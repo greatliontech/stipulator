@@ -4,6 +4,7 @@
 package records
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"path"
@@ -75,11 +76,15 @@ func Load(fsys fs.FS) (*Store, error) {
 }
 
 // LoadTombstones reads the tombstone registry; an absent registry means
-// nothing has been retired.
+// nothing has been retired, but any other read failure propagates — an
+// unreadable registry must never let a retired identity redeclare.
 func LoadTombstones(fsys fs.FS) ([]string, error) {
 	b, err := fs.ReadFile(fsys, TombstonesPath)
-	if err != nil {
+	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("reading %s: %w", TombstonesPath, err)
 	}
 	t := &stipulatorv1.Tombstones{}
 	if err := prototext.Unmarshal(b, t); err != nil {
@@ -89,15 +94,23 @@ func LoadTombstones(fsys fs.FS) ([]string, error) {
 }
 
 // eachTextproto visits the .textproto files of a directory in lexical
-// order; an absent directory is empty.
+// order. An absent directory is empty; any other read failure propagates.
+// A stray non-.textproto file is an error — a typoed record extension must
+// not make the claim silently invisible.
 func eachTextproto(fsys fs.FS, dir string, fn func(string, []byte) error) error {
 	entries, err := fs.ReadDir(fsys, dir)
-	if err != nil {
+	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
+	if err != nil {
+		return fmt.Errorf("reading %s: %w", dir, err)
+	}
 	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".textproto") {
+		if e.IsDir() {
 			continue
+		}
+		if !strings.HasSuffix(e.Name(), ".textproto") {
+			return fmt.Errorf("%s: unexpected file %q in a record directory (records are .textproto)", dir, e.Name())
 		}
 		p := path.Join(dir, e.Name())
 		raw, err := fs.ReadFile(fsys, p)

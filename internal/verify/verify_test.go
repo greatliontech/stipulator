@@ -1,6 +1,7 @@
 package verify
 
 import (
+	"io/fs"
 	"os"
 	"strings"
 	"testing"
@@ -107,7 +108,10 @@ func TestPin(t *testing.T) {
 	})
 	_ = rep
 	hashes := map[string]string{"REQ-v-a": strings.Repeat("a", 64)}
-	updates := records.Pin(store, hashes)
+	updates, err := records.Pin(store, hashes)
+	if err != nil {
+		t.Fatal(err)
+	}
 	got, ok := updates[".stipulator/bindings/x.textproto"]
 	if !ok {
 		t.Fatal("no update produced")
@@ -126,8 +130,73 @@ func TestPin(t *testing.T) {
 	store2, _ := records.Load(fstest.MapFS{
 		".stipulator/bindings/x.textproto": {Data: got},
 	})
-	if again := records.Pin(store2, hashes); len(again) != 0 {
-		t.Fatalf("re-pin of pinned file produced changes: %v", again)
+	if again, err := records.Pin(store2, hashes); err != nil || len(again) != 0 {
+		t.Fatalf("re-pin of pinned file produced changes: %v %v", again, err)
+	}
+}
+
+func TestPinRefusesCommentedFile(t *testing.T) {
+	header := "# proto-file: proto/stipulator/v1/records.proto\n"
+	_, store := run(t, map[string]string{
+		".stipulator/bindings/x.textproto": header + binding("REQ-v-a", "") +
+			"# reviewed by hand, keep\n" + binding("REQ-v-b", ""),
+	})
+	_, err := records.Pin(store, map[string]string{
+		"REQ-v-a": strings.Repeat("a", 64),
+		"REQ-v-b": strings.Repeat("b", 64),
+	})
+	if err == nil || !strings.Contains(err.Error(), "comment outside the leading header") {
+		t.Fatalf("want comment refusal, got %v", err)
+	}
+}
+
+func TestRecordHygiene(t *testing.T) {
+	t.Run("duplicate binding flagged", func(t *testing.T) {
+		rep, _ := run(t, map[string]string{
+			".stipulator/bindings/x.textproto": binding("REQ-v-a", "") + binding("REQ-v-a", ""),
+		})
+		wantProblem(t, rep, "duplicate binding")
+	})
+	t.Run("gap without id gets dedicated message", func(t *testing.T) {
+		rep, _ := run(t, map[string]string{
+			".stipulator/gaps/x.textproto": "reason: \"r\"\nlands { exists: \"REQ-v-a\" }\n",
+		})
+		wantProblem(t, rep, "gap without requirement_id")
+	})
+	t.Run("stray file in record dir is an error", func(t *testing.T) {
+		fsys := fstest.MapFS{
+			"stipulator.textproto":             {Data: []byte("include: \"specs/**/*.md\"\n")},
+			"specs/a.md":                       {Data: []byte(goodDoc)},
+			".stipulator/bindings/README.md":   {Data: []byte("stray")},
+		}
+		if _, err := records.Load(fsys); err == nil {
+			t.Fatal("stray file tolerated")
+		}
+	})
+}
+
+// errFS wraps an fs.FS, failing reads of one path with a non-NotExist error.
+type errFS struct {
+	fs.FS
+	fail string
+}
+
+func (e errFS) ReadFile(name string) ([]byte, error) {
+	if name == e.fail {
+		return nil, fs.ErrPermission
+	}
+	return fs.ReadFile(e.FS, name)
+}
+
+func TestUnreadableTombstonesPropagates(t *testing.T) {
+	base := fstest.MapFS{
+		".stipulator/tombstones.textproto": {Data: []byte("retired: \"REQ-old\"\n")},
+	}
+	if _, err := records.LoadTombstones(errFS{FS: base, fail: records.TombstonesPath}); err == nil {
+		t.Fatal("permission error read as empty registry")
+	}
+	if _, err := records.LoadTombstones(fstest.MapFS{}); err != nil {
+		t.Fatalf("absent registry must be empty, got %v", err)
 	}
 }
 

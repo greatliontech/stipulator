@@ -70,6 +70,20 @@ func TestDiff(t *testing.T) {
 		}
 	})
 
+	t.Run("text and kind change together report both", func(t *testing.T) {
+		next := compileFiles(t, map[string]string{
+			"specs/a.md": "# T\n\n**widget** (term): a gadget.\n\n" +
+				"**REQ-d-a** (wire): Using the widget it MUST x differently.\n\n" +
+				"**REQ-d-b** (behavior, refines REQ-d-a): It MUST y.\n",
+		})
+		r := Diff(base, next)
+		if !slices.Equal(r.TextChangedRequirements, []string{"REQ-d-a"}) ||
+			!slices.Equal(r.KindChangedRequirements, []string{"REQ-d-a"}) {
+			t.Fatalf("independent axes not reported: text=%v kind=%v",
+				r.TextChangedRequirements, r.KindChangedRequirements)
+		}
+	})
+
 	t.Run("text change", func(t *testing.T) {
 		next := compileFiles(t, map[string]string{
 			"specs/a.md": "# T\n\n**widget** (term): a gadget.\n\n" +
@@ -108,6 +122,9 @@ func TestDiff(t *testing.T) {
 		}
 		if !slices.Equal(r.MetadataOnlyTerms, []string{"Widget"}) {
 			t.Fatalf("metadata-only terms = %v", r.MetadataOnlyTerms)
+		}
+		if !r.SemanticallyEmpty() {
+			t.Fatalf("case-only term rename produced semantic delta: %v", r.Lines())
 		}
 	})
 }

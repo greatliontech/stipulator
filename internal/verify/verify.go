@@ -42,9 +42,15 @@ func Run(spec *stipulatorv1.Spec, store *records.Store) *Report {
 		rep.Problems = append(rep.Problems, Problem{Path: path, Message: fmt.Sprintf(format, args...)})
 	}
 
+	seen := map[string]bool{}
 	for _, bf := range store.Bindings {
 		for _, b := range bf.Set.GetBindings() {
 			id := b.GetRequirementId()
+			key := id + "|" + b.GetBackend() + "|" + b.GetSymbol() + "|" + b.GetRole().String()
+			if seen[key] {
+				problem(bf.Path, "duplicate binding: %s %s %s", id, b.GetSymbol(), b.GetRole())
+			}
+			seen[key] = true
 			h, known := hashes[id]
 			switch {
 			case id == "":
@@ -70,7 +76,9 @@ func Run(spec *stipulatorv1.Spec, store *records.Store) *Report {
 
 	for _, gf := range store.Gaps {
 		id := gf.Gap.GetRequirementId()
-		if _, known := hashes[id]; !known {
+		if id == "" {
+			problem(gf.Path, "gap without requirement_id")
+		} else if _, known := hashes[id]; !known {
 			problem(gf.Path, "gap names %s, which is not in the corpus", id)
 		}
 		if gf.Gap.GetReason() == "" {

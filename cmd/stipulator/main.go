@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/compile"
@@ -77,11 +78,15 @@ func main() {
 		for _, r := range spec.GetRequirements() {
 			hashes[r.GetId()] = r.GetContentHash()
 		}
-		updates := records.Pin(store, hashes)
+		updates, err := records.Pin(store, hashes)
+		if err != nil {
+			fatal(err)
+		}
 		paths := make([]string, 0, len(updates))
 		for p := range updates {
 			paths = append(paths, p)
 		}
+		sort.Strings(paths)
 		for _, p := range paths {
 			if err := os.WriteFile(filepath.Join(*root, filepath.FromSlash(p)), updates[p], 0o644); err != nil {
 				fatal(err)
@@ -124,6 +129,6 @@ func fatal(err error) {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: stipulator <compile|verify|pin> [-C root] [-ir]")
+	fmt.Fprintln(os.Stderr, "usage: stipulator <compile|verify|pin> [-C root] [-ir] | stipulator diff <old-root> <new-root>")
 	os.Exit(2)
 }

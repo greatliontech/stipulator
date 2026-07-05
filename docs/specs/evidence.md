@@ -13,6 +13,12 @@ identifier, the content hash it was authored against (unset when not yet
 pinned), a backend, a symbol reference, a role, and — when the backend
 defines one — the shape hash of the bound symbol.
 
+**REQ-evidence-binding-machine-owned** (behavior): A tool rewrite of a
+binding file MUST fail when the file carries comments outside its leading
+header block, so hand-written commentary is never silently destroyed;
+binding rationale belongs in review and commit messages, not in record
+files.
+
 **REQ-evidence-binding-roles** (behavior): A binding's role MUST be one of
 `implements` (the symbol realizes the requirement), `tests` (the symbol is a
 test exercising it), or `proves` (a backend prover assertion checks it).

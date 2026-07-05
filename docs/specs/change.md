@@ -12,8 +12,9 @@ deliberately ahead of the code.
 **REQ-change-diff** (behavior): The `diff` operation MUST compare two
 compiled IRs and report, per identity: added, removed, text-changed (content
 hash delta), kind-changed (clause kind is marker metadata, invisible to the
-content hash), metadata-only (location), and edge changes — such that a pure
-file reorganization reports no semantic delta.
+content hash), metadata-only (location), and edge changes — text-changed and
+kind-changed are independent axes, reported together when both change, and a
+pure file reorganization reports no semantic delta.
 
 ## Dispositions
 

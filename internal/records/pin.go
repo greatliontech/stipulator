@@ -16,7 +16,7 @@ import (
 // protobuf-go text marshaler deliberately randomizes its whitespace, and
 // pin output is observable state that determinism rules over. The leading
 // comment header of each file (its '#' lines) is preserved.
-func Pin(store *Store, hashes map[string]string) map[string][]byte {
+func Pin(store *Store, hashes map[string]string) (map[string][]byte, error) {
 	out := map[string][]byte{}
 	for _, bf := range store.Bindings {
 		changed := false
@@ -27,11 +27,37 @@ func Pin(store *Store, hashes map[string]string) map[string][]byte {
 				changed = true
 			}
 		}
-		if changed {
-			out[bf.Path] = renderBindingSet(bf)
+		if !changed {
+			continue
+		}
+		// Binding files are machine-owned: rewriting would destroy any
+		// commentary outside the leading header, so refuse instead of
+		// silently dropping it.
+		if line := commentOutsideHeader(bf.Raw); line > 0 {
+			return nil, fmt.Errorf("%s:%d: comment outside the leading header block; move commentary to the commit message before pinning", bf.Path, line)
+		}
+		out[bf.Path] = renderBindingSet(bf)
+	}
+	return out, nil
+}
+
+// commentOutsideHeader returns the 1-based line of the first comment after
+// the leading header block, or 0.
+func commentOutsideHeader(raw []byte) int {
+	inHeader := true
+	for i, line := range strings.Split(string(raw), "\n") {
+		t := strings.TrimSpace(line)
+		if inHeader {
+			if strings.HasPrefix(t, "#") {
+				continue
+			}
+			inHeader = false
+		}
+		if strings.HasPrefix(t, "#") {
+			return i + 1
 		}
 	}
-	return out
+	return 0
 }
 
 func renderBindingSet(bf BindingFile) []byte {

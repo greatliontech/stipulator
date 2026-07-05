@@ -3,7 +3,7 @@
 
 bindings {
   requirement_id: "REQ-change-diff"
-  content_hash: "02f8de1f894f4672d895803ded734fa8b23dc47cc9eee79d57eed5d6bd65339f"
+  content_hash: "74ea12ecdb16feaf2af189cd62955f6574fc33db3e153de5bfa12f9350177a87"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/diff.Diff"
   role: BINDING_ROLE_IMPLEMENTS
@@ -11,7 +11,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-diff"
-  content_hash: "02f8de1f894f4672d895803ded734fa8b23dc47cc9eee79d57eed5d6bd65339f"
+  content_hash: "74ea12ecdb16feaf2af189cd62955f6574fc33db3e153de5bfa12f9350177a87"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/diff.TestDiff"
   role: BINDING_ROLE_TESTS

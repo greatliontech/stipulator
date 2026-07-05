@@ -72,14 +72,23 @@ func Diff(old, new *stipulatorv1.Spec) *Report {
 	newReqs := reqMap(new)
 	for id, o := range oldReqs {
 		n, ok := newReqs[id]
-		switch {
-		case !ok:
+		if !ok {
 			r.RemovedRequirements = append(r.RemovedRequirements, id)
-		case o.GetContentHash() != n.GetContentHash():
+			continue
+		}
+		// Text and kind are independent axes: the clause kind lives in the
+		// marker, outside the content hash, so both can change at once and
+		// both must be reported.
+		semantic := false
+		if o.GetContentHash() != n.GetContentHash() {
 			r.TextChangedRequirements = append(r.TextChangedRequirements, id)
-		case o.GetKind() != n.GetKind():
+			semantic = true
+		}
+		if o.GetKind() != n.GetKind() {
 			r.KindChangedRequirements = append(r.KindChangedRequirements, id)
-		case !sameLocation(o.GetLocation(), n.GetLocation()):
+			semantic = true
+		}
+		if !semantic && !sameLocation(o.GetLocation(), n.GetLocation()) {
 			r.MetadataOnlyRequirements = append(r.MetadataOnlyRequirements, id)
 		}
 	}
@@ -162,11 +171,14 @@ func edgeKey(e *stipulatorv1.Edge) string {
 		refString(e.GetFrom()), refString(e.GetTo()))
 }
 
+// refString renders an edge endpoint. Term names are case-folded: term
+// identity is case-insensitive, so a case-only rename must not read as an
+// edge change.
 func refString(r *stipulatorv1.NodeRef) string {
 	if r.HasRequirementId() {
 		return r.GetRequirementId()
 	}
-	return fmt.Sprintf("%q", r.GetTermName())
+	return fmt.Sprintf("%q", strings.ToLower(r.GetTermName()))
 }
 
 func sameLocation(a, b *stipulatorv1.Location) bool {
