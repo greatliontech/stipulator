@@ -1,0 +1,249 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-profile-utf8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.Compile"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-profile-utf8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestDocumentErrors"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-profile-doc-title"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/profile.transformer.Transform"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-profile-doc-title"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestDocumentErrors"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-profile-requirement-lead"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/profile.transformer.paragraph"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-profile-requirement-lead"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestRequirementLead"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-profile-id-grammar"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/profile.IDPattern"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-profile-id-grammar"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestIdentity"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-profile-metadata"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/profile.parseMetadata"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-profile-metadata"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestLeadErrors"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-profile-lead-nearmiss"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/profile.transformer.paragraph"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-profile-lead-nearmiss"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestLeadErrors"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-profile-term-lead"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/profile.transformer.paragraph"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-profile-term-lead"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestTermMatching"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-profile-payload"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/profile.adoptPayload"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-profile-payload"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestPayloadChangesHash"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-profile-note"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/profile.Note"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-profile-note"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestNotes"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-profile-code-inert"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/profile.InlineSegs"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-profile-code-inert"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestKeywordDiscipline"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-profile-one-keyword"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.resolve"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-profile-one-keyword"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestKeywordDiscipline"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-profile-orphan-keyword"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.resolve"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-profile-orphan-keyword"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestKeywordDiscipline"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-profile-term-matching"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.termMatcher"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-profile-term-matching"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestTermMatching"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-profile-id-reference"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.resolve"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-profile-id-reference"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestReferences"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-profile-annotations"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.extractDocument"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-profile-annotations"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestReferences"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-model-graph"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.resolve"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-model-canonical-order"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.resolve"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-model-canonical-order"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestLayoutIndependence"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-model-identity"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestIdentity"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-model-tombstones"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.loadTombstones"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-model-tombstones"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestIdentity"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-model-content-hash"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestHashStableUnderRewrap"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-model-location-metadata"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestLayoutIndependence"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-model-layout-independence"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestLayoutIndependence"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-model-source"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/profile.Source"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-model-source"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestRequirementLead"
+  role: BINDING_ROLE_TESTS
+}
