@@ -1,0 +1,18 @@
+edition = "2023";
+
+package stipulator.v1;
+
+option go_package = "github.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1";
+
+// Manifest is the root configuration of a stipulator repository. It is
+// stored as textproto in the file `stipulator.textproto` at the repository
+// root; a repository without one is not a stipulator repository.
+message Manifest {
+  // Include globs selecting the corpus documents, slash-separated and
+  // relative to the repository root. Globs are matched per path segment:
+  // `**` as a complete segment matches zero or more segments; any other
+  // segment follows Go path.Match syntax. When empty, the corpus defaults
+  // to "docs/specs/**/*.md". Generated folder indexes (README.md) are
+  // always excluded from enumeration.
+  repeated string include = 1;
+}

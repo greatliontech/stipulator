@@ -18,6 +18,15 @@ manifest declares at least the corpus include globs, defaulting to
 resolving the manifest's include globs and sorting the resulting paths
 lexicographically; generated folder indexes are excluded from enumeration.
 
+**REQ-profile-glob** (behavior, refines REQ-profile-enumeration): An include
+glob MUST be matched against slash-separated paths relative to the repository
+root, per path segment — `**` as a complete segment matching zero or more
+segments; any other segment matching exactly one path segment, with `*` (a
+possibly empty run of characters), `?` (any single character), `[...]` and
+`[^...]` classes with `-` ranges,
+and `\` escapes — and a glob containing an empty or malformed segment is
+rejected when enumeration begins, before any matching.
+
 ## Documents and sections
 
 **REQ-profile-doc-title** (behavior): Each corpus document MUST contain

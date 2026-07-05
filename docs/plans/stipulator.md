@@ -2,7 +2,7 @@
 
 Spec: docs/specs/
 
-- [ ] 1. Manifest + corpus enumeration
+- [x] 1. Manifest + corpus enumeration
 - [ ] 2. IR schema (proto) + canonical hashing primitives
 - [ ] 3. Profile compiler (goldmark → IR) + lints
 - [ ] 4. Self-compile golden fixture (own spec as first corpus)
