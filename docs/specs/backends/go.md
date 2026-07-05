@@ -28,7 +28,8 @@ package load failure is a verification error, not an absence.
 output produced in the current verification run, correlating passed tests
 with bindings of role `tests`; toolchain cache replays are current-run
 equivalent (the cache key is the tree content), and a bound test producing
-no outcome in a witnessed run is unwitnessed and reads as `broken`.
+no outcome in a witnessed run is unwitnessed and reads as `broken`; a
+skipped test grants no witness without reading as `broken`.
 
 **REQ-go-covers** (behavior): Tests MAY register requirement coverage at
 runtime through the provided `Covers(t, id)` helper, which yields

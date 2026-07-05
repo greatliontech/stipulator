@@ -69,14 +69,16 @@ unbound `MAY` requirements exempt from coverage.
 | `wire` | analyzer proof or executed witness |
 
 **REQ-coverage-buckets** (behavior): Each non-exempt requirement MUST be
-reported in exactly one bucket, with `broken` taking precedence over `stale`
-and `stale` over `uncovered`:
+reported in exactly one bucket — any broken binding forces `broken`, else
+any stale binding forces `stale`, then the policy decides `covered` against
+`uncovered`; claim hygiene is part of coverage, so red claims downgrade a
+requirement even when other evidence satisfies the policy:
 
 | Bucket | Meaning |
 |---|---|
 | `covered` | policy met by current evidence |
 | `broken` | a binding fails to resolve, its shape hash mismatches, or its bound test fails or produces no outcome in a witnessed run |
-| `stale` | evidence whose content-hash pin is unset or differs from the current one |
+| `stale` | a binding whose content-hash pin is unset or differs from the current one |
 | `uncovered` | no evidence meets policy |
 
 **REQ-coverage-no-scalar** (behavior): Stipulator MUST NOT gate on aggregate

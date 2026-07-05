@@ -1,0 +1,6 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.Gap
+
+requirement_id: "REQ-profile-index-generated"
+reason: "fmt not yet built"
+lands { attested { condition: "fmt chunk begins" } }

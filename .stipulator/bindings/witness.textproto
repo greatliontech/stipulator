@@ -3,7 +3,7 @@
 
 bindings {
   requirement_id: "REQ-go-witness"
-  content_hash: "2861721ff2c6adc7412adf709c04ba3d8dab4ea1f9e6a9ec21132d032ad333c4"
+  content_hash: "54bfb3b7693ff8d4ea8a42346ff83783a6176d79bef1fa188eb189274417961a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.RunTests"
   role: BINDING_ROLE_IMPLEMENTS
@@ -12,7 +12,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-witness"
-  content_hash: "2861721ff2c6adc7412adf709c04ba3d8dab4ea1f9e6a9ec21132d032ad333c4"
+  content_hash: "54bfb3b7693ff8d4ea8a42346ff83783a6176d79bef1fa188eb189274417961a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunTests"
   role: BINDING_ROLE_TESTS

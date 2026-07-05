@@ -1,7 +1,8 @@
 // Command stipulator compiles and verifies a specification corpus.
 //
 //	stipulator compile [-C root] [-ir]   compile the corpus; print diagnostics
-//	stipulator verify  [-C root]         check records against the corpus
+//	stipulator verify  [-C root] [-no-test]  check records against corpus and code
+//	stipulator gate    [-C root]         coverage buckets + the gate verdict
 //	stipulator diff <old-root> <new-root>  per-identity IR delta
 //	stipulator pin     [-C root]         backfill binding content-hash pins
 package main
@@ -12,10 +13,12 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/compile"
+	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/diff"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
@@ -82,9 +85,9 @@ func main() {
 			rep.Pinned, rep.Stale, rep.ShapePinned, rep.ShapeUnpinned,
 			rep.Broken, rep.ShapeMismatch, rep.TestsFailed, rep.TestsNotRun,
 			rep.Unverified, rep.TestsPassed, len(rep.Registrations), len(store.Gaps))
-		// CLI policy until the coverage gate lands: anything broken fails
-		// the run; the gate will make it gap-excusable per requirement.
-		if len(rep.Problems) > 0 || rep.Broken > 0 || rep.ShapeMismatch > 0 || rep.TestsFailed > 0 || (testRun != nil && rep.TestsNotRun > 0) {
+		// verify fails only on verification errors; red evidence is bucket
+		// data for the gate, which decides gap-excusability.
+		if len(rep.Problems) > 0 {
 			os.Exit(1)
 		}
 	case "diff":
@@ -101,6 +104,42 @@ func main() {
 		if r.SemanticallyEmpty() {
 			fmt.Println("no semantic delta")
 		}
+	case "gate":
+		fs.Parse(os.Args[2:])
+		spec := mustCompile(*root)
+		store := mustLoad(*root)
+		testRun, err := golang.RunTests(*root)
+		if err != nil {
+			fatal(err)
+		}
+		rep := verify.Run(spec, store, mustBackends(*root), testRun)
+		for _, p := range rep.Problems {
+			fmt.Fprintln(os.Stderr, p)
+		}
+		if len(rep.Problems) > 0 {
+			os.Exit(1)
+		}
+		cov := coverage.Evaluate(spec, rep, store, true)
+		counts := map[coverage.Bucket]int{}
+		for _, r := range cov.Requirements {
+			counts[r.Bucket]++
+			if r.Bucket != coverage.Covered && r.Bucket != coverage.Exempt {
+				fmt.Printf("%s: %s (%s)\n", r.Bucket, r.Id, strings.Join(r.Reasons, "; "))
+			}
+		}
+		for _, g := range cov.Gaps {
+			fmt.Printf("gap %s: %s (%s)\n", g.State, g.RequirementId, g.Path)
+		}
+		fmt.Printf("coverage: %d covered, %d uncovered, %d stale, %d broken, %d exempt; gaps: %d\n",
+			counts[coverage.Covered], counts[coverage.Uncovered], counts[coverage.Stale],
+			counts[coverage.Broken], counts[coverage.Exempt], len(cov.Gaps))
+		if !cov.GatePasses() {
+			for _, v := range cov.Violations {
+				fmt.Fprintf(os.Stderr, "gate: %s is red and no gap names it\n", v)
+			}
+			os.Exit(1)
+		}
+		fmt.Println("gate: pass")
 	case "pin":
 		fs.Parse(os.Args[2:])
 		spec := mustCompile(*root)
@@ -185,6 +224,6 @@ func fatal(err error) {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: stipulator <compile|verify|pin> [-C root] [-ir] | stipulator diff <old-root> <new-root>")
+	fmt.Fprintln(os.Stderr, "usage: stipulator <compile|verify|gate|pin> [flags] | stipulator diff <old-root> <new-root>")
 	os.Exit(2)
 }
