@@ -1,0 +1,24 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Vet
+        run: go vet ./...
+      - name: Test
+        # Suite health is a broader check than the gate: a failing unbound
+        # test breaks no binding, so the gate alone could pass on a red
+        # suite.
+        run: go test -race ./...
+      - name: Gate
+        run: go run ./cmd/stipulator gate

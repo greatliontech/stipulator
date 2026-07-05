@@ -1,0 +1,48 @@
+version: "3"
+
+tasks:
+  default:
+    deps: [check]
+
+  build:
+    desc: Build all packages
+    cmds:
+      - go build ./...
+
+  test:
+    desc: Run the test suite with the race detector
+    cmds:
+      - go test -race ./...
+
+  vet:
+    desc: Static analysis
+    cmds:
+      - go vet ./...
+
+  generate:
+    desc: Regenerate protobuf code
+    cmds:
+      - buf lint
+      - buf generate
+
+  gate:
+    desc: Coverage buckets and the gate verdict (compiles the corpus, runs tests, verifies records)
+    cmds:
+      - go run ./cmd/stipulator gate
+
+  verify:
+    desc: Check records against the corpus and code
+    cmds:
+      - go run ./cmd/stipulator verify
+
+  pin:
+    desc: Backfill binding content and shape pins
+    cmds:
+      - go run ./cmd/stipulator pin
+
+  check:
+    desc: Everything CI runs
+    deps: [vet]
+    cmds:
+      - task: test
+      - task: gate
