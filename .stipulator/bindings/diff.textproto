@@ -7,6 +7,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/diff.Diff"
   role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "0f367ad2e180f19a59ec860ac66fc666c236952ae094dff00dae098667c59e4a"
 }
 
 bindings {
@@ -15,6 +16,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/diff.TestDiff"
   role: BINDING_ROLE_TESTS
+  shape_hash: "3372e7446b81873c14c3c2e04fdd38282bd952de5155ee38eb572798290d626e"
 }
 
 bindings {
@@ -23,4 +25,5 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/diff.TestDiff"
   role: BINDING_ROLE_TESTS
+  shape_hash: "3372e7446b81873c14c3c2e04fdd38282bd952de5155ee38eb572798290d626e"
 }

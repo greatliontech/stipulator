@@ -30,7 +30,7 @@ func run(t *testing.T, files map[string]string) (*Report, *records.Store) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return Run(spec, store), store
+	return Run(spec, store, nil), store
 }
 
 func wantProblem(t *testing.T, rep *Report, substr string) {
@@ -108,7 +108,7 @@ func TestPin(t *testing.T) {
 	})
 	_ = rep
 	hashes := map[string]string{"REQ-v-a": strings.Repeat("a", 64)}
-	updates, err := records.Pin(store, hashes)
+	updates, err := records.Pin(store, hashes, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestPin(t *testing.T) {
 	store2, _ := records.Load(fstest.MapFS{
 		".stipulator/bindings/x.textproto": {Data: got},
 	})
-	if again, err := records.Pin(store2, hashes); err != nil || len(again) != 0 {
+	if again, err := records.Pin(store2, hashes, nil); err != nil || len(again) != 0 {
 		t.Fatalf("re-pin of pinned file produced changes: %v %v", again, err)
 	}
 }
@@ -144,7 +144,7 @@ func TestPinRefusesCommentedFile(t *testing.T) {
 	_, err := records.Pin(store, map[string]string{
 		"REQ-v-a": strings.Repeat("a", 64),
 		"REQ-v-b": strings.Repeat("b", 64),
-	})
+	}, nil)
 	if err == nil || !strings.Contains(err.Error(), "comment outside the leading header") {
 		t.Fatalf("want comment refusal, got %v", err)
 	}
@@ -173,6 +173,120 @@ func TestRecordHygiene(t *testing.T) {
 			t.Fatal("stray file tolerated")
 		}
 	})
+}
+
+// fakeBackend resolves from a fixed map: absent means NotFound; shape
+// "GEN" means GeneratedFile.
+type fakeBackend map[string]string
+
+func (f fakeBackend) Resolve(symbol string) (Resolution, string, error) {
+	shape, ok := f[symbol]
+	switch {
+	case !ok:
+		return NotFound, "", nil
+	case shape == "GEN":
+		return GeneratedFile, "", nil
+	}
+	return Resolved, shape, nil
+}
+
+func TestBackendResolution(t *testing.T) {
+	fsys := fstest.MapFS{
+		"stipulator.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
+		"specs/a.md":           {Data: []byte(goodDoc)},
+		".stipulator/bindings/x.textproto": {Data: []byte(
+			binding("REQ-v-a", "") + // symbol example.com/p.F
+				strings.ReplaceAll(binding("REQ-v-b", ""), "example.com/p.F", "example.com/p.Gone") +
+				strings.ReplaceAll(binding("REQ-v-a", ""), "example.com/p.F", "example.com/p.Generated") +
+				strings.ReplaceAll(binding("REQ-v-b", ""), `backend: "go"`, `backend: "proto"`))},
+	}
+	spec, diags, err := compile.Compile(fsys)
+	if err != nil || len(diags) > 0 {
+		t.Fatalf("compile: %v %v", err, diags)
+	}
+	store, err := records.Load(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	backends := map[string]Backend{"go": fakeBackend{
+		"example.com/p.F":         strings.Repeat("s", 64),
+		"example.com/p.Generated": "GEN",
+	}}
+	rep := Run(spec, store, backends)
+	wantProblem(t, rep, "generated file; bind the generating artifact")
+	// A missing symbol is broken-bucket data, never a Problem: gap records
+	// must be able to excuse it at the gate.
+	for _, p := range rep.Problems {
+		if strings.Contains(p.Message, "p.Gone") {
+			t.Fatalf("NotFound reported as Problem: %v", p)
+		}
+	}
+	if rep.Broken != 1 {
+		t.Fatalf("broken = %d", rep.Broken)
+	}
+	var gone *BindingResult
+	for i := range rep.Results {
+		if rep.Results[i].Symbol == "example.com/p.Gone" {
+			gone = &rep.Results[i]
+		}
+	}
+	if gone == nil || gone.Resolution != NotFound {
+		t.Fatalf("missing NotFound result: %+v", gone)
+	}
+	if rep.ShapeUnpinned != 1 { // p.F resolved, shape pin unset
+		t.Fatalf("shape unpinned = %d", rep.ShapeUnpinned)
+	}
+	if rep.Unverified != 1 { // the proto-backend binding
+		t.Fatalf("unverified = %d", rep.Unverified)
+	}
+
+	// Pin the shape, re-run: shape pinned.
+	updates, err := records.Pin(store, nil, map[string]string{
+		records.ShapeKey("go", "example.com/p.F"): strings.Repeat("s", 64),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(updates) != 1 {
+		t.Fatalf("updates = %d", len(updates))
+	}
+	store2, err := records.Load(fstest.MapFS{
+		".stipulator/bindings/x.textproto": {Data: updates[".stipulator/bindings/x.textproto"]},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep2 := Run(spec, store2, backends)
+	if rep2.ShapePinned != 1 || rep2.ShapeUnpinned != 0 {
+		t.Fatalf("after pin: shape pinned=%d unpinned=%d", rep2.ShapePinned, rep2.ShapeUnpinned)
+	}
+}
+
+func TestShapeMismatchIsDataNotProblem(t *testing.T) {
+	fsys := fstest.MapFS{
+		"stipulator.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
+		"specs/a.md":           {Data: []byte(goodDoc)},
+		".stipulator/bindings/x.textproto": {Data: []byte(
+			strings.Replace(binding("REQ-v-a", ""), "role:",
+				"shape_hash: \""+strings.Repeat("0", 64)+"\"\n  role:", 1))},
+	}
+	spec, diags, err := compile.Compile(fsys)
+	if err != nil || len(diags) > 0 {
+		t.Fatalf("compile: %v %v", err, diags)
+	}
+	store, err := records.Load(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep := Run(spec, store, map[string]Backend{"go": fakeBackend{
+		"example.com/p.F": strings.Repeat("s", 64),
+	}})
+	if len(rep.Problems) != 0 {
+		t.Fatalf("problems = %v", rep.Problems)
+	}
+	if rep.ShapeMismatch != 1 {
+		t.Fatalf("shape mismatch = %d", rep.ShapeMismatch)
+	}
 }
 
 // errFS wraps an fs.FS, failing reads of one path with a non-NotExist error.
@@ -212,7 +326,7 @@ func TestSelfVerify(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rep := Run(spec, store)
+	rep := Run(spec, store, nil)
 	for _, p := range rep.Problems {
 		t.Error(p)
 	}

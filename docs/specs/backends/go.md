@@ -8,12 +8,15 @@ interface (REQ-backend-surfaces); nothing in the core knows Go exists.
 ## Symbols and shapes
 
 **REQ-go-symbol** (behavior): A Go symbol reference MUST name the package
-import path, the identifier, the receiver type for methods, and the object
-kind.
+import path, the identifier, and the receiver type for methods; the object's
+kind and shape are resolved from the code, never declared in the reference,
+so they cannot diverge from reality.
 
 **REQ-go-shape-hash** (wire): The Go shape hash MUST be computed over the
-object's declared type signature rendered canonically with fully qualified
-type names, per REQ-model-hash-canonical-form.
+object's declaration as rendered by the Go type-checker's object printer
+with full package-path qualifiers, per REQ-model-hash-canonical-form; the
+rendering is toolchain-versioned, so a toolchain change may re-stale shape
+pins, restored by re-pinning.
 
 **REQ-go-static-binding** (behavior): Static binding verification MUST
 resolve the symbol through the Go type checker and compare shape hashes; a

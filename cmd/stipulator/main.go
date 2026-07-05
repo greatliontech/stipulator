@@ -14,6 +14,7 @@ import (
 	"sort"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/diff"
 	"github.com/greatliontech/stipulator/internal/records"
@@ -48,12 +49,23 @@ func main() {
 		fs.Parse(os.Args[2:])
 		spec := mustCompile(*root)
 		store := mustLoad(*root)
-		rep := verify.Run(spec, store)
+		rep := verify.Run(spec, store, mustBackends(*root))
 		for _, p := range rep.Problems {
 			fmt.Fprintln(os.Stderr, p)
 		}
-		fmt.Printf("bindings: %d pinned, %d stale; gaps: %d\n", rep.Pinned, rep.Stale, len(store.Gaps))
-		if len(rep.Problems) > 0 {
+		for _, r := range rep.Results {
+			if r.Resolution == verify.NotFound {
+				fmt.Fprintf(os.Stderr, "%s: broken: symbol %s not found (binding for %s)\n", r.Path, r.Symbol, r.RequirementId)
+			}
+			if r.Shape == verify.ShapeMismatch {
+				fmt.Fprintf(os.Stderr, "%s: broken: shape of %s moved (binding for %s)\n", r.Path, r.Symbol, r.RequirementId)
+			}
+		}
+		fmt.Printf("bindings: %d pinned, %d stale; shapes: %d pinned, %d unpinned, %d mismatched; broken: %d; unverified: %d; gaps: %d\n",
+			rep.Pinned, rep.Stale, rep.ShapePinned, rep.ShapeUnpinned, rep.ShapeMismatch, rep.Broken, rep.Unverified, len(store.Gaps))
+		// CLI policy until the coverage gate lands: broken bindings fail
+		// the run; the gate will make them gap-excusable per requirement.
+		if len(rep.Problems) > 0 || rep.Broken > 0 || rep.ShapeMismatch > 0 {
 			os.Exit(1)
 		}
 	case "diff":
@@ -78,7 +90,24 @@ func main() {
 		for _, r := range spec.GetRequirements() {
 			hashes[r.GetId()] = r.GetContentHash()
 		}
-		updates, err := records.Pin(store, hashes)
+		shapes := map[string]string{}
+		backends := mustBackends(*root)
+		for _, bf := range store.Bindings {
+			for _, b := range bf.Set.GetBindings() {
+				be, ok := backends[b.GetBackend()]
+				if !ok {
+					continue
+				}
+				res, shape, err := be.Resolve(b.GetSymbol())
+				switch {
+				case err != nil:
+					fmt.Fprintf(os.Stderr, "pin: skipping %s: %v\n", b.GetSymbol(), err)
+				case res == verify.Resolved:
+					shapes[records.ShapeKey(b.GetBackend(), b.GetSymbol())] = shape
+				}
+			}
+		}
+		updates, err := records.Pin(store, hashes, shapes)
 		if err != nil {
 			fatal(err)
 		}
@@ -113,6 +142,14 @@ func mustCompile(root string) *stipulatorv1.Spec {
 		os.Exit(1)
 	}
 	return spec
+}
+
+func mustBackends(root string) map[string]verify.Backend {
+	gb, err := golang.New(root)
+	if err != nil {
+		fatal(err)
+	}
+	return map[string]verify.Backend{"go": gb}
 }
 
 func mustLoad(root string) *records.Store {

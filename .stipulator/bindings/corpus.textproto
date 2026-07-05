@@ -7,6 +7,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.LoadManifest"
   role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "5583631254302a7928bab3178f630e1805a5ba392fecda4055a10e09ffbbe71b"
 }
 
 bindings {
@@ -15,6 +16,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.TestLoadManifest"
   role: BINDING_ROLE_TESTS
+  shape_hash: "a8f8b0a08a0f681469742095b6544970290bd0a507742fe8ce918e915e65f732"
 }
 
 bindings {
@@ -23,6 +25,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.Enumerate"
   role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "2f3b6a20022c3eac491bd1e39e14fa21eb404ae3914f85556b6622e2c1cbca21"
 }
 
 bindings {
@@ -31,6 +34,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.TestEnumerate"
   role: BINDING_ROLE_TESTS
+  shape_hash: "58957c36b5986dd54cc1394f88821cf252c6982483e881f38c88492b95ebda79"
 }
 
 bindings {
@@ -39,6 +43,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.matchGlob"
   role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "138cdba1d2144c841e9da1a55f63320051d57d2a613b91e05d92bd0489e3416d"
 }
 
 bindings {
@@ -47,6 +52,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.validateGlob"
   role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "6d4feccb9f41838778e82a13a5753f8c15a658b4339cb7971dbae5693c7422bc"
 }
 
 bindings {
@@ -55,4 +61,5 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.TestMatchGlob"
   role: BINDING_ROLE_TESTS
+  shape_hash: "3d15d5747f2e9d67116f7745c3921993afaf5e55604d581a85e1aa37185b31d5"
 }

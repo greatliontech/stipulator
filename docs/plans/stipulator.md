@@ -8,7 +8,7 @@ Spec: docs/specs/
 - [x] 4. Self-compile golden fixture (own spec as first corpus)
 - [x] 5. Consistency verify: record stores, dangling/stale detection, pin backfill, CLI
 - [x] 6. IR diff + layout-independence check
-- [ ] 7. Go backend static resolution + shape hashing
+- [x] 7. Go backend static resolution + shape hashing
 - [ ] 8. Go witnesses (`go test -json` correlation + Covers helper)
 - [ ] 9. Coverage policy + report buckets + gate
 - [ ] 10. MCP server (modelcontextprotocol/go-sdk): compile/verify/coverage tools; gitfs adapter (go-git) for diff-against-revision

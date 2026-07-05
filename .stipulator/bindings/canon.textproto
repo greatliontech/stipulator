@@ -7,6 +7,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/canon.Text"
   role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "3d7d72c95e9d324e0b11459da8c3f291c3beaf2047b5099b9a6100449dfe98e6"
 }
 
 bindings {
@@ -15,6 +16,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/canon.TestText"
   role: BINDING_ROLE_TESTS
+  shape_hash: "83147d6b52ae8940965b0a9e76341f234ebed178a42c83b32cd58367d91520d4"
 }
 
 bindings {
@@ -23,6 +25,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/canon.Hash"
   role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "22bc5589fe5dcf001c98d9232b94ed1be6c268f272e23f5acba78bb0a58f946d"
 }
 
 bindings {
@@ -31,6 +34,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/canon.TestHash"
   role: BINDING_ROLE_TESTS
+  shape_hash: "a733f753fadbe006da8bff4d0f2cb6cc944b0eb24eefa1be40809f6f79b28cf0"
 }
 
 bindings {
@@ -39,4 +43,5 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/canon.FuzzTextProjection"
   role: BINDING_ROLE_TESTS
+  shape_hash: "e8283705ecb112c7de25ebffb399b78ffd1b039be9eb31caee7f62a83b499a01"
 }
