@@ -1,0 +1,50 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-change-dangling"
+  content_hash: "6d05ebafaea6e82fe8f353beeafb8ea52276c9bf17c1d588e59a062d0ed6f2e7"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verify.Run"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+
+bindings {
+  requirement_id: "REQ-change-dangling"
+  content_hash: "6d05ebafaea6e82fe8f353beeafb8ea52276c9bf17c1d588e59a062d0ed6f2e7"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
+  role: BINDING_ROLE_TESTS
+}
+
+bindings {
+  requirement_id: "REQ-evidence-binding-store"
+  content_hash: "deef3300be8bfd9f00faa07bf610351480a51d7794162e88cdfc8273ea492acd"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/records.Load"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+
+bindings {
+  requirement_id: "REQ-gap-record"
+  content_hash: "7413260a7bdf93b66518e26259c9db2ff79ef942ec0d0b0591fc54f645d113ec"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/records.Load"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+
+bindings {
+  requirement_id: "REQ-gap-record"
+  content_hash: "7413260a7bdf93b66518e26259c9db2ff79ef942ec0d0b0591fc54f645d113ec"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
+  role: BINDING_ROLE_TESTS
+}
+
+bindings {
+  requirement_id: "REQ-gap-conditions"
+  content_hash: "30ad5534db456ea78b41547566ebf336a292d35d836711ea210d7172072e6ed6"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
+  role: BINDING_ROLE_TESTS
+}

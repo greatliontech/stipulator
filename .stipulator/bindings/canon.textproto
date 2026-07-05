@@ -3,30 +3,39 @@
 
 bindings {
   requirement_id: "REQ-model-content-hash"
+  content_hash: "68b80853ed0fb20fc048a4da58aaa82f71483727399127b477d386bcad5c9555"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/canon.Text"
   role: BINDING_ROLE_IMPLEMENTS
 }
+
 bindings {
   requirement_id: "REQ-model-content-hash"
+  content_hash: "68b80853ed0fb20fc048a4da58aaa82f71483727399127b477d386bcad5c9555"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/canon.TestText"
   role: BINDING_ROLE_TESTS
 }
+
 bindings {
   requirement_id: "REQ-model-hash-func"
+  content_hash: "547692af2bb65b46a1145e0b14ad8d23bba6fcfc71aff690a8369f31c40e7062"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/canon.Hash"
   role: BINDING_ROLE_IMPLEMENTS
 }
+
 bindings {
   requirement_id: "REQ-model-hash-func"
+  content_hash: "547692af2bb65b46a1145e0b14ad8d23bba6fcfc71aff690a8369f31c40e7062"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/canon.TestHash"
   role: BINDING_ROLE_TESTS
 }
+
 bindings {
   requirement_id: "REQ-model-hash-canonical-form"
+  content_hash: "eb86411e15cd6f995fe5aeb118d5b2d06e41ca00f41b4aeb0334e8e72ae6b1aa"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/canon.FuzzTextProjection"
   role: BINDING_ROLE_TESTS

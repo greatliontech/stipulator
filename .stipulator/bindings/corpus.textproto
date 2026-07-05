@@ -3,42 +3,55 @@
 
 bindings {
   requirement_id: "REQ-profile-manifest"
+  content_hash: "b8dceece3126c3fa2245fbe2b174fb76edb1806d3347c23a63c77b85703d1a63"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.LoadManifest"
   role: BINDING_ROLE_IMPLEMENTS
 }
+
 bindings {
   requirement_id: "REQ-profile-manifest"
+  content_hash: "b8dceece3126c3fa2245fbe2b174fb76edb1806d3347c23a63c77b85703d1a63"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.TestLoadManifest"
   role: BINDING_ROLE_TESTS
 }
+
 bindings {
   requirement_id: "REQ-profile-enumeration"
+  content_hash: "eaf846f778662693b65553a6666800623807a8ba04a6ffecb0b8216e0608c9d1"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.Enumerate"
   role: BINDING_ROLE_IMPLEMENTS
 }
+
 bindings {
   requirement_id: "REQ-profile-enumeration"
+  content_hash: "eaf846f778662693b65553a6666800623807a8ba04a6ffecb0b8216e0608c9d1"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.TestEnumerate"
   role: BINDING_ROLE_TESTS
 }
+
 bindings {
   requirement_id: "REQ-profile-glob"
+  content_hash: "c2c4c4c69acfafb9ab547e1f6d415c7f656c4f4e07ca697166c2489e3f41beb2"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.matchGlob"
   role: BINDING_ROLE_IMPLEMENTS
 }
+
 bindings {
   requirement_id: "REQ-profile-glob"
+  content_hash: "c2c4c4c69acfafb9ab547e1f6d415c7f656c4f4e07ca697166c2489e3f41beb2"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.validateGlob"
   role: BINDING_ROLE_IMPLEMENTS
 }
+
 bindings {
   requirement_id: "REQ-profile-glob"
+  content_hash: "c2c4c4c69acfafb9ab547e1f6d415c7f656c4f4e07ca697166c2489e3f41beb2"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.TestMatchGlob"
   role: BINDING_ROLE_TESTS

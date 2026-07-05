@@ -21,11 +21,8 @@ import (
 	"github.com/greatliontech/stipulator/internal/canon"
 	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/profile"
-	"google.golang.org/protobuf/encoding/prototext"
+	"github.com/greatliontech/stipulator/internal/records"
 )
-
-// TombstonesPath is the tombstone registry's fixed location.
-const TombstonesPath = ".stipulator/tombstones.textproto"
 
 // Diagnostic is a profile violation.
 type Diagnostic struct {
@@ -77,9 +74,13 @@ func Compile(fsys fs.FS) (*stipulatorv1.Spec, []Diagnostic, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	tombstones, err := loadTombstones(fsys)
+	retired, err := records.LoadTombstones(fsys)
 	if err != nil {
 		return nil, nil, err
+	}
+	tombstones := map[string]bool{}
+	for _, r := range retired {
+		tombstones[strings.ToLower(r)] = true
 	}
 
 	var diags []Diagnostic
@@ -115,22 +116,6 @@ func Compile(fsys fs.FS) (*stipulatorv1.Spec, []Diagnostic, error) {
 		return nil, diags, nil
 	}
 	return spec, nil, nil
-}
-
-func loadTombstones(fsys fs.FS) (map[string]bool, error) {
-	set := map[string]bool{}
-	b, err := fs.ReadFile(fsys, TombstonesPath)
-	if err != nil {
-		return set, nil // absent registry = nothing retired
-	}
-	t := &stipulatorv1.Tombstones{}
-	if err := prototext.Unmarshal(b, t); err != nil {
-		return nil, fmt.Errorf("parsing %s: %w", TombstonesPath, err)
-	}
-	for _, r := range t.GetRetired() {
-		set[strings.ToLower(r)] = true
-	}
-	return set, nil
 }
 
 // resolve runs corpus-wide checks and assembles the IR.
@@ -389,15 +374,35 @@ func refKey(r *stipulatorv1.NodeRef) string {
 	return "1:" + strings.ToLower(r.GetTermName())
 }
 
-// findTokens runs a regexp over the non-inert segments, returning matches
-// in document order.
-func findTokens(segs []profile.Seg, re *regexp.Regexp) []string {
-	var out []string
+// detectionRuns merges contiguous non-inert segments: only inert content
+// breaks a detection run, so a soft line break can never split a keyword or
+// a multi-word term name.
+func detectionRuns(segs []profile.Seg) []string {
+	var runs []string
+	var cur strings.Builder
+	flush := func() {
+		if cur.Len() > 0 {
+			runs = append(runs, cur.String())
+			cur.Reset()
+		}
+	}
 	for _, s := range segs {
 		if s.Inert {
+			flush()
 			continue
 		}
-		out = append(out, re.FindAllString(s.Text, -1)...)
+		cur.WriteString(s.Text)
+	}
+	flush()
+	return runs
+}
+
+// findTokens runs a regexp over the detection runs, returning matches in
+// document order.
+func findTokens(segs []profile.Seg, re *regexp.Regexp) []string {
+	var out []string
+	for _, run := range detectionRuns(segs) {
+		out = append(out, re.FindAllString(run, -1)...)
 	}
 	return out
 }
@@ -428,12 +433,10 @@ func newTermMatcher(terms map[string]*termBlock) *termMatcher {
 // match returns the lowercased names of terms occurring in the segments,
 // sorted; self names its own lowercased identity to skip self-edges.
 func (m *termMatcher) match(segs []profile.Seg, self string) []string {
-	texts := make([][]byte, 0, len(segs))
-	for _, s := range segs {
-		if s.Inert {
-			continue
-		}
-		texts = append(texts, []byte(strings.ToLower(s.Text)))
+	runs := detectionRuns(segs)
+	texts := make([][]byte, 0, len(runs))
+	for _, run := range runs {
+		texts = append(texts, []byte(strings.ToLower(run)))
 	}
 	var out []string
 	for _, name := range m.names {

@@ -171,6 +171,25 @@ func TestKeywordDiscipline(t *testing.T) {
 		})
 		wantClean(t, diags)
 	})
+	t.Run("keyword wrapped across a soft break", func(t *testing.T) {
+		spec, diags := compileFiles(t, map[string]string{
+			"specs/a.md": "# T\n\n**REQ-x-a** (behavior): It MUST\nNOT do the thing.\n",
+		})
+		wantClean(t, diags)
+		if kw := req(t, spec, "REQ-x-a").GetKeyword(); kw != stipulatorv1.Keyword_KEYWORD_MUST_NOT {
+			t.Fatalf("wrapped MUST NOT classified as %v", kw)
+		}
+	})
+	t.Run("term name wrapped across a soft break", func(t *testing.T) {
+		spec, diags := compileFiles(t, map[string]string{
+			"specs/a.md": "# T\n\n**content hash** (term): a digest.\n\n" +
+				"**REQ-x-a** (behavior): The content\nhash MUST be stable.\n",
+		})
+		wantClean(t, diags)
+		if !hasEdge(spec, stipulatorv1.EdgeKind_EDGE_KIND_USES_TERM, reqRef("REQ-x-a"), termRef("content hash")) {
+			t.Fatal("wrapped term name did not match")
+		}
+	})
 	t.Run("MUST NOT is one occurrence", func(t *testing.T) {
 		spec, diags := compileFiles(t, map[string]string{"specs/a.md": "# T\n\n**REQ-x-a** (behavior): It MUST NOT x.\n"})
 		wantClean(t, diags)
