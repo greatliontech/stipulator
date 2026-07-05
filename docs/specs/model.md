@@ -8,9 +8,12 @@ markdown.
 
 ## Graph
 
-**REQ-model-graph** (wire): The IR MUST represent documents, sections,
-requirements, terms, notes, and annotations as nodes, with typed edges
-`reference`, `uses-term`, `refines`, `depends`, and `supersedes`.
+**REQ-model-graph** (wire): The IR MUST represent requirements, terms,
+notes, and annotations as nodes with typed edges `reference`, `uses-term`,
+`refines`, `depends`, and `supersedes`, and carry document and section
+structure as location metadata; graph edges hold identity-bearing endpoints
+only, with references originating from identity-less blocks recorded on the
+block's own node.
 
 **REQ-model-canonical-order** (wire): Every collection in the IR MUST be
 canonically ordered — identified nodes by identifier, location metadata by
@@ -24,7 +27,12 @@ corpus; identities are never reassigned.
 
 **REQ-model-tombstones** (behavior): Retiring an identity MUST append it to
 the tombstone registry at `.stipulator/tombstones.textproto`, and compilation
-rejects a corpus that declares a tombstoned identity.
+rejects a corpus that declares a tombstoned identity, compared
+case-insensitively.
+
+**REQ-model-source** (wire): Each requirement, term, note, and annotation
+MUST carry its original markdown source, for rendering fidelity in bundles
+and views; source is carried metadata, never hashed.
 
 **REQ-model-content-hash** (wire): Each requirement and term MUST carry a
 content hash computed over its canonical text: the lead paragraph excluding

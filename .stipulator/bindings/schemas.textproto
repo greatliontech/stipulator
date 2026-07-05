@@ -1,0 +1,45 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-model-graph"
+  backend: "proto"
+  symbol: "stipulator.v1.Spec"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-evidence-binding-store"
+  backend: "proto"
+  symbol: "stipulator.v1.Binding"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-evidence-binding-roles"
+  backend: "proto"
+  symbol: "stipulator.v1.BindingRole"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-gap-record"
+  backend: "proto"
+  symbol: "stipulator.v1.Gap"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-gap-conditions"
+  backend: "proto"
+  symbol: "stipulator.v1.LandingCondition"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-model-tombstones"
+  backend: "proto"
+  symbol: "stipulator.v1.Tombstones"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-core-proto-io"
+  backend: "proto"
+  symbol: "stipulator.v1.Manifest"
+  role: BINDING_ROLE_IMPLEMENTS
+}

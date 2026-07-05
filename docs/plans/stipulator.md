@@ -3,7 +3,7 @@
 Spec: docs/specs/
 
 - [x] 1. Manifest + corpus enumeration
-- [ ] 2. IR + record schemas (proto) + canonical hashing primitives
+- [x] 2. IR + record schemas (proto) + canonical hashing primitives
 - [ ] 3. Profile compiler (goldmark → IR) + lints
 - [ ] 4. Self-compile golden fixture (own spec as first corpus)
 - [ ] 5. Consistency verify: record stores, dangling/stale detection, gate (no backends); backfill binding hash pins

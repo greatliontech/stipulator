@@ -1,0 +1,84 @@
+edition = "2023";
+
+package stipulator.v1;
+
+option go_package = "github.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1";
+
+// Records are the committed, reviewable claims adjacent to the corpus:
+// bindings under .stipulator/bindings/, gaps under .stipulator/gaps/, and
+// the tombstone registry at .stipulator/tombstones.textproto. Records are
+// inputs to verification, never results of it: nothing in these files can
+// make a requirement covered — only the verifier re-deriving evidence from
+// the current corpus and code can.
+
+// BindingRole states what the bound symbol claims to be to the requirement.
+enum BindingRole {
+  BINDING_ROLE_UNSPECIFIED = 0;
+  // The symbol realizes the requirement.
+  BINDING_ROLE_IMPLEMENTS = 1;
+  // The symbol is a test exercising the requirement.
+  BINDING_ROLE_TESTS = 2;
+  // A backend prover assertion checks the requirement.
+  BINDING_ROLE_PROVES = 3;
+}
+
+// Binding is a claim that a symbol implements, tests, or proves a
+// requirement.
+message Binding {
+  string requirement_id = 1;
+  // The requirement's content hash the claim was authored against. Unset
+  // means never pinned: the binding reads as stale until verified against
+  // a compiled corpus and re-pinned.
+  string content_hash = 2;
+  // Language backend interpreting the symbol reference, e.g. "go", "proto".
+  string backend = 3;
+  // Backend-scoped symbol reference; opaque to the core.
+  string symbol = 4;
+  BindingRole role = 5;
+  // The bound symbol's shape hash, when the backend defines one. Unset
+  // means never pinned.
+  string shape_hash = 6;
+}
+
+// BindingSet is the root message of a binding file; grouping bindings into
+// files is free (per package, per document, per feature) — file layout of
+// records carries no meaning.
+message BindingSet {
+  repeated Binding bindings = 1;
+}
+
+// Gap declares a requirement knowingly uncovered, stale, or broken. It is
+// the only sanctioned way to ship red: the gate fails on any red
+// requirement no gap names.
+message Gap {
+  string requirement_id = 1;
+  // Why the gap exists; the deferral reasoning that would otherwise rot in
+  // process artifacts.
+  string reason = 2;
+  LandingCondition lands = 3;
+}
+
+// LandingCondition states when the deferred work becomes due. Machine
+// conditions are evaluated at verification time; an attested condition
+// fires only when explicitly marked fired.
+message LandingCondition {
+  oneof condition {
+    // Due when the named requirement reaches the covered bucket.
+    string covered = 1;
+    // Due when the named requirement exists in the corpus.
+    string exists = 2;
+    Attested attested = 3;
+  }
+}
+
+message Attested {
+  // The external condition, in prose, that cannot be machine-evaluated.
+  string condition = 1;
+  bool fired = 2;
+}
+
+// Tombstones is the permanent registry of retired identities — requirement
+// identifiers and term names — none of which may ever be redeclared.
+message Tombstones {
+  repeated string retired = 1;
+}

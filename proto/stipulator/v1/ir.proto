@@ -1,0 +1,162 @@
+edition = "2023";
+
+package stipulator.v1;
+
+option go_package = "github.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1";
+
+// The compiled intermediate representation of a corpus. The IR is the sole
+// machine-consumed form of the specification: chunking, diffing, coverage,
+// and gating all read the IR, never the markdown.
+//
+// Every repeated field is canonically ordered — documents by path,
+// requirements by identifier, terms by name, notes and annotations by
+// (document, line), edges by (kind, from, to) with NodeRefs ordered by
+// (variant, value) — so corpus enumeration order is not observable in the
+// IR.
+message Spec {
+  repeated Document documents = 1;
+  repeated Requirement requirements = 2;
+  repeated Term terms = 3;
+  repeated Note notes = 4;
+  repeated Annotation annotations = 5;
+  repeated Edge edges = 6;
+}
+
+// ClauseKind determines what evidence can satisfy a requirement.
+enum ClauseKind {
+  CLAUSE_KIND_UNSPECIFIED = 0;
+  // Black-box observable input/output behavior.
+  CLAUSE_KIND_BEHAVIOR = 1;
+  // A property over all reachable states or runs.
+  CLAUSE_KIND_INVARIANT = 2;
+  // An architecture constraint: dependency direction, boundaries,
+  // interface satisfaction.
+  CLAUSE_KIND_STRUCTURAL = 3;
+  // Anything observable across the wire or a restart: encodings, formats,
+  // canonical forms.
+  CLAUSE_KIND_WIRE = 4;
+}
+
+// Keyword is the RFC-2119 normative keyword governing a requirement.
+enum Keyword {
+  KEYWORD_UNSPECIFIED = 0;
+  KEYWORD_MUST = 1;
+  KEYWORD_MUST_NOT = 2;
+  KEYWORD_SHOULD = 3;
+  KEYWORD_SHOULD_NOT = 4;
+  KEYWORD_MAY = 5;
+}
+
+// Location is metadata only: it never contributes to identity, content
+// hashes, closures, or evidence pins. Reorganizing files changes locations
+// and nothing else.
+message Location {
+  // Corpus document path, slash-separated, relative to the repository root.
+  string document = 1;
+  // Headings of the enclosing sections, outermost first.
+  repeated string section_path = 2;
+  // 1-based line of the block's first source line.
+  int32 line = 3;
+}
+
+// Requirement is a single normative statement; the unit of identity,
+// coverage, and chunking.
+message Requirement {
+  // Permanent identifier matching REQ(-[a-z0-9]+)+; never reassigned.
+  string id = 1;
+  ClauseKind kind = 2;
+  Keyword keyword = 3;
+  // Canonical text: lead paragraph (marker excluded) plus payload blocks,
+  // rendered to plain text, NFC-normalized, whitespace-collapsed. This is
+  // the content-hash input.
+  string text = 4;
+  // SHA-256 of the UTF-8 canonical text, 64 lowercase hex characters.
+  string content_hash = 5;
+  // Original markdown of the lead paragraph and payload, for rendering
+  // fidelity in bundles; carried, never hashed.
+  string source = 6;
+  Location location = 7;
+}
+
+// Term is a definition; its identity is its name.
+message Term {
+  // The term's name (its first strong-emphasis span), unique
+  // case-insensitively across the corpus.
+  string name = 1;
+  // Canonical text of the definition; same form as Requirement.text.
+  string text = 2;
+  // SHA-256 of the UTF-8 canonical text, 64 lowercase hex characters.
+  string content_hash = 3;
+  string source = 4;
+  Location location = 5;
+}
+
+// Note is a non-normative blockquote attached to the preceding requirement
+// or term, or to its enclosing section when none precedes it (in which case
+// attached_to is unset and location identifies the section).
+message Note {
+  string text = 1;
+  string source = 2;
+  NodeRef attached_to = 3;
+  // Identifier references occurring in the note's text. Identity-less
+  // blocks carry their references locally so that graph edges never embed
+  // a location and pure reorganizations never change the edge list.
+  repeated NodeRef references = 4;
+  Location location = 5;
+}
+
+// Annotation is any other non-normative content, attached to its enclosing
+// section, preserved for context and carried into bundles.
+message Annotation {
+  string text = 1;
+  string source = 2;
+  // See Note.references.
+  repeated NodeRef references = 3;
+  Location location = 4;
+}
+
+// NodeRef addresses an identity-bearing graph node.
+message NodeRef {
+  oneof ref {
+    string requirement_id = 1;
+    string term_name = 2;
+  }
+}
+
+// EdgeKind types the graph edges.
+enum EdgeKind {
+  EDGE_KIND_UNSPECIFIED = 0;
+  // An identifier token occurring in a block's text.
+  EDGE_KIND_REFERENCE = 1;
+  // A term's name occurring in a requirement's or term's text.
+  EDGE_KIND_USES_TERM = 2;
+  // Declared via the refines metadata clause.
+  EDGE_KIND_REFINES = 3;
+  // Declared via the depends metadata clause.
+  EDGE_KIND_DEPENDS = 4;
+  // Declared via the supersedes metadata clause, or created by split and
+  // merge dispositions.
+  EDGE_KIND_SUPERSEDES = 5;
+}
+
+message Edge {
+  NodeRef from = 1;
+  NodeRef to = 2;
+  EdgeKind kind = 3;
+}
+
+// Document and Section are location structure: the section tree exists for
+// reporting, review routing, and index generation, never for semantics.
+message Document {
+  string path = 1;
+  // The single level-1 heading.
+  string title = 2;
+  repeated Section sections = 3;
+}
+
+message Section {
+  string heading = 1;
+  // Markdown heading level, 2-6.
+  int32 level = 2;
+  int32 line = 3;
+}

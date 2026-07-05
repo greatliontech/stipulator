@@ -1,0 +1,45 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-profile-manifest"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/corpus.LoadManifest"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-profile-manifest"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/corpus.TestLoadManifest"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-profile-enumeration"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/corpus.Enumerate"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-profile-enumeration"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/corpus.TestEnumerate"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-profile-glob"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/corpus.matchGlob"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-profile-glob"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/corpus.validateGlob"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-profile-glob"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/corpus.TestMatchGlob"
+  role: BINDING_ROLE_TESTS
+}

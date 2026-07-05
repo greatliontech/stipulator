@@ -30,6 +30,9 @@ rejected when enumeration begins, before any matching.
 
 ## Documents and sections
 
+**REQ-profile-utf8** (behavior): A corpus document that is not valid UTF-8
+MUST be rejected at compile time, before any hashing or matching.
+
 **REQ-profile-doc-title** (behavior): Each corpus document MUST contain
 exactly one level-1 heading, which is the document title; subsequent headings
 form the section tree.
@@ -97,8 +100,8 @@ in the block's text, matched case-insensitively on word boundaries with
 longest match winning.
 
 **REQ-profile-id-reference** (behavior): A requirement identifier token
-occurring in any block's text MUST compile to a `reference` edge from that
-block to the identified node, with an identifier that resolves to nothing a
+occurring in any block's text MUST compile to a `reference` from that block
+to the identified node, with an identifier that resolves to nothing a
 compile error.
 
 ## Non-normative content

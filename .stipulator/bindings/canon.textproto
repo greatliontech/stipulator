@@ -1,0 +1,33 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-model-content-hash"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/canon.Text"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-model-content-hash"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/canon.TestText"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-model-hash-func"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/canon.Hash"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+bindings {
+  requirement_id: "REQ-model-hash-func"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/canon.TestHash"
+  role: BINDING_ROLE_TESTS
+}
+bindings {
+  requirement_id: "REQ-model-hash-canonical-form"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/canon.FuzzTextProjection"
+  role: BINDING_ROLE_TESTS
+}

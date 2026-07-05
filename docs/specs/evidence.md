@@ -9,9 +9,9 @@ corpus and code. Nothing an agent writes can make a requirement covered.
 
 **REQ-evidence-binding-store** (behavior): Binding claims MUST be stored as
 textproto files under `.stipulator/bindings/`, each naming a requirement
-identifier, the content hash it was authored against, a backend, a symbol
-reference, a role, and — when the backend defines one — the shape hash of
-the bound symbol.
+identifier, the content hash it was authored against (unset when not yet
+pinned), a backend, a symbol reference, a role, and — when the backend
+defines one — the shape hash of the bound symbol.
 
 **REQ-evidence-binding-roles** (behavior): A binding's role MUST be one of
 `implements` (the symbol realizes the requirement), `tests` (the symbol is a
@@ -70,7 +70,7 @@ and `stale` over `uncovered`:
 |---|---|
 | `covered` | policy met by current evidence |
 | `broken` | a binding fails to resolve, its shape hash mismatches, or its bound test fails |
-| `stale` | evidence pinned to a content hash other than the current one |
+| `stale` | evidence whose content-hash pin is unset or differs from the current one |
 | `uncovered` | no evidence meets policy |
 
 **REQ-coverage-no-scalar** (behavior): Stipulator MUST NOT gate on aggregate
