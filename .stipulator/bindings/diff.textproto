@@ -1,0 +1,26 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-change-diff"
+  content_hash: "02f8de1f894f4672d895803ded734fa8b23dc47cc9eee79d57eed5d6bd65339f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/diff.Diff"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+
+bindings {
+  requirement_id: "REQ-change-diff"
+  content_hash: "02f8de1f894f4672d895803ded734fa8b23dc47cc9eee79d57eed5d6bd65339f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/diff.TestDiff"
+  role: BINDING_ROLE_TESTS
+}
+
+bindings {
+  requirement_id: "REQ-model-layout-independence"
+  content_hash: "df7c1fc5b69983c7978231dd8075f2d1987702401b17a23874f7919352e025fb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/diff.TestDiff"
+  role: BINDING_ROLE_TESTS
+}

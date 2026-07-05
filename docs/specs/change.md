@@ -11,8 +11,9 @@ deliberately ahead of the code.
 
 **REQ-change-diff** (behavior): The `diff` operation MUST compare two
 compiled IRs and report, per identity: added, removed, text-changed (content
-hash delta), metadata-only, and edge changes — such that a pure file
-reorganization reports no semantic delta.
+hash delta), kind-changed (clause kind is marker metadata, invisible to the
+content hash), metadata-only (location), and edge changes — such that a pure
+file reorganization reports no semantic delta.
 
 ## Dispositions
 

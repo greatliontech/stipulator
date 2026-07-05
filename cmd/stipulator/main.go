@@ -2,6 +2,7 @@
 //
 //	stipulator compile [-C root] [-ir]   compile the corpus; print diagnostics
 //	stipulator verify  [-C root]         check records against the corpus
+//	stipulator diff <old-root> <new-root>  per-identity IR delta
 //	stipulator pin     [-C root]         backfill binding content-hash pins
 package main
 
@@ -13,6 +14,7 @@ import (
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/compile"
+	"github.com/greatliontech/stipulator/internal/diff"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -52,6 +54,20 @@ func main() {
 		fmt.Printf("bindings: %d pinned, %d stale; gaps: %d\n", rep.Pinned, rep.Stale, len(store.Gaps))
 		if len(rep.Problems) > 0 {
 			os.Exit(1)
+		}
+	case "diff":
+		fs.Parse(os.Args[2:])
+		args := fs.Args()
+		if len(args) != 2 {
+			fmt.Fprintln(os.Stderr, "usage: stipulator diff <old-root> <new-root>")
+			os.Exit(2)
+		}
+		r := diff.Diff(mustCompile(args[0]), mustCompile(args[1]))
+		for _, line := range r.Lines() {
+			fmt.Println(line)
+		}
+		if r.SemanticallyEmpty() {
+			fmt.Println("no semantic delta")
 		}
 	case "pin":
 		fs.Parse(os.Args[2:])

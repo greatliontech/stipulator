@@ -7,7 +7,7 @@ Spec: docs/specs/
 - [x] 3. Profile compiler (goldmark → IR) + lints
 - [x] 4. Self-compile golden fixture (own spec as first corpus)
 - [x] 5. Consistency verify: record stores, dangling/stale detection, pin backfill, CLI
-- [ ] 6. IR diff + layout-independence check
+- [x] 6. IR diff + layout-independence check
 - [ ] 7. Go backend static resolution + shape hashing
 - [ ] 8. Go witnesses (`go test -json` correlation + Covers helper)
 - [ ] 9. Coverage policy + report buckets + gate
