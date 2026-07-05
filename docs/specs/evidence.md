@@ -1,0 +1,86 @@
+# Bindings, evidence, coverage
+
+The claim/evidence split is the trust boundary of the system: bindings are
+committed, reviewable claims authored by humans or agents; evidence exists
+only as the output of stipulator verifying those claims against the current
+corpus and code. Nothing an agent writes can make a requirement covered.
+
+## Bindings
+
+**REQ-evidence-binding-store** (behavior): Binding claims MUST be stored as
+textproto files under `.stipulator/bindings/`, each naming a requirement
+identifier, the content hash it was authored against, a backend, a symbol
+reference, and a role.
+
+**REQ-evidence-binding-roles** (behavior): A binding's role MUST be one of
+`implements` (the symbol realizes the requirement), `tests` (the symbol is a
+test exercising it), or `proves` (a backend prover assertion checks it).
+
+**REQ-evidence-generated-code** (behavior): A binding claim targeting a
+generated source file MUST be rejected, with guidance to bind the generating
+artifact instead.
+
+## Evidence
+
+**REQ-evidence-promotion** (invariant): Evidence MUST exist only as the
+result of verifying a binding against the current corpus and code in the
+current run; see REQ-core-claims-untrusted.
+
+**REQ-evidence-ladder** (behavior): Evidence strength MUST be ordered,
+strongest first:
+
+1. analyzer proof
+2. executed witness
+3. static binding (the symbol resolves and its shape hash matches)
+4. attestation
+
+**REQ-evidence-witness** (behavior): A witness MUST record that a named test
+passed in the current verification run while bound — or registered at
+runtime — to the requirement.
+
+**REQ-evidence-attestation** (behavior): An attestation MUST carry its reason
+text and appear distinctly in every coverage output; it is the weakest
+evidence and is never silently aggregated into stronger kinds.
+
+## Coverage
+
+**REQ-coverage-policy** (behavior): Coverage MUST be evaluated per
+requirement by a policy mapping the pair (clause kind, normative keyword) to
+a minimum required evidence, with the manifest able to override the defaults.
+
+**REQ-coverage-policy-default** (behavior, refines REQ-coverage-policy): The
+default policy MUST require, for `MUST`/`MUST NOT` requirements, the minimum
+evidence listed per clause kind below; for `SHOULD`/`SHOULD NOT`, a static
+binding or an attestation; and for `MAY`, a static binding when bound, with
+unbound `MAY` requirements exempt from coverage.
+
+| Clause kind | Minimum evidence |
+|---|---|
+| `behavior` | executed witness |
+| `invariant` | executed witness or analyzer proof |
+| `structural` | analyzer proof |
+| `wire` | analyzer proof or executed witness |
+
+**REQ-coverage-buckets** (behavior): Each non-exempt requirement MUST be
+reported in exactly one bucket, with `broken` taking precedence over `stale`
+and `stale` over `uncovered`:
+
+| Bucket | Meaning |
+|---|---|
+| `covered` | policy met by current evidence |
+| `broken` | a binding fails to resolve, its shape hash mismatches, or its bound test fails |
+| `stale` | evidence pinned to a content hash other than the current one |
+| `uncovered` | no evidence meets policy |
+
+**REQ-coverage-no-scalar** (behavior): Stipulator MUST NOT gate on aggregate
+percentages; gating is expressed only over requirement sets and buckets.
+
+## Backend interface
+
+**REQ-backend-surfaces** (structural): A backend MUST consist of exactly
+three surfaces: a symbol reference scheme, a shape-hash definition, and a set
+of provers.
+
+**REQ-backend-core-neutral** (structural): The compilation, binding,
+coverage, and change models MUST NOT depend on any backend; backend-specific
+knowledge is confined to symbol reference interpretation and proving.
