@@ -17,10 +17,11 @@ Spec: docs/specs/
 - [x] 13. MCP server (modelcontextprotocol/go-sdk): tools, resources, report wire messages; bundles pulled forward
 - [x] 14. Context facts: closure seeds (spec-neighborhood bindings), policy-free symbol slice, candidate partitions by slice disjointness
 - [ ] 15. Dispositions
-- [ ] 16. Proto backend (protocompile, descriptor hashing, assertions)
-- [x] 17. Bundles (closure computation + export; MCP bundle tool) — landed with chunk 13
-- [ ] 18. Generated folder indexes (`fmt` + freshness lint)
-- [ ] 19. Go structural provers (import constraints, interface satisfaction)
-- [ ] 20. Property-test hardening: invariant coverage to property witnesses
-- [ ] 21. Attestation records + change-signature classifier + determinism harness + manifest policy overrides
-- [ ] 22. gitfs adapter (go-git) for diff-against-revision
+- [ ] 16. Witness hardening: vacuity rejection at bind, body hashes, harden verb (operators + overlay runner), hardening records, nightly sweep
+- [ ] 17. Proto backend (protocompile, descriptor hashing, assertions)
+- [x] 18. Bundles (closure computation + export; MCP bundle tool) — landed with chunk 13
+- [ ] 19. Generated folder indexes (`fmt` + freshness lint)
+- [ ] 20. Go structural provers (import constraints, interface satisfaction)
+- [ ] 21. Property-test hardening: invariant coverage to property witnesses
+- [ ] 22. Attestation records + change-signature classifier + determinism harness + manifest policy overrides
+- [ ] 23. gitfs adapter (go-git) for diff-against-revision

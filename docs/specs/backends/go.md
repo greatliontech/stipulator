@@ -67,6 +67,12 @@ signatures and named types declared within the module, rendered by the
 object printer and shape-pinned, canonically ordered — returning facts
 only: no depth budgets, no exemplar selection, no rendering policy.
 
+**REQ-go-body-hash** (wire): The Go body hash MUST be computed over the
+canonical text of the symbol's body source, per
+REQ-model-hash-canonical-form — it moves when behavior-bearing code moves
+and ignores formatting churn, versioning what a hardening record vouches
+against.
+
 ## Generated code
 
 **REQ-go-generated-detect** (behavior): Generated Go files MUST be detected
