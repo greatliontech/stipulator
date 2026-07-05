@@ -41,6 +41,9 @@ func bindCmd() *cobra.Command {
 	c.Flags().StringVar(&role, "role", "", "implements, tests, or proves")
 	c.Flags().StringVar(&backendName, "backend", "go", "language backend")
 	c.Flags().StringVar(&file, "file", "", "target binding file (derived from the requirement when empty)")
+	registerReqCompletions(c, "req")
+	_ = c.RegisterFlagCompletionFunc("role", completeRoles)
+	_ = c.RegisterFlagCompletionFunc("backend", completeBackends)
 	return c
 }
 
@@ -68,5 +71,7 @@ func unbindCmd() *cobra.Command {
 	c.Flags().StringVar(&req, "req", "", "requirement identifier")
 	c.Flags().StringVar(&symbol, "symbol", "", "narrow to one symbol")
 	c.Flags().StringVar(&role, "role", "", "narrow to one role")
+	registerReqCompletions(c, "req")
+	_ = c.RegisterFlagCompletionFunc("role", completeRoles)
 	return c
 }

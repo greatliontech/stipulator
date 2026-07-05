@@ -37,5 +37,6 @@ func gapCmd() *cobra.Command {
 	c.Flags().StringVar(&coveredID, "covered", "", "lands when this requirement is covered")
 	c.Flags().StringVar(&existsID, "exists", "", "lands when this requirement exists")
 	c.Flags().StringVar(&attested, "attested", "", "lands on this external condition, fired explicitly")
+	registerReqCompletions(c, "req", "covered", "exists")
 	return c
 }

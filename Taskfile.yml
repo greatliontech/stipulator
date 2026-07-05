@@ -40,6 +40,14 @@ tasks:
     cmds:
       - go run ./cmd/stipulator pin
 
+  install:
+    desc: Install stipulator to ~/.local/bin with zsh completion
+    cmds:
+      - mkdir -p $HOME/.local/bin $HOME/.local/share/zsh/site-functions
+      - go build -o $HOME/.local/bin/stipulator ./cmd/stipulator
+      - $HOME/.local/bin/stipulator completion zsh > $HOME/.local/share/zsh/site-functions/_stipulator
+      - echo "note - ensure fpath includes ~/.local/share/zsh/site-functions before compinit"
+
   check:
     desc: Everything CI runs
     deps: [vet]
