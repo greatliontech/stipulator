@@ -11,7 +11,7 @@ Spec: docs/specs/
 - [ ] 7. Go backend static resolution + shape hashing
 - [ ] 8. Go witnesses (`go test -json` correlation + Covers helper)
 - [ ] 9. Coverage policy + report buckets + gate
-- [ ] 10. MCP server (modelcontextprotocol/go-sdk): compile/verify/coverage tools
+- [ ] 10. MCP server (modelcontextprotocol/go-sdk): compile/verify/coverage tools; gitfs adapter (go-git) for diff-against-revision
 - [ ] 11. Dispositions
 - [ ] 12. Gap landing conditions
 - [ ] 13. Proto backend (protocompile, descriptor hashing, assertions)

@@ -99,3 +99,9 @@ from the corpus, bindings, and code is computed on demand, never stored.
 **REQ-core-proto-io** (wire): Every machine-consumed input and output of
 stipulator MUST be expressible as protobuf messages; human-facing renderings
 are views of those messages.
+
+**REQ-core-vcs-free** (structural): Compilation, verification, coverage, and
+diff MUST NOT depend on a version-control system; revisions enter only as
+trees through the filesystem abstraction, VCS access is confined to adapter
+packages, and history is never an input — rewriting history cannot change
+any verification result.
