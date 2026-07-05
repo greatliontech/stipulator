@@ -120,6 +120,37 @@ func lookup(pkg *types.Package, parts []string) types.Object {
 	return nil
 }
 
+// WitnessClass implements verify.WitnessClassifier: a fuzz target — a
+// function taking *testing.F — yields a property witness; everything else
+// is an example witness. Resolved from the code, never declared.
+func (b *Backend) WitnessClass(symbol string) verify.WitnessClass {
+	pkgPath, rest := b.splitSymbol(symbol)
+	if pkgPath == "" {
+		return verify.ExampleWitness
+	}
+	parts := strings.Split(rest, ".")
+	for _, pkg := range b.pkgs {
+		if pkg.PkgPath != pkgPath && pkg.PkgPath != pkgPath+"_test" {
+			continue
+		}
+		obj := lookup(pkg.Types, parts)
+		fn, ok := obj.(*types.Func)
+		if !ok {
+			continue
+		}
+		sig := fn.Type().(*types.Signature)
+		if sig.Params().Len() == 1 {
+			if named, ok := sig.Params().At(0).Type().(*types.Pointer); ok {
+				if t, ok := named.Elem().(*types.Named); ok &&
+					t.Obj().Pkg() != nil && t.Obj().Pkg().Path() == "testing" && t.Obj().Name() == "F" {
+					return verify.PropertyWitness
+				}
+			}
+		}
+	}
+	return verify.ExampleWitness
+}
+
 // shapeHash hashes the object's declared type rendered with fully
 // qualified package paths.
 func shapeHash(obj types.Object) string {

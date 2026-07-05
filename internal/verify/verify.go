@@ -74,6 +74,9 @@ const (
 // material witnesses are derived from. Producing it is backend work;
 // correlating it is this package's.
 type TestRun struct {
+	// RaceEnabled records whether the run enabled the race detector: a
+	// rigor attribute every witness inherits.
+	RaceEnabled bool
 	// Outcomes maps "<import-path>.<TestName>[/<subtest>...]" to the
 	// observed outcome.
 	Outcomes map[string]TestOutcome
@@ -121,8 +124,27 @@ type BindingResult struct {
 	Resolution    Resolution
 	Shape         ShapeState
 	// TestOutcome is set for role-tests bindings when the run witnessed
-	// tests.
-	TestOutcome TestOutcome
+	// tests; WitnessClass and RaceEnabled qualify the witness.
+	TestOutcome  TestOutcome
+	WitnessClass WitnessClass
+	RaceEnabled  bool
+}
+
+// WitnessClass classifies what a bound test quantifies over.
+type WitnessClass int
+
+const (
+	// ExampleWitness: the test exercises named cases.
+	ExampleWitness WitnessClass = iota
+	// PropertyWitness: the test is generator-driven, quantifying over
+	// inputs (e.g. a fuzz target).
+	PropertyWitness
+)
+
+// WitnessClassifier is an optional Backend extension: it resolves, from
+// the code, what class of witness a bound test yields.
+type WitnessClassifier interface {
+	WitnessClass(symbol string) WitnessClass
 }
 
 // Backend verifies symbol references for one language. Implementations
@@ -225,6 +247,10 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 
 			if testRun != nil && b.GetRole() == stipulatorv1.BindingRole_BINDING_ROLE_TESTS {
 				result.TestOutcome = testRun.Outcomes[b.GetSymbol()]
+				result.RaceEnabled = testRun.RaceEnabled
+				if wc, ok := backends[b.GetBackend()].(WitnessClassifier); ok {
+					result.WitnessClass = wc.WitnessClass(b.GetSymbol())
+				}
 				switch result.TestOutcome {
 				case TestPassed:
 					rep.TestsPassed++

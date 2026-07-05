@@ -101,10 +101,13 @@ func (r *Report) GatePasses() bool { return len(r.Violations) == 0 }
 // never granted yet — no analyzer prover exists — but the policy's proof
 // legs are contract (REQ-coverage-policy-default), not dead code.
 type evidence struct {
-	witness, static, proof bool
-	broken, stale          bool
-	reasons                []string
+	example, property, static, proof bool
+	broken, stale                    bool
+	reasons                          []string
 }
+
+// witness reports any executed witness, of either class.
+func (e *evidence) witness() bool { return e.example || e.property }
 
 // Evaluate computes buckets, gap states, and the gate verdict. witnessed
 // states whether the verify run executed tests: without witnesses, no
@@ -148,7 +151,11 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 			switch r.TestOutcome {
 			case verify.TestPassed:
 				if r.ContentPinned && r.Resolution == verify.Resolved {
-					e.witness = true
+					if r.WitnessClass == verify.PropertyWitness {
+						e.property = true
+					} else {
+						e.example = true
+					}
 				}
 			case verify.TestFailed:
 				e.broken = true
@@ -164,7 +171,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 	buckets := map[string]Bucket{}
 	for _, r := range spec.GetRequirements() {
 		e := get(r.GetId())
-		bound := len(e.reasons) > 0 || e.witness || e.static || e.stale || e.broken || hasAnyBinding(vr, r.GetId())
+		bound := len(e.reasons) > 0 || e.witness() || e.static || e.stale || e.broken || hasAnyBinding(vr, r.GetId())
 		var b Bucket
 		switch {
 		case r.GetKeyword() == stipulatorv1.Keyword_KEYWORD_MAY && !bound:
@@ -227,18 +234,20 @@ func satisfied(kind stipulatorv1.ClauseKind, kw stipulatorv1.Keyword, e *evidenc
 	case stipulatorv1.Keyword_KEYWORD_MUST, stipulatorv1.Keyword_KEYWORD_MUST_NOT:
 		switch kind {
 		case stipulatorv1.ClauseKind_CLAUSE_KIND_BEHAVIOR:
-			return e.witness
+			return e.witness()
 		case stipulatorv1.ClauseKind_CLAUSE_KIND_INVARIANT:
-			return e.witness || e.proof
+			// A for-all claim wants a for-all witness: examples pin
+			// anchor cases but never satisfy an invariant alone.
+			return e.property || e.proof
 		case stipulatorv1.ClauseKind_CLAUSE_KIND_STRUCTURAL:
 			return e.proof
 		case stipulatorv1.ClauseKind_CLAUSE_KIND_WIRE:
-			return e.proof || e.witness
+			return e.proof || e.witness()
 		}
 	case stipulatorv1.Keyword_KEYWORD_SHOULD, stipulatorv1.Keyword_KEYWORD_SHOULD_NOT:
-		return e.static || e.witness || e.proof
+		return e.static || e.witness() || e.proof
 	case stipulatorv1.Keyword_KEYWORD_MAY:
-		return e.static || e.witness || e.proof
+		return e.static || e.witness() || e.proof
 	}
 	return false
 }
@@ -251,7 +260,7 @@ func requiredEvidence(kind stipulatorv1.ClauseKind, kw stipulatorv1.Keyword) str
 		case stipulatorv1.ClauseKind_CLAUSE_KIND_BEHAVIOR:
 			return "needs an executed witness (" + k + ")"
 		case stipulatorv1.ClauseKind_CLAUSE_KIND_INVARIANT:
-			return "needs a witness or analyzer proof (" + k + ")"
+			return "needs a property witness or analyzer proof (" + k + ")"
 		case stipulatorv1.ClauseKind_CLAUSE_KIND_STRUCTURAL:
 			return "needs an analyzer proof (" + k + ")"
 		case stipulatorv1.ClauseKind_CLAUSE_KIND_WIRE:

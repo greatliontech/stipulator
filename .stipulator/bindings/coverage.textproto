@@ -12,7 +12,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-coverage-policy-default"
-  content_hash: "980242954c381ad369162f05d547e652a9b1e648a70b19ea7f7b02c5885f0e72"
+  content_hash: "e72c94f59e9f6aa1c8b144b1dae3238a3cba84b14bec806b5b0a2b9b3f5908b4"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.satisfied"
   role: BINDING_ROLE_IMPLEMENTS
@@ -21,7 +21,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-coverage-policy-default"
-  content_hash: "980242954c381ad369162f05d547e652a9b1e648a70b19ea7f7b02c5885f0e72"
+  content_hash: "e72c94f59e9f6aa1c8b144b1dae3238a3cba84b14bec806b5b0a2b9b3f5908b4"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestPolicyDefaults"
   role: BINDING_ROLE_TESTS
@@ -120,7 +120,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-ladder"
-  content_hash: "80b2d3f8b272433ea92429a047439c270a6ff38995f9b2dde14601fb6fcf6342"
+  content_hash: "cf469a772a6696059f4121abbf99981dd6ccd3aaeb33ae1b5e60602ce3f9bd8b"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.satisfied"
   role: BINDING_ROLE_IMPLEMENTS
@@ -129,7 +129,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-ladder"
-  content_hash: "80b2d3f8b272433ea92429a047439c270a6ff38995f9b2dde14601fb6fcf6342"
+  content_hash: "cf469a772a6696059f4121abbf99981dd6ccd3aaeb33ae1b5e60602ce3f9bd8b"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestPolicyDefaults"
   role: BINDING_ROLE_TESTS

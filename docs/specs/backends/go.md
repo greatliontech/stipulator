@@ -31,6 +31,19 @@ equivalent (the cache key is the tree content), and a bound test producing
 no outcome in a witnessed run is unwitnessed and reads as `broken`; a
 skipped test grants no witness without reading as `broken`.
 
+**REQ-go-witness-class** (behavior): A witness MUST be classified `property`
+when its bound test is a fuzz target (a function taking `*testing.F`), and
+`example` otherwise; the classification is resolved from the code, never
+declared.
+
+**REQ-go-race** (behavior): Witness runs MUST enable the race detector, so
+every witness is race-attributed.
+
+**REQ-go-fuzz-exploration** (behavior): A fuzzing campaign MUST NOT feed the
+gate directly — campaigns are time-bounded and nondeterministic; their
+counterexamples enter the committed seed corpus, whose deterministic replay
+in ordinary test runs is the witness.
+
 **REQ-go-covers** (behavior): Tests MAY register requirement coverage at
 runtime through the provided `Covers(t, id)` helper, which yields
 subtest-granular witnesses in the same run.

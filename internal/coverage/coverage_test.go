@@ -75,12 +75,17 @@ func TestPolicyDefaults(t *testing.T) {
 	witness := func(id string) verify.BindingResult {
 		return result(id, tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed)
 	}
+	property := func(id string) verify.BindingResult {
+		r := witness(id)
+		r.WitnessClass = verify.PropertyWitness
+		return r
+	}
 	static := func(id string) verify.BindingResult {
 		return result(id, impl, true, verify.Resolved, verify.ShapeMatch, verify.TestNotRun)
 	}
 	vr := &verify.Report{Results: []verify.BindingResult{
 		witness("REQ-c-beh"),
-		witness("REQ-c-inv"),
+		witness("REQ-c-inv"), // example witness is NOT enough for an invariant
 		witness("REQ-c-str"), // witness is NOT enough for structural
 		witness("REQ-c-wire"),
 		static("REQ-c-should"),
@@ -89,7 +94,7 @@ func TestPolicyDefaults(t *testing.T) {
 	rep := Evaluate(spec, vr, store, true)
 	want := map[string]Bucket{
 		"REQ-c-beh":     Covered,
-		"REQ-c-inv":     Covered,
+		"REQ-c-inv":     Uncovered, // for-all claim wants a for-all witness
 		"REQ-c-str":     Uncovered, // needs analyzer proof
 		"REQ-c-wire":    Covered,
 		"REQ-c-should":  Covered,
@@ -106,6 +111,17 @@ func TestPolicyDefaults(t *testing.T) {
 	vr2 := &verify.Report{Results: []verify.BindingResult{static("REQ-c-beh")}}
 	if got := bucketOf(t, Evaluate(spec, vr2, store, true), "REQ-c-beh").Bucket; got != Uncovered {
 		t.Errorf("static-only MUST behavior = %v, want uncovered", got)
+	}
+
+	// A property witness satisfies an invariant — and a behavior too
+	// (stronger satisfies weaker).
+	vr3 := &verify.Report{Results: []verify.BindingResult{property("REQ-c-inv"), property("REQ-c-beh")}}
+	rep3 := Evaluate(spec, vr3, store, true)
+	if got := bucketOf(t, rep3, "REQ-c-inv").Bucket; got != Covered {
+		t.Errorf("property witness on invariant = %v, want covered", got)
+	}
+	if got := bucketOf(t, rep3, "REQ-c-beh").Bucket; got != Covered {
+		t.Errorf("property witness on behavior = %v, want covered", got)
 	}
 }
 

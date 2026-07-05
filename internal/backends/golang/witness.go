@@ -14,6 +14,10 @@ import (
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
+// testArgs is the witness-run invocation: -race is always on, so every
+// witness is race-attributed.
+func testArgs() []string { return []string{"test", "-json", "-race", "./..."} }
+
 // coversRe extracts requirement identifiers from stipulate registration
 // lines in test output. It is built from stipulate.Marker so the helper
 // and the correlator cannot drift apart.
@@ -30,7 +34,7 @@ var coversRe = regexp.MustCompile(regexp.QuoteMeta(stipulate.Marker) + `(` + pro
 // failure) simply has no outcome, which the correlator reads as
 // unwitnessed/broken. A run producing no events at all is an error.
 func RunTests(dir string) (*verify.TestRun, error) {
-	cmd := exec.Command("go", "test", "-json", "./...")
+	cmd := exec.Command("go", testArgs()...)
 	cmd.Dir = dir
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -40,7 +44,7 @@ func RunTests(dir string) (*verify.TestRun, error) {
 	type event struct {
 		Action, Package, Test, Output string
 	}
-	tr := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}}
+	tr := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}, RaceEnabled: true}
 	dec := json.NewDecoder(&stdout)
 	events := 0
 	for dec.More() {

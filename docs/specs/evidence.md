@@ -37,13 +37,18 @@ current run; see REQ-core-claims-untrusted.
 strongest first:
 
 1. analyzer proof
-2. executed witness
-3. static binding (the symbol resolves and its shape hash matches)
-4. attestation
+2. property witness (a generator-driven test quantifying over inputs)
+3. example witness (a test exercising named cases)
+4. static binding (the symbol resolves and its shape hash matches)
+5. attestation
 
 **REQ-evidence-witness** (behavior): A witness MUST record that a named test
 passed in the current verification run while bound — or registered at
 runtime — to the requirement.
+
+**REQ-evidence-run-attributes** (behavior): A witness MUST carry the rigor
+attributes of the run that produced it, at minimum whether the race
+detector was enabled.
 
 **REQ-evidence-attestation** (behavior): An attestation MUST carry its reason
 text and appear distinctly in every coverage output; it is the weakest
@@ -63,8 +68,8 @@ unbound `MAY` requirements exempt from coverage.
 
 | Clause kind | Minimum evidence |
 |---|---|
-| `behavior` | executed witness |
-| `invariant` | executed witness or analyzer proof |
+| `behavior` | executed witness (property or example) |
+| `invariant` | property witness or analyzer proof |
 | `structural` | analyzer proof |
 | `wire` | analyzer proof or executed witness |
 

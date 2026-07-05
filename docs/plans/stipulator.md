@@ -11,11 +11,14 @@ Spec: docs/specs/
 - [x] 7. Go backend static resolution + shape hashing
 - [x] 8. Go witnesses (`go test -json` correlation + Covers helper)
 - [x] 9. Coverage policy + report buckets + gate
-- [ ] 10. MCP server (modelcontextprotocol/go-sdk): compile/verify/coverage tools; gitfs adapter (go-git) for diff-against-revision
-- [ ] 11. Dispositions
-- [ ] 12. Gap landing conditions
-- [ ] 13. Proto backend (protocompile, descriptor hashing, assertions)
-- [ ] 14. Bundles (closure computation + export; MCP bundle tool)
-- [ ] 15. Generated folder indexes (`fmt` + freshness lint)
-- [ ] 16. Go structural provers (import constraints, interface satisfaction)
-- [ ] 17. Attestation records + change-signature classifier + determinism harness + manifest policy overrides
+- [x] 10. Evidence ladder v2: property/example witness split, run attributes (-race), fuzz-as-exploration
+- [ ] 11. Record verbs: bind/unbind/gap (tool-owned record authoring)
+- [ ] 12. CI gate: Taskfile + workflow
+- [ ] 13. MCP server (modelcontextprotocol/go-sdk): compile/verify/coverage/bind tools; gitfs adapter (go-git)
+- [ ] 14. Dispositions
+- [ ] 15. Proto backend (protocompile, descriptor hashing, assertions)
+- [ ] 16. Bundles (closure computation + export; MCP bundle tool)
+- [ ] 17. Generated folder indexes (`fmt` + freshness lint)
+- [ ] 18. Go structural provers (import constraints, interface satisfaction)
+- [ ] 19. Property-test hardening: invariant coverage to property witnesses
+- [ ] 20. Attestation records + change-signature classifier + determinism harness + manifest policy overrides

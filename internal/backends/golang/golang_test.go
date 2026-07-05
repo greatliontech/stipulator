@@ -1,6 +1,7 @@
 package golang
 
 import (
+	"strings"
 	"go/types"
 	"testing"
 
@@ -112,6 +113,9 @@ func TestRunTests(t *testing.T) {
 			t.Errorf("outcome[%s] = %v, want %v", k, got, w)
 		}
 	}
+	if !tr.RaceEnabled {
+		t.Fatal("test run not race-attributed")
+	}
 	wantRegs := []verify.Registration{
 		{Package: "example.com/fixture/lib", Test: "TestWitFail", Requirement: "REQ-fix-c"},
 		{Package: "example.com/fixture/lib", Test: "TestWitPass", Requirement: "REQ-fix-a"},
@@ -172,5 +176,42 @@ func TestShapeHashDistinguishesSignatures(t *testing.T) {
 	}
 	if a != a2 {
 		t.Fatal("shape hash not stable across resolutions")
+	}
+}
+
+// TestWitnessClass pins property-vs-example classification: fuzz targets
+// are property witnesses, ordinary tests are example witnesses, resolved
+// from signatures, never declared.
+func TestWitnessClass(t *testing.T) {
+	if got := backend.WitnessClass(mod + "/internal/canon.FuzzTextProjection"); got != verify.PropertyWitness {
+		t.Fatalf("fuzz target classified %v", got)
+	}
+	if got := backend.WitnessClass(mod + "/internal/corpus.TestLoadManifest"); got != verify.ExampleWitness {
+		t.Fatalf("ordinary test classified %v", got)
+	}
+	if got := backend.WitnessClass(mod + "/internal/corpus.LoadManifest"); got != verify.ExampleWitness {
+		t.Fatalf("non-test symbol classified %v", got)
+	}
+}
+
+// TestWitnessRunInvocation pins the witness-run contract: the race
+// detector is always on, and no fuzzing campaign flag ever reaches the
+// gate's test run — campaigns are exploration, outside the gate.
+func TestWitnessRunInvocation(t *testing.T) {
+	args := testArgs()
+	race, fuzz := false, false
+	for _, a := range args {
+		if a == "-race" {
+			race = true
+		}
+		if strings.HasPrefix(a, "-fuzz") {
+			fuzz = true
+		}
+	}
+	if !race {
+		t.Fatal("witness run does not enable the race detector")
+	}
+	if fuzz {
+		t.Fatal("witness run passes a fuzzing flag")
 	}
 }
