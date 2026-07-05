@@ -19,6 +19,13 @@ header block, so hand-written commentary is never silently destroyed;
 binding rationale belongs in review and commit messages, not in record
 files.
 
+**REQ-evidence-record-verbs** (behavior): Binding records MUST be writable
+through tool operations that validate at write time — the requirement
+against the compiled corpus, the symbol through its backend when one exists
+— rendering through the machine-owned writer with the content pin, and the
+shape pin when the backend has a verifier, applied immediately, so a freshly
+authored claim is never born stale.
+
 **REQ-evidence-binding-roles** (behavior): A binding's role MUST be one of
 `implements` (the symbol realizes the requirement), `tests` (the symbol is a
 test exercising it), or `proves` (a backend prover assertion checks it).

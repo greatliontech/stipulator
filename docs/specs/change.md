@@ -50,6 +50,12 @@ identity not present in the corpus MUST be a verification error.
 under `.stipulator/gaps/` naming exactly one requirement identifier, a
 reason, and a landing condition.
 
+**REQ-gap-verb** (behavior): Gap records MUST be writable through a tool
+operation that validates the requirement identifier against the compiled
+corpus and requires a reason and a landing condition at write time, writing
+to the requirement's canonical path and refusing to overwrite a record that
+names a different requirement.
+
 **REQ-gap-conditions** (behavior): A landing condition MUST be either
 machine-evaluable — `covered(<id>)`, `exists(<id>)` — or attested, firing
 only when explicitly marked fired.

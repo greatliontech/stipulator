@@ -74,7 +74,9 @@ func commentOutsideHeader(raw []byte) int {
 func renderBindingSet(bf BindingFile) []byte {
 	var b strings.Builder
 	for _, line := range strings.Split(string(bf.Raw), "\n") {
-		if !strings.HasPrefix(line, "#") {
+		// Match commentOutsideHeader's notion of a header line exactly, or
+		// an indented header comment would silently vanish on re-render.
+		if !strings.HasPrefix(strings.TrimSpace(line), "#") {
 			break
 		}
 		b.WriteString(line)

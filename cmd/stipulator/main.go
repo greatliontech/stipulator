@@ -3,6 +3,9 @@
 //	stipulator compile [-C root] [-ir]   compile the corpus; print diagnostics
 //	stipulator verify  [-C root] [-no-test]  check records against corpus and code
 //	stipulator gate    [-C root]         coverage buckets + the gate verdict
+//	stipulator bind    -req R -symbol S -role r  author a validated binding
+//	stipulator unbind  -req R [-symbol S] [-role r]  remove bindings
+//	stipulator gap     -req R -reason ... (-covered R|-exists R|-attested ...)  declare a gap
 //	stipulator diff <old-root> <new-root>  per-identity IR delta
 //	stipulator pin     [-C root]         backfill binding content-hash pins
 package main
@@ -16,6 +19,7 @@ import (
 	"strings"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/coverage"
@@ -140,6 +144,65 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println("gate: pass")
+	case "bind":
+		reqID := fs.String("req", "", "requirement identifier")
+		symbol := fs.String("symbol", "", "backend-scoped symbol reference")
+		role := fs.String("role", "", "implements, tests, or proves")
+		backendName := fs.String("backend", "go", "language backend")
+		file := fs.String("file", "", "target binding file (derived from the requirement when empty)")
+		fs.Parse(os.Args[2:])
+		r, err := author.ParseRole(*role)
+		if err != nil {
+			fatal(err)
+		}
+		if !knownBackends[*backendName] {
+			fatal(fmt.Errorf("unknown backend %q (go, proto)", *backendName))
+		}
+		up, err := author.Bind(os.DirFS(*root), mustBackends(*root), author.BindRequest{
+			Requirement: *reqID, Symbol: *symbol, Backend: *backendName,
+			Role: r, File: *file,
+		})
+		if err != nil {
+			fatal(err)
+		}
+		applyUpdates(*root, []author.Update{*up})
+	case "unbind":
+		reqID := fs.String("req", "", "requirement identifier")
+		symbol := fs.String("symbol", "", "narrow to one symbol")
+		role := fs.String("role", "", "narrow to one role")
+		fs.Parse(os.Args[2:])
+		r, err := author.ParseRole(*role)
+		if err != nil {
+			fatal(err)
+		}
+		ups, removed, err := author.Unbind(os.DirFS(*root), *reqID, *symbol, r)
+		if err != nil {
+			fatal(err)
+		}
+		applyUpdates(*root, ups)
+		fmt.Println("removed", removed)
+	case "gap":
+		reqID := fs.String("req", "", "requirement identifier")
+		reason := fs.String("reason", "", "why the gap exists")
+		coveredID := fs.String("covered", "", "lands when this requirement is covered")
+		existsID := fs.String("exists", "", "lands when this requirement exists")
+		attested := fs.String("attested", "", "lands on this external condition, fired explicitly")
+		fs.Parse(os.Args[2:])
+		g := &stipulatorv1.Gap{}
+		g.SetRequirementId(*reqID)
+		g.SetReason(*reason)
+		lc, err := author.NewLandingCondition(*coveredID, *existsID, *attested)
+		if err != nil {
+			fatal(err)
+		}
+		if lc != nil {
+			g.SetLands(lc)
+		}
+		up, err := author.Gap(os.DirFS(*root), g)
+		if err != nil {
+			fatal(err)
+		}
+		applyUpdates(*root, []author.Update{*up})
 	case "pin":
 		fs.Parse(os.Args[2:])
 		spec := mustCompile(*root)
@@ -188,6 +251,30 @@ func main() {
 	}
 }
 
+// knownBackends closes the backend-name set so a typo cannot author an
+// unvalidated binding.
+var knownBackends = map[string]bool{"go": true, "proto": true}
+
+func applyUpdates(root string, ups []author.Update) {
+	for _, up := range ups {
+		full := filepath.Join(root, filepath.FromSlash(up.Path))
+		if up.Content == nil {
+			if err := os.Remove(full); err != nil {
+				fatal(err)
+			}
+			fmt.Println("deleted", up.Path)
+			continue
+		}
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			fatal(err)
+		}
+		if err := os.WriteFile(full, up.Content, 0o644); err != nil {
+			fatal(err)
+		}
+		fmt.Println("wrote", up.Path)
+	}
+}
+
 func mustCompile(root string) *stipulatorv1.Spec {
 	spec, diags, err := compile.Compile(os.DirFS(root))
 	if err != nil {
@@ -224,6 +311,6 @@ func fatal(err error) {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: stipulator <compile|verify|gate|pin> [flags] | stipulator diff <old-root> <new-root>")
+	fmt.Fprintln(os.Stderr, "usage: stipulator <compile|verify|gate|bind|unbind|gap|pin> [flags] | stipulator diff <old-root> <new-root>")
 	os.Exit(2)
 }

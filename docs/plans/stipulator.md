@@ -12,7 +12,7 @@ Spec: docs/specs/
 - [x] 8. Go witnesses (`go test -json` correlation + Covers helper)
 - [x] 9. Coverage policy + report buckets + gate
 - [x] 10. Evidence ladder v2: property/example witness split, run attributes (-race), fuzz-as-exploration
-- [ ] 11. Record verbs: bind/unbind/gap (tool-owned record authoring)
+- [x] 11. Record verbs: bind/unbind/gap (tool-owned record authoring)
 - [ ] 12. CI gate: Taskfile + workflow
 - [ ] 13. MCP server (modelcontextprotocol/go-sdk): compile/verify/coverage/bind tools; verify+coverage report messages (wire); gitfs adapter (go-git)
 - [ ] 14. Context facts: closure seeds (spec-neighborhood bindings), policy-free symbol slice, candidate partitions by slice disjointness

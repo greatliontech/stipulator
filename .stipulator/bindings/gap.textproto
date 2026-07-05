@@ -1,0 +1,20 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-gap-verb"
+  content_hash: "2a72f489d16697187dd2f087c7fae0a78a5a617042a377c6976391392e8a4a26"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.Gap"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "078e6d4fbc9d97ddd4779cf49851674680d5a4a6c807efc0ec7f1b3505d62543"
+}
+
+bindings {
+  requirement_id: "REQ-gap-verb"
+  content_hash: "2a72f489d16697187dd2f087c7fae0a78a5a617042a377c6976391392e8a4a26"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestGap"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "fb74e7e6f2d455ca4443d10dae01ab0889d59ff0d26678dea93f34df1cbd5d8d"
+}

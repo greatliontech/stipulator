@@ -1,0 +1,38 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-evidence-record-verbs"
+  content_hash: "a6f642c0f8685883a4c0997bf4dd2d40ae02cda6669204462698d7585ba02169"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.Bind"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "866858ddddb85218f5d6d184e6d35be4005d36a1ac2774a4d0539cf13347d4be"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-record-verbs"
+  content_hash: "a6f642c0f8685883a4c0997bf4dd2d40ae02cda6669204462698d7585ba02169"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestBind"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e540efff87cc9b8993d3b4b5a209276009ab5f86c061d92d6b4d29a27161302e"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-record-verbs"
+  content_hash: "a6f642c0f8685883a4c0997bf4dd2d40ae02cda6669204462698d7585ba02169"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.Unbind"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "bb5524cee26866607ce902b7bd2c4c2fe8e546656f7028c4fa3a398a84b6fc89"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-record-verbs"
+  content_hash: "a6f642c0f8685883a4c0997bf4dd2d40ae02cda6669204462698d7585ba02169"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestUnbind"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b1d897ede160f65e6b57aa81dff768332a5817dd87bc3a84f268f9625edd053c"
+}
