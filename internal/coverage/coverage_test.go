@@ -16,7 +16,7 @@ import (
 func fixture(t *testing.T, doc string, files map[string]string) (*stipulatorv1.Spec, *records.Store) {
 	t.Helper()
 	fsys := fstest.MapFS{
-		"stipulator.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
+		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
 		"specs/a.md":           {Data: []byte(doc)},
 	}
 	for p, c := range files {

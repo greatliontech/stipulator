@@ -12,7 +12,7 @@ import (
 func compileFiles(t *testing.T, files map[string]string) *stipulatorv1.Spec {
 	t.Helper()
 	fsys := fstest.MapFS{
-		"stipulator.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
+		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
 	}
 	for p, c := range files {
 		fsys[p] = &fstest.MapFile{Data: []byte(c)}

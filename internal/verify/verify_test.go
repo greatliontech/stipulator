@@ -16,7 +16,7 @@ const goodDoc = "# T\n\n**REQ-v-a** (behavior): It MUST x.\n\n**REQ-v-b** (behav
 func run(t *testing.T, files map[string]string) (*Report, *records.Store) {
 	t.Helper()
 	fsys := fstest.MapFS{
-		"stipulator.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
+		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
 		"specs/a.md":           {Data: []byte(goodDoc)},
 	}
 	for p, c := range files {
@@ -165,7 +165,7 @@ func TestRecordHygiene(t *testing.T) {
 	})
 	t.Run("stray file in record dir is an error", func(t *testing.T) {
 		fsys := fstest.MapFS{
-			"stipulator.textproto":             {Data: []byte("include: \"specs/**/*.md\"\n")},
+			".stipulator/manifest.textproto":             {Data: []byte("include: \"specs/**/*.md\"\n")},
 			"specs/a.md":                       {Data: []byte(goodDoc)},
 			".stipulator/bindings/README.md":   {Data: []byte("stray")},
 		}
@@ -192,7 +192,7 @@ func (f fakeBackend) Resolve(symbol string) (Resolution, string, error) {
 
 func TestBackendResolution(t *testing.T) {
 	fsys := fstest.MapFS{
-		"stipulator.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
+		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
 		"specs/a.md":           {Data: []byte(goodDoc)},
 		".stipulator/bindings/x.textproto": {Data: []byte(
 			binding("REQ-v-a", "") + // symbol example.com/p.F
@@ -264,7 +264,7 @@ func TestBackendResolution(t *testing.T) {
 
 func TestShapeMismatchIsDataNotProblem(t *testing.T) {
 	fsys := fstest.MapFS{
-		"stipulator.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
+		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
 		"specs/a.md":           {Data: []byte(goodDoc)},
 		".stipulator/bindings/x.textproto": {Data: []byte(
 			strings.Replace(binding("REQ-v-a", ""), "role:",
@@ -300,7 +300,7 @@ func TestWitnessCorrelation(t *testing.T) {
 		strings.ReplaceAll(binding("REQ-v-b", ""), "example.com/p.F", "example.com/p.TestC"),
 		"BINDING_ROLE_IMPLEMENTS", "BINDING_ROLE_TESTS")
 	fsys := fstest.MapFS{
-		"stipulator.textproto":             {Data: []byte("include: \"specs/**/*.md\"\n")},
+		".stipulator/manifest.textproto":             {Data: []byte("include: \"specs/**/*.md\"\n")},
 		"specs/a.md":                       {Data: []byte(goodDoc)},
 		".stipulator/bindings/x.textproto": {Data: []byte(testsBinding + failBinding + shadowBinding)},
 	}

@@ -16,7 +16,7 @@ const doc = "# T\n\n**REQ-au-a** (behavior): It MUST x.\n\n**REQ-au-b** (behavio
 
 func testFS(files map[string]string) fstest.MapFS {
 	fsys := fstest.MapFS{
-		"stipulator.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
+		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
 		"specs/a.md":           {Data: []byte(doc)},
 	}
 	for p, c := range files {

@@ -23,8 +23,8 @@ Non-normative orientation; each stage is specified in its own document.
 **corpus** (term): the set of markdown documents enumerated by the manifest;
 the unit of compilation.
 
-**manifest** (term): the file `stipulator.textproto` at the repository root;
-declares the corpus and configuration.
+**manifest** (term): the file `.stipulator/manifest.textproto`; declares the
+corpus and configuration.
 
 **IR** (term): the intermediate representation — the protobuf graph a corpus
 compiles to.

@@ -13,7 +13,7 @@ import (
 func compileFiles(t *testing.T, files map[string]string) (*stipulatorv1.Spec, []Diagnostic) {
 	t.Helper()
 	fsys := fstest.MapFS{
-		"stipulator.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
+		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
 	}
 	for p, c := range files {
 		fsys[p] = &fstest.MapFile{Data: []byte(c)}
@@ -228,7 +228,7 @@ func TestIdentity(t *testing.T) {
 	})
 	t.Run("tombstoned identities rejected", func(t *testing.T) {
 		fsys := fstest.MapFS{
-			"stipulator.textproto":            {Data: []byte("include: \"specs/**/*.md\"\n")},
+			".stipulator/manifest.textproto":            {Data: []byte("include: \"specs/**/*.md\"\n")},
 			".stipulator/tombstones.textproto": {Data: []byte("retired: \"REQ-x-old\"\nretired: \"Widget\"\n")},
 			"specs/a.md": {Data: []byte("# T\n\n**REQ-x-old** (behavior): It MUST x.\n\n**widget** (term): a gadget.\n")},
 		}
@@ -241,7 +241,7 @@ func TestIdentity(t *testing.T) {
 	})
 	t.Run("supersedes may target tombstone", func(t *testing.T) {
 		fsys := fstest.MapFS{
-			"stipulator.textproto":            {Data: []byte("include: \"specs/**/*.md\"\n")},
+			".stipulator/manifest.textproto":            {Data: []byte("include: \"specs/**/*.md\"\n")},
 			".stipulator/tombstones.textproto": {Data: []byte("retired: \"REQ-x-old\"\n")},
 			"specs/a.md": {Data: []byte("# T\n\n**REQ-x-new** (behavior, supersedes REQ-x-old): It MUST x.\n")},
 		}

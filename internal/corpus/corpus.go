@@ -21,7 +21,7 @@ import (
 
 // ManifestPath is the manifest's fixed location relative to the repository
 // root. A repository without a manifest is not a stipulator repository.
-const ManifestPath = "stipulator.textproto"
+const ManifestPath = ".stipulator/manifest.textproto"
 
 // DefaultInclude is the include glob in effect when the manifest declares
 // none.

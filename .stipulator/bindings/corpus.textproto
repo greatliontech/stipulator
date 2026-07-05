@@ -3,7 +3,7 @@
 
 bindings {
   requirement_id: "REQ-profile-manifest"
-  content_hash: "b8dceece3126c3fa2245fbe2b174fb76edb1806d3347c23a63c77b85703d1a63"
+  content_hash: "4e79a58e0e0609c00e982a0bf17db03ffbc7366e56ad4047320a78c8141fe0a5"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.LoadManifest"
   role: BINDING_ROLE_IMPLEMENTS
@@ -12,7 +12,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-profile-manifest"
-  content_hash: "b8dceece3126c3fa2245fbe2b174fb76edb1806d3347c23a63c77b85703d1a63"
+  content_hash: "4e79a58e0e0609c00e982a0bf17db03ffbc7366e56ad4047320a78c8141fe0a5"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.TestLoadManifest"
   role: BINDING_ROLE_TESTS

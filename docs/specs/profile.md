@@ -10,8 +10,8 @@ non-normative by construction.
 ## Corpus and manifest
 
 **REQ-profile-manifest** (behavior): The compiler MUST read the manifest from
-`stipulator.textproto` at the repository root and fail when it is absent; the
-manifest declares at least the corpus include globs, defaulting to
+`.stipulator/manifest.textproto` and fail when it is absent; the manifest
+declares at least the corpus include globs, defaulting to
 `docs/specs/**/*.md`.
 
 **REQ-profile-enumeration** (behavior): The corpus MUST be enumerated by
