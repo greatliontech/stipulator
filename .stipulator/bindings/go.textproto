@@ -1,0 +1,20 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-go-slice"
+  content_hash: "d651c96d3628e0a785cac20dc20793606b66f21cf5b01a2dd9148a3488d40cd8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend.Slice"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "8fd772a1b63a8a4b5f941fd8cd4a6c2c2aced1a03942bbd09cce2ba570b4cf17"
+}
+
+bindings {
+  requirement_id: "REQ-go-slice"
+  content_hash: "d651c96d3628e0a785cac20dc20793606b66f21cf5b01a2dd9148a3488d40cd8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestSlice"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "98b114328eefeb10205f1f103126d7ccfb6d24e54463fb933ac9342c96ee474b"
+}

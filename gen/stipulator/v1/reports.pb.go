@@ -1560,6 +1560,726 @@ func (b0 CoverageReport_builder) Build() *CoverageReport {
 	return m0
 }
 
+// Seed is a bound symbol seeding code context for a requirement set.
+type Seed struct {
+	state                    protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_RequirementId *string                `protobuf:"bytes,1,opt,name=requirement_id,json=requirementId"`
+	xxx_hidden_Backend       *string                `protobuf:"bytes,2,opt,name=backend"`
+	xxx_hidden_Symbol        *string                `protobuf:"bytes,3,opt,name=symbol"`
+	xxx_hidden_Role          BindingRole            `protobuf:"varint,4,opt,name=role,enum=stipulator.v1.BindingRole"`
+	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
+	XXX_presence             [1]uint32
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
+}
+
+func (x *Seed) Reset() {
+	*x = Seed{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Seed) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Seed) ProtoMessage() {}
+
+func (x *Seed) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Seed) GetRequirementId() string {
+	if x != nil {
+		if x.xxx_hidden_RequirementId != nil {
+			return *x.xxx_hidden_RequirementId
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *Seed) GetBackend() string {
+	if x != nil {
+		if x.xxx_hidden_Backend != nil {
+			return *x.xxx_hidden_Backend
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *Seed) GetSymbol() string {
+	if x != nil {
+		if x.xxx_hidden_Symbol != nil {
+			return *x.xxx_hidden_Symbol
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *Seed) GetRole() BindingRole {
+	if x != nil {
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 3) {
+			return x.xxx_hidden_Role
+		}
+	}
+	return BindingRole_BINDING_ROLE_UNSPECIFIED
+}
+
+func (x *Seed) SetRequirementId(v string) {
+	x.xxx_hidden_RequirementId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
+}
+
+func (x *Seed) SetBackend(v string) {
+	x.xxx_hidden_Backend = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
+}
+
+func (x *Seed) SetSymbol(v string) {
+	x.xxx_hidden_Symbol = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
+}
+
+func (x *Seed) SetRole(v BindingRole) {
+	x.xxx_hidden_Role = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
+}
+
+func (x *Seed) HasRequirementId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *Seed) HasBackend() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *Seed) HasSymbol() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *Seed) HasRole() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *Seed) ClearRequirementId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_RequirementId = nil
+}
+
+func (x *Seed) ClearBackend() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Backend = nil
+}
+
+func (x *Seed) ClearSymbol() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Symbol = nil
+}
+
+func (x *Seed) ClearRole() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_Role = BindingRole_BINDING_ROLE_UNSPECIFIED
+}
+
+type Seed_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	RequirementId *string
+	Backend       *string
+	Symbol        *string
+	Role          *BindingRole
+}
+
+func (b0 Seed_builder) Build() *Seed {
+	m0 := &Seed{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.RequirementId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		x.xxx_hidden_RequirementId = b.RequirementId
+	}
+	if b.Backend != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
+		x.xxx_hidden_Backend = b.Backend
+	}
+	if b.Symbol != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
+		x.xxx_hidden_Symbol = b.Symbol
+	}
+	if b.Role != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		x.xxx_hidden_Role = *b.Role
+	}
+	return m0
+}
+
+// Decl is one declaration fact from a code slice.
+type Decl struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Package     *string                `protobuf:"bytes,1,opt,name=package"`
+	xxx_hidden_Name        *string                `protobuf:"bytes,2,opt,name=name"`
+	xxx_hidden_Declaration *string                `protobuf:"bytes,3,opt,name=declaration"`
+	xxx_hidden_ShapeHash   *string                `protobuf:"bytes,4,opt,name=shape_hash,json=shapeHash"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *Decl) Reset() {
+	*x = Decl{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Decl) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Decl) ProtoMessage() {}
+
+func (x *Decl) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Decl) GetPackage() string {
+	if x != nil {
+		if x.xxx_hidden_Package != nil {
+			return *x.xxx_hidden_Package
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *Decl) GetName() string {
+	if x != nil {
+		if x.xxx_hidden_Name != nil {
+			return *x.xxx_hidden_Name
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *Decl) GetDeclaration() string {
+	if x != nil {
+		if x.xxx_hidden_Declaration != nil {
+			return *x.xxx_hidden_Declaration
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *Decl) GetShapeHash() string {
+	if x != nil {
+		if x.xxx_hidden_ShapeHash != nil {
+			return *x.xxx_hidden_ShapeHash
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *Decl) SetPackage(v string) {
+	x.xxx_hidden_Package = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
+}
+
+func (x *Decl) SetName(v string) {
+	x.xxx_hidden_Name = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
+}
+
+func (x *Decl) SetDeclaration(v string) {
+	x.xxx_hidden_Declaration = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
+}
+
+func (x *Decl) SetShapeHash(v string) {
+	x.xxx_hidden_ShapeHash = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
+}
+
+func (x *Decl) HasPackage() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *Decl) HasName() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *Decl) HasDeclaration() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *Decl) HasShapeHash() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *Decl) ClearPackage() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Package = nil
+}
+
+func (x *Decl) ClearName() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Name = nil
+}
+
+func (x *Decl) ClearDeclaration() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Declaration = nil
+}
+
+func (x *Decl) ClearShapeHash() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_ShapeHash = nil
+}
+
+type Decl_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Package *string
+	Name    *string
+	// The declaration rendered by the backend's object printer.
+	Declaration *string
+	ShapeHash   *string
+}
+
+func (b0 Decl_builder) Build() *Decl {
+	m0 := &Decl{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Package != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		x.xxx_hidden_Package = b.Package
+	}
+	if b.Name != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
+		x.xxx_hidden_Name = b.Name
+	}
+	if b.Declaration != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
+		x.xxx_hidden_Declaration = b.Declaration
+	}
+	if b.ShapeHash != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		x.xxx_hidden_ShapeHash = b.ShapeHash
+	}
+	return m0
+}
+
+// ContextReport carries the context facts for a requirement set: seeds
+// from the closure's bindings, and the slice of declarations they reach.
+type ContextReport struct {
+	state                   protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Seeds        *[]*Seed               `protobuf:"bytes,1,rep,name=seeds"`
+	xxx_hidden_Declarations *[]*Decl               `protobuf:"bytes,2,rep,name=declarations"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *ContextReport) Reset() {
+	*x = ContextReport{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ContextReport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ContextReport) ProtoMessage() {}
+
+func (x *ContextReport) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *ContextReport) GetSeeds() []*Seed {
+	if x != nil {
+		if x.xxx_hidden_Seeds != nil {
+			return *x.xxx_hidden_Seeds
+		}
+	}
+	return nil
+}
+
+func (x *ContextReport) GetDeclarations() []*Decl {
+	if x != nil {
+		if x.xxx_hidden_Declarations != nil {
+			return *x.xxx_hidden_Declarations
+		}
+	}
+	return nil
+}
+
+func (x *ContextReport) SetSeeds(v []*Seed) {
+	x.xxx_hidden_Seeds = &v
+}
+
+func (x *ContextReport) SetDeclarations(v []*Decl) {
+	x.xxx_hidden_Declarations = &v
+}
+
+type ContextReport_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Seeds        []*Seed
+	Declarations []*Decl
+}
+
+func (b0 ContextReport_builder) Build() *ContextReport {
+	m0 := &ContextReport{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Seeds = &b.Seeds
+	x.xxx_hidden_Declarations = &b.Declarations
+	return m0
+}
+
+// PartitionComponent is one candidate work unit: requirements whose
+// closures intersect, with their seeds and touched packages.
+type PartitionComponent struct {
+	state                     protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_RequirementIds []string               `protobuf:"bytes,1,rep,name=requirement_ids,json=requirementIds"`
+	xxx_hidden_Seeds          *[]*Seed               `protobuf:"bytes,2,rep,name=seeds"`
+	xxx_hidden_Packages       []string               `protobuf:"bytes,3,rep,name=packages"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *PartitionComponent) Reset() {
+	*x = PartitionComponent{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PartitionComponent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PartitionComponent) ProtoMessage() {}
+
+func (x *PartitionComponent) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *PartitionComponent) GetRequirementIds() []string {
+	if x != nil {
+		return x.xxx_hidden_RequirementIds
+	}
+	return nil
+}
+
+func (x *PartitionComponent) GetSeeds() []*Seed {
+	if x != nil {
+		if x.xxx_hidden_Seeds != nil {
+			return *x.xxx_hidden_Seeds
+		}
+	}
+	return nil
+}
+
+func (x *PartitionComponent) GetPackages() []string {
+	if x != nil {
+		return x.xxx_hidden_Packages
+	}
+	return nil
+}
+
+func (x *PartitionComponent) SetRequirementIds(v []string) {
+	x.xxx_hidden_RequirementIds = v
+}
+
+func (x *PartitionComponent) SetSeeds(v []*Seed) {
+	x.xxx_hidden_Seeds = &v
+}
+
+func (x *PartitionComponent) SetPackages(v []string) {
+	x.xxx_hidden_Packages = v
+}
+
+type PartitionComponent_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	RequirementIds []string
+	Seeds          []*Seed
+	Packages       []string
+}
+
+func (b0 PartitionComponent_builder) Build() *PartitionComponent {
+	m0 := &PartitionComponent{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_RequirementIds = b.RequirementIds
+	x.xxx_hidden_Seeds = &b.Seeds
+	x.xxx_hidden_Packages = b.Packages
+	return m0
+}
+
+// PartitionOverlap reports two components sharing packages: fan them out
+// sequentially, not in parallel.
+type PartitionOverlap struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_A           int32                  `protobuf:"varint,1,opt,name=a"`
+	xxx_hidden_B           int32                  `protobuf:"varint,2,opt,name=b"`
+	xxx_hidden_Packages    []string               `protobuf:"bytes,3,rep,name=packages"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *PartitionOverlap) Reset() {
+	*x = PartitionOverlap{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PartitionOverlap) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PartitionOverlap) ProtoMessage() {}
+
+func (x *PartitionOverlap) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *PartitionOverlap) GetA() int32 {
+	if x != nil {
+		return x.xxx_hidden_A
+	}
+	return 0
+}
+
+func (x *PartitionOverlap) GetB() int32 {
+	if x != nil {
+		return x.xxx_hidden_B
+	}
+	return 0
+}
+
+func (x *PartitionOverlap) GetPackages() []string {
+	if x != nil {
+		return x.xxx_hidden_Packages
+	}
+	return nil
+}
+
+func (x *PartitionOverlap) SetA(v int32) {
+	x.xxx_hidden_A = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *PartitionOverlap) SetB(v int32) {
+	x.xxx_hidden_B = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *PartitionOverlap) SetPackages(v []string) {
+	x.xxx_hidden_Packages = v
+}
+
+func (x *PartitionOverlap) HasA() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *PartitionOverlap) HasB() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *PartitionOverlap) ClearA() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_A = 0
+}
+
+func (x *PartitionOverlap) ClearB() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_B = 0
+}
+
+type PartitionOverlap_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	A        *int32
+	B        *int32
+	Packages []string
+}
+
+func (b0 PartitionOverlap_builder) Build() *PartitionOverlap {
+	m0 := &PartitionOverlap{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.A != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_A = *b.A
+	}
+	if b.B != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		x.xxx_hidden_B = *b.B
+	}
+	x.xxx_hidden_Packages = b.Packages
+	return m0
+}
+
+// PartitionReport is the candidate-partition derivation. Selection and
+// ordering are deliberately absent: they belong to the caller.
+type PartitionReport struct {
+	state                 protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Components *[]*PartitionComponent `protobuf:"bytes,1,rep,name=components"`
+	xxx_hidden_Overlaps   *[]*PartitionOverlap   `protobuf:"bytes,2,rep,name=overlaps"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *PartitionReport) Reset() {
+	*x = PartitionReport{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PartitionReport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PartitionReport) ProtoMessage() {}
+
+func (x *PartitionReport) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *PartitionReport) GetComponents() []*PartitionComponent {
+	if x != nil {
+		if x.xxx_hidden_Components != nil {
+			return *x.xxx_hidden_Components
+		}
+	}
+	return nil
+}
+
+func (x *PartitionReport) GetOverlaps() []*PartitionOverlap {
+	if x != nil {
+		if x.xxx_hidden_Overlaps != nil {
+			return *x.xxx_hidden_Overlaps
+		}
+	}
+	return nil
+}
+
+func (x *PartitionReport) SetComponents(v []*PartitionComponent) {
+	x.xxx_hidden_Components = &v
+}
+
+func (x *PartitionReport) SetOverlaps(v []*PartitionOverlap) {
+	x.xxx_hidden_Overlaps = &v
+}
+
+type PartitionReport_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Components []*PartitionComponent
+	Overlaps   []*PartitionOverlap
+}
+
+func (b0 PartitionReport_builder) Build() *PartitionReport {
+	m0 := &PartitionReport{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Components = &b.Components
+	x.xxx_hidden_Overlaps = &b.Overlaps
+	return m0
+}
+
 var File_stipulator_v1_reports_proto protoreflect.FileDescriptor
 
 const file_stipulator_v1_reports_proto_rawDesc = "" +
@@ -1609,7 +2329,34 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"violations\x18\x03 \x03(\tR\n" +
 	"violations\x12\x1f\n" +
 	"\vgate_passes\x18\x04 \x01(\bR\n" +
-	"gatePasses*\x95\x01\n" +
+	"gatePasses\"\x8f\x01\n" +
+	"\x04Seed\x12%\n" +
+	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x12\x18\n" +
+	"\abackend\x18\x02 \x01(\tR\abackend\x12\x16\n" +
+	"\x06symbol\x18\x03 \x01(\tR\x06symbol\x12.\n" +
+	"\x04role\x18\x04 \x01(\x0e2\x1a.stipulator.v1.BindingRoleR\x04role\"u\n" +
+	"\x04Decl\x12\x18\n" +
+	"\apackage\x18\x01 \x01(\tR\apackage\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
+	"\vdeclaration\x18\x03 \x01(\tR\vdeclaration\x12\x1d\n" +
+	"\n" +
+	"shape_hash\x18\x04 \x01(\tR\tshapeHash\"s\n" +
+	"\rContextReport\x12)\n" +
+	"\x05seeds\x18\x01 \x03(\v2\x13.stipulator.v1.SeedR\x05seeds\x127\n" +
+	"\fdeclarations\x18\x02 \x03(\v2\x13.stipulator.v1.DeclR\fdeclarations\"\x84\x01\n" +
+	"\x12PartitionComponent\x12'\n" +
+	"\x0frequirement_ids\x18\x01 \x03(\tR\x0erequirementIds\x12)\n" +
+	"\x05seeds\x18\x02 \x03(\v2\x13.stipulator.v1.SeedR\x05seeds\x12\x1a\n" +
+	"\bpackages\x18\x03 \x03(\tR\bpackages\"J\n" +
+	"\x10PartitionOverlap\x12\f\n" +
+	"\x01a\x18\x01 \x01(\x05R\x01a\x12\f\n" +
+	"\x01b\x18\x02 \x01(\x05R\x01b\x12\x1a\n" +
+	"\bpackages\x18\x03 \x03(\tR\bpackages\"\x91\x01\n" +
+	"\x0fPartitionReport\x12A\n" +
+	"\n" +
+	"components\x18\x01 \x03(\v2!.stipulator.v1.PartitionComponentR\n" +
+	"components\x12;\n" +
+	"\boverlaps\x18\x02 \x03(\v2\x1f.stipulator.v1.PartitionOverlapR\boverlaps*\x95\x01\n" +
 	"\n" +
 	"Resolution\x12\x1a\n" +
 	"\x16RESOLUTION_UNSPECIFIED\x10\x00\x12\x19\n" +
@@ -1648,7 +2395,7 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x12GAP_STATE_RESOLVED\x10\x03BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
 var file_stipulator_v1_reports_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_stipulator_v1_reports_proto_goTypes = []any{
 	(Resolution)(0),             // 0: stipulator.v1.Resolution
 	(ShapeState)(0),             // 1: stipulator.v1.ShapeState
@@ -1663,12 +2410,18 @@ var file_stipulator_v1_reports_proto_goTypes = []any{
 	(*RequirementCoverage)(nil), // 10: stipulator.v1.RequirementCoverage
 	(*GapReport)(nil),           // 11: stipulator.v1.GapReport
 	(*CoverageReport)(nil),      // 12: stipulator.v1.CoverageReport
-	(BindingRole)(0),            // 13: stipulator.v1.BindingRole
-	(ClauseKind)(0),             // 14: stipulator.v1.ClauseKind
-	(Keyword)(0),                // 15: stipulator.v1.Keyword
+	(*Seed)(nil),                // 13: stipulator.v1.Seed
+	(*Decl)(nil),                // 14: stipulator.v1.Decl
+	(*ContextReport)(nil),       // 15: stipulator.v1.ContextReport
+	(*PartitionComponent)(nil),  // 16: stipulator.v1.PartitionComponent
+	(*PartitionOverlap)(nil),    // 17: stipulator.v1.PartitionOverlap
+	(*PartitionReport)(nil),     // 18: stipulator.v1.PartitionReport
+	(BindingRole)(0),            // 19: stipulator.v1.BindingRole
+	(ClauseKind)(0),             // 20: stipulator.v1.ClauseKind
+	(Keyword)(0),                // 21: stipulator.v1.Keyword
 }
 var file_stipulator_v1_reports_proto_depIdxs = []int32{
-	13, // 0: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
+	19, // 0: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
 	0,  // 1: stipulator.v1.BindingResult.resolution:type_name -> stipulator.v1.Resolution
 	1,  // 2: stipulator.v1.BindingResult.shape:type_name -> stipulator.v1.ShapeState
 	2,  // 3: stipulator.v1.BindingResult.test_outcome:type_name -> stipulator.v1.TestOutcome
@@ -1677,17 +2430,23 @@ var file_stipulator_v1_reports_proto_depIdxs = []int32{
 	6,  // 6: stipulator.v1.VerifyReport.problems:type_name -> stipulator.v1.Problem
 	7,  // 7: stipulator.v1.VerifyReport.results:type_name -> stipulator.v1.BindingResult
 	8,  // 8: stipulator.v1.VerifyReport.registrations:type_name -> stipulator.v1.RegistrationResult
-	14, // 9: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
-	15, // 10: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
+	20, // 9: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
+	21, // 10: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
 	4,  // 11: stipulator.v1.RequirementCoverage.bucket:type_name -> stipulator.v1.Bucket
 	5,  // 12: stipulator.v1.GapReport.state:type_name -> stipulator.v1.GapState
 	10, // 13: stipulator.v1.CoverageReport.requirements:type_name -> stipulator.v1.RequirementCoverage
 	11, // 14: stipulator.v1.CoverageReport.gaps:type_name -> stipulator.v1.GapReport
-	15, // [15:15] is the sub-list for method output_type
-	15, // [15:15] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	19, // 15: stipulator.v1.Seed.role:type_name -> stipulator.v1.BindingRole
+	13, // 16: stipulator.v1.ContextReport.seeds:type_name -> stipulator.v1.Seed
+	14, // 17: stipulator.v1.ContextReport.declarations:type_name -> stipulator.v1.Decl
+	13, // 18: stipulator.v1.PartitionComponent.seeds:type_name -> stipulator.v1.Seed
+	16, // 19: stipulator.v1.PartitionReport.components:type_name -> stipulator.v1.PartitionComponent
+	17, // 20: stipulator.v1.PartitionReport.overlaps:type_name -> stipulator.v1.PartitionOverlap
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_reports_proto_init() }
@@ -1703,7 +2462,7 @@ func file_stipulator_v1_reports_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_reports_proto_rawDesc), len(file_stipulator_v1_reports_proto_rawDesc)),
 			NumEnums:      6,
-			NumMessages:   7,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

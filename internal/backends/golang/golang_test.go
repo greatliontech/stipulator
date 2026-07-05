@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/stipulate"
 )
 
 // The backend is tested against this module itself: the repository's own
@@ -213,5 +214,46 @@ func TestWitnessRunInvocation(t *testing.T) {
 	}
 	if fuzz {
 		t.Fatal("witness run passes a fuzzing flag")
+	}
+}
+
+// TestSlice pins the slice facts: the seed's declaration plus the named
+// module-local types its signature reaches, transitively, shape-pinned and
+// canonically ordered — and nothing from outside the module.
+func TestSlice(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-slice")
+	decls, err := backend.Slice([]string{mod + "/internal/corpus.LoadManifest"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := map[string]string{}
+	for _, d := range decls {
+		names[d.Package+"."+d.Name] = d.Declaration
+		if len(d.ShapeHash) != 64 {
+			t.Fatalf("decl not shape-pinned: %+v", d)
+		}
+	}
+	// The function itself.
+	if _, ok := names[mod+"/internal/corpus.LoadManifest"]; !ok {
+		t.Fatalf("seed declaration missing: %v", names)
+	}
+	// Its result type, declared in the generated package — reached
+	// transitively through the signature.
+	if _, ok := names[mod+"/gen/stipulator/v1.Manifest"]; !ok {
+		t.Fatalf("transitive named type missing: %v", names)
+	}
+	// Module-external types (io/fs.FS) appear only inside declaration
+	// strings, never as declarations of their own.
+	for key := range names {
+		if strings.HasPrefix(key, "io/fs.") {
+			t.Fatalf("module-external declaration leaked: %s", key)
+		}
+	}
+	// Canonical order.
+	for i := 1; i < len(decls); i++ {
+		a, b := decls[i-1], decls[i]
+		if a.Package > b.Package || (a.Package == b.Package && a.Name > b.Name) {
+			t.Fatal("slice not canonically ordered")
+		}
 	}
 }

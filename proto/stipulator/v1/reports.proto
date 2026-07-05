@@ -128,3 +128,50 @@ message CoverageReport {
   repeated string violations = 3;
   bool gate_passes = 4;
 }
+
+// Seed is a bound symbol seeding code context for a requirement set.
+message Seed {
+  string requirement_id = 1;
+  string backend = 2;
+  string symbol = 3;
+  BindingRole role = 4;
+}
+
+// Decl is one declaration fact from a code slice.
+message Decl {
+  string package = 1;
+  string name = 2;
+  // The declaration rendered by the backend's object printer.
+  string declaration = 3;
+  string shape_hash = 4;
+}
+
+// ContextReport carries the context facts for a requirement set: seeds
+// from the closure's bindings, and the slice of declarations they reach.
+message ContextReport {
+  repeated Seed seeds = 1;
+  repeated Decl declarations = 2;
+}
+
+// PartitionComponent is one candidate work unit: requirements whose
+// closures intersect, with their seeds and touched packages.
+message PartitionComponent {
+  repeated string requirement_ids = 1;
+  repeated Seed seeds = 2;
+  repeated string packages = 3;
+}
+
+// PartitionOverlap reports two components sharing packages: fan them out
+// sequentially, not in parallel.
+message PartitionOverlap {
+  int32 a = 1;
+  int32 b = 2;
+  repeated string packages = 3;
+}
+
+// PartitionReport is the candidate-partition derivation. Selection and
+// ordering are deliberately absent: they belong to the caller.
+message PartitionReport {
+  repeated PartitionComponent components = 1;
+  repeated PartitionOverlap overlaps = 2;
+}

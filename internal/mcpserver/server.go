@@ -26,6 +26,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/bundle"
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/coverage"
+	"github.com/greatliontech/stipulator/internal/facts"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
@@ -107,6 +108,14 @@ func (s *Server) MCP() *mcp.Server {
 		Name:        "pin",
 		Description: "Backfill binding content and shape pins to current values; returns rewritten record files.",
 	}, s.toolPin)
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "context",
+		Description: "Code-context facts for requirement ids (comma-separated): seed symbols from the closure's bindings, and the declarations their code slice reaches. Facts only — selection is yours.",
+	}, s.toolContext)
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "partitions",
+		Description: "Candidate work partitions for requirement ids (comma-separated; empty means all red requirements): closure-connected components with seeds, touched packages, and pairwise overlaps. Disjoint components can fan out in parallel.",
+	}, s.toolPartitions)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "read_spec",
 		Description: "Read the self-contained bundle for requirement ids (comma-separated): the requirements, their closure, terms, and context. Mirrors the bundle resource for clients without resource support.",
@@ -426,6 +435,85 @@ func (s *Server) toolReadSpec(ctx context.Context, req *mcp.CallToolRequest, in 
 		return nil, readSpecOut{}, err
 	}
 	return nil, readSpecOut{Markdown: md}, nil
+}
+
+type contextIn struct {
+	Ids string `json:"ids" jsonschema:"comma-separated requirement identifiers"`
+}
+
+func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in contextIn) (*mcp.CallToolResult, map[string]any, error) {
+	spec, err := s.compileFresh()
+	if err != nil {
+		return nil, nil, err
+	}
+	store, err := records.Load(s.fsys())
+	if err != nil {
+		return nil, nil, err
+	}
+	backends, err := s.backends()
+	if err != nil {
+		return nil, nil, err
+	}
+	ids, err := splitIDs(in.Ids)
+	if err != nil {
+		return nil, nil, err
+	}
+	seeds, decls, err := facts.Context(spec, store, backends, ids)
+	if err != nil {
+		return nil, nil, err
+	}
+	return protoJSON(facts.ContextProto(seeds, decls))
+}
+
+type partitionsIn struct {
+	Ids string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers; empty means all red requirements"`
+}
+
+func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, in partitionsIn) (*mcp.CallToolResult, map[string]any, error) {
+	spec, rep, store, err := s.verifyPipeline(false)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(rep.Problems) > 0 {
+		return nil, nil, fmt.Errorf("verification problems; fix records first")
+	}
+	backends, err := s.backends()
+	if err != nil {
+		return nil, nil, err
+	}
+	var ids []string
+	if strings.TrimSpace(in.Ids) != "" {
+		ids, err = splitIDs(in.Ids)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		cov := coverage.Evaluate(spec, rep, store, true)
+		for _, r := range cov.Requirements {
+			switch r.Bucket {
+			case coverage.Uncovered, coverage.Stale, coverage.Broken:
+				ids = append(ids, r.Id)
+			}
+		}
+	}
+	pr, err := facts.Partitions(spec, store, backends, ids)
+	if err != nil {
+		return nil, nil, err
+	}
+	return protoJSON(pr.Proto())
+}
+
+func splitIDs(commaIDs string) ([]string, error) {
+	var ids []string
+	for _, id := range strings.Split(commaIDs, ",") {
+		if id = strings.TrimSpace(id); id != "" {
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) == 0 {
+		return nil, fmt.Errorf("no requirement identifiers given")
+	}
+	return ids, nil
 }
 
 // --- resources ---

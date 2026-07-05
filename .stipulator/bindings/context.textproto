@@ -1,0 +1,38 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-context-seeds"
+  content_hash: "b22ba056852674eaabc62c5971a50228a488656ca84dc371802e2f825e33eeb0"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/facts.Seeds"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "befd9f28667edd6ac49ec0b4ef5045a1d3101307f5c669ab5bfa92066d5aa882"
+}
+
+bindings {
+  requirement_id: "REQ-context-seeds"
+  content_hash: "b22ba056852674eaabc62c5971a50228a488656ca84dc371802e2f825e33eeb0"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/facts.TestSeedsFromNeighborhood"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "f92fa27e10bdc32df7b33d643a3e97133c5c02ddf4ffe42484c6e5f0896666e0"
+}
+
+bindings {
+  requirement_id: "REQ-context-partitions"
+  content_hash: "1cacbcaf795a039d82c6cae730c367559d0d43233356d53ec2a5e753372637ce"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/facts.Partitions"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "a993ad13b0e4ff3220a63b46f8ac4d68d53227c544bdd9ef076bad4ecc47d5cc"
+}
+
+bindings {
+  requirement_id: "REQ-context-partitions"
+  content_hash: "1cacbcaf795a039d82c6cae730c367559d0d43233356d53ec2a5e753372637ce"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/facts.TestPartitions"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "1035182b8edd4ab178c7d00326cbc72671698e89200a04fce72550e967301c15"
+}

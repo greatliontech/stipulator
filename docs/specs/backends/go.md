@@ -59,6 +59,14 @@ analyzers asserting import constraints (a package set does not import
 another) and interface satisfaction (a named type implements a named
 interface), as the initial prover set for `structural` clauses.
 
+## Slice
+
+**REQ-go-slice** (behavior): Given symbol references, the Go backend MUST
+return the declarations of their transitive dependency frontier —
+signatures and named types declared within the module, rendered by the
+object printer and shape-pinned, canonically ordered — returning facts
+only: no depth budgets, no exemplar selection, no rendering policy.
+
 ## Generated code
 
 **REQ-go-generated-detect** (behavior): Generated Go files MUST be detected

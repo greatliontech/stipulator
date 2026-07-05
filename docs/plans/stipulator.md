@@ -15,7 +15,7 @@ Spec: docs/specs/
 - [x] 11. Record verbs: bind/unbind/gap (tool-owned record authoring)
 - [x] 12. CI gate: Taskfile + workflow
 - [x] 13. MCP server (modelcontextprotocol/go-sdk): tools, resources, report wire messages; bundles pulled forward
-- [ ] 14. Context facts: closure seeds (spec-neighborhood bindings), policy-free symbol slice, candidate partitions by slice disjointness
+- [x] 14. Context facts: closure seeds (spec-neighborhood bindings), policy-free symbol slice, candidate partitions by slice disjointness
 - [ ] 15. Dispositions
 - [ ] 16. Proto backend (protocompile, descriptor hashing, assertions)
 - [x] 17. Bundles (closure computation + export; MCP bundle tool) — landed with chunk 13

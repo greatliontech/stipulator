@@ -147,6 +147,20 @@ type WitnessClassifier interface {
 	WitnessClass(symbol string) WitnessClass
 }
 
+// Decl is one declaration fact from a code slice.
+type Decl struct {
+	Package     string
+	Name        string
+	Declaration string
+	ShapeHash   string
+}
+
+// Slicer is an optional Backend extension: the declarations of the
+// transitive dependency frontier of symbols — facts only.
+type Slicer interface {
+	Slice(symbols []string) ([]Decl, error)
+}
+
 // Backend verifies symbol references for one language. Implementations
 // live outside this package: the core never depends on a backend.
 type Backend interface {
