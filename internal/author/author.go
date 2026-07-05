@@ -98,7 +98,7 @@ func Bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Upd
 		return nil, err
 	}
 	if len(diags) > 0 {
-		return nil, fmt.Errorf("corpus does not compile: %s (and %d more)", diags[0], len(diags)-1)
+		return nil, fmt.Errorf("corpus does not compile: %s%s", diags[0], moreSuffix(len(diags)-1))
 	}
 	var contentHash string
 	for _, r := range spec.GetRequirements() {
@@ -220,7 +220,7 @@ func Gap(fsys fs.FS, g *stipulatorv1.Gap) (*Update, error) {
 		return nil, err
 	}
 	if len(diags) > 0 {
-		return nil, fmt.Errorf("corpus does not compile: %s (and %d more)", diags[0], len(diags)-1)
+		return nil, fmt.Errorf("corpus does not compile: %s%s", diags[0], moreSuffix(len(diags)-1))
 	}
 	found := false
 	for _, r := range spec.GetRequirements() {
@@ -265,6 +265,14 @@ func defaultBindingFile(requirement string) string {
 		name = segs[1]
 	}
 	return path.Join(records.BindingsDir, name+".textproto")
+}
+
+// moreSuffix renders "(and N more)" only when there are more.
+func moreSuffix(n int) string {
+	if n <= 0 {
+		return ""
+	}
+	return fmt.Sprintf(" (and %d more)", n)
 }
 
 func sortUpdates(u []Update) {

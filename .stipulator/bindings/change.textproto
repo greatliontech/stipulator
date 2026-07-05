@@ -1,0 +1,65 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-change-editorial"
+  content_hash: "1e8f5860be1eb80d992cd04b7c2fc668caa3f69b461f8c811febf800745cd128"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.Editorial"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "04eef98e5d53a752275af7063c87e888690041c6bb2a1cccb89906b7a8b3b5b4"
+}
+
+bindings {
+  requirement_id: "REQ-change-editorial"
+  content_hash: "1e8f5860be1eb80d992cd04b7c2fc668caa3f69b461f8c811febf800745cd128"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestEditorial"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "99b7c6b69a7811dd84bdfcfde9168a0dba894eb50804731cacf39cd382fcb200"
+}
+
+bindings {
+  requirement_id: "REQ-change-retire"
+  content_hash: "59b79d2e8efeda4421fc6d8b1ae6ad4e9014c4d77cd15a0434871483e9c6ef0d"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.Retire"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "d6fd7c832c7a34fff9d7385497bb48dd2a409e0a3db75fc1820f7dba8eea9823"
+}
+
+bindings {
+  requirement_id: "REQ-change-retire"
+  content_hash: "59b79d2e8efeda4421fc6d8b1ae6ad4e9014c4d77cd15a0434871483e9c6ef0d"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestRetire"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a913d0efef17ba7355e5d26e687a181fc75e5745c52c3192d1fa270e9fa93f1d"
+}
+
+bindings {
+  requirement_id: "REQ-change-split-merge"
+  content_hash: "2407a5c48e1480371dc0a6b93085370308b21a7a68d309bad6f7d99061a704f8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.Supersede"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "7f984b6322e7e8ed7fb541f67a7723ddb83ffeb8aa4d2c87af101b67de9e51cf"
+}
+
+bindings {
+  requirement_id: "REQ-change-split-merge"
+  content_hash: "2407a5c48e1480371dc0a6b93085370308b21a7a68d309bad6f7d99061a704f8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestSupersede"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "376400cdf88032f80606ea6898f938c6c2e1176916fd0885584c587b8c0f0a18"
+}
+
+bindings {
+  requirement_id: "REQ-change-transient"
+  content_hash: "220a6eaae19481e42e9f7369c0359802bec1e9985d5a3e317696dc4146bf647e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestSupersede"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "376400cdf88032f80606ea6898f938c6c2e1176916fd0885584c587b8c0f0a18"
+}

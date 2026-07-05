@@ -19,6 +19,11 @@ header block, so hand-written commentary is never silently destroyed;
 binding rationale belongs in review and commit messages, not in record
 files.
 
+**REQ-pin-backfill** (behavior): The pin operation MUST set only unset
+content pins and shape pins — a differing content pin is never rewritten
+outside an editorial disposition, so staleness cannot be laundered by a
+blanket re-pin.
+
 **REQ-evidence-record-verbs** (behavior): Binding records MUST be writable
 through tool operations that validate at write time — the requirement
 against the compiled corpus, the symbol through its backend when one exists

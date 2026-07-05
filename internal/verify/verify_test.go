@@ -126,6 +126,15 @@ func TestPin(t *testing.T) {
 	if strings.Contains(strings.Split(s, "REQ-v-ghost")[1], "content_hash") {
 		t.Fatalf("unknown requirement got a pin:\n%s", s)
 	}
+	// A differing content pin is NEVER rewritten by pin — that is an
+	// editorial disposition. (REQ-pin-backfill)
+	store3, _ := records.Load(fstest.MapFS{
+		".stipulator/bindings/x.textproto": {Data: []byte(binding("REQ-v-a", strings.Repeat("0", 64)))},
+	})
+	if ups, err := records.Pin(store3, hashes, nil); err != nil || len(ups) != 0 {
+		t.Fatalf("differing pin laundered by pin: %v %v", ups, err)
+	}
+
 	// Deterministic: pinning twice produces identical bytes.
 	store2, _ := records.Load(fstest.MapFS{
 		".stipulator/bindings/x.textproto": {Data: got},

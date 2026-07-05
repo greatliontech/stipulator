@@ -31,8 +31,11 @@ is the default assumption.
 identity's bindings to the new content hash without invalidation.
 
 **REQ-change-split-merge** (behavior): Split and merge dispositions MUST
-tombstone the source identities, create `supersedes` edges from the
-successors, and retarget existing bindings to the successors in stale state.
+tombstone the source identities, verify that every successor declares a
+`supersedes` edge to its sources — edges are spec-owned, authored in the
+successor's metadata, never written by the tool — and retarget existing
+bindings to the successors with their content pins cleared, which reads as
+stale by contract.
 
 **REQ-change-retire** (behavior): A retire disposition MUST tombstone the
 identity and delete its bindings and gap records.

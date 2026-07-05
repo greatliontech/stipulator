@@ -19,8 +19,8 @@ as JSON), with the resource list enumerating every requirement as of the
 most recent operation — reads themselves are always fresh.
 
 **REQ-mcp-tools** (wire): The server MUST expose tools `compile`, `verify`,
-`gate`, `bind`, `unbind`, `gap`, `pin`, `read_spec`, `context`, and
-`partitions`, mirroring the
+`gate`, `bind`, `unbind`, `gap`, `pin`, `read_spec`, `context`,
+`partitions`, and `dispose`, mirroring the
 operation semantics exactly, with report-shaped results rendered from the
 report messages as JSON.
 

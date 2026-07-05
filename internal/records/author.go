@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"google.golang.org/protobuf/encoding/prototext"
 )
 
 // defaultHeader heads freshly created record files.
@@ -59,6 +60,9 @@ func RemoveBindings(store *Store, fn func(*stipulatorv1.Binding) bool) (updates 
 		}
 		removed += matched
 		if len(keep) == 0 {
+			// Keep the in-memory store consistent with the deletion, or a
+			// later add to the same path resurrects removed bindings.
+			bf.Set.SetBindings(nil)
 			deletions = append(deletions, bf.Path)
 			continue
 		}
@@ -96,4 +100,46 @@ func RenderGap(g *stipulatorv1.Gap) []byte {
 		}
 	}
 	return []byte(b.String())
+}
+
+// Render re-renders one binding file through the machine-owned writer,
+// refusing files carrying comments outside the leading header.
+func Render(bf BindingFile) ([]byte, error) {
+	if line := commentOutsideHeader(bf.Raw); line > 0 {
+		return nil, fmt.Errorf("%s:%d: comment outside the leading header block; move commentary to the commit message first", bf.Path, line)
+	}
+	return renderBindingSet(bf), nil
+}
+
+// RenderTombstones renders the tombstone registry deterministically.
+func RenderTombstones(retired []string) []byte {
+	var b strings.Builder
+	b.WriteString(defaultHeader)
+	b.WriteString("# proto-message: stipulator.v1.Tombstones\n\n")
+	for _, r := range retired {
+		fmt.Fprintf(&b, "retired: %s\n", strconv.Quote(r))
+	}
+	return []byte(b.String())
+}
+
+// RemoveBindingsCollect is RemoveBindings that also hands back the removed
+// bindings, for retargeting.
+func RemoveBindingsCollect(store *Store, fn func(*stipulatorv1.Binding) bool, removedOut *[]*stipulatorv1.Binding) (map[string][]byte, []string, int, error) {
+	collect := func(b *stipulatorv1.Binding) bool {
+		if fn(b) {
+			*removedOut = append(*removedOut, b)
+			return true
+		}
+		return false
+	}
+	return RemoveBindings(store, collect)
+}
+
+// ParseBindingFile parses raw binding-file bytes into a BindingFile.
+func ParseBindingFile(path string, raw []byte) (BindingFile, error) {
+	set := &stipulatorv1.BindingSet{}
+	if err := prototext.Unmarshal(raw, set); err != nil {
+		return BindingFile{}, fmt.Errorf("parsing %s: %w", path, err)
+	}
+	return BindingFile{Path: path, Raw: raw, Set: set}, nil
 }

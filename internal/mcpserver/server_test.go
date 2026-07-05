@@ -265,6 +265,69 @@ func TestBindToolWritesConfined(t *testing.T) {
 	}
 }
 
+// TestToolListExact pins REQ-mcp-tools at the wire: the exposed tool set
+// is exactly the specced one — a dropped or extra registration fails.
+func TestToolListExact(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-tools")
+	sess, _ := harness(t, nil)
+	list, err := sess.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]bool{}
+	for _, tool := range list.Tools {
+		got[tool.Name] = true
+	}
+	want := []string{"compile", "verify", "gate", "bind", "unbind", "gap", "pin", "read_spec", "context", "partitions", "dispose"}
+	for _, w := range want {
+		if !got[w] {
+			t.Fatalf("tool %s missing from the wire list: %v", w, got)
+		}
+	}
+	if len(got) != len(want) {
+		t.Fatalf("tool list drifted: %v", got)
+	}
+}
+
+// TestDisposeToolRetire exercises the wire deletion path: retiring an
+// identity whose binding and gap records exist but whose requirement is
+// gone writes the tombstone and deletes the records.
+func TestDisposeToolRetire(t *testing.T) {
+	sess, writes := harness(t, map[string]string{
+		".stipulator/bindings/gone.textproto": "bindings {\n  requirement_id: \"REQ-m-gone\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n}\n",
+		".stipulator/gaps/m-gone.textproto":   "requirement_id: \"REQ-m-gone\"\nreason: \"r\"\nlands { attested { condition: \"x\" } }\n",
+	})
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "dispose", Arguments: map[string]any{
+		"kind": "retire", "requirement": "REQ-m-gone",
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsError {
+		t.Fatalf("dispose errored: %v", res.Content)
+	}
+	if writes[".stipulator/tombstones.textproto"] == nil {
+		t.Fatal("tombstone not written")
+	}
+	deleted := 0
+	for p, c := range writes {
+		if c == nil && (strings.Contains(p, "gone")) {
+			deleted++
+		}
+	}
+	if deleted != 2 {
+		t.Fatalf("expected binding+gap deletions, got %d: %v", deleted, writes)
+	}
+
+	// Unknown kind is a teaching error.
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "dispose", Arguments: map[string]any{
+		"kind": "obliterate", "requirement": "REQ-m-a",
+	}})
+	if err != nil || !res.IsError {
+		t.Fatalf("unknown kind accepted: %v %v", err, res)
+	}
+}
+
 func TestCoverageResourceStableJSON(t *testing.T) {
 	sess, _ := harness(t, nil)
 	read := func() string {

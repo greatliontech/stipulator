@@ -28,7 +28,7 @@ func Execute() error {
 		SilenceErrors: true,
 	}
 	c.PersistentFlags().StringVarP(&chdir, "chdir", "C", ".", "repository root")
-	c.AddCommand(compileCmd(), verifyCmd(), gateCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), pinCmd(), mcpCmd())
+	c.AddCommand(compileCmd(), verifyCmd(), gateCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), pinCmd(), disposeCmd(), mcpCmd())
 	return c.Execute()
 }
 

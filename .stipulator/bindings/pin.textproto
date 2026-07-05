@@ -1,0 +1,20 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-pin-backfill"
+  content_hash: "17bcc0e2ed2b904ed492cc9352227d32b494feb0edae9c165266f8be8ca0a171"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/records.Pin"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "e31622871c78a83e626362dfa3ffb292b8c61528fce2eb964b665627ebbfc09b"
+}
+
+bindings {
+  requirement_id: "REQ-pin-backfill"
+  content_hash: "17bcc0e2ed2b904ed492cc9352227d32b494feb0edae9c165266f8be8ca0a171"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verify.TestPin"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e3acedf0b35fdb1073ba8cf0a2663f4e612758ec8eb1fa47aa9f03cac4c4a36f"
+}

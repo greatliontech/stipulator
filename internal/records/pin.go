@@ -9,14 +9,13 @@ import (
 // ShapeKey keys the shape-hash map passed to Pin.
 func ShapeKey(backend, symbol string) string { return backend + "|" + symbol }
 
-// Pin returns replacement contents for every binding file where some
-// binding's content-hash pin differs from the current corpus hash of its
-// requirement, or whose shape-hash pin differs from the resolved shape in
-// shapes (keyed by ShapeKey; unresolved symbols are simply absent).
-// Content pins for unknown requirements are left untouched — reporting
-// them is the verifier's job — while shape backfill is symbol-keyed and
-// independent of the requirement. Files whose pins are all current are
-// omitted from the result.
+// Pin backfills: it sets only UNSET content pins (to the requirement's
+// current hash) and shape pins (set or differing — shapes come from
+// resolution and cannot lie). A differing content pin is never rewritten:
+// that is an editorial disposition, and staleness must not be laundered by
+// a blanket re-pin. Unknown requirements are left untouched — reporting
+// them is the verifier's job. Files whose pins are all current are omitted
+// from the result.
 //
 // Output is rendered by hand rather than through prototext.Marshal: the
 // protobuf-go text marshaler deliberately randomizes its whitespace, and
@@ -28,7 +27,7 @@ func Pin(store *Store, hashes, shapes map[string]string) (map[string][]byte, err
 		changed := false
 		for _, b := range bf.Set.GetBindings() {
 			h, ok := hashes[b.GetRequirementId()]
-			if ok && b.GetContentHash() != h {
+			if ok && b.GetContentHash() == "" {
 				b.SetContentHash(h)
 				changed = true
 			}

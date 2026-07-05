@@ -109,6 +109,10 @@ func (s *Server) MCP() *mcp.Server {
 		Description: "Backfill binding content and shape pins to current values; returns rewritten record files.",
 	}, s.toolPin)
 	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "dispose",
+		Description: "Apply a spec-change disposition: kind editorial (re-pin after meaning-preserving edit), retire (tombstone a removed identity), or supersede (tombstone sources, retarget bindings to declaring successors).",
+	}, s.toolDispose)
+	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "context",
 		Description: "Code-context facts for requirement ids (comma-separated): seed symbols from the closure's bindings, and the declarations their code slice reaches. Facts only — selection is yours.",
 	}, s.toolContext)
@@ -435,6 +439,54 @@ func (s *Server) toolReadSpec(ctx context.Context, req *mcp.CallToolRequest, in 
 		return nil, readSpecOut{}, err
 	}
 	return nil, readSpecOut{Markdown: md}, nil
+}
+
+type disposeIn struct {
+	Kind        string `json:"kind" jsonschema:"editorial, retire, or supersede"`
+	Requirement string `json:"requirement,omitempty" jsonschema:"target for editorial/retire"`
+	From        string `json:"from,omitempty" jsonschema:"comma-separated sources for supersede"`
+	Into        string `json:"into,omitempty" jsonschema:"comma-separated successors for supersede"`
+	Force       bool   `json:"force,omitempty" jsonschema:"retire even when no record names the identity"`
+}
+
+func (s *Server) toolDispose(ctx context.Context, req *mcp.CallToolRequest, in disposeIn) (*mcp.CallToolResult, writeOut, error) {
+	var ups []author.Update
+	var err error
+	switch in.Kind {
+	case "editorial":
+		ups, err = author.Editorial(s.fsys(), in.Requirement)
+	case "retire":
+		ups, err = author.Retire(s.fsys(), in.Requirement, in.Force)
+	case "supersede":
+		var from, into []string
+		if from, err = splitIDs(in.From); err != nil {
+			return nil, writeOut{}, fmt.Errorf("from: %w", err)
+		}
+		if into, err = splitIDs(in.Into); err != nil {
+			return nil, writeOut{}, fmt.Errorf("into: %w", err)
+		}
+		ups, err = author.Supersede(s.fsys(), from, into, in.Force)
+	default:
+		return nil, writeOut{}, fmt.Errorf("unknown disposition kind %q (editorial, retire, supersede)", in.Kind)
+	}
+	if err != nil {
+		return nil, writeOut{}, err
+	}
+	out := writeOut{}
+	for _, up := range ups {
+		if up.Content == nil {
+			if err := s.remove(up.Path); err != nil {
+				return nil, writeOut{}, err
+			}
+			out.Deleted = append(out.Deleted, up.Path)
+			continue
+		}
+		if err := s.write(up.Path, up.Content); err != nil {
+			return nil, writeOut{}, err
+		}
+		out.Wrote = append(out.Wrote, up.Path)
+	}
+	return nil, out, nil
 }
 
 type contextIn struct {
