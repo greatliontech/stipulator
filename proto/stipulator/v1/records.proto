@@ -82,3 +82,30 @@ message Attested {
 message Tombstones {
   repeated string retired = 1;
 }
+
+// MutationSurvivor is one mutant no bound test noticed: a finding.
+message MutationSurvivor {
+  // Position is file:line:column of the mutated node.
+  string position = 1;
+  string operator = 2;
+}
+
+// Hardening is one mutation kill-sheet: valid only while body_hash matches
+// the symbol's current body.
+message Hardening {
+  string requirement_id = 1;
+  string backend = 2;
+  string symbol = 3;
+  string body_hash = 4;
+  int32 mutants = 5;
+  int32 killed = 6;
+  repeated MutationSurvivor survivors = 7;
+  // Discarded mutants failed to compile: reported so a low mutant count is
+  // never mistaken for thin mutation coverage.
+  int32 discarded = 8;
+}
+
+// HardeningSet is one hardening record file.
+message HardeningSet {
+  repeated Hardening records = 1;
+}

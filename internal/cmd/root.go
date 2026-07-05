@@ -28,7 +28,7 @@ func Execute() error {
 		SilenceErrors: true,
 	}
 	c.PersistentFlags().StringVarP(&chdir, "chdir", "C", ".", "repository root")
-	c.AddCommand(compileCmd(), verifyCmd(), gateCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), pinCmd(), disposeCmd(), mcpCmd())
+	c.AddCommand(compileCmd(), verifyCmd(), gateCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), pinCmd(), disposeCmd(), hardenCmd(), mcpCmd())
 	return c.Execute()
 }
 
@@ -54,6 +54,15 @@ func makeBackends(dir string) (map[string]verify.Backend, error) {
 		return nil, err
 	}
 	return map[string]verify.Backend{"go": gb}, nil
+}
+
+func writeFileAt(dir, rel string, content []byte) error {
+	full := filepath.Join(dir, filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		return err
+	}
+	fmt.Println("wrote", rel)
+	return os.WriteFile(full, content, 0o644)
 }
 
 func applyUpdates(dir string, ups []author.Update) error {

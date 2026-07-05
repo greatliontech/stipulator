@@ -28,6 +28,14 @@ type BindingFile struct {
 	Set  *stipulatorv1.BindingSet
 }
 
+// HardeningFile is one committed kill-sheet file — exploration records,
+// read for cache reuse and staleness reporting, never by coverage.
+type HardeningFile struct {
+	Path string
+	Raw  []byte
+	Set  *stipulatorv1.HardeningSet
+}
+
 // GapFile is one committed gap record.
 type GapFile struct {
 	Path string
@@ -39,6 +47,7 @@ type GapFile struct {
 type Store struct {
 	Bindings   []BindingFile
 	Gaps       []GapFile
+	Hardening  []HardeningFile
 	Tombstones []string
 }
 
@@ -63,6 +72,16 @@ func Load(fsys fs.FS) (*Store, error) {
 			return fmt.Errorf("parsing %s: %w", p, err)
 		}
 		s.Gaps = append(s.Gaps, GapFile{Path: p, Raw: raw, Gap: gap})
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	if err := eachTextproto(fsys, HardeningDir, func(p string, raw []byte) error {
+		set := &stipulatorv1.HardeningSet{}
+		if err := prototext.Unmarshal(raw, set); err != nil {
+			return fmt.Errorf("parsing %s: %w", p, err)
+		}
+		s.Hardening = append(s.Hardening, HardeningFile{Path: p, Raw: raw, Set: set})
 		return nil
 	}); err != nil {
 		return nil, err

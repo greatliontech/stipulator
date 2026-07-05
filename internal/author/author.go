@@ -139,6 +139,17 @@ func Bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Upd
 			return nil, fmt.Errorf("symbol %s is declared in a generated file; bind the generating artifact instead", req.Symbol)
 		}
 		shapeHash = shape
+		if req.Role == stipulatorv1.BindingRole_BINDING_ROLE_TESTS {
+			if vc, ok := be.(verify.VacuityChecker); ok {
+				vacuous, err := vc.Vacuous(req.Symbol)
+				if err != nil {
+					return nil, fmt.Errorf("checking %s: %w", req.Symbol, err)
+				}
+				if vacuous {
+					return nil, fmt.Errorf("test %s has no failure path — no failing testing call, helper delegation, or panic; an assertion-free test cannot become evidence", req.Symbol)
+				}
+			}
+		}
 	}
 
 	store, err := records.Load(fsys)

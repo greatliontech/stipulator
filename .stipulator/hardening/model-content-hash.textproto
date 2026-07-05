@@ -1,0 +1,11 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  requirement_id: "REQ-model-content-hash"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/canon.Text"
+  body_hash: "ad1ee980177f8c704065ed221a1d93cd6edf56c4959b70d75130ad03eb67f8ae"
+  mutants: 1
+  killed: 1
+}

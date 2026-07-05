@@ -209,3 +209,19 @@ func TestMatchGlob(t *testing.T) {
 		}
 	}
 }
+
+// TestValidateGlobErrors pins the eager validation arm: hardening showed
+// TestMatchGlob alone leaves every validateGlob mutant alive.
+func TestValidateGlobErrors(t *testing.T) {
+	stipulate.Covers(t, "REQ-profile-glob")
+	for _, bad := range []string{"", "a//b", "a/[x/b", "[/b"} {
+		if err := validateGlob(bad); err == nil {
+			t.Errorf("validateGlob(%q) accepted", bad)
+		}
+	}
+	for _, good := range []string{"a/*.md", "docs/**/*.md", "*.md", "x/**", "a/**x/b"} {
+		if err := validateGlob(good); err != nil {
+			t.Errorf("validateGlob(%q) rejected: %v", good, err)
+		}
+	}
+}

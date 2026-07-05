@@ -20,7 +20,7 @@ most recent operation — reads themselves are always fresh.
 
 **REQ-mcp-tools** (wire): The server MUST expose tools `compile`, `verify`,
 `gate`, `bind`, `unbind`, `gap`, `pin`, `read_spec`, `context`,
-`partitions`, and `dispose`, mirroring the
+`partitions`, `dispose`, and `harden`, mirroring the
 operation semantics exactly, with report-shaped results rendered from the
 report messages as JSON.
 

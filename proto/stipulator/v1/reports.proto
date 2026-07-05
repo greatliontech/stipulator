@@ -175,3 +175,18 @@ message PartitionReport {
   repeated PartitionComponent components = 1;
   repeated PartitionOverlap overlaps = 2;
 }
+
+// HardenResult is one target's outcome in a hardening run.
+message HardenResult {
+  Hardening record = 1;
+  // Cached: the stored record's body hash matched; no mutants ran.
+  bool cached = 2;
+  // SkippedNoTests: the target has no bound tests to kill mutants.
+  bool skipped_no_tests = 3;
+}
+
+// HardenReport is the outcome of a hardening run — exploration output,
+// never gate input.
+message HardenReport {
+  repeated HardenResult results = 1;
+}

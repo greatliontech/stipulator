@@ -2280,6 +2280,200 @@ func (b0 PartitionReport_builder) Build() *PartitionReport {
 	return m0
 }
 
+// HardenResult is one target's outcome in a hardening run.
+type HardenResult struct {
+	state                     protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Record         *Hardening             `protobuf:"bytes,1,opt,name=record"`
+	xxx_hidden_Cached         bool                   `protobuf:"varint,2,opt,name=cached"`
+	xxx_hidden_SkippedNoTests bool                   `protobuf:"varint,3,opt,name=skipped_no_tests,json=skippedNoTests"`
+	XXX_raceDetectHookData    protoimpl.RaceDetectHookData
+	XXX_presence              [1]uint32
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *HardenResult) Reset() {
+	*x = HardenResult{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HardenResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HardenResult) ProtoMessage() {}
+
+func (x *HardenResult) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *HardenResult) GetRecord() *Hardening {
+	if x != nil {
+		return x.xxx_hidden_Record
+	}
+	return nil
+}
+
+func (x *HardenResult) GetCached() bool {
+	if x != nil {
+		return x.xxx_hidden_Cached
+	}
+	return false
+}
+
+func (x *HardenResult) GetSkippedNoTests() bool {
+	if x != nil {
+		return x.xxx_hidden_SkippedNoTests
+	}
+	return false
+}
+
+func (x *HardenResult) SetRecord(v *Hardening) {
+	x.xxx_hidden_Record = v
+}
+
+func (x *HardenResult) SetCached(v bool) {
+	x.xxx_hidden_Cached = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *HardenResult) SetSkippedNoTests(v bool) {
+	x.xxx_hidden_SkippedNoTests = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+}
+
+func (x *HardenResult) HasRecord() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Record != nil
+}
+
+func (x *HardenResult) HasCached() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *HardenResult) HasSkippedNoTests() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *HardenResult) ClearRecord() {
+	x.xxx_hidden_Record = nil
+}
+
+func (x *HardenResult) ClearCached() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Cached = false
+}
+
+func (x *HardenResult) ClearSkippedNoTests() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_SkippedNoTests = false
+}
+
+type HardenResult_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Record *Hardening
+	// Cached: the stored record's body hash matched; no mutants ran.
+	Cached *bool
+	// SkippedNoTests: the target has no bound tests to kill mutants.
+	SkippedNoTests *bool
+}
+
+func (b0 HardenResult_builder) Build() *HardenResult {
+	m0 := &HardenResult{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Record = b.Record
+	if b.Cached != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		x.xxx_hidden_Cached = *b.Cached
+	}
+	if b.SkippedNoTests != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_SkippedNoTests = *b.SkippedNoTests
+	}
+	return m0
+}
+
+// HardenReport is the outcome of a hardening run — exploration output,
+// never gate input.
+type HardenReport struct {
+	state              protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Results *[]*HardenResult       `protobuf:"bytes,1,rep,name=results"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *HardenReport) Reset() {
+	*x = HardenReport{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HardenReport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HardenReport) ProtoMessage() {}
+
+func (x *HardenReport) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *HardenReport) GetResults() []*HardenResult {
+	if x != nil {
+		if x.xxx_hidden_Results != nil {
+			return *x.xxx_hidden_Results
+		}
+	}
+	return nil
+}
+
+func (x *HardenReport) SetResults(v []*HardenResult) {
+	x.xxx_hidden_Results = &v
+}
+
+type HardenReport_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Results []*HardenResult
+}
+
+func (b0 HardenReport_builder) Build() *HardenReport {
+	m0 := &HardenReport{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Results = &b.Results
+	return m0
+}
+
 var File_stipulator_v1_reports_proto protoreflect.FileDescriptor
 
 const file_stipulator_v1_reports_proto_rawDesc = "" +
@@ -2356,7 +2550,13 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\n" +
 	"components\x18\x01 \x03(\v2!.stipulator.v1.PartitionComponentR\n" +
 	"components\x12;\n" +
-	"\boverlaps\x18\x02 \x03(\v2\x1f.stipulator.v1.PartitionOverlapR\boverlaps*\x95\x01\n" +
+	"\boverlaps\x18\x02 \x03(\v2\x1f.stipulator.v1.PartitionOverlapR\boverlaps\"\x82\x01\n" +
+	"\fHardenResult\x120\n" +
+	"\x06record\x18\x01 \x01(\v2\x18.stipulator.v1.HardeningR\x06record\x12\x16\n" +
+	"\x06cached\x18\x02 \x01(\bR\x06cached\x12(\n" +
+	"\x10skipped_no_tests\x18\x03 \x01(\bR\x0eskippedNoTests\"E\n" +
+	"\fHardenReport\x125\n" +
+	"\aresults\x18\x01 \x03(\v2\x1b.stipulator.v1.HardenResultR\aresults*\x95\x01\n" +
 	"\n" +
 	"Resolution\x12\x1a\n" +
 	"\x16RESOLUTION_UNSPECIFIED\x10\x00\x12\x19\n" +
@@ -2395,7 +2595,7 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x12GAP_STATE_RESOLVED\x10\x03BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
 var file_stipulator_v1_reports_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_stipulator_v1_reports_proto_goTypes = []any{
 	(Resolution)(0),             // 0: stipulator.v1.Resolution
 	(ShapeState)(0),             // 1: stipulator.v1.ShapeState
@@ -2416,12 +2616,15 @@ var file_stipulator_v1_reports_proto_goTypes = []any{
 	(*PartitionComponent)(nil),  // 16: stipulator.v1.PartitionComponent
 	(*PartitionOverlap)(nil),    // 17: stipulator.v1.PartitionOverlap
 	(*PartitionReport)(nil),     // 18: stipulator.v1.PartitionReport
-	(BindingRole)(0),            // 19: stipulator.v1.BindingRole
-	(ClauseKind)(0),             // 20: stipulator.v1.ClauseKind
-	(Keyword)(0),                // 21: stipulator.v1.Keyword
+	(*HardenResult)(nil),        // 19: stipulator.v1.HardenResult
+	(*HardenReport)(nil),        // 20: stipulator.v1.HardenReport
+	(BindingRole)(0),            // 21: stipulator.v1.BindingRole
+	(ClauseKind)(0),             // 22: stipulator.v1.ClauseKind
+	(Keyword)(0),                // 23: stipulator.v1.Keyword
+	(*Hardening)(nil),           // 24: stipulator.v1.Hardening
 }
 var file_stipulator_v1_reports_proto_depIdxs = []int32{
-	19, // 0: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
+	21, // 0: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
 	0,  // 1: stipulator.v1.BindingResult.resolution:type_name -> stipulator.v1.Resolution
 	1,  // 2: stipulator.v1.BindingResult.shape:type_name -> stipulator.v1.ShapeState
 	2,  // 3: stipulator.v1.BindingResult.test_outcome:type_name -> stipulator.v1.TestOutcome
@@ -2430,23 +2633,25 @@ var file_stipulator_v1_reports_proto_depIdxs = []int32{
 	6,  // 6: stipulator.v1.VerifyReport.problems:type_name -> stipulator.v1.Problem
 	7,  // 7: stipulator.v1.VerifyReport.results:type_name -> stipulator.v1.BindingResult
 	8,  // 8: stipulator.v1.VerifyReport.registrations:type_name -> stipulator.v1.RegistrationResult
-	20, // 9: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
-	21, // 10: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
+	22, // 9: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
+	23, // 10: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
 	4,  // 11: stipulator.v1.RequirementCoverage.bucket:type_name -> stipulator.v1.Bucket
 	5,  // 12: stipulator.v1.GapReport.state:type_name -> stipulator.v1.GapState
 	10, // 13: stipulator.v1.CoverageReport.requirements:type_name -> stipulator.v1.RequirementCoverage
 	11, // 14: stipulator.v1.CoverageReport.gaps:type_name -> stipulator.v1.GapReport
-	19, // 15: stipulator.v1.Seed.role:type_name -> stipulator.v1.BindingRole
+	21, // 15: stipulator.v1.Seed.role:type_name -> stipulator.v1.BindingRole
 	13, // 16: stipulator.v1.ContextReport.seeds:type_name -> stipulator.v1.Seed
 	14, // 17: stipulator.v1.ContextReport.declarations:type_name -> stipulator.v1.Decl
 	13, // 18: stipulator.v1.PartitionComponent.seeds:type_name -> stipulator.v1.Seed
 	16, // 19: stipulator.v1.PartitionReport.components:type_name -> stipulator.v1.PartitionComponent
 	17, // 20: stipulator.v1.PartitionReport.overlaps:type_name -> stipulator.v1.PartitionOverlap
-	21, // [21:21] is the sub-list for method output_type
-	21, // [21:21] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	24, // 21: stipulator.v1.HardenResult.record:type_name -> stipulator.v1.Hardening
+	19, // 22: stipulator.v1.HardenReport.results:type_name -> stipulator.v1.HardenResult
+	23, // [23:23] is the sub-list for method output_type
+	23, // [23:23] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_reports_proto_init() }
@@ -2462,7 +2667,7 @@ func file_stipulator_v1_reports_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_reports_proto_rawDesc), len(file_stipulator_v1_reports_proto_rawDesc)),
 			NumEnums:      6,
-			NumMessages:   13,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

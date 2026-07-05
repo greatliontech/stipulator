@@ -27,6 +27,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/facts"
+	"github.com/greatliontech/stipulator/internal/harden"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
@@ -39,6 +40,7 @@ type Server struct {
 	fsys     func() fs.FS
 	backends func() (map[string]verify.Backend, error)
 	runTests func() (*verify.TestRun, error)
+	harden   func(ctx context.Context, spec *stipulatorv1.Spec, store *records.Store, in hardenIn) (*harden.Report, error)
 	write    func(path string, content []byte) error
 	remove   func(path string) error
 }
@@ -49,6 +51,23 @@ func New(dir string) *Server {
 		fsys:     func() fs.FS { return os.DirFS(dir) },
 		backends: func() (map[string]verify.Backend, error) { return makeBackends(dir) },
 		runTests: func() (*verify.TestRun, error) { return golang.RunTests(dir) },
+		harden: func(ctx context.Context, spec *stipulatorv1.Spec, store *records.Store, in hardenIn) (*harden.Report, error) {
+			gb, err := golang.New(dir)
+			if err != nil {
+				return nil, err
+			}
+			reqs, _ := splitIDsLoose(in.Reqs)
+			syms, _ := splitIDsLoose(in.Symbols)
+			targets := harden.Plan(spec, store, reqs, syms)
+			if len(targets) == 0 {
+				return nil, fmt.Errorf("no targets: no go implements-bindings match the selection")
+			}
+			budget := in.Budget
+			if budget == 0 {
+				budget = 24
+			}
+			return harden.Run(ctx, dir, gb, store, targets, harden.Options{Budget: budget, Force: in.Force})
+		},
 		write: func(path string, content []byte) error {
 			full := filepath.Join(dir, filepath.FromSlash(path))
 			if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
@@ -120,6 +139,10 @@ func (s *Server) MCP() *mcp.Server {
 		Name:        "partitions",
 		Description: "Candidate work partitions for requirement ids (comma-separated; empty means all red requirements): closure-connected components with seeds, touched packages, and pairwise overlaps. Disjoint components can fan out in parallel.",
 	}, s.toolPartitions)
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "harden",
+		Description: "Mutation-test bound implementations against their bound tests: reqs/symbols scope (comma-separated, empty = all), per-symbol budget. Survivors are findings — strengthen the test or attest equivalence; never a gate input. Writes kill-sheets under .stipulator/hardening/.",
+	}, s.toolHarden)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "read_spec",
 		Description: "Read the self-contained bundle for requirement ids (comma-separated): the requirements, their closure, terms, and context. Mirrors the bundle resource for clients without resource support.",
@@ -441,6 +464,59 @@ func (s *Server) toolReadSpec(ctx context.Context, req *mcp.CallToolRequest, in 
 	return nil, readSpecOut{Markdown: md}, nil
 }
 
+type hardenIn struct {
+	Reqs    string `json:"reqs,omitempty" jsonschema:"comma-separated requirement identifiers; empty means all bound"`
+	Symbols string `json:"symbols,omitempty" jsonschema:"comma-separated implementation symbols filter"`
+	Budget  int    `json:"budget,omitempty" jsonschema:"mutant budget per symbol; 0 means all, default 24"`
+	Force   bool   `json:"force,omitempty" jsonschema:"rerun targets whose kill-sheet body hash still matches"`
+}
+
+func (s *Server) toolHarden(ctx context.Context, req *mcp.CallToolRequest, in hardenIn) (*mcp.CallToolResult, map[string]any, error) {
+	spec, err := s.compileFresh()
+	if err != nil {
+		return nil, nil, err
+	}
+	store, err := records.Load(s.fsys())
+	if err != nil {
+		return nil, nil, err
+	}
+	rep, err := s.harden(ctx, spec, store, in)
+	if err != nil {
+		return nil, nil, err
+	}
+	for path, content := range rep.Records(store) {
+		if err := s.write(path, content); err != nil {
+			return nil, nil, err
+		}
+	}
+	out := &stipulatorv1.HardenReport{}
+	var results []*stipulatorv1.HardenResult
+	for _, res := range rep.Results {
+		hr := &stipulatorv1.HardenResult{}
+		rec := &stipulatorv1.Hardening{}
+		rec.SetRequirementId(res.Requirement)
+		rec.SetBackend("go")
+		rec.SetSymbol(res.Symbol)
+		rec.SetBodyHash(res.BodyHash)
+		rec.SetMutants(int32(res.Mutants))
+		rec.SetKilled(int32(res.Killed))
+		var survivors []*stipulatorv1.MutationSurvivor
+		for _, sv := range res.Survivors {
+			m := &stipulatorv1.MutationSurvivor{}
+			m.SetPosition(sv.Position)
+			m.SetOperator(sv.Operator)
+			survivors = append(survivors, m)
+		}
+		rec.SetSurvivors(survivors)
+		hr.SetRecord(rec)
+		hr.SetCached(res.Cached)
+		hr.SetSkippedNoTests(res.SkippedNoTest)
+		results = append(results, hr)
+	}
+	out.SetResults(results)
+	return protoJSON(out)
+}
+
 type disposeIn struct {
 	Kind        string `json:"kind" jsonschema:"editorial, retire, or supersede"`
 	Requirement string `json:"requirement,omitempty" jsonschema:"target for editorial/retire"`
@@ -553,6 +629,15 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 		return nil, nil, err
 	}
 	return protoJSON(pr.Proto())
+}
+
+// splitIDsLoose splits a comma list; empty input is an empty selection,
+// not an error.
+func splitIDsLoose(commaIDs string) ([]string, error) {
+	if strings.TrimSpace(commaIDs) == "" {
+		return nil, nil
+	}
+	return splitIDs(commaIDs)
 }
 
 func splitIDs(commaIDs string) ([]string, error) {

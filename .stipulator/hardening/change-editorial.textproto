@@ -1,0 +1,15 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  requirement_id: "REQ-change-editorial"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.Editorial"
+  body_hash: "bd52c9f210c0de1c55b2217bca50068dc690176a43abcbefa5b780a267776204"
+  mutants: 16
+  killed: 15
+  survivors {
+    position: "dispose.go:62:2"
+    operator: "delete statement"
+  }
+}

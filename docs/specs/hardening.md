@@ -12,8 +12,10 @@ body; the version of behavior a hardening record vouches against — the
 sibling of the shape hash, which covers only the declaration.
 
 **REQ-harden-vacuity** (behavior): A `tests`-role binding whose bound test
-contains no reachable failure path MUST be rejected at write time, resolved
-from the code — an empty or assertion-free test can never become evidence.
+contains no failure path — no failing testing call, no delegation to a
+callee that receives a testing handle, and no panic — MUST be rejected at
+write time, resolved from the code; reachability is deliberately not
+decided here, that is what mutation is for.
 
 **REQ-harden-mutation** (behavior): The `harden` operation MUST mutate the
 bodies of a requirement's `implements` symbols and execute its bound tests

@@ -1,0 +1,101 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-harden-vacuity"
+  content_hash: "bd0f9b4de242991a2feb11d07ab180d0cfcfe73c6a62c5b7d16dd39ed18e49eb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend.Vacuous"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "31c8d88b35aef9fd7e43746dc5c1bf3ba29fad2911376c74424d1d2dac974cb9"
+}
+
+bindings {
+  requirement_id: "REQ-harden-vacuity"
+  content_hash: "bd0f9b4de242991a2feb11d07ab180d0cfcfe73c6a62c5b7d16dd39ed18e49eb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestVacuity"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b66fd503429fc2cc0bbcc0fe0e0244faf22b1263b6729577e2393c396f817de2"
+}
+
+bindings {
+  requirement_id: "REQ-harden-mutation"
+  content_hash: "3b76318a8705b55681358e55d3161ab8fb647572313c70f1f86ce284aa8cf798"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.RunMutant"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "9c8af488b3854d5a633b798ecc677ce9e73bd98a9eeb17561736d3ca794da6d9"
+}
+
+bindings {
+  requirement_id: "REQ-harden-mutation"
+  content_hash: "3b76318a8705b55681358e55d3161ab8fb647572313c70f1f86ce284aa8cf798"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunMutantOutcomes"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e644783792c68f508f58ea65f34fdf190f7483b09fd27e7a1ca532b440cc5f7e"
+}
+
+bindings {
+  requirement_id: "REQ-harden-operators"
+  content_hash: "589cbe25dc3c1c1278bb44c8048d77242e50d5a6b897c3f71d658c9e3d8ba9fa"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend.Mutants"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "165c61d79799da74a54f4bef023453e9caf7ef0e5a26887d9d5a34cc18e828ff"
+}
+
+bindings {
+  requirement_id: "REQ-harden-operators"
+  content_hash: "589cbe25dc3c1c1278bb44c8048d77242e50d5a6b897c3f71d658c9e3d8ba9fa"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestMutants"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "9ba7c41f2cc258a8d42de90ed4ca7289b1c05ce53bb44e63c58de532bee64c81"
+}
+
+bindings {
+  requirement_id: "REQ-harden-scope"
+  content_hash: "48a47339aa0527d0fbce0eb65d6fd7d931baff9964ffc0777cc38826ea5834bc"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.Plan"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "0fe2a4091e156c0923106c9a248239bcab78e01cedc206406022101685e9ce69"
+}
+
+bindings {
+  requirement_id: "REQ-harden-scope"
+  content_hash: "48a47339aa0527d0fbce0eb65d6fd7d931baff9964ffc0777cc38826ea5834bc"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.TestPlanScope"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7f0fe27e42278eeedaa52e2f92ff6e8253136d60b539949f8d99072a0e97460c"
+}
+
+bindings {
+  requirement_id: "REQ-harden-records"
+  content_hash: "6663a0acca81d53258db1798a0ecee71161e614a722ce38e3458c9df8d055cb8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.Report.Records"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "f47f666dcb86aa00d575eecc2a677b6b36778de4ba4e262384d833b1fe72f689"
+}
+
+bindings {
+  requirement_id: "REQ-harden-records"
+  content_hash: "6663a0acca81d53258db1798a0ecee71161e614a722ce38e3458c9df8d055cb8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.TestRunAndRecords"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "548ed5ac90ac1b23bc97cccd3affc8def69d9537a7e19fa43b78b710a291cabb"
+}
+
+bindings {
+  requirement_id: "REQ-harden-exploration"
+  content_hash: "1dc5b324862b46a87d99c2ac4974fc08943cb86811721bc803fd13b1d5822429"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.TestRunAndRecords"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "548ed5ac90ac1b23bc97cccd3affc8def69d9537a7e19fa43b78b710a291cabb"
+}

@@ -17,7 +17,7 @@ Spec: docs/specs/
 - [x] 13. MCP server (modelcontextprotocol/go-sdk): tools, resources, report wire messages; bundles pulled forward
 - [x] 14. Context facts: closure seeds (spec-neighborhood bindings), policy-free symbol slice, candidate partitions by slice disjointness
 - [x] 15. Dispositions
-- [ ] 16. Witness hardening: vacuity rejection at bind, body hashes, harden verb (operators + overlay runner), hardening records, nightly sweep
+- [x] 16. Witness hardening: vacuity rejection at bind, body hashes, harden verb (operators + overlay runner), hardening records, nightly sweep
 - [ ] 17. Proto backend (protocompile, descriptor hashing, assertions)
 - [x] 18. Bundles (closure computation + export; MCP bundle tool) — landed with chunk 13
 - [ ] 19. Generated folder indexes (`fmt` + freshness lint)

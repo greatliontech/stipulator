@@ -37,12 +37,19 @@ func TestEditorial(t *testing.T) {
 	newDoc := "# T\n\n**REQ-au-a** (behavior): It MUST x, reworded.\n\n**REQ-au-b** (behavior): It MUST y.\n"
 	fsys := disposeFS(t, oldDoc, newDoc, nil)
 
+	// A second stale binding file for the same requirement: re-pin spans
+	// files and the update list is canonically ordered.
+	fsys[".stipulator/bindings/zz-extra.textproto"] = &fstest.MapFile{Data: []byte(
+		"bindings {\n  requirement_id: \"REQ-au-a\"\n  content_hash: \"" + strings.Repeat("0", 64) + "\"\n  backend: \"go\"\n  symbol: \"example.com/p.G\"\n  role: BINDING_ROLE_TESTS\n}\n")}
 	ups, err := Editorial(fsys, "REQ-au-a")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(ups) != 1 {
+	if len(ups) != 2 {
 		t.Fatalf("updates = %d", len(ups))
+	}
+	if !(ups[0].Path < ups[1].Path) {
+		t.Fatal("updates not canonically ordered")
 	}
 	set := &stipulatorv1.BindingSet{}
 	if err := prototext.Unmarshal(ups[0].Content, set); err != nil {
@@ -68,6 +75,18 @@ func TestEditorial(t *testing.T) {
 	}
 	if _, err := Editorial(fsys, "REQ-au-ghost"); err == nil {
 		t.Fatal("unknown requirement accepted")
+	}
+
+	// Error arms propagate, never swallow — hardening found both
+	// unwitnessed: a corpus that no longer compiles, and a broken store.
+	fsys["specs/broken.md"] = &fstest.MapFile{Data: []byte("# B\n\n**REQ-au-a** (behavior): Redeclared, it MUST clash.\n")}
+	if _, err := Editorial(fsys, "REQ-au-a"); err == nil {
+		t.Fatal("non-compiling corpus swallowed")
+	}
+	delete(fsys, "specs/broken.md")
+	fsys[".stipulator/bindings/broken.textproto"] = &fstest.MapFile{Data: []byte("not textproto {{{")}
+	if _, err := Editorial(fsys, "REQ-au-a"); err == nil {
+		t.Fatal("broken store swallowed")
 	}
 }
 
