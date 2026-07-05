@@ -19,9 +19,6 @@ func bindCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if !knownBackends[backendName] {
-				return fmt.Errorf("unknown backend %q (go, proto)", backendName)
-			}
 			backends, err := makeBackends(chdir)
 			if err != nil {
 				return err

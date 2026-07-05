@@ -64,7 +64,10 @@ canonical form, rendered as sixty-four lowercase hexadecimal characters.
 its transitive expansion over `uses-term`, `reference`, `refines`, and
 `depends` edges.
 
-**REQ-model-bundle** (behavior): A bundle MUST contain exactly the requested
-requirements, their closure, and the note and annotation nodes attached to
-the sections enclosing those nodes, such that every identifier and term name
-occurring in the bundle resolves within the bundle.
+**REQ-model-bundle** (behavior): A bundle MUST contain the requested
+requirements, their closure expanded to a fixed point over requirement
+edges and the references carried by included notes and annotations, the
+terms used, and the note and annotation nodes attached to the enclosing
+sections — such that every requirement identifier occurring in the bundle,
+and every term name used by its requirements and terms, resolves within the
+bundle.

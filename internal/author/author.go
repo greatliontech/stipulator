@@ -17,6 +17,10 @@ import (
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
+// KnownBackends closes the backend-name set: a typo must never author an
+// unvalidated binding, on any surface.
+var KnownBackends = map[string]bool{"go": true, "proto": true}
+
 // Roles maps CLI role names to the enum.
 var Roles = map[string]stipulatorv1.BindingRole{
 	"implements": stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS,
@@ -110,6 +114,16 @@ func Bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Upd
 	}
 	if req.Symbol == "" || req.Backend == "" {
 		return nil, fmt.Errorf("a backend and symbol are required")
+	}
+	if !KnownBackends[req.Backend] {
+		return nil, fmt.Errorf("unknown backend %q (go, proto)", req.Backend)
+	}
+	if req.File != "" {
+		clean := path.Clean(req.File)
+		if clean != req.File || !strings.HasPrefix(clean, records.BindingsDir+"/") ||
+			!strings.HasSuffix(clean, ".textproto") || strings.Contains(clean, "..") {
+			return nil, fmt.Errorf("binding file must be a clean .textproto path under %s", records.BindingsDir)
+		}
 	}
 
 	shapeHash := ""

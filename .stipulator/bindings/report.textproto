@@ -1,0 +1,29 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-report-messages"
+  content_hash: "ffed2ac7934e36d2120eb5f413254b2218becc35709f9ab43adb250a1e230c05"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verify.Report.Proto"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "ef656c64b6438cd0b6bed4588467b56f1eaf4f43b2971734e353f1265a76eb76"
+}
+
+bindings {
+  requirement_id: "REQ-report-messages"
+  content_hash: "ffed2ac7934e36d2120eb5f413254b2218becc35709f9ab43adb250a1e230c05"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.Report.Proto"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "3e5ddf9d5e5968d19508a9d3f6468558880e0ce3e57dbec436360c337f2d047b"
+}
+
+bindings {
+  requirement_id: "REQ-report-messages"
+  content_hash: "ffed2ac7934e36d2120eb5f413254b2218becc35709f9ab43adb250a1e230c05"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGateTool"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "1cc777fada1eab924b8f7f27d1b005f89105e7cd508ccd623bf3e712653bd4a4"
+}

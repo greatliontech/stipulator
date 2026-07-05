@@ -15,12 +15,13 @@ records reloaded on every read, never cached across tree changes.
 kind, keyword, content hash, edges, source), `stipulator://term/{name}`,
 `stipulator://bundle/{ids}` (comma-separated identifiers, rendered as a
 self-contained document), and `stipulator://coverage` (the coverage report
-as JSON), with the resource list enumerating every requirement.
+as JSON), with the resource list enumerating every requirement as of the
+most recent operation — reads themselves are always fresh.
 
 **REQ-mcp-tools** (wire): The server MUST expose tools `compile`, `verify`,
-`gate`, `bind`, `unbind`, `gap`, and `pin`, mirroring the operation
-semantics exactly, with report-shaped results rendered from the report
-messages as JSON.
+`gate`, `bind`, `unbind`, `gap`, `pin`, and `read_spec`, mirroring the
+operation semantics exactly, with report-shaped results rendered from the
+report messages as JSON.
 
 **REQ-mcp-writes-confined** (behavior): The server MUST NOT write outside
 the record stores under `.stipulator/` — it never edits spec documents or

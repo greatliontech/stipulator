@@ -1,0 +1,74 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-mcp-server"
+  content_hash: "b0096a6bc5302ff6af6ce28235b1b332607603a05e6e0cf2c3b38120a973f26a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.New"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "da47a47aae6ac31e7bf1e2bed666436cd7a85759042c9132835cc590596596c6"
+}
+
+bindings {
+  requirement_id: "REQ-mcp-server"
+  content_hash: "b0096a6bc5302ff6af6ce28235b1b332607603a05e6e0cf2c3b38120a973f26a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestResourceIndexAndReads"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a733a893c24dfee657ba43c5c68ada369663d91edd9a587f4bed758bbf1ed6a0"
+}
+
+bindings {
+  requirement_id: "REQ-mcp-resources"
+  content_hash: "54f5939cde091994896a4b6ca5fc39fef1d90855d66c29640f8369e573c4cc8b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.Server.readResource"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "a201fab0fdeda57c5fe4ec8726b61579d3d062357e8b91de59d3e12643a61b97"
+}
+
+bindings {
+  requirement_id: "REQ-mcp-resources"
+  content_hash: "54f5939cde091994896a4b6ca5fc39fef1d90855d66c29640f8369e573c4cc8b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestResourceIndexAndReads"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a733a893c24dfee657ba43c5c68ada369663d91edd9a587f4bed758bbf1ed6a0"
+}
+
+bindings {
+  requirement_id: "REQ-mcp-tools"
+  content_hash: "abadc831d8408308b1bb36379abb62ff0ecdd3295e79d01488d8e807a3c80740"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.Server.MCP"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "4f77943aae4c380cc13e05030d333304e42f6a0d633bcd66eebf302de89437cd"
+}
+
+bindings {
+  requirement_id: "REQ-mcp-tools"
+  content_hash: "abadc831d8408308b1bb36379abb62ff0ecdd3295e79d01488d8e807a3c80740"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGateTool"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "1cc777fada1eab924b8f7f27d1b005f89105e7cd508ccd623bf3e712653bd4a4"
+}
+
+bindings {
+  requirement_id: "REQ-mcp-writes-confined"
+  content_hash: "79e626c58498fbc584735c23e1a423d4c1a30f5716d3d7041af6f7d3ae73a7d3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.New"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "da47a47aae6ac31e7bf1e2bed666436cd7a85759042c9132835cc590596596c6"
+}
+
+bindings {
+  requirement_id: "REQ-mcp-writes-confined"
+  content_hash: "79e626c58498fbc584735c23e1a423d4c1a30f5716d3d7041af6f7d3ae73a7d3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestBindToolWritesConfined"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "0d7770c579f0cb5d81332f904f13cbae028c1705f648ec0b092c37d1427e4afd"
+}

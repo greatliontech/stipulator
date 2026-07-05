@@ -36,3 +36,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "b1d897ede160f65e6b57aa81dff768332a5817dd87bc3a84f268f9625edd053c"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-record-verbs"
+  content_hash: "a6f642c0f8685883a4c0997bf4dd2d40ae02cda6669204462698d7585ba02169"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestBindFileConfinement"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a0414efba45630b5a1b59fb1b8df3b23f39554ff4235f1d447676eb3b3f32c15"
+}

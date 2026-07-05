@@ -1,0 +1,38 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-model-closure"
+  content_hash: "d60f045c53652cd08a8b08365016a47d6101ce3862ffc8c6d448615244e0c559"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/bundle.Compute"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "43b3203af67fb124434d6be24b7b2b6e84e3887916d3d7b3b9cf161851aae94b"
+}
+
+bindings {
+  requirement_id: "REQ-model-closure"
+  content_hash: "d60f045c53652cd08a8b08365016a47d6101ce3862ffc8c6d448615244e0c559"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/bundle.TestClosure"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7b2a287c4e73d256823b626824f871f276856108cf93c56cb3588a96210a0525"
+}
+
+bindings {
+  requirement_id: "REQ-model-bundle"
+  content_hash: "c37fa813c12f3165c2028debabebe4102ffc6ad91ced366a140ac26ac9c85fb4"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/bundle.Markdown"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "8f6bdf57c546c20b17bf0ef9993fa5527a666254d1997ffe63dcf65796f5677a"
+}
+
+bindings {
+  requirement_id: "REQ-model-bundle"
+  content_hash: "c37fa813c12f3165c2028debabebe4102ffc6ad91ced366a140ac26ac9c85fb4"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/bundle.TestBundleSelfContained"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "9fab40db72ce8f393cd157d08e0c64c82bfc627a7978cee859c08b3417a8458b"
+}

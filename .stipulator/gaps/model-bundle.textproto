@@ -1,6 +1,0 @@
-# proto-file: proto/stipulator/v1/records.proto
-# proto-message: stipulator.v1.Gap
-
-requirement_id: "REQ-model-bundle"
-reason: "bundles not yet built"
-lands { attested { condition: "bundles chunk begins" } }

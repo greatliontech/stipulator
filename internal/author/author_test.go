@@ -153,6 +153,22 @@ func TestBind(t *testing.T) {
 	})
 }
 
+func TestBindFileConfinement(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-record-verbs")
+	for _, escape := range []string{"specs/a.md", "../evil.textproto", ".stipulator/bindings/../../x.textproto", ".stipulator/bindings/x.md"} {
+		req := bindReq("REQ-au-a", "example.com/p.F")
+		req.File = escape
+		if _, err := Bind(testFS(nil), backends, req); err == nil {
+			t.Fatalf("file escape accepted: %s", escape)
+		}
+	}
+	req := bindReq("REQ-au-a", "example.com/p.F")
+	req.Backend = "gp"
+	if _, err := Bind(testFS(nil), backends, req); err == nil || !strings.Contains(err.Error(), "unknown backend") {
+		t.Fatal("typo'd backend accepted")
+	}
+}
+
 func TestUnbind(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-record-verbs")
 	fsys := testFS(nil)

@@ -1,0 +1,130 @@
+edition = "2023";
+
+package stipulator.v1;
+
+option go_package = "github.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1";
+
+import "stipulator/v1/ir.proto";
+import "stipulator/v1/records.proto";
+
+// Report messages: the wire forms of verification and coverage results.
+// Reports are always derived — computed fresh from the tree at every trust
+// boundary and never persisted as inputs.
+
+// Resolution classifies a backend's answer for a symbol reference.
+enum Resolution {
+  RESOLUTION_UNSPECIFIED = 0;
+  // No backend was available for the binding.
+  RESOLUTION_UNVERIFIED = 1;
+  RESOLUTION_RESOLVED = 2;
+  RESOLUTION_NOT_FOUND = 3;
+  RESOLUTION_GENERATED_FILE = 4;
+}
+
+// ShapeState classifies a resolved binding's shape pin.
+enum ShapeState {
+  SHAPE_STATE_UNSPECIFIED = 0;
+  // The binding did not resolve, so no comparison happened.
+  SHAPE_STATE_UNKNOWN = 1;
+  SHAPE_STATE_UNPINNED = 2;
+  SHAPE_STATE_MATCH = 3;
+  SHAPE_STATE_MISMATCH = 4;
+}
+
+// TestOutcome is the witnessed outcome of a bound test.
+enum TestOutcome {
+  TEST_OUTCOME_UNSPECIFIED = 0;
+  // No outcome observed in a witnessed run: unwitnessed, reads as broken.
+  TEST_OUTCOME_NOT_RUN = 1;
+  TEST_OUTCOME_PASSED = 2;
+  TEST_OUTCOME_FAILED = 3;
+  TEST_OUTCOME_SKIPPED = 4;
+}
+
+// WitnessClass classifies what a bound test quantifies over.
+enum WitnessClass {
+  WITNESS_CLASS_UNSPECIFIED = 0;
+  WITNESS_CLASS_EXAMPLE = 1;
+  WITNESS_CLASS_PROPERTY = 2;
+}
+
+// Problem is a verification error; any problem fails a run.
+message Problem {
+  string path = 1;
+  string message = 2;
+}
+
+// BindingResult is the verified state of one binding.
+message BindingResult {
+  string path = 1;
+  string requirement_id = 2;
+  string symbol = 3;
+  string backend = 4;
+  BindingRole role = 5;
+  bool content_pinned = 6;
+  Resolution resolution = 7;
+  ShapeState shape = 8;
+  TestOutcome test_outcome = 9;
+  WitnessClass witness_class = 10;
+  bool race_enabled = 11;
+}
+
+// RegistrationResult is a cross-checked runtime coverage claim.
+message RegistrationResult {
+  string package = 1;
+  string test = 2;
+  string requirement_id = 3;
+  TestOutcome outcome = 4;
+}
+
+// VerifyReport is the outcome of a verification run.
+message VerifyReport {
+  repeated Problem problems = 1;
+  repeated BindingResult results = 2;
+  repeated RegistrationResult registrations = 3;
+}
+
+// Bucket classifies a requirement's coverage.
+enum Bucket {
+  BUCKET_UNSPECIFIED = 0;
+  BUCKET_UNCOVERED = 1;
+  BUCKET_STALE = 2;
+  BUCKET_BROKEN = 3;
+  BUCKET_COVERED = 4;
+  // A MAY requirement with no bindings.
+  BUCKET_EXEMPT = 5;
+}
+
+// GapState classifies a gap record.
+enum GapState {
+  GAP_STATE_UNSPECIFIED = 0;
+  GAP_STATE_OPEN = 1;
+  GAP_STATE_DUE = 2;
+  GAP_STATE_RESOLVED = 3;
+}
+
+// RequirementCoverage is one requirement's evaluated bucket.
+message RequirementCoverage {
+  string id = 1;
+  ClauseKind kind = 2;
+  Keyword keyword = 3;
+  Bucket bucket = 4;
+  repeated string reasons = 5;
+}
+
+// GapReport is one gap record's evaluated state.
+message GapReport {
+  string path = 1;
+  string requirement_id = 2;
+  GapState state = 3;
+}
+
+// CoverageReport is the coverage evaluation and gate verdict. There are
+// deliberately no aggregate ratios: the verdict is the violation set.
+message CoverageReport {
+  repeated RequirementCoverage requirements = 1;
+  repeated GapReport gaps = 2;
+  // Red requirements no gap names; the gate fails exactly when non-empty.
+  repeated string violations = 3;
+  bool gate_passes = 4;
+}
