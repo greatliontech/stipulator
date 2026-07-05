@@ -93,6 +93,50 @@ func TestFixtureModule(t *testing.T) {
 	})
 }
 
+// TestRunTests executes the fixture module's tests and checks outcome and
+// registration derivation, including the failing and skipped arms.
+func TestRunTests(t *testing.T) {
+	tr, err := RunTests("testdata/fixturemod")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]verify.TestOutcome{
+		"example.com/fixture/lib.TestWitPass":     verify.TestPassed,
+		"example.com/fixture/lib.TestWitPass/sub": verify.TestPassed,
+		"example.com/fixture/lib.TestWitFail":     verify.TestFailed,
+		"example.com/fixture/lib.TestWitSkip":     verify.TestSkipped,
+		"example.com/fixture/lib.TestExt":         verify.TestPassed,
+	}
+	for k, w := range want {
+		if got := tr.Outcomes[k]; got != w {
+			t.Errorf("outcome[%s] = %v, want %v", k, got, w)
+		}
+	}
+	wantRegs := []verify.Registration{
+		{Package: "example.com/fixture/lib", Test: "TestWitFail", Requirement: "REQ-fix-c"},
+		{Package: "example.com/fixture/lib", Test: "TestWitPass", Requirement: "REQ-fix-a"},
+		{Package: "example.com/fixture/lib", Test: "TestWitPass/sub", Requirement: "REQ-fix-b"},
+	}
+	if len(tr.Registrations) != len(wantRegs) {
+		t.Fatalf("registrations = %v", tr.Registrations)
+	}
+	for i, w := range wantRegs {
+		if tr.Registrations[i] != w {
+			t.Errorf("registration[%d] = %v, want %v", i, tr.Registrations[i], w)
+		}
+	}
+
+	// A panic aborts the package's test binary: the panicker itself is
+	// failed, and the shadowed test after it has no outcome at all — the
+	// correlator must be able to see that absence.
+	if got := tr.Outcomes["example.com/fixture/panicky.TestPanics"]; got != verify.TestFailed {
+		t.Errorf("panicking test outcome = %v, want failed", got)
+	}
+	if _, ok := tr.Outcomes["example.com/fixture/panicky.TestShadowed"]; ok {
+		t.Error("shadowed test unexpectedly has an outcome")
+	}
+}
+
 // TestShapeHashIsPackageQualified pins that identically-named,
 // identically-shaped symbols in different packages hash differently: the
 // rendering must carry full package paths, or cross-package shape drift

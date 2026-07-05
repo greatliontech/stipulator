@@ -43,7 +43,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.Run"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "9a8b0e8fea587be5a4bb3247083870c48fd5f6f45645d9db65fdd068e888b9f9"
+  shape_hash: "60ca4dacc1bcd321bdc015ec740e4149a7e9b7a352fbef9fc4a85a63fa4d7279"
 }
 
 bindings {
@@ -79,7 +79,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.Run"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "9a8b0e8fea587be5a4bb3247083870c48fd5f6f45645d9db65fdd068e888b9f9"
+  shape_hash: "60ca4dacc1bcd321bdc015ec740e4149a7e9b7a352fbef9fc4a85a63fa4d7279"
 }
 
 bindings {

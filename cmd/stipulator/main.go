@@ -28,10 +28,12 @@ func main() {
 	}
 	fs := flag.NewFlagSet(os.Args[1], flag.ExitOnError)
 	root := fs.String("C", ".", "repository root")
-	ir := fs.Bool("ir", false, "print the compiled IR as textproto")
+	// Verb-specific flags are registered per verb so help stays honest.
+	var ir, noTest *bool
 
 	switch os.Args[1] {
 	case "compile":
+		ir = fs.Bool("ir", false, "print the compiled IR as textproto")
 		fs.Parse(os.Args[2:])
 		spec := mustCompile(*root)
 		if *ir {
@@ -46,10 +48,19 @@ func main() {
 			len(spec.GetDocuments()), len(spec.GetRequirements()), len(spec.GetTerms()),
 			len(spec.GetNotes()), len(spec.GetAnnotations()), len(spec.GetEdges()))
 	case "verify":
+		noTest = fs.Bool("no-test", false, "skip running tests (no witnesses)")
 		fs.Parse(os.Args[2:])
 		spec := mustCompile(*root)
 		store := mustLoad(*root)
-		rep := verify.Run(spec, store, mustBackends(*root))
+		var testRun *verify.TestRun
+		if !*noTest {
+			tr, err := golang.RunTests(*root)
+			if err != nil {
+				fatal(err)
+			}
+			testRun = tr
+		}
+		rep := verify.Run(spec, store, mustBackends(*root), testRun)
 		for _, p := range rep.Problems {
 			fmt.Fprintln(os.Stderr, p)
 		}
@@ -60,12 +71,20 @@ func main() {
 			if r.Shape == verify.ShapeMismatch {
 				fmt.Fprintf(os.Stderr, "%s: broken: shape of %s moved (binding for %s)\n", r.Path, r.Symbol, r.RequirementId)
 			}
+			if r.TestOutcome == verify.TestFailed {
+				fmt.Fprintf(os.Stderr, "%s: broken: bound test %s failed (binding for %s)\n", r.Path, r.Symbol, r.RequirementId)
+			}
+			if testRun != nil && r.TestOutcome == verify.TestNotRun && r.Role == stipulatorv1.BindingRole_BINDING_ROLE_TESTS {
+				fmt.Fprintf(os.Stderr, "%s: broken: bound test %s produced no outcome — unwitnessed (binding for %s)\n", r.Path, r.Symbol, r.RequirementId)
+			}
 		}
-		fmt.Printf("bindings: %d pinned, %d stale; shapes: %d pinned, %d unpinned, %d mismatched; broken: %d; unverified: %d; gaps: %d\n",
-			rep.Pinned, rep.Stale, rep.ShapePinned, rep.ShapeUnpinned, rep.ShapeMismatch, rep.Broken, rep.Unverified, len(store.Gaps))
-		// CLI policy until the coverage gate lands: broken bindings fail
-		// the run; the gate will make them gap-excusable per requirement.
-		if len(rep.Problems) > 0 || rep.Broken > 0 || rep.ShapeMismatch > 0 {
+		fmt.Printf("bindings: %d pinned, %d stale; shapes: %d pinned, %d unpinned; broken: %d symbols, %d shapes, %d failed tests, %d unwitnessed; unverified: %d; tests passed: %d; registrations: %d; gaps: %d\n",
+			rep.Pinned, rep.Stale, rep.ShapePinned, rep.ShapeUnpinned,
+			rep.Broken, rep.ShapeMismatch, rep.TestsFailed, rep.TestsNotRun,
+			rep.Unverified, rep.TestsPassed, len(rep.Registrations), len(store.Gaps))
+		// CLI policy until the coverage gate lands: anything broken fails
+		// the run; the gate will make it gap-excusable per requirement.
+		if len(rep.Problems) > 0 || rep.Broken > 0 || rep.ShapeMismatch > 0 || rep.TestsFailed > 0 || (testRun != nil && rep.TestsNotRun > 0) {
 			os.Exit(1)
 		}
 	case "diff":

@@ -30,7 +30,7 @@ func run(t *testing.T, files map[string]string) (*Report, *records.Store) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return Run(spec, store, nil), store
+	return Run(spec, store, nil, nil), store
 }
 
 func wantProblem(t *testing.T, rep *Report, substr string) {
@@ -212,7 +212,7 @@ func TestBackendResolution(t *testing.T) {
 		"example.com/p.F":         strings.Repeat("s", 64),
 		"example.com/p.Generated": "GEN",
 	}}
-	rep := Run(spec, store, backends)
+	rep := Run(spec, store, backends, nil)
 	wantProblem(t, rep, "generated file; bind the generating artifact")
 	// A missing symbol is broken-bucket data, never a Problem: gap records
 	// must be able to excuse it at the gate.
@@ -256,7 +256,7 @@ func TestBackendResolution(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rep2 := Run(spec, store2, backends)
+	rep2 := Run(spec, store2, backends, nil)
 	if rep2.ShapePinned != 1 || rep2.ShapeUnpinned != 0 {
 		t.Fatalf("after pin: shape pinned=%d unpinned=%d", rep2.ShapePinned, rep2.ShapeUnpinned)
 	}
@@ -280,12 +280,65 @@ func TestShapeMismatchIsDataNotProblem(t *testing.T) {
 	}
 	rep := Run(spec, store, map[string]Backend{"go": fakeBackend{
 		"example.com/p.F": strings.Repeat("s", 64),
-	}})
+	}}, nil)
 	if len(rep.Problems) != 0 {
 		t.Fatalf("problems = %v", rep.Problems)
 	}
 	if rep.ShapeMismatch != 1 {
 		t.Fatalf("shape mismatch = %d", rep.ShapeMismatch)
+	}
+}
+
+func TestWitnessCorrelation(t *testing.T) {
+	testsBinding := strings.ReplaceAll(
+		strings.ReplaceAll(binding("REQ-v-a", ""), "example.com/p.F", "example.com/p.TestA"),
+		"BINDING_ROLE_IMPLEMENTS", "BINDING_ROLE_TESTS")
+	failBinding := strings.ReplaceAll(
+		strings.ReplaceAll(binding("REQ-v-b", ""), "example.com/p.F", "example.com/p.TestB"),
+		"BINDING_ROLE_IMPLEMENTS", "BINDING_ROLE_TESTS")
+	shadowBinding := strings.ReplaceAll(
+		strings.ReplaceAll(binding("REQ-v-b", ""), "example.com/p.F", "example.com/p.TestC"),
+		"BINDING_ROLE_IMPLEMENTS", "BINDING_ROLE_TESTS")
+	fsys := fstest.MapFS{
+		"stipulator.textproto":             {Data: []byte("include: \"specs/**/*.md\"\n")},
+		"specs/a.md":                       {Data: []byte(goodDoc)},
+		".stipulator/bindings/x.textproto": {Data: []byte(testsBinding + failBinding + shadowBinding)},
+	}
+	spec, diags, err := compile.Compile(fsys)
+	if err != nil || len(diags) > 0 {
+		t.Fatalf("compile: %v %v", err, diags)
+	}
+	store, err := records.Load(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tr := &TestRun{
+		Outcomes: map[string]TestOutcome{
+			"example.com/p.TestA":     TestPassed,
+			"example.com/p.TestA/sub": TestPassed,
+			"example.com/p.TestB":     TestFailed,
+		},
+		Registrations: []Registration{
+			{Package: "example.com/p", Test: "TestA/sub", Requirement: "REQ-v-a"}, // backed, subtest
+			{Package: "example.com/p", Test: "TestA", Requirement: "REQ-v-b"},     // NOT backed by TestA
+		},
+	}
+	rep := Run(spec, store, nil, tr)
+	if rep.TestsPassed != 1 || rep.TestsFailed != 1 {
+		t.Fatalf("tests passed=%d failed=%d", rep.TestsPassed, rep.TestsFailed)
+	}
+	if rep.TestsNotRun != 1 { // TestC bound but produced no outcome
+		t.Fatalf("tests not-run = %d (unwitnessed bound test must surface)", rep.TestsNotRun)
+	}
+	wantProblem(t, rep, "covers REQ-v-b, but no role-tests binding backs it")
+	if len(rep.Registrations) != 1 || rep.Registrations[0].Requirement != "REQ-v-a" ||
+		rep.Registrations[0].Outcome != TestPassed {
+		t.Fatalf("registrations = %+v", rep.Registrations)
+	}
+	for _, r := range rep.Results {
+		if r.Symbol == "example.com/p.TestB" && r.TestOutcome != TestFailed {
+			t.Fatalf("failed test outcome = %v", r.TestOutcome)
+		}
 	}
 }
 
@@ -326,7 +379,7 @@ func TestSelfVerify(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rep := Run(spec, store, nil)
+	rep := Run(spec, store, nil, nil)
 	for _, p := range rep.Problems {
 		t.Error(p)
 	}

@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	"github.com/greatliontech/stipulator/stipulate"
 )
 
 func TestText(t *testing.T) {
@@ -28,6 +30,7 @@ func TestText(t *testing.T) {
 }
 
 func TestHash(t *testing.T) {
+	stipulate.Covers(t, "REQ-model-hash-func")
 	// Known SHA-256 vector: canonical form of "abc" is "abc" itself, so the
 	// output must be the standard digest, pinning both the algorithm and
 	// the lowercase-hex rendering.

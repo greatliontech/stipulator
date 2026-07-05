@@ -13,6 +13,7 @@ package verify
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/records"
@@ -57,6 +58,55 @@ const (
 	ShapeMismatch
 )
 
+// TestOutcome is the witnessed outcome of a bound test.
+type TestOutcome int
+
+const (
+	// TestNotRun: no outcome observed — the run had no witnessing, the
+	// test was filtered out, or its package failed to build.
+	TestNotRun TestOutcome = iota
+	TestPassed
+	TestFailed
+	TestSkipped
+)
+
+// TestRun carries the observed outcomes of one test execution: the raw
+// material witnesses are derived from. Producing it is backend work;
+// correlating it is this package's.
+type TestRun struct {
+	// Outcomes maps "<import-path>.<TestName>[/<subtest>...]" to the
+	// observed outcome.
+	Outcomes map[string]TestOutcome
+	// Registrations are runtime coverage claims emitted through the
+	// stipulate marker, in deterministic order.
+	Registrations []Registration
+}
+
+// Registration is one runtime coverage claim. Package and the test path
+// are carried separately: import paths contain slashes, so a fused string
+// cannot be split back into its parts.
+type Registration struct {
+	// Package is the import path of the registering test's package.
+	Package string
+	// Test is the test path within the package, "TestName[/subtest...]".
+	Test        string
+	Requirement string
+}
+
+// TopLevel returns the top-level test function name of the registration.
+func (r Registration) TopLevel() string {
+	if i := strings.Index(r.Test, "/"); i >= 0 {
+		return r.Test[:i]
+	}
+	return r.Test
+}
+
+// RegistrationResult is a cross-checked registration.
+type RegistrationResult struct {
+	Registration
+	Outcome TestOutcome
+}
+
 // BindingResult is the verified state of one binding: the facts the
 // coverage buckets are computed from.
 type BindingResult struct {
@@ -70,6 +120,9 @@ type BindingResult struct {
 	ContentPinned bool
 	Resolution    Resolution
 	Shape         ShapeState
+	// TestOutcome is set for role-tests bindings when the run witnessed
+	// tests.
+	TestOutcome TestOutcome
 }
 
 // Backend verifies symbol references for one language. Implementations
@@ -95,12 +148,19 @@ type Report struct {
 	// did not resolve; Unverified counts bindings whose backend has no
 	// verifier in this run.
 	ShapePinned, ShapeUnpinned, ShapeMismatch, Broken, Unverified int
+	// Registrations holds the cross-checked runtime coverage claims;
+	// TestsPassed, TestsFailed, and TestsNotRun count role-tests bindings
+	// by witnessed outcome (TestsNotRun counts bound tests that produced
+	// no outcome in a witnessed run — unwitnessed, reads as broken).
+	Registrations                         []RegistrationResult
+	TestsPassed, TestsFailed, TestsNotRun int
 }
 
 // Run checks the store against the compiled spec, resolving symbols
 // through the supplied backends (keyed by backend name; nil skips all
-// symbol resolution).
-func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Backend) *Report {
+// symbol resolution) and correlating test outcomes from testRun (nil
+// skips witnessing: role-tests bindings read TestNotRun).
+func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Backend, testRun *TestRun) *Report {
 	hashes := map[string]string{}
 	for _, r := range spec.GetRequirements() {
 		hashes[r.GetId()] = r.GetContentHash()
@@ -163,6 +223,21 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 				rep.Stale++
 			}
 
+			if testRun != nil && b.GetRole() == stipulatorv1.BindingRole_BINDING_ROLE_TESTS {
+				result.TestOutcome = testRun.Outcomes[b.GetSymbol()]
+				switch result.TestOutcome {
+				case TestPassed:
+					rep.TestsPassed++
+				case TestFailed:
+					rep.TestsFailed++
+				case TestNotRun:
+					// No outcome in a witnessed run: the test never ran
+					// (package build failure, sibling panic aborting the
+					// binary) — unwitnessed, reads as broken.
+					rep.TestsNotRun++
+				}
+			}
+
 			if backend, ok := backends[b.GetBackend()]; ok {
 				res, shape, err := backend.Resolve(b.GetSymbol())
 				switch {
@@ -193,6 +268,33 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 				rep.Unverified++
 			}
 			rep.Results = append(rep.Results, result)
+		}
+	}
+
+	if testRun != nil {
+		// Cross-check runtime registrations: every registration must be
+		// backed by a role-tests binding for the same requirement on the
+		// registration's top-level test — the binding store remains the
+		// only claim source.
+		type reqTest struct{ req, symbol string }
+		backed := map[reqTest]bool{}
+		for _, bf := range store.Bindings {
+			for _, b := range bf.Set.GetBindings() {
+				if b.GetRole() == stipulatorv1.BindingRole_BINDING_ROLE_TESTS {
+					backed[reqTest{b.GetRequirementId(), b.GetSymbol()}] = true
+				}
+			}
+		}
+		for _, reg := range testRun.Registrations {
+			symbol := reg.Package + "." + reg.TopLevel()
+			if !backed[reqTest{reg.Requirement, symbol}] {
+				problem("test run", "registration %s.%s covers %s, but no role-tests binding backs it", reg.Package, reg.Test, reg.Requirement)
+				continue
+			}
+			rep.Registrations = append(rep.Registrations, RegistrationResult{
+				Registration: reg,
+				Outcome:      testRun.Outcomes[reg.Package+"."+reg.Test],
+			})
 		}
 	}
 

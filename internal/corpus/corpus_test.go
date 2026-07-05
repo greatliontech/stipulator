@@ -7,6 +7,7 @@ import (
 	"testing/fstest"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/stipulate"
 )
 
 func manifest(includes ...string) *stipulatorv1.Manifest {
@@ -16,6 +17,7 @@ func manifest(includes ...string) *stipulatorv1.Manifest {
 }
 
 func TestLoadManifest(t *testing.T) {
+	stipulate.Covers(t, "REQ-profile-manifest")
 	t.Run("missing manifest is an error", func(t *testing.T) {
 		_, err := LoadManifest(fstest.MapFS{})
 		if err == nil {
@@ -62,6 +64,7 @@ func TestLoadManifest(t *testing.T) {
 }
 
 func TestEnumerate(t *testing.T) {
+	stipulate.Covers(t, "REQ-profile-enumeration")
 	md := &fstest.MapFile{Data: []byte("x")}
 	fsys := fstest.MapFS{
 		"docs/specs/overview.md":          md,

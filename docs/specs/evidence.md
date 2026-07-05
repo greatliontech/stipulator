@@ -75,7 +75,7 @@ and `stale` over `uncovered`:
 | Bucket | Meaning |
 |---|---|
 | `covered` | policy met by current evidence |
-| `broken` | a binding fails to resolve, its shape hash mismatches, or its bound test fails |
+| `broken` | a binding fails to resolve, its shape hash mismatches, or its bound test fails or produces no outcome in a witnessed run |
 | `stale` | evidence whose content-hash pin is unset or differs from the current one |
 | `uncovered` | no evidence meets policy |
 
