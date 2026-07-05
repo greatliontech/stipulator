@@ -23,7 +23,8 @@ glob MUST be matched against slash-separated paths relative to the repository
 root, per path segment — `**` as a complete segment matching zero or more
 segments; any other segment matching exactly one path segment, with `*` (a
 possibly empty run of characters), `?` (any single character), `[...]` and
-`[^...]` classes with `-` ranges,
+`[^...]` classes with `-` ranges (an inverted range is valid and matches
+nothing),
 and `\` escapes — and a glob containing an empty or malformed segment is
 rejected when enumeration begins, before any matching.
 
@@ -108,9 +109,9 @@ enclosing section, preserved in the IR and carried into bundles for context.
 
 ## Generated indexes
 
-**REQ-profile-index-generated** (behavior): The `fmt` operation MUST write
-each corpus directory's `README.md` as an index generated from the IR,
-containing no normative text.
+**REQ-profile-index-generated** (behavior): The `fmt` operation MUST write,
+for each directory containing at least one corpus document, a `README.md`
+index generated from the IR, containing no normative text.
 
 **REQ-profile-index-fresh** (behavior): Lint MUST reject a repository whose
 generated indexes differ from what `fmt` would regenerate.

@@ -46,6 +46,10 @@ IRs identical modulo location metadata.
 stipulator's outputs or stored records MUST be defined over an explicitly
 specified canonical form; serialized protobuf bytes are not a canonical form.
 
+**REQ-model-hash-func** (wire, refines REQ-model-hash-canonical-form): Every
+observable hash MUST be the SHA-256 digest of the UTF-8 bytes of the
+canonical form, rendered as sixty-four lowercase hexadecimal characters.
+
 ## Closure and bundles
 
 **REQ-model-closure** (behavior): The closure of a requirement set MUST be
