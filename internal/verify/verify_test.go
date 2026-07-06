@@ -9,6 +9,7 @@ import (
 
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/records"
+	"github.com/greatliontech/stipulator/stipulate"
 )
 
 const goodDoc = "# T\n\n**REQ-v-a** (behavior): It MUST x.\n\n**REQ-v-b** (behavior): It MUST y.\n"
@@ -402,5 +403,25 @@ func TestSelfVerify(t *testing.T) {
 	}
 	if len(store.Bindings) == 0 {
 		t.Fatal("no binding files loaded")
+	}
+}
+
+// TestAttestationRecordHygiene pins the contradictory-records refusal and
+// the one-judgment rule: a requirement cannot be both gapped and
+// attested, and duplicate attestations across files are problems.
+func TestAttestationRecordHygiene(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-attestation")
+	rep, _ := run(t, map[string]string{
+		".stipulator/gaps/a.textproto":          "requirement_id: \"REQ-v-a\"\nreason: \"deferred\"\nlands { manual { condition: \"x\" } }\n",
+		".stipulator/attestations/a.textproto":  "attestations {\n  requirement_id: \"REQ-v-a\"\n  reason: \"judged fine\"\n}\n",
+		".stipulator/attestations/b.textproto":  "attestations {\n  requirement_id: \"REQ-v-b\"\n  reason: \"first\"\n}\n",
+		".stipulator/attestations/b2.textproto": "attestations {\n  requirement_id: \"REQ-v-b\"\n  reason: \"second\"\n}\n",
+	})
+	wantProblem(t, rep, "both gapped and attested")
+	wantProblem(t, rep, "duplicates")
+	// The contradicted and duplicated records yield no results beyond the
+	// first judgment.
+	if len(rep.Attestations) != 1 || rep.Attestations[0].RequirementId != "REQ-v-b" {
+		t.Fatalf("attestation results = %+v", rep.Attestations)
 	}
 }

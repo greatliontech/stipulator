@@ -153,7 +153,7 @@ func TestGateTool(t *testing.T) {
 	// REQ-m-a witnessed; REQ-m-b red but gapped → gate passes.
 	sess, _ := harness(t, map[string]string{
 		".stipulator/bindings/m.textproto": pinnedBinding(t),
-		".stipulator/gaps/m-b.textproto":   "requirement_id: \"REQ-m-b\"\nreason: \"later\"\nlands { attested { condition: \"x\" } }\n",
+		".stipulator/gaps/m-b.textproto":   "requirement_id: \"REQ-m-b\"\nreason: \"later\"\nlands { manual { condition: \"x\" } }\n",
 	})
 	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "gate", Arguments: map[string]any{}})
 	if err != nil {
@@ -295,7 +295,7 @@ func TestToolListExact(t *testing.T) {
 func TestDisposeToolRetire(t *testing.T) {
 	sess, writes := harness(t, map[string]string{
 		".stipulator/bindings/gone.textproto": "bindings {\n  requirement_id: \"REQ-m-gone\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n}\n",
-		".stipulator/gaps/m-gone.textproto":   "requirement_id: \"REQ-m-gone\"\nreason: \"r\"\nlands { attested { condition: \"x\" } }\n",
+		".stipulator/gaps/m-gone.textproto":   "requirement_id: \"REQ-m-gone\"\nreason: \"r\"\nlands { manual { condition: \"x\" } }\n",
 	})
 	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "dispose", Arguments: map[string]any{
 		"kind": "retire", "requirement": "REQ-m-gone",

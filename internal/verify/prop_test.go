@@ -23,23 +23,27 @@ func TestPropDanglingRecordsAreProblems(t *testing.T) {
 		files := c.Partition(rt, "p")
 
 		// Records naming declared requirements, with one optionally
-		// corrupted to a ghost identity.
+		// corrupted to a ghost identity — any of the three record kinds
+		// that can dangle.
 		ghost := fmt.Sprintf("REQ-p-ghost%d", rapid.IntRange(0, 9).Draw(rt, "ghost"))
 		corrupt := rapid.Bool().Draw(rt, "corrupt")
-		asGap := rapid.Bool().Draw(rt, "asGap")
 
 		bound := rapid.SampledFrom(c.ReqIDs).Draw(rt, "bound")
-		bindingID, gapID := bound, bound
+		bindingID, gapID, attID := bound, bound, bound
 		if corrupt {
-			if asGap {
-				gapID = ghost
-			} else {
+			switch rapid.SampledFrom([]string{"binding", "gap", "attestation"}).Draw(rt, "kind") {
+			case "binding":
 				bindingID = ghost
+			case "gap":
+				gapID = ghost
+			case "attestation":
+				attID = ghost
 			}
 		}
 		extra := map[string]string{
-			".stipulator/bindings/p.textproto": proptest.BindingText(bindingID, ""),
-			".stipulator/gaps/p.textproto":     proptest.GapText(gapID),
+			".stipulator/bindings/p.textproto":     proptest.BindingText(bindingID, ""),
+			".stipulator/gaps/p.textproto":         proptest.GapText(gapID),
+			".stipulator/attestations/p.textproto": proptest.AttestationText(attID, ""),
 		}
 
 		spec, diags, err := compile.Compile(proptest.FS(files, extra))

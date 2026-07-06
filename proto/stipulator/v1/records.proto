@@ -58,8 +58,25 @@ message Gap {
   LandingCondition lands = 3;
 }
 
+// RequirementAttestation is the weakest evidence (REQ-evidence-ladder):
+// a reason-carrying human voucher for one requirement, admissible only
+// where the manifest policy names attestation as a cell's minimum, and
+// rendered as its own coverage bucket — never aggregated into covered.
+// The content hash pins the requirement text vouched for; a moved
+// requirement re-stales the attestation.
+message RequirementAttestation {
+  string requirement_id = 1;
+  string content_hash = 2;
+  string reason = 3;
+}
+
+// AttestationSet is one attestation record file.
+message AttestationSet {
+  repeated RequirementAttestation attestations = 1;
+}
+
 // LandingCondition states when the deferred work becomes due. Machine
-// conditions are evaluated at verification time; an attested condition
+// conditions are evaluated at verification time; a manual condition
 // fires only when explicitly marked fired.
 message LandingCondition {
   oneof condition {
@@ -67,11 +84,11 @@ message LandingCondition {
     string covered = 1;
     // Due when the named requirement exists in the corpus.
     string exists = 2;
-    Attested attested = 3;
+    ManualCondition manual = 3;
   }
 }
 
-message Attested {
+message ManualCondition {
   // The external condition, in prose, that cannot be machine-evaluated.
   string condition = 1;
   bool fired = 2;

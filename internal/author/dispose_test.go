@@ -95,7 +95,7 @@ func TestRetire(t *testing.T) {
 	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST x.\n\n**REQ-au-b** (behavior): It MUST y.\n"
 	newDoc := "# T\n\n**REQ-au-b** (behavior): It MUST y.\n" // a removed
 	fsys := disposeFS(t, oldDoc, newDoc, map[string]string{
-		".stipulator/gaps/au-a.textproto": "requirement_id: \"REQ-au-a\"\nreason: \"r\"\nlands { attested { condition: \"x\" } }\n",
+		".stipulator/gaps/au-a.textproto": "requirement_id: \"REQ-au-a\"\nreason: \"r\"\nlands { manual { condition: \"x\" } }\n",
 	})
 
 	ups, err := Retire(fsys, "REQ-au-a", false)

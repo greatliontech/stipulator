@@ -29,6 +29,10 @@ const (
 	Covered
 	// Exempt: a MAY requirement with no bindings.
 	Exempt
+	// Attested: satisfied only by an attestation on a cell that admits
+	// one — the weakest evidence, rendered distinctly, never folded into
+	// covered (REQ-evidence-attestation).
+	Attested
 )
 
 func (b Bucket) String() string {
@@ -41,6 +45,8 @@ func (b Bucket) String() string {
 		return "stale"
 	case Exempt:
 		return "exempt"
+	case Attested:
+		return "attested"
 	}
 	return "uncovered"
 }
@@ -170,8 +176,13 @@ func (p *Policy) minimum(kind stipulatorv1.ClauseKind, kw stipulatorv1.Keyword) 
 // dead code.
 type evidence struct {
 	example, property, static, proof bool
-	broken, stale                    bool
-	reasons                          []string
+	// attested: a current, reason-carrying attestation exists — the
+	// weakest rung, granted only where a policy cell admits it and never
+	// aggregated into the stronger kinds above.
+	attested      bool
+	attestReasons []string
+	broken, stale bool
+	reasons       []string
 }
 
 // witness reports any executed witness, of either class.
@@ -246,11 +257,25 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		}
 	}
 
+	// Attestations enter as the weakest evidence leg: a stale pin is
+	// claim hygiene like any other record, a current one carries its
+	// reason forward — never into the stronger kinds.
+	for _, a := range vr.Attestations {
+		e := get(a.RequirementId)
+		if !a.ContentPinned {
+			e.stale = true
+			e.reasons = append(e.reasons, "attestation has a stale content pin (the requirement moved since it was vouched for)")
+			continue
+		}
+		e.attested = true
+		e.attestReasons = append(e.attestReasons, a.Reason)
+	}
+
 	rep := &Report{PolicyOverrides: pol.Active()}
 	buckets := map[string]Bucket{}
 	for _, r := range spec.GetRequirements() {
 		e := get(r.GetId())
-		bound := len(e.reasons) > 0 || e.witness() || e.static || e.stale || e.broken || hasAnyBinding(vr, r.GetId())
+		bound := len(e.reasons) > 0 || e.witness() || e.static || e.stale || e.broken || e.attested || hasAnyBinding(vr, r.GetId())
 		min, overridden := pol.minimum(r.GetKind(), r.GetKeyword())
 		exemptCell := overridden && min == stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_EXEMPT
 		var b Bucket
@@ -265,9 +290,17 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 			b = Stale
 		case satisfied(pol, r.GetKind(), r.GetKeyword(), e):
 			b = Covered
+		case e.attested && admitsAttestation(overridden, min, r.GetKeyword()):
+			b = Attested
+			for _, ar := range e.attestReasons {
+				e.reasons = append(e.reasons, "attested: "+ar)
+			}
 		default:
 			b = Uncovered
 			e.reasons = append(e.reasons, requiredEvidence(pol, r.GetKind(), r.GetKeyword()))
+			for _, ar := range e.attestReasons {
+				e.reasons = append(e.reasons, fmt.Sprintf("attestation recorded (%q) does not meet this cell's minimum", ar))
+			}
 		}
 		buckets[r.GetId()] = b
 		sort.Strings(e.reasons)
@@ -310,6 +343,18 @@ func hasAnyBinding(vr *verify.Report, id string) bool {
 	return false
 }
 
+// admitsAttestation reports whether the effective policy accepts an
+// attestation as the cell's minimum: a manifest ATTESTATION cell, or the
+// default table's SHOULD/SHOULD NOT row ("a static binding or an
+// attestation", REQ-coverage-policy-default). Admission renders the
+// distinct attested bucket, never covered.
+func admitsAttestation(overridden bool, min stipulatorv1.MinimumEvidence, kw stipulatorv1.Keyword) bool {
+	if overridden {
+		return min == stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_ATTESTATION
+	}
+	return kw == stipulatorv1.Keyword_KEYWORD_SHOULD || kw == stipulatorv1.Keyword_KEYWORD_SHOULD_NOT
+}
+
 // satisfied applies the effective policy: a manifest override's
 // satisfaction set when the cell is named, the default table otherwise.
 func satisfied(pol *Policy, kind stipulatorv1.ClauseKind, kw stipulatorv1.Keyword, e *evidence) bool {
@@ -327,6 +372,11 @@ func satisfied(pol *Policy, kind stipulatorv1.ClauseKind, kw stipulatorv1.Keywor
 			return e.static || e.witness() || e.proof
 		case stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_EXEMPT:
 			return true
+		case stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_ATTESTATION:
+			// Stronger evidence satisfies as covered; attestation alone
+			// renders the distinct attested bucket in Evaluate, never
+			// covered — deliberately not satisfied here.
+			return e.static || e.witness() || e.proof
 		}
 		return false
 	}
@@ -367,6 +417,8 @@ func requiredEvidence(pol *Policy, kind stipulatorv1.ClauseKind, kw stipulatorv1
 			need = "an analyzer proof or witness"
 		case stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_STATIC:
 			need = "a static binding"
+		case stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_ATTESTATION:
+			need = "an attestation or stronger"
 		}
 		return "needs " + need + " (" + k + ", manifest override)"
 	}
@@ -383,10 +435,13 @@ func requiredEvidence(pol *Policy, kind stipulatorv1.ClauseKind, kw stipulatorv1
 			return "needs an analyzer proof or witness (" + k + ")"
 		}
 	}
+	if kw == stipulatorv1.Keyword_KEYWORD_SHOULD || kw == stipulatorv1.Keyword_KEYWORD_SHOULD_NOT {
+		return "needs a static binding or attestation (" + k + ")"
+	}
 	return "needs a static binding (" + k + ")"
 }
 
-// conditionHolds evaluates a machine landing condition; attested
+// conditionHolds evaluates a machine landing condition; manual
 // conditions hold only when explicitly fired.
 func conditionHolds(lc *stipulatorv1.LandingCondition, buckets map[string]Bucket, spec *stipulatorv1.Spec) bool {
 	switch {
@@ -401,8 +456,8 @@ func conditionHolds(lc *stipulatorv1.LandingCondition, buckets map[string]Bucket
 			}
 		}
 		return false
-	case lc.HasAttested():
-		return lc.GetAttested().GetFired()
+	case lc.HasManual():
+		return lc.GetManual().GetFired()
 	}
 	return false
 }

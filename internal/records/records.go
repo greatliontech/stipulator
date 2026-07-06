@@ -16,9 +16,10 @@ import (
 
 // Store locations, fixed relative to the repository root.
 const (
-	BindingsDir    = ".stipulator/bindings"
-	GapsDir        = ".stipulator/gaps"
-	TombstonesPath = ".stipulator/tombstones.textproto"
+	BindingsDir     = ".stipulator/bindings"
+	GapsDir         = ".stipulator/gaps"
+	AttestationsDir = ".stipulator/attestations"
+	TombstonesPath  = ".stipulator/tombstones.textproto"
 )
 
 // BindingFile is one committed binding file.
@@ -43,12 +44,20 @@ type GapFile struct {
 	Gap  *stipulatorv1.Gap
 }
 
+// AttestationFile is one committed attestation record file.
+type AttestationFile struct {
+	Path string
+	Raw  []byte
+	Set  *stipulatorv1.AttestationSet
+}
+
 // Store is the loaded record state of a repository.
 type Store struct {
-	Bindings   []BindingFile
-	Gaps       []GapFile
-	Hardening  []HardeningFile
-	Tombstones []string
+	Bindings     []BindingFile
+	Gaps         []GapFile
+	Attestations []AttestationFile
+	Hardening    []HardeningFile
+	Tombstones   []string
 }
 
 // Load reads all records from fsys, which must be rooted at the repository
@@ -72,6 +81,16 @@ func Load(fsys fs.FS) (*Store, error) {
 			return fmt.Errorf("parsing %s: %w", p, err)
 		}
 		s.Gaps = append(s.Gaps, GapFile{Path: p, Raw: raw, Gap: gap})
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	if err := eachTextproto(fsys, AttestationsDir, func(p string, raw []byte) error {
+		set := &stipulatorv1.AttestationSet{}
+		if err := prototext.Unmarshal(raw, set); err != nil {
+			return fmt.Errorf("parsing %s: %w", p, err)
+		}
+		s.Attestations = append(s.Attestations, AttestationFile{Path: p, Raw: raw, Set: set})
 		return nil
 	}); err != nil {
 		return nil, err

@@ -122,7 +122,7 @@ func (s *Server) MCP() *mcp.Server {
 	}, s.toolUnbind)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "gap",
-		Description: "Declare a coverage gap: requirement, reason, and exactly one landing condition (covered/exists/attested).",
+		Description: "Declare a coverage gap: requirement, reason, and exactly one landing condition (covered/exists/manual).",
 	}, s.toolGap)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "pin",
@@ -397,14 +397,14 @@ type gapIn struct {
 	Reason      string `json:"reason" jsonschema:"why the gap exists"`
 	Covered     string `json:"covered,omitempty" jsonschema:"lands when this requirement is covered"`
 	Exists      string `json:"exists,omitempty" jsonschema:"lands when this requirement exists"`
-	Attested    string `json:"attested,omitempty" jsonschema:"lands on this external condition, fired explicitly"`
+	Manual      string `json:"manual,omitempty" jsonschema:"lands on this externally judged condition, fired explicitly"`
 }
 
 func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn) (*mcp.CallToolResult, writeOut, error) {
 	g := &stipulatorv1.Gap{}
 	g.SetRequirementId(in.Requirement)
 	g.SetReason(in.Reason)
-	lc, err := author.NewLandingCondition(in.Covered, in.Exists, in.Attested)
+	lc, err := author.NewLandingCondition(in.Covered, in.Exists, in.Manual)
 	if err != nil {
 		return nil, writeOut{}, err
 	}

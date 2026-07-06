@@ -94,7 +94,9 @@ func printCoverage(cov *coverage.Report) {
 			bucket = red(r.Bucket.String())
 		}
 		gapNote := red("no gap")
-		if g, ok := gapByReq[r.Id]; ok {
+		if r.Bucket == coverage.Attested {
+			gapNote = dim("evidence")
+		} else if g, ok := gapByReq[r.Id]; ok {
 			gapNote = dim("gap " + g.State.String())
 		}
 		reason := ""
@@ -106,8 +108,9 @@ func printCoverage(cov *coverage.Report) {
 		}
 		fmt.Printf("  %-9s %-*s  %s  %s\n", bucket, width, r.Id, gapNote, reason)
 	}
-	fmt.Printf("coverage: %s covered, %s uncovered, %s stale, %s broken, %d exempt; gaps: %d\n",
-		green(fmt.Sprint(counts[coverage.Covered])), num(counts[coverage.Uncovered], yellow),
+	fmt.Printf("coverage: %s covered, %s attested, %s uncovered, %s stale, %s broken, %d exempt; gaps: %d\n",
+		green(fmt.Sprint(counts[coverage.Covered])), num(counts[coverage.Attested], yellow),
+		num(counts[coverage.Uncovered], yellow),
 		num(counts[coverage.Stale], yellow), num(counts[coverage.Broken], red),
 		counts[coverage.Exempt], len(cov.Gaps))
 }

@@ -255,11 +255,11 @@ func TestGap(t *testing.T) {
 		}
 	})
 
-	t.Run("attested and exists render and parse", func(t *testing.T) {
+	t.Run("manual and exists render and parse", func(t *testing.T) {
 		att := &stipulatorv1.LandingCondition{}
-		a := &stipulatorv1.Attested{}
+		a := &stipulatorv1.ManualCondition{}
 		a.SetCondition("external thing")
-		att.SetAttested(a)
+		att.SetManual(a)
 		up, err := Gap(testFS(nil), mkGap("REQ-au-b", "r", att))
 		if err != nil {
 			t.Fatal(err)
@@ -268,8 +268,8 @@ func TestGap(t *testing.T) {
 		if err := prototext.Unmarshal(up.Content, g); err != nil {
 			t.Fatal(err)
 		}
-		if g.GetLands().GetAttested().GetCondition() != "external thing" || g.GetLands().GetAttested().GetFired() {
-			t.Fatalf("attested condition mangled: %v", g)
+		if g.GetLands().GetManual().GetCondition() != "external thing" || g.GetLands().GetManual().GetFired() {
+			t.Fatalf("manual condition mangled: %v", g)
 		}
 	})
 }
@@ -289,8 +289,8 @@ func TestParseRoleAndConditions(t *testing.T) {
 		t.Fatal("conflicting conditions accepted")
 	}
 	lc, err := NewLandingCondition("", "", "external")
-	if err != nil || !lc.HasAttested() {
-		t.Fatalf("attested condition: %v %v", lc, err)
+	if err != nil || !lc.HasManual() {
+		t.Fatalf("manual condition: %v %v", lc, err)
 	}
 }
 
@@ -383,8 +383,8 @@ func TestGapsBulk(t *testing.T) {
 func TestPruneResolvedGaps(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-resolved-pruned")
 	fsys := testFS(map[string]string{
-		".stipulator/gaps/a.textproto": "requirement_id: \"REQ-au-a\"\nreason: \"r\"\nlands { attested { condition: \"x\" } }\n",
-		".stipulator/gaps/b.textproto": "requirement_id: \"REQ-au-b\"\nreason: \"r\"\nlands { attested { condition: \"x\" } }\n",
+		".stipulator/gaps/a.textproto": "requirement_id: \"REQ-au-a\"\nreason: \"r\"\nlands { manual { condition: \"x\" } }\n",
+		".stipulator/gaps/b.textproto": "requirement_id: \"REQ-au-b\"\nreason: \"r\"\nlands { manual { condition: \"x\" } }\n",
 	})
 	store, err := records.Load(fsys)
 	if err != nil {

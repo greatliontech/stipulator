@@ -8,7 +8,10 @@ requirement covered. The spec corpus and the manifest — including its
 coverage-policy overrides — stand outside that boundary as contract-tier
 configuration: editing them changes what coverage means, which is why they
 are reviewed like spec text and why every active policy override is
-surfaced in coverage output rather than applied silently.
+surfaced in coverage output rather than applied silently. An attestation
+record is the one record that carries judgment: it can render a
+requirement attested — never covered — and only where the policy admits
+it.
 
 ## Bindings
 
@@ -74,7 +77,9 @@ detector was enabled.
 
 **REQ-evidence-attestation** (behavior): An attestation MUST carry its reason
 text and appear distinctly in every coverage output; it is the weakest
-evidence and is never silently aggregated into stronger kinds.
+evidence and is never silently aggregated into stronger kinds. A
+requirement cannot carry both a gap and an attestation — deferred and
+judged-satisfied contradict, and verification fails on the pair.
 
 ## Coverage
 

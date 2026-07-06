@@ -47,15 +47,15 @@ func ParseRole(s string) (stipulatorv1.BindingRole, error) {
 
 // NewLandingCondition builds a landing condition from mutually exclusive
 // flag values; more than one set is an error.
-func NewLandingCondition(covered, exists, attested string) (*stipulatorv1.LandingCondition, error) {
+func NewLandingCondition(covered, exists, manual string) (*stipulatorv1.LandingCondition, error) {
 	set := 0
-	for _, v := range []string{covered, exists, attested} {
+	for _, v := range []string{covered, exists, manual} {
 		if v != "" {
 			set++
 		}
 	}
 	if set > 1 {
-		return nil, fmt.Errorf("conflicting landing conditions: give exactly one of covered, exists, attested")
+		return nil, fmt.Errorf("conflicting landing conditions: give exactly one of covered, exists, manual")
 	}
 	lc := &stipulatorv1.LandingCondition{}
 	switch {
@@ -63,10 +63,10 @@ func NewLandingCondition(covered, exists, attested string) (*stipulatorv1.Landin
 		lc.SetCovered(covered)
 	case exists != "":
 		lc.SetExists(exists)
-	case attested != "":
-		a := &stipulatorv1.Attested{}
-		a.SetCondition(attested)
-		lc.SetAttested(a)
+	case manual != "":
+		a := &stipulatorv1.ManualCondition{}
+		a.SetCondition(manual)
+		lc.SetManual(a)
 	default:
 		return nil, nil
 	}

@@ -40,6 +40,10 @@ const (
 	// No evidence demanded: unbound requirements read exempt; bound ones
 	// keep claim hygiene (broken and stale still read red).
 	MinimumEvidence_MINIMUM_EVIDENCE_EXEMPT MinimumEvidence = 6
+	// A reason-carrying attestation record suffices; satisfied by
+	// attestation alone renders the distinct attested bucket, and any
+	// stronger evidence renders covered as usual (REQ-evidence-attestation).
+	MinimumEvidence_MINIMUM_EVIDENCE_ATTESTATION MinimumEvidence = 7
 )
 
 // Enum value maps for MinimumEvidence.
@@ -52,6 +56,7 @@ var (
 		4: "MINIMUM_EVIDENCE_PROOF_OR_WITNESS",
 		5: "MINIMUM_EVIDENCE_STATIC",
 		6: "MINIMUM_EVIDENCE_EXEMPT",
+		7: "MINIMUM_EVIDENCE_ATTESTATION",
 	}
 	MinimumEvidence_value = map[string]int32{
 		"MINIMUM_EVIDENCE_UNSPECIFIED":      0,
@@ -61,6 +66,7 @@ var (
 		"MINIMUM_EVIDENCE_PROOF_OR_WITNESS": 4,
 		"MINIMUM_EVIDENCE_STATIC":           5,
 		"MINIMUM_EVIDENCE_EXEMPT":           6,
+		"MINIMUM_EVIDENCE_ATTESTATION":      7,
 	}
 )
 
@@ -327,7 +333,7 @@ const file_stipulator_v1_manifest_proto_rawDesc = "" +
 	"\x0ePolicyOverride\x12-\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x19.stipulator.v1.ClauseKindR\x04kind\x120\n" +
 	"\akeyword\x18\x02 \x01(\x0e2\x16.stipulator.v1.KeywordR\akeyword\x128\n" +
-	"\aminimum\x18\x03 \x01(\x0e2\x1e.stipulator.v1.MinimumEvidenceR\aminimum*\xf6\x01\n" +
+	"\aminimum\x18\x03 \x01(\x0e2\x1e.stipulator.v1.MinimumEvidenceR\aminimum*\x98\x02\n" +
 	"\x0fMinimumEvidence\x12 \n" +
 	"\x1cMINIMUM_EVIDENCE_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fMINIMUM_EVIDENCE_ANALYZER_PROOF\x10\x01\x12\x1d\n" +
@@ -335,7 +341,8 @@ const file_stipulator_v1_manifest_proto_rawDesc = "" +
 	"\x18MINIMUM_EVIDENCE_WITNESS\x10\x03\x12%\n" +
 	"!MINIMUM_EVIDENCE_PROOF_OR_WITNESS\x10\x04\x12\x1b\n" +
 	"\x17MINIMUM_EVIDENCE_STATIC\x10\x05\x12\x1b\n" +
-	"\x17MINIMUM_EVIDENCE_EXEMPT\x10\x06BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
+	"\x17MINIMUM_EVIDENCE_EXEMPT\x10\x06\x12 \n" +
+	"\x1cMINIMUM_EVIDENCE_ATTESTATION\x10\aBDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
 var file_stipulator_v1_manifest_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_stipulator_v1_manifest_proto_msgTypes = make([]protoimpl.MessageInfo, 2)

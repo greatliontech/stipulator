@@ -91,12 +91,12 @@ func RenderGap(g *stipulatorv1.Gap) []byte {
 		fmt.Fprintf(&b, "lands { covered: %s }\n", strconv.Quote(lc.GetCovered()))
 	case lc.HasExists():
 		fmt.Fprintf(&b, "lands { exists: %s }\n", strconv.Quote(lc.GetExists()))
-	case lc.HasAttested():
-		a := lc.GetAttested()
+	case lc.HasManual():
+		a := lc.GetManual()
 		if a.GetFired() {
-			fmt.Fprintf(&b, "lands { attested { condition: %s fired: true } }\n", strconv.Quote(a.GetCondition()))
+			fmt.Fprintf(&b, "lands { manual { condition: %s fired: true } }\n", strconv.Quote(a.GetCondition()))
 		} else {
-			fmt.Fprintf(&b, "lands { attested { condition: %s } }\n", strconv.Quote(a.GetCondition()))
+			fmt.Fprintf(&b, "lands { manual { condition: %s } }\n", strconv.Quote(a.GetCondition()))
 		}
 	}
 	return []byte(b.String())
@@ -142,4 +142,26 @@ func ParseBindingFile(path string, raw []byte) (BindingFile, error) {
 		return BindingFile{}, fmt.Errorf("parsing %s: %w", path, err)
 	}
 	return BindingFile{Path: path, Raw: raw, Set: set}, nil
+}
+
+// AttestationPath is the canonical file path for a requirement's
+// attestation record.
+func AttestationPath(requirementID string) string {
+	return path.Join(AttestationsDir, strings.TrimPrefix(strings.ToLower(requirementID), "req-")+".textproto")
+}
+
+// RenderAttestations renders an attestation set deterministically with
+// the standard header.
+func RenderAttestations(set *stipulatorv1.AttestationSet) []byte {
+	var b strings.Builder
+	b.WriteString(defaultHeader)
+	b.WriteString("# proto-message: stipulator.v1.AttestationSet\n")
+	for _, a := range set.GetAttestations() {
+		b.WriteString("\nattestations {\n")
+		fmt.Fprintf(&b, "  requirement_id: %s\n", strconv.Quote(a.GetRequirementId()))
+		fmt.Fprintf(&b, "  content_hash: %s\n", strconv.Quote(a.GetContentHash()))
+		fmt.Fprintf(&b, "  reason: %s\n", strconv.Quote(a.GetReason()))
+		b.WriteString("}\n")
+	}
+	return []byte(b.String())
 }

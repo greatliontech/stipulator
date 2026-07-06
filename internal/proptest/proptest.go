@@ -185,5 +185,14 @@ func BindingTextPinned(id, contentHash, shapeHash string) string {
 
 // GapText renders one gap record naming the requirement.
 func GapText(id string) string {
-	return "requirement_id: \"" + id + "\"\nreason: \"generated\"\nlands { attested { condition: \"generated\" } }\n"
+	return "requirement_id: \"" + id + "\"\nreason: \"generated\"\nlands { manual { condition: \"generated\" } }\n"
+}
+
+// AttestationText renders one attestation record naming the requirement.
+func AttestationText(id, contentHash string) string {
+	s := "attestations {\n  requirement_id: \"" + id + "\"\n"
+	if contentHash != "" {
+		s += "  content_hash: \"" + contentHash + "\"\n"
+	}
+	return s + "  reason: \"generated voucher\"\n}\n"
 }

@@ -44,8 +44,9 @@ identity and delete its bindings and gap records.
 log; their only persistent effect is the rewritten state of the
 corpus-adjacent records and the tombstone registry.
 
-**REQ-change-dangling** (invariant): A binding or gap record naming an
-identity not present in the corpus MUST be a verification error.
+**REQ-change-dangling** (invariant): A binding, gap, or attestation
+record naming an identity not present in the corpus MUST be a
+verification error.
 
 ## Gaps
 
@@ -60,8 +61,9 @@ to the requirement's canonical path and refusing to overwrite a record that
 names a different requirement.
 
 **REQ-gap-conditions** (behavior): A landing condition MUST be either
-machine-evaluable — `covered(<id>)`, `exists(<id>)` — or attested, firing
-only when explicitly marked fired.
+machine-evaluable — `covered(<id>)`, `exists(<id>)` — or manual, firing
+only when explicitly marked fired: an external judgment distinct from
+attestation evidence.
 
 **REQ-gap-lifecycle** (behavior): Verification MUST classify each gap as
 `open`, `due` (its landing condition holds), or `resolved` (its requirement

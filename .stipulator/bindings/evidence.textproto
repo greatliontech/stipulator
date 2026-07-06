@@ -72,3 +72,39 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "d196ee6236fa26f588fcaf540c7736f5ef60a3d9b94cb56a449fceba93cf2fc8"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-attestation"
+  content_hash: "0e68aac4251661b577f23f0ad5cc35b120665231f2556faf4ee092815108ba12"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.AttestRequirement"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "874f6159ce9b3b35c8e43ffb6e9473d8c52098c309d63e166794a4fb1052054d"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-attestation"
+  content_hash: "0e68aac4251661b577f23f0ad5cc35b120665231f2556faf4ee092815108ba12"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestAttestRequirement"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "61f0e9c1471422a0000f1739a45bd31a63bfaca932488c50b54ba7aa417c6d61"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-attestation"
+  content_hash: "0e68aac4251661b577f23f0ad5cc35b120665231f2556faf4ee092815108ba12"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.TestAttestationEvidence"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a22e47ab5e32c428a00eb136eb5a4c7c814fa8c460933cd8bb08a1b83f325d81"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-attestation"
+  content_hash: "0e68aac4251661b577f23f0ad5cc35b120665231f2556faf4ee092815108ba12"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verify.TestAttestationRecordHygiene"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ccdb79c228cb7be58f1054d52697d4b061c062eb6ce074897bebb5449d128e2b"
+}

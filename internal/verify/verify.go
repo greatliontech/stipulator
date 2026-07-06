@@ -209,6 +209,18 @@ type Report struct {
 	// reads as broken).
 	Registrations                         []RegistrationResult
 	TestsPassed, TestsFailed, TestsNotRun int
+	// Attestations holds the verified state of every well-formed
+	// requirement attestation, in store order.
+	Attestations []AttestationResult
+}
+
+// AttestationResult is one requirement attestation checked against the
+// current corpus: the reason rides to coverage, and a stale content pin
+// means the requirement moved since it was vouched for.
+type AttestationResult struct {
+	RequirementId string
+	Reason        string
+	ContentPinned bool
 }
 
 // Run checks the store against the compiled spec, resolving symbols
@@ -353,6 +365,46 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 			rep.Registrations = append(rep.Registrations, RegistrationResult{
 				Registration: reg,
 				Outcome:      testRun.Outcomes[reg.Package+"."+reg.Test],
+			})
+		}
+	}
+
+	gappedIDs := map[string]bool{}
+	for _, gf := range store.Gaps {
+		gappedIDs[gf.Gap.GetRequirementId()] = true
+	}
+	attestedIDs := map[string]string{}
+	for _, af := range store.Attestations {
+		for _, a := range af.Set.GetAttestations() {
+			id := a.GetRequirementId()
+			switch {
+			case id == "":
+				problem(af.Path, "attestation without requirement_id")
+				continue
+			case a.GetReason() == "":
+				problem(af.Path, "attestation for %s has no reason", id)
+				continue
+			}
+			if prior, dup := attestedIDs[id]; dup {
+				problem(af.Path, "attestation for %s duplicates %s; one judgment per requirement", id, prior)
+				continue
+			}
+			attestedIDs[id] = af.Path
+			hash, known := hashes[id]
+			if !known {
+				problem(af.Path, "attestation names %s, which is not in the corpus", id)
+				continue
+			}
+			if gappedIDs[id] {
+				// Deferred and judged-satisfied contradict: the records
+				// cannot both stand.
+				problem(af.Path, "%s is both gapped and attested; the records contradict — retract one", id)
+				continue
+			}
+			rep.Attestations = append(rep.Attestations, AttestationResult{
+				RequirementId: id,
+				Reason:        a.GetReason(),
+				ContentPinned: a.GetContentHash() == hash,
 			})
 		}
 	}

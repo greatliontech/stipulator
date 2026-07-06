@@ -525,8 +525,218 @@ func (b0 Gap_builder) Build() *Gap {
 	return m0
 }
 
+// RequirementAttestation is the weakest evidence (REQ-evidence-ladder):
+// a reason-carrying human voucher for one requirement, admissible only
+// where the manifest policy names attestation as a cell's minimum, and
+// rendered as its own coverage bucket — never aggregated into covered.
+// The content hash pins the requirement text vouched for; a moved
+// requirement re-stales the attestation.
+type RequirementAttestation struct {
+	state                    protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_RequirementId *string                `protobuf:"bytes,1,opt,name=requirement_id,json=requirementId"`
+	xxx_hidden_ContentHash   *string                `protobuf:"bytes,2,opt,name=content_hash,json=contentHash"`
+	xxx_hidden_Reason        *string                `protobuf:"bytes,3,opt,name=reason"`
+	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
+	XXX_presence             [1]uint32
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
+}
+
+func (x *RequirementAttestation) Reset() {
+	*x = RequirementAttestation{}
+	mi := &file_stipulator_v1_records_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequirementAttestation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequirementAttestation) ProtoMessage() {}
+
+func (x *RequirementAttestation) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_records_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *RequirementAttestation) GetRequirementId() string {
+	if x != nil {
+		if x.xxx_hidden_RequirementId != nil {
+			return *x.xxx_hidden_RequirementId
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *RequirementAttestation) GetContentHash() string {
+	if x != nil {
+		if x.xxx_hidden_ContentHash != nil {
+			return *x.xxx_hidden_ContentHash
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *RequirementAttestation) GetReason() string {
+	if x != nil {
+		if x.xxx_hidden_Reason != nil {
+			return *x.xxx_hidden_Reason
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *RequirementAttestation) SetRequirementId(v string) {
+	x.xxx_hidden_RequirementId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *RequirementAttestation) SetContentHash(v string) {
+	x.xxx_hidden_ContentHash = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *RequirementAttestation) SetReason(v string) {
+	x.xxx_hidden_Reason = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+}
+
+func (x *RequirementAttestation) HasRequirementId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *RequirementAttestation) HasContentHash() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *RequirementAttestation) HasReason() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *RequirementAttestation) ClearRequirementId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_RequirementId = nil
+}
+
+func (x *RequirementAttestation) ClearContentHash() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_ContentHash = nil
+}
+
+func (x *RequirementAttestation) ClearReason() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Reason = nil
+}
+
+type RequirementAttestation_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	RequirementId *string
+	ContentHash   *string
+	Reason        *string
+}
+
+func (b0 RequirementAttestation_builder) Build() *RequirementAttestation {
+	m0 := &RequirementAttestation{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.RequirementId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_RequirementId = b.RequirementId
+	}
+	if b.ContentHash != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		x.xxx_hidden_ContentHash = b.ContentHash
+	}
+	if b.Reason != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_Reason = b.Reason
+	}
+	return m0
+}
+
+// AttestationSet is one attestation record file.
+type AttestationSet struct {
+	state                   protoimpl.MessageState     `protogen:"opaque.v1"`
+	xxx_hidden_Attestations *[]*RequirementAttestation `protobuf:"bytes,1,rep,name=attestations"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *AttestationSet) Reset() {
+	*x = AttestationSet{}
+	mi := &file_stipulator_v1_records_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AttestationSet) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AttestationSet) ProtoMessage() {}
+
+func (x *AttestationSet) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_records_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *AttestationSet) GetAttestations() []*RequirementAttestation {
+	if x != nil {
+		if x.xxx_hidden_Attestations != nil {
+			return *x.xxx_hidden_Attestations
+		}
+	}
+	return nil
+}
+
+func (x *AttestationSet) SetAttestations(v []*RequirementAttestation) {
+	x.xxx_hidden_Attestations = &v
+}
+
+type AttestationSet_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Attestations []*RequirementAttestation
+}
+
+func (b0 AttestationSet_builder) Build() *AttestationSet {
+	m0 := &AttestationSet{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Attestations = &b.Attestations
+	return m0
+}
+
 // LandingCondition states when the deferred work becomes due. Machine
-// conditions are evaluated at verification time; an attested condition
+// conditions are evaluated at verification time; a manual condition
 // fires only when explicitly marked fired.
 type LandingCondition struct {
 	state                protoimpl.MessageState       `protogen:"opaque.v1"`
@@ -537,7 +747,7 @@ type LandingCondition struct {
 
 func (x *LandingCondition) Reset() {
 	*x = LandingCondition{}
-	mi := &file_stipulator_v1_records_proto_msgTypes[3]
+	mi := &file_stipulator_v1_records_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -549,7 +759,7 @@ func (x *LandingCondition) String() string {
 func (*LandingCondition) ProtoMessage() {}
 
 func (x *LandingCondition) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_records_proto_msgTypes[3]
+	mi := &file_stipulator_v1_records_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -578,10 +788,10 @@ func (x *LandingCondition) GetExists() string {
 	return ""
 }
 
-func (x *LandingCondition) GetAttested() *Attested {
+func (x *LandingCondition) GetManual() *ManualCondition {
 	if x != nil {
-		if x, ok := x.xxx_hidden_Condition.(*landingCondition_Attested); ok {
-			return x.Attested
+		if x, ok := x.xxx_hidden_Condition.(*landingCondition_Manual); ok {
+			return x.Manual
 		}
 	}
 	return nil
@@ -595,12 +805,12 @@ func (x *LandingCondition) SetExists(v string) {
 	x.xxx_hidden_Condition = &landingCondition_Exists{v}
 }
 
-func (x *LandingCondition) SetAttested(v *Attested) {
+func (x *LandingCondition) SetManual(v *ManualCondition) {
 	if v == nil {
 		x.xxx_hidden_Condition = nil
 		return
 	}
-	x.xxx_hidden_Condition = &landingCondition_Attested{v}
+	x.xxx_hidden_Condition = &landingCondition_Manual{v}
 }
 
 func (x *LandingCondition) HasCondition() bool {
@@ -626,11 +836,11 @@ func (x *LandingCondition) HasExists() bool {
 	return ok
 }
 
-func (x *LandingCondition) HasAttested() bool {
+func (x *LandingCondition) HasManual() bool {
 	if x == nil {
 		return false
 	}
-	_, ok := x.xxx_hidden_Condition.(*landingCondition_Attested)
+	_, ok := x.xxx_hidden_Condition.(*landingCondition_Manual)
 	return ok
 }
 
@@ -650,8 +860,8 @@ func (x *LandingCondition) ClearExists() {
 	}
 }
 
-func (x *LandingCondition) ClearAttested() {
-	if _, ok := x.xxx_hidden_Condition.(*landingCondition_Attested); ok {
+func (x *LandingCondition) ClearManual() {
+	if _, ok := x.xxx_hidden_Condition.(*landingCondition_Manual); ok {
 		x.xxx_hidden_Condition = nil
 	}
 }
@@ -659,7 +869,7 @@ func (x *LandingCondition) ClearAttested() {
 const LandingCondition_Condition_not_set_case case_LandingCondition_Condition = 0
 const LandingCondition_Covered_case case_LandingCondition_Condition = 1
 const LandingCondition_Exists_case case_LandingCondition_Condition = 2
-const LandingCondition_Attested_case case_LandingCondition_Condition = 3
+const LandingCondition_Manual_case case_LandingCondition_Condition = 3
 
 func (x *LandingCondition) WhichCondition() case_LandingCondition_Condition {
 	if x == nil {
@@ -670,8 +880,8 @@ func (x *LandingCondition) WhichCondition() case_LandingCondition_Condition {
 		return LandingCondition_Covered_case
 	case *landingCondition_Exists:
 		return LandingCondition_Exists_case
-	case *landingCondition_Attested:
-		return LandingCondition_Attested_case
+	case *landingCondition_Manual:
+		return LandingCondition_Manual_case
 	default:
 		return LandingCondition_Condition_not_set_case
 	}
@@ -684,8 +894,8 @@ type LandingCondition_builder struct {
 	// Due when the named requirement reaches the covered bucket.
 	Covered *string
 	// Due when the named requirement exists in the corpus.
-	Exists   *string
-	Attested *Attested
+	Exists *string
+	Manual *ManualCondition
 	// -- end of xxx_hidden_Condition
 }
 
@@ -699,8 +909,8 @@ func (b0 LandingCondition_builder) Build() *LandingCondition {
 	if b.Exists != nil {
 		x.xxx_hidden_Condition = &landingCondition_Exists{*b.Exists}
 	}
-	if b.Attested != nil {
-		x.xxx_hidden_Condition = &landingCondition_Attested{b.Attested}
+	if b.Manual != nil {
+		x.xxx_hidden_Condition = &landingCondition_Manual{b.Manual}
 	}
 	return m0
 }
@@ -708,7 +918,7 @@ func (b0 LandingCondition_builder) Build() *LandingCondition {
 type case_LandingCondition_Condition protoreflect.FieldNumber
 
 func (x case_LandingCondition_Condition) String() string {
-	md := file_stipulator_v1_records_proto_msgTypes[3].Descriptor()
+	md := file_stipulator_v1_records_proto_msgTypes[5].Descriptor()
 	if x == 0 {
 		return "not set"
 	}
@@ -729,17 +939,17 @@ type landingCondition_Exists struct {
 	Exists string `protobuf:"bytes,2,opt,name=exists,oneof"`
 }
 
-type landingCondition_Attested struct {
-	Attested *Attested `protobuf:"bytes,3,opt,name=attested,oneof"`
+type landingCondition_Manual struct {
+	Manual *ManualCondition `protobuf:"bytes,3,opt,name=manual,oneof"`
 }
 
 func (*landingCondition_Covered) isLandingCondition_Condition() {}
 
 func (*landingCondition_Exists) isLandingCondition_Condition() {}
 
-func (*landingCondition_Attested) isLandingCondition_Condition() {}
+func (*landingCondition_Manual) isLandingCondition_Condition() {}
 
-type Attested struct {
+type ManualCondition struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Condition   *string                `protobuf:"bytes,1,opt,name=condition"`
 	xxx_hidden_Fired       bool                   `protobuf:"varint,2,opt,name=fired"`
@@ -749,21 +959,21 @@ type Attested struct {
 	sizeCache              protoimpl.SizeCache
 }
 
-func (x *Attested) Reset() {
-	*x = Attested{}
-	mi := &file_stipulator_v1_records_proto_msgTypes[4]
+func (x *ManualCondition) Reset() {
+	*x = ManualCondition{}
+	mi := &file_stipulator_v1_records_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Attested) String() string {
+func (x *ManualCondition) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Attested) ProtoMessage() {}
+func (*ManualCondition) ProtoMessage() {}
 
-func (x *Attested) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_records_proto_msgTypes[4]
+func (x *ManualCondition) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_records_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -774,7 +984,7 @@ func (x *Attested) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-func (x *Attested) GetCondition() string {
+func (x *ManualCondition) GetCondition() string {
 	if x != nil {
 		if x.xxx_hidden_Condition != nil {
 			return *x.xxx_hidden_Condition
@@ -784,48 +994,48 @@ func (x *Attested) GetCondition() string {
 	return ""
 }
 
-func (x *Attested) GetFired() bool {
+func (x *ManualCondition) GetFired() bool {
 	if x != nil {
 		return x.xxx_hidden_Fired
 	}
 	return false
 }
 
-func (x *Attested) SetCondition(v string) {
+func (x *ManualCondition) SetCondition(v string) {
 	x.xxx_hidden_Condition = &v
 	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
 }
 
-func (x *Attested) SetFired(v bool) {
+func (x *ManualCondition) SetFired(v bool) {
 	x.xxx_hidden_Fired = v
 	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
 }
 
-func (x *Attested) HasCondition() bool {
+func (x *ManualCondition) HasCondition() bool {
 	if x == nil {
 		return false
 	}
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
 }
 
-func (x *Attested) HasFired() bool {
+func (x *ManualCondition) HasFired() bool {
 	if x == nil {
 		return false
 	}
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
 }
 
-func (x *Attested) ClearCondition() {
+func (x *ManualCondition) ClearCondition() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Condition = nil
 }
 
-func (x *Attested) ClearFired() {
+func (x *ManualCondition) ClearFired() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
 	x.xxx_hidden_Fired = false
 }
 
-type Attested_builder struct {
+type ManualCondition_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	// The external condition, in prose, that cannot be machine-evaluated.
@@ -833,8 +1043,8 @@ type Attested_builder struct {
 	Fired     *bool
 }
 
-func (b0 Attested_builder) Build() *Attested {
-	m0 := &Attested{}
+func (b0 ManualCondition_builder) Build() *ManualCondition {
+	m0 := &ManualCondition{}
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Condition != nil {
@@ -859,7 +1069,7 @@ type Tombstones struct {
 
 func (x *Tombstones) Reset() {
 	*x = Tombstones{}
-	mi := &file_stipulator_v1_records_proto_msgTypes[5]
+	mi := &file_stipulator_v1_records_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -871,7 +1081,7 @@ func (x *Tombstones) String() string {
 func (*Tombstones) ProtoMessage() {}
 
 func (x *Tombstones) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_records_proto_msgTypes[5]
+	mi := &file_stipulator_v1_records_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -920,7 +1130,7 @@ type MutationSurvivor struct {
 
 func (x *MutationSurvivor) Reset() {
 	*x = MutationSurvivor{}
-	mi := &file_stipulator_v1_records_proto_msgTypes[6]
+	mi := &file_stipulator_v1_records_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -932,7 +1142,7 @@ func (x *MutationSurvivor) String() string {
 func (*MutationSurvivor) ProtoMessage() {}
 
 func (x *MutationSurvivor) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_records_proto_msgTypes[6]
+	mi := &file_stipulator_v1_records_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1047,7 +1257,7 @@ type Hardening struct {
 
 func (x *Hardening) Reset() {
 	*x = Hardening{}
-	mi := &file_stipulator_v1_records_proto_msgTypes[7]
+	mi := &file_stipulator_v1_records_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1059,7 +1269,7 @@ func (x *Hardening) String() string {
 func (*Hardening) ProtoMessage() {}
 
 func (x *Hardening) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_records_proto_msgTypes[7]
+	mi := &file_stipulator_v1_records_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1431,7 +1641,7 @@ type MutationAttestation struct {
 
 func (x *MutationAttestation) Reset() {
 	*x = MutationAttestation{}
-	mi := &file_stipulator_v1_records_proto_msgTypes[8]
+	mi := &file_stipulator_v1_records_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1443,7 +1653,7 @@ func (x *MutationAttestation) String() string {
 func (*MutationAttestation) ProtoMessage() {}
 
 func (x *MutationAttestation) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_records_proto_msgTypes[8]
+	mi := &file_stipulator_v1_records_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1572,7 +1782,7 @@ type HardeningSet struct {
 
 func (x *HardeningSet) Reset() {
 	*x = HardeningSet{}
-	mi := &file_stipulator_v1_records_proto_msgTypes[9]
+	mi := &file_stipulator_v1_records_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1584,7 +1794,7 @@ func (x *HardeningSet) String() string {
 func (*HardeningSet) ProtoMessage() {}
 
 func (x *HardeningSet) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_records_proto_msgTypes[9]
+	mi := &file_stipulator_v1_records_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1641,13 +1851,19 @@ const file_stipulator_v1_records_proto_rawDesc = "" +
 	"\x03Gap\x12%\n" +
 	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x125\n" +
-	"\x05lands\x18\x03 \x01(\v2\x1f.stipulator.v1.LandingConditionR\x05lands\"\x8c\x01\n" +
+	"\x05lands\x18\x03 \x01(\v2\x1f.stipulator.v1.LandingConditionR\x05lands\"z\n" +
+	"\x16RequirementAttestation\x12%\n" +
+	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x12!\n" +
+	"\fcontent_hash\x18\x02 \x01(\tR\vcontentHash\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"[\n" +
+	"\x0eAttestationSet\x12I\n" +
+	"\fattestations\x18\x01 \x03(\v2%.stipulator.v1.RequirementAttestationR\fattestations\"\x8f\x01\n" +
 	"\x10LandingCondition\x12\x1a\n" +
 	"\acovered\x18\x01 \x01(\tH\x00R\acovered\x12\x18\n" +
-	"\x06exists\x18\x02 \x01(\tH\x00R\x06exists\x125\n" +
-	"\battested\x18\x03 \x01(\v2\x17.stipulator.v1.AttestedH\x00R\battestedB\v\n" +
-	"\tcondition\">\n" +
-	"\bAttested\x12\x1c\n" +
+	"\x06exists\x18\x02 \x01(\tH\x00R\x06exists\x128\n" +
+	"\x06manual\x18\x03 \x01(\v2\x1e.stipulator.v1.ManualConditionH\x00R\x06manualB\v\n" +
+	"\tcondition\"E\n" +
+	"\x0fManualCondition\x12\x1c\n" +
 	"\tcondition\x18\x01 \x01(\tR\tcondition\x12\x14\n" +
 	"\x05fired\x18\x02 \x01(\bR\x05fired\"&\n" +
 	"\n" +
@@ -1683,33 +1899,36 @@ const file_stipulator_v1_records_proto_rawDesc = "" +
 	"\x13BINDING_ROLE_PROVES\x10\x03BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
 var file_stipulator_v1_records_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_stipulator_v1_records_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_stipulator_v1_records_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_stipulator_v1_records_proto_goTypes = []any{
-	(BindingRole)(0),            // 0: stipulator.v1.BindingRole
-	(*Binding)(nil),             // 1: stipulator.v1.Binding
-	(*BindingSet)(nil),          // 2: stipulator.v1.BindingSet
-	(*Gap)(nil),                 // 3: stipulator.v1.Gap
-	(*LandingCondition)(nil),    // 4: stipulator.v1.LandingCondition
-	(*Attested)(nil),            // 5: stipulator.v1.Attested
-	(*Tombstones)(nil),          // 6: stipulator.v1.Tombstones
-	(*MutationSurvivor)(nil),    // 7: stipulator.v1.MutationSurvivor
-	(*Hardening)(nil),           // 8: stipulator.v1.Hardening
-	(*MutationAttestation)(nil), // 9: stipulator.v1.MutationAttestation
-	(*HardeningSet)(nil),        // 10: stipulator.v1.HardeningSet
+	(BindingRole)(0),               // 0: stipulator.v1.BindingRole
+	(*Binding)(nil),                // 1: stipulator.v1.Binding
+	(*BindingSet)(nil),             // 2: stipulator.v1.BindingSet
+	(*Gap)(nil),                    // 3: stipulator.v1.Gap
+	(*RequirementAttestation)(nil), // 4: stipulator.v1.RequirementAttestation
+	(*AttestationSet)(nil),         // 5: stipulator.v1.AttestationSet
+	(*LandingCondition)(nil),       // 6: stipulator.v1.LandingCondition
+	(*ManualCondition)(nil),        // 7: stipulator.v1.ManualCondition
+	(*Tombstones)(nil),             // 8: stipulator.v1.Tombstones
+	(*MutationSurvivor)(nil),       // 9: stipulator.v1.MutationSurvivor
+	(*Hardening)(nil),              // 10: stipulator.v1.Hardening
+	(*MutationAttestation)(nil),    // 11: stipulator.v1.MutationAttestation
+	(*HardeningSet)(nil),           // 12: stipulator.v1.HardeningSet
 }
 var file_stipulator_v1_records_proto_depIdxs = []int32{
-	0, // 0: stipulator.v1.Binding.role:type_name -> stipulator.v1.BindingRole
-	1, // 1: stipulator.v1.BindingSet.bindings:type_name -> stipulator.v1.Binding
-	4, // 2: stipulator.v1.Gap.lands:type_name -> stipulator.v1.LandingCondition
-	5, // 3: stipulator.v1.LandingCondition.attested:type_name -> stipulator.v1.Attested
-	7, // 4: stipulator.v1.Hardening.survivors:type_name -> stipulator.v1.MutationSurvivor
-	9, // 5: stipulator.v1.Hardening.attested:type_name -> stipulator.v1.MutationAttestation
-	8, // 6: stipulator.v1.HardeningSet.records:type_name -> stipulator.v1.Hardening
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	0,  // 0: stipulator.v1.Binding.role:type_name -> stipulator.v1.BindingRole
+	1,  // 1: stipulator.v1.BindingSet.bindings:type_name -> stipulator.v1.Binding
+	6,  // 2: stipulator.v1.Gap.lands:type_name -> stipulator.v1.LandingCondition
+	4,  // 3: stipulator.v1.AttestationSet.attestations:type_name -> stipulator.v1.RequirementAttestation
+	7,  // 4: stipulator.v1.LandingCondition.manual:type_name -> stipulator.v1.ManualCondition
+	9,  // 5: stipulator.v1.Hardening.survivors:type_name -> stipulator.v1.MutationSurvivor
+	11, // 6: stipulator.v1.Hardening.attested:type_name -> stipulator.v1.MutationAttestation
+	10, // 7: stipulator.v1.HardeningSet.records:type_name -> stipulator.v1.Hardening
+	8,  // [8:8] is the sub-list for method output_type
+	8,  // [8:8] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_records_proto_init() }
@@ -1717,10 +1936,10 @@ func file_stipulator_v1_records_proto_init() {
 	if File_stipulator_v1_records_proto != nil {
 		return
 	}
-	file_stipulator_v1_records_proto_msgTypes[3].OneofWrappers = []any{
+	file_stipulator_v1_records_proto_msgTypes[5].OneofWrappers = []any{
 		(*landingCondition_Covered)(nil),
 		(*landingCondition_Exists)(nil),
-		(*landingCondition_Attested)(nil),
+		(*landingCondition_Manual)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -1728,7 +1947,7 @@ func file_stipulator_v1_records_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_records_proto_rawDesc), len(file_stipulator_v1_records_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

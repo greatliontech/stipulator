@@ -3,4 +3,4 @@
 
 requirement_id: "REQ-backend-surfaces"
 reason: "structural clause demands surface-set exactness; the initial prover set (import constraints, interface satisfaction) asserts satisfaction, not exhaustiveness"
-lands { attested { condition: "the prover set can assert interface-set exactness (an exhaustiveness assertion over a backend's surfaces)" } }
+lands { manual { condition: "the prover set can assert interface-set exactness (an exhaustiveness assertion over a backend's surfaces)" } }

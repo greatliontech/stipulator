@@ -235,6 +235,9 @@ const (
 	Bucket_BUCKET_COVERED     Bucket = 4
 	// A MAY requirement with no bindings.
 	Bucket_BUCKET_EXEMPT Bucket = 5
+	// Satisfied only by an attestation on a cell that admits one: the
+	// weakest evidence, rendered distinctly, never folded into covered.
+	Bucket_BUCKET_ATTESTED Bucket = 6
 )
 
 // Enum value maps for Bucket.
@@ -246,6 +249,7 @@ var (
 		3: "BUCKET_BROKEN",
 		4: "BUCKET_COVERED",
 		5: "BUCKET_EXEMPT",
+		6: "BUCKET_ATTESTED",
 	}
 	Bucket_value = map[string]int32{
 		"BUCKET_UNSPECIFIED": 0,
@@ -254,6 +258,7 @@ var (
 		"BUCKET_BROKEN":      3,
 		"BUCKET_COVERED":     4,
 		"BUCKET_EXEMPT":      5,
+		"BUCKET_ATTESTED":    6,
 	}
 )
 
@@ -2636,14 +2641,15 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x19WITNESS_CLASS_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15WITNESS_CLASS_EXAMPLE\x10\x01\x12\x1a\n" +
 	"\x16WITNESS_CLASS_PROPERTY\x10\x02\x12 \n" +
-	"\x1cWITNESS_CLASS_ANALYZER_PROOF\x10\x03*\x82\x01\n" +
+	"\x1cWITNESS_CLASS_ANALYZER_PROOF\x10\x03*\x97\x01\n" +
 	"\x06Bucket\x12\x16\n" +
 	"\x12BUCKET_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10BUCKET_UNCOVERED\x10\x01\x12\x10\n" +
 	"\fBUCKET_STALE\x10\x02\x12\x11\n" +
 	"\rBUCKET_BROKEN\x10\x03\x12\x12\n" +
 	"\x0eBUCKET_COVERED\x10\x04\x12\x11\n" +
-	"\rBUCKET_EXEMPT\x10\x05*d\n" +
+	"\rBUCKET_EXEMPT\x10\x05\x12\x13\n" +
+	"\x0fBUCKET_ATTESTED\x10\x06*d\n" +
 	"\bGapState\x12\x19\n" +
 	"\x15GAP_STATE_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eGAP_STATE_OPEN\x10\x01\x12\x11\n" +

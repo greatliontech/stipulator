@@ -123,6 +123,21 @@ func TestPolicyDefaults(t *testing.T) {
 	if got := bucketOf(t, rep3, "REQ-c-beh").Bucket; got != Covered {
 		t.Errorf("property witness on behavior = %v, want covered", got)
 	}
+
+	// The SHOULD row admits an attestation by default ("a static binding
+	// or an attestation") — rendered attested, never covered; a MUST row
+	// admits none.
+	att := func(id string) verify.AttestationResult {
+		return verify.AttestationResult{RequirementId: id, Reason: "judged", ContentPinned: true}
+	}
+	vr4 := &verify.Report{Attestations: []verify.AttestationResult{att("REQ-c-should"), att("REQ-c-beh")}}
+	rep4 := Evaluate(spec, vr4, store, true, nil)
+	if got := bucketOf(t, rep4, "REQ-c-should").Bucket; got != Attested {
+		t.Errorf("attested SHOULD = %v, want attested", got)
+	}
+	if got := bucketOf(t, rep4, "REQ-c-beh").Bucket; got != Uncovered {
+		t.Errorf("attested MUST = %v, want uncovered", got)
+	}
 }
 
 // TestPolicyOverrides pins the manifest override surface: a named cell's
@@ -307,7 +322,7 @@ func TestGapStates(t *testing.T) {
 	spec, store := fixture(t, doc, map[string]string{
 		".stipulator/gaps/a.textproto": gap("REQ-c-a", `covered: "REQ-c-d"`),      // due when d covered
 		".stipulator/gaps/b.textproto": gap("REQ-c-b", `exists: "REQ-c-ghost"`),   // open: target absent
-		".stipulator/gaps/c.textproto": gap("REQ-c-c", `attested { condition: "external" fired: true }`), // due: fired
+		".stipulator/gaps/c.textproto": gap("REQ-c-c", `manual { condition: "external" fired: true }`), // due: fired
 		".stipulator/gaps/d.textproto": gap("REQ-c-d", `exists: "REQ-c-a"`),       // resolved: d covered
 	})
 	vr := &verify.Report{Results: []verify.BindingResult{
@@ -347,7 +362,7 @@ func TestGate(t *testing.T) {
 	})
 	t.Run("zero coverage passes when every red is declared", func(t *testing.T) {
 		gap := func(id string) string {
-			return "requirement_id: \"" + id + "\"\nreason: \"r\"\nlands { attested { condition: \"later\" } }\n"
+			return "requirement_id: \"" + id + "\"\nreason: \"r\"\nlands { manual { condition: \"later\" } }\n"
 		}
 		spec2, store2 := fixture(t, doc, map[string]string{
 			".stipulator/gaps/a.textproto": gap("REQ-c-a"),
@@ -427,5 +442,76 @@ func TestAnalyzerProofSatisfiesStructural(t *testing.T) {
 	// The report names the drift, not just the missing evidence.
 	if !strings.Contains(strings.Join(beh.Reasons, "; "), "no longer classifies as an analyzer proof") {
 		t.Fatalf("drift not named in reasons: %v", beh.Reasons)
+	}
+}
+
+// TestAttestationEvidence pins the weakest rung (REQ-evidence-attestation):
+// an attestation covers nothing by default, renders the distinct attested
+// bucket only where a policy cell admits it, carries its reason into the
+// output, is never folded into covered when stronger evidence exists, and
+// stales when the requirement moves.
+func TestAttestationEvidence(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-attestation")
+	doc := "# T\n\n**REQ-c-att** (behavior): It MUST x.\n\n**REQ-c-plain** (behavior): It MUST y.\n"
+	spec, store := fixture(t, doc, nil)
+
+	manifest := &stipulatorv1.Manifest{}
+	o := &stipulatorv1.PolicyOverride{}
+	o.SetKind(stipulatorv1.ClauseKind_CLAUSE_KIND_BEHAVIOR)
+	o.SetKeyword(stipulatorv1.Keyword_KEYWORD_MUST)
+	o.SetMinimum(stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_ATTESTATION)
+	manifest.SetPolicy([]*stipulatorv1.PolicyOverride{o})
+	pol, err := PolicyFromManifest(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	att := verify.AttestationResult{RequirementId: "REQ-c-att", Reason: "judged by review", ContentPinned: true}
+
+	// Admitted: the distinct bucket, reason carried, never a violation.
+	rep := Evaluate(spec, &verify.Report{Attestations: []verify.AttestationResult{att}}, store, true, pol)
+	r := bucketOf(t, rep, "REQ-c-att")
+	if r.Bucket != Attested {
+		t.Fatalf("admitted attestation = %v, want attested", r.Bucket)
+	}
+	if !strings.Contains(strings.Join(r.Reasons, " "), "attested: judged by review") {
+		t.Fatalf("reason not carried: %v", r.Reasons)
+	}
+	if bucketProto[r.Bucket] != stipulatorv1.Bucket_BUCKET_ATTESTED {
+		t.Fatalf("wire bucket = %v", bucketProto[r.Bucket])
+	}
+	for _, v := range rep.Violations {
+		if v == "REQ-c-att" {
+			t.Fatal("attested requirement read as a violation")
+		}
+	}
+
+	// Never aggregated: with a real witness present the bucket is
+	// covered — the attestation contributes nothing to stronger kinds.
+	wit := result("REQ-c-att", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed)
+	rep2 := Evaluate(spec, &verify.Report{
+		Results:      []verify.BindingResult{wit},
+		Attestations: []verify.AttestationResult{att},
+	}, store, true, pol)
+	if got := bucketOf(t, rep2, "REQ-c-att").Bucket; got != Covered {
+		t.Fatalf("witness + attestation = %v, want covered", got)
+	}
+
+	// Default policy admits attestation nowhere: uncovered, with the
+	// inadmissibility surfaced.
+	rep3 := Evaluate(spec, &verify.Report{Attestations: []verify.AttestationResult{att}}, store, true, nil)
+	r3 := bucketOf(t, rep3, "REQ-c-att")
+	if r3.Bucket != Uncovered {
+		t.Fatalf("default-policy attestation = %v, want uncovered", r3.Bucket)
+	}
+	if !strings.Contains(strings.Join(r3.Reasons, " "), "does not meet this cell's minimum") {
+		t.Fatalf("inadmissibility not surfaced: %v", r3.Reasons)
+	}
+
+	// A moved requirement stales the voucher.
+	staleAtt := verify.AttestationResult{RequirementId: "REQ-c-att", Reason: "old judgment", ContentPinned: false}
+	rep4 := Evaluate(spec, &verify.Report{Attestations: []verify.AttestationResult{staleAtt}}, store, true, pol)
+	if got := bucketOf(t, rep4, "REQ-c-att").Bucket; got != Stale {
+		t.Fatalf("stale attestation = %v, want stale", got)
 	}
 }

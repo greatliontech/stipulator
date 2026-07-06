@@ -43,6 +43,10 @@ enum MinimumEvidence {
   // No evidence demanded: unbound requirements read exempt; bound ones
   // keep claim hygiene (broken and stale still read red).
   MINIMUM_EVIDENCE_EXEMPT = 6;
+  // A reason-carrying attestation record suffices; satisfied by
+  // attestation alone renders the distinct attested bucket, and any
+  // stronger evidence renders covered as usual (REQ-evidence-attestation).
+  MINIMUM_EVIDENCE_ATTESTATION = 7;
 }
 
 // PolicyOverride replaces the default minimum evidence for one exact

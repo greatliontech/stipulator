@@ -7,6 +7,9 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   shape pins and Go witnesses cannot cover.*
 - **[term-name-shadowing-lint](term-name-shadowing-lint.md)** — warn when a term name shadows
   another term or a common word. *Lands: when profile lints are extended.*
+- **[gap-declare-no-upsert](gap-declare-no-upsert.md)** — `gap` refuses to update an existing
+  declaration (no upsert, no `--force`), so evolving a stale reason forces hand-edited textproto —
+  asymmetric with `bind`. *Lands: when gap-authoring ergonomics are revisited.*
 - **[gopter-property-recognition](gopter-property-recognition.md)** — gopter-driven tests
   classify as example witnesses; the classifier recognizes fuzz targets and rapid drivers
   only. *Lands: when a corpus standardized on gopter needs invariant coverage.*

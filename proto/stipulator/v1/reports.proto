@@ -94,6 +94,9 @@ enum Bucket {
   BUCKET_COVERED = 4;
   // A MAY requirement with no bindings.
   BUCKET_EXEMPT = 5;
+  // Satisfied only by an attestation on a cell that admits one: the
+  // weakest evidence, rendered distinctly, never folded into covered.
+  BUCKET_ATTESTED = 6;
 }
 
 // GapState classifies a gap record.

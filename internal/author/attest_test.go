@@ -62,3 +62,34 @@ func TestAttest(t *testing.T) {
 		t.Fatalf("sheetless attestation accepted: %v", err)
 	}
 }
+
+// TestAttestRequirement pins the evidence-attestation verb: reasoned,
+// corpus-validated, content-pinned at write, one per requirement.
+func TestAttestRequirement(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-attestation")
+	fsys := testFS(nil)
+
+	up, err := AttestRequirement(fsys, "REQ-au-a", "review judged this satisfied")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if up.Path != ".stipulator/attestations/au-a.textproto" {
+		t.Fatalf("path = %s", up.Path)
+	}
+	for _, want := range []string{`requirement_id: "REQ-au-a"`, "review judged this satisfied", "content_hash: "} {
+		if !strings.Contains(string(up.Content), want) {
+			t.Fatalf("attestation missing %q:\n%s", want, up.Content)
+		}
+	}
+
+	if _, err := AttestRequirement(fsys, "REQ-au-a", ""); err == nil || !strings.Contains(err.Error(), "reason") {
+		t.Fatalf("reasonless attestation accepted: %v", err)
+	}
+	if _, err := AttestRequirement(fsys, "REQ-au-ghost", "r"); err == nil || !strings.Contains(err.Error(), "not in the corpus") {
+		t.Fatalf("ghost requirement attested: %v", err)
+	}
+	fsys[up.Path] = &fstest.MapFile{Data: up.Content}
+	if _, err := AttestRequirement(fsys, "REQ-au-a", "again"); err == nil || !strings.Contains(err.Error(), "already attested") {
+		t.Fatalf("duplicate attestation accepted: %v", err)
+	}
+}

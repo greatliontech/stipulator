@@ -3,4 +3,4 @@
 
 requirement_id: "REQ-gate-change-signature"
 reason: "change-signature classifier not yet built"
-lands { attested { condition: "change-signature classifier chunk begins" } }
+lands { manual { condition: "change-signature classifier chunk begins" } }
