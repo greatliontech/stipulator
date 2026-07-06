@@ -6,7 +6,7 @@
 |---|---|---|---|
 | [change.md](change.md) | Change model | 14 | 0 |
 | [context.md](context.md) | Context facts | 2 | 0 |
-| [evidence.md](evidence.md) | Bindings, evidence, coverage | 17 | 0 |
+| [evidence.md](evidence.md) | Bindings, evidence, coverage | 18 | 0 |
 | [hardening.md](hardening.md) | Witness hardening | 6 | 1 |
 | [mcp.md](mcp.md) | MCP surface | 5 | 0 |
 | [model.md](model.md) | Intermediate representation | 12 | 0 |
@@ -50,6 +50,7 @@
 - `REQ-evidence-generated-code` (behavior, must)
 - `REQ-evidence-ladder` (behavior, must)
 - `REQ-evidence-promotion` (invariant, must)
+- `REQ-evidence-proves-discharge` (behavior, must)
 - `REQ-evidence-record-verbs` (behavior, must)
 - `REQ-evidence-run-attributes` (behavior, must)
 - `REQ-evidence-witness` (behavior, must)

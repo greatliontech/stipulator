@@ -180,9 +180,10 @@ func (x TestOutcome) Number() protoreflect.EnumNumber {
 type WitnessClass int32
 
 const (
-	WitnessClass_WITNESS_CLASS_UNSPECIFIED WitnessClass = 0
-	WitnessClass_WITNESS_CLASS_EXAMPLE     WitnessClass = 1
-	WitnessClass_WITNESS_CLASS_PROPERTY    WitnessClass = 2
+	WitnessClass_WITNESS_CLASS_UNSPECIFIED    WitnessClass = 0
+	WitnessClass_WITNESS_CLASS_EXAMPLE        WitnessClass = 1
+	WitnessClass_WITNESS_CLASS_PROPERTY       WitnessClass = 2
+	WitnessClass_WITNESS_CLASS_ANALYZER_PROOF WitnessClass = 3
 )
 
 // Enum value maps for WitnessClass.
@@ -191,11 +192,13 @@ var (
 		0: "WITNESS_CLASS_UNSPECIFIED",
 		1: "WITNESS_CLASS_EXAMPLE",
 		2: "WITNESS_CLASS_PROPERTY",
+		3: "WITNESS_CLASS_ANALYZER_PROOF",
 	}
 	WitnessClass_value = map[string]int32{
-		"WITNESS_CLASS_UNSPECIFIED": 0,
-		"WITNESS_CLASS_EXAMPLE":     1,
-		"WITNESS_CLASS_PROPERTY":    2,
+		"WITNESS_CLASS_UNSPECIFIED":    0,
+		"WITNESS_CLASS_EXAMPLE":        1,
+		"WITNESS_CLASS_PROPERTY":       2,
+		"WITNESS_CLASS_ANALYZER_PROOF": 3,
 	}
 )
 
@@ -2576,11 +2579,12 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x14TEST_OUTCOME_NOT_RUN\x10\x01\x12\x17\n" +
 	"\x13TEST_OUTCOME_PASSED\x10\x02\x12\x17\n" +
 	"\x13TEST_OUTCOME_FAILED\x10\x03\x12\x18\n" +
-	"\x14TEST_OUTCOME_SKIPPED\x10\x04*d\n" +
+	"\x14TEST_OUTCOME_SKIPPED\x10\x04*\x86\x01\n" +
 	"\fWitnessClass\x12\x1d\n" +
 	"\x19WITNESS_CLASS_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15WITNESS_CLASS_EXAMPLE\x10\x01\x12\x1a\n" +
-	"\x16WITNESS_CLASS_PROPERTY\x10\x02*\x82\x01\n" +
+	"\x16WITNESS_CLASS_PROPERTY\x10\x02\x12 \n" +
+	"\x1cWITNESS_CLASS_ANALYZER_PROOF\x10\x03*\x82\x01\n" +
 	"\x06Bucket\x12\x16\n" +
 	"\x12BUCKET_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10BUCKET_UNCOVERED\x10\x01\x12\x10\n" +

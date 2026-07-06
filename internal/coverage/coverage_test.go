@@ -58,8 +58,8 @@ const (
 
 // TestPolicyDefaults pins the (kind, keyword) → minimum-evidence table and
 // with it the evidence ladder: a witness satisfies behavior, a static
-// binding does not; a static binding satisfies SHOULD; nothing satisfies
-// structural until an analyzer proof exists.
+// binding does not; a static binding satisfies SHOULD; structural
+// accepts nothing weaker than an analyzer proof.
 func TestPolicyDefaults(t *testing.T) {
 	stipulate.Covers(t, "REQ-coverage-policy-default", "REQ-evidence-ladder")
 	doc := "# T\n\n" +
@@ -264,5 +264,59 @@ func TestReasonsAreDeterministic(t *testing.T) {
 	}
 	if len(a.Reasons) == 0 {
 		t.Fatal("red bucket carries no reasons")
+	}
+}
+
+// TestAnalyzerProofSatisfiesStructural pins the proof grant: a passing
+// proves-role binding whose witness class is an analyzer proof covers
+// structural (and invariant) requirements; an example witness never does.
+func TestAnalyzerProofSatisfiesStructural(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-structural-provers")
+	doc := "# T\n\n**REQ-c-str** (structural): It MUST NOT depend.\n\n**REQ-c-inv** (invariant): It MUST hold.\n\n**REQ-c-beh** (behavior): It MUST behave.\n"
+	spec, store := fixture(t, doc, nil)
+	proves := stipulatorv1.BindingRole_BINDING_ROLE_PROVES
+
+	proof := result("REQ-c-str", proves, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed)
+	proof.WitnessClass = verify.AnalyzerProof
+	invProof := result("REQ-c-inv", proves, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed)
+	invProof.WitnessClass = verify.AnalyzerProof
+	rep := Evaluate(spec, &verify.Report{Results: []verify.BindingResult{proof, invProof}}, store, true)
+	if b := bucketOf(t, rep, "REQ-c-str"); b.Bucket != Covered {
+		t.Fatalf("structural with proof = %s (%v)", b.Bucket, b.Reasons)
+	}
+	if b := bucketOf(t, rep, "REQ-c-inv"); b.Bucket != Covered {
+		t.Fatalf("invariant with proof = %s (%v)", b.Bucket, b.Reasons)
+	}
+
+	// The same binding downgraded to an example witness covers neither.
+	weak := proof
+	weak.WitnessClass = verify.ExampleWitness
+	weakInv := invProof
+	weakInv.WitnessClass = verify.ExampleWitness
+	rep = Evaluate(spec, &verify.Report{Results: []verify.BindingResult{weak, weakInv}}, store, true)
+	if b := bucketOf(t, rep, "REQ-c-str"); b.Bucket != Uncovered {
+		t.Fatalf("structural with example witness = %s", b.Bucket)
+	}
+	// A failing prover is broken, not merely uncovered.
+	failing := proof
+	failing.TestOutcome = verify.TestFailed
+	rep = Evaluate(spec, &verify.Report{Results: []verify.BindingResult{failing}}, store, true)
+	if b := bucketOf(t, rep, "REQ-c-str"); b.Bucket != Broken {
+		t.Fatalf("failing prover = %s", b.Bucket)
+	}
+
+	// A proves claim whose class drifted off proof grants nothing at all:
+	// even a behavior requirement, which an example witness would cover,
+	// stays uncovered.
+	drifted := result("REQ-c-beh", proves, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed)
+	drifted.WitnessClass = verify.ExampleWitness
+	rep = Evaluate(spec, &verify.Report{Results: []verify.BindingResult{drifted}}, store, true)
+	beh := bucketOf(t, rep, "REQ-c-beh")
+	if beh.Bucket != Uncovered {
+		t.Fatalf("behavior with drifted proves claim = %s", beh.Bucket)
+	}
+	// The report names the drift, not just the missing evidence.
+	if !strings.Contains(strings.Join(beh.Reasons, "; "), "no longer classifies as an analyzer proof") {
+		t.Fatalf("drift not named in reasons: %v", beh.Reasons)
 	}
 }

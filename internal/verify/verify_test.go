@@ -308,10 +308,13 @@ func TestWitnessCorrelation(t *testing.T) {
 	shadowBinding := strings.ReplaceAll(
 		strings.ReplaceAll(binding("REQ-v-b", ""), "example.com/p.F", "example.com/p.TestC"),
 		"BINDING_ROLE_IMPLEMENTS", "BINDING_ROLE_TESTS")
+	provesBinding := strings.ReplaceAll(
+		strings.ReplaceAll(binding("REQ-v-b", ""), "example.com/p.F", "example.com/p.TestD"),
+		"BINDING_ROLE_IMPLEMENTS", "BINDING_ROLE_PROVES")
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto":             {Data: []byte("include: \"specs/**/*.md\"\n")},
 		"specs/a.md":                       {Data: []byte(goodDoc)},
-		".stipulator/bindings/x.textproto": {Data: []byte(testsBinding + failBinding + shadowBinding)},
+		".stipulator/bindings/x.textproto": {Data: []byte(testsBinding + failBinding + shadowBinding + provesBinding)},
 	}
 	spec, diags, err := compile.Compile(fsys)
 	if err != nil || len(diags) > 0 {
@@ -326,23 +329,28 @@ func TestWitnessCorrelation(t *testing.T) {
 			"example.com/p.TestA":     TestPassed,
 			"example.com/p.TestA/sub": TestPassed,
 			"example.com/p.TestB":     TestFailed,
+			"example.com/p.TestD":     TestPassed,
 		},
 		Registrations: []Registration{
 			{Package: "example.com/p", Test: "TestA/sub", Requirement: "REQ-v-a"}, // backed, subtest
 			{Package: "example.com/p", Test: "TestA", Requirement: "REQ-v-b"},     // NOT backed by TestA
+			{Package: "example.com/p", Test: "TestD", Requirement: "REQ-v-b"},     // backed by a proves-role binding
 		},
 	}
 	rep := Run(spec, store, nil, tr)
-	if rep.TestsPassed != 1 || rep.TestsFailed != 1 {
+	if rep.TestsPassed != 2 || rep.TestsFailed != 1 {
 		t.Fatalf("tests passed=%d failed=%d", rep.TestsPassed, rep.TestsFailed)
 	}
 	if rep.TestsNotRun != 1 { // TestC bound but produced no outcome
 		t.Fatalf("tests not-run = %d (unwitnessed bound test must surface)", rep.TestsNotRun)
 	}
-	wantProblem(t, rep, "covers REQ-v-b, but no role-tests binding backs it")
-	if len(rep.Registrations) != 1 || rep.Registrations[0].Requirement != "REQ-v-a" ||
+	wantProblem(t, rep, "covers REQ-v-b, but no tests- or proves-role binding backs it")
+	if len(rep.Registrations) != 2 || rep.Registrations[0].Requirement != "REQ-v-a" ||
 		rep.Registrations[0].Outcome != TestPassed {
 		t.Fatalf("registrations = %+v", rep.Registrations)
+	}
+	if rep.Registrations[1].Requirement != "REQ-v-b" || rep.Registrations[1].Outcome != TestPassed {
+		t.Fatalf("proves-backed registration = %+v", rep.Registrations[1])
 	}
 	for _, r := range rep.Results {
 		if r.Symbol == "example.com/p.TestB" && r.TestOutcome != TestFailed {

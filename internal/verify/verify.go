@@ -123,8 +123,8 @@ type BindingResult struct {
 	ContentPinned bool
 	Resolution    Resolution
 	Shape         ShapeState
-	// TestOutcome is set for role-tests bindings when the run witnessed
-	// tests; WitnessClass and RaceEnabled qualify the witness.
+	// TestOutcome is set for tests- and proves-role bindings when the run
+	// witnessed tests; WitnessClass and RaceEnabled qualify the witness.
 	TestOutcome  TestOutcome
 	WitnessClass WitnessClass
 	RaceEnabled  bool
@@ -139,7 +139,17 @@ const (
 	// PropertyWitness: the test is generator-driven, quantifying over
 	// inputs (e.g. a fuzz target).
 	PropertyWitness
+	// AnalyzerProof: the test's assertions are recognized analyzer calls
+	// (the stipulate/structural library) — the proof tier.
+	AnalyzerProof
 )
+
+// witnessRole reports whether a binding's role carries a test outcome:
+// tests and proves both name executable symbols.
+func witnessRole(role stipulatorv1.BindingRole) bool {
+	return role == stipulatorv1.BindingRole_BINDING_ROLE_TESTS ||
+		role == stipulatorv1.BindingRole_BINDING_ROLE_PROVES
+}
 
 // WitnessClassifier is an optional Backend extension: it resolves, from
 // the code, what class of witness a bound test yields.
@@ -193,9 +203,10 @@ type Report struct {
 	// verifier in this run.
 	ShapePinned, ShapeUnpinned, ShapeMismatch, Broken, Unverified int
 	// Registrations holds the cross-checked runtime coverage claims;
-	// TestsPassed, TestsFailed, and TestsNotRun count role-tests bindings
-	// by witnessed outcome (TestsNotRun counts bound tests that produced
-	// no outcome in a witnessed run — unwitnessed, reads as broken).
+	// TestsPassed, TestsFailed, and TestsNotRun count tests- and
+	// proves-role bindings by witnessed outcome (TestsNotRun counts bound
+	// tests that produced no outcome in a witnessed run — unwitnessed,
+	// reads as broken).
 	Registrations                         []RegistrationResult
 	TestsPassed, TestsFailed, TestsNotRun int
 }
@@ -267,7 +278,7 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 				rep.Stale++
 			}
 
-			if testRun != nil && b.GetRole() == stipulatorv1.BindingRole_BINDING_ROLE_TESTS {
+			if testRun != nil && witnessRole(b.GetRole()) {
 				result.TestOutcome = testRun.Outcomes[b.GetSymbol()]
 				result.RaceEnabled = testRun.RaceEnabled
 				if wc, ok := backends[b.GetBackend()].(WitnessClassifier); ok {
@@ -321,14 +332,14 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 
 	if testRun != nil {
 		// Cross-check runtime registrations: every registration must be
-		// backed by a role-tests binding for the same requirement on the
-		// registration's top-level test — the binding store remains the
-		// only claim source.
+		// backed by a witness-role binding (tests or proves) for the same
+		// requirement on the registration's top-level test — the binding
+		// store remains the only claim source.
 		type reqTest struct{ req, symbol string }
 		backed := map[reqTest]bool{}
 		for _, bf := range store.Bindings {
 			for _, b := range bf.Set.GetBindings() {
-				if b.GetRole() == stipulatorv1.BindingRole_BINDING_ROLE_TESTS {
+				if witnessRole(b.GetRole()) {
 					backed[reqTest{b.GetRequirementId(), b.GetSymbol()}] = true
 				}
 			}
@@ -336,7 +347,7 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 		for _, reg := range testRun.Registrations {
 			symbol := reg.Package + "." + reg.TopLevel()
 			if !backed[reqTest{reg.Requirement, symbol}] {
-				problem("test run", "registration %s.%s covers %s, but no role-tests binding backs it", reg.Package, reg.Test, reg.Requirement)
+				problem("test run", "registration %s.%s covers %s, but no tests- or proves-role binding backs it", reg.Package, reg.Test, reg.Requirement)
 				continue
 			}
 			rep.Registrations = append(rep.Registrations, RegistrationResult{

@@ -1,0 +1,60 @@
+// Package arch holds the repository's structural proofs: analyzer
+// assertions over the import graph and interface surfaces, executed as
+// ordinary tests and scored as the proof evidence class.
+package arch
+
+import (
+	"testing"
+
+	"github.com/greatliontech/stipulator/internal/backends/golang"
+	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/stipulate"
+	"github.com/greatliontech/stipulator/stipulate/structural"
+)
+
+const mod = "github.com/greatliontech/stipulator"
+
+// TestCoreNeverImportsBackends proves backend neutrality: the compilation,
+// binding, coverage, and change models never depend on a backend —
+// backend knowledge is confined to symbol interpretation and proving.
+func TestCoreNeverImportsBackends(t *testing.T) {
+	stipulate.Covers(t, "REQ-backend-core-neutral")
+	for _, core := range []string{
+		mod + "/internal/canon", mod + "/internal/corpus", mod + "/internal/profile",
+		mod + "/internal/compile", mod + "/internal/records", mod + "/internal/author",
+		mod + "/internal/verify", mod + "/internal/coverage", mod + "/internal/diff",
+		mod + "/internal/bundle", mod + "/internal/facts", mod + "/internal/index",
+	} {
+		structural.NoImport(t, core, mod+"/internal/backends/...")
+	}
+}
+
+// TestCoreIsVcsFree proves the VCS-independence invariant: no core package
+// reads version-control state or shells out — revisions enter only as
+// trees. The Go backend is the one sanctioned toolchain exception (go
+// test, go/packages), and command wiring may exec; neither is core.
+func TestCoreIsVcsFree(t *testing.T) {
+	stipulate.Covers(t, "REQ-core-vcs-free")
+	for _, core := range []string{
+		mod + "/internal/canon", mod + "/internal/corpus", mod + "/internal/profile",
+		mod + "/internal/compile", mod + "/internal/records", mod + "/internal/author",
+		mod + "/internal/verify", mod + "/internal/coverage", mod + "/internal/diff",
+		mod + "/internal/bundle", mod + "/internal/facts", mod + "/internal/index",
+	} {
+		structural.NoImport(t, core,
+			"os/exec",
+			"github.com/go-git/go-git/...",
+			"github.com/go-git/go-billy/...",
+		)
+	}
+}
+
+// TestBackendSatisfiesVerifierSurfaces proves the Go backend's optional
+// surfaces are real interface satisfactions, not naming coincidences.
+func TestBackendSatisfiesVerifierSurfaces(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-structural-provers")
+	structural.Implements(t, (*golang.Backend)(nil), (*verify.Backend)(nil))
+	structural.Implements(t, (*golang.Backend)(nil), (*verify.Slicer)(nil))
+	structural.Implements(t, (*golang.Backend)(nil), (*verify.WitnessClassifier)(nil))
+	structural.Implements(t, (*golang.Backend)(nil), (*verify.VacuityChecker)(nil))
+}

@@ -26,13 +26,16 @@ package load failure is a verification error, not an absence.
 
 **REQ-go-witness** (behavior): Witnesses MUST be derived from `go test -json`
 output produced in the current verification run, correlating passed tests
-with bindings of role `tests`; toolchain cache replays are current-run
+with bindings of role `tests` or `proves` — both name executable test
+symbols; toolchain cache replays are current-run
 equivalent (the cache key is the tree content), and a bound test producing
 no outcome in a witnessed run is unwitnessed and reads as `broken`; a
 skipped test grants no witness without reading as `broken`.
 
-**REQ-go-witness-class** (behavior): A witness MUST be classified `property`
-when its bound test is a fuzz target (a function taking `*testing.F`), and
+**REQ-go-witness-class** (behavior): A witness MUST be classified `proof`
+when its bound test's own body directly invokes the `stipulate/structural`
+analyzer library (indirection through a helper does not classify),
+`property` when it is a fuzz target (a function taking `*testing.F`), and
 `example` otherwise; the classification is resolved from the code, never
 declared.
 
@@ -49,15 +52,19 @@ runtime through the provided `Covers(t, id)` helper, which yields
 subtest-granular witnesses in the same run.
 
 **REQ-go-covers-crosscheck** (behavior): A runtime registration naming a
-requirement that has no matching binding of role `tests` MUST be a
-verification error; the binding store is the only claim source.
+requirement that has no matching binding of role `tests` or `proves` MUST
+be a verification error; the binding store is the only claim source.
 
 ## Structural provers
 
 **REQ-go-structural-provers** (behavior): The Go backend MUST provide
-analyzers asserting import constraints (a package set does not import
-another) and interface satisfaction (a named type implements a named
-interface), as the initial prover set for `structural` clauses.
+analyzer assertions — import constraints (a package set does not import
+another, transitively) and interface satisfaction (a named type implements
+a named interface) as the initial set — authored as tests invoking the
+`stipulate/structural` library, with the proof class resolved from the
+invoking code exactly as witness classes are: never declared. Parameters
+live in the test source, type-checked and reviewable, and the assertion
+executes in the ordinary witness run.
 
 ## Slice
 

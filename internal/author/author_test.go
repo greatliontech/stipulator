@@ -399,3 +399,61 @@ func TestPruneResolvedGaps(t *testing.T) {
 		t.Fatalf("prunes unordered or incomplete: %+v", both)
 	}
 }
+
+// fakeClassifier resolves a fixed witness class alongside resolution.
+type fakeClassifier struct {
+	fakeBackend
+	class verify.WitnessClass
+}
+
+func (f fakeClassifier) WitnessClass(string) verify.WitnessClass { return f.class }
+
+// fakeVacuous layers a vacuity verdict over fakeClassifier.
+type fakeVacuous struct {
+	fakeClassifier
+	vacuous bool
+}
+
+func (f fakeVacuous) Vacuous(string) (bool, error) { return f.vacuous, nil }
+
+// TestProvesDischarge pins the loud-failure contract: a proves claim the
+// backend cannot discharge is refused at write time, never recorded.
+func TestProvesDischarge(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-proves-discharge")
+	fsys := testFS(nil)
+	req := bindReq("REQ-au-a", "example.com/p.F")
+	req.Role = stipulatorv1.BindingRole_BINDING_ROLE_PROVES
+
+	fb := fakeBackend{"example.com/p.F": strings.Repeat("s", 64)}
+	example := map[string]verify.Backend{"go": fakeClassifier{fb, verify.ExampleWitness}}
+	if _, err := Bind(fsys, example, req); err == nil || !strings.Contains(err.Error(), "cannot discharge") {
+		t.Fatalf("undischargeable proof accepted: %v", err)
+	}
+
+	proof := map[string]verify.Backend{"go": fakeClassifier{fb, verify.AnalyzerProof}}
+	if _, err := Bind(fsys, proof, req); err != nil {
+		t.Fatalf("analyzer test refused: %v", err)
+	}
+
+	// A backend with no classifier at all cannot discharge either.
+	if _, err := Bind(fsys, backends, req); err == nil || !strings.Contains(err.Error(), "cannot discharge") {
+		t.Fatalf("classifierless backend accepted a proof: %v", err)
+	}
+
+	// A vacuous analyzer test is refused exactly as a tests-role witness
+	// would be: the proof tier gets no weaker gate.
+	vac := map[string]verify.Backend{"go": fakeVacuous{fakeClassifier{fb, verify.AnalyzerProof}, true}}
+	if _, err := Bind(fsys, vac, req); err == nil || !strings.Contains(err.Error(), "no failure path") {
+		t.Fatalf("vacuous proof accepted: %v", err)
+	}
+	solid := map[string]verify.Backend{"go": fakeVacuous{fakeClassifier{fb, verify.AnalyzerProof}, false}}
+	if _, err := Bind(fsys, solid, req); err != nil {
+		t.Fatalf("non-vacuous proof refused: %v", err)
+	}
+
+	// No loaded verifier: the claim cannot be checked at write time, so it
+	// is refused rather than recorded.
+	if _, err := Bind(fsys, map[string]verify.Backend{}, req); err == nil || !strings.Contains(err.Error(), "cannot be checked") {
+		t.Fatalf("unloaded backend accepted a proof: %v", err)
+	}
+}

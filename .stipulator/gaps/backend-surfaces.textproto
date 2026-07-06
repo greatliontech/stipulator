@@ -2,5 +2,5 @@
 # proto-message: stipulator.v1.Gap
 
 requirement_id: "REQ-backend-surfaces"
-reason: "structural clause; no analyzer proof exists yet"
-lands { covered: "REQ-go-structural-provers" }
+reason: "structural clause demands surface-set exactness; the initial prover set (import constraints, interface satisfaction) asserts satisfaction, not exhaustiveness"
+lands { attested { condition: "the prover set can assert interface-set exactness (an exhaustiveness assertion over a backend's surfaces)" } }

@@ -1,0 +1,11 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-core-vcs-free"
+  content_hash: "54f6faa1e618120c103a1cb3d996f6053d7f902c93457e2a5f104975583e69e0"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/arch.TestCoreIsVcsFree"
+  role: BINDING_ROLE_PROVES
+  shape_hash: "07a0d610efa2f7323d18097116008ae8ddde17e148ad3e93b92f25fdfa110a3e"
+}

@@ -14,6 +14,8 @@ import (
 	"go/types"
 	"sort"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"golang.org/x/tools/go/packages"
 
@@ -120,10 +122,37 @@ func lookup(pkg *types.Package, parts []string) types.Object {
 	return nil
 }
 
-// WitnessClass implements verify.WitnessClassifier: a fuzz target — a
-// function taking *testing.F — yields a property witness; everything else
-// is an example witness. Resolved from the code, never declared.
+// structuralPkg is the analyzer-assertion library: a test invoking it is
+// the proof class.
+const structuralPkg = "github.com/greatliontech/stipulator/stipulate/structural"
+
+// WitnessClass implements verify.WitnessClassifier: a test invoking the
+// structural library yields an analyzer proof; a fuzz target — a function
+// taking *testing.F — yields a property witness; everything else is an
+// example witness. Resolved from the code, never declared.
 func (b *Backend) WitnessClass(symbol string) verify.WitnessClass {
+	// Proof outranks property: resolved from the body's callees. Only a
+	// test the witness run executes can be a proof — a structural
+	// invocation in a plain function never runs, so it never classifies.
+	if fd, pkg, err := b.funcDecl(symbol); err == nil && fd.Body != nil && runnableWitness(fd, pkg) {
+		proof := false
+		ast.Inspect(fd.Body, func(n ast.Node) bool {
+			call, ok := n.(*ast.CallExpr)
+			if !ok || proof {
+				return !proof
+			}
+			if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
+				if obj := pkg.TypesInfo.Uses[sel.Sel]; obj != nil && obj.Pkg() != nil && obj.Pkg().Path() == structuralPkg {
+					proof = true
+					return false
+				}
+			}
+			return true
+		})
+		if proof {
+			return verify.AnalyzerProof
+		}
+	}
 	pkgPath, rest := b.splitSymbol(symbol)
 	if pkgPath == "" {
 		return verify.ExampleWitness
@@ -149,6 +178,51 @@ func (b *Backend) WitnessClass(symbol string) verify.WitnessClass {
 		}
 	}
 	return verify.ExampleWitness
+}
+
+// runnableWitness reports whether the declaration is a test the ordinary
+// witness run executes: a Test or Fuzz function in a _test.go file taking
+// the matching testing handle, per go test's naming rule (the name after
+// the prefix must not start lowercase). Anything else never runs, so it
+// can never produce evidence.
+func runnableWitness(fd *ast.FuncDecl, pkg *packages.Package) bool {
+	name := fd.Name.Name
+	var prefix, handle string
+	switch {
+	case strings.HasPrefix(name, "Test"):
+		prefix, handle = "Test", "T"
+	case strings.HasPrefix(name, "Fuzz"):
+		prefix, handle = "Fuzz", "F"
+	default:
+		return false
+	}
+	if rest := name[len(prefix):]; rest != "" {
+		r, _ := utf8.DecodeRuneInString(rest)
+		if unicode.IsLower(r) {
+			return false
+		}
+	}
+	if !strings.HasSuffix(pkg.Fset.Position(fd.Pos()).Filename, "_test.go") {
+		return false
+	}
+	fn, ok := pkg.TypesInfo.Defs[fd.Name].(*types.Func)
+	if !ok {
+		return false
+	}
+	sig := fn.Type().(*types.Signature)
+	if sig.Recv() != nil || sig.Params().Len() != 1 {
+		return false
+	}
+	ptr, ok := sig.Params().At(0).Type().(*types.Pointer)
+	if !ok {
+		return false
+	}
+	named, ok := ptr.Elem().(*types.Named)
+	if !ok {
+		return false
+	}
+	obj := named.Obj()
+	return obj.Pkg() != nil && obj.Pkg().Path() == "testing" && obj.Name() == handle
 }
 
 // shapeHash hashes the object's declared type rendered with fully

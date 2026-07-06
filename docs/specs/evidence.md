@@ -35,6 +35,11 @@ authored claim is never born stale.
 `implements` (the symbol realizes the requirement), `tests` (the symbol is a
 test exercising it), or `proves` (a backend prover assertion checks it).
 
+**REQ-evidence-proves-discharge** (behavior): A `proves`-role binding MUST
+be rejected at write time unless the backend resolves the bound symbol as
+an analyzer assertion it can discharge — a proof claim that can never
+produce evidence is refused, not recorded to fail silently.
+
 **REQ-evidence-generated-code** (behavior): A binding claim targeting a
 generated source file MUST be rejected, with guidance to bind the generating
 artifact instead.

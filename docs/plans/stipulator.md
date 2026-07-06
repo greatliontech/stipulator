@@ -20,7 +20,7 @@ Spec: docs/specs/
 - [x] 16. Witness hardening: vacuity rejection at bind, body hashes, harden verb (operators + overlay runner), hardening records, nightly sweep
 - [x] 17. Bundles (closure computation + export; MCP bundle tool) — landed with chunk 13
 - [x] 18. Generated folder indexes (`fmt` + freshness lint)
-- [ ] 19. Go structural provers (import constraints, interface satisfaction)
+- [x] 19. Go structural provers (import constraints, interface satisfaction)
 - [ ] 20. Property-test hardening: invariant coverage to property witnesses
 - [ ] 21. Attestation records + change-signature classifier + determinism harness + manifest policy overrides
 - [ ] 22. gitfs adapter (go-git) for diff-against-revision

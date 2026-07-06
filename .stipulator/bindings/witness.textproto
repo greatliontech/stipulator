@@ -3,7 +3,7 @@
 
 bindings {
   requirement_id: "REQ-go-witness"
-  content_hash: "54bfb3b7693ff8d4ea8a42346ff83783a6176d79bef1fa188eb189274417961a"
+  content_hash: "dfc6a4083896a9460529c2307505b908922acc45c4767ef5e00827d5328e6c12"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.RunTests"
   role: BINDING_ROLE_IMPLEMENTS
@@ -12,7 +12,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-witness"
-  content_hash: "54bfb3b7693ff8d4ea8a42346ff83783a6176d79bef1fa188eb189274417961a"
+  content_hash: "dfc6a4083896a9460529c2307505b908922acc45c4767ef5e00827d5328e6c12"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunTests"
   role: BINDING_ROLE_TESTS
@@ -39,7 +39,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-covers-crosscheck"
-  content_hash: "c73b1bed33fd99761a613685824a5a59cd7fc02b18c312bb57817dc65f686e4c"
+  content_hash: "db48c655d1e0ceeca9aaf81359f95159ffcc9443648c047a248caf13fd640274"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.Run"
   role: BINDING_ROLE_IMPLEMENTS
@@ -48,7 +48,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-covers-crosscheck"
-  content_hash: "c73b1bed33fd99761a613685824a5a59cd7fc02b18c312bb57817dc65f686e4c"
+  content_hash: "db48c655d1e0ceeca9aaf81359f95159ffcc9443648c047a248caf13fd640274"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.TestWitnessCorrelation"
   role: BINDING_ROLE_TESTS
@@ -111,7 +111,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-witness-class"
-  content_hash: "ee0ac2a2f432f3b781d27490f28f42bc89a4457ca6cf24a6551b9f0f40631151"
+  content_hash: "5b9810d704dfd1ccaf3239df77dc893e17e38d98120ab2c8f1065affbe1e9049"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend.WitnessClass"
   role: BINDING_ROLE_IMPLEMENTS
@@ -120,7 +120,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-witness-class"
-  content_hash: "ee0ac2a2f432f3b781d27490f28f42bc89a4457ca6cf24a6551b9f0f40631151"
+  content_hash: "5b9810d704dfd1ccaf3239df77dc893e17e38d98120ab2c8f1065affbe1e9049"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestWitnessClass"
   role: BINDING_ROLE_TESTS

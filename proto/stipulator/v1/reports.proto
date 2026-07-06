@@ -46,6 +46,7 @@ enum WitnessClass {
   WITNESS_CLASS_UNSPECIFIED = 0;
   WITNESS_CLASS_EXAMPLE = 1;
   WITNESS_CLASS_PROPERTY = 2;
+  WITNESS_CLASS_ANALYZER_PROOF = 3;
 }
 
 // Problem is a verification error; any problem fails a run.

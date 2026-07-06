@@ -1,0 +1,63 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  requirement_id: "REQ-evidence-proves-discharge"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.Bind"
+  body_hash: "f8705498782b3af221781a75e60ea703bf9380780e869cd7f0c750d630138e38"
+  mutants: 24
+  killed: 11
+  survivors {
+    position: "author.go:178:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "author.go:179:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "author.go:180:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "author.go:181:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "author.go:182:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "author.go:101:15"
+    operator: "zero return"
+  }
+  survivors {
+    position: "author.go:104:15"
+    operator: "zero return"
+  }
+  survivors {
+    position: "author.go:108:6"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "author.go:108:16"
+    operator: "== -> !="
+  }
+  survivors {
+    position: "author.go:113:15"
+    operator: "zero return"
+  }
+  survivors {
+    position: "author.go:116:15"
+    operator: "zero return"
+  }
+  survivors {
+    position: "author.go:118:22"
+    operator: "|| -> &&"
+  }
+  survivors {
+    position: "author.go:119:15"
+    operator: "zero return"
+  }
+}

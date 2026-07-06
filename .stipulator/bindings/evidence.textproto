@@ -45,3 +45,21 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "a0414efba45630b5a1b59fb1b8df3b23f39554ff4235f1d447676eb3b3f32c15"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-proves-discharge"
+  content_hash: "b4bfabc51342883c272b48e722051d6e0dbc12f8d33f9e4c21e581e400bc141a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.Bind"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "866858ddddb85218f5d6d184e6d35be4005d36a1ac2774a4d0539cf13347d4be"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-proves-discharge"
+  content_hash: "b4bfabc51342883c272b48e722051d6e0dbc12f8d33f9e4c21e581e400bc141a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestProvesDischarge"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "08eee58d93c984dc7fbb0c6e8b2482773d86f213d99045f6532aac5a80d6f9f4"
+}

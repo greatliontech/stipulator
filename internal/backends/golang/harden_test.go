@@ -6,7 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
+	"github.com/greatliontech/stipulator/stipulate/structural"
 )
 
 // TestBodyHash pins the body-hash contract: stable across resolutions,
@@ -159,4 +161,29 @@ func fixtureBackend(t *testing.T) *Backend {
 		t.Fatal(err)
 	}
 	return b
+}
+
+// TestWitnessClassProof pins the proof class: a test invoking the
+// structural library scores as an analyzer proof — resolved from the
+// body, outranking property and example — and nothing outside a runnable
+// test ever does.
+func TestWitnessClassProof(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-structural-provers")
+	if got := backend.WitnessClass(mod + "/internal/arch.TestCoreNeverImportsBackends"); got != verify.AnalyzerProof {
+		t.Fatalf("structural test classified %v", got)
+	}
+	if got := backend.WitnessClass(mod + "/internal/corpus.TestLoadManifest"); got == verify.AnalyzerProof {
+		t.Fatal("ordinary test classified as proof")
+	}
+	notATest(t)
+	if got := backend.WitnessClass(mod + "/internal/backends/golang.notATest"); got == verify.AnalyzerProof {
+		t.Fatal("plain function classified as proof; it never runs in a witness run")
+	}
+}
+
+// notATest invokes the structural library outside any runnable test: the
+// classifier must never score it as a proof, because go test never
+// executes it.
+func notATest(tb testing.TB) {
+	structural.NoImport(tb, "github.com/greatliontech/stipulator/internal/canon", "os/exec")
 }

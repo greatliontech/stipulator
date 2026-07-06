@@ -97,9 +97,9 @@ type Report struct {
 // GatePasses reports the gate verdict.
 func (r *Report) GatePasses() bool { return len(r.Violations) == 0 }
 
-// evidence is what the verifier's facts grant one requirement. proof is
-// never granted yet — no analyzer prover exists — but the policy's proof
-// legs are contract (REQ-coverage-policy-default), not dead code.
+// evidence is what the verifier's facts grant one requirement; the
+// policy's proof legs are contract (REQ-coverage-policy-default), not
+// dead code.
 type evidence struct {
 	example, property, static, proof bool
 	broken, stale                    bool
@@ -147,13 +147,23 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 				}
 			}
 		}
-		if r.Role == stipulatorv1.BindingRole_BINDING_ROLE_TESTS && witnessed {
+		if (r.Role == stipulatorv1.BindingRole_BINDING_ROLE_TESTS ||
+			r.Role == stipulatorv1.BindingRole_BINDING_ROLE_PROVES) && witnessed {
 			switch r.TestOutcome {
 			case verify.TestPassed:
 				if r.ContentPinned && r.Resolution == verify.Resolved {
-					if r.WitnessClass == verify.PropertyWitness {
+					switch {
+					case r.WitnessClass == verify.AnalyzerProof:
+						e.proof = true
+					case r.Role == stipulatorv1.BindingRole_BINDING_ROLE_PROVES:
+						// A proves claim whose symbol no longer resolves
+						// as an analyzer proof grants nothing — never
+						// example evidence — and the report names the
+						// drift, not just the missing evidence.
+						e.reasons = append(e.reasons, fmt.Sprintf("proves claim %s passed but no longer classifies as an analyzer proof", r.Symbol))
+					case r.WitnessClass == verify.PropertyWitness:
 						e.property = true
-					} else {
+					default:
 						e.example = true
 					}
 				}

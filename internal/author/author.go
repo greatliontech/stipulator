@@ -130,7 +130,11 @@ func Bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Upd
 	}
 
 	shapeHash := ""
-	if be, ok := backends[req.Backend]; ok {
+	be, loaded := backends[req.Backend]
+	if req.Role == stipulatorv1.BindingRole_BINDING_ROLE_PROVES && !loaded {
+		return nil, fmt.Errorf("no %s verifier is loaded to discharge %s as a proof; a proof claim that cannot be checked at write time is refused, not recorded", req.Backend, req.Symbol)
+	}
+	if loaded {
 		res, shape, err := be.Resolve(req.Symbol)
 		if err != nil {
 			return nil, fmt.Errorf("resolving %s: %w", req.Symbol, err)
@@ -142,7 +146,14 @@ func Bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Upd
 			return nil, fmt.Errorf("symbol %s is declared in a generated file; bind the generating artifact instead", req.Symbol)
 		}
 		shapeHash = shape
-		if req.Role == stipulatorv1.BindingRole_BINDING_ROLE_TESTS {
+		if req.Role == stipulatorv1.BindingRole_BINDING_ROLE_PROVES {
+			wc, ok := be.(verify.WitnessClassifier)
+			if !ok || wc.WitnessClass(req.Symbol) != verify.AnalyzerProof {
+				return nil, fmt.Errorf("the %s backend cannot discharge %s as a proof: bind an analyzer test (one invoking stipulate/structural), or use role tests", req.Backend, req.Symbol)
+			}
+		}
+		if req.Role == stipulatorv1.BindingRole_BINDING_ROLE_TESTS ||
+			req.Role == stipulatorv1.BindingRole_BINDING_ROLE_PROVES {
 			if vc, ok := be.(verify.VacuityChecker); ok {
 				vacuous, err := vc.Vacuous(req.Symbol)
 				if err != nil {

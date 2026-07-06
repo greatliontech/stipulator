@@ -1,0 +1,11 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-backend-core-neutral"
+  content_hash: "854736dde30f1ba926e775de6338e1e3e0270c57caf3986410d4e82740a2e6a1"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/arch.TestCoreNeverImportsBackends"
+  role: BINDING_ROLE_PROVES
+  shape_hash: "fa309f1cfb5ff3acbf0db23e57d2ea554c45ac74b809bb00789edbd1c87beb04"
+}
