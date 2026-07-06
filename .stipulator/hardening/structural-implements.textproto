@@ -4,7 +4,7 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/stipulate/structural.Implements"
-  body_hash: "3daaba50ea876cddfee835e12d33c4e75c92a188748207452ec6bed7aee020f9"
+  body_hash: "8647b5aba4be98365d1dfc00227dfa82998eb807f83721f27d9eab2388d6bfe9"
   mutants: 11
   killed: 5
   survivors {

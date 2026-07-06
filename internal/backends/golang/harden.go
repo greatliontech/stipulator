@@ -3,6 +3,7 @@ package golang
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -449,48 +450,153 @@ func (b *Backend) SplitRapidPkgs(testPkgs []string) (rapid, plain []string) {
 	return rapid, plain
 }
 
+// TimeoutKiller is the killer attribution of a timed-out mutant run: the
+// hang itself is the noticed breakage, so no named test claims the kill.
+const TimeoutKiller = "(timeout)"
+
+// PackageKillerPrefix prefixes the killer attribution of a mutant that
+// breaks a test binary at package scope — a panic in a goroutine, an
+// os.Exit, a TestMain failure — where go test emits no test-level fail
+// event. Such a kill is admitted only after a differential baseline probe
+// clears the environment.
+const PackageKillerPrefix = "(package failure: "
+
 // RunMutant executes the bound tests against one mutant through a build
 // overlay — the tree is never touched. binFlags are passed to the test
 // binaries after the package list.
-func RunMutant(ctx context.Context, dir string, m Mutant, testPkgs []string, runRegex string, timeout time.Duration, binFlags []string) (MutantOutcome, error) {
+//
+// A kill must be attributed: a named failing test in the run's -json
+// stream (returned as "<pkg>.<TopLevelTest>"), a timeout (TimeoutKiller —
+// behavior changed: it hangs), or a package-scope failure the baseline
+// probe attributes to the mutant (PackageKillerPrefix). A run that fails
+// any other way is environmental noise — an unregistered flag, a loaded
+// machine, a dying binary — and returns an error, never a kill: noise
+// once inflated kill counts in the flattering direction, and a corrupted
+// measurement must never read as a sound one.
+func RunMutant(ctx context.Context, dir string, m Mutant, testPkgs []string, runRegex string, timeout time.Duration, binFlags []string) (MutantOutcome, string, error) {
 	tmp, err := os.MkdirTemp("", "stipulator-mutant-*")
 	if err != nil {
-		return MutantDiscarded, err
+		return MutantDiscarded, "", err
 	}
 	defer os.RemoveAll(tmp)
 	mutFile := filepath.Join(tmp, "mutant.go")
 	if err := os.WriteFile(mutFile, m.Source, 0o644); err != nil {
-		return MutantDiscarded, err
+		return MutantDiscarded, "", err
 	}
 	overlay := filepath.Join(tmp, "overlay.json")
 	oj := fmt.Sprintf(`{"Replace": {%q: %q}}`, m.File, mutFile)
 	if err := os.WriteFile(overlay, []byte(oj), 0o644); err != nil {
-		return MutantDiscarded, err
+		return MutantDiscarded, "", err
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, timeout)
+	parent := ctx
+	runCtx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 	// -failfast: one witness failure decides the binary's verdict; the
 	// remaining tests in it prove nothing further about this mutant.
-	args := append([]string{"test", "-overlay", overlay, "-count=1", "-failfast", "-run", runRegex}, testPkgs...)
+	baseArgs := append([]string{"test", "-json", "-count=1", "-failfast", "-run", runRegex}, testPkgs...)
+	baseArgs = append(baseArgs, binFlags...)
+	args := append([]string{"test", "-json", "-overlay", overlay, "-count=1", "-failfast", "-run", runRegex}, testPkgs...)
 	args = append(args, binFlags...)
-	cmd := exec.CommandContext(ctx, "go", args...)
+	cmd := exec.CommandContext(runCtx, "go", args...)
 	cmd.Dir = dir
 	cmd.Env = goworkEnv(dir)
-	outBytes, err := cmd.CombinedOutput()
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	runErr := cmd.Run()
+
+	killer := firstFailingTest(stdout.Bytes())
 	switch {
-	case err == nil:
-		return MutantSurvived, nil
-	case ctx.Err() == context.DeadlineExceeded:
-		return MutantKilled, nil // behavior changed: it hangs
-	case ctx.Err() != nil:
+	case runErr == nil:
+		return MutantSurvived, "", nil
+	case runCtx.Err() == context.DeadlineExceeded:
+		return MutantKilled, TimeoutKiller, nil
+	case runCtx.Err() != nil:
 		// A cancelled run proves nothing about the mutant.
-		return MutantDiscarded, ctx.Err()
-	case strings.Contains(string(outBytes), "[build failed]"):
-		return MutantDiscarded, nil
-	default:
-		return MutantKilled, nil
+		return MutantDiscarded, "", ctx.Err()
+	case strings.Contains(stdout.String(), "[build failed]"):
+		return MutantDiscarded, "", nil
+	case killer != "":
+		return MutantKilled, killer, nil
 	}
+
+	// The run failed with no test-level attribution. Two very different
+	// causes share this shape: the mutant breaking the binary at package
+	// scope (a goroutine panic, an os.Exit, a TestMain failure — the
+	// strongest kind of kill), and environmental noise (the shape that
+	// once inflated five sheets). A differential baseline probe — the
+	// same invocation without the overlay — tells them apart: noise
+	// fails the baseline too; a mutant-caused break does not.
+	if pkg := failedPackage(stdout.Bytes()); pkg != "" {
+		baseCtx, baseCancel := context.WithTimeout(parent, timeout)
+		defer baseCancel()
+		base := exec.CommandContext(baseCtx, "go", baseArgs...)
+		base.Dir = dir
+		base.Env = goworkEnv(dir)
+		baseErr := base.Run()
+		if baseCtx.Err() != nil {
+			// A cancelled probe proves nothing — never "noise".
+			return MutantDiscarded, "", baseCtx.Err()
+		}
+		if baseErr == nil {
+			return MutantKilled, PackageKillerPrefix + pkg + ")", nil
+		}
+	}
+	return MutantDiscarded, "", fmt.Errorf("mutant run failed with no test-attributed kill (environmental noise, not a kill; baseline probe did not clear it): %v: %s", runErr, tail(stderr.String()+stdout.String(), 400))
+}
+
+// failedPackage scans a go test -json stream for a package-level fail
+// event, returning the package or empty.
+func failedPackage(stream []byte) string {
+	type event struct {
+		Action, Package, Test string
+	}
+	dec := json.NewDecoder(bytes.NewReader(stream))
+	for dec.More() {
+		var e event
+		if dec.Decode(&e) != nil {
+			return ""
+		}
+		if e.Action == "fail" && e.Test == "" && e.Package != "" {
+			return e.Package
+		}
+	}
+	return ""
+}
+
+// firstFailingTest scans a go test -json stream for the first test-level
+// fail event, returning the failing test as "<pkg>.<TopLevelTest>" — the
+// symbol form witness sets pin. The subtest path is stripped HERE, where
+// the Test field is unambiguous; in the joined form the first "/" lands
+// inside the import path.
+func firstFailingTest(stream []byte) string {
+	type event struct {
+		Action, Package, Test string
+	}
+	dec := json.NewDecoder(bytes.NewReader(stream))
+	for dec.More() {
+		var e event
+		if dec.Decode(&e) != nil {
+			return ""
+		}
+		if e.Action == "fail" && e.Test != "" {
+			name := e.Test
+			if i := strings.Index(name, "/"); i >= 0 {
+				name = name[:i]
+			}
+			return e.Package + "." + name
+		}
+	}
+	return ""
+}
+
+// tail returns the last n bytes of s, for error surfacing.
+func tail(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return "…" + s[len(s)-n:]
 }
 
 // ErrNotFunction marks a resolvable symbol with no function body — a

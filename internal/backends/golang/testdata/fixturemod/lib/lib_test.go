@@ -21,3 +21,9 @@ func TestWeak(t *testing.T) {
 func TestVacuous(t *testing.T) {
 	_ = Add(1, 2)
 }
+
+func TestGuarded(t *testing.T) {
+	if Guarded(3) != 6 {
+		t.Fatal("broken")
+	}
+}

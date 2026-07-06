@@ -4,40 +4,33 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.Evaluate"
-  body_hash: "23cc6236eff027d8a301ba96d7a8665e603722d1dd7cba60f6ffc0ab1a55aae8"
+  body_hash: "12c5cd7abd79f9452572b3ce2a6bd57a5f45c47dc570c460e4fe0dc4563ee277"
   mutants: 23
-  killed: 17
+  killed: 19
   discarded: 1
   survivors {
-    position: "coverage.go:227:2"
+    position: "coverage.go:333:2"
     operator: "delete statement"
   }
   survivors {
-    position: "coverage.go:130:4"
+    position: "coverage.go:210:4"
     operator: "drop assignment"
   }
   survivors {
-    position: "coverage.go:145:8"
-    operator: "negate condition"
-  }
-  survivors {
-    position: "coverage.go:146:6"
-    operator: "drop assignment"
-  }
-  survivors {
-    position: "coverage.go:151:4"
+    position: "coverage.go:231:4"
     operator: "force false"
   }
   survivors {
-    position: "coverage.go:154:8"
+    position: "coverage.go:234:8"
     operator: "force true"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestBuckets"
   witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestClaimsGrantNothingUnverified"
   witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestGapStates"
   witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestGate"
+  witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestPolicyOverrides"
   witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestPropEvidenceOnlyFromCurrentRun"
   operators: "go/2"
-  body_line: 115
+  body_line: 195
   budget: 24
 }

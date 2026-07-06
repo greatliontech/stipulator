@@ -35,8 +35,18 @@ type Target struct {
 	// Witnesses are the unioned witness-role test symbols, canonically
 	// ordered — the set the resulting sheet is pinned to.
 	Witnesses []string
-	// TestPkgs and RunRegex are the go-test execution form of Witnesses.
-	TestPkgs []string
+	// PkgRuns is the go-test execution form of Witnesses: each witness
+	// package paired with the -run regex of ITS witnesses alone. One
+	// union regex across packages would also run same-named non-witness
+	// tests in sibling packages, and their kills would read as
+	// unattributed.
+	PkgRuns []PkgRun
+}
+
+// PkgRun is one package's witness execution: the package and the -run
+// regex of exactly its witness tests.
+type PkgRun struct {
+	Pkg      string
 	RunRegex string
 }
 
@@ -149,29 +159,25 @@ func Plan(spec *stipulatorv1.Spec, store *records.Store, reqs, symbols []string)
 				union[w] = true
 			}
 		}
-		pkgs := map[string]bool{}
-		fnSet := map[string]bool{}
+		pkgFns := map[string][]string{}
 		for w := range union {
 			pkg, fn := splitTestSymbol(w)
 			if pkg == "" {
 				continue
 			}
 			t.Witnesses = append(t.Witnesses, w)
-			pkgs[pkg] = true
-			fnSet[fn] = true
+			pkgFns[pkg] = append(pkgFns[pkg], fn)
 		}
 		sort.Strings(t.Witnesses)
-		if len(t.Witnesses) > 0 {
-			for pkg := range pkgs {
-				t.TestPkgs = append(t.TestPkgs, pkg)
-			}
-			sort.Strings(t.TestPkgs)
-			fns := make([]string, 0, len(fnSet))
-			for fn := range fnSet {
-				fns = append(fns, fn)
-			}
+		pkgs := make([]string, 0, len(pkgFns))
+		for pkg := range pkgFns {
+			pkgs = append(pkgs, pkg)
+		}
+		sort.Strings(pkgs)
+		for _, pkg := range pkgs {
+			fns := pkgFns[pkg]
 			sort.Strings(fns)
-			t.RunRegex = "^(" + strings.Join(fns, "|") + ")$"
+			t.PkgRuns = append(t.PkgRuns, PkgRun{Pkg: pkg, RunRegex: "^(" + strings.Join(fns, "|") + ")$"})
 		}
 		out = append(out, t)
 	}
@@ -202,10 +208,12 @@ type Options struct {
 	Jobs int
 }
 
-// group is one test-binary invocation class: packages sharing binFlags.
+// group is one test-binary invocation: a package, its witnesses' -run
+// regex, and the binary's flags.
 type group struct {
-	pkgs  []string
-	flags []string
+	pkgs     []string
+	runRegex string
+	flags    []string
 }
 
 // Run mutates each target and executes its witness union per mutant,
@@ -234,10 +242,10 @@ func Run(ctx context.Context, dir string, backend *golang.Backend, store *record
 	// Phase one, sequential: resolve every target to a terminal result
 	// (skipped, cached) or to a mutant work list.
 	type work struct {
-		target   int
-		mutants  []golang.Mutant
-		groups   []group
-		runRegex string
+		target     int
+		mutants    []golang.Mutant
+		groups     []group
+		witnessSet map[string]bool
 	}
 	rep := &Report{Results: make([]Result, len(targets))}
 	pins := make([]func(*stipulatorv1.Hardening) bool, len(targets))
@@ -245,7 +253,7 @@ func Run(ctx context.Context, dir string, backend *golang.Backend, store *record
 	for i, t := range targets {
 		res := &rep.Results[i]
 		*res = Result{Symbol: t.Symbol, Requirements: t.Requirements, Witnesses: t.Witnesses}
-		if len(t.TestPkgs) == 0 {
+		if len(t.PkgRuns) == 0 {
 			res.SkippedNoTest = true
 			continue
 		}
@@ -297,15 +305,32 @@ func Run(ctx context.Context, dir string, backend *golang.Backend, store *record
 		// The rapid failfile flag is per-binary, so the witness packages
 		// run as two groups: passing it to a binary that does not
 		// register it would read as a false kill.
-		rapidPkgs, plainPkgs := backend.SplitRapidPkgs(t.TestPkgs)
+		pkgs := make([]string, 0, len(t.PkgRuns))
+		for _, pr := range t.PkgRuns {
+			pkgs = append(pkgs, pr.Pkg)
+		}
+		rapidPkgs, _ := backend.SplitRapidPkgs(pkgs)
+		rapid := make(map[string]bool, len(rapidPkgs))
+		for _, p := range rapidPkgs {
+			rapid[p] = true
+		}
+		var groups []group
+		for _, pr := range t.PkgRuns {
+			var flags []string
+			if rapid[pr.Pkg] {
+				flags = []string{"-rapid.nofailfile"}
+			}
+			groups = append(groups, group{[]string{pr.Pkg}, pr.RunRegex, flags})
+		}
+		witnessSet := make(map[string]bool, len(t.Witnesses))
+		for _, w := range t.Witnesses {
+			witnessSet[w] = true
+		}
 		pending = append(pending, work{
-			target:  i,
-			mutants: mutants,
-			groups: []group{
-				{rapidPkgs, []string{"-rapid.nofailfile"}},
-				{plainPkgs, nil},
-			},
-			runRegex: t.RunRegex,
+			target:     i,
+			mutants:    mutants,
+			groups:     groups,
+			witnessSet: witnessSet,
 		})
 	}
 
@@ -335,7 +360,10 @@ func Run(ctx context.Context, dir string, backend *golang.Backend, store *record
 					if len(g.pkgs) == 0 || outcome != golang.MutantSurvived {
 						continue
 					}
-					out, err := golang.RunMutant(poolCtx, dir, m, g.pkgs, w.runRegex, opts.Timeout, g.flags)
+					out, killer, err := golang.RunMutant(poolCtx, dir, m, g.pkgs, g.runRegex, opts.Timeout, g.flags)
+					if err == nil && out == golang.MutantKilled {
+						err = attributedKill(killer, w.witnessSet)
+					}
 					if err != nil {
 						errOnce.Do(func() {
 							poolErr = fmt.Errorf("mutant %s %s: %w", m.Position, m.Operator, err)
@@ -512,4 +540,16 @@ func toSet(items []string) map[string]bool {
 		}
 	}
 	return set
+}
+
+// attributedKill accepts a kill only from the pinned witness set: a kill
+// claims a witness noticed the breakage, so the killer must BE a witness
+// (the backend already reports subtest kills through their top level) or
+// the timeout sentinel. Anything else is a corrupted measurement, aborted
+// exactly like noise — it must never inflate a sheet.
+func attributedKill(killer string, witnessSet map[string]bool) error {
+	if killer == golang.TimeoutKiller || strings.HasPrefix(killer, golang.PackageKillerPrefix) || witnessSet[killer] {
+		return nil
+	}
+	return fmt.Errorf("killed by %s, which is not in the pinned witness set", killer)
 }

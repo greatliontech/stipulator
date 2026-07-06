@@ -21,16 +21,16 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-mutation"
-  content_hash: "6d1329a44ba4490cb33460427d1901b5e7dc766b35238eafbfb0e2168d03c9fa"
+  content_hash: "5e9b8216d995fe9081d6540b1f9552f0a5427eb276e7b36895ff15ece3babe2a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.RunMutant"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "12820ccb9789a5703ce1fde3a2b856e030707eacafadc48c183048fb9b2c9962"
+  shape_hash: "e0840d8c5da94034a6d1156a8b77b569285fe23b2dc5802f21a561e2f3c204cb"
 }
 
 bindings {
   requirement_id: "REQ-harden-mutation"
-  content_hash: "6d1329a44ba4490cb33460427d1901b5e7dc766b35238eafbfb0e2168d03c9fa"
+  content_hash: "5e9b8216d995fe9081d6540b1f9552f0a5427eb276e7b36895ff15ece3babe2a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunMutantOutcomes"
   role: BINDING_ROLE_TESTS
@@ -102,7 +102,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-mutation"
-  content_hash: "6d1329a44ba4490cb33460427d1901b5e7dc766b35238eafbfb0e2168d03c9fa"
+  content_hash: "5e9b8216d995fe9081d6540b1f9552f0a5427eb276e7b36895ff15ece3babe2a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/harden.TestPlanScope"
   role: BINDING_ROLE_TESTS
@@ -111,7 +111,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-mutation"
-  content_hash: "6d1329a44ba4490cb33460427d1901b5e7dc766b35238eafbfb0e2168d03c9fa"
+  content_hash: "5e9b8216d995fe9081d6540b1f9552f0a5427eb276e7b36895ff15ece3babe2a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/harden.TestRunAndRecords"
   role: BINDING_ROLE_TESTS
@@ -120,7 +120,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-mutation"
-  content_hash: "6d1329a44ba4490cb33460427d1901b5e7dc766b35238eafbfb0e2168d03c9fa"
+  content_hash: "5e9b8216d995fe9081d6540b1f9552f0a5427eb276e7b36895ff15ece3babe2a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/harden.Plan"
   role: BINDING_ROLE_IMPLEMENTS
@@ -129,7 +129,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-mutation"
-  content_hash: "6d1329a44ba4490cb33460427d1901b5e7dc766b35238eafbfb0e2168d03c9fa"
+  content_hash: "5e9b8216d995fe9081d6540b1f9552f0a5427eb276e7b36895ff15ece3babe2a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestSplitRapidPkgs"
   role: BINDING_ROLE_TESTS
@@ -152,4 +152,40 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/author.TestAttest"
   role: BINDING_ROLE_TESTS
   shape_hash: "b2ede2a3da4cb89db0738b2def43e0e4289737388de2b9e8b19e8b2ac35c6647"
+}
+
+bindings {
+  requirement_id: "REQ-harden-mutation"
+  content_hash: "5e9b8216d995fe9081d6540b1f9552f0a5427eb276e7b36895ff15ece3babe2a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestFirstFailingTest"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "972255a66a2d78bab3bbbe0f1d3b73a3dc3f7340b5927c760bbf86c5bf5decec"
+}
+
+bindings {
+  requirement_id: "REQ-harden-mutation"
+  content_hash: "5e9b8216d995fe9081d6540b1f9552f0a5427eb276e7b36895ff15ece3babe2a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunMutantNoiseIsNeverAKill"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7e739f83eb6931341deaf52f7be723be42fd759d4fb649cc40721c05a3f54cb8"
+}
+
+bindings {
+  requirement_id: "REQ-harden-mutation"
+  content_hash: "5e9b8216d995fe9081d6540b1f9552f0a5427eb276e7b36895ff15ece3babe2a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.TestAttributedKill"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ed3a521a1d7064bd13245a5fc59c161959f63288c31adbe1d4d980efde1b239d"
+}
+
+bindings {
+  requirement_id: "REQ-harden-mutation"
+  content_hash: "5e9b8216d995fe9081d6540b1f9552f0a5427eb276e7b36895ff15ece3babe2a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunMutantGoroutinePanicIsAKill"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "641b60659315ee286027ad1c2b743bdc367ea49b4d8c59b9ba5b4d62f73ea6ce"
 }

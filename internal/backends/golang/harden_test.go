@@ -164,15 +164,22 @@ func TestRunMutantOutcomes(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, m := range ms {
-			out, err := RunMutant(context.Background(), dir, m, []string{"example.com/fixture/lib"}, regex, 60*time.Second, nil)
+			out, killer, err := RunMutant(context.Background(), dir, m, []string{"example.com/fixture/lib"}, regex, 60*time.Second, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
 			switch out {
 			case MutantKilled:
 				killed++
+				// Every kill is attributed to the witness that noticed.
+				if killer != "example.com/fixture/lib."+strings.TrimSuffix(strings.TrimPrefix(regex, "^"), "$") {
+					t.Fatalf("kill attributed to %q under -run %s", killer, regex)
+				}
 			case MutantSurvived:
 				survived++
+				if killer != "" {
+					t.Fatalf("survivor carries killer %q", killer)
+				}
 				survivors = append(survivors, m)
 			}
 		}
@@ -250,4 +257,79 @@ func TestWitnessClassProof(t *testing.T) {
 // executes it.
 func notATest(tb testing.TB) {
 	structural.NoImport(tb, "github.com/greatliontech/stipulator/internal/canon", "os/exec")
+}
+
+// TestRunMutantGoroutinePanicIsAKill pins the package-level attribution
+// arm: a mutant that detonates in a goroutine emits no test-level fail
+// event — the differential baseline probe clears the environment and the
+// kill is admitted with the package sentinel, never misread as noise.
+func TestRunMutantGoroutinePanicIsAKill(t *testing.T) {
+	stipulate.Covers(t, "REQ-harden-mutation")
+	if testing.Short() {
+		t.Skip("runs go test")
+	}
+	b := fixtureBackend(t)
+	ms, err := b.Mutants("example.com/fixture/lib.Guarded", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pkgKills := 0
+	for _, m := range ms {
+		out, killer, err := RunMutant(context.Background(), "testdata/fixturemod", m,
+			[]string{"example.com/fixture/lib"}, "^TestGuarded$", 60*time.Second, nil)
+		if err != nil {
+			t.Fatalf("mutant %s %s aborted as noise: %v", m.Position, m.Operator, err)
+		}
+		if out == MutantKilled && strings.HasPrefix(killer, PackageKillerPrefix) {
+			pkgKills++
+			if killer != PackageKillerPrefix+"example.com/fixture/lib)" {
+				t.Fatalf("sentinel = %q", killer)
+			}
+		}
+	}
+	if pkgKills == 0 {
+		t.Fatal("no mutant detonated in the goroutine; the guard mutant should")
+	}
+}
+
+// TestRunMutantNoiseIsNeverAKill pins the attribution rule that keeps
+// kill counts reproducible: a run that dies without a test-attributed
+// failure — here, a test binary refusing an unregistered flag, the exact
+// shape that once corrupted five sheets — is an error, never a kill.
+func TestRunMutantNoiseIsNeverAKill(t *testing.T) {
+	stipulate.Covers(t, "REQ-harden-mutation")
+	if testing.Short() {
+		t.Skip("runs go test")
+	}
+	b := fixtureBackend(t)
+	ms, err := b.Mutants("example.com/fixture/lib.Add", 1)
+	if err != nil || len(ms) == 0 {
+		t.Fatalf("no mutants: %v", err)
+	}
+	out, killer, err := RunMutant(context.Background(), "testdata/fixturemod", ms[0],
+		[]string{"example.com/fixture/plain"}, "^TestPlain$", 60*time.Second,
+		[]string{"-no.such.flag"})
+	if err == nil || !strings.Contains(err.Error(), "no test-attributed kill") {
+		t.Fatalf("noise read as outcome %v killer %q err %v", out, killer, err)
+	}
+}
+
+// TestFirstFailingTest pins killer derivation from the -json stream:
+// first test-level fail wins, subtest kills attribute through their top
+// level (stripped here, where the Test field is unambiguous — the joined
+// symbol's first slash lands inside the import path), and package-level
+// fail events attribute nothing.
+func TestFirstFailingTest(t *testing.T) {
+	stipulate.Covers(t, "REQ-harden-mutation")
+	stream := []byte(`{"Action":"run","Package":"example.com/p","Test":"TestA"}
+{"Action":"fail","Package":"example.com/p","Test":"TestA/sub/deep"}
+{"Action":"fail","Package":"example.com/p","Test":"TestA"}
+{"Action":"fail","Package":"example.com/p"}
+`)
+	if got := firstFailingTest(stream); got != "example.com/p.TestA" {
+		t.Fatalf("killer = %q", got)
+	}
+	if got := firstFailingTest([]byte(`{"Action":"fail","Package":"example.com/p"}` + "\n")); got != "" {
+		t.Fatalf("package-level fail attributed: %q", got)
+	}
 }

@@ -138,10 +138,17 @@ func TestPlanScope(t *testing.T) {
 	if !slices.Equal(weak.Witnesses, wantWitnesses) {
 		t.Fatalf("witness union = %v, want %v", weak.Witnesses, wantWitnesses)
 	}
-	if weak.RunRegex != "^(TestAdd|TestPlain|TestWeak)$" {
-		t.Fatalf("run regex = %q", weak.RunRegex)
+	// Per-package regexes: one union regex would also run same-named
+	// non-witness tests in sibling packages, and their kills would read
+	// as unattributed.
+	wantRuns := []PkgRun{
+		{Pkg: "example.com/fixture/lib", RunRegex: "^(TestAdd|TestWeak)$"},
+		{Pkg: "example.com/fixture/plain", RunRegex: "^(TestPlain)$"},
 	}
-	if got, want := weak.TestPkgs, []string{"example.com/fixture/lib", "example.com/fixture/plain"}; !slices.Equal(got, want) {
+	if !slices.Equal(weak.PkgRuns, wantRuns) {
+		t.Fatalf("pkg runs = %+v", weak.PkgRuns)
+	}
+	if got, want := pkgsOf(weak.PkgRuns), []string{"example.com/fixture/lib", "example.com/fixture/plain"}; !slices.Equal(got, want) {
 		t.Fatalf("test packages = %v, want %v", got, want)
 	}
 
@@ -151,7 +158,7 @@ func TestPlanScope(t *testing.T) {
 	}
 
 	for _, tgt := range all {
-		if tgt.Symbol == "example.com/fixture/lib.F" && (len(tgt.TestPkgs) != 0 || tgt.RunRegex != "" || len(tgt.Witnesses) != 0) {
+		if tgt.Symbol == "example.com/fixture/lib.F" && (len(tgt.PkgRuns) != 0 || len(tgt.Witnesses) != 0) {
 			t.Fatalf("witness-less target grew killers: %+v", tgt)
 		}
 	}
@@ -454,4 +461,30 @@ func shiftSheetLines(t *testing.T, sheet string, delta int) string {
 		}
 	}
 	return string(records.RenderHardening(set.GetRecords()))
+}
+
+// TestAttributedKill pins the acceptance rule for kills: a named witness
+// (any subtest depth), or the timeout sentinel; an unexpected killer is a
+// corrupted measurement.
+func TestAttributedKill(t *testing.T) {
+	stipulate.Covers(t, "REQ-harden-mutation")
+	set := map[string]bool{"example.com/p.TestA": true}
+	for _, ok := range []string{"example.com/p.TestA", golang.TimeoutKiller} {
+		if err := attributedKill(ok, set); err != nil {
+			t.Errorf("attributedKill(%q) = %v", ok, err)
+		}
+	}
+	for _, bad := range []string{"example.com/p.TestB", "example.com/q.TestA", "", "(bogus sentinel)", "(timeout extra)"} {
+		if err := attributedKill(bad, set); err == nil {
+			t.Errorf("unexpected killer %q accepted", bad)
+		}
+	}
+}
+
+func pkgsOf(runs []PkgRun) []string {
+	var out []string
+	for _, r := range runs {
+		out = append(out, r.Pkg)
+	}
+	return out
 }

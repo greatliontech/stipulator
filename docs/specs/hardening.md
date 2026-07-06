@@ -22,7 +22,15 @@ each targeted symbol's body and execute, against each mutant, the union
 of the witness-role bound tests of every requirement that binds the
 symbol as `implements` — in isolation, through build overlays, never by
 touching the tree — reporting every surviving mutant as a finding with
-its position and operator. A survivor means no test that vouches for the
+its position and operator. A kill is attributed: it requires a named
+failing test from that pinned witness set, a timeout, or a package-scope
+failure — a break with no test-level event, admitted only when a
+baseline probe of the unmutated tree passes, distinguishing a
+goroutine-panic-class kill from environmental noise; a run that fails
+any other way aborts the sweep without writing records, because a
+corrupted measurement that reads as a sound one inflates kills in the
+flattering direction. A
+survivor means no test that vouches for the
 body notices the breakage; statement-level requirement attribution is
 deliberately not claimed, because no code-resolvable partition of a body
 by requirement exists.

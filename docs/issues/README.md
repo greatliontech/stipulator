@@ -14,10 +14,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   the determinism property quantifies compile→verify→evaluate and the record verbs; fmt,
   bundle, facts, diff, and harden have no determinism witness. *Lands: when the determinism
   harness chunk of the active plan begins.*
-- **[kill-sheet-attribution](kill-sheet-attribution.md)** — RunMutant counts any test failure
-  (and timeouts, by design) as a kill, so sheet counts are not reproducible under noise; two
-  same-pinned sheets disagreed by 15 mutants. *Lands: when the determinism harness chunk of
-  the active plan begins.*
 - **[out-of-process-backends](out-of-process-backends.md)** — the backend surfaces (and the
   mutator, whose kill-sheet records are already the interchange contract) can move behind a
   wire protocol with the trust model intact; deferred while one backend exists. *Lands: when
@@ -43,3 +39,7 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   class measures performance; pew recordings (guard-derived validity) are the binding-pin
   model applied to measurements and slot in without bending the trust model. *Lands: when a
   corpus declares a performance requirement.*
+- **[gate-verify-output-granularity](gate-verify-output-granularity.md)** — gate/verify emit one
+  fixed verbosity (full firehose); add a `view` axis (summary default for MCP) and scope filters
+  (ids/bucket/filter/path) so callers stop shelling out to a compact CLI. *Lands: when gate/verify
+  output ergonomics are revisited.*

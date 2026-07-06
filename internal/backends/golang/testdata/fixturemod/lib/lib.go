@@ -47,3 +47,18 @@ func Mixed(xs []int) int {
 	total = total + 3
 	return total
 }
+
+// Guarded doubles n behind a goroutine whose guard panics on negatives:
+// mutating the guard detonates off the test goroutine, so go test emits
+// only a package-level fail — the attribution edge the baseline probe
+// disambiguates.
+func Guarded(n int) int {
+	ch := make(chan int)
+	go func() {
+		if n < 0 {
+			panic("negative input")
+		}
+		ch <- n * 2
+	}()
+	return <-ch
+}
