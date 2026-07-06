@@ -122,8 +122,11 @@ func Gen(t *rapid.T, opts ...Option) Corpus {
 }
 
 // Partition renders the pool as 1..3 files with independently random
-// section structure, preserving block order. The label keeps repeated
-// draws in one test distinct for rapid's shrinker.
+// section structure, preserving block order, each file in a randomly
+// drawn folder — multi-folder corpora exercise per-directory surfaces
+// (folder indexes, path ordering) that a flat layout leaves untouched.
+// The label keeps repeated draws in one test distinct for rapid's
+// shrinker.
 func (c Corpus) Partition(t *rapid.T, label string) map[string]string {
 	nFiles := rapid.IntRange(1, 3).Draw(t, label+"Files")
 	// Cut the ordered pool into consecutive runs; empty files are legal.
@@ -146,7 +149,8 @@ func (c Corpus) Partition(t *rapid.T, label string) map[string]string {
 			}
 			b.WriteString("\n" + block + "\n")
 		}
-		files[fmt.Sprintf("specs/d%d.md", f)] = b.String()
+		dir := rapid.SampledFrom([]string{"", "sub/", "sub/deep/"}).Draw(t, label+"Dir")
+		files[fmt.Sprintf("specs/%sd%d.md", dir, f)] = b.String()
 	}
 	return files
 }

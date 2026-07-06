@@ -32,6 +32,8 @@ records {
     operator: "delete statement"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/harden.TestRunAndRecords"
+  witnesses: "github.com/greatliontech/stipulator/internal/records.TestHardeningGeneratorKeepsPaceWithSchema"
+  witnesses: "github.com/greatliontech/stipulator/internal/records.TestPropHardeningRenderRoundTrip"
   operators: "go/2"
   body_line: 472
   budget: 24

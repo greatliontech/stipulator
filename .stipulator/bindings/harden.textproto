@@ -189,3 +189,21 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "641b60659315ee286027ad1c2b743bdc367ea49b4d8c59b9ba5b4d62f73ea6ce"
 }
+
+bindings {
+  requirement_id: "REQ-harden-records"
+  content_hash: "4ff559d45d7b19cbed470eb1a0ef9e83397cd8515aaf96847507b7fb10fdbf8e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/records.TestPropHardeningRenderRoundTrip"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "05fe817479513a0eb064fa6faba377b16280c5cc7aed2f37e1dee37ba04a9cbe"
+}
+
+bindings {
+  requirement_id: "REQ-harden-records"
+  content_hash: "4ff559d45d7b19cbed470eb1a0ef9e83397cd8515aaf96847507b7fb10fdbf8e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/records.TestHardeningGeneratorKeepsPaceWithSchema"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "87d48c6f338f4dcd54212e435365443a07d30adb616c0a9e22081bdc9e941a9b"
+}

@@ -1,0 +1,197 @@
+# 2026/07/06 22:37:06.361498 [TestPropLayoutIndependence] [rapid] draw terms: 0
+# 2026/07/06 22:37:06.361507 [TestPropLayoutIndependence] [rapid] draw reqs: 7
+# 2026/07/06 22:37:06.361509 [TestPropLayoutIndependence] [rapid] draw keyword: "MUST"
+# 2026/07/06 22:37:06.361511 [TestPropLayoutIndependence] [rapid] draw kind: "behavior"
+# 2026/07/06 22:37:06.361512 [TestPropLayoutIndependence] [rapid] draw variant: 0
+# 2026/07/06 22:37:06.361513 [TestPropLayoutIndependence] [rapid] draw payload: 0
+# 2026/07/06 22:37:06.361514 [TestPropLayoutIndependence] [rapid] draw note: false
+# 2026/07/06 22:37:06.361515 [TestPropLayoutIndependence] [rapid] draw keyword: "MUST"
+# 2026/07/06 22:37:06.361517 [TestPropLayoutIndependence] [rapid] draw kind: "behavior"
+# 2026/07/06 22:37:06.361517 [TestPropLayoutIndependence] [rapid] draw edge: false
+# 2026/07/06 22:37:06.361517 [TestPropLayoutIndependence] [rapid] draw variant: 0
+# 2026/07/06 22:37:06.361518 [TestPropLayoutIndependence] [rapid] draw payload: 0
+# 2026/07/06 22:37:06.361518 [TestPropLayoutIndependence] [rapid] draw note: false
+# 2026/07/06 22:37:06.361519 [TestPropLayoutIndependence] [rapid] draw keyword: "MUST"
+# 2026/07/06 22:37:06.361519 [TestPropLayoutIndependence] [rapid] draw kind: "behavior"
+# 2026/07/06 22:37:06.361519 [TestPropLayoutIndependence] [rapid] draw edge: false
+# 2026/07/06 22:37:06.361521 [TestPropLayoutIndependence] [rapid] draw variant: 0
+# 2026/07/06 22:37:06.361521 [TestPropLayoutIndependence] [rapid] draw payload: 0
+# 2026/07/06 22:37:06.361521 [TestPropLayoutIndependence] [rapid] draw note: false
+# 2026/07/06 22:37:06.361522 [TestPropLayoutIndependence] [rapid] draw keyword: "MUST"
+# 2026/07/06 22:37:06.361522 [TestPropLayoutIndependence] [rapid] draw kind: "behavior"
+# 2026/07/06 22:37:06.361523 [TestPropLayoutIndependence] [rapid] draw edge: false
+# 2026/07/06 22:37:06.361523 [TestPropLayoutIndependence] [rapid] draw variant: 0
+# 2026/07/06 22:37:06.361524 [TestPropLayoutIndependence] [rapid] draw payload: 0
+# 2026/07/06 22:37:06.361524 [TestPropLayoutIndependence] [rapid] draw note: true
+# 2026/07/06 22:37:06.361524 [TestPropLayoutIndependence] [rapid] draw noteText: 0
+# 2026/07/06 22:37:06.361525 [TestPropLayoutIndependence] [rapid] draw keyword: "MUST"
+# 2026/07/06 22:37:06.361525 [TestPropLayoutIndependence] [rapid] draw kind: "behavior"
+# 2026/07/06 22:37:06.361525 [TestPropLayoutIndependence] [rapid] draw edge: false
+# 2026/07/06 22:37:06.361526 [TestPropLayoutIndependence] [rapid] draw variant: 0
+# 2026/07/06 22:37:06.361526 [TestPropLayoutIndependence] [rapid] draw payload: 0
+# 2026/07/06 22:37:06.361527 [TestPropLayoutIndependence] [rapid] draw note: false
+# 2026/07/06 22:37:06.361527 [TestPropLayoutIndependence] [rapid] draw keyword: "MUST"
+# 2026/07/06 22:37:06.361529 [TestPropLayoutIndependence] [rapid] draw kind: "behavior"
+# 2026/07/06 22:37:06.361529 [TestPropLayoutIndependence] [rapid] draw edge: false
+# 2026/07/06 22:37:06.361530 [TestPropLayoutIndependence] [rapid] draw variant: 0
+# 2026/07/06 22:37:06.361530 [TestPropLayoutIndependence] [rapid] draw payload: 0
+# 2026/07/06 22:37:06.361530 [TestPropLayoutIndependence] [rapid] draw note: false
+# 2026/07/06 22:37:06.361531 [TestPropLayoutIndependence] [rapid] draw keyword: "MUST"
+# 2026/07/06 22:37:06.361531 [TestPropLayoutIndependence] [rapid] draw kind: "behavior"
+# 2026/07/06 22:37:06.361532 [TestPropLayoutIndependence] [rapid] draw edge: false
+# 2026/07/06 22:37:06.361532 [TestPropLayoutIndependence] [rapid] draw variant: 0
+# 2026/07/06 22:37:06.361533 [TestPropLayoutIndependence] [rapid] draw payload: 0
+# 2026/07/06 22:37:06.361533 [TestPropLayoutIndependence] [rapid] draw note: true
+# 2026/07/06 22:37:06.361533 [TestPropLayoutIndependence] [rapid] draw noteText: 0
+# 2026/07/06 22:37:06.361534 [TestPropLayoutIndependence] [rapid] draw annotation: false
+# 2026/07/06 22:37:06.361534 [TestPropLayoutIndependence] [rapid] draw oneFiles: 2
+# 2026/07/06 22:37:06.361535 [TestPropLayoutIndependence] [rapid] draw oneCut1: 4
+# 2026/07/06 22:37:06.361535 [TestPropLayoutIndependence] [rapid] draw oneHeading: false
+# 2026/07/06 22:37:06.361536 [TestPropLayoutIndependence] [rapid] draw oneHeading: false
+# 2026/07/06 22:37:06.361536 [TestPropLayoutIndependence] [rapid] draw oneHeading: false
+# 2026/07/06 22:37:06.361536 [TestPropLayoutIndependence] [rapid] draw oneHeading: false
+# 2026/07/06 22:37:06.361537 [TestPropLayoutIndependence] [rapid] draw oneDir: "sub/"
+# 2026/07/06 22:37:06.361539 [TestPropLayoutIndependence] [rapid] draw oneHeading: false
+# 2026/07/06 22:37:06.361539 [TestPropLayoutIndependence] [rapid] draw oneHeading: false
+# 2026/07/06 22:37:06.361539 [TestPropLayoutIndependence] [rapid] draw oneHeading: false
+# 2026/07/06 22:37:06.361540 [TestPropLayoutIndependence] [rapid] draw oneDir: ""
+# 2026/07/06 22:37:06.361626 [TestPropLayoutIndependence] [rapid] draw twoFiles: 1
+# 2026/07/06 22:37:06.361627 [TestPropLayoutIndependence] [rapid] draw twoHeading: false
+# 2026/07/06 22:37:06.361627 [TestPropLayoutIndependence] [rapid] draw twoHeading: false
+# 2026/07/06 22:37:06.361628 [TestPropLayoutIndependence] [rapid] draw twoHeading: false
+# 2026/07/06 22:37:06.361628 [TestPropLayoutIndependence] [rapid] draw twoHeading: false
+# 2026/07/06 22:37:06.361629 [TestPropLayoutIndependence] [rapid] draw twoHeading: false
+# 2026/07/06 22:37:06.361629 [TestPropLayoutIndependence] [rapid] draw twoHeading: false
+# 2026/07/06 22:37:06.361629 [TestPropLayoutIndependence] [rapid] draw twoHeading: false
+# 2026/07/06 22:37:06.361634 [TestPropLayoutIndependence] [rapid] draw twoDir: ""
+# 2026/07/06 22:37:06.361730 [TestPropLayoutIndependence] IRs differ beyond location metadata:
+# requirements:{id:"REQ-p-r0"  kind:CLAUSE_KIND_BEHAVIOR  keyword:KEYWORD_MUST  text:"It MUST hold case 0."  content_hash:"115940fca310f9e080a720f7b1b3823b1c23b93001c562f76387716757d59ce5"  source:"**REQ-p-r0** (behavior): It MUST hold case 0."}  requirements:{id:"REQ-p-r1"  kind:CLAUSE_KIND_BEHAVIOR  keyword:KEYWORD_MUST  text:"It MUST hold case 0."  content_hash:"115940fca310f9e080a720f7b1b3823b1c23b93001c562f76387716757d59ce5"  source:"**REQ-p-r1** (behavior): It MUST hold case 0."}  requirements:{id:"REQ-p-r2"  kind:CLAUSE_KIND_BEHAVIOR  keyword:KEYWORD_MUST  text:"It MUST hold case 0."  content_hash:"115940fca310f9e080a720f7b1b3823b1c23b93001c562f76387716757d59ce5"  source:"**REQ-p-r2** (behavior): It MUST hold case 0."}  requirements:{id:"REQ-p-r3"  kind:CLAUSE_KIND_BEHAVIOR  keyword:KEYWORD_MUST  text:"It MUST hold case 0."  content_hash:"115940fca310f9e080a720f7b1b3823b1c23b93001c562f76387716757d59ce5"  source:"**REQ-p-r3** (behavior): It MUST hold case 0."}  requirements:{id:"REQ-p-r4"  kind:CLAUSE_KIND_BEHAVIOR  keyword:KEYWORD_MUST  text:"It MUST hold case 0."  content_hash:"115940fca310f9e080a720f7b1b3823b1c23b93001c562f76387716757d59ce5"  source:"**REQ-p-r4** (behavior): It MUST hold case 0."}  requirements:{id:"REQ-p-r5"  kind:CLAUSE_KIND_BEHAVIOR  keyword:KEYWORD_MUST  text:"It MUST hold case 0."  content_hash:"115940fca310f9e080a720f7b1b3823b1c23b93001c562f76387716757d59ce5"  source:"**REQ-p-r5** (behavior): It MUST hold case 0."}  requirements:{id:"REQ-p-r6"  kind:CLAUSE_KIND_BEHAVIOR  keyword:KEYWORD_MUST  text:"It MUST hold case 0."  content_hash:"115940fca310f9e080a720f7b1b3823b1c23b93001c562f76387716757d59ce5"  source:"**REQ-p-r6** (behavior): It MUST hold case 0."}  notes:{text:"Commentary 0."  source:"> Commentary 0."  attached_to:{requirement_id:"REQ-p-r6"}}  notes:{text:"Commentary 0."  source:"> Commentary 0."  attached_to:{requirement_id:"REQ-p-r3"}}
+# ---
+# requirements:{id:"REQ-p-r0"  kind:CLAUSE_KIND_BEHAVIOR  keyword:KEYWORD_MUST  text:"It MUST hold case 0."  content_hash:"115940fca310f9e080a720f7b1b3823b1c23b93001c562f76387716757d59ce5"  source:"**REQ-p-r0** (behavior): It MUST hold case 0."}  requirements:{id:"REQ-p-r1"  kind:CLAUSE_KIND_BEHAVIOR  keyword:KEYWORD_MUST  text:"It MUST hold case 0."  content_hash:"115940fca310f9e080a720f7b1b3823b1c23b93001c562f76387716757d59ce5"  source:"**REQ-p-r1** (behavior): It MUST hold case 0."}  requirements:{id:"REQ-p-r2"  kind:CLAUSE_KIND_BEHAVIOR  keyword:KEYWORD_MUST  text:"It MUST hold case 0."  content_hash:"115940fca310f9e080a720f7b1b3823b1c23b93001c562f76387716757d59ce5"  source:"**REQ-p-r2** (behavior): It MUST hold case 0."}  requirements:{id:"REQ-p-r3"  kind:CLAUSE_KIND_BEHAVIOR  keyword:KEYWORD_MUST  text:"It MUST hold case 0."  content_hash:"115940fca310f9e080a720f7b1b3823b1c23b93001c562f76387716757d59ce5"  source:"**REQ-p-r3** (behavior): It MUST hold case 0."}  requirements:{id:"REQ-p-r4"  kind:CLAUSE_KIND_BEHAVIOR  keyword:KEYWORD_MUST  text:"It MUST hold case 0."  content_hash:"115940fca310f9e080a720f7b1b3823b1c23b93001c562f76387716757d59ce5"  source:"**REQ-p-r4** (behavior): It MUST hold case 0."}  requirements:{id:"REQ-p-r5"  kind:CLAUSE_KIND_BEHAVIOR  keyword:KEYWORD_MUST  text:"It MUST hold case 0."  content_hash:"115940fca310f9e080a720f7b1b3823b1c23b93001c562f76387716757d59ce5"  source:"**REQ-p-r5** (behavior): It MUST hold case 0."}  requirements:{id:"REQ-p-r6"  kind:CLAUSE_KIND_BEHAVIOR  keyword:KEYWORD_MUST  text:"It MUST hold case 0."  content_hash:"115940fca310f9e080a720f7b1b3823b1c23b93001c562f76387716757d59ce5"  source:"**REQ-p-r6** (behavior): It MUST hold case 0."}  notes:{text:"Commentary 0."  source:"> Commentary 0."  attached_to:{requirement_id:"REQ-p-r3"}}  notes:{text:"Commentary 0."  source:"> Commentary 0."  attached_to:{requirement_id:"REQ-p-r6"}}
+# 
+v0.4.8#15826635256124440750
+0x0
+0x0
+0x0
+0x0
+0x6b74f03291620
+0x6
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x1
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x1
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x1
+0x0
+0x6b74f03291620
+0x4
+0x0
+0x0
+0x0
+0x0
+0x0
+0x1
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0

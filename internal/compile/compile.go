@@ -327,14 +327,25 @@ func resolve(docs []*document, tombstones map[string]bool, diags *[]Diagnostic) 
 		}
 		return strings.Compare(a.GetName(), b.GetName())
 	})
-	byLoc := func(a, b *stipulatorv1.Location) int {
-		if c := strings.Compare(a.GetDocument(), b.GetDocument()); c != 0 {
+	// Identity-less blocks order by content, never by location: location
+	// is metadata the layout-independence invariant excludes, so an order
+	// derived from it would make the IR depend on how blocks are
+	// partitioned into files (REQ-model-layout-independence).
+	refKey := func(r *stipulatorv1.NodeRef) string {
+		if r.HasTermName() {
+			return "t\x00" + r.GetTermName()
+		}
+		return "r\x00" + r.GetRequirementId()
+	}
+	slices.SortFunc(irNotes, func(a, b *stipulatorv1.Note) int {
+		if c := strings.Compare(refKey(a.GetAttachedTo()), refKey(b.GetAttachedTo())); c != 0 {
 			return c
 		}
-		return int(a.GetLine() - b.GetLine())
-	}
-	slices.SortFunc(irNotes, func(a, b *stipulatorv1.Note) int { return byLoc(a.GetLocation(), b.GetLocation()) })
-	slices.SortFunc(irAnns, func(a, b *stipulatorv1.Annotation) int { return byLoc(a.GetLocation(), b.GetLocation()) })
+		return strings.Compare(a.GetSource(), b.GetSource())
+	})
+	slices.SortFunc(irAnns, func(a, b *stipulatorv1.Annotation) int {
+		return strings.Compare(a.GetSource(), b.GetSource())
+	})
 
 	edgeKeys := make([]string, 0, len(edges))
 	for k := range edges {

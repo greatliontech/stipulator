@@ -26,6 +26,6 @@ Spec: docs/specs/
 - [x] 22. Mutation engine v2: type-aware statement noop-ification, attested-equivalence survivor dispositions, extended operator families
 - [x] 23. Manifest policy overrides ((kind, keyword) → minimum evidence)
 - [x] 24. Attestation evidence records (weakest rung, distinct in every output)
-- [ ] 25. Determinism harness (kill attribution, operation coverage, environment pins)
+- [x] 25. Determinism harness (kill attribution, operation coverage, environment pins)
 - [ ] 26. Change-signature classifier (rearchitecture vs semantic drift)
 - [ ] 27. gitfs adapter (go-git) for diff-against-revision

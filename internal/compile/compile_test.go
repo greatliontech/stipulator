@@ -332,11 +332,17 @@ func TestNotes(t *testing.T) {
 	if len(notes) != 2 {
 		t.Fatalf("notes = %d", len(notes))
 	}
-	if notes[0].GetAttachedTo().GetRequirementId() != "REQ-x-a" {
-		t.Errorf("first note attachment = %v", notes[0].GetAttachedTo())
+	// Note order is canonical by content, not document position, so
+	// locate each by its text.
+	byText := map[string]*stipulatorv1.Note{}
+	for _, n := range notes {
+		byText[n.GetText()] = n
 	}
-	if notes[1].HasAttachedTo() {
-		t.Errorf("section note should have no attachment, got %v", notes[1].GetAttachedTo())
+	if n := byText["Attached commentary."]; n.GetAttachedTo().GetRequirementId() != "REQ-x-a" {
+		t.Errorf("attached note attachment = %v", n.GetAttachedTo())
+	}
+	if n := byText["Section commentary."]; n.HasAttachedTo() {
+		t.Errorf("section note should have no attachment, got %v", n.GetAttachedTo())
 	}
 }
 

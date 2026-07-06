@@ -24,4 +24,14 @@ records {
   operators: "go/2"
   body_line: 23
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
+  attested {
+    position: "index.go:50:3"
+    operator: "delete statement"
+    reason: "equivalent over all reachable inputs: corpus enumeration is sorted lexicographically (internal/corpus), so documents arrive pre-sorted and the sort is local defense for that non-local guarantee; kept deliberately"
+  }
+  attested {
+    position: "index.go:50:50"
+    operator: "zero return"
+    reason: "the sort comparator is unreachable for discriminating inputs for the same reason the sort itself is equivalent: documents arrive pre-sorted from corpus enumeration"
+  }
 }

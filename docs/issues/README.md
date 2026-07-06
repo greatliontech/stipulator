@@ -10,10 +10,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[gopter-property-recognition](gopter-property-recognition.md)** — gopter-driven tests
   classify as example witnesses; the classifier recognizes fuzz targets and rapid drivers
   only. *Lands: when a corpus standardized on gopter needs invariant coverage.*
-- **[determinism-witness-operation-coverage](determinism-witness-operation-coverage.md)** —
-  the determinism property quantifies compile→verify→evaluate and the record verbs; fmt,
-  bundle, facts, diff, and harden have no determinism witness. *Lands: when the determinism
-  harness chunk of the active plan begins.*
 - **[out-of-process-backends](out-of-process-backends.md)** — the backend surfaces (and the
   mutator, whose kill-sheet records are already the interchange contract) can move behind a
   wire protocol with the trust model intact; deferred while one backend exists. *Lands: when
