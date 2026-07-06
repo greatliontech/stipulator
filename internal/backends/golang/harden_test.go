@@ -234,6 +234,11 @@ func TestWitnessClassProof(t *testing.T) {
 	if got := backend.WitnessClass(mod + "/internal/corpus.TestLoadManifest"); got == verify.AnalyzerProof {
 		t.Fatal("ordinary test classified as proof")
 	}
+	// Generic instantiation is still a direct invocation: this test's
+	// body calls structural only through Implements[I](...).
+	if got := backend.WitnessClass(mod + "/internal/arch.TestBackendSatisfiesVerifierSurfaces"); got != verify.AnalyzerProof {
+		t.Fatalf("generic structural invocation classified %v", got)
+	}
 	notATest(t)
 	if got := backend.WitnessClass(mod + "/internal/backends/golang.notATest"); got == verify.AnalyzerProof {
 		t.Fatal("plain function classified as proof; it never runs in a witness run")

@@ -152,7 +152,17 @@ func (b *Backend) WitnessClass(symbol string) verify.WitnessClass {
 			if !ok || proof {
 				return !proof
 			}
-			if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
+			// A generic instantiation wraps the selector in an index
+			// expression: structural.Implements[io.Reader](t, x) is
+			// still a direct invocation.
+			fun := call.Fun
+			switch idx := fun.(type) {
+			case *ast.IndexExpr:
+				fun = idx.X
+			case *ast.IndexListExpr:
+				fun = idx.X
+			}
+			if sel, ok := fun.(*ast.SelectorExpr); ok {
 				if obj := pkg.TypesInfo.Uses[sel.Sel]; obj != nil && obj.Pkg() != nil {
 					switch {
 					case obj.Pkg().Path() == structuralPkg:

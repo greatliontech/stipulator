@@ -52,7 +52,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/stipulate/structural.Implements"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "51a9c5fcae5d4c5085da6b629945068b95634f04add6c380804cee522c952fb5"
+  shape_hash: "ad73c18068f28bf93fed289d93831f016472a9ae68ea2e2ada0ca5ba7e0c134a"
 }
 
 bindings {
@@ -81,3 +81,4 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "78735ffa13dad3bde5c9160ae7c95e286443e8b6880528510a0b86101ac3f85c"
 }
+

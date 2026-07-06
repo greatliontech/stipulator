@@ -83,17 +83,18 @@ func NoImport(tb testing.TB, fromPattern string, forbidden ...string) {
 	}
 }
 
-// Implements asserts that a type satisfies an interface. Pass pointers so
-// nil values carry the types: Implements(t, (*ast.Ident)(nil),
-// (*ast.Node)(nil)). Failures name the missing or mismatched method.
-func Implements(tb testing.TB, typ, iface any) {
+// Implements asserts that a type satisfies the interface I. Pass a typed
+// nil pointer so the value carries the type:
+// Implements[ast.Node](t, (*ast.Ident)(nil)). Failures name the missing
+// or mismatched method; instantiating with a non-interface I is refused —
+// that would silently assert type identity, a different claim.
+func Implements[I any](tb testing.TB, typ any) {
 	tb.Helper()
-	it := reflect.TypeOf(iface)
-	if it == nil || it.Kind() != reflect.Pointer || it.Elem().Kind() != reflect.Interface {
-		tb.Fatalf("structural.Implements: iface must be a nil interface pointer like (*io.Reader)(nil), got %T", iface)
+	ifaceType := reflect.TypeFor[I]()
+	if ifaceType.Kind() != reflect.Interface {
+		tb.Fatalf("structural.Implements: type parameter must be an interface, got %s", ifaceType)
 		return
 	}
-	ifaceType := it.Elem()
 	tt := reflect.TypeOf(typ)
 	if tt == nil {
 		tb.Fatalf("structural.Implements: typ carries no type; pass a typed nil pointer")

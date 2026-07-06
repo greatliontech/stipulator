@@ -4,61 +4,36 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/stipulate/structural.Implements"
-  body_hash: "1f7ba2f7a6c7815c197a94045d29cce84874ce7a061fba21919990c51817d803"
-  mutants: 19
-  killed: 7
+  body_hash: "3daaba50ea876cddfee835e12d33c4e75c92a188748207452ec6bed7aee020f9"
+  mutants: 11
+  killed: 5
   survivors {
-    position: "structural.go:90:2"
+    position: "structural.go:92:2"
     operator: "delete statement"
   }
   survivors {
-    position: "structural.go:112:2"
+    position: "structural.go:113:2"
     operator: "delete statement"
   }
   survivors {
-    position: "structural.go:92:47"
-    operator: "|| -> &&"
-  }
-  survivors {
-    position: "structural.go:92:5"
-    operator: "force false"
-  }
-  survivors {
-    position: "structural.go:92:50"
-    operator: "force false"
-  }
-  survivors {
-    position: "structural.go:92:15"
-    operator: "|| -> &&"
-  }
-  survivors {
-    position: "structural.go:92:5"
-    operator: "force false"
-  }
-  survivors {
-    position: "structural.go:92:18"
-    operator: "force false"
-  }
-  survivors {
-    position: "structural.go:93:3"
+    position: "structural.go:95:3"
     operator: "delete statement"
   }
   survivors {
-    position: "structural.go:99:3"
+    position: "structural.go:100:3"
     operator: "delete statement"
   }
   survivors {
-    position: "structural.go:107:40"
+    position: "structural.go:108:40"
     operator: "negate condition"
   }
   survivors {
-    position: "structural.go:108:4"
+    position: "structural.go:109:4"
     operator: "delete statement"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/arch.TestBackendSatisfiesVerifierSurfaces"
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestWitnessClassProof"
   witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestAnalyzerProofSatisfiesStructural"
   operators: "go/2"
-  body_line: 89
-  budget: 24
+  body_line: 91
 }

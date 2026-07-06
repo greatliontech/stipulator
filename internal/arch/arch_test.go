@@ -53,8 +53,8 @@ func TestCoreIsVcsFree(t *testing.T) {
 // surfaces are real interface satisfactions, not naming coincidences.
 func TestBackendSatisfiesVerifierSurfaces(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-structural-provers")
-	structural.Implements(t, (*golang.Backend)(nil), (*verify.Backend)(nil))
-	structural.Implements(t, (*golang.Backend)(nil), (*verify.Slicer)(nil))
-	structural.Implements(t, (*golang.Backend)(nil), (*verify.WitnessClassifier)(nil))
-	structural.Implements(t, (*golang.Backend)(nil), (*verify.VacuityChecker)(nil))
+	structural.Implements[verify.Backend](t, (*golang.Backend)(nil))
+	structural.Implements[verify.Slicer](t, (*golang.Backend)(nil))
+	structural.Implements[verify.WitnessClassifier](t, (*golang.Backend)(nil))
+	structural.Implements[verify.VacuityChecker](t, (*golang.Backend)(nil))
 }

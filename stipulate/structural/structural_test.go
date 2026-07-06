@@ -67,16 +67,23 @@ func TestNoImport(t *testing.T) {
 
 func TestImplements(t *testing.T) {
 	r := &recorder{}
-	Implements(r, (*strings.Reader)(nil), (*io.Reader)(nil))
+	Implements[io.Reader](r, (*strings.Reader)(nil))
 	if len(r.errors)+len(r.fatals) != 0 {
 		t.Fatalf("satisfied interface failed: %v %v", r.errors, r.fatals)
 	}
-	Implements(r, (*strings.Reader)(nil), (*io.Closer)(nil))
+	Implements[io.Closer](r, (*strings.Reader)(nil))
 	if len(r.errors) == 0 || !strings.Contains(r.errors[0], "missing method Close") {
 		t.Fatalf("missing method not named: %v", r.errors)
 	}
-	Implements(r, (*strings.Reader)(nil), "not an interface pointer")
+	// A non-interface type parameter would silently assert type identity
+	// — a different claim — so it is refused.
+	Implements[strings.Reader](r, (*strings.Reader)(nil))
 	if len(r.fatals) == 0 {
-		t.Fatal("malformed iface argument accepted")
+		t.Fatal("non-interface type parameter accepted")
+	}
+	// An untyped nil carries no type to check.
+	Implements[io.Reader](r, nil)
+	if len(r.fatals) < 2 {
+		t.Fatal("untyped nil accepted")
 	}
 }
