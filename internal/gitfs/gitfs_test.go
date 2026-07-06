@@ -142,24 +142,62 @@ func TestRevisionSubdirCorpus(t *testing.T) {
 	}
 }
 
-// TestLinkedWorktreeRefused pins the fail-loud contract: the embedded git
-// opens a linked worktree's gitfile redirection but resolves no
-// references, so gitfs refuses with the real cause instead of blaming
-// the revision.
-func TestLinkedWorktreeRefused(t *testing.T) {
+// TestLinkedWorktreeSupported pins commondir support: a linked worktree
+// (git worktree add — .git is a file) resolves revisions and compiles
+// the corpus exactly as the main worktree does; without the commondir
+// indirection every revision reads as "reference not found".
+func TestLinkedWorktreeSupported(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-diff-revision")
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git binary not available")
 	}
-	dir := repoWith(t, map[string]string{"a.txt": "x\n"}, nil)
+	dir := repoWith(t, map[string]string{
+		".stipulator/manifest.textproto": "include: \"specs/**/*.md\"\n",
+		"specs/a.md":                     "# T\n\n**REQ-g-a** (behavior): It MUST x.\n",
+	}, nil)
+	// A second commit ahead of the worktree's pin: HEAD in a linked
+	// worktree must mean THAT worktree's checked-out revision, never the
+	// main worktree's.
+	repo, err := git.PlainOpen(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wt, err := repo.Worktree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := wt.Filesystem.Create("specs/b.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Write([]byte("# U\n\n**REQ-g-b** (behavior): It MUST y.\n"))
+	f.Close()
+	if _, err := wt.Add("."); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wt.Commit("v2", &git.CommitOptions{
+		Author: &object.Signature{Name: "t", Email: "t@t", When: time.Unix(1, 0)},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
 	linked := t.TempDir() + "/wt"
-	out, err := exec.Command("git", "-C", dir, "worktree", "add", linked).CombinedOutput()
+	out, err := exec.Command("git", "-C", dir, "worktree", "add", linked, "HEAD~1").CombinedOutput()
 	if err != nil {
 		t.Skipf("git worktree add failed: %v: %s", err, out)
 	}
-	_, err = FS(linked, "HEAD")
-	if err == nil || !strings.Contains(err.Error(), "linked git worktree") {
-		t.Fatalf("linked worktree not refused with the real cause: %v", err)
+	fsys, err := FS(linked, "HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec, diags, err := compile.Compile(fsys)
+	if err != nil || len(diags) > 0 {
+		t.Fatalf("compile from linked worktree: %v %v", err, diags)
+	}
+	// One requirement: the worktree pins v1, so v2's REQ-g-b is
+	// invisible even though the main worktree's HEAD carries it.
+	if len(spec.GetRequirements()) != 1 || spec.GetRequirements()[0].GetId() != "REQ-g-a" {
+		t.Fatalf("linked HEAD read main's revision: %+v", spec.GetRequirements())
 	}
 }
 

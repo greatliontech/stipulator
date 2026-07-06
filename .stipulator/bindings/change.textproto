@@ -113,15 +113,6 @@ bindings {
   requirement_id: "REQ-change-diff-revision"
   content_hash: "931a47ba63e3b0767e7ab168a0dd29d4e728cfcbb700070206dd3b7f1f257f0f"
   backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/gitfs.TestLinkedWorktreeRefused"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "93197568e9c0e4076d333898a24ce7e9420780429240317bcb10ae5ef478be8d"
-}
-
-bindings {
-  requirement_id: "REQ-change-diff-revision"
-  content_hash: "931a47ba63e3b0767e7ab168a0dd29d4e728cfcbb700070206dd3b7f1f257f0f"
-  backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/gitfs.TestSymlinkEntriesRefused"
   role: BINDING_ROLE_TESTS
   shape_hash: "7b72d1f3afc61bbf8a9701778063ff01da698b6dea7d1727e3c27f2fc0e27d86"
@@ -134,4 +125,13 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPinTool"
   role: BINDING_ROLE_TESTS
   shape_hash: "b29a14ad85d5a0eb500f9e668a9b7bb77e5ceff480e5747077ce966e7d0f6e43"
+}
+
+bindings {
+  requirement_id: "REQ-change-diff-revision"
+  content_hash: "931a47ba63e3b0767e7ab168a0dd29d4e728cfcbb700070206dd3b7f1f257f0f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/gitfs.TestLinkedWorktreeSupported"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "125a3a598980de9db60dcfef87f4b076b9c4b5f0ef126300f5bac72642aa52fa"
 }

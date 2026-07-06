@@ -44,7 +44,3 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   only, so analyzer witnesses get no teeth check; add a structural mutation class (inject a
   forbidden import / break an asserted method set, require the witness to fail). *Lands: when an
   analyzer witness needs adequacy evidence.*
-- **[gitfs-linked-worktrees](gitfs-linked-worktrees.md)** — diff --against refuses linked git
-  worktrees (embedded git resolves nothing through a gitfile redirection; fail-loud beats a
-  misleading "reference not found"). *Lands: when diff-against-revision is needed from a linked
-  worktree.*

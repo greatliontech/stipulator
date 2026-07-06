@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"os"
 	"path"
 	"path/filepath"
 	"sort"
@@ -28,13 +27,11 @@ import (
 // onto the same corpus root at the revision. The revision accepts
 // anything git rev-parse does (HEAD~2, branch, tag, hash).
 func FS(dir, rev string) (fs.FS, error) {
-	if gitFile(dir) {
-		// go-git opens a linked worktree's gitfile redirection but then
-		// resolves no references at all — every revision would read as
-		// "not found", blaming the caller. Refuse with the real cause.
-		return nil, fmt.Errorf("%s is a linked git worktree (.git is a file), which the embedded git cannot resolve revisions in; run from the main worktree", dir)
-	}
-	repo, err := git.PlainOpenWithOptions(dir, &git.PlainOpenOptions{DetectDotGit: true})
+	// EnableDotGitCommonDir wires the commondir indirection, so linked
+	// worktrees (git worktree add — .git is a file) resolve their
+	// references and objects; without it every revision reads as
+	// "reference not found".
+	repo, err := git.PlainOpenWithOptions(dir, &git.PlainOpenOptions{DetectDotGit: true, EnableDotGitCommonDir: true})
 	if err != nil {
 		return nil, fmt.Errorf("opening git repository at %s: %w", dir, err)
 	}
@@ -64,26 +61,6 @@ func FS(dir, rev string) (fs.FS, error) {
 		return nil, fmt.Errorf("revision %q has no directory %q: %w", rev, prefix, err)
 	}
 	return sub, nil
-}
-
-// gitFile reports whether the repository containing dir is reached
-// through a .git FILE — a linked worktree's redirection.
-func gitFile(dir string) bool {
-	abs, err := absPath(dir)
-	if err != nil {
-		return false
-	}
-	for {
-		info, err := os.Stat(filepath.Join(abs, ".git"))
-		if err == nil {
-			return info.Mode().IsRegular()
-		}
-		parent := filepath.Dir(abs)
-		if parent == abs {
-			return false
-		}
-		abs = parent
-	}
 }
 
 // repoRelative returns dir's clean path relative to the repository's
