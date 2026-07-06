@@ -4,7 +4,7 @@
 
 | Document | Title | Requirements | Terms |
 |---|---|---|---|
-| [change.md](change.md) | Change model | 14 | 0 |
+| [change.md](change.md) | Change model | 15 | 0 |
 | [context.md](context.md) | Context facts | 2 | 0 |
 | [evidence.md](evidence.md) | Bindings, evidence, coverage | 18 | 0 |
 | [hardening.md](hardening.md) | Witness hardening | 7 | 1 |
@@ -18,6 +18,7 @@
 - `REQ-change-dangling` (invariant, must)
 - `REQ-change-default-normative` (behavior, must)
 - `REQ-change-diff` (behavior, must)
+- `REQ-change-diff-revision` (behavior, must)
 - `REQ-change-editorial` (behavior, must)
 - `REQ-change-retire` (behavior, must)
 - `REQ-change-split-merge` (behavior, must)

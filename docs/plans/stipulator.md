@@ -28,4 +28,4 @@ Spec: docs/specs/
 - [x] 24. Attestation evidence records (weakest rung, distinct in every output)
 - [x] 25. Determinism harness (kill attribution, operation coverage, environment pins)
 - [x] 26. Change-signature classifier (rearchitecture vs semantic drift)
-- [ ] 27. gitfs adapter (go-git) for diff-against-revision
+- [x] 27. gitfs adapter (go-git) for diff-against-revision

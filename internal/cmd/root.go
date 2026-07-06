@@ -67,6 +67,23 @@ func mustCompile(dir string) (*stipulatorv1.Spec, error) {
 		}
 		return nil, err
 	}
+	return mustClean(spec, diags)
+}
+
+// mustCompileFS compiles a corpus from any filesystem — a git revision's
+// tree, most notably — labeling errors with where it came from.
+func mustCompileFS(fsys fs.FS, label string) (*stipulatorv1.Spec, error) {
+	spec, diags, err := compile.Compile(fsys)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) && strings.Contains(err.Error(), corpus.ManifestPath) {
+			return nil, fmt.Errorf("%s holds no stipulator corpus (no %s)", label, corpus.ManifestPath)
+		}
+		return nil, err
+	}
+	return mustClean(spec, diags)
+}
+
+func mustClean(spec *stipulatorv1.Spec, diags []compile.Diagnostic) (*stipulatorv1.Spec, error) {
 	if len(diags) > 0 {
 		for _, d := range diags {
 			fmt.Fprintln(os.Stderr, d)

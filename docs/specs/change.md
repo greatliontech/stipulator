@@ -16,6 +16,12 @@ content hash), metadata-only (location), and edge changes — text-changed and
 kind-changed are independent axes, reported together when both change, and a
 pure file reorganization reports no semantic delta.
 
+**REQ-change-diff-revision** (behavior): The `diff` operation MUST accept a
+git revision as the old corpus, compiling it from the repository's object
+store at the corpus root's repo-relative path — no checkout, no worktree
+mutation — so the committed contract and the working tree compare in one
+invocation.
+
 ## Dispositions
 
 Dispositions are operations, not records: they rewrite the stored bindings,
