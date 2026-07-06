@@ -21,7 +21,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-covers"
-  content_hash: "b70adec7e7e8e898e559c4a35c5090f2c415e5c47a4de81e71a44ab201fdb79e"
+  content_hash: "e5112a86513397c56228cb47ce9c030c91c7d7e73e84cabd9f4ba892783ef83e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/stipulate.Covers"
   role: BINDING_ROLE_IMPLEMENTS
@@ -30,7 +30,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-covers"
-  content_hash: "b70adec7e7e8e898e559c4a35c5090f2c415e5c47a4de81e71a44ab201fdb79e"
+  content_hash: "e5112a86513397c56228cb47ce9c030c91c7d7e73e84cabd9f4ba892783ef83e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/stipulate.TestCoversEmitsMarker"
   role: BINDING_ROLE_TESTS
@@ -57,7 +57,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-witness"
-  content_hash: "3f353bac92cb1b484518b377df3b70929e1f47a3dd43e8ad792ccdecaadbb48b"
+  content_hash: "e22a6e3886e24459029537b7ca47306a843b4cede5b1a9e2342557c72c33ba6b"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.Run"
   role: BINDING_ROLE_IMPLEMENTS
@@ -66,7 +66,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-witness"
-  content_hash: "3f353bac92cb1b484518b377df3b70929e1f47a3dd43e8ad792ccdecaadbb48b"
+  content_hash: "e22a6e3886e24459029537b7ca47306a843b4cede5b1a9e2342557c72c33ba6b"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.TestWitnessCorrelation"
   role: BINDING_ROLE_TESTS

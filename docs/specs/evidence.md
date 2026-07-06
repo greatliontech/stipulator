@@ -67,9 +67,13 @@ strongest first:
 4. static binding (the symbol resolves and its shape hash matches)
 5. attestation
 
-**REQ-evidence-witness** (behavior): A witness MUST record that a named test
-passed in the current verification run while bound — or registered at
-runtime — to the requirement.
+**REQ-evidence-witness** (behavior): A witness MUST record that a named
+test passed in the current verification run while bound to the
+requirement. Runtime registrations refine attribution — which subtest
+claims which requirement, cross-checked against the binding store and
+reported with per-subtest outcomes — but evidence follows the bound
+test's outcome alone: a passing subtest inside a failing test binary
+grants nothing, because a red suite never yields green evidence.
 
 **REQ-evidence-run-attributes** (behavior): A witness MUST carry the rigor
 attributes of the run that produced it, at minimum whether the race

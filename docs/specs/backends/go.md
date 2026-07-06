@@ -56,7 +56,9 @@ in ordinary test runs is the witness.
 
 **REQ-go-covers** (behavior): Tests MAY register requirement coverage at
 runtime through the provided `Covers(t, id)` helper, which yields
-subtest-granular witnesses in the same run.
+subtest-granular registrations in the same run — attribution and
+reporting, per REQ-evidence-witness; the witness itself follows the
+bound test's outcome.
 
 **REQ-go-covers-crosscheck** (behavior): A runtime registration naming a
 requirement that has no matching binding of role `tests` or `proves` MUST
