@@ -1,0 +1,59 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.Report.Records"
+  body_hash: "5d4c78cc39f4df4056a07a1207fc6537dc32a7f471b87888b51b7db28da824e5"
+  mutants: 20
+  killed: 8
+  survivors {
+    position: "harden.go:281:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "harden.go:284:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "harden.go:285:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "harden.go:286:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "harden.go:290:4"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "harden.go:291:4"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "harden.go:318:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "harden.go:308:7"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "harden.go:308:15"
+    operator: "!= -> =="
+  }
+  survivors {
+    position: "harden.go:312:8"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "harden.go:319:11"
+    operator: "zero return"
+  }
+  survivors {
+    position: "harden.go:319:30"
+    operator: "< -> >="
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/harden.TestRunAndRecords"
+}

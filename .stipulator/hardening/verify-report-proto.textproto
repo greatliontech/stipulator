@@ -1,0 +1,103 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verify.Report.Proto"
+  body_hash: "230f0050615c21c5a9f15b1df5a195853182ce8119257f5058bb2a4f4ef0cb98"
+  mutants: 23
+  killed: 0
+  survivors {
+    position: "proto.go:17:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:37:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:48:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:13:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:14:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:22:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:23:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:24:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:25:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:26:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:27:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:28:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:29:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:30:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:34:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:31:6"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "proto.go:31:14"
+    operator: "== -> !="
+  }
+  survivors {
+    position: "proto.go:32:4"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:42:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:43:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:44:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:45:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:49:9"
+    operator: "zero return"
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestGateTool"
+}

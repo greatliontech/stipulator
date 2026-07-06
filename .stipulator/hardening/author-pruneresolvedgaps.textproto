@@ -2,14 +2,14 @@
 # proto-message: stipulator.v1.HardeningSet
 
 records {
-  requirement_id: "REQ-gap-resolved-pruned"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.PruneResolvedGaps"
   body_hash: "15238ff58b75d7bbd58208426fcba0c2ef4496d318af45ed3839f07bcd1ac460"
   mutants: 3
   killed: 2
   survivors {
-    position: "author.go:350:2"
+    position: "author.go:361:2"
     operator: "delete statement"
   }
+  witnesses: "github.com/greatliontech/stipulator/internal/author.TestPruneResolvedGaps"
 }

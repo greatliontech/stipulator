@@ -1,0 +1,23 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/profile.transformer.Transform"
+  body_hash: "44d9bd77f6027518f525f95b6d2250be073f125b340cefa994bfd269b513de0e"
+  mutants: 9
+  killed: 6
+  survivors {
+    position: "transform.go:89:53"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "transform.go:89:59"
+    operator: "!= -> =="
+  }
+  survivors {
+    position: "transform.go:90:42"
+    operator: "negate condition"
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/compile.TestDocumentErrors"
+}

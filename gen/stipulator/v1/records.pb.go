@@ -1020,22 +1020,25 @@ func (b0 MutationSurvivor_builder) Build() *MutationSurvivor {
 	return m0
 }
 
-// Hardening is one mutation kill-sheet: valid only while body_hash matches
-// the symbol's current body.
+// Hardening is one mutation kill-sheet, keyed by the mutated symbol:
+// valid only while body_hash matches the symbol's current body AND
+// witnesses matches the union of witness-role tests bound (via any
+// requirement the symbol implements) in the binding store. Per-requirement
+// views are derived from the binding store on demand, never stored.
 type Hardening struct {
-	state                    protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_RequirementId *string                `protobuf:"bytes,1,opt,name=requirement_id,json=requirementId"`
-	xxx_hidden_Backend       *string                `protobuf:"bytes,2,opt,name=backend"`
-	xxx_hidden_Symbol        *string                `protobuf:"bytes,3,opt,name=symbol"`
-	xxx_hidden_BodyHash      *string                `protobuf:"bytes,4,opt,name=body_hash,json=bodyHash"`
-	xxx_hidden_Mutants       int32                  `protobuf:"varint,5,opt,name=mutants"`
-	xxx_hidden_Killed        int32                  `protobuf:"varint,6,opt,name=killed"`
-	xxx_hidden_Survivors     *[]*MutationSurvivor   `protobuf:"bytes,7,rep,name=survivors"`
-	xxx_hidden_Discarded     int32                  `protobuf:"varint,8,opt,name=discarded"`
-	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
-	XXX_presence             [1]uint32
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Backend     *string                `protobuf:"bytes,2,opt,name=backend"`
+	xxx_hidden_Symbol      *string                `protobuf:"bytes,3,opt,name=symbol"`
+	xxx_hidden_BodyHash    *string                `protobuf:"bytes,4,opt,name=body_hash,json=bodyHash"`
+	xxx_hidden_Mutants     int32                  `protobuf:"varint,5,opt,name=mutants"`
+	xxx_hidden_Killed      int32                  `protobuf:"varint,6,opt,name=killed"`
+	xxx_hidden_Survivors   *[]*MutationSurvivor   `protobuf:"bytes,7,rep,name=survivors"`
+	xxx_hidden_Discarded   int32                  `protobuf:"varint,8,opt,name=discarded"`
+	xxx_hidden_Witnesses   []string               `protobuf:"bytes,9,rep,name=witnesses"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Hardening) Reset() {
@@ -1061,16 +1064,6 @@ func (x *Hardening) ProtoReflect() protoreflect.Message {
 		return ms
 	}
 	return mi.MessageOf(x)
-}
-
-func (x *Hardening) GetRequirementId() string {
-	if x != nil {
-		if x.xxx_hidden_RequirementId != nil {
-			return *x.xxx_hidden_RequirementId
-		}
-		return ""
-	}
-	return ""
 }
 
 func (x *Hardening) GetBackend() string {
@@ -1133,34 +1126,36 @@ func (x *Hardening) GetDiscarded() int32 {
 	return 0
 }
 
-func (x *Hardening) SetRequirementId(v string) {
-	x.xxx_hidden_RequirementId = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 8)
+func (x *Hardening) GetWitnesses() []string {
+	if x != nil {
+		return x.xxx_hidden_Witnesses
+	}
+	return nil
 }
 
 func (x *Hardening) SetBackend(v string) {
 	x.xxx_hidden_Backend = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 8)
 }
 
 func (x *Hardening) SetSymbol(v string) {
 	x.xxx_hidden_Symbol = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 8)
 }
 
 func (x *Hardening) SetBodyHash(v string) {
 	x.xxx_hidden_BodyHash = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 8)
 }
 
 func (x *Hardening) SetMutants(v int32) {
 	x.xxx_hidden_Mutants = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 8)
 }
 
 func (x *Hardening) SetKilled(v int32) {
 	x.xxx_hidden_Killed = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 8)
 }
 
 func (x *Hardening) SetSurvivors(v []*MutationSurvivor) {
@@ -1169,141 +1164,133 @@ func (x *Hardening) SetSurvivors(v []*MutationSurvivor) {
 
 func (x *Hardening) SetDiscarded(v int32) {
 	x.xxx_hidden_Discarded = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 8)
 }
 
-func (x *Hardening) HasRequirementId() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+func (x *Hardening) SetWitnesses(v []string) {
+	x.xxx_hidden_Witnesses = v
 }
 
 func (x *Hardening) HasBackend() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
 }
 
 func (x *Hardening) HasSymbol() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
 }
 
 func (x *Hardening) HasBodyHash() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
 }
 
 func (x *Hardening) HasMutants() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
 }
 
 func (x *Hardening) HasKilled() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
 }
 
 func (x *Hardening) HasDiscarded() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 7)
-}
-
-func (x *Hardening) ClearRequirementId() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
-	x.xxx_hidden_RequirementId = nil
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
 }
 
 func (x *Hardening) ClearBackend() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Backend = nil
 }
 
 func (x *Hardening) ClearSymbol() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
 	x.xxx_hidden_Symbol = nil
 }
 
 func (x *Hardening) ClearBodyHash() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
 	x.xxx_hidden_BodyHash = nil
 }
 
 func (x *Hardening) ClearMutants() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
 	x.xxx_hidden_Mutants = 0
 }
 
 func (x *Hardening) ClearKilled() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
 	x.xxx_hidden_Killed = 0
 }
 
 func (x *Hardening) ClearDiscarded() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 7)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
 	x.xxx_hidden_Discarded = 0
 }
 
 type Hardening_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	RequirementId *string
-	Backend       *string
-	Symbol        *string
-	BodyHash      *string
-	Mutants       *int32
-	Killed        *int32
-	Survivors     []*MutationSurvivor
+	Backend   *string
+	Symbol    *string
+	BodyHash  *string
+	Mutants   *int32
+	Killed    *int32
+	Survivors []*MutationSurvivor
 	// Discarded mutants failed to compile: reported so a low mutant count is
 	// never mistaken for thin mutation coverage.
 	Discarded *int32
+	// Witnesses pins the killer-test set the sheet ran against, canonically
+	// ordered; a new witness bound to the symbol re-stales the sheet exactly
+	// as a body edit does.
+	Witnesses []string
 }
 
 func (b0 Hardening_builder) Build() *Hardening {
 	m0 := &Hardening{}
 	b, x := &b0, m0
 	_, _ = b, x
-	if b.RequirementId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 8)
-		x.xxx_hidden_RequirementId = b.RequirementId
-	}
 	if b.Backend != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 8)
 		x.xxx_hidden_Backend = b.Backend
 	}
 	if b.Symbol != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 8)
 		x.xxx_hidden_Symbol = b.Symbol
 	}
 	if b.BodyHash != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 8)
 		x.xxx_hidden_BodyHash = b.BodyHash
 	}
 	if b.Mutants != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 8)
 		x.xxx_hidden_Mutants = *b.Mutants
 	}
 	if b.Killed != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 8)
 		x.xxx_hidden_Killed = *b.Killed
 	}
 	x.xxx_hidden_Survivors = &b.Survivors
 	if b.Discarded != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 8)
 		x.xxx_hidden_Discarded = *b.Discarded
 	}
+	x.xxx_hidden_Witnesses = b.Witnesses
 	return m0
 }
 
@@ -1400,16 +1387,16 @@ const file_stipulator_v1_records_proto_rawDesc = "" +
 	"\aretired\x18\x01 \x03(\tR\aretired\"J\n" +
 	"\x10MutationSurvivor\x12\x1a\n" +
 	"\bposition\x18\x01 \x01(\tR\bposition\x12\x1a\n" +
-	"\boperator\x18\x02 \x01(\tR\boperator\"\x90\x02\n" +
-	"\tHardening\x12%\n" +
-	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x12\x18\n" +
+	"\boperator\x18\x02 \x01(\tR\boperator\"\x8d\x02\n" +
+	"\tHardening\x12\x18\n" +
 	"\abackend\x18\x02 \x01(\tR\abackend\x12\x16\n" +
 	"\x06symbol\x18\x03 \x01(\tR\x06symbol\x12\x1b\n" +
 	"\tbody_hash\x18\x04 \x01(\tR\bbodyHash\x12\x18\n" +
 	"\amutants\x18\x05 \x01(\x05R\amutants\x12\x16\n" +
 	"\x06killed\x18\x06 \x01(\x05R\x06killed\x12=\n" +
 	"\tsurvivors\x18\a \x03(\v2\x1f.stipulator.v1.MutationSurvivorR\tsurvivors\x12\x1c\n" +
-	"\tdiscarded\x18\b \x01(\x05R\tdiscarded\"B\n" +
+	"\tdiscarded\x18\b \x01(\x05R\tdiscarded\x12\x1c\n" +
+	"\twitnesses\x18\t \x03(\tR\twitnessesJ\x04\b\x01\x10\x02\"B\n" +
 	"\fHardeningSet\x122\n" +
 	"\arecords\x18\x01 \x03(\v2\x18.stipulator.v1.HardeningR\arecords*y\n" +
 	"\vBindingRole\x12\x1c\n" +

@@ -2285,14 +2285,15 @@ func (b0 PartitionReport_builder) Build() *PartitionReport {
 
 // HardenResult is one target's outcome in a hardening run.
 type HardenResult struct {
-	state                     protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Record         *Hardening             `protobuf:"bytes,1,opt,name=record"`
-	xxx_hidden_Cached         bool                   `protobuf:"varint,2,opt,name=cached"`
-	xxx_hidden_SkippedNoTests bool                   `protobuf:"varint,3,opt,name=skipped_no_tests,json=skippedNoTests"`
-	XXX_raceDetectHookData    protoimpl.RaceDetectHookData
-	XXX_presence              [1]uint32
-	unknownFields             protoimpl.UnknownFields
-	sizeCache                 protoimpl.SizeCache
+	state                         protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Record             *Hardening             `protobuf:"bytes,1,opt,name=record"`
+	xxx_hidden_Cached             bool                   `protobuf:"varint,2,opt,name=cached"`
+	xxx_hidden_SkippedNoTests     bool                   `protobuf:"varint,3,opt,name=skipped_no_tests,json=skippedNoTests"`
+	xxx_hidden_SkippedNotFunction bool                   `protobuf:"varint,4,opt,name=skipped_not_function,json=skippedNotFunction"`
+	XXX_raceDetectHookData        protoimpl.RaceDetectHookData
+	XXX_presence                  [1]uint32
+	unknownFields                 protoimpl.UnknownFields
+	sizeCache                     protoimpl.SizeCache
 }
 
 func (x *HardenResult) Reset() {
@@ -2341,18 +2342,30 @@ func (x *HardenResult) GetSkippedNoTests() bool {
 	return false
 }
 
+func (x *HardenResult) GetSkippedNotFunction() bool {
+	if x != nil {
+		return x.xxx_hidden_SkippedNotFunction
+	}
+	return false
+}
+
 func (x *HardenResult) SetRecord(v *Hardening) {
 	x.xxx_hidden_Record = v
 }
 
 func (x *HardenResult) SetCached(v bool) {
 	x.xxx_hidden_Cached = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
 }
 
 func (x *HardenResult) SetSkippedNoTests(v bool) {
 	x.xxx_hidden_SkippedNoTests = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
+}
+
+func (x *HardenResult) SetSkippedNotFunction(v bool) {
+	x.xxx_hidden_SkippedNotFunction = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
 }
 
 func (x *HardenResult) HasRecord() bool {
@@ -2376,6 +2389,13 @@ func (x *HardenResult) HasSkippedNoTests() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
 }
 
+func (x *HardenResult) HasSkippedNotFunction() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
 func (x *HardenResult) ClearRecord() {
 	x.xxx_hidden_Record = nil
 }
@@ -2390,14 +2410,23 @@ func (x *HardenResult) ClearSkippedNoTests() {
 	x.xxx_hidden_SkippedNoTests = false
 }
 
+func (x *HardenResult) ClearSkippedNotFunction() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_SkippedNotFunction = false
+}
+
 type HardenResult_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	Record *Hardening
-	// Cached: the stored record's body hash matched; no mutants ran.
+	// Cached: the stored record's pins (body hash, witness set) matched;
+	// no mutants ran.
 	Cached *bool
-	// SkippedNoTests: the target has no bound tests to kill mutants.
+	// SkippedNoTests: the target has no bound witnesses to kill mutants.
 	SkippedNoTests *bool
+	// SkippedNotFunction: the symbol resolves but has no function body (a
+	// type or variable implements-binding) — nothing to mutate.
+	SkippedNotFunction *bool
 }
 
 func (b0 HardenResult_builder) Build() *HardenResult {
@@ -2406,12 +2435,16 @@ func (b0 HardenResult_builder) Build() *HardenResult {
 	_, _ = b, x
 	x.xxx_hidden_Record = b.Record
 	if b.Cached != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
 		x.xxx_hidden_Cached = *b.Cached
 	}
 	if b.SkippedNoTests != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
 		x.xxx_hidden_SkippedNoTests = *b.SkippedNoTests
+	}
+	if b.SkippedNotFunction != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		x.xxx_hidden_SkippedNotFunction = *b.SkippedNotFunction
 	}
 	return m0
 }
@@ -2553,11 +2586,12 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\n" +
 	"components\x18\x01 \x03(\v2!.stipulator.v1.PartitionComponentR\n" +
 	"components\x12;\n" +
-	"\boverlaps\x18\x02 \x03(\v2\x1f.stipulator.v1.PartitionOverlapR\boverlaps\"\x82\x01\n" +
+	"\boverlaps\x18\x02 \x03(\v2\x1f.stipulator.v1.PartitionOverlapR\boverlaps\"\xb4\x01\n" +
 	"\fHardenResult\x120\n" +
 	"\x06record\x18\x01 \x01(\v2\x18.stipulator.v1.HardeningR\x06record\x12\x16\n" +
 	"\x06cached\x18\x02 \x01(\bR\x06cached\x12(\n" +
-	"\x10skipped_no_tests\x18\x03 \x01(\bR\x0eskippedNoTests\"E\n" +
+	"\x10skipped_no_tests\x18\x03 \x01(\bR\x0eskippedNoTests\x120\n" +
+	"\x14skipped_not_function\x18\x04 \x01(\bR\x12skippedNotFunction\"E\n" +
 	"\fHardenReport\x125\n" +
 	"\aresults\x18\x01 \x03(\v2\x1b.stipulator.v1.HardenResultR\aresults*\x95\x01\n" +
 	"\n" +

@@ -1,0 +1,16 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/stipulate.Covers"
+  body_hash: "d8674e58ee669d83972739ce28641e787a02309041da10ba3fd7e243c643e741"
+  mutants: 1
+  killed: 0
+  discarded: 1
+  survivors {
+    position: "stipulate.go:23:2"
+    operator: "delete statement"
+  }
+  witnesses: "github.com/greatliontech/stipulator/stipulate.TestCoversEmitsMarker"
+}

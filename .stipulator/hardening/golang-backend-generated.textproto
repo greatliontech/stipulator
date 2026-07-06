@@ -1,0 +1,20 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend.generated"
+  body_hash: "b18047713f8fcdd8e9933683bb3bfc617c0fbcb9c05c48b0a0be5402808372f3"
+  mutants: 10
+  killed: 8
+  survivors {
+    position: "golang.go:263:20"
+    operator: "|| -> &&"
+  }
+  survivors {
+    position: "golang.go:271:26"
+    operator: "&& -> ||"
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestFixtureModule"
+  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestResolve"
+}

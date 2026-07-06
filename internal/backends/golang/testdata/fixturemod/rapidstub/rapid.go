@@ -3,7 +3,18 @@
 // fixture needs the shapes, not the behavior.
 package rapid
 
-import "testing"
+import (
+	"flag"
+	"testing"
+)
+
+// The real library registers its flags in package init; test binaries
+// linking this stub must accept them too, or every harden run against a
+// rapid-importing fixture package would die on an unknown flag and read
+// as a false kill.
+func init() {
+	flag.Bool("rapid.nofailfile", false, "rapid: do not write fail files on test failures")
+}
 
 // T mirrors rapid.T as the property callback's handle.
 type T struct{ testing.TB }

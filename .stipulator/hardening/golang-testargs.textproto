@@ -1,0 +1,11 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.testArgs"
+  body_hash: "cd0bd07b590fdb3e8179146b5f4a6fcc730441caa132a61ff27b9dd27342b6cc"
+  mutants: 1
+  killed: 1
+  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestWitnessRunInvocation"
+}

@@ -2,19 +2,11 @@
 # proto-message: stipulator.v1.HardeningSet
 
 records {
-  requirement_id: "REQ-profile-glob"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.matchGlob"
   body_hash: "2ff0611737659c844500ac16596e0a89e19344e334bec87a404fad17d1e57c47"
   mutants: 0
   killed: 0
-}
-
-records {
-  requirement_id: "REQ-profile-glob"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/corpus.validateGlob"
-  body_hash: "953b9e4cc18175720dbcb8f9ce44385f29df0e27294b1f9b756a871818196a70"
-  mutants: 8
-  killed: 8
+  witnesses: "github.com/greatliontech/stipulator/internal/corpus.TestMatchGlob"
+  witnesses: "github.com/greatliontech/stipulator/internal/corpus.TestValidateGlobErrors"
 }

@@ -1,0 +1,72 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/bundle.Markdown"
+  body_hash: "f561ed48bc944ad94bd74165582d8cb2d9d3084145cd65bd278091ef48bb5548"
+  mutants: 20
+  killed: 5
+  discarded: 3
+  survivors {
+    position: "bundle.go:183:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "bundle.go:184:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "bundle.go:191:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "bundle.go:200:6"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "bundle.go:201:4"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "bundle.go:206:6"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "bundle.go:211:4"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "bundle.go:207:7"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "bundle.go:208:5"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "bundle.go:215:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "bundle.go:220:5"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "bundle.go:220:27"
+    operator: "|| -> &&"
+  }
+  survivors {
+    position: "bundle.go:220:23"
+    operator: "> -> <="
+  }
+  survivors {
+    position: "bundle.go:220:54"
+    operator: "> -> <="
+  }
+  survivors {
+    position: "bundle.go:221:3"
+    operator: "delete statement"
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/bundle.TestBundleSelfContained"
+}

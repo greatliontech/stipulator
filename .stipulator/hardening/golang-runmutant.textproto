@@ -1,0 +1,35 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.RunMutant"
+  body_hash: "b0008eeb4504139a826c30bef02d167d30fe321c7a4b57b09eb70a3baa8ef4d8"
+  mutants: 12
+  killed: 7
+  discarded: 1
+  survivors {
+    position: "harden.go:322:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "harden.go:320:27"
+    operator: "zero return"
+  }
+  survivors {
+    position: "harden.go:325:27"
+    operator: "zero return"
+  }
+  survivors {
+    position: "harden.go:330:27"
+    operator: "zero return"
+  }
+  survivors {
+    position: "harden.go:343:17"
+    operator: "== -> !="
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunMutantOutcomes"
+  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestSplitRapidPkgs"
+  witnesses: "github.com/greatliontech/stipulator/internal/harden.TestPlanScope"
+  witnesses: "github.com/greatliontech/stipulator/internal/harden.TestRunAndRecords"
+}

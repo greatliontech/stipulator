@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -20,10 +21,12 @@ func hardenCmd() *cobra.Command {
 	var force bool
 	c := &cobra.Command{
 		Use:   "harden",
-		Short: "Mutation-test bound implementations against their bound tests",
-		Long: "Break each target's body on purpose and check that a bound test notices.\n" +
-			"Survivors are findings, never gate failures; kill-sheets are recorded under\n" +
-			".stipulator/hardening/, valid while the body hash matches.",
+		Short: "Mutation-test bound implementations against their bound witnesses",
+		Long: "Break each bound symbol's body on purpose and check that a witness notices:\n" +
+			"each symbol is mutated once against the union of the witness-role tests of\n" +
+			"every requirement it implements. Survivors are findings, never gate failures;\n" +
+			"kill-sheets are recorded under .stipulator/hardening/, valid while the body\n" +
+			"hash and witness set match.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			spec, err := mustCompile(chdir)
 			if err != nil {
@@ -54,14 +57,17 @@ func hardenCmd() *cobra.Command {
 			}
 			survivors := 0
 			for _, res := range rep.Results {
+				reqs := strings.Join(res.Requirements, ",")
 				switch {
 				case res.SkippedNoTest:
-					fmt.Printf("skip  %s %s: no bound tests\n", res.Requirement, res.Symbol)
+					fmt.Printf("skip  %s (%s): no bound witnesses\n", res.Symbol, reqs)
+				case res.SkippedNotFunc:
+					fmt.Printf("skip  %s (%s): not a function — nothing to mutate\n", res.Symbol, reqs)
 				case res.Cached:
-					fmt.Printf("cache %s %s: %d/%d killed, %d survivors\n", res.Requirement, res.Symbol, res.Killed, res.Mutants, len(res.Survivors))
+					fmt.Printf("cache %s: %d/%d killed, %d survivors\n", res.Symbol, res.Killed, res.Mutants, len(res.Survivors))
 					survivors += len(res.Survivors)
 				default:
-					fmt.Printf("run   %s %s: %d/%d killed, %d discarded\n", res.Requirement, res.Symbol, res.Killed, res.Mutants, res.Discarded)
+					fmt.Printf("run   %s (%s): %d/%d killed, %d discarded, %d witnesses\n", res.Symbol, reqs, res.Killed, res.Mutants, res.Discarded, len(res.Witnesses))
 					for _, s := range res.Survivors {
 						fmt.Printf("      SURVIVOR %s: %s\n", s.Position, s.Operator)
 						survivors++
@@ -72,11 +78,11 @@ func hardenCmd() *cobra.Command {
 			return nil
 		},
 	}
-	c.Flags().StringArrayVar(&reqs, "req", nil, "requirement identifiers to harden (repeatable; empty = all bound)")
+	c.Flags().StringArrayVar(&reqs, "req", nil, "requirement identifiers selecting symbols to harden; each runs against its full witness union (repeatable; empty = all bound)")
 	c.Flags().StringArrayVar(&symbols, "symbol", nil, "implementation symbols to harden (repeatable filter)")
 	c.Flags().IntVar(&budget, "budget", 24, "mutant budget per symbol (0 = all)")
-	c.Flags().DurationVar(&timeout, "timeout", 60*time.Second, "per-mutant test timeout")
-	c.Flags().BoolVar(&force, "force", false, "rerun targets whose kill-sheet body hash still matches")
+	c.Flags().DurationVar(&timeout, "timeout", 60*time.Second, "test timeout per mutant invocation (a mixed rapid/plain witness union runs up to two)")
+	c.Flags().BoolVar(&force, "force", false, "rerun targets whose kill-sheet pins (body hash, witness set) still match")
 	registerReqCompletions(c, "req")
 	return c
 }

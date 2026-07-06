@@ -1,0 +1,44 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.Gap"
+  body_hash: "86155dda07748028ee1a58666a278cffcf04fbdba17e45a2744d3068265d22b2"
+  mutants: 24
+  killed: 16
+  survivors {
+    position: "author.go:245:15"
+    operator: "zero return"
+  }
+  survivors {
+    position: "author.go:248:15"
+    operator: "zero return"
+  }
+  survivors {
+    position: "author.go:267:15"
+    operator: "zero return"
+  }
+  survivors {
+    position: "author.go:271:6"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "author.go:271:32"
+    operator: "== -> !="
+  }
+  survivors {
+    position: "author.go:277:6"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "author.go:277:14"
+    operator: "== -> !="
+  }
+  survivors {
+    position: "author.go:278:16"
+    operator: "zero return"
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/author.TestGap"
+  witnesses: "github.com/greatliontech/stipulator/internal/author.TestGapsBulk"
+}

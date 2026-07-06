@@ -141,7 +141,7 @@ func (s *Server) MCP() *mcp.Server {
 	}, s.toolPartitions)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "harden",
-		Description: "Mutation-test bound implementations against their bound tests: reqs/symbols scope (comma-separated, empty = all), per-symbol budget. Survivors are findings — strengthen the test or attest equivalence; never a gate input. Writes kill-sheets under .stipulator/hardening/.",
+		Description: "Mutation-test bound implementations against the union of witnesses of every requirement each symbol implements: reqs/symbols scope (comma-separated, empty = all), per-symbol budget. Survivors are findings — strengthen a test or attest equivalence; never a gate input. Writes per-symbol kill-sheets under .stipulator/hardening/, pinned to body hash and witness set.",
 	}, s.toolHarden)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "read_spec",
@@ -494,9 +494,9 @@ func (s *Server) toolHarden(ctx context.Context, req *mcp.CallToolRequest, in ha
 	for _, res := range rep.Results {
 		hr := &stipulatorv1.HardenResult{}
 		rec := &stipulatorv1.Hardening{}
-		rec.SetRequirementId(res.Requirement)
 		rec.SetBackend("go")
 		rec.SetSymbol(res.Symbol)
+		rec.SetWitnesses(res.Witnesses)
 		rec.SetBodyHash(res.BodyHash)
 		rec.SetMutants(int32(res.Mutants))
 		rec.SetKilled(int32(res.Killed))
@@ -511,6 +511,7 @@ func (s *Server) toolHarden(ctx context.Context, req *mcp.CallToolRequest, in ha
 		hr.SetRecord(rec)
 		hr.SetCached(res.Cached)
 		hr.SetSkippedNoTests(res.SkippedNoTest)
+		hr.SetSkippedNotFunction(res.SkippedNotFunc)
 		results = append(results, hr)
 	}
 	out.SetResults(results)

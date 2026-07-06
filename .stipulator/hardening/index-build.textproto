@@ -2,7 +2,6 @@
 # proto-message: stipulator.v1.HardeningSet
 
 records {
-  requirement_id: "REQ-profile-index-generated"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/index.Build"
   body_hash: "d2e0311d198e1dbe9dd12fd33bd03d7514a97157af0f998a816806aafffc4a2a"
@@ -17,4 +16,5 @@ records {
     position: "index.go:50:50"
     operator: "zero return"
   }
+  witnesses: "github.com/greatliontech/stipulator/internal/index.TestBuild"
 }

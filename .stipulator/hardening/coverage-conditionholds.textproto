@@ -1,0 +1,16 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.conditionHolds"
+  body_hash: "68ad757988881727d107b125499dabdad1bfdff22a004f226a1bf950858104f8"
+  mutants: 7
+  killed: 6
+  survivors {
+    position: "coverage.go:294:12"
+    operator: "zero return"
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestGapStates"
+  witnesses: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
+}

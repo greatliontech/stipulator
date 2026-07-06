@@ -1,0 +1,71 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.Compile"
+  body_hash: "a84ee119de029d24e408d6f8edc5d2d7050b9f28aad47c508b9525db8b20cd4c"
+  mutants: 24
+  killed: 9
+  survivors {
+    position: "compile.go:105:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "compile.go:71:20"
+    operator: "zero return"
+  }
+  survivors {
+    position: "compile.go:75:20"
+    operator: "zero return"
+  }
+  survivors {
+    position: "compile.go:79:20"
+    operator: "zero return"
+  }
+  survivors {
+    position: "compile.go:91:21"
+    operator: "zero return"
+  }
+  survivors {
+    position: "compile.go:107:6"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "compile.go:107:17"
+    operator: "!= -> =="
+  }
+  survivors {
+    position: "compile.go:108:11"
+    operator: "zero return"
+  }
+  survivors {
+    position: "compile.go:108:22"
+    operator: "< -> >="
+  }
+  survivors {
+    position: "compile.go:110:6"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "compile.go:110:13"
+    operator: "!= -> =="
+  }
+  survivors {
+    position: "compile.go:111:11"
+    operator: "zero return"
+  }
+  survivors {
+    position: "compile.go:111:18"
+    operator: "< -> >="
+  }
+  survivors {
+    position: "compile.go:113:10"
+    operator: "zero return"
+  }
+  survivors {
+    position: "compile.go:113:20"
+    operator: "< -> >="
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/compile.TestDocumentErrors"
+}

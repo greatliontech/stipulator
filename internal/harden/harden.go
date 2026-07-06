@@ -1,13 +1,18 @@
 // Package harden runs targeted mutation testing over the binding graph:
-// each requirement's implements-bindings say what to break, its
-// tests-bindings say which tests must notice. Survivors are findings for
-// disposition — this is exploration, never gate input; the only records
-// written are kill-sheets pinned to body hashes.
+// implements-bindings say what to break; the union of the witness-role
+// bindings of every requirement a symbol implements says which tests must
+// notice. Sheets are keyed by symbol — a survivor means no test vouching
+// for the body noticed, with no pretence of statement-level requirement
+// attribution. Survivors are findings for disposition — this is
+// exploration, never gate input; the only records written are kill-sheets
+// pinned to body hash and witness set.
 package harden
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -17,12 +22,17 @@ import (
 	"github.com/greatliontech/stipulator/internal/records"
 )
 
-// Target is one (implementation symbol, killer tests) pair derived from a
-// requirement's bindings.
+// Target is one implementation symbol paired with the union of its
+// killer tests, derived from the bindings of every requirement that
+// binds it as implements.
 type Target struct {
-	Requirement string
-	Symbol      string
-	// Tests are the bound killer tests: package import path and function.
+	Symbol string
+	// Requirements name the implementing claims, for reporting only.
+	Requirements []string
+	// Witnesses are the unioned witness-role test symbols, canonically
+	// ordered — the set the resulting sheet is pinned to.
+	Witnesses []string
+	// TestPkgs and RunRegex are the go-test execution form of Witnesses.
 	TestPkgs []string
 	RunRegex string
 }
@@ -35,8 +45,9 @@ type Survivor struct {
 
 // Result is one target's outcome.
 type Result struct {
-	Requirement   string
 	Symbol        string
+	Requirements  []string
+	Witnesses     []string
 	BodyHash      string
 	Mutants       int
 	Killed        int
@@ -44,6 +55,9 @@ type Result struct {
 	Survivors     []Survivor
 	Cached        bool
 	SkippedNoTest bool
+	// SkippedNotFunc: the symbol resolves but has no function body (a
+	// type or variable implements-binding) — nothing to mutate.
+	SkippedNotFunc bool
 }
 
 // Report is a hardening run's outcome.
@@ -51,10 +65,12 @@ type Report struct {
 	Results []Result
 }
 
-// Plan derives targets from the store: for each selected requirement, its
-// go implements-symbols paired with its go tests-bindings. Requirements
-// and symbols filter (empty = all); a target with no bound tests is
-// reported skipped, never silently dropped.
+// Plan derives one target per go implements-symbol: the killer set is
+// the union of the witness-role (tests or proves) bindings of every
+// requirement binding that symbol as implements. A requirement filter
+// keeps symbols implementing at least one selected requirement; a symbol
+// filter keeps the named symbols (empty = all). A target with no bound
+// witnesses is reported skipped, never silently dropped.
 func Plan(spec *stipulatorv1.Spec, store *records.Store, reqs, symbols []string) []Target {
 	wantReq := toSet(reqs)
 	wantSym := toSet(symbols)
@@ -63,8 +79,8 @@ func Plan(spec *stipulatorv1.Spec, store *records.Store, reqs, symbols []string)
 		inCorpus[r.GetId()] = true
 	}
 
-	impls := map[string][]string{} // requirement -> implements symbols
-	tests := map[string]map[string]map[string]bool{}
+	implReqs := map[string]map[string]bool{}   // symbol -> implementing requirements
+	witnesses := map[string]map[string]bool{}  // requirement -> witness test symbols
 	for _, bf := range store.Bindings {
 		for _, b := range bf.Set.GetBindings() {
 			if b.GetBackend() != "go" || !inCorpus[b.GetRequirementId()] {
@@ -73,56 +89,82 @@ func Plan(spec *stipulatorv1.Spec, store *records.Store, reqs, symbols []string)
 			id := b.GetRequirementId()
 			switch b.GetRole() {
 			case stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS:
-				impls[id] = append(impls[id], b.GetSymbol())
-			case stipulatorv1.BindingRole_BINDING_ROLE_TESTS:
-				pkg, fn := splitTestSymbol(b.GetSymbol())
-				if pkg == "" {
-					continue
+				if implReqs[b.GetSymbol()] == nil {
+					implReqs[b.GetSymbol()] = map[string]bool{}
 				}
-				if tests[id] == nil {
-					tests[id] = map[string]map[string]bool{}
+				implReqs[b.GetSymbol()][id] = true
+			case stipulatorv1.BindingRole_BINDING_ROLE_TESTS,
+				stipulatorv1.BindingRole_BINDING_ROLE_PROVES:
+				if witnesses[id] == nil {
+					witnesses[id] = map[string]bool{}
 				}
-				if tests[id][pkg] == nil {
-					tests[id][pkg] = map[string]bool{}
-				}
-				tests[id][pkg][fn] = true
+				witnesses[id][b.GetSymbol()] = true
 			}
 		}
 	}
 
-	var out []Target
-	ids := make([]string, 0, len(impls))
-	for id := range impls {
-		ids = append(ids, id)
+	syms := make([]string, 0, len(implReqs))
+	for sym := range implReqs {
+		syms = append(syms, sym)
 	}
-	sort.Strings(ids)
-	for _, id := range ids {
-		if len(wantReq) > 0 && !wantReq[id] {
+	sort.Strings(syms)
+
+	var out []Target
+	for _, sym := range syms {
+		if len(wantSym) > 0 && !wantSym[sym] {
 			continue
 		}
-		syms := append([]string{}, impls[id]...)
-		sort.Strings(syms)
-		for _, sym := range syms {
-			if len(wantSym) > 0 && !wantSym[sym] {
+		t := Target{Symbol: sym}
+		for id := range implReqs[sym] {
+			t.Requirements = append(t.Requirements, id)
+		}
+		sort.Strings(t.Requirements)
+		if len(wantReq) > 0 && !anyIn(t.Requirements, wantReq) {
+			continue
+		}
+
+		union := map[string]bool{}
+		for _, id := range t.Requirements {
+			for w := range witnesses[id] {
+				union[w] = true
+			}
+		}
+		pkgs := map[string]bool{}
+		fnSet := map[string]bool{}
+		for w := range union {
+			pkg, fn := splitTestSymbol(w)
+			if pkg == "" {
 				continue
 			}
-			t := Target{Requirement: id, Symbol: sym}
-			if byPkg := tests[id]; len(byPkg) > 0 {
-				var fns []string
-				for pkg, set := range byPkg {
-					t.TestPkgs = append(t.TestPkgs, pkg)
-					for fn := range set {
-						fns = append(fns, fn)
-					}
-				}
-				sort.Strings(t.TestPkgs)
-				sort.Strings(fns)
-				t.RunRegex = "^(" + strings.Join(fns, "|") + ")$"
-			}
-			out = append(out, t)
+			t.Witnesses = append(t.Witnesses, w)
+			pkgs[pkg] = true
+			fnSet[fn] = true
 		}
+		sort.Strings(t.Witnesses)
+		if len(t.Witnesses) > 0 {
+			for pkg := range pkgs {
+				t.TestPkgs = append(t.TestPkgs, pkg)
+			}
+			sort.Strings(t.TestPkgs)
+			fns := make([]string, 0, len(fnSet))
+			for fn := range fnSet {
+				fns = append(fns, fn)
+			}
+			sort.Strings(fns)
+			t.RunRegex = "^(" + strings.Join(fns, "|") + ")$"
+		}
+		out = append(out, t)
 	}
 	return out
+}
+
+func anyIn(items []string, want map[string]bool) bool {
+	for _, it := range items {
+		if want[it] {
+			return true
+		}
+	}
+	return false
 }
 
 // Options bound a run.
@@ -131,12 +173,13 @@ type Options struct {
 	Budget int
 	// Timeout bounds one mutant's test run.
 	Timeout time.Duration
-	// Force reruns targets whose stored kill-sheet body hash still matches.
+	// Force reruns targets whose stored kill-sheet pins still match.
 	Force bool
 }
 
-// Run mutates each target and executes its bound tests per mutant. Stored
-// kill-sheets whose body hash matches are reused unless forced.
+// Run mutates each target and executes its witness union per mutant.
+// Stored kill-sheets are reused only when both pins hold — the body hash
+// and the witness set — unless forced.
 func Run(ctx context.Context, dir string, backend *golang.Backend, store *records.Store, targets []Target, opts Options) (*Report, error) {
 	if opts.Timeout <= 0 {
 		opts.Timeout = 60 * time.Second
@@ -144,24 +187,33 @@ func Run(ctx context.Context, dir string, backend *golang.Backend, store *record
 	prior := map[string]*stipulatorv1.Hardening{}
 	for _, hf := range store.Hardening {
 		for _, rec := range hf.Set.GetRecords() {
-			prior[rec.GetRequirementId()+"|"+rec.GetSymbol()] = rec
+			prior[rec.GetSymbol()] = rec
 		}
 	}
 
 	rep := &Report{}
 	for _, t := range targets {
-		res := Result{Requirement: t.Requirement, Symbol: t.Symbol}
+		res := Result{Symbol: t.Symbol, Requirements: t.Requirements, Witnesses: t.Witnesses}
 		if len(t.TestPkgs) == 0 {
 			res.SkippedNoTest = true
 			rep.Results = append(rep.Results, res)
 			continue
 		}
 		bodyHash, err := backend.BodyHash(t.Symbol)
+		if errors.Is(err, golang.ErrNotFunction) {
+			// A type or variable bound as implements is a legitimate
+			// static claim with no body to mutate: reported, never fatal,
+			// never silently dropped.
+			res.SkippedNotFunc = true
+			rep.Results = append(rep.Results, res)
+			continue
+		}
 		if err != nil {
 			return nil, fmt.Errorf("target %s: %w", t.Symbol, err)
 		}
 		res.BodyHash = bodyHash
-		if rec, ok := prior[t.Requirement+"|"+t.Symbol]; ok && !opts.Force && rec.GetBodyHash() == bodyHash {
+		if rec, ok := prior[t.Symbol]; ok && !opts.Force &&
+			rec.GetBodyHash() == bodyHash && slices.Equal(rec.GetWitnesses(), t.Witnesses) {
 			res.Cached = true
 			res.Mutants = int(rec.GetMutants())
 			res.Killed = int(rec.GetKilled())
@@ -176,10 +228,28 @@ func Run(ctx context.Context, dir string, backend *golang.Backend, store *record
 		if err != nil {
 			return nil, fmt.Errorf("target %s: %w", t.Symbol, err)
 		}
+		// The rapid failfile flag is per-binary, so the witness packages
+		// run as two groups: passing it to a binary that does not
+		// register it would read as a false kill.
+		rapidPkgs, plainPkgs := backend.SplitRapidPkgs(t.TestPkgs)
+		groups := []struct {
+			pkgs  []string
+			flags []string
+		}{
+			{rapidPkgs, []string{"-rapid.nofailfile"}},
+			{plainPkgs, nil},
+		}
 		for _, m := range mutants {
-			outcome, err := golang.RunMutant(ctx, dir, m, t.TestPkgs, t.RunRegex, opts.Timeout)
-			if err != nil {
-				return nil, fmt.Errorf("mutant %s %s: %w", m.Position, m.Operator, err)
+			outcome := golang.MutantSurvived
+			for _, g := range groups {
+				if len(g.pkgs) == 0 || outcome != golang.MutantSurvived {
+					continue
+				}
+				out, err := golang.RunMutant(ctx, dir, m, g.pkgs, t.RunRegex, opts.Timeout, g.flags)
+				if err != nil {
+					return nil, fmt.Errorf("mutant %s %s: %w", m.Position, m.Operator, err)
+				}
+				outcome = out
 			}
 			switch outcome {
 			case golang.MutantDiscarded:
@@ -199,16 +269,15 @@ func Run(ctx context.Context, dir string, backend *golang.Backend, store *record
 }
 
 // Records renders the run's kill-sheets as record-file updates, one file
-// per requirement segment, replacing that requirement's prior records for
-// the symbols run. Cached and skipped results write nothing.
+// per symbol segment, replacing the symbols' prior records. Cached and
+// skipped results write nothing.
 func (r *Report) Records(store *records.Store) map[string][]byte {
 	fresh := map[string][]*stipulatorv1.Hardening{}
 	for _, res := range r.Results {
-		if res.Cached || res.SkippedNoTest {
+		if res.Cached || res.SkippedNoTest || res.SkippedNotFunc {
 			continue
 		}
 		rec := &stipulatorv1.Hardening{}
-		rec.SetRequirementId(res.Requirement)
 		rec.SetBackend("go")
 		rec.SetSymbol(res.Symbol)
 		rec.SetBodyHash(res.BodyHash)
@@ -223,7 +292,8 @@ func (r *Report) Records(store *records.Store) map[string][]byte {
 			survivors = append(survivors, m)
 		}
 		rec.SetSurvivors(survivors)
-		path := records.HardeningPath(res.Requirement)
+		rec.SetWitnesses(res.Witnesses)
+		path := records.HardeningPath(res.Symbol)
 		fresh[path] = append(fresh[path], rec)
 	}
 
@@ -231,7 +301,7 @@ func (r *Report) Records(store *records.Store) map[string][]byte {
 	for path, recs := range fresh {
 		replaced := map[string]bool{}
 		for _, rec := range recs {
-			replaced[rec.GetRequirementId()+"|"+rec.GetSymbol()] = true
+			replaced[rec.GetSymbol()] = true
 		}
 		var all []*stipulatorv1.Hardening
 		for _, hf := range store.Hardening {
@@ -239,16 +309,13 @@ func (r *Report) Records(store *records.Store) map[string][]byte {
 				continue
 			}
 			for _, rec := range hf.Set.GetRecords() {
-				if !replaced[rec.GetRequirementId()+"|"+rec.GetSymbol()] {
+				if !replaced[rec.GetSymbol()] {
 					all = append(all, rec)
 				}
 			}
 		}
 		all = append(all, recs...)
 		sort.Slice(all, func(i, j int) bool {
-			if all[i].GetRequirementId() != all[j].GetRequirementId() {
-				return all[i].GetRequirementId() < all[j].GetRequirementId()
-			}
 			return all[i].GetSymbol() < all[j].GetSymbol()
 		})
 		out[path] = records.RenderHardening(all)

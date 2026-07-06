@@ -1,0 +1,19 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/records.LoadTombstones"
+  body_hash: "4604ee5ffd6786ebfbfa4a9a47d80cc4f8f99802b26b11c5bb13023f8650779c"
+  mutants: 8
+  killed: 6
+  survivors {
+    position: "records.go:106:15"
+    operator: "zero return"
+  }
+  survivors {
+    position: "records.go:110:15"
+    operator: "zero return"
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/compile.TestIdentity"
+}

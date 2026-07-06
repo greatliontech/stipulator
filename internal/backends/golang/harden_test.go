@@ -124,7 +124,7 @@ func TestRunMutantOutcomes(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, m := range ms {
-			out, err := RunMutant(context.Background(), dir, m, []string{"example.com/fixture/lib"}, regex, 60*time.Second)
+			out, err := RunMutant(context.Background(), dir, m, []string{"example.com/fixture/lib"}, regex, 60*time.Second, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -161,6 +161,25 @@ func fixtureBackend(t *testing.T) *Backend {
 		t.Fatal(err)
 	}
 	return b
+}
+
+// TestSplitRapidPkgs pins the rapid-failfile partition: the flag is
+// per-binary, so packages split by whether their test files (in-package
+// or external variant) import rapid — a mixed union must never put the
+// flag in front of a rapid-free binary, which would die on it and read
+// as a false kill.
+func TestSplitRapidPkgs(t *testing.T) {
+	stipulate.Covers(t, "REQ-harden-mutation")
+	b := fixtureBackend(t)
+	lib, plainPkg, ext := "example.com/fixture/lib", "example.com/fixture/plain", "example.com/fixture/extprop"
+
+	rapid, plain := b.SplitRapidPkgs([]string{lib, plainPkg, ext})
+	if len(rapid) != 2 || rapid[0] != lib || rapid[1] != ext {
+		t.Fatalf("rapid group = %v (lib via in-package tests, extprop via the external variant)", rapid)
+	}
+	if len(plain) != 1 || plain[0] != plainPkg {
+		t.Fatalf("plain group = %v", plain)
+	}
 }
 
 // TestWitnessClassProof pins the proof class: a test invoking the

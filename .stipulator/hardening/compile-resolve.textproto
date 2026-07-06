@@ -1,0 +1,58 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.resolve"
+  body_hash: "e467f5707909855c1cd8187f254b6609b3ea3a28a74e71a3922ef291598f90ec"
+  mutants: 22
+  killed: 11
+  discarded: 2
+  survivors {
+    position: "compile.go:322:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "compile.go:323:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "compile.go:324:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "compile.go:336:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "compile.go:337:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "compile.go:343:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "compile.go:349:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "compile.go:351:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "compile.go:352:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "compile.go:141:5"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "compile.go:153:5"
+    operator: "delete statement"
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/compile.TestKeywordDiscipline"
+  witnesses: "github.com/greatliontech/stipulator/internal/compile.TestLayoutIndependence"
+  witnesses: "github.com/greatliontech/stipulator/internal/compile.TestReferences"
+}

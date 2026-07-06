@@ -2,7 +2,6 @@
 # proto-message: stipulator.v1.HardeningSet
 
 records {
-  requirement_id: "REQ-change-dangling"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.Run"
   body_hash: "b48590484f700c8b54e385927a1594aa928edf987f276a08fcedbc29e163bf40"
@@ -24,4 +23,9 @@ records {
     position: "verify.go:276:5"
     operator: "delete statement"
   }
+  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestFixtureModule"
+  witnesses: "github.com/greatliontech/stipulator/internal/verify.TestBackendResolution"
+  witnesses: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
+  witnesses: "github.com/greatliontech/stipulator/internal/verify.TestPropDanglingRecordsAreProblems"
+  witnesses: "github.com/greatliontech/stipulator/internal/verify.TestWitnessCorrelation"
 }

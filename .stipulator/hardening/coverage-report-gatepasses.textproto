@@ -1,0 +1,11 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.Report.GatePasses"
+  body_hash: "7353d68b93748fa8b6a1cf6b772fcee2289fd080dd30ec6619bdc2496da1876e"
+  mutants: 2
+  killed: 2
+  witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestGate"
+}

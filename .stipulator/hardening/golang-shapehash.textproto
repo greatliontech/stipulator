@@ -1,0 +1,15 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.shapeHash"
+  body_hash: "0509097afb6aee361464e0ed20d334f912d9efb88f0d3b0195dde340392b3308"
+  mutants: 2
+  killed: 1
+  survivors {
+    position: "golang.go:251:10"
+    operator: "zero return"
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestShapeHashDistinguishesSignatures"
+}

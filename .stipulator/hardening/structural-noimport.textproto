@@ -1,0 +1,73 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/stipulate/structural.NoImport"
+  body_hash: "5f1791b71e150c2bb546480bc0eb9b18547a4306c43bdacc3b0397fbd1f4fd3a"
+  mutants: 24
+  killed: 9
+  survivors {
+    position: "structural.go:23:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "structural.go:28:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "structural.go:32:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "structural.go:37:48"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "structural.go:38:8"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "structural.go:38:20"
+    operator: "|| -> &&"
+  }
+  survivors {
+    position: "structural.go:38:13"
+    operator: "== -> !="
+  }
+  survivors {
+    position: "structural.go:39:13"
+    operator: "zero return"
+  }
+  survivors {
+    position: "structural.go:42:12"
+    operator: "zero return"
+  }
+  survivors {
+    position: "structural.go:49:4"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "structural.go:57:18"
+    operator: "> -> <="
+  }
+  survivors {
+    position: "structural.go:64:4"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "structural.go:66:8"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "structural.go:76:6"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "structural.go:73:32"
+    operator: "!= -> =="
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/arch.TestBackendSatisfiesVerifierSurfaces"
+  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestWitnessClassProof"
+  witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestAnalyzerProofSatisfiesStructural"
+}

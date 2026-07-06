@@ -1,0 +1,15 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.Supersede"
+  body_hash: "0ebcda05a5b5a3462a9b58be608721bf366609366a40ad389c7a6d41bef628a5"
+  mutants: 3
+  killed: 2
+  survivors {
+    position: "dispose.go:81:15"
+    operator: "zero return"
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/author.TestSupersede"
+}

@@ -1,0 +1,52 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.extractDocument"
+  body_hash: "01da42d6f268778c62d196053393e5e40bfee7fc4f466b9c2519eb9442ab582f"
+  mutants: 12
+  killed: 2
+  discarded: 2
+  survivors {
+    position: "extract.go:70:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "extract.go:71:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "extract.go:73:10"
+    operator: "zero return"
+  }
+  survivors {
+    position: "extract.go:81:7"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "extract.go:81:18"
+    operator: "== -> !="
+  }
+  survivors {
+    position: "extract.go:92:5"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "extract.go:93:5"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "extract.go:85:32"
+    operator: "&& -> ||"
+  }
+  survivors {
+    position: "extract.go:85:28"
+    operator: "> -> <="
+  }
+  survivors {
+    position: "extract.go:85:71"
+    operator: ">= -> <"
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/compile.TestReferences"
+}

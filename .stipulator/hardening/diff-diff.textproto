@@ -1,0 +1,12 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/diff.Diff"
+  body_hash: "9a80f3b5aa4180fd040b17cf6da856b46dedabbd0dea558675d157c54cc07e5a"
+  mutants: 15
+  killed: 15
+  discarded: 1
+  witnesses: "github.com/greatliontech/stipulator/internal/diff.TestDiff"
+}

@@ -1,0 +1,64 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.Server.readResource"
+  body_hash: "e5b919085892458378bbc8f52302ffa065533122510810ec8bd94398d9b2f413"
+  mutants: 22
+  killed: 9
+  discarded: 2
+  survivors {
+    position: "server.go:664:6"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "server.go:664:10"
+    operator: "!= -> =="
+  }
+  survivors {
+    position: "server.go:665:16"
+    operator: "zero return"
+  }
+  survivors {
+    position: "server.go:671:6"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "server.go:671:10"
+    operator: "!= -> =="
+  }
+  survivors {
+    position: "server.go:672:16"
+    operator: "zero return"
+  }
+  survivors {
+    position: "server.go:675:6"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "server.go:675:10"
+    operator: "!= -> =="
+  }
+  survivors {
+    position: "server.go:676:16"
+    operator: "zero return"
+  }
+  survivors {
+    position: "server.go:683:16"
+    operator: "zero return"
+  }
+  survivors {
+    position: "server.go:695:15"
+    operator: "zero return"
+  }
+  survivors {
+    position: "server.go:700:16"
+    operator: "zero return"
+  }
+  survivors {
+    position: "server.go:707:15"
+    operator: "zero return"
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestResourceIndexAndReads"
+}

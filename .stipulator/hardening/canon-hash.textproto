@@ -2,11 +2,11 @@
 # proto-message: stipulator.v1.HardeningSet
 
 records {
-  requirement_id: "REQ-model-hash-func"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/canon.Hash"
   body_hash: "5adcba00f32c25916dd502ded85f55e6e75825d84b78c41e7f863c531ead27bf"
   mutants: 0
   killed: 0
   discarded: 1
+  witnesses: "github.com/greatliontech/stipulator/internal/canon.TestHash"
 }

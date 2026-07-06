@@ -180,10 +180,14 @@ message PartitionReport {
 // HardenResult is one target's outcome in a hardening run.
 message HardenResult {
   Hardening record = 1;
-  // Cached: the stored record's body hash matched; no mutants ran.
+  // Cached: the stored record's pins (body hash, witness set) matched;
+  // no mutants ran.
   bool cached = 2;
-  // SkippedNoTests: the target has no bound tests to kill mutants.
+  // SkippedNoTests: the target has no bound witnesses to kill mutants.
   bool skipped_no_tests = 3;
+  // SkippedNotFunction: the symbol resolves but has no function body (a
+  // type or variable implements-binding) — nothing to mutate.
+  bool skipped_not_function = 4;
 }
 
 // HardenReport is the outcome of a hardening run — exploration output,

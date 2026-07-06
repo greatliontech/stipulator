@@ -1,0 +1,20 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/profile.InlineSegs"
+  body_hash: "0f96384744c50c896254f5946215955f7dd3d317df58292b884537ff194daac5"
+  mutants: 6
+  killed: 4
+  discarded: 1
+  survivors {
+    position: "text.go:46:31"
+    operator: "!= -> =="
+  }
+  survivors {
+    position: "text.go:47:34"
+    operator: "negate condition"
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/compile.TestKeywordDiscipline"
+}

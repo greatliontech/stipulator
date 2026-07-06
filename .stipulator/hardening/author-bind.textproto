@@ -1,0 +1,34 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.Bind"
+  body_hash: "817e2fd31ca05b72d72302ab737a4b314222d738bd306f8bc123706c96627f7e"
+  mutants: 24
+  killed: 19
+  survivors {
+    position: "author.go:101:15"
+    operator: "zero return"
+  }
+  survivors {
+    position: "author.go:104:15"
+    operator: "zero return"
+  }
+  survivors {
+    position: "author.go:116:15"
+    operator: "zero return"
+  }
+  survivors {
+    position: "author.go:118:22"
+    operator: "|| -> &&"
+  }
+  survivors {
+    position: "author.go:119:15"
+    operator: "zero return"
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/author.TestBind"
+  witnesses: "github.com/greatliontech/stipulator/internal/author.TestBindFileConfinement"
+  witnesses: "github.com/greatliontech/stipulator/internal/author.TestProvesDischarge"
+  witnesses: "github.com/greatliontech/stipulator/internal/author.TestUnbind"
+}

@@ -90,10 +90,13 @@ message MutationSurvivor {
   string operator = 2;
 }
 
-// Hardening is one mutation kill-sheet: valid only while body_hash matches
-// the symbol's current body.
+// Hardening is one mutation kill-sheet, keyed by the mutated symbol:
+// valid only while body_hash matches the symbol's current body AND
+// witnesses matches the union of witness-role tests bound (via any
+// requirement the symbol implements) in the binding store. Per-requirement
+// views are derived from the binding store on demand, never stored.
 message Hardening {
-  string requirement_id = 1;
+  reserved 1; // was requirement_id: sheets are per-symbol, not per-claim
   string backend = 2;
   string symbol = 3;
   string body_hash = 4;
@@ -103,6 +106,10 @@ message Hardening {
   // Discarded mutants failed to compile: reported so a low mutant count is
   // never mistaken for thin mutation coverage.
   int32 discarded = 8;
+  // Witnesses pins the killer-test set the sheet ran against, canonically
+  // ordered; a new witness bound to the symbol re-stales the sheet exactly
+  // as a body edit does.
+  repeated string witnesses = 9;
 }
 
 // HardeningSet is one hardening record file.

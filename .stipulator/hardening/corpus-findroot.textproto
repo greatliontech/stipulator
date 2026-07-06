@@ -2,7 +2,6 @@
 # proto-message: stipulator.v1.HardeningSet
 
 records {
-  requirement_id: "REQ-profile-root"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.FindRoot"
   body_hash: "2946af72a437614ecb5d83e77e2386a36e390eac934c380816d392757258cfcc"
@@ -12,4 +11,5 @@ records {
     position: "root.go:16:14"
     operator: "zero return"
   }
+  witnesses: "github.com/greatliontech/stipulator/internal/corpus.TestFindRoot"
 }

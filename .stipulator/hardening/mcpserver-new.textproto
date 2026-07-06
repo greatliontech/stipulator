@@ -1,0 +1,72 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.New"
+  body_hash: "f8db1dda13bc3f7e03ea70ccb2639ddf013b45cc2c91b6618be6f1c50a3f372a"
+  mutants: 15
+  killed: 0
+  survivors {
+    position: "server.go:50:9"
+    operator: "zero return"
+  }
+  survivors {
+    position: "server.go:51:35"
+    operator: "zero return"
+  }
+  survivors {
+    position: "server.go:56:7"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "server.go:56:11"
+    operator: "!= -> =="
+  }
+  survivors {
+    position: "server.go:57:17"
+    operator: "zero return"
+  }
+  survivors {
+    position: "server.go:62:7"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "server.go:62:20"
+    operator: "== -> !="
+  }
+  survivors {
+    position: "server.go:63:17"
+    operator: "zero return"
+  }
+  survivors {
+    position: "server.go:66:7"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "server.go:66:14"
+    operator: "== -> !="
+  }
+  survivors {
+    position: "server.go:73:54"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "server.go:73:58"
+    operator: "!= -> =="
+  }
+  survivors {
+    position: "server.go:74:12"
+    operator: "zero return"
+  }
+  survivors {
+    position: "server.go:76:11"
+    operator: "zero return"
+  }
+  survivors {
+    position: "server.go:79:11"
+    operator: "zero return"
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestBindToolWritesConfined"
+  witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestResourceIndexAndReads"
+}

@@ -1,0 +1,47 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.RunTests"
+  body_hash: "d63688eb3b3b6f891c4ab7d93da3a69eff27a0e625b7c17c7bae037c113a2c0c"
+  mutants: 24
+  killed: 15
+  survivors {
+    position: "witness.go:53:16"
+    operator: "zero return"
+  }
+  survivors {
+    position: "witness.go:76:6"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "witness.go:76:13"
+    operator: "!= -> =="
+  }
+  survivors {
+    position: "witness.go:77:16"
+    operator: "zero return"
+  }
+  survivors {
+    position: "witness.go:79:15"
+    operator: "zero return"
+  }
+  survivors {
+    position: "witness.go:84:11"
+    operator: "zero return"
+  }
+  survivors {
+    position: "witness.go:84:21"
+    operator: "< -> >="
+  }
+  survivors {
+    position: "witness.go:89:10"
+    operator: "zero return"
+  }
+  survivors {
+    position: "witness.go:89:24"
+    operator: "< -> >="
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunTests"
+}

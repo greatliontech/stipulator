@@ -3,6 +3,7 @@ package golang
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/format"
@@ -276,9 +277,44 @@ const (
 	MutantDiscarded
 )
 
+// SplitRapidPkgs partitions test packages by whether their test files
+// (in-package or external variant) import pgregory.net/rapid. Rapid
+// packages need -rapid.nofailfile so a mutant-induced property failure
+// never writes a reproducer into the source tree — and one mutant's
+// failfile cannot replay into the next mutant's run. The flag is
+// per-binary: a test binary that does not register it fails on the
+// unknown flag and reads as a false kill, so the two groups must run in
+// separate invocations. The scan is of direct imports only — a test
+// driving rapid solely through a helper package escapes the guard; the
+// failure mode there is visible failfile litter, never a false kill.
+func (b *Backend) SplitRapidPkgs(testPkgs []string) (rapid, plain []string) {
+	byPath := map[string]bool{}
+	for _, pkg := range b.pkgs {
+		if byPath[pkg.PkgPath] {
+			continue
+		}
+		for _, f := range pkg.Syntax {
+			for _, imp := range f.Imports {
+				if strings.Trim(imp.Path.Value, `"`) == rapidPkg {
+					byPath[pkg.PkgPath] = true
+				}
+			}
+		}
+	}
+	for _, p := range testPkgs {
+		if byPath[p] || byPath[p+"_test"] {
+			rapid = append(rapid, p)
+		} else {
+			plain = append(plain, p)
+		}
+	}
+	return rapid, plain
+}
+
 // RunMutant executes the bound tests against one mutant through a build
-// overlay — the tree is never touched.
-func RunMutant(ctx context.Context, dir string, m Mutant, testPkgs []string, runRegex string, timeout time.Duration) (MutantOutcome, error) {
+// overlay — the tree is never touched. binFlags are passed to the test
+// binaries after the package list.
+func RunMutant(ctx context.Context, dir string, m Mutant, testPkgs []string, runRegex string, timeout time.Duration, binFlags []string) (MutantOutcome, error) {
 	tmp, err := os.MkdirTemp("", "stipulator-mutant-*")
 	if err != nil {
 		return MutantDiscarded, err
@@ -297,6 +333,7 @@ func RunMutant(ctx context.Context, dir string, m Mutant, testPkgs []string, run
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	args := append([]string{"test", "-overlay", overlay, "-count=1", "-run", runRegex}, testPkgs...)
+	args = append(args, binFlags...)
 	cmd := exec.CommandContext(ctx, "go", args...)
 	cmd.Dir = dir
 	outBytes, err := cmd.CombinedOutput()
@@ -311,6 +348,11 @@ func RunMutant(ctx context.Context, dir string, m Mutant, testPkgs []string, run
 		return MutantKilled, nil
 	}
 }
+
+// ErrNotFunction marks a resolvable symbol with no function body — a
+// type or variable. Body-level operations skip such symbols; there is
+// nothing to hash or mutate.
+var ErrNotFunction = errors.New("is not a function or method")
 
 // funcDecl resolves a symbol to its declaring FuncDecl and package.
 func (b *Backend) funcDecl(symbol string) (*ast.FuncDecl, *packages.Package, error) {
@@ -338,7 +380,7 @@ func (b *Backend) funcDecl(symbol string) (*ast.FuncDecl, *packages.Package, err
 			}
 		}
 	}
-	return nil, nil, fmt.Errorf("symbol %s is not a function or method", symbol)
+	return nil, nil, fmt.Errorf("symbol %s: %w", symbol, ErrNotFunction)
 }
 
 // fileOf finds the syntax file (and its absolute path) containing pos.
