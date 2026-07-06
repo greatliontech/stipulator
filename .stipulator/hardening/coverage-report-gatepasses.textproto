@@ -9,6 +9,6 @@ records {
   killed: 3
   witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestGate"
   operators: "go/2"
-  body_line: 98
-  budget: 24
+  body_line: 108
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

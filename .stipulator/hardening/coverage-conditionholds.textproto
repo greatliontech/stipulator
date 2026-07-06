@@ -4,16 +4,16 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.conditionHolds"
-  body_hash: "68ad757988881727d107b125499dabdad1bfdff22a004f226a1bf950858104f8"
+  body_hash: "051d7aa281cadb5180c3e2413f29a47b446087826d1299dfaabe9044430fcaba"
   mutants: 7
   killed: 6
   survivors {
-    position: "coverage.go:294:12"
+    position: "coverage.go:455:12"
     operator: "zero return"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestGapStates"
   witnesses: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
   operators: "go/2"
-  body_line: 285
-  budget: 24
+  body_line: 446
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

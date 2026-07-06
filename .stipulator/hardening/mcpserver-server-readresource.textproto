@@ -4,64 +4,73 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.Server.readResource"
-  body_hash: "e5b919085892458378bbc8f52302ffa065533122510810ec8bd94398d9b2f413"
+  body_hash: "2ca4fa801edffb8b9774dea4bffd4806d15feb04086d22bfd666181df5828e1d"
   mutants: 22
-  killed: 9
+  killed: 7
   discarded: 2
   survivors {
-    position: "server.go:675:6"
+    position: "server.go:775:6"
     operator: "negate condition"
   }
   survivors {
-    position: "server.go:675:10"
+    position: "server.go:775:10"
     operator: "!= -> =="
   }
   survivors {
-    position: "server.go:676:16"
+    position: "server.go:776:16"
     operator: "zero return"
   }
   survivors {
-    position: "server.go:682:6"
+    position: "server.go:779:6"
     operator: "negate condition"
   }
   survivors {
-    position: "server.go:682:10"
+    position: "server.go:779:11"
     operator: "!= -> =="
   }
   survivors {
-    position: "server.go:683:16"
+    position: "server.go:780:16"
     operator: "zero return"
   }
   survivors {
-    position: "server.go:686:6"
+    position: "server.go:786:6"
     operator: "negate condition"
   }
   survivors {
-    position: "server.go:686:10"
+    position: "server.go:786:10"
     operator: "!= -> =="
   }
   survivors {
-    position: "server.go:687:16"
+    position: "server.go:787:16"
     operator: "zero return"
   }
   survivors {
-    position: "server.go:694:16"
+    position: "server.go:790:6"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "server.go:790:10"
+    operator: "!= -> =="
+  }
+  survivors {
+    position: "server.go:791:16"
     operator: "zero return"
   }
   survivors {
-    position: "server.go:706:15"
+    position: "server.go:798:16"
     operator: "zero return"
   }
   survivors {
-    position: "server.go:711:16"
+    position: "server.go:810:15"
     operator: "zero return"
   }
   survivors {
-    position: "server.go:718:15"
+    position: "server.go:815:16"
     operator: "zero return"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestResourceIndexAndReads"
   operators: "go/2"
-  body_line: 670
+  body_line: 770
   budget: 24
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

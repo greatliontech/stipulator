@@ -8,15 +8,15 @@ records {
   mutants: 8
   killed: 6
   survivors {
-    position: "records.go:106:15"
+    position: "records.go:125:15"
     operator: "zero return"
   }
   survivors {
-    position: "records.go:110:15"
+    position: "records.go:129:15"
     operator: "zero return"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/compile.TestIdentity"
   operators: "go/2"
-  body_line: 100
-  budget: 24
+  body_line: 119
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

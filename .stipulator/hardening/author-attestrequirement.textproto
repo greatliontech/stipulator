@@ -1,0 +1,31 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.AttestRequirement"
+  body_hash: "3b700fb4744668a321860ce895f36910bc5bce459596c35f8318d2256d225bcd"
+  mutants: 24
+  killed: 21
+  survivors {
+    position: "attest_requirement.go:65:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "attest_requirement.go:23:20"
+    operator: "zero return"
+  }
+  survivors {
+    position: "attest_requirement.go:36:20"
+    operator: "zero return"
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/author.TestAttestRequirement"
+  witnesses: "github.com/greatliontech/stipulator/internal/author.TestAttestRequirementMultiRecordFile"
+  witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestAttestationEvidence"
+  witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestAttestTools"
+  witnesses: "github.com/greatliontech/stipulator/internal/verify.TestAttestationRecordHygiene"
+  operators: "go/2"
+  body_line: 17
+  budget: 24
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
+}

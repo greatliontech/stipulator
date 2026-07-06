@@ -4,55 +4,36 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.RunTests"
-  body_hash: "d63688eb3b3b6f891c4ab7d93da3a69eff27a0e625b7c17c7bae037c113a2c0c"
-  mutants: 24
-  killed: 13
+  body_hash: "9d8291c9732bef1d4f45357b5f52652da4c694876ba7fd73697bf2136578cf5d"
+  mutants: 15
+  killed: 9
   survivors {
-    position: "witness.go:41:2"
-    operator: "drop assignment"
-  }
-  survivors {
-    position: "witness.go:91:2"
-    operator: "drop assignment"
-  }
-  survivors {
-    position: "witness.go:49:12"
-    operator: "increment literal"
-  }
-  survivors {
-    position: "witness.go:53:16"
+    position: "witness.go:40:15"
     operator: "zero return"
   }
   survivors {
-    position: "witness.go:55:9"
-    operator: "++ -> --"
-  }
-  survivors {
-    position: "witness.go:68:64"
+    position: "witness.go:44:12"
     operator: "increment literal"
   }
   survivors {
-    position: "witness.go:75:15"
-    operator: "increment literal"
-  }
-  survivors {
-    position: "witness.go:76:6"
-    operator: "negate condition"
-  }
-  survivors {
-    position: "witness.go:76:13"
-    operator: "!= -> =="
-  }
-  survivors {
-    position: "witness.go:77:16"
+    position: "witness.go:48:16"
     operator: "zero return"
   }
   survivors {
-    position: "witness.go:79:15"
+    position: "witness.go:50:10"
+    operator: "+= -> -="
+  }
+  survivors {
+    position: "witness.go:52:15"
+    operator: "increment literal"
+  }
+  survivors {
+    position: "witness.go:53:15"
     operator: "zero return"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunTests"
+  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestWorkspaceMembers"
   operators: "go/2"
-  body_line: 36
-  budget: 24
+  body_line: 37
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

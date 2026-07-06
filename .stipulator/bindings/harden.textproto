@@ -75,7 +75,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-records"
-  content_hash: "b4b9022553c9a9e32de474aa6c7b0678de2d34ff263ea972c161b9ae5c7445a0"
+  content_hash: "4ff559d45d7b19cbed470eb1a0ef9e83397cd8515aaf96847507b7fb10fdbf8e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/harden.Report.Records"
   role: BINDING_ROLE_IMPLEMENTS
@@ -84,7 +84,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-records"
-  content_hash: "b4b9022553c9a9e32de474aa6c7b0678de2d34ff263ea972c161b9ae5c7445a0"
+  content_hash: "4ff559d45d7b19cbed470eb1a0ef9e83397cd8515aaf96847507b7fb10fdbf8e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/harden.TestRunAndRecords"
   role: BINDING_ROLE_TESTS

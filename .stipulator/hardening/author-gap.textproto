@@ -4,44 +4,41 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.Gap"
-  body_hash: "86155dda07748028ee1a58666a278cffcf04fbdba17e45a2744d3068265d22b2"
+  body_hash: "79c74cd3dc07d4d05168f2e2dae87f3a04bdd4312dc88783977f0c1b503ee9a5"
   mutants: 24
-  killed: 16
+  killed: 17
   survivors {
-    position: "author.go:245:15"
+    position: "author.go:248:20"
     operator: "zero return"
   }
   survivors {
-    position: "author.go:247:18"
+    position: "author.go:250:18"
     operator: "increment literal"
   }
   survivors {
-    position: "author.go:248:15"
+    position: "author.go:251:20"
     operator: "zero return"
   }
   survivors {
-    position: "author.go:248:65"
+    position: "author.go:251:70"
     operator: "increment literal"
   }
   survivors {
-    position: "author.go:248:90"
+    position: "author.go:251:95"
     operator: "- -> +"
   }
   survivors {
-    position: "author.go:248:91"
+    position: "author.go:251:96"
     operator: "increment literal"
   }
   survivors {
-    position: "author.go:267:15"
+    position: "author.go:270:20"
     operator: "zero return"
-  }
-  survivors {
-    position: "author.go:271:6"
-    operator: "negate condition"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/author.TestGap"
   witnesses: "github.com/greatliontech/stipulator/internal/author.TestGapsBulk"
   operators: "go/2"
-  body_line: 242
+  body_line: 245
   budget: 24
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

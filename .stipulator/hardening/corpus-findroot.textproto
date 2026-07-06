@@ -15,5 +15,5 @@ records {
   witnesses: "github.com/greatliontech/stipulator/internal/corpus.TestFindRoot"
   operators: "go/2"
   body_line: 13
-  budget: 24
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

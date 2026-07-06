@@ -36,4 +36,5 @@ records {
   witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestAnalyzerProofSatisfiesStructural"
   operators: "go/2"
   body_line: 91
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

@@ -144,6 +144,12 @@ message Hardening {
   // exhaustive): a capped sheet must never answer a request for more
   // mutants than it generated.
   int32 budget = 13;
+  // Toolchain pins the identity of the toolchain that executed the
+  // witnesses (version and platform of the go command the engine
+  // invoked, e.g. "go1.26.4 linux/amd64"): the same body under the same
+  // witnesses kills differently across toolchains, so a toolchain change
+  // re-stales the sheet like any other pin.
+  string toolchain = 14;
 }
 
 // MutationAttestation is one survivor disposition: the named mutant is

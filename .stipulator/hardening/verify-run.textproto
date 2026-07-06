@@ -4,47 +4,49 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.Run"
-  body_hash: "b48590484f700c8b54e385927a1594aa928edf987f276a08fcedbc29e163bf40"
+  body_hash: "0e62ca060e2525180c2bed801dcc6db63126793290dc3faa8a60e7652d5078b2"
   mutants: 24
   killed: 16
   survivors {
-    position: "verify.go:378:2"
+    position: "verify.go:438:2"
     operator: "delete statement"
   }
   survivors {
-    position: "verify.go:237:4"
+    position: "verify.go:249:4"
     operator: "drop assignment"
   }
   survivors {
-    position: "verify.go:235:5"
+    position: "verify.go:247:5"
     operator: "delete statement"
   }
   survivors {
-    position: "verify.go:241:5"
+    position: "verify.go:253:5"
     operator: "delete statement"
-  }
-  survivors {
-    position: "verify.go:242:5"
-    operator: "drop assignment"
-  }
-  survivors {
-    position: "verify.go:246:5"
-    operator: "drop assignment"
-  }
-  survivors {
-    position: "verify.go:250:5"
-    operator: "drop assignment"
   }
   survivors {
     position: "verify.go:254:5"
     operator: "drop assignment"
   }
+  survivors {
+    position: "verify.go:258:5"
+    operator: "drop assignment"
+  }
+  survivors {
+    position: "verify.go:262:5"
+    operator: "drop assignment"
+  }
+  survivors {
+    position: "verify.go:266:5"
+    operator: "drop assignment"
+  }
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestFixtureModule"
+  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestWorkspaceMembers"
   witnesses: "github.com/greatliontech/stipulator/internal/verify.TestBackendResolution"
   witnesses: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
   witnesses: "github.com/greatliontech/stipulator/internal/verify.TestPropDanglingRecordsAreProblems"
   witnesses: "github.com/greatliontech/stipulator/internal/verify.TestWitnessCorrelation"
   operators: "go/2"
-  body_line: 218
+  body_line: 230
   budget: 24
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

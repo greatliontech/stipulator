@@ -18,9 +18,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   mutator, whose kill-sheet records are already the interchange contract) can move behind a
   wire protocol with the trust model intact; deferred while one backend exists. *Lands: when
   a second language backend is planned.*
-- **[kill-sheet-environment-pin](kill-sheet-environment-pin.md)** — sheets pin every input
-  stipulator controls but not the toolchain; a Go upgrade silently invalidates measurements.
-  *Lands: when the determinism harness chunk of the active plan begins.*
 - **[slice-frontier-uncertainty](slice-frontier-uncertainty.md)** — typed frontiers miss
   reflection, build tags, and init effects; pew's closure model (sound floor, provably-safe
   refinement, resolve/widen/unverifiable dispositions) is the reference shape. *Lands: when a

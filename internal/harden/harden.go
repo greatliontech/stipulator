@@ -73,12 +73,15 @@ type Result struct {
 	// BodyLine anchors the body's first line for position rebasing;
 	// Budget records the mutant cap this measurement ran under (0 =
 	// exhaustive).
-	BodyLine  int
-	Budget    int
+	BodyLine int
+	Budget   int
+	// Toolchain is the executing toolchain's identity, pinned on the
+	// sheet (REQ-harden-records).
+	Toolchain string
 	Mutants   int
 	Killed    int
 	Discarded int
-	Survivors     []Survivor
+	Survivors []Survivor
 	// Attested carries the survivor dispositions still valid for this
 	// sheet: dispositions from a prior sheet survive only while every
 	// pin holds and the survivor is still present.
@@ -109,8 +112,8 @@ func Plan(spec *stipulatorv1.Spec, store *records.Store, reqs, symbols []string)
 		inCorpus[r.GetId()] = true
 	}
 
-	implReqs := map[string]map[string]bool{}   // symbol -> implementing requirements
-	witnesses := map[string]map[string]bool{}  // requirement -> witness test symbols
+	implReqs := map[string]map[string]bool{}  // symbol -> implementing requirements
+	witnesses := map[string]map[string]bool{} // requirement -> witness test symbols
 	for _, bf := range store.Bindings {
 		for _, b := range bf.Set.GetBindings() {
 			if b.GetBackend() != "go" || !inCorpus[b.GetRequirementId()] {
@@ -247,6 +250,10 @@ func Run(ctx context.Context, dir string, backend *golang.Backend, store *record
 		groups     []group
 		witnessSet map[string]bool
 	}
+	toolchain, err := golang.Toolchain(dir)
+	if err != nil {
+		return nil, err
+	}
 	rep := &Report{Results: make([]Result, len(targets))}
 	pins := make([]func(*stipulatorv1.Hardening) bool, len(targets))
 	var pending []work
@@ -269,10 +276,12 @@ func Run(ctx context.Context, dir string, backend *golang.Backend, store *record
 			return nil, fmt.Errorf("target %s: %w", t.Symbol, err)
 		}
 		res.BodyHash = bodyHash
+		res.Toolchain = toolchain
 		pins[i] = func(rec *stipulatorv1.Hardening) bool {
 			return rec.GetBodyHash() == bodyHash &&
 				slices.Equal(rec.GetWitnesses(), t.Witnesses) &&
-				rec.GetOperators() == golang.OperatorSet
+				rec.GetOperators() == golang.OperatorSet &&
+				rec.GetToolchain() == toolchain
 		}
 		if rec, ok := prior[t.Symbol]; ok && !opts.Force && pins[i](rec) &&
 			budgetCovers(int(rec.GetBudget()), opts.Budget) {
@@ -485,6 +494,7 @@ func (r *Report) Records(store *records.Store) map[string][]byte {
 		rec.SetOperators(golang.OperatorSet)
 		rec.SetBodyLine(int32(res.BodyLine))
 		rec.SetBudget(int32(res.Budget))
+		rec.SetToolchain(res.Toolchain)
 		var attested []*stipulatorv1.MutationAttestation
 		for _, a := range res.Attested {
 			ma := &stipulatorv1.MutationAttestation{}

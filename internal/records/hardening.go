@@ -57,6 +57,9 @@ func RenderHardening(recs []*stipulatorv1.Hardening) []byte {
 		if rec.GetBudget() != 0 {
 			fmt.Fprintf(&b, "  budget: %d\n", rec.GetBudget())
 		}
+		if rec.GetToolchain() != "" {
+			fmt.Fprintf(&b, "  toolchain: %s\n", strconv.Quote(rec.GetToolchain()))
+		}
 		for _, a := range rec.GetAttested() {
 			b.WriteString("  attested {\n")
 			fmt.Fprintf(&b, "    position: %s\n", strconv.Quote(a.GetPosition()))

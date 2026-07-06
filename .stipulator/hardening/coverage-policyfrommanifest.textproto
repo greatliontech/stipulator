@@ -1,0 +1,18 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.PolicyFromManifest"
+  body_hash: "0be54a42d4fb728369219fac1a5d5c94be292f2c263465ab33722f414f88ba72"
+  mutants: 7
+  killed: 6
+  survivors {
+    position: "coverage.go:130:4"
+    operator: "continue -> break"
+  }
+  witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestPolicyOverrides"
+  operators: "go/2"
+  body_line: 126
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
+}

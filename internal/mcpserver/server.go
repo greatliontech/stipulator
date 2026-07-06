@@ -594,6 +594,7 @@ func (s *Server) toolHarden(ctx context.Context, req *mcp.CallToolRequest, in ha
 		rec.SetSymbol(res.Symbol)
 		rec.SetWitnesses(res.Witnesses)
 		rec.SetOperators(golang.OperatorSet)
+		rec.SetToolchain(res.Toolchain)
 		var attested []*stipulatorv1.MutationAttestation
 		for _, a := range res.Attested {
 			ma := &stipulatorv1.MutationAttestation{}

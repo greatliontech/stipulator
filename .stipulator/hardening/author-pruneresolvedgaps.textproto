@@ -8,11 +8,11 @@ records {
   mutants: 4
   killed: 3
   survivors {
-    position: "author.go:361:2"
+    position: "author.go:399:2"
     operator: "delete statement"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/author.TestPruneResolvedGaps"
   operators: "go/2"
-  body_line: 354
-  budget: 24
+  body_line: 392
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

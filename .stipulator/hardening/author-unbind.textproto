@@ -8,45 +8,46 @@ records {
   mutants: 24
   killed: 15
   survivors {
-    position: "author.go:235:2"
+    position: "author.go:236:2"
     operator: "delete statement"
   }
   survivors {
-    position: "author.go:208:18"
+    position: "author.go:209:18"
     operator: "zero return"
   }
   survivors {
-    position: "author.go:208:15"
+    position: "author.go:209:15"
     operator: "increment literal"
   }
   survivors {
-    position: "author.go:214:22"
+    position: "author.go:215:22"
     operator: "force true"
   }
   survivors {
-    position: "author.go:214:36"
+    position: "author.go:215:36"
     operator: "!= -> =="
   }
   survivors {
-    position: "author.go:217:67"
+    position: "author.go:218:67"
     operator: "force true"
   }
   survivors {
-    position: "author.go:217:79"
+    position: "author.go:218:79"
     operator: "!= -> =="
   }
   survivors {
-    position: "author.go:223:18"
+    position: "author.go:224:18"
     operator: "zero return"
   }
   survivors {
-    position: "author.go:223:15"
+    position: "author.go:224:15"
     operator: "increment literal"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/author.TestBind"
   witnesses: "github.com/greatliontech/stipulator/internal/author.TestBindFileConfinement"
   witnesses: "github.com/greatliontech/stipulator/internal/author.TestUnbind"
   operators: "go/2"
-  body_line: 205
+  body_line: 206
   budget: 24
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

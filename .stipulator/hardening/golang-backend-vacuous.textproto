@@ -9,23 +9,24 @@ records {
   killed: 14
   discarded: 6
   survivors {
-    position: "harden.go:53:17"
+    position: "harden.go:54:17"
     operator: "zero return"
   }
   survivors {
-    position: "harden.go:56:10"
+    position: "harden.go:57:10"
     operator: "zero return"
   }
   survivors {
-    position: "harden.go:62:13"
+    position: "harden.go:63:13"
     operator: "force false"
   }
   survivors {
-    position: "harden.go:66:4"
+    position: "harden.go:67:4"
     operator: "drop assignment"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestVacuity"
   operators: "go/2"
-  body_line: 50
+  body_line: 51
   budget: 24
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

@@ -295,6 +295,33 @@ func TestRunAndRecords(t *testing.T) {
 		}
 	}
 
+	// Toolchain staleness: a sheet measured under a different toolchain
+	// re-stales even with everything in the tree unchanged — the one pin
+	// the tree does not carry. The written sheet must pin the live
+	// toolchain identity ("goX.Y GOOS/GOARCH").
+	tc, err := golang.Toolchain("../backends/golang/testdata/fixturemod")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(files[weakPath], `toolchain: "`+tc+`"`) {
+		t.Fatalf("sheet does not pin the toolchain %q:\n%s", tc, files[weakPath])
+	}
+	oldTc := map[string]string{}
+	for p, c := range files {
+		oldTc[p] = c
+	}
+	oldTc[weakPath] = strings.ReplaceAll(oldTc[weakPath], `toolchain: "`+tc+`"`, `toolchain: "go1.0 plan9/mips"`)
+	_, storeTc := fixture(t, oldTc)
+	repTc, err := Run(context.Background(), "../backends/golang/testdata/fixturemod", backend, storeTc, targets, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range repTc.Results {
+		if r.Symbol == "example.com/fixture/lib.Weak" && r.Cached {
+			t.Fatalf("foreign-toolchain sheet reused as cache: %+v", r)
+		}
+	}
+
 	// Attestation lifecycle: an attested survivor rides a forced rerun
 	// while the pins hold, and is shed when the witness pin moves.
 	attFS := fstest.MapFS{}

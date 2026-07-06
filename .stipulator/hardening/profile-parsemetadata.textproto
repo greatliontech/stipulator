@@ -34,5 +34,5 @@ records {
   witnesses: "github.com/greatliontech/stipulator/internal/compile.TestLeadErrors"
   operators: "go/2"
   body_line: 158
-  budget: 24
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

@@ -4,39 +4,104 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.satisfied"
-  body_hash: "bd518b9da1fc6e677c5ba8d202046748d8f45cd30b9072498c82d473afb99148"
+  body_hash: "a34406c1d4ef034e3fb3b35395ed55030e70badaf28b76fd47e01c624a9e7461"
   mutants: 24
-  killed: 17
+  killed: 1
   survivors {
-    position: "coverage.go:251:25"
-    operator: "force false"
-  }
-  survivors {
-    position: "coverage.go:253:11"
+    position: "coverage.go:364:11"
     operator: "zero return"
   }
   survivors {
-    position: "coverage.go:255:11"
+    position: "coverage.go:366:11"
+    operator: "zero return"
+  }
+  survivors {
+    position: "coverage.go:366:22"
+    operator: "|| -> &&"
+  }
+  survivors {
+    position: "coverage.go:366:11"
     operator: "force false"
   }
   survivors {
-    position: "coverage.go:258:37"
+    position: "coverage.go:366:25"
     operator: "force false"
   }
   survivors {
-    position: "coverage.go:258:22"
+    position: "coverage.go:368:11"
+    operator: "zero return"
+  }
+  survivors {
+    position: "coverage.go:370:11"
+    operator: "zero return"
+  }
+  survivors {
+    position: "coverage.go:370:19"
+    operator: "|| -> &&"
+  }
+  survivors {
+    position: "coverage.go:370:11"
     operator: "force false"
   }
   survivors {
-    position: "coverage.go:260:37"
+    position: "coverage.go:370:22"
     operator: "force false"
   }
   survivors {
-    position: "coverage.go:260:22"
+    position: "coverage.go:372:11"
+    operator: "zero return"
+  }
+  survivors {
+    position: "coverage.go:372:35"
+    operator: "|| -> &&"
+  }
+  survivors {
+    position: "coverage.go:372:11"
     operator: "force false"
+  }
+  survivors {
+    position: "coverage.go:372:38"
+    operator: "force false"
+  }
+  survivors {
+    position: "coverage.go:372:20"
+    operator: "|| -> &&"
+  }
+  survivors {
+    position: "coverage.go:372:11"
+    operator: "force false"
+  }
+  survivors {
+    position: "coverage.go:372:23"
+    operator: "force false"
+  }
+  survivors {
+    position: "coverage.go:374:11"
+    operator: "zero return"
+  }
+  survivors {
+    position: "coverage.go:379:11"
+    operator: "zero return"
+  }
+  survivors {
+    position: "coverage.go:379:35"
+    operator: "|| -> &&"
+  }
+  survivors {
+    position: "coverage.go:379:11"
+    operator: "force false"
+  }
+  survivors {
+    position: "coverage.go:379:38"
+    operator: "force false"
+  }
+  survivors {
+    position: "coverage.go:379:20"
+    operator: "|| -> &&"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestPolicyDefaults"
   operators: "go/2"
-  body_line: 242
+  body_line: 360
   budget: 24
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

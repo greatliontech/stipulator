@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -60,4 +61,23 @@ func goworkEnv(dir string) []string {
 		return append(os.Environ(), "GOWORK="+work)
 	}
 	return append(os.Environ(), "GOWORK=off")
+}
+
+// Toolchain reports the identity of the go command the engine invokes in
+// dir — "GOVERSION GOOS/GOARCH" — under the same GOWORK pinning as every
+// other invocation. It is the exec'd toolchain, deliberately not this
+// binary's runtime.Version(): the witnesses run under the former.
+func Toolchain(dir string) (string, error) {
+	cmd := exec.Command("go", "env", "GOVERSION", "GOOS", "GOARCH")
+	cmd.Dir = dir
+	cmd.Env = goworkEnv(dir)
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("resolving toolchain identity: %w", err)
+	}
+	f := strings.Fields(string(out))
+	if len(f) != 3 {
+		return "", fmt.Errorf("unexpected go env output %q", out)
+	}
+	return f[0] + " " + f[1] + "/" + f[2], nil
 }

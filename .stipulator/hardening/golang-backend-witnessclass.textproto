@@ -4,44 +4,45 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend.WitnessClass"
-  body_hash: "9ab9a3a6f2ad8c21576125e8051bd0c51d42d9bf0ce115b8baf93f41b775d3cf"
+  body_hash: "1747942abd79e411c4410e3bc67b34a7c9de396835e6e808ef3e34443d13795c"
   mutants: 21
   killed: 13
   discarded: 3
   survivors {
-    position: "golang.go:148:70"
+    position: "golang.go:162:70"
     operator: "&& -> ||"
   }
   survivors {
-    position: "golang.go:148:73"
+    position: "golang.go:162:73"
     operator: "force true"
   }
   survivors {
-    position: "golang.go:148:52"
+    position: "golang.go:162:52"
     operator: "&& -> ||"
   }
   survivors {
-    position: "golang.go:148:55"
+    position: "golang.go:162:55"
     operator: "force true"
   }
   survivors {
-    position: "golang.go:152:14"
+    position: "golang.go:166:14"
     operator: "force false"
   }
   survivors {
-    position: "golang.go:156:55"
+    position: "golang.go:180:55"
     operator: "&& -> ||"
   }
   survivors {
-    position: "golang.go:156:44"
+    position: "golang.go:180:44"
     operator: "force true"
   }
   survivors {
-    position: "golang.go:156:58"
+    position: "golang.go:180:58"
     operator: "force true"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestWitnessClass"
   operators: "go/2"
-  body_line: 143
+  body_line: 157
   budget: 24
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

@@ -48,4 +48,5 @@ records {
   operators: "go/2"
   body_line: 16
   budget: 24
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

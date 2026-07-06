@@ -8,31 +8,31 @@ records {
   mutants: 24
   killed: 17
   survivors {
-    position: "author.go:101:15"
+    position: "author.go:102:15"
     operator: "zero return"
   }
   survivors {
-    position: "author.go:103:18"
+    position: "author.go:104:18"
     operator: "increment literal"
   }
   survivors {
-    position: "author.go:104:15"
+    position: "author.go:105:15"
     operator: "zero return"
   }
   survivors {
-    position: "author.go:104:65"
+    position: "author.go:105:65"
     operator: "increment literal"
   }
   survivors {
-    position: "author.go:104:90"
+    position: "author.go:105:90"
     operator: "- -> +"
   }
   survivors {
-    position: "author.go:104:91"
+    position: "author.go:105:91"
     operator: "increment literal"
   }
   survivors {
-    position: "author.go:116:15"
+    position: "author.go:117:15"
     operator: "zero return"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/author.TestBind"
@@ -40,6 +40,7 @@ records {
   witnesses: "github.com/greatliontech/stipulator/internal/author.TestProvesDischarge"
   witnesses: "github.com/greatliontech/stipulator/internal/author.TestUnbind"
   operators: "go/2"
-  body_line: 98
+  body_line: 99
   budget: 24
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

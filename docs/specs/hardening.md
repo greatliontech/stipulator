@@ -54,13 +54,19 @@ remains available for the night tier.
 
 **REQ-harden-records** (behavior): A hardening record MUST be keyed by
 the mutated symbol, pinning the symbol's body hash, the witness set it
-ran against, the operator-set version that generated its mutants, and
-the mutant budget it ran under, and carrying the mutant count, the kill
-count, and each survivor. A record is stale when any pin no longer
-covers the request — a new witness bound to the symbol, an engine
-gaining operators, or a request for more mutants than a capped sheet
-generated invalidates it exactly as a body edit does. Per-requirement
+ran against, the operator-set version that generated its mutants, the
+mutant budget it ran under, and the identity of the toolchain that
+executed the witnesses — the one input the tree does not carry: the
+same body under the same witnesses kills differently across toolchains
+— and carrying the mutant count, the kill count, and each survivor. A
+record is stale when any pin no longer covers the request — a new
+witness bound to the symbol, an engine gaining operators, a toolchain
+change, or a request for more mutants than a capped sheet generated
+invalidates it exactly as a body edit does. Per-requirement
 views are derived from the binding store on demand, never stored.
+Sheets are per-platform by construction — the toolchain pin carries
+GOOS/GOARCH — so a team spanning platforms regenerates from one
+designated platform (typically CI) rather than ping-ponging the store.
 
 **REQ-harden-attestation** (behavior): An attested equivalence MUST be
 recorded on the kill-sheet as a survivor disposition naming the mutant

@@ -4,35 +4,36 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/harden.Report.Records"
-  body_hash: "a0e720a74d91026cb71de48ab1c05f50b94c6f6b9615cd2c49aca6f6321ad361"
+  body_hash: "aa0a4bb68c89905a3f7fc73396903c2da4743db30ad89d820d399203a0def3b1"
   mutants: 24
   killed: 18
   survivors {
-    position: "harden.go:437:3"
+    position: "harden.go:479:3"
     operator: "delete statement"
   }
   survivors {
-    position: "harden.go:440:3"
+    position: "harden.go:482:3"
     operator: "delete statement"
   }
   survivors {
-    position: "harden.go:441:3"
+    position: "harden.go:483:3"
     operator: "delete statement"
   }
   survivors {
-    position: "harden.go:442:3"
+    position: "harden.go:484:3"
     operator: "delete statement"
   }
   survivors {
-    position: "harden.go:454:3"
+    position: "harden.go:496:3"
     operator: "delete statement"
   }
   survivors {
-    position: "harden.go:463:3"
+    position: "harden.go:506:3"
     operator: "delete statement"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/harden.TestRunAndRecords"
   operators: "go/2"
-  body_line: 430
+  body_line: 472
   budget: 24
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

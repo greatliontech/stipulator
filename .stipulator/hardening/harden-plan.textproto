@@ -4,35 +4,19 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/harden.Plan"
-  body_hash: "6e0c465fe553590aaec027bd83f63b82d46e6390d807944839033e2e1fe5c970"
-  mutants: 23
-  killed: 18
-  discarded: 1
-  survivors {
-    position: "harden.go:130:2"
-    operator: "delete statement"
-  }
-  survivors {
-    position: "harden.go:106:30"
-    operator: "|| -> &&"
-  }
-  survivors {
-    position: "harden.go:106:7"
-    operator: "force false"
-  }
-  survivors {
-    position: "harden.go:106:33"
-    operator: "force false"
-  }
-  survivors {
-    position: "harden.go:107:5"
-    operator: "continue -> break"
-  }
+  body_hash: "17bf1b49cd878255cc7bd70510b885216899c28688d123cc9a3bae4dcb2d7d31"
+  mutants: 24
+  killed: 24
+  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestFirstFailingTest"
+  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunMutantGoroutinePanicIsAKill"
+  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunMutantNoiseIsNeverAKill"
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunMutantOutcomes"
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestSplitRapidPkgs"
+  witnesses: "github.com/greatliontech/stipulator/internal/harden.TestAttributedKill"
   witnesses: "github.com/greatliontech/stipulator/internal/harden.TestPlanScope"
   witnesses: "github.com/greatliontech/stipulator/internal/harden.TestRunAndRecords"
   operators: "go/2"
-  body_line: 94
+  body_line: 107
   budget: 24
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

@@ -8,32 +8,32 @@ records {
   mutants: 15
   killed: 9
   survivors {
-    position: "golang.go:263:20"
+    position: "golang.go:287:20"
     operator: "|| -> &&"
   }
   survivors {
-    position: "golang.go:263:5"
+    position: "golang.go:287:5"
     operator: "force false"
   }
   survivors {
-    position: "golang.go:263:23"
+    position: "golang.go:287:23"
     operator: "force false"
   }
   survivors {
-    position: "golang.go:271:26"
+    position: "golang.go:295:26"
     operator: "&& -> ||"
   }
   survivors {
-    position: "golang.go:271:7"
+    position: "golang.go:295:7"
     operator: "force true"
   }
   survivors {
-    position: "golang.go:271:29"
+    position: "golang.go:295:29"
     operator: "force true"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestFixtureModule"
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestResolve"
   operators: "go/2"
-  body_line: 261
-  budget: 24
+  body_line: 285
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

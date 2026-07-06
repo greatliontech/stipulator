@@ -4,45 +4,39 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.Server.MCP"
-  body_hash: "82dd6182c42297eeffc81ecd9b1335b220b803f057a80e4ec14223c2161fcbbe"
+  body_hash: "e5f27b680daf1939139dec636f4abc75f052132631d613cbe22b2f9ba852fce7"
   mutants: 22
-  killed: 14
+  killed: 16
   discarded: 2
   survivors {
-    position: "server.go:151:2"
+    position: "server.go:160:2"
     operator: "delete statement"
   }
   survivors {
-    position: "server.go:157:2"
+    position: "server.go:166:2"
     operator: "delete statement"
   }
   survivors {
-    position: "server.go:163:2"
+    position: "server.go:172:2"
     operator: "delete statement"
   }
   survivors {
-    position: "server.go:169:2"
+    position: "server.go:178:2"
     operator: "delete statement"
   }
   survivors {
-    position: "server.go:182:52"
+    position: "server.go:191:52"
     operator: "negate condition"
   }
   survivors {
-    position: "server.go:182:63"
+    position: "server.go:191:63"
     operator: "&& -> ||"
   }
-  survivors {
-    position: "server.go:182:56"
-    operator: "== -> !="
-  }
-  survivors {
-    position: "server.go:182:77"
-    operator: "== -> !="
-  }
+  witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestAttestTools"
   witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestGateTool"
   witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestToolListExact"
   operators: "go/2"
-  body_line: 99
+  body_line: 100
   budget: 24
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

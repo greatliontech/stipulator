@@ -9,6 +9,6 @@ records {
   killed: 1
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestWitnessRunInvocation"
   operators: "go/2"
-  body_line: 19
-  budget: 24
+  body_line: 20
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

@@ -8,11 +8,11 @@ records {
   mutants: 2
   killed: 1
   survivors {
-    position: "golang.go:251:10"
+    position: "golang.go:275:10"
     operator: "zero return"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestShapeHashDistinguishesSignatures"
   operators: "go/2"
-  body_line: 249
-  budget: 24
+  body_line: 273
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

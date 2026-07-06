@@ -1249,6 +1249,7 @@ type Hardening struct {
 	xxx_hidden_Attested    *[]*MutationAttestation `protobuf:"bytes,11,rep,name=attested"`
 	xxx_hidden_BodyLine    int32                   `protobuf:"varint,12,opt,name=body_line,json=bodyLine"`
 	xxx_hidden_Budget      int32                   `protobuf:"varint,13,opt,name=budget"`
+	xxx_hidden_Toolchain   *string                 `protobuf:"bytes,14,opt,name=toolchain"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -1380,29 +1381,39 @@ func (x *Hardening) GetBudget() int32 {
 	return 0
 }
 
+func (x *Hardening) GetToolchain() string {
+	if x != nil {
+		if x.xxx_hidden_Toolchain != nil {
+			return *x.xxx_hidden_Toolchain
+		}
+		return ""
+	}
+	return ""
+}
+
 func (x *Hardening) SetBackend(v string) {
 	x.xxx_hidden_Backend = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 13)
 }
 
 func (x *Hardening) SetSymbol(v string) {
 	x.xxx_hidden_Symbol = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 13)
 }
 
 func (x *Hardening) SetBodyHash(v string) {
 	x.xxx_hidden_BodyHash = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 13)
 }
 
 func (x *Hardening) SetMutants(v int32) {
 	x.xxx_hidden_Mutants = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 13)
 }
 
 func (x *Hardening) SetKilled(v int32) {
 	x.xxx_hidden_Killed = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 13)
 }
 
 func (x *Hardening) SetSurvivors(v []*MutationSurvivor) {
@@ -1411,7 +1422,7 @@ func (x *Hardening) SetSurvivors(v []*MutationSurvivor) {
 
 func (x *Hardening) SetDiscarded(v int32) {
 	x.xxx_hidden_Discarded = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 13)
 }
 
 func (x *Hardening) SetWitnesses(v []string) {
@@ -1420,7 +1431,7 @@ func (x *Hardening) SetWitnesses(v []string) {
 
 func (x *Hardening) SetOperators(v string) {
 	x.xxx_hidden_Operators = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 13)
 }
 
 func (x *Hardening) SetAttested(v []*MutationAttestation) {
@@ -1429,12 +1440,17 @@ func (x *Hardening) SetAttested(v []*MutationAttestation) {
 
 func (x *Hardening) SetBodyLine(v int32) {
 	x.xxx_hidden_BodyLine = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 13)
 }
 
 func (x *Hardening) SetBudget(v int32) {
 	x.xxx_hidden_Budget = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 13)
+}
+
+func (x *Hardening) SetToolchain(v string) {
+	x.xxx_hidden_Toolchain = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 13)
 }
 
 func (x *Hardening) HasBackend() bool {
@@ -1500,6 +1516,13 @@ func (x *Hardening) HasBudget() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 11)
 }
 
+func (x *Hardening) HasToolchain() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 12)
+}
+
 func (x *Hardening) ClearBackend() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Backend = nil
@@ -1545,6 +1568,11 @@ func (x *Hardening) ClearBudget() {
 	x.xxx_hidden_Budget = 0
 }
 
+func (x *Hardening) ClearToolchain() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 12)
+	x.xxx_hidden_Toolchain = nil
+}
+
 type Hardening_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -1578,6 +1606,12 @@ type Hardening_builder struct {
 	// exhaustive): a capped sheet must never answer a request for more
 	// mutants than it generated.
 	Budget *int32
+	// Toolchain pins the identity of the toolchain that executed the
+	// witnesses (version and platform of the go command the engine
+	// invoked, e.g. "go1.26.4 linux/amd64"): the same body under the same
+	// witnesses kills differently across toolchains, so a toolchain change
+	// re-stales the sheet like any other pin.
+	Toolchain *string
 }
 
 func (b0 Hardening_builder) Build() *Hardening {
@@ -1585,43 +1619,47 @@ func (b0 Hardening_builder) Build() *Hardening {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Backend != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 13)
 		x.xxx_hidden_Backend = b.Backend
 	}
 	if b.Symbol != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 13)
 		x.xxx_hidden_Symbol = b.Symbol
 	}
 	if b.BodyHash != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 13)
 		x.xxx_hidden_BodyHash = b.BodyHash
 	}
 	if b.Mutants != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 13)
 		x.xxx_hidden_Mutants = *b.Mutants
 	}
 	if b.Killed != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 13)
 		x.xxx_hidden_Killed = *b.Killed
 	}
 	x.xxx_hidden_Survivors = &b.Survivors
 	if b.Discarded != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 13)
 		x.xxx_hidden_Discarded = *b.Discarded
 	}
 	x.xxx_hidden_Witnesses = b.Witnesses
 	if b.Operators != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 13)
 		x.xxx_hidden_Operators = b.Operators
 	}
 	x.xxx_hidden_Attested = &b.Attested
 	if b.BodyLine != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 13)
 		x.xxx_hidden_BodyLine = *b.BodyLine
 	}
 	if b.Budget != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 13)
 		x.xxx_hidden_Budget = *b.Budget
+	}
+	if b.Toolchain != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 13)
+		x.xxx_hidden_Toolchain = b.Toolchain
 	}
 	return m0
 }
@@ -1871,7 +1909,7 @@ const file_stipulator_v1_records_proto_rawDesc = "" +
 	"\aretired\x18\x01 \x03(\tR\aretired\"J\n" +
 	"\x10MutationSurvivor\x12\x1a\n" +
 	"\bposition\x18\x01 \x01(\tR\bposition\x12\x1a\n" +
-	"\boperator\x18\x02 \x01(\tR\boperator\"\xa0\x03\n" +
+	"\boperator\x18\x02 \x01(\tR\boperator\"\xbe\x03\n" +
 	"\tHardening\x12\x18\n" +
 	"\abackend\x18\x02 \x01(\tR\abackend\x12\x16\n" +
 	"\x06symbol\x18\x03 \x01(\tR\x06symbol\x12\x1b\n" +
@@ -1885,7 +1923,8 @@ const file_stipulator_v1_records_proto_rawDesc = "" +
 	" \x01(\tR\toperators\x12>\n" +
 	"\battested\x18\v \x03(\v2\".stipulator.v1.MutationAttestationR\battested\x12\x1b\n" +
 	"\tbody_line\x18\f \x01(\x05R\bbodyLine\x12\x16\n" +
-	"\x06budget\x18\r \x01(\x05R\x06budgetJ\x04\b\x01\x10\x02\"e\n" +
+	"\x06budget\x18\r \x01(\x05R\x06budget\x12\x1c\n" +
+	"\ttoolchain\x18\x0e \x01(\tR\ttoolchainJ\x04\b\x01\x10\x02\"e\n" +
 	"\x13MutationAttestation\x12\x1a\n" +
 	"\bposition\x18\x01 \x01(\tR\bposition\x12\x1a\n" +
 	"\boperator\x18\x02 \x01(\tR\boperator\x12\x16\n" +

@@ -4,11 +4,15 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.Report.Proto"
-  body_hash: "3408bd5218f496a3fcff1059656513c2a4b3ffb019e5eaadd5871e7b928e7ac4"
-  mutants: 15
+  body_hash: "6c807446ab5f3390820a9c4caacf462323b5687881e53930ca8c266642ecc2e9"
+  mutants: 16
   killed: 7
   survivors {
-    position: "proto.go:30:2"
+    position: "proto.go:21:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:31:2"
     operator: "delete statement"
   }
   survivors {
@@ -24,10 +28,6 @@ records {
     operator: "delete statement"
   }
   survivors {
-    position: "proto.go:25:3"
-    operator: "delete statement"
-  }
-  survivors {
     position: "proto.go:26:3"
     operator: "delete statement"
   }
@@ -37,10 +37,14 @@ records {
   }
   survivors {
     position: "proto.go:28:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:29:3"
     operator: "drop assignment"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestGateTool"
   operators: "go/2"
   body_line: 8
-  budget: 24
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

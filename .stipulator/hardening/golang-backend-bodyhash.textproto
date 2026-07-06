@@ -9,27 +9,27 @@ records {
   killed: 4
   discarded: 1
   survivors {
-    position: "harden.go:33:14"
+    position: "harden.go:34:14"
     operator: "zero return"
   }
   survivors {
-    position: "harden.go:36:5"
+    position: "harden.go:37:5"
     operator: "negate condition"
   }
   survivors {
-    position: "harden.go:36:13"
+    position: "harden.go:37:13"
     operator: "!= -> =="
   }
   survivors {
-    position: "harden.go:37:3"
+    position: "harden.go:38:3"
     operator: "drop assignment"
   }
   survivors {
-    position: "harden.go:41:14"
+    position: "harden.go:42:14"
     operator: "zero return"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestBodyHash"
   operators: "go/2"
-  body_line: 30
-  budget: 24
+  body_line: 31
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }
