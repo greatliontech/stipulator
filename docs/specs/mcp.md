@@ -20,9 +20,9 @@ most recent operation — reads themselves are always fresh.
 
 **REQ-mcp-tools** (wire): The server MUST expose tools `compile`, `verify`,
 `gate`, `bind`, `unbind`, `gap`, `pin`, `read_spec`, `context`,
-`partitions`, `dispose`, and `harden`, mirroring the
-operation semantics exactly, with report-shaped results rendered from the
-report messages as JSON.
+`partitions`, `dispose`, `harden`, `attest_survivor`, and
+`attest_requirement`, mirroring the operation semantics exactly, with
+report-shaped results rendered from the report messages as JSON.
 
 **REQ-mcp-writes-confined** (behavior): The server MUST NOT write outside
 the record stores under `.stipulator/` — it never edits spec documents or

@@ -125,6 +125,14 @@ func (s *Server) MCP() *mcp.Server {
 		Description: "Declare a coverage gap: requirement, reason, and exactly one landing condition (covered/exists/manual).",
 	}, s.toolGap)
 	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "attest_survivor",
+		Description: "Disposition a surviving mutant as attested equivalent on its kill-sheet, with reasoning; shed when the sheet's pins move.",
+	}, s.toolAttestSurvivor)
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "attest_requirement",
+		Description: "Author the weakest evidence: a reason-carrying voucher for a requirement, content-pinned; renders the distinct attested bucket only where the policy admits it, never covered.",
+	}, s.toolAttestRequirement)
+	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "pin",
 		Description: "Backfill binding content and shape pins to current values; returns rewritten record files.",
 	}, s.toolPin)
@@ -412,6 +420,40 @@ func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn
 		g.SetLands(lc)
 	}
 	up, err := author.Gap(s.fsys(), g)
+	if err != nil {
+		return nil, writeOut{}, err
+	}
+	if err := s.write(up.Path, up.Content); err != nil {
+		return nil, writeOut{}, err
+	}
+	return nil, writeOut{Wrote: []string{up.Path}}, nil
+}
+
+type attestSurvivorIn struct {
+	Symbol   string `json:"symbol" jsonschema:"mutated symbol whose sheet carries the survivor"`
+	Position string `json:"position" jsonschema:"survivor position as printed by harden (file.go:line:col)"`
+	Operator string `json:"operator" jsonschema:"survivor operator as printed by harden"`
+	Reason   string `json:"reason" jsonschema:"why the mutant is equivalent or accepted"`
+}
+
+func (s *Server) toolAttestSurvivor(ctx context.Context, req *mcp.CallToolRequest, in attestSurvivorIn) (*mcp.CallToolResult, writeOut, error) {
+	up, err := author.Attest(s.fsys(), in.Symbol, in.Position, in.Operator, in.Reason)
+	if err != nil {
+		return nil, writeOut{}, err
+	}
+	if err := s.write(up.Path, up.Content); err != nil {
+		return nil, writeOut{}, err
+	}
+	return nil, writeOut{Wrote: []string{up.Path}}, nil
+}
+
+type attestRequirementIn struct {
+	Requirement string `json:"requirement" jsonschema:"requirement identifier"`
+	Reason      string `json:"reason" jsonschema:"why the requirement is judged satisfied"`
+}
+
+func (s *Server) toolAttestRequirement(ctx context.Context, req *mcp.CallToolRequest, in attestRequirementIn) (*mcp.CallToolResult, writeOut, error) {
+	up, err := author.AttestRequirement(s.fsys(), in.Requirement, in.Reason)
 	if err != nil {
 		return nil, writeOut{}, err
 	}

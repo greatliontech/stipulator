@@ -278,7 +278,7 @@ func TestToolListExact(t *testing.T) {
 	for _, tool := range list.Tools {
 		got[tool.Name] = true
 	}
-	want := []string{"compile", "verify", "gate", "bind", "unbind", "gap", "pin", "read_spec", "context", "partitions", "dispose", "harden"}
+	want := []string{"compile", "verify", "gate", "bind", "unbind", "gap", "pin", "read_spec", "context", "partitions", "dispose", "harden", "attest_survivor", "attest_requirement"}
 	for _, w := range want {
 		if !got[w] {
 			t.Fatalf("tool %s missing from the wire list: %v", w, got)
@@ -357,5 +357,72 @@ func TestReadSpecToolMirrorsBundle(t *testing.T) {
 	b, _ := json.Marshal(res.StructuredContent)
 	if !strings.Contains(string(b), "widget") {
 		t.Fatalf("read_spec lacks closure content: %s", b)
+	}
+}
+
+// TestAttestTools pins the MCP surface of both attest verbs: writes land
+// in the record stores, and the verbs' refusals surface as tool errors.
+func TestAttestTools(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-tools", "REQ-evidence-attestation")
+	sess, writes := harness(t, map[string]string{
+		".stipulator/hardening/f.textproto": `records {
+  backend: "go"
+  symbol: "example.com/p.F"
+  body_hash: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  mutants: 2
+  killed: 1
+  survivors {
+    position: "f.go:5:2"
+    operator: "drop assignment"
+  }
+  operators: "go/2"
+}
+`,
+	})
+
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "attest_survivor", Arguments: map[string]any{
+		"symbol": "example.com/p.F", "position": "f.go:5:2", "operator": "drop assignment", "reason": "store re-derived below",
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsError {
+		t.Fatalf("attest_survivor errored: %v", res.Content[0])
+	}
+	if _, ok := writes[".stipulator/hardening/f.textproto"]; !ok {
+		t.Fatalf("survivor attestation not written: %v", writes)
+	}
+
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "attest_requirement", Arguments: map[string]any{
+		"requirement": "REQ-m-a", "reason": "judged by review",
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsError {
+		t.Fatalf("attest_requirement errored: %v", res.Content[0])
+	}
+	found := false
+	for p := range writes {
+		if strings.HasPrefix(p, ".stipulator/attestations/") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("requirement attestation not written: %v", writes)
+	}
+
+	// Refusals surface as tool errors: reasonless, and non-survivors.
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "attest_requirement", Arguments: map[string]any{
+		"requirement": "REQ-m-b",
+	}})
+	if err != nil || !res.IsError {
+		t.Fatalf("reasonless attestation accepted: %v %v", err, res)
+	}
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "attest_survivor", Arguments: map[string]any{
+		"symbol": "example.com/p.F", "position": "f.go:99:9", "operator": "drop assignment", "reason": "r",
+	}})
+	if err != nil || !res.IsError {
+		t.Fatalf("non-survivor attested: %v %v", err, res)
 	}
 }
