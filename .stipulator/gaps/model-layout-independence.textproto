@@ -1,6 +1,0 @@
-# proto-file: proto/stipulator/v1/records.proto
-# proto-message: stipulator.v1.Gap
-
-requirement_id: "REQ-model-layout-independence"
-reason: "invariant pinned by example tests only; a for-all claim wants a property witness"
-lands { attested { condition: "property-test hardening chunk begins" } }

@@ -10,6 +10,7 @@ require (
 	github.com/yuin/goldmark v1.8.2
 	golang.org/x/text v0.38.0
 	golang.org/x/tools v0.47.0
+	pgregory.net/rapid v1.3.0
 )
 
 require (

@@ -1,0 +1,72 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  requirement_id: "REQ-core-claims-untrusted"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.Evaluate"
+  body_hash: "23cc6236eff027d8a301ba96d7a8665e603722d1dd7cba60f6ffc0ab1a55aae8"
+  mutants: 23
+  killed: 8
+  discarded: 1
+  survivors {
+    position: "coverage.go:227:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "coverage.go:145:8"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "coverage.go:150:14"
+    operator: "== -> !="
+  }
+  survivors {
+    position: "coverage.go:151:11"
+    operator: "== -> !="
+  }
+  survivors {
+    position: "coverage.go:156:26"
+    operator: "== -> !="
+  }
+  survivors {
+    position: "coverage.go:158:18"
+    operator: "== -> !="
+  }
+  survivors {
+    position: "coverage.go:164:26"
+    operator: "== -> !="
+  }
+  survivors {
+    position: "coverage.go:200:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "coverage.go:184:81"
+    operator: "|| -> &&"
+  }
+  survivors {
+    position: "coverage.go:184:69"
+    operator: "|| -> &&"
+  }
+  survivors {
+    position: "coverage.go:184:58"
+    operator: "|| -> &&"
+  }
+  survivors {
+    position: "coverage.go:184:46"
+    operator: "|| -> &&"
+  }
+  survivors {
+    position: "coverage.go:184:31"
+    operator: "|| -> &&"
+  }
+  survivors {
+    position: "coverage.go:184:27"
+    operator: "> -> <="
+  }
+  survivors {
+    position: "coverage.go:187:59"
+    operator: "&& -> ||"
+  }
+}

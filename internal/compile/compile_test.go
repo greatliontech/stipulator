@@ -369,19 +369,8 @@ func TestLayoutIndependence(t *testing.T) {
 	specSplit, diags := compileFiles(t, split)
 	wantClean(t, diags)
 
-	strip := func(s *stipulatorv1.Spec) *stipulatorv1.Spec {
-		c := proto.Clone(s).(*stipulatorv1.Spec)
-		c.SetDocuments(nil)
-		for _, r := range c.GetRequirements() {
-			r.ClearLocation()
-		}
-		for _, tm := range c.GetTerms() {
-			tm.ClearLocation()
-		}
-		return c
-	}
-	if !proto.Equal(strip(specOne), strip(specSplit)) {
-		t.Fatalf("IRs differ beyond location metadata:\n%v\n---\n%v", strip(specOne), strip(specSplit))
+	if !proto.Equal(stripLocations(specOne), stripLocations(specSplit)) {
+		t.Fatalf("IRs differ beyond location metadata:\n%v\n---\n%v", stripLocations(specOne), stripLocations(specSplit))
 	}
 }
 

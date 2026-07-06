@@ -1,0 +1,27 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  requirement_id: "REQ-change-dangling"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verify.Run"
+  body_hash: "b48590484f700c8b54e385927a1594aa928edf987f276a08fcedbc29e163bf40"
+  mutants: 24
+  killed: 20
+  survivors {
+    position: "verify.go:378:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "verify.go:235:5"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "verify.go:241:5"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "verify.go:276:5"
+    operator: "delete statement"
+  }
+}

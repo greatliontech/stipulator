@@ -21,6 +21,7 @@ Spec: docs/specs/
 - [x] 17. Bundles (closure computation + export; MCP bundle tool) — landed with chunk 13
 - [x] 18. Generated folder indexes (`fmt` + freshness lint)
 - [x] 19. Go structural provers (import constraints, interface satisfaction)
-- [ ] 20. Property-test hardening: invariant coverage to property witnesses
-- [ ] 21. Attestation records + change-signature classifier + determinism harness + manifest policy overrides
-- [ ] 22. gitfs adapter (go-git) for diff-against-revision
+- [x] 20. Property-test hardening: invariant coverage to property witnesses
+- [ ] 21. Per-symbol kill-sheets: harden records re-keyed to (symbol, body hash, witness set)
+- [ ] 22. Attestation records + change-signature classifier + determinism harness + manifest policy overrides
+- [ ] 23. gitfs adapter (go-git) for diff-against-revision

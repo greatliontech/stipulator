@@ -1,6 +1,0 @@
-# proto-file: proto/stipulator/v1/records.proto
-# proto-message: stipulator.v1.Gap
-
-requirement_id: "REQ-change-transient"
-reason: "mechanism landed; invariant awaits its property witness"
-lands { attested { condition: "property-test hardening chunk begins" } }

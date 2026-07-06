@@ -36,3 +36,30 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "9fab40db72ce8f393cd157d08e0c64c82bfc627a7978cee859c08b3417a8458b"
 }
+
+bindings {
+  requirement_id: "REQ-model-layout-independence"
+  content_hash: "df7c1fc5b69983c7978231dd8075f2d1987702401b17a23874f7919352e025fb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestPropLayoutIndependence"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "774b3b8c0a199b459c7a7266d9a53626487a35504e0dcaa25f17400f366b33be"
+}
+
+bindings {
+  requirement_id: "REQ-model-location-metadata"
+  content_hash: "5da370a62aeaf018b254c036671a6fc0901d76dade38fa15b6d4e66938d9476c"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestPropLayoutIndependence"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "774b3b8c0a199b459c7a7266d9a53626487a35504e0dcaa25f17400f366b33be"
+}
+
+bindings {
+  requirement_id: "REQ-model-identity"
+  content_hash: "d3280e79f2568eb2b7b7316c10773110b25b43b224fceb970688e96ad71a6a87"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestPropTombstonedIdentityNeverRedeclared"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "12cbef528c5e0e797b0ea86a605cf7768e5df9b9b862f7bc52051aceac0d8f05"
+}

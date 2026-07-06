@@ -63,3 +63,21 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "376400cdf88032f80606ea6898f938c6c2e1176916fd0885584c587b8c0f0a18"
 }
+
+bindings {
+  requirement_id: "REQ-change-dangling"
+  content_hash: "6d05ebafaea6e82fe8f353beeafb8ea52276c9bf17c1d588e59a062d0ed6f2e7"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verify.TestPropDanglingRecordsAreProblems"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "801128597cdff83da03beab98c837cbf9cc7ce4c92c2d9e795537725bf232eb8"
+}
+
+bindings {
+  requirement_id: "REQ-change-transient"
+  content_hash: "220a6eaae19481e42e9f7369c0359802bec1e9985d5a3e317696dc4146bf647e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestPropVerbsWriteOnlyRecords"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "1d06f943b0e4107dec6ba31452926c848dea758bdf3e081e380b2211f88b2f8f"
+}

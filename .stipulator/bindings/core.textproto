@@ -9,3 +9,30 @@ bindings {
   role: BINDING_ROLE_PROVES
   shape_hash: "07a0d610efa2f7323d18097116008ae8ddde17e148ad3e93b92f25fdfa110a3e"
 }
+
+bindings {
+  requirement_id: "REQ-core-determinism"
+  content_hash: "c62f4d3906f9283749c3e19928e7c3f678aa706749914b6e6fe706da9112124f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.TestPropPipelineDeterminism"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "90e17273ad9599494c67a5eae7a1ca90f2c90487e5a6dbfa4e15b154eae94668"
+}
+
+bindings {
+  requirement_id: "REQ-core-claims-untrusted"
+  content_hash: "fc13bd888d33996087f697b06137befa9a1bcf827c3f001b621098ab0cc63610"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.TestPropEvidenceOnlyFromCurrentRun"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "d196ee6236fa26f588fcaf540c7736f5ef60a3d9b94cb56a449fceba93cf2fc8"
+}
+
+bindings {
+  requirement_id: "REQ-core-scope"
+  content_hash: "95ad033a4917ae6b64325472813ea59ece2ab8f5c7d33e3e1f2679ccd98162e9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestPropVerbsWriteOnlyRecords"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "1d06f943b0e4107dec6ba31452926c848dea758bdf3e081e380b2211f88b2f8f"
+}

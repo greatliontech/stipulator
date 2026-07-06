@@ -63,3 +63,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "08eee58d93c984dc7fbb0c6e8b2482773d86f213d99045f6532aac5a80d6f9f4"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-promotion"
+  content_hash: "cd111698d940da3cbb7584ce86616a68538ccc610ba3b3db525bbe1c1f37bcfc"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.TestPropEvidenceOnlyFromCurrentRun"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "d196ee6236fa26f588fcaf540c7736f5ef60a3d9b94cb56a449fceba93cf2fc8"
+}
