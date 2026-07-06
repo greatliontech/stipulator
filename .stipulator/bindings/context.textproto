@@ -36,3 +36,21 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "1035182b8edd4ab178c7d00326cbc72671698e89200a04fce72550e967301c15"
 }
+
+bindings {
+  requirement_id: "REQ-context-dossier"
+  content_hash: "22f279ff3b9c9045b2dfdceb5065e6b9375d2abb49e2242dc8b9cff298328818"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestContextDossier"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "6f1026f51453556ef1124cc27da3b808ea5c35aa0d8ff88142841d1c469cde3b"
+}
+
+bindings {
+  requirement_id: "REQ-context-dossier"
+  content_hash: "22f279ff3b9c9045b2dfdceb5065e6b9375d2abb49e2242dc8b9cff298328818"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/dossier.Build"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "cff274a0cf87b34c1e328a7cf9656359687af0be037e44fd78bdd34aba21820d"
+}

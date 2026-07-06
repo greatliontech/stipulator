@@ -18,21 +18,7 @@ func (r *Report) Proto() *stipulatorv1.VerifyReport {
 
 	var results []*stipulatorv1.BindingResult
 	for _, br := range r.Results {
-		m := &stipulatorv1.BindingResult{}
-		m.SetPath(br.Path)
-		m.SetRequirementId(br.RequirementId)
-		m.SetSymbol(br.Symbol)
-		m.SetBackend(br.Backend)
-		m.SetRole(br.Role)
-		m.SetContentPinned(br.ContentPinned)
-		m.SetResolution(resolutionProto[br.Resolution])
-		m.SetShape(shapeProto[br.Shape])
-		m.SetTestOutcome(outcomeProto[br.TestOutcome])
-		if witnessRole(br.Role) {
-			m.SetWitnessClass(classProto[br.WitnessClass])
-		}
-		m.SetRaceEnabled(br.RaceEnabled)
-		results = append(results, m)
+		results = append(results, BindingResultProto(br))
 	}
 	out.SetResults(results)
 
@@ -89,4 +75,25 @@ var classProto = map[WitnessClass]stipulatorv1.WitnessClass{
 	ExampleWitness:  stipulatorv1.WitnessClass_WITNESS_CLASS_EXAMPLE,
 	PropertyWitness: stipulatorv1.WitnessClass_WITNESS_CLASS_PROPERTY,
 	AnalyzerProof:   stipulatorv1.WitnessClass_WITNESS_CLASS_ANALYZER_PROOF,
+}
+
+// BindingResultProto renders one binding row as its wire message — the
+// one conversion both the verify report and the dossier use, so the two
+// surfaces cannot drift.
+func BindingResultProto(br BindingResult) *stipulatorv1.BindingResult {
+	m := &stipulatorv1.BindingResult{}
+	m.SetPath(br.Path)
+	m.SetRequirementId(br.RequirementId)
+	m.SetSymbol(br.Symbol)
+	m.SetBackend(br.Backend)
+	m.SetRole(br.Role)
+	m.SetContentPinned(br.ContentPinned)
+	m.SetResolution(resolutionProto[br.Resolution])
+	m.SetShape(shapeProto[br.Shape])
+	m.SetTestOutcome(outcomeProto[br.TestOutcome])
+	if witnessRole(br.Role) {
+		m.SetWitnessClass(classProto[br.WitnessClass])
+	}
+	m.SetRaceEnabled(br.RaceEnabled)
+	return m
 }

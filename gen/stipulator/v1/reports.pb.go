@@ -2211,6 +2211,544 @@ func (b0 ContextReport_builder) Build() *ContextReport {
 	return m0
 }
 
+// Dossier is one requirement's orientation view, assembled from the
+// compiled corpus and the record stores in one call: no consumer should
+// need to know the record stores' file layout to ask "tell me
+// everything about REQ-X".
+type Dossier struct {
+	state                  protoimpl.MessageState  `protogen:"opaque.v1"`
+	xxx_hidden_Requirement *Requirement            `protobuf:"bytes,1,opt,name=requirement"`
+	xxx_hidden_Coverage    *RequirementCoverage    `protobuf:"bytes,2,opt,name=coverage"`
+	xxx_hidden_Gap         *Gap                    `protobuf:"bytes,3,opt,name=gap"`
+	xxx_hidden_Attestation *RequirementAttestation `protobuf:"bytes,4,opt,name=attestation"`
+	xxx_hidden_Bindings    *[]*BindingResult       `protobuf:"bytes,5,rep,name=bindings"`
+	xxx_hidden_Hardening   *[]*HardeningRollup     `protobuf:"bytes,6,rep,name=hardening"`
+	xxx_hidden_Seeds       *[]*Seed                `protobuf:"bytes,7,rep,name=seeds"`
+	xxx_hidden_GapState    GapState                `protobuf:"varint,8,opt,name=gap_state,json=gapState,enum=stipulator.v1.GapState"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *Dossier) Reset() {
+	*x = Dossier{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Dossier) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Dossier) ProtoMessage() {}
+
+func (x *Dossier) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Dossier) GetRequirement() *Requirement {
+	if x != nil {
+		return x.xxx_hidden_Requirement
+	}
+	return nil
+}
+
+func (x *Dossier) GetCoverage() *RequirementCoverage {
+	if x != nil {
+		return x.xxx_hidden_Coverage
+	}
+	return nil
+}
+
+func (x *Dossier) GetGap() *Gap {
+	if x != nil {
+		return x.xxx_hidden_Gap
+	}
+	return nil
+}
+
+func (x *Dossier) GetAttestation() *RequirementAttestation {
+	if x != nil {
+		return x.xxx_hidden_Attestation
+	}
+	return nil
+}
+
+func (x *Dossier) GetBindings() []*BindingResult {
+	if x != nil {
+		if x.xxx_hidden_Bindings != nil {
+			return *x.xxx_hidden_Bindings
+		}
+	}
+	return nil
+}
+
+func (x *Dossier) GetHardening() []*HardeningRollup {
+	if x != nil {
+		if x.xxx_hidden_Hardening != nil {
+			return *x.xxx_hidden_Hardening
+		}
+	}
+	return nil
+}
+
+func (x *Dossier) GetSeeds() []*Seed {
+	if x != nil {
+		if x.xxx_hidden_Seeds != nil {
+			return *x.xxx_hidden_Seeds
+		}
+	}
+	return nil
+}
+
+func (x *Dossier) GetGapState() GapState {
+	if x != nil {
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 7) {
+			return x.xxx_hidden_GapState
+		}
+	}
+	return GapState_GAP_STATE_UNSPECIFIED
+}
+
+func (x *Dossier) SetRequirement(v *Requirement) {
+	x.xxx_hidden_Requirement = v
+}
+
+func (x *Dossier) SetCoverage(v *RequirementCoverage) {
+	x.xxx_hidden_Coverage = v
+}
+
+func (x *Dossier) SetGap(v *Gap) {
+	x.xxx_hidden_Gap = v
+}
+
+func (x *Dossier) SetAttestation(v *RequirementAttestation) {
+	x.xxx_hidden_Attestation = v
+}
+
+func (x *Dossier) SetBindings(v []*BindingResult) {
+	x.xxx_hidden_Bindings = &v
+}
+
+func (x *Dossier) SetHardening(v []*HardeningRollup) {
+	x.xxx_hidden_Hardening = &v
+}
+
+func (x *Dossier) SetSeeds(v []*Seed) {
+	x.xxx_hidden_Seeds = &v
+}
+
+func (x *Dossier) SetGapState(v GapState) {
+	x.xxx_hidden_GapState = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 8)
+}
+
+func (x *Dossier) HasRequirement() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Requirement != nil
+}
+
+func (x *Dossier) HasCoverage() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Coverage != nil
+}
+
+func (x *Dossier) HasGap() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Gap != nil
+}
+
+func (x *Dossier) HasAttestation() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Attestation != nil
+}
+
+func (x *Dossier) HasGapState() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 7)
+}
+
+func (x *Dossier) ClearRequirement() {
+	x.xxx_hidden_Requirement = nil
+}
+
+func (x *Dossier) ClearCoverage() {
+	x.xxx_hidden_Coverage = nil
+}
+
+func (x *Dossier) ClearGap() {
+	x.xxx_hidden_Gap = nil
+}
+
+func (x *Dossier) ClearAttestation() {
+	x.xxx_hidden_Attestation = nil
+}
+
+func (x *Dossier) ClearGapState() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 7)
+	x.xxx_hidden_GapState = GapState_GAP_STATE_UNSPECIFIED
+}
+
+type Dossier_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Requirement is the compiled view: canonical text, kind, keyword,
+	// content hash, source.
+	Requirement *Requirement
+	// Coverage is the requirement's bucket with its reasons.
+	Coverage *RequirementCoverage
+	// Gap is the open gap record, when one names the requirement.
+	Gap *Gap
+	// Attestation is the judgment record, when one names the requirement.
+	Attestation *RequirementAttestation
+	// Bindings are the verified per-binding rows: symbol, role, witness
+	// class, pin freshness, outcome.
+	Bindings []*BindingResult
+	// Hardening rolls up each bound symbol's kill-sheet.
+	Hardening []*HardeningRollup
+	// Seeds are the closure's seed symbols (REQ-context-seeds).
+	Seeds []*Seed
+	// GapState is the gap record's evaluated state, so a resolved gap
+	// beside a covered bucket explains itself.
+	GapState *GapState
+}
+
+func (b0 Dossier_builder) Build() *Dossier {
+	m0 := &Dossier{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Requirement = b.Requirement
+	x.xxx_hidden_Coverage = b.Coverage
+	x.xxx_hidden_Gap = b.Gap
+	x.xxx_hidden_Attestation = b.Attestation
+	x.xxx_hidden_Bindings = &b.Bindings
+	x.xxx_hidden_Hardening = &b.Hardening
+	x.xxx_hidden_Seeds = &b.Seeds
+	if b.GapState != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 8)
+		x.xxx_hidden_GapState = *b.GapState
+	}
+	return m0
+}
+
+// HardeningRollup is one symbol's kill-sheet, summarized.
+type HardeningRollup struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Symbol      *string                `protobuf:"bytes,1,opt,name=symbol"`
+	xxx_hidden_Mutants     int32                  `protobuf:"varint,2,opt,name=mutants"`
+	xxx_hidden_Killed      int32                  `protobuf:"varint,3,opt,name=killed"`
+	xxx_hidden_Survivors   int32                  `protobuf:"varint,4,opt,name=survivors"`
+	xxx_hidden_Attested    int32                  `protobuf:"varint,5,opt,name=attested"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *HardeningRollup) Reset() {
+	*x = HardeningRollup{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HardeningRollup) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HardeningRollup) ProtoMessage() {}
+
+func (x *HardeningRollup) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *HardeningRollup) GetSymbol() string {
+	if x != nil {
+		if x.xxx_hidden_Symbol != nil {
+			return *x.xxx_hidden_Symbol
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *HardeningRollup) GetMutants() int32 {
+	if x != nil {
+		return x.xxx_hidden_Mutants
+	}
+	return 0
+}
+
+func (x *HardeningRollup) GetKilled() int32 {
+	if x != nil {
+		return x.xxx_hidden_Killed
+	}
+	return 0
+}
+
+func (x *HardeningRollup) GetSurvivors() int32 {
+	if x != nil {
+		return x.xxx_hidden_Survivors
+	}
+	return 0
+}
+
+func (x *HardeningRollup) GetAttested() int32 {
+	if x != nil {
+		return x.xxx_hidden_Attested
+	}
+	return 0
+}
+
+func (x *HardeningRollup) SetSymbol(v string) {
+	x.xxx_hidden_Symbol = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 5)
+}
+
+func (x *HardeningRollup) SetMutants(v int32) {
+	x.xxx_hidden_Mutants = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 5)
+}
+
+func (x *HardeningRollup) SetKilled(v int32) {
+	x.xxx_hidden_Killed = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 5)
+}
+
+func (x *HardeningRollup) SetSurvivors(v int32) {
+	x.xxx_hidden_Survivors = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 5)
+}
+
+func (x *HardeningRollup) SetAttested(v int32) {
+	x.xxx_hidden_Attested = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 5)
+}
+
+func (x *HardeningRollup) HasSymbol() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *HardeningRollup) HasMutants() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *HardeningRollup) HasKilled() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *HardeningRollup) HasSurvivors() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *HardeningRollup) HasAttested() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *HardeningRollup) ClearSymbol() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Symbol = nil
+}
+
+func (x *HardeningRollup) ClearMutants() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Mutants = 0
+}
+
+func (x *HardeningRollup) ClearKilled() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Killed = 0
+}
+
+func (x *HardeningRollup) ClearSurvivors() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_Survivors = 0
+}
+
+func (x *HardeningRollup) ClearAttested() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_Attested = 0
+}
+
+type HardeningRollup_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Symbol    *string
+	Mutants   *int32
+	Killed    *int32
+	Survivors *int32
+	Attested  *int32
+}
+
+func (b0 HardeningRollup_builder) Build() *HardeningRollup {
+	m0 := &HardeningRollup{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Symbol != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 5)
+		x.xxx_hidden_Symbol = b.Symbol
+	}
+	if b.Mutants != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 5)
+		x.xxx_hidden_Mutants = *b.Mutants
+	}
+	if b.Killed != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 5)
+		x.xxx_hidden_Killed = *b.Killed
+	}
+	if b.Survivors != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 5)
+		x.xxx_hidden_Survivors = *b.Survivors
+	}
+	if b.Attested != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 5)
+		x.xxx_hidden_Attested = *b.Attested
+	}
+	return m0
+}
+
+// DossierReport is the context operation's answer, one dossier per
+// requested requirement.
+type DossierReport struct {
+	state                   protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Dossiers     *[]*Dossier            `protobuf:"bytes,1,rep,name=dossiers"`
+	xxx_hidden_Problems     *[]*Problem            `protobuf:"bytes,3,rep,name=problems"`
+	xxx_hidden_Declarations *[]*Decl               `protobuf:"bytes,2,rep,name=declarations"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *DossierReport) Reset() {
+	*x = DossierReport{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DossierReport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DossierReport) ProtoMessage() {}
+
+func (x *DossierReport) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *DossierReport) GetDossiers() []*Dossier {
+	if x != nil {
+		if x.xxx_hidden_Dossiers != nil {
+			return *x.xxx_hidden_Dossiers
+		}
+	}
+	return nil
+}
+
+func (x *DossierReport) GetProblems() []*Problem {
+	if x != nil {
+		if x.xxx_hidden_Problems != nil {
+			return *x.xxx_hidden_Problems
+		}
+	}
+	return nil
+}
+
+func (x *DossierReport) GetDeclarations() []*Decl {
+	if x != nil {
+		if x.xxx_hidden_Declarations != nil {
+			return *x.xxx_hidden_Declarations
+		}
+	}
+	return nil
+}
+
+func (x *DossierReport) SetDossiers(v []*Dossier) {
+	x.xxx_hidden_Dossiers = &v
+}
+
+func (x *DossierReport) SetProblems(v []*Problem) {
+	x.xxx_hidden_Problems = &v
+}
+
+func (x *DossierReport) SetDeclarations(v []*Decl) {
+	x.xxx_hidden_Declarations = &v
+}
+
+type DossierReport_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Dossiers []*Dossier
+	// Problems are the verification problems of the run that assembled
+	// the dossiers: orientation over a store that fails verification must
+	// say so, or first-wins picks render without the problem that
+	// explains them.
+	Problems []*Problem
+	// Declarations carry the requested requirements' code-slice frontier
+	// when the caller asked for it — the expensive leg, off by default.
+	Declarations []*Decl
+}
+
+func (b0 DossierReport_builder) Build() *DossierReport {
+	m0 := &DossierReport{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Dossiers = &b.Dossiers
+	x.xxx_hidden_Problems = &b.Problems
+	x.xxx_hidden_Declarations = &b.Declarations
+	return m0
+}
+
 // PartitionComponent is one candidate work unit: requirements whose
 // closures intersect, with their seeds and touched packages.
 type PartitionComponent struct {
@@ -2224,7 +2762,7 @@ type PartitionComponent struct {
 
 func (x *PartitionComponent) Reset() {
 	*x = PartitionComponent{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2236,7 +2774,7 @@ func (x *PartitionComponent) String() string {
 func (*PartitionComponent) ProtoMessage() {}
 
 func (x *PartitionComponent) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2315,7 +2853,7 @@ type PartitionOverlap struct {
 
 func (x *PartitionOverlap) Reset() {
 	*x = PartitionOverlap{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2327,7 +2865,7 @@ func (x *PartitionOverlap) String() string {
 func (*PartitionOverlap) ProtoMessage() {}
 
 func (x *PartitionOverlap) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2433,7 +2971,7 @@ type PartitionReport struct {
 
 func (x *PartitionReport) Reset() {
 	*x = PartitionReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2445,7 +2983,7 @@ func (x *PartitionReport) String() string {
 func (*PartitionReport) ProtoMessage() {}
 
 func (x *PartitionReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2513,7 +3051,7 @@ type HardenResult struct {
 
 func (x *HardenResult) Reset() {
 	*x = HardenResult{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2525,7 +3063,7 @@ func (x *HardenResult) String() string {
 func (*HardenResult) ProtoMessage() {}
 
 func (x *HardenResult) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2675,7 +3213,7 @@ type HardenReport struct {
 
 func (x *HardenReport) Reset() {
 	*x = HardenReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2687,7 +3225,7 @@ func (x *HardenReport) String() string {
 func (*HardenReport) ProtoMessage() {}
 
 func (x *HardenReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2796,6 +3334,25 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"shape_hash\x18\x04 \x01(\tR\tshapeHash\"s\n" +
 	"\rContextReport\x12)\n" +
 	"\x05seeds\x18\x01 \x03(\v2\x13.stipulator.v1.SeedR\x05seeds\x127\n" +
+	"\fdeclarations\x18\x02 \x03(\v2\x13.stipulator.v1.DeclR\fdeclarations\"\xcf\x03\n" +
+	"\aDossier\x12<\n" +
+	"\vrequirement\x18\x01 \x01(\v2\x1a.stipulator.v1.RequirementR\vrequirement\x12>\n" +
+	"\bcoverage\x18\x02 \x01(\v2\".stipulator.v1.RequirementCoverageR\bcoverage\x12$\n" +
+	"\x03gap\x18\x03 \x01(\v2\x12.stipulator.v1.GapR\x03gap\x12G\n" +
+	"\vattestation\x18\x04 \x01(\v2%.stipulator.v1.RequirementAttestationR\vattestation\x128\n" +
+	"\bbindings\x18\x05 \x03(\v2\x1c.stipulator.v1.BindingResultR\bbindings\x12<\n" +
+	"\thardening\x18\x06 \x03(\v2\x1e.stipulator.v1.HardeningRollupR\thardening\x12)\n" +
+	"\x05seeds\x18\a \x03(\v2\x13.stipulator.v1.SeedR\x05seeds\x124\n" +
+	"\tgap_state\x18\b \x01(\x0e2\x17.stipulator.v1.GapStateR\bgapState\"\x95\x01\n" +
+	"\x0fHardeningRollup\x12\x16\n" +
+	"\x06symbol\x18\x01 \x01(\tR\x06symbol\x12\x18\n" +
+	"\amutants\x18\x02 \x01(\x05R\amutants\x12\x16\n" +
+	"\x06killed\x18\x03 \x01(\x05R\x06killed\x12\x1c\n" +
+	"\tsurvivors\x18\x04 \x01(\x05R\tsurvivors\x12\x1a\n" +
+	"\battested\x18\x05 \x01(\x05R\battested\"\xb0\x01\n" +
+	"\rDossierReport\x122\n" +
+	"\bdossiers\x18\x01 \x03(\v2\x16.stipulator.v1.DossierR\bdossiers\x122\n" +
+	"\bproblems\x18\x03 \x03(\v2\x16.stipulator.v1.ProblemR\bproblems\x127\n" +
 	"\fdeclarations\x18\x02 \x03(\v2\x13.stipulator.v1.DeclR\fdeclarations\"\x84\x01\n" +
 	"\x12PartitionComponent\x12'\n" +
 	"\x0frequirement_ids\x18\x01 \x03(\tR\x0erequirementIds\x12)\n" +
@@ -2861,38 +3418,44 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x12GAP_STATE_RESOLVED\x10\x03BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
 var file_stipulator_v1_reports_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_stipulator_v1_reports_proto_goTypes = []any{
-	(Resolution)(0),             // 0: stipulator.v1.Resolution
-	(ShapeState)(0),             // 1: stipulator.v1.ShapeState
-	(TestOutcome)(0),            // 2: stipulator.v1.TestOutcome
-	(WitnessClass)(0),           // 3: stipulator.v1.WitnessClass
-	(SignatureLabel)(0),         // 4: stipulator.v1.SignatureLabel
-	(Bucket)(0),                 // 5: stipulator.v1.Bucket
-	(GapState)(0),               // 6: stipulator.v1.GapState
-	(*Problem)(nil),             // 7: stipulator.v1.Problem
-	(*BindingResult)(nil),       // 8: stipulator.v1.BindingResult
-	(*RegistrationResult)(nil),  // 9: stipulator.v1.RegistrationResult
-	(*VerifyReport)(nil),        // 10: stipulator.v1.VerifyReport
-	(*ChangeSignature)(nil),     // 11: stipulator.v1.ChangeSignature
-	(*RequirementCoverage)(nil), // 12: stipulator.v1.RequirementCoverage
-	(*GapReport)(nil),           // 13: stipulator.v1.GapReport
-	(*CoverageReport)(nil),      // 14: stipulator.v1.CoverageReport
-	(*Seed)(nil),                // 15: stipulator.v1.Seed
-	(*Decl)(nil),                // 16: stipulator.v1.Decl
-	(*ContextReport)(nil),       // 17: stipulator.v1.ContextReport
-	(*PartitionComponent)(nil),  // 18: stipulator.v1.PartitionComponent
-	(*PartitionOverlap)(nil),    // 19: stipulator.v1.PartitionOverlap
-	(*PartitionReport)(nil),     // 20: stipulator.v1.PartitionReport
-	(*HardenResult)(nil),        // 21: stipulator.v1.HardenResult
-	(*HardenReport)(nil),        // 22: stipulator.v1.HardenReport
-	(BindingRole)(0),            // 23: stipulator.v1.BindingRole
-	(ClauseKind)(0),             // 24: stipulator.v1.ClauseKind
-	(Keyword)(0),                // 25: stipulator.v1.Keyword
-	(*Hardening)(nil),           // 26: stipulator.v1.Hardening
+	(Resolution)(0),                // 0: stipulator.v1.Resolution
+	(ShapeState)(0),                // 1: stipulator.v1.ShapeState
+	(TestOutcome)(0),               // 2: stipulator.v1.TestOutcome
+	(WitnessClass)(0),              // 3: stipulator.v1.WitnessClass
+	(SignatureLabel)(0),            // 4: stipulator.v1.SignatureLabel
+	(Bucket)(0),                    // 5: stipulator.v1.Bucket
+	(GapState)(0),                  // 6: stipulator.v1.GapState
+	(*Problem)(nil),                // 7: stipulator.v1.Problem
+	(*BindingResult)(nil),          // 8: stipulator.v1.BindingResult
+	(*RegistrationResult)(nil),     // 9: stipulator.v1.RegistrationResult
+	(*VerifyReport)(nil),           // 10: stipulator.v1.VerifyReport
+	(*ChangeSignature)(nil),        // 11: stipulator.v1.ChangeSignature
+	(*RequirementCoverage)(nil),    // 12: stipulator.v1.RequirementCoverage
+	(*GapReport)(nil),              // 13: stipulator.v1.GapReport
+	(*CoverageReport)(nil),         // 14: stipulator.v1.CoverageReport
+	(*Seed)(nil),                   // 15: stipulator.v1.Seed
+	(*Decl)(nil),                   // 16: stipulator.v1.Decl
+	(*ContextReport)(nil),          // 17: stipulator.v1.ContextReport
+	(*Dossier)(nil),                // 18: stipulator.v1.Dossier
+	(*HardeningRollup)(nil),        // 19: stipulator.v1.HardeningRollup
+	(*DossierReport)(nil),          // 20: stipulator.v1.DossierReport
+	(*PartitionComponent)(nil),     // 21: stipulator.v1.PartitionComponent
+	(*PartitionOverlap)(nil),       // 22: stipulator.v1.PartitionOverlap
+	(*PartitionReport)(nil),        // 23: stipulator.v1.PartitionReport
+	(*HardenResult)(nil),           // 24: stipulator.v1.HardenResult
+	(*HardenReport)(nil),           // 25: stipulator.v1.HardenReport
+	(BindingRole)(0),               // 26: stipulator.v1.BindingRole
+	(ClauseKind)(0),                // 27: stipulator.v1.ClauseKind
+	(Keyword)(0),                   // 28: stipulator.v1.Keyword
+	(*Requirement)(nil),            // 29: stipulator.v1.Requirement
+	(*Gap)(nil),                    // 30: stipulator.v1.Gap
+	(*RequirementAttestation)(nil), // 31: stipulator.v1.RequirementAttestation
+	(*Hardening)(nil),              // 32: stipulator.v1.Hardening
 }
 var file_stipulator_v1_reports_proto_depIdxs = []int32{
-	23, // 0: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
+	26, // 0: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
 	0,  // 1: stipulator.v1.BindingResult.resolution:type_name -> stipulator.v1.Resolution
 	1,  // 2: stipulator.v1.BindingResult.shape:type_name -> stipulator.v1.ShapeState
 	2,  // 3: stipulator.v1.BindingResult.test_outcome:type_name -> stipulator.v1.TestOutcome
@@ -2903,25 +3466,36 @@ var file_stipulator_v1_reports_proto_depIdxs = []int32{
 	9,  // 8: stipulator.v1.VerifyReport.registrations:type_name -> stipulator.v1.RegistrationResult
 	11, // 9: stipulator.v1.VerifyReport.signatures:type_name -> stipulator.v1.ChangeSignature
 	4,  // 10: stipulator.v1.ChangeSignature.label:type_name -> stipulator.v1.SignatureLabel
-	24, // 11: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
-	25, // 12: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
+	27, // 11: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
+	28, // 12: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
 	5,  // 13: stipulator.v1.RequirementCoverage.bucket:type_name -> stipulator.v1.Bucket
 	6,  // 14: stipulator.v1.GapReport.state:type_name -> stipulator.v1.GapState
 	12, // 15: stipulator.v1.CoverageReport.requirements:type_name -> stipulator.v1.RequirementCoverage
 	13, // 16: stipulator.v1.CoverageReport.gaps:type_name -> stipulator.v1.GapReport
-	23, // 17: stipulator.v1.Seed.role:type_name -> stipulator.v1.BindingRole
+	26, // 17: stipulator.v1.Seed.role:type_name -> stipulator.v1.BindingRole
 	15, // 18: stipulator.v1.ContextReport.seeds:type_name -> stipulator.v1.Seed
 	16, // 19: stipulator.v1.ContextReport.declarations:type_name -> stipulator.v1.Decl
-	15, // 20: stipulator.v1.PartitionComponent.seeds:type_name -> stipulator.v1.Seed
-	18, // 21: stipulator.v1.PartitionReport.components:type_name -> stipulator.v1.PartitionComponent
-	19, // 22: stipulator.v1.PartitionReport.overlaps:type_name -> stipulator.v1.PartitionOverlap
-	26, // 23: stipulator.v1.HardenResult.record:type_name -> stipulator.v1.Hardening
-	21, // 24: stipulator.v1.HardenReport.results:type_name -> stipulator.v1.HardenResult
-	25, // [25:25] is the sub-list for method output_type
-	25, // [25:25] is the sub-list for method input_type
-	25, // [25:25] is the sub-list for extension type_name
-	25, // [25:25] is the sub-list for extension extendee
-	0,  // [0:25] is the sub-list for field type_name
+	29, // 20: stipulator.v1.Dossier.requirement:type_name -> stipulator.v1.Requirement
+	12, // 21: stipulator.v1.Dossier.coverage:type_name -> stipulator.v1.RequirementCoverage
+	30, // 22: stipulator.v1.Dossier.gap:type_name -> stipulator.v1.Gap
+	31, // 23: stipulator.v1.Dossier.attestation:type_name -> stipulator.v1.RequirementAttestation
+	8,  // 24: stipulator.v1.Dossier.bindings:type_name -> stipulator.v1.BindingResult
+	19, // 25: stipulator.v1.Dossier.hardening:type_name -> stipulator.v1.HardeningRollup
+	15, // 26: stipulator.v1.Dossier.seeds:type_name -> stipulator.v1.Seed
+	6,  // 27: stipulator.v1.Dossier.gap_state:type_name -> stipulator.v1.GapState
+	18, // 28: stipulator.v1.DossierReport.dossiers:type_name -> stipulator.v1.Dossier
+	7,  // 29: stipulator.v1.DossierReport.problems:type_name -> stipulator.v1.Problem
+	16, // 30: stipulator.v1.DossierReport.declarations:type_name -> stipulator.v1.Decl
+	15, // 31: stipulator.v1.PartitionComponent.seeds:type_name -> stipulator.v1.Seed
+	21, // 32: stipulator.v1.PartitionReport.components:type_name -> stipulator.v1.PartitionComponent
+	22, // 33: stipulator.v1.PartitionReport.overlaps:type_name -> stipulator.v1.PartitionOverlap
+	32, // 34: stipulator.v1.HardenResult.record:type_name -> stipulator.v1.Hardening
+	24, // 35: stipulator.v1.HardenReport.results:type_name -> stipulator.v1.HardenResult
+	36, // [36:36] is the sub-list for method output_type
+	36, // [36:36] is the sub-list for method input_type
+	36, // [36:36] is the sub-list for extension type_name
+	36, // [36:36] is the sub-list for extension extendee
+	0,  // [0:36] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_reports_proto_init() }
@@ -2937,7 +3511,7 @@ func file_stipulator_v1_reports_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_reports_proto_rawDesc), len(file_stipulator_v1_reports_proto_rawDesc)),
 			NumEnums:      7,
-			NumMessages:   16,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

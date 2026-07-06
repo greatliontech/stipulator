@@ -29,6 +29,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/coverage"
+	"github.com/greatliontech/stipulator/internal/dossier"
 	"github.com/greatliontech/stipulator/internal/facts"
 	"github.com/greatliontech/stipulator/internal/harden"
 	"github.com/greatliontech/stipulator/internal/records"
@@ -144,7 +145,7 @@ func (s *Server) MCP() *mcp.Server {
 	}, s.toolDispose)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "context",
-		Description: "Code-context facts for requirement ids (comma-separated): seed symbols from the closure's bindings, and the declarations their code slice reaches. Facts only — selection is yours.",
+		Description: "Per-requirement dossier for ids (comma-separated): clause text with kind and keyword, coverage bucket with reasons, open gap, attestation, bindings with witness class and pin freshness, hardening roll-ups, and closure seeds. Pass slice=true for the code-slice declaration frontier. Facts only — selection is yours.",
 	}, s.toolContext)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "partitions",
@@ -710,31 +711,52 @@ func (s *Server) toolDispose(ctx context.Context, req *mcp.CallToolRequest, in d
 }
 
 type contextIn struct {
-	Ids string `json:"ids" jsonschema:"comma-separated requirement identifiers"`
+	Ids   string `json:"ids" jsonschema:"comma-separated requirement identifiers"`
+	Slice bool   `json:"slice,omitempty" jsonschema:"include the code-slice declaration frontier (the expensive leg)"`
 }
 
 func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in contextIn) (*mcp.CallToolResult, map[string]any, error) {
-	spec, err := s.compileFresh()
-	if err != nil {
-		return nil, nil, err
-	}
-	store, err := records.Load(s.fsys())
-	if err != nil {
-		return nil, nil, err
-	}
-	backends, err := s.backends()
-	if err != nil {
-		return nil, nil, err
-	}
 	ids, err := splitIDs(in.Ids)
 	if err != nil {
 		return nil, nil, err
 	}
-	seeds, decls, err := facts.Context(spec, store, backends, ids)
+	spec, vr, store, err := s.verifyPipeline(false)
 	if err != nil {
 		return nil, nil, err
 	}
-	return protoJSON(facts.ContextProto(seeds, decls))
+	pol, err := s.policy()
+	if err != nil {
+		return nil, nil, err
+	}
+	cr := coverage.Evaluate(spec, vr, store, true, pol)
+	dossiers, err := dossier.Build(spec, vr, cr, store, ids)
+	if err != nil {
+		return nil, nil, err
+	}
+	out := &stipulatorv1.DossierReport{}
+	out.SetDossiers(dossiers)
+	// Orientation over a store that fails verification must say so, or
+	// first-wins picks render without the problem that explains them.
+	var problems []*stipulatorv1.Problem
+	for _, p := range vr.Problems {
+		m := &stipulatorv1.Problem{}
+		m.SetPath(p.Path)
+		m.SetMessage(p.Message)
+		problems = append(problems, m)
+	}
+	out.SetProblems(problems)
+	if in.Slice {
+		backends, err := s.backends()
+		if err != nil {
+			return nil, nil, err
+		}
+		_, decls, err := facts.Context(spec, store, backends, ids)
+		if err != nil {
+			return nil, nil, err
+		}
+		out.SetDeclarations(facts.ContextProto(nil, decls).GetDeclarations())
+	}
+	return protoJSON(out)
 }
 
 type partitionsIn struct {
@@ -789,6 +811,26 @@ func splitIDsLoose(commaIDs string) ([]string, error) {
 }
 
 func splitIDs(commaIDs string) ([]string, error) {
+	trimmed := strings.TrimSpace(commaIDs)
+	// Tolerate a JSON-array-encoded list: clients that serialize the ids
+	// field as an array deliver it as one string, and treating it as a
+	// single identifier produces a mangled unknown-id error.
+	if strings.HasPrefix(trimmed, "[") {
+		var arr []string
+		if err := json.Unmarshal([]byte(trimmed), &arr); err != nil {
+			return nil, fmt.Errorf("ids looks like a JSON array but does not parse: %w", err)
+		}
+		var ids []string
+		for _, id := range arr {
+			if id = strings.TrimSpace(id); id != "" {
+				ids = append(ids, id)
+			}
+		}
+		if len(ids) == 0 {
+			return nil, fmt.Errorf("no requirement identifiers given")
+		}
+		return ids, nil
+	}
 	var ids []string
 	for _, id := range strings.Split(commaIDs, ",") {
 		if id = strings.TrimSpace(id); id != "" {

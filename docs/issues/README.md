@@ -34,10 +34,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   emit one fixed verbosity (full firehose); add a `view` axis (summary default for MCP) and scope
   filters (ids/bucket/filter/path) so callers stop shelling out to a compact CLI. *Lands: when
   gate/verify output ergonomics are revisited.*
-- **[context-requirement-dossier](context-requirement-dossier.md)** — `context` returns `{}` for a
-  valid id and mis-parses id lists, while gap reasons, bindings, and hardening state have no MCP
-  home at all; make `context` the per-requirement dossier, tools primary, resources as same-renderer
-  mirrors. *Lands: when the MCP read surface is next revisited.*
 - **[analyzer-witness-hardening](analyzer-witness-hardening.md)** — harden mutates function bodies
   only, so analyzer witnesses get no teeth check; add a structural mutation class (inject a
   forbidden import / break an asserted method set, require the witness to fail). *Lands: when an

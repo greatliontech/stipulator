@@ -3,6 +3,7 @@ package mcpserver
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"strings"
 	"testing"
@@ -487,5 +488,86 @@ func TestPinTool(t *testing.T) {
 	}
 	if text := toolText(t, res); !strings.Contains(text, "all pins current") {
 		t.Fatalf("blanket no-op silent: %s", text)
+	}
+}
+
+// TestContextDossier pins the orientation call: one request answers with
+// the clause, coverage, gap, bindings with witness class, and hardening
+// roll-up — no record-store spelunking; a JSON-array-encoded ids value is
+// tolerated; an unknown id is quoted cleanly.
+func TestContextDossier(t *testing.T) {
+	stipulate.Covers(t, "REQ-context-dossier")
+	sess, _ := harness(t, map[string]string{
+		".stipulator/bindings/m.textproto": pinnedBinding(t),
+		".stipulator/gaps/m-b.textproto":   "requirement_id: \"REQ-m-b\"\nreason: \"awaiting design\"\nlands { manual { condition: \"design settles\" } }\n",
+		".stipulator/hardening/p.textproto": `records {
+  backend: "go"
+  symbol: "example.com/p.TestA"
+  body_hash: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  mutants: 4
+  killed: 3
+  survivors {
+    position: "p.go:5:2"
+    operator: "zero return"
+  }
+  operators: "go/2"
+}
+`,
+	})
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "context", Arguments: map[string]any{
+		"ids": "REQ-m-a,REQ-m-b",
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("context: %v %v", err, res)
+	}
+	text := toolText(t, res)
+	for _, want := range []string{
+		`"Using the widget it MUST x."`, // clause text, compiled view
+		`"bucket":"BUCKET_COVERED"`,     // REQ-m-a: pinned witness passed
+		`"awaiting design"`,             // REQ-m-b's gap reason
+		`"design settles"`,              // and its landing condition
+		`"witnessClass":"WITNESS_CLASS_EXAMPLE"`,
+		`"mutants":4`, // hardening roll-up
+		`"killed":3`,
+		`"survivors":1`,
+		`"gapState":"GAP_STATE_OPEN"`, // the record's evaluated state
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("dossier missing %s:\n%s", want, text)
+		}
+	}
+
+	// A store failing verification must say so in the dossier: a
+	// dangling binding's problem rides the report.
+	sessBad, _ := harness(t, map[string]string{
+		".stipulator/bindings/ghost.textproto": "bindings {\n  requirement_id: \"REQ-m-ghost\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n}\n",
+	})
+	res, err = sessBad.CallTool(context.Background(), &mcp.CallToolParams{Name: "context", Arguments: map[string]any{
+		"ids": "REQ-m-a",
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("context over problem store: %v %v", err, res)
+	}
+	if text := toolText(t, res); !strings.Contains(text, "is not in the corpus") || !strings.Contains(text, `"problems"`) {
+		t.Fatalf("verification problems hidden from the dossier: %s", text)
+	}
+
+	// JSON-array-encoded ids: tolerated, same answer.
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "context", Arguments: map[string]any{
+		"ids": `["REQ-m-a"]`,
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("array ids rejected: %v %v", err, res)
+	}
+
+	// Unknown id: quoted cleanly, no mangling.
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "context", Arguments: map[string]any{
+		"ids": "REQ-m-ghost",
+	}})
+	if err != nil || !res.IsError {
+		t.Fatal("unknown id accepted")
+	}
+	if msg := fmt.Sprint(res.Content[0]); !strings.Contains(msg, `"REQ-m-ghost" is not in the corpus`) {
+		t.Fatalf("unknown id not quoted cleanly: %s", msg)
 	}
 }

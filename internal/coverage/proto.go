@@ -48,3 +48,9 @@ var gapProto = map[GapState]stipulatorv1.GapState{
 	Due:      stipulatorv1.GapState_GAP_STATE_DUE,
 	Resolved: stipulatorv1.GapState_GAP_STATE_RESOLVED,
 }
+
+// BucketProto maps a bucket to its wire enum, for report composers.
+func BucketProto(b Bucket) stipulatorv1.Bucket { return bucketProto[b] }
+
+// GapStateProto maps a gap state to its wire enum, for report composers.
+func GapStateProto(s GapState) stipulatorv1.GapState { return gapProto[s] }

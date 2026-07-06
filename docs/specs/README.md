@@ -5,7 +5,7 @@
 | Document | Title | Requirements | Terms |
 |---|---|---|---|
 | [change.md](change.md) | Change model | 15 | 0 |
-| [context.md](context.md) | Context facts | 2 | 0 |
+| [context.md](context.md) | Context facts | 3 | 0 |
 | [evidence.md](evidence.md) | Bindings, evidence, coverage | 18 | 0 |
 | [hardening.md](hardening.md) | Witness hardening | 7 | 1 |
 | [mcp.md](mcp.md) | MCP surface | 5 | 0 |
@@ -33,6 +33,7 @@
 
 ## context.md
 
+- `REQ-context-dossier` (behavior, must)
 - `REQ-context-partitions` (behavior, must)
 - `REQ-context-seeds` (behavior, must)
 

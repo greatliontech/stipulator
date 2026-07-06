@@ -15,3 +15,13 @@ work partitions over a requirement set as a derived report — connected
 components of intersecting closures, each carrying its seeds and the
 packages its code slice touches, with pairwise package overlaps reported —
 leaving selection and ordering entirely to the caller.
+
+**REQ-context-dossier** (behavior): For each requested requirement,
+stipulator MUST assemble the orientation dossier in one call — the
+compiled clause with kind and keyword, the coverage bucket with its
+reasons, any gap record's reason, landing condition, and evaluated
+state, any attestation,
+each binding with role, witness class, and pin freshness, and a
+kill-sheet roll-up per bound symbol — so answering "tell me everything
+about this requirement" never requires reading the record stores' file
+layout.

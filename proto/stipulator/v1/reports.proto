@@ -183,6 +183,55 @@ message ContextReport {
   repeated Decl declarations = 2;
 }
 
+// Dossier is one requirement's orientation view, assembled from the
+// compiled corpus and the record stores in one call: no consumer should
+// need to know the record stores' file layout to ask "tell me
+// everything about REQ-X".
+message Dossier {
+  // Requirement is the compiled view: canonical text, kind, keyword,
+  // content hash, source.
+  Requirement requirement = 1;
+  // Coverage is the requirement's bucket with its reasons.
+  RequirementCoverage coverage = 2;
+  // Gap is the open gap record, when one names the requirement.
+  Gap gap = 3;
+  // Attestation is the judgment record, when one names the requirement.
+  RequirementAttestation attestation = 4;
+  // Bindings are the verified per-binding rows: symbol, role, witness
+  // class, pin freshness, outcome.
+  repeated BindingResult bindings = 5;
+  // Hardening rolls up each bound symbol's kill-sheet.
+  repeated HardeningRollup hardening = 6;
+  // Seeds are the closure's seed symbols (REQ-context-seeds).
+  repeated Seed seeds = 7;
+  // GapState is the gap record's evaluated state, so a resolved gap
+  // beside a covered bucket explains itself.
+  GapState gap_state = 8;
+}
+
+// HardeningRollup is one symbol's kill-sheet, summarized.
+message HardeningRollup {
+  string symbol = 1;
+  int32 mutants = 2;
+  int32 killed = 3;
+  int32 survivors = 4;
+  int32 attested = 5;
+}
+
+// DossierReport is the context operation's answer, one dossier per
+// requested requirement.
+message DossierReport {
+  repeated Dossier dossiers = 1;
+  // Problems are the verification problems of the run that assembled
+  // the dossiers: orientation over a store that fails verification must
+  // say so, or first-wins picks render without the problem that
+  // explains them.
+  repeated Problem problems = 3;
+  // Declarations carry the requested requirements' code-slice frontier
+  // when the caller asked for it — the expensive leg, off by default.
+  repeated Decl declarations = 2;
+}
+
 // PartitionComponent is one candidate work unit: requirements whose
 // closures intersect, with their seeds and touched packages.
 message PartitionComponent {
