@@ -190,7 +190,7 @@ func (s *Server) MCP() *mcp.Server {
 	// operation; reads themselves always recompile.
 	s.srv = srv
 	s.indexed = map[string]bool{}
-	if spec, diags, err := compile.Compile(s.fsys()); err == nil && len(diags) == 0 {
+	if spec, diags, err := compile.Compile(s.fsys()); err == nil && len(compile.Errors(diags)) == 0 {
 		s.syncIndex(spec)
 	}
 	return srv
@@ -236,9 +236,9 @@ func (s *Server) compileFresh() (*stipulatorv1.Spec, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(diags) > 0 {
-		msgs := make([]string, 0, len(diags))
-		for _, d := range diags {
+	if errs := compile.Errors(diags); len(errs) > 0 {
+		msgs := make([]string, 0, len(errs))
+		for _, d := range errs {
 			msgs = append(msgs, d.String())
 		}
 		return nil, fmt.Errorf("corpus does not compile:\n%s", strings.Join(msgs, "\n"))

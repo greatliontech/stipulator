@@ -136,7 +136,7 @@ func retire(fsys fs.FS, identities, successors []string, force bool) ([]Update, 
 	// gets the actionable message. Mid-disposition corpora legitimately
 	// fail to compile (successors' supersedes clauses await the
 	// tombstone), so a failing base defers judgment to the overlay.
-	if base, diags, err := compile.Compile(fsys); err == nil && len(diags) == 0 {
+	if base, diags, err := compile.Compile(fsys); err == nil && len(compile.Errors(diags)) == 0 {
 		for _, r := range base.GetRequirements() {
 			for _, id := range identities {
 				if r.GetId() == id {
@@ -157,8 +157,8 @@ func retire(fsys fs.FS, identities, successors []string, force bool) ([]Update, 
 	if err != nil {
 		return nil, err
 	}
-	if len(diags) > 0 {
-		return nil, fmt.Errorf("cannot validate the retirement; corpus does not compile: %s%s", diags[0], moreSuffix(len(diags)-1))
+	if errs := compile.Errors(diags); len(errs) > 0 {
+		return nil, fmt.Errorf("cannot validate the retirement; corpus does not compile: %s%s", errs[0], moreSuffix(len(errs)-1))
 	}
 	inCorpus := map[string]bool{}
 	for _, r := range spec.GetRequirements() {
@@ -274,8 +274,8 @@ func compileClean(fsys fs.FS) (*stipulatorv1.Spec, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(diags) > 0 {
-		return nil, fmt.Errorf("corpus does not compile: %s%s", diags[0], moreSuffix(len(diags)-1))
+	if errs := compile.Errors(diags); len(errs) > 0 {
+		return nil, fmt.Errorf("corpus does not compile: %s%s", errs[0], moreSuffix(len(errs)-1))
 	}
 	return spec, nil
 }

@@ -13,7 +13,7 @@ import (
 // Compilation is milliseconds, so completion stays live with the spec.
 func completeReqs(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	spec, diags, err := compile.Compile(os.DirFS(chdir))
-	if err != nil || len(diags) > 0 {
+	if err != nil || len(compile.Errors(diags)) > 0 {
 		return nil, cobra.ShellCompDirectiveError
 	}
 	var out []string

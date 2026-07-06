@@ -67,6 +67,15 @@ strong-emphasis span that matches the identifier grammar but does not parse
 as a requirement lead MUST be a compile error, so that a malformed lead can
 never silently demote a requirement to prose.
 
+**REQ-profile-term-lint** (behavior): When the manifest opts in through
+its term-lint configuration, the compiler MUST emit warnings —
+diagnostics that surface without failing compilation — for a declared
+term name that contains another declared term name on word boundaries,
+and for a term name matching the configured denylist: longest-match
+resolves shadowing correctly, but which occurrences bind is invisible at
+the source, so the observation is chosen per corpus, never inherited
+noise.
+
 **REQ-profile-term-lead** (behavior): A paragraph whose first inline is a
 strong-emphasis span followed by `(term):` MUST compile to a term whose
 identity is its name, unique case-insensitively across the corpus and the

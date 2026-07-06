@@ -5,8 +5,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[proto-backend](proto-backend.md)** — descriptor-level verification via protocompile;
   spec exists, five requirements gapped. *Lands: when a corpus needs wire evidence that
   shape pins and Go witnesses cannot cover.*
-- **[term-name-shadowing-lint](term-name-shadowing-lint.md)** — warn when a term name shadows
-  another term or a common word. *Lands: when profile lints are extended.*
 - **[gopter-property-recognition](gopter-property-recognition.md)** — gopter-driven tests
   classify as example witnesses; the classifier recognizes fuzz targets and rapid drivers
   only. *Lands: when a corpus standardized on gopter needs invariant coverage.*
@@ -44,3 +42,7 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   only, so analyzer witnesses get no teeth check; add a structural mutation class (inject a
   forbidden import / break an asserted method set, require the witness to fail). *Lands: when an
   analyzer witness needs adequacy evidence.*
+- **[term-matcher-ascii-boundaries](term-matcher-ascii-boundaries.md)** — `\b` is ASCII-only,
+  so non-ASCII term names may never match a use site (silently missing uses-term edges); the
+  lint mirrors the same semantics deliberately — fix both together on rune boundaries. *Lands:
+  when a corpus declares non-ASCII term names.*

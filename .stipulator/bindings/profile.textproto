@@ -63,3 +63,21 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "63367bfb07937b08d47a2dd51f8f31bc73ced51ff1e4237b413115da2236cd95"
 }
+
+bindings {
+  requirement_id: "REQ-profile-term-lint"
+  content_hash: "5ed9496e06c5649ea948f85c2020a37c23c53f841daee091153bd1e03d1c0c70"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestTermLint"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7b7be0495edb4429ea8ad8c510cda64cc9047ec686d69b8d01ab47cfc7952bd1"
+}
+
+bindings {
+  requirement_id: "REQ-profile-term-lint"
+  content_hash: "5ed9496e06c5649ea948f85c2020a37c23c53f841daee091153bd1e03d1c0c70"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.lintTerms"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "f0db2ea5901b9f24e0afa13e07a65507a5a50d2d6ac3cc14becd4bfd7381fc7a"
+}

@@ -11,7 +11,7 @@
 | [mcp.md](mcp.md) | MCP surface | 5 | 0 |
 | [model.md](model.md) | Intermediate representation | 12 | 0 |
 | [overview.md](overview.md) | Stipulator overview | 5 | 20 |
-| [profile.md](profile.md) | Authoring profile | 21 | 0 |
+| [profile.md](profile.md) | Authoring profile | 22 | 0 |
 
 ## change.md
 
@@ -119,5 +119,6 @@
 - `REQ-profile-requirement-lead` (behavior, must)
 - `REQ-profile-root` (behavior, must)
 - `REQ-profile-term-lead` (behavior, must)
+- `REQ-profile-term-lint` (behavior, must)
 - `REQ-profile-term-matching` (behavior, must)
 - `REQ-profile-utf8` (behavior, must)

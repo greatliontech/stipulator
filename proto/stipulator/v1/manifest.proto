@@ -10,6 +10,12 @@ option go_package = "github.com/greatliontech/stipulator/gen/stipulator/v1;stipu
 // stored as textproto in the file `stipulator.textproto` at the repository
 // root; a repository without one is not a stipulator repository.
 message Manifest {
+  // TermLint opts a corpus into term-name lint warnings — diagnostics
+  // that surface without failing compilation. Off by default: substring
+  // overlaps resolved by longest-match are legitimate, so the noise is
+  // chosen, never inherited.
+  TermLint term_lint = 3;
+
   // Include globs selecting the corpus documents, slash-separated and
   // relative to the repository root. Globs are matched per path segment:
   // `**` as a complete segment matches zero or more segments; any other
@@ -55,4 +61,16 @@ message PolicyOverride {
   ClauseKind kind = 1;
   Keyword keyword = 2;
   MinimumEvidence minimum = 3;
+}
+
+// TermLint configures the opt-in term-name lint.
+message TermLint {
+  // WarnShadowing warns when a declared term name contains another
+  // declared term name on word boundaries: the longest-match rule
+  // resolves such overlaps correctly, but which occurrences bind is
+  // invisible at the source.
+  bool warn_shadowing = 1;
+  // Denylist warns when a term name matches an entry, case-insensitively
+  // — common words that make poor term names.
+  repeated string denylist = 2;
 }

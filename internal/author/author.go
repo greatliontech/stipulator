@@ -101,8 +101,8 @@ func Bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Upd
 	if err != nil {
 		return nil, err
 	}
-	if len(diags) > 0 {
-		return nil, fmt.Errorf("corpus does not compile: %s%s", diags[0], moreSuffix(len(diags)-1))
+	if errs := compile.Errors(diags); len(errs) > 0 {
+		return nil, fmt.Errorf("corpus does not compile: %s%s", errs[0], moreSuffix(len(errs)-1))
 	}
 	var contentHash string
 	for _, r := range spec.GetRequirements() {
@@ -247,8 +247,8 @@ func Gap(fsys fs.FS, g *stipulatorv1.Gap) (*Update, *stipulatorv1.Gap, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	if len(diags) > 0 {
-		return nil, nil, fmt.Errorf("corpus does not compile: %s%s", diags[0], moreSuffix(len(diags)-1))
+	if errs := compile.Errors(diags); len(errs) > 0 {
+		return nil, nil, fmt.Errorf("corpus does not compile: %s%s", errs[0], moreSuffix(len(errs)-1))
 	}
 	found := false
 	for _, r := range spec.GetRequirements() {

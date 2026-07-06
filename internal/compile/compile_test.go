@@ -6,6 +6,7 @@ import (
 	"testing/fstest"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/stipulate"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -388,5 +389,54 @@ func TestGeneratedIndexExcluded(t *testing.T) {
 	wantClean(t, diags)
 	if len(spec.GetDocuments()) != 1 {
 		t.Fatalf("documents = %d", len(spec.GetDocuments()))
+	}
+}
+
+// TestTermLint pins the opt-in lint: silent without the manifest opt-in
+// (this repository's own corpus carries deliberate substring pairs),
+// shadowing and denylist warnings when opted in — surfaced without
+// failing compilation — and word-boundary matching (a plural is not a
+// shadow).
+func TestTermLint(t *testing.T) {
+	stipulate.Covers(t, "REQ-profile-term-lint")
+	doc := "# T\n\n**law node** (term): a node holding law.\n\n**node** (term): a graph vertex.\n\n**nodes overview** (term): prose about many.\n"
+
+	compileWith := func(manifest string) (bool, []Diagnostic) {
+		spec, diags, err := Compile(fstest.MapFS{
+			".stipulator/manifest.textproto": {Data: []byte(manifest)},
+			"specs/a.md":                     {Data: []byte(doc)},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return spec != nil, diags
+	}
+
+	ok, diags := compileWith("include: \"specs/**/*.md\"\n")
+	if !ok || len(diags) != 0 {
+		t.Fatalf("lint fired without opt-in: %v", diags)
+	}
+
+	ok, diags = compileWith("include: \"specs/**/*.md\"\nterm_lint { warn_shadowing: true denylist: \"node\" }\n")
+	if !ok {
+		t.Fatal("warnings failed the compile")
+	}
+	var msgs []string
+	for _, d := range diags {
+		if !d.Warning {
+			t.Fatalf("lint emitted an error-severity diagnostic: %v", d)
+		}
+		msgs = append(msgs, d.Message)
+	}
+	joined := strings.Join(msgs, "|")
+	if !strings.Contains(joined, `term "law node" contains term "node"`) {
+		t.Fatalf("shadowing not warned: %v", msgs)
+	}
+	if !strings.Contains(joined, `term "node" matches the manifest denylist`) {
+		t.Fatalf("denylist not warned: %v", msgs)
+	}
+	// "nodes overview" contains "node" only mid-word: no warning.
+	if strings.Contains(joined, "nodes overview") {
+		t.Fatalf("plural mid-word shadow warned: %v", msgs)
 	}
 }

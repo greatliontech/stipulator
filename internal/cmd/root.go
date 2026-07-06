@@ -84,10 +84,10 @@ func mustCompileFS(fsys fs.FS, label string) (*stipulatorv1.Spec, error) {
 }
 
 func mustClean(spec *stipulatorv1.Spec, diags []compile.Diagnostic) (*stipulatorv1.Spec, error) {
-	if len(diags) > 0 {
-		for _, d := range diags {
-			fmt.Fprintln(os.Stderr, d)
-		}
+	for _, d := range diags {
+		fmt.Fprintln(os.Stderr, d)
+	}
+	if len(compile.Errors(diags)) > 0 {
 		os.Exit(1)
 	}
 	return spec, nil

@@ -5,7 +5,8 @@
 // restructures), extract typed blocks, then resolve corpus-wide — identity
 // uniqueness, keyword discipline, references, term matching — and assemble
 // the canonically-ordered Spec. Diagnostics are the lint channel: a corpus
-// with any diagnostic has no IR.
+// with any error-severity diagnostic has no IR; opt-in lint warnings ride
+// alongside a clean compile.
 package compile
 
 import (
@@ -24,15 +25,32 @@ import (
 	"github.com/greatliontech/stipulator/internal/records"
 )
 
-// Diagnostic is a profile violation.
+// Diagnostic is a profile violation, or — when Warning is set — an
+// opt-in lint observation that surfaces without failing compilation.
 type Diagnostic struct {
 	Document string
 	Line     int
 	Message  string
+	Warning  bool
 }
 
 func (d Diagnostic) String() string {
+	if d.Warning {
+		return fmt.Sprintf("%s:%d: warning: %s", d.Document, d.Line, d.Message)
+	}
 	return fmt.Sprintf("%s:%d: %s", d.Document, d.Line, d.Message)
+}
+
+// Errors filters lint warnings out: the corpus is clean iff no
+// error-severity diagnostic remains.
+func Errors(diags []Diagnostic) []Diagnostic {
+	var out []Diagnostic
+	for _, d := range diags {
+		if !d.Warning {
+			out = append(out, d)
+		}
+	}
+	return out
 }
 
 var (
@@ -102,6 +120,7 @@ func Compile(fsys fs.FS) (*stipulatorv1.Spec, []Diagnostic, error) {
 	}
 
 	spec := resolve(docs, tombstones, &diags)
+	lintTerms(spec, m.GetTermLint(), &diags)
 	sort.Slice(diags, func(i, j int) bool {
 		a, b := diags[i], diags[j]
 		if a.Document != b.Document {
@@ -112,10 +131,10 @@ func Compile(fsys fs.FS) (*stipulatorv1.Spec, []Diagnostic, error) {
 		}
 		return a.Message < b.Message
 	})
-	if len(diags) > 0 {
+	if len(Errors(diags)) > 0 {
 		return nil, diags, nil
 	}
-	return spec, nil, nil
+	return spec, diags, nil
 }
 
 // resolve runs corpus-wide checks and assembles the IR.
@@ -466,4 +485,62 @@ func (m *termMatcher) match(segs []profile.Seg, self string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// lintTerms emits the opt-in term-name warnings (REQ-profile-term-lint):
+// a declared name containing another declared name on word boundaries is
+// resolved correctly by longest-match but invisibly at the source; a
+// denylist match names a term the corpus decided makes a poor name.
+func lintTerms(spec *stipulatorv1.Spec, cfg *stipulatorv1.TermLint, diags *[]Diagnostic) {
+	if spec == nil || cfg == nil {
+		return
+	}
+	deny := map[string]bool{}
+	for _, w := range cfg.GetDenylist() {
+		deny[strings.ToLower(w)] = true
+	}
+	terms := spec.GetTerms()
+	for _, t := range terms {
+		name := strings.ToLower(t.GetName())
+		loc := t.GetLocation()
+		if deny[name] {
+			*diags = append(*diags, Diagnostic{
+				Document: loc.GetDocument(), Line: int(loc.GetLine()), Warning: true,
+				Message: fmt.Sprintf("term %q matches the manifest denylist", t.GetName()),
+			})
+		}
+		if !cfg.GetWarnShadowing() {
+			continue
+		}
+		for _, other := range terms {
+			o := strings.ToLower(other.GetName())
+			if o == name || !containsWord(name, o) {
+				continue
+			}
+			*diags = append(*diags, Diagnostic{
+				Document: loc.GetDocument(), Line: int(loc.GetLine()), Warning: true,
+				Message: fmt.Sprintf("term %q contains term %q: occurrences of %q inside %q bind to the longer name (longest match); shadowing is invisible at the source", t.GetName(), other.GetName(), other.GetName(), t.GetName()),
+			})
+		}
+	}
+}
+
+// containsWord reports whether hay contains needle on word boundaries.
+func containsWord(hay, needle string) bool {
+	for i := 0; i+len(needle) <= len(hay); i++ {
+		if hay[i:i+len(needle)] != needle {
+			continue
+		}
+		beforeOK := i == 0 || !isWordByte(hay[i-1])
+		after := i + len(needle)
+		afterOK := after == len(hay) || !isWordByte(hay[after])
+		if beforeOK && afterOK {
+			return true
+		}
+	}
+	return false
+}
+
+func isWordByte(b byte) bool {
+	return b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z' || b >= '0' && b <= '9'
 }

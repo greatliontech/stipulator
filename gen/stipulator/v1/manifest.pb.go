@@ -96,11 +96,12 @@ func (x MinimumEvidence) Number() protoreflect.EnumNumber {
 // stored as textproto in the file `stipulator.textproto` at the repository
 // root; a repository without one is not a stipulator repository.
 type Manifest struct {
-	state              protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Include []string               `protobuf:"bytes,1,rep,name=include"`
-	xxx_hidden_Policy  *[]*PolicyOverride     `protobuf:"bytes,2,rep,name=policy"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_TermLint *TermLint              `protobuf:"bytes,3,opt,name=term_lint,json=termLint"`
+	xxx_hidden_Include  []string               `protobuf:"bytes,1,rep,name=include"`
+	xxx_hidden_Policy   *[]*PolicyOverride     `protobuf:"bytes,2,rep,name=policy"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *Manifest) Reset() {
@@ -128,6 +129,13 @@ func (x *Manifest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
+func (x *Manifest) GetTermLint() *TermLint {
+	if x != nil {
+		return x.xxx_hidden_TermLint
+	}
+	return nil
+}
+
 func (x *Manifest) GetInclude() []string {
 	if x != nil {
 		return x.xxx_hidden_Include
@@ -144,6 +152,10 @@ func (x *Manifest) GetPolicy() []*PolicyOverride {
 	return nil
 }
 
+func (x *Manifest) SetTermLint(v *TermLint) {
+	x.xxx_hidden_TermLint = v
+}
+
 func (x *Manifest) SetInclude(v []string) {
 	x.xxx_hidden_Include = v
 }
@@ -152,9 +164,25 @@ func (x *Manifest) SetPolicy(v []*PolicyOverride) {
 	x.xxx_hidden_Policy = &v
 }
 
+func (x *Manifest) HasTermLint() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_TermLint != nil
+}
+
+func (x *Manifest) ClearTermLint() {
+	x.xxx_hidden_TermLint = nil
+}
+
 type Manifest_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
+	// TermLint opts a corpus into term-name lint warnings — diagnostics
+	// that surface without failing compilation. Off by default: substring
+	// overlaps resolved by longest-match are legitimate, so the noise is
+	// chosen, never inherited.
+	TermLint *TermLint
 	// Include globs selecting the corpus documents, slash-separated and
 	// relative to the repository root. Globs are matched per path segment:
 	// `**` as a complete segment matches zero or more segments; any other
@@ -174,6 +202,7 @@ func (b0 Manifest_builder) Build() *Manifest {
 	m0 := &Manifest{}
 	b, x := &b0, m0
 	_, _ = b, x
+	x.xxx_hidden_TermLint = b.TermLint
 	x.xxx_hidden_Include = b.Include
 	x.xxx_hidden_Policy = &b.Policy
 	return m0
@@ -322,18 +351,118 @@ func (b0 PolicyOverride_builder) Build() *PolicyOverride {
 	return m0
 }
 
+// TermLint configures the opt-in term-name lint.
+type TermLint struct {
+	state                    protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_WarnShadowing bool                   `protobuf:"varint,1,opt,name=warn_shadowing,json=warnShadowing"`
+	xxx_hidden_Denylist      []string               `protobuf:"bytes,2,rep,name=denylist"`
+	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
+	XXX_presence             [1]uint32
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
+}
+
+func (x *TermLint) Reset() {
+	*x = TermLint{}
+	mi := &file_stipulator_v1_manifest_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TermLint) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TermLint) ProtoMessage() {}
+
+func (x *TermLint) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_manifest_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *TermLint) GetWarnShadowing() bool {
+	if x != nil {
+		return x.xxx_hidden_WarnShadowing
+	}
+	return false
+}
+
+func (x *TermLint) GetDenylist() []string {
+	if x != nil {
+		return x.xxx_hidden_Denylist
+	}
+	return nil
+}
+
+func (x *TermLint) SetWarnShadowing(v bool) {
+	x.xxx_hidden_WarnShadowing = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+}
+
+func (x *TermLint) SetDenylist(v []string) {
+	x.xxx_hidden_Denylist = v
+}
+
+func (x *TermLint) HasWarnShadowing() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *TermLint) ClearWarnShadowing() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_WarnShadowing = false
+}
+
+type TermLint_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// WarnShadowing warns when a declared term name contains another
+	// declared term name on word boundaries: the longest-match rule
+	// resolves such overlaps correctly, but which occurrences bind is
+	// invisible at the source.
+	WarnShadowing *bool
+	// Denylist warns when a term name matches an entry, case-insensitively
+	// — common words that make poor term names.
+	Denylist []string
+}
+
+func (b0 TermLint_builder) Build() *TermLint {
+	m0 := &TermLint{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.WarnShadowing != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		x.xxx_hidden_WarnShadowing = *b.WarnShadowing
+	}
+	x.xxx_hidden_Denylist = b.Denylist
+	return m0
+}
+
 var File_stipulator_v1_manifest_proto protoreflect.FileDescriptor
 
 const file_stipulator_v1_manifest_proto_rawDesc = "" +
 	"\n" +
-	"\x1cstipulator/v1/manifest.proto\x12\rstipulator.v1\x1a\x16stipulator/v1/ir.proto\"[\n" +
-	"\bManifest\x12\x18\n" +
+	"\x1cstipulator/v1/manifest.proto\x12\rstipulator.v1\x1a\x16stipulator/v1/ir.proto\"\x91\x01\n" +
+	"\bManifest\x124\n" +
+	"\tterm_lint\x18\x03 \x01(\v2\x17.stipulator.v1.TermLintR\btermLint\x12\x18\n" +
 	"\ainclude\x18\x01 \x03(\tR\ainclude\x125\n" +
 	"\x06policy\x18\x02 \x03(\v2\x1d.stipulator.v1.PolicyOverrideR\x06policy\"\xab\x01\n" +
 	"\x0ePolicyOverride\x12-\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x19.stipulator.v1.ClauseKindR\x04kind\x120\n" +
 	"\akeyword\x18\x02 \x01(\x0e2\x16.stipulator.v1.KeywordR\akeyword\x128\n" +
-	"\aminimum\x18\x03 \x01(\x0e2\x1e.stipulator.v1.MinimumEvidenceR\aminimum*\x98\x02\n" +
+	"\aminimum\x18\x03 \x01(\x0e2\x1e.stipulator.v1.MinimumEvidenceR\aminimum\"M\n" +
+	"\bTermLint\x12%\n" +
+	"\x0ewarn_shadowing\x18\x01 \x01(\bR\rwarnShadowing\x12\x1a\n" +
+	"\bdenylist\x18\x02 \x03(\tR\bdenylist*\x98\x02\n" +
 	"\x0fMinimumEvidence\x12 \n" +
 	"\x1cMINIMUM_EVIDENCE_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fMINIMUM_EVIDENCE_ANALYZER_PROOF\x10\x01\x12\x1d\n" +
@@ -345,24 +474,26 @@ const file_stipulator_v1_manifest_proto_rawDesc = "" +
 	"\x1cMINIMUM_EVIDENCE_ATTESTATION\x10\aBDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
 var file_stipulator_v1_manifest_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_stipulator_v1_manifest_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_stipulator_v1_manifest_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_stipulator_v1_manifest_proto_goTypes = []any{
 	(MinimumEvidence)(0),   // 0: stipulator.v1.MinimumEvidence
 	(*Manifest)(nil),       // 1: stipulator.v1.Manifest
 	(*PolicyOverride)(nil), // 2: stipulator.v1.PolicyOverride
-	(ClauseKind)(0),        // 3: stipulator.v1.ClauseKind
-	(Keyword)(0),           // 4: stipulator.v1.Keyword
+	(*TermLint)(nil),       // 3: stipulator.v1.TermLint
+	(ClauseKind)(0),        // 4: stipulator.v1.ClauseKind
+	(Keyword)(0),           // 5: stipulator.v1.Keyword
 }
 var file_stipulator_v1_manifest_proto_depIdxs = []int32{
-	2, // 0: stipulator.v1.Manifest.policy:type_name -> stipulator.v1.PolicyOverride
-	3, // 1: stipulator.v1.PolicyOverride.kind:type_name -> stipulator.v1.ClauseKind
-	4, // 2: stipulator.v1.PolicyOverride.keyword:type_name -> stipulator.v1.Keyword
-	0, // 3: stipulator.v1.PolicyOverride.minimum:type_name -> stipulator.v1.MinimumEvidence
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	3, // 0: stipulator.v1.Manifest.term_lint:type_name -> stipulator.v1.TermLint
+	2, // 1: stipulator.v1.Manifest.policy:type_name -> stipulator.v1.PolicyOverride
+	4, // 2: stipulator.v1.PolicyOverride.kind:type_name -> stipulator.v1.ClauseKind
+	5, // 3: stipulator.v1.PolicyOverride.keyword:type_name -> stipulator.v1.Keyword
+	0, // 4: stipulator.v1.PolicyOverride.minimum:type_name -> stipulator.v1.MinimumEvidence
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_manifest_proto_init() }
@@ -377,7 +508,7 @@ func file_stipulator_v1_manifest_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_manifest_proto_rawDesc), len(file_stipulator_v1_manifest_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
