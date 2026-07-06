@@ -28,13 +28,23 @@ func (r *Report) Proto() *stipulatorv1.VerifyReport {
 		m.SetResolution(resolutionProto[br.Resolution])
 		m.SetShape(shapeProto[br.Shape])
 		m.SetTestOutcome(outcomeProto[br.TestOutcome])
-		if br.Role == stipulatorv1.BindingRole_BINDING_ROLE_TESTS {
+		if witnessRole(br.Role) {
 			m.SetWitnessClass(classProto[br.WitnessClass])
 		}
 		m.SetRaceEnabled(br.RaceEnabled)
 		results = append(results, m)
 	}
 	out.SetResults(results)
+
+	var sigs []*stipulatorv1.ChangeSignature
+	for _, cs := range r.Signatures {
+		m := &stipulatorv1.ChangeSignature{}
+		m.SetRequirementId(cs.RequirementId)
+		m.SetLabel(labelProto[cs.Label])
+		m.SetEvidence(cs.Evidence)
+		sigs = append(sigs, m)
+	}
+	out.SetSignatures(sigs)
 
 	var regs []*stipulatorv1.RegistrationResult
 	for _, rr := range r.Registrations {
@@ -70,7 +80,13 @@ var outcomeProto = map[TestOutcome]stipulatorv1.TestOutcome{
 	TestSkipped: stipulatorv1.TestOutcome_TEST_OUTCOME_SKIPPED,
 }
 
+var labelProto = map[SignatureLabel]stipulatorv1.SignatureLabel{
+	Rearchitecture: stipulatorv1.SignatureLabel_SIGNATURE_LABEL_REARCHITECTURE,
+	SemanticDrift:  stipulatorv1.SignatureLabel_SIGNATURE_LABEL_SEMANTIC_DRIFT,
+}
+
 var classProto = map[WitnessClass]stipulatorv1.WitnessClass{
 	ExampleWitness:  stipulatorv1.WitnessClass_WITNESS_CLASS_EXAMPLE,
 	PropertyWitness: stipulatorv1.WitnessClass_WITNESS_CLASS_PROPERTY,
+	AnalyzerProof:   stipulatorv1.WitnessClass_WITNESS_CLASS_ANALYZER_PROOF,
 }

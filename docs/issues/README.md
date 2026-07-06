@@ -44,10 +44,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   content pins with no refresh verb: `pin` is a silent no-op and re-`bind` refuses as "identical"
   while the hash differs; only unbind+bind works. *Lands: when the bind/pin record verbs are next
   touched.*
-- **[analyzer-witness-classification](analyzer-witness-classification.md)** — verify reports a
-  `structural.NoImport` witness as `WITNESS_CLASS_UNSPECIFIED` while the gate buckets its
-  requirement COVERED as an analyzer proof; one classifier should feed both surfaces. *Lands: when
-  the witness classifier or the verify surface is next touched.*
 - **[analyzer-witness-hardening](analyzer-witness-hardening.md)** — harden mutates function bodies
   only, so analyzer witnesses get no teeth check; add a structural mutation class (inject a
   forbidden import / break an asserted method set, require the witness to fail). *Lands: when an

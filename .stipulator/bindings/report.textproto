@@ -27,3 +27,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "1cc777fada1eab924b8f7f27d1b005f89105e7cd508ccd623bf3e712653bd4a4"
 }
+
+bindings {
+  requirement_id: "REQ-report-messages"
+  content_hash: "ffed2ac7934e36d2120eb5f413254b2218becc35709f9ab43adb250a1e230c05"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verify.TestWireWitnessClassMirrorsClassifier"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "db78b453039d913a5e32d63c40a352c6a5a97a76538511bc01259b48efca66f6"
+}

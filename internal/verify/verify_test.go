@@ -7,6 +7,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -18,7 +19,7 @@ func run(t *testing.T, files map[string]string) (*Report, *records.Store) {
 	t.Helper()
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
-		"specs/a.md":           {Data: []byte(goodDoc)},
+		"specs/a.md":                     {Data: []byte(goodDoc)},
 	}
 	for p, c := range files {
 		fsys[p] = &fstest.MapFile{Data: []byte(c)}
@@ -182,9 +183,9 @@ func TestRecordHygiene(t *testing.T) {
 	})
 	t.Run("stray file in record dir is an error", func(t *testing.T) {
 		fsys := fstest.MapFS{
-			".stipulator/manifest.textproto":             {Data: []byte("include: \"specs/**/*.md\"\n")},
-			"specs/a.md":                       {Data: []byte(goodDoc)},
-			".stipulator/bindings/README.md":   {Data: []byte("stray")},
+			".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
+			"specs/a.md":                     {Data: []byte(goodDoc)},
+			".stipulator/bindings/README.md": {Data: []byte("stray")},
 		}
 		if _, err := records.Load(fsys); err == nil {
 			t.Fatal("stray file tolerated")
@@ -210,7 +211,7 @@ func (f fakeBackend) Resolve(symbol string) (Resolution, string, error) {
 func TestBackendResolution(t *testing.T) {
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
-		"specs/a.md":           {Data: []byte(goodDoc)},
+		"specs/a.md":                     {Data: []byte(goodDoc)},
 		".stipulator/bindings/x.textproto": {Data: []byte(
 			binding("REQ-v-a", "") + // symbol example.com/p.F
 				strings.ReplaceAll(binding("REQ-v-b", ""), "example.com/p.F", "example.com/p.Gone") +
@@ -282,7 +283,7 @@ func TestBackendResolution(t *testing.T) {
 func TestShapeMismatchIsDataNotProblem(t *testing.T) {
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
-		"specs/a.md":           {Data: []byte(goodDoc)},
+		"specs/a.md":                     {Data: []byte(goodDoc)},
 		".stipulator/bindings/x.textproto": {Data: []byte(
 			strings.Replace(binding("REQ-v-a", ""), "role:",
 				"shape_hash: \""+strings.Repeat("0", 64)+"\"\n  role:", 1))},
@@ -320,7 +321,7 @@ func TestWitnessCorrelation(t *testing.T) {
 		strings.ReplaceAll(binding("REQ-v-b", ""), "example.com/p.F", "example.com/p.TestD"),
 		"BINDING_ROLE_IMPLEMENTS", "BINDING_ROLE_PROVES")
 	fsys := fstest.MapFS{
-		".stipulator/manifest.textproto":             {Data: []byte("include: \"specs/**/*.md\"\n")},
+		".stipulator/manifest.textproto":   {Data: []byte("include: \"specs/**/*.md\"\n")},
 		"specs/a.md":                       {Data: []byte(goodDoc)},
 		".stipulator/bindings/x.textproto": {Data: []byte(testsBinding + failBinding + shadowBinding + provesBinding)},
 	}
@@ -430,5 +431,159 @@ func TestAttestationRecordHygiene(t *testing.T) {
 	// first judgment.
 	if len(rep.Attestations) != 1 || rep.Attestations[0].RequirementId != "REQ-v-b" {
 		t.Fatalf("attestation results = %+v", rep.Attestations)
+	}
+}
+
+// TestWireWitnessClassMirrorsClassifier pins one-classifier-both-surfaces:
+// the wire report carries the same evidence class the classifier resolved
+// — for every class the classifier can produce and for both witness roles
+// — so a per-binding view can never disagree with the per-requirement
+// verdict. The map exhaustiveness arm is the tripwire for a class added
+// to the enum but not the wire mirror (analyzer proofs shipped as
+// UNSPECIFIED exactly that way).
+func TestWireWitnessClassMirrorsClassifier(t *testing.T) {
+	stipulate.Covers(t, "REQ-report-messages")
+	for wc := ExampleWitness; wc <= AnalyzerProof; wc++ {
+		if _, ok := classProto[wc]; !ok {
+			t.Errorf("witness class %d missing from the wire mirror", wc)
+		}
+	}
+	for sl := Rearchitecture; sl <= SemanticDrift; sl++ {
+		if _, ok := labelProto[sl]; !ok {
+			t.Errorf("signature label %d missing from the wire mirror", sl)
+		}
+	}
+	for _, role := range []stipulatorv1.BindingRole{
+		stipulatorv1.BindingRole_BINDING_ROLE_TESTS,
+		stipulatorv1.BindingRole_BINDING_ROLE_PROVES,
+	} {
+		r := &Report{Results: []BindingResult{{
+			RequirementId: "REQ-v-a", Symbol: "example.com/p.TestX", Backend: "go",
+			Role: role, WitnessClass: AnalyzerProof, TestOutcome: TestPassed,
+		}}}
+		got := r.Proto().GetResults()[0].GetWitnessClass()
+		if got != stipulatorv1.WitnessClass_WITNESS_CLASS_ANALYZER_PROOF {
+			t.Errorf("role %v: wire class = %v, want ANALYZER_PROOF", role, got)
+		}
+	}
+}
+
+type sigBackend struct {
+	shapes  map[string]string
+	classes map[string]WitnessClass
+}
+
+func (b sigBackend) Resolve(sym string) (Resolution, string, error) {
+	return Resolved, b.shapes[sym], nil
+}
+func (b sigBackend) WitnessClass(sym string) WitnessClass { return b.classes[sym] }
+
+// TestChangeSignatures pins the classifier: pins are the baseline. A
+// behavior witness failing under a current content pin is semantic
+// drift; a proof-shape move (or proof failure) with every behavior
+// witness green is a rearchitecture; a red witness whose contract text
+// also moved carries a spec delta and is neither.
+func TestChangeSignatures(t *testing.T) {
+	stipulate.Covers(t, "REQ-gate-change-signature")
+	fsys := fstest.MapFS{
+		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
+		"specs/a.md":                     {Data: []byte(goodDoc)},
+	}
+	spec, diags, err := compile.Compile(fsys)
+	if err != nil || len(diags) > 0 {
+		t.Fatalf("compile: %v %v", err, diags)
+	}
+	hashes := map[string]string{}
+	for _, r := range spec.GetRequirements() {
+		hashes[r.GetId()] = r.GetContentHash()
+	}
+
+	binding := func(req, sym, role, content, shape string) string {
+		b := "bindings {\n  requirement_id: \"" + req + "\"\n  backend: \"go\"\n  symbol: \"" + sym + "\"\n  role: " + role + "\n"
+		if content != "" {
+			b += "  content_hash: \"" + content + "\"\n"
+		}
+		if shape != "" {
+			b += "  shape_hash: \"" + shape + "\"\n"
+		}
+		return b + "}\n"
+	}
+	fsys[".stipulator/bindings/sig.textproto"] = &fstest.MapFile{Data: []byte(
+		binding("REQ-v-a", "example.com/p.TestBehaviorA", "BINDING_ROLE_TESTS", hashes["REQ-v-a"], "s1") +
+			binding("REQ-v-b", "example.com/p.TestProofB", "BINDING_ROLE_PROVES", hashes["REQ-v-b"], "old-shape") +
+			binding("REQ-v-b", "example.com/p.TestBehaviorB", "BINDING_ROLE_TESTS", hashes["REQ-v-b"], "s2"))}
+	store, err := records.Load(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	backend := sigBackend{
+		shapes: map[string]string{
+			"example.com/p.TestBehaviorA": "s1",
+			"example.com/p.TestProofB":    "new-shape", // moved against the pin
+			"example.com/p.TestBehaviorB": "s2",
+		},
+		classes: map[string]WitnessClass{
+			"example.com/p.TestBehaviorA": ExampleWitness,
+			"example.com/p.TestProofB":    AnalyzerProof,
+			"example.com/p.TestBehaviorB": ExampleWitness,
+		},
+	}
+	tr := &TestRun{Outcomes: map[string]TestOutcome{
+		"example.com/p.TestBehaviorA": TestFailed,
+		"example.com/p.TestProofB":    TestPassed,
+		"example.com/p.TestBehaviorB": TestPassed,
+	}, RaceEnabled: true}
+	rep := Run(spec, store, map[string]Backend{"go": backend}, tr)
+
+	if len(rep.Signatures) != 2 {
+		t.Fatalf("signatures = %+v", rep.Signatures)
+	}
+	drift, rearch := rep.Signatures[0], rep.Signatures[1]
+	if drift.RequirementId != "REQ-v-a" || drift.Label != SemanticDrift ||
+		!strings.Contains(strings.Join(drift.Evidence, ";"), "TestBehaviorA") {
+		t.Fatalf("drift = %+v", drift)
+	}
+	if rearch.RequirementId != "REQ-v-b" || rearch.Label != Rearchitecture ||
+		!strings.Contains(strings.Join(rearch.Evidence, ";"), "proof shape moved: example.com/p.TestProofB") {
+		t.Fatalf("rearchitecture = %+v", rearch)
+	}
+
+	// A red witness whose contract text ALSO moved carries a spec delta:
+	// no drift signature.
+	fsys[".stipulator/bindings/sig.textproto"] = &fstest.MapFile{Data: []byte(
+		binding("REQ-v-a", "example.com/p.TestBehaviorA", "BINDING_ROLE_TESTS", strings.Repeat("0", 64), "s1"))}
+	store2, err := records.Load(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep2 := Run(spec, store2, map[string]Backend{"go": backend}, tr)
+	if len(rep2.Signatures) != 0 {
+		t.Fatalf("stale-contract red produced a signature: %+v", rep2.Signatures)
+	}
+
+	// Proof moved AND behavior red with a stale contract: the red
+	// carries a spec delta (no drift), and a red behavior witness
+	// forbids the rearchitecture label — neither fires.
+	fsys[".stipulator/bindings/sig.textproto"] = &fstest.MapFile{Data: []byte(
+		binding("REQ-v-b", "example.com/p.TestProofB", "BINDING_ROLE_PROVES", hashes["REQ-v-b"], "old-shape") +
+			binding("REQ-v-b", "example.com/p.TestBehaviorB", "BINDING_ROLE_TESTS", strings.Repeat("0", 64), "s2"))}
+	storeMixed, err := records.Load(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	trRed := &TestRun{Outcomes: map[string]TestOutcome{
+		"example.com/p.TestProofB":    TestPassed,
+		"example.com/p.TestBehaviorB": TestFailed,
+	}, RaceEnabled: true}
+	repMixed := Run(spec, storeMixed, map[string]Backend{"go": backend}, trRed)
+	if len(repMixed.Signatures) != 0 {
+		t.Fatalf("red-behavior rearchitecture mislabeled: %+v", repMixed.Signatures)
+	}
+
+	// An unwitnessed run derives no signatures: without outcomes there is
+	// nothing to classify.
+	rep3 := Run(spec, store, map[string]Backend{"go": backend}, nil)
+	if len(rep3.Signatures) != 0 {
+		t.Fatalf("unwitnessed run classified: %+v", rep3.Signatures)
 	}
 }
