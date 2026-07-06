@@ -337,3 +337,16 @@ func Gaps(fsys fs.FS, reqs []string, reason string, lands *stipulatorv1.LandingC
 	sortUpdates(out)
 	return out, nil
 }
+
+// PruneResolvedGaps returns deletions for every gap whose requirement ids
+// are in resolved — the fmt arm of gap hygiene.
+func PruneResolvedGaps(store *records.Store, resolved map[string]bool) []Update {
+	var out []Update
+	for _, gf := range store.Gaps {
+		if resolved[gf.Gap.GetRequirementId()] {
+			out = append(out, Update{Path: gf.Path, Content: nil})
+		}
+	}
+	sortUpdates(out)
+	return out
+}

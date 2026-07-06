@@ -377,3 +377,25 @@ func TestGapsBulk(t *testing.T) {
 		t.Fatal("empty list accepted")
 	}
 }
+
+// TestPruneResolvedGaps pins the fmt arm of gap hygiene: resolved gaps
+// delete, open ones stay.
+func TestPruneResolvedGaps(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-resolved-pruned")
+	fsys := testFS(map[string]string{
+		".stipulator/gaps/a.textproto": "requirement_id: \"REQ-au-a\"\nreason: \"r\"\nlands { attested { condition: \"x\" } }\n",
+		".stipulator/gaps/b.textproto": "requirement_id: \"REQ-au-b\"\nreason: \"r\"\nlands { attested { condition: \"x\" } }\n",
+	})
+	store, err := records.Load(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ups := PruneResolvedGaps(store, map[string]bool{"REQ-au-a": true})
+	if len(ups) != 1 || ups[0].Path != ".stipulator/gaps/a.textproto" || ups[0].Content != nil {
+		t.Fatalf("prunes = %+v", ups)
+	}
+	both := PruneResolvedGaps(store, map[string]bool{"REQ-au-a": true, "REQ-au-b": true})
+	if len(both) != 2 || !(both[0].Path < both[1].Path) {
+		t.Fatalf("prunes unordered or incomplete: %+v", both)
+	}
+}

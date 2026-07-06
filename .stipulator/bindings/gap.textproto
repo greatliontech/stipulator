@@ -27,3 +27,21 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "bb53ffee2ca4a05772d6b6dfe8929800cf02ef3c0dc3cb01e6eb188a61206a7c"
 }
+
+bindings {
+  requirement_id: "REQ-gap-resolved-pruned"
+  content_hash: "755d23b6b6a7ab733cb93f12325918ca02db88f5047c4dcf481eefe6fadc59d3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.PruneResolvedGaps"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "df6f6c06c4203c5e53650c96d15edc6837c1bf6f17f9ce9bd8279ca3e6229fd1"
+}
+
+bindings {
+  requirement_id: "REQ-gap-resolved-pruned"
+  content_hash: "755d23b6b6a7ab733cb93f12325918ca02db88f5047c4dcf481eefe6fadc59d3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestPruneResolvedGaps"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "9cb24e7c46b70bf256942e6c08b31bc58c3c201c9875a2c3e5713384adbb4dd2"
+}

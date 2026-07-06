@@ -48,9 +48,15 @@ tasks:
       - $HOME/.local/bin/stipulator completion zsh > $HOME/.local/share/zsh/site-functions/_stipulator
       - echo "note - ensure fpath includes ~/.local/share/zsh/site-functions before compinit"
 
+  fmt:
+    desc: Regenerate folder indexes and prune resolved gaps
+    cmds:
+      - go run ./cmd/stipulator fmt
+
   check:
     desc: Everything CI runs
     deps: [vet]
     cmds:
       - task: test
       - task: gate
+      - go run ./cmd/stipulator fmt --check --no-test
