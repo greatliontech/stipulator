@@ -15,3 +15,11 @@ should pin the toolchain identity (at minimum the Go version; possibly
 GOOS/GOARCH for platform-sensitive witnesses) under the same covering
 rule as the other pins. Fits the determinism harness: reproducibility of
 sheet measurements is that chunk's subject.
+
+The worked-out guard vocabulary exists in pew
+(`github.com/thegrumpylion/pew`, docs/spec.md §7): validity =
+closure ∧ runtime-inputs ∧ toolchain ∧ machine ∧ buildconfig, each an
+exact-equality guard on recorded provenance, with verdicts
+valid/stale/unverifiable. The sheet needs a subset (toolchain,
+buildconfig; machine only if timing-sensitive kills are ever admitted) —
+crib the semantics rather than reinvent them.

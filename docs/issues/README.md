@@ -26,9 +26,9 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   stipulator controls but not the toolchain; a Go upgrade silently invalidates measurements.
   *Lands: when the determinism harness chunk of the active plan begins.*
 - **[slice-frontier-uncertainty](slice-frontier-uncertainty.md)** — typed frontiers miss
-  reflection, build tags, and init effects; consumers need a confidence surface, not a bigger
-  frontier. *Lands: when a corpus relies on slice completeness for automated context assembly
-  over such code.*
+  reflection, build tags, and init effects; pew's closure model (sound floor, provably-safe
+  refinement, resolve/widen/unverifiable dispositions) is the reference shape. *Lands: when a
+  corpus relies on slice completeness for automated context assembly over such code.*
 - **[prover-trust-tiers](prover-trust-tiers.md)** — the proof rung assumes near-sound provers;
   a heuristic analyzer must not inherit it. *Lands: when a heuristic analyzer prover is
   proposed.*
@@ -39,3 +39,7 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[concurrent-record-writes](concurrent-record-writes.md)** — record verbs are last-writer-
   wins; concurrent agents need compare-and-swap at the verb layer, never actor metadata in
   records. *Lands: when concurrent agents write records in one working tree.*
+- **[performance-evidence-axis](performance-evidence-axis.md)** — no clause kind or evidence
+  class measures performance; pew recordings (guard-derived validity) are the binding-pin
+  model applied to measurements and slot in without bending the trust model. *Lands: when a
+  corpus declares a performance requirement.*
