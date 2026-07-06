@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -19,9 +20,12 @@ func gapCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			ups, err := author.Gaps(os.DirFS(chdir), reqs, reason, lc)
+			ups, notes, err := author.Gaps(os.DirFS(chdir), reqs, reason, lc)
 			if err != nil {
 				return err
+			}
+			for _, n := range notes {
+				fmt.Println(n)
 			}
 			return applyUpdates(chdir, ups)
 		},

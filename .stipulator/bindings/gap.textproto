@@ -3,16 +3,16 @@
 
 bindings {
   requirement_id: "REQ-gap-verb"
-  content_hash: "2a72f489d16697187dd2f087c7fae0a78a5a617042a377c6976391392e8a4a26"
+  content_hash: "4e20a532ccd700f804f5f6e805adfd95f4c4b15f2bc8267af0b89cc8b74f4cbf"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.Gap"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "078e6d4fbc9d97ddd4779cf49851674680d5a4a6c807efc0ec7f1b3505d62543"
+  shape_hash: "93701825895e5c87527a231c519a5d9c3effc1e629e1bb99153337d2b33c7a08"
 }
 
 bindings {
   requirement_id: "REQ-gap-verb"
-  content_hash: "2a72f489d16697187dd2f087c7fae0a78a5a617042a377c6976391392e8a4a26"
+  content_hash: "4e20a532ccd700f804f5f6e805adfd95f4c4b15f2bc8267af0b89cc8b74f4cbf"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.TestGap"
   role: BINDING_ROLE_TESTS
@@ -21,7 +21,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-verb"
-  content_hash: "2a72f489d16697187dd2f087c7fae0a78a5a617042a377c6976391392e8a4a26"
+  content_hash: "4e20a532ccd700f804f5f6e805adfd95f4c4b15f2bc8267af0b89cc8b74f4cbf"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.TestGapsBulk"
   role: BINDING_ROLE_TESTS

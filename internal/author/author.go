@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"google.golang.org/protobuf/proto"
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/records"
@@ -236,16 +237,18 @@ func Unbind(fsys fs.FS, requirement, symbol string, role stipulatorv1.BindingRol
 	return out, removed, nil
 }
 
-// Gap validates and authors a gap record: the requirement must exist, a
-// reason and a landing condition are required, and an existing record for
-// the requirement is refused.
-func Gap(fsys fs.FS, g *stipulatorv1.Gap) (*Update, error) {
+// Gap validates and authors a gap record: the requirement must exist and
+// a reason and a landing condition are required. Declaring over an
+// existing gap updates it in place — a gap's reason evolves with the
+// code — and the prior record is returned so a changed landing condition
+// is surfaced, never silently retargeted.
+func Gap(fsys fs.FS, g *stipulatorv1.Gap) (*Update, *stipulatorv1.Gap, error) {
 	spec, diags, err := compile.Compile(fsys)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if len(diags) > 0 {
-		return nil, fmt.Errorf("corpus does not compile: %s%s", diags[0], moreSuffix(len(diags)-1))
+		return nil, nil, fmt.Errorf("corpus does not compile: %s%s", diags[0], moreSuffix(len(diags)-1))
 	}
 	found := false
 	for _, r := range spec.GetRequirements() {
@@ -254,31 +257,58 @@ func Gap(fsys fs.FS, g *stipulatorv1.Gap) (*Update, error) {
 		}
 	}
 	if !found {
-		return nil, fmt.Errorf("requirement %s is not in the corpus", g.GetRequirementId())
+		return nil, nil, fmt.Errorf("requirement %s is not in the corpus", g.GetRequirementId())
 	}
 	if g.GetReason() == "" {
-		return nil, fmt.Errorf("a reason is required")
+		return nil, nil, fmt.Errorf("a reason is required")
 	}
 	if !g.HasLands() {
-		return nil, fmt.Errorf("a landing condition is required")
+		return nil, nil, fmt.Errorf("a landing condition is required")
 	}
 	store, err := records.Load(fsys)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	target := records.GapPath(g.GetRequirementId())
+	var prior *stipulatorv1.Gap
 	for _, gf := range store.Gaps {
 		if gf.Gap.GetRequirementId() == g.GetRequirementId() {
-			return nil, fmt.Errorf("a gap for %s already exists at %s", g.GetRequirementId(), gf.Path)
+			// Update in place, at the record's existing path.
+			target = gf.Path
+			prior = gf.Gap
 		}
+	}
+	if prior == nil {
 		// Gap file layout is free, so another requirement's record may
 		// legally sit at this requirement's canonical path — never
 		// overwrite it.
-		if gf.Path == target {
-			return nil, fmt.Errorf("%s holds a gap for %s; refusing to overwrite", target, gf.Gap.GetRequirementId())
+		for _, gf := range store.Gaps {
+			if gf.Path == target {
+				return nil, nil, fmt.Errorf("%s holds a gap for %s; refusing to overwrite", target, gf.Gap.GetRequirementId())
+			}
 		}
 	}
-	return &Update{Path: target, Content: records.RenderGap(g)}, nil
+	return &Update{Path: target, Content: records.RenderGap(g)}, prior, nil
+}
+
+// LandingConditionString renders a landing condition human-readably, for
+// surfacing retargets.
+func LandingConditionString(lc *stipulatorv1.LandingCondition) string {
+	switch {
+	case lc == nil:
+		return "none"
+	case lc.HasCovered():
+		return "covered(" + lc.GetCovered() + ")"
+	case lc.HasExists():
+		return "exists(" + lc.GetExists() + ")"
+	case lc.HasManual():
+		s := "manual(" + lc.GetManual().GetCondition() + ")"
+		if lc.GetManual().GetFired() {
+			s += " [fired]"
+		}
+		return s
+	}
+	return "none"
 }
 
 // defaultBindingFile groups bindings by the identifier's second segment:
@@ -321,12 +351,15 @@ func Init(fsys fs.FS) (*Update, error) {
 // Gaps declares one gap per requirement, all sharing a reason and landing
 // condition — the spec-ahead-of-code bulk case. Each record is an ordinary
 // per-requirement gap and lands independently; validation is all-or-nothing
-// so a typo mid-list declares nothing.
-func Gaps(fsys fs.FS, reqs []string, reason string, lands *stipulatorv1.LandingCondition) ([]Update, error) {
+// so a typo mid-list declares nothing. Updated gaps whose landing
+// condition changed are surfaced in the returned notes — a retarget is
+// never silent.
+func Gaps(fsys fs.FS, reqs []string, reason string, lands *stipulatorv1.LandingCondition) ([]Update, []string, error) {
 	if len(reqs) == 0 {
-		return nil, fmt.Errorf("at least one requirement is required")
+		return nil, nil, fmt.Errorf("at least one requirement is required")
 	}
 	var out []Update
+	var notes []string
 	seenPath := map[string]bool{}
 	for _, id := range reqs {
 		g := &stipulatorv1.Gap{}
@@ -335,18 +368,23 @@ func Gaps(fsys fs.FS, reqs []string, reason string, lands *stipulatorv1.LandingC
 		if lands != nil {
 			g.SetLands(lands)
 		}
-		up, err := Gap(fsys, g)
+		up, prior, err := Gap(fsys, g)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if seenPath[up.Path] {
-			return nil, fmt.Errorf("requirement %s repeats in the list", id)
+			return nil, nil, fmt.Errorf("requirement %s repeats in the list", id)
 		}
 		seenPath[up.Path] = true
+		if prior != nil && !proto.Equal(prior.GetLands(), g.GetLands()) {
+			notes = append(notes, id+": landing retargeted "+
+				LandingConditionString(prior.GetLands())+" -> "+LandingConditionString(g.GetLands()))
+		}
 		out = append(out, *up)
 	}
 	sortUpdates(out)
-	return out, nil
+	sort.Strings(notes)
+	return out, notes, nil
 }
 
 // PruneResolvedGaps returns deletions for every gap whose requirement ids

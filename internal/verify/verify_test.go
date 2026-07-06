@@ -167,6 +167,13 @@ func TestRecordHygiene(t *testing.T) {
 		})
 		wantProblem(t, rep, "duplicate binding")
 	})
+	t.Run("duplicate gap flagged", func(t *testing.T) {
+		rep, _ := run(t, map[string]string{
+			".stipulator/gaps/x.textproto": "requirement_id: \"REQ-v-a\"\nreason: \"r\"\nlands { exists: \"REQ-v-b\" }\n",
+			".stipulator/gaps/y.textproto": "requirement_id: \"REQ-v-a\"\nreason: \"stale twin\"\nlands { exists: \"REQ-v-b\" }\n",
+		})
+		wantProblem(t, rep, "gap for REQ-v-a duplicates")
+	})
 	t.Run("gap without id gets dedicated message", func(t *testing.T) {
 		rep, _ := run(t, map[string]string{
 			".stipulator/gaps/x.textproto": "reason: \"r\"\nlands { exists: \"REQ-v-a\" }\n",

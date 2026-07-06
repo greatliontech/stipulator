@@ -79,7 +79,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.AttestRequirement"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "874f6159ce9b3b35c8e43ffb6e9473d8c52098c309d63e166794a4fb1052054d"
+  shape_hash: "174efa890555bc4b7db4054b5fd933e18cc2fad847ed096e0018502e7ef267cd"
 }
 
 bindings {
@@ -116,4 +116,13 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestAttestTools"
   role: BINDING_ROLE_TESTS
   shape_hash: "038223796b0c302eacb25b2f0b5c64ffef5ce3d5643f4ef59795d9585a4c52e7"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-attestation"
+  content_hash: "0e68aac4251661b577f23f0ad5cc35b120665231f2556faf4ee092815108ba12"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestAttestRequirementMultiRecordFile"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "4a86c1582f1986500f4790218aa15876141a6b6ada3107209660aa5a5c2529bb"
 }

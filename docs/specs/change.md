@@ -56,9 +56,10 @@ reason, and a landing condition.
 
 **REQ-gap-verb** (behavior): Gap records MUST be writable through a tool
 operation that validates the requirement identifier against the compiled
-corpus and requires a reason and a landing condition at write time, writing
-to the requirement's canonical path and refusing to overwrite a record that
-names a different requirement.
+corpus and requires a reason and a landing condition at write time,
+updating an existing declaration in place — a changed landing condition
+is surfaced, never silently retargeted — and refusing to overwrite a
+record that names a different requirement.
 
 **REQ-gap-conditions** (behavior): A landing condition MUST be either
 machine-evaluable — `covered(<id>)`, `exists(<id>)` — or manual, firing

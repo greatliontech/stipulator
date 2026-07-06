@@ -409,12 +409,20 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 		}
 	}
 
+	seenGaps := map[string]string{}
 	for _, gf := range store.Gaps {
 		id := gf.Gap.GetRequirementId()
 		if id == "" {
 			problem(gf.Path, "gap without requirement_id")
 		} else if _, known := hashes[id]; !known {
 			problem(gf.Path, "gap names %s, which is not in the corpus", id)
+		}
+		if id != "" {
+			if prior, dup := seenGaps[id]; dup {
+				problem(gf.Path, "gap for %s duplicates %s; one declaration per requirement", id, prior)
+			} else {
+				seenGaps[id] = gf.Path
+			}
 		}
 		if gf.Gap.GetReason() == "" {
 			problem(gf.Path, "gap for %s has no reason", id)

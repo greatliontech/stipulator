@@ -211,7 +211,7 @@ func TestGap(t *testing.T) {
 	}
 
 	t.Run("authors a parseable record at the canonical path", func(t *testing.T) {
-		up, err := Gap(testFS(nil), mkGap("REQ-au-a", "later", covered("REQ-au-b")))
+		up, _, err := Gap(testFS(nil), mkGap("REQ-au-a", "later", covered("REQ-au-b")))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -239,19 +239,47 @@ func TestGap(t *testing.T) {
 		}
 		for _, c := range cases {
 			t.Run(c.name, func(t *testing.T) {
-				if _, err := Gap(testFS(nil), c.gap); err == nil || !strings.Contains(err.Error(), c.want) {
+				if _, _, err := Gap(testFS(nil), c.gap); err == nil || !strings.Contains(err.Error(), c.want) {
 					t.Fatalf("err = %v", err)
 				}
 			})
 		}
 	})
 
-	t.Run("existing gap refused", func(t *testing.T) {
+	t.Run("declaring over an existing gap updates it in place", func(t *testing.T) {
 		fsys := testFS(nil)
-		up, _ := Gap(fsys, mkGap("REQ-au-a", "later", covered("REQ-au-b")))
+		up, prior, err := Gap(fsys, mkGap("REQ-au-a", "not yet implemented", covered("REQ-au-b")))
+		if err != nil || prior != nil {
+			t.Fatalf("fresh gap: %v prior=%v", err, prior)
+		}
 		fsys[up.Path] = &fstest.MapFile{Data: up.Content}
-		if _, err := Gap(fsys, mkGap("REQ-au-a", "again", covered("REQ-au-b"))); err == nil {
-			t.Fatal("duplicate gap accepted")
+
+		// Same landing, evolved reason: quiet update, prior surfaced.
+		up2, prior2, err := Gap(fsys, mkGap("REQ-au-a", "implemented; awaiting witness", covered("REQ-au-b")))
+		if err != nil || prior2 == nil || prior2.GetReason() != "not yet implemented" {
+			t.Fatalf("update: %v prior=%v", err, prior2)
+		}
+		if up2.Path != up.Path || !strings.Contains(string(up2.Content), "awaiting witness") {
+			t.Fatalf("update misplaced: %s\n%s", up2.Path, up2.Content)
+		}
+
+		// A retarget is surfaced through the bulk verb's notes.
+		fsys[up2.Path] = &fstest.MapFile{Data: up2.Content}
+		lc := &stipulatorv1.LandingCondition{}
+		lc.SetExists("REQ-au-b")
+		_, notes, err := Gaps(fsys, []string{"REQ-au-a"}, "retargeted", lc)
+		if err != nil || len(notes) != 1 || !strings.Contains(notes[0], "covered(REQ-au-b) -> exists(REQ-au-b)") {
+			t.Fatalf("retarget not surfaced: %v %v", err, notes)
+		}
+	})
+
+	t.Run("foreign record at the canonical path still refused", func(t *testing.T) {
+		fsys := testFS(map[string]string{
+			// REQ-au-b's record legally sits at REQ-au-a's canonical path.
+			".stipulator/gaps/au-a.textproto": "requirement_id: \"REQ-au-b\"\nreason: \"r\"\nlands { exists: \"REQ-au-a\" }\n",
+		})
+		if _, _, err := Gap(fsys, mkGap("REQ-au-a", "r", covered("REQ-au-b"))); err == nil || !strings.Contains(err.Error(), "refusing to overwrite") {
+			t.Fatalf("foreign-path overwrite accepted: %v", err)
 		}
 	})
 
@@ -260,7 +288,7 @@ func TestGap(t *testing.T) {
 		a := &stipulatorv1.ManualCondition{}
 		a.SetCondition("external thing")
 		att.SetManual(a)
-		up, err := Gap(testFS(nil), mkGap("REQ-au-b", "r", att))
+		up, _, err := Gap(testFS(nil), mkGap("REQ-au-b", "r", att))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -306,7 +334,7 @@ func TestGapRefusesForeignPathCollision(t *testing.T) {
 	lc := &stipulatorv1.LandingCondition{}
 	lc.SetCovered("REQ-au-b")
 	g.SetLands(lc)
-	if _, err := Gap(fsys, g); err == nil || !strings.Contains(err.Error(), "refusing to overwrite") {
+	if _, _, err := Gap(fsys, g); err == nil || !strings.Contains(err.Error(), "refusing to overwrite") {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -355,7 +383,7 @@ func TestGapsBulk(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ups, err := Gaps(fsys, []string{"REQ-au-a", "REQ-au-b"}, "spec ahead of code", lc)
+	ups, _, err := Gaps(fsys, []string{"REQ-au-a", "REQ-au-b"}, "spec ahead of code", lc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -367,13 +395,13 @@ func TestGapsBulk(t *testing.T) {
 			t.Fatalf("shared reason missing:\n%s", up.Content)
 		}
 	}
-	if _, err := Gaps(fsys, []string{"REQ-au-a", "REQ-au-ghost"}, "r", lc); err == nil {
+	if _, _, err := Gaps(fsys, []string{"REQ-au-a", "REQ-au-ghost"}, "r", lc); err == nil {
 		t.Fatal("typo mid-list declared gaps anyway")
 	}
-	if _, err := Gaps(fsys, []string{"REQ-au-a", "REQ-au-a"}, "r", lc); err == nil {
+	if _, _, err := Gaps(fsys, []string{"REQ-au-a", "REQ-au-a"}, "r", lc); err == nil {
 		t.Fatal("duplicate requirement accepted")
 	}
-	if _, err := Gaps(fsys, nil, "r", lc); err == nil {
+	if _, _, err := Gaps(fsys, nil, "r", lc); err == nil {
 		t.Fatal("empty list accepted")
 	}
 }

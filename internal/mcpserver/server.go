@@ -340,6 +340,9 @@ type writeOut struct {
 	Wrote   []string `json:"wrote,omitempty"`
 	Deleted []string `json:"deleted,omitempty"`
 	Removed int      `json:"removed,omitempty"`
+	// Notes surface non-silent consequences, e.g. a gap's landing
+	// condition retarget.
+	Notes []string `json:"notes,omitempty"`
 }
 
 func (s *Server) toolBind(ctx context.Context, req *mcp.CallToolRequest, in bindIn) (*mcp.CallToolResult, writeOut, error) {
@@ -419,9 +422,19 @@ func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn
 	if lc != nil {
 		g.SetLands(lc)
 	}
-	up, err := author.Gap(s.fsys(), g)
+	up, prior, err := author.Gap(s.fsys(), g)
 	if err != nil {
 		return nil, writeOut{}, err
+	}
+	if prior != nil && !proto.Equal(prior.GetLands(), g.GetLands()) {
+		// A retarget is never silent: the wire result names old and new.
+		out := writeOut{Wrote: []string{up.Path}, Notes: []string{
+			"landing retargeted: " + author.LandingConditionString(prior.GetLands()) + " -> " + author.LandingConditionString(g.GetLands()),
+		}}
+		if err := s.write(up.Path, up.Content); err != nil {
+			return nil, writeOut{}, err
+		}
+		return nil, out, nil
 	}
 	if err := s.write(up.Path, up.Content); err != nil {
 		return nil, writeOut{}, err
@@ -449,18 +462,42 @@ func (s *Server) toolAttestSurvivor(ctx context.Context, req *mcp.CallToolReques
 
 type attestRequirementIn struct {
 	Requirement string `json:"requirement" jsonschema:"requirement identifier"`
-	Reason      string `json:"reason" jsonschema:"why the requirement is judged satisfied"`
+	Reason      string `json:"reason,omitempty" jsonschema:"why the requirement is judged satisfied (required unless retracting)"`
+	Retract     bool   `json:"retract,omitempty" jsonschema:"withdraw the requirement's judgment instead of authoring one"`
 }
 
 func (s *Server) toolAttestRequirement(ctx context.Context, req *mcp.CallToolRequest, in attestRequirementIn) (*mcp.CallToolResult, writeOut, error) {
-	up, err := author.AttestRequirement(s.fsys(), in.Requirement, in.Reason)
+	if in.Retract {
+		up, prior, err := author.RetractAttestation(s.fsys(), in.Requirement)
+		if err != nil {
+			return nil, writeOut{}, err
+		}
+		out := writeOut{Notes: []string{"retracted judgment: " + prior.GetReason()}}
+		if up.Content == nil {
+			out.Deleted = []string{up.Path}
+			if err := s.remove(up.Path); err != nil {
+				return nil, writeOut{}, err
+			}
+			return nil, out, nil
+		}
+		out.Wrote = []string{up.Path}
+		if err := s.write(up.Path, up.Content); err != nil {
+			return nil, writeOut{}, err
+		}
+		return nil, out, nil
+	}
+	up, prior, err := author.AttestRequirement(s.fsys(), in.Requirement, in.Reason)
 	if err != nil {
 		return nil, writeOut{}, err
 	}
 	if err := s.write(up.Path, up.Content); err != nil {
 		return nil, writeOut{}, err
 	}
-	return nil, writeOut{Wrote: []string{up.Path}}, nil
+	out := writeOut{Wrote: []string{up.Path}}
+	if prior != nil {
+		out.Notes = []string{"replaced judgment: " + prior.GetReason()}
+	}
+	return nil, out, nil
 }
 
 func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in struct{}) (*mcp.CallToolResult, writeOut, error) {
