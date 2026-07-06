@@ -5,13 +5,8 @@ go 1.26.4
 require google.golang.org/protobuf v1.36.11
 
 require (
-	github.com/greatliontech/stipulator/stipulate v0.0.0
-	github.com/greatliontech/stipulator/stipulate/structural v0.0.0
-)
-
-replace (
-	github.com/greatliontech/stipulator/stipulate => ./stipulate
-	github.com/greatliontech/stipulator/stipulate/structural => ./stipulate/structural
+	github.com/greatliontech/stipulator/stipulate v0.1.0
+	github.com/greatliontech/stipulator/stipulate/structural v0.1.0
 )
 
 require (
