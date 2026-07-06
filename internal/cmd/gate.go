@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/greatliontech/stipulator/internal/backends/golang"
+	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
@@ -41,7 +42,15 @@ func gateCmd() *cobra.Command {
 			if len(rep.Problems) > 0 {
 				os.Exit(1)
 			}
-			cov := coverage.Evaluate(spec, rep, store, true)
+			manifest, err := corpus.LoadManifest(os.DirFS(chdir))
+			if err != nil {
+				return err
+			}
+			pol, err := coverage.PolicyFromManifest(manifest)
+			if err != nil {
+				return err
+			}
+			cov := coverage.Evaluate(spec, rep, store, true, pol)
 			printCoverage(cov)
 			if !cov.GatePasses() {
 				for _, v := range cov.Violations {
@@ -62,6 +71,9 @@ func printCoverage(cov *coverage.Report) {
 	gapByReq := map[string]coverage.Gap{}
 	for _, g := range cov.Gaps {
 		gapByReq[g.RequirementId] = g
+	}
+	for _, o := range cov.PolicyOverrides {
+		fmt.Println(dim(o))
 	}
 	counts := map[coverage.Bucket]int{}
 	width := 0

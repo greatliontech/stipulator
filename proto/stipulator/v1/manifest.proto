@@ -2,6 +2,8 @@ edition = "2023";
 
 package stipulator.v1;
 
+import "stipulator/v1/ir.proto";
+
 option go_package = "github.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1";
 
 // Manifest is the root configuration of a stipulator repository. It is
@@ -15,4 +17,38 @@ message Manifest {
   // to "docs/specs/**/*.md". Generated folder indexes (README.md) are
   // always excluded from enumeration.
   repeated string include = 1;
+  // Policy overrides replace the default minimum evidence for exact
+  // (clause kind, keyword) cells; unnamed cells keep the defaults
+  // (REQ-coverage-policy). Naming a cell twice is refused. Overriding a
+  // MAY cell replaces the default unbound-MAY-exempt rule too: unbound
+  // MAY requirements on that cell then read uncovered, not exempt.
+  repeated PolicyOverride policy = 2;
+}
+
+// MinimumEvidence names a satisfaction set for one policy cell. The sets
+// are fixed, not a ladder: an analyzer proof does not demonstrate runtime
+// behavior, so WITNESS deliberately excludes it.
+enum MinimumEvidence {
+  MINIMUM_EVIDENCE_UNSPECIFIED = 0;
+  // Analyzer proof only.
+  MINIMUM_EVIDENCE_ANALYZER_PROOF = 1;
+  // Property witness or analyzer proof.
+  MINIMUM_EVIDENCE_PROPERTY = 2;
+  // An executed witness of either class; a proof is not execution.
+  MINIMUM_EVIDENCE_WITNESS = 3;
+  // An analyzer proof or an executed witness.
+  MINIMUM_EVIDENCE_PROOF_OR_WITNESS = 4;
+  // A static binding or anything stronger.
+  MINIMUM_EVIDENCE_STATIC = 5;
+  // No evidence demanded: unbound requirements read exempt; bound ones
+  // keep claim hygiene (broken and stale still read red).
+  MINIMUM_EVIDENCE_EXEMPT = 6;
+}
+
+// PolicyOverride replaces the default minimum evidence for one exact
+// (clause kind, keyword) cell — MUST and MUST NOT are distinct cells.
+message PolicyOverride {
+  ClauseKind kind = 1;
+  Keyword keyword = 2;
+  MinimumEvidence minimum = 3;
 }

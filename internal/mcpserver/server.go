@@ -25,6 +25,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/bundle"
 	"github.com/greatliontech/stipulator/internal/compile"
+	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/facts"
 	"github.com/greatliontech/stipulator/internal/harden"
@@ -209,6 +210,17 @@ func (s *Server) syncIndex(spec *stipulatorv1.Spec) {
 	}
 }
 
+// policy loads the manifest's coverage-policy overrides; verification
+// errors surface at compile time, so a load failure here is unreachable
+// on a tree that compiled.
+func (s *Server) policy() (*coverage.Policy, error) {
+	m, err := corpus.LoadManifest(s.fsys())
+	if err != nil {
+		return nil, err
+	}
+	return coverage.PolicyFromManifest(m)
+}
+
 func (s *Server) compileFresh() (*stipulatorv1.Spec, error) {
 	spec, diags, err := compile.Compile(s.fsys())
 	if err != nil {
@@ -300,7 +312,11 @@ func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in stru
 		}
 		return nil, nil, fmt.Errorf("verification problems:\n%s", strings.Join(msgs, "\n"))
 	}
-	cov := coverage.Evaluate(spec, rep, store, true)
+	pol, err := s.policy()
+	if err != nil {
+		return nil, nil, err
+	}
+	cov := coverage.Evaluate(spec, rep, store, true, pol)
 	return protoJSON(cov.Proto())
 }
 
@@ -628,7 +644,11 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 			return nil, nil, err
 		}
 	} else {
-		cov := coverage.Evaluate(spec, rep, store, true)
+		pol, perr := s.policy()
+		if perr != nil {
+			return nil, nil, perr
+		}
+		cov := coverage.Evaluate(spec, rep, store, true, pol)
 		for _, r := range cov.Requirements {
 			switch r.Bucket {
 			case coverage.Uncovered, coverage.Stale, coverage.Broken:
@@ -675,7 +695,11 @@ func (s *Server) readResource(ctx context.Context, req *mcp.ReadResourceRequest)
 		if err != nil {
 			return nil, err
 		}
-		cov := coverage.Evaluate(spec, rep, store, true)
+		pol, perr := s.policy()
+		if perr != nil {
+			return nil, perr
+		}
+		cov := coverage.Evaluate(spec, rep, store, true, pol)
 		// Round-trip through a map for deterministic key-sorted JSON:
 		// protojson output whitespace is deliberately unstable.
 		_, m, err := protoJSON(cov.Proto())

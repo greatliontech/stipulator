@@ -8,6 +8,7 @@ import (
 
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
+	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/index"
 	"github.com/greatliontech/stipulator/internal/records"
@@ -55,7 +56,15 @@ func fmtCmd() *cobra.Command {
 				}
 				return fmt.Errorf("fix verification problems first")
 			}
-			cov := coverage.Evaluate(spec, rep, store, !noTest)
+			manifest, err := corpus.LoadManifest(os.DirFS(chdir))
+			if err != nil {
+				return err
+			}
+			pol, err := coverage.PolicyFromManifest(manifest)
+			if err != nil {
+				return err
+			}
+			cov := coverage.Evaluate(spec, rep, store, !noTest, pol)
 			resolved := map[string]bool{}
 			for _, g := range cov.Gaps {
 				if g.State == coverage.Resolved {

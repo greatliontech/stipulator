@@ -1442,15 +1442,16 @@ func (b0 GapReport_builder) Build() *GapReport {
 // CoverageReport is the coverage evaluation and gate verdict. There are
 // deliberately no aggregate ratios: the verdict is the violation set.
 type CoverageReport struct {
-	state                   protoimpl.MessageState  `protogen:"opaque.v1"`
-	xxx_hidden_Requirements *[]*RequirementCoverage `protobuf:"bytes,1,rep,name=requirements"`
-	xxx_hidden_Gaps         *[]*GapReport           `protobuf:"bytes,2,rep,name=gaps"`
-	xxx_hidden_Violations   []string                `protobuf:"bytes,3,rep,name=violations"`
-	xxx_hidden_GatePasses   bool                    `protobuf:"varint,4,opt,name=gate_passes,json=gatePasses"`
-	XXX_raceDetectHookData  protoimpl.RaceDetectHookData
-	XXX_presence            [1]uint32
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	state                      protoimpl.MessageState  `protogen:"opaque.v1"`
+	xxx_hidden_Requirements    *[]*RequirementCoverage `protobuf:"bytes,1,rep,name=requirements"`
+	xxx_hidden_Gaps            *[]*GapReport           `protobuf:"bytes,2,rep,name=gaps"`
+	xxx_hidden_Violations      []string                `protobuf:"bytes,3,rep,name=violations"`
+	xxx_hidden_GatePasses      bool                    `protobuf:"varint,4,opt,name=gate_passes,json=gatePasses"`
+	xxx_hidden_PolicyOverrides []string                `protobuf:"bytes,5,rep,name=policy_overrides,json=policyOverrides"`
+	XXX_raceDetectHookData     protoimpl.RaceDetectHookData
+	XXX_presence               [1]uint32
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *CoverageReport) Reset() {
@@ -1510,6 +1511,13 @@ func (x *CoverageReport) GetGatePasses() bool {
 	return false
 }
 
+func (x *CoverageReport) GetPolicyOverrides() []string {
+	if x != nil {
+		return x.xxx_hidden_PolicyOverrides
+	}
+	return nil
+}
+
 func (x *CoverageReport) SetRequirements(v []*RequirementCoverage) {
 	x.xxx_hidden_Requirements = &v
 }
@@ -1524,7 +1532,11 @@ func (x *CoverageReport) SetViolations(v []string) {
 
 func (x *CoverageReport) SetGatePasses(v bool) {
 	x.xxx_hidden_GatePasses = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 5)
+}
+
+func (x *CoverageReport) SetPolicyOverrides(v []string) {
+	x.xxx_hidden_PolicyOverrides = v
 }
 
 func (x *CoverageReport) HasGatePasses() bool {
@@ -1547,6 +1559,10 @@ type CoverageReport_builder struct {
 	// Red requirements no gap names; the gate fails exactly when non-empty.
 	Violations []string
 	GatePasses *bool
+	// Active manifest policy overrides, human-readable and canonically
+	// ordered: contract-tier configuration is surfaced in every coverage
+	// output, never applied silently.
+	PolicyOverrides []string
 }
 
 func (b0 CoverageReport_builder) Build() *CoverageReport {
@@ -1557,9 +1573,10 @@ func (b0 CoverageReport_builder) Build() *CoverageReport {
 	x.xxx_hidden_Gaps = &b.Gaps
 	x.xxx_hidden_Violations = b.Violations
 	if b.GatePasses != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 5)
 		x.xxx_hidden_GatePasses = *b.GatePasses
 	}
+	x.xxx_hidden_PolicyOverrides = b.PolicyOverrides
 	return m0
 }
 
@@ -2551,7 +2568,7 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\tGapReport\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12%\n" +
 	"\x0erequirement_id\x18\x02 \x01(\tR\rrequirementId\x12-\n" +
-	"\x05state\x18\x03 \x01(\x0e2\x17.stipulator.v1.GapStateR\x05state\"\xc7\x01\n" +
+	"\x05state\x18\x03 \x01(\x0e2\x17.stipulator.v1.GapStateR\x05state\"\xf2\x01\n" +
 	"\x0eCoverageReport\x12F\n" +
 	"\frequirements\x18\x01 \x03(\v2\".stipulator.v1.RequirementCoverageR\frequirements\x12,\n" +
 	"\x04gaps\x18\x02 \x03(\v2\x18.stipulator.v1.GapReportR\x04gaps\x12\x1e\n" +
@@ -2559,7 +2576,8 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"violations\x18\x03 \x03(\tR\n" +
 	"violations\x12\x1f\n" +
 	"\vgate_passes\x18\x04 \x01(\bR\n" +
-	"gatePasses\"\x8f\x01\n" +
+	"gatePasses\x12)\n" +
+	"\x10policy_overrides\x18\x05 \x03(\tR\x0fpolicyOverrides\"\x8f\x01\n" +
 	"\x04Seed\x12%\n" +
 	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x12\x18\n" +
 	"\abackend\x18\x02 \x01(\tR\abackend\x12\x16\n" +

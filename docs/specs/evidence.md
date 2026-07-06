@@ -3,7 +3,12 @@
 The claim/evidence split is the trust boundary of the system: bindings are
 committed, reviewable claims authored by humans or agents; evidence exists
 only as the output of stipulator verifying those claims against the current
-corpus and code. Nothing an agent writes can make a requirement covered.
+corpus and code. Nothing written into the record stores can make a
+requirement covered. The spec corpus and the manifest — including its
+coverage-policy overrides — stand outside that boundary as contract-tier
+configuration: editing them changes what coverage means, which is why they
+are reviewed like spec text and why every active policy override is
+surfaced in coverage output rather than applied silently.
 
 ## Bindings
 

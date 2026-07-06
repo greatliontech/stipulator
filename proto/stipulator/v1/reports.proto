@@ -128,6 +128,10 @@ message CoverageReport {
   // Red requirements no gap names; the gate fails exactly when non-empty.
   repeated string violations = 3;
   bool gate_passes = 4;
+  // Active manifest policy overrides, human-readable and canonically
+  // ordered: contract-tier configuration is surfaced in every coverage
+  // output, never applied silently.
+  repeated string policy_overrides = 5;
 }
 
 // Seed is a bound symbol seeding code context for a requirement set.

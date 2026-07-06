@@ -37,7 +37,7 @@ func pipeline(rt *rapid.T, files, extra map[string]string, backends map[string]v
 		rt.Fatal(err)
 	}
 	vr := verify.Run(spec, store, backends, nil)
-	cr := Evaluate(spec, vr, store, false)
+	cr := Evaluate(spec, vr, store, false, nil)
 	return spec, vr, cr
 }
 
@@ -128,7 +128,7 @@ func TestPropEvidenceOnlyFromCurrentRun(t *testing.T) {
 		}
 		res := result(bound, tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed)
 		res.WitnessClass = verify.PropertyWitness
-		unwitnessed := Evaluate(spec, &verify.Report{Results: []verify.BindingResult{res}}, store, false)
+		unwitnessed := Evaluate(spec, &verify.Report{Results: []verify.BindingResult{res}}, store, false, nil)
 		for _, r := range unwitnessed.Requirements {
 			if r.Id == bound && r.Bucket == Covered {
 				rt.Fatalf("%s covered by a claimed outcome outside a witnessed run", bound)

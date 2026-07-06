@@ -89,6 +89,10 @@ type Gap struct {
 type Report struct {
 	Requirements []Requirement
 	Gaps         []Gap
+	// PolicyOverrides lists the manifest's active overrides,
+	// human-readable and canonically ordered: contract-tier
+	// configuration is surfaced in every coverage output.
+	PolicyOverrides []string
 	// Violations lists red requirements no gap names: the gate fails
 	// exactly when this is non-empty.
 	Violations []string
@@ -96,6 +100,70 @@ type Report struct {
 
 // GatePasses reports the gate verdict.
 func (r *Report) GatePasses() bool { return len(r.Violations) == 0 }
+
+// Policy resolves each (clause kind, keyword) cell to its minimum
+// evidence: manifest overrides win over the default table
+// (REQ-coverage-policy). A nil Policy is the pure default table.
+type Policy struct {
+	overrides map[policyCell]stipulatorv1.MinimumEvidence
+}
+
+type policyCell struct {
+	kind stipulatorv1.ClauseKind
+	kw   stipulatorv1.Keyword
+}
+
+// PolicyFromManifest builds the effective policy from the manifest's
+// override entries. Entries with an unspecified minimum are ignored
+// rather than silently exempting a cell; a duplicate cell is refused —
+// a self-contradictory policy must never resolve by entry order.
+func PolicyFromManifest(m *stipulatorv1.Manifest) (*Policy, error) {
+	p := &Policy{overrides: map[policyCell]stipulatorv1.MinimumEvidence{}}
+	for _, o := range m.GetPolicy() {
+		if o.GetMinimum() == stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_UNSPECIFIED {
+			continue
+		}
+		cell := policyCell{o.GetKind(), o.GetKeyword()}
+		if _, dup := p.overrides[cell]; dup {
+			return nil, fmt.Errorf("manifest policy names the cell (%s, %s) twice", kindName(cell.kind), keywordName(cell.kw))
+		}
+		p.overrides[cell] = o.GetMinimum()
+	}
+	return p, nil
+}
+
+// Active renders the policy's overrides human-readably, canonically
+// ordered: contract-tier configuration is surfaced, never silent.
+func (p *Policy) Active() []string {
+	if p == nil {
+		return nil
+	}
+	var out []string
+	for cell, min := range p.overrides {
+		out = append(out, fmt.Sprintf("policy override: (%s, %s) -> %s",
+			kindName(cell.kind), keywordName(cell.kw),
+			strings.ToLower(strings.TrimPrefix(min.String(), "MINIMUM_EVIDENCE_"))))
+	}
+	sort.Strings(out)
+	return out
+}
+
+func kindName(k stipulatorv1.ClauseKind) string {
+	return strings.ToLower(strings.TrimPrefix(k.String(), "CLAUSE_KIND_"))
+}
+
+func keywordName(k stipulatorv1.Keyword) string {
+	return strings.ToLower(strings.ReplaceAll(strings.TrimPrefix(k.String(), "KEYWORD_"), "_", " "))
+}
+
+// minimum reports the overridden minimum for a cell, if any.
+func (p *Policy) minimum(kind stipulatorv1.ClauseKind, kw stipulatorv1.Keyword) (stipulatorv1.MinimumEvidence, bool) {
+	if p == nil {
+		return stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_UNSPECIFIED, false
+	}
+	m, ok := p.overrides[policyCell{kind, kw}]
+	return m, ok
+}
 
 // evidence is what the verifier's facts grant one requirement; the
 // policy's proof legs are contract (REQ-coverage-policy-default), not
@@ -111,8 +179,9 @@ func (e *evidence) witness() bool { return e.example || e.property }
 
 // Evaluate computes buckets, gap states, and the gate verdict. witnessed
 // states whether the verify run executed tests: without witnesses, no
-// witness-tier evidence exists.
-func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, witnessed bool) *Report {
+// witness-tier evidence exists. pol carries the manifest's policy
+// overrides; nil means the default table.
+func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, witnessed bool, pol *Policy) *Report {
 	ev := map[string]*evidence{}
 	get := func(id string) *evidence {
 		e, ok := ev[id]
@@ -177,24 +246,28 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		}
 	}
 
-	rep := &Report{}
+	rep := &Report{PolicyOverrides: pol.Active()}
 	buckets := map[string]Bucket{}
 	for _, r := range spec.GetRequirements() {
 		e := get(r.GetId())
 		bound := len(e.reasons) > 0 || e.witness() || e.static || e.stale || e.broken || hasAnyBinding(vr, r.GetId())
+		min, overridden := pol.minimum(r.GetKind(), r.GetKeyword())
+		exemptCell := overridden && min == stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_EXEMPT
 		var b Bucket
 		switch {
-		case r.GetKeyword() == stipulatorv1.Keyword_KEYWORD_MAY && !bound:
+		case exemptCell && !bound:
+			b = Exempt
+		case !overridden && r.GetKeyword() == stipulatorv1.Keyword_KEYWORD_MAY && !bound:
 			b = Exempt
 		case e.broken:
 			b = Broken
 		case e.stale:
 			b = Stale
-		case satisfied(r.GetKind(), r.GetKeyword(), e):
+		case satisfied(pol, r.GetKind(), r.GetKeyword(), e):
 			b = Covered
 		default:
 			b = Uncovered
-			e.reasons = append(e.reasons, requiredEvidence(r.GetKind(), r.GetKeyword()))
+			e.reasons = append(e.reasons, requiredEvidence(pol, r.GetKind(), r.GetKeyword()))
 		}
 		buckets[r.GetId()] = b
 		sort.Strings(e.reasons)
@@ -237,9 +310,26 @@ func hasAnyBinding(vr *verify.Report, id string) bool {
 	return false
 }
 
-// satisfied applies the default policy: the minimum evidence per (clause
-// kind, keyword).
-func satisfied(kind stipulatorv1.ClauseKind, kw stipulatorv1.Keyword, e *evidence) bool {
+// satisfied applies the effective policy: a manifest override's
+// satisfaction set when the cell is named, the default table otherwise.
+func satisfied(pol *Policy, kind stipulatorv1.ClauseKind, kw stipulatorv1.Keyword, e *evidence) bool {
+	if min, ok := pol.minimum(kind, kw); ok {
+		switch min {
+		case stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_ANALYZER_PROOF:
+			return e.proof
+		case stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_PROPERTY:
+			return e.property || e.proof
+		case stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_WITNESS:
+			return e.witness()
+		case stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_PROOF_OR_WITNESS:
+			return e.proof || e.witness()
+		case stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_STATIC:
+			return e.static || e.witness() || e.proof
+		case stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_EXEMPT:
+			return true
+		}
+		return false
+	}
 	switch kw {
 	case stipulatorv1.Keyword_KEYWORD_MUST, stipulatorv1.Keyword_KEYWORD_MUST_NOT:
 		switch kind {
@@ -262,8 +352,24 @@ func satisfied(kind stipulatorv1.ClauseKind, kw stipulatorv1.Keyword, e *evidenc
 	return false
 }
 
-func requiredEvidence(kind stipulatorv1.ClauseKind, kw stipulatorv1.Keyword) string {
+func requiredEvidence(pol *Policy, kind stipulatorv1.ClauseKind, kw stipulatorv1.Keyword) string {
 	k := strings.ToLower(strings.TrimPrefix(kind.String(), "CLAUSE_KIND_"))
+	if min, ok := pol.minimum(kind, kw); ok {
+		need := "evidence"
+		switch min {
+		case stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_ANALYZER_PROOF:
+			need = "an analyzer proof"
+		case stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_PROPERTY:
+			need = "a property witness or analyzer proof"
+		case stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_WITNESS:
+			need = "an executed witness"
+		case stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_PROOF_OR_WITNESS:
+			need = "an analyzer proof or witness"
+		case stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_STATIC:
+			need = "a static binding"
+		}
+		return "needs " + need + " (" + k + ", manifest override)"
+	}
 	switch kw {
 	case stipulatorv1.Keyword_KEYWORD_MUST, stipulatorv1.Keyword_KEYWORD_MUST_NOT:
 		switch kind {

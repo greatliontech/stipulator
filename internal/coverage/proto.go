@@ -18,6 +18,7 @@ func (r *Report) Proto() *stipulatorv1.CoverageReport {
 		reqs = append(reqs, m)
 	}
 	out.SetRequirements(reqs)
+	out.SetPolicyOverrides(r.PolicyOverrides)
 
 	var gaps []*stipulatorv1.GapReport
 	for _, g := range r.Gaps {

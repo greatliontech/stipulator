@@ -20,12 +20,79 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// MinimumEvidence names a satisfaction set for one policy cell. The sets
+// are fixed, not a ladder: an analyzer proof does not demonstrate runtime
+// behavior, so WITNESS deliberately excludes it.
+type MinimumEvidence int32
+
+const (
+	MinimumEvidence_MINIMUM_EVIDENCE_UNSPECIFIED MinimumEvidence = 0
+	// Analyzer proof only.
+	MinimumEvidence_MINIMUM_EVIDENCE_ANALYZER_PROOF MinimumEvidence = 1
+	// Property witness or analyzer proof.
+	MinimumEvidence_MINIMUM_EVIDENCE_PROPERTY MinimumEvidence = 2
+	// An executed witness of either class; a proof is not execution.
+	MinimumEvidence_MINIMUM_EVIDENCE_WITNESS MinimumEvidence = 3
+	// An analyzer proof or an executed witness.
+	MinimumEvidence_MINIMUM_EVIDENCE_PROOF_OR_WITNESS MinimumEvidence = 4
+	// A static binding or anything stronger.
+	MinimumEvidence_MINIMUM_EVIDENCE_STATIC MinimumEvidence = 5
+	// No evidence demanded: unbound requirements read exempt; bound ones
+	// keep claim hygiene (broken and stale still read red).
+	MinimumEvidence_MINIMUM_EVIDENCE_EXEMPT MinimumEvidence = 6
+)
+
+// Enum value maps for MinimumEvidence.
+var (
+	MinimumEvidence_name = map[int32]string{
+		0: "MINIMUM_EVIDENCE_UNSPECIFIED",
+		1: "MINIMUM_EVIDENCE_ANALYZER_PROOF",
+		2: "MINIMUM_EVIDENCE_PROPERTY",
+		3: "MINIMUM_EVIDENCE_WITNESS",
+		4: "MINIMUM_EVIDENCE_PROOF_OR_WITNESS",
+		5: "MINIMUM_EVIDENCE_STATIC",
+		6: "MINIMUM_EVIDENCE_EXEMPT",
+	}
+	MinimumEvidence_value = map[string]int32{
+		"MINIMUM_EVIDENCE_UNSPECIFIED":      0,
+		"MINIMUM_EVIDENCE_ANALYZER_PROOF":   1,
+		"MINIMUM_EVIDENCE_PROPERTY":         2,
+		"MINIMUM_EVIDENCE_WITNESS":          3,
+		"MINIMUM_EVIDENCE_PROOF_OR_WITNESS": 4,
+		"MINIMUM_EVIDENCE_STATIC":           5,
+		"MINIMUM_EVIDENCE_EXEMPT":           6,
+	}
+)
+
+func (x MinimumEvidence) Enum() *MinimumEvidence {
+	p := new(MinimumEvidence)
+	*p = x
+	return p
+}
+
+func (x MinimumEvidence) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (MinimumEvidence) Descriptor() protoreflect.EnumDescriptor {
+	return file_stipulator_v1_manifest_proto_enumTypes[0].Descriptor()
+}
+
+func (MinimumEvidence) Type() protoreflect.EnumType {
+	return &file_stipulator_v1_manifest_proto_enumTypes[0]
+}
+
+func (x MinimumEvidence) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
 // Manifest is the root configuration of a stipulator repository. It is
 // stored as textproto in the file `stipulator.textproto` at the repository
 // root; a repository without one is not a stipulator repository.
 type Manifest struct {
 	state              protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Include []string               `protobuf:"bytes,1,rep,name=include"`
+	xxx_hidden_Policy  *[]*PolicyOverride     `protobuf:"bytes,2,rep,name=policy"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -62,8 +129,21 @@ func (x *Manifest) GetInclude() []string {
 	return nil
 }
 
+func (x *Manifest) GetPolicy() []*PolicyOverride {
+	if x != nil {
+		if x.xxx_hidden_Policy != nil {
+			return *x.xxx_hidden_Policy
+		}
+	}
+	return nil
+}
+
 func (x *Manifest) SetInclude(v []string) {
 	x.xxx_hidden_Include = v
+}
+
+func (x *Manifest) SetPolicy(v []*PolicyOverride) {
+	x.xxx_hidden_Policy = &v
 }
 
 type Manifest_builder struct {
@@ -76,6 +156,12 @@ type Manifest_builder struct {
 	// to "docs/specs/**/*.md". Generated folder indexes (README.md) are
 	// always excluded from enumeration.
 	Include []string
+	// Policy overrides replace the default minimum evidence for exact
+	// (clause kind, keyword) cells; unnamed cells keep the defaults
+	// (REQ-coverage-policy). Naming a cell twice is refused. Overriding a
+	// MAY cell replaces the default unbound-MAY-exempt rule too: unbound
+	// MAY requirements on that cell then read uncovered, not exempt.
+	Policy []*PolicyOverride
 }
 
 func (b0 Manifest_builder) Build() *Manifest {
@@ -83,6 +169,150 @@ func (b0 Manifest_builder) Build() *Manifest {
 	b, x := &b0, m0
 	_, _ = b, x
 	x.xxx_hidden_Include = b.Include
+	x.xxx_hidden_Policy = &b.Policy
+	return m0
+}
+
+// PolicyOverride replaces the default minimum evidence for one exact
+// (clause kind, keyword) cell — MUST and MUST NOT are distinct cells.
+type PolicyOverride struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Kind        ClauseKind             `protobuf:"varint,1,opt,name=kind,enum=stipulator.v1.ClauseKind"`
+	xxx_hidden_Keyword     Keyword                `protobuf:"varint,2,opt,name=keyword,enum=stipulator.v1.Keyword"`
+	xxx_hidden_Minimum     MinimumEvidence        `protobuf:"varint,3,opt,name=minimum,enum=stipulator.v1.MinimumEvidence"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *PolicyOverride) Reset() {
+	*x = PolicyOverride{}
+	mi := &file_stipulator_v1_manifest_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PolicyOverride) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PolicyOverride) ProtoMessage() {}
+
+func (x *PolicyOverride) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_manifest_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *PolicyOverride) GetKind() ClauseKind {
+	if x != nil {
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 0) {
+			return x.xxx_hidden_Kind
+		}
+	}
+	return ClauseKind_CLAUSE_KIND_UNSPECIFIED
+}
+
+func (x *PolicyOverride) GetKeyword() Keyword {
+	if x != nil {
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 1) {
+			return x.xxx_hidden_Keyword
+		}
+	}
+	return Keyword_KEYWORD_UNSPECIFIED
+}
+
+func (x *PolicyOverride) GetMinimum() MinimumEvidence {
+	if x != nil {
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 2) {
+			return x.xxx_hidden_Minimum
+		}
+	}
+	return MinimumEvidence_MINIMUM_EVIDENCE_UNSPECIFIED
+}
+
+func (x *PolicyOverride) SetKind(v ClauseKind) {
+	x.xxx_hidden_Kind = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *PolicyOverride) SetKeyword(v Keyword) {
+	x.xxx_hidden_Keyword = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *PolicyOverride) SetMinimum(v MinimumEvidence) {
+	x.xxx_hidden_Minimum = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+}
+
+func (x *PolicyOverride) HasKind() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *PolicyOverride) HasKeyword() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *PolicyOverride) HasMinimum() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *PolicyOverride) ClearKind() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Kind = ClauseKind_CLAUSE_KIND_UNSPECIFIED
+}
+
+func (x *PolicyOverride) ClearKeyword() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Keyword = Keyword_KEYWORD_UNSPECIFIED
+}
+
+func (x *PolicyOverride) ClearMinimum() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Minimum = MinimumEvidence_MINIMUM_EVIDENCE_UNSPECIFIED
+}
+
+type PolicyOverride_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Kind    *ClauseKind
+	Keyword *Keyword
+	Minimum *MinimumEvidence
+}
+
+func (b0 PolicyOverride_builder) Build() *PolicyOverride {
+	m0 := &PolicyOverride{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Kind != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_Kind = *b.Kind
+	}
+	if b.Keyword != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		x.xxx_hidden_Keyword = *b.Keyword
+	}
+	if b.Minimum != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_Minimum = *b.Minimum
+	}
 	return m0
 }
 
@@ -90,20 +320,42 @@ var File_stipulator_v1_manifest_proto protoreflect.FileDescriptor
 
 const file_stipulator_v1_manifest_proto_rawDesc = "" +
 	"\n" +
-	"\x1cstipulator/v1/manifest.proto\x12\rstipulator.v1\"$\n" +
+	"\x1cstipulator/v1/manifest.proto\x12\rstipulator.v1\x1a\x16stipulator/v1/ir.proto\"[\n" +
 	"\bManifest\x12\x18\n" +
-	"\ainclude\x18\x01 \x03(\tR\aincludeBDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
+	"\ainclude\x18\x01 \x03(\tR\ainclude\x125\n" +
+	"\x06policy\x18\x02 \x03(\v2\x1d.stipulator.v1.PolicyOverrideR\x06policy\"\xab\x01\n" +
+	"\x0ePolicyOverride\x12-\n" +
+	"\x04kind\x18\x01 \x01(\x0e2\x19.stipulator.v1.ClauseKindR\x04kind\x120\n" +
+	"\akeyword\x18\x02 \x01(\x0e2\x16.stipulator.v1.KeywordR\akeyword\x128\n" +
+	"\aminimum\x18\x03 \x01(\x0e2\x1e.stipulator.v1.MinimumEvidenceR\aminimum*\xf6\x01\n" +
+	"\x0fMinimumEvidence\x12 \n" +
+	"\x1cMINIMUM_EVIDENCE_UNSPECIFIED\x10\x00\x12#\n" +
+	"\x1fMINIMUM_EVIDENCE_ANALYZER_PROOF\x10\x01\x12\x1d\n" +
+	"\x19MINIMUM_EVIDENCE_PROPERTY\x10\x02\x12\x1c\n" +
+	"\x18MINIMUM_EVIDENCE_WITNESS\x10\x03\x12%\n" +
+	"!MINIMUM_EVIDENCE_PROOF_OR_WITNESS\x10\x04\x12\x1b\n" +
+	"\x17MINIMUM_EVIDENCE_STATIC\x10\x05\x12\x1b\n" +
+	"\x17MINIMUM_EVIDENCE_EXEMPT\x10\x06BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
-var file_stipulator_v1_manifest_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_stipulator_v1_manifest_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_stipulator_v1_manifest_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_stipulator_v1_manifest_proto_goTypes = []any{
-	(*Manifest)(nil), // 0: stipulator.v1.Manifest
+	(MinimumEvidence)(0),   // 0: stipulator.v1.MinimumEvidence
+	(*Manifest)(nil),       // 1: stipulator.v1.Manifest
+	(*PolicyOverride)(nil), // 2: stipulator.v1.PolicyOverride
+	(ClauseKind)(0),        // 3: stipulator.v1.ClauseKind
+	(Keyword)(0),           // 4: stipulator.v1.Keyword
 }
 var file_stipulator_v1_manifest_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	2, // 0: stipulator.v1.Manifest.policy:type_name -> stipulator.v1.PolicyOverride
+	3, // 1: stipulator.v1.PolicyOverride.kind:type_name -> stipulator.v1.ClauseKind
+	4, // 2: stipulator.v1.PolicyOverride.keyword:type_name -> stipulator.v1.Keyword
+	0, // 3: stipulator.v1.PolicyOverride.minimum:type_name -> stipulator.v1.MinimumEvidence
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_manifest_proto_init() }
@@ -111,18 +363,20 @@ func file_stipulator_v1_manifest_proto_init() {
 	if File_stipulator_v1_manifest_proto != nil {
 		return
 	}
+	file_stipulator_v1_ir_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_manifest_proto_rawDesc), len(file_stipulator_v1_manifest_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   1,
+			NumEnums:      1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_stipulator_v1_manifest_proto_goTypes,
 		DependencyIndexes: file_stipulator_v1_manifest_proto_depIdxs,
+		EnumInfos:         file_stipulator_v1_manifest_proto_enumTypes,
 		MessageInfos:      file_stipulator_v1_manifest_proto_msgTypes,
 	}.Build()
 	File_stipulator_v1_manifest_proto = out.File

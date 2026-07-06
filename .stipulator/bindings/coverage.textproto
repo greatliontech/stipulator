@@ -7,7 +7,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.Evaluate"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "bedf30757290b275c34ac838eb8935a20324fb9a28a358c713d3dd0e666f47b0"
+  shape_hash: "5b89e4222531e32dd18239fc414d7ad1052a618cb807a41270ef7555b92db1e5"
 }
 
 bindings {
@@ -16,7 +16,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.satisfied"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "900b758009046f0fa0a0d5f1e171f2cb6cad6fdd6d7f39bf118ab16494da957a"
+  shape_hash: "169599c5c461e20584f2b8fcb18f49588e85c66b81631d9ef2ee1d5d8968dcee"
 }
 
 bindings {
@@ -34,7 +34,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.Evaluate"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "bedf30757290b275c34ac838eb8935a20324fb9a28a358c713d3dd0e666f47b0"
+  shape_hash: "5b89e4222531e32dd18239fc414d7ad1052a618cb807a41270ef7555b92db1e5"
 }
 
 bindings {
@@ -70,7 +70,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.Evaluate"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "bedf30757290b275c34ac838eb8935a20324fb9a28a358c713d3dd0e666f47b0"
+  shape_hash: "5b89e4222531e32dd18239fc414d7ad1052a618cb807a41270ef7555b92db1e5"
 }
 
 bindings {
@@ -88,7 +88,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.Evaluate"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "bedf30757290b275c34ac838eb8935a20324fb9a28a358c713d3dd0e666f47b0"
+  shape_hash: "5b89e4222531e32dd18239fc414d7ad1052a618cb807a41270ef7555b92db1e5"
 }
 
 bindings {
@@ -124,7 +124,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.satisfied"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "900b758009046f0fa0a0d5f1e171f2cb6cad6fdd6d7f39bf118ab16494da957a"
+  shape_hash: "169599c5c461e20584f2b8fcb18f49588e85c66b81631d9ef2ee1d5d8968dcee"
 }
 
 bindings {
@@ -151,7 +151,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.Evaluate"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "bedf30757290b275c34ac838eb8935a20324fb9a28a358c713d3dd0e666f47b0"
+  shape_hash: "5b89e4222531e32dd18239fc414d7ad1052a618cb807a41270ef7555b92db1e5"
 }
 
 bindings {
@@ -215,4 +215,22 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/verify.TestPinRefusesCommentedFile"
   role: BINDING_ROLE_TESTS
   shape_hash: "68d69e554dfc06bdcf72b066da7e1632bbd010a8c6d31df0ca30468ceebdf3fb"
+}
+
+bindings {
+  requirement_id: "REQ-coverage-policy"
+  content_hash: "fa9d8f1ed7873fe993bd53bd5f4ffb8861302e1a5400f65021432eccc7a49a72"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.TestPolicyOverrides"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "30c544fa79049246dcbc9c4093f5bb8f7da159509bcd6ae406e04a17e45c7fa5"
+}
+
+bindings {
+  requirement_id: "REQ-coverage-policy"
+  content_hash: "fa9d8f1ed7873fe993bd53bd5f4ffb8861302e1a5400f65021432eccc7a49a72"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.PolicyFromManifest"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "ddfb32a3630e2769434d4538488b454d8a766bc5985646d00a4aa313676eae49"
 }

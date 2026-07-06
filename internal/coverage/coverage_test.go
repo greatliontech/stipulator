@@ -91,7 +91,7 @@ func TestPolicyDefaults(t *testing.T) {
 		static("REQ-c-should"),
 		static("REQ-c-may"),
 	}}
-	rep := Evaluate(spec, vr, store, true)
+	rep := Evaluate(spec, vr, store, true, nil)
 	want := map[string]Bucket{
 		"REQ-c-beh":     Covered,
 		"REQ-c-inv":     Uncovered, // for-all claim wants a for-all witness
@@ -109,19 +109,128 @@ func TestPolicyDefaults(t *testing.T) {
 
 	// A static binding alone never satisfies a MUST behavior.
 	vr2 := &verify.Report{Results: []verify.BindingResult{static("REQ-c-beh")}}
-	if got := bucketOf(t, Evaluate(spec, vr2, store, true), "REQ-c-beh").Bucket; got != Uncovered {
+	if got := bucketOf(t, Evaluate(spec, vr2, store, true, nil), "REQ-c-beh").Bucket; got != Uncovered {
 		t.Errorf("static-only MUST behavior = %v, want uncovered", got)
 	}
 
 	// A property witness satisfies an invariant — and a behavior too
 	// (stronger satisfies weaker).
 	vr3 := &verify.Report{Results: []verify.BindingResult{property("REQ-c-inv"), property("REQ-c-beh")}}
-	rep3 := Evaluate(spec, vr3, store, true)
+	rep3 := Evaluate(spec, vr3, store, true, nil)
 	if got := bucketOf(t, rep3, "REQ-c-inv").Bucket; got != Covered {
 		t.Errorf("property witness on invariant = %v, want covered", got)
 	}
 	if got := bucketOf(t, rep3, "REQ-c-beh").Bucket; got != Covered {
 		t.Errorf("property witness on behavior = %v, want covered", got)
+	}
+}
+
+// TestPolicyOverrides pins the manifest override surface: a named cell's
+// satisfaction set replaces the default exactly there, unnamed cells keep
+// the defaults, exempt cells mirror the MAY rule while red claims still
+// read red, and the uncovered reason names the override.
+func TestPolicyOverrides(t *testing.T) {
+	stipulate.Covers(t, "REQ-coverage-policy")
+	doc := "# T\n\n" +
+		"**REQ-c-str** (structural): It MUST NOT depend.\n\n" +
+		"**REQ-c-beh** (behavior): It MUST x.\n\n" +
+		"**REQ-c-inv** (invariant): It MUST hold.\n\n" +
+		"**REQ-c-ex** (behavior): It MUST NOT y.\n"
+	spec, store := fixture(t, doc, nil)
+
+	manifest := &stipulatorv1.Manifest{}
+	override := func(kind stipulatorv1.ClauseKind, kw stipulatorv1.Keyword, min stipulatorv1.MinimumEvidence) *stipulatorv1.PolicyOverride {
+		o := &stipulatorv1.PolicyOverride{}
+		o.SetKind(kind)
+		o.SetKeyword(kw)
+		o.SetMinimum(min)
+		return o
+	}
+	manifest.SetPolicy([]*stipulatorv1.PolicyOverride{
+		override(stipulatorv1.ClauseKind_CLAUSE_KIND_STRUCTURAL, stipulatorv1.Keyword_KEYWORD_MUST_NOT,
+			stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_PROOF_OR_WITNESS),
+		override(stipulatorv1.ClauseKind_CLAUSE_KIND_BEHAVIOR, stipulatorv1.Keyword_KEYWORD_MUST,
+			stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_STATIC),
+		override(stipulatorv1.ClauseKind_CLAUSE_KIND_BEHAVIOR, stipulatorv1.Keyword_KEYWORD_MUST_NOT,
+			stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_EXEMPT),
+	})
+	pol, err := PolicyFromManifest(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	witness := result("REQ-c-str", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed)
+	static := result("REQ-c-beh", impl, true, verify.Resolved, verify.ShapeMatch, verify.TestNotRun)
+	vr := &verify.Report{Results: []verify.BindingResult{witness, static}}
+	rep := Evaluate(spec, vr, store, true, pol)
+
+	// The overridden structural cell accepts a witness; the overridden
+	// behavior cell accepts a static binding.
+	if got := bucketOf(t, rep, "REQ-c-str").Bucket; got != Covered {
+		t.Errorf("overridden structural with witness = %v, want covered", got)
+	}
+	if got := bucketOf(t, rep, "REQ-c-beh").Bucket; got != Covered {
+		t.Errorf("overridden behavior with static = %v, want covered", got)
+	}
+	// The unnamed invariant cell keeps its default: uncovered, with the
+	// default reason.
+	inv := bucketOf(t, rep, "REQ-c-inv")
+	if inv.Bucket != Uncovered {
+		t.Errorf("unnamed cell = %v, want uncovered", inv.Bucket)
+	}
+	// An exempt cell reads exempt when unbound.
+	if got := bucketOf(t, rep, "REQ-c-ex").Bucket; got != Exempt {
+		t.Errorf("exempt cell unbound = %v, want exempt", got)
+	}
+
+	// Without the overrides the same evidence covers neither cell, and
+	// the reason names the override when they are on.
+	repDefault := Evaluate(spec, vr, store, true, nil)
+	if got := bucketOf(t, repDefault, "REQ-c-str").Bucket; got != Uncovered {
+		t.Errorf("default structural with witness = %v, want uncovered", got)
+	}
+	if got := bucketOf(t, repDefault, "REQ-c-ex").Bucket; got != Uncovered {
+		t.Errorf("default MUST NOT unbound = %v, want uncovered", got)
+	}
+	weak := result("REQ-c-str", impl, true, verify.Resolved, verify.ShapeMatch, verify.TestNotRun)
+	repWeak := Evaluate(spec, &verify.Report{Results: []verify.BindingResult{weak}}, store, true, pol)
+	r := bucketOf(t, repWeak, "REQ-c-str")
+	if r.Bucket != Uncovered || !strings.Contains(strings.Join(r.Reasons, " "), "manifest override") {
+		t.Errorf("override reason missing: %v %v", r.Bucket, r.Reasons)
+	}
+
+	// Claim hygiene survives an exempt cell: a broken binding on it
+	// still reads broken.
+	brokenEx := result("REQ-c-ex", impl, true, verify.NotFound, verify.ShapeUnknown, verify.TestNotRun)
+	repBroken := Evaluate(spec, &verify.Report{Results: []verify.BindingResult{brokenEx}}, store, true, pol)
+	if got := bucketOf(t, repBroken, "REQ-c-ex").Bucket; got != Broken {
+		t.Errorf("broken claim on exempt cell = %v, want broken", got)
+	}
+
+	// Contract-tier configuration is surfaced: every active override
+	// appears in the report, canonically ordered, and on the wire.
+	if len(rep.PolicyOverrides) != 3 {
+		t.Fatalf("overrides surfaced = %v", rep.PolicyOverrides)
+	}
+	joined := strings.Join(rep.PolicyOverrides, "\n")
+	for _, want := range []string{"(structural, must not) -> proof_or_witness", "(behavior, must) -> static", "(behavior, must not) -> exempt"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("override %q not surfaced:\n%s", want, joined)
+		}
+	}
+	if got := rep.Proto().GetPolicyOverrides(); len(got) != 3 {
+		t.Errorf("wire overrides = %v", got)
+	}
+	if repDefault.PolicyOverrides != nil {
+		t.Errorf("default policy surfaced overrides: %v", repDefault.PolicyOverrides)
+	}
+
+	// A self-contradictory policy is refused, never entry-order resolved.
+	manifest.SetPolicy(append(manifest.GetPolicy(),
+		override(stipulatorv1.ClauseKind_CLAUSE_KIND_BEHAVIOR, stipulatorv1.Keyword_KEYWORD_MUST,
+			stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_WITNESS)))
+	if _, err := PolicyFromManifest(manifest); err == nil || !strings.Contains(err.Error(), "twice") {
+		t.Fatalf("duplicate cell accepted: %v", err)
 	}
 }
 
@@ -149,7 +258,7 @@ func TestBuckets(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			vr := &verify.Report{Results: []verify.BindingResult{witness, c.extra}}
-			if got := bucketOf(t, Evaluate(spec, vr, store, true), "REQ-c-a").Bucket; got != c.want {
+			if got := bucketOf(t, Evaluate(spec, vr, store, true, nil), "REQ-c-a").Bucket; got != c.want {
 				t.Fatalf("bucket = %v, want %v", got, c.want)
 			}
 		})
@@ -160,7 +269,7 @@ func TestBuckets(t *testing.T) {
 		result("REQ-c-a", impl, false, verify.Resolved, verify.ShapeMatch, verify.TestNotRun),
 		result("REQ-c-a", impl, true, verify.NotFound, verify.ShapeUnknown, verify.TestNotRun),
 	}}
-	if got := bucketOf(t, Evaluate(spec, vr, store, true), "REQ-c-a").Bucket; got != Broken {
+	if got := bucketOf(t, Evaluate(spec, vr, store, true, nil), "REQ-c-a").Bucket; got != Broken {
 		t.Fatalf("broken+stale = %v, want broken", got)
 	}
 }
@@ -175,14 +284,14 @@ func TestClaimsGrantNothingUnverified(t *testing.T) {
 
 	// Fully pinned but unverified (no backend ran): no evidence.
 	unverified := result("REQ-c-a", tests, true, verify.Unverified, verify.ShapeUnknown, verify.TestPassed)
-	rep := Evaluate(spec, &verify.Report{Results: []verify.BindingResult{unverified}}, store, true)
+	rep := Evaluate(spec, &verify.Report{Results: []verify.BindingResult{unverified}}, store, true, nil)
 	if got := bucketOf(t, rep, "REQ-c-a").Bucket; got != Uncovered {
 		t.Fatalf("unverified claim granted evidence: %v", got)
 	}
 
 	// Resolved and passing, but the run was not witnessed: no witness tier.
 	resolved := result("REQ-c-a", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed)
-	rep = Evaluate(spec, &verify.Report{Results: []verify.BindingResult{resolved}}, store, false)
+	rep = Evaluate(spec, &verify.Report{Results: []verify.BindingResult{resolved}}, store, false, nil)
 	if got := bucketOf(t, rep, "REQ-c-a").Bucket; got != Uncovered {
 		t.Fatalf("unwitnessed run granted a witness: %v", got)
 	}
@@ -204,7 +313,7 @@ func TestGapStates(t *testing.T) {
 	vr := &verify.Report{Results: []verify.BindingResult{
 		result("REQ-c-d", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed),
 	}}
-	rep := Evaluate(spec, vr, store, true)
+	rep := Evaluate(spec, vr, store, true, nil)
 	want := map[string]GapState{
 		"REQ-c-a": Due, "REQ-c-b": Open, "REQ-c-c": Due, "REQ-c-d": Resolved,
 	}
@@ -231,7 +340,7 @@ func TestGate(t *testing.T) {
 		vr := &verify.Report{Results: []verify.BindingResult{
 			result("REQ-c-a", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed),
 		}}
-		rep := Evaluate(spec, vr, store, true)
+		rep := Evaluate(spec, vr, store, true, nil)
 		if rep.GatePasses() || len(rep.Violations) != 1 || rep.Violations[0] != "REQ-c-b" {
 			t.Fatalf("violations = %v", rep.Violations)
 		}
@@ -244,7 +353,7 @@ func TestGate(t *testing.T) {
 			".stipulator/gaps/a.textproto": gap("REQ-c-a"),
 			".stipulator/gaps/b.textproto": gap("REQ-c-b"),
 		})
-		rep := Evaluate(spec2, &verify.Report{}, store2, true)
+		rep := Evaluate(spec2, &verify.Report{}, store2, true, nil)
 		if !rep.GatePasses() {
 			t.Fatalf("declared reds failed the gate: %v", rep.Violations)
 		}
@@ -257,8 +366,8 @@ func TestReasonsAreDeterministic(t *testing.T) {
 	vr := &verify.Report{Results: []verify.BindingResult{
 		result("REQ-c-a", impl, false, verify.NotFound, verify.ShapeUnknown, verify.TestNotRun),
 	}}
-	a := bucketOf(t, Evaluate(spec, vr, store, true), "REQ-c-a")
-	b := bucketOf(t, Evaluate(spec, vr, store, true), "REQ-c-a")
+	a := bucketOf(t, Evaluate(spec, vr, store, true, nil), "REQ-c-a")
+	b := bucketOf(t, Evaluate(spec, vr, store, true, nil), "REQ-c-a")
 	if strings.Join(a.Reasons, "|") != strings.Join(b.Reasons, "|") {
 		t.Fatal("reasons order unstable")
 	}
@@ -280,7 +389,7 @@ func TestAnalyzerProofSatisfiesStructural(t *testing.T) {
 	proof.WitnessClass = verify.AnalyzerProof
 	invProof := result("REQ-c-inv", proves, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed)
 	invProof.WitnessClass = verify.AnalyzerProof
-	rep := Evaluate(spec, &verify.Report{Results: []verify.BindingResult{proof, invProof}}, store, true)
+	rep := Evaluate(spec, &verify.Report{Results: []verify.BindingResult{proof, invProof}}, store, true, nil)
 	if b := bucketOf(t, rep, "REQ-c-str"); b.Bucket != Covered {
 		t.Fatalf("structural with proof = %s (%v)", b.Bucket, b.Reasons)
 	}
@@ -293,14 +402,14 @@ func TestAnalyzerProofSatisfiesStructural(t *testing.T) {
 	weak.WitnessClass = verify.ExampleWitness
 	weakInv := invProof
 	weakInv.WitnessClass = verify.ExampleWitness
-	rep = Evaluate(spec, &verify.Report{Results: []verify.BindingResult{weak, weakInv}}, store, true)
+	rep = Evaluate(spec, &verify.Report{Results: []verify.BindingResult{weak, weakInv}}, store, true, nil)
 	if b := bucketOf(t, rep, "REQ-c-str"); b.Bucket != Uncovered {
 		t.Fatalf("structural with example witness = %s", b.Bucket)
 	}
 	// A failing prover is broken, not merely uncovered.
 	failing := proof
 	failing.TestOutcome = verify.TestFailed
-	rep = Evaluate(spec, &verify.Report{Results: []verify.BindingResult{failing}}, store, true)
+	rep = Evaluate(spec, &verify.Report{Results: []verify.BindingResult{failing}}, store, true, nil)
 	if b := bucketOf(t, rep, "REQ-c-str"); b.Bucket != Broken {
 		t.Fatalf("failing prover = %s", b.Bucket)
 	}
@@ -310,7 +419,7 @@ func TestAnalyzerProofSatisfiesStructural(t *testing.T) {
 	// stays uncovered.
 	drifted := result("REQ-c-beh", proves, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed)
 	drifted.WitnessClass = verify.ExampleWitness
-	rep = Evaluate(spec, &verify.Report{Results: []verify.BindingResult{drifted}}, store, true)
+	rep = Evaluate(spec, &verify.Report{Results: []verify.BindingResult{drifted}}, store, true, nil)
 	beh := bucketOf(t, rep, "REQ-c-beh")
 	if beh.Bucket != Uncovered {
 		t.Fatalf("behavior with drifted proves claim = %s", beh.Bucket)
