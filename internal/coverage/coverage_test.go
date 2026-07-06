@@ -347,10 +347,13 @@ func TestGapStates(t *testing.T) {
 // ratio — one undeclared red among many covered fails; all-red-all-gapped
 // passes.
 func TestGate(t *testing.T) {
-	stipulate.Covers(t, "REQ-gate-no-undeclared", "REQ-coverage-no-scalar")
+	// Registered per subtest, not at the top: each arm pins both clauses
+	// on its own, and the live corpus should exercise the
+	// subtest-granular registration path it ships to consumers.
 	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n\n**REQ-c-b** (behavior): It MUST y.\n"
 
 	t.Run("one undeclared red fails despite high coverage", func(t *testing.T) {
+		stipulate.Covers(t, "REQ-gate-no-undeclared", "REQ-coverage-no-scalar")
 		spec, store := fixture(t, doc, nil)
 		vr := &verify.Report{Results: []verify.BindingResult{
 			result("REQ-c-a", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed),
@@ -361,6 +364,7 @@ func TestGate(t *testing.T) {
 		}
 	})
 	t.Run("zero coverage passes when every red is declared", func(t *testing.T) {
+		stipulate.Covers(t, "REQ-gate-no-undeclared", "REQ-coverage-no-scalar")
 		gap := func(id string) string {
 			return "requirement_id: \"" + id + "\"\nreason: \"r\"\nlands { manual { condition: \"later\" } }\n"
 		}

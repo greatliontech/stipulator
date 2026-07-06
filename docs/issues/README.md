@@ -43,3 +43,7 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   class measures performance; pew recordings (guard-derived validity) are the binding-pin
   model applied to measurements and slot in without bending the trust model. *Lands: when a
   corpus declares a performance requirement.*
+- **[registration-witnesses-unconsumed](registration-witnesses-unconsumed.md)** — runtime
+  registrations are crosschecked and reported but never consumed as evidence; the spec's
+  "or registered at runtime" witness sentence and the conservative implementation diverge
+  exactly on table-driven tests. *Lands: when coverage evidence derivation is next touched.*
