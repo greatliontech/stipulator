@@ -2,5 +2,5 @@
 # proto-message: stipulator.v1.Gap
 
 requirement_id: "REQ-proto-no-option-linkage"
-reason: "proto backend not yet built"
-lands { covered: "REQ-proto-provers" }
+reason: "proto backend deferred indefinitely: machinery large, cut partial, gain marginal while Go witnesses and shape pins cover wire behavior"
+lands { attested { condition: "proto backend work is scheduled (docs/issues/proto-backend.md)" } }
