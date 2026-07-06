@@ -31,7 +31,28 @@ func Execute() error {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	c.PersistentFlags().StringVarP(&chdir, "chdir", "C", ".", "repository root")
+	c.PersistentFlags().StringVarP(&chdir, "chdir", "C", ".", "start directory for corpus-root discovery")
+	c.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		// init scaffolds a new root exactly where it is invoked — nested
+		// corpora are deliberate — and help-class commands need no corpus.
+		switch cmd.Name() {
+		case "init", "help", "completion", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd:
+			return nil
+		case "mcp":
+			// A globally-registered server must start even outside a
+			// corpus: tools return the teaching error per request.
+			if root, err := corpus.FindRoot(chdir); err == nil {
+				chdir = root
+			}
+			return nil
+		}
+		root, err := corpus.FindRoot(chdir)
+		if err != nil {
+			return err
+		}
+		chdir = root
+		return nil
+	}
 	c.AddCommand(compileCmd(), verifyCmd(), gateCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), pinCmd(), disposeCmd(), hardenCmd(), initCmd(), mcpCmd())
 	return c.Execute()
 }

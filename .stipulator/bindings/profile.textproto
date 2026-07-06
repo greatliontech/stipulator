@@ -9,3 +9,21 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "80e3e2719ea8f69fc880b32456d2adbbd9994fbcab7f4a3695aa10e14c418403"
 }
+
+bindings {
+  requirement_id: "REQ-profile-root"
+  content_hash: "6512ba35768513f76a3026e0a8284ea6c83a2e8cc21dc756313a583e4cc97914"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/corpus.FindRoot"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "573ae6e3147b99f75924a01e6c00a1757b5886301a41d91ecf5ec158eb4cff31"
+}
+
+bindings {
+  requirement_id: "REQ-profile-root"
+  content_hash: "6512ba35768513f76a3026e0a8284ea6c83a2e8cc21dc756313a583e4cc97914"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/corpus.TestFindRoot"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "075a49e19bcb136c7d843e2ac37c7be8aa7646a6903ab6aa347ba68e7b80c510"
+}

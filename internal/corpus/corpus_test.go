@@ -1,6 +1,8 @@
 package corpus
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -67,16 +69,16 @@ func TestEnumerate(t *testing.T) {
 	stipulate.Covers(t, "REQ-profile-enumeration")
 	md := &fstest.MapFile{Data: []byte("x")}
 	fsys := fstest.MapFS{
-		"docs/specs/overview.md":          md,
-		"docs/specs/profile.md":           md,
-		"docs/specs/README.md":            md,
-		"docs/specs/backends/go.md":       md,
-		"docs/specs/backends/README.md":   md,
-		"docs/specs/deep/a/b/c.md":        md,
-		"docs/specs/notes.txt":            md,
-		"docs/plans/stipulator.md":        md,
-		"README.md":                       md,
-		"internal/corpus/corpus.go":       md,
+		"docs/specs/overview.md":        md,
+		"docs/specs/profile.md":         md,
+		"docs/specs/README.md":          md,
+		"docs/specs/backends/go.md":     md,
+		"docs/specs/backends/README.md": md,
+		"docs/specs/deep/a/b/c.md":      md,
+		"docs/specs/notes.txt":          md,
+		"docs/plans/stipulator.md":      md,
+		"README.md":                     md,
+		"internal/corpus/corpus.go":     md,
 	}
 
 	t.Run("doublestar matches zero and many segments, indexes excluded", func(t *testing.T) {
@@ -223,5 +225,49 @@ func TestValidateGlobErrors(t *testing.T) {
 		if err := validateGlob(good); err != nil {
 			t.Errorf("validateGlob(%q) rejected: %v", good, err)
 		}
+	}
+}
+
+// TestFindRoot pins root discovery: the root itself, a nested working
+// directory, nearest-wins across nested corpora, and the teaching error.
+func TestFindRoot(t *testing.T) {
+	stipulate.Covers(t, "REQ-profile-root")
+	outer := t.TempDir()
+	must := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	manifest := func(root string) {
+		t.Helper()
+		must(os.MkdirAll(filepath.Join(root, ".stipulator"), 0o755))
+		must(os.WriteFile(filepath.Join(root, ".stipulator", "manifest.textproto"), []byte("include: \"docs/specs/**/*.md\"\n"), 0o644))
+	}
+	manifest(outer)
+	inner := filepath.Join(outer, "sub", "nested")
+	must(os.MkdirAll(filepath.Join(inner, "deep"), 0o755))
+
+	for _, start := range []string{outer, filepath.Join(outer, "sub"), filepath.Join(inner, "deep")} {
+		got, err := FindRoot(start)
+		if err != nil || got != outer {
+			t.Fatalf("FindRoot(%s) = %s, %v; want %s", start, got, err, outer)
+		}
+	}
+
+	// Nearest wins: a nested corpus shadows the outer one.
+	manifest(inner)
+	got, err := FindRoot(filepath.Join(inner, "deep"))
+	if err != nil || got != inner {
+		t.Fatalf("nearest-wins: FindRoot = %s, %v; want %s", got, err, inner)
+	}
+	// The sibling subtree still resolves to the outer root.
+	got, err = FindRoot(filepath.Join(outer, "sub"))
+	if err != nil || got != outer {
+		t.Fatalf("sibling: FindRoot = %s, %v; want %s", got, err, outer)
+	}
+
+	if _, err := FindRoot(t.TempDir()); err == nil || !strings.Contains(err.Error(), "stipulator init") {
+		t.Fatalf("teaching error missing: %v", err)
 	}
 }

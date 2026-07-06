@@ -14,6 +14,13 @@ non-normative by construction.
 declares at least the corpus include globs, defaulting to
 `docs/specs/**/*.md`.
 
+**REQ-profile-root** (behavior): Commands MUST locate the corpus root by
+searching upward from their working directory to the nearest ancestor
+containing `.stipulator/manifest.textproto` — nearest wins, so corpora
+nest — failing with guidance when no ancestor has one. Discovery belongs
+to the command surface: the core always operates on an
+already-rooted tree.
+
 **REQ-profile-enumeration** (behavior): The corpus MUST be enumerated by
 resolving the manifest's include globs and sorting the resulting paths
 lexicographically; generated folder indexes are excluded from enumeration.
