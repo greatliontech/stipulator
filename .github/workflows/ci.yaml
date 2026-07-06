@@ -14,12 +14,18 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Vet
-        run: go vet ./...
+        run: go vet github.com/greatliontech/stipulator/...
+
+      - name: Tidy check (per module — workspace CI cannot see drift)
+        run: |
+          go mod tidy -diff
+          (cd stipulate && go mod tidy -diff)
+          (cd stipulate/structural && go mod tidy -diff)
       - name: Test
         # Suite health is a broader check than the gate: a failing unbound
         # test breaks no binding, so the gate alone could pass on a red
         # suite.
-        run: go test -race ./...
+        run: go test -race github.com/greatliontech/stipulator/...
       - name: Gate
         run: go run ./cmd/stipulator gate
       - name: Fmt lint

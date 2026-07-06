@@ -53,10 +53,18 @@ tasks:
     cmds:
       - go run ./cmd/stipulator fmt
 
+  tidy-check:
+    desc: Every module ships a tidy go.mod/go.sum (workspace-mode CI cannot see per-module drift)
+    cmds:
+      - go mod tidy -diff
+      - cd stipulate && go mod tidy -diff
+      - cd stipulate/structural && go mod tidy -diff
+
   check:
     desc: Everything CI runs
     deps: [vet]
     cmds:
+      - task: tidy-check
       - task: test
       - task: gate
       - go run ./cmd/stipulator fmt --check --no-test

@@ -5,6 +5,16 @@ go 1.26.4
 require google.golang.org/protobuf v1.36.11
 
 require (
+	github.com/greatliontech/stipulator/stipulate v0.0.0
+	github.com/greatliontech/stipulator/stipulate/structural v0.0.0
+)
+
+replace (
+	github.com/greatliontech/stipulator/stipulate => ./stipulate
+	github.com/greatliontech/stipulator/stipulate/structural => ./stipulate/structural
+)
+
+require (
 	github.com/modelcontextprotocol/go-sdk v1.6.1
 	github.com/spf13/cobra v1.10.2
 	github.com/yuin/goldmark v1.8.2
