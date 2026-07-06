@@ -39,7 +39,23 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   class measures performance; pew recordings (guard-derived validity) are the binding-pin
   model applied to measurements and slot in without bending the trust model. *Lands: when a
   corpus declares a performance requirement.*
-- **[gate-verify-output-granularity](gate-verify-output-granularity.md)** — gate/verify emit one
-  fixed verbosity (full firehose); add a `view` axis (summary default for MCP) and scope filters
-  (ids/bucket/filter/path) so callers stop shelling out to a compact CLI. *Lands: when gate/verify
-  output ergonomics are revisited.*
+- **[gate-verify-output-granularity](gate-verify-output-granularity.md)** — gate/verify/harden
+  emit one fixed verbosity (full firehose); add a `view` axis (summary default for MCP) and scope
+  filters (ids/bucket/filter/path) so callers stop shelling out to a compact CLI. *Lands: when
+  gate/verify output ergonomics are revisited.*
+- **[context-requirement-dossier](context-requirement-dossier.md)** — `context` returns `{}` for a
+  valid id and mis-parses id lists, while gap reasons, bindings, and hardening state have no MCP
+  home at all; make `context` the per-requirement dossier, tools primary, resources as same-renderer
+  mirrors. *Lands: when the MCP read surface is next revisited.*
+- **[binding-content-pin-refresh](binding-content-pin-refresh.md)** — a clause reword leaves stale
+  content pins with no refresh verb: `pin` is a silent no-op and re-`bind` refuses as "identical"
+  while the hash differs; only unbind+bind works. *Lands: when the bind/pin record verbs are next
+  touched.*
+- **[analyzer-witness-classification](analyzer-witness-classification.md)** — verify reports a
+  `structural.NoImport` witness as `WITNESS_CLASS_UNSPECIFIED` while the gate buckets its
+  requirement COVERED as an analyzer proof; one classifier should feed both surfaces. *Lands: when
+  the witness classifier or the verify surface is next touched.*
+- **[analyzer-witness-hardening](analyzer-witness-hardening.md)** — harden mutates function bodies
+  only, so analyzer witnesses get no teeth check; add a structural mutation class (inject a
+  forbidden import / break an asserted method set, require the witness to fail). *Lands: when an
+  analyzer witness needs adequacy evidence.*
