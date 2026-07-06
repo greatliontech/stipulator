@@ -3,9 +3,12 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -13,6 +16,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/compile"
+	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
@@ -28,7 +32,7 @@ func Execute() error {
 		SilenceErrors: true,
 	}
 	c.PersistentFlags().StringVarP(&chdir, "chdir", "C", ".", "repository root")
-	c.AddCommand(compileCmd(), verifyCmd(), gateCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), pinCmd(), disposeCmd(), hardenCmd(), mcpCmd())
+	c.AddCommand(compileCmd(), verifyCmd(), gateCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), pinCmd(), disposeCmd(), hardenCmd(), initCmd(), mcpCmd())
 	return c.Execute()
 }
 
@@ -37,6 +41,9 @@ func Execute() error {
 func mustCompile(dir string) (*stipulatorv1.Spec, error) {
 	spec, diags, err := compile.Compile(os.DirFS(dir))
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) && strings.Contains(err.Error(), corpus.ManifestPath) {
+			return nil, fmt.Errorf("not a stipulator repository (no %s); run `stipulator init` to scaffold one", corpus.ManifestPath)
+		}
 		return nil, err
 	}
 	if len(diags) > 0 {

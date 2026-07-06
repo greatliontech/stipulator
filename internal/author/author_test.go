@@ -6,6 +6,7 @@ import (
 	"testing/fstest"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -17,7 +18,7 @@ const doc = "# T\n\n**REQ-au-a** (behavior): It MUST x.\n\n**REQ-au-b** (behavio
 func testFS(files map[string]string) fstest.MapFS {
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
-		"specs/a.md":           {Data: []byte(doc)},
+		"specs/a.md":                     {Data: []byte(doc)},
 	}
 	for p, c := range files {
 		fsys[p] = &fstest.MapFile{Data: []byte(c)}
@@ -321,5 +322,58 @@ func TestAppendPreservesIndentedHeaderComment(t *testing.T) {
 	}
 	if !strings.Contains(string(up.Content), "indented note") {
 		t.Fatalf("indented header comment silently destroyed:\n%s", up.Content)
+	}
+}
+
+// TestInit pins first-run bootstrap: a fresh tree scaffolds the manifest
+// with the default include; an initialized tree refuses.
+func TestInit(t *testing.T) {
+	up, err := Init(fstest.MapFS{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if up.Path != corpus.ManifestPath {
+		t.Fatalf("path = %s", up.Path)
+	}
+	fsys := fstest.MapFS{up.Path: &fstest.MapFile{Data: up.Content}}
+	if _, err := corpus.LoadManifest(fsys); err != nil {
+		t.Fatalf("scaffolded manifest does not load: %v", err)
+	}
+	if _, err := Init(fsys); err == nil {
+		t.Fatal("re-init accepted")
+	}
+}
+
+// TestGapsBulk pins bulk declaration: one record per requirement, shared
+// reason and landing condition, all-or-nothing validation.
+func TestGapsBulk(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-verb")
+	fsys := testFS(nil)
+	fsys["specs/a.md"] = &fstest.MapFile{Data: []byte(
+		"# T\n\n**REQ-au-a** (behavior): It MUST x.\n\n**REQ-au-b** (behavior): It MUST y.\n")}
+	lc, err := NewLandingCondition("", "", "later")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ups, err := Gaps(fsys, []string{"REQ-au-a", "REQ-au-b"}, "spec ahead of code", lc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ups) != 2 {
+		t.Fatalf("updates = %d", len(ups))
+	}
+	for _, up := range ups {
+		if !strings.Contains(string(up.Content), `reason: "spec ahead of code"`) {
+			t.Fatalf("shared reason missing:\n%s", up.Content)
+		}
+	}
+	if _, err := Gaps(fsys, []string{"REQ-au-a", "REQ-au-ghost"}, "r", lc); err == nil {
+		t.Fatal("typo mid-list declared gaps anyway")
+	}
+	if _, err := Gaps(fsys, []string{"REQ-au-a", "REQ-au-a"}, "r", lc); err == nil {
+		t.Fatal("duplicate requirement accepted")
+	}
+	if _, err := Gaps(fsys, nil, "r", lc); err == nil {
+		t.Fatal("empty list accepted")
 	}
 }

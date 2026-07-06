@@ -28,6 +28,7 @@ func verifyCmd() *cobra.Command {
 			}
 			var testRun *verify.TestRun
 			if !noTest {
+				fmt.Fprintln(os.Stderr, dim("witnessing: go test -json -race ./..."))
 				tr, err := golang.RunTests(chdir)
 				if err != nil {
 					return err
@@ -40,7 +41,7 @@ func verifyCmd() *cobra.Command {
 			}
 			rep := verify.Run(spec, store, backends, testRun)
 			for _, p := range rep.Problems {
-				fmt.Fprintln(os.Stderr, p)
+				fmt.Fprintln(os.Stderr, red(p.String()))
 			}
 			for _, r := range rep.Results {
 				if r.Resolution == verify.NotFound {
@@ -56,10 +57,16 @@ func verifyCmd() *cobra.Command {
 					fmt.Fprintf(os.Stderr, "%s: broken: bound test %s produced no outcome — unwitnessed (binding for %s)\n", r.Path, r.Symbol, r.RequirementId)
 				}
 			}
-			fmt.Printf("bindings: %d pinned, %d stale; shapes: %d pinned, %d unpinned; broken: %d symbols, %d shapes, %d failed tests, %d unwitnessed; unverified: %d; tests passed: %d; registrations: %d; gaps: %d\n",
-				rep.Pinned, rep.Stale, rep.ShapePinned, rep.ShapeUnpinned,
-				rep.Broken, rep.ShapeMismatch, rep.TestsFailed, rep.TestsNotRun,
-				rep.Unverified, rep.TestsPassed, len(rep.Registrations), len(store.Gaps))
+			fmt.Printf("claims:    %d bindings (%s stale), %d gaps, %d registrations\n",
+				rep.Pinned+rep.Stale, num(rep.Stale, yellow), len(store.Gaps), len(rep.Registrations))
+			fmt.Printf("shapes:    %d pinned, %s unpinned, %s moved\n",
+				rep.ShapePinned, num(rep.ShapeUnpinned, yellow), num(rep.ShapeMismatch, red))
+			fmt.Printf("witnesses: %d passed, %s failed, %s unwitnessed\n",
+				rep.TestsPassed, num(rep.TestsFailed, red), num(rep.TestsNotRun, red))
+			if rep.Broken > 0 || rep.Unverified > 0 {
+				fmt.Printf("symbols:   %s unresolved, %d unverified (no backend in this run)\n",
+					num(rep.Broken, red), rep.Unverified)
+			}
 			// verify fails only on verification errors; red evidence is
 			// bucket data for the gate, which decides gap-excusability.
 			if len(rep.Problems) > 0 {

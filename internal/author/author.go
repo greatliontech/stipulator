@@ -5,14 +5,17 @@
 package author
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/compile"
+	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
@@ -288,4 +291,49 @@ func moreSuffix(n int) string {
 
 func sortUpdates(u []Update) {
 	sort.Slice(u, func(i, j int) bool { return u[i].Path < u[j].Path })
+}
+
+// Init scaffolds the manifest for a fresh corpus with the default include,
+// refusing when one already exists.
+func Init(fsys fs.FS) (*Update, error) {
+	if _, err := fs.Stat(fsys, corpus.ManifestPath); err == nil {
+		return nil, fmt.Errorf("%s already exists; this is already a stipulator repository", corpus.ManifestPath)
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return nil, err
+	}
+	content := "# proto-file: proto/stipulator/v1/manifest.proto\n" +
+		"# proto-message: stipulator.v1.Manifest\n\n" +
+		"include: " + strconv.Quote(corpus.DefaultInclude) + "\n"
+	return &Update{Path: corpus.ManifestPath, Content: []byte(content)}, nil
+}
+
+// Gaps declares one gap per requirement, all sharing a reason and landing
+// condition — the spec-ahead-of-code bulk case. Each record is an ordinary
+// per-requirement gap and lands independently; validation is all-or-nothing
+// so a typo mid-list declares nothing.
+func Gaps(fsys fs.FS, reqs []string, reason string, lands *stipulatorv1.LandingCondition) ([]Update, error) {
+	if len(reqs) == 0 {
+		return nil, fmt.Errorf("at least one requirement is required")
+	}
+	var out []Update
+	seenPath := map[string]bool{}
+	for _, id := range reqs {
+		g := &stipulatorv1.Gap{}
+		g.SetRequirementId(id)
+		g.SetReason(reason)
+		if lands != nil {
+			g.SetLands(lands)
+		}
+		up, err := Gap(fsys, g)
+		if err != nil {
+			return nil, err
+		}
+		if seenPath[up.Path] {
+			return nil, fmt.Errorf("requirement %s repeats in the list", id)
+		}
+		seenPath[up.Path] = true
+		out = append(out, *up)
+	}
+	sortUpdates(out)
+	return out, nil
 }

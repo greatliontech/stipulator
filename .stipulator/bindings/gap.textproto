@@ -18,3 +18,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "fb74e7e6f2d455ca4443d10dae01ab0889d59ff0d26678dea93f34df1cbd5d8d"
 }
+
+bindings {
+  requirement_id: "REQ-gap-verb"
+  content_hash: "2a72f489d16697187dd2f087c7fae0a78a5a617042a377c6976391392e8a4a26"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestGapsBulk"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "bb53ffee2ca4a05772d6b6dfe8929800cf02ef3c0dc3cb01e6eb188a61206a7c"
+}

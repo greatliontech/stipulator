@@ -5,34 +5,28 @@ import (
 
 	"github.com/spf13/cobra"
 
-	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
 )
 
 func gapCmd() *cobra.Command {
-	var req, reason, coveredID, existsID, attested string
+	var reqs []string
+	var reason, coveredID, existsID, attested string
 	c := &cobra.Command{
 		Use:   "gap",
 		Short: "Declare a coverage gap with a landing condition",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			g := &stipulatorv1.Gap{}
-			g.SetRequirementId(req)
-			g.SetReason(reason)
 			lc, err := author.NewLandingCondition(coveredID, existsID, attested)
 			if err != nil {
 				return err
 			}
-			if lc != nil {
-				g.SetLands(lc)
-			}
-			up, err := author.Gap(os.DirFS(chdir), g)
+			ups, err := author.Gaps(os.DirFS(chdir), reqs, reason, lc)
 			if err != nil {
 				return err
 			}
-			return applyUpdates(chdir, []author.Update{*up})
+			return applyUpdates(chdir, ups)
 		},
 	}
-	c.Flags().StringVar(&req, "req", "", "requirement identifier")
+	c.Flags().StringArrayVar(&reqs, "req", nil, "requirement identifier (repeatable; all share the reason and landing condition)")
 	c.Flags().StringVar(&reason, "reason", "", "why the gap exists")
 	c.Flags().StringVar(&coveredID, "covered", "", "lands when this requirement is covered")
 	c.Flags().StringVar(&existsID, "exists", "", "lands when this requirement exists")
