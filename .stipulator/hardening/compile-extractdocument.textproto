@@ -5,9 +5,9 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.extractDocument"
   body_hash: "01da42d6f268778c62d196053393e5e40bfee7fc4f466b9c2519eb9442ab582f"
-  mutants: 12
-  killed: 2
-  discarded: 2
+  mutants: 21
+  killed: 1
+  discarded: 3
   survivors {
     position: "extract.go:70:3"
     operator: "delete statement"
@@ -29,6 +29,22 @@ records {
     operator: "== -> !="
   }
   survivors {
+    position: "extract.go:81:21"
+    operator: "increment literal"
+  }
+  survivors {
+    position: "extract.go:82:5"
+    operator: "drop assignment"
+  }
+  survivors {
+    position: "extract.go:89:5"
+    operator: "drop assignment"
+  }
+  survivors {
+    position: "extract.go:90:5"
+    operator: "drop assignment"
+  }
+  survivors {
     position: "extract.go:92:5"
     operator: "delete statement"
   }
@@ -37,16 +53,43 @@ records {
     operator: "delete statement"
   }
   survivors {
+    position: "extract.go:96:5"
+    operator: "drop assignment"
+  }
+  survivors {
     position: "extract.go:85:32"
     operator: "&& -> ||"
+  }
+  survivors {
+    position: "extract.go:85:9"
+    operator: "force true"
+  }
+  survivors {
+    position: "extract.go:85:35"
+    operator: "force true"
   }
   survivors {
     position: "extract.go:85:28"
     operator: "> -> <="
   }
   survivors {
+    position: "extract.go:85:30"
+    operator: "increment literal"
+  }
+  survivors {
     position: "extract.go:85:71"
     operator: ">= -> <"
   }
+  survivors {
+    position: "extract.go:85:67"
+    operator: "- -> +"
+  }
+  survivors {
+    position: "extract.go:85:68"
+    operator: "increment literal"
+  }
   witnesses: "github.com/greatliontech/stipulator/internal/compile.TestReferences"
+  operators: "go/2"
+  body_line: 61
+  budget: 24
 }

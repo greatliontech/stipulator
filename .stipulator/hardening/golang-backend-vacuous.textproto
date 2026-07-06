@@ -5,20 +5,27 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend.Vacuous"
   body_hash: "2fb1842958934990b5fba7c853f2e7ae8eef779f45b50ae76926ab003cf54700"
-  mutants: 17
+  mutants: 18
   killed: 14
-  discarded: 1
+  discarded: 6
   survivors {
-    position: "harden.go:52:17"
+    position: "harden.go:53:17"
     operator: "zero return"
   }
   survivors {
-    position: "harden.go:55:10"
+    position: "harden.go:56:10"
     operator: "zero return"
   }
   survivors {
-    position: "harden.go:78:10"
-    operator: "zero return"
+    position: "harden.go:62:13"
+    operator: "force false"
+  }
+  survivors {
+    position: "harden.go:66:4"
+    operator: "drop assignment"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestVacuity"
+  operators: "go/2"
+  body_line: 50
+  budget: 24
 }

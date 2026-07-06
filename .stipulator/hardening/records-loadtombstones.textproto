@@ -16,4 +16,7 @@ records {
     operator: "zero return"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/compile.TestIdentity"
+  operators: "go/2"
+  body_line: 100
+  budget: 24
 }

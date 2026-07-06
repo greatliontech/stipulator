@@ -5,16 +5,35 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend.generated"
   body_hash: "b18047713f8fcdd8e9933683bb3bfc617c0fbcb9c05c48b0a0be5402808372f3"
-  mutants: 10
-  killed: 8
+  mutants: 15
+  killed: 9
   survivors {
     position: "golang.go:263:20"
     operator: "|| -> &&"
   }
   survivors {
+    position: "golang.go:263:5"
+    operator: "force false"
+  }
+  survivors {
+    position: "golang.go:263:23"
+    operator: "force false"
+  }
+  survivors {
     position: "golang.go:271:26"
     operator: "&& -> ||"
   }
+  survivors {
+    position: "golang.go:271:7"
+    operator: "force true"
+  }
+  survivors {
+    position: "golang.go:271:29"
+    operator: "force true"
+  }
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestFixtureModule"
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestResolve"
+  operators: "go/2"
+  body_line: 261
+  budget: 24
 }

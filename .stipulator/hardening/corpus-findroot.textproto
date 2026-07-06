@@ -5,11 +5,15 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.FindRoot"
   body_hash: "2946af72a437614ecb5d83e77e2386a36e390eac934c380816d392757258cfcc"
-  mutants: 10
-  killed: 9
+  mutants: 11
+  killed: 10
+  discarded: 2
   survivors {
     position: "root.go:16:14"
     operator: "zero return"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/corpus.TestFindRoot"
+  operators: "go/2"
+  body_line: 13
+  budget: 24
 }

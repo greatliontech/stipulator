@@ -4,32 +4,51 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.RunMutant"
-  body_hash: "b0008eeb4504139a826c30bef02d167d30fe321c7a4b57b09eb70a3baa8ef4d8"
-  mutants: 12
-  killed: 7
+  body_hash: "4207040d3dbcb63360ca7699c3c631bb06ab1e8f81377c78979f2069d13ce4d1"
+  mutants: 18
+  killed: 9
   discarded: 1
   survivors {
-    position: "harden.go:322:2"
+    position: "harden.go:457:2"
     operator: "delete statement"
   }
   survivors {
-    position: "harden.go:320:27"
+    position: "harden.go:473:2"
+    operator: "drop assignment"
+  }
+  survivors {
+    position: "harden.go:455:27"
     operator: "zero return"
   }
   survivors {
-    position: "harden.go:325:27"
+    position: "harden.go:459:44"
+    operator: "increment literal"
+  }
+  survivors {
+    position: "harden.go:460:27"
     operator: "zero return"
   }
   survivors {
-    position: "harden.go:330:27"
+    position: "harden.go:464:46"
+    operator: "increment literal"
+  }
+  survivors {
+    position: "harden.go:465:27"
     operator: "zero return"
   }
   survivors {
-    position: "harden.go:343:17"
+    position: "harden.go:480:17"
     operator: "== -> !="
+  }
+  survivors {
+    position: "harden.go:484:27"
+    operator: "zero return"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunMutantOutcomes"
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestSplitRapidPkgs"
   witnesses: "github.com/greatliontech/stipulator/internal/harden.TestPlanScope"
   witnesses: "github.com/greatliontech/stipulator/internal/harden.TestRunAndRecords"
+  operators: "go/2"
+  body_line: 452
+  budget: 24
 }

@@ -6,10 +6,34 @@ records {
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.RunTests"
   body_hash: "d63688eb3b3b6f891c4ab7d93da3a69eff27a0e625b7c17c7bae037c113a2c0c"
   mutants: 24
-  killed: 15
+  killed: 13
+  survivors {
+    position: "witness.go:41:2"
+    operator: "drop assignment"
+  }
+  survivors {
+    position: "witness.go:91:2"
+    operator: "drop assignment"
+  }
+  survivors {
+    position: "witness.go:49:12"
+    operator: "increment literal"
+  }
   survivors {
     position: "witness.go:53:16"
     operator: "zero return"
+  }
+  survivors {
+    position: "witness.go:55:9"
+    operator: "++ -> --"
+  }
+  survivors {
+    position: "witness.go:68:64"
+    operator: "increment literal"
+  }
+  survivors {
+    position: "witness.go:75:15"
+    operator: "increment literal"
   }
   survivors {
     position: "witness.go:76:6"
@@ -27,21 +51,8 @@ records {
     position: "witness.go:79:15"
     operator: "zero return"
   }
-  survivors {
-    position: "witness.go:84:11"
-    operator: "zero return"
-  }
-  survivors {
-    position: "witness.go:84:21"
-    operator: "< -> >="
-  }
-  survivors {
-    position: "witness.go:89:10"
-    operator: "zero return"
-  }
-  survivors {
-    position: "witness.go:89:24"
-    operator: "< -> >="
-  }
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunTests"
+  operators: "go/2"
+  body_line: 36
+  budget: 24
 }

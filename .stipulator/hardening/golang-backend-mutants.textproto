@@ -4,24 +4,36 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend.Mutants"
-  body_hash: "1981a6d7a78dd16a1261a01be5b029fdcbc9739a3db614931a0248ef16436a43"
-  mutants: 24
-  killed: 20
+  body_hash: "dcdabeca6e6a357bae958b4ef6fb7cd2833070fa0130877f1b21309fbbee13a4"
+  mutants: 20
+  killed: 14
+  discarded: 4
   survivors {
-    position: "harden.go:137:15"
+    position: "harden.go:156:15"
     operator: "zero return"
   }
   survivors {
-    position: "harden.go:144:15"
+    position: "harden.go:163:15"
     operator: "zero return"
   }
   survivors {
-    position: "harden.go:148:15"
+    position: "harden.go:167:15"
     operator: "zero return"
   }
   survivors {
-    position: "harden.go:223:17"
-    operator: "|| -> &&"
+    position: "harden.go:182:13"
+    operator: "&& -> ||"
+  }
+  survivors {
+    position: "harden.go:182:48"
+    operator: "increment literal"
+  }
+  survivors {
+    position: "harden.go:197:47"
+    operator: "&& -> ||"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestMutants"
+  operators: "go/2"
+  body_line: 153
+  budget: 24
 }

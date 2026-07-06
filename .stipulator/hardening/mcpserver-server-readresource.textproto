@@ -9,30 +9,6 @@ records {
   killed: 9
   discarded: 2
   survivors {
-    position: "server.go:664:6"
-    operator: "negate condition"
-  }
-  survivors {
-    position: "server.go:664:10"
-    operator: "!= -> =="
-  }
-  survivors {
-    position: "server.go:665:16"
-    operator: "zero return"
-  }
-  survivors {
-    position: "server.go:671:6"
-    operator: "negate condition"
-  }
-  survivors {
-    position: "server.go:671:10"
-    operator: "!= -> =="
-  }
-  survivors {
-    position: "server.go:672:16"
-    operator: "zero return"
-  }
-  survivors {
     position: "server.go:675:6"
     operator: "negate condition"
   }
@@ -45,20 +21,47 @@ records {
     operator: "zero return"
   }
   survivors {
+    position: "server.go:682:6"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "server.go:682:10"
+    operator: "!= -> =="
+  }
+  survivors {
     position: "server.go:683:16"
     operator: "zero return"
   }
   survivors {
-    position: "server.go:695:15"
+    position: "server.go:686:6"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "server.go:686:10"
+    operator: "!= -> =="
+  }
+  survivors {
+    position: "server.go:687:16"
     operator: "zero return"
   }
   survivors {
-    position: "server.go:700:16"
+    position: "server.go:694:16"
     operator: "zero return"
   }
   survivors {
-    position: "server.go:707:15"
+    position: "server.go:706:15"
+    operator: "zero return"
+  }
+  survivors {
+    position: "server.go:711:16"
+    operator: "zero return"
+  }
+  survivors {
+    position: "server.go:718:15"
     operator: "zero return"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestResourceIndexAndReads"
+  operators: "go/2"
+  body_line: 670
+  budget: 24
 }

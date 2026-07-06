@@ -5,11 +5,24 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/facts.Seeds"
   body_hash: "55ba7e828f36ab748fba6630d1eed010d0c6de98f9e11b2e417e919143bc3f8d"
-  mutants: 13
-  killed: 6
+  mutants: 17
+  killed: 7
+  discarded: 1
   survivors {
     position: "facts.go:58:2"
     operator: "delete statement"
+  }
+  survivors {
+    position: "facts.go:49:4"
+    operator: "drop assignment"
+  }
+  survivors {
+    position: "facts.go:43:5"
+    operator: "continue -> break"
+  }
+  survivors {
+    position: "facts.go:47:5"
+    operator: "continue -> break"
   }
   survivors {
     position: "facts.go:60:6"
@@ -36,4 +49,7 @@ records {
     operator: "< -> >="
   }
   witnesses: "github.com/greatliontech/stipulator/internal/facts.TestSeedsFromNeighborhood"
+  operators: "go/2"
+  body_line: 29
+  budget: 24
 }

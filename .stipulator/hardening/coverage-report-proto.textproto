@@ -5,8 +5,8 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.Report.Proto"
   body_hash: "3408bd5218f496a3fcff1059656513c2a4b3ffb019e5eaadd5871e7b928e7ac4"
-  mutants: 13
-  killed: 6
+  mutants: 15
+  killed: 7
   survivors {
     position: "proto.go:30:2"
     operator: "delete statement"
@@ -35,5 +35,12 @@ records {
     position: "proto.go:27:3"
     operator: "delete statement"
   }
+  survivors {
+    position: "proto.go:28:3"
+    operator: "drop assignment"
+  }
   witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestGateTool"
+  operators: "go/2"
+  body_line: 8
+  budget: 24
 }

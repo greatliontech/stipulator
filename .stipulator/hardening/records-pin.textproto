@@ -5,12 +5,20 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/records.Pin"
   body_hash: "0199747c103672ee695479fdd78f26e289b762504db9766adbcc75389ddfe70c"
-  mutants: 12
-  killed: 9
+  mutants: 21
+  killed: 13
   discarded: 1
   survivors {
     position: "pin.go:35:10"
     operator: "&& -> ||"
+  }
+  survivors {
+    position: "pin.go:35:7"
+    operator: "force true"
+  }
+  survivors {
+    position: "pin.go:35:13"
+    operator: "force true"
   }
   survivors {
     position: "pin.go:35:30"
@@ -20,6 +28,21 @@ records {
     position: "pin.go:36:5"
     operator: "delete statement"
   }
+  survivors {
+    position: "pin.go:37:5"
+    operator: "drop assignment"
+  }
+  survivors {
+    position: "pin.go:41:4"
+    operator: "continue -> break"
+  }
+  survivors {
+    position: "pin.go:46:51"
+    operator: "increment literal"
+  }
   witnesses: "github.com/greatliontech/stipulator/internal/verify.TestPin"
   witnesses: "github.com/greatliontech/stipulator/internal/verify.TestPinRefusesCommentedFile"
+  operators: "go/2"
+  body_line: 24
+  budget: 24
 }

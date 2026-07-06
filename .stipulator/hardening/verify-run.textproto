@@ -6,10 +6,14 @@ records {
   symbol: "github.com/greatliontech/stipulator/internal/verify.Run"
   body_hash: "b48590484f700c8b54e385927a1594aa928edf987f276a08fcedbc29e163bf40"
   mutants: 24
-  killed: 20
+  killed: 16
   survivors {
     position: "verify.go:378:2"
     operator: "delete statement"
+  }
+  survivors {
+    position: "verify.go:237:4"
+    operator: "drop assignment"
   }
   survivors {
     position: "verify.go:235:5"
@@ -20,12 +24,27 @@ records {
     operator: "delete statement"
   }
   survivors {
-    position: "verify.go:276:5"
-    operator: "delete statement"
+    position: "verify.go:242:5"
+    operator: "drop assignment"
+  }
+  survivors {
+    position: "verify.go:246:5"
+    operator: "drop assignment"
+  }
+  survivors {
+    position: "verify.go:250:5"
+    operator: "drop assignment"
+  }
+  survivors {
+    position: "verify.go:254:5"
+    operator: "drop assignment"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestFixtureModule"
   witnesses: "github.com/greatliontech/stipulator/internal/verify.TestBackendResolution"
   witnesses: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
   witnesses: "github.com/greatliontech/stipulator/internal/verify.TestPropDanglingRecordsAreProblems"
   witnesses: "github.com/greatliontech/stipulator/internal/verify.TestWitnessCorrelation"
+  operators: "go/2"
+  body_line: 218
+  budget: 24
 }

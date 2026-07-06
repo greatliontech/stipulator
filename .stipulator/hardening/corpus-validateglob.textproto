@@ -5,8 +5,15 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.validateGlob"
   body_hash: "953b9e4cc18175720dbcb8f9ce44385f29df0e27294b1f9b756a871818196a70"
-  mutants: 8
+  mutants: 9
   killed: 8
+  survivors {
+    position: "corpus.go:106:4"
+    operator: "continue -> break"
+  }
   witnesses: "github.com/greatliontech/stipulator/internal/corpus.TestMatchGlob"
   witnesses: "github.com/greatliontech/stipulator/internal/corpus.TestValidateGlobErrors"
+  operators: "go/2"
+  body_line: 100
+  budget: 24
 }

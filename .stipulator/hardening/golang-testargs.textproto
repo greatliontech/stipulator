@@ -8,4 +8,7 @@ records {
   mutants: 1
   killed: 1
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestWitnessRunInvocation"
+  operators: "go/2"
+  body_line: 19
+  budget: 24
 }

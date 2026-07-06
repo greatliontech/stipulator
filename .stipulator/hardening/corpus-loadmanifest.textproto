@@ -5,7 +5,10 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.LoadManifest"
   body_hash: "491d707cae0978d18ef3440fb9e265943a60a52e7f584c29c219192f54d1489b"
-  mutants: 10
-  killed: 10
+  mutants: 11
+  killed: 11
   witnesses: "github.com/greatliontech/stipulator/internal/corpus.TestLoadManifest"
+  operators: "go/2"
+  body_line: 37
+  budget: 24
 }

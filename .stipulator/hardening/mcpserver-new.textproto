@@ -4,8 +4,8 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.New"
-  body_hash: "f8db1dda13bc3f7e03ea70ccb2639ddf013b45cc2c91b6618be6f1c50a3f372a"
-  mutants: 15
+  body_hash: "0d597519331830272898d12dded91a304d315fe5ff8490966b504b1fbf764843"
+  mutants: 21
   killed: 0
   survivors {
     position: "server.go:50:9"
@@ -36,6 +36,10 @@ records {
     operator: "== -> !="
   }
   survivors {
+    position: "server.go:62:23"
+    operator: "increment literal"
+  }
+  survivors {
     position: "server.go:63:17"
     operator: "zero return"
   }
@@ -48,8 +52,24 @@ records {
     operator: "== -> !="
   }
   survivors {
+    position: "server.go:66:17"
+    operator: "increment literal"
+  }
+  survivors {
+    position: "server.go:67:5"
+    operator: "drop assignment"
+  }
+  survivors {
+    position: "server.go:67:14"
+    operator: "increment literal"
+  }
+  survivors {
     position: "server.go:73:54"
     operator: "negate condition"
+  }
+  survivors {
+    position: "server.go:73:46"
+    operator: "increment literal"
   }
   survivors {
     position: "server.go:73:58"
@@ -64,9 +84,16 @@ records {
     operator: "zero return"
   }
   survivors {
+    position: "server.go:76:39"
+    operator: "increment literal"
+  }
+  survivors {
     position: "server.go:79:11"
     operator: "zero return"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestBindToolWritesConfined"
   witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestResourceIndexAndReads"
+  operators: "go/2"
+  body_line: 49
+  budget: 24
 }

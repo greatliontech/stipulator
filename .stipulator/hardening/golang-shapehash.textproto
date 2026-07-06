@@ -12,4 +12,7 @@ records {
     operator: "zero return"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestShapeHashDistinguishesSignatures"
+  operators: "go/2"
+  body_line: 249
+  budget: 24
 }

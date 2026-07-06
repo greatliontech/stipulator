@@ -5,8 +5,9 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.Compile"
   body_hash: "a84ee119de029d24e408d6f8edc5d2d7050b9f28aad47c508b9525db8b20cd4c"
-  mutants: 24
-  killed: 9
+  mutants: 23
+  killed: 11
+  discarded: 1
   survivors {
     position: "compile.go:105:2"
     operator: "delete statement"
@@ -24,8 +25,20 @@ records {
     operator: "zero return"
   }
   survivors {
+    position: "compile.go:101:3"
+    operator: "drop assignment"
+  }
+  survivors {
     position: "compile.go:91:21"
     operator: "zero return"
+  }
+  survivors {
+    position: "compile.go:94:56"
+    operator: "increment literal"
+  }
+  survivors {
+    position: "compile.go:95:4"
+    operator: "continue -> break"
   }
   survivors {
     position: "compile.go:107:6"
@@ -43,29 +56,8 @@ records {
     position: "compile.go:108:22"
     operator: "< -> >="
   }
-  survivors {
-    position: "compile.go:110:6"
-    operator: "negate condition"
-  }
-  survivors {
-    position: "compile.go:110:13"
-    operator: "!= -> =="
-  }
-  survivors {
-    position: "compile.go:111:11"
-    operator: "zero return"
-  }
-  survivors {
-    position: "compile.go:111:18"
-    operator: "< -> >="
-  }
-  survivors {
-    position: "compile.go:113:10"
-    operator: "zero return"
-  }
-  survivors {
-    position: "compile.go:113:20"
-    operator: "< -> >="
-  }
   witnesses: "github.com/greatliontech/stipulator/internal/compile.TestDocumentErrors"
+  operators: "go/2"
+  body_line: 68
+  budget: 24
 }

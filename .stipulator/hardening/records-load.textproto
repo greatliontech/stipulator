@@ -5,8 +5,12 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/records.Load"
   body_hash: "bad0d6db6052533718f328595f4cc92040ff87ba0f64dca3642c73dcff1ee511"
-  mutants: 22
-  killed: 13
+  mutants: 24
+  killed: 14
+  survivors {
+    position: "records.go:93:2"
+    operator: "drop assignment"
+  }
   survivors {
     position: "records.go:62:11"
     operator: "zero return"
@@ -24,6 +28,10 @@ records {
     operator: "zero return"
   }
   survivors {
+    position: "records.go:84:3"
+    operator: "drop assignment"
+  }
+  survivors {
     position: "records.go:81:44"
     operator: "negate condition"
   }
@@ -39,9 +47,8 @@ records {
     position: "records.go:87:15"
     operator: "zero return"
   }
-  survivors {
-    position: "records.go:91:15"
-    operator: "zero return"
-  }
   witnesses: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
+  operators: "go/2"
+  body_line: 57
+  budget: 24
 }

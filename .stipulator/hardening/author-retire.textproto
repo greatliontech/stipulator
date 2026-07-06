@@ -8,4 +8,6 @@ records {
   mutants: 0
   killed: 0
   witnesses: "github.com/greatliontech/stipulator/internal/author.TestRetire"
+  operators: "go/2"
+  budget: 24
 }

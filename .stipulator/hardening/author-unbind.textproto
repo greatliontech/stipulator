@@ -5,8 +5,8 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.Unbind"
   body_hash: "b691caef28e10f37cd71e79c425488c05217e51951df064e893e259c7f71b925"
-  mutants: 23
-  killed: 18
+  mutants: 24
+  killed: 15
   survivors {
     position: "author.go:235:2"
     operator: "delete statement"
@@ -16,8 +16,20 @@ records {
     operator: "zero return"
   }
   survivors {
+    position: "author.go:208:15"
+    operator: "increment literal"
+  }
+  survivors {
+    position: "author.go:214:22"
+    operator: "force true"
+  }
+  survivors {
     position: "author.go:214:36"
     operator: "!= -> =="
+  }
+  survivors {
+    position: "author.go:217:67"
+    operator: "force true"
   }
   survivors {
     position: "author.go:217:79"
@@ -27,7 +39,14 @@ records {
     position: "author.go:223:18"
     operator: "zero return"
   }
+  survivors {
+    position: "author.go:223:15"
+    operator: "increment literal"
+  }
   witnesses: "github.com/greatliontech/stipulator/internal/author.TestBind"
   witnesses: "github.com/greatliontech/stipulator/internal/author.TestBindFileConfinement"
   witnesses: "github.com/greatliontech/stipulator/internal/author.TestUnbind"
+  operators: "go/2"
+  body_line: 205
+  budget: 24
 }

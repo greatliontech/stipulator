@@ -23,6 +23,6 @@ Spec: docs/specs/
 - [x] 19. Go structural provers (import constraints, interface satisfaction)
 - [x] 20. Property-test hardening: invariant coverage to property witnesses
 - [x] 21. Per-symbol kill-sheets: harden records re-keyed to (symbol, body hash, witness set)
-- [ ] 22. Mutation engine v2: type-aware statement noop-ification, attested-equivalence survivor dispositions, extended operator families
+- [x] 22. Mutation engine v2: type-aware statement noop-ification, attested-equivalence survivor dispositions, extended operator families
 - [ ] 23. Attestation records + change-signature classifier + determinism harness + manifest policy overrides
 - [ ] 24. gitfs adapter (go-git) for diff-against-revision

@@ -5,9 +5,8 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/bundle.Compute"
   body_hash: "eb5f082e9257ffdb285f157b3f387b03d1b2532f1922963368881f0630e58704"
-  mutants: 22
-  killed: 10
-  discarded: 2
+  mutants: 24
+  killed: 18
   survivors {
     position: "bundle.go:123:2"
     operator: "delete statement"
@@ -29,32 +28,11 @@ records {
     operator: "delete statement"
   }
   survivors {
-    position: "bundle.go:87:30"
-    operator: "negate condition"
-  }
-  survivors {
-    position: "bundle.go:93:7"
-    operator: "negate condition"
-  }
-  survivors {
-    position: "bundle.go:93:65"
-    operator: "|| -> &&"
-  }
-  survivors {
-    position: "bundle.go:93:30"
-    operator: "&& -> ||"
-  }
-  survivors {
-    position: "bundle.go:94:23"
-    operator: "&& -> ||"
-  }
-  survivors {
-    position: "bundle.go:100:7"
-    operator: "negate condition"
-  }
-  survivors {
-    position: "bundle.go:107:7"
-    operator: "negate condition"
+    position: "bundle.go:70:6"
+    operator: "continue -> break"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/bundle.TestClosure"
+  operators: "go/2"
+  body_line: 25
+  budget: 24
 }

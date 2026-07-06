@@ -33,3 +33,17 @@ func Weak(x int) int {
 	}
 	return x
 }
+
+// Mixed exists for operator coverage: assignments, compound arithmetic,
+// logical operands, loops, and literals — one site per operator family.
+func Mixed(xs []int) int {
+	total := 0
+	for _, x := range xs {
+		if x < 0 || x > 99 {
+			continue
+		}
+		total += x * 2
+	}
+	total = total + 3
+	return total
+}

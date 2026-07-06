@@ -5,8 +5,9 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/facts.Partitions"
   body_hash: "93ad6b635ed285b0f4ab23c70d4ad891e6ce3083cd1cfa2e07a0ff0c9c3499f7"
-  mutants: 23
-  killed: 17
+  mutants: 22
+  killed: 18
+  discarded: 2
   survivors {
     position: "facts.go:122:2"
     operator: "delete statement"
@@ -20,16 +21,11 @@ records {
     operator: "zero return"
   }
   survivors {
-    position: "facts.go:168:3"
-    operator: "delete statement"
-  }
-  survivors {
-    position: "facts.go:183:3"
-    operator: "delete statement"
-  }
-  survivors {
-    position: "facts.go:171:16"
-    operator: "zero return"
+    position: "facts.go:148:16"
+    operator: "increment literal"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/facts.TestPartitions"
+  operators: "go/2"
+  body_line: 121
+  budget: 24
 }

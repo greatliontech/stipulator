@@ -12,4 +12,7 @@ records {
     operator: "zero return"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/compile.TestPayloadChangesHash"
+  operators: "go/2"
+  body_line: 218
+  budget: 24
 }

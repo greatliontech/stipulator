@@ -5,7 +5,7 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.Report.Proto"
   body_hash: "230f0050615c21c5a9f15b1df5a195853182ce8119257f5058bb2a4f4ef0cb98"
-  mutants: 23
+  mutants: 24
   killed: 0
   survivors {
     position: "proto.go:17:2"
@@ -26,6 +26,10 @@ records {
   survivors {
     position: "proto.go:14:3"
     operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:15:3"
+    operator: "drop assignment"
   }
   survivors {
     position: "proto.go:22:3"
@@ -68,6 +72,10 @@ records {
     operator: "delete statement"
   }
   survivors {
+    position: "proto.go:35:3"
+    operator: "drop assignment"
+  }
+  survivors {
     position: "proto.go:31:6"
     operator: "negate condition"
   }
@@ -95,9 +103,8 @@ records {
     position: "proto.go:45:3"
     operator: "delete statement"
   }
-  survivors {
-    position: "proto.go:49:9"
-    operator: "zero return"
-  }
   witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestGateTool"
+  operators: "go/2"
+  body_line: 8
+  budget: 24
 }

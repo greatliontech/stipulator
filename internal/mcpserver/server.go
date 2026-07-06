@@ -66,7 +66,7 @@ func New(dir string) *Server {
 			if budget == 0 {
 				budget = 24
 			}
-			return harden.Run(ctx, dir, gb, store, targets, harden.Options{Budget: budget, Force: in.Force})
+			return harden.Run(ctx, dir, gb, store, targets, harden.Options{Budget: budget, Force: in.Force, Jobs: in.Jobs})
 		},
 		write: func(path string, content []byte) error {
 			full := filepath.Join(dir, filepath.FromSlash(path))
@@ -468,7 +468,8 @@ type hardenIn struct {
 	Reqs    string `json:"reqs,omitempty" jsonschema:"comma-separated requirement identifiers; empty means all bound"`
 	Symbols string `json:"symbols,omitempty" jsonschema:"comma-separated implementation symbols filter"`
 	Budget  int    `json:"budget,omitempty" jsonschema:"mutant budget per symbol; 0 means all, default 24"`
-	Force   bool   `json:"force,omitempty" jsonschema:"rerun targets whose kill-sheet body hash still matches"`
+	Force   bool   `json:"force,omitempty" jsonschema:"rerun targets whose kill-sheet pins (body hash, witness set, operator set) still match"`
+	Jobs    int    `json:"jobs,omitempty" jsonschema:"concurrent mutant runs; 0 means half the CPUs"`
 }
 
 func (s *Server) toolHarden(ctx context.Context, req *mcp.CallToolRequest, in hardenIn) (*mcp.CallToolResult, map[string]any, error) {
@@ -497,6 +498,16 @@ func (s *Server) toolHarden(ctx context.Context, req *mcp.CallToolRequest, in ha
 		rec.SetBackend("go")
 		rec.SetSymbol(res.Symbol)
 		rec.SetWitnesses(res.Witnesses)
+		rec.SetOperators(golang.OperatorSet)
+		var attested []*stipulatorv1.MutationAttestation
+		for _, a := range res.Attested {
+			ma := &stipulatorv1.MutationAttestation{}
+			ma.SetPosition(a.Position)
+			ma.SetOperator(a.Operator)
+			ma.SetReason(a.Reason)
+			attested = append(attested, ma)
+		}
+		rec.SetAttested(attested)
 		rec.SetBodyHash(res.BodyHash)
 		rec.SetMutants(int32(res.Mutants))
 		rec.SetKilled(int32(res.Killed))

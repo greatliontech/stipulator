@@ -5,11 +5,14 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.PruneResolvedGaps"
   body_hash: "15238ff58b75d7bbd58208426fcba0c2ef4496d318af45ed3839f07bcd1ac460"
-  mutants: 3
-  killed: 2
+  mutants: 4
+  killed: 3
   survivors {
     position: "author.go:361:2"
     operator: "delete statement"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/author.TestPruneResolvedGaps"
+  operators: "go/2"
+  body_line: 354
+  budget: 24
 }

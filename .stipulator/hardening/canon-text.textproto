@@ -9,4 +9,7 @@ records {
   killed: 1
   witnesses: "github.com/greatliontech/stipulator/internal/canon.TestText"
   witnesses: "github.com/greatliontech/stipulator/internal/compile.TestHashStableUnderRewrap"
+  operators: "go/2"
+  body_line: 21
+  budget: 24
 }

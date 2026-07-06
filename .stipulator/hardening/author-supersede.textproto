@@ -5,11 +5,14 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.Supersede"
   body_hash: "0ebcda05a5b5a3462a9b58be608721bf366609366a40ad389c7a6d41bef628a5"
-  mutants: 3
-  killed: 2
+  mutants: 4
+  killed: 3
   survivors {
     position: "dispose.go:81:15"
     operator: "zero return"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/author.TestSupersede"
+  operators: "go/2"
+  body_line: 79
+  budget: 24
 }

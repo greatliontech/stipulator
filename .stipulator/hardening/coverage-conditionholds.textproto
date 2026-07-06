@@ -13,4 +13,7 @@ records {
   }
   witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestGapStates"
   witnesses: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
+  operators: "go/2"
+  body_line: 285
+  budget: 24
 }

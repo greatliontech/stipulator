@@ -32,6 +32,14 @@ records {
     operator: "|| -> &&"
   }
   survivors {
+    position: "structural.go:38:8"
+    operator: "force false"
+  }
+  survivors {
+    position: "structural.go:38:23"
+    operator: "force false"
+  }
+  survivors {
     position: "structural.go:38:13"
     operator: "== -> !="
   }
@@ -44,30 +52,25 @@ records {
     operator: "zero return"
   }
   survivors {
+    position: "structural.go:48:25"
+    operator: "increment literal"
+  }
+  survivors {
     position: "structural.go:49:4"
     operator: "delete statement"
+  }
+  survivors {
+    position: "structural.go:49:87"
+    operator: "increment literal"
   }
   survivors {
     position: "structural.go:57:18"
     operator: "> -> <="
   }
-  survivors {
-    position: "structural.go:64:4"
-    operator: "delete statement"
-  }
-  survivors {
-    position: "structural.go:66:8"
-    operator: "negate condition"
-  }
-  survivors {
-    position: "structural.go:76:6"
-    operator: "delete statement"
-  }
-  survivors {
-    position: "structural.go:73:32"
-    operator: "!= -> =="
-  }
   witnesses: "github.com/greatliontech/stipulator/internal/arch.TestBackendSatisfiesVerifierSurfaces"
   witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestWitnessClassProof"
   witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestAnalyzerProofSatisfiesStructural"
+  operators: "go/2"
+  body_line: 22
+  budget: 24
 }

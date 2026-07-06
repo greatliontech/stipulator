@@ -5,8 +5,8 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/index.Build"
   body_hash: "d2e0311d198e1dbe9dd12fd33bd03d7514a97157af0f998a816806aafffc4a2a"
-  mutants: 11
-  killed: 9
+  mutants: 18
+  killed: 15
   discarded: 2
   survivors {
     position: "index.go:50:3"
@@ -16,5 +16,12 @@ records {
     position: "index.go:50:50"
     operator: "zero return"
   }
+  survivors {
+    position: "index.go:60:5"
+    operator: "continue -> break"
+  }
   witnesses: "github.com/greatliontech/stipulator/internal/index.TestBuild"
+  operators: "go/2"
+  body_line: 23
+  budget: 24
 }

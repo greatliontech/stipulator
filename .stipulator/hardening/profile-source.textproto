@@ -9,4 +9,7 @@ records {
   killed: 0
   discarded: 1
   witnesses: "github.com/greatliontech/stipulator/internal/compile.TestRequirementLead"
+  operators: "go/2"
+  body_line: 175
+  budget: 24
 }

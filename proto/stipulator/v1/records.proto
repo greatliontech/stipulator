@@ -110,6 +110,31 @@ message Hardening {
   // ordered; a new witness bound to the symbol re-stales the sheet exactly
   // as a body edit does.
   repeated string witnesses = 9;
+  // Operators pins the operator-set identifier that generated the
+  // mutants: an engine gaining operators re-stales every sheet — an old
+  // sheet must never claim coverage of mutants it never generated.
+  string operators = 10;
+  // Attested marks survivors dispositioned as equivalent or accepted,
+  // scoped to this sheet's pins: a record whose pins move sheds its
+  // attestations, so every body version's equivalences are re-judged.
+  repeated MutationAttestation attested = 11;
+  // BodyLine anchors the mutated body's first line: survivor and
+  // attestation positions are absolute file coordinates, so matching
+  // across regenerations rebases them against this anchor — position
+  // drift from edits above the body never sheds a disposition.
+  int32 body_line = 12;
+  // Budget records the per-symbol mutant cap the sheet ran under (0 =
+  // exhaustive): a capped sheet must never answer a request for more
+  // mutants than it generated.
+  int32 budget = 13;
+}
+
+// MutationAttestation is one survivor disposition: the named mutant is
+// attested equivalent (or accepted), with the reasoning.
+message MutationAttestation {
+  string position = 1;
+  string operator = 2;
+  string reason = 3;
 }
 
 // HardeningSet is one hardening record file.

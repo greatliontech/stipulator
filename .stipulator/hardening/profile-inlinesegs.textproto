@@ -5,9 +5,13 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/profile.InlineSegs"
   body_hash: "0f96384744c50c896254f5946215955f7dd3d317df58292b884537ff194daac5"
-  mutants: 6
-  killed: 4
+  mutants: 9
+  killed: 6
   discarded: 1
+  survivors {
+    position: "text.go:39:28"
+    operator: "force false"
+  }
   survivors {
     position: "text.go:46:31"
     operator: "!= -> =="
@@ -17,4 +21,7 @@ records {
     operator: "negate condition"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/compile.TestKeywordDiscipline"
+  operators: "go/2"
+  body_line: 33
+  budget: 24
 }

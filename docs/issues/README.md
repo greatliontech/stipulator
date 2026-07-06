@@ -22,3 +22,20 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   mutator, whose kill-sheet records are already the interchange contract) can move behind a
   wire protocol with the trust model intact; deferred while one backend exists. *Lands: when
   a second language backend is planned.*
+- **[kill-sheet-environment-pin](kill-sheet-environment-pin.md)** — sheets pin every input
+  stipulator controls but not the toolchain; a Go upgrade silently invalidates measurements.
+  *Lands: when the determinism harness chunk of the active plan begins.*
+- **[slice-frontier-uncertainty](slice-frontier-uncertainty.md)** — typed frontiers miss
+  reflection, build tags, and init effects; consumers need a confidence surface, not a bigger
+  frontier. *Lands: when a corpus relies on slice completeness for automated context assembly
+  over such code.*
+- **[prover-trust-tiers](prover-trust-tiers.md)** — the proof rung assumes near-sound provers;
+  a heuristic analyzer must not inherit it. *Lands: when a heuristic analyzer prover is
+  proposed.*
+- **[witness-subset-adequacy](witness-subset-adequacy.md)** — union sheets cannot say whether
+  one requirement's own witnesses have teeth; an opt-in per-requirement probe is measurable
+  without attribution claims. *Lands: when a requirement's risk profile demands per-requirement
+  witness adequacy.*
+- **[concurrent-record-writes](concurrent-record-writes.md)** — record verbs are last-writer-
+  wins; concurrent agents need compare-and-swap at the verb layer, never actor metadata in
+  records. *Lands: when concurrent agents write records in one working tree.*

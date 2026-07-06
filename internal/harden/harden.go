@@ -5,16 +5,19 @@
 // for the body noticed, with no pretence of statement-level requirement
 // attribution. Survivors are findings for disposition — this is
 // exploration, never gate input; the only records written are kill-sheets
-// pinned to body hash and witness set.
+// pinned to body hash, witness set, and operator set.
 package harden
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -43,16 +46,33 @@ type Survivor struct {
 	Operator string
 }
 
+// Attestation is one survivor disposition carried on the sheet: the
+// mutant is attested equivalent (or accepted), with the reasoning.
+type Attestation struct {
+	Position string
+	Operator string
+	Reason   string
+}
+
 // Result is one target's outcome.
 type Result struct {
-	Symbol        string
-	Requirements  []string
-	Witnesses     []string
-	BodyHash      string
-	Mutants       int
-	Killed        int
-	Discarded     int
+	Symbol       string
+	Requirements []string
+	Witnesses    []string
+	BodyHash     string
+	// BodyLine anchors the body's first line for position rebasing;
+	// Budget records the mutant cap this measurement ran under (0 =
+	// exhaustive).
+	BodyLine  int
+	Budget    int
+	Mutants   int
+	Killed    int
+	Discarded int
 	Survivors     []Survivor
+	// Attested carries the survivor dispositions still valid for this
+	// sheet: dispositions from a prior sheet survive only while every
+	// pin holds and the survivor is still present.
+	Attested      []Attestation
 	Cached        bool
 	SkippedNoTest bool
 	// SkippedNotFunc: the symbol resolves but has no function body (a
@@ -175,28 +195,58 @@ type Options struct {
 	Timeout time.Duration
 	// Force reruns targets whose stored kill-sheet pins still match.
 	Force bool
+	// Jobs bounds concurrent mutant runs; 0 means half the CPUs. Mutant
+	// runs are process-isolated (own overlay, own temp dir, shared
+	// content-addressed build cache), so they parallelize safely — but
+	// load-induced flakes read as kills, so the default hedges.
+	Jobs int
 }
 
-// Run mutates each target and executes its witness union per mutant.
-// Stored kill-sheets are reused only when both pins hold — the body hash
-// and the witness set — unless forced.
+// group is one test-binary invocation class: packages sharing binFlags.
+type group struct {
+	pkgs  []string
+	flags []string
+}
+
+// Run mutates each target and executes its witness union per mutant,
+// fanning mutant runs across a worker pool. Stored kill-sheets are
+// reused only when every pin holds — body hash, witness set, and
+// operator set — unless forced.
 func Run(ctx context.Context, dir string, backend *golang.Backend, store *records.Store, targets []Target, opts Options) (*Report, error) {
 	if opts.Timeout <= 0 {
 		opts.Timeout = 60 * time.Second
 	}
+	jobs := opts.Jobs
+	if jobs <= 0 {
+		jobs = max(1, runtime.NumCPU()/2)
+	}
+	// First match wins, matching the attest verb's lookup; duplicate
+	// symbols across files occur only in hand-edited stores.
 	prior := map[string]*stipulatorv1.Hardening{}
 	for _, hf := range store.Hardening {
 		for _, rec := range hf.Set.GetRecords() {
-			prior[rec.GetSymbol()] = rec
+			if _, ok := prior[rec.GetSymbol()]; !ok {
+				prior[rec.GetSymbol()] = rec
+			}
 		}
 	}
 
-	rep := &Report{}
-	for _, t := range targets {
-		res := Result{Symbol: t.Symbol, Requirements: t.Requirements, Witnesses: t.Witnesses}
+	// Phase one, sequential: resolve every target to a terminal result
+	// (skipped, cached) or to a mutant work list.
+	type work struct {
+		target   int
+		mutants  []golang.Mutant
+		groups   []group
+		runRegex string
+	}
+	rep := &Report{Results: make([]Result, len(targets))}
+	pins := make([]func(*stipulatorv1.Hardening) bool, len(targets))
+	var pending []work
+	for i, t := range targets {
+		res := &rep.Results[i]
+		*res = Result{Symbol: t.Symbol, Requirements: t.Requirements, Witnesses: t.Witnesses}
 		if len(t.TestPkgs) == 0 {
 			res.SkippedNoTest = true
-			rep.Results = append(rep.Results, res)
 			continue
 		}
 		bodyHash, err := backend.BodyHash(t.Symbol)
@@ -205,56 +255,124 @@ func Run(ctx context.Context, dir string, backend *golang.Backend, store *record
 			// static claim with no body to mutate: reported, never fatal,
 			// never silently dropped.
 			res.SkippedNotFunc = true
-			rep.Results = append(rep.Results, res)
 			continue
 		}
 		if err != nil {
 			return nil, fmt.Errorf("target %s: %w", t.Symbol, err)
 		}
 		res.BodyHash = bodyHash
-		if rec, ok := prior[t.Symbol]; ok && !opts.Force &&
-			rec.GetBodyHash() == bodyHash && slices.Equal(rec.GetWitnesses(), t.Witnesses) {
+		pins[i] = func(rec *stipulatorv1.Hardening) bool {
+			return rec.GetBodyHash() == bodyHash &&
+				slices.Equal(rec.GetWitnesses(), t.Witnesses) &&
+				rec.GetOperators() == golang.OperatorSet
+		}
+		if rec, ok := prior[t.Symbol]; ok && !opts.Force && pins[i](rec) &&
+			budgetCovers(int(rec.GetBudget()), opts.Budget) {
 			res.Cached = true
+			res.BodyLine = int(rec.GetBodyLine())
+			res.Budget = int(rec.GetBudget())
 			res.Mutants = int(rec.GetMutants())
 			res.Killed = int(rec.GetKilled())
 			for _, s := range rec.GetSurvivors() {
 				res.Survivors = append(res.Survivors, Survivor{Position: s.GetPosition(), Operator: s.GetOperator()})
 			}
-			rep.Results = append(rep.Results, res)
+			for _, a := range rec.GetAttested() {
+				res.Attested = append(res.Attested, Attestation{Position: a.GetPosition(), Operator: a.GetOperator(), Reason: a.GetReason()})
+			}
 			continue
 		}
-
 		mutants, err := backend.Mutants(t.Symbol, opts.Budget)
 		if err != nil {
 			return nil, fmt.Errorf("target %s: %w", t.Symbol, err)
+		}
+		res.Budget = opts.Budget
+		if opts.Budget > 0 && len(mutants) < opts.Budget {
+			// The cap did not bind: the run is exhaustive, and the sheet
+			// should answer exhaustive requests from cache.
+			res.Budget = 0
+		}
+		if len(mutants) > 0 {
+			res.BodyLine = mutants[0].BodyLine
 		}
 		// The rapid failfile flag is per-binary, so the witness packages
 		// run as two groups: passing it to a binary that does not
 		// register it would read as a false kill.
 		rapidPkgs, plainPkgs := backend.SplitRapidPkgs(t.TestPkgs)
-		groups := []struct {
-			pkgs  []string
-			flags []string
-		}{
-			{rapidPkgs, []string{"-rapid.nofailfile"}},
-			{plainPkgs, nil},
-		}
-		for _, m := range mutants {
-			outcome := golang.MutantSurvived
-			for _, g := range groups {
-				if len(g.pkgs) == 0 || outcome != golang.MutantSurvived {
-					continue
+		pending = append(pending, work{
+			target:  i,
+			mutants: mutants,
+			groups: []group{
+				{rapidPkgs, []string{"-rapid.nofailfile"}},
+				{plainPkgs, nil},
+			},
+			runRegex: t.RunRegex,
+		})
+	}
+
+	// Phase two: the pool. Outcomes land in a preallocated matrix so
+	// aggregation is deterministic regardless of completion order; the
+	// first error cancels everything in flight.
+	outcomes := make([][]golang.MutantOutcome, len(pending))
+	for wi := range pending {
+		outcomes[wi] = make([]golang.MutantOutcome, len(pending[wi].mutants))
+	}
+	type job struct{ wi, mi int }
+	jobCh := make(chan job)
+	poolCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	var wg sync.WaitGroup
+	var errOnce sync.Once
+	var poolErr error
+	for range jobs {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := range jobCh {
+				w := pending[j.wi]
+				m := w.mutants[j.mi]
+				outcome := golang.MutantSurvived
+				for _, g := range w.groups {
+					if len(g.pkgs) == 0 || outcome != golang.MutantSurvived {
+						continue
+					}
+					out, err := golang.RunMutant(poolCtx, dir, m, g.pkgs, w.runRegex, opts.Timeout, g.flags)
+					if err != nil {
+						errOnce.Do(func() {
+							poolErr = fmt.Errorf("mutant %s %s: %w", m.Position, m.Operator, err)
+							cancel()
+						})
+						return
+					}
+					outcome = out
 				}
-				out, err := golang.RunMutant(ctx, dir, m, g.pkgs, t.RunRegex, opts.Timeout, g.flags)
-				if err != nil {
-					return nil, fmt.Errorf("mutant %s %s: %w", m.Position, m.Operator, err)
-				}
-				outcome = out
+				outcomes[j.wi][j.mi] = outcome
 			}
-			switch outcome {
+		}()
+	}
+	for wi := range pending {
+		for mi := range pending[wi].mutants {
+			select {
+			case jobCh <- job{wi, mi}:
+			case <-poolCtx.Done():
+			}
+		}
+	}
+	close(jobCh)
+	wg.Wait()
+	if poolErr != nil {
+		return nil, poolErr
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	// Phase three, sequential: aggregate in target and mutant order.
+	for wi, w := range pending {
+		res := &rep.Results[w.target]
+		for mi, m := range w.mutants {
+			switch outcomes[wi][mi] {
 			case golang.MutantDiscarded:
 				res.Discarded++
-				continue
 			case golang.MutantKilled:
 				res.Mutants++
 				res.Killed++
@@ -263,9 +381,52 @@ func Run(ctx context.Context, dir string, backend *golang.Backend, store *record
 				res.Survivors = append(res.Survivors, Survivor{Position: m.Position, Operator: m.Operator})
 			}
 		}
-		rep.Results = append(rep.Results, res)
+		// A rerun with unchanged pins keeps prior attestations that
+		// still name a survivor; changed pins shed them, so every body
+		// version's equivalences are re-judged. Positions are absolute
+		// file coordinates, so old ones are rebased against the body
+		// anchors first — drift from edits above the body never sheds a
+		// disposition.
+		if rec, ok := prior[targets[w.target].Symbol]; ok && pins[w.target](rec) {
+			delta := res.BodyLine - int(rec.GetBodyLine())
+			open := map[string]bool{}
+			for _, s := range res.Survivors {
+				open[s.Position+"|"+s.Operator] = true
+			}
+			for _, a := range rec.GetAttested() {
+				pos, ok := shiftPos(a.GetPosition(), delta)
+				if ok && open[pos+"|"+a.GetOperator()] {
+					res.Attested = append(res.Attested, Attestation{Position: pos, Operator: a.GetOperator(), Reason: a.GetReason()})
+				}
+			}
+		}
 	}
 	return rep, nil
+}
+
+// budgetCovers reports whether a sheet generated under the recorded cap
+// answers a request for req mutants per symbol (0 = exhaustive): a
+// capped sheet never answers a request for more mutants than it
+// generated.
+func budgetCovers(recorded, req int) bool {
+	if recorded == 0 {
+		return true
+	}
+	return req > 0 && req <= recorded
+}
+
+// shiftPos rebases a file:line:col position by delta lines; false when
+// the position does not parse.
+func shiftPos(pos string, delta int) (string, bool) {
+	parts := strings.Split(pos, ":")
+	if len(parts) != 3 {
+		return "", false
+	}
+	line, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return "", false
+	}
+	return fmt.Sprintf("%s:%d:%s", parts[0], line+delta, parts[2]), true
 }
 
 // Records renders the run's kill-sheets as record-file updates, one file
@@ -293,6 +454,18 @@ func (r *Report) Records(store *records.Store) map[string][]byte {
 		}
 		rec.SetSurvivors(survivors)
 		rec.SetWitnesses(res.Witnesses)
+		rec.SetOperators(golang.OperatorSet)
+		rec.SetBodyLine(int32(res.BodyLine))
+		rec.SetBudget(int32(res.Budget))
+		var attested []*stipulatorv1.MutationAttestation
+		for _, a := range res.Attested {
+			ma := &stipulatorv1.MutationAttestation{}
+			ma.SetPosition(a.Position)
+			ma.SetOperator(a.Operator)
+			ma.SetReason(a.Reason)
+			attested = append(attested, ma)
+		}
+		rec.SetAttested(attested)
 		path := records.HardeningPath(res.Symbol)
 		fresh[path] = append(fresh[path], rec)
 	}

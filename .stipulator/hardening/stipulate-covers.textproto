@@ -13,4 +13,7 @@ records {
     operator: "delete statement"
   }
   witnesses: "github.com/greatliontech/stipulator/stipulate.TestCoversEmitsMarker"
+  operators: "go/2"
+  body_line: 22
+  budget: 24
 }

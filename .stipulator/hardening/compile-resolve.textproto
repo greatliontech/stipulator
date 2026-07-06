@@ -6,7 +6,7 @@ records {
   symbol: "github.com/greatliontech/stipulator/internal/compile.resolve"
   body_hash: "e467f5707909855c1cd8187f254b6609b3ea3a28a74e71a3922ef291598f90ec"
   mutants: 22
-  killed: 11
+  killed: 10
   discarded: 2
   survivors {
     position: "compile.go:322:2"
@@ -29,10 +29,6 @@ records {
     operator: "delete statement"
   }
   survivors {
-    position: "compile.go:343:2"
-    operator: "delete statement"
-  }
-  survivors {
     position: "compile.go:349:2"
     operator: "delete statement"
   }
@@ -45,14 +41,25 @@ records {
     operator: "delete statement"
   }
   survivors {
+    position: "compile.go:138:5"
+    operator: "continue -> break"
+  }
+  survivors {
     position: "compile.go:141:5"
     operator: "delete statement"
   }
   survivors {
-    position: "compile.go:153:5"
-    operator: "delete statement"
+    position: "compile.go:142:5"
+    operator: "continue -> break"
+  }
+  survivors {
+    position: "compile.go:150:5"
+    operator: "continue -> break"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/compile.TestKeywordDiscipline"
   witnesses: "github.com/greatliontech/stipulator/internal/compile.TestLayoutIndependence"
   witnesses: "github.com/greatliontech/stipulator/internal/compile.TestReferences"
+  operators: "go/2"
+  body_line: 122
+  budget: 24
 }

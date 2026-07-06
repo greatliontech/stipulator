@@ -7,7 +7,7 @@
 | [change.md](change.md) | Change model | 14 | 0 |
 | [context.md](context.md) | Context facts | 2 | 0 |
 | [evidence.md](evidence.md) | Bindings, evidence, coverage | 18 | 0 |
-| [hardening.md](hardening.md) | Witness hardening | 6 | 1 |
+| [hardening.md](hardening.md) | Witness hardening | 7 | 1 |
 | [mcp.md](mcp.md) | MCP surface | 5 | 0 |
 | [model.md](model.md) | Intermediate representation | 12 | 0 |
 | [overview.md](overview.md) | Stipulator overview | 5 | 20 |
@@ -58,6 +58,7 @@
 
 ## hardening.md
 
+- `REQ-harden-attestation` (behavior, must)
 - `REQ-harden-exploration` (behavior, must not)
 - `REQ-harden-mutation` (behavior, must)
 - `REQ-harden-operators` (behavior, must)

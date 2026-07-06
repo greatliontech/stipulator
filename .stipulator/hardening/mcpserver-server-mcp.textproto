@@ -5,9 +5,9 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.Server.MCP"
   body_hash: "82dd6182c42297eeffc81ecd9b1335b220b803f057a80e4ec14223c2161fcbbe"
-  mutants: 21
-  killed: 13
-  discarded: 1
+  mutants: 22
+  killed: 14
+  discarded: 2
   survivors {
     position: "server.go:151:2"
     operator: "delete statement"
@@ -42,4 +42,7 @@ records {
   }
   witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestGateTool"
   witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestToolListExact"
+  operators: "go/2"
+  body_line: 99
+  budget: 24
 }

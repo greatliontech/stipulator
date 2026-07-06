@@ -6,29 +6,40 @@ records {
   symbol: "github.com/greatliontech/stipulator/internal/author.Bind"
   body_hash: "817e2fd31ca05b72d72302ab737a4b314222d738bd306f8bc123706c96627f7e"
   mutants: 24
-  killed: 19
+  killed: 17
   survivors {
     position: "author.go:101:15"
     operator: "zero return"
+  }
+  survivors {
+    position: "author.go:103:18"
+    operator: "increment literal"
   }
   survivors {
     position: "author.go:104:15"
     operator: "zero return"
   }
   survivors {
+    position: "author.go:104:65"
+    operator: "increment literal"
+  }
+  survivors {
+    position: "author.go:104:90"
+    operator: "- -> +"
+  }
+  survivors {
+    position: "author.go:104:91"
+    operator: "increment literal"
+  }
+  survivors {
     position: "author.go:116:15"
-    operator: "zero return"
-  }
-  survivors {
-    position: "author.go:118:22"
-    operator: "|| -> &&"
-  }
-  survivors {
-    position: "author.go:119:15"
     operator: "zero return"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/author.TestBind"
   witnesses: "github.com/greatliontech/stipulator/internal/author.TestBindFileConfinement"
   witnesses: "github.com/greatliontech/stipulator/internal/author.TestProvesDischarge"
   witnesses: "github.com/greatliontech/stipulator/internal/author.TestUnbind"
+  operators: "go/2"
+  body_line: 98
+  budget: 24
 }

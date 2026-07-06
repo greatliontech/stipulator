@@ -5,8 +5,23 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/diff.Diff"
   body_hash: "9a80f3b5aa4180fd040b17cf6da856b46dedabbd0dea558675d157c54cc07e5a"
-  mutants: 15
-  killed: 15
+  mutants: 23
+  killed: 20
   discarded: 1
+  survivors {
+    position: "diff.go:85:4"
+    operator: "drop assignment"
+  }
+  survivors {
+    position: "diff.go:89:4"
+    operator: "drop assignment"
+  }
+  survivors {
+    position: "diff.go:110:38"
+    operator: "force false"
+  }
   witnesses: "github.com/greatliontech/stipulator/internal/diff.TestDiff"
+  operators: "go/2"
+  body_line: 68
+  budget: 24
 }

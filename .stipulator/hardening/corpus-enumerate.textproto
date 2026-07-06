@@ -5,8 +5,8 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.Enumerate"
   body_hash: "3426c849d5e75da3c2096cd8cfd0fd7457c52d552be5978d0c249d25b2b84a76"
-  mutants: 18
-  killed: 15
+  mutants: 19
+  killed: 16
   survivors {
     position: "corpus.go:67:11"
     operator: "zero return"
@@ -20,4 +20,7 @@ records {
     operator: "zero return"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/corpus.TestEnumerate"
+  operators: "go/2"
+  body_line: 57
+  budget: 24
 }

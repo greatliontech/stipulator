@@ -9,4 +9,6 @@ records {
   killed: 0
   witnesses: "github.com/greatliontech/stipulator/internal/corpus.TestMatchGlob"
   witnesses: "github.com/greatliontech/stipulator/internal/corpus.TestValidateGlobErrors"
+  operators: "go/2"
+  budget: 24
 }

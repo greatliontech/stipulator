@@ -5,11 +5,34 @@ records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/profile.parseMetadata"
   body_hash: "a38fac8dde7f062004f6f671198233a7bcd9ad03440fb12ac4d5c8ec675fc9a4"
-  mutants: 10
-  killed: 9
+  mutants: 21
+  killed: 15
+  survivors {
+    position: "transform.go:165:2"
+    operator: "drop assignment"
+  }
+  survivors {
+    position: "transform.go:182:3"
+    operator: "drop assignment"
+  }
+  survivors {
+    position: "transform.go:178:97"
+    operator: "increment literal"
+  }
+  survivors {
+    position: "transform.go:182:59"
+    operator: "increment literal"
+  }
+  survivors {
+    position: "transform.go:182:79"
+    operator: "increment literal"
+  }
   survivors {
     position: "transform.go:184:9"
     operator: "zero return"
   }
   witnesses: "github.com/greatliontech/stipulator/internal/compile.TestLeadErrors"
+  operators: "go/2"
+  body_line: 158
+  budget: 24
 }

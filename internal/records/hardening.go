@@ -48,6 +48,22 @@ func RenderHardening(recs []*stipulatorv1.Hardening) []byte {
 		for _, w := range rec.GetWitnesses() {
 			fmt.Fprintf(&b, "  witnesses: %s\n", strconv.Quote(w))
 		}
+		if rec.GetOperators() != "" {
+			fmt.Fprintf(&b, "  operators: %s\n", strconv.Quote(rec.GetOperators()))
+		}
+		if rec.GetBodyLine() != 0 {
+			fmt.Fprintf(&b, "  body_line: %d\n", rec.GetBodyLine())
+		}
+		if rec.GetBudget() != 0 {
+			fmt.Fprintf(&b, "  budget: %d\n", rec.GetBudget())
+		}
+		for _, a := range rec.GetAttested() {
+			b.WriteString("  attested {\n")
+			fmt.Fprintf(&b, "    position: %s\n", strconv.Quote(a.GetPosition()))
+			fmt.Fprintf(&b, "    operator: %s\n", strconv.Quote(a.GetOperator()))
+			fmt.Fprintf(&b, "    reason: %s\n", strconv.Quote(a.GetReason()))
+			b.WriteString("  }\n")
+		}
 		b.WriteString("}\n")
 	}
 	return []byte(b.String())

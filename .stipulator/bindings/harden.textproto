@@ -39,7 +39,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-operators"
-  content_hash: "589cbe25dc3c1c1278bb44c8048d77242e50d5a6b897c3f71d658c9e3d8ba9fa"
+  content_hash: "f447eeb038e62be645e714b8170bf0176c4c07b721a84c9832bfcdeab17fd32d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend.Mutants"
   role: BINDING_ROLE_IMPLEMENTS
@@ -48,7 +48,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-operators"
-  content_hash: "589cbe25dc3c1c1278bb44c8048d77242e50d5a6b897c3f71d658c9e3d8ba9fa"
+  content_hash: "f447eeb038e62be645e714b8170bf0176c4c07b721a84c9832bfcdeab17fd32d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestMutants"
   role: BINDING_ROLE_TESTS
@@ -75,7 +75,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-records"
-  content_hash: "fb1044f77306ac3b11457b554a117c482d546c095112db0e7ec36aace3246026"
+  content_hash: "b4b9022553c9a9e32de474aa6c7b0678de2d34ff263ea972c161b9ae5c7445a0"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/harden.Report.Records"
   role: BINDING_ROLE_IMPLEMENTS
@@ -84,7 +84,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-records"
-  content_hash: "fb1044f77306ac3b11457b554a117c482d546c095112db0e7ec36aace3246026"
+  content_hash: "b4b9022553c9a9e32de474aa6c7b0678de2d34ff263ea972c161b9ae5c7445a0"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/harden.TestRunAndRecords"
   role: BINDING_ROLE_TESTS
@@ -134,4 +134,22 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestSplitRapidPkgs"
   role: BINDING_ROLE_TESTS
   shape_hash: "9d97ff282407abf275328665f8c27c1ed3bcdce9c548e2359334998233fc0b59"
+}
+
+bindings {
+  requirement_id: "REQ-harden-attestation"
+  content_hash: "bb083f55641240a0c9b1048481d7ff4888048d1f832fef6b8cd6deef55f921ec"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.Attest"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "2464acc134c195b1741294d67c0188312d170d2418d0a9c81ea4287a826badba"
+}
+
+bindings {
+  requirement_id: "REQ-harden-attestation"
+  content_hash: "bb083f55641240a0c9b1048481d7ff4888048d1f832fef6b8cd6deef55f921ec"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestAttest"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b2ede2a3da4cb89db0738b2def43e0e4289737388de2b9e8b19e8b2ac35c6647"
 }

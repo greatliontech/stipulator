@@ -92,6 +92,46 @@ func TestMutants(t *testing.T) {
 			t.Fatalf("operator %q missing: %v", want, ops)
 		}
 	}
+
+	// The extended families, one site each in the Mixed fixture. The
+	// declaration (total := 0) must NOT yield a drop-assignment mutant:
+	// removing a declaration proves nothing.
+	mixed, err := b.Mutants("example.com/fixture/lib.Mixed", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mixedOps := map[string]int{}
+	for _, m := range mixed {
+		mixedOps[m.Operator]++
+	}
+	for _, want := range []string{
+		"drop assignment", "+= -> -=", "* -> /", "+ -> -",
+		"increment literal", "continue -> break", "force false",
+	} {
+		if mixedOps[want] == 0 {
+			t.Fatalf("operator %q missing: %v", want, mixedOps)
+		}
+	}
+	if got := mixedOps["drop assignment"]; got != 2 { // += and = are stores; := is not
+		t.Fatalf("drop assignment sites = %d; a declaration must not count", got)
+	}
+
+	// No two mutants of one symbol render the same source: a duplicate
+	// would double-count one effective mutant.
+	for _, symbol := range []string{"example.com/fixture/lib.Add", "example.com/fixture/lib.Weak", "example.com/fixture/lib.Mixed"} {
+		ms, err := b.Mutants(symbol, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		seen := map[string]string{}
+		for _, m := range ms {
+			key := string(m.Source)
+			if prev, dup := seen[key]; dup {
+				t.Fatalf("%s: mutants %s and %s render identically", symbol, prev, m.Position+" "+m.Operator)
+			}
+			seen[key] = m.Position + " " + m.Operator
+		}
+	}
 	capped, err := b.Mutants("example.com/fixture/lib.Add", 2)
 	if err != nil || len(capped) != 2 {
 		t.Fatalf("budget ignored: %d %v", len(capped), err)
