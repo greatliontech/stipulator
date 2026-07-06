@@ -190,16 +190,16 @@ func (b *Backend) Mutants(symbol string, budget int) ([]Mutant, error) {
 			if swapped, ok := comparisonSwap[v.Op]; ok {
 				orig := v.Op
 				sites = append(sites, site{
-					op:  fmt.Sprintf("%s -> %s", orig, swapped),
-					pos: v.OpPos,
+					op:    fmt.Sprintf("%s -> %s", orig, swapped),
+					pos:   v.OpPos,
 					apply: func() { v.Op = swapped }, revert: func() { v.Op = orig },
 				})
 			}
 			if swapped, ok := arithmeticSwap[v.Op]; ok && numeric(v.X) {
 				orig := v.Op
 				sites = append(sites, site{
-					op:  fmt.Sprintf("%s -> %s", orig, swapped),
-					pos: v.OpPos,
+					op:    fmt.Sprintf("%s -> %s", orig, swapped),
+					pos:   v.OpPos,
 					apply: func() { v.Op = swapped }, revert: func() { v.Op = orig },
 				})
 			}
@@ -214,8 +214,8 @@ func (b *Backend) Mutants(symbol string, budget int) ([]Mutant, error) {
 				for _, side := range []*ast.Expr{&v.X, &v.Y} {
 					s, orig := side, *side
 					sites = append(sites, site{
-						op:  "force " + forced.Name,
-						pos: orig.Pos(),
+						op:    "force " + forced.Name,
+						pos:   orig.Pos(),
 						apply: func() { *s = forced }, revert: func() { *s = orig },
 					})
 				}
@@ -224,8 +224,8 @@ func (b *Backend) Mutants(symbol string, budget int) ([]Mutant, error) {
 			if v.Kind == token.INT {
 				orig := v.Value
 				sites = append(sites, site{
-					op:  "increment literal",
-					pos: v.Pos(),
+					op:    "increment literal",
+					pos:   v.Pos(),
 					apply: func() { v.Value = incrementInt(orig) }, revert: func() { v.Value = orig },
 				})
 			}
@@ -236,8 +236,8 @@ func (b *Backend) Mutants(symbol string, budget int) ([]Mutant, error) {
 					swapped = token.BREAK
 				}
 				sites = append(sites, site{
-					op:  fmt.Sprintf("%s -> %s", orig, swapped),
-					pos: v.Pos(),
+					op:    fmt.Sprintf("%s -> %s", orig, swapped),
+					pos:   v.Pos(),
 					apply: func() { v.Tok = swapped }, revert: func() { v.Tok = orig },
 				})
 			}
@@ -247,16 +247,16 @@ func (b *Backend) Mutants(symbol string, budget int) ([]Mutant, error) {
 				swapped = token.INC
 			}
 			sites = append(sites, site{
-				op:  fmt.Sprintf("%s -> %s", orig, swapped),
-				pos: v.TokPos,
+				op:    fmt.Sprintf("%s -> %s", orig, swapped),
+				pos:   v.TokPos,
 				apply: func() { v.Tok = swapped }, revert: func() { v.Tok = orig },
 			})
 		case *ast.AssignStmt:
 			if swapped, ok := assignArithmeticSwap[v.Tok]; ok && numeric(v.Lhs[0]) {
 				orig := v.Tok
 				sites = append(sites, site{
-					op:  fmt.Sprintf("%s -> %s", orig, swapped),
-					pos: v.TokPos,
+					op:    fmt.Sprintf("%s -> %s", orig, swapped),
+					pos:   v.TokPos,
 					apply: func() { v.Tok = swapped }, revert: func() { v.Tok = orig },
 				})
 			}
@@ -303,8 +303,8 @@ func (b *Backend) Mutants(symbol string, budget int) ([]Mutant, error) {
 					noop := &ast.AssignStmt{Lhs: blanks, Tok: token.ASSIGN, Rhs: typed.Rhs}
 					idx, orig, list := i, st, v
 					sites = append(sites, site{
-						op:  "drop assignment",
-						pos: st.Pos(),
+						op:     "drop assignment",
+						pos:    st.Pos(),
 						apply:  func() { list.List[idx] = noop },
 						revert: func() { list.List[idx] = orig },
 					})
@@ -318,8 +318,8 @@ func (b *Backend) Mutants(symbol string, budget int) ([]Mutant, error) {
 				}
 				idx, orig, ret := i, res, v
 				sites = append(sites, site{
-					op:  "zero return",
-					pos: res.Pos(),
+					op:    "zero return",
+					pos:   res.Pos(),
 					apply: func() { ret.Results[idx] = zero }, revert: func() { ret.Results[idx] = orig },
 				})
 			}

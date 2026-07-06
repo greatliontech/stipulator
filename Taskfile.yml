@@ -53,6 +53,11 @@ tasks:
     cmds:
       - go run ./cmd/stipulator fmt
 
+  fmt-check:
+    desc: gofmt cleanliness across all workspace modules
+    cmds:
+      - test -z "$(gofmt -l . | grep -v testdata)"
+
   tidy-check:
     desc: Every module ships a tidy go.mod/go.sum (workspace-mode CI cannot see per-module drift)
     cmds:
@@ -64,6 +69,7 @@ tasks:
     desc: Everything CI runs
     deps: [vet]
     cmds:
+      - task: fmt-check
       - task: tidy-check
       - task: test
       - task: gate

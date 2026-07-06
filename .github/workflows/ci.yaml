@@ -16,6 +16,9 @@ jobs:
       - name: Vet
         run: go vet github.com/greatliontech/stipulator/...
 
+      - name: gofmt check
+        run: test -z "$(gofmt -l . | grep -v testdata)"
+
       - name: Tidy check (per module — workspace CI cannot see drift)
         run: |
           go mod tidy -diff

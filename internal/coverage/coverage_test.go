@@ -17,7 +17,7 @@ func fixture(t *testing.T, doc string, files map[string]string) (*stipulatorv1.S
 	t.Helper()
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
-		"specs/a.md":           {Data: []byte(doc)},
+		"specs/a.md":                     {Data: []byte(doc)},
 	}
 	for p, c := range files {
 		fsys[p] = &fstest.MapFile{Data: []byte(c)}
@@ -320,10 +320,10 @@ func TestGapStates(t *testing.T) {
 		return "requirement_id: \"" + id + "\"\nreason: \"r\"\nlands { " + lands + " }\n"
 	}
 	spec, store := fixture(t, doc, map[string]string{
-		".stipulator/gaps/a.textproto": gap("REQ-c-a", `covered: "REQ-c-d"`),      // due when d covered
-		".stipulator/gaps/b.textproto": gap("REQ-c-b", `exists: "REQ-c-ghost"`),   // open: target absent
+		".stipulator/gaps/a.textproto": gap("REQ-c-a", `covered: "REQ-c-d"`),                           // due when d covered
+		".stipulator/gaps/b.textproto": gap("REQ-c-b", `exists: "REQ-c-ghost"`),                        // open: target absent
 		".stipulator/gaps/c.textproto": gap("REQ-c-c", `manual { condition: "external" fired: true }`), // due: fired
-		".stipulator/gaps/d.textproto": gap("REQ-c-d", `exists: "REQ-c-a"`),       // resolved: d covered
+		".stipulator/gaps/d.textproto": gap("REQ-c-d", `exists: "REQ-c-a"`),                            // resolved: d covered
 	})
 	vr := &verify.Report{Results: []verify.BindingResult{
 		result("REQ-c-d", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed),

@@ -212,7 +212,34 @@ type Report struct {
 	// Attestations holds the verified state of every well-formed
 	// requirement attestation, in store order.
 	Attestations []AttestationResult
+	// Signatures classify each changed requirement's shape against the
+	// record pins — the baseline; no verification outcome is persisted
+	// (REQ-gate-change-signature). Derived only in witnessed runs, in
+	// requirement order.
+	Signatures []ChangeSignature
 }
+
+// ChangeSignature labels one requirement's change shape.
+type ChangeSignature struct {
+	RequirementId string
+	Label         SignatureLabel
+	// Evidence names the observations behind the label, human-readable.
+	Evidence []string
+}
+
+// SignatureLabel is the change-signature vocabulary.
+type SignatureLabel int
+
+const (
+	// Rearchitecture: structure moved — a proof-shape pin no longer
+	// matches, or a proof failed — while every behavior witness stayed
+	// green: the behavior contract is intact under a new shape.
+	Rearchitecture SignatureLabel = iota + 1
+	// SemanticDrift: a behavior witness failed while the requirement's
+	// content pin is current — red with no corresponding spec delta:
+	// behavior diverged under a stable contract.
+	SemanticDrift
+)
 
 // AttestationResult is one requirement attestation checked against the
 // current corpus: the reason rides to coverage, and a stale content pin
@@ -442,5 +469,80 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 		}
 		return a.Message < b.Message
 	})
+	if testRun != nil {
+		rep.Signatures = signatures(rep.Results)
+	}
 	return rep
+}
+
+// signatures classifies each requirement's change shape from one run's
+// binding results, with the record pins as baseline
+// (REQ-gate-change-signature). The two labels are disjoint by
+// construction: rearchitecture demands every behavior witness green,
+// semantic drift demands one red.
+func signatures(results []BindingResult) []ChangeSignature {
+	type reqState struct {
+		proofMoved, proofFailed  []string
+		behaviorGreen            int
+		redCurrent, redStalePins []string
+	}
+	states := map[string]*reqState{}
+	order := []string{}
+	get := func(id string) *reqState {
+		st, ok := states[id]
+		if !ok {
+			st = &reqState{}
+			states[id] = st
+			order = append(order, id)
+		}
+		return st
+	}
+	for _, r := range results {
+		st := get(r.RequirementId)
+		proof := r.Role == stipulatorv1.BindingRole_BINDING_ROLE_PROVES || r.WitnessClass == AnalyzerProof
+		switch {
+		case proof && r.Shape == ShapeMismatch:
+			st.proofMoved = append(st.proofMoved, r.Symbol)
+		case proof && r.TestOutcome == TestFailed:
+			st.proofFailed = append(st.proofFailed, r.Symbol)
+		case !proof && witnessRole(r.Role):
+			switch r.TestOutcome {
+			case TestPassed:
+				st.behaviorGreen++
+			case TestFailed:
+				if r.ContentPinned {
+					st.redCurrent = append(st.redCurrent, r.Symbol)
+				} else {
+					st.redStalePins = append(st.redStalePins, r.Symbol)
+				}
+			}
+		}
+	}
+	var out []ChangeSignature
+	sort.Strings(order)
+	for _, id := range order {
+		st := states[id]
+		switch {
+		case len(st.redCurrent) > 0:
+			var ev []string
+			for _, sym := range st.redCurrent {
+				ev = append(ev, "behavior witness failed under a current contract: "+sym)
+			}
+			for _, sym := range st.redStalePins {
+				ev = append(ev, "behavior witness failed alongside a spec delta: "+sym)
+			}
+			out = append(out, ChangeSignature{RequirementId: id, Label: SemanticDrift, Evidence: ev})
+		case (len(st.proofMoved) > 0 || len(st.proofFailed) > 0) && len(st.redCurrent)+len(st.redStalePins) == 0 && st.behaviorGreen > 0:
+			var ev []string
+			for _, sym := range st.proofMoved {
+				ev = append(ev, "proof shape moved: "+sym)
+			}
+			for _, sym := range st.proofFailed {
+				ev = append(ev, "proof failed: "+sym)
+			}
+			ev = append(ev, fmt.Sprintf("behavior green: %d witnesses", st.behaviorGreen))
+			out = append(out, ChangeSignature{RequirementId: id, Label: Rearchitecture, Evidence: ev})
+		}
+	}
+	return out
 }

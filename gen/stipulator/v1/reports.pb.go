@@ -224,6 +224,54 @@ func (x WitnessClass) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
+// SignatureLabel is the change-signature vocabulary.
+type SignatureLabel int32
+
+const (
+	SignatureLabel_SIGNATURE_LABEL_UNSPECIFIED SignatureLabel = 0
+	// Structure moved while every behavior witness stayed green.
+	SignatureLabel_SIGNATURE_LABEL_REARCHITECTURE SignatureLabel = 1
+	// A behavior witness failed while the requirement's contract text is
+	// unchanged — red with no corresponding spec delta.
+	SignatureLabel_SIGNATURE_LABEL_SEMANTIC_DRIFT SignatureLabel = 2
+)
+
+// Enum value maps for SignatureLabel.
+var (
+	SignatureLabel_name = map[int32]string{
+		0: "SIGNATURE_LABEL_UNSPECIFIED",
+		1: "SIGNATURE_LABEL_REARCHITECTURE",
+		2: "SIGNATURE_LABEL_SEMANTIC_DRIFT",
+	}
+	SignatureLabel_value = map[string]int32{
+		"SIGNATURE_LABEL_UNSPECIFIED":    0,
+		"SIGNATURE_LABEL_REARCHITECTURE": 1,
+		"SIGNATURE_LABEL_SEMANTIC_DRIFT": 2,
+	}
+)
+
+func (x SignatureLabel) Enum() *SignatureLabel {
+	p := new(SignatureLabel)
+	*p = x
+	return p
+}
+
+func (x SignatureLabel) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SignatureLabel) Descriptor() protoreflect.EnumDescriptor {
+	return file_stipulator_v1_reports_proto_enumTypes[4].Descriptor()
+}
+
+func (SignatureLabel) Type() protoreflect.EnumType {
+	return &file_stipulator_v1_reports_proto_enumTypes[4]
+}
+
+func (x SignatureLabel) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
 // Bucket classifies a requirement's coverage.
 type Bucket int32
 
@@ -273,11 +321,11 @@ func (x Bucket) String() string {
 }
 
 func (Bucket) Descriptor() protoreflect.EnumDescriptor {
-	return file_stipulator_v1_reports_proto_enumTypes[4].Descriptor()
+	return file_stipulator_v1_reports_proto_enumTypes[5].Descriptor()
 }
 
 func (Bucket) Type() protoreflect.EnumType {
-	return &file_stipulator_v1_reports_proto_enumTypes[4]
+	return &file_stipulator_v1_reports_proto_enumTypes[5]
 }
 
 func (x Bucket) Number() protoreflect.EnumNumber {
@@ -321,11 +369,11 @@ func (x GapState) String() string {
 }
 
 func (GapState) Descriptor() protoreflect.EnumDescriptor {
-	return file_stipulator_v1_reports_proto_enumTypes[5].Descriptor()
+	return file_stipulator_v1_reports_proto_enumTypes[6].Descriptor()
 }
 
 func (GapState) Type() protoreflect.EnumType {
-	return &file_stipulator_v1_reports_proto_enumTypes[5]
+	return &file_stipulator_v1_reports_proto_enumTypes[6]
 }
 
 func (x GapState) Number() protoreflect.EnumNumber {
@@ -1025,6 +1073,7 @@ type VerifyReport struct {
 	xxx_hidden_Problems      *[]*Problem            `protobuf:"bytes,1,rep,name=problems"`
 	xxx_hidden_Results       *[]*BindingResult      `protobuf:"bytes,2,rep,name=results"`
 	xxx_hidden_Registrations *[]*RegistrationResult `protobuf:"bytes,3,rep,name=registrations"`
+	xxx_hidden_Signatures    *[]*ChangeSignature    `protobuf:"bytes,4,rep,name=signatures"`
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -1081,6 +1130,15 @@ func (x *VerifyReport) GetRegistrations() []*RegistrationResult {
 	return nil
 }
 
+func (x *VerifyReport) GetSignatures() []*ChangeSignature {
+	if x != nil {
+		if x.xxx_hidden_Signatures != nil {
+			return *x.xxx_hidden_Signatures
+		}
+	}
+	return nil
+}
+
 func (x *VerifyReport) SetProblems(v []*Problem) {
 	x.xxx_hidden_Problems = &v
 }
@@ -1093,12 +1151,20 @@ func (x *VerifyReport) SetRegistrations(v []*RegistrationResult) {
 	x.xxx_hidden_Registrations = &v
 }
 
+func (x *VerifyReport) SetSignatures(v []*ChangeSignature) {
+	x.xxx_hidden_Signatures = &v
+}
+
 type VerifyReport_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	Problems      []*Problem
 	Results       []*BindingResult
 	Registrations []*RegistrationResult
+	// Signatures classify each changed requirement's shape against the
+	// record pins — the baseline; no verification outcome is persisted
+	// (REQ-gate-change-signature).
+	Signatures []*ChangeSignature
 }
 
 func (b0 VerifyReport_builder) Build() *VerifyReport {
@@ -1108,6 +1174,133 @@ func (b0 VerifyReport_builder) Build() *VerifyReport {
 	x.xxx_hidden_Problems = &b.Problems
 	x.xxx_hidden_Results = &b.Results
 	x.xxx_hidden_Registrations = &b.Registrations
+	x.xxx_hidden_Signatures = &b.Signatures
+	return m0
+}
+
+// ChangeSignature labels one requirement's change shape.
+type ChangeSignature struct {
+	state                    protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_RequirementId *string                `protobuf:"bytes,1,opt,name=requirement_id,json=requirementId"`
+	xxx_hidden_Label         SignatureLabel         `protobuf:"varint,2,opt,name=label,enum=stipulator.v1.SignatureLabel"`
+	xxx_hidden_Evidence      []string               `protobuf:"bytes,3,rep,name=evidence"`
+	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
+	XXX_presence             [1]uint32
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
+}
+
+func (x *ChangeSignature) Reset() {
+	*x = ChangeSignature{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChangeSignature) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChangeSignature) ProtoMessage() {}
+
+func (x *ChangeSignature) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *ChangeSignature) GetRequirementId() string {
+	if x != nil {
+		if x.xxx_hidden_RequirementId != nil {
+			return *x.xxx_hidden_RequirementId
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *ChangeSignature) GetLabel() SignatureLabel {
+	if x != nil {
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 1) {
+			return x.xxx_hidden_Label
+		}
+	}
+	return SignatureLabel_SIGNATURE_LABEL_UNSPECIFIED
+}
+
+func (x *ChangeSignature) GetEvidence() []string {
+	if x != nil {
+		return x.xxx_hidden_Evidence
+	}
+	return nil
+}
+
+func (x *ChangeSignature) SetRequirementId(v string) {
+	x.xxx_hidden_RequirementId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *ChangeSignature) SetLabel(v SignatureLabel) {
+	x.xxx_hidden_Label = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *ChangeSignature) SetEvidence(v []string) {
+	x.xxx_hidden_Evidence = v
+}
+
+func (x *ChangeSignature) HasRequirementId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *ChangeSignature) HasLabel() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *ChangeSignature) ClearRequirementId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_RequirementId = nil
+}
+
+func (x *ChangeSignature) ClearLabel() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Label = SignatureLabel_SIGNATURE_LABEL_UNSPECIFIED
+}
+
+type ChangeSignature_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	RequirementId *string
+	Label         *SignatureLabel
+	// Evidence names the observations behind the label, human-readable.
+	Evidence []string
+}
+
+func (b0 ChangeSignature_builder) Build() *ChangeSignature {
+	m0 := &ChangeSignature{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.RequirementId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_RequirementId = b.RequirementId
+	}
+	if b.Label != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		x.xxx_hidden_Label = *b.Label
+	}
+	x.xxx_hidden_Evidence = b.Evidence
 	return m0
 }
 
@@ -1127,7 +1320,7 @@ type RequirementCoverage struct {
 
 func (x *RequirementCoverage) Reset() {
 	*x = RequirementCoverage{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[4]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1139,7 +1332,7 @@ func (x *RequirementCoverage) String() string {
 func (*RequirementCoverage) ProtoMessage() {}
 
 func (x *RequirementCoverage) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[4]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1314,7 +1507,7 @@ type GapReport struct {
 
 func (x *GapReport) Reset() {
 	*x = GapReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[5]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1326,7 +1519,7 @@ func (x *GapReport) String() string {
 func (*GapReport) ProtoMessage() {}
 
 func (x *GapReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[5]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1461,7 +1654,7 @@ type CoverageReport struct {
 
 func (x *CoverageReport) Reset() {
 	*x = CoverageReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[6]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1473,7 +1666,7 @@ func (x *CoverageReport) String() string {
 func (*CoverageReport) ProtoMessage() {}
 
 func (x *CoverageReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[6]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1600,7 +1793,7 @@ type Seed struct {
 
 func (x *Seed) Reset() {
 	*x = Seed{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[7]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1612,7 +1805,7 @@ func (x *Seed) String() string {
 func (*Seed) ProtoMessage() {}
 
 func (x *Seed) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[7]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1777,7 +1970,7 @@ type Decl struct {
 
 func (x *Decl) Reset() {
 	*x = Decl{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[8]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1789,7 +1982,7 @@ func (x *Decl) String() string {
 func (*Decl) ProtoMessage() {}
 
 func (x *Decl) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[8]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1953,7 +2146,7 @@ type ContextReport struct {
 
 func (x *ContextReport) Reset() {
 	*x = ContextReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1965,7 +2158,7 @@ func (x *ContextReport) String() string {
 func (*ContextReport) ProtoMessage() {}
 
 func (x *ContextReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2031,7 +2224,7 @@ type PartitionComponent struct {
 
 func (x *PartitionComponent) Reset() {
 	*x = PartitionComponent{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2043,7 +2236,7 @@ func (x *PartitionComponent) String() string {
 func (*PartitionComponent) ProtoMessage() {}
 
 func (x *PartitionComponent) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2122,7 +2315,7 @@ type PartitionOverlap struct {
 
 func (x *PartitionOverlap) Reset() {
 	*x = PartitionOverlap{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2134,7 +2327,7 @@ func (x *PartitionOverlap) String() string {
 func (*PartitionOverlap) ProtoMessage() {}
 
 func (x *PartitionOverlap) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2240,7 +2433,7 @@ type PartitionReport struct {
 
 func (x *PartitionReport) Reset() {
 	*x = PartitionReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2252,7 +2445,7 @@ func (x *PartitionReport) String() string {
 func (*PartitionReport) ProtoMessage() {}
 
 func (x *PartitionReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2320,7 +2513,7 @@ type HardenResult struct {
 
 func (x *HardenResult) Reset() {
 	*x = HardenResult{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2332,7 +2525,7 @@ func (x *HardenResult) String() string {
 func (*HardenResult) ProtoMessage() {}
 
 func (x *HardenResult) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2482,7 +2675,7 @@ type HardenReport struct {
 
 func (x *HardenReport) Reset() {
 	*x = HardenReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2494,7 +2687,7 @@ func (x *HardenReport) String() string {
 func (*HardenReport) ProtoMessage() {}
 
 func (x *HardenReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2559,11 +2752,18 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\apackage\x18\x01 \x01(\tR\apackage\x12\x12\n" +
 	"\x04test\x18\x02 \x01(\tR\x04test\x12%\n" +
 	"\x0erequirement_id\x18\x03 \x01(\tR\rrequirementId\x124\n" +
-	"\aoutcome\x18\x04 \x01(\x0e2\x1a.stipulator.v1.TestOutcomeR\aoutcome\"\xc3\x01\n" +
+	"\aoutcome\x18\x04 \x01(\x0e2\x1a.stipulator.v1.TestOutcomeR\aoutcome\"\x83\x02\n" +
 	"\fVerifyReport\x122\n" +
 	"\bproblems\x18\x01 \x03(\v2\x16.stipulator.v1.ProblemR\bproblems\x126\n" +
 	"\aresults\x18\x02 \x03(\v2\x1c.stipulator.v1.BindingResultR\aresults\x12G\n" +
-	"\rregistrations\x18\x03 \x03(\v2!.stipulator.v1.RegistrationResultR\rregistrations\"\xcf\x01\n" +
+	"\rregistrations\x18\x03 \x03(\v2!.stipulator.v1.RegistrationResultR\rregistrations\x12>\n" +
+	"\n" +
+	"signatures\x18\x04 \x03(\v2\x1e.stipulator.v1.ChangeSignatureR\n" +
+	"signatures\"\x89\x01\n" +
+	"\x0fChangeSignature\x12%\n" +
+	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x123\n" +
+	"\x05label\x18\x02 \x01(\x0e2\x1d.stipulator.v1.SignatureLabelR\x05label\x12\x1a\n" +
+	"\bevidence\x18\x03 \x03(\tR\bevidence\"\xcf\x01\n" +
 	"\x13RequirementCoverage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12-\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x19.stipulator.v1.ClauseKindR\x04kind\x120\n" +
@@ -2641,7 +2841,11 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x19WITNESS_CLASS_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15WITNESS_CLASS_EXAMPLE\x10\x01\x12\x1a\n" +
 	"\x16WITNESS_CLASS_PROPERTY\x10\x02\x12 \n" +
-	"\x1cWITNESS_CLASS_ANALYZER_PROOF\x10\x03*\x97\x01\n" +
+	"\x1cWITNESS_CLASS_ANALYZER_PROOF\x10\x03*y\n" +
+	"\x0eSignatureLabel\x12\x1f\n" +
+	"\x1bSIGNATURE_LABEL_UNSPECIFIED\x10\x00\x12\"\n" +
+	"\x1eSIGNATURE_LABEL_REARCHITECTURE\x10\x01\x12\"\n" +
+	"\x1eSIGNATURE_LABEL_SEMANTIC_DRIFT\x10\x02*\x97\x01\n" +
 	"\x06Bucket\x12\x16\n" +
 	"\x12BUCKET_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10BUCKET_UNCOVERED\x10\x01\x12\x10\n" +
@@ -2656,64 +2860,68 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\rGAP_STATE_DUE\x10\x02\x12\x16\n" +
 	"\x12GAP_STATE_RESOLVED\x10\x03BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
-var file_stipulator_v1_reports_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_stipulator_v1_reports_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
+var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_stipulator_v1_reports_proto_goTypes = []any{
 	(Resolution)(0),             // 0: stipulator.v1.Resolution
 	(ShapeState)(0),             // 1: stipulator.v1.ShapeState
 	(TestOutcome)(0),            // 2: stipulator.v1.TestOutcome
 	(WitnessClass)(0),           // 3: stipulator.v1.WitnessClass
-	(Bucket)(0),                 // 4: stipulator.v1.Bucket
-	(GapState)(0),               // 5: stipulator.v1.GapState
-	(*Problem)(nil),             // 6: stipulator.v1.Problem
-	(*BindingResult)(nil),       // 7: stipulator.v1.BindingResult
-	(*RegistrationResult)(nil),  // 8: stipulator.v1.RegistrationResult
-	(*VerifyReport)(nil),        // 9: stipulator.v1.VerifyReport
-	(*RequirementCoverage)(nil), // 10: stipulator.v1.RequirementCoverage
-	(*GapReport)(nil),           // 11: stipulator.v1.GapReport
-	(*CoverageReport)(nil),      // 12: stipulator.v1.CoverageReport
-	(*Seed)(nil),                // 13: stipulator.v1.Seed
-	(*Decl)(nil),                // 14: stipulator.v1.Decl
-	(*ContextReport)(nil),       // 15: stipulator.v1.ContextReport
-	(*PartitionComponent)(nil),  // 16: stipulator.v1.PartitionComponent
-	(*PartitionOverlap)(nil),    // 17: stipulator.v1.PartitionOverlap
-	(*PartitionReport)(nil),     // 18: stipulator.v1.PartitionReport
-	(*HardenResult)(nil),        // 19: stipulator.v1.HardenResult
-	(*HardenReport)(nil),        // 20: stipulator.v1.HardenReport
-	(BindingRole)(0),            // 21: stipulator.v1.BindingRole
-	(ClauseKind)(0),             // 22: stipulator.v1.ClauseKind
-	(Keyword)(0),                // 23: stipulator.v1.Keyword
-	(*Hardening)(nil),           // 24: stipulator.v1.Hardening
+	(SignatureLabel)(0),         // 4: stipulator.v1.SignatureLabel
+	(Bucket)(0),                 // 5: stipulator.v1.Bucket
+	(GapState)(0),               // 6: stipulator.v1.GapState
+	(*Problem)(nil),             // 7: stipulator.v1.Problem
+	(*BindingResult)(nil),       // 8: stipulator.v1.BindingResult
+	(*RegistrationResult)(nil),  // 9: stipulator.v1.RegistrationResult
+	(*VerifyReport)(nil),        // 10: stipulator.v1.VerifyReport
+	(*ChangeSignature)(nil),     // 11: stipulator.v1.ChangeSignature
+	(*RequirementCoverage)(nil), // 12: stipulator.v1.RequirementCoverage
+	(*GapReport)(nil),           // 13: stipulator.v1.GapReport
+	(*CoverageReport)(nil),      // 14: stipulator.v1.CoverageReport
+	(*Seed)(nil),                // 15: stipulator.v1.Seed
+	(*Decl)(nil),                // 16: stipulator.v1.Decl
+	(*ContextReport)(nil),       // 17: stipulator.v1.ContextReport
+	(*PartitionComponent)(nil),  // 18: stipulator.v1.PartitionComponent
+	(*PartitionOverlap)(nil),    // 19: stipulator.v1.PartitionOverlap
+	(*PartitionReport)(nil),     // 20: stipulator.v1.PartitionReport
+	(*HardenResult)(nil),        // 21: stipulator.v1.HardenResult
+	(*HardenReport)(nil),        // 22: stipulator.v1.HardenReport
+	(BindingRole)(0),            // 23: stipulator.v1.BindingRole
+	(ClauseKind)(0),             // 24: stipulator.v1.ClauseKind
+	(Keyword)(0),                // 25: stipulator.v1.Keyword
+	(*Hardening)(nil),           // 26: stipulator.v1.Hardening
 }
 var file_stipulator_v1_reports_proto_depIdxs = []int32{
-	21, // 0: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
+	23, // 0: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
 	0,  // 1: stipulator.v1.BindingResult.resolution:type_name -> stipulator.v1.Resolution
 	1,  // 2: stipulator.v1.BindingResult.shape:type_name -> stipulator.v1.ShapeState
 	2,  // 3: stipulator.v1.BindingResult.test_outcome:type_name -> stipulator.v1.TestOutcome
 	3,  // 4: stipulator.v1.BindingResult.witness_class:type_name -> stipulator.v1.WitnessClass
 	2,  // 5: stipulator.v1.RegistrationResult.outcome:type_name -> stipulator.v1.TestOutcome
-	6,  // 6: stipulator.v1.VerifyReport.problems:type_name -> stipulator.v1.Problem
-	7,  // 7: stipulator.v1.VerifyReport.results:type_name -> stipulator.v1.BindingResult
-	8,  // 8: stipulator.v1.VerifyReport.registrations:type_name -> stipulator.v1.RegistrationResult
-	22, // 9: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
-	23, // 10: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
-	4,  // 11: stipulator.v1.RequirementCoverage.bucket:type_name -> stipulator.v1.Bucket
-	5,  // 12: stipulator.v1.GapReport.state:type_name -> stipulator.v1.GapState
-	10, // 13: stipulator.v1.CoverageReport.requirements:type_name -> stipulator.v1.RequirementCoverage
-	11, // 14: stipulator.v1.CoverageReport.gaps:type_name -> stipulator.v1.GapReport
-	21, // 15: stipulator.v1.Seed.role:type_name -> stipulator.v1.BindingRole
-	13, // 16: stipulator.v1.ContextReport.seeds:type_name -> stipulator.v1.Seed
-	14, // 17: stipulator.v1.ContextReport.declarations:type_name -> stipulator.v1.Decl
-	13, // 18: stipulator.v1.PartitionComponent.seeds:type_name -> stipulator.v1.Seed
-	16, // 19: stipulator.v1.PartitionReport.components:type_name -> stipulator.v1.PartitionComponent
-	17, // 20: stipulator.v1.PartitionReport.overlaps:type_name -> stipulator.v1.PartitionOverlap
-	24, // 21: stipulator.v1.HardenResult.record:type_name -> stipulator.v1.Hardening
-	19, // 22: stipulator.v1.HardenReport.results:type_name -> stipulator.v1.HardenResult
-	23, // [23:23] is the sub-list for method output_type
-	23, // [23:23] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	7,  // 6: stipulator.v1.VerifyReport.problems:type_name -> stipulator.v1.Problem
+	8,  // 7: stipulator.v1.VerifyReport.results:type_name -> stipulator.v1.BindingResult
+	9,  // 8: stipulator.v1.VerifyReport.registrations:type_name -> stipulator.v1.RegistrationResult
+	11, // 9: stipulator.v1.VerifyReport.signatures:type_name -> stipulator.v1.ChangeSignature
+	4,  // 10: stipulator.v1.ChangeSignature.label:type_name -> stipulator.v1.SignatureLabel
+	24, // 11: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
+	25, // 12: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
+	5,  // 13: stipulator.v1.RequirementCoverage.bucket:type_name -> stipulator.v1.Bucket
+	6,  // 14: stipulator.v1.GapReport.state:type_name -> stipulator.v1.GapState
+	12, // 15: stipulator.v1.CoverageReport.requirements:type_name -> stipulator.v1.RequirementCoverage
+	13, // 16: stipulator.v1.CoverageReport.gaps:type_name -> stipulator.v1.GapReport
+	23, // 17: stipulator.v1.Seed.role:type_name -> stipulator.v1.BindingRole
+	15, // 18: stipulator.v1.ContextReport.seeds:type_name -> stipulator.v1.Seed
+	16, // 19: stipulator.v1.ContextReport.declarations:type_name -> stipulator.v1.Decl
+	15, // 20: stipulator.v1.PartitionComponent.seeds:type_name -> stipulator.v1.Seed
+	18, // 21: stipulator.v1.PartitionReport.components:type_name -> stipulator.v1.PartitionComponent
+	19, // 22: stipulator.v1.PartitionReport.overlaps:type_name -> stipulator.v1.PartitionOverlap
+	26, // 23: stipulator.v1.HardenResult.record:type_name -> stipulator.v1.Hardening
+	21, // 24: stipulator.v1.HardenReport.results:type_name -> stipulator.v1.HardenResult
+	25, // [25:25] is the sub-list for method output_type
+	25, // [25:25] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_reports_proto_init() }
@@ -2728,8 +2936,8 @@ func file_stipulator_v1_reports_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_reports_proto_rawDesc), len(file_stipulator_v1_reports_proto_rawDesc)),
-			NumEnums:      6,
-			NumMessages:   15,
+			NumEnums:      7,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

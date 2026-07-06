@@ -35,7 +35,7 @@ func (r *Report) Proto() *stipulatorv1.CoverageReport {
 }
 
 var bucketProto = map[Bucket]stipulatorv1.Bucket{
-	Attested: stipulatorv1.Bucket_BUCKET_ATTESTED,
+	Attested:  stipulatorv1.Bucket_BUCKET_ATTESTED,
 	Uncovered: stipulatorv1.Bucket_BUCKET_UNCOVERED,
 	Stale:     stipulatorv1.Bucket_BUCKET_STALE,
 	Broken:    stipulatorv1.Bucket_BUCKET_BROKEN,

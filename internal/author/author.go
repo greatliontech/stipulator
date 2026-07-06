@@ -14,11 +14,11 @@ import (
 	"strings"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
-	"google.golang.org/protobuf/proto"
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
+	"google.golang.org/protobuf/proto"
 )
 
 // KnownBackends closes the backend-name set: a typo must never author an

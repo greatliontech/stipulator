@@ -1,8 +1,8 @@
 package golang
 
 import (
-	"strings"
 	"go/types"
+	"strings"
 	"testing"
 
 	"github.com/greatliontech/stipulator/internal/verify"

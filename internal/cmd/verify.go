@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -66,6 +67,13 @@ func verifyCmd() *cobra.Command {
 			if rep.Broken > 0 || rep.Unverified > 0 {
 				fmt.Printf("symbols:   %s unresolved, %d unverified (no backend in this run)\n",
 					num(rep.Broken, red), rep.Unverified)
+			}
+			for _, sig := range rep.Signatures {
+				label := "rearchitecture"
+				if sig.Label == verify.SemanticDrift {
+					label = "semantic drift"
+				}
+				fmt.Printf("signature: %s %s (%s)\n", label, sig.RequirementId, strings.Join(sig.Evidence, "; "))
 			}
 			// verify fails only on verification errors; red evidence is
 			// bucket data for the gate, which decides gap-excusability.

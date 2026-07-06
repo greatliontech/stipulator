@@ -164,7 +164,7 @@ func TestGateTool(t *testing.T) {
 	}
 	b, _ := json.Marshal(res.StructuredContent)
 	var out struct {
-		GatePasses bool `json:"gatePasses"`
+		GatePasses   bool `json:"gatePasses"`
 		Requirements []struct {
 			Id     string `json:"id"`
 			Bucket string `json:"bucket"`

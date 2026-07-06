@@ -83,7 +83,12 @@ exactly like new ones, which is what makes the migration window auditable.
 requirement is `uncovered`, `stale`, or `broken` and no gap record names it.
 
 **REQ-gate-change-signature** (behavior): The verification report SHOULD
-classify the change signature — labeling a change whose structural proofs
-changed state while behavior witnesses stayed green as a rearchitecture, and
-flagging a behavior witness turning red without a corresponding spec delta as
-semantic drift.
+classify the change signature per requirement, with the record pins as
+the baseline — no verification outcome is ever persisted, so "changed"
+means "moved against a pin": a requirement whose proof-shape pins moved
+or whose proof failed while its behavior witnesses stayed green — at
+least one, all green; a witness-less requirement attests nothing — is
+labeled a rearchitecture (structure moved under an intact behavior
+contract); a behavior witness failing while the requirement's content
+pin is current — red with no corresponding spec delta — is flagged as
+semantic drift (behavior diverged under a stable contract).

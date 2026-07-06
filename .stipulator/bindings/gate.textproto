@@ -1,0 +1,20 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-gate-change-signature"
+  content_hash: "04985749b39df1fed2701454db3bfc38001d0197d957cc7b9ae6a03e25a7e65b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verify.TestChangeSignatures"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "18c66acba1d990fcdae8d191137168f8ea2daa0ea0eb27be31c1e5a541aaed9d"
+}
+
+bindings {
+  requirement_id: "REQ-gate-change-signature"
+  content_hash: "04985749b39df1fed2701454db3bfc38001d0197d957cc7b9ae6a03e25a7e65b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verify.signatures"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "09bb5f79491ca13e16741b87f7e4285ebf766b22a027fc087717c8464d4503c5"
+}

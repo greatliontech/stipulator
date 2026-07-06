@@ -83,6 +83,28 @@ message VerifyReport {
   repeated Problem problems = 1;
   repeated BindingResult results = 2;
   repeated RegistrationResult registrations = 3;
+  // Signatures classify each changed requirement's shape against the
+  // record pins — the baseline; no verification outcome is persisted
+  // (REQ-gate-change-signature).
+  repeated ChangeSignature signatures = 4;
+}
+
+// ChangeSignature labels one requirement's change shape.
+message ChangeSignature {
+  string requirement_id = 1;
+  SignatureLabel label = 2;
+  // Evidence names the observations behind the label, human-readable.
+  repeated string evidence = 3;
+}
+
+// SignatureLabel is the change-signature vocabulary.
+enum SignatureLabel {
+  SIGNATURE_LABEL_UNSPECIFIED = 0;
+  // Structure moved while every behavior witness stayed green.
+  SIGNATURE_LABEL_REARCHITECTURE = 1;
+  // A behavior witness failed while the requirement's contract text is
+  // unchanged — red with no corresponding spec delta.
+  SIGNATURE_LABEL_SEMANTIC_DRIFT = 2;
 }
 
 // Bucket classifies a requirement's coverage.
