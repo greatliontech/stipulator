@@ -270,3 +270,46 @@ func TestSlice(t *testing.T) {
 		}
 	}
 }
+
+// TestWorkspaceMembers pins the workspace walk: with a go.work present,
+// every member's symbols resolve and every member's tests are witnessed —
+// package patterns are module-scoped, so without the walk a nested
+// published module silently vanishes from verification.
+func TestWorkspaceMembers(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-static-binding", "REQ-go-witness", "REQ-go-workspace")
+	b, err := New("testdata/workspacemod")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res, _, err := b.Resolve("example.com/ws.Root"); err != nil || res != verify.Resolved {
+		t.Fatalf("root member symbol: %v %v", res, err)
+	}
+	if res, _, err := b.Resolve("example.com/ws/sub.Nested"); err != nil || res != verify.Resolved {
+		t.Fatalf("nested member symbol: %v %v", res, err)
+	}
+
+	tr, err := RunTests("testdata/workspacemod")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.Outcomes["example.com/ws.TestRoot"] != verify.TestPassed {
+		t.Fatalf("root member unwitnessed: %v", tr.Outcomes)
+	}
+	if tr.Outcomes["example.com/ws/sub.TestNested"] != verify.TestPassed {
+		t.Fatalf("nested member unwitnessed: %v", tr.Outcomes)
+	}
+	found := false
+	for _, r := range tr.Registrations {
+		if r.Package == "example.com/ws/sub" && r.Requirement == "REQ-ws-a" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("nested member registration lost: %v", tr.Registrations)
+	}
+
+	// A member escaping the tree is refused: hermeticity, never bent.
+	if _, err := New("testdata/escapemod"); err == nil || !strings.Contains(err.Error(), "escapes the verification tree") {
+		t.Fatalf("escaping go.work member accepted: %v", err)
+	}
+}

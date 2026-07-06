@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"sort"
@@ -34,8 +35,34 @@ var coversRe = regexp.MustCompile(regexp.QuoteMeta(stipulate.Marker) + `(` + pro
 // failure) simply has no outcome, which the correlator reads as
 // unwitnessed/broken. A run producing no events at all is an error.
 func RunTests(dir string) (*verify.TestRun, error) {
+	members, err := workspaceMembers(dir)
+	if err != nil {
+		return nil, err
+	}
+	env := goworkEnv(dir)
+	tr := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}, RaceEnabled: true}
+	events := 0
+	for _, m := range members {
+		n, err := runMemberTests(filepath.Join(dir, m), env, tr)
+		if err != nil {
+			return nil, err
+		}
+		events += n
+	}
+	if events == 0 {
+		return nil, fmt.Errorf("go test -json produced no events")
+	}
+	sortRegs(tr)
+	return tr, nil
+}
+
+// runMemberTests executes one module's witness run, merging outcomes and
+// registrations into tr; it returns the event count so a silent member is
+// distinguishable from a silent workspace.
+func runMemberTests(dir string, env []string, tr *verify.TestRun) (int, error) {
 	cmd := exec.Command("go", testArgs()...)
 	cmd.Dir = dir
+	cmd.Env = env
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -44,13 +71,12 @@ func RunTests(dir string) (*verify.TestRun, error) {
 	type event struct {
 		Action, Package, Test, Output string
 	}
-	tr := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}, RaceEnabled: true}
 	dec := json.NewDecoder(&stdout)
 	events := 0
 	for dec.More() {
 		var e event
 		if err := dec.Decode(&e); err != nil {
-			return nil, fmt.Errorf("parsing go test -json stream: %w", err)
+			return 0, fmt.Errorf("parsing go test -json stream: %w", err)
 		}
 		events++
 		if e.Test == "" {
@@ -72,12 +98,13 @@ func RunTests(dir string) (*verify.TestRun, error) {
 			}
 		}
 	}
-	if events == 0 {
-		if runErr != nil {
-			return nil, fmt.Errorf("go test -json produced no events: %v: %s", runErr, stderr.String())
-		}
-		return nil, fmt.Errorf("go test -json produced no events")
+	if events == 0 && runErr != nil {
+		return 0, fmt.Errorf("go test -json in %s produced no events: %v: %s", dir, runErr, stderr.String())
 	}
+	return events, nil
+}
+
+func sortRegs(tr *verify.TestRun) {
 	sort.Slice(tr.Registrations, func(i, j int) bool {
 		a, b := tr.Registrations[i], tr.Registrations[j]
 		if a.Package != b.Package {
@@ -89,5 +116,4 @@ func RunTests(dir string) (*verify.TestRun, error) {
 		return a.Requirement < b.Requirement
 	})
 	tr.Registrations = slices.Compact(tr.Registrations)
-	return tr, nil
 }

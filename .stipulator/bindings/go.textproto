@@ -82,3 +82,29 @@ bindings {
   shape_hash: "78735ffa13dad3bde5c9160ae7c95e286443e8b6880528510a0b86101ac3f85c"
 }
 
+bindings {
+  requirement_id: "REQ-go-static-binding"
+  content_hash: "f86007a29d3a858e3c5c64a70293265e1021d9d1d0044c8f8bd40b2b45ad2d94"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestWorkspaceMembers"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e6b4252b260d69eef7f4b3ad9e407aa7d42291a9c4986bd3382ae21fc64d51ea"
+}
+
+bindings {
+  requirement_id: "REQ-go-witness"
+  content_hash: "dfc6a4083896a9460529c2307505b908922acc45c4767ef5e00827d5328e6c12"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestWorkspaceMembers"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e6b4252b260d69eef7f4b3ad9e407aa7d42291a9c4986bd3382ae21fc64d51ea"
+}
+
+bindings {
+  requirement_id: "REQ-go-workspace"
+  content_hash: "5c240637a17d955e66a44aba3fc93545c94bcc9226a66a4464b33818448b85eb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestWorkspaceMembers"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e6b4252b260d69eef7f4b3ad9e407aa7d42291a9c4986bd3382ae21fc64d51ea"
+}

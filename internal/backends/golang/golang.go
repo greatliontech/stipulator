@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/types"
+	"path/filepath"
 	"sort"
 	"strings"
 	"unicode"
@@ -23,24 +24,37 @@ import (
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
-// Backend resolves symbols within one Go module tree.
+// Backend resolves symbols within one Go tree: a single module, or a
+// workspace whose go.work members are all in scope.
 type Backend struct {
 	pkgs []*packages.Package
 }
 
-// New loads the module rooted at dir, including test packages. A load
-// failure is an error: per the spec, an unloadable tree is a verification
-// error, never an absence.
+// New loads the tree rooted at dir, including test packages: the module
+// alone, or every go.work member when the tree is a workspace — package
+// patterns are module-scoped, so nested published modules would otherwise
+// vanish from symbol resolution. A load failure is an error: per the
+// spec, an unloadable tree is a verification error, never an absence.
 func New(dir string) (*Backend, error) {
-	cfg := &packages.Config{
-		Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax |
-			packages.NeedTypes | packages.NeedTypesInfo,
-		Dir:   dir,
-		Tests: true,
-	}
-	pkgs, err := packages.Load(cfg, "./...")
+	members, err := workspaceMembers(dir)
 	if err != nil {
-		return nil, fmt.Errorf("loading Go packages: %w", err)
+		return nil, err
+	}
+	env := goworkEnv(dir)
+	var pkgs []*packages.Package
+	for _, m := range members {
+		cfg := &packages.Config{
+			Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax |
+				packages.NeedTypes | packages.NeedTypesInfo,
+			Dir:   filepath.Join(dir, m),
+			Env:   env,
+			Tests: true,
+		}
+		loaded, err := packages.Load(cfg, "./...")
+		if err != nil {
+			return nil, fmt.Errorf("loading Go packages in %s: %w", m, err)
+		}
+		pkgs = append(pkgs, loaded...)
 	}
 	// Deterministic candidate order regardless of load order.
 	sort.Slice(pkgs, func(i, j int) bool { return pkgs[i].ID < pkgs[j].ID })

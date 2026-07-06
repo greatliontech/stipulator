@@ -4,7 +4,7 @@
 
 | Document | Title | Requirements | Terms |
 |---|---|---|---|
-| [go.md](go.md) | Go backend | 13 | 0 |
+| [go.md](go.md) | Go backend | 14 | 0 |
 | [proto.md](proto.md) | Protobuf backend | 5 | 0 |
 
 ## go.md
@@ -22,6 +22,7 @@
 - `REQ-go-symbol` (behavior, must)
 - `REQ-go-witness` (behavior, must)
 - `REQ-go-witness-class` (behavior, must)
+- `REQ-go-workspace` (behavior, may)
 
 ## proto.md
 

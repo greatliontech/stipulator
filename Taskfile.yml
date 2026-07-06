@@ -5,19 +5,19 @@ tasks:
     deps: [check]
 
   build:
-    desc: Build all packages
+    desc: Build all packages, across all workspace modules
     cmds:
-      - go build ./...
+      - go build github.com/greatliontech/stipulator/...
 
   test:
-    desc: Run the test suite with the race detector
+    desc: Run the test suite with the race detector, across all workspace modules
     cmds:
-      - go test -race ./...
+      - go test -race github.com/greatliontech/stipulator/...
 
   vet:
-    desc: Static analysis
+    desc: Static analysis, across all workspace modules
     cmds:
-      - go vet ./...
+      - go vet github.com/greatliontech/stipulator/...
 
   generate:
     desc: Regenerate protobuf code

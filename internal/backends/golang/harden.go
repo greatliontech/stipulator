@@ -347,6 +347,9 @@ func (b *Backend) Mutants(symbol string, budget int) ([]Mutant, error) {
 		}
 		// A mutation that orphans an import must not die as a build
 		// failure: prune imports so the mutant gets its day in court.
+		// Process only formats and prunes here — it must never gain an
+		// add-import mode, which would resolve against the inherited
+		// (unpinned) workspace.
 		if fixed, err := imports.Process("mutant.go", mutated, nil); err == nil {
 			mutated = fixed
 		}
@@ -473,6 +476,7 @@ func RunMutant(ctx context.Context, dir string, m Mutant, testPkgs []string, run
 	args = append(args, binFlags...)
 	cmd := exec.CommandContext(ctx, "go", args...)
 	cmd.Dir = dir
+	cmd.Env = goworkEnv(dir)
 	outBytes, err := cmd.CombinedOutput()
 	switch {
 	case err == nil:
