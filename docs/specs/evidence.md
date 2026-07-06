@@ -28,9 +28,12 @@ binding rationale belongs in review and commit messages, not in record
 files.
 
 **REQ-pin-backfill** (behavior): The pin operation MUST set only unset
-content pins and shape pins — a differing content pin is never rewritten
-outside an editorial disposition, so staleness cannot be laundered by a
-blanket re-pin.
+content pins and shape pins in its blanket form — a differing content pin
+is never rewritten without naming the requirement, so staleness cannot be
+laundered by a blanket re-pin. Naming requirements explicitly is the
+editorial re-consent (REQ-change-editorial), surfaced under pin as well
+as the dispose verb, and a pin invocation that changes nothing reports
+the no-op rather than returning silence.
 
 **REQ-evidence-record-verbs** (behavior): Binding records MUST be writable
 through tool operations that validate at write time — the requirement

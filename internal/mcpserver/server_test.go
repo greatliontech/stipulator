@@ -79,11 +79,16 @@ func harness(t *testing.T, files map[string]string) (*mcp.ClientSession, map[str
 			}, nil
 		},
 		write: func(path string, content []byte) error {
+			// Captured AND fed back: the real server reads the tree it
+			// writes, and read-after-write flows (pin to quiescence,
+			// re-declare over an update) depend on it.
 			writes[path] = content
+			fsys[path] = &fstest.MapFile{Data: content}
 			return nil
 		},
 		remove: func(path string) error {
 			writes[path] = nil
+			delete(fsys, path)
 			return nil
 		},
 	}
@@ -424,5 +429,63 @@ func TestAttestTools(t *testing.T) {
 	}})
 	if err != nil || !res.IsError {
 		t.Fatalf("non-survivor attested: %v %v", err, res)
+	}
+}
+
+// toolText flattens a tool result's text content for assertions.
+func toolText(t *testing.T, res *mcp.CallToolResult) string {
+	t.Helper()
+	var b strings.Builder
+	for _, c := range res.Content {
+		if tc, ok := c.(*mcp.TextContent); ok {
+			b.WriteString(tc.Text)
+		}
+	}
+	return b.String()
+}
+
+// TestPinTool pins the refresh verb's contract: ids editorially re-pin a
+// stale content pin (the one-verb recovery after a reword), a clean
+// requirement reports "pins current", and the no-id no-op is never a
+// silent empty object.
+func TestPinTool(t *testing.T) {
+	stipulate.Covers(t, "REQ-pin-backfill", "REQ-change-editorial")
+	sess, writes := harness(t, map[string]string{
+		".stipulator/bindings/stale.textproto": "bindings {\n  requirement_id: \"REQ-m-a\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n  content_hash: \"" + strings.Repeat("0", 64) + "\"\n}\n",
+	})
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "pin", Arguments: map[string]any{
+		"ids": "REQ-m-a",
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("pin with ids: %v %v", err, res)
+	}
+	content, ok := writes[".stipulator/bindings/stale.textproto"]
+	if !ok || strings.Contains(string(content), strings.Repeat("0", 64)) {
+		t.Fatalf("stale pin not refreshed: %s", content)
+	}
+
+	// Re-pinning a current requirement is a reported no-op.
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "pin", Arguments: map[string]any{
+		"ids": "REQ-m-b",
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("pin current: %v %v", err, res)
+	}
+	text := toolText(t, res)
+	if !strings.Contains(text, "pins current") {
+		t.Fatalf("no-op silent: %s", text)
+	}
+
+	// The blanket form is never a silent empty object: run it to
+	// quiescence, then the no-op run must SAY it did nothing.
+	if _, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "pin", Arguments: map[string]any{}}); err != nil {
+		t.Fatal(err)
+	}
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "pin", Arguments: map[string]any{}})
+	if err != nil || res.IsError {
+		t.Fatalf("blanket pin: %v %v", err, res)
+	}
+	if text := toolText(t, res); !strings.Contains(text, "all pins current") {
+		t.Fatalf("blanket no-op silent: %s", text)
 	}
 }

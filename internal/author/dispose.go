@@ -1,6 +1,7 @@
 package author
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"sort"
@@ -15,6 +16,11 @@ import (
 // updates that are their only persistent effect — rewritten bindings,
 // deleted gaps, and the tombstone registry. Nothing is logged; git holds
 // history.
+
+// ErrNothingStale marks an editorial re-pin that found every binding
+// already current: an error for dispose (a disposition that changed
+// nothing was probably a mistake), a clean no-op for pin --req.
+var ErrNothingStale = errors.New("nothing stale to re-pin")
 
 // Editorial re-pins a requirement's bindings to its current content hash:
 // the author's claim that a spec edit preserved meaning. The claim is
@@ -57,7 +63,7 @@ func Editorial(fsys fs.FS, requirement string) ([]Update, error) {
 		}
 	}
 	if repinned == 0 {
-		return nil, fmt.Errorf("no stale bindings for %s to re-pin", requirement)
+		return nil, fmt.Errorf("no stale bindings for %s: %w", requirement, ErrNothingStale)
 	}
 	sortUpdates(out)
 	return out, nil

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -8,15 +9,38 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
 func pinCmd() *cobra.Command {
-	return &cobra.Command{
+	var reqs []string
+	c := &cobra.Command{
 		Use:   "pin",
-		Short: "Backfill binding content and shape pins",
+		Short: "Backfill binding content and shape pins; --req re-consents named requirements",
+		Long: "Without flags, backfills unset content pins and refreshes shape pins" +
+			" - a differing content pin is never rewritten by the blanket form, so" +
+			" staleness cannot be laundered. Naming requirements with --req is the" +
+			" editorial re-consent: their bindings re-pin to the current clause text.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(reqs) > 0 {
+				for _, id := range reqs {
+					ups, err := author.Editorial(os.DirFS(chdir), id)
+					if errors.Is(err, author.ErrNothingStale) {
+						fmt.Printf("%s: pins current\n", id)
+						continue
+					}
+					if err != nil {
+						return err
+					}
+					if err := applyUpdates(chdir, ups); err != nil {
+						return err
+					}
+					fmt.Printf("%s: %d file(s) re-pinned\n", id, len(ups))
+				}
+				return nil
+			}
 			spec, err := mustCompile(chdir)
 			if err != nil {
 				return err
@@ -70,4 +94,7 @@ func pinCmd() *cobra.Command {
 			return nil
 		},
 	}
+	c.Flags().StringArrayVar(&reqs, "req", nil, "requirement identifier to editorially re-pin (repeatable)")
+	registerReqCompletions(c, "req")
+	return c
 }

@@ -10,10 +10,12 @@ package mcpserver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -134,7 +136,7 @@ func (s *Server) MCP() *mcp.Server {
 	}, s.toolAttestRequirement)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "pin",
-		Description: "Backfill binding content and shape pins to current values; returns rewritten record files.",
+		Description: "Backfill unset content pins and refresh shape pins; with ids, editorially re-pin those requirements' bindings to the current clause text (re-consent). Never silent: no-ops say so.",
 	}, s.toolPin)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "dispose",
@@ -500,7 +502,35 @@ func (s *Server) toolAttestRequirement(ctx context.Context, req *mcp.CallToolReq
 	return nil, out, nil
 }
 
-func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in struct{}) (*mcp.CallToolResult, writeOut, error) {
+type pinIn struct {
+	Ids string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers to editorially re-pin; empty backfills unset pins"`
+}
+
+func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn) (*mcp.CallToolResult, writeOut, error) {
+	if in.Ids != "" {
+		ids, err := splitIDs(in.Ids)
+		if err != nil {
+			return nil, writeOut{}, err
+		}
+		out := writeOut{}
+		for _, id := range ids {
+			ups, err := author.Editorial(s.fsys(), id)
+			if errors.Is(err, author.ErrNothingStale) {
+				out.Notes = append(out.Notes, id+": pins current")
+				continue
+			}
+			if err != nil {
+				return nil, writeOut{}, err
+			}
+			for _, up := range ups {
+				if err := s.write(up.Path, up.Content); err != nil {
+					return nil, writeOut{}, err
+				}
+				out.Wrote = append(out.Wrote, up.Path)
+			}
+		}
+		return nil, out, nil
+	}
 	spec, err := s.compileFresh()
 	if err != nil {
 		return nil, writeOut{}, err
@@ -540,6 +570,12 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in struc
 		}
 		out.Wrote = append(out.Wrote, p)
 	}
+	if len(out.Wrote) == 0 {
+		// A no-op must say so: a silent {} reads as "did something,
+		// reported nothing".
+		out.Notes = []string{"all pins current"}
+	}
+	slices.Sort(out.Wrote)
 	return nil, out, nil
 }
 

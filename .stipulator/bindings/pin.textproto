@@ -3,7 +3,7 @@
 
 bindings {
   requirement_id: "REQ-pin-backfill"
-  content_hash: "17bcc0e2ed2b904ed492cc9352227d32b494feb0edae9c165266f8be8ca0a171"
+  content_hash: "be845e9bf500e2eba60b0b94360a52cbaa188666f8bf02c72c7feba8b3b1d48f"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/records.Pin"
   role: BINDING_ROLE_IMPLEMENTS
@@ -12,9 +12,27 @@ bindings {
 
 bindings {
   requirement_id: "REQ-pin-backfill"
-  content_hash: "17bcc0e2ed2b904ed492cc9352227d32b494feb0edae9c165266f8be8ca0a171"
+  content_hash: "be845e9bf500e2eba60b0b94360a52cbaa188666f8bf02c72c7feba8b3b1d48f"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.TestPin"
   role: BINDING_ROLE_TESTS
   shape_hash: "e3acedf0b35fdb1073ba8cf0a2663f4e612758ec8eb1fa47aa9f03cac4c4a36f"
+}
+
+bindings {
+  requirement_id: "REQ-pin-backfill"
+  content_hash: "be845e9bf500e2eba60b0b94360a52cbaa188666f8bf02c72c7feba8b3b1d48f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPinTool"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b29a14ad85d5a0eb500f9e668a9b7bb77e5ceff480e5747077ce966e7d0f6e43"
+}
+
+bindings {
+  requirement_id: "REQ-pin-backfill"
+  content_hash: "be845e9bf500e2eba60b0b94360a52cbaa188666f8bf02c72c7feba8b3b1d48f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/records.TestPinNeverRewritesDifferingContent"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "460d30164510577693cc7be3622368b6589d51bed9bf3c8382ceabed799b94dc"
 }

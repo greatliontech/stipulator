@@ -40,10 +40,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   valid id and mis-parses id lists, while gap reasons, bindings, and hardening state have no MCP
   home at all; make `context` the per-requirement dossier, tools primary, resources as same-renderer
   mirrors. *Lands: when the MCP read surface is next revisited.*
-- **[binding-content-pin-refresh](binding-content-pin-refresh.md)** — a clause reword leaves stale
-  content pins with no refresh verb: `pin` is a silent no-op and re-`bind` refuses as "identical"
-  while the hash differs; only unbind+bind works. *Lands: when the bind/pin record verbs are next
-  touched.*
 - **[analyzer-witness-hardening](analyzer-witness-hardening.md)** — harden mutates function bodies
   only, so analyzer witnesses get no teeth check; add a structural mutation class (inject a
   forbidden import / break an asserted method set, require the witness to fail). *Lands: when an

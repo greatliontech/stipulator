@@ -126,3 +126,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "7b72d1f3afc61bbf8a9701778063ff01da698b6dea7d1727e3c27f2fc0e27d86"
 }
+
+bindings {
+  requirement_id: "REQ-change-editorial"
+  content_hash: "1e8f5860be1eb80d992cd04b7c2fc668caa3f69b461f8c811febf800745cd128"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPinTool"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b29a14ad85d5a0eb500f9e668a9b7bb77e5ceff480e5747077ce966e7d0f6e43"
+}
