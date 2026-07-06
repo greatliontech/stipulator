@@ -11,7 +11,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   bound function, so requirements sharing a symbol report survivors from each other's logic.
   *Lands: when harden gains statement-level attribution, or the union-of-tests expectation is
   documented.*
-- **[property-witness-fuzz-only](property-witness-fuzz-only.md)** — a property witness must be
-  a native `*testing.F` fuzz target; rapid/gopter `*testing.T` tests score as example
-  witnesses, so invariants can't be covered by them. *Lands: when the classifier recognizes
-  property libraries, or the fuzz-only rule is documented.*
+- **[gopter-property-recognition](gopter-property-recognition.md)** — gopter-driven tests
+  classify as example witnesses; the classifier recognizes fuzz targets and rapid drivers
+  only. *Lands: when a corpus standardized on gopter needs invariant coverage.*

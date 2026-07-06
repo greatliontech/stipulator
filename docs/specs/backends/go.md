@@ -35,9 +35,11 @@ skipped test grants no witness without reading as `broken`.
 **REQ-go-witness-class** (behavior): A witness MUST be classified `proof`
 when its bound test's own body directly invokes the `stipulate/structural`
 analyzer library (indirection through a helper does not classify),
-`property` when it is a fuzz target (a function taking `*testing.F`), and
-`example` otherwise; the classification is resolved from the code, never
-declared.
+`property` when it is a fuzz target (a function taking `*testing.F`) or
+its own body directly drives `pgregory.net/rapid` (a qualified or aliased
+`rapid.Check` / `rapid.MakeCheck` selector call — a dot-imported call or
+generator construction alone does not classify), and `example` otherwise;
+the classification is resolved from the code, never declared.
 
 **REQ-go-race** (behavior): Witness runs MUST enable the race detector, so
 every witness is race-attributed.

@@ -111,7 +111,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-witness-class"
-  content_hash: "5b9810d704dfd1ccaf3239df77dc893e17e38d98120ab2c8f1065affbe1e9049"
+  content_hash: "e8e23901a7154c232c855d68f54d6093483f98bb785e949ebbca29a38d651dea"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend.WitnessClass"
   role: BINDING_ROLE_IMPLEMENTS
@@ -120,7 +120,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-witness-class"
-  content_hash: "5b9810d704dfd1ccaf3239df77dc893e17e38d98120ab2c8f1065affbe1e9049"
+  content_hash: "e8e23901a7154c232c855d68f54d6093483f98bb785e949ebbca29a38d651dea"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestWitnessClass"
   role: BINDING_ROLE_TESTS

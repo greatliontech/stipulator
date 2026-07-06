@@ -126,31 +126,50 @@ func lookup(pkg *types.Package, parts []string) types.Object {
 // the proof class.
 const structuralPkg = "github.com/greatliontech/stipulator/stipulate/structural"
 
+// rapidPkg is the recognized property-test library: a test driving its
+// check runner quantifies over generated inputs. Generator construction
+// alone does not quantify, so only the drivers classify.
+const rapidPkg = "pgregory.net/rapid"
+
+func rapidDriver(name string) bool { return name == "Check" || name == "MakeCheck" }
+
 // WitnessClass implements verify.WitnessClassifier: a test invoking the
 // structural library yields an analyzer proof; a fuzz target — a function
-// taking *testing.F — yields a property witness; everything else is an
-// example witness. Resolved from the code, never declared.
+// taking *testing.F — or a test driving a rapid check runner (a qualified
+// or aliased rapid.Check / rapid.MakeCheck selector call in its own body)
+// yields a property witness; everything else — including dot-imported
+// driver calls — is an example witness. Resolved from the code, never
+// declared.
 func (b *Backend) WitnessClass(symbol string) verify.WitnessClass {
-	// Proof outranks property: resolved from the body's callees. Only a
-	// test the witness run executes can be a proof — a structural
-	// invocation in a plain function never runs, so it never classifies.
+	// Proof outranks property, property outranks example: resolved from
+	// the body's callees. Only a test the witness run executes can
+	// classify above example — a structural or rapid invocation in a
+	// plain function never runs.
 	if fd, pkg, err := b.funcDecl(symbol); err == nil && fd.Body != nil && runnableWitness(fd, pkg) {
-		proof := false
+		proof, property := false, false
 		ast.Inspect(fd.Body, func(n ast.Node) bool {
 			call, ok := n.(*ast.CallExpr)
 			if !ok || proof {
 				return !proof
 			}
 			if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
-				if obj := pkg.TypesInfo.Uses[sel.Sel]; obj != nil && obj.Pkg() != nil && obj.Pkg().Path() == structuralPkg {
-					proof = true
-					return false
+				if obj := pkg.TypesInfo.Uses[sel.Sel]; obj != nil && obj.Pkg() != nil {
+					switch {
+					case obj.Pkg().Path() == structuralPkg:
+						proof = true
+						return false
+					case obj.Pkg().Path() == rapidPkg && rapidDriver(sel.Sel.Name):
+						property = true
+					}
 				}
 			}
 			return true
 		})
-		if proof {
+		switch {
+		case proof:
 			return verify.AnalyzerProof
+		case property:
+			return verify.PropertyWitness
 		}
 	}
 	pkgPath, rest := b.splitSymbol(symbol)

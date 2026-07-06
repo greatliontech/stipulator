@@ -181,8 +181,8 @@ func TestShapeHashDistinguishesSignatures(t *testing.T) {
 }
 
 // TestWitnessClass pins property-vs-example classification: fuzz targets
-// are property witnesses, ordinary tests are example witnesses, resolved
-// from signatures, never declared.
+// and rapid-driven tests are property witnesses, ordinary tests are
+// example witnesses, resolved from the code, never declared.
 func TestWitnessClass(t *testing.T) {
 	if got := backend.WitnessClass(mod + "/internal/canon.FuzzTextProjection"); got != verify.PropertyWitness {
 		t.Fatalf("fuzz target classified %v", got)
@@ -192,6 +192,19 @@ func TestWitnessClass(t *testing.T) {
 	}
 	if got := backend.WitnessClass(mod + "/internal/corpus.LoadManifest"); got != verify.ExampleWitness {
 		t.Fatalf("non-test symbol classified %v", got)
+	}
+
+	// The rapid check drivers quantify; generator construction alone does
+	// not.
+	fb := fixtureBackend(t)
+	if got := fb.WitnessClass("example.com/fixture/lib.TestPropRapidCheck"); got != verify.PropertyWitness {
+		t.Fatalf("rapid.Check test classified %v", got)
+	}
+	if got := fb.WitnessClass("example.com/fixture/lib.TestPropRapidMakeCheck"); got != verify.PropertyWitness {
+		t.Fatalf("rapid.MakeCheck test classified %v", got)
+	}
+	if got := fb.WitnessClass("example.com/fixture/lib.TestPropRapidGeneratorOnly"); got != verify.ExampleWitness {
+		t.Fatalf("generator-only test classified %v", got)
 	}
 }
 
