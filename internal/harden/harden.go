@@ -563,3 +563,46 @@ func attributedKill(killer string, witnessSet map[string]bool) error {
 	}
 	return fmt.Errorf("killed by %s, which is not in the pinned witness set", killer)
 }
+
+// Proto renders the report as its wire message — the one renderer every
+// surface uses.
+func (r *Report) Proto() *stipulatorv1.HardenReport {
+	out := &stipulatorv1.HardenReport{}
+	var results []*stipulatorv1.HardenResult
+	for _, res := range r.Results {
+		hr := &stipulatorv1.HardenResult{}
+		rec := &stipulatorv1.Hardening{}
+		rec.SetBackend("go")
+		rec.SetSymbol(res.Symbol)
+		rec.SetWitnesses(res.Witnesses)
+		rec.SetOperators(golang.OperatorSet)
+		rec.SetToolchain(res.Toolchain)
+		var attested []*stipulatorv1.MutationAttestation
+		for _, a := range res.Attested {
+			ma := &stipulatorv1.MutationAttestation{}
+			ma.SetPosition(a.Position)
+			ma.SetOperator(a.Operator)
+			ma.SetReason(a.Reason)
+			attested = append(attested, ma)
+		}
+		rec.SetAttested(attested)
+		rec.SetBodyHash(res.BodyHash)
+		rec.SetMutants(int32(res.Mutants))
+		rec.SetKilled(int32(res.Killed))
+		var survivors []*stipulatorv1.MutationSurvivor
+		for _, sv := range res.Survivors {
+			m := &stipulatorv1.MutationSurvivor{}
+			m.SetPosition(sv.Position)
+			m.SetOperator(sv.Operator)
+			survivors = append(survivors, m)
+		}
+		rec.SetSurvivors(survivors)
+		hr.SetRecord(rec)
+		hr.SetCached(res.Cached)
+		hr.SetSkippedNoTests(res.SkippedNoTest)
+		hr.SetSkippedNotFunction(res.SkippedNotFunc)
+		results = append(results, hr)
+	}
+	out.SetResults(results)
+	return out
+}

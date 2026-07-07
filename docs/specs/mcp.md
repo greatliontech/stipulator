@@ -13,16 +13,27 @@ records reloaded on every read, never cached across tree changes.
 **REQ-mcp-resources** (wire): The server MUST expose resource URIs
 `stipulator://req/{id}` (a requirement's compiled view: canonical text,
 kind, keyword, content hash, edges, source), `stipulator://term/{name}`,
-`stipulator://bundle/{ids}` (comma-separated identifiers, rendered as a
-self-contained document), and `stipulator://coverage` (the coverage report
-as JSON), with the resource list enumerating every requirement as of the
-most recent operation — reads themselves are always fresh.
+and `stipulator://bundle/{ids}` (comma-separated identifiers, rendered
+as a self-contained document), with the resource list enumerating every
+requirement as of the most recent operation — reads themselves are
+always fresh. Coverage deliberately has no resource: the gate tool's
+views are the one surface, and a resource duplicate would be
+duplication without a distinct consumer.
 
 **REQ-mcp-tools** (wire): The server MUST expose tools `compile`, `verify`,
 `gate`, `bind`, `unbind`, `gap`, `pin`, `read_spec`, `context`,
 `partitions`, `dispose`, `harden`, `attest_survivor`, and
 `attest_requirement`, mirroring the operation semantics exactly, with
 report-shaped results rendered from the report messages as JSON.
+
+**REQ-mcp-views** (behavior): The gate, verify, and harden tools MUST
+answer at the summary view by default — the roll-up most calls want —
+with richer views (per-requirement rows, per-binding rows, records with
+attestation prose) and scope filters (identifiers, bucket, identifier
+glob, document-or-symbol path prefix) opt-in per call, every view
+rendered by one renderer per report so no two surfaces can drift, and an
+unknown view or scope word refused — a typo never reads as an empty
+result.
 
 **REQ-mcp-writes-confined** (behavior): The server MUST NOT write outside
 the record stores under `.stipulator/` — it never edits spec documents or

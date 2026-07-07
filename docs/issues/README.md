@@ -30,10 +30,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   class measures performance; pew recordings (guard-derived validity) are the binding-pin
   model applied to measurements and slot in without bending the trust model. *Lands: when a
   corpus declares a performance requirement.*
-- **[gate-verify-output-granularity](gate-verify-output-granularity.md)** — gate/verify/harden
-  emit one fixed verbosity (full firehose); add a `view` axis (summary default for MCP) and scope
-  filters (ids/bucket/filter/path) so callers stop shelling out to a compact CLI. *Lands: when
-  gate/verify output ergonomics are revisited.*
 - **[analyzer-witness-hardening](analyzer-witness-hardening.md)** — harden mutates function bodies
   only, so analyzer witnesses get no teeth check; add a structural mutation class (inject a
   forbidden import / break an asserted method set, require the witness to fail). *Lands: when an

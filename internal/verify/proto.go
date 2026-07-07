@@ -97,3 +97,6 @@ func BindingResultProto(br BindingResult) *stipulatorv1.BindingResult {
 	m.SetRaceEnabled(br.RaceEnabled)
 	return m
 }
+
+// LabelProto maps a signature label to its wire enum, for composers.
+func LabelProto(l SignatureLabel) stipulatorv1.SignatureLabel { return labelProto[l] }

@@ -1778,6 +1778,1011 @@ func (b0 CoverageReport_builder) Build() *CoverageReport {
 	return m0
 }
 
+// CoverageSummary is the coverage roll-up: the answer most gate calls
+// want — pass/fail, counts over the scoped rows, what is red — without
+// the per-requirement array. GatePasses is always the global verdict: a
+// slice passing means nothing when the tree fails.
+type CoverageSummary struct {
+	state                      protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_GatePasses      bool                   `protobuf:"varint,1,opt,name=gate_passes,json=gatePasses"`
+	xxx_hidden_Covered         int32                  `protobuf:"varint,2,opt,name=covered"`
+	xxx_hidden_Attested        int32                  `protobuf:"varint,3,opt,name=attested"`
+	xxx_hidden_Uncovered       int32                  `protobuf:"varint,4,opt,name=uncovered"`
+	xxx_hidden_Stale           int32                  `protobuf:"varint,5,opt,name=stale"`
+	xxx_hidden_Broken          int32                  `protobuf:"varint,6,opt,name=broken"`
+	xxx_hidden_Exempt          int32                  `protobuf:"varint,7,opt,name=exempt"`
+	xxx_hidden_Violations      []string               `protobuf:"bytes,8,rep,name=violations"`
+	xxx_hidden_GapsOpen        int32                  `protobuf:"varint,9,opt,name=gaps_open,json=gapsOpen"`
+	xxx_hidden_PolicyOverrides []string               `protobuf:"bytes,10,rep,name=policy_overrides,json=policyOverrides"`
+	XXX_raceDetectHookData     protoimpl.RaceDetectHookData
+	XXX_presence               [1]uint32
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
+}
+
+func (x *CoverageSummary) Reset() {
+	*x = CoverageSummary{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CoverageSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CoverageSummary) ProtoMessage() {}
+
+func (x *CoverageSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *CoverageSummary) GetGatePasses() bool {
+	if x != nil {
+		return x.xxx_hidden_GatePasses
+	}
+	return false
+}
+
+func (x *CoverageSummary) GetCovered() int32 {
+	if x != nil {
+		return x.xxx_hidden_Covered
+	}
+	return 0
+}
+
+func (x *CoverageSummary) GetAttested() int32 {
+	if x != nil {
+		return x.xxx_hidden_Attested
+	}
+	return 0
+}
+
+func (x *CoverageSummary) GetUncovered() int32 {
+	if x != nil {
+		return x.xxx_hidden_Uncovered
+	}
+	return 0
+}
+
+func (x *CoverageSummary) GetStale() int32 {
+	if x != nil {
+		return x.xxx_hidden_Stale
+	}
+	return 0
+}
+
+func (x *CoverageSummary) GetBroken() int32 {
+	if x != nil {
+		return x.xxx_hidden_Broken
+	}
+	return 0
+}
+
+func (x *CoverageSummary) GetExempt() int32 {
+	if x != nil {
+		return x.xxx_hidden_Exempt
+	}
+	return 0
+}
+
+func (x *CoverageSummary) GetViolations() []string {
+	if x != nil {
+		return x.xxx_hidden_Violations
+	}
+	return nil
+}
+
+func (x *CoverageSummary) GetGapsOpen() int32 {
+	if x != nil {
+		return x.xxx_hidden_GapsOpen
+	}
+	return 0
+}
+
+func (x *CoverageSummary) GetPolicyOverrides() []string {
+	if x != nil {
+		return x.xxx_hidden_PolicyOverrides
+	}
+	return nil
+}
+
+func (x *CoverageSummary) SetGatePasses(v bool) {
+	x.xxx_hidden_GatePasses = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 10)
+}
+
+func (x *CoverageSummary) SetCovered(v int32) {
+	x.xxx_hidden_Covered = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 10)
+}
+
+func (x *CoverageSummary) SetAttested(v int32) {
+	x.xxx_hidden_Attested = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 10)
+}
+
+func (x *CoverageSummary) SetUncovered(v int32) {
+	x.xxx_hidden_Uncovered = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 10)
+}
+
+func (x *CoverageSummary) SetStale(v int32) {
+	x.xxx_hidden_Stale = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 10)
+}
+
+func (x *CoverageSummary) SetBroken(v int32) {
+	x.xxx_hidden_Broken = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 10)
+}
+
+func (x *CoverageSummary) SetExempt(v int32) {
+	x.xxx_hidden_Exempt = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 10)
+}
+
+func (x *CoverageSummary) SetViolations(v []string) {
+	x.xxx_hidden_Violations = v
+}
+
+func (x *CoverageSummary) SetGapsOpen(v int32) {
+	x.xxx_hidden_GapsOpen = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 10)
+}
+
+func (x *CoverageSummary) SetPolicyOverrides(v []string) {
+	x.xxx_hidden_PolicyOverrides = v
+}
+
+func (x *CoverageSummary) HasGatePasses() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *CoverageSummary) HasCovered() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *CoverageSummary) HasAttested() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *CoverageSummary) HasUncovered() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *CoverageSummary) HasStale() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *CoverageSummary) HasBroken() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *CoverageSummary) HasExempt() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
+func (x *CoverageSummary) HasGapsOpen() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 8)
+}
+
+func (x *CoverageSummary) ClearGatePasses() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_GatePasses = false
+}
+
+func (x *CoverageSummary) ClearCovered() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Covered = 0
+}
+
+func (x *CoverageSummary) ClearAttested() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Attested = 0
+}
+
+func (x *CoverageSummary) ClearUncovered() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_Uncovered = 0
+}
+
+func (x *CoverageSummary) ClearStale() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_Stale = 0
+}
+
+func (x *CoverageSummary) ClearBroken() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_Broken = 0
+}
+
+func (x *CoverageSummary) ClearExempt() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	x.xxx_hidden_Exempt = 0
+}
+
+func (x *CoverageSummary) ClearGapsOpen() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 8)
+	x.xxx_hidden_GapsOpen = 0
+}
+
+type CoverageSummary_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	GatePasses *bool
+	Covered    *int32
+	Attested   *int32
+	Uncovered  *int32
+	Stale      *int32
+	Broken     *int32
+	Exempt     *int32
+	Violations []string
+	// GapsOpen counts unresolved gaps among the scoped requirements.
+	GapsOpen *int32
+	// PolicyOverrides lists the manifest's active coverage-policy
+	// overrides: an override shapes the verdict and every count, so no
+	// view — the summary least of all — may apply one silently.
+	PolicyOverrides []string
+}
+
+func (b0 CoverageSummary_builder) Build() *CoverageSummary {
+	m0 := &CoverageSummary{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.GatePasses != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 10)
+		x.xxx_hidden_GatePasses = *b.GatePasses
+	}
+	if b.Covered != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 10)
+		x.xxx_hidden_Covered = *b.Covered
+	}
+	if b.Attested != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 10)
+		x.xxx_hidden_Attested = *b.Attested
+	}
+	if b.Uncovered != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 10)
+		x.xxx_hidden_Uncovered = *b.Uncovered
+	}
+	if b.Stale != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 10)
+		x.xxx_hidden_Stale = *b.Stale
+	}
+	if b.Broken != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 10)
+		x.xxx_hidden_Broken = *b.Broken
+	}
+	if b.Exempt != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 10)
+		x.xxx_hidden_Exempt = *b.Exempt
+	}
+	x.xxx_hidden_Violations = b.Violations
+	if b.GapsOpen != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 10)
+		x.xxx_hidden_GapsOpen = *b.GapsOpen
+	}
+	x.xxx_hidden_PolicyOverrides = b.PolicyOverrides
+	return m0
+}
+
+// VerifySummary is the verification roll-up: record hygiene and witness
+// counts, with change signatures — no per-binding rows.
+type VerifySummary struct {
+	state                    protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Problems      int32                  `protobuf:"varint,1,opt,name=problems"`
+	xxx_hidden_Pinned        int32                  `protobuf:"varint,2,opt,name=pinned"`
+	xxx_hidden_Stale         int32                  `protobuf:"varint,3,opt,name=stale"`
+	xxx_hidden_ShapePinned   int32                  `protobuf:"varint,4,opt,name=shape_pinned,json=shapePinned"`
+	xxx_hidden_ShapeUnpinned int32                  `protobuf:"varint,5,opt,name=shape_unpinned,json=shapeUnpinned"`
+	xxx_hidden_ShapeMismatch int32                  `protobuf:"varint,6,opt,name=shape_mismatch,json=shapeMismatch"`
+	xxx_hidden_Broken        int32                  `protobuf:"varint,7,opt,name=broken"`
+	xxx_hidden_Unverified    int32                  `protobuf:"varint,8,opt,name=unverified"`
+	xxx_hidden_TestsPassed   int32                  `protobuf:"varint,9,opt,name=tests_passed,json=testsPassed"`
+	xxx_hidden_TestsFailed   int32                  `protobuf:"varint,10,opt,name=tests_failed,json=testsFailed"`
+	xxx_hidden_TestsNotRun   int32                  `protobuf:"varint,11,opt,name=tests_not_run,json=testsNotRun"`
+	xxx_hidden_Signatures    *[]*ChangeSignature    `protobuf:"bytes,12,rep,name=signatures"`
+	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
+	XXX_presence             [1]uint32
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
+}
+
+func (x *VerifySummary) Reset() {
+	*x = VerifySummary{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VerifySummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VerifySummary) ProtoMessage() {}
+
+func (x *VerifySummary) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *VerifySummary) GetProblems() int32 {
+	if x != nil {
+		return x.xxx_hidden_Problems
+	}
+	return 0
+}
+
+func (x *VerifySummary) GetPinned() int32 {
+	if x != nil {
+		return x.xxx_hidden_Pinned
+	}
+	return 0
+}
+
+func (x *VerifySummary) GetStale() int32 {
+	if x != nil {
+		return x.xxx_hidden_Stale
+	}
+	return 0
+}
+
+func (x *VerifySummary) GetShapePinned() int32 {
+	if x != nil {
+		return x.xxx_hidden_ShapePinned
+	}
+	return 0
+}
+
+func (x *VerifySummary) GetShapeUnpinned() int32 {
+	if x != nil {
+		return x.xxx_hidden_ShapeUnpinned
+	}
+	return 0
+}
+
+func (x *VerifySummary) GetShapeMismatch() int32 {
+	if x != nil {
+		return x.xxx_hidden_ShapeMismatch
+	}
+	return 0
+}
+
+func (x *VerifySummary) GetBroken() int32 {
+	if x != nil {
+		return x.xxx_hidden_Broken
+	}
+	return 0
+}
+
+func (x *VerifySummary) GetUnverified() int32 {
+	if x != nil {
+		return x.xxx_hidden_Unverified
+	}
+	return 0
+}
+
+func (x *VerifySummary) GetTestsPassed() int32 {
+	if x != nil {
+		return x.xxx_hidden_TestsPassed
+	}
+	return 0
+}
+
+func (x *VerifySummary) GetTestsFailed() int32 {
+	if x != nil {
+		return x.xxx_hidden_TestsFailed
+	}
+	return 0
+}
+
+func (x *VerifySummary) GetTestsNotRun() int32 {
+	if x != nil {
+		return x.xxx_hidden_TestsNotRun
+	}
+	return 0
+}
+
+func (x *VerifySummary) GetSignatures() []*ChangeSignature {
+	if x != nil {
+		if x.xxx_hidden_Signatures != nil {
+			return *x.xxx_hidden_Signatures
+		}
+	}
+	return nil
+}
+
+func (x *VerifySummary) SetProblems(v int32) {
+	x.xxx_hidden_Problems = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 12)
+}
+
+func (x *VerifySummary) SetPinned(v int32) {
+	x.xxx_hidden_Pinned = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 12)
+}
+
+func (x *VerifySummary) SetStale(v int32) {
+	x.xxx_hidden_Stale = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 12)
+}
+
+func (x *VerifySummary) SetShapePinned(v int32) {
+	x.xxx_hidden_ShapePinned = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 12)
+}
+
+func (x *VerifySummary) SetShapeUnpinned(v int32) {
+	x.xxx_hidden_ShapeUnpinned = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 12)
+}
+
+func (x *VerifySummary) SetShapeMismatch(v int32) {
+	x.xxx_hidden_ShapeMismatch = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 12)
+}
+
+func (x *VerifySummary) SetBroken(v int32) {
+	x.xxx_hidden_Broken = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 12)
+}
+
+func (x *VerifySummary) SetUnverified(v int32) {
+	x.xxx_hidden_Unverified = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 12)
+}
+
+func (x *VerifySummary) SetTestsPassed(v int32) {
+	x.xxx_hidden_TestsPassed = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 12)
+}
+
+func (x *VerifySummary) SetTestsFailed(v int32) {
+	x.xxx_hidden_TestsFailed = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 12)
+}
+
+func (x *VerifySummary) SetTestsNotRun(v int32) {
+	x.xxx_hidden_TestsNotRun = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 12)
+}
+
+func (x *VerifySummary) SetSignatures(v []*ChangeSignature) {
+	x.xxx_hidden_Signatures = &v
+}
+
+func (x *VerifySummary) HasProblems() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *VerifySummary) HasPinned() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *VerifySummary) HasStale() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *VerifySummary) HasShapePinned() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *VerifySummary) HasShapeUnpinned() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *VerifySummary) HasShapeMismatch() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *VerifySummary) HasBroken() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
+func (x *VerifySummary) HasUnverified() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 7)
+}
+
+func (x *VerifySummary) HasTestsPassed() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 8)
+}
+
+func (x *VerifySummary) HasTestsFailed() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 9)
+}
+
+func (x *VerifySummary) HasTestsNotRun() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 10)
+}
+
+func (x *VerifySummary) ClearProblems() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Problems = 0
+}
+
+func (x *VerifySummary) ClearPinned() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Pinned = 0
+}
+
+func (x *VerifySummary) ClearStale() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Stale = 0
+}
+
+func (x *VerifySummary) ClearShapePinned() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_ShapePinned = 0
+}
+
+func (x *VerifySummary) ClearShapeUnpinned() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_ShapeUnpinned = 0
+}
+
+func (x *VerifySummary) ClearShapeMismatch() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_ShapeMismatch = 0
+}
+
+func (x *VerifySummary) ClearBroken() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	x.xxx_hidden_Broken = 0
+}
+
+func (x *VerifySummary) ClearUnverified() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 7)
+	x.xxx_hidden_Unverified = 0
+}
+
+func (x *VerifySummary) ClearTestsPassed() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 8)
+	x.xxx_hidden_TestsPassed = 0
+}
+
+func (x *VerifySummary) ClearTestsFailed() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 9)
+	x.xxx_hidden_TestsFailed = 0
+}
+
+func (x *VerifySummary) ClearTestsNotRun() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 10)
+	x.xxx_hidden_TestsNotRun = 0
+}
+
+type VerifySummary_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Problems      *int32
+	Pinned        *int32
+	Stale         *int32
+	ShapePinned   *int32
+	ShapeUnpinned *int32
+	ShapeMismatch *int32
+	Broken        *int32
+	Unverified    *int32
+	TestsPassed   *int32
+	TestsFailed   *int32
+	TestsNotRun   *int32
+	Signatures    []*ChangeSignature
+}
+
+func (b0 VerifySummary_builder) Build() *VerifySummary {
+	m0 := &VerifySummary{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Problems != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 12)
+		x.xxx_hidden_Problems = *b.Problems
+	}
+	if b.Pinned != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 12)
+		x.xxx_hidden_Pinned = *b.Pinned
+	}
+	if b.Stale != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 12)
+		x.xxx_hidden_Stale = *b.Stale
+	}
+	if b.ShapePinned != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 12)
+		x.xxx_hidden_ShapePinned = *b.ShapePinned
+	}
+	if b.ShapeUnpinned != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 12)
+		x.xxx_hidden_ShapeUnpinned = *b.ShapeUnpinned
+	}
+	if b.ShapeMismatch != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 12)
+		x.xxx_hidden_ShapeMismatch = *b.ShapeMismatch
+	}
+	if b.Broken != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 12)
+		x.xxx_hidden_Broken = *b.Broken
+	}
+	if b.Unverified != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 12)
+		x.xxx_hidden_Unverified = *b.Unverified
+	}
+	if b.TestsPassed != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 12)
+		x.xxx_hidden_TestsPassed = *b.TestsPassed
+	}
+	if b.TestsFailed != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 12)
+		x.xxx_hidden_TestsFailed = *b.TestsFailed
+	}
+	if b.TestsNotRun != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 12)
+		x.xxx_hidden_TestsNotRun = *b.TestsNotRun
+	}
+	x.xxx_hidden_Signatures = &b.Signatures
+	return m0
+}
+
+// HardenResultSummary is one symbol's hardening state without the
+// attestation prose: counts, plus only the OPEN survivors — the ones
+// needing a disposition.
+type HardenResultSummary struct {
+	state                     protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Symbol         *string                `protobuf:"bytes,1,opt,name=symbol"`
+	xxx_hidden_RequirementIds []string               `protobuf:"bytes,2,rep,name=requirement_ids,json=requirementIds"`
+	xxx_hidden_Mutants        int32                  `protobuf:"varint,3,opt,name=mutants"`
+	xxx_hidden_Killed         int32                  `protobuf:"varint,4,opt,name=killed"`
+	xxx_hidden_OpenSurvivors  *[]*MutationSurvivor   `protobuf:"bytes,5,rep,name=open_survivors,json=openSurvivors"`
+	xxx_hidden_Attested       int32                  `protobuf:"varint,6,opt,name=attested"`
+	xxx_hidden_Cached         bool                   `protobuf:"varint,7,opt,name=cached"`
+	XXX_raceDetectHookData    protoimpl.RaceDetectHookData
+	XXX_presence              [1]uint32
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *HardenResultSummary) Reset() {
+	*x = HardenResultSummary{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HardenResultSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HardenResultSummary) ProtoMessage() {}
+
+func (x *HardenResultSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *HardenResultSummary) GetSymbol() string {
+	if x != nil {
+		if x.xxx_hidden_Symbol != nil {
+			return *x.xxx_hidden_Symbol
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *HardenResultSummary) GetRequirementIds() []string {
+	if x != nil {
+		return x.xxx_hidden_RequirementIds
+	}
+	return nil
+}
+
+func (x *HardenResultSummary) GetMutants() int32 {
+	if x != nil {
+		return x.xxx_hidden_Mutants
+	}
+	return 0
+}
+
+func (x *HardenResultSummary) GetKilled() int32 {
+	if x != nil {
+		return x.xxx_hidden_Killed
+	}
+	return 0
+}
+
+func (x *HardenResultSummary) GetOpenSurvivors() []*MutationSurvivor {
+	if x != nil {
+		if x.xxx_hidden_OpenSurvivors != nil {
+			return *x.xxx_hidden_OpenSurvivors
+		}
+	}
+	return nil
+}
+
+func (x *HardenResultSummary) GetAttested() int32 {
+	if x != nil {
+		return x.xxx_hidden_Attested
+	}
+	return 0
+}
+
+func (x *HardenResultSummary) GetCached() bool {
+	if x != nil {
+		return x.xxx_hidden_Cached
+	}
+	return false
+}
+
+func (x *HardenResultSummary) SetSymbol(v string) {
+	x.xxx_hidden_Symbol = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 7)
+}
+
+func (x *HardenResultSummary) SetRequirementIds(v []string) {
+	x.xxx_hidden_RequirementIds = v
+}
+
+func (x *HardenResultSummary) SetMutants(v int32) {
+	x.xxx_hidden_Mutants = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 7)
+}
+
+func (x *HardenResultSummary) SetKilled(v int32) {
+	x.xxx_hidden_Killed = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 7)
+}
+
+func (x *HardenResultSummary) SetOpenSurvivors(v []*MutationSurvivor) {
+	x.xxx_hidden_OpenSurvivors = &v
+}
+
+func (x *HardenResultSummary) SetAttested(v int32) {
+	x.xxx_hidden_Attested = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 7)
+}
+
+func (x *HardenResultSummary) SetCached(v bool) {
+	x.xxx_hidden_Cached = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 7)
+}
+
+func (x *HardenResultSummary) HasSymbol() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *HardenResultSummary) HasMutants() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *HardenResultSummary) HasKilled() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *HardenResultSummary) HasAttested() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *HardenResultSummary) HasCached() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
+func (x *HardenResultSummary) ClearSymbol() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Symbol = nil
+}
+
+func (x *HardenResultSummary) ClearMutants() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Mutants = 0
+}
+
+func (x *HardenResultSummary) ClearKilled() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_Killed = 0
+}
+
+func (x *HardenResultSummary) ClearAttested() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_Attested = 0
+}
+
+func (x *HardenResultSummary) ClearCached() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	x.xxx_hidden_Cached = false
+}
+
+type HardenResultSummary_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Symbol         *string
+	RequirementIds []string
+	Mutants        *int32
+	Killed         *int32
+	OpenSurvivors  []*MutationSurvivor
+	Attested       *int32
+	Cached         *bool
+}
+
+func (b0 HardenResultSummary_builder) Build() *HardenResultSummary {
+	m0 := &HardenResultSummary{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Symbol != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 7)
+		x.xxx_hidden_Symbol = b.Symbol
+	}
+	x.xxx_hidden_RequirementIds = b.RequirementIds
+	if b.Mutants != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 7)
+		x.xxx_hidden_Mutants = *b.Mutants
+	}
+	if b.Killed != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 7)
+		x.xxx_hidden_Killed = *b.Killed
+	}
+	x.xxx_hidden_OpenSurvivors = &b.OpenSurvivors
+	if b.Attested != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 7)
+		x.xxx_hidden_Attested = *b.Attested
+	}
+	if b.Cached != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 7)
+		x.xxx_hidden_Cached = *b.Cached
+	}
+	return m0
+}
+
+// HardenSummary is the harden report at the summary view.
+type HardenSummary struct {
+	state              protoimpl.MessageState  `protogen:"opaque.v1"`
+	xxx_hidden_Results *[]*HardenResultSummary `protobuf:"bytes,1,rep,name=results"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *HardenSummary) Reset() {
+	*x = HardenSummary{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HardenSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HardenSummary) ProtoMessage() {}
+
+func (x *HardenSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *HardenSummary) GetResults() []*HardenResultSummary {
+	if x != nil {
+		if x.xxx_hidden_Results != nil {
+			return *x.xxx_hidden_Results
+		}
+	}
+	return nil
+}
+
+func (x *HardenSummary) SetResults(v []*HardenResultSummary) {
+	x.xxx_hidden_Results = &v
+}
+
+type HardenSummary_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Results []*HardenResultSummary
+}
+
+func (b0 HardenSummary_builder) Build() *HardenSummary {
+	m0 := &HardenSummary{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Results = &b.Results
+	return m0
+}
+
 // Seed is a bound symbol seeding code context for a requirement set.
 type Seed struct {
 	state                    protoimpl.MessageState `protogen:"opaque.v1"`
@@ -1793,7 +2798,7 @@ type Seed struct {
 
 func (x *Seed) Reset() {
 	*x = Seed{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[8]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1805,7 +2810,7 @@ func (x *Seed) String() string {
 func (*Seed) ProtoMessage() {}
 
 func (x *Seed) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[8]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1970,7 +2975,7 @@ type Decl struct {
 
 func (x *Decl) Reset() {
 	*x = Decl{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1982,7 +2987,7 @@ func (x *Decl) String() string {
 func (*Decl) ProtoMessage() {}
 
 func (x *Decl) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2146,7 +3151,7 @@ type ContextReport struct {
 
 func (x *ContextReport) Reset() {
 	*x = ContextReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2158,7 +3163,7 @@ func (x *ContextReport) String() string {
 func (*ContextReport) ProtoMessage() {}
 
 func (x *ContextReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2233,7 +3238,7 @@ type Dossier struct {
 
 func (x *Dossier) Reset() {
 	*x = Dossier{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2245,7 +3250,7 @@ func (x *Dossier) String() string {
 func (*Dossier) ProtoMessage() {}
 
 func (x *Dossier) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2467,7 +3472,7 @@ type HardeningRollup struct {
 
 func (x *HardeningRollup) Reset() {
 	*x = HardeningRollup{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2479,7 +3484,7 @@ func (x *HardeningRollup) String() string {
 func (*HardeningRollup) ProtoMessage() {}
 
 func (x *HardeningRollup) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2663,7 +3668,7 @@ type DossierReport struct {
 
 func (x *DossierReport) Reset() {
 	*x = DossierReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2675,7 +3680,7 @@ func (x *DossierReport) String() string {
 func (*DossierReport) ProtoMessage() {}
 
 func (x *DossierReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2762,7 +3767,7 @@ type PartitionComponent struct {
 
 func (x *PartitionComponent) Reset() {
 	*x = PartitionComponent{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2774,7 +3779,7 @@ func (x *PartitionComponent) String() string {
 func (*PartitionComponent) ProtoMessage() {}
 
 func (x *PartitionComponent) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2853,7 +3858,7 @@ type PartitionOverlap struct {
 
 func (x *PartitionOverlap) Reset() {
 	*x = PartitionOverlap{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2865,7 +3870,7 @@ func (x *PartitionOverlap) String() string {
 func (*PartitionOverlap) ProtoMessage() {}
 
 func (x *PartitionOverlap) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2971,7 +3976,7 @@ type PartitionReport struct {
 
 func (x *PartitionReport) Reset() {
 	*x = PartitionReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2983,7 +3988,7 @@ func (x *PartitionReport) String() string {
 func (*PartitionReport) ProtoMessage() {}
 
 func (x *PartitionReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3051,7 +4056,7 @@ type HardenResult struct {
 
 func (x *HardenResult) Reset() {
 	*x = HardenResult{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3063,7 +4068,7 @@ func (x *HardenResult) String() string {
 func (*HardenResult) ProtoMessage() {}
 
 func (x *HardenResult) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3213,7 +4218,7 @@ type HardenReport struct {
 
 func (x *HardenReport) Reset() {
 	*x = HardenReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[18]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3225,7 +4230,7 @@ func (x *HardenReport) String() string {
 func (*HardenReport) ProtoMessage() {}
 
 func (x *HardenReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[18]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3320,7 +4325,50 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"violations\x12\x1f\n" +
 	"\vgate_passes\x18\x04 \x01(\bR\n" +
 	"gatePasses\x12)\n" +
-	"\x10policy_overrides\x18\x05 \x03(\tR\x0fpolicyOverrides\"\x8f\x01\n" +
+	"\x10policy_overrides\x18\x05 \x03(\tR\x0fpolicyOverrides\"\xb4\x02\n" +
+	"\x0fCoverageSummary\x12\x1f\n" +
+	"\vgate_passes\x18\x01 \x01(\bR\n" +
+	"gatePasses\x12\x18\n" +
+	"\acovered\x18\x02 \x01(\x05R\acovered\x12\x1a\n" +
+	"\battested\x18\x03 \x01(\x05R\battested\x12\x1c\n" +
+	"\tuncovered\x18\x04 \x01(\x05R\tuncovered\x12\x14\n" +
+	"\x05stale\x18\x05 \x01(\x05R\x05stale\x12\x16\n" +
+	"\x06broken\x18\x06 \x01(\x05R\x06broken\x12\x16\n" +
+	"\x06exempt\x18\a \x01(\x05R\x06exempt\x12\x1e\n" +
+	"\n" +
+	"violations\x18\b \x03(\tR\n" +
+	"violations\x12\x1b\n" +
+	"\tgaps_open\x18\t \x01(\x05R\bgapsOpen\x12)\n" +
+	"\x10policy_overrides\x18\n" +
+	" \x03(\tR\x0fpolicyOverrides\"\xac\x03\n" +
+	"\rVerifySummary\x12\x1a\n" +
+	"\bproblems\x18\x01 \x01(\x05R\bproblems\x12\x16\n" +
+	"\x06pinned\x18\x02 \x01(\x05R\x06pinned\x12\x14\n" +
+	"\x05stale\x18\x03 \x01(\x05R\x05stale\x12!\n" +
+	"\fshape_pinned\x18\x04 \x01(\x05R\vshapePinned\x12%\n" +
+	"\x0eshape_unpinned\x18\x05 \x01(\x05R\rshapeUnpinned\x12%\n" +
+	"\x0eshape_mismatch\x18\x06 \x01(\x05R\rshapeMismatch\x12\x16\n" +
+	"\x06broken\x18\a \x01(\x05R\x06broken\x12\x1e\n" +
+	"\n" +
+	"unverified\x18\b \x01(\x05R\n" +
+	"unverified\x12!\n" +
+	"\ftests_passed\x18\t \x01(\x05R\vtestsPassed\x12!\n" +
+	"\ftests_failed\x18\n" +
+	" \x01(\x05R\vtestsFailed\x12\"\n" +
+	"\rtests_not_run\x18\v \x01(\x05R\vtestsNotRun\x12>\n" +
+	"\n" +
+	"signatures\x18\f \x03(\v2\x1e.stipulator.v1.ChangeSignatureR\n" +
+	"signatures\"\x84\x02\n" +
+	"\x13HardenResultSummary\x12\x16\n" +
+	"\x06symbol\x18\x01 \x01(\tR\x06symbol\x12'\n" +
+	"\x0frequirement_ids\x18\x02 \x03(\tR\x0erequirementIds\x12\x18\n" +
+	"\amutants\x18\x03 \x01(\x05R\amutants\x12\x16\n" +
+	"\x06killed\x18\x04 \x01(\x05R\x06killed\x12F\n" +
+	"\x0eopen_survivors\x18\x05 \x03(\v2\x1f.stipulator.v1.MutationSurvivorR\ropenSurvivors\x12\x1a\n" +
+	"\battested\x18\x06 \x01(\x05R\battested\x12\x16\n" +
+	"\x06cached\x18\a \x01(\bR\x06cached\"M\n" +
+	"\rHardenSummary\x12<\n" +
+	"\aresults\x18\x01 \x03(\v2\".stipulator.v1.HardenResultSummaryR\aresults\"\x8f\x01\n" +
 	"\x04Seed\x12%\n" +
 	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x12\x18\n" +
 	"\abackend\x18\x02 \x01(\tR\abackend\x12\x16\n" +
@@ -3418,7 +4466,7 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x12GAP_STATE_RESOLVED\x10\x03BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
 var file_stipulator_v1_reports_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_stipulator_v1_reports_proto_goTypes = []any{
 	(Resolution)(0),                // 0: stipulator.v1.Resolution
 	(ShapeState)(0),                // 1: stipulator.v1.ShapeState
@@ -3435,27 +4483,32 @@ var file_stipulator_v1_reports_proto_goTypes = []any{
 	(*RequirementCoverage)(nil),    // 12: stipulator.v1.RequirementCoverage
 	(*GapReport)(nil),              // 13: stipulator.v1.GapReport
 	(*CoverageReport)(nil),         // 14: stipulator.v1.CoverageReport
-	(*Seed)(nil),                   // 15: stipulator.v1.Seed
-	(*Decl)(nil),                   // 16: stipulator.v1.Decl
-	(*ContextReport)(nil),          // 17: stipulator.v1.ContextReport
-	(*Dossier)(nil),                // 18: stipulator.v1.Dossier
-	(*HardeningRollup)(nil),        // 19: stipulator.v1.HardeningRollup
-	(*DossierReport)(nil),          // 20: stipulator.v1.DossierReport
-	(*PartitionComponent)(nil),     // 21: stipulator.v1.PartitionComponent
-	(*PartitionOverlap)(nil),       // 22: stipulator.v1.PartitionOverlap
-	(*PartitionReport)(nil),        // 23: stipulator.v1.PartitionReport
-	(*HardenResult)(nil),           // 24: stipulator.v1.HardenResult
-	(*HardenReport)(nil),           // 25: stipulator.v1.HardenReport
-	(BindingRole)(0),               // 26: stipulator.v1.BindingRole
-	(ClauseKind)(0),                // 27: stipulator.v1.ClauseKind
-	(Keyword)(0),                   // 28: stipulator.v1.Keyword
-	(*Requirement)(nil),            // 29: stipulator.v1.Requirement
-	(*Gap)(nil),                    // 30: stipulator.v1.Gap
-	(*RequirementAttestation)(nil), // 31: stipulator.v1.RequirementAttestation
-	(*Hardening)(nil),              // 32: stipulator.v1.Hardening
+	(*CoverageSummary)(nil),        // 15: stipulator.v1.CoverageSummary
+	(*VerifySummary)(nil),          // 16: stipulator.v1.VerifySummary
+	(*HardenResultSummary)(nil),    // 17: stipulator.v1.HardenResultSummary
+	(*HardenSummary)(nil),          // 18: stipulator.v1.HardenSummary
+	(*Seed)(nil),                   // 19: stipulator.v1.Seed
+	(*Decl)(nil),                   // 20: stipulator.v1.Decl
+	(*ContextReport)(nil),          // 21: stipulator.v1.ContextReport
+	(*Dossier)(nil),                // 22: stipulator.v1.Dossier
+	(*HardeningRollup)(nil),        // 23: stipulator.v1.HardeningRollup
+	(*DossierReport)(nil),          // 24: stipulator.v1.DossierReport
+	(*PartitionComponent)(nil),     // 25: stipulator.v1.PartitionComponent
+	(*PartitionOverlap)(nil),       // 26: stipulator.v1.PartitionOverlap
+	(*PartitionReport)(nil),        // 27: stipulator.v1.PartitionReport
+	(*HardenResult)(nil),           // 28: stipulator.v1.HardenResult
+	(*HardenReport)(nil),           // 29: stipulator.v1.HardenReport
+	(BindingRole)(0),               // 30: stipulator.v1.BindingRole
+	(ClauseKind)(0),                // 31: stipulator.v1.ClauseKind
+	(Keyword)(0),                   // 32: stipulator.v1.Keyword
+	(*MutationSurvivor)(nil),       // 33: stipulator.v1.MutationSurvivor
+	(*Requirement)(nil),            // 34: stipulator.v1.Requirement
+	(*Gap)(nil),                    // 35: stipulator.v1.Gap
+	(*RequirementAttestation)(nil), // 36: stipulator.v1.RequirementAttestation
+	(*Hardening)(nil),              // 37: stipulator.v1.Hardening
 }
 var file_stipulator_v1_reports_proto_depIdxs = []int32{
-	26, // 0: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
+	30, // 0: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
 	0,  // 1: stipulator.v1.BindingResult.resolution:type_name -> stipulator.v1.Resolution
 	1,  // 2: stipulator.v1.BindingResult.shape:type_name -> stipulator.v1.ShapeState
 	2,  // 3: stipulator.v1.BindingResult.test_outcome:type_name -> stipulator.v1.TestOutcome
@@ -3466,36 +4519,39 @@ var file_stipulator_v1_reports_proto_depIdxs = []int32{
 	9,  // 8: stipulator.v1.VerifyReport.registrations:type_name -> stipulator.v1.RegistrationResult
 	11, // 9: stipulator.v1.VerifyReport.signatures:type_name -> stipulator.v1.ChangeSignature
 	4,  // 10: stipulator.v1.ChangeSignature.label:type_name -> stipulator.v1.SignatureLabel
-	27, // 11: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
-	28, // 12: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
+	31, // 11: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
+	32, // 12: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
 	5,  // 13: stipulator.v1.RequirementCoverage.bucket:type_name -> stipulator.v1.Bucket
 	6,  // 14: stipulator.v1.GapReport.state:type_name -> stipulator.v1.GapState
 	12, // 15: stipulator.v1.CoverageReport.requirements:type_name -> stipulator.v1.RequirementCoverage
 	13, // 16: stipulator.v1.CoverageReport.gaps:type_name -> stipulator.v1.GapReport
-	26, // 17: stipulator.v1.Seed.role:type_name -> stipulator.v1.BindingRole
-	15, // 18: stipulator.v1.ContextReport.seeds:type_name -> stipulator.v1.Seed
-	16, // 19: stipulator.v1.ContextReport.declarations:type_name -> stipulator.v1.Decl
-	29, // 20: stipulator.v1.Dossier.requirement:type_name -> stipulator.v1.Requirement
-	12, // 21: stipulator.v1.Dossier.coverage:type_name -> stipulator.v1.RequirementCoverage
-	30, // 22: stipulator.v1.Dossier.gap:type_name -> stipulator.v1.Gap
-	31, // 23: stipulator.v1.Dossier.attestation:type_name -> stipulator.v1.RequirementAttestation
-	8,  // 24: stipulator.v1.Dossier.bindings:type_name -> stipulator.v1.BindingResult
-	19, // 25: stipulator.v1.Dossier.hardening:type_name -> stipulator.v1.HardeningRollup
-	15, // 26: stipulator.v1.Dossier.seeds:type_name -> stipulator.v1.Seed
-	6,  // 27: stipulator.v1.Dossier.gap_state:type_name -> stipulator.v1.GapState
-	18, // 28: stipulator.v1.DossierReport.dossiers:type_name -> stipulator.v1.Dossier
-	7,  // 29: stipulator.v1.DossierReport.problems:type_name -> stipulator.v1.Problem
-	16, // 30: stipulator.v1.DossierReport.declarations:type_name -> stipulator.v1.Decl
-	15, // 31: stipulator.v1.PartitionComponent.seeds:type_name -> stipulator.v1.Seed
-	21, // 32: stipulator.v1.PartitionReport.components:type_name -> stipulator.v1.PartitionComponent
-	22, // 33: stipulator.v1.PartitionReport.overlaps:type_name -> stipulator.v1.PartitionOverlap
-	32, // 34: stipulator.v1.HardenResult.record:type_name -> stipulator.v1.Hardening
-	24, // 35: stipulator.v1.HardenReport.results:type_name -> stipulator.v1.HardenResult
-	36, // [36:36] is the sub-list for method output_type
-	36, // [36:36] is the sub-list for method input_type
-	36, // [36:36] is the sub-list for extension type_name
-	36, // [36:36] is the sub-list for extension extendee
-	0,  // [0:36] is the sub-list for field type_name
+	11, // 17: stipulator.v1.VerifySummary.signatures:type_name -> stipulator.v1.ChangeSignature
+	33, // 18: stipulator.v1.HardenResultSummary.open_survivors:type_name -> stipulator.v1.MutationSurvivor
+	17, // 19: stipulator.v1.HardenSummary.results:type_name -> stipulator.v1.HardenResultSummary
+	30, // 20: stipulator.v1.Seed.role:type_name -> stipulator.v1.BindingRole
+	19, // 21: stipulator.v1.ContextReport.seeds:type_name -> stipulator.v1.Seed
+	20, // 22: stipulator.v1.ContextReport.declarations:type_name -> stipulator.v1.Decl
+	34, // 23: stipulator.v1.Dossier.requirement:type_name -> stipulator.v1.Requirement
+	12, // 24: stipulator.v1.Dossier.coverage:type_name -> stipulator.v1.RequirementCoverage
+	35, // 25: stipulator.v1.Dossier.gap:type_name -> stipulator.v1.Gap
+	36, // 26: stipulator.v1.Dossier.attestation:type_name -> stipulator.v1.RequirementAttestation
+	8,  // 27: stipulator.v1.Dossier.bindings:type_name -> stipulator.v1.BindingResult
+	23, // 28: stipulator.v1.Dossier.hardening:type_name -> stipulator.v1.HardeningRollup
+	19, // 29: stipulator.v1.Dossier.seeds:type_name -> stipulator.v1.Seed
+	6,  // 30: stipulator.v1.Dossier.gap_state:type_name -> stipulator.v1.GapState
+	22, // 31: stipulator.v1.DossierReport.dossiers:type_name -> stipulator.v1.Dossier
+	7,  // 32: stipulator.v1.DossierReport.problems:type_name -> stipulator.v1.Problem
+	20, // 33: stipulator.v1.DossierReport.declarations:type_name -> stipulator.v1.Decl
+	19, // 34: stipulator.v1.PartitionComponent.seeds:type_name -> stipulator.v1.Seed
+	25, // 35: stipulator.v1.PartitionReport.components:type_name -> stipulator.v1.PartitionComponent
+	26, // 36: stipulator.v1.PartitionReport.overlaps:type_name -> stipulator.v1.PartitionOverlap
+	37, // 37: stipulator.v1.HardenResult.record:type_name -> stipulator.v1.Hardening
+	28, // 38: stipulator.v1.HardenReport.results:type_name -> stipulator.v1.HardenResult
+	39, // [39:39] is the sub-list for method output_type
+	39, // [39:39] is the sub-list for method input_type
+	39, // [39:39] is the sub-list for extension type_name
+	39, // [39:39] is the sub-list for extension extendee
+	0,  // [0:39] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_reports_proto_init() }
@@ -3511,7 +4567,7 @@ func file_stipulator_v1_reports_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_reports_proto_rawDesc), len(file_stipulator_v1_reports_proto_rawDesc)),
 			NumEnums:      7,
-			NumMessages:   19,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

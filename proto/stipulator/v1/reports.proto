@@ -159,6 +159,62 @@ message CoverageReport {
   repeated string policy_overrides = 5;
 }
 
+// CoverageSummary is the coverage roll-up: the answer most gate calls
+// want — pass/fail, counts over the scoped rows, what is red — without
+// the per-requirement array. GatePasses is always the global verdict: a
+// slice passing means nothing when the tree fails.
+message CoverageSummary {
+  bool gate_passes = 1;
+  int32 covered = 2;
+  int32 attested = 3;
+  int32 uncovered = 4;
+  int32 stale = 5;
+  int32 broken = 6;
+  int32 exempt = 7;
+  repeated string violations = 8;
+  // GapsOpen counts unresolved gaps among the scoped requirements.
+  int32 gaps_open = 9;
+  // PolicyOverrides lists the manifest's active coverage-policy
+  // overrides: an override shapes the verdict and every count, so no
+  // view — the summary least of all — may apply one silently.
+  repeated string policy_overrides = 10;
+}
+
+// VerifySummary is the verification roll-up: record hygiene and witness
+// counts, with change signatures — no per-binding rows.
+message VerifySummary {
+  int32 problems = 1;
+  int32 pinned = 2;
+  int32 stale = 3;
+  int32 shape_pinned = 4;
+  int32 shape_unpinned = 5;
+  int32 shape_mismatch = 6;
+  int32 broken = 7;
+  int32 unverified = 8;
+  int32 tests_passed = 9;
+  int32 tests_failed = 10;
+  int32 tests_not_run = 11;
+  repeated ChangeSignature signatures = 12;
+}
+
+// HardenResultSummary is one symbol's hardening state without the
+// attestation prose: counts, plus only the OPEN survivors — the ones
+// needing a disposition.
+message HardenResultSummary {
+  string symbol = 1;
+  repeated string requirement_ids = 2;
+  int32 mutants = 3;
+  int32 killed = 4;
+  repeated MutationSurvivor open_survivors = 5;
+  int32 attested = 6;
+  bool cached = 7;
+}
+
+// HardenSummary is the harden report at the summary view.
+message HardenSummary {
+  repeated HardenResultSummary results = 1;
+}
+
 // Seed is a bound symbol seeding code context for a requirement set.
 message Seed {
   string requirement_id = 1;

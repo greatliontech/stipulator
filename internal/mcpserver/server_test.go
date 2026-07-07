@@ -118,10 +118,15 @@ func TestResourceIndexAndReads(t *testing.T) {
 	for _, r := range list.Resources {
 		uris[r.URI] = true
 	}
-	for _, want := range []string{"stipulator://req/REQ-m-a", "stipulator://req/REQ-m-b", "stipulator://coverage"} {
+	for _, want := range []string{"stipulator://req/REQ-m-a", "stipulator://req/REQ-m-b"} {
 		if !uris[want] {
 			t.Fatalf("resource list missing %s: %v", want, uris)
 		}
+	}
+	// Coverage deliberately has no resource: the gate tool's views are
+	// the one surface (REQ-mcp-resources).
+	if uris["stipulator://coverage"] {
+		t.Fatalf("pruned coverage resource still listed: %v", uris)
 	}
 
 	rr, err := sess.ReadResource(context.Background(), &mcp.ReadResourceParams{URI: "stipulator://req/REQ-m-a"})
@@ -161,6 +166,8 @@ func TestGateTool(t *testing.T) {
 		".stipulator/bindings/m.textproto": pinnedBinding(t),
 		".stipulator/gaps/m-b.textproto":   "requirement_id: \"REQ-m-b\"\nreason: \"later\"\nlands { manual { condition: \"x\" } }\n",
 	})
+	// Default view is the summary: pass/fail + counts + violations,
+	// no per-requirement array — the answer most calls want.
 	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "gate", Arguments: map[string]any{}})
 	if err != nil {
 		t.Fatal(err)
@@ -169,6 +176,28 @@ func TestGateTool(t *testing.T) {
 		t.Fatalf("gate tool errored: %v", res.Content)
 	}
 	b, _ := json.Marshal(res.StructuredContent)
+	var sum struct {
+		GatePasses bool `json:"gatePasses"`
+		Covered    int  `json:"covered"`
+		Uncovered  int  `json:"uncovered"`
+		GapsOpen   int  `json:"gapsOpen"`
+	}
+	if err := json.Unmarshal(b, &sum); err != nil {
+		t.Fatal(err)
+	}
+	if !sum.GatePasses || sum.Covered != 1 || sum.Uncovered != 1 || sum.GapsOpen != 1 {
+		t.Fatalf("summary wrong: %s", b)
+	}
+	if strings.Contains(string(b), "requirements") {
+		t.Fatalf("summary carries the per-requirement array: %s", b)
+	}
+
+	// view=full: the per-requirement array.
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "gate", Arguments: map[string]any{"view": "full"}})
+	if err != nil || res.IsError {
+		t.Fatalf("gate full: %v %v", err, res)
+	}
+	b, _ = json.Marshal(res.StructuredContent)
 	var out struct {
 		GatePasses   bool `json:"gatePasses"`
 		Requirements []struct {
@@ -191,6 +220,25 @@ func TestGateTool(t *testing.T) {
 	}
 	if buckets["REQ-m-b"] != "BUCKET_UNCOVERED" {
 		t.Fatalf("REQ-m-b bucket = %s", buckets["REQ-m-b"])
+	}
+
+	// Scope: bucket=uncovered narrows the full view to the red row.
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "gate", Arguments: map[string]any{"view": "full", "bucket": "uncovered"}})
+	if err != nil || res.IsError {
+		t.Fatalf("gate scoped: %v %v", err, res)
+	}
+	b, _ = json.Marshal(res.StructuredContent)
+	if err := json.Unmarshal(b, &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Requirements) != 1 || out.Requirements[0].Id != "REQ-m-b" {
+		t.Fatalf("bucket scope wrong: %s", b)
+	}
+
+	// An unknown bucket refuses — a typo must never read as empty.
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "gate", Arguments: map[string]any{"bucket": "redish"}})
+	if err != nil || !res.IsError {
+		t.Fatalf("unknown bucket accepted: %v %v", err, res)
 	}
 
 	// The failing direction must survive the wire too: undeclared red →
@@ -331,24 +379,6 @@ func TestDisposeToolRetire(t *testing.T) {
 	}})
 	if err != nil || !res.IsError {
 		t.Fatalf("unknown kind accepted: %v %v", err, res)
-	}
-}
-
-func TestCoverageResourceStableJSON(t *testing.T) {
-	sess, _ := harness(t, nil)
-	read := func() string {
-		rr, err := sess.ReadResource(context.Background(), &mcp.ReadResourceParams{URI: "stipulator://coverage"})
-		if err != nil {
-			t.Fatal(err)
-		}
-		return rr.Contents[0].Text
-	}
-	a, b := read(), read()
-	if a != b {
-		t.Fatal("coverage resource bytes unstable across identical reads")
-	}
-	if !strings.Contains(a, "\"requirements\"") || !strings.Contains(a, "\"gatePasses\"") {
-		t.Fatalf("coverage resource shape: %s", a)
 	}
 }
 

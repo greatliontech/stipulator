@@ -11,13 +11,21 @@ import (
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/internal/views"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func gateCmd() *cobra.Command {
-	return &cobra.Command{
+	var reqs []string
+	var bucket, filter, pathPrefix, view string
+	var jsonOut, quiet bool
+	c := &cobra.Command{
 		Use:   "gate",
 		Short: "Coverage buckets and the gate verdict",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if jsonOut && quiet {
+				return fmt.Errorf("give either --json or --quiet")
+			}
 			spec, err := mustCompile(chdir)
 			if err != nil {
 				return err
@@ -51,18 +59,54 @@ func gateCmd() *cobra.Command {
 				return err
 			}
 			cov := coverage.Evaluate(spec, rep, store, true, pol)
-			printCoverage(cov)
-			if !cov.GatePasses() {
-				for _, v := range cov.Violations {
-					fmt.Fprintf(os.Stderr, "%s %s is red and no gap names it\n", red("violation:"), bold(v))
+			scope := views.Scope{Ids: reqs, Bucket: bucket, Filter: filter, Path: pathPrefix}
+			facts := views.FactsFrom(spec, rep)
+			switch {
+			case jsonOut:
+				m, verr := views.CoverageView(cov, facts, view, scope)
+				if verr != nil {
+					return verr
 				}
-				fmt.Println(red("gate: fail"))
+				b, verr := protojson.Marshal(m)
+				if verr != nil {
+					return verr
+				}
+				fmt.Println(string(b))
+			case quiet:
+				// Exit code only, for CI.
+			default:
+				rows, verr := views.FilterRows(cov, facts, scope)
+				if verr != nil {
+					return verr
+				}
+				sliced := *cov
+				sliced.Requirements = rows
+				printCoverage(&sliced)
+			}
+			if !cov.GatePasses() {
+				if !quiet && !jsonOut {
+					for _, v := range cov.Violations {
+						fmt.Fprintf(os.Stderr, "%s %s is red and no gap names it\n", red("violation:"), bold(v))
+					}
+					fmt.Println(red("gate: fail"))
+				}
 				os.Exit(1)
 			}
-			fmt.Println(green("gate: pass"))
+			if !quiet && !jsonOut {
+				fmt.Println(green("gate: pass"))
+			}
 			return nil
 		},
 	}
+	c.Flags().StringArrayVar(&reqs, "req", nil, "scope to requirement identifier (repeatable)")
+	c.Flags().StringVar(&bucket, "bucket", "", "scope to one bucket: uncovered, stale, broken, covered, exempt, attested")
+	c.Flags().StringVar(&filter, "filter", "", "requirement-id glob, e.g. 'REQ-arch-*'")
+	c.Flags().StringVar(&pathPrefix, "path", "", "prefix over declaring document or bound symbols")
+	c.Flags().StringVar(&view, "view", "", "JSON view: summary (default), reds, full")
+	c.Flags().BoolVar(&jsonOut, "json", false, "machine output: the selected view as JSON")
+	c.Flags().BoolVarP(&quiet, "quiet", "q", false, "exit code only")
+	registerReqCompletions(c, "req")
+	return c
 }
 
 // printCoverage renders the human coverage view: red requirements with

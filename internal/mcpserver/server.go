@@ -34,6 +34,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/harden"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/internal/views"
 )
 
 // Server serves one repository. The function fields exist so tests can
@@ -109,11 +110,11 @@ func (s *Server) MCP() *mcp.Server {
 	}, s.toolCompile)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "verify",
-		Description: "Check binding and gap records against the corpus and code; returns the verify report. Set no_test to skip witnessing.",
+		Description: "Check records against corpus and code. Default view is the summary (hygiene and witness counts, change signatures); view=bindings for per-binding rows, scoped with ids/filter/path. Set no_test to skip witnessing.",
 	}, s.toolVerify)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "gate",
-		Description: "Full conformance verdict: per-requirement coverage buckets with reasons, gap states, and violations. gate_passes is the verdict.",
+		Description: "Coverage gate. Default view is the summary (gate_passes, counts, violations); view=reds or full for per-requirement rows; scope with ids/bucket/filter/path. Runs the test suite.",
 	}, s.toolGate)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "bind",
@@ -177,12 +178,6 @@ func (s *Server) MCP() *mcp.Server {
 		Name:        "bundle",
 		Description: "Self-contained closure for comma-separated requirement ids.",
 		MIMEType:    "text/markdown",
-	}, s.readResource)
-	srv.AddResource(&mcp.Resource{
-		URI:         "stipulator://coverage",
-		Name:        "coverage",
-		Description: "The coverage report: buckets, reasons, gap states, gate verdict. Runs the test suite.",
-		MIMEType:    "application/json",
 	}, s.readResource)
 
 	// The requirement index: one listed resource per requirement, so
@@ -277,7 +272,11 @@ func (s *Server) toolCompile(ctx context.Context, req *mcp.CallToolRequest, in s
 }
 
 type verifyIn struct {
-	NoTest bool `json:"no_test,omitempty" jsonschema:"skip running tests (no witnesses)"`
+	NoTest bool   `json:"no_test,omitempty" jsonschema:"skip running tests (no witnesses)"`
+	View   string `json:"view,omitempty" jsonschema:"summary (default: hygiene and witness counts with change signatures) or bindings (the per-binding rows)"`
+	Ids    string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers to scope binding rows to"`
+	Filter string `json:"filter,omitempty" jsonschema:"requirement-id glob over binding rows"`
+	Path   string `json:"path,omitempty" jsonschema:"prefix over declaring document or symbol"`
 }
 
 func (s *Server) verifyPipeline(noTest bool) (*stipulatorv1.Spec, *verify.Report, *records.Store, error) {
@@ -304,14 +303,30 @@ func (s *Server) verifyPipeline(noTest bool) (*stipulatorv1.Spec, *verify.Report
 }
 
 func (s *Server) toolVerify(ctx context.Context, req *mcp.CallToolRequest, in verifyIn) (*mcp.CallToolResult, map[string]any, error) {
-	_, rep, _, err := s.verifyPipeline(in.NoTest)
+	spec, rep, _, err := s.verifyPipeline(in.NoTest)
 	if err != nil {
 		return nil, nil, err
 	}
-	return protoJSON(rep.Proto())
+	scope, err := scopeFrom(in.Ids, "", in.Filter, in.Path)
+	if err != nil {
+		return nil, nil, err
+	}
+	m, err := views.VerifyView(rep, views.FactsFrom(spec, rep), in.View, scope)
+	if err != nil {
+		return nil, nil, err
+	}
+	return protoJSON(m)
 }
 
-func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in struct{}) (*mcp.CallToolResult, map[string]any, error) {
+type gateIn struct {
+	View   string `json:"view,omitempty" jsonschema:"summary (default: pass/fail + counts + violations), reds (red requirements with reasons), or full (every requirement)"`
+	Ids    string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers to scope to"`
+	Bucket string `json:"bucket,omitempty" jsonschema:"scope to one bucket: uncovered, stale, broken, covered, exempt, attested"`
+	Filter string `json:"filter,omitempty" jsonschema:"requirement-id glob, e.g. REQ-arch-*"`
+	Path   string `json:"path,omitempty" jsonschema:"prefix over declaring spec document or bound symbols, e.g. docs/specs/change.md or internal/corpus"`
+}
+
+func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in gateIn) (*mcp.CallToolResult, map[string]any, error) {
 	spec, rep, store, err := s.verifyPipeline(false)
 	if err != nil {
 		return nil, nil, err
@@ -328,7 +343,29 @@ func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in stru
 		return nil, nil, err
 	}
 	cov := coverage.Evaluate(spec, rep, store, true, pol)
-	return protoJSON(cov.Proto())
+	scope, err := scopeFrom(in.Ids, in.Bucket, in.Filter, in.Path)
+	if err != nil {
+		return nil, nil, err
+	}
+	m, err := views.CoverageView(cov, views.FactsFrom(spec, rep), in.View, scope)
+	if err != nil {
+		return nil, nil, err
+	}
+	return protoJSON(m)
+}
+
+// scopeFrom builds a scope from tool params, tolerating the same id
+// encodings splitIDs does.
+func scopeFrom(ids, bucket, filter, pathPrefix string) (views.Scope, error) {
+	sc := views.Scope{Bucket: bucket, Filter: filter, Path: pathPrefix}
+	if strings.TrimSpace(ids) != "" {
+		parsed, err := splitIDs(ids)
+		if err != nil {
+			return views.Scope{}, err
+		}
+		sc.Ids = parsed
+	}
+	return sc, nil
 }
 
 type bindIn struct {
@@ -602,6 +639,7 @@ type hardenIn struct {
 	Budget  int    `json:"budget,omitempty" jsonschema:"mutant budget per symbol; 0 means all, default 24"`
 	Force   bool   `json:"force,omitempty" jsonschema:"rerun targets whose kill-sheet pins (body hash, witness set, operator set) still match"`
 	Jobs    int    `json:"jobs,omitempty" jsonschema:"concurrent mutant runs; 0 means half the CPUs"`
+	View    string `json:"view,omitempty" jsonschema:"summary (default: counts plus only the open survivors) or full (records with attestation prose)"`
 }
 
 func (s *Server) toolHarden(ctx context.Context, req *mcp.CallToolRequest, in hardenIn) (*mcp.CallToolResult, map[string]any, error) {
@@ -622,44 +660,11 @@ func (s *Server) toolHarden(ctx context.Context, req *mcp.CallToolRequest, in ha
 			return nil, nil, err
 		}
 	}
-	out := &stipulatorv1.HardenReport{}
-	var results []*stipulatorv1.HardenResult
-	for _, res := range rep.Results {
-		hr := &stipulatorv1.HardenResult{}
-		rec := &stipulatorv1.Hardening{}
-		rec.SetBackend("go")
-		rec.SetSymbol(res.Symbol)
-		rec.SetWitnesses(res.Witnesses)
-		rec.SetOperators(golang.OperatorSet)
-		rec.SetToolchain(res.Toolchain)
-		var attested []*stipulatorv1.MutationAttestation
-		for _, a := range res.Attested {
-			ma := &stipulatorv1.MutationAttestation{}
-			ma.SetPosition(a.Position)
-			ma.SetOperator(a.Operator)
-			ma.SetReason(a.Reason)
-			attested = append(attested, ma)
-		}
-		rec.SetAttested(attested)
-		rec.SetBodyHash(res.BodyHash)
-		rec.SetMutants(int32(res.Mutants))
-		rec.SetKilled(int32(res.Killed))
-		var survivors []*stipulatorv1.MutationSurvivor
-		for _, sv := range res.Survivors {
-			m := &stipulatorv1.MutationSurvivor{}
-			m.SetPosition(sv.Position)
-			m.SetOperator(sv.Operator)
-			survivors = append(survivors, m)
-		}
-		rec.SetSurvivors(survivors)
-		hr.SetRecord(rec)
-		hr.SetCached(res.Cached)
-		hr.SetSkippedNoTests(res.SkippedNoTest)
-		hr.SetSkippedNotFunction(res.SkippedNotFunc)
-		results = append(results, hr)
+	m, err := views.HardenView(rep, in.View)
+	if err != nil {
+		return nil, nil, err
 	}
-	out.SetResults(results)
-	return protoJSON(out)
+	return protoJSON(m)
 }
 
 type disposeIn struct {
@@ -848,27 +853,6 @@ func splitIDs(commaIDs string) ([]string, error) {
 func (s *Server) readResource(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 	uri := req.Params.URI
 	switch {
-	case uri == "stipulator://coverage":
-		spec, rep, store, err := s.verifyPipeline(false)
-		if err != nil {
-			return nil, err
-		}
-		pol, perr := s.policy()
-		if perr != nil {
-			return nil, perr
-		}
-		cov := coverage.Evaluate(spec, rep, store, true, pol)
-		// Round-trip through a map for deterministic key-sorted JSON:
-		// protojson output whitespace is deliberately unstable.
-		_, m, err := protoJSON(cov.Proto())
-		if err != nil {
-			return nil, err
-		}
-		b, err := json.Marshal(m)
-		if err != nil {
-			return nil, err
-		}
-		return textResource(uri, "application/json", string(b)), nil
 	case strings.HasPrefix(uri, "stipulator://req/"):
 		id := strings.TrimPrefix(uri, "stipulator://req/")
 		spec, err := s.compileFresh()

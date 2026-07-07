@@ -8,7 +8,7 @@
 | [context.md](context.md) | Context facts | 3 | 0 |
 | [evidence.md](evidence.md) | Bindings, evidence, coverage | 18 | 0 |
 | [hardening.md](hardening.md) | Witness hardening | 7 | 1 |
-| [mcp.md](mcp.md) | MCP surface | 5 | 0 |
+| [mcp.md](mcp.md) | MCP surface | 6 | 0 |
 | [model.md](model.md) | Intermediate representation | 12 | 0 |
 | [overview.md](overview.md) | Stipulator overview | 5 | 20 |
 | [profile.md](profile.md) | Authoring profile | 22 | 0 |
@@ -73,6 +73,7 @@
 - `REQ-mcp-resources` (wire, must)
 - `REQ-mcp-server` (behavior, must)
 - `REQ-mcp-tools` (wire, must)
+- `REQ-mcp-views` (behavior, must)
 - `REQ-mcp-writes-confined` (behavior, must not)
 - `REQ-report-messages` (wire, must)
 
