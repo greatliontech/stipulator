@@ -15,5 +15,6 @@ re-measurement — a workaround, not a mechanism.
 
 Fix: pin witness content the same way binding pins clause content — a content or body hash
 per witness symbol in the sheet's pin set, so a witness edit invalidates exactly the sheets
-it ran in. Sibling concern to kill-sheet-environment-pin (the toolchain pin), which covers
-inputs outside the tree; this one is an input inside the tree that the pin set misses.
+it ran in. Sibling concern to the landed toolchain pin (REQ-harden-records names the
+toolchain among the sheet's pins), which covers inputs outside the tree; this one is an
+input inside the tree that the pin set still misses.
