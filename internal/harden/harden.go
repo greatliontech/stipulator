@@ -5,7 +5,7 @@
 // for the body noticed, with no pretence of statement-level requirement
 // attribution. Survivors are findings for disposition — this is
 // exploration, never gate input; the only records written are kill-sheets
-// pinned to body hash, witness set, and operator set.
+// pinned to body hash, witness content, operator set, and toolchain.
 package harden
 
 import (
@@ -13,7 +13,6 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
-	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -56,6 +55,14 @@ type Survivor struct {
 	Operator string
 }
 
+// WitnessPin is one witness the sheet ran against, pinned by symbol and the
+// body hash it ran at: an edit to a bound witness's body moves its hash and
+// re-stales the sheet, so a strengthened test never leaves a stale survivor.
+type WitnessPin struct {
+	Symbol string
+	Hash   string
+}
+
 // Attestation is one survivor disposition carried on the sheet: the
 // mutant is attested equivalent (or accepted), with the reasoning.
 type Attestation struct {
@@ -69,7 +76,10 @@ type Result struct {
 	Symbol       string
 	Requirements []string
 	Witnesses    []string
-	BodyHash     string
+	// WitnessPins pairs each witness with the body hash it ran at — the
+	// content pin the sheet is stored and re-validated against.
+	WitnessPins []WitnessPin
+	BodyHash    string
 	// BodyLine anchors the body's first line for position rebasing;
 	// Budget records the mutant cap this measurement ran under (0 =
 	// exhaustive).
@@ -221,8 +231,8 @@ type group struct {
 
 // Run mutates each target and executes its witness union per mutant,
 // fanning mutant runs across a worker pool. Stored kill-sheets are
-// reused only when every pin holds — body hash, witness set, and
-// operator set — unless forced.
+// reused only when every pin holds — body hash, witness content,
+// operator set, and toolchain — unless forced.
 func Run(ctx context.Context, dir string, backend *golang.Backend, store *records.Store, targets []Target, opts Options) (*Report, error) {
 	if opts.Timeout <= 0 {
 		opts.Timeout = 60 * time.Second
@@ -277,9 +287,22 @@ func Run(ctx context.Context, dir string, backend *golang.Backend, store *record
 		}
 		res.BodyHash = bodyHash
 		res.Toolchain = toolchain
+		// Pin each witness by the body hash it ran at: a strengthened test
+		// moves its hash and re-stales the sheet, so a survivor the current
+		// witnesses would now kill is never served from cache. t.Witnesses
+		// is canonically ordered, so the pins are too.
+		witnessPins := make([]WitnessPin, 0, len(t.Witnesses))
+		for _, w := range t.Witnesses {
+			wh, err := backend.BodyHash(w)
+			if err != nil {
+				return nil, fmt.Errorf("target %s witness %s: %w", t.Symbol, w, err)
+			}
+			witnessPins = append(witnessPins, WitnessPin{Symbol: w, Hash: wh})
+		}
+		res.WitnessPins = witnessPins
 		pins[i] = func(rec *stipulatorv1.Hardening) bool {
 			return rec.GetBodyHash() == bodyHash &&
-				slices.Equal(rec.GetWitnesses(), t.Witnesses) &&
+				witnessPinsEqual(rec.GetWitnessPins(), witnessPins) &&
 				rec.GetOperators() == golang.OperatorSet &&
 				rec.GetToolchain() == toolchain
 		}
@@ -441,6 +464,28 @@ func Run(ctx context.Context, dir string, backend *golang.Backend, store *record
 	return rep, nil
 }
 
+// witnessPinsEqual reports whether a stored sheet's witness pins match the
+// current ones exactly — same witness symbols, each at the same body hash.
+// A new or dropped witness, or an edit to a bound witness's body, makes them
+// differ and re-stales the sheet. Compared as a set so a hand-reordered
+// sheet is judged on content, not order.
+func witnessPinsEqual(stored []*stipulatorv1.Witness, current []WitnessPin) bool {
+	if len(stored) != len(current) {
+		return false
+	}
+	bySym := make(map[string]string, len(stored))
+	for _, w := range stored {
+		bySym[w.GetSymbol()] = w.GetBodyHash()
+	}
+	for _, c := range current {
+		h, ok := bySym[c.Symbol]
+		if !ok || h != c.Hash {
+			return false
+		}
+	}
+	return true
+}
+
 // budgetCovers reports whether a sheet generated under the recorded cap
 // answers a request for req mutants per symbol (0 = exhaustive): a
 // capped sheet never answers a request for more mutants than it
@@ -490,7 +535,7 @@ func (r *Report) Records(store *records.Store) map[string][]byte {
 			survivors = append(survivors, m)
 		}
 		rec.SetSurvivors(survivors)
-		rec.SetWitnesses(res.Witnesses)
+		rec.SetWitnessPins(witnessPinsProto(res.WitnessPins))
 		rec.SetOperators(golang.OperatorSet)
 		rec.SetBodyLine(int32(res.BodyLine))
 		rec.SetBudget(int32(res.Budget))
@@ -530,6 +575,19 @@ func (r *Report) Records(store *records.Store) map[string][]byte {
 			return all[i].GetSymbol() < all[j].GetSymbol()
 		})
 		out[path] = records.RenderHardening(all)
+	}
+	return out
+}
+
+// witnessPinsProto renders witness pins as their wire message, one entry
+// per witness carrying its symbol and body hash.
+func witnessPinsProto(pins []WitnessPin) []*stipulatorv1.Witness {
+	var out []*stipulatorv1.Witness
+	for _, p := range pins {
+		w := &stipulatorv1.Witness{}
+		w.SetSymbol(p.Symbol)
+		w.SetBodyHash(p.Hash)
+		out = append(out, w)
 	}
 	return out
 }
@@ -574,7 +632,7 @@ func (r *Report) Proto() *stipulatorv1.HardenReport {
 		rec := &stipulatorv1.Hardening{}
 		rec.SetBackend("go")
 		rec.SetSymbol(res.Symbol)
-		rec.SetWitnesses(res.Witnesses)
+		rec.SetWitnessPins(witnessPinsProto(res.WitnessPins))
 		rec.SetOperators(golang.OperatorSet)
 		rec.SetToolchain(res.Toolchain)
 		var attested []*stipulatorv1.MutationAttestation

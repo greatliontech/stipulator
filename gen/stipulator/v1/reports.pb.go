@@ -4177,8 +4177,8 @@ type HardenResult_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	Record *Hardening
-	// Cached: the stored record's pins (body hash, witness set) matched;
-	// no mutants ran.
+	// Cached: the stored record's pins (body hash, witness content,
+	// operators, toolchain) matched; no mutants ran.
 	Cached *bool
 	// SkippedNoTests: the target has no bound witnesses to kill mutants.
 	SkippedNoTests *bool

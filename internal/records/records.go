@@ -97,7 +97,14 @@ func Load(fsys fs.FS) (*Store, error) {
 	}
 	if err := eachTextproto(fsys, HardeningDir, func(p string, raw []byte) error {
 		set := &stipulatorv1.HardeningSet{}
-		if err := prototext.Unmarshal(raw, set); err != nil {
+		// The hardening store is the one non-authoritative record class —
+		// exploration findings, never gate input — so it alone tolerates an
+		// unknown field, discarding it and re-measuring rather than aborting
+		// the load. That is what lets a sheet written before a pin was added
+		// (e.g. the pre-content-pin `witnesses` field) load and re-stale
+		// instead of bricking the tree. The authoritative stores above stay
+		// strict: a typo'd field there must never silently drop a claim.
+		if err := (prototext.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(raw, set); err != nil {
 			return fmt.Errorf("parsing %s: %w", p, err)
 		}
 		s.Hardening = append(s.Hardening, HardeningFile{Path: p, Raw: raw, Set: set})

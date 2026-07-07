@@ -154,7 +154,7 @@ func (s *Server) MCP() *mcp.Server {
 	}, s.toolPartitions)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "harden",
-		Description: "Mutation-test bound implementations against the union of witnesses of every requirement each symbol implements: reqs/symbols scope (comma-separated, empty = all), per-symbol budget. Survivors are findings — strengthen a test or attest equivalence; never a gate input. Writes per-symbol kill-sheets under .stipulator/hardening/, pinned to body hash and witness set.",
+		Description: "Mutation-test bound implementations against the union of witnesses of every requirement each symbol implements: reqs/symbols scope (comma-separated, empty = all), per-symbol budget. Survivors are findings — strengthen a test or attest equivalence; never a gate input. Writes per-symbol kill-sheets under .stipulator/hardening/, pinned to body hash and witness content.",
 	}, s.toolHarden)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "read_spec",
@@ -637,7 +637,7 @@ type hardenIn struct {
 	Reqs    string `json:"reqs,omitempty" jsonschema:"comma-separated requirement identifiers; empty means all bound"`
 	Symbols string `json:"symbols,omitempty" jsonschema:"comma-separated implementation symbols filter"`
 	Budget  int    `json:"budget,omitempty" jsonschema:"mutant budget per symbol; 0 means all, default 24"`
-	Force   bool   `json:"force,omitempty" jsonschema:"rerun targets whose kill-sheet pins (body hash, witness set, operator set) still match"`
+	Force   bool   `json:"force,omitempty" jsonschema:"rerun targets whose kill-sheet pins (body hash, witness content, operator set, toolchain) still match"`
 	Jobs    int    `json:"jobs,omitempty" jsonschema:"concurrent mutant runs; 0 means half the CPUs"`
 	View    string `json:"view,omitempty" jsonschema:"summary (default: counts plus only the open survivors) or full (records with attestation prose)"`
 }

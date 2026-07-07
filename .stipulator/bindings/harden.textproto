@@ -75,7 +75,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-records"
-  content_hash: "4ff559d45d7b19cbed470eb1a0ef9e83397cd8515aaf96847507b7fb10fdbf8e"
+  content_hash: "a24f88d7b890c54c28f7c63e4a42d14681247f237effb4ab3a3494cd05babae9"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/harden.Report.Records"
   role: BINDING_ROLE_IMPLEMENTS
@@ -84,7 +84,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-records"
-  content_hash: "4ff559d45d7b19cbed470eb1a0ef9e83397cd8515aaf96847507b7fb10fdbf8e"
+  content_hash: "a24f88d7b890c54c28f7c63e4a42d14681247f237effb4ab3a3494cd05babae9"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/harden.TestRunAndRecords"
   role: BINDING_ROLE_TESTS
@@ -192,7 +192,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-records"
-  content_hash: "4ff559d45d7b19cbed470eb1a0ef9e83397cd8515aaf96847507b7fb10fdbf8e"
+  content_hash: "a24f88d7b890c54c28f7c63e4a42d14681247f237effb4ab3a3494cd05babae9"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/records.TestPropHardeningRenderRoundTrip"
   role: BINDING_ROLE_TESTS
@@ -201,9 +201,36 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-records"
-  content_hash: "4ff559d45d7b19cbed470eb1a0ef9e83397cd8515aaf96847507b7fb10fdbf8e"
+  content_hash: "a24f88d7b890c54c28f7c63e4a42d14681247f237effb4ab3a3494cd05babae9"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/records.TestHardeningGeneratorKeepsPaceWithSchema"
   role: BINDING_ROLE_TESTS
   shape_hash: "87d48c6f338f4dcd54212e435365443a07d30adb616c0a9e22081bdc9e941a9b"
+}
+
+bindings {
+  requirement_id: "REQ-harden-records"
+  content_hash: "a24f88d7b890c54c28f7c63e4a42d14681247f237effb4ab3a3494cd05babae9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.TestWitnessPinsEqual"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "587adcbab57389984dba041278f95e52b277743041a99679b6614564c2f5666a"
+}
+
+bindings {
+  requirement_id: "REQ-harden-records"
+  content_hash: "a24f88d7b890c54c28f7c63e4a42d14681247f237effb4ab3a3494cd05babae9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/records.TestHardeningLoadToleratesUnknownField"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7a1eb2971eacb37b24740ea89a125ab5a9bc2c84bcc74252fa03d394ca1b93df"
+}
+
+bindings {
+  requirement_id: "REQ-harden-records"
+  content_hash: "a24f88d7b890c54c28f7c63e4a42d14681247f237effb4ab3a3494cd05babae9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/records.TestAuthoritativeStoresStayStrict"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c74ae2ab3df4d6e0ed0449d2fa73c8206970d9ffd496d5156374d581b5fe55ef"
 }

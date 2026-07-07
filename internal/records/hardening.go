@@ -45,8 +45,11 @@ func RenderHardening(recs []*stipulatorv1.Hardening) []byte {
 			fmt.Fprintf(&b, "    operator: %s\n", strconv.Quote(s.GetOperator()))
 			b.WriteString("  }\n")
 		}
-		for _, w := range rec.GetWitnesses() {
-			fmt.Fprintf(&b, "  witnesses: %s\n", strconv.Quote(w))
+		for _, w := range rec.GetWitnessPins() {
+			b.WriteString("  witness_pins {\n")
+			fmt.Fprintf(&b, "    symbol: %s\n", strconv.Quote(w.GetSymbol()))
+			fmt.Fprintf(&b, "    body_hash: %s\n", strconv.Quote(w.GetBodyHash()))
+			b.WriteString("  }\n")
 		}
 		if rec.GetOperators() != "" {
 			fmt.Fprintf(&b, "  operators: %s\n", strconv.Quote(rec.GetOperators()))

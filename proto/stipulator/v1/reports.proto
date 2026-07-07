@@ -314,8 +314,8 @@ message PartitionReport {
 // HardenResult is one target's outcome in a hardening run.
 message HardenResult {
   Hardening record = 1;
-  // Cached: the stored record's pins (body hash, witness set) matched;
-  // no mutants ran.
+  // Cached: the stored record's pins (body hash, witness content,
+  // operators, toolchain) matched; no mutants ran.
   bool cached = 2;
   // SkippedNoTests: the target has no bound witnesses to kill mutants.
   bool skipped_no_tests = 3;

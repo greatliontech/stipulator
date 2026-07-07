@@ -27,7 +27,15 @@ func genHardening(rt *rapid.T) *stipulatorv1.Hardening {
 	if d := int32(rapid.IntRange(0, 5).Draw(rt, "discarded")); d != 0 {
 		rec.SetDiscarded(d)
 	}
-	rec.SetWitnesses(rapid.SliceOfN(rapid.StringMatching(`example\.com/[a-z]{1,8}\.Test[A-Z][a-z]{0,8}`), 0, 3).Draw(rt, "witnesses"))
+	var pins []*stipulatorv1.Witness
+	for i := range rapid.IntRange(0, 3).Draw(rt, "nWitnessPins") {
+		w := &stipulatorv1.Witness{}
+		w.SetSymbol(rapid.StringMatching(`example\.com/[a-z]{1,8}\.Test[A-Z][a-z]{0,8}`).Draw(rt, "wsym"))
+		w.SetBodyHash(rapid.StringMatching(`[0-9a-f]{64}`).Draw(rt, "whash"))
+		pins = append(pins, w)
+		_ = i
+	}
+	rec.SetWitnessPins(pins)
 	if ops := rapid.SampledFrom([]string{"", "go/1", "go/2"}).Draw(rt, "operators"); ops != "" {
 		rec.SetOperators(ops)
 	}
@@ -101,7 +109,7 @@ func TestHardeningGeneratorKeepsPaceWithSchema(t *testing.T) {
 	stipulate.Covers(t, "REQ-harden-records")
 	drawn := map[protoreflect.FieldNumber]bool{
 		2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: true,
-		9: true, 10: true, 11: true, 12: true, 13: true, 14: true,
+		10: true, 11: true, 12: true, 13: true, 14: true, 15: true,
 	}
 	fields := (&stipulatorv1.Hardening{}).ProtoReflect().Descriptor().Fields()
 	for i := range fields.Len() {

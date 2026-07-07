@@ -54,19 +54,32 @@ remains available for the night tier.
 
 **REQ-harden-records** (behavior): A hardening record MUST be keyed by
 the mutated symbol, pinning the symbol's body hash, the witness set it
-ran against, the operator-set version that generated its mutants, the
-mutant budget it ran under, and the identity of the toolchain that
-executed the witnesses — the one input the tree does not carry: the
-same body under the same witnesses kills differently across toolchains
-— and carrying the mutant count, the kill count, and each survivor. A
-record is stale when any pin no longer covers the request — a new
-witness bound to the symbol, an engine gaining operators, a toolchain
-change, or a request for more mutants than a capped sheet generated
-invalidates it exactly as a body edit does. Per-requirement
-views are derived from the binding store on demand, never stored.
-Sheets are per-platform by construction — the toolchain pin carries
-GOOS/GOARCH — so a team spanning platforms regenerates from one
-designated platform (typically CI) rather than ping-ponging the store.
+ran against with each witness's body hash, the operator-set version that
+generated its mutants, the mutant budget it ran under, and the identity
+of the toolchain that executed the witnesses — the one input the tree
+does not carry: the same body under the same witnesses kills differently
+across toolchains — and carrying the mutant count, the kill count, and
+each survivor. A record is stale when any pin no longer covers the
+request — a new witness bound to the symbol, a change to a bound
+witness's body, an engine gaining operators, a toolchain change, or a
+request for more mutants than a capped sheet generated invalidates it
+exactly as a body edit does. Pinning witness content, not merely the
+witness set, is what re-stales a sheet when a bound test is
+strengthened: an assertion added to a witness that would now kill a
+recorded survivor moves that witness's body hash, so the sheet
+re-measures rather than serving the survivor the current tests
+demonstrably kill. Per-requirement views are derived from the binding
+store on demand, never stored. Sheets are per-platform by construction —
+the toolchain pin carries GOOS/GOARCH — so a team spanning platforms
+regenerates from one designated platform (typically CI) rather than
+ping-ponging the store. Because a kill-sheet is exploration output and
+never gate input, an unrecognized field in one is discarded rather than
+bricking the load: a sheet written before a pin existed re-stales — the
+missing pin no longer matches — and re-measures, while any other dropped
+field merely under-populates a record still served from cache. Both are
+acceptable precisely because no verdict rests on a kill-sheet; the
+authoritative record stores stay strict, where an unknown field would
+silently drop a claim.
 
 **REQ-harden-attestation** (behavior): An attested equivalence MUST be
 recorded on the kill-sheet as a survivor disposition naming the mutant

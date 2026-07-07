@@ -26,7 +26,7 @@ func hardenCmd() *cobra.Command {
 			"each symbol is mutated once against the union of the witness-role tests of\n" +
 			"every requirement it implements. Survivors are findings, never gate failures;\n" +
 			"kill-sheets are recorded under .stipulator/hardening/, valid while the body\n" +
-			"hash and witness set match.",
+			"hash and each bound witness's content match.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			spec, err := mustCompile(chdir)
 			if err != nil {
@@ -91,7 +91,7 @@ func hardenCmd() *cobra.Command {
 	c.Flags().StringArrayVar(&symbols, "symbol", nil, "implementation symbols to harden (repeatable filter)")
 	c.Flags().IntVar(&budget, "budget", 24, "mutant budget per symbol (0 = all)")
 	c.Flags().DurationVar(&timeout, "timeout", 60*time.Second, "test timeout per mutant invocation (a mixed rapid/plain witness union runs up to two)")
-	c.Flags().BoolVar(&force, "force", false, "rerun targets whose kill-sheet pins (body hash, witness set, operator set) still match")
+	c.Flags().BoolVar(&force, "force", false, "rerun targets whose kill-sheet pins (body hash, witness content, operator set, toolchain) still match")
 	c.Flags().IntVar(&jobs, "jobs", 0, "concurrent mutant runs (0 = half the CPUs; load-induced flakes read as kills, so the default hedges)")
 	registerReqCompletions(c, "req")
 	return c

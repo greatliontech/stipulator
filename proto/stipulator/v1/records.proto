@@ -107,13 +107,30 @@ message MutationSurvivor {
   string operator = 2;
 }
 
+// Witness pins one killer test the sheet ran against: its symbol and the
+// body hash it ran at. Pinning content, not just the symbol, is what
+// re-stales a sheet when a bound test is strengthened — an assertion added
+// to a witness that would now kill a recorded survivor moves its body hash,
+// so the sheet re-measures rather than serving the stale survivor.
+message Witness {
+  string symbol = 1;
+  string body_hash = 2;
+}
+
 // Hardening is one mutation kill-sheet, keyed by the mutated symbol:
 // valid only while body_hash matches the symbol's current body AND
-// witnesses matches the union of witness-role tests bound (via any
-// requirement the symbol implements) in the binding store. Per-requirement
-// views are derived from the binding store on demand, never stored.
+// witness_pins matches the union of witness-role tests bound (via any
+// requirement the symbol implements) in the binding store, each at its
+// current body hash. Per-requirement views are derived from the binding
+// store on demand, never stored.
 message Hardening {
   reserved 1; // was requirement_id: sheets are per-symbol, not per-claim
+  reserved 9;         // was: repeated string witnesses (symbol-only) —
+  reserved witnesses; // superseded by witness_pins, which also pins each
+              // witness's body hash. Reserving both the number and the name
+              // bars either from being reclaimed with new semantics.
+              // Pre-content-pin sheets carry field 9; the hardening loader
+              // discards it as unknown and re-measures.
   string backend = 2;
   string symbol = 3;
   string body_hash = 4;
@@ -123,10 +140,11 @@ message Hardening {
   // Discarded mutants failed to compile: reported so a low mutant count is
   // never mistaken for thin mutation coverage.
   int32 discarded = 8;
-  // Witnesses pins the killer-test set the sheet ran against, canonically
-  // ordered; a new witness bound to the symbol re-stales the sheet exactly
-  // as a body edit does.
-  repeated string witnesses = 9;
+  // WitnessPins pins the killer-test set the sheet ran against, canonically
+  // ordered by symbol, each carrying the witness's body hash; a new witness
+  // bound to the symbol, or an edit to a bound witness's body, re-stales the
+  // sheet exactly as an edit to the mutated body does.
+  repeated Witness witness_pins = 15;
   // Operators pins the operator-set identifier that generated the
   // mutants: an engine gaining operators re-stales every sheet — an old
   // sheet must never claim coverage of mutants it never generated.

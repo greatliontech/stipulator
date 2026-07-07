@@ -19,10 +19,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[prover-trust-tiers](prover-trust-tiers.md)** — the proof rung assumes near-sound provers;
   a heuristic analyzer must not inherit it. *Lands: when a heuristic analyzer prover is
   proposed.*
-- **[kill-sheet-witness-content-pin](kill-sheet-witness-content-pin.md)** — sheets pin the
-  witness set by symbol only, so a strengthened bound test leaves a stale survivor report
-  until the set itself changes; pin witness content like binding pins clause content.
-  *Lands: when the hardening record's pin set is next extended.*
 - **[witness-subset-adequacy](witness-subset-adequacy.md)** — union sheets cannot say whether
   one requirement's own witnesses have teeth; an opt-in per-requirement probe is measurable
   without attribution claims. *Lands: when a requirement's risk profile demands per-requirement

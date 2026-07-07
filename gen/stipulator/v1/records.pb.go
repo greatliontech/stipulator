@@ -1230,11 +1230,128 @@ func (b0 MutationSurvivor_builder) Build() *MutationSurvivor {
 	return m0
 }
 
+// Witness pins one killer test the sheet ran against: its symbol and the
+// body hash it ran at. Pinning content, not just the symbol, is what
+// re-stales a sheet when a bound test is strengthened — an assertion added
+// to a witness that would now kill a recorded survivor moves its body hash,
+// so the sheet re-measures rather than serving the stale survivor.
+type Witness struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Symbol      *string                `protobuf:"bytes,1,opt,name=symbol"`
+	xxx_hidden_BodyHash    *string                `protobuf:"bytes,2,opt,name=body_hash,json=bodyHash"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *Witness) Reset() {
+	*x = Witness{}
+	mi := &file_stipulator_v1_records_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Witness) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Witness) ProtoMessage() {}
+
+func (x *Witness) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_records_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Witness) GetSymbol() string {
+	if x != nil {
+		if x.xxx_hidden_Symbol != nil {
+			return *x.xxx_hidden_Symbol
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *Witness) GetBodyHash() string {
+	if x != nil {
+		if x.xxx_hidden_BodyHash != nil {
+			return *x.xxx_hidden_BodyHash
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *Witness) SetSymbol(v string) {
+	x.xxx_hidden_Symbol = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+}
+
+func (x *Witness) SetBodyHash(v string) {
+	x.xxx_hidden_BodyHash = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+}
+
+func (x *Witness) HasSymbol() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *Witness) HasBodyHash() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *Witness) ClearSymbol() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Symbol = nil
+}
+
+func (x *Witness) ClearBodyHash() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_BodyHash = nil
+}
+
+type Witness_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Symbol   *string
+	BodyHash *string
+}
+
+func (b0 Witness_builder) Build() *Witness {
+	m0 := &Witness{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Symbol != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		x.xxx_hidden_Symbol = b.Symbol
+	}
+	if b.BodyHash != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		x.xxx_hidden_BodyHash = b.BodyHash
+	}
+	return m0
+}
+
 // Hardening is one mutation kill-sheet, keyed by the mutated symbol:
 // valid only while body_hash matches the symbol's current body AND
-// witnesses matches the union of witness-role tests bound (via any
-// requirement the symbol implements) in the binding store. Per-requirement
-// views are derived from the binding store on demand, never stored.
+// witness_pins matches the union of witness-role tests bound (via any
+// requirement the symbol implements) in the binding store, each at its
+// current body hash. Per-requirement views are derived from the binding
+// store on demand, never stored.
 type Hardening struct {
 	state                  protoimpl.MessageState  `protogen:"opaque.v1"`
 	xxx_hidden_Backend     *string                 `protobuf:"bytes,2,opt,name=backend"`
@@ -1244,7 +1361,7 @@ type Hardening struct {
 	xxx_hidden_Killed      int32                   `protobuf:"varint,6,opt,name=killed"`
 	xxx_hidden_Survivors   *[]*MutationSurvivor    `protobuf:"bytes,7,rep,name=survivors"`
 	xxx_hidden_Discarded   int32                   `protobuf:"varint,8,opt,name=discarded"`
-	xxx_hidden_Witnesses   []string                `protobuf:"bytes,9,rep,name=witnesses"`
+	xxx_hidden_WitnessPins *[]*Witness             `protobuf:"bytes,15,rep,name=witness_pins,json=witnessPins"`
 	xxx_hidden_Operators   *string                 `protobuf:"bytes,10,opt,name=operators"`
 	xxx_hidden_Attested    *[]*MutationAttestation `protobuf:"bytes,11,rep,name=attested"`
 	xxx_hidden_BodyLine    int32                   `protobuf:"varint,12,opt,name=body_line,json=bodyLine"`
@@ -1258,7 +1375,7 @@ type Hardening struct {
 
 func (x *Hardening) Reset() {
 	*x = Hardening{}
-	mi := &file_stipulator_v1_records_proto_msgTypes[9]
+	mi := &file_stipulator_v1_records_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1270,7 +1387,7 @@ func (x *Hardening) String() string {
 func (*Hardening) ProtoMessage() {}
 
 func (x *Hardening) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_records_proto_msgTypes[9]
+	mi := &file_stipulator_v1_records_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1341,9 +1458,11 @@ func (x *Hardening) GetDiscarded() int32 {
 	return 0
 }
 
-func (x *Hardening) GetWitnesses() []string {
+func (x *Hardening) GetWitnessPins() []*Witness {
 	if x != nil {
-		return x.xxx_hidden_Witnesses
+		if x.xxx_hidden_WitnessPins != nil {
+			return *x.xxx_hidden_WitnessPins
+		}
 	}
 	return nil
 }
@@ -1425,8 +1544,8 @@ func (x *Hardening) SetDiscarded(v int32) {
 	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 13)
 }
 
-func (x *Hardening) SetWitnesses(v []string) {
-	x.xxx_hidden_Witnesses = v
+func (x *Hardening) SetWitnessPins(v []*Witness) {
+	x.xxx_hidden_WitnessPins = &v
 }
 
 func (x *Hardening) SetOperators(v string) {
@@ -1576,6 +1695,10 @@ func (x *Hardening) ClearToolchain() {
 type Hardening_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
+	// witness's body hash. Reserving both the number and the name
+	// bars either from being reclaimed with new semantics.
+	// Pre-content-pin sheets carry field 9; the hardening loader
+	// discards it as unknown and re-measures.
 	Backend   *string
 	Symbol    *string
 	BodyHash  *string
@@ -1585,10 +1708,11 @@ type Hardening_builder struct {
 	// Discarded mutants failed to compile: reported so a low mutant count is
 	// never mistaken for thin mutation coverage.
 	Discarded *int32
-	// Witnesses pins the killer-test set the sheet ran against, canonically
-	// ordered; a new witness bound to the symbol re-stales the sheet exactly
-	// as a body edit does.
-	Witnesses []string
+	// WitnessPins pins the killer-test set the sheet ran against, canonically
+	// ordered by symbol, each carrying the witness's body hash; a new witness
+	// bound to the symbol, or an edit to a bound witness's body, re-stales the
+	// sheet exactly as an edit to the mutated body does.
+	WitnessPins []*Witness
 	// Operators pins the operator-set identifier that generated the
 	// mutants: an engine gaining operators re-stales every sheet — an old
 	// sheet must never claim coverage of mutants it never generated.
@@ -1643,7 +1767,7 @@ func (b0 Hardening_builder) Build() *Hardening {
 		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 13)
 		x.xxx_hidden_Discarded = *b.Discarded
 	}
-	x.xxx_hidden_Witnesses = b.Witnesses
+	x.xxx_hidden_WitnessPins = &b.WitnessPins
 	if b.Operators != nil {
 		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 13)
 		x.xxx_hidden_Operators = b.Operators
@@ -1679,7 +1803,7 @@ type MutationAttestation struct {
 
 func (x *MutationAttestation) Reset() {
 	*x = MutationAttestation{}
-	mi := &file_stipulator_v1_records_proto_msgTypes[10]
+	mi := &file_stipulator_v1_records_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1691,7 +1815,7 @@ func (x *MutationAttestation) String() string {
 func (*MutationAttestation) ProtoMessage() {}
 
 func (x *MutationAttestation) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_records_proto_msgTypes[10]
+	mi := &file_stipulator_v1_records_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1820,7 +1944,7 @@ type HardeningSet struct {
 
 func (x *HardeningSet) Reset() {
 	*x = HardeningSet{}
-	mi := &file_stipulator_v1_records_proto_msgTypes[11]
+	mi := &file_stipulator_v1_records_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1832,7 +1956,7 @@ func (x *HardeningSet) String() string {
 func (*HardeningSet) ProtoMessage() {}
 
 func (x *HardeningSet) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_records_proto_msgTypes[11]
+	mi := &file_stipulator_v1_records_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1909,7 +2033,10 @@ const file_stipulator_v1_records_proto_rawDesc = "" +
 	"\aretired\x18\x01 \x03(\tR\aretired\"J\n" +
 	"\x10MutationSurvivor\x12\x1a\n" +
 	"\bposition\x18\x01 \x01(\tR\bposition\x12\x1a\n" +
-	"\boperator\x18\x02 \x01(\tR\boperator\"\xbe\x03\n" +
+	"\boperator\x18\x02 \x01(\tR\boperator\">\n" +
+	"\aWitness\x12\x16\n" +
+	"\x06symbol\x18\x01 \x01(\tR\x06symbol\x12\x1b\n" +
+	"\tbody_hash\x18\x02 \x01(\tR\bbodyHash\"\xec\x03\n" +
 	"\tHardening\x12\x18\n" +
 	"\abackend\x18\x02 \x01(\tR\abackend\x12\x16\n" +
 	"\x06symbol\x18\x03 \x01(\tR\x06symbol\x12\x1b\n" +
@@ -1917,14 +2044,15 @@ const file_stipulator_v1_records_proto_rawDesc = "" +
 	"\amutants\x18\x05 \x01(\x05R\amutants\x12\x16\n" +
 	"\x06killed\x18\x06 \x01(\x05R\x06killed\x12=\n" +
 	"\tsurvivors\x18\a \x03(\v2\x1f.stipulator.v1.MutationSurvivorR\tsurvivors\x12\x1c\n" +
-	"\tdiscarded\x18\b \x01(\x05R\tdiscarded\x12\x1c\n" +
-	"\twitnesses\x18\t \x03(\tR\twitnesses\x12\x1c\n" +
+	"\tdiscarded\x18\b \x01(\x05R\tdiscarded\x129\n" +
+	"\fwitness_pins\x18\x0f \x03(\v2\x16.stipulator.v1.WitnessR\vwitnessPins\x12\x1c\n" +
 	"\toperators\x18\n" +
 	" \x01(\tR\toperators\x12>\n" +
 	"\battested\x18\v \x03(\v2\".stipulator.v1.MutationAttestationR\battested\x12\x1b\n" +
 	"\tbody_line\x18\f \x01(\x05R\bbodyLine\x12\x16\n" +
 	"\x06budget\x18\r \x01(\x05R\x06budget\x12\x1c\n" +
-	"\ttoolchain\x18\x0e \x01(\tR\ttoolchainJ\x04\b\x01\x10\x02\"e\n" +
+	"\ttoolchain\x18\x0e \x01(\tR\ttoolchainJ\x04\b\x01\x10\x02J\x04\b\t\x10\n" +
+	"R\twitnesses\"e\n" +
 	"\x13MutationAttestation\x12\x1a\n" +
 	"\bposition\x18\x01 \x01(\tR\bposition\x12\x1a\n" +
 	"\boperator\x18\x02 \x01(\tR\boperator\x12\x16\n" +
@@ -1938,7 +2066,7 @@ const file_stipulator_v1_records_proto_rawDesc = "" +
 	"\x13BINDING_ROLE_PROVES\x10\x03BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
 var file_stipulator_v1_records_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_stipulator_v1_records_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_stipulator_v1_records_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_stipulator_v1_records_proto_goTypes = []any{
 	(BindingRole)(0),               // 0: stipulator.v1.BindingRole
 	(*Binding)(nil),                // 1: stipulator.v1.Binding
@@ -1950,9 +2078,10 @@ var file_stipulator_v1_records_proto_goTypes = []any{
 	(*ManualCondition)(nil),        // 7: stipulator.v1.ManualCondition
 	(*Tombstones)(nil),             // 8: stipulator.v1.Tombstones
 	(*MutationSurvivor)(nil),       // 9: stipulator.v1.MutationSurvivor
-	(*Hardening)(nil),              // 10: stipulator.v1.Hardening
-	(*MutationAttestation)(nil),    // 11: stipulator.v1.MutationAttestation
-	(*HardeningSet)(nil),           // 12: stipulator.v1.HardeningSet
+	(*Witness)(nil),                // 10: stipulator.v1.Witness
+	(*Hardening)(nil),              // 11: stipulator.v1.Hardening
+	(*MutationAttestation)(nil),    // 12: stipulator.v1.MutationAttestation
+	(*HardeningSet)(nil),           // 13: stipulator.v1.HardeningSet
 }
 var file_stipulator_v1_records_proto_depIdxs = []int32{
 	0,  // 0: stipulator.v1.Binding.role:type_name -> stipulator.v1.BindingRole
@@ -1961,13 +2090,14 @@ var file_stipulator_v1_records_proto_depIdxs = []int32{
 	4,  // 3: stipulator.v1.AttestationSet.attestations:type_name -> stipulator.v1.RequirementAttestation
 	7,  // 4: stipulator.v1.LandingCondition.manual:type_name -> stipulator.v1.ManualCondition
 	9,  // 5: stipulator.v1.Hardening.survivors:type_name -> stipulator.v1.MutationSurvivor
-	11, // 6: stipulator.v1.Hardening.attested:type_name -> stipulator.v1.MutationAttestation
-	10, // 7: stipulator.v1.HardeningSet.records:type_name -> stipulator.v1.Hardening
-	8,  // [8:8] is the sub-list for method output_type
-	8,  // [8:8] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	10, // 6: stipulator.v1.Hardening.witness_pins:type_name -> stipulator.v1.Witness
+	12, // 7: stipulator.v1.Hardening.attested:type_name -> stipulator.v1.MutationAttestation
+	11, // 8: stipulator.v1.HardeningSet.records:type_name -> stipulator.v1.Hardening
+	9,  // [9:9] is the sub-list for method output_type
+	9,  // [9:9] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_records_proto_init() }
@@ -1986,7 +2116,7 @@ func file_stipulator_v1_records_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_records_proto_rawDesc), len(file_stipulator_v1_records_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   12,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

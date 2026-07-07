@@ -166,9 +166,10 @@ func TestPlanScope(t *testing.T) {
 
 // TestRunAndRecords is the end-to-end pin for REQ-harden-mutation,
 // REQ-harden-records, and REQ-harden-exploration: survivors are findings
-// in the report; kill-sheets pin the body hash and the witness set; a
-// sheet with both pins matching is reused as cache and either pin moving
-// re-stales it; and the only writes are under .stipulator/hardening/.
+// in the report; kill-sheets pin the body hash and each witness's content
+// (among body hash, witnesses, operators, toolchain, budget); a sheet with
+// every pin matching is reused as cache and any pin moving re-stales it;
+// and the only writes are under .stipulator/hardening/.
 func TestRunAndRecords(t *testing.T) {
 	if testing.Short() {
 		t.Skip("runs go test per mutant")
@@ -236,8 +237,13 @@ func TestRunAndRecords(t *testing.T) {
 			if len(rec.GetBodyHash()) != 64 {
 				t.Fatalf("record without body hash: %v", rec)
 			}
-			if len(rec.GetWitnesses()) == 0 {
+			if len(rec.GetWitnessPins()) == 0 {
 				t.Fatalf("record without witness pin: %v", rec)
+			}
+			for _, w := range rec.GetWitnessPins() {
+				if w.GetSymbol() == "" || len(w.GetBodyHash()) != 64 {
+					t.Fatalf("witness pin without symbol or body hash: %v", w)
+				}
 			}
 		}
 	}
@@ -319,6 +325,30 @@ func TestRunAndRecords(t *testing.T) {
 	for _, r := range repTc.Results {
 		if r.Symbol == "example.com/fixture/lib.Weak" && r.Cached {
 			t.Fatalf("foreign-toolchain sheet reused as cache: %+v", r)
+		}
+	}
+
+	// Witness-content staleness: a bound witness strengthened after the
+	// sheet was written moves its body hash while its symbol — and every
+	// other pin — stays. Simulate by rewriting one witness pin's hash: only
+	// the content pin can catch it, so the sheet must re-stale rather than
+	// serve a survivor the strengthened test would now kill.
+	staleWit := map[string]string{}
+	for p, c := range files {
+		staleWit[p] = c
+	}
+	staleWit[weakPath] = rewriteFirstWitnessHash(t, staleWit[weakPath])
+	if staleWit[weakPath] == files[weakPath] {
+		t.Fatal("witness content pin not present in the written sheet")
+	}
+	_, storeWit := fixture(t, staleWit)
+	repWit, err := Run(context.Background(), "../backends/golang/testdata/fixturemod", backend, storeWit, targets, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range repWit.Results {
+		if r.Symbol == "example.com/fixture/lib.Weak" && r.Cached {
+			t.Fatalf("stale witness content reused as cache: %+v", r)
 		}
 	}
 
@@ -458,6 +488,59 @@ bindings {
 				t.Fatalf("attestation survived a moved witness pin: %+v", r)
 			}
 		}
+	}
+}
+
+// rewriteFirstWitnessHash rewrites the first witness pin's body hash of
+// every record in the sheet to a distinct well-formed hash — a witness
+// strengthened after the sheet was written, without touching the mutated
+// symbol's own body hash.
+func rewriteFirstWitnessHash(t *testing.T, sheet string) string {
+	t.Helper()
+	set := &stipulatorv1.HardeningSet{}
+	if err := prototext.Unmarshal([]byte(sheet), set); err != nil {
+		t.Fatal(err)
+	}
+	changed := false
+	for _, rec := range set.GetRecords() {
+		pins := rec.GetWitnessPins()
+		if len(pins) == 0 {
+			continue
+		}
+		pins[0].SetBodyHash(strings.Repeat("a", 64))
+		changed = true
+	}
+	if !changed {
+		t.Fatal("sheet carries no witness pins to rewrite")
+	}
+	return string(records.RenderHardening(set.GetRecords()))
+}
+
+// TestWitnessPinsEqual pins the content-pin comparison directly: it holds
+// only when the same witness symbols each carry the same body hash. A
+// changed hash, a new symbol, or a dropped symbol breaks it — the checks a
+// sheet's staleness decision rests on.
+func TestWitnessPinsEqual(t *testing.T) {
+	stipulate.Covers(t, "REQ-harden-records")
+	stored := []*stipulatorv1.Witness{}
+	for _, p := range []WitnessPin{{"a", "h1"}, {"b", "h2"}} {
+		w := &stipulatorv1.Witness{}
+		w.SetSymbol(p.Symbol)
+		w.SetBodyHash(p.Hash)
+		stored = append(stored, w)
+	}
+	same := []WitnessPin{{"b", "h2"}, {"a", "h1"}} // order-independent
+	if !witnessPinsEqual(stored, same) {
+		t.Fatal("equal pins compared unequal")
+	}
+	if witnessPinsEqual(stored, []WitnessPin{{"a", "h1"}, {"b", "CHANGED"}}) {
+		t.Fatal("a changed witness hash did not re-stale")
+	}
+	if witnessPinsEqual(stored, []WitnessPin{{"a", "h1"}}) {
+		t.Fatal("a dropped witness did not re-stale")
+	}
+	if witnessPinsEqual(stored, []WitnessPin{{"a", "h1"}, {"b", "h2"}, {"c", "h3"}}) {
+		t.Fatal("an added witness did not re-stale")
 	}
 }
 
