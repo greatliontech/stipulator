@@ -275,8 +275,13 @@ func TestRunMutantGoroutinePanicIsAKill(t *testing.T) {
 	}
 	pkgKills := 0
 	for _, m := range ms {
+		// Two of Guarded's mutants drop the channel send, so the receiver
+		// deadlocks and the run can only end at the timeout. A short one
+		// suffices — the legitimate run is sub-second — and keeps this
+		// exhaustive loop from paying a long timeout for mutants that are
+		// incidental to the package-kill this test asserts.
 		out, killer, err := RunMutant(context.Background(), "testdata/fixturemod", m,
-			[]string{"example.com/fixture/lib"}, "^TestGuarded$", 60*time.Second, nil)
+			[]string{"example.com/fixture/lib"}, "^TestGuarded$", 5*time.Second, nil)
 		if err != nil {
 			t.Fatalf("mutant %s %s aborted as noise: %v", m.Position, m.Operator, err)
 		}
