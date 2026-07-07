@@ -23,7 +23,8 @@ already-rooted tree.
 
 **REQ-profile-enumeration** (behavior): The corpus MUST be enumerated by
 resolving the manifest's include globs and sorting the resulting paths
-lexicographically; generated folder indexes are excluded from enumeration.
+lexicographically; `README.md` files are excluded from enumeration — a
+folder readme is navigation, never a corpus document.
 
 **REQ-profile-glob** (behavior, refines REQ-profile-enumeration): An include
 glob MUST be matched against slash-separated paths relative to the repository
@@ -125,14 +126,3 @@ compile error.
 **REQ-profile-annotations** (behavior): Content that is neither a requirement
 nor a term nor a note MUST compile to an annotation node attached to its
 enclosing section, preserved in the IR and carried into bundles for context.
-
-## Generated indexes
-
-**REQ-profile-index-generated** (behavior): The `fmt` operation MUST write,
-for each directory containing at least one corpus document, a `README.md`
-index generated from the IR, containing no normative text and carrying a
-generation marker — an existing `README.md` without the marker is refused,
-never silently replaced, with force overriding.
-
-**REQ-profile-index-fresh** (behavior): Lint MUST reject a repository whose
-generated indexes differ from what `fmt` would regenerate.

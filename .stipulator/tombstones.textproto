@@ -1,0 +1,5 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.Tombstones
+
+retired: "REQ-profile-index-fresh"
+retired: "REQ-profile-index-generated"

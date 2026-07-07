@@ -29,42 +29,6 @@ bindings {
 }
 
 bindings {
-  requirement_id: "REQ-profile-index-generated"
-  content_hash: "59cbbc980bbe42e041367561f33c2d4fa32cbd94002ebcec5e93f464da48eb99"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/index.Build"
-  role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "aed00d503b75451beb1ac831624b34c0865e6e9e66c57744f7331daff55091b7"
-}
-
-bindings {
-  requirement_id: "REQ-profile-index-generated"
-  content_hash: "59cbbc980bbe42e041367561f33c2d4fa32cbd94002ebcec5e93f464da48eb99"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/index.TestBuild"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "f580dcdc1fe16e8d21cea9221ab523d81e31cad99376bc118c6dc76beb35a049"
-}
-
-bindings {
-  requirement_id: "REQ-profile-index-fresh"
-  content_hash: "5eca14d2f9415c6befd214ad0f1e7f405424f8e2f2e7536812780fe4a9575a25"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/index.Stale"
-  role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "d42c78c27206093d398ace38a46ec6ad8ecd563075424c665114377d490509c1"
-}
-
-bindings {
-  requirement_id: "REQ-profile-index-fresh"
-  content_hash: "5eca14d2f9415c6befd214ad0f1e7f405424f8e2f2e7536812780fe4a9575a25"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/index.TestStale"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "63367bfb07937b08d47a2dd51f8f31bc73ced51ff1e4237b413115da2236cd95"
-}
-
-bindings {
   requirement_id: "REQ-profile-term-lint"
   content_hash: "5ed9496e06c5649ea948f85c2020a37c23c53f841daee091153bd1e03d1c0c70"
   backend: "go"

@@ -180,13 +180,9 @@ func CoverageView(cov *coverage.Report, facts Facts, view string, scope Scope) (
 			}
 		}
 		out.SetViolations(viol)
-		open := int32(0)
-		for _, g := range cov.Gaps {
-			if g.State != coverage.Resolved && keptIDs[g.RequirementId] {
-				open++
-			}
-		}
-		out.SetGapsOpen(open)
+		open, prunable := coverage.GapCounts(cov.Gaps, keptIDs)
+		out.SetGapsOpen(int32(open))
+		out.SetResolvedGapsPrunable(int32(prunable))
 		// The trust settlement: an override shapes the verdict and every
 		// count, so even the roll-up surfaces it, never applies it
 		// silently.

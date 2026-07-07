@@ -21,7 +21,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-profile-enumeration"
-  content_hash: "eaf846f778662693b65553a6666800623807a8ba04a6ffecb0b8216e0608c9d1"
+  content_hash: "8b13b9f876147e6d104ceca92c018c50c2ac142d97a8f92ca18a55bdff605494"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.Enumerate"
   role: BINDING_ROLE_IMPLEMENTS
@@ -30,7 +30,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-profile-enumeration"
-  content_hash: "eaf846f778662693b65553a6666800623807a8ba04a6ffecb0b8216e0608c9d1"
+  content_hash: "8b13b9f876147e6d104ceca92c018c50c2ac142d97a8f92ca18a55bdff605494"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.TestEnumerate"
   role: BINDING_ROLE_TESTS

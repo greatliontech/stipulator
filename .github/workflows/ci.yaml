@@ -31,7 +31,7 @@ jobs:
         run: go test -race github.com/greatliontech/stipulator/...
       - name: Gate
         run: go run ./cmd/stipulator gate
-      - name: Fmt lint
-        # Indexes current, no resolved gap lingering. --no-test: the gate
-        # step already witnessed this tree.
-        run: go run ./cmd/stipulator fmt --check --no-test
+      - name: Prune lint
+        # No resolved gap lingering. --no-test: the gate step already
+        # witnessed this tree.
+        run: go run ./cmd/stipulator prune --check --no-test

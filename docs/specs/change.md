@@ -76,8 +76,13 @@ attestation evidence.
 `open`, `due` (its landing condition holds), or `resolved` (its requirement
 is covered).
 
-**REQ-gap-resolved-pruned** (behavior): The `fmt` operation MUST delete
-resolved gap records, and lint reports a resolved gap that lingers.
+**REQ-gap-resolved-pruned** (behavior): The `prune` operation MUST delete
+resolved gap records — a gap whose requirement has reached the covered
+bucket is satisfied, dead record weight. Detecting resolution is the
+coverage evaluation `gate` already performs, so `gate` surfaces the count
+of resolved gaps awaiting prune, discoverable from a run already made; the
+gate never deletes records itself. `prune --check` reports a resolved gap
+that lingers without deleting anything.
 
 ## The gate
 

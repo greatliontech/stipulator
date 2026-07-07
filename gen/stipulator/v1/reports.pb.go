@@ -1783,21 +1783,22 @@ func (b0 CoverageReport_builder) Build() *CoverageReport {
 // the per-requirement array. GatePasses is always the global verdict: a
 // slice passing means nothing when the tree fails.
 type CoverageSummary struct {
-	state                      protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_GatePasses      bool                   `protobuf:"varint,1,opt,name=gate_passes,json=gatePasses"`
-	xxx_hidden_Covered         int32                  `protobuf:"varint,2,opt,name=covered"`
-	xxx_hidden_Attested        int32                  `protobuf:"varint,3,opt,name=attested"`
-	xxx_hidden_Uncovered       int32                  `protobuf:"varint,4,opt,name=uncovered"`
-	xxx_hidden_Stale           int32                  `protobuf:"varint,5,opt,name=stale"`
-	xxx_hidden_Broken          int32                  `protobuf:"varint,6,opt,name=broken"`
-	xxx_hidden_Exempt          int32                  `protobuf:"varint,7,opt,name=exempt"`
-	xxx_hidden_Violations      []string               `protobuf:"bytes,8,rep,name=violations"`
-	xxx_hidden_GapsOpen        int32                  `protobuf:"varint,9,opt,name=gaps_open,json=gapsOpen"`
-	xxx_hidden_PolicyOverrides []string               `protobuf:"bytes,10,rep,name=policy_overrides,json=policyOverrides"`
-	XXX_raceDetectHookData     protoimpl.RaceDetectHookData
-	XXX_presence               [1]uint32
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	state                           protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_GatePasses           bool                   `protobuf:"varint,1,opt,name=gate_passes,json=gatePasses"`
+	xxx_hidden_Covered              int32                  `protobuf:"varint,2,opt,name=covered"`
+	xxx_hidden_Attested             int32                  `protobuf:"varint,3,opt,name=attested"`
+	xxx_hidden_Uncovered            int32                  `protobuf:"varint,4,opt,name=uncovered"`
+	xxx_hidden_Stale                int32                  `protobuf:"varint,5,opt,name=stale"`
+	xxx_hidden_Broken               int32                  `protobuf:"varint,6,opt,name=broken"`
+	xxx_hidden_Exempt               int32                  `protobuf:"varint,7,opt,name=exempt"`
+	xxx_hidden_Violations           []string               `protobuf:"bytes,8,rep,name=violations"`
+	xxx_hidden_GapsOpen             int32                  `protobuf:"varint,9,opt,name=gaps_open,json=gapsOpen"`
+	xxx_hidden_PolicyOverrides      []string               `protobuf:"bytes,10,rep,name=policy_overrides,json=policyOverrides"`
+	xxx_hidden_ResolvedGapsPrunable int32                  `protobuf:"varint,11,opt,name=resolved_gaps_prunable,json=resolvedGapsPrunable"`
+	XXX_raceDetectHookData          protoimpl.RaceDetectHookData
+	XXX_presence                    [1]uint32
+	unknownFields                   protoimpl.UnknownFields
+	sizeCache                       protoimpl.SizeCache
 }
 
 func (x *CoverageSummary) Reset() {
@@ -1895,39 +1896,46 @@ func (x *CoverageSummary) GetPolicyOverrides() []string {
 	return nil
 }
 
+func (x *CoverageSummary) GetResolvedGapsPrunable() int32 {
+	if x != nil {
+		return x.xxx_hidden_ResolvedGapsPrunable
+	}
+	return 0
+}
+
 func (x *CoverageSummary) SetGatePasses(v bool) {
 	x.xxx_hidden_GatePasses = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 11)
 }
 
 func (x *CoverageSummary) SetCovered(v int32) {
 	x.xxx_hidden_Covered = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 11)
 }
 
 func (x *CoverageSummary) SetAttested(v int32) {
 	x.xxx_hidden_Attested = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 11)
 }
 
 func (x *CoverageSummary) SetUncovered(v int32) {
 	x.xxx_hidden_Uncovered = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 11)
 }
 
 func (x *CoverageSummary) SetStale(v int32) {
 	x.xxx_hidden_Stale = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 11)
 }
 
 func (x *CoverageSummary) SetBroken(v int32) {
 	x.xxx_hidden_Broken = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 11)
 }
 
 func (x *CoverageSummary) SetExempt(v int32) {
 	x.xxx_hidden_Exempt = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 11)
 }
 
 func (x *CoverageSummary) SetViolations(v []string) {
@@ -1936,11 +1944,16 @@ func (x *CoverageSummary) SetViolations(v []string) {
 
 func (x *CoverageSummary) SetGapsOpen(v int32) {
 	x.xxx_hidden_GapsOpen = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 11)
 }
 
 func (x *CoverageSummary) SetPolicyOverrides(v []string) {
 	x.xxx_hidden_PolicyOverrides = v
+}
+
+func (x *CoverageSummary) SetResolvedGapsPrunable(v int32) {
+	x.xxx_hidden_ResolvedGapsPrunable = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 11)
 }
 
 func (x *CoverageSummary) HasGatePasses() bool {
@@ -1999,6 +2012,13 @@ func (x *CoverageSummary) HasGapsOpen() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 8)
 }
 
+func (x *CoverageSummary) HasResolvedGapsPrunable() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 10)
+}
+
 func (x *CoverageSummary) ClearGatePasses() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_GatePasses = false
@@ -2039,6 +2059,11 @@ func (x *CoverageSummary) ClearGapsOpen() {
 	x.xxx_hidden_GapsOpen = 0
 }
 
+func (x *CoverageSummary) ClearResolvedGapsPrunable() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 10)
+	x.xxx_hidden_ResolvedGapsPrunable = 0
+}
+
 type CoverageSummary_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -2056,6 +2081,11 @@ type CoverageSummary_builder struct {
 	// overrides: an override shapes the verdict and every count, so no
 	// view — the summary least of all — may apply one silently.
 	PolicyOverrides []string
+	// ResolvedGapsPrunable counts gaps whose requirement is now covered,
+	// among the scoped requirements: dead records the `prune` operation
+	// deletes. Surfaced so the cleanup is discoverable from a gate run
+	// already made; the gate never deletes records itself.
+	ResolvedGapsPrunable *int32
 }
 
 func (b0 CoverageSummary_builder) Build() *CoverageSummary {
@@ -2063,39 +2093,43 @@ func (b0 CoverageSummary_builder) Build() *CoverageSummary {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.GatePasses != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 11)
 		x.xxx_hidden_GatePasses = *b.GatePasses
 	}
 	if b.Covered != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 11)
 		x.xxx_hidden_Covered = *b.Covered
 	}
 	if b.Attested != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 11)
 		x.xxx_hidden_Attested = *b.Attested
 	}
 	if b.Uncovered != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 11)
 		x.xxx_hidden_Uncovered = *b.Uncovered
 	}
 	if b.Stale != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 11)
 		x.xxx_hidden_Stale = *b.Stale
 	}
 	if b.Broken != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 11)
 		x.xxx_hidden_Broken = *b.Broken
 	}
 	if b.Exempt != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 11)
 		x.xxx_hidden_Exempt = *b.Exempt
 	}
 	x.xxx_hidden_Violations = b.Violations
 	if b.GapsOpen != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 11)
 		x.xxx_hidden_GapsOpen = *b.GapsOpen
 	}
 	x.xxx_hidden_PolicyOverrides = b.PolicyOverrides
+	if b.ResolvedGapsPrunable != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 11)
+		x.xxx_hidden_ResolvedGapsPrunable = *b.ResolvedGapsPrunable
+	}
 	return m0
 }
 
@@ -4325,7 +4359,7 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"violations\x12\x1f\n" +
 	"\vgate_passes\x18\x04 \x01(\bR\n" +
 	"gatePasses\x12)\n" +
-	"\x10policy_overrides\x18\x05 \x03(\tR\x0fpolicyOverrides\"\xb4\x02\n" +
+	"\x10policy_overrides\x18\x05 \x03(\tR\x0fpolicyOverrides\"\xea\x02\n" +
 	"\x0fCoverageSummary\x12\x1f\n" +
 	"\vgate_passes\x18\x01 \x01(\bR\n" +
 	"gatePasses\x12\x18\n" +
@@ -4340,7 +4374,8 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"violations\x12\x1b\n" +
 	"\tgaps_open\x18\t \x01(\x05R\bgapsOpen\x12)\n" +
 	"\x10policy_overrides\x18\n" +
-	" \x03(\tR\x0fpolicyOverrides\"\xac\x03\n" +
+	" \x03(\tR\x0fpolicyOverrides\x124\n" +
+	"\x16resolved_gaps_prunable\x18\v \x01(\x05R\x14resolvedGapsPrunable\"\xac\x03\n" +
 	"\rVerifySummary\x12\x1a\n" +
 	"\bproblems\x18\x01 \x01(\x05R\bproblems\x12\x16\n" +
 	"\x06pinned\x18\x02 \x01(\x05R\x06pinned\x12\x14\n" +

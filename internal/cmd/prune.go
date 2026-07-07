@@ -10,30 +10,24 @@ import (
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/coverage"
-	"github.com/greatliontech/stipulator/internal/index"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
-func fmtCmd() *cobra.Command {
-	var check, force, noTest bool
+func pruneCmd() *cobra.Command {
+	var check, noTest bool
 	c := &cobra.Command{
-		Use:   "fmt",
-		Short: "Regenerate folder indexes and prune resolved gaps",
-		Long: "Writes the generated README.md index for every corpus directory and\n" +
-			"deletes gap records whose requirements are covered. --check lints instead:\n" +
-			"non-zero exit when anything would change, writing nothing.",
+		Use:   "prune",
+		Short: "Delete resolved gap records",
+		Long: "Deletes gap records whose requirements have reached the covered bucket —\n" +
+			"a resolved gap is satisfied, dead record weight. --check lints instead:\n" +
+			"non-zero exit when any resolved gap lingers, deleting nothing.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			spec, err := mustCompile(chdir)
 			if err != nil {
 				return err
 			}
 			fsys := os.DirFS(chdir)
-			stale, err := index.Stale(fsys, spec, force)
-			if err != nil {
-				return err
-			}
-
 			store, err := records.Load(fsys)
 			if err != nil {
 				return err
@@ -49,6 +43,10 @@ func fmtCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			// A resolved gap is derived from coverage, which is only sound
+			// when verification is clean: a dangling or stale record could
+			// misreport a requirement's bucket and prune a gap that is still
+			// load-bearing. Refuse rather than delete on a shaky reading.
 			rep := verify.Run(spec, store, backends, testRun)
 			if len(rep.Problems) > 0 {
 				for _, p := range rep.Problems {
@@ -56,7 +54,7 @@ func fmtCmd() *cobra.Command {
 				}
 				return fmt.Errorf("fix verification problems first")
 			}
-			manifest, err := corpus.LoadManifest(os.DirFS(chdir))
+			manifest, err := corpus.LoadManifest(fsys)
 			if err != nil {
 				return err
 			}
@@ -74,34 +72,23 @@ func fmtCmd() *cobra.Command {
 			prunes := author.PruneResolvedGaps(store, resolved)
 
 			if check {
-				for _, p := range stale {
-					fmt.Printf("%s index %s\n", yellow("stale:"), p)
-				}
 				for _, up := range prunes {
-					fmt.Printf("%s resolved gap lingers: %s\n", yellow("stale:"), up.Path)
+					fmt.Printf("%s resolved gap lingers: %s\n", yellow("prunable:"), up.Path)
 				}
-				if len(stale) > 0 || len(prunes) > 0 {
-					return fmt.Errorf("fmt --check: %d stale", len(stale)+len(prunes))
+				if len(prunes) > 0 {
+					return fmt.Errorf("prune --check: %d resolved gaps linger", len(prunes))
 				}
-				fmt.Println(green("fmt: clean"))
+				fmt.Println(green("prune: clean"))
 				return nil
-			}
-
-			indexes := index.Build(spec)
-			for _, p := range stale {
-				if err := writeFileAt(chdir, p, indexes[p]); err != nil {
-					return err
-				}
 			}
 			if err := applyUpdates(chdir, prunes); err != nil {
 				return err
 			}
-			fmt.Printf("fmt: %d indexes written, %d resolved gaps pruned\n", len(stale), len(prunes))
+			fmt.Printf("prune: %d resolved gaps pruned\n", len(prunes))
 			return nil
 		},
 	}
-	c.Flags().BoolVar(&check, "check", false, "lint: fail when indexes are stale or resolved gaps linger; write nothing")
-	c.Flags().BoolVar(&force, "force", false, "replace README.md files that are not generated indexes")
+	c.Flags().BoolVar(&check, "check", false, "lint: fail when resolved gaps linger; delete nothing")
 	c.Flags().BoolVar(&noTest, "no-test", false, "skip the witness run (resolved-gap pruning may under-detect)")
 	return c
 }

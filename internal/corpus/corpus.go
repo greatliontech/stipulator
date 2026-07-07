@@ -27,9 +27,9 @@ const ManifestPath = ".stipulator/manifest.textproto"
 // none.
 const DefaultInclude = "docs/specs/**/*.md"
 
-// indexBasename names generated folder indexes, which are views of the IR
-// and never part of the corpus, even when an include glob matches them.
-const indexBasename = "README.md"
+// readmeBasename names a folder readme, which is navigation for humans and
+// never part of the corpus, even when an include glob matches it.
+const readmeBasename = "README.md"
 
 // LoadManifest reads and parses the manifest from fsys, which must be rooted
 // at the repository root. The returned manifest is normalized: when the file
@@ -51,7 +51,7 @@ func LoadManifest(fsys fs.FS) (*stipulatorv1.Manifest, error) {
 
 // Enumerate resolves the manifest's include globs against fsys and returns
 // the corpus document paths, duplicate-free, sorted lexicographically, and
-// never containing generated folder indexes. Malformed globs are rejected
+// never containing folder readmes. Malformed globs are rejected
 // up front, before any matching, so a typo cannot silently shrink the
 // corpus on trees that never reach the bad segment.
 func Enumerate(fsys fs.FS, m *stipulatorv1.Manifest) ([]string, error) {
@@ -69,7 +69,7 @@ func Enumerate(fsys fs.FS, m *stipulatorv1.Manifest) ([]string, error) {
 		if d.IsDir() {
 			return nil
 		}
-		if path.Base(p) == indexBasename {
+		if path.Base(p) == readmeBasename {
 			return nil
 		}
 		for _, g := range globs {

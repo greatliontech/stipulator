@@ -187,10 +187,12 @@ func TestCoverageViewScopesGapsAndViolations(t *testing.T) {
 }
 
 // TestCoverageSummaryPinsCountsAndGapState gives the summary counters
-// teeth: every bucket count and the open-gap tally must move with the data,
-// so a flipped counter or a dropped resolved-gap guard cannot pass silently.
+// teeth: every bucket count, the open-gap tally, and the prunable
+// resolved-gap tally must move with the data, so a flipped counter or a
+// resolved/open misclassification cannot pass silently. The prunable count
+// is how the gate surfaces resolved gaps awaiting prune.
 func TestCoverageSummaryPinsCountsAndGapState(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-views")
+	stipulate.Covers(t, "REQ-mcp-views", "REQ-gap-resolved-pruned")
 	cov := &coverage.Report{
 		Requirements: []coverage.Requirement{
 			{Id: "REQ-a", Bucket: coverage.Covered},
@@ -200,9 +202,12 @@ func TestCoverageSummaryPinsCountsAndGapState(t *testing.T) {
 			{Id: "REQ-e", Bucket: coverage.Broken},
 			{Id: "REQ-f", Bucket: coverage.Exempt},
 		},
+		// Asymmetric on purpose — two open, one resolved — so a
+		// resolved/open misclassification changes at least one tally.
 		Gaps: []coverage.Gap{
 			{RequirementId: "REQ-c", State: coverage.Open},
-			{RequirementId: "REQ-a", State: coverage.Resolved}, // excluded from the tally
+			{RequirementId: "REQ-d", State: coverage.Open},
+			{RequirementId: "REQ-a", State: coverage.Resolved},
 		},
 	}
 	facts := Facts{Doc: map[string]string{}, Symbols: map[string][]string{}}
@@ -215,8 +220,11 @@ func TestCoverageSummaryPinsCountsAndGapState(t *testing.T) {
 		sum.GetStale() != 1 || sum.GetBroken() != 1 || sum.GetExempt() != 1 {
 		t.Fatalf("bucket counts each want 1: %+v", sum)
 	}
-	if sum.GetGapsOpen() != 1 {
-		t.Fatalf("gaps_open = %d, want 1 (the resolved gap is excluded)", sum.GetGapsOpen())
+	if sum.GetResolvedGapsPrunable() != 1 {
+		t.Fatalf("resolved_gaps_prunable = %d, want 1 (only REQ-a's gap is resolved)", sum.GetResolvedGapsPrunable())
+	}
+	if sum.GetGapsOpen() != 2 {
+		t.Fatalf("gaps_open = %d, want 2 (the resolved gap is excluded)", sum.GetGapsOpen())
 	}
 }
 

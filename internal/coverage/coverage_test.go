@@ -519,3 +519,26 @@ func TestAttestationEvidence(t *testing.T) {
 		t.Fatalf("stale attestation = %v, want stale", got)
 	}
 }
+
+// TestGapCounts pins the shared gap tally that both the gate summary and the
+// human prunable hint derive from: open counts unresolved, resolved counts
+// prunable, and keep (nil = all) scopes both. Asymmetric on purpose so a
+// resolved/open misclassification flips a tally.
+func TestGapCounts(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-resolved-pruned")
+	gaps := []Gap{
+		{RequirementId: "a", State: Open},
+		{RequirementId: "b", State: Open},
+		{RequirementId: "c", State: Resolved},
+		{RequirementId: "out", State: Resolved}, // out of a scoped keep
+	}
+	// Unscoped (keep == nil): every gap counts.
+	if open, resolved := GapCounts(gaps, nil); open != 2 || resolved != 2 {
+		t.Fatalf("unscoped counts = open %d resolved %d, want 2/2", open, resolved)
+	}
+	// Scoped: "out" is excluded, so one resolved drops.
+	keep := map[string]bool{"a": true, "b": true, "c": true}
+	if open, resolved := GapCounts(gaps, keep); open != 2 || resolved != 1 {
+		t.Fatalf("scoped counts = open %d resolved %d, want 2/1", open, resolved)
+	}
+}

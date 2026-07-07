@@ -50,15 +50,6 @@ bindings {
   requirement_id: "REQ-core-determinism"
   content_hash: "c62f4d3906f9283749c3e19928e7c3f678aa706749914b6e6fe706da9112124f"
   backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/index.TestPropIndexDeterminism"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "512d44510c38b826c5c0028637d0f52f5e175e47c13f8bea7c762bb2061a901e"
-}
-
-bindings {
-  requirement_id: "REQ-core-determinism"
-  content_hash: "c62f4d3906f9283749c3e19928e7c3f678aa706749914b6e6fe706da9112124f"
-  backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/bundle.TestPropBundleDeterminism"
   role: BINDING_ROLE_TESTS
   shape_hash: "71a6803e0c80be83d2b1b509a52789bc9c8c626a4a28b104dd0e03004fedc416"

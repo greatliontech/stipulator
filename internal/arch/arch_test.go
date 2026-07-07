@@ -23,7 +23,7 @@ func TestCoreNeverImportsBackends(t *testing.T) {
 		mod + "/internal/canon", mod + "/internal/corpus", mod + "/internal/profile",
 		mod + "/internal/compile", mod + "/internal/records", mod + "/internal/author",
 		mod + "/internal/verify", mod + "/internal/coverage", mod + "/internal/diff",
-		mod + "/internal/bundle", mod + "/internal/facts", mod + "/internal/index",
+		mod + "/internal/bundle", mod + "/internal/facts",
 	} {
 		structural.NoImport(t, core, mod+"/internal/backends/...")
 	}
@@ -39,7 +39,7 @@ func TestCoreIsVcsFree(t *testing.T) {
 		mod + "/internal/canon", mod + "/internal/corpus", mod + "/internal/profile",
 		mod + "/internal/compile", mod + "/internal/records", mod + "/internal/author",
 		mod + "/internal/verify", mod + "/internal/coverage", mod + "/internal/diff",
-		mod + "/internal/bundle", mod + "/internal/facts", mod + "/internal/index",
+		mod + "/internal/bundle", mod + "/internal/facts",
 	} {
 		structural.NoImport(t, core,
 			"os/exec",

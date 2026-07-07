@@ -163,4 +163,11 @@ func printCoverage(cov *coverage.Report) {
 		num(counts[coverage.Uncovered], yellow),
 		num(counts[coverage.Stale], yellow), num(counts[coverage.Broken], red),
 		counts[coverage.Exempt], len(cov.Gaps))
+	if _, prunable := coverage.GapCounts(cov.Gaps, nil); prunable > 0 {
+		noun := "gap"
+		if prunable > 1 {
+			noun = "gaps"
+		}
+		fmt.Printf("prunable: %d resolved %s — run %s\n", prunable, noun, bold("stipulator prune"))
+	}
 }

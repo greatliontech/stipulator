@@ -178,6 +178,11 @@ message CoverageSummary {
   // overrides: an override shapes the verdict and every count, so no
   // view — the summary least of all — may apply one silently.
   repeated string policy_overrides = 10;
+  // ResolvedGapsPrunable counts gaps whose requirement is now covered,
+  // among the scoped requirements: dead records the `prune` operation
+  // deletes. Surfaced so the cleanup is discoverable from a gate run
+  // already made; the gate never deletes records itself.
+  int32 resolved_gaps_prunable = 11;
 }
 
 // VerifySummary is the verification roll-up: record hygiene and witness

@@ -107,6 +107,24 @@ type Report struct {
 // GatePasses reports the gate verdict.
 func (r *Report) GatePasses() bool { return len(r.Violations) == 0 }
 
+// GapCounts tallies gaps by disposition among the kept requirements
+// (keep == nil counts all): open is the unresolved count, resolved is the
+// prunable count. The summary's counters and the gate's prunable hint both
+// derive from this one tally, so the two surfaces cannot drift.
+func GapCounts(gaps []Gap, keep map[string]bool) (open, resolved int) {
+	for _, g := range gaps {
+		if keep != nil && !keep[g.RequirementId] {
+			continue
+		}
+		if g.State == Resolved {
+			resolved++
+		} else {
+			open++
+		}
+	}
+	return
+}
+
 // Policy resolves each (clause kind, keyword) cell to its minimum
 // evidence: manifest overrides win over the default table
 // (REQ-coverage-policy). A nil Policy is the pure default table.
