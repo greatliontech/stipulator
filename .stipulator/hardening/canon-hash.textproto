@@ -8,7 +8,10 @@ records {
   mutants: 0
   killed: 0
   discarded: 1
-  witnesses: "github.com/greatliontech/stipulator/internal/canon.TestHash"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/canon.TestHash"
+    body_hash: "5ac41d98778e64d3923de9edacb7651c15edac10c03329046af6cde78b2619e8"
+  }
   operators: "go/2"
   body_line: 27
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"

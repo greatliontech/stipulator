@@ -24,9 +24,18 @@ records {
     position: "transform.go:132:4"
     operator: "delete statement"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/compile.TestLeadErrors"
-  witnesses: "github.com/greatliontech/stipulator/internal/compile.TestRequirementLead"
-  witnesses: "github.com/greatliontech/stipulator/internal/compile.TestTermMatching"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/compile.TestLeadErrors"
+    body_hash: "626f78787a051d0927523f7b122f28fc80b93d00375d382dfae63ef6bcfa7797"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/compile.TestRequirementLead"
+    body_hash: "804a61d0308e8990e2904626267bc2035021c870040d977c5e479194adf1cda4"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/compile.TestTermMatching"
+    body_hash: "eb0615d1a3d32558e34aeed6a6100b5e039fa015f088c511fdfb87a10f6d28c1"
+  }
   operators: "go/2"
   body_line: 118
   budget: 24

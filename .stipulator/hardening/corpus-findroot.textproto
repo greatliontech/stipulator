@@ -12,7 +12,10 @@ records {
     position: "root.go:16:14"
     operator: "zero return"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/corpus.TestFindRoot"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/corpus.TestFindRoot"
+    body_hash: "0cc73aeed3f560b7f5196a25f03d55cd123f6ffe131e07400ceb6988d7107b75"
+  }
   operators: "go/2"
   body_line: 13
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"

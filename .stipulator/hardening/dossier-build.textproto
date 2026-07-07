@@ -1,0 +1,55 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/dossier.Build"
+  body_hash: "6189118cb574720c7f505cb259425d33087849b729264ed68a6088f365666069"
+  mutants: 23
+  killed: 14
+  discarded: 1
+  survivors {
+    position: "dossier.go:25:3"
+    operator: "drop assignment"
+  }
+  survivors {
+    position: "dossier.go:46:53"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "dossier.go:47:5"
+    operator: "drop assignment"
+  }
+  survivors {
+    position: "dossier.go:104:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "dossier.go:120:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "dossier.go:68:4"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "dossier.go:69:4"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "dossier.go:70:4"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "dossier.go:72:4"
+    operator: "delete statement"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestContextDossier"
+    body_hash: "7a70c7dd3c5163d7aebd6675930b1aa3a0afd9d1789a9d4059c3af031878b77a"
+  }
+  operators: "go/2"
+  body_line: 22
+  budget: 24
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
+}

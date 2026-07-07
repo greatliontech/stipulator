@@ -19,7 +19,10 @@ records {
     position: "corpus.go:88:15"
     operator: "zero return"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/corpus.TestEnumerate"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/corpus.TestEnumerate"
+    body_hash: "e68c630a6553f8e4265247b03e0ea679ec82636e832169884d535470bbf6f54e"
+  }
   operators: "go/2"
   body_line: 57
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"

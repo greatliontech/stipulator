@@ -28,7 +28,10 @@ records {
     position: "harden.go:42:14"
     operator: "zero return"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestBodyHash"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestBodyHash"
+    body_hash: "e21623a70c4516cf8803b54d68d37212658d71644fdfc1a512cc03a443bb8365"
+  }
   operators: "go/2"
   body_line: 31
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"

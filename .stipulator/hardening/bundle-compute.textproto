@@ -31,7 +31,10 @@ records {
     position: "bundle.go:70:6"
     operator: "continue -> break"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/bundle.TestClosure"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/bundle.TestClosure"
+    body_hash: "ddba4cc05ed9300b2a01698a8cb9a50815404da8e3cfe26f0d5913b44faf41b1"
+  }
   operators: "go/2"
   body_line: 25
   budget: 24

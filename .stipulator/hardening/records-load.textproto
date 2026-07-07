@@ -4,11 +4,11 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/records.Load"
-  body_hash: "ecd3cdffc38b872d5abdf8f6e8247e6b758604867261968bb2f2aa2edafb0662"
+  body_hash: "a49fcc4458db118dec465c7c333823abf0527ea0ff7b2b8feaab363264302e35"
   mutants: 24
   killed: 13
   survivors {
-    position: "records.go:112:2"
+    position: "records.go:119:2"
     operator: "drop assignment"
   }
   survivors {
@@ -48,10 +48,13 @@ records {
     operator: "zero return"
   }
   survivors {
-    position: "records.go:103:3"
+    position: "records.go:110:3"
     operator: "drop assignment"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
+    body_hash: "4472759eeaa03e90ac7f89ec01bfb34f3b2a0f1069cffba690eb55aaaaa336d1"
+  }
   operators: "go/2"
   body_line: 66
   budget: 24

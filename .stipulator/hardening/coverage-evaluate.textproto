@@ -24,12 +24,30 @@ records {
     position: "coverage.go:234:8"
     operator: "force true"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestBuckets"
-  witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestClaimsGrantNothingUnverified"
-  witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestGapStates"
-  witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestGate"
-  witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestPolicyOverrides"
-  witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestPropEvidenceOnlyFromCurrentRun"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/coverage.TestBuckets"
+    body_hash: "e27337e1f9afdd1adda445ac16f4315aac860b9259684bfa61d216e2e3c6b244"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/coverage.TestClaimsGrantNothingUnverified"
+    body_hash: "fd2107f643a7e884917bcb38ada3ea46cc9277cbda243bbc6e3440a93a5900b1"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/coverage.TestGapStates"
+    body_hash: "188161e9a34948a7bdefcbe8a74db2f948c1a9ca2b3fb45be0e48d93948ef1f1"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/coverage.TestGate"
+    body_hash: "ad950fac092800bd27f9ad07980d4f7f39e22802742ef7cd4ee514f66fe70536"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/coverage.TestPolicyOverrides"
+    body_hash: "a8e865f09f784005c58121da3985d0b488bcc0e246fc9ca1a1ec37550d1ef399"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/coverage.TestPropEvidenceOnlyFromCurrentRun"
+    body_hash: "c359976cb77561c8a58c5bafbbed5d4fc4c4ecdba0d1d0b37d2a772d4b0944a2"
+  }
   operators: "go/2"
   body_line: 195
   budget: 24

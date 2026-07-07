@@ -7,7 +7,10 @@ records {
   body_hash: "7353d68b93748fa8b6a1cf6b772fcee2289fd080dd30ec6619bdc2496da1876e"
   mutants: 3
   killed: 3
-  witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestGate"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/coverage.TestGate"
+    body_hash: "ad950fac092800bd27f9ad07980d4f7f39e22802742ef7cd4ee514f66fe70536"
+  }
   operators: "go/2"
   body_line: 108
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"

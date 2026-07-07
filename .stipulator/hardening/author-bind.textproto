@@ -4,7 +4,7 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.Bind"
-  body_hash: "817e2fd31ca05b72d72302ab737a4b314222d738bd306f8bc123706c96627f7e"
+  body_hash: "9ae0ee198e21bd0a043058a2e10cd55e82bf5f652e3ed1736e3847024f67323d"
   mutants: 24
   killed: 17
   survivors {
@@ -12,7 +12,7 @@ records {
     operator: "zero return"
   }
   survivors {
-    position: "author.go:104:18"
+    position: "author.go:104:48"
     operator: "increment literal"
   }
   survivors {
@@ -20,25 +20,37 @@ records {
     operator: "zero return"
   }
   survivors {
-    position: "author.go:105:65"
+    position: "author.go:105:64"
     operator: "increment literal"
   }
   survivors {
-    position: "author.go:105:90"
+    position: "author.go:105:88"
     operator: "- -> +"
   }
   survivors {
-    position: "author.go:105:91"
+    position: "author.go:105:89"
     operator: "increment literal"
   }
   survivors {
     position: "author.go:117:15"
     operator: "zero return"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/author.TestBind"
-  witnesses: "github.com/greatliontech/stipulator/internal/author.TestBindFileConfinement"
-  witnesses: "github.com/greatliontech/stipulator/internal/author.TestProvesDischarge"
-  witnesses: "github.com/greatliontech/stipulator/internal/author.TestUnbind"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/author.TestBind"
+    body_hash: "40cca5c71205d824064b4532a67e5d98eeceee6aaaaab1f8fedef0387fc7f25b"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/author.TestBindFileConfinement"
+    body_hash: "b57015d75462529ee31c3eb3ded9a8c08b7d62dabc43066424eaa80eb21dbab6"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/author.TestProvesDischarge"
+    body_hash: "36c5e517c15a435c9f0502c96254dc5c699cb7369814a9d2a0ff4d534bde908e"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/author.TestUnbind"
+    body_hash: "e97f0dc0e0042d8c9b933c0f5bea88dd399c9fc575ade14dc7d1ffbadb536be0"
+  }
   operators: "go/2"
   body_line: 99
   budget: 24

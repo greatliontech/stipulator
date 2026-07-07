@@ -9,58 +9,67 @@ records {
   killed: 9
   discarded: 3
   survivors {
-    position: "compile.go:322:2"
+    position: "compile.go:341:2"
     operator: "delete statement"
   }
   survivors {
-    position: "compile.go:323:2"
+    position: "compile.go:342:2"
     operator: "delete statement"
   }
   survivors {
-    position: "compile.go:324:2"
+    position: "compile.go:343:2"
     operator: "delete statement"
   }
   survivors {
-    position: "compile.go:346:2"
+    position: "compile.go:365:2"
     operator: "delete statement"
   }
   survivors {
-    position: "compile.go:354:2"
+    position: "compile.go:373:2"
     operator: "delete statement"
   }
   survivors {
-    position: "compile.go:360:2"
+    position: "compile.go:379:2"
     operator: "delete statement"
   }
   survivors {
-    position: "compile.go:362:2"
+    position: "compile.go:381:2"
     operator: "delete statement"
   }
   survivors {
-    position: "compile.go:363:2"
+    position: "compile.go:382:2"
     operator: "delete statement"
   }
   survivors {
-    position: "compile.go:138:5"
+    position: "compile.go:157:5"
     operator: "continue -> break"
   }
   survivors {
-    position: "compile.go:141:5"
+    position: "compile.go:160:5"
     operator: "delete statement"
   }
   survivors {
-    position: "compile.go:142:5"
+    position: "compile.go:161:5"
     operator: "continue -> break"
   }
   survivors {
-    position: "compile.go:150:5"
+    position: "compile.go:169:5"
     operator: "continue -> break"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/compile.TestKeywordDiscipline"
-  witnesses: "github.com/greatliontech/stipulator/internal/compile.TestLayoutIndependence"
-  witnesses: "github.com/greatliontech/stipulator/internal/compile.TestReferences"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/compile.TestKeywordDiscipline"
+    body_hash: "13fd6bb22b87d96fac82e485995078baf8d8b636ef85f87068d9a634f3246edb"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/compile.TestLayoutIndependence"
+    body_hash: "8ad292acc08f38aad62aeeb05b4d0c2a5d3c52c222b2e15370e26fb6f04468a5"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/compile.TestReferences"
+    body_hash: "1b642fd5441bf9163c0e755e85437a45a9b6733f4fb559a7abc3bfc91bc8933e"
+  }
   operators: "go/2"
-  body_line: 122
+  body_line: 141
   budget: 24
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

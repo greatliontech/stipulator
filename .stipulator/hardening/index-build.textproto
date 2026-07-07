@@ -20,7 +20,10 @@ records {
     position: "index.go:60:5"
     operator: "continue -> break"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/index.TestBuild"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/index.TestBuild"
+    body_hash: "8f0cadaafd2e5affb7143a1009039181b8d2447dd2d6b0ab5a7c5bf1a7b65aee"
+  }
   operators: "go/2"
   body_line: 23
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"

@@ -48,7 +48,10 @@ records {
     position: "facts.go:63:19"
     operator: "< -> >="
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/facts.TestSeedsFromNeighborhood"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/facts.TestSeedsFromNeighborhood"
+    body_hash: "421d56afb6ca499bc0c4ce02f3ae260a1609d8ea33279390b91e10fb8e1ff892"
+  }
   operators: "go/2"
   body_line: 29
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"

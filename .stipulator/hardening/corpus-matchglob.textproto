@@ -7,8 +7,14 @@ records {
   body_hash: "2ff0611737659c844500ac16596e0a89e19344e334bec87a404fad17d1e57c47"
   mutants: 0
   killed: 0
-  witnesses: "github.com/greatliontech/stipulator/internal/corpus.TestMatchGlob"
-  witnesses: "github.com/greatliontech/stipulator/internal/corpus.TestValidateGlobErrors"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/corpus.TestMatchGlob"
+    body_hash: "450d712ae2fbfda0e37c50e79ae582a0340d9842318e9b81d1d331d509339792"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/corpus.TestValidateGlobErrors"
+    body_hash: "c92571b0470154826f6631b25584dbbe0c1cb420c1fed8cf89b353921e14a79d"
+  }
   operators: "go/2"
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

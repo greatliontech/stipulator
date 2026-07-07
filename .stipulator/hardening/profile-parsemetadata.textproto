@@ -31,7 +31,10 @@ records {
     position: "transform.go:184:9"
     operator: "zero return"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/compile.TestLeadErrors"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/compile.TestLeadErrors"
+    body_hash: "626f78787a051d0927523f7b122f28fc80b93d00375d382dfae63ef6bcfa7797"
+  }
   operators: "go/2"
   body_line: 158
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"

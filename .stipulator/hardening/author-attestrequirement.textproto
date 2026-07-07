@@ -19,11 +19,26 @@ records {
     position: "attest_requirement.go:36:20"
     operator: "zero return"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/author.TestAttestRequirement"
-  witnesses: "github.com/greatliontech/stipulator/internal/author.TestAttestRequirementMultiRecordFile"
-  witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestAttestationEvidence"
-  witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestAttestTools"
-  witnesses: "github.com/greatliontech/stipulator/internal/verify.TestAttestationRecordHygiene"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/author.TestAttestRequirement"
+    body_hash: "282bacb942be0e5a968eddb348b6d9401a6f0339a5a088ba3bb64af1faf76f26"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/author.TestAttestRequirementMultiRecordFile"
+    body_hash: "c951d6e65f13ef3572afc1215ae629fdc7124ef3b6247791f7399bca77957a52"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/coverage.TestAttestationEvidence"
+    body_hash: "fcb99b88f0f6c3714fb493c031075abc31baefa8e5abbd7ef137ea1e21077b3e"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestAttestTools"
+    body_hash: "2659deee29e675d37e539e1acbf62bcd58503b88695a23eb90e489e4adc1a600"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/verify.TestAttestationRecordHygiene"
+    body_hash: "13c9f7569bf8f699d05671e8cfae9cc4fd3754e7b1a5389a2aca78860cca62fd"
+  }
   operators: "go/2"
   body_line: 17
   budget: 24

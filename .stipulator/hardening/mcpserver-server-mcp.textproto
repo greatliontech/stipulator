@@ -4,39 +4,48 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.Server.MCP"
-  body_hash: "e5f27b680daf1939139dec636f4abc75f052132631d613cbe22b2f9ba852fce7"
+  body_hash: "75a70d492f021d8aba69454b1c13b2e8e81bf551eb8093a586c668d1fed52fa4"
   mutants: 22
   killed: 16
   discarded: 2
   survivors {
-    position: "server.go:160:2"
+    position: "server.go:164:2"
     operator: "delete statement"
   }
   survivors {
-    position: "server.go:166:2"
+    position: "server.go:170:2"
     operator: "delete statement"
   }
   survivors {
-    position: "server.go:172:2"
+    position: "server.go:176:2"
     operator: "delete statement"
   }
   survivors {
-    position: "server.go:178:2"
-    operator: "delete statement"
-  }
-  survivors {
-    position: "server.go:191:52"
+    position: "server.go:189:52"
     operator: "negate condition"
   }
   survivors {
-    position: "server.go:191:63"
+    position: "server.go:189:63"
     operator: "&& -> ||"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestAttestTools"
-  witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestGateTool"
-  witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestToolListExact"
+  survivors {
+    position: "server.go:189:56"
+    operator: "== -> !="
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestAttestTools"
+    body_hash: "2659deee29e675d37e539e1acbf62bcd58503b88695a23eb90e489e4adc1a600"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGateTool"
+    body_hash: "0d4c2a9fefbf7e66ef10c1bb6ba3391284b5361ab852fb24619a9d14128bbb89"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestToolListExact"
+    body_hash: "65f342d2f18d9777f139e0d961d2ba2397fa30ced8b7192ab13b60185caee8fc"
+  }
   operators: "go/2"
-  body_line: 100
+  body_line: 104
   budget: 24
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

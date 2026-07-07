@@ -11,7 +11,10 @@ records {
     position: "author.go:399:2"
     operator: "delete statement"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/author.TestPruneResolvedGaps"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/author.TestPruneResolvedGaps"
+    body_hash: "4efe41e78eacc34e8f6d221f84f5e03b2b19ecd961ec72f2693cf6d7b8dee727"
+  }
   operators: "go/2"
   body_line: 392
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"

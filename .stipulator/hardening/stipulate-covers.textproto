@@ -12,7 +12,10 @@ records {
     position: "stipulate.go:23:2"
     operator: "delete statement"
   }
-  witnesses: "github.com/greatliontech/stipulator/stipulate.TestCoversEmitsMarker"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/stipulate.TestCoversEmitsMarker"
+    body_hash: "3bc353c3511fb8025292650c9c6ae46d543225f9d77a61fe8373f7642668b7c6"
+  }
   operators: "go/2"
   body_line: 22
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"

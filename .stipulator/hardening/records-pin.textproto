@@ -6,27 +6,15 @@ records {
   symbol: "github.com/greatliontech/stipulator/internal/records.Pin"
   body_hash: "0199747c103672ee695479fdd78f26e289b762504db9766adbcc75389ddfe70c"
   mutants: 21
-  killed: 13
+  killed: 16
   discarded: 1
-  survivors {
-    position: "pin.go:35:10"
-    operator: "&& -> ||"
-  }
   survivors {
     position: "pin.go:35:7"
     operator: "force true"
   }
   survivors {
-    position: "pin.go:35:13"
-    operator: "force true"
-  }
-  survivors {
     position: "pin.go:35:30"
     operator: "!= -> =="
-  }
-  survivors {
-    position: "pin.go:36:5"
-    operator: "delete statement"
   }
   survivors {
     position: "pin.go:37:5"
@@ -40,8 +28,22 @@ records {
     position: "pin.go:46:51"
     operator: "increment literal"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/verify.TestPin"
-  witnesses: "github.com/greatliontech/stipulator/internal/verify.TestPinRefusesCommentedFile"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPinTool"
+    body_hash: "55ce42b4c9314d5f4ec93291faabef28d86e88198ac72952cc67a712dd677da5"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/records.TestPinNeverRewritesDifferingContent"
+    body_hash: "d3493c0f34868fef1d63cadb5d233a39a35bf982327d3ecd1c0822c397343360"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/verify.TestPin"
+    body_hash: "72a7e2754f1f1629ba777cce037adca46eede0040bd015e2607439d5ca52b699"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/verify.TestPinRefusesCommentedFile"
+    body_hash: "1c204eaed7dfe2e940957fb96bdcc7e75510d3a9014ae4c9e4aeeacd01cf4d79"
+  }
   operators: "go/2"
   body_line: 24
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"

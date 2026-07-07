@@ -31,8 +31,14 @@ records {
     position: "golang.go:295:29"
     operator: "force true"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestFixtureModule"
-  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestResolve"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestFixtureModule"
+    body_hash: "ec7d3f976fff6ebd903f05f03fe32ca91d11db79c9eb9b086f616aa688aba682"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestResolve"
+    body_hash: "477ae1737a28108d7396bcc8fc9d6c3c1b69d2e4ded75e5345bc3620c5e7c01d"
+  }
   operators: "go/2"
   body_line: 285
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"

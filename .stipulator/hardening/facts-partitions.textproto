@@ -24,7 +24,10 @@ records {
     position: "facts.go:148:16"
     operator: "increment literal"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/facts.TestPartitions"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/facts.TestPartitions"
+    body_hash: "61f2c5f2de1af8a4f9e21bcfbe8c4ec292c7d6357d2ae5312b85f73f7c294b71"
+  }
   operators: "go/2"
   body_line: 121
   budget: 24

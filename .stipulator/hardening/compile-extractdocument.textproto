@@ -88,7 +88,10 @@ records {
     position: "extract.go:85:68"
     operator: "increment literal"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/compile.TestReferences"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/compile.TestReferences"
+    body_hash: "1b642fd5441bf9163c0e755e85437a45a9b6733f4fb559a7abc3bfc91bc8933e"
+  }
   operators: "go/2"
   body_line: 61
   budget: 24

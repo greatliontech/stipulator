@@ -43,7 +43,10 @@ records {
     position: "attest.go:32:5"
     operator: "continue -> break"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/author.TestAttest"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/author.TestAttest"
+    body_hash: "061a6bbd57df1fca2537a8d2469c0040475792c9726438999f448bd0b2b0bbad"
+  }
   operators: "go/2"
   body_line: 18
   budget: 24

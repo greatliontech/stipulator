@@ -4,61 +4,64 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.Compile"
-  body_hash: "a84ee119de029d24e408d6f8edc5d2d7050b9f28aad47c508b9525db8b20cd4c"
+  body_hash: "bfbe6baa5fd6fbacb4dc16512ef657f8650b3e0f231f92e26dde29655247edb2"
   mutants: 23
   killed: 11
   discarded: 1
   survivors {
-    position: "compile.go:105:2"
+    position: "compile.go:123:2"
     operator: "delete statement"
   }
   survivors {
-    position: "compile.go:71:20"
+    position: "compile.go:124:2"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "compile.go:89:20"
     operator: "zero return"
   }
   survivors {
-    position: "compile.go:75:20"
+    position: "compile.go:93:20"
     operator: "zero return"
   }
   survivors {
-    position: "compile.go:79:20"
+    position: "compile.go:97:20"
     operator: "zero return"
   }
   survivors {
-    position: "compile.go:101:3"
+    position: "compile.go:119:3"
     operator: "drop assignment"
   }
   survivors {
-    position: "compile.go:91:21"
+    position: "compile.go:109:21"
     operator: "zero return"
   }
   survivors {
-    position: "compile.go:94:56"
+    position: "compile.go:112:56"
     operator: "increment literal"
   }
   survivors {
-    position: "compile.go:95:4"
+    position: "compile.go:113:4"
     operator: "continue -> break"
   }
   survivors {
-    position: "compile.go:107:6"
+    position: "compile.go:126:6"
     operator: "negate condition"
   }
   survivors {
-    position: "compile.go:107:17"
+    position: "compile.go:126:17"
     operator: "!= -> =="
   }
   survivors {
-    position: "compile.go:108:11"
+    position: "compile.go:127:11"
     operator: "zero return"
   }
-  survivors {
-    position: "compile.go:108:22"
-    operator: "< -> >="
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/compile.TestDocumentErrors"
+    body_hash: "b0cfeb0b0626fd1ccb656adbc4de0fe4fedc0dfa2314d4420412c9b1d358a9de"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/compile.TestDocumentErrors"
   operators: "go/2"
-  body_line: 68
+  body_line: 86
   budget: 24
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

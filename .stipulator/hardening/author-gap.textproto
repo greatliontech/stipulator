@@ -4,7 +4,7 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.Gap"
-  body_hash: "79c74cd3dc07d4d05168f2e2dae87f3a04bdd4312dc88783977f0c1b503ee9a5"
+  body_hash: "9d61ed6b7ef99672b340a1d4fc9bf73b0de62720bc0223cf36ca8c13ca19e57a"
   mutants: 24
   killed: 17
   survivors {
@@ -12,7 +12,7 @@ records {
     operator: "zero return"
   }
   survivors {
-    position: "author.go:250:18"
+    position: "author.go:250:48"
     operator: "increment literal"
   }
   survivors {
@@ -20,23 +20,29 @@ records {
     operator: "zero return"
   }
   survivors {
-    position: "author.go:251:70"
+    position: "author.go:251:69"
     operator: "increment literal"
   }
   survivors {
-    position: "author.go:251:95"
+    position: "author.go:251:93"
     operator: "- -> +"
   }
   survivors {
-    position: "author.go:251:96"
+    position: "author.go:251:94"
     operator: "increment literal"
   }
   survivors {
     position: "author.go:270:20"
     operator: "zero return"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/author.TestGap"
-  witnesses: "github.com/greatliontech/stipulator/internal/author.TestGapsBulk"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/author.TestGap"
+    body_hash: "294c4f3ed5bde1856a922ed1aee508f75c6ae0f75f0332c20878b32f99b9b237"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/author.TestGapsBulk"
+    body_hash: "ab53ef1bd440200235c183d0dc16df8869b9dabd01bd46c917059ee82d1c4a79"
+  }
   operators: "go/2"
   body_line: 245
   budget: 24

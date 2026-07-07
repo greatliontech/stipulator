@@ -1,0 +1,49 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.HardeningSet
+
+records {
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/views.VerifyView"
+  body_hash: "3a4f80d242ace9c43a5142c05a17d1eb24825757283952875e22272fa8c50125"
+  mutants: 17
+  killed: 12
+  survivors {
+    position: "views.go:225:15"
+    operator: "zero return"
+  }
+  survivors {
+    position: "views.go:244:4"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "views.go:245:4"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "views.go:246:4"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "views.go:268:14"
+    operator: "zero return"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGateTool"
+    body_hash: "0d4c2a9fefbf7e66ef10c1bb6ba3391284b5361ab852fb24619a9d14128bbb89"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/views.TestHardenViews"
+    body_hash: "19f94040a49dda2831d604ab23c91dc913df7bcf1afcc9a6239037b92bc87a04"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/views.TestScopeValidate"
+    body_hash: "6045c620b83b225e61ef804474d4c892411b9d8632502520105481d79ac2cacb"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/views.TestVerifyViews"
+    body_hash: "1d1080e18ae9310e506de12110c268e451648775acbba0a0872ef8224aaa067d"
+  }
+  operators: "go/2"
+  body_line: 223
+  toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
+}

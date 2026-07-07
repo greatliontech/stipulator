@@ -11,8 +11,14 @@ records {
     position: "coverage.go:455:12"
     operator: "zero return"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestGapStates"
-  witnesses: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/coverage.TestGapStates"
+    body_hash: "188161e9a34948a7bdefcbe8a74db2f948c1a9ca2b3fb45be0e48d93948ef1f1"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
+    body_hash: "4472759eeaa03e90ac7f89ec01bfb34f3b2a0f1069cffba690eb55aaaaa336d1"
+  }
   operators: "go/2"
   body_line: 446
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"

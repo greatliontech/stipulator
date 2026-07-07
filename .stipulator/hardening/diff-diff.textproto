@@ -20,7 +20,10 @@ records {
     position: "diff.go:110:38"
     operator: "force false"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/diff.TestDiff"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/diff.TestDiff"
+    body_hash: "2f02f1500b371b3b8af6d798bce3c8299ab3c45a28758dcf96bf00e1c523ce1d"
+  }
   operators: "go/2"
   body_line: 68
   budget: 24

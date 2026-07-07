@@ -31,10 +31,22 @@ records {
     position: "golang.go:79:96"
     operator: "increment literal"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestFixtureModule"
-  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestResolve"
-  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestWorkspaceMembers"
-  witnesses: "github.com/greatliontech/stipulator/internal/verify.TestBackendResolution"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestFixtureModule"
+    body_hash: "ec7d3f976fff6ebd903f05f03fe32ca91d11db79c9eb9b086f616aa688aba682"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestResolve"
+    body_hash: "477ae1737a28108d7396bcc8fc9d6c3c1b69d2e4ded75e5345bc3620c5e7c01d"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestWorkspaceMembers"
+    body_hash: "0bdd3f0f4981544cf26c30da5ddbb68124a84723bb686ff84b89a2d24a09cb58"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/verify.TestBackendResolution"
+    body_hash: "c76533bf9e9fe013eb67361a1d03dfd31c10691ac99dedc8a282229c92efeb48"
+  }
   operators: "go/2"
   body_line: 65
   budget: 24

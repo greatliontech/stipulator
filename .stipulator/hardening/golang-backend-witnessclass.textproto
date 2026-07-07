@@ -40,7 +40,10 @@ records {
     position: "golang.go:180:58"
     operator: "force true"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestWitnessClass"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestWitnessClass"
+    body_hash: "af75b56e1af42de764af0495d93126622bd42ab0a3022c460170f83ec347a31e"
+  }
   operators: "go/2"
   body_line: 157
   budget: 24

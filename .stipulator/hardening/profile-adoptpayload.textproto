@@ -11,7 +11,10 @@ records {
     position: "transform.go:226:11"
     operator: "zero return"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/compile.TestPayloadChangesHash"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/compile.TestPayloadChangesHash"
+    body_hash: "b49a10e84cce101b7cd4f877d2f2abe3e981a052acf741d2571f5040c8fc2963"
+  }
   operators: "go/2"
   body_line: 218
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"

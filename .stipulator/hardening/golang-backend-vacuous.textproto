@@ -24,7 +24,10 @@ records {
     position: "harden.go:67:4"
     operator: "drop assignment"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestVacuity"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestVacuity"
+    body_hash: "be04f6edae78b76fd8094bbc38d649193d1528f601088f325cd866d020567d41"
+  }
   operators: "go/2"
   body_line: 51
   budget: 24

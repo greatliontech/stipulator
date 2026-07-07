@@ -4,19 +4,19 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.Report.Proto"
-  body_hash: "230f0050615c21c5a9f15b1df5a195853182ce8119257f5058bb2a4f4ef0cb98"
-  mutants: 24
-  killed: 0
+  body_hash: "12e99525d4f77ed28ea52caf3e0429a18813b25cb00fd9f186ebeb085248087c"
+  mutants: 18
+  killed: 3
   survivors {
     position: "proto.go:17:2"
     operator: "delete statement"
   }
   survivors {
-    position: "proto.go:37:2"
+    position: "proto.go:33:2"
     operator: "delete statement"
   }
   survivors {
-    position: "proto.go:48:2"
+    position: "proto.go:44:2"
     operator: "delete statement"
   }
   survivors {
@@ -32,30 +32,6 @@ records {
     operator: "drop assignment"
   }
   survivors {
-    position: "proto.go:22:3"
-    operator: "delete statement"
-  }
-  survivors {
-    position: "proto.go:23:3"
-    operator: "delete statement"
-  }
-  survivors {
-    position: "proto.go:24:3"
-    operator: "delete statement"
-  }
-  survivors {
-    position: "proto.go:25:3"
-    operator: "delete statement"
-  }
-  survivors {
-    position: "proto.go:26:3"
-    operator: "delete statement"
-  }
-  survivors {
-    position: "proto.go:27:3"
-    operator: "delete statement"
-  }
-  survivors {
     position: "proto.go:28:3"
     operator: "delete statement"
   }
@@ -68,44 +44,38 @@ records {
     operator: "delete statement"
   }
   survivors {
-    position: "proto.go:34:3"
-    operator: "delete statement"
-  }
-  survivors {
-    position: "proto.go:35:3"
+    position: "proto.go:31:3"
     operator: "drop assignment"
   }
   survivors {
-    position: "proto.go:31:6"
-    operator: "negate condition"
+    position: "proto.go:38:3"
+    operator: "delete statement"
   }
   survivors {
-    position: "proto.go:31:14"
-    operator: "== -> !="
+    position: "proto.go:39:3"
+    operator: "delete statement"
   }
   survivors {
-    position: "proto.go:32:4"
+    position: "proto.go:40:3"
+    operator: "delete statement"
+  }
+  survivors {
+    position: "proto.go:41:3"
     operator: "delete statement"
   }
   survivors {
     position: "proto.go:42:3"
-    operator: "delete statement"
+    operator: "drop assignment"
   }
-  survivors {
-    position: "proto.go:43:3"
-    operator: "delete statement"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGateTool"
+    body_hash: "0d4c2a9fefbf7e66ef10c1bb6ba3391284b5361ab852fb24619a9d14128bbb89"
   }
-  survivors {
-    position: "proto.go:44:3"
-    operator: "delete statement"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/verify.TestWireWitnessClassMirrorsClassifier"
+    body_hash: "d04710bcd6e294d0c2dd48b96e009a6b0eb6c656e3d6e6fe1d3c9fdea9ecacbf"
   }
-  survivors {
-    position: "proto.go:45:3"
-    operator: "delete statement"
-  }
-  witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestGateTool"
   operators: "go/2"
   body_line: 8
-  budget: 24
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

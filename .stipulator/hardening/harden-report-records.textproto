@@ -4,38 +4,47 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/harden.Report.Records"
-  body_hash: "aa0a4bb68c89905a3f7fc73396903c2da4743db30ad89d820d399203a0def3b1"
+  body_hash: "92d007c44f4c399fabccaec6654f339b66093d3a204c709aacd46cf5c96baa28"
   mutants: 24
   killed: 18
   survivors {
-    position: "harden.go:479:3"
+    position: "harden.go:524:3"
     operator: "delete statement"
   }
   survivors {
-    position: "harden.go:482:3"
+    position: "harden.go:527:3"
     operator: "delete statement"
   }
   survivors {
-    position: "harden.go:483:3"
+    position: "harden.go:528:3"
     operator: "delete statement"
   }
   survivors {
-    position: "harden.go:484:3"
+    position: "harden.go:529:3"
     operator: "delete statement"
   }
   survivors {
-    position: "harden.go:496:3"
+    position: "harden.go:541:3"
     operator: "delete statement"
   }
   survivors {
-    position: "harden.go:506:3"
+    position: "harden.go:551:3"
     operator: "delete statement"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/harden.TestRunAndRecords"
-  witnesses: "github.com/greatliontech/stipulator/internal/records.TestHardeningGeneratorKeepsPaceWithSchema"
-  witnesses: "github.com/greatliontech/stipulator/internal/records.TestPropHardeningRenderRoundTrip"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/harden.TestRunAndRecords"
+    body_hash: "10cd0903787a85b605a5bb4708b4cfc2450556664f3b2d317530a681ca96d446"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/records.TestHardeningGeneratorKeepsPaceWithSchema"
+    body_hash: "8226f3c54a5a464495e9bf59ac4cedafeb49c607f6b8a194a2cf257d90f2f6cf"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/records.TestPropHardeningRenderRoundTrip"
+    body_hash: "015140f550b36f7e5af81662596425b2279ae3999d3c204860fcf753b3b735d0"
+  }
   operators: "go/2"
-  body_line: 472
+  body_line: 517
   budget: 24
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

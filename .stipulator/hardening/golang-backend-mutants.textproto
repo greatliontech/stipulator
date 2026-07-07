@@ -32,7 +32,10 @@ records {
     position: "harden.go:198:47"
     operator: "&& -> ||"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestMutants"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestMutants"
+    body_hash: "360101bb1fd6295918f5c0356f3be6da448558e7533d774034c3910eb8529e22"
+  }
   operators: "go/2"
   body_line: 154
   budget: 24

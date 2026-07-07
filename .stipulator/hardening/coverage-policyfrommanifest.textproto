@@ -11,7 +11,10 @@ records {
     position: "coverage.go:130:4"
     operator: "continue -> break"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/coverage.TestPolicyOverrides"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/coverage.TestPolicyOverrides"
+    body_hash: "a8e865f09f784005c58121da3985d0b488bcc0e246fc9ca1a1ec37550d1ef399"
+  }
   operators: "go/2"
   body_line: 126
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"

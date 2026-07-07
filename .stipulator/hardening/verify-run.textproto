@@ -4,49 +4,67 @@
 records {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.Run"
-  body_hash: "0e62ca060e2525180c2bed801dcc6db63126793290dc3faa8a60e7652d5078b2"
+  body_hash: "12dd72e36e8ae074a9cff067b5e43844c28f338042a58ab85917e2ac2470016e"
   mutants: 24
   killed: 16
   survivors {
-    position: "verify.go:438:2"
+    position: "verify.go:465:2"
     operator: "delete statement"
   }
   survivors {
-    position: "verify.go:249:4"
+    position: "verify.go:276:4"
     operator: "drop assignment"
   }
   survivors {
-    position: "verify.go:247:5"
+    position: "verify.go:274:5"
     operator: "delete statement"
   }
   survivors {
-    position: "verify.go:253:5"
+    position: "verify.go:280:5"
     operator: "delete statement"
   }
   survivors {
-    position: "verify.go:254:5"
+    position: "verify.go:281:5"
     operator: "drop assignment"
   }
   survivors {
-    position: "verify.go:258:5"
+    position: "verify.go:285:5"
     operator: "drop assignment"
   }
   survivors {
-    position: "verify.go:262:5"
+    position: "verify.go:289:5"
     operator: "drop assignment"
   }
   survivors {
-    position: "verify.go:266:5"
+    position: "verify.go:293:5"
     operator: "drop assignment"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestFixtureModule"
-  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestWorkspaceMembers"
-  witnesses: "github.com/greatliontech/stipulator/internal/verify.TestBackendResolution"
-  witnesses: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
-  witnesses: "github.com/greatliontech/stipulator/internal/verify.TestPropDanglingRecordsAreProblems"
-  witnesses: "github.com/greatliontech/stipulator/internal/verify.TestWitnessCorrelation"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestFixtureModule"
+    body_hash: "ec7d3f976fff6ebd903f05f03fe32ca91d11db79c9eb9b086f616aa688aba682"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestWorkspaceMembers"
+    body_hash: "0bdd3f0f4981544cf26c30da5ddbb68124a84723bb686ff84b89a2d24a09cb58"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/verify.TestBackendResolution"
+    body_hash: "c76533bf9e9fe013eb67361a1d03dfd31c10691ac99dedc8a282229c92efeb48"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
+    body_hash: "4472759eeaa03e90ac7f89ec01bfb34f3b2a0f1069cffba690eb55aaaaa336d1"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/verify.TestPropDanglingRecordsAreProblems"
+    body_hash: "54b133213b72b7ba6c7150b70725e2922c21ba2866e81a580f14ce03f3f3d8ce"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/verify.TestWitnessCorrelation"
+    body_hash: "feb20264bc2233ca947a8aea26d08f7c299e16d4dfe8911770980559d956c474"
+  }
   operators: "go/2"
-  body_line: 230
+  body_line: 257
   budget: 24
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

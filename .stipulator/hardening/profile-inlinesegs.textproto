@@ -20,7 +20,10 @@ records {
     position: "text.go:47:34"
     operator: "negate condition"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/compile.TestKeywordDiscipline"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/compile.TestKeywordDiscipline"
+    body_hash: "13fd6bb22b87d96fac82e485995078baf8d8b636ef85f87068d9a634f3246edb"
+  }
   operators: "go/2"
   body_line: 33
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"

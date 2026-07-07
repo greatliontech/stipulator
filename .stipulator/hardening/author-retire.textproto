@@ -7,7 +7,10 @@ records {
   body_hash: "b9088dcb2e2474e64a6f71efc558842a93f33a0289d255f123c033b9c974c8d7"
   mutants: 0
   killed: 0
-  witnesses: "github.com/greatliontech/stipulator/internal/author.TestRetire"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/author.TestRetire"
+    body_hash: "cb52cd4a8d3368a293b9454405f72290706489503e9d54148cba102c9a67ce55"
+  }
   operators: "go/2"
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

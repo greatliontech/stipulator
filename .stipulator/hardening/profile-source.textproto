@@ -8,7 +8,10 @@ records {
   mutants: 0
   killed: 0
   discarded: 1
-  witnesses: "github.com/greatliontech/stipulator/internal/compile.TestRequirementLead"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/compile.TestRequirementLead"
+    body_hash: "804a61d0308e8990e2904626267bc2035021c870040d977c5e479194adf1cda4"
+  }
   operators: "go/2"
   body_line: 175
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"

@@ -6,8 +6,15 @@ records {
   symbol: "github.com/greatliontech/stipulator/internal/index.Stale"
   body_hash: "f0455f201aa28963c6d75b85994a5af5fadfd0c79c39a7b24144358d52463f21"
   mutants: 8
-  killed: 8
-  witnesses: "github.com/greatliontech/stipulator/internal/index.TestStale"
+  killed: 7
+  survivors {
+    position: "index.go:91:2"
+    operator: "delete statement"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/index.TestStale"
+    body_hash: "87a731946edd9aaadb5de6d6df029bb3729780aebf1afeedfc30d13786d14ff4"
+  }
   operators: "go/2"
   body_line: 77
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"

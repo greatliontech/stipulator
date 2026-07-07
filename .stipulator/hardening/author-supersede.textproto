@@ -8,11 +8,14 @@ records {
   mutants: 4
   killed: 3
   survivors {
-    position: "dispose.go:81:15"
+    position: "dispose.go:87:15"
     operator: "zero return"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/author.TestSupersede"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/author.TestSupersede"
+    body_hash: "7db528401c7e631618805e82b1e16997004642292d335dc25c263e74ea427685"
+  }
   operators: "go/2"
-  body_line: 79
+  body_line: 85
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

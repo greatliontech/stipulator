@@ -8,39 +8,23 @@ records {
   mutants: 21
   killed: 0
   survivors {
-    position: "server.go:51:9"
+    position: "server.go:55:9"
     operator: "zero return"
   }
   survivors {
-    position: "server.go:52:35"
+    position: "server.go:56:35"
     operator: "zero return"
   }
   survivors {
-    position: "server.go:57:7"
+    position: "server.go:61:7"
     operator: "negate condition"
   }
   survivors {
-    position: "server.go:57:11"
+    position: "server.go:61:11"
     operator: "!= -> =="
   }
   survivors {
-    position: "server.go:58:17"
-    operator: "zero return"
-  }
-  survivors {
-    position: "server.go:63:7"
-    operator: "negate condition"
-  }
-  survivors {
-    position: "server.go:63:20"
-    operator: "== -> !="
-  }
-  survivors {
-    position: "server.go:63:23"
-    operator: "increment literal"
-  }
-  survivors {
-    position: "server.go:64:17"
+    position: "server.go:62:17"
     operator: "zero return"
   }
   survivors {
@@ -48,52 +32,74 @@ records {
     operator: "negate condition"
   }
   survivors {
-    position: "server.go:67:14"
+    position: "server.go:67:20"
     operator: "== -> !="
   }
   survivors {
-    position: "server.go:67:17"
+    position: "server.go:67:23"
     operator: "increment literal"
   }
   survivors {
-    position: "server.go:68:5"
-    operator: "drop assignment"
+    position: "server.go:68:17"
+    operator: "zero return"
   }
   survivors {
-    position: "server.go:68:14"
-    operator: "increment literal"
-  }
-  survivors {
-    position: "server.go:74:54"
+    position: "server.go:71:7"
     operator: "negate condition"
   }
   survivors {
-    position: "server.go:74:46"
+    position: "server.go:71:14"
+    operator: "== -> !="
+  }
+  survivors {
+    position: "server.go:71:17"
     operator: "increment literal"
   }
   survivors {
-    position: "server.go:74:58"
+    position: "server.go:72:5"
+    operator: "drop assignment"
+  }
+  survivors {
+    position: "server.go:72:14"
+    operator: "increment literal"
+  }
+  survivors {
+    position: "server.go:78:54"
+    operator: "negate condition"
+  }
+  survivors {
+    position: "server.go:78:46"
+    operator: "increment literal"
+  }
+  survivors {
+    position: "server.go:78:58"
     operator: "!= -> =="
   }
   survivors {
-    position: "server.go:75:12"
+    position: "server.go:79:12"
     operator: "zero return"
   }
   survivors {
-    position: "server.go:77:11"
+    position: "server.go:81:11"
     operator: "zero return"
   }
   survivors {
-    position: "server.go:77:39"
+    position: "server.go:81:39"
     operator: "increment literal"
   }
   survivors {
-    position: "server.go:80:11"
+    position: "server.go:84:11"
     operator: "zero return"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestBindToolWritesConfined"
-  witnesses: "github.com/greatliontech/stipulator/internal/mcpserver.TestResourceIndexAndReads"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestBindToolWritesConfined"
+    body_hash: "c263b3ff0c1ff2406bdc48d675c471c049fd820922e166f9f2c978533e1d9541"
+  }
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestResourceIndexAndReads"
+    body_hash: "22f03ae062205003a9c1dbf0b736aa1c205fa1f56132bfac4f65e6d6df528b4e"
+  }
   operators: "go/2"
-  body_line: 50
+  body_line: 54
   toolchain: "go1.26.4-X:nodwarf5 linux/amd64"
 }

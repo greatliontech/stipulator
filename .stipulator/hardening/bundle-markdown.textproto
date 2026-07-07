@@ -80,7 +80,10 @@ records {
     position: "bundle.go:220:25"
     operator: "increment literal"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/bundle.TestBundleSelfContained"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/bundle.TestBundleSelfContained"
+    body_hash: "92e2ce86c38ca3bd26b22b5d1e86e7f4b0d0442282919bb2bb375b31938f790f"
+  }
   operators: "go/2"
   body_line: 181
   budget: 24

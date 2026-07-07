@@ -44,7 +44,10 @@ records {
     position: "slice.go:42:7"
     operator: "force true"
   }
-  witnesses: "github.com/greatliontech/stipulator/internal/backends/golang.TestSlice"
+  witness_pins {
+    symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestSlice"
+    body_hash: "b1cfd579915026c2301599b216877fd5722b219e76635459a6ac5e42aa7d29dd"
+  }
   operators: "go/2"
   body_line: 16
   budget: 24
