@@ -145,6 +145,10 @@ func (s *Server) MCP() *mcp.Server {
 		Description: "Apply a spec-change disposition: kind editorial (re-pin after meaning-preserving edit), retire (tombstone a removed identity), or supersede (tombstone sources, retarget bindings to declaring successors).",
 	}, s.toolDispose)
 	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "prune",
+		Description: "Delete resolved gap records — gaps whose requirement has reached the covered bucket, satisfied dead weight the gate advertises. Pass check=true to report what would be pruned without deleting. Writes only under .stipulator/gaps/.",
+	}, s.toolPrune)
+	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "context",
 		Description: "Per-requirement dossier for ids (comma-separated): clause text with kind and keyword, coverage bucket with reasons, open gap, attestation, bindings with witness class and pin freshness, hardening roll-ups, and closure seeds. Pass slice=true for the code-slice declaration frontier. Facts only — selection is yours.",
 	}, s.toolContext)
@@ -711,6 +715,56 @@ func (s *Server) toolDispose(ctx context.Context, req *mcp.CallToolRequest, in d
 			return nil, writeOut{}, err
 		}
 		out.Wrote = append(out.Wrote, up.Path)
+	}
+	return nil, out, nil
+}
+
+type pruneIn struct {
+	Check bool `json:"check,omitempty" jsonschema:"report which resolved gaps would be pruned, deleting nothing"`
+}
+
+// toolPrune deletes resolved gap records. Detecting resolution is the same
+// verify+coverage the gate performs — a resolved gap is one whose
+// requirement has reached the covered bucket — and pruning is refused on a
+// shaky reading: a verification problem could misreport a bucket and prune a
+// still-load-bearing gap. It writes only under .stipulator/gaps/.
+func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pruneIn) (*mcp.CallToolResult, writeOut, error) {
+	spec, rep, store, err := s.verifyPipeline(false)
+	if err != nil {
+		return nil, writeOut{}, err
+	}
+	if len(rep.Problems) > 0 {
+		msgs := make([]string, 0, len(rep.Problems))
+		for _, p := range rep.Problems {
+			msgs = append(msgs, p.String())
+		}
+		return nil, writeOut{}, fmt.Errorf("verification problems:\n%s", strings.Join(msgs, "\n"))
+	}
+	pol, err := s.policy()
+	if err != nil {
+		return nil, writeOut{}, err
+	}
+	cov := coverage.Evaluate(spec, rep, store, true, pol)
+	resolved := map[string]bool{}
+	for _, g := range cov.Gaps {
+		if g.State == coverage.Resolved {
+			resolved[g.RequirementId] = true
+		}
+	}
+	prunes := author.PruneResolvedGaps(store, resolved)
+	if in.Check {
+		out := writeOut{}
+		for _, up := range prunes {
+			out.Notes = append(out.Notes, "resolved gap lingers: "+up.Path)
+		}
+		return nil, out, nil
+	}
+	out := writeOut{}
+	for _, up := range prunes {
+		if err := s.remove(up.Path); err != nil {
+			return nil, writeOut{}, err
+		}
+		out.Deleted = append(out.Deleted, up.Path)
 	}
 	return nil, out, nil
 }

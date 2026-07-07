@@ -332,7 +332,7 @@ func TestToolListExact(t *testing.T) {
 	for _, tool := range list.Tools {
 		got[tool.Name] = true
 	}
-	want := []string{"compile", "verify", "gate", "bind", "unbind", "gap", "pin", "read_spec", "context", "partitions", "dispose", "harden", "attest_survivor", "attest_requirement"}
+	want := []string{"compile", "verify", "gate", "bind", "unbind", "gap", "pin", "prune", "read_spec", "context", "partitions", "dispose", "harden", "attest_survivor", "attest_requirement"}
 	for _, w := range want {
 		if !got[w] {
 			t.Fatalf("tool %s missing from the wire list: %v", w, got)
@@ -379,6 +379,53 @@ func TestDisposeToolRetire(t *testing.T) {
 	}})
 	if err != nil || !res.IsError {
 		t.Fatalf("unknown kind accepted: %v %v", err, res)
+	}
+}
+
+// TestPruneTool exercises the wire prune verb: a gap on a now-covered
+// requirement is resolved dead weight — check=true reports it without
+// deleting, and the plain call deletes exactly that record and nothing else.
+func TestPruneTool(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-tools", "REQ-gap-resolved-pruned")
+	gapPath := ".stipulator/gaps/m-a.textproto"
+	openGapPath := ".stipulator/gaps/m-b.textproto"
+	sess, writes := harness(t, map[string]string{
+		".stipulator/bindings/m.textproto": pinnedBinding(t), // REQ-m-a covered
+		// Resolved: its requirement is covered.
+		gapPath: "requirement_id: \"REQ-m-a\"\nreason: \"was deferred\"\nlands { manual { condition: \"x\" } }\n",
+		// Open: REQ-m-b is uncovered, so this gap is load-bearing and must survive.
+		openGapPath: "requirement_id: \"REQ-m-b\"\nreason: \"later\"\nlands { manual { condition: \"x\" } }\n",
+	})
+
+	// check=true reports the resolved gap and deletes nothing.
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "prune", Arguments: map[string]any{"check": true}})
+	if err != nil || res.IsError {
+		t.Fatalf("prune check: %v %v", err, res)
+	}
+	b, _ := json.Marshal(res.StructuredContent)
+	if !strings.Contains(string(b), "m-a.textproto") {
+		t.Fatalf("check did not report the resolved gap: %s", b)
+	}
+	if _, touched := writes[gapPath]; touched {
+		t.Fatal("check touched the gap record — must be dry-run")
+	}
+
+	// Plain call deletes exactly the resolved gap.
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "prune", Arguments: map[string]any{}})
+	if err != nil || res.IsError {
+		t.Fatalf("prune: %v %v", err, res)
+	}
+	if c, ok := writes[gapPath]; !ok || c != nil {
+		t.Fatalf("resolved gap not deleted (ok=%v content=%v)", ok, c)
+	}
+	// The open gap is load-bearing and must survive — prune deletes only
+	// resolved gaps, never open ones.
+	if _, touched := writes[openGapPath]; touched {
+		t.Fatal("prune deleted an OPEN gap — it must delete only resolved gaps")
+	}
+	b, _ = json.Marshal(res.StructuredContent)
+	if !strings.Contains(string(b), gapPath) {
+		t.Fatalf("deletion not reported in the result: %s", b)
 	}
 }
 

@@ -63,3 +63,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "d4f4c0402c6576cf7ff578d87c4316f36154471fb383db48c1b45c0a5ef28e29"
 }
+
+bindings {
+  requirement_id: "REQ-gap-resolved-pruned"
+  content_hash: "0562f8afc7c913960043640c652447c6be2f32e9671d0411e99c6e4e85c89fdd"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPruneTool"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "71244202993bf7ec2945e9bef99d4153ff8d721dffb8d3783407d79b9f95c648"
+}

@@ -21,7 +21,7 @@ views are the one surface, and a resource duplicate would be
 duplication without a distinct consumer.
 
 **REQ-mcp-tools** (wire): The server MUST expose tools `compile`, `verify`,
-`gate`, `bind`, `unbind`, `gap`, `pin`, `read_spec`, `context`,
+`gate`, `bind`, `unbind`, `gap`, `pin`, `prune`, `read_spec`, `context`,
 `partitions`, `dispose`, `harden`, `attest_survivor`, and
 `attest_requirement`, mirroring the operation semantics exactly, with
 report-shaped results rendered from the report messages as JSON.

@@ -39,7 +39,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-tools"
-  content_hash: "1c424a757c589391e5d88ee68b4992c4de1e272fca74b68de8c0e9486c38eb57"
+  content_hash: "52c9dd444fde4b84adfd7f6d51d5ca65cd352db2f120e303f4acd83ec0bd5241"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.Server.MCP"
   role: BINDING_ROLE_IMPLEMENTS
@@ -48,7 +48,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-tools"
-  content_hash: "1c424a757c589391e5d88ee68b4992c4de1e272fca74b68de8c0e9486c38eb57"
+  content_hash: "52c9dd444fde4b84adfd7f6d51d5ca65cd352db2f120e303f4acd83ec0bd5241"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGateTool"
   role: BINDING_ROLE_TESTS
@@ -75,7 +75,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-tools"
-  content_hash: "1c424a757c589391e5d88ee68b4992c4de1e272fca74b68de8c0e9486c38eb57"
+  content_hash: "52c9dd444fde4b84adfd7f6d51d5ca65cd352db2f120e303f4acd83ec0bd5241"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestToolListExact"
   role: BINDING_ROLE_TESTS
@@ -84,7 +84,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-tools"
-  content_hash: "1c424a757c589391e5d88ee68b4992c4de1e272fca74b68de8c0e9486c38eb57"
+  content_hash: "52c9dd444fde4b84adfd7f6d51d5ca65cd352db2f120e303f4acd83ec0bd5241"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestAttestTools"
   role: BINDING_ROLE_TESTS
@@ -179,4 +179,13 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/views.TestCoverageSummaryPinsCountsAndGapState"
   role: BINDING_ROLE_TESTS
   shape_hash: "e0e55e91f7771b6035f16bcbf666b2c66213e5567147a0b9bf03225245903d53"
+}
+
+bindings {
+  requirement_id: "REQ-mcp-tools"
+  content_hash: "52c9dd444fde4b84adfd7f6d51d5ca65cd352db2f120e303f4acd83ec0bd5241"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPruneTool"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "71244202993bf7ec2945e9bef99d4153ff8d721dffb8d3783407d79b9f95c648"
 }
