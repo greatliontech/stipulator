@@ -193,27 +193,68 @@ func CoverageView(cov *coverage.Report, facts Facts, view string, scope Scope) (
 		out.SetPolicyOverrides(cov.PolicyOverrides)
 		return out, nil
 	case "reds":
-		red := kept[:0:0]
+		var red []coverage.Requirement
 		for _, r := range kept {
 			switch r.Bucket {
 			case coverage.Uncovered, coverage.Stale, coverage.Broken:
 				red = append(red, r)
 			}
 		}
-		return coverageReportProto(cov, red), nil
+		return coverageReportProto(cov, red, scopeKeep(scope, keptIDs)), nil
 	case "full":
-		return coverageReportProto(cov, kept), nil
+		return coverageReportProto(cov, kept, scopeKeep(scope, keptIDs)), nil
 	}
 	return nil, fmt.Errorf("unknown view %q (summary, reds, full)", view)
 }
 
-// coverageReportProto renders the report wire message with the rows
-// replaced by the given slice — everything else (gaps, violations,
-// policy overrides) stays the owner's.
-func coverageReportProto(cov *coverage.Report, rows []coverage.Requirement) *stipulatorv1.CoverageReport {
+// scopeKeep returns the requirement-id set to narrow a report's gaps and
+// violations to, or nil for an unscoped call — where the whole report
+// passes through, so an orphan gap (one naming a requirement absent from
+// the corpus) is still emitted rather than silently dropped.
+func scopeKeep(scope Scope, keptIDs map[string]bool) map[string]bool {
+	if scope.Empty() {
+		return nil
+	}
+	return keptIDs
+}
+
+// ScopeReport returns a copy of cov narrowed to a scope: Requirements set
+// to rows, and — when keep is non-nil — its Gaps and Violations filtered to
+// the kept requirement ids, so a scoped view is not polluted by out-of-scope
+// entries. keep==nil leaves gaps and violations untouched (an unscoped
+// call). The gate verdict is deliberately NOT re-derived here: a scoped
+// slice with no in-scope violation says nothing about whether the tree
+// passes, so callers keep the global GatePasses().
+func ScopeReport(cov *coverage.Report, rows []coverage.Requirement, keep map[string]bool) coverage.Report {
 	sliced := *cov
 	sliced.Requirements = rows
-	return sliced.Proto()
+	if keep != nil {
+		gaps := make([]coverage.Gap, 0, len(cov.Gaps))
+		for _, g := range cov.Gaps {
+			if keep[g.RequirementId] {
+				gaps = append(gaps, g)
+			}
+		}
+		sliced.Gaps = gaps
+		viol := make([]string, 0, len(cov.Violations))
+		for _, v := range cov.Violations {
+			if keep[v] {
+				viol = append(viol, v)
+			}
+		}
+		sliced.Violations = viol
+	}
+	return sliced
+}
+
+// coverageReportProto renders the report wire message with the rows
+// replaced by the given slice and gaps/violations narrowed to the scope
+// (keep); the gate verdict it carries stays the GLOBAL one.
+func coverageReportProto(cov *coverage.Report, rows []coverage.Requirement, keep map[string]bool) *stipulatorv1.CoverageReport {
+	sliced := ScopeReport(cov, rows, keep)
+	out := sliced.Proto()
+	out.SetGatePasses(cov.GatePasses())
+	return out
 }
 
 // VerifyView renders the verification report at a view: summary (record

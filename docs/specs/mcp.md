@@ -33,7 +33,11 @@ attestation prose) and scope filters (identifiers, bucket, identifier
 glob, document-or-symbol path prefix) opt-in per call, every view
 rendered by one renderer per report so no two surfaces can drift, and an
 unknown view or scope word refused — a typo never reads as an empty
-result.
+result. A scope narrows the WHOLE report, not only its rows: the gap and
+violation lists a view carries are filtered to the same requirements, so
+filtered triage is never polluted by out-of-scope entries. The gate
+verdict a view reports stays the GLOBAL one — a scoped slice with no
+in-scope violation says nothing about whether the tree passes.
 
 **REQ-mcp-writes-confined** (behavior): The server MUST NOT write outside
 the record stores under `.stipulator/` — it never edits spec documents or

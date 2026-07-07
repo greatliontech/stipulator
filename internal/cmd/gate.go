@@ -79,8 +79,14 @@ func gateCmd() *cobra.Command {
 				if verr != nil {
 					return verr
 				}
-				sliced := *cov
-				sliced.Requirements = rows
+				var keep map[string]bool
+				if !scope.Empty() {
+					keep = make(map[string]bool, len(rows))
+					for _, r := range rows {
+						keep[r.Id] = true
+					}
+				}
+				sliced := views.ScopeReport(cov, rows, keep)
 				printCoverage(&sliced)
 			}
 			if !cov.GatePasses() {

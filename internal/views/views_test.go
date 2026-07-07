@@ -95,6 +95,131 @@ func TestVerifyViews(t *testing.T) {
 	}
 }
 
+// TestCoverageViewScopesGapsAndViolations pins that a scope narrows the
+// WHOLE report, not just the requirement rows: the reds and full views must
+// filter gaps and violations to the scope, so filtered triage is not
+// polluted by out-of-scope entries — while the gate verdict stays global.
+func TestCoverageViewScopesGapsAndViolations(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-views")
+	cov := &coverage.Report{
+		Requirements: []coverage.Requirement{
+			{Id: "REQ-corpus-a", Bucket: coverage.Uncovered}, // gapped
+			{Id: "REQ-corpus-b", Bucket: coverage.Uncovered}, // violation
+			{Id: "REQ-arch-x", Bucket: coverage.Uncovered},   // gapped, out of scope
+			{Id: "REQ-arch-y", Bucket: coverage.Uncovered},   // violation, out of scope
+		},
+		Gaps: []coverage.Gap{
+			{RequirementId: "REQ-corpus-a", State: coverage.Open},
+			{RequirementId: "REQ-arch-x", State: coverage.Open},
+			// An orphan gap: its requirement is absent from Requirements, so
+			// it must survive the UNSCOPED view rather than be dropped.
+			{RequirementId: "REQ-gone", State: coverage.Open},
+		},
+		Violations: []string{"REQ-arch-y", "REQ-corpus-b"},
+	}
+	facts := Facts{Doc: map[string]string{}, Symbols: map[string][]string{}}
+
+	for _, view := range []string{"reds", "full"} {
+		m, err := CoverageView(cov, facts, view, Scope{Filter: "REQ-corpus-*"})
+		if err != nil {
+			t.Fatalf("%s: %v", view, err)
+		}
+		rep := m.(*stipulatorv1.CoverageReport)
+		for _, g := range rep.GetGaps() {
+			if !strings.HasPrefix(g.GetRequirementId(), "REQ-corpus-") {
+				t.Fatalf("%s view leaked out-of-scope gap %q", view, g.GetRequirementId())
+			}
+		}
+		if len(rep.GetGaps()) != 1 {
+			t.Fatalf("%s: want the one in-scope gap, got %v", view, rep.GetGaps())
+		}
+		for _, v := range rep.GetViolations() {
+			if !strings.HasPrefix(v, "REQ-corpus-") {
+				t.Fatalf("%s view leaked out-of-scope violation %q", view, v)
+			}
+		}
+		if len(rep.GetViolations()) != 1 {
+			t.Fatalf("%s: want the one in-scope violation, got %v", view, rep.GetViolations())
+		}
+		// The verdict is global: the tree fails on out-of-scope violations,
+		// so a scoped slice must not report a passing gate.
+		if rep.GetGatePasses() {
+			t.Fatalf("%s view reported a passing gate for a failing tree", view)
+		}
+	}
+
+	// Global verdict under a scope that contains NO in-scope violation:
+	// REQ-corpus-a is gapped, not a violation, so the scoped slice's
+	// violations are empty — yet the tree fails on out-of-scope violations,
+	// so the reported gate must still be false. This is what distinguishes
+	// the global verdict from the slice's own.
+	m0, err := CoverageView(cov, facts, "full", Scope{Ids: []string{"REQ-corpus-a"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep0 := m0.(*stipulatorv1.CoverageReport)
+	if len(rep0.GetViolations()) != 0 {
+		t.Fatalf("scope with no in-scope violation still listed some: %v", rep0.GetViolations())
+	}
+	if rep0.GetGatePasses() {
+		t.Fatal("empty scoped violations reported a passing gate for a failing tree")
+	}
+
+	// Unscoped: every gap survives, including the orphan; the verdict is
+	// still global.
+	m, err := CoverageView(cov, facts, "full", Scope{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep := m.(*stipulatorv1.CoverageReport)
+	if len(rep.GetGaps()) != 3 {
+		t.Fatalf("unscoped view dropped a gap (orphan pruned?): %v", rep.GetGaps())
+	}
+	if len(rep.GetViolations()) != 2 || rep.GetGatePasses() {
+		t.Fatalf("unscoped violations/verdict wrong: %v pass=%v", rep.GetViolations(), rep.GetGatePasses())
+	}
+
+	// An unknown view is refused, never rendered as an empty result
+	// (REQ-mcp-views: a typo never reads as empty).
+	if _, err := CoverageView(cov, facts, "nope", Scope{}); err == nil {
+		t.Fatal("unknown coverage view accepted instead of refused")
+	}
+}
+
+// TestCoverageSummaryPinsCountsAndGapState gives the summary counters
+// teeth: every bucket count and the open-gap tally must move with the data,
+// so a flipped counter or a dropped resolved-gap guard cannot pass silently.
+func TestCoverageSummaryPinsCountsAndGapState(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-views")
+	cov := &coverage.Report{
+		Requirements: []coverage.Requirement{
+			{Id: "REQ-a", Bucket: coverage.Covered},
+			{Id: "REQ-b", Bucket: coverage.Attested},
+			{Id: "REQ-c", Bucket: coverage.Uncovered},
+			{Id: "REQ-d", Bucket: coverage.Stale},
+			{Id: "REQ-e", Bucket: coverage.Broken},
+			{Id: "REQ-f", Bucket: coverage.Exempt},
+		},
+		Gaps: []coverage.Gap{
+			{RequirementId: "REQ-c", State: coverage.Open},
+			{RequirementId: "REQ-a", State: coverage.Resolved}, // excluded from the tally
+		},
+	}
+	facts := Facts{Doc: map[string]string{}, Symbols: map[string][]string{}}
+	m, err := CoverageView(cov, facts, "summary", Scope{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := m.(*stipulatorv1.CoverageSummary)
+	if sum.GetCovered() != 1 || sum.GetAttested() != 1 || sum.GetUncovered() != 1 ||
+		sum.GetStale() != 1 || sum.GetBroken() != 1 || sum.GetExempt() != 1 {
+		t.Fatalf("bucket counts each want 1: %+v", sum)
+	}
+	if sum.GetGapsOpen() != 1 {
+		t.Fatalf("gaps_open = %d, want 1 (the resolved gap is excluded)", sum.GetGapsOpen())
+	}
+}
+
 // TestScopeValidate pins the typo rule: unknown vocabulary refuses
 // before filtering, so a misspelling never reads as an empty result.
 func TestScopeValidate(t *testing.T) {
