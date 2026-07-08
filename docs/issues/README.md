@@ -34,6 +34,19 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   only, so analyzer witnesses get no teeth check; add a structural mutation class (inject a
   forbidden import / break an asserted method set, require the witness to fail). *Lands: when an
   analyzer witness needs adequacy evidence.*
+- **[harden-staged-delta-scope](harden-staged-delta-scope.md)** — harden does not report which
+  staged-delta surfaces it covers and which need manual mutation. *Lands: when a consuming repo
+  uses harden as the adversarial-loop entry point for a staged change set.*
+- **[harden-ephemeral-mutants](harden-ephemeral-mutants.md)** — one-off manual mutants have no
+  standardized apply-run-restore evidence path. *Lands: when a consuming repo needs to prove a
+  manual mutation that harden cannot generate.*
+- **[harden-integration-recipes](harden-integration-recipes.md)** — generated-data drift,
+  parser-guard, resolver-precedence, and caller-mapping mutants recur as recipes outside the body
+  operator set. *Lands: when a corpus repeatedly needs manual mutants for generated data,
+  resolver seams, or caller mappings.*
+- **[harden-new-coverage-reminder](harden-new-coverage-reminder.md)** — gate/verify do not remind
+  when newly covered requirements have no fresh hardening sheet. *Lands: when gate/verify output
+  is used to drive the full adversarial loop for a change set.*
 - **[term-matcher-ascii-boundaries](term-matcher-ascii-boundaries.md)** — `\b` is ASCII-only,
   so non-ASCII term names may never match a use site (silently missing uses-term edges); the
   lint mirrors the same semantics deliberately — fix both together on rune boundaries. *Lands:
