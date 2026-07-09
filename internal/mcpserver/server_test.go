@@ -343,6 +343,73 @@ func TestToolListExact(t *testing.T) {
 	}
 }
 
+// TestCompileToolCounts pins the compile result's two arms: a clean corpus
+// reports the IR counts, an erroring corpus omits them entirely rather than
+// reporting a misleading zero — absent means "no IR, not computed".
+func TestCompileToolCounts(t *testing.T) {
+	// Clean arm: counts present and correct.
+	sess, _ := harness(t, nil)
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "compile", Arguments: map[string]any{}})
+	if err != nil || res.IsError {
+		t.Fatalf("compile clean: %v %v", err, res)
+	}
+	b, _ := json.Marshal(res.StructuredContent)
+	var clean struct {
+		Diagnostics  []string `json:"diagnostics"`
+		Requirements *int     `json:"requirements"`
+		Terms        *int     `json:"terms"`
+		Edges        *int     `json:"edges"`
+	}
+	if err := json.Unmarshal(b, &clean); err != nil {
+		t.Fatal(err)
+	}
+	if len(clean.Diagnostics) != 0 {
+		t.Fatalf("clean corpus has diagnostics: %s", b)
+	}
+	if clean.Requirements == nil || *clean.Requirements != 2 {
+		t.Fatalf("requirements count wrong: %s", b)
+	}
+	if clean.Terms == nil || *clean.Terms != 1 {
+		t.Fatalf("terms count wrong: %s", b)
+	}
+	if clean.Edges == nil {
+		t.Fatalf("edges count absent on clean corpus: %s", b)
+	}
+
+	// Error arm: a keyword outside a requirement fails compilation, so there
+	// is no IR. The counts must be ABSENT, never a zero that reads as
+	// "nothing parsed".
+	badSess, _ := harness(t, map[string]string{
+		"specs/bad.md": "# Bad\n\nThe system MUST work here.\n",
+	})
+	res, err = badSess.CallTool(context.Background(), &mcp.CallToolParams{Name: "compile", Arguments: map[string]any{}})
+	if err != nil || res.IsError {
+		t.Fatalf("compile error arm: %v %v", err, res)
+	}
+	b, _ = json.Marshal(res.StructuredContent)
+	var bad struct {
+		Diagnostics  []string `json:"diagnostics"`
+		Requirements *int     `json:"requirements"`
+		Terms        *int     `json:"terms"`
+		Edges        *int     `json:"edges"`
+	}
+	if err := json.Unmarshal(b, &bad); err != nil {
+		t.Fatal(err)
+	}
+	if len(bad.Diagnostics) == 0 {
+		t.Fatalf("erroring corpus reported no diagnostics: %s", b)
+	}
+	if bad.Requirements != nil || bad.Terms != nil || bad.Edges != nil {
+		t.Fatalf("counts present on error arm, should be absent: %s", b)
+	}
+	// The false zero must not appear on the wire at all.
+	for _, k := range []string{"requirements", "terms", "edges"} {
+		if strings.Contains(string(b), k) {
+			t.Fatalf("count key %q leaked onto error arm: %s", k, b)
+		}
+	}
+}
+
 // TestDisposeToolRetire exercises the wire deletion path: retiring an
 // identity whose binding and gap records exist but whose requirement is
 // gone writes the tombstone and deletes the records.

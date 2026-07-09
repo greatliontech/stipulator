@@ -251,11 +251,15 @@ func (s *Server) compileFresh() (*stipulatorv1.Spec, error) {
 
 // --- tools ---
 
+// compileOut carries the diagnostics and, when the corpus is clean, the
+// IR's counts. The counts are a property of the IR, and an error-severity
+// diagnostic leaves no IR — so they are pointers, absent (not zero) on
+// error: absent means "not computed", a present 0 means "genuinely empty".
 type compileOut struct {
 	Diagnostics  []string `json:"diagnostics"`
-	Requirements int      `json:"requirements"`
-	Terms        int      `json:"terms"`
-	Edges        int      `json:"edges"`
+	Requirements *int     `json:"requirements,omitempty"`
+	Terms        *int     `json:"terms,omitempty"`
+	Edges        *int     `json:"edges,omitempty"`
 }
 
 func (s *Server) toolCompile(ctx context.Context, req *mcp.CallToolRequest, in struct{}) (*mcp.CallToolResult, compileOut, error) {
@@ -268,9 +272,8 @@ func (s *Server) toolCompile(ctx context.Context, req *mcp.CallToolRequest, in s
 		out.Diagnostics = append(out.Diagnostics, d.String())
 	}
 	if spec != nil {
-		out.Requirements = len(spec.GetRequirements())
-		out.Terms = len(spec.GetTerms())
-		out.Edges = len(spec.GetEdges())
+		reqs, terms, edges := len(spec.GetRequirements()), len(spec.GetTerms()), len(spec.GetEdges())
+		out.Requirements, out.Terms, out.Edges = &reqs, &terms, &edges
 	}
 	return nil, out, nil
 }
