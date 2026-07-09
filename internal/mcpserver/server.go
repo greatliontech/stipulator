@@ -52,7 +52,7 @@ type Server struct {
 	stagedScope func(spec *stipulatorv1.Spec, store *records.Store) (*harden.StagedReport, error)
 	// coverageReminder lists covered bodies with no fresh kill-sheet; it
 	// needs the backend and toolchain, so it too is dir-bound.
-	coverageReminder func(spec *stipulatorv1.Spec, store *records.Store, covered []string) (*harden.Reminder, error)
+	coverageReminder func(spec *stipulatorv1.Spec, store *records.Store, covered []string, findings []harden.EngineFinding) (*harden.Reminder, error)
 	// ephemeral runs one manual mutant through an overlay; it needs the tree
 	// root to run go test, so it is dir-bound.
 	ephemeral func(ctx context.Context, file string, mutant []byte, pkg, run string) (*harden.EphemeralResult, error)
@@ -102,7 +102,7 @@ func New(dir string) *Server {
 			}
 			return harden.StagedScope(spec, store, gb, changed, head), nil
 		},
-		coverageReminder: func(spec *stipulatorv1.Spec, store *records.Store, covered []string) (*harden.Reminder, error) {
+		coverageReminder: func(spec *stipulatorv1.Spec, store *records.Store, covered []string, findings []harden.EngineFinding) (*harden.Reminder, error) {
 			gb, err := golang.New(dir)
 			if err != nil {
 				return nil, err
@@ -111,7 +111,7 @@ func New(dir string) *Server {
 			if err != nil {
 				return nil, err
 			}
-			return harden.CoverageReminder(spec, store, gb, toolchain, covered)
+			return harden.CoverageReminder(spec, store, gb, toolchain, covered, findings)
 		},
 		ephemeral: func(ctx context.Context, file string, mutant []byte, pkg, run string) (*harden.EphemeralResult, error) {
 			return harden.Ephemeral(ctx, dir, file, mutant, pkg, run, 0)
@@ -421,7 +421,12 @@ func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in gate
 			covered = append(covered, r.Id)
 		}
 	}
-	reminder, rerr := s.coverageReminder(spec, store, covered)
+	findings, ferr := harden.LoadFindings(s.fsys(), harden.FindingsPath)
+	var reminder *harden.Reminder
+	rerr := ferr
+	if rerr == nil {
+		reminder, rerr = s.coverageReminder(spec, store, covered, findings)
+	}
 	foldReminder(out, reminder, rerr)
 	return res, out, nil
 }
@@ -927,7 +932,11 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 		return nil, nil, err
 	}
 	cr := coverage.Evaluate(spec, vr, store, true, pol)
-	dossiers, err := dossier.Build(spec, vr, cr, store, ids)
+	findings, err := harden.LoadFindings(s.fsys(), harden.FindingsPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	dossiers, err := dossier.Build(spec, vr, cr, store, findings, ids)
 	if err != nil {
 		return nil, nil, err
 	}

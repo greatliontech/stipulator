@@ -15,8 +15,10 @@ type SheetState string
 const (
 	// Missing: no recorded sheet keys this symbol.
 	Missing SheetState = "missing"
-	// Stale: a sheet exists but its body/witness/operator/toolchain pins no
-	// longer match the current tree (REQ-harden-records).
+	// Stale: a finding exists but its body/witness/toolchain pins no longer
+	// match the current tree. Operator-set drift is deliberately not judged
+	// here: stipulator cannot know the engine's current operator version,
+	// and the engine re-measures on its own bump (REQ-harden-findings).
 	Stale SheetState = "stale"
 )
 
@@ -28,8 +30,9 @@ type ReminderEntry struct {
 	Requirements []string   `json:"requirements,omitempty"`
 	State        SheetState `json:"state"`
 	// Hardenable is true when a body mutator can break at least one of the
-	// symbol's witnesses — run `harden`. False means no mutation target
-	// (witnessed only by analyzer proofs): the staged-delta report explains.
+	// symbol's witnesses — export targets and run the engine. False means no
+	// mutation target (witnessed only by analyzer proofs): the staged-delta
+	// report explains.
 	Hardenable bool `json:"hardenable"`
 }
 
@@ -39,7 +42,7 @@ type Reminder struct {
 }
 
 // Hardenable returns the entries a body mutator can run — the actionable
-// `harden` targets.
+// mutation targets.
 func (r *Reminder) Hardenable() []ReminderEntry {
 	var out []ReminderEntry
 	for _, e := range r.Entries {
@@ -84,13 +87,14 @@ func ReminderMap(r *Reminder) map[string]any {
 // and are skipped; a body with a current sheet drops off. toolchain is the
 // executing toolchain identity a sheet must match (golang.Toolchain).
 // Advisory only — the caller never gates on it (REQ-harden-coverage-reminder).
-func CoverageReminder(spec *stipulatorv1.Spec, store *records.Store, backend *golang.Backend, toolchain string, covered []string) (*Reminder, error) {
-	prior := map[string]*stipulatorv1.Hardening{}
-	for _, hf := range store.Hardening {
-		for _, rec := range hf.Set.GetRecords() {
-			if _, ok := prior[rec.GetSymbol()]; !ok {
-				prior[rec.GetSymbol()] = rec
-			}
+func CoverageReminder(spec *stipulatorv1.Spec, store *records.Store, backend *golang.Backend, toolchain string, covered []string, findings []EngineFinding) (*Reminder, error) {
+	// First match wins on a duplicate symbol; duplicates occur only in
+	// hand-edited documents.
+	prior := map[string]*EngineFinding{}
+	for i := range findings {
+		f := &findings[i]
+		if _, ok := prior[f.Symbol]; !ok {
+			prior[f.Symbol] = f
 		}
 	}
 
@@ -117,11 +121,10 @@ func CoverageReminder(spec *stipulatorv1.Spec, store *records.Store, backend *go
 			witnessPins = append(witnessPins, WitnessPin{Symbol: w, Hash: wh})
 		}
 		rec, has := prior[t.Symbol]
-		if has && rec.GetBodyHash() == bodyHash &&
-			witnessPinsEqual(rec.GetWitnessPins(), witnessPins) &&
-			rec.GetOperators() == golang.OperatorSet &&
-			rec.GetToolchain() == toolchain {
-			continue // sheet is current — hardened
+		if has && rec.BodyHash == bodyHash &&
+			oraclePinsEqual(rec.Oracle, witnessPins) &&
+			rec.Toolchain == toolchain {
+			continue // the finding is current — hardened
 		}
 		state := Missing
 		if has {
@@ -151,4 +154,24 @@ func intersect(ids []string, set map[string]bool) []string {
 		}
 	}
 	return out
+}
+
+// oraclePinsEqual reports whether the finding's oracle pins match the
+// current witness pins exactly — same test symbols, each at the same body
+// hash — compared as a set, so order never matters. A new or dropped
+// witness, or an edit to one, re-stales the finding.
+func oraclePinsEqual(recorded []OraclePin, current []WitnessPin) bool {
+	if len(recorded) != len(current) {
+		return false
+	}
+	bySym := make(map[string]string, len(recorded))
+	for _, p := range recorded {
+		bySym[p.Symbol] = p.Hash
+	}
+	for _, c := range current {
+		if h, ok := bySym[c.Symbol]; !ok || h != c.Hash {
+			return false
+		}
+	}
+	return true
 }

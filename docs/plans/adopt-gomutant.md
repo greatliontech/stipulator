@@ -10,7 +10,7 @@ versioned findings document by label. Each tool is complete alone.
   and requirement ids, {"stipulatorTargets":1, targets:[{symbol, witnesses,
   requirements}]} — derived by Plan from the binding store, to stdout or
   --out. hardening.md gains the export clause (the wire format is contract).
-- [ ] 2. Findings in: the gate's coverage reminder, views roll-ups, and the
+- [x] 2. Findings in: the gate's coverage reminder, views roll-ups, and the
   context dossier read gomutant's findings document (default
   .gomutant/findings.json at the tree root, overridable), pin freshness
   computed with stipulator's own hashes — canon is deliberately

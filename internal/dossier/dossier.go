@@ -8,6 +8,7 @@ package dossier
 
 import (
 	"fmt"
+	"github.com/greatliontech/stipulator/internal/harden"
 	"sort"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -19,7 +20,7 @@ import (
 
 // Build assembles one dossier per requested id, in request order. An id
 // not in the corpus is an error naming it exactly.
-func Build(spec *stipulatorv1.Spec, vr *verify.Report, cr *coverage.Report, store *records.Store, ids []string) ([]*stipulatorv1.Dossier, error) {
+func Build(spec *stipulatorv1.Spec, vr *verify.Report, cr *coverage.Report, store *records.Store, findings []harden.EngineFinding, ids []string) ([]*stipulatorv1.Dossier, error) {
 	gapStates := map[string]coverage.GapState{}
 	for _, g := range cr.Gaps {
 		gapStates[g.RequirementId] = g.State
@@ -48,10 +49,24 @@ func Build(spec *stipulatorv1.Spec, vr *verify.Report, cr *coverage.Report, stor
 			}
 		}
 	}
-	sheets := map[string]*stipulatorv1.Hardening{}
-	for _, hf := range store.Hardening {
-		for _, rec := range hf.Set.GetRecords() {
-			sheets[rec.GetSymbol()] = rec
+	// Findings join the dossier by LABEL: the engine echoes the requirement
+	// identifiers stipulator exported, so a finding without this
+	// requirement's label — a whole-tree run under oracles no witness
+	// binding vouched — is not evidence here (REQ-harden-findings). First
+	// match wins on a duplicate symbol; duplicates occur only in hand-edited
+	// documents.
+	byLabel := map[string]map[string]*harden.EngineFinding{}
+	for i := range findings {
+		f := &findings[i]
+		for _, label := range f.Labels {
+			m := byLabel[label]
+			if m == nil {
+				m = map[string]*harden.EngineFinding{}
+				byLabel[label] = m
+			}
+			if _, ok := m[f.Symbol]; !ok {
+				m[f.Symbol] = f
+			}
 		}
 	}
 
@@ -89,16 +104,16 @@ func Build(spec *stipulatorv1.Spec, vr *verify.Report, cr *coverage.Report, stor
 		d.SetBindings(wire)
 		var rollups []*stipulatorv1.HardeningRollup
 		for sym := range symbols {
-			rec, ok := sheets[sym]
+			rec, ok := byLabel[id][sym]
 			if !ok {
 				continue
 			}
 			hr := &stipulatorv1.HardeningRollup{}
 			hr.SetSymbol(sym)
-			hr.SetMutants(rec.GetMutants())
-			hr.SetKilled(rec.GetKilled())
-			hr.SetSurvivors(int32(len(rec.GetSurvivors())))
-			hr.SetAttested(int32(len(rec.GetAttested())))
+			hr.SetMutants(int32(rec.Mutants))
+			hr.SetKilled(int32(rec.Killed))
+			hr.SetSurvivors(int32(len(rec.Survivors)))
+			hr.SetAttested(int32(len(rec.Attested)))
 			rollups = append(rollups, hr)
 		}
 		sort.Slice(rollups, func(i, j int) bool { return rollups[i].GetSymbol() < rollups[j].GetSymbol() })

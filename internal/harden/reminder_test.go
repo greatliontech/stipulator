@@ -1,7 +1,6 @@
 package harden
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/greatliontech/stipulator/internal/backends/golang"
@@ -36,33 +35,21 @@ func TestCoverageReminder(t *testing.T) {
 	add := "example.com/fixture/lib.Add"
 	weak := "example.com/fixture/lib.Weak"
 
-	// A sheet current for Add (matching body, witness, operators, toolchain)
-	// and a stale sheet for Weak (wrong body hash).
-	sheet := fmt.Sprintf(`records {
-  backend: "go"
-  symbol: %q
-  body_hash: %q
-  witness_pins { symbol: %q body_hash: %q }
-  operators: %q
-  toolchain: %q
-}
-records {
-  backend: "go"
-  symbol: %q
-  body_hash: "0000000000000000000000000000000000000000000000000000000000000000"
-  operators: %q
-  toolchain: %q
-}
-`,
-		add, hashOf(t, backend, add),
-		"example.com/fixture/lib.TestAdd", hashOf(t, backend, "example.com/fixture/lib.TestAdd"),
-		golang.OperatorSet, tc,
-		weak, golang.OperatorSet, tc)
+	// A finding current for Add (matching body, witness pins, toolchain) and
+	// a stale one for Weak (wrong body hash). The engine's document, as the
+	// engine writes it.
+	findings := []EngineFinding{
+		{Symbol: add, BodyHash: hashOf(t, backend, add),
+			Oracle:    []OraclePin{{Symbol: "example.com/fixture/lib.TestAdd", Hash: hashOf(t, backend, "example.com/fixture/lib.TestAdd")}},
+			Toolchain: tc},
+		{Symbol: weak, BodyHash: "0000000000000000000000000000000000000000000000000000000000000000",
+			Toolchain: tc},
+	}
 
-	spec, store := fixture(t, map[string]string{".stipulator/hardening/r.textproto": sheet})
+	spec, store := fixture(t, nil)
 
 	covered := []string{"REQ-h-strong", "REQ-h-weak", "REQ-h-shared", "REQ-h-typed"}
-	rep, err := CoverageReminder(spec, store, backend, tc, covered)
+	rep, err := CoverageReminder(spec, store, backend, tc, covered, findings)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +74,7 @@ records {
 
 	// With no sheets at all, a covered body is Missing.
 	spec2, store2 := fixture(t, nil)
-	rep2, err := CoverageReminder(spec2, store2, backend, tc, []string{"REQ-h-strong"})
+	rep2, err := CoverageReminder(spec2, store2, backend, tc, []string{"REQ-h-strong"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +85,7 @@ records {
 	// The displayed requirements are the covered subset: Weak implements
 	// REQ-h-weak and REQ-h-shared, but covering only REQ-h-weak lists just
 	// that one — even though freshness still uses the full witness union.
-	rep4, err := CoverageReminder(spec2, store2, backend, tc, []string{"REQ-h-weak"})
+	rep4, err := CoverageReminder(spec2, store2, backend, tc, []string{"REQ-h-weak"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +95,7 @@ records {
 	}
 
 	// A covered body with no witness cannot be hardened.
-	rep3, err := CoverageReminder(spec2, store2, backend, tc, []string{"REQ-h-untested"})
+	rep3, err := CoverageReminder(spec2, store2, backend, tc, []string{"REQ-h-untested"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,35 +106,47 @@ records {
 		t.Fatalf("Hardenable() = %+v, want [Weak]", got)
 	}
 
-	// Each pin is load-bearing: an Add sheet matching every pin but one is
-	// stale, so Add is reminded. The witness case moves the witness body
-	// hash; the others move operators or toolchain.
+	// Each pin stipulator can compute is load-bearing: a finding matching
+	// every pin but one is stale, so Add is reminded. Operator-set drift is
+	// deliberately not judged here — the engine re-measures on its own bump.
 	addBody := hashOf(t, backend, add)
 	testAdd := "example.com/fixture/lib.TestAdd"
 	addWit := hashOf(t, backend, testAdd)
 	for _, c := range []struct {
-		name, wit, ops, chain string
+		name, wit, chain string
 	}{
-		{"wrong-witness-hash", "deadbeef", golang.OperatorSet, tc},
-		{"wrong-operators", addWit, "go/999", tc},
-		{"wrong-toolchain", addWit, golang.OperatorSet, "other/toolchain"},
+		{"wrong-witness-hash", "deadbeef", tc},
+		{"wrong-toolchain", addWit, "other/toolchain"},
 	} {
-		s := fmt.Sprintf(`records {
-  backend: "go"
-  symbol: %q
-  body_hash: %q
-  witness_pins { symbol: %q body_hash: %q }
-  operators: %q
-  toolchain: %q
-}
-`, add, addBody, testAdd, c.wit, c.ops, c.chain)
-		sp, st := fixture(t, map[string]string{".stipulator/hardening/r.textproto": s})
-		r, err := CoverageReminder(sp, st, backend, tc, []string{"REQ-h-strong"})
+		f := []EngineFinding{{Symbol: add, BodyHash: addBody,
+			Oracle:    []OraclePin{{Symbol: testAdd, Hash: c.wit}},
+			Toolchain: c.chain}}
+		sp, st := fixture(t, nil)
+		r, err := CoverageReminder(sp, st, backend, tc, []string{"REQ-h-strong"}, f)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if len(r.Entries) != 1 || r.Entries[0].Symbol != add || r.Entries[0].State != Stale {
 			t.Fatalf("%s: want Add stale, got %+v", c.name, r.Entries)
+		}
+	}
+
+	// Oracle-set drift re-stales in both directions, even when every present
+	// hash matches: a finding with no pins (a witness has since been bound),
+	// and a finding with an extra pin (a witness has since been dropped) —
+	// the superset direction is exactly what a size check exists to catch.
+	for name, oracle := range map[string][]OraclePin{
+		"witness added":   nil,
+		"witness dropped": {{Symbol: testAdd, Hash: addWit}, {Symbol: "example.com/fixture/lib.TestGone", Hash: "gh"}},
+	} {
+		f := []EngineFinding{{Symbol: add, BodyHash: addBody, Oracle: oracle, Toolchain: tc}}
+		sp, st := fixture(t, nil)
+		r, err := CoverageReminder(sp, st, backend, tc, []string{"REQ-h-strong"}, f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(r.Entries) != 1 || r.Entries[0].State != Stale {
+			t.Fatalf("%s: want Add stale, got %+v", name, r.Entries)
 		}
 	}
 }

@@ -111,17 +111,28 @@ acceptable precisely because no verdict rests on a kill-sheet; the
 authoritative record stores stay strict, where an unknown field would
 silently drop a claim.
 
+**REQ-harden-findings** (behavior): stipulator MUST read the mutation
+engine's findings document — the versioned record the engine maintains at
+the tree root, refused at an unknown version, unknown fields ignored, a
+missing document reading as nothing measured — and recover requirement
+scoping from the labels it exported, never from the engine's internals: the
+document is the engine's contract, the reading is advisory (its surfaces
+never gate), and the pins stipulator judges are the ones it can compute
+itself — body and witness hashes (canon is hash-compatible by design) and
+the toolchain — while operator-set drift is the engine's own re-measure
+concern, invisible and unjudged here.
+
 **REQ-harden-coverage-reminder** (behavior): The gate MUST report, without
-affecting its verdict (REQ-harden-exploration), each covered requirement whose
-implementation body has no fresh kill-sheet — a function bound `implements`
-that no recorded sheet covers, or whose recorded sheet no longer matches the
-current body hash, witness set, operator version, or toolchain
-(REQ-harden-records) — distinguishing a body a mutator can harden (witnessed
-by a test the mutator breaks: run `harden`) from one with no mutation target
+affecting its verdict (REQ-harden-exploration), each covered requirement
+whose implementation body has no fresh finding — a function bound
+`implements` that no recorded finding covers, or whose finding no longer
+matches the current body hash, witness set and content, or toolchain
+(REQ-harden-findings) — distinguishing a body a mutator can harden
+(witnessed by a test the mutator breaks) from one with no mutation target
 (witnessed only outside the operator set, which the staged-delta report
 explains). A non-function binding, having no body to mutate, is never
-reminded, and a body whose sheet is fresh drops off, so the reminder shrinks
-to empty as coverage is hardened. The reminder makes the covered but
+reminded, and a body whose finding is fresh drops off, so the reminder
+shrinks to empty as coverage is hardened. The reminder makes the covered but
 unhardened tail explicit; it is never a gate input.
 
 **REQ-harden-attestation** (behavior): An attested equivalence MUST be

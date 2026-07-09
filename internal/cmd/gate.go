@@ -145,7 +145,11 @@ func coverageReminder(dir string, backends map[string]verify.Backend, spec *stip
 			covered = append(covered, r.Id)
 		}
 	}
-	return harden.CoverageReminder(spec, store, gb, toolchain, covered)
+	findings, err := harden.LoadFindings(os.DirFS(dir), harden.FindingsPath)
+	if err != nil {
+		return nil, err
+	}
+	return harden.CoverageReminder(spec, store, gb, toolchain, covered, findings)
 }
 
 // mergeReminderJSON marshals the coverage view and folds the hardening
@@ -168,14 +172,15 @@ func mergeReminderJSON(m proto.Message, reminder *harden.Reminder) (string, erro
 }
 
 // printReminder renders the covered-but-unhardened tail: hardenable bodies
-// first (run harden), then any with no mutation target. Silent when empty.
+// first (export targets, run the engine), then any with no mutation target.
+// Silent when empty.
 func printReminder(reminder *harden.Reminder) {
 	if reminder == nil || len(reminder.Entries) == 0 {
 		return
 	}
 	hardenable, noTarget := reminder.Counts()
-	fmt.Printf("hardening: %s covered %s need harden (run %s)",
-		yellow(fmt.Sprint(hardenable)), plural(hardenable, "body", "bodies"), bold("stipulator harden"))
+	fmt.Printf("hardening: %s covered %s need a mutation run (%s, then a gomutant run over the export)",
+		yellow(fmt.Sprint(hardenable)), plural(hardenable, "body", "bodies"), bold("stipulator targets"))
 	if noTarget > 0 {
 		fmt.Printf(", %d no mutation target", noTarget)
 	}

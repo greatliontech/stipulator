@@ -98,7 +98,7 @@ func harness(t *testing.T, files map[string]string) (*mcp.ClientSession, map[str
 		// The reminder needs a real go backend the in-memory harness lacks;
 		// stub it empty. Its content is pinned in the harden package
 		// (TestCoverageReminder); here only the gate tool's folding matters.
-		coverageReminder: func(_ *stipulatorv1.Spec, _ *records.Store, _ []string) (*harden.Reminder, error) {
+		coverageReminder: func(_ *stipulatorv1.Spec, _ *records.Store, _ []string, _ []harden.EngineFinding) (*harden.Reminder, error) {
 			return &harden.Reminder{}, nil
 		},
 		// The ephemeral runner shells out to go test, which the in-memory
@@ -744,19 +744,13 @@ func TestContextDossier(t *testing.T) {
 	sess, _ := harness(t, map[string]string{
 		".stipulator/bindings/m.textproto": pinnedBinding(t),
 		".stipulator/gaps/m-b.textproto":   "requirement_id: \"REQ-m-b\"\nreason: \"awaiting design\"\nlands { manual { condition: \"design settles\" } }\n",
-		".stipulator/hardening/p.textproto": `records {
-  backend: "go"
-  symbol: "example.com/p.TestA"
-  body_hash: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-  mutants: 4
-  killed: 3
-  survivors {
-    position: "p.go:5:2"
-    operator: "zero return"
-  }
-  operators: "go/2"
-}
-`,
+		".gomutant/findings.json": `{"version": 1, "findings": [
+  {"symbol": "example.com/p.TestA", "labels": ["REQ-m-a"],
+   "bodyHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "operatorSet": "go/2", "toolchain": "tc",
+   "mutants": 4, "killed": 3,
+   "survivors": [{"position": "p.go:5:2", "operator": "zero return"}]}
+]}`,
 	})
 	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "context", Arguments: map[string]any{
 		"ids": "REQ-m-a,REQ-m-b",
@@ -779,6 +773,26 @@ func TestContextDossier(t *testing.T) {
 		if !strings.Contains(text, want) {
 			t.Fatalf("dossier missing %s:\n%s", want, text)
 		}
+	}
+
+	// A finding without this requirement's label is not evidence here: an
+	// engine run under oracles no witness binding vouched must not roll up
+	// (REQ-harden-findings' label scoping).
+	sessUnlabeled, _ := harness(t, map[string]string{
+		".stipulator/bindings/m.textproto": pinnedBinding(t),
+		".gomutant/findings.json": `{"version": 1, "findings": [
+  {"symbol": "example.com/p.TestA", "labels": ["REQ-other"],
+   "bodyHash": "bb", "operatorSet": "go/2", "toolchain": "tc", "mutants": 4, "killed": 3}
+]}`,
+	})
+	res, err = sessUnlabeled.CallTool(context.Background(), &mcp.CallToolParams{Name: "context", Arguments: map[string]any{
+		"ids": "REQ-m-a",
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("context: %v %v", err, res)
+	}
+	if text := toolText(t, res); strings.Contains(text, `"mutants"`) {
+		t.Fatalf("an unlabeled finding rolled up as requirement evidence: %s", text)
 	}
 
 	// A store failing verification must say so in the dossier: a
