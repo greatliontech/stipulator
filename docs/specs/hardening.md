@@ -17,6 +17,22 @@ delegation to a callee that receives a testing handle, and no panic —
 MUST be rejected at write time, resolved from the code; reachability is
 deliberately not decided here, that is what mutation is for.
 
+**REQ-harden-export** (behavior): The `targets` operation MUST export the
+mutation surface as stipulator's own versioned document —
+`{"stipulatorTargets": 1, "targets": [{"symbol", "witnesses",
+"requirements"}]}` — one entry per symbol bound `implements` by an
+in-corpus requirement (a dangling binding is verify's diagnostic, never
+the export's silent narrowing), carrying the union of the witness-role
+bound tests of every such requirement and those requirement identifiers as
+opaque labels, deterministically ordered so an export commits and diffs
+stably. A witness-less entry exports with an empty witness set and means
+exactly that — nothing vouches; the export is a complete statement, and an
+engine must not substitute tests stipulator never bound. The format is
+stipulator's contract with any mutation engine that consumes it: the engine
+parses this document and returns its findings in a document of its own that
+stipulator reads back by label, so the two tools compose through documents
+— never a shared library, never an invocation.
+
 **REQ-harden-mutation** (behavior): The `harden` operation MUST mutate
 each targeted symbol's body and execute, against each mutant, the union
 of the witness-role bound tests of every requirement that binds the
@@ -120,14 +136,14 @@ sheds a disposition.
 
 **REQ-harden-ephemeral** (behavior): The `harden` operation MUST run an
 ephemeral mutant — a caller-supplied replacement of one source file, exercised
-through a build overlay against a named test, the tree never touched — for the
-manual mutations the operator set cannot generate (generated-data drift,
-resolver seams, caller mappings). Before running the mutant it MUST probe the
-named test on the unmutated tree: a run pattern matching zero tests cannot
-attribute any outcome, and a test already failing clean would fail against the
-mutant too and read as a fabricated kill — the flattering direction
-REQ-harden-mutation refuses — so either probe result refuses the run rather
-than scoring it. It reports whether the named test killed the
+through a build overlay against a named test that first passed a probe on the
+unmutated tree, the tree never touched — for the manual mutations the operator
+set cannot generate (generated-data drift, resolver seams, caller mappings).
+The probe is what keeps the measurement attributable: a run pattern matching
+zero tests cannot attribute any outcome, and a test already failing clean
+would fail against the mutant too and read as a fabricated kill — the
+flattering direction REQ-harden-mutation refuses — so either probe result
+refuses the run rather than scoring it. It reports whether the named test killed the
 mutant and the attributed failing test; a survivor is a finding that the test
 does not catch the mutation. The result is finding evidence for the operator
 to record, never persisted to a kill-sheet nor fed to the gate

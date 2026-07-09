@@ -117,6 +117,11 @@ func New(dir string) *Server {
 			return harden.Ephemeral(ctx, dir, file, mutant, pkg, run, 0)
 		},
 		write: func(path string, content []byte) error {
+			// The server is corpus-bound: a caller-supplied path (the
+			// targets tool's out) must not escape the tree.
+			if !filepath.IsLocal(filepath.FromSlash(path)) {
+				return fmt.Errorf("path %q escapes the corpus root", path)
+			}
 			full := filepath.Join(dir, filepath.FromSlash(path))
 			if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 				return err
@@ -147,6 +152,10 @@ func (s *Server) Run(ctx context.Context) error {
 func (s *Server) MCP() *mcp.Server {
 	srv := mcp.NewServer(&mcp.Implementation{Name: "stipulator", Version: "v0"}, nil)
 
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "targets",
+		Description: "Export the mutation targets: every go implements-binding with its witness union and requirement ids, as stipulator's versioned targets document. A mutation engine (gomutant) consumes it and writes a findings document stipulator reads back by label. Scope with reqs/symbols.",
+	}, s.toolTargets)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "compile",
 		Description: "Compile the spec corpus; returns diagnostics (empty means clean) and counts.",
@@ -1151,4 +1160,48 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return string(r[:n]) + "…"
+}
+
+type targetsIn struct {
+	Reqs    string `json:"reqs,omitempty" jsonschema:"comma-separated requirement identifiers; empty means all bound"`
+	Symbols string `json:"symbols,omitempty" jsonschema:"comma-separated implementation symbols filter"`
+	Out     string `json:"out,omitempty" jsonschema:"tree-relative path to write the export to; empty returns it inline"`
+}
+
+func (s *Server) toolTargets(ctx context.Context, req *mcp.CallToolRequest, in targetsIn) (*mcp.CallToolResult, map[string]any, error) {
+	spec, err := s.compileFresh()
+	if err != nil {
+		return nil, nil, err
+	}
+	store, err := records.Load(s.fsys())
+	if err != nil {
+		return nil, nil, err
+	}
+	reqs, err := splitIDsLoose(in.Reqs)
+	if err != nil {
+		return nil, nil, err
+	}
+	syms, err := splitIDsLoose(in.Symbols)
+	if err != nil {
+		return nil, nil, err
+	}
+	targets := harden.Plan(spec, store, reqs, syms)
+	if len(targets) == 0 {
+		return nil, nil, fmt.Errorf("no targets: no go implements-bindings match the selection")
+	}
+	doc, err := harden.ExportTargets(targets)
+	if err != nil {
+		return nil, nil, err
+	}
+	if in.Out != "" {
+		if err := s.write(in.Out, append(doc, '\n')); err != nil {
+			return nil, nil, err
+		}
+		return nil, map[string]any{"wrote": in.Out, "targets": len(targets)}, nil
+	}
+	var m map[string]any
+	if err := json.Unmarshal(doc, &m); err != nil {
+		return nil, nil, err
+	}
+	return nil, m, nil
 }

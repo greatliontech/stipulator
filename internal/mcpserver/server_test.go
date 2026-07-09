@@ -351,7 +351,7 @@ func TestToolListExact(t *testing.T) {
 	for _, tool := range list.Tools {
 		got[tool.Name] = true
 	}
-	want := []string{"compile", "verify", "gate", "bind", "unbind", "gap", "pin", "prune", "read_spec", "context", "partitions", "dispose", "harden", "attest_survivor", "attest_requirement"}
+	want := []string{"compile", "verify", "gate", "bind", "unbind", "gap", "pin", "prune", "read_spec", "context", "partitions", "dispose", "harden", "targets", "attest_survivor", "attest_requirement"}
 	for _, w := range want {
 		if !got[w] {
 			t.Fatalf("tool %s missing from the wire list: %v", w, got)
@@ -359,6 +359,24 @@ func TestToolListExact(t *testing.T) {
 	}
 	if len(got) != len(want) {
 		t.Fatalf("tool list drifted: %v", got)
+	}
+}
+
+// TestTargetsToolWiring pins the targets tool's wiring and its refusal to
+// emit an empty export (REQ-harden-export): a corpus with no go
+// implements-bindings has no mutation surface to narrate.
+func TestTargetsToolWiring(t *testing.T) {
+	stipulate.Covers(t, "REQ-harden-export")
+	sess, _ := harness(t, nil)
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "targets", Arguments: map[string]any{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.IsError {
+		t.Fatalf("empty surface exported: %+v", res)
+	}
+	if msg := fmt.Sprint(res.Content[0]); !strings.Contains(msg, "no targets") {
+		t.Fatalf("refusal = %q", msg)
 	}
 }
 
