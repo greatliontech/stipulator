@@ -21,7 +21,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-staged-scope"
-  content_hash: "b78327df5c61e129f1865aea7746a7321403d5ea8e43a98f1cea0ed1ce69de97"
+  content_hash: "2c2d79da24547dfdcb07950578868d9fc0760b00a7dcb70e3c81d3ca356c9c59"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/harden.StagedScope"
   role: BINDING_ROLE_IMPLEMENTS
@@ -30,7 +30,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-staged-scope"
-  content_hash: "b78327df5c61e129f1865aea7746a7321403d5ea8e43a98f1cea0ed1ce69de97"
+  content_hash: "2c2d79da24547dfdcb07950578868d9fc0760b00a7dcb70e3c81d3ca356c9c59"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/harden.TestStagedScope"
   role: BINDING_ROLE_TESTS
@@ -39,7 +39,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-staged-scope"
-  content_hash: "b78327df5c61e129f1865aea7746a7321403d5ea8e43a98f1cea0ed1ce69de97"
+  content_hash: "2c2d79da24547dfdcb07950578868d9fc0760b00a7dcb70e3c81d3ca356c9c59"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/harden.TestStagedScopeChangeFilter"
   role: BINDING_ROLE_TESTS
@@ -48,7 +48,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-staged-scope"
-  content_hash: "b78327df5c61e129f1865aea7746a7321403d5ea8e43a98f1cea0ed1ce69de97"
+  content_hash: "2c2d79da24547dfdcb07950578868d9fc0760b00a7dcb70e3c81d3ca356c9c59"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/harden.TestStagedScopeWitnessClass"
   role: BINDING_ROLE_TESTS
@@ -57,7 +57,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-staged-scope"
-  content_hash: "b78327df5c61e129f1865aea7746a7321403d5ea8e43a98f1cea0ed1ce69de97"
+  content_hash: "2c2d79da24547dfdcb07950578868d9fc0760b00a7dcb70e3c81d3ca356c9c59"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/gitfs.Changed"
   role: BINDING_ROLE_IMPLEMENTS
@@ -66,7 +66,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-staged-scope"
-  content_hash: "b78327df5c61e129f1865aea7746a7321403d5ea8e43a98f1cea0ed1ce69de97"
+  content_hash: "2c2d79da24547dfdcb07950578868d9fc0760b00a7dcb70e3c81d3ca356c9c59"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/gitfs.TestChanged"
   role: BINDING_ROLE_TESTS
@@ -75,7 +75,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-staged-scope"
-  content_hash: "b78327df5c61e129f1865aea7746a7321403d5ea8e43a98f1cea0ed1ce69de97"
+  content_hash: "2c2d79da24547dfdcb07950578868d9fc0760b00a7dcb70e3c81d3ca356c9c59"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend.Surface"
   role: BINDING_ROLE_IMPLEMENTS
@@ -84,7 +84,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-staged-scope"
-  content_hash: "b78327df5c61e129f1865aea7746a7321403d5ea8e43a98f1cea0ed1ce69de97"
+  content_hash: "2c2d79da24547dfdcb07950578868d9fc0760b00a7dcb70e3c81d3ca356c9c59"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestSurfaceMethods"
   role: BINDING_ROLE_TESTS
@@ -93,7 +93,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-coverage-reminder"
-  content_hash: "40c8e0e70ba2fd8d5184472dff1837a75f0f4b59ccfb91fb54d2fb32e44f2a4e"
+  content_hash: "e69d7c7d171f0ed10c0018c86e0e87df8953d159bd9103f8c8b6cee386be3ca3"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/harden.CoverageReminder"
   role: BINDING_ROLE_IMPLEMENTS
@@ -102,7 +102,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-harden-coverage-reminder"
-  content_hash: "40c8e0e70ba2fd8d5184472dff1837a75f0f4b59ccfb91fb54d2fb32e44f2a4e"
+  content_hash: "e69d7c7d171f0ed10c0018c86e0e87df8953d159bd9103f8c8b6cee386be3ca3"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/harden.TestCoverageReminder"
   role: BINDING_ROLE_TESTS
@@ -152,4 +152,22 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/harden.LoadFindings"
   role: BINDING_ROLE_IMPLEMENTS
   shape_hash: "1aa2a17aa2f833f65b9e02a6a12425fbcd7496cf661419c26bd311628988538e"
+}
+
+bindings {
+  requirement_id: "REQ-harden-export"
+  content_hash: "3ce4833a783cc338813b5b2296ce3f4ec8c3678a7577b31124db0cd4915b3c3f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestTargetsToolWiring"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "0bc350eacde29698a869c7285c2606b650205edb64814488e12358b28e50a527"
+}
+
+bindings {
+  requirement_id: "REQ-harden-exploration"
+  content_hash: "1dc5b324862b46a87d99c2ac4974fc08943cb86811721bc803fd13b1d5822429"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestFoldReminder"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5094fe289f772d7d6193c42b8b0f79ecddf794bcf17bb46c8e421f79a8ef699d"
 }
