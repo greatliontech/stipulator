@@ -570,6 +570,55 @@ func failedPackage(stream []byte) string {
 // symbol form witness sets pin. The subtest path is stripped HERE, where
 // the Test field is unambiguous; in the joined form the first "/" lands
 // inside the import path.
+// TestProbe runs the named test on the unmutated tree and reports how many
+// top-level tests ran and whether the run passed. It is the baseline the
+// ephemeral runner needs before trusting a survivor: a -run matching zero
+// tests, or a test already failing on the clean tree, cannot attribute a
+// mutant, so a survivor verdict against it would be a fabricated finding.
+func TestProbe(ctx context.Context, dir, testPkg, run string, timeout time.Duration, binFlags []string) (ran int, passed bool, err error) {
+	ctx2, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	// binFlags carries -rapid.nofailfile for rapid packages: a property that
+	// fails on the clean baseline would otherwise write a reproducer into the
+	// tree, the very invariant the ephemeral runner protects.
+	args := append([]string{"test", "-json", "-count=1", "-run", run, testPkg}, binFlags...)
+	cmd := exec.CommandContext(ctx2, "go", args...)
+	cmd.Dir = dir
+	cmd.Env = goworkEnv(dir)
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	cmd.Stderr = &buf
+	runErr := cmd.Run()
+	if ctx2.Err() == context.DeadlineExceeded {
+		return 0, false, fmt.Errorf("baseline test timed out")
+	}
+	if strings.Contains(buf.String(), "[build failed]") {
+		return 0, false, fmt.Errorf("baseline test failed to build")
+	}
+	return countTopTests(buf.Bytes()), runErr == nil, nil
+}
+
+// countTopTests counts the distinct top-level tests (excluding subtests) that
+// reported a pass or fail in a go test -json stream.
+func countTopTests(stream []byte) int {
+	type event struct{ Action, Test string }
+	seen := map[string]bool{}
+	dec := json.NewDecoder(bytes.NewReader(stream))
+	for dec.More() {
+		var e event
+		if dec.Decode(&e) != nil {
+			break
+		}
+		if e.Test == "" || strings.Contains(e.Test, "/") {
+			continue
+		}
+		if e.Action == "pass" || e.Action == "fail" {
+			seen[e.Test] = true
+		}
+	}
+	return len(seen)
+}
+
 func firstFailingTest(stream []byte) string {
 	type event struct {
 		Action, Package, Test string

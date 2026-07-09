@@ -53,8 +53,11 @@ type Server struct {
 	// coverageReminder lists covered bodies with no fresh kill-sheet; it
 	// needs the backend and toolchain, so it too is dir-bound.
 	coverageReminder func(spec *stipulatorv1.Spec, store *records.Store, covered []string) (*harden.Reminder, error)
-	write            func(path string, content []byte) error
-	remove           func(path string) error
+	// ephemeral runs one manual mutant through an overlay; it needs the tree
+	// root to run go test, so it is dir-bound.
+	ephemeral func(ctx context.Context, file string, mutant []byte, pkg, run string) (*harden.EphemeralResult, error)
+	write     func(path string, content []byte) error
+	remove    func(path string) error
 }
 
 // New returns a server rooted at dir.
@@ -109,6 +112,9 @@ func New(dir string) *Server {
 				return nil, err
 			}
 			return harden.CoverageReminder(spec, store, gb, toolchain, covered)
+		},
+		ephemeral: func(ctx context.Context, file string, mutant []byte, pkg, run string) (*harden.EphemeralResult, error) {
+			return harden.Ephemeral(ctx, dir, file, mutant, pkg, run, 0)
 		},
 		write: func(path string, content []byte) error {
 			full := filepath.Join(dir, filepath.FromSlash(path))
@@ -195,7 +201,7 @@ func (s *Server) MCP() *mcp.Server {
 	}, s.toolPartitions)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "harden",
-		Description: "Mutation-test bound implementations against the union of witnesses of every requirement each symbol implements: reqs/symbols scope (comma-separated, empty = all), per-symbol budget. Survivors are findings — strengthen a test or attest equivalence; never a gate input. Writes per-symbol kill-sheets under .stipulator/hardening/, pinned to body hash and witness content. Set staged_diff to instead classify the working-tree delta vs HEAD — which changed implementation surfaces harden covers and which need manual mutation (advisory, never a gate).",
+		Description: "Mutation-test bound implementations against the union of witnesses of every requirement each symbol implements: reqs/symbols scope (comma-separated, empty = all), per-symbol budget. Survivors are findings — strengthen a test or attest equivalence; never a gate input. Writes per-symbol kill-sheets under .stipulator/hardening/, pinned to body hash and witness content. Set staged_diff to instead classify the working-tree delta vs HEAD — which changed implementation surfaces harden covers and which need manual mutation (advisory, never a gate). Set ephemeral to run one manual mutant the operator set cannot generate: overlay file with mutant, run test_pkg filtered to run, report whether it is killed (the tree is never touched; evidence, never persisted).",
 	}, s.toolHarden)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "read_spec",
@@ -710,6 +716,12 @@ type hardenIn struct {
 	Jobs    int    `json:"jobs,omitempty" jsonschema:"concurrent mutant runs; 0 means half the CPUs"`
 	View    string `json:"view,omitempty" jsonschema:"summary (default: counts plus only the open survivors) or full (records with attestation prose)"`
 	Staged  bool   `json:"staged_diff,omitempty" jsonschema:"classify the working-tree delta vs HEAD instead of mutating: which changed surfaces harden covers and which need manual mutation"`
+
+	Ephemeral bool   `json:"ephemeral,omitempty" jsonschema:"run one manual mutant the operator set cannot generate: overlay file with mutant, run test_pkg filtered to run, report whether it is killed (the tree is never touched)"`
+	File      string `json:"file,omitempty" jsonschema:"ephemeral: tree-relative source file to replace"`
+	Mutant    string `json:"mutant,omitempty" jsonschema:"ephemeral: the replacement source for file"`
+	TestPkg   string `json:"test_pkg,omitempty" jsonschema:"ephemeral: go package path of the witnessing test"`
+	Run       string `json:"run,omitempty" jsonschema:"ephemeral: -run regex selecting the witnessing test"`
 }
 
 // stagedEntry is one classified surface on the wire.
@@ -731,6 +743,9 @@ type stagedOut struct {
 }
 
 func (s *Server) toolHarden(ctx context.Context, req *mcp.CallToolRequest, in hardenIn) (*mcp.CallToolResult, map[string]any, error) {
+	if in.Ephemeral {
+		return s.ephemeralResult(ctx, in)
+	}
 	spec, err := s.compileFresh()
 	if err != nil {
 		return nil, nil, err
@@ -760,6 +775,30 @@ func (s *Server) toolHarden(ctx context.Context, req *mcp.CallToolRequest, in ha
 		return nil, nil, err
 	}
 	return protoJSON(m)
+}
+
+// ephemeralResult runs one manual mutant and returns its evidence
+// (REQ-harden-ephemeral): killed plus attribution, or a survivor finding. A
+// survivor is not an error — it is the finding — so it returns normally.
+func (s *Server) ephemeralResult(ctx context.Context, in hardenIn) (*mcp.CallToolResult, map[string]any, error) {
+	for name, v := range map[string]string{"file": in.File, "mutant": in.Mutant, "test_pkg": in.TestPkg, "run": in.Run} {
+		if v == "" {
+			return nil, nil, fmt.Errorf("ephemeral requires %s", name)
+		}
+	}
+	res, err := s.ephemeral(ctx, in.File, []byte(in.Mutant), in.TestPkg, in.Run)
+	if err != nil {
+		return nil, nil, err
+	}
+	b, err := json.Marshal(res)
+	if err != nil {
+		return nil, nil, err
+	}
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil, nil, err
+	}
+	return nil, m, nil
 }
 
 type disposeIn struct {

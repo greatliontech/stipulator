@@ -152,6 +152,29 @@ func TestSurfaceMethods(t *testing.T) {
 	}
 }
 
+// TestCountTopTests pins the baseline probe's tally: distinct top-level tests
+// reporting pass or fail are counted once each; subtests (Test with "/") and
+// skips are excluded, so a run that only skips or only aborts at package scope
+// counts zero — the signal that nothing witnessed the mutant.
+func TestCountTopTests(t *testing.T) {
+	stream := []byte(`{"Action":"run","Test":"TestA"}
+{"Action":"pass","Test":"TestA"}
+{"Action":"run","Test":"TestA/sub"}
+{"Action":"pass","Test":"TestA/sub"}
+{"Action":"run","Test":"TestB"}
+{"Action":"fail","Test":"TestB"}
+{"Action":"skip","Test":"TestC"}
+{"Action":"pass","Test":"TestA"}
+{"Action":"fail","Test":""}
+`)
+	if got := countTopTests(stream); got != 2 {
+		t.Fatalf("countTopTests = %d, want 2 (TestA, TestB; sub/skip/pkg excluded)", got)
+	}
+	if got := countTopTests([]byte(`{"Action":"skip","Test":"TestC"}` + "\n")); got != 0 {
+		t.Fatalf("skip-only = %d, want 0", got)
+	}
+}
+
 func TestRunTests(t *testing.T) {
 	tr, err := RunTests("testdata/fixturemod")
 	if err != nil {

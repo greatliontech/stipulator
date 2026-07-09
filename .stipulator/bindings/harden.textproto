@@ -324,3 +324,39 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "312bce65a4417e5eadfdbda4070c031a666dd523a2af36ae0a250f291c3fbdf2"
 }
+
+bindings {
+  requirement_id: "REQ-harden-ephemeral"
+  content_hash: "60abc471e3a9b3aea15b411cc10cc15b13a5821f522ada4cc215c637662fa7b5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.Ephemeral"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "cd988c19a284d734e33d6f992e968463fdb1e0966c3014adb42e64e6c3755f4c"
+}
+
+bindings {
+  requirement_id: "REQ-harden-ephemeral"
+  content_hash: "60abc471e3a9b3aea15b411cc10cc15b13a5821f522ada4cc215c637662fa7b5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.TestEphemeral"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "57a1b3d14cf98e9ad8c4faed7d3deb7c7606805afbac83155c2b1292b05cba00"
+}
+
+bindings {
+  requirement_id: "REQ-harden-ephemeral"
+  content_hash: "60abc471e3a9b3aea15b411cc10cc15b13a5821f522ada4cc215c637662fa7b5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestProbe"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "b3449eda075b74fa41e0584d34bfea83f37a76797fd58ab04f48733f7f217047"
+}
+
+bindings {
+  requirement_id: "REQ-harden-ephemeral"
+  content_hash: "60abc471e3a9b3aea15b411cc10cc15b13a5821f522ada4cc215c637662fa7b5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.TestRapidBinFlags"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "d02d0da9a7f101a86227a410d6b2964d16bb7da7fd30f6e7712bcc6826086612"
+}

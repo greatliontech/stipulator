@@ -118,6 +118,16 @@ location metadata, rebased against the sheet's recorded body anchor when
 carried across regenerations: drift from edits outside the body never
 sheds a disposition.
 
+**REQ-harden-ephemeral** (behavior): The `harden` operation MUST run an
+ephemeral mutant — a caller-supplied replacement of one source file, exercised
+through a build overlay against a named test, the tree never touched — for the
+manual mutations the operator set cannot generate (generated-data drift,
+resolver seams, caller mappings). It reports whether the named test killed the
+mutant and the attributed failing test; a survivor is a finding that the test
+does not catch the mutation. The result is finding evidence for the operator
+to record, never persisted to a kill-sheet nor fed to the gate
+(REQ-harden-exploration).
+
 **REQ-harden-exploration** (behavior): Hardening campaigns MUST NOT feed
 the gate — survivors are findings awaiting disposition, a strengthened
 test or an attested equivalence, never automatic failures.

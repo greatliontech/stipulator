@@ -101,6 +101,12 @@ func harness(t *testing.T, files map[string]string) (*mcp.ClientSession, map[str
 		coverageReminder: func(_ *stipulatorv1.Spec, _ *records.Store, _ []string) (*harden.Reminder, error) {
 			return &harden.Reminder{}, nil
 		},
+		// The ephemeral runner shells out to go test, which the in-memory
+		// harness cannot; stub a canned result. Its real behavior is pinned
+		// in the harden package (TestEphemeral); here only wiring matters.
+		ephemeral: func(_ context.Context, file string, _ []byte, pkg, run string) (*harden.EphemeralResult, error) {
+			return &harden.EphemeralResult{File: file, TestPkg: pkg, Run: run, Killed: true, Killer: "pkg.TestX"}, nil
+		},
 	}
 	ct, st := mcp.NewInMemoryTransports()
 	go func() {
@@ -450,6 +456,39 @@ func TestFoldReminder(t *testing.T) {
 	rem, _ = out["hardeningReminder"].(map[string]any)
 	if rem["hardenable"] != 1 {
 		t.Fatalf("reminder not folded: %v", rem)
+	}
+}
+
+// TestHardenToolEphemeral pins the ephemeral wiring: the harden tool routes
+// ephemeral=true to the runner and returns its evidence, and refuses when a
+// required parameter is missing (REQ-harden-ephemeral).
+func TestHardenToolEphemeral(t *testing.T) {
+	sess, _ := harness(t, nil)
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "harden", Arguments: map[string]any{
+		"ephemeral": true, "file": "a.go", "mutant": "package p", "test_pkg": "./p", "run": "^TestX$",
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("ephemeral harden: %v %v", err, res)
+	}
+	b, _ := json.Marshal(res.StructuredContent)
+	var out struct {
+		File   string `json:"file"`
+		Killed bool   `json:"killed"`
+		Killer string `json:"killer"`
+	}
+	if err := json.Unmarshal(b, &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.File != "a.go" || !out.Killed || out.Killer == "" {
+		t.Fatalf("ephemeral evidence not wired through: %s", b)
+	}
+
+	// A missing required parameter is refused, never silently run.
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "harden", Arguments: map[string]any{
+		"ephemeral": true, "file": "a.go",
+	}})
+	if err == nil && !res.IsError {
+		t.Fatal("ephemeral without required params was accepted")
 	}
 }
 

@@ -21,6 +21,8 @@ func hardenCmd() *cobra.Command {
 	var budget, jobs int
 	var timeout time.Duration
 	var force, staged bool
+	var ephemeral bool
+	var ephFile, ephMutant, ephPkg, ephRun string
 	c := &cobra.Command{
 		Use:   "harden",
 		Short: "Mutation-test bound implementations against their bound witnesses",
@@ -30,6 +32,9 @@ func hardenCmd() *cobra.Command {
 			"kill-sheets are recorded under .stipulator/hardening/, valid while the body\n" +
 			"hash and each bound witness's content match.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if ephemeral {
+				return runEphemeral(cmd, chdir, ephFile, ephMutant, ephPkg, ephRun, timeout)
+			}
 			spec, err := mustCompile(chdir)
 			if err != nil {
 				return err
@@ -112,8 +117,40 @@ func hardenCmd() *cobra.Command {
 	c.Flags().BoolVar(&force, "force", false, "rerun targets whose kill-sheet pins (body hash, witness content, operator set, toolchain) still match")
 	c.Flags().IntVar(&jobs, "jobs", 0, "concurrent mutant runs (0 = half the CPUs; load-induced flakes read as kills, so the default hedges)")
 	c.Flags().BoolVar(&staged, "staged-diff", false, "classify the working-tree delta vs HEAD instead of mutating: which changed surfaces harden covers and which need manual mutation")
+	c.Flags().BoolVar(&ephemeral, "ephemeral", false, "run one manual mutant the operator set cannot generate: overlay --file with --mutant, run --test-pkg filtered to --run, require it to be killed (the tree is never touched)")
+	c.Flags().StringVar(&ephFile, "file", "", "ephemeral: tree-relative source file to replace")
+	c.Flags().StringVar(&ephMutant, "mutant", "", "ephemeral: path to the replacement source for --file")
+	c.Flags().StringVar(&ephPkg, "test-pkg", "", "ephemeral: go package path of the witnessing test")
+	c.Flags().StringVar(&ephRun, "run", "", "ephemeral: -run regex selecting the witnessing test")
 	registerReqCompletions(c, "req")
 	return c
+}
+
+// runEphemeral overlays a manual mutant and reports whether the named test
+// kills it (REQ-harden-ephemeral). A survivor exits non-zero: the mutation is
+// not caught, which is the finding. The result is evidence for the operator
+// to record, never persisted.
+func runEphemeral(cmd *cobra.Command, dir, file, mutantPath, pkg, run string, timeout time.Duration) error {
+	for name, v := range map[string]string{"file": file, "mutant": mutantPath, "test-pkg": pkg, "run": run} {
+		if v == "" {
+			return fmt.Errorf("--ephemeral requires --%s", name)
+		}
+	}
+	mutant, err := os.ReadFile(mutantPath)
+	if err != nil {
+		return fmt.Errorf("reading mutant source: %w", err)
+	}
+	res, err := harden.Ephemeral(cmd.Context(), dir, file, mutant, pkg, run, timeout)
+	if err != nil {
+		return err
+	}
+	if res.Killed {
+		fmt.Printf("%s %s killed by %s (test %s in %s)\n", green("ephemeral: killed"), file, res.Killer, run, pkg)
+		return nil
+	}
+	fmt.Printf("%s %s survived %s in %s — the test does not catch this mutation\n", red("ephemeral: SURVIVED"), file, run, pkg)
+	os.Exit(1)
+	return nil
 }
 
 // printStagedScope renders the staged-delta classification: the coverable
