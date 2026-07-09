@@ -306,3 +306,21 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "99a5a7101d2037a680bd3abc0062d84dbf2aeff8dbedeb32b795bd56961f2360"
 }
+
+bindings {
+  requirement_id: "REQ-harden-coverage-reminder"
+  content_hash: "40c8e0e70ba2fd8d5184472dff1837a75f0f4b59ccfb91fb54d2fb32e44f2a4e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.CoverageReminder"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "e310633f3160f5a981d44e2c51438f9ef2df4c7542d3f2ff6570836bbae7a38c"
+}
+
+bindings {
+  requirement_id: "REQ-harden-coverage-reminder"
+  content_hash: "40c8e0e70ba2fd8d5184472dff1837a75f0f4b59ccfb91fb54d2fb32e44f2a4e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.TestCoverageReminder"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "312bce65a4417e5eadfdbda4070c031a666dd523a2af36ae0a250f291c3fbdf2"
+}

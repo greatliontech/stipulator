@@ -95,6 +95,19 @@ acceptable precisely because no verdict rests on a kill-sheet; the
 authoritative record stores stay strict, where an unknown field would
 silently drop a claim.
 
+**REQ-harden-coverage-reminder** (behavior): The gate MUST report, without
+affecting its verdict (REQ-harden-exploration), each covered requirement whose
+implementation body has no fresh kill-sheet — a function bound `implements`
+that no recorded sheet covers, or whose recorded sheet no longer matches the
+current body hash, witness set, operator version, or toolchain
+(REQ-harden-records) — distinguishing a body a mutator can harden (witnessed
+by a test the mutator breaks: run `harden`) from one with no mutation target
+(witnessed only outside the operator set, which the staged-delta report
+explains). A non-function binding, having no body to mutate, is never
+reminded, and a body whose sheet is fresh drops off, so the reminder shrinks
+to empty as coverage is hardened. The reminder makes the covered but
+unhardened tail explicit; it is never a gate input.
+
 **REQ-harden-attestation** (behavior): An attested equivalence MUST be
 recorded on the kill-sheet as a survivor disposition naming the mutant
 and the reasoning, refused unless the mutant is among the sheet's

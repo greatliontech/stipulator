@@ -50,8 +50,11 @@ type Server struct {
 	// stagedScope classifies the working-tree delta vs HEAD; it needs git
 	// and a loaded backend, so like harden it is a dir-bound closure.
 	stagedScope func(spec *stipulatorv1.Spec, store *records.Store) (*harden.StagedReport, error)
-	write       func(path string, content []byte) error
-	remove      func(path string) error
+	// coverageReminder lists covered bodies with no fresh kill-sheet; it
+	// needs the backend and toolchain, so it too is dir-bound.
+	coverageReminder func(spec *stipulatorv1.Spec, store *records.Store, covered []string) (*harden.Reminder, error)
+	write            func(path string, content []byte) error
+	remove           func(path string) error
 }
 
 // New returns a server rooted at dir.
@@ -96,6 +99,17 @@ func New(dir string) *Server {
 			}
 			return harden.StagedScope(spec, store, gb, changed, head), nil
 		},
+		coverageReminder: func(spec *stipulatorv1.Spec, store *records.Store, covered []string) (*harden.Reminder, error) {
+			gb, err := golang.New(dir)
+			if err != nil {
+				return nil, err
+			}
+			toolchain, err := golang.Toolchain(dir)
+			if err != nil {
+				return nil, err
+			}
+			return harden.CoverageReminder(spec, store, gb, toolchain, covered)
+		},
 		write: func(path string, content []byte) error {
 			full := filepath.Join(dir, filepath.FromSlash(path))
 			if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
@@ -137,7 +151,7 @@ func (s *Server) MCP() *mcp.Server {
 	}, s.toolVerify)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "gate",
-		Description: "Coverage gate. Default view is the summary (gate_passes, counts, violations); view=reds or full for per-requirement rows; scope with ids/bucket/filter/path. Runs the test suite.",
+		Description: "Coverage gate. Default view is the summary (gate_passes, counts, violations); view=reds or full for per-requirement rows; scope with ids/bucket/filter/path. Runs the test suite. Also folds in hardeningReminder: covered bodies with no fresh kill-sheet (advisory, never affects the verdict).",
 	}, s.toolGate)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "bind",
@@ -381,7 +395,32 @@ func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in gate
 	if err != nil {
 		return nil, nil, err
 	}
-	return protoJSON(m)
+	res, out, err := protoJSON(m)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Fold in the covered-but-unhardened reminder (advisory, never gates).
+	var covered []string
+	for _, r := range cov.Requirements {
+		if r.Bucket == coverage.Covered {
+			covered = append(covered, r.Id)
+		}
+	}
+	reminder, rerr := s.coverageReminder(spec, store, covered)
+	foldReminder(out, reminder, rerr)
+	return res, out, nil
+}
+
+// foldReminder attaches the hardening reminder to a gate result. It never
+// fails the call: the reminder is advisory (REQ-harden-coverage-reminder), so
+// a computation error degrades to an empty reminder plus a diagnostic, never
+// clobbering the gate verdict already in out — mirroring the CLI, which warns
+// and proceeds.
+func foldReminder(out map[string]any, reminder *harden.Reminder, err error) {
+	out["hardeningReminder"] = harden.ReminderMap(reminder)
+	if err != nil {
+		out["hardeningReminderError"] = err.Error()
+	}
 }
 
 // scopeFrom builds a scope from tool params, tolerating the same id

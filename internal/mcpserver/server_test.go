@@ -11,7 +11,10 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/compile"
+	"github.com/greatliontech/stipulator/internal/harden"
+	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
 )
@@ -91,6 +94,12 @@ func harness(t *testing.T, files map[string]string) (*mcp.ClientSession, map[str
 			writes[path] = nil
 			delete(fsys, path)
 			return nil
+		},
+		// The reminder needs a real go backend the in-memory harness lacks;
+		// stub it empty. Its content is pinned in the harden package
+		// (TestCoverageReminder); here only the gate tool's folding matters.
+		coverageReminder: func(_ *stipulatorv1.Spec, _ *records.Store, _ []string) (*harden.Reminder, error) {
+			return &harden.Reminder{}, nil
 		},
 	}
 	ct, st := mcp.NewInMemoryTransports()
@@ -190,6 +199,10 @@ func TestGateTool(t *testing.T) {
 	}
 	if strings.Contains(string(b), "requirements") {
 		t.Fatalf("summary carries the per-requirement array: %s", b)
+	}
+	// The gate tool folds in the hardening reminder (REQ-harden-coverage-reminder).
+	if !strings.Contains(string(b), "hardeningReminder") {
+		t.Fatalf("gate tool omitted the hardening reminder: %s", b)
 	}
 
 	// view=full: the per-requirement array.
@@ -407,6 +420,36 @@ func TestCompileToolCounts(t *testing.T) {
 		if strings.Contains(string(b), k) {
 			t.Fatalf("count key %q leaked onto error arm: %s", k, b)
 		}
+	}
+}
+
+// TestFoldReminder pins the advisory contract: a reminder-computation error
+// degrades to an empty reminder plus a diagnostic and never clobbers the gate
+// verdict already in the result (REQ-harden-coverage-reminder).
+func TestFoldReminder(t *testing.T) {
+	// Error path: verdict preserved, empty reminder, diagnostic present.
+	out := map[string]any{"gatePasses": true}
+	foldReminder(out, nil, fmt.Errorf("backend exploded"))
+	if out["gatePasses"] != true {
+		t.Fatalf("reminder error clobbered the verdict: %v", out)
+	}
+	if out["hardeningReminderError"] != "backend exploded" {
+		t.Fatalf("missing reminder diagnostic: %v", out)
+	}
+	rem, _ := out["hardeningReminder"].(map[string]any)
+	if entries, _ := rem["entries"].([]harden.ReminderEntry); len(entries) != 0 {
+		t.Fatalf("error path should fold an empty reminder: %v", rem)
+	}
+
+	// Success path: the reminder folds in, no diagnostic.
+	out = map[string]any{"gatePasses": true}
+	foldReminder(out, &harden.Reminder{Entries: []harden.ReminderEntry{{Symbol: "x", Hardenable: true}}}, nil)
+	if _, ok := out["hardeningReminderError"]; ok {
+		t.Fatalf("success path emitted a diagnostic: %v", out)
+	}
+	rem, _ = out["hardeningReminder"].(map[string]any)
+	if rem["hardenable"] != 1 {
+		t.Fatalf("reminder not folded: %v", rem)
 	}
 }
 

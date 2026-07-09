@@ -1,6 +1,7 @@
 # staged-diff coarsely labels deleted and unloadable surfaces
 
-Lands: when the gate/verify coverage-delta reminder (harden-new-coverage-reminder) lands.
+Lands: when `harden --staged-diff` gains a disposition distinguishing a deleted
+or unloadable surface from an integration seam.
 
 `harden --staged-diff` classifies a changed `.go` path that is absent from the
 loaded packages — a deletion, a file behind a non-matching `//go:build` tag,

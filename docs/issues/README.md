@@ -43,11 +43,8 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   resolver seams, or caller mappings.*
 - **[harden-staged-deleted-surface](harden-staged-deleted-surface.md)** — `harden --staged-diff`
   labels a deleted or unloadable `.go` surface as an integration seam, conflating a removed
-  bound implementation with an out-of-body edit. *Lands: when the coverage-delta reminder
-  (harden-new-coverage-reminder) lands.*
-- **[harden-new-coverage-reminder](harden-new-coverage-reminder.md)** — gate/verify do not remind
-  when newly covered requirements have no fresh hardening sheet. *Lands: when gate/verify output
-  is used to drive the full adversarial loop for a change set.*
+  bound implementation with an out-of-body edit. *Lands: when `harden --staged-diff` gains a
+  disposition distinguishing a deleted or unloadable surface from an integration seam.*
 - **[term-matcher-ascii-boundaries](term-matcher-ascii-boundaries.md)** — `\b` is ASCII-only,
   so non-ASCII term names may never match a use site (silently missing uses-term edges); the
   lint mirrors the same semantics deliberately — fix both together on rune boundaries. *Lands:

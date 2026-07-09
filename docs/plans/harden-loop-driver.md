@@ -13,8 +13,7 @@ changed-file list comes from the git index. Freshness of hardening is read
 from kill-sheet staleness (a body-hash move re-stales a sheet — already
 defined), so no base-commit body-hash comparison and no worktree are needed.
 
-Resolves issue docs: `harden-new-coverage-reminder` (chunk 2),
-`harden-ephemeral-mutants` (chunk 3).
+Resolves issue docs: `harden-ephemeral-mutants` (chunk 3).
 
 ## Chunks
 
@@ -24,7 +23,7 @@ Resolves issue docs: `harden-new-coverage-reminder` (chunk 2),
   no-witness / witness-class-outside-operators / generated-or-data /
   integration-seam. Report on CLI + MCP; not a gate. Reuses `harden.Plan`,
   `Backend.WitnessClass`, `Backend.generated`.
-- [ ] **2. gate/verify new-coverage-lacks-hardening reminder.** New spec clause
+- [x] **2. gate/verify new-coverage-lacks-hardening reminder.** New spec clause
   (reminder, explicitly not a gate). List covered requirements whose
   implementing symbol has no fresh (non-stale) kill-sheet; split "harden can
   run this" from "no harden target → see staged-diff". Reuses chunk 1's
