@@ -62,6 +62,43 @@ func repoWith(t *testing.T, committed, worktree map[string]string) string {
 	return dir
 }
 
+// TestChanged pins the staged-delta boundary: a file untouched since HEAD is
+// absent, a modified file and a brand-new untracked file are both present.
+func TestChanged(t *testing.T) {
+	dir := repoWith(t,
+		map[string]string{
+			"a.go":     "package p\nfunc A() {}\n",
+			"b.go":     "package p\nfunc B() {}\n",
+			"gen/c.go": "package gen\nfunc C() {}\n",
+		},
+		map[string]string{
+			"a.go":   "package p\nfunc A() { println(1) }\n", // modified
+			"new.go": "package p\nfunc N() {}\n",             // untracked
+		})
+
+	got, err := Changed(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := map[string]bool{}
+	for _, p := range got {
+		set[p] = true
+	}
+	if !set["a.go"] {
+		t.Errorf("modified a.go not reported: %v", got)
+	}
+	if !set["new.go"] {
+		t.Errorf("untracked new.go not reported: %v", got)
+	}
+	if set["b.go"] || set["gen/c.go"] {
+		t.Errorf("unchanged files reported: %v", got)
+	}
+	// Sorted, slash-separated, dir-relative.
+	if !sort.StringsAreSorted(got) {
+		t.Errorf("not sorted: %v", got)
+	}
+}
+
 // TestRevisionCorpusDiff pins the diff-against-revision path end to end:
 // the committed corpus compiles from the object store — no checkout — and
 // diffs against the edited working tree.

@@ -1,7 +1,9 @@
 package golang
 
 import (
+	"bytes"
 	"go/types"
+	"os"
 	"strings"
 	"testing"
 
@@ -97,6 +99,59 @@ func TestFixtureModule(t *testing.T) {
 
 // TestRunTests executes the fixture module's tests and checks outcome and
 // registration derivation, including the failing and skipped arms.
+// TestSurfaceMethods pins the staged-surface symbol keying for methods and
+// generic receivers, and the body-change filter through a method: a value-
+// and pointer-receiver method and a generic-receiver method each resolve to
+// their "pkg.Receiver.Method" symbol, and only the method whose body differs
+// from HEAD surfaces.
+func TestSurfaceMethods(t *testing.T) {
+	b, err := New("testdata/fixturemod")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const p = "methods/methods.go"
+	pkg := "example.com/fixture/methods"
+	want := map[string]bool{
+		pkg + ".Counter.Inc":   true,
+		pkg + ".Counter.Value": true,
+		pkg + ".Box.Get":       true, // generic receiver, type params stripped
+	}
+
+	// noHead: every declared method surfaces, with the receiver-qualified
+	// symbol string.
+	fs := b.Surface([]string{p}, func(string) ([]byte, bool) { return nil, false })
+	if len(fs) != 1 {
+		t.Fatalf("surfaces = %d", len(fs))
+	}
+	got := map[string]bool{}
+	for _, s := range fs[0].Symbols {
+		got[s] = true
+	}
+	for w := range want {
+		if !got[w] {
+			t.Errorf("missing method symbol %q; got %v", w, fs[0].Symbols)
+		}
+	}
+	if len(got) != len(want) {
+		t.Errorf("unexpected method symbols: %v", fs[0].Symbols)
+	}
+
+	// Change filter through a method: a HEAD differing only in Inc's body
+	// surfaces Inc alone.
+	work, err := os.ReadFile("testdata/fixturemod/" + p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	head := bytes.Replace(work, []byte("c.n++"), []byte("c.n += 2"), 1)
+	if bytes.Equal(head, work) {
+		t.Fatal("failed to synthesize a differing HEAD")
+	}
+	fs = b.Surface([]string{p}, func(string) ([]byte, bool) { return head, true })
+	if len(fs[0].Symbols) != 1 || fs[0].Symbols[0] != pkg+".Counter.Inc" {
+		t.Fatalf("method change filter surfaced %v, want only Counter.Inc", fs[0].Symbols)
+	}
+}
+
 func TestRunTests(t *testing.T) {
 	tr, err := RunTests("testdata/fixturemod")
 	if err != nil {

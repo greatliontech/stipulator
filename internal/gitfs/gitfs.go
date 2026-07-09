@@ -63,6 +63,51 @@ func FS(dir, rev string) (fs.FS, error) {
 	return sub, nil
 }
 
+// Changed returns the paths, relative to dir and slash-separated, of every
+// file under dir whose working-tree state differs from HEAD — modified,
+// added, staged, untracked, or deleted alike. It is the staged-delta
+// boundary the harden classification measures against (REQ-harden-staged-
+// scope): "the working tree against HEAD" is the whole change set since the
+// last commit, whether or not the operator has run `git add`. Paths outside
+// dir's subtree (the corpus root's repo-relative prefix) are excluded, so a
+// nested corpus never sees sibling changes. Deleted paths are included: their
+// symbols vanished from the delta and the classifier resolves them to no
+// bound body.
+func Changed(dir string) ([]string, error) {
+	repo, err := git.PlainOpenWithOptions(dir, &git.PlainOpenOptions{DetectDotGit: true, EnableDotGitCommonDir: true})
+	if err != nil {
+		return nil, fmt.Errorf("opening git repository at %s: %w", dir, err)
+	}
+	prefix, err := repoRelative(repo, dir)
+	if err != nil {
+		return nil, err
+	}
+	wt, err := repo.Worktree()
+	if err != nil {
+		return nil, fmt.Errorf("reading worktree: %w", err)
+	}
+	status, err := wt.Status()
+	if err != nil {
+		return nil, fmt.Errorf("reading worktree status: %w", err)
+	}
+	var out []string
+	for p, st := range status {
+		if st.Staging == git.Unmodified && st.Worktree == git.Unmodified {
+			continue
+		}
+		rel := p // status paths are repo-root-relative, slash-separated
+		if prefix != "" {
+			if rel != prefix && !strings.HasPrefix(rel, prefix+"/") {
+				continue
+			}
+			rel = strings.TrimPrefix(rel, prefix+"/")
+		}
+		out = append(out, rel)
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
 // repoRelative returns dir's clean path relative to the repository's
 // worktree root, "" for the root itself.
 func repoRelative(repo *git.Repository, dir string) (string, error) {

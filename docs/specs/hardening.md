@@ -52,6 +52,20 @@ requirement-set and changed-symbol scoping with a per-symbol mutant
 budget, so the hot loop completes in seconds while the exhaustive sweep
 remains available for the night tier.
 
+**REQ-harden-staged-scope** (behavior): The `harden` operation MUST offer a
+staged-delta classification, scoping the change set to the working tree
+against `HEAD`, that reports for each changed implementation symbol — a
+symbol whose body differs from its `HEAD` form, in a non-test source file,
+since test sources are witnesses rather than mutation targets — whether
+hardening covers it or the specific reason it does not: covered, a bound
+`implements` symbol with a resolving witness whose class the body mutator can
+break; no bound implementation; no resolving witness; a witness class outside
+the body-mutation operator set; a generated or data-only file; or an
+integration seam, a changed file that declares no such body. The
+classification is exploration, never a gate (REQ-harden-exploration): its sole
+purpose is to make the manual-mutation tail explicit, so the operator hardens
+the covered surface and hand-mutates only what the report marks unreachable.
+
 **REQ-harden-records** (behavior): A hardening record MUST be keyed by
 the mutated symbol, pinning the symbol's body hash, the witness set it
 ran against with each witness's body hash, the operator-set version that

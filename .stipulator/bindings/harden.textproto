@@ -234,3 +234,75 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "c74ae2ab3df4d6e0ed0449d2fa73c8206970d9ffd496d5156374d581b5fe55ef"
 }
+
+bindings {
+  requirement_id: "REQ-harden-staged-scope"
+  content_hash: "b78327df5c61e129f1865aea7746a7321403d5ea8e43a98f1cea0ed1ce69de97"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.StagedScope"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "dc9db9d72be42c14329e563072285029c607dcebe29d50ede114ad8e4c7c48f6"
+}
+
+bindings {
+  requirement_id: "REQ-harden-staged-scope"
+  content_hash: "b78327df5c61e129f1865aea7746a7321403d5ea8e43a98f1cea0ed1ce69de97"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.TestStagedScope"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "fb13a209a2863129b69d24ca20e6749bfc3c0d3aa48bc003a3d0fded95e67f6a"
+}
+
+bindings {
+  requirement_id: "REQ-harden-staged-scope"
+  content_hash: "b78327df5c61e129f1865aea7746a7321403d5ea8e43a98f1cea0ed1ce69de97"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.TestStagedScopeChangeFilter"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "2bcc5300331f6ffd8a6acff4721ae1c05c95abff10c5cbdefef39d8daca46406"
+}
+
+bindings {
+  requirement_id: "REQ-harden-staged-scope"
+  content_hash: "b78327df5c61e129f1865aea7746a7321403d5ea8e43a98f1cea0ed1ce69de97"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.TestStagedScopeWitnessClass"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "05d4cb744f1509129de20c882456562ef0f361b9d218bf713ff6f8b2c621364a"
+}
+
+bindings {
+  requirement_id: "REQ-harden-staged-scope"
+  content_hash: "b78327df5c61e129f1865aea7746a7321403d5ea8e43a98f1cea0ed1ce69de97"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/gitfs.Changed"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "0603ea5cdf197bd0ba06e9d7ec1f5571472341528435491f33a16ccb4fe52490"
+}
+
+bindings {
+  requirement_id: "REQ-harden-staged-scope"
+  content_hash: "b78327df5c61e129f1865aea7746a7321403d5ea8e43a98f1cea0ed1ce69de97"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/gitfs.TestChanged"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "68019f2ac7f741b60ae2f63709f2daeeab451705f7bd3b715469c2480f83bfee"
+}
+
+bindings {
+  requirement_id: "REQ-harden-staged-scope"
+  content_hash: "b78327df5c61e129f1865aea7746a7321403d5ea8e43a98f1cea0ed1ce69de97"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend.Surface"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "8099f648249a7ffc04d51cd02a598ef1f0c91d703589ff75916b6bb5b8a53dc3"
+}
+
+bindings {
+  requirement_id: "REQ-harden-staged-scope"
+  content_hash: "b78327df5c61e129f1865aea7746a7321403d5ea8e43a98f1cea0ed1ce69de97"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestSurfaceMethods"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "99a5a7101d2037a680bd3abc0062d84dbf2aeff8dbedeb32b795bd56961f2360"
+}

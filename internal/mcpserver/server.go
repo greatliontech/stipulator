@@ -31,6 +31,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/dossier"
 	"github.com/greatliontech/stipulator/internal/facts"
+	"github.com/greatliontech/stipulator/internal/gitfs"
 	"github.com/greatliontech/stipulator/internal/harden"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
@@ -46,8 +47,11 @@ type Server struct {
 	backends func() (map[string]verify.Backend, error)
 	runTests func() (*verify.TestRun, error)
 	harden   func(ctx context.Context, spec *stipulatorv1.Spec, store *records.Store, in hardenIn) (*harden.Report, error)
-	write    func(path string, content []byte) error
-	remove   func(path string) error
+	// stagedScope classifies the working-tree delta vs HEAD; it needs git
+	// and a loaded backend, so like harden it is a dir-bound closure.
+	stagedScope func(spec *stipulatorv1.Spec, store *records.Store) (*harden.StagedReport, error)
+	write       func(path string, content []byte) error
+	remove      func(path string) error
 }
 
 // New returns a server rooted at dir.
@@ -72,6 +76,25 @@ func New(dir string) *Server {
 				budget = 24
 			}
 			return harden.Run(ctx, dir, gb, store, targets, harden.Options{Budget: budget, Force: in.Force, Jobs: in.Jobs})
+		},
+		stagedScope: func(spec *stipulatorv1.Spec, store *records.Store) (*harden.StagedReport, error) {
+			gb, err := golang.New(dir)
+			if err != nil {
+				return nil, err
+			}
+			changed, err := gitfs.Changed(dir)
+			if err != nil {
+				return nil, err
+			}
+			headFS, err := gitfs.FS(dir, "HEAD")
+			if err != nil {
+				return nil, err
+			}
+			head := func(p string) ([]byte, bool) {
+				b, err := fs.ReadFile(headFS, p)
+				return b, err == nil
+			}
+			return harden.StagedScope(spec, store, gb, changed, head), nil
 		},
 		write: func(path string, content []byte) error {
 			full := filepath.Join(dir, filepath.FromSlash(path))
@@ -158,7 +181,7 @@ func (s *Server) MCP() *mcp.Server {
 	}, s.toolPartitions)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "harden",
-		Description: "Mutation-test bound implementations against the union of witnesses of every requirement each symbol implements: reqs/symbols scope (comma-separated, empty = all), per-symbol budget. Survivors are findings — strengthen a test or attest equivalence; never a gate input. Writes per-symbol kill-sheets under .stipulator/hardening/, pinned to body hash and witness content.",
+		Description: "Mutation-test bound implementations against the union of witnesses of every requirement each symbol implements: reqs/symbols scope (comma-separated, empty = all), per-symbol budget. Survivors are findings — strengthen a test or attest equivalence; never a gate input. Writes per-symbol kill-sheets under .stipulator/hardening/, pinned to body hash and witness content. Set staged_diff to instead classify the working-tree delta vs HEAD — which changed implementation surfaces harden covers and which need manual mutation (advisory, never a gate).",
 	}, s.toolHarden)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "read_spec",
@@ -647,6 +670,25 @@ type hardenIn struct {
 	Force   bool   `json:"force,omitempty" jsonschema:"rerun targets whose kill-sheet pins (body hash, witness content, operator set, toolchain) still match"`
 	Jobs    int    `json:"jobs,omitempty" jsonschema:"concurrent mutant runs; 0 means half the CPUs"`
 	View    string `json:"view,omitempty" jsonschema:"summary (default: counts plus only the open survivors) or full (records with attestation prose)"`
+	Staged  bool   `json:"staged_diff,omitempty" jsonschema:"classify the working-tree delta vs HEAD instead of mutating: which changed surfaces harden covers and which need manual mutation"`
+}
+
+// stagedEntry is one classified surface on the wire.
+type stagedEntry struct {
+	Path         string   `json:"path"`
+	Symbol       string   `json:"symbol,omitempty"`
+	Class        string   `json:"class"`
+	Requirements []string `json:"requirements,omitempty"`
+}
+
+// stagedOut mirrors the staged-delta classification (REQ-harden-staged-scope):
+// every changed surface with its disposition, plus a coverable/manual/skipped
+// roll-up. Advisory, never a gate.
+type stagedOut struct {
+	Entries   []stagedEntry `json:"entries"`
+	Coverable int           `json:"coverable"`
+	Manual    int           `json:"manual"`
+	Skipped   int           `json:"skipped"`
 }
 
 func (s *Server) toolHarden(ctx context.Context, req *mcp.CallToolRequest, in hardenIn) (*mcp.CallToolResult, map[string]any, error) {
@@ -657,6 +699,13 @@ func (s *Server) toolHarden(ctx context.Context, req *mcp.CallToolRequest, in ha
 	store, err := records.Load(s.fsys())
 	if err != nil {
 		return nil, nil, err
+	}
+	if in.Staged {
+		rep, err := s.stagedScope(spec, store)
+		if err != nil {
+			return nil, nil, err
+		}
+		return stagedResult(rep)
 	}
 	rep, err := s.harden(ctx, spec, store, in)
 	if err != nil {
@@ -978,6 +1027,34 @@ func textResource(uri, mime, text string) *mcp.ReadResourceResult {
 }
 
 // protoJSON renders a report message as the tool's structured output.
+// stagedResult renders a staged-delta classification as JSON: every entry
+// plus the coverable/manual/skipped roll-up.
+func stagedResult(rep *harden.StagedReport) (*mcp.CallToolResult, map[string]any, error) {
+	out := stagedOut{Entries: []stagedEntry{}}
+	for _, e := range rep.Entries {
+		out.Entries = append(out.Entries, stagedEntry{
+			Path: e.Path, Symbol: e.Symbol, Class: string(e.Class), Requirements: e.Requirements,
+		})
+		switch e.Class {
+		case harden.Covered:
+			out.Coverable++
+		case harden.GeneratedOrData:
+			out.Skipped++
+		default:
+			out.Manual++
+		}
+	}
+	b, err := json.Marshal(out)
+	if err != nil {
+		return nil, nil, err
+	}
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil, nil, err
+	}
+	return nil, m, nil
+}
+
 func protoJSON(m proto.Message) (*mcp.CallToolResult, map[string]any, error) {
 	b, err := protojson.Marshal(m)
 	if err != nil {
