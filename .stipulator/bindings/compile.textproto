@@ -237,7 +237,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-profile-id-reference"
-  content_hash: "9b244fb5085a308677a0defaa9d0d5c4d5618385388695a6a51e1f24a914442d"
+  content_hash: "7904bce5f4483f2fae4cc245e9bbb73959a193a143a34f196288a88c02930529"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.resolve"
   role: BINDING_ROLE_IMPLEMENTS
@@ -246,7 +246,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-profile-id-reference"
-  content_hash: "9b244fb5085a308677a0defaa9d0d5c4d5618385388695a6a51e1f24a914442d"
+  content_hash: "7904bce5f4483f2fae4cc245e9bbb73959a193a143a34f196288a88c02930529"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestReferences"
   role: BINDING_ROLE_TESTS

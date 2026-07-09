@@ -117,9 +117,18 @@ in the block's text, matched case-insensitively on word boundaries with
 longest match winning.
 
 **REQ-profile-id-reference** (behavior): A requirement identifier token
-occurring in any block's text MUST compile to a `reference` from that block
-to the identified node, with an identifier that resolves to nothing a
-compile error.
+occurring in any block's interpreted text MUST compile to a `reference` from
+that block to the identified node, with an identifier that resolves to
+nothing a compile error. A `reference` is exactly this textual occurrence
+made machine-readable — the edge is the mention, so the equivalence runs both
+ways: every occurrence in interpreted text forces the edge, and a `reference`
+is never declared out of band. The metadata edge clauses are the semantic
+verbs `refines`, `depends`, and `supersedes` — which assert relationships a
+mention cannot — and there is deliberately no metadata verb for `reference`,
+because a `reference` that did not correspond to a textual mention would let
+the graph diverge from the prose. To name an identifier without referencing
+it — a literal token rather than a normative mention — write it in inert
+content (REQ-profile-code-inert), which is exempt from reference detection.
 
 ## Non-normative content
 
