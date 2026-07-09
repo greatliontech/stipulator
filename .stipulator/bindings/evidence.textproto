@@ -77,15 +77,6 @@ bindings {
   requirement_id: "REQ-evidence-attestation"
   content_hash: "0e68aac4251661b577f23f0ad5cc35b120665231f2556faf4ee092815108ba12"
   backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/author.AttestRequirement"
-  role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "174efa890555bc4b7db4054b5fd933e18cc2fad847ed096e0018502e7ef267cd"
-}
-
-bindings {
-  requirement_id: "REQ-evidence-attestation"
-  content_hash: "0e68aac4251661b577f23f0ad5cc35b120665231f2556faf4ee092815108ba12"
-  backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.TestAttestRequirement"
   role: BINDING_ROLE_TESTS
   shape_hash: "61f0e9c1471422a0000f1739a45bd31a63bfaca932488c50b54ba7aa417c6d61"

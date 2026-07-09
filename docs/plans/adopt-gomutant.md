@@ -16,7 +16,7 @@ versioned findings document by label. Each tool is complete alone.
   computed with stipulator's own hashes — canon is deliberately
   hash-compatible — and requirement scoping recovered from labels.
   hardening.md re-scopes the reminder and records clauses to the document.
-- [ ] 3. The retirement: the harden verb, the MCP harden tool, --ephemeral,
+- [x] 3. The retirement: the harden verb, the MCP harden tool, --ephemeral,
   attest survivor, internal/harden's Run/records/ephemeral, the kill-sheet
   store (records/hardening.go, .stipulator/hardening textprotos, the
   Hardening/HardeningSet proto messages), and the engine half of

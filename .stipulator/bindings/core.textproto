@@ -41,15 +41,6 @@ bindings {
   requirement_id: "REQ-core-determinism"
   content_hash: "c62f4d3906f9283749c3e19928e7c3f678aa706749914b6e6fe706da9112124f"
   backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/records.TestPropHardeningRenderRoundTrip"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "05fe817479513a0eb064fa6faba377b16280c5cc7aed2f37e1dee37ba04a9cbe"
-}
-
-bindings {
-  requirement_id: "REQ-core-determinism"
-  content_hash: "c62f4d3906f9283749c3e19928e7c3f678aa706749914b6e6fe706da9112124f"
-  backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/bundle.TestPropBundleDeterminism"
   role: BINDING_ROLE_TESTS
   shape_hash: "71a6803e0c80be83d2b1b509a52789bc9c8c626a4a28b104dd0e03004fedc416"

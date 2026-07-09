@@ -29,14 +29,6 @@ type BindingFile struct {
 	Set  *stipulatorv1.BindingSet
 }
 
-// HardeningFile is one committed kill-sheet file — exploration records,
-// read for cache reuse and staleness reporting, never by coverage.
-type HardeningFile struct {
-	Path string
-	Raw  []byte
-	Set  *stipulatorv1.HardeningSet
-}
-
 // GapFile is one committed gap record.
 type GapFile struct {
 	Path string
@@ -56,7 +48,6 @@ type Store struct {
 	Bindings     []BindingFile
 	Gaps         []GapFile
 	Attestations []AttestationFile
-	Hardening    []HardeningFile
 	Tombstones   []string
 }
 
@@ -91,23 +82,6 @@ func Load(fsys fs.FS) (*Store, error) {
 			return fmt.Errorf("parsing %s: %w", p, err)
 		}
 		s.Attestations = append(s.Attestations, AttestationFile{Path: p, Raw: raw, Set: set})
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-	if err := eachTextproto(fsys, HardeningDir, func(p string, raw []byte) error {
-		set := &stipulatorv1.HardeningSet{}
-		// The hardening store is the one non-authoritative record class —
-		// exploration findings, never gate input — so it alone tolerates an
-		// unknown field, discarding it and re-measuring rather than aborting
-		// the load. That is what lets a sheet written before a pin was added
-		// (e.g. the pre-content-pin `witnesses` field) load and re-stale
-		// instead of bricking the tree. The authoritative stores above stay
-		// strict: a typo'd field there must never silently drop a claim.
-		if err := (prototext.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(raw, set); err != nil {
-			return fmt.Errorf("parsing %s: %w", p, err)
-		}
-		s.Hardening = append(s.Hardening, HardeningFile{Path: p, Raw: raw, Set: set})
 		return nil
 	}); err != nil {
 		return nil, err

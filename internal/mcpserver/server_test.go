@@ -101,12 +101,6 @@ func harness(t *testing.T, files map[string]string) (*mcp.ClientSession, map[str
 		coverageReminder: func(_ *stipulatorv1.Spec, _ *records.Store, _ []string, _ []harden.EngineFinding) (*harden.Reminder, error) {
 			return &harden.Reminder{}, nil
 		},
-		// The ephemeral runner shells out to go test, which the in-memory
-		// harness cannot; stub a canned result. Its real behavior is pinned
-		// in the harden package (TestEphemeral); here only wiring matters.
-		ephemeral: func(_ context.Context, file string, _ []byte, pkg, run string) (*harden.EphemeralResult, error) {
-			return &harden.EphemeralResult{File: file, TestPkg: pkg, Run: run, Killed: true, Killer: "pkg.TestX"}, nil
-		},
 	}
 	ct, st := mcp.NewInMemoryTransports()
 	go func() {
@@ -351,7 +345,7 @@ func TestToolListExact(t *testing.T) {
 	for _, tool := range list.Tools {
 		got[tool.Name] = true
 	}
-	want := []string{"compile", "verify", "gate", "bind", "unbind", "gap", "pin", "prune", "read_spec", "context", "partitions", "dispose", "harden", "targets", "attest_survivor", "attest_requirement"}
+	want := []string{"compile", "verify", "gate", "bind", "unbind", "gap", "pin", "prune", "read_spec", "context", "partitions", "dispose", "targets", "attest_requirement"}
 	for _, w := range want {
 		if !got[w] {
 			t.Fatalf("tool %s missing from the wire list: %v", w, got)
@@ -477,39 +471,6 @@ func TestFoldReminder(t *testing.T) {
 	}
 }
 
-// TestHardenToolEphemeral pins the ephemeral wiring: the harden tool routes
-// ephemeral=true to the runner and returns its evidence, and refuses when a
-// required parameter is missing (REQ-harden-ephemeral).
-func TestHardenToolEphemeral(t *testing.T) {
-	sess, _ := harness(t, nil)
-	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "harden", Arguments: map[string]any{
-		"ephemeral": true, "file": "a.go", "mutant": "package p", "test_pkg": "./p", "run": "^TestX$",
-	}})
-	if err != nil || res.IsError {
-		t.Fatalf("ephemeral harden: %v %v", err, res)
-	}
-	b, _ := json.Marshal(res.StructuredContent)
-	var out struct {
-		File   string `json:"file"`
-		Killed bool   `json:"killed"`
-		Killer string `json:"killer"`
-	}
-	if err := json.Unmarshal(b, &out); err != nil {
-		t.Fatal(err)
-	}
-	if out.File != "a.go" || !out.Killed || out.Killer == "" {
-		t.Fatalf("ephemeral evidence not wired through: %s", b)
-	}
-
-	// A missing required parameter is refused, never silently run.
-	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "harden", Arguments: map[string]any{
-		"ephemeral": true, "file": "a.go",
-	}})
-	if err == nil && !res.IsError {
-		t.Fatal("ephemeral without required params was accepted")
-	}
-}
-
 // TestDisposeToolRetire exercises the wire deletion path: retiring an
 // identity whose binding and gap records exist but whose requirement is
 // gone writes the tombstone and deletes the records.
@@ -610,40 +571,14 @@ func TestReadSpecToolMirrorsBundle(t *testing.T) {
 	}
 }
 
-// TestAttestTools pins the MCP surface of both attest verbs: writes land
-// in the record stores, and the verbs' refusals surface as tool errors.
+// TestAttestTools pins the MCP surface of the requirement attest verb:
+// writes land in the record store, and refusals surface as tool errors.
+// (Survivor attestation is the mutation engine's verb now.)
 func TestAttestTools(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-tools", "REQ-evidence-attestation")
-	sess, writes := harness(t, map[string]string{
-		".stipulator/hardening/f.textproto": `records {
-  backend: "go"
-  symbol: "example.com/p.F"
-  body_hash: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-  mutants: 2
-  killed: 1
-  survivors {
-    position: "f.go:5:2"
-    operator: "drop assignment"
-  }
-  operators: "go/2"
-}
-`,
-	})
+	sess, writes := harness(t, nil)
 
-	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "attest_survivor", Arguments: map[string]any{
-		"symbol": "example.com/p.F", "position": "f.go:5:2", "operator": "drop assignment", "reason": "store re-derived below",
-	}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if res.IsError {
-		t.Fatalf("attest_survivor errored: %v", res.Content[0])
-	}
-	if _, ok := writes[".stipulator/hardening/f.textproto"]; !ok {
-		t.Fatalf("survivor attestation not written: %v", writes)
-	}
-
-	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "attest_requirement", Arguments: map[string]any{
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "attest_requirement", Arguments: map[string]any{
 		"requirement": "REQ-m-a", "reason": "judged by review",
 	}})
 	if err != nil {
@@ -668,12 +603,6 @@ func TestAttestTools(t *testing.T) {
 	}})
 	if err != nil || !res.IsError {
 		t.Fatalf("reasonless attestation accepted: %v %v", err, res)
-	}
-	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "attest_survivor", Arguments: map[string]any{
-		"symbol": "example.com/p.F", "position": "f.go:99:9", "operator": "drop assignment", "reason": "r",
-	}})
-	if err != nil || !res.IsError {
-		t.Fatalf("non-survivor attested: %v %v", err, res)
 	}
 }
 

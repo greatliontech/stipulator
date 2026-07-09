@@ -52,5 +52,5 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/dossier.Build"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "cff274a0cf87b34c1e328a7cf9656359687af0be037e44fd78bdd34aba21820d"
+  shape_hash: "7dfdadc9d7fdc7d48064ae2bca7752c689eeb66392a5fe6bb0664a0e3e9e9df6"
 }

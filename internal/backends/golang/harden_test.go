@@ -1,10 +1,7 @@
 package golang
 
 import (
-	"context"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -71,136 +68,6 @@ func TestVacuity(t *testing.T) {
 	}
 }
 
-// TestMutants pins the operator set and determinism: sites in source
-// order, budget respected, identical runs identical.
-func TestMutants(t *testing.T) {
-	stipulate.Covers(t, "REQ-harden-operators")
-	b := fixtureBackend(t)
-	ms, err := b.Mutants("example.com/fixture/lib.Add", 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ops := map[string]bool{}
-	for _, m := range ms {
-		ops[m.Operator] = true
-		if m.Position == "" || len(m.Source) == 0 {
-			t.Fatalf("incomplete mutant: %+v", m)
-		}
-	}
-	for _, want := range []string{"== -> !=", "negate condition", "zero return"} {
-		if !ops[want] {
-			t.Fatalf("operator %q missing: %v", want, ops)
-		}
-	}
-
-	// The extended families, one site each in the Mixed fixture. The
-	// declaration (total := 0) must NOT yield a drop-assignment mutant:
-	// removing a declaration proves nothing.
-	mixed, err := b.Mutants("example.com/fixture/lib.Mixed", 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	mixedOps := map[string]int{}
-	for _, m := range mixed {
-		mixedOps[m.Operator]++
-	}
-	for _, want := range []string{
-		"drop assignment", "+= -> -=", "* -> /", "+ -> -",
-		"increment literal", "continue -> break", "force false",
-	} {
-		if mixedOps[want] == 0 {
-			t.Fatalf("operator %q missing: %v", want, mixedOps)
-		}
-	}
-	if got := mixedOps["drop assignment"]; got != 2 { // += and = are stores; := is not
-		t.Fatalf("drop assignment sites = %d; a declaration must not count", got)
-	}
-
-	// No two mutants of one symbol render the same source: a duplicate
-	// would double-count one effective mutant.
-	for _, symbol := range []string{"example.com/fixture/lib.Add", "example.com/fixture/lib.Weak", "example.com/fixture/lib.Mixed"} {
-		ms, err := b.Mutants(symbol, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
-		seen := map[string]string{}
-		for _, m := range ms {
-			key := string(m.Source)
-			if prev, dup := seen[key]; dup {
-				t.Fatalf("%s: mutants %s and %s render identically", symbol, prev, m.Position+" "+m.Operator)
-			}
-			seen[key] = m.Position + " " + m.Operator
-		}
-	}
-	capped, err := b.Mutants("example.com/fixture/lib.Add", 2)
-	if err != nil || len(capped) != 2 {
-		t.Fatalf("budget ignored: %d %v", len(capped), err)
-	}
-	again, err := b.Mutants("example.com/fixture/lib.Add", 0)
-	if err != nil || len(again) != len(ms) {
-		t.Fatalf("nondeterministic: %d vs %d", len(again), len(ms))
-	}
-	for i := range ms {
-		if ms[i].Operator != again[i].Operator || ms[i].Position != again[i].Position {
-			t.Fatal("mutant order not deterministic")
-		}
-	}
-}
-
-// TestRunMutantOutcomes pins the overlay runner end to end: a pinned-down
-// body kills every mutant, an untested branch yields survivors, and the
-// tree is never touched.
-func TestRunMutantOutcomes(t *testing.T) {
-	stipulate.Covers(t, "REQ-harden-mutation")
-	if testing.Short() {
-		t.Skip("runs go test per mutant")
-	}
-	b := fixtureBackend(t)
-	dir := "testdata/fixturemod"
-
-	run := func(symbol, regex string) (killed, survived int, survivors []Mutant) {
-		ms, err := b.Mutants(symbol, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, m := range ms {
-			out, killer, err := RunMutant(context.Background(), dir, m, []string{"example.com/fixture/lib"}, regex, 60*time.Second, nil)
-			if err != nil {
-				t.Fatal(err)
-			}
-			switch out {
-			case MutantKilled:
-				killed++
-				// Every kill is attributed to the witness that noticed.
-				if killer != "example.com/fixture/lib."+strings.TrimSuffix(strings.TrimPrefix(regex, "^"), "$") {
-					t.Fatalf("kill attributed to %q under -run %s", killer, regex)
-				}
-			case MutantSurvived:
-				survived++
-				if killer != "" {
-					t.Fatalf("survivor carries killer %q", killer)
-				}
-				survivors = append(survivors, m)
-			}
-		}
-		return
-	}
-
-	killed, survived, _ := run("example.com/fixture/lib.Add", "^TestAdd$")
-	if survived != 0 || killed == 0 {
-		t.Fatalf("Add: killed=%d survived=%d — the pinned body should kill all", killed, survived)
-	}
-	_, survived, survivors := run("example.com/fixture/lib.Weak", "^TestWeak$")
-	if survived == 0 {
-		t.Fatal("Weak: the untested branch produced no survivors")
-	}
-	for _, s := range survivors {
-		if !strings.HasPrefix(s.Position, "lib.go:") {
-			t.Fatalf("survivor position not file-anchored: %s", s.Position)
-		}
-	}
-}
-
 func fixtureBackend(t *testing.T) *Backend {
 	t.Helper()
 	b, err := New("testdata/fixturemod")
@@ -208,25 +75,6 @@ func fixtureBackend(t *testing.T) *Backend {
 		t.Fatal(err)
 	}
 	return b
-}
-
-// TestSplitRapidPkgs pins the rapid-failfile partition: the flag is
-// per-binary, so packages split by whether their test files (in-package
-// or external variant) import rapid — a mixed union must never put the
-// flag in front of a rapid-free binary, which would die on it and read
-// as a false kill.
-func TestSplitRapidPkgs(t *testing.T) {
-	stipulate.Covers(t, "REQ-harden-mutation")
-	b := fixtureBackend(t)
-	lib, plainPkg, ext := "example.com/fixture/lib", "example.com/fixture/plain", "example.com/fixture/extprop"
-
-	rapid, plain := b.SplitRapidPkgs([]string{lib, plainPkg, ext})
-	if len(rapid) != 2 || rapid[0] != lib || rapid[1] != ext {
-		t.Fatalf("rapid group = %v (lib via in-package tests, extprop via the external variant)", rapid)
-	}
-	if len(plain) != 1 || plain[0] != plainPkg {
-		t.Fatalf("plain group = %v", plain)
-	}
 }
 
 // TestWitnessClassProof pins the proof class: a test invoking the
@@ -257,84 +105,4 @@ func TestWitnessClassProof(t *testing.T) {
 // executes it.
 func notATest(tb testing.TB) {
 	structural.NoImport(tb, "github.com/greatliontech/stipulator/internal/canon", "os/exec")
-}
-
-// TestRunMutantGoroutinePanicIsAKill pins the package-level attribution
-// arm: a mutant that detonates in a goroutine emits no test-level fail
-// event — the differential baseline probe clears the environment and the
-// kill is admitted with the package sentinel, never misread as noise.
-func TestRunMutantGoroutinePanicIsAKill(t *testing.T) {
-	stipulate.Covers(t, "REQ-harden-mutation")
-	if testing.Short() {
-		t.Skip("runs go test")
-	}
-	b := fixtureBackend(t)
-	ms, err := b.Mutants("example.com/fixture/lib.Guarded", 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	pkgKills := 0
-	for _, m := range ms {
-		// Two of Guarded's mutants drop the channel send, so the receiver
-		// deadlocks and the run can only end at the timeout. A short one
-		// suffices — the legitimate run is sub-second — and keeps this
-		// exhaustive loop from paying a long timeout for mutants that are
-		// incidental to the package-kill this test asserts.
-		out, killer, err := RunMutant(context.Background(), "testdata/fixturemod", m,
-			[]string{"example.com/fixture/lib"}, "^TestGuarded$", 5*time.Second, nil)
-		if err != nil {
-			t.Fatalf("mutant %s %s aborted as noise: %v", m.Position, m.Operator, err)
-		}
-		if out == MutantKilled && strings.HasPrefix(killer, PackageKillerPrefix) {
-			pkgKills++
-			if killer != PackageKillerPrefix+"example.com/fixture/lib)" {
-				t.Fatalf("sentinel = %q", killer)
-			}
-		}
-	}
-	if pkgKills == 0 {
-		t.Fatal("no mutant detonated in the goroutine; the guard mutant should")
-	}
-}
-
-// TestRunMutantNoiseIsNeverAKill pins the attribution rule that keeps
-// kill counts reproducible: a run that dies without a test-attributed
-// failure — here, a test binary refusing an unregistered flag, the exact
-// shape that once corrupted five sheets — is an error, never a kill.
-func TestRunMutantNoiseIsNeverAKill(t *testing.T) {
-	stipulate.Covers(t, "REQ-harden-mutation")
-	if testing.Short() {
-		t.Skip("runs go test")
-	}
-	b := fixtureBackend(t)
-	ms, err := b.Mutants("example.com/fixture/lib.Add", 1)
-	if err != nil || len(ms) == 0 {
-		t.Fatalf("no mutants: %v", err)
-	}
-	out, killer, err := RunMutant(context.Background(), "testdata/fixturemod", ms[0],
-		[]string{"example.com/fixture/plain"}, "^TestPlain$", 60*time.Second,
-		[]string{"-no.such.flag"})
-	if err == nil || !strings.Contains(err.Error(), "no test-attributed kill") {
-		t.Fatalf("noise read as outcome %v killer %q err %v", out, killer, err)
-	}
-}
-
-// TestFirstFailingTest pins killer derivation from the -json stream:
-// first test-level fail wins, subtest kills attribute through their top
-// level (stripped here, where the Test field is unambiguous — the joined
-// symbol's first slash lands inside the import path), and package-level
-// fail events attribute nothing.
-func TestFirstFailingTest(t *testing.T) {
-	stipulate.Covers(t, "REQ-harden-mutation")
-	stream := []byte(`{"Action":"run","Package":"example.com/p","Test":"TestA"}
-{"Action":"fail","Package":"example.com/p","Test":"TestA/sub/deep"}
-{"Action":"fail","Package":"example.com/p","Test":"TestA"}
-{"Action":"fail","Package":"example.com/p"}
-`)
-	if got := firstFailingTest(stream); got != "example.com/p.TestA" {
-		t.Fatalf("killer = %q", got)
-	}
-	if got := firstFailingTest([]byte(`{"Action":"fail","Package":"example.com/p"}` + "\n")); got != "" {
-		t.Fatalf("package-level fail attributed: %q", got)
-	}
 }

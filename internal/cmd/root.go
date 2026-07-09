@@ -53,7 +53,7 @@ func Execute() error {
 		chdir = root
 		return nil
 	}
-	c.AddCommand(compileCmd(), verifyCmd(), gateCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), pruneCmd(), pinCmd(), disposeCmd(), hardenCmd(), targetsCmd(), attestCmd(), initCmd(), mcpCmd())
+	c.AddCommand(compileCmd(), verifyCmd(), gateCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), pruneCmd(), pinCmd(), disposeCmd(), targetsCmd(), attestCmd(), initCmd(), mcpCmd())
 	return c.Execute()
 }
 

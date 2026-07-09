@@ -100,12 +100,6 @@ message Tombstones {
   repeated string retired = 1;
 }
 
-// MutationSurvivor is one mutant no bound test noticed: a finding.
-message MutationSurvivor {
-  // Position is file:line:column of the mutated node.
-  string position = 1;
-  string operator = 2;
-}
 
 // Witness pins one killer test the sheet ran against: its symbol and the
 // body hash it ran at. Pinning content, not just the symbol, is what
@@ -117,68 +111,3 @@ message Witness {
   string body_hash = 2;
 }
 
-// Hardening is one mutation kill-sheet, keyed by the mutated symbol:
-// valid only while body_hash matches the symbol's current body AND
-// witness_pins matches the union of witness-role tests bound (via any
-// requirement the symbol implements) in the binding store, each at its
-// current body hash. Per-requirement views are derived from the binding
-// store on demand, never stored.
-message Hardening {
-  reserved 1; // was requirement_id: sheets are per-symbol, not per-claim
-  reserved 9;         // was: repeated string witnesses (symbol-only) —
-  reserved witnesses; // superseded by witness_pins, which also pins each
-              // witness's body hash. Reserving both the number and the name
-              // bars either from being reclaimed with new semantics.
-              // Pre-content-pin sheets carry field 9; the hardening loader
-              // discards it as unknown and re-measures.
-  string backend = 2;
-  string symbol = 3;
-  string body_hash = 4;
-  int32 mutants = 5;
-  int32 killed = 6;
-  repeated MutationSurvivor survivors = 7;
-  // Discarded mutants failed to compile: reported so a low mutant count is
-  // never mistaken for thin mutation coverage.
-  int32 discarded = 8;
-  // WitnessPins pins the killer-test set the sheet ran against, canonically
-  // ordered by symbol, each carrying the witness's body hash; a new witness
-  // bound to the symbol, or an edit to a bound witness's body, re-stales the
-  // sheet exactly as an edit to the mutated body does.
-  repeated Witness witness_pins = 15;
-  // Operators pins the operator-set identifier that generated the
-  // mutants: an engine gaining operators re-stales every sheet — an old
-  // sheet must never claim coverage of mutants it never generated.
-  string operators = 10;
-  // Attested marks survivors dispositioned as equivalent or accepted,
-  // scoped to this sheet's pins: a record whose pins move sheds its
-  // attestations, so every body version's equivalences are re-judged.
-  repeated MutationAttestation attested = 11;
-  // BodyLine anchors the mutated body's first line: survivor and
-  // attestation positions are absolute file coordinates, so matching
-  // across regenerations rebases them against this anchor — position
-  // drift from edits above the body never sheds a disposition.
-  int32 body_line = 12;
-  // Budget records the per-symbol mutant cap the sheet ran under (0 =
-  // exhaustive): a capped sheet must never answer a request for more
-  // mutants than it generated.
-  int32 budget = 13;
-  // Toolchain pins the identity of the toolchain that executed the
-  // witnesses (version and platform of the go command the engine
-  // invoked, e.g. "go1.26.4 linux/amd64"): the same body under the same
-  // witnesses kills differently across toolchains, so a toolchain change
-  // re-stales the sheet like any other pin.
-  string toolchain = 14;
-}
-
-// MutationAttestation is one survivor disposition: the named mutant is
-// attested equivalent (or accepted), with the reasoning.
-message MutationAttestation {
-  string position = 1;
-  string operator = 2;
-  string reason = 3;
-}
-
-// HardeningSet is one hardening record file.
-message HardeningSet {
-  repeated Hardening records = 1;
-}

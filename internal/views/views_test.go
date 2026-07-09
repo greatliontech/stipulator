@@ -6,55 +6,9 @@ import (
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/coverage"
-	"github.com/greatliontech/stipulator/internal/harden"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
 )
-
-// TestHardenViews pins the harden view axis: the summary carries counts
-// and only the OPEN survivors — attested ones and their prose stay in
-// the full view.
-func TestHardenViews(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-views")
-	rep := &harden.Report{Results: []harden.Result{{
-		Symbol:  "example.com/p.F",
-		Mutants: 5,
-		Killed:  3,
-		Survivors: []harden.Survivor{
-			{Position: "f.go:5:2", Operator: "zero return"},
-			{Position: "f.go:9:1", Operator: "drop assignment"},
-		},
-		Attested: []harden.Attestation{{Position: "f.go:9:1", Operator: "drop assignment", Reason: "equivalent: derived below"}},
-	}}}
-
-	m, err := HardenView(rep, "summary")
-	if err != nil {
-		t.Fatal(err)
-	}
-	sum := m.(*stipulatorv1.HardenSummary)
-	res := sum.GetResults()[0]
-	if res.GetMutants() != 5 || res.GetKilled() != 3 || res.GetAttested() != 1 {
-		t.Fatalf("summary counts: %v", res)
-	}
-	if len(res.GetOpenSurvivors()) != 1 || res.GetOpenSurvivors()[0].GetPosition() != "f.go:5:2" {
-		t.Fatalf("open survivors wrong: %v", res.GetOpenSurvivors())
-	}
-	if strings.Contains(res.String(), "equivalent: derived below") {
-		t.Fatal("attestation prose leaked into the summary")
-	}
-
-	full, err := HardenView(rep, "full")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(full.(*stipulatorv1.HardenReport).String(), "equivalent: derived below") {
-		t.Fatal("full view lost the attestation prose")
-	}
-
-	if _, err := HardenView(rep, "everything"); err == nil {
-		t.Fatal("unknown view accepted")
-	}
-}
 
 // TestVerifyViews pins the verify view axis: the summary is counts and
 // signatures with no binding rows; the bindings view scopes.

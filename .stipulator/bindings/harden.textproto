@@ -20,222 +20,6 @@ bindings {
 }
 
 bindings {
-  requirement_id: "REQ-harden-mutation"
-  content_hash: "5e9b8216d995fe9081d6540b1f9552f0a5427eb276e7b36895ff15ece3babe2a"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.RunMutant"
-  role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "e0840d8c5da94034a6d1156a8b77b569285fe23b2dc5802f21a561e2f3c204cb"
-}
-
-bindings {
-  requirement_id: "REQ-harden-mutation"
-  content_hash: "5e9b8216d995fe9081d6540b1f9552f0a5427eb276e7b36895ff15ece3babe2a"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunMutantOutcomes"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "e644783792c68f508f58ea65f34fdf190f7483b09fd27e7a1ca532b440cc5f7e"
-}
-
-bindings {
-  requirement_id: "REQ-harden-operators"
-  content_hash: "f447eeb038e62be645e714b8170bf0176c4c07b721a84c9832bfcdeab17fd32d"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend.Mutants"
-  role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "165c61d79799da74a54f4bef023453e9caf7ef0e5a26887d9d5a34cc18e828ff"
-}
-
-bindings {
-  requirement_id: "REQ-harden-operators"
-  content_hash: "f447eeb038e62be645e714b8170bf0176c4c07b721a84c9832bfcdeab17fd32d"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestMutants"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "9ba7c41f2cc258a8d42de90ed4ca7289b1c05ce53bb44e63c58de532bee64c81"
-}
-
-bindings {
-  requirement_id: "REQ-harden-scope"
-  content_hash: "48a47339aa0527d0fbce0eb65d6fd7d931baff9964ffc0777cc38826ea5834bc"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/harden.Plan"
-  role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "0fe2a4091e156c0923106c9a248239bcab78e01cedc206406022101685e9ce69"
-}
-
-bindings {
-  requirement_id: "REQ-harden-scope"
-  content_hash: "48a47339aa0527d0fbce0eb65d6fd7d931baff9964ffc0777cc38826ea5834bc"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/harden.TestPlanScope"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "7f0fe27e42278eeedaa52e2f92ff6e8253136d60b539949f8d99072a0e97460c"
-}
-
-bindings {
-  requirement_id: "REQ-harden-records"
-  content_hash: "a24f88d7b890c54c28f7c63e4a42d14681247f237effb4ab3a3494cd05babae9"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/harden.Report.Records"
-  role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "f47f666dcb86aa00d575eecc2a677b6b36778de4ba4e262384d833b1fe72f689"
-}
-
-bindings {
-  requirement_id: "REQ-harden-records"
-  content_hash: "a24f88d7b890c54c28f7c63e4a42d14681247f237effb4ab3a3494cd05babae9"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/harden.TestRunAndRecords"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "548ed5ac90ac1b23bc97cccd3affc8def69d9537a7e19fa43b78b710a291cabb"
-}
-
-bindings {
-  requirement_id: "REQ-harden-exploration"
-  content_hash: "1dc5b324862b46a87d99c2ac4974fc08943cb86811721bc803fd13b1d5822429"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/harden.TestRunAndRecords"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "548ed5ac90ac1b23bc97cccd3affc8def69d9537a7e19fa43b78b710a291cabb"
-}
-
-bindings {
-  requirement_id: "REQ-harden-mutation"
-  content_hash: "5e9b8216d995fe9081d6540b1f9552f0a5427eb276e7b36895ff15ece3babe2a"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/harden.TestPlanScope"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "7f0fe27e42278eeedaa52e2f92ff6e8253136d60b539949f8d99072a0e97460c"
-}
-
-bindings {
-  requirement_id: "REQ-harden-mutation"
-  content_hash: "5e9b8216d995fe9081d6540b1f9552f0a5427eb276e7b36895ff15ece3babe2a"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/harden.TestRunAndRecords"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "548ed5ac90ac1b23bc97cccd3affc8def69d9537a7e19fa43b78b710a291cabb"
-}
-
-bindings {
-  requirement_id: "REQ-harden-mutation"
-  content_hash: "5e9b8216d995fe9081d6540b1f9552f0a5427eb276e7b36895ff15ece3babe2a"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/harden.Plan"
-  role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "0fe2a4091e156c0923106c9a248239bcab78e01cedc206406022101685e9ce69"
-}
-
-bindings {
-  requirement_id: "REQ-harden-mutation"
-  content_hash: "5e9b8216d995fe9081d6540b1f9552f0a5427eb276e7b36895ff15ece3babe2a"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestSplitRapidPkgs"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "9d97ff282407abf275328665f8c27c1ed3bcdce9c548e2359334998233fc0b59"
-}
-
-bindings {
-  requirement_id: "REQ-harden-attestation"
-  content_hash: "bb083f55641240a0c9b1048481d7ff4888048d1f832fef6b8cd6deef55f921ec"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/author.Attest"
-  role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "2464acc134c195b1741294d67c0188312d170d2418d0a9c81ea4287a826badba"
-}
-
-bindings {
-  requirement_id: "REQ-harden-attestation"
-  content_hash: "bb083f55641240a0c9b1048481d7ff4888048d1f832fef6b8cd6deef55f921ec"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/author.TestAttest"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "b2ede2a3da4cb89db0738b2def43e0e4289737388de2b9e8b19e8b2ac35c6647"
-}
-
-bindings {
-  requirement_id: "REQ-harden-mutation"
-  content_hash: "5e9b8216d995fe9081d6540b1f9552f0a5427eb276e7b36895ff15ece3babe2a"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestFirstFailingTest"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "972255a66a2d78bab3bbbe0f1d3b73a3dc3f7340b5927c760bbf86c5bf5decec"
-}
-
-bindings {
-  requirement_id: "REQ-harden-mutation"
-  content_hash: "5e9b8216d995fe9081d6540b1f9552f0a5427eb276e7b36895ff15ece3babe2a"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunMutantNoiseIsNeverAKill"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "7e739f83eb6931341deaf52f7be723be42fd759d4fb649cc40721c05a3f54cb8"
-}
-
-bindings {
-  requirement_id: "REQ-harden-mutation"
-  content_hash: "5e9b8216d995fe9081d6540b1f9552f0a5427eb276e7b36895ff15ece3babe2a"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/harden.TestAttributedKill"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "ed3a521a1d7064bd13245a5fc59c161959f63288c31adbe1d4d980efde1b239d"
-}
-
-bindings {
-  requirement_id: "REQ-harden-mutation"
-  content_hash: "5e9b8216d995fe9081d6540b1f9552f0a5427eb276e7b36895ff15ece3babe2a"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunMutantGoroutinePanicIsAKill"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "641b60659315ee286027ad1c2b743bdc367ea49b4d8c59b9ba5b4d62f73ea6ce"
-}
-
-bindings {
-  requirement_id: "REQ-harden-records"
-  content_hash: "a24f88d7b890c54c28f7c63e4a42d14681247f237effb4ab3a3494cd05babae9"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/records.TestPropHardeningRenderRoundTrip"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "05fe817479513a0eb064fa6faba377b16280c5cc7aed2f37e1dee37ba04a9cbe"
-}
-
-bindings {
-  requirement_id: "REQ-harden-records"
-  content_hash: "a24f88d7b890c54c28f7c63e4a42d14681247f237effb4ab3a3494cd05babae9"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/records.TestHardeningGeneratorKeepsPaceWithSchema"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "87d48c6f338f4dcd54212e435365443a07d30adb616c0a9e22081bdc9e941a9b"
-}
-
-bindings {
-  requirement_id: "REQ-harden-records"
-  content_hash: "a24f88d7b890c54c28f7c63e4a42d14681247f237effb4ab3a3494cd05babae9"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/harden.TestWitnessPinsEqual"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "587adcbab57389984dba041278f95e52b277743041a99679b6614564c2f5666a"
-}
-
-bindings {
-  requirement_id: "REQ-harden-records"
-  content_hash: "a24f88d7b890c54c28f7c63e4a42d14681247f237effb4ab3a3494cd05babae9"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/records.TestHardeningLoadToleratesUnknownField"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "7a1eb2971eacb37b24740ea89a125ab5a9bc2c84bcc74252fa03d394ca1b93df"
-}
-
-bindings {
-  requirement_id: "REQ-harden-records"
-  content_hash: "a24f88d7b890c54c28f7c63e4a42d14681247f237effb4ab3a3494cd05babae9"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/records.TestAuthoritativeStoresStayStrict"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "c74ae2ab3df4d6e0ed0449d2fa73c8206970d9ffd496d5156374d581b5fe55ef"
-}
-
-bindings {
   requirement_id: "REQ-harden-staged-scope"
   content_hash: "b78327df5c61e129f1865aea7746a7321403d5ea8e43a98f1cea0ed1ce69de97"
   backend: "go"
@@ -313,7 +97,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/harden.CoverageReminder"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "e310633f3160f5a981d44e2c51438f9ef2df4c7542d3f2ff6570836bbae7a38c"
+  shape_hash: "db7d2e6292fd3294f333e6cb9766cff31d3d5098f6d9611f9b0a084e12116011"
 }
 
 bindings {
@@ -326,37 +110,46 @@ bindings {
 }
 
 bindings {
-  requirement_id: "REQ-harden-ephemeral"
-  content_hash: "60abc471e3a9b3aea15b411cc10cc15b13a5821f522ada4cc215c637662fa7b5"
+  requirement_id: "REQ-harden-export"
+  content_hash: "3ce4833a783cc338813b5b2296ce3f4ec8c3678a7577b31124db0cd4915b3c3f"
   backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/harden.Ephemeral"
-  role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "cd988c19a284d734e33d6f992e968463fdb1e0966c3014adb42e64e6c3755f4c"
-}
-
-bindings {
-  requirement_id: "REQ-harden-ephemeral"
-  content_hash: "60abc471e3a9b3aea15b411cc10cc15b13a5821f522ada4cc215c637662fa7b5"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/harden.TestEphemeral"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.TestExportTargets"
   role: BINDING_ROLE_TESTS
-  shape_hash: "57a1b3d14cf98e9ad8c4faed7d3deb7c7606805afbac83155c2b1292b05cba00"
+  shape_hash: "f47db6d7db1619cf46df91fe55047462cd1b973d85e65001817d48e9db87a9a7"
 }
 
 bindings {
-  requirement_id: "REQ-harden-ephemeral"
-  content_hash: "60abc471e3a9b3aea15b411cc10cc15b13a5821f522ada4cc215c637662fa7b5"
+  requirement_id: "REQ-harden-export"
+  content_hash: "3ce4833a783cc338813b5b2296ce3f4ec8c3678a7577b31124db0cd4915b3c3f"
   backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestProbe"
-  role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "b3449eda075b74fa41e0584d34bfea83f37a76797fd58ab04f48733f7f217047"
-}
-
-bindings {
-  requirement_id: "REQ-harden-ephemeral"
-  content_hash: "60abc471e3a9b3aea15b411cc10cc15b13a5821f522ada4cc215c637662fa7b5"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/harden.TestRapidBinFlags"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.TestPlanScope"
   role: BINDING_ROLE_TESTS
-  shape_hash: "d02d0da9a7f101a86227a410d6b2964d16bb7da7fd30f6e7712bcc6826086612"
+  shape_hash: "7f0fe27e42278eeedaa52e2f92ff6e8253136d60b539949f8d99072a0e97460c"
+}
+
+bindings {
+  requirement_id: "REQ-harden-findings"
+  content_hash: "8072bda06b0c1d3036b9cfd2bfa782b10d3988757670a5c9fd103c19db83adb2"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.TestLoadFindings"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "bb880d5113d575895976668be2f428a5cdfdd0a61fb6e484af29fe943bd51849"
+}
+
+bindings {
+  requirement_id: "REQ-harden-export"
+  content_hash: "3ce4833a783cc338813b5b2296ce3f4ec8c3678a7577b31124db0cd4915b3c3f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.ExportTargets"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "df90e0815cfeb9c47b4855493bcd2e9d62c987dae7613b3787c445eb0983c066"
+}
+
+bindings {
+  requirement_id: "REQ-harden-findings"
+  content_hash: "8072bda06b0c1d3036b9cfd2bfa782b10d3988757670a5c9fd103c19db83adb2"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/harden.LoadFindings"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "1aa2a17aa2f833f65b9e02a6a12425fbcd7496cf661419c26bd311628988538e"
 }

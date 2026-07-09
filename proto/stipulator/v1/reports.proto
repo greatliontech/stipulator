@@ -202,23 +202,7 @@ message VerifySummary {
   repeated ChangeSignature signatures = 12;
 }
 
-// HardenResultSummary is one symbol's hardening state without the
-// attestation prose: counts, plus only the OPEN survivors — the ones
-// needing a disposition.
-message HardenResultSummary {
-  string symbol = 1;
-  repeated string requirement_ids = 2;
-  int32 mutants = 3;
-  int32 killed = 4;
-  repeated MutationSurvivor open_survivors = 5;
-  int32 attested = 6;
-  bool cached = 7;
-}
 
-// HardenSummary is the harden report at the summary view.
-message HardenSummary {
-  repeated HardenResultSummary results = 1;
-}
 
 // Seed is a bound symbol seeding code context for a requirement set.
 message Seed {
@@ -316,21 +300,4 @@ message PartitionReport {
   repeated PartitionOverlap overlaps = 2;
 }
 
-// HardenResult is one target's outcome in a hardening run.
-message HardenResult {
-  Hardening record = 1;
-  // Cached: the stored record's pins (body hash, witness content,
-  // operators, toolchain) matched; no mutants ran.
-  bool cached = 2;
-  // SkippedNoTests: the target has no bound witnesses to kill mutants.
-  bool skipped_no_tests = 3;
-  // SkippedNotFunction: the symbol resolves but has no function body (a
-  // type or variable implements-binding) — nothing to mutate.
-  bool skipped_not_function = 4;
-}
 
-// HardenReport is the outcome of a hardening run — exploration output,
-// never gate input.
-message HardenReport {
-  repeated HardenResult results = 1;
-}

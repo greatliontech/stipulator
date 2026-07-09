@@ -14,7 +14,6 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/greatliontech/stipulator/internal/coverage"
-	"github.com/greatliontech/stipulator/internal/harden"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
@@ -303,45 +302,4 @@ func VerifyView(vr *verify.Report, facts Facts, view string, scope Scope) (proto
 		return sliced.Proto(), nil
 	}
 	return nil, fmt.Errorf("unknown view %q (summary, bindings)", view)
-}
-
-// HardenView renders the harden report at a view: summary (counts plus
-// only the OPEN survivors — the ones needing a disposition) or full
-// (the records with attestation prose). The empty view means summary.
-func HardenView(rep *harden.Report, view string) (proto.Message, error) {
-	switch view {
-	case "", "summary":
-		out := &stipulatorv1.HardenSummary{}
-		var results []*stipulatorv1.HardenResultSummary
-		for _, res := range rep.Results {
-			m := &stipulatorv1.HardenResultSummary{}
-			m.SetSymbol(res.Symbol)
-			m.SetRequirementIds(res.Requirements)
-			m.SetMutants(int32(res.Mutants))
-			m.SetKilled(int32(res.Killed))
-			m.SetAttested(int32(len(res.Attested)))
-			m.SetCached(res.Cached)
-			attested := map[string]bool{}
-			for _, a := range res.Attested {
-				attested[a.Position+"|"+a.Operator] = true
-			}
-			var open []*stipulatorv1.MutationSurvivor
-			for _, s := range res.Survivors {
-				if attested[s.Position+"|"+s.Operator] {
-					continue
-				}
-				ms := &stipulatorv1.MutationSurvivor{}
-				ms.SetPosition(s.Position)
-				ms.SetOperator(s.Operator)
-				open = append(open, ms)
-			}
-			m.SetOpenSurvivors(open)
-			results = append(results, m)
-		}
-		out.SetResults(results)
-		return out, nil
-	case "full":
-		return rep.Proto(), nil
-	}
-	return nil, fmt.Errorf("unknown view %q (summary, full)", view)
 }
