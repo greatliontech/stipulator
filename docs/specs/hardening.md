@@ -122,7 +122,12 @@ sheds a disposition.
 ephemeral mutant — a caller-supplied replacement of one source file, exercised
 through a build overlay against a named test, the tree never touched — for the
 manual mutations the operator set cannot generate (generated-data drift,
-resolver seams, caller mappings). It reports whether the named test killed the
+resolver seams, caller mappings). Before running the mutant it MUST probe the
+named test on the unmutated tree: a run pattern matching zero tests cannot
+attribute any outcome, and a test already failing clean would fail against the
+mutant too and read as a fabricated kill — the flattering direction
+REQ-harden-mutation refuses — so either probe result refuses the run rather
+than scoring it. It reports whether the named test killed the
 mutant and the attributed failing test; a survivor is a finding that the test
 does not catch the mutation. The result is finding evidence for the operator
 to record, never persisted to a kill-sheet nor fed to the gate
