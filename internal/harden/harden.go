@@ -22,13 +22,13 @@ type Target struct {
 	// Requirements name the implementing claims, for reporting only.
 	Requirements []string
 	// Witnesses are the unioned witness-role test symbols, canonically
-	// ordered — the set the resulting sheet is pinned to.
+	// ordered — the set the resulting finding is pinned to.
 	Witnesses []string
 }
 
 // WitnessPin is one witness the sheet ran against, pinned by symbol and the
 // body hash it ran at: an edit to a bound witness's body moves its hash and
-// re-stales the sheet, so a strengthened test never leaves a stale survivor.
+// re-stales the finding, so a strengthened test never leaves a stale survivor.
 type WitnessPin struct {
 	Symbol string
 	Hash   string

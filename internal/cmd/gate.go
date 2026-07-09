@@ -145,6 +145,9 @@ func coverageReminder(dir string, backends map[string]verify.Backend, spec *stip
 			covered = append(covered, r.Id)
 		}
 	}
+	if records.RetiredHardeningPresent(os.DirFS(dir)) {
+		fmt.Fprintln(os.Stderr, dim("note: .stipulator/hardening is retired and ignored — mutation findings live in "+harden.FindingsPath+"; delete the directory"))
+	}
 	findings, err := harden.LoadFindings(os.DirFS(dir), harden.FindingsPath)
 	if err != nil {
 		return nil, err

@@ -9,26 +9,26 @@ import (
 	"github.com/greatliontech/stipulator/internal/records"
 )
 
-// SheetState is why a covered body's kill-sheet is not current.
-type SheetState string
+// FindingState is why a covered body's finding is not current.
+type FindingState string
 
 const (
-	// Missing: no recorded sheet keys this symbol.
-	Missing SheetState = "missing"
+	// Missing: no recorded finding keys this symbol.
+	Missing FindingState = "missing"
 	// Stale: a finding exists but its body/witness/toolchain pins no longer
 	// match the current tree. Operator-set drift is deliberately not judged
 	// here: stipulator cannot know the engine's current operator version,
 	// and the engine re-measures on its own bump (REQ-harden-findings).
-	Stale SheetState = "stale"
+	Stale FindingState = "stale"
 )
 
-// ReminderEntry is one covered implementation body whose kill-sheet is not
+// ReminderEntry is one covered implementation body whose finding is not
 // current: the symbol, the requirements it covers, why the sheet is not
 // current, and whether a body mutator can harden it.
 type ReminderEntry struct {
-	Symbol       string     `json:"symbol"`
-	Requirements []string   `json:"requirements,omitempty"`
-	State        SheetState `json:"state"`
+	Symbol       string       `json:"symbol"`
+	Requirements []string     `json:"requirements,omitempty"`
+	State        FindingState `json:"state"`
 	// Hardenable is true when a body mutator can break at least one of the
 	// symbol's witnesses — export targets and run the engine. False means no
 	// mutation target (witnessed only by analyzer proofs): the staged-delta
@@ -82,7 +82,7 @@ func ReminderMap(r *Reminder) map[string]any {
 }
 
 // CoverageReminder lists the covered requirements' implementation bodies with
-// no fresh kill-sheet: a function bound `implements` that no sheet covers, or
+// no fresh finding: a function bound `implements` that no sheet covers, or
 // whose sheet's pins have moved. Non-function bindings have no body to mutate
 // and are skipped; a body with a current sheet drops off. toolchain is the
 // executing toolchain identity a sheet must match (golang.Toolchain).

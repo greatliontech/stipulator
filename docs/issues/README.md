@@ -2,6 +2,10 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
+- **[gofresh-witness-freshness](gofresh-witness-freshness.md)** — persist witness outcomes with
+  gofresh fingerprints so the gate re-runs only stale witnesses instead of the whole suite.
+  *Lands: when the full-suite re-run next proves too slow in real use, or witness records are
+  next redesigned.*
 - **[proto-backend](proto-backend.md)** — descriptor-level verification via protocompile;
   spec exists, five requirements gapped. *Lands: when a corpus needs wire evidence that
   shape pins and Go witnesses cannot cover.*
@@ -38,9 +42,9 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   parser-guard, resolver-precedence, and caller-mapping mutants recur as recipes outside the body
   operator set. *Lands: when a corpus repeatedly needs manual mutants for generated data,
   resolver seams, or caller mappings.*
-- **[harden-staged-deleted-surface](harden-staged-deleted-surface.md)** — `harden --staged-diff`
+- **[harden-staged-deleted-surface](harden-staged-deleted-surface.md)** — `targets --staged-diff`
   labels a deleted or unloadable `.go` surface as an integration seam, conflating a removed
-  bound implementation with an out-of-body edit. *Lands: when `harden --staged-diff` gains a
+  bound implementation with an out-of-body edit. *Lands: when `targets --staged-diff` gains a
   disposition distinguishing a deleted or unloadable surface from an integration seam.*
 - **[term-matcher-ascii-boundaries](term-matcher-ascii-boundaries.md)** — `\b` is ASCII-only,
   so non-ASCII term names may never match a use site (silently missing uses-term edges); the

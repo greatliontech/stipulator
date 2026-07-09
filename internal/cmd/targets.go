@@ -79,6 +79,9 @@ func targetsCmd() *cobra.Command {
 	c.Flags().StringArrayVar(&symbols, "symbol", nil, "implementation symbols filter (repeatable)")
 	c.Flags().StringVar(&out, "out", "", "write the export here instead of stdout")
 	c.Flags().BoolVar(&staged, "staged-diff", false, "classify the working-tree delta vs HEAD instead of exporting: which changed surfaces the mutation flow covers and which need manual mutation")
+	c.MarkFlagsMutuallyExclusive("staged-diff", "out")
+	c.MarkFlagsMutuallyExclusive("staged-diff", "req")
+	c.MarkFlagsMutuallyExclusive("staged-diff", "symbol")
 	registerReqCompletions(c, "req")
 	return c
 }

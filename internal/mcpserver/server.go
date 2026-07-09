@@ -49,7 +49,7 @@ type Server struct {
 	// stagedScope classifies the working-tree delta vs HEAD; it needs git
 	// and a loaded backend, so it is a dir-bound closure.
 	stagedScope func(spec *stipulatorv1.Spec, store *records.Store) (*harden.StagedReport, error)
-	// coverageReminder lists covered bodies with no fresh kill-sheet; it
+	// coverageReminder lists covered bodies with no fresh finding; it
 	// needs the backend and toolchain, so it too is dir-bound.
 	coverageReminder func(spec *stipulatorv1.Spec, store *records.Store, covered []string, findings []harden.EngineFinding) (*harden.Reminder, error)
 	write            func(path string, content []byte) error
@@ -142,7 +142,7 @@ func (s *Server) MCP() *mcp.Server {
 	}, s.toolVerify)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "gate",
-		Description: "Coverage gate. Default view is the summary (gate_passes, counts, violations); view=reds or full for per-requirement rows; scope with ids/bucket/filter/path. Runs the test suite. Also folds in hardeningReminder: covered bodies with no fresh kill-sheet (advisory, never affects the verdict).",
+		Description: "Coverage gate. Default view is the summary (gate_passes, counts, violations); view=reds or full for per-requirement rows; scope with ids/bucket/filter/path. Runs the test suite. Also folds in hardeningReminder: covered bodies with no fresh mutation finding (advisory, never affects the verdict).",
 	}, s.toolGate)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "bind",
@@ -537,13 +537,6 @@ func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn
 		return nil, writeOut{}, err
 	}
 	return nil, writeOut{Wrote: []string{up.Path}}, nil
-}
-
-type attestSurvivorIn struct {
-	Symbol   string `json:"symbol" jsonschema:"mutated symbol whose sheet carries the survivor"`
-	Position string `json:"position" jsonschema:"survivor position as printed by harden (file.go:line:col)"`
-	Operator string `json:"operator" jsonschema:"survivor operator as printed by harden"`
-	Reason   string `json:"reason" jsonschema:"why the mutant is equivalent or accepted"`
 }
 
 type attestRequirementIn struct {
@@ -1070,6 +1063,9 @@ func (s *Server) toolTargets(ctx context.Context, req *mcp.CallToolRequest, in t
 		return nil, nil, err
 	}
 	if in.Staged {
+		if in.Reqs != "" || in.Symbols != "" || in.Out != "" {
+			return nil, nil, fmt.Errorf("staged_diff is a classification, not an export: it takes no reqs, symbols, or out")
+		}
 		rep, err := s.stagedScope(spec, store)
 		if err != nil {
 			return nil, nil, err

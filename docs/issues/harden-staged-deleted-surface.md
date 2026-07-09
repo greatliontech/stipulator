@@ -1,9 +1,9 @@
 # staged-diff coarsely labels deleted and unloadable surfaces
 
-Lands: when `harden --staged-diff` gains a disposition distinguishing a deleted
+Lands: when `targets --staged-diff` gains a disposition distinguishing a deleted
 or unloadable surface from an integration seam.
 
-`harden --staged-diff` classifies a changed `.go` path that is absent from the
+`targets --staged-diff` classifies a changed `.go` path that is absent from the
 loaded packages — a deletion, a file behind a non-matching `//go:build` tag,
 or a file in a package that failed to load — as `integration-seam` (a changed
 file declaring no mutatable body). For a deletion this conflates "a covered
