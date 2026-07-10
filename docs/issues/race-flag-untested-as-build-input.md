@@ -1,21 +1,26 @@
-# The -race build input has no stipulator-side witness
+# Race witness freshness analyzes the default build
 
-Lands: when witnessing grows a second rigor mode (a no-race or coverage
-variant) or the build-input surface next changes.
+Lands: when stipulator next bumps gofresh to a release carrying
+`WithBuildFlags` and build-aware purity scanning.
 
 ## Context
 
-RunTestsFresh pins `-race` into every witness fingerprint as a
-caller-supplied build input (gofresh `WithBuildInputs`), and runs the
-selective executions with the same flag. The clause
-(REQ-evidence-witness-freshness) names the flag as part of the fingerprint;
-gofresh's own suite witnesses that build inputs fold into the BuildConfig
-guard, but no stipulator test varies the flag and observes a verdict flip —
-dropping the `WithBuildInputs("-race")` argument survives the current suite
-because both runs of the e2e use the same flag.
+`RunTestsFresh` executes selective witnesses under `-race`, which enables the
+`race` build tag, but gofresh v0.2.2 accepts that flag only as opaque
+`WithBuildInputs` guard evidence. Its closure and purity scanners therefore load
+the default source set. A helper selected by `//go:build race` can change while
+the analyzed `!race` source and recorded guard remain equal, allowing cached
+witness outcomes from different code to be served as fresh.
+
+The gofresh API that separates executable flags from opaque evidence is not in
+stipulator's pinned release yet. Until that dependency is bumped and the caller
+is migrated, witness freshness under `-race` is not sound; callers requiring the
+guarantee use the full witness run.
 
 ## Resolution
 
-A witness that captures under one build-input set and checks under another,
-asserting Stale — cheap once the engine surface is exercised with two
-configurations in one test.
+On the next gofresh bump, construct one `[]string{"-race"}` build selection,
+pass it to build-aware purity scanning and `WithBuildFlags`, and remove the old
+`WithBuildInputs` call. Add a race-tagged fixture whose selected helper changes,
+then prove the old fingerprint becomes stale while the unselected helper cannot
+confer purity.
