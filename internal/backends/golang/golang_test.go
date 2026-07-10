@@ -363,6 +363,27 @@ func TestWorkspaceMembers(t *testing.T) {
 		t.Fatalf("nested member registration lost: %v", tr.Registrations)
 	}
 
+	tmp := t.TempDir()
+	if err := os.CopyFS(tmp, os.DirFS("testdata/workspacemod")); err != nil {
+		t.Fatal(err)
+	}
+	firstFresh, err := RunTestsFresh(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fresh(t, firstFresh, "workspace first run")
+	if firstFresh.Fresh != 0 || firstFresh.Ran != 2 {
+		t.Fatalf("workspace first run: ran=%d fresh=%d, want both tests run", firstFresh.Ran, firstFresh.Fresh)
+	}
+	secondFresh, err := RunTestsFresh(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fresh(t, secondFresh, "workspace second run")
+	if secondFresh.Ran != 0 || secondFresh.Fresh != 2 {
+		t.Fatalf("workspace second run: ran=%d fresh=%d, want both member tests served", secondFresh.Ran, secondFresh.Fresh)
+	}
+
 	// A member escaping the tree is refused: hermeticity, never bent.
 	if _, err := New("testdata/escapemod"); err == nil || !strings.Contains(err.Error(), "escapes the verification tree") {
 		t.Fatalf("escaping go.work member accepted: %v", err)

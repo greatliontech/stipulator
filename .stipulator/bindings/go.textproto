@@ -108,3 +108,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "e6b4252b260d69eef7f4b3ad9e407aa7d42291a9c4986bd3382ae21fc64d51ea"
 }
+
+bindings {
+  requirement_id: "REQ-go-race"
+  content_hash: "c4d0362d9b7b9e4c83a1c80882caeac41a0a8fa459a8cc259cc68efd28cfa299"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunTestsFreshSelectsRaceSources"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7b576e9c0af633949420ed0a08adb4fe8d17982a5a61585be364490b08321a9e"
+}

@@ -59,13 +59,14 @@ func runTestsFresh(dir string) (*verify.TestRun, error) {
 	}
 	sort.Strings(pkgs)
 
-	pure, err := gofresh.ScanPureDirectivesIn(dir, pkgs...)
+	buildFlags := []string{"-race"}
+	pure, err := gofresh.ScanPureDirectivesInWithBuildFlags(dir, buildFlags, pkgs...)
 	if err != nil {
 		return nil, err
 	}
 	engine, err := gofresh.New(
 		gofresh.WithDir(dir),
-		gofresh.WithBuildInputs("-race"),
+		gofresh.WithBuildFlags(buildFlags...),
 		gofresh.WithAssumePure(pure),
 	)
 	if err != nil {

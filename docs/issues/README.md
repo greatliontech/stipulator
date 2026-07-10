@@ -13,10 +13,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   mutator, whose kill-sheet records are already the interchange contract) can move behind a
   wire protocol with the trust model intact; deferred while one backend exists. *Lands: when
   a second language backend is planned.*
-- **[race-flag-untested-as-build-input](race-flag-untested-as-build-input.md)** — selective
-  witnesses execute the race-selected build while gofresh v0.2.2 analyzes default sources,
-  permitting false-fresh reuse across race-tagged changes. *Lands: when stipulator next bumps
-  gofresh to a release carrying `WithBuildFlags` and build-aware purity scanning.*
 - **[runtime-input-digest-races-the-run](runtime-input-digest-races-the-run.md)** — the testlog
   manifest is hashed after the run, so a fixture edited while its readers execute can pin
   pre-edit outcomes under a post-edit digest. *Lands: when gofresh grows pre-run manifest
@@ -28,10 +24,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[prover-trust-tiers](prover-trust-tiers.md)** — the proof rung assumes near-sound provers;
   a heuristic analyzer must not inherit it. *Lands: when a heuristic analyzer prover is
   proposed.*
-- **[workspace-freshness-unexercised](workspace-freshness-unexercised.md)** — on a go.work tree an
-  engine that cannot resolve members makes the gate re-run everything forever with no note
-  saying why. *Lands: when a go.work tree is next witnessed in anger, or when the freshness
-  path's engine construction next changes.*
 - **[witness-e2e-reds-only-under-gate](witness-e2e-reds-only-under-gate.md)** — the freshness
   witness fails only inside a completed gate run and the gate now dies mid-analysis on engine
   memory; instrumentation to name the failure is in place. *Lands: when gofresh's
