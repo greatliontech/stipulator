@@ -23,9 +23,17 @@ asserted per phase). That instrumentation and the failed-witness output
 surfacing are already in place, so the next completed gate names the
 failure on its own stderr.
 
+After race-selected analysis landed, isolating the freshness fixture reduced
+the complete outer `go test -race` phase to 313.410s. The immediately following
+gate still did not reach a verdict before manual termination: it starts a new
+whole-tree freshness analysis rather than consuming those test outcomes, and
+would then run any stale or unproven tests independently. The discarded-outcome
+workflow is tracked separately; even without the preceding test phase, the
+gate's per-subject engine cost remains the blocker tracked here.
+
 ## Resolution
 
-After the gofresh rework shrinks the engine phase, run the gate on an
+After the gofresh rework shrinks the engine phase, run the gate directly on an
 otherwise quiet machine and read the surfaced witness output. If it names
 a degrade, the cause was environmental and dies with the rework; a real
 assertion gets a fresh diagnosis.

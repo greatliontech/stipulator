@@ -28,6 +28,10 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   witness fails only inside a completed gate run and the gate now dies mid-analysis on engine
   memory; instrumentation to name the failure is in place. *Lands: when gofresh's
   closure-analysis cost/memory rework lands — rerun the gate and read the surfaced failure.*
+- **[check-discards-race-suite](check-discards-race-suite.md)** — `task check` completes the full
+  race suite, then the gate starts an independent freshness analysis because it cannot consume
+  those outcomes; any stale or unproven tests run again afterward. *Lands: when the check/gate
+  execution contract next changes.*
 - **[witness-subset-adequacy](witness-subset-adequacy.md)** — union sheets cannot say whether
   one requirement's own witnesses have teeth; an opt-in per-requirement probe is measurable
   without attribution claims. *Lands: when a requirement's risk profile demands per-requirement
