@@ -83,6 +83,19 @@ type TestRun struct {
 	// Registrations are runtime coverage claims emitted through the
 	// stipulate marker, in deterministic order.
 	Registrations []Registration
+	// Ran and Fresh count top-level tests executed vs served from the
+	// witness cache by proven equivalence (REQ-evidence-witness-freshness);
+	// both zero on a full uncached run's legacy path.
+	Ran   int
+	Fresh int
+	// Degraded carries the freshness-path fault when the run fell back to
+	// the full suite (REQ-evidence-freshness-degrade); empty on the
+	// freshness path proper.
+	Degraded string
+	// Failures carries each failed top-level test's output tail, keyed like
+	// Outcomes: a red witness must be diagnosable from the run that saw it,
+	// not by re-running the suite by hand.
+	Failures map[string]string
 }
 
 // Registration is one runtime coverage claim. Package and the test path

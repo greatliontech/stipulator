@@ -39,10 +39,16 @@ func gateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(os.Stderr, dim("witnessing: go test -json -race ./..."))
-			testRun, err := golang.RunTests(chdir)
+			fmt.Fprintln(os.Stderr, dim("witnessing: fresh-checked; stale and unproven tests run (-race)"))
+			testRun, err := golang.RunTestsFresh(chdir)
 			if err != nil {
 				return err
+			}
+			if testRun.Ran+testRun.Fresh > 0 {
+				fmt.Fprintln(os.Stderr, dim(fmt.Sprintf("witnessed: %d ran, %d served fresh", testRun.Ran, testRun.Fresh)))
+			}
+			for key, out := range testRun.Failures {
+				fmt.Fprintf(os.Stderr, "%s\n%s", red("witness failed: "+key), out)
 			}
 			backends, err := makeBackends(chdir)
 			if err != nil {

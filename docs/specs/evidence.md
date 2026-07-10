@@ -82,6 +82,36 @@ grants nothing, because a red suite never yields green evidence.
 attributes of the run that produced it, at minimum whether the race
 detector was enabled.
 
+**REQ-evidence-witness-freshness** (behavior): A witnessing run MAY serve a
+test's outcome — its subtest outcomes and runtime registrations riding with
+it — from a local cache exactly when the freshness fingerprint recorded
+beside it checks valid against the current tree, because a valid fingerprint
+proves the test's source closure and produced environment are those that
+produced the outcome: the served outcome is the current run's verification
+by proven equivalence, not a trust extension, so REQ-evidence-promotion
+holds. Anything short of valid — a stale or unverifiable verdict, an absent
+or unreadable record — runs the test; absence of proof never serves an
+outcome. The fingerprint pins the closure and environment guards with the
+race flag as a caller-supplied build input, and the run's observed
+runtime-input manifest is captured per package and attached to every test
+fingerprinted from that run — an over-approximation whose failure direction
+is a spurious re-run, never a spurious reuse. A selective run may
+isolate a test its full-suite sibling would have shadowed by a package
+abort: the isolated outcome is a real run's outcome — evidence follows
+execution, the aborting sibling's own failure stands, and a shadowed test
+gaining its first outcome this way is the selective form being more
+precise, not less. The cache is memoization,
+never authoritative and never committed: for a deterministic test,
+discarding it changes no verdict, only the work — a flaky test's served
+outcome is that flake pinned until its inputs move or the cache is
+discarded, which is a finding about the test, not the cache. A test whose
+fixture reads leave it unverifiable re-runs every time until its author
+asserts purity in source, the deliberate opt-in.
+
+**REQ-evidence-freshness-degrade** (behavior): A fault anywhere on the
+freshness path MUST degrade to the full witnessing run: the cache saves
+work, it never blocks or weakens witnessing.
+
 **REQ-evidence-attestation** (behavior): An attestation MUST carry its reason
 text and appear distinctly in every coverage output; it is the weakest
 evidence and is never silently aggregated into stronger kinds. A

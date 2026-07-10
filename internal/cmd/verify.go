@@ -29,10 +29,16 @@ func verifyCmd() *cobra.Command {
 			}
 			var testRun *verify.TestRun
 			if !noTest {
-				fmt.Fprintln(os.Stderr, dim("witnessing: go test -json -race ./..."))
-				tr, err := golang.RunTests(chdir)
+				fmt.Fprintln(os.Stderr, dim("witnessing: fresh-checked; stale and unproven tests run (-race)"))
+				tr, err := golang.RunTestsFresh(chdir)
 				if err != nil {
 					return err
+				}
+				if tr.Ran+tr.Fresh > 0 {
+					fmt.Fprintln(os.Stderr, dim(fmt.Sprintf("witnessed: %d ran, %d served fresh", tr.Ran, tr.Fresh)))
+				}
+				for key, out := range tr.Failures {
+					fmt.Fprintf(os.Stderr, "%s\n%s", red("witness failed: "+key), out)
 				}
 				testRun = tr
 			}

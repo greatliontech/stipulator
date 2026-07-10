@@ -2,10 +2,7 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
-- **[gofresh-witness-freshness](gofresh-witness-freshness.md)** — persist witness outcomes with
-  gofresh fingerprints so the gate re-runs only stale witnesses instead of the whole suite.
-  *Lands: when the full-suite re-run next proves too slow in real use, or witness records are
-  next redesigned.*
+
 - **[proto-backend](proto-backend.md)** — descriptor-level verification via protocompile;
   spec exists, five requirements gapped. *Lands: when a corpus needs wire evidence that
   shape pins and Go witnesses cannot cover.*
@@ -16,6 +13,14 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   mutator, whose kill-sheet records are already the interchange contract) can move behind a
   wire protocol with the trust model intact; deferred while one backend exists. *Lands: when
   a second language backend is planned.*
+- **[race-flag-untested-as-build-input](race-flag-untested-as-build-input.md)** — `-race` rides every
+  witness fingerprint as a build input but no stipulator test varies it and observes a verdict
+  flip. *Lands: when witnessing grows a second rigor mode or the build-input surface next
+  changes.*
+- **[runtime-input-digest-races-the-run](runtime-input-digest-races-the-run.md)** — the testlog
+  manifest is hashed after the run, so a fixture edited while its readers execute can pin
+  pre-edit outcomes under a post-edit digest. *Lands: when gofresh grows pre-run manifest
+  evaluation, or when witness records are next redesigned.*
 - **[slice-frontier-uncertainty](slice-frontier-uncertainty.md)** — typed frontiers miss
   reflection, build tags, and init effects; pew's closure model (sound floor, provably-safe
   refinement, resolve/widen/unverifiable dispositions) is the reference shape. *Lands: when a
@@ -23,6 +28,14 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[prover-trust-tiers](prover-trust-tiers.md)** — the proof rung assumes near-sound provers;
   a heuristic analyzer must not inherit it. *Lands: when a heuristic analyzer prover is
   proposed.*
+- **[workspace-freshness-unexercised](workspace-freshness-unexercised.md)** — on a go.work tree an
+  engine that cannot resolve members makes the gate re-run everything forever with no note
+  saying why. *Lands: when a go.work tree is next witnessed in anger, or when the freshness
+  path's engine construction next changes.*
+- **[witness-e2e-reds-only-under-gate](witness-e2e-reds-only-under-gate.md)** — the freshness
+  witness fails only inside a completed gate run and the gate now dies mid-analysis on engine
+  memory; instrumentation to name the failure is in place. *Lands: when gofresh's
+  closure-analysis cost/memory rework lands — rerun the gate and read the surfaced failure.*
 - **[witness-subset-adequacy](witness-subset-adequacy.md)** — union sheets cannot say whether
   one requirement's own witnesses have teeth; an opt-in per-requirement probe is measurable
   without attribution claims. *Lands: when a requirement's risk profile demands per-requirement

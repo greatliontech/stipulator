@@ -61,7 +61,7 @@ func New(dir string) *Server {
 	return &Server{
 		fsys:     func() fs.FS { return os.DirFS(dir) },
 		backends: func() (map[string]verify.Backend, error) { return makeBackends(dir) },
-		runTests: func() (*verify.TestRun, error) { return golang.RunTests(dir) },
+		runTests: func() (*verify.TestRun, error) { return golang.RunTestsFresh(dir) },
 		stagedScope: func(spec *stipulatorv1.Spec, store *records.Store) (*harden.StagedReport, error) {
 			gb, err := golang.New(dir)
 			if err != nil {

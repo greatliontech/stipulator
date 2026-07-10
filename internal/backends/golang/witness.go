@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"go/ast"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"sort"
+	"strings"
 
 	"github.com/greatliontech/stipulator/internal/profile"
 	"github.com/greatliontech/stipulator/internal/verify"
@@ -17,7 +19,7 @@ import (
 
 // testArgs is the witness-run invocation: -race is always on, so every
 // witness is race-attributed.
-func testArgs() []string { return []string{"test", "-json", "-race", "./..."} }
+func testArgs() []string { return []string{"test", "-json", "-race", "-timeout=30m", "./..."} }
 
 // coversRe extracts requirement identifiers from stipulate registration
 // lines in test output. It is built from stipulate.Marker so the helper
@@ -116,4 +118,34 @@ func sortRegs(tr *verify.TestRun) {
 		return a.Requirement < b.Requirement
 	})
 	tr.Registrations = slices.Compact(tr.Registrations)
+}
+
+// RunnableTests enumerates each package's top-level runnable tests — Test
+// and Fuzz functions go test would execute, both variants folded to the
+// plain import path — the expected witness set a freshness-aware run
+// selects from (REQ-evidence-witness-freshness).
+func (b *Backend) RunnableTests() map[string][]string {
+	out := map[string][]string{}
+	seen := map[string]bool{}
+	for _, pkg := range b.pkgs {
+		pkgPath := strings.TrimSuffix(pkg.PkgPath, "_test")
+		for _, f := range pkg.Syntax {
+			for _, d := range f.Decls {
+				fd, ok := d.(*ast.FuncDecl)
+				if !ok || !runnableWitness(fd, pkg) {
+					continue
+				}
+				key := pkgPath + "." + fd.Name.Name
+				if seen[key] {
+					continue
+				}
+				seen[key] = true
+				out[pkgPath] = append(out[pkgPath], fd.Name.Name)
+			}
+		}
+	}
+	for _, names := range out {
+		sort.Strings(names)
+	}
+	return out
 }

@@ -28,7 +28,7 @@ jobs:
         # Suite health is a broader check than the gate: a failing unbound
         # test breaks no binding, so the gate alone could pass on a red
         # suite.
-        run: go test -race github.com/greatliontech/stipulator/...
+        run: go test -race -timeout=30m github.com/greatliontech/stipulator/...
       - name: Gate
         run: go run ./cmd/stipulator gate
       - name: Prune lint
