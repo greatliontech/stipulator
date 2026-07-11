@@ -1,8 +1,8 @@
 # The freshness witness reds only inside a completed gate run
 
-Lands: when gofresh's closure-analysis cost/memory rework lands (its
-docs/issues/closure-analysis-cost-amortization.md) — rerun the gate and
-read the surfaced failure.
+Lands: when witness execution can apply the corpus test policy without an independent
+universal race run — rerun the isolated gate diagnostic and read the surfaced
+failure.
 
 ## Context
 
@@ -29,11 +29,14 @@ gate still did not reach a verdict before manual termination: it starts a new
 whole-tree freshness analysis rather than consuming those test outcomes, and
 would then run any stale or unproven tests independently. The discarded-outcome
 workflow is tracked separately; even without the preceding test phase, the
-gate's per-subject engine cost remains the blocker tracked here.
+gate's per-subject engine cost remained the blocker. Gofresh's maximal-default batch
+rework removed that blocker, but a direct Gofresh verification then demonstrated the
+separate universal-race policy cost tracked in
+`witness-execution-ignores-test-policy.md`; the diagnostic remains parked until it can
+run under the accepted corpus policy.
 
 ## Resolution
 
-After the gofresh rework shrinks the engine phase, run the gate directly on an
-otherwise quiet machine and read the surfaced witness output. If it names
-a degrade, the cause was environmental and dies with the rework; a real
+Run the isolated gate diagnostic under the accepted corpus policy and read the
+surfaced witness output. If it names a degrade, the cause was environmental; a real
 assertion gets a fresh diagnosis.

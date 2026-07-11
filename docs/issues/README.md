@@ -25,13 +25,17 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   a heuristic analyzer must not inherit it. *Lands: when a heuristic analyzer prover is
   proposed.*
 - **[witness-e2e-reds-only-under-gate](witness-e2e-reds-only-under-gate.md)** — the freshness
-  witness fails only inside a completed gate run and the gate now dies mid-analysis on engine
-  memory; instrumentation to name the failure is in place. *Lands: when gofresh's
-  closure-analysis cost/memory rework lands — rerun the gate and read the surfaced failure.*
+  witness fails only inside a completed gate run; instrumentation to name the failure is in
+  place. *Lands: when witness execution can apply the corpus test policy without an independent
+  universal race run.*
 - **[check-discards-race-suite](check-discards-race-suite.md)** — `task check` completes the full
   race suite, then the gate starts an independent freshness analysis because it cannot consume
   those outcomes; any stale or unproven tests run again afterward. *Lands: when the check/gate
   execution contract next changes.*
+- **[witness-execution-ignores-test-policy](witness-execution-ignores-test-policy.md)** — witness
+  verification imposes `-race ./...` even when the corpus's accepted policy races only selected
+  packages. *Lands: when the witness/check execution contract next changes, or before gating a
+  corpus whose accepted test policy excludes a universal race run.*
 - **[witness-subset-adequacy](witness-subset-adequacy.md)** — union sheets cannot say whether
   one requirement's own witnesses have teeth; an opt-in per-requirement probe is measurable
   without attribution claims. *Lands: when a requirement's risk profile demands per-requirement
