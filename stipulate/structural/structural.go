@@ -6,6 +6,7 @@
 package structural
 
 import (
+	"go/token"
 	"reflect"
 	"sort"
 	"strings"
@@ -13,6 +14,90 @@ import (
 
 	"golang.org/x/tools/go/packages"
 )
+
+// Field describes one exported field in an ExportedData assertion.
+type Field struct {
+	Name string
+	Type reflect.Type
+}
+
+// FieldOf constructs an expected exported field without requiring callers to
+// manipulate reflect.Type values directly.
+func FieldOf[T any](name string) Field {
+	return Field{Name: name, Type: reflect.TypeFor[T]()}
+}
+
+// ExportedData asserts that T resolves to an exported named struct whose complete
+// field list exactly matches fields in declaration order. Every field must be
+// exported, non-embedded, and untagged, and neither the value nor pointer type may
+// expose exported methods. Exact names and types plus those exclusions make hidden
+// state or type-owned serialization behavior a structural failure.
+func ExportedData[T any](tb testing.TB, fields ...Field) {
+	tb.Helper()
+	typ := reflect.TypeFor[T]()
+	if typ.Kind() != reflect.Struct {
+		tb.Fatalf("structural.ExportedData: %s is %s, want struct", typ, typ.Kind())
+		return
+	}
+	if typ.Name() == "" || typ.PkgPath() == "" || !token.IsExported(typ.Name()) {
+		tb.Fatalf("structural.ExportedData: %s is not an exported named type", typ)
+		return
+	}
+	if typ.NumField() != len(fields) {
+		tb.Errorf("structural.ExportedData: %s has %d fields, want %d", typ, typ.NumField(), len(fields))
+		return
+	}
+	if typ.NumMethod() != 0 || reflect.PointerTo(typ).NumMethod() != 0 {
+		tb.Errorf("structural.ExportedData: %s has methods on its value or pointer type", typ)
+		return
+	}
+	for i, want := range fields {
+		got := typ.Field(i)
+		if !got.IsExported() {
+			tb.Errorf("structural.ExportedData: %s field %d %q is unexported", typ, i, got.Name)
+			return
+		}
+		if got.Anonymous {
+			tb.Errorf("structural.ExportedData: %s field %d %q is embedded", typ, i, got.Name)
+			return
+		}
+		if got.Tag != "" {
+			tb.Errorf("structural.ExportedData: %s field %d %q has tag %q", typ, i, got.Name, got.Tag)
+			return
+		}
+		if want.Name == "" || want.Type == nil {
+			tb.Fatalf("structural.ExportedData: expected field %d is incomplete: %+v", i, want)
+			return
+		}
+		if got.Name != want.Name || got.Type != want.Type {
+			tb.Errorf("structural.ExportedData: %s field %d = %s %s, want %s %s", typ, i, got.Name, got.Type, want.Name, want.Type)
+			return
+		}
+	}
+}
+
+// FunctionSignature asserts that fn is a function whose complete signature is
+// exactly Sig. Sig must itself be a function type.
+func FunctionSignature[Sig any](tb testing.TB, fn any) {
+	tb.Helper()
+	want := reflect.TypeFor[Sig]()
+	if want.Kind() != reflect.Func {
+		tb.Fatalf("structural.FunctionSignature: signature type must be a function, got %s", want)
+		return
+	}
+	got := reflect.TypeOf(fn)
+	if got == nil {
+		tb.Fatalf("structural.FunctionSignature: function value carries no type")
+		return
+	}
+	if got.Kind() != reflect.Func {
+		tb.Fatalf("structural.FunctionSignature: value has type %s, want function %s", got, want)
+		return
+	}
+	if got != want {
+		tb.Errorf("structural.FunctionSignature: got %s, want %s", got, want)
+	}
+}
 
 // NoImport asserts that no package matched by fromPattern imports any of
 // the forbidden packages, transitively. A forbidden entry matches exactly,

@@ -94,10 +94,17 @@ func TestWitnessClassProof(t *testing.T) {
 	if got := backend.WitnessClass(mod + "/internal/arch.TestBackendSatisfiesVerifierSurfaces"); got != verify.AnalyzerProof {
 		t.Fatalf("generic structural invocation classified %v", got)
 	}
+	if got := backend.WitnessClass(mod + "/internal/backends/golang.TestFieldHelperOnly"); got != verify.ExampleWitness {
+		t.Fatalf("structural helper-only test classified %v, want example", got)
+	}
 	notATest(t)
 	if got := backend.WitnessClass(mod + "/internal/backends/golang.notATest"); got == verify.AnalyzerProof {
 		t.Fatal("plain function classified as proof; it never runs in a witness run")
 	}
+}
+
+func TestFieldHelperOnly(t *testing.T) {
+	_ = structural.FieldOf[int]("Value")
 }
 
 // notATest invokes the structural library outside any runnable test: the

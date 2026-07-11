@@ -325,6 +325,15 @@ func lookup(pkg *types.Package, parts []string) types.Object {
 // the proof class.
 const structuralPkg = "github.com/greatliontech/stipulator/stipulate/structural"
 
+func structuralAssertion(name string) bool {
+	switch name {
+	case "NoImport", "Implements", "ExportedData", "FunctionSignature":
+		return true
+	default:
+		return false
+	}
+}
+
 // rapidPkg is the recognized property-test library: a test driving its
 // check runner quantifies over generated inputs. Generator construction
 // alone does not quantify, so only the drivers classify.
@@ -364,7 +373,7 @@ func (b *Backend) WitnessClass(symbol string) verify.WitnessClass {
 			if sel, ok := fun.(*ast.SelectorExpr); ok {
 				if obj := pkg.TypesInfo.Uses[sel.Sel]; obj != nil && obj.Pkg() != nil {
 					switch {
-					case obj.Pkg().Path() == structuralPkg:
+					case obj.Pkg().Path() == structuralPkg && structuralAssertion(obj.Name()):
 						proof = true
 						return false
 					case obj.Pkg().Path() == rapidPkg && rapidDriver(sel.Sel.Name):

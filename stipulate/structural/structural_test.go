@@ -15,6 +15,46 @@ type recorder struct {
 	fatals []string
 }
 
+type PublicData struct {
+	Name  string
+	Count int
+}
+
+type PublicHiddenData struct {
+	Name   string
+	hidden int
+}
+
+type PublicEmbeddedData struct {
+	PublicData
+}
+
+type PublicTaggedData struct {
+	Name string `json:"name"`
+}
+
+type PublicMethodData struct {
+	Name string
+}
+
+func (PublicMethodData) String() string { return "" }
+
+type PublicPointerMethodData struct {
+	Name string
+}
+
+func (*PublicPointerMethodData) Reset() {}
+
+type PublicPrivateMethodData struct {
+	Name string
+}
+
+func (PublicPrivateMethodData) normalize() {}
+
+type privateData struct {
+	Name string
+}
+
 func (r *recorder) Helper()                   {}
 func (r *recorder) Errorf(f string, a ...any) { r.errors = append(r.errors, fmt.Sprintf(f, a...)) }
 func (r *recorder) Fatalf(f string, a ...any) { r.fatals = append(r.fatals, fmt.Sprintf(f, a...)) }
@@ -86,4 +126,123 @@ func TestImplements(t *testing.T) {
 	if len(r.fatals) < 2 {
 		t.Fatal("untyped nil accepted")
 	}
+}
+
+func TestExportedData(t *testing.T) {
+	t.Run("exact exported shape passes", func(t *testing.T) {
+		r := &recorder{}
+		ExportedData[PublicData](r, FieldOf[string]("Name"), FieldOf[int]("Count"))
+		if len(r.errors)+len(r.fatals) != 0 {
+			t.Fatalf("exact data shape failed: %v %v", r.errors, r.fatals)
+		}
+	})
+	t.Run("wrong field name fails", func(t *testing.T) {
+		r := &recorder{}
+		ExportedData[PublicData](r, FieldOf[string]("Wrong"), FieldOf[int]("Count"))
+		if len(r.errors) == 0 || !strings.Contains(r.errors[0], "field 0") {
+			t.Fatalf("wrong field name accepted: %v", r.errors)
+		}
+	})
+	t.Run("wrong field type fails", func(t *testing.T) {
+		r := &recorder{}
+		ExportedData[PublicData](r, FieldOf[int]("Name"), FieldOf[int]("Count"))
+		if len(r.errors) == 0 || !strings.Contains(r.errors[0], "field 0") {
+			t.Fatalf("wrong field type accepted: %v", r.errors)
+		}
+	})
+	t.Run("hidden state fails", func(t *testing.T) {
+		r := &recorder{}
+		ExportedData[PublicHiddenData](r, FieldOf[string]("Name"), FieldOf[int]("hidden"))
+		if len(r.errors) == 0 || !strings.Contains(r.errors[0], "unexported") {
+			t.Fatalf("hidden field accepted: %v", r.errors)
+		}
+	})
+	t.Run("embedding fails", func(t *testing.T) {
+		r := &recorder{}
+		ExportedData[PublicEmbeddedData](r, FieldOf[PublicData]("PublicData"))
+		if len(r.errors) == 0 || !strings.Contains(r.errors[0], "embedded") {
+			t.Fatalf("embedded field accepted: %v", r.errors)
+		}
+	})
+	t.Run("pointer methods fail", func(t *testing.T) {
+		r := &recorder{}
+		ExportedData[PublicPointerMethodData](r, FieldOf[string]("Name"))
+		if len(r.errors) == 0 || !strings.Contains(r.errors[0], "has methods") {
+			t.Fatalf("pointer method-bearing data accepted: %v", r.errors)
+		}
+	})
+	t.Run("unexported helper passes", func(t *testing.T) {
+		r := &recorder{}
+		ExportedData[PublicPrivateMethodData](r, FieldOf[string]("Name"))
+		if len(r.errors)+len(r.fatals) != 0 {
+			t.Fatalf("unexported helper changed public data shape: %v %v", r.errors, r.fatals)
+		}
+	})
+	t.Run("anonymous struct fails", func(t *testing.T) {
+		r := &recorder{}
+		ExportedData[struct{ Name string }](r, FieldOf[string]("Name"))
+		if len(r.fatals) == 0 || !strings.Contains(r.fatals[0], "not an exported named type") {
+			t.Fatalf("anonymous struct accepted: %v", r.fatals)
+		}
+	})
+	t.Run("unexported named type fails", func(t *testing.T) {
+		r := &recorder{}
+		ExportedData[privateData](r, FieldOf[string]("Name"))
+		if len(r.fatals) == 0 || !strings.Contains(r.fatals[0], "not an exported named type") {
+			t.Fatalf("unexported named type accepted: %v", r.fatals)
+		}
+	})
+	t.Run("tag fails", func(t *testing.T) {
+		r := &recorder{}
+		ExportedData[PublicTaggedData](r, FieldOf[string]("Name"))
+		if len(r.errors) == 0 || !strings.Contains(r.errors[0], "has tag") {
+			t.Fatalf("tagged field accepted: %v", r.errors)
+		}
+	})
+	t.Run("methods fail", func(t *testing.T) {
+		r := &recorder{}
+		ExportedData[PublicMethodData](r, FieldOf[string]("Name"))
+		if len(r.errors) == 0 || !strings.Contains(r.errors[0], "has methods") {
+			t.Fatalf("method-bearing data accepted: %v", r.errors)
+		}
+	})
+	t.Run("non-struct fails", func(t *testing.T) {
+		r := &recorder{}
+		ExportedData[int](r)
+		if len(r.fatals) == 0 {
+			t.Fatal("non-struct accepted")
+		}
+	})
+}
+
+func TestFunctionSignature(t *testing.T) {
+	fn := func(string) bool { return true }
+	t.Run("exact signature passes", func(t *testing.T) {
+		r := &recorder{}
+		FunctionSignature[func(string) bool](r, fn)
+		if len(r.errors)+len(r.fatals) != 0 {
+			t.Fatalf("exact function signature failed: %v %v", r.errors, r.fatals)
+		}
+	})
+	t.Run("mismatch fails", func(t *testing.T) {
+		r := &recorder{}
+		FunctionSignature[func(int) bool](r, fn)
+		if len(r.errors) == 0 {
+			t.Fatal("mismatched function signature accepted")
+		}
+	})
+	t.Run("non-function signature fails", func(t *testing.T) {
+		r := &recorder{}
+		FunctionSignature[string](r, fn)
+		if len(r.fatals) == 0 {
+			t.Fatal("non-function signature type accepted")
+		}
+	})
+	t.Run("non-function value fails", func(t *testing.T) {
+		r := &recorder{}
+		FunctionSignature[func(string) bool](r, 1)
+		if len(r.fatals) == 0 {
+			t.Fatal("non-function value accepted")
+		}
+	})
 }
