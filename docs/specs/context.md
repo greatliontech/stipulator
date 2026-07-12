@@ -20,8 +20,8 @@ leaving selection and ordering entirely to the caller.
 stipulator MUST assemble the orientation dossier in one call — the
 compiled clause with kind and keyword, the coverage bucket with its
 reasons, any gap record's reason, landing condition, and evaluated
-state, any attestation,
-each binding with role, witness class, and pin freshness, and a
-kill-sheet roll-up per bound symbol — so answering "tell me everything
+state, any attestation, each binding with role, witness class, and pin
+freshness, and any explicitly supplied advisory attachments with their
+correlation state — so answering "tell me everything
 about this requirement" never requires reading the record stores' file
 layout.

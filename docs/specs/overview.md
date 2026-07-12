@@ -54,6 +54,10 @@ verification, never a result of it.
 **evidence** (term): a verified binding — produced only by stipulator
 checking a claim against the current corpus and code.
 
+Evidence is distinct from advisory attachments: out-of-band material may be
+correlated and rendered, but only a backend Stipulator invokes in the current
+verification run can produce evidence.
+
 **witness** (term): evidence that a named test passed while bound to a
 requirement in the same verification run.
 
