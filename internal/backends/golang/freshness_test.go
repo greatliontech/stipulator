@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -32,6 +33,105 @@ func TestRunTestsFreshDegrades(t *testing.T) {
 	}
 	if tr.Degraded == "" {
 		t.Fatal("degraded run did not name its fault")
+	}
+}
+
+func TestRunTestsFreshRejectsProducerViewDrift(t *testing.T) {
+	tmp := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte("module example.com/mutate\n\ngo 1.26\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmp, "mutate.go"), []byte("package mutate\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testSource := `package mutate
+
+import (
+	"os"
+	"testing"
+)
+
+func TestMutatesSourceOnce(t *testing.T) {
+	if _, err := os.Stat("mutated.once"); !os.IsNotExist(err) {
+		return
+	}
+	source, err := os.ReadFile("mutate.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile("mutate.go", append(source, []byte("\n// changed during run\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile("mutated.once", nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+`
+	if err := os.WriteFile(filepath.Join(tmp, "mutate_test.go"), []byte(testSource), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	run, err := RunTestsFresh(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(run.Degraded, "analysis view changed") {
+		t.Fatalf("degraded reason = %q, want producer view drift", run.Degraded)
+	}
+	if run.Outcomes["example.com/mutate.TestMutatesSourceOnce"] != verify.TestPassed {
+		t.Fatalf("fallback outcome missing: %v", run.Outcomes)
+	}
+	if _, err := os.Stat(filepath.Join(tmp, filepath.FromSlash(witnesscache.Path))); !os.IsNotExist(err) {
+		t.Fatalf("drifted producer cache exists: %v", err)
+	}
+}
+
+func TestRunTestsFreshRejectsRuntimeInputDriftBetweenPackages(t *testing.T) {
+	tmp := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte("module example.com/runtime-drift\n\ngo 1.26\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	readerDir := filepath.Join(tmp, "reader")
+	writerDir := filepath.Join(tmp, "writer")
+	if err := os.MkdirAll(readerDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(writerDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(readerDir, "data.txt"), []byte("before"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	reader := `package reader
+import ("os"; "testing")
+//gofresh:pure
+func TestReads(t *testing.T) { if _, err := os.ReadFile("data.txt"); err != nil { t.Fatal(err) } }
+`
+	writer := `package writer
+import ("os"; "testing")
+//gofresh:pure
+func TestWritesOnce(t *testing.T) {
+	if _, err := os.Stat("written.once"); !os.IsNotExist(err) { return }
+	if err := os.WriteFile("../reader/data.txt", []byte("after"), 0o644); err != nil { t.Fatal(err) }
+	if err := os.WriteFile("written.once", nil, 0o644); err != nil { t.Fatal(err) }
+}
+`
+	if err := os.WriteFile(filepath.Join(readerDir, "reader_test.go"), []byte(reader), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(writerDir, "writer_test.go"), []byte(writer), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	run, err := RunTestsFresh(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(run.Degraded, "reader.TestReads moved during execution") {
+		t.Fatalf("degraded reason = %q, want runtime-input drift", run.Degraded)
+	}
+	if _, err := os.Stat(filepath.Join(tmp, filepath.FromSlash(witnesscache.Path))); !os.IsNotExist(err) {
+		t.Fatalf("runtime-drifted cache exists: %v", err)
 	}
 }
 

@@ -2,6 +2,7 @@ package golang
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -60,19 +61,23 @@ func runTestsFresh(dir string) (*verify.TestRun, error) {
 	sort.Strings(pkgs)
 
 	buildFlags := []string{"-race"}
-	pure, err := gofresh.ScanPureDirectivesInWithBuildFlags(dir, buildFlags, pkgs...)
-	if err != nil {
-		return nil, err
-	}
 	engine, err := gofresh.New(
 		gofresh.WithDir(dir),
 		gofresh.WithBuildFlags(buildFlags...),
-		gofresh.WithAssumePure(pure),
 	)
 	if err != nil {
 		return nil, err
 	}
-	engine.Prime(pkgs)
+	var subjects []gofresh.Subject
+	for _, pkg := range pkgs {
+		for _, test := range expected[pkg] {
+			subjects = append(subjects, gofresh.Subject{Package: pkg, Symbol: test})
+		}
+	}
+	view, err := engine.NewView(subjects, dir)
+	if err != nil {
+		return nil, err
+	}
 
 	cached := map[string]witnesscache.Record{}
 	for _, rec := range witnesscache.Load(dir) {
@@ -82,6 +87,22 @@ func runTestsFresh(dir string) (*verify.TestRun, error) {
 	env := goworkEnv(dir)
 	tr := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}, RaceEnabled: true}
 	var next []witnesscache.Record
+	served := map[string]bool{}
+	recorded := map[gofresh.Subject]gofresh.Fingerprint{}
+	for _, pkg := range pkgs {
+		for _, test := range expected[pkg] {
+			if rec, ok := cached[pkg+"."+test]; ok {
+				recorded[gofresh.Subject{Package: pkg, Symbol: test}] = rec.Fingerprint.ToGofresh()
+			}
+		}
+	}
+	verdicts := map[gofresh.Subject]gofresh.Verdict{}
+	if len(recorded) != 0 {
+		verdicts, err = view.CheckRefinedBatch(context.Background(), recorded)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	// One engine pass over every package — check what serves, and capture
 	// fingerprints for what must run — before any test executes. Capturing
@@ -100,13 +121,13 @@ func runTestsFresh(dir string) (*verify.TestRun, error) {
 	for _, pkg := range pkgs {
 		var stale []string
 		for _, test := range expected[pkg] {
+			subject := gofresh.Subject{Package: pkg, Symbol: test}
 			rec, ok := cached[pkg+"."+test]
 			if !ok {
 				stale = append(stale, test)
 				continue
 			}
-			verdict, err := engine.Check(rec.Fingerprint.ToGofresh(), gofresh.Subject{Package: pkg, Symbol: test}, dir, gofresh.CodeResult)
-			if err != nil || verdict.Status != gofresh.Valid {
+			if verdicts[subject].Status != gofresh.Valid {
 				stale = append(stale, test)
 				continue
 			}
@@ -117,25 +138,23 @@ func runTestsFresh(dir string) (*verify.TestRun, error) {
 			tr.Registrations = append(tr.Registrations, rec.Regs...)
 			tr.Fresh++
 			next = append(next, rec)
+			served[rec.Key()] = true
 		}
 		if len(stale) == 0 {
 			continue
 		}
 		fps := map[string]gofresh.Fingerprint{}
 		for _, test := range stale {
-			if fp, err := engine.Capture(gofresh.Subject{Package: pkg, Symbol: test}, dir); err == nil {
+			if fp, err := view.Capture(gofresh.Subject{Package: pkg, Symbol: test}); err == nil {
 				fps[test] = fp
 			}
 		}
 		plans = append(plans, pkgPlan{pkg: pkg, stale: stale, fps: fps})
 	}
 
-	// The engine's whole-tree analysis holds gigabytes. Release it — to the
-	// OS, not just the Go heap, since the builds it starves are child
-	// processes — before spawning race-instrumented builds: witnessing must
-	// never run under the analysis's memory pressure; that pressure is
-	// exactly what turns transient toolchain faults into degraded runs.
-	engine = nil
+	// Release transient package-loading memory before spawning race-instrumented
+	// builds. The bounded maximal view remains alive because producer validation
+	// must re-observe it after execution.
 	debug.FreeOSMemory()
 
 	for _, plan := range plans {
@@ -149,6 +168,35 @@ func runTestsFresh(dir string) (*verify.TestRun, error) {
 				tr.Ran++
 			}
 		}
+	}
+	if err := view.Validate(); err != nil {
+		return nil, err
+	}
+	if len(next) != 0 {
+		final := make(map[gofresh.Subject]gofresh.Fingerprint, len(next))
+		for _, rec := range next {
+			final[gofresh.Subject{Package: rec.Package, Symbol: rec.Test}] = rec.Fingerprint.ToGofresh()
+		}
+		verdicts, err := view.CheckRefinedBatch(context.Background(), final)
+		if err != nil {
+			return nil, err
+		}
+		publish := next[:0]
+		for _, rec := range next {
+			subject := gofresh.Subject{Package: rec.Package, Symbol: rec.Test}
+			switch verdicts[subject].Status {
+			case gofresh.Valid:
+				publish = append(publish, rec)
+			case gofresh.Unverifiable:
+				if !served[rec.Key()] {
+					continue
+				}
+				fallthrough
+			default:
+				return nil, fmt.Errorf("witness %s.%s moved during execution", subject.Package, subject.Symbol)
+			}
+		}
+		next = publish
 	}
 	sortRegs(tr)
 	if err := witnesscache.EnsureIgnored(dir); err == nil {

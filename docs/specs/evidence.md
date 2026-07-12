@@ -108,6 +108,22 @@ discarded, which is a finding about the test, not the cache. A test whose
 fixture reads leave it unverifiable re-runs every time until its author
 asserts purity in source, the deliberate opt-in.
 
+**REQ-evidence-witness-cache-format** (behavior): The local witness cache MUST be a JSON
+object with integer `version` equal to `2` and array `records`. Each record carries
+string `package` and `test`, object `fingerprint`, object `outcomes`, and optional
+array `registrations`. Its fingerprint keys are `maximalClosure`, `toolchain`,
+`buildConfig`, optional `purityAssertion`,
+`runtimeInputs`, `runtimeDigest`, and numeric `resultKind`; closure, build, and runtime
+digests are 16-byte lowercase hexadecimal values, the runtime manifest is canonical
+Gofresh v1, purity is empty or a recognized Gofresh attribution, measurement fields
+are absent, and result kind is Gofresh code-result. `records` is an array even when
+empty; every outcomes object contains its record's top-level `package.test` key and
+only that key or its `/subtest` descendants, with `passed`, `failed`, or `skipped`
+values. Optional fields are omitted rather than encoded as `null`. Duplicate record
+identities, unknown fields, another version, or any malformed record make the whole
+document an empty cache, never migrated or partially trusted, because cache loss
+costs only execution.
+
 **REQ-evidence-freshness-degrade** (behavior): A fault anywhere on the
 freshness path MUST degrade to the full witnessing run: the cache saves
 work, it never blocks or weakens witnessing.
