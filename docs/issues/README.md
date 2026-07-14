@@ -63,3 +63,17 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   so non-ASCII term names may never match a use site (silently missing uses-term edges); the
   lint mirrors the same semantics deliberately — fix both together on rune boundaries. *Lands:
   when a corpus declares non-ASCII term names.*
+- **[mcp-root-failure-lacks-guidance](mcp-root-failure-lacks-guidance.md)** — MCP `compile`
+  without a manifest returns the raw open error instead of the guided failure the CLI gives
+  (`REQ-profile-root`: "failing with guidance"); an agent hitting it must guess between broken,
+  misrooted, and uninitialized. *Lands: when the MCP server's root-discovery failure path next
+  changes.*
+- **[gap-bulk-cannot-express-self-landing](gap-bulk-cannot-express-self-landing.md)** — bulk
+  `gap --req` shares one landing condition, so the design-stage idiom covered(self) needs one
+  call per requirement; a `--covered self` sentinel would fix it. Observed: 22 gaps mis-targeted
+  in a consuming corpus, retargeted individually (update-in-place worked as specified). *Lands:
+  when the gap verb surface next changes.*
+- **[mcp-gap-tool-single-requirement](mcp-gap-tool-single-requirement.md)** — the MCP `gap`
+  tool takes one `requirement` where the CLI's `--req` is repeatable; agents declaring
+  design-stage gaps pay one round-trip per requirement. *Lands: when the MCP tool surface next
+  changes.*
