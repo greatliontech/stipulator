@@ -54,13 +54,25 @@ func workspaceMembers(dir string) ([]string, error) {
 // trees that are not its members and refuse their "./..." patterns.
 func goworkEnv(dir string) []string {
 	work := filepath.Join(dir, "go.work")
+	pin := "GOWORK=off"
 	if _, err := os.Stat(work); err == nil {
 		if abs, aerr := filepath.Abs(work); aerr == nil {
 			work = abs
 		}
-		return append(os.Environ(), "GOWORK="+work)
+		pin = "GOWORK=" + work
 	}
-	return append(os.Environ(), "GOWORK=off")
+	// Replace, never append beside, an ambient GOWORK: exec semantics
+	// tolerate a duplicate key (last wins), a strict environment
+	// normalizer refuses it — and this env now also feeds the
+	// freshness engine's analysis.
+	env := make([]string, 0, len(os.Environ())+1)
+	for _, kv := range os.Environ() {
+		if strings.HasPrefix(kv, "GOWORK=") {
+			continue
+		}
+		env = append(env, kv)
+	}
+	return append(env, pin)
 }
 
 // Toolchain reports the identity of the go command the engine invokes in

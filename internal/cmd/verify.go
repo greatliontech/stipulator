@@ -35,7 +35,7 @@ func verifyCmd() *cobra.Command {
 					return err
 				}
 				if tr.Ran+tr.Fresh > 0 {
-					fmt.Fprintln(os.Stderr, dim(fmt.Sprintf("witnessed: %d ran, %d served fresh", tr.Ran, tr.Fresh)))
+					fmt.Fprintln(os.Stderr, dim(fmt.Sprintf("witnessed: %d ran, %d served fresh, %d uncacheable", tr.Ran, tr.Fresh, tr.Uncached)))
 				}
 				for key, out := range tr.Failures {
 					fmt.Fprintf(os.Stderr, "%s\n%s", red("witness failed: "+key), out)

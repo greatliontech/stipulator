@@ -83,6 +83,11 @@ type TestRun struct {
 	// Registrations are runtime coverage claims emitted through the
 	// stipulate marker, in deterministic order.
 	Registrations []Registration
+	// Uncached counts executed tests whose records could not be
+	// published for reuse (unverifiable dependences): they will run
+	// again next time. A silently shrinking cache reads as "covered";
+	// the count keeps the cost visible.
+	Uncached int
 	// Ran and Fresh count top-level tests executed vs served from the
 	// witness cache by proven equivalence (REQ-evidence-witness-freshness);
 	// both zero on a full uncached run's legacy path.

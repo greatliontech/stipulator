@@ -39,7 +39,7 @@ func pruneCmd() *cobra.Command {
 					return err
 				}
 				if testRun.Ran+testRun.Fresh > 0 {
-					fmt.Fprintln(os.Stderr, dim(fmt.Sprintf("witnessed: %d ran, %d served fresh", testRun.Ran, testRun.Fresh)))
+					fmt.Fprintln(os.Stderr, dim(fmt.Sprintf("witnessed: %d ran, %d served fresh, %d uncacheable", testRun.Ran, testRun.Fresh, testRun.Uncached)))
 				}
 				for key, out := range testRun.Failures {
 					fmt.Fprintf(os.Stderr, "%s\n%s", red("witness failed: "+key), out)

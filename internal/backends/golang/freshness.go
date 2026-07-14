@@ -61,9 +61,14 @@ func runTestsFresh(dir string) (*verify.TestRun, error) {
 	sort.Strings(pkgs)
 
 	buildFlags := []string{"-race"}
+	// The engine analyzes under the same GOWORK pinning as every witness
+	// invocation (goworkEnv): an ambient workspace pointing elsewhere —
+	// the outer harness's, when this run is itself a witness — would
+	// resolve the module under the wrong workspace and break go list.
 	engine, err := gofresh.New(
 		gofresh.WithDir(dir),
 		gofresh.WithBuildFlags(buildFlags...),
+		gofresh.WithEnv(goworkEnv(dir)...),
 	)
 	if err != nil {
 		return nil, err
@@ -189,11 +194,13 @@ func runTestsFresh(dir string) (*verify.TestRun, error) {
 				publish = append(publish, rec)
 			case gofresh.Unverifiable:
 				if !served[rec.Key()] {
+					tr.Uncached++
 					continue
 				}
 				fallthrough
 			default:
-				return nil, fmt.Errorf("witness %s.%s moved during execution", subject.Package, subject.Symbol)
+				v := verdicts[subject]
+				return nil, fmt.Errorf("witness %s.%s moved during execution (%s: %s)", subject.Package, subject.Symbol, v.Status, v.Reason)
 			}
 		}
 		next = publish
@@ -359,7 +366,13 @@ func runOnce(dir string, env []string, pkg string, tests []string, tr *verify.Te
 	}
 	if log, err := os.ReadFile(logPath); err == nil {
 		if pkgDir, ok := packageDir(dir, env, pkg); ok {
-			if st, err := runtimeinput.FromTestLog(log, dir, pkgDir); err == nil {
+			// VCS bookkeeping and the root listing are never witness
+			// inputs: their digests move under unrelated tooling (a
+			// shell prompt's git status), which is exactly the
+			// observation-coherence noise REQ-inputs-exclusions exists
+			// to silence. The corpus files themselves stay recorded
+			// individually, so real input changes still stale.
+			if st, err := runtimeinput.FromTestLog(log, dir, pkgDir, runtimeinput.WithExcludedPaths(".", ".git")); err == nil {
 				for t := range completed {
 					run.capture[t] = manifestCapture{manifest: st.Manifest, digest: st.Digest}
 				}
