@@ -1,6 +1,6 @@
 # Advisory attachments
 
-- [ ] 1. Replace the hardening contract with binding-surface targets and non-evidence advisory attachments; retire obsolete mutation-specific issues and requirement bindings.
+- [x] 1. Replace the hardening contract with binding-surface targets and non-evidence advisory attachments; retire obsolete mutation-specific issues and requirement bindings.
 - [ ] 2. Replace hardening protobuf report fields and the stranded kill-sheet witness type with target-surface, attachment, and correlation messages, reserving removed wire names and numbers.
 - [ ] 3. Replace `internal/harden` with backend-independent binding-surface derivation, canonical surface identifiers, strict ProtoJSON attachment loading, and current/stale/orphaned correlation.
 - [ ] 4. Keep `targets` as a filtered surface export, add explicit attachment input to context dossiers, and remove staged mutation classification, findings ingestion, gate reminders, and hardening CLI output.
