@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/greatliontech/stipulator/internal/backends/golang"
-	"github.com/greatliontech/stipulator/stipulate"
 )
 
 const fixtureDir = "../backends/golang/testdata/fixturemod"
@@ -23,7 +22,6 @@ func hashOf(t *testing.T, b *golang.Backend, sym string) string {
 // is Missing; a non-function binding is never reminded; and Hardenable tracks
 // whether a body mutator can reach the witnesses.
 func TestCoverageReminder(t *testing.T) {
-	stipulate.Covers(t, "REQ-harden-coverage-reminder")
 	backend, err := golang.New(fixtureDir)
 	if err != nil {
 		t.Fatal(err)

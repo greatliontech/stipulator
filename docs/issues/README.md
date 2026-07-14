@@ -47,18 +47,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   class measures performance; pew recordings (guard-derived validity) are the binding-pin
   model applied to measurements and slot in without bending the trust model. *Lands: when a
   corpus declares a performance requirement.*
-- **[analyzer-witness-hardening](analyzer-witness-hardening.md)** — harden mutates function bodies
-  only, so analyzer witnesses get no teeth check; add a structural mutation class (inject a
-  forbidden import / break an asserted method set, require the witness to fail). *Lands: when an
-  analyzer witness needs adequacy evidence.*
-- **[harden-integration-recipes](harden-integration-recipes.md)** — generated-data drift,
-  parser-guard, resolver-precedence, and caller-mapping mutants recur as recipes outside the body
-  operator set. *Lands: when a corpus repeatedly needs manual mutants for generated data,
-  resolver seams, or caller mappings.*
-- **[harden-staged-deleted-surface](harden-staged-deleted-surface.md)** — `targets --staged-diff`
-  labels a deleted or unloadable `.go` surface as an integration seam, conflating a removed
-  bound implementation with an out-of-body edit. *Lands: when `targets --staged-diff` gains a
-  disposition distinguishing a deleted or unloadable surface from an integration seam.*
 - **[term-matcher-ascii-boundaries](term-matcher-ascii-boundaries.md)** — `\b` is ASCII-only,
   so non-ASCII term names may never match a use site (silently missing uses-term edges); the
   lint mirrors the same semantics deliberately — fix both together on rune boundaries. *Lands:

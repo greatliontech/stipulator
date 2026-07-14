@@ -360,7 +360,6 @@ func TestToolListExact(t *testing.T) {
 // emit an empty export (REQ-harden-export): a corpus with no go
 // implements-bindings has no mutation surface to narrate.
 func TestTargetsToolWiring(t *testing.T) {
-	stipulate.Covers(t, "REQ-harden-export")
 	sess, _ := harness(t, nil)
 	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "targets", Arguments: map[string]any{}})
 	if err != nil {

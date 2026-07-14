@@ -10,7 +10,6 @@ import (
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
-	"github.com/greatliontech/stipulator/stipulate"
 )
 
 // fakeBackend drives StagedScope deterministically: canned file surfaces and
@@ -43,7 +42,6 @@ func (f fakeBackend) WitnessClass(symbol string) verify.WitnessClass {
 // outside body mutation (witness-class-outside-operators), while the same
 // symbol with any example/property witness is covered.
 func TestStagedScopeWitnessClass(t *testing.T) {
-	stipulate.Covers(t, "REQ-harden-staged-scope")
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
 		"specs/a.md": {Data: []byte("# T\n\n" +
@@ -112,7 +110,6 @@ bindings {
 // unbound-impl; a generated or non-Go file is generated-or-data; a Go file
 // declaring no function is an integration seam.
 func TestStagedScope(t *testing.T) {
-	stipulate.Covers(t, "REQ-harden-staged-scope")
 	spec, store := fixture(t, nil)
 	backend, err := golang.New("../backends/golang/testdata/fixturemod")
 	if err != nil {

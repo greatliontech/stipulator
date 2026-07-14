@@ -12,7 +12,6 @@ import (
 // distinct across distinct bodies, identical for identical bodies, and
 // insensitive to formatting because it hashes canonical text.
 func TestBodyHash(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-body-hash")
 	b := fixtureBackend(t)
 	h1, err := b.BodyHash("example.com/fixture/lib.Add")
 	if err != nil {
@@ -39,7 +38,6 @@ func TestBodyHash(t *testing.T) {
 // TestVacuity pins the vacuity resolution: assertion-free tests are
 // vacuous; failing calls, helper delegation, and fuzz delegation are not.
 func TestVacuity(t *testing.T) {
-	stipulate.Covers(t, "REQ-harden-vacuity")
 	b := fixtureBackend(t)
 	cases := []struct {
 		symbol string

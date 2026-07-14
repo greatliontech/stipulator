@@ -7,7 +7,6 @@ import (
 
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/records"
-	"github.com/greatliontech/stipulator/stipulate"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 )
@@ -101,7 +100,6 @@ bindings {
 // requirement and symbol filters narrow the targets; a target with no
 // bound witnesses is reported, never silently dropped.
 func TestPlanScope(t *testing.T) {
-	stipulate.Covers(t, "REQ-harden-export")
 	spec, store := fixture(t, nil)
 
 	all := Plan(spec, store, nil, nil)

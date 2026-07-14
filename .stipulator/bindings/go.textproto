@@ -20,24 +20,6 @@ bindings {
 }
 
 bindings {
-  requirement_id: "REQ-go-body-hash"
-  content_hash: "a922d1bfcf784d62e354b0cb199c048025c378735af51720679a08bb179fafea"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend.BodyHash"
-  role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "cce331ca30a30b4914ea2d762b00de5e5f7d1701038bf765938587b6ea34b302"
-}
-
-bindings {
-  requirement_id: "REQ-go-body-hash"
-  content_hash: "a922d1bfcf784d62e354b0cb199c048025c378735af51720679a08bb179fafea"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestBodyHash"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "86cb34c7f951c5d643b8685ed094f56e19a54e9902659e05f1ec21a4c6e25513"
-}
-
-bindings {
   requirement_id: "REQ-go-structural-provers"
   content_hash: "1ea7a734a891a59843cd706995a062845505813005723e09001cdd3d3451751a"
   backend: "go"

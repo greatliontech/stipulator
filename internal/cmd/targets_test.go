@@ -9,9 +9,8 @@ import (
 )
 
 // TestTargetsCmdOut pins the CLI verb's --out arm over this repository's own
-// corpus (REQ-harden-export): the export lands at the path with a summary
-// line, and a selection matching nothing refuses rather than emitting an
-// empty document.
+// corpus: the export lands at the path with a summary line, and a selection
+// matching nothing refuses rather than emitting an empty document.
 func TestTargetsCmdOut(t *testing.T) {
 	if testing.Short() {
 		t.Skip("compiles the corpus")
@@ -24,7 +23,7 @@ func TestTargetsCmdOut(t *testing.T) {
 	c := targetsCmd()
 	var buf bytes.Buffer
 	c.SetOut(&buf)
-	c.SetArgs([]string{"--req", "REQ-harden-vacuity", "--out", out})
+	c.SetArgs([]string{"--req", "REQ-profile-root", "--out", out})
 	if err := c.Execute(); err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +34,7 @@ func TestTargetsCmdOut(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(data), `"stipulatorTargets": 1`) || !strings.Contains(string(data), "Vacuous") {
+	if !strings.Contains(string(data), `"stipulatorTargets": 1`) || !strings.Contains(string(data), "FindRoot") {
 		t.Fatalf("export = %s", data)
 	}
 

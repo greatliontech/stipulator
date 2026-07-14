@@ -1,0 +1,6 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.Gap
+
+requirement_id: "REQ-mcp-tools"
+reason: "the MCP surface mirrors target export and explicit context attachment input in the decoupling plan; retained tools are implemented and witnessed"
+lands { manual { condition: "advisory-attachments plan chunk 5 (MCP mirror of targets and attachments) ships" } }
