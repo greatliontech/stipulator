@@ -129,7 +129,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-witness-freshness"
-  content_hash: "0a6951cf5f0b04419cce6a06fe587a54a7ad053e700ac9f8254941510c7318f0"
+  content_hash: "9546cff542dbab4db594e67c057eb965b5a42115cf681b90b11ad94318bb6f22"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunTestsFresh"
   role: BINDING_ROLE_TESTS
@@ -138,7 +138,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-witness-freshness"
-  content_hash: "0a6951cf5f0b04419cce6a06fe587a54a7ad053e700ac9f8254941510c7318f0"
+  content_hash: "9546cff542dbab4db594e67c057eb965b5a42115cf681b90b11ad94318bb6f22"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.RunTestsFresh"
   role: BINDING_ROLE_IMPLEMENTS
@@ -147,7 +147,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-witness-freshness"
-  content_hash: "0a6951cf5f0b04419cce6a06fe587a54a7ad053e700ac9f8254941510c7318f0"
+  content_hash: "9546cff542dbab4db594e67c057eb965b5a42115cf681b90b11ad94318bb6f22"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/witnesscache.TestLoadUnreadableIsEmpty"
   role: BINDING_ROLE_TESTS
@@ -174,7 +174,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-witness-freshness"
-  content_hash: "0a6951cf5f0b04419cce6a06fe587a54a7ad053e700ac9f8254941510c7318f0"
+  content_hash: "9546cff542dbab4db594e67c057eb965b5a42115cf681b90b11ad94318bb6f22"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunTestsFreshSelectsRaceSources"
   role: BINDING_ROLE_TESTS
@@ -210,7 +210,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-witness-freshness"
-  content_hash: "0a6951cf5f0b04419cce6a06fe587a54a7ad053e700ac9f8254941510c7318f0"
+  content_hash: "9546cff542dbab4db594e67c057eb965b5a42115cf681b90b11ad94318bb6f22"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunTestsFreshRejectsProducerViewDrift"
   role: BINDING_ROLE_TESTS
@@ -228,7 +228,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-witness-freshness"
-  content_hash: "0a6951cf5f0b04419cce6a06fe587a54a7ad053e700ac9f8254941510c7318f0"
+  content_hash: "9546cff542dbab4db594e67c057eb965b5a42115cf681b90b11ad94318bb6f22"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunTestsFreshRejectsRuntimeInputDriftBetweenPackages"
   role: BINDING_ROLE_TESTS
