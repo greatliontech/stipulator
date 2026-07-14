@@ -87,6 +87,11 @@ func TestMutatesSourceOnce(t *testing.T) {
 }
 
 func TestRunTestsFreshRejectsRuntimeInputDriftBetweenPackages(t *testing.T) {
+	// The drift this fixture forces depends on package ordering: the
+	// reader must hash before the mutator writes. Serialize so the
+	// interleaving is deterministic; the rejection machinery itself is
+	// interleaving-independent (the post-run re-validation).
+	t.Setenv("STIPULATOR_WITNESS_PARALLEL", "1")
 	tmp := t.TempDir()
 	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte("module example.com/runtime-drift\n\ngo 1.26\n"), 0o644); err != nil {
 		t.Fatal(err)

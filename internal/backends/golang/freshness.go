@@ -7,9 +7,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"runtime/debug"
 	"sort"
+	"strconv"
 	"strings"
+	"sync"
 
 	gofresh "github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/runtimeinput"
@@ -162,17 +165,64 @@ func runTestsFresh(dir string) (*verify.TestRun, error) {
 	// must re-observe it after execution.
 	debug.FreeOSMemory()
 
-	for _, plan := range plans {
-		ran, err := runSelected(dir, env, plan.pkg, plan.stale, tr)
-		if err != nil {
-			return nil, err
-		}
-		next = append(next, fingerprintRan(plan.fps, plan.pkg, plan.stale, ran)...)
-		for _, test := range plan.stale {
-			if _, ok := ran.outcomes[plan.pkg+"."+test]; ok {
-				tr.Ran++
+	// Packages execute concurrently under a small bound: race-
+	// instrumented builds dominate the wall clock and are independent
+	// per package. Each worker folds into a private shard; shards
+	// merge in plan order, so outcomes, registrations, and published
+	// records land deterministically regardless of completion order.
+	type shard struct {
+		tr   *verify.TestRun
+		recs []witnesscache.Record
+		err  error
+	}
+	shards := make([]shard, len(plans))
+	sem := make(chan struct{}, witnessParallelism())
+	var wg sync.WaitGroup
+	for i, plan := range plans {
+		wg.Add(1)
+		// Acquire in dispatch order: goroutines SPAWN in plan order,
+		// and under a bound of 1 each completes before the next spawns
+		// (the deterministic mode the drift fixtures pin). Above 1,
+		// execution and completion order race by design.
+		sem <- struct{}{}
+		go func(i int, plan pkgPlan) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			private := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}, RaceEnabled: true}
+			ran, err := runSelected(dir, env, plan.pkg, plan.stale, private)
+			if err != nil {
+				shards[i] = shard{err: err}
+				return
 			}
+			recs := fingerprintRan(plan.fps, plan.pkg, plan.stale, ran)
+			for _, test := range plan.stale {
+				if _, ok := ran.outcomes[plan.pkg+"."+test]; ok {
+					private.Ran++
+				}
+			}
+			shards[i] = shard{tr: private, recs: recs}
+		}(i, plan)
+	}
+	wg.Wait()
+	for _, sh := range shards {
+		if sh.err != nil {
+			return nil, sh.err
 		}
+		if sh.tr == nil {
+			continue
+		}
+		for key, out := range sh.tr.Outcomes {
+			tr.Outcomes[key] = out
+		}
+		for key, failure := range sh.tr.Failures {
+			if tr.Failures == nil {
+				tr.Failures = map[string]string{}
+			}
+			tr.Failures[key] = failure
+		}
+		tr.Registrations = append(tr.Registrations, sh.tr.Registrations...)
+		tr.Ran += sh.tr.Ran
+		next = append(next, sh.recs...)
 	}
 	if err := view.Validate(); err != nil {
 		return nil, err
@@ -223,6 +273,30 @@ func runTestsFresh(dir string) (*verify.TestRun, error) {
 		_ = witnesscache.Save(dir, next)
 	}
 	return tr, nil
+}
+
+// witnessParallelism bounds concurrent package executions: race-
+// instrumented builds are memory-heavy, so the bound stays small and
+// never exceeds the machine. STIPULATOR_WITNESS_PARALLEL overrides
+// (a positive integer; 1 serializes — the deterministic-interleaving
+// mode the drift fixtures pin).
+func witnessParallelism() int {
+	if raw := os.Getenv("STIPULATOR_WITNESS_PARALLEL"); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+			if max := runtime.GOMAXPROCS(0); n > max {
+				return max
+			}
+			return n
+		}
+	}
+	n := runtime.GOMAXPROCS(0) / 2
+	if n < 1 {
+		return 1
+	}
+	if n > 4 {
+		return 4
+	}
+	return n
 }
 
 // selectedRun is one package's selective execution: the parsed outcomes and

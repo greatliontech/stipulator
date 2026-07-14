@@ -33,3 +33,12 @@ Pre-run manifest evaluation needs the path set ahead of execution: either
 gofresh-side support (a recorded manifest re-digested at invocation start
 for previously-cached tests) or a record redesign that stores content
 observed by the run itself.
+
+Widened by parallel witness execution: with packages running
+concurrently, a sibling witness that mutates another package's
+observed input inside its read-to-hash window creates the same wrong
+pin without any human edit — the first self-generated instance of
+this window. The harness assumes package-parallel-safe witnesses (the
+`go test` baseline, declared in evidence.md); this issue remains the
+tracking point for closing the window mechanically (pre-run manifest
+evaluation in gofresh, or post-run interference detection).

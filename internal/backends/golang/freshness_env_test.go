@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -75,5 +76,37 @@ func TestRunTestsFreshUnderForeignWorkspace(t *testing.T) {
 	// cannot publish: the shrinkage must be visible as a number.
 	if tr.Uncached != tr.Ran || tr.Uncached == 0 {
 		t.Fatalf("uncached = %d with ran = %d; cache shrinkage must be counted", tr.Uncached, tr.Ran)
+	}
+}
+
+// TestFreshRunCarriesFailureOutput pins the shard merge of failure
+// diagnostics: a red witness must be diagnosable from the run that
+// saw it, through the concurrent path.
+func TestFreshRunCarriesFailureOutput(t *testing.T) {
+	tmp := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte("module example.com/redfix\n\ngo 1.26\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testSource := `package redfix
+
+import "testing"
+
+func TestAlwaysRed(t *testing.T) {
+	t.Fatal("the diagnostic that must survive the merge")
+}
+`
+	if err := os.WriteFile(filepath.Join(tmp, "redfix_test.go"), []byte(testSource), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	tr, err := RunTestsFresh(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key := "example.com/redfix.TestAlwaysRed"
+	if tr.Outcomes[key] != 2 {
+		t.Fatalf("outcome = %v, want failed", tr.Outcomes[key])
+	}
+	if !strings.Contains(tr.Failures[key], "the diagnostic that must survive the merge") {
+		t.Fatalf("failure diagnostics lost in the merge: %q", tr.Failures[key])
 	}
 }
