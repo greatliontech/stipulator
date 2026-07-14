@@ -71,4 +71,9 @@ func TestRunTestsFreshUnderForeignWorkspace(t *testing.T) {
 	if tr.Outcomes["example.com/envfix.TestReadsVolatileState"] == 0 {
 		t.Fatalf("fixture test outcome missing: %v", tr.Outcomes)
 	}
+	// The fixture's file-I/O closure is unverifiable, so its record
+	// cannot publish: the shrinkage must be visible as a number.
+	if tr.Uncached != tr.Ran || tr.Uncached == 0 {
+		t.Fatalf("uncached = %d with ran = %d; cache shrinkage must be counted", tr.Uncached, tr.Ran)
+	}
 }

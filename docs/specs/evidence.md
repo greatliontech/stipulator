@@ -93,9 +93,18 @@ holds. Anything short of valid — a stale or unverifiable verdict, an absent
 or unreadable record — runs the test; absence of proof never serves an
 outcome. The fingerprint pins the closure and environment guards with the
 race flag as a caller-supplied build input, and the run's observed
-runtime-input manifest is captured per package and attached to every test
-fingerprinted from that run — an over-approximation whose failure direction
-is a spurious re-run, never a spurious reuse. A selective run may
+runtime-input manifest is captured per package under the same environment
+as the witness invocation and attached to every test fingerprinted from
+that run — an over-approximation whose failure direction is a spurious
+re-run, never a spurious reuse, with one declared exception: the
+observation excludes the repository root listing and the VCS bookkeeping
+tree (`.` and `.git`), whose digests move under unrelated tooling and are
+asserted to be no witness's input. The exclusion carries the caller-side
+soundness responsibility gofresh's exclusion contract assigns it — its
+failure direction is a spurious reuse, accepted exactly there and nowhere
+else. Executed tests whose records cannot be published for reuse are
+reported as an uncacheable count beside the run/served summary, so a
+shrinking cache is a visible number, never silence. A selective run may
 isolate a test its full-suite sibling would have shadowed by a package
 abort: the isolated outcome is a real run's outcome — evidence follows
 execution, the aborting sibling's own failure stands, and a shadowed test

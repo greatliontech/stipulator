@@ -194,7 +194,6 @@ func runTestsFresh(dir string) (*verify.TestRun, error) {
 				publish = append(publish, rec)
 			case gofresh.Unverifiable:
 				if !served[rec.Key()] {
-					tr.Uncached++
 					continue
 				}
 				fallthrough
@@ -206,6 +205,20 @@ func runTestsFresh(dir string) (*verify.TestRun, error) {
 		next = publish
 	}
 	sortRegs(tr)
+	// Uncached is structural — executed tests minus fresh records that
+	// survived to publication — so every drop path counts: aborted
+	// invocations, missing manifest captures, failed pre-run captures,
+	// and unverifiable post-run verdicts alike. A silently shrinking
+	// cache must read as a number, never as "covered".
+	freshPublished := 0
+	for _, rec := range next {
+		if !served[rec.Key()] {
+			freshPublished++
+		}
+	}
+	if tr.Ran > freshPublished {
+		tr.Uncached = tr.Ran - freshPublished
+	}
 	if err := witnesscache.EnsureIgnored(dir); err == nil {
 		_ = witnesscache.Save(dir, next)
 	}
@@ -372,7 +385,7 @@ func runOnce(dir string, env []string, pkg string, tests []string, tr *verify.Te
 			// observation-coherence noise REQ-inputs-exclusions exists
 			// to silence. The corpus files themselves stay recorded
 			// individually, so real input changes still stale.
-			if st, err := runtimeinput.FromTestLog(log, dir, pkgDir, runtimeinput.WithExcludedPaths(".", ".git")); err == nil {
+			if st, err := runtimeinput.FromTestLogEnv(log, dir, pkgDir, env, runtimeinput.WithExcludedPaths(".", ".git")); err == nil {
 				for t := range completed {
 					run.capture[t] = manifestCapture{manifest: st.Manifest, digest: st.Digest}
 				}
