@@ -24,7 +24,10 @@ duplication without a distinct consumer.
 `gate`, `bind`, `unbind`, `gap`, `pin`, `prune`, `read_spec`, `context`,
 `partitions`, `dispose`, `targets`, and `attest_requirement`, mirroring the
 operation semantics exactly, with report-shaped results rendered from the
-report messages as JSON.
+report messages as JSON. The `targets` tool accepts arrays of exact requirement
+identifiers, implementation backends, and implementation symbols; it has no
+file-output or staged-diff input and returns `BindingSurfaceReport` as a
+structured result.
 
 **REQ-mcp-views** (behavior): The gate and verify tools MUST
 answer at the summary view by default — the roll-up most calls want —

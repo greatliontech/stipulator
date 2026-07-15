@@ -1,0 +1,6 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.Gap
+
+requirement_id: "REQ-advisory-output"
+reason: "the current CLI targets operation emits a mutation-specific JSON document and writes output non-atomically rather than rendering the binding-surface ProtoJSON report"
+lands { manual { condition: "binding-surfaces plan chunk 6 (ProtoJSON CLI targets output) ships" } }
