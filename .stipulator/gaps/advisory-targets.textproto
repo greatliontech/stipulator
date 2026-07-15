@@ -3,4 +3,4 @@
 
 requirement_id: "REQ-advisory-targets"
 reason: "the targets export must become a backend-independent filtered binding-surface export"
-lands { manual { condition: "binding-surfaces plan chunk 6 (filtered ProtoJSON CLI targets export) ships" } }
+lands { manual { condition: "binding-surfaces plan chunk 8 (filtered ProtoJSON CLI targets export) ships" } }

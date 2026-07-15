@@ -65,6 +65,15 @@ names and unpopulated repeated fields emitted as empty arrays. Inline output
 ends in one newline. File output is rendered completely before atomically
 replacing the destination and carries no human summary in the file.
 
+**REQ-advisory-json** (wire): A binding-surface ProtoJSON document MUST use
+exactly the lower-camel field names in the wire table, role names
+`BINDING_ROLE_TESTS` and `BINDING_ROLE_PROVES`, and all fields including empty
+repeated arrays. Every field is required and non-null. Unknown or duplicate
+fields, numeric enum values, alternate protobuf field spellings, trailing JSON
+values, invalid UTF-8, and JSON strings that do not decode to Unicode scalar
+values are refused. Insignificant whitespace and object-member order carry no
+meaning; repeated-field order does.
+
 **REQ-advisory-surface-id** (wire): A binding-surface identifier MUST be the
 REQ-model-hash-func digest of the canonical bytes below. `str(x)` is the
 shortest base-10 ASCII rendering of the UTF-8 byte length of `x`, one colon,
@@ -83,3 +92,10 @@ is, in order:
 The stable role tokens are `tests` and `proves`, in that order. The SHA-256
 function consumes these bytes directly: no Unicode normalization, whitespace
 folding, serialized protobuf bytes, separator, or terminator contributes.
+
+**REQ-advisory-go-wire** (structural): Go producers and consumers MUST share
+one independently versioned binding-surface API as the authority for the wire
+messages, strict ProtoJSON contract, canonical report validation, and
+identifier computation. Root Stipulator and consumers depend on that API
+rather than duplicating its schema or canonical algorithm. Its module imports
+neither the root Stipulator module nor a consumer module.

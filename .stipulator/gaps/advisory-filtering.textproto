@@ -3,4 +3,4 @@
 
 requirement_id: "REQ-advisory-filtering"
 reason: "the current targets operation lacks backend filtering and the settled whole-surface exact filter and empty-selection semantics"
-lands { manual { condition: "binding-surfaces plan chunk 6 (filtered ProtoJSON CLI targets export) ships" } }
+lands { manual { condition: "binding-surfaces plan chunk 8 (filtered ProtoJSON CLI targets export) ships" } }

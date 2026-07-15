@@ -3,4 +3,4 @@
 
 requirement_id: "REQ-mcp-tools"
 reason: "the current MCP targets tool still accepts comma-encoded filters, arbitrary file output, and staged mutation classification instead of the settled read-only structured report input"
-lands { manual { condition: "binding-surfaces plan chunk 7 (read-only MCP binding-surface report) ships" } }
+lands { manual { condition: "binding-surfaces plan chunk 9 (read-only MCP binding-surface report) ships" } }
