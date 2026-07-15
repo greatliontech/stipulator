@@ -30,7 +30,7 @@ func verifyCmd() *cobra.Command {
 			var testRun *verify.TestRun
 			if !noTest {
 				fmt.Fprintln(os.Stderr, dim("witnessing: fresh-checked; stale and unproven tests run (-race)"))
-				tr, err := golang.RunTestsFresh(chdir)
+				tr, err := golang.RunTestsFreshContext(cmd.Context(), chdir)
 				if err != nil {
 					return err
 				}
@@ -42,7 +42,7 @@ func verifyCmd() *cobra.Command {
 				}
 				testRun = tr
 			}
-			backends, err := makeBackends(chdir)
+			backends, err := makeBackends(cmd.Context(), chdir)
 			if err != nil {
 				return err
 			}

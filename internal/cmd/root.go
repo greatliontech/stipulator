@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -93,8 +94,8 @@ func mustClean(spec *stipulatorv1.Spec, diags []compile.Diagnostic) (*stipulator
 	return spec, nil
 }
 
-func makeBackends(dir string) (map[string]verify.Backend, error) {
-	gb, err := golang.New(dir)
+func makeBackends(ctx context.Context, dir string) (map[string]verify.Backend, error) {
+	gb, err := golang.NewContext(ctx, dir)
 	if err != nil {
 		return nil, err
 	}

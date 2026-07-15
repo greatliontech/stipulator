@@ -19,7 +19,7 @@ func bindCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			backends, err := makeBackends(chdir)
+			backends, err := makeBackends(cmd.Context(), chdir)
 			if err != nil {
 				return err
 			}

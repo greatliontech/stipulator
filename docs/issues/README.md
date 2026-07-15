@@ -72,8 +72,13 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[mcp-long-running-tools-time-out-opaquely](mcp-long-running-tools-time-out-opaquely.md)** —
   MCP `gate` and `context` exceed the harness deadline without progress or actionable failure
   while the equivalent CLI operation remains active and reports witness progress. *Lands: when
-  MCP long-running operation semantics next change.*
+  MCP operations gain progress reporting or resumable execution.*
 - **[go-module-rename-lacks-symbol-migration](go-module-rename-lacks-symbol-migration.md)** — a
   Go module-path change invalidates large stored-symbol sets, with no validated bulk retarget
   command or actionable remediation. *Lands: before a corpus with stored Go symbol references
   changes module path, or when the binding rewrite surface next changes.*
+- **[go-subprocess-tree-ownership](go-subprocess-tree-ownership.md)** — Unix witness runs own
+  their process groups, but package loading owns an opaque launcher and non-Unix tree termination
+  cannot yet prove descendant cleanup on platform-facility failure. *Lands: when Go package loading
+  execution is next redesigned, or before descendant-cancellation guarantees are claimed for
+  non-Unix platforms.*

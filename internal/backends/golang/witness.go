@@ -2,10 +2,10 @@ package golang
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"go/ast"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -37,6 +37,11 @@ var coversRe = regexp.MustCompile(regexp.QuoteMeta(stipulate.Marker) + `(` + pro
 // failure) simply has no outcome, which the correlator reads as
 // unwitnessed/broken. A run producing no events at all is an error.
 func RunTests(dir string) (*verify.TestRun, error) {
+	return RunTestsContext(context.Background(), dir)
+}
+
+// RunTestsContext executes the module's tests while honoring ctx.
+func RunTestsContext(ctx context.Context, dir string) (*verify.TestRun, error) {
 	members, err := workspaceMembers(dir)
 	if err != nil {
 		return nil, err
@@ -45,7 +50,7 @@ func RunTests(dir string) (*verify.TestRun, error) {
 	tr := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}, RaceEnabled: true}
 	events := 0
 	for _, m := range members {
-		n, err := runMemberTests(filepath.Join(dir, m), env, tr)
+		n, err := runMemberTests(ctx, filepath.Join(dir, m), env, tr)
 		if err != nil {
 			return nil, err
 		}
@@ -61,14 +66,17 @@ func RunTests(dir string) (*verify.TestRun, error) {
 // runMemberTests executes one module's witness run, merging outcomes and
 // registrations into tr; it returns the event count so a silent member is
 // distinguishable from a silent workspace.
-func runMemberTests(dir string, env []string, tr *verify.TestRun) (int, error) {
-	cmd := exec.Command("go", testArgs()...)
+func runMemberTests(ctx context.Context, dir string, env []string, tr *verify.TestRun) (int, error) {
+	cmd := commandContext(ctx, "go", testArgs()...)
 	cmd.Dir = dir
 	cmd.Env = env
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	runErr := cmd.Run()
+	if ctx.Err() != nil {
+		return 0, ctx.Err()
+	}
 
 	type event struct {
 		Action, Package, Test, Output string

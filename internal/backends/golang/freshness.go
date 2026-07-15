@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"runtime"
 	"runtime/debug"
 	"sort"
@@ -35,10 +34,18 @@ import (
 // runtime-input manifest. Any fault on the freshness path degrades to the
 // full run: the cache saves work, never blocks witnessing.
 func RunTestsFresh(dir string) (*verify.TestRun, error) {
-	tr, err := runTestsFresh(dir)
+	return RunTestsFreshContext(context.Background(), dir)
+}
+
+// RunTestsFreshContext performs a freshness-aware witness run bound to ctx.
+func RunTestsFreshContext(ctx context.Context, dir string) (*verify.TestRun, error) {
+	tr, err := runTestsFresh(ctx, dir)
 	if err != nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 		fmt.Fprintf(os.Stderr, "witness cache unavailable (%v); running the full suite\n", err)
-		full, ferr := RunTests(dir)
+		full, ferr := RunTestsContext(ctx, dir)
 		if ferr != nil {
 			return nil, ferr
 		}
@@ -48,8 +55,8 @@ func RunTestsFresh(dir string) (*verify.TestRun, error) {
 	return tr, nil
 }
 
-func runTestsFresh(dir string) (*verify.TestRun, error) {
-	backend, err := New(dir)
+func runTestsFresh(ctx context.Context, dir string) (*verify.TestRun, error) {
+	backend, err := NewContext(ctx, dir)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +89,7 @@ func runTestsFresh(dir string) (*verify.TestRun, error) {
 			subjects = append(subjects, gofresh.Subject{Package: pkg, Symbol: test})
 		}
 	}
-	view, err := engine.NewView(subjects, dir)
+	view, err := engine.NewViewContext(ctx, subjects, dir)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +113,7 @@ func runTestsFresh(dir string) (*verify.TestRun, error) {
 	}
 	verdicts := map[gofresh.Subject]gofresh.Verdict{}
 	if len(recorded) != 0 {
-		verdicts, err = view.CheckRefinedBatch(context.Background(), recorded)
+		verdicts, err = view.CheckRefinedBatch(ctx, recorded)
 		if err != nil {
 			return nil, err
 		}
@@ -179,17 +186,19 @@ func runTestsFresh(dir string) (*verify.TestRun, error) {
 	sem := make(chan struct{}, witnessParallelism())
 	var wg sync.WaitGroup
 	for i, plan := range plans {
-		wg.Add(1)
 		// Acquire in dispatch order: goroutines SPAWN in plan order,
 		// and under a bound of 1 each completes before the next spawns
 		// (the deterministic mode the drift fixtures pin). Above 1,
 		// execution and completion order race by design.
-		sem <- struct{}{}
+		if !acquireWitnessSlot(ctx, sem, &wg) {
+			wg.Wait()
+			return nil, ctx.Err()
+		}
 		go func(i int, plan pkgPlan) {
 			defer wg.Done()
 			defer func() { <-sem }()
 			private := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}, RaceEnabled: true}
-			ran, err := runSelected(dir, env, plan.pkg, plan.stale, private)
+			ran, err := runSelected(ctx, dir, env, plan.pkg, plan.stale, private)
 			if err != nil {
 				shards[i] = shard{err: err}
 				return
@@ -224,7 +233,7 @@ func runTestsFresh(dir string) (*verify.TestRun, error) {
 		tr.Ran += sh.tr.Ran
 		next = append(next, sh.recs...)
 	}
-	if err := view.Validate(); err != nil {
+	if err := view.ValidateContext(ctx); err != nil {
 		return nil, err
 	}
 	if len(next) != 0 {
@@ -232,7 +241,7 @@ func runTestsFresh(dir string) (*verify.TestRun, error) {
 		for _, rec := range next {
 			final[gofresh.Subject{Package: rec.Package, Symbol: rec.Test}] = rec.Fingerprint.ToGofresh()
 		}
-		verdicts, err := view.CheckRefinedBatch(context.Background(), final)
+		verdicts, err := view.CheckRefinedBatch(ctx, final)
 		if err != nil {
 			return nil, err
 		}
@@ -273,6 +282,20 @@ func runTestsFresh(dir string) (*verify.TestRun, error) {
 		_ = witnesscache.Save(dir, next)
 	}
 	return tr, nil
+}
+
+func acquireWitnessSlot(ctx context.Context, sem chan struct{}, wg *sync.WaitGroup) bool {
+	select {
+	case sem <- struct{}{}:
+		if ctx.Err() != nil {
+			<-sem
+			return false
+		}
+		wg.Add(1)
+		return true
+	case <-ctx.Done():
+		return false
+	}
 }
 
 // witnessParallelism bounds concurrent package executions: race-
@@ -324,11 +347,11 @@ type manifestCapture struct {
 // invocation makes no progress. Caching eligibility is decided per
 // invocation, never per package run: an absent manifest is an assertion in
 // gofresh, so evidence from an aborted invocation must not be cached at all.
-func runSelected(dir string, env []string, pkg string, tests []string, tr *verify.TestRun) (*selectedRun, error) {
+func runSelected(ctx context.Context, dir string, env []string, pkg string, tests []string, tr *verify.TestRun) (*selectedRun, error) {
 	run := &selectedRun{outcomes: map[string]string{}, regs: map[string][]verify.Registration{}, capture: map[string]manifestCapture{}}
 	remaining := tests
 	for len(remaining) > 0 {
-		completed, err := runOnce(dir, env, pkg, remaining, tr, run)
+		completed, err := runOnce(ctx, dir, env, pkg, remaining, tr, run)
 		if err != nil {
 			return nil, err
 		}
@@ -358,7 +381,7 @@ func runSelected(dir string, env []string, pkg string, tests []string, tr *verif
 // and a lost read must fail closed as "do not cache", never masquerade as
 // gofresh's "no runtime inputs observed" assertion — the failure direction
 // is a spurious re-run, never a spurious reuse.
-func runOnce(dir string, env []string, pkg string, tests []string, tr *verify.TestRun, run *selectedRun) (map[string]bool, error) {
+func runOnce(ctx context.Context, dir string, env []string, pkg string, tests []string, tr *verify.TestRun, run *selectedRun) (map[string]bool, error) {
 	logf, err := os.CreateTemp("", "stipulator-testlog-*.txt")
 	if err != nil {
 		return nil, err
@@ -372,13 +395,16 @@ func runOnce(dir string, env []string, pkg string, tests []string, tr *verify.Te
 	// freshness witness alone exceeds it under -race; a kill mid-binary
 	// masquerades as a test failure.
 	args := []string{"test", "-json", "-race", "-timeout=30m", "-run", pattern, pkg, "-args", "-test.testlogfile=" + logPath}
-	cmd := exec.Command("go", args...)
+	cmd := commandContext(ctx, "go", args...)
 	cmd.Dir = dir
 	cmd.Env = env
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	runErr := cmd.Run()
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
 
 	type event struct {
 		Action, Package, Test, Output string
@@ -452,7 +478,7 @@ func runOnce(dir string, env []string, pkg string, tests []string, tr *verify.Te
 		return completed, nil
 	}
 	if log, err := os.ReadFile(logPath); err == nil {
-		if pkgDir, ok := packageDir(dir, env, pkg); ok {
+		if pkgDir, ok := packageDir(ctx, dir, env, pkg); ok {
 			// VCS bookkeeping and the root listing are never witness
 			// inputs: their digests move under unrelated tooling (a
 			// shell prompt's git status), which is exactly the
@@ -529,8 +555,8 @@ func topLevel(test string) string {
 }
 
 // packageDir resolves a package's directory for testlog path resolution.
-func packageDir(dir string, env []string, pkg string) (string, bool) {
-	cmd := exec.Command("go", "list", "-f", "{{.Dir}}", pkg)
+func packageDir(ctx context.Context, dir string, env []string, pkg string) (string, bool) {
+	cmd := commandContext(ctx, "go", "list", "-f", "{{.Dir}}", pkg)
 	cmd.Dir = dir
 	cmd.Env = env
 	out, err := cmd.Output()

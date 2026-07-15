@@ -3,11 +3,13 @@ package mcpserver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -70,13 +72,13 @@ func harness(t *testing.T, files map[string]string) (*mcp.ClientSession, map[str
 	writes := map[string][]byte{}
 	s := &Server{
 		fsys: func() fs.FS { return fsys },
-		backends: func() (map[string]verify.Backend, error) {
+		backends: func(context.Context) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{"go": fakeBackend{
 				"example.com/p.TestA": strings.Repeat("s", 64),
 				"example.com/p.F":     strings.Repeat("f", 64),
 			}}, nil
 		},
-		runTests: func() (*verify.TestRun, error) {
+		runTests: func(context.Context) (*verify.TestRun, error) {
 			return &verify.TestRun{
 				RaceEnabled: true,
 				Outcomes:    map[string]verify.TestOutcome{"example.com/p.TestA": verify.TestPassed},
@@ -98,7 +100,7 @@ func harness(t *testing.T, files map[string]string) (*mcp.ClientSession, map[str
 		// The reminder needs a real go backend the in-memory harness lacks;
 		// stub it empty. Its content is pinned in the harden package
 		// (TestCoverageReminder); here only the gate tool's folding matters.
-		coverageReminder: func(_ *stipulatorv1.Spec, _ *records.Store, _ []string, _ []harden.EngineFinding) (*harden.Reminder, error) {
+		coverageReminder: func(context.Context, *stipulatorv1.Spec, *records.Store, []string, []harden.EngineFinding) (*harden.Reminder, error) {
 			return &harden.Reminder{}, nil
 		},
 	}
@@ -113,6 +115,61 @@ func harness(t *testing.T, files map[string]string) (*mcp.ClientSession, map[str
 	}
 	t.Cleanup(func() { sess.Close() })
 	return sess, writes
+}
+
+func TestCanceledToolCallStopsWitnessRun(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-server")
+	started := make(chan struct{})
+	stopped := make(chan struct{})
+	s := &Server{
+		fsys: func() fs.FS {
+			return fstest.MapFS{
+				".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
+				"specs/a.md":                     {Data: []byte(doc)},
+			}
+		},
+		backends: func(context.Context) (map[string]verify.Backend, error) {
+			return map[string]verify.Backend{}, nil
+		},
+		runTests: func(ctx context.Context) (*verify.TestRun, error) {
+			close(started)
+			<-ctx.Done()
+			close(stopped)
+			return nil, ctx.Err()
+		},
+	}
+	ct, st := mcp.NewInMemoryTransports()
+	serverCtx, stopServer := context.WithCancel(context.Background())
+	t.Cleanup(stopServer)
+	go func() { _ = s.MCP().Run(serverCtx, st) }()
+	client := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "v0"}, nil)
+	sess, err := client.Connect(context.Background(), ct, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sess.Close() })
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		_, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "gate", Arguments: map[string]any{}})
+		done <- err
+	}()
+	<-started
+	cancel()
+	select {
+	case <-stopped:
+	case <-time.After(time.Second):
+		t.Fatal("witness run did not receive request cancellation")
+	}
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("tool call error = %v, want context canceled", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("tool call did not return after cancellation")
+	}
 }
 
 //gofresh:pure
@@ -347,11 +404,14 @@ func TestToolListExact(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := map[string]bool{}
-	var contextDescription string
+	var contextDescription, targetsDescription string
 	for _, tool := range list.Tools {
 		got[tool.Name] = true
 		if tool.Name == "context" {
 			contextDescription = tool.Description
+		}
+		if tool.Name == "targets" {
+			targetsDescription = tool.Description
 		}
 	}
 	want := []string{"compile", "verify", "gate", "bind", "unbind", "gap", "pin", "prune", "read_spec", "context", "partitions", "dispose", "targets", "attest_requirement"}
@@ -366,11 +426,13 @@ func TestToolListExact(t *testing.T) {
 	if !strings.Contains(contextDescription, "closure seeds") || strings.Contains(contextDescription, "hardening") {
 		t.Fatalf("context description is stale: %q", contextDescription)
 	}
+	if !strings.Contains(targetsDescription, "binding surfaces") || strings.Contains(targetsDescription, "mutation") || strings.Contains(targetsDescription, "reqs") {
+		t.Fatalf("targets description is stale: %q", targetsDescription)
+	}
 }
 
-// TestTargetsToolWiring pins the targets tool's wiring and its refusal to
-// emit an empty export (REQ-harden-export): a corpus with no go
-// implements-bindings has no mutation surface to narrate.
+// TestTargetsToolWiring pins the read-only structured report, valid empty
+// corpus, intersecting array filters, and retired input rejection.
 //
 //gofresh:pure
 func TestTargetsToolWiring(t *testing.T) {
@@ -379,11 +441,50 @@ func TestTargetsToolWiring(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.IsError {
-		t.Fatalf("empty surface exported: %+v", res)
+	structured, ok := res.StructuredContent.(map[string]any)
+	if res.IsError || !ok || structured["format"] != "stipulator.binding-surfaces/v1" {
+		t.Fatalf("empty surface report = %+v", res)
 	}
-	if msg := fmt.Sprint(res.Content[0]); !strings.Contains(msg, "no targets") {
-		t.Fatalf("refusal = %q", msg)
+	if surfaces, ok := structured["surfaces"].([]any); !ok || len(surfaces) != 0 {
+		t.Fatalf("empty surfaces = %#v", structured["surfaces"])
+	}
+
+	bindings := pinnedBinding(t) + `bindings {
+  requirement_id: "REQ-m-a"
+  backend: "go"
+  symbol: "example.com/p.F"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+`
+	sess, _ = harness(t, map[string]string{".stipulator/bindings/m.textproto": bindings})
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "targets", Arguments: map[string]any{
+		"requirements": []string{"REQ-m-a", "REQ-absent"},
+		"backends":     []string{"go"},
+		"symbols":      []string{"example.com/p.F"},
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("filtered report = %+v, %v", res, err)
+	}
+	structured, ok = res.StructuredContent.(map[string]any)
+	if !ok {
+		t.Fatalf("filtered structured content = %#v", res.StructuredContent)
+	}
+	surfaces, ok := structured["surfaces"].([]any)
+	if !ok || len(surfaces) != 1 {
+		t.Fatalf("filtered surfaces = %#v", structured["surfaces"])
+	}
+	for _, arguments := range []map[string]any{
+		{"backends": []string{"absent"}},
+		{"requirements": []string{"REQ-m-b"}},
+		{"symbols": []string{"example.com/p.Missing"}},
+		{"out": "targets.json"},
+		{"staged_diff": true},
+		{"reqs": "REQ-m-a"},
+	} {
+		res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "targets", Arguments: arguments})
+		if err == nil && !res.IsError {
+			t.Fatalf("targets accepted invalid or empty selection input %v: %+v", arguments, res)
+		}
 	}
 }
 

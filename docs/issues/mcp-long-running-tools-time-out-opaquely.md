@@ -1,6 +1,10 @@
 # Long-running MCP gate and context calls time out opaquely
 
-Lands: when MCP long-running operation semantics next change.
+Lands: when MCP operations gain progress reporting or resumable execution.
+
+Request cancellation now terminates witness work, but it does not expose progress, preserve a
+resumable result, or distinguish the phase in which a client deadline expired. Those unresolved
+conditions remain the trigger for this issue.
 
 ## Observed
 

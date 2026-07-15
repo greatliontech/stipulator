@@ -22,16 +22,17 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
+	surfacewire "github.com/greatliontech/stipulator/bindingsurface"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
+	"github.com/greatliontech/stipulator/internal/bindingsurface"
 	"github.com/greatliontech/stipulator/internal/bundle"
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/dossier"
 	"github.com/greatliontech/stipulator/internal/facts"
-	"github.com/greatliontech/stipulator/internal/gitfs"
 	"github.com/greatliontech/stipulator/internal/harden"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
@@ -44,14 +45,11 @@ type Server struct {
 	srv      *mcp.Server
 	indexed  map[string]bool
 	fsys     func() fs.FS
-	backends func() (map[string]verify.Backend, error)
-	runTests func() (*verify.TestRun, error)
-	// stagedScope classifies the working-tree delta vs HEAD; it needs git
-	// and a loaded backend, so it is a dir-bound closure.
-	stagedScope func(spec *stipulatorv1.Spec, store *records.Store) (*harden.StagedReport, error)
+	backends func(context.Context) (map[string]verify.Backend, error)
+	runTests func(context.Context) (*verify.TestRun, error)
 	// coverageReminder lists covered bodies with no fresh finding; it
 	// needs the backend and toolchain, so it too is dir-bound.
-	coverageReminder func(spec *stipulatorv1.Spec, store *records.Store, covered []string, findings []harden.EngineFinding) (*harden.Reminder, error)
+	coverageReminder func(context.Context, *stipulatorv1.Spec, *records.Store, []string, []harden.EngineFinding) (*harden.Reminder, error)
 	write            func(path string, content []byte) error
 	remove           func(path string) error
 }
@@ -60,41 +58,22 @@ type Server struct {
 func New(dir string) *Server {
 	return &Server{
 		fsys:     func() fs.FS { return os.DirFS(dir) },
-		backends: func() (map[string]verify.Backend, error) { return makeBackends(dir) },
-		runTests: func() (*verify.TestRun, error) { return golang.RunTestsFresh(dir) },
-		stagedScope: func(spec *stipulatorv1.Spec, store *records.Store) (*harden.StagedReport, error) {
-			gb, err := golang.New(dir)
+		backends: func(ctx context.Context) (map[string]verify.Backend, error) { return makeBackends(ctx, dir) },
+		runTests: func(ctx context.Context) (*verify.TestRun, error) { return golang.RunTestsFreshContext(ctx, dir) },
+		coverageReminder: func(ctx context.Context, spec *stipulatorv1.Spec, store *records.Store, covered []string, findings []harden.EngineFinding) (*harden.Reminder, error) {
+			gb, err := golang.NewContext(ctx, dir)
 			if err != nil {
 				return nil, err
 			}
-			changed, err := gitfs.Changed(dir)
-			if err != nil {
-				return nil, err
-			}
-			headFS, err := gitfs.FS(dir, "HEAD")
-			if err != nil {
-				return nil, err
-			}
-			head := func(p string) ([]byte, bool) {
-				b, err := fs.ReadFile(headFS, p)
-				return b, err == nil
-			}
-			return harden.StagedScope(spec, store, gb, changed, head), nil
-		},
-		coverageReminder: func(spec *stipulatorv1.Spec, store *records.Store, covered []string, findings []harden.EngineFinding) (*harden.Reminder, error) {
-			gb, err := golang.New(dir)
-			if err != nil {
-				return nil, err
-			}
-			toolchain, err := golang.Toolchain(dir)
+			toolchain, err := golang.ToolchainContext(ctx, dir)
 			if err != nil {
 				return nil, err
 			}
 			return harden.CoverageReminder(spec, store, gb, toolchain, covered, findings)
 		},
 		write: func(path string, content []byte) error {
-			// The server is corpus-bound: a caller-supplied path (the
-			// targets tool's out) must not escape the tree.
+			// The server is corpus-bound: every record update must remain
+			// within the tree.
 			if !filepath.IsLocal(filepath.FromSlash(path)) {
 				return fmt.Errorf("path %q escapes the corpus root", path)
 			}
@@ -110,8 +89,8 @@ func New(dir string) *Server {
 	}
 }
 
-func makeBackends(dir string) (map[string]verify.Backend, error) {
-	gb, err := golang.New(dir)
+func makeBackends(ctx context.Context, dir string) (map[string]verify.Backend, error) {
+	gb, err := golang.NewContext(ctx, dir)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +109,7 @@ func (s *Server) MCP() *mcp.Server {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "targets",
-		Description: "Export the mutation targets: every go implements-binding with its witness union and requirement ids, as stipulator's versioned targets document. A mutation engine (gomutant) consumes it and writes a findings document stipulator reads back by label. Scope with reqs/symbols.",
+		Description: "Derive backend-independent binding surfaces. Exact requirement, backend, and symbol arrays filter whole surfaces; the result is a structured BindingSurfaceReport.",
 	}, s.toolTargets)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "compile",
@@ -306,7 +285,7 @@ type verifyIn struct {
 	Path   string `json:"path,omitempty" jsonschema:"prefix over declaring document or symbol"`
 }
 
-func (s *Server) verifyPipeline(noTest bool) (*stipulatorv1.Spec, *verify.Report, *records.Store, error) {
+func (s *Server) verifyPipeline(ctx context.Context, noTest bool) (*stipulatorv1.Spec, *verify.Report, *records.Store, error) {
 	spec, err := s.compileFresh()
 	if err != nil {
 		return nil, nil, nil, err
@@ -315,13 +294,13 @@ func (s *Server) verifyPipeline(noTest bool) (*stipulatorv1.Spec, *verify.Report
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	backends, err := s.backends()
+	backends, err := s.backends(ctx)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	var tr *verify.TestRun
 	if !noTest {
-		tr, err = s.runTests()
+		tr, err = s.runTests(ctx)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -330,7 +309,7 @@ func (s *Server) verifyPipeline(noTest bool) (*stipulatorv1.Spec, *verify.Report
 }
 
 func (s *Server) toolVerify(ctx context.Context, req *mcp.CallToolRequest, in verifyIn) (*mcp.CallToolResult, map[string]any, error) {
-	spec, rep, _, err := s.verifyPipeline(in.NoTest)
+	spec, rep, _, err := s.verifyPipeline(ctx, in.NoTest)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -354,7 +333,7 @@ type gateIn struct {
 }
 
 func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in gateIn) (*mcp.CallToolResult, map[string]any, error) {
-	spec, rep, store, err := s.verifyPipeline(false)
+	spec, rep, store, err := s.verifyPipeline(ctx, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -393,7 +372,7 @@ func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in gate
 	var reminder *harden.Reminder
 	rerr := ferr
 	if rerr == nil {
-		reminder, rerr = s.coverageReminder(spec, store, covered, findings)
+		reminder, rerr = s.coverageReminder(ctx, spec, store, covered, findings)
 	}
 	foldReminder(out, reminder, rerr)
 	return res, out, nil
@@ -451,7 +430,7 @@ func (s *Server) toolBind(ctx context.Context, req *mcp.CallToolRequest, in bind
 	if backendName == "" {
 		backendName = "go"
 	}
-	backends, err := s.backends()
+	backends, err := s.backends(ctx)
 	if err != nil {
 		return nil, writeOut{}, err
 	}
@@ -620,7 +599,7 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 	for _, r := range spec.GetRequirements() {
 		hashes[r.GetId()] = r.GetContentHash()
 	}
-	backends, err := s.backends()
+	backends, err := s.backends(ctx)
 	if err != nil {
 		return nil, writeOut{}, err
 	}
@@ -670,24 +649,6 @@ func (s *Server) toolReadSpec(ctx context.Context, req *mcp.CallToolRequest, in 
 		return nil, readSpecOut{}, err
 	}
 	return nil, readSpecOut{Markdown: md}, nil
-}
-
-// stagedEntry is one classified surface on the wire.
-type stagedEntry struct {
-	Path         string   `json:"path"`
-	Symbol       string   `json:"symbol,omitempty"`
-	Class        string   `json:"class"`
-	Requirements []string `json:"requirements,omitempty"`
-}
-
-// stagedOut mirrors the staged-delta classification (REQ-harden-staged-scope):
-// every changed surface with its disposition, plus a coverable/manual/skipped
-// roll-up. Advisory, never a gate.
-type stagedOut struct {
-	Entries   []stagedEntry `json:"entries"`
-	Coverable int           `json:"coverable"`
-	Manual    int           `json:"manual"`
-	Skipped   int           `json:"skipped"`
 }
 
 type disposeIn struct {
@@ -748,7 +709,7 @@ type pruneIn struct {
 // shaky reading: a verification problem could misreport a bucket and prune a
 // still-load-bearing gap. It writes only under .stipulator/gaps/.
 func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pruneIn) (*mcp.CallToolResult, writeOut, error) {
-	spec, rep, store, err := s.verifyPipeline(false)
+	spec, rep, store, err := s.verifyPipeline(ctx, false)
 	if err != nil {
 		return nil, writeOut{}, err
 	}
@@ -798,7 +759,7 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 	if err != nil {
 		return nil, nil, err
 	}
-	spec, vr, store, err := s.verifyPipeline(false)
+	spec, vr, store, err := s.verifyPipeline(ctx, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -824,7 +785,7 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 	}
 	out.SetProblems(problems)
 	if in.Slice {
-		backends, err := s.backends()
+		backends, err := s.backends(ctx)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -842,14 +803,14 @@ type partitionsIn struct {
 }
 
 func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, in partitionsIn) (*mcp.CallToolResult, map[string]any, error) {
-	spec, rep, store, err := s.verifyPipeline(false)
+	spec, rep, store, err := s.verifyPipeline(ctx, false)
 	if err != nil {
 		return nil, nil, err
 	}
 	if len(rep.Problems) > 0 {
 		return nil, nil, fmt.Errorf("verification problems; fix records first")
 	}
-	backends, err := s.backends()
+	backends, err := s.backends(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -994,34 +955,6 @@ func textResource(uri, mime, text string) *mcp.ReadResourceResult {
 }
 
 // protoJSON renders a report message as the tool's structured output.
-// stagedResult renders a staged-delta classification as JSON: every entry
-// plus the coverable/manual/skipped roll-up.
-func stagedResult(rep *harden.StagedReport) (*mcp.CallToolResult, map[string]any, error) {
-	out := stagedOut{Entries: []stagedEntry{}}
-	for _, e := range rep.Entries {
-		out.Entries = append(out.Entries, stagedEntry{
-			Path: e.Path, Symbol: e.Symbol, Class: string(e.Class), Requirements: e.Requirements,
-		})
-		switch e.Class {
-		case harden.Covered:
-			out.Coverable++
-		case harden.GeneratedOrData:
-			out.Skipped++
-		default:
-			out.Manual++
-		}
-	}
-	b, err := json.Marshal(out)
-	if err != nil {
-		return nil, nil, err
-	}
-	var m map[string]any
-	if err := json.Unmarshal(b, &m); err != nil {
-		return nil, nil, err
-	}
-	return nil, m, nil
-}
-
 func protoJSON(m proto.Message) (*mcp.CallToolResult, map[string]any, error) {
 	b, err := protojson.Marshal(m)
 	if err != nil {
@@ -1043,10 +976,9 @@ func truncate(s string, n int) string {
 }
 
 type targetsIn struct {
-	Reqs    string `json:"reqs,omitempty" jsonschema:"comma-separated requirement identifiers; empty means all bound"`
-	Symbols string `json:"symbols,omitempty" jsonschema:"comma-separated implementation symbols filter"`
-	Out     string `json:"out,omitempty" jsonschema:"tree-relative path to write the export to; empty returns it inline"`
-	Staged  bool   `json:"staged_diff,omitempty" jsonschema:"classify the working-tree delta vs HEAD instead of exporting: which changed surfaces the mutation flow covers and which need manual mutation"`
+	Requirements []string `json:"requirements,omitempty" jsonschema:"exact implementing requirement identifiers; alternatives"`
+	Backends     []string `json:"backends,omitempty" jsonschema:"exact implementation backends; alternatives"`
+	Symbols      []string `json:"symbols,omitempty" jsonschema:"exact implementation symbols; alternatives"`
 }
 
 func (s *Server) toolTargets(ctx context.Context, req *mcp.CallToolRequest, in targetsIn) (*mcp.CallToolResult, map[string]any, error) {
@@ -1058,37 +990,17 @@ func (s *Server) toolTargets(ctx context.Context, req *mcp.CallToolRequest, in t
 	if err != nil {
 		return nil, nil, err
 	}
-	if in.Staged {
-		if in.Reqs != "" || in.Symbols != "" || in.Out != "" {
-			return nil, nil, fmt.Errorf("staged_diff is a classification, not an export: it takes no reqs, symbols, or out")
-		}
-		rep, err := s.stagedScope(spec, store)
-		if err != nil {
-			return nil, nil, err
-		}
-		return stagedResult(rep)
-	}
-	reqs, err := splitIDsLoose(in.Reqs)
+	report, err := bindingsurface.Derive(spec, store)
 	if err != nil {
 		return nil, nil, err
 	}
-	syms, err := splitIDsLoose(in.Symbols)
+	report, err = bindingsurface.Filter(report, in.Requirements, in.Backends, in.Symbols)
 	if err != nil {
 		return nil, nil, err
 	}
-	targets := harden.Plan(spec, store, reqs, syms)
-	if len(targets) == 0 {
-		return nil, nil, fmt.Errorf("no targets: no go implements-bindings match the selection")
-	}
-	doc, err := harden.ExportTargets(targets)
+	doc, err := surfacewire.MarshalJSON(report)
 	if err != nil {
 		return nil, nil, err
-	}
-	if in.Out != "" {
-		if err := s.write(in.Out, append(doc, '\n')); err != nil {
-			return nil, nil, err
-		}
-		return nil, map[string]any{"wrote": in.Out, "targets": len(targets)}, nil
 	}
 	var m map[string]any
 	if err := json.Unmarshal(doc, &m); err != nil {

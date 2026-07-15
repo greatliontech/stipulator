@@ -35,7 +35,7 @@ func pruneCmd() *cobra.Command {
 			var testRun *verify.TestRun
 			if !noTest {
 				fmt.Fprintln(os.Stderr, dim("witnessing: fresh-checked; stale and unproven tests run (-race)"))
-				if testRun, err = golang.RunTestsFresh(chdir); err != nil {
+				if testRun, err = golang.RunTestsFreshContext(cmd.Context(), chdir); err != nil {
 					return err
 				}
 				if testRun.Ran+testRun.Fresh > 0 {
@@ -45,7 +45,7 @@ func pruneCmd() *cobra.Command {
 					fmt.Fprintf(os.Stderr, "%s\n%s", red("witness failed: "+key), out)
 				}
 			}
-			backends, err := makeBackends(chdir)
+			backends, err := makeBackends(cmd.Context(), chdir)
 			if err != nil {
 				return err
 			}

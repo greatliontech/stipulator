@@ -9,6 +9,7 @@
 package golang
 
 import (
+	"context"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -42,6 +43,11 @@ type Backend struct {
 // vanish from symbol resolution. A load failure is an error: per the
 // spec, an unloadable tree is a verification error, never an absence.
 func New(dir string) (*Backend, error) {
+	return NewContext(context.Background(), dir)
+}
+
+// NewContext loads the tree rooted at dir and binds package loading to ctx.
+func NewContext(ctx context.Context, dir string) (*Backend, error) {
 	members, err := workspaceMembers(dir)
 	if err != nil {
 		return nil, err
@@ -50,6 +56,7 @@ func New(dir string) (*Backend, error) {
 	var pkgs []*packages.Package
 	for _, m := range members {
 		cfg := &packages.Config{
+			Context: ctx,
 			Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax |
 				packages.NeedTypes | packages.NeedTypesInfo,
 			Dir:   filepath.Join(dir, m),

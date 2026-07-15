@@ -1,11 +1,11 @@
 package golang
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -80,7 +80,12 @@ func goworkEnv(dir string) []string {
 // other invocation. It is the exec'd toolchain, deliberately not this
 // binary's runtime.Version(): the witnesses run under the former.
 func Toolchain(dir string) (string, error) {
-	cmd := exec.Command("go", "env", "GOVERSION", "GOOS", "GOARCH")
+	return ToolchainContext(context.Background(), dir)
+}
+
+// ToolchainContext reports the invoked Go toolchain while honoring ctx.
+func ToolchainContext(ctx context.Context, dir string) (string, error) {
+	cmd := commandContext(ctx, "go", "env", "GOVERSION", "GOOS", "GOARCH")
 	cmd.Dir = dir
 	cmd.Env = goworkEnv(dir)
 	out, err := cmd.Output()

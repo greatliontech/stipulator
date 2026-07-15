@@ -53,7 +53,7 @@ func pinCmd() *cobra.Command {
 			for _, r := range spec.GetRequirements() {
 				hashes[r.GetId()] = r.GetContentHash()
 			}
-			backends, err := makeBackends(chdir)
+			backends, err := makeBackends(cmd.Context(), chdir)
 			if err != nil {
 				return err
 			}

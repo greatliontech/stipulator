@@ -6,8 +6,21 @@ import (
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
+	"github.com/greatliontech/stipulator/internal/bindingsurface"
 	"github.com/greatliontech/stipulator/internal/records"
+	"github.com/greatliontech/stipulator/internal/verify"
 )
+
+type reminderTarget struct {
+	Symbol       string
+	Requirements []string
+	Witnesses    []string
+}
+
+type WitnessPin struct {
+	Symbol string
+	Hash   string
+}
 
 // FindingState is why a covered body's finding is not current.
 type FindingState string
@@ -104,7 +117,11 @@ func CoverageReminder(spec *stipulatorv1.Spec, store *records.Store, backend *go
 	}
 
 	rep := &Reminder{}
-	for _, t := range Plan(spec, store, covered, nil) {
+	targets, err := reminderTargets(spec, store, coveredSet)
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range targets {
 		bodyHash, err := backend.BodyHash(t.Symbol)
 		if errors.Is(err, golang.ErrNotFunction) {
 			continue // no body to mutate — never reminded
@@ -143,6 +160,43 @@ func CoverageReminder(spec *stipulatorv1.Spec, store *records.Store, backend *go
 	}
 	sort.Slice(rep.Entries, func(i, j int) bool { return rep.Entries[i].Symbol < rep.Entries[j].Symbol })
 	return rep, nil
+}
+
+func reminderTargets(spec *stipulatorv1.Spec, store *records.Store, covered map[string]bool) ([]reminderTarget, error) {
+	report, err := bindingsurface.Derive(spec, store)
+	if err != nil {
+		return nil, err
+	}
+	var targets []reminderTarget
+	for _, surface := range report.GetSurfaces() {
+		if surface.GetBackend() != "go" || len(intersect(surface.GetRequirementIds(), covered)) == 0 {
+			continue
+		}
+		target := reminderTarget{Symbol: surface.GetSymbol(), Requirements: surface.GetRequirementIds()}
+		witnesses := map[string]bool{}
+		for _, binding := range surface.GetBindings() {
+			if binding.GetBackend() == "go" {
+				witnesses[binding.GetSymbol()] = true
+			}
+		}
+		for witness := range witnesses {
+			target.Witnesses = append(target.Witnesses, witness)
+		}
+		sort.Strings(target.Witnesses)
+		targets = append(targets, target)
+	}
+	return targets, nil
+}
+
+func mutatable(backend interface {
+	WitnessClass(string) verify.WitnessClass
+}, witnesses []string) bool {
+	for _, witness := range witnesses {
+		if backend.WitnessClass(witness) != verify.AnalyzerProof {
+			return true
+		}
+	}
+	return false
 }
 
 // intersect returns the ids present in set, preserving ids' order.

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -40,7 +41,7 @@ func gateCmd() *cobra.Command {
 				return err
 			}
 			fmt.Fprintln(os.Stderr, dim("witnessing: fresh-checked; stale and unproven tests run (-race)"))
-			testRun, err := golang.RunTestsFresh(chdir)
+			testRun, err := golang.RunTestsFreshContext(cmd.Context(), chdir)
 			if err != nil {
 				return err
 			}
@@ -50,7 +51,7 @@ func gateCmd() *cobra.Command {
 			for key, out := range testRun.Failures {
 				fmt.Fprintf(os.Stderr, "%s\n%s", red("witness failed: "+key), out)
 			}
-			backends, err := makeBackends(chdir)
+			backends, err := makeBackends(cmd.Context(), chdir)
 			if err != nil {
 				return err
 			}
@@ -74,7 +75,7 @@ func gateCmd() *cobra.Command {
 			facts := views.FactsFrom(spec, rep)
 			// The covered-but-unhardened reminder is advisory (never gates):
 			// a failure to compute it is a warning, not a gate failure.
-			reminder, rerr := coverageReminder(chdir, backends, spec, store, cov)
+			reminder, rerr := coverageReminder(cmd.Context(), chdir, backends, spec, store, cov)
 			if rerr != nil {
 				fmt.Fprintln(os.Stderr, dim("hardening reminder unavailable: "+rerr.Error()))
 			}
@@ -136,12 +137,12 @@ func gateCmd() *cobra.Command {
 // coverageReminder computes the covered-but-unhardened reminder from the
 // already-loaded go backend (never reloading packages), scoped to the
 // covered requirements. Advisory only (REQ-harden-coverage-reminder).
-func coverageReminder(dir string, backends map[string]verify.Backend, spec *stipulatorv1.Spec, store *records.Store, cov *coverage.Report) (*harden.Reminder, error) {
+func coverageReminder(ctx context.Context, dir string, backends map[string]verify.Backend, spec *stipulatorv1.Spec, store *records.Store, cov *coverage.Report) (*harden.Reminder, error) {
 	gb, ok := backends["go"].(*golang.Backend)
 	if !ok {
 		return nil, fmt.Errorf("go backend unavailable")
 	}
-	toolchain, err := golang.Toolchain(dir)
+	toolchain, err := golang.ToolchainContext(ctx, dir)
 	if err != nil {
 		return nil, err
 	}
