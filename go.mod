@@ -17,6 +17,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/yuin/goldmark v1.8.2
 	golang.org/x/mod v0.37.0
+	golang.org/x/sys v0.46.0
 	golang.org/x/text v0.38.0
 	golang.org/x/tools v0.47.0
 	pgregory.net/rapid v1.3.0
@@ -49,6 +50,5 @@ require (
 	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/oauth2 v0.35.0 // indirect
 	golang.org/x/sync v0.21.0 // indirect
-	golang.org/x/sys v0.46.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )

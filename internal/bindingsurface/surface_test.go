@@ -134,6 +134,42 @@ func TestDeriveProjectsSharedRequirementOntoEveryImplementation(t *testing.T) {
 	}
 }
 
+func TestFilterSelectsWholeStableSurfaces(t *testing.T) {
+	report, err := Derive(testSpec("REQ-a", "REQ-b"), testStore(
+		binding("REQ-a", "go", "p.F", stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS),
+		binding("REQ-b", "go", "p.F", stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS),
+		binding("REQ-b", "proto", "p.G", stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS),
+		binding("REQ-a", "go", "p.TestF", stipulatorv1.BindingRole_BINDING_ROLE_TESTS),
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+	goID := report.GetSurfaces()[0].GetId()
+
+	filtered, err := Filter(report, []string{"REQ-a", "REQ-absent"}, []string{"go"}, []string{"p.F"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(filtered.GetSurfaces()) != 1 || filtered.GetSurfaces()[0].GetId() != goID ||
+		!proto.Equal(filtered.GetSurfaces()[0], report.GetSurfaces()[0]) {
+		t.Fatalf("filtered report changed its surface: %v", filtered)
+	}
+	symbolOnly, err := Filter(report, nil, nil, []string{"p.G"})
+	if err != nil || len(symbolOnly.GetSurfaces()) != 1 || symbolOnly.GetSurfaces()[0].GetSymbol() != "p.G" {
+		t.Fatalf("symbol-only filter = %v, %v", symbolOnly, err)
+	}
+	if _, err := Filter(report, []string{"REQ-a"}, []string{"proto"}, nil); err == nil {
+		t.Fatal("intersecting filters with no match succeeded")
+	}
+	emptyReport := &surfacewire.Report{}
+	emptyReport.SetFormat(surfacewire.Format)
+	emptyReport.SetSurfaces([]*surfacewire.Surface{})
+	empty, err := Filter(emptyReport, nil, nil, nil)
+	if err != nil || len(empty.GetSurfaces()) != 0 {
+		t.Fatalf("unfiltered empty report = %v, %v", empty, err)
+	}
+}
+
 func TestDeriveEmptyReport(t *testing.T) {
 	report, err := Derive(testSpec("REQ-a"), testStore(
 		binding("REQ-a", "go", "p.TestA", stipulatorv1.BindingRole_BINDING_ROLE_TESTS),

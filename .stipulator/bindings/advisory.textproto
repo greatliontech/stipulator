@@ -171,3 +171,102 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "fb0f98b2ca158924bd10c4ae0dff6dc63f4eb13d73bb7a6c7823ded1bd41a56a"
 }
+
+bindings {
+  requirement_id: "REQ-advisory-targets"
+  content_hash: "a742f6ad0fad0cff4669a3e6c3ebecc7c5d8d7cdd893e586c45988e633e55dd6"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/bindingsurface.Derive"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "2760dca3bbe286879cf6dc4640285ccca996e7216e7ad67a42d8afd2f77780f5"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-targets"
+  content_hash: "a742f6ad0fad0cff4669a3e6c3ebecc7c5d8d7cdd893e586c45988e633e55dd6"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/bindingsurface.TestDeriveCanonicalSurfaces"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "fb0f98b2ca158924bd10c4ae0dff6dc63f4eb13d73bb7a6c7823ded1bd41a56a"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-targets"
+  content_hash: "a742f6ad0fad0cff4669a3e6c3ebecc7c5d8d7cdd893e586c45988e633e55dd6"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/bindingsurface.TestDeriveProjectsSharedRequirementOntoEveryImplementation"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "8b821aef334f888d4a482ea6c5f5b731d7646e416780ac22fb789405c3756ac6"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-filtering"
+  content_hash: "6536c2f5f52cfd9614eeea697adb63511ea433850c351dd194dac2aa1a1bf0c2"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/bindingsurface.Filter"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "2c139f4090fa62b043074f56313dd526ab06f4efc925a3fa263d410ac90a991e"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-output"
+  content_hash: "d094e1708add1026544597c9962cf724cfcf9d47c9f10f120327e8d921eac128"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.targetsCmd"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "8f63f4d5ac19c28250116f67ebedf22cd8ff287640364ee09adc748fdf64fb98"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-output"
+  content_hash: "d094e1708add1026544597c9962cf724cfcf9d47c9f10f120327e8d921eac128"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.writeAtomicFile"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "ade52aca1989cb0a00c4d7af95f23ab448378d0006fc15c5b5c8e71d88cd039f"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-output"
+  content_hash: "d094e1708add1026544597c9962cf724cfcf9d47c9f10f120327e8d921eac128"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestTargetsCmdOut"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "65ede47fd66b0cdf551e820a1cb1863d0a19a0dcde90a55653553b6b5142645f"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-output"
+  content_hash: "d094e1708add1026544597c9962cf724cfcf9d47c9f10f120327e8d921eac128"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestWriteAtomicFileReplacesWithoutResidue"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "f3633798c7f48256e71cf8b95d8b6d8cf162144d55c2a5910bf4244aaab2927c"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-filtering"
+  content_hash: "6536c2f5f52cfd9614eeea697adb63511ea433850c351dd194dac2aa1a1bf0c2"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestTargetsCmdOut"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "65ede47fd66b0cdf551e820a1cb1863d0a19a0dcde90a55653553b6b5142645f"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-output"
+  content_hash: "d094e1708add1026544597c9962cf724cfcf9d47c9f10f120327e8d921eac128"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.atomicReplace"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "a2722fe82be5f692b8e4d2762b441908a7df5025bab3dbd5fd94406fb3ac3d8c"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-filtering"
+  content_hash: "6536c2f5f52cfd9614eeea697adb63511ea433850c351dd194dac2aa1a1bf0c2"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/bindingsurface.TestFilterSelectsWholeStableSurfaces"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "784b0a8e7f4ee775138f5daa878260f3119ce7679beac3384a5ae560445ff9c9"
+}

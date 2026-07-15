@@ -140,6 +140,54 @@ func Derive(spec *stipulatorv1.Spec, store *records.Store) (*surfacewire.Report,
 	return report, nil
 }
 
+// Filter selects complete surfaces by exact requirement, backend, and symbol.
+// Values within a dimension are alternatives; populated dimensions intersect.
+func Filter(report *surfacewire.Report, requirements, backends, symbols []string) (*surfacewire.Report, error) {
+	requirementSet := stringSet(requirements)
+	backendSet := stringSet(backends)
+	symbolSet := stringSet(symbols)
+	filtered := &surfacewire.Report{}
+	filtered.SetFormat(surfacewire.Format)
+	var surfaces []*surfacewire.Surface
+	for _, surface := range report.GetSurfaces() {
+		if len(requirementSet) != 0 && !containsAny(surface.GetRequirementIds(), requirementSet) {
+			continue
+		}
+		if len(backendSet) != 0 && !backendSet[surface.GetBackend()] {
+			continue
+		}
+		if len(symbolSet) != 0 && !symbolSet[surface.GetSymbol()] {
+			continue
+		}
+		surfaces = append(surfaces, surface)
+	}
+	filtered.SetSurfaces(surfaces)
+	if len(surfaces) == 0 && (len(requirements) != 0 || len(backends) != 0 || len(symbols) != 0) {
+		return nil, fmt.Errorf("no binding surfaces match the supplied filters")
+	}
+	if err := surfacewire.Validate(filtered); err != nil {
+		return nil, fmt.Errorf("filter binding surfaces: %w", err)
+	}
+	return filtered, nil
+}
+
+func stringSet(values []string) map[string]bool {
+	set := make(map[string]bool, len(values))
+	for _, value := range values {
+		set[value] = true
+	}
+	return set
+}
+
+func containsAny(values []string, set map[string]bool) bool {
+	for _, value := range values {
+		if set[value] {
+			return true
+		}
+	}
+	return false
+}
+
 func sortedSet(set map[string]bool) []string {
 	out := make([]string, 0, len(set))
 	for value := range set {
