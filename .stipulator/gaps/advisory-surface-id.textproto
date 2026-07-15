@@ -1,6 +1,0 @@
-# proto-file: proto/stipulator/v1/records.proto
-# proto-message: stipulator.v1.Gap
-
-requirement_id: "REQ-advisory-surface-id"
-reason: "the current hardening model does not derive canonical backend-independent binding-surface identifiers"
-lands { manual { condition: "binding-surfaces plan chunk 4 (binding-surface derivation and canonical identifiers) ships" } }

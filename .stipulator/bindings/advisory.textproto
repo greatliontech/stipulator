@@ -1,0 +1,56 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-advisory-surface-id"
+  content_hash: "4efba698abc034698af9ed7258ca67b8fc1661740764b157c7ac3c80f0fa3121"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/bindingsurface.Derive"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "bd41a6df208a78bc7e4b3690dc1e70560b0235ba62389f2b8143c81dd02b1d7e"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-surface-id"
+  content_hash: "4efba698abc034698af9ed7258ca67b8fc1661740764b157c7ac3c80f0fa3121"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/bindingsurface.TestSurfaceIdentifierCanonicalBytes"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "bdd30f18cfb87b361d570a820089eb71b8a71d7fe247121a71d941485271d5ec"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-surface-id"
+  content_hash: "4efba698abc034698af9ed7258ca67b8fc1661740764b157c7ac3c80f0fa3121"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/bindingsurface.TestSurfaceIdentifierTracksOnlyRepresentedRelationship"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "efb4c952e36c1e4439be26c4731db08aaaee48d27050483e065144e1f807534c"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-surface-id"
+  content_hash: "4efba698abc034698af9ed7258ca67b8fc1661740764b157c7ac3c80f0fa3121"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/bindingsurface.TestDeriveIsPermutationInvariant"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "1989973bed8d25de7929c8a2451b9a15289c86b48254fdfd24e3a0ac128628ce"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-validation"
+  content_hash: "b45496a507ddc149f8bc83e09491ded287662e564392b2fc78138c73fdbbf663"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/bindingsurface.Derive"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "bd41a6df208a78bc7e4b3690dc1e70560b0235ba62389f2b8143c81dd02b1d7e"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-validation"
+  content_hash: "b45496a507ddc149f8bc83e09491ded287662e564392b2fc78138c73fdbbf663"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/bindingsurface.TestDeriveRejectsIllFormedBindings"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "bafba409079b06193f978fc46516f397e5eac0a2422b17a774b6ec795d29e761"
+}

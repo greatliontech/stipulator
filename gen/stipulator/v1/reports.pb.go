@@ -3282,10 +3282,13 @@ func (b0 BindingSurface_builder) Build() *BindingSurface {
 
 // BindingSurfaceReport is the targets operation's backend-independent export.
 type BindingSurfaceReport struct {
-	state               protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Surfaces *[]*BindingSurface     `protobuf:"bytes,1,rep,name=surfaces"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Surfaces    *[]*BindingSurface     `protobuf:"bytes,1,rep,name=surfaces"`
+	xxx_hidden_Format      *string                `protobuf:"bytes,2,opt,name=format"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *BindingSurfaceReport) Reset() {
@@ -3322,14 +3325,42 @@ func (x *BindingSurfaceReport) GetSurfaces() []*BindingSurface {
 	return nil
 }
 
+func (x *BindingSurfaceReport) GetFormat() string {
+	if x != nil {
+		if x.xxx_hidden_Format != nil {
+			return *x.xxx_hidden_Format
+		}
+		return ""
+	}
+	return ""
+}
+
 func (x *BindingSurfaceReport) SetSurfaces(v []*BindingSurface) {
 	x.xxx_hidden_Surfaces = &v
+}
+
+func (x *BindingSurfaceReport) SetFormat(v string) {
+	x.xxx_hidden_Format = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+}
+
+func (x *BindingSurfaceReport) HasFormat() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *BindingSurfaceReport) ClearFormat() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Format = nil
 }
 
 type BindingSurfaceReport_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	Surfaces []*BindingSurface
+	Format   *string
 }
 
 func (b0 BindingSurfaceReport_builder) Build() *BindingSurfaceReport {
@@ -3337,6 +3368,10 @@ func (b0 BindingSurfaceReport_builder) Build() *BindingSurfaceReport {
 	b, x := &b0, m0
 	_, _ = b, x
 	x.xxx_hidden_Surfaces = &b.Surfaces
+	if b.Format != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		x.xxx_hidden_Format = b.Format
+	}
 	return m0
 }
 
@@ -4064,9 +4099,10 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\abackend\x18\x02 \x01(\tR\abackend\x12\x16\n" +
 	"\x06symbol\x18\x03 \x01(\tR\x06symbol\x12'\n" +
 	"\x0frequirement_ids\x18\x04 \x03(\tR\x0erequirementIds\x129\n" +
-	"\bbindings\x18\x05 \x03(\v2\x1d.stipulator.v1.SurfaceBindingR\bbindings\"Q\n" +
+	"\bbindings\x18\x05 \x03(\v2\x1d.stipulator.v1.SurfaceBindingR\bbindings\"i\n" +
 	"\x14BindingSurfaceReport\x129\n" +
-	"\bsurfaces\x18\x01 \x03(\v2\x1d.stipulator.v1.BindingSurfaceR\bsurfaces\"\xa2\x03\n" +
+	"\bsurfaces\x18\x01 \x03(\v2\x1d.stipulator.v1.BindingSurfaceR\bsurfaces\x12\x16\n" +
+	"\x06format\x18\x02 \x01(\tR\x06format\"\xa2\x03\n" +
 	"\aDossier\x12<\n" +
 	"\vrequirement\x18\x01 \x01(\v2\x1a.stipulator.v1.RequirementR\vrequirement\x12>\n" +
 	"\bcoverage\x18\x02 \x01(\v2\".stipulator.v1.RequirementCoverageR\bcoverage\x12$\n" +

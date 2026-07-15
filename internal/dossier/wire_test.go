@@ -26,6 +26,7 @@ func TestBindingSurfaceWireContract(t *testing.T) {
 		}},
 		{(&stipulatorv1.BindingSurfaceReport{}).ProtoReflect().Descriptor(), []fieldContract{
 			{"surfaces", 1, protoreflect.MessageKind, true, "stipulator.v1.BindingSurface"},
+			{"format", 2, protoreflect.StringKind, false, ""},
 		}},
 	}
 	for _, test := range tests {

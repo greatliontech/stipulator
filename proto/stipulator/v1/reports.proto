@@ -249,6 +249,7 @@ message BindingSurface {
 // BindingSurfaceReport is the targets operation's backend-independent export.
 message BindingSurfaceReport {
   repeated BindingSurface surfaces = 1;
+  string format = 2;
 }
 
 // Dossier is one requirement's orientation view, assembled from the
