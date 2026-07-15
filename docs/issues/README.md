@@ -69,3 +69,11 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   tool takes one `requirement` where the CLI's `--req` is repeatable; agents declaring
   design-stage gaps pay one round-trip per requirement. *Lands: when the MCP tool surface next
   changes.*
+- **[mcp-long-running-tools-time-out-opaquely](mcp-long-running-tools-time-out-opaquely.md)** —
+  MCP `gate` and `context` exceed the harness deadline without progress or actionable failure
+  while the equivalent CLI operation remains active and reports witness progress. *Lands: when
+  MCP long-running operation semantics next change.*
+- **[go-module-rename-lacks-symbol-migration](go-module-rename-lacks-symbol-migration.md)** — a
+  Go module-path change invalidates large stored-symbol sets, with no validated bulk retarget
+  command or actionable remediation. *Lands: before a corpus with stored Go symbol references
+  changes module path, or when the binding rewrite surface next changes.*
