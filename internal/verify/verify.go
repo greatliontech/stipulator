@@ -175,14 +175,6 @@ type WitnessClassifier interface {
 	WitnessClass(symbol string) WitnessClass
 }
 
-// VacuityChecker is an optional Backend extension: whether a test symbol
-// contains no failure path — no failing testing call, no delegation to a
-// callee receiving a testing handle, no panic. Resolved from the code,
-// never declared.
-type VacuityChecker interface {
-	Vacuous(symbol string) (bool, error)
-}
-
 // Decl is one declaration fact from a code slice.
 type Decl struct {
 	Package     string

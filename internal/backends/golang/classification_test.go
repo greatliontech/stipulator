@@ -8,39 +8,6 @@ import (
 	"github.com/greatliontech/stipulator/stipulate/structural"
 )
 
-// TestVacuity pins the vacuity resolution: assertion-free tests are
-// vacuous; failing calls, helper delegation, and fuzz delegation are not.
-//
-//gofresh:pure
-func TestVacuity(t *testing.T) {
-	b := fixtureBackend(t)
-	cases := []struct {
-		symbol string
-		want   bool
-	}{
-		{"example.com/fixture/lib.TestVacuous", true},
-		{"example.com/fixture/lib.TestAdd", false},
-		{"example.com/fixture/lib.TestWitPass", false},
-	}
-	for _, c := range cases {
-		got, err := b.Vacuous(c.symbol)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got != c.want {
-			t.Errorf("Vacuous(%s) = %v, want %v", c.symbol, got, c.want)
-		}
-	}
-	self := backend
-	got, err := self.Vacuous(mod + "/internal/canon.FuzzTextProjection")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got {
-		t.Fatal("fuzz target read as vacuous: f.Fuzz delegation missed")
-	}
-}
-
 func fixtureBackend(t *testing.T) *Backend {
 	t.Helper()
 	b, err := New("testdata/fixturemod")

@@ -243,3 +243,21 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "c71e6e507a0d326fb9a83f1b17ac2cc91ea3599eb48d902013c1edc78649b73d"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-record-verbs"
+  content_hash: "a6f642c0f8685883a4c0997bf4dd2d40ae02cda6669204462698d7585ba02169"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestBindDoesNotInferTestOutcomeFromSyntax"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "be4d4963861015932f2c00492eefcfebed913ff4be4cf713c945f7e8c1c8f9fe"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-promotion"
+  content_hash: "cd111698d940da3cbb7584ce86616a68538ccc610ba3b3db525bbe1c1f37bcfc"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestBindDoesNotInferTestOutcomeFromSyntax"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "be4d4963861015932f2c00492eefcfebed913ff4be4cf713c945f7e8c1c8f9fe"
+}

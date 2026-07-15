@@ -10,8 +10,3 @@ func TestAdd(t *testing.T) {
 		t.Fatal("zero arm")
 	}
 }
-
-// TestVacuous is deliberately assertion-free: the vacuity check's fixture.
-func TestVacuous(t *testing.T) {
-	_ = Add(1, 2)
-}

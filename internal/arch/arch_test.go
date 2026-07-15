@@ -74,7 +74,6 @@ func TestBackendSatisfiesVerifierSurfaces(t *testing.T) {
 	structural.Implements[verify.Backend](t, (*golang.Backend)(nil))
 	structural.Implements[verify.Slicer](t, (*golang.Backend)(nil))
 	structural.Implements[verify.WitnessClassifier](t, (*golang.Backend)(nil))
-	structural.Implements[verify.VacuityChecker](t, (*golang.Backend)(nil))
 }
 
 // TestBindingSurfaceWireOwnership proves that root derivation returns the
