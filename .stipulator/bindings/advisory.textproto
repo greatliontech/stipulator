@@ -5,24 +5,6 @@ bindings {
   requirement_id: "REQ-advisory-surface-id"
   content_hash: "4efba698abc034698af9ed7258ca67b8fc1661740764b157c7ac3c80f0fa3121"
   backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/bindingsurface.Derive"
-  role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "bd41a6df208a78bc7e4b3690dc1e70560b0235ba62389f2b8143c81dd02b1d7e"
-}
-
-bindings {
-  requirement_id: "REQ-advisory-surface-id"
-  content_hash: "4efba698abc034698af9ed7258ca67b8fc1661740764b157c7ac3c80f0fa3121"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/bindingsurface.TestSurfaceIdentifierCanonicalBytes"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "bdd30f18cfb87b361d570a820089eb71b8a71d7fe247121a71d941485271d5ec"
-}
-
-bindings {
-  requirement_id: "REQ-advisory-surface-id"
-  content_hash: "4efba698abc034698af9ed7258ca67b8fc1661740764b157c7ac3c80f0fa3121"
-  backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/bindingsurface.TestSurfaceIdentifierTracksOnlyRepresentedRelationship"
   role: BINDING_ROLE_TESTS
   shape_hash: "efb4c952e36c1e4439be26c4731db08aaaee48d27050483e065144e1f807534c"
@@ -41,16 +23,151 @@ bindings {
   requirement_id: "REQ-advisory-validation"
   content_hash: "b45496a507ddc149f8bc83e09491ded287662e564392b2fc78138c73fdbbf663"
   backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/bindingsurface.TestDeriveRejectsIllFormedBindings"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "bafba409079b06193f978fc46516f397e5eac0a2422b17a774b6ec795d29e761"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-surface-id"
+  content_hash: "4efba698abc034698af9ed7258ca67b8fc1661740764b157c7ac3c80f0fa3121"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/bindingsurface.Identifier"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "14ea2c55535c7160ab34441cca0c1307187262f04dcfc240d093e04d44a02c34"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-surface-id"
+  content_hash: "4efba698abc034698af9ed7258ca67b8fc1661740764b157c7ac3c80f0fa3121"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/bindingsurface.TestIdentifierAnchor"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a3fe2368881c6a7f1db22211a20eb5065ba100a25ddb2f5b54d0d94a594d3e2b"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-json"
+  content_hash: "5010fa246e933afd5e8b96d86f06ffb5cb5d381269ad2daac2c4617a57857fcb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/bindingsurface.ParseJSON"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "bc6cb98bd769be5df33623f235facc248b58ff19d9ee7e1a2d6d1e76bc55b16d"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-json"
+  content_hash: "5010fa246e933afd5e8b96d86f06ffb5cb5d381269ad2daac2c4617a57857fcb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/bindingsurface.MarshalJSON"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "878a9efc4b7b5793e46a6a54ec848c55bd1c89fc16bdafceee90070deb00a066"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-json"
+  content_hash: "5010fa246e933afd5e8b96d86f06ffb5cb5d381269ad2daac2c4617a57857fcb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/bindingsurface.TestParseJSONRequiresExactRepresentation"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7512992cd818dbe52807d401a16d8af29c9cf5bcf5841e3d7722a4622edf9b83"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-json"
+  content_hash: "5010fa246e933afd5e8b96d86f06ffb5cb5d381269ad2daac2c4617a57857fcb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/bindingsurface.TestMarshalJSONEmitsRequiredEmptyCollections"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "595e4f0e520703bbe399d2ce3b8f0b29188b56ff3ca673503eaae9c40c30b141"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-json"
+  content_hash: "5010fa246e933afd5e8b96d86f06ffb5cb5d381269ad2daac2c4617a57857fcb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/bindingsurface.TestContractFixtures"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "0831bf207764c6a81a1eb09d9c130b811653f57d17f9d58b73830dddf117ee1e"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-go-wire"
+  content_hash: "9b455ce4fc47d80f243d0cc8f3b694eb923fd93452e79759ab746aaee71ee729"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/bindingsurface.Report"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "a137fd164558d42ce33549bac182d0ea4f43aab1a527e3e51dc9b9cdf506c060"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-go-wire"
+  content_hash: "9b455ce4fc47d80f243d0cc8f3b694eb923fd93452e79759ab746aaee71ee729"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/bindingsurface.Validate"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "0d4e1c59d6bf18bc7209fe5fe07ffcc207469b3fa210edc8038a9f113fc785ad"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-go-wire"
+  content_hash: "9b455ce4fc47d80f243d0cc8f3b694eb923fd93452e79759ab746aaee71ee729"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/bindingsurface.Identifier"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "14ea2c55535c7160ab34441cca0c1307187262f04dcfc240d093e04d44a02c34"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-go-wire"
+  content_hash: "9b455ce4fc47d80f243d0cc8f3b694eb923fd93452e79759ab746aaee71ee729"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/bindingsurface.ParseJSON"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "bc6cb98bd769be5df33623f235facc248b58ff19d9ee7e1a2d6d1e76bc55b16d"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-go-wire"
+  content_hash: "9b455ce4fc47d80f243d0cc8f3b694eb923fd93452e79759ab746aaee71ee729"
+  backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/bindingsurface.Derive"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "bd41a6df208a78bc7e4b3690dc1e70560b0235ba62389f2b8143c81dd02b1d7e"
+  shape_hash: "2760dca3bbe286879cf6dc4640285ccca996e7216e7ad67a42d8afd2f77780f5"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-go-wire"
+  content_hash: "9b455ce4fc47d80f243d0cc8f3b694eb923fd93452e79759ab746aaee71ee729"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/bindingsurface.TestModuleHasNoApplicationDependencies"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b6255437bc9553aec217ab3a6c6f3bb297782c9b5c113acc450ca1f184552d50"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-go-wire"
+  content_hash: "9b455ce4fc47d80f243d0cc8f3b694eb923fd93452e79759ab746aaee71ee729"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/arch.TestBindingSurfaceWireOwnership"
+  role: BINDING_ROLE_PROVES
+  shape_hash: "d651d19d7c9a512f7bbf9b83b1fa9794a106f7796bf25d05760a7f223918d323"
 }
 
 bindings {
   requirement_id: "REQ-advisory-validation"
   content_hash: "b45496a507ddc149f8bc83e09491ded287662e564392b2fc78138c73fdbbf663"
   backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/bindingsurface.TestDeriveRejectsIllFormedBindings"
+  symbol: "github.com/greatliontech/stipulator/internal/bindingsurface.Derive"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "2760dca3bbe286879cf6dc4640285ccca996e7216e7ad67a42d8afd2f77780f5"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-go-wire"
+  content_hash: "9b455ce4fc47d80f243d0cc8f3b694eb923fd93452e79759ab746aaee71ee729"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/bindingsurface.TestDeriveCanonicalSurfaces"
   role: BINDING_ROLE_TESTS
-  shape_hash: "bafba409079b06193f978fc46516f397e5eac0a2422b17a774b6ec795d29e761"
+  shape_hash: "fb0f98b2ca158924bd10c4ae0dff6dc63f4eb13d73bb7a6c7823ded1bd41a56a"
 }

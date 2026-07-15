@@ -41,6 +41,8 @@ github.com/google/jsonschema-go v0.4.3 h1:/DBOLZTfDow7pe2GmaJNhltueGTtDKICi8V8p+
 github.com/google/jsonschema-go v0.4.3/go.mod h1:r5quNTdLOYEz95Ru18zA0ydNbBuYoo9tgaYcxEYhJVE=
 github.com/greatliontech/gofresh v0.10.0 h1:wOP6evtLB4wtxEqYUBSgz8x7izAB44z+fP34hhAvxHE=
 github.com/greatliontech/gofresh v0.10.0/go.mod h1:YLG+txeAVyPROEOGGI36HvAitgeahUrLbfHv0/XgisQ=
+github.com/greatliontech/stipulator/bindingsurface v0.1.0 h1:MKYkcxxB2t2pmdXqSFbw0KbxR2kpsRI+9WSDHTpv+9k=
+github.com/greatliontech/stipulator/bindingsurface v0.1.0/go.mod h1:UdNdn17fge54gi1sBzO0fBg944kDNeiQ9xU6aKRDAp8=
 github.com/greatliontech/stipulator/stipulate v0.1.0 h1:HZ4MnlDswQDa9T8Je+m+avajnHVA4iCWDEKJMEGcarc=
 github.com/greatliontech/stipulator/stipulate v0.1.0/go.mod h1:j7D1PnMS8A/9b/eUB8tzuz0LpKtndcO7KRA64PzbYB4=
 github.com/greatliontech/stipulator/stipulate/structural v0.2.0 h1:1BDo5qKiXuoplGiy+m2/5RW95dxo0JI/jiA1jZLuQME=

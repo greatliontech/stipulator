@@ -12,6 +12,7 @@ require (
 require (
 	github.com/go-git/go-git/v5 v5.19.1
 	github.com/greatliontech/gofresh v0.10.0
+	github.com/greatliontech/stipulator/bindingsurface v0.1.0
 	github.com/modelcontextprotocol/go-sdk v1.6.1
 	github.com/spf13/cobra v1.10.2
 	github.com/yuin/goldmark v1.8.2

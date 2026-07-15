@@ -228,30 +228,6 @@ message ContextReport {
   repeated Decl declarations = 2;
 }
 
-// SurfaceBinding is one test or proof binding associated with a binding
-// surface. It is an exported claim reference, not verified evidence.
-message SurfaceBinding {
-  string backend = 1;
-  BindingRole role = 2;
-  string symbol = 3;
-}
-
-// BindingSurface is one implementation symbol and the binding relationship
-// external tools can address without becoming Stipulator backends.
-message BindingSurface {
-  string id = 1;
-  string backend = 2;
-  string symbol = 3;
-  repeated string requirement_ids = 4;
-  repeated SurfaceBinding bindings = 5;
-}
-
-// BindingSurfaceReport is the targets operation's backend-independent export.
-message BindingSurfaceReport {
-  repeated BindingSurface surfaces = 1;
-  string format = 2;
-}
-
 // Dossier is one requirement's orientation view, assembled from the
 // compiled corpus and the record stores in one call: no consumer should
 // need to know the record stores' file layout to ask "tell me

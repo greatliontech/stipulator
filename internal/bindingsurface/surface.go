@@ -3,21 +3,13 @@
 package bindingsurface
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"sort"
-	"strconv"
-	"strings"
 
+	surfacewire "github.com/greatliontech/stipulator/bindingsurface"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/records"
 )
-
-// Format identifies the binding-surface ProtoJSON document contract.
-const Format = "stipulator.binding-surfaces/v1"
-
-const domain = "stipulator-binding-surface-v1"
 
 type implementation struct {
 	backend string
@@ -25,7 +17,7 @@ type implementation struct {
 }
 
 type associated struct {
-	role    stipulatorv1.BindingRole
+	role    surfacewire.BindingRole
 	backend string
 	symbol  string
 }
@@ -38,7 +30,7 @@ type claim struct {
 }
 
 // Derive validates the binding graph and projects it into canonical surfaces.
-func Derive(spec *stipulatorv1.Spec, store *records.Store) (*stipulatorv1.BindingSurfaceReport, error) {
+func Derive(spec *stipulatorv1.Spec, store *records.Store) (*surfacewire.Report, error) {
 	inCorpus := make(map[string]bool, len(spec.GetRequirements()))
 	for _, requirement := range spec.GetRequirements() {
 		inCorpus[requirement.GetId()] = true
@@ -86,7 +78,9 @@ func Derive(spec *stipulatorv1.Spec, store *records.Store) (*stipulatorv1.Bindin
 				if associatedByRequirement[id] == nil {
 					associatedByRequirement[id] = map[associated]bool{}
 				}
-				associatedByRequirement[id][associated{role: role, backend: backend, symbol: symbol}] = true
+				associatedByRequirement[id][associated{
+					role: wireRole(role), backend: backend, symbol: symbol,
+				}] = true
 			}
 		}
 	}
@@ -102,9 +96,9 @@ func Derive(spec *stipulatorv1.Spec, store *records.Store) (*stipulatorv1.Bindin
 		return keys[i].symbol < keys[j].symbol
 	})
 
-	report := &stipulatorv1.BindingSurfaceReport{}
-	report.SetFormat(Format)
-	var surfaces []*stipulatorv1.BindingSurface
+	report := &surfacewire.Report{}
+	report.SetFormat(surfacewire.Format)
+	var surfaces []*surfacewire.Surface
 	for _, key := range keys {
 		requirements := sortedSet(implementations[key])
 		bindingSet := map[associated]bool{}
@@ -119,23 +113,30 @@ func Derive(spec *stipulatorv1.Spec, store *records.Store) (*stipulatorv1.Bindin
 		}
 		sort.Slice(bindings, func(i, j int) bool { return lessBinding(bindings[i], bindings[j]) })
 
-		surface := &stipulatorv1.BindingSurface{}
+		surface := &surfacewire.Surface{}
 		surface.SetBackend(key.backend)
 		surface.SetSymbol(key.symbol)
 		surface.SetRequirementIds(requirements)
-		var wireBindings []*stipulatorv1.SurfaceBinding
+		var wireBindings []*surfacewire.Binding
 		for _, binding := range bindings {
-			wire := &stipulatorv1.SurfaceBinding{}
+			wire := &surfacewire.Binding{}
 			wire.SetRole(binding.role)
 			wire.SetBackend(binding.backend)
 			wire.SetSymbol(binding.symbol)
 			wireBindings = append(wireBindings, wire)
 		}
 		surface.SetBindings(wireBindings)
-		surface.SetId(identifier(key, requirements, bindings))
+		id, err := surfacewire.Identifier(surface)
+		if err != nil {
+			return nil, fmt.Errorf("derive binding surface %s %s: %w", key.backend, key.symbol, err)
+		}
+		surface.SetId(id)
 		surfaces = append(surfaces, surface)
 	}
 	report.SetSurfaces(surfaces)
+	if err := surfacewire.Validate(report); err != nil {
+		return nil, fmt.Errorf("derive binding surfaces: %w", err)
+	}
 	return report, nil
 }
 
@@ -158,49 +159,16 @@ func lessBinding(a, b associated) bool {
 	return a.symbol < b.symbol
 }
 
-func roleOrder(role stipulatorv1.BindingRole) int {
-	if role == stipulatorv1.BindingRole_BINDING_ROLE_TESTS {
+func roleOrder(role surfacewire.BindingRole) int {
+	if role == surfacewire.BindingRoleTests {
 		return 0
 	}
 	return 1
 }
 
-func roleToken(role stipulatorv1.BindingRole) string {
+func wireRole(role stipulatorv1.BindingRole) surfacewire.BindingRole {
 	if role == stipulatorv1.BindingRole_BINDING_ROLE_TESTS {
-		return "tests"
+		return surfacewire.BindingRoleTests
 	}
-	return "proves"
-}
-
-func identifier(key implementation, requirements []string, bindings []associated) string {
-	sum := sha256.Sum256(canonicalBytes(key, requirements, bindings))
-	return hex.EncodeToString(sum[:])
-}
-
-func canonicalBytes(key implementation, requirements []string, bindings []associated) []byte {
-	var canonical strings.Builder
-	writeString(&canonical, domain)
-	writeString(&canonical, key.backend)
-	writeString(&canonical, key.symbol)
-	writeCount(&canonical, len(requirements))
-	for _, requirement := range requirements {
-		writeString(&canonical, requirement)
-	}
-	writeCount(&canonical, len(bindings))
-	for _, binding := range bindings {
-		writeString(&canonical, roleToken(binding.role))
-		writeString(&canonical, binding.backend)
-		writeString(&canonical, binding.symbol)
-	}
-	return []byte(canonical.String())
-}
-
-func writeString(out *strings.Builder, value string) {
-	writeCount(out, len(value))
-	out.WriteString(value)
-}
-
-func writeCount(out *strings.Builder, count int) {
-	out.WriteString(strconv.Itoa(count))
-	out.WriteByte(':')
+	return surfacewire.BindingRoleProves
 }

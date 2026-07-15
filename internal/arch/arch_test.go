@@ -6,7 +6,11 @@ package arch
 import (
 	"testing"
 
+	surfacewire "github.com/greatliontech/stipulator/bindingsurface"
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
+	rootbindingsurface "github.com/greatliontech/stipulator/internal/bindingsurface"
+	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
 	"github.com/greatliontech/stipulator/stipulate/structural"
@@ -71,4 +75,21 @@ func TestBackendSatisfiesVerifierSurfaces(t *testing.T) {
 	structural.Implements[verify.Slicer](t, (*golang.Backend)(nil))
 	structural.Implements[verify.WitnessClassifier](t, (*golang.Backend)(nil))
 	structural.Implements[verify.VacuityChecker](t, (*golang.Backend)(nil))
+}
+
+// TestBindingSurfaceWireOwnership proves that root derivation returns the
+// shared wire type while the wire module remains independent of applications.
+//
+// Deliberately not //gofresh:pure: the import-graph verdict depends on packages
+// outside this test binary's closure and must be re-evaluated every gate.
+func TestBindingSurfaceWireOwnership(t *testing.T) {
+	stipulate.Covers(t, "REQ-advisory-go-wire")
+	structural.FunctionSignature[func(*stipulatorv1.Spec, *records.Store) (*surfacewire.Report, error)](t, rootbindingsurface.Derive)
+	structural.NoImport(t, mod+"/bindingsurface",
+		mod+"/cmd/...",
+		mod+"/gen/...",
+		mod+"/internal/...",
+		mod+"/stipulate/...",
+		"github.com/greatliontech/gomutant/...",
+	)
 }

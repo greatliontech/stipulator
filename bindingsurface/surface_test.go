@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"testing"
 )
@@ -150,6 +151,19 @@ func TestIdentifierRejectsNoncanonicalRelationship(t *testing.T) {
 
 	if _, err := Identifier(surface); err == nil {
 		t.Fatal("Identifier accepted noncanonical binding order")
+	}
+}
+
+func TestModuleHasNoApplicationDependencies(t *testing.T) {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		t.Fatal("build information unavailable")
+	}
+	for _, dependency := range info.Deps {
+		if dependency.Path == "github.com/greatliontech/stipulator" ||
+			dependency.Path == "github.com/greatliontech/gomutant" {
+			t.Fatalf("wire module depends on application module %s", dependency.Path)
+		}
 	}
 }
 

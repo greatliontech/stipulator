@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	surfacewire "github.com/greatliontech/stipulator/bindingsurface"
 	"google.golang.org/protobuf/proto"
 	"pgregory.net/rapid"
 
@@ -33,7 +34,10 @@ func TestDeriveCanonicalSurfaces(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if report.GetFormat() != Format || len(report.GetSurfaces()) != 3 {
+	if err := surfacewire.Validate(report); err != nil {
+		t.Fatalf("derived report is not valid shared wire data: %v", err)
+	}
+	if report.GetFormat() != surfacewire.Format || len(report.GetSurfaces()) != 3 {
 		t.Fatalf("report = %v", report)
 	}
 	goA, goSurface, protoSurface := report.GetSurfaces()[0], report.GetSurfaces()[1], report.GetSurfaces()[2]
@@ -63,28 +67,6 @@ func TestDeriveCanonicalSurfaces(t *testing.T) {
 	if protoSurface.GetBackend() != "proto" || protoSurface.GetSymbol() != "p.F" ||
 		!slices.Equal(protoSurface.GetRequirementIds(), []string{"REQ-c"}) || len(protoSurface.GetBindings()) != 0 {
 		t.Fatalf("witness-less surface = %v", protoSurface)
-	}
-}
-
-func TestSurfaceIdentifierCanonicalBytes(t *testing.T) {
-	stipulate.Covers(t, "REQ-advisory-surface-id")
-	key := implementation{backend: "go", symbol: "p.F"}
-	requirements := []string{"REQ-a"}
-	bindings := []associated{{
-		role: stipulatorv1.BindingRole_BINDING_ROLE_TESTS, backend: "go", symbol: "p.TestF",
-	}}
-	wantBytes := "29:stipulator-binding-surface-v1" +
-		"2:go3:p.F1:5:REQ-a1:5:tests2:go7:p.TestF"
-	if got := string(canonicalBytes(key, requirements, bindings)); got != wantBytes {
-		t.Fatalf("canonical bytes = %q, want %q", got, wantBytes)
-	}
-	const wantID = "ed0330a6f616587e4597de19c3b9681a255f452e5c1eeee96860aab92f4997f9"
-	if got := identifier(key, requirements, bindings); got != wantID {
-		t.Fatalf("identifier = %s, want %s", got, wantID)
-	}
-	if identifier(implementation{backend: "a", symbol: "bc"}, nil, nil) ==
-		identifier(implementation{backend: "ab", symbol: "c"}, nil, nil) {
-		t.Fatal("length framing did not distinguish ambiguous concatenations")
 	}
 }
 
@@ -131,11 +113,32 @@ func TestSurfaceIdentifierTracksOnlyRepresentedRelationship(t *testing.T) {
 	}
 }
 
+func TestDeriveProjectsSharedRequirementOntoEveryImplementation(t *testing.T) {
+	report, err := Derive(testSpec("REQ-shared"), testStore(
+		binding("REQ-shared", "go", "p.A", stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS),
+		binding("REQ-shared", "go", "p.B", stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS),
+		binding("REQ-shared", "go", "p.TestShared", stipulatorv1.BindingRole_BINDING_ROLE_TESTS),
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.GetSurfaces()) != 2 {
+		t.Fatalf("surfaces = %v, want two implementations", report.GetSurfaces())
+	}
+	for _, surface := range report.GetSurfaces() {
+		if !slices.Equal(surface.GetRequirementIds(), []string{"REQ-shared"}) ||
+			len(surface.GetBindings()) != 1 ||
+			surface.GetBindings()[0].GetSymbol() != "p.TestShared" {
+			t.Fatalf("shared requirement projection = %v", surface)
+		}
+	}
+}
+
 func TestDeriveEmptyReport(t *testing.T) {
 	report, err := Derive(testSpec("REQ-a"), testStore(
 		binding("REQ-a", "go", "p.TestA", stipulatorv1.BindingRole_BINDING_ROLE_TESTS),
 	))
-	if err != nil || report.GetFormat() != Format || len(report.GetSurfaces()) != 0 {
+	if err != nil || report.GetFormat() != surfacewire.Format || len(report.GetSurfaces()) != 0 {
 		t.Fatalf("empty report = %v, %v", report, err)
 	}
 }

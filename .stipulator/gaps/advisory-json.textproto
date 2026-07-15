@@ -1,6 +1,0 @@
-# proto-file: proto/stipulator/v1/records.proto
-# proto-message: stipulator.v1.Gap
-
-requirement_id: "REQ-advisory-json"
-reason: "the existing report messages have no shared strict codec and standard ProtoJSON decoding accepts alternate representations such as null collections and numeric enums"
-lands { manual { condition: "binding-surfaces plan chunk 7 (strict shared wire API migration) ships" } }
