@@ -23,4 +23,5 @@ reasons, any gap record's reason, landing condition, and evaluated
 state, any attestation, and each binding with role, witness class, and pin
 freshness — so answering "tell me everything
 about this requirement" never requires reading the record stores' file
-layout.
+layout. The `Dossier` wire message reserves field number 6 and field name
+`hardening`; neither can be reused for another dossier fact.

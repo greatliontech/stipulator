@@ -174,7 +174,7 @@ func (s *Server) MCP() *mcp.Server {
 	}, s.toolPrune)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "context",
-		Description: "Per-requirement dossier for ids (comma-separated): clause text with kind and keyword, coverage bucket with reasons, open gap, attestation, bindings with witness class and pin freshness, hardening roll-ups, and closure seeds. Pass slice=true for the code-slice declaration frontier. Facts only — selection is yours.",
+		Description: "Per-requirement dossier for ids (comma-separated): clause text with kind and keyword, coverage bucket with reasons, open gap, attestation, bindings with witness class and pin freshness, and closure seeds. Pass slice=true for the code-slice declaration frontier. Facts only — selection is yours.",
 	}, s.toolContext)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "partitions",
@@ -807,11 +807,7 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 		return nil, nil, err
 	}
 	cr := coverage.Evaluate(spec, vr, store, true, pol)
-	findings, err := harden.LoadFindings(s.fsys(), harden.FindingsPath)
-	if err != nil {
-		return nil, nil, err
-	}
-	dossiers, err := dossier.Build(spec, vr, cr, store, findings, ids)
+	dossiers, err := dossier.Build(spec, vr, cr, store, ids)
 	if err != nil {
 		return nil, nil, err
 	}

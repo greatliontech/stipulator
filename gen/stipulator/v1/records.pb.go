@@ -1117,122 +1117,6 @@ func (b0 Tombstones_builder) Build() *Tombstones {
 	return m0
 }
 
-// Witness pins one killer test the sheet ran against: its symbol and the
-// body hash it ran at. Pinning content, not just the symbol, is what
-// re-stales a sheet when a bound test is strengthened — an assertion added
-// to a witness that would now kill a recorded survivor moves its body hash,
-// so the sheet re-measures rather than serving the stale survivor.
-type Witness struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Symbol      *string                `protobuf:"bytes,1,opt,name=symbol"`
-	xxx_hidden_BodyHash    *string                `protobuf:"bytes,2,opt,name=body_hash,json=bodyHash"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
-}
-
-func (x *Witness) Reset() {
-	*x = Witness{}
-	mi := &file_stipulator_v1_records_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Witness) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Witness) ProtoMessage() {}
-
-func (x *Witness) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_records_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *Witness) GetSymbol() string {
-	if x != nil {
-		if x.xxx_hidden_Symbol != nil {
-			return *x.xxx_hidden_Symbol
-		}
-		return ""
-	}
-	return ""
-}
-
-func (x *Witness) GetBodyHash() string {
-	if x != nil {
-		if x.xxx_hidden_BodyHash != nil {
-			return *x.xxx_hidden_BodyHash
-		}
-		return ""
-	}
-	return ""
-}
-
-func (x *Witness) SetSymbol(v string) {
-	x.xxx_hidden_Symbol = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
-}
-
-func (x *Witness) SetBodyHash(v string) {
-	x.xxx_hidden_BodyHash = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
-}
-
-func (x *Witness) HasSymbol() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
-}
-
-func (x *Witness) HasBodyHash() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
-}
-
-func (x *Witness) ClearSymbol() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
-	x.xxx_hidden_Symbol = nil
-}
-
-func (x *Witness) ClearBodyHash() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
-	x.xxx_hidden_BodyHash = nil
-}
-
-type Witness_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	Symbol   *string
-	BodyHash *string
-}
-
-func (b0 Witness_builder) Build() *Witness {
-	m0 := &Witness{}
-	b, x := &b0, m0
-	_, _ = b, x
-	if b.Symbol != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
-		x.xxx_hidden_Symbol = b.Symbol
-	}
-	if b.BodyHash != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
-		x.xxx_hidden_BodyHash = b.BodyHash
-	}
-	return m0
-}
-
 var File_stipulator_v1_records_proto protoreflect.FileDescriptor
 
 const file_stipulator_v1_records_proto_rawDesc = "" +
@@ -1269,10 +1153,7 @@ const file_stipulator_v1_records_proto_rawDesc = "" +
 	"\x05fired\x18\x02 \x01(\bR\x05fired\"&\n" +
 	"\n" +
 	"Tombstones\x12\x18\n" +
-	"\aretired\x18\x01 \x03(\tR\aretired\">\n" +
-	"\aWitness\x12\x16\n" +
-	"\x06symbol\x18\x01 \x01(\tR\x06symbol\x12\x1b\n" +
-	"\tbody_hash\x18\x02 \x01(\tR\bbodyHash*y\n" +
+	"\aretired\x18\x01 \x03(\tR\aretired*y\n" +
 	"\vBindingRole\x12\x1c\n" +
 	"\x18BINDING_ROLE_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17BINDING_ROLE_IMPLEMENTS\x10\x01\x12\x16\n" +
@@ -1280,7 +1161,7 @@ const file_stipulator_v1_records_proto_rawDesc = "" +
 	"\x13BINDING_ROLE_PROVES\x10\x03BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
 var file_stipulator_v1_records_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_stipulator_v1_records_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_stipulator_v1_records_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_stipulator_v1_records_proto_goTypes = []any{
 	(BindingRole)(0),               // 0: stipulator.v1.BindingRole
 	(*Binding)(nil),                // 1: stipulator.v1.Binding
@@ -1291,7 +1172,6 @@ var file_stipulator_v1_records_proto_goTypes = []any{
 	(*LandingCondition)(nil),       // 6: stipulator.v1.LandingCondition
 	(*ManualCondition)(nil),        // 7: stipulator.v1.ManualCondition
 	(*Tombstones)(nil),             // 8: stipulator.v1.Tombstones
-	(*Witness)(nil),                // 9: stipulator.v1.Witness
 }
 var file_stipulator_v1_records_proto_depIdxs = []int32{
 	0, // 0: stipulator.v1.Binding.role:type_name -> stipulator.v1.BindingRole
@@ -1322,7 +1202,7 @@ func file_stipulator_v1_records_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_records_proto_rawDesc), len(file_stipulator_v1_records_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   9,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

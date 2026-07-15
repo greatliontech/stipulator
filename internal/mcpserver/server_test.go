@@ -347,8 +347,12 @@ func TestToolListExact(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := map[string]bool{}
+	var contextDescription string
 	for _, tool := range list.Tools {
 		got[tool.Name] = true
+		if tool.Name == "context" {
+			contextDescription = tool.Description
+		}
 	}
 	want := []string{"compile", "verify", "gate", "bind", "unbind", "gap", "pin", "prune", "read_spec", "context", "partitions", "dispose", "targets", "attest_requirement"}
 	for _, w := range want {
@@ -358,6 +362,9 @@ func TestToolListExact(t *testing.T) {
 	}
 	if len(got) != len(want) {
 		t.Fatalf("tool list drifted: %v", got)
+	}
+	if !strings.Contains(contextDescription, "closure seeds") || strings.Contains(contextDescription, "hardening") {
+		t.Fatalf("context description is stale: %q", contextDescription)
 	}
 }
 
@@ -684,8 +691,8 @@ func TestPinTool(t *testing.T) {
 }
 
 // TestContextDossier pins the orientation call: one request answers with
-// the clause, coverage, gap, bindings with witness class, and hardening
-// roll-up — no record-store spelunking; a JSON-array-encoded ids value is
+// the clause, coverage, gap, and bindings with witness class — no
+// record-store spelunking; a JSON-array-encoded ids value is
 // tolerated; an unknown id is quoted cleanly.
 //
 //gofresh:pure
@@ -694,13 +701,9 @@ func TestContextDossier(t *testing.T) {
 	sess, _ := harness(t, map[string]string{
 		".stipulator/bindings/m.textproto": pinnedBinding(t),
 		".stipulator/gaps/m-b.textproto":   "requirement_id: \"REQ-m-b\"\nreason: \"awaiting design\"\nlands { manual { condition: \"design settles\" } }\n",
-		".gomutant/findings.json": `{"version": 1, "findings": [
-  {"symbol": "example.com/p.TestA", "labels": ["REQ-m-a"],
-   "bodyHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-   "operatorSet": "go/2", "toolchain": "tc",
-   "mutants": 4, "killed": 3,
-   "survivors": [{"position": "p.go:5:2", "operator": "zero return"}]}
-]}`,
+		// Context does not consume producer-owned findings; malformed external
+		// material cannot break dossier assembly.
+		".gomutant/findings.json": `{not json}`,
 	})
 	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "context", Arguments: map[string]any{
 		"ids": "REQ-m-a,REQ-m-b",
@@ -715,34 +718,16 @@ func TestContextDossier(t *testing.T) {
 		`"awaiting design"`,             // REQ-m-b's gap reason
 		`"design settles"`,              // and its landing condition
 		`"witnessClass":"WITNESS_CLASS_EXAMPLE"`,
-		`"mutants":4`, // hardening roll-up
-		`"killed":3`,
-		`"survivors":1`,
 		`"gapState":"GAP_STATE_OPEN"`, // the record's evaluated state
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("dossier missing %s:\n%s", want, text)
 		}
 	}
-
-	// A finding without this requirement's label is not evidence here: an
-	// engine run under oracles no witness binding vouched must not roll up
-	// (REQ-harden-findings' label scoping).
-	sessUnlabeled, _ := harness(t, map[string]string{
-		".stipulator/bindings/m.textproto": pinnedBinding(t),
-		".gomutant/findings.json": `{"version": 1, "findings": [
-  {"symbol": "example.com/p.TestA", "labels": ["REQ-other"],
-   "bodyHash": "bb", "operatorSet": "go/2", "toolchain": "tc", "mutants": 4, "killed": 3}
-]}`,
-	})
-	res, err = sessUnlabeled.CallTool(context.Background(), &mcp.CallToolParams{Name: "context", Arguments: map[string]any{
-		"ids": "REQ-m-a",
-	}})
-	if err != nil || res.IsError {
-		t.Fatalf("context: %v %v", err, res)
-	}
-	if text := toolText(t, res); strings.Contains(text, `"mutants"`) {
-		t.Fatalf("an unlabeled finding rolled up as requirement evidence: %s", text)
+	for _, retired := range []string{`"hardening"`, `"mutants"`, `"killed"`, `"survivors"`} {
+		if strings.Contains(text, retired) {
+			t.Fatalf("dossier retained mutation result field %s:\n%s", retired, text)
+		}
 	}
 
 	// A store failing verification must say so in the dossier: a

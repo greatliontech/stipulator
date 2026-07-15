@@ -99,15 +99,3 @@ message ManualCondition {
 message Tombstones {
   repeated string retired = 1;
 }
-
-
-// Witness pins one killer test the sheet ran against: its symbol and the
-// body hash it ran at. Pinning content, not just the symbol, is what
-// re-stales a sheet when a bound test is strengthened — an assertion added
-// to a witness that would now kill a recorded survivor moves its body hash,
-// so the sheet re-measures rather than serving the stale survivor.
-message Witness {
-  string symbol = 1;
-  string body_hash = 2;
-}
-

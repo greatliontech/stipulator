@@ -19,7 +19,20 @@ requirement identifiers plus the sorted backend, role, and symbol of their
 from exactly that relationship, so adding, removing, or retargeting any
 participating binding changes the identifier while source changes that leave
 the binding relationship intact do not. Filters can narrow the exported set
-but leave an included surface and its identifier unchanged.
+but leave an included surface and its identifier unchanged. The protobuf wire
+form uses these fields; repeated fields preserve the canonical ordering above:
+
+| Message | Field | Number | Type |
+|---|---|---:|---|
+| `BindingSurfaceReport` | `surfaces` | 1 | repeated `BindingSurface` |
+| `BindingSurface` | `id` | 1 | string |
+| `BindingSurface` | `backend` | 2 | string |
+| `BindingSurface` | `symbol` | 3 | string |
+| `BindingSurface` | `requirement_ids` | 4 | repeated string |
+| `BindingSurface` | `bindings` | 5 | repeated `SurfaceBinding` |
+| `SurfaceBinding` | `backend` | 1 | string |
+| `SurfaceBinding` | `role` | 2 | `BindingRole` |
+| `SurfaceBinding` | `symbol` | 3 | string |
 
 **REQ-advisory-surface-id** (wire): A binding-surface identifier MUST be the
 REQ-model-hash-func digest of this canonical byte sequence: the ASCII domain

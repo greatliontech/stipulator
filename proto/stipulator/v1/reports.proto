@@ -228,6 +228,29 @@ message ContextReport {
   repeated Decl declarations = 2;
 }
 
+// SurfaceBinding is one test or proof binding associated with a binding
+// surface. It is an exported claim reference, not verified evidence.
+message SurfaceBinding {
+  string backend = 1;
+  BindingRole role = 2;
+  string symbol = 3;
+}
+
+// BindingSurface is one implementation symbol and the binding relationship
+// external tools can address without becoming Stipulator backends.
+message BindingSurface {
+  string id = 1;
+  string backend = 2;
+  string symbol = 3;
+  repeated string requirement_ids = 4;
+  repeated SurfaceBinding bindings = 5;
+}
+
+// BindingSurfaceReport is the targets operation's backend-independent export.
+message BindingSurfaceReport {
+  repeated BindingSurface surfaces = 1;
+}
+
 // Dossier is one requirement's orientation view, assembled from the
 // compiled corpus and the record stores in one call: no consumer should
 // need to know the record stores' file layout to ask "tell me
@@ -245,22 +268,13 @@ message Dossier {
   // Bindings are the verified per-binding rows: symbol, role, witness
   // class, pin freshness, outcome.
   repeated BindingResult bindings = 5;
-  // Hardening rolls up each bound symbol's kill-sheet.
-  repeated HardeningRollup hardening = 6;
+  reserved 6;
+  reserved hardening;
   // Seeds are the closure's seed symbols (REQ-context-seeds).
   repeated Seed seeds = 7;
   // GapState is the gap record's evaluated state, so a resolved gap
   // beside a covered bucket explains itself.
   GapState gap_state = 8;
-}
-
-// HardeningRollup is one symbol's kill-sheet, summarized.
-message HardeningRollup {
-  string symbol = 1;
-  int32 mutants = 2;
-  int32 killed = 3;
-  int32 survivors = 4;
-  int32 attested = 5;
 }
 
 // DossierReport is the context operation's answer, one dossier per
@@ -299,5 +313,3 @@ message PartitionReport {
   repeated PartitionComponent components = 1;
   repeated PartitionOverlap overlaps = 2;
 }
-
-
