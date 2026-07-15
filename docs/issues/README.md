@@ -9,10 +9,14 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[gopter-property-recognition](gopter-property-recognition.md)** — gopter-driven tests
   classify as example witnesses; the classifier recognizes fuzz targets and rapid drivers
   only. *Lands: when a corpus standardized on gopter needs invariant coverage.*
-- **[out-of-process-backends](out-of-process-backends.md)** — the backend surfaces (and the
-  mutator, whose kill-sheet records are already the interchange contract) can move behind a
-  wire protocol with the trust model intact; deferred while one backend exists. *Lands: when
-  a second language backend is planned.*
+- **[out-of-process-backends](out-of-process-backends.md)** — trusted backend surfaces can move
+  behind a wire protocol while Stipulator continues deriving evidence in the current run;
+  mutation findings remain gomutant-owned. *Lands: when a second language backend is planned.*
+- **[advisory-context-attachments](advisory-context-attachments.md)** — binding surfaces have
+  no generic channel for producer-owned material in context dossiers; current consumers read
+  producer-owned typed results directly. *Lands: when a consumer needs producer-owned material
+  rendered in Stipulator context dossiers instead of consuming the producer's typed output
+  directly.*
 - **[runtime-input-digest-races-the-run](runtime-input-digest-races-the-run.md)** — the testlog
   manifest is hashed after the run, so a fixture edited while its readers execute can pin
   pre-edit outcomes under a post-edit digest. *Lands: when gofresh grows pre-run manifest
@@ -36,10 +40,10 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   verification imposes `-race ./...` even when the corpus's accepted policy races only selected
   packages. *Lands: when the witness/check execution contract next changes, or before gating a
   corpus whose accepted test policy excludes a universal race run.*
-- **[witness-subset-adequacy](witness-subset-adequacy.md)** — union sheets cannot say whether
-  one requirement's own witnesses have teeth; an opt-in per-requirement probe is measurable
-  without attribution claims. *Lands: when a requirement's risk profile demands per-requirement
-  witness adequacy.*
+- **[witness-subset-adequacy](witness-subset-adequacy.md)** — a binding surface's union mutation
+  oracle cannot say whether each requirement's own witnesses have teeth; an opt-in
+  per-requirement probe is measurable without attribution claims. *Lands: when a requirement's
+  risk profile demands per-requirement witness adequacy.*
 - **[concurrent-record-writes](concurrent-record-writes.md)** — record verbs are last-writer-
   wins; concurrent agents need compare-and-swap at the verb layer, never actor metadata in
   records. *Lands: when concurrent agents write records in one working tree.*

@@ -39,7 +39,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-context-dossier"
-  content_hash: "22f279ff3b9c9045b2dfdceb5065e6b9375d2abb49e2242dc8b9cff298328818"
+  content_hash: "5fefbd73e152769f8fe1507575af25c9b8edf45b8743ee910c9477e9029de826"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestContextDossier"
   role: BINDING_ROLE_TESTS
@@ -48,7 +48,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-context-dossier"
-  content_hash: "22f279ff3b9c9045b2dfdceb5065e6b9375d2abb49e2242dc8b9cff298328818"
+  content_hash: "5fefbd73e152769f8fe1507575af25c9b8edf45b8743ee910c9477e9029de826"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/dossier.Build"
   role: BINDING_ROLE_IMPLEMENTS

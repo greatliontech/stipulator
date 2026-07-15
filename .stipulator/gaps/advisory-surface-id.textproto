@@ -2,5 +2,5 @@
 # proto-message: stipulator.v1.Gap
 
 requirement_id: "REQ-advisory-surface-id"
-reason: "hardening was replaced by the advisory-attachment contract; the surface identifiers, attachment loading, and correlation land with the decoupling plan"
-lands { manual { condition: "advisory-attachments plan chunk 3 (binding-surface derivation, attachment loading, correlation) ships" } }
+reason: "the current hardening model does not derive canonical backend-independent binding-surface identifiers"
+lands { manual { condition: "binding-surfaces plan chunk 3 (binding-surface derivation and canonical identifiers) ships" } }

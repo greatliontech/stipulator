@@ -2,5 +2,5 @@
 # proto-message: stipulator.v1.Gap
 
 requirement_id: "REQ-advisory-targets"
-reason: "the targets export becomes a backend-independent filtered surface export in the decoupling plan"
-lands { manual { condition: "advisory-attachments plan chunk 4 (targets as filtered surface export) ships" } }
+reason: "the targets export must become a backend-independent filtered binding-surface export"
+lands { manual { condition: "binding-surfaces plan chunk 4 (targets as filtered surface export) ships" } }

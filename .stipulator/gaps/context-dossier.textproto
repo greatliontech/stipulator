@@ -1,6 +1,0 @@
-# proto-file: proto/stipulator/v1/records.proto
-# proto-message: stipulator.v1.Gap
-
-requirement_id: "REQ-context-dossier"
-reason: "dossiers gain explicit advisory-attachment input in the decoupling plan; the retained dossier behavior is implemented and witnessed"
-lands { manual { condition: "advisory-attachments plan chunk 4 (explicit attachment input to context dossiers) ships" } }

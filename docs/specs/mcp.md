@@ -24,9 +24,7 @@ duplication without a distinct consumer.
 `gate`, `bind`, `unbind`, `gap`, `pin`, `prune`, `read_spec`, `context`,
 `partitions`, `dispose`, `targets`, and `attest_requirement`, mirroring the
 operation semantics exactly, with report-shaped results rendered from the
-report messages as JSON. Tools that render context accept advisory attachment
-documents as explicit request input; the server never discovers or stores
-them.
+report messages as JSON.
 
 **REQ-mcp-views** (behavior): The gate and verify tools MUST
 answer at the summary view by default — the roll-up most calls want —

@@ -39,7 +39,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-tools"
-  content_hash: "cf8dc307066615fec4f1e8b6e74a4835c20bacc691188d2f765e8ef3a64fb8da"
+  content_hash: "0d1bab1536fd33f572673ebccfc70e6af8576f70d5112e6b632dd53973703676"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.Server.MCP"
   role: BINDING_ROLE_IMPLEMENTS
@@ -48,7 +48,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-tools"
-  content_hash: "cf8dc307066615fec4f1e8b6e74a4835c20bacc691188d2f765e8ef3a64fb8da"
+  content_hash: "0d1bab1536fd33f572673ebccfc70e6af8576f70d5112e6b632dd53973703676"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGateTool"
   role: BINDING_ROLE_TESTS
@@ -75,7 +75,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-tools"
-  content_hash: "cf8dc307066615fec4f1e8b6e74a4835c20bacc691188d2f765e8ef3a64fb8da"
+  content_hash: "0d1bab1536fd33f572673ebccfc70e6af8576f70d5112e6b632dd53973703676"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestToolListExact"
   role: BINDING_ROLE_TESTS
@@ -84,7 +84,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-tools"
-  content_hash: "cf8dc307066615fec4f1e8b6e74a4835c20bacc691188d2f765e8ef3a64fb8da"
+  content_hash: "0d1bab1536fd33f572673ebccfc70e6af8576f70d5112e6b632dd53973703676"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestAttestTools"
   role: BINDING_ROLE_TESTS
@@ -165,7 +165,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-tools"
-  content_hash: "cf8dc307066615fec4f1e8b6e74a4835c20bacc691188d2f765e8ef3a64fb8da"
+  content_hash: "0d1bab1536fd33f572673ebccfc70e6af8576f70d5112e6b632dd53973703676"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPruneTool"
   role: BINDING_ROLE_TESTS
