@@ -33,7 +33,6 @@ import (
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/dossier"
 	"github.com/greatliontech/stipulator/internal/facts"
-	"github.com/greatliontech/stipulator/internal/harden"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/views"
@@ -47,11 +46,8 @@ type Server struct {
 	fsys     func() fs.FS
 	backends func(context.Context) (map[string]verify.Backend, error)
 	runTests func(context.Context) (*verify.TestRun, error)
-	// coverageReminder lists covered bodies with no fresh finding; it
-	// needs the backend and toolchain, so it too is dir-bound.
-	coverageReminder func(context.Context, *stipulatorv1.Spec, *records.Store, []string, []harden.EngineFinding) (*harden.Reminder, error)
-	write            func(path string, content []byte) error
-	remove           func(path string) error
+	write    func(path string, content []byte) error
+	remove   func(path string) error
 }
 
 // New returns a server rooted at dir.
@@ -60,17 +56,6 @@ func New(dir string) *Server {
 		fsys:     func() fs.FS { return os.DirFS(dir) },
 		backends: func(ctx context.Context) (map[string]verify.Backend, error) { return makeBackends(ctx, dir) },
 		runTests: func(ctx context.Context) (*verify.TestRun, error) { return golang.RunTestsFreshContext(ctx, dir) },
-		coverageReminder: func(ctx context.Context, spec *stipulatorv1.Spec, store *records.Store, covered []string, findings []harden.EngineFinding) (*harden.Reminder, error) {
-			gb, err := golang.NewContext(ctx, dir)
-			if err != nil {
-				return nil, err
-			}
-			toolchain, err := golang.ToolchainContext(ctx, dir)
-			if err != nil {
-				return nil, err
-			}
-			return harden.CoverageReminder(spec, store, gb, toolchain, covered, findings)
-		},
 		write: func(path string, content []byte) error {
 			// The server is corpus-bound: every record update must remain
 			// within the tree.
@@ -121,7 +106,7 @@ func (s *Server) MCP() *mcp.Server {
 	}, s.toolVerify)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "gate",
-		Description: "Coverage gate. Default view is the summary (gate_passes, counts, violations); view=reds or full for per-requirement rows; scope with ids/bucket/filter/path. Runs the test suite. Also folds in hardeningReminder: covered bodies with no fresh mutation finding (advisory, never affects the verdict).",
+		Description: "Coverage gate. Default view is the summary (gate_passes, counts, violations); view=reds or full for per-requirement rows; scope with ids/bucket/filter/path. Runs the test suite.",
 	}, s.toolGate)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "bind",
@@ -357,37 +342,7 @@ func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in gate
 	if err != nil {
 		return nil, nil, err
 	}
-	res, out, err := protoJSON(m)
-	if err != nil {
-		return nil, nil, err
-	}
-	// Fold in the covered-but-unhardened reminder (advisory, never gates).
-	var covered []string
-	for _, r := range cov.Requirements {
-		if r.Bucket == coverage.Covered {
-			covered = append(covered, r.Id)
-		}
-	}
-	findings, ferr := harden.LoadFindings(s.fsys(), harden.FindingsPath)
-	var reminder *harden.Reminder
-	rerr := ferr
-	if rerr == nil {
-		reminder, rerr = s.coverageReminder(ctx, spec, store, covered, findings)
-	}
-	foldReminder(out, reminder, rerr)
-	return res, out, nil
-}
-
-// foldReminder attaches the hardening reminder to a gate result. It never
-// fails the call: the reminder is advisory (REQ-harden-coverage-reminder), so
-// a computation error degrades to an empty reminder plus a diagnostic, never
-// clobbering the gate verdict already in out — mirroring the CLI, which warns
-// and proceeds.
-func foldReminder(out map[string]any, reminder *harden.Reminder, err error) {
-	out["hardeningReminder"] = harden.ReminderMap(reminder)
-	if err != nil {
-		out["hardeningReminderError"] = err.Error()
-	}
+	return protoJSON(m)
 }
 
 // scopeFrom builds a scope from tool params, tolerating the same id

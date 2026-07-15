@@ -43,24 +43,6 @@ type AttestationFile struct {
 	Set  *stipulatorv1.AttestationSet
 }
 
-// Store is the loaded record state of a repository.
-// HardeningDir is the RETIRED kill-sheet directory: nothing reads or writes
-// it anymore — mutation findings live in the engine's document — but its
-// presence earns a breadcrumb so the retirement never reads as silent data
-// loss.
-const HardeningDir = ".stipulator/hardening"
-
-// RetiredHardeningPresent reports whether the retired kill-sheet directory
-// still exists: its records are inert — mutation findings live in the
-// engine's document now — and a user pulling the retirement deserves the
-// breadcrumb rather than a silently all-Missing reminder.
-func RetiredHardeningPresent(fsys fs.FS) bool {
-	if fi, err := fs.Stat(fsys, HardeningDir); err == nil && fi.IsDir() {
-		return true
-	}
-	return false
-}
-
 type Store struct {
 	Bindings     []BindingFile
 	Gaps         []GapFile
