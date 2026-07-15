@@ -11,19 +11,7 @@ func TestAdd(t *testing.T) {
 	}
 }
 
-func TestWeak(t *testing.T) {
-	if Weak(5) != 5 {
-		t.Fatal("small arm")
-	}
-}
-
 // TestVacuous is deliberately assertion-free: the vacuity check's fixture.
 func TestVacuous(t *testing.T) {
 	_ = Add(1, 2)
-}
-
-func TestGuarded(t *testing.T) {
-	if Guarded(3) != 6 {
-		t.Fatal("broken")
-	}
 }

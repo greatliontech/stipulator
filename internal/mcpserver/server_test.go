@@ -655,7 +655,6 @@ func TestReadSpecToolMirrorsBundle(t *testing.T) {
 
 // TestAttestTools pins the MCP surface of the requirement attest verb:
 // writes land in the record store, and refusals surface as tool errors.
-// (Survivor attestation is the mutation engine's verb now.)
 //
 //gofresh:pure
 func TestAttestTools(t *testing.T) {
@@ -681,7 +680,7 @@ func TestAttestTools(t *testing.T) {
 		t.Fatalf("requirement attestation not written: %v", writes)
 	}
 
-	// Refusals surface as tool errors: reasonless, and non-survivors.
+	// Reasonless requests surface as tool errors.
 	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "attest_requirement", Arguments: map[string]any{
 		"requirement": "REQ-m-b",
 	}})

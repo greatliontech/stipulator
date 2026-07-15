@@ -10,6 +10,6 @@
 - [x] 8. After gomutant accepts a released wire module and its fixtures under its own plan, replace the CLI `targets` export with exact filters, ProtoJSON stdout and atomic file output, and resolve the targets, filtering, and output gaps.
 - [x] 9. Mirror the filtered report over read-only MCP inputs, delete the old target planner, exporter, staged classifier and their tests, resolve the MCP-tools gap, and disposition every issue whose MCP-surface trigger fires.
 - [x] 10. Remove gomutant findings ingestion, hardening reminders and errors, findings/reminder readers, retired-store breadcrumbs and their tests from CLI and MCP gate paths.
-- [ ] 11. Delete the residual `internal/harden` package, Go body hashing and mutation-surface analysis, and their mutation-only tests and bindings.
+- [x] 11. Delete the residual `internal/harden` package, Go body hashing and mutation-surface analysis, and their mutation-only tests and bindings.
 - [ ] 12. Separately remove the syntax-based test-vacuity authoring heuristic without weakening ordinary binding resolution or witness execution.
 - [ ] 13. Verify both repositories and their copied contract fixtures, retarget or close every resolving issue and reference, remove obsolete artifacts, and delete this plan.

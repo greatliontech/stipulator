@@ -12,7 +12,7 @@ import (
 func attestCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "attest",
-		Short: "Record a human judgment: a surviving mutant's equivalence, or a requirement's weakest evidence",
+		Short: "Record a human judgment as a requirement's weakest evidence",
 	}
 	c.AddCommand(attestRequirementCmd())
 	return c

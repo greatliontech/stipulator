@@ -65,14 +65,10 @@ func FS(dir, rev string) (fs.FS, error) {
 
 // Changed returns the paths, relative to dir and slash-separated, of every
 // file under dir whose working-tree state differs from HEAD — modified,
-// added, staged, untracked, or deleted alike. It is the staged-delta
-// boundary the harden classification measures against (REQ-harden-staged-
-// scope): "the working tree against HEAD" is the whole change set since the
-// last commit, whether or not the operator has run `git add`. Paths outside
-// dir's subtree (the corpus root's repo-relative prefix) are excluded, so a
-// nested corpus never sees sibling changes. Deleted paths are included: their
-// symbols vanished from the delta and the classifier resolves them to no
-// bound body.
+// added, staged, untracked, or deleted alike. The working tree against HEAD
+// is the whole change set since the last commit, whether or not the operator
+// has run `git add`. Paths outside dir's subtree are excluded, so a nested
+// corpus never sees sibling changes.
 func Changed(dir string) ([]string, error) {
 	repo, err := git.PlainOpenWithOptions(dir, &git.PlainOpenOptions{DetectDotGit: true, EnableDotGitCommonDir: true})
 	if err != nil {

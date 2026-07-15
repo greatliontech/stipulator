@@ -76,9 +76,8 @@ func TestNoImport(t *testing.T) {
 	})
 	t.Run("violation names the chain", func(t *testing.T) {
 		r := &recorder{}
-		// harden legitimately imports the go backend: a known edge to
-		// detect.
-		NoImport(r, mod+"/internal/harden", mod+"/internal/backends/...")
+		// The CLI legitimately imports the Go backend: a known edge to detect.
+		NoImport(r, mod+"/internal/cmd", mod+"/internal/backends/...")
 		if len(r.errors) == 0 {
 			t.Fatal("violation not reported")
 		}

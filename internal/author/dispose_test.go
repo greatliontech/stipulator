@@ -78,8 +78,8 @@ func TestEditorial(t *testing.T) {
 		t.Fatal("unknown requirement accepted")
 	}
 
-	// Error arms propagate, never swallow — hardening found both
-	// unwitnessed: a corpus that no longer compiles, and a broken store.
+	// Error arms propagate for both a corpus that no longer compiles and a
+	// broken store.
 	fsys["specs/broken.md"] = &fstest.MapFile{Data: []byte("# B\n\n**REQ-au-a** (behavior): Redeclared, it MUST clash.\n")}
 	if _, err := Editorial(fsys, "REQ-au-a"); err == nil {
 		t.Fatal("non-compiling corpus swallowed")

@@ -20,11 +20,6 @@ import (
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
 
-// gofresh here is a library dependency by gofresh's own design
-// (caller-owned fingerprints, REQ-fresh-fingerprint-data); the
-// documents-only seam stipulator keeps toward the mutation engine is
-// specific to that tool pair and does not apply.
-//
 // RunTestsFresh is the freshness-aware witness run
 // (REQ-evidence-witness-freshness): each expected top-level test whose
 // cached fingerprint checks valid against the current tree serves its

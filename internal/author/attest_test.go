@@ -8,21 +8,6 @@ import (
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
-const sheet = `records {
-  backend: "go"
-  symbol: "example.com/p.F"
-  body_hash: "` + "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" + `"
-  mutants: 3
-  killed: 2
-  survivors {
-    position: "f.go:10:2"
-    operator: "drop assignment"
-  }
-  witnesses: "example.com/p.TestF"
-  operators: "go/2"
-}
-`
-
 // TestAttestRequirement pins the evidence-attestation verb: reasoned,
 // corpus-validated, content-pinned at write, one per requirement.
 //

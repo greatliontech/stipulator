@@ -215,8 +215,8 @@ func TestMatchGlob(t *testing.T) {
 	}
 }
 
-// TestValidateGlobErrors pins the eager validation arm: hardening showed
-// TestMatchGlob alone leaves every validateGlob mutant alive.
+// TestValidateGlobErrors pins eager validation independently of matching:
+// malformed patterns are refused before any path is considered.
 //
 //gofresh:pure
 func TestValidateGlobErrors(t *testing.T) {

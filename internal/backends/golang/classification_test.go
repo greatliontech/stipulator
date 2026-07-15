@@ -8,35 +8,6 @@ import (
 	"github.com/greatliontech/stipulator/stipulate/structural"
 )
 
-// TestBodyHash pins the body-hash contract: stable across resolutions,
-// distinct across distinct bodies, identical for identical bodies, and
-// insensitive to formatting because it hashes canonical text.
-//
-//gofresh:pure
-func TestBodyHash(t *testing.T) {
-	b := fixtureBackend(t)
-	h1, err := b.BodyHash("example.com/fixture/lib.Add")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(h1) != 64 {
-		t.Fatalf("body hash %q", h1)
-	}
-	h2, err := b.BodyHash("example.com/fixture/lib.Add")
-	if err != nil || h1 != h2 {
-		t.Fatalf("unstable: %v %s %s", err, h1, h2)
-	}
-	hw, err := b.BodyHash("example.com/fixture/lib.Weak")
-	if err != nil || hw == h1 {
-		t.Fatalf("distinct bodies share a hash: %v", err)
-	}
-	// Shape hash and body hash version different things: F's shape.
-	_, shape, err := b.Resolve("example.com/fixture/lib.Add")
-	if err != nil || shape == h1 {
-		t.Fatalf("body hash equals shape hash: %v", err)
-	}
-}
-
 // TestVacuity pins the vacuity resolution: assertion-free tests are
 // vacuous; failing calls, helper delegation, and fuzz delegation are not.
 //
@@ -60,7 +31,7 @@ func TestVacuity(t *testing.T) {
 			t.Errorf("Vacuous(%s) = %v, want %v", c.symbol, got, c.want)
 		}
 	}
-	self := backend // the repo's own tree
+	self := backend
 	got, err := self.Vacuous(mod + "/internal/canon.FuzzTextProjection")
 	if err != nil {
 		t.Fatal(err)
@@ -96,8 +67,6 @@ func TestWitnessClassProof(t *testing.T) {
 	if got := backend.WitnessClass(mod + "/internal/corpus.TestLoadManifest"); got == verify.AnalyzerProof {
 		t.Fatal("ordinary test classified as proof")
 	}
-	// Generic instantiation is still a direct invocation: this test's
-	// body calls structural only through Implements[I](...).
 	if got := backend.WitnessClass(mod + "/internal/arch.TestBackendSatisfiesVerifierSurfaces"); got != verify.AnalyzerProof {
 		t.Fatalf("generic structural invocation classified %v", got)
 	}

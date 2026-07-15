@@ -1,42 +1,18 @@
 package golang
 
 import (
-	"errors"
 	"fmt"
 	"go/ast"
 	"go/types"
-	"os"
 
 	"golang.org/x/tools/go/packages"
 
-	"github.com/greatliontech/stipulator/internal/canon"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
-// BodyHash hashes the canonical text of the symbol's body source — the
-// function or method body when there is one, the whole declaration
-// otherwise. It moves when behavior-bearing code moves and ignores
-// formatting churn.
-func (b *Backend) BodyHash(symbol string) (string, error) {
-	fd, pkg, err := b.funcDecl(symbol)
-	if err != nil {
-		return "", err
-	}
-	node := ast.Node(fd)
-	if fd.Body != nil {
-		node = fd.Body
-	}
-	src, err := b.sourceOf(pkg, node)
-	if err != nil {
-		return "", err
-	}
-	return canon.Hash(canon.Text(string(src))), nil
-}
-
 // Vacuous reports whether a test function contains no failure path: no
 // failing testing call, no delegation to a callee receiving a testing
-// handle, and no panic. Reachability is deliberately not decided here —
-// that is what mutation is for.
+// handle, and no panic.
 func (b *Backend) Vacuous(symbol string) (bool, error) {
 	fd, pkg, err := b.funcDecl(symbol)
 	if err != nil {
@@ -72,8 +48,7 @@ func (b *Backend) Vacuous(symbol string) (bool, error) {
 }
 
 // carriesTestingHandle reports whether t is a testing handle (*testing.T,
-// *testing.F, testing.TB) or a function type receiving one — the helper
-// and f.Fuzz delegation shapes.
+// *testing.F, testing.TB) or a function type receiving one.
 func carriesTestingHandle(t types.Type) bool {
 	switch v := t.(type) {
 	case nil:
@@ -99,11 +74,6 @@ func isTestingType(n *types.Named) bool {
 	return obj.Pkg() != nil && obj.Pkg().Path() == "testing" &&
 		(obj.Name() == "T" || obj.Name() == "F" || obj.Name() == "B" || obj.Name() == "TB")
 }
-
-// ErrNotFunction marks a resolvable symbol with no function body — a
-// type or variable. Body-level operations skip such symbols; there is
-// nothing to hash or mutate.
-var ErrNotFunction = errors.New("is not a function or method")
 
 // funcDecl resolves a symbol to its declaring FuncDecl and package.
 func (b *Backend) funcDecl(symbol string) (*ast.FuncDecl, *packages.Package, error) {
@@ -131,19 +101,5 @@ func (b *Backend) funcDecl(symbol string) (*ast.FuncDecl, *packages.Package, err
 			}
 		}
 	}
-	return nil, nil, fmt.Errorf("symbol %s: %w", symbol, ErrNotFunction)
-}
-
-// sourceOf reads the original source bytes spanned by node.
-func (b *Backend) sourceOf(pkg *packages.Package, node ast.Node) ([]byte, error) {
-	start := pkg.Fset.Position(node.Pos())
-	end := pkg.Fset.Position(node.End())
-	data, err := os.ReadFile(start.Filename)
-	if err != nil {
-		return nil, err
-	}
-	if start.Offset < 0 || end.Offset > len(data) || start.Offset > end.Offset {
-		return nil, fmt.Errorf("node span out of range in %s", start.Filename)
-	}
-	return data[start.Offset:end.Offset], nil
+	return nil, nil, fmt.Errorf("symbol %s is not a function or method", symbol)
 }

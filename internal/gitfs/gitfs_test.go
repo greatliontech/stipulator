@@ -62,8 +62,8 @@ func repoWith(t *testing.T, committed, worktree map[string]string) string {
 	return dir
 }
 
-// TestChanged pins the staged-delta boundary: a file untouched since HEAD is
-// absent, a modified file and a brand-new untracked file are both present.
+// TestChanged pins the working-tree boundary: a file untouched since HEAD is
+// absent, while a modified file and a brand-new untracked file are present.
 //
 //gofresh:pure
 func TestChanged(t *testing.T) {
