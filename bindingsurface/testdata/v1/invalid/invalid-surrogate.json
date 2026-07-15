@@ -1,0 +1,1 @@
+{"format":"stipulator.binding-surfaces/v1","surfaces":[{"id":"0000000000000000000000000000000000000000000000000000000000000000","backend":"go","symbol":"\ud800","requirementIds":["REQ-fixture-a"],"bindings":[]}]}

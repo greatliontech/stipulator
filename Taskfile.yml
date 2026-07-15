@@ -8,22 +8,27 @@ tasks:
     desc: Build all packages, across all workspace modules
     cmds:
       - go build github.com/greatliontech/stipulator/...
+      - go build github.com/greatliontech/stipulator/bindingsurface/...
 
   test:
     desc: Run the test suite with the race detector, across all workspace modules
     cmds:
       - go test -race github.com/greatliontech/stipulator/...
+      - go test -race github.com/greatliontech/stipulator/bindingsurface/...
 
   vet:
     desc: Static analysis, across all workspace modules
     cmds:
       - go vet github.com/greatliontech/stipulator/...
+      - go vet github.com/greatliontech/stipulator/bindingsurface/...
 
   generate:
     desc: Regenerate protobuf code
     cmds:
       - buf lint
       - buf generate
+      - cd bindingsurface && buf lint
+      - cd bindingsurface && buf generate
 
   gate:
     desc: Coverage buckets and the gate verdict (compiles the corpus, runs tests, verifies records)
@@ -62,6 +67,7 @@ tasks:
     desc: Every module ships a tidy go.mod/go.sum (workspace-mode CI cannot see per-module drift)
     cmds:
       - go mod tidy -diff
+      - cd bindingsurface && go mod tidy -diff
       - cd stipulate && go mod tidy -diff
       - cd stipulate/structural && go mod tidy -diff
 

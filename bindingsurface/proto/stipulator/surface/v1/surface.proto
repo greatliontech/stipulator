@@ -1,0 +1,34 @@
+edition = "2023";
+
+package stipulator.surface.v1;
+
+option go_package = "github.com/greatliontech/stipulator/bindingsurface/gen/stipulator/surface/v1;surfacev1";
+
+// BindingRole is the evidence-binding role represented on a surface.
+enum BindingRole {
+  BINDING_ROLE_UNSPECIFIED = 0;
+  BINDING_ROLE_TESTS = 1;
+  BINDING_ROLE_PROVES = 2;
+}
+
+// SurfaceBinding is one test or proof claim associated with a surface.
+message SurfaceBinding {
+  string backend = 1;
+  BindingRole role = 2;
+  string symbol = 3;
+}
+
+// BindingSurface is one implementation symbol and its binding relationship.
+message BindingSurface {
+  string id = 1;
+  string backend = 2;
+  string symbol = 3;
+  repeated string requirement_ids = 4;
+  repeated SurfaceBinding bindings = 5;
+}
+
+// BindingSurfaceReport is the versioned backend-independent targets export.
+message BindingSurfaceReport {
+  repeated BindingSurface surfaces = 1;
+  string format = 2;
+}
