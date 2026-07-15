@@ -31,6 +31,7 @@ func disposeFS(t *testing.T, oldDoc, newDoc string, extra map[string]string) fst
 	return fsys
 }
 
+//gofresh:pure
 func TestEditorial(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-editorial")
 	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST x.\n\n**REQ-au-b** (behavior): It MUST y.\n"
@@ -90,6 +91,7 @@ func TestEditorial(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestRetire(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-retire")
 	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST x.\n\n**REQ-au-b** (behavior): It MUST y.\n"
@@ -136,6 +138,7 @@ func TestRetire(t *testing.T) {
 	})
 }
 
+//gofresh:pure
 func TestSupersede(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-split-merge", "REQ-change-transient")
 	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST x.\n\n**REQ-au-b** (behavior): It MUST y.\n"

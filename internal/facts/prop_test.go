@@ -14,6 +14,8 @@ import (
 // TestPropSeedsDeterminism quantifies REQ-core-determinism over facts
 // seed derivation: byte-identical corpora, record stores, and identifier
 // sets yield identical seeds on every run.
+//
+//gofresh:pure
 func TestPropSeedsDeterminism(t *testing.T) {
 	stipulate.Covers(t, "REQ-core-determinism")
 	rapid.Check(t, func(rt *rapid.T) {

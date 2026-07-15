@@ -47,6 +47,8 @@ func compileClean(rt *rapid.T, files map[string]string) *stipulatorv1.Spec {
 // partitions of one block pool compile to IRs identical modulo location
 // metadata, and location never contributes to identities or content
 // hashes.
+//
+//gofresh:pure
 func TestPropLayoutIndependence(t *testing.T) {
 	stipulate.Covers(t, "REQ-model-layout-independence", "REQ-model-location-metadata")
 	rapid.Check(t, func(rt *rapid.T) {
@@ -102,6 +104,8 @@ func caseVariant(rt *rapid.T, s string) string {
 // TestPropTombstonedIdentityNeverRedeclared quantifies identity
 // permanence: any declared identity, tombstoned under any letter case,
 // makes the corpus refuse to compile cleanly.
+//
+//gofresh:pure
 func TestPropTombstonedIdentityNeverRedeclared(t *testing.T) {
 	stipulate.Covers(t, "REQ-model-identity")
 	rapid.Check(t, func(rt *rapid.T) {

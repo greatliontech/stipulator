@@ -25,6 +25,8 @@ const sheet = `records {
 
 // TestAttestRequirement pins the evidence-attestation verb: reasoned,
 // corpus-validated, content-pinned at write, one per requirement.
+//
+//gofresh:pure
 func TestAttestRequirement(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-attestation")
 	fsys := testFS(nil)
@@ -82,6 +84,8 @@ func TestAttestRequirement(t *testing.T) {
 // TestAttestRequirementMultiRecordFile pins the two-pass replace: in a
 // hand-edited multi-attestation file, records preceding AND following the
 // judgment survive a replace untouched.
+//
+//gofresh:pure
 func TestAttestRequirementMultiRecordFile(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-attestation")
 	fsys := testFS(map[string]string{

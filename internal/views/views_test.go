@@ -12,6 +12,8 @@ import (
 
 // TestVerifyViews pins the verify view axis: the summary is counts and
 // signatures with no binding rows; the bindings view scopes.
+//
+//gofresh:pure
 func TestVerifyViews(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-views")
 	vr := &verify.Report{
@@ -53,6 +55,8 @@ func TestVerifyViews(t *testing.T) {
 // WHOLE report, not just the requirement rows: the reds and full views must
 // filter gaps and violations to the scope, so filtered triage is not
 // polluted by out-of-scope entries — while the gate verdict stays global.
+//
+//gofresh:pure
 func TestCoverageViewScopesGapsAndViolations(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-views")
 	cov := &coverage.Report{
@@ -145,6 +149,8 @@ func TestCoverageViewScopesGapsAndViolations(t *testing.T) {
 // resolved-gap tally must move with the data, so a flipped counter or a
 // resolved/open misclassification cannot pass silently. The prunable count
 // is how the gate surfaces resolved gaps awaiting prune.
+//
+//gofresh:pure
 func TestCoverageSummaryPinsCountsAndGapState(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-views", "REQ-gap-resolved-pruned")
 	cov := &coverage.Report{
@@ -184,6 +190,8 @@ func TestCoverageSummaryPinsCountsAndGapState(t *testing.T) {
 
 // TestScopeValidate pins the typo rule: unknown vocabulary refuses
 // before filtering, so a misspelling never reads as an empty result.
+//
+//gofresh:pure
 func TestScopeValidate(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-views")
 	if err := (Scope{Bucket: "redish"}).Validate(); err == nil || !strings.Contains(err.Error(), `unknown bucket "redish"`) {

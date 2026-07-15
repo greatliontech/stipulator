@@ -15,6 +15,8 @@ import (
 // the freshness path (here: a module that enumerates no runnable tests)
 // falls back to the full witnessing run instead of failing the caller, and
 // the result names the fault.
+//
+//gofresh:pure
 func TestRunTestsFreshDegrades(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-freshness-degrade")
 	tmp := t.TempDir()
@@ -36,6 +38,7 @@ func TestRunTestsFreshDegrades(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestRunTestsFreshRejectsProducerViewDrift(t *testing.T) {
 	tmp := t.TempDir()
 	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte("module example.com/mutate\n\ngo 1.26\n"), 0o644); err != nil {
@@ -86,6 +89,7 @@ func TestMutatesSourceOnce(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestRunTestsFreshRejectsRuntimeInputDriftBetweenPackages(t *testing.T) {
 	// The drift this fixture forces depends on package ordering: the
 	// reader must hash before the mutator writes. Serialize so the
@@ -308,6 +312,8 @@ func TestRunTestsFresh(t *testing.T) {
 // race-selected sources as the witness run. The default-only declaration's
 // purity assertion must not apply to its race-selected counterpart, and an
 // edit to a race-only helper must stale the test that reaches it.
+//
+//gofresh:pure
 func TestRunTestsFreshSelectsRaceSources(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-go-race")
 	if testing.Short() {

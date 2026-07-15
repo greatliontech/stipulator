@@ -61,6 +61,11 @@ func (r *recorder) Fatalf(f string, a ...any) { r.fatals = append(r.fatals, fmt.
 
 const mod = "github.com/greatliontech/stipulator"
 
+// Deliberately not //gofresh:pure: the verdict depends on the import
+// graph of module packages outside this test binary's closure, read
+// through a go list child the testlog cannot observe. A cached pass
+// could serve while an audited package drifts; the witness re-runs
+// every gate.
 func TestNoImport(t *testing.T) {
 	t.Run("clean constraint passes", func(t *testing.T) {
 		r := &recorder{}
@@ -105,6 +110,7 @@ func TestNoImport(t *testing.T) {
 	})
 }
 
+//gofresh:pure
 func TestImplements(t *testing.T) {
 	r := &recorder{}
 	Implements[io.Reader](r, (*strings.Reader)(nil))
@@ -128,6 +134,7 @@ func TestImplements(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestExportedData(t *testing.T) {
 	t.Run("exact exported shape passes", func(t *testing.T) {
 		r := &recorder{}
@@ -215,6 +222,7 @@ func TestExportedData(t *testing.T) {
 	})
 }
 
+//gofresh:pure
 func TestFunctionSignature(t *testing.T) {
 	fn := func(string) bool { return true }
 	t.Run("exact signature passes", func(t *testing.T) {

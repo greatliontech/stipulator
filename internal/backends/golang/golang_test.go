@@ -23,6 +23,10 @@ var backend = func() *Backend {
 
 const mod = "github.com/greatliontech/stipulator"
 
+// Deliberately not //gofresh:pure: the verdict depends on module
+// sources outside this binary's closure, loaded through the shared
+// backend at package init — before the testlog starts, so no digest
+// guards them. The witness re-runs every gate.
 func TestResolve(t *testing.T) {
 	cases := []struct {
 		name, symbol string
@@ -61,6 +65,8 @@ func TestResolve(t *testing.T) {
 // TestFixtureModule exercises the branches this repository's own healthy
 // tree cannot: external test packages, generated-type promotion through
 // embedding, interface methods, and packages that fail to load.
+//
+//gofresh:pure
 func TestFixtureModule(t *testing.T) {
 	b, err := New("testdata/fixturemod")
 	if err != nil {
@@ -104,6 +110,8 @@ func TestFixtureModule(t *testing.T) {
 // and pointer-receiver method and a generic-receiver method each resolve to
 // their "pkg.Receiver.Method" symbol, and only the method whose body differs
 // from HEAD surfaces.
+//
+//gofresh:pure
 func TestSurfaceMethods(t *testing.T) {
 	b, err := New("testdata/fixturemod")
 	if err != nil {
@@ -152,6 +160,10 @@ func TestSurfaceMethods(t *testing.T) {
 	}
 }
 
+// Deliberately not //gofresh:pure: the fixture module's sources are
+// read only by the child go test invocation, outside the testlog; a
+// solo recapture would publish a manifest blind to them. The witness
+// re-runs every gate.
 func TestRunTests(t *testing.T) {
 	tr, err := RunTests("testdata/fixturemod")
 	if err != nil {
@@ -201,6 +213,8 @@ func TestRunTests(t *testing.T) {
 // identically-shaped symbols in different packages hash differently: the
 // rendering must carry full package paths, or cross-package shape drift
 // becomes invisible.
+//
+//gofresh:pure
 func TestShapeHashIsPackageQualified(t *testing.T) {
 	fn := func(path string) *types.Func {
 		pkg := types.NewPackage(path, "p")
@@ -214,6 +228,10 @@ func TestShapeHashIsPackageQualified(t *testing.T) {
 	}
 }
 
+// Deliberately not //gofresh:pure: the verdict depends on module
+// sources outside this binary's closure, loaded through the shared
+// backend at package init — before the testlog starts, so no digest
+// guards them. The witness re-runs every gate.
 func TestShapeHashDistinguishesSignatures(t *testing.T) {
 	_, a, err := backend.Resolve(mod + "/internal/corpus.LoadManifest")
 	if err != nil {
@@ -238,6 +256,11 @@ func TestShapeHashDistinguishesSignatures(t *testing.T) {
 // TestWitnessClass pins property-vs-example classification: fuzz targets
 // and rapid-driven tests are property witnesses, ordinary tests are
 // example witnesses, resolved from the code, never declared.
+//
+// Deliberately not //gofresh:pure: the verdict depends on module
+// sources outside this binary's closure, loaded through the shared
+// backend at package init — before the testlog starts, so no digest
+// guards them. The witness re-runs every gate.
 func TestWitnessClass(t *testing.T) {
 	if got := backend.WitnessClass(mod + "/internal/canon.FuzzTextProjection"); got != verify.PropertyWitness {
 		t.Fatalf("fuzz target classified %v", got)
@@ -266,6 +289,8 @@ func TestWitnessClass(t *testing.T) {
 // TestWitnessRunInvocation pins the witness-run contract: the race
 // detector is always on, and no fuzzing campaign flag ever reaches the
 // gate's test run — campaigns are exploration, outside the gate.
+//
+//gofresh:pure
 func TestWitnessRunInvocation(t *testing.T) {
 	args := testArgs()
 	race, fuzz := false, false
@@ -288,6 +313,11 @@ func TestWitnessRunInvocation(t *testing.T) {
 // TestSlice pins the slice facts: the seed's declaration plus the named
 // module-local types its signature reaches, transitively, shape-pinned and
 // canonically ordered — and nothing from outside the module.
+//
+// Deliberately not //gofresh:pure: the verdict depends on module
+// sources outside this binary's closure, loaded through the shared
+// backend at package init — before the testlog starts, so no digest
+// guards them. The witness re-runs every gate.
 func TestSlice(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-slice")
 	decls, err := backend.Slice([]string{mod + "/internal/corpus.LoadManifest"})
@@ -330,6 +360,8 @@ func TestSlice(t *testing.T) {
 // every member's symbols resolve and every member's tests are witnessed —
 // package patterns are module-scoped, so without the walk a nested
 // published module silently vanishes from verification.
+//
+//gofresh:pure
 func TestWorkspaceMembers(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-static-binding", "REQ-go-witness", "REQ-go-workspace")
 	b, err := New("testdata/workspacemod")

@@ -9,6 +9,8 @@ import (
 // TestLoadFindings pins the document reading (REQ-harden-findings): a missing
 // document is nothing measured, an unknown version is refused, unknown fields
 // are ignored, and the pins arrive intact.
+//
+//gofresh:pure
 func TestLoadFindings(t *testing.T) {
 	if got, err := LoadFindings(fstest.MapFS{}, FindingsPath); err != nil || got != nil {
 		t.Fatalf("missing document: %v %v", got, err)

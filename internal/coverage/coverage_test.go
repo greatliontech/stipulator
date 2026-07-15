@@ -60,6 +60,8 @@ const (
 // with it the evidence ladder: a witness satisfies behavior, a static
 // binding does not; a static binding satisfies SHOULD; structural
 // accepts nothing weaker than an analyzer proof.
+//
+//gofresh:pure
 func TestPolicyDefaults(t *testing.T) {
 	stipulate.Covers(t, "REQ-coverage-policy-default", "REQ-evidence-ladder")
 	doc := "# T\n\n" +
@@ -144,6 +146,8 @@ func TestPolicyDefaults(t *testing.T) {
 // satisfaction set replaces the default exactly there, unnamed cells keep
 // the defaults, exempt cells mirror the MAY rule while red claims still
 // read red, and the uncovered reason names the override.
+//
+//gofresh:pure
 func TestPolicyOverrides(t *testing.T) {
 	stipulate.Covers(t, "REQ-coverage-policy")
 	doc := "# T\n\n" +
@@ -251,6 +255,8 @@ func TestPolicyOverrides(t *testing.T) {
 
 // TestBuckets pins precedence and claim hygiene: broken beats stale beats
 // covered — red claims downgrade even when other evidence satisfies.
+//
+//gofresh:pure
 func TestBuckets(t *testing.T) {
 	stipulate.Covers(t, "REQ-coverage-buckets")
 	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n"
@@ -292,6 +298,8 @@ func TestBuckets(t *testing.T) {
 // TestClaimsGrantNothingUnverified pins the trust boundary: pinned claims
 // with no verifying backend, and passed tests without witnessing, grant no
 // evidence tier.
+//
+//gofresh:pure
 func TestClaimsGrantNothingUnverified(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-promotion", "REQ-core-claims-untrusted")
 	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n"
@@ -313,6 +321,8 @@ func TestClaimsGrantNothingUnverified(t *testing.T) {
 }
 
 // TestGapStates pins the gap lifecycle and landing conditions.
+//
+//gofresh:pure
 func TestGapStates(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-lifecycle", "REQ-gap-conditions")
 	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n\n**REQ-c-b** (behavior): It MUST y.\n\n**REQ-c-c** (behavior): It MUST z.\n\n**REQ-c-d** (behavior): It MUST w.\n"
@@ -346,6 +356,8 @@ func TestGapStates(t *testing.T) {
 // with it: verdicts follow the red-without-gap set, never any aggregate
 // ratio — one undeclared red among many covered fails; all-red-all-gapped
 // passes.
+//
+//gofresh:pure
 func TestGate(t *testing.T) {
 	// Registered per subtest, not at the top: each arm pins both clauses
 	// on its own, and the live corpus should exercise the
@@ -379,6 +391,7 @@ func TestGate(t *testing.T) {
 	})
 }
 
+//gofresh:pure
 func TestReasonsAreDeterministic(t *testing.T) {
 	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n"
 	spec, store := fixture(t, doc, nil)
@@ -398,6 +411,8 @@ func TestReasonsAreDeterministic(t *testing.T) {
 // TestAnalyzerProofSatisfiesStructural pins the proof grant: a passing
 // proves-role binding whose witness class is an analyzer proof covers
 // structural (and invariant) requirements; an example witness never does.
+//
+//gofresh:pure
 func TestAnalyzerProofSatisfiesStructural(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-structural-provers")
 	doc := "# T\n\n**REQ-c-str** (structural): It MUST NOT depend.\n\n**REQ-c-inv** (invariant): It MUST hold.\n\n**REQ-c-beh** (behavior): It MUST behave.\n"
@@ -454,6 +469,8 @@ func TestAnalyzerProofSatisfiesStructural(t *testing.T) {
 // bucket only where a policy cell admits it, carries its reason into the
 // output, is never folded into covered when stronger evidence exists, and
 // stales when the requirement moves.
+//
+//gofresh:pure
 func TestAttestationEvidence(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-attestation")
 	doc := "# T\n\n**REQ-c-att** (behavior): It MUST x.\n\n**REQ-c-plain** (behavior): It MUST y.\n"
@@ -524,6 +541,8 @@ func TestAttestationEvidence(t *testing.T) {
 // human prunable hint derive from: open counts unresolved, resolved counts
 // prunable, and keep (nil = all) scopes both. Asymmetric on purpose so a
 // resolved/open misclassification flips a tally.
+//
+//gofresh:pure
 func TestGapCounts(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-resolved-pruned")
 	gaps := []Gap{

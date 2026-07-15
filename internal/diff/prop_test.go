@@ -13,6 +13,8 @@ import (
 // TestPropDiffDeterminism quantifies REQ-core-determinism over IR diff:
 // byte-identical corpus pairs yield identical reports on every run,
 // including the self-diff (which must also be empty).
+//
+//gofresh:pure
 func TestPropDiffDeterminism(t *testing.T) {
 	stipulate.Covers(t, "REQ-core-determinism")
 	rapid.Check(t, func(rt *rapid.T) {

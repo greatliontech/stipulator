@@ -8,6 +8,8 @@ import (
 // TestSelfCompile compiles this repository's own spec corpus: the corpus
 // must always be profile-clean, and the compiler's first real input is its
 // own contract.
+//
+//gofresh:pure
 func TestSelfCompile(t *testing.T) {
 	spec, diags, err := Compile(os.DirFS("../.."))
 	if err != nil {

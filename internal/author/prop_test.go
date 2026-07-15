@@ -47,6 +47,8 @@ func parseRecord(rt *rapid.T, u Update) {
 // admit no status, ordering, or narrative fields — and the outputs are
 // pure functions of their inputs (identical on a second run over the
 // same state).
+//
+//gofresh:pure
 func TestPropVerbsWriteOnlyRecords(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-transient", "REQ-core-scope")
 	rapid.Check(t, func(rt *rapid.T) {

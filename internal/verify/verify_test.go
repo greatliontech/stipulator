@@ -53,6 +53,7 @@ func binding(id, hash string) string {
 	return b + "  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n}\n"
 }
 
+//gofresh:pure
 func TestConsistency(t *testing.T) {
 	t.Run("dangling binding", func(t *testing.T) {
 		rep, _ := run(t, map[string]string{
@@ -103,6 +104,7 @@ func TestConsistency(t *testing.T) {
 	})
 }
 
+//gofresh:pure
 func TestPin(t *testing.T) {
 	header := "# proto-file: proto/stipulator/v1/records.proto\n# proto-message: stipulator.v1.BindingSet\n"
 	rep, store := run(t, map[string]string{
@@ -146,6 +148,7 @@ func TestPin(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestPinRefusesCommentedFile(t *testing.T) {
 	header := "# proto-file: proto/stipulator/v1/records.proto\n"
 	_, store := run(t, map[string]string{
@@ -161,6 +164,7 @@ func TestPinRefusesCommentedFile(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestRecordHygiene(t *testing.T) {
 	t.Run("duplicate binding flagged", func(t *testing.T) {
 		rep, _ := run(t, map[string]string{
@@ -208,6 +212,7 @@ func (f fakeBackend) Resolve(symbol string) (Resolution, string, error) {
 	return Resolved, shape, nil
 }
 
+//gofresh:pure
 func TestBackendResolution(t *testing.T) {
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
@@ -280,6 +285,7 @@ func TestBackendResolution(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestShapeMismatchIsDataNotProblem(t *testing.T) {
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
@@ -307,6 +313,7 @@ func TestShapeMismatchIsDataNotProblem(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestWitnessCorrelation(t *testing.T) {
 	testsBinding := strings.ReplaceAll(
 		strings.ReplaceAll(binding("REQ-v-a", ""), "example.com/p.F", "example.com/p.TestA"),
@@ -381,6 +388,7 @@ func (e errFS) ReadFile(name string) ([]byte, error) {
 	return fs.ReadFile(e.FS, name)
 }
 
+//gofresh:pure
 func TestUnreadableTombstonesPropagates(t *testing.T) {
 	base := fstest.MapFS{
 		".stipulator/tombstones.textproto": {Data: []byte("retired: \"REQ-old\"\n")},
@@ -395,6 +403,8 @@ func TestUnreadableTombstonesPropagates(t *testing.T) {
 
 // TestSelfVerify checks this repository's own records against its own
 // corpus: no dangling identities, no malformed records.
+//
+//gofresh:pure
 func TestSelfVerify(t *testing.T) {
 	fsys := os.DirFS("../..")
 	spec, diags, err := compile.Compile(fsys)
@@ -417,6 +427,8 @@ func TestSelfVerify(t *testing.T) {
 // TestAttestationRecordHygiene pins the contradictory-records refusal and
 // the one-judgment rule: a requirement cannot be both gapped and
 // attested, and duplicate attestations across files are problems.
+//
+//gofresh:pure
 func TestAttestationRecordHygiene(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-attestation")
 	rep, _ := run(t, map[string]string{
@@ -441,6 +453,8 @@ func TestAttestationRecordHygiene(t *testing.T) {
 // verdict. The map exhaustiveness arm is the tripwire for a class added
 // to the enum but not the wire mirror (analyzer proofs shipped as
 // UNSPECIFIED exactly that way).
+//
+//gofresh:pure
 func TestWireWitnessClassMirrorsClassifier(t *testing.T) {
 	stipulate.Covers(t, "REQ-report-messages")
 	for wc := ExampleWitness; wc <= AnalyzerProof; wc++ {
@@ -483,6 +497,8 @@ func (b sigBackend) WitnessClass(sym string) WitnessClass { return b.classes[sym
 // drift; a proof-shape move (or proof failure) with every behavior
 // witness green is a rearchitecture; a red witness whose contract text
 // also moved carries a spec delta and is neither.
+//
+//gofresh:pure
 func TestChangeSignatures(t *testing.T) {
 	stipulate.Covers(t, "REQ-gate-change-signature")
 	fsys := fstest.MapFS{

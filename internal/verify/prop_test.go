@@ -16,6 +16,8 @@ import (
 // a binding or gap record naming an identity outside the corpus is a
 // verification problem, and records naming declared identities never
 // produce one.
+//
+//gofresh:pure
 func TestPropDanglingRecordsAreProblems(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-dangling")
 	rapid.Check(t, func(rt *rapid.T) {

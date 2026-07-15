@@ -21,6 +21,8 @@ func hashOf(t *testing.T, b *golang.Backend, sym string) string {
 // a current sheet drops off; one with a moved pin is Stale; one with no sheet
 // is Missing; a non-function binding is never reminded; and Hardenable tracks
 // whether a body mutator can reach the witnesses.
+//
+//gofresh:pure
 func TestCoverageReminder(t *testing.T) {
 	backend, err := golang.New(fixtureDir)
 	if err != nil {

@@ -18,8 +18,12 @@ func simpleModule(t *testing.T) string {
 		t.Fatal(err)
 	}
 	// A real (empty) repository: go's VCS stamping probes it, and the
-	// fixture test reads it — the volatile observation under test.
+	// fixture test reads it — the volatile observation under test. Global
+	// and system git config are pinned away: a child process's config
+	// reads are outside the testlog, so ambient config must not be able
+	// to shape recorded fixture state.
 	git := exec.Command("git", "init", "-q", tmp)
+	git.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null", "GIT_CONFIG_NOSYSTEM=1")
 	if out, err := git.CombinedOutput(); err != nil {
 		t.Skipf("git init unavailable: %v (%s)", err, out)
 	}
@@ -51,6 +55,10 @@ func TestReadsVolatileState(t *testing.T) {
 // must analyze under the same pinning — an ambient workspace pointing
 // at another tree (the outer harness's own, when this run is itself a
 // witness) must never leak into the module's go invocations.
+//
+// Deliberately not //gofresh:pure: the fixture leans on the git
+// binary's init behavior, a child-process input no guard covers; the
+// witness re-runs every gate.
 func TestRunTestsFreshUnderForeignWorkspace(t *testing.T) {
 	work, err := filepath.Abs("../../../go.work")
 	if err != nil {
@@ -72,8 +80,10 @@ func TestRunTestsFreshUnderForeignWorkspace(t *testing.T) {
 	if tr.Outcomes["example.com/envfix.TestReadsVolatileState"] == 0 {
 		t.Fatalf("fixture test outcome missing: %v", tr.Outcomes)
 	}
-	// The fixture's file-I/O closure is unverifiable, so its record
-	// cannot publish: the shrinkage must be visible as a number.
+	// The fixture's file-I/O closure is unverifiable and its test carries
+	// no //gofresh:pure directive, so its record cannot publish — absence
+	// of the deliberate opt-in stays uncached, and the shrinkage must be
+	// visible as a number.
 	if tr.Uncached != tr.Ran || tr.Uncached == 0 {
 		t.Fatalf("uncached = %d with ran = %d; cache shrinkage must be counted", tr.Uncached, tr.Ran)
 	}
@@ -82,6 +92,8 @@ func TestRunTestsFreshUnderForeignWorkspace(t *testing.T) {
 // TestFreshRunCarriesFailureOutput pins the shard merge of failure
 // diagnostics: a red witness must be diagnosable from the run that
 // saw it, through the concurrent path.
+//
+//gofresh:pure
 func TestFreshRunCarriesFailureOutput(t *testing.T) {
 	tmp := t.TempDir()
 	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte("module example.com/redfix\n\ngo 1.26\n"), 0o644); err != nil {

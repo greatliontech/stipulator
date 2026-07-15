@@ -24,6 +24,7 @@ func compileFiles(t *testing.T, files map[string]string) *stipulatorv1.Spec {
 	return spec
 }
 
+//gofresh:pure
 func TestDiff(t *testing.T) {
 	base := compileFiles(t, map[string]string{
 		"specs/a.md": "# T\n\n**widget** (term): a gadget.\n\n" +

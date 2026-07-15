@@ -99,6 +99,8 @@ bindings {
 // union of the witness bindings of every requirement implementing it;
 // requirement and symbol filters narrow the targets; a target with no
 // bound witnesses is reported, never silently dropped.
+//
+//gofresh:pure
 func TestPlanScope(t *testing.T) {
 	spec, store := fixture(t, nil)
 

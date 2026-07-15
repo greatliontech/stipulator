@@ -44,6 +44,8 @@ func pipeline(rt *rapid.T, files, extra map[string]string, backends map[string]v
 // TestPropPipelineDeterminism quantifies the determinism invariant:
 // byte-identical inputs produce identical compile, verify, and coverage
 // outputs on every run.
+//
+//gofresh:pure
 func TestPropPipelineDeterminism(t *testing.T) {
 	stipulate.Covers(t, "REQ-core-determinism")
 	rapid.Check(t, func(rt *rapid.T) {
@@ -84,6 +86,8 @@ func TestPropPipelineDeterminism(t *testing.T) {
 // unwitnessed run grants no witness-tier evidence regardless of what any
 // record claims, and files outside the corpus and record stores — where
 // any persisted result would live — never influence verification.
+//
+//gofresh:pure
 func TestPropEvidenceOnlyFromCurrentRun(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-promotion", "REQ-core-claims-untrusted")
 	rapid.Check(t, func(rt *rapid.T) {

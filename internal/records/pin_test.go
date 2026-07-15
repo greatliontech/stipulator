@@ -24,6 +24,8 @@ func storeWith(t *testing.T, bindings string) *Store {
 // the blanket form sets only UNSET content pins — a differing pin is the
 // consent trail, rewritten only through the named editorial path, so
 // staleness cannot be laundered.
+//
+//gofresh:pure
 func TestPinNeverRewritesDifferingContent(t *testing.T) {
 	stipulate.Covers(t, "REQ-pin-backfill")
 	stale := strings.Repeat("0", 64)

@@ -8,6 +8,8 @@ import (
 // TestExportTargets pins the targets export (REQ-harden-export): the
 // versioned envelope, symbol/witnesses/requirements per entry, witness-less
 // targets included, symbol-less refused.
+//
+//gofresh:pure
 func TestExportTargets(t *testing.T) {
 	doc, err := ExportTargets([]Target{
 		{Symbol: "example.com/p.F", Witnesses: []string{"example.com/p.TestF"}, Requirements: []string{"REQ-a"}},

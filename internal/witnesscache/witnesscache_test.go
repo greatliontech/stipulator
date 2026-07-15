@@ -17,6 +17,8 @@ import (
 // REQ-evidence-witness-freshness: a corrupt or version-mismatched cache is
 // an empty cache, so every test runs — a broken cache costs work, never
 // correctness.
+//
+//gofresh:pure
 func TestLoadUnreadableIsEmpty(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness")
 	dir := t.TempDir()
@@ -174,6 +176,7 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestFingerprintRoundTrip(t *testing.T) {
 	want := gofresh.Fingerprint{
 		MaximalClosure: "closure",

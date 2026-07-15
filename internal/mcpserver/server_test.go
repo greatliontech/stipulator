@@ -115,6 +115,7 @@ func harness(t *testing.T, files map[string]string) (*mcp.ClientSession, map[str
 	return sess, writes
 }
 
+//gofresh:pure
 func TestResourceIndexAndReads(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-resources", "REQ-mcp-server")
 	sess, _ := harness(t, nil)
@@ -168,6 +169,7 @@ func TestResourceIndexAndReads(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestGateTool(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-tools", "REQ-report-messages")
 	// REQ-m-a witnessed; REQ-m-b red but gapped → gate passes.
@@ -276,6 +278,7 @@ func TestGateTool(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestBindToolWritesConfined(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-writes-confined")
 	sess, writes := harness(t, nil)
@@ -334,6 +337,8 @@ func TestBindToolWritesConfined(t *testing.T) {
 
 // TestToolListExact pins REQ-mcp-tools at the wire: the exposed tool set
 // is exactly the specced one — a dropped or extra registration fails.
+//
+//gofresh:pure
 func TestToolListExact(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-tools")
 	sess, _ := harness(t, nil)
@@ -359,6 +364,8 @@ func TestToolListExact(t *testing.T) {
 // TestTargetsToolWiring pins the targets tool's wiring and its refusal to
 // emit an empty export (REQ-harden-export): a corpus with no go
 // implements-bindings has no mutation surface to narrate.
+//
+//gofresh:pure
 func TestTargetsToolWiring(t *testing.T) {
 	sess, _ := harness(t, nil)
 	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "targets", Arguments: map[string]any{}})
@@ -376,6 +383,8 @@ func TestTargetsToolWiring(t *testing.T) {
 // TestCompileToolCounts pins the compile result's two arms: a clean corpus
 // reports the IR counts, an erroring corpus omits them entirely rather than
 // reporting a misleading zero — absent means "no IR, not computed".
+//
+//gofresh:pure
 func TestCompileToolCounts(t *testing.T) {
 	// Clean arm: counts present and correct.
 	sess, _ := harness(t, nil)
@@ -443,6 +452,8 @@ func TestCompileToolCounts(t *testing.T) {
 // TestFoldReminder pins the advisory contract: a reminder-computation error
 // degrades to an empty reminder plus a diagnostic and never clobbers the gate
 // verdict already in the result (REQ-harden-coverage-reminder).
+//
+//gofresh:pure
 func TestFoldReminder(t *testing.T) {
 	// Error path: verdict preserved, empty reminder, diagnostic present.
 	out := map[string]any{"gatePasses": true}
@@ -473,6 +484,8 @@ func TestFoldReminder(t *testing.T) {
 // TestDisposeToolRetire exercises the wire deletion path: retiring an
 // identity whose binding and gap records exist but whose requirement is
 // gone writes the tombstone and deletes the records.
+//
+//gofresh:pure
 func TestDisposeToolRetire(t *testing.T) {
 	sess, writes := harness(t, map[string]string{
 		".stipulator/bindings/gone.textproto": "bindings {\n  requirement_id: \"REQ-m-gone\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n}\n",
@@ -512,6 +525,8 @@ func TestDisposeToolRetire(t *testing.T) {
 // TestPruneTool exercises the wire prune verb: a gap on a now-covered
 // requirement is resolved dead weight — check=true reports it without
 // deleting, and the plain call deletes exactly that record and nothing else.
+//
+//gofresh:pure
 func TestPruneTool(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-tools", "REQ-gap-resolved-pruned")
 	gapPath := ".stipulator/gaps/m-a.textproto"
@@ -556,6 +571,7 @@ func TestPruneTool(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestReadSpecToolMirrorsBundle(t *testing.T) {
 	sess, _ := harness(t, nil)
 	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "read_spec", Arguments: map[string]any{
@@ -573,6 +589,8 @@ func TestReadSpecToolMirrorsBundle(t *testing.T) {
 // TestAttestTools pins the MCP surface of the requirement attest verb:
 // writes land in the record store, and refusals surface as tool errors.
 // (Survivor attestation is the mutation engine's verb now.)
+//
+//gofresh:pure
 func TestAttestTools(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-tools", "REQ-evidence-attestation")
 	sess, writes := harness(t, nil)
@@ -621,6 +639,8 @@ func toolText(t *testing.T, res *mcp.CallToolResult) string {
 // stale content pin (the one-verb recovery after a reword), a clean
 // requirement reports "pins current", and the no-id no-op is never a
 // silent empty object.
+//
+//gofresh:pure
 func TestPinTool(t *testing.T) {
 	stipulate.Covers(t, "REQ-pin-backfill", "REQ-change-editorial")
 	sess, writes := harness(t, map[string]string{
@@ -667,6 +687,8 @@ func TestPinTool(t *testing.T) {
 // the clause, coverage, gap, bindings with witness class, and hardening
 // roll-up — no record-store spelunking; a JSON-array-encoded ids value is
 // tolerated; an unknown id is quoted cleanly.
+//
+//gofresh:pure
 func TestContextDossier(t *testing.T) {
 	stipulate.Covers(t, "REQ-context-dossier")
 	sess, _ := harness(t, map[string]string{

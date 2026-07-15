@@ -8,6 +8,7 @@ import (
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
+//gofresh:pure
 func TestText(t *testing.T) {
 	cases := []struct {
 		name, in, want string
@@ -29,6 +30,7 @@ func TestText(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestHash(t *testing.T) {
 	stipulate.Covers(t, "REQ-model-hash-func")
 	// Known SHA-256 vector: canonical form of "abc" is "abc" itself, so the

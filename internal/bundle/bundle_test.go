@@ -42,6 +42,7 @@ func ids(b *stipulatorv1.Spec) []string {
 	return out
 }
 
+//gofresh:pure
 func TestClosure(t *testing.T) {
 	stipulate.Covers(t, "REQ-model-closure")
 	spec := compileDoc(t)
@@ -89,6 +90,8 @@ func TestClosure(t *testing.T) {
 // TestBundleSelfContained pins the bundle contract: every requirement
 // identifier and term name occurring in the rendered bundle resolves
 // within it.
+//
+//gofresh:pure
 func TestBundleSelfContained(t *testing.T) {
 	stipulate.Covers(t, "REQ-model-bundle")
 	spec := compileDoc(t)
@@ -123,6 +126,8 @@ func TestBundleSelfContained(t *testing.T) {
 // TestBundleFixpointPullsNoteReferences pins the fixed point: a note in an
 // included section referencing an out-of-closure requirement pulls that
 // requirement in, so nothing rendered dangles.
+//
+//gofresh:pure
 func TestBundleFixpointPullsNoteReferences(t *testing.T) {
 	spec := compileDoc(t)
 	b, err := Compute(spec, []string{"REQ-b-deep"})

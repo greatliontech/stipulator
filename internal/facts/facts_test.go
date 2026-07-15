@@ -87,6 +87,8 @@ func backends() map[string]verify.Backend {
 
 // TestSeedsFromNeighborhood pins the greenfield story: REQ-f-new has no
 // bindings, but seeding it reaches its dependency's bindings.
+//
+//gofresh:pure
 func TestSeedsFromNeighborhood(t *testing.T) {
 	stipulate.Covers(t, "REQ-context-seeds")
 	spec, store := fixture(t)
@@ -111,6 +113,7 @@ func TestSeedsFromNeighborhood(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestContextSlices(t *testing.T) {
 	spec, store := fixture(t)
 	seeds, decls, err := Context(spec, store, backends(), []string{"REQ-f-a"})
@@ -130,6 +133,8 @@ func TestContextSlices(t *testing.T) {
 // TestPartitions pins connectivity and disjointness: a/b/new form one
 // component (intersecting closures), lone another; their packages differ,
 // so no overlap is reported.
+//
+//gofresh:pure
 func TestPartitions(t *testing.T) {
 	stipulate.Covers(t, "REQ-context-partitions")
 	spec, store := fixture(t)

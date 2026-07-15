@@ -14,6 +14,8 @@ import (
 // TestPropBundleDeterminism quantifies REQ-core-determinism over bundle
 // export: byte-identical corpora and identifier sets yield identical
 // closures and byte-identical rendered documents on every run.
+//
+//gofresh:pure
 func TestPropBundleDeterminism(t *testing.T) {
 	stipulate.Covers(t, "REQ-core-determinism")
 	rapid.Check(t, func(rt *rapid.T) {

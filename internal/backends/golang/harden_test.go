@@ -11,6 +11,8 @@ import (
 // TestBodyHash pins the body-hash contract: stable across resolutions,
 // distinct across distinct bodies, identical for identical bodies, and
 // insensitive to formatting because it hashes canonical text.
+//
+//gofresh:pure
 func TestBodyHash(t *testing.T) {
 	b := fixtureBackend(t)
 	h1, err := b.BodyHash("example.com/fixture/lib.Add")
@@ -37,6 +39,8 @@ func TestBodyHash(t *testing.T) {
 
 // TestVacuity pins the vacuity resolution: assertion-free tests are
 // vacuous; failing calls, helper delegation, and fuzz delegation are not.
+//
+//gofresh:pure
 func TestVacuity(t *testing.T) {
 	b := fixtureBackend(t)
 	cases := []struct {
@@ -79,6 +83,11 @@ func fixtureBackend(t *testing.T) *Backend {
 // structural library scores as an analyzer proof — resolved from the
 // body, outranking property and example — and nothing outside a runnable
 // test ever does.
+//
+// Deliberately not //gofresh:pure: the verdict depends on module
+// sources outside this binary's closure, loaded through the shared
+// backend at package init — before the testlog starts, so no digest
+// guards them. The witness re-runs every gate.
 func TestWitnessClassProof(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-structural-provers")
 	if got := backend.WitnessClass(mod + "/internal/arch.TestCoreNeverImportsBackends"); got != verify.AnalyzerProof {
@@ -101,6 +110,7 @@ func TestWitnessClassProof(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestFieldHelperOnly(t *testing.T) {
 	_ = structural.FieldOf[int]("Value")
 }

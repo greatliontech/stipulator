@@ -63,6 +63,7 @@ func hasEdge(spec *stipulatorv1.Spec, kind stipulatorv1.EdgeKind, from, to *stip
 	return false
 }
 
+//gofresh:pure
 func TestRequirementLead(t *testing.T) {
 	spec, diags := compileFiles(t, map[string]string{
 		"specs/a.md": "# T\n\n## S\n\n**REQ-a-one** (behavior): It MUST do the thing.\n\n" +
@@ -110,6 +111,7 @@ func TestRequirementLead(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestPayloadChangesHash(t *testing.T) {
 	base := "# T\n\n**REQ-x-a** (behavior): It MUST hold:\n\n- point\n"
 	specA, diags := compileFiles(t, map[string]string{"specs/a.md": base})
@@ -129,6 +131,7 @@ func TestPayloadChangesHash(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestHashStableUnderRewrap(t *testing.T) {
 	a := "# T\n\n**REQ-w-a** (behavior): The system MUST do a thing that is long enough to wrap.\n"
 	b := "# T\n\n**REQ-w-a** (behavior): The system MUST do\na thing that is long\nenough to wrap.\n"
@@ -141,6 +144,7 @@ func TestHashStableUnderRewrap(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestLeadErrors(t *testing.T) {
 	cases := []struct{ name, body, diag string }{
 		{"near miss no metadata", "**REQ-x-a** does the thing.", "does not parse as a requirement lead"},
@@ -157,6 +161,7 @@ func TestLeadErrors(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestKeywordDiscipline(t *testing.T) {
 	t.Run("zero keywords", func(t *testing.T) {
 		_, diags := compileFiles(t, map[string]string{"specs/a.md": "# T\n\n**REQ-x-a** (behavior): It does the thing.\n"})
@@ -213,6 +218,7 @@ func TestKeywordDiscipline(t *testing.T) {
 	})
 }
 
+//gofresh:pure
 func TestIdentity(t *testing.T) {
 	t.Run("duplicate requirement", func(t *testing.T) {
 		_, diags := compileFiles(t, map[string]string{
@@ -260,6 +266,7 @@ func TestIdentity(t *testing.T) {
 	})
 }
 
+//gofresh:pure
 func TestReferences(t *testing.T) {
 	t.Run("edge from requirement", func(t *testing.T) {
 		spec, diags := compileFiles(t, map[string]string{
@@ -299,6 +306,7 @@ func TestReferences(t *testing.T) {
 	})
 }
 
+//gofresh:pure
 func TestTermMatching(t *testing.T) {
 	spec, diags := compileFiles(t, map[string]string{
 		"specs/a.md": "# T\n\n**content hash** (term): a hash of content.\n\n**hash** (term): a digest.\n\n" +
@@ -324,6 +332,7 @@ func TestTermMatching(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestNotes(t *testing.T) {
 	spec, diags := compileFiles(t, map[string]string{
 		"specs/a.md": "# T\n\n**REQ-x-a** (behavior): It MUST x.\n\n> Attached commentary.\n\n## S\n\n> Section commentary.\n",
@@ -347,6 +356,7 @@ func TestNotes(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestDocumentErrors(t *testing.T) {
 	t.Run("two titles", func(t *testing.T) {
 		_, diags := compileFiles(t, map[string]string{"specs/a.md": "# T\n\n# U\n"})
@@ -358,6 +368,7 @@ func TestDocumentErrors(t *testing.T) {
 	})
 }
 
+//gofresh:pure
 func TestLayoutIndependence(t *testing.T) {
 	blocks := []string{
 		"**REQ-l-a** (behavior): It MUST x.",
@@ -381,6 +392,7 @@ func TestLayoutIndependence(t *testing.T) {
 	}
 }
 
+//gofresh:pure
 func TestGeneratedIndexExcluded(t *testing.T) {
 	spec, diags := compileFiles(t, map[string]string{
 		"specs/a.md":      "# T\n\n**REQ-x-a** (behavior): It MUST x.\n",
@@ -397,6 +409,8 @@ func TestGeneratedIndexExcluded(t *testing.T) {
 // shadowing and denylist warnings when opted in — surfaced without
 // failing compilation — and word-boundary matching (a plural is not a
 // shadow).
+//
+//gofresh:pure
 func TestTermLint(t *testing.T) {
 	stipulate.Covers(t, "REQ-profile-term-lint")
 	doc := "# T\n\n**law node** (term): a node holding law.\n\n**node** (term): a graph vertex.\n\n**nodes overview** (term): prose about many.\n"

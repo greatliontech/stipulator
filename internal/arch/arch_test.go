@@ -17,6 +17,12 @@ const mod = "github.com/greatliontech/stipulator"
 // TestCoreNeverImportsBackends proves backend neutrality: the compilation,
 // binding, coverage, and change models never depend on a backend —
 // backend knowledge is confined to symbol interpretation and proving.
+//
+// Deliberately not //gofresh:pure: the verdict depends on the import
+// graph of module packages outside this test binary's closure, read
+// through a go list child the testlog cannot observe. A cached pass
+// could serve while an audited package drifts; the witness re-runs
+// every gate.
 func TestCoreNeverImportsBackends(t *testing.T) {
 	stipulate.Covers(t, "REQ-backend-core-neutral")
 	for _, core := range []string{
@@ -33,6 +39,12 @@ func TestCoreNeverImportsBackends(t *testing.T) {
 // reads version-control state or shells out — revisions enter only as
 // trees. The Go backend is the one sanctioned toolchain exception (go
 // test, go/packages), and command wiring may exec; neither is core.
+//
+// Deliberately not //gofresh:pure: the verdict depends on the import
+// graph of module packages outside this test binary's closure, read
+// through a go list child the testlog cannot observe. A cached pass
+// could serve while an audited package drifts; the witness re-runs
+// every gate.
 func TestCoreIsVcsFree(t *testing.T) {
 	stipulate.Covers(t, "REQ-core-vcs-free")
 	for _, core := range []string{
@@ -51,6 +63,8 @@ func TestCoreIsVcsFree(t *testing.T) {
 
 // TestBackendSatisfiesVerifierSurfaces proves the Go backend's optional
 // surfaces are real interface satisfactions, not naming coincidences.
+//
+//gofresh:pure
 func TestBackendSatisfiesVerifierSurfaces(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-structural-provers")
 	structural.Implements[verify.Backend](t, (*golang.Backend)(nil))

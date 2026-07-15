@@ -41,6 +41,8 @@ func (f fakeBackend) WitnessClass(symbol string) verify.WitnessClass {
 // reach: a bound implements symbol witnessed only by an analyzer proof is
 // outside body mutation (witness-class-outside-operators), while the same
 // symbol with any example/property witness is covered.
+//
+//gofresh:pure
 func TestStagedScopeWitnessClass(t *testing.T) {
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
@@ -109,6 +111,8 @@ bindings {
 // witness is no-witness; a changed function with no implements binding is
 // unbound-impl; a generated or non-Go file is generated-or-data; a Go file
 // declaring no function is an integration seam.
+//
+//gofresh:pure
 func TestStagedScope(t *testing.T) {
 	spec, store := fixture(t, nil)
 	backend, err := golang.New("../backends/golang/testdata/fixturemod")
@@ -183,6 +187,8 @@ func TestStagedScope(t *testing.T) {
 // version differing only in Weak's body, only Weak surfaces — Add, F, Mixed,
 // and Guarded, whose bodies match HEAD, are dropped. This is what keeps a
 // one-function edit from listing every function in the file.
+//
+//gofresh:pure
 func TestStagedScopeChangeFilter(t *testing.T) {
 	spec, store := fixture(t, nil)
 	dir := "../backends/golang/testdata/fixturemod"

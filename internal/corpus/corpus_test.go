@@ -18,6 +18,7 @@ func manifest(includes ...string) *stipulatorv1.Manifest {
 	return m
 }
 
+//gofresh:pure
 func TestLoadManifest(t *testing.T) {
 	stipulate.Covers(t, "REQ-profile-manifest")
 	t.Run("missing manifest is an error", func(t *testing.T) {
@@ -65,6 +66,7 @@ func TestLoadManifest(t *testing.T) {
 	})
 }
 
+//gofresh:pure
 func TestEnumerate(t *testing.T) {
 	stipulate.Covers(t, "REQ-profile-enumeration")
 	md := &fstest.MapFile{Data: []byte("x")}
@@ -183,6 +185,7 @@ func TestEnumerate(t *testing.T) {
 	})
 }
 
+//gofresh:pure
 func TestMatchGlob(t *testing.T) {
 	cases := []struct {
 		pattern, name string
@@ -214,6 +217,8 @@ func TestMatchGlob(t *testing.T) {
 
 // TestValidateGlobErrors pins the eager validation arm: hardening showed
 // TestMatchGlob alone leaves every validateGlob mutant alive.
+//
+//gofresh:pure
 func TestValidateGlobErrors(t *testing.T) {
 	stipulate.Covers(t, "REQ-profile-glob")
 	for _, bad := range []string{"", "a//b", "a/[x/b", "[/b"} {
@@ -230,6 +235,8 @@ func TestValidateGlobErrors(t *testing.T) {
 
 // TestFindRoot pins root discovery: the root itself, a nested working
 // directory, nearest-wins across nested corpora, and the teaching error.
+//
+//gofresh:pure
 func TestFindRoot(t *testing.T) {
 	stipulate.Covers(t, "REQ-profile-root")
 	outer := t.TempDir()

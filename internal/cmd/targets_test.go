@@ -11,6 +11,8 @@ import (
 // TestTargetsCmdOut pins the CLI verb's --out arm over this repository's own
 // corpus: the export lands at the path with a summary line, and a selection
 // matching nothing refuses rather than emitting an empty document.
+//
+//gofresh:pure
 func TestTargetsCmdOut(t *testing.T) {
 	if testing.Short() {
 		t.Skip("compiles the corpus")
