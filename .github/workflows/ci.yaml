@@ -22,6 +22,7 @@ jobs:
       - name: Tidy check (per module — workspace CI cannot see drift)
         run: |
           go mod tidy -diff
+          (cd bindingsurface && go mod tidy -diff)
           (cd stipulate && go mod tidy -diff)
           (cd stipulate/structural && go mod tidy -diff)
       - name: Test

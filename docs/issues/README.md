@@ -67,8 +67,8 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   when the gap verb surface next changes.*
 - **[mcp-gap-tool-single-requirement](mcp-gap-tool-single-requirement.md)** — the MCP `gap`
   tool takes one `requirement` where the CLI's `--req` is repeatable; agents declaring
-  design-stage gaps pay one round-trip per requirement. *Lands: when the MCP tool surface next
-  changes.*
+  design-stage gaps pay one round-trip per requirement. *Lands: when the MCP `gap` input schema
+  or gap operation semantics next change.*
 - **[mcp-long-running-tools-time-out-opaquely](mcp-long-running-tools-time-out-opaquely.md)** —
   MCP `gate` and `context` exceed the harness deadline without progress or actionable failure
   while the equivalent CLI operation remains active and reports witness progress. *Lands: when

@@ -1,6 +1,6 @@
 # MCP gap tool takes one requirement where the CLI takes many
 
-Lands: when the MCP tool surface next changes.
+Lands: when the MCP `gap` input schema or gap operation semantics next change.
 
 The CLI's `gap --req` is repeatable ("all share the reason and landing
 condition"); the MCP `gap` tool's schema takes a single `requirement`
