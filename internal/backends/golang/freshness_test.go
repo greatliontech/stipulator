@@ -136,7 +136,7 @@ func TestWritesOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(run.Degraded, "reader.TestReads moved during execution") {
+	if !strings.Contains(run.Degraded, "reader.TestReads") || !strings.Contains(run.Degraded, "runtimeinput") {
 		t.Fatalf("degraded reason = %q, want runtime-input drift", run.Degraded)
 	}
 	if _, err := os.Stat(filepath.Join(tmp, filepath.FromSlash(witnesscache.Path))); !os.IsNotExist(err) {
@@ -311,7 +311,10 @@ func TestRunTestsFresh(t *testing.T) {
 // TestRunTestsFreshSelectsRaceSources pins that freshness analyzes the same
 // race-selected sources as the witness run. The default-only declaration's
 // purity assertion must not apply to its race-selected counterpart, and an
-// edit to a race-only helper must stale the test that reaches it.
+// edit to a race-only helper must stale the test that reaches it. Each package
+// has one selected test, so process isolation permits proof selection; the
+// race I/O test still reruns because its diagnostic error path is not covered
+// by a positive observation proof.
 //
 //gofresh:pure
 func TestRunTestsFreshSelectsRaceSources(t *testing.T) {

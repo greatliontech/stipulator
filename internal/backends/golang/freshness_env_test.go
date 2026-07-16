@@ -81,9 +81,10 @@ func TestRunTestsFreshUnderForeignWorkspace(t *testing.T) {
 		t.Fatalf("fixture test outcome missing: %v", tr.Outcomes)
 	}
 	// The fixture's file-I/O closure is unverifiable and its test carries
-	// no //gofresh:pure directive, so its record cannot publish — absence
-	// of the deliberate opt-in stays uncached, and the shrinkage must be
-	// visible as a number.
+	// no //gofresh:pure directive. Its single-test process is isolated, but
+	// the excluded volatile reads do not provide guarded outcomes from which
+	// a positive observation proof can derive its error branches, so its
+	// record cannot publish and the shrinkage stays visible as a number.
 	if tr.Uncached != tr.Ran || tr.Uncached == 0 {
 		t.Fatalf("uncached = %d with ran = %d; cache shrinkage must be counted", tr.Uncached, tr.Ran)
 	}

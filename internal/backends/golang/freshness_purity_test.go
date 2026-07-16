@@ -3,16 +3,17 @@ package golang
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/greatliontech/gofresh"
+	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
 
-// pureReaderModule writes a self-contained module whose one test reads a
-// data file — an unverifiable file dependence — and carries the
-// //gofresh:pure directive, the author's in-source assertion that the
-// read is behavior-irrelevant beyond what the runtime-input digest
-// already guards (REQ-evidence-witness-freshness: "asserts purity in
-// source, the deliberate opt-in").
-func pureReaderModule(t *testing.T) string {
+// observedReaderModule writes a self-contained module whose one test reads a
+// data file. The witness runner must prove that its completed runtime
+// observation is complete instead of relying on a purity assertion.
+func observedReaderModule(t *testing.T) string {
 	t.Helper()
 	tmp := t.TempDir()
 	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte("module example.com/purefix\n\ngo 1.26\n"), 0o644); err != nil {
@@ -28,11 +29,8 @@ import (
 	"testing"
 )
 
-//gofresh:pure
-func TestReadsAssertedFixture(t *testing.T) {
-	if _, err := os.ReadFile("data.txt"); err != nil {
-		t.Fatal(err)
-	}
+func TestReadsObservedFixture(t *testing.T) {
+	_, _ = os.ReadFile("data.txt")
 }
 `
 	if err := os.WriteFile(filepath.Join(tmp, "purefix_test.go"), []byte(testSource), 0o644); err != nil {
@@ -41,14 +39,14 @@ func TestReadsAssertedFixture(t *testing.T) {
 	return tmp
 }
 
-// TestPurityDirectivePublishesAndServes pins the deliberate opt-in end to
-// end: a file-reading test with a //gofresh:pure source directive
-// publishes its witness record on the first run and is served from the
-// cache — verification by proven equivalence — on the second.
+// TestObservationProofPublishesAndServes pins the caller-selected proof end
+// to end: a file-reading test without a purity directive publishes only after
+// its completed observation is attached and validated, then serves through
+// an explicitly observed check.
 //
 //gofresh:pure
-func TestPurityDirectivePublishesAndServes(t *testing.T) {
-	tmp := pureReaderModule(t)
+func TestObservationProofPublishesAndServes(t *testing.T) {
+	tmp := observedReaderModule(t)
 
 	first, err := RunTestsFresh(tmp)
 	if err != nil {
@@ -58,7 +56,15 @@ func TestPurityDirectivePublishesAndServes(t *testing.T) {
 		t.Fatalf("first run degraded: %s", first.Degraded)
 	}
 	if first.Ran != 1 || first.Uncached != 0 {
-		t.Fatalf("first run: ran=%d uncached=%d; the directive-pure record must publish", first.Ran, first.Uncached)
+		t.Fatalf("first run: ran=%d uncached=%d; the observation-proven record must publish", first.Ran, first.Uncached)
+	}
+	records := witnesscache.Load(tmp)
+	if len(records) != 1 || records[0].Fingerprint.PurityAssertion != "" ||
+		records[0].Fingerprint.ObservationAssertion != "caller assertion" ||
+		records[0].Fingerprint.ObservationProof == nil ||
+		records[0].Fingerprint.ObservationProof.Strategy != gofresh.ObservationRTA ||
+		!records[0].Fingerprint.ObservationProof.Observable {
+		t.Fatalf("published fingerprint lacks attributable positive observation proof: %+v", records)
 	}
 
 	second, err := RunTestsFresh(tmp)
@@ -71,19 +77,18 @@ func TestPurityDirectivePublishesAndServes(t *testing.T) {
 	if second.Fresh != 1 || second.Ran != 0 {
 		t.Fatalf("second run: fresh=%d ran=%d; the published record must serve", second.Fresh, second.Ran)
 	}
-	if second.Outcomes["example.com/purefix.TestReadsAssertedFixture"] == 0 {
+	if second.Outcomes["example.com/purefix.TestReadsObservedFixture"] == 0 {
 		t.Fatalf("served outcome missing: %v", second.Outcomes)
 	}
 }
 
-// TestPurityNeverWaivesInputDigest pins the boundary of the assertion:
-// purity suppresses unverifiability only — every hashable guard stays
-// active (gofresh REQ-purity-override), so a change to the observed data
-// file stales the record and the test re-runs.
+// TestObservationProofNeverWaivesInputDigest pins that the proof suppresses
+// only closure-level observation conservatism: a change to the observed data
+// file still stales the record and re-runs the test.
 //
 //gofresh:pure
-func TestPurityNeverWaivesInputDigest(t *testing.T) {
-	tmp := pureReaderModule(t)
+func TestObservationProofNeverWaivesInputDigest(t *testing.T) {
+	tmp := observedReaderModule(t)
 
 	first, err := RunTestsFresh(tmp)
 	if err != nil {
@@ -106,5 +111,107 @@ func TestPurityNeverWaivesInputDigest(t *testing.T) {
 	}
 	if second.Ran != 1 || second.Fresh != 0 {
 		t.Fatalf("after input change: ran=%d fresh=%d; the digest must stale the record", second.Ran, second.Fresh)
+	}
+}
+
+// TestIncompatibleObservationEvidenceCannotServe pins the cache boundary: a
+// canonical structural digest remains readable without source loading, but
+// CheckObserved rejects evidence that is not bound to the current proof.
+//
+//gofresh:pure
+func TestIncompatibleObservationEvidenceCannotServe(t *testing.T) {
+	tmp := observedReaderModule(t)
+	first, err := RunTestsFresh(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Ran != 1 || first.Uncached != 0 {
+		t.Fatalf("first run: ran=%d uncached=%d; record did not publish", first.Ran, first.Uncached)
+	}
+	records := witnesscache.Load(tmp)
+	if len(records) != 1 || records[0].Fingerprint.ObservationProof == nil {
+		t.Fatalf("published proof missing: %+v", records)
+	}
+	evidence := records[0].Fingerprint.ObservationProof.Evidence
+	incompatible := strings.Repeat("0", 32)
+	if incompatible == evidence {
+		incompatible = strings.Repeat("1", 32)
+	}
+	cachePath := filepath.Join(tmp, filepath.FromSlash(witnesscache.Path))
+	data, err := os.ReadFile(cachePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tampered := strings.Replace(string(data), evidence, incompatible, 1)
+	if tampered == string(data) {
+		t.Fatal("proof evidence not found in cache")
+	}
+	if err := os.WriteFile(cachePath, []byte(tampered), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := witnesscache.Load(tmp); len(got) != 1 {
+		t.Fatalf("canonical incompatible proof was not structurally readable: %+v", got)
+	}
+
+	second, err := RunTestsFresh(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Degraded != "" {
+		t.Fatalf("incompatible proof degraded freshness: %s", second.Degraded)
+	}
+	if second.Fresh != 0 || second.Ran != 1 {
+		t.Fatalf("incompatible proof served: fresh=%d ran=%d", second.Fresh, second.Ran)
+	}
+}
+
+// TestObservationProofRequiresIsolatedTestProcess pins attribution at the
+// process boundary: one sibling mutates process state and another consumes it,
+// so neither outcome may receive a per-subject completeness proof.
+//
+//gofresh:pure
+func TestObservationProofRequiresIsolatedTestProcess(t *testing.T) {
+	tmp := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte("module example.com/siblingfix\n\ngo 1.26\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmp, "data.txt"), []byte("guarded input"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testSource := `package siblingfix
+
+import (
+	"os"
+	"testing"
+)
+
+var siblingState string
+
+func TestAChangesProcessState(t *testing.T) {
+	_, _ = os.ReadFile("data.txt")
+	siblingState = "set-by-sibling"
+}
+
+func TestBDependsOnSiblingState(t *testing.T) {
+	_, _ = os.ReadFile("data.txt")
+	if siblingState != "set-by-sibling" {
+		return
+	}
+}
+`
+	if err := os.WriteFile(filepath.Join(tmp, "sibling_test.go"), []byte(testSource), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for run := 1; run <= 2; run++ {
+		result, err := RunTestsFresh(tmp)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result.Degraded != "" {
+			t.Fatalf("run %d degraded: %s", run, result.Degraded)
+		}
+		if result.Ran != 2 || result.Fresh != 0 || result.Uncached != 2 {
+			t.Fatalf("run %d: ran=%d fresh=%d uncached=%d; shared-process outcomes must rerun", run, result.Ran, result.Fresh, result.Uncached)
+		}
 	}
 }

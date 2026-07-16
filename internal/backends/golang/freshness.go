@@ -20,6 +20,12 @@ import (
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
 
+type pkgPlan struct {
+	pkg   string
+	stale []string
+	fps   map[string]gofresh.Fingerprint
+}
+
 // RunTestsFresh is the freshness-aware witness run
 // (REQ-evidence-witness-freshness): each expected top-level test whose
 // cached fingerprint checks valid against the current tree serves its
@@ -106,11 +112,18 @@ func runTestsFresh(ctx context.Context, dir string) (*verify.TestRun, error) {
 			}
 		}
 	}
-	verdicts := map[gofresh.Subject]gofresh.Verdict{}
-	if len(recorded) != 0 {
-		verdicts, err = view.CheckRefinedBatch(ctx, recorded)
-		if err != nil {
-			return nil, err
+	verdicts := make(map[gofresh.Subject]gofresh.Verdict, len(recorded))
+	for _, pkg := range pkgs {
+		for _, test := range expected[pkg] {
+			subject := gofresh.Subject{Package: pkg, Symbol: test}
+			fingerprint, ok := recorded[subject]
+			if !ok {
+				continue
+			}
+			verdicts[subject], err = view.CheckObserved(ctx, fingerprint, subject)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -122,12 +135,8 @@ func runTestsFresh(ctx context.Context, dir string) (*verify.TestRun, error) {
 	// hash — a Valid verdict for evidence the current tree never produced.
 	// Captured before, the same interleaving records a hash the edited tree
 	// no longer matches: Stale, the safe direction.
-	type pkgPlan struct {
-		pkg   string
-		stale []string
-		fps   map[string]gofresh.Fingerprint
-	}
 	var plans []pkgPlan
+	var observationCandidates []gofresh.Subject
 	for _, pkg := range pkgs {
 		var stale []string
 		for _, test := range expected[pkg] {
@@ -159,8 +168,15 @@ func runTestsFresh(ctx context.Context, dir string) (*verify.TestRun, error) {
 				fps[test] = fp
 			}
 		}
+		// A per-subject completeness assertion cannot be derived from a
+		// process shared with sibling tests: a sibling can mutate process
+		// state the subject observes without appearing in its closure.
+		if len(stale) == 1 && fps[stale[0]].PurityAssertion == "" {
+			observationCandidates = append(observationCandidates, gofresh.Subject{Package: pkg, Symbol: stale[0]})
+		}
 		plans = append(plans, pkgPlan{pkg: pkg, stale: stale, fps: fps})
 	}
+	observed, observedFPs := observedView(ctx, engine, observationCandidates, dir)
 
 	// Release transient package-loading memory before spawning race-instrumented
 	// builds. The bounded maximal view remains alive because producer validation
@@ -173,9 +189,9 @@ func runTestsFresh(ctx context.Context, dir string) (*verify.TestRun, error) {
 	// merge in plan order, so outcomes, registrations, and published
 	// records land deterministically regardless of completion order.
 	type shard struct {
-		tr   *verify.TestRun
-		recs []witnesscache.Record
-		err  error
+		tr  *verify.TestRun
+		run *selectedRun
+		err error
 	}
 	shards := make([]shard, len(plans))
 	sem := make(chan struct{}, witnessParallelism())
@@ -198,13 +214,12 @@ func runTestsFresh(ctx context.Context, dir string) (*verify.TestRun, error) {
 				shards[i] = shard{err: err}
 				return
 			}
-			recs := fingerprintRan(plan.fps, plan.pkg, plan.stale, ran)
 			for _, test := range plan.stale {
 				if _, ok := ran.outcomes[plan.pkg+"."+test]; ok {
 					private.Ran++
 				}
 			}
-			shards[i] = shard{tr: private, recs: recs}
+			shards[i] = shard{tr: private, run: ran}
 		}(i, plan)
 	}
 	wg.Wait()
@@ -226,19 +241,65 @@ func runTestsFresh(ctx context.Context, dir string) (*verify.TestRun, error) {
 		}
 		tr.Registrations = append(tr.Registrations, sh.tr.Registrations...)
 		tr.Ran += sh.tr.Ran
-		next = append(next, sh.recs...)
 	}
 	if err := view.ValidateContext(ctx); err != nil {
 		return nil, err
+	}
+	if observed != nil && len(observedFPs) == len(observationCandidates) {
+		complete := true
+		attached := make(map[gofresh.Subject]gofresh.Fingerprint, len(observationCandidates))
+		for i, plan := range plans {
+			for _, test := range plan.stale {
+				subject := gofresh.Subject{Package: plan.pkg, Symbol: test}
+				observedFP, selected := observedFPs[subject]
+				if !selected {
+					continue
+				}
+				capture, ok := shards[i].run.capture[test]
+				if !ok {
+					complete = false
+					break
+				}
+				fp, err := observed.AttachObservation(subject, observedFP, capture.observation)
+				if err != nil {
+					return nil, err
+				}
+				attached[subject] = fp
+			}
+			if !complete {
+				break
+			}
+		}
+		if complete {
+			if err := observed.ValidateObserved(ctx); err != nil {
+				return nil, err
+			}
+			for i := range plans {
+				for test := range plans[i].fps {
+					subject := gofresh.Subject{Package: plans[i].pkg, Symbol: test}
+					if fp, ok := attached[subject]; ok {
+						plans[i].fps[test] = fp
+					}
+				}
+			}
+		}
+	}
+	for i, plan := range plans {
+		next = append(next, fingerprintRan(plan, shards[i].run)...)
 	}
 	if len(next) != 0 {
 		final := make(map[gofresh.Subject]gofresh.Fingerprint, len(next))
 		for _, rec := range next {
 			final[gofresh.Subject{Package: rec.Package, Symbol: rec.Test}] = rec.Fingerprint.ToGofresh()
 		}
-		verdicts, err := view.CheckRefinedBatch(ctx, final)
-		if err != nil {
-			return nil, err
+		verdicts := make(map[gofresh.Subject]gofresh.Verdict, len(final))
+		for _, rec := range next {
+			subject := gofresh.Subject{Package: rec.Package, Symbol: rec.Test}
+			fingerprint := final[subject]
+			verdicts[subject], err = view.CheckObserved(ctx, fingerprint, subject)
+			if err != nil {
+				return nil, err
+			}
 		}
 		publish := next[:0]
 		for _, rec := range next {
@@ -329,8 +390,7 @@ type selectedRun struct {
 
 // manifestCapture is one clean invocation's runtime-input evidence.
 type manifestCapture struct {
-	manifest string
-	digest   string
+	observation runtimeinput.Observation
 }
 
 // runSelected executes exactly the named tests of one package, folding
@@ -480,9 +540,11 @@ func runOnce(ctx context.Context, dir string, env []string, pkg string, tests []
 			// observation-coherence noise REQ-inputs-exclusions exists
 			// to silence. The corpus files themselves stay recorded
 			// individually, so real input changes still stale.
-			if st, err := runtimeinput.FromTestLogEnv(log, dir, pkgDir, env, runtimeinput.WithExcludedPaths(".", ".git")); err == nil {
+			if observation, err := runtimeinput.FromTestLogEnv(log, dir, pkgDir, env,
+				runtimeinput.WithCompletedProcess(pkg),
+				runtimeinput.WithExcludedPaths(".", ".git")); err == nil {
 				for t := range completed {
-					run.capture[t] = manifestCapture{manifest: st.Manifest, digest: st.Digest}
+					run.capture[t] = manifestCapture{observation: observation}
 				}
 			}
 		}
@@ -502,15 +564,33 @@ func isAbortOutput(s string) bool {
 	return strings.Contains(s, "panic: ") || strings.Contains(s, "fatal error: ")
 }
 
+// observedView selects observation-completeness proof for every unasserted
+// subject in one batch. Failure leaves the ordinary maximal captures in force.
+func observedView(ctx context.Context, engine *gofresh.Engine, subjects []gofresh.Subject, dir string) (*gofresh.View, map[gofresh.Subject]gofresh.Fingerprint) {
+	if len(subjects) == 0 {
+		return nil, nil
+	}
+	view, err := engine.NewViewContext(ctx, subjects, dir)
+	if err != nil {
+		return nil, nil
+	}
+	captured, err := view.CaptureObservedBatch(ctx)
+	if err != nil {
+		return nil, nil
+	}
+	return view, captured
+}
+
 // fingerprintRan assembles the cache records for tests that just ran under
 // a clean invocation, from the fingerprints captured before the run. A test
 // without a recorded manifest capture (its invocation aborted, or the
 // testlog could not be read whole), without an outcome, or whose pre-run
 // fingerprint capture failed stays uncached — it simply runs again next
 // time.
-func fingerprintRan(fps map[string]gofresh.Fingerprint, pkg string, tests []string, run *selectedRun) []witnesscache.Record {
+func fingerprintRan(plan pkgPlan, run *selectedRun) []witnesscache.Record {
+	fps := plan.fps
 	var out []witnesscache.Record
-	for _, test := range tests {
+	for _, test := range plan.stale {
 		cap, ok := run.capture[test]
 		if !ok {
 			continue
@@ -519,7 +599,7 @@ func fingerprintRan(fps map[string]gofresh.Fingerprint, pkg string, tests []stri
 		if !ok {
 			continue
 		}
-		prefix := pkg + "." + test
+		prefix := plan.pkg + "." + test
 		outcomes := map[string]string{}
 		for key, o := range run.outcomes {
 			if key == prefix || strings.HasPrefix(key, prefix+"/") {
@@ -529,9 +609,15 @@ func fingerprintRan(fps map[string]gofresh.Fingerprint, pkg string, tests []stri
 		if len(outcomes) == 0 {
 			continue
 		}
-		fp.RuntimeInputs, fp.RuntimeDigest = cap.manifest, cap.digest
+		if fp.ObservationAssertion == "" {
+			state, err := runtimeinput.CompletedState(cap.observation)
+			if err != nil {
+				continue
+			}
+			fp.RuntimeInputs, fp.RuntimeDigest = state.Manifest, state.Digest
+		}
 		out = append(out, witnesscache.Record{
-			Package:     pkg,
+			Package:     plan.pkg,
 			Test:        test,
 			Fingerprint: witnesscache.FromGofresh(fp),
 			Outcomes:    outcomes,

@@ -30,20 +30,92 @@ import (
 // cache would ping-pong across machines.
 const Path = ".stipulator/cache/witnesses.json"
 
-const version = 2
+const version = 3
+
+type observationProof struct {
+	Strategy   string `json:"strategy"`
+	Package    string `json:"package"`
+	Symbol     string `json:"symbol"`
+	Observable bool   `json:"observable"`
+	Reason     string `json:"reason,omitempty"`
+	Evidence   string `json:"evidence"`
+}
+
+func (p *observationProof) UnmarshalJSON(data []byte) error {
+	type plain observationProof
+	fields, err := uniqueObjectFields(data)
+	if err != nil {
+		return err
+	}
+	reason, hasReason := fields["reason"]
+	if hasReason && isJSONNull(reason) {
+		return errors.New("witnesscache: observation proof reason is null")
+	}
+	observable, ok := fields["observable"]
+	if !ok {
+		return errors.New("witnesscache: observation proof observable is absent")
+	}
+	if isJSONNull(observable) {
+		return errors.New("witnesscache: observation proof observable is null")
+	}
+	var decoded plain
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&decoded); err != nil {
+		return err
+	}
+	if decoded.Observable && hasReason {
+		return errors.New("witnesscache: positive observation proof carries reason")
+	}
+	*p = observationProof(decoded)
+	return nil
+}
+
+func uniqueObjectFields(data []byte) (map[string]json.RawMessage, error) {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	start, err := dec.Token()
+	if err != nil || start != json.Delim('{') {
+		return nil, errors.New("witnesscache: expected JSON object")
+	}
+	fields := make(map[string]json.RawMessage)
+	for dec.More() {
+		token, err := dec.Token()
+		if err != nil {
+			return nil, err
+		}
+		name, ok := token.(string)
+		if !ok {
+			return nil, errors.New("witnesscache: expected JSON object field")
+		}
+		if _, exists := fields[name]; exists {
+			return nil, errors.New("witnesscache: duplicate JSON object field")
+		}
+		var value json.RawMessage
+		if err := dec.Decode(&value); err != nil {
+			return nil, err
+		}
+		fields[name] = value
+	}
+	if _, err := dec.Token(); err != nil {
+		return nil, err
+	}
+	return fields, nil
+}
 
 // Fingerprint is the serialized gofresh fingerprint — the caller owns the
 // wire form (gofresh REQ-fresh-fingerprint-data).
 type Fingerprint struct {
-	MaximalClosure  string       `json:"maximalClosure"`
-	Toolchain       string       `json:"toolchain"`
-	BuildConfig     string       `json:"buildConfig"`
-	Machine         string       `json:"machine,omitempty"`
-	RuntimeConfig   string       `json:"runtimeConfig,omitempty"`
-	PurityAssertion string       `json:"purityAssertion,omitempty"`
-	RuntimeInputs   string       `json:"runtimeInputs,omitempty"`
-	RuntimeDigest   string       `json:"runtimeDigest,omitempty"`
-	ResultKind      gofresh.Kind `json:"resultKind"`
+	MaximalClosure       string            `json:"maximalClosure"`
+	Toolchain            string            `json:"toolchain"`
+	BuildConfig          string            `json:"buildConfig"`
+	Machine              string            `json:"machine,omitempty"`
+	RuntimeConfig        string            `json:"runtimeConfig,omitempty"`
+	ObservationAssertion string            `json:"observationAssertion,omitempty"`
+	ObservationProof     *observationProof `json:"observationProof,omitempty"`
+	PurityAssertion      string            `json:"purityAssertion,omitempty"`
+	RuntimeInputs        string            `json:"runtimeInputs,omitempty"`
+	RuntimeDigest        string            `json:"runtimeDigest,omitempty"`
+	ResultKind           gofresh.Kind      `json:"resultKind"`
 }
 
 func (f *Fingerprint) UnmarshalJSON(data []byte) error {
@@ -57,6 +129,12 @@ func (f *Fingerprint) UnmarshalJSON(data []byte) error {
 	}
 	if _, ok := fields["runtimeConfig"]; ok {
 		return errors.New("witnesscache: code fingerprint carries runtime guard field")
+	}
+	if value, ok := fields["observationProof"]; ok && isJSONNull(value) {
+		return errors.New("witnesscache: observation proof is null")
+	}
+	if value, ok := fields["observationAssertion"]; ok && isJSONNull(value) {
+		return errors.New("witnesscache: observation assertion is null")
 	}
 	if value, ok := fields["purityAssertion"]; ok && isJSONNull(value) {
 		return errors.New("witnesscache: purity assertion is null")
@@ -73,7 +151,7 @@ func (f *Fingerprint) UnmarshalJSON(data []byte) error {
 
 // ToGofresh converts to the engine's form.
 func (f Fingerprint) ToGofresh() gofresh.Fingerprint {
-	return gofresh.Fingerprint{
+	fp := gofresh.Fingerprint{
 		MaximalClosure: f.MaximalClosure,
 		Guards: guard.Guards{
 			Toolchain:     f.Toolchain,
@@ -81,26 +159,49 @@ func (f Fingerprint) ToGofresh() gofresh.Fingerprint {
 			Machine:       f.Machine,
 			RuntimeConfig: f.RuntimeConfig,
 		},
-		PurityAssertion: f.PurityAssertion,
-		RuntimeInputs:   f.RuntimeInputs,
-		RuntimeDigest:   f.RuntimeDigest,
-		ResultKind:      f.ResultKind,
+		ObservationAssertion: f.ObservationAssertion,
+		PurityAssertion:      f.PurityAssertion,
+		RuntimeInputs:        f.RuntimeInputs,
+		RuntimeDigest:        f.RuntimeDigest,
+		ResultKind:           f.ResultKind,
 	}
+	if f.ObservationProof != nil {
+		fp.ObservationProof = gofresh.ObservationProof{
+			Strategy:   f.ObservationProof.Strategy,
+			Subject:    gofresh.Subject{Package: f.ObservationProof.Package, Symbol: f.ObservationProof.Symbol},
+			Observable: f.ObservationProof.Observable,
+			Reason:     f.ObservationProof.Reason,
+			Evidence:   f.ObservationProof.Evidence,
+		}
+	}
+	return fp
 }
 
 // FromGofresh converts from the engine's form.
 func FromGofresh(fp gofresh.Fingerprint) Fingerprint {
-	return Fingerprint{
-		MaximalClosure:  fp.MaximalClosure,
-		Toolchain:       fp.Guards.Toolchain,
-		BuildConfig:     fp.Guards.BuildConfig,
-		Machine:         fp.Guards.Machine,
-		RuntimeConfig:   fp.Guards.RuntimeConfig,
-		PurityAssertion: fp.PurityAssertion,
-		RuntimeInputs:   fp.RuntimeInputs,
-		RuntimeDigest:   fp.RuntimeDigest,
-		ResultKind:      fp.ResultKind,
+	f := Fingerprint{
+		MaximalClosure:       fp.MaximalClosure,
+		Toolchain:            fp.Guards.Toolchain,
+		BuildConfig:          fp.Guards.BuildConfig,
+		Machine:              fp.Guards.Machine,
+		RuntimeConfig:        fp.Guards.RuntimeConfig,
+		ObservationAssertion: fp.ObservationAssertion,
+		PurityAssertion:      fp.PurityAssertion,
+		RuntimeInputs:        fp.RuntimeInputs,
+		RuntimeDigest:        fp.RuntimeDigest,
+		ResultKind:           fp.ResultKind,
 	}
+	if fp.ObservationProof != (gofresh.ObservationProof{}) {
+		f.ObservationProof = &observationProof{
+			Strategy:   fp.ObservationProof.Strategy,
+			Package:    fp.ObservationProof.Subject.Package,
+			Symbol:     fp.ObservationProof.Subject.Symbol,
+			Observable: fp.ObservationProof.Observable,
+			Reason:     fp.ObservationProof.Reason,
+			Evidence:   fp.ObservationProof.Evidence,
+		}
+	}
+	return f
 }
 
 // Record is one top-level test's cached witness: the fingerprint that
@@ -159,7 +260,10 @@ func Load(dir string) []Record {
 	manifests := map[string]bool{}
 	seen := map[string]bool{}
 	for _, rec := range doc.Records {
-		if rec.Package == "" || rec.Test == "" || seen[rec.Key()] || !validOutcomes(rec) || !rec.Fingerprint.valid(dir, manifests) {
+		proof := rec.Fingerprint.ObservationProof
+		if rec.Package == "" || rec.Test == "" || seen[rec.Key()] ||
+			(proof != nil && (proof.Package != rec.Package || proof.Symbol != rec.Test)) ||
+			!validOutcomes(rec) || !rec.Fingerprint.valid(dir, manifests) {
 			return nil
 		}
 		seen[rec.Key()] = true
@@ -199,8 +303,22 @@ func (f Fingerprint) valid(dir string, manifests map[string]bool) bool {
 	}
 	return validDigest(f.MaximalClosure) && f.Toolchain != "" && validDigest(f.BuildConfig) &&
 		f.Machine == "" && f.RuntimeConfig == "" &&
-		validPurity(f.PurityAssertion) && validManifest && validDigest(f.RuntimeDigest) &&
+		validObservation(f) && validPurity(f.PurityAssertion) && validManifest && validDigest(f.RuntimeDigest) &&
 		f.ResultKind == gofresh.CodeResult
+}
+
+func validObservation(f Fingerprint) bool {
+	if f.ObservationAssertion == "" && f.ObservationProof == nil {
+		return true
+	}
+	if f.ObservationProof == nil {
+		return false
+	}
+	return f.ObservationAssertion == "caller assertion" &&
+		f.ObservationProof.Strategy == gofresh.ObservationRTA &&
+		f.ObservationProof.Package != "" && f.ObservationProof.Symbol != "" &&
+		f.ObservationProof.Observable == (f.ObservationProof.Reason == "") &&
+		validDigest(f.ObservationProof.Evidence)
 }
 
 func validDigest(value string) bool {
