@@ -705,8 +705,9 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 }
 
 type contextIn struct {
-	Ids   string `json:"ids" jsonschema:"comma-separated requirement identifiers"`
-	Slice bool   `json:"slice,omitempty" jsonschema:"include the code-slice declaration frontier (the expensive leg)"`
+	Ids    string `json:"ids" jsonschema:"comma-separated requirement identifiers"`
+	Slice  bool   `json:"slice,omitempty" jsonschema:"include the code-slice declaration frontier (the expensive leg)"`
+	NoTest bool   `json:"no_test,omitempty" jsonschema:"skip running tests (no witnesses); dossiers render from records alone"`
 }
 
 func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in contextIn) (*mcp.CallToolResult, map[string]any, error) {
@@ -714,7 +715,7 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 	if err != nil {
 		return nil, nil, err
 	}
-	spec, vr, store, err := s.verifyPipeline(ctx, false)
+	spec, vr, store, err := s.verifyPipeline(ctx, in.NoTest)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -722,7 +723,7 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 	if err != nil {
 		return nil, nil, err
 	}
-	cr := coverage.Evaluate(spec, vr, store, true, pol)
+	cr := coverage.Evaluate(spec, vr, store, !in.NoTest, pol)
 	dossiers, err := dossier.Build(spec, vr, cr, store, ids)
 	if err != nil {
 		return nil, nil, err
@@ -754,11 +755,12 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 }
 
 type partitionsIn struct {
-	Ids string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers; empty means all red requirements"`
+	Ids    string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers; empty means all red requirements"`
+	NoTest bool   `json:"no_test,omitempty" jsonschema:"skip running tests (no witnesses); partitions derive from records alone"`
 }
 
 func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, in partitionsIn) (*mcp.CallToolResult, map[string]any, error) {
-	spec, rep, store, err := s.verifyPipeline(ctx, false)
+	spec, rep, store, err := s.verifyPipeline(ctx, in.NoTest)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -780,7 +782,7 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 		if perr != nil {
 			return nil, nil, perr
 		}
-		cov := coverage.Evaluate(spec, rep, store, true, pol)
+		cov := coverage.Evaluate(spec, rep, store, !in.NoTest, pol)
 		for _, r := range cov.Requirements {
 			switch r.Bucket {
 			case coverage.Uncovered, coverage.Stale, coverage.Broken:

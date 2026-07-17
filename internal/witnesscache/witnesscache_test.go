@@ -27,11 +27,20 @@ func generatedObservationFingerprint(t *testing.T) gofresh.Fingerprint {
 		}
 	}
 	subject := gofresh.Subject{Package: "example.com/cacheproof", Symbol: "TestObserved"}
-	engine, err := gofresh.New(gofresh.WithDir(dir))
+	// The fixture module must resolve regardless of the invoking process's
+	// workspace: under a witness run the ambient environment pins GOWORK to
+	// the repository workspace, which cannot provide the fixture package.
+	env := []string{"GOWORK=off"}
+	for _, entry := range os.Environ() {
+		if !strings.HasPrefix(entry, "GOWORK=") {
+			env = append(env, entry)
+		}
+	}
+	engine, err := gofresh.New(gofresh.WithDir(dir), gofresh.WithEnv(env...))
 	if err != nil {
 		t.Fatal(err)
 	}
-	view, err := engine.NewView([]gofresh.Subject{subject}, dir)
+	view, err := engine.NewView(context.Background(), []gofresh.Subject{subject}, dir)
 	if err != nil {
 		t.Fatal(err)
 	}

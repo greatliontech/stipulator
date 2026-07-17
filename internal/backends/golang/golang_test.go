@@ -107,6 +107,9 @@ func TestFixtureModule(t *testing.T) {
 // solo recapture would publish a manifest blind to them. The witness
 // re-runs every gate.
 func TestRunTests(t *testing.T) {
+	if testing.Short() {
+		t.Skip("executes a real race-instrumented witness suite")
+	}
 	tr, err := RunTests("testdata/fixturemod")
 	if err != nil {
 		t.Fatal(err)
@@ -234,6 +237,9 @@ func TestWitnessClass(t *testing.T) {
 //
 //gofresh:pure
 func TestWitnessRunInvocation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("executes a real race-instrumented witness suite")
+	}
 	args := testArgs()
 	race, fuzz := false, false
 	for _, a := range args {

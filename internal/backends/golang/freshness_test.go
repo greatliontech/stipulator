@@ -40,6 +40,9 @@ func TestRunTestsFreshDegrades(t *testing.T) {
 
 //gofresh:pure
 func TestRunTestsFreshRejectsProducerViewDrift(t *testing.T) {
+	if testing.Short() {
+		t.Skip("executes a real race-instrumented witness suite")
+	}
 	tmp := t.TempDir()
 	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte("module example.com/mutate\n\ngo 1.26\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -91,6 +94,9 @@ func TestMutatesSourceOnce(t *testing.T) {
 
 //gofresh:pure
 func TestRunTestsFreshRejectsRuntimeInputDriftBetweenPackages(t *testing.T) {
+	if testing.Short() {
+		t.Skip("executes a real race-instrumented witness suite")
+	}
 	// The drift this fixture forces depends on package ordering: the
 	// reader must hash before the mutator writes. Serialize so the
 	// interleaving is deterministic; the rejection machinery itself is

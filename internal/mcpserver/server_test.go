@@ -823,3 +823,34 @@ func TestContextDossier(t *testing.T) {
 		t.Fatalf("unknown id not quoted cleanly: %s", msg)
 	}
 }
+
+func TestContextAndPartitionsNoTestSkipWitnessing(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-tools")
+	sess, _ := harness(t, map[string]string{
+		".stipulator/bindings/m.textproto": pinnedBinding(t),
+	})
+	// An unwitnessed evaluation is not a witnessed run: a test-bound
+	// requirement must not read as broken merely because no_test skipped the
+	// witness pipeline.
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "context", Arguments: map[string]any{
+		"ids":     "REQ-m-a",
+		"no_test": true,
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("context no_test: %v %v", err, res)
+	}
+	text := toolText(t, res)
+	if strings.Contains(text, `"BUCKET_BROKEN"`) {
+		t.Fatalf("no_test dossier buckets the requirement broken:\n%s", text)
+	}
+	if !strings.Contains(text, `"Using the widget it MUST x."`) {
+		t.Fatalf("no_test dossier lost the compiled clause:\n%s", text)
+	}
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "partitions", Arguments: map[string]any{
+		"ids":     "REQ-m-a",
+		"no_test": true,
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("partitions no_test: %v %v", err, res)
+	}
+}

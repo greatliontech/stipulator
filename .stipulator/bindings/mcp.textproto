@@ -198,3 +198,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "7e3641900ccfccd89f2ff9682061e67f94e882ad2533ebbcd7ead755a14e56ed"
 }
+
+bindings {
+  requirement_id: "REQ-mcp-tools"
+  content_hash: "ec2ce71d44f0e0145a6f6050e5099b5eae002a6554a98716af3c08da058c3e6d"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestContextAndPartitionsNoTestSkipWitnessing"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b35d58fba6c9716ad81b31394806e0c69ac3ca5a8136a75fec792c96eedf5dc7"
+}

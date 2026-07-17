@@ -60,6 +60,9 @@ func TestReadsVolatileState(t *testing.T) {
 // binary's init behavior, a child-process input no guard covers; the
 // witness re-runs every gate.
 func TestRunTestsFreshUnderForeignWorkspace(t *testing.T) {
+	if testing.Short() {
+		t.Skip("executes a real race-instrumented witness suite")
+	}
 	work, err := filepath.Abs("../../../go.work")
 	if err != nil {
 		t.Fatal(err)
@@ -96,6 +99,9 @@ func TestRunTestsFreshUnderForeignWorkspace(t *testing.T) {
 //
 //gofresh:pure
 func TestFreshRunCarriesFailureOutput(t *testing.T) {
+	if testing.Short() {
+		t.Skip("executes a real race-instrumented witness suite")
+	}
 	tmp := t.TempDir()
 	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte("module example.com/redfix\n\ngo 1.26\n"), 0o644); err != nil {
 		t.Fatal(err)

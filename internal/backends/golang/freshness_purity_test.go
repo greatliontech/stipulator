@@ -47,6 +47,9 @@ func TestReadsObservedFixture(t *testing.T) {
 //
 //gofresh:pure
 func TestObservationProofPublishesAndServes(t *testing.T) {
+	if testing.Short() {
+		t.Skip("executes a real race-instrumented witness suite")
+	}
 	tmp := observedReaderModule(t)
 
 	first, err := RunTestsFresh(tmp)
@@ -89,6 +92,9 @@ func TestObservationProofPublishesAndServes(t *testing.T) {
 //
 //gofresh:pure
 func TestObservationProofNeverWaivesInputDigest(t *testing.T) {
+	if testing.Short() {
+		t.Skip("executes a real race-instrumented witness suite")
+	}
 	tmp := observedReaderModule(t)
 
 	first, err := RunTestsFresh(tmp)
@@ -117,6 +123,9 @@ func TestObservationProofNeverWaivesInputDigest(t *testing.T) {
 
 //gofresh:pure
 func TestObservationProofDoesNotPublishUnverifiableRuntimeState(t *testing.T) {
+	if testing.Short() {
+		t.Skip("executes a real race-instrumented witness suite")
+	}
 	tmp := t.TempDir()
 	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte("module example.com/statfix\n\ngo 1.26\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -172,6 +181,9 @@ func TestValidatedObservationRequiresVerifiableRuntimeState(t *testing.T) {
 //
 //gofresh:pure
 func TestIncompatibleObservationEvidenceCannotServe(t *testing.T) {
+	if testing.Short() {
+		t.Skip("executes a real race-instrumented witness suite")
+	}
 	tmp := observedReaderModule(t)
 	first, err := RunTestsFresh(tmp)
 	if err != nil {
@@ -223,6 +235,9 @@ func TestIncompatibleObservationEvidenceCannotServe(t *testing.T) {
 //
 //gofresh:pure
 func TestObservationProofRequiresIsolatedTestProcess(t *testing.T) {
+	if testing.Short() {
+		t.Skip("executes a real race-instrumented witness suite")
+	}
 	tmp := t.TempDir()
 	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte("module example.com/siblingfix\n\ngo 1.26\n"), 0o644); err != nil {
 		t.Fatal(err)

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"runtime"
 	"runtime/debug"
@@ -90,7 +91,7 @@ func runTestsFresh(ctx context.Context, dir string) (*verify.TestRun, error) {
 			subjects = append(subjects, gofresh.Subject{Package: pkg, Symbol: test})
 		}
 	}
-	view, err := engine.NewViewContext(ctx, subjects, dir)
+	view, err := engine.NewView(ctx, subjects, dir)
 	if err != nil {
 		return nil, err
 	}
@@ -112,19 +113,9 @@ func runTestsFresh(ctx context.Context, dir string) (*verify.TestRun, error) {
 			}
 		}
 	}
-	verdicts := make(map[gofresh.Subject]gofresh.Verdict, len(recorded))
-	for _, pkg := range pkgs {
-		for _, test := range expected[pkg] {
-			subject := gofresh.Subject{Package: pkg, Symbol: test}
-			fingerprint, ok := recorded[subject]
-			if !ok {
-				continue
-			}
-			verdicts[subject], err = checkFingerprint(ctx, view, fingerprint, subject)
-			if err != nil {
-				return nil, err
-			}
-		}
+	verdicts, err := checkFingerprints(ctx, view, recorded)
+	if err != nil {
+		return nil, err
 	}
 
 	// One engine pass over every package — check what serves, and capture
@@ -242,7 +233,7 @@ func runTestsFresh(ctx context.Context, dir string) (*verify.TestRun, error) {
 		tr.Registrations = append(tr.Registrations, sh.tr.Registrations...)
 		tr.Ran += sh.tr.Ran
 	}
-	if err := view.ValidateContext(ctx); err != nil {
+	if err := view.Validate(ctx); err != nil {
 		return nil, err
 	}
 	validatedObserved := map[gofresh.Subject]bool{}
@@ -302,19 +293,20 @@ func runTestsFresh(ctx context.Context, dir string) (*verify.TestRun, error) {
 		for _, rec := range next {
 			final[gofresh.Subject{Package: rec.Package, Symbol: rec.Test}] = rec.Fingerprint.ToGofresh()
 		}
+		unvalidated := make(map[gofresh.Subject]gofresh.Fingerprint, len(final))
 		verdicts := make(map[gofresh.Subject]gofresh.Verdict, len(final))
-		for _, rec := range next {
-			subject := gofresh.Subject{Package: rec.Package, Symbol: rec.Test}
-			fingerprint := final[subject]
+		for subject, fingerprint := range final {
 			if validatedObserved[subject] {
 				verdicts[subject] = gofresh.Verdict{Status: gofresh.Valid}
 			} else {
-				verdicts[subject], err = checkFingerprint(ctx, view, fingerprint, subject)
-				if err != nil {
-					return nil, err
-				}
+				unvalidated[subject] = fingerprint
 			}
 		}
+		checked, err := checkFingerprints(ctx, view, unvalidated)
+		if err != nil {
+			return nil, err
+		}
+		maps.Copy(verdicts, checked)
 		publish := next[:0]
 		for _, rec := range next {
 			subject := gofresh.Subject{Package: rec.Package, Symbol: rec.Test}
@@ -354,11 +346,37 @@ func runTestsFresh(ctx context.Context, dir string) (*verify.TestRun, error) {
 	return tr, nil
 }
 
-func checkFingerprint(ctx context.Context, view *gofresh.View, fingerprint gofresh.Fingerprint, subject gofresh.Subject) (gofresh.Verdict, error) {
-	if fingerprint.ObservationAssertion != "" || fingerprint.ObservationProof != (gofresh.ObservationProof{}) {
-		return view.CheckObserved(ctx, fingerprint, subject)
+// checkFingerprints checks a recording set with one shared drift bracket pair,
+// runtime window, and precise analysis per policy class: observed recordings
+// batch through the observed policy, the rest through the ordinary hierarchical
+// policy. Per-record checking multiplied full workspace observations by the
+// record count.
+func checkFingerprints(ctx context.Context, view *gofresh.View, recorded map[gofresh.Subject]gofresh.Fingerprint) (map[gofresh.Subject]gofresh.Verdict, error) {
+	observed := make(map[gofresh.Subject]gofresh.Fingerprint, len(recorded))
+	plain := make(map[gofresh.Subject]gofresh.Fingerprint, len(recorded))
+	for subject, fingerprint := range recorded {
+		if fingerprint.ObservationAssertion != "" || fingerprint.ObservationProof != (gofresh.ObservationProof{}) {
+			observed[subject] = fingerprint
+		} else {
+			plain[subject] = fingerprint
+		}
 	}
-	return view.CheckContext(ctx, fingerprint, subject)
+	verdicts := make(map[gofresh.Subject]gofresh.Verdict, len(recorded))
+	if len(observed) != 0 {
+		batch, err := view.CheckObservedBatch(ctx, observed)
+		if err != nil {
+			return nil, err
+		}
+		maps.Copy(verdicts, batch)
+	}
+	if len(plain) != 0 {
+		batch, err := view.CheckRefinedBatch(ctx, plain)
+		if err != nil {
+			return nil, err
+		}
+		maps.Copy(verdicts, batch)
+	}
+	return verdicts, nil
 }
 
 func validatedObservation(fingerprint gofresh.Fingerprint, state runtimeinput.State) bool {
@@ -595,7 +613,7 @@ func observedView(ctx context.Context, engine *gofresh.Engine, subjects []gofres
 	if len(subjects) == 0 {
 		return nil, nil
 	}
-	view, err := engine.NewViewContext(ctx, subjects, dir)
+	view, err := engine.NewView(ctx, subjects, dir)
 	if err != nil {
 		return nil, nil
 	}
