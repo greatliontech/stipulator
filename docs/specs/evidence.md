@@ -124,7 +124,7 @@ outcome is that flake pinned until its inputs move or the cache is
 discarded, which is a finding about the test, not the cache. A test whose
 fixture reads leave it unverifiable re-runs every time until its author
 asserts purity in source, the deliberate opt-in. A clean witness invocation
-instead MAY publish without that assertion when its completed testlog is
+instead may publish without that assertion when its completed testlog is
 attached to a compatible caller-selected Gofresh observation-completeness proof
 captured before execution and both are revalidated after execution. Stipulator
 selects that proof only when the producing test process runs one selected

@@ -120,7 +120,7 @@ func runTestsFresh(ctx context.Context, dir string) (*verify.TestRun, error) {
 			if !ok {
 				continue
 			}
-			verdicts[subject], err = view.CheckObserved(ctx, fingerprint, subject)
+			verdicts[subject], err = checkFingerprint(ctx, view, fingerprint, subject)
 			if err != nil {
 				return nil, err
 			}
@@ -245,9 +245,11 @@ func runTestsFresh(ctx context.Context, dir string) (*verify.TestRun, error) {
 	if err := view.ValidateContext(ctx); err != nil {
 		return nil, err
 	}
+	validatedObserved := map[gofresh.Subject]bool{}
 	if observed != nil && len(observedFPs) == len(observationCandidates) {
 		complete := true
 		attached := make(map[gofresh.Subject]gofresh.Fingerprint, len(observationCandidates))
+		attachedValid := make(map[gofresh.Subject]bool, len(observationCandidates))
 		for i, plan := range plans {
 			for _, test := range plan.stale {
 				subject := gofresh.Subject{Package: plan.pkg, Symbol: test}
@@ -265,6 +267,11 @@ func runTestsFresh(ctx context.Context, dir string) (*verify.TestRun, error) {
 					return nil, err
 				}
 				attached[subject] = fp
+				state, err := runtimeinput.CompletedState(capture.observation)
+				if err != nil {
+					return nil, err
+				}
+				attachedValid[subject] = validatedObservation(fp, state)
 			}
 			if !complete {
 				break
@@ -273,6 +280,9 @@ func runTestsFresh(ctx context.Context, dir string) (*verify.TestRun, error) {
 		if complete {
 			if err := observed.ValidateObserved(ctx); err != nil {
 				return nil, err
+			}
+			for subject := range attached {
+				validatedObserved[subject] = attachedValid[subject]
 			}
 			for i := range plans {
 				for test := range plans[i].fps {
@@ -287,7 +297,7 @@ func runTestsFresh(ctx context.Context, dir string) (*verify.TestRun, error) {
 	for i, plan := range plans {
 		next = append(next, fingerprintRan(plan, shards[i].run)...)
 	}
-	if len(next) != 0 {
+	if len(next) != 0 && len(plans) != 0 {
 		final := make(map[gofresh.Subject]gofresh.Fingerprint, len(next))
 		for _, rec := range next {
 			final[gofresh.Subject{Package: rec.Package, Symbol: rec.Test}] = rec.Fingerprint.ToGofresh()
@@ -296,9 +306,13 @@ func runTestsFresh(ctx context.Context, dir string) (*verify.TestRun, error) {
 		for _, rec := range next {
 			subject := gofresh.Subject{Package: rec.Package, Symbol: rec.Test}
 			fingerprint := final[subject]
-			verdicts[subject], err = view.CheckObserved(ctx, fingerprint, subject)
-			if err != nil {
-				return nil, err
+			if validatedObserved[subject] {
+				verdicts[subject] = gofresh.Verdict{Status: gofresh.Valid}
+			} else {
+				verdicts[subject], err = checkFingerprint(ctx, view, fingerprint, subject)
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 		publish := next[:0]
@@ -338,6 +352,17 @@ func runTestsFresh(ctx context.Context, dir string) (*verify.TestRun, error) {
 		_ = witnesscache.Save(dir, next)
 	}
 	return tr, nil
+}
+
+func checkFingerprint(ctx context.Context, view *gofresh.View, fingerprint gofresh.Fingerprint, subject gofresh.Subject) (gofresh.Verdict, error) {
+	if fingerprint.ObservationAssertion != "" || fingerprint.ObservationProof != (gofresh.ObservationProof{}) {
+		return view.CheckObserved(ctx, fingerprint, subject)
+	}
+	return view.CheckContext(ctx, fingerprint, subject)
+}
+
+func validatedObservation(fingerprint gofresh.Fingerprint, state runtimeinput.State) bool {
+	return fingerprint.ObservationProof.Observable && !state.Unverifiable
 }
 
 func acquireWitnessSlot(ctx context.Context, sem chan struct{}, wg *sync.WaitGroup) bool {

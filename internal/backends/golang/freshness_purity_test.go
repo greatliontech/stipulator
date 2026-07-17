@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/greatliontech/gofresh"
+	"github.com/greatliontech/gofresh/runtimeinput"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
 
@@ -111,6 +112,57 @@ func TestObservationProofNeverWaivesInputDigest(t *testing.T) {
 	}
 	if second.Ran != 1 || second.Fresh != 0 {
 		t.Fatalf("after input change: ran=%d fresh=%d; the digest must stale the record", second.Ran, second.Fresh)
+	}
+}
+
+//gofresh:pure
+func TestObservationProofDoesNotPublishUnverifiableRuntimeState(t *testing.T) {
+	tmp := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte("module example.com/statfix\n\ngo 1.26\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmp, "fixture"), []byte("data"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testSource := `package statfix
+
+import (
+	"os"
+	"testing"
+)
+
+func TestStatsFixture(t *testing.T) {
+	if _, err := os.Stat("fixture"); err != nil {
+		t.Fatal(err)
+	}
+}
+`
+	if err := os.WriteFile(filepath.Join(tmp, "statfix_test.go"), []byte(testSource), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := RunTestsFresh(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Ran != 1 || result.Uncached != 1 {
+		t.Fatalf("run: ran=%d uncached=%d; unverifiable runtime state must not publish", result.Ran, result.Uncached)
+	}
+	if records := witnesscache.Load(tmp); len(records) != 0 {
+		t.Fatalf("unverifiable runtime state published: %+v", records)
+	}
+}
+
+func TestValidatedObservationRequiresVerifiableRuntimeState(t *testing.T) {
+	positive := gofresh.Fingerprint{ObservationProof: gofresh.ObservationProof{Observable: true}}
+	if validatedObservation(positive, runtimeinput.State{Unverifiable: true}) {
+		t.Fatal("positive proof validated an unverifiable runtime state")
+	}
+	if !validatedObservation(positive, runtimeinput.State{}) {
+		t.Fatal("positive proof rejected a verifiable runtime state")
+	}
+	if validatedObservation(gofresh.Fingerprint{}, runtimeinput.State{}) {
+		t.Fatal("missing proof validated a runtime state")
 	}
 }
 
