@@ -15,6 +15,23 @@ observation-completeness proofs publish and serve across gate runs, so the
 discarded work shrinks to whatever the edit actually staled — the double
 execution remains, but only over the stale set rather than the whole suite.
 
+The cold self-gate makes the duplication concrete: it selects 156 witnesses
+across 22 packages. Twenty-one package groups finish within 75 seconds, while
+the 28-test Go-backend group contains nested freshness witnesses. Under the
+outer race-enabled testlog, its first 17 tests take about 10 minutes and
+`TestRunTestsFresh` alone takes another 10 minutes 46 seconds; the observation
+log reaches 9–12 MB. A 30-minute test-binary timeout can therefore abort that
+valid group and make the selective runner retry its unfinished remainder,
+adding work rather than bounding it. The timeout must admit the measured group
+until one execution contract removes the duplicate run.
+
+The two dominant meta-tests use independent copied modules and now opt into
+standard top-level test parallelism. The complete backend group consequently
+finishes in about 26 minutes under the outer race-enabled testlog on the
+development machine. That removes the demonstrated local retry while retaining
+a 60-minute binary ceiling for slower runners; it does not remove the duplicated
+suite or make its prior outcomes consumable by the gate.
+
 Removing either command without defining their combined coverage can silently
 drop checks: the ordinary suite may execute tests or examples the backend does
 not enumerate, while only the gate correlates current-run outcomes with bindings.

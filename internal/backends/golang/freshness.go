@@ -471,10 +471,10 @@ func runOnce(ctx context.Context, dir string, env []string, pkg string, tests []
 	defer os.Remove(logPath)
 
 	pattern := "^(" + strings.Join(tests, "|") + ")$"
-	// An explicit timeout: the default 10m is per test binary and the
-	// freshness witness alone exceeds it under -race; a kill mid-binary
-	// masquerades as a test failure.
-	args := []string{"test", "-json", "-race", "-timeout=30m", "-run", pattern, pkg, "-args", "-test.testlogfile=" + logPath}
+	// An explicit timeout: the default 10m is per test binary and nested
+	// freshness witnesses exceed 30m under -race with testlog observation; a
+	// kill mid-binary masquerades as a test failure and retries the remainder.
+	args := []string{"test", "-json", "-race", "-timeout=60m", "-run", pattern, pkg, "-args", "-test.testlogfile=" + logPath}
 	cmd := commandContext(ctx, "go", args...)
 	cmd.Dir = dir
 	cmd.Env = env

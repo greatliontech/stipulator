@@ -195,6 +195,7 @@ func TestRunTestsFresh(t *testing.T) {
 	if testing.Short() {
 		t.Skip("runs go test per package")
 	}
+	t.Parallel()
 	tmp := t.TempDir()
 	if err := os.CopyFS(tmp, os.DirFS("testdata/freshfixture")); err != nil {
 		t.Fatal(err)
@@ -322,6 +323,7 @@ func TestRunTestsFreshSelectsRaceSources(t *testing.T) {
 	if testing.Short() {
 		t.Skip("runs go test per package")
 	}
+	t.Parallel()
 	tmp := t.TempDir()
 	if err := os.CopyFS(tmp, os.DirFS("testdata/racefixture")); err != nil {
 		t.Fatal(err)
