@@ -12,6 +12,15 @@
   "invocations": [
     {
       "disposition": "HEALTH_DISPOSITION_TEST_FAILED",
+      "go": {
+        "cgoEnabled": true,
+        "goarch": "arm64",
+        "goexperiment": "jsonv2",
+        "goflags": "-trimpath",
+        "goos": "linux",
+        "toolchain": "go1.26.4",
+        "workspaceOn": true
+      },
       "invocation": "workspace-race",
       "packages": [
         {
@@ -41,6 +50,29 @@
       "obligation": "example.com/m/ok"
     }
   ],
+  "observations": [
+    {
+      "completed": {
+        "digest": "00112233445566778899aabbccddeeff",
+        "manifest": "{\"v\":1,\"env\":[\"HOME\"],\"paths\":[{\"k\":\"rel\",\"p\":\"testdata/fixture.txt\"}]}"
+      },
+      "package": "example.com/m/ok",
+      "producer": {
+        "invocation": "workspace-race",
+        "processId": "4242",
+        "processOrdinal": 1
+      }
+    },
+    {
+      "incompleteReason": "tests started but unfinished; the process died before its testlog flushed",
+      "package": "example.com/m/broken",
+      "producer": {
+        "invocation": "workspace-race",
+        "processId": "4243",
+        "processOrdinal": 2
+      }
+    }
+  ],
   "tests": [
     {
       "outcome": "TEST_OUTCOME_PASSED",
@@ -50,6 +82,10 @@
         "processId": "4242",
         "processOrdinal": 1
       },
+      "registrations": [
+        "REQ-a",
+        "REQ-b"
+      ],
       "test": "TestConservation/named_case"
     }
   ]

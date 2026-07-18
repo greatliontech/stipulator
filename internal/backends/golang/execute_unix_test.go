@@ -43,7 +43,7 @@ func TestGoExecuteEnvelopeTimeoutNamesAbortedTests(t *testing.T) {
 		Env:      []string{"PATH=" + bin},
 	}
 	selection := []Obligation{{Kind: ObligationPackage, Package: "example.com/hang"}}
-	health, _, diags, err := ExecuteInvocation(context.Background(), n, selection)
+	health, _, diags, observations, err := ExecuteInvocation(context.Background(), n, selection)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,6 +52,19 @@ func TestGoExecuteEnvelopeTimeoutNamesAbortedTests(t *testing.T) {
 	}
 	if len(diags) != 1 || !strings.Contains(diags[0].GetOutput(), "started but unfinished: TestHang") {
 		t.Errorf("timeout diagnostic does not name the aborted test: %v", diags)
+	}
+	// The launched, cut-off process still owns its observation — an
+	// incomplete one bound to the real process, never a completed record
+	// and never silence.
+	if len(observations) != 1 {
+		t.Fatalf("timeout run owns %d observations, want 1", len(observations))
+	}
+	o := observations[0].Wire
+	if o.GetCompleted() != nil || o.GetIncompleteReason() == "" {
+		t.Errorf("cut-off process observation = %v, want incomplete with a reason", o)
+	}
+	if o.GetProducer().GetProcessId() <= 0 || o.GetProducer().GetInvocation() != "hang" {
+		t.Errorf("observation producer = %v, want the launched process bound", o.GetProducer())
 	}
 }
 
@@ -75,7 +88,7 @@ func TestGoExecuteSilentToolchainDegradesEndToEnd(t *testing.T) {
 		Env:      []string{"PATH=" + bin},
 	}
 	selection := []Obligation{{Kind: ObligationPackage, Package: "example.com/silent"}}
-	health, tests, diags, err := ExecuteInvocation(context.Background(), n, selection)
+	health, tests, diags, _, err := ExecuteInvocation(context.Background(), n, selection)
 	if err != nil {
 		t.Fatal(err)
 	}

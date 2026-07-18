@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -70,11 +72,15 @@ type testEvent struct {
 // disposition means the run reached no terminal fact of its own — the
 // caller classifies it as timeout or discards it on cancellation —
 // with aborted carrying the names of tests that had started but not
-// finished when the run was cut off.
+// finished when the run was cut off. producer is set exactly when a
+// process was launched; obs is that process's owned observation, absent
+// until the caller classifies a cut-off run.
 type packageRun struct {
 	pkg         string
 	disposition stipulatorv1.HealthDisposition
 	aborted     []string
+	producer    *stipulatorv1.ProducerIdentity
+	obs         *ProcessObservation
 	tests       []*stipulatorv1.TestResult
 	diags       []*stipulatorv1.FailureDiagnostic
 }
@@ -84,16 +90,19 @@ type packageRun struct {
 // cancellable `go test -json` process, fanned out under a
 // GOMAXPROCS-derived concurrency bound with the invocation's reviewed
 // envelope timeout governing the whole invocation as a context deadline.
-// It returns the invocation's terminal health with every selected package
-// disposed, the named test outcomes attributed to their producing process,
-// and bounded failure diagnostics. Caller cancellation discards the
-// partial run: the return is (nil, nil, nil, ctx.Err()), never a partial
-// report (REQ-policy-cancellation). Envelope expiry is not cancellation —
-// it is a terminal fact, reported as TIMEOUT dispositions.
-func ExecuteInvocation(ctx context.Context, n *NormalizedInvocation, selection []Obligation) (*stipulatorv1.InvocationHealth, []*stipulatorv1.TestResult, []*stipulatorv1.FailureDiagnostic, error) {
+// It returns the invocation's terminal health — carrying the resolved
+// pin-at-load configuration as its evidentiary record — with every
+// selected package disposed, the named test outcomes attributed to their
+// producing process, bounded failure diagnostics, and one owned
+// observation per launched process. Caller cancellation discards the
+// partial run: the return is (nil, nil, nil, nil, ctx.Err()), never a
+// partial report (REQ-policy-cancellation). Envelope expiry is not
+// cancellation — it is a terminal fact, reported as TIMEOUT dispositions
+// with each cut-off launched process owning an incomplete observation.
+func ExecuteInvocation(ctx context.Context, n *NormalizedInvocation, selection []Obligation) (*stipulatorv1.InvocationHealth, []*stipulatorv1.TestResult, []*stipulatorv1.FailureDiagnostic, []*ProcessObservation, error) {
 	pkgs := selectedPackages(selection)
 	if len(pkgs) == 0 {
-		return nil, nil, nil, fmt.Errorf("invocation %q: selection carries no package obligations", n.Name)
+		return nil, nil, nil, nil, fmt.Errorf("invocation %q: selection carries no package obligations", n.Name)
 	}
 	invCtx, cancel := context.WithTimeout(ctx, n.Timeout)
 	defer cancel()
@@ -136,16 +145,18 @@ func ExecuteInvocation(ctx context.Context, n *NormalizedInvocation, selection [
 		// Caller cancellation: the partial run is discarded whole. The
 		// envelope context is derived from ctx, so every child is already
 		// terminated through its owned process boundary.
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	timedOut := invCtx.Err() != nil
 
 	health := &stipulatorv1.InvocationHealth{}
 	health.SetInvocation(n.Name)
+	health.SetGo(resolvedConfig(n))
 	packages := make([]*stipulatorv1.PackageHealth, 0, len(runs))
 	var (
-		tests []*stipulatorv1.TestResult
-		diags []*stipulatorv1.FailureDiagnostic
+		tests        []*stipulatorv1.TestResult
+		diags        []*stipulatorv1.FailureDiagnostic
+		observations []*ProcessObservation
 	)
 	invDisposition := stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY
 	for _, r := range runs {
@@ -153,7 +164,7 @@ func ExecuteInvocation(ctx context.Context, n *NormalizedInvocation, selection [
 			// No terminal disposition of its own: the envelope deadline is
 			// the only in-spec way to get here without caller cancellation.
 			if !timedOut {
-				return nil, nil, nil, fmt.Errorf("invocation %q: package %s ended without a terminal disposition outside timeout and cancellation", n.Name, r.pkg)
+				return nil, nil, nil, nil, fmt.Errorf("invocation %q: package %s ended without a terminal disposition outside timeout and cancellation", n.Name, r.pkg)
 			}
 			r.disposition = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT
 			d := &stipulatorv1.FailureDiagnostic{}
@@ -169,6 +180,13 @@ func ExecuteInvocation(ctx context.Context, n *NormalizedInvocation, selection [
 			d.SetOutput(out.b.String())
 			d.SetTruncated(out.truncated)
 			r.diags = append(r.diags, d)
+			if r.producer != nil {
+				// A launched process the envelope cut off died before its
+				// testlog flushed: it still owns its observation —
+				// incomplete, never silently absent.
+				r.obs = incompleteObservation(r.pkg, r.producer,
+					fmt.Sprintf("invocation timeout %v expired before the process completed", n.Timeout))
+			}
 		}
 		ph := &stipulatorv1.PackageHealth{}
 		ph.SetPackage(r.pkg)
@@ -176,11 +194,14 @@ func ExecuteInvocation(ctx context.Context, n *NormalizedInvocation, selection [
 		packages = append(packages, ph)
 		tests = append(tests, r.tests...)
 		diags = append(diags, r.diags...)
+		if r.obs != nil {
+			observations = append(observations, r.obs)
+		}
 		invDisposition = worseDisposition(invDisposition, r.disposition)
 	}
 	health.SetDisposition(invDisposition)
 	health.SetPackages(packages)
-	return health, tests, diags, nil
+	return health, tests, diags, observations, nil
 }
 
 // worseDisposition aggregates package dispositions into the invocation's:
@@ -223,12 +244,29 @@ func selectedPackages(selection []Obligation) []string {
 }
 
 // runPackage executes one package's `go test -json` in an owned child
-// process and classifies its stream. A cancelled or deadline-expired
-// context leaves the disposition unspecified: the caller — not the
-// stream parser — decides between timeout reporting and cancellation
-// discard.
+// process — the test binary's testlog directed to a per-process capture
+// file the executor owns — and classifies its stream. A cancelled or
+// deadline-expired context leaves the disposition unspecified: the caller
+// — not the stream parser — decides between timeout reporting and
+// cancellation discard.
 func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, ordinal int32) packageRun {
-	cmd := commandContext(ctx, "go", testCommandArgs(n, pkg)...)
+	// Directing the test binary's testlog to a per-process capture file
+	// makes the run uncacheable to the toolchain (extra binary arguments
+	// fall outside its cacheable set): observation capture deliberately
+	// trades toolchain cache hits for per-process evidence — a cached
+	// replay has no process, so nothing could own its observation — and
+	// witness freshness serving is the sanctioned cache
+	// (REQ-evidence-witness-freshness).
+	// A failed capture-file creation never blocks execution: the run
+	// proceeds without a testlog and the process's observation is
+	// incomplete for that stated reason.
+	logPath := ""
+	if logf, err := os.CreateTemp("", "stipulator-testlog-*.txt"); err == nil {
+		logPath = logf.Name()
+		logf.Close()
+		defer os.Remove(logPath)
+	}
+	cmd := commandContext(ctx, "go", testCommandArgs(n, pkg, logPath)...)
 	cmd.Dir = n.Dir
 	cmd.Env = n.Env
 	var stderr boundedBuffer
@@ -261,18 +299,25 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, ordina
 	waitErr := cmd.Wait()
 	if ctx.Err() != nil {
 		// Keep the parsed residue: on envelope expiry the caller's
-		// timeout diagnostic names the tests the cutoff aborted.
-		return packageRun{pkg: pkg, aborted: startedTests(st)}
+		// timeout diagnostic names the tests the cutoff aborted and the
+		// launched process gains its incomplete observation.
+		return packageRun{pkg: pkg, aborted: startedTests(st), producer: producer}
 	}
-	return classifyRun(n.Name, pkg, st, waitErr, &stderr)
+	run := classifyRun(n.Name, pkg, st, waitErr, &stderr)
+	run.producer = producer
+	run.obs = observeProcess(ctx, n, pkg, producer, st, waitErr, run.disposition, logPath)
+	return run
 }
 
 // testCommandArgs renders one package's `go test -json` argument list from
-// the normalized invocation: the typed configuration and nothing ambient.
-// Per-binary timeouts deliberately keep the toolchain default; the
-// reviewed envelope timeout governs the invocation, and finer bounds ride
-// typed configuration when those fields land.
-func testCommandArgs(n *NormalizedInvocation, pkg string) []string {
+// the normalized invocation: the typed configuration and nothing ambient,
+// plus the per-process testlog capture file when one exists — executor
+// property no reviewed args entry may name (validation refuses the
+// collision, so the capture is always the executor's own file, bound to
+// exactly this process). Per-binary timeouts deliberately keep the toolchain
+// default; the reviewed envelope timeout governs the invocation, and
+// finer bounds ride typed configuration when those fields land.
+func testCommandArgs(n *NormalizedInvocation, pkg string, logPath string) []string {
 	args := []string{"test", "-json"}
 	if n.Race {
 		args = append(args, "-race")
@@ -299,8 +344,11 @@ func testCommandArgs(n *NormalizedInvocation, pkg string) []string {
 		args = append(args, fmt.Sprintf("-count=%d", n.Count))
 	}
 	args = append(args, pkg)
-	if len(n.Args) > 0 {
+	if logPath != "" || len(n.Args) > 0 {
 		args = append(args, "-args")
+		if logPath != "" {
+			args = append(args, "-test.testlogfile="+logPath)
+		}
 		args = append(args, n.Args...)
 	}
 	return args
@@ -326,6 +374,12 @@ type streamState struct {
 	events      int
 	// malformed retains the first unparseable bytes, when any.
 	malformed string
+	// postTerminal reports events after the terminal package event — a
+	// shape the toolchain never produces, refused rather than trusted.
+	postTerminal bool
+	// sawAbort reports abort output (a panic, a runtime fatal) anywhere in
+	// the stream: the testlog flush of such a process cannot be trusted.
+	sawAbort bool
 	// pkgOutput is package-level output: build diagnostics and package
 	// FAIL/ok lines.
 	pkgOutput boundedBuffer
@@ -338,18 +392,24 @@ type streamState struct {
 	// startOrder preserves first-appearance order for deterministic
 	// residue rendering.
 	startOrder []string
-	tests      []*stipulatorv1.TestResult
-	diags      []*stipulatorv1.FailureDiagnostic
+	// regs accumulates each named test's runtime registrations until its
+	// terminal event.
+	regs  map[string][]string
+	tests []*stipulatorv1.TestResult
+	diags []*stipulatorv1.FailureDiagnostic
 }
 
 // parseTestStream consumes one `go test -json` stream, recording named
-// test outcomes attributed to producer and retaining bounded failure
-// output. It never classifies health — classification needs the process
-// exit and context state the caller holds.
+// test outcomes attributed to producer — subtests under the same producer
+// as their parent, in stream order — with each occurrence's runtime
+// registrations, and retaining bounded failure output. It never
+// classifies health — classification needs the process exit and context
+// state the caller holds.
 func parseTestStream(invocation, pkg string, r io.Reader, producer *stipulatorv1.ProducerIdentity) *streamState {
 	st := &streamState{
 		perTest: map[string]*boundedBuffer{},
 		started: map[string]bool{},
+		regs:    map[string][]string{},
 	}
 	dec := json.NewDecoder(r)
 	for {
@@ -372,6 +432,14 @@ func parseTestStream(invocation, pkg string, r io.Reader, producer *stipulatorv1
 			return st
 		}
 		st.events++
+		if st.terminal != "" {
+			// The terminal package event ends a well-formed stream; the
+			// classifier refuses anything that follows it.
+			st.postTerminal = true
+		}
+		if e.Action == "output" && isAbortOutput(e.Output) {
+			st.sawAbort = true
+		}
 		switch e.Action {
 		case "build-output":
 			st.pkgOutput.write(e.Output)
@@ -408,6 +476,11 @@ func parseTestStream(invocation, pkg string, r io.Reader, producer *stipulatorv1
 				}
 			}
 			bb.write(e.Output)
+			// Runtime registrations attribute to the exact test whose
+			// output carried them — subtest-granular by construction.
+			for _, m := range coversRe.FindAllStringSubmatch(e.Output, -1) {
+				st.regs[e.Test] = append(st.regs[e.Test], m[1])
+			}
 		case "pass", "fail", "skip":
 			delete(st.started, e.Test)
 			tr := &stipulatorv1.TestResult{}
@@ -415,6 +488,11 @@ func parseTestStream(invocation, pkg string, r io.Reader, producer *stipulatorv1
 			tr.SetTest(e.Test)
 			tr.SetOutcome(outcomeOf(e.Action))
 			tr.SetProducer(producer)
+			if regs := st.regs[e.Test]; len(regs) > 0 {
+				sort.Strings(regs)
+				tr.SetRegistrations(slices.Compact(regs))
+				delete(st.regs, e.Test)
+			}
 			st.tests = append(st.tests, tr)
 			if e.Action == "fail" {
 				d := &stipulatorv1.FailureDiagnostic{}
@@ -499,6 +577,8 @@ func classifyRun(invocation, pkg string, st *streamState, waitErr error, stderr 
 		return degrade("go test -json produced no events; a silent command stream is refused")
 	case st.terminal == "":
 		return degrade("go test -json stream ended without a terminal package event")
+	case st.postTerminal:
+		return degrade("go test -json stream carried events after the terminal package event; a stream that outlives its own verdict is refused")
 	}
 	switch st.terminal {
 	case "pass", "skip":
@@ -568,48 +648,60 @@ func (f writerFunc) Write(p []byte) (int, error) { return f(p) }
 
 // ExecutePolicy executes every Go invocation of the accepted policy
 // exactly once against the tree at dir and assembles the execution
-// report: per-invocation and per-package terminal health, attributed test
-// outcomes, bounded failure diagnostics, and the conservation findings of
-// the policy against the workspace's default-selection obligation
-// universe (REQ-policy-conservation). Caller cancellation anywhere —
-// discovery included — discards the whole partial report and returns only
-// the cancellation error (REQ-policy-cancellation). Invocations execute
+// report: per-invocation and per-package terminal health carrying each
+// invocation's resolved configuration, attributed test outcomes, bounded
+// failure diagnostics, per-process runtime observations, and the
+// conservation findings of the policy against the workspace's
+// default-selection obligation universe (REQ-policy-conservation). The
+// returned observations are the report's own, with each completed
+// record's live gofresh evidence beside its wire form for in-process
+// consumers — gofresh's producer-side attach path takes the sealed value,
+// which has no wire decode. Caller cancellation anywhere — discovery
+// included — discards the whole partial report and returns only the
+// cancellation error (REQ-policy-cancellation). Invocations execute
 // sequentially in record order; concurrency lives inside each invocation,
 // bounded per package — so each invocation's envelope bounds only its own
 // span and the policy's wall time is the sum of what its invocations
 // spend, bounded overall only by the caller's context.
-func ExecutePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (*stipulatorv1.ExecutionReport, error) {
+func ExecutePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (*stipulatorv1.ExecutionReport, []*ProcessObservation, error) {
 	universe, err := discoverUniverse(ctx, dir)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	discovered, err := discoverInvocations(ctx, dir, p)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var (
-		selections  []InvocationSelection
-		invocations []*stipulatorv1.InvocationHealth
-		tests       []*stipulatorv1.TestResult
-		diags       []*stipulatorv1.FailureDiagnostic
+		selections   []InvocationSelection
+		invocations  []*stipulatorv1.InvocationHealth
+		tests        []*stipulatorv1.TestResult
+		diags        []*stipulatorv1.FailureDiagnostic
+		observations []*ProcessObservation
 	)
 	for _, d := range discovered {
 		selections = append(selections, d.selection)
-		health, invTests, invDiags, err := ExecuteInvocation(ctx, d.normalized, d.selection.Obligations)
+		health, invTests, invDiags, invObs, err := ExecuteInvocation(ctx, d.normalized, d.selection.Obligations)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		invocations = append(invocations, health)
 		tests = append(tests, invTests...)
 		diags = append(diags, invDiags...)
+		observations = append(observations, invObs...)
 	}
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	report := &stipulatorv1.ExecutionReport{}
 	report.SetInvocations(invocations)
 	report.SetTests(tests)
 	report.SetObligations(PartitionReports(universe, selections))
 	report.SetDiagnostics(diags)
-	return report, nil
+	wire := make([]*stipulatorv1.Observation, len(observations))
+	for i, o := range observations {
+		wire[i] = o.Wire
+	}
+	report.SetObservations(wire)
+	return report, observations, nil
 }

@@ -72,7 +72,10 @@ enum GoModuleMode {
 enum GoCacheMode {
   // Unspecified keeps the toolchain's default caching behavior.
   GO_CACHE_MODE_UNSPECIFIED = 0;
-  // The toolchain's ordinary test caching.
+  // The toolchain's ordinary test caching. Observation capture attaches
+  // per-process arguments outside the toolchain's cacheable set, so an
+  // observed execution is never served by this cache; witness freshness
+  // serving is the sanctioned reuse for observed runs.
   GO_CACHE_MODE_ENABLED = 1;
   // Force re-execution (`-count=1` semantics) regardless of the cache.
   GO_CACHE_MODE_BYPASS = 2;

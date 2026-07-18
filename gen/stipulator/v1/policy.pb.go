@@ -125,7 +125,10 @@ type GoCacheMode int32
 const (
 	// Unspecified keeps the toolchain's default caching behavior.
 	GoCacheMode_GO_CACHE_MODE_UNSPECIFIED GoCacheMode = 0
-	// The toolchain's ordinary test caching.
+	// The toolchain's ordinary test caching. Observation capture attaches
+	// per-process arguments outside the toolchain's cacheable set, so an
+	// observed execution is never served by this cache; witness freshness
+	// serving is the sanctioned reuse for observed runs.
 	GoCacheMode_GO_CACHE_MODE_ENABLED GoCacheMode = 1
 	// Force re-execution (`-count=1` semantics) regardless of the cache.
 	GoCacheMode_GO_CACHE_MODE_BYPASS GoCacheMode = 2

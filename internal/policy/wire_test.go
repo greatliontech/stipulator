@@ -86,6 +86,15 @@ func fixtureExecutionReport() proto.Message {
 	invHealth.SetInvocation("workspace-race")
 	invHealth.SetDisposition(stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED)
 	invHealth.SetPackages([]*stipulatorv1.PackageHealth{pkgOK, pkgBad})
+	resolved := &stipulatorv1.GoResolvedConfig{}
+	resolved.SetToolchain("go1.26.4")
+	resolved.SetGoos("linux")
+	resolved.SetGoarch("arm64")
+	resolved.SetCgoEnabled(true)
+	resolved.SetGoflags("-trimpath")
+	resolved.SetGoexperiment("jsonv2")
+	resolved.SetWorkspaceOn(true)
+	invHealth.SetGo(resolved)
 
 	producer := &stipulatorv1.ProducerIdentity{}
 	producer.SetInvocation("workspace-race")
@@ -96,6 +105,23 @@ func fixtureExecutionReport() proto.Message {
 	test.SetTest("TestConservation/named_case")
 	test.SetOutcome(stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED)
 	test.SetProducer(producer)
+	test.SetRegistrations([]string{"REQ-a", "REQ-b"})
+
+	completedObs := &stipulatorv1.Observation{}
+	completedObs.SetProducer(producer)
+	completedObs.SetPackage("example.com/m/ok")
+	completed := &stipulatorv1.CompletedObservation{}
+	completed.SetManifest(`{"v":1,"env":["HOME"],"paths":[{"k":"rel","p":"testdata/fixture.txt"}]}`)
+	completed.SetDigest("00112233445566778899aabbccddeeff")
+	completedObs.SetCompleted(completed)
+	incompleteProducer := &stipulatorv1.ProducerIdentity{}
+	incompleteProducer.SetInvocation("workspace-race")
+	incompleteProducer.SetProcessId(4243)
+	incompleteProducer.SetProcessOrdinal(2)
+	incompleteObs := &stipulatorv1.Observation{}
+	incompleteObs.SetProducer(incompleteProducer)
+	incompleteObs.SetPackage("example.com/m/broken")
+	incompleteObs.SetIncompleteReason("tests started but unfinished; the process died before its testlog flushed")
 
 	omitted := &stipulatorv1.ObligationReport{}
 	omitted.SetBackend("go")
@@ -120,6 +146,7 @@ func fixtureExecutionReport() proto.Message {
 	r.SetTests([]*stipulatorv1.TestResult{test})
 	r.SetObligations([]*stipulatorv1.ObligationReport{omitted, doubled})
 	r.SetDiagnostics([]*stipulatorv1.FailureDiagnostic{diag})
+	r.SetObservations([]*stipulatorv1.Observation{completedObs, incompleteObs})
 	return r
 }
 

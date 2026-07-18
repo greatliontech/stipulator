@@ -67,9 +67,42 @@ message InvocationHealth {
   string invocation = 1;
   HealthDisposition disposition = 2;
   repeated PackageHealth packages = 3;
+  // The invocation's resolved pin-at-load configuration, part of its
+  // evidentiary record: a field the committed record leaves absent pins
+  // its effective value at load, and the resolved value rides the report
+  // so what actually ran is reviewable after the fact. Exactly one typed
+  // backend case, mirroring the policy payload dispatch — orchestration
+  // carries it opaque.
+  oneof resolved {
+    GoResolvedConfig go = 4;
+  }
+}
+
+// GoResolvedConfig is the Go backend's resolved pin-at-load configuration:
+// the effective values normalization pinned at policy load. A field the
+// committed record sets explicitly appears at its explicit value; a field
+// it leaves absent appears at the value the tree and host environment
+// selected when the policy was loaded.
+message GoResolvedConfig {
+  // Effective toolchain identity (`go env GOVERSION`).
+  string toolchain = 1;
+  string goos = 2;
+  string goarch = 3;
+  bool cgo_enabled = 4;
+  // Effective GOFLAGS after explicit override or ambient pin.
+  string goflags = 5;
+  // Effective experiment set (`go env GOEXPERIMENT`), pinned even though
+  // the committed record cannot set it: experiments move generated code
+  // and runtime behavior, so the run's set is part of what ran.
+  string goexperiment = 6;
+  // Whether the invocation ran under the tree's go.work.
+  bool workspace_on = 7;
 }
 
 // TestResult is one named test's outcome, attributed to its producer.
+// A stream legitimately carrying the same test more than once (an
+// invocation with `-count` above one) yields one result per occurrence in
+// stream order, never a collapsed union.
 message TestResult {
   string package = 1;
   string test = 2;
@@ -79,6 +112,12 @@ message TestResult {
   // lands with witness derivation.
   reserved 5;
   reserved served;
+  // Runtime coverage registrations this named test emitted in this
+  // process — requirement identifiers, sorted and deduplicated per
+  // occurrence. Subtest registrations ride the subtest's own result.
+  // Cross-checking against the binding store is downstream verification's
+  // judgment, never the executor's.
+  repeated string registrations = 6;
 }
 
 // ObligationDisposition classifies a completeness finding.
@@ -124,6 +163,39 @@ message FailureDiagnostic {
   bool truncated = 6;
 }
 
+// CompletedObservation is the runtime-input evidence of one completed
+// process: the canonical gofresh v1 manifest built from the process's own
+// testlog, and its integrity digest — the encoding downstream witness
+// derivation hands to gofresh. The digest is empty when the manifest
+// itself records unverifiable observations; such a manifest still names
+// what was observed but can never check valid.
+message CompletedObservation {
+  string manifest = 1;
+  string digest = 2;
+}
+
+// Observation is one launched process's runtime-input observation, bound
+// to the exact policy invocation and operating-system process that
+// produced it. Completeness is structural: a completed record carries
+// manifest evidence and an incomplete record carries only its reason, so
+// bytes from an incomplete child cannot be expressed as completed
+// evidence. Observations from distinct processes are never merged — a
+// union is a downstream consumer's judgment under its own contract,
+// never the report's. A package whose process was never launched has no
+// observation at all.
+message Observation {
+  ProducerIdentity producer = 1;
+  // Package whose owned test process produced the observation.
+  string package = 2;
+  oneof evidence {
+    CompletedObservation completed = 3;
+    // Why no completed observation exists: the process died before its
+    // testlog flushed, its package did not dispose healthy, no test
+    // process ran, or ingestion failed.
+    string incomplete_reason = 4;
+  }
+}
+
 // ExecutionReport is the outcome of one execution of the accepted test
 // policy. Suite health is derived, never stored: the suite is healthy
 // exactly when every invocation's disposition is healthy. Progress is
@@ -134,9 +206,9 @@ message ExecutionReport {
   repeated TestResult tests = 2;
   repeated ObligationReport obligations = 3;
   repeated FailureDiagnostic diagnostics = 4;
-  // Per-process runtime observations land with observation attribution.
-  reserved 5;
-  reserved observations;
+  // Per-process runtime observations, one per launched process, each
+  // bound to its producer.
+  repeated Observation observations = 5;
 }
 
 // Phase names the stage a long-running operation is in.

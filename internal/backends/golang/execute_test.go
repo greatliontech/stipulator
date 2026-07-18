@@ -28,6 +28,14 @@ func executeFixture(t *testing.T) string {
 // execute fixture, then runs it.
 func executeInvocation(t *testing.T, timeout time.Duration, cfg *stipulatorv1.GoInvocationConfig, name string) (*stipulatorv1.InvocationHealth, []*stipulatorv1.TestResult, []*stipulatorv1.FailureDiagnostic) {
 	t.Helper()
+	health, tests, diags, _ := executeInvocationObserved(t, timeout, cfg, name)
+	return health, tests, diags
+}
+
+// executeInvocationObserved is executeInvocation with the per-process
+// observations exposed.
+func executeInvocationObserved(t *testing.T, timeout time.Duration, cfg *stipulatorv1.GoInvocationConfig, name string) (*stipulatorv1.InvocationHealth, []*stipulatorv1.TestResult, []*stipulatorv1.FailureDiagnostic, []*ProcessObservation) {
+	t.Helper()
 	inv := &stipulatorv1.PolicyInvocation{}
 	inv.SetName(name)
 	inv.SetTimeout(durationpb.New(timeout))
@@ -41,11 +49,11 @@ func executeInvocation(t *testing.T, timeout time.Duration, cfg *stipulatorv1.Go
 	if err != nil {
 		t.Fatal(err)
 	}
-	health, tests, diags, err := ExecuteInvocation(ctx, n, obs)
+	health, tests, diags, observations, err := ExecuteInvocation(ctx, n, obs)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return health, tests, diags
+	return health, tests, diags, observations
 }
 
 func packageDisposition(t *testing.T, h *stipulatorv1.InvocationHealth, pkg string) stipulatorv1.HealthDisposition {
@@ -329,7 +337,7 @@ func TestGoExecutePolicyWorkspaceReport(t *testing.T) {
 		goInvocation("member", memberCfg),
 		goInvocation("root", rootCfg),
 	})
-	report, err := ExecutePolicy(context.Background(), executeFixture(t), p)
+	report, _, err := ExecutePolicy(context.Background(), executeFixture(t), p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -359,6 +367,9 @@ func TestGoExecutePolicyWorkspaceReport(t *testing.T) {
 		"example.com/exec/sleepy":    stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY,
 		"example.com/exec/examples":  stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED,
 		"example.com/exec/fuzzseed":  stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED,
+		"example.com/exec/reads":     stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY,
+		"example.com/exec/killmid":   stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED,
+		"example.com/exec/mainexit":  stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY,
 	}
 	for pkg, wantD := range want {
 		if got := packageDisposition(t, byName["root"], pkg); got != wantD {
@@ -377,6 +388,21 @@ func TestGoExecutePolicyWorkspaceReport(t *testing.T) {
 	if len(report.GetObligations()) != 0 {
 		t.Errorf("complete policy reported findings: %v", report.GetObligations())
 	}
+	// Every launched process owns exactly one observation on the report,
+	// bound to its producer — one per selected package here, since every
+	// package spawns a process.
+	launched := len(byName["root"].GetPackages()) + len(byName["member"].GetPackages())
+	if got := len(report.GetObservations()); got != launched {
+		t.Errorf("report carries %d observations, want one per launched process (%d)", got, launched)
+	}
+	for _, o := range report.GetObservations() {
+		if o.GetProducer().GetInvocation() == "" || o.GetProducer().GetProcessId() <= 0 {
+			t.Errorf("observation not bound to a producing process: %v", o)
+		}
+		if (o.GetCompleted() == nil) == (o.GetIncompleteReason() == "") {
+			t.Errorf("observation is neither completed nor loudly incomplete: %v", o)
+		}
+	}
 }
 
 // TestGoExecutePolicyReportsOmissions pins the conservation half of one
@@ -390,7 +416,7 @@ func TestGoExecutePolicyReportsOmissions(t *testing.T) {
 	cfg.SetModuleRoot("member")
 	cfg.SetPackages([]string{"./..."})
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("member", cfg)})
-	report, err := ExecutePolicy(context.Background(), executeFixture(t), p)
+	report, _, err := ExecutePolicy(context.Background(), executeFixture(t), p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -441,12 +467,12 @@ func TestGoExecuteCancellationDiscardsPartialReport(t *testing.T) {
 		time.Sleep(300 * time.Millisecond)
 		cancel()
 	}()
-	health, tests, diags, err := ExecuteInvocation(ctx, n, obs)
+	health, tests, diags, observations, err := ExecuteInvocation(ctx, n, obs)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("err = %v, want context.Canceled", err)
 	}
-	if health != nil || tests != nil || diags != nil {
-		t.Fatalf("partial results escaped a cancelled execution: %v %v %v", health, tests, diags)
+	if health != nil || tests != nil || diags != nil || observations != nil {
+		t.Fatalf("partial results escaped a cancelled execution: %v %v %v %v", health, tests, diags, observations)
 	}
 
 	// The policy path discards identically.
@@ -457,12 +483,12 @@ func TestGoExecuteCancellationDiscardsPartialReport(t *testing.T) {
 		time.Sleep(300 * time.Millisecond)
 		pcancel()
 	}()
-	report, err := ExecutePolicy(pctx, fixture, p)
+	report, live, err := ExecutePolicy(pctx, fixture, p)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("policy err = %v, want context.Canceled", err)
 	}
-	if report != nil {
-		t.Fatalf("partial report escaped a cancelled policy execution: %v", report)
+	if report != nil || live != nil {
+		t.Fatalf("partial report escaped a cancelled policy execution: %v %v", report, live)
 	}
 }
 
@@ -592,12 +618,22 @@ func TestGoExecuteCommandArgsRendering(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			got := testCommandArgs(tc.n, "pkg")
+			got := testCommandArgs(tc.n, "pkg", "")
 			if !slices.Equal(got, tc.want) {
 				t.Errorf("testCommandArgs = %q, want %q", got, tc.want)
 			}
 		})
 	}
+	// The per-process testlog capture file rides first among the binary
+	// arguments; validation refuses any reviewed args entry naming the
+	// flag, so the capture is always the executor's own file.
+	t.Run("testlog capture", func(t *testing.T) {
+		n := &NormalizedInvocation{Dir: tree, Args: []string{"extra"}}
+		want := []string{"test", "-json", "pkg", "-args", "-test.testlogfile=/tmp/log", "extra"}
+		if got := testCommandArgs(n, "pkg", "/tmp/log"); !slices.Equal(got, want) {
+			t.Errorf("testCommandArgs = %q, want %q", got, want)
+		}
+	})
 }
 
 // TestGoExecuteRefusesTruncatedStream pins the refusal ladder for missing

@@ -251,6 +251,15 @@ func TestGoPolicyConfigStaticValidation(t *testing.T) {
 			c.SetCount(2)
 		}},
 		{"args NUL", "NUL", func(c *stipulatorv1.GoInvocationConfig) { c.SetArgs([]string{"a\x00b"}) }},
+		{"args testlogfile", "capture file", func(c *stipulatorv1.GoInvocationConfig) {
+			c.SetArgs([]string{"-test.testlogfile=/dev/null"})
+		}},
+		{"args testlogfile split value", "capture file", func(c *stipulatorv1.GoInvocationConfig) {
+			c.SetArgs([]string{"-test.testlogfile", "/dev/null"})
+		}},
+		{"args testlogfile double dash", "capture file", func(c *stipulatorv1.GoInvocationConfig) {
+			c.SetArgs([]string{"--test.testlogfile=/dev/null"})
+		}},
 	}
 	for _, c := range reject {
 		cfg := base()

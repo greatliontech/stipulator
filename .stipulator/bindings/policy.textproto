@@ -360,3 +360,66 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "6ac2a220f3c64d0f95081d27d74935e27f1aa565e2f09068ee1ef020634e3c11"
 }
+
+bindings {
+  requirement_id: "REQ-policy-attribution"
+  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteObservationOwnership"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ef43c4bc8851afdda8d5b0bad62849e5b7b6becb09ed7b9e9750632a901043d9"
+}
+
+bindings {
+  requirement_id: "REQ-policy-attribution"
+  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteKilledMidRunObservationIncomplete"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "066eb8fcccf254d3f25e96b48edb1c50e6b38e8621355c968e9c4be5b278cf24"
+}
+
+bindings {
+  requirement_id: "REQ-policy-attribution"
+  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSubtestAttribution"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "010c8921ddde594e1eaf241c19953ad614bd566023f39d59921b25ab55fb7ce7"
+}
+
+bindings {
+  requirement_id: "REQ-policy-attribution"
+  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteResolvedConfigurationBound"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "8183996e0c5be344c7bc7ab2fcc420066c80260c65a5ee328ef43f3d0851e3d5"
+}
+
+bindings {
+  requirement_id: "REQ-policy-attribution"
+  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteObservationCompletenessClassifier"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "4cad85363549e51d4b47093b53d81dd154a91d4a6aeb0f49c3da7b8cfe043f7c"
+}
+
+bindings {
+  requirement_id: "REQ-policy-attribution"
+  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.FuzzGoExecuteEventStream"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "6079f79f3e0a91d5381bc1835873b51700aeba590f8bfe94d92e73e93e9af7f8"
+}
+
+bindings {
+  requirement_id: "REQ-policy-attribution"
+  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.FuzzGoExecuteTestlogIngestion"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "acc01e8de8ae9acba555188407829b52d5df20f86fa75c015b6ceb454dc6b706"
+}

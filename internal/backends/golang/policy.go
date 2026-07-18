@@ -117,6 +117,18 @@ func validateConfig(cfg *stipulatorv1.GoInvocationConfig) error {
 		if strings.ContainsRune(a, 0) {
 			return fmt.Errorf("args entry %q contains NUL", a)
 		}
+		// The runtime-input capture file is per-process executor property:
+		// a reviewed redirection would sever the capture from the process
+		// the executor attributes it to, so the ingested file could carry
+		// another writer's bytes — or nothing — as completed evidence.
+		if name := strings.TrimLeft(a, "-"); len(name) != len(a) {
+			if i := strings.IndexByte(name, '='); i >= 0 {
+				name = name[:i]
+			}
+			if name == "test.testlogfile" {
+				return fmt.Errorf("args entry %q names the runtime-input capture file, which the executor owns per process", a)
+			}
+		}
 	}
 	return nil
 }

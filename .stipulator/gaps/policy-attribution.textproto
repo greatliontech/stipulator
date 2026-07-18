@@ -1,6 +1,0 @@
-# proto-file: proto/stipulator/v1/records.proto
-# proto-message: stipulator.v1.Gap
-
-requirement_id: "REQ-policy-attribution"
-reason: "the policy executor binds every test outcome to its producing invocation and owned child process; resolved pin-at-load configuration is not yet bound into run evidence and runtime observations are not yet attributed per process"
-lands { manual { condition: "per-process observation and deterministic event attribution land in the policy executor" } }

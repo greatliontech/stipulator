@@ -43,3 +43,10 @@ this window. The harness assumes package-parallel-safe witnesses (the
 `go test` baseline, declared in evidence.md); this issue remains the
 tracking point for closing the window mechanically (pre-run manifest
 evaluation in gofresh, or post-run interference detection).
+
+The policy executor's per-process observations share the identical
+window: each launched process's testlog is ingested after the process
+exits, digesting observed content at post-run state while the outcomes
+rode what the run read, and packages fan out concurrently within an
+invocation exactly like parallel witnesses. The same landing condition
+covers both capture sites.

@@ -37,6 +37,10 @@ type NormalizedInvocation struct {
 	Tags       []string
 	// GOFLAGS is the effective, validated GOFLAGS value.
 	GOFLAGS string
+	// GOEXPERIMENT is the effective experiment set pinned at load
+	// (`go env GOEXPERIMENT`); the committed record cannot set it, but the
+	// run's set is part of what ran and rides the evidentiary record.
+	GOEXPERIMENT string
 	// WorkspaceOn reports whether the invocation runs under the tree's
 	// go.work.
 	WorkspaceOn bool
@@ -166,6 +170,7 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		return nil, fmt.Errorf("invocation %q: ambient control: %w", inv.GetName(), err)
 	}
 	n.Toolchain, n.GOOS, n.GOARCH, n.GOFLAGS = version, goos, goarch, goflags
+	n.GOEXPERIMENT = goexperiment
 	n.CgoEnabled = cgo == "1"
 	// Pin every effective value into the child environment: later spawns
 	// run under the values resolved at load even if the host environment

@@ -351,3 +351,21 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "5c791aa9cc69815560f238adfa8bbb933be7490c7bd46cac73abb0773451c641"
 }
+
+bindings {
+  requirement_id: "REQ-go-policy-complete"
+  content_hash: "29ad9bb6ebf2b4d3d8f94dd3c3b3989b42a68cbaf565ca7912bdbc051063625e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteRefusesPostTerminalEvents"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b91dfa137fdd1478a5142bb877801de0fc4b29ce05792d01998521645f27cf6c"
+}
+
+bindings {
+  requirement_id: "REQ-go-policy-complete"
+  content_hash: "29ad9bb6ebf2b4d3d8f94dd3c3b3989b42a68cbaf565ca7912bdbc051063625e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.FuzzGoExecuteEventStream"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "6079f79f3e0a91d5381bc1835873b51700aeba590f8bfe94d92e73e93e9af7f8"
+}

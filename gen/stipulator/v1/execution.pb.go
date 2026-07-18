@@ -521,10 +521,11 @@ func (b0 PackageHealth_builder) Build() *PackageHealth {
 // appears — a package without a disposition does not exist in a completed
 // report.
 type InvocationHealth struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Invocation  *string                `protobuf:"bytes,1,opt,name=invocation"`
-	xxx_hidden_Disposition HealthDisposition      `protobuf:"varint,2,opt,name=disposition,enum=stipulator.v1.HealthDisposition"`
-	xxx_hidden_Packages    *[]*PackageHealth      `protobuf:"bytes,3,rep,name=packages"`
+	state                  protoimpl.MessageState      `protogen:"opaque.v1"`
+	xxx_hidden_Invocation  *string                     `protobuf:"bytes,1,opt,name=invocation"`
+	xxx_hidden_Disposition HealthDisposition           `protobuf:"varint,2,opt,name=disposition,enum=stipulator.v1.HealthDisposition"`
+	xxx_hidden_Packages    *[]*PackageHealth           `protobuf:"bytes,3,rep,name=packages"`
+	xxx_hidden_Resolved    isInvocationHealth_Resolved `protobuf_oneof:"resolved"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -584,18 +585,35 @@ func (x *InvocationHealth) GetPackages() []*PackageHealth {
 	return nil
 }
 
+func (x *InvocationHealth) GetGo() *GoResolvedConfig {
+	if x != nil {
+		if x, ok := x.xxx_hidden_Resolved.(*invocationHealth_Go); ok {
+			return x.Go
+		}
+	}
+	return nil
+}
+
 func (x *InvocationHealth) SetInvocation(v string) {
 	x.xxx_hidden_Invocation = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
 }
 
 func (x *InvocationHealth) SetDisposition(v HealthDisposition) {
 	x.xxx_hidden_Disposition = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
 }
 
 func (x *InvocationHealth) SetPackages(v []*PackageHealth) {
 	x.xxx_hidden_Packages = &v
+}
+
+func (x *InvocationHealth) SetGo(v *GoResolvedConfig) {
+	if v == nil {
+		x.xxx_hidden_Resolved = nil
+		return
+	}
+	x.xxx_hidden_Resolved = &invocationHealth_Go{v}
 }
 
 func (x *InvocationHealth) HasInvocation() bool {
@@ -612,6 +630,21 @@ func (x *InvocationHealth) HasDisposition() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
 }
 
+func (x *InvocationHealth) HasResolved() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Resolved != nil
+}
+
+func (x *InvocationHealth) HasGo() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Resolved.(*invocationHealth_Go)
+	return ok
+}
+
 func (x *InvocationHealth) ClearInvocation() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Invocation = nil
@@ -622,6 +655,31 @@ func (x *InvocationHealth) ClearDisposition() {
 	x.xxx_hidden_Disposition = HealthDisposition_HEALTH_DISPOSITION_UNSPECIFIED
 }
 
+func (x *InvocationHealth) ClearResolved() {
+	x.xxx_hidden_Resolved = nil
+}
+
+func (x *InvocationHealth) ClearGo() {
+	if _, ok := x.xxx_hidden_Resolved.(*invocationHealth_Go); ok {
+		x.xxx_hidden_Resolved = nil
+	}
+}
+
+const InvocationHealth_Resolved_not_set_case case_InvocationHealth_Resolved = 0
+const InvocationHealth_Go_case case_InvocationHealth_Resolved = 4
+
+func (x *InvocationHealth) WhichResolved() case_InvocationHealth_Resolved {
+	if x == nil {
+		return InvocationHealth_Resolved_not_set_case
+	}
+	switch x.xxx_hidden_Resolved.(type) {
+	case *invocationHealth_Go:
+		return InvocationHealth_Go_case
+	default:
+		return InvocationHealth_Resolved_not_set_case
+	}
+}
+
 type InvocationHealth_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -629,6 +687,16 @@ type InvocationHealth_builder struct {
 	Invocation  *string
 	Disposition *HealthDisposition
 	Packages    []*PackageHealth
+	// The invocation's resolved pin-at-load configuration, part of its
+	// evidentiary record: a field the committed record leaves absent pins
+	// its effective value at load, and the resolved value rides the report
+	// so what actually ran is reviewable after the fact. Exactly one typed
+	// backend case, mirroring the policy payload dispatch — orchestration
+	// carries it opaque.
+
+	// Fields of oneof xxx_hidden_Resolved:
+	Go *GoResolvedConfig
+	// -- end of xxx_hidden_Resolved
 }
 
 func (b0 InvocationHealth_builder) Build() *InvocationHealth {
@@ -636,33 +704,341 @@ func (b0 InvocationHealth_builder) Build() *InvocationHealth {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Invocation != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
 		x.xxx_hidden_Invocation = b.Invocation
 	}
 	if b.Disposition != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
 		x.xxx_hidden_Disposition = *b.Disposition
 	}
 	x.xxx_hidden_Packages = &b.Packages
+	if b.Go != nil {
+		x.xxx_hidden_Resolved = &invocationHealth_Go{b.Go}
+	}
+	return m0
+}
+
+type case_InvocationHealth_Resolved protoreflect.FieldNumber
+
+func (x case_InvocationHealth_Resolved) String() string {
+	md := file_stipulator_v1_execution_proto_msgTypes[2].Descriptor()
+	if x == 0 {
+		return "not set"
+	}
+	return protoimpl.X.MessageFieldStringOf(md, protoreflect.FieldNumber(x))
+}
+
+type isInvocationHealth_Resolved interface {
+	isInvocationHealth_Resolved()
+}
+
+type invocationHealth_Go struct {
+	Go *GoResolvedConfig `protobuf:"bytes,4,opt,name=go,oneof"`
+}
+
+func (*invocationHealth_Go) isInvocationHealth_Resolved() {}
+
+// GoResolvedConfig is the Go backend's resolved pin-at-load configuration:
+// the effective values normalization pinned at policy load. A field the
+// committed record sets explicitly appears at its explicit value; a field
+// it leaves absent appears at the value the tree and host environment
+// selected when the policy was loaded.
+type GoResolvedConfig struct {
+	state                   protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Toolchain    *string                `protobuf:"bytes,1,opt,name=toolchain"`
+	xxx_hidden_Goos         *string                `protobuf:"bytes,2,opt,name=goos"`
+	xxx_hidden_Goarch       *string                `protobuf:"bytes,3,opt,name=goarch"`
+	xxx_hidden_CgoEnabled   bool                   `protobuf:"varint,4,opt,name=cgo_enabled,json=cgoEnabled"`
+	xxx_hidden_Goflags      *string                `protobuf:"bytes,5,opt,name=goflags"`
+	xxx_hidden_Goexperiment *string                `protobuf:"bytes,6,opt,name=goexperiment"`
+	xxx_hidden_WorkspaceOn  bool                   `protobuf:"varint,7,opt,name=workspace_on,json=workspaceOn"`
+	XXX_raceDetectHookData  protoimpl.RaceDetectHookData
+	XXX_presence            [1]uint32
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *GoResolvedConfig) Reset() {
+	*x = GoResolvedConfig{}
+	mi := &file_stipulator_v1_execution_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GoResolvedConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GoResolvedConfig) ProtoMessage() {}
+
+func (x *GoResolvedConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_execution_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *GoResolvedConfig) GetToolchain() string {
+	if x != nil {
+		if x.xxx_hidden_Toolchain != nil {
+			return *x.xxx_hidden_Toolchain
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *GoResolvedConfig) GetGoos() string {
+	if x != nil {
+		if x.xxx_hidden_Goos != nil {
+			return *x.xxx_hidden_Goos
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *GoResolvedConfig) GetGoarch() string {
+	if x != nil {
+		if x.xxx_hidden_Goarch != nil {
+			return *x.xxx_hidden_Goarch
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *GoResolvedConfig) GetCgoEnabled() bool {
+	if x != nil {
+		return x.xxx_hidden_CgoEnabled
+	}
+	return false
+}
+
+func (x *GoResolvedConfig) GetGoflags() string {
+	if x != nil {
+		if x.xxx_hidden_Goflags != nil {
+			return *x.xxx_hidden_Goflags
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *GoResolvedConfig) GetGoexperiment() string {
+	if x != nil {
+		if x.xxx_hidden_Goexperiment != nil {
+			return *x.xxx_hidden_Goexperiment
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *GoResolvedConfig) GetWorkspaceOn() bool {
+	if x != nil {
+		return x.xxx_hidden_WorkspaceOn
+	}
+	return false
+}
+
+func (x *GoResolvedConfig) SetToolchain(v string) {
+	x.xxx_hidden_Toolchain = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 7)
+}
+
+func (x *GoResolvedConfig) SetGoos(v string) {
+	x.xxx_hidden_Goos = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 7)
+}
+
+func (x *GoResolvedConfig) SetGoarch(v string) {
+	x.xxx_hidden_Goarch = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 7)
+}
+
+func (x *GoResolvedConfig) SetCgoEnabled(v bool) {
+	x.xxx_hidden_CgoEnabled = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 7)
+}
+
+func (x *GoResolvedConfig) SetGoflags(v string) {
+	x.xxx_hidden_Goflags = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 7)
+}
+
+func (x *GoResolvedConfig) SetGoexperiment(v string) {
+	x.xxx_hidden_Goexperiment = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 7)
+}
+
+func (x *GoResolvedConfig) SetWorkspaceOn(v bool) {
+	x.xxx_hidden_WorkspaceOn = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 7)
+}
+
+func (x *GoResolvedConfig) HasToolchain() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *GoResolvedConfig) HasGoos() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *GoResolvedConfig) HasGoarch() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *GoResolvedConfig) HasCgoEnabled() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *GoResolvedConfig) HasGoflags() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *GoResolvedConfig) HasGoexperiment() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *GoResolvedConfig) HasWorkspaceOn() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
+func (x *GoResolvedConfig) ClearToolchain() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Toolchain = nil
+}
+
+func (x *GoResolvedConfig) ClearGoos() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Goos = nil
+}
+
+func (x *GoResolvedConfig) ClearGoarch() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Goarch = nil
+}
+
+func (x *GoResolvedConfig) ClearCgoEnabled() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_CgoEnabled = false
+}
+
+func (x *GoResolvedConfig) ClearGoflags() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_Goflags = nil
+}
+
+func (x *GoResolvedConfig) ClearGoexperiment() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_Goexperiment = nil
+}
+
+func (x *GoResolvedConfig) ClearWorkspaceOn() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	x.xxx_hidden_WorkspaceOn = false
+}
+
+type GoResolvedConfig_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Effective toolchain identity (`go env GOVERSION`).
+	Toolchain  *string
+	Goos       *string
+	Goarch     *string
+	CgoEnabled *bool
+	// Effective GOFLAGS after explicit override or ambient pin.
+	Goflags *string
+	// Effective experiment set (`go env GOEXPERIMENT`), pinned even though
+	// the committed record cannot set it: experiments move generated code
+	// and runtime behavior, so the run's set is part of what ran.
+	Goexperiment *string
+	// Whether the invocation ran under the tree's go.work.
+	WorkspaceOn *bool
+}
+
+func (b0 GoResolvedConfig_builder) Build() *GoResolvedConfig {
+	m0 := &GoResolvedConfig{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Toolchain != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 7)
+		x.xxx_hidden_Toolchain = b.Toolchain
+	}
+	if b.Goos != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 7)
+		x.xxx_hidden_Goos = b.Goos
+	}
+	if b.Goarch != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 7)
+		x.xxx_hidden_Goarch = b.Goarch
+	}
+	if b.CgoEnabled != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 7)
+		x.xxx_hidden_CgoEnabled = *b.CgoEnabled
+	}
+	if b.Goflags != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 7)
+		x.xxx_hidden_Goflags = b.Goflags
+	}
+	if b.Goexperiment != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 7)
+		x.xxx_hidden_Goexperiment = b.Goexperiment
+	}
+	if b.WorkspaceOn != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 7)
+		x.xxx_hidden_WorkspaceOn = *b.WorkspaceOn
+	}
 	return m0
 }
 
 // TestResult is one named test's outcome, attributed to its producer.
+// A stream legitimately carrying the same test more than once (an
+// invocation with `-count` above one) yields one result per occurrence in
+// stream order, never a collapsed union.
 type TestResult struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Package     *string                `protobuf:"bytes,1,opt,name=package"`
-	xxx_hidden_Test        *string                `protobuf:"bytes,2,opt,name=test"`
-	xxx_hidden_Outcome     TestOutcome            `protobuf:"varint,3,opt,name=outcome,enum=stipulator.v1.TestOutcome"`
-	xxx_hidden_Producer    *ProducerIdentity      `protobuf:"bytes,4,opt,name=producer"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	state                    protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Package       *string                `protobuf:"bytes,1,opt,name=package"`
+	xxx_hidden_Test          *string                `protobuf:"bytes,2,opt,name=test"`
+	xxx_hidden_Outcome       TestOutcome            `protobuf:"varint,3,opt,name=outcome,enum=stipulator.v1.TestOutcome"`
+	xxx_hidden_Producer      *ProducerIdentity      `protobuf:"bytes,4,opt,name=producer"`
+	xxx_hidden_Registrations []string               `protobuf:"bytes,6,rep,name=registrations"`
+	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
+	XXX_presence             [1]uint32
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *TestResult) Reset() {
 	*x = TestResult{}
-	mi := &file_stipulator_v1_execution_proto_msgTypes[3]
+	mi := &file_stipulator_v1_execution_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -674,7 +1050,7 @@ func (x *TestResult) String() string {
 func (*TestResult) ProtoMessage() {}
 
 func (x *TestResult) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_execution_proto_msgTypes[3]
+	mi := &file_stipulator_v1_execution_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -721,23 +1097,34 @@ func (x *TestResult) GetProducer() *ProducerIdentity {
 	return nil
 }
 
+func (x *TestResult) GetRegistrations() []string {
+	if x != nil {
+		return x.xxx_hidden_Registrations
+	}
+	return nil
+}
+
 func (x *TestResult) SetPackage(v string) {
 	x.xxx_hidden_Package = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 5)
 }
 
 func (x *TestResult) SetTest(v string) {
 	x.xxx_hidden_Test = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 5)
 }
 
 func (x *TestResult) SetOutcome(v TestOutcome) {
 	x.xxx_hidden_Outcome = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 5)
 }
 
 func (x *TestResult) SetProducer(v *ProducerIdentity) {
 	x.xxx_hidden_Producer = v
+}
+
+func (x *TestResult) SetRegistrations(v []string) {
+	x.xxx_hidden_Registrations = v
 }
 
 func (x *TestResult) HasPackage() bool {
@@ -794,6 +1181,12 @@ type TestResult_builder struct {
 	Test     *string
 	Outcome  *TestOutcome
 	Producer *ProducerIdentity
+	// Runtime coverage registrations this named test emitted in this
+	// process — requirement identifiers, sorted and deduplicated per
+	// occurrence. Subtest registrations ride the subtest's own result.
+	// Cross-checking against the binding store is downstream verification's
+	// judgment, never the executor's.
+	Registrations []string
 }
 
 func (b0 TestResult_builder) Build() *TestResult {
@@ -801,18 +1194,19 @@ func (b0 TestResult_builder) Build() *TestResult {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Package != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 5)
 		x.xxx_hidden_Package = b.Package
 	}
 	if b.Test != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 5)
 		x.xxx_hidden_Test = b.Test
 	}
 	if b.Outcome != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 5)
 		x.xxx_hidden_Outcome = *b.Outcome
 	}
 	x.xxx_hidden_Producer = b.Producer
+	x.xxx_hidden_Registrations = b.Registrations
 	return m0
 }
 
@@ -833,7 +1227,7 @@ type ObligationReport struct {
 
 func (x *ObligationReport) Reset() {
 	*x = ObligationReport{}
-	mi := &file_stipulator_v1_execution_proto_msgTypes[4]
+	mi := &file_stipulator_v1_execution_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -845,7 +1239,7 @@ func (x *ObligationReport) String() string {
 func (*ObligationReport) ProtoMessage() {}
 
 func (x *ObligationReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_execution_proto_msgTypes[4]
+	mi := &file_stipulator_v1_execution_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1000,7 +1394,7 @@ type FailureDiagnostic struct {
 
 func (x *FailureDiagnostic) Reset() {
 	*x = FailureDiagnostic{}
-	mi := &file_stipulator_v1_execution_proto_msgTypes[5]
+	mi := &file_stipulator_v1_execution_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1012,7 +1406,7 @@ func (x *FailureDiagnostic) String() string {
 func (*FailureDiagnostic) ProtoMessage() {}
 
 func (x *FailureDiagnostic) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_execution_proto_msgTypes[5]
+	mi := &file_stipulator_v1_execution_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1229,24 +1623,385 @@ func (b0 FailureDiagnostic_builder) Build() *FailureDiagnostic {
 	return m0
 }
 
+// CompletedObservation is the runtime-input evidence of one completed
+// process: the canonical gofresh v1 manifest built from the process's own
+// testlog, and its integrity digest — the encoding downstream witness
+// derivation hands to gofresh. The digest is empty when the manifest
+// itself records unverifiable observations; such a manifest still names
+// what was observed but can never check valid.
+type CompletedObservation struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Manifest    *string                `protobuf:"bytes,1,opt,name=manifest"`
+	xxx_hidden_Digest      *string                `protobuf:"bytes,2,opt,name=digest"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *CompletedObservation) Reset() {
+	*x = CompletedObservation{}
+	mi := &file_stipulator_v1_execution_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CompletedObservation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CompletedObservation) ProtoMessage() {}
+
+func (x *CompletedObservation) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_execution_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *CompletedObservation) GetManifest() string {
+	if x != nil {
+		if x.xxx_hidden_Manifest != nil {
+			return *x.xxx_hidden_Manifest
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *CompletedObservation) GetDigest() string {
+	if x != nil {
+		if x.xxx_hidden_Digest != nil {
+			return *x.xxx_hidden_Digest
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *CompletedObservation) SetManifest(v string) {
+	x.xxx_hidden_Manifest = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+}
+
+func (x *CompletedObservation) SetDigest(v string) {
+	x.xxx_hidden_Digest = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+}
+
+func (x *CompletedObservation) HasManifest() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *CompletedObservation) HasDigest() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *CompletedObservation) ClearManifest() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Manifest = nil
+}
+
+func (x *CompletedObservation) ClearDigest() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Digest = nil
+}
+
+type CompletedObservation_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Manifest *string
+	Digest   *string
+}
+
+func (b0 CompletedObservation_builder) Build() *CompletedObservation {
+	m0 := &CompletedObservation{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Manifest != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		x.xxx_hidden_Manifest = b.Manifest
+	}
+	if b.Digest != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		x.xxx_hidden_Digest = b.Digest
+	}
+	return m0
+}
+
+// Observation is one launched process's runtime-input observation, bound
+// to the exact policy invocation and operating-system process that
+// produced it. Completeness is structural: a completed record carries
+// manifest evidence and an incomplete record carries only its reason, so
+// bytes from an incomplete child cannot be expressed as completed
+// evidence. Observations from distinct processes are never merged — a
+// union is a downstream consumer's judgment under its own contract,
+// never the report's. A package whose process was never launched has no
+// observation at all.
+type Observation struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Producer    *ProducerIdentity      `protobuf:"bytes,1,opt,name=producer"`
+	xxx_hidden_Package     *string                `protobuf:"bytes,2,opt,name=package"`
+	xxx_hidden_Evidence    isObservation_Evidence `protobuf_oneof:"evidence"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *Observation) Reset() {
+	*x = Observation{}
+	mi := &file_stipulator_v1_execution_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Observation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Observation) ProtoMessage() {}
+
+func (x *Observation) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_execution_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Observation) GetProducer() *ProducerIdentity {
+	if x != nil {
+		return x.xxx_hidden_Producer
+	}
+	return nil
+}
+
+func (x *Observation) GetPackage() string {
+	if x != nil {
+		if x.xxx_hidden_Package != nil {
+			return *x.xxx_hidden_Package
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *Observation) GetCompleted() *CompletedObservation {
+	if x != nil {
+		if x, ok := x.xxx_hidden_Evidence.(*observation_Completed); ok {
+			return x.Completed
+		}
+	}
+	return nil
+}
+
+func (x *Observation) GetIncompleteReason() string {
+	if x != nil {
+		if x, ok := x.xxx_hidden_Evidence.(*observation_IncompleteReason); ok {
+			return x.IncompleteReason
+		}
+	}
+	return ""
+}
+
+func (x *Observation) SetProducer(v *ProducerIdentity) {
+	x.xxx_hidden_Producer = v
+}
+
+func (x *Observation) SetPackage(v string) {
+	x.xxx_hidden_Package = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *Observation) SetCompleted(v *CompletedObservation) {
+	if v == nil {
+		x.xxx_hidden_Evidence = nil
+		return
+	}
+	x.xxx_hidden_Evidence = &observation_Completed{v}
+}
+
+func (x *Observation) SetIncompleteReason(v string) {
+	x.xxx_hidden_Evidence = &observation_IncompleteReason{v}
+}
+
+func (x *Observation) HasProducer() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Producer != nil
+}
+
+func (x *Observation) HasPackage() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *Observation) HasEvidence() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Evidence != nil
+}
+
+func (x *Observation) HasCompleted() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Evidence.(*observation_Completed)
+	return ok
+}
+
+func (x *Observation) HasIncompleteReason() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Evidence.(*observation_IncompleteReason)
+	return ok
+}
+
+func (x *Observation) ClearProducer() {
+	x.xxx_hidden_Producer = nil
+}
+
+func (x *Observation) ClearPackage() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Package = nil
+}
+
+func (x *Observation) ClearEvidence() {
+	x.xxx_hidden_Evidence = nil
+}
+
+func (x *Observation) ClearCompleted() {
+	if _, ok := x.xxx_hidden_Evidence.(*observation_Completed); ok {
+		x.xxx_hidden_Evidence = nil
+	}
+}
+
+func (x *Observation) ClearIncompleteReason() {
+	if _, ok := x.xxx_hidden_Evidence.(*observation_IncompleteReason); ok {
+		x.xxx_hidden_Evidence = nil
+	}
+}
+
+const Observation_Evidence_not_set_case case_Observation_Evidence = 0
+const Observation_Completed_case case_Observation_Evidence = 3
+const Observation_IncompleteReason_case case_Observation_Evidence = 4
+
+func (x *Observation) WhichEvidence() case_Observation_Evidence {
+	if x == nil {
+		return Observation_Evidence_not_set_case
+	}
+	switch x.xxx_hidden_Evidence.(type) {
+	case *observation_Completed:
+		return Observation_Completed_case
+	case *observation_IncompleteReason:
+		return Observation_IncompleteReason_case
+	default:
+		return Observation_Evidence_not_set_case
+	}
+}
+
+type Observation_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Producer *ProducerIdentity
+	// Package whose owned test process produced the observation.
+	Package *string
+	// Fields of oneof xxx_hidden_Evidence:
+	Completed *CompletedObservation
+	// Why no completed observation exists: the process died before its
+	// testlog flushed, its package did not dispose healthy, no test
+	// process ran, or ingestion failed.
+	IncompleteReason *string
+	// -- end of xxx_hidden_Evidence
+}
+
+func (b0 Observation_builder) Build() *Observation {
+	m0 := &Observation{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Producer = b.Producer
+	if b.Package != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		x.xxx_hidden_Package = b.Package
+	}
+	if b.Completed != nil {
+		x.xxx_hidden_Evidence = &observation_Completed{b.Completed}
+	}
+	if b.IncompleteReason != nil {
+		x.xxx_hidden_Evidence = &observation_IncompleteReason{*b.IncompleteReason}
+	}
+	return m0
+}
+
+type case_Observation_Evidence protoreflect.FieldNumber
+
+func (x case_Observation_Evidence) String() string {
+	md := file_stipulator_v1_execution_proto_msgTypes[8].Descriptor()
+	if x == 0 {
+		return "not set"
+	}
+	return protoimpl.X.MessageFieldStringOf(md, protoreflect.FieldNumber(x))
+}
+
+type isObservation_Evidence interface {
+	isObservation_Evidence()
+}
+
+type observation_Completed struct {
+	Completed *CompletedObservation `protobuf:"bytes,3,opt,name=completed,oneof"`
+}
+
+type observation_IncompleteReason struct {
+	// Why no completed observation exists: the process died before its
+	// testlog flushed, its package did not dispose healthy, no test
+	// process ran, or ingestion failed.
+	IncompleteReason string `protobuf:"bytes,4,opt,name=incomplete_reason,json=incompleteReason,oneof"`
+}
+
+func (*observation_Completed) isObservation_Evidence() {}
+
+func (*observation_IncompleteReason) isObservation_Evidence() {}
+
 // ExecutionReport is the outcome of one execution of the accepted test
 // policy. Suite health is derived, never stored: the suite is healthy
 // exactly when every invocation's disposition is healthy. Progress is
 // deliberately absent — progress events are notifications, never result
 // payload.
 type ExecutionReport struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Invocations *[]*InvocationHealth   `protobuf:"bytes,1,rep,name=invocations"`
-	xxx_hidden_Tests       *[]*TestResult         `protobuf:"bytes,2,rep,name=tests"`
-	xxx_hidden_Obligations *[]*ObligationReport   `protobuf:"bytes,3,rep,name=obligations"`
-	xxx_hidden_Diagnostics *[]*FailureDiagnostic  `protobuf:"bytes,4,rep,name=diagnostics"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Invocations  *[]*InvocationHealth   `protobuf:"bytes,1,rep,name=invocations"`
+	xxx_hidden_Tests        *[]*TestResult         `protobuf:"bytes,2,rep,name=tests"`
+	xxx_hidden_Obligations  *[]*ObligationReport   `protobuf:"bytes,3,rep,name=obligations"`
+	xxx_hidden_Diagnostics  *[]*FailureDiagnostic  `protobuf:"bytes,4,rep,name=diagnostics"`
+	xxx_hidden_Observations *[]*Observation        `protobuf:"bytes,5,rep,name=observations"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *ExecutionReport) Reset() {
 	*x = ExecutionReport{}
-	mi := &file_stipulator_v1_execution_proto_msgTypes[6]
+	mi := &file_stipulator_v1_execution_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1258,7 +2013,7 @@ func (x *ExecutionReport) String() string {
 func (*ExecutionReport) ProtoMessage() {}
 
 func (x *ExecutionReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_execution_proto_msgTypes[6]
+	mi := &file_stipulator_v1_execution_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1305,6 +2060,15 @@ func (x *ExecutionReport) GetDiagnostics() []*FailureDiagnostic {
 	return nil
 }
 
+func (x *ExecutionReport) GetObservations() []*Observation {
+	if x != nil {
+		if x.xxx_hidden_Observations != nil {
+			return *x.xxx_hidden_Observations
+		}
+	}
+	return nil
+}
+
 func (x *ExecutionReport) SetInvocations(v []*InvocationHealth) {
 	x.xxx_hidden_Invocations = &v
 }
@@ -1321,6 +2085,10 @@ func (x *ExecutionReport) SetDiagnostics(v []*FailureDiagnostic) {
 	x.xxx_hidden_Diagnostics = &v
 }
 
+func (x *ExecutionReport) SetObservations(v []*Observation) {
+	x.xxx_hidden_Observations = &v
+}
+
 type ExecutionReport_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -1328,6 +2096,9 @@ type ExecutionReport_builder struct {
 	Tests       []*TestResult
 	Obligations []*ObligationReport
 	Diagnostics []*FailureDiagnostic
+	// Per-process runtime observations, one per launched process, each
+	// bound to its producer.
+	Observations []*Observation
 }
 
 func (b0 ExecutionReport_builder) Build() *ExecutionReport {
@@ -1338,6 +2109,7 @@ func (b0 ExecutionReport_builder) Build() *ExecutionReport {
 	x.xxx_hidden_Tests = &b.Tests
 	x.xxx_hidden_Obligations = &b.Obligations
 	x.xxx_hidden_Diagnostics = &b.Diagnostics
+	x.xxx_hidden_Observations = &b.Observations
 	return m0
 }
 
@@ -1359,7 +2131,7 @@ type ProgressEvent struct {
 
 func (x *ProgressEvent) Reset() {
 	*x = ProgressEvent{}
-	mi := &file_stipulator_v1_execution_proto_msgTypes[7]
+	mi := &file_stipulator_v1_execution_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1371,7 +2143,7 @@ func (x *ProgressEvent) String() string {
 func (*ProgressEvent) ProtoMessage() {}
 
 func (x *ProgressEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_execution_proto_msgTypes[7]
+	mi := &file_stipulator_v1_execution_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1589,19 +2361,32 @@ const file_stipulator_v1_execution_proto_rawDesc = "" +
 	"\x0fprocess_ordinal\x18\x03 \x01(\x05R\x0eprocessOrdinal\"m\n" +
 	"\rPackageHealth\x12\x18\n" +
 	"\apackage\x18\x01 \x01(\tR\apackage\x12B\n" +
-	"\vdisposition\x18\x02 \x01(\x0e2 .stipulator.v1.HealthDispositionR\vdisposition\"\xb0\x01\n" +
+	"\vdisposition\x18\x02 \x01(\x0e2 .stipulator.v1.HealthDispositionR\vdisposition\"\xef\x01\n" +
 	"\x10InvocationHealth\x12\x1e\n" +
 	"\n" +
 	"invocation\x18\x01 \x01(\tR\n" +
 	"invocation\x12B\n" +
 	"\vdisposition\x18\x02 \x01(\x0e2 .stipulator.v1.HealthDispositionR\vdisposition\x128\n" +
-	"\bpackages\x18\x03 \x03(\v2\x1c.stipulator.v1.PackageHealthR\bpackages\"\xbb\x01\n" +
+	"\bpackages\x18\x03 \x03(\v2\x1c.stipulator.v1.PackageHealthR\bpackages\x121\n" +
+	"\x02go\x18\x04 \x01(\v2\x1f.stipulator.v1.GoResolvedConfigH\x00R\x02goB\n" +
+	"\n" +
+	"\bresolved\"\xde\x01\n" +
+	"\x10GoResolvedConfig\x12\x1c\n" +
+	"\ttoolchain\x18\x01 \x01(\tR\ttoolchain\x12\x12\n" +
+	"\x04goos\x18\x02 \x01(\tR\x04goos\x12\x16\n" +
+	"\x06goarch\x18\x03 \x01(\tR\x06goarch\x12\x1f\n" +
+	"\vcgo_enabled\x18\x04 \x01(\bR\n" +
+	"cgoEnabled\x12\x18\n" +
+	"\agoflags\x18\x05 \x01(\tR\agoflags\x12\"\n" +
+	"\fgoexperiment\x18\x06 \x01(\tR\fgoexperiment\x12!\n" +
+	"\fworkspace_on\x18\a \x01(\bR\vworkspaceOn\"\xe1\x01\n" +
 	"\n" +
 	"TestResult\x12\x18\n" +
 	"\apackage\x18\x01 \x01(\tR\apackage\x12\x12\n" +
 	"\x04test\x18\x02 \x01(\tR\x04test\x124\n" +
 	"\aoutcome\x18\x03 \x01(\x0e2\x1a.stipulator.v1.TestOutcomeR\aoutcome\x12;\n" +
-	"\bproducer\x18\x04 \x01(\v2\x1f.stipulator.v1.ProducerIdentityR\bproducerJ\x04\b\x05\x10\x06R\x06served\"\xb6\x01\n" +
+	"\bproducer\x18\x04 \x01(\v2\x1f.stipulator.v1.ProducerIdentityR\bproducer\x12$\n" +
+	"\rregistrations\x18\x06 \x03(\tR\rregistrationsJ\x04\b\x05\x10\x06R\x06served\"\xb6\x01\n" +
 	"\x10ObligationReport\x12\x18\n" +
 	"\abackend\x18\x01 \x01(\tR\abackend\x12\x1e\n" +
 	"\n" +
@@ -1617,12 +2402,23 @@ const file_stipulator_v1_execution_proto_rawDesc = "" +
 	"\x04test\x18\x03 \x01(\tR\x04test\x12B\n" +
 	"\vdisposition\x18\x04 \x01(\x0e2 .stipulator.v1.HealthDispositionR\vdisposition\x12\x16\n" +
 	"\x06output\x18\x05 \x01(\tR\x06output\x12\x1c\n" +
-	"\ttruncated\x18\x06 \x01(\bR\ttruncated\"\xa0\x02\n" +
+	"\ttruncated\x18\x06 \x01(\bR\ttruncated\"J\n" +
+	"\x14CompletedObservation\x12\x1a\n" +
+	"\bmanifest\x18\x01 \x01(\tR\bmanifest\x12\x16\n" +
+	"\x06digest\x18\x02 \x01(\tR\x06digest\"\xe4\x01\n" +
+	"\vObservation\x12;\n" +
+	"\bproducer\x18\x01 \x01(\v2\x1f.stipulator.v1.ProducerIdentityR\bproducer\x12\x18\n" +
+	"\apackage\x18\x02 \x01(\tR\apackage\x12C\n" +
+	"\tcompleted\x18\x03 \x01(\v2#.stipulator.v1.CompletedObservationH\x00R\tcompleted\x12-\n" +
+	"\x11incomplete_reason\x18\x04 \x01(\tH\x00R\x10incompleteReasonB\n" +
+	"\n" +
+	"\bevidence\"\xcc\x02\n" +
 	"\x0fExecutionReport\x12A\n" +
 	"\vinvocations\x18\x01 \x03(\v2\x1f.stipulator.v1.InvocationHealthR\vinvocations\x12/\n" +
 	"\x05tests\x18\x02 \x03(\v2\x19.stipulator.v1.TestResultR\x05tests\x12A\n" +
 	"\vobligations\x18\x03 \x03(\v2\x1f.stipulator.v1.ObligationReportR\vobligations\x12B\n" +
-	"\vdiagnostics\x18\x04 \x03(\v2 .stipulator.v1.FailureDiagnosticR\vdiagnosticsJ\x04\b\x05\x10\x06R\fobservations\"\x89\x02\n" +
+	"\vdiagnostics\x18\x04 \x03(\v2 .stipulator.v1.FailureDiagnosticR\vdiagnostics\x12>\n" +
+	"\fobservations\x18\x05 \x03(\v2\x1a.stipulator.v1.ObservationR\fobservations\"\x89\x02\n" +
 	"\rProgressEvent\x12*\n" +
 	"\x05phase\x18\x01 \x01(\x0e2\x14.stipulator.v1.PhaseR\x05phase\x12\x1e\n" +
 	"\n" +
@@ -1660,43 +2456,50 @@ const file_stipulator_v1_execution_proto_rawDesc = "" +
 	"\x1dTERMINAL_CAUSE_SERVER_FAILURE\x10\x05BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
 var file_stipulator_v1_execution_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_stipulator_v1_execution_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_stipulator_v1_execution_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_stipulator_v1_execution_proto_goTypes = []any{
-	(HealthDisposition)(0),      // 0: stipulator.v1.HealthDisposition
-	(ObligationDisposition)(0),  // 1: stipulator.v1.ObligationDisposition
-	(Phase)(0),                  // 2: stipulator.v1.Phase
-	(TerminalCause)(0),          // 3: stipulator.v1.TerminalCause
-	(*ProducerIdentity)(nil),    // 4: stipulator.v1.ProducerIdentity
-	(*PackageHealth)(nil),       // 5: stipulator.v1.PackageHealth
-	(*InvocationHealth)(nil),    // 6: stipulator.v1.InvocationHealth
-	(*TestResult)(nil),          // 7: stipulator.v1.TestResult
-	(*ObligationReport)(nil),    // 8: stipulator.v1.ObligationReport
-	(*FailureDiagnostic)(nil),   // 9: stipulator.v1.FailureDiagnostic
-	(*ExecutionReport)(nil),     // 10: stipulator.v1.ExecutionReport
-	(*ProgressEvent)(nil),       // 11: stipulator.v1.ProgressEvent
-	(TestOutcome)(0),            // 12: stipulator.v1.TestOutcome
-	(*durationpb.Duration)(nil), // 13: google.protobuf.Duration
+	(HealthDisposition)(0),       // 0: stipulator.v1.HealthDisposition
+	(ObligationDisposition)(0),   // 1: stipulator.v1.ObligationDisposition
+	(Phase)(0),                   // 2: stipulator.v1.Phase
+	(TerminalCause)(0),           // 3: stipulator.v1.TerminalCause
+	(*ProducerIdentity)(nil),     // 4: stipulator.v1.ProducerIdentity
+	(*PackageHealth)(nil),        // 5: stipulator.v1.PackageHealth
+	(*InvocationHealth)(nil),     // 6: stipulator.v1.InvocationHealth
+	(*GoResolvedConfig)(nil),     // 7: stipulator.v1.GoResolvedConfig
+	(*TestResult)(nil),           // 8: stipulator.v1.TestResult
+	(*ObligationReport)(nil),     // 9: stipulator.v1.ObligationReport
+	(*FailureDiagnostic)(nil),    // 10: stipulator.v1.FailureDiagnostic
+	(*CompletedObservation)(nil), // 11: stipulator.v1.CompletedObservation
+	(*Observation)(nil),          // 12: stipulator.v1.Observation
+	(*ExecutionReport)(nil),      // 13: stipulator.v1.ExecutionReport
+	(*ProgressEvent)(nil),        // 14: stipulator.v1.ProgressEvent
+	(TestOutcome)(0),             // 15: stipulator.v1.TestOutcome
+	(*durationpb.Duration)(nil),  // 16: google.protobuf.Duration
 }
 var file_stipulator_v1_execution_proto_depIdxs = []int32{
 	0,  // 0: stipulator.v1.PackageHealth.disposition:type_name -> stipulator.v1.HealthDisposition
 	0,  // 1: stipulator.v1.InvocationHealth.disposition:type_name -> stipulator.v1.HealthDisposition
 	5,  // 2: stipulator.v1.InvocationHealth.packages:type_name -> stipulator.v1.PackageHealth
-	12, // 3: stipulator.v1.TestResult.outcome:type_name -> stipulator.v1.TestOutcome
-	4,  // 4: stipulator.v1.TestResult.producer:type_name -> stipulator.v1.ProducerIdentity
-	1,  // 5: stipulator.v1.ObligationReport.disposition:type_name -> stipulator.v1.ObligationDisposition
-	0,  // 6: stipulator.v1.FailureDiagnostic.disposition:type_name -> stipulator.v1.HealthDisposition
-	6,  // 7: stipulator.v1.ExecutionReport.invocations:type_name -> stipulator.v1.InvocationHealth
-	7,  // 8: stipulator.v1.ExecutionReport.tests:type_name -> stipulator.v1.TestResult
-	8,  // 9: stipulator.v1.ExecutionReport.obligations:type_name -> stipulator.v1.ObligationReport
-	9,  // 10: stipulator.v1.ExecutionReport.diagnostics:type_name -> stipulator.v1.FailureDiagnostic
-	2,  // 11: stipulator.v1.ProgressEvent.phase:type_name -> stipulator.v1.Phase
-	13, // 12: stipulator.v1.ProgressEvent.elapsed:type_name -> google.protobuf.Duration
-	3,  // 13: stipulator.v1.ProgressEvent.terminal_cause:type_name -> stipulator.v1.TerminalCause
-	14, // [14:14] is the sub-list for method output_type
-	14, // [14:14] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	7,  // 3: stipulator.v1.InvocationHealth.go:type_name -> stipulator.v1.GoResolvedConfig
+	15, // 4: stipulator.v1.TestResult.outcome:type_name -> stipulator.v1.TestOutcome
+	4,  // 5: stipulator.v1.TestResult.producer:type_name -> stipulator.v1.ProducerIdentity
+	1,  // 6: stipulator.v1.ObligationReport.disposition:type_name -> stipulator.v1.ObligationDisposition
+	0,  // 7: stipulator.v1.FailureDiagnostic.disposition:type_name -> stipulator.v1.HealthDisposition
+	4,  // 8: stipulator.v1.Observation.producer:type_name -> stipulator.v1.ProducerIdentity
+	11, // 9: stipulator.v1.Observation.completed:type_name -> stipulator.v1.CompletedObservation
+	6,  // 10: stipulator.v1.ExecutionReport.invocations:type_name -> stipulator.v1.InvocationHealth
+	8,  // 11: stipulator.v1.ExecutionReport.tests:type_name -> stipulator.v1.TestResult
+	9,  // 12: stipulator.v1.ExecutionReport.obligations:type_name -> stipulator.v1.ObligationReport
+	10, // 13: stipulator.v1.ExecutionReport.diagnostics:type_name -> stipulator.v1.FailureDiagnostic
+	12, // 14: stipulator.v1.ExecutionReport.observations:type_name -> stipulator.v1.Observation
+	2,  // 15: stipulator.v1.ProgressEvent.phase:type_name -> stipulator.v1.Phase
+	16, // 16: stipulator.v1.ProgressEvent.elapsed:type_name -> google.protobuf.Duration
+	3,  // 17: stipulator.v1.ProgressEvent.terminal_cause:type_name -> stipulator.v1.TerminalCause
+	18, // [18:18] is the sub-list for method output_type
+	18, // [18:18] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_execution_proto_init() }
@@ -1705,13 +2508,20 @@ func file_stipulator_v1_execution_proto_init() {
 		return
 	}
 	file_stipulator_v1_reports_proto_init()
+	file_stipulator_v1_execution_proto_msgTypes[2].OneofWrappers = []any{
+		(*invocationHealth_Go)(nil),
+	}
+	file_stipulator_v1_execution_proto_msgTypes[8].OneofWrappers = []any{
+		(*observation_Completed)(nil),
+		(*observation_IncompleteReason)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_execution_proto_rawDesc), len(file_stipulator_v1_execution_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   8,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
