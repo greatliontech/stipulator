@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
-	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
@@ -29,16 +28,9 @@ func verifyCmd() *cobra.Command {
 			}
 			var testRun *verify.TestRun
 			if !noTest {
-				fmt.Fprintln(os.Stderr, dim("witnessing: fresh-checked; stale and unproven tests run (-race)"))
-				tr, err := golang.RunTestsFreshContext(cmd.Context(), chdir)
+				tr, err := witnessRun(cmd.Context())
 				if err != nil {
 					return err
-				}
-				if tr.Ran+tr.Fresh > 0 {
-					fmt.Fprintln(os.Stderr, dim(fmt.Sprintf("witnessed: %d ran, %d served fresh, %d uncacheable", tr.Ran, tr.Fresh, tr.Uncached)))
-				}
-				for key, out := range tr.Failures {
-					fmt.Fprintf(os.Stderr, "%s\n%s", red("witness failed: "+key), out)
 				}
 				testRun = tr
 			}

@@ -36,6 +36,13 @@ import (
 // the log it summarizes. Truncation is always marked, never silent.
 const failureOutputCap = 64 << 10
 
+// isAbortOutput recognizes the output of a dying test binary. A test that
+// legitimately prints these words costs a spurious untrusted-stream
+// classification for its process — its evidence is refused, nothing more.
+func isAbortOutput(s string) bool {
+	return strings.Contains(s, "panic: ") || strings.Contains(s, "fatal error: ")
+}
+
 // boundedBuffer retains at most failureOutputCap bytes and records that it
 // dropped the rest.
 type boundedBuffer struct {

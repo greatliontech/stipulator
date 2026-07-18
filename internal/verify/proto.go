@@ -42,6 +42,8 @@ func (r *Report) Proto() *stipulatorv1.VerifyReport {
 		regs = append(regs, m)
 	}
 	out.SetRegistrations(regs)
+	out.SetOutsidePolicy(int32(r.OutsidePolicy))
+	out.SetPackageFailures(r.PackageFailures)
 	return out
 }
 

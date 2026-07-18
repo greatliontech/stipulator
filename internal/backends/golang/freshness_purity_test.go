@@ -1,6 +1,7 @@
 package golang
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,6 +38,7 @@ func TestReadsObservedFixture(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tmp, "purefix_test.go"), []byte(testSource), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	writeRacePolicy(t, tmp)
 	return tmp
 }
 
@@ -52,7 +54,7 @@ func TestObservationProofPublishesAndServes(t *testing.T) {
 	}
 	tmp := observedReaderModule(t)
 
-	first, err := RunTestsFresh(tmp)
+	first, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +73,7 @@ func TestObservationProofPublishesAndServes(t *testing.T) {
 		t.Fatalf("published fingerprint lacks attributable positive observation proof: %+v", records)
 	}
 
-	second, err := RunTestsFresh(tmp)
+	second, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +99,7 @@ func TestObservationProofNeverWaivesInputDigest(t *testing.T) {
 	}
 	tmp := observedReaderModule(t)
 
-	first, err := RunTestsFresh(tmp)
+	first, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +111,7 @@ func TestObservationProofNeverWaivesInputDigest(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tmp, "data.txt"), []byte("v2\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	second, err := RunTestsFresh(tmp)
+	second, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,8 +151,9 @@ func TestStatsFixture(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tmp, "statfix_test.go"), []byte(testSource), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	writeRacePolicy(t, tmp)
 
-	result, err := RunTestsFresh(tmp)
+	result, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +188,7 @@ func TestIncompatibleObservationEvidenceCannotServe(t *testing.T) {
 		t.Skip("executes a real race-instrumented witness suite")
 	}
 	tmp := observedReaderModule(t)
-	first, err := RunTestsFresh(tmp)
+	first, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,7 +220,7 @@ func TestIncompatibleObservationEvidenceCannotServe(t *testing.T) {
 		t.Fatalf("canonical incompatible proof was not structurally readable: %+v", got)
 	}
 
-	second, err := RunTestsFresh(tmp)
+	second, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -269,8 +272,9 @@ func TestBDependsOnSiblingState(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tmp, "sibling_test.go"), []byte(testSource), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	writeRacePolicy(t, tmp)
 	for run := 1; run <= 2; run++ {
-		result, err := RunTestsFresh(tmp)
+		result, err := RunWitnesses(context.Background(), tmp)
 		if err != nil {
 			t.Fatal(err)
 		}

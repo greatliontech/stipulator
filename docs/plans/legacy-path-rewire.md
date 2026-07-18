@@ -13,7 +13,7 @@ Spec: docs/specs/overview.md, docs/specs/evidence.md, docs/specs/change.md, docs
       on selective-process disposition, post-run served-record revalidation
       with one in-run retry, empty-served degrade, outside-policy count in
       report + views; disjointness pinning test.
-- [ ] 4 Rewire consumers + kill: cmd verify/gate/prune + mcpserver runTests
+- [x] 4 Rewire consumers + kill: cmd verify/gate/prune + mcpserver runTests
       switch; delete legacy runners per kill list; repoint drift/ungated-pass
       fixtures; fire+prune core-one-execution gap; close reds-only issue.
 - [ ] 5 gofresh bump + brackets: pkgDirs plumbing, pre-spawn module-relative

@@ -13,6 +13,8 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -852,5 +854,70 @@ func TestContextAndPartitionsNoTestSkipWitnessing(t *testing.T) {
 	}})
 	if err != nil || res.IsError {
 		t.Fatalf("partitions no_test: %v %v", err, res)
+	}
+}
+
+// TestVerifyToolNamesPolicyRecordProblem pins the tree-fact
+// classification of a policy record problem on the MCP surface: a verify
+// call over a tree with no accepted test policy fails carrying the
+// record's path and the loader's guidance — never a bare server failure
+// — and its terminal cause is TEST_FAILURE, the same classification the
+// unified check gives the condition, so an agent distinguishes no-policy
+// from server fault without guessing (REQ-mcp-progress).
+func TestVerifyToolNamesPolicyRecordProblem(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-progress")
+	// A real tree with no policy record: the production witnessing seam
+	// fails through the one shared loading seam.
+	dir := t.TempDir()
+	s := &Server{
+		fsys: func() fs.FS {
+			return fstest.MapFS{
+				".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
+				"specs/a.md":                     {Data: []byte(doc)},
+			}
+		},
+		backends: func(context.Context) (map[string]verify.Backend, error) {
+			return map[string]verify.Backend{"go": fakeBackend{}}, nil
+		},
+		runTests: func(ctx context.Context) (*verify.TestRun, error) { return golang.RunWitnesses(ctx, dir) },
+	}
+	ct, st := mcp.NewInMemoryTransports()
+	go func() { _ = s.MCP().Run(context.Background(), st) }()
+	log := &notificationLog{}
+	client := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "v0"}, &mcp.ClientOptions{
+		ProgressNotificationHandler: func(_ context.Context, req *mcp.ProgressNotificationClientRequest) {
+			log.add(req.Params)
+		},
+	})
+	sess, err := client.Connect(context.Background(), ct, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { sess.Close() })
+
+	params := &mcp.CallToolParams{Name: "verify", Arguments: map[string]any{}}
+	params.SetProgressToken("verify-policy-problem")
+	res, err := sess.CallTool(context.Background(), params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.IsError {
+		t.Fatal("verify over a policy-less tree did not fail")
+	}
+	text := toolText(t, res)
+	if !strings.Contains(text, ".stipulator/policy.textproto") ||
+		!strings.Contains(text, "no accepted test policy") {
+		t.Fatalf("tool error does not carry the record path and loader guidance:\n%s", text)
+	}
+	// The terminal notification rides the non-blocking sender after the
+	// call returns; poll until a cause-carrying event arrives.
+	deadline := time.Now().Add(5 * time.Second)
+	cause := stipulatorv1.TerminalCause_TERMINAL_CAUSE_UNSPECIFIED
+	for time.Now().Before(deadline) && cause == stipulatorv1.TerminalCause_TERMINAL_CAUSE_UNSPECIFIED {
+		_, cause = phasesOf(t, log.snapshot())
+		time.Sleep(5 * time.Millisecond)
+	}
+	if cause != stipulatorv1.TerminalCause_TERMINAL_CAUSE_TEST_FAILURE {
+		t.Fatalf("terminal cause = %v, want TEST_FAILURE: a record problem is a tree fact, not a server fault", cause)
 	}
 }

@@ -1069,13 +1069,17 @@ func (b0 RegistrationResult_builder) Build() *RegistrationResult {
 
 // VerifyReport is the outcome of a verification run.
 type VerifyReport struct {
-	state                    protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Problems      *[]*Problem            `protobuf:"bytes,1,rep,name=problems"`
-	xxx_hidden_Results       *[]*BindingResult      `protobuf:"bytes,2,rep,name=results"`
-	xxx_hidden_Registrations *[]*RegistrationResult `protobuf:"bytes,3,rep,name=registrations"`
-	xxx_hidden_Signatures    *[]*ChangeSignature    `protobuf:"bytes,4,rep,name=signatures"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	state                      protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Problems        *[]*Problem            `protobuf:"bytes,1,rep,name=problems"`
+	xxx_hidden_Results         *[]*BindingResult      `protobuf:"bytes,2,rep,name=results"`
+	xxx_hidden_Registrations   *[]*RegistrationResult `protobuf:"bytes,3,rep,name=registrations"`
+	xxx_hidden_Signatures      *[]*ChangeSignature    `protobuf:"bytes,4,rep,name=signatures"`
+	xxx_hidden_OutsidePolicy   int32                  `protobuf:"varint,5,opt,name=outside_policy,json=outsidePolicy"`
+	xxx_hidden_PackageFailures map[string]string      `protobuf:"bytes,6,rep,name=package_failures,json=packageFailures" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	XXX_raceDetectHookData     protoimpl.RaceDetectHookData
+	XXX_presence               [1]uint32
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *VerifyReport) Reset() {
@@ -1139,6 +1143,20 @@ func (x *VerifyReport) GetSignatures() []*ChangeSignature {
 	return nil
 }
 
+func (x *VerifyReport) GetOutsidePolicy() int32 {
+	if x != nil {
+		return x.xxx_hidden_OutsidePolicy
+	}
+	return 0
+}
+
+func (x *VerifyReport) GetPackageFailures() map[string]string {
+	if x != nil {
+		return x.xxx_hidden_PackageFailures
+	}
+	return nil
+}
+
 func (x *VerifyReport) SetProblems(v []*Problem) {
 	x.xxx_hidden_Problems = &v
 }
@@ -1155,6 +1173,27 @@ func (x *VerifyReport) SetSignatures(v []*ChangeSignature) {
 	x.xxx_hidden_Signatures = &v
 }
 
+func (x *VerifyReport) SetOutsidePolicy(v int32) {
+	x.xxx_hidden_OutsidePolicy = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
+}
+
+func (x *VerifyReport) SetPackageFailures(v map[string]string) {
+	x.xxx_hidden_PackageFailures = v
+}
+
+func (x *VerifyReport) HasOutsidePolicy() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *VerifyReport) ClearOutsidePolicy() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_OutsidePolicy = 0
+}
+
 type VerifyReport_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -1165,6 +1204,17 @@ type VerifyReport_builder struct {
 	// record pins — the baseline; no verification outcome is persisted
 	// (REQ-gate-change-signature).
 	Signatures []*ChangeSignature
+	// OutsidePolicy counts expected witness subjects the accepted test
+	// policy leaves outside selective witnessing (REQ-core-one-execution:
+	// such subjects neither serve nor execute); the count keeps the gap a
+	// visible number, never silence (REQ-policy-conservation). Zero in
+	// unwitnessed runs.
+	OutsidePolicy *int32
+	// PackageFailures carries the witnessing run's failure diagnostics no
+	// single test owns — an envelope cutoff, a package abort, a build
+	// failure — keyed by import path: an expected subject denied an
+	// outcome is diagnosable from the run that denied it.
+	PackageFailures map[string]string
 }
 
 func (b0 VerifyReport_builder) Build() *VerifyReport {
@@ -1175,6 +1225,11 @@ func (b0 VerifyReport_builder) Build() *VerifyReport {
 	x.xxx_hidden_Results = &b.Results
 	x.xxx_hidden_Registrations = &b.Registrations
 	x.xxx_hidden_Signatures = &b.Signatures
+	if b.OutsidePolicy != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
+		x.xxx_hidden_OutsidePolicy = *b.OutsidePolicy
+	}
+	x.xxx_hidden_PackageFailures = b.PackageFailures
 	return m0
 }
 
@@ -2136,23 +2191,25 @@ func (b0 CoverageSummary_builder) Build() *CoverageSummary {
 // VerifySummary is the verification roll-up: record hygiene and witness
 // counts, with change signatures — no per-binding rows.
 type VerifySummary struct {
-	state                    protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Problems      int32                  `protobuf:"varint,1,opt,name=problems"`
-	xxx_hidden_Pinned        int32                  `protobuf:"varint,2,opt,name=pinned"`
-	xxx_hidden_Stale         int32                  `protobuf:"varint,3,opt,name=stale"`
-	xxx_hidden_ShapePinned   int32                  `protobuf:"varint,4,opt,name=shape_pinned,json=shapePinned"`
-	xxx_hidden_ShapeUnpinned int32                  `protobuf:"varint,5,opt,name=shape_unpinned,json=shapeUnpinned"`
-	xxx_hidden_ShapeMismatch int32                  `protobuf:"varint,6,opt,name=shape_mismatch,json=shapeMismatch"`
-	xxx_hidden_Broken        int32                  `protobuf:"varint,7,opt,name=broken"`
-	xxx_hidden_Unverified    int32                  `protobuf:"varint,8,opt,name=unverified"`
-	xxx_hidden_TestsPassed   int32                  `protobuf:"varint,9,opt,name=tests_passed,json=testsPassed"`
-	xxx_hidden_TestsFailed   int32                  `protobuf:"varint,10,opt,name=tests_failed,json=testsFailed"`
-	xxx_hidden_TestsNotRun   int32                  `protobuf:"varint,11,opt,name=tests_not_run,json=testsNotRun"`
-	xxx_hidden_Signatures    *[]*ChangeSignature    `protobuf:"bytes,12,rep,name=signatures"`
-	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
-	XXX_presence             [1]uint32
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	state                      protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Problems        int32                  `protobuf:"varint,1,opt,name=problems"`
+	xxx_hidden_Pinned          int32                  `protobuf:"varint,2,opt,name=pinned"`
+	xxx_hidden_Stale           int32                  `protobuf:"varint,3,opt,name=stale"`
+	xxx_hidden_ShapePinned     int32                  `protobuf:"varint,4,opt,name=shape_pinned,json=shapePinned"`
+	xxx_hidden_ShapeUnpinned   int32                  `protobuf:"varint,5,opt,name=shape_unpinned,json=shapeUnpinned"`
+	xxx_hidden_ShapeMismatch   int32                  `protobuf:"varint,6,opt,name=shape_mismatch,json=shapeMismatch"`
+	xxx_hidden_Broken          int32                  `protobuf:"varint,7,opt,name=broken"`
+	xxx_hidden_Unverified      int32                  `protobuf:"varint,8,opt,name=unverified"`
+	xxx_hidden_TestsPassed     int32                  `protobuf:"varint,9,opt,name=tests_passed,json=testsPassed"`
+	xxx_hidden_TestsFailed     int32                  `protobuf:"varint,10,opt,name=tests_failed,json=testsFailed"`
+	xxx_hidden_TestsNotRun     int32                  `protobuf:"varint,11,opt,name=tests_not_run,json=testsNotRun"`
+	xxx_hidden_Signatures      *[]*ChangeSignature    `protobuf:"bytes,12,rep,name=signatures"`
+	xxx_hidden_OutsidePolicy   int32                  `protobuf:"varint,13,opt,name=outside_policy,json=outsidePolicy"`
+	xxx_hidden_PackageFailures map[string]string      `protobuf:"bytes,14,rep,name=package_failures,json=packageFailures" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	XXX_raceDetectHookData     protoimpl.RaceDetectHookData
+	XXX_presence               [1]uint32
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *VerifySummary) Reset() {
@@ -2266,63 +2323,86 @@ func (x *VerifySummary) GetSignatures() []*ChangeSignature {
 	return nil
 }
 
+func (x *VerifySummary) GetOutsidePolicy() int32 {
+	if x != nil {
+		return x.xxx_hidden_OutsidePolicy
+	}
+	return 0
+}
+
+func (x *VerifySummary) GetPackageFailures() map[string]string {
+	if x != nil {
+		return x.xxx_hidden_PackageFailures
+	}
+	return nil
+}
+
 func (x *VerifySummary) SetProblems(v int32) {
 	x.xxx_hidden_Problems = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 14)
 }
 
 func (x *VerifySummary) SetPinned(v int32) {
 	x.xxx_hidden_Pinned = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 14)
 }
 
 func (x *VerifySummary) SetStale(v int32) {
 	x.xxx_hidden_Stale = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 14)
 }
 
 func (x *VerifySummary) SetShapePinned(v int32) {
 	x.xxx_hidden_ShapePinned = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 14)
 }
 
 func (x *VerifySummary) SetShapeUnpinned(v int32) {
 	x.xxx_hidden_ShapeUnpinned = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 14)
 }
 
 func (x *VerifySummary) SetShapeMismatch(v int32) {
 	x.xxx_hidden_ShapeMismatch = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 14)
 }
 
 func (x *VerifySummary) SetBroken(v int32) {
 	x.xxx_hidden_Broken = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 14)
 }
 
 func (x *VerifySummary) SetUnverified(v int32) {
 	x.xxx_hidden_Unverified = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 14)
 }
 
 func (x *VerifySummary) SetTestsPassed(v int32) {
 	x.xxx_hidden_TestsPassed = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 14)
 }
 
 func (x *VerifySummary) SetTestsFailed(v int32) {
 	x.xxx_hidden_TestsFailed = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 14)
 }
 
 func (x *VerifySummary) SetTestsNotRun(v int32) {
 	x.xxx_hidden_TestsNotRun = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 14)
 }
 
 func (x *VerifySummary) SetSignatures(v []*ChangeSignature) {
 	x.xxx_hidden_Signatures = &v
+}
+
+func (x *VerifySummary) SetOutsidePolicy(v int32) {
+	x.xxx_hidden_OutsidePolicy = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 14)
+}
+
+func (x *VerifySummary) SetPackageFailures(v map[string]string) {
+	x.xxx_hidden_PackageFailures = v
 }
 
 func (x *VerifySummary) HasProblems() bool {
@@ -2402,6 +2482,13 @@ func (x *VerifySummary) HasTestsNotRun() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 10)
 }
 
+func (x *VerifySummary) HasOutsidePolicy() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 12)
+}
+
 func (x *VerifySummary) ClearProblems() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Problems = 0
@@ -2457,6 +2544,11 @@ func (x *VerifySummary) ClearTestsNotRun() {
 	x.xxx_hidden_TestsNotRun = 0
 }
 
+func (x *VerifySummary) ClearOutsidePolicy() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 12)
+	x.xxx_hidden_OutsidePolicy = 0
+}
+
 type VerifySummary_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -2472,6 +2564,15 @@ type VerifySummary_builder struct {
 	TestsFailed   *int32
 	TestsNotRun   *int32
 	Signatures    []*ChangeSignature
+	// OutsidePolicy counts expected witness subjects the accepted test
+	// policy leaves outside selective witnessing (REQ-core-one-execution);
+	// the roll-up surfaces the gap as a number, never silence.
+	OutsidePolicy *int32
+	// PackageFailures carries the witnessing run's package-keyed failure
+	// diagnostics — an envelope cutoff, a package abort, a build failure —
+	// so a subject denied an outcome is diagnosable from the summary most
+	// calls read.
+	PackageFailures map[string]string
 }
 
 func (b0 VerifySummary_builder) Build() *VerifySummary {
@@ -2479,50 +2580,55 @@ func (b0 VerifySummary_builder) Build() *VerifySummary {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Problems != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 14)
 		x.xxx_hidden_Problems = *b.Problems
 	}
 	if b.Pinned != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 14)
 		x.xxx_hidden_Pinned = *b.Pinned
 	}
 	if b.Stale != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 14)
 		x.xxx_hidden_Stale = *b.Stale
 	}
 	if b.ShapePinned != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 14)
 		x.xxx_hidden_ShapePinned = *b.ShapePinned
 	}
 	if b.ShapeUnpinned != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 14)
 		x.xxx_hidden_ShapeUnpinned = *b.ShapeUnpinned
 	}
 	if b.ShapeMismatch != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 14)
 		x.xxx_hidden_ShapeMismatch = *b.ShapeMismatch
 	}
 	if b.Broken != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 14)
 		x.xxx_hidden_Broken = *b.Broken
 	}
 	if b.Unverified != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 14)
 		x.xxx_hidden_Unverified = *b.Unverified
 	}
 	if b.TestsPassed != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 14)
 		x.xxx_hidden_TestsPassed = *b.TestsPassed
 	}
 	if b.TestsFailed != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 14)
 		x.xxx_hidden_TestsFailed = *b.TestsFailed
 	}
 	if b.TestsNotRun != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 14)
 		x.xxx_hidden_TestsNotRun = *b.TestsNotRun
 	}
 	x.xxx_hidden_Signatures = &b.Signatures
+	if b.OutsidePolicy != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 14)
+		x.xxx_hidden_OutsidePolicy = *b.OutsidePolicy
+	}
+	x.xxx_hidden_PackageFailures = b.PackageFailures
 	return m0
 }
 
@@ -3595,14 +3701,19 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\apackage\x18\x01 \x01(\tR\apackage\x12\x12\n" +
 	"\x04test\x18\x02 \x01(\tR\x04test\x12%\n" +
 	"\x0erequirement_id\x18\x03 \x01(\tR\rrequirementId\x124\n" +
-	"\aoutcome\x18\x04 \x01(\x0e2\x1a.stipulator.v1.TestOutcomeR\aoutcome\"\x83\x02\n" +
+	"\aoutcome\x18\x04 \x01(\x0e2\x1a.stipulator.v1.TestOutcomeR\aoutcome\"\xcb\x03\n" +
 	"\fVerifyReport\x122\n" +
 	"\bproblems\x18\x01 \x03(\v2\x16.stipulator.v1.ProblemR\bproblems\x126\n" +
 	"\aresults\x18\x02 \x03(\v2\x1c.stipulator.v1.BindingResultR\aresults\x12G\n" +
 	"\rregistrations\x18\x03 \x03(\v2!.stipulator.v1.RegistrationResultR\rregistrations\x12>\n" +
 	"\n" +
 	"signatures\x18\x04 \x03(\v2\x1e.stipulator.v1.ChangeSignatureR\n" +
-	"signatures\"\x89\x01\n" +
+	"signatures\x12%\n" +
+	"\x0eoutside_policy\x18\x05 \x01(\x05R\routsidePolicy\x12[\n" +
+	"\x10package_failures\x18\x06 \x03(\v20.stipulator.v1.VerifyReport.PackageFailuresEntryR\x0fpackageFailures\x1aB\n" +
+	"\x14PackageFailuresEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x89\x01\n" +
 	"\x0fChangeSignature\x12%\n" +
 	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x123\n" +
 	"\x05label\x18\x02 \x01(\x0e2\x1d.stipulator.v1.SignatureLabelR\x05label\x12\x1a\n" +
@@ -3641,7 +3752,7 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\tgaps_open\x18\t \x01(\x05R\bgapsOpen\x12)\n" +
 	"\x10policy_overrides\x18\n" +
 	" \x03(\tR\x0fpolicyOverrides\x124\n" +
-	"\x16resolved_gaps_prunable\x18\v \x01(\x05R\x14resolvedGapsPrunable\"\xac\x03\n" +
+	"\x16resolved_gaps_prunable\x18\v \x01(\x05R\x14resolvedGapsPrunable\"\xf5\x04\n" +
 	"\rVerifySummary\x12\x1a\n" +
 	"\bproblems\x18\x01 \x01(\x05R\bproblems\x12\x16\n" +
 	"\x06pinned\x18\x02 \x01(\x05R\x06pinned\x12\x14\n" +
@@ -3659,7 +3770,12 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\rtests_not_run\x18\v \x01(\x05R\vtestsNotRun\x12>\n" +
 	"\n" +
 	"signatures\x18\f \x03(\v2\x1e.stipulator.v1.ChangeSignatureR\n" +
-	"signatures\"\x8f\x01\n" +
+	"signatures\x12%\n" +
+	"\x0eoutside_policy\x18\r \x01(\x05R\routsidePolicy\x12\\\n" +
+	"\x10package_failures\x18\x0e \x03(\v21.stipulator.v1.VerifySummary.PackageFailuresEntryR\x0fpackageFailures\x1aB\n" +
+	"\x14PackageFailuresEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x8f\x01\n" +
 	"\x04Seed\x12%\n" +
 	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x12\x18\n" +
 	"\abackend\x18\x02 \x01(\tR\abackend\x12\x16\n" +
@@ -3743,7 +3859,7 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x12GAP_STATE_RESOLVED\x10\x03BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
 var file_stipulator_v1_reports_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_stipulator_v1_reports_proto_goTypes = []any{
 	(Resolution)(0),                // 0: stipulator.v1.Resolution
 	(ShapeState)(0),                // 1: stipulator.v1.ShapeState
@@ -3770,15 +3886,17 @@ var file_stipulator_v1_reports_proto_goTypes = []any{
 	(*PartitionComponent)(nil),     // 22: stipulator.v1.PartitionComponent
 	(*PartitionOverlap)(nil),       // 23: stipulator.v1.PartitionOverlap
 	(*PartitionReport)(nil),        // 24: stipulator.v1.PartitionReport
-	(BindingRole)(0),               // 25: stipulator.v1.BindingRole
-	(ClauseKind)(0),                // 26: stipulator.v1.ClauseKind
-	(Keyword)(0),                   // 27: stipulator.v1.Keyword
-	(*Requirement)(nil),            // 28: stipulator.v1.Requirement
-	(*Gap)(nil),                    // 29: stipulator.v1.Gap
-	(*RequirementAttestation)(nil), // 30: stipulator.v1.RequirementAttestation
+	nil,                            // 25: stipulator.v1.VerifyReport.PackageFailuresEntry
+	nil,                            // 26: stipulator.v1.VerifySummary.PackageFailuresEntry
+	(BindingRole)(0),               // 27: stipulator.v1.BindingRole
+	(ClauseKind)(0),                // 28: stipulator.v1.ClauseKind
+	(Keyword)(0),                   // 29: stipulator.v1.Keyword
+	(*Requirement)(nil),            // 30: stipulator.v1.Requirement
+	(*Gap)(nil),                    // 31: stipulator.v1.Gap
+	(*RequirementAttestation)(nil), // 32: stipulator.v1.RequirementAttestation
 }
 var file_stipulator_v1_reports_proto_depIdxs = []int32{
-	25, // 0: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
+	27, // 0: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
 	0,  // 1: stipulator.v1.BindingResult.resolution:type_name -> stipulator.v1.Resolution
 	1,  // 2: stipulator.v1.BindingResult.shape:type_name -> stipulator.v1.ShapeState
 	2,  // 3: stipulator.v1.BindingResult.test_outcome:type_name -> stipulator.v1.TestOutcome
@@ -3788,35 +3906,37 @@ var file_stipulator_v1_reports_proto_depIdxs = []int32{
 	8,  // 7: stipulator.v1.VerifyReport.results:type_name -> stipulator.v1.BindingResult
 	9,  // 8: stipulator.v1.VerifyReport.registrations:type_name -> stipulator.v1.RegistrationResult
 	11, // 9: stipulator.v1.VerifyReport.signatures:type_name -> stipulator.v1.ChangeSignature
-	4,  // 10: stipulator.v1.ChangeSignature.label:type_name -> stipulator.v1.SignatureLabel
-	26, // 11: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
-	27, // 12: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
-	5,  // 13: stipulator.v1.RequirementCoverage.bucket:type_name -> stipulator.v1.Bucket
-	6,  // 14: stipulator.v1.GapReport.state:type_name -> stipulator.v1.GapState
-	12, // 15: stipulator.v1.CoverageReport.requirements:type_name -> stipulator.v1.RequirementCoverage
-	13, // 16: stipulator.v1.CoverageReport.gaps:type_name -> stipulator.v1.GapReport
-	11, // 17: stipulator.v1.VerifySummary.signatures:type_name -> stipulator.v1.ChangeSignature
-	25, // 18: stipulator.v1.Seed.role:type_name -> stipulator.v1.BindingRole
-	17, // 19: stipulator.v1.ContextReport.seeds:type_name -> stipulator.v1.Seed
-	18, // 20: stipulator.v1.ContextReport.declarations:type_name -> stipulator.v1.Decl
-	28, // 21: stipulator.v1.Dossier.requirement:type_name -> stipulator.v1.Requirement
-	12, // 22: stipulator.v1.Dossier.coverage:type_name -> stipulator.v1.RequirementCoverage
-	29, // 23: stipulator.v1.Dossier.gap:type_name -> stipulator.v1.Gap
-	30, // 24: stipulator.v1.Dossier.attestation:type_name -> stipulator.v1.RequirementAttestation
-	8,  // 25: stipulator.v1.Dossier.bindings:type_name -> stipulator.v1.BindingResult
-	17, // 26: stipulator.v1.Dossier.seeds:type_name -> stipulator.v1.Seed
-	6,  // 27: stipulator.v1.Dossier.gap_state:type_name -> stipulator.v1.GapState
-	20, // 28: stipulator.v1.DossierReport.dossiers:type_name -> stipulator.v1.Dossier
-	7,  // 29: stipulator.v1.DossierReport.problems:type_name -> stipulator.v1.Problem
-	18, // 30: stipulator.v1.DossierReport.declarations:type_name -> stipulator.v1.Decl
-	17, // 31: stipulator.v1.PartitionComponent.seeds:type_name -> stipulator.v1.Seed
-	22, // 32: stipulator.v1.PartitionReport.components:type_name -> stipulator.v1.PartitionComponent
-	23, // 33: stipulator.v1.PartitionReport.overlaps:type_name -> stipulator.v1.PartitionOverlap
-	34, // [34:34] is the sub-list for method output_type
-	34, // [34:34] is the sub-list for method input_type
-	34, // [34:34] is the sub-list for extension type_name
-	34, // [34:34] is the sub-list for extension extendee
-	0,  // [0:34] is the sub-list for field type_name
+	25, // 10: stipulator.v1.VerifyReport.package_failures:type_name -> stipulator.v1.VerifyReport.PackageFailuresEntry
+	4,  // 11: stipulator.v1.ChangeSignature.label:type_name -> stipulator.v1.SignatureLabel
+	28, // 12: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
+	29, // 13: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
+	5,  // 14: stipulator.v1.RequirementCoverage.bucket:type_name -> stipulator.v1.Bucket
+	6,  // 15: stipulator.v1.GapReport.state:type_name -> stipulator.v1.GapState
+	12, // 16: stipulator.v1.CoverageReport.requirements:type_name -> stipulator.v1.RequirementCoverage
+	13, // 17: stipulator.v1.CoverageReport.gaps:type_name -> stipulator.v1.GapReport
+	11, // 18: stipulator.v1.VerifySummary.signatures:type_name -> stipulator.v1.ChangeSignature
+	26, // 19: stipulator.v1.VerifySummary.package_failures:type_name -> stipulator.v1.VerifySummary.PackageFailuresEntry
+	27, // 20: stipulator.v1.Seed.role:type_name -> stipulator.v1.BindingRole
+	17, // 21: stipulator.v1.ContextReport.seeds:type_name -> stipulator.v1.Seed
+	18, // 22: stipulator.v1.ContextReport.declarations:type_name -> stipulator.v1.Decl
+	30, // 23: stipulator.v1.Dossier.requirement:type_name -> stipulator.v1.Requirement
+	12, // 24: stipulator.v1.Dossier.coverage:type_name -> stipulator.v1.RequirementCoverage
+	31, // 25: stipulator.v1.Dossier.gap:type_name -> stipulator.v1.Gap
+	32, // 26: stipulator.v1.Dossier.attestation:type_name -> stipulator.v1.RequirementAttestation
+	8,  // 27: stipulator.v1.Dossier.bindings:type_name -> stipulator.v1.BindingResult
+	17, // 28: stipulator.v1.Dossier.seeds:type_name -> stipulator.v1.Seed
+	6,  // 29: stipulator.v1.Dossier.gap_state:type_name -> stipulator.v1.GapState
+	20, // 30: stipulator.v1.DossierReport.dossiers:type_name -> stipulator.v1.Dossier
+	7,  // 31: stipulator.v1.DossierReport.problems:type_name -> stipulator.v1.Problem
+	18, // 32: stipulator.v1.DossierReport.declarations:type_name -> stipulator.v1.Decl
+	17, // 33: stipulator.v1.PartitionComponent.seeds:type_name -> stipulator.v1.Seed
+	22, // 34: stipulator.v1.PartitionReport.components:type_name -> stipulator.v1.PartitionComponent
+	23, // 35: stipulator.v1.PartitionReport.overlaps:type_name -> stipulator.v1.PartitionOverlap
+	36, // [36:36] is the sub-list for method output_type
+	36, // [36:36] is the sub-list for method input_type
+	36, // [36:36] is the sub-list for extension type_name
+	36, // [36:36] is the sub-list for extension extendee
+	0,  // [0:36] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_reports_proto_init() }
@@ -3832,7 +3952,7 @@ func file_stipulator_v1_reports_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_reports_proto_rawDesc), len(file_stipulator_v1_reports_proto_rawDesc)),
 			NumEnums:      7,
-			NumMessages:   18,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

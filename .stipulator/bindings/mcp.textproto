@@ -441,3 +441,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "856a5cf64a6a99e0980022efe874500239f99fffac3fefd47f43f0364ea14cf8"
 }
+
+bindings {
+  requirement_id: "REQ-mcp-progress"
+  content_hash: "bb953898e7245feef25038acff83fa1bed7d81533a7a64eddbd9a53f061f8b45"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestVerifyToolNamesPolicyRecordProblem"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "82af074d8f807e879a8d2f8ef9abf2c8d2c6198fd86aecd25d4bd5638be65ccc"
+}

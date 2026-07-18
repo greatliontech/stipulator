@@ -87,6 +87,17 @@ message VerifyReport {
   // record pins — the baseline; no verification outcome is persisted
   // (REQ-gate-change-signature).
   repeated ChangeSignature signatures = 4;
+  // OutsidePolicy counts expected witness subjects the accepted test
+  // policy leaves outside selective witnessing (REQ-core-one-execution:
+  // such subjects neither serve nor execute); the count keeps the gap a
+  // visible number, never silence (REQ-policy-conservation). Zero in
+  // unwitnessed runs.
+  int32 outside_policy = 5;
+  // PackageFailures carries the witnessing run's failure diagnostics no
+  // single test owns — an envelope cutoff, a package abort, a build
+  // failure — keyed by import path: an expected subject denied an
+  // outcome is diagnosable from the run that denied it.
+  map<string, string> package_failures = 6;
 }
 
 // ChangeSignature labels one requirement's change shape.
@@ -200,6 +211,15 @@ message VerifySummary {
   int32 tests_failed = 10;
   int32 tests_not_run = 11;
   repeated ChangeSignature signatures = 12;
+  // OutsidePolicy counts expected witness subjects the accepted test
+  // policy leaves outside selective witnessing (REQ-core-one-execution);
+  // the roll-up surfaces the gap as a number, never silence.
+  int32 outside_policy = 13;
+  // PackageFailures carries the witnessing run's package-keyed failure
+  // diagnostics — an envelope cutoff, a package abort, a build failure —
+  // so a subject denied an outcome is diagnosable from the summary most
+  // calls read.
+  map<string, string> package_failures = 14;
 }
 
 

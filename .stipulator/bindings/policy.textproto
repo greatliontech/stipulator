@@ -540,3 +540,21 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "c4053a5e1fd872edf8d25c28d76f3b76b248977518bdded4786055c590fbdc64"
 }
+
+bindings {
+  requirement_id: "REQ-policy-explicit"
+  content_hash: "2ba187b1e0d0b9fb218ca978eb57a2424d4b7a0780d3038c71e0fdc292ef1e0e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestGateFailsWithoutPolicyRecord"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ad520dc2c65ab02225ecb66fc4cf7e2a83c695fc3175f84099af998fead4b223"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation"
+  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesCancellationDiscardsRun"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c2754de0c9b5f493b5c5a7f9baac766765086277e6006fbb24b47d5720035cd8"
+}

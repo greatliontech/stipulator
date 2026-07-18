@@ -92,15 +92,6 @@ bindings {
 }
 
 bindings {
-  requirement_id: "REQ-go-race"
-  content_hash: "089f46b0cfbbb21a63a00ef63139cd6d310c24e9ad919d88e3a520e71f5307d0"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunTestsFreshSelectsRaceSources"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "7b576e9c0af633949420ed0a08adb4fe8d17982a5a61585be364490b08321a9e"
-}
-
-bindings {
   requirement_id: "REQ-go-workspace"
   content_hash: "5c240637a17d955e66a44aba3fc93545c94bcc9226a66a4464b33818448b85eb"
   backend: "go"
@@ -467,4 +458,13 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSelectionFuzzReplaysCommittedSeeds"
   role: BINDING_ROLE_TESTS
   shape_hash: "984c5624abbf7a5efaafb7cbfaf66a3e28533b2d0aac996a7fafaf5ac0cde24f"
+}
+
+bindings {
+  requirement_id: "REQ-go-race"
+  content_hash: "089f46b0cfbbb21a63a00ef63139cd6d310c24e9ad919d88e3a520e71f5307d0"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesSelectsRaceSources"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "f1c3c97d29be118c70d9fd0064159e80f5b3ccfb98d30872909b33674d8396ab"
 }

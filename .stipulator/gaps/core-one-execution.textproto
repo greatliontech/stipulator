@@ -2,5 +2,5 @@
 # proto-message: stipulator.v1.Gap
 
 requirement_id: "REQ-core-one-execution"
-reason: "the canonical CI and Taskfile path runs the unified check, which derives suite health and witness evidence from one execution of the accepted policy; the standalone legacy verify and gate commands, when invoked directly, still run an independent assumed universal race suite beside witness analysis"
-lands { manual { condition: "legacy verify and gate derive suite health and witness evidence from the accepted policy's single execution" } }
+reason: "the invariant holds by construction — check executes the accepted policy once, and standalone verify, gate, and prune consume the policy's witness-only selective execution with no independent suite beside it — but the invariant cell demands property-class evidence and every bound witness is an example anchor"
+lands { manual { condition: "a property witness or analyzer proof quantifies over policy execution: no reachable operation can execute test work outside the accepted policy" } }

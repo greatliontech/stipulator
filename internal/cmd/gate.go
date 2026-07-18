@@ -6,7 +6,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/records"
@@ -34,16 +33,9 @@ func gateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(os.Stderr, dim("witnessing: fresh-checked; stale and unproven tests run (-race)"))
-			testRun, err := golang.RunTestsFreshContext(cmd.Context(), chdir)
+			testRun, err := witnessRun(cmd.Context())
 			if err != nil {
 				return err
-			}
-			if testRun.Ran+testRun.Fresh > 0 {
-				fmt.Fprintln(os.Stderr, dim(fmt.Sprintf("witnessed: %d ran, %d served fresh, %d uncacheable", testRun.Ran, testRun.Fresh, testRun.Uncached)))
-			}
-			for key, out := range testRun.Failures {
-				fmt.Fprintf(os.Stderr, "%s\n%s", red("witness failed: "+key), out)
 			}
 			backends, err := makeBackends(cmd.Context(), chdir)
 			if err != nil {

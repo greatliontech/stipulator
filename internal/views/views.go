@@ -274,6 +274,8 @@ func VerifyView(vr *verify.Report, facts Facts, view string, scope Scope) (proto
 		out.SetTestsPassed(int32(vr.TestsPassed))
 		out.SetTestsFailed(int32(vr.TestsFailed))
 		out.SetTestsNotRun(int32(vr.TestsNotRun))
+		out.SetOutsidePolicy(int32(vr.OutsidePolicy))
+		out.SetPackageFailures(vr.PackageFailures)
 		var sigs []*stipulatorv1.ChangeSignature
 		for _, cs := range vr.Signatures {
 			m := &stipulatorv1.ChangeSignature{}
@@ -298,6 +300,22 @@ func VerifyView(vr *verify.Report, facts Facts, view string, scope Scope) (proto
 				}
 			}
 			sliced.Results = rows
+			// A scope narrows the WHOLE report (REQ-mcp-views): the
+			// package-keyed diagnostics follow the kept rows, so filtered
+			// triage is never polluted by out-of-scope packages' failures.
+			// OutsidePolicy stays GLOBAL exactly like the gate verdict — a
+			// scoped slice says nothing about what the policy leaves
+			// outside the tree-wide witnessing.
+			kept := map[string]string{}
+			for pkg, out := range vr.PackageFailures {
+				for _, br := range rows {
+					if strings.HasPrefix(br.Symbol, pkg+".") {
+						kept[pkg] = out
+						break
+					}
+				}
+			}
+			sliced.PackageFailures = kept
 		}
 		return sliced.Proto(), nil
 	}

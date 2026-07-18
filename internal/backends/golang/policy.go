@@ -350,12 +350,11 @@ const derivedTimeout = 2 * time.Hour
 // can tighten or drop it deliberately.
 const derivedBinaryTimeout = "-test.timeout=30m"
 
-// DerivePolicy derives the accepted-test-policy record equivalent to the
-// universal race suite the legacy witness pipeline executes: one
-// race-enabled `./...` invocation per workspace member — the go.work
-// member enumeration RunTests iterates, the root module alone when the
-// tree declares no workspace — each under the ceiling the legacy suite
-// declares and carrying its explicit per-binary timeout. Module roots are
+// DerivePolicy derives the accepted-test-policy record proposed for a
+// tree that has none: one race-enabled `./...` invocation per workspace
+// member — policyMembers' go.work enumeration, the root module alone
+// when the tree declares no workspace — each under a generous default
+// envelope and carrying its explicit per-binary timeout. Module roots are
 // recorded tree-relative in slash form and invocation names derive from
 // them alone, never from host paths, so two hosts derive byte-identical
 // records from the same workspace declaration.

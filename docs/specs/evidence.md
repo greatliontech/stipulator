@@ -105,14 +105,16 @@ failure direction is a spurious reuse, accepted exactly there and nowhere
 else. Executed tests whose records cannot be published for reuse are
 reported as an uncacheable count beside the run/served summary, so a
 shrinking cache is a visible number, never silence. Witness packages
-execute concurrently under a small bound, which assumes what standard
-Go tooling already assumes of them (`go test` runs packages in
-parallel by default): witnesses do not mutate inputs other packages
+execute concurrently under a processor-count bound, which assumes what
+standard Go tooling already assumes of them (`go test` runs packages
+in parallel by default): witnesses do not mutate inputs other packages
 observe. A suite violating that forfeits the spurious-reuse guarantee
 for the interfered records exactly as an ambient mid-run edit does —
 the same filed window, widened from one invocation's span to
-overlapping invocations — and a deterministic serial order remains
-available to diagnostics through the parallelism override. A selective run may
+overlapping invocations. No serial-order control survives the accepted
+record; diagnostics narrow instead of serialize: re-running the
+suspect subjects alone is a witness-only selective execution, and each
+solo subject runs in a process of its own. A selective run may
 isolate a test its process siblings would otherwise deny an outcome: a test
 shadowed by a package abort, or a completed pass inside a process whose own
 disposition is red — a red process yields no green evidence, so the pass

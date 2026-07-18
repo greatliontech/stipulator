@@ -353,10 +353,18 @@ func TestWitnessCorrelation(t *testing.T) {
 			{Package: "example.com/p", Test: "TestA", Requirement: "REQ-v-b"},     // NOT backed by TestA
 			{Package: "example.com/p", Test: "TestD", Requirement: "REQ-v-b"},     // backed by a proves-role binding
 		},
+		OutsidePolicy:   2,
+		PackageFailures: map[string]string{"example.com/p": "package abort"},
 	}
 	rep := Run(spec, store, nil, tr)
 	if rep.TestsPassed != 2 || rep.TestsFailed != 1 {
 		t.Fatalf("tests passed=%d failed=%d", rep.TestsPassed, rep.TestsFailed)
+	}
+	// The witnessed run's visibility facts ride the report: the
+	// outside-policy count and the package-keyed diagnostics reach every
+	// report surface, never stop at the test run.
+	if rep.OutsidePolicy != 2 || rep.PackageFailures["example.com/p"] != "package abort" {
+		t.Fatalf("report lost witnessing facts: outside=%d failures=%v", rep.OutsidePolicy, rep.PackageFailures)
 	}
 	if rep.TestsNotRun != 1 { // TestC bound but produced no outcome
 		t.Fatalf("tests not-run = %d (unwitnessed bound test must surface)", rep.TestsNotRun)

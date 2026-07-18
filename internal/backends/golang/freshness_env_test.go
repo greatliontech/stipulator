@@ -1,6 +1,7 @@
 package golang
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,22 +47,23 @@ func TestReadsVolatileState(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tmp, "envfix_test.go"), []byte(testSource), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	writeRacePolicy(t, tmp)
 	return tmp
 }
 
-// TestRunTestsFreshUnderForeignWorkspace pins the environment seam
-// that made freshness witnesses fail only inside a completed gate:
-// the witness runner pins GOWORK per module, and the analysis engine
-// must analyze under the same pinning — an ambient workspace pointing
-// at another tree (the outer harness's own, when this run is itself a
-// witness) must never leak into the module's go invocations.
+// TestGoRunWitnessesUnderForeignWorkspace pins the environment seam
+// that once made freshness witnesses fail only inside a completed gate:
+// the witness invocations pin GOWORK per module, and the analysis
+// engines must analyze under the same pinning — an ambient workspace
+// pointing at another tree (the outer harness's own, when this run is
+// itself a witness) must never leak into the module's go invocations.
 //
 // Deliberately not //gofresh:pure: the fixture leans on the git
 // binary's init behavior, a child-process input no guard covers; the
 // witness re-runs every gate.
-func TestRunTestsFreshUnderForeignWorkspace(t *testing.T) {
+func TestGoRunWitnessesUnderForeignWorkspace(t *testing.T) {
 	if testing.Short() {
-		t.Skip("executes a real race-instrumented witness suite")
+		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
 	work, err := filepath.Abs("../../../go.work")
 	if err != nil {
@@ -73,7 +75,7 @@ func TestRunTestsFreshUnderForeignWorkspace(t *testing.T) {
 	t.Setenv("GOWORK", work)
 
 	tmp := simpleModule(t)
-	tr, err := RunTestsFresh(tmp)
+	tr, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,31 +95,29 @@ func TestRunTestsFreshUnderForeignWorkspace(t *testing.T) {
 	}
 }
 
-// TestFreshRunCarriesFailureOutput pins the shard merge of failure
-// diagnostics: a red witness must be diagnosable from the run that
-// saw it, through the concurrent path.
+// TestGoRunWitnessesCarriesFailureOutput pins the failure-diagnostic
+// merge across the selective run's processes: a red witness must be
+// diagnosable from the run that saw it.
 //
 //gofresh:pure
-func TestFreshRunCarriesFailureOutput(t *testing.T) {
+func TestGoRunWitnessesCarriesFailureOutput(t *testing.T) {
 	if testing.Short() {
-		t.Skip("executes a real race-instrumented witness suite")
+		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
-	tmp := t.TempDir()
-	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte("module example.com/redfix\n\ngo 1.26\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	testSource := `package redfix
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod": "module example.com/redfix\n\ngo 1.26\n",
+		"redfix_test.go": `package redfix
 
 import "testing"
 
 func TestAlwaysRed(t *testing.T) {
 	t.Fatal("the diagnostic that must survive the merge")
 }
-`
-	if err := os.WriteFile(filepath.Join(tmp, "redfix_test.go"), []byte(testSource), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	tr, err := RunTestsFresh(tmp)
+`,
+	})
+	writeRacePolicy(t, tmp)
+	tr, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
 		t.Fatal(err)
 	}

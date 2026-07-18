@@ -1,56 +1,78 @@
 package golang
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
-// TestRunTestsFreshDegrades pins REQ-evidence-freshness-degrade: a fault on
-// the freshness path (here: a module that enumerates no runnable tests)
-// falls back to the full witnessing run instead of failing the caller, and
-// the result names the fault.
+// writeRacePolicy commits the simplest witnessing policy — one
+// race-enabled invocation over the whole module — so a fixture module's
+// every test is in-policy for the selective witness runner.
+func writeRacePolicy(t *testing.T, dir string) {
+	t.Helper()
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./..."})
+	cfg.SetRace(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", cfg)})
+	writePolicyRecord(t, dir, p)
+}
+
+// TestGoRunWitnessesTestlessPolicyRunsClean pins the empty end of the
+// selective surface: a policy whose invocations select packages with no
+// runnable tests is a clean empty run — nothing serves, nothing
+// executes, nothing degrades — never a fault. A corpus adopting a policy
+// before writing its first test must not fail witnessing.
 //
 //gofresh:pure
-func TestRunTestsFreshDegrades(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-freshness-degrade")
-	tmp := t.TempDir()
-	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte("module example.com/empty\n\ngo 1.24\n"), 0o644); err != nil {
-		t.Fatal(err)
+func TestGoRunWitnessesTestlessPolicyRunsClean(t *testing.T) {
+	if testing.Short() {
+		t.Skip("runs policy discovery over a temporary module")
 	}
-	if err := os.WriteFile(filepath.Join(tmp, "empty.go"), []byte("package empty\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	tr, err := RunTestsFresh(tmp)
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":   "module example.com/empty\n\ngo 1.26\n",
+		"empty.go": "package empty\n",
+	})
+	writeRacePolicy(t, tmp)
+	tr, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
-		t.Fatalf("freshness fault did not degrade to the full run: %v", err)
+		t.Fatalf("testless policy faulted the run: %v", err)
 	}
-	if len(tr.Outcomes) != 0 {
-		t.Fatalf("empty module produced outcomes: %v", tr.Outcomes)
+	if tr.Degraded != "" {
+		t.Fatalf("testless policy degraded: %s", tr.Degraded)
 	}
-	if tr.Degraded == "" {
-		t.Fatal("degraded run did not name its fault")
+	if len(tr.Outcomes) != 0 || tr.Ran != 0 || tr.Fresh != 0 || tr.OutsidePolicy != 0 {
+		t.Fatalf("testless policy produced evidence: outcomes=%v ran=%d fresh=%d outside=%d",
+			tr.Outcomes, tr.Ran, tr.Fresh, tr.OutsidePolicy)
 	}
 }
 
+// TestGoRunWitnessesMidRunSourceEditNeverPublishes pins the safe
+// direction of pre-execution capture: fingerprints pin the tree that
+// compiled the binaries, so an edit made while the tests run voids every
+// publication — the executed evidence stands, and nothing is recorded
+// under a hash the edited tree no longer matches.
+//
 //gofresh:pure
-func TestRunTestsFreshRejectsProducerViewDrift(t *testing.T) {
+func TestGoRunWitnessesMidRunSourceEditNeverPublishes(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
 	if testing.Short() {
-		t.Skip("executes a real race-instrumented witness suite")
+		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
-	tmp := t.TempDir()
-	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte("module example.com/mutate\n\ngo 1.26\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(tmp, "mutate.go"), []byte("package mutate\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	testSource := `package mutate
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":    "module example.com/mutate\n\ngo 1.26\n",
+		"mutate.go": "package mutate\n",
+		"mutate_test.go": `package mutate
 
 import (
 	"os"
@@ -72,87 +94,118 @@ func TestMutatesSourceOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 }
-`
-	if err := os.WriteFile(filepath.Join(tmp, "mutate_test.go"), []byte(testSource), 0o644); err != nil {
-		t.Fatal(err)
-	}
+`,
+	})
+	writeRacePolicy(t, tmp)
 
-	run, err := RunTestsFresh(tmp)
+	run, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(run.Degraded, "analysis view changed") {
-		t.Fatalf("degraded reason = %q, want producer view drift", run.Degraded)
+	if run.Degraded != "" {
+		t.Fatalf("mid-run edit degraded the run: %s", run.Degraded)
 	}
 	if run.Outcomes["example.com/mutate.TestMutatesSourceOnce"] != verify.TestPassed {
-		t.Fatalf("fallback outcome missing: %v", run.Outcomes)
+		t.Fatalf("executed evidence lost: %v", run.Outcomes)
 	}
-	if _, err := os.Stat(filepath.Join(tmp, filepath.FromSlash(witnesscache.Path))); !os.IsNotExist(err) {
-		t.Fatalf("drifted producer cache exists: %v", err)
+	if got := witnesscache.Load(tmp); len(got) != 0 {
+		t.Fatalf("mid-run source edit published records: %+v", got)
+	}
+	if run.Ran != 1 || run.Uncached != 1 {
+		t.Fatalf("ran=%d uncached=%d, want the voided publication counted", run.Ran, run.Uncached)
 	}
 }
 
+// TestGoRunWitnessesMidRunRuntimeInputDriftDropsRecord pins the post-run
+// fingerprint check over executed subjects' runtime inputs: a recorded
+// input that another process of the same run mutated after the subject's
+// observation fails the post-run check, so the record is dropped and
+// counted uncacheable while the executed evidence stands. The mutation
+// rides the isolation pass — a solo re-run that begins only after every
+// package process has completed and observed — so the interleaving is
+// structural, not scheduled.
+//
 //gofresh:pure
-func TestRunTestsFreshRejectsRuntimeInputDriftBetweenPackages(t *testing.T) {
+func TestGoRunWitnessesMidRunRuntimeInputDriftDropsRecord(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
 	if testing.Short() {
-		t.Skip("executes a real race-instrumented witness suite")
+		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
-	// The drift this fixture forces depends on package ordering: the
-	// reader must hash before the mutator writes. Serialize so the
-	// interleaving is deterministic; the rejection machinery itself is
-	// interleaving-independent (the post-run re-validation).
-	t.Setenv("STIPULATOR_WITNESS_PARALLEL", "1")
-	tmp := t.TempDir()
-	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte("module example.com/runtime-drift\n\ngo 1.26\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	readerDir := filepath.Join(tmp, "reader")
-	writerDir := filepath.Join(tmp, "writer")
-	if err := os.MkdirAll(readerDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(writerDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(readerDir, "data.txt"), []byte("before"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	reader := `package reader
-import ("os"; "testing")
-//gofresh:pure
-func TestReads(t *testing.T) { if _, err := os.ReadFile("data.txt"); err != nil { t.Fatal(err) } }
-`
-	writer := `package writer
-import ("os"; "testing")
-//gofresh:pure
-func TestWritesOnce(t *testing.T) {
-	if _, err := os.Stat("written.once"); !os.IsNotExist(err) { return }
-	if err := os.WriteFile("../reader/data.txt", []byte("after"), 0o644); err != nil { t.Fatal(err) }
-	if err := os.WriteFile("written.once", nil, 0o644); err != nil { t.Fatal(err) }
-}
-`
-	if err := os.WriteFile(filepath.Join(readerDir, "reader_test.go"), []byte(reader), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(writerDir, "writer_test.go"), []byte(writer), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":          "module example.com/runtime-drift\n\ngo 1.26\n",
+		"reader/data.txt": "before",
+		"reader/reader_test.go": `package reader
 
-	run, err := RunTestsFresh(tmp)
+import (
+	"os"
+	"testing"
+)
+
+//gofresh:pure
+func TestReads(t *testing.T) {
+	if _, err := os.ReadFile("data.txt"); err != nil {
+		t.Fatal(err)
+	}
+}
+`,
+		// The writer package's red sibling denies the pass, so the write
+		// happens in the isolation pass's solo process: only the second
+		// invocation — the solo re-run, after every package process has
+		// observed — finds its sentinel and mutates the reader's input.
+		"writer/writer_test.go": `package writer
+
+import (
+	"os"
+	"testing"
+)
+
+func TestRedFlag(t *testing.T) {
+	t.Fatal("deliberately red so the sibling pass is denied and re-runs solo")
+}
+
+func TestWritesOnce(t *testing.T) {
+	if _, err := os.Stat("seen.once"); os.IsNotExist(err) {
+		if err := os.WriteFile("seen.once", nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	if err := os.WriteFile("../reader/data.txt", []byte("after"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+`,
+	})
+	writeRacePolicy(t, tmp)
+
+	run, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(run.Degraded, "reader.TestReads") || !strings.Contains(run.Degraded, "runtimeinput") {
-		t.Fatalf("degraded reason = %q, want runtime-input drift", run.Degraded)
+	if run.Degraded != "" {
+		t.Fatalf("runtime-input drift degraded the run: %s", run.Degraded)
 	}
-	if _, err := os.Stat(filepath.Join(tmp, filepath.FromSlash(witnesscache.Path))); !os.IsNotExist(err) {
-		t.Fatalf("runtime-drifted cache exists: %v", err)
+	if got := run.Outcomes["example.com/runtime-drift/reader.TestReads"]; got != verify.TestPassed {
+		t.Fatalf("reader evidence lost: %v", got)
+	}
+	if got := run.Outcomes["example.com/runtime-drift/writer.TestWritesOnce"]; got != verify.TestPassed {
+		t.Fatalf("solo-isolated writer pass lost: %v", got)
+	}
+	if got := run.Outcomes["example.com/runtime-drift/writer.TestRedFlag"]; got != verify.TestFailed {
+		t.Fatalf("denying red must stand: %v", got)
+	}
+	if cacheRecord(t, witnesscache.Load(tmp), "example.com/runtime-drift/reader", "TestReads") != nil {
+		t.Error("reader record published although its recorded input drifted mid-run")
+	}
+	if run.Uncached == 0 {
+		t.Error("dropped record not counted uncacheable")
 	}
 }
 
-// fresh fails the calling phase when the freshness path silently fell back
-// to the full run: a degraded run exercises nothing this test pins, and the
-// fault text is the difference between a contract violation and an
+// fresh fails the calling phase when the freshness path fell back to
+// full execution: a degraded run exercises nothing these tests pin, and
+// the fault text is the difference between a contract violation and an
 // environmental fault.
 func fresh(t *testing.T, tr *verify.TestRun, phase string) {
 	t.Helper()
@@ -181,23 +234,28 @@ func sameRegistrationSet(a, b []verify.Registration) bool {
 	return true
 }
 
-// TestRunTestsFresh pins the freshness-aware witness run
-// (REQ-evidence-witness-freshness): the first run executes and fingerprints
-// everything, retrying past the aborting fixture to unshadow its sibling;
-// the second serves from the cache by proven equivalence with identical
-// outcomes and registrations while re-running only the aborter; source and
-// fixture edits then re-stale their independently affected tests without
-// re-running the world; and the cache lands gitignored.
+// TestGoRunWitnessesServingRoundTrip pins the serving round trip of the
+// selective witness runner (REQ-evidence-witness-freshness): the first
+// run executes and fingerprints everything, isolating the abort-shadowed
+// sibling and the pass denied by a red process into solo outcomes; the
+// second serves every proven-equivalent record with identical outcomes
+// and registrations while re-executing exactly the subjects no healthy
+// process could publish — the aborter, the failing test, and the skip
+// recorded inside its red process; and independent source and fixture
+// edits then re-stale exactly their affected tests. Every witness is
+// race-attributed (REQ-evidence-run-attributes) and every outcome is a
+// current-run `go test -json` derivation or its proven-equivalent serve
+// (REQ-go-witness).
 //
 // The test copies its fixture module before running it, so every fixture
-// file rides this process's testlog manifest; the child go invocations see
-// only those copies, and the toolchain itself is pinned by the
-// fingerprint's toolchain guard. That is why the purity assertion below is
-// sound.
+// file rides this process's testlog manifest; the child go invocations
+// see only those copies, and the toolchain itself is pinned by the
+// fingerprint's toolchain guard. That is why the purity assertion below
+// is sound.
 //
 //gofresh:pure
-func TestRunTestsFresh(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+func TestGoRunWitnessesServingRoundTrip(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-go-witness", "REQ-evidence-run-attributes")
 	if testing.Short() {
 		t.Skip("runs go test per package")
 	}
@@ -206,14 +264,18 @@ func TestRunTestsFresh(t *testing.T) {
 	if err := os.CopyFS(tmp, os.DirFS("testdata/freshfixture")); err != nil {
 		t.Fatal(err)
 	}
+	writeRacePolicy(t, tmp)
 
-	first, err := RunTestsFresh(tmp)
+	first, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
 	fresh(t, first, "first run")
 	if first.Fresh != 0 || first.Ran == 0 {
 		t.Fatalf("first run: ran=%d fresh=%d, want everything ran", first.Ran, first.Fresh)
+	}
+	if !first.RaceEnabled {
+		t.Fatal("witness run not race-attributed")
 	}
 	if first.Outcomes["example.com/freshfixture/lib.TestAdd"] != verify.TestPassed {
 		t.Fatalf("TestAdd outcome missing: %v", first.Outcomes)
@@ -225,29 +287,32 @@ func TestRunTestsFresh(t *testing.T) {
 		t.Fatalf("cache not ignored: %v", err)
 	}
 
-	// The aborting invocation retries its incomplete remainder, so the
-	// shadowed sibling is unshadowed within the first run already.
+	// The abort-shadowed sibling is unshadowed by its solo isolation
+	// re-run within the first run already.
 	if first.Outcomes["example.com/freshfixture/panicky.TestShadowed"] != verify.TestPassed {
-		t.Fatalf("the shadowed test was not unshadowed by a retry invocation: %v", first.Outcomes["example.com/freshfixture/panicky.TestShadowed"])
+		t.Fatalf("the shadowed test was not unshadowed by isolation: %v", first.Outcomes["example.com/freshfixture/panicky.TestShadowed"])
 	}
 
-	second, err := RunTestsFresh(tmp)
+	second, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
 	fresh(t, second, "second run")
-	if second.Fresh == 0 {
-		t.Fatalf("second run served nothing: ran=%d fresh=%d", second.Ran, second.Fresh)
-	}
-	// Steady state re-runs exactly the aborting test: its invocation dies
-	// before the testlog flush, so its evidence is never cacheable. An absent
-	// manifest would read as gofresh's "no runtime inputs observed" assertion,
-	// which an abort never earns.
-	if second.Ran != 1 {
-		t.Fatalf("steady state ran %d tests, want exactly the aborting one", second.Ran)
+	// Steady state re-executes exactly the subjects no healthy process
+	// granted a record: the aborter (its process dies before the testlog
+	// flush), the failing test (a red never publishes), and the skip
+	// recorded inside that red process. Everything else serves.
+	if second.Ran != 3 || second.Fresh != 5 {
+		t.Fatalf("steady state: ran=%d fresh=%d, want 3 recordless re-runs and 5 served", second.Ran, second.Fresh)
 	}
 	if second.Outcomes["example.com/freshfixture/panicky.TestPanics"] != verify.TestFailed {
 		t.Fatalf("the aborting test did not re-run red: %v", second.Outcomes["example.com/freshfixture/panicky.TestPanics"])
+	}
+	if second.Outcomes["example.com/freshfixture/outcomes.TestFail"] != verify.TestFailed {
+		t.Fatalf("the failing test did not re-run red: %v", second.Outcomes["example.com/freshfixture/outcomes.TestFail"])
+	}
+	if second.Outcomes["example.com/freshfixture/outcomes.TestSkip"] != verify.TestSkipped {
+		t.Fatalf("the skipped test lost its outcome: %v", second.Outcomes["example.com/freshfixture/outcomes.TestSkip"])
 	}
 	if second.Outcomes["example.com/freshfixture/lib.TestAdd"] != verify.TestPassed {
 		t.Fatalf("served outcome lost: %v", second.Outcomes["example.com/freshfixture/lib.TestAdd"])
@@ -255,26 +320,19 @@ func TestRunTestsFresh(t *testing.T) {
 	if second.Outcomes["example.com/freshfixture/freader.TestReadsFixture"] != verify.TestPassed {
 		t.Fatalf("pure fixture reader not served: %v", second.Outcomes["example.com/freshfixture/freader.TestReadsFixture"])
 	}
+	if second.Outcomes["example.com/freshfixture/outcomes.TestPass/sub"] != verify.TestPassed {
+		t.Fatalf("cached subtest outcome lost: %v", second.Outcomes)
+	}
 	// Served registrations are the recorded ones — the same set the first
 	// run produced, no losses, no fabrications.
 	if !sameRegistrationSet(first.Registrations, second.Registrations) {
 		t.Fatalf("registration sets differ:\nfirst:  %+v\nsecond: %+v", first.Registrations, second.Registrations)
 	}
-
 	// Every first-run outcome survives the second run.
 	for k, v := range first.Outcomes {
 		if second.Outcomes[k] != v {
 			t.Fatalf("outcome %s changed or vanished: %v -> %v", k, v, second.Outcomes[k])
 		}
-	}
-	if second.Outcomes["example.com/freshfixture/outcomes.TestPass/sub"] != verify.TestPassed {
-		t.Fatalf("cached subtest outcome lost: %v", second.Outcomes)
-	}
-	if second.Outcomes["example.com/freshfixture/outcomes.TestFail"] != verify.TestFailed {
-		t.Fatalf("cached failed outcome lost: %v", second.Outcomes)
-	}
-	if second.Outcomes["example.com/freshfixture/outcomes.TestSkip"] != verify.TestSkipped {
-		t.Fatalf("cached skipped outcome lost: %v", second.Outcomes)
 	}
 
 	// Independently break Add's source and the pure reader's observed fixture.
@@ -296,16 +354,13 @@ func TestRunTestsFresh(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tmp, "freader", "data.txt"), nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	third, err := RunTestsFresh(tmp)
+	third, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
 	fresh(t, third, "edit run")
-	if third.Ran < 3 {
-		t.Fatalf("source and fixture edits plus the aborter ran only %d tests", third.Ran)
-	}
-	if third.Fresh == 0 && second.Fresh > 1 {
-		t.Fatalf("edits in two packages re-ran the world: ran=%d fresh=%d", third.Ran, third.Fresh)
+	if third.Ran != 5 || third.Fresh != 3 {
+		t.Fatalf("edit run: ran=%d fresh=%d, want the two edited tests plus the three recordless ones re-run", third.Ran, third.Fresh)
 	}
 	if third.Outcomes["example.com/freshfixture/lib.TestAdd"] != verify.TestFailed {
 		t.Fatalf("source-edited test did not re-run red: %v", third.Outcomes)
@@ -315,16 +370,17 @@ func TestRunTestsFresh(t *testing.T) {
 	}
 }
 
-// TestRunTestsFreshSelectsRaceSources pins that freshness analyzes the same
-// race-selected sources as the witness run. The default-only declaration's
-// purity assertion must not apply to its race-selected counterpart, and an
-// edit to a race-only helper must stale the test that reaches it. Each package
-// has one selected test, so process isolation permits proof selection; the
-// race I/O test still reruns because its diagnostic error path is not covered
+// TestGoRunWitnessesSelectsRaceSources pins that freshness analyzes the
+// same race-selected sources as the covering race invocation executes
+// (REQ-go-race). The default-only declaration's purity assertion must not
+// apply to its race-selected counterpart, and an edit to a race-only
+// helper must stale the test that reaches it. Each package has one
+// selected test, so process isolation permits proof selection; the race
+// I/O test still reruns because its diagnostic error path is not covered
 // by a positive observation proof.
 //
 //gofresh:pure
-func TestRunTestsFreshSelectsRaceSources(t *testing.T) {
+func TestGoRunWitnessesSelectsRaceSources(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-go-race")
 	if testing.Short() {
 		t.Skip("runs go test per package")
@@ -334,8 +390,9 @@ func TestRunTestsFreshSelectsRaceSources(t *testing.T) {
 	if err := os.CopyFS(tmp, os.DirFS("testdata/racefixture")); err != nil {
 		t.Fatal(err)
 	}
+	writeRacePolicy(t, tmp)
 
-	first, err := RunTestsFresh(tmp)
+	first, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -343,7 +400,7 @@ func TestRunTestsFreshSelectsRaceSources(t *testing.T) {
 	if first.Fresh != 0 || first.Ran != 2 {
 		t.Fatalf("first run: ran=%d fresh=%d, want both tests run", first.Ran, first.Fresh)
 	}
-	second, err := RunTestsFresh(tmp)
+	second, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -365,7 +422,7 @@ func TestRunTestsFreshSelectsRaceSources(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	third, err := RunTestsFresh(tmp)
+	third, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -377,7 +434,7 @@ func TestRunTestsFreshSelectsRaceSources(t *testing.T) {
 		t.Fatalf("race-selected closure test did not pass after re-witnessing: %v", third.Outcomes)
 	}
 
-	fourth, err := RunTestsFresh(tmp)
+	fourth, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
 		t.Fatal(err)
 	}

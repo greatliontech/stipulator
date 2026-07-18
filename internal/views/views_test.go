@@ -21,8 +21,13 @@ func TestVerifyViews(t *testing.T) {
 			{RequirementId: "REQ-v-a", Symbol: "example.com/p.TestA", Role: stipulatorv1.BindingRole_BINDING_ROLE_TESTS},
 			{RequirementId: "REQ-v-b", Symbol: "example.com/q.TestB", Role: stipulatorv1.BindingRole_BINDING_ROLE_TESTS},
 		},
-		TestsPassed: 2,
-		Signatures:  []verify.ChangeSignature{{RequirementId: "REQ-v-a", Label: verify.SemanticDrift, Evidence: []string{"e"}}},
+		TestsPassed:   2,
+		OutsidePolicy: 3,
+		PackageFailures: map[string]string{
+			"example.com/q": "build failed: boom",
+			"example.com/p": "package abort: poof",
+		},
+		Signatures: []verify.ChangeSignature{{RequirementId: "REQ-v-a", Label: verify.SemanticDrift, Evidence: []string{"e"}}},
 	}
 	facts := Facts{Doc: map[string]string{"REQ-v-a": "specs/a.md", "REQ-v-b": "specs/b.md"}, Symbols: map[string][]string{}}
 
@@ -34,14 +39,32 @@ func TestVerifyViews(t *testing.T) {
 	if sum.GetTestsPassed() != 2 || len(sum.GetSignatures()) != 1 {
 		t.Fatalf("summary: %v", sum)
 	}
+	// The witnessing gaps ride the summary: the outside-policy count and
+	// the package-keyed diagnostics are visible facts, never silence.
+	if sum.GetOutsidePolicy() != 3 {
+		t.Fatalf("summary outside_policy = %d, want 3", sum.GetOutsidePolicy())
+	}
+	if len(sum.GetPackageFailures()) != 2 || sum.GetPackageFailures()["example.com/q"] != "build failed: boom" {
+		t.Fatalf("summary package_failures = %v", sum.GetPackageFailures())
+	}
 
 	m, err = VerifyView(vr, facts, "bindings", Scope{Path: "example.com/q"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	rows := m.(*stipulatorv1.VerifyReport).GetResults()
+	rep := m.(*stipulatorv1.VerifyReport)
+	rows := rep.GetResults()
 	if len(rows) != 1 || rows[0].GetSymbol() != "example.com/q.TestB" {
 		t.Fatalf("scoped bindings: %v", rows)
+	}
+	// A scope narrows the WHOLE report: only packages owning in-scope
+	// rows keep their diagnostics; the outside-policy count stays global
+	// exactly like the gate verdict.
+	if rep.GetOutsidePolicy() != 3 || rep.GetPackageFailures()["example.com/q"] != "build failed: boom" {
+		t.Fatalf("bindings view lost witnessing facts: outside=%d failures=%v", rep.GetOutsidePolicy(), rep.GetPackageFailures())
+	}
+	if _, leaked := rep.GetPackageFailures()["example.com/p"]; leaked {
+		t.Fatalf("scoped bindings view leaked an out-of-scope package failure: %v", rep.GetPackageFailures())
 	}
 
 	// Bucket scope has no meaning over binding rows: refused, never

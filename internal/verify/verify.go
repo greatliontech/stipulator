@@ -89,8 +89,7 @@ type TestRun struct {
 	// the count keeps the cost visible.
 	Uncached int
 	// Ran and Fresh count top-level tests executed vs served from the
-	// witness cache by proven equivalence (REQ-evidence-witness-freshness);
-	// both zero on a full uncached run's legacy path.
+	// witness cache by proven equivalence (REQ-evidence-witness-freshness).
 	Ran   int
 	Fresh int
 	// Degraded carries the freshness-path fault when the run fell back to
@@ -231,6 +230,18 @@ type Report struct {
 	// reads as broken).
 	Registrations                         []RegistrationResult
 	TestsPassed, TestsFailed, TestsNotRun int
+	// OutsidePolicy counts expected witness subjects the accepted test
+	// policy left outside selective witnessing in the witnessed run
+	// (REQ-core-one-execution: such subjects neither serve nor execute);
+	// carried from the test run so every report surface renders the gap
+	// as a visible number, never silence. Zero in unwitnessed runs.
+	OutsidePolicy int
+	// PackageFailures carries the witnessed run's failure diagnostics no
+	// single test owns — an envelope cutoff, a package abort, a build
+	// failure — keyed by import path: a bound test reading unwitnessed is
+	// diagnosable from the same report that says so. Nil in unwitnessed
+	// runs.
+	PackageFailures map[string]string
 	// Attestations holds the verified state of every well-formed
 	// requirement attestation, in store order.
 	Attestations []AttestationResult
@@ -396,6 +407,8 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 	}
 
 	if testRun != nil {
+		rep.OutsidePolicy = testRun.OutsidePolicy
+		rep.PackageFailures = testRun.PackageFailures
 		// Cross-check runtime registrations: every registration must be
 		// backed by a witness-role binding (tests or proves) for the same
 		// requirement on the registration's top-level test — the binding

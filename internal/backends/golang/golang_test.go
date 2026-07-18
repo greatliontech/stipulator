@@ -1,6 +1,7 @@
 package golang
 
 import (
+	"context"
 	"go/types"
 	"os"
 	"strings"
@@ -102,58 +103,6 @@ func TestFixtureModule(t *testing.T) {
 	})
 }
 
-// Deliberately not //gofresh:pure: the fixture module's sources are
-// read only by the child go test invocation, outside the testlog; a
-// solo recapture would publish a manifest blind to them. The witness
-// re-runs every gate.
-func TestRunTests(t *testing.T) {
-	if testing.Short() {
-		t.Skip("executes a real race-instrumented witness suite")
-	}
-	tr, err := RunTests("testdata/fixturemod")
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := map[string]verify.TestOutcome{
-		"example.com/fixture/lib.TestWitPass":     verify.TestPassed,
-		"example.com/fixture/lib.TestWitPass/sub": verify.TestPassed,
-		"example.com/fixture/lib.TestWitFail":     verify.TestFailed,
-		"example.com/fixture/lib.TestWitSkip":     verify.TestSkipped,
-		"example.com/fixture/lib.TestExt":         verify.TestPassed,
-	}
-	for k, w := range want {
-		if got := tr.Outcomes[k]; got != w {
-			t.Errorf("outcome[%s] = %v, want %v", k, got, w)
-		}
-	}
-	if !tr.RaceEnabled {
-		t.Fatal("test run not race-attributed")
-	}
-	wantRegs := []verify.Registration{
-		{Package: "example.com/fixture/lib", Test: "TestWitFail", Requirement: "REQ-fix-c"},
-		{Package: "example.com/fixture/lib", Test: "TestWitPass", Requirement: "REQ-fix-a"},
-		{Package: "example.com/fixture/lib", Test: "TestWitPass/sub", Requirement: "REQ-fix-b"},
-	}
-	if len(tr.Registrations) != len(wantRegs) {
-		t.Fatalf("registrations = %v", tr.Registrations)
-	}
-	for i, w := range wantRegs {
-		if tr.Registrations[i] != w {
-			t.Errorf("registration[%d] = %v, want %v", i, tr.Registrations[i], w)
-		}
-	}
-
-	// A panic aborts the package's test binary: the panicker itself is
-	// failed, and the shadowed test after it has no outcome at all — the
-	// correlator must be able to see that absence.
-	if got := tr.Outcomes["example.com/fixture/panicky.TestPanics"]; got != verify.TestFailed {
-		t.Errorf("panicking test outcome = %v, want failed", got)
-	}
-	if _, ok := tr.Outcomes["example.com/fixture/panicky.TestShadowed"]; ok {
-		t.Error("shadowed test unexpectedly has an outcome")
-	}
-}
-
 // TestShapeHashIsPackageQualified pins that identically-named,
 // identically-shaped symbols in different packages hash differently: the
 // rendering must carry full package paths, or cross-package shape drift
@@ -231,33 +180,6 @@ func TestWitnessClass(t *testing.T) {
 	}
 }
 
-// TestWitnessRunInvocation pins the witness-run contract: the race
-// detector is always on, and no fuzzing campaign flag ever reaches the
-// gate's test run — campaigns are exploration, outside the gate.
-//
-//gofresh:pure
-func TestWitnessRunInvocation(t *testing.T) {
-	if testing.Short() {
-		t.Skip("executes a real race-instrumented witness suite")
-	}
-	args := testArgs()
-	race, fuzz := false, false
-	for _, a := range args {
-		if a == "-race" {
-			race = true
-		}
-		if strings.HasPrefix(a, "-fuzz") {
-			fuzz = true
-		}
-	}
-	if !race {
-		t.Fatal("witness run does not enable the race detector")
-	}
-	if fuzz {
-		t.Fatal("witness run passes a fuzzing flag")
-	}
-}
-
 // TestSlice pins the slice facts: the seed's declaration plus the named
 // module-local types its signature reaches, transitively, shape-pinned and
 // canonically ordered — and nothing from outside the module.
@@ -323,31 +245,19 @@ func TestWorkspaceMembers(t *testing.T) {
 		t.Fatalf("nested member symbol: %v %v", res, err)
 	}
 
-	tr, err := RunTests("testdata/workspacemod")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if tr.Outcomes["example.com/ws.TestRoot"] != verify.TestPassed {
-		t.Fatalf("root member unwitnessed: %v", tr.Outcomes)
-	}
-	if tr.Outcomes["example.com/ws/sub.TestNested"] != verify.TestPassed {
-		t.Fatalf("nested member unwitnessed: %v", tr.Outcomes)
-	}
-	found := false
-	for _, r := range tr.Registrations {
-		if r.Package == "example.com/ws/sub" && r.Requirement == "REQ-ws-a" {
-			found = true
-		}
-	}
-	if !found {
-		t.Fatalf("nested member registration lost: %v", tr.Registrations)
-	}
-
 	tmp := t.TempDir()
 	if err := os.CopyFS(tmp, os.DirFS("testdata/workspacemod")); err != nil {
 		t.Fatal(err)
 	}
-	firstFresh, err := RunTestsFresh(tmp)
+	// The workspace's accepted policy is one race invocation per member —
+	// package patterns are module-scoped, so a single `./...` invocation
+	// would silently drop the nested member from witnessing.
+	derived, err := DerivePolicy(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writePolicyRecord(t, tmp, derived)
+	firstFresh, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -355,7 +265,22 @@ func TestWorkspaceMembers(t *testing.T) {
 	if firstFresh.Fresh != 0 || firstFresh.Ran != 2 {
 		t.Fatalf("workspace first run: ran=%d fresh=%d, want both tests run", firstFresh.Ran, firstFresh.Fresh)
 	}
-	secondFresh, err := RunTestsFresh(tmp)
+	if firstFresh.Outcomes["example.com/ws.TestRoot"] != verify.TestPassed {
+		t.Fatalf("root member unwitnessed: %v", firstFresh.Outcomes)
+	}
+	if firstFresh.Outcomes["example.com/ws/sub.TestNested"] != verify.TestPassed {
+		t.Fatalf("nested member unwitnessed: %v", firstFresh.Outcomes)
+	}
+	found := false
+	for _, r := range firstFresh.Registrations {
+		if r.Package == "example.com/ws/sub" && r.Requirement == "REQ-ws-a" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("nested member registration lost: %v", firstFresh.Registrations)
+	}
+	secondFresh, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
 		t.Fatal(err)
 	}

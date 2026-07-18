@@ -17,12 +17,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   producer-owned typed results directly. *Lands: when a consumer needs producer-owned material
   rendered in Stipulator context dossiers instead of consuming the producer's typed output
   directly.*
-- **[witness-e2e-reds-only-under-gate](witness-e2e-reds-only-under-gate.md)** — a freshness
-  witness historically ran red only inside the legacy whole-suite witness runner and never in
-  isolation; it does not reproduce under the accepted policy, so the exposure is scoped to the
-  legacy runner standalone `verify`/`gate` still invoke. *Lands: when standalone `verify` and
-  `gate` derive from the accepted policy's single execution or are retired — close then; a
-  recurrence before that gets a fresh diagnosis.*
 - **[runtime-input-digest-races-the-run](runtime-input-digest-races-the-run.md)** — the testlog
   manifest is hashed after the run, so a fixture edited while its readers execute can pin
   pre-edit outcomes under a post-edit digest. *Lands: when gofresh can atomically bind

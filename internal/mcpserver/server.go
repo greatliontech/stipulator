@@ -34,6 +34,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/dossier"
 	"github.com/greatliontech/stipulator/internal/facts"
+	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
@@ -59,7 +60,7 @@ func New(dir string) *Server {
 	return &Server{
 		fsys:     func() fs.FS { return os.DirFS(dir) },
 		backends: func(ctx context.Context) (map[string]verify.Backend, error) { return makeBackends(ctx, dir) },
-		runTests: func(ctx context.Context) (*verify.TestRun, error) { return golang.RunTestsFreshContext(ctx, dir) },
+		runTests: func(ctx context.Context) (*verify.TestRun, error) { return golang.RunWitnesses(ctx, dir) },
 		runCheck: func(ctx context.Context) (*stipulatorv1.CheckResult, error) { return check.Run(ctx, dir) },
 		write: func(path string, content []byte) error {
 			// The server is corpus-bound: every record update must remain
@@ -431,6 +432,16 @@ func terminalToolError(prog *progress.Reporter, ctx context.Context, err error) 
 	case context.Canceled:
 		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_CANCELLED)
 		return fmt.Errorf("cancelled by the client in the %s phase: %w", progress.Word(prog.CurrentPhase()), err)
+	}
+	if errors.Is(err, policy.ErrRecord) {
+		// A missing or invalid accepted test policy is a fact about the
+		// tree, not a server fault: the unified check fails its verdict on
+		// exactly this condition (REQ-check-verdict), so the tool call
+		// carries the test-failure cause and names the record's path
+		// beside the loader's guidance — an agent must distinguish
+		// no-policy from server failure without guessing.
+		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_TEST_FAILURE)
+		return fmt.Errorf("%s: %w", policy.Path, err)
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_SERVER_FAILURE)
 	return err

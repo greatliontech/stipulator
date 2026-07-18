@@ -1,6 +1,7 @@
 package golang
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -851,5 +852,108 @@ func TestOK(t *testing.T) {}
 	}
 	if cacheRecord(t, witnesscache.Load(tmp), "example.com/uni/covered", "TestOK") == nil {
 		t.Error("degraded run dropped the existing cache")
+	}
+}
+
+// TestGoRunWitnessesCancellationDiscardsRun pins the discard contract on
+// the selective witness surface (REQ-policy-cancellation): a caller
+// cancellation mid-execution discards the partial run whole — the
+// selective executor returns no partial SelectionResult, the runner
+// returns no partial TestRun, and the witness cache is left byte-for-byte
+// untouched.
+func TestGoRunWitnessesCancellationDiscardsRun(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-cancellation")
+	if testing.Short() {
+		t.Skip("executes race-instrumented selective runs over temporary modules")
+	}
+	neutralAmbient(t)
+
+	sleepyModule := func(module string) (string, string) {
+		tmp := writeModule(t, map[string]string{
+			"go.mod": "module " + module + "\n\ngo 1.26\n",
+			"sleepy/sleepy_test.go": `package sleepy
+
+import (
+	"os"
+	"testing"
+	"time"
+)
+
+func TestSleeps(t *testing.T) {
+	_ = os.WriteFile("started.sentinel", nil, 0o644)
+	time.Sleep(10 * time.Minute)
+}
+`,
+		})
+		return tmp, filepath.Join(tmp, "sleepy", "started.sentinel")
+	}
+	// cancelOnSentinel fires the cancellation only once the test binary
+	// is demonstrably executing, so the cancel always lands mid-run,
+	// never before the spawn.
+	cancelOnSentinel := func(ctx context.Context, cancel context.CancelFunc, sentinel string) {
+		go func() {
+			deadline := time.Now().Add(3 * time.Minute)
+			for time.Now().Before(deadline) {
+				if _, err := os.Stat(sentinel); err == nil {
+					cancel()
+					return
+				}
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(25 * time.Millisecond):
+				}
+			}
+			cancel()
+		}()
+	}
+
+	// The selective executor discards the partial selection result.
+	selDir, selSentinel := sleepyModule("example.com/cancelsel")
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./sleepy"})
+	cfg.SetRace(true)
+	n, err := NormalizeInvocation(context.Background(), selDir, goInvocation("solo", cfg))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	cancelOnSentinel(ctx, cancel, selSentinel)
+	res, err := ExecuteSelection(ctx, n, TestSelection{"example.com/cancelsel/sleepy": {"TestSleeps"}})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("ExecuteSelection err = %v, want context.Canceled", err)
+	}
+	if res != nil {
+		t.Fatalf("partial selection result escaped a cancelled execution: %+v", res)
+	}
+
+	// The runner discards identically and leaves the cache untouched.
+	runDir, runSentinel := sleepyModule("example.com/cancelrun")
+	writeRacePolicy(t, runDir)
+	cachePath := filepath.Join(runDir, filepath.FromSlash(witnesscache.Path))
+	if err := os.MkdirAll(filepath.Dir(cachePath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	seed := []byte(`{"version":3,"records":[]}`)
+	if err := os.WriteFile(cachePath, seed, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rctx, rcancel := context.WithCancel(context.Background())
+	defer rcancel()
+	cancelOnSentinel(rctx, rcancel, runSentinel)
+	tr, err := RunWitnesses(rctx, runDir)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("RunWitnesses err = %v, want context.Canceled", err)
+	}
+	if tr != nil {
+		t.Fatalf("partial test run escaped a cancelled witnessing run: %+v", tr)
+	}
+	after, err := os.ReadFile(cachePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(seed, after) {
+		t.Fatalf("cancelled run touched the witness cache:\nseed:  %s\nafter: %s", seed, after)
 	}
 }
