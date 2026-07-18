@@ -337,6 +337,13 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, select
 		logf.Close()
 		defer os.Remove(logPath)
 	}
+	// The observation bracket is captured strictly before the process
+	// spawns: it must fingerprint the declared roots as they were when the
+	// run could first read them, so a change under a declared root
+	// persisting across the run-to-ingest span moves it. A capture failure
+	// never blocks execution — the process's observation is incomplete for
+	// the stated reason, exactly as a failed capture-file creation.
+	frame := captureObservationFrame(ctx, n, pkg)
 	cmd := commandContext(ctx, "go", testCommandArgs(n, pkg, selection, logPath)...)
 	cmd.Dir = n.Dir
 	cmd.Env = n.Env
@@ -383,7 +390,7 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, select
 	// pass consumes, not only diagnostic prose.
 	run.aborted = startedTests(st)
 	run.producer = producer
-	run.obs = observeProcess(ctx, n, pkg, producer, st, waitErr, run.disposition, logPath)
+	run.obs = observeProcess(n, pkg, producer, st, waitErr, run.disposition, logPath, frame)
 	return run
 }
 

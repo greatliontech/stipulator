@@ -17,11 +17,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   producer-owned typed results directly. *Lands: when a consumer needs producer-owned material
   rendered in Stipulator context dossiers instead of consuming the producer's typed output
   directly.*
-- **[runtime-input-digest-races-the-run](runtime-input-digest-races-the-run.md)** — the testlog
-  manifest is hashed after the run, so a fixture edited while its readers execute can pin
-  pre-edit outcomes under a post-edit digest. *Lands: when gofresh can atomically bind
-  observed runtime-input values to the reads that produced the outcome (atomic value
-  observation), or when witness records are next redesigned.*
 - **[slice-frontier-uncertainty](slice-frontier-uncertainty.md)** — typed frontiers miss
   reflection, build tags, and init effects; pew's closure model (sound floor, provably-safe
   refinement, resolve/widen/unverifiable dispositions) is the reference shape. *Lands: when a
@@ -78,3 +73,11 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   REQ-go-owned-processes and the unowned `go/packages` launcher) is inexpressible in records.
   *Lands: when the gap lifecycle or prune residue semantics next change, or when `go/packages`
   symbol loading runs behind an owned boundary.*
+- **[closure-edit-revert-inside-run-span](closure-edit-revert-inside-run-span.md)** — a source
+  edit and its exact revert both landing inside one package's capture-compile-run span restore
+  the recorded closure hash over outcomes a transiently-edited binary produced; the
+  runtime-input half of this family is narrowed by observation brackets (a
+  content-and-metadata-exact restore within the span stays the shared residual), while closure
+  fingerprints hash content alone. *Lands: when witness fingerprints gain pre-run-evaluation
+  support binding closure content to the compile that consumed it, or when witness records are
+  next redesigned.*

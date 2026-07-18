@@ -558,3 +558,39 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "c2754de0c9b5f493b5c5a7f9baac766765086277e6006fbb24b47d5720035cd8"
 }
+
+bindings {
+  requirement_id: "REQ-policy-attribution"
+  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSelfMutatedInputSealsUnverifiable"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "fb7a490cd10dba07e39929b8ecbcf681b4defab48a9eac207454d710de3d8c96"
+}
+
+bindings {
+  requirement_id: "REQ-policy-attribution"
+  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteOutOfRootReadSealsUnverifiable"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e73265c6809e2314dda07d417a8b457ca44e09c6c0a299b9e04d9cacd67b11be"
+}
+
+bindings {
+  requirement_id: "REQ-policy-attribution"
+  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteUnknownPackageDirObservationIncomplete"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "3e451fce5c83f9edd41443af61b8f9058691b24a6f386828911374ba72e0584a"
+}
+
+bindings {
+  requirement_id: "REQ-policy-attribution"
+  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteExternalWorkspaceMemberObservationIncomplete"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "88829bff99e5e81c5e15293f73c69e12a7d8dadeacff50f05e58bf59a3bc655e"
+}

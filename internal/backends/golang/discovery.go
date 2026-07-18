@@ -70,11 +70,21 @@ func (o Obligation) ID() string {
 // boundary (REQ-go-owned-processes); enumeration parses the listed test
 // sources in-process, spawning nothing. A package that fails to list still
 // yields its package obligation: its build failure is part of the suite,
-// and execution — not discovery — is where it surfaces.
+// and execution — not discovery — is where it surfaces. Discovery also
+// records each listed package's directory on the invocation (PkgDirs):
+// the executor's observation bracket must be captured before the package's
+// process spawns, so the directory has to be resolved ahead of execution —
+// a post-run resolution could not declare what the run was allowed to read.
 func DiscoverInvocation(ctx context.Context, n *NormalizedInvocation) ([]Obligation, error) {
 	pkgs, err := listPackages(ctx, n)
 	if err != nil {
 		return nil, err
+	}
+	n.PkgDirs = make(map[string]string, len(pkgs))
+	for _, p := range pkgs {
+		if p.Dir != "" {
+			n.PkgDirs[p.ImportPath] = p.Dir
+		}
 	}
 	seen := map[string]bool{}
 	var out []Obligation

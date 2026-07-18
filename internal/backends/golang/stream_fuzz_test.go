@@ -143,33 +143,58 @@ func FuzzGoExecuteEventStream(f *testing.F) {
 
 // FuzzGoExecuteTestlogIngestion drives gofresh testlog ingestion over
 // adversarial testlog bytes — truncated, duplicate, reordered, and
-// garbage lines among them — and pins the executor's contract with it:
-// ingestion of the same bytes is deterministic in the manifest it
-// derives, a successful ingestion yields sealed completed evidence whose
-// manifest decodes, and a refused ingestion surfaces an error the
-// executor turns into a loud incomplete observation, never a silent
-// completed one.
+// garbage lines among them — under the pre-spawn observation bracket the
+// executor now always supplies, and pins the executor's contract with it:
+// ingestion of the same bytes against one bracket is deterministic in the
+// manifest it derives, a successful ingestion yields sealed completed
+// evidence whose manifest decodes, a refused ingestion surfaces an error
+// the executor turns into a loud incomplete observation, and a bracketed
+// root mutated inside the capture-to-ingest window seals the observation
+// unverifiable — never bound, whatever the log bytes claim.
 func FuzzGoExecuteTestlogIngestion(f *testing.F) {
-	f.Add([]byte("# test log\ngetenv HOME\nopen testdata/fixture.txt\n"))
-	f.Add([]byte("open a.txt\nopen a.txt\nstat b.txt\nchdir sub\nopen c.txt\n"))
+	f.Add([]byte("# test log\ngetenv HOME\nopen testdata/fixture.txt\n"), false)
+	f.Add([]byte("open a.txt\nopen a.txt\nstat b.txt\nchdir sub\nopen c.txt\n"), false)
 	// Truncated mid-line: a mid-write kill's residue.
-	f.Add([]byte("# test log\nopen testdata/fixt"))
+	f.Add([]byte("# test log\nopen testdata/fixt"), false)
 	// Reordered header and unknown ops.
-	f.Add([]byte("open x\n# test log\nfrobnicate y\n"))
-	f.Add([]byte("\x00\xff garbage\n"))
-	f.Add([]byte(""))
+	f.Add([]byte("open x\n# test log\nfrobnicate y\n"), false)
+	f.Add([]byte("\x00\xff garbage\n"), false)
+	f.Add([]byte(""), false)
+	// The run-to-ingest window: the bracketed root moves after capture,
+	// before ingestion — a clean covered read and an empty log alike must
+	// seal unverifiable.
+	f.Add([]byte("# test log\nopen fixture.txt\n"), true)
+	f.Add([]byte(""), true)
 
-	f.Fuzz(func(t *testing.T, log []byte) {
-		stipulate.Covers(t, "REQ-policy-attribution")
+	f.Fuzz(func(t *testing.T, log []byte, mutate bool) {
+		stipulate.Covers(t, "REQ-policy-attribution", "REQ-evidence-witness-freshness")
 		dir := t.TempDir()
 		pkgDir := filepath.Join(dir, "p")
 		if err := os.MkdirAll(pkgDir, 0o755); err != nil {
 			t.Fatal(err)
 		}
+		if err := os.WriteFile(filepath.Join(pkgDir, "fixture.txt"), []byte("recorded"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// One bracket per iteration, captured over the package root before
+		// any mutation, shared by both ingestions so determinism is judged
+		// against one capture — exactly the executor's pre-spawn shape.
+		bracket, err := runtimeinput.CaptureBracket(dir, []string{"p"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if mutate {
+			// The mutation lands inside the capture-to-ingest window and
+			// persists: the bracket must move, whatever the log carries.
+			if err := os.WriteFile(filepath.Join(pkgDir, "moved.txt"), []byte("moved"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
 		env := []string{"HOME=/nonexistent", "PATH=/usr/bin"}
 		ingest := func() (runtimeinput.Observation, error) {
 			return runtimeinput.FromTestLogEnv(log, dir, pkgDir, env,
 				runtimeinput.WithCompletedProcess("fuzz#1:example.com/p"),
+				runtimeinput.WithBracket(bracket),
 				runtimeinput.WithExcludedPaths(".", ".git"))
 		}
 		o1, err1 := ingest()
@@ -193,13 +218,16 @@ func FuzzGoExecuteTestlogIngestion(f *testing.F) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		// The manifest is a pure function of the bytes and environment;
-		// only content digests may move between calls.
+		// The manifest is a pure function of the bytes, environment, and
+		// bracket; only content digests may move between calls.
 		if s1.Manifest != s2.Manifest {
 			t.Fatal("nondeterministic manifest from identical testlog bytes")
 		}
 		if _, err := runtimeinput.ModuleRelPaths(s1.Manifest); err != nil {
 			t.Fatalf("accepted manifest does not decode: %v", err)
+		}
+		if mutate && !s1.Unverifiable {
+			t.Fatal("a bracketed root mutated inside the capture-to-ingest window sealed verifiable; a moved bracket must never bind")
 		}
 	})
 }

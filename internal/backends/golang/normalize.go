@@ -54,6 +54,12 @@ type NormalizedInvocation struct {
 	// plus overrides, with every backend-pinned key set from its one
 	// typed source.
 	Env []string
+	// PkgDirs maps each package the invocation's discovery listed to its
+	// absolute source directory, recorded by DiscoverInvocation so the
+	// executor can capture a package's observation bracket before its
+	// process spawns. A package absent from the map gets no bracket and
+	// its observation fails closed as incomplete.
+	PkgDirs map[string]string
 }
 
 // NormalizeInvocation resolves one policy invocation against the tree at

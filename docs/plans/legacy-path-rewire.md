@@ -16,7 +16,7 @@ Spec: docs/specs/overview.md, docs/specs/evidence.md, docs/specs/change.md, docs
 - [x] 4 Rewire consumers + kill: cmd verify/gate/prune + mcpserver runTests
       switch; delete legacy runners per kill list; repoint drift/ungated-pass
       fixtures; fire+prune core-one-execution gap; close reds-only issue.
-- [ ] 5 gofresh bump + brackets: pkgDirs plumbing, pre-spawn module-relative
+- [x] 5 gofresh bump + brackets: pkgDirs plumbing, pre-spawn module-relative
       bracket, WithBracket in completedObservation + fuzzer per-iteration
       bracket + grammar extension; delete packageDir; close runtime-input
       issue (promote root policy into evidence.md/comment).

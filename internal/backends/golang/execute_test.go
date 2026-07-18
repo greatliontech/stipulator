@@ -368,6 +368,7 @@ func TestGoExecutePolicyWorkspaceReport(t *testing.T) {
 		"example.com/exec/examples":  stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED,
 		"example.com/exec/fuzzseed":  stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED,
 		"example.com/exec/reads":     stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY,
+		"example.com/exec/extread":   stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY,
 		"example.com/exec/killmid":   stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED,
 		"example.com/exec/mainexit":  stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY,
 		"example.com/exec/mixed":     stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED,
@@ -656,8 +657,10 @@ func TestGoExecuteCommandArgsRendering(t *testing.T) {
 	})
 }
 
-// executeSelection normalizes one invocation over the execute fixture and
-// runs a witness-only selection of it.
+// executeSelection normalizes and discovers one invocation over the
+// execute fixture and runs a witness-only selection of it — discovery
+// first, as every production selective path runs it, so the executor has
+// the package directories its pre-spawn brackets need.
 func executeSelection(t *testing.T, timeout time.Duration, cfg *stipulatorv1.GoInvocationConfig, name string, sel TestSelection) *SelectionResult {
 	t.Helper()
 	inv := &stipulatorv1.PolicyInvocation{}
@@ -667,6 +670,9 @@ func executeSelection(t *testing.T, timeout time.Duration, cfg *stipulatorv1.GoI
 	ctx := context.Background()
 	n, err := NormalizeInvocation(ctx, executeFixture(t), inv)
 	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := DiscoverInvocation(ctx, n); err != nil {
 		t.Fatal(err)
 	}
 	res, err := ExecuteSelection(ctx, n, sel)

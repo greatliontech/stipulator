@@ -102,16 +102,36 @@ tree (`.` and `.git`), whose digests move under unrelated tooling and are
 asserted to be no witness's input. The exclusion carries the caller-side
 soundness responsibility gofresh's exclusion contract assigns it — its
 failure direction is a spurious reuse, accepted exactly there and nowhere
-else. Executed tests whose records cannot be published for reuse are
+else. Each producing process's completed observation is sealed against an
+observation bracket captured before the process spawns, declaring the
+package's own directory — module-relative under the verification tree,
+with the VCS bookkeeping tree excluded — as its one root: a change under
+the declared root persisting across the run-to-ingest span moves the
+bracket — a restore is tolerated only when it reproduces content and
+metadata alike — and the observation seals unverifiable, while a read
+resolving outside the declared root seals per-identity unverifiable —
+permanently uncacheable under this root policy — both toward
+re-execution, never reuse. A package whose directory is unresolved before
+spawn, or whose directory lies outside the verification tree, yields an
+incomplete observation rather than a completed record sealed without a
+bracket. Executed tests whose records cannot be published for reuse are
 reported as an uncacheable count beside the run/served summary, so a
 shrinking cache is a visible number, never silence. Witness packages
 execute concurrently under a processor-count bound, which assumes what
 standard Go tooling already assumes of them (`go test` runs packages
 in parallel by default): witnesses do not mutate inputs other packages
-observe. A suite violating that forfeits the spurious-reuse guarantee
-for the interfered records exactly as an ambient mid-run edit does —
-the same filed window, widened from one invocation's span to
-overlapping invocations. No serial-order control survives the accepted
+observe. A suite violating that is caught whenever the interference
+persists across the interfered process's run-to-ingest span: a
+persisting change under the record's declared bracket root moves its
+bracket, a write outside every declared root can interfere only
+through inputs whose reads already seal uncovered, and interference
+with a served record's observed inputs surfaces at its post-run
+revalidation — the interfered records re-execute rather than reuse. A
+mutation-and-restore interval completed exactly within the span —
+content and metadata alike — is the residual gofresh's
+observation-coherence contract declares unprovable: records interfered
+with that way forfeit the spurious-reuse guarantee, exactly as an
+ambient mid-run edit-and-restore does. No serial-order control survives the accepted
 record; diagnostics narrow instead of serialize: re-running the
 suspect subjects alone is a witness-only selective execution, and each
 solo subject runs in a process of its own. A selective run may

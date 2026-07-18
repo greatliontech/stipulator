@@ -80,18 +80,6 @@ func topLevel(test string) string {
 	return test
 }
 
-// packageDir resolves a package's directory for testlog path resolution.
-func packageDir(ctx context.Context, dir string, env []string, pkg string) (string, bool) {
-	cmd := commandContext(ctx, "go", "list", "-f", "{{.Dir}}", pkg)
-	cmd.Dir = dir
-	cmd.Env = env
-	out, err := cmd.Output()
-	if err != nil {
-		return "", false
-	}
-	return strings.TrimSpace(string(out)), true
-}
-
 // outcomeFromString maps a cached outcome back to the verify enum; an
 // unknown word reads as not-run, which the correlator treats as
 // unwitnessed — the conservative direction.

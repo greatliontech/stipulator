@@ -525,6 +525,73 @@ func TestWritesOnce(t *testing.T) {
 	}
 }
 
+// TestGoRunWitnessesSelfMutatingInputStaysUncacheable pins the
+// run-to-ingest window on the witness path: a test that mutates its own
+// observed input mid-run — the mutation persisting past process exit —
+// moves its process's pre-spawn observation bracket, so the observation
+// seals unverifiable, the record is dropped and counted uncacheable, and
+// nothing is ever served for the subject: it re-executes every run until
+// the test stops moving its own inputs or its author asserts purity.
+func TestGoRunWitnessesSelfMutatingInputStaysUncacheable(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented selective run over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":       "module example.com/selfmut\n\ngo 1.26\n",
+		"mut/data.txt": "stable-bytes\n",
+		"mut/mut_test.go": `package mut
+
+import (
+	"os"
+	"testing"
+)
+
+// TestRewritesOwnInput rewrites the same bytes it read: content stays
+// fixed, but the metadata moves inside the run-to-ingest window.
+func TestRewritesOwnInput(t *testing.T) {
+	raw, err := os.ReadFile("data.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile("data.txt", raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+`,
+	})
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./..."})
+	cfg.SetRace(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", cfg)})
+	writePolicyRecord(t, tmp, p)
+
+	for _, phase := range []string{"cold", "second"} {
+		tr, err := RunWitnesses(context.Background(), tmp)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if tr.Degraded != "" {
+			t.Fatalf("%s: freshness path degraded: %s", phase, tr.Degraded)
+		}
+		// The evidence stands — witnessing never depends on caching — but
+		// nothing serves and nothing publishes: the subject executed, its
+		// record dropped, uncacheable as a visible count.
+		if got := tr.Outcomes["example.com/selfmut/mut.TestRewritesOwnInput"]; got != verify.TestPassed {
+			t.Errorf("%s: outcome = %v, want PASSED from real execution", phase, got)
+		}
+		if tr.Fresh != 0 || tr.Ran != 1 || tr.Uncached != 1 {
+			t.Errorf("%s: fresh=%d ran=%d uncached=%d, want 0/1/1: a self-mutating input must neither serve nor publish",
+				phase, tr.Fresh, tr.Ran, tr.Uncached)
+		}
+		if cacheRecord(t, witnesscache.Load(tmp), "example.com/selfmut/mut", "TestRewritesOwnInput") != nil {
+			t.Errorf("%s: a moved-bracket observation published a record", phase)
+		}
+	}
+}
+
 // TestGoRunWitnessesDegradesToFullExecution pins the degrade rule: a
 // fault on the freshness path — here an analysis view that cannot be
 // built over a package whose test sources fail to load — serves nothing

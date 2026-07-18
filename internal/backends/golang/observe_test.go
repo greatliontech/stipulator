@@ -3,6 +3,8 @@ package golang
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -70,6 +72,15 @@ func TestGoExecuteObservationOwnership(t *testing.T) {
 		}
 		if state.Manifest != completed.GetManifest() {
 			t.Errorf("live and wire manifests disagree for %s", po.Wire.GetPackage())
+		}
+		// A quiet package reading only under its own directory binds: the
+		// observation is verifiable and carries its bound digest — the
+		// module-relative bracket root covers the recorded reads.
+		if state.Unverifiable {
+			t.Errorf("quiet package %s sealed unverifiable: %s", po.Wire.GetPackage(), state.Reason)
+		}
+		if completed.GetDigest() == "" {
+			t.Errorf("verifiable observation for %s carries no bound digest", po.Wire.GetPackage())
 		}
 	}
 
@@ -319,6 +330,426 @@ func TestGoExecuteObservationCompletenessClassifier(t *testing.T) {
 				t.Fatalf("reason = %q, want it to name %q", got, tc.wantReason)
 			}
 		})
+	}
+}
+
+// selfMutatingModule stages a temporary module whose one test reads its
+// committed input and rewrites the same bytes in place before returning:
+// the content is unchanged, but the rewrite persists past process exit
+// and moves the input's recorded metadata — the run-to-ingest window
+// made durable by the run itself, which the pre-spawn observation
+// bracket must catch. Staged into a temp directory, never committed: an
+// in-place fixture would move this package's own bracket on every run.
+func selfMutatingModule(t *testing.T) string {
+	t.Helper()
+	return writeModule(t, map[string]string{
+		"go.mod":                 "module example.com/selfmut\n\ngo 1.24\n",
+		"mut/testdata/input.txt": "self-mutated-bytes\n",
+		"mut/mut_test.go": `package mut
+
+import (
+	"os"
+	"testing"
+)
+
+func TestRewritesOwnInput(t *testing.T) {
+	raw, err := os.ReadFile("testdata/input.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile("testdata/input.txt", raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+`,
+	})
+}
+
+// TestGoExecuteSelfMutatedInputSealsUnverifiable pins the run-to-ingest
+// window: a test that rewrites its own observed input mid-run — the
+// mutation persisting past process exit — moves the pre-spawn observation
+// bracket, so the completed observation seals unverifiable naming the
+// moved root and carries no bound digest. The failure direction is
+// re-execution, never reuse.
+func TestGoExecuteSelfMutatedInputSealsUnverifiable(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-policy-attribution")
+	neutralAmbient(t)
+	tmp := selfMutatingModule(t)
+	inv := &stipulatorv1.PolicyInvocation{}
+	inv.SetName("selfmut")
+	inv.SetTimeout(durationpb.New(time.Minute))
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./mut"})
+	inv.SetGo(cfg)
+	ctx := context.Background()
+	n, err := NormalizeInvocation(ctx, tmp, inv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	obs, err := DiscoverInvocation(ctx, n)
+	if err != nil {
+		t.Fatal(err)
+	}
+	health, _, diags, observations, err := ExecuteInvocation(ctx, n, obs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := health.GetDisposition(); got != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+		t.Fatalf("invocation disposition = %v, want HEALTHY — the suite genuinely passes (diags: %v)", got, diags)
+	}
+	o := findObservation(observations, "example.com/selfmut/mut")
+	if o == nil || o.Wire.GetCompleted() == nil {
+		t.Fatalf("healthy completed process yielded no completed observation: %v", observations)
+	}
+	state, err := runtimeinput.CompletedState(o.Runtime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !state.Unverifiable {
+		t.Fatal("mid-run mutation of a bracketed input did not seal the observation unverifiable")
+	}
+	if !strings.Contains(state.Reason, "observation bracket moved") || !strings.Contains(state.Reason, "mut") {
+		t.Errorf("unverifiable reason = %q, want the moved bracket root named", state.Reason)
+	}
+	if o.Wire.GetCompleted().GetDigest() != "" {
+		t.Error("unverifiable observation carries a bound digest; a moved bracket must never bind")
+	}
+	paths, err := runtimeinput.ModuleRelPaths(o.Wire.GetCompleted().GetManifest())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(paths, "mut/testdata/input.txt") {
+		t.Errorf("mutated input not recorded in the manifest: %v", paths)
+	}
+}
+
+// TestGoExecuteModuleRootPackageBracket pins the "." root shape: a tree
+// whose root directory is itself the selected package declares the whole
+// tree as its bracket root. Quiet, the observation binds; a write landing
+// anywhere under the tree during the span — a sibling data directory
+// here, and equally the tree's own bookkeeping directory (`.stipulator`),
+// which is deliberately not bracket-excluded — moves the bracket and
+// seals unverifiable. The module-root shape trades root narrowness for
+// tree-wide sensitivity: the failure direction is re-execution, never a
+// wrong bind.
+func TestGoExecuteModuleRootPackageBracket(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-policy-attribution")
+	neutralAmbient(t)
+	execRoot := func(t *testing.T, files map[string]string) (*ProcessObservation, runtimeinput.State) {
+		t.Helper()
+		tmp := writeModule(t, files)
+		inv := &stipulatorv1.PolicyInvocation{}
+		inv.SetName("rootpkg")
+		inv.SetTimeout(durationpb.New(time.Minute))
+		cfg := &stipulatorv1.GoInvocationConfig{}
+		cfg.SetPackages([]string{"."})
+		inv.SetGo(cfg)
+		ctx := context.Background()
+		n, err := NormalizeInvocation(ctx, tmp, inv)
+		if err != nil {
+			t.Fatal(err)
+		}
+		obs, err := DiscoverInvocation(ctx, n)
+		if err != nil {
+			t.Fatal(err)
+		}
+		health, _, diags, observations, err := ExecuteInvocation(ctx, n, obs)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := health.GetDisposition(); got != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+			t.Fatalf("invocation disposition = %v, want HEALTHY (diags: %v)", got, diags)
+		}
+		o := findObservation(observations, "example.com/rootpkg")
+		if o == nil || o.Wire.GetCompleted() == nil {
+			t.Fatalf("healthy completed process yielded no completed observation: %v", observations)
+		}
+		state, err := runtimeinput.CompletedState(o.Runtime)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return o, state
+	}
+	t.Run("quiet root binds", func(t *testing.T) {
+		o, state := execRoot(t, map[string]string{
+			"go.mod":               "module example.com/rootpkg\n\ngo 1.24\n",
+			"testdata/fixture.txt": "root-bytes\n",
+			"root_test.go": `package rootpkg
+
+import (
+	"os"
+	"testing"
+)
+
+func TestQuietRead(t *testing.T) {
+	if _, err := os.ReadFile("testdata/fixture.txt"); err != nil {
+		t.Fatal(err)
+	}
+}
+`,
+		})
+		if state.Unverifiable {
+			t.Fatalf("quiet module-root package sealed unverifiable: %s", state.Reason)
+		}
+		if o.Wire.GetCompleted().GetDigest() == "" {
+			t.Error("verifiable module-root observation carries no bound digest")
+		}
+	})
+	t.Run("sibling write within the tree moves the root bracket", func(t *testing.T) {
+		o, state := execRoot(t, map[string]string{
+			"go.mod":           "module example.com/rootpkg\n\ngo 1.24\n",
+			"sibling/data.txt": "before\n",
+			"root_test.go": `package rootpkg
+
+import (
+	"os"
+	"testing"
+)
+
+func TestWritesSibling(t *testing.T) {
+	if err := os.WriteFile("sibling/data.txt", []byte("after"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+`,
+		})
+		if !state.Unverifiable {
+			t.Fatal("a mid-span write under the module-root bracket sealed verifiable")
+		}
+		if !strings.Contains(state.Reason, "observation bracket moved") {
+			t.Errorf("unverifiable reason = %q, want the moved bracket named", state.Reason)
+		}
+		if o.Wire.GetCompleted().GetDigest() != "" {
+			t.Error("unverifiable observation carries a bound digest")
+		}
+	})
+}
+
+// TestGoExecuteOutOfRootReadSealsUnverifiable pins the declared root
+// policy's consequence: a read resolving inside the verification tree but
+// outside the package directory — the observation bracket's one declared
+// root — seals per-identity unverifiable, permanently uncacheable, and
+// the completed observation carries no bound digest. A test wanting
+// cacheable fixtures keeps them under its own package directory.
+func TestGoExecuteOutOfRootReadSealsUnverifiable(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-policy-attribution")
+	neutralAmbient(t)
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./extread"})
+	health, _, diags, observations := executeInvocationObserved(t, time.Minute, cfg, "extread")
+	if got := health.GetDisposition(); got != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+		t.Fatalf("invocation disposition = %v, want HEALTHY (diags: %v)", got, diags)
+	}
+	o := findObservation(observations, "example.com/exec/extread")
+	if o == nil || o.Wire.GetCompleted() == nil {
+		t.Fatalf("healthy completed process yielded no completed observation: %v", observations)
+	}
+	state, err := runtimeinput.CompletedState(o.Runtime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !state.Unverifiable {
+		t.Fatal("out-of-root read did not seal the observation unverifiable")
+	}
+	if !strings.Contains(state.Reason, "not covered by observation bracket") ||
+		!strings.Contains(state.Reason, "reads/testdata/fixture.txt") {
+		t.Errorf("unverifiable reason = %q, want the uncovered identity named", state.Reason)
+	}
+	if o.Wire.GetCompleted().GetDigest() != "" {
+		t.Error("unverifiable observation carries a bound digest; an uncovered read must never bind")
+	}
+}
+
+// TestGoExecuteUnknownPackageDirObservationIncomplete pins the fail-closed
+// leg of pre-spawn bracket capture: a package whose directory discovery
+// never resolved gets no bracket, so even a provably flushed testlog
+// yields an incomplete observation naming the missing directory — never a
+// completed record sealed without a bracket.
+func TestGoExecuteUnknownPackageDirObservationIncomplete(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-attribution")
+	neutralAmbient(t)
+	inv := &stipulatorv1.PolicyInvocation{}
+	inv.SetName("nodirs")
+	inv.SetTimeout(durationpb.New(time.Minute))
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./ok"})
+	inv.SetGo(cfg)
+	ctx := context.Background()
+	n, err := NormalizeInvocation(ctx, executeFixture(t), inv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Deliberately no discovery: the executor must fail closed when the
+	// package-directory map was never populated.
+	selection := []Obligation{{Kind: ObligationPackage, Package: "example.com/exec/ok"}}
+	health, _, diags, observations, err := ExecuteInvocation(ctx, n, selection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := health.GetDisposition(); got != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+		t.Fatalf("invocation disposition = %v, want HEALTHY (diags: %v)", got, diags)
+	}
+	if len(observations) != 1 {
+		t.Fatalf("process owns %d observations, want 1", len(observations))
+	}
+	o := observations[0].Wire
+	if o.GetCompleted() != nil {
+		t.Fatalf("a bracketless process produced completed evidence: %v", o)
+	}
+	if reason := o.GetIncompleteReason(); !strings.Contains(reason, "package directory unknown") {
+		t.Errorf("incomplete reason = %q, want the unresolved package directory named", reason)
+	}
+}
+
+// TestGoExecuteExternalWorkspaceMemberObservationIncomplete pins the
+// external-member leg: a workspace member outside the verification tree
+// has no module-relative bracket root, so its process — however cleanly
+// it completes — owns an incomplete observation naming the out-of-tree
+// directory, never an unbracketed completed record.
+func TestGoExecuteExternalWorkspaceMemberObservationIncomplete(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-attribution")
+	neutralAmbient(t)
+	parent := t.TempDir()
+	tree := filepath.Join(parent, "tree")
+	for path, content := range map[string]string{
+		"tree/go.work": "go 1.24\n\nuse (\n\t.\n\t../ext\n)\n",
+		"tree/go.mod":  "module example.com/tree\n\ngo 1.24\n",
+		"ext/go.mod":   "module example.com/extmod\n\ngo 1.24\n",
+		"ext/ext_test.go": `package extmod
+
+import "testing"
+
+func TestExternal(t *testing.T) {}
+`,
+	} {
+		full := filepath.Join(parent, filepath.FromSlash(path))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	inv := &stipulatorv1.PolicyInvocation{}
+	inv.SetName("external")
+	inv.SetTimeout(durationpb.New(time.Minute))
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"example.com/extmod"})
+	inv.SetGo(cfg)
+	ctx := context.Background()
+	n, err := NormalizeInvocation(ctx, tree, inv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	obs, err := DiscoverInvocation(ctx, n)
+	if err != nil {
+		t.Fatal(err)
+	}
+	health, _, diags, observations, err := ExecuteInvocation(ctx, n, obs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := health.GetDisposition(); got != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+		t.Fatalf("invocation disposition = %v, want HEALTHY (diags: %v)", got, diags)
+	}
+	o := findObservation(observations, "example.com/extmod")
+	if o == nil {
+		t.Fatalf("external member owns no observation: %v", observations)
+	}
+	if o.Wire.GetCompleted() != nil {
+		t.Fatalf("an out-of-tree member produced completed evidence: %v", o.Wire)
+	}
+	if reason := o.Wire.GetIncompleteReason(); !strings.Contains(reason, "outside the verification tree") {
+		t.Errorf("incomplete reason = %q, want the out-of-tree directory named", reason)
+	}
+}
+
+// TestGoExecuteSymlinkedTreeObservationBinds pins the resolved
+// observation frame: a verification tree reached through a symlinked
+// prefix — `go list` reports resolved package directories while the
+// invocation carries the alias — must still bracket and bind. A lexical
+// containment check would misclassify every package as outside the tree
+// (incomplete observations with a misleading reason), and an unresolved
+// module view would classify every recorded read as external
+// (per-identity unverifiable) — either way total, silent cache death.
+func TestGoExecuteSymlinkedTreeObservationBinds(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-attribution", "REQ-evidence-witness-freshness")
+	neutralAmbient(t)
+	parent := t.TempDir()
+	for path, content := range map[string]string{
+		"real/go.mod":                   "module example.com/aliased\n\ngo 1.24\n",
+		"real/pkg/testdata/fixture.txt": "aliased-bytes\n",
+		"real/pkg/pkg_test.go": `package pkg
+
+import (
+	"os"
+	"testing"
+)
+
+func TestReadsFixture(t *testing.T) {
+	if _, err := os.ReadFile("testdata/fixture.txt"); err != nil {
+		t.Fatal(err)
+	}
+}
+`,
+	} {
+		full := filepath.Join(parent, filepath.FromSlash(path))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	alias := filepath.Join(parent, "alias")
+	if err := os.Symlink(filepath.Join(parent, "real"), alias); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	inv := &stipulatorv1.PolicyInvocation{}
+	inv.SetName("aliased")
+	inv.SetTimeout(durationpb.New(time.Minute))
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./..."})
+	inv.SetGo(cfg)
+	ctx := context.Background()
+	n, err := NormalizeInvocation(ctx, alias, inv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	obs, err := DiscoverInvocation(ctx, n)
+	if err != nil {
+		t.Fatal(err)
+	}
+	health, _, diags, observations, err := ExecuteInvocation(ctx, n, obs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := health.GetDisposition(); got != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+		t.Fatalf("invocation disposition = %v, want HEALTHY (diags: %v)", got, diags)
+	}
+	o := findObservation(observations, "example.com/aliased/pkg")
+	if o == nil {
+		t.Fatalf("aliased package owns no observation: %v", observations)
+	}
+	if o.Wire.GetCompleted() == nil {
+		t.Fatalf("symlinked-tree observation incomplete: %q", o.Wire.GetIncompleteReason())
+	}
+	state, err := runtimeinput.CompletedState(o.Runtime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Unverifiable {
+		t.Fatalf("symlinked-tree observation sealed unverifiable: %s", state.Reason)
+	}
+	if o.Wire.GetCompleted().GetDigest() == "" {
+		t.Error("symlinked-tree observation carries no bound digest")
+	}
+	paths, err := runtimeinput.ModuleRelPaths(o.Wire.GetCompleted().GetManifest())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(paths, "pkg/testdata/fixture.txt") {
+		t.Errorf("fixture read not recorded module-relative: %v", paths)
 	}
 }
 
