@@ -94,3 +94,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "696b80c3c41f84327e4d97f42051125672582765d1f5f039d875ac7c07562e82"
 }
+
+bindings {
+  requirement_id: "REQ-report-check-result"
+  content_hash: "76509d45240de3f39c229dbafa896f1371c1c5cd442e9b6077696220d3f9d45c"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestCheckJSONProjectionIsDeterministic"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "82838f03ed753746d7757d5319353141f9afa92fabb33d455e3bf66a8e13296a"
+}

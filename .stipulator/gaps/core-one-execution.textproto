@@ -2,5 +2,5 @@
 # proto-message: stipulator.v1.Gap
 
 requirement_id: "REQ-core-one-execution"
-reason: "unified execution not yet built; check and gate still run witness analysis beside an independent race suite"
-lands { manual { condition: "the unified check derives suite health and witness evidence from one execution of the accepted test policy" } }
+reason: "the unified check derives suite health and witness evidence from one execution of the accepted policy, but legacy verify and gate still run an independent assumed universal race suite beside witness analysis"
+lands { manual { condition: "legacy verify and gate derive suite health and witness evidence from the accepted policy's single execution" } }

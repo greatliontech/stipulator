@@ -126,9 +126,15 @@
     ]
   },
   "passed": false,
+  "policyProblem": {
+    "message": "invocation \"race\": missing explicit timeout",
+    "path": ".stipulator/policy.textproto"
+  },
   "pruneResidue": [
     ".stipulator/gaps/y.textproto"
   ],
+  "testsExecuted": 12,
+  "testsUncacheable": 3,
   "verify": {
     "results": [
       {
@@ -145,5 +151,6 @@
         "witnessClass": "WITNESS_CLASS_PROPERTY"
       }
     ]
-  }
+  },
+  "witnessPublicationDegraded": "source producer validation failed: view invalidated"
 }

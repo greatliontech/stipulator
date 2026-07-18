@@ -25,17 +25,21 @@ const (
 // test policy, binding verification, coverage, gap evaluation, and prune
 // residue. Every human rendering is a projection of this message.
 type CheckResult struct {
-	state                      protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Passed          bool                   `protobuf:"varint,1,opt,name=passed"`
-	xxx_hidden_CompileProblems *[]*Problem            `protobuf:"bytes,2,rep,name=compile_problems,json=compileProblems"`
-	xxx_hidden_Execution       *ExecutionReport       `protobuf:"bytes,3,opt,name=execution"`
-	xxx_hidden_Verify          *VerifyReport          `protobuf:"bytes,4,opt,name=verify"`
-	xxx_hidden_Coverage        *CoverageReport        `protobuf:"bytes,5,opt,name=coverage"`
-	xxx_hidden_PruneResidue    []string               `protobuf:"bytes,6,rep,name=prune_residue,json=pruneResidue"`
-	XXX_raceDetectHookData     protoimpl.RaceDetectHookData
-	XXX_presence               [1]uint32
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	state                                 protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Passed                     bool                   `protobuf:"varint,1,opt,name=passed"`
+	xxx_hidden_CompileProblems            *[]*Problem            `protobuf:"bytes,2,rep,name=compile_problems,json=compileProblems"`
+	xxx_hidden_Execution                  *ExecutionReport       `protobuf:"bytes,3,opt,name=execution"`
+	xxx_hidden_Verify                     *VerifyReport          `protobuf:"bytes,4,opt,name=verify"`
+	xxx_hidden_Coverage                   *CoverageReport        `protobuf:"bytes,5,opt,name=coverage"`
+	xxx_hidden_PruneResidue               []string               `protobuf:"bytes,6,rep,name=prune_residue,json=pruneResidue"`
+	xxx_hidden_PolicyProblem              *Problem               `protobuf:"bytes,7,opt,name=policy_problem,json=policyProblem"`
+	xxx_hidden_TestsExecuted              int32                  `protobuf:"varint,8,opt,name=tests_executed,json=testsExecuted"`
+	xxx_hidden_TestsUncacheable           int32                  `protobuf:"varint,9,opt,name=tests_uncacheable,json=testsUncacheable"`
+	xxx_hidden_WitnessPublicationDegraded *string                `protobuf:"bytes,10,opt,name=witness_publication_degraded,json=witnessPublicationDegraded"`
+	XXX_raceDetectHookData                protoimpl.RaceDetectHookData
+	XXX_presence                          [1]uint32
+	unknownFields                         protoimpl.UnknownFields
+	sizeCache                             protoimpl.SizeCache
 }
 
 func (x *CheckResult) Reset() {
@@ -107,9 +111,40 @@ func (x *CheckResult) GetPruneResidue() []string {
 	return nil
 }
 
+func (x *CheckResult) GetPolicyProblem() *Problem {
+	if x != nil {
+		return x.xxx_hidden_PolicyProblem
+	}
+	return nil
+}
+
+func (x *CheckResult) GetTestsExecuted() int32 {
+	if x != nil {
+		return x.xxx_hidden_TestsExecuted
+	}
+	return 0
+}
+
+func (x *CheckResult) GetTestsUncacheable() int32 {
+	if x != nil {
+		return x.xxx_hidden_TestsUncacheable
+	}
+	return 0
+}
+
+func (x *CheckResult) GetWitnessPublicationDegraded() string {
+	if x != nil {
+		if x.xxx_hidden_WitnessPublicationDegraded != nil {
+			return *x.xxx_hidden_WitnessPublicationDegraded
+		}
+		return ""
+	}
+	return ""
+}
+
 func (x *CheckResult) SetPassed(v bool) {
 	x.xxx_hidden_Passed = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 10)
 }
 
 func (x *CheckResult) SetCompileProblems(v []*Problem) {
@@ -130,6 +165,25 @@ func (x *CheckResult) SetCoverage(v *CoverageReport) {
 
 func (x *CheckResult) SetPruneResidue(v []string) {
 	x.xxx_hidden_PruneResidue = v
+}
+
+func (x *CheckResult) SetPolicyProblem(v *Problem) {
+	x.xxx_hidden_PolicyProblem = v
+}
+
+func (x *CheckResult) SetTestsExecuted(v int32) {
+	x.xxx_hidden_TestsExecuted = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 10)
+}
+
+func (x *CheckResult) SetTestsUncacheable(v int32) {
+	x.xxx_hidden_TestsUncacheable = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 10)
+}
+
+func (x *CheckResult) SetWitnessPublicationDegraded(v string) {
+	x.xxx_hidden_WitnessPublicationDegraded = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 10)
 }
 
 func (x *CheckResult) HasPassed() bool {
@@ -160,6 +214,34 @@ func (x *CheckResult) HasCoverage() bool {
 	return x.xxx_hidden_Coverage != nil
 }
 
+func (x *CheckResult) HasPolicyProblem() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_PolicyProblem != nil
+}
+
+func (x *CheckResult) HasTestsExecuted() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 7)
+}
+
+func (x *CheckResult) HasTestsUncacheable() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 8)
+}
+
+func (x *CheckResult) HasWitnessPublicationDegraded() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 9)
+}
+
 func (x *CheckResult) ClearPassed() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Passed = false
@@ -175,6 +257,25 @@ func (x *CheckResult) ClearVerify() {
 
 func (x *CheckResult) ClearCoverage() {
 	x.xxx_hidden_Coverage = nil
+}
+
+func (x *CheckResult) ClearPolicyProblem() {
+	x.xxx_hidden_PolicyProblem = nil
+}
+
+func (x *CheckResult) ClearTestsExecuted() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 7)
+	x.xxx_hidden_TestsExecuted = 0
+}
+
+func (x *CheckResult) ClearTestsUncacheable() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 8)
+	x.xxx_hidden_TestsUncacheable = 0
+}
+
+func (x *CheckResult) ClearWitnessPublicationDegraded() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 9)
+	x.xxx_hidden_WitnessPublicationDegraded = nil
 }
 
 type CheckResult_builder struct {
@@ -200,6 +301,23 @@ type CheckResult_builder struct {
 	// operation deletes, echoed from the coverage gap evaluation so
 	// consumers need no join; the verdict fails while non-empty.
 	PruneResidue []string
+	// The accepted test policy failed to load, parse, or validate. Set means
+	// no execution happened and the execution, verify, and coverage sections
+	// are absent; the verdict fails — witness execution consumes the
+	// committed policy record, never an assumed invocation.
+	PolicyProblem *Problem
+	// Top-level tests the policy execution ran. Nothing in this count was
+	// served from the witness cache: the check judges every invocation's
+	// health, and a health-judged invocation executes whole.
+	TestsExecuted *int32
+	// Executed tests whose freshness records could not be published for
+	// later freshness-serving consumers; they run again next time. A
+	// silently shrinking cache reads as covered — the count keeps the cost
+	// visible.
+	TestsUncacheable *int32
+	// The freshness-publication fault when record publication was disabled
+	// whole; execution evidence and suite health stand, only reuse is lost.
+	WitnessPublicationDegraded *string
 }
 
 func (b0 CheckResult_builder) Build() *CheckResult {
@@ -207,7 +325,7 @@ func (b0 CheckResult_builder) Build() *CheckResult {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Passed != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 10)
 		x.xxx_hidden_Passed = *b.Passed
 	}
 	x.xxx_hidden_CompileProblems = &b.CompileProblems
@@ -215,6 +333,19 @@ func (b0 CheckResult_builder) Build() *CheckResult {
 	x.xxx_hidden_Verify = b.Verify
 	x.xxx_hidden_Coverage = b.Coverage
 	x.xxx_hidden_PruneResidue = b.PruneResidue
+	x.xxx_hidden_PolicyProblem = b.PolicyProblem
+	if b.TestsExecuted != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 10)
+		x.xxx_hidden_TestsExecuted = *b.TestsExecuted
+	}
+	if b.TestsUncacheable != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 10)
+		x.xxx_hidden_TestsUncacheable = *b.TestsUncacheable
+	}
+	if b.WitnessPublicationDegraded != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 10)
+		x.xxx_hidden_WitnessPublicationDegraded = b.WitnessPublicationDegraded
+	}
 	return m0
 }
 
@@ -222,14 +353,19 @@ var File_stipulator_v1_check_proto protoreflect.FileDescriptor
 
 const file_stipulator_v1_check_proto_rawDesc = "" +
 	"\n" +
-	"\x19stipulator/v1/check.proto\x12\rstipulator.v1\x1a\x1dstipulator/v1/execution.proto\x1a\x1bstipulator/v1/reports.proto\"\xbb\x02\n" +
+	"\x19stipulator/v1/check.proto\x12\rstipulator.v1\x1a\x1dstipulator/v1/execution.proto\x1a\x1bstipulator/v1/reports.proto\"\x90\x04\n" +
 	"\vCheckResult\x12\x16\n" +
 	"\x06passed\x18\x01 \x01(\bR\x06passed\x12A\n" +
 	"\x10compile_problems\x18\x02 \x03(\v2\x16.stipulator.v1.ProblemR\x0fcompileProblems\x12<\n" +
 	"\texecution\x18\x03 \x01(\v2\x1e.stipulator.v1.ExecutionReportR\texecution\x123\n" +
 	"\x06verify\x18\x04 \x01(\v2\x1b.stipulator.v1.VerifyReportR\x06verify\x129\n" +
 	"\bcoverage\x18\x05 \x01(\v2\x1d.stipulator.v1.CoverageReportR\bcoverage\x12#\n" +
-	"\rprune_residue\x18\x06 \x03(\tR\fpruneResidueBDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
+	"\rprune_residue\x18\x06 \x03(\tR\fpruneResidue\x12=\n" +
+	"\x0epolicy_problem\x18\a \x01(\v2\x16.stipulator.v1.ProblemR\rpolicyProblem\x12%\n" +
+	"\x0etests_executed\x18\b \x01(\x05R\rtestsExecuted\x12+\n" +
+	"\x11tests_uncacheable\x18\t \x01(\x05R\x10testsUncacheable\x12@\n" +
+	"\x1cwitness_publication_degraded\x18\n" +
+	" \x01(\tR\x1awitnessPublicationDegradedBDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
 var file_stipulator_v1_check_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_stipulator_v1_check_proto_goTypes = []any{
@@ -244,11 +380,12 @@ var file_stipulator_v1_check_proto_depIdxs = []int32{
 	2, // 1: stipulator.v1.CheckResult.execution:type_name -> stipulator.v1.ExecutionReport
 	3, // 2: stipulator.v1.CheckResult.verify:type_name -> stipulator.v1.VerifyReport
 	4, // 3: stipulator.v1.CheckResult.coverage:type_name -> stipulator.v1.CoverageReport
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	1, // 4: stipulator.v1.CheckResult.policy_problem:type_name -> stipulator.v1.Problem
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_check_proto_init() }

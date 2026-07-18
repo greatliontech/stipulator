@@ -1,6 +1,0 @@
-# proto-file: proto/stipulator/v1/records.proto
-# proto-message: stipulator.v1.Gap
-
-requirement_id: "REQ-check-verdict"
-reason: "the unified check operation does not exist; check is a task sequence of independent commands today"
-lands { manual { condition: "the unified check command returns one verdict from one policy execution without invoking test, verify, or gate as subprocesses" } }

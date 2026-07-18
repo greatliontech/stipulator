@@ -72,3 +72,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "71244202993bf7ec2945e9bef99d4153ff8d721dffb8d3783407d79b9f95c648"
 }
+
+bindings {
+  requirement_id: "REQ-gap-resolved-pruned"
+  content_hash: "0562f8afc7c913960043640c652447c6be2f32e9671d0411e99c6e4e85c89fdd"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckWitnessResolvedGapIsResidueUntilPruned"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "0c72440f9f8c243dfc2e6ccd1b3a5d79e67ab1751ed8bdbfca12029695478e47"
+}

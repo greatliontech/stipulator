@@ -37,7 +37,6 @@ func TestPolicyCanonicalFormAccepted(t *testing.T) {
 		name   string
 		policy *stipulatorv1.TestPolicy
 	}{
-		{"empty policy", mkPolicy()},
 		{"one invocation", mkPolicy(mkInvocation("race", durationpb.New(900e9), true))},
 		{"ascending names", mkPolicy(
 			mkInvocation("member-race", durationpb.New(600e9), true),
@@ -62,6 +61,9 @@ func TestPolicyNonCanonicalFormRefusedWhole(t *testing.T) {
 		policy  *stipulatorv1.TestPolicy
 		wantErr string
 	}{
+		{"no invocations",
+			mkPolicy(),
+			"no invocations"},
 		{"empty invocation name",
 			mkPolicy(mkInvocation("", durationpb.New(1e9), true)),
 			"empty name"},

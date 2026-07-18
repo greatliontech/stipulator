@@ -33,6 +33,8 @@ jobs:
       - name: Gate
         run: go run ./cmd/stipulator gate
       - name: Prune lint
-        # No resolved gap lingering. --no-test: the gate step already
-        # witnessed this tree.
+        # No resolved gap lingering. --no-test evaluates unwitnessed, so a
+        # gap resolved only by an executed witness is invisible to this
+        # lint; `stipulator check` reports such residue from its witnessed
+        # pass.
         run: go run ./cmd/stipulator prune --check --no-test

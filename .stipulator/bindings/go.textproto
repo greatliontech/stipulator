@@ -304,7 +304,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.ExecuteInvocation"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "67bc0ca27141b2a0c4b6c9d8d385d1b4064bb52af577453cb944478c26123ddd"
+  shape_hash: "36fbc70c31ece43990d9c9d8390a439aa9d55ebc00bab907adb87755993fc372"
 }
 
 bindings {

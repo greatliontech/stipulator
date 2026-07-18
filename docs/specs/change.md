@@ -106,10 +106,14 @@ the gate judged — not in a second run with different conditions.
 **REQ-check-verdict** (behavior): The unified check MUST derive its one
 verdict from a single evaluation pass — compilation, one execution of the
 accepted test policy, binding verification, coverage, gap evaluation, and
-prune residue — failing exactly when compilation fails, verification reports
-problems, suite health is unhealthy, REQ-gate-no-undeclared fails, or prune
-residue remains, and never composing the answer from subprocess invocations
-of the individual operations.
+prune residue — failing exactly when compilation fails, the accepted test
+policy record is missing or invalid (REQ-policy-explicit: without it there
+is no execution whose suite health the verdict could judge), verification
+reports problems, suite health is unhealthy, REQ-gate-no-undeclared fails,
+or prune residue remains, and never composing the answer from subprocess
+invocations of the individual operations. A cancelled check yields no
+verdict at all — cancellation is an operational abort, never a pass or a
+fail.
 
 **REQ-check-diagnostics** (behavior): A failing check MUST surface the
 retained output of every failing policy invocation and every failed or

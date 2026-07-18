@@ -68,26 +68,44 @@ func Dispatch(p *stipulatorv1.TestPolicy, backends map[string]Backend) ([]Invoca
 	return invs, nil
 }
 
+// ErrRecord classifies a policy loading failure as a record problem — the
+// committed record is missing or invalid — as opposed to an operational
+// fault reading it. A record problem is a fact about the tree; an
+// operational fault says nothing about it.
+var ErrRecord = errors.New("policy record problem")
+
+// recordError marks a loading failure as ErrRecord without reshaping its
+// message.
+type recordError struct{ err error }
+
+func (e recordError) Error() string { return e.err.Error() }
+func (e recordError) Unwrap() error { return e.err }
+func (recordError) Is(target error) bool {
+	return target == ErrRecord
+}
+
 // Load reads the committed policy record from its fixed location under
 // root, strict-parses it, and dispatches it through backends: the one
 // loading seam every consumer shares, so what executes is always the
 // validated form of what was reviewed. An absent record is an error — the
-// policy is explicit, never assumed (REQ-policy-explicit).
+// policy is explicit, never assumed (REQ-policy-explicit). Missing and
+// invalid records match ErrRecord; a read fault that says nothing about
+// the record's content does not.
 func Load(root string, backends map[string]Backend) (*stipulatorv1.TestPolicy, []Invocation, error) {
 	raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(Path)))
 	if errors.Is(err, fs.ErrNotExist) {
-		return nil, nil, fmt.Errorf("no accepted test policy at %s; run `stipulator policy init` to derive one", Path)
+		return nil, nil, recordError{fmt.Errorf("no accepted test policy at %s; run `stipulator policy init` to derive one", Path)}
 	}
 	if err != nil {
 		return nil, nil, err
 	}
 	p, err := Parse(raw)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, recordError{err}
 	}
 	invs, err := Dispatch(p, backends)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, recordError{err}
 	}
 	return p, invs, nil
 }

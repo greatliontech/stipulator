@@ -1,6 +1,7 @@
 package policy
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -67,13 +68,13 @@ func TestPolicyRenderRoundTripsCanonically(t *testing.T) {
 		t.Error("rendered record parses back to a different policy")
 	}
 
+	// An empty policy renders (the renderer is a pure serializer) but can
+	// never load: a record accepting no test work is refused at parse.
 	empty, err := Render(mkPolicy())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p2, err := Parse(empty); err != nil {
-		t.Fatalf("empty record does not strict-parse: %v", err)
-	} else if len(p2.GetInvocations()) != 0 {
-		t.Error("empty policy round-trips invocations")
+	if _, err := Parse(empty); err == nil || !strings.Contains(err.Error(), "no invocations") {
+		t.Errorf("empty record parse = %v, want the no-invocations refusal", err)
 	}
 }

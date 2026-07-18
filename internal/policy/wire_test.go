@@ -201,6 +201,10 @@ func fixtureCheckResult() proto.Message {
 	coverage.SetGatePasses(false)
 	coverage.SetPolicyOverrides([]string{"behavior MUST: attestation"})
 
+	policyProblem := &stipulatorv1.Problem{}
+	policyProblem.SetPath(".stipulator/policy.textproto")
+	policyProblem.SetMessage("invocation \"race\": missing explicit timeout")
+
 	c := &stipulatorv1.CheckResult{}
 	c.SetPassed(false)
 	c.SetCompileProblems([]*stipulatorv1.Problem{problem})
@@ -208,6 +212,10 @@ func fixtureCheckResult() proto.Message {
 	c.SetVerify(verify)
 	c.SetCoverage(coverage)
 	c.SetPruneResidue([]string{".stipulator/gaps/y.textproto"})
+	c.SetPolicyProblem(policyProblem)
+	c.SetTestsExecuted(12)
+	c.SetTestsUncacheable(3)
+	c.SetWitnessPublicationDegraded("source producer validation failed: view invalidated")
 	return c
 }
 

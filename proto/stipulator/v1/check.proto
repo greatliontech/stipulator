@@ -32,4 +32,21 @@ message CheckResult {
   // operation deletes, echoed from the coverage gap evaluation so
   // consumers need no join; the verdict fails while non-empty.
   repeated string prune_residue = 6;
+  // The accepted test policy failed to load, parse, or validate. Set means
+  // no execution happened and the execution, verify, and coverage sections
+  // are absent; the verdict fails — witness execution consumes the
+  // committed policy record, never an assumed invocation.
+  Problem policy_problem = 7;
+  // Top-level tests the policy execution ran. Nothing in this count was
+  // served from the witness cache: the check judges every invocation's
+  // health, and a health-judged invocation executes whole.
+  int32 tests_executed = 8;
+  // Executed tests whose freshness records could not be published for
+  // later freshness-serving consumers; they run again next time. A
+  // silently shrinking cache reads as covered — the count keeps the cost
+  // visible.
+  int32 tests_uncacheable = 9;
+  // The freshness-publication fault when record publication was disabled
+  // whole; execution evidence and suite health stand, only reuse is lost.
+  string witness_publication_degraded = 10;
 }

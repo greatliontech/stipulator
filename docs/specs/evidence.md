@@ -202,7 +202,10 @@ universal invocation.
 
 **REQ-policy-record-location** (wire): The accepted test policy MUST be
 stored as textproto at `.stipulator/policy.textproto` in canonical form:
-invocation names non-empty, unique, and strictly ascending in byte order,
+at least one invocation declared — a record accepting no test work names
+no suite whose health a run could judge, so admitting it would create a
+tree that fails forever without a stated cause — with invocation names
+non-empty, unique, and strictly ascending in byte order,
 each invocation carrying exactly one typed backend payload and a valid,
 positive explicit timeout. A record violating canonical form — unknown fields,
 duplicates, and out-of-order or incomplete invocations included — is

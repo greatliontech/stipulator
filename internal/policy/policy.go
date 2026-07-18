@@ -35,11 +35,17 @@ func Parse(raw []byte) (*stipulatorv1.TestPolicy, error) {
 	return p, nil
 }
 
-// Validate checks canonical form over the backend-neutral envelope:
-// invocation names non-empty, unique, and strictly ascending in byte
-// order; every invocation carrying a positive explicit timeout and
-// exactly one typed backend payload.
+// Validate checks canonical form over the backend-neutral envelope: at
+// least one invocation declared; invocation names non-empty, unique, and
+// strictly ascending in byte order; every invocation carrying a positive
+// explicit timeout and exactly one typed backend payload.
 func Validate(p *stipulatorv1.TestPolicy) error {
+	// A record accepting no test work names no suite whose health a run
+	// could judge: admitting it would create a tree that fails every check
+	// without a stated cause.
+	if len(p.GetInvocations()) == 0 {
+		return fmt.Errorf("policy declares no invocations; the accepted policy names the suite it stands for")
+	}
 	prev := ""
 	for i, inv := range p.GetInvocations() {
 		name := inv.GetName()

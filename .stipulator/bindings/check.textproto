@@ -1,0 +1,128 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-check-verdict"
+  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.Run"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "4bdc601da3078610d7046fabe314f5a773efb50eca5760e8dd9dd7c1fe7a9697"
+}
+
+bindings {
+  requirement_id: "REQ-check-verdict"
+  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckMissingPolicyFailsWithGuidance"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e580e475fcbc8c8bf70ef6bee08e4162d1088ef3f7192bf4492729cf2d293fec"
+}
+
+bindings {
+  requirement_id: "REQ-check-verdict"
+  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckCompileFailureIsTheVerdict"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "67d4e1238cca04abb0fe62055bf7834ffc247abbdcfc1677ecf722f2584d5bf1"
+}
+
+bindings {
+  requirement_id: "REQ-check-verdict"
+  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckSuiteFailureFailsTheCheckWithDiagnostics"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "1e2f1ce8c38ceb2fcee277deb5e21ce9deab299bdd2f160e6045631ad64e439e"
+}
+
+bindings {
+  requirement_id: "REQ-check-verdict"
+  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckCoverageViolationFailsTheCheck"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b7ec1e1476b4134ac04712156af133116c8d63575f49f8173dda1edf141b49b3"
+}
+
+bindings {
+  requirement_id: "REQ-check-verdict"
+  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckVerifyProblemFailsTheCheck"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b946331dcbe5a79da55c2280a7a16df2a9e3c643f190c1afa808a1e6cfff0018"
+}
+
+bindings {
+  requirement_id: "REQ-check-verdict"
+  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckBrokenBindingFailsTheCheck"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "03f69dad47423ecf09f2775906c65a4f021c43f914d07246414e03df30a9f07c"
+}
+
+bindings {
+  requirement_id: "REQ-check-verdict"
+  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckWitnessResolvedGapIsResidueUntilPruned"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "0c72440f9f8c243dfc2e6ccd1b3a5d79e67ab1751ed8bdbfca12029695478e47"
+}
+
+bindings {
+  requirement_id: "REQ-check-verdict"
+  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckCancelledRunYieldsNoVerdict"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "17d0cf25efcf8a58425e467d57698c463c4f55c38dc5590bb4011986d29fef19"
+}
+
+bindings {
+  requirement_id: "REQ-check-verdict"
+  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestCheckExitCodes"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ae4939687c5702c83024e10c11bc6250c93f9b8d3f2272d0bf86d03dfdefbaa8"
+}
+
+bindings {
+  requirement_id: "REQ-check-diagnostics"
+  content_hash: "b373e6343bd4553e52e640af2e3943d9d3c002932bb77da1ebb35ce4876d1beb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckSuiteFailureFailsTheCheckWithDiagnostics"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "1e2f1ce8c38ceb2fcee277deb5e21ce9deab299bdd2f160e6045631ad64e439e"
+}
+
+bindings {
+  requirement_id: "REQ-check-diagnostics"
+  content_hash: "b373e6343bd4553e52e640af2e3943d9d3c002932bb77da1ebb35ce4876d1beb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestCheckRenderNamesDegradedDistinctly"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "251509d5295683816ff073a8883905b981ce8567634cc16a8c1dac8ef8e87b69"
+}
+
+bindings {
+  requirement_id: "REQ-check-diagnostics"
+  content_hash: "b373e6343bd4553e52e640af2e3943d9d3c002932bb77da1ebb35ce4876d1beb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.renderCheck"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "1ca312dec3e1791b99e195bbca3cf5ba521ad1a84e5c564486a8584a1d1296bb"
+}
+
+bindings {
+  requirement_id: "REQ-check-verdict"
+  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckComposesInProcess"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ad1410ddad0dc092e0cd309eba9df62d6518db29ca1e18a5f1d070e9a9fe702c"
+}
