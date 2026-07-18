@@ -23,7 +23,7 @@ import (
 // selected packages, one owned child process per package. Per-package
 // processes are what make attribution honest: every outcome in the report
 // names the one process whose stream produced it (REQ-policy-attribution),
-// and chunk-per-process observation later refines the same boundary. The
+// and per-process observation refines the same boundary. The
 // executor trusts nothing silent: a stream that ends without a terminal
 // package event, carries unparseable bytes, or disagrees with its process
 // exit status is degraded, never healthy — an environment that swallowed a

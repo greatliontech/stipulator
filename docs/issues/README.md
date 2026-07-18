@@ -17,6 +17,12 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   producer-owned typed results directly. *Lands: when a consumer needs producer-owned material
   rendered in Stipulator context dossiers instead of consuming the producer's typed output
   directly.*
+- **[witness-e2e-reds-only-under-gate](witness-e2e-reds-only-under-gate.md)** — a freshness
+  witness historically ran red only inside the legacy whole-suite witness runner and never in
+  isolation; it does not reproduce under the accepted policy, so the exposure is scoped to the
+  legacy runner standalone `verify`/`gate` still invoke. *Lands: when standalone `verify` and
+  `gate` derive from the accepted policy's single execution or are retired — close then; a
+  recurrence before that gets a fresh diagnosis.*
 - **[runtime-input-digest-races-the-run](runtime-input-digest-races-the-run.md)** — the testlog
   manifest is hashed after the run, so a fixture edited while its readers execute can pin
   pre-edit outcomes under a post-edit digest. *Lands: when gofresh can atomically bind
@@ -68,11 +74,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   termination cannot be proven without a Windows host. *Lands: when Windows descendant
   termination is proven with a real spawned child (Windows host unavailable here), and when
   `go/packages` symbol loading runs behind an owned boundary.*
-- **[witness-e2e-reds-only-under-gate](witness-e2e-reds-only-under-gate.md)** — a freshness
-  witness runs red only inside completed whole-corpus gate runs and never in isolation; standing
-  hypothesis is environmental degradation under whole-suite load, with the isolated diagnostic and
-  disposition rule recorded. *Lands: when witness execution can apply the accepted test policy and
-  the isolated diagnostic has been executed and dispositioned.*
 - **[symlinked-member-escapes-lexical-validation](symlinked-member-escapes-lexical-validation.md)** — an
   in-tree symlink pointing outside the tree passes the lexical escape checks in workspace member
   and policy module-root validation. *Lands: when validation resolves symlinks or execution refuses
