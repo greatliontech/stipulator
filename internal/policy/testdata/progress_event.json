@@ -1,0 +1,8 @@
+{
+  "completed": 7,
+  "elapsed": "90.500s",
+  "invocation": "workspace-race",
+  "phase": "PHASE_EXECUTION",
+  "terminalCause": "TERMINAL_CAUSE_DEADLINE",
+  "total": 12
+}

@@ -36,3 +36,61 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "db78b453039d913a5e32d63c40a352c6a5a97a76538511bc01259b48efca66f6"
 }
+
+bindings {
+  requirement_id: "REQ-report-policy-messages"
+  content_hash: "0cf08ef5af13b1b2e2a1ce2b67c0916c3b81d2d2654152936af93ba5eb445253"
+  backend: "proto"
+  symbol: "stipulator.v1.TestPolicy"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+
+bindings {
+  requirement_id: "REQ-report-policy-messages"
+  content_hash: "0cf08ef5af13b1b2e2a1ce2b67c0916c3b81d2d2654152936af93ba5eb445253"
+  backend: "proto"
+  symbol: "stipulator.v1.PolicyInvocation"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+
+bindings {
+  requirement_id: "REQ-report-policy-messages"
+  content_hash: "0cf08ef5af13b1b2e2a1ce2b67c0916c3b81d2d2654152936af93ba5eb445253"
+  backend: "proto"
+  symbol: "stipulator.v1.ExecutionReport"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+
+bindings {
+  requirement_id: "REQ-report-policy-messages"
+  content_hash: "0cf08ef5af13b1b2e2a1ce2b67c0916c3b81d2d2654152936af93ba5eb445253"
+  backend: "proto"
+  symbol: "stipulator.v1.ProgressEvent"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+
+bindings {
+  requirement_id: "REQ-report-policy-messages"
+  content_hash: "0cf08ef5af13b1b2e2a1ce2b67c0916c3b81d2d2654152936af93ba5eb445253"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/policy.TestPolicyAndReportWireFixturesRoundTrip"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "aa0a8ee23374286de26a8d9dc8be6dd5a534750b070fb97c48c97a5afde4a4f8"
+}
+
+bindings {
+  requirement_id: "REQ-report-check-result"
+  content_hash: "76509d45240de3f39c229dbafa896f1371c1c5cd442e9b6077696220d3f9d45c"
+  backend: "proto"
+  symbol: "stipulator.v1.CheckResult"
+  role: BINDING_ROLE_IMPLEMENTS
+}
+
+bindings {
+  requirement_id: "REQ-report-check-result"
+  content_hash: "76509d45240de3f39c229dbafa896f1371c1c5cd442e9b6077696220d3f9d45c"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/policy.TestCheckResultWireFixtureRoundTrip"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "696b80c3c41f84327e4d97f42051125672582765d1f5f039d875ac7c07562e82"
+}

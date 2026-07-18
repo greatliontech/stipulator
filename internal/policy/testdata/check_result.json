@@ -1,0 +1,112 @@
+{
+  "compileProblems": [
+    {
+      "message": "registration names an unbound requirement",
+      "path": "docs/specs/evidence.md"
+    }
+  ],
+  "coverage": {
+    "gaps": [
+      {
+        "path": ".stipulator/gaps/y.textproto",
+        "requirementId": "REQ-y",
+        "state": "GAP_STATE_RESOLVED"
+      }
+    ],
+    "gatePasses": false,
+    "policyOverrides": [
+      "behavior MUST: attestation"
+    ],
+    "requirements": [
+      {
+        "bucket": "BUCKET_BROKEN",
+        "id": "REQ-x",
+        "keyword": "KEYWORD_MUST",
+        "kind": "CLAUSE_KIND_BEHAVIOR",
+        "reasons": [
+          "bound test failed"
+        ]
+      }
+    ],
+    "violations": [
+      "REQ-x"
+    ]
+  },
+  "execution": {
+    "diagnostics": [
+      {
+        "disposition": "HEALTH_DISPOSITION_DEGRADED",
+        "invocation": "workspace-race",
+        "output": "test binary exited without a report\n",
+        "package": "example.com/m/broken",
+        "test": "TestFlaky",
+        "truncated": true
+      }
+    ],
+    "invocations": [
+      {
+        "disposition": "HEALTH_DISPOSITION_TEST_FAILED",
+        "invocation": "workspace-race",
+        "packages": [
+          {
+            "disposition": "HEALTH_DISPOSITION_HEALTHY",
+            "package": "example.com/m/ok"
+          },
+          {
+            "disposition": "HEALTH_DISPOSITION_BUILD_FAILED",
+            "package": "example.com/m/broken"
+          }
+        ]
+      }
+    ],
+    "obligations": [
+      {
+        "backend": "go",
+        "disposition": "OBLIGATION_DISPOSITION_OMITTED",
+        "obligation": "example.com/m/orphan"
+      },
+      {
+        "backend": "go",
+        "disposition": "OBLIGATION_DISPOSITION_MULTIPLY_SELECTED",
+        "invocations": [
+          "member-health",
+          "workspace-race"
+        ],
+        "obligation": "example.com/m/ok"
+      }
+    ],
+    "tests": [
+      {
+        "outcome": "TEST_OUTCOME_PASSED",
+        "package": "example.com/m/ok",
+        "producer": {
+          "invocation": "workspace-race",
+          "processId": "4242",
+          "processOrdinal": 1
+        },
+        "test": "TestConservation/named_case"
+      }
+    ]
+  },
+  "passed": false,
+  "pruneResidue": [
+    ".stipulator/gaps/y.textproto"
+  ],
+  "verify": {
+    "results": [
+      {
+        "backend": "go",
+        "contentPinned": true,
+        "path": ".stipulator/bindings/evidence.textproto",
+        "raceEnabled": true,
+        "requirementId": "REQ-x",
+        "resolution": "RESOLUTION_RESOLVED",
+        "role": "BINDING_ROLE_TESTS",
+        "shape": "SHAPE_STATE_MATCH",
+        "symbol": "example.com/m.TestX",
+        "testOutcome": "TEST_OUTCOME_FAILED",
+        "witnessClass": "WITNESS_CLASS_PROPERTY"
+      }
+    ]
+  }
+}

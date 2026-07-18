@@ -1,0 +1,56 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-policy-record-location"
+  content_hash: "c75c5b944226bf48685c197551bec90192a134750ca9ddd60508cb607846ace9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/policy.Parse"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "e6cabd782411c0eeb7808b4321ec3546d4134f5e1974d45a83d6e5f5b94f78e9"
+}
+
+bindings {
+  requirement_id: "REQ-policy-record-location"
+  content_hash: "c75c5b944226bf48685c197551bec90192a134750ca9ddd60508cb607846ace9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/policy.Validate"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "04d3c6b55d15a09016e7a1525f00d889593674152083ef14c8e13c4764851b33"
+}
+
+bindings {
+  requirement_id: "REQ-policy-record-location"
+  content_hash: "c75c5b944226bf48685c197551bec90192a134750ca9ddd60508cb607846ace9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/policy.TestPolicyCanonicalFormAccepted"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a96563f1780d32cfb32cfa7a77442865099a72ad3a8b153a69f10a568bf00bc3"
+}
+
+bindings {
+  requirement_id: "REQ-policy-record-location"
+  content_hash: "c75c5b944226bf48685c197551bec90192a134750ca9ddd60508cb607846ace9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/policy.TestPolicyNonCanonicalFormRefusedWhole"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c7e5a3169777a8dcd204aedf14b2de2e1f883e54c9fff9bc67f73beb449cb227"
+}
+
+bindings {
+  requirement_id: "REQ-policy-record-location"
+  content_hash: "c75c5b944226bf48685c197551bec90192a134750ca9ddd60508cb607846ace9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/policy.TestPolicyRecordParseRefusesMalformedWhole"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "f29d83ca8a9cb4a145f97475be8040743cd2a890fdc839f0e08b65f1a778a14e"
+}
+
+bindings {
+  requirement_id: "REQ-policy-record-location"
+  content_hash: "c75c5b944226bf48685c197551bec90192a134750ca9ddd60508cb607846ace9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/policy.FuzzPolicyTextprotoParse"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c32ba5a68995b0f84743d4d9040d806d2e0b59c091d5ee7e31094a0768e7e3e2"
+}

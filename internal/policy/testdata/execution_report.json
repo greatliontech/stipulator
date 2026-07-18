@@ -1,0 +1,56 @@
+{
+  "diagnostics": [
+    {
+      "disposition": "HEALTH_DISPOSITION_DEGRADED",
+      "invocation": "workspace-race",
+      "output": "test binary exited without a report\n",
+      "package": "example.com/m/broken",
+      "test": "TestFlaky",
+      "truncated": true
+    }
+  ],
+  "invocations": [
+    {
+      "disposition": "HEALTH_DISPOSITION_TEST_FAILED",
+      "invocation": "workspace-race",
+      "packages": [
+        {
+          "disposition": "HEALTH_DISPOSITION_HEALTHY",
+          "package": "example.com/m/ok"
+        },
+        {
+          "disposition": "HEALTH_DISPOSITION_BUILD_FAILED",
+          "package": "example.com/m/broken"
+        }
+      ]
+    }
+  ],
+  "obligations": [
+    {
+      "backend": "go",
+      "disposition": "OBLIGATION_DISPOSITION_OMITTED",
+      "obligation": "example.com/m/orphan"
+    },
+    {
+      "backend": "go",
+      "disposition": "OBLIGATION_DISPOSITION_MULTIPLY_SELECTED",
+      "invocations": [
+        "member-health",
+        "workspace-race"
+      ],
+      "obligation": "example.com/m/ok"
+    }
+  ],
+  "tests": [
+    {
+      "outcome": "TEST_OUTCOME_PASSED",
+      "package": "example.com/m/ok",
+      "producer": {
+        "invocation": "workspace-race",
+        "processId": "4242",
+        "processOrdinal": 1
+      },
+      "test": "TestConservation/named_case"
+    }
+  ]
+}

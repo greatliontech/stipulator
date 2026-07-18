@@ -1,0 +1,25 @@
+{
+  "invocations": [
+    {
+      "go": {
+        "moduleRoot": "bindingsurface",
+        "packages": [
+          "./..."
+        ]
+      },
+      "name": "member-health",
+      "timeout": "600s"
+    },
+    {
+      "go": {
+        "packages": [
+          "./...",
+          "./stipulate/..."
+        ],
+        "race": true
+      },
+      "name": "workspace-race",
+      "timeout": "900s"
+    }
+  ]
+}

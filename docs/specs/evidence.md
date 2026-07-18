@@ -199,6 +199,15 @@ explicit timeout, so a deliberately long-running invocation is admitted by
 review rather than aborted by an inherited ceiling — never an assumed
 universal invocation.
 
+**REQ-policy-record-location** (wire): The accepted test policy MUST be
+stored as textproto at `.stipulator/policy.textproto` in canonical form:
+invocation names non-empty, unique, and strictly ascending in byte order,
+each invocation carrying exactly one typed backend payload and a valid,
+positive explicit timeout. A record violating canonical form — unknown fields,
+duplicates, and out-of-order or incomplete invocations included — is
+refused whole, never reordered, defaulted, or partially loaded: the record
+is reviewed contract, and what runs must be what was reviewed.
+
 **REQ-policy-backend-neutral** (structural, refines
 REQ-backend-core-neutral): The core policy model MUST treat each policy
 invocation's backend configuration as an opaque typed payload dispatched

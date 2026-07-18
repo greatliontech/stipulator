@@ -1,0 +1,184 @@
+edition = "2023";
+
+package stipulator.v1;
+
+option go_package = "github.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1";
+
+import "google/protobuf/duration.proto";
+import "stipulator/v1/reports.proto";
+
+// Execution report messages: the wire forms of one execution of the
+// accepted test policy — per-invocation and per-package health
+// dispositions, per-test outcomes with producer attribution, completeness
+// findings, failure diagnostics, and progress events. Like every report,
+// an execution report is derived — computed by executing the policy, never
+// persisted as an input.
+
+// HealthDisposition is the terminal health of a policy invocation or a
+// selected package. There is deliberately no cancelled value: a cancelled
+// execution discards its partial results and reports no terminal
+// disposition at all; cancellation is visible only as a progress-event
+// terminal cause.
+enum HealthDisposition {
+  HEALTH_DISPOSITION_UNSPECIFIED = 0;
+  HEALTH_DISPOSITION_HEALTHY = 1;
+  // Tests ran and at least one assertion failed.
+  HEALTH_DISPOSITION_TEST_FAILED = 2;
+  // The package (or an invocation member) failed to build.
+  HEALTH_DISPOSITION_BUILD_FAILED = 3;
+  // The invocation exceeded its policy-declared timeout.
+  HEALTH_DISPOSITION_TIMEOUT = 4;
+  // Environment-induced failure: a silent or malformed command stream,
+  // a run that ended without a usable report. Named distinctly from an
+  // assertion failure so the two are never indistinguishable.
+  HEALTH_DISPOSITION_DEGRADED = 5;
+}
+
+// ProducerIdentity binds an outcome or observation to the exact policy
+// invocation and operating-system process that produced it. Work from
+// distinct processes is never merged into one evidentiary record.
+message ProducerIdentity {
+  // Canonical invocation name from the policy record.
+  string invocation = 1;
+  // Operating-system process id of the producing child.
+  int64 process_id = 2;
+  // Spawn ordinal of the process within its invocation's execution,
+  // disambiguating pid reuse.
+  int32 process_ordinal = 3;
+}
+
+// PackageHealth is one selected package's terminal disposition within an
+// invocation.
+message PackageHealth {
+  string package = 1;
+  HealthDisposition disposition = 2;
+}
+
+// InvocationHealth is one executed policy invocation's terminal
+// disposition with its per-package dispositions. Every selected package
+// appears — a package without a disposition does not exist in a completed
+// report.
+message InvocationHealth {
+  // Canonical invocation name from the policy record.
+  string invocation = 1;
+  HealthDisposition disposition = 2;
+  repeated PackageHealth packages = 3;
+}
+
+// TestResult is one named test's outcome, attributed to its producer.
+message TestResult {
+  string package = 1;
+  string test = 2;
+  TestOutcome outcome = 3;
+  ProducerIdentity producer = 4;
+  // A freshness-served outcome (producer absent, no health contribution)
+  // lands with witness derivation.
+  reserved 5;
+  reserved served;
+}
+
+// ObligationDisposition classifies a completeness finding.
+enum ObligationDisposition {
+  OBLIGATION_DISPOSITION_UNSPECIFIED = 0;
+  // The obligation is part of a complete suite and no invocation selects
+  // it.
+  OBLIGATION_DISPOSITION_OMITTED = 1;
+  // More than one invocation selects the obligation.
+  OBLIGATION_DISPOSITION_MULTIPLY_SELECTED = 2;
+}
+
+// ObligationReport is one completeness finding: a suite obligation the
+// policy omits or selects more than once. An omission is a visible fact,
+// never silence.
+message ObligationReport {
+  // Backend defining the obligation, e.g. "go".
+  string backend = 1;
+  // Backend-scoped obligation identity, e.g. a package import path.
+  string obligation = 2;
+  ObligationDisposition disposition = 3;
+  // Canonical names of the selecting invocations, when multiply selected.
+  repeated string invocations = 4;
+}
+
+// FailureDiagnostic is the retained output of one failing or degraded
+// unit of policy execution — an invocation, a package, or a named test.
+// Retained failure output is part of the verdict, not a courtesy: without
+// it an environment-induced failure and a real regression are
+// indistinguishable.
+message FailureDiagnostic {
+  // Canonical invocation name from the policy record.
+  string invocation = 1;
+  // Set when the diagnostic is package-scoped.
+  string package = 2;
+  // Set when the diagnostic is test-scoped (a failed or degraded
+  // witness).
+  string test = 3;
+  // Names a degraded execution distinctly from an assertion failure.
+  HealthDisposition disposition = 4;
+  // Retained output, bounded by the executor.
+  string output = 5;
+  bool truncated = 6;
+}
+
+// ExecutionReport is the outcome of one execution of the accepted test
+// policy. Suite health is derived, never stored: the suite is healthy
+// exactly when every invocation's disposition is healthy. Progress is
+// deliberately absent — progress events are notifications, never result
+// payload.
+message ExecutionReport {
+  repeated InvocationHealth invocations = 1;
+  repeated TestResult tests = 2;
+  repeated ObligationReport obligations = 3;
+  repeated FailureDiagnostic diagnostics = 4;
+  // Per-process runtime observations land with observation attribution.
+  reserved 5;
+  reserved observations;
+}
+
+// Phase names the stage a long-running operation is in.
+enum Phase {
+  PHASE_UNSPECIFIED = 0;
+  PHASE_COMPILE = 1;
+  // Package and obligation discovery, policy normalization included.
+  PHASE_DISCOVERY = 2;
+  // Policy execution.
+  PHASE_EXECUTION = 3;
+  // Binding verification.
+  PHASE_VERIFICATION = 4;
+  // Coverage evaluation.
+  PHASE_COVERAGE = 5;
+  // Expensive context slicing.
+  PHASE_CONTEXT_SLICE = 6;
+}
+
+// TerminalCause states why an operation stopped; unspecified means the
+// event is not terminal. A client can distinguish long-running work,
+// deadline expiry, cancellation, test failure, and server failure without
+// guessing.
+enum TerminalCause {
+  TERMINAL_CAUSE_UNSPECIFIED = 0;
+  TERMINAL_CAUSE_COMPLETED = 1;
+  // The client's deadline expired; the event's phase is the phase the
+  // deadline expired in.
+  TERMINAL_CAUSE_DEADLINE = 2;
+  TERMINAL_CAUSE_CANCELLED = 3;
+  // The operation completed with failing tests.
+  TERMINAL_CAUSE_TEST_FAILURE = 4;
+  TERMINAL_CAUSE_SERVER_FAILURE = 5;
+}
+
+// ProgressEvent is one bounded progress notification. Events ride
+// notification channels only — never inside result payloads.
+message ProgressEvent {
+  Phase phase = 1;
+  // Canonical invocation name, set during execution-phase events.
+  string invocation = 2;
+  // Elapsed time since the operation began.
+  google.protobuf.Duration elapsed = 3;
+  // Completed and total work units within the phase; zero total means
+  // the total is not yet known.
+  int32 completed = 4;
+  int32 total = 5;
+  // Set only on the final event.
+  TerminalCause terminal_cause = 6;
+}

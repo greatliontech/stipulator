@@ -1,0 +1,71 @@
+edition = "2023";
+
+package stipulator.v1;
+
+option go_package = "github.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1";
+
+import "google/protobuf/duration.proto";
+
+// The accepted test policy: the committed record declaring which test
+// invocations constitute a complete suite for this tree. Contract-tier
+// configuration exactly as the manifest is — reviewed like spec text,
+// stored as textproto at `.stipulator/policy.textproto`, and canonically
+// ordered so two hosts render the same policy byte-identically.
+
+// TestPolicy is the root message of the policy record.
+message TestPolicy {
+  // Invocations in canonical order: names non-empty, unique, and strictly
+  // ascending in byte order. A record violating canonical form is refused
+  // whole — never reordered, defaulted, or partially loaded — because
+  // what runs must be what was reviewed.
+  repeated PolicyInvocation invocations = 1;
+  // Policy-wide defaults, when a future revision earns them.
+  reserved 2;
+  reserved defaults;
+}
+
+// PolicyInvocation is one backend-neutral invocation envelope: canonical
+// identity, an explicit timeout, and one typed backend payload. The
+// backend is named by the set config case — never a separate field that
+// could disagree with the payload's type. Orchestration observes only the
+// canonical identity and the resulting health facts; the payload is
+// dispatched opaque to the named backend.
+message PolicyInvocation {
+  // Canonical invocation identity, unique within the policy. Every test
+  // outcome and runtime observation is attributed to it.
+  string name = 1;
+  // Explicit per-invocation timeout, required and positive: a
+  // deliberately long-running invocation is admitted by review rather
+  // than aborted by an inherited ceiling.
+  google.protobuf.Duration timeout = 2;
+  // Exactly one typed backend payload; the case names the backend.
+  oneof config {
+    GoInvocationConfig go = 3;
+  }
+  // Envelope facts a future revision may earn (invocation labels,
+  // policy-level concurrency grouping).
+  reserved 4 to 7;
+  reserved labels, group;
+}
+
+// GoInvocationConfig is the Go backend's typed invocation payload,
+// interpreted only by the Go backend. The reserved fields are the Go
+// policy-normalization surface — effective toolchain pinning, environment
+// inheritance and denial, target platform, build and test inputs — which
+// lands with normalization and must not be squatted before it.
+message GoInvocationConfig {
+  // Module root directory, slash-separated and relative to the repository
+  // root; empty means the repository root.
+  string module_root = 1;
+  // Package patterns selecting the invocation's scope, as `go test`
+  // accepts them (e.g. "./...").
+  repeated string packages = 2;
+  // Run under the race detector. Only race-enabled invocations can grant
+  // Go witness evidence; a non-race invocation contributes suite health
+  // alone.
+  bool race = 3;
+  reserved 4 to 19;
+  reserved toolchain, environment, env_deny, goos, goarch, cgo_enabled,
+      tags, goflags, workspace_mode, module_mode, pgo, count, cache_mode,
+      args;
+}

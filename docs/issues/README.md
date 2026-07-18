@@ -72,3 +72,7 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   hypothesis is environmental degradation under whole-suite load, with the isolated diagnostic and
   disposition rule recorded. *Lands: when witness execution can apply the accepted test policy and
   the isolated diagnostic has been executed and dispositioned.*
+- **[prune-check-blind-to-witness-resolved-gaps](prune-check-blind-to-witness-resolved-gaps.md)** — the
+  unwitnessed prune lint suppresses witness evidence, so gaps resolved by executed witnesses are
+  structurally undetectable by CI's check step. *Lands: when the unified check evaluates gap
+  resolution inside its witnessed single pass, or when the prune lint gains a witnessed mode.*
