@@ -94,6 +94,7 @@ func fixtureExecutionReport() proto.Message {
 	resolved.SetGoflags("-trimpath")
 	resolved.SetGoexperiment("jsonv2")
 	resolved.SetWorkspaceOn(true)
+	resolved.SetRace(true)
 	invHealth.SetGo(resolved)
 
 	producer := &stipulatorv1.ProducerIdentity{}

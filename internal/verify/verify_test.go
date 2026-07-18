@@ -341,6 +341,7 @@ func TestWitnessCorrelation(t *testing.T) {
 		t.Fatal(err)
 	}
 	tr := &TestRun{
+		RaceEnabled: true,
 		Outcomes: map[string]TestOutcome{
 			"example.com/p.TestA":     TestPassed,
 			"example.com/p.TestA/sub": TestPassed,
@@ -371,6 +372,13 @@ func TestWitnessCorrelation(t *testing.T) {
 	for _, r := range rep.Results {
 		if r.Symbol == "example.com/p.TestB" && r.TestOutcome != TestFailed {
 			t.Fatalf("failed test outcome = %v", r.TestOutcome)
+		}
+		// RaceEnabled qualifies a witness: only a passing outcome carries
+		// the run's rigor claim — a failed or unwitnessed row has no
+		// witness to qualify, and its producing rigor may differ from the
+		// run-level attribute.
+		if wantRace := r.TestOutcome == TestPassed && witnessRole(r.Role); r.RaceEnabled != wantRace {
+			t.Fatalf("%s (outcome %v) race_enabled = %v, want %v", r.Symbol, r.TestOutcome, r.RaceEnabled, wantRace)
 		}
 	}
 }

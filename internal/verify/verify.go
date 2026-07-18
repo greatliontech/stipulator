@@ -329,7 +329,11 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 
 			if testRun != nil && witnessRole(b.GetRole()) {
 				result.TestOutcome = testRun.Outcomes[b.GetSymbol()]
-				result.RaceEnabled = testRun.RaceEnabled
+				// RaceEnabled qualifies a witness; a row without a passing
+				// outcome carries no witness to qualify, so it never claims
+				// the run's rigor for an outcome another invocation (or no
+				// execution at all) produced.
+				result.RaceEnabled = testRun.RaceEnabled && result.TestOutcome == TestPassed
 				if wc, ok := backends[b.GetBackend()].(WitnessClassifier); ok {
 					result.WitnessClass = wc.WitnessClass(b.GetSymbol())
 				}

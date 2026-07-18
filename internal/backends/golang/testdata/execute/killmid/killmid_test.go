@@ -15,3 +15,8 @@ func TestKilledMidRun(t *testing.T) {
 	}
 	os.Exit(2)
 }
+
+// TestShadowedByKill would pass, but the sibling above kills the binary
+// before this test ever starts: it produces no outcome at all in a
+// full-package run.
+func TestShadowedByKill(t *testing.T) {}

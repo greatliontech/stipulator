@@ -7,7 +7,10 @@ import (
 
 // TestReadsFixture reads a committed fixture file so the process's testlog
 // records a real runtime input, with a subtest so subtest attribution has
-// a second producer to distinguish.
+// a second producer to distinguish. The purity assertion lets witness
+// derivation publish a freshness record carrying that observed input.
+//
+//gofresh:pure
 func TestReadsFixture(t *testing.T) {
 	b, err := os.ReadFile("testdata/fixture.txt")
 	if err != nil {

@@ -127,8 +127,9 @@ asserts purity in source, the deliberate opt-in. A clean witness invocation
 instead may publish without that assertion when its completed testlog is
 attached to a compatible caller-selected Gofresh observation-completeness proof
 captured before execution and both are revalidated after execution. Stipulator
-selects that proof only when the producing test process runs one selected
-top-level test, so sibling tests cannot contribute unrecorded process state to
+selects that proof only when the producing test process runs exactly one
+selected top-level runnable — executable examples counted among them — so no
+sibling runnable in the process can contribute unrecorded process state to
 the subject's outcome; an ordinary freshness check never infers proof selection.
 
 **REQ-evidence-witness-cache-format** (behavior): The local witness cache MUST be a JSON

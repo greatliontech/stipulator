@@ -165,5 +165,6 @@ func resolvedConfig(n *NormalizedInvocation) *stipulatorv1.GoResolvedConfig {
 	rc.SetGoflags(n.GOFLAGS)
 	rc.SetGoexperiment(n.GOEXPERIMENT)
 	rc.SetWorkspaceOn(n.WorkspaceOn)
+	rc.SetRace(n.Race)
 	return rc
 }

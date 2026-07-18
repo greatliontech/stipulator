@@ -75,7 +75,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-race"
-  content_hash: "c4d0362d9b7b9e4c83a1c80882caeac41a0a8fa459a8cc259cc68efd28cfa299"
+  content_hash: "089f46b0cfbbb21a63a00ef63139cd6d310c24e9ad919d88e3a520e71f5307d0"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.testArgs"
   role: BINDING_ROLE_IMPLEMENTS
@@ -84,7 +84,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-race"
-  content_hash: "c4d0362d9b7b9e4c83a1c80882caeac41a0a8fa459a8cc259cc68efd28cfa299"
+  content_hash: "089f46b0cfbbb21a63a00ef63139cd6d310c24e9ad919d88e3a520e71f5307d0"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestWitnessRunInvocation"
   role: BINDING_ROLE_TESTS

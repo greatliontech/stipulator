@@ -752,6 +752,7 @@ type GoResolvedConfig struct {
 	xxx_hidden_Goflags      *string                `protobuf:"bytes,5,opt,name=goflags"`
 	xxx_hidden_Goexperiment *string                `protobuf:"bytes,6,opt,name=goexperiment"`
 	xxx_hidden_WorkspaceOn  bool                   `protobuf:"varint,7,opt,name=workspace_on,json=workspaceOn"`
+	xxx_hidden_Race         bool                   `protobuf:"varint,8,opt,name=race"`
 	XXX_raceDetectHookData  protoimpl.RaceDetectHookData
 	XXX_presence            [1]uint32
 	unknownFields           protoimpl.UnknownFields
@@ -847,39 +848,51 @@ func (x *GoResolvedConfig) GetWorkspaceOn() bool {
 	return false
 }
 
+func (x *GoResolvedConfig) GetRace() bool {
+	if x != nil {
+		return x.xxx_hidden_Race
+	}
+	return false
+}
+
 func (x *GoResolvedConfig) SetToolchain(v string) {
 	x.xxx_hidden_Toolchain = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 8)
 }
 
 func (x *GoResolvedConfig) SetGoos(v string) {
 	x.xxx_hidden_Goos = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 8)
 }
 
 func (x *GoResolvedConfig) SetGoarch(v string) {
 	x.xxx_hidden_Goarch = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 8)
 }
 
 func (x *GoResolvedConfig) SetCgoEnabled(v bool) {
 	x.xxx_hidden_CgoEnabled = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 8)
 }
 
 func (x *GoResolvedConfig) SetGoflags(v string) {
 	x.xxx_hidden_Goflags = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 8)
 }
 
 func (x *GoResolvedConfig) SetGoexperiment(v string) {
 	x.xxx_hidden_Goexperiment = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 8)
 }
 
 func (x *GoResolvedConfig) SetWorkspaceOn(v bool) {
 	x.xxx_hidden_WorkspaceOn = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 8)
+}
+
+func (x *GoResolvedConfig) SetRace(v bool) {
+	x.xxx_hidden_Race = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 8)
 }
 
 func (x *GoResolvedConfig) HasToolchain() bool {
@@ -931,6 +944,13 @@ func (x *GoResolvedConfig) HasWorkspaceOn() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
 }
 
+func (x *GoResolvedConfig) HasRace() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 7)
+}
+
 func (x *GoResolvedConfig) ClearToolchain() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Toolchain = nil
@@ -966,6 +986,11 @@ func (x *GoResolvedConfig) ClearWorkspaceOn() {
 	x.xxx_hidden_WorkspaceOn = false
 }
 
+func (x *GoResolvedConfig) ClearRace() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 7)
+	x.xxx_hidden_Race = false
+}
+
 type GoResolvedConfig_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -982,6 +1007,12 @@ type GoResolvedConfig_builder struct {
 	Goexperiment *string
 	// Whether the invocation ran under the tree's go.work.
 	WorkspaceOn *bool
+	// Whether the invocation ran under the race detector. The flag is a
+	// rigor attribute of every outcome the invocation produced: witness
+	// derivation grants Go witness evidence only from race-enabled
+	// invocations, so the report itself must say which invocations those
+	// were.
+	Race *bool
 }
 
 func (b0 GoResolvedConfig_builder) Build() *GoResolvedConfig {
@@ -989,32 +1020,36 @@ func (b0 GoResolvedConfig_builder) Build() *GoResolvedConfig {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Toolchain != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 8)
 		x.xxx_hidden_Toolchain = b.Toolchain
 	}
 	if b.Goos != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 8)
 		x.xxx_hidden_Goos = b.Goos
 	}
 	if b.Goarch != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 8)
 		x.xxx_hidden_Goarch = b.Goarch
 	}
 	if b.CgoEnabled != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 8)
 		x.xxx_hidden_CgoEnabled = *b.CgoEnabled
 	}
 	if b.Goflags != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 8)
 		x.xxx_hidden_Goflags = b.Goflags
 	}
 	if b.Goexperiment != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 8)
 		x.xxx_hidden_Goexperiment = b.Goexperiment
 	}
 	if b.WorkspaceOn != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 8)
 		x.xxx_hidden_WorkspaceOn = *b.WorkspaceOn
+	}
+	if b.Race != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 8)
+		x.xxx_hidden_Race = *b.Race
 	}
 	return m0
 }
@@ -2370,7 +2405,7 @@ const file_stipulator_v1_execution_proto_rawDesc = "" +
 	"\bpackages\x18\x03 \x03(\v2\x1c.stipulator.v1.PackageHealthR\bpackages\x121\n" +
 	"\x02go\x18\x04 \x01(\v2\x1f.stipulator.v1.GoResolvedConfigH\x00R\x02goB\n" +
 	"\n" +
-	"\bresolved\"\xde\x01\n" +
+	"\bresolved\"\xf2\x01\n" +
 	"\x10GoResolvedConfig\x12\x1c\n" +
 	"\ttoolchain\x18\x01 \x01(\tR\ttoolchain\x12\x12\n" +
 	"\x04goos\x18\x02 \x01(\tR\x04goos\x12\x16\n" +
@@ -2379,7 +2414,8 @@ const file_stipulator_v1_execution_proto_rawDesc = "" +
 	"cgoEnabled\x12\x18\n" +
 	"\agoflags\x18\x05 \x01(\tR\agoflags\x12\"\n" +
 	"\fgoexperiment\x18\x06 \x01(\tR\fgoexperiment\x12!\n" +
-	"\fworkspace_on\x18\a \x01(\bR\vworkspaceOn\"\xe1\x01\n" +
+	"\fworkspace_on\x18\a \x01(\bR\vworkspaceOn\x12\x12\n" +
+	"\x04race\x18\b \x01(\bR\x04race\"\xe1\x01\n" +
 	"\n" +
 	"TestResult\x12\x18\n" +
 	"\apackage\x18\x01 \x01(\tR\apackage\x12\x12\n" +

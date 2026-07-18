@@ -97,6 +97,12 @@ message GoResolvedConfig {
   string goexperiment = 6;
   // Whether the invocation ran under the tree's go.work.
   bool workspace_on = 7;
+  // Whether the invocation ran under the race detector. The flag is a
+  // rigor attribute of every outcome the invocation produced: witness
+  // derivation grants Go witness evidence only from race-enabled
+  // invocations, so the report itself must say which invocations those
+  // were.
+  bool race = 8;
 }
 
 // TestResult is one named test's outcome, attributed to its producer.

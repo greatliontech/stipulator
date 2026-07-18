@@ -2,6 +2,10 @@ package ok
 
 import "testing"
 
+// The purity assertions let witness derivation publish freshness records
+// for these tests; the executor itself ignores them.
+//
+//gofresh:pure
 func TestDouble(t *testing.T) {
 	if Double(2) != 4 {
 		t.Fatal("2*2 != 4")
@@ -13,6 +17,7 @@ func TestDouble(t *testing.T) {
 	})
 }
 
+//gofresh:pure
 func TestSkipped(t *testing.T) {
 	t.Skip("deliberately skipped")
 }

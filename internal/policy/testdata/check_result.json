@@ -52,6 +52,7 @@
           "goexperiment": "jsonv2",
           "goflags": "-trimpath",
           "goos": "linux",
+          "race": true,
           "toolchain": "go1.26.4",
           "workspaceOn": true
         },
