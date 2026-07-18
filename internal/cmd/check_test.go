@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/wire"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -95,7 +96,7 @@ func TestCheckJSONProjectionIsDeterministic(t *testing.T) {
 	res.SetTestsExecuted(2)
 	res.SetTestsUncacheable(1)
 	res.SetPruneResidue([]string{".stipulator/gaps/x.textproto"})
-	got, err := canonicalProtoJSON(res)
+	got, err := wire.CanonicalJSON(res)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +115,7 @@ func TestCheckJSONProjectionIsDeterministic(t *testing.T) {
 	if err := protojson.Unmarshal(got, decoded); err != nil {
 		t.Fatalf("JSON projection is not a strict CheckResult: %v", err)
 	}
-	full, err := canonicalProtoJSON(failingCheckResult())
+	full, err := wire.CanonicalJSON(failingCheckResult())
 	if err != nil {
 		t.Fatal(err)
 	}

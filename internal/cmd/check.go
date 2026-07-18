@@ -1,17 +1,15 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/check"
+	"github.com/greatliontech/stipulator/internal/wire"
 )
 
 func checkCmd() *cobra.Command {
@@ -39,7 +37,7 @@ func checkCmd() *cobra.Command {
 			}
 			switch {
 			case jsonOut:
-				out, err := canonicalProtoJSON(res)
+				out, err := wire.CanonicalJSON(res)
 				if err != nil {
 					return err
 				}
@@ -60,26 +58,6 @@ func checkCmd() *cobra.Command {
 	c.Flags().BoolVar(&jsonOut, "json", false, "machine output: the check result as deterministic JSON")
 	c.Flags().BoolVarP(&quiet, "quiet", "q", false, "exit code only")
 	return c
-}
-
-// canonicalProtoJSON renders a message's deterministic JSON projection:
-// the ProtoJSON encoding re-serialized with sorted keys and fixed
-// indentation, because protojson.Marshal deliberately randomizes its
-// whitespace while machine consumers pin bytes.
-func canonicalProtoJSON(m proto.Message) ([]byte, error) {
-	b, err := protojson.Marshal(m)
-	if err != nil {
-		return nil, err
-	}
-	var v any
-	if err := json.Unmarshal(b, &v); err != nil {
-		return nil, err
-	}
-	out, err := json.MarshalIndent(v, "", "  ")
-	if err != nil {
-		return nil, err
-	}
-	return append(out, '\n'), nil
 }
 
 // renderCheck prints the human view of one check result. Every line is a

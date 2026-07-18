@@ -28,14 +28,17 @@ import (
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/bindingsurface"
 	"github.com/greatliontech/stipulator/internal/bundle"
+	"github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/dossier"
 	"github.com/greatliontech/stipulator/internal/facts"
+	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/views"
+	"github.com/greatliontech/stipulator/internal/wire"
 )
 
 // Server serves one repository. The function fields exist so tests can
@@ -46,6 +49,7 @@ type Server struct {
 	fsys     func() fs.FS
 	backends func(context.Context) (map[string]verify.Backend, error)
 	runTests func(context.Context) (*verify.TestRun, error)
+	runCheck func(context.Context) (*stipulatorv1.CheckResult, error)
 	write    func(path string, content []byte) error
 	remove   func(path string) error
 }
@@ -56,6 +60,7 @@ func New(dir string) *Server {
 		fsys:     func() fs.FS { return os.DirFS(dir) },
 		backends: func(ctx context.Context) (map[string]verify.Backend, error) { return makeBackends(ctx, dir) },
 		runTests: func(ctx context.Context) (*verify.TestRun, error) { return golang.RunTestsFreshContext(ctx, dir) },
+		runCheck: func(ctx context.Context) (*stipulatorv1.CheckResult, error) { return check.Run(ctx, dir) },
 		write: func(path string, content []byte) error {
 			// The server is corpus-bound: every record update must remain
 			// within the tree.
@@ -108,6 +113,10 @@ func (s *Server) MCP() *mcp.Server {
 		Name:        "gate",
 		Description: "Coverage gate. Default view is the summary (gate_passes, counts, violations); view=reds or full for per-requirement rows; scope with ids/bucket/filter/path. Runs the test suite.",
 	}, s.toolGate)
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "check",
+		Description: "One pass, one verdict: compiles the corpus, executes the accepted test policy once, verifies bindings against that execution, evaluates coverage and gaps, and reports prune residue. The structured result is the CheckResult message as JSON; a tree failing the check is a successful call carrying passed=false.",
+	}, s.toolCheck)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "bind",
 		Description: "Author a validated binding claim: the requirement must exist, the symbol must resolve (generated files rejected), pins applied immediately. Errors explain what to fix.",
@@ -271,6 +280,8 @@ type verifyIn struct {
 }
 
 func (s *Server) verifyPipeline(ctx context.Context, noTest bool) (*stipulatorv1.Spec, *verify.Report, *records.Store, error) {
+	rep := progress.FromContext(ctx)
+	rep.Phase(stipulatorv1.Phase_PHASE_COMPILE)
 	spec, err := s.compileFresh()
 	if err != nil {
 		return nil, nil, nil, err
@@ -285,27 +296,31 @@ func (s *Server) verifyPipeline(ctx context.Context, noTest bool) (*stipulatorv1
 	}
 	var tr *verify.TestRun
 	if !noTest {
+		rep.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
 		tr, err = s.runTests(ctx)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 	}
+	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
 	return spec, verify.Run(spec, store, backends, tr), store, nil
 }
 
 func (s *Server) toolVerify(ctx context.Context, req *mcp.CallToolRequest, in verifyIn) (*mcp.CallToolResult, map[string]any, error) {
+	ctx, prog := s.startProgress(ctx, req)
 	spec, rep, _, err := s.verifyPipeline(ctx, in.NoTest)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	scope, err := scopeFrom(in.Ids, "", in.Filter, in.Path)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	m, err := views.VerifyView(rep, views.FactsFrom(spec, rep), in.View, scope)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
+	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	return protoJSON(m)
 }
 
@@ -318,31 +333,107 @@ type gateIn struct {
 }
 
 func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in gateIn) (*mcp.CallToolResult, map[string]any, error) {
+	ctx, prog := s.startProgress(ctx, req)
 	spec, rep, store, err := s.verifyPipeline(ctx, false)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	if len(rep.Problems) > 0 {
 		msgs := make([]string, 0, len(rep.Problems))
 		for _, p := range rep.Problems {
 			msgs = append(msgs, p.String())
 		}
-		return nil, nil, fmt.Errorf("verification problems:\n%s", strings.Join(msgs, "\n"))
+		return nil, nil, terminalToolError(prog, ctx, fmt.Errorf("verification problems:\n%s", strings.Join(msgs, "\n")))
 	}
 	pol, err := s.policy()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
+	prog.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
 	cov := coverage.Evaluate(spec, rep, store, true, pol)
 	scope, err := scopeFrom(in.Ids, in.Bucket, in.Filter, in.Path)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	m, err := views.CoverageView(cov, views.FactsFrom(spec, rep), in.View, scope)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
+	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	return protoJSON(m)
+}
+
+func (s *Server) toolCheck(ctx context.Context, req *mcp.CallToolRequest, in struct{}) (*mcp.CallToolResult, map[string]any, error) {
+	ctx, prog := s.startProgress(ctx, req)
+	res, err := s.runCheck(ctx)
+	if err != nil {
+		// The error return is reserved for operational faults — a tree
+		// failing the check is a successful call carrying passed=false.
+		return nil, nil, terminalToolError(prog, ctx, err)
+	}
+	cause := stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED
+	if res.GetExecution() != nil && !golang.SuiteHealthy(res.GetExecution()) {
+		cause = stipulatorv1.TerminalCause_TERMINAL_CAUSE_TEST_FAILURE
+	}
+	prog.Terminal(cause)
+	return protoJSON(res)
+}
+
+// startProgress arms one tool call's progress seam: the returned context
+// carries a Reporter whose phase tracking backs terminal-cause
+// attribution, and — only when the client asked, by sending a progress
+// token — whose bounded events ride MCP progress notifications
+// (REQ-mcp-progress). Progress never enters result payloads: the sink is
+// the notification channel and nothing else. The sink is non-blocking —
+// the transport write happens on NonBlocking's sender goroutine — so a
+// stalled progress-consuming client costs dropped advisory events, never
+// the operation's cancellability. Notifications are sent on a
+// cancellation-free context because the terminal event must still reach
+// the client after the request context ends.
+func (s *Server) startProgress(ctx context.Context, req *mcp.CallToolRequest) (context.Context, *progress.Reporter) {
+	var sink func(*stipulatorv1.ProgressEvent)
+	if token := req.Params.GetProgressToken(); token != nil {
+		session := req.Session
+		notifyCtx := context.WithoutCancel(ctx)
+		// NonBlocking's one sender goroutine calls send serially, so the
+		// counter needs no lock; MCP requires the progress value to
+		// increase with every notification.
+		var seq float64
+		sink = progress.NonBlocking(func(e *stipulatorv1.ProgressEvent) {
+			b, err := protojson.Marshal(e)
+			if err != nil {
+				return
+			}
+			seq++
+			_ = session.NotifyProgress(notifyCtx, &mcp.ProgressNotificationParams{
+				ProgressToken: token,
+				Message:       string(b),
+				Progress:      seq,
+			})
+		})
+	}
+	prog := progress.New(sink)
+	return progress.NewContext(ctx, prog), prog
+}
+
+// terminalToolError seals a failed call's progress and names its terminal
+// cause. A call that ends at a deadline or a client cancellation
+// identifies the phase it died in and which of the two ended it — so a
+// client can distinguish long-running work, deadline expiry,
+// cancellation, and server failure without guessing (REQ-mcp-progress,
+// REQ-mcp-cancellation); any other operational fault is a server
+// failure and speaks for itself.
+func terminalToolError(prog *progress.Reporter, ctx context.Context, err error) error {
+	switch ctx.Err() {
+	case context.DeadlineExceeded:
+		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_DEADLINE)
+		return fmt.Errorf("deadline expired in the %s phase: %w", progress.Word(prog.CurrentPhase()), err)
+	case context.Canceled:
+		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_CANCELLED)
+		return fmt.Errorf("cancelled by the client in the %s phase: %w", progress.Word(prog.CurrentPhase()), err)
+	}
+	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_SERVER_FAILURE)
+	return err
 }
 
 // scopeFrom builds a scope from tool params, tolerating the same id
@@ -664,21 +755,23 @@ type pruneIn struct {
 // shaky reading: a verification problem could misreport a bucket and prune a
 // still-load-bearing gap. It writes only under .stipulator/gaps/.
 func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pruneIn) (*mcp.CallToolResult, writeOut, error) {
+	ctx, prog := s.startProgress(ctx, req)
 	spec, rep, store, err := s.verifyPipeline(ctx, false)
 	if err != nil {
-		return nil, writeOut{}, err
+		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
 	if len(rep.Problems) > 0 {
 		msgs := make([]string, 0, len(rep.Problems))
 		for _, p := range rep.Problems {
 			msgs = append(msgs, p.String())
 		}
-		return nil, writeOut{}, fmt.Errorf("verification problems:\n%s", strings.Join(msgs, "\n"))
+		return nil, writeOut{}, terminalToolError(prog, ctx, fmt.Errorf("verification problems:\n%s", strings.Join(msgs, "\n")))
 	}
 	pol, err := s.policy()
 	if err != nil {
-		return nil, writeOut{}, err
+		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
+	prog.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
 	cov := coverage.Evaluate(spec, rep, store, true, pol)
 	resolved := map[string]bool{}
 	for _, g := range cov.Gaps {
@@ -692,15 +785,17 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 		for _, up := range prunes {
 			out.Notes = append(out.Notes, "resolved gap lingers: "+up.Path)
 		}
+		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 		return nil, out, nil
 	}
 	out := writeOut{}
 	for _, up := range prunes {
 		if err := s.remove(up.Path); err != nil {
-			return nil, writeOut{}, err
+			return nil, writeOut{}, terminalToolError(prog, ctx, err)
 		}
 		out.Deleted = append(out.Deleted, up.Path)
 	}
+	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	return nil, out, nil
 }
 
@@ -711,22 +806,24 @@ type contextIn struct {
 }
 
 func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in contextIn) (*mcp.CallToolResult, map[string]any, error) {
+	ctx, prog := s.startProgress(ctx, req)
 	ids, err := splitIDs(in.Ids)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	spec, vr, store, err := s.verifyPipeline(ctx, in.NoTest)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	pol, err := s.policy()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
+	prog.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
 	cr := coverage.Evaluate(spec, vr, store, !in.NoTest, pol)
 	dossiers, err := dossier.Build(spec, vr, cr, store, ids)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	out := &stipulatorv1.DossierReport{}
 	out.SetDossiers(dossiers)
@@ -741,16 +838,20 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 	}
 	out.SetProblems(problems)
 	if in.Slice {
+		// The declaration frontier is the expensive leg: it loads and
+		// walks the bound packages' sources.
+		prog.Phase(stipulatorv1.Phase_PHASE_CONTEXT_SLICE)
 		backends, err := s.backends(ctx)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, terminalToolError(prog, ctx, err)
 		}
 		_, decls, err := facts.Context(spec, store, backends, ids)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, terminalToolError(prog, ctx, err)
 		}
 		out.SetDeclarations(facts.ContextProto(nil, decls).GetDeclarations())
 	}
+	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	return protoJSON(out)
 }
 
@@ -760,28 +861,30 @@ type partitionsIn struct {
 }
 
 func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, in partitionsIn) (*mcp.CallToolResult, map[string]any, error) {
+	ctx, prog := s.startProgress(ctx, req)
 	spec, rep, store, err := s.verifyPipeline(ctx, in.NoTest)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	if len(rep.Problems) > 0 {
-		return nil, nil, fmt.Errorf("verification problems; fix records first")
+		return nil, nil, terminalToolError(prog, ctx, fmt.Errorf("verification problems; fix records first"))
 	}
 	backends, err := s.backends(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	var ids []string
 	if strings.TrimSpace(in.Ids) != "" {
 		ids, err = splitIDs(in.Ids)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, terminalToolError(prog, ctx, err)
 		}
 	} else {
 		pol, perr := s.policy()
 		if perr != nil {
-			return nil, nil, perr
+			return nil, nil, terminalToolError(prog, ctx, perr)
 		}
+		prog.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
 		cov := coverage.Evaluate(spec, rep, store, !in.NoTest, pol)
 		for _, r := range cov.Requirements {
 			switch r.Bucket {
@@ -792,8 +895,9 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 	}
 	pr, err := facts.Partitions(spec, store, backends, ids)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
+	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	return protoJSON(pr.Proto())
 }
 
@@ -911,14 +1015,12 @@ func textResource(uri, mime, text string) *mcp.ReadResourceResult {
 	}}}
 }
 
-// protoJSON renders a report message as the tool's structured output.
+// protoJSON renders a report message as the tool's structured output —
+// the same ProtoJSON projection the CLI's --json output renders, from
+// one shared renderer, so the two machine surfaces cannot drift.
 func protoJSON(m proto.Message) (*mcp.CallToolResult, map[string]any, error) {
-	b, err := protojson.Marshal(m)
+	out, err := wire.StructuredContent(m)
 	if err != nil {
-		return nil, nil, err
-	}
-	var out map[string]any
-	if err := json.Unmarshal(b, &out); err != nil {
 		return nil, nil, err
 	}
 	return nil, out, nil

@@ -143,7 +143,8 @@ const (
 	Phase_PHASE_DISCOVERY Phase = 2
 	// Policy execution.
 	Phase_PHASE_EXECUTION Phase = 3
-	// Binding verification.
+	// Evidence verification: witness derivation — producer validation and
+	// record publication — and binding verification.
 	Phase_PHASE_VERIFICATION Phase = 4
 	// Coverage evaluation.
 	Phase_PHASE_COVERAGE Phase = 5

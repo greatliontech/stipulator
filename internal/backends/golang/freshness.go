@@ -17,6 +17,7 @@ import (
 	gofresh "github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/runtimeinput"
 
+	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
@@ -81,6 +82,10 @@ func runTestsFresh(ctx context.Context, dir string) (*verify.TestRun, error) {
 		gofresh.WithDir(dir),
 		gofresh.WithBuildFlags(buildFlags...),
 		gofresh.WithEnv(goworkEnv(dir)...),
+		// Freshness analysis is the longest silent stretch of a witness
+		// run; gofresh's analysis steps feed the operation's progress seam
+		// as rate-limited keep-alives.
+		gofresh.WithProgress(func(gofresh.Progress) { progress.FromContext(ctx).Keepalive() }),
 	)
 	if err != nil {
 		return nil, err

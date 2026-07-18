@@ -14,6 +14,7 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
+	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
 )
@@ -412,6 +413,50 @@ func TestCheckComposesInProcess(t *testing.T) {
 					t.Errorf("%s imports os/exec; the check composes library calls, never subprocesses", path)
 				}
 			}
+		}
+	}
+}
+
+// TestCheckReportsPhaseTransitions pins the pass's phase marks: a run
+// with a progress reporter installed reports compile, discovery,
+// execution, verification, and coverage in order — the phases a
+// long-running check call surfaces as MCP progress and the attribution a
+// deadline error names.
+func TestCheckReportsPhaseTransitions(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-progress")
+	if testing.Short() {
+		t.Skip("executes a policy over a fixture tree")
+	}
+	neutralAmbient(t)
+	dir := writeTree(t, baseTree(nil))
+	var events []*stipulatorv1.ProgressEvent
+	rep := progress.New(func(e *stipulatorv1.ProgressEvent) { events = append(events, e) })
+	res, err := Run(progress.NewContext(context.Background(), rep), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.GetPassed() {
+		t.Fatalf("fixture check failed: %v", res)
+	}
+	var phases []stipulatorv1.Phase
+	for _, e := range events {
+		if len(phases) == 0 || phases[len(phases)-1] != e.GetPhase() {
+			phases = append(phases, e.GetPhase())
+		}
+	}
+	want := []stipulatorv1.Phase{
+		stipulatorv1.Phase_PHASE_COMPILE,
+		stipulatorv1.Phase_PHASE_DISCOVERY,
+		stipulatorv1.Phase_PHASE_EXECUTION,
+		stipulatorv1.Phase_PHASE_VERIFICATION,
+		stipulatorv1.Phase_PHASE_COVERAGE,
+	}
+	if len(phases) != len(want) {
+		t.Fatalf("phase sequence = %v, want %v", phases, want)
+	}
+	for i := range want {
+		if phases[i] != want[i] {
+			t.Fatalf("phase sequence = %v, want %v", phases, want)
 		}
 	}
 }

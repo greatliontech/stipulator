@@ -1,6 +1,0 @@
-# proto-file: proto/stipulator/v1/records.proto
-# proto-message: stipulator.v1.Gap
-
-requirement_id: "REQ-mcp-progress"
-reason: "long-running MCP tools expose neither progress nor a phase-attributed deadline cause"
-lands { manual { condition: "MCP progress notifications with elapsed time, counts, and terminal deadline cause land, proven by deadline and progress fixtures" } }

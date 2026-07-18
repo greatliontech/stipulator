@@ -11,6 +11,7 @@ import (
 	"github.com/greatliontech/gofresh/runtimeinput"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
@@ -332,6 +333,11 @@ func NewWitnessRecorder(ctx context.Context, dir string, p *stipulatorv1.TestPol
 			gofresh.WithDir(dir),
 			gofresh.WithBuildFlags(flags...),
 			gofresh.WithEnv(g.env...),
+			// Freshness capture and validation are the longest silent
+			// stretches of a witnessed run; gofresh's own analysis steps
+			// feed the operation's progress seam as rate-limited
+			// keep-alives in whatever phase the operation is in.
+			gofresh.WithProgress(func(gofresh.Progress) { progress.FromContext(ctx).Keepalive() }),
 		)
 		if err != nil {
 			return degrade(err)
@@ -719,11 +725,18 @@ func compactRegs(regs []verify.Registration) []verify.Registration {
 // after source and runtime producer validation. Caller cancellation
 // anywhere discards the whole result.
 func ExecutePolicyWitnessed(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (*stipulatorv1.ExecutionReport, *verify.TestRun, error) {
+	rep := progress.FromContext(ctx)
+	// Pre-execution capture normalizes and discovers the policy's
+	// invocations for itself: discovery-phase work.
+	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	recorder := NewWitnessRecorder(ctx, dir, p)
 	report, observations, err := ExecutePolicy(ctx, dir, p)
 	if err != nil {
 		return nil, nil, err
 	}
+	// Producer validation and publication judge the evidence the run
+	// produced: verification-phase work.
+	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
 	tr, err := recorder.Derive(ctx, report, observations)
 	if err != nil {
 		return nil, nil, err

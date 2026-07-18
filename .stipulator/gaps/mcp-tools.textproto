@@ -1,6 +1,0 @@
-# proto-file: proto/stipulator/v1/records.proto
-# proto-message: stipulator.v1.Gap
-
-requirement_id: "REQ-mcp-tools"
-reason: "amended: the tool list now includes check, which the server does not yet expose; existing binding pinned to the prior text"
-lands { manual { condition: "the MCP check tool lands, validated against the protobuf check result" } }

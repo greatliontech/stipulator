@@ -7,10 +7,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -103,5 +105,55 @@ func TestGoExecuteSilentToolchainDegradesEndToEnd(t *testing.T) {
 	}
 	if len(diags) != 1 {
 		t.Errorf("silent degradation retained %d diagnostics, want 1", len(diags))
+	}
+}
+
+// TestGoExecuteReportsPerInvocationProgress pins the executor's leg of
+// the progress seam: with a reporter installed, each selected package's
+// completion is counted against the invocation, and the final package
+// always emits the invocation-completion milestone with its counts.
+func TestGoExecuteReportsPerInvocationProgress(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-progress")
+	bin := t.TempDir()
+	stub := filepath.Join(bin, "go")
+	script := "#!/bin/sh\n" +
+		"pkg=\"\"\nfor a in \"$@\"; do pkg=\"$a\"; done\n" +
+		"printf '{\"Action\":\"pass\",\"Package\":\"'\"$pkg\"'\"}\\n'\n"
+	if err := os.WriteFile(stub, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin)
+	n := &NormalizedInvocation{
+		Name:     "steps",
+		Dir:      t.TempDir(),
+		Packages: []string{"./..."},
+		Timeout:  30 * time.Second,
+		Env:      []string{"PATH=" + bin},
+	}
+	selection := []Obligation{
+		{Kind: ObligationPackage, Package: "example.com/a"},
+		{Kind: ObligationPackage, Package: "example.com/b"},
+	}
+	var (
+		mu     sync.Mutex
+		events []*stipulatorv1.ProgressEvent
+	)
+	rep := progress.New(func(e *stipulatorv1.ProgressEvent) {
+		mu.Lock()
+		defer mu.Unlock()
+		events = append(events, e)
+	}, progress.WithInterval(time.Hour))
+	ctx := progress.NewContext(context.Background(), rep)
+	if _, _, _, _, err := ExecuteInvocation(ctx, n, selection); err != nil {
+		t.Fatal(err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(events) == 0 {
+		t.Fatal("execution reported no per-invocation progress")
+	}
+	final := events[len(events)-1]
+	if final.GetInvocation() != "steps" || final.GetCompleted() != 2 || final.GetTotal() != 2 {
+		t.Fatalf("completion milestone = %v, want steps 2/2", final)
 	}
 }

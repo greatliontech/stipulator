@@ -432,3 +432,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "17d0cf25efcf8a58425e467d57698c463c4f55c38dc5590bb4011986d29fef19"
 }
+
+bindings {
+  requirement_id: "REQ-policy-cancellation"
+  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolClientCancellationKillsEveryChildProcess"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "4a5bfc8aaa5a7bffaa5a5ad062eb27a2f7f14a6af4f261ac378a2cccb9612e46"
+}

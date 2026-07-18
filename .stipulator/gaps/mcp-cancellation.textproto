@@ -1,6 +1,0 @@
-# proto-file: proto/stipulator/v1/records.proto
-# proto-message: stipulator.v1.Gap
-
-requirement_id: "REQ-mcp-cancellation"
-reason: "client cancellation terminates witness work but does not yet reach package discovery descendants"
-lands { manual { condition: "client cancellation propagates through package discovery and every child process" } }

@@ -53,7 +53,11 @@ expired and the terminal cause, so a client can distinguish long-running
 work, deadline expiry, cancellation, test failure, and server failure
 without guessing. An operation that exceeds its client's deadline while
 reporting nothing is unusable through the agent surface even when the
-identical CLI operation is healthy.
+identical CLI operation is healthy. A server-observed deadline expiry
+carries the deadline cause; a client-side deadline surfaces as the
+client's cancellation, carrying the cancellation cause and the expiring
+phase, which the client composes with its own locally known reason — the
+distinguishing never requires guessing.
 
 **REQ-mcp-cancellation** (behavior): A client cancellation MUST cancel the
 underlying operation end to end, reaching package discovery and every

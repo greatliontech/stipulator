@@ -23,6 +23,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/policy"
+	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
@@ -47,6 +48,10 @@ func Run(ctx context.Context, dir string) (*stipulatorv1.CheckResult, error) {
 	res := &stipulatorv1.CheckResult{}
 	fsys := os.DirFS(dir)
 
+	// Phase marks feed the operation's progress seam; with no reporter
+	// installed (the CLI path) every mark is a no-op.
+	rep := progress.FromContext(ctx)
+	rep.Phase(stipulatorv1.Phase_PHASE_COMPILE)
 	spec, diags, err := compile.Compile(fsys)
 	if err != nil {
 		return nil, err
@@ -110,6 +115,7 @@ func Run(ctx context.Context, dir string) (*stipulatorv1.CheckResult, error) {
 		return nil, err
 	}
 	backends := map[string]verify.Backend{"go": gb}
+	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
 	vr := verify.Run(spec, store, backends, testRun)
 	res.SetVerify(vr.Proto())
 
@@ -121,6 +127,7 @@ func Run(ctx context.Context, dir string) (*stipulatorv1.CheckResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	rep.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
 	cov := coverage.Evaluate(spec, vr, store, true, covPol)
 	res.SetCoverage(cov.Proto())
 

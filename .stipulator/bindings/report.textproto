@@ -103,3 +103,30 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "82838f03ed753746d7757d5319353141f9afa92fabb33d455e3bf66a8e13296a"
 }
+
+bindings {
+  requirement_id: "REQ-report-check-result"
+  content_hash: "76509d45240de3f39c229dbafa896f1371c1c5cd442e9b6077696220d3f9d45c"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolStructuredResultMirrorsCheckResult"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "934c0f16771c547e01fc1ef93a8c56ec3c26496b1c669fe488a32a6f32885c01"
+}
+
+bindings {
+  requirement_id: "REQ-report-check-result"
+  content_hash: "76509d45240de3f39c229dbafa896f1371c1c5cd442e9b6077696220d3f9d45c"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/wire.TestCheckSurfacesRenderEquivalentFacts"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "d5a3776bec2ea5bf7cd159587b99cc9975b3a778e9c6caaf572d1fd8833838f6"
+}
+
+bindings {
+  requirement_id: "REQ-report-check-result"
+  content_hash: "76509d45240de3f39c229dbafa896f1371c1c5cd442e9b6077696220d3f9d45c"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/wire.TestCanonicalJSONIsByteDeterministic"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "d9640acca1707f512d03f9e58f0c897cb15bc77ae758642284229f4310d348d1"
+}

@@ -12,8 +12,10 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/progress"
 )
 
 // The policy executor runs each normalized Go invocation exactly once and
@@ -113,6 +115,8 @@ func ExecuteInvocation(ctx context.Context, n *NormalizedInvocation, selection [
 	}
 	sem := make(chan struct{}, bound)
 	runs := make([]packageRun, len(pkgs))
+	rep := progress.FromContext(ctx)
+	var pkgsDone atomic.Int32
 	var (
 		wg      sync.WaitGroup
 		ordMu   sync.Mutex
@@ -128,6 +132,9 @@ func ExecuteInvocation(ctx context.Context, n *NormalizedInvocation, selection [
 		wg.Add(1)
 		go func(i int, pkg string) {
 			defer wg.Done()
+			// Every package reports its completion exactly once, whichever
+			// way it ends; the reporter bounds emission.
+			defer func() { rep.Step(n.Name, pkgsDone.Add(1), int32(len(pkgs))) }()
 			select {
 			case sem <- struct{}{}:
 				defer func() { <-sem }()
@@ -664,6 +671,8 @@ func (f writerFunc) Write(p []byte) (int, error) { return f(p) }
 // span and the policy's wall time is the sum of what its invocations
 // spend, bounded overall only by the caller's context.
 func ExecutePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (*stipulatorv1.ExecutionReport, []*ProcessObservation, error) {
+	rep := progress.FromContext(ctx)
+	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	universe, err := discoverUniverse(ctx, dir)
 	if err != nil {
 		return nil, nil, err
@@ -672,6 +681,7 @@ func ExecutePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) 
 	if err != nil {
 		return nil, nil, err
 	}
+	rep.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
 	var (
 		selections   []InvocationSelection
 		invocations  []*stipulatorv1.InvocationHealth

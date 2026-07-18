@@ -225,7 +225,8 @@ enum Phase {
   PHASE_DISCOVERY = 2;
   // Policy execution.
   PHASE_EXECUTION = 3;
-  // Binding verification.
+  // Evidence verification: witness derivation — producer validation and
+  // record publication — and binding verification.
   PHASE_VERIFICATION = 4;
   // Coverage evaluation.
   PHASE_COVERAGE = 5;
