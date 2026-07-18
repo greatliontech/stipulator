@@ -4,7 +4,7 @@
 invocations {
   name: "race"
   timeout {
-    seconds: 7200
+    seconds: 2700
   }
   go {
     packages: "./..."
@@ -13,24 +13,36 @@ invocations {
   }
 }
 invocations {
-  name: "race:member/nested"
+  name: "race:bindingsurface"
   timeout {
-    seconds: 7200
+    seconds: 2700
   }
   go {
-    module_root: "member/nested"
+    module_root: "bindingsurface"
     packages: "./..."
     race: true
     args: "-test.timeout=30m"
   }
 }
 invocations {
-  name: "race:zeta"
+  name: "race:stipulate"
   timeout {
-    seconds: 7200
+    seconds: 2700
   }
   go {
-    module_root: "zeta"
+    module_root: "stipulate"
+    packages: "./..."
+    race: true
+    args: "-test.timeout=30m"
+  }
+}
+invocations {
+  name: "race:stipulate/structural"
+  timeout {
+    seconds: 2700
+  }
+  go {
+    module_root: "stipulate/structural"
     packages: "./..."
     race: true
     args: "-test.timeout=30m"

@@ -126,3 +126,39 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "ad1410ddad0dc092e0cd309eba9df62d6518db29ca1e18a5f1d070e9a9fe702c"
 }
+
+bindings {
+  requirement_id: "REQ-check-verdict"
+  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckCatchesEverySuiteFailureClass"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e5a84ae9198d9cad70464493205f02edd6abf26b26e3f274e3e7ceb5a3bf9fbd"
+}
+
+bindings {
+  requirement_id: "REQ-check-verdict"
+  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckEmptyPolicyFailsWithNamedCause"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "101e07c2b0649de99ea1bf3e12e717018067eb028b6cdc1848452fb75a61cda9"
+}
+
+bindings {
+  requirement_id: "REQ-check-verdict"
+  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckUnreadablePolicyIsOperational"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a9f6dee7a3a8cd20df9d7d0b9a05602f25303845fcba20bd7771cfd278c0bd67"
+}
+
+bindings {
+  requirement_id: "REQ-check-diagnostics"
+  content_hash: "b373e6343bd4553e52e640af2e3943d9d3c002932bb77da1ebb35ce4876d1beb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestCheckRenderNamesPolicyRecordPath"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "3a8eb9f26d95c18f4a0c35bbd1319fc48f878385bcea3fd819c1bec90263c028"
+}

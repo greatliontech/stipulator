@@ -70,6 +70,110 @@ func TestGoExecuteEnvelopeTimeoutNamesAbortedTests(t *testing.T) {
 	}
 }
 
+// TestGoExecuteEnvelopeTimeoutRetainsGoroutineDump pins the envelope
+// kill's evidence: expiry escalates through SIGQUIT before SIGKILL, so a
+// test binary wedged on a channel — including one wedged before its own
+// -test.timeout timer is armed — dies printing a goroutine dump, and the
+// TIMEOUT diagnostic retains that dump instead of discarding the cut-off
+// process's output.
+func TestGoExecuteEnvelopeTimeoutRetainsGoroutineDump(t *testing.T) {
+	if testing.Short() {
+		t.Skip("runs a real go test to envelope expiry")
+	}
+	stipulate.Covers(t, "REQ-go-policy-complete")
+	neutralAmbient(t)
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example.com/hangdump\n\ngo 1.24\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	src := "package hangdump\n\n" +
+		"import (\n\t\"testing\"\n\t\"time\"\n)\n\n" +
+		"// TestWedge blocks on a channel no sender ever fills; the sleeping\n" +
+		"// goroutine keeps the runtime's deadlock detector quiet.\n" +
+		"func TestWedge(t *testing.T) {\n" +
+		"\tch := make(chan struct{})\n" +
+		"\tgo func() {\n\t\ttime.Sleep(time.Hour)\n\t\tclose(ch)\n\t}()\n" +
+		"\t<-ch\n}\n"
+	if err := os.WriteFile(filepath.Join(dir, "hang_test.go"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	n := &NormalizedInvocation{
+		Name:        "hangdump",
+		Dir:         dir,
+		Packages:    []string{"."},
+		Timeout:     2 * time.Second,
+		CacheBypass: true,
+	}
+	selection := []Obligation{{Kind: ObligationPackage, Package: "example.com/hangdump"}}
+	health, _, diags, _, err := ExecuteInvocation(context.Background(), n, selection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := health.GetDisposition(); got != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT {
+		t.Fatalf("invocation disposition = %v, want TIMEOUT (diags: %v)", got, diags)
+	}
+	if len(diags) != 1 {
+		t.Fatalf("timeout run retained %d diagnostics, want 1: %v", len(diags), diags)
+	}
+	if out := diags[0].GetOutput(); !strings.Contains(out, "goroutine ") {
+		t.Errorf("timeout diagnostic lost the kill-time goroutine dump:\n%s", out)
+	}
+}
+
+// TestGoExecuteCallerDeadlineSkipsDumpGrace pins the kill discrimination:
+// a caller's own deadline — not the invocation envelope — discards the
+// run whole, so the kill is immediate: no SIGQUIT, no grace, an abort
+// well inside the dump window even against a wedged binary.
+func TestGoExecuteCallerDeadlineSkipsDumpGrace(t *testing.T) {
+	if testing.Short() {
+		t.Skip("runs a real go test to a caller deadline")
+	}
+	stipulate.Covers(t, "REQ-policy-cancellation")
+	neutralAmbient(t)
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example.com/hangfast\n\ngo 1.24\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// The binary ignores SIGQUIT: a cooperative child dies on the QUIT
+	// itself and would mask a wrongly-paid grace, so only an ignoring
+	// child can prove the immediate-kill path.
+	src := "package hangfast\n\n" +
+		"import (\n\t\"os\"\n\t\"os/signal\"\n\t\"syscall\"\n\t\"testing\"\n\t\"time\"\n)\n\n" +
+		"func TestMain(m *testing.M) {\n" +
+		"\tsignal.Ignore(syscall.SIGQUIT)\n" +
+		"\tos.Exit(m.Run())\n}\n\n" +
+		"func TestWedge(t *testing.T) {\n" +
+		"\tch := make(chan struct{})\n" +
+		"\tgo func() {\n\t\ttime.Sleep(time.Hour)\n\t\tclose(ch)\n\t}()\n" +
+		"\t<-ch\n}\n"
+	if err := os.WriteFile(filepath.Join(dir, "hang_test.go"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	n := &NormalizedInvocation{
+		Name:        "hangfast",
+		Dir:         dir,
+		Packages:    []string{"."},
+		Timeout:     time.Hour,
+		CacheBypass: true,
+	}
+	selection := []Obligation{{Kind: ObligationPackage, Package: "example.com/hangfast"}}
+	// The deadline leaves room for the trivial build; the wedge then holds
+	// the binary until the caller deadline fires.
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+	start := time.Now()
+	health, _, _, _, err := ExecuteInvocation(ctx, n, selection)
+	elapsed := time.Since(start)
+	if err == nil || health != nil {
+		t.Fatalf("caller-deadline run returned a report (health=%v err=%v); it must be discarded whole", health, err)
+	}
+	// Well inside deadline + grace: an immediate kill returns almost at
+	// the deadline; paying the 10s SIGQUIT grace would land past it.
+	if limit := 15 * time.Second; elapsed > limit {
+		t.Errorf("caller-deadline abort took %v, want < %v (the dump grace must not be paid)", elapsed, limit)
+	}
+}
+
 // TestGoExecuteSilentToolchainDegradesEndToEnd drives the whole spawn
 // path against a toolchain stand-in that exits zero without a single
 // event: the package must dispose DEGRADED — a silent command stream is

@@ -78,7 +78,10 @@ func TestGoPolicyDeriveGoldenByteIdentical(t *testing.T) {
 
 // TestGoPolicyDeriveMirrorsLegacySuite pins the derivation's shape against
 // what the legacy universal suite executes: one race-enabled ./...
-// invocation per workspace member under the legacy 30-minute ceiling.
+// invocation per workspace member, each carrying the legacy explicit
+// 30-minute per-binary timeout — dropping it would leave binaries bounded
+// only by the invocation envelope, not what the legacy suite ran — under
+// the derived invocation envelope.
 func TestGoPolicyDeriveMirrorsLegacySuite(t *testing.T) {
 	stipulate.Covers(t, "REQ-policy-explicit")
 	p, err := DerivePolicy(filepath.Join("testdata", "policyderive", "workspace"))
@@ -103,6 +106,9 @@ func TestGoPolicyDeriveMirrorsLegacySuite(t *testing.T) {
 		}
 		if !cfg.GetRace() {
 			t.Errorf("invocation %q is not race-enabled; the legacy suite races everything", inv.GetName())
+		}
+		if got := cfg.GetArgs(); len(got) != 1 || got[0] != "-test.timeout=30m" {
+			t.Errorf("invocation %q args = %v, want the legacy per-binary [-test.timeout=30m]", inv.GetName(), got)
 		}
 		if want := durationpb.New(derivedTimeout); !proto.Equal(inv.GetTimeout(), want) {
 			t.Errorf("invocation %q timeout = %v, want %v", inv.GetName(), inv.GetTimeout(), want)

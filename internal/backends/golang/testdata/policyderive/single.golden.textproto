@@ -9,5 +9,6 @@ invocations {
   go {
     packages: "./..."
     race: true
+    args: "-test.timeout=30m"
   }
 }

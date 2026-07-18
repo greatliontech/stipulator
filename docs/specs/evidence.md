@@ -198,7 +198,10 @@ corpus's accepted test policy — a committed record declaring every policy
 invocation with its backend, package scope, typed configuration, and an
 explicit timeout, so a deliberately long-running invocation is admitted by
 review rather than aborted by an inherited ceiling — never an assumed
-universal invocation.
+universal invocation. No toolchain-implicit time bound survives the
+accepted record: the record's envelope and its reviewed arguments are the
+only sources of execution bounds, so an inherited default can never abort
+work the record admitted.
 
 **REQ-policy-record-location** (wire): The accepted test policy MUST be
 stored as textproto at `.stipulator/policy.textproto` in canonical form:

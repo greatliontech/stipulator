@@ -225,7 +225,8 @@ func validateBuildTag(tag string) error {
 // the reviewed invocation beside its typed declaration.
 var ownedGoflags = map[string]string{
 	"race": "race", "tags": "tags", "mod": "module_mode", "pgo": "pgo",
-	"count": "count", "timeout": "the envelope timeout",
+	"count":   "count",
+	"timeout": "the envelope timeout (per-binary bounds ride the reviewed args as -test.timeout)",
 }
 
 // unsupportedGoflags are the ambient controls refused outright — the
@@ -319,18 +320,27 @@ func validateModuleRoot(root string) error {
 // The legacy suite bounded each test binary at thirty minutes with no
 // invocation-level ceiling, so a member running many binaries was admitted
 // far beyond thirty minutes serially; two hours is a generous explicit
-// envelope the migration review sees and can tighten, while per-binary
-// bounds return as typed Go configuration when those fields land.
+// envelope the migration review sees and can tighten.
 const derivedTimeout = 2 * time.Hour
+
+// derivedBinaryTimeout is the per-binary bound the derived record carries,
+// mirroring the legacy suite's explicit thirty-minute test-binary timeout.
+// The executor disables the toolchain's implicit per-binary default, so
+// without this argument each binary would be bounded only by the
+// invocation envelope; deriving the legacy bound keeps the record's
+// semantics exactly what the legacy suite ran, and the migration review
+// can tighten or drop it deliberately.
+const derivedBinaryTimeout = "-test.timeout=30m"
 
 // DerivePolicy derives the accepted-test-policy record equivalent to the
 // universal race suite the legacy witness pipeline executes: one
 // race-enabled `./...` invocation per workspace member — the go.work
 // member enumeration RunTests iterates, the root module alone when the
 // tree declares no workspace — each under the ceiling the legacy suite
-// declares. Module roots are recorded tree-relative in slash form and
-// invocation names derive from them alone, never from host paths, so two
-// hosts derive byte-identical records from the same workspace declaration.
+// declares and carrying its explicit per-binary timeout. Module roots are
+// recorded tree-relative in slash form and invocation names derive from
+// them alone, never from host paths, so two hosts derive byte-identical
+// records from the same workspace declaration.
 func DerivePolicy(dir string) (*stipulatorv1.TestPolicy, error) {
 	members, err := policyMembers(dir)
 	if err != nil {
@@ -350,6 +360,7 @@ func DerivePolicy(dir string) (*stipulatorv1.TestPolicy, error) {
 		}
 		cfg.SetPackages([]string{"./..."})
 		cfg.SetRace(true)
+		cfg.SetArgs([]string{derivedBinaryTimeout})
 		inv := &stipulatorv1.PolicyInvocation{}
 		inv.SetName(name)
 		inv.SetTimeout(durationpb.New(derivedTimeout))

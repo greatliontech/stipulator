@@ -450,3 +450,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "48c0766782b3292a7b492dd300c568fe3c7636ee18cb44282b7eb87417a6a6cd"
 }
+
+bindings {
+  requirement_id: "REQ-go-policy-complete"
+  content_hash: "29ad9bb6ebf2b4d3d8f94dd3c3b3989b42a68cbaf565ca7912bdbc051063625e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteEnvelopeTimeoutRetainsGoroutineDump"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "9595ea0f3eea7c6f6d34f3c0dae417af439055a2756318d0b12232ab9def25cc"
+}

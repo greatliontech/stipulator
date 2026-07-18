@@ -25,16 +25,13 @@ jobs:
           (cd bindingsurface && go mod tidy -diff)
           (cd stipulate && go mod tidy -diff)
           (cd stipulate/structural && go mod tidy -diff)
-      - name: Test
-        # Suite health is a broader check than the gate: a failing unbound
-        # test breaks no binding, so the gate alone could pass on a red
-        # suite.
-        run: go test -race -timeout=40m github.com/greatliontech/stipulator/...
-      - name: Gate
-        run: go run ./cmd/stipulator gate
-      - name: Prune lint
-        # No resolved gap lingering. --no-test evaluates unwitnessed, so a
-        # gap resolved only by an executed witness is invisible to this
-        # lint; `stipulator check` reports such residue from its witnessed
-        # pass.
-        run: go run ./cmd/stipulator prune --check --no-test
+      - name: Check
+        # One pass, one verdict: compiles the corpus, executes the accepted
+        # test policy once (every workspace member, race-enabled), verifies
+        # bindings against that same execution, evaluates coverage and
+        # gaps, and reports prune residue. Suite health and witness
+        # evidence derive from the same single execution, so a witness
+        # failure occurs inside the run whose health the verdict judged —
+        # and a gap resolved only by an executed witness surfaces as prune
+        # residue here, which no unwitnessed lint could see.
+        run: go run ./cmd/stipulator check

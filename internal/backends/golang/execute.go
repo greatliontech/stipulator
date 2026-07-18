@@ -74,13 +74,15 @@ type testEvent struct {
 // disposition means the run reached no terminal fact of its own — the
 // caller classifies it as timeout or discards it on cancellation —
 // with aborted carrying the names of tests that had started but not
-// finished when the run was cut off. producer is set exactly when a
-// process was launched; obs is that process's owned observation, absent
-// until the caller classifies a cut-off run.
+// finished when the run was cut off and residue the bounded output the
+// cut-off process left behind. producer is set exactly when a process
+// was launched; obs is that process's owned observation, absent until
+// the caller classifies a cut-off run.
 type packageRun struct {
 	pkg         string
 	disposition stipulatorv1.HealthDisposition
 	aborted     []string
+	residue     *boundedBuffer
 	producer    *stipulatorv1.ProducerIdentity
 	obs         *ProcessObservation
 	tests       []*stipulatorv1.TestResult
@@ -106,7 +108,12 @@ func ExecuteInvocation(ctx context.Context, n *NormalizedInvocation, selection [
 	if len(pkgs) == 0 {
 		return nil, nil, nil, nil, fmt.Errorf("invocation %q: selection carries no package obligations", n.Name)
 	}
-	invCtx, cancel := context.WithTimeout(ctx, n.Timeout)
+	// The envelope carries its identity as the context cause: the kill path
+	// dumps and graces only on true envelope expiry, never on a caller's
+	// own deadline — a caller-bounded run is discarded whole, so a dump
+	// there would have no consumer and the grace would only delay the
+	// abort.
+	invCtx, cancel := context.WithTimeoutCause(ctx, n.Timeout, errEnvelopeExpired)
 	defer cancel()
 
 	bound := runtime.GOMAXPROCS(0)
@@ -183,6 +190,14 @@ func ExecuteInvocation(ctx context.Context, n *NormalizedInvocation, selection [
 			if len(r.aborted) > 0 {
 				out.write("\nstarted but unfinished: ")
 				out.write(strings.Join(r.aborted, ", "))
+			}
+			// The cut-off process's retained output — the kill-time
+			// goroutine dump included — is part of the verdict
+			// (REQ-check-diagnostics), never discarded with the run.
+			if r.residue != nil && !r.residue.empty() {
+				out.write("\n")
+				out.write(r.residue.b.String())
+				out.truncated = out.truncated || r.residue.truncated
 			}
 			d.SetOutput(out.b.String())
 			d.SetTruncated(out.truncated)
@@ -306,9 +321,12 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, ordina
 	waitErr := cmd.Wait()
 	if ctx.Err() != nil {
 		// Keep the parsed residue: on envelope expiry the caller's
-		// timeout diagnostic names the tests the cutoff aborted and the
-		// launched process gains its incomplete observation.
-		return packageRun{pkg: pkg, aborted: startedTests(st), producer: producer}
+		// timeout diagnostic names the tests the cutoff aborted, carries
+		// the bounded output the cut-off process left behind — the
+		// kill-time goroutine dump arrives on the child's stdout and
+		// stderr — and the launched process gains its incomplete
+		// observation.
+		return packageRun{pkg: pkg, aborted: startedTests(st), residue: cutoffResidue(st, &stderr), producer: producer}
 	}
 	run := classifyRun(n.Name, pkg, st, waitErr, &stderr)
 	run.producer = producer
@@ -321,11 +339,20 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, ordina
 // plus the per-process testlog capture file when one exists — executor
 // property no reviewed args entry may name (validation refuses the
 // collision, so the capture is always the executor's own file, bound to
-// exactly this process). Per-binary timeouts deliberately keep the toolchain
-// default; the reviewed envelope timeout governs the invocation, and
-// finer bounds ride typed configuration when those fields land.
+// exactly this process).
+//
+// The toolchain's implicit per-binary timeout is disabled outright: the
+// reviewed record is the only source of test bounds. The envelope timeout
+// governs the whole invocation through owned process termination, and a
+// finer per-binary bound rides the reviewed args — the test binary honors
+// the last -test.timeout it parses. Left in force, the implicit default
+// would abort a reviewed long-running invocation at ten minutes: the go
+// command derives both the binary's default -test.timeout and its own
+// SIGQUIT kill backstop from its -timeout flag, and binary-level
+// arguments cannot reach that backstop, so the inherited ceiling must be
+// disabled at the go level, never overridden per binary.
 func testCommandArgs(n *NormalizedInvocation, pkg string, logPath string) []string {
-	args := []string{"test", "-json"}
+	args := []string{"test", "-json", "-timeout=0"}
 	if n.Race {
 		args = append(args, "-race")
 	}
@@ -517,6 +544,41 @@ func parseTestStream(invocation, pkg string, r io.Reader, producer *stipulatorv1
 		}
 	}
 	return st
+}
+
+// cutoffResidue renders the bounded output a cut-off run leaves behind —
+// package-level output, each aborted test's buffered output, any unparsed
+// stream remainder, and the child's stderr, where the envelope kill's
+// goroutine dump lands — for the caller's timeout diagnostic.
+func cutoffResidue(st *streamState, stderr *boundedBuffer) *boundedBuffer {
+	var out boundedBuffer
+	if !st.pkgOutput.empty() {
+		out.write("package output:\n")
+		out.write(st.pkgOutput.b.String())
+		out.truncated = out.truncated || st.pkgOutput.truncated
+	}
+	for _, name := range st.startOrder {
+		if !st.started[name] {
+			continue
+		}
+		bb := st.perTest[name]
+		if bb == nil || bb.empty() {
+			continue
+		}
+		out.write(fmt.Sprintf("\n--- aborted: %s ---\n", name))
+		out.write(bb.b.String())
+		out.truncated = out.truncated || bb.truncated
+	}
+	if st.malformed != "" {
+		out.write("\nmalformed stream: ")
+		out.write(st.malformed)
+	}
+	if !stderr.empty() {
+		out.write("\nstderr:\n")
+		out.write(stderr.b.String())
+		out.truncated = out.truncated || stderr.truncated
+	}
+	return &out
 }
 
 // startedTests returns, in first-appearance order, the tests a cut-off

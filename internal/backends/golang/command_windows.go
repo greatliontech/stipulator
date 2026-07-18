@@ -12,7 +12,9 @@ import (
 	"time"
 )
 
-func configureCommandCancellation(cmd *exec.Cmd) {
+// No SIGQUIT-first escalation on envelope expiry here: Windows has no
+// SIGQUIT, so a timed-out child dies without a goroutine dump.
+func configureCommandCancellation(_ context.Context, cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP}
 	cmd.Cancel = func() error {
 		if cmd.Process == nil {

@@ -578,23 +578,23 @@ func TestGoExecuteCommandArgsRendering(t *testing.T) {
 	}{
 		"bare": {
 			n:    &NormalizedInvocation{Dir: tree},
-			want: []string{"test", "-json", "pkg"},
+			want: []string{"test", "-json", "-timeout=0", "pkg"},
 		},
 		"race": {
 			n:    &NormalizedInvocation{Dir: tree, Race: true},
-			want: []string{"test", "-json", "-race", "pkg"},
+			want: []string{"test", "-json", "-timeout=0", "-race", "pkg"},
 		},
 		"tags": {
 			n:    &NormalizedInvocation{Dir: tree, Tags: []string{"a", "b"}},
-			want: []string{"test", "-json", "-tags=a,b", "pkg"},
+			want: []string{"test", "-json", "-timeout=0", "-tags=a,b", "pkg"},
 		},
 		"module mode": {
 			n:    &NormalizedInvocation{Dir: tree, ModuleMode: stipulatorv1.GoModuleMode_GO_MODULE_MODE_VENDOR},
-			want: []string{"test", "-json", "-mod=vendor", "pkg"},
+			want: []string{"test", "-json", "-timeout=0", "-mod=vendor", "pkg"},
 		},
 		"pgo keyword": {
 			n:    &NormalizedInvocation{Dir: tree, PGO: "off"},
-			want: []string{"test", "-json", "-pgo=off", "pkg"},
+			want: []string{"test", "-json", "-timeout=0", "-pgo=off", "pkg"},
 		},
 		"pgo tree-relative path from a nested module root": {
 			n: &NormalizedInvocation{
@@ -602,19 +602,19 @@ func TestGoExecuteCommandArgsRendering(t *testing.T) {
 				ModuleRoot: "member",
 				PGO:        "profiles/cpu.pprof",
 			},
-			want: []string{"test", "-json", "-pgo=" + filepath.Join(tree, "profiles", "cpu.pprof"), "pkg"},
+			want: []string{"test", "-json", "-timeout=0", "-pgo=" + filepath.Join(tree, "profiles", "cpu.pprof"), "pkg"},
 		},
 		"count": {
 			n:    &NormalizedInvocation{Dir: tree, Count: 3},
-			want: []string{"test", "-json", "-count=3", "pkg"},
+			want: []string{"test", "-json", "-timeout=0", "-count=3", "pkg"},
 		},
 		"cache bypass": {
 			n:    &NormalizedInvocation{Dir: tree, CacheBypass: true},
-			want: []string{"test", "-json", "-count=1", "pkg"},
+			want: []string{"test", "-json", "-timeout=0", "-count=1", "pkg"},
 		},
 		"test binary args": {
 			n:    &NormalizedInvocation{Dir: tree, Args: []string{"-test.timeout=1s", "extra"}},
-			want: []string{"test", "-json", "pkg", "-args", "-test.timeout=1s", "extra"},
+			want: []string{"test", "-json", "-timeout=0", "pkg", "-args", "-test.timeout=1s", "extra"},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -629,7 +629,7 @@ func TestGoExecuteCommandArgsRendering(t *testing.T) {
 	// flag, so the capture is always the executor's own file.
 	t.Run("testlog capture", func(t *testing.T) {
 		n := &NormalizedInvocation{Dir: tree, Args: []string{"extra"}}
-		want := []string{"test", "-json", "pkg", "-args", "-test.testlogfile=/tmp/log", "extra"}
+		want := []string{"test", "-json", "-timeout=0", "pkg", "-args", "-test.testlogfile=/tmp/log", "extra"}
 		if got := testCommandArgs(n, "pkg", "/tmp/log"); !slices.Equal(got, want) {
 			t.Errorf("testCommandArgs = %q, want %q", got, want)
 		}

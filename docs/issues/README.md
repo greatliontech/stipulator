@@ -77,3 +77,9 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   in-tree symlink pointing outside the tree passes the lexical escape checks in workspace member
   and policy module-root validation. *Lands: when validation resolves symlinks or execution refuses
   escaping resolved members.*
+- **[coverage-forces-out-manual-condition-gaps](coverage-forces-out-manual-condition-gaps.md)** — a gap
+  resolves the moment its requirement's coverage reaches covered and then fails the check as prune
+  residue, so a witnessed-green requirement with a known unwitnessed violation (observed:
+  REQ-go-owned-processes and the unowned `go/packages` launcher) is inexpressible in records.
+  *Lands: when the gap lifecycle or prune residue semantics next change, or when `go/packages`
+  symbol loading runs behind an owned boundary.*
