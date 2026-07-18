@@ -113,11 +113,13 @@ for the interfered records exactly as an ambient mid-run edit does —
 the same filed window, widened from one invocation's span to
 overlapping invocations — and a deterministic serial order remains
 available to diagnostics through the parallelism override. A selective run may
-isolate a test its full-suite sibling would have shadowed by a package
-abort: the isolated outcome is a real run's outcome — evidence follows
-execution, the aborting sibling's own failure stands, and a shadowed test
-gaining its first outcome this way is the selective form being more
-precise, not less. The cache is memoization,
+isolate a test its process siblings would otherwise deny an outcome: a test
+shadowed by a package abort, or a completed pass inside a process whose own
+disposition is red — a red process yields no green evidence, so the pass
+grants nothing from that process. The isolated outcome is a real run's
+outcome — evidence follows execution, the aborting or failing sibling's own
+failure stands, and a test gaining its outcome this way is the selective
+form being more precise, not less. The cache is memoization,
 never authoritative and never committed: for a deterministic test,
 discarding it changes no verdict, only the work — a flaky test's served
 outcome is that flake pinned until its inputs move or the cache is

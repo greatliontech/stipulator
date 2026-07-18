@@ -128,6 +128,9 @@ func validateConfig(cfg *stipulatorv1.GoInvocationConfig) error {
 			if name == "test.testlogfile" {
 				return fmt.Errorf("args entry %q names the runtime-input capture file, which the executor owns per process", a)
 			}
+			if selectionBinaryArgs[name] {
+				return fmt.Errorf("args entry %q names the test selection, which the executor owns per process", a)
+			}
 		}
 	}
 	return nil
@@ -247,6 +250,21 @@ var unsupportedGoflags = map[string]string{
 var selectionGoflags = map[string]bool{
 	"run": true, "skip": true, "short": true, "failfast": true,
 	"list": true, "bench": true, "benchtime": true, "fuzz": true, "fuzztime": true,
+}
+
+// selectionBinaryArgs are the binary-side selection flags no reviewed
+// args entry may carry — the -test.* twins of the selection controls
+// GOFLAGS validation already refuses at the go-command level, plus the
+// bare "run" form, inert binary-side but refused for symmetry with the
+// family. Selection is executor and reviewed-record property exactly as
+// the capture file is: the executor renders each process's selection at
+// the go-command level (the whole package, or one isolated runnable),
+// and the test binary honors the last value it parses — a reviewed entry
+// would silently reshape which obligations execute beneath the
+// executor's own rendering.
+var selectionBinaryArgs = map[string]bool{
+	"test.run": true, "test.skip": true, "test.list": true,
+	"test.bench": true, "test.fuzz": true, "run": true,
 }
 
 // validateGoflags checks one GOFLAGS value, explicit or effective.

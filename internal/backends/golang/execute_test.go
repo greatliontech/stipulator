@@ -370,6 +370,7 @@ func TestGoExecutePolicyWorkspaceReport(t *testing.T) {
 		"example.com/exec/reads":     stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY,
 		"example.com/exec/killmid":   stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED,
 		"example.com/exec/mainexit":  stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY,
+		"example.com/exec/mixed":     stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED,
 	}
 	for pkg, wantD := range want {
 		if got := packageDisposition(t, byName["root"], pkg); got != wantD {
@@ -555,7 +556,7 @@ func TestGoExecuteSpawnRefusedByExpiredContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	n := &NormalizedInvocation{Name: "expired", Dir: t.TempDir(), Timeout: time.Minute}
-	run := runPackage(ctx, n, "example.com/x", 1)
+	run := runPackage(ctx, n, "example.com/x", nil, 1)
 	if run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_UNSPECIFIED {
 		t.Fatalf("disposition = %v, want none: the caller owns the timeout-or-discard classification", run.disposition)
 	}
@@ -566,15 +567,19 @@ func TestGoExecuteSpawnRefusedByExpiredContext(t *testing.T) {
 
 // TestGoExecuteCommandArgsRendering pins the typed-configuration flag
 // rendering: race, tags, module mode, PGO (keyword and tree-relative
-// path), count, cache bypass, and test-binary args each render exactly
-// their reviewed form, nothing ambient.
+// path), count, cache bypass, test-binary args, and the executor's
+// top-level test selection each render exactly their reviewed form,
+// nothing ambient. Selection renders as an anchored, regexp-escaped
+// `-run` go-command flag before the package argument — never a binary
+// argument.
 func TestGoExecuteCommandArgsRendering(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-policy-complete", "REQ-policy-explicit")
+	stipulate.Covers(t, "REQ-go-policy-complete", "REQ-policy-explicit", "REQ-core-one-execution")
 	sep := string(filepath.Separator)
 	tree := sep + filepath.Join("host", "tree")
 	for name, tc := range map[string]struct {
-		n    *NormalizedInvocation
-		want []string
+		n         *NormalizedInvocation
+		selection []string
+		want      []string
 	}{
 		"bare": {
 			n:    &NormalizedInvocation{Dir: tree},
@@ -616,9 +621,24 @@ func TestGoExecuteCommandArgsRendering(t *testing.T) {
 			n:    &NormalizedInvocation{Dir: tree, Args: []string{"-test.timeout=1s", "extra"}},
 			want: []string{"test", "-json", "-timeout=0", "pkg", "-args", "-test.timeout=1s", "extra"},
 		},
+		"selection": {
+			n:         &NormalizedInvocation{Dir: tree},
+			selection: []string{"TestOne", "FuzzTwo"},
+			want:      []string{"test", "-json", "-timeout=0", "-run=^(TestOne|FuzzTwo)$", "pkg"},
+		},
+		"selection escapes regexp metacharacters": {
+			n:         &NormalizedInvocation{Dir: tree},
+			selection: []string{"TestDot.Star*"},
+			want:      []string{"test", "-json", "-timeout=0", `-run=^(TestDot\.Star\*)$`, "pkg"},
+		},
+		"selection rides the go command, never the binary args": {
+			n:         &NormalizedInvocation{Dir: tree, Args: []string{"-test.timeout=1s"}},
+			selection: []string{"TestOne"},
+			want:      []string{"test", "-json", "-timeout=0", "-run=^(TestOne)$", "pkg", "-args", "-test.timeout=1s"},
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			got := testCommandArgs(tc.n, "pkg", "")
+			got := testCommandArgs(tc.n, "pkg", tc.selection, "")
 			if !slices.Equal(got, tc.want) {
 				t.Errorf("testCommandArgs = %q, want %q", got, tc.want)
 			}
@@ -630,10 +650,215 @@ func TestGoExecuteCommandArgsRendering(t *testing.T) {
 	t.Run("testlog capture", func(t *testing.T) {
 		n := &NormalizedInvocation{Dir: tree, Args: []string{"extra"}}
 		want := []string{"test", "-json", "-timeout=0", "pkg", "-args", "-test.testlogfile=/tmp/log", "extra"}
-		if got := testCommandArgs(n, "pkg", "/tmp/log"); !slices.Equal(got, want) {
+		if got := testCommandArgs(n, "pkg", nil, "/tmp/log"); !slices.Equal(got, want) {
 			t.Errorf("testCommandArgs = %q, want %q", got, want)
 		}
 	})
+}
+
+// executeSelection normalizes one invocation over the execute fixture and
+// runs a witness-only selection of it.
+func executeSelection(t *testing.T, timeout time.Duration, cfg *stipulatorv1.GoInvocationConfig, name string, sel TestSelection) *SelectionResult {
+	t.Helper()
+	inv := &stipulatorv1.PolicyInvocation{}
+	inv.SetName(name)
+	inv.SetTimeout(durationpb.New(timeout))
+	inv.SetGo(cfg)
+	ctx := context.Background()
+	n, err := NormalizeInvocation(ctx, executeFixture(t), inv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := ExecuteSelection(ctx, n, sel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return res
+}
+
+func findProcess(procs []ProcessOutcome, pkg, test string) *ProcessOutcome {
+	for i := range procs {
+		if procs[i].Package == pkg && procs[i].Test == test {
+			return &procs[i]
+		}
+	}
+	return nil
+}
+
+// sameProcess reports whether two producer identities name the same
+// launched process of one execution.
+func sameProcess(a, b *stipulatorv1.ProducerIdentity) bool {
+	return a != nil && b != nil &&
+		a.GetInvocation() == b.GetInvocation() &&
+		a.GetProcessOrdinal() == b.GetProcessOrdinal()
+}
+
+// TestGoExecuteSelectionRunsOnlySelected pins the selective execution's
+// narrowing: a top-level selection executes exactly the named runnables —
+// subtests riding their selected parent — and the unselected sibling
+// produces no outcome at all, from one healthy package-selection process
+// whose producer is pinned.
+func TestGoExecuteSelectionRunsOnlySelected(t *testing.T) {
+	stipulate.Covers(t, "REQ-core-one-execution", "REQ-policy-attribution")
+	neutralAmbient(t)
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./ok"})
+	res := executeSelection(t, time.Minute, cfg, "selective", TestSelection{
+		"example.com/exec/ok": {"TestDouble"},
+	})
+	for name, want := range map[string]stipulatorv1.TestOutcome{
+		"TestDouble":      stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED,
+		"TestDouble/zero": stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED,
+	} {
+		tr := findTest(res.Tests, "example.com/exec/ok", name)
+		if tr == nil || tr.GetOutcome() != want {
+			t.Errorf("%s outcome = %v, want %v", name, tr, want)
+		}
+	}
+	if tr := findTest(res.Tests, "example.com/exec/ok", "TestSkipped"); tr != nil {
+		t.Errorf("unselected test executed: %v", tr)
+	}
+	if len(res.Processes) != 1 {
+		t.Fatalf("selective run launched %d processes, want 1: %v", len(res.Processes), res.Processes)
+	}
+	p := res.Processes[0]
+	if p.Test != "" || p.Disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+		t.Errorf("package-selection process = %+v, want a healthy package process", p)
+	}
+	if p.Producer.GetInvocation() != "selective" || p.Producer.GetProcessId() <= 0 {
+		t.Errorf("process producer = %v, want the producing invocation and process pinned", p.Producer)
+	}
+}
+
+// TestGoExecuteSelectionIsolatesAbortShadowedTests pins the isolation
+// pass's abort class: a process a sibling kills mid-run denies its
+// shadowed tests any outcome, so each denied test is re-run solo and
+// gains its outcome from its own producing process — while the killer's
+// re-run dies again and its failure stands, no outcome invented.
+func TestGoExecuteSelectionIsolatesAbortShadowedTests(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-core-one-execution", "REQ-policy-attribution")
+	neutralAmbient(t)
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./killmid"})
+	res := executeSelection(t, time.Minute, cfg, "isolate-abort", TestSelection{
+		"example.com/exec/killmid": {"TestKilledMidRun", "TestShadowedByKill"},
+	})
+	main := findProcess(res.Processes, "example.com/exec/killmid", "")
+	if main == nil || main.Disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED {
+		t.Fatalf("package-selection process = %+v, want TEST_FAILED for the killed package", main)
+	}
+	shadow := findProcess(res.Processes, "example.com/exec/killmid", "TestShadowedByKill")
+	if shadow == nil || shadow.Disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+		t.Fatalf("shadowed test's solo process = %+v, want a healthy solo re-run", shadow)
+	}
+	if sameProcess(shadow.Producer, main.Producer) {
+		t.Error("solo re-run attributed to the killed process, want its own producer")
+	}
+	tr := findTest(res.Tests, "example.com/exec/killmid", "TestShadowedByKill")
+	if tr == nil || tr.GetOutcome() != stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED {
+		t.Fatalf("shadowed test outcome = %v, want PASSED from the solo re-run", tr)
+	}
+	if !sameProcess(tr.GetProducer(), shadow.Producer) {
+		t.Errorf("shadowed test producer = %v, want the solo process %v", tr.GetProducer(), shadow.Producer)
+	}
+	// The killer re-runs solo once, dies again, and its failure stands:
+	// no outcome is invented for it.
+	killer := findProcess(res.Processes, "example.com/exec/killmid", "TestKilledMidRun")
+	if killer == nil || killer.Disposition == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+		t.Errorf("killer's solo process = %+v, want its own death recorded", killer)
+	}
+	if tr := findTest(res.Tests, "example.com/exec/killmid", "TestKilledMidRun"); tr != nil {
+		t.Errorf("a test that never finished gained an outcome: %v", tr)
+	}
+}
+
+// TestGoExecuteSelectionIsolatesGreenInRedProcess pins the isolation
+// pass's red-process class: a completed pass inside a process whose own
+// disposition is red grants no green evidence from that process, so the
+// pass is re-run solo and gains its outcome from a healthy process of its
+// own — with a completed observation — while the red sibling's failure
+// stands and is never re-run.
+func TestGoExecuteSelectionIsolatesGreenInRedProcess(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-policy-attribution")
+	neutralAmbient(t)
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./mixed"})
+	res := executeSelection(t, time.Minute, cfg, "isolate-green", TestSelection{
+		"example.com/exec/mixed": {"TestGreen", "TestRed"},
+	})
+	main := findProcess(res.Processes, "example.com/exec/mixed", "")
+	if main == nil || main.Disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED {
+		t.Fatalf("package-selection process = %+v, want TEST_FAILED to stand", main)
+	}
+	solo := findProcess(res.Processes, "example.com/exec/mixed", "TestGreen")
+	if solo == nil || solo.Disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+		t.Fatalf("green test's solo process = %+v, want a healthy solo re-run", solo)
+	}
+	if p := findProcess(res.Processes, "example.com/exec/mixed", "TestRed"); p != nil {
+		t.Errorf("failed test re-run in isolation, want its failure to stand: %+v", p)
+	}
+	if tr := findTest(res.Tests, "example.com/exec/mixed", "TestRed"); tr == nil ||
+		tr.GetOutcome() != stipulatorv1.TestOutcome_TEST_OUTCOME_FAILED {
+		t.Errorf("red sibling outcome = %v, want FAILED recorded", tr)
+	}
+	var fromSolo bool
+	for _, tr := range res.Tests {
+		if tr.GetTest() == "TestGreen" && sameProcess(tr.GetProducer(), solo.Producer) {
+			if tr.GetOutcome() != stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED {
+				t.Errorf("solo re-run outcome = %v, want PASSED", tr.GetOutcome())
+			}
+			fromSolo = true
+		}
+	}
+	if !fromSolo {
+		t.Error("green test gained no outcome attributed to its solo process")
+	}
+	var soloObserved bool
+	for _, o := range res.Observations {
+		if sameProcess(o.Wire.GetProducer(), solo.Producer) {
+			if o.Wire.GetCompleted() == nil {
+				t.Errorf("solo healthy process observation = %v, want completed", o.Wire)
+			}
+			soloObserved = true
+		}
+	}
+	if !soloObserved {
+		t.Error("solo healthy process owns no observation")
+	}
+}
+
+// TestGoExecuteSelectionFuzzReplaysCommittedSeeds pins the fuzz leg of
+// selective execution: a single-element Fuzz selection replays the
+// target's committed seeds — each seed row appears with its replay
+// outcome, here the red seed failing — the target's own failure stands
+// (never isolation-eligible), and nothing outside the selected target
+// executes.
+func TestGoExecuteSelectionFuzzReplaysCommittedSeeds(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-go-policy-complete")
+	neutralAmbient(t)
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./fuzzseed"})
+	res := executeSelection(t, time.Minute, cfg, "fuzz-replay", TestSelection{
+		"example.com/exec/fuzzseed": {"FuzzRefuse"},
+	})
+	if tr := findTest(res.Tests, "example.com/exec/fuzzseed", "FuzzRefuse/seed-red"); tr == nil ||
+		tr.GetOutcome() != stipulatorv1.TestOutcome_TEST_OUTCOME_FAILED {
+		t.Fatalf("committed seed replay outcome = %v, want the named seed FAILED", tr)
+	}
+	for _, tr := range res.Tests {
+		if topLevel(tr.GetTest()) != "FuzzRefuse" {
+			t.Errorf("unselected runnable executed: %v", tr)
+		}
+	}
+	main := findProcess(res.Processes, "example.com/exec/fuzzseed", "")
+	if main == nil || main.Disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED {
+		t.Fatalf("package-selection process = %+v, want TEST_FAILED from the red seed", main)
+	}
+	// The target's recorded failure stands: the isolation pass never
+	// re-runs it, so the package process is the execution's only one.
+	if len(res.Processes) != 1 {
+		t.Errorf("failing seed replay spawned isolation processes: %+v", res.Processes)
+	}
 }
 
 // TestGoExecuteRefusesTruncatedStream pins the refusal ladder for missing

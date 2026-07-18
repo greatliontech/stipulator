@@ -63,3 +63,39 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "c04494b85d6d55bc5d4c86255fa556b69bacd546e92990eb5b4432f57550d5d8"
 }
+
+bindings {
+  requirement_id: "REQ-core-one-execution"
+  content_hash: "27037830c846e6bd1e46201d4c5410eac7011f7c1805f54c2cdb095c122af3bc"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteCommandArgsRendering"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "6ac2a220f3c64d0f95081d27d74935e27f1aa565e2f09068ee1ef020634e3c11"
+}
+
+bindings {
+  requirement_id: "REQ-core-one-execution"
+  content_hash: "27037830c846e6bd1e46201d4c5410eac7011f7c1805f54c2cdb095c122af3bc"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSelectionRunsOnlySelected"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "37357067c3b4bf4aa3407afbc47fb6d40bcda641cfb443caf8bf088899596ca7"
+}
+
+bindings {
+  requirement_id: "REQ-core-one-execution"
+  content_hash: "27037830c846e6bd1e46201d4c5410eac7011f7c1805f54c2cdb095c122af3bc"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSelectionIsolatesAbortShadowedTests"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5538e244592140489822b122135930bea2d9415a901906721c9f8181f0d40833"
+}
+
+bindings {
+  requirement_id: "REQ-core-one-execution"
+  content_hash: "27037830c846e6bd1e46201d4c5410eac7011f7c1805f54c2cdb095c122af3bc"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSelectionEnvelopeBoundsIsolation"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "db86950fd050d2c74adb7e8684a9576d722d586d0ffb6a9f8ec2d268fcc63b32"
+}

@@ -266,6 +266,33 @@ func TestGoPolicyConfigStaticValidation(t *testing.T) {
 		{"args testlogfile double dash", "capture file", func(c *stipulatorv1.GoInvocationConfig) {
 			c.SetArgs([]string{"--test.testlogfile=/dev/null"})
 		}},
+		{"args test.run", "test selection", func(c *stipulatorv1.GoInvocationConfig) {
+			c.SetArgs([]string{"-test.run=TestOnlyThis"})
+		}},
+		{"args test.run split value", "test selection", func(c *stipulatorv1.GoInvocationConfig) {
+			c.SetArgs([]string{"-test.run", "TestOnlyThis"})
+		}},
+		{"args test.run double dash", "test selection", func(c *stipulatorv1.GoInvocationConfig) {
+			c.SetArgs([]string{"--test.run=TestOnlyThis"})
+		}},
+		{"args test.skip", "test selection", func(c *stipulatorv1.GoInvocationConfig) {
+			c.SetArgs([]string{"-test.skip=TestSkipThis"})
+		}},
+		{"args test.skip split value", "test selection", func(c *stipulatorv1.GoInvocationConfig) {
+			c.SetArgs([]string{"-test.skip", "TestSkipThis"})
+		}},
+		{"args test.list double dash", "test selection", func(c *stipulatorv1.GoInvocationConfig) {
+			c.SetArgs([]string{"--test.list=.*"})
+		}},
+		{"args test.bench", "test selection", func(c *stipulatorv1.GoInvocationConfig) {
+			c.SetArgs([]string{"-test.bench=."})
+		}},
+		{"args test.fuzz", "test selection", func(c *stipulatorv1.GoInvocationConfig) {
+			c.SetArgs([]string{"-test.fuzz=FuzzX"})
+		}},
+		{"args bare run", "test selection", func(c *stipulatorv1.GoInvocationConfig) {
+			c.SetArgs([]string{"-run=TestOnlyThis"})
+		}},
 	}
 	for _, c := range reject {
 		cfg := base()

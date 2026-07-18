@@ -187,6 +187,73 @@ func TestGoExecuteCallerDeadlineSkipsDumpGrace(t *testing.T) {
 	}
 }
 
+// TestGoExecuteSelectionEnvelopeBoundsIsolation pins the isolation
+// pass's bound: solo re-runs execute under the invocation envelope, so an
+// envelope expiring mid-isolation cuts the re-run off — the denied test
+// is reported as a TIMEOUT process outcome, never granted an outcome and
+// never retried outside the reviewed bound. A toolchain stand-in makes
+// the timing deterministic: the package run reds instantly around a
+// completed pass, and the solo re-run of that pass wedges until the
+// envelope kills it.
+func TestGoExecuteSelectionEnvelopeBoundsIsolation(t *testing.T) {
+	stipulate.Covers(t, "REQ-core-one-execution", "REQ-evidence-witness-freshness")
+	bin := t.TempDir()
+	stub := filepath.Join(bin, "go")
+	script := "#!/bin/sh\n" +
+		"PATH=/usr/bin:/bin\n" +
+		// The solo isolation re-run carries a single-name -run pattern
+		// (the package-selection run carries the two-name alternation):
+		// wedge the solo so only the envelope can end it.
+		"for a in \"$@\"; do if [ \"$a\" = '-run=^(TestGreen)$' ]; then sleep 30; exit 0; fi; done\n" +
+		`echo '{"Action":"run","Package":"example.com/mix","Test":"TestRed"}'` + "\n" +
+		`echo '{"Action":"fail","Package":"example.com/mix","Test":"TestRed"}'` + "\n" +
+		`echo '{"Action":"run","Package":"example.com/mix","Test":"TestGreen"}'` + "\n" +
+		`echo '{"Action":"pass","Package":"example.com/mix","Test":"TestGreen"}'` + "\n" +
+		`echo '{"Action":"fail","Package":"example.com/mix"}'` + "\n" +
+		"exit 1\n"
+	if err := os.WriteFile(stub, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin)
+	n := &NormalizedInvocation{
+		Name:     "bounded",
+		Dir:      t.TempDir(),
+		Packages: []string{"./..."},
+		Timeout:  2 * time.Second,
+		Env:      []string{"PATH=" + bin},
+	}
+	start := time.Now()
+	res, err := ExecuteSelection(context.Background(), n, TestSelection{
+		"example.com/mix": {"TestGreen", "TestRed"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if elapsed, limit := time.Since(start), 15*time.Second; elapsed > limit {
+		t.Errorf("selective run took %v, want < %v: isolation re-runs must not outlive the envelope", elapsed, limit)
+	}
+	solo := findProcess(res.Processes, "example.com/mix", "TestGreen")
+	if solo == nil || solo.Disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT {
+		t.Fatalf("cut-off solo re-run = %+v, want a TIMEOUT process outcome", solo)
+	}
+	// The wedged re-run granted nothing: the only green outcome is the
+	// red package process's, which the isolation pass was voiding.
+	for _, tr := range res.Tests {
+		if tr.GetTest() == "TestGreen" && sameProcess(tr.GetProducer(), solo.Producer) {
+			t.Errorf("cut-off solo re-run granted an outcome: %v", tr)
+		}
+	}
+	var denialNamed bool
+	for _, d := range res.Diagnostics {
+		if d.GetTest() == "TestGreen" && d.GetDisposition() == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT {
+			denialNamed = true
+		}
+	}
+	if !denialNamed {
+		t.Error("the envelope-denied re-run left no TIMEOUT diagnostic naming its test")
+	}
+}
+
 // TestGoExecuteSilentToolchainDegradesEndToEnd drives the whole spawn
 // path against a toolchain stand-in that exits zero without a single
 // event: the package must dispose DEGRADED — a silent command stream is

@@ -486,3 +486,30 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "5b30aa59d9d9c04d57a938ab37e5752af0c1d32cf61bca1370e8acd6fb06a78d"
 }
+
+bindings {
+  requirement_id: "REQ-policy-attribution"
+  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSelectionRunsOnlySelected"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "37357067c3b4bf4aa3407afbc47fb6d40bcda641cfb443caf8bf088899596ca7"
+}
+
+bindings {
+  requirement_id: "REQ-policy-attribution"
+  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSelectionIsolatesAbortShadowedTests"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5538e244592140489822b122135930bea2d9415a901906721c9f8181f0d40833"
+}
+
+bindings {
+  requirement_id: "REQ-policy-attribution"
+  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSelectionIsolatesGreenInRedProcess"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "18d6f9e03a6fc1b8d1261931b8a136e5ae2fdc394e126acea9e94fe598463dba"
+}

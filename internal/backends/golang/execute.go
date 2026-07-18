@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"slices"
 	"sort"
@@ -72,12 +73,13 @@ type testEvent struct {
 
 // packageRun is one selected package's parsed execution. A zero
 // disposition means the run reached no terminal fact of its own — the
-// caller classifies it as timeout or discards it on cancellation —
-// with aborted carrying the names of tests that had started but not
-// finished when the run was cut off and residue the bounded output the
-// cut-off process left behind. producer is set exactly when a process
-// was launched; obs is that process's owned observation, absent until
-// the caller classifies a cut-off run.
+// caller classifies it as timeout or discards it on cancellation.
+// aborted carries the names of tests that had started but not finished
+// when the process ended — whether the envelope cut it off or the
+// package died under them with a terminal verdict — and residue the
+// bounded output a cut-off process left behind. producer is set exactly
+// when a process was launched; obs is that process's owned observation,
+// absent until the caller classifies a cut-off run.
 type packageRun struct {
 	pkg         string
 	disposition stipulatorv1.HealthDisposition
@@ -94,6 +96,11 @@ type packageRun struct {
 // cancellable `go test -json` process, fanned out under a
 // GOMAXPROCS-derived concurrency bound with the invocation's reviewed
 // envelope timeout governing the whole invocation as a context deadline.
+// Every selected package executes whole: the exported executor accepts
+// no test selection, so the health-judged path is structurally unable to
+// narrow — health is a property of the entire declared invocation
+// (REQ-core-one-execution), and witness-only narrowing lives behind
+// ExecuteSelection, which never grants health.
 // It returns the invocation's terminal health — carrying the resolved
 // pin-at-load configuration as its evidentiary record — with every
 // selected package disposed, the named test outcomes attributed to their
@@ -115,7 +122,37 @@ func ExecuteInvocation(ctx context.Context, n *NormalizedInvocation, selection [
 	// abort.
 	invCtx, cancel := context.WithTimeoutCause(ctx, n.Timeout, errEnvelopeExpired)
 	defer cancel()
+	runs := runSelectedPackages(ctx, invCtx, n, pkgs, nil, spawnOrdinals())
+	if err := ctx.Err(); err != nil {
+		// Caller cancellation: the partial run is discarded whole. The
+		// envelope context is derived from ctx, so every child is already
+		// terminated through its owned process boundary.
+		return nil, nil, nil, nil, err
+	}
+	return assembleInvocation(n, runs, invCtx.Err() != nil)
+}
 
+// spawnOrdinals issues process spawn ordinals, unique within one
+// execution, so pid reuse never aliases two launched processes.
+func spawnOrdinals() func() int32 {
+	var (
+		mu   sync.Mutex
+		next int32
+	)
+	return func() int32 {
+		mu.Lock()
+		defer mu.Unlock()
+		next++
+		return next
+	}
+}
+
+// runSelectedPackages fans the packages out under a GOMAXPROCS-derived
+// concurrency bound, one owned process per package narrowed to its tests
+// selection, with invCtx — the invocation envelope — governing every
+// spawn. Runs the envelope denied before their spawn come back with no
+// terminal disposition for the caller to classify.
+func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, pkgs []string, tests TestSelection, spawnOrdinal func() int32) []packageRun {
 	bound := runtime.GOMAXPROCS(0)
 	if bound < 1 {
 		bound = 1
@@ -124,17 +161,7 @@ func ExecuteInvocation(ctx context.Context, n *NormalizedInvocation, selection [
 	runs := make([]packageRun, len(pkgs))
 	rep := progress.FromContext(ctx)
 	var pkgsDone atomic.Int32
-	var (
-		wg      sync.WaitGroup
-		ordMu   sync.Mutex
-		nextOrd int32
-	)
-	spawnOrdinal := func() int32 {
-		ordMu.Lock()
-		defer ordMu.Unlock()
-		nextOrd++
-		return nextOrd
-	}
+	var wg sync.WaitGroup
 	for i, pkg := range pkgs {
 		wg.Add(1)
 		go func(i int, pkg string) {
@@ -151,18 +178,64 @@ func ExecuteInvocation(ctx context.Context, n *NormalizedInvocation, selection [
 				runs[i] = packageRun{pkg: pkg}
 				return
 			}
-			runs[i] = runPackage(invCtx, n, pkg, spawnOrdinal())
+			runs[i] = runPackage(invCtx, n, pkg, tests[pkg], spawnOrdinal())
 		}(i, pkg)
 	}
 	wg.Wait()
-	if err := ctx.Err(); err != nil {
-		// Caller cancellation: the partial run is discarded whole. The
-		// envelope context is derived from ctx, so every child is already
-		// terminated through its owned process boundary.
-		return nil, nil, nil, nil, err
-	}
-	timedOut := invCtx.Err() != nil
+	return runs
+}
 
+// finalizeRun classifies a run that reached no terminal fact of its own:
+// under envelope expiry it becomes a reported TIMEOUT disposition — the
+// cut-off process's retained output is part of the verdict
+// (REQ-check-diagnostics), never discarded with the run, and a launched
+// process that died before its testlog flushed still owns its
+// observation, incomplete rather than silently absent. Outside expiry a
+// missing terminal disposition has no in-spec cause and is surfaced as an
+// error. soloTest names the single isolated runnable a solo process ran,
+// so a denied re-run's timeout diagnostic names the test it denied.
+func finalizeRun(n *NormalizedInvocation, r *packageRun, timedOut bool, soloTest string) error {
+	if r.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_UNSPECIFIED {
+		return nil
+	}
+	// No terminal disposition of its own: the envelope deadline is the
+	// only in-spec way to get here without caller cancellation.
+	if !timedOut {
+		return fmt.Errorf("invocation %q: package %s ended without a terminal disposition outside timeout and cancellation", n.Name, r.pkg)
+	}
+	r.disposition = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT
+	d := &stipulatorv1.FailureDiagnostic{}
+	d.SetInvocation(n.Name)
+	d.SetPackage(r.pkg)
+	if soloTest != "" {
+		d.SetTest(soloTest)
+	}
+	d.SetDisposition(r.disposition)
+	var out boundedBuffer
+	out.write(fmt.Sprintf("invocation timeout %v expired before the package completed", n.Timeout))
+	if len(r.aborted) > 0 {
+		out.write("\nstarted but unfinished: ")
+		out.write(strings.Join(r.aborted, ", "))
+	}
+	if r.residue != nil && !r.residue.empty() {
+		out.write("\n")
+		out.write(r.residue.b.String())
+		out.truncated = out.truncated || r.residue.truncated
+	}
+	d.SetOutput(out.b.String())
+	d.SetTruncated(out.truncated)
+	r.diags = append(r.diags, d)
+	if r.producer != nil {
+		r.obs = incompleteObservation(r.pkg, r.producer,
+			fmt.Sprintf("invocation timeout %v expired before the process completed", n.Timeout))
+	}
+	return nil
+}
+
+// assembleInvocation turns the terminal runs into the invocation report:
+// per-package health, attributed outcomes, diagnostics, and observations,
+// with the invocation disposed as its worst package.
+func assembleInvocation(n *NormalizedInvocation, runs []packageRun, timedOut bool) (*stipulatorv1.InvocationHealth, []*stipulatorv1.TestResult, []*stipulatorv1.FailureDiagnostic, []*ProcessObservation, error) {
 	health := &stipulatorv1.InvocationHealth{}
 	health.SetInvocation(n.Name)
 	health.SetGo(resolvedConfig(n))
@@ -173,42 +246,10 @@ func ExecuteInvocation(ctx context.Context, n *NormalizedInvocation, selection [
 		observations []*ProcessObservation
 	)
 	invDisposition := stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY
-	for _, r := range runs {
-		if r.disposition == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_UNSPECIFIED {
-			// No terminal disposition of its own: the envelope deadline is
-			// the only in-spec way to get here without caller cancellation.
-			if !timedOut {
-				return nil, nil, nil, nil, fmt.Errorf("invocation %q: package %s ended without a terminal disposition outside timeout and cancellation", n.Name, r.pkg)
-			}
-			r.disposition = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT
-			d := &stipulatorv1.FailureDiagnostic{}
-			d.SetInvocation(n.Name)
-			d.SetPackage(r.pkg)
-			d.SetDisposition(r.disposition)
-			var out boundedBuffer
-			out.write(fmt.Sprintf("invocation timeout %v expired before the package completed", n.Timeout))
-			if len(r.aborted) > 0 {
-				out.write("\nstarted but unfinished: ")
-				out.write(strings.Join(r.aborted, ", "))
-			}
-			// The cut-off process's retained output — the kill-time
-			// goroutine dump included — is part of the verdict
-			// (REQ-check-diagnostics), never discarded with the run.
-			if r.residue != nil && !r.residue.empty() {
-				out.write("\n")
-				out.write(r.residue.b.String())
-				out.truncated = out.truncated || r.residue.truncated
-			}
-			d.SetOutput(out.b.String())
-			d.SetTruncated(out.truncated)
-			r.diags = append(r.diags, d)
-			if r.producer != nil {
-				// A launched process the envelope cut off died before its
-				// testlog flushed: it still owns its observation —
-				// incomplete, never silently absent.
-				r.obs = incompleteObservation(r.pkg, r.producer,
-					fmt.Sprintf("invocation timeout %v expired before the process completed", n.Timeout))
-			}
+	for i := range runs {
+		r := &runs[i]
+		if err := finalizeRun(n, r, timedOut, ""); err != nil {
+			return nil, nil, nil, nil, err
 		}
 		ph := &stipulatorv1.PackageHealth{}
 		ph.SetPackage(r.pkg)
@@ -266,12 +307,13 @@ func selectedPackages(selection []Obligation) []string {
 }
 
 // runPackage executes one package's `go test -json` in an owned child
-// process — the test binary's testlog directed to a per-process capture
+// process — narrowed to the selected top-level runnables when selection
+// is non-nil, the test binary's testlog directed to a per-process capture
 // file the executor owns — and classifies its stream. A cancelled or
 // deadline-expired context leaves the disposition unspecified: the caller
 // — not the stream parser — decides between timeout reporting and
 // cancellation discard.
-func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, ordinal int32) packageRun {
+func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, selection []string, ordinal int32) packageRun {
 	// Directing the test binary's testlog to a per-process capture file
 	// makes the run uncacheable to the toolchain (extra binary arguments
 	// fall outside its cacheable set): observation capture deliberately
@@ -288,7 +330,7 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, ordina
 		logf.Close()
 		defer os.Remove(logPath)
 	}
-	cmd := commandContext(ctx, "go", testCommandArgs(n, pkg, logPath)...)
+	cmd := commandContext(ctx, "go", testCommandArgs(n, pkg, selection, logPath)...)
 	cmd.Dir = n.Dir
 	cmd.Env = n.Env
 	var stderr boundedBuffer
@@ -329,6 +371,10 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, ordina
 		return packageRun{pkg: pkg, aborted: startedTests(st), residue: cutoffResidue(st, &stderr), producer: producer}
 	}
 	run := classifyRun(n.Name, pkg, st, waitErr, &stderr)
+	// A terminal run retains its started-but-unfinished tests: a package
+	// abort's shadowed tests are structural facts the selective isolation
+	// pass consumes, not only diagnostic prose.
+	run.aborted = startedTests(st)
 	run.producer = producer
 	run.obs = observeProcess(ctx, n, pkg, producer, st, waitErr, run.disposition, logPath)
 	return run
@@ -336,10 +382,18 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, ordina
 
 // testCommandArgs renders one package's `go test -json` argument list from
 // the normalized invocation: the typed configuration and nothing ambient,
-// plus the per-process testlog capture file when one exists — executor
-// property no reviewed args entry may name (validation refuses the
-// collision, so the capture is always the executor's own file, bound to
-// exactly this process).
+// plus the per-process testlog capture file when one exists and the
+// top-level test selection when one is given — both executor property no
+// reviewed args entry may name (validation refuses the collisions, so the
+// capture is always the executor's own file and the selection always the
+// executor's own rendering, bound to exactly this process).
+//
+// A non-nil selection renders as an anchored, alternation-of-literals
+// `-run` flag on the go command — never a binary argument, so the
+// toolchain applies it to every test binary it builds for the package.
+// Anchoring is per top-level runnable: subtests and committed fuzz seeds
+// ride their selected parent (a single-element Fuzz selection replays the
+// target's committed seeds, exactly the ordinary run's replay obligation).
 //
 // The toolchain's implicit per-binary timeout is disabled outright: the
 // reviewed record is the only source of test bounds. The envelope timeout
@@ -351,7 +405,7 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, ordina
 // SIGQUIT kill backstop from its -timeout flag, and binary-level
 // arguments cannot reach that backstop, so the inherited ceiling must be
 // disabled at the go level, never overridden per binary.
-func testCommandArgs(n *NormalizedInvocation, pkg string, logPath string) []string {
+func testCommandArgs(n *NormalizedInvocation, pkg string, selection []string, logPath string) []string {
 	args := []string{"test", "-json", "-timeout=0"}
 	if n.Race {
 		args = append(args, "-race")
@@ -376,6 +430,13 @@ func testCommandArgs(n *NormalizedInvocation, pkg string, logPath string) []stri
 		args = append(args, "-count=1")
 	case n.Count > 0:
 		args = append(args, fmt.Sprintf("-count=%d", n.Count))
+	}
+	if len(selection) > 0 {
+		quoted := make([]string, len(selection))
+		for i, name := range selection {
+			quoted[i] = regexp.QuoteMeta(name)
+		}
+		args = append(args, "-run=^("+strings.Join(quoted, "|")+")$")
 	}
 	args = append(args, pkg)
 	if logPath != "" || len(n.Args) > 0 {
