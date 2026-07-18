@@ -1,10 +1,31 @@
 # The runtime-input digest hashes fixture content after the run
 
-Lands: when gofresh can atomically bind observed runtime-input values to
-the reads that produced the outcome (atomic value observation), or when
-witness records are next redesigned.
+Lands: when the executor captures per-package observation brackets
+pre-spawn — which requires package-directory resolution to move ahead of
+process spawn — and publishGroup seals completed observations on them.
 
 ## Context
+
+Gofresh now carries the closing mechanism (value binding landed):
+constructing a completed observation requires an observation bracket
+(`runtimeinput.CaptureBracket` supplied through `runtimeinput.WithBracket`,
+spec REQ-inputs-value-binding) — a fingerprint over caller-declared
+candidate roots captured before the producing process starts and
+revalidated strictly after the manifest digest's last input read. A
+fixture mutated inside the run-to-ingest window moves the bracket and the
+observation seals unverifiable, toward recomputation; an observed identity
+resolving under no declared root seals per-identity unverifiable. What
+remains is this consumer's adoption: the executor capturing per-package
+brackets pre-spawn and publishGroup sealing completed observations on
+them.
+
+Migration note: reads resolving outside declared roots become permanently
+per-identity unverifiable — the consumer's root policy owns the
+recommended default. Blast radius: only stipulator's
+observe.go/freshness.go/stream fuzzer construct completed observations;
+pew uses IncompleteEnv and is unaffected.
+
+The original window, for the record:
 
 Witness closure fingerprints are captured before the selective run, so a
 source edit made while tests execute records a hash the edited tree no
@@ -30,10 +51,12 @@ halves.
 
 ## Resolution
 
-Pre-run manifest evaluation needs the path set ahead of execution: either
-gofresh-side support (a recorded manifest re-digested at invocation start
-for previously-cached tests) or a record redesign that stores content
-observed by the run itself.
+The gofresh-side support exists: the observation bracket sidesteps the
+path-set-only-known-post-run limit by fingerprinting caller-declared
+roots pre-spawn, so the remaining work is entirely on this side —
+resolve each package directory before its process spawns, capture a
+bracket over the declared roots there, and pass it to the observation
+construction publishGroup seals on.
 
 Widened by parallel witness execution: with packages running
 concurrently, a sibling witness that mutates another package's
@@ -41,8 +64,8 @@ observed input inside its read-to-hash window creates the same wrong
 pin without any human edit — the first self-generated instance of
 this window. The harness assumes package-parallel-safe witnesses (the
 `go test` baseline, declared in evidence.md); this issue remains the
-tracking point for closing the window mechanically (pre-run manifest
-evaluation in gofresh, or post-run interference detection).
+tracking point for closing the window mechanically — per-package brackets
+captured pre-spawn, per the landing condition.
 
 The policy executor's per-process observations share the identical
 window: each launched process's testlog is ingested after the process
