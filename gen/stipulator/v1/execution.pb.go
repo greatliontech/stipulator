@@ -374,10 +374,14 @@ type ProducerIdentity_builder struct {
 
 	// Canonical invocation name from the policy record.
 	Invocation *string
-	// Operating-system process id of the producing child.
+	// Operating-system process id of the producing child: the owned command
+	// process whose -json stream carried the outcome — not the test binary
+	// grandchild it supervises, whose pid the stream does not expose.
 	ProcessId *int64
 	// Spawn ordinal of the process within its invocation's execution,
-	// disambiguating pid reuse.
+	// disambiguating pid reuse. Assignment order across a concurrent
+	// package fan-out is nondeterministic; consumers compare ordinals only
+	// for identity, never for order.
 	ProcessOrdinal *int32
 }
 

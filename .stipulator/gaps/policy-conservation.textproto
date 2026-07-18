@@ -1,6 +1,0 @@
-# proto-file: proto/stipulator/v1/records.proto
-# proto-message: stipulator.v1.Gap
-
-requirement_id: "REQ-policy-conservation"
-reason: "obligation discovery and partition reporting exist with property coverage, but no policy execution consumes them yet, so one execution preserving every failure class remains unproven"
-lands { manual { condition: "one execution of the accepted policy emits the conservation report and preserves every backend failure class" } }

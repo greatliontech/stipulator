@@ -92,6 +92,56 @@ func PartitionReports(universe []Obligation, selections []InvocationSelection) [
 // selected obligation. Every subprocess it causes runs inside an owned,
 // cancellable process boundary.
 func ConservationReport(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) ([]*stipulatorv1.ObligationReport, error) {
+	universe, err := discoverUniverse(ctx, dir)
+	if err != nil {
+		return nil, err
+	}
+	discovered, err := discoverInvocations(ctx, dir, p)
+	if err != nil {
+		return nil, err
+	}
+	selections := make([]InvocationSelection, 0, len(discovered))
+	for _, d := range discovered {
+		selections = append(selections, d.selection)
+	}
+	return PartitionReports(universe, selections), nil
+}
+
+// invocationDiscovery pairs one Go invocation's normalized form with its
+// discovered obligation selection.
+type invocationDiscovery struct {
+	normalized *NormalizedInvocation
+	selection  InvocationSelection
+}
+
+// discoverInvocations normalizes and discovers every Go invocation of a
+// policy in record order.
+func discoverInvocations(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) ([]invocationDiscovery, error) {
+	var out []invocationDiscovery
+	for _, inv := range p.GetInvocations() {
+		if inv.GetGo() == nil {
+			continue
+		}
+		n, err := NormalizeInvocation(ctx, dir, inv)
+		if err != nil {
+			return nil, err
+		}
+		obs, err := DiscoverInvocation(ctx, n)
+		if err != nil {
+			return nil, fmt.Errorf("discovering invocation %q: %w", inv.GetName(), err)
+		}
+		out = append(out, invocationDiscovery{
+			normalized: n,
+			selection:  InvocationSelection{Invocation: inv.GetName(), Obligations: obs},
+		})
+	}
+	return out, nil
+}
+
+// discoverUniverse enumerates the tree's complete obligation universe:
+// every workspace member's "./..." under the tree's default build
+// selection, deduplicated and member-ordered.
+func discoverUniverse(ctx context.Context, dir string) ([]Obligation, error) {
 	members, err := policyMembers(dir)
 	if err != nil {
 		return nil, err
@@ -115,22 +165,7 @@ func ConservationReport(ctx context.Context, dir string, p *stipulatorv1.TestPol
 			}
 		}
 	}
-	var selections []InvocationSelection
-	for _, inv := range p.GetInvocations() {
-		if inv.GetGo() == nil {
-			continue
-		}
-		n, err := NormalizeInvocation(ctx, dir, inv)
-		if err != nil {
-			return nil, err
-		}
-		obs, err := DiscoverInvocation(ctx, n)
-		if err != nil {
-			return nil, fmt.Errorf("discovering invocation %q: %w", inv.GetName(), err)
-		}
-		selections = append(selections, InvocationSelection{Invocation: inv.GetName(), Obligations: obs})
-	}
-	return PartitionReports(universe, selections), nil
+	return universe, nil
 }
 
 // baselineInvocation is one workspace member's default-selection scope,

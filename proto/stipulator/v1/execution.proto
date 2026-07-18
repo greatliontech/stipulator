@@ -40,10 +40,14 @@ enum HealthDisposition {
 message ProducerIdentity {
   // Canonical invocation name from the policy record.
   string invocation = 1;
-  // Operating-system process id of the producing child.
+  // Operating-system process id of the producing child: the owned command
+  // process whose -json stream carried the outcome — not the test binary
+  // grandchild it supervises, whose pid the stream does not expose.
   int64 process_id = 2;
   // Spawn ordinal of the process within its invocation's execution,
-  // disambiguating pid reuse.
+  // disambiguating pid reuse. Assignment order across a concurrent
+  // package fan-out is nondeterministic; consumers compare ordinals only
+  // for identity, never for order.
   int32 process_ordinal = 3;
 }
 

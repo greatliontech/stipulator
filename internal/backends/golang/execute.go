@@ -1,0 +1,615 @@
+package golang
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"path/filepath"
+	"runtime"
+	"sort"
+	"strings"
+	"sync"
+
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+)
+
+// The policy executor runs each normalized Go invocation exactly once and
+// derives its terminal health from the `go test -json` streams of its
+// selected packages, one owned child process per package. Per-package
+// processes are what make attribution honest: every outcome in the report
+// names the one process whose stream produced it (REQ-policy-attribution),
+// and chunk-per-process observation later refines the same boundary. The
+// executor trusts nothing silent: a stream that ends without a terminal
+// package event, carries unparseable bytes, or disagrees with its process
+// exit status is degraded, never healthy — an environment that swallowed a
+// suite must be distinguishable from a suite that passed.
+
+// failureOutputCap bounds the retained output of one failure diagnostic.
+// Retention is part of the verdict; the cap keeps a pathological stream
+// (a runaway goroutine dump, a looping test) from turning the report into
+// the log it summarizes. Truncation is always marked, never silent.
+const failureOutputCap = 64 << 10
+
+// boundedBuffer retains at most failureOutputCap bytes and records that it
+// dropped the rest.
+type boundedBuffer struct {
+	b         strings.Builder
+	truncated bool
+}
+
+func (bb *boundedBuffer) write(s string) {
+	room := failureOutputCap - bb.b.Len()
+	if room <= 0 {
+		bb.truncated = bb.truncated || s != ""
+		return
+	}
+	if len(s) > room {
+		s = s[:room]
+		bb.truncated = true
+	}
+	bb.b.WriteString(s)
+}
+
+func (bb *boundedBuffer) empty() bool { return bb.b.Len() == 0 && !bb.truncated }
+
+// testEvent is the subset of test2json (and go build -json) output the
+// executor reads. Build events carry ImportPath and no Package; test
+// events carry Package. FailedBuild on a terminal fail event names the
+// package whose compilation failed.
+type testEvent struct {
+	Action      string
+	Package     string
+	ImportPath  string
+	Test        string
+	Output      string
+	FailedBuild string
+}
+
+// packageRun is one selected package's parsed execution. A zero
+// disposition means the run reached no terminal fact of its own — the
+// caller classifies it as timeout or discards it on cancellation —
+// with aborted carrying the names of tests that had started but not
+// finished when the run was cut off.
+type packageRun struct {
+	pkg         string
+	disposition stipulatorv1.HealthDisposition
+	aborted     []string
+	tests       []*stipulatorv1.TestResult
+	diags       []*stipulatorv1.FailureDiagnostic
+}
+
+// ExecuteInvocation executes one normalized invocation's selected packages
+// — the package obligations of selection — each in its own owned,
+// cancellable `go test -json` process, fanned out under a
+// GOMAXPROCS-derived concurrency bound with the invocation's reviewed
+// envelope timeout governing the whole invocation as a context deadline.
+// It returns the invocation's terminal health with every selected package
+// disposed, the named test outcomes attributed to their producing process,
+// and bounded failure diagnostics. Caller cancellation discards the
+// partial run: the return is (nil, nil, nil, ctx.Err()), never a partial
+// report (REQ-policy-cancellation). Envelope expiry is not cancellation —
+// it is a terminal fact, reported as TIMEOUT dispositions.
+func ExecuteInvocation(ctx context.Context, n *NormalizedInvocation, selection []Obligation) (*stipulatorv1.InvocationHealth, []*stipulatorv1.TestResult, []*stipulatorv1.FailureDiagnostic, error) {
+	pkgs := selectedPackages(selection)
+	if len(pkgs) == 0 {
+		return nil, nil, nil, fmt.Errorf("invocation %q: selection carries no package obligations", n.Name)
+	}
+	invCtx, cancel := context.WithTimeout(ctx, n.Timeout)
+	defer cancel()
+
+	bound := runtime.GOMAXPROCS(0)
+	if bound < 1 {
+		bound = 1
+	}
+	sem := make(chan struct{}, bound)
+	runs := make([]packageRun, len(pkgs))
+	var (
+		wg      sync.WaitGroup
+		ordMu   sync.Mutex
+		nextOrd int32
+	)
+	spawnOrdinal := func() int32 {
+		ordMu.Lock()
+		defer ordMu.Unlock()
+		nextOrd++
+		return nextOrd
+	}
+	for i, pkg := range pkgs {
+		wg.Add(1)
+		go func(i int, pkg string) {
+			defer wg.Done()
+			select {
+			case sem <- struct{}{}:
+				defer func() { <-sem }()
+			case <-invCtx.Done():
+				// Never spawned: the caller classifies the missing terminal
+				// disposition as timeout or discards on cancellation.
+				runs[i] = packageRun{pkg: pkg}
+				return
+			}
+			runs[i] = runPackage(invCtx, n, pkg, spawnOrdinal())
+		}(i, pkg)
+	}
+	wg.Wait()
+	if err := ctx.Err(); err != nil {
+		// Caller cancellation: the partial run is discarded whole. The
+		// envelope context is derived from ctx, so every child is already
+		// terminated through its owned process boundary.
+		return nil, nil, nil, err
+	}
+	timedOut := invCtx.Err() != nil
+
+	health := &stipulatorv1.InvocationHealth{}
+	health.SetInvocation(n.Name)
+	packages := make([]*stipulatorv1.PackageHealth, 0, len(runs))
+	var (
+		tests []*stipulatorv1.TestResult
+		diags []*stipulatorv1.FailureDiagnostic
+	)
+	invDisposition := stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY
+	for _, r := range runs {
+		if r.disposition == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_UNSPECIFIED {
+			// No terminal disposition of its own: the envelope deadline is
+			// the only in-spec way to get here without caller cancellation.
+			if !timedOut {
+				return nil, nil, nil, fmt.Errorf("invocation %q: package %s ended without a terminal disposition outside timeout and cancellation", n.Name, r.pkg)
+			}
+			r.disposition = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT
+			d := &stipulatorv1.FailureDiagnostic{}
+			d.SetInvocation(n.Name)
+			d.SetPackage(r.pkg)
+			d.SetDisposition(r.disposition)
+			var out boundedBuffer
+			out.write(fmt.Sprintf("invocation timeout %v expired before the package completed", n.Timeout))
+			if len(r.aborted) > 0 {
+				out.write("\nstarted but unfinished: ")
+				out.write(strings.Join(r.aborted, ", "))
+			}
+			d.SetOutput(out.b.String())
+			d.SetTruncated(out.truncated)
+			r.diags = append(r.diags, d)
+		}
+		ph := &stipulatorv1.PackageHealth{}
+		ph.SetPackage(r.pkg)
+		ph.SetDisposition(r.disposition)
+		packages = append(packages, ph)
+		tests = append(tests, r.tests...)
+		diags = append(diags, r.diags...)
+		invDisposition = worseDisposition(invDisposition, r.disposition)
+	}
+	health.SetDisposition(invDisposition)
+	health.SetPackages(packages)
+	return health, tests, diags, nil
+}
+
+// worseDisposition aggregates package dispositions into the invocation's:
+// healthy only when every package is, otherwise the most report-shaping
+// failure wins — timeout over degradation over build failure over test
+// failure — so the invocation names the reason its report cannot be
+// trusted further.
+func worseDisposition(a, b stipulatorv1.HealthDisposition) stipulatorv1.HealthDisposition {
+	rank := func(d stipulatorv1.HealthDisposition) int {
+		switch d {
+		case stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT:
+			return 4
+		case stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_DEGRADED:
+			return 3
+		case stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_BUILD_FAILED:
+			return 2
+		case stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED:
+			return 1
+		}
+		return 0
+	}
+	if rank(b) > rank(a) {
+		return b
+	}
+	return a
+}
+
+// selectedPackages extracts the sorted package obligations of a selection.
+func selectedPackages(selection []Obligation) []string {
+	seen := map[string]bool{}
+	var pkgs []string
+	for _, o := range selection {
+		if o.Kind == ObligationPackage && !seen[o.Package] {
+			seen[o.Package] = true
+			pkgs = append(pkgs, o.Package)
+		}
+	}
+	sort.Strings(pkgs)
+	return pkgs
+}
+
+// runPackage executes one package's `go test -json` in an owned child
+// process and classifies its stream. A cancelled or deadline-expired
+// context leaves the disposition unspecified: the caller — not the
+// stream parser — decides between timeout reporting and cancellation
+// discard.
+func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, ordinal int32) packageRun {
+	cmd := commandContext(ctx, "go", testCommandArgs(n, pkg)...)
+	cmd.Dir = n.Dir
+	cmd.Env = n.Env
+	var stderr boundedBuffer
+	cmd.Stderr = writerFunc(func(p []byte) (int, error) {
+		stderr.write(string(p))
+		return len(p), nil
+	})
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		if ctx.Err() != nil {
+			return packageRun{pkg: pkg}
+		}
+		return degradedRun(n.Name, pkg, fmt.Sprintf("spawning go test: %v", err), false)
+	}
+	if err := cmd.Start(); err != nil {
+		// A spawn refused by an expired or cancelled context is not an
+		// environmental degradation: the caller classifies the missing
+		// terminal fact as timeout or discards the run.
+		if ctx.Err() != nil {
+			return packageRun{pkg: pkg}
+		}
+		return degradedRun(n.Name, pkg, fmt.Sprintf("spawning go test: %v", err), false)
+	}
+	producer := &stipulatorv1.ProducerIdentity{}
+	producer.SetInvocation(n.Name)
+	producer.SetProcessId(int64(cmd.Process.Pid))
+	producer.SetProcessOrdinal(ordinal)
+
+	st := parseTestStream(n.Name, pkg, stdout, producer)
+	waitErr := cmd.Wait()
+	if ctx.Err() != nil {
+		// Keep the parsed residue: on envelope expiry the caller's
+		// timeout diagnostic names the tests the cutoff aborted.
+		return packageRun{pkg: pkg, aborted: startedTests(st)}
+	}
+	return classifyRun(n.Name, pkg, st, waitErr, &stderr)
+}
+
+// testCommandArgs renders one package's `go test -json` argument list from
+// the normalized invocation: the typed configuration and nothing ambient.
+// Per-binary timeouts deliberately keep the toolchain default; the
+// reviewed envelope timeout governs the invocation, and finer bounds ride
+// typed configuration when those fields land.
+func testCommandArgs(n *NormalizedInvocation, pkg string) []string {
+	args := []string{"test", "-json"}
+	if n.Race {
+		args = append(args, "-race")
+	}
+	if len(n.Tags) > 0 {
+		args = append(args, "-tags="+strings.Join(n.Tags, ","))
+	}
+	if flag := moduleModeFlag(n.ModuleMode); flag != "" {
+		args = append(args, flag)
+	}
+	if n.PGO != "" {
+		pgo := n.PGO
+		if pgo != "auto" && pgo != "off" {
+			// The committed value is tree-relative; the child runs in the
+			// module root, so resolve against the tree root.
+			pgo = filepath.Join(treeRoot(n), filepath.FromSlash(pgo))
+		}
+		args = append(args, "-pgo="+pgo)
+	}
+	switch {
+	case n.CacheBypass:
+		args = append(args, "-count=1")
+	case n.Count > 0:
+		args = append(args, fmt.Sprintf("-count=%d", n.Count))
+	}
+	args = append(args, pkg)
+	if len(n.Args) > 0 {
+		args = append(args, "-args")
+		args = append(args, n.Args...)
+	}
+	return args
+}
+
+// treeRoot recovers the verification tree root from the normalized
+// invocation's absolute module directory and tree-relative module root.
+func treeRoot(n *NormalizedInvocation) string {
+	if n.ModuleRoot == "" {
+		return n.Dir
+	}
+	return strings.TrimSuffix(n.Dir, string(filepath.Separator)+filepath.FromSlash(n.ModuleRoot))
+}
+
+// streamState is the parsed form of one package's command stream.
+type streamState struct {
+	// terminal is the package-level terminal action: "pass", "fail",
+	// "skip", or empty when the stream ended without one.
+	terminal string
+	// failedBuild reports a build-fail event or a terminal fail event
+	// naming a failed build.
+	failedBuild bool
+	events      int
+	// malformed retains the first unparseable bytes, when any.
+	malformed string
+	// pkgOutput is package-level output: build diagnostics and package
+	// FAIL/ok lines.
+	pkgOutput boundedBuffer
+	// perTest accumulates each named test's own output until its terminal
+	// event.
+	perTest map[string]*boundedBuffer
+	// started tracks tests that began and have not reached a terminal
+	// event — abort residue when the package dies under them.
+	started map[string]bool
+	// startOrder preserves first-appearance order for deterministic
+	// residue rendering.
+	startOrder []string
+	tests      []*stipulatorv1.TestResult
+	diags      []*stipulatorv1.FailureDiagnostic
+}
+
+// parseTestStream consumes one `go test -json` stream, recording named
+// test outcomes attributed to producer and retaining bounded failure
+// output. It never classifies health — classification needs the process
+// exit and context state the caller holds.
+func parseTestStream(invocation, pkg string, r io.Reader, producer *stipulatorv1.ProducerIdentity) *streamState {
+	st := &streamState{
+		perTest: map[string]*boundedBuffer{},
+		started: map[string]bool{},
+	}
+	dec := json.NewDecoder(r)
+	for {
+		var e testEvent
+		if err := dec.Decode(&e); err != nil {
+			if err == io.EOF {
+				break
+			}
+			// An unparseable line poisons the stream: retain what remains
+			// for the diagnostic and stop trusting anything after it.
+			var rest boundedBuffer
+			rest.write(err.Error())
+			rest.write("; unparsed remainder: ")
+			buf := make([]byte, failureOutputCap)
+			m, _ := io.ReadFull(io.MultiReader(dec.Buffered(), r), buf)
+			rest.write(string(buf[:m]))
+			// Drain so the child never blocks on a full pipe.
+			_, _ = io.Copy(io.Discard, r)
+			st.malformed = rest.b.String()
+			return st
+		}
+		st.events++
+		switch e.Action {
+		case "build-output":
+			st.pkgOutput.write(e.Output)
+			continue
+		case "build-fail":
+			st.failedBuild = true
+			continue
+		}
+		if e.Test == "" {
+			switch e.Action {
+			case "output":
+				st.pkgOutput.write(e.Output)
+			case "pass", "fail", "skip":
+				st.terminal = e.Action
+				if e.FailedBuild != "" {
+					st.failedBuild = true
+				}
+			}
+			continue
+		}
+		switch e.Action {
+		case "run":
+			if !st.started[e.Test] && st.perTest[e.Test] == nil {
+				st.startOrder = append(st.startOrder, e.Test)
+			}
+			st.started[e.Test] = true
+		case "output":
+			bb := st.perTest[e.Test]
+			if bb == nil {
+				bb = &boundedBuffer{}
+				st.perTest[e.Test] = bb
+				if !st.started[e.Test] {
+					st.startOrder = append(st.startOrder, e.Test)
+				}
+			}
+			bb.write(e.Output)
+		case "pass", "fail", "skip":
+			delete(st.started, e.Test)
+			tr := &stipulatorv1.TestResult{}
+			tr.SetPackage(pkg)
+			tr.SetTest(e.Test)
+			tr.SetOutcome(outcomeOf(e.Action))
+			tr.SetProducer(producer)
+			st.tests = append(st.tests, tr)
+			if e.Action == "fail" {
+				d := &stipulatorv1.FailureDiagnostic{}
+				d.SetInvocation(invocation)
+				d.SetPackage(pkg)
+				d.SetTest(e.Test)
+				d.SetDisposition(stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED)
+				if bb := st.perTest[e.Test]; bb != nil {
+					d.SetOutput(bb.b.String())
+					d.SetTruncated(bb.truncated)
+				}
+				st.diags = append(st.diags, d)
+			}
+			delete(st.perTest, e.Test)
+		}
+	}
+	return st
+}
+
+// startedTests returns, in first-appearance order, the tests a cut-off
+// stream had started without finishing.
+func startedTests(st *streamState) []string {
+	var names []string
+	for _, name := range st.startOrder {
+		if st.started[name] {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+func outcomeOf(action string) stipulatorv1.TestOutcome {
+	switch action {
+	case "pass":
+		return stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED
+	case "fail":
+		return stipulatorv1.TestOutcome_TEST_OUTCOME_FAILED
+	}
+	return stipulatorv1.TestOutcome_TEST_OUTCOME_SKIPPED
+}
+
+// classifyRun turns a parsed stream plus its process exit into the
+// package's terminal disposition. The refusal ladder comes first: a
+// malformed stream, a stream without a terminal package event, or a
+// process that produced no events at all — exit status notwithstanding —
+// is degraded, never healthy, because a report that cannot prove the suite
+// ran cannot certify it passed.
+func classifyRun(invocation, pkg string, st *streamState, waitErr error, stderr *boundedBuffer) packageRun {
+	run := packageRun{pkg: pkg, tests: st.tests, diags: st.diags}
+	degrade := func(reason string) packageRun {
+		var out boundedBuffer
+		out.write(reason)
+		if !st.pkgOutput.empty() {
+			out.write("\npackage output:\n")
+			out.write(st.pkgOutput.b.String())
+		}
+		if !stderr.empty() {
+			out.write("\nstderr:\n")
+			out.write(stderr.b.String())
+		}
+		if st.malformed != "" {
+			out.write("\nmalformed stream: ")
+			out.write(st.malformed)
+		}
+		if waitErr != nil {
+			out.write(fmt.Sprintf("\nprocess exit: %v", waitErr))
+		}
+		run.disposition = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_DEGRADED
+		d := &stipulatorv1.FailureDiagnostic{}
+		d.SetInvocation(invocation)
+		d.SetPackage(pkg)
+		d.SetDisposition(run.disposition)
+		d.SetOutput(out.b.String())
+		d.SetTruncated(out.truncated || st.pkgOutput.truncated || stderr.truncated)
+		run.diags = append(run.diags, d)
+		return run
+	}
+	switch {
+	case st.malformed != "":
+		return degrade("go test -json stream carried unparseable output")
+	case st.events == 0:
+		return degrade("go test -json produced no events; a silent command stream is refused")
+	case st.terminal == "":
+		return degrade("go test -json stream ended without a terminal package event")
+	}
+	switch st.terminal {
+	case "pass", "skip":
+		if waitErr != nil {
+			// A green stream from a red process is a contradiction the
+			// report must not paper over.
+			return degrade("go test exited with failure despite a passing stream")
+		}
+		run.disposition = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY
+		return run
+	}
+	// Terminal fail: a build failure when the toolchain says so, otherwise
+	// suite semantics — assertion failures, panics, red TestMain, a
+	// go-test-level timeout — exactly the failure classes a direct
+	// `go test` exits non-zero for.
+	if st.failedBuild {
+		run.disposition = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_BUILD_FAILED
+	} else {
+		run.disposition = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED
+	}
+	var out boundedBuffer
+	out.write(st.pkgOutput.b.String())
+	truncated := st.pkgOutput.truncated
+	for _, name := range st.startOrder {
+		if !st.started[name] {
+			continue
+		}
+		// A started test with no terminal event died with the package;
+		// its buffered output is the failure's residue (a timeout panic,
+		// an abort) and belongs to the package diagnostic.
+		out.write(fmt.Sprintf("\n--- aborted: %s ---\n", name))
+		if bb := st.perTest[name]; bb != nil {
+			out.write(bb.b.String())
+			truncated = truncated || bb.truncated
+		}
+	}
+	d := &stipulatorv1.FailureDiagnostic{}
+	d.SetInvocation(invocation)
+	d.SetPackage(pkg)
+	d.SetDisposition(run.disposition)
+	d.SetOutput(out.b.String())
+	d.SetTruncated(out.truncated || truncated)
+	run.diags = append(run.diags, d)
+	return run
+}
+
+// degradedRun is a spawn-stage degradation: the package never produced a
+// stream at all.
+func degradedRun(invocation, pkg, reason string, truncated bool) packageRun {
+	d := &stipulatorv1.FailureDiagnostic{}
+	d.SetInvocation(invocation)
+	d.SetPackage(pkg)
+	d.SetDisposition(stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_DEGRADED)
+	d.SetOutput(reason)
+	d.SetTruncated(truncated)
+	return packageRun{
+		pkg:         pkg,
+		disposition: stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_DEGRADED,
+		diags:       []*stipulatorv1.FailureDiagnostic{d},
+	}
+}
+
+// writerFunc adapts a function to io.Writer for the bounded stderr sink.
+type writerFunc func(p []byte) (int, error)
+
+func (f writerFunc) Write(p []byte) (int, error) { return f(p) }
+
+// ExecutePolicy executes every Go invocation of the accepted policy
+// exactly once against the tree at dir and assembles the execution
+// report: per-invocation and per-package terminal health, attributed test
+// outcomes, bounded failure diagnostics, and the conservation findings of
+// the policy against the workspace's default-selection obligation
+// universe (REQ-policy-conservation). Caller cancellation anywhere —
+// discovery included — discards the whole partial report and returns only
+// the cancellation error (REQ-policy-cancellation). Invocations execute
+// sequentially in record order; concurrency lives inside each invocation,
+// bounded per package — so each invocation's envelope bounds only its own
+// span and the policy's wall time is the sum of what its invocations
+// spend, bounded overall only by the caller's context.
+func ExecutePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (*stipulatorv1.ExecutionReport, error) {
+	universe, err := discoverUniverse(ctx, dir)
+	if err != nil {
+		return nil, err
+	}
+	discovered, err := discoverInvocations(ctx, dir, p)
+	if err != nil {
+		return nil, err
+	}
+	var (
+		selections  []InvocationSelection
+		invocations []*stipulatorv1.InvocationHealth
+		tests       []*stipulatorv1.TestResult
+		diags       []*stipulatorv1.FailureDiagnostic
+	)
+	for _, d := range discovered {
+		selections = append(selections, d.selection)
+		health, invTests, invDiags, err := ExecuteInvocation(ctx, d.normalized, d.selection.Obligations)
+		if err != nil {
+			return nil, err
+		}
+		invocations = append(invocations, health)
+		tests = append(tests, invTests...)
+		diags = append(diags, invDiags...)
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	report := &stipulatorv1.ExecutionReport{}
+	report.SetInvocations(invocations)
+	report.SetTests(tests)
+	report.SetObligations(PartitionReports(universe, selections))
+	report.SetDiagnostics(diags)
+	return report, nil
+}
