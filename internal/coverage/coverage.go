@@ -59,8 +59,9 @@ const (
 	Open GapState = iota
 	// Due: the landing condition holds — the deferred work is ready.
 	Due
-	// Resolved: the gap's requirement is covered; the record awaits
-	// pruning.
+	// Resolved: the gap's requirement is covered — and, for a manual
+	// landing condition, the condition has been explicitly fired; the
+	// record awaits pruning.
 	Resolved
 )
 
@@ -334,7 +335,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		gapped[id] = true
 		state := Open
 		switch {
-		case buckets[id] == Covered:
+		case buckets[id] == Covered && !manualUnfired(gf.Gap.GetLands()):
 			state = Resolved
 		case conditionHolds(gf.Gap.GetLands(), buckets, spec):
 			state = Due
@@ -457,6 +458,17 @@ func requiredEvidence(pol *Policy, kind stipulatorv1.ClauseKind, kw stipulatorv1
 		return "needs a static binding or attestation (" + k + ")"
 	}
 	return "needs a static binding (" + k + ")"
+}
+
+// manualUnfired reports whether the landing condition is a manual
+// judgment not yet explicitly fired. Such a gap never resolves on
+// coverage alone: a manual condition is an external judgment coverage
+// cannot make, so the record stays open on a covered requirement — a
+// declared violation that outlives green witnesses (REQ-gap-lifecycle).
+// Machine conditions carry no such consent: their firing is
+// coverage-shaped, so coverage resolves them as satisfied.
+func manualUnfired(lc *stipulatorv1.LandingCondition) bool {
+	return lc.HasManual() && !lc.GetManual().GetFired()
 }
 
 // conditionHolds evaluates a machine landing condition; manual

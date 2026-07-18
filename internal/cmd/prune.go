@@ -18,9 +18,10 @@ func pruneCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "prune",
 		Short: "Delete resolved gap records",
-		Long: "Deletes gap records whose requirements have reached the covered bucket —\n" +
-			"a resolved gap is satisfied, dead record weight. --check lints instead:\n" +
-			"non-zero exit when any resolved gap lingers, deleting nothing.",
+		Long: "Deletes resolved gap records — requirement covered, any manual landing\n" +
+			"condition explicitly fired: a resolved gap is satisfied, dead record weight.\n" +
+			"--check lints instead: non-zero exit when any resolved gap lingers,\n" +
+			"deleting nothing.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			spec, err := mustCompile(chdir)
 			if err != nil {

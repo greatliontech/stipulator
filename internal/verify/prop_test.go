@@ -44,7 +44,7 @@ func TestPropDanglingRecordsAreProblems(t *testing.T) {
 		}
 		extra := map[string]string{
 			".stipulator/bindings/p.textproto":     proptest.BindingText(bindingID, ""),
-			".stipulator/gaps/p.textproto":         proptest.GapText(gapID),
+			".stipulator/gaps/p.textproto":         proptest.GapText(gapID, false),
 			".stipulator/attestations/p.textproto": proptest.AttestationText(attID, ""),
 		}
 

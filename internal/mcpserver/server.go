@@ -144,7 +144,7 @@ func (s *Server) MCP() *mcp.Server {
 	}, s.toolDispose)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "prune",
-		Description: "Delete resolved gap records — gaps whose requirement has reached the covered bucket, satisfied dead weight the gate advertises. Pass check=true to report what would be pruned without deleting. Writes only under .stipulator/gaps/.",
+		Description: "Delete resolved gap records — requirement covered and any manual landing condition explicitly fired: satisfied dead weight the gate advertises. Pass check=true to report what would be pruned without deleting. Writes only under .stipulator/gaps/.",
 	}, s.toolPrune)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "context",
@@ -760,11 +760,12 @@ type pruneIn struct {
 	Check bool `json:"check,omitempty" jsonschema:"report which resolved gaps would be pruned, deleting nothing"`
 }
 
-// toolPrune deletes resolved gap records. Detecting resolution is the same
-// verify+coverage the gate performs — a resolved gap is one whose
-// requirement has reached the covered bucket — and pruning is refused on a
-// shaky reading: a verification problem could misreport a bucket and prune a
-// still-load-bearing gap. It writes only under .stipulator/gaps/.
+// toolPrune deletes resolved gap records. Detecting resolution is the
+// same verify+coverage the gate performs — a resolved gap is one whose
+// requirement is covered with any manual landing condition explicitly
+// fired — and pruning is refused on a shaky reading: a verification
+// problem could misreport a bucket and prune a still-load-bearing gap.
+// It writes only under .stipulator/gaps/.
 func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pruneIn) (*mcp.CallToolResult, writeOut, error) {
 	ctx, prog := s.startProgress(ctx, req)
 	spec, rep, store, err := s.verifyPipeline(ctx, false)

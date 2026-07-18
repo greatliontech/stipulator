@@ -65,7 +65,17 @@ func TestPropPipelineDeterminism(t *testing.T) {
 		}
 		for f := range rapid.IntRange(0, 2).Draw(rt, "gapFiles") {
 			gapped := rapid.SampledFrom(c.ReqIDs).Draw(rt, "gapped")
-			extra[fmt.Sprintf(".stipulator/gaps/p%d.textproto", f)] = proptest.GapText(gapped)
+			// Both condition families: manual (fired or not) and the
+			// machine-evaluable covered/exists arms, so the evaluation's
+			// condition branches all sit under the determinism claim.
+			if rapid.Bool().Draw(rt, "machine") {
+				target := rapid.SampledFrom(c.ReqIDs).Draw(rt, "target")
+				exists := rapid.Bool().Draw(rt, "exists")
+				extra[fmt.Sprintf(".stipulator/gaps/p%d.textproto", f)] = proptest.GapTextMachine(gapped, target, exists)
+			} else {
+				fired := rapid.Bool().Draw(rt, "fired")
+				extra[fmt.Sprintf(".stipulator/gaps/p%d.textproto", f)] = proptest.GapText(gapped, fired)
+			}
 		}
 
 		specA, vrA, crA := pipeline(rt, files, extra, nil)

@@ -74,14 +74,17 @@ attestation evidence.
 
 **REQ-gap-lifecycle** (behavior): Verification MUST classify each gap as
 `open`, `due` (its landing condition holds), or `resolved` (its requirement
-is covered).
+is covered — and, for a gap with a manual landing condition, the condition
+has also been explicitly fired: a manual condition is an external judgment
+coverage cannot make, so a covered requirement with an unfired manual gap
+stays `open`, a declared violation that outlives green witnesses).
 
 **REQ-gap-resolved-pruned** (behavior): The `prune` operation MUST delete
-resolved gap records — a gap whose requirement has reached the covered
-bucket is satisfied, dead record weight. Detecting resolution is the
-coverage evaluation `gate` already performs, so `gate` surfaces the count
-of resolved gaps awaiting prune, discoverable from a run already made; the
-gate never deletes records itself. `prune --check` reports a resolved gap
+resolved gap records — a resolved gap is satisfied, dead record weight.
+Detecting resolution is the coverage evaluation `gate` already performs,
+so `gate` surfaces the count of resolved gaps awaiting prune,
+discoverable from a run already made; the gate never deletes records
+itself. `prune --check` reports a resolved gap
 that lingers without deleting anything.
 
 ## The gate

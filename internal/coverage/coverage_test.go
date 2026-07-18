@@ -320,12 +320,17 @@ func TestClaimsGrantNothingUnverified(t *testing.T) {
 	}
 }
 
-// TestGapStates pins the gap lifecycle and landing conditions.
+// TestGapStates pins the gap lifecycle and landing conditions: machine
+// conditions resolve on coverage alone, while a manual condition is an
+// external judgment coverage cannot make — a covered requirement with an
+// unfired manual gap stays open, a declared violation that outlives
+// green witnesses, and resolves only once the condition is explicitly
+// fired.
 //
 //gofresh:pure
 func TestGapStates(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-lifecycle", "REQ-gap-conditions")
-	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n\n**REQ-c-b** (behavior): It MUST y.\n\n**REQ-c-c** (behavior): It MUST z.\n\n**REQ-c-d** (behavior): It MUST w.\n"
+	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n\n**REQ-c-b** (behavior): It MUST y.\n\n**REQ-c-c** (behavior): It MUST z.\n\n**REQ-c-d** (behavior): It MUST w.\n\n**REQ-c-e** (behavior): It MUST v.\n\n**REQ-c-f** (behavior): It MUST u.\n\n**REQ-c-g** (behavior): It MUST t.\n"
 	gap := func(id, lands string) string {
 		return "requirement_id: \"" + id + "\"\nreason: \"r\"\nlands { " + lands + " }\n"
 	}
@@ -333,14 +338,20 @@ func TestGapStates(t *testing.T) {
 		".stipulator/gaps/a.textproto": gap("REQ-c-a", `covered: "REQ-c-d"`),                           // due when d covered
 		".stipulator/gaps/b.textproto": gap("REQ-c-b", `exists: "REQ-c-ghost"`),                        // open: target absent
 		".stipulator/gaps/c.textproto": gap("REQ-c-c", `manual { condition: "external" fired: true }`), // due: fired
-		".stipulator/gaps/d.textproto": gap("REQ-c-d", `exists: "REQ-c-a"`),                            // resolved: d covered
+		".stipulator/gaps/d.textproto": gap("REQ-c-d", `exists: "REQ-c-a"`),                            // resolved: d covered, machine condition
+		".stipulator/gaps/e.textproto": gap("REQ-c-e", `manual { condition: "external" fired: true }`), // resolved: e covered, manual fired
+		".stipulator/gaps/f.textproto": gap("REQ-c-f", `manual { condition: "external" }`),             // open: f covered, manual unfired
+		".stipulator/gaps/g.textproto": gap("REQ-c-g", `manual { condition: "external" }`),             // open: g uncovered, manual unfired — never due
 	})
 	vr := &verify.Report{Results: []verify.BindingResult{
 		result("REQ-c-d", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed),
+		result("REQ-c-e", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed),
+		result("REQ-c-f", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed),
 	}}
 	rep := Evaluate(spec, vr, store, true, nil)
 	want := map[string]GapState{
 		"REQ-c-a": Due, "REQ-c-b": Open, "REQ-c-c": Due, "REQ-c-d": Resolved,
+		"REQ-c-e": Resolved, "REQ-c-f": Open, "REQ-c-g": Open,
 	}
 	for _, g := range rep.Gaps {
 		if w, ok := want[g.RequirementId]; !ok || g.State != w {

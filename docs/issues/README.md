@@ -67,12 +67,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   in-tree symlink pointing outside the tree passes the lexical escape checks in workspace member
   and policy module-root validation. *Lands: when validation resolves symlinks or execution refuses
   escaping resolved members.*
-- **[coverage-forces-out-manual-condition-gaps](coverage-forces-out-manual-condition-gaps.md)** — a gap
-  resolves the moment its requirement's coverage reaches covered and then fails the check as prune
-  residue, so a witnessed-green requirement with a known unwitnessed violation (observed:
-  REQ-go-owned-processes and the unowned `go/packages` launcher) is inexpressible in records.
-  *Lands: when the gap lifecycle or prune residue semantics next change, or when `go/packages`
-  symbol loading runs behind an owned boundary.*
 - **[closure-edit-revert-inside-run-span](closure-edit-revert-inside-run-span.md)** — a source
   edit and its exact revert both landing inside one package's capture-compile-run span restore
   the recorded closure hash over outcomes a transiently-edited binary produced; the
@@ -81,3 +75,14 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   fingerprints hash content alone. *Lands: when witness fingerprints gain pre-run-evaluation
   support binding closure content to the compile that consumed it, or when witness records are
   next redesigned.*
+- **[gap-verb-cannot-fire-manual-condition](gap-verb-cannot-fire-manual-condition.md)** — the
+  `fired` bit that resolves a manual-condition gap is unreachable from the gap verb: firing
+  requires a direct record edit, and re-declaring a fired gap through the verb rewrites it
+  unfired. *Lands: when the gap verb's input surface next changes, or when a manual-condition
+  gap in this corpus first needs firing.*
+- **[standing-gap-absorbs-unrelated-red](standing-gap-absorbs-unrelated-red.md)** — a covered
+  requirement carrying an open manual-condition gap can later go red for an unrelated reason
+  and the gate raises no violation, while the gap's reason describes the original class —
+  witnessed regressions still surface through suite health; the blind spot is auditability.
+  *Lands: when gap records gain violation-class scoping, or when the gap lifecycle next
+  changes.*

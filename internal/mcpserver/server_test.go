@@ -602,8 +602,10 @@ func TestPruneTool(t *testing.T) {
 	openGapPath := ".stipulator/gaps/m-b.textproto"
 	sess, writes := harness(t, map[string]string{
 		".stipulator/bindings/m.textproto": pinnedBinding(t), // REQ-m-a covered
-		// Resolved: its requirement is covered.
-		gapPath: "requirement_id: \"REQ-m-a\"\nreason: \"was deferred\"\nlands { manual { condition: \"x\" } }\n",
+		// Resolved: its requirement is covered and the manual condition is
+		// explicitly fired — an unfired manual gap stays open on a covered
+		// requirement and is never prunable.
+		gapPath: "requirement_id: \"REQ-m-a\"\nreason: \"was deferred\"\nlands { manual { condition: \"x\" fired: true } }\n",
 		// Open: REQ-m-b is uncovered, so this gap is load-bearing and must survive.
 		openGapPath: "requirement_id: \"REQ-m-b\"\nreason: \"later\"\nlands { manual { condition: \"x\" } }\n",
 	})

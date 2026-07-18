@@ -187,9 +187,25 @@ func BindingTextPinned(id, contentHash, shapeHash string) string {
 	return b + "  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n}\n"
 }
 
-// GapText renders one gap record naming the requirement.
-func GapText(id string) string {
+// GapText renders one gap record naming the requirement; fired marks the
+// manual landing condition explicitly fired, the bit gap evaluation
+// branches on.
+func GapText(id string, fired bool) string {
+	if fired {
+		return "requirement_id: \"" + id + "\"\nreason: \"generated\"\nlands { manual { condition: \"generated\" fired: true } }\n"
+	}
 	return "requirement_id: \"" + id + "\"\nreason: \"generated\"\nlands { manual { condition: \"generated\" } }\n"
+}
+
+// GapTextMachine renders one gap record with a machine-evaluable landing
+// condition — covered(target) or exists(target) — so generators exercise
+// the condition arms coverage evaluates without external judgment.
+func GapTextMachine(id, target string, exists bool) string {
+	kind := "covered"
+	if exists {
+		kind = "exists"
+	}
+	return "requirement_id: \"" + id + "\"\nreason: \"generated\"\nlands { " + kind + ": \"" + target + "\" }\n"
 }
 
 // AttestationText renders one attestation record naming the requirement.

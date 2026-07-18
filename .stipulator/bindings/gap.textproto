@@ -30,7 +30,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-resolved-pruned"
-  content_hash: "0562f8afc7c913960043640c652447c6be2f32e9671d0411e99c6e4e85c89fdd"
+  content_hash: "83b153386104d7685164baa9b02d659be539e0920d5797acdddee86a61103844"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.PruneResolvedGaps"
   role: BINDING_ROLE_IMPLEMENTS
@@ -39,7 +39,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-resolved-pruned"
-  content_hash: "0562f8afc7c913960043640c652447c6be2f32e9671d0411e99c6e4e85c89fdd"
+  content_hash: "83b153386104d7685164baa9b02d659be539e0920d5797acdddee86a61103844"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.TestPruneResolvedGaps"
   role: BINDING_ROLE_TESTS
@@ -48,7 +48,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-resolved-pruned"
-  content_hash: "0562f8afc7c913960043640c652447c6be2f32e9671d0411e99c6e4e85c89fdd"
+  content_hash: "83b153386104d7685164baa9b02d659be539e0920d5797acdddee86a61103844"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.TestCoverageSummaryPinsCountsAndGapState"
   role: BINDING_ROLE_TESTS
@@ -57,7 +57,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-resolved-pruned"
-  content_hash: "0562f8afc7c913960043640c652447c6be2f32e9671d0411e99c6e4e85c89fdd"
+  content_hash: "83b153386104d7685164baa9b02d659be539e0920d5797acdddee86a61103844"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestGapCounts"
   role: BINDING_ROLE_TESTS
@@ -66,7 +66,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-resolved-pruned"
-  content_hash: "0562f8afc7c913960043640c652447c6be2f32e9671d0411e99c6e4e85c89fdd"
+  content_hash: "83b153386104d7685164baa9b02d659be539e0920d5797acdddee86a61103844"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPruneTool"
   role: BINDING_ROLE_TESTS
@@ -75,9 +75,27 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-resolved-pruned"
-  content_hash: "0562f8afc7c913960043640c652447c6be2f32e9671d0411e99c6e4e85c89fdd"
+  content_hash: "83b153386104d7685164baa9b02d659be539e0920d5797acdddee86a61103844"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckWitnessResolvedGapIsResidueUntilPruned"
   role: BINDING_ROLE_TESTS
   shape_hash: "0c72440f9f8c243dfc2e6ccd1b3a5d79e67ab1751ed8bdbfca12029695478e47"
+}
+
+bindings {
+  requirement_id: "REQ-gap-lifecycle"
+  content_hash: "00ff914cdcbd5f214d32e54095cb4449f2de2b682114d68113b23384e943ac53"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckUnfiredManualGapOutlivesGreenWitnesses"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "721d1c8c2d097eee8690064d0c652f93d4069662021c7892995691ef1514fe9a"
+}
+
+bindings {
+  requirement_id: "REQ-gap-conditions"
+  content_hash: "13a40af8e6a229927b3e15516d441576192cede92c878677ec03747746115fe4"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckUnfiredManualGapOutlivesGreenWitnesses"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "721d1c8c2d097eee8690064d0c652f93d4069662021c7892995691ef1514fe9a"
 }

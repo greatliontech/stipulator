@@ -307,7 +307,10 @@ func TestCheckBrokenBindingFailsTheCheck(t *testing.T) {
 // executed witness is invisible to an unwitnessed evaluation, but the
 // check evaluates gaps inside its witnessed single pass, so the lingering
 // record is prune residue and the verdict fails until the record is
-// deleted.
+// deleted. The fixture's manual condition is explicitly fired: coverage
+// resolves a manual-condition gap only alongside the fired external
+// judgment (an unfired one stays open — the lifecycle's manual arm,
+// pinned separately).
 func TestCheckWitnessResolvedGapIsResidueUntilPruned(t *testing.T) {
 	stipulate.Covers(t, "REQ-check-verdict", "REQ-gap-resolved-pruned")
 	if testing.Short() {
@@ -320,7 +323,7 @@ func TestCheckWitnessResolvedGapIsResidueUntilPruned(t *testing.T) {
 		".stipulator/policy.textproto": racePolicy,
 		gapPath: "requirement_id: \"REQ-fix-must\"\n" +
 			"reason: \"witness pending\"\n" +
-			"lands {\n  manual {\n    condition: \"never\"\n  }\n}\n",
+			"lands {\n  manual {\n    condition: \"judged done\"\n    fired: true\n  }\n}\n",
 	}))
 	// Author the witness binding through the same authoring path the CLI
 	// uses, so the content and shape pins are captured for real.
@@ -385,6 +388,106 @@ func TestCheckWitnessResolvedGapIsResidueUntilPruned(t *testing.T) {
 	}
 	if len(res.GetPruneResidue()) != 0 {
 		t.Errorf("prune residue = %v after the record was deleted", res.GetPruneResidue())
+	}
+}
+
+// TestCheckUnfiredManualGapOutlivesGreenWitnesses pins the gap
+// lifecycle's manual arm end to end: a covered requirement whose gap
+// carries an unfired manual landing condition stays open — the check
+// passes with no prune residue, so the record expresses a declared
+// violation on a path no witness reaches while every bound witness is
+// green. Explicitly firing the condition is what resolves the gap into
+// prune residue.
+func TestCheckUnfiredManualGapOutlivesGreenWitnesses(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-verdict", "REQ-gap-lifecycle", "REQ-gap-conditions")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented policy over a fixture tree")
+	}
+	neutralAmbient(t)
+	gapPath := ".stipulator/gaps/fix-must.textproto"
+	unfired := "requirement_id: \"REQ-fix-must\"\n" +
+		"reason: \"violated on an unwitnessed path\"\n" +
+		"lands {\n  manual {\n    condition: \"the unwitnessed path is closed\"\n  }\n}\n"
+	dir := writeTree(t, baseTree(map[string]string{
+		"specs/check.md":               "# Check\n\n**REQ-fix-must** (behavior): The fixture MUST pass.\n",
+		".stipulator/policy.textproto": racePolicy,
+		gapPath:                        unfired,
+	}))
+	ctx := context.Background()
+	gb, err := golang.NewContext(ctx, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	up, err := author.Bind(os.DirFS(dir), map[string]verify.Backend{"go": gb}, author.BindRequest{
+		Requirement: "REQ-fix-must",
+		Symbol:      "example.com/checkfix/ok.TestDouble",
+		Backend:     "go",
+		Role:        stipulatorv1.BindingRole_BINDING_ROLE_TESTS,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	full := filepath.Join(dir, filepath.FromSlash(up.Path))
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(full, up.Content, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := Run(ctx, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gapState := func() stipulatorv1.GapState {
+		for _, g := range res.GetCoverage().GetGaps() {
+			if g.GetRequirementId() == "REQ-fix-must" {
+				return g.GetState()
+			}
+		}
+		return stipulatorv1.GapState_GAP_STATE_UNSPECIFIED
+	}
+	if !res.GetPassed() {
+		t.Errorf("check failed with a covered requirement and an unfired manual gap; verify=%v violations=%v residue=%v",
+			res.GetVerify().GetProblems(), res.GetCoverage().GetViolations(), res.GetPruneResidue())
+	}
+	if got := gapState(); got != stipulatorv1.GapState_GAP_STATE_OPEN {
+		t.Errorf("gap state = %v, want OPEN: coverage must not fire an external judgment", got)
+	}
+	if got := res.GetPruneResidue(); len(got) != 0 {
+		t.Errorf("prune residue = %v; an unfired manual gap is load-bearing, never residue", got)
+	}
+	var bucket stipulatorv1.Bucket
+	for _, r := range res.GetCoverage().GetRequirements() {
+		if r.GetId() == "REQ-fix-must" {
+			bucket = r.GetBucket()
+		}
+	}
+	if bucket != stipulatorv1.Bucket_BUCKET_COVERED {
+		t.Fatalf("bucket = %v, want COVERED: the scenario needs green witnesses under the open gap", bucket)
+	}
+
+	// Firing the condition is the external judgment: the same record then
+	// resolves and lingers as prune residue.
+	fired := strings.Replace(unfired, "condition: \"the unwitnessed path is closed\"\n", "condition: \"the unwitnessed path is closed\"\n    fired: true\n", 1)
+	if fired == unfired {
+		t.Fatal("fixture rewrite did not fire the condition")
+	}
+	if err := os.WriteFile(filepath.Join(dir, filepath.FromSlash(gapPath)), []byte(fired), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res, err = Run(ctx, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.GetPassed() {
+		t.Error("check passed while a fired, covered gap lingers as residue")
+	}
+	if got := res.GetPruneResidue(); len(got) != 1 || got[0] != gapPath {
+		t.Errorf("prune residue = %v, want [%s]", got, gapPath)
+	}
+	if got := gapState(); got != stipulatorv1.GapState_GAP_STATE_RESOLVED {
+		t.Errorf("gap state = %v, want RESOLVED after the condition fired", got)
 	}
 }
 

@@ -162,3 +162,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "3a8eb9f26d95c18f4a0c35bbd1319fc48f878385bcea3fd819c1bec90263c028"
 }
+
+bindings {
+  requirement_id: "REQ-check-verdict"
+  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckUnfiredManualGapOutlivesGreenWitnesses"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "721d1c8c2d097eee8690064d0c652f93d4069662021c7892995691ef1514fe9a"
+}
