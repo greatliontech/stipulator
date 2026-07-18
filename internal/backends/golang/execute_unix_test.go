@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/protobuf/types/known/durationpb"
+
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -70,6 +72,25 @@ func TestGoExecuteEnvelopeTimeoutNamesAbortedTests(t *testing.T) {
 	}
 }
 
+// normalizedFixtureInvocation normalizes one cache-bypassing invocation
+// over a temporary module, pinning the complete child environment the
+// way every policy invocation is pinned.
+func normalizedFixtureInvocation(t *testing.T, dir, name string, timeout time.Duration) *NormalizedInvocation {
+	t.Helper()
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"."})
+	cfg.SetCacheMode(stipulatorv1.GoCacheMode_GO_CACHE_MODE_BYPASS)
+	inv := &stipulatorv1.PolicyInvocation{}
+	inv.SetName(name)
+	inv.SetTimeout(durationpb.New(timeout))
+	inv.SetGo(cfg)
+	n, err := NormalizeInvocation(context.Background(), dir, inv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
 // TestGoExecuteEnvelopeTimeoutRetainsGoroutineDump pins the envelope
 // kill's evidence: expiry escalates through SIGQUIT before SIGKILL, so a
 // test binary wedged on a channel — including one wedged before its own
@@ -97,13 +118,11 @@ func TestGoExecuteEnvelopeTimeoutRetainsGoroutineDump(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "hang_test.go"), []byte(src), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	n := &NormalizedInvocation{
-		Name:        "hangdump",
-		Dir:         dir,
-		Packages:    []string{"."},
-		Timeout:     2 * time.Second,
-		CacheBypass: true,
-	}
+	// The invocation is normalized like any policy invocation, so the
+	// child environment is fully pinned — a hand-built struct would
+	// inherit whatever GOWORK the surrounding runner pinned and resolve
+	// the temp module against the wrong workspace.
+	n := normalizedFixtureInvocation(t, dir, "hangdump", 2*time.Second)
 	selection := []Obligation{{Kind: ObligationPackage, Package: "example.com/hangdump"}}
 	health, _, diags, _, err := ExecuteInvocation(context.Background(), n, selection)
 	if err != nil {
@@ -149,13 +168,7 @@ func TestGoExecuteCallerDeadlineSkipsDumpGrace(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "hang_test.go"), []byte(src), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	n := &NormalizedInvocation{
-		Name:        "hangfast",
-		Dir:         dir,
-		Packages:    []string{"."},
-		Timeout:     time.Hour,
-		CacheBypass: true,
-	}
+	n := normalizedFixtureInvocation(t, dir, "hangfast", time.Hour)
 	selection := []Obligation{{Kind: ObligationPackage, Package: "example.com/hangfast"}}
 	// The deadline leaves room for the trivial build; the wedge then holds
 	// the binary until the caller deadline fires.
