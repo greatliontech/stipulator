@@ -468,3 +468,66 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "f1c3c97d29be118c70d9fd0064159e80f5b3ccfb98d30872909b33674d8396ab"
 }
+
+bindings {
+  requirement_id: "REQ-go-owned-processes"
+  content_hash: "3e86b716107f82c0c73b08ef873d237c9c185450c9c6847a7add1cda275412f5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoLoadPinsAmbientPackageDriverOff"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "9626a92c5eb565d7a43bf032b7dfa0ec6d4718f5c38ab64e943c6a718d6253e8"
+}
+
+bindings {
+  requirement_id: "REQ-go-owned-processes"
+  content_hash: "3e86b716107f82c0c73b08ef873d237c9c185450c9c6847a7add1cda275412f5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestResolverWireMappingsRoundTrip"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "6b7c2bbee88a991a867c0f5c3205bad0502f935f17c584cefa3b983f69b7362d"
+}
+
+bindings {
+  requirement_id: "REQ-go-owned-processes"
+  content_hash: "3e86b716107f82c0c73b08ef873d237c9c185450c9c6847a7add1cda275412f5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestOwnedResolverProtocolRoundTrips"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "88c820fece62753d45e5cb745cbf39a46fd4c1b051ac09669d43089f36dd0018"
+}
+
+bindings {
+  requirement_id: "REQ-go-owned-processes"
+  content_hash: "3e86b716107f82c0c73b08ef873d237c9c185450c9c6847a7add1cda275412f5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestOwnedResolverLoadErrorPropagates"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "044cc2eae747bf1c0e41e099e6b17fdd1d202a773786bdc3c8ea258247c33c06"
+}
+
+bindings {
+  requirement_id: "REQ-go-static-binding"
+  content_hash: "f86007a29d3a858e3c5c64a70293265e1021d9d1d0044c8f8bd40b2b45ad2d94"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestOwnedResolverLoadErrorPropagates"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "044cc2eae747bf1c0e41e099e6b17fdd1d202a773786bdc3c8ea258247c33c06"
+}
+
+bindings {
+  requirement_id: "REQ-go-owned-processes"
+  content_hash: "3e86b716107f82c0c73b08ef873d237c9c185450c9c6847a7add1cda275412f5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestOwnedResolverChildCrashErrors"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b75987f45a08e4d7981cab5960f9c5071eb883429295a807f0d99d303d37d87d"
+}
+
+bindings {
+  requirement_id: "REQ-go-owned-processes"
+  content_hash: "3e86b716107f82c0c73b08ef873d237c9c185450c9c6847a7add1cda275412f5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoResolverCancellationTerminatesDescendants"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "12681fa03e355ae41a95642d5be5f051217d65f2f4aea48cc43dfe2e920e783b"
+}

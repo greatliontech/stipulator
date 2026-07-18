@@ -81,7 +81,7 @@ func New(dir string) *Server {
 }
 
 func makeBackends(ctx context.Context, dir string) (map[string]verify.Backend, error) {
-	gb, err := golang.NewContext(ctx, dir)
+	gb, err := golang.NewOwned(ctx, dir)
 	if err != nil {
 		return nil, err
 	}

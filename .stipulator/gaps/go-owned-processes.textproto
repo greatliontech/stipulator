@@ -1,6 +1,0 @@
-# proto-file: proto/stipulator/v1/records.proto
-# proto-message: stipulator.v1.Gap
-
-requirement_id: "REQ-go-owned-processes"
-reason: "the go/packages symbol-resolution launcher runs outside any owned process boundary: its descendants can outlive cancellation on a path no witness reaches, while every bound witness is green"
-lands { manual { condition: "go/packages symbol loading runs behind an owned, cancellable process boundary" } }

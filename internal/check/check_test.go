@@ -496,7 +496,8 @@ func TestCheckUnfiredManualGapOutlivesGreenWitnesses(t *testing.T) {
 // subprocess invocations of the individual operations, so this package
 // has no business importing subprocess plumbing. Child processes exist
 // only behind the backend execution seam, which spawns toolchain
-// commands, never stipulator.
+// commands and the owned symbol-resolution child — never a subprocess
+// invocation of a stipulator verb.
 func TestCheckComposesInProcess(t *testing.T) {
 	stipulate.Covers(t, "REQ-check-verdict")
 	fset := token.NewFileSet()

@@ -3,11 +3,13 @@
 // verification against that execution, coverage and gap evaluation, and
 // prune residue — composed into one CheckResult carrying one verdict.
 //
-// The pass is entirely in-process: every stage is a library call, never a
+// The pass composes in-process: every stage is a library call, never a
 // subprocess invocation of the individual operations, so suite health and
 // witness evidence derive from the same execution and a witness failure
 // occurs inside the run whose health the verdict judged — not in a second
-// run with different conditions. Every human rendering of the check is a
+// run with different conditions. Child processes exist only behind the Go
+// backend's owned execution seam (test binaries, toolchain queries, the
+// symbol-resolution child). Every human rendering of the check is a
 // projection of the returned message.
 package check
 
@@ -110,10 +112,11 @@ func Run(ctx context.Context, dir string) (*stipulatorv1.CheckResult, error) {
 	res.SetTestsUncacheable(int32(testRun.Uncached))
 	res.SetWitnessPublicationDegraded(testRun.Degraded)
 
-	gb, err := golang.NewContext(ctx, dir)
+	gb, err := golang.NewOwned(ctx, dir)
 	if err != nil {
 		return nil, err
 	}
+	defer gb.Close()
 	backends := map[string]verify.Backend{"go": gb}
 	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
 	vr := verify.Run(spec, store, backends, testRun)

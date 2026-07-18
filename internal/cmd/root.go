@@ -49,6 +49,10 @@ func newRootCmd() *cobra.Command {
 			}
 		case "help", "completion", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd:
 			return nil
+		case golang.ResolverSubcommand:
+			// The resolver child's argument is a tree root its parent
+			// already resolved; corpus-root discovery does not apply.
+			return nil
 		case "mcp":
 			// A globally-registered server must start even outside a
 			// corpus: tools return the teaching error per request.
@@ -64,7 +68,7 @@ func newRootCmd() *cobra.Command {
 		chdir = root
 		return nil
 	}
-	c.AddCommand(compileCmd(), checkCmd(), verifyCmd(), gateCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), pruneCmd(), pinCmd(), disposeCmd(), targetsCmd(), attestCmd(), initCmd(), policyCmd(), mcpCmd())
+	c.AddCommand(compileCmd(), checkCmd(), verifyCmd(), gateCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), pruneCmd(), pinCmd(), disposeCmd(), targetsCmd(), attestCmd(), initCmd(), policyCmd(), mcpCmd(), internalResolveCmd())
 	return c
 }
 
@@ -105,7 +109,7 @@ func mustClean(spec *stipulatorv1.Spec, diags []compile.Diagnostic) (*stipulator
 }
 
 func makeBackends(ctx context.Context, dir string) (map[string]verify.Backend, error) {
-	gb, err := golang.NewContext(ctx, dir)
+	gb, err := golang.NewOwned(ctx, dir)
 	if err != nil {
 		return nil, err
 	}

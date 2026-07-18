@@ -65,14 +65,21 @@ func goworkEnv(dir string) []string {
 	// tolerate a duplicate key (last wins), a strict environment
 	// normalizer refuses it — and this env now also feeds the
 	// freshness engine's analysis.
-	env := make([]string, 0, len(os.Environ())+1)
+	env := make([]string, 0, len(os.Environ())+2)
 	for _, kv := range os.Environ() {
-		if strings.HasPrefix(kv, "GOWORK=") {
+		if strings.HasPrefix(kv, "GOWORK=") || strings.HasPrefix(kv, "GOPACKAGESDRIVER=") {
 			continue
 		}
 		env = append(env, kv)
 	}
-	return append(env, pin)
+	// An ambient external package driver never shapes verification
+	// (REQ-go-owned-processes), so the driver is pinned off: symbol
+	// loading and toolchain queries always go through the real toolchain.
+	// Policy normalization refuses a real ambient driver because there an
+	// accepted, reviewed invocation record exists for the ambient control
+	// to contradict; this environment backs no reviewed record, so the
+	// pin — not a refusal — is the right shape here.
+	return append(env, "GOPACKAGESDRIVER=off", pin)
 }
 
 // Toolchain reports the identity of the go command the engine invokes in

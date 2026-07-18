@@ -57,12 +57,11 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   Go module-path change invalidates large stored-symbol sets, with no validated bulk retarget
   command or actionable remediation. *Lands: before a corpus with stored Go symbol references
   changes module path, or when the binding rewrite surface next changes.*
-- **[go-subprocess-tree-ownership](go-subprocess-tree-ownership.md)** — Unix policy work
-  (witness runs, normalization, discovery) owns its process groups with descendant termination
-  proven, but `go/packages` symbol loading owns an opaque launcher and Windows descendant
+- **[go-subprocess-tree-ownership](go-subprocess-tree-ownership.md)** — Unix Go backend work
+  (witness runs, normalization, discovery, and symbol loading via the owned resolver child)
+  owns its process groups with descendant termination proven, but Windows descendant
   termination cannot be proven without a Windows host. *Lands: when Windows descendant
-  termination is proven with a real spawned child (Windows host unavailable here), and when
-  `go/packages` symbol loading runs behind an owned boundary.*
+  termination is proven with a real spawned child (Windows host unavailable here).*
 - **[symlinked-member-escapes-lexical-validation](symlinked-member-escapes-lexical-validation.md)** — an
   in-tree symlink pointing outside the tree passes the lexical escape checks in workspace member
   and policy module-root validation. *Lands: when validation resolves symlinks or execution refuses
