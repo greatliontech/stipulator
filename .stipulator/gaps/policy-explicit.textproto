@@ -2,5 +2,5 @@
 # proto-message: stipulator.v1.Gap
 
 requirement_id: "REQ-policy-explicit"
-reason: "no policy record or loader exists; witness execution still imposes a universal race invocation"
+reason: "no committed policy record exists for this repository; witness execution still imposes a universal race invocation"
 lands { manual { condition: "backend-neutral policy loading, validation, and migration land with a committed policy record" } }

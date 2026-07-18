@@ -26,6 +26,10 @@ var chdir string
 
 // Execute runs the CLI.
 func Execute() error {
+	return newRootCmd().Execute()
+}
+
+func newRootCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:           "stipulator",
 		Short:         "Specification compiler and conformance verifier",
@@ -34,10 +38,16 @@ func Execute() error {
 	}
 	c.PersistentFlags().StringVarP(&chdir, "chdir", "C", ".", "start directory for corpus-root discovery")
 	c.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		// init scaffolds a new root exactly where it is invoked — nested
-		// corpora are deliberate — and help-class commands need no corpus.
+		// Root-level init scaffolds a new root exactly where it is invoked
+		// — nested corpora are deliberate — and help-class commands need
+		// no corpus. Subcommands merely named "init" (`policy init`)
+		// operate on an existing corpus and fall through to discovery.
 		switch cmd.Name() {
-		case "init", "help", "completion", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd:
+		case "init":
+			if cmd.Parent() == cmd.Root() {
+				return nil
+			}
+		case "help", "completion", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd:
 			return nil
 		case "mcp":
 			// A globally-registered server must start even outside a
@@ -54,8 +64,8 @@ func Execute() error {
 		chdir = root
 		return nil
 	}
-	c.AddCommand(compileCmd(), verifyCmd(), gateCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), pruneCmd(), pinCmd(), disposeCmd(), targetsCmd(), attestCmd(), initCmd(), mcpCmd())
-	return c.Execute()
+	c.AddCommand(compileCmd(), verifyCmd(), gateCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), pruneCmd(), pinCmd(), disposeCmd(), targetsCmd(), attestCmd(), initCmd(), policyCmd(), mcpCmd())
+	return c
 }
 
 // mustCompile compiles the corpus at dir, printing diagnostics and exiting

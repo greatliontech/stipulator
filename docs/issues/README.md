@@ -76,3 +76,7 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   unwitnessed prune lint suppresses witness evidence, so gaps resolved by executed witnesses are
   structurally undetectable by CI's check step. *Lands: when the unified check evaluates gap
   resolution inside its witnessed single pass, or when the prune lint gains a witnessed mode.*
+- **[symlinked-member-escapes-lexical-validation](symlinked-member-escapes-lexical-validation.md)** — an
+  in-tree symlink pointing outside the tree passes the lexical escape checks in workspace member
+  and policy module-root validation. *Lands: when validation resolves symlinks or execution refuses
+  escaping resolved members.*

@@ -208,6 +208,12 @@ duplicates, and out-of-order or incomplete invocations included — is
 refused whole, never reordered, defaulted, or partially loaded: the record
 is reviewed contract, and what runs must be what was reviewed.
 
+**REQ-policy-init-immutable** (behavior): `stipulator policy init` MUST NOT
+modify an existing policy record: absent, it writes the derived record and
+reports the configuration break; byte-identical, it succeeds as a no-op;
+divergent, it fails naming the first differing line — an accepted record
+changes only by review, never by derivation.
+
 **REQ-policy-backend-neutral** (structural, refines
 REQ-backend-core-neutral): The core policy model MUST treat each policy
 invocation's backend configuration as an opaque typed payload dispatched

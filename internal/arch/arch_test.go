@@ -65,6 +65,26 @@ func TestCoreIsVcsFree(t *testing.T) {
 	}
 }
 
+// TestPolicyCoreStaysBackendNeutral proves the policy dispatch seam's
+// neutrality: the core policy model treats each invocation's backend
+// configuration as an opaque typed payload and never depends on a
+// backend — payload interpretation happens only behind the dispatch
+// interface.
+//
+// Deliberately not //gofresh:pure: the verdict depends on the import
+// graph of module packages outside this test binary's closure, read
+// through a go list child the testlog cannot observe. A cached pass
+// could serve while an audited package drifts; the witness re-runs
+// every gate.
+// The non-import proof cannot forbid the shared generated package: payload
+// types live beside the envelope types the core must import, so a dispatch
+// that type-asserted a concrete payload and peeked would pass this proof.
+// That residue is pinned behaviorally by the dispatch tests, not structurally.
+func TestPolicyCoreStaysBackendNeutral(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-backend-neutral")
+	structural.NoImport(t, mod+"/internal/policy", mod+"/internal/backends/...")
+}
+
 // TestBackendSatisfiesVerifierSurfaces proves the Go backend's optional
 // surfaces are real interface satisfactions, not naming coincidences.
 //

@@ -68,6 +68,20 @@ func FuzzPolicyTextprotoParse(f *testing.F) {
 		if !proto.Equal(p, again) {
 			t.Fatalf("round trip changed the policy:\n%v\n%v", p, again)
 		}
+		// The owned renderer is part of the record surface: whatever
+		// parses canonically renders deterministically and strict-parses
+		// back whole.
+		rendered, err := Render(p)
+		if err != nil {
+			t.Fatalf("render of accepted policy: %v", err)
+		}
+		fromRender, err := Parse(rendered)
+		if err != nil {
+			t.Fatalf("rendered record refused: %v\n%s", err, rendered)
+		}
+		if !proto.Equal(p, fromRender) {
+			t.Fatalf("render round trip changed the policy:\n%s", rendered)
+		}
 	})
 }
 

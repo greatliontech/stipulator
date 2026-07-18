@@ -54,3 +54,147 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "c32ba5a68995b0f84743d4d9040d806d2e0b59c091d5ee7e31094a0768e7e3e2"
 }
+
+bindings {
+  requirement_id: "REQ-policy-backend-neutral"
+  content_hash: "2d92e676a0da3041cebed8d8044198d89fa3acbf118857e9c4a6e80861af3c1a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/arch.TestPolicyCoreStaysBackendNeutral"
+  role: BINDING_ROLE_PROVES
+  shape_hash: "1daba0a3615b69246cf48fc3fe53a926d43983b2fe4d08515ba9b2bf8650c675"
+}
+
+bindings {
+  requirement_id: "REQ-policy-backend-neutral"
+  content_hash: "2d92e676a0da3041cebed8d8044198d89fa3acbf118857e9c4a6e80861af3c1a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/policy.TestPolicyDispatchRoutesPayloadsToNamedBackend"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "75a3477a755c08ac3eac8468c85d86e3d22ce5372e42d4af5c86fdb439ac7f6c"
+}
+
+bindings {
+  requirement_id: "REQ-policy-backend-neutral"
+  content_hash: "2d92e676a0da3041cebed8d8044198d89fa3acbf118857e9c4a6e80861af3c1a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/policy.TestPolicyDispatchRejectsUnsupportedBackend"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "cf4e74dd37db42f46168245ca03298803bea6c580f68f27cd231d783686b4331"
+}
+
+bindings {
+  requirement_id: "REQ-policy-backend-neutral"
+  content_hash: "2d92e676a0da3041cebed8d8044198d89fa3acbf118857e9c4a6e80861af3c1a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/policy.TestPolicyDispatchPropagatesBackendRefusal"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "9d2140d8eb8f18131e357c691b1b2db9ecf4292b46e3b33e07b73fc2b7a45ebe"
+}
+
+bindings {
+  requirement_id: "REQ-policy-backend-neutral"
+  content_hash: "2d92e676a0da3041cebed8d8044198d89fa3acbf118857e9c4a6e80861af3c1a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/policy.Dispatch"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "f42535237b095cca3b6f9e27e7d5c7d3368cb763a58bf94e04b4dc35d2ee9d94"
+}
+
+bindings {
+  requirement_id: "REQ-policy-explicit"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/policy.TestPolicyLoadReadsCommittedRecord"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e5ff1116b61c4fcaa01c589acfc7caa14f527dbbb569724491235960ffa29c3a"
+}
+
+bindings {
+  requirement_id: "REQ-policy-explicit"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoPolicyDeriveGoldenByteIdentical"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "00268a5e6f23364d8e8c8279338d0a8b4276ac87e23fb4db157928c13374847f"
+}
+
+bindings {
+  requirement_id: "REQ-policy-explicit"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoPolicyDeriveMirrorsLegacySuite"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "bb67803b4c5465bd7a06cae18cd9f77de0cb3ee42b3c66d6695f493f72708549"
+}
+
+bindings {
+  requirement_id: "REQ-policy-explicit"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestPolicyInitIsIdempotentAndRefusesDivergence"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "2326b03018e5d9fdfe0bb1d5911216e6b6bc2299b36828f6edf83f224674bcbe"
+}
+
+bindings {
+  requirement_id: "REQ-policy-explicit"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/policy.Load"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "7079b9b2ff6e4297ec4ea825b3388d462a2ad151a6272fa3ac49060713083069"
+}
+
+bindings {
+  requirement_id: "REQ-policy-record-location"
+  content_hash: "c75c5b944226bf48685c197551bec90192a134750ca9ddd60508cb607846ace9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/policy.TestPolicyRenderRoundTripsCanonically"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "8181b141307ca63752490e65fd01a629b0939e8f546f2b3b97f5072c5cf2cade"
+}
+
+bindings {
+  requirement_id: "REQ-policy-record-location"
+  content_hash: "c75c5b944226bf48685c197551bec90192a134750ca9ddd60508cb607846ace9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoPolicyDeriveGoldenByteIdentical"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "00268a5e6f23364d8e8c8279338d0a8b4276ac87e23fb4db157928c13374847f"
+}
+
+bindings {
+  requirement_id: "REQ-policy-record-location"
+  content_hash: "c75c5b944226bf48685c197551bec90192a134750ca9ddd60508cb607846ace9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestPolicyInitIsIdempotentAndRefusesDivergence"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "2326b03018e5d9fdfe0bb1d5911216e6b6bc2299b36828f6edf83f224674bcbe"
+}
+
+bindings {
+  requirement_id: "REQ-policy-record-location"
+  content_hash: "c75c5b944226bf48685c197551bec90192a134750ca9ddd60508cb607846ace9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/policy.Render"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "15e3b15a7f0edd93d005fada4c11778b080875fe46a8a91f221b5d09a3e5ed30"
+}
+
+bindings {
+  requirement_id: "REQ-policy-init-immutable"
+  content_hash: "173ac10501ef200c18df729c88c380692d30aaec83925c4edfd1e196a9d39f67"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestPolicyInitIsIdempotentAndRefusesDivergence"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "2326b03018e5d9fdfe0bb1d5911216e6b6bc2299b36828f6edf83f224674bcbe"
+}
+
+bindings {
+  requirement_id: "REQ-policy-init-immutable"
+  content_hash: "173ac10501ef200c18df729c88c380692d30aaec83925c4edfd1e196a9d39f67"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestPolicyInitRoutesThroughRootCommand"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e20d0765ac766726d9165e41052878c026acbb3e8880eb8f5147c58aaa589c67"
+}

@@ -1,0 +1,35 @@
+# proto-file: proto/stipulator/v1/policy.proto
+# proto-message: stipulator.v1.TestPolicy
+
+invocations {
+  name: "race"
+  timeout {
+    seconds: 7200
+  }
+  go {
+    packages: "./..."
+    race: true
+  }
+}
+invocations {
+  name: "race:member/nested"
+  timeout {
+    seconds: 7200
+  }
+  go {
+    module_root: "member/nested"
+    packages: "./..."
+    race: true
+  }
+}
+invocations {
+  name: "race:zeta"
+  timeout {
+    seconds: 7200
+  }
+  go {
+    module_root: "zeta"
+    packages: "./..."
+    race: true
+  }
+}

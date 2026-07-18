@@ -99,3 +99,21 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "7b576e9c0af633949420ed0a08adb4fe8d17982a5a61585be364490b08321a9e"
 }
+
+bindings {
+  requirement_id: "REQ-go-workspace"
+  content_hash: "5c240637a17d955e66a44aba3fc93545c94bcc9226a66a4464b33818448b85eb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoPolicyDeriveRefusesEscapingMember"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c4deec48678c1d414fceea30680c23b236791d634ffcf4d78ae5f556e93d790a"
+}
+
+bindings {
+  requirement_id: "REQ-go-workspace"
+  content_hash: "5c240637a17d955e66a44aba3fc93545c94bcc9226a66a4464b33818448b85eb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoPolicyPayloadValidation"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c872efa36bc7a0ec5d7dfbb066874cf54e452850b01db057b8414c93406dec4d"
+}
