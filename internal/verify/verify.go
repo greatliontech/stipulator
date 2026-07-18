@@ -97,10 +97,22 @@ type TestRun struct {
 	// the full suite (REQ-evidence-freshness-degrade); empty on the
 	// freshness path proper.
 	Degraded string
+	// OutsidePolicy counts expected witness subjects the accepted test
+	// policy leaves outside selective witnessing — subjects whose package
+	// no invocation covers, only a non-race invocation covers, or more
+	// than one invocation covers (REQ-core-one-execution: such subjects
+	// neither serve nor execute). The count keeps the gap visible in
+	// reports and views rather than silent.
+	OutsidePolicy int
 	// Failures carries each failed top-level test's output tail, keyed like
 	// Outcomes: a red witness must be diagnosable from the run that saw it,
 	// not by re-running the suite by hand.
 	Failures map[string]string
+	// PackageFailures carries the failure diagnostics no single test owns
+	// — an envelope cutoff, a package abort, a build failure — keyed by
+	// import path, occurrences joined like Failures: an expected subject
+	// denied an outcome must be diagnosable from the run that denied it.
+	PackageFailures map[string]string
 }
 
 // Registration is one runtime coverage claim. Package and the test path

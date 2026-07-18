@@ -99,3 +99,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "db86950fd050d2c74adb7e8684a9576d722d586d0ffb6a9f8ec2d268fcc63b32"
 }
+
+bindings {
+  requirement_id: "REQ-core-one-execution"
+  content_hash: "27037830c846e6bd1e46201d4c5410eac7011f7c1805f54c2cdb095c122af3bc"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesServeExecuteOutsideDisjoint"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "9b96de75fbbd95b32e27c122ffa9ed75e2ea1dde6adaf211ff24a9ebc932f840"
+}

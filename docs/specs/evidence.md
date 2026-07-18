@@ -119,7 +119,12 @@ disposition is red — a red process yields no green evidence, so the pass
 grants nothing from that process. The isolated outcome is a real run's
 outcome — evidence follows execution, the aborting or failing sibling's own
 failure stands, and a test gaining its outcome this way is the selective
-form being more precise, not less. The cache is memoization,
+form being more precise, not less. A served record's fingerprint is
+revalidated after the run's executions complete: a served outcome whose
+record no longer checks valid is discarded and its subject executed once
+within the same run, and a still-drifting subject ends unwitnessed with
+its record dropped and counted uncacheable — the run's evidence never
+reports a serve the tree it finished on disproves. The cache is memoization,
 never authoritative and never committed: for a deterministic test,
 discarding it changes no verdict, only the work — a flaky test's served
 outcome is that flake pinned until its inputs move or the cache is
@@ -169,7 +174,11 @@ command would build, start, and exit cleanly today.
 
 **REQ-evidence-freshness-degrade** (behavior): A fault anywhere on the
 freshness path MUST degrade to the full witnessing run: the cache saves
-work, it never blocks or weakens witnessing.
+work, it never blocks or weakens witnessing. On the witness-only
+selective path the full witnessing run is that path with an empty served
+set: every subject the accepted policy covers executes under its
+covering invocation, and work the policy leaves outside witnessing stays
+outside, degraded or not.
 
 **REQ-evidence-attestation** (behavior): An attestation MUST carry its reason
 text and appear distinctly in every coverage output; it is the weakest

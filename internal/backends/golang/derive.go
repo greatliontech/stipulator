@@ -213,55 +213,59 @@ type WitnessRecorder struct {
 	groups   []*captureGroup
 }
 
-// NewWitnessRecorder prepares freshness publication for one execution of
-// the accepted policy: it must be called before the policy executes, so
-// the captured fingerprints pin the tree the execution compiles. Only
-// race-enabled Go invocations are captured — a non-race invocation grants
-// no witness evidence, so nothing it produces may enter the cache a
-// freshness-serving run would grant evidence from. A fault while
-// preparing disables publication and is reported through the derived
-// run's degraded reason, never as an error: publication is optimization,
-// not correctness.
-func NewWitnessRecorder(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) *WitnessRecorder {
-	r := &WitnessRecorder{dir: dir}
-	degrade := func(err error) *WitnessRecorder {
-		r.degraded = err.Error()
-		r.groups = nil
-		return r
-	}
-	// A package selected by more than one invocation — race or not, in any
-	// group — can never publish: its record would have no single producing
-	// invocation. Counting selections across the whole policy first keeps
-	// such packages out of every capture, so their guaranteed
-	// ineligibility can never strip the observation-proof leg from a
-	// group's publishable candidates.
-	type invEntry struct {
-		n           *NormalizedInvocation
-		obligations []Obligation
-	}
-	var entries []invEntry
-	globalCount := map[string]int{}
+// invocationCapture pairs one Go invocation's normalized form with its
+// discovered obligation set.
+type invocationCapture struct {
+	n           *NormalizedInvocation
+	obligations []Obligation
+}
+
+// policyCapture is the shared first pass over one accepted policy: every
+// Go invocation normalized and discovered in record order, the
+// policy-wide package selection count, and the race invocations' capture
+// groups (sorted by group key). It performs no gofresh work, so both the
+// witness recorder and the selective witness runner build on it.
+type policyCapture struct {
+	invocations []invocationCapture
+	// globalCount counts, per package, the invocations selecting it — race
+	// or not, in any group. A package selected by more than one invocation
+	// can never publish or serve: its record would have no single
+	// producing invocation. Counting across the whole policy keeps such
+	// packages out of every capture, so their guaranteed ineligibility can
+	// never strip the observation-proof leg from a group's publishable
+	// candidates.
+	globalCount map[string]int
+	groups      []*captureGroup
+}
+
+// capturePolicy normalizes and discovers every Go invocation of the
+// policy and folds the race-enabled ones into capture groups.
+func capturePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (*policyCapture, error) {
+	pc := &policyCapture{globalCount: map[string]int{}}
+	var entries []invocationCapture
 	for _, inv := range p.GetInvocations() {
 		if inv.GetGo() == nil {
 			continue
 		}
 		n, err := NormalizeInvocation(ctx, dir, inv)
 		if err != nil {
-			return degrade(err)
+			return nil, err
 		}
 		obligations, err := DiscoverInvocation(ctx, n)
 		if err != nil {
-			return degrade(err)
+			return nil, err
 		}
+		ic := invocationCapture{n: n, obligations: obligations}
+		pc.invocations = append(pc.invocations, ic)
 		selected := map[string]bool{}
 		for _, o := range obligations {
 			selected[o.Package] = true
 		}
 		for pkg := range selected {
-			globalCount[pkg]++
+			pc.globalCount[pkg]++
 		}
 		if n.Race {
-			entries = append(entries, invEntry{n: n, obligations: obligations})
+			entries = append(entries, ic)
 		}
 	}
 	byKey := map[string]*captureGroup{}
@@ -305,40 +309,79 @@ func NewWitnessRecorder(ctx context.Context, dir string, p *stipulatorv1.TestPol
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		g := byKey[key]
-		var subjects []gofresh.Subject
-		for pkg, names := range g.tests {
-			if globalCount[pkg] != 1 {
-				continue
-			}
-			for _, name := range names {
-				subjects = append(subjects, gofresh.Subject{Package: pkg, Symbol: name})
-			}
+		pc.groups = append(pc.groups, byKey[key])
+	}
+	return pc, nil
+}
+
+// groupSubjects enumerates one capture group's publishable subjects in
+// deterministic order: every expected witness of a package this group's
+// one invocation selects alone across the whole policy.
+func groupSubjects(g *captureGroup, globalCount map[string]int) []gofresh.Subject {
+	var subjects []gofresh.Subject
+	for pkg, names := range g.tests {
+		if globalCount[pkg] != 1 {
+			continue
 		}
+		for _, name := range names {
+			subjects = append(subjects, gofresh.Subject{Package: pkg, Symbol: name})
+		}
+	}
+	sort.Slice(subjects, func(i, j int) bool {
+		a, b := subjects[i], subjects[j]
+		if a.Package != b.Package {
+			return a.Package < b.Package
+		}
+		return a.Symbol < b.Symbol
+	})
+	return subjects
+}
+
+// groupEngine constructs the gofresh engine for one capture group's
+// closure-shaping configuration.
+func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Engine, error) {
+	flags := []string{"-race"}
+	if len(g.tags) > 0 {
+		flags = append(flags, "-tags="+strings.Join(g.tags, ","))
+	}
+	return gofresh.New(
+		gofresh.WithDir(dir),
+		gofresh.WithBuildFlags(flags...),
+		gofresh.WithEnv(g.env...),
+		// Freshness capture and validation are the longest silent
+		// stretches of a witnessed run; gofresh's own analysis steps
+		// feed the operation's progress seam as rate-limited
+		// keep-alives in whatever phase the operation is in.
+		gofresh.WithProgress(func(gofresh.Progress) { progress.FromContext(ctx).Keepalive() }),
+	)
+}
+
+// NewWitnessRecorder prepares freshness publication for one execution of
+// the accepted policy: it must be called before the policy executes, so
+// the captured fingerprints pin the tree the execution compiles. Only
+// race-enabled Go invocations are captured — a non-race invocation grants
+// no witness evidence, so nothing it produces may enter the cache a
+// freshness-serving run would grant evidence from. A fault while
+// preparing disables publication and is reported through the derived
+// run's degraded reason, never as an error: publication is optimization,
+// not correctness.
+func NewWitnessRecorder(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) *WitnessRecorder {
+	r := &WitnessRecorder{dir: dir}
+	degrade := func(err error) *WitnessRecorder {
+		r.degraded = err.Error()
+		r.groups = nil
+		return r
+	}
+	pc, err := capturePolicy(ctx, dir, p)
+	if err != nil {
+		return degrade(err)
+	}
+	for _, g := range pc.groups {
+		subjects := groupSubjects(g, pc.globalCount)
 		if len(subjects) == 0 {
 			continue
 		}
-		sort.Slice(subjects, func(i, j int) bool {
-			a, b := subjects[i], subjects[j]
-			if a.Package != b.Package {
-				return a.Package < b.Package
-			}
-			return a.Symbol < b.Symbol
-		})
-		flags := []string{"-race"}
-		if len(g.tags) > 0 {
-			flags = append(flags, "-tags="+strings.Join(g.tags, ","))
-		}
-		engine, err := gofresh.New(
-			gofresh.WithDir(dir),
-			gofresh.WithBuildFlags(flags...),
-			gofresh.WithEnv(g.env...),
-			// Freshness capture and validation are the longest silent
-			// stretches of a witnessed run; gofresh's own analysis steps
-			// feed the operation's progress seam as rate-limited
-			// keep-alives in whatever phase the operation is in.
-			gofresh.WithProgress(func(gofresh.Progress) { progress.FromContext(ctx).Keepalive() }),
-		)
+		engine, err := groupEngine(ctx, dir, g)
 		if err != nil {
 			return degrade(err)
 		}

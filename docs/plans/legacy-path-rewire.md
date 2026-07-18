@@ -8,7 +8,7 @@ Spec: docs/specs/overview.md, docs/specs/evidence.md, docs/specs/change.md, docs
       testCommandArgs/runPackage take a top-level selection; -test.run joins the
       reviewed-args collision refusal; retry loop isolates abort-shadowed AND
       green-in-red-process tests under the invocation envelope; fixtures.
-- [ ] 3 Selective witness runner: policy load (fail on ErrRecord), discovery-
+- [x] 3 Selective witness runner: policy load (fail on ErrRecord), discovery-
       derived expected set, capture groups reused, serve/execute/publish keyed
       on selective-process disposition, post-run served-record revalidation
       with one in-run retry, empty-served degrade, outside-policy count in
