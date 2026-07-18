@@ -2,5 +2,5 @@
 # proto-message: stipulator.v1.Gap
 
 requirement_id: "REQ-policy-attribution"
-reason: "outcomes and observations are not yet bound to a producing invocation and process; attribution lands with per-process observation collection"
+reason: "resolved pin-at-load configuration is not yet bound into run evidence; outcomes and observations are not yet bound to a producing invocation and process; attribution lands with per-process observation collection"
 lands { manual { condition: "per-process observation and deterministic event attribution land in the policy executor" } }

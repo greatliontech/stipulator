@@ -62,11 +62,12 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   Go module-path change invalidates large stored-symbol sets, with no validated bulk retarget
   command or actionable remediation. *Lands: before a corpus with stored Go symbol references
   changes module path, or when the binding rewrite surface next changes.*
-- **[go-subprocess-tree-ownership](go-subprocess-tree-ownership.md)** — Unix witness runs own
-  their process groups, but package loading owns an opaque launcher and non-Unix tree termination
-  cannot yet prove descendant cleanup on platform-facility failure. *Lands: when Go package loading
-  execution is next redesigned, or before descendant-cancellation guarantees are claimed for
-  non-Unix platforms.*
+- **[go-subprocess-tree-ownership](go-subprocess-tree-ownership.md)** — Unix policy work
+  (witness runs, normalization, discovery) owns its process groups with descendant termination
+  proven, but `go/packages` symbol loading owns an opaque launcher and Windows descendant
+  termination cannot be proven without a Windows host. *Lands: when Windows descendant
+  termination is proven with a real spawned child (Windows host unavailable here), and when
+  `go/packages` symbol loading runs behind an owned boundary.*
 - **[witness-e2e-reds-only-under-gate](witness-e2e-reds-only-under-gate.md)** — a freshness
   witness runs red only inside completed whole-corpus gate runs and never in isolation; standing
   hypothesis is environmental degradation under whole-suite load, with the isolated diagnostic and

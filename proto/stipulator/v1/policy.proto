@@ -48,24 +48,113 @@ message PolicyInvocation {
   reserved labels, group;
 }
 
+// GoWorkspaceMode selects whether an invocation runs under the tree's
+// go.work workspace or with workspace resolution off.
+enum GoWorkspaceMode {
+  GO_WORKSPACE_MODE_UNSPECIFIED = 0;
+  // Run under the tree's own go.work; refused when the tree declares none.
+  GO_WORKSPACE_MODE_WORKSPACE = 1;
+  // Run with GOWORK=off even inside a workspace tree.
+  GO_WORKSPACE_MODE_OFF = 2;
+}
+
+// GoModuleMode is the `-mod` module resolution and download behavior of an
+// invocation. Download configuration beyond `-mod` (GOPROXY and friends)
+// rides the inherited environment and the `environment` overrides.
+enum GoModuleMode {
+  GO_MODULE_MODE_UNSPECIFIED = 0;
+  GO_MODULE_MODE_READONLY = 1;
+  GO_MODULE_MODE_VENDOR = 2;
+  GO_MODULE_MODE_MOD = 3;
+}
+
+// GoCacheMode is the test-result cache stance of an invocation.
+enum GoCacheMode {
+  // Unspecified keeps the toolchain's default caching behavior.
+  GO_CACHE_MODE_UNSPECIFIED = 0;
+  // The toolchain's ordinary test caching.
+  GO_CACHE_MODE_ENABLED = 1;
+  // Force re-execution (`-count=1` semantics) regardless of the cache.
+  GO_CACHE_MODE_BYPASS = 2;
+}
+
 // GoInvocationConfig is the Go backend's typed invocation payload,
-// interpreted only by the Go backend. The reserved fields are the Go
-// policy-normalization surface — effective toolchain pinning, environment
-// inheritance and denial, target platform, build and test inputs — which
-// lands with normalization and must not be squatted before it.
+// interpreted only by the Go backend.
+//
+// Every field is either pin-at-load or explicit-only. A pin-at-load field
+// left absent means "the effective value the tree and host environment
+// select at policy load" — normalization resolves and pins that value into
+// the in-memory normalized invocation, so what runs is always a concrete,
+// visible configuration; a present value is explicit and overrides the
+// environment. Pin-at-load fields are exactly those for which every Go
+// invocation has an ambient effective value regardless of the record:
+// toolchain, goos, goarch, cgo_enabled, goflags, workspace_mode. An
+// explicit-only field left absent means a fixed, environment-independent
+// default (none, or the toolchain's own documented default) — deriving it
+// from the host would smuggle unreviewed host state into the invocation:
+// environment, env_deny, tags, module_mode, pgo, count, cache_mode, args.
+// Environment-derived pins live only in the normalized in-memory form,
+// never in the derived committed record, which stays a pure function of
+// the workspace declaration. The invocation timeout is envelope-level
+// (PolicyInvocation.timeout) and always explicit.
 message GoInvocationConfig {
   // Module root directory, slash-separated and relative to the repository
   // root; empty means the repository root.
   string module_root = 1;
   // Package patterns selecting the invocation's scope, as `go test`
-  // accepts them (e.g. "./...").
+  // accepts them (e.g. "./..."). Patterns must not escape the tree and
+  // must not begin with "-".
   repeated string packages = 2;
   // Run under the race detector. Only race-enabled invocations can grant
   // Go witness evidence; a non-race invocation contributes suite health
   // alone.
   bool race = 3;
-  reserved 4 to 19;
-  reserved toolchain, environment, env_deny, goos, goarch, cgo_enabled,
-      tags, goflags, workspace_mode, module_mode, pgo, count, cache_mode,
-      args;
+  // Pin-at-load. Present: the required toolchain selection, exported as
+  // GOTOOLCHAIN to the invocation. Absent: the effective toolchain the
+  // environment selects at load is pinned (`go env GOVERSION`).
+  string toolchain = 4;
+  // Explicit-only. KEY=VALUE overrides applied to the inherited
+  // environment after denial. Keys the backend itself pins — GOWORK,
+  // GOPACKAGESDRIVER, GOOS, GOARCH, CGO_ENABLED, GOFLAGS, GOTOOLCHAIN —
+  // are refused here: each has exactly one source.
+  repeated string environment = 5;
+  // Explicit-only. Variable names removed from the inherited environment
+  // before overrides apply. Backend-pinned keys are refused here for the
+  // same single-source reason.
+  repeated string env_deny = 6;
+  // Pin-at-load. Target operating system; absent pins the effective
+  // `go env GOOS`.
+  string goos = 7;
+  // Pin-at-load. Target architecture; absent pins the effective
+  // `go env GOARCH`.
+  string goarch = 8;
+  // Pin-at-load. cgo enablement; absent pins the effective
+  // `go env CGO_ENABLED`.
+  bool cgo_enabled = 9;
+  // Explicit-only. Build tags (`-tags`); absent means none.
+  repeated string tags = 10;
+  // Pin-at-load. GOFLAGS for the invocation; present replaces the ambient
+  // value, absent pins the effective `go env GOFLAGS`. Either form is
+  // refused when it carries an unsupported ambient control (`-overlay`,
+  // `-toolexec`) or a flag owned by a typed field of this message.
+  string goflags = 11;
+  // Pin-at-load. Absent derives from the workspace declaration: the
+  // tree's go.work when present, otherwise off.
+  GoWorkspaceMode workspace_mode = 12;
+  // Explicit-only. `-mod` behavior; absent means the toolchain default.
+  GoModuleMode module_mode = 13;
+  // Explicit-only. `-pgo` profile selection: "auto", "off", or a
+  // tree-relative slash path to a committed profile; absent means the
+  // toolchain default.
+  string pgo = 14;
+  // Explicit-only. `-count`; absent means the toolchain default. Must be
+  // positive when present.
+  int32 count = 15;
+  // Explicit-only. Test-cache stance; BYPASS is incompatible with an
+  // explicit count other than 1.
+  GoCacheMode cache_mode = 16;
+  // Explicit-only. Extra arguments passed to the test binaries after
+  // `-args`; absent means none.
+  repeated string args = 17;
+  reserved 18, 19;
 }

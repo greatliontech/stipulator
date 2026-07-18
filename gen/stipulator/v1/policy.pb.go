@@ -21,6 +21,152 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// GoWorkspaceMode selects whether an invocation runs under the tree's
+// go.work workspace or with workspace resolution off.
+type GoWorkspaceMode int32
+
+const (
+	GoWorkspaceMode_GO_WORKSPACE_MODE_UNSPECIFIED GoWorkspaceMode = 0
+	// Run under the tree's own go.work; refused when the tree declares none.
+	GoWorkspaceMode_GO_WORKSPACE_MODE_WORKSPACE GoWorkspaceMode = 1
+	// Run with GOWORK=off even inside a workspace tree.
+	GoWorkspaceMode_GO_WORKSPACE_MODE_OFF GoWorkspaceMode = 2
+)
+
+// Enum value maps for GoWorkspaceMode.
+var (
+	GoWorkspaceMode_name = map[int32]string{
+		0: "GO_WORKSPACE_MODE_UNSPECIFIED",
+		1: "GO_WORKSPACE_MODE_WORKSPACE",
+		2: "GO_WORKSPACE_MODE_OFF",
+	}
+	GoWorkspaceMode_value = map[string]int32{
+		"GO_WORKSPACE_MODE_UNSPECIFIED": 0,
+		"GO_WORKSPACE_MODE_WORKSPACE":   1,
+		"GO_WORKSPACE_MODE_OFF":         2,
+	}
+)
+
+func (x GoWorkspaceMode) Enum() *GoWorkspaceMode {
+	p := new(GoWorkspaceMode)
+	*p = x
+	return p
+}
+
+func (x GoWorkspaceMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (GoWorkspaceMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_stipulator_v1_policy_proto_enumTypes[0].Descriptor()
+}
+
+func (GoWorkspaceMode) Type() protoreflect.EnumType {
+	return &file_stipulator_v1_policy_proto_enumTypes[0]
+}
+
+func (x GoWorkspaceMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// GoModuleMode is the `-mod` module resolution and download behavior of an
+// invocation. Download configuration beyond `-mod` (GOPROXY and friends)
+// rides the inherited environment and the `environment` overrides.
+type GoModuleMode int32
+
+const (
+	GoModuleMode_GO_MODULE_MODE_UNSPECIFIED GoModuleMode = 0
+	GoModuleMode_GO_MODULE_MODE_READONLY    GoModuleMode = 1
+	GoModuleMode_GO_MODULE_MODE_VENDOR      GoModuleMode = 2
+	GoModuleMode_GO_MODULE_MODE_MOD         GoModuleMode = 3
+)
+
+// Enum value maps for GoModuleMode.
+var (
+	GoModuleMode_name = map[int32]string{
+		0: "GO_MODULE_MODE_UNSPECIFIED",
+		1: "GO_MODULE_MODE_READONLY",
+		2: "GO_MODULE_MODE_VENDOR",
+		3: "GO_MODULE_MODE_MOD",
+	}
+	GoModuleMode_value = map[string]int32{
+		"GO_MODULE_MODE_UNSPECIFIED": 0,
+		"GO_MODULE_MODE_READONLY":    1,
+		"GO_MODULE_MODE_VENDOR":      2,
+		"GO_MODULE_MODE_MOD":         3,
+	}
+)
+
+func (x GoModuleMode) Enum() *GoModuleMode {
+	p := new(GoModuleMode)
+	*p = x
+	return p
+}
+
+func (x GoModuleMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (GoModuleMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_stipulator_v1_policy_proto_enumTypes[1].Descriptor()
+}
+
+func (GoModuleMode) Type() protoreflect.EnumType {
+	return &file_stipulator_v1_policy_proto_enumTypes[1]
+}
+
+func (x GoModuleMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// GoCacheMode is the test-result cache stance of an invocation.
+type GoCacheMode int32
+
+const (
+	// Unspecified keeps the toolchain's default caching behavior.
+	GoCacheMode_GO_CACHE_MODE_UNSPECIFIED GoCacheMode = 0
+	// The toolchain's ordinary test caching.
+	GoCacheMode_GO_CACHE_MODE_ENABLED GoCacheMode = 1
+	// Force re-execution (`-count=1` semantics) regardless of the cache.
+	GoCacheMode_GO_CACHE_MODE_BYPASS GoCacheMode = 2
+)
+
+// Enum value maps for GoCacheMode.
+var (
+	GoCacheMode_name = map[int32]string{
+		0: "GO_CACHE_MODE_UNSPECIFIED",
+		1: "GO_CACHE_MODE_ENABLED",
+		2: "GO_CACHE_MODE_BYPASS",
+	}
+	GoCacheMode_value = map[string]int32{
+		"GO_CACHE_MODE_UNSPECIFIED": 0,
+		"GO_CACHE_MODE_ENABLED":     1,
+		"GO_CACHE_MODE_BYPASS":      2,
+	}
+)
+
+func (x GoCacheMode) Enum() *GoCacheMode {
+	p := new(GoCacheMode)
+	*p = x
+	return p
+}
+
+func (x GoCacheMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (GoCacheMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_stipulator_v1_policy_proto_enumTypes[2].Descriptor()
+}
+
+func (GoCacheMode) Type() protoreflect.EnumType {
+	return &file_stipulator_v1_policy_proto_enumTypes[2]
+}
+
+func (x GoCacheMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
 // TestPolicy is the root message of the policy record.
 type TestPolicy struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
@@ -286,19 +432,47 @@ type policyInvocation_Go struct {
 func (*policyInvocation_Go) isPolicyInvocation_Config() {}
 
 // GoInvocationConfig is the Go backend's typed invocation payload,
-// interpreted only by the Go backend. The reserved fields are the Go
-// policy-normalization surface — effective toolchain pinning, environment
-// inheritance and denial, target platform, build and test inputs — which
-// lands with normalization and must not be squatted before it.
+// interpreted only by the Go backend.
+//
+// Every field is either pin-at-load or explicit-only. A pin-at-load field
+// left absent means "the effective value the tree and host environment
+// select at policy load" — normalization resolves and pins that value into
+// the in-memory normalized invocation, so what runs is always a concrete,
+// visible configuration; a present value is explicit and overrides the
+// environment. Pin-at-load fields are exactly those for which every Go
+// invocation has an ambient effective value regardless of the record:
+// toolchain, goos, goarch, cgo_enabled, goflags, workspace_mode. An
+// explicit-only field left absent means a fixed, environment-independent
+// default (none, or the toolchain's own documented default) — deriving it
+// from the host would smuggle unreviewed host state into the invocation:
+// environment, env_deny, tags, module_mode, pgo, count, cache_mode, args.
+// Environment-derived pins live only in the normalized in-memory form,
+// never in the derived committed record, which stays a pure function of
+// the workspace declaration. The invocation timeout is envelope-level
+// (PolicyInvocation.timeout) and always explicit.
 type GoInvocationConfig struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_ModuleRoot  *string                `protobuf:"bytes,1,opt,name=module_root,json=moduleRoot"`
-	xxx_hidden_Packages    []string               `protobuf:"bytes,2,rep,name=packages"`
-	xxx_hidden_Race        bool                   `protobuf:"varint,3,opt,name=race"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	state                    protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_ModuleRoot    *string                `protobuf:"bytes,1,opt,name=module_root,json=moduleRoot"`
+	xxx_hidden_Packages      []string               `protobuf:"bytes,2,rep,name=packages"`
+	xxx_hidden_Race          bool                   `protobuf:"varint,3,opt,name=race"`
+	xxx_hidden_Toolchain     *string                `protobuf:"bytes,4,opt,name=toolchain"`
+	xxx_hidden_Environment   []string               `protobuf:"bytes,5,rep,name=environment"`
+	xxx_hidden_EnvDeny       []string               `protobuf:"bytes,6,rep,name=env_deny,json=envDeny"`
+	xxx_hidden_Goos          *string                `protobuf:"bytes,7,opt,name=goos"`
+	xxx_hidden_Goarch        *string                `protobuf:"bytes,8,opt,name=goarch"`
+	xxx_hidden_CgoEnabled    bool                   `protobuf:"varint,9,opt,name=cgo_enabled,json=cgoEnabled"`
+	xxx_hidden_Tags          []string               `protobuf:"bytes,10,rep,name=tags"`
+	xxx_hidden_Goflags       *string                `protobuf:"bytes,11,opt,name=goflags"`
+	xxx_hidden_WorkspaceMode GoWorkspaceMode        `protobuf:"varint,12,opt,name=workspace_mode,json=workspaceMode,enum=stipulator.v1.GoWorkspaceMode"`
+	xxx_hidden_ModuleMode    GoModuleMode           `protobuf:"varint,13,opt,name=module_mode,json=moduleMode,enum=stipulator.v1.GoModuleMode"`
+	xxx_hidden_Pgo           *string                `protobuf:"bytes,14,opt,name=pgo"`
+	xxx_hidden_Count         int32                  `protobuf:"varint,15,opt,name=count"`
+	xxx_hidden_CacheMode     GoCacheMode            `protobuf:"varint,16,opt,name=cache_mode,json=cacheMode,enum=stipulator.v1.GoCacheMode"`
+	xxx_hidden_Args          []string               `protobuf:"bytes,17,rep,name=args"`
+	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
+	XXX_presence             [1]uint32
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *GoInvocationConfig) Reset() {
@@ -350,9 +524,128 @@ func (x *GoInvocationConfig) GetRace() bool {
 	return false
 }
 
+func (x *GoInvocationConfig) GetToolchain() string {
+	if x != nil {
+		if x.xxx_hidden_Toolchain != nil {
+			return *x.xxx_hidden_Toolchain
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *GoInvocationConfig) GetEnvironment() []string {
+	if x != nil {
+		return x.xxx_hidden_Environment
+	}
+	return nil
+}
+
+func (x *GoInvocationConfig) GetEnvDeny() []string {
+	if x != nil {
+		return x.xxx_hidden_EnvDeny
+	}
+	return nil
+}
+
+func (x *GoInvocationConfig) GetGoos() string {
+	if x != nil {
+		if x.xxx_hidden_Goos != nil {
+			return *x.xxx_hidden_Goos
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *GoInvocationConfig) GetGoarch() string {
+	if x != nil {
+		if x.xxx_hidden_Goarch != nil {
+			return *x.xxx_hidden_Goarch
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *GoInvocationConfig) GetCgoEnabled() bool {
+	if x != nil {
+		return x.xxx_hidden_CgoEnabled
+	}
+	return false
+}
+
+func (x *GoInvocationConfig) GetTags() []string {
+	if x != nil {
+		return x.xxx_hidden_Tags
+	}
+	return nil
+}
+
+func (x *GoInvocationConfig) GetGoflags() string {
+	if x != nil {
+		if x.xxx_hidden_Goflags != nil {
+			return *x.xxx_hidden_Goflags
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *GoInvocationConfig) GetWorkspaceMode() GoWorkspaceMode {
+	if x != nil {
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 11) {
+			return x.xxx_hidden_WorkspaceMode
+		}
+	}
+	return GoWorkspaceMode_GO_WORKSPACE_MODE_UNSPECIFIED
+}
+
+func (x *GoInvocationConfig) GetModuleMode() GoModuleMode {
+	if x != nil {
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 12) {
+			return x.xxx_hidden_ModuleMode
+		}
+	}
+	return GoModuleMode_GO_MODULE_MODE_UNSPECIFIED
+}
+
+func (x *GoInvocationConfig) GetPgo() string {
+	if x != nil {
+		if x.xxx_hidden_Pgo != nil {
+			return *x.xxx_hidden_Pgo
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *GoInvocationConfig) GetCount() int32 {
+	if x != nil {
+		return x.xxx_hidden_Count
+	}
+	return 0
+}
+
+func (x *GoInvocationConfig) GetCacheMode() GoCacheMode {
+	if x != nil {
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 15) {
+			return x.xxx_hidden_CacheMode
+		}
+	}
+	return GoCacheMode_GO_CACHE_MODE_UNSPECIFIED
+}
+
+func (x *GoInvocationConfig) GetArgs() []string {
+	if x != nil {
+		return x.xxx_hidden_Args
+	}
+	return nil
+}
+
 func (x *GoInvocationConfig) SetModuleRoot(v string) {
 	x.xxx_hidden_ModuleRoot = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 17)
 }
 
 func (x *GoInvocationConfig) SetPackages(v []string) {
@@ -361,7 +654,73 @@ func (x *GoInvocationConfig) SetPackages(v []string) {
 
 func (x *GoInvocationConfig) SetRace(v bool) {
 	x.xxx_hidden_Race = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 17)
+}
+
+func (x *GoInvocationConfig) SetToolchain(v string) {
+	x.xxx_hidden_Toolchain = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 17)
+}
+
+func (x *GoInvocationConfig) SetEnvironment(v []string) {
+	x.xxx_hidden_Environment = v
+}
+
+func (x *GoInvocationConfig) SetEnvDeny(v []string) {
+	x.xxx_hidden_EnvDeny = v
+}
+
+func (x *GoInvocationConfig) SetGoos(v string) {
+	x.xxx_hidden_Goos = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 17)
+}
+
+func (x *GoInvocationConfig) SetGoarch(v string) {
+	x.xxx_hidden_Goarch = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 17)
+}
+
+func (x *GoInvocationConfig) SetCgoEnabled(v bool) {
+	x.xxx_hidden_CgoEnabled = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 17)
+}
+
+func (x *GoInvocationConfig) SetTags(v []string) {
+	x.xxx_hidden_Tags = v
+}
+
+func (x *GoInvocationConfig) SetGoflags(v string) {
+	x.xxx_hidden_Goflags = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 17)
+}
+
+func (x *GoInvocationConfig) SetWorkspaceMode(v GoWorkspaceMode) {
+	x.xxx_hidden_WorkspaceMode = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 17)
+}
+
+func (x *GoInvocationConfig) SetModuleMode(v GoModuleMode) {
+	x.xxx_hidden_ModuleMode = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 17)
+}
+
+func (x *GoInvocationConfig) SetPgo(v string) {
+	x.xxx_hidden_Pgo = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 13, 17)
+}
+
+func (x *GoInvocationConfig) SetCount(v int32) {
+	x.xxx_hidden_Count = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 14, 17)
+}
+
+func (x *GoInvocationConfig) SetCacheMode(v GoCacheMode) {
+	x.xxx_hidden_CacheMode = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 15, 17)
+}
+
+func (x *GoInvocationConfig) SetArgs(v []string) {
+	x.xxx_hidden_Args = v
 }
 
 func (x *GoInvocationConfig) HasModuleRoot() bool {
@@ -378,6 +737,76 @@ func (x *GoInvocationConfig) HasRace() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
 }
 
+func (x *GoInvocationConfig) HasToolchain() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *GoInvocationConfig) HasGoos() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
+func (x *GoInvocationConfig) HasGoarch() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 7)
+}
+
+func (x *GoInvocationConfig) HasCgoEnabled() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 8)
+}
+
+func (x *GoInvocationConfig) HasGoflags() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 10)
+}
+
+func (x *GoInvocationConfig) HasWorkspaceMode() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 11)
+}
+
+func (x *GoInvocationConfig) HasModuleMode() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 12)
+}
+
+func (x *GoInvocationConfig) HasPgo() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 13)
+}
+
+func (x *GoInvocationConfig) HasCount() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 14)
+}
+
+func (x *GoInvocationConfig) HasCacheMode() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 15)
+}
+
 func (x *GoInvocationConfig) ClearModuleRoot() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_ModuleRoot = nil
@@ -388,6 +817,56 @@ func (x *GoInvocationConfig) ClearRace() {
 	x.xxx_hidden_Race = false
 }
 
+func (x *GoInvocationConfig) ClearToolchain() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_Toolchain = nil
+}
+
+func (x *GoInvocationConfig) ClearGoos() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	x.xxx_hidden_Goos = nil
+}
+
+func (x *GoInvocationConfig) ClearGoarch() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 7)
+	x.xxx_hidden_Goarch = nil
+}
+
+func (x *GoInvocationConfig) ClearCgoEnabled() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 8)
+	x.xxx_hidden_CgoEnabled = false
+}
+
+func (x *GoInvocationConfig) ClearGoflags() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 10)
+	x.xxx_hidden_Goflags = nil
+}
+
+func (x *GoInvocationConfig) ClearWorkspaceMode() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 11)
+	x.xxx_hidden_WorkspaceMode = GoWorkspaceMode_GO_WORKSPACE_MODE_UNSPECIFIED
+}
+
+func (x *GoInvocationConfig) ClearModuleMode() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 12)
+	x.xxx_hidden_ModuleMode = GoModuleMode_GO_MODULE_MODE_UNSPECIFIED
+}
+
+func (x *GoInvocationConfig) ClearPgo() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 13)
+	x.xxx_hidden_Pgo = nil
+}
+
+func (x *GoInvocationConfig) ClearCount() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 14)
+	x.xxx_hidden_Count = 0
+}
+
+func (x *GoInvocationConfig) ClearCacheMode() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 15)
+	x.xxx_hidden_CacheMode = GoCacheMode_GO_CACHE_MODE_UNSPECIFIED
+}
+
 type GoInvocationConfig_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -395,12 +874,60 @@ type GoInvocationConfig_builder struct {
 	// root; empty means the repository root.
 	ModuleRoot *string
 	// Package patterns selecting the invocation's scope, as `go test`
-	// accepts them (e.g. "./...").
+	// accepts them (e.g. "./..."). Patterns must not escape the tree and
+	// must not begin with "-".
 	Packages []string
 	// Run under the race detector. Only race-enabled invocations can grant
 	// Go witness evidence; a non-race invocation contributes suite health
 	// alone.
 	Race *bool
+	// Pin-at-load. Present: the required toolchain selection, exported as
+	// GOTOOLCHAIN to the invocation. Absent: the effective toolchain the
+	// environment selects at load is pinned (`go env GOVERSION`).
+	Toolchain *string
+	// Explicit-only. KEY=VALUE overrides applied to the inherited
+	// environment after denial. Keys the backend itself pins — GOWORK,
+	// GOPACKAGESDRIVER, GOOS, GOARCH, CGO_ENABLED, GOFLAGS, GOTOOLCHAIN —
+	// are refused here: each has exactly one source.
+	Environment []string
+	// Explicit-only. Variable names removed from the inherited environment
+	// before overrides apply. Backend-pinned keys are refused here for the
+	// same single-source reason.
+	EnvDeny []string
+	// Pin-at-load. Target operating system; absent pins the effective
+	// `go env GOOS`.
+	Goos *string
+	// Pin-at-load. Target architecture; absent pins the effective
+	// `go env GOARCH`.
+	Goarch *string
+	// Pin-at-load. cgo enablement; absent pins the effective
+	// `go env CGO_ENABLED`.
+	CgoEnabled *bool
+	// Explicit-only. Build tags (`-tags`); absent means none.
+	Tags []string
+	// Pin-at-load. GOFLAGS for the invocation; present replaces the ambient
+	// value, absent pins the effective `go env GOFLAGS`. Either form is
+	// refused when it carries an unsupported ambient control (`-overlay`,
+	// `-toolexec`) or a flag owned by a typed field of this message.
+	Goflags *string
+	// Pin-at-load. Absent derives from the workspace declaration: the
+	// tree's go.work when present, otherwise off.
+	WorkspaceMode *GoWorkspaceMode
+	// Explicit-only. `-mod` behavior; absent means the toolchain default.
+	ModuleMode *GoModuleMode
+	// Explicit-only. `-pgo` profile selection: "auto", "off", or a
+	// tree-relative slash path to a committed profile; absent means the
+	// toolchain default.
+	Pgo *string
+	// Explicit-only. `-count`; absent means the toolchain default. Must be
+	// positive when present.
+	Count *int32
+	// Explicit-only. Test-cache stance; BYPASS is incompatible with an
+	// explicit count other than 1.
+	CacheMode *GoCacheMode
+	// Explicit-only. Extra arguments passed to the test binaries after
+	// `-args`; absent means none.
+	Args []string
 }
 
 func (b0 GoInvocationConfig_builder) Build() *GoInvocationConfig {
@@ -408,14 +935,58 @@ func (b0 GoInvocationConfig_builder) Build() *GoInvocationConfig {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.ModuleRoot != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 17)
 		x.xxx_hidden_ModuleRoot = b.ModuleRoot
 	}
 	x.xxx_hidden_Packages = b.Packages
 	if b.Race != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 17)
 		x.xxx_hidden_Race = *b.Race
 	}
+	if b.Toolchain != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 17)
+		x.xxx_hidden_Toolchain = b.Toolchain
+	}
+	x.xxx_hidden_Environment = b.Environment
+	x.xxx_hidden_EnvDeny = b.EnvDeny
+	if b.Goos != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 17)
+		x.xxx_hidden_Goos = b.Goos
+	}
+	if b.Goarch != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 17)
+		x.xxx_hidden_Goarch = b.Goarch
+	}
+	if b.CgoEnabled != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 17)
+		x.xxx_hidden_CgoEnabled = *b.CgoEnabled
+	}
+	x.xxx_hidden_Tags = b.Tags
+	if b.Goflags != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 17)
+		x.xxx_hidden_Goflags = b.Goflags
+	}
+	if b.WorkspaceMode != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 17)
+		x.xxx_hidden_WorkspaceMode = *b.WorkspaceMode
+	}
+	if b.ModuleMode != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 17)
+		x.xxx_hidden_ModuleMode = *b.ModuleMode
+	}
+	if b.Pgo != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 13, 17)
+		x.xxx_hidden_Pgo = b.Pgo
+	}
+	if b.Count != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 14, 17)
+		x.xxx_hidden_Count = *b.Count
+	}
+	if b.CacheMode != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 15, 17)
+		x.xxx_hidden_CacheMode = *b.CacheMode
+	}
+	x.xxx_hidden_Args = b.Args
 	return m0
 }
 
@@ -431,30 +1002,67 @@ const file_stipulator_v1_policy_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x123\n" +
 	"\atimeout\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\atimeout\x123\n" +
 	"\x02go\x18\x03 \x01(\v2!.stipulator.v1.GoInvocationConfigH\x00R\x02goB\b\n" +
-	"\x06configJ\x04\b\x04\x10\bR\x06labelsR\x05group\"\xf2\x01\n" +
+	"\x06configJ\x04\b\x04\x10\bR\x06labelsR\x05group\"\xc3\x04\n" +
 	"\x12GoInvocationConfig\x12\x1f\n" +
 	"\vmodule_root\x18\x01 \x01(\tR\n" +
 	"moduleRoot\x12\x1a\n" +
 	"\bpackages\x18\x02 \x03(\tR\bpackages\x12\x12\n" +
-	"\x04race\x18\x03 \x01(\bR\x04raceJ\x04\b\x04\x10\x14R\ttoolchainR\venvironmentR\benv_denyR\x04goosR\x06goarchR\vcgo_enabledR\x04tagsR\agoflagsR\x0eworkspace_modeR\vmodule_modeR\x03pgoR\x05countR\n" +
-	"cache_modeR\x04argsBDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
+	"\x04race\x18\x03 \x01(\bR\x04race\x12\x1c\n" +
+	"\ttoolchain\x18\x04 \x01(\tR\ttoolchain\x12 \n" +
+	"\venvironment\x18\x05 \x03(\tR\venvironment\x12\x19\n" +
+	"\benv_deny\x18\x06 \x03(\tR\aenvDeny\x12\x12\n" +
+	"\x04goos\x18\a \x01(\tR\x04goos\x12\x16\n" +
+	"\x06goarch\x18\b \x01(\tR\x06goarch\x12\x1f\n" +
+	"\vcgo_enabled\x18\t \x01(\bR\n" +
+	"cgoEnabled\x12\x12\n" +
+	"\x04tags\x18\n" +
+	" \x03(\tR\x04tags\x12\x18\n" +
+	"\agoflags\x18\v \x01(\tR\agoflags\x12E\n" +
+	"\x0eworkspace_mode\x18\f \x01(\x0e2\x1e.stipulator.v1.GoWorkspaceModeR\rworkspaceMode\x12<\n" +
+	"\vmodule_mode\x18\r \x01(\x0e2\x1b.stipulator.v1.GoModuleModeR\n" +
+	"moduleMode\x12\x10\n" +
+	"\x03pgo\x18\x0e \x01(\tR\x03pgo\x12\x14\n" +
+	"\x05count\x18\x0f \x01(\x05R\x05count\x129\n" +
+	"\n" +
+	"cache_mode\x18\x10 \x01(\x0e2\x1a.stipulator.v1.GoCacheModeR\tcacheMode\x12\x12\n" +
+	"\x04args\x18\x11 \x03(\tR\x04argsJ\x04\b\x12\x10\x13J\x04\b\x13\x10\x14*p\n" +
+	"\x0fGoWorkspaceMode\x12!\n" +
+	"\x1dGO_WORKSPACE_MODE_UNSPECIFIED\x10\x00\x12\x1f\n" +
+	"\x1bGO_WORKSPACE_MODE_WORKSPACE\x10\x01\x12\x19\n" +
+	"\x15GO_WORKSPACE_MODE_OFF\x10\x02*~\n" +
+	"\fGoModuleMode\x12\x1e\n" +
+	"\x1aGO_MODULE_MODE_UNSPECIFIED\x10\x00\x12\x1b\n" +
+	"\x17GO_MODULE_MODE_READONLY\x10\x01\x12\x19\n" +
+	"\x15GO_MODULE_MODE_VENDOR\x10\x02\x12\x16\n" +
+	"\x12GO_MODULE_MODE_MOD\x10\x03*a\n" +
+	"\vGoCacheMode\x12\x1d\n" +
+	"\x19GO_CACHE_MODE_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15GO_CACHE_MODE_ENABLED\x10\x01\x12\x18\n" +
+	"\x14GO_CACHE_MODE_BYPASS\x10\x02BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
+var file_stipulator_v1_policy_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_stipulator_v1_policy_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_stipulator_v1_policy_proto_goTypes = []any{
-	(*TestPolicy)(nil),          // 0: stipulator.v1.TestPolicy
-	(*PolicyInvocation)(nil),    // 1: stipulator.v1.PolicyInvocation
-	(*GoInvocationConfig)(nil),  // 2: stipulator.v1.GoInvocationConfig
-	(*durationpb.Duration)(nil), // 3: google.protobuf.Duration
+	(GoWorkspaceMode)(0),        // 0: stipulator.v1.GoWorkspaceMode
+	(GoModuleMode)(0),           // 1: stipulator.v1.GoModuleMode
+	(GoCacheMode)(0),            // 2: stipulator.v1.GoCacheMode
+	(*TestPolicy)(nil),          // 3: stipulator.v1.TestPolicy
+	(*PolicyInvocation)(nil),    // 4: stipulator.v1.PolicyInvocation
+	(*GoInvocationConfig)(nil),  // 5: stipulator.v1.GoInvocationConfig
+	(*durationpb.Duration)(nil), // 6: google.protobuf.Duration
 }
 var file_stipulator_v1_policy_proto_depIdxs = []int32{
-	1, // 0: stipulator.v1.TestPolicy.invocations:type_name -> stipulator.v1.PolicyInvocation
-	3, // 1: stipulator.v1.PolicyInvocation.timeout:type_name -> google.protobuf.Duration
-	2, // 2: stipulator.v1.PolicyInvocation.go:type_name -> stipulator.v1.GoInvocationConfig
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	4, // 0: stipulator.v1.TestPolicy.invocations:type_name -> stipulator.v1.PolicyInvocation
+	6, // 1: stipulator.v1.PolicyInvocation.timeout:type_name -> google.protobuf.Duration
+	5, // 2: stipulator.v1.PolicyInvocation.go:type_name -> stipulator.v1.GoInvocationConfig
+	0, // 3: stipulator.v1.GoInvocationConfig.workspace_mode:type_name -> stipulator.v1.GoWorkspaceMode
+	1, // 4: stipulator.v1.GoInvocationConfig.module_mode:type_name -> stipulator.v1.GoModuleMode
+	2, // 5: stipulator.v1.GoInvocationConfig.cache_mode:type_name -> stipulator.v1.GoCacheMode
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_policy_proto_init() }
@@ -470,13 +1078,14 @@ func file_stipulator_v1_policy_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_policy_proto_rawDesc), len(file_stipulator_v1_policy_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      3,
 			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_stipulator_v1_policy_proto_goTypes,
 		DependencyIndexes: file_stipulator_v1_policy_proto_depIdxs,
+		EnumInfos:         file_stipulator_v1_policy_proto_enumTypes,
 		MessageInfos:      file_stipulator_v1_policy_proto_msgTypes,
 	}.Build()
 	File_stipulator_v1_policy_proto = out.File

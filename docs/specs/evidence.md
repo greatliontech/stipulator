@@ -228,8 +228,12 @@ never silence.
 
 **REQ-policy-attribution** (invariant): Every test outcome and every
 runtime observation MUST be bound to the exact policy invocation and
-operating-system process that produced it; outcomes or observations from
-distinct processes are never merged into one evidentiary record.
+operating-system process that produced it — including the invocation's
+resolved configuration: a field the committed record leaves absent pins its
+effective value at load, and that resolved value is part of the invocation's
+evidentiary record, so what actually ran is reviewable after the fact.
+Outcomes or observations from distinct processes are never merged into one
+evidentiary record.
 
 **REQ-policy-cancellation** (behavior): A cancelled policy execution MUST
 discard its partial results — no outcome, observation, or health

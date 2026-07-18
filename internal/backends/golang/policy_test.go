@@ -172,3 +172,96 @@ func TestGoPolicyPayloadValidation(t *testing.T) {
 		t.Error("foreign payload type accepted; the Go backend must claim only GoInvocationConfig")
 	}
 }
+
+// TestGoPolicyConfigStaticValidation pins the record-only validation of
+// the full normalization surface: every typed field refuses malformed,
+// escaping, flag-injecting, or double-sourced configuration before any
+// toolchain work happens.
+func TestGoPolicyConfigStaticValidation(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-explicit")
+	base := func() *stipulatorv1.GoInvocationConfig {
+		cfg := &stipulatorv1.GoInvocationConfig{}
+		cfg.SetPackages([]string{"./..."})
+		cfg.SetRace(true)
+		return cfg
+	}
+	accept := []func(*stipulatorv1.GoInvocationConfig){
+		func(c *stipulatorv1.GoInvocationConfig) {},
+		func(c *stipulatorv1.GoInvocationConfig) { c.SetToolchain("go1.26.4") },
+		func(c *stipulatorv1.GoInvocationConfig) { c.SetEnvironment([]string{"GOPROXY=off", "HOME=/tmp/h"}) },
+		func(c *stipulatorv1.GoInvocationConfig) { c.SetEnvDeny([]string{"GOPROXY"}) },
+		func(c *stipulatorv1.GoInvocationConfig) { c.SetGoos("linux"); c.SetGoarch("arm64") },
+		func(c *stipulatorv1.GoInvocationConfig) { c.SetTags([]string{"integration", "special"}) },
+		func(c *stipulatorv1.GoInvocationConfig) { c.SetGoflags("-trimpath -v") },
+		func(c *stipulatorv1.GoInvocationConfig) {
+			c.SetModuleMode(stipulatorv1.GoModuleMode_GO_MODULE_MODE_VENDOR)
+		},
+		func(c *stipulatorv1.GoInvocationConfig) { c.SetPgo("profiles/default.pgo") },
+		func(c *stipulatorv1.GoInvocationConfig) { c.SetPgo("off") },
+		func(c *stipulatorv1.GoInvocationConfig) { c.SetCount(3) },
+		func(c *stipulatorv1.GoInvocationConfig) {
+			c.SetCacheMode(stipulatorv1.GoCacheMode_GO_CACHE_MODE_BYPASS)
+			c.SetCount(1)
+		},
+		func(c *stipulatorv1.GoInvocationConfig) { c.SetArgs([]string{"-quick", "positional"}) },
+		func(c *stipulatorv1.GoInvocationConfig) { c.SetPackages([]string{"example.com/disc/..."}) },
+	}
+	for i, mutate := range accept {
+		cfg := base()
+		mutate(cfg)
+		if err := (Policy{}).ValidateInvocation("race", cfg); err != nil {
+			t.Errorf("accept case %d refused: %v", i, err)
+		}
+	}
+	reject := []struct {
+		name, wantErr string
+		mutate        func(*stipulatorv1.GoInvocationConfig)
+	}{
+		{"flag-shaped package", "flag-shaped", func(c *stipulatorv1.GoInvocationConfig) { c.SetPackages([]string{"-run=."}) }},
+		{"empty package", "empty", func(c *stipulatorv1.GoInvocationConfig) { c.SetPackages([]string{""}) }},
+		{"escaping package", "escapes", func(c *stipulatorv1.GoInvocationConfig) { c.SetPackages([]string{"../sibling/..."}) }},
+		{"absolute package", "absolute", func(c *stipulatorv1.GoInvocationConfig) { c.SetPackages([]string{"/abs/..."}) }},
+		{"toolchain with space", "bare token", func(c *stipulatorv1.GoInvocationConfig) { c.SetToolchain("go1.26.4 local") }},
+		{"environment pinned key", "backend-pinned", func(c *stipulatorv1.GoInvocationConfig) { c.SetEnvironment([]string{"GOFLAGS=-v"}) }},
+		{"environment malformed", "KEY=VALUE", func(c *stipulatorv1.GoInvocationConfig) { c.SetEnvironment([]string{"NOEQUALS"}) }},
+		{"environment duplicate", "duplicate", func(c *stipulatorv1.GoInvocationConfig) { c.SetEnvironment([]string{"A=1", "A=2"}) }},
+		{"env_deny pinned key", "backend-pinned", func(c *stipulatorv1.GoInvocationConfig) { c.SetEnvDeny([]string{"GOWORK"}) }},
+		{"env_deny with equals", "bare variable name", func(c *stipulatorv1.GoInvocationConfig) { c.SetEnvDeny([]string{"A=1"}) }},
+		{"env_deny duplicate", "duplicate", func(c *stipulatorv1.GoInvocationConfig) { c.SetEnvDeny([]string{"A", "A"}) }},
+		{"empty goos", "bare token", func(c *stipulatorv1.GoInvocationConfig) { c.SetGoos("") }},
+		{"tag with comma", "build tag", func(c *stipulatorv1.GoInvocationConfig) { c.SetTags([]string{"a,b"}) }},
+		{"flag-shaped tag", "build tag", func(c *stipulatorv1.GoInvocationConfig) { c.SetTags([]string{"-special"}) }},
+		{"goflags overlay", "unsupported", func(c *stipulatorv1.GoInvocationConfig) { c.SetGoflags("-overlay=/tmp/o.json") }},
+		{"goflags toolexec", "unsupported", func(c *stipulatorv1.GoInvocationConfig) { c.SetGoflags("-toolexec=strace") }},
+		{"goflags exec", "unsupported", func(c *stipulatorv1.GoInvocationConfig) { c.SetGoflags("-exec=/bin/true") }},
+		{"goflags ldflags", "unsupported", func(c *stipulatorv1.GoInvocationConfig) { c.SetGoflags("-ldflags=-X main.v=1") }},
+		{"goflags run selection", "shapes test selection", func(c *stipulatorv1.GoInvocationConfig) { c.SetGoflags("-run=TestOnlyThis") }},
+		{"goflags skip selection", "shapes test selection", func(c *stipulatorv1.GoInvocationConfig) { c.SetGoflags("-skip=.*") }},
+		{"goflags short selection", "shapes test selection", func(c *stipulatorv1.GoInvocationConfig) { c.SetGoflags("-short") }},
+		{"goflags fuzz selection", "shapes test selection", func(c *stipulatorv1.GoInvocationConfig) { c.SetGoflags("-fuzz=FuzzX") }},
+		{"goflags owned race", "owned by", func(c *stipulatorv1.GoInvocationConfig) { c.SetGoflags("-race") }},
+		{"goflags owned tags", "owned by", func(c *stipulatorv1.GoInvocationConfig) { c.SetGoflags("-tags=x") }},
+		{"goflags owned timeout", "owned by", func(c *stipulatorv1.GoInvocationConfig) { c.SetGoflags("-timeout=1h") }},
+		{"pgo escape", "pgo", func(c *stipulatorv1.GoInvocationConfig) { c.SetPgo("../prof.pgo") }},
+		{"pgo empty", "pgo", func(c *stipulatorv1.GoInvocationConfig) { c.SetPgo("") }},
+		{"zero count", "positive", func(c *stipulatorv1.GoInvocationConfig) { c.SetCount(0) }},
+		{"negative count", "positive", func(c *stipulatorv1.GoInvocationConfig) { c.SetCount(-1) }},
+		{"bypass with count", "incompatible", func(c *stipulatorv1.GoInvocationConfig) {
+			c.SetCacheMode(stipulatorv1.GoCacheMode_GO_CACHE_MODE_BYPASS)
+			c.SetCount(2)
+		}},
+		{"args NUL", "NUL", func(c *stipulatorv1.GoInvocationConfig) { c.SetArgs([]string{"a\x00b"}) }},
+	}
+	for _, c := range reject {
+		cfg := base()
+		c.mutate(cfg)
+		err := (Policy{}).ValidateInvocation("race", cfg)
+		if err == nil {
+			t.Errorf("%s: accepted", c.name)
+			continue
+		}
+		if !strings.Contains(err.Error(), c.wantErr) {
+			t.Errorf("%s: error = %q, want it to name %q", c.name, err, c.wantErr)
+		}
+	}
+}

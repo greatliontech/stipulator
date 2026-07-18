@@ -2,5 +2,5 @@
 # proto-message: stipulator.v1.Gap
 
 requirement_id: "REQ-policy-conservation"
-reason: "no policy executor exists; omitted or multiply selected obligations are not yet enumerated or reported"
-lands { manual { condition: "the policy executor reports every omitted and multiply selected obligation across workspaces and build selections" } }
+reason: "obligation discovery and partition reporting exist with property coverage, but no policy execution consumes them yet, so one execution preserving every failure class remains unproven"
+lands { manual { condition: "one execution of the accepted policy emits the conservation report and preserves every backend failure class" } }

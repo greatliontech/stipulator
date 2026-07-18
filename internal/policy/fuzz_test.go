@@ -17,6 +17,13 @@ func FuzzPolicyTextprotoParse(f *testing.F) {
 		"",
 		"invocations { name: \"a\" timeout { seconds: 1 } go { packages: \"./...\" race: true } }",
 		"invocations { name: \"a\" timeout { seconds: 1 } go {} }\ninvocations { name: \"b\" timeout { seconds: 900 nanos: 1 } go { module_root: \"m\" } }",
+		// The full Go normalization surface, well-formed.
+		"invocations { name: \"a\" timeout { seconds: 1 } go { module_root: \"m\" packages: \"./...\" race: true toolchain: \"go1.26.4\" environment: \"GOPROXY=off\" env_deny: \"HTTPS_PROXY\" goos: \"linux\" goarch: \"arm64\" cgo_enabled: true tags: \"special\" goflags: \"-trimpath\" workspace_mode: GO_WORKSPACE_MODE_OFF module_mode: GO_MODULE_MODE_VENDOR pgo: \"p.pgo\" count: 2 cache_mode: GO_CACHE_MODE_ENABLED args: \"-quick\" } }",
+		// Malformed normalization-surface records: unknown enum value,
+		// duplicate scalar, squatted reserved number.
+		"invocations { name: \"a\" timeout { seconds: 1 } go { workspace_mode: GO_WORKSPACE_MODE_BOGUS } }",
+		"invocations { name: \"a\" timeout { seconds: 1 } go { toolchain: \"x\" toolchain: \"y\" } }",
+		"invocations { name: \"a\" timeout { seconds: 1 } go { 18: \"squatted\" } }",
 		// Malformed: syntax, unknown field, duplicate scalar, duplicate
 		// oneof case, out of order, missing envelope facts.
 		"invocations { name:",
@@ -92,6 +99,9 @@ func FuzzPolicyProtoJSON(f *testing.F) {
 	for _, seed := range []string{
 		"{}",
 		`{"invocations":[{"name":"a","timeout":"900s","go":{"packages":["./..."],"race":true}}]}`,
+		`{"invocations":[{"name":"a","timeout":"900s","go":{"toolchain":"go1.26.4","environment":["GOPROXY=off"],"envDeny":["HTTPS_PROXY"],"goos":"linux","goarch":"arm64","cgoEnabled":true,"tags":["special"],"goflags":"-trimpath","workspaceMode":"GO_WORKSPACE_MODE_OFF","moduleMode":"GO_MODULE_MODE_VENDOR","pgo":"p.pgo","count":2,"cacheMode":"GO_CACHE_MODE_BYPASS","args":["-quick"]}}]}`,
+		`{"invocations":[{"name":"a","timeout":"900s","go":{"workspaceMode":"BOGUS"}}]}`,
+		`{"invocations":[{"name":"a","timeout":"900s","go":{"count":null}}]}`,
 		`{"bogus":1}`,
 		`{"invocations":[{"name":"a","name":"b"}]}`,
 		`{"invocations":null}`,

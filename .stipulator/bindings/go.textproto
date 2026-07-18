@@ -117,3 +117,48 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "c872efa36bc7a0ec5d7dfbb066874cf54e452850b01db057b8414c93406dec4d"
 }
+
+bindings {
+  requirement_id: "REQ-go-owned-processes"
+  content_hash: "3e86b716107f82c0c73b08ef873d237c9c185450c9c6847a7add1cda275412f5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoNormalizeRejectsAmbientControls"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5100bddae2e78521b61d1649a91119010307a97d5a75463b9a1ba989ffa19735"
+}
+
+bindings {
+  requirement_id: "REQ-go-owned-processes"
+  content_hash: "3e86b716107f82c0c73b08ef873d237c9c185450c9c6847a7add1cda275412f5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoDiscoveryCancellationTerminatesDescendants"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "05f806f1cc0ef552ec7c4347d6459e4295d97fda6a796896002939a0853c9325"
+}
+
+bindings {
+  requirement_id: "REQ-go-workspace"
+  content_hash: "5c240637a17d955e66a44aba3fc93545c94bcc9226a66a4464b33818448b85eb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoNormalizeWorkspaceModeRequiresDeclaration"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "810392fb326e7db381ceb94f23e96cf80ffa26f0ee1fedd19af44b02ef91a47f"
+}
+
+bindings {
+  requirement_id: "REQ-go-workspace"
+  content_hash: "5c240637a17d955e66a44aba3fc93545c94bcc9226a66a4464b33818448b85eb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoDiscoveryWorkspaceMemberScope"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5ce6722f7b4114c0488e4d8ba73239fc0a2fbd02f314e6b9eb36bcf969b69e7b"
+}
+
+bindings {
+  requirement_id: "REQ-go-workspace"
+  content_hash: "5c240637a17d955e66a44aba3fc93545c94bcc9226a66a4464b33818448b85eb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoConservationReportWorkspace"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b6c3484813e372ec83b7b2fe9bf039806799d0bdea7472ea1a7392de0d762ef5"
+}

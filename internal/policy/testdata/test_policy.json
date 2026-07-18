@@ -2,10 +2,32 @@
   "invocations": [
     {
       "go": {
+        "args": [
+          "-quick"
+        ],
+        "cacheMode": "GO_CACHE_MODE_BYPASS",
+        "cgoEnabled": true,
+        "count": 1,
+        "envDeny": [
+          "HTTPS_PROXY"
+        ],
+        "environment": [
+          "GOPROXY=off"
+        ],
+        "goarch": "arm64",
+        "goflags": "-trimpath",
+        "goos": "linux",
+        "moduleMode": "GO_MODULE_MODE_VENDOR",
         "moduleRoot": "bindingsurface",
         "packages": [
           "./..."
-        ]
+        ],
+        "pgo": "profiles/default.pgo",
+        "tags": [
+          "integration"
+        ],
+        "toolchain": "go1.26.4",
+        "workspaceMode": "GO_WORKSPACE_MODE_OFF"
       },
       "name": "member-health",
       "timeout": "600s"

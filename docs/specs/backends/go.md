@@ -57,7 +57,13 @@ failures, `init` failures, `TestMain` failures, executable examples,
 committed fuzz-seed replay (REQ-go-fuzz-exploration), packages without
 named tests, and every workspace member (REQ-go-workspace) keep their
 failure and selection behavior under the policy exactly as under a direct
-`go test` of the same scope.
+`go test` of the same scope. A Go obligation crosses the wire as a
+kind-prefixed identity — `package:`, `test:`, `example:`, `fuzz:`, or
+`seed:` followed by the package path and, where applicable, the symbol or
+seed file — and the conservation universe is the workspace's default build
+selection as the executing host resolves it at load: obligations reachable only through an invocation's explicit tag
+widening are a reviewed coverage addition, selected without an omission
+finding elsewhere.
 
 **REQ-go-owned-processes** (behavior): Every child process spawned for Go
 policy execution or package discovery MUST run inside an owned, cancellable

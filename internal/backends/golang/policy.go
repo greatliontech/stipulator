@@ -26,13 +26,247 @@ type Policy struct{}
 
 // ValidateInvocation implements the core policy dispatch seam for the Go
 // payload: it claims exactly its own typed configuration and enforces the
-// payload semantics only this backend understands.
+// payload semantics only this backend understands. Validation here is
+// static — record-only, no toolchain work — so a refused record costs
+// nothing; environment-effective checks (ambient GOFLAGS, the external
+// package driver) live in NormalizeInvocation, which is where the
+// environment first enters.
 func (Policy) ValidateInvocation(invocation string, payload proto.Message) error {
 	cfg, ok := payload.(*stipulatorv1.GoInvocationConfig)
 	if !ok {
 		return fmt.Errorf("the Go backend claims only GoInvocationConfig payloads, got %T", payload)
 	}
-	return validateModuleRoot(cfg.GetModuleRoot())
+	return validateConfig(cfg)
+}
+
+// validateConfig statically validates every typed field of one Go payload.
+func validateConfig(cfg *stipulatorv1.GoInvocationConfig) error {
+	if err := validateModuleRoot(cfg.GetModuleRoot()); err != nil {
+		return err
+	}
+	for _, p := range cfg.GetPackages() {
+		if err := validatePackagePattern(p); err != nil {
+			return err
+		}
+	}
+	if cfg.HasToolchain() {
+		if err := validateBareToken("toolchain", cfg.GetToolchain()); err != nil {
+			return err
+		}
+	}
+	if err := validateEnvOverrides(cfg.GetEnvironment()); err != nil {
+		return err
+	}
+	if err := validateEnvDeny(cfg.GetEnvDeny()); err != nil {
+		return err
+	}
+	if cfg.HasGoos() {
+		if err := validateBareToken("goos", cfg.GetGoos()); err != nil {
+			return err
+		}
+	}
+	if cfg.HasGoarch() {
+		if err := validateBareToken("goarch", cfg.GetGoarch()); err != nil {
+			return err
+		}
+	}
+	for _, tag := range cfg.GetTags() {
+		if err := validateBuildTag(tag); err != nil {
+			return err
+		}
+	}
+	if cfg.HasGoflags() {
+		if err := validateGoflags(cfg.GetGoflags()); err != nil {
+			return err
+		}
+	}
+	switch cfg.GetWorkspaceMode() {
+	case stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_UNSPECIFIED,
+		stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_WORKSPACE,
+		stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_OFF:
+	default:
+		return fmt.Errorf("workspace_mode %d is not a recognized mode", cfg.GetWorkspaceMode())
+	}
+	switch cfg.GetModuleMode() {
+	case stipulatorv1.GoModuleMode_GO_MODULE_MODE_UNSPECIFIED,
+		stipulatorv1.GoModuleMode_GO_MODULE_MODE_READONLY,
+		stipulatorv1.GoModuleMode_GO_MODULE_MODE_VENDOR,
+		stipulatorv1.GoModuleMode_GO_MODULE_MODE_MOD:
+	default:
+		return fmt.Errorf("module_mode %d is not a recognized mode", cfg.GetModuleMode())
+	}
+	if cfg.HasPgo() {
+		if err := validatePGO(cfg.GetPgo()); err != nil {
+			return err
+		}
+	}
+	if cfg.HasCount() && cfg.GetCount() <= 0 {
+		return fmt.Errorf("count %d must be positive", cfg.GetCount())
+	}
+	switch cfg.GetCacheMode() {
+	case stipulatorv1.GoCacheMode_GO_CACHE_MODE_UNSPECIFIED,
+		stipulatorv1.GoCacheMode_GO_CACHE_MODE_ENABLED:
+	case stipulatorv1.GoCacheMode_GO_CACHE_MODE_BYPASS:
+		if cfg.HasCount() && cfg.GetCount() != 1 {
+			return fmt.Errorf("cache_mode BYPASS is incompatible with count %d; bypass means count 1 semantics", cfg.GetCount())
+		}
+	default:
+		return fmt.Errorf("cache_mode %d is not a recognized mode", cfg.GetCacheMode())
+	}
+	for _, a := range cfg.GetArgs() {
+		if strings.ContainsRune(a, 0) {
+			return fmt.Errorf("args entry %q contains NUL", a)
+		}
+	}
+	return nil
+}
+
+// validatePackagePattern refuses a pattern that could escape the tree or
+// inject flags into the spawned go command. Import-path patterns and
+// tree-relative "./..." forms pass; absolute paths, parent escapes,
+// host-specific runes, and flag-shaped entries are refused.
+func validatePackagePattern(p string) error {
+	switch {
+	case p == "":
+		return fmt.Errorf("packages entry is empty")
+	case strings.ContainsRune(p, 0):
+		return fmt.Errorf("packages entry %q contains NUL", p)
+	case strings.HasPrefix(p, "-"):
+		return fmt.Errorf("packages entry %q is flag-shaped; patterns must not begin with '-'", p)
+	case !hostPortableTreePath(p):
+		return fmt.Errorf("packages entry %q carries host-specific path runes", p)
+	case strings.HasPrefix(p, "/"):
+		return fmt.Errorf("packages entry %q is absolute; patterns are module-relative or import paths", p)
+	}
+	if clean := path.Clean(p); clean == ".." || strings.HasPrefix(clean, "../") {
+		return fmt.Errorf("packages entry %q escapes the verification tree", p)
+	}
+	return nil
+}
+
+// pinnedEnvKeys are the environment variables the backend itself owns —
+// each is pinned from exactly one typed source (a config field or the
+// workspace declaration), so carrying it through the generic environment
+// fields would store one fact in two places.
+var pinnedEnvKeys = map[string]bool{
+	"GOWORK": true, "GOPACKAGESDRIVER": true, "GOOS": true, "GOARCH": true,
+	"CGO_ENABLED": true, "GOFLAGS": true, "GOTOOLCHAIN": true,
+}
+
+func validateEnvOverrides(entries []string) error {
+	seen := map[string]bool{}
+	for _, e := range entries {
+		if strings.ContainsRune(e, 0) {
+			return fmt.Errorf("environment entry %q contains NUL", e)
+		}
+		eq := strings.IndexByte(e, '=')
+		if eq <= 0 {
+			return fmt.Errorf("environment entry %q is not KEY=VALUE with a non-empty key", e)
+		}
+		key := e[:eq]
+		if pinnedEnvKeys[key] {
+			return fmt.Errorf("environment entry %q sets backend-pinned key %s; use its typed field", e, key)
+		}
+		if seen[key] {
+			return fmt.Errorf("environment sets duplicate key %q", key)
+		}
+		seen[key] = true
+	}
+	return nil
+}
+
+func validateEnvDeny(names []string) error {
+	seen := map[string]bool{}
+	for _, n := range names {
+		if n == "" || strings.ContainsAny(n, "=\x00") {
+			return fmt.Errorf("env_deny entry %q is not a bare variable name", n)
+		}
+		if pinnedEnvKeys[n] {
+			return fmt.Errorf("env_deny entry %q names a backend-pinned key; use its typed field", n)
+		}
+		if seen[n] {
+			return fmt.Errorf("env_deny names duplicate key %q", n)
+		}
+		seen[n] = true
+	}
+	return nil
+}
+
+// validateBareToken accepts a single shell-safe token: non-empty, no
+// whitespace, no NUL, no '=' (which would smuggle an environment entry).
+func validateBareToken(field, v string) error {
+	if v == "" || strings.ContainsAny(v, " \t\n\x00=") {
+		return fmt.Errorf("%s %q is not a bare token", field, v)
+	}
+	return nil
+}
+
+func validateBuildTag(tag string) error {
+	if tag == "" || strings.HasPrefix(tag, "-") || strings.ContainsAny(tag, ", \t\n\x00") {
+		return fmt.Errorf("tags entry %q is not a valid build tag", tag)
+	}
+	return nil
+}
+
+// ownedGoflags maps GOFLAGS-carried flags to the typed field that owns
+// them: an ambient or explicit GOFLAGS carrying one would silently reshape
+// the reviewed invocation beside its typed declaration.
+var ownedGoflags = map[string]string{
+	"race": "race", "tags": "tags", "mod": "module_mode", "pgo": "pgo",
+	"count": "count", "timeout": "the envelope timeout",
+}
+
+// unsupportedGoflags are the ambient controls refused outright — the
+// overlay-refusal class gofresh's build-flag validation implements:
+// source and tool substitution the verification model cannot represent.
+var unsupportedGoflags = map[string]string{
+	"overlay":  "freshness analysis hashes disk source",
+	"toolexec": "an ambient tool substitution must never shape verification",
+	"exec":     "an ambient test-binary substitution must never shape verification",
+	"ldflags":  "ambient linker flags change compiled semantics outside the reviewed record",
+	"gcflags":  "ambient compiler flags change compiled semantics outside the reviewed record",
+	"asmflags": "ambient assembler flags change compiled semantics outside the reviewed record",
+}
+
+// selectionGoflags shape which obligations execute; carried ambiently they
+// defeat conservation silently — a run selecting nothing partitions cleanly
+// while executing nothing — so they are refused wherever GOFLAGS carries them.
+var selectionGoflags = map[string]bool{
+	"run": true, "skip": true, "short": true, "failfast": true,
+	"list": true, "bench": true, "benchtime": true, "fuzz": true, "fuzztime": true,
+}
+
+// validateGoflags checks one GOFLAGS value, explicit or effective.
+func validateGoflags(goflags string) error {
+	for _, word := range strings.Fields(goflags) {
+		word = strings.Trim(word, `"'`)
+		name := strings.TrimLeft(word, "-")
+		if i := strings.IndexByte(name, '='); i >= 0 {
+			name = name[:i]
+		}
+		if reason, ok := unsupportedGoflags[name]; ok {
+			return fmt.Errorf("GOFLAGS carries -%s, which is unsupported: %s", name, reason)
+		}
+		if selectionGoflags[name] {
+			return fmt.Errorf("GOFLAGS carries -%s, which shapes test selection outside the reviewed record", name)
+		}
+		if owner, ok := ownedGoflags[name]; ok {
+			return fmt.Errorf("GOFLAGS carries -%s, which is owned by %s; declare it there", name, owner)
+		}
+	}
+	return nil
+}
+
+// validatePGO accepts the toolchain's keyword selections or a committed
+// tree-relative profile path.
+func validatePGO(v string) error {
+	if v == "auto" || v == "off" {
+		return nil
+	}
+	if err := validateModuleRoot(v); err != nil || v == "" {
+		return fmt.Errorf("pgo %q is not \"auto\", \"off\", or a tree-relative slash path to a committed profile", v)
+	}
+	return nil
 }
 
 // validateModuleRoot enforces the payload's hermeticity: a module root is

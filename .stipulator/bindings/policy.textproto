@@ -198,3 +198,84 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "e20d0765ac766726d9165e41052878c026acbb3e8880eb8f5147c58aaa589c67"
 }
+
+bindings {
+  requirement_id: "REQ-policy-explicit"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoNormalizeAbsentFieldsPinEffectiveEnvironment"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "d6682cced72a7b8ca43a8f1d0a4f73e670ecb30447cb53634df3a478445d2235"
+}
+
+bindings {
+  requirement_id: "REQ-policy-explicit"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoNormalizeExplicitFieldsOverrideEnvironment"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5ae5145e91c6c29a97fa5deecd4435e4862a20c41c53491696b2aae9b38941ef"
+}
+
+bindings {
+  requirement_id: "REQ-policy-explicit"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoNormalizeEnvironmentDenialAndOverride"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "fc1057cdd905093d95df5b59dc69d31a11f8f5ef00143a9c81d493810737dce9"
+}
+
+bindings {
+  requirement_id: "REQ-policy-explicit"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoPolicyConfigStaticValidation"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c8c377e7ba677b3d769e0104f104d6936b5c753547e02f3e1ad41175936d2f11"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation"
+  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoDiscoveryCancellationTerminatesDescendants"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "05f806f1cc0ef552ec7c4347d6459e4295d97fda6a796896002939a0853c9325"
+}
+
+bindings {
+  requirement_id: "REQ-policy-conservation"
+  content_hash: "9e1e49c0acd384835c8e653296abeca90dd61eb35da4ca979af1ab0ba99185bb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoPartitionConservationProperty"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "eaa31cd006455f00ee33513bbf911bbbba758281219e6033dcc2e0d903813d64"
+}
+
+bindings {
+  requirement_id: "REQ-policy-conservation"
+  content_hash: "9e1e49c0acd384835c8e653296abeca90dd61eb35da4ca979af1ab0ba99185bb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoConservationReportWorkspace"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b6c3484813e372ec83b7b2fe9bf039806799d0bdea7472ea1a7392de0d762ef5"
+}
+
+bindings {
+  requirement_id: "REQ-policy-conservation"
+  content_hash: "9e1e49c0acd384835c8e653296abeca90dd61eb35da4ca979af1ab0ba99185bb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoDiscoveryEnumeratesCompleteObligationSet"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "212a56778097acd9d6988619ec77e844030b50a8b83ecce97652e09a50c63785"
+}
+
+bindings {
+  requirement_id: "REQ-policy-conservation"
+  content_hash: "9e1e49c0acd384835c8e653296abeca90dd61eb35da4ca979af1ab0ba99185bb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoDiscoveryBuildSelectionChangesObligations"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c59ac06aca1381bf255182544e3e518a5851884e217bbfe801a470aafd78b8e3"
+}
