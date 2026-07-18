@@ -66,6 +66,19 @@ scheme, a shape-hash definition, and provers.
 **coverage** (term): the per-requirement evaluation of held evidence against
 the policy for its clause kind and normative keyword.
 
+**test policy** (term): the committed, reviewable declaration of the
+complete set of test commands whose single execution defines suite health
+for a tree and produces the run's witness outcomes.
+
+**policy invocation** (term): one declared test command within a test
+policy — a backend, a package scope, and typed backend configuration — the
+unit of execution, health disposition, and outcome attribution.
+
+**suite health** (term): the aggregate of per-invocation and per-package
+terminal dispositions from one execution of the accepted test policy;
+healthy exactly when every policy invocation completes with every selected
+package passing.
+
 **gap** (term): a committed record declaring a requirement knowingly
 uncovered, stale, or broken, carrying a reason and a landing condition.
 
@@ -99,6 +112,17 @@ from the corpus, bindings, and code is computed on demand, never stored.
 **REQ-core-proto-io** (wire): Every machine-consumed input and output of
 stipulator MUST be expressible as protobuf messages; human-facing renderings
 are views of those messages.
+
+**REQ-core-one-execution** (invariant): A verification run MUST NOT execute
+test work outside the accepted test policy: suite health and executed witness
+evidence both derive from one execution of that policy, and no operation runs
+an independent suite beside the policy or discards a policy invocation's
+outcomes to re-derive them. Freshness serving stands in for individual test
+executions only where no suite-health disposition is demanded of their
+invocation; an invocation whose health the run judges executes whole, because
+health is a property of the entire declared invocation. A witness-only
+selective execution narrower than a policy invocation remains legitimate
+outside suite judgment: it grants witness evidence and never any health.
 
 **REQ-core-vcs-free** (structural): Compilation, verification, coverage, and
 diff MUST NOT depend on a version-control system; revisions enter only as

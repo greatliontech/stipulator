@@ -93,6 +93,31 @@ exactly like new ones, which is what makes the migration window auditable.
 **REQ-gate-no-undeclared** (behavior): The gate MUST fail exactly when some
 requirement is `uncovered`, `stale`, or `broken` and no gap record names it.
 
+## The unified check
+
+One command answers "does this tree pass": it compiles the corpus,
+executes the accepted test policy once, verifies bindings against that
+execution, evaluates coverage and gaps, and renders one verdict. Suite
+health and witness evidence come from the same execution per
+REQ-core-one-execution, so a passing suite is never discarded and
+re-derived, and a witness failure occurs inside the same run whose health
+the gate judged — not in a second run with different conditions.
+
+**REQ-check-verdict** (behavior): The unified check MUST derive its one
+verdict from a single evaluation pass — compilation, one execution of the
+accepted test policy, binding verification, coverage, gap evaluation, and
+prune residue — failing exactly when compilation fails, verification reports
+problems, suite health is unhealthy, REQ-gate-no-undeclared fails, or prune
+residue remains, and never composing the answer from subprocess invocations
+of the individual operations.
+
+**REQ-check-diagnostics** (behavior): A failing check MUST surface the
+retained output of every failing policy invocation and every failed or
+degraded witness, naming a degraded execution distinctly from an
+assertion failure — a red witness whose output is discarded leaves an
+environment-induced failure and a real regression indistinguishable, so
+retained failure output is part of the verdict, not a courtesy.
+
 **REQ-gate-change-signature** (behavior): The verification report SHOULD
 classify the change signature per requirement, with the record pins as
 the baseline — no verification outcome is ever persisted, so "changed"

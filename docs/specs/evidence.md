@@ -157,6 +157,13 @@ fields, another version, or any structurally malformed record make the whole doc
 an empty cache, never migrated or partially trusted, because cache loss costs only
 execution.
 
+**REQ-evidence-freshness-no-health** (behavior): A freshness-served test
+outcome MUST NOT contribute to package, command, or suite health; serving
+grants witness evidence for the served test alone, and every health
+disposition comes from current execution of its producing invocation —
+proven equivalence covers one test's outcome, never whether a whole
+command would build, start, and exit cleanly today.
+
 **REQ-evidence-freshness-degrade** (behavior): A fault anywhere on the
 freshness path MUST degrade to the full witnessing run: the cache saves
 work, it never blocks or weakens witnessing.
@@ -166,6 +173,54 @@ text and appear distinctly in every coverage output; it is the weakest
 evidence and is never silently aggregated into stronger kinds. A
 requirement cannot carry both a gap and an attestation — deferred and
 judged-satisfied contradict, and verification fails on the pair.
+
+## Test policy
+
+The accepted test policy is contract-tier configuration exactly as the
+manifest is: a committed record of which test commands constitute a
+complete suite for this tree, reviewed like spec text. It exists because
+neither extreme is sound. An imposed universal invocation misstates
+corpora whose accepted rigor differs per package — racing selected
+packages while an analysis-heavy package runs uninstrumented is a
+legitimate accepted policy, not a weakened one. Running only the named
+bound tests silently drops the rest of a real suite: build failures,
+initialization failures, executable examples, committed seed replay,
+packages with no named test, and workspace members with no binding at
+all are part of what a suite checks. The policy names the whole suite
+explicitly so that one execution serves both consumers — suite health
+for the change gate and witness evidence for coverage — instead of a
+health suite whose outcomes are discarded beside an independent witness
+run duplicating its work.
+
+**REQ-policy-explicit** (behavior): Witness execution MUST consume the
+corpus's accepted test policy — a committed record declaring every policy
+invocation with its backend, package scope, typed configuration, and an
+explicit timeout, so a deliberately long-running invocation is admitted by
+review rather than aborted by an inherited ceiling — never an assumed
+universal invocation.
+
+**REQ-policy-backend-neutral** (structural, refines
+REQ-backend-core-neutral): The core policy model MUST treat each policy
+invocation's backend configuration as an opaque typed payload dispatched
+to the named backend; orchestration observes only canonical invocation
+identity and health facts.
+
+**REQ-policy-conservation** (behavior): One execution of the accepted test
+policy MUST preserve every failure class and selection obligation its
+backends define for a complete suite, reporting every obligation the
+policy omits or selects more than once — an omission is a visible fact,
+never silence.
+
+**REQ-policy-attribution** (invariant): Every test outcome and every
+runtime observation MUST be bound to the exact policy invocation and
+operating-system process that produced it; outcomes or observations from
+distinct processes are never merged into one evidentiary record.
+
+**REQ-policy-cancellation** (behavior): A cancelled policy execution MUST
+discard its partial results — no outcome, observation, or health
+disposition from a cancelled run is persisted, served, or reported as
+terminal — with cancellation propagated to every child process of the
+execution, package discovery included.
 
 ## Coverage
 

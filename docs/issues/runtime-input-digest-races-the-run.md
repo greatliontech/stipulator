@@ -1,7 +1,8 @@
 # The runtime-input digest hashes fixture content after the run
 
-Lands: when gofresh grows pre-run manifest evaluation, or when witness
-records are next redesigned.
+Lands: when gofresh can atomically bind observed runtime-input values to
+the reads that produced the outcome (atomic value observation), or when
+witness records are next redesigned.
 
 ## Context
 

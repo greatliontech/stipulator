@@ -1,0 +1,6 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.Gap
+
+requirement_id: "REQ-policy-cancellation"
+reason: "policy execution does not exist; current witness runs cancel but package discovery descendants are not owned"
+lands { manual { condition: "policy execution runs under caller cancellation through owned process boundaries, discarding partial reports" } }

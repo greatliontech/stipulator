@@ -46,8 +46,25 @@ its own body directly drives `pgregory.net/rapid` (a qualified or aliased
 generator construction alone does not classify), and `example` otherwise;
 the classification is resolved from the code, never declared.
 
-**REQ-go-race** (behavior): Witness runs MUST enable the race detector, so
-every witness is race-attributed.
+**REQ-go-race** (behavior): A Go witness MUST derive only from a
+race-enabled policy invocation, so every witness is race-attributed; an
+accepted invocation running without the race detector contributes suite
+health exactly like any other invocation and grants no witness evidence.
+
+**REQ-go-policy-complete** (behavior): A Go policy execution MUST conserve
+the complete suite semantics of its invocations: package build and exit
+failures, `init` failures, `TestMain` failures, executable examples,
+committed fuzz-seed replay (REQ-go-fuzz-exploration), packages without
+named tests, and every workspace member (REQ-go-workspace) keep their
+failure and selection behavior under the policy exactly as under a direct
+`go test` of the same scope.
+
+**REQ-go-owned-processes** (behavior): Every child process spawned for Go
+policy execution or package discovery MUST run inside an owned, cancellable
+process boundary whose entire descendant tree terminates with the
+operation's cancellation — package loading owns its launcher's descendants
+exactly as test invocations own theirs, and an ambient external package
+driver never shapes verification.
 
 **REQ-go-fuzz-exploration** (behavior): A fuzzing campaign MUST NOT feed the
 gate directly — campaigns are time-bounded and nondeterministic; their

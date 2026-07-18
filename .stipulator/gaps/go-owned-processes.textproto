@@ -1,0 +1,6 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.Gap
+
+requirement_id: "REQ-go-owned-processes"
+reason: "package loading owns an opaque launcher and non-Unix tree termination cannot prove descendant cleanup; resolution comes with the owned process boundaries"
+lands { manual { condition: "Go package loading and policy execution run behind owned, cancellable process boundaries with descendant termination proven on every supported platform" } }

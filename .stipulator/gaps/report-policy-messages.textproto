@@ -1,0 +1,6 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.Gap
+
+requirement_id: "REQ-report-policy-messages"
+reason: "the protobuf policy and execution-report messages are not yet defined"
+lands { manual { condition: "the protobuf policy and report messages land with reserved wire names, canonical ordering, and round-trip fixtures" } }

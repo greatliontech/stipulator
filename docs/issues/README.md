@@ -19,8 +19,9 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   directly.*
 - **[runtime-input-digest-races-the-run](runtime-input-digest-races-the-run.md)** — the testlog
   manifest is hashed after the run, so a fixture edited while its readers execute can pin
-  pre-edit outcomes under a post-edit digest. *Lands: when gofresh grows pre-run manifest
-  evaluation, or when witness records are next redesigned.*
+  pre-edit outcomes under a post-edit digest. *Lands: when gofresh can atomically bind
+  observed runtime-input values to the reads that produced the outcome (atomic value
+  observation), or when witness records are next redesigned.*
 - **[slice-frontier-uncertainty](slice-frontier-uncertainty.md)** — typed frontiers miss
   reflection, build tags, and init effects; pew's closure model (sound floor, provably-safe
   refinement, resolve/widen/unverifiable dispositions) is the reference shape. *Lands: when a
@@ -28,18 +29,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[prover-trust-tiers](prover-trust-tiers.md)** — the proof rung assumes near-sound provers;
   a heuristic analyzer must not inherit it. *Lands: when a heuristic analyzer prover is
   proposed.*
-- **[witness-e2e-reds-only-under-gate](witness-e2e-reds-only-under-gate.md)** — the freshness
-  witness fails only inside a completed gate run; instrumentation to name the failure is in
-  place. *Lands: when witness execution can apply the corpus test policy without an independent
-  universal race run.*
-- **[check-discards-race-suite](check-discards-race-suite.md)** — `task check` completes the full
-  race suite, then the gate starts an independent freshness analysis because it cannot consume
-  those outcomes; any stale or unproven tests run again afterward. *Lands: when the check/gate
-  execution contract next changes.*
-- **[witness-execution-ignores-test-policy](witness-execution-ignores-test-policy.md)** — witness
-  verification imposes `-race ./...` even when the corpus's accepted policy races only selected
-  packages. *Lands: when the witness/check execution contract next changes, or before gating a
-  corpus whose accepted test policy excludes a universal race run.*
 - **[witness-subset-adequacy](witness-subset-adequacy.md)** — a binding surface's union mutation
   oracle cannot say whether each requirement's own witnesses have teeth; an opt-in
   per-requirement probe is measurable without attribution claims. *Lands: when a requirement's
@@ -69,10 +58,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   tool takes one `requirement` where the CLI's `--req` is repeatable; agents declaring
   design-stage gaps pay one round-trip per requirement. *Lands: when the MCP `gap` input schema
   or gap operation semantics next change.*
-- **[mcp-long-running-tools-time-out-opaquely](mcp-long-running-tools-time-out-opaquely.md)** —
-  MCP `gate` and `context` exceed the harness deadline without progress or actionable failure
-  while the equivalent CLI operation remains active and reports witness progress. *Lands: when
-  MCP operations gain progress reporting or resumable execution.*
 - **[go-module-rename-lacks-symbol-migration](go-module-rename-lacks-symbol-migration.md)** — a
   Go module-path change invalidates large stored-symbol sets, with no validated bulk retarget
   command or actionable remediation. *Lands: before a corpus with stored Go symbol references
@@ -82,3 +67,8 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   cannot yet prove descendant cleanup on platform-facility failure. *Lands: when Go package loading
   execution is next redesigned, or before descendant-cancellation guarantees are claimed for
   non-Unix platforms.*
+- **[witness-e2e-reds-only-under-gate](witness-e2e-reds-only-under-gate.md)** — a freshness
+  witness runs red only inside completed whole-corpus gate runs and never in isolation; standing
+  hypothesis is environmental degradation under whole-suite load, with the isolated diagnostic and
+  disposition rule recorded. *Lands: when witness execution can apply the accepted test policy and
+  the isolated diagnostic has been executed and dispositioned.*

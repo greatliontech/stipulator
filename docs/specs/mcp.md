@@ -21,8 +21,9 @@ views are the one surface, and a resource duplicate would be
 duplication without a distinct consumer.
 
 **REQ-mcp-tools** (wire): The server MUST expose tools `compile`, `verify`,
-`gate`, `bind`, `unbind`, `gap`, `pin`, `prune`, `read_spec`, `context`,
-`partitions`, `dispose`, `targets`, and `attest_requirement`, mirroring the
+`gate`, `check`, `bind`, `unbind`, `gap`, `pin`, `prune`, `read_spec`,
+`context`, `partitions`, `dispose`, `targets`, and `attest_requirement`,
+mirroring the
 operation semantics exactly, with report-shaped results rendered from the
 report messages as JSON. The `targets` tool accepts arrays of exact requirement
 identifiers, implementation backends, and implementation symbols; it has no
@@ -40,7 +41,23 @@ result. A scope narrows the WHOLE report, not only its rows: the gap and
 violation lists a view carries are filtered to the same requirements, so
 filtered triage is never polluted by out-of-scope entries. The gate
 verdict a view reports stays the GLOBAL one — a scoped slice with no
-in-scope violation says nothing about whether the tree passes.
+in-scope violation says nothing about whether the tree passes. The check
+tool answers as its one structured result message and carries no views or
+scopes of its own.
+
+**REQ-mcp-progress** (behavior): A long-running tool call MUST report
+progress as bounded notifications — the current phase, and per-invocation
+progress with elapsed time and counts — never inside result payloads, with
+a call that ends at a deadline identifying the phase in which the deadline
+expired and the terminal cause, so a client can distinguish long-running
+work, deadline expiry, cancellation, test failure, and server failure
+without guessing. An operation that exceeds its client's deadline while
+reporting nothing is unusable through the agent surface even when the
+identical CLI operation is healthy.
+
+**REQ-mcp-cancellation** (behavior): A client cancellation MUST cancel the
+underlying operation end to end, reaching package discovery and every
+child process per REQ-policy-cancellation.
 
 **REQ-mcp-writes-confined** (behavior): The server MUST NOT write outside
 the record stores under `.stipulator/` — it never edits spec documents or
@@ -50,3 +67,16 @@ source code, so wiring it into any harness is low-risk by construction.
 coverage reports MUST be expressible as the protobuf report messages,
 carrying per-binding results, per-requirement buckets with reasons, gap
 states, and the gate verdict.
+
+**REQ-report-policy-messages** (wire, refines REQ-core-proto-io): The
+accepted test policy and its execution report MUST be expressible as
+protobuf messages — backend-neutral invocation envelopes carrying typed
+backend payloads, canonical invocation identity, per-invocation and
+per-package health dispositions, completeness omissions, progress events,
+and failure diagnostics.
+
+**REQ-report-check-result** (wire, refines REQ-report-messages): The
+unified check operation MUST return one protobuf check result carrying
+the compile outcome, suite health, per-binding verification, coverage
+buckets, gap evaluation, failed-witness diagnostics, and prune residue,
+with every human rendering a projection of that message.

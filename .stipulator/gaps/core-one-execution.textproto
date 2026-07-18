@@ -1,0 +1,6 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.Gap
+
+requirement_id: "REQ-core-one-execution"
+reason: "unified execution not yet built; check and gate still run witness analysis beside an independent race suite"
+lands { manual { condition: "the unified check derives suite health and witness evidence from one execution of the accepted test policy" } }
