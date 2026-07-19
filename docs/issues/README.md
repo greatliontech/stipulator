@@ -53,6 +53,19 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   tool takes one `requirement` where the CLI's `--req` is repeatable; agents declaring
   design-stage gaps pay one round-trip per requirement. *Lands: when the MCP `gap` input schema
   or gap operation semantics next change.*
+- **[mcp-check-result-too-large](mcp-check-result-too-large.md)** — MCP `check` can return a
+  full one-line result large enough for clients to truncate before the verdict is visible.
+  *Lands: when the MCP `check` result schema or rendering next changes.*
+- **[targets-empty-surface-lacks-guidance](targets-empty-surface-lacks-guidance.md)** — an empty
+  binding-surface export does not explain that implementation bindings are missing. *Lands: when
+  the binding-surface report diagnostics next change.*
+- **[mcp-targets-artifact-handoff](mcp-targets-artifact-handoff.md)** — Stipulator surfaces feed
+  gomutant, but MCP users must manually copy inline JSON between tool calls. *Lands: when the MCP
+  `targets` export surface next changes, or when MCP clients can pass typed tool-result artifacts
+  directly between tools.*
+- **[mcp-bind-bulk-claims](mcp-bind-bulk-claims.md)** — initial corpus migrations need many
+  validated binding claims, but MCP `bind` writes only one per call. *Lands: when the MCP `bind`
+  input schema or binding record verb next changes.*
 - **[go-module-rename-lacks-symbol-migration](go-module-rename-lacks-symbol-migration.md)** — a
   Go module-path change invalidates large stored-symbol sets, with no validated bulk retarget
   command or actionable remediation. *Lands: before a corpus with stored Go symbol references
