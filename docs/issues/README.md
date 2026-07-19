@@ -98,3 +98,13 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   witnessed regressions still surface through suite health; the blind spot is auditability.
   *Lands: when gap records gain violation-class scoping, or when the gap lifecycle next
   changes.*
+- **[attestation-rejection-lacks-reason](attestation-rejection-lacks-reason.md)** — an
+  attestation on a cell whose policy does not admit it renders as a bare violation with
+  no reason naming the inadmissibility. *Lands: when the attested bucket's rendering next
+  changes, or an agent session next burns a cycle on it.*
+- **[gap-on-exempt-requirement-never-resolves](gap-on-exempt-requirement-never-resolves.md)** —
+  a gap on an exempt (unbound MAY) requirement has no reachable terminal state. *Lands:
+  when gap lifecycle evaluation next changes.*
+- **[mcp-progress-not-observed](mcp-progress-not-observed.md)** — suite-running MCP tools
+  surfaced no progress to a live agent client; every call was backgrounded at the client's
+  timeout. *Lands: when REQ-mcp-progress is next verified against a real client.*
