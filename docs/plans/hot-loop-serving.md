@@ -7,7 +7,7 @@ witness cache moves to the user cache directory, every re-run is explainable, an
 is designed for its actual consumer: a token-conscious agent inside a harness, not a human
 reading a terminal.
 
-- [ ] 1. Triage gate; gofresh bump to current
+- [x] 1. Triage gate; gofresh bump to current
 - [x] 1.5. Full lifecycle and UX analysis, before any code: the tool's life inside the dev loop — clean tree, dirty tree, staged-vs-worktree divergence, mid-rebase, branch switch, stash; when records/witnesses stale against each state and what the user sees; every surface's response-size envelope at corpus scale (gate/verify/check/targets — worst-case output bounded and paginated, never a terabyte-class dump); token economy per MCP response; failure-path UX walked end-to-end. Deliverable: analysis doc reviewed by the user; coding chunks start only on that review.
 - [ ] 2. Serving `check`: serve-fresh default, `--full` for whole-suite execution (execution-contract spec amendment)
 - [ ] 3. Witness cache relocation: user cache directory keyed by corpus root, per-entry files with atomic installs; in-repo `.stipulator/cache` and its gitignore handling removed (clean break); per-entry granularity ends the whole-document drop on one invalid record, and records hold multiple content variants so branch alternation stops thrashing
