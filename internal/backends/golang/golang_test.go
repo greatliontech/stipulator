@@ -233,6 +233,7 @@ func TestSlice(t *testing.T) {
 //
 //gofresh:pure
 func TestWorkspaceMembers(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	stipulate.Covers(t, "REQ-go-static-binding", "REQ-go-witness", "REQ-go-workspace")
 	b, err := New("testdata/workspacemod")
 	if err != nil {

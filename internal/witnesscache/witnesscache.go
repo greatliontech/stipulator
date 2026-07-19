@@ -9,13 +9,14 @@ package witnesscache
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	gofresh "github.com/greatliontech/gofresh"
@@ -25,12 +26,54 @@ import (
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
-// Path is the cache file, tree-relative — under .stipulator/cache, which is
-// gitignored: fingerprints pin the toolchain and platform, so a committed
-// cache would ping-pong across machines.
-const Path = ".stipulator/cache/witnesses.json"
+// The store lives under the user cache directory, keyed by the corpus
+// root's absolute resolved path — never inside the repository:
+// fingerprints pin the toolchain and platform, so a committed cache would
+// ping-pong across machines, and a repo-local one dies with every fresh
+// worktree (REQ-evidence-witness-cache-format).
+const version = 4
 
-const version = 3
+// variantBound caps how many tree-state variants one test identity
+// retains; eviction is by install recency and costs only execution.
+const variantBound = 4
+
+// StoreDir is the witness store for the corpus rooted at dir.
+func StoreDir(dir string) (string, error) {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return "", err
+	}
+	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
+		abs = resolved
+	}
+	root, err := os.UserCacheDir()
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256([]byte(abs))
+	return filepath.Join(root, "stipulator", "witnesses", hex.EncodeToString(sum[:8])), nil
+}
+
+func identityDigest(pkg, test string) string {
+	sum := sha256.Sum256([]byte(pkg + "\x00" + test))
+	return hex.EncodeToString(sum[:8])
+}
+
+func fingerprintDigest(f Fingerprint) string {
+	data, err := json.Marshal(f)
+	if err != nil {
+		return ""
+	}
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:8])
+}
+
+// fileName is the record's store name: identity digest joined with
+// fingerprint digest, so distinct tree states coexist as variants and a
+// name disagreeing with its content is refusable on read.
+func fileName(r Record) string {
+	return identityDigest(r.Package, r.Test) + "-" + fingerprintDigest(r.Fingerprint) + ".json"
+}
 
 type observationProof struct {
 	Strategy   string `json:"strategy"`
@@ -238,37 +281,80 @@ func isJSONNull(value json.RawMessage) bool {
 	return bytes.Equal(bytes.TrimSpace(value), []byte("null"))
 }
 
-type document struct {
-	Version int      `json:"version"`
-	Records []Record `json:"records"`
+// entry is one variant file's content: a versioned single record.
+type entry struct {
+	Version     int                   `json:"version"`
+	Package     string                `json:"package"`
+	Test        string                `json:"test"`
+	Fingerprint Fingerprint           `json:"fingerprint"`
+	Outcomes    map[string]string     `json:"outcomes"`
+	Regs        []verify.Registration `json:"registrations,omitempty"`
 }
 
-// Load reads the cache at path under dir; a missing or unreadable-as-cache
-// file is an empty cache — absence of proof runs tests, so a corrupt cache
-// costs work, never correctness.
+// Load reads every variant record of the corpus rooted at dir. A missing
+// store is an empty cache, and a malformed, wrong-version, or
+// misnamed file is that record alone absent — sibling records stay
+// trusted; refusal is per record and costs only that record's execution
+// (REQ-evidence-witness-cache-format). One identity may return several
+// variants: distinct tree states coexist, and serving picks whichever
+// fingerprint proves equivalence.
 func Load(dir string) []Record {
-	data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(Path)))
+	store, err := StoreDir(dir)
 	if err != nil {
 		return nil
 	}
-	var doc document
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.DisallowUnknownFields()
-	if dec.Decode(&doc) != nil || dec.Decode(&struct{}{}) != io.EOF || doc.Version != version || doc.Records == nil {
+	// The legacy in-repo cache is never read again; remove it best-effort
+	// once per load so migrated corpora stop carrying it.
+	os.RemoveAll(filepath.Join(dir, ".stipulator", "cache"))
+	entries, err := os.ReadDir(store)
+	if err != nil {
 		return nil
 	}
-	manifests := map[string]bool{}
-	seen := map[string]bool{}
-	for _, rec := range doc.Records {
-		proof := rec.Fingerprint.ObservationProof
-		if rec.Package == "" || rec.Test == "" || seen[rec.Key()] ||
-			(proof != nil && (proof.Package != rec.Package || proof.Symbol != rec.Test)) ||
-			!validOutcomes(rec) || !rec.Fingerprint.valid(dir, manifests) {
-			return nil
+	// ReadDir returns name-sorted entries; dot-prefixed names are install
+	// temporaries, never records.
+	names := make([]string, 0, len(entries))
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") && !strings.HasPrefix(e.Name(), ".") {
+			names = append(names, e.Name())
 		}
-		seen[rec.Key()] = true
 	}
-	return doc.Records
+	manifests := map[string]bool{}
+	var records []Record
+	for _, name := range names {
+		rec, ok := loadEntry(store, name, dir, manifests)
+		if ok {
+			records = append(records, rec)
+		}
+	}
+	return records
+}
+
+func loadEntry(store, name, dir string, manifests map[string]bool) (Record, bool) {
+	data, err := os.ReadFile(filepath.Join(store, name))
+	if err != nil {
+		return Record{}, false
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(data, &fields) != nil {
+		return Record{}, false
+	}
+	if value, ok := fields["registrations"]; ok && isJSONNull(value) {
+		return Record{}, false
+	}
+	var e entry
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	if dec.Decode(&e) != nil || dec.Decode(&struct{}{}) != io.EOF || e.Version != version {
+		return Record{}, false
+	}
+	rec := Record{Package: e.Package, Test: e.Test, Fingerprint: e.Fingerprint, Outcomes: e.Outcomes, Regs: e.Regs}
+	proof := rec.Fingerprint.ObservationProof
+	if rec.Package == "" || rec.Test == "" || name != fileName(rec) ||
+		(proof != nil && (proof.Package != rec.Package || proof.Symbol != rec.Test)) ||
+		!validOutcomes(rec) || !rec.Fingerprint.valid(dir, manifests) {
+		return Record{}, false
+	}
+	return rec, true
 }
 
 func validOutcomes(rec Record) bool {
@@ -335,24 +421,27 @@ func validPurity(value string) bool {
 	}
 }
 
-// Save writes the cache under dir.
-func Save(dir string, records []Record) error {
-	if records == nil {
-		records = []Record{}
-	}
-	doc := document{Version: version, Records: records}
-	data, err := json.MarshalIndent(doc, "", "  ")
+// Install atomically writes one record's variant file and bounds the
+// identity's variant set: beyond variantBound, the least recently
+// installed variants are evicted — eviction costs only execution.
+func Install(dir string, rec Record) error {
+	store, err := StoreDir(dir)
 	if err != nil {
 		return err
 	}
-	full := filepath.Join(dir, filepath.FromSlash(Path))
-	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+	if err := os.MkdirAll(store, 0o755); err != nil {
 		return err
 	}
-	// Write-then-rename: a concurrent writer (two MCP verifies) must never
-	// leave a torn file — a torn cache costs work, but only through Load's
-	// unreadable-is-empty leg, and rename makes even that window vanish.
-	tmp, err := os.CreateTemp(filepath.Dir(full), ".witnesses-*.json")
+	e := entry{Version: version, Package: rec.Package, Test: rec.Test, Fingerprint: rec.Fingerprint, Outcomes: rec.Outcomes, Regs: rec.Regs}
+	data, err := json.MarshalIndent(e, "", "  ")
+	if err != nil {
+		return err
+	}
+	full := filepath.Join(store, fileName(rec))
+	// Write-then-rename: a concurrent writer must never leave a torn
+	// file — a torn variant costs only its own record through the
+	// per-file refusal leg, and rename makes even that window vanish.
+	tmp, err := os.CreateTemp(store, ".variant-*.json")
 	if err != nil {
 		return err
 	}
@@ -365,23 +454,43 @@ func Save(dir string, records []Record) error {
 		os.Remove(tmp.Name())
 		return err
 	}
-	return os.Rename(tmp.Name(), full)
+	if err := os.Rename(tmp.Name(), full); err != nil {
+		os.Remove(tmp.Name())
+		return err
+	}
+	evictBeyondBound(store, identityDigest(rec.Package, rec.Test), filepath.Base(full))
+	return nil
 }
 
-// EnsureIgnored makes sure the cache directory is never committed: it
-// writes a .gitignore beside the cache covering the cache dir when one is
-// not already in place.
-func EnsureIgnored(dir string) error {
-	gi := filepath.Join(dir, ".stipulator", "cache", ".gitignore")
-	if _, err := os.Stat(gi); err == nil {
-		return nil
-	} else if !errors.Is(err, fs.ErrNotExist) {
-		return err
+// evictBeyondBound removes the oldest variants of one identity past
+// variantBound, never the just-installed file. On mtime ties a concurrent
+// runner's fresh variant can be evicted — execution cost on its next run,
+// never wrong serving.
+func evictBeyondBound(store, identity, keep string) {
+	matches, err := filepath.Glob(filepath.Join(store, identity+"-*.json"))
+	if err != nil || len(matches) <= variantBound {
+		return
 	}
-	if err := os.MkdirAll(filepath.Dir(gi), 0o755); err != nil {
-		return err
+	type aged struct {
+		path string
+		mod  int64
 	}
-	return os.WriteFile(gi, []byte("*\n"), 0o644)
+	var others []aged
+	for _, m := range matches {
+		if filepath.Base(m) == keep {
+			continue
+		}
+		info, err := os.Stat(m)
+		if err != nil {
+			continue
+		}
+		others = append(others, aged{m, info.ModTime().UnixNano()})
+	}
+	sort.Slice(others, func(i, j int) bool { return others[i].mod < others[j].mod })
+	for len(others) > variantBound-1 {
+		os.Remove(others[0].path)
+		others = others[1:]
+	}
 }
 
 // Key is the record's identity.

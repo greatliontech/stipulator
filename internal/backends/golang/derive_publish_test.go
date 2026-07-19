@@ -77,15 +77,17 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 		RuntimeDigest:  "00112233445566778899aabbccddeeff",
 		ResultKind:     gofresh.CodeResult,
 	}
-	if err := witnesscache.Save(tmp, []witnesscache.Record{
+	for _, rec := range []witnesscache.Record{
 		{Package: "example.com/exec/redmain", Test: "TestGreen", Fingerprint: seedFP,
 			Outcomes: map[string]string{"example.com/exec/redmain.TestGreen": "passed"}},
 		{Package: "example.com/exec/ok", Test: "TestDouble", Fingerprint: seedFP,
 			Outcomes: map[string]string{"example.com/exec/ok.TestDouble": "failed"}},
 		{Package: "example.com/exec/killmid", Test: "TestShadowedByKill", Fingerprint: seedFP,
 			Outcomes: map[string]string{"example.com/exec/killmid.TestShadowedByKill": "passed"}},
-	}); err != nil {
-		t.Fatal(err)
+	} {
+		if err := witnesscache.Install(tmp, rec); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if len(witnesscache.Load(tmp)) != 3 {
 		t.Fatal("seeded cache records are not loadable; the seeds would prove nothing")
@@ -152,16 +154,22 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 	}
 
 	cache := witnesscache.Load(tmp)
-	if len(cache) != 4 {
-		t.Fatalf("cache carries %d records, want 4 (3 published + 1 retained): %+v", len(cache), cache)
+	if len(cache) != 6 {
+		t.Fatalf("cache carries %d records, want 6 (3 published + 3 seeded variants retained): %+v", len(cache), cache)
 	}
-	for _, dropped := range []struct{ pkg, test string }{
-		{"example.com/exec/redmain", "TestGreen"},
-		{"example.com/exec/killmid", "TestKilledMidRun"},
-		{"example.com/exec/sleepy", "TestSleeps"},
-	} {
-		if cacheRecord(t, cache, dropped.pkg, dropped.test) != nil {
-			t.Errorf("record for %s.%s published from an unhealthy, aborted, or non-race source", dropped.pkg, dropped.test)
+	// No identity gains a NEW variant from an unhealthy, aborted, or
+	// non-race source: a seeded prior-tree variant may remain — serving
+	// revalidates it — but every variant of these identities must carry
+	// the seed fingerprint, and unseeded identities must have none.
+	const seedClosure = "00112233445566778899aabbccddeeff"
+	for _, rec := range cache {
+		switch rec.Package + "." + rec.Test {
+		case "example.com/exec/redmain.TestGreen", "example.com/exec/killmid.TestShadowedByKill":
+			if rec.Fingerprint.MaximalClosure != seedClosure {
+				t.Errorf("%s gained a variant from an unhealthy or shadowed source: %+v", rec.Key(), rec.Fingerprint)
+			}
+		case "example.com/exec/killmid.TestKilledMidRun", "example.com/exec/sleepy.TestSleeps":
+			t.Errorf("record for %s published from an aborted source", rec.Key())
 		}
 	}
 	// The shadowed test produced no row, so its prior record — a
@@ -173,13 +181,22 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 	} else if shadowed.Fingerprint.MaximalClosure != seedFP.MaximalClosure {
 		t.Error("shadowed test's record was republished rather than retained")
 	}
-	double := cacheRecord(t, cache, "example.com/exec/ok", "TestDouble")
+	// The executed run publishes its own variant beside the seeded one;
+	// the executed variant carries the run's outcomes.
+	var double *witnesscache.Record
+	for i := range cache {
+		rec := &cache[i]
+		if rec.Package == "example.com/exec/ok" && rec.Test == "TestDouble" &&
+			rec.Fingerprint.MaximalClosure != seedClosure {
+			double = rec
+		}
+	}
 	if double == nil {
-		t.Fatal("no record published for the healthy race-produced test")
+		t.Fatal("no variant published for the healthy race-produced test")
 	}
 	if double.Outcomes["example.com/exec/ok.TestDouble"] != "passed" ||
 		double.Outcomes["example.com/exec/ok.TestDouble/zero"] != "passed" {
-		t.Errorf("stale seeded record was not replaced by the executed outcomes: %v", double.Outcomes)
+		t.Errorf("executed variant does not carry the executed outcomes: %v", double.Outcomes)
 	}
 	reads := cacheRecord(t, cache, "example.com/exec/reads", "TestReadsFixture")
 	if reads == nil {

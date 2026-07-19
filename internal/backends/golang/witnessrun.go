@@ -188,9 +188,11 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 	}
 
 	cached := witnesscache.Load(dir)
-	cachedByKey := map[string]witnesscache.Record{}
+	// One identity may hold several tree-state variants; at most one can
+	// prove equivalent against the current tree, so serving tries each.
+	cachedByKey := map[string][]witnesscache.Record{}
 	for _, rec := range cached {
-		cachedByKey[rec.Key()] = rec
+		cachedByKey[rec.Key()] = append(cachedByKey[rec.Key()], rec)
 	}
 
 	var groups []*witnessGroup
@@ -333,31 +335,16 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 		tr.Uncached = tr.Ran - len(published)
 	}
 
-	// Publication replaces exactly the subjects this run served or
-	// executed; records the run never touched — outside-policy subjects'
-	// and departed tests' among them — are retained: serving revalidates
-	// every record, so a retained record whose inputs moved simply
-	// re-runs. On the degraded path the cache is left alone entirely.
+	// Publication installs exactly what this run produced: each published
+	// record lands as its own variant file, atomically, bounding the
+	// identity's variant set. Untouched records — served, outside-policy,
+	// departed — need no rewrite: the store is per-record, so nothing is
+	// clobbered and a concurrent runner's installs interleave instead of
+	// last-writer-winning a whole document. On the degraded path nothing
+	// publishes and the store is left alone.
 	if degraded == "" && len(groups) > 0 {
-		touched := map[string]bool{}
-		for s := range inPolicy {
-			touched[s.Package+"."+s.Symbol] = true
-		}
-		next := append(append([]witnesscache.Record{}, servedRecords...), published...)
-		for _, rec := range cached {
-			if !touched[rec.Key()] {
-				next = append(next, rec)
-			}
-		}
-		sort.Slice(next, func(i, j int) bool {
-			a, b := next[i], next[j]
-			if a.Package != b.Package {
-				return a.Package < b.Package
-			}
-			return a.Test < b.Test
-		})
-		if err := witnesscache.EnsureIgnored(dir); err == nil {
-			_ = witnesscache.Save(dir, next)
+		for _, rec := range published {
+			_ = witnesscache.Install(dir, rec)
 		}
 	}
 	return tr, nil
@@ -370,7 +357,7 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 // top-level runnable. Any fault returns the degraded reason: the caller
 // serves nothing and executes everything covered
 // (REQ-evidence-freshness-degrade).
-func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, cached map[string]witnesscache.Record) ([]*witnessGroup, string) {
+func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, cached map[string][]witnesscache.Record) ([]*witnessGroup, string) {
 	var out []*witnessGroup
 	for _, g := range pc.groups {
 		subjects := groupSubjects(g, pc.globalCount)
@@ -391,21 +378,39 @@ func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, ca
 			stale:    map[string][]string{},
 			fps:      map[gofresh.Subject]gofresh.Fingerprint{},
 		}
-		recordedFPs := map[gofresh.Subject]gofresh.Fingerprint{}
-		for _, s := range subjects {
-			if rec, ok := cached[s.Package+"."+s.Symbol]; ok {
-				wg.recorded[s] = rec
-				recordedFPs[s] = rec.Fingerprint.ToGofresh()
+		// Round-based variant checking: round N checks each unproven
+		// subject's Nth variant, and the first variant proving equivalent
+		// serves — deterministic by digest-sorted load order. Variants
+		// differing only in manifests or proof attachment can both prove
+		// equivalent; each is a proven equivalence, so either serves
+		// soundly. Rounds cost only fingerprint checks, never analysis or
+		// execution.
+		valid := map[gofresh.Subject]bool{}
+		for round := 0; ; round++ {
+			fps := map[gofresh.Subject]gofresh.Fingerprint{}
+			for _, s := range subjects {
+				if vars := cached[s.Package+"."+s.Symbol]; !valid[s] && round < len(vars) {
+					fps[s] = vars[round].Fingerprint.ToGofresh()
+				}
+			}
+			if len(fps) == 0 {
+				break
+			}
+			verdicts, err := checkFingerprints(ctx, view, fps)
+			if err != nil {
+				return nil, err.Error()
+			}
+			for s := range fps {
+				if verdicts[s].Status == gofresh.Valid {
+					valid[s] = true
+					wg.recorded[s] = cached[s.Package+"."+s.Symbol][round]
+				}
 			}
 		}
-		verdicts, err := checkFingerprints(ctx, view, recordedFPs)
-		if err != nil {
-			return nil, err.Error()
-		}
 		for _, s := range subjects {
-			if _, ok := wg.recorded[s]; ok && verdicts[s].Status == gofresh.Valid {
-				// Proven equivalent: the record serves, pending post-run
-				// revalidation.
+			if valid[s] {
+				// Proven equivalent: the chosen variant serves, pending
+				// post-run revalidation.
 				wg.served = append(wg.served, s)
 				continue
 			}

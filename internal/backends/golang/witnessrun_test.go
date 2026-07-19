@@ -1,7 +1,6 @@
 package golang
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -1001,17 +1000,9 @@ func TestSleeps(t *testing.T) {
 		t.Fatalf("partial selection result escaped a cancelled execution: %+v", res)
 	}
 
-	// The runner discards identically and leaves the cache untouched.
+	// The runner discards identically and leaves the store untouched.
 	runDir, runSentinel := sleepyModule("example.com/cancelrun")
 	writeRacePolicy(t, runDir)
-	cachePath := filepath.Join(runDir, filepath.FromSlash(witnesscache.Path))
-	if err := os.MkdirAll(filepath.Dir(cachePath), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	seed := []byte(`{"version":3,"records":[]}`)
-	if err := os.WriteFile(cachePath, seed, 0o644); err != nil {
-		t.Fatal(err)
-	}
 	rctx, rcancel := context.WithCancel(context.Background())
 	defer rcancel()
 	cancelOnSentinel(rctx, rcancel, runSentinel)
@@ -1022,12 +1013,12 @@ func TestSleeps(t *testing.T) {
 	if tr != nil {
 		t.Fatalf("partial test run escaped a cancelled witnessing run: %+v", tr)
 	}
-	after, err := os.ReadFile(cachePath)
+	store, err := witnesscache.StoreDir(runDir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(seed, after) {
-		t.Fatalf("cancelled run touched the witness cache:\nseed:  %s\nafter: %s", seed, after)
+	if _, err := os.Stat(store); !os.IsNotExist(err) {
+		t.Fatalf("cancelled run touched the witness store: %v", err)
 	}
 }
 
@@ -1161,4 +1152,58 @@ func TestGreenReg(t *testing.T) {
 	if !found {
 		t.Fatalf("green non-race registration lost — the unbacked-registration cross-check is blind to it: %+v", tr.Registrations)
 	}
+}
+
+// TestGoRunWitnessesServesAcrossTreeAlternation pins the variant store's
+// point (REQ-evidence-witness-cache-format): two tree states of one test
+// coexist as variants, so returning to an earlier state serves its
+// witness instead of re-executing — branch ping-pong evicts nothing.
+func TestGoRunWitnessesServesAcrossTreeAlternation(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-cache-format", "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented selective run over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":          "module example.com/alt\n\ngo 1.26\n",
+		"pkg/lib.go":      "package pkg\n\nfunc State() string { return \"state-a\" }\n",
+		"pkg/lib_test.go": "package pkg\n\nimport \"testing\"\n\n//gofresh:pure\nfunc TestState(t *testing.T) {\n\tif State() == \"\" {\n\t\tt.Fatal(\"empty\")\n\t}\n}\n",
+	})
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./pkg"})
+	cfg.SetRace(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
+	writePolicyRecord(t, tmp, p)
+
+	stateA := "package pkg\n\nfunc State() string { return \"state-a\" }\n"
+	stateB := "package pkg\n\nfunc State() string { return \"state-b\" }\n"
+	libPath := filepath.Join(tmp, "pkg", "lib.go")
+
+	run := func(phase string, wantFresh, wantRan int) {
+		t.Helper()
+		tr, err := RunWitnesses(context.Background(), tmp)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if tr.Degraded != "" {
+			t.Fatalf("%s: degraded: %s", phase, tr.Degraded)
+		}
+		if tr.Fresh != wantFresh || tr.Ran != wantRan {
+			t.Fatalf("%s: fresh=%d ran=%d, want %d/%d", phase, tr.Fresh, tr.Ran, wantFresh, wantRan)
+		}
+	}
+	run("cold state-a", 0, 1)
+	if err := os.WriteFile(libPath, []byte(stateB), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run("cold state-b", 0, 1)
+	if err := os.WriteFile(libPath, []byte(stateA), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run("returned to state-a", 1, 0)
+	if err := os.WriteFile(libPath, []byte(stateB), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run("returned to state-b", 1, 0)
 }

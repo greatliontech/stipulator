@@ -460,34 +460,15 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 		if tr.Ran > len(published) {
 			tr.Uncached = tr.Ran - len(published)
 		}
-		// Publication replaces exactly what this execution touched. A prior
-		// record whose test produced no row this run — a shadowed sibling, a
-		// package this policy never selected — was legitimately published by
-		// an earlier run (a selective isolated run among them) and is
-		// retained: discarding it would silently shrink the cache for work
-		// this run never re-did. Retention is safe because serving
-		// revalidates every record's fingerprint, so a retained record
-		// whose inputs moved simply re-runs; a deleted test's record
-		// lingers here as dead weight until a serving run's own save
-		// drops it — cost, never correctness.
-		touched := map[string]bool{}
-		for _, row := range report.GetTests() {
-			touched[row.GetPackage()+"."+topLevel(row.GetTest())] = true
-		}
-		for _, rec := range witnesscache.Load(r.dir) {
-			if !touched[rec.Package+"."+rec.Test] {
-				published = append(published, rec)
-			}
-		}
-		sort.Slice(published, func(i, j int) bool {
-			a, b := published[i], published[j]
-			if a.Package != b.Package {
-				return a.Package < b.Package
-			}
-			return a.Test < b.Test
-		})
-		if err := witnesscache.EnsureIgnored(r.dir); err == nil {
-			_ = witnesscache.Save(r.dir, published)
+		// Publication installs exactly what this execution produced, one
+		// variant file per record. Records this run never touched — a
+		// shadowed sibling's, a package this policy never selected's —
+		// need no rewrite: the store is per-record, so retention is the
+		// default and nothing shrinks. A departed test's variants linger
+		// as dead weight — its identity never installs again, so no bound
+		// fires; store growth is cost, never correctness.
+		for _, rec := range published {
+			_ = witnesscache.Install(r.dir, rec)
 		}
 	}
 	return tr, nil

@@ -39,6 +39,9 @@ func writeTree(t *testing.T, files map[string]string) string {
 // a known hermetic state, so host configuration cannot steer these tests.
 func neutralAmbient(t *testing.T) {
 	t.Helper()
+	// The witness store lives under the user cache directory; tests must
+	// never touch the real one.
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	t.Setenv("GOENV", "off")
 	t.Setenv("GOFLAGS", "")
 	t.Setenv("GOPACKAGESDRIVER", "")

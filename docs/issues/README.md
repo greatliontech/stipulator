@@ -108,3 +108,7 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[mcp-progress-not-observed](mcp-progress-not-observed.md)** — suite-running MCP tools
   surfaced no progress to a live agent client; every call was backgrounded at the client's
   timeout. *Lands: when REQ-mcp-progress is next verified against a real client.*
+- **[witness-store-gc](witness-store-gc.md)** — departed identities' witness variants
+  accumulate without bound (eviction fires only on same-identity installs); cost-only.
+  *Lands: when the store next gains a maintenance surface, or when store size first
+  becomes a measured cost.*

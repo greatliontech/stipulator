@@ -32,6 +32,7 @@ import (
 )
 
 func TestReadsObservedFixture(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	_, _ = os.ReadFile("data.txt")
 }
 `
@@ -49,6 +50,7 @@ func TestReadsObservedFixture(t *testing.T) {
 //
 //gofresh:pure
 func TestObservationProofPublishesAndServes(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	if testing.Short() {
 		t.Skip("executes a real race-instrumented witness suite")
 	}
@@ -94,6 +96,7 @@ func TestObservationProofPublishesAndServes(t *testing.T) {
 //
 //gofresh:pure
 func TestObservationProofNeverWaivesInputDigest(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	if testing.Short() {
 		t.Skip("executes a real race-instrumented witness suite")
 	}
@@ -125,6 +128,7 @@ func TestObservationProofNeverWaivesInputDigest(t *testing.T) {
 
 //gofresh:pure
 func TestObservationProofDoesNotPublishUnverifiableRuntimeState(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	if testing.Short() {
 		t.Skip("executes a real race-instrumented witness suite")
 	}
@@ -143,6 +147,7 @@ import (
 )
 
 func TestStatsFixture(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	if _, err := os.Stat("fixture"); err != nil {
 		t.Fatal(err)
 	}
@@ -166,6 +171,7 @@ func TestStatsFixture(t *testing.T) {
 }
 
 func TestValidatedObservationRequiresVerifiableRuntimeState(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	positive := gofresh.Fingerprint{ObservationProof: gofresh.ObservationProof{Observable: true}}
 	if validatedObservation(positive, runtimeinput.State{Unverifiable: true}) {
 		t.Fatal("positive proof validated an unverifiable runtime state")
@@ -184,6 +190,7 @@ func TestValidatedObservationRequiresVerifiableRuntimeState(t *testing.T) {
 //
 //gofresh:pure
 func TestIncompatibleObservationEvidenceCannotServe(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	if testing.Short() {
 		t.Skip("executes a real race-instrumented witness suite")
 	}
@@ -204,16 +211,20 @@ func TestIncompatibleObservationEvidenceCannotServe(t *testing.T) {
 	if incompatible == evidence {
 		incompatible = strings.Repeat("1", 32)
 	}
-	cachePath := filepath.Join(tmp, filepath.FromSlash(witnesscache.Path))
-	data, err := os.ReadFile(cachePath)
+	store, err := witnesscache.StoreDir(tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
-	tampered := strings.Replace(string(data), evidence, incompatible, 1)
-	if tampered == string(data) {
-		t.Fatal("proof evidence not found in cache")
+	variants, err := filepath.Glob(filepath.Join(store, "*.json"))
+	if err != nil || len(variants) != 1 {
+		t.Fatalf("variant files = %v (%v), want exactly one", variants, err)
 	}
-	if err := os.WriteFile(cachePath, []byte(tampered), 0o644); err != nil {
+	if err := os.Remove(variants[0]); err != nil {
+		t.Fatal(err)
+	}
+	rec := records[0]
+	rec.Fingerprint.ObservationProof.Evidence = incompatible
+	if err := witnesscache.Install(tmp, rec); err != nil {
 		t.Fatal(err)
 	}
 	if got := witnesscache.Load(tmp); len(got) != 1 {
@@ -238,6 +249,7 @@ func TestIncompatibleObservationEvidenceCannotServe(t *testing.T) {
 //
 //gofresh:pure
 func TestObservationProofRequiresIsolatedTestProcess(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	if testing.Short() {
 		t.Skip("executes a real race-instrumented witness suite")
 	}
@@ -258,11 +270,13 @@ import (
 var siblingState string
 
 func TestAChangesProcessState(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	_, _ = os.ReadFile("data.txt")
 	siblingState = "set-by-sibling"
 }
 
 func TestBDependsOnSiblingState(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	_, _ = os.ReadFile("data.txt")
 	if siblingState != "set-by-sibling" {
 		return

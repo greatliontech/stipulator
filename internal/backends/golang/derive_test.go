@@ -4,7 +4,6 @@ import (
 	"context"
 	"maps"
 	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -286,12 +285,13 @@ func TestDeriveRegistrationsCrossCheckedAgainstBindings(t *testing.T) {
 // execution of the producing invocation, and the cache is structurally
 // not an input to either.
 func TestDeriveCachedOutcomeGrantsNoHealthOrEvidence(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	stipulate.Covers(t, "REQ-evidence-freshness-no-health")
 	tmp := t.TempDir()
 	// The seeded record is structurally valid — it would load and serve on
 	// a freshness-serving path — so ignoring it here is the derivation's
 	// choice, not a loader rejection.
-	if err := witnesscache.Save(tmp, []witnesscache.Record{{
+	if err := witnesscache.Install(tmp, witnesscache.Record{
 		Package: "example.com/m/redmain",
 		Test:    "TestGreen",
 		Fingerprint: witnesscache.Fingerprint{
@@ -303,7 +303,7 @@ func TestDeriveCachedOutcomeGrantsNoHealthOrEvidence(t *testing.T) {
 			ResultKind:     gofresh.CodeResult,
 		},
 		Outcomes: map[string]string{"example.com/m/redmain.TestGreen": "passed"},
-	}}); err != nil {
+	}); err != nil {
 		t.Fatal(err)
 	}
 	if len(witnesscache.Load(tmp)) != 1 {
@@ -444,10 +444,15 @@ func TestDeriveSuiteHealthRejectsEmptyReport(t *testing.T) {
 	}
 }
 
-// requireCacheAbsent asserts no witness cache file exists under dir.
+// requireCacheAbsent asserts the corpus's witness store holds nothing.
 func requireCacheAbsent(t *testing.T, dir string) {
 	t.Helper()
-	if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(witnesscache.Path))); !os.IsNotExist(err) {
-		t.Fatalf("witness cache exists: %v", err)
+	store, err := witnesscache.StoreDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(store)
+	if !os.IsNotExist(err) && len(entries) > 0 {
+		t.Fatalf("witness store holds %d entries: %v", len(entries), err)
 	}
 }

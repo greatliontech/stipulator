@@ -30,6 +30,9 @@ func neutralAmbient(t *testing.T) {
 	// off makes the values set here the only ambient source.
 	t.Setenv("GOENV", "off")
 	t.Helper()
+	// The witness store lives under the user cache directory; tests must
+	// never touch the real one.
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	t.Setenv("GOFLAGS", "")
 	t.Setenv("GOPACKAGESDRIVER", "")
 	t.Setenv("GOTOOLCHAIN", "local")
