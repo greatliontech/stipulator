@@ -32,7 +32,6 @@ import (
 )
 
 func TestReadsObservedFixture(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	_, _ = os.ReadFile("data.txt")
 }
 `
@@ -147,7 +146,6 @@ import (
 )
 
 func TestStatsFixture(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	if _, err := os.Stat("fixture"); err != nil {
 		t.Fatal(err)
 	}
