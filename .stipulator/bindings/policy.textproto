@@ -621,3 +621,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "ca380e075f53b1529a4ccf4c446919ac6c23667732dba0167258d0e76ee043a7"
 }
+
+bindings {
+  requirement_id: "REQ-policy-cancellation"
+  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolServingPathCancellationKillsChildren"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7960587a31790ea45c6951f95c215c567f14dbc13e7c22ac76904b9a253c7788"
+}

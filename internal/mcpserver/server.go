@@ -50,7 +50,7 @@ type Server struct {
 	fsys     func() fs.FS
 	backends func(context.Context) (map[string]verify.Backend, error)
 	runTests func(context.Context) (*verify.TestRun, error)
-	runCheck func(context.Context) (*stipulatorv1.CheckResult, error)
+	runCheck func(context.Context, bool) (*stipulatorv1.CheckResult, error)
 	write    func(path string, content []byte) error
 	remove   func(path string) error
 }
@@ -61,7 +61,9 @@ func New(dir string) *Server {
 		fsys:     func() fs.FS { return os.DirFS(dir) },
 		backends: func(ctx context.Context) (map[string]verify.Backend, error) { return makeBackends(ctx, dir) },
 		runTests: func(ctx context.Context) (*verify.TestRun, error) { return golang.RunWitnesses(ctx, dir) },
-		runCheck: func(ctx context.Context) (*stipulatorv1.CheckResult, error) { return check.Run(ctx, dir) },
+		runCheck: func(ctx context.Context, full bool) (*stipulatorv1.CheckResult, error) {
+			return check.Run(ctx, dir, full)
+		},
 		write: func(path string, content []byte) error {
 			// The server is corpus-bound: every record update must remain
 			// within the tree.
@@ -116,7 +118,7 @@ func (s *Server) MCP() *mcp.Server {
 	}, s.toolGate)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "check",
-		Description: "One pass, one verdict: compiles the corpus, executes the accepted test policy once, verifies bindings against that execution, evaluates coverage and gaps, and reports prune residue. The structured result is the CheckResult message as JSON; a tree failing the check is a successful call carrying passed=false.",
+		Description: "One pass, one verdict: compiles the corpus, takes witness evidence — served from proven-fresh records with selective execution of only the stale remainder by default (fast on a warm tree), or one whole policy execution with full=true, which additionally judges suite health — verifies bindings against that evidence, evaluates coverage and gaps, and reports prune residue. The structured result is the CheckResult message as JSON; a tree failing the check is a successful call carrying passed=false.",
 	}, s.toolCheck)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "bind",
@@ -364,9 +366,17 @@ func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in gate
 	return protoJSON(m)
 }
 
-func (s *Server) toolCheck(ctx context.Context, req *mcp.CallToolRequest, in struct{}) (*mcp.CallToolResult, map[string]any, error) {
+// checkIn selects the check's evidence class: full demands suite
+// judgment through one whole policy execution; the default serves fresh
+// witnesses and selectively executes the stale remainder
+// (REQ-check-verdict).
+type checkIn struct {
+	Full bool `json:"full,omitempty" jsonschema:"execute the whole accepted policy and judge suite health; default serves fresh witnesses and executes only the stale remainder"`
+}
+
+func (s *Server) toolCheck(ctx context.Context, req *mcp.CallToolRequest, in checkIn) (*mcp.CallToolResult, map[string]any, error) {
 	ctx, prog := s.startProgress(ctx, req)
-	res, err := s.runCheck(ctx)
+	res, err := s.runCheck(ctx, in.Full)
 	if err != nil {
 		// The error return is reserved for operational faults — a tree
 		// failing the check is a successful call carrying passed=false.
@@ -374,6 +384,9 @@ func (s *Server) toolCheck(ctx context.Context, req *mcp.CallToolRequest, in str
 	}
 	cause := stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED
 	if res.GetExecution() != nil && !golang.SuiteHealthy(res.GetExecution()) {
+		cause = stipulatorv1.TerminalCause_TERMINAL_CAUSE_TEST_FAILURE
+	}
+	if len(res.GetWitnessDiagnostics()) > 0 {
 		cause = stipulatorv1.TerminalCause_TERMINAL_CAUSE_TEST_FAILURE
 	}
 	prog.Terminal(cause)

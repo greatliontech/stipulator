@@ -150,13 +150,18 @@ func TestTwice(t *testing.T) {
 }
 
 // requireNoSentinels asserts that no outside-policy package's test ever
-// executed: an executed test would have left its sentinel file behind.
+// executed — an executed test would have left its sentinel file behind —
+// while the multiply-selected package's sentinel MUST exist: it executes
+// every run under each covering race invocation.
 func requireNoSentinels(t *testing.T, tmp string) {
 	t.Helper()
-	for _, pkg := range []string{"uncovered", "nonrace", "twice"} {
+	for _, pkg := range []string{"uncovered", "nonrace"} {
 		if _, err := os.Stat(filepath.Join(tmp, pkg, "ran.sentinel")); !os.IsNotExist(err) {
 			t.Errorf("a process ran for outside-policy package %s: %v", pkg, err)
 		}
+	}
+	if _, err := os.Stat(filepath.Join(tmp, "twice", "ran.sentinel")); err != nil {
+		t.Errorf("the multiply-selected package never executed: %v", err)
 	}
 }
 
@@ -164,8 +169,8 @@ func requireNoSentinels(t *testing.T, tmp string) {
 // partition: every expected witness subject is served, executed, or
 // outside the policy — exactly one of the three — on the cold run, the
 // warm run, and a partial-stale run alike. Outside-policy subjects — a
-// package covered by no invocation, only by a non-race invocation, or by
-// two invocations — neither serve nor execute and ride the result as a
+// package covered by no invocation or only by a non-race invocation —
+// neither serve nor execute and ride the result as a
 // count; serving grants witness outcomes and registrations without any
 // health judgment, and a stale subject re-executes while its still-valid
 // sibling serves.
@@ -193,17 +198,18 @@ func TestGoRunWitnessesServeExecuteOutsideDisjoint(t *testing.T) {
 	})
 	writePolicyRecord(t, tmp, p)
 
-	// Expected subjects: covered.TestOne, covered2.TestTwo, and the three
-	// outside ones (TestNone uncovered, TestPlain non-race, TestTwice
-	// doubly covered).
+	// Expected subjects: covered.TestOne, covered2.TestTwo, the doubly
+	// covered twice.TestTwice — which executes every run under each
+	// covering race invocation and never serves or publishes — and the two
+	// outside ones (TestNone uncovered, TestPlain non-race).
 	const expectedTotal = 5
 	requirePartition := func(phase string, tr *verify.TestRun, fresh, ran int) {
 		t.Helper()
 		if tr.Degraded != "" {
 			t.Fatalf("%s: freshness path degraded: %s", phase, tr.Degraded)
 		}
-		if tr.Fresh != fresh || tr.Ran != ran || tr.OutsidePolicy != 3 {
-			t.Errorf("%s: fresh=%d ran=%d outside=%d, want %d/%d/3",
+		if tr.Fresh != fresh || tr.Ran != ran || tr.OutsidePolicy != 2 {
+			t.Errorf("%s: fresh=%d ran=%d outside=%d, want %d/%d/2",
 				phase, tr.Fresh, tr.Ran, tr.OutsidePolicy, fresh, ran)
 		}
 		// The disjointness invariant: each expected subject counted
@@ -219,6 +225,7 @@ func TestGoRunWitnessesServeExecuteOutsideDisjoint(t *testing.T) {
 		for _, key := range []string{
 			"example.com/wit/covered.TestOne",
 			"example.com/wit/covered2.TestTwo",
+			"example.com/wit/twice.TestTwice",
 		} {
 			if got := tr.Outcomes[key]; got != verify.TestPassed {
 				t.Errorf("%s: %s = %v, want PASSED", phase, key, got)
@@ -227,7 +234,6 @@ func TestGoRunWitnessesServeExecuteOutsideDisjoint(t *testing.T) {
 		for _, key := range []string{
 			"example.com/wit/uncovered.TestNone",
 			"example.com/wit/nonrace.TestPlain",
-			"example.com/wit/twice.TestTwice",
 		} {
 			if got, ok := tr.Outcomes[key]; ok {
 				t.Errorf("%s: outside-policy subject %s carries outcome %v", phase, key, got)
@@ -250,21 +256,21 @@ func TestGoRunWitnessesServeExecuteOutsideDisjoint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	requirePartition("cold", cold, 0, 2)
-	if cold.Uncached != 0 {
-		t.Errorf("cold: uncached=%d, want 0: both executed subjects publish", cold.Uncached)
+	requirePartition("cold", cold, 0, 3)
+	if cold.Uncached != 1 {
+		t.Errorf("cold: uncached=%d, want 1: the multiply-selected subject executes but cannot publish", cold.Uncached)
 	}
 	cache := witnesscache.Load(tmp)
 	if len(cache) != 2 {
 		t.Fatalf("cold run published %d records, want 2: %+v", len(cache), cache)
 	}
-	for _, outside := range []struct{ pkg, test string }{
+	for _, unpublished := range []struct{ pkg, test string }{
 		{"example.com/wit/uncovered", "TestNone"},
 		{"example.com/wit/nonrace", "TestPlain"},
 		{"example.com/wit/twice", "TestTwice"},
 	} {
-		if cacheRecord(t, cache, outside.pkg, outside.test) != nil {
-			t.Errorf("outside-policy subject %s.%s published a record", outside.pkg, outside.test)
+		if cacheRecord(t, cache, unpublished.pkg, unpublished.test) != nil {
+			t.Errorf("unservable subject %s.%s published a record", unpublished.pkg, unpublished.test)
 		}
 	}
 
@@ -272,7 +278,7 @@ func TestGoRunWitnessesServeExecuteOutsideDisjoint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	requirePartition("warm", warm, 2, 0)
+	requirePartition("warm", warm, 2, 1)
 
 	// Stale exactly one subject: the edit reaches TestOne's closure and
 	// not TestTwo's, so only TestOne re-executes while its sibling serves.
@@ -292,7 +298,7 @@ func TestGoRunWitnessesServeExecuteOutsideDisjoint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	requirePartition("stale sibling", staleRun, 1, 1)
+	requirePartition("stale sibling", staleRun, 1, 2)
 }
 
 // TestGoRunWitnessesIsolatesDeniedOutcomes pins that the selective
@@ -1022,5 +1028,137 @@ func TestSleeps(t *testing.T) {
 	}
 	if !bytes.Equal(seed, after) {
 		t.Fatalf("cancelled run touched the witness cache:\nseed:  %s\nafter: %s", seed, after)
+	}
+}
+
+// TestGoRunWitnessesMultiplySelectedRunsEveryRaceLeg pins that a package
+// two same-group race invocations select executes under each covering
+// invocation from that invocation's own discovery. The hasty leg's
+// one-second timeout cannot revoke the patient leg's healthy grant —
+// exactly the health-judged form's worst-wins derivation, where a
+// timeout is invocation health, not a witness outcome — but its
+// diagnostic must surface: the second leg demonstrably ran.
+func TestGoRunWitnessesMultiplySelectedRunsEveryRaceLeg(t *testing.T) {
+	stipulate.Covers(t, "REQ-core-one-execution", "REQ-check-verdict")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented selective run over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod": "module example.com/multi\n\ngo 1.26\n",
+		"pkg/pkg_test.go": `package pkg
+
+import (
+	"testing"
+	"time"
+)
+
+func TestSlowEnough(t *testing.T) {
+	time.Sleep(3 * time.Second)
+}
+`,
+	})
+	patient := &stipulatorv1.GoInvocationConfig{}
+	patient.SetPackages([]string{"./pkg"})
+	patient.SetRace(true)
+	hasty := &stipulatorv1.GoInvocationConfig{}
+	hasty.SetPackages([]string{"./pkg"})
+	hasty.SetRace(true)
+	p := &stipulatorv1.TestPolicy{}
+	inv1 := goInvocation("a-patient", patient)
+	inv2 := goInvocation("b-hasty", hasty)
+	inv2.SetTimeout(durationpb.New(time.Second))
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{inv1, inv2})
+	writePolicyRecord(t, tmp, p)
+
+	tr, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.Degraded != "" {
+		t.Fatalf("freshness path degraded: %s", tr.Degraded)
+	}
+	if got := tr.Outcomes["example.com/multi/pkg.TestSlowEnough"]; got != verify.TestPassed {
+		t.Fatalf("multiply-selected outcome = %v, want PASSED from the patient leg (health-judged parity); outcomes=%v",
+			got, tr.Outcomes)
+	}
+	var hastyDiag bool
+	for _, d := range tr.Diagnostics {
+		if d.GetPackage() == "example.com/multi/pkg" && d.GetInvocation() == "b-hasty" {
+			hastyDiag = true
+		}
+	}
+	if !hastyDiag {
+		t.Fatalf("no diagnostic from the hasty leg: the second covering invocation never executed; diagnostics=%v", tr.Diagnostics)
+	}
+}
+
+// TestGoRunWitnessesMultiplySelectedRunsNonRaceLeg pins that a non-race
+// invocation co-selecting a package contributes its failures to the
+// witness-evidence run — and only failures: the tagged red test exists
+// solely in the non-race leg's discovery, and its failure must surface
+// while race-blind passes grant nothing.
+func TestGoRunWitnessesMultiplySelectedRunsNonRaceLeg(t *testing.T) {
+	stipulate.Covers(t, "REQ-core-one-execution", "REQ-check-verdict")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented selective run over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":            "module example.com/multinr\n\ngo 1.26\n",
+		"pkg/green_test.go": "package pkg\n\nimport \"testing\"\n\nfunc TestGreen(t *testing.T) {}\n",
+		"pkg/red_test.go": `//go:build redflag
+
+package pkg
+
+import "testing"
+
+func TestRedFlag(t *testing.T) {
+	t.Fatal("only the non-race leg discovers me")
+}
+
+func TestGreenReg(t *testing.T) {
+	t.Log("stipulator:covers REQ-nonrace-reg")
+}
+`,
+	})
+	race := &stipulatorv1.GoInvocationConfig{}
+	race.SetPackages([]string{"./pkg"})
+	race.SetRace(true)
+	tagged := &stipulatorv1.GoInvocationConfig{}
+	tagged.SetPackages([]string{"./pkg"})
+	tagged.SetTags([]string{"redflag"})
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{
+		goInvocation("a-race", race),
+		goInvocation("b-tagged", tagged),
+	})
+	writePolicyRecord(t, tmp, p)
+
+	tr, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.Degraded != "" {
+		t.Fatalf("freshness path degraded: %s", tr.Degraded)
+	}
+	if got := tr.Outcomes["example.com/multinr/pkg.TestRedFlag"]; got != verify.TestFailed {
+		t.Fatalf("non-race leg failure = %v, want FAILED surfaced; outcomes=%v", got, tr.Outcomes)
+	}
+	if got := tr.Outcomes["example.com/multinr/pkg.TestGreen"]; got != verify.TestPassed {
+		t.Fatalf("race-leg pass = %v, want PASSED from the race leg", got)
+	}
+	if got, ok := tr.Outcomes["example.com/multinr/pkg.TestGreenReg"]; ok {
+		t.Fatalf("non-race pass granted an outcome %v; race rigor alone grants", got)
+	}
+	wantReg := verify.Registration{Package: "example.com/multinr/pkg", Test: "TestGreenReg", Requirement: "REQ-nonrace-reg"}
+	var found bool
+	for _, reg := range tr.Registrations {
+		if reg == wantReg {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("green non-race registration lost — the unbacked-registration cross-check is blind to it: %+v", tr.Registrations)
 	}
 }

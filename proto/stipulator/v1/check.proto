@@ -10,7 +10,9 @@ import "stipulator/v1/reports.proto";
 // CheckResult is the unified check operation's one answer, derived from a
 // single evaluation pass — compilation, one execution of the accepted
 // test policy, binding verification, coverage, gap evaluation, and prune
-// residue. Every human rendering is a projection of this message.
+// residue. The default pass takes witness evidence from served records
+// plus selective execution; the health-judged pass executes the whole
+// policy. Every human rendering is a projection of this message.
 message CheckResult {
   // The one verdict: false exactly when compilation fails, verification
   // reports problems, suite health is unhealthy, an undeclared red
@@ -37,9 +39,9 @@ message CheckResult {
   // are absent; the verdict fails — witness execution consumes the
   // committed policy record, never an assumed invocation.
   Problem policy_problem = 7;
-  // Top-level tests the policy execution ran. Nothing in this count was
-  // served from the witness cache: the check judges every invocation's
-  // health, and a health-judged invocation executes whole.
+  // Top-level tests this pass executed. Under the health-judged form the
+  // whole policy runs and nothing is served; under the default
+  // witness-evidence form only the stale remainder executes.
   int32 tests_executed = 8;
   // Executed tests whose freshness records could not be published for
   // later freshness-serving consumers; they run again next time. A
@@ -47,6 +49,24 @@ message CheckResult {
   // visible.
   int32 tests_uncacheable = 9;
   // The freshness-publication fault when record publication was disabled
-  // whole; execution evidence and suite health stand, only reuse is lost.
+  // whole; witness evidence stands — and suite health with it under the
+  // health-judged form — only reuse is lost.
   string witness_publication_degraded = 10;
+  // The evidence class that produced the verdict: true means the
+  // health-judging whole-policy execution (suite health rides execution);
+  // false means the default witness-evidence pass — served records plus
+  // witness-only selective execution of the stale remainder — which claims
+  // no suite health and carries no execution report.
+  bool suite_health_judged = 11;
+  // Top-level tests served from proven-fresh witness records instead of
+  // executing. Always zero under the health-judged form: a health-judged
+  // invocation executes whole.
+  int32 tests_served = 12;
+  // Failure diagnostics for the witness-evidence form, where no
+  // execution report exists to carry them: the same typed rows the
+  // execution report would hold — disposition, truncation, and retained
+  // output intact, so a degraded execution stays distinct from an
+  // assertion failure (REQ-check-diagnostics). Empty under the
+  // health-judged form.
+  repeated FailureDiagnostic witness_diagnostics = 13;
 }

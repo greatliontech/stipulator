@@ -26,11 +26,16 @@ import (
 // exactly as SelectionResult carries them, and no package or invocation
 // health exists on this path (REQ-evidence-freshness-no-health). The
 // expected witness set derives from policy discovery against the tree's
-// obligation universe; a subject whose package no invocation covers, only
-// a non-race invocation covers, or more than one invocation covers is
-// outside the policy — it neither serves nor executes, and the count of
-// such subjects rides the result so the gap is a visible number, never
-// silence (REQ-policy-conservation's visibility principle). Visibility
+// obligation universe; a subject whose package exactly one invocation
+// covers and that invocation is non-race is outside the policy — it
+// neither serves nor executes, and the count of such subjects rides the
+// result so the gap is a visible number, never silence
+// (REQ-policy-conservation's visibility principle). A multiply-selected
+// package's subjects execute every run under each covering invocation —
+// race legs granting outcomes, non-race legs contributing failures and
+// registrations only: they cannot serve — a record has no per-invocation
+// identity — but their witness evidence stays aligned with the
+// health-judged form's. Visibility
 // has two homes on the result: the counts (outside-policy, uncacheable)
 // and the package-keyed failure diagnostics — an envelope cutoff, a
 // package abort, a build failure — so an expected subject denied an
@@ -53,6 +58,13 @@ func RunWitnesses(ctx context.Context, dir string) (*verify.TestRun, error) {
 	if err != nil {
 		return nil, err
 	}
+	return runWitnesses(ctx, dir, p)
+}
+
+// RunWitnessesPolicy is RunWitnesses over an already-loaded accepted
+// policy — the unified check loads the policy once for its own verdict
+// short-circuits and hands it through.
+func RunWitnessesPolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (*verify.TestRun, error) {
 	return runWitnesses(ctx, dir, p)
 }
 
@@ -134,9 +146,43 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 			covering[s.Package] = normalized[g.pkgInv[s.Package]]
 		}
 	}
+	// A multiply-selected package's subjects cannot serve — a witness
+	// record has no per-invocation identity — but they must not read
+	// unwitnessed either: the health-judged form derives their evidence
+	// from every covering invocation, so the witness-evidence form
+	// executes them under each covering invocation from that invocation's
+	// own discovery (same-group duplicates included) and the merge takes
+	// the worst outcome. Race legs grant outcomes; non-race legs
+	// contribute failures only — a non-race pass never grants witness
+	// evidence — keeping the two forms' evidence aligned
+	// (REQ-check-verdict).
+	multiSel := map[string]TestSelection{}
+	multiNonRace := map[string]TestSelection{}
+	multiExecuted := map[gofresh.Subject]bool{}
+	for _, ic := range pc.invocations {
+		dst := multiSel
+		if !ic.n.Race {
+			dst = multiNonRace
+		}
+		for _, o := range ic.obligations {
+			if o.Kind != ObligationTest && o.Kind != ObligationFuzz {
+				continue
+			}
+			if pc.globalCount[o.Package] <= 1 {
+				continue
+			}
+			sel := dst[ic.n.Name]
+			if sel == nil {
+				sel = TestSelection{}
+				dst[ic.n.Name] = sel
+			}
+			sel[o.Package] = append(sel[o.Package], o.Name)
+			multiExecuted[gofresh.Subject{Package: o.Package, Symbol: o.Name}] = true
+		}
+	}
 	outside := 0
 	for s := range expected {
-		if !inPolicy[s] {
+		if !inPolicy[s] && !multiExecuted[s] {
 			outside++
 		}
 	}
@@ -184,6 +230,18 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 			}
 		}
 	}
+	// Multiply-selected subjects execute every run, under each covering
+	// race invocation, alongside that invocation's stale selection.
+	for inv, sel := range multiSel {
+		dst := staleSel[inv]
+		if dst == nil {
+			dst = TestSelection{}
+			staleSel[inv] = dst
+		}
+		for pkg, names := range sel {
+			dst[pkg] = append(dst[pkg], names...)
+		}
+	}
 	for _, sel := range staleSel {
 		for pkg := range sel {
 			sort.Strings(sel[pkg])
@@ -198,6 +256,17 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 	m := newExecMerge()
 	if err := executeSelections(ctx, p, normalized, staleSel, m); err != nil {
 		return nil, err
+	}
+	var nonRaceMerge *execMerge
+	if len(multiNonRace) > 0 {
+		// Non-race covering legs of multiply-selected packages: their
+		// failures are evidence the health-judged form would surface, so
+		// they execute here in the execution phase and fold after the
+		// main merges — failures and registrations only, never a grant.
+		nonRaceMerge = newExecMerge()
+		if err := executeSelections(ctx, p, normalized, multiNonRace, nonRaceMerge); err != nil {
+			return nil, err
+		}
 	}
 
 	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
@@ -243,6 +312,9 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 	ranTop := map[string]bool{}
 	consumeMerge(tr, m, ranTop)
 	consumeMerge(tr, retryMerge, ranTop)
+	if nonRaceMerge != nil {
+		consumeMergeFailuresOnly(tr, nonRaceMerge, ranTop)
+	}
 	tr.Ran = len(ranTop)
 	for _, rec := range servedRecords {
 		for key, out := range rec.Outcomes {
@@ -783,7 +855,31 @@ func retryDrifted(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, n
 // isolation sentence). When one test name carries several results the
 // worst outcome wins, so a single red occurrence is never papered over
 // by a green sibling.
+// consumeMergeFailuresOnly folds one merge's failed outcomes, its
+// diagnostics, and every row's registrations into the run — pass and
+// skip outcomes are stripped, never the rows: the source executions lack
+// race rigor, so they can indict evidence but never grant it, while
+// their registrations and execution remain facts the
+// unbacked-registration cross-check and the executed counts must see.
+func consumeMergeFailuresOnly(tr *verify.TestRun, m *execMerge, ranTop map[string]bool) {
+	filtered := &execMerge{disp: m.disp, obs: m.obs, diags: m.diags}
+	for _, row := range m.rows {
+		if row.GetOutcome() == stipulatorv1.TestOutcome_TEST_OUTCOME_FAILED {
+			filtered.rows = append(filtered.rows, row)
+			continue
+		}
+		stripped := &stipulatorv1.TestResult{}
+		stripped.SetPackage(row.GetPackage())
+		stripped.SetTest(row.GetTest())
+		stripped.SetRegistrations(row.GetRegistrations())
+		stripped.SetProducer(row.GetProducer())
+		filtered.rows = append(filtered.rows, stripped)
+	}
+	consumeMerge(tr, filtered, ranTop)
+}
+
 func consumeMerge(tr *verify.TestRun, m *execMerge, ranTop map[string]bool) {
+	tr.Diagnostics = append(tr.Diagnostics, m.diags...)
 	rank := func(o verify.TestOutcome) int {
 		switch o {
 		case verify.TestFailed:

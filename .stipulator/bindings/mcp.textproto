@@ -450,3 +450,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "82af074d8f807e879a8d2f8ef9abf2c8d2c6198fd86aecd25d4bd5638be65ccc"
 }
+
+bindings {
+  requirement_id: "REQ-mcp-cancellation"
+  content_hash: "e6d4373361a4a4c5ce7ec78e505048d48ff414702f4ea8aab6f74ecad347f03b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolServingPathCancellationKillsChildren"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7960587a31790ea45c6951f95c215c567f14dbc13e7c22ac76904b9a253c7788"
+}

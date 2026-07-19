@@ -1,6 +1,7 @@
 # MCP check returns a full result too large for the client response
 
-Lands: when the MCP `check` result schema or rendering next changes.
+Lands: 6 of the active hot-loop-serving plan (the response contract:
+summary-first check views and scopes).
 
 ## Observed
 
@@ -29,3 +30,8 @@ summary should include at least:
 
 The full `CheckResult` can remain available, but an agent-facing check call
 needs the one-verdict answer without relying on client truncation side channels.
+
+Additional duplication to resolve with the response contract: a package
+failure rides the check result twice — as a typed `witness_diagnostics`
+row (test unset; disposition and truncation intact) and as the same text
+in `verify.package_failures`. One fact, one wire home.

@@ -215,3 +215,40 @@ func TestCheckExitCodes(t *testing.T) {
 		t.Errorf("non-corpus dir exit = %d, want 2", code)
 	}
 }
+
+// The serving form has no execution report, so its diagnostics render
+// from the result's own typed rows — dispositions and truncation named
+// exactly as the health-judged form names them.
+func TestCheckRenderServingFormNamesDiagnosticsDistinctly(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-diagnostics")
+	res := &stipulatorv1.CheckResult{}
+	res.SetTestsServed(2)
+	res.SetTestsExecuted(1)
+	failed := &stipulatorv1.FailureDiagnostic{}
+	failed.SetPackage("example.com/m/red")
+	failed.SetTest("TestRed")
+	failed.SetDisposition(stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED)
+	failed.SetOutput("    red_test.go:7: boom\n")
+	degraded := &stipulatorv1.FailureDiagnostic{}
+	degraded.SetPackage("example.com/m/silent")
+	degraded.SetDisposition(stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_DEGRADED)
+	degraded.SetOutput("test binary exited without a report\n")
+	degraded.SetTruncated(true)
+	res.SetWitnessDiagnostics([]*stipulatorv1.FailureDiagnostic{failed, degraded})
+
+	var stdout, stderr bytes.Buffer
+	renderCheck(&stdout, &stderr, res)
+	diag := stderr.String()
+	if !strings.Contains(diag, "witnessed: 2 served fresh, 1 executed") {
+		t.Errorf("serving line missing:\n%s", diag)
+	}
+	if !strings.Contains(diag, "failed: example.com/m/red.TestRed") {
+		t.Errorf("assertion failure not named as failed:\n%s", diag)
+	}
+	if !strings.Contains(diag, "degraded: example.com/m/silent") {
+		t.Errorf("degraded execution not named distinctly:\n%s", diag)
+	}
+	if !strings.Contains(diag, "(output truncated)") {
+		t.Errorf("truncation marker lost:\n%s", diag)
+	}
+}

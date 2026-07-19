@@ -1,16 +1,19 @@
 // Package check runs the unified check: one in-process evaluation pass —
-// compilation, one execution of the accepted test policy, binding
-// verification against that execution, coverage and gap evaluation, and
-// prune residue — composed into one CheckResult carrying one verdict.
+// compilation, witness evidence, binding verification, coverage and gap
+// evaluation, and prune residue — composed into one CheckResult carrying
+// one verdict.
 //
-// The pass composes in-process: every stage is a library call, never a
-// subprocess invocation of the individual operations, so suite health and
-// witness evidence derive from the same execution and a witness failure
-// occurs inside the run whose health the verdict judged — not in a second
-// run with different conditions. Child processes exist only behind the Go
-// backend's owned execution seam (test binaries, toolchain queries, the
-// symbol-resolution child). Every human rendering of the check is a
-// projection of the returned message.
+// Witness evidence has two forms (REQ-check-verdict). The default serves
+// proven-fresh witness records and selectively executes only the stale
+// remainder — a witness-evidence invocation that demands no suite-health
+// disposition, per REQ-core-one-execution's witness-only class. The full
+// form executes the accepted policy whole, so suite health and witness
+// evidence derive from the same execution and a witness failure occurs
+// inside the run whose health the verdict judged. Either way the pass
+// composes in-process: every stage is a library call, never a subprocess
+// invocation of the individual operations; child processes exist only
+// behind the Go backend's owned execution seam. Every human rendering of
+// the check is a projection of the returned message.
 package check
 
 import (
@@ -35,12 +38,16 @@ import (
 // return is reserved for operational faults — cancellation included: a
 // cancelled run aborts cleanly with no partial verdict.
 //
-// The verdict fails exactly when compilation fails, the accepted test
-// policy cannot load, verification reports problems, suite health is
-// unhealthy, some red requirement has no gap naming it, or prune residue
-// remains. A tree failing the check is a fact in the result, never an
-// error.
-func Run(ctx context.Context, dir string) (*stipulatorv1.CheckResult, error) {
+// By default the pass takes its witness evidence from freshness-served
+// records plus witness-only selective execution of the stale remainder,
+// claims no suite health, and fails exactly when compilation fails, the
+// accepted test policy cannot load, verification reports problems, some
+// red requirement has no gap naming it, or prune residue remains. With
+// full set the accepted policy executes whole, health derives from that
+// same execution, and the verdict additionally fails when suite health
+// is unhealthy (REQ-check-verdict). A tree failing the check is a fact
+// in the result, never an error.
+func Run(ctx context.Context, dir string, full bool) (*stipulatorv1.CheckResult, error) {
 	// The entry guard keeps every verdict short circuit — compile problems
 	// and policy problems included — behind a live context: a cancelled
 	// run aborts before it can render any partial judgment.
@@ -99,15 +106,30 @@ func Run(ctx context.Context, dir string) (*stipulatorv1.CheckResult, error) {
 		return res, nil
 	}
 
-	report, testRun, err := golang.ExecutePolicyWitnessed(ctx, dir, pol)
-	if err != nil {
-		return nil, err
+	// The evidence-class fork (REQ-check-verdict): health judgment demands
+	// whole-policy execution, so the full form executes everything and the
+	// default form serves proven-fresh witnesses with witness-only
+	// selective execution of the stale remainder — claiming no health.
+	var testRun *verify.TestRun
+	var report *stipulatorv1.ExecutionReport
+	if full {
+		report, testRun, err = golang.ExecutePolicyWitnessed(ctx, dir, pol)
+		if err != nil {
+			return nil, err
+		}
+		res.SetExecution(report)
+		res.SetSuiteHealthJudged(true)
+	} else {
+		testRun, err = golang.RunWitnessesPolicy(ctx, dir, pol)
+		if err != nil {
+			return nil, err
+		}
+		res.SetTestsServed(int32(testRun.Fresh))
+		// No execution report exists to carry retained failure output on
+		// this form, so the typed diagnostics ride the result directly —
+		// disposition and truncation intact (REQ-check-diagnostics).
+		res.SetWitnessDiagnostics(testRun.Diagnostics)
 	}
-	res.SetExecution(report)
-	// Nothing on this path is served from the witness cache: the check
-	// judges every invocation's health and a health-judged invocation
-	// executes whole, so the fresh count is structurally zero and only the
-	// executed and uncacheable counts carry information.
 	res.SetTestsExecuted(int32(testRun.Ran))
 	res.SetTestsUncacheable(int32(testRun.Uncached))
 	res.SetWitnessPublicationDegraded(testRun.Degraded)
@@ -150,8 +172,14 @@ func Run(ctx context.Context, dir string) (*stipulatorv1.CheckResult, error) {
 	}
 	res.SetPruneResidue(residue)
 
+	// The witness-evidence form omits the health term: it demanded no
+	// suite-health disposition, so health can neither pass nor fail it.
+	healthy := true
+	if full {
+		healthy = golang.SuiteHealthy(report)
+	}
 	res.SetPassed(len(vr.Problems) == 0 &&
-		golang.SuiteHealthy(report) &&
+		healthy &&
 		cov.GatePasses() &&
 		len(residue) == 0)
 	return res, nil

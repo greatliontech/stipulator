@@ -81,6 +81,8 @@ and failure diagnostics.
 
 **REQ-report-check-result** (wire, refines REQ-report-messages): The
 unified check operation MUST return one protobuf check result carrying
-the compile outcome, suite health, per-binding verification, coverage
-buckets, gap evaluation, failed-witness diagnostics, and prune residue,
-with every human rendering a projection of that message.
+the compile outcome, the evidence class (witness-evidence or
+health-judged), suite health when judged, served, executed, and
+uncacheable witness counts, per-binding verification, coverage buckets,
+gap evaluation, failed-witness diagnostics, and prune residue, with
+every human rendering a projection of that message.

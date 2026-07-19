@@ -82,7 +82,7 @@ func TestCheckMissingPolicyFailsWithGuidance(t *testing.T) {
 	files := baseTree(nil)
 	delete(files, ".stipulator/policy.textproto")
 	dir := writeTree(t, files)
-	res, err := Run(context.Background(), dir)
+	res, err := Run(context.Background(), dir, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +111,7 @@ func TestCheckEmptyPolicyFailsWithNamedCause(t *testing.T) {
 	files := baseTree(nil)
 	files[".stipulator/policy.textproto"] = "# empty on purpose\n"
 	dir := writeTree(t, files)
-	res, err := Run(context.Background(), dir)
+	res, err := Run(context.Background(), dir, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func TestCheckUnreadablePolicyIsOperational(t *testing.T) {
 	if err := os.Chmod(filepath.Join(dir, ".stipulator/policy.textproto"), 0); err != nil {
 		t.Fatal(err)
 	}
-	res, err := Run(context.Background(), dir)
+	res, err := Run(context.Background(), dir, true)
 	if err == nil {
 		t.Fatal("unreadable policy record produced no operational error")
 	}
@@ -155,7 +155,7 @@ func TestCheckCompileFailureIsTheVerdict(t *testing.T) {
 		"specs/check.md": "# Check\n\n**REQ-fix-dup** (behavior): The fixture MUST pass.\n\n" +
 			"**REQ-fix-dup** (behavior): The fixture MUST pass twice.\n",
 	}))
-	res, err := Run(context.Background(), dir)
+	res, err := Run(context.Background(), dir, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,7 +180,7 @@ func TestCheckSuiteFailureFailsTheCheckWithDiagnostics(t *testing.T) {
 		"red/red_test.go": "package red\n\nimport \"testing\"\n\n" +
 			"func TestAlwaysRed(t *testing.T) {\n\tt.Fatal(\"deliberate fixture failure\")\n}\n",
 	}))
-	res, err := Run(context.Background(), dir)
+	res, err := Run(context.Background(), dir, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +221,7 @@ func TestCheckCoverageViolationFailsTheCheck(t *testing.T) {
 	dir := writeTree(t, baseTree(map[string]string{
 		"specs/check.md": "# Check\n\n**REQ-fix-must** (behavior): The fixture MUST pass.\n",
 	}))
-	res, err := Run(context.Background(), dir)
+	res, err := Run(context.Background(), dir, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +251,7 @@ func TestCheckVerifyProblemFailsTheCheck(t *testing.T) {
 			"  role: BINDING_ROLE_IMPLEMENTS\n" +
 			"}\n",
 	}))
-	res, err := Run(context.Background(), dir)
+	res, err := Run(context.Background(), dir, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -281,7 +281,7 @@ func TestCheckBrokenBindingFailsTheCheck(t *testing.T) {
 			"  role: BINDING_ROLE_TESTS\n" +
 			"}\n",
 	}))
-	res, err := Run(context.Background(), dir)
+	res, err := Run(context.Background(), dir, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -349,7 +349,7 @@ func TestCheckWitnessResolvedGapIsResidueUntilPruned(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := Run(ctx, dir)
+	res, err := Run(ctx, dir, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -377,7 +377,7 @@ func TestCheckWitnessResolvedGapIsResidueUntilPruned(t *testing.T) {
 	if err := os.Remove(filepath.Join(dir, filepath.FromSlash(gapPath))); err != nil {
 		t.Fatal(err)
 	}
-	res, err = Run(ctx, dir)
+	res, err = Run(ctx, dir, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -435,7 +435,7 @@ func TestCheckUnfiredManualGapOutlivesGreenWitnesses(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := Run(ctx, dir)
+	res, err := Run(ctx, dir, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -476,7 +476,7 @@ func TestCheckUnfiredManualGapOutlivesGreenWitnesses(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, filepath.FromSlash(gapPath)), []byte(fired), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	res, err = Run(ctx, dir)
+	res, err = Run(ctx, dir, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -535,7 +535,7 @@ func TestCheckReportsPhaseTransitions(t *testing.T) {
 	dir := writeTree(t, baseTree(nil))
 	var events []*stipulatorv1.ProgressEvent
 	rep := progress.New(func(e *stipulatorv1.ProgressEvent) { events = append(events, e) })
-	res, err := Run(progress.NewContext(context.Background(), rep), dir)
+	res, err := Run(progress.NewContext(context.Background(), rep), dir, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -575,7 +575,7 @@ func TestCheckCancelledRunYieldsNoVerdict(t *testing.T) {
 		dir := writeTree(t, baseTree(nil))
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
-		res, err := Run(ctx, dir)
+		res, err := Run(ctx, dir, true)
 		if res != nil {
 			t.Errorf("cancelled run returned a verdict: %v", res)
 		}
@@ -592,7 +592,7 @@ func TestCheckCancelledRunYieldsNoVerdict(t *testing.T) {
 		dir := writeTree(t, files)
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
-		res, err := Run(ctx, dir)
+		res, err := Run(ctx, dir, true)
 		if res != nil {
 			t.Errorf("cancelled run returned a verdict: %v", res)
 		}
@@ -609,7 +609,7 @@ func TestCheckCancelledRunYieldsNoVerdict(t *testing.T) {
 		}))
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
-		res, err := Run(ctx, dir)
+		res, err := Run(ctx, dir, true)
 		if res != nil {
 			t.Errorf("cancelled run returned a verdict: %v", res)
 		}
@@ -624,7 +624,7 @@ func TestCheckCancelledRunYieldsNoVerdict(t *testing.T) {
 		}))
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		res, err := Run(ctx, dir)
+		res, err := Run(ctx, dir, true)
 		if res != nil {
 			t.Errorf("cancelled run returned a verdict: %v", res)
 		}

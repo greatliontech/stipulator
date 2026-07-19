@@ -99,24 +99,34 @@ requirement is `uncovered`, `stale`, or `broken` and no gap record names it.
 ## The unified check
 
 One command answers "does this tree pass": it compiles the corpus,
-executes the accepted test policy once, verifies bindings against that
-execution, evaluates coverage and gaps, and renders one verdict. Suite
-health and witness evidence come from the same execution per
-REQ-core-one-execution, so a passing suite is never discarded and
-re-derived, and a witness failure occurs inside the same run whose health
-the gate judged — not in a second run with different conditions.
+obtains witness evidence — served from proven-fresh records with
+witness-only selective execution of the stale remainder by default, or
+from one whole execution of the accepted test policy when the caller
+demands suite judgment — verifies bindings against that evidence,
+evaluates coverage and gaps, and renders one verdict. Suite health is
+claimed only by the full form, where health and witness evidence come
+from the same execution per REQ-core-one-execution, so a passing suite
+is never discarded and re-derived and a witness failure occurs inside
+the run whose health the gate judged. The default form is the warm
+loop's verdict: it re-runs exactly what moved and claims no health.
 
 **REQ-check-verdict** (behavior): The unified check MUST derive its one
-verdict from a single evaluation pass — compilation, one execution of the
-accepted test policy, binding verification, coverage, gap evaluation, and
-prune residue — failing exactly when compilation fails, the accepted test
-policy record is missing or invalid (REQ-policy-explicit: without it there
-is no execution whose suite health the verdict could judge), verification
-reports problems, suite health is unhealthy, REQ-gate-no-undeclared fails,
-or prune residue remains, and never composing the answer from subprocess
-invocations of the individual operations. A cancelled check yields no
-verdict at all — cancellation is an operational abort, never a pass or a
-fail.
+verdict from a single evaluation pass — compilation, witness evidence,
+binding verification, coverage, gap evaluation, and prune residue —
+never composing the answer from subprocess invocations of the individual
+operations. By default the witness evidence comes from freshness-served
+records plus witness-only selective execution of the stale remainder — a
+witness-evidence invocation demanding no suite-health disposition
+(REQ-core-one-execution) — and the verdict fails exactly when
+compilation fails, the accepted test policy record is missing or invalid
+(REQ-policy-explicit), verification reports problems,
+REQ-gate-no-undeclared fails, or prune residue remains. A caller
+demanding suite judgment selects full execution: the policy executes
+whole, health derives from that same execution, and the verdict
+additionally fails when suite health is unhealthy. The result names
+which evidence class produced it, so a witness-evidence verdict is never
+mistaken for a health-judged one. A cancelled check yields no verdict at
+all — cancellation is an operational abort, never a pass or a fail.
 
 **REQ-check-diagnostics** (behavior): A failing check MUST surface the
 retained output of every failing policy invocation and every failed or

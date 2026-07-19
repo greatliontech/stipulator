@@ -44,7 +44,7 @@ var (
 func checkUnhealthy(t *testing.T, files map[string]string) *stipulatorv1.CheckResult {
 	t.Helper()
 	dir := writeTree(t, files)
-	res, err := Run(context.Background(), dir)
+	res, err := Run(context.Background(), dir, true)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -43,7 +43,7 @@ func (l *notificationLog) snapshot() []*mcp.ProgressNotificationParams {
 
 // checkHarness builds a session against a server whose check operation is
 // injected, with the client capturing progress notifications.
-func checkHarness(t *testing.T, runCheck func(context.Context) (*stipulatorv1.CheckResult, error)) (*mcp.ClientSession, *notificationLog) {
+func checkHarness(t *testing.T, runCheck func(context.Context, bool) (*stipulatorv1.CheckResult, error)) (*mcp.ClientSession, *notificationLog) {
 	t.Helper()
 	s := &Server{
 		fsys: func() fs.FS {
@@ -92,7 +92,7 @@ func fixtureResult(t *testing.T) *stipulatorv1.CheckResult {
 func TestCheckToolStructuredResultMirrorsCheckResult(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-tools", "REQ-report-check-result")
 	want := fixtureResult(t)
-	sess, _ := checkHarness(t, func(context.Context) (*stipulatorv1.CheckResult, error) {
+	sess, _ := checkHarness(t, func(context.Context, bool) (*stipulatorv1.CheckResult, error) {
 		return want, nil
 	})
 	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "check", Arguments: map[string]any{}})
@@ -133,7 +133,7 @@ func TestCheckToolFailingTreeIsSuccessfulCall(t *testing.T) {
 	failing.SetPassed(false)
 	failing.SetTestsExecuted(1)
 	failing.SetExecution(redExecution)
-	sess, log := checkHarness(t, func(context.Context) (*stipulatorv1.CheckResult, error) {
+	sess, log := checkHarness(t, func(context.Context, bool) (*stipulatorv1.CheckResult, error) {
 		return failing, nil
 	})
 	params := &mcp.CallToolParams{Name: "check", Arguments: map[string]any{}}
@@ -162,7 +162,7 @@ func TestCheckToolFailingTreeIsSuccessfulCall(t *testing.T) {
 		t.Errorf("terminal cause = %v, want TEST_FAILURE for a red suite", final.GetTerminalCause())
 	}
 
-	opSess, _ := checkHarness(t, func(context.Context) (*stipulatorv1.CheckResult, error) {
+	opSess, _ := checkHarness(t, func(context.Context, bool) (*stipulatorv1.CheckResult, error) {
 		return nil, errors.New("policy record unreadable: permission denied")
 	})
 	res, err = opSess.CallTool(context.Background(), &mcp.CallToolParams{Name: "check", Arguments: map[string]any{}})
@@ -180,7 +180,7 @@ func TestCheckToolFailingTreeIsSuccessfulCall(t *testing.T) {
 // ignored.
 func TestCheckToolRefusesViewAndScopeInputs(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-views")
-	sess, _ := checkHarness(t, func(context.Context) (*stipulatorv1.CheckResult, error) {
+	sess, _ := checkHarness(t, func(context.Context, bool) (*stipulatorv1.CheckResult, error) {
 		return &stipulatorv1.CheckResult{}, nil
 	})
 	for _, args := range []map[string]any{
@@ -221,7 +221,7 @@ func TestCheckToolProgressRidesNotificationsNotPayload(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-progress")
 	passing := &stipulatorv1.CheckResult{}
 	passing.SetPassed(true)
-	sess, log := checkHarness(t, func(ctx context.Context) (*stipulatorv1.CheckResult, error) {
+	sess, log := checkHarness(t, func(ctx context.Context, _ bool) (*stipulatorv1.CheckResult, error) {
 		rep := progress.FromContext(ctx)
 		rep.Phase(stipulatorv1.Phase_PHASE_COMPILE)
 		rep.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
@@ -507,7 +507,7 @@ func TestCheckToolClientCancellationSealsProgress(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-cancellation", "REQ-mcp-progress")
 	started := make(chan struct{})
 	stopped := make(chan struct{})
-	sess, log := checkHarness(t, func(ctx context.Context) (*stipulatorv1.CheckResult, error) {
+	sess, log := checkHarness(t, func(ctx context.Context, _ bool) (*stipulatorv1.CheckResult, error) {
 		progress.FromContext(ctx).Phase(stipulatorv1.Phase_PHASE_EXECUTION)
 		close(started)
 		<-ctx.Done()

@@ -112,6 +112,11 @@ type TestRun struct {
 	// import path, occurrences joined like Failures: an expected subject
 	// denied an outcome must be diagnosable from the run that denied it.
 	PackageFailures map[string]string
+	// Diagnostics carries the same failures as typed rows — disposition,
+	// truncation, and retained output intact — for consumers that must
+	// name a degraded execution distinctly from an assertion failure
+	// (REQ-check-diagnostics) where no execution report exists.
+	Diagnostics []*stipulatorv1.FailureDiagnostic
 }
 
 // Registration is one runtime coverage claim. Package and the test path

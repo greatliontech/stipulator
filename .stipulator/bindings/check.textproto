@@ -171,3 +171,39 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "721d1c8c2d097eee8690064d0c652f93d4069662021c7892995691ef1514fe9a"
 }
+
+bindings {
+  requirement_id: "REQ-check-verdict"
+  content_hash: "7f661b9481d4c82e69656579b9f89bb7ea28cd6004f44cfcbe23cf8ebac443c8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckServesFreshWitnessesByDefault"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "84764ba77b14d6dd4f8cc37e12bcc2f9a7bbf0e66822136a9384a51bd7049a07"
+}
+
+bindings {
+  requirement_id: "REQ-check-verdict"
+  content_hash: "7f661b9481d4c82e69656579b9f89bb7ea28cd6004f44cfcbe23cf8ebac443c8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckDefaultExecutesOnlyTheStaleRemainder"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "bada1f17560401b16dae192eca62a91201424aaa391bed0e61e3946534bd9ffc"
+}
+
+bindings {
+  requirement_id: "REQ-check-diagnostics"
+  content_hash: "b373e6343bd4553e52e640af2e3943d9d3c002932bb77da1ebb35ce4876d1beb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckDefaultRedWitnessFailsWithDiagnostics"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "d5c23d9037313a1782e8eef59c64bd8058490645e7f4f1bdea18b5af23d349a8"
+}
+
+bindings {
+  requirement_id: "REQ-check-diagnostics"
+  content_hash: "b373e6343bd4553e52e640af2e3943d9d3c002932bb77da1ebb35ce4876d1beb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestCheckRenderServingFormNamesDiagnosticsDistinctly"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "946a904123b8ff38482c7fd17b18a59eef49f6a5b89406a01ad6e57f7b52741c"
+}

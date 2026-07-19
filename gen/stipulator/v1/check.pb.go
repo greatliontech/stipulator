@@ -23,7 +23,9 @@ const (
 // CheckResult is the unified check operation's one answer, derived from a
 // single evaluation pass — compilation, one execution of the accepted
 // test policy, binding verification, coverage, gap evaluation, and prune
-// residue. Every human rendering is a projection of this message.
+// residue. The default pass takes witness evidence from served records
+// plus selective execution; the health-judged pass executes the whole
+// policy. Every human rendering is a projection of this message.
 type CheckResult struct {
 	state                                 protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Passed                     bool                   `protobuf:"varint,1,opt,name=passed"`
@@ -36,6 +38,9 @@ type CheckResult struct {
 	xxx_hidden_TestsExecuted              int32                  `protobuf:"varint,8,opt,name=tests_executed,json=testsExecuted"`
 	xxx_hidden_TestsUncacheable           int32                  `protobuf:"varint,9,opt,name=tests_uncacheable,json=testsUncacheable"`
 	xxx_hidden_WitnessPublicationDegraded *string                `protobuf:"bytes,10,opt,name=witness_publication_degraded,json=witnessPublicationDegraded"`
+	xxx_hidden_SuiteHealthJudged          bool                   `protobuf:"varint,11,opt,name=suite_health_judged,json=suiteHealthJudged"`
+	xxx_hidden_TestsServed                int32                  `protobuf:"varint,12,opt,name=tests_served,json=testsServed"`
+	xxx_hidden_WitnessDiagnostics         *[]*FailureDiagnostic  `protobuf:"bytes,13,rep,name=witness_diagnostics,json=witnessDiagnostics"`
 	XXX_raceDetectHookData                protoimpl.RaceDetectHookData
 	XXX_presence                          [1]uint32
 	unknownFields                         protoimpl.UnknownFields
@@ -142,9 +147,32 @@ func (x *CheckResult) GetWitnessPublicationDegraded() string {
 	return ""
 }
 
+func (x *CheckResult) GetSuiteHealthJudged() bool {
+	if x != nil {
+		return x.xxx_hidden_SuiteHealthJudged
+	}
+	return false
+}
+
+func (x *CheckResult) GetTestsServed() int32 {
+	if x != nil {
+		return x.xxx_hidden_TestsServed
+	}
+	return 0
+}
+
+func (x *CheckResult) GetWitnessDiagnostics() []*FailureDiagnostic {
+	if x != nil {
+		if x.xxx_hidden_WitnessDiagnostics != nil {
+			return *x.xxx_hidden_WitnessDiagnostics
+		}
+	}
+	return nil
+}
+
 func (x *CheckResult) SetPassed(v bool) {
 	x.xxx_hidden_Passed = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 13)
 }
 
 func (x *CheckResult) SetCompileProblems(v []*Problem) {
@@ -173,17 +201,31 @@ func (x *CheckResult) SetPolicyProblem(v *Problem) {
 
 func (x *CheckResult) SetTestsExecuted(v int32) {
 	x.xxx_hidden_TestsExecuted = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 13)
 }
 
 func (x *CheckResult) SetTestsUncacheable(v int32) {
 	x.xxx_hidden_TestsUncacheable = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 13)
 }
 
 func (x *CheckResult) SetWitnessPublicationDegraded(v string) {
 	x.xxx_hidden_WitnessPublicationDegraded = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 10)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 13)
+}
+
+func (x *CheckResult) SetSuiteHealthJudged(v bool) {
+	x.xxx_hidden_SuiteHealthJudged = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 13)
+}
+
+func (x *CheckResult) SetTestsServed(v int32) {
+	x.xxx_hidden_TestsServed = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 13)
+}
+
+func (x *CheckResult) SetWitnessDiagnostics(v []*FailureDiagnostic) {
+	x.xxx_hidden_WitnessDiagnostics = &v
 }
 
 func (x *CheckResult) HasPassed() bool {
@@ -242,6 +284,20 @@ func (x *CheckResult) HasWitnessPublicationDegraded() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 9)
 }
 
+func (x *CheckResult) HasSuiteHealthJudged() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 10)
+}
+
+func (x *CheckResult) HasTestsServed() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 11)
+}
+
 func (x *CheckResult) ClearPassed() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Passed = false
@@ -278,6 +334,16 @@ func (x *CheckResult) ClearWitnessPublicationDegraded() {
 	x.xxx_hidden_WitnessPublicationDegraded = nil
 }
 
+func (x *CheckResult) ClearSuiteHealthJudged() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 10)
+	x.xxx_hidden_SuiteHealthJudged = false
+}
+
+func (x *CheckResult) ClearTestsServed() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 11)
+	x.xxx_hidden_TestsServed = 0
+}
+
 type CheckResult_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -306,9 +372,9 @@ type CheckResult_builder struct {
 	// are absent; the verdict fails — witness execution consumes the
 	// committed policy record, never an assumed invocation.
 	PolicyProblem *Problem
-	// Top-level tests the policy execution ran. Nothing in this count was
-	// served from the witness cache: the check judges every invocation's
-	// health, and a health-judged invocation executes whole.
+	// Top-level tests this pass executed. Under the health-judged form the
+	// whole policy runs and nothing is served; under the default
+	// witness-evidence form only the stale remainder executes.
 	TestsExecuted *int32
 	// Executed tests whose freshness records could not be published for
 	// later freshness-serving consumers; they run again next time. A
@@ -316,8 +382,26 @@ type CheckResult_builder struct {
 	// visible.
 	TestsUncacheable *int32
 	// The freshness-publication fault when record publication was disabled
-	// whole; execution evidence and suite health stand, only reuse is lost.
+	// whole; witness evidence stands — and suite health with it under the
+	// health-judged form — only reuse is lost.
 	WitnessPublicationDegraded *string
+	// The evidence class that produced the verdict: true means the
+	// health-judging whole-policy execution (suite health rides execution);
+	// false means the default witness-evidence pass — served records plus
+	// witness-only selective execution of the stale remainder — which claims
+	// no suite health and carries no execution report.
+	SuiteHealthJudged *bool
+	// Top-level tests served from proven-fresh witness records instead of
+	// executing. Always zero under the health-judged form: a health-judged
+	// invocation executes whole.
+	TestsServed *int32
+	// Failure diagnostics for the witness-evidence form, where no
+	// execution report exists to carry them: the same typed rows the
+	// execution report would hold — disposition, truncation, and retained
+	// output intact, so a degraded execution stays distinct from an
+	// assertion failure (REQ-check-diagnostics). Empty under the
+	// health-judged form.
+	WitnessDiagnostics []*FailureDiagnostic
 }
 
 func (b0 CheckResult_builder) Build() *CheckResult {
@@ -325,7 +409,7 @@ func (b0 CheckResult_builder) Build() *CheckResult {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Passed != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 13)
 		x.xxx_hidden_Passed = *b.Passed
 	}
 	x.xxx_hidden_CompileProblems = &b.CompileProblems
@@ -335,17 +419,26 @@ func (b0 CheckResult_builder) Build() *CheckResult {
 	x.xxx_hidden_PruneResidue = b.PruneResidue
 	x.xxx_hidden_PolicyProblem = b.PolicyProblem
 	if b.TestsExecuted != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 13)
 		x.xxx_hidden_TestsExecuted = *b.TestsExecuted
 	}
 	if b.TestsUncacheable != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 13)
 		x.xxx_hidden_TestsUncacheable = *b.TestsUncacheable
 	}
 	if b.WitnessPublicationDegraded != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 10)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 13)
 		x.xxx_hidden_WitnessPublicationDegraded = b.WitnessPublicationDegraded
 	}
+	if b.SuiteHealthJudged != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 13)
+		x.xxx_hidden_SuiteHealthJudged = *b.SuiteHealthJudged
+	}
+	if b.TestsServed != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 13)
+		x.xxx_hidden_TestsServed = *b.TestsServed
+	}
+	x.xxx_hidden_WitnessDiagnostics = &b.WitnessDiagnostics
 	return m0
 }
 
@@ -353,7 +446,7 @@ var File_stipulator_v1_check_proto protoreflect.FileDescriptor
 
 const file_stipulator_v1_check_proto_rawDesc = "" +
 	"\n" +
-	"\x19stipulator/v1/check.proto\x12\rstipulator.v1\x1a\x1dstipulator/v1/execution.proto\x1a\x1bstipulator/v1/reports.proto\"\x90\x04\n" +
+	"\x19stipulator/v1/check.proto\x12\rstipulator.v1\x1a\x1dstipulator/v1/execution.proto\x1a\x1bstipulator/v1/reports.proto\"\xb6\x05\n" +
 	"\vCheckResult\x12\x16\n" +
 	"\x06passed\x18\x01 \x01(\bR\x06passed\x12A\n" +
 	"\x10compile_problems\x18\x02 \x03(\v2\x16.stipulator.v1.ProblemR\x0fcompileProblems\x12<\n" +
@@ -365,15 +458,19 @@ const file_stipulator_v1_check_proto_rawDesc = "" +
 	"\x0etests_executed\x18\b \x01(\x05R\rtestsExecuted\x12+\n" +
 	"\x11tests_uncacheable\x18\t \x01(\x05R\x10testsUncacheable\x12@\n" +
 	"\x1cwitness_publication_degraded\x18\n" +
-	" \x01(\tR\x1awitnessPublicationDegradedBDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
+	" \x01(\tR\x1awitnessPublicationDegraded\x12.\n" +
+	"\x13suite_health_judged\x18\v \x01(\bR\x11suiteHealthJudged\x12!\n" +
+	"\ftests_served\x18\f \x01(\x05R\vtestsServed\x12Q\n" +
+	"\x13witness_diagnostics\x18\r \x03(\v2 .stipulator.v1.FailureDiagnosticR\x12witnessDiagnosticsBDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
 var file_stipulator_v1_check_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_stipulator_v1_check_proto_goTypes = []any{
-	(*CheckResult)(nil),     // 0: stipulator.v1.CheckResult
-	(*Problem)(nil),         // 1: stipulator.v1.Problem
-	(*ExecutionReport)(nil), // 2: stipulator.v1.ExecutionReport
-	(*VerifyReport)(nil),    // 3: stipulator.v1.VerifyReport
-	(*CoverageReport)(nil),  // 4: stipulator.v1.CoverageReport
+	(*CheckResult)(nil),       // 0: stipulator.v1.CheckResult
+	(*Problem)(nil),           // 1: stipulator.v1.Problem
+	(*ExecutionReport)(nil),   // 2: stipulator.v1.ExecutionReport
+	(*VerifyReport)(nil),      // 3: stipulator.v1.VerifyReport
+	(*CoverageReport)(nil),    // 4: stipulator.v1.CoverageReport
+	(*FailureDiagnostic)(nil), // 5: stipulator.v1.FailureDiagnostic
 }
 var file_stipulator_v1_check_proto_depIdxs = []int32{
 	1, // 0: stipulator.v1.CheckResult.compile_problems:type_name -> stipulator.v1.Problem
@@ -381,11 +478,12 @@ var file_stipulator_v1_check_proto_depIdxs = []int32{
 	3, // 2: stipulator.v1.CheckResult.verify:type_name -> stipulator.v1.VerifyReport
 	4, // 3: stipulator.v1.CheckResult.coverage:type_name -> stipulator.v1.CoverageReport
 	1, // 4: stipulator.v1.CheckResult.policy_problem:type_name -> stipulator.v1.Problem
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	5, // 5: stipulator.v1.CheckResult.witness_diagnostics:type_name -> stipulator.v1.FailureDiagnostic
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_check_proto_init() }

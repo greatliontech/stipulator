@@ -70,7 +70,7 @@ func TestCheckToolDeadlineNamesExpiredPhaseAndCause(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
 	req := &mcp.CallToolRequest{Params: &mcp.CallToolParamsRaw{Name: "check"}}
-	_, _, err := s.toolCheck(ctx, req, struct{}{})
+	_, _, err := s.toolCheck(ctx, req, checkIn{Full: true})
 	if err == nil {
 		t.Fatal("deadline-terminated check returned no error")
 	}
@@ -101,6 +101,14 @@ func TestCheckToolClientCancellationKillsEveryChildProcess(t *testing.T) {
 		"\tif err := os.WriteFile(\"pid.txt\", []byte(strconv.Itoa(os.Getpid())), 0o644); err != nil {\n\t\tt.Fatal(err)\n\t}\n"+
 		"\ttime.Sleep(time.Minute)\n}\n")
 
+	cancellationKillScenario(t, dir, map[string]any{"full": true})
+}
+
+// cancellationKillScenario drives one check call to the point where the
+// fixture's sleeping test binary is alive, cancels the client call, and
+// requires both a prompt cancellation return and the grandchild's death.
+func cancellationKillScenario(t *testing.T, dir string, args map[string]any) {
+	t.Helper()
 	s := New(dir)
 	ct, st := mcp.NewInMemoryTransports()
 	serverCtx, stopServer := context.WithCancel(context.Background())
@@ -117,7 +125,7 @@ func TestCheckToolClientCancellationKillsEveryChildProcess(t *testing.T) {
 	defer cancel()
 	done := make(chan error, 1)
 	go func() {
-		_, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "check", Arguments: map[string]any{}})
+		_, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "check", Arguments: args})
 		done <- err
 	}()
 
@@ -160,4 +168,24 @@ func TestCheckToolClientCancellationKillsEveryChildProcess(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatalf("test binary %d survived client cancellation", pid)
+}
+
+// The witness-evidence form executes its stale remainder through the
+// same owned seam: client cancellation mid-selective-execution kills the
+// test binary grandchild just as the health-judged form does.
+func TestCheckToolServingPathCancellationKillsChildren(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-cancellation", "REQ-policy-cancellation")
+	if testing.Short() {
+		t.Skip("executes a policy over a fixture tree")
+	}
+	neutralAmbient(t)
+	dir := writeCheckTree(t, "package slow\n\nimport (\n\t\"os\"\n\t\"strconv\"\n\t\"testing\"\n\t\"time\"\n)\n\n"+
+		"func TestSleeps(t *testing.T) {\n"+
+		"\tif err := os.WriteFile(\"pid.txt\", []byte(strconv.Itoa(os.Getpid())), 0o644); err != nil {\n\t\tt.Fatal(err)\n\t}\n"+
+		"\ttime.Sleep(time.Minute)\n}\n")
+	racePolicy := "invocations {\n  name: \"all\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./...\"\n    race: true\n  }\n}\n"
+	if err := os.WriteFile(filepath.Join(dir, ".stipulator", "policy.textproto"), []byte(racePolicy), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cancellationKillScenario(t, dir, map[string]any{})
 }
