@@ -11,6 +11,8 @@ import (
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
+	"github.com/greatliontech/gofresh/runtimeinput"
+
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/internal/verify"
@@ -1206,4 +1208,88 @@ func TestGoRunWitnessesServesAcrossTreeAlternation(t *testing.T) {
 		t.Fatal(err)
 	}
 	run("returned to state-b", 1, 0)
+}
+
+// TestGoRunWitnessesToolchainReadStaysCacheable pins the guard-covered
+// classification end to end: a witness reading the toolchain root
+// publishes a cacheable record — the read is pinned by the toolchain
+// guard, not sealed unverifiable — and serves on the next run.
+func TestGoRunWitnessesToolchainReadStaysCacheable(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented selective run over a temporary module")
+	}
+	neutralAmbient(t)
+	// A controlled module-cache root proves the module-cache leg of the
+	// exemption deterministically: the fixture reads a file under it, and
+	// the pinned frozen environment carries it to the spawned process.
+	fakeModCache := filepath.Join(t.TempDir(), "modcache")
+	if err := os.MkdirAll(filepath.Join(fakeModCache, "example.com"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pinnedMod := filepath.Join(fakeModCache, "example.com", "pinned.txt")
+	if err := os.WriteFile(pinnedMod, []byte("immutable"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GOMODCACHE", fakeModCache)
+	tmp := writeModule(t, map[string]string{
+		"go.mod": "module example.com/toolread\n\ngo 1.26\n",
+		"pkg/pkg_test.go": `package pkg
+
+import (
+	"os"
+	"path/filepath"
+	"runtime"
+	"testing"
+)
+
+//gofresh:pure
+func TestReadsToolchain(t *testing.T) {
+	if _, err := os.ReadFile(filepath.Join(runtime.GOROOT(), "VERSION")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.ReadFile(` + "`" + pinnedMod + "`" + `); err != nil {
+		t.Fatal(err)
+	}
+}
+`,
+	})
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./pkg"})
+	cfg.SetRace(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
+	writePolicyRecord(t, tmp, p)
+
+	first, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Degraded != "" {
+		t.Fatalf("degraded: %s", first.Degraded)
+	}
+	if first.Ran != 1 || first.Uncached != 0 {
+		t.Fatalf("first run ran=%d uncached=%d, want 1/0: the toolchain read must not seal the record unverifiable", first.Ran, first.Uncached)
+	}
+	second, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Fresh != 1 || second.Ran != 0 {
+		t.Fatalf("second run fresh=%d ran=%d, want 1/0: the guard-covered witness must serve", second.Fresh, second.Ran)
+	}
+	// The wiring's own claim: the toolchain read never entered the
+	// manifest — guard-covered reads skip it entirely, they are not
+	// merely tolerated as sealed unverifiable evidence.
+	records := witnesscache.Load(tmp)
+	if len(records) != 1 {
+		t.Fatalf("store holds %d records, want 1", len(records))
+	}
+	desc, err := runtimeinput.Describe(records[0].Fingerprint.RuntimeInputs, tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(desc.Paths) != 0 || len(desc.Unverifiable) != 0 {
+		t.Fatalf("manifest carries paths=%v unverifiable=%v; the guard-covered read leaked into the manifest", desc.Paths, desc.Unverifiable)
+	}
 }

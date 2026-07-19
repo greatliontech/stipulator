@@ -111,7 +111,14 @@ bracket — a restore is tolerated only when it reproduces content and
 metadata alike — and the observation seals unverifiable, while a read
 resolving outside the declared root seals per-identity unverifiable —
 permanently uncacheable under this root policy — both toward
-re-execution, never reuse. A package whose directory is unresolved before
+re-execution, never reuse. One class is exempt: a read resolving under
+the effective toolchain root, or under the module cache outside its
+download-cache subtree, classifies guard-covered — the toolchain guard
+pins the toolchain root's contents and version-addressed immutability
+pins module trees, so observing them neither enters the manifest nor
+seals anything, and a toolchain-reading witness stays cacheable. The
+download-cache subtree's mutable metadata is pinned by neither and
+stays observed. A package whose directory is unresolved before
 spawn, or whose directory lies outside the verification tree, yields an
 incomplete observation rather than a completed record sealed without a
 bracket. Executed tests whose records cannot be published for reuse are

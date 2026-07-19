@@ -229,3 +229,24 @@ func TestGoNormalizeWorkspaceModeRequiresDeclaration(t *testing.T) {
 		t.Fatalf("workspace mode without declaration accepted: %v", err)
 	}
 }
+
+// usableGuardRoot degrades every unusable ambient root to the unguarded
+// posture — cost-only — and refuses ".." outright: lexical cleaning
+// across a symlink can rebind the referent, the one spurious-reuse risk
+// this class carries.
+func TestUsableGuardRoot(t *testing.T) {
+	cases := map[string]string{
+		"":                  "",
+		"relative/root":     "",
+		"/x/link/../y":      "",
+		"/usr/lib/go/":      "/usr/lib/go",
+		"/usr/lib//go":      "/usr/lib/go",
+		"/usr/lib/./go":     "/usr/lib/go",
+		"/home/u/go/pkgmod": "/home/u/go/pkgmod",
+	}
+	for in, want := range cases {
+		if got := usableGuardRoot(in); got != want {
+			t.Errorf("usableGuardRoot(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

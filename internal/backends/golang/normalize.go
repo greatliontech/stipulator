@@ -27,6 +27,11 @@ type NormalizedInvocation struct {
 	// Packages is the invocation's package pattern scope.
 	Packages []string
 	Race     bool
+	// ToolchainRoot and ModuleCacheRoot are the effective GOROOT and
+	// GOMODCACHE: guard-covered observation roots — reads under them are
+	// already pinned by the toolchain and build-config guards.
+	ToolchainRoot   string
+	ModuleCacheRoot string
 	// Timeout is the envelope's explicit, reviewed timeout.
 	Timeout time.Duration
 	// Toolchain is the effective toolchain identity (`go env GOVERSION`).
@@ -164,7 +169,7 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		env = setEnv(env, "GOFLAGS", cfg.GetGoflags())
 	}
 
-	version, goos, goarch, cgo, goflags, goexperiment, err := effectiveGoEnv(ctx, n.Dir, env)
+	version, goos, goarch, cgo, goflags, goexperiment, goroot, gomodcache, err := effectiveGoEnv(ctx, n.Dir, env)
 	if err != nil {
 		return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
 	}
@@ -200,27 +205,68 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		env = setEnv(env, "GOTOOLCHAIN", toolchainPin)
 	}
 	env = setEnv(env, "GOEXPERIMENT", goexperiment)
+	// The module-cache root is pinned into the frozen environment like
+	// every other config-file-sourced value: the query ran with GOENV
+	// active, the spawn runs with GOENV=off, and an unpinned value would
+	// let the declared guard root disagree with the actual reads. GOROOT
+	// is deliberately not pinned - the GOTOOLCHAIN pin already fixes the
+	// executing toolchain, and forcing GOROOT interacts with toolchain
+	// re-exec.
+	if gomodcache != "" {
+		env = setEnv(env, "GOMODCACHE", gomodcache)
+	}
 	n.Env = env
+	// The toolchain and module-cache roots feed the guard-covered
+	// observation classification: the toolchain guard pins the toolchain
+	// root's contents, and module trees are pinned by version-addressed
+	// immutability, so reads under either must not seal witnesses
+	// unverifiable. gofresh refuses non-clean or relative roots outright -
+	// and a refused option would disable publication wholesale - so an
+	// unusable ambient value degrades to the unguarded posture instead.
+	n.ToolchainRoot = usableGuardRoot(goroot)
+	n.ModuleCacheRoot = usableGuardRoot(gomodcache)
 	return n, nil
+}
+
+// usableGuardRoot returns root cleaned when it can serve as a guard root,
+// and "" - the option-skipped posture - when it cannot: absence of a
+// guard costs re-execution, never a failed observation. A ".." component
+// is refused outright rather than cleaned: lexical elimination across a
+// symlink can rebind the path to an unrelated directory no guard pins -
+// the one direction this class must never risk.
+func usableGuardRoot(root string) string {
+	if root == "" {
+		return ""
+	}
+	for _, seg := range strings.Split(filepath.ToSlash(root), "/") {
+		if seg == ".." {
+			return ""
+		}
+	}
+	cleaned := filepath.Clean(root)
+	if !filepath.IsAbs(cleaned) {
+		return ""
+	}
+	return cleaned
 }
 
 // effectiveGoEnv queries the exec'd toolchain for the pin-at-load values in
 // one owned, cancellable subprocess.
-func effectiveGoEnv(ctx context.Context, dir string, env []string) (version, goos, goarch, cgo, goflags, goexperiment string, err error) {
-	cmd := commandContext(ctx, "go", "env", "GOVERSION", "GOOS", "GOARCH", "CGO_ENABLED", "GOFLAGS", "GOEXPERIMENT")
+func effectiveGoEnv(ctx context.Context, dir string, env []string) (version, goos, goarch, cgo, goflags, goexperiment, goroot, gomodcache string, err error) {
+	cmd := commandContext(ctx, "go", "env", "GOVERSION", "GOOS", "GOARCH", "CGO_ENABLED", "GOFLAGS", "GOEXPERIMENT", "GOROOT", "GOMODCACHE")
 	cmd.Dir = dir
 	cmd.Env = env
 	out, err := cmd.Output()
 	if err != nil {
-		return "", "", "", "", "", "", fmt.Errorf("resolving effective go env: %w", err)
+		return "", "", "", "", "", "", "", "", fmt.Errorf("resolving effective go env: %w", err)
 	}
 	// Strip exactly the final newline: an empty value (an unset GOFLAGS)
 	// is a legitimate empty line that TrimRight would swallow.
 	lines := strings.Split(strings.TrimSuffix(string(out), "\n"), "\n")
-	if len(lines) != 6 {
-		return "", "", "", "", "", "", fmt.Errorf("unexpected go env output %q", out)
+	if len(lines) != 8 {
+		return "", "", "", "", "", "", "", "", fmt.Errorf("unexpected go env output %q", out)
 	}
-	return lines[0], lines[1], lines[2], lines[3], lines[4], lines[5], nil
+	return lines[0], lines[1], lines[2], lines[3], lines[4], lines[5], lines[6], lines[7], nil
 }
 
 // normalizeEnv returns a deterministic owned copy of a complete process

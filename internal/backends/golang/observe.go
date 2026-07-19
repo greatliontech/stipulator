@@ -201,10 +201,24 @@ func completedObservation(n *NormalizedInvocation, pkg string, producer *stipula
 	// to be no witness's input (their digests move under unrelated
 	// tooling); the exclusion carries the caller-side soundness
 	// responsibility gofresh's exclusion contract assigns it.
-	observation, err := runtimeinput.FromTestLogEnv(log, frame.root, frame.pkgDir, n.Env,
+	opts := []runtimeinput.TestLogOption{
 		runtimeinput.WithCompletedProcess(processIdentity(n, producer, pkg)),
 		runtimeinput.WithBracket(*frame.bracket),
-		runtimeinput.WithExcludedPaths(".", ".git"))
+		runtimeinput.WithExcludedPaths(".", ".git"),
+	}
+	// Toolchain and module-cache reads classify guard-covered: the
+	// toolchain guard pins the toolchain root's contents, module trees
+	// are pinned by version-addressed immutability, so a test reading
+	// GOROOT or a module tree stays cacheable instead of sealing
+	// unverifiable. The module cache's download-cache subtree stays
+	// observed - gofresh's classification carves it out.
+	if n.ToolchainRoot != "" {
+		opts = append(opts, runtimeinput.WithToolchainRoot(n.ToolchainRoot))
+	}
+	if n.ModuleCacheRoot != "" {
+		opts = append(opts, runtimeinput.WithModuleCacheRoot(n.ModuleCacheRoot))
+	}
+	observation, err := runtimeinput.FromTestLogEnv(log, frame.root, frame.pkgDir, n.Env, opts...)
 	if err != nil {
 		return nil, err
 	}
