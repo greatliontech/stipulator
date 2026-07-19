@@ -27,3 +27,14 @@ drop notifications: a phase-stamped line in the eventual result
 (already partially specified by REQ-mcp-progress's deadline-cause
 clause), so even a notification-blind client can distinguish slow
 work from a hang after the fact.
+
+## Cause hypothesis to verify first
+
+The server arms the progress seam only when the request carries a
+progress token — spec-compliant per REQ-mcp-progress's "only when the
+client asked" clause. If this client class never sends tokens, emission
+is working as specified and the observable silence is the spec's own
+gap: the audit should verify token presence from a real Claude Code
+client before touching emission, and if absent, the fix is the
+token-independent fallback (bounded heartbeat or phase-stamped result),
+not more notifications nobody requested.
