@@ -11,7 +11,7 @@ reading a terminal.
 - [ ] 2. Serving `check`: serve-fresh default, `--full` for whole-suite execution (execution-contract spec amendment)
 - [ ] 3. Witness cache relocation: user cache directory keyed by corpus root, per-entry files with atomic installs; in-repo `.stipulator/cache` and its gitignore handling removed (clean break)
 - [ ] 4. Freshness visibility: per-test served/executed/uncacheable reasons on check and witness output, moved-input attribution via manifest v2
-- [ ] 5. Gap verb surface: repeatable requirements on the MCP tool, bulk self-landing sentinel, fired-bit expressibility
+- [ ] 5. Record lifecycle ownership — gap surface: upsert/retract verbs with atomic batch apply (CLI file + MCP batch parity), retraction working on dangling records (requirement already gone) without tombstoning, repeatable requirements on the MCP tool, bulk self-landing sentinel, fired-bit expressibility; verify reports dangling gaps with their repair command; `prune --dangling` (with `--check`) as the explicit bulk repair, never part of ordinary resolved-record pruning
 - [ ] 6. Agent-first MCP face: server instructions and tool descriptions that teach when to use what; responses restructured for token economy with next-action guidance; guided root-discovery failure; check JSON/quiet analogs
 - [ ] 7. Output and remediation audit: every message earns its lines; mechanical remediations (e.g. healing unbound registrations) become offered actions instead of imperative instructions
 - [ ] 8. Concurrent record writes: compare-and-swap at the verb layer
