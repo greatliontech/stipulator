@@ -27,9 +27,7 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   oracle cannot say whether each requirement's own witnesses have teeth; an opt-in
   per-requirement probe is measurable without attribution claims. *Lands: when a requirement's
   risk profile demands per-requirement witness adequacy.*
-- **[concurrent-record-writes](concurrent-record-writes.md)** — record verbs are last-writer-
-  wins; concurrent agents need compare-and-swap at the verb layer, never actor metadata in
-  records. *Lands: when concurrent agents write records in one working tree.*
+
 - **[performance-evidence-axis](performance-evidence-axis.md)** — no clause kind or evidence
   class measures performance; pew recordings (guard-derived validity) are the binding-pin
   model applied to measurements and slot in without bending the trust model. *Lands: when a
