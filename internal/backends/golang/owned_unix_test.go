@@ -150,3 +150,27 @@ func TestOwnedResolverChildCrashErrors(t *testing.T) {
 		}
 	})
 }
+
+// A child that answers a protocol-level error — an older binary that
+// does not know an op, most notably — must surface it as an error from
+// every impact-facing op, never as a silently empty result: an empty
+// code-side preview and a dead boundary are different answers.
+//
+//gofresh:pure
+func TestOwnedResolverProtocolErrorSurfaces(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-owned-processes")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	owned := NewOwnedCommand(ctx, "/bin/sh", "-c",
+		`echo '{"ready":true}'; while read -r line; do echo '{"error":"unknown resolver op"}'; done`)
+	defer owned.Close()
+	if _, _, err := owned.SymbolFile("m.X"); err == nil || !strings.Contains(err.Error(), "unknown resolver op") {
+		t.Errorf("SymbolFile error = %v, want the child's protocol error", err)
+	}
+	if _, err := owned.SymbolPackage("m.X"); err == nil || !strings.Contains(err.Error(), "unknown resolver op") {
+		t.Errorf("SymbolPackage error = %v, want the child's protocol error", err)
+	}
+	if _, err := owned.ReachedPackages([]string{"a.go"}); err == nil || !strings.Contains(err.Error(), "unknown resolver op") {
+		t.Errorf("ReachedPackages error = %v, want the child's protocol error", err)
+	}
+}

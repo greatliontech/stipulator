@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 
 	"github.com/greatliontech/stipulator/internal/verify"
 )
@@ -37,6 +38,14 @@ type resolverResponse struct {
 	Shape      string         `json:"shape,omitempty"`
 	Class      string         `json:"class,omitempty"`
 	Decls      []resolverDecl `json:"decls,omitempty"`
+	// File and Found carry a symbolfile result; Found travels explicitly
+	// because an empty path is a legitimate not-found, never a default.
+	File  string `json:"file,omitempty"`
+	Found bool   `json:"found,omitempty"`
+	// Package carries a symbolpackage result; Packages a reached result,
+	// sorted so the wire form is deterministic.
+	Package  string   `json:"package,omitempty"`
+	Packages []string `json:"packages,omitempty"`
 }
 
 // resolverDecl is verify.Decl on the wire: four strings, value-shaped.
@@ -103,7 +112,7 @@ func classFromWire(s string) (verify.WitnessClass, bool) {
 }
 
 // ServeResolver is the resolver child's half of the owned symbol-loading
-// boundary: it loads the tree rooted at dir in-process (NewContext) and
+// boundary: it loads the tree rooted at dir in-process (newContext) and
 // serves the Backend surface — resolve, witnessclass, slice — over the
 // JSON-lines protocol on r and w. The first response line is the
 // handshake: ready, or the tree's load error, propagated verbatim so the
@@ -112,7 +121,7 @@ func classFromWire(s string) (verify.WitnessClass, bool) {
 // cleanly when r reaches EOF — the parent closed the pipe or exited.
 func ServeResolver(ctx context.Context, dir string, r io.Reader, w io.Writer) error {
 	enc := json.NewEncoder(w)
-	b, err := NewContext(ctx, dir)
+	b, err := newContext(ctx, dir)
 	if err != nil {
 		if encErr := enc.Encode(resolverResponse{Error: err.Error()}); encErr != nil {
 			return errors.Join(err, encErr)
@@ -157,6 +166,17 @@ func ServeResolver(ctx context.Context, dir string, r io.Reader, w io.Writer) er
 					})
 				}
 			}
+		case "symbolfile":
+			resp.File, resp.Found = b.SymbolFile(req.Symbol)
+		case "symbolpackage":
+			resp.Package = b.SymbolPackage(req.Symbol)
+		case "reached":
+			reach := b.ReachedPackages(req.Symbols)
+			resp.Packages = make([]string, 0, len(reach))
+			for p := range reach {
+				resp.Packages = append(resp.Packages, p)
+			}
+			sort.Strings(resp.Packages)
 		default:
 			resp.Error = fmt.Sprintf("unknown resolver op %q", req.Op)
 		}

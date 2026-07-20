@@ -135,3 +135,93 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "125a3a598980de9db60dcfef87f4b076b9c4b5f0ef126300f5bac72642aa52fa"
 }
+
+bindings {
+  requirement_id: "REQ-change-impact"
+  content_hash: "b86078b3ea2956f061875147d3365783174547df341f985cd9b15d54b0816c37"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/impact.Preview"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "375e13ac376f1f00bb0c0b729791bc2deb0393d842b5bde0afff3a41e569b6ea"
+}
+
+bindings {
+  requirement_id: "REQ-change-impact"
+  content_hash: "b86078b3ea2956f061875147d3365783174547df341f985cd9b15d54b0816c37"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/impact.TestPreviewJoinsBindingsAndImportReach"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "2da214b8a2c0c7469a51d26c4a2efe7736e1933fd1bb74e8f00000c160adf8b5"
+}
+
+bindings {
+  requirement_id: "REQ-change-impact"
+  content_hash: "b86078b3ea2956f061875147d3365783174547df341f985cd9b15d54b0816c37"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/impact.TestPreviewNamesSpecDeltaWithoutVerdict"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "afa25ede57e15c9f1a3762ad088d07ea0397b3906abcd22f87f6d7174a5dee39"
+}
+
+bindings {
+  requirement_id: "REQ-change-impact"
+  content_hash: "b86078b3ea2956f061875147d3365783174547df341f985cd9b15d54b0816c37"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/impact.TestPreviewCleanTreeAndNonRepo"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "3a748d1c4078dc7dcd82259512e30ec80bf8719914b2bb50a381117a77c0ae06"
+}
+
+bindings {
+  requirement_id: "REQ-change-impact"
+  content_hash: "b86078b3ea2956f061875147d3365783174547df341f985cd9b15d54b0816c37"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestSymbolFileNamesDeclaringFile"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "cc68cb9ee57ed332edf05aa97062bf1e1022dce4a53fda80805c1614ee98a6b3"
+}
+
+bindings {
+  requirement_id: "REQ-change-impact"
+  content_hash: "b86078b3ea2956f061875147d3365783174547df341f985cd9b15d54b0816c37"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestReachedPackagesReverseClosure"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "298e7e1f25d338898b89f7e191211601a2132c24d914758b21a884b7f92f9d58"
+}
+
+bindings {
+  requirement_id: "REQ-change-impact"
+  content_hash: "b86078b3ea2956f061875147d3365783174547df341f985cd9b15d54b0816c37"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/impact.TestPreviewSpecOnlyCorpusNeedsNoGoTree"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "0f342b3fa4dec02e5d163524781551b21d6cb02072d2fca888ba89654a8a09dc"
+}
+
+bindings {
+  requirement_id: "REQ-change-impact"
+  content_hash: "b86078b3ea2956f061875147d3365783174547df341f985cd9b15d54b0816c37"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestImpactRenderNamesCandidatesAndAdvisoryFooter"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "0dab4e2950fbe984ca9974a45f2e1ad38d760d2c9756764e958bdd09be3cbedb"
+}
+
+bindings {
+  requirement_id: "REQ-change-impact"
+  content_hash: "b86078b3ea2956f061875147d3365783174547df341f985cd9b15d54b0816c37"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestImpactRenderEmptyChangeSetStillShowsSpecDelta"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "1d57e5c0807009045944b36a967a63c7b72cdad0065c6cefc49fb34cb852c616"
+}
+
+bindings {
+  requirement_id: "REQ-change-impact"
+  content_hash: "b86078b3ea2956f061875147d3365783174547df341f985cd9b15d54b0816c37"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/impact.TestPreviewCleanGoBoundTreeSkipsGoLoad"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "4a510df842c004a94b07f3889d79c8aa0c4cc0798add8ba12701105144ac18bd"
+}

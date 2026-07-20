@@ -35,17 +35,16 @@ type Backend struct {
 	dir string
 }
 
-// New loads the tree rooted at dir, including test packages: the module
-// alone, or every go.work member when the tree is a workspace — package
-// patterns are module-scoped, so nested published modules would otherwise
-// vanish from symbol resolution. A load failure is an error: per the
-// spec, an unloadable tree is a verification error, never an absence.
-func New(dir string) (*Backend, error) {
-	return NewContext(context.Background(), dir)
-}
-
-// NewContext loads the tree rooted at dir and binds package loading to ctx.
-func NewContext(ctx context.Context, dir string) (*Backend, error) {
+// newContext loads the tree rooted at dir, including test packages: the
+// module alone, or every go.work member when the tree is a workspace —
+// package patterns are module-scoped, so nested published modules would
+// otherwise vanish from symbol resolution. A load failure is an error:
+// per the spec, an unloadable tree is a verification error, never an
+// absence. Deliberately unexported: in-process loading spawns go list
+// outside any owned process group, so the only cross-package door to
+// package discovery is the owned resolver client (NewOwned), keeping
+// REQ-go-owned-processes structurally satisfied for every consumer.
+func newContext(ctx context.Context, dir string) (*Backend, error) {
 	members, err := workspaceMembers(dir)
 	if err != nil {
 		return nil, err
@@ -56,7 +55,7 @@ func NewContext(ctx context.Context, dir string) (*Backend, error) {
 		cfg := &packages.Config{
 			Context: ctx,
 			Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax |
-				packages.NeedTypes | packages.NeedTypesInfo,
+				packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports,
 			Dir:   filepath.Join(dir, m),
 			Env:   env,
 			Tests: true,
@@ -103,6 +102,100 @@ func (b *Backend) Resolve(symbol string) (verify.Resolution, string, error) {
 		return verify.Resolved, shapeHash(obj), nil
 	}
 	return verify.NotFound, "", nil
+}
+
+// SymbolFile returns the tree-relative, slash-separated path of the file
+// declaring the symbol, and false when the symbol does not resolve or its
+// declaration lies outside the loaded tree (a method promoted from an
+// out-of-tree embedded type declares elsewhere).
+func (b *Backend) SymbolFile(symbol string) (string, bool) {
+	pkgPath, rest := b.splitSymbol(symbol)
+	if pkgPath == "" {
+		return "", false
+	}
+	parts := strings.Split(rest, ".")
+	if len(parts) == 0 || len(parts) > 2 {
+		return "", false
+	}
+	for _, pkg := range b.pkgs {
+		if pkg.PkgPath != pkgPath && pkg.PkgPath != pkgPath+"_test" {
+			continue
+		}
+		obj := lookup(pkg.Types, parts)
+		if obj == nil || !obj.Pos().IsValid() {
+			continue
+		}
+		rel, err := filepath.Rel(b.dir, pkg.Fset.Position(obj.Pos()).Filename)
+		if err != nil || strings.HasPrefix(rel, "..") {
+			return "", false
+		}
+		return filepath.ToSlash(rel), true
+	}
+	return "", false
+}
+
+// SymbolPackage returns the loaded package path owning the symbol
+// reference — external test variants folded onto their production path —
+// or "" when no loaded package matches.
+func (b *Backend) SymbolPackage(symbol string) string {
+	p, _ := b.splitSymbol(symbol)
+	return p
+}
+
+// ReachedPackages returns the packages — named by production import path,
+// test variants folded in — that the given tree-relative files reach
+// through the reverse import graph: the packages the files belong to,
+// plus every package importing one of those, transitively. Paths not
+// belonging to any loaded package contribute nothing; reach through
+// non-import couplings (runtime inputs, generated artifacts) is invisible
+// here by construction, which is why an impact preview is advisory.
+func (b *Backend) ReachedPackages(files []string) map[string]bool {
+	inFile := make(map[string]bool, len(files))
+	for _, f := range files {
+		inFile[f] = true
+	}
+	norm := func(p string) string { return strings.TrimSuffix(p, "_test") }
+	rev := map[string][]string{}
+	seeds := map[string]bool{}
+	for _, pkg := range b.pkgs {
+		np := norm(pkg.PkgPath)
+		for _, imp := range pkg.Imports {
+			// Without NeedDeps an out-of-tree import is a stub whose only
+			// identity is its ID; in-tree imports share the fully loaded
+			// root nodes. Either way the import path is the edge key.
+			target := imp.PkgPath
+			if target == "" {
+				target = imp.ID
+			}
+			rev[norm(target)] = append(rev[norm(target)], np)
+		}
+		for _, list := range [][]string{pkg.GoFiles, pkg.OtherFiles} {
+			for _, f := range list {
+				rel, err := filepath.Rel(b.dir, f)
+				if err != nil {
+					continue
+				}
+				if inFile[filepath.ToSlash(rel)] {
+					seeds[np] = true
+				}
+			}
+		}
+	}
+	reached := map[string]bool{}
+	var walk func(string)
+	walk = func(p string) {
+		if reached[p] {
+			return
+		}
+		reached[p] = true
+		for _, q := range rev[p] {
+			walk(q)
+		}
+	}
+	for s := range seeds {
+		walk(s)
+	}
+	return reached
 }
 
 // splitSymbol finds the loaded package whose path prefixes the symbol

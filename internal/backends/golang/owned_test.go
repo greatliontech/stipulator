@@ -40,7 +40,7 @@ func buildResolverCLI(t *testing.T) string {
 func TestGoLoadPinsAmbientPackageDriverOff(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-owned-processes")
 	t.Setenv("GOPACKAGESDRIVER", filepath.Join(t.TempDir(), "no-such-driver"))
-	b, err := NewContext(context.Background(), "testdata/fixturemod")
+	b, err := newContext(context.Background(), "testdata/fixturemod")
 	if err != nil {
 		t.Fatalf("load consulted the ambient package driver: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestOwnedResolverProtocolRoundTrips(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	inproc, err := New(dir)
+	inproc, err := newContext(context.Background(), dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,6 +151,35 @@ func TestOwnedResolverProtocolRoundTrips(t *testing.T) {
 	if !reflect.DeepEqual(gotDecls, wantDecls) {
 		t.Errorf("Slice through the child = %+v, in-process %+v", gotDecls, wantDecls)
 	}
+
+	for _, symbol := range []string{"example.com/fixture/lib.Add", "example.com/fixture/lib.NoSuch"} {
+		wantFile, wantOK := inproc.SymbolFile(symbol)
+		gotFile, gotOK, err := owned.SymbolFile(symbol)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if gotFile != wantFile || gotOK != wantOK {
+			t.Errorf("SymbolFile(%s) = (%q, %v), in-process (%q, %v)", symbol, gotFile, gotOK, wantFile, wantOK)
+		}
+		gotPkg, err := owned.SymbolPackage(symbol)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := inproc.SymbolPackage(symbol); gotPkg != want {
+			t.Errorf("SymbolPackage(%s) = %q, in-process %q", symbol, gotPkg, want)
+		}
+	}
+	seed, ok := inproc.SymbolFile("example.com/fixture/lib.Add")
+	if !ok {
+		t.Fatal("fixture symbol did not resolve in-process")
+	}
+	gotReach, err := owned.ReachedPackages([]string{seed})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := inproc.ReachedPackages([]string{seed}); !reflect.DeepEqual(gotReach, want) {
+		t.Errorf("ReachedPackages through the child = %v, in-process %v", gotReach, want)
+	}
 }
 
 // TestOwnedResolverLoadErrorPropagates pins load-error propagation
@@ -171,7 +200,7 @@ func TestOwnedResolverLoadErrorPropagates(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := New(dir); err == nil {
+	if _, err := newContext(context.Background(), dir); err == nil {
 		t.Fatal("fixture loads in-process; the scenario no longer exercises a load error")
 	}
 	ctx, cancel := context.WithCancel(context.Background())

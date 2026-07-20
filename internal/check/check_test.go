@@ -331,10 +331,11 @@ func TestCheckWitnessResolvedGapIsResidueUntilPruned(t *testing.T) {
 	// Author the witness binding through the same authoring path the CLI
 	// uses, so the content and shape pins are captured for real.
 	ctx := context.Background()
-	gb, err := golang.NewContext(ctx, dir)
+	gb, err := golang.NewOwned(ctx, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer gb.Close()
 	up, err := author.Bind(os.DirFS(dir), map[string]verify.Backend{"go": gb}, author.BindRequest{
 		Requirement: "REQ-fix-must",
 		Symbol:      "example.com/checkfix/ok.TestDouble",
@@ -417,10 +418,11 @@ func TestCheckUnfiredManualGapOutlivesGreenWitnesses(t *testing.T) {
 		gapPath:                        unfired,
 	}))
 	ctx := context.Background()
-	gb, err := golang.NewContext(ctx, dir)
+	gb, err := golang.NewOwned(ctx, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer gb.Close()
 	up, err := author.Bind(os.DirFS(dir), map[string]verify.Backend{"go": gb}, author.BindRequest{
 		Requirement: "REQ-fix-must",
 		Symbol:      "example.com/checkfix/ok.TestDouble",

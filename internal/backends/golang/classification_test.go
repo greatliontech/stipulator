@@ -1,6 +1,7 @@
 package golang
 
 import (
+	"context"
 	"testing"
 
 	"github.com/greatliontech/stipulator/internal/verify"
@@ -10,7 +11,7 @@ import (
 
 func fixtureBackend(t *testing.T) *Backend {
 	t.Helper()
-	b, err := New("testdata/fixturemod")
+	b, err := newContext(context.Background(), "testdata/fixturemod")
 	if err != nil {
 		t.Fatal(err)
 	}

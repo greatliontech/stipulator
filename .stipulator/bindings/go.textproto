@@ -531,3 +531,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "12681fa03e355ae41a95642d5be5f051217d65f2f4aea48cc43dfe2e920e783b"
 }
+
+bindings {
+  requirement_id: "REQ-go-owned-processes"
+  content_hash: "3e86b716107f82c0c73b08ef873d237c9c185450c9c6847a7add1cda275412f5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestOwnedResolverProtocolErrorSurfaces"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "d626336875239d68aed14e5f5956b7e516648d7ed5f560778bc5ee704a2bed61"
+}

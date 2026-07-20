@@ -20,7 +20,7 @@ import (
 // every other child of Go policy work, so the package launcher and its
 // entire descendant tree — every go list, compile, and VCS subprocess —
 // terminates with the operation's cancellation (REQ-go-owned-processes).
-// The in-process implementation stays: the child runs NewContext; the
+// The in-process implementation stays: the child runs newContext; the
 // parent speaks the JSON-lines resolver protocol over the child's stdio.
 //
 // The child is spawned lazily on first use and dies with ctx, with an
@@ -215,6 +215,49 @@ func (o *Owned) Slice(symbols []string) ([]verify.Decl, error) {
 		})
 	}
 	return decls, nil
+}
+
+// SymbolFile is Backend.SymbolFile through the resolver child. Unlike
+// the in-process form it returns transport faults explicitly: a preview
+// must distinguish "does not resolve" from "the boundary died", or a
+// faulted child would silently empty the code-side candidates.
+func (o *Owned) SymbolFile(symbol string) (string, bool, error) {
+	resp, err := o.roundTrip(resolverRequest{Op: "symbolfile", Symbol: symbol})
+	if err != nil {
+		return "", false, err
+	}
+	if resp.Error != "" {
+		return "", false, errors.New(resp.Error)
+	}
+	return resp.File, resp.Found, nil
+}
+
+// SymbolPackage is Backend.SymbolPackage through the resolver child.
+func (o *Owned) SymbolPackage(symbol string) (string, error) {
+	resp, err := o.roundTrip(resolverRequest{Op: "symbolpackage", Symbol: symbol})
+	if err != nil {
+		return "", err
+	}
+	if resp.Error != "" {
+		return "", errors.New(resp.Error)
+	}
+	return resp.Package, nil
+}
+
+// ReachedPackages is Backend.ReachedPackages through the resolver child.
+func (o *Owned) ReachedPackages(files []string) (map[string]bool, error) {
+	resp, err := o.roundTrip(resolverRequest{Op: "reached", Symbols: files})
+	if err != nil {
+		return nil, err
+	}
+	if resp.Error != "" {
+		return nil, errors.New(resp.Error)
+	}
+	reach := make(map[string]bool, len(resp.Packages))
+	for _, p := range resp.Packages {
+		reach[p] = true
+	}
+	return reach, nil
 }
 
 // Close terminates the resolver child's process group; the reaper

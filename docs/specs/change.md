@@ -22,6 +22,23 @@ store at the corpus root's repo-relative path — no checkout, no worktree
 mutation — so the committed contract and the working tree compare in one
 invocation.
 
+## Impact preview
+
+**REQ-change-impact** (behavior): The `impact` operation MUST report, for
+the working tree's whole change set against HEAD, the requirements the
+change plausibly touches — those whose spec documents changed, resolved
+through the diff semantics to the identities whose content moved, and
+those bound to symbols resolving into changed source files — together
+with the expected witness subjects whose packages the change set reaches
+through the import graph, all without executing any test, loading no more
+than symbol resolution requires, and never claiming a freshness verdict:
+the preview names candidates for the witnessed surfaces to decide, and
+its omissions are bounded by what symbol resolution and import reach can
+see — a runtime-input edit reaches witnesses no import edge names, so an
+empty preview is advisory, never a proof of no impact. Version-control
+access stays confined to the adapter (REQ-core-vcs-free); a tree outside
+any repository reports that plainly instead of guessing.
+
 ## Dispositions
 
 Dispositions are operations, not records: they rewrite the stored bindings,
