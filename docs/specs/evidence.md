@@ -101,8 +101,9 @@ observation excludes the repository root listing and the VCS bookkeeping
 tree (`.` and `.git`), whose digests move under unrelated tooling and are
 asserted to be no witness's input. The exclusion carries the caller-side
 soundness responsibility gofresh's exclusion contract assigns it — its
-failure direction is a spurious reuse, accepted exactly there and nowhere
-else. Each producing process's completed observation is sealed against an
+failure direction is a spurious reuse, accepted exactly there and — each
+scoped to the stated assumption whose violation would convert it — in
+the exemption classes below, nowhere else. Each producing process's completed observation is sealed against an
 observation bracket captured before the process spawns, declaring the
 package's own directory — module-relative under the verification tree,
 with the VCS bookkeeping tree excluded — as its one root: a change under
@@ -111,14 +112,28 @@ bracket — a restore is tolerated only when it reproduces content and
 metadata alike — and the observation seals unverifiable, while a read
 resolving outside the declared root seals per-identity unverifiable —
 permanently uncacheable under this root policy — both toward
-re-execution, never reuse. One class is exempt: a read resolving under
-the effective toolchain root, or under the module cache outside its
-download-cache subtree, classifies guard-covered — the toolchain guard
-pins the toolchain root's contents and version-addressed immutability
-pins module trees, so observing them neither enters the manifest nor
-seals anything, and a toolchain-reading witness stays cacheable. The
-download-cache subtree's mutable metadata is pinned by neither and
-stays observed. A package whose directory is unresolved before
+re-execution, never reuse. Three classes are exempt: a read resolving
+under the effective toolchain root; under the module cache outside its
+download-cache subtree; or under the effective build cache outside its
+fuzz-corpus subtree — each classifies guard-covered. The toolchain
+guard pins the toolchain root's contents, version-addressed
+immutability pins module trees, and build-cache reads are admitted on
+toolchain-mediated observational equivalence — the toolchain rederives
+or revalidates cache content from inputs the fingerprint already pins —
+under gofresh's runtime-inputs contract, whose stated assumption
+excludes a subject consuming cache objects as opaque data. Observing an
+exempt read neither enters the manifest nor seals anything, and a
+toolchain- or cache-reading witness stays cacheable. The download-cache
+subtree's mutable metadata and the fuzz-corpus subtree's independently
+grown evidence are pinned by nothing and stay observed. The producing
+environment's temp root is declared ephemeral: the root's own identity
+admits without entering the manifest — its churn between runs is
+asserted to be no witness's input — while any read beneath it stays
+observed. The kernel's stable machine-fact identities enter the
+manifest as the machine guard's stable projection rather than volatile
+content, so a machine-fact-reading witness stales on a hardware or
+kernel change, with the in-window residual gofresh's runtime-inputs
+contract states. A package whose directory is unresolved before
 spawn, or whose directory lies outside the verification tree, yields an
 incomplete observation rather than a completed record sealed without a
 bracket. Executed tests whose records cannot be published for reuse — and

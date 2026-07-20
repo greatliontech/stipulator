@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -32,6 +33,12 @@ type NormalizedInvocation struct {
 	// already pinned by the toolchain and build-config guards.
 	ToolchainRoot   string
 	ModuleCacheRoot string
+	// BuildCacheRoot is the effective GOCACHE (guard-covered on
+	// toolchain-mediated observational equivalence) and TempRoot the
+	// producing environment's temp directory (ephemeral, identity-only
+	// admission).
+	BuildCacheRoot string
+	TempRoot       string
 	// Timeout is the envelope's explicit, reviewed timeout.
 	Timeout time.Duration
 	// Toolchain is the effective toolchain identity (`go env GOVERSION`).
@@ -169,7 +176,7 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		env = setEnv(env, "GOFLAGS", cfg.GetGoflags())
 	}
 
-	version, goos, goarch, cgo, goflags, goexperiment, goroot, gomodcache, err := effectiveGoEnv(ctx, n.Dir, env)
+	version, goos, goarch, cgo, goflags, goexperiment, goroot, gomodcache, gocache, err := effectiveGoEnv(ctx, n.Dir, env)
 	if err != nil {
 		return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
 	}
@@ -205,15 +212,18 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		env = setEnv(env, "GOTOOLCHAIN", toolchainPin)
 	}
 	env = setEnv(env, "GOEXPERIMENT", goexperiment)
-	// The module-cache root is pinned into the frozen environment like
-	// every other config-file-sourced value: the query ran with GOENV
-	// active, the spawn runs with GOENV=off, and an unpinned value would
-	// let the declared guard root disagree with the actual reads. GOROOT
-	// is deliberately not pinned - the GOTOOLCHAIN pin already fixes the
-	// executing toolchain, and forcing GOROOT interacts with toolchain
-	// re-exec.
+	// The module-cache and build-cache roots are pinned into the frozen
+	// environment like every other config-file-sourced value: the query
+	// ran with GOENV active, the spawn runs with GOENV=off, and an
+	// unpinned value would let the declared guard root disagree with the
+	// actual reads. GOROOT is deliberately not pinned - the GOTOOLCHAIN
+	// pin already fixes the executing toolchain, and forcing GOROOT
+	// interacts with toolchain re-exec.
 	if gomodcache != "" {
 		env = setEnv(env, "GOMODCACHE", gomodcache)
+	}
+	if gocache != "" {
+		env = setEnv(env, "GOCACHE", gocache)
 	}
 	n.Env = env
 	// The toolchain and module-cache roots feed the guard-covered
@@ -225,6 +235,11 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	// unusable ambient value degrades to the unguarded posture instead.
 	n.ToolchainRoot = usableGuardRoot(goroot)
 	n.ModuleCacheRoot = usableGuardRoot(gomodcache)
+	n.BuildCacheRoot = usableGuardRoot(gocache)
+	// The interiority check runs against the verification tree root, not
+	// the module directory: observation refuses a root inside the TREE,
+	// and with module_root set the tree is a strict ancestor of n.Dir.
+	n.TempRoot = usableTempRoot(tempRootFromEnv(env), treeRoot(n))
 	return n, nil
 }
 
@@ -252,21 +267,21 @@ func usableGuardRoot(root string) string {
 
 // effectiveGoEnv queries the exec'd toolchain for the pin-at-load values in
 // one owned, cancellable subprocess.
-func effectiveGoEnv(ctx context.Context, dir string, env []string) (version, goos, goarch, cgo, goflags, goexperiment, goroot, gomodcache string, err error) {
-	cmd := commandContext(ctx, "go", "env", "GOVERSION", "GOOS", "GOARCH", "CGO_ENABLED", "GOFLAGS", "GOEXPERIMENT", "GOROOT", "GOMODCACHE")
+func effectiveGoEnv(ctx context.Context, dir string, env []string) (version, goos, goarch, cgo, goflags, goexperiment, goroot, gomodcache, gocache string, err error) {
+	cmd := commandContext(ctx, "go", "env", "GOVERSION", "GOOS", "GOARCH", "CGO_ENABLED", "GOFLAGS", "GOEXPERIMENT", "GOROOT", "GOMODCACHE", "GOCACHE")
 	cmd.Dir = dir
 	cmd.Env = env
 	out, err := cmd.Output()
 	if err != nil {
-		return "", "", "", "", "", "", "", "", fmt.Errorf("resolving effective go env: %w", err)
+		return "", "", "", "", "", "", "", "", "", fmt.Errorf("resolving effective go env: %w", err)
 	}
 	// Strip exactly the final newline: an empty value (an unset GOFLAGS)
 	// is a legitimate empty line that TrimRight would swallow.
 	lines := strings.Split(strings.TrimSuffix(string(out), "\n"), "\n")
-	if len(lines) != 8 {
-		return "", "", "", "", "", "", "", "", fmt.Errorf("unexpected go env output %q", out)
+	if len(lines) != 9 {
+		return "", "", "", "", "", "", "", "", "", fmt.Errorf("unexpected go env output %q", out)
 	}
-	return lines[0], lines[1], lines[2], lines[3], lines[4], lines[5], lines[6], lines[7], nil
+	return lines[0], lines[1], lines[2], lines[3], lines[4], lines[5], lines[6], lines[7], lines[8], nil
 }
 
 // normalizeEnv returns a deterministic owned copy of a complete process
@@ -328,4 +343,57 @@ func lookupEnv(env []string, key string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// tempRootFromEnv resolves the producing environment's temp root the
+// way the child's os.TempDir will: TMPDIR when set, the platform
+// default otherwise. Windows children ignore TMPDIR (GetTempPath is
+// per-process), and plan9 stays undeclared as a conservative
+// cost-only posture, so no root is declared on either. The value is
+// returned raw — cleaning happens in usableGuardRoot, whose ".."
+// refusal must see the original components.
+func tempRootFromEnv(env []string) string {
+	if runtime.GOOS == "windows" || runtime.GOOS == "plan9" {
+		return ""
+	}
+	for _, kv := range env {
+		if v, ok := strings.CutPrefix(kv, "TMPDIR="); ok && v != "" {
+			return v
+		}
+	}
+	if runtime.GOOS == "android" {
+		return "/data/local/tmp"
+	}
+	return "/tmp"
+}
+
+// usableTempRoot additionally degrades a temp root lying inside the
+// verification tree — declared or resolved form — to the unguarded
+// posture: gofresh refuses a module-interior ephemeral root loudly,
+// which would disable witness publication wholesale, while absence of
+// the root only costs re-execution.
+func usableTempRoot(root, treeRoot string) string {
+	root = usableGuardRoot(root)
+	if root == "" {
+		return ""
+	}
+	sep := string(filepath.Separator)
+	for _, form := range []string{root, resolveOrSelf(root)} {
+		for _, tree := range []string{treeRoot, resolveOrSelf(treeRoot)} {
+			if form == tree || strings.HasPrefix(form, tree+sep) {
+				return ""
+			}
+		}
+	}
+	return root
+}
+
+// resolveOrSelf resolves symlinks when the path resolves at all, and
+// returns the path unchanged when it does not — an unresolvable root is
+// still a declarable identity.
+func resolveOrSelf(p string) string {
+	if r, err := filepath.EvalSymlinks(p); err == nil {
+		return r
+	}
+	return p
 }

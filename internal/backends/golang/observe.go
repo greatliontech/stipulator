@@ -218,6 +218,18 @@ func completedObservation(n *NormalizedInvocation, pkg string, producer *stipula
 	if n.ModuleCacheRoot != "" {
 		opts = append(opts, runtimeinput.WithModuleCacheRoot(n.ModuleCacheRoot))
 	}
+	// The build cache is guard-covered on toolchain-mediated
+	// observational equivalence — the toolchain rederives or revalidates
+	// cache content from inputs the fingerprint already pins; a subject
+	// consuming cache objects as data is outside the stated assumption —
+	// and the temp root is ephemeral (only its own identity admits;
+	// deeper reads stay observed).
+	if n.BuildCacheRoot != "" {
+		opts = append(opts, runtimeinput.WithBuildCacheRoot(n.BuildCacheRoot))
+	}
+	if n.TempRoot != "" {
+		opts = append(opts, runtimeinput.WithEphemeralTempRoot(n.TempRoot))
+	}
 	observation, err := runtimeinput.FromTestLogEnv(log, frame.root, frame.pkgDir, n.Env, opts...)
 	if err != nil {
 		return nil, err

@@ -2,7 +2,9 @@ package golang
 
 import (
 	"context"
+	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -227,6 +229,106 @@ func TestGoNormalizeWorkspaceModeRequiresDeclaration(t *testing.T) {
 	_, err = NormalizeInvocation(context.Background(), dir, goInvocation("ws", cfg))
 	if err == nil || !strings.Contains(err.Error(), "declares no go.work") {
 		t.Fatalf("workspace mode without declaration accepted: %v", err)
+	}
+}
+
+// The normalized invocation carries all four observation-guard roots
+// resolved from the effective environment — toolchain, module cache,
+// build cache, and the producing environment's temp root — so witness
+// observation can classify reads under them instead of sealing. The
+// build cache is sourced from the go env config file, the ambient
+// source GOENV=off silences in the child: the resolved value must be
+// pinned into the frozen environment, or the declared root and the
+// child's actual cache silently diverge.
+func TestGoNormalizeCarriesObservationGuardRoots(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	neutralAmbient(t)
+	gocache := t.TempDir()
+	tmproot := t.TempDir()
+	goenvFile := filepath.Join(t.TempDir(), "goenv")
+	if err := os.WriteFile(goenvFile, []byte("GOCACHE="+gocache+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GOENV", goenvFile)
+	t.Setenv("TMPDIR", tmproot)
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./..."})
+	n, err := NormalizeInvocation(context.Background(), discoverFixture(t), goInvocation("roots", cfg))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.ToolchainRoot == "" || n.ModuleCacheRoot == "" {
+		t.Errorf("toolchain/module-cache roots not resolved: %q %q", n.ToolchainRoot, n.ModuleCacheRoot)
+	}
+	if n.BuildCacheRoot != gocache {
+		t.Errorf("BuildCacheRoot = %q, want the effective GOCACHE %q", n.BuildCacheRoot, gocache)
+	}
+	if pinned, ok := lookupEnv(n.Env, "GOCACHE"); !ok || pinned != gocache {
+		t.Errorf("child env GOCACHE = %q (present=%v), want the resolved %q pinned — GOENV=off silences the config file the value came from", pinned, ok, gocache)
+	}
+	if n.TempRoot != tmproot {
+		t.Errorf("TempRoot = %q, want the effective TMPDIR %q", n.TempRoot, tmproot)
+	}
+}
+
+// A TMPDIR inside the verification tree degrades to the unguarded
+// posture even when the invocation's module root is a nested member:
+// observation refuses tree-interior roots against the TREE, of which
+// the module directory is a strict descendant — checking the module
+// directory would declare the root and lose publication wholesale.
+func TestGoNormalizeTreeInteriorTempRootDegradesUnderModuleRoot(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	neutralAmbient(t)
+	dir := discoverFixture(t)
+	t.Setenv("TMPDIR", filepath.Join(dir, ".tmp"))
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetModuleRoot("sub")
+	cfg.SetPackages([]string{"./..."})
+	n, err := NormalizeInvocation(context.Background(), dir, goInvocation("race:sub", cfg))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.TempRoot != "" {
+		t.Errorf("TempRoot = %q, want the unguarded posture for a tree-interior TMPDIR outside the module directory", n.TempRoot)
+	}
+}
+
+// tempRootFromEnv mirrors os.TempDir against the frozen environment —
+// TMPDIR raw when set, the platform default otherwise — and
+// usableTempRoot degrades what cannot serve: a ".."-carrying TMPDIR
+// (raw delivery is what lets usableGuardRoot's refusal see it) and a
+// root inside the verification tree, whose loud refusal downstream
+// would disable publication wholesale.
+func TestTempRootHandling(t *testing.T) {
+	if runtime.GOOS == "windows" || runtime.GOOS == "plan9" {
+		t.Skip("no temp root is declared on this platform")
+	}
+	if got := tempRootFromEnv([]string{"TMPDIR=/scratch/run/"}); got != "/scratch/run/" {
+		t.Errorf("TMPDIR set: got %q, want the raw value", got)
+	}
+	if got := tempRootFromEnv([]string{"PATH=/usr/bin", "TMPDIR="}); got != "/tmp" {
+		t.Errorf("TMPDIR empty: got %q, want the platform default", got)
+	}
+	if got := usableTempRoot("/a/link/../y", "/repo"); got != "" {
+		t.Errorf("parent traversal: got %q, want refusal — Clean would rebind across a symlink", got)
+	}
+	if got := usableTempRoot("/repo/.tmp", "/repo"); got != "" {
+		t.Errorf("tree-interior root: got %q, want the unguarded posture", got)
+	}
+	if got := usableTempRoot("/scratch/run/", "/repo"); got != "/scratch/run" {
+		t.Errorf("usable root: got %q", got)
+	}
+	// Resolved-form interiority: a symlink outside the tree pointing in.
+	tree := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tree, "sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(t.TempDir(), "into-tree")
+	if err := os.Symlink(tree, link); err != nil {
+		t.Fatal(err)
+	}
+	if got := usableTempRoot(filepath.Join(link, "sub"), tree); got != "" {
+		t.Errorf("resolved-interior root: got %q, want the unguarded posture", got)
 	}
 }
 

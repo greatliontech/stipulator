@@ -93,3 +93,15 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   package failure rides the check result as both a typed witness_diagnostics row and the
   verify.package_failures text; one fact, one wire home. *Lands: when the check result's
   wire shape next changes.*
+- **[structural-call-absence-verb](structural-call-absence-verb.md)** — "never constructs
+  X" structural clauses have no verb: NoImport is transitive (stdlib forbiddance fails
+  through any real dependency) and the shape verbs state presence, not capability absence;
+  a direct-call-absence verb (structural.NoCall) would carry them. *Lands: when a
+  structural requirement next needs a call-absence proof and the signature/import verbs
+  demonstrably cannot carry it.*
+- **[sealed-record-publishes-silently](sealed-record-publishes-silently.md)** — spec says
+  out-of-bracket reads seal permanently uncacheable; the implementation digest-binds them
+  and serves, accepting a read-to-seal-window residual silently — spurious reuse the spec
+  text forbids, staled only by post-seal changes. Spec-amend candidate; three resolution
+  routes recorded. *Lands: when the user dispositions the spec-amend candidate, or at the
+  stipulator issue-elimination phase, whichever comes first.*

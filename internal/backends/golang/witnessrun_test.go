@@ -1297,6 +1297,226 @@ func TestReadsToolchain(t *testing.T) {
 	}
 }
 
+// TestGoRunWitnessesBuildCacheAndTempReadsStayCacheable pins the other
+// two exemption classes end to end: a witness reading under the
+// effective build cache is guard-covered, a witness stat'ing the temp
+// root itself is admitted as ephemeral identity — neither seals the
+// record nor enters the manifest, and the witness serves next run.
+func TestGoRunWitnessesBuildCacheAndTempReadsStayCacheable(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented selective run over a temporary module")
+	}
+	neutralAmbient(t)
+	// A controlled build cache proves the leg deterministically: the
+	// fixture reads a file seeded under it, and the frozen environment
+	// carries the root to both normalization and the spawned process.
+	fakeGocache := filepath.Join(t.TempDir(), "gocache")
+	if err := os.MkdirAll(fakeGocache, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(fakeGocache, "pinned.txt"), []byte("derived"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GOCACHE", fakeGocache)
+	tempRoot := filepath.Join(t.TempDir(), "scratch")
+	if err := os.MkdirAll(tempRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("TMPDIR", tempRoot)
+	tmp := writeModule(t, map[string]string{
+		"go.mod": "module example.com/cacheread\n\ngo 1.26\n",
+		"pkg/pkg_test.go": `package pkg
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+// Reading a cache file as data is outside the admission's stated
+// assumption — it is used here only as a deterministic vehicle for
+// exercising the classification, not as an endorsed subject pattern.
+//
+//gofresh:pure
+func TestReadsBuildCacheAndTempRoot(t *testing.T) {
+	if _, err := os.ReadFile(filepath.Join(os.Getenv("GOCACHE"), "pinned.txt")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(os.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+}
+`,
+	})
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./pkg"})
+	cfg.SetRace(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
+	writePolicyRecord(t, tmp, p)
+
+	first, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Degraded != "" {
+		t.Fatalf("degraded: %s", first.Degraded)
+	}
+	if first.Ran != 1 || first.Uncached != 0 {
+		t.Fatalf("first run ran=%d uncached=%d, want 1/0: the build-cache read and temp-root stat must not seal the record", first.Ran, first.Uncached)
+	}
+	second, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Fresh != 1 || second.Ran != 0 {
+		t.Fatalf("second run fresh=%d ran=%d, want 1/0: the exempted witness must serve", second.Fresh, second.Ran)
+	}
+	records := witnesscache.Load(tmp)
+	if len(records) != 1 {
+		t.Fatalf("store holds %d records, want 1", len(records))
+	}
+	desc, err := runtimeinput.Describe(records[0].Fingerprint.RuntimeInputs, tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(desc.Paths) != 0 || len(desc.Unverifiable) != 0 {
+		t.Fatalf("manifest carries paths=%v unverifiable=%v; an exempted read leaked into the manifest", desc.Paths, desc.Unverifiable)
+	}
+}
+
+// TestGoRunWitnessesExemptionBoundariesStayObserved pins the refusal
+// side of the build-cache and temp-root exemptions: a read under the
+// build cache's fuzz-corpus subtree and a read beneath the temp root
+// (deeper than the root's own identity) stay observed — the manifest
+// carries each read, and changing the read content stales the record,
+// where an over-admitting classification would serve it stale.
+func TestGoRunWitnessesExemptionBoundariesStayObserved(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented selective run over a temporary module")
+	}
+	neutralAmbient(t)
+	fakeGocache := filepath.Join(t.TempDir(), "gocache")
+	if err := os.MkdirAll(filepath.Join(fakeGocache, "fuzz"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	corpus := filepath.Join(fakeGocache, "fuzz", "corpus.txt")
+	if err := os.WriteFile(corpus, []byte("grown evidence"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GOCACHE", fakeGocache)
+	tempRoot := filepath.Join(t.TempDir(), "scratch")
+	if err := os.MkdirAll(filepath.Join(tempRoot, "deep"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	deep := filepath.Join(tempRoot, "deep", "data.txt")
+	if err := os.WriteFile(deep, []byte("beneath the root"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("TMPDIR", tempRoot)
+	tmp := writeModule(t, map[string]string{
+		"go.mod": "module example.com/boundary\n\ngo 1.26\n",
+		"fuzzread/pkg_test.go": `package fuzzread
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+//gofresh:pure
+func TestReadsFuzzCorpus(t *testing.T) {
+	if _, err := os.ReadFile(filepath.Join(os.Getenv("GOCACHE"), "fuzz", "corpus.txt")); err != nil {
+		t.Fatal(err)
+	}
+}
+`,
+		"tempread/pkg_test.go": `package tempread
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+//gofresh:pure
+func TestReadsBeneathTempRoot(t *testing.T) {
+	if _, err := os.ReadFile(filepath.Join(os.TempDir(), "deep", "data.txt")); err != nil {
+		t.Fatal(err)
+	}
+}
+`,
+	})
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./..."})
+	cfg.SetRace(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
+	writePolicyRecord(t, tmp, p)
+
+	first, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Degraded != "" {
+		t.Fatalf("degraded: %s", first.Degraded)
+	}
+	if first.Ran != 2 {
+		t.Fatalf("first run ran=%d, want 2", first.Ran)
+	}
+	// Each read is observed by identity: the record's manifest carries
+	// it, so it participates in revalidation — the admission classes
+	// must not swallow it.
+	observedBy := map[string]string{
+		"example.com/boundary/fuzzread": "corpus.txt",
+		"example.com/boundary/tempread": "data.txt",
+	}
+	records := witnesscache.Load(tmp)
+	if len(records) != 2 {
+		t.Fatalf("store holds %d records, want 2", len(records))
+	}
+	for _, rec := range records {
+		observed, ok := observedBy[rec.Package]
+		if !ok {
+			t.Fatalf("unexpected record package %s", rec.Package)
+		}
+		desc, err := runtimeinput.Describe(rec.Fingerprint.RuntimeInputs, tmp)
+		if err != nil {
+			t.Fatal(err)
+		}
+		found := false
+		for _, p := range desc.Paths {
+			if strings.Contains(p, observed) {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s: manifest paths=%v do not carry the read %s — it was admitted past the exemption boundary", rec.Package, desc.Paths, observed)
+		}
+	}
+	// Changing both contents and asserting the second run re-executes
+	// closes the over-admission direction together with the manifest
+	// assertion above: a swallowed read leaves the manifest AND lets the
+	// stale outcome serve. Whether an unchanged out-of-bracket record
+	// may serve is deliberately unpinned here — that disposition is
+	// tracked in docs/issues/sealed-record-publishes-silently.md.
+	if err := os.WriteFile(corpus, []byte("regrown"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(deep, []byte("rewritten"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	second, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Fresh != 0 || second.Ran != 2 {
+		t.Fatalf("second run fresh=%d ran=%d, want 0/2: changed observed inputs must stale the records", second.Fresh, second.Ran)
+	}
+}
+
 // TestGoRunWitnessesNamesUncacheableReasons pins the diagnosable-set
 // requirement: an executed test whose record cannot publish carries the
 // refusing leg's own reason on the run result — here the observation
