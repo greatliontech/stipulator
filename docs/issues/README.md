@@ -99,9 +99,3 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   a direct-call-absence verb (structural.NoCall) would carry them. *Lands: when a
   structural requirement next needs a call-absence proof and the signature/import verbs
   demonstrably cannot carry it.*
-- **[sealed-record-publishes-silently](sealed-record-publishes-silently.md)** — spec says
-  out-of-bracket reads seal permanently uncacheable; the implementation digest-binds them
-  and serves, accepting a read-to-seal-window residual silently — spurious reuse the spec
-  text forbids, staled only by post-seal changes. Spec-amend candidate; three resolution
-  routes recorded. *Lands: when the user dispositions the spec-amend candidate, or at the
-  stipulator issue-elimination phase, whichever comes first.*

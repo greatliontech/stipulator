@@ -1389,9 +1389,11 @@ func TestReadsBuildCacheAndTempRoot(t *testing.T) {
 // TestGoRunWitnessesExemptionBoundariesStayObserved pins the refusal
 // side of the build-cache and temp-root exemptions: a read under the
 // build cache's fuzz-corpus subtree and a read beneath the temp root
-// (deeper than the root's own identity) stay observed — the manifest
-// carries each read, and changing the read content stales the record,
-// where an over-admitting classification would serve it stale.
+// (deeper than the root's own identity) stay observed — outside the
+// package bracket they seal the observation, so an UNASSERTED witness
+// executes but never publishes, with the sealing read named per test.
+// (A purity-asserted subject would publish under the author's opt-in,
+// REQ-purity-override — these fixtures are deliberately unasserted.)
 func TestGoRunWitnessesExemptionBoundariesStayObserved(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness")
 	if testing.Short() {
@@ -1426,7 +1428,6 @@ import (
 	"testing"
 )
 
-//gofresh:pure
 func TestReadsFuzzCorpus(t *testing.T) {
 	if _, err := os.ReadFile(filepath.Join(os.Getenv("GOCACHE"), "fuzz", "corpus.txt")); err != nil {
 		t.Fatal(err)
@@ -1441,7 +1442,6 @@ import (
 	"testing"
 )
 
-//gofresh:pure
 func TestReadsBeneathTempRoot(t *testing.T) {
 	if _, err := os.ReadFile(filepath.Join(os.TempDir(), "deep", "data.txt")); err != nil {
 		t.Fatal(err)
@@ -1463,57 +1463,33 @@ func TestReadsBeneathTempRoot(t *testing.T) {
 	if first.Degraded != "" {
 		t.Fatalf("degraded: %s", first.Degraded)
 	}
-	if first.Ran != 2 {
-		t.Fatalf("first run ran=%d, want 2", first.Ran)
+	if first.Ran != 2 || first.Uncached != 2 {
+		t.Fatalf("first run ran=%d uncached=%d, want 2/2: a sealed observation must not publish (reasons=%v)", first.Ran, first.Uncached, first.UncacheableReasons)
 	}
-	// Each read is observed by identity: the record's manifest carries
-	// it, so it participates in revalidation — the admission classes
-	// must not swallow it.
-	observedBy := map[string]string{
-		"example.com/boundary/fuzzread": "corpus.txt",
-		"example.com/boundary/tempread": "data.txt",
-	}
-	records := witnesscache.Load(tmp)
-	if len(records) != 2 {
-		t.Fatalf("store holds %d records, want 2", len(records))
-	}
-	for _, rec := range records {
-		observed, ok := observedBy[rec.Package]
+	for test, sealing := range map[string]string{
+		"example.com/boundary/fuzzread.TestReadsFuzzCorpus":      "corpus.txt",
+		"example.com/boundary/tempread.TestReadsBeneathTempRoot": "data.txt",
+	} {
+		why, ok := first.UncacheableReasons[test]
 		if !ok {
-			t.Fatalf("unexpected record package %s", rec.Package)
+			t.Fatalf("uncacheable reasons = %v, missing %s", first.UncacheableReasons, test)
 		}
-		desc, err := runtimeinput.Describe(rec.Fingerprint.RuntimeInputs, tmp)
-		if err != nil {
-			t.Fatal(err)
-		}
-		found := false
-		for _, p := range desc.Paths {
-			if strings.Contains(p, observed) {
-				found = true
-			}
-		}
-		if !found {
-			t.Errorf("%s: manifest paths=%v do not carry the read %s — it was admitted past the exemption boundary", rec.Package, desc.Paths, observed)
+		if !strings.Contains(why, sealing) {
+			t.Errorf("reason %q for %s does not name the sealing read", why, test)
 		}
 	}
-	// Changing both contents and asserting the second run re-executes
-	// closes the over-admission direction together with the manifest
-	// assertion above: a swallowed read leaves the manifest AND lets the
-	// stale outcome serve. Whether an unchanged out-of-bracket record
-	// may serve is deliberately unpinned here — that disposition is
-	// tracked in docs/issues/sealed-record-publishes-silently.md.
-	if err := os.WriteFile(corpus, []byte("regrown"), 0o644); err != nil {
-		t.Fatal(err)
+	if records := witnesscache.Load(tmp); len(records) != 0 {
+		t.Fatalf("store holds %d sealed records, want none", len(records))
 	}
-	if err := os.WriteFile(deep, []byte("rewritten"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	// Nothing published, so the second run re-executes — an
+	// over-admitting classification would have published cacheable
+	// records and served them here.
 	second, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if second.Fresh != 0 || second.Ran != 2 {
-		t.Fatalf("second run fresh=%d ran=%d, want 0/2: changed observed inputs must stale the records", second.Fresh, second.Ran)
+		t.Fatalf("second run fresh=%d ran=%d, want 0/2", second.Fresh, second.Ran)
 	}
 }
 
