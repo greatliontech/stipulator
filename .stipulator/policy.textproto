@@ -11,6 +11,7 @@ invocations {
     race: true
     args: "-test.timeout=30m"
     bracket_paths: "/bin/sh"
+    bracket_paths: "/usr/bin/sh"
     bracket_paths: "/usr/bin/git"
   }
 }
@@ -23,6 +24,9 @@ invocations {
     module_root: "bindingsurface"
     packages: "./..."
     race: true
+    bracket_paths: "/bin/sh"
+    bracket_paths: "/usr/bin/sh"
+    bracket_paths: "/usr/bin/git"
     args: "-test.timeout=30m"
   }
 }
@@ -35,6 +39,9 @@ invocations {
     module_root: "stipulate"
     packages: "./..."
     race: true
+    bracket_paths: "/bin/sh"
+    bracket_paths: "/usr/bin/sh"
+    bracket_paths: "/usr/bin/git"
     args: "-test.timeout=30m"
   }
 }
@@ -47,6 +54,9 @@ invocations {
     module_root: "stipulate/structural"
     packages: "./..."
     race: true
+    bracket_paths: "/bin/sh"
+    bracket_paths: "/usr/bin/sh"
+    bracket_paths: "/usr/bin/git"
     args: "-test.timeout=30m"
   }
 }
