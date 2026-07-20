@@ -1346,6 +1346,13 @@ func TestReadsBuildCacheAndTempRoot(t *testing.T) {
 	if _, err := os.Stat(os.TempDir()); err != nil {
 		t.Fatal(err)
 	}
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if os.Getenv("PWD") != wd {
+		t.Fatalf("PWD %q is not the spawn directory %q", os.Getenv("PWD"), wd)
+	}
 }
 `,
 	})
@@ -1365,6 +1372,9 @@ func TestReadsBuildCacheAndTempRoot(t *testing.T) {
 	}
 	if first.Ran != 1 || first.Uncached != 0 {
 		t.Fatalf("first run ran=%d uncached=%d, want 1/0: the build-cache read and temp-root stat must not seal the record", first.Ran, first.Uncached)
+	}
+	if got := first.Outcomes["example.com/cacheread/pkg.TestReadsBuildCacheAndTempRoot"]; got != verify.TestPassed {
+		t.Fatalf("witness outcome = %v, want PASSED — the fixture's own environment assertions failed", got)
 	}
 	second, err := RunWitnesses(context.Background(), tmp)
 	if err != nil {

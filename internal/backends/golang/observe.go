@@ -178,6 +178,24 @@ func incompleteObservationReason(st *streamState, waitErr error, disposition sti
 	return ""
 }
 
+// witnessProcessEnv is the frozen environment one package's witness
+// process actually runs under: the invocation environment with PWD
+// pinned to the package directory the test binary starts in, so a PWD
+// read is truthful — fully determined by the frame identity — and
+// admits recordless instead of sealing process-local. Spawn and
+// ingestion MUST use the same environment; this helper is the single
+// source for both. The go tool independently appends the same
+// PWD=<package dir> when it spawns the test binary, so the spawn-side
+// pin is deliberately redundant: it keeps the ingest mirror sound even
+// if a future toolchain stopped supplying it, which is why no test can
+// distinguish dropping the spawn-side call alone.
+func witnessProcessEnv(n *NormalizedInvocation, frame observationFrame) []string {
+	if frame.pkgDir == "" {
+		return n.Env
+	}
+	return setEnv(append([]string(nil), n.Env...), "PWD", frame.pkgDir)
+}
+
 // completedObservation ingests one completed process's testlog through
 // gofresh under the resolved observation frame, asserting process
 // completion against the pre-spawn observation bracket, with the declared
@@ -230,7 +248,7 @@ func completedObservation(n *NormalizedInvocation, pkg string, producer *stipula
 	if n.TempRoot != "" {
 		opts = append(opts, runtimeinput.WithEphemeralTempRoot(n.TempRoot))
 	}
-	observation, err := runtimeinput.FromTestLogEnv(log, frame.root, frame.pkgDir, n.Env, opts...)
+	observation, err := runtimeinput.FromTestLogEnv(log, frame.root, frame.pkgDir, witnessProcessEnv(n, frame), opts...)
 	if err != nil {
 		return nil, err
 	}

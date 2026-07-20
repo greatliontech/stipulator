@@ -346,7 +346,7 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, select
 	frame := captureObservationFrame(ctx, n, pkg)
 	cmd := commandContext(ctx, "go", testCommandArgs(n, pkg, selection, logPath)...)
 	cmd.Dir = n.Dir
-	cmd.Env = n.Env
+	cmd.Env = witnessProcessEnv(n, frame)
 	var stderr boundedBuffer
 	cmd.Stderr = writerFunc(func(p []byte) (int, error) {
 		stderr.write(string(p))
