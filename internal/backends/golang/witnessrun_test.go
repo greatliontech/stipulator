@@ -45,6 +45,11 @@ func writePolicyRecord(t *testing.T, dir string, p *stipulatorv1.TestPolicy) {
 //
 //gofresh:pure
 func TestGoRunWitnessesRequiresPolicyRecord(t *testing.T) {
+	// The witness store must never be the user's real one: an
+	// un-overridden store poisons this package's own observation and
+	// pollutes the host cache (t.Setenv forbids t.Parallel, which these
+	// tests drop for hermeticity).
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	stipulate.Covers(t, "REQ-policy-explicit")
 	tmp := writeModule(t, map[string]string{
 		"go.mod": "module example.com/nopolicy\n\ngo 1.26\n",

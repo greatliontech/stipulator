@@ -255,11 +255,15 @@ func sameRegistrationSet(a, b []verify.Registration) bool {
 //
 //gofresh:pure
 func TestGoRunWitnessesServingRoundTrip(t *testing.T) {
+	// The witness store must never be the user's real one: an
+	// un-overridden store poisons this package's own observation and
+	// pollutes the host cache (t.Setenv forbids t.Parallel, which these
+	// tests drop for hermeticity).
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-go-witness", "REQ-evidence-run-attributes")
 	if testing.Short() {
 		t.Skip("runs go test per package")
 	}
-	t.Parallel()
 	tmp := t.TempDir()
 	if err := os.CopyFS(tmp, os.DirFS("testdata/freshfixture")); err != nil {
 		t.Fatal(err)
@@ -397,11 +401,15 @@ func TestGoRunWitnessesServingRoundTrip(t *testing.T) {
 //
 //gofresh:pure
 func TestGoRunWitnessesSelectsRaceSources(t *testing.T) {
+	// The witness store must never be the user's real one: an
+	// un-overridden store poisons this package's own observation and
+	// pollutes the host cache (t.Setenv forbids t.Parallel, which these
+	// tests drop for hermeticity).
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-go-race")
 	if testing.Short() {
 		t.Skip("runs go test per package")
 	}
-	t.Parallel()
 	tmp := t.TempDir()
 	if err := os.CopyFS(tmp, os.DirFS("testdata/racefixture")); err != nil {
 		t.Fatal(err)

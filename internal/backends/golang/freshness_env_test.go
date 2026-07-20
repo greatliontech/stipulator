@@ -62,6 +62,11 @@ func TestReadsVolatileState(t *testing.T) {
 // binary's init behavior, a child-process input no guard covers; the
 // witness re-runs every gate.
 func TestGoRunWitnessesUnderForeignWorkspace(t *testing.T) {
+	// The witness store must never be the user's real one: an
+	// un-overridden store poisons this package's own observation and
+	// pollutes the host cache (t.Setenv forbids t.Parallel, which these
+	// tests drop for hermeticity).
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
