@@ -86,11 +86,12 @@ func fixtureResult(t *testing.T) *stipulatorv1.CheckResult {
 }
 
 // TestCheckToolStructuredResultMirrorsCheckResult validates the tool's
-// output against the protobuf result: the structured content of a check
-// call over the full-field wire fixture strict-round-trips into an equal
-// CheckResult — every key is a CheckResult field, every field survives.
+// output against the protobuf messages: the default call answers the
+// bounded summary (a strict CheckSummary), and view=full
+// strict-round-trips the whole wire fixture into an equal CheckResult —
+// every key a field of its message, every field surviving.
 func TestCheckToolStructuredResultMirrorsCheckResult(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-tools", "REQ-report-check-result")
+	stipulate.Covers(t, "REQ-mcp-tools", "REQ-report-check-result", "REQ-mcp-views", "REQ-mcp-response-contract")
 	want := fixtureResult(t)
 	sess, _ := checkHarness(t, func(context.Context, bool) (*stipulatorv1.CheckResult, error) {
 		return want, nil
@@ -106,14 +107,35 @@ func TestCheckToolStructuredResultMirrorsCheckResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := &stipulatorv1.CheckResult{}
 	// Strict decoding: an unknown key — progress smuggled into the
 	// payload, a drifted field name — fails the round trip.
+	summary := &stipulatorv1.CheckSummary{}
+	if err := protojson.Unmarshal(b, summary); err != nil {
+		t.Fatalf("default structured content is not a strict CheckSummary: %v\n%s", err, b)
+	}
+	if summary.GetPassed() != want.GetPassed() || summary.GetTestsExecuted() != want.GetTestsExecuted() {
+		t.Errorf("summary drifted from the result:\n%s", b)
+	}
+	// The text content beside it is a one-line summary, never a second
+	// serialization of the payload (REQ-mcp-response-contract).
+	if text := toolText(t, res); len(text) > 200 || !strings.Contains(text, "check:") {
+		t.Errorf("text content is not a one-line summary: %q", text)
+	}
+
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "check", Arguments: map[string]any{"view": "full"}})
+	if err != nil || res.IsError {
+		t.Fatalf("check view=full: %v %v", err, res)
+	}
+	b, err = json.Marshal(res.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := &stipulatorv1.CheckResult{}
 	if err := protojson.Unmarshal(b, got); err != nil {
-		t.Fatalf("structured content is not a strict CheckResult: %v\n%s", err, b)
+		t.Fatalf("full structured content is not a strict CheckResult: %v\n%s", err, b)
 	}
 	if !proto.Equal(want, got) {
-		t.Errorf("structured content decodes to a different message:\n%s", b)
+		t.Errorf("full view decodes to a different message:\n%s", b)
 	}
 }
 
@@ -146,7 +168,7 @@ func TestCheckToolFailingTreeIsSuccessfulCall(t *testing.T) {
 		t.Fatalf("failing tree surfaced as a tool error: %v", res.Content)
 	}
 	b, _ := json.Marshal(res.StructuredContent)
-	got := &stipulatorv1.CheckResult{}
+	got := &stipulatorv1.CheckSummary{}
 	if err := protojson.Unmarshal(b, got); err != nil {
 		t.Fatal(err)
 	}
@@ -174,26 +196,58 @@ func TestCheckToolFailingTreeIsSuccessfulCall(t *testing.T) {
 	}
 }
 
-// TestCheckToolRefusesViewAndScopeInputs pins the check tool's input
-// surface: it answers as its one structured result message and carries no
-// views or scopes — a view or scope argument is refused, never silently
-// ignored.
-func TestCheckToolRefusesViewAndScopeInputs(t *testing.T) {
+// TestCheckToolViewsAndScopes pins the check tool's input surface: the
+// summary and full views answer, an unknown view word or scope-style
+// argument outside the surface is refused — a typo never reads as an
+// empty result — and an ids scope filters coverage rows while the
+// verdict stays global.
+func TestCheckToolViewsAndScopes(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-views")
+	req := &stipulatorv1.RequirementCoverage{}
+	req.SetId("REQ-m-a")
+	req.SetBucket(stipulatorv1.Bucket_BUCKET_UNCOVERED)
+	other := &stipulatorv1.RequirementCoverage{}
+	other.SetId("REQ-m-b")
+	other.SetBucket(stipulatorv1.Bucket_BUCKET_UNCOVERED)
+	cov := &stipulatorv1.CoverageReport{}
+	cov.SetRequirements([]*stipulatorv1.RequirementCoverage{req, other})
+	cov.SetViolations([]string{"REQ-m-a", "REQ-m-b"})
+	res := &stipulatorv1.CheckResult{}
+	res.SetPassed(false)
+	res.SetCoverage(cov)
 	sess, _ := checkHarness(t, func(context.Context, bool) (*stipulatorv1.CheckResult, error) {
-		return &stipulatorv1.CheckResult{}, nil
+		return res, nil
 	})
 	for _, args := range []map[string]any{
-		{"view": "summary"},
-		{"ids": "REQ-m-a"},
+		{"view": "reds"},
 		{"bucket": "uncovered"},
 		{"filter": "REQ-*"},
 		{"path": "specs"},
 	} {
-		res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "check", Arguments: args})
-		if err == nil && !res.IsError {
-			t.Errorf("check accepted a view/scope input %v", args)
+		out, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "check", Arguments: args})
+		if err == nil && !out.IsError {
+			t.Errorf("check accepted %v", args)
 		}
+	}
+	out, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "check", Arguments: map[string]any{
+		"ids": "REQ-m-a", "view": "full",
+	}})
+	if err != nil || out.IsError {
+		t.Fatalf("scoped full view: %v %v", err, out)
+	}
+	b, _ := json.Marshal(out.StructuredContent)
+	scoped := &stipulatorv1.CheckResult{}
+	if err := protojson.Unmarshal(b, scoped); err != nil {
+		t.Fatal(err)
+	}
+	if rows := scoped.GetCoverage().GetRequirements(); len(rows) != 1 || rows[0].GetId() != "REQ-m-a" {
+		t.Fatalf("ids scope did not filter coverage rows: %s", b)
+	}
+	if v := scoped.GetCoverage().GetViolations(); len(v) != 1 || v[0] != "REQ-m-a" {
+		t.Fatalf("ids scope did not filter violations: %s", b)
+	}
+	if scoped.GetPassed() {
+		t.Fatal("scoping flipped the global verdict")
 	}
 }
 

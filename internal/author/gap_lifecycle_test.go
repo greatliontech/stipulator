@@ -219,3 +219,34 @@ func stripHeader(b []byte) []byte {
 	}
 	return []byte(strings.Join(out, "\n"))
 }
+
+// A batch's later claims validate against the earlier claims' pending
+// writes: a duplicate inside one batch is refused exactly like a
+// committed duplicate, which proves the overlay feeds each claim's
+// effect forward — and a refusal anywhere authors nothing.
+//
+//gofresh:pure
+func TestBindsBatchOverlay(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-tools")
+	claims := []BindRequest{
+		{Requirement: "REQ-au-a", Symbol: "example.com/p.F", Backend: "go", Role: stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS},
+		{Requirement: "REQ-au-b", Symbol: "example.com/p.TestB", Backend: "go", Role: stipulatorv1.BindingRole_BINDING_ROLE_TESTS},
+	}
+	ups, err := Binds(testFS(nil), nil, claims)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ups) != 1 {
+		t.Fatalf("same-file claims did not merge: %+v", ups)
+	}
+	if c := string(ups[0].Content); !strings.Contains(c, "REQ-au-a") || !strings.Contains(c, "REQ-au-b") {
+		t.Fatalf("merged file misses a claim:\n%s", c)
+	}
+	dup := append(claims[:1:1], claims[0])
+	if _, err := Binds(testFS(nil), nil, dup); err == nil || !strings.Contains(err.Error(), "identical binding already exists") {
+		t.Fatalf("in-batch duplicate accepted: %v", err)
+	}
+	if _, err := Binds(testFS(nil), nil, nil); err == nil {
+		t.Fatal("empty batch accepted")
+	}
+}

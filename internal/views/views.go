@@ -275,7 +275,17 @@ func VerifyView(vr *verify.Report, facts Facts, view string, scope Scope) (proto
 		out.SetTestsFailed(int32(vr.TestsFailed))
 		out.SetTestsNotRun(int32(vr.TestsNotRun))
 		out.SetOutsidePolicy(int32(vr.OutsidePolicy))
-		out.SetPackageFailures(vr.PackageFailures)
+		// Package-failure values are retained test output — a runtime
+		// product the summary must bound (REQ-mcp-response-contract): each
+		// entry keeps a capped prefix with the truncation stated; the CLI
+		// rendering carries the full retained output.
+		if len(vr.PackageFailures) > 0 {
+			capped := make(map[string]string, len(vr.PackageFailures))
+			for pkg, out := range vr.PackageFailures {
+				capped[pkg] = truncateOutput(out, packageFailureCap)
+			}
+			out.SetPackageFailures(capped)
+		}
 		var sigs []*stipulatorv1.ChangeSignature
 		for _, cs := range vr.Signatures {
 			m := &stipulatorv1.ChangeSignature{}
@@ -320,4 +330,16 @@ func VerifyView(vr *verify.Report, facts Facts, view string, scope Scope) (proto
 		return sliced.Proto(), nil
 	}
 	return nil, fmt.Errorf("unknown view %q (summary, bindings)", view)
+}
+
+// packageFailureCap bounds one package-failure entry in the verify
+// summary; the remainder is announced, never silently dropped.
+const packageFailureCap = 2048
+
+// truncateOutput caps retained output with a stated truncation.
+func truncateOutput(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "\n…(truncated; the CLI rendering carries the full retained output)"
 }

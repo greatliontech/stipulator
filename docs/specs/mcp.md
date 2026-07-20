@@ -8,7 +8,11 @@ tool names are wire, and harness compatibility rests on them.
 **REQ-mcp-server** (behavior): Stipulator MUST provide an MCP server over
 stdio exposing the compiled corpus as resources and the operations as
 tools, serving fresh state per request — the corpus is recompiled and
-records reloaded on every read, never cached across tree changes.
+records reloaded on every read, never cached across tree changes — and
+declaring server instructions that teach an agent which tool answers
+which question, so tool selection needs no trial calls. A tool invoked
+outside any corpus fails with the same guided root-discovery message
+the CLI gives: the upward search that ran, and the init pointer.
 
 **REQ-mcp-resources** (wire): The server MUST expose resource URIs
 `stipulator://req/{id}` (a requirement's compiled view: canonical text,
@@ -27,8 +31,11 @@ mirroring the
 operation semantics exactly, with report-shaped results rendered from the
 report messages as JSON. The `targets` tool accepts arrays of exact requirement
 identifiers, implementation backends, and implementation symbols; it has no
-file-output or staged-diff input and returns `BindingSurfaceReport` as a
-structured result.
+staged-diff input and returns `BindingSurfaceReport` as a structured
+result, with an opt-in caller-named export path writing the identical
+structure to a file — the artifact handoff that spares a consuming tool
+the inline copy of a large surface. The `bind` tool accepts many claims
+in one call, validating all-or-nothing like the gap surface.
 
 **REQ-mcp-views** (behavior): The gate and verify tools MUST
 answer at the summary view by default — the roll-up most calls want —
@@ -42,8 +49,32 @@ violation lists a view carries are filtered to the same requirements, so
 filtered triage is never polluted by out-of-scope entries. The gate
 verdict a view reports stays the GLOBAL one — a scoped slice with no
 in-scope violation says nothing about whether the tree passes. The check
-tool answers as its one structured result message and carries no views or
-scopes of its own.
+tool answers at the summary view by default — the verdict, its evidence
+class, the counts, the violations and prune residue, and the reason
+maps aggregated to bounded histograms — with the full check result
+message and identifier scoping opt-in per call under the same
+refused-typo rule; the summary is a projection of the one result
+message, never a second derivation.
+
+**REQ-mcp-response-contract** (behavior): Every tool result MUST fit a
+declared budget by construction, in one of four forms: a bounded
+projection (summary-first defaults, capped lists whose omitted
+remainders are counted — a truncation is never silent), a caller-named
+export under the record-store home carrying the full document with only
+its location on the wire, a payload bounded by the caller's own
+explicit identifier list, or a payload proportional to the committed
+corpus and records — the caller's own artifact bounds it. What no
+result may scale with is a runtime product: test output volumes,
+failure counts, or pairwise combinations grow without the caller
+having authored anything, and those surfaces take a cap or an export,
+never a passthrough. One wire encoding of the payload — the
+structured result beside a one-line text summary, or, for a
+document-valued result like a spec bundle, the document as the text
+content beside a size-only structured result — never a duplicate
+serialization of the whole payload. The surfaces that grow without
+bound (per-test reason maps, pairwise partition overlap terms,
+diagnostic collections and dossiers) travel in full only through the
+full view or the export form.
 
 **REQ-mcp-progress** (behavior): A long-running tool call MUST report
 progress as bounded notifications — the current phase, and per-invocation
@@ -64,8 +95,9 @@ underlying operation end to end, reaching package discovery and every
 child process per REQ-policy-cancellation.
 
 **REQ-mcp-writes-confined** (behavior): The server MUST NOT write outside
-the record stores under `.stipulator/` — it never edits spec documents or
-source code, so wiring it into any harness is low-risk by construction.
+the record stores and the export home under `.stipulator/` — it never
+edits spec documents or source code, so wiring it into any harness is
+low-risk by construction.
 
 **REQ-report-messages** (wire, refines REQ-core-proto-io): Verification and
 coverage reports MUST be expressible as the protobuf report messages,

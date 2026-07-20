@@ -651,9 +651,10 @@ func TestReadSpecToolMirrorsBundle(t *testing.T) {
 	if err != nil || res.IsError {
 		t.Fatalf("read_spec: %v %v", err, res)
 	}
-	b, _ := json.Marshal(res.StructuredContent)
-	if !strings.Contains(string(b), "widget") {
-		t.Fatalf("read_spec lacks closure content: %s", b)
+	// The bundle rides the text content once; the structured result
+	// carries only its size (REQ-mcp-response-contract).
+	if text := toolText(t, res); !strings.Contains(text, "widget") {
+		t.Fatalf("read_spec lacks closure content: %s", text)
 	}
 }
 
@@ -705,6 +706,18 @@ func toolText(t *testing.T, res *mcp.CallToolResult) string {
 	return b.String()
 }
 
+// toolPayload renders the structured result as JSON — the machine
+// surface; the text content carries only a one-line summary
+// (REQ-mcp-response-contract).
+func toolPayload(t *testing.T, res *mcp.CallToolResult) string {
+	t.Helper()
+	b, err := json.Marshal(res.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
 // TestPinTool pins the refresh verb's contract: ids editorially re-pin a
 // stale content pin (the one-verb recovery after a reword), a clean
 // requirement reports "pins current", and the no-id no-op is never a
@@ -734,7 +747,7 @@ func TestPinTool(t *testing.T) {
 	if err != nil || res.IsError {
 		t.Fatalf("pin current: %v %v", err, res)
 	}
-	text := toolText(t, res)
+	text := toolPayload(t, res)
 	if !strings.Contains(text, "pins current") {
 		t.Fatalf("no-op silent: %s", text)
 	}
@@ -748,7 +761,7 @@ func TestPinTool(t *testing.T) {
 	if err != nil || res.IsError {
 		t.Fatalf("blanket pin: %v %v", err, res)
 	}
-	if text := toolText(t, res); !strings.Contains(text, "all pins current") {
+	if text := toolPayload(t, res); !strings.Contains(text, "all pins current") {
 		t.Fatalf("blanket no-op silent: %s", text)
 	}
 }
@@ -774,7 +787,7 @@ func TestContextDossier(t *testing.T) {
 	if err != nil || res.IsError {
 		t.Fatalf("context: %v %v", err, res)
 	}
-	text := toolText(t, res)
+	text := toolPayload(t, res)
 	for _, want := range []string{
 		`"Using the widget it MUST x."`, // clause text, compiled view
 		`"bucket":"BUCKET_COVERED"`,     // REQ-m-a: pinned witness passed
@@ -804,7 +817,7 @@ func TestContextDossier(t *testing.T) {
 	if err != nil || res.IsError {
 		t.Fatalf("context over problem store: %v %v", err, res)
 	}
-	if text := toolText(t, res); !strings.Contains(text, "is not in the corpus") || !strings.Contains(text, `"problems"`) {
+	if text := toolPayload(t, res); !strings.Contains(text, "is not in the corpus") || !strings.Contains(text, `"problems"`) {
 		t.Fatalf("verification problems hidden from the dossier: %s", text)
 	}
 
@@ -843,7 +856,7 @@ func TestContextAndPartitionsNoTestSkipWitnessing(t *testing.T) {
 	if err != nil || res.IsError {
 		t.Fatalf("context no_test: %v %v", err, res)
 	}
-	text := toolText(t, res)
+	text := toolPayload(t, res)
 	if strings.Contains(text, `"BUCKET_BROKEN"`) {
 		t.Fatalf("no_test dossier buckets the requirement broken:\n%s", text)
 	}

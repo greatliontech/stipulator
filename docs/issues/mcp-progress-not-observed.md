@@ -1,8 +1,18 @@
 # Suite-running MCP tools surfaced no progress to a live agent client
 
-Lands: 6 of the active hot-loop-serving plan (the progress-token audit — this
-is the live evidence it exists for; note the client patience observed
-was 120 seconds, tighter than the 600s cap previously assumed).
+Lands: when the harness MCP server is next restarted against a live
+agent client (the emission audit landed: every suite-running tool arms
+the progress seam, and the server instructions teach clients to send a
+token; what remains is the live observation — token presence from a
+real Claude Code client, notifications flowing — and, if tokens are
+absent, the observable silence is the spec's own "only when the client
+asked" clause, not an emission defect. Client patience observed: 120
+seconds, tighter than the 600s cap previously assumed). The same
+restart also validates the response contract's single-encoding change:
+tool text content now carries a one-line summary while the payload
+rides structuredContent only — confirm the live client renders
+structured payloads; a text-only client class would see the summary
+line and need the duplication debate reopened.
 
 ## Observed
 

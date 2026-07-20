@@ -197,6 +197,24 @@ func Partitions(spec *stipulatorv1.Spec, store *records.Store, backends map[stri
 	return rep, nil
 }
 
+// ProtoUncapped renders the report with the full pairwise overlap set —
+// the explicit-request form the capped wire default points at
+// (REQ-mcp-response-contract): exports carry everything.
+func (r *Report) ProtoUncapped() *stipulatorv1.PartitionReport {
+	out := r.Proto()
+	var overlaps []*stipulatorv1.PartitionOverlap
+	for _, o := range r.Overlaps {
+		m := &stipulatorv1.PartitionOverlap{}
+		m.SetA(int32(o.A))
+		m.SetB(int32(o.B))
+		m.SetPackages(o.Packages)
+		overlaps = append(overlaps, m)
+	}
+	out.SetOverlaps(overlaps)
+	out.SetOverlapsOmitted(0)
+	return out
+}
+
 // Proto renders the context facts as their wire message.
 func ContextProto(seeds []Seed, decls []verify.Decl) *stipulatorv1.ContextReport {
 	out := &stipulatorv1.ContextReport{}
@@ -236,8 +254,21 @@ func (r *Report) Proto() *stipulatorv1.PartitionReport {
 		comps = append(comps, m)
 	}
 	out.SetComponents(comps)
+	// Overlap terms grow O(components²): the wire form carries the
+	// heaviest couplings — most shared packages first, pair order the
+	// tiebreak — and counts the omitted remainder, so the truncation is
+	// never silent (REQ-mcp-response-contract).
+	ranked := make([]Overlap, len(r.Overlaps))
+	copy(ranked, r.Overlaps)
+	sort.SliceStable(ranked, func(i, j int) bool {
+		return len(ranked[i].Packages) > len(ranked[j].Packages)
+	})
+	if len(ranked) > OverlapCap {
+		out.SetOverlapsOmitted(int32(len(ranked) - OverlapCap))
+		ranked = ranked[:OverlapCap]
+	}
 	var overlaps []*stipulatorv1.PartitionOverlap
-	for _, o := range r.Overlaps {
+	for _, o := range ranked {
 		m := &stipulatorv1.PartitionOverlap{}
 		m.SetA(int32(o.A))
 		m.SetB(int32(o.B))
@@ -247,6 +278,10 @@ func (r *Report) Proto() *stipulatorv1.PartitionReport {
 	out.SetOverlaps(overlaps)
 	return out
 }
+
+// OverlapCap bounds the wire overlap list; the full pairwise set stays
+// available on the in-process Report.
+const OverlapCap = 64
 
 func intersects(a, b map[string]bool) bool {
 	if len(b) < len(a) {

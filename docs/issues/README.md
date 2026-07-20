@@ -38,25 +38,11 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   so non-ASCII term names may never match a use site (silently missing uses-term edges); the
   lint mirrors the same semantics deliberately — fix both together on rune boundaries. *Lands:
   when a corpus declares non-ASCII term names.*
-- **[mcp-root-failure-lacks-guidance](mcp-root-failure-lacks-guidance.md)** — MCP `compile`
-  without a manifest returns the raw open error instead of the guided failure the CLI gives
-  (`REQ-profile-root`: "failing with guidance"); an agent hitting it must guess between broken,
-  misrooted, and uninitialized. *Lands: when the MCP server's root-discovery failure path next
-  changes.*
 
-- **[mcp-check-result-too-large](mcp-check-result-too-large.md)** — MCP `check` can return a
-  full one-line result large enough for clients to truncate before the verdict is visible.
-  *Lands: when the MCP `check` result schema or rendering next changes.*
 - **[targets-empty-surface-lacks-guidance](targets-empty-surface-lacks-guidance.md)** — an empty
   binding-surface export does not explain that implementation bindings are missing. *Lands: when
   the binding-surface report diagnostics next change.*
-- **[mcp-targets-artifact-handoff](mcp-targets-artifact-handoff.md)** — Stipulator surfaces feed
-  gomutant, but MCP users must manually copy inline JSON between tool calls. *Lands: when the MCP
-  `targets` export surface next changes, or when MCP clients can pass typed tool-result artifacts
-  directly between tools.*
-- **[mcp-bind-bulk-claims](mcp-bind-bulk-claims.md)** — initial corpus migrations need many
-  validated binding claims, but MCP `bind` writes only one per call. *Lands: when the MCP `bind`
-  input schema or binding record verb next changes.*
+
 - **[go-module-rename-lacks-symbol-migration](go-module-rename-lacks-symbol-migration.md)** — a
   Go module-path change invalidates large stored-symbol sets, with no validated bulk retarget
   command or actionable remediation. *Lands: before a corpus with stored Go symbol references
@@ -92,7 +78,9 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 
 - **[mcp-progress-not-observed](mcp-progress-not-observed.md)** — suite-running MCP tools
   surfaced no progress to a live agent client; every call was backgrounded at the client's
-  timeout. *Lands: when REQ-mcp-progress is next verified against a real client.*
+  timeout. *Lands: when the harness MCP server is next restarted against a live agent
+  client (emission audit landed; the live token observation remains, and the same
+  restart validates that the client renders structuredContent-only payloads).*
 - **[witness-store-gc](witness-store-gc.md)** — departed identities' witness variants
   accumulate without bound (eviction fires only on same-identity installs); cost-only.
   *Lands: when the store next gains a maintenance surface, or when store size first
@@ -102,7 +90,12 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   deletion invisible code-side (spec-side deletions do report), and non-implemented
   backends are skipped with no user-visible statement. *Lands: when the user disposes
   the REQ-change-impact spec-amend candidates.*
-- **[prune-serving-class-unpinned](prune-serving-class-unpinned.md)** — REQ-gap-resolved-pruned's
-  serving-class sentence holds by call-path identity but no test pins it; a swap to whole
-  execution would survive the suite. *Lands: when the witness path gains an execution-class
-  seam or observability hook a test can assert against.*
+- **[prune-serving-class-unpinned](prune-serving-class-unpinned.md)** — call-path identity
+  choices without dedicated pins: prune's serving-class witness source, and the partitions
+  export's uncapped form at the tool seam; a callee swap would survive the suite. *Lands:
+  when the witness path gains an execution-class seam or observability hook a test can
+  assert against.*
+- **[check-result-duplicate-package-failure](check-result-duplicate-package-failure.md)** — a
+  package failure rides the check result as both a typed witness_diagnostics row and the
+  verify.package_failures text; one fact, one wire home. *Lands: when the check result's
+  wire shape next changes.*

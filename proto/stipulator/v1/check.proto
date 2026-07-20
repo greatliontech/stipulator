@@ -88,3 +88,67 @@ message CheckResult {
   // health-judged form.
   repeated FailureDiagnostic witness_diagnostics = 13;
 }
+
+// CheckSummary is the check operation's summary view: the verdict with
+// the counts and red entries an agent acts on, every reason map
+// aggregated to a bounded histogram, diagnostic bodies reduced to
+// subject headings. A projection of CheckResult — never a second
+// derivation — sized for an agent's context window where the full
+// result is not (REQ-mcp-response-contract).
+message CheckSummary {
+  bool passed = 1;
+  // The evidence class (REQ-check-verdict): true means the health-judged
+  // whole-policy execution; false the witness-evidence serving form.
+  bool suite_health_judged = 2;
+  // Suite health under the health-judged form; meaningless when
+  // suite_health_judged is false.
+  bool suite_healthy = 3;
+  int32 tests_served = 4;
+  int32 tests_executed = 5;
+  int32 tests_uncacheable = 6;
+  // Reason histograms: distinct reason -> count, aggregated from the
+  // full result's per-test maps. The per-test attribution rides only
+  // the full view.
+  map<string, int32> uncacheable_reason_counts = 7;
+  map<string, int32> executed_reason_counts = 8;
+  // Compilation and policy problems, verbatim — a summary that hides
+  // why the tree cannot even evaluate would force a second call.
+  repeated Problem compile_problems = 9;
+  Problem policy_problem = 10;
+  int32 verify_problems = 11;
+  // Binding hygiene counts, defined exactly as verification defines
+  // them: stale is a row whose content pin is unset or moved, broken is
+  // a row whose symbol did not resolve, shape_mismatch a resolved row
+  // whose shape pin disagrees — the same axes VerifySummary counts,
+  // never a third classification.
+  int32 bindings_stale = 12;
+  int32 bindings_broken = 13;
+  int32 bindings_shape_mismatch = 24;
+  bool gate_passes = 14;
+  // Red coverage rows: identifier, bucket word, and first reason. Capped;
+  // reds_omitted counts the remainder so truncation is never silent.
+  repeated CheckRedRow reds = 15;
+  int32 reds_omitted = 16;
+  int32 gaps_open = 17;
+  int32 gaps_due = 18;
+  int32 gaps_resolved = 19;
+  // Capped like the red rows; the omitted counters keep every
+  // truncation loud.
+  repeated string violations = 20;
+  int32 violations_omitted = 25;
+  repeated string prune_residue = 21;
+  // Failed or degraded witnesses as disposition-prefixed subject
+  // headings; retained output rides only the full view. Capped, with
+  // the remainder counted.
+  repeated string witness_failure_headings = 22;
+  int32 witness_failure_headings_omitted = 26;
+  string witness_publication_degraded = 23;
+}
+
+// CheckRedRow is one red coverage row in the summary: enough to act on
+// without the full per-requirement array.
+message CheckRedRow {
+  string id = 1;
+  string bucket = 2;
+  string reason = 3;
+}

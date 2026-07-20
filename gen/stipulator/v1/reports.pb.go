@@ -3600,11 +3600,14 @@ func (b0 PartitionOverlap_builder) Build() *PartitionOverlap {
 // PartitionReport is the candidate-partition derivation. Selection and
 // ordering are deliberately absent: they belong to the caller.
 type PartitionReport struct {
-	state                 protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Components *[]*PartitionComponent `protobuf:"bytes,1,rep,name=components"`
-	xxx_hidden_Overlaps   *[]*PartitionOverlap   `protobuf:"bytes,2,rep,name=overlaps"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	state                      protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Components      *[]*PartitionComponent `protobuf:"bytes,1,rep,name=components"`
+	xxx_hidden_Overlaps        *[]*PartitionOverlap   `protobuf:"bytes,2,rep,name=overlaps"`
+	xxx_hidden_OverlapsOmitted int32                  `protobuf:"varint,3,opt,name=overlaps_omitted,json=overlapsOmitted"`
+	XXX_raceDetectHookData     protoimpl.RaceDetectHookData
+	XXX_presence               [1]uint32
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *PartitionReport) Reset() {
@@ -3650,6 +3653,13 @@ func (x *PartitionReport) GetOverlaps() []*PartitionOverlap {
 	return nil
 }
 
+func (x *PartitionReport) GetOverlapsOmitted() int32 {
+	if x != nil {
+		return x.xxx_hidden_OverlapsOmitted
+	}
+	return 0
+}
+
 func (x *PartitionReport) SetComponents(v []*PartitionComponent) {
 	x.xxx_hidden_Components = &v
 }
@@ -3658,11 +3668,32 @@ func (x *PartitionReport) SetOverlaps(v []*PartitionOverlap) {
 	x.xxx_hidden_Overlaps = &v
 }
 
+func (x *PartitionReport) SetOverlapsOmitted(v int32) {
+	x.xxx_hidden_OverlapsOmitted = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+}
+
+func (x *PartitionReport) HasOverlapsOmitted() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *PartitionReport) ClearOverlapsOmitted() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_OverlapsOmitted = 0
+}
+
 type PartitionReport_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	Components []*PartitionComponent
-	Overlaps   []*PartitionOverlap
+	// Pairwise overlaps grow O(components²); the list is capped by shared
+	// package count, and overlaps_omitted counts the remainder so the
+	// truncation is never silent (REQ-mcp-response-contract).
+	Overlaps        []*PartitionOverlap
+	OverlapsOmitted *int32
 }
 
 func (b0 PartitionReport_builder) Build() *PartitionReport {
@@ -3671,6 +3702,10 @@ func (b0 PartitionReport_builder) Build() *PartitionReport {
 	_, _ = b, x
 	x.xxx_hidden_Components = &b.Components
 	x.xxx_hidden_Overlaps = &b.Overlaps
+	if b.OverlapsOmitted != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_OverlapsOmitted = *b.OverlapsOmitted
+	}
 	return m0
 }
 
@@ -3809,12 +3844,13 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x10PartitionOverlap\x12\f\n" +
 	"\x01a\x18\x01 \x01(\x05R\x01a\x12\f\n" +
 	"\x01b\x18\x02 \x01(\x05R\x01b\x12\x1a\n" +
-	"\bpackages\x18\x03 \x03(\tR\bpackages\"\x91\x01\n" +
+	"\bpackages\x18\x03 \x03(\tR\bpackages\"\xbc\x01\n" +
 	"\x0fPartitionReport\x12A\n" +
 	"\n" +
 	"components\x18\x01 \x03(\v2!.stipulator.v1.PartitionComponentR\n" +
 	"components\x12;\n" +
-	"\boverlaps\x18\x02 \x03(\v2\x1f.stipulator.v1.PartitionOverlapR\boverlaps*\x95\x01\n" +
+	"\boverlaps\x18\x02 \x03(\v2\x1f.stipulator.v1.PartitionOverlapR\boverlaps\x12)\n" +
+	"\x10overlaps_omitted\x18\x03 \x01(\x05R\x0foverlapsOmitted*\x95\x01\n" +
 	"\n" +
 	"Resolution\x12\x1a\n" +
 	"\x16RESOLUTION_UNSPECIFIED\x10\x00\x12\x19\n" +

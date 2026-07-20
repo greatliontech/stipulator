@@ -308,5 +308,9 @@ message PartitionOverlap {
 // ordering are deliberately absent: they belong to the caller.
 message PartitionReport {
   repeated PartitionComponent components = 1;
+  // Pairwise overlaps grow O(components²); the list is capped by shared
+  // package count, and overlaps_omitted counts the remainder so the
+  // truncation is never silent (REQ-mcp-response-contract).
   repeated PartitionOverlap overlaps = 2;
+  int32 overlaps_omitted = 3;
 }

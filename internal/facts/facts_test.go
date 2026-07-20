@@ -181,3 +181,36 @@ func TestPartitions(t *testing.T) {
 		t.Fatalf("shared package not reported: %+v", rep2.Overlaps)
 	}
 }
+
+// The wire overlap list is capped at the heaviest couplings with the
+// remainder counted — a silent truncation would read as "no more
+// overlaps" (REQ-mcp-response-contract).
+//
+//gofresh:pure
+func TestPartitionProtoCapsOverlaps(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-response-contract")
+	r := &Report{}
+	for i := 0; i < OverlapCap+9; i++ {
+		pkgs := []string{"pkg/shared"}
+		if i == 0 {
+			// The heaviest coupling must survive the cap.
+			pkgs = []string{"pkg/a", "pkg/b", "pkg/c"}
+		}
+		r.Overlaps = append(r.Overlaps, Overlap{A: i, B: i + 1, Packages: pkgs})
+	}
+	m := r.Proto()
+	if len(m.GetOverlaps()) != OverlapCap {
+		t.Fatalf("overlaps = %d, want the cap %d", len(m.GetOverlaps()), OverlapCap)
+	}
+	if m.GetOverlapsOmitted() != 9 {
+		t.Fatalf("omitted = %d, want 9", m.GetOverlapsOmitted())
+	}
+	if len(m.GetOverlaps()[0].GetPackages()) != 3 {
+		t.Fatal("the heaviest coupling did not rank first")
+	}
+	// The export form is uncapped: everything travels, nothing omitted.
+	full := r.ProtoUncapped()
+	if len(full.GetOverlaps()) != OverlapCap+9 || full.GetOverlapsOmitted() != 0 {
+		t.Fatalf("uncapped form = %d overlaps, %d omitted", len(full.GetOverlaps()), full.GetOverlapsOmitted())
+	}
+}

@@ -9,6 +9,7 @@ package mcpserver
 
 import (
 	"context"
+	pathpkg "path"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -44,7 +45,21 @@ import (
 
 // Server serves one repository. The function fields exist so tests can
 // inject trees, backends, and test runs; New wires production behavior.
+// serverInstructions teach an agent which tool answers which question,
+// so tool selection needs no trial calls (REQ-mcp-server).
+const serverInstructions = "stipulator verifies code against a compiled requirement corpus. " +
+	"The loop: check answers \"does this tree pass\" (summary view by default; it serves fresh witness evidence and executes only what moved, so warm calls are cheap; full=true additionally judges suite health). " +
+	"gate/verify give coverage and binding detail (summary default; views/scopes opt-in). " +
+	"read_spec and context orient before writing code; partitions splits red work into disjoint components. " +
+	"Authoring: bind (claims batch, all-or-nothing), gap (declare/fire/retract, batch), attest_requirement, pin (re-consent after spec edits), dispose (editorial/retire/supersede), prune (resolved records; dangling=true repairs orphans). " +
+	"targets exports binding surfaces (export_path under .stipulator/exports/ for large handoffs, e.g. gomutant). " +
+	"Long calls (check/gate/verify/prune/context/partitions) report phase progress when the request carries a progress token - send one and be patient rather than assuming a hang; results state the phase a deadline expired in. " +
+	"All writes stay under .stipulator/; spec documents and source are never edited."
+
 type Server struct {
+	// root is the launch directory the corpus search started from,
+	// kept for guided failure messages.
+	root string
 	srv      *mcp.Server
 	indexed  map[string]bool
 	fsys     func() fs.FS
@@ -58,6 +73,7 @@ type Server struct {
 // New returns a server rooted at dir.
 func New(dir string) *Server {
 	return &Server{
+		root:     dir,
 		fsys:     func() fs.FS { return os.DirFS(dir) },
 		backends: func(ctx context.Context) (map[string]verify.Backend, error) { return makeBackends(ctx, dir) },
 		runTests: func(ctx context.Context) (*verify.TestRun, error) { return golang.RunWitnesses(ctx, dir) },
@@ -95,71 +111,100 @@ func (s *Server) Run(ctx context.Context) error {
 	return s.MCP().Run(ctx, &mcp.StdioTransport{})
 }
 
+// ensureCorpus fails a tool call before any work when the server's
+// root holds no corpus, with the CLI's guided message (REQ-mcp-server):
+// the upward search already ran at server start, so the guidance names
+// the launch root and the init pointer instead of a raw open error.
+func (s *Server) ensureCorpus() error {
+	if _, err := fs.Stat(s.fsys(), corpus.ManifestPath); err != nil {
+		where := s.root
+		if where == "" {
+			where = "."
+		}
+		return fmt.Errorf("not inside a stipulator repository (no %s under %s, searched upward at server start); run `stipulator init` to scaffold one", corpus.ManifestPath, where)
+	}
+	return nil
+}
+
+// guarded wraps a tool handler with the corpus guard, so every tool
+// fails the same guided way outside a corpus.
+func guarded[In, Out any](s *Server, h func(context.Context, *mcp.CallToolRequest, In) (*mcp.CallToolResult, Out, error)) func(context.Context, *mcp.CallToolRequest, In) (*mcp.CallToolResult, Out, error) {
+	return func(ctx context.Context, req *mcp.CallToolRequest, in In) (*mcp.CallToolResult, Out, error) {
+		var zero Out
+		if err := s.ensureCorpus(); err != nil {
+			return nil, zero, err
+		}
+		return h(ctx, req, in)
+	}
+}
+
 // MCP builds the protocol server: tools, resource templates, and the
 // requirement index.
 func (s *Server) MCP() *mcp.Server {
-	srv := mcp.NewServer(&mcp.Implementation{Name: "stipulator", Version: "v0"}, nil)
+	srv := mcp.NewServer(&mcp.Implementation{Name: "stipulator", Version: "v0"}, &mcp.ServerOptions{
+		Instructions: serverInstructions,
+	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "targets",
-		Description: "Derive backend-independent binding surfaces. Exact requirement, backend, and symbol arrays filter whole surfaces; the result is a structured BindingSurfaceReport.",
-	}, s.toolTargets)
+		Description: "Derive backend-independent binding surfaces. Exact requirement, backend, and symbol arrays filter whole surfaces; the result is a structured BindingSurfaceReport. export_path (under .stipulator/exports/) writes the document to a file and returns only its location - the handoff for large surfaces (gomutant reads the same format).",
+	}, guarded(s, s.toolTargets))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "compile",
 		Description: "Compile the spec corpus; returns diagnostics (empty means clean) and counts.",
-	}, s.toolCompile)
+	}, guarded(s, s.toolCompile))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "verify",
 		Description: "Check records against corpus and code. Default view is the summary (hygiene and witness counts, change signatures); view=bindings for per-binding rows, scoped with ids/filter/path. Set no_test to skip witnessing.",
-	}, s.toolVerify)
+	}, guarded(s, s.toolVerify))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "gate",
 		Description: "Coverage gate. Default view is the summary (gate_passes, counts, violations); view=reds or full for per-requirement rows; scope with ids/bucket/filter/path. Runs the test suite.",
-	}, s.toolGate)
+	}, guarded(s, s.toolGate))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "check",
-		Description: "One pass, one verdict: compiles the corpus, takes witness evidence — served from proven-fresh records with selective execution of only the stale remainder by default (fast on a warm tree), or one whole policy execution with full=true, which additionally judges suite health — verifies bindings against that evidence, evaluates coverage and gaps, and reports prune residue. The structured result is the CheckResult message as JSON; a tree failing the check is a successful call carrying passed=false.",
-	}, s.toolCheck)
+		Description: "One pass, one verdict: compiles the corpus, takes witness evidence — served from proven-fresh records with selective execution of only the stale remainder by default (fast on a warm tree), or one whole policy execution with full=true, which additionally judges suite health — verifies bindings against that evidence, evaluates coverage and gaps, and reports prune residue. Default view is the bounded summary (verdict, counts, capped red rows, reason histograms, diagnostic headings); view=full carries the whole CheckResult with per-test maps and retained output; ids scopes coverage rows while the verdict stays global. A tree failing the check is a successful call carrying passed=false.",
+	}, guarded(s, s.toolCheck))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "bind",
-		Description: "Author a validated binding claim: the requirement must exist, the symbol must resolve (generated files rejected), pins applied immediately. Errors explain what to fix.",
-	}, s.toolBind)
+		Description: "Author validated binding claims: the requirement must exist, the symbol must resolve (generated files rejected), pins applied immediately. One claim via requirement/symbol/role, or many via claims=[...] validated all-or-nothing — a failure anywhere authors nothing. Errors explain what to fix.",
+	}, guarded(s, s.toolBind))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "unbind",
 		Description: "Remove binding claims for a requirement, optionally narrowed by symbol and role. Matching nothing is an error.",
-	}, s.toolUnbind)
+	}, guarded(s, s.toolUnbind))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "gap",
 		Description: "Declare, fire, or retract coverage gaps. Declaring takes comma-separated requirements sharing one reason and landing condition (covered/exists/manual; covered=self lands each requirement on its own coverage; manual with fired=true declares already-fired). fired=true alone marks existing gaps' manual conditions fired. retract=true deletes the records — dangling records included. Batches apply all-or-nothing.",
-	}, s.toolGap)
+	}, guarded(s, s.toolGap))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "attest_requirement",
 		Description: "Author the weakest evidence: a reason-carrying voucher for a requirement, content-pinned; renders the distinct attested bucket only where the policy admits it, never covered.",
-	}, s.toolAttestRequirement)
+	}, guarded(s, s.toolAttestRequirement))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "pin",
 		Description: "Backfill unset content pins and refresh shape pins; with ids, editorially re-pin those requirements' bindings to the current clause text (re-consent). Never silent: no-ops say so.",
-	}, s.toolPin)
+	}, guarded(s, s.toolPin))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "dispose",
 		Description: "Apply a spec-change disposition: kind editorial (re-pin after meaning-preserving edit), retire (tombstone a removed identity), or supersede (tombstone sources, retarget bindings to declaring successors).",
-	}, s.toolDispose)
+	}, guarded(s, s.toolDispose))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "prune",
 		Description: "Delete resolved gap records — requirement covered and any manual landing condition explicitly fired: satisfied dead weight the gate advertises. Pass check=true to report what would be pruned without deleting. Writes only under .stipulator/gaps/.",
-	}, s.toolPrune)
+	}, guarded(s, s.toolPrune))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "context",
 		Description: "Per-requirement dossier for ids (comma-separated): clause text with kind and keyword, coverage bucket with reasons, open gap, attestation, bindings with witness class and pin freshness, and closure seeds. Pass slice=true for the code-slice declaration frontier. Facts only — selection is yours.",
-	}, s.toolContext)
+	}, guarded(s, s.toolContext))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "partitions",
 		Description: "Candidate work partitions for requirement ids (comma-separated; empty means all red requirements): closure-connected components with seeds, touched packages, and pairwise overlaps. Disjoint components can fan out in parallel.",
-	}, s.toolPartitions)
+	}, guarded(s, s.toolPartitions))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "read_spec",
 		Description: "Read the self-contained bundle for requirement ids (comma-separated): the requirements, their closure, terms, and context. Mirrors the bundle resource for clients without resource support.",
-	}, s.toolReadSpec)
+	}, guarded(s, s.toolReadSpec))
 
 	srv.AddResourceTemplate(&mcp.ResourceTemplate{
 		URITemplate: "stipulator://req/{id}",
@@ -252,11 +297,17 @@ func (s *Server) compileFresh() (*stipulatorv1.Spec, error) {
 // diagnostic leaves no IR — so they are pointers, absent (not zero) on
 // error: absent means "not computed", a present 0 means "genuinely empty".
 type compileOut struct {
-	Diagnostics  []string `json:"diagnostics"`
-	Requirements *int     `json:"requirements,omitempty"`
-	Terms        *int     `json:"terms,omitempty"`
-	Edges        *int     `json:"edges,omitempty"`
+	// Capped; DiagnosticsOmitted counts the remainder so the truncation
+	// is never silent (REQ-mcp-response-contract).
+	Diagnostics        []string `json:"diagnostics"`
+	DiagnosticsOmitted int      `json:"diagnostics_omitted,omitempty"`
+	Requirements       *int     `json:"requirements,omitempty"`
+	Terms              *int     `json:"terms,omitempty"`
+	Edges              *int     `json:"edges,omitempty"`
 }
+
+// compileDiagnosticCap bounds the compile tool's diagnostic list.
+const compileDiagnosticCap = 50
 
 func (s *Server) toolCompile(ctx context.Context, req *mcp.CallToolRequest, in struct{}) (*mcp.CallToolResult, compileOut, error) {
 	spec, diags, err := compile.Compile(s.fsys())
@@ -265,13 +316,28 @@ func (s *Server) toolCompile(ctx context.Context, req *mcp.CallToolRequest, in s
 	}
 	out := compileOut{Diagnostics: []string{}}
 	for _, d := range diags {
+		if len(out.Diagnostics) == compileDiagnosticCap {
+			out.DiagnosticsOmitted = len(diags) - compileDiagnosticCap
+			break
+		}
 		out.Diagnostics = append(out.Diagnostics, d.String())
 	}
 	if spec != nil {
 		reqs, terms, edges := len(spec.GetRequirements()), len(spec.GetTerms()), len(spec.GetEdges())
 		out.Requirements, out.Terms, out.Edges = &reqs, &terms, &edges
 	}
-	return nil, out, nil
+	return textOnly(compileLine(out)), out, nil
+}
+
+// compileLine is the one-line text beside the structured compile result.
+func compileLine(out compileOut) string {
+	if n := len(out.Diagnostics) + out.DiagnosticsOmitted; n > 0 {
+		return fmt.Sprintf("compile: %d diagnostics", n)
+	}
+	if out.Requirements != nil {
+		return fmt.Sprintf("compile: ok, %d requirements", *out.Requirements)
+	}
+	return "compile: ok"
 }
 
 type verifyIn struct {
@@ -324,7 +390,7 @@ func (s *Server) toolVerify(ctx context.Context, req *mcp.CallToolRequest, in ve
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-	return protoJSON(m)
+	return summarized(viewLine("verify", m), m)
 }
 
 type gateIn struct {
@@ -363,7 +429,7 @@ func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in gate
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-	return protoJSON(m)
+	return summarized(viewLine("gate", m), m)
 }
 
 // checkIn selects the check's evidence class: full demands suite
@@ -371,10 +437,21 @@ func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in gate
 // witnesses and selectively executes the stale remainder
 // (REQ-check-verdict).
 type checkIn struct {
-	Full bool `json:"full,omitempty" jsonschema:"execute the whole accepted policy and judge suite health; default serves fresh witnesses and executes only the stale remainder"`
+	Full bool   `json:"full,omitempty" jsonschema:"execute the whole accepted policy and judge suite health; default serves fresh witnesses and executes only the stale remainder"`
+	View string `json:"view,omitempty" jsonschema:"summary (default: verdict, counts, capped red rows, reason histograms, diagnostic headings) or full (the whole CheckResult with per-test maps and retained output)"`
+	Ids  string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers scoping coverage rows, gaps, and violations; the verdict stays global"`
 }
 
 func (s *Server) toolCheck(ctx context.Context, req *mcp.CallToolRequest, in checkIn) (*mcp.CallToolResult, map[string]any, error) {
+	// View and scope words are validated before the expensive pass: a
+	// typo must not cost a witness run only to be refused at render time.
+	ids, err := splitIDsLoose(in.Ids)
+	if err != nil {
+		return nil, nil, err
+	}
+	if _, err := views.CheckView(&stipulatorv1.CheckResult{}, in.View, nil); err != nil {
+		return nil, nil, err
+	}
 	ctx, prog := s.startProgress(ctx, req)
 	res, err := s.runCheck(ctx, in.Full)
 	if err != nil {
@@ -390,7 +467,46 @@ func (s *Server) toolCheck(ctx context.Context, req *mcp.CallToolRequest, in che
 		cause = stipulatorv1.TerminalCause_TERMINAL_CAUSE_TEST_FAILURE
 	}
 	prog.Terminal(cause)
-	return protoJSON(res)
+	view, err := views.CheckView(res, in.View, ids)
+	if err != nil {
+		return nil, nil, err
+	}
+	return summarized(checkLine(res), view)
+}
+
+// checkLine is the one-line text beside the structured result: the
+// verdict and the load-bearing counts, never a duplicate serialization
+// (REQ-mcp-response-contract).
+func checkLine(res *stipulatorv1.CheckResult) string {
+	verdict := "pass"
+	if !res.GetPassed() {
+		verdict = "fail"
+	}
+	if n := len(res.GetCompileProblems()); n > 0 {
+		return fmt.Sprintf("check: %s (corpus does not compile: %d problems)", verdict, n)
+	}
+	if res.GetPolicyProblem() != nil {
+		return fmt.Sprintf("check: %s (test policy problem)", verdict)
+	}
+	class := "witness-evidence"
+	if res.GetSuiteHealthJudged() {
+		class = "health-judged"
+	}
+	return fmt.Sprintf("check: %s (%s; %d served, %d executed, %d uncacheable; %d violations)",
+		verdict, class, res.GetTestsServed(), res.GetTestsExecuted(), res.GetTestsUncacheable(),
+		len(res.GetCoverage().GetViolations()))
+}
+
+// summarized emits one wire encoding of the payload: the structured
+// result beside a one-line text summary. Leaving Content nil would make
+// the SDK serialize the whole payload a second time as text
+// (REQ-mcp-response-contract).
+func summarized(line string, m proto.Message) (*mcp.CallToolResult, map[string]any, error) {
+	out, err := wire.StructuredContent(m)
+	if err != nil {
+		return nil, nil, err
+	}
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: line}}}, out, nil
 }
 
 // startProgress arms one tool call's progress seam: the returned context
@@ -475,10 +591,19 @@ func scopeFrom(ids, bucket, filter, pathPrefix string) (views.Scope, error) {
 }
 
 type bindIn struct {
+	Requirement string `json:"requirement,omitempty" jsonschema:"requirement identifier (single-claim form)"`
+	Symbol      string `json:"symbol,omitempty" jsonschema:"backend-scoped symbol reference (single-claim form)"`
+	Role        string `json:"role,omitempty" jsonschema:"implements, tests, or proves (single-claim form)"`
+	Backend     string `json:"backend,omitempty" jsonschema:"language backend (default go; shared by batch claims lacking one)"`
+	File        string `json:"file,omitempty" jsonschema:"target binding file (derived when empty)"`
+	Claims      []bindClaim `json:"claims,omitempty" jsonschema:"batch claims validated all-or-nothing - a failure anywhere authors nothing; alternative to the single-claim fields"`
+}
+
+type bindClaim struct {
 	Requirement string `json:"requirement" jsonschema:"requirement identifier"`
 	Symbol      string `json:"symbol" jsonschema:"backend-scoped symbol reference"`
 	Role        string `json:"role" jsonschema:"implements, tests, or proves"`
-	Backend     string `json:"backend,omitempty" jsonschema:"language backend (default go)"`
+	Backend     string `json:"backend,omitempty" jsonschema:"language backend (defaults to the call's backend, then go)"`
 	File        string `json:"file,omitempty" jsonschema:"target binding file (derived when empty)"`
 }
 
@@ -491,30 +616,70 @@ type writeOut struct {
 	Notes []string `json:"notes,omitempty"`
 }
 
-func (s *Server) toolBind(ctx context.Context, req *mcp.CallToolRequest, in bindIn) (*mcp.CallToolResult, writeOut, error) {
-	role, err := author.ParseRole(in.Role)
-	if err != nil {
-		return nil, writeOut{}, err
+// result is the one-line Content beside the structured writeOut
+// (REQ-mcp-response-contract's single payload encoding).
+func (w writeOut) result() *mcp.CallToolResult {
+	line := fmt.Sprintf("wrote %d, deleted %d", len(w.Wrote), len(w.Deleted))
+	if w.Removed > 0 {
+		line += fmt.Sprintf(", removed %d claims", w.Removed)
 	}
-	backendName := in.Backend
-	if backendName == "" {
-		backendName = "go"
+	if len(w.Notes) > 0 {
+		line += fmt.Sprintf("; %d notes", len(w.Notes))
+	}
+	return textOnly(line)
+}
+
+func (s *Server) toolBind(ctx context.Context, req *mcp.CallToolRequest, in bindIn) (*mcp.CallToolResult, writeOut, error) {
+	defaultBackend := in.Backend
+	if defaultBackend == "" {
+		defaultBackend = "go"
+	}
+	var reqs []author.BindRequest
+	switch {
+	case len(in.Claims) > 0:
+		if in.Requirement != "" || in.Symbol != "" || in.Role != "" || in.File != "" {
+			return nil, writeOut{}, fmt.Errorf("give either claims or the single-claim fields, not both")
+		}
+		for _, c := range in.Claims {
+			role, err := author.ParseRole(c.Role)
+			if err != nil {
+				return nil, writeOut{}, err
+			}
+			backendName := c.Backend
+			if backendName == "" {
+				backendName = defaultBackend
+			}
+			reqs = append(reqs, author.BindRequest{
+				Requirement: c.Requirement, Symbol: c.Symbol, Backend: backendName,
+				Role: role, File: c.File,
+			})
+		}
+	default:
+		role, err := author.ParseRole(in.Role)
+		if err != nil {
+			return nil, writeOut{}, err
+		}
+		reqs = append(reqs, author.BindRequest{
+			Requirement: in.Requirement, Symbol: in.Symbol, Backend: defaultBackend,
+			Role: role, File: in.File,
+		})
 	}
 	backends, err := s.backends(ctx)
 	if err != nil {
 		return nil, writeOut{}, err
 	}
-	up, err := author.Bind(s.fsys(), backends, author.BindRequest{
-		Requirement: in.Requirement, Symbol: in.Symbol, Backend: backendName,
-		Role: role, File: in.File,
-	})
+	ups, err := author.Binds(s.fsys(), backends, reqs)
 	if err != nil {
 		return nil, writeOut{}, err
 	}
-	if err := s.write(up.Path, up.Content); err != nil {
-		return nil, writeOut{}, err
+	out := writeOut{}
+	for _, up := range ups {
+		if err := s.write(up.Path, up.Content); err != nil {
+			return nil, writeOut{}, err
+		}
+		out.Wrote = append(out.Wrote, up.Path)
 	}
-	return nil, writeOut{Wrote: []string{up.Path}}, nil
+	return out.result(), out, nil
 }
 
 type unbindIn struct {
@@ -546,7 +711,7 @@ func (s *Server) toolUnbind(ctx context.Context, req *mcp.CallToolRequest, in un
 		}
 		out.Wrote = append(out.Wrote, up.Path)
 	}
-	return nil, out, nil
+	return out.result(), out, nil
 }
 
 type gapIn struct {
@@ -581,7 +746,7 @@ func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn
 			}
 			out.Deleted = append(out.Deleted, up.Path)
 		}
-		return nil, out, nil
+		return out.result(), out, nil
 	case in.Fired && in.Manual == "":
 		if conditioned {
 			return nil, writeOut{}, fmt.Errorf("fired alone fires existing gaps; declaring a new fired gap takes manual with fired")
@@ -597,7 +762,7 @@ func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn
 			}
 			out.Wrote = append(out.Wrote, up.Path)
 		}
-		return nil, out, nil
+		return out.result(), out, nil
 	}
 	lc, lcErr := author.NewLandingCondition(in.Covered, in.Exists, in.Manual, in.Fired)
 	if lcErr != nil {
@@ -615,7 +780,7 @@ func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn
 		}
 		out.Wrote = append(out.Wrote, up.Path)
 	}
-	return nil, out, nil
+	return out.result(), out, nil
 }
 
 type attestRequirementIn struct {
@@ -636,13 +801,13 @@ func (s *Server) toolAttestRequirement(ctx context.Context, req *mcp.CallToolReq
 			if err := s.remove(up.Path); err != nil {
 				return nil, writeOut{}, err
 			}
-			return nil, out, nil
+			return out.result(), out, nil
 		}
 		out.Wrote = []string{up.Path}
 		if err := s.write(up.Path, up.Content); err != nil {
 			return nil, writeOut{}, err
 		}
-		return nil, out, nil
+		return out.result(), out, nil
 	}
 	up, prior, err := author.AttestRequirement(s.fsys(), in.Requirement, in.Reason)
 	if err != nil {
@@ -655,7 +820,7 @@ func (s *Server) toolAttestRequirement(ctx context.Context, req *mcp.CallToolReq
 	if prior != nil {
 		out.Notes = []string{"replaced judgment: " + prior.GetReason()}
 	}
-	return nil, out, nil
+	return out.result(), out, nil
 }
 
 type pinIn struct {
@@ -685,7 +850,7 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 				out.Wrote = append(out.Wrote, up.Path)
 			}
 		}
-		return nil, out, nil
+		return out.result(), out, nil
 	}
 	spec, err := s.compileFresh()
 	if err != nil {
@@ -732,7 +897,7 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 		out.Notes = []string{"all pins current"}
 	}
 	slices.Sort(out.Wrote)
-	return nil, out, nil
+	return out.result(), out, nil
 }
 
 type readSpecIn struct {
@@ -740,7 +905,11 @@ type readSpecIn struct {
 }
 
 type readSpecOut struct {
-	Markdown string `json:"markdown"`
+	// Bytes counts the markdown carried in the text content — the one
+	// wire encoding of the bundle; duplicating the whole document into
+	// the structured result would double the payload
+	// (REQ-mcp-response-contract).
+	Bytes int `json:"bytes"`
 }
 
 func (s *Server) toolReadSpec(ctx context.Context, req *mcp.CallToolRequest, in readSpecIn) (*mcp.CallToolResult, readSpecOut, error) {
@@ -748,7 +917,7 @@ func (s *Server) toolReadSpec(ctx context.Context, req *mcp.CallToolRequest, in 
 	if err != nil {
 		return nil, readSpecOut{}, err
 	}
-	return nil, readSpecOut{Markdown: md}, nil
+	return textOnly(md), readSpecOut{Bytes: len(md)}, nil
 }
 
 type disposeIn struct {
@@ -796,7 +965,7 @@ func (s *Server) toolDispose(ctx context.Context, req *mcp.CallToolRequest, in d
 		}
 		out.Wrote = append(out.Wrote, up.Path)
 	}
-	return nil, out, nil
+	return out.result(), out, nil
 }
 
 type pruneIn struct {
@@ -834,7 +1003,7 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 			for _, up := range prunes {
 				out.Notes = append(out.Notes, "dangling gap lingers: "+up.Path)
 			}
-			return nil, out, nil
+			return out.result(), out, nil
 		}
 		for _, up := range prunes {
 			if err := s.remove(up.Path); err != nil {
@@ -842,7 +1011,7 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 			}
 			out.Deleted = append(out.Deleted, up.Path)
 		}
-		return nil, out, nil
+		return out.result(), out, nil
 	}
 	ctx, prog := s.startProgress(ctx, req)
 	spec, rep, store, err := s.verifyPipeline(ctx, false)
@@ -875,7 +1044,7 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 			out.Notes = append(out.Notes, "resolved gap lingers: "+up.Path)
 		}
 		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-		return nil, out, nil
+		return out.result(), out, nil
 	}
 	out := writeOut{}
 	for _, up := range prunes {
@@ -885,16 +1054,20 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 		out.Deleted = append(out.Deleted, up.Path)
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-	return nil, out, nil
+	return out.result(), out, nil
 }
 
 type contextIn struct {
-	Ids    string `json:"ids" jsonschema:"comma-separated requirement identifiers"`
-	Slice  bool   `json:"slice,omitempty" jsonschema:"include the code-slice declaration frontier (the expensive leg)"`
-	NoTest bool   `json:"no_test,omitempty" jsonschema:"skip running tests (no witnesses); dossiers render from records alone"`
+	Ids        string `json:"ids" jsonschema:"comma-separated requirement identifiers"`
+	Slice      bool   `json:"slice,omitempty" jsonschema:"include the code-slice declaration frontier (the expensive leg)"`
+	NoTest     bool   `json:"no_test,omitempty" jsonschema:"skip running tests (no witnesses); dossiers render from records alone"`
+	ExportPath string `json:"export_path,omitempty" jsonschema:"write the dossier report to this path under .stipulator/exports/ and return only its location - the budget valve for many-id calls"`
 }
 
 func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in contextIn) (*mcp.CallToolResult, map[string]any, error) {
+	if err := validExportPath(in.ExportPath); err != nil {
+		return nil, nil, err
+	}
 	ctx, prog := s.startProgress(ctx, req)
 	ids, err := splitIDs(in.Ids)
 	if err != nil {
@@ -941,15 +1114,26 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 		out.SetDeclarations(facts.ContextProto(nil, decls).GetDeclarations())
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-	return protoJSON(out)
+	if in.ExportPath != "" {
+		doc, err := protojson.Marshal(out)
+		if err != nil {
+			return nil, nil, err
+		}
+		return s.exportTo(in.ExportPath, doc, "context")
+	}
+	return summarized(fmt.Sprintf("context: %d dossiers", len(out.GetDossiers())), out)
 }
 
 type partitionsIn struct {
-	Ids    string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers; empty means all red requirements"`
-	NoTest bool   `json:"no_test,omitempty" jsonschema:"skip running tests (no witnesses); partitions derive from records alone"`
+	Ids        string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers; empty means all red requirements"`
+	NoTest     bool   `json:"no_test,omitempty" jsonschema:"skip running tests (no witnesses); partitions derive from records alone"`
+	ExportPath string `json:"export_path,omitempty" jsonschema:"write the full report (uncapped overlaps) to this path under .stipulator/exports/ and return only its location"`
 }
 
 func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, in partitionsIn) (*mcp.CallToolResult, map[string]any, error) {
+	if err := validExportPath(in.ExportPath); err != nil {
+		return nil, nil, err
+	}
 	ctx, prog := s.startProgress(ctx, req)
 	spec, rep, store, err := s.verifyPipeline(ctx, in.NoTest)
 	if err != nil {
@@ -987,7 +1171,17 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-	return protoJSON(pr.Proto())
+	// The export carries the FULL pairwise overlap set — the explicit
+	// request the capped wire default points at.
+	if in.ExportPath != "" {
+		doc, err := protojson.Marshal(pr.ProtoUncapped())
+		if err != nil {
+			return nil, nil, err
+		}
+		return s.exportTo(in.ExportPath, doc, "partitions")
+	}
+	m := pr.Proto()
+	return summarized(fmt.Sprintf("partitions: %d components, %d overlaps (%d omitted)", len(m.GetComponents()), len(m.GetOverlaps()), m.GetOverlapsOmitted()), m)
 }
 
 // splitIDsLoose splits a comma list; empty input is an empty selection,
@@ -1104,15 +1298,55 @@ func textResource(uri, mime, text string) *mcp.ReadResourceResult {
 	}}}
 }
 
-// protoJSON renders a report message as the tool's structured output —
-// the same ProtoJSON projection the CLI's --json output renders, from
-// one shared renderer, so the two machine surfaces cannot drift.
-func protoJSON(m proto.Message) (*mcp.CallToolResult, map[string]any, error) {
-	out, err := wire.StructuredContent(m)
-	if err != nil {
+// exportTo validates a caller-named export path and writes the document
+// under .stipulator/exports/ — the record-store home bounds every
+// server write (REQ-mcp-writes-confined) — returning the location-only
+// wire result.
+func (s *Server) exportTo(exportPath string, doc []byte, what string) (*mcp.CallToolResult, map[string]any, error) {
+	if err := validExportPath(exportPath); err != nil {
 		return nil, nil, err
 	}
-	return nil, out, nil
+	if err := s.write(exportPath, doc); err != nil {
+		return nil, nil, err
+	}
+	out := map[string]any{"exported": exportPath, "bytes": len(doc)}
+	return textOnly(fmt.Sprintf("%s: exported %d bytes to %s", what, len(doc), exportPath)), out, nil
+}
+
+// validExportPath refuses anything outside the export home. Tools with
+// an expensive pass validate BEFORE running it: a typo must not cost a
+// witness run only to be refused at write time.
+func validExportPath(exportPath string) error {
+	if exportPath == "" {
+		return nil
+	}
+	clean := pathpkg.Clean(exportPath)
+	if clean != exportPath || !strings.HasPrefix(clean, ".stipulator/exports/") || strings.Contains(clean, "..") {
+		return fmt.Errorf("export_path must be a clean path under .stipulator/exports/ (the server writes nowhere else)")
+	}
+	return nil
+}
+
+// textOnly is the one-line Content beside a structured result — set so
+// the SDK never serializes the whole payload a second time as text
+// (REQ-mcp-response-contract).
+func textOnly(line string) *mcp.CallToolResult {
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: line}}}
+}
+
+// viewLine names one view result for the text line.
+func viewLine(op string, m proto.Message) string {
+	switch v := m.(type) {
+	case *stipulatorv1.VerifySummary:
+		return fmt.Sprintf("verify: %d problems, %d stale, %d broken", v.GetProblems(), v.GetStale(), v.GetBroken())
+	case *stipulatorv1.CoverageSummary:
+		word := "pass"
+		if !v.GetGatePasses() {
+			word = "fail"
+		}
+		return fmt.Sprintf("gate: %s, %d violations", word, len(v.GetViolations()))
+	}
+	return op + " (structured content carries the payload)"
 }
 
 func truncate(s string, n int) string {
@@ -1127,6 +1361,7 @@ type targetsIn struct {
 	Requirements []string `json:"requirements,omitempty" jsonschema:"exact implementing requirement identifiers; alternatives"`
 	Backends     []string `json:"backends,omitempty" jsonschema:"exact implementation backends; alternatives"`
 	Symbols      []string `json:"symbols,omitempty" jsonschema:"exact implementation symbols; alternatives"`
+	ExportPath   string   `json:"export_path,omitempty" jsonschema:"write the binding-surfaces document to this path under .stipulator/exports/ and return only its location - the artifact handoff for large surfaces (e.g. gomutant's targets input)"`
 }
 
 func (s *Server) toolTargets(ctx context.Context, req *mcp.CallToolRequest, in targetsIn) (*mcp.CallToolResult, map[string]any, error) {
@@ -1150,9 +1385,16 @@ func (s *Server) toolTargets(ctx context.Context, req *mcp.CallToolRequest, in t
 	if err != nil {
 		return nil, nil, err
 	}
+	// The artifact handoff: the identical document written under the
+	// record-store home (REQ-mcp-writes-confined bounds every server
+	// write), with only its location on the wire — a consuming tool
+	// reads the file instead of an inline copy of a large surface.
+	if in.ExportPath != "" {
+		return s.exportTo(in.ExportPath, doc, "targets")
+	}
 	var m map[string]any
 	if err := json.Unmarshal(doc, &m); err != nil {
 		return nil, nil, err
 	}
-	return nil, m, nil
+	return textOnly(fmt.Sprintf("targets: %d surfaces", len(report.GetSurfaces()))), m, nil
 }

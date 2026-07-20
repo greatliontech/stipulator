@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"testing/fstest"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/compile"
@@ -193,6 +194,81 @@ func Bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Upd
 		return nil, err
 	}
 	return &Update{Path: file, Content: content}, nil
+}
+
+// Binds authors many binding claims in one call, validating
+// all-or-nothing: each claim validates against the tree with every
+// earlier claim's pending write applied — same-file claims merge — and
+// a failure anywhere authors nothing (REQ-mcp-tools).
+func Binds(fsys fs.FS, backends map[string]verify.Backend, reqs []BindRequest) ([]Update, error) {
+	if len(reqs) == 0 {
+		return nil, fmt.Errorf("at least one claim is required")
+	}
+	over := batchFS{base: fsys, mem: fstest.MapFS{}}
+	latest := map[string]Update{}
+	for i, r := range reqs {
+		up, err := Bind(over, backends, r)
+		if err != nil {
+			return nil, fmt.Errorf("claim %d (%s %s): %w", i+1, r.Requirement, r.Symbol, err)
+		}
+		over.mem[up.Path] = &fstest.MapFile{Data: up.Content}
+		latest[up.Path] = *up
+	}
+	out := make([]Update, 0, len(latest))
+	for _, up := range latest {
+		out = append(out, up)
+	}
+	sortUpdates(out)
+	return out, nil
+}
+
+// batchFS lays a batch's pending record writes over the base tree, so
+// a later claim validates against the earlier claims' effects without
+// touching disk until the whole batch validates.
+type batchFS struct {
+	base fs.FS
+	mem  fstest.MapFS
+}
+
+func (o batchFS) Open(name string) (fs.File, error) {
+	if _, ok := o.mem[name]; ok {
+		return o.mem.Open(name)
+	}
+	return o.base.Open(name)
+}
+
+// ReadDir merges the overlay's entries into the base directory listing —
+// a batch-created record file must be visible to the next claim's store
+// load — with the overlay winning on name collisions.
+func (o batchFS) ReadDir(name string) ([]fs.DirEntry, error) {
+	baseEntries, baseErr := fs.ReadDir(o.base, name)
+	if baseErr != nil && !errors.Is(baseErr, fs.ErrNotExist) {
+		return nil, baseErr
+	}
+	memEntries, memErr := fs.ReadDir(o.mem, name)
+	if memErr != nil && !errors.Is(memErr, fs.ErrNotExist) {
+		return nil, memErr
+	}
+	if baseErr != nil && memErr != nil {
+		return nil, baseErr
+	}
+	merged := map[string]fs.DirEntry{}
+	for _, e := range baseEntries {
+		merged[e.Name()] = e
+	}
+	for _, e := range memEntries {
+		merged[e.Name()] = e
+	}
+	names := make([]string, 0, len(merged))
+	for n := range merged {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	out := make([]fs.DirEntry, 0, len(names))
+	for _, n := range names {
+		out = append(out, merged[n])
+	}
+	return out, nil
 }
 
 // Unbind removes bindings matching the request (symbol and role narrowing
