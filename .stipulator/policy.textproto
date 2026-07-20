@@ -11,6 +11,7 @@ invocations {
     race: true
     args: "-test.timeout=30m"
     bracket_paths: "/bin/sh"
+    bracket_paths: "/usr/bin/git"
   }
 }
 invocations {
