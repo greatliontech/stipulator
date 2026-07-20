@@ -1,0 +1,29 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.BindingSet
+
+bindings {
+  requirement_id: "REQ-record-cas"
+  content_hash: "2b66480c7a139c5569cf931b85e3df85f618b5eb0ed9a6f8ae94410a62ecde0f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.StampPriors"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "c481a3cb7c3debd462edca9dc41e593e77e8b45360903b477ec918aa3934bc53"
+}
+
+bindings {
+  requirement_id: "REQ-record-cas"
+  content_hash: "2b66480c7a139c5569cf931b85e3df85f618b5eb0ed9a6f8ae94410a62ecde0f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.Server.apply"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "eb25eaae2c3d377680d735dc911f38f0d683f32783019251c4fe1d4a386c0a5d"
+}
+
+bindings {
+  requirement_id: "REQ-record-cas"
+  content_hash: "ce32d16bf821ab6abb13c06b90d0f7b8e5bd399a8c76492aa17ea7e321ba7ae3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/records.TestLoadSkipsHiddenFiles"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a235cffa9767ae96a3b742eb97fed3ebeff36a984866d4032bd6c96613fdf28d"
+}

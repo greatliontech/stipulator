@@ -90,7 +90,9 @@ func AttestRequirement(fsys fs.FS, requirement, reason string) (*Update, *stipul
 	a.SetReason(reason)
 	set := &stipulatorv1.AttestationSet{}
 	set.SetAttestations(append(keep, a))
-	return &Update{Path: target, Content: records.RenderAttestations(set)}, prior, nil
+	up := &Update{Path: target, Content: records.RenderAttestations(set)}
+	stampPrior(store, up)
+	return up, prior, nil
 }
 
 // RetractAttestation withdraws a requirement's judgment: the record is
@@ -116,11 +118,15 @@ func RetractAttestation(fsys fs.FS, requirement string) (*Update, *stipulatorv1.
 			continue
 		}
 		if len(keep) == 0 {
-			return &Update{Path: af.Path, Content: nil}, retracted, nil
+			up := &Update{Path: af.Path, Content: nil}
+			stampPrior(store, up)
+			return up, retracted, nil
 		}
 		set := &stipulatorv1.AttestationSet{}
 		set.SetAttestations(keep)
-		return &Update{Path: af.Path, Content: records.RenderAttestations(set)}, retracted, nil
+		up := &Update{Path: af.Path, Content: records.RenderAttestations(set)}
+		stampPrior(store, up)
+		return up, retracted, nil
 	}
 	return nil, nil, fmt.Errorf("no attestation records %s; nothing to retract", requirement)
 }

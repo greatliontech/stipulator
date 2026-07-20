@@ -84,6 +84,22 @@ witness, an unresolved symbol) names no operation: the tool computes
 remediations, never prescribes fixes, and a wrong spelling misleads
 worse than silence.
 
+**REQ-record-cas** (invariant): Every record write MUST carry the
+content the computing operation read for its target file — absence
+included — with the applier refusing the whole batch when any target
+moved in between, naming the moved file: last-writer-wins would
+silently drop a concurrent agent's records, and identity or approval
+metadata in the records is not the answer — identity stays with the
+transport, never in the store. A batch checks every precondition
+before its first write and stages every file before its first rename,
+so a concurrent write refuses cleanly within a process — one apply at
+a time — and a mid-batch fault leaves at most a partial state the
+working tree makes visible, never a silent mix. Across processes the
+precondition is best-effort: with lock files banned, the moments
+between check and rename stay open, and git remains the serialization
+point of record. The precondition is transient, in memory, dying with
+the operation — no stored version counters, no lock files.
+
 ## Gaps
 
 **REQ-gap-record** (behavior): A gap MUST be a committed textproto record

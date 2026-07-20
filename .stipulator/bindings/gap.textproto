@@ -243,3 +243,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "8b5870bcfe14ad2aebfc2d303bedb7798be06d439d935e43cb1c2b986527f1bf"
 }
+
+bindings {
+  requirement_id: "REQ-gap-verb"
+  content_hash: "771526a9a697b054d33e758426c156c9581b8996c08a8ed850dc4189620bfc2d"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestUnchangedRedeclareIsSilent"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "16f8a351d97061650136e777f83ea2d858b1020f65e9fff2c3a7171ba331ab21"
+}

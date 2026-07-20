@@ -8,8 +8,10 @@
 package mcpserver
 
 import (
+	"bytes"
 	"context"
 	pathpkg "path"
+	"sync"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -60,6 +62,10 @@ type Server struct {
 	// root is the launch directory the corpus search started from,
 	// kept for guided failure messages.
 	root string
+	// applyMu serializes record applies: the SDK dispatches tool calls
+	// concurrently, and CAS is only sound when check-then-write is one
+	// critical section per process.
+	applyMu sync.Mutex
 	srv      *mcp.Server
 	indexed  map[string]bool
 	fsys     func() fs.FS
@@ -90,7 +96,27 @@ func New(dir string) *Server {
 			if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 				return err
 			}
-			return os.WriteFile(full, content, 0o644)
+			// Staged like the CLI applier (REQ-record-cas): the dot-temp
+			// is invisible to the record loader, and the rename is atomic,
+			// so a crash mid-write never leaves a torn record.
+			tmp, err := os.CreateTemp(filepath.Dir(full), ".stipulator-apply-*")
+			if err != nil {
+				return err
+			}
+			if _, err := tmp.Write(content); err != nil {
+				tmp.Close()
+				os.Remove(tmp.Name())
+				return err
+			}
+			if err := tmp.Close(); err != nil {
+				os.Remove(tmp.Name())
+				return err
+			}
+			if err := os.Rename(tmp.Name(), full); err != nil {
+				os.Remove(tmp.Name())
+				return err
+			}
+			return nil
 		},
 		remove: func(path string) error {
 			return os.Remove(filepath.Join(dir, filepath.FromSlash(path)))
@@ -616,6 +642,59 @@ type writeOut struct {
 	Notes []string `json:"notes,omitempty"`
 }
 
+// apply lands a batch of record updates under compare-and-swap
+// (REQ-record-cas): every precondition checks against the live tree
+// before the first write, so a target that moved since the operation
+// read it refuses the whole batch and a concurrent agent's records are
+// never silently dropped.
+func (s *Server) apply(ups []author.Update) (writeOut, error) {
+	// One apply at a time: the SDK runs tool calls concurrently, and an
+	// unserialized check-then-write would let two batches both pass
+	// their preconditions then clobber each other — the precise loss
+	// REQ-record-cas exists to refuse. A process-local mutex is
+	// transient in-memory state, exactly what the clause sanctions.
+	s.applyMu.Lock()
+	defer s.applyMu.Unlock()
+	seen := map[string]bool{}
+	for _, up := range ups {
+		if seen[up.Path] {
+			return writeOut{}, fmt.Errorf("batch names %s twice; refusing the ambiguous apply", up.Path)
+		}
+		seen[up.Path] = true
+		if up.Prior == nil && !up.PriorAbsent {
+			return writeOut{}, fmt.Errorf("%s carries no precondition; the computing operation failed to stamp what it read", up.Path)
+		}
+		current, err := fs.ReadFile(s.fsys(), up.Path)
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			if !up.PriorAbsent && up.Prior != nil {
+				return writeOut{}, fmt.Errorf("%s vanished since the operation read it; re-run against the current tree", up.Path)
+			}
+		case err != nil:
+			return writeOut{}, err
+		case up.PriorAbsent:
+			return writeOut{}, fmt.Errorf("%s appeared since the operation ran; re-run against the current tree", up.Path)
+		case !bytes.Equal(current, up.Prior):
+			return writeOut{}, fmt.Errorf("%s changed since the operation read it (a concurrent write?); re-run against the current tree", up.Path)
+		}
+	}
+	out := writeOut{}
+	for _, up := range ups {
+		if up.Content == nil {
+			if err := s.remove(up.Path); err != nil {
+				return writeOut{}, err
+			}
+			out.Deleted = append(out.Deleted, up.Path)
+			continue
+		}
+		if err := s.write(up.Path, up.Content); err != nil {
+			return writeOut{}, err
+		}
+		out.Wrote = append(out.Wrote, up.Path)
+	}
+	return out, nil
+}
+
 // result is the one-line Content beside the structured writeOut
 // (REQ-mcp-response-contract's single payload encoding).
 func (w writeOut) result() *mcp.CallToolResult {
@@ -672,12 +751,9 @@ func (s *Server) toolBind(ctx context.Context, req *mcp.CallToolRequest, in bind
 	if err != nil {
 		return nil, writeOut{}, err
 	}
-	out := writeOut{}
-	for _, up := range ups {
-		if err := s.write(up.Path, up.Content); err != nil {
-			return nil, writeOut{}, err
-		}
-		out.Wrote = append(out.Wrote, up.Path)
+	out, err := s.apply(ups)
+	if err != nil {
+		return nil, writeOut{}, err
 	}
 	return out.result(), out, nil
 }
@@ -697,20 +773,11 @@ func (s *Server) toolUnbind(ctx context.Context, req *mcp.CallToolRequest, in un
 	if err != nil {
 		return nil, writeOut{}, err
 	}
-	out := writeOut{Removed: removed}
-	for _, up := range ups {
-		if up.Content == nil {
-			if err := s.remove(up.Path); err != nil {
-				return nil, writeOut{}, err
-			}
-			out.Deleted = append(out.Deleted, up.Path)
-			continue
-		}
-		if err := s.write(up.Path, up.Content); err != nil {
-			return nil, writeOut{}, err
-		}
-		out.Wrote = append(out.Wrote, up.Path)
+	out, err := s.apply(ups)
+	if err != nil {
+		return nil, writeOut{}, err
 	}
+	out.Removed = removed
 	return out.result(), out, nil
 }
 
@@ -739,12 +806,9 @@ func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn
 		if err != nil {
 			return nil, writeOut{}, err
 		}
-		out := writeOut{}
-		for _, up := range ups {
-			if err := s.remove(up.Path); err != nil {
-				return nil, writeOut{}, err
-			}
-			out.Deleted = append(out.Deleted, up.Path)
+		out, err := s.apply(ups)
+		if err != nil {
+			return nil, writeOut{}, err
 		}
 		return out.result(), out, nil
 	case in.Fired && in.Manual == "":
@@ -755,12 +819,9 @@ func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn
 		if err != nil {
 			return nil, writeOut{}, err
 		}
-		out := writeOut{}
-		for _, up := range ups {
-			if err := s.write(up.Path, up.Content); err != nil {
-				return nil, writeOut{}, err
-			}
-			out.Wrote = append(out.Wrote, up.Path)
+		out, err := s.apply(ups)
+		if err != nil {
+			return nil, writeOut{}, err
 		}
 		return out.result(), out, nil
 	}
@@ -772,14 +833,12 @@ func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn
 	if err != nil {
 		return nil, writeOut{}, err
 	}
-	// A retarget is never silent: the wire result names old and new.
-	out := writeOut{Notes: notes}
-	for _, up := range ups {
-		if err := s.write(up.Path, up.Content); err != nil {
-			return nil, writeOut{}, err
-		}
-		out.Wrote = append(out.Wrote, up.Path)
+	out, err := s.apply(ups)
+	if err != nil {
+		return nil, writeOut{}, err
 	}
+	// A retarget is never silent: the wire result names old and new.
+	out.Notes = notes
 	return out.result(), out, nil
 }
 
@@ -795,28 +854,21 @@ func (s *Server) toolAttestRequirement(ctx context.Context, req *mcp.CallToolReq
 		if err != nil {
 			return nil, writeOut{}, err
 		}
-		out := writeOut{Notes: []string{"retracted judgment: " + prior.GetReason()}}
-		if up.Content == nil {
-			out.Deleted = []string{up.Path}
-			if err := s.remove(up.Path); err != nil {
-				return nil, writeOut{}, err
-			}
-			return out.result(), out, nil
-		}
-		out.Wrote = []string{up.Path}
-		if err := s.write(up.Path, up.Content); err != nil {
+		out, err := s.apply([]author.Update{*up})
+		if err != nil {
 			return nil, writeOut{}, err
 		}
+		out.Notes = []string{"retracted judgment: " + prior.GetReason()}
 		return out.result(), out, nil
 	}
 	up, prior, err := author.AttestRequirement(s.fsys(), in.Requirement, in.Reason)
 	if err != nil {
 		return nil, writeOut{}, err
 	}
-	if err := s.write(up.Path, up.Content); err != nil {
+	out, err := s.apply([]author.Update{*up})
+	if err != nil {
 		return nil, writeOut{}, err
 	}
-	out := writeOut{Wrote: []string{up.Path}}
 	if prior != nil {
 		out.Notes = []string{"replaced judgment: " + prior.GetReason()}
 	}
@@ -843,12 +895,11 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 			if err != nil {
 				return nil, writeOut{}, err
 			}
-			for _, up := range ups {
-				if err := s.write(up.Path, up.Content); err != nil {
-					return nil, writeOut{}, err
-				}
-				out.Wrote = append(out.Wrote, up.Path)
+			applied, err := s.apply(ups)
+			if err != nil {
+				return nil, writeOut{}, err
 			}
+			out.Wrote = append(out.Wrote, applied.Wrote...)
 		}
 		return out.result(), out, nil
 	}
@@ -884,12 +935,16 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 	if err != nil {
 		return nil, writeOut{}, err
 	}
-	out := writeOut{}
+	ups := make([]author.Update, 0, len(updates))
 	for p, c := range updates {
-		if err := s.write(p, c); err != nil {
-			return nil, writeOut{}, err
-		}
-		out.Wrote = append(out.Wrote, p)
+		ups = append(ups, author.Update{Path: p, Content: c})
+	}
+	// The same store snapshot that fed Pin stamps the preconditions —
+	// the backfill is a record write like any other (REQ-record-cas).
+	author.StampPriors(store, ups)
+	out, err := s.apply(ups)
+	if err != nil {
+		return nil, writeOut{}, err
 	}
 	if len(out.Wrote) == 0 {
 		// A no-op must say so: a silent {} reads as "did something,
@@ -951,19 +1006,9 @@ func (s *Server) toolDispose(ctx context.Context, req *mcp.CallToolRequest, in d
 	if err != nil {
 		return nil, writeOut{}, err
 	}
-	out := writeOut{}
-	for _, up := range ups {
-		if up.Content == nil {
-			if err := s.remove(up.Path); err != nil {
-				return nil, writeOut{}, err
-			}
-			out.Deleted = append(out.Deleted, up.Path)
-			continue
-		}
-		if err := s.write(up.Path, up.Content); err != nil {
-			return nil, writeOut{}, err
-		}
-		out.Wrote = append(out.Wrote, up.Path)
+	out, err := s.apply(ups)
+	if err != nil {
+		return nil, writeOut{}, err
 	}
 	return out.result(), out, nil
 }
@@ -998,18 +1043,16 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 			present[r.GetId()] = true
 		}
 		prunes := author.PruneDanglingGaps(store, present)
-		out := writeOut{}
 		if in.Check {
+			out := writeOut{}
 			for _, up := range prunes {
 				out.Notes = append(out.Notes, "dangling gap lingers: "+up.Path)
 			}
 			return out.result(), out, nil
 		}
-		for _, up := range prunes {
-			if err := s.remove(up.Path); err != nil {
-				return nil, writeOut{}, err
-			}
-			out.Deleted = append(out.Deleted, up.Path)
+		out, err := s.apply(prunes)
+		if err != nil {
+			return nil, writeOut{}, err
 		}
 		return out.result(), out, nil
 	}
@@ -1046,12 +1089,9 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 		return out.result(), out, nil
 	}
-	out := writeOut{}
-	for _, up := range prunes {
-		if err := s.remove(up.Path); err != nil {
-			return nil, writeOut{}, terminalToolError(prog, ctx, err)
-		}
-		out.Deleted = append(out.Deleted, up.Path)
+	out, err := s.apply(prunes)
+	if err != nil {
+		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	return out.result(), out, nil

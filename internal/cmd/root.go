@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -125,23 +126,104 @@ func writeFileAt(dir, rel string, content []byte) error {
 	return os.WriteFile(full, content, 0o644)
 }
 
+// applyUpdates applies a batch under compare-and-swap: every
+// precondition is checked before the first write — a target that moved
+// since the operation read it refuses the WHOLE batch, so a concurrent
+// agent's records are never silently dropped — then every write stages
+// to a temp file before the first rename, shrinking a mid-batch fault
+// to at most a git-visible partial state (REQ-record-cas).
 func applyUpdates(dir string, ups []author.Update) error {
+	seen := map[string]bool{}
+	for _, up := range ups {
+		// A duplicate path would pass every pre-batch precondition and
+		// then last-write-wins silently; no verb produces one today, so
+		// reaching this is a programming error, refused loudly.
+		if seen[up.Path] {
+			return fmt.Errorf("batch names %s twice; refusing the ambiguous apply", up.Path)
+		}
+		seen[up.Path] = true
+		if err := checkPrior(dir, up); err != nil {
+			return err
+		}
+	}
+	type staged struct {
+		tmp, full, path string
+	}
+	var writes []staged
+	var deletions []author.Update
+	// Any temp not renamed by the time we return is removed: a leaked
+	// dot-temp is invisible to the record loader, but tidiness is free.
+	defer func() {
+		for _, w := range writes {
+			os.Remove(w.tmp)
+		}
+	}()
 	for _, up := range ups {
 		full := filepath.Join(dir, filepath.FromSlash(up.Path))
 		if up.Content == nil {
-			if err := os.Remove(full); err != nil {
-				return err
-			}
-			fmt.Println("deleted", up.Path)
+			deletions = append(deletions, up)
 			continue
 		}
 		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 			return err
 		}
-		if err := os.WriteFile(full, up.Content, 0o644); err != nil {
+		tmp, err := os.CreateTemp(filepath.Dir(full), ".stipulator-apply-*")
+		if err != nil {
 			return err
 		}
-		fmt.Println("wrote", up.Path)
+		// Registered before the write so the deferred cleanup owns it on
+		// every failure path.
+		writes = append(writes, staged{tmp: tmp.Name(), full: full, path: up.Path})
+		if _, err := tmp.Write(up.Content); err != nil {
+			tmp.Close()
+			return err
+		}
+		if err := tmp.Close(); err != nil {
+			return err
+		}
+	}
+	renamed := 0
+	for i := range writes {
+		if err := os.Rename(writes[i].tmp, writes[i].full); err != nil {
+			return err
+		}
+		renamed++
+		fmt.Println("wrote", writes[i].path)
+	}
+	writes = writes[renamed:]
+	for _, up := range deletions {
+		if err := os.Remove(filepath.Join(dir, filepath.FromSlash(up.Path))); err != nil {
+			return err
+		}
+		fmt.Println("deleted", up.Path)
+	}
+	return nil
+}
+
+// checkPrior is one update's compare-and-swap precondition against the
+// tree.
+func checkPrior(dir string, up author.Update) error {
+	// An update carrying neither a prior nor read-absence was never
+	// stamped: a stamped update always sets one (fs.ReadFile returns
+	// non-nil even for an empty file). Refusing makes a missing stamp
+	// loud at apply time instead of a silent CAS hole.
+	if up.Prior == nil && !up.PriorAbsent {
+		return fmt.Errorf("%s carries no precondition; the computing operation failed to stamp what it read", up.Path)
+	}
+	full := filepath.Join(dir, filepath.FromSlash(up.Path))
+	current, err := os.ReadFile(full)
+	switch {
+	case os.IsNotExist(err):
+		if !up.PriorAbsent && up.Prior != nil {
+			return fmt.Errorf("%s vanished since the operation read it; re-run against the current tree", up.Path)
+		}
+		return nil
+	case err != nil:
+		return err
+	case up.PriorAbsent:
+		return fmt.Errorf("%s appeared since the operation ran; re-run against the current tree", up.Path)
+	case !bytes.Equal(current, up.Prior):
+		return fmt.Errorf("%s changed since the operation read it (a concurrent write?); re-run against the current tree", up.Path)
 	}
 	return nil
 }

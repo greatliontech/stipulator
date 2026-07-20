@@ -8,6 +8,7 @@ import (
 	"testing/fstest"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -185,5 +186,38 @@ func TestContextAndPartitionsExportPath(t *testing.T) {
 	}
 	if _, ok := writes[".stipulator/exports/partitions.json"]; !ok {
 		t.Fatal("partitions export not written")
+	}
+}
+
+// The server-side applier enforces the same compare-and-swap: a record
+// that moved between the operation's read and the apply refuses the
+// whole batch (REQ-record-cas).
+//
+//gofresh:pure
+func TestServerApplyCompareAndSwap(t *testing.T) {
+	stipulate.Covers(t, "REQ-record-cas")
+	mem := fstest.MapFS{
+		".stipulator/gaps/a.textproto": {Data: []byte("current a")},
+	}
+	writes := map[string][]byte{}
+	s := &Server{
+		fsys:   func() fs.FS { return mem },
+		write:  func(p string, c []byte) error { writes[p] = c; return nil },
+		remove: func(p string) error { writes[p] = nil; return nil },
+	}
+	if _, err := s.apply([]author.Update{
+		{Path: ".stipulator/gaps/new.textproto", Content: []byte("x"), PriorAbsent: true},
+		{Path: ".stipulator/gaps/a.textproto", Content: []byte("y"), Prior: []byte("what it read")},
+	}); err == nil {
+		t.Fatal("moved target accepted")
+	}
+	if len(writes) != 0 {
+		t.Fatalf("batch partially applied despite a failed precondition: %v", writes)
+	}
+	out, err := s.apply([]author.Update{
+		{Path: ".stipulator/gaps/a.textproto", Content: nil, Prior: []byte("current a")},
+	})
+	if err != nil || len(out.Deleted) != 1 {
+		t.Fatalf("matching prior refused: %v %+v", err, out)
 	}
 }

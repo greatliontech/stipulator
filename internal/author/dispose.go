@@ -66,6 +66,7 @@ func Editorial(fsys fs.FS, requirement string) ([]Update, error) {
 		return nil, fmt.Errorf("no stale bindings for %s: %w", requirement, ErrNothingStale)
 	}
 	sortUpdates(out)
+	StampPriors(store, out)
 	return out, nil
 }
 
@@ -266,6 +267,7 @@ func retire(fsys fs.FS, identities, successors []string, force bool) ([]Update, 
 		}
 	}
 	sortUpdates(out)
+	StampPriors(store, out)
 	return out, nil
 }
 

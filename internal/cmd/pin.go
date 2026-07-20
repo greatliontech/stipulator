@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 
 	"github.com/spf13/cobra"
@@ -82,11 +81,13 @@ func pinCmd() *cobra.Command {
 				paths = append(paths, p)
 			}
 			sort.Strings(paths)
+			ups := make([]author.Update, 0, len(paths))
 			for _, p := range paths {
-				if err := os.WriteFile(filepath.Join(chdir, filepath.FromSlash(p)), updates[p], 0o644); err != nil {
-					return err
-				}
-				fmt.Println("pinned", p)
+				ups = append(ups, author.Update{Path: p, Content: updates[p]})
+			}
+			author.StampPriors(store, ups)
+			if err := applyUpdates(chdir, ups); err != nil {
+				return err
 			}
 			if len(updates) == 0 {
 				fmt.Println("all pins current")

@@ -192,6 +192,30 @@ func TestGapFiredPreservedOnRedeclare(t *testing.T) {
 	}
 }
 
+// Re-declaring an unchanged UNFIRED manual gap is silent: the built
+// condition must not carry explicit fired=false presence, which would
+// make proto.Equal see a retarget against every prior record that
+// simply lacks the field.
+//
+//gofresh:pure
+func TestUnchangedRedeclareIsSilent(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-verb")
+	fsys := testFS(map[string]string{
+		".stipulator/gaps/a.textproto": "requirement_id: \"REQ-au-a\"\nreason: \"r\"\nlands { manual { condition: \"c\" } }\n",
+	})
+	lc, err := NewLandingCondition("", "", "c", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, notes, err := Gaps(fsys, []string{"REQ-au-a"}, "r2", lc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(notes) != 0 {
+		t.Fatalf("unchanged condition produced notes: %v", notes)
+	}
+}
+
 // Fired at declaration time rides only a manual condition.
 //
 //gofresh:pure

@@ -73,7 +73,12 @@ func NewLandingCondition(covered, exists, manual string, fired bool) (*stipulato
 	case manual != "":
 		a := &stipulatorv1.ManualCondition{}
 		a.SetCondition(manual)
-		a.SetFired(fired)
+		// Set only when true: an explicit false would give the field
+		// presence, making proto.Equal see a retarget against every prior
+		// record that simply lacks it.
+		if fired {
+			a.SetFired(true)
+		}
 		lc.SetManual(a)
 	default:
 		return nil, nil
@@ -96,6 +101,45 @@ type BindRequest struct {
 type Update struct {
 	Path    string
 	Content []byte // nil means delete the file
+	// Prior is the raw content the computing operation read at Path —
+	// the compare-and-swap precondition (REQ-record-cas): the applier
+	// refuses when the file moved in between. PriorAbsent means the
+	// operation saw no file there.
+	Prior       []byte
+	PriorAbsent bool
+}
+
+// StampPriors records, on each update, the content the operation read
+// for its target file from its loaded store — the compare-and-swap
+// precondition (REQ-record-cas). A path outside the store stamps as
+// read-absent.
+func StampPriors(store *records.Store, ups []Update) {
+	raw := map[string][]byte{}
+	for _, bf := range store.Bindings {
+		raw[bf.Path] = bf.Raw
+	}
+	for _, gf := range store.Gaps {
+		raw[gf.Path] = gf.Raw
+	}
+	for _, af := range store.Attestations {
+		raw[af.Path] = af.Raw
+	}
+	if store.TombstonesRaw != nil {
+		raw[records.TombstonesPath] = store.TombstonesRaw
+	}
+	for i := range ups {
+		if b, ok := raw[ups[i].Path]; ok {
+			ups[i].Prior = b
+		} else {
+			ups[i].PriorAbsent = true
+		}
+	}
+}
+
+func stampPrior(store *records.Store, up *Update) {
+	tmp := []Update{*up}
+	StampPriors(store, tmp)
+	*up = tmp[0]
 }
 
 // Bind validates and authors a binding: the requirement must exist in the
@@ -193,7 +237,9 @@ func Bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Upd
 	if err != nil {
 		return nil, err
 	}
-	return &Update{Path: file, Content: content}, nil
+	up := &Update{Path: file, Content: content}
+	stampPrior(store, up)
+	return up, nil
 }
 
 // Binds authors many binding claims in one call, validating
@@ -203,6 +249,10 @@ func Bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Upd
 func Binds(fsys fs.FS, backends map[string]verify.Backend, reqs []BindRequest) ([]Update, error) {
 	if len(reqs) == 0 {
 		return nil, fmt.Errorf("at least one claim is required")
+	}
+	base, err := records.Load(fsys)
+	if err != nil {
+		return nil, err
 	}
 	over := batchFS{base: fsys, mem: fstest.MapFS{}}
 	latest := map[string]Update{}
@@ -219,6 +269,13 @@ func Binds(fsys fs.FS, backends map[string]verify.Backend, reqs []BindRequest) (
 		out = append(out, up)
 	}
 	sortUpdates(out)
+	// Priors come from the BASE store: a Bind inside the batch stamped
+	// against the overlay, whose pending content is this batch's own,
+	// never what sits on disk (REQ-record-cas).
+	for i := range out {
+		out[i].Prior, out[i].PriorAbsent = nil, false
+	}
+	StampPriors(base, out)
 	return out, nil
 }
 
@@ -304,6 +361,7 @@ func Unbind(fsys fs.FS, requirement, symbol string, role stipulatorv1.BindingRol
 		out = append(out, Update{Path: p, Content: nil})
 	}
 	sortUpdates(out)
+	StampPriors(store, out)
 	return out, removed, nil
 }
 
@@ -366,7 +424,9 @@ func Gap(fsys fs.FS, g *stipulatorv1.Gap) (*Update, *stipulatorv1.Gap, error) {
 			}
 		}
 	}
-	return &Update{Path: target, Content: records.RenderGap(g)}, prior, nil
+	up := &Update{Path: target, Content: records.RenderGap(g)}
+	stampPrior(store, up)
+	return up, prior, nil
 }
 
 // LandingConditionString renders a landing condition human-readably, for
@@ -423,7 +483,7 @@ func Init(fsys fs.FS) (*Update, error) {
 	content := "# proto-file: proto/stipulator/v1/manifest.proto\n" +
 		"# proto-message: stipulator.v1.Manifest\n\n" +
 		"include: " + strconv.Quote(corpus.DefaultInclude) + "\n"
-	return &Update{Path: corpus.ManifestPath, Content: []byte(content)}, nil
+	return &Update{Path: corpus.ManifestPath, Content: []byte(content), PriorAbsent: true}, nil
 }
 
 // SelfSentinel is the bulk landing sentinel: covered(self) resolves to
@@ -518,6 +578,7 @@ func RetractGaps(fsys fs.FS, reqs []string) ([]Update, error) {
 		}
 	}
 	sortUpdates(out)
+	StampPriors(store, out)
 	return out, nil
 }
 
@@ -577,6 +638,7 @@ func FireGaps(fsys fs.FS, reqs []string) ([]Update, error) {
 		}
 	}
 	sortUpdates(out)
+	StampPriors(store, out)
 	return out, nil
 }
 
@@ -591,6 +653,7 @@ func PruneDanglingGaps(store *records.Store, present map[string]bool) []Update {
 		}
 	}
 	sortUpdates(out)
+	StampPriors(store, out)
 	return out
 }
 
@@ -604,5 +667,6 @@ func PruneResolvedGaps(store *records.Store, resolved map[string]bool) []Update 
 		}
 	}
 	sortUpdates(out)
+	StampPriors(store, out)
 	return out
 }

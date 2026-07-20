@@ -48,6 +48,10 @@ type Store struct {
 	Gaps         []GapFile
 	Attestations []AttestationFile
 	Tombstones   []string
+	// TombstonesRaw is the registry file's bytes as loaded — the
+	// compare-and-swap precondition for disposition writes; nil when the
+	// registry is absent.
+	TombstonesRaw []byte
 }
 
 // Load reads all records from fsys, which must be rooted at the repository
@@ -90,6 +94,9 @@ func Load(fsys fs.FS) (*Store, error) {
 		return nil, err
 	}
 	s.Tombstones = tombs
+	if b, err := fs.ReadFile(fsys, TombstonesPath); err == nil {
+		s.TombstonesRaw = b
+	}
 	return s, nil
 }
 
@@ -125,6 +132,13 @@ func eachTextproto(fsys fs.FS, dir string, fn func(string, []byte) error) error 
 	}
 	for _, e := range entries {
 		if e.IsDir() {
+			continue
+		}
+		// Hidden files are never records: editor droppings and the
+		// applier's staging temps (dot-prefixed) must not brick the load
+		// — a crash between stage and rename leaves temps behind, and a
+		// concurrent load during the staging window must stay clean.
+		if strings.HasPrefix(e.Name(), ".") {
 			continue
 		}
 		if !strings.HasSuffix(e.Name(), ".textproto") {
