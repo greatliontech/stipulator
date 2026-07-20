@@ -1644,3 +1644,91 @@ func TestGoRunWitnessesNamesReExecutionReason(t *testing.T) {
 		t.Fatalf("re-execution reason = %q (map %v), want the moved input named", why, second.ExecutedReasons)
 	}
 }
+
+// A reviewed bracket path lets an unasserted witness consume a fixed
+// external file cacheably: the pre-spawn bracket fingerprints it,
+// observation binds the constant-path read, the proof stays closed, and
+// the record serves until the file changes - while the identical
+// witness without the declaration seals out-of-bracket. Process images
+// follow the same mechanics but their spawning subjects additionally
+// need a purity assertion, since child behavior is outside the testlog
+// (REQ-evidence-witness-freshness).
+func TestGoRunWitnessesBracketPathBindsExternalFile(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented selective run over a temporary module")
+	}
+	neutralAmbient(t)
+	external := filepath.Join(t.TempDir(), "pinned.conf")
+	if err := os.WriteFile(external, []byte("v1"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{
+		"go.mod": "module example.com/extread\n\ngo 1.26\n",
+		"pkg/pkg_test.go": `package pkg
+
+import (
+	"os"
+	"testing"
+)
+
+func TestReadsPinnedExternal(*testing.T) {
+	_, _ = os.ReadFile("` + external + `")
+}
+`,
+	}
+	run := func(declare bool) *verify.TestRun {
+		t.Helper()
+		t.Setenv("XDG_CACHE_HOME", t.TempDir())
+		tmp := writeModule(t, files)
+		cfg := &stipulatorv1.GoInvocationConfig{}
+		cfg.SetPackages([]string{"./pkg"})
+		cfg.SetRace(true)
+		if declare {
+			cfg.SetBracketPaths([]string{external})
+		}
+		p := &stipulatorv1.TestPolicy{}
+		p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
+		writePolicyRecord(t, tmp, p)
+		first, err := RunWitnesses(context.Background(), tmp)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if first.Degraded != "" {
+			t.Fatalf("degraded: %s", first.Degraded)
+		}
+		if declare {
+			if first.Ran != 1 || first.Uncached != 0 {
+				t.Fatalf("declared first run ran=%d uncached=%d, want 1/0 (reasons=%v)", first.Ran, first.Uncached, first.UncacheableReasons)
+			}
+			second, err := RunWitnesses(context.Background(), tmp)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if second.Fresh != 1 || second.Ran != 0 {
+				t.Fatalf("declared second run fresh=%d ran=%d, want 1/0", second.Fresh, second.Ran)
+			}
+			// The bound external file's change stales the record.
+			if err := os.WriteFile(external, []byte("v2"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			third, err := RunWitnesses(context.Background(), tmp)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if third.Fresh != 0 || third.Ran != 1 {
+				t.Fatalf("declared third run fresh=%d ran=%d, want 0/1 after the bound file changed", third.Fresh, third.Ran)
+			}
+			if err := os.WriteFile(external, []byte("v1"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return first
+	}
+
+	run(true)
+	bare := run(false)
+	if bare.Uncached != 1 {
+		t.Fatalf("undeclared first run uncached=%d, want 1 (reasons=%v)", bare.Uncached, bare.UncacheableReasons)
+	}
+}

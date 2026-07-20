@@ -106,8 +106,11 @@ scoped to the stated assumption whose violation would convert it — in
 the exemption classes below, nowhere else. Each producing process's completed observation is sealed against an
 observation bracket captured before the process spawns, declaring the
 package's own directory — module-relative under the verification tree,
-with the VCS bookkeeping tree excluded — as its one root: a change under
-the declared root persisting across the run-to-ingest span moves the
+with the VCS bookkeeping tree excluded — together with the invocation's
+reviewed bracket paths (process images and fixed external files its
+tests deliberately consume, each a clean absolute or tree-relative
+path, fingerprinted present or absent) as its roots: a change under
+any declared root persisting across the run-to-ingest span moves the
 bracket — a restore is tolerated only when it reproduces content and
 metadata alike — and the observation seals unverifiable, while a read
 resolving outside the declared root seals per-identity unverifiable —

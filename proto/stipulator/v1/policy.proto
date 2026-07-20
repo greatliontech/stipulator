@@ -160,4 +160,19 @@ message GoInvocationConfig {
   // `-args`; absent means none.
   repeated string args = 17;
   reserved 18, 19;
+  // Reviewed observation-bracket paths added to every package's
+  // pre-spawn bracket beside the package directory: process images and
+  // fixed external files the invocation's tests deliberately consume
+  // (an interpreter such as /bin/sh, a pinned data file). Each entry is
+  // a clean absolute host path or a tree-relative slash path; the
+  // bracket fingerprints it before the process spawns - present or
+  // absent - so a change persisting across the run-to-ingest span
+  // moves the bracket, and observation can bind reads of it instead of
+  // sealing them out-of-bracket. Machine-specific probe paths belong in
+  // per-machine tooling, never here: the policy is committed and
+  // reviewed. Keep entries narrow: "." or "/" turns every concurrent
+  // package's writes into bracket noise or an unhashable root, and a
+  // declared path one package's test WRITES moves every concurrent
+  // package's in-flight bracket - conservative, but a whole-run seal.
+  repeated string bracket_paths = 20;
 }

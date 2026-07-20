@@ -10,6 +10,7 @@ invocations {
     packages: "./..."
     race: true
     args: "-test.timeout=30m"
+    bracket_paths: "/bin/sh"
   }
 }
 invocations {

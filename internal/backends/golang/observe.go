@@ -35,16 +35,17 @@ var testlogHeader = []byte("# test log")
 // Every completed observation is constructed against an observation
 // bracket captured before its process spawned (gofresh
 // REQ-inputs-value-binding), declaring the package's own directory —
-// module-relative under the verification tree root — as the one bracket
-// root. The package directory is the root policy here because it is the
+// module-relative under the verification tree root — as its bracket
+// root, together with the invocation's reviewed bracket paths. The package directory is the root policy here because it is the
 // surface `go test` conventions give a test to read (testdata rides it as
 // a subtree) while staying narrow enough that a sibling package's
 // parallel writes cannot move it; declaring the whole tree instead would
 // turn every concurrent package's writes into bracket noise. The
-// consequence is deliberate: a read resolving outside the package
-// directory seals per-identity unverifiable — permanently uncacheable —
+// consequence is deliberate: a read resolving outside the declared
+// roots seals per-identity unverifiable — permanently uncacheable —
 // and a test wanting cacheable cross-directory fixtures must move them
-// under its package or assert purity in source.
+// under its package, name them in the invocation's reviewed bracket
+// paths, or assert purity in source.
 
 // ProcessObservation pairs one launched process's wire observation with
 // the live gofresh evidence behind it. Runtime is set exactly when Wire
@@ -118,7 +119,12 @@ func captureObservationFrame(ctx context.Context, n *NormalizedInvocation, pkg s
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return observationFrame{reason: fmt.Sprintf("package directory %s lies outside the verification tree; no observation bracket can cover it", pkgDir)}
 	}
-	b, err := runtimeinput.CaptureBracketContext(ctx, root, []string{filepath.ToSlash(rel)},
+	// The invocation's reviewed bracket paths ride beside the package
+	// directory: fingerprinted pre-spawn - present or absent - so the
+	// consumed process images and fixed external files bind instead of
+	// sealing out-of-bracket.
+	roots := append([]string{filepath.ToSlash(rel)}, n.BracketPaths...)
+	b, err := runtimeinput.CaptureBracketContext(ctx, root, roots,
 		runtimeinput.WithBracketExcludedPaths(".git"))
 	if err != nil {
 		return observationFrame{reason: fmt.Sprintf("observation bracket capture failed: %v", err)}

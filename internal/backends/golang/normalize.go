@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -39,6 +40,10 @@ type NormalizedInvocation struct {
 	// admission).
 	BuildCacheRoot string
 	TempRoot       string
+	// BracketPaths are the invocation's reviewed extra observation-bracket
+	// roots - process images and fixed external files its tests consume -
+	// validated to clean absolute or tree-relative slash form.
+	BracketPaths []string
 	// Timeout is the envelope's explicit, reviewed timeout.
 	Timeout time.Duration
 	// Toolchain is the effective toolchain identity (`go env GOVERSION`).
@@ -240,7 +245,38 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	// the module directory: observation refuses a root inside the TREE,
 	// and with module_root set the tree is a strict ancestor of n.Dir.
 	n.TempRoot = usableTempRoot(tempRootFromEnv(env), treeRoot(n))
+	for _, p := range cfg.GetBracketPaths() {
+		if err := validateBracketPath(p); err != nil {
+			return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
+		}
+		n.BracketPaths = append(n.BracketPaths, p)
+	}
 	return n, nil
+}
+
+// validateBracketPath admits exactly the forms the observation bracket
+// accepts: a clean absolute host path or a clean tree-relative slash
+// path, neither carrying a parent traversal - a ".." component could
+// rebind across a symlink to an object no review saw.
+func validateBracketPath(p string) error {
+	if p == "" {
+		return fmt.Errorf("bracket path is empty")
+	}
+	for _, segment := range strings.Split(filepath.ToSlash(p), "/") {
+		if segment == ".." {
+			return fmt.Errorf("bracket path %q carries a parent traversal", p)
+		}
+	}
+	if filepath.IsAbs(p) {
+		if filepath.Clean(p) != p {
+			return fmt.Errorf("bracket path %q is not clean", p)
+		}
+		return nil
+	}
+	if path.Clean(p) != p {
+		return fmt.Errorf("bracket path %q is not a clean slash path", p)
+	}
+	return nil
 }
 
 // usableGuardRoot returns root cleaned when it can serve as a guard root,

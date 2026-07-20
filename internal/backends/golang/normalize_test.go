@@ -357,3 +357,29 @@ func TestUsableGuardRoot(t *testing.T) {
 		}
 	}
 }
+
+// Bracket paths admit exactly the forms the observation bracket
+// accepts — clean absolute or clean tree-relative slash paths, never a
+// parent traversal — and ride the normalized invocation.
+func TestGoNormalizeBracketPaths(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	neutralAmbient(t)
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./..."})
+	cfg.SetBracketPaths([]string{"/bin/sh", "testdata/pinned.bin", "testdata/a..b.golden"})
+	n, err := NormalizeInvocation(context.Background(), discoverFixture(t), goInvocation("bp", cfg))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(n.BracketPaths) != 3 || n.BracketPaths[0] != "/bin/sh" || n.BracketPaths[2] != "testdata/a..b.golden" {
+		t.Fatalf("BracketPaths = %v", n.BracketPaths)
+	}
+	for _, bad := range []string{"", "/bin/../sh", "/unclean//sh", "a/../b", "./rel", "../escape", ".."} {
+		c := &stipulatorv1.GoInvocationConfig{}
+		c.SetPackages([]string{"./..."})
+		c.SetBracketPaths([]string{bad})
+		if _, err := NormalizeInvocation(context.Background(), discoverFixture(t), goInvocation("bp", c)); err == nil {
+			t.Errorf("bracket path %q accepted", bad)
+		}
+	}
+}
