@@ -3,7 +3,7 @@
 
 bindings {
   requirement_id: "REQ-record-cas"
-  content_hash: "2b66480c7a139c5569cf931b85e3df85f618b5eb0ed9a6f8ae94410a62ecde0f"
+  content_hash: "ce32d16bf821ab6abb13c06b90d0f7b8e5bd399a8c76492aa17ea7e321ba7ae3"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.StampPriors"
   role: BINDING_ROLE_IMPLEMENTS
@@ -12,7 +12,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-record-cas"
-  content_hash: "2b66480c7a139c5569cf931b85e3df85f618b5eb0ed9a6f8ae94410a62ecde0f"
+  content_hash: "ce32d16bf821ab6abb13c06b90d0f7b8e5bd399a8c76492aa17ea7e321ba7ae3"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.Server.apply"
   role: BINDING_ROLE_IMPLEMENTS
@@ -26,4 +26,40 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/records.TestLoadSkipsHiddenFiles"
   role: BINDING_ROLE_TESTS
   shape_hash: "a235cffa9767ae96a3b742eb97fed3ebeff36a984866d4032bd6c96613fdf28d"
+}
+
+bindings {
+  requirement_id: "REQ-record-cas"
+  content_hash: "ce32d16bf821ab6abb13c06b90d0f7b8e5bd399a8c76492aa17ea7e321ba7ae3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestPropApplyRefusesIffAnyTargetMoved"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "fba257fdc04f23b53c3042c0bf3c4063ff919ec67cd79164dce47a73f9de1b06"
+}
+
+bindings {
+  requirement_id: "REQ-record-cas"
+  content_hash: "ce32d16bf821ab6abb13c06b90d0f7b8e5bd399a8c76492aa17ea7e321ba7ae3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestApplyUpdatesCompareAndSwap"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "513e59950a96b463bf32c56ebc617728d5744bbfb8d94a0649a13e4db884a2df"
+}
+
+bindings {
+  requirement_id: "REQ-record-cas"
+  content_hash: "ce32d16bf821ab6abb13c06b90d0f7b8e5bd399a8c76492aa17ea7e321ba7ae3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestVerbsStampPriors"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "0f180b94b6bcd78abfcdaec3be88b7e22cc5cb043ceb6fa90dfa5b5bba06704a"
+}
+
+bindings {
+  requirement_id: "REQ-record-cas"
+  content_hash: "ce32d16bf821ab6abb13c06b90d0f7b8e5bd399a8c76492aa17ea7e321ba7ae3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestServerApplyCompareAndSwap"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "23452a2cc3e44e27844eec288d144a66aa5d143e0e598e5286f1f5bd70d56eed"
 }

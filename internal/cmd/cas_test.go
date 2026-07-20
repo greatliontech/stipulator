@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"pgregory.net/rapid"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
@@ -161,4 +164,120 @@ func TestVerbsStampPriors(t *testing.T) {
 	if up.PriorAbsent || string(up.Prior) != existingBinding {
 		t.Fatalf("bind over an existing file stamped prior=%q absent=%v", up.Prior, up.PriorAbsent)
 	}
+}
+
+// For every batch over every tree: the apply lands exactly when every
+// target still matches what the operation read — a single moved,
+// appeared, or vanished target refuses the WHOLE batch and leaves every
+// target byte-identical (REQ-record-cas, quantified).
+//
+//gofresh:pure
+func TestPropApplyRefusesIffAnyTargetMoved(t *testing.T) {
+	stipulate.Covers(t, "REQ-record-cas")
+	rapid.Check(t, func(rt *rapid.T) {
+		dir := t.TempDir()
+		nFiles := rapid.IntRange(1, 5).Draw(rt, "nFiles")
+		content := func(i, gen int) []byte {
+			return []byte(fmt.Sprintf("record %d gen %d", i, gen))
+		}
+		pathOf := func(i int) string { return fmt.Sprintf(".stipulator/gaps/f%d.textproto", i) }
+		fullOf := func(i int) string { return filepath.Join(dir, filepath.FromSlash(pathOf(i))) }
+		exists := make([]bool, nFiles)
+		if err := os.MkdirAll(filepath.Join(dir, ".stipulator/gaps"), 0o755); err != nil {
+			rt.Fatal(err)
+		}
+		for i := 0; i < nFiles; i++ {
+			exists[i] = rapid.Bool().Draw(rt, fmt.Sprintf("exists%d", i))
+			if exists[i] {
+				if err := os.WriteFile(fullOf(i), content(i, 0), 0o644); err != nil {
+					rt.Fatal(err)
+				}
+			}
+		}
+		// The batch: each chosen target's update, stamped from the state
+		// just written — exactly what a verb's load would have read.
+		var ups []author.Update
+		for i := 0; i < nFiles; i++ {
+			if !rapid.Bool().Draw(rt, fmt.Sprintf("in%d", i)) {
+				continue
+			}
+			up := author.Update{Path: pathOf(i)}
+			if exists[i] {
+				up.Prior = content(i, 0)
+			} else {
+				up.PriorAbsent = true
+			}
+			if exists[i] && rapid.Bool().Draw(rt, fmt.Sprintf("del%d", i)) {
+				up.Content = nil
+			} else {
+				up.Content = content(i, 1)
+			}
+			ups = append(ups, up)
+		}
+		if len(ups) == 0 {
+			return
+		}
+		// The concurrent writer: maybe move one target after the stamp.
+		moved := -1
+		if rapid.Bool().Draw(rt, "interfere") {
+			victim := ups[rapid.IntRange(0, len(ups)-1).Draw(rt, "victim")]
+			idx := -1
+			for i := 0; i < nFiles; i++ {
+				if pathOf(i) == victim.Path {
+					idx = i
+				}
+			}
+			switch {
+			case exists[idx]:
+				if rapid.Bool().Draw(rt, "vanish") {
+					if err := os.Remove(fullOf(idx)); err != nil {
+						rt.Fatal(err)
+					}
+				} else if err := os.WriteFile(fullOf(idx), []byte("concurrent"), 0o644); err != nil {
+					rt.Fatal(err)
+				}
+			default:
+				if err := os.WriteFile(fullOf(idx), []byte("appeared"), 0o644); err != nil {
+					rt.Fatal(err)
+				}
+			}
+			moved = idx
+		}
+		before := map[string][]byte{}
+		for i := 0; i < nFiles; i++ {
+			if b, err := os.ReadFile(fullOf(i)); err == nil {
+				before[pathOf(i)] = b
+			}
+		}
+		err := applyUpdates(dir, ups)
+		if moved >= 0 {
+			if err == nil {
+				rt.Fatalf("a moved target (%s) did not refuse the batch", pathOf(moved))
+			}
+			// All-or-nothing: every target byte-identical to pre-apply.
+			for i := 0; i < nFiles; i++ {
+				after, aerr := os.ReadFile(fullOf(i))
+				prior, had := before[pathOf(i)]
+				if (aerr == nil) != had || (had && string(after) != string(prior)) {
+					rt.Fatalf("refused batch mutated %s", pathOf(i))
+				}
+			}
+			return
+		}
+		if err != nil {
+			rt.Fatalf("clean batch refused: %v", err)
+		}
+		for _, up := range ups {
+			after, aerr := os.ReadFile(filepath.Join(dir, filepath.FromSlash(up.Path)))
+			if up.Content == nil {
+				if aerr == nil {
+					rt.Fatalf("deletion did not land for %s", up.Path)
+				}
+				continue
+			}
+			if aerr != nil || string(after) != string(up.Content) {
+				rt.Fatalf("write did not land for %s", up.Path)
+			}
+		}
+	})
 }

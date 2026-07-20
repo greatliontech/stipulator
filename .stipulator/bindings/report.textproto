@@ -80,7 +80,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-report-check-result"
-  content_hash: "76509d45240de3f39c229dbafa896f1371c1c5cd442e9b6077696220d3f9d45c"
+  content_hash: "e6e636971cb0afc888f25c572165f005fd2f56f89559ec613ba09e62a4d28a21"
   backend: "proto"
   symbol: "stipulator.v1.CheckResult"
   role: BINDING_ROLE_IMPLEMENTS
@@ -88,7 +88,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-report-check-result"
-  content_hash: "76509d45240de3f39c229dbafa896f1371c1c5cd442e9b6077696220d3f9d45c"
+  content_hash: "e6e636971cb0afc888f25c572165f005fd2f56f89559ec613ba09e62a4d28a21"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/policy.TestCheckResultWireFixtureRoundTrip"
   role: BINDING_ROLE_TESTS
@@ -97,7 +97,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-report-check-result"
-  content_hash: "76509d45240de3f39c229dbafa896f1371c1c5cd442e9b6077696220d3f9d45c"
+  content_hash: "e6e636971cb0afc888f25c572165f005fd2f56f89559ec613ba09e62a4d28a21"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestCheckJSONProjectionIsDeterministic"
   role: BINDING_ROLE_TESTS
@@ -106,7 +106,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-report-check-result"
-  content_hash: "76509d45240de3f39c229dbafa896f1371c1c5cd442e9b6077696220d3f9d45c"
+  content_hash: "e6e636971cb0afc888f25c572165f005fd2f56f89559ec613ba09e62a4d28a21"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolStructuredResultMirrorsCheckResult"
   role: BINDING_ROLE_TESTS
@@ -115,7 +115,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-report-check-result"
-  content_hash: "76509d45240de3f39c229dbafa896f1371c1c5cd442e9b6077696220d3f9d45c"
+  content_hash: "e6e636971cb0afc888f25c572165f005fd2f56f89559ec613ba09e62a4d28a21"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/wire.TestCheckSurfacesRenderEquivalentFacts"
   role: BINDING_ROLE_TESTS
@@ -124,7 +124,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-report-check-result"
-  content_hash: "76509d45240de3f39c229dbafa896f1371c1c5cd442e9b6077696220d3f9d45c"
+  content_hash: "e6e636971cb0afc888f25c572165f005fd2f56f89559ec613ba09e62a4d28a21"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/wire.TestCanonicalJSONIsByteDeterministic"
   role: BINDING_ROLE_TESTS

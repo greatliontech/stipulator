@@ -3,7 +3,7 @@
 
 bindings {
   requirement_id: "REQ-gap-verb"
-  content_hash: "80de2c6fd7e7e35d5ee73d1d670290c7682d6d649175d276fe99b041c23c772e"
+  content_hash: "771526a9a697b054d33e758426c156c9581b8996c08a8ed850dc4189620bfc2d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.Gap"
   role: BINDING_ROLE_IMPLEMENTS
@@ -12,7 +12,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-verb"
-  content_hash: "80de2c6fd7e7e35d5ee73d1d670290c7682d6d649175d276fe99b041c23c772e"
+  content_hash: "771526a9a697b054d33e758426c156c9581b8996c08a8ed850dc4189620bfc2d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.TestGap"
   role: BINDING_ROLE_TESTS
@@ -21,7 +21,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-verb"
-  content_hash: "80de2c6fd7e7e35d5ee73d1d670290c7682d6d649175d276fe99b041c23c772e"
+  content_hash: "771526a9a697b054d33e758426c156c9581b8996c08a8ed850dc4189620bfc2d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.TestGapsBulk"
   role: BINDING_ROLE_TESTS
@@ -138,7 +138,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-retract"
-  content_hash: "a5ca816e59250aa7caff8b244ab666bc18487b1ac7d153516432e6a25b5c1306"
+  content_hash: "c9a90b5bb061e655238ec4f2b2d17502ed8d79a79003dd66de67ed167ab14a84"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.RetractGaps"
   role: BINDING_ROLE_IMPLEMENTS
@@ -147,7 +147,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-retract"
-  content_hash: "a5ca816e59250aa7caff8b244ab666bc18487b1ac7d153516432e6a25b5c1306"
+  content_hash: "c9a90b5bb061e655238ec4f2b2d17502ed8d79a79003dd66de67ed167ab14a84"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.TestRetractGaps"
   role: BINDING_ROLE_TESTS
@@ -156,7 +156,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-retract"
-  content_hash: "a5ca816e59250aa7caff8b244ab666bc18487b1ac7d153516432e6a25b5c1306"
+  content_hash: "c9a90b5bb061e655238ec4f2b2d17502ed8d79a79003dd66de67ed167ab14a84"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGapToolBatchFireRetract"
   role: BINDING_ROLE_TESTS
@@ -165,7 +165,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-retract"
-  content_hash: "a5ca816e59250aa7caff8b244ab666bc18487b1ac7d153516432e6a25b5c1306"
+  content_hash: "c9a90b5bb061e655238ec4f2b2d17502ed8d79a79003dd66de67ed167ab14a84"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestGapLifecycleCLI"
   role: BINDING_ROLE_TESTS
@@ -174,7 +174,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-retract"
-  content_hash: "a5ca816e59250aa7caff8b244ab666bc18487b1ac7d153516432e6a25b5c1306"
+  content_hash: "c9a90b5bb061e655238ec4f2b2d17502ed8d79a79003dd66de67ed167ab14a84"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
   role: BINDING_ROLE_TESTS
@@ -210,7 +210,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-verb"
-  content_hash: "80de2c6fd7e7e35d5ee73d1d670290c7682d6d649175d276fe99b041c23c772e"
+  content_hash: "771526a9a697b054d33e758426c156c9581b8996c08a8ed850dc4189620bfc2d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.FireGaps"
   role: BINDING_ROLE_IMPLEMENTS
@@ -219,7 +219,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-verb"
-  content_hash: "80de2c6fd7e7e35d5ee73d1d670290c7682d6d649175d276fe99b041c23c772e"
+  content_hash: "771526a9a697b054d33e758426c156c9581b8996c08a8ed850dc4189620bfc2d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.TestFireGaps"
   role: BINDING_ROLE_TESTS
@@ -228,7 +228,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-verb"
-  content_hash: "80de2c6fd7e7e35d5ee73d1d670290c7682d6d649175d276fe99b041c23c772e"
+  content_hash: "771526a9a697b054d33e758426c156c9581b8996c08a8ed850dc4189620bfc2d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.TestGapFiredPreservedOnRedeclare"
   role: BINDING_ROLE_TESTS
@@ -237,7 +237,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-verb"
-  content_hash: "80de2c6fd7e7e35d5ee73d1d670290c7682d6d649175d276fe99b041c23c772e"
+  content_hash: "771526a9a697b054d33e758426c156c9581b8996c08a8ed850dc4189620bfc2d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.TestNewLandingConditionFired"
   role: BINDING_ROLE_TESTS

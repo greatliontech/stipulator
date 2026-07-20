@@ -228,7 +228,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-remediation"
-  content_hash: "b3815a54c183b76891b2d07b471fb65358c449c487f3da04be7a9b2a46d7db44"
+  content_hash: "89f8aa44ad68598bf477d06395078b24e2162314cb1eca834c8af80105966fb0"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestStalePinReasonNamesReConsent"
   role: BINDING_ROLE_TESTS
@@ -237,7 +237,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-remediation"
-  content_hash: "b3815a54c183b76891b2d07b471fb65358c449c487f3da04be7a9b2a46d7db44"
+  content_hash: "89f8aa44ad68598bf477d06395078b24e2162314cb1eca834c8af80105966fb0"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
   role: BINDING_ROLE_TESTS
@@ -246,7 +246,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-remediation"
-  content_hash: "b3815a54c183b76891b2d07b471fb65358c449c487f3da04be7a9b2a46d7db44"
+  content_hash: "89f8aa44ad68598bf477d06395078b24e2162314cb1eca834c8af80105966fb0"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.AttestRequirement"
   role: BINDING_ROLE_IMPLEMENTS
@@ -255,7 +255,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-remediation"
-  content_hash: "b3815a54c183b76891b2d07b471fb65358c449c487f3da04be7a9b2a46d7db44"
+  content_hash: "89f8aa44ad68598bf477d06395078b24e2162314cb1eca834c8af80105966fb0"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestAttestTools"
   role: BINDING_ROLE_TESTS
@@ -264,7 +264,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-remediation"
-  content_hash: "b3815a54c183b76891b2d07b471fb65358c449c487f3da04be7a9b2a46d7db44"
+  content_hash: "89f8aa44ad68598bf477d06395078b24e2162314cb1eca834c8af80105966fb0"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.TestChangeSignatures"
   role: BINDING_ROLE_TESTS
@@ -287,4 +287,13 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/verify.TestAttestationRecordHygiene"
   role: BINDING_ROLE_TESTS
   shape_hash: "ccdb79c228cb7be58f1054d52697d4b061c062eb6ce074897bebb5449d128e2b"
+}
+
+bindings {
+  requirement_id: "REQ-change-remediation"
+  content_hash: "89f8aa44ad68598bf477d06395078b24e2162314cb1eca834c8af80105966fb0"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.TestAttestationEvidence"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a22e47ab5e32c428a00eb136eb5a4c7c814fa8c460933cd8bb08a1b83f325d81"
 }

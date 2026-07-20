@@ -3,16 +3,16 @@
 
 bindings {
   requirement_id: "REQ-check-verdict"
-  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  content_hash: "7f661b9481d4c82e69656579b9f89bb7ea28cd6004f44cfcbe23cf8ebac443c8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.Run"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "4bdc601da3078610d7046fabe314f5a773efb50eca5760e8dd9dd7c1fe7a9697"
+  shape_hash: "16d6dec06031f69a69a560250d15c8dffd5f9735d904a1d5ce001b3e6660104c"
 }
 
 bindings {
   requirement_id: "REQ-check-verdict"
-  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  content_hash: "7f661b9481d4c82e69656579b9f89bb7ea28cd6004f44cfcbe23cf8ebac443c8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckMissingPolicyFailsWithGuidance"
   role: BINDING_ROLE_TESTS
@@ -21,7 +21,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict"
-  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  content_hash: "7f661b9481d4c82e69656579b9f89bb7ea28cd6004f44cfcbe23cf8ebac443c8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckCompileFailureIsTheVerdict"
   role: BINDING_ROLE_TESTS
@@ -30,7 +30,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict"
-  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  content_hash: "7f661b9481d4c82e69656579b9f89bb7ea28cd6004f44cfcbe23cf8ebac443c8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckSuiteFailureFailsTheCheckWithDiagnostics"
   role: BINDING_ROLE_TESTS
@@ -39,7 +39,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict"
-  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  content_hash: "7f661b9481d4c82e69656579b9f89bb7ea28cd6004f44cfcbe23cf8ebac443c8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckCoverageViolationFailsTheCheck"
   role: BINDING_ROLE_TESTS
@@ -48,7 +48,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict"
-  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  content_hash: "7f661b9481d4c82e69656579b9f89bb7ea28cd6004f44cfcbe23cf8ebac443c8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckVerifyProblemFailsTheCheck"
   role: BINDING_ROLE_TESTS
@@ -57,7 +57,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict"
-  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  content_hash: "7f661b9481d4c82e69656579b9f89bb7ea28cd6004f44cfcbe23cf8ebac443c8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckBrokenBindingFailsTheCheck"
   role: BINDING_ROLE_TESTS
@@ -66,7 +66,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict"
-  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  content_hash: "7f661b9481d4c82e69656579b9f89bb7ea28cd6004f44cfcbe23cf8ebac443c8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckWitnessResolvedGapIsResidueUntilPruned"
   role: BINDING_ROLE_TESTS
@@ -75,7 +75,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict"
-  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  content_hash: "7f661b9481d4c82e69656579b9f89bb7ea28cd6004f44cfcbe23cf8ebac443c8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckCancelledRunYieldsNoVerdict"
   role: BINDING_ROLE_TESTS
@@ -84,7 +84,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict"
-  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  content_hash: "7f661b9481d4c82e69656579b9f89bb7ea28cd6004f44cfcbe23cf8ebac443c8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestCheckExitCodes"
   role: BINDING_ROLE_TESTS
@@ -120,7 +120,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict"
-  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  content_hash: "7f661b9481d4c82e69656579b9f89bb7ea28cd6004f44cfcbe23cf8ebac443c8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckComposesInProcess"
   role: BINDING_ROLE_TESTS
@@ -129,7 +129,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict"
-  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  content_hash: "7f661b9481d4c82e69656579b9f89bb7ea28cd6004f44cfcbe23cf8ebac443c8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckCatchesEverySuiteFailureClass"
   role: BINDING_ROLE_TESTS
@@ -138,7 +138,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict"
-  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  content_hash: "7f661b9481d4c82e69656579b9f89bb7ea28cd6004f44cfcbe23cf8ebac443c8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckEmptyPolicyFailsWithNamedCause"
   role: BINDING_ROLE_TESTS
@@ -147,7 +147,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict"
-  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  content_hash: "7f661b9481d4c82e69656579b9f89bb7ea28cd6004f44cfcbe23cf8ebac443c8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckUnreadablePolicyIsOperational"
   role: BINDING_ROLE_TESTS
@@ -165,7 +165,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict"
-  content_hash: "5219f6c7c8ea6803597f83f2134df3b8267054e37a0c1048b98a0394ec94ae56"
+  content_hash: "7f661b9481d4c82e69656579b9f89bb7ea28cd6004f44cfcbe23cf8ebac443c8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckUnfiredManualGapOutlivesGreenWitnesses"
   role: BINDING_ROLE_TESTS
@@ -206,4 +206,31 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestCheckRenderServingFormNamesDiagnosticsDistinctly"
   role: BINDING_ROLE_TESTS
   shape_hash: "946a904123b8ff38482c7fd17b18a59eef49f6a5b89406a01ad6e57f7b52741c"
+}
+
+bindings {
+  requirement_id: "REQ-check-verdict"
+  content_hash: "7f661b9481d4c82e69656579b9f89bb7ea28cd6004f44cfcbe23cf8ebac443c8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesMultiplySelectedRunsEveryRaceLeg"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "0eac670593398dfb90fc8dc41739bf9a372a8494a8986ce948ef6a8aa6ee89d4"
+}
+
+bindings {
+  requirement_id: "REQ-check-verdict"
+  content_hash: "7f661b9481d4c82e69656579b9f89bb7ea28cd6004f44cfcbe23cf8ebac443c8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesMultiplySelectedRunsNonRaceLeg"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "00de14bdac645eb165bd09b5c1fd6f12ad1ae254f28272cfba2a15c4587add1d"
+}
+
+bindings {
+  requirement_id: "REQ-check-verdict"
+  content_hash: "7f661b9481d4c82e69656579b9f89bb7ea28cd6004f44cfcbe23cf8ebac443c8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckDefaultRedWitnessFailsWithDiagnostics"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "d5c23d9037313a1782e8eef59c64bd8058490645e7f4f1bdea18b5af23d349a8"
 }
