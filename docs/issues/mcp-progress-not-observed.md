@@ -7,7 +7,14 @@ token; what remains is the live observation — token presence from a
 real Claude Code client, notifications flowing — and, if tokens are
 absent, the observable silence is the spec's own "only when the client
 asked" clause, not an emission defect. Client patience observed: 120
-seconds, tighter than the 600s cap previously assumed). The same
+seconds, tighter than the 600s cap previously assumed; live dogfood
+2026-07-20 against the agent-first server sharpened both numbers: the
+client backgrounds the call at exactly 120s and then kills the
+backgrounded task at a hard 600s cap — so any check longer than ten
+minutes cannot complete through this client regardless of what the
+server emits, and the binding constraint is suite wall-time, not
+notification emission; the serving flywheel reaching the consuming
+corpus is the real fix, with view/scope narrowing second). The same
 restart also validates the response contract's single-encoding change:
 tool text content now carries a one-line summary while the payload
 rides structuredContent only — confirm the live client renders
