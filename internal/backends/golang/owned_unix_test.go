@@ -21,6 +21,11 @@ import (
 // cancelled mid-load, and the whole descendant tree dies with it —
 // package loading owns its launcher's descendants exactly as test
 // invocations own theirs.
+// The spawned shells' behavior is the author-owned dependency here:
+// the interpreter image is bracket-bound by the policy's bracket_paths,
+// and the inline scripts are source.
+//
+//gofresh:pure
 func TestGoResolverCancellationTerminatesDescendants(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-owned-processes")
 	stipulate.Covers(t, "REQ-policy-cancellation")
@@ -124,6 +129,11 @@ func TestGoResolverCancellationTerminatesDescendants(t *testing.T) {
 // dies before or after its handshake yields prompt errors from the
 // client — a verification error, never a hang and never a silent
 // degradation to unowned in-process loading.
+// The spawned shells' behavior is the author-owned dependency here:
+// the interpreter image is bracket-bound by the policy's bracket_paths,
+// and the inline scripts are source.
+//
+//gofresh:pure
 func TestOwnedResolverChildCrashErrors(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-owned-processes")
 	t.Run("before handshake", func(t *testing.T) {
@@ -156,6 +166,11 @@ func TestOwnedResolverChildCrashErrors(t *testing.T) {
 // every impact-facing op, never as a silently empty result: an empty
 // code-side preview and a dead boundary are different answers.
 //
+// The spawned shells' behavior is the author-owned dependency here:
+// the interpreter image is bracket-bound by the policy's bracket_paths,
+// and the inline scripts are source.
+//
+//gofresh:pure
 //gofresh:pure
 func TestOwnedResolverProtocolErrorSurfaces(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-owned-processes")
