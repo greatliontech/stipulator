@@ -657,3 +657,39 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "d78f9023869641417dc978ba4f89c6f3df6c3e4ba84dee7979440e4cc9fff1ab"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "3a193af602f5ad5380bbabdae3bc9b2f6ba1a913b6785552ef089556e844aa8a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoNormalizeCarriesObservationGuardRoots"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "cf5a75f951d69385c042a69ec6a2b0b708f5bbe7554a97b97f38adac2b817c87"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "3a193af602f5ad5380bbabdae3bc9b2f6ba1a913b6785552ef089556e844aa8a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoNormalizeTreeInteriorTempRootDegradesUnderModuleRoot"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c570c839280b780f617635efe4673c44a560d1b16b6e5d551def8e8c0ca4618a"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "3a193af602f5ad5380bbabdae3bc9b2f6ba1a913b6785552ef089556e844aa8a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesBuildCacheAndTempReadsStayCacheable"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ecec6311b61c494776780767070c88a8692edf4373304caa513eef655f4f8574"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "3a193af602f5ad5380bbabdae3bc9b2f6ba1a913b6785552ef089556e844aa8a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesExemptionBoundariesStayObserved"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "98da65eb98f87b9eb91dde2c118129d8923061e88a9176c2e913d177bdd57127"
+}
