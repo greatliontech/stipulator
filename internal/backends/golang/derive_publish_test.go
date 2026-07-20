@@ -558,3 +558,50 @@ func TestCleanNoop(t *testing.T) {}
 		t.Errorf("ran=%d uncached=%d, want 8/6", tr.Ran, tr.Uncached)
 	}
 }
+
+// TestGoDeriveNamesSealedObservationReason pins the full form's
+// sealed-observation attribution leg: a witness reading outside its
+// package bracket carries the seal's own reason, the input named —
+// the same diagnosable set the selective path pins.
+func TestGoDeriveNamesSealedObservationReason(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented policy over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":     "module example.com/fullwhy\n\ngo 1.26\n",
+		"shared.txt": "outside the package bracket\n",
+		"pkg/pkg_test.go": `package pkg
+
+import (
+	"os"
+	"testing"
+)
+
+func TestReadsOutsideBracket(t *testing.T) {
+	if _, err := os.ReadFile("../shared.txt"); err != nil {
+		t.Fatal(err)
+	}
+}
+`,
+	})
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./pkg"})
+	cfg.SetRace(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
+	writePolicyRecord(t, tmp, p)
+
+	_, tr, err := ExecutePolicyWitnessed(context.Background(), tmp, p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.Uncached != 1 {
+		t.Fatalf("uncached=%d, want 1", tr.Uncached)
+	}
+	why := tr.UncacheableReasons["example.com/fullwhy/pkg.TestReadsOutsideBracket"]
+	if !strings.Contains(why, "shared.txt") {
+		t.Fatalf("full-form reason = %q (map %v), want the sealing input named", why, tr.UncacheableReasons)
+	}
+}

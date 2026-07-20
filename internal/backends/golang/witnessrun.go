@@ -77,6 +77,10 @@ type witnessGroup struct {
 	view   *gofresh.View
 	// recorded holds the loadable cache record per subject, when one exists.
 	recorded map[gofresh.Subject]witnesscache.Record
+	// executedWhy names, per stale subject that held prior evidence, why
+	// its variants failed to serve - the last-checked variant's verdict
+	// reason, movers named by gofresh's attribution.
+	executedWhy map[gofresh.Subject]string
 	// served are the subjects whose recorded fingerprint checked valid
 	// before execution; stale maps each package to its executing top-level
 	// names, sorted.
@@ -314,6 +318,17 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 	// own dispositions — then the surviving served records, whose keys are
 	// disjoint from every executed subject's by construction.
 	tr := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}, RaceEnabled: true, OutsidePolicy: outside}
+	for _, wg := range groups {
+		for s, why := range wg.executedWhy {
+			if why == "" {
+				why = "prior evidence stale"
+			}
+			if tr.ExecutedReasons == nil {
+				tr.ExecutedReasons = map[string]string{}
+			}
+			tr.ExecutedReasons[s.Package+"."+s.Symbol] = why
+		}
+	}
 	ranTop := map[string]bool{}
 	consumeMerge(tr, m, ranTop)
 	consumeMerge(tr, retryMerge, ranTop)
@@ -409,9 +424,10 @@ func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, ca
 		}
 		wg := &witnessGroup{
 			g: g, engine: engine, view: view,
-			recorded: map[gofresh.Subject]witnesscache.Record{},
-			stale:    map[string][]string{},
-			fps:      map[gofresh.Subject]gofresh.Fingerprint{},
+			recorded:    map[gofresh.Subject]witnesscache.Record{},
+			executedWhy: map[gofresh.Subject]string{},
+			stale:       map[string][]string{},
+			fps:         map[gofresh.Subject]gofresh.Fingerprint{},
 		}
 		// Round-based variant checking: round N checks each unproven
 		// subject's Nth variant, and the first variant proving equivalent
@@ -439,7 +455,12 @@ func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, ca
 				if verdicts[s].Status == gofresh.Valid {
 					valid[s] = true
 					wg.recorded[s] = cached[s.Package+"."+s.Symbol][round]
+					delete(wg.executedWhy, s)
+					continue
 				}
+				// The last-checked variant's refusal explains the coming
+				// re-execution; a later round's success deletes it.
+				wg.executedWhy[s] = verdicts[s].Reason
 			}
 		}
 		for _, s := range subjects {
@@ -573,6 +594,10 @@ func finishGroup(ctx context.Context, wg *witnessGroup, m *execMerge) ([]gofresh
 	for _, s := range wg.served {
 		if verdicts[s].Status != gofresh.Valid {
 			drifted = append(drifted, s)
+			// The served record held prior evidence and now re-executes:
+			// the drift verdict's reason - movers named - is its
+			// executed-reason attribution, never a cold read.
+			wg.executedWhy[s] = "mid-run drift: " + verdicts[s].Reason
 		}
 	}
 	records, reasons, err := publishExecuted(ctx, wg, m)

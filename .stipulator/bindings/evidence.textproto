@@ -630,3 +630,21 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "e116bf28cc376b48eebe4bcbc13ecb5f66aa861abf78f756ab9d62fed778d0b6"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "1ffb35f181d44f3974d172d706bad82307b9c7a94fb7b9978e2eed50930223da"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesNamesReExecutionReason"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "919fc0374fcc13f30f25081ed85d8634cd81e3daf4007e58b1f142ce022b1111"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "1ffb35f181d44f3974d172d706bad82307b9c7a94fb7b9978e2eed50930223da"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoDeriveNamesSealedObservationReason"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "6300669a2ea57f9a7b094ff7c585298fd04611977e1d9c338e9297ce943c852d"
+}

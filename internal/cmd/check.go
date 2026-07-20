@@ -95,6 +95,7 @@ func renderCheck(stdout, stderr io.Writer, res *stipulatorv1.CheckResult) {
 	} else if !res.GetSuiteHealthJudged() && res.GetPolicyProblem() == nil && len(res.GetCompileProblems()) == 0 {
 		fmt.Fprintln(stderr, dim(fmt.Sprintf("witnessed: %d served fresh, %d executed, %d uncacheable",
 			res.GetTestsServed(), res.GetTestsExecuted(), res.GetTestsUncacheable())))
+		renderReasonHistogram(stderr, "re-executed", res.GetExecutedReasons())
 		renderUncacheableHistogram(stderr, res.GetUncacheableReasons())
 		if d := res.GetWitnessPublicationDegraded(); d != "" {
 			fmt.Fprintln(stderr, dim("freshness degraded: "+d))
@@ -165,6 +166,12 @@ func diagnosticHeading(d *stipulatorv1.FailureDiagnostic) string {
 // that will not warm, without a per-test flood — the full attribution
 // rides the machine result.
 func renderUncacheableHistogram(stderr io.Writer, reasons map[string]string) {
+	renderReasonHistogram(stderr, "uncacheable", reasons)
+}
+
+// renderReasonHistogram is the shared bounded frequency view over one
+// per-test reason map.
+func renderReasonHistogram(stderr io.Writer, class string, reasons map[string]string) {
 	if len(reasons) == 0 {
 		return
 	}
@@ -196,7 +203,7 @@ func renderUncacheableHistogram(stderr io.Writer, reasons map[string]string) {
 			fmt.Fprintln(stderr, dim(fmt.Sprintf("  ... and %d more across %d reasons", rest, len(entries)-shown)))
 			break
 		}
-		fmt.Fprintln(stderr, dim(fmt.Sprintf("  %4d  %s", e.n, e.why)))
+		fmt.Fprintln(stderr, dim(fmt.Sprintf("  %4d  %s: %s", e.n, class, e.why)))
 	}
 }
 

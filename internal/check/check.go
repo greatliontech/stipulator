@@ -133,6 +133,7 @@ func Run(ctx context.Context, dir string, full bool) (*stipulatorv1.CheckResult,
 	res.SetTestsExecuted(int32(testRun.Ran))
 	res.SetTestsUncacheable(int32(testRun.Uncached))
 	res.SetUncacheableReasons(testRun.UncacheableReasons)
+	res.SetExecutedReasons(testRun.ExecutedReasons)
 	res.SetWitnessPublicationDegraded(testRun.Degraded)
 
 	gb, err := golang.NewOwned(ctx, dir)

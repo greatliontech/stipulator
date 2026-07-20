@@ -117,6 +117,12 @@ type TestRun struct {
 	// name a degraded execution distinctly from an assertion failure
 	// (REQ-check-diagnostics) where no execution report exists.
 	Diagnostics []*stipulatorv1.FailureDiagnostic
+	// ExecutedReasons names, per re-executed top-level test that held
+	// prior witness evidence, why serving refused it - the stale
+	// variant's verdict reason with gofresh's movers named. Cold
+	// subjects (no prior record) are absent: their cause is the absence
+	// itself (REQ-evidence-witness-freshness).
+	ExecutedReasons map[string]string
 	// UncacheableReasons names, per executed top-level test that could
 	// not publish, the leg that refused — the sealed observation's own
 	// reason, the refused proof's, the missing granting process, the

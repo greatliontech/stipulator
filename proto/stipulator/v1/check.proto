@@ -62,6 +62,14 @@ message CheckResult {
   // executing. Always zero under the health-judged form: a health-judged
   // invocation executes whole.
   int32 tests_served = 12;
+  // Per-test re-execution attribution: for each re-executed top-level
+  // test that held prior witness evidence, why serving refused it - the
+  // stale variant's verdict reason, movers named. Cold subjects are
+  // absent: their cause is the absence of a record. Always empty under
+  // the health-judged form, which never serves, and under a degraded
+  // freshness path, where the degradation is named globally and per
+  // test in uncacheable_reasons.
+  map<string, string> executed_reasons = 16;
   // Per-test uncacheable attribution: for each executed top-level test
   // whose record could not publish - and each expected witness subject
   // the run denied execution outright - the leg that refused: the sealed

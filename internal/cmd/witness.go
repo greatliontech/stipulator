@@ -46,6 +46,7 @@ func printWitnessSummary(tr *verify.TestRun) {
 	if tr.Degraded != "" {
 		fmt.Fprintln(os.Stderr, dim("freshness degraded: "+tr.Degraded))
 	}
+	renderReasonHistogram(os.Stderr, "re-executed", tr.ExecutedReasons)
 	renderUncacheableHistogram(os.Stderr, tr.UncacheableReasons)
 	for _, key := range sortedKeys(tr.Failures) {
 		fmt.Fprintf(os.Stderr, "%s\n%s", red("witness failed: "+key), tr.Failures[key])

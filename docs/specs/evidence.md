@@ -127,9 +127,12 @@ reported beside the run/served summary with a per-test attributable
 reason — the sealed observation's own reason, the refused proof's, the
 missing granting process, the post-run drift with its moved inputs
 named, whichever leg refused — so a shrinking cache is a visible,
-diagnosable set, never silence and never a bare number. Human
-renderings aggregate the reasons; the per-test attribution rides the
-machine result. Witness packages
+diagnosable set, never silence and never a bare number. A re-executed
+test that held prior witness evidence names why serving refused it —
+the stale variant's verdict with its moved inputs — while a test with
+no prior record needs no reason beyond the absence. Human renderings
+aggregate the reasons; the per-test attribution rides the machine
+result. Witness packages
 execute concurrently under a processor-count bound, which assumes what
 standard Go tooling already assumes of them (`go test` runs packages
 in parallel by default): witnesses do not mutate inputs other packages

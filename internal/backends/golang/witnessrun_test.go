@@ -1194,6 +1194,9 @@ func TestGoRunWitnessesServesAcrossTreeAlternation(t *testing.T) {
 		if tr.Fresh != wantFresh || tr.Ran != wantRan {
 			t.Fatalf("%s: fresh=%d ran=%d, want %d/%d", phase, tr.Fresh, tr.Ran, wantFresh, wantRan)
 		}
+		if wantRan == 0 && len(tr.ExecutedReasons) != 0 {
+			t.Fatalf("%s: served run carries executed reasons %v - a refused earlier variant's reason must be deleted when a later variant serves", phase, tr.ExecutedReasons)
+		}
 	}
 	run("cold state-a", 0, 1)
 	if err := os.WriteFile(libPath, []byte(stateB), 0o644); err != nil {
@@ -1383,5 +1386,50 @@ func TestGoRunWitnessesAttributesDeniedAtZeroUncached(t *testing.T) {
 	}
 	if !strings.Contains(why, "no process produced") && !strings.Contains(why, "terminal") {
 		t.Errorf("denied reason = %q, want the denial leg named", why)
+	}
+}
+
+// TestGoRunWitnessesNamesReExecutionReason pins executed-reason
+// attribution: a subject with prior witness evidence that re-executes
+// carries why serving refused it — for runtime-input drift, gofresh's
+// mover attribution names the file.
+func TestGoRunWitnessesNamesReExecutionReason(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented selective run over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":             "module example.com/whymove\n\ngo 1.26\n",
+		"pkg/testdata/f.txt": "one",
+		"pkg/pkg_test.go":    "package pkg\n\nimport (\n\t\"os\"\n\t\"testing\"\n)\n\n//gofresh:pure\nfunc TestReads(t *testing.T) {\n\tif _, err := os.ReadFile(\"testdata/f.txt\"); err != nil {\n\t\tt.Fatal(err)\n\t}\n}\n",
+	})
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./pkg"})
+	cfg.SetRace(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
+	writePolicyRecord(t, tmp, p)
+
+	first, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Uncached != 0 || len(first.ExecutedReasons) != 0 {
+		t.Fatalf("cold run uncached=%d executedReasons=%v, want a clean publish with no prior evidence to attribute", first.Uncached, first.ExecutedReasons)
+	}
+	if err := os.WriteFile(filepath.Join(tmp, "pkg", "testdata", "f.txt"), []byte("two"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	second, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Ran != 1 {
+		t.Fatalf("edited run ran=%d, want the stale subject re-executed", second.Ran)
+	}
+	why := second.ExecutedReasons["example.com/whymove/pkg.TestReads"]
+	if !strings.Contains(why, "f.txt") {
+		t.Fatalf("re-execution reason = %q (map %v), want the moved input named", why, second.ExecutedReasons)
 	}
 }

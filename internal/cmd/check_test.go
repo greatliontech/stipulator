@@ -270,8 +270,8 @@ func TestCheckRenderUncacheableHistogram(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	renderCheck(&stdout, &stderr, res)
 	out := stderr.String()
-	first := strings.Index(out, "2  observation sealed: runtime input not covered by observation bracket: x.txt")
-	second := strings.Index(out, "1  no healthy process granted the outcome")
+	first := strings.Index(out, "2  uncacheable: observation sealed: runtime input not covered by observation bracket: x.txt")
+	second := strings.Index(out, "1  uncacheable: no healthy process granted the outcome")
 	if first < 0 || second < 0 || first > second {
 		t.Fatalf("histogram missing or misordered:\n%s", out)
 	}
