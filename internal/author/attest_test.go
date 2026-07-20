@@ -8,31 +8,41 @@ import (
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
+// attestableFS is the attest fixture: REQ-au-s sits in a SHOULD cell,
+// which the default policy admits attestation for; the MUST cells
+// refuse at write time (the born-valid check).
+func attestableFS(files map[string]string) fstest.MapFS {
+	fsys := testFS(files)
+	fsys["specs/should.md"] = &fstest.MapFile{Data: []byte(
+		"# S\n\n**REQ-au-s** (behavior): It SHOULD s.\n")}
+	return fsys
+}
+
 // TestAttestRequirement pins the evidence-attestation verb: reasoned,
 // corpus-validated, content-pinned at write, one per requirement.
 //
 //gofresh:pure
 func TestAttestRequirement(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-attestation")
-	fsys := testFS(nil)
+	fsys := attestableFS(nil)
 
-	up, prior, err := AttestRequirement(fsys, "REQ-au-a", "review judged this satisfied")
+	up, prior, err := AttestRequirement(fsys, "REQ-au-s", "review judged this satisfied")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if up.Path != ".stipulator/attestations/au-a.textproto" {
+	if up.Path != ".stipulator/attestations/au-s.textproto" {
 		t.Fatalf("path = %s", up.Path)
 	}
 	if prior != nil {
 		t.Fatalf("fresh attestation reported a prior: %v", prior)
 	}
-	for _, want := range []string{`requirement_id: "REQ-au-a"`, "review judged this satisfied", "content_hash: "} {
+	for _, want := range []string{`requirement_id: "REQ-au-s"`, "review judged this satisfied", "content_hash: "} {
 		if !strings.Contains(string(up.Content), want) {
 			t.Fatalf("attestation missing %q:\n%s", want, up.Content)
 		}
 	}
 
-	if _, _, err := AttestRequirement(fsys, "REQ-au-a", ""); err == nil || !strings.Contains(err.Error(), "reason") {
+	if _, _, err := AttestRequirement(fsys, "REQ-au-s", ""); err == nil || !strings.Contains(err.Error(), "reason") {
 		t.Fatalf("reasonless attestation accepted: %v", err)
 	}
 	if _, _, err := AttestRequirement(fsys, "REQ-au-ghost", "r"); err == nil || !strings.Contains(err.Error(), "not in the corpus") {
@@ -40,7 +50,7 @@ func TestAttestRequirement(t *testing.T) {
 	}
 	// Re-judging replaces in place and surfaces the superseded reasoning.
 	fsys[up.Path] = &fstest.MapFile{Data: up.Content}
-	up2, prior2, err := AttestRequirement(fsys, "REQ-au-a", "re-judged after refactor")
+	up2, prior2, err := AttestRequirement(fsys, "REQ-au-s", "re-judged after refactor")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,15 +64,24 @@ func TestAttestRequirement(t *testing.T) {
 
 	// Retraction withdraws the judgment and deletes an emptied file.
 	fsys[up2.Path] = &fstest.MapFile{Data: up2.Content}
-	del, retracted, err := RetractAttestation(fsys, "REQ-au-a")
+	del, retracted, err := RetractAttestation(fsys, "REQ-au-s")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if del.Path != up2.Path || del.Content != nil || retracted.GetReason() != "re-judged after refactor" {
 		t.Fatalf("retract: %+v %v", del, retracted)
 	}
-	if _, _, err := RetractAttestation(testFS(nil), "REQ-au-a"); err == nil || !strings.Contains(err.Error(), "nothing to retract") {
+	if _, _, err := RetractAttestation(testFS(nil), "REQ-au-s"); err == nil || !strings.Contains(err.Error(), "nothing to retract") {
 		t.Fatalf("empty retract accepted: %v", err)
+	}
+
+	// Born-valid: a cell that can never render the attested bucket
+	// refuses at write time, naming its real demand
+	// (REQ-change-remediation).
+	if _, _, err := AttestRequirement(fsys, "REQ-au-a", "judged"); err == nil ||
+		!strings.Contains(err.Error(), "never admits attestation") ||
+		!strings.Contains(err.Error(), "executed witness") {
+		t.Fatalf("MUST-cell attestation error = %v, want the cell's demand", err)
 	}
 }
 
@@ -73,10 +92,10 @@ func TestAttestRequirement(t *testing.T) {
 //gofresh:pure
 func TestAttestRequirementMultiRecordFile(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-attestation")
-	fsys := testFS(map[string]string{
-		".stipulator/attestations/combo.textproto": "attestations {\n  requirement_id: \"REQ-au-b\"\n  reason: \"before\"\n}\nattestations {\n  requirement_id: \"REQ-au-a\"\n  reason: \"old\"\n}\n",
+	fsys := attestableFS(map[string]string{
+		".stipulator/attestations/combo.textproto": "attestations {\n  requirement_id: \"REQ-au-b\"\n  reason: \"before\"\n}\nattestations {\n  requirement_id: \"REQ-au-s\"\n  reason: \"old\"\n}\n",
 	})
-	up, prior, err := AttestRequirement(fsys, "REQ-au-a", "new judgment")
+	up, prior, err := AttestRequirement(fsys, "REQ-au-s", "new judgment")
 	if err != nil {
 		t.Fatal(err)
 	}

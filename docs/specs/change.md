@@ -71,6 +71,19 @@ corpus-adjacent records and the tombstone registry.
 record naming an identity not present in the corpus MUST be a
 verification error.
 
+**REQ-change-remediation** (behavior): Every rendered broken, stale, or
+dangling finding whose repair the tool can compute MUST name that
+repair operation in the finding itself, in the CLI's executable
+spelling — the canonical surface; MCP tools mirror the verbs
+one-to-one, so the verb name carries across — the stale content pin its
+re-consent, the moved or unpinned shape its re-pin, the dangling record
+its retraction or unbinding, the contradictory record pair both
+retractions, the inadmissible attestation the evidence its cell
+demands. A finding whose repair is the operator's own judgment (a red
+witness, an unresolved symbol) names no operation: the tool computes
+remediations, never prescribes fixes, and a wrong spelling misleads
+worse than silence.
+
 ## Gaps
 
 **REQ-gap-record** (behavior): A gap MUST be a committed textproto record

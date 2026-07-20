@@ -542,15 +542,21 @@ func TestAttestationEvidence(t *testing.T) {
 	if r3.Bucket != Uncovered {
 		t.Fatalf("default-policy attestation = %v, want uncovered", r3.Bucket)
 	}
-	if !strings.Contains(strings.Join(r3.Reasons, " "), "does not meet this cell's minimum") {
-		t.Fatalf("inadmissibility not surfaced: %v", r3.Reasons)
+	if !strings.Contains(strings.Join(r3.Reasons, " "), "is not admitted here — the cell needs an executed witness") {
+		t.Fatalf("inadmissibility not surfaced with the cell's demand: %v", r3.Reasons)
 	}
+	stipulate.Covers(t, "REQ-change-remediation")
 
-	// A moved requirement stales the voucher.
+	// A moved requirement stales the voucher — and the finding names its
+	// re-attest in the executable spelling (REQ-change-remediation).
 	staleAtt := verify.AttestationResult{RequirementId: "REQ-c-att", Reason: "old judgment", ContentPinned: false}
 	rep4 := Evaluate(spec, &verify.Report{Attestations: []verify.AttestationResult{staleAtt}}, store, true, pol)
-	if got := bucketOf(t, rep4, "REQ-c-att").Bucket; got != Stale {
-		t.Fatalf("stale attestation = %v, want stale", got)
+	r4 := bucketOf(t, rep4, "REQ-c-att")
+	if r4.Bucket != Stale {
+		t.Fatalf("stale attestation = %v, want stale", r4.Bucket)
+	}
+	if !strings.Contains(strings.Join(r4.Reasons, " "), "stipulator attest requirement --req REQ-c-att") {
+		t.Fatalf("stale attestation withholds the re-attest spelling: %v", r4.Reasons)
 	}
 }
 
@@ -576,5 +582,48 @@ func TestGapCounts(t *testing.T) {
 	keep := map[string]bool{"a": true, "b": true, "c": true}
 	if open, resolved := GapCounts(gaps, keep); open != 2 || resolved != 1 {
 		t.Fatalf("scoped counts = open %d resolved %d, want 2/1", open, resolved)
+	}
+}
+
+// The stale-pin reason names its re-consent in the executable spelling
+// (REQ-change-remediation): the tool computes the remediation and says
+// it.
+//
+//gofresh:pure
+func TestStalePinReasonNamesReConsent(t *testing.T) {
+	stipulate.Covers(t, "REQ-change-remediation")
+	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n"
+	spec, store := fixture(t, doc, nil)
+	vr := &verify.Report{Results: []verify.BindingResult{
+		result("REQ-c-a", tests, false, verify.Resolved, verify.ShapeMatch, verify.TestPassed),
+	}}
+	rep := Evaluate(spec, vr, store, true, nil)
+	r := bucketOf(t, rep, "REQ-c-a")
+	joined := strings.Join(r.Reasons, " ")
+	if !strings.Contains(joined, "stipulator pin --req REQ-c-a") {
+		t.Fatalf("stale-pin reason withholds the re-consent spelling: %v", r.Reasons)
+	}
+}
+
+// The shape findings name their re-pin in the executable spelling —
+// the moved shape and the unpinned shape both point at stipulator pin
+// (REQ-change-remediation).
+//
+//gofresh:pure
+func TestShapeFindingsNameRePin(t *testing.T) {
+	stipulate.Covers(t, "REQ-change-remediation")
+	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n"
+	spec, store := fixture(t, doc, nil)
+	moved := Evaluate(spec, &verify.Report{Results: []verify.BindingResult{
+		result("REQ-c-a", impl, true, verify.Resolved, verify.ShapeMismatch, verify.TestNotRun),
+	}}, store, true, nil)
+	if got := strings.Join(bucketOf(t, moved, "REQ-c-a").Reasons, " "); !strings.Contains(got, "re-pin after review: stipulator pin") {
+		t.Fatalf("moved shape withholds the re-pin: %v", got)
+	}
+	unpinned := Evaluate(spec, &verify.Report{Results: []verify.BindingResult{
+		result("REQ-c-a", impl, true, verify.Resolved, verify.ShapeUnpinned, verify.TestNotRun),
+	}}, store, true, nil)
+	if got := strings.Join(bucketOf(t, unpinned, "REQ-c-a").Reasons, " "); !strings.Contains(got, "backfill: stipulator pin") {
+		t.Fatalf("unpinned shape withholds the backfill: %v", got)
 	}
 }

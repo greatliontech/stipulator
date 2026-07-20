@@ -180,7 +180,16 @@ the subject's outcome; an ordinary freshness check never infers proof selection.
 **REQ-evidence-witness-cache-format** (behavior): The local witness cache MUST live
 outside the repository, under the user cache directory keyed by the corpus root's
 absolute path, as one JSON file per record variant — named by the record identity's
-digest joined with its fingerprint's digest, installed atomically, so distinct tree
+digest joined with its fingerprint's digest, each name segment the first
+sixteen hexadecimal characters of the REQ-model-hash-func digest — the
+identity segment over the package, a NUL byte, and the test name; the
+fingerprint segment over the fingerprint's canonical JSON encoding; and
+the store's per-corpus directory the same truncation over the resolved
+corpus root's absolute path: a filename-length economy over the one
+hash the model defines, never a second hash function, with the per-file
+name-content agreement check absorbing the truncation's collision risk. The fingerprint's own 16-byte
+digests are Gofresh-owned integrity values, outside REQ-model-hash-func
+entirely. Files install atomically, so distinct tree
 states of one test coexist as variants and alternating between branches evicts
 nothing. Each file carries one record object with integer `version` equal to `4`,
 string `package` and `test`, object `fingerprint`, object `outcomes`, and optional

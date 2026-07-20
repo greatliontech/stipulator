@@ -59,7 +59,14 @@ func TestConsistency(t *testing.T) {
 		rep, _ := run(t, map[string]string{
 			".stipulator/bindings/x.textproto": binding("REQ-v-ghost", ""),
 		})
-		wantProblem(t, rep, "names REQ-v-ghost, which is not in the corpus")
+		wantProblem(t, rep, "names REQ-v-ghost, which is not in the corpus — unbind it: stipulator unbind --req REQ-v-ghost (or stipulator dispose retire --id REQ-v-ghost if the requirement was removed deliberately)")
+	})
+	t.Run("dangling attestation names its retraction repair", func(t *testing.T) {
+		stipulate.Covers(t, "REQ-change-remediation")
+		rep, _ := run(t, map[string]string{
+			".stipulator/attestations/ghost.textproto": "attestations {\n  requirement_id: \"REQ-v-ghost\"\n  reason: \"r\"\n}\n",
+		})
+		wantProblem(t, rep, "attestation names REQ-v-ghost, which is not in the corpus — retract it: stipulator attest requirement --req REQ-v-ghost --retract")
 	})
 	t.Run("dangling gap names its retraction repair", func(t *testing.T) {
 		stipulate.Covers(t, "REQ-gap-retract")
@@ -460,7 +467,7 @@ func TestAttestationRecordHygiene(t *testing.T) {
 		".stipulator/attestations/b.textproto":  "attestations {\n  requirement_id: \"REQ-v-b\"\n  reason: \"first\"\n}\n",
 		".stipulator/attestations/b2.textproto": "attestations {\n  requirement_id: \"REQ-v-b\"\n  reason: \"second\"\n}\n",
 	})
-	wantProblem(t, rep, "both gapped and attested")
+	wantProblem(t, rep, "both gapped and attested; the records contradict — retract one: stipulator gap --req REQ-v-a --retract, or stipulator attest requirement --req REQ-v-a --retract")
 	wantProblem(t, rep, "duplicates")
 	// The contradicted and duplicated records yield no results beyond the
 	// first judgment.
@@ -585,6 +592,11 @@ func TestChangeSignatures(t *testing.T) {
 	if rearch.RequirementId != "REQ-v-b" || rearch.Label != Rearchitecture ||
 		!strings.Contains(strings.Join(rearch.Evidence, ";"), "proof shape moved: example.com/p.TestProofB") {
 		t.Fatalf("rearchitecture = %+v", rearch)
+	}
+	// The remediation floor: the moved shape names its re-pin in the
+	// finding itself (REQ-change-remediation).
+	if !strings.Contains(strings.Join(rearch.Evidence, ";"), "stipulator pin") {
+		t.Fatalf("rearchitecture evidence withholds the computed remediation: %v", rearch.Evidence)
 	}
 
 	// A red witness whose contract text ALSO moved carries a spec delta:

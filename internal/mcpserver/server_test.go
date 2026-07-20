@@ -664,10 +664,24 @@ func TestReadSpecToolMirrorsBundle(t *testing.T) {
 //gofresh:pure
 func TestAttestTools(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-tools", "REQ-evidence-attestation")
-	sess, writes := harness(t, nil)
+	sess, writes := harness(t, map[string]string{
+		"specs/should.md": "# S\n\n**REQ-m-s** (behavior): It SHOULD s.\n",
+	})
 
+	// A cell that never admits attestation refuses at write time with
+	// its real demand (REQ-change-remediation's born-valid arm).
 	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "attest_requirement", Arguments: map[string]any{
 		"requirement": "REQ-m-a", "reason": "judged by review",
+	}})
+	if err != nil || !res.IsError {
+		t.Fatalf("MUST-cell attestation accepted: %v %+v", err, res)
+	}
+	if text := toolText(t, res); !strings.Contains(text, "never admits attestation") || !strings.Contains(text, "executed witness") {
+		t.Fatalf("refusal lacks the cell's demand: %s", text)
+	}
+
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "attest_requirement", Arguments: map[string]any{
+		"requirement": "REQ-m-s", "reason": "judged by review",
 	}})
 	if err != nil {
 		t.Fatal(err)
@@ -685,12 +699,18 @@ func TestAttestTools(t *testing.T) {
 		t.Fatalf("requirement attestation not written: %v", writes)
 	}
 
-	// Reasonless requests surface as tool errors.
+	// Reasonless requests surface as tool errors naming the missing
+	// reason — asserted by substring so the admission refusal (REQ-m-b is
+	// a MUST cell) cannot mask a vanished reason check: the SHOULD cell
+	// carries the discrimination.
 	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "attest_requirement", Arguments: map[string]any{
-		"requirement": "REQ-m-b",
+		"requirement": "REQ-m-s",
 	}})
 	if err != nil || !res.IsError {
 		t.Fatalf("reasonless attestation accepted: %v %v", err, res)
+	}
+	if text := toolText(t, res); !strings.Contains(text, "reason") {
+		t.Fatalf("reasonless refusal does not name the reason: %s", text)
 	}
 }
 

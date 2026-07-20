@@ -225,3 +225,66 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "4a510df842c004a94b07f3889d79c8aa0c4cc0798add8ba12701105144ac18bd"
 }
+
+bindings {
+  requirement_id: "REQ-change-remediation"
+  content_hash: "b3815a54c183b76891b2d07b471fb65358c449c487f3da04be7a9b2a46d7db44"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.TestStalePinReasonNamesReConsent"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "59295de889ef6d69fbc49caa5bcf9d44886629a84567ea5c3355f3e37d98c8de"
+}
+
+bindings {
+  requirement_id: "REQ-change-remediation"
+  content_hash: "b3815a54c183b76891b2d07b471fb65358c449c487f3da04be7a9b2a46d7db44"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b381b9cf5be6acde850b7a887dcd189d8b6bc0df8234028e6d6fe9c092fc0ed5"
+}
+
+bindings {
+  requirement_id: "REQ-change-remediation"
+  content_hash: "b3815a54c183b76891b2d07b471fb65358c449c487f3da04be7a9b2a46d7db44"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.AttestRequirement"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "174efa890555bc4b7db4054b5fd933e18cc2fad847ed096e0018502e7ef267cd"
+}
+
+bindings {
+  requirement_id: "REQ-change-remediation"
+  content_hash: "b3815a54c183b76891b2d07b471fb65358c449c487f3da04be7a9b2a46d7db44"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestAttestTools"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "038223796b0c302eacb25b2f0b5c64ffef5ce3d5643f4ef59795d9585a4c52e7"
+}
+
+bindings {
+  requirement_id: "REQ-change-remediation"
+  content_hash: "b3815a54c183b76891b2d07b471fb65358c449c487f3da04be7a9b2a46d7db44"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verify.TestChangeSignatures"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "18c66acba1d990fcdae8d191137168f8ea2daa0ea0eb27be31c1e5a541aaed9d"
+}
+
+bindings {
+  requirement_id: "REQ-change-remediation"
+  content_hash: "89f8aa44ad68598bf477d06395078b24e2162314cb1eca834c8af80105966fb0"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.TestShapeFindingsNameRePin"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "94550b5560c24c91549a62a696ffabcc7e831c41b2e47a1928d5227c8dda4f00"
+}
+
+bindings {
+  requirement_id: "REQ-change-remediation"
+  content_hash: "89f8aa44ad68598bf477d06395078b24e2162314cb1eca834c8af80105966fb0"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verify.TestAttestationRecordHygiene"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ccdb79c228cb7be58f1054d52697d4b061c062eb6ce074897bebb5449d128e2b"
+}

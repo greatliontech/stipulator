@@ -226,7 +226,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		e := get(r.RequirementId)
 		if !r.ContentPinned {
 			e.stale = true
-			e.reasons = append(e.reasons, fmt.Sprintf("binding %s has a stale content pin", r.Symbol))
+			e.reasons = append(e.reasons, fmt.Sprintf("binding %s has a stale content pin — re-consent: stipulator pin --req %s", r.Symbol, r.RequirementId))
 		}
 		switch r.Resolution {
 		case verify.NotFound:
@@ -236,10 +236,10 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 			switch r.Shape {
 			case verify.ShapeMismatch:
 				e.broken = true
-				e.reasons = append(e.reasons, fmt.Sprintf("shape of %s moved", r.Symbol))
+				e.reasons = append(e.reasons, fmt.Sprintf("shape of %s moved — re-pin after review: stipulator pin", r.Symbol))
 			case verify.ShapeUnpinned:
 				e.stale = true
-				e.reasons = append(e.reasons, fmt.Sprintf("binding %s has no shape pin", r.Symbol))
+				e.reasons = append(e.reasons, fmt.Sprintf("binding %s has no shape pin — backfill: stipulator pin", r.Symbol))
 			case verify.ShapeMatch:
 				if r.ContentPinned {
 					e.static = true
@@ -283,7 +283,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		e := get(a.RequirementId)
 		if !a.ContentPinned {
 			e.stale = true
-			e.reasons = append(e.reasons, "attestation has a stale content pin (the requirement moved since it was vouched for)")
+			e.reasons = append(e.reasons, fmt.Sprintf("attestation has a stale content pin (the requirement moved since it was vouched for) — review the moved clause and re-attest: stipulator attest requirement --req %s", a.RequirementId))
 			continue
 		}
 		e.attested = true
@@ -318,7 +318,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 			b = Uncovered
 			e.reasons = append(e.reasons, requiredEvidence(pol, r.GetKind(), r.GetKeyword()))
 			for _, ar := range e.attestReasons {
-				e.reasons = append(e.reasons, fmt.Sprintf("attestation recorded (%q) does not meet this cell's minimum", ar))
+				e.reasons = append(e.reasons, fmt.Sprintf("attestation recorded (%q) is not admitted here — the cell %s", ar, requiredEvidence(pol, r.GetKind(), r.GetKeyword())))
 			}
 		}
 		buckets[r.GetId()] = b
@@ -372,6 +372,20 @@ func hasAnyBinding(vr *verify.Report, id string) bool {
 // default table's SHOULD/SHOULD NOT row ("a static binding or an
 // attestation", REQ-coverage-policy-default). Admission renders the
 // distinct attested bucket, never covered.
+// AdmitsAttestation reports whether the (kind, keyword) cell can ever
+// render the attested bucket under pol — the born-valid check the
+// attest verb applies at write time: an attestation that can never
+// render is refused, not recorded.
+func AdmitsAttestation(pol *Policy, kind stipulatorv1.ClauseKind, kw stipulatorv1.Keyword) bool {
+	min, overridden := pol.minimum(kind, kw)
+	return admitsAttestation(overridden, min, kw)
+}
+
+// RequiredEvidence names the cell's evidence demand, human-readably.
+func RequiredEvidence(pol *Policy, kind stipulatorv1.ClauseKind, kw stipulatorv1.Keyword) string {
+	return requiredEvidence(pol, kind, kw)
+}
+
 func admitsAttestation(overridden bool, min stipulatorv1.MinimumEvidence, kw stipulatorv1.Keyword) bool {
 	if overridden {
 		return min == stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_ATTESTATION

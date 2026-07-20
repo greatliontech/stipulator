@@ -345,7 +345,7 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 			}
 			h, known := hashes[id]
 			if id != "" && !known {
-				problem(bf.Path, "binding names %s, which is not in the corpus", id)
+				problem(bf.Path, "binding names %s, which is not in the corpus — unbind it: stipulator unbind --req %s (or stipulator dispose retire --id %s if the requirement was removed deliberately)", id, id, id)
 				malformed = true
 			}
 			if malformed {
@@ -476,13 +476,13 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 			attestedIDs[id] = af.Path
 			hash, known := hashes[id]
 			if !known {
-				problem(af.Path, "attestation names %s, which is not in the corpus", id)
+				problem(af.Path, "attestation names %s, which is not in the corpus — retract it: stipulator attest requirement --req %s --retract", id, id)
 				continue
 			}
 			if gappedIDs[id] {
 				// Deferred and judged-satisfied contradict: the records
 				// cannot both stand.
-				problem(af.Path, "%s is both gapped and attested; the records contradict — retract one", id)
+				problem(af.Path, "%s is both gapped and attested; the records contradict — retract one: stipulator gap --req %s --retract, or stipulator attest requirement --req %s --retract", id, id, id)
 				continue
 			}
 			rep.Attestations = append(rep.Attestations, AttestationResult{
@@ -598,6 +598,7 @@ func signatures(results []BindingResult) []ChangeSignature {
 				ev = append(ev, "proof failed: "+sym)
 			}
 			ev = append(ev, fmt.Sprintf("behavior green: %d witnesses", st.behaviorGreen))
+			ev = append(ev, "shape re-pin available: stipulator pin")
 			out = append(out, ChangeSignature{RequirementId: id, Label: Rearchitecture, Evidence: ev})
 		}
 	}

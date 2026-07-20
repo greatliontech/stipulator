@@ -3,8 +3,11 @@ package author
 import (
 	"fmt"
 	"io/fs"
+	"strings"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/corpus"
+	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/records"
 )
 
@@ -23,13 +26,34 @@ func AttestRequirement(fsys fs.FS, requirement, reason string) (*Update, *stipul
 		return nil, nil, err
 	}
 	contentHash := ""
+	var kind stipulatorv1.ClauseKind
+	var keyword stipulatorv1.Keyword
 	for _, r := range spec.GetRequirements() {
 		if r.GetId() == requirement {
 			contentHash = r.GetContentHash()
+			kind, keyword = r.GetKind(), r.GetKeyword()
 		}
 	}
 	if contentHash == "" {
 		return nil, nil, fmt.Errorf("requirement %s is not in the corpus", requirement)
+	}
+	// Born-valid, like the bind verb's proves-role refusal: an
+	// attestation on a cell whose policy can never render the attested
+	// bucket is refused at write time with the cell's real demand, not
+	// recorded to rot as an unexplained red (REQ-change-remediation).
+	manifest, err := corpus.LoadManifest(fsys)
+	if err != nil {
+		return nil, nil, err
+	}
+	pol, err := coverage.PolicyFromManifest(manifest)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !coverage.AdmitsAttestation(pol, kind, keyword) {
+		return nil, nil, fmt.Errorf("the (%s, %s) cell never admits attestation — it %s; an attestation that can never render is refused, not recorded",
+			strings.ToLower(strings.TrimPrefix(kind.String(), "CLAUSE_KIND_")),
+			strings.ReplaceAll(strings.TrimPrefix(keyword.String(), "KEYWORD_"), "_", " "),
+			coverage.RequiredEvidence(pol, kind, keyword))
 	}
 	store, err := records.Load(fsys)
 	if err != nil {
