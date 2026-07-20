@@ -330,7 +330,7 @@ func TestClaimsGrantNothingUnverified(t *testing.T) {
 //gofresh:pure
 func TestGapStates(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-lifecycle", "REQ-gap-conditions")
-	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n\n**REQ-c-b** (behavior): It MUST y.\n\n**REQ-c-c** (behavior): It MUST z.\n\n**REQ-c-d** (behavior): It MUST w.\n\n**REQ-c-e** (behavior): It MUST v.\n\n**REQ-c-f** (behavior): It MUST u.\n\n**REQ-c-g** (behavior): It MUST t.\n"
+	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n\n**REQ-c-b** (behavior): It MUST y.\n\n**REQ-c-c** (behavior): It MUST z.\n\n**REQ-c-d** (behavior): It MUST w.\n\n**REQ-c-e** (behavior): It MUST v.\n\n**REQ-c-f** (behavior): It MUST u.\n\n**REQ-c-g** (behavior): It MUST t.\n\n**REQ-c-h** (behavior): It MAY s.\n\n**REQ-c-i** (behavior): It MAY r.\n\n**REQ-c-j** (behavior): It MAY q.\n"
 	gap := func(id, lands string) string {
 		return "requirement_id: \"" + id + "\"\nreason: \"r\"\nlands { " + lands + " }\n"
 	}
@@ -342,6 +342,11 @@ func TestGapStates(t *testing.T) {
 		".stipulator/gaps/e.textproto": gap("REQ-c-e", `manual { condition: "external" fired: true }`), // resolved: e covered, manual fired
 		".stipulator/gaps/f.textproto": gap("REQ-c-f", `manual { condition: "external" }`),             // open: f covered, manual unfired
 		".stipulator/gaps/g.textproto": gap("REQ-c-g", `manual { condition: "external" }`),             // open: g uncovered, manual unfired — never due
+		// The exempt arm: coverage is not a state an exempt cell can
+		// reach, so the landing condition alone defines completion.
+		".stipulator/gaps/h.textproto": gap("REQ-c-h", `manual { condition: "external" fired: true }`), // resolved: h exempt, condition fired
+		".stipulator/gaps/i.textproto": gap("REQ-c-i", `manual { condition: "external" }`),             // open: i exempt, unfired
+		".stipulator/gaps/j.textproto": gap("REQ-c-j", `covered: "REQ-c-d"`),                           // resolved: j exempt, machine condition holds
 	})
 	vr := &verify.Report{Results: []verify.BindingResult{
 		result("REQ-c-d", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed),
@@ -352,6 +357,7 @@ func TestGapStates(t *testing.T) {
 	want := map[string]GapState{
 		"REQ-c-a": Due, "REQ-c-b": Open, "REQ-c-c": Due, "REQ-c-d": Resolved,
 		"REQ-c-e": Resolved, "REQ-c-f": Open, "REQ-c-g": Open,
+		"REQ-c-h": Resolved, "REQ-c-i": Open, "REQ-c-j": Resolved,
 	}
 	for _, g := range rep.Gaps {
 		if w, ok := want[g.RequirementId]; !ok || g.State != w {

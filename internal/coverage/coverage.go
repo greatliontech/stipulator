@@ -337,6 +337,11 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		switch {
 		case buckets[id] == Covered && !manualUnfired(gf.Gap.GetLands()):
 			state = Resolved
+		// Coverage is not a state an exempt cell can reach, so the landing
+		// condition alone defines completion — without this arm the record
+		// would have no reachable terminal state (REQ-gap-lifecycle).
+		case buckets[id] == Exempt && conditionHolds(gf.Gap.GetLands(), buckets, spec):
+			state = Resolved
 		case conditionHolds(gf.Gap.GetLands(), buckets, spec):
 			state = Due
 		}

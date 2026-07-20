@@ -1,7 +1,6 @@
 # A standing gap absorbs a later red of an unrelated class
 
-Lands: when gap records gain violation-class scoping, or when the gap
-lifecycle next changes.
+Lands: when gap records gain violation-class scoping.
 
 ## Observed
 

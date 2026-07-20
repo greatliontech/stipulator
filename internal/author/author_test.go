@@ -318,10 +318,10 @@ func TestParseRoleAndConditions(t *testing.T) {
 	if r, err := ParseRole(""); err != nil || r != stipulatorv1.BindingRole_BINDING_ROLE_UNSPECIFIED {
 		t.Fatalf("empty role = %v %v", r, err)
 	}
-	if _, err := NewLandingCondition("REQ-au-a", "", "also"); err == nil {
+	if _, err := NewLandingCondition("REQ-au-a", "", "also", false); err == nil {
 		t.Fatal("conflicting conditions accepted")
 	}
-	lc, err := NewLandingCondition("", "", "external")
+	lc, err := NewLandingCondition("", "", "external", false)
 	if err != nil || !lc.HasManual() {
 		t.Fatalf("manual condition: %v %v", lc, err)
 	}
@@ -390,7 +390,7 @@ func TestGapsBulk(t *testing.T) {
 	fsys := testFS(nil)
 	fsys["specs/a.md"] = &fstest.MapFile{Data: []byte(
 		"# T\n\n**REQ-au-a** (behavior): It MUST x.\n\n**REQ-au-b** (behavior): It MUST y.\n")}
-	lc, err := NewLandingCondition("", "", "later")
+	lc, err := NewLandingCondition("", "", "later", false)
 	if err != nil {
 		t.Fatal(err)
 	}

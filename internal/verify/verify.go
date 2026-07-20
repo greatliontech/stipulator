@@ -499,7 +499,7 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 		if id == "" {
 			problem(gf.Path, "gap without requirement_id")
 		} else if _, known := hashes[id]; !known {
-			problem(gf.Path, "gap names %s, which is not in the corpus", id)
+			problem(gf.Path, "gap names %s, which is not in the corpus — retract it: stipulator gap --req %s --retract (or prune --dangling for the bulk repair)", id, id)
 		}
 		if id != "" {
 			if prior, dup := seenGaps[id]; dup {

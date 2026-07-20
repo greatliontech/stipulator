@@ -47,8 +47,10 @@ func ParseRole(s string) (stipulatorv1.BindingRole, error) {
 }
 
 // NewLandingCondition builds a landing condition from mutually exclusive
-// flag values; more than one set is an error.
-func NewLandingCondition(covered, exists, manual string) (*stipulatorv1.LandingCondition, error) {
+// flag values; more than one set is an error. Fired marks a manual
+// condition already discharged at declaration time — it is meaningless
+// on the machine-evaluable conditions.
+func NewLandingCondition(covered, exists, manual string, fired bool) (*stipulatorv1.LandingCondition, error) {
 	set := 0
 	for _, v := range []string{covered, exists, manual} {
 		if v != "" {
@@ -57,6 +59,9 @@ func NewLandingCondition(covered, exists, manual string) (*stipulatorv1.LandingC
 	}
 	if set > 1 {
 		return nil, fmt.Errorf("conflicting landing conditions: give exactly one of covered, exists, manual")
+	}
+	if fired && manual == "" {
+		return nil, fmt.Errorf("fired accompanies a manual condition (fire an existing gap with the fired flag alone)")
 	}
 	lc := &stipulatorv1.LandingCondition{}
 	switch {
@@ -67,6 +72,7 @@ func NewLandingCondition(covered, exists, manual string) (*stipulatorv1.LandingC
 	case manual != "":
 		a := &stipulatorv1.ManualCondition{}
 		a.SetCondition(manual)
+		a.SetFired(fired)
 		lc.SetManual(a)
 	default:
 		return nil, nil
@@ -266,6 +272,14 @@ func Gap(fsys fs.FS, g *stipulatorv1.Gap) (*Update, *stipulatorv1.Gap, error) {
 			prior = gf.Gap
 		}
 	}
+	// An unchanged manual condition keeps its fired state: an unfire is a
+	// lifecycle retarget, so it only happens through an explicit changed
+	// declaration, never as a side effect of re-declaring (REQ-gap-verb).
+	if prior != nil && g.GetLands().HasManual() && prior.GetLands().HasManual() &&
+		g.GetLands().GetManual().GetCondition() == prior.GetLands().GetManual().GetCondition() &&
+		prior.GetLands().GetManual().GetFired() {
+		g.GetLands().GetManual().SetFired(true)
+	}
 	if prior == nil {
 		// Gap file layout is free, so another requirement's record may
 		// legally sit at this requirement's canonical path — never
@@ -336,8 +350,15 @@ func Init(fsys fs.FS) (*Update, error) {
 	return &Update{Path: corpus.ManifestPath, Content: []byte(content)}, nil
 }
 
+// SelfSentinel is the bulk landing sentinel: covered(self) resolves to
+// each named requirement's own coverage (REQ-gap-bulk). It can never
+// collide with a real identifier — the profile's ID pattern requires the
+// REQ- prefix.
+const SelfSentinel = "self"
+
 // Gaps declares one gap per requirement, all sharing a reason and landing
-// condition — the spec-ahead-of-code bulk case. Each record is an ordinary
+// condition — the spec-ahead-of-code bulk case. A covered(self) condition
+// resolves to each requirement's own coverage. Each record is an ordinary
 // per-requirement gap and lands independently; validation is all-or-nothing
 // so a typo mid-list declares nothing. Updated gaps whose landing
 // condition changed are surfaced in the returned notes — a retarget is
@@ -353,8 +374,14 @@ func Gaps(fsys fs.FS, reqs []string, reason string, lands *stipulatorv1.LandingC
 		g := &stipulatorv1.Gap{}
 		g.SetRequirementId(id)
 		g.SetReason(reason)
+		wantUnfired := false
 		if lands != nil {
-			g.SetLands(lands)
+			each := proto.CloneOf(lands)
+			if each.HasCovered() && each.GetCovered() == SelfSentinel {
+				each.SetCovered(id)
+			}
+			wantUnfired = each.HasManual() && !each.GetManual().GetFired()
+			g.SetLands(each)
 		}
 		up, prior, err := Gap(fsys, g)
 		if err != nil {
@@ -364,15 +391,131 @@ func Gaps(fsys fs.FS, reqs []string, reason string, lands *stipulatorv1.LandingC
 			return nil, nil, fmt.Errorf("requirement %s repeats in the list", id)
 		}
 		seenPath[up.Path] = true
-		if prior != nil && !proto.Equal(prior.GetLands(), g.GetLands()) {
+		switch {
+		case prior != nil && !proto.Equal(prior.GetLands(), g.GetLands()):
 			notes = append(notes, id+": landing retargeted "+
 				LandingConditionString(prior.GetLands())+" -> "+LandingConditionString(g.GetLands()))
+		// Preservation overriding an explicitly unfired declaration is
+		// surfaced like any other non-silent consequence (REQ-gap-verb):
+		// after preservation the old and new conditions compare equal, so
+		// the retarget note above cannot fire for it.
+		case wantUnfired && g.GetLands().GetManual().GetFired():
+			notes = append(notes, id+": fired state preserved (unfire requires a changed condition, or retract and redeclare)")
 		}
 		out = append(out, *up)
 	}
 	sortUpdates(out)
 	sort.Strings(notes)
 	return out, notes, nil
+}
+
+// RetractGaps deletes the gap records naming the given requirements —
+// dangling records included: the dangling state is what retraction
+// repairs, so no corpus validation gates it, and the tombstone registry
+// is never touched (retraction withdraws a declaration, never the
+// requirement). A requirement with no gap record is an error, and the
+// batch applies all-or-nothing (REQ-gap-retract).
+func RetractGaps(fsys fs.FS, reqs []string) ([]Update, error) {
+	if len(reqs) == 0 {
+		return nil, fmt.Errorf("at least one requirement is required")
+	}
+	store, err := records.Load(fsys)
+	if err != nil {
+		return nil, err
+	}
+	var out []Update
+	seen := map[string]bool{}
+	for _, id := range reqs {
+		if seen[id] {
+			return nil, fmt.Errorf("requirement %s repeats in the list", id)
+		}
+		seen[id] = true
+		found := false
+		for _, gf := range store.Gaps {
+			if gf.Gap.GetRequirementId() == id {
+				out = append(out, Update{Path: gf.Path, Content: nil})
+				found = true
+			}
+		}
+		if !found {
+			return nil, fmt.Errorf("no gap record names %s; nothing to retract", id)
+		}
+	}
+	sortUpdates(out)
+	return out, nil
+}
+
+// FireGaps marks existing gaps' manual landing conditions fired — the
+// external judgment entering the record system through the same
+// validated path as the declaration it discharges (REQ-gap-verb): the
+// requirement is validated against the compiled corpus exactly as a
+// declaration is, so firing a dangling record errors toward its real
+// repair, retraction. A missing record or a non-manual condition is an
+// error; the batch validates all-or-nothing, and firing an already-fired
+// record is a no-op write, not an error.
+func FireGaps(fsys fs.FS, reqs []string) ([]Update, error) {
+	if len(reqs) == 0 {
+		return nil, fmt.Errorf("at least one requirement is required")
+	}
+	spec, diags, err := compile.Compile(fsys)
+	if err != nil {
+		return nil, err
+	}
+	if errs := compile.Errors(diags); len(errs) > 0 {
+		return nil, fmt.Errorf("corpus does not compile: %s%s", errs[0], moreSuffix(len(errs)-1))
+	}
+	present := map[string]bool{}
+	for _, r := range spec.GetRequirements() {
+		present[r.GetId()] = true
+	}
+	store, err := records.Load(fsys)
+	if err != nil {
+		return nil, err
+	}
+	var out []Update
+	seen := map[string]bool{}
+	for _, id := range reqs {
+		if seen[id] {
+			return nil, fmt.Errorf("requirement %s repeats in the list", id)
+		}
+		seen[id] = true
+		if !present[id] {
+			return nil, fmt.Errorf("%s is not in the corpus; a dangling gap's repair is retraction, not firing", id)
+		}
+		found := false
+		for _, gf := range store.Gaps {
+			if gf.Gap.GetRequirementId() != id {
+				continue
+			}
+			found = true
+			if !gf.Gap.GetLands().HasManual() {
+				return nil, fmt.Errorf("%s's landing condition is %s, not manual; only a manual condition fires",
+					id, LandingConditionString(gf.Gap.GetLands()))
+			}
+			g := proto.CloneOf(gf.Gap)
+			g.GetLands().GetManual().SetFired(true)
+			out = append(out, Update{Path: gf.Path, Content: records.RenderGap(g)})
+		}
+		if !found {
+			return nil, fmt.Errorf("no gap record names %s; declare it before firing", id)
+		}
+	}
+	sortUpdates(out)
+	return out, nil
+}
+
+// PruneDanglingGaps returns deletions for every gap record naming a
+// requirement absent from the corpus — the explicit bulk repair,
+// judged against the compiled corpus alone (REQ-gap-prune-dangling).
+func PruneDanglingGaps(store *records.Store, present map[string]bool) []Update {
+	var out []Update
+	for _, gf := range store.Gaps {
+		if !present[gf.Gap.GetRequirementId()] {
+			out = append(out, Update{Path: gf.Path, Content: nil})
+		}
+	}
+	sortUpdates(out)
+	return out
 }
 
 // PruneResolvedGaps returns deletions for every gap whose requirement ids

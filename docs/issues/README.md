@@ -2,7 +2,6 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
-
 - **[proto-backend](proto-backend.md)** — descriptor-level verification via protocompile;
   spec exists, five requirements gapped. *Lands: when a corpus needs wire evidence that
   shape pins and Go witnesses cannot cover.*
@@ -44,15 +43,7 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   (`REQ-profile-root`: "failing with guidance"); an agent hitting it must guess between broken,
   misrooted, and uninitialized. *Lands: when the MCP server's root-discovery failure path next
   changes.*
-- **[gap-bulk-cannot-express-self-landing](gap-bulk-cannot-express-self-landing.md)** — bulk
-  `gap --req` shares one landing condition, so the design-stage idiom covered(self) needs one
-  call per requirement; a `--covered self` sentinel would fix it. Observed: 22 gaps mis-targeted
-  in a consuming corpus, retargeted individually (update-in-place worked as specified). *Lands:
-  when the gap verb surface next changes.*
-- **[mcp-gap-tool-single-requirement](mcp-gap-tool-single-requirement.md)** — the MCP `gap`
-  tool takes one `requirement` where the CLI's `--req` is repeatable; agents declaring
-  design-stage gaps pay one round-trip per requirement. *Lands: when the MCP `gap` input schema
-  or gap operation semantics next change.*
+
 - **[mcp-check-result-too-large](mcp-check-result-too-large.md)** — MCP `check` can return a
   full one-line result large enough for clients to truncate before the verdict is visible.
   *Lands: when the MCP `check` result schema or rendering next changes.*
@@ -87,11 +78,7 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   fingerprints hash content alone. *Lands: when witness fingerprints gain pre-run-evaluation
   support binding closure content to the compile that consumed it, or when witness records are
   next redesigned.*
-- **[gap-verb-cannot-fire-manual-condition](gap-verb-cannot-fire-manual-condition.md)** — the
-  `fired` bit that resolves a manual-condition gap is unreachable from the gap verb: firing
-  requires a direct record edit, and re-declaring a fired gap through the verb rewrites it
-  unfired. *Lands: when the gap verb's input surface next changes, or when a manual-condition
-  gap in this corpus first needs firing.*
+
 - **[standing-gap-absorbs-unrelated-red](standing-gap-absorbs-unrelated-red.md)** — a covered
   requirement carrying an open manual-condition gap can later go red for an unrelated reason
   and the gate raises no violation, while the gap's reason describes the original class —
@@ -102,9 +89,7 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   attestation on a cell whose policy does not admit it renders as a bare violation with
   no reason naming the inadmissibility. *Lands: when the attested bucket's rendering next
   changes, or an agent session next burns a cycle on it.*
-- **[gap-on-exempt-requirement-never-resolves](gap-on-exempt-requirement-never-resolves.md)** —
-  a gap on an exempt (unbound MAY) requirement has no reachable terminal state. *Lands:
-  when gap lifecycle evaluation next changes.*
+
 - **[mcp-progress-not-observed](mcp-progress-not-observed.md)** — suite-running MCP tools
   surfaced no progress to a live agent client; every call was backgrounded at the client's
   timeout. *Lands: when REQ-mcp-progress is next verified against a real client.*
@@ -117,3 +102,7 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   deletion invisible code-side (spec-side deletions do report), and non-implemented
   backends are skipped with no user-visible statement. *Lands: when the user disposes
   the REQ-change-impact spec-amend candidates.*
+- **[prune-serving-class-unpinned](prune-serving-class-unpinned.md)** — REQ-gap-resolved-pruned's
+  serving-class sentence holds by call-path identity but no test pins it; a swap to whole
+  execution would survive the suite. *Lands: when the witness path gains an execution-class
+  seam or observability hook a test can assert against.*

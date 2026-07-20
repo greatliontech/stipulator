@@ -60,7 +60,7 @@ func TestPropVerbsWriteOnlyRecords(t *testing.T) {
 		// function of (filesystem, drawn values), so running it twice
 		// over the same state must be identical.
 		var run func(fsys fstest.MapFS) ([]Update, error)
-		switch rapid.SampledFrom([]string{"bind", "gap", "editorial", "retire", "unbind"}).Draw(rt, "verb") {
+		switch rapid.SampledFrom([]string{"bind", "gap", "editorial", "retire", "unbind", "gapretract", "gapfire", "gapprunedangling"}).Draw(rt, "verb") {
 		case "bind":
 			role := stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS
 			if rapid.Bool().Draw(rt, "roleTests") {
@@ -80,7 +80,7 @@ func TestPropVerbsWriteOnlyRecords(t *testing.T) {
 				g := &stipulatorv1.Gap{}
 				g.SetRequirementId(target)
 				g.SetReason("generated reason")
-				lands, err := NewLandingCondition("", "", "generated condition")
+				lands, err := NewLandingCondition("", "", "generated condition", false)
 				if err != nil {
 					return nil, err
 				}
@@ -115,6 +115,37 @@ func TestPropVerbsWriteOnlyRecords(t *testing.T) {
 				}
 				ups, _, err := Unbind(fsys, target, "example.com/p.F", stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS)
 				return ups, err
+			}
+		case "gapretract":
+			run = func(fsys fstest.MapFS) ([]Update, error) {
+				fsys[".stipulator/gaps/gen.textproto"] = &fstest.MapFile{
+					Data: []byte("requirement_id: \"" + target + "\"\nreason: \"r\"\nlands { manual { condition: \"c\" } }\n"),
+				}
+				return RetractGaps(fsys, []string{target})
+			}
+		case "gapfire":
+			run = func(fsys fstest.MapFS) ([]Update, error) {
+				fsys[".stipulator/gaps/gen.textproto"] = &fstest.MapFile{
+					Data: []byte("requirement_id: \"" + target + "\"\nreason: \"r\"\nlands { manual { condition: \"c\" } }\n"),
+				}
+				return FireGaps(fsys, []string{target})
+			}
+		case "gapprunedangling":
+			// The victim is absent from the corpus but named by a record —
+			// the dangling precondition.
+			run = func(fsys fstest.MapFS) ([]Update, error) {
+				fsys[".stipulator/gaps/gen.textproto"] = &fstest.MapFile{
+					Data: []byte("requirement_id: \"REQ-p-ghost\"\nreason: \"r\"\nlands { manual { condition: \"c\" } }\n"),
+				}
+				store, err := records.Load(fsys)
+				if err != nil {
+					return nil, err
+				}
+				present := map[string]bool{}
+				for _, id := range c.ReqIDs {
+					present[id] = true
+				}
+				return PruneDanglingGaps(store, present), nil
 			}
 		}
 

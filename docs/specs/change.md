@@ -82,7 +82,31 @@ operation that validates the requirement identifier against the compiled
 corpus and requires a reason and a landing condition at write time,
 updating an existing declaration in place — a changed landing condition
 is surfaced, never silently retargeted — and refusing to overwrite a
-record that names a different requirement.
+record that names a different requirement — with a manual condition's
+fired bit expressible through the operation, and re-declaring a record
+whose manual condition text is unchanged preserving its fired state,
+the preservation surfaced when it overrides an unfired
+declaration: an unfire is a lifecycle retarget, so it happens only
+through an explicit changed declaration, never as a side effect of
+re-declaring.
+
+**REQ-gap-bulk** (behavior): The declaring operation MUST accept many
+requirements in one call sharing one reason and landing condition,
+validating all-or-nothing so a typo mid-list declares nothing, together
+with a self landing sentinel resolving to each named requirement's own
+coverage — the design-stage idiom where every declared requirement
+lands on itself.
+
+**REQ-gap-retract** (behavior): A gap record MUST be retractable through
+a tool operation that deletes the record without touching the tombstone
+registry — retraction withdraws a declaration about a requirement, never
+the requirement itself — working equally on a dangling record whose
+requirement has already left the corpus: the dangling state is what
+retraction repairs, so corpus validation cannot gate it. Retracting a
+requirement that has no gap record is an error, not a no-op; many
+retractions in one call validate all-or-nothing, so a typo mid-list
+retracts nothing; and verification's dangling-gap error names this
+retraction as its repair.
 
 **REQ-gap-conditions** (behavior): A landing condition MUST be either
 machine-evaluable — `covered(<id>)`, `exists(<id>)` — or manual, firing
@@ -94,7 +118,12 @@ attestation evidence.
 is covered — and, for a gap with a manual landing condition, the condition
 has also been explicitly fired: a manual condition is an external judgment
 coverage cannot make, so a covered requirement with an unfired manual gap
-stays `open`, a declared violation that outlives green witnesses).
+stays `open`, a declared violation that outlives green witnesses). A gap
+on a requirement the active policy renders exempt is `resolved` when its
+landing condition holds — explicitly fired, for a manual condition:
+coverage is not a state an exempt cell can reach, so the condition alone
+defines completion, and without this arm the record would have no
+reachable terminal state.
 
 **REQ-gap-resolved-pruned** (behavior): The `prune` operation MUST delete
 resolved gap records — a resolved gap is satisfied, dead record weight.
@@ -102,7 +131,18 @@ Detecting resolution is the coverage evaluation `gate` already performs,
 so `gate` surfaces the count of resolved gaps awaiting prune,
 discoverable from a run already made; the gate never deletes records
 itself. `prune --check` reports a resolved gap
-that lingers without deleting anything.
+that lingers without deleting anything. The resolved-record evaluation
+takes its witness evidence from the serving class — proven-fresh records
+with selective execution of the stale remainder (REQ-core-one-execution)
+— never a whole policy execution demanded for pruning alone.
+
+**REQ-gap-prune-dangling** (behavior): An explicit dangling mode of
+`prune` — with a check form — MUST delete dangling gap records in bulk,
+judged against the compiled corpus alone with no witness evidence and no
+symbol resolution, while the ordinary resolved-record prune never
+deletes a dangling record: danglingness is a corpus-and-records fact,
+resolution is a coverage judgment, and conflating them would let record
+cleanup masquerade as satisfied work.
 
 ## The gate
 
