@@ -99,3 +99,9 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   a direct-call-absence verb (structural.NoCall) would carry them. *Lands: when a
   structural requirement next needs a call-absence proof and the signature/import verbs
   demonstrably cannot carry it.*
+- **[witness-concurrency-saturates-host](witness-concurrency-saturates-host.md)** — the
+  witness executor fans out GOMAXPROCS race-instrumented go-test process trees at once,
+  a multiple of the core count in effective load; nice covers CPU only, so a full corpus
+  check can freeze an interactive host on memory/IO pressure. Reviewed concurrency knob +
+  pressure-aware admission proposed. *Lands: at the stipulator issue-elimination phase, or
+  when the witness executor's spawn path next changes, whichever comes first.*
