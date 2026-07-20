@@ -585,3 +585,48 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "a9e7596fa35f410bddff1307d63a715fdf5bb62feae8492fa50e66de67205549"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "7f796149d6063648ddf152cca23d77a73626b37e44316652cd810a686d3609db"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesNamesUncacheableReasons"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "2d63330c25b2b3aaed791993bb4eb7573fc33f96b265edd65eec4edab3763d0c"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "7f796149d6063648ddf152cca23d77a73626b37e44316652cd810a686d3609db"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestCheckRenderUncacheableHistogram"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "13550f5a09e85ca47f2673e47904a3ae71871b379f542e9d967d316cfb16ec02"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "adc4e189a42942187d7167f0c0ce10c31698275509e5f6c98f9f5dae00bb214d"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestDeriveNamesUncacheableWithoutGroups"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "f517ee060ed7fb0147f6e07c3aa1e41c21f9f1d0545c2450e01f9b7106a4100d"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "adc4e189a42942187d7167f0c0ce10c31698275509e5f6c98f9f5dae00bb214d"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGrantingRunNamesRefusals"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a54a2e104b38c59d6fda708e37c82f4c59a11de0c82628d41c8ae64d67124fbf"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "adc4e189a42942187d7167f0c0ce10c31698275509e5f6c98f9f5dae00bb214d"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesAttributesDeniedAtZeroUncached"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e116bf28cc376b48eebe4bcbc13ecb5f66aa861abf78f756ab9d62fed778d0b6"
+}

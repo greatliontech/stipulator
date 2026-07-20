@@ -35,3 +35,8 @@ Additional duplication to resolve with the response contract: a package
 failure rides the check result twice — as a typed `witness_diagnostics`
 row (test unset; disposition and truncation intact) and as the same text
 in `verify.package_failures`. One fact, one wire home.
+
+The per-test `uncacheable_reasons` map (spec-mandated on the machine
+result) adds ~40-60 KB on a cold or degraded 464-test corpus — another
+line item for the response contract: the summary view should carry the
+aggregated histogram, the full map only on request.

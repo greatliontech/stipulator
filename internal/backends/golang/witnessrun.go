@@ -274,15 +274,17 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
 	var published []witnesscache.Record
 	var servedRecords []witnesscache.Record
+	uncacheableWhy := map[gofresh.Subject]string{}
 	retryMerge := newExecMerge()
 	if degraded == "" {
 		var drifted []gofresh.Subject
 		driftedByGroup := map[*witnessGroup][]gofresh.Subject{}
 		for _, wg := range groups {
-			groupDrifted, records, err := finishGroup(ctx, wg, m)
+			groupDrifted, records, reasons, err := finishGroup(ctx, wg, m)
 			if err != nil {
 				return nil, err
 			}
+			maps.Copy(uncacheableWhy, reasons)
 			published = append(published, records...)
 			driftedByGroup[wg] = groupDrifted
 			drifted = append(drifted, groupDrifted...)
@@ -297,10 +299,11 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 			}
 		}
 		if len(drifted) > 0 {
-			retryPublished, err := retryDrifted(ctx, dir, p, normalized, covering, driftedByGroup, retryMerge)
+			retryPublished, retryReasons, err := retryDrifted(ctx, dir, p, normalized, covering, driftedByGroup, retryMerge)
 			if err != nil {
 				return nil, err
 			}
+			maps.Copy(uncacheableWhy, retryReasons)
 			published = append(published, retryPublished...)
 		}
 	}
@@ -333,6 +336,38 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 	// verdicts, and the degraded path (which publishes nothing) alike.
 	if tr.Ran > len(published) {
 		tr.Uncached = tr.Ran - len(published)
+	}
+	// Per-test attribution for the uncacheable set: the ladder's own
+	// refusal reasons, the multiply-selected class, the degraded path,
+	// and a structural fallback for anything a drop path missed
+	// (REQ-evidence-witness-freshness's diagnosable-set requirement).
+	if tr.Uncached > 0 || len(uncacheableWhy) > 0 {
+		tr.UncacheableReasons = map[string]string{}
+		for s, why := range uncacheableWhy {
+			tr.UncacheableReasons[s.Package+"."+s.Symbol] = why
+		}
+		for s := range multiExecuted {
+			if _, ok := tr.UncacheableReasons[s.Package+"."+s.Symbol]; !ok {
+				tr.UncacheableReasons[s.Package+"."+s.Symbol] = "multiply-selected: a record has no per-invocation identity"
+			}
+		}
+		publishedKey := map[string]bool{}
+		for _, rec := range published {
+			publishedKey[rec.Package+"."+rec.Test] = true
+		}
+		for key := range ranTop {
+			if publishedKey[key] {
+				delete(tr.UncacheableReasons, key)
+				continue
+			}
+			if _, ok := tr.UncacheableReasons[key]; !ok {
+				if degraded != "" {
+					tr.UncacheableReasons[key] = "freshness path degraded: " + degraded
+				} else {
+					tr.UncacheableReasons[key] = "record not published"
+				}
+			}
+		}
 	}
 
 	// Publication installs exactly what this run produced: each published
@@ -504,12 +539,18 @@ func executeSelections(ctx context.Context, p *stipulatorv1.TestPolicy, normaliz
 // group the same way, and nothing executed under it can publish; the
 // executed evidence itself stands untouched. The error return is
 // reserved for caller cancellation.
-func finishGroup(ctx context.Context, wg *witnessGroup, m *execMerge) ([]gofresh.Subject, []witnesscache.Record, error) {
+func finishGroup(ctx context.Context, wg *witnessGroup, m *execMerge) ([]gofresh.Subject, []witnesscache.Record, map[gofresh.Subject]string, error) {
 	if err := wg.view.Validate(ctx); err != nil {
 		if ctx.Err() != nil {
-			return nil, nil, ctx.Err()
+			return nil, nil, nil, ctx.Err()
 		}
-		return append([]gofresh.Subject(nil), wg.served...), nil, nil
+		reasons := map[gofresh.Subject]string{}
+		for pkg, names := range wg.stale {
+			for _, name := range names {
+				reasons[gofresh.Subject{Package: pkg, Symbol: name}] = "source producer validation failed: " + err.Error()
+			}
+		}
+		return append([]gofresh.Subject(nil), wg.served...), nil, reasons, nil
 	}
 	servedFPs := map[gofresh.Subject]gofresh.Fingerprint{}
 	for _, s := range wg.served {
@@ -518,9 +559,15 @@ func finishGroup(ctx context.Context, wg *witnessGroup, m *execMerge) ([]gofresh
 	verdicts, err := checkFingerprints(ctx, wg.view, servedFPs)
 	if err != nil {
 		if ctx.Err() != nil {
-			return nil, nil, ctx.Err()
+			return nil, nil, nil, ctx.Err()
 		}
-		return append([]gofresh.Subject(nil), wg.served...), nil, nil
+		reasons := map[gofresh.Subject]string{}
+		for pkg, names := range wg.stale {
+			for _, name := range names {
+				reasons[gofresh.Subject{Package: pkg, Symbol: name}] = "post-run served-record revalidation faulted: " + err.Error()
+			}
+		}
+		return append([]gofresh.Subject(nil), wg.served...), nil, reasons, nil
 	}
 	var drifted []gofresh.Subject
 	for _, s := range wg.served {
@@ -528,11 +575,11 @@ func finishGroup(ctx context.Context, wg *witnessGroup, m *execMerge) ([]gofresh
 			drifted = append(drifted, s)
 		}
 	}
-	records, err := publishExecuted(ctx, wg, m)
+	records, reasons, err := publishExecuted(ctx, wg, m)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return drifted, records, nil
+	return drifted, records, reasons, nil
 }
 
 // subjectRun is one executed subject's cache-eligible material: the
@@ -551,7 +598,7 @@ type subjectRun struct {
 // and owns a completed observation. A subject whose package process
 // disposed red gets its chance from the isolation pass's solo process; a
 // subject no healthy process granted stays uncacheable.
-func grantingRun(s gofresh.Subject, m *execMerge) *subjectRun {
+func grantingRun(s gofresh.Subject, m *execMerge) (*subjectRun, string) {
 	byProducer := map[producerKey][]*stipulatorv1.TestResult{}
 	var order []producerKey
 	for _, row := range m.rows {
@@ -568,14 +615,17 @@ func grantingRun(s gofresh.Subject, m *execMerge) *subjectRun {
 		}
 		byProducer[k] = append(byProducer[k], row)
 	}
+	sawUnhealthy, sawUnproven := false, false
 	for _, k := range order {
 		if m.disp[k] != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+			sawUnhealthy = true
 			continue
 		}
 		obs := m.obs[k]
 		if obs == nil || obs.Wire.GetCompleted() == nil {
 			// The producing process's testlog flush is unproven: its tests
 			// execute and witness, they just cannot cache.
+			sawUnproven = true
 			continue
 		}
 		sr := &subjectRun{obs: obs, outcomes: map[string]string{}}
@@ -599,11 +649,19 @@ func grantingRun(s gofresh.Subject, m *execMerge) *subjectRun {
 			}
 		}
 		if contradicted || sr.outcomes[s.Package+"."+s.Symbol] == "" {
+			sawUnhealthy = sawUnhealthy || contradicted
 			continue
 		}
-		return sr
+		return sr, ""
 	}
-	return nil
+	switch {
+	case sawUnproven:
+		return nil, "producing process's testlog flush unproven"
+	case sawUnhealthy:
+		return nil, "no healthy process granted the outcome"
+	default:
+		return nil, "no process produced the subject's terminal event"
+	}
 }
 
 // publishExecuted assembles the cache records one group's executed
@@ -612,8 +670,10 @@ func grantingRun(s gofresh.Subject, m *execMerge) *subjectRun {
 // group can attach, plain per-process manifests otherwise, and a
 // post-run fingerprint check per record — a stale verdict is mid-run
 // drift of the record's inputs, dropped so the next run re-derives it.
-// The error return is reserved for caller cancellation.
-func publishExecuted(ctx context.Context, wg *witnessGroup, m *execMerge) ([]witnesscache.Record, error) {
+// The error return is reserved for caller cancellation. The second
+// return names, per unpublished subject, the leg that refused
+// (REQ-evidence-witness-freshness's diagnosable-set requirement).
+func publishExecuted(ctx context.Context, wg *witnessGroup, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]string, error) {
 	var order []gofresh.Subject
 	for pkg, names := range wg.stale {
 		for _, name := range names {
@@ -628,13 +688,18 @@ func publishExecuted(ctx context.Context, wg *witnessGroup, m *execMerge) ([]wit
 		return a.Symbol < b.Symbol
 	})
 	eligible := map[gofresh.Subject]*subjectRun{}
+	reasons := map[gofresh.Subject]string{}
 	for _, s := range order {
 		if _, ok := wg.fps[s]; !ok {
+			reasons[s] = "pre-execution fingerprint capture failed"
 			continue
 		}
-		if sr := grantingRun(s, m); sr != nil {
-			eligible[s] = sr
+		sr, why := grantingRun(s, m)
+		if sr == nil {
+			reasons[s] = why
+			continue
 		}
+		eligible[s] = sr
 	}
 
 	// Observation-completeness proofs attach only when every candidate of
@@ -664,11 +729,21 @@ func publishExecuted(ctx context.Context, wg *witnessGroup, m *execMerge) ([]wit
 			}
 			attached[s] = fp
 			attachedValid[s] = validatedObservation(fp, state)
+			if !attachedValid[s] {
+				// The sealed state names the concrete input; the proof
+				// refusal names an analyzer class. Prefer the input.
+				switch {
+				case state.Unverifiable:
+					reasons[s] = "observation sealed: " + state.Reason
+				case !fp.ObservationProof.Observable:
+					reasons[s] = "observation proof refused: " + fp.ObservationProof.Reason
+				}
+			}
 		}
 		if complete && len(wg.candidates) > 0 {
 			if err := wg.observed.ValidateObserved(ctx); err != nil {
 				if ctx.Err() != nil {
-					return nil, ctx.Err()
+					return nil, nil, ctx.Err()
 				}
 				complete = false
 			}
@@ -715,13 +790,27 @@ func publishExecuted(ctx context.Context, wg *witnessGroup, m *execMerge) ([]wit
 	checked, err := checkFingerprints(ctx, wg.view, unvalidated)
 	if err != nil {
 		if ctx.Err() != nil {
-			return nil, ctx.Err()
+			return nil, nil, ctx.Err()
 		}
 		// A faulting post-run check publishes nothing for the group; the
 		// executed evidence stands and every subject counts uncacheable.
-		return nil, nil
+		for _, s := range order {
+			if _, ok := reasons[s]; !ok {
+				reasons[s] = "post-run producer validation faulted: " + err.Error()
+			}
+		}
+		return nil, reasons, nil
 	}
 	maps.Copy(verdicts, checked)
+	for s, v := range checked {
+		if v.Status != gofresh.Valid {
+			if _, ok := reasons[s]; !ok {
+				// The verdict's own reason carries gofresh's attribution -
+				// moved inputs named per identity.
+				reasons[s] = "post-run validation: " + v.Reason
+			}
+		}
+	}
 
 	var records []witnesscache.Record
 	for _, s := range order {
@@ -745,8 +834,17 @@ func publishExecuted(ctx context.Context, wg *witnessGroup, m *execMerge) ([]wit
 			Outcomes:    sr.outcomes,
 			Regs:        compactRegs(regs),
 		})
+		delete(reasons, s)
 	}
-	return records, nil
+	for _, s := range order {
+		if _, published := final[s]; published && verdicts[s].Status == gofresh.Valid {
+			continue
+		}
+		if _, ok := reasons[s]; !ok {
+			reasons[s] = "record not published"
+		}
+	}
+	return records, reasons, nil
 }
 
 // retryDrifted re-executes each drifted served subject exactly once,
@@ -756,7 +854,7 @@ func publishExecuted(ctx context.Context, wg *witnessGroup, m *execMerge) ([]wit
 // the current tree before the retry executes; a retry whose record still
 // fails validation afterwards — still drifting — is dropped and counted
 // uncacheable, never retried again.
-func retryDrifted(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, normalized map[string]*NormalizedInvocation, covering map[string]*NormalizedInvocation, driftedByGroup map[*witnessGroup][]gofresh.Subject, m *execMerge) ([]witnesscache.Record, error) {
+func retryDrifted(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, normalized map[string]*NormalizedInvocation, covering map[string]*NormalizedInvocation, driftedByGroup map[*witnessGroup][]gofresh.Subject, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]string, error) {
 	// Fresh pre-retry capture per group: the old view described a tree the
 	// drift already left behind.
 	type retryState struct {
@@ -801,7 +899,7 @@ func retryDrifted(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, n
 				}
 			}
 		} else if ctx.Err() != nil {
-			return nil, ctx.Err()
+			return nil, nil, ctx.Err()
 		}
 		// The retry's proof candidates follow the same per-process solo
 		// rule as the main pass, over the retry's own stale set: a retried
@@ -819,16 +917,20 @@ func retryDrifted(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, n
 		states = append(states, st)
 	}
 	if err := executeSelections(ctx, p, normalized, retrySel, m); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var published []witnesscache.Record
+	reasons := map[gofresh.Subject]string{}
 	for _, st := range states {
 		if st.view == nil {
 			continue
 		}
 		if err := st.view.Validate(ctx); err != nil {
 			if ctx.Err() != nil {
-				return nil, ctx.Err()
+				return nil, nil, ctx.Err()
+			}
+			for rs := range st.fps {
+				reasons[rs] = "retry producer validation failed: " + err.Error()
 			}
 			continue
 		}
@@ -842,13 +944,16 @@ func retryDrifted(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, n
 			g: st.wg.g, engine: st.wg.engine, view: st.view, stale: stale, fps: st.fps,
 			candidates: st.candidates, observed: st.observed, observedFPs: st.observedFPs,
 		}
-		records, err := publishExecuted(ctx, rwg, m)
+		records, retryReasons, err := publishExecuted(ctx, rwg, m)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
+		// The retry is the subject's one re-derivation this run; a record
+		// still refusing keeps the retry's reason.
+		maps.Copy(reasons, retryReasons)
 		published = append(published, records...)
 	}
-	return published, nil
+	return published, reasons, nil
 }
 
 // consumeMerge folds one merged selective execution into the run's

@@ -83,6 +83,7 @@ and failure diagnostics.
 unified check operation MUST return one protobuf check result carrying
 the compile outcome, the evidence class (witness-evidence or
 health-judged), suite health when judged, served, executed, and
-uncacheable witness counts, per-binding verification, coverage buckets,
-gap evaluation, failed-witness diagnostics, and prune residue, with
-every human rendering a projection of that message.
+uncacheable witness counts with per-test uncacheable reasons,
+per-binding verification, coverage buckets, gap evaluation,
+failed-witness diagnostics, and prune residue, with every human
+rendering a projection of that message.

@@ -456,3 +456,69 @@ func requireCacheAbsent(t *testing.T, dir string) {
 		t.Fatalf("witness store holds %d entries: %v", len(entries), err)
 	}
 }
+
+// TestDeriveNamesUncacheableWithoutGroups pins the no-capture-group and
+// degraded branches of per-test attribution: every executed top-level
+// test carries the branch's reason, keyed correctly through
+// multi-segment import paths — never a bare count.
+func TestDeriveNamesUncacheableWithoutGroups(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	report := synthReport(
+		[]*stipulatorv1.InvocationHealth{synthInvocation("plain", false, map[string]stipulatorv1.HealthDisposition{
+			"example.com/m/deep/pkg": healthy,
+		})},
+		[]*stipulatorv1.TestResult{synthRow("plain", "example.com/m/deep/pkg", "TestOk", passed)},
+	)
+	recorder := &WitnessRecorder{dir: t.TempDir()}
+	tr, err := recorder.Derive(context.Background(), report, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.Uncached != 1 {
+		t.Fatalf("uncached=%d, want 1", tr.Uncached)
+	}
+	why := tr.UncacheableReasons["example.com/m/deep/pkg.TestOk"]
+	if !strings.Contains(why, "no capture group") {
+		t.Fatalf("no-groups reason = %q (map %v), want the branch named per test", why, tr.UncacheableReasons)
+	}
+
+	degradedRecorder := &WitnessRecorder{dir: t.TempDir(), degraded: "engine fault"}
+	tr, err = degradedRecorder.Derive(context.Background(), report, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	why = tr.UncacheableReasons["example.com/m/deep/pkg.TestOk"]
+	if !strings.Contains(why, "freshness path degraded: engine fault") {
+		t.Fatalf("degraded reason = %q, want the fault named per test", why)
+	}
+}
+
+// TestGrantingRunNamesRefusals pins the granting ladder's distinct
+// refusals: an unhealthy process, an unproven testlog flush, and a
+// subject with no terminal event each name their own leg.
+func TestGrantingRunNamesRefusals(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	subject := gofresh.Subject{Package: "example.com/m/pkg", Symbol: "TestX"}
+	row := synthRow("race", "example.com/m/pkg", "TestX", passed)
+	key := keyOfProducer(row.GetProducer())
+
+	unhealthy := newExecMerge()
+	unhealthy.rows = append(unhealthy.rows, row)
+	unhealthy.disp[key] = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED
+	if _, why := grantingRun(subject, unhealthy); !strings.Contains(why, "no healthy process") {
+		t.Errorf("unhealthy refusal = %q", why)
+	}
+
+	unproven := newExecMerge()
+	unproven.rows = append(unproven.rows, row)
+	unproven.disp[key] = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY
+	if _, why := grantingRun(subject, unproven); !strings.Contains(why, "testlog flush unproven") {
+		t.Errorf("unproven refusal = %q", why)
+	}
+
+	empty := newExecMerge()
+	if _, why := grantingRun(subject, empty); !strings.Contains(why, "no process produced") {
+		t.Errorf("no-terminal refusal = %q", why)
+	}
+}

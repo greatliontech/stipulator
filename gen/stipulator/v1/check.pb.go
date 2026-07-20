@@ -40,6 +40,7 @@ type CheckResult struct {
 	xxx_hidden_WitnessPublicationDegraded *string                `protobuf:"bytes,10,opt,name=witness_publication_degraded,json=witnessPublicationDegraded"`
 	xxx_hidden_SuiteHealthJudged          bool                   `protobuf:"varint,11,opt,name=suite_health_judged,json=suiteHealthJudged"`
 	xxx_hidden_TestsServed                int32                  `protobuf:"varint,12,opt,name=tests_served,json=testsServed"`
+	xxx_hidden_UncacheableReasons         map[string]string      `protobuf:"bytes,15,rep,name=uncacheable_reasons,json=uncacheableReasons" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	xxx_hidden_WitnessDiagnostics         *[]*FailureDiagnostic  `protobuf:"bytes,13,rep,name=witness_diagnostics,json=witnessDiagnostics"`
 	XXX_raceDetectHookData                protoimpl.RaceDetectHookData
 	XXX_presence                          [1]uint32
@@ -161,6 +162,13 @@ func (x *CheckResult) GetTestsServed() int32 {
 	return 0
 }
 
+func (x *CheckResult) GetUncacheableReasons() map[string]string {
+	if x != nil {
+		return x.xxx_hidden_UncacheableReasons
+	}
+	return nil
+}
+
 func (x *CheckResult) GetWitnessDiagnostics() []*FailureDiagnostic {
 	if x != nil {
 		if x.xxx_hidden_WitnessDiagnostics != nil {
@@ -172,7 +180,7 @@ func (x *CheckResult) GetWitnessDiagnostics() []*FailureDiagnostic {
 
 func (x *CheckResult) SetPassed(v bool) {
 	x.xxx_hidden_Passed = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 14)
 }
 
 func (x *CheckResult) SetCompileProblems(v []*Problem) {
@@ -201,27 +209,31 @@ func (x *CheckResult) SetPolicyProblem(v *Problem) {
 
 func (x *CheckResult) SetTestsExecuted(v int32) {
 	x.xxx_hidden_TestsExecuted = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 14)
 }
 
 func (x *CheckResult) SetTestsUncacheable(v int32) {
 	x.xxx_hidden_TestsUncacheable = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 14)
 }
 
 func (x *CheckResult) SetWitnessPublicationDegraded(v string) {
 	x.xxx_hidden_WitnessPublicationDegraded = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 14)
 }
 
 func (x *CheckResult) SetSuiteHealthJudged(v bool) {
 	x.xxx_hidden_SuiteHealthJudged = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 14)
 }
 
 func (x *CheckResult) SetTestsServed(v int32) {
 	x.xxx_hidden_TestsServed = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 14)
+}
+
+func (x *CheckResult) SetUncacheableReasons(v map[string]string) {
+	x.xxx_hidden_UncacheableReasons = v
 }
 
 func (x *CheckResult) SetWitnessDiagnostics(v []*FailureDiagnostic) {
@@ -395,6 +407,16 @@ type CheckResult_builder struct {
 	// executing. Always zero under the health-judged form: a health-judged
 	// invocation executes whole.
 	TestsServed *int32
+	// Per-test uncacheable attribution: for each executed top-level test
+	// whose record could not publish - and each expected witness subject
+	// the run denied execution outright - the leg that refused: the sealed
+	// observation's reason, the refused proof's, the missing granting
+	// process, the post-run drift with its moved inputs named. Human
+	// renderings aggregate; the per-test map is the machine surface. The
+	// map's size and tests_uncacheable answer different questions: denied
+	// subjects attribute without executing, so the map can exceed the
+	// count and be non-empty at zero.
+	UncacheableReasons map[string]string
 	// Failure diagnostics for the witness-evidence form, where no
 	// execution report exists to carry them: the same typed rows the
 	// execution report would hold — disposition, truncation, and retained
@@ -409,7 +431,7 @@ func (b0 CheckResult_builder) Build() *CheckResult {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Passed != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 14)
 		x.xxx_hidden_Passed = *b.Passed
 	}
 	x.xxx_hidden_CompileProblems = &b.CompileProblems
@@ -419,25 +441,26 @@ func (b0 CheckResult_builder) Build() *CheckResult {
 	x.xxx_hidden_PruneResidue = b.PruneResidue
 	x.xxx_hidden_PolicyProblem = b.PolicyProblem
 	if b.TestsExecuted != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 14)
 		x.xxx_hidden_TestsExecuted = *b.TestsExecuted
 	}
 	if b.TestsUncacheable != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 14)
 		x.xxx_hidden_TestsUncacheable = *b.TestsUncacheable
 	}
 	if b.WitnessPublicationDegraded != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 14)
 		x.xxx_hidden_WitnessPublicationDegraded = b.WitnessPublicationDegraded
 	}
 	if b.SuiteHealthJudged != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 14)
 		x.xxx_hidden_SuiteHealthJudged = *b.SuiteHealthJudged
 	}
 	if b.TestsServed != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 14)
 		x.xxx_hidden_TestsServed = *b.TestsServed
 	}
+	x.xxx_hidden_UncacheableReasons = b.UncacheableReasons
 	x.xxx_hidden_WitnessDiagnostics = &b.WitnessDiagnostics
 	return m0
 }
@@ -446,7 +469,7 @@ var File_stipulator_v1_check_proto protoreflect.FileDescriptor
 
 const file_stipulator_v1_check_proto_rawDesc = "" +
 	"\n" +
-	"\x19stipulator/v1/check.proto\x12\rstipulator.v1\x1a\x1dstipulator/v1/execution.proto\x1a\x1bstipulator/v1/reports.proto\"\xb6\x05\n" +
+	"\x19stipulator/v1/check.proto\x12\rstipulator.v1\x1a\x1dstipulator/v1/execution.proto\x1a\x1bstipulator/v1/reports.proto\"\xe2\x06\n" +
 	"\vCheckResult\x12\x16\n" +
 	"\x06passed\x18\x01 \x01(\bR\x06passed\x12A\n" +
 	"\x10compile_problems\x18\x02 \x03(\v2\x16.stipulator.v1.ProblemR\x0fcompileProblems\x12<\n" +
@@ -460,30 +483,36 @@ const file_stipulator_v1_check_proto_rawDesc = "" +
 	"\x1cwitness_publication_degraded\x18\n" +
 	" \x01(\tR\x1awitnessPublicationDegraded\x12.\n" +
 	"\x13suite_health_judged\x18\v \x01(\bR\x11suiteHealthJudged\x12!\n" +
-	"\ftests_served\x18\f \x01(\x05R\vtestsServed\x12Q\n" +
-	"\x13witness_diagnostics\x18\r \x03(\v2 .stipulator.v1.FailureDiagnosticR\x12witnessDiagnosticsBDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
+	"\ftests_served\x18\f \x01(\x05R\vtestsServed\x12c\n" +
+	"\x13uncacheable_reasons\x18\x0f \x03(\v22.stipulator.v1.CheckResult.UncacheableReasonsEntryR\x12uncacheableReasons\x12Q\n" +
+	"\x13witness_diagnostics\x18\r \x03(\v2 .stipulator.v1.FailureDiagnosticR\x12witnessDiagnostics\x1aE\n" +
+	"\x17UncacheableReasonsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
-var file_stipulator_v1_check_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_stipulator_v1_check_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_stipulator_v1_check_proto_goTypes = []any{
 	(*CheckResult)(nil),       // 0: stipulator.v1.CheckResult
-	(*Problem)(nil),           // 1: stipulator.v1.Problem
-	(*ExecutionReport)(nil),   // 2: stipulator.v1.ExecutionReport
-	(*VerifyReport)(nil),      // 3: stipulator.v1.VerifyReport
-	(*CoverageReport)(nil),    // 4: stipulator.v1.CoverageReport
-	(*FailureDiagnostic)(nil), // 5: stipulator.v1.FailureDiagnostic
+	nil,                       // 1: stipulator.v1.CheckResult.UncacheableReasonsEntry
+	(*Problem)(nil),           // 2: stipulator.v1.Problem
+	(*ExecutionReport)(nil),   // 3: stipulator.v1.ExecutionReport
+	(*VerifyReport)(nil),      // 4: stipulator.v1.VerifyReport
+	(*CoverageReport)(nil),    // 5: stipulator.v1.CoverageReport
+	(*FailureDiagnostic)(nil), // 6: stipulator.v1.FailureDiagnostic
 }
 var file_stipulator_v1_check_proto_depIdxs = []int32{
-	1, // 0: stipulator.v1.CheckResult.compile_problems:type_name -> stipulator.v1.Problem
-	2, // 1: stipulator.v1.CheckResult.execution:type_name -> stipulator.v1.ExecutionReport
-	3, // 2: stipulator.v1.CheckResult.verify:type_name -> stipulator.v1.VerifyReport
-	4, // 3: stipulator.v1.CheckResult.coverage:type_name -> stipulator.v1.CoverageReport
-	1, // 4: stipulator.v1.CheckResult.policy_problem:type_name -> stipulator.v1.Problem
-	5, // 5: stipulator.v1.CheckResult.witness_diagnostics:type_name -> stipulator.v1.FailureDiagnostic
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	2, // 0: stipulator.v1.CheckResult.compile_problems:type_name -> stipulator.v1.Problem
+	3, // 1: stipulator.v1.CheckResult.execution:type_name -> stipulator.v1.ExecutionReport
+	4, // 2: stipulator.v1.CheckResult.verify:type_name -> stipulator.v1.VerifyReport
+	5, // 3: stipulator.v1.CheckResult.coverage:type_name -> stipulator.v1.CoverageReport
+	2, // 4: stipulator.v1.CheckResult.policy_problem:type_name -> stipulator.v1.Problem
+	1, // 5: stipulator.v1.CheckResult.uncacheable_reasons:type_name -> stipulator.v1.CheckResult.UncacheableReasonsEntry
+	6, // 6: stipulator.v1.CheckResult.witness_diagnostics:type_name -> stipulator.v1.FailureDiagnostic
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_check_proto_init() }
@@ -499,7 +528,7 @@ func file_stipulator_v1_check_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_check_proto_rawDesc), len(file_stipulator_v1_check_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -1293,3 +1293,95 @@ func TestReadsToolchain(t *testing.T) {
 		t.Fatalf("manifest carries paths=%v unverifiable=%v; the guard-covered read leaked into the manifest", desc.Paths, desc.Unverifiable)
 	}
 }
+
+// TestGoRunWitnessesNamesUncacheableReasons pins the diagnosable-set
+// requirement: an executed test whose record cannot publish carries the
+// refusing leg's own reason on the run result — here the observation
+// seal for a read outside the package's bracket root — keyed per test,
+// so an unwarmable cache explains itself.
+func TestGoRunWitnessesNamesUncacheableReasons(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented selective run over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":     "module example.com/whyfix\n\ngo 1.26\n",
+		"shared.txt": "outside the package bracket\n",
+		"pkg/pkg_test.go": `package pkg
+
+import (
+	"os"
+	"testing"
+)
+
+func TestReadsOutsideBracket(t *testing.T) {
+	if _, err := os.ReadFile("../shared.txt"); err != nil {
+		t.Fatal(err)
+	}
+}
+`,
+	})
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./pkg"})
+	cfg.SetRace(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
+	writePolicyRecord(t, tmp, p)
+
+	tr, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.Degraded != "" {
+		t.Fatalf("degraded: %s", tr.Degraded)
+	}
+	if tr.Ran != 1 || tr.Uncached != 1 {
+		t.Fatalf("ran=%d uncached=%d, want 1/1", tr.Ran, tr.Uncached)
+	}
+	why, ok := tr.UncacheableReasons["example.com/whyfix/pkg.TestReadsOutsideBracket"]
+	if !ok {
+		t.Fatalf("uncacheable reasons = %v, want the refusing leg named per test", tr.UncacheableReasons)
+	}
+	if !strings.Contains(why, "shared.txt") {
+		t.Errorf("reason %q does not name the sealing input", why)
+	}
+}
+
+// TestGoRunWitnessesAttributesDeniedAtZeroUncached pins the widened
+// contract's unconditional arm: a subject denied execution outright is
+// attributed even when every executed test published — the uncacheable
+// count and the attribution map answer different questions.
+func TestGoRunWitnessesAttributesDeniedAtZeroUncached(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented selective run over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":           "module example.com/denied\n\ngo 1.26\n",
+		"ok/ok_test.go":    "package ok\n\nimport \"testing\"\n\n//gofresh:pure\nfunc TestOk(t *testing.T) {}\n",
+		"denied/d_test.go": "package denied\n\nimport (\n\t\"os\"\n\t\"testing\"\n)\n\nfunc TestMain(m *testing.M) { os.Exit(0) }\n\nfunc TestNeverRuns(t *testing.T) {}\n",
+	})
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./..."})
+	cfg.SetRace(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
+	writePolicyRecord(t, tmp, p)
+
+	tr, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.Degraded != "" {
+		t.Fatalf("degraded: %s", tr.Degraded)
+	}
+	why, ok := tr.UncacheableReasons["example.com/denied/denied.TestNeverRuns"]
+	if !ok {
+		t.Fatalf("denied subject unattributed (uncached=%d reasons=%v)", tr.Uncached, tr.UncacheableReasons)
+	}
+	if !strings.Contains(why, "no process produced") && !strings.Contains(why, "terminal") {
+		t.Errorf("denied reason = %q, want the denial leg named", why)
+	}
+}

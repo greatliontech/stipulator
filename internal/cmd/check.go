@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 
 	"github.com/spf13/cobra"
 
@@ -81,6 +82,7 @@ func renderCheck(stdout, stderr io.Writer, res *stipulatorv1.CheckResult) {
 	if ex := res.GetExecution(); ex != nil {
 		fmt.Fprintln(stderr, dim(fmt.Sprintf("witnessed: %d executed, %d uncacheable",
 			res.GetTestsExecuted(), res.GetTestsUncacheable())))
+		renderUncacheableHistogram(stderr, res.GetUncacheableReasons())
 		if d := res.GetWitnessPublicationDegraded(); d != "" {
 			fmt.Fprintln(stderr, dim("freshness publication degraded: "+d))
 		}
@@ -93,6 +95,7 @@ func renderCheck(stdout, stderr io.Writer, res *stipulatorv1.CheckResult) {
 	} else if !res.GetSuiteHealthJudged() && res.GetPolicyProblem() == nil && len(res.GetCompileProblems()) == 0 {
 		fmt.Fprintln(stderr, dim(fmt.Sprintf("witnessed: %d served fresh, %d executed, %d uncacheable",
 			res.GetTestsServed(), res.GetTestsExecuted(), res.GetTestsUncacheable())))
+		renderUncacheableHistogram(stderr, res.GetUncacheableReasons())
 		if d := res.GetWitnessPublicationDegraded(); d != "" {
 			fmt.Fprintln(stderr, dim("freshness degraded: "+d))
 		}
@@ -154,6 +157,46 @@ func diagnosticHeading(d *stipulatorv1.FailureDiagnostic) string {
 		return "timeout: " + subject
 	default:
 		return "failed: " + subject
+	}
+}
+
+// renderUncacheableHistogram aggregates the per-test uncacheable reasons
+// into a bounded frequency view: the diagnosis instrument for a cache
+// that will not warm, without a per-test flood — the full attribution
+// rides the machine result.
+func renderUncacheableHistogram(stderr io.Writer, reasons map[string]string) {
+	if len(reasons) == 0 {
+		return
+	}
+	counts := map[string]int{}
+	for _, why := range reasons {
+		counts[why]++
+	}
+	type entry struct {
+		why string
+		n   int
+	}
+	entries := make([]entry, 0, len(counts))
+	for why, n := range counts {
+		entries = append(entries, entry{why, n})
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].n != entries[j].n {
+			return entries[i].n > entries[j].n
+		}
+		return entries[i].why < entries[j].why
+	})
+	const shown = 8
+	for i, e := range entries {
+		if i == shown {
+			rest := 0
+			for _, r := range entries[shown:] {
+				rest += r.n
+			}
+			fmt.Fprintln(stderr, dim(fmt.Sprintf("  ... and %d more across %d reasons", rest, len(entries)-shown)))
+			break
+		}
+		fmt.Fprintln(stderr, dim(fmt.Sprintf("  %4d  %s", e.n, e.why)))
 	}
 }
 

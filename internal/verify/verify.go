@@ -117,6 +117,13 @@ type TestRun struct {
 	// name a degraded execution distinctly from an assertion failure
 	// (REQ-check-diagnostics) where no execution report exists.
 	Diagnostics []*stipulatorv1.FailureDiagnostic
+	// UncacheableReasons names, per executed top-level test that could
+	// not publish, the leg that refused — the sealed observation's own
+	// reason, the refused proof's, the missing granting process, the
+	// post-run drift with its moved inputs — so the uncacheable count is
+	// a diagnosable set, never a bare number
+	// (REQ-evidence-witness-freshness).
+	UncacheableReasons map[string]string
 }
 
 // Registration is one runtime coverage claim. Package and the test path

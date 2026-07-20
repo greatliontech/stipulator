@@ -252,3 +252,27 @@ func TestCheckRenderServingFormNamesDiagnosticsDistinctly(t *testing.T) {
 		t.Errorf("truncation marker lost:\n%s", diag)
 	}
 }
+
+// The uncacheable histogram aggregates per-test reasons into a bounded
+// frequency view, most common first — the diagnosis instrument for a
+// cache that will not warm, never a per-test flood.
+func TestCheckRenderUncacheableHistogram(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	res := &stipulatorv1.CheckResult{}
+	res.SetTestsServed(1)
+	res.SetTestsExecuted(3)
+	res.SetTestsUncacheable(3)
+	res.SetUncacheableReasons(map[string]string{
+		"p.TestA": "observation sealed: runtime input not covered by observation bracket: x.txt",
+		"p.TestB": "observation sealed: runtime input not covered by observation bracket: x.txt",
+		"p.TestC": "no healthy process granted the outcome",
+	})
+	var stdout, stderr bytes.Buffer
+	renderCheck(&stdout, &stderr, res)
+	out := stderr.String()
+	first := strings.Index(out, "2  observation sealed: runtime input not covered by observation bracket: x.txt")
+	second := strings.Index(out, "1  no healthy process granted the outcome")
+	if first < 0 || second < 0 || first > second {
+		t.Fatalf("histogram missing or misordered:\n%s", out)
+	}
+}

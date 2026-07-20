@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	gofresh "github.com/greatliontech/gofresh"
@@ -151,6 +152,20 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 	// red-TestMain green and the non-race pass stay visibly uncacheable.
 	if tr.Ran != 5 || tr.Fresh != 0 || tr.Uncached != 2 {
 		t.Errorf("ran=%d fresh=%d uncached=%d, want 5/0/2", tr.Ran, tr.Fresh, tr.Uncached)
+	}
+	// The uncacheable pair is attributed, never a bare number: the
+	// red-TestMain green names its unhealthy package, and the
+	// killed-mid-run sleeper carries the structural fallback rather than
+	// silence. The denied killmid subjects — expected but never granted —
+	// are attributed too, beyond the executed pair.
+	if why := tr.UncacheableReasons["example.com/exec/redmain.TestGreen"]; !strings.Contains(why, "unhealthy") {
+		t.Errorf("redmain.TestGreen reason = %q, want the unhealthy package named", why)
+	}
+	if why := tr.UncacheableReasons["example.com/exec/sleepy.TestSleeps"]; !strings.Contains(why, "record not published") {
+		t.Errorf("killed sleeper reason = %q, want the structural fallback named", why)
+	}
+	if why := tr.UncacheableReasons["example.com/exec/killmid.TestShadowedByKill"]; !strings.Contains(why, "unhealthy") {
+		t.Errorf("denied subject reason = %q, want attribution beyond the executed set", why)
 	}
 
 	cache := witnesscache.Load(tmp)

@@ -3,6 +3,7 @@ package golang
 import (
 	"context"
 	"fmt"
+	"maps"
 	"runtime/debug"
 	"sort"
 	"strings"
@@ -443,22 +444,53 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 		return nil, err
 	}
 	tr := DeriveTestRun(report)
-	published, degraded, err := r.publish(ctx, report, observations)
+	published, uncacheableWhy, degraded, err := r.publish(ctx, report, observations)
 	if err != nil {
 		return nil, err
 	}
+	executedTop := executedTopKeys(report)
 	switch {
 	case degraded != "":
 		tr.Degraded = degraded
 		tr.Uncached = tr.Ran
+		tr.UncacheableReasons = map[string]string{}
+		for key := range executedTop {
+			tr.UncacheableReasons[key] = "freshness path degraded: " + degraded
+		}
 	case len(r.groups) == 0:
 		// Nothing was capturable (no race-enabled invocation, or no
 		// expected tests): every executed test is uncacheable and the
 		// existing cache is left alone.
 		tr.Uncached = tr.Ran
+		tr.UncacheableReasons = map[string]string{}
+		for key := range executedTop {
+			tr.UncacheableReasons[key] = "no capture group: no race-enabled invocation covers the package"
+		}
 	default:
 		if tr.Ran > len(published) {
 			tr.Uncached = tr.Ran - len(published)
+		}
+		// Per-test attribution mirrors the selective runner's: the
+		// ladder's own refusal reasons plus a structural fallback
+		// (REQ-evidence-witness-freshness's diagnosable-set requirement).
+		if tr.Uncached > 0 || len(uncacheableWhy) > 0 {
+			tr.UncacheableReasons = map[string]string{}
+			for s, why := range uncacheableWhy {
+				tr.UncacheableReasons[s.Package+"."+s.Symbol] = why
+			}
+			publishedKey := map[string]bool{}
+			for _, rec := range published {
+				publishedKey[rec.Package+"."+rec.Test] = true
+			}
+			for key := range executedTop {
+				if publishedKey[key] {
+					delete(tr.UncacheableReasons, key)
+					continue
+				}
+				if _, ok := tr.UncacheableReasons[key]; !ok {
+					tr.UncacheableReasons[key] = "record not published"
+				}
+			}
 		}
 		// Publication installs exactly what this execution produced, one
 		// variant file per record. Records this run never touched — a
@@ -478,12 +510,12 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 // report supports. It returns the publishable records, or the degraded
 // reason when a fault disabled publication whole; the error return is
 // reserved for caller cancellation.
-func (r *WitnessRecorder) publish(ctx context.Context, report *stipulatorv1.ExecutionReport, observations []*ProcessObservation) ([]witnesscache.Record, string, error) {
+func (r *WitnessRecorder) publish(ctx context.Context, report *stipulatorv1.ExecutionReport, observations []*ProcessObservation) ([]witnesscache.Record, map[gofresh.Subject]string, string, error) {
 	if r.degraded != "" {
-		return nil, r.degraded, nil
+		return nil, nil, r.degraded, nil
 	}
 	if len(r.groups) == 0 {
-		return nil, "", nil
+		return nil, nil, "", nil
 	}
 	facts := indexInvocations(report)
 	// A package under more than one invocation has no single producing
@@ -506,14 +538,16 @@ func (r *WitnessRecorder) publish(ctx context.Context, report *stipulatorv1.Exec
 	}
 
 	var published []witnesscache.Record
+	uncacheableWhy := map[gofresh.Subject]string{}
 	for _, g := range r.groups {
-		records, degraded, err := r.publishGroup(ctx, g, facts, selectCount, rowsByInvPkg, obsByProducer)
+		records, reasons, degraded, err := r.publishGroup(ctx, g, facts, selectCount, rowsByInvPkg, obsByProducer)
 		if err != nil || degraded != "" {
-			return nil, degraded, err
+			return nil, nil, degraded, err
 		}
+		maps.Copy(uncacheableWhy, reasons)
 		published = append(published, records...)
 	}
-	return published, "", nil
+	return published, uncacheableWhy, "", nil
 }
 
 // groupSubject is one publishable subject's execution-side material.
@@ -526,32 +560,41 @@ type groupSubject struct {
 	regs     []verify.Registration
 }
 
-func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, facts invocationFacts, selectCount map[string]int, rowsByInvPkg map[string][]*stipulatorv1.TestResult, obsByProducer map[producerKey]*ProcessObservation) ([]witnesscache.Record, string, error) {
+func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, facts invocationFacts, selectCount map[string]int, rowsByInvPkg map[string][]*stipulatorv1.TestResult, obsByProducer map[producerKey]*ProcessObservation) ([]witnesscache.Record, map[gofresh.Subject]string, string, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, "", err
+		return nil, nil, "", err
 	}
 	// Source producer validation: the analysis view must still describe
 	// the tree after execution, or every fingerprint of the group is a
 	// hash of a tree the outcomes may not have come from.
 	if err := g.view.Validate(ctx); err != nil {
 		if ctx.Err() != nil {
-			return nil, "", ctx.Err()
+			return nil, nil, "", ctx.Err()
 		}
-		return nil, fmt.Sprintf("source producer validation failed: %v", err), nil
+		return nil, nil, fmt.Sprintf("source producer validation failed: %v", err), nil
 	}
+	reasons := map[gofresh.Subject]string{}
 
 	eligible := map[gofresh.Subject]*groupSubject{}
 	var order []gofresh.Subject
 	for pkg, names := range g.tests {
+		markAll := func(why string) {
+			for _, name := range names {
+				reasons[gofresh.Subject{Package: pkg, Symbol: name}] = why
+			}
+		}
 		inv, ok := g.pkgInv[pkg]
 		if !ok || g.ambiguous[pkg] || selectCount[pkg] != 1 {
+			markAll("multiply-selected or ambiguous invocation coverage: a record has no per-invocation identity")
 			continue
 		}
 		if !facts.healthyPkg[inv+"\x00"+pkg] {
+			markAll("producing package disposed unhealthy")
 			continue
 		}
 		rows := rowsByInvPkg[inv+"\x00"+pkg]
 		if len(rows) == 0 {
+			markAll("no terminal event from the producing process")
 			continue
 		}
 		// The executor launches exactly one process per selected package per
@@ -561,6 +604,7 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 		if obs == nil || obs.Wire.GetCompleted() == nil {
 			// The producing process's testlog flush is unproven: its
 			// tests execute and witness, they just cannot cache.
+			markAll("producing process's testlog flush unproven")
 			continue
 		}
 		tops := map[string]bool{}
@@ -570,6 +614,7 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 		for _, name := range names {
 			subject := gofresh.Subject{Package: pkg, Symbol: name}
 			if _, captured := g.fps[subject]; !captured {
+				reasons[subject] = "pre-execution fingerprint capture failed"
 				continue
 			}
 			gs := &groupSubject{subject: subject, obs: obs, soloRun: len(tops) == 1 && tops[name]}
@@ -598,6 +643,7 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 				}
 			}
 			if contradicted || gs.outcomes[pkg+"."+name] == "" {
+				reasons[subject] = "no healthy outcome for the subject"
 				continue
 			}
 			eligible[subject] = gs
@@ -639,11 +685,19 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 			}
 			attached[subject] = fp
 			attachedValid[subject] = validatedObservation(fp, state)
+			if !attachedValid[subject] {
+				switch {
+				case state.Unverifiable:
+					reasons[subject] = "observation sealed: " + state.Reason
+				case !fp.ObservationProof.Observable:
+					reasons[subject] = "observation proof refused: " + fp.ObservationProof.Reason
+				}
+			}
 		}
 		if complete && len(g.candidates) > 0 {
 			if err := g.observed.ValidateObserved(ctx); err != nil {
 				if ctx.Err() != nil {
-					return nil, "", ctx.Err()
+					return nil, nil, "", ctx.Err()
 				}
 				complete = false
 			}
@@ -668,6 +722,7 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 		if fp.ObservationAssertion == "" {
 			state, err := runtimeinput.CompletedState(gs.obs.Runtime)
 			if err != nil {
+				reasons[subject] = "observation state unavailable: " + err.Error()
 				continue
 			}
 			fp.RuntimeInputs, fp.RuntimeDigest = state.Manifest, state.Digest
@@ -694,12 +749,17 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 	checked, err := checkFingerprints(ctx, g.view, unvalidated)
 	if err != nil {
 		if ctx.Err() != nil {
-			return nil, "", ctx.Err()
+			return nil, nil, "", ctx.Err()
 		}
-		return nil, fmt.Sprintf("runtime producer validation failed: %v", err), nil
+		return nil, nil, fmt.Sprintf("runtime producer validation failed: %v", err), nil
 	}
 	for subject, verdict := range checked {
 		verdicts[subject] = verdict
+		if verdict.Status != gofresh.Valid {
+			if _, ok := reasons[subject]; !ok {
+				reasons[subject] = "post-run validation: " + verdict.Reason
+			}
+		}
 	}
 
 	var records []witnesscache.Record
@@ -724,8 +784,9 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 			Outcomes:    gs.outcomes,
 			Regs:        compactRegs(regs),
 		})
+		delete(reasons, subject)
 	}
-	return records, "", nil
+	return records, reasons, "", nil
 }
 
 func compactRegs(regs []verify.Registration) []verify.Registration {
@@ -766,4 +827,18 @@ func ExecutePolicyWitnessed(ctx context.Context, dir string, p *stipulatorv1.Tes
 		return nil, nil, err
 	}
 	return report, tr, nil
+}
+
+// executedTopKeys is the executed top-level witness-subject key set —
+// "pkg.TopLevelTest" per report row, examples excluded by the
+// toolchain's own dispatch rule, the same rule Ran counts by: the
+// attribution map and the Ran count must never desynchronize.
+func executedTopKeys(report *stipulatorv1.ExecutionReport) map[string]bool {
+	keys := map[string]bool{}
+	for _, row := range report.GetTests() {
+		if top := topLevel(row.GetTest()); !strings.HasPrefix(top, "Example") {
+			keys[row.GetPackage()+"."+top] = true
+		}
+	}
+	return keys
 }

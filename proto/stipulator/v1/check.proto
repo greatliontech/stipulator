@@ -62,6 +62,16 @@ message CheckResult {
   // executing. Always zero under the health-judged form: a health-judged
   // invocation executes whole.
   int32 tests_served = 12;
+  // Per-test uncacheable attribution: for each executed top-level test
+  // whose record could not publish - and each expected witness subject
+  // the run denied execution outright - the leg that refused: the sealed
+  // observation's reason, the refused proof's, the missing granting
+  // process, the post-run drift with its moved inputs named. Human
+  // renderings aggregate; the per-test map is the machine surface. The
+  // map's size and tests_uncacheable answer different questions: denied
+  // subjects attribute without executing, so the map can exceed the
+  // count and be non-empty at zero.
+  map<string, string> uncacheable_reasons = 15;
   // Failure diagnostics for the witness-evidence form, where no
   // execution report exists to carry them: the same typed rows the
   // execution report would hold — disposition, truncation, and retained

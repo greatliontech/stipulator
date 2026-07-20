@@ -121,9 +121,15 @@ download-cache subtree's mutable metadata is pinned by neither and
 stays observed. A package whose directory is unresolved before
 spawn, or whose directory lies outside the verification tree, yields an
 incomplete observation rather than a completed record sealed without a
-bracket. Executed tests whose records cannot be published for reuse are
-reported as an uncacheable count beside the run/served summary, so a
-shrinking cache is a visible number, never silence. Witness packages
+bracket. Executed tests whose records cannot be published for reuse — and
+expected witness subjects a run denied execution outright — are
+reported beside the run/served summary with a per-test attributable
+reason — the sealed observation's own reason, the refused proof's, the
+missing granting process, the post-run drift with its moved inputs
+named, whichever leg refused — so a shrinking cache is a visible,
+diagnosable set, never silence and never a bare number. Human
+renderings aggregate the reasons; the per-test attribution rides the
+machine result. Witness packages
 execute concurrently under a processor-count bound, which assumes what
 standard Go tooling already assumes of them (`go test` runs packages
 in parallel by default): witnesses do not mutate inputs other packages
