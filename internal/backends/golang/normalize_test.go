@@ -38,6 +38,11 @@ func neutralAmbient(t *testing.T) {
 	t.Setenv("GOFLAGS", "")
 	t.Setenv("GOPACKAGESDRIVER", "")
 	t.Setenv("GOTOOLCHAIN", "local")
+	// An exported GOCACHE would out-rank the go env config file these
+	// tests source values from - the witness executor itself pins one
+	// into child environments, so the suite must stay hermetic when run
+	// as its own witness. Empty defers to the config file.
+	t.Setenv("GOCACHE", "")
 }
 
 func goInvocation(name string, cfg *stipulatorv1.GoInvocationConfig) *stipulatorv1.PolicyInvocation {
