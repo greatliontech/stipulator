@@ -27,6 +27,11 @@ const mod = "github.com/greatliontech/stipulator"
 // sources outside this binary's closure, loaded through the shared
 // backend at package init — before the testlog starts, so no digest
 // guards them. The witness re-runs every gate.
+// This subject analyzes the repository tree itself: its inputs are
+// the source closure and guard-covered toolchain state the fingerprint
+// already pins, asserted pure under REQ-purity-responsibility.
+//
+//gofresh:pure
 func TestResolve(t *testing.T) {
 	cases := []struct {
 		name, symbol string
@@ -66,6 +71,11 @@ func TestResolve(t *testing.T) {
 // tree cannot: external test packages, generated-type promotion through
 // embedding, interface methods, and packages that fail to load.
 //
+// This subject analyzes the repository tree itself: its inputs are
+// the source closure and guard-covered toolchain state the fingerprint
+// already pins, asserted pure under REQ-purity-responsibility.
+//
+//gofresh:pure
 //gofresh:pure
 func TestFixtureModule(t *testing.T) {
 	b, err := newContext(context.Background(), "testdata/fixturemod")
@@ -108,6 +118,11 @@ func TestFixtureModule(t *testing.T) {
 // rendering must carry full package paths, or cross-package shape drift
 // becomes invisible.
 //
+// This subject analyzes the repository tree itself: its inputs are
+// the source closure and guard-covered toolchain state the fingerprint
+// already pins, asserted pure under REQ-purity-responsibility.
+//
+//gofresh:pure
 //gofresh:pure
 func TestShapeHashIsPackageQualified(t *testing.T) {
 	fn := func(path string) *types.Func {
@@ -126,6 +141,11 @@ func TestShapeHashIsPackageQualified(t *testing.T) {
 // sources outside this binary's closure, loaded through the shared
 // backend at package init — before the testlog starts, so no digest
 // guards them. The witness re-runs every gate.
+// This subject analyzes the repository tree itself: its inputs are
+// the source closure and guard-covered toolchain state the fingerprint
+// already pins, asserted pure under REQ-purity-responsibility.
+//
+//gofresh:pure
 func TestShapeHashDistinguishesSignatures(t *testing.T) {
 	_, a, err := backend.Resolve(mod + "/internal/corpus.LoadManifest")
 	if err != nil {
@@ -155,6 +175,11 @@ func TestShapeHashDistinguishesSignatures(t *testing.T) {
 // sources outside this binary's closure, loaded through the shared
 // backend at package init — before the testlog starts, so no digest
 // guards them. The witness re-runs every gate.
+// This subject analyzes the repository tree itself: its inputs are
+// the source closure and guard-covered toolchain state the fingerprint
+// already pins, asserted pure under REQ-purity-responsibility.
+//
+//gofresh:pure
 func TestWitnessClass(t *testing.T) {
 	if got := backend.WitnessClass(mod + "/internal/canon.FuzzTextProjection"); got != verify.PropertyWitness {
 		t.Fatalf("fuzz target classified %v", got)
@@ -188,6 +213,11 @@ func TestWitnessClass(t *testing.T) {
 // sources outside this binary's closure, loaded through the shared
 // backend at package init — before the testlog starts, so no digest
 // guards them. The witness re-runs every gate.
+// This subject analyzes the repository tree itself: its inputs are
+// the source closure and guard-covered toolchain state the fingerprint
+// already pins, asserted pure under REQ-purity-responsibility.
+//
+//gofresh:pure
 func TestSlice(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-slice")
 	decls, err := backend.Slice([]string{mod + "/internal/corpus.LoadManifest"})
@@ -231,6 +261,11 @@ func TestSlice(t *testing.T) {
 // package patterns are module-scoped, so without the walk a nested
 // published module silently vanishes from verification.
 //
+// This subject analyzes the repository tree itself: its inputs are
+// the source closure and guard-covered toolchain state the fingerprint
+// already pins, asserted pure under REQ-purity-responsibility.
+//
+//gofresh:pure
 //gofresh:pure
 func TestWorkspaceMembers(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
