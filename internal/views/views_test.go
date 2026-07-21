@@ -18,14 +18,14 @@ func TestVerifyViews(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-views")
 	vr := &verify.Report{
 		Results: []verify.BindingResult{
-			{RequirementId: "REQ-v-a", Symbol: "example.com/p.TestA", Role: stipulatorv1.BindingRole_BINDING_ROLE_TESTS},
-			{RequirementId: "REQ-v-b", Symbol: "example.com/q.TestB", Role: stipulatorv1.BindingRole_BINDING_ROLE_TESTS},
+			{RequirementId: "REQ-v-a", Symbol: "example.com/p.TestA", Package: "example.com/p", Role: stipulatorv1.BindingRole_BINDING_ROLE_TESTS},
+			{RequirementId: "REQ-v-b", Symbol: "example.com/q.TestB", Package: "example.com/q", Role: stipulatorv1.BindingRole_BINDING_ROLE_TESTS},
 		},
 		TestsPassed:   2,
 		OutsidePolicy: 3,
-		PackageFailures: map[string]string{
-			"example.com/q": "build failed: boom",
-			"example.com/p": "package abort: poof",
+		Diagnostics: []*stipulatorv1.FailureDiagnostic{
+			packageDiag("example.com/q", "build failed: boom"),
+			packageDiag("example.com/p", "package abort: poof"),
 		},
 		Signatures: []verify.ChangeSignature{{RequirementId: "REQ-v-a", Label: verify.SemanticDrift, Evidence: []string{"e"}}},
 	}
@@ -39,13 +39,14 @@ func TestVerifyViews(t *testing.T) {
 	if sum.GetTestsPassed() != 2 || len(sum.GetSignatures()) != 1 {
 		t.Fatalf("summary: %v", sum)
 	}
-	// The witnessing gaps ride the summary: the outside-policy count and
-	// the package-keyed diagnostics are visible facts, never silence.
+	// The outside-policy count rides the summary as a visible fact; the
+	// failure diagnostics surface as capped heading words — the bodies
+	// ride the full report alone.
 	if sum.GetOutsidePolicy() != 3 {
 		t.Fatalf("summary outside_policy = %d, want 3", sum.GetOutsidePolicy())
 	}
-	if len(sum.GetPackageFailures()) != 2 || sum.GetPackageFailures()["example.com/q"] != "build failed: boom" {
-		t.Fatalf("summary package_failures = %v", sum.GetPackageFailures())
+	if h := sum.GetWitnessFailureHeadings(); len(h) != 2 || h[0] != "failed: example.com/q" {
+		t.Fatalf("summary witness failure headings = %v", h)
 	}
 
 	m, err = VerifyView(vr, facts, "bindings", Scope{Path: "example.com/q"})
@@ -58,13 +59,11 @@ func TestVerifyViews(t *testing.T) {
 		t.Fatalf("scoped bindings: %v", rows)
 	}
 	// A scope narrows the WHOLE report: only packages owning in-scope
-	// rows keep their diagnostics; the outside-policy count stays global
-	// exactly like the gate verdict.
-	if rep.GetOutsidePolicy() != 3 || rep.GetPackageFailures()["example.com/q"] != "build failed: boom" {
-		t.Fatalf("bindings view lost witnessing facts: outside=%d failures=%v", rep.GetOutsidePolicy(), rep.GetPackageFailures())
-	}
-	if _, leaked := rep.GetPackageFailures()["example.com/p"]; leaked {
-		t.Fatalf("scoped bindings view leaked an out-of-scope package failure: %v", rep.GetPackageFailures())
+	// rows keep their diagnostic rows; the outside-policy count stays
+	// global exactly like the gate verdict.
+	diags := rep.GetWitnessDiagnostics()
+	if rep.GetOutsidePolicy() != 3 || len(diags) != 1 || diags[0].GetPackage() != "example.com/q" || diags[0].GetOutput() != "build failed: boom" {
+		t.Fatalf("scoped bindings view diagnostics: outside=%d diags=%v", rep.GetOutsidePolicy(), diags)
 	}
 
 	// Bucket scope has no meaning over binding rows: refused, never
@@ -263,4 +262,84 @@ func TestScopeValidate(t *testing.T) {
 	if unscoped.(*stipulatorv1.CoverageSummary).GetGapsOpen() != 1 {
 		t.Fatalf("unscoped gaps_open wrong: %v", unscoped)
 	}
+}
+
+// A scoped bindings view keeps a diagnostic only for a package whose
+// backend-resolved row it keeps — never a re-parse of the symbol
+// string, which is ambiguous for dotted path elements (example.com/p
+// vs example.com/p.v2) and method receivers (example.com/p.Server.Handle
+// lives in example.com/p) (REQ-mcp-views).
+//
+//gofresh:pure
+func TestVerifyBindingsScopeDiagnosticsResolvedPackage(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-views")
+	vr := &verify.Report{
+		Results: []verify.BindingResult{
+			{RequirementId: "REQ-dp", Symbol: "example.com/p.v2.TestX", Package: "example.com/p.v2", Role: stipulatorv1.BindingRole_BINDING_ROLE_TESTS},
+			{RequirementId: "REQ-dm", Symbol: "example.com/p.Server.Handle", Package: "example.com/p", Role: stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS},
+			// Unresolved: no backend answer, so the row identifies no
+			// package and must claim no diagnostic — in particular not
+			// an invocation-level one, whose package is equally empty.
+			{RequirementId: "REQ-dp", Symbol: "example.com/p.v2.Gone", Package: "", Role: stipulatorv1.BindingRole_BINDING_ROLE_TESTS},
+		},
+		Diagnostics: []*stipulatorv1.FailureDiagnostic{
+			packageDiag("example.com/p", "outer boom"),
+			packageDiag("example.com/p.v2", "inner boom"),
+			packageDiag("example.com/q", "stray boom"),
+			packageDiag("", "envelope boom"),
+		},
+	}
+	facts := Facts{Doc: map[string]string{"REQ-dp": "specs/a.md", "REQ-dm": "specs/a.md"}, Symbols: map[string][]string{}}
+
+	// The narrow scope keeps only the dotted package's row: the parent
+	// package's diagnostic must not leak in.
+	m, err := VerifyView(vr, facts, "bindings", Scope{Path: "example.com/p.v2"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	diags := m.(*stipulatorv1.VerifyReport).GetWitnessDiagnostics()
+	if len(diags) != 1 || diags[0].GetPackage() != "example.com/p.v2" {
+		t.Fatalf("scoped diagnostics = %v, want exactly the dotted package's row", diags)
+	}
+
+	// The wide scope keeps both rows; the method-bound row claims its
+	// package's diagnostic, and the out-of-scope package stays out.
+	m, err = VerifyView(vr, facts, "bindings", Scope{Path: "example.com/p"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	diags = m.(*stipulatorv1.VerifyReport).GetWitnessDiagnostics()
+	if len(diags) != 2 || diags[0].GetPackage() != "example.com/p" || diags[1].GetPackage() != "example.com/p.v2" {
+		t.Fatalf("scoped diagnostics = %v, want the method-bound and dotted packages' rows", diags)
+	}
+
+	// A build-broken package's rows resolve to no package, but a path
+	// scope onto that package keeps its diagnostic directly: the one
+	// output explaining the breakage must not vanish from the scoped
+	// triage view.
+	vr = &verify.Report{
+		Results: []verify.BindingResult{
+			{RequirementId: "REQ-dp", Symbol: "example.com/broken.TestX", Package: "", Role: stipulatorv1.BindingRole_BINDING_ROLE_TESTS},
+		},
+		Diagnostics: []*stipulatorv1.FailureDiagnostic{
+			packageDiag("example.com/broken", "syntax boom"),
+			packageDiag("", "envelope boom"),
+		},
+	}
+	m, err = VerifyView(vr, Facts{Doc: map[string]string{"REQ-dp": "specs/a.md"}, Symbols: map[string][]string{}}, "bindings", Scope{Path: "example.com/broken"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	diags = m.(*stipulatorv1.VerifyReport).GetWitnessDiagnostics()
+	if len(diags) != 1 || diags[0].GetPackage() != "example.com/broken" {
+		t.Fatalf("broken-package scope diagnostics = %v, want its build diagnostic kept", diags)
+	}
+}
+
+// packageDiag builds a package-level failure diagnostic (no owning test).
+func packageDiag(pkg, out string) *stipulatorv1.FailureDiagnostic {
+	d := &stipulatorv1.FailureDiagnostic{}
+	d.SetPackage(pkg)
+	d.SetOutput(out)
+	return d
 }

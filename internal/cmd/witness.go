@@ -35,7 +35,7 @@ func witnessRun(ctx context.Context) (*verify.TestRun, error) {
 // printWitnessSummary renders one witness run's shared stderr surface:
 // the run/served/uncacheable/outside-policy counts, the degraded reason
 // when the freshness path faulted, each failed test's retained output,
-// and the package-keyed diagnostics no single test owns — the denied
+// and the package-level diagnostic rows no single test owns — the denied
 // subjects' visibility story. Keys render sorted so identical runs
 // render identically (REQ-core-determinism).
 func printWitnessSummary(tr *verify.TestRun) {
@@ -51,8 +51,11 @@ func printWitnessSummary(tr *verify.TestRun) {
 	for _, key := range sortedKeys(tr.Failures) {
 		fmt.Fprintf(os.Stderr, "%s\n%s", red("witness failed: "+key), tr.Failures[key])
 	}
-	for _, pkg := range sortedKeys(tr.PackageFailures) {
-		fmt.Fprintf(os.Stderr, "%s\n%s", red("witness denied: "+pkg), tr.PackageFailures[pkg])
+	for _, d := range tr.Diagnostics {
+		if d.GetTest() != "" {
+			continue
+		}
+		fmt.Fprintf(os.Stderr, "%s\n%s", red("witness denied: "+d.GetPackage()), d.GetOutput())
 	}
 }
 

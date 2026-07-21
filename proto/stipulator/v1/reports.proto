@@ -49,6 +49,46 @@ enum WitnessClass {
   WITNESS_CLASS_ANALYZER_PROOF = 3;
 }
 
+// HealthDisposition is the terminal health of a policy invocation or a
+// selected package. There is deliberately no cancelled value: a cancelled
+// execution discards its partial results and reports no terminal
+// disposition at all; cancellation is visible only as a progress-event
+// terminal cause.
+enum HealthDisposition {
+  HEALTH_DISPOSITION_UNSPECIFIED = 0;
+  HEALTH_DISPOSITION_HEALTHY = 1;
+  // Tests ran and at least one assertion failed.
+  HEALTH_DISPOSITION_TEST_FAILED = 2;
+  // The package (or an invocation member) failed to build.
+  HEALTH_DISPOSITION_BUILD_FAILED = 3;
+  // The invocation exceeded its policy-declared timeout.
+  HEALTH_DISPOSITION_TIMEOUT = 4;
+  // Environment-induced failure: a silent or malformed command stream,
+  // a run that ended without a usable report. Named distinctly from an
+  // assertion failure so the two are never indistinguishable.
+  HEALTH_DISPOSITION_DEGRADED = 5;
+}
+
+// FailureDiagnostic is the retained output of one failing or degraded
+// unit of policy execution — an invocation, a package, or a named test.
+// Retained failure output is part of the verdict, not a courtesy: without
+// it an environment-induced failure and a real regression are
+// indistinguishable.
+message FailureDiagnostic {
+  // Canonical invocation name from the policy record.
+  string invocation = 1;
+  // Set when the diagnostic is package-scoped.
+  string package = 2;
+  // Set when the diagnostic is test-scoped (a failed or degraded
+  // witness).
+  string test = 3;
+  // Names a degraded execution distinctly from an assertion failure.
+  HealthDisposition disposition = 4;
+  // Retained output, bounded by the executor.
+  string output = 5;
+  bool truncated = 6;
+}
+
 // Problem is a verification error; any problem fails a run.
 message Problem {
   string path = 1;
@@ -68,6 +108,11 @@ message BindingResult {
   TestOutcome test_outcome = 9;
   WitnessClass witness_class = 10;
   bool race_enabled = 11;
+  // The symbol's owning package as the backend resolved it — the one
+  // source for package-scoped correlation (a symbol string alone is
+  // ambiguous: dotted path elements vs method receivers). Empty when
+  // resolution found no owning package.
+  string package = 12;
 }
 
 // RegistrationResult is a cross-checked runtime coverage claim.
@@ -93,11 +138,12 @@ message VerifyReport {
   // visible number, never silence (REQ-policy-conservation). Zero in
   // unwitnessed runs.
   int32 outside_policy = 5;
-  // PackageFailures carries the witnessing run's failure diagnostics no
-  // single test owns — an envelope cutoff, a package abort, a build
-  // failure — keyed by import path: an expected subject denied an
-  // outcome is diagnosable from the run that denied it.
-  map<string, string> package_failures = 6;
+  reserved 6;
+  // The witnessing run's failure diagnostics, test- and package-scoped
+  // alike — the one wire home for retained failure output in a verify
+  // payload. Check payloads carry the same typed rows at the check
+  // level and leave this empty (one fact, one home per payload).
+  repeated FailureDiagnostic witness_diagnostics = 7;
 }
 
 // ChangeSignature labels one requirement's change shape.
@@ -215,11 +261,13 @@ message VerifySummary {
   // policy leaves outside selective witnessing (REQ-core-one-execution);
   // the roll-up surfaces the gap as a number, never silence.
   int32 outside_policy = 13;
-  // PackageFailures carries the witnessing run's package-keyed failure
-  // diagnostics — an envelope cutoff, a package abort, a build failure —
-  // so a subject denied an outcome is diagnosable from the summary most
-  // calls read.
-  map<string, string> package_failures = 14;
+  reserved 14;
+  // Heading words for the run's failure diagnostics — unit and
+  // disposition, no retained output; the bodies ride only the full
+  // report. Capped, with the omitted remainder counted: a truncation
+  // is never silent (REQ-mcp-response-contract).
+  repeated string witness_failure_headings = 15;
+  int32 witness_failure_headings_omitted = 16;
 }
 
 

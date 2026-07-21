@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"google.golang.org/protobuf/proto"
+
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -204,27 +206,55 @@ func TestCheckViewScopeFiltersWholeReport(t *testing.T) {
 	}
 }
 
-// The verify summary's package-failure values are retained runtime
-// output: each entry is capped with the truncation stated
+// Failure-diagnostic output is a retained runtime product: the verify
+// summary omits it entirely and the full report carries the rows
+// untruncated — bounded summary, lossless drill-down
 // (REQ-mcp-response-contract).
 //
 //gofresh:pure
-func TestVerifySummaryCapsPackageFailureOutput(t *testing.T) {
+func TestVerifySummaryOmitsFailureDiagnosticOutput(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-response-contract")
-	vr := &verify.Report{PackageFailures: map[string]string{
-		"example.com/m/broken": strings.Repeat("compiler noise\n", 1000),
-		"example.com/m/short":  "one line\n",
-	}}
+	noise := strings.Repeat("compiler noise\n", 1000)
+	d := &stipulatorv1.FailureDiagnostic{}
+	d.SetPackage("example.com/m/broken")
+	d.SetOutput(noise)
+	vr := &verify.Report{Diagnostics: []*stipulatorv1.FailureDiagnostic{d}}
 	m, err := VerifyView(vr, Facts{}, "summary", Scope{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := m.(*stipulatorv1.VerifySummary).GetPackageFailures()
-	long := got["example.com/m/broken"]
-	if len(long) > packageFailureCap+100 || !strings.Contains(long, "truncated") {
-		t.Fatalf("long failure not capped with a stated truncation (len=%d)", len(long))
+	sum := m.(*stipulatorv1.VerifySummary)
+	raw, err := proto.Marshal(sum)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if got["example.com/m/short"] != "one line\n" {
-		t.Fatalf("short failure mangled: %q", got["example.com/m/short"])
+	if strings.Contains(string(raw), "compiler noise") {
+		t.Fatalf("summary payload carries retained diagnostic output (%d bytes)", len(raw))
+	}
+	if h := sum.GetWitnessFailureHeadings(); len(h) != 1 || h[0] != "failed: example.com/m/broken" {
+		t.Fatalf("summary headings = %v", h)
+	}
+	m, err = VerifyView(vr, Facts{}, "bindings", Scope{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := m.(*stipulatorv1.VerifyReport).GetWitnessDiagnostics()
+	if len(rows) != 1 || rows[0].GetOutput() != noise {
+		t.Fatalf("full report lost or truncated the diagnostic row: %v", rows)
+	}
+
+	// Past the cap, the omitted remainder is counted — a truncation is
+	// never silent.
+	var many []*stipulatorv1.FailureDiagnostic
+	for i := 0; i < headingCap+3; i++ {
+		many = append(many, d)
+	}
+	m, err = VerifyView(&verify.Report{Diagnostics: many}, Facts{}, "summary", Scope{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum = m.(*stipulatorv1.VerifySummary)
+	if len(sum.GetWitnessFailureHeadings()) != headingCap || sum.GetWitnessFailureHeadingsOmitted() != 3 {
+		t.Fatalf("capped headings = %d, omitted = %d", len(sum.GetWitnessFailureHeadings()), sum.GetWitnessFailureHeadingsOmitted())
 	}
 }

@@ -224,6 +224,70 @@ func (x WitnessClass) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
+// HealthDisposition is the terminal health of a policy invocation or a
+// selected package. There is deliberately no cancelled value: a cancelled
+// execution discards its partial results and reports no terminal
+// disposition at all; cancellation is visible only as a progress-event
+// terminal cause.
+type HealthDisposition int32
+
+const (
+	HealthDisposition_HEALTH_DISPOSITION_UNSPECIFIED HealthDisposition = 0
+	HealthDisposition_HEALTH_DISPOSITION_HEALTHY     HealthDisposition = 1
+	// Tests ran and at least one assertion failed.
+	HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED HealthDisposition = 2
+	// The package (or an invocation member) failed to build.
+	HealthDisposition_HEALTH_DISPOSITION_BUILD_FAILED HealthDisposition = 3
+	// The invocation exceeded its policy-declared timeout.
+	HealthDisposition_HEALTH_DISPOSITION_TIMEOUT HealthDisposition = 4
+	// Environment-induced failure: a silent or malformed command stream,
+	// a run that ended without a usable report. Named distinctly from an
+	// assertion failure so the two are never indistinguishable.
+	HealthDisposition_HEALTH_DISPOSITION_DEGRADED HealthDisposition = 5
+)
+
+// Enum value maps for HealthDisposition.
+var (
+	HealthDisposition_name = map[int32]string{
+		0: "HEALTH_DISPOSITION_UNSPECIFIED",
+		1: "HEALTH_DISPOSITION_HEALTHY",
+		2: "HEALTH_DISPOSITION_TEST_FAILED",
+		3: "HEALTH_DISPOSITION_BUILD_FAILED",
+		4: "HEALTH_DISPOSITION_TIMEOUT",
+		5: "HEALTH_DISPOSITION_DEGRADED",
+	}
+	HealthDisposition_value = map[string]int32{
+		"HEALTH_DISPOSITION_UNSPECIFIED":  0,
+		"HEALTH_DISPOSITION_HEALTHY":      1,
+		"HEALTH_DISPOSITION_TEST_FAILED":  2,
+		"HEALTH_DISPOSITION_BUILD_FAILED": 3,
+		"HEALTH_DISPOSITION_TIMEOUT":      4,
+		"HEALTH_DISPOSITION_DEGRADED":     5,
+	}
+)
+
+func (x HealthDisposition) Enum() *HealthDisposition {
+	p := new(HealthDisposition)
+	*p = x
+	return p
+}
+
+func (x HealthDisposition) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (HealthDisposition) Descriptor() protoreflect.EnumDescriptor {
+	return file_stipulator_v1_reports_proto_enumTypes[4].Descriptor()
+}
+
+func (HealthDisposition) Type() protoreflect.EnumType {
+	return &file_stipulator_v1_reports_proto_enumTypes[4]
+}
+
+func (x HealthDisposition) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
 // SignatureLabel is the change-signature vocabulary.
 type SignatureLabel int32
 
@@ -261,11 +325,11 @@ func (x SignatureLabel) String() string {
 }
 
 func (SignatureLabel) Descriptor() protoreflect.EnumDescriptor {
-	return file_stipulator_v1_reports_proto_enumTypes[4].Descriptor()
+	return file_stipulator_v1_reports_proto_enumTypes[5].Descriptor()
 }
 
 func (SignatureLabel) Type() protoreflect.EnumType {
-	return &file_stipulator_v1_reports_proto_enumTypes[4]
+	return &file_stipulator_v1_reports_proto_enumTypes[5]
 }
 
 func (x SignatureLabel) Number() protoreflect.EnumNumber {
@@ -321,11 +385,11 @@ func (x Bucket) String() string {
 }
 
 func (Bucket) Descriptor() protoreflect.EnumDescriptor {
-	return file_stipulator_v1_reports_proto_enumTypes[5].Descriptor()
+	return file_stipulator_v1_reports_proto_enumTypes[6].Descriptor()
 }
 
 func (Bucket) Type() protoreflect.EnumType {
-	return &file_stipulator_v1_reports_proto_enumTypes[5]
+	return &file_stipulator_v1_reports_proto_enumTypes[6]
 }
 
 func (x Bucket) Number() protoreflect.EnumNumber {
@@ -369,15 +433,265 @@ func (x GapState) String() string {
 }
 
 func (GapState) Descriptor() protoreflect.EnumDescriptor {
-	return file_stipulator_v1_reports_proto_enumTypes[6].Descriptor()
+	return file_stipulator_v1_reports_proto_enumTypes[7].Descriptor()
 }
 
 func (GapState) Type() protoreflect.EnumType {
-	return &file_stipulator_v1_reports_proto_enumTypes[6]
+	return &file_stipulator_v1_reports_proto_enumTypes[7]
 }
 
 func (x GapState) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
+}
+
+// FailureDiagnostic is the retained output of one failing or degraded
+// unit of policy execution — an invocation, a package, or a named test.
+// Retained failure output is part of the verdict, not a courtesy: without
+// it an environment-induced failure and a real regression are
+// indistinguishable.
+type FailureDiagnostic struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Invocation  *string                `protobuf:"bytes,1,opt,name=invocation"`
+	xxx_hidden_Package     *string                `protobuf:"bytes,2,opt,name=package"`
+	xxx_hidden_Test        *string                `protobuf:"bytes,3,opt,name=test"`
+	xxx_hidden_Disposition HealthDisposition      `protobuf:"varint,4,opt,name=disposition,enum=stipulator.v1.HealthDisposition"`
+	xxx_hidden_Output      *string                `protobuf:"bytes,5,opt,name=output"`
+	xxx_hidden_Truncated   bool                   `protobuf:"varint,6,opt,name=truncated"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *FailureDiagnostic) Reset() {
+	*x = FailureDiagnostic{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FailureDiagnostic) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FailureDiagnostic) ProtoMessage() {}
+
+func (x *FailureDiagnostic) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *FailureDiagnostic) GetInvocation() string {
+	if x != nil {
+		if x.xxx_hidden_Invocation != nil {
+			return *x.xxx_hidden_Invocation
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *FailureDiagnostic) GetPackage() string {
+	if x != nil {
+		if x.xxx_hidden_Package != nil {
+			return *x.xxx_hidden_Package
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *FailureDiagnostic) GetTest() string {
+	if x != nil {
+		if x.xxx_hidden_Test != nil {
+			return *x.xxx_hidden_Test
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *FailureDiagnostic) GetDisposition() HealthDisposition {
+	if x != nil {
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 3) {
+			return x.xxx_hidden_Disposition
+		}
+	}
+	return HealthDisposition_HEALTH_DISPOSITION_UNSPECIFIED
+}
+
+func (x *FailureDiagnostic) GetOutput() string {
+	if x != nil {
+		if x.xxx_hidden_Output != nil {
+			return *x.xxx_hidden_Output
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *FailureDiagnostic) GetTruncated() bool {
+	if x != nil {
+		return x.xxx_hidden_Truncated
+	}
+	return false
+}
+
+func (x *FailureDiagnostic) SetInvocation(v string) {
+	x.xxx_hidden_Invocation = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
+}
+
+func (x *FailureDiagnostic) SetPackage(v string) {
+	x.xxx_hidden_Package = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 6)
+}
+
+func (x *FailureDiagnostic) SetTest(v string) {
+	x.xxx_hidden_Test = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 6)
+}
+
+func (x *FailureDiagnostic) SetDisposition(v HealthDisposition) {
+	x.xxx_hidden_Disposition = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
+}
+
+func (x *FailureDiagnostic) SetOutput(v string) {
+	x.xxx_hidden_Output = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
+}
+
+func (x *FailureDiagnostic) SetTruncated(v bool) {
+	x.xxx_hidden_Truncated = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 6)
+}
+
+func (x *FailureDiagnostic) HasInvocation() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *FailureDiagnostic) HasPackage() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *FailureDiagnostic) HasTest() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *FailureDiagnostic) HasDisposition() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *FailureDiagnostic) HasOutput() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *FailureDiagnostic) HasTruncated() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *FailureDiagnostic) ClearInvocation() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Invocation = nil
+}
+
+func (x *FailureDiagnostic) ClearPackage() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Package = nil
+}
+
+func (x *FailureDiagnostic) ClearTest() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Test = nil
+}
+
+func (x *FailureDiagnostic) ClearDisposition() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_Disposition = HealthDisposition_HEALTH_DISPOSITION_UNSPECIFIED
+}
+
+func (x *FailureDiagnostic) ClearOutput() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_Output = nil
+}
+
+func (x *FailureDiagnostic) ClearTruncated() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_Truncated = false
+}
+
+type FailureDiagnostic_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Canonical invocation name from the policy record.
+	Invocation *string
+	// Set when the diagnostic is package-scoped.
+	Package *string
+	// Set when the diagnostic is test-scoped (a failed or degraded
+	// witness).
+	Test *string
+	// Names a degraded execution distinctly from an assertion failure.
+	Disposition *HealthDisposition
+	// Retained output, bounded by the executor.
+	Output    *string
+	Truncated *bool
+}
+
+func (b0 FailureDiagnostic_builder) Build() *FailureDiagnostic {
+	m0 := &FailureDiagnostic{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Invocation != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
+		x.xxx_hidden_Invocation = b.Invocation
+	}
+	if b.Package != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 6)
+		x.xxx_hidden_Package = b.Package
+	}
+	if b.Test != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 6)
+		x.xxx_hidden_Test = b.Test
+	}
+	if b.Disposition != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
+		x.xxx_hidden_Disposition = *b.Disposition
+	}
+	if b.Output != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
+		x.xxx_hidden_Output = b.Output
+	}
+	if b.Truncated != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 6)
+		x.xxx_hidden_Truncated = *b.Truncated
+	}
+	return m0
 }
 
 // Problem is a verification error; any problem fails a run.
@@ -393,7 +707,7 @@ type Problem struct {
 
 func (x *Problem) Reset() {
 	*x = Problem{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[0]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -405,7 +719,7 @@ func (x *Problem) String() string {
 func (*Problem) ProtoMessage() {}
 
 func (x *Problem) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[0]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -506,6 +820,7 @@ type BindingResult struct {
 	xxx_hidden_TestOutcome   TestOutcome            `protobuf:"varint,9,opt,name=test_outcome,json=testOutcome,enum=stipulator.v1.TestOutcome"`
 	xxx_hidden_WitnessClass  WitnessClass           `protobuf:"varint,10,opt,name=witness_class,json=witnessClass,enum=stipulator.v1.WitnessClass"`
 	xxx_hidden_RaceEnabled   bool                   `protobuf:"varint,11,opt,name=race_enabled,json=raceEnabled"`
+	xxx_hidden_Package       *string                `protobuf:"bytes,12,opt,name=package"`
 	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
 	XXX_presence             [1]uint32
 	unknownFields            protoimpl.UnknownFields
@@ -514,7 +829,7 @@ type BindingResult struct {
 
 func (x *BindingResult) Reset() {
 	*x = BindingResult{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[1]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -526,7 +841,7 @@ func (x *BindingResult) String() string {
 func (*BindingResult) ProtoMessage() {}
 
 func (x *BindingResult) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[1]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -636,59 +951,74 @@ func (x *BindingResult) GetRaceEnabled() bool {
 	return false
 }
 
+func (x *BindingResult) GetPackage() string {
+	if x != nil {
+		if x.xxx_hidden_Package != nil {
+			return *x.xxx_hidden_Package
+		}
+		return ""
+	}
+	return ""
+}
+
 func (x *BindingResult) SetPath(v string) {
 	x.xxx_hidden_Path = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 12)
 }
 
 func (x *BindingResult) SetRequirementId(v string) {
 	x.xxx_hidden_RequirementId = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 12)
 }
 
 func (x *BindingResult) SetSymbol(v string) {
 	x.xxx_hidden_Symbol = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 12)
 }
 
 func (x *BindingResult) SetBackend(v string) {
 	x.xxx_hidden_Backend = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 12)
 }
 
 func (x *BindingResult) SetRole(v BindingRole) {
 	x.xxx_hidden_Role = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 12)
 }
 
 func (x *BindingResult) SetContentPinned(v bool) {
 	x.xxx_hidden_ContentPinned = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 12)
 }
 
 func (x *BindingResult) SetResolution(v Resolution) {
 	x.xxx_hidden_Resolution = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 12)
 }
 
 func (x *BindingResult) SetShape(v ShapeState) {
 	x.xxx_hidden_Shape = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 12)
 }
 
 func (x *BindingResult) SetTestOutcome(v TestOutcome) {
 	x.xxx_hidden_TestOutcome = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 12)
 }
 
 func (x *BindingResult) SetWitnessClass(v WitnessClass) {
 	x.xxx_hidden_WitnessClass = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 12)
 }
 
 func (x *BindingResult) SetRaceEnabled(v bool) {
 	x.xxx_hidden_RaceEnabled = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 12)
+}
+
+func (x *BindingResult) SetPackage(v string) {
+	x.xxx_hidden_Package = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 12)
 }
 
 func (x *BindingResult) HasPath() bool {
@@ -768,6 +1098,13 @@ func (x *BindingResult) HasRaceEnabled() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 10)
 }
 
+func (x *BindingResult) HasPackage() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 11)
+}
+
 func (x *BindingResult) ClearPath() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Path = nil
@@ -823,6 +1160,11 @@ func (x *BindingResult) ClearRaceEnabled() {
 	x.xxx_hidden_RaceEnabled = false
 }
 
+func (x *BindingResult) ClearPackage() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 11)
+	x.xxx_hidden_Package = nil
+}
+
 type BindingResult_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -837,6 +1179,11 @@ type BindingResult_builder struct {
 	TestOutcome   *TestOutcome
 	WitnessClass  *WitnessClass
 	RaceEnabled   *bool
+	// The symbol's owning package as the backend resolved it — the one
+	// source for package-scoped correlation (a symbol string alone is
+	// ambiguous: dotted path elements vs method receivers). Empty when
+	// resolution found no owning package.
+	Package *string
 }
 
 func (b0 BindingResult_builder) Build() *BindingResult {
@@ -844,48 +1191,52 @@ func (b0 BindingResult_builder) Build() *BindingResult {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Path != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 12)
 		x.xxx_hidden_Path = b.Path
 	}
 	if b.RequirementId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 12)
 		x.xxx_hidden_RequirementId = b.RequirementId
 	}
 	if b.Symbol != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 12)
 		x.xxx_hidden_Symbol = b.Symbol
 	}
 	if b.Backend != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 12)
 		x.xxx_hidden_Backend = b.Backend
 	}
 	if b.Role != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 12)
 		x.xxx_hidden_Role = *b.Role
 	}
 	if b.ContentPinned != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 12)
 		x.xxx_hidden_ContentPinned = *b.ContentPinned
 	}
 	if b.Resolution != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 12)
 		x.xxx_hidden_Resolution = *b.Resolution
 	}
 	if b.Shape != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 12)
 		x.xxx_hidden_Shape = *b.Shape
 	}
 	if b.TestOutcome != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 12)
 		x.xxx_hidden_TestOutcome = *b.TestOutcome
 	}
 	if b.WitnessClass != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 12)
 		x.xxx_hidden_WitnessClass = *b.WitnessClass
 	}
 	if b.RaceEnabled != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 12)
 		x.xxx_hidden_RaceEnabled = *b.RaceEnabled
+	}
+	if b.Package != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 12)
+		x.xxx_hidden_Package = b.Package
 	}
 	return m0
 }
@@ -905,7 +1256,7 @@ type RegistrationResult struct {
 
 func (x *RegistrationResult) Reset() {
 	*x = RegistrationResult{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[2]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -917,7 +1268,7 @@ func (x *RegistrationResult) String() string {
 func (*RegistrationResult) ProtoMessage() {}
 
 func (x *RegistrationResult) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[2]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1069,22 +1420,22 @@ func (b0 RegistrationResult_builder) Build() *RegistrationResult {
 
 // VerifyReport is the outcome of a verification run.
 type VerifyReport struct {
-	state                      protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Problems        *[]*Problem            `protobuf:"bytes,1,rep,name=problems"`
-	xxx_hidden_Results         *[]*BindingResult      `protobuf:"bytes,2,rep,name=results"`
-	xxx_hidden_Registrations   *[]*RegistrationResult `protobuf:"bytes,3,rep,name=registrations"`
-	xxx_hidden_Signatures      *[]*ChangeSignature    `protobuf:"bytes,4,rep,name=signatures"`
-	xxx_hidden_OutsidePolicy   int32                  `protobuf:"varint,5,opt,name=outside_policy,json=outsidePolicy"`
-	xxx_hidden_PackageFailures map[string]string      `protobuf:"bytes,6,rep,name=package_failures,json=packageFailures" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	XXX_raceDetectHookData     protoimpl.RaceDetectHookData
-	XXX_presence               [1]uint32
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	state                         protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Problems           *[]*Problem            `protobuf:"bytes,1,rep,name=problems"`
+	xxx_hidden_Results            *[]*BindingResult      `protobuf:"bytes,2,rep,name=results"`
+	xxx_hidden_Registrations      *[]*RegistrationResult `protobuf:"bytes,3,rep,name=registrations"`
+	xxx_hidden_Signatures         *[]*ChangeSignature    `protobuf:"bytes,4,rep,name=signatures"`
+	xxx_hidden_OutsidePolicy      int32                  `protobuf:"varint,5,opt,name=outside_policy,json=outsidePolicy"`
+	xxx_hidden_WitnessDiagnostics *[]*FailureDiagnostic  `protobuf:"bytes,7,rep,name=witness_diagnostics,json=witnessDiagnostics"`
+	XXX_raceDetectHookData        protoimpl.RaceDetectHookData
+	XXX_presence                  [1]uint32
+	unknownFields                 protoimpl.UnknownFields
+	sizeCache                     protoimpl.SizeCache
 }
 
 func (x *VerifyReport) Reset() {
 	*x = VerifyReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[3]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1096,7 +1447,7 @@ func (x *VerifyReport) String() string {
 func (*VerifyReport) ProtoMessage() {}
 
 func (x *VerifyReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[3]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1150,9 +1501,11 @@ func (x *VerifyReport) GetOutsidePolicy() int32 {
 	return 0
 }
 
-func (x *VerifyReport) GetPackageFailures() map[string]string {
+func (x *VerifyReport) GetWitnessDiagnostics() []*FailureDiagnostic {
 	if x != nil {
-		return x.xxx_hidden_PackageFailures
+		if x.xxx_hidden_WitnessDiagnostics != nil {
+			return *x.xxx_hidden_WitnessDiagnostics
+		}
 	}
 	return nil
 }
@@ -1178,8 +1531,8 @@ func (x *VerifyReport) SetOutsidePolicy(v int32) {
 	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
 }
 
-func (x *VerifyReport) SetPackageFailures(v map[string]string) {
-	x.xxx_hidden_PackageFailures = v
+func (x *VerifyReport) SetWitnessDiagnostics(v []*FailureDiagnostic) {
+	x.xxx_hidden_WitnessDiagnostics = &v
 }
 
 func (x *VerifyReport) HasOutsidePolicy() bool {
@@ -1210,11 +1563,11 @@ type VerifyReport_builder struct {
 	// visible number, never silence (REQ-policy-conservation). Zero in
 	// unwitnessed runs.
 	OutsidePolicy *int32
-	// PackageFailures carries the witnessing run's failure diagnostics no
-	// single test owns — an envelope cutoff, a package abort, a build
-	// failure — keyed by import path: an expected subject denied an
-	// outcome is diagnosable from the run that denied it.
-	PackageFailures map[string]string
+	// The witnessing run's failure diagnostics, test- and package-scoped
+	// alike — the one wire home for retained failure output in a verify
+	// payload. Check payloads carry the same typed rows at the check
+	// level and leave this empty (one fact, one home per payload).
+	WitnessDiagnostics []*FailureDiagnostic
 }
 
 func (b0 VerifyReport_builder) Build() *VerifyReport {
@@ -1229,7 +1582,7 @@ func (b0 VerifyReport_builder) Build() *VerifyReport {
 		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
 		x.xxx_hidden_OutsidePolicy = *b.OutsidePolicy
 	}
-	x.xxx_hidden_PackageFailures = b.PackageFailures
+	x.xxx_hidden_WitnessDiagnostics = &b.WitnessDiagnostics
 	return m0
 }
 
@@ -1247,7 +1600,7 @@ type ChangeSignature struct {
 
 func (x *ChangeSignature) Reset() {
 	*x = ChangeSignature{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[4]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1259,7 +1612,7 @@ func (x *ChangeSignature) String() string {
 func (*ChangeSignature) ProtoMessage() {}
 
 func (x *ChangeSignature) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[4]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1375,7 +1728,7 @@ type RequirementCoverage struct {
 
 func (x *RequirementCoverage) Reset() {
 	*x = RequirementCoverage{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[5]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1387,7 +1740,7 @@ func (x *RequirementCoverage) String() string {
 func (*RequirementCoverage) ProtoMessage() {}
 
 func (x *RequirementCoverage) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[5]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1562,7 +1915,7 @@ type GapReport struct {
 
 func (x *GapReport) Reset() {
 	*x = GapReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[6]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1574,7 +1927,7 @@ func (x *GapReport) String() string {
 func (*GapReport) ProtoMessage() {}
 
 func (x *GapReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[6]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1709,7 +2062,7 @@ type CoverageReport struct {
 
 func (x *CoverageReport) Reset() {
 	*x = CoverageReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[7]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1721,7 +2074,7 @@ func (x *CoverageReport) String() string {
 func (*CoverageReport) ProtoMessage() {}
 
 func (x *CoverageReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[7]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1858,7 +2211,7 @@ type CoverageSummary struct {
 
 func (x *CoverageSummary) Reset() {
 	*x = CoverageSummary{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[8]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1870,7 +2223,7 @@ func (x *CoverageSummary) String() string {
 func (*CoverageSummary) ProtoMessage() {}
 
 func (x *CoverageSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[8]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2191,30 +2544,31 @@ func (b0 CoverageSummary_builder) Build() *CoverageSummary {
 // VerifySummary is the verification roll-up: record hygiene and witness
 // counts, with change signatures — no per-binding rows.
 type VerifySummary struct {
-	state                      protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Problems        int32                  `protobuf:"varint,1,opt,name=problems"`
-	xxx_hidden_Pinned          int32                  `protobuf:"varint,2,opt,name=pinned"`
-	xxx_hidden_Stale           int32                  `protobuf:"varint,3,opt,name=stale"`
-	xxx_hidden_ShapePinned     int32                  `protobuf:"varint,4,opt,name=shape_pinned,json=shapePinned"`
-	xxx_hidden_ShapeUnpinned   int32                  `protobuf:"varint,5,opt,name=shape_unpinned,json=shapeUnpinned"`
-	xxx_hidden_ShapeMismatch   int32                  `protobuf:"varint,6,opt,name=shape_mismatch,json=shapeMismatch"`
-	xxx_hidden_Broken          int32                  `protobuf:"varint,7,opt,name=broken"`
-	xxx_hidden_Unverified      int32                  `protobuf:"varint,8,opt,name=unverified"`
-	xxx_hidden_TestsPassed     int32                  `protobuf:"varint,9,opt,name=tests_passed,json=testsPassed"`
-	xxx_hidden_TestsFailed     int32                  `protobuf:"varint,10,opt,name=tests_failed,json=testsFailed"`
-	xxx_hidden_TestsNotRun     int32                  `protobuf:"varint,11,opt,name=tests_not_run,json=testsNotRun"`
-	xxx_hidden_Signatures      *[]*ChangeSignature    `protobuf:"bytes,12,rep,name=signatures"`
-	xxx_hidden_OutsidePolicy   int32                  `protobuf:"varint,13,opt,name=outside_policy,json=outsidePolicy"`
-	xxx_hidden_PackageFailures map[string]string      `protobuf:"bytes,14,rep,name=package_failures,json=packageFailures" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	XXX_raceDetectHookData     protoimpl.RaceDetectHookData
-	XXX_presence               [1]uint32
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	state                                    protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Problems                      int32                  `protobuf:"varint,1,opt,name=problems"`
+	xxx_hidden_Pinned                        int32                  `protobuf:"varint,2,opt,name=pinned"`
+	xxx_hidden_Stale                         int32                  `protobuf:"varint,3,opt,name=stale"`
+	xxx_hidden_ShapePinned                   int32                  `protobuf:"varint,4,opt,name=shape_pinned,json=shapePinned"`
+	xxx_hidden_ShapeUnpinned                 int32                  `protobuf:"varint,5,opt,name=shape_unpinned,json=shapeUnpinned"`
+	xxx_hidden_ShapeMismatch                 int32                  `protobuf:"varint,6,opt,name=shape_mismatch,json=shapeMismatch"`
+	xxx_hidden_Broken                        int32                  `protobuf:"varint,7,opt,name=broken"`
+	xxx_hidden_Unverified                    int32                  `protobuf:"varint,8,opt,name=unverified"`
+	xxx_hidden_TestsPassed                   int32                  `protobuf:"varint,9,opt,name=tests_passed,json=testsPassed"`
+	xxx_hidden_TestsFailed                   int32                  `protobuf:"varint,10,opt,name=tests_failed,json=testsFailed"`
+	xxx_hidden_TestsNotRun                   int32                  `protobuf:"varint,11,opt,name=tests_not_run,json=testsNotRun"`
+	xxx_hidden_Signatures                    *[]*ChangeSignature    `protobuf:"bytes,12,rep,name=signatures"`
+	xxx_hidden_OutsidePolicy                 int32                  `protobuf:"varint,13,opt,name=outside_policy,json=outsidePolicy"`
+	xxx_hidden_WitnessFailureHeadings        []string               `protobuf:"bytes,15,rep,name=witness_failure_headings,json=witnessFailureHeadings"`
+	xxx_hidden_WitnessFailureHeadingsOmitted int32                  `protobuf:"varint,16,opt,name=witness_failure_headings_omitted,json=witnessFailureHeadingsOmitted"`
+	XXX_raceDetectHookData                   protoimpl.RaceDetectHookData
+	XXX_presence                             [1]uint32
+	unknownFields                            protoimpl.UnknownFields
+	sizeCache                                protoimpl.SizeCache
 }
 
 func (x *VerifySummary) Reset() {
 	*x = VerifySummary{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2226,7 +2580,7 @@ func (x *VerifySummary) String() string {
 func (*VerifySummary) ProtoMessage() {}
 
 func (x *VerifySummary) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2330,66 +2684,73 @@ func (x *VerifySummary) GetOutsidePolicy() int32 {
 	return 0
 }
 
-func (x *VerifySummary) GetPackageFailures() map[string]string {
+func (x *VerifySummary) GetWitnessFailureHeadings() []string {
 	if x != nil {
-		return x.xxx_hidden_PackageFailures
+		return x.xxx_hidden_WitnessFailureHeadings
 	}
 	return nil
 }
 
+func (x *VerifySummary) GetWitnessFailureHeadingsOmitted() int32 {
+	if x != nil {
+		return x.xxx_hidden_WitnessFailureHeadingsOmitted
+	}
+	return 0
+}
+
 func (x *VerifySummary) SetProblems(v int32) {
 	x.xxx_hidden_Problems = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 15)
 }
 
 func (x *VerifySummary) SetPinned(v int32) {
 	x.xxx_hidden_Pinned = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 15)
 }
 
 func (x *VerifySummary) SetStale(v int32) {
 	x.xxx_hidden_Stale = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 15)
 }
 
 func (x *VerifySummary) SetShapePinned(v int32) {
 	x.xxx_hidden_ShapePinned = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 15)
 }
 
 func (x *VerifySummary) SetShapeUnpinned(v int32) {
 	x.xxx_hidden_ShapeUnpinned = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 15)
 }
 
 func (x *VerifySummary) SetShapeMismatch(v int32) {
 	x.xxx_hidden_ShapeMismatch = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 15)
 }
 
 func (x *VerifySummary) SetBroken(v int32) {
 	x.xxx_hidden_Broken = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 15)
 }
 
 func (x *VerifySummary) SetUnverified(v int32) {
 	x.xxx_hidden_Unverified = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 15)
 }
 
 func (x *VerifySummary) SetTestsPassed(v int32) {
 	x.xxx_hidden_TestsPassed = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 15)
 }
 
 func (x *VerifySummary) SetTestsFailed(v int32) {
 	x.xxx_hidden_TestsFailed = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 15)
 }
 
 func (x *VerifySummary) SetTestsNotRun(v int32) {
 	x.xxx_hidden_TestsNotRun = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 15)
 }
 
 func (x *VerifySummary) SetSignatures(v []*ChangeSignature) {
@@ -2398,11 +2759,16 @@ func (x *VerifySummary) SetSignatures(v []*ChangeSignature) {
 
 func (x *VerifySummary) SetOutsidePolicy(v int32) {
 	x.xxx_hidden_OutsidePolicy = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 15)
 }
 
-func (x *VerifySummary) SetPackageFailures(v map[string]string) {
-	x.xxx_hidden_PackageFailures = v
+func (x *VerifySummary) SetWitnessFailureHeadings(v []string) {
+	x.xxx_hidden_WitnessFailureHeadings = v
+}
+
+func (x *VerifySummary) SetWitnessFailureHeadingsOmitted(v int32) {
+	x.xxx_hidden_WitnessFailureHeadingsOmitted = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 14, 15)
 }
 
 func (x *VerifySummary) HasProblems() bool {
@@ -2489,6 +2855,13 @@ func (x *VerifySummary) HasOutsidePolicy() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 12)
 }
 
+func (x *VerifySummary) HasWitnessFailureHeadingsOmitted() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 14)
+}
+
 func (x *VerifySummary) ClearProblems() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Problems = 0
@@ -2549,6 +2922,11 @@ func (x *VerifySummary) ClearOutsidePolicy() {
 	x.xxx_hidden_OutsidePolicy = 0
 }
 
+func (x *VerifySummary) ClearWitnessFailureHeadingsOmitted() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 14)
+	x.xxx_hidden_WitnessFailureHeadingsOmitted = 0
+}
+
 type VerifySummary_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -2568,11 +2946,12 @@ type VerifySummary_builder struct {
 	// policy leaves outside selective witnessing (REQ-core-one-execution);
 	// the roll-up surfaces the gap as a number, never silence.
 	OutsidePolicy *int32
-	// PackageFailures carries the witnessing run's package-keyed failure
-	// diagnostics — an envelope cutoff, a package abort, a build failure —
-	// so a subject denied an outcome is diagnosable from the summary most
-	// calls read.
-	PackageFailures map[string]string
+	// Heading words for the run's failure diagnostics — unit and
+	// disposition, no retained output; the bodies ride only the full
+	// report. Capped, with the omitted remainder counted: a truncation
+	// is never silent (REQ-mcp-response-contract).
+	WitnessFailureHeadings        []string
+	WitnessFailureHeadingsOmitted *int32
 }
 
 func (b0 VerifySummary_builder) Build() *VerifySummary {
@@ -2580,55 +2959,59 @@ func (b0 VerifySummary_builder) Build() *VerifySummary {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Problems != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 15)
 		x.xxx_hidden_Problems = *b.Problems
 	}
 	if b.Pinned != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 15)
 		x.xxx_hidden_Pinned = *b.Pinned
 	}
 	if b.Stale != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 15)
 		x.xxx_hidden_Stale = *b.Stale
 	}
 	if b.ShapePinned != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 15)
 		x.xxx_hidden_ShapePinned = *b.ShapePinned
 	}
 	if b.ShapeUnpinned != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 15)
 		x.xxx_hidden_ShapeUnpinned = *b.ShapeUnpinned
 	}
 	if b.ShapeMismatch != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 15)
 		x.xxx_hidden_ShapeMismatch = *b.ShapeMismatch
 	}
 	if b.Broken != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 15)
 		x.xxx_hidden_Broken = *b.Broken
 	}
 	if b.Unverified != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 15)
 		x.xxx_hidden_Unverified = *b.Unverified
 	}
 	if b.TestsPassed != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 15)
 		x.xxx_hidden_TestsPassed = *b.TestsPassed
 	}
 	if b.TestsFailed != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 15)
 		x.xxx_hidden_TestsFailed = *b.TestsFailed
 	}
 	if b.TestsNotRun != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 15)
 		x.xxx_hidden_TestsNotRun = *b.TestsNotRun
 	}
 	x.xxx_hidden_Signatures = &b.Signatures
 	if b.OutsidePolicy != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 15)
 		x.xxx_hidden_OutsidePolicy = *b.OutsidePolicy
 	}
-	x.xxx_hidden_PackageFailures = b.PackageFailures
+	x.xxx_hidden_WitnessFailureHeadings = b.WitnessFailureHeadings
+	if b.WitnessFailureHeadingsOmitted != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 14, 15)
+		x.xxx_hidden_WitnessFailureHeadingsOmitted = *b.WitnessFailureHeadingsOmitted
+	}
 	return m0
 }
 
@@ -2647,7 +3030,7 @@ type Seed struct {
 
 func (x *Seed) Reset() {
 	*x = Seed{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2659,7 +3042,7 @@ func (x *Seed) String() string {
 func (*Seed) ProtoMessage() {}
 
 func (x *Seed) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2824,7 +3207,7 @@ type Decl struct {
 
 func (x *Decl) Reset() {
 	*x = Decl{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2836,7 +3219,7 @@ func (x *Decl) String() string {
 func (*Decl) ProtoMessage() {}
 
 func (x *Decl) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3000,7 +3383,7 @@ type ContextReport struct {
 
 func (x *ContextReport) Reset() {
 	*x = ContextReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3012,7 +3395,7 @@ func (x *ContextReport) String() string {
 func (*ContextReport) ProtoMessage() {}
 
 func (x *ContextReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3086,7 +3469,7 @@ type Dossier struct {
 
 func (x *Dossier) Reset() {
 	*x = Dossier{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3098,7 +3481,7 @@ func (x *Dossier) String() string {
 func (*Dossier) ProtoMessage() {}
 
 func (x *Dossier) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3301,7 +3684,7 @@ type DossierReport struct {
 
 func (x *DossierReport) Reset() {
 	*x = DossierReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3313,7 +3696,7 @@ func (x *DossierReport) String() string {
 func (*DossierReport) ProtoMessage() {}
 
 func (x *DossierReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3400,7 +3783,7 @@ type PartitionComponent struct {
 
 func (x *PartitionComponent) Reset() {
 	*x = PartitionComponent{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3412,7 +3795,7 @@ func (x *PartitionComponent) String() string {
 func (*PartitionComponent) ProtoMessage() {}
 
 func (x *PartitionComponent) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3491,7 +3874,7 @@ type PartitionOverlap struct {
 
 func (x *PartitionOverlap) Reset() {
 	*x = PartitionOverlap{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3503,7 +3886,7 @@ func (x *PartitionOverlap) String() string {
 func (*PartitionOverlap) ProtoMessage() {}
 
 func (x *PartitionOverlap) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3612,7 +3995,7 @@ type PartitionReport struct {
 
 func (x *PartitionReport) Reset() {
 	*x = PartitionReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3624,7 +4007,7 @@ func (x *PartitionReport) String() string {
 func (*PartitionReport) ProtoMessage() {}
 
 func (x *PartitionReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3713,10 +4096,19 @@ var File_stipulator_v1_reports_proto protoreflect.FileDescriptor
 
 const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\n" +
-	"\x1bstipulator/v1/reports.proto\x12\rstipulator.v1\x1a\x16stipulator/v1/ir.proto\x1a\x1bstipulator/v1/records.proto\"7\n" +
+	"\x1bstipulator/v1/reports.proto\x12\rstipulator.v1\x1a\x16stipulator/v1/ir.proto\x1a\x1bstipulator/v1/records.proto\"\xdb\x01\n" +
+	"\x11FailureDiagnostic\x12\x1e\n" +
+	"\n" +
+	"invocation\x18\x01 \x01(\tR\n" +
+	"invocation\x12\x18\n" +
+	"\apackage\x18\x02 \x01(\tR\apackage\x12\x12\n" +
+	"\x04test\x18\x03 \x01(\tR\x04test\x12B\n" +
+	"\vdisposition\x18\x04 \x01(\x0e2 .stipulator.v1.HealthDispositionR\vdisposition\x12\x16\n" +
+	"\x06output\x18\x05 \x01(\tR\x06output\x12\x1c\n" +
+	"\ttruncated\x18\x06 \x01(\bR\ttruncated\"7\n" +
 	"\aProblem\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\xe3\x03\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\xfd\x03\n" +
 	"\rBindingResult\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12%\n" +
 	"\x0erequirement_id\x18\x02 \x01(\tR\rrequirementId\x12\x16\n" +
@@ -3731,12 +4123,13 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\ftest_outcome\x18\t \x01(\x0e2\x1a.stipulator.v1.TestOutcomeR\vtestOutcome\x12@\n" +
 	"\rwitness_class\x18\n" +
 	" \x01(\x0e2\x1b.stipulator.v1.WitnessClassR\fwitnessClass\x12!\n" +
-	"\frace_enabled\x18\v \x01(\bR\vraceEnabled\"\x9f\x01\n" +
+	"\frace_enabled\x18\v \x01(\bR\vraceEnabled\x12\x18\n" +
+	"\apackage\x18\f \x01(\tR\apackage\"\x9f\x01\n" +
 	"\x12RegistrationResult\x12\x18\n" +
 	"\apackage\x18\x01 \x01(\tR\apackage\x12\x12\n" +
 	"\x04test\x18\x02 \x01(\tR\x04test\x12%\n" +
 	"\x0erequirement_id\x18\x03 \x01(\tR\rrequirementId\x124\n" +
-	"\aoutcome\x18\x04 \x01(\x0e2\x1a.stipulator.v1.TestOutcomeR\aoutcome\"\xcb\x03\n" +
+	"\aoutcome\x18\x04 \x01(\x0e2\x1a.stipulator.v1.TestOutcomeR\aoutcome\"\x83\x03\n" +
 	"\fVerifyReport\x122\n" +
 	"\bproblems\x18\x01 \x03(\v2\x16.stipulator.v1.ProblemR\bproblems\x126\n" +
 	"\aresults\x18\x02 \x03(\v2\x1c.stipulator.v1.BindingResultR\aresults\x12G\n" +
@@ -3744,11 +4137,8 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\n" +
 	"signatures\x18\x04 \x03(\v2\x1e.stipulator.v1.ChangeSignatureR\n" +
 	"signatures\x12%\n" +
-	"\x0eoutside_policy\x18\x05 \x01(\x05R\routsidePolicy\x12[\n" +
-	"\x10package_failures\x18\x06 \x03(\v20.stipulator.v1.VerifyReport.PackageFailuresEntryR\x0fpackageFailures\x1aB\n" +
-	"\x14PackageFailuresEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x89\x01\n" +
+	"\x0eoutside_policy\x18\x05 \x01(\x05R\routsidePolicy\x12Q\n" +
+	"\x13witness_diagnostics\x18\a \x03(\v2 .stipulator.v1.FailureDiagnosticR\x12witnessDiagnosticsJ\x04\b\x06\x10\a\"\x89\x01\n" +
 	"\x0fChangeSignature\x12%\n" +
 	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x123\n" +
 	"\x05label\x18\x02 \x01(\x0e2\x1d.stipulator.v1.SignatureLabelR\x05label\x12\x1a\n" +
@@ -3787,7 +4177,7 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\tgaps_open\x18\t \x01(\x05R\bgapsOpen\x12)\n" +
 	"\x10policy_overrides\x18\n" +
 	" \x03(\tR\x0fpolicyOverrides\x124\n" +
-	"\x16resolved_gaps_prunable\x18\v \x01(\x05R\x14resolvedGapsPrunable\"\xf5\x04\n" +
+	"\x16resolved_gaps_prunable\x18\v \x01(\x05R\x14resolvedGapsPrunable\"\xdc\x04\n" +
 	"\rVerifySummary\x12\x1a\n" +
 	"\bproblems\x18\x01 \x01(\x05R\bproblems\x12\x16\n" +
 	"\x06pinned\x18\x02 \x01(\x05R\x06pinned\x12\x14\n" +
@@ -3806,11 +4196,9 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\n" +
 	"signatures\x18\f \x03(\v2\x1e.stipulator.v1.ChangeSignatureR\n" +
 	"signatures\x12%\n" +
-	"\x0eoutside_policy\x18\r \x01(\x05R\routsidePolicy\x12\\\n" +
-	"\x10package_failures\x18\x0e \x03(\v21.stipulator.v1.VerifySummary.PackageFailuresEntryR\x0fpackageFailures\x1aB\n" +
-	"\x14PackageFailuresEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x8f\x01\n" +
+	"\x0eoutside_policy\x18\r \x01(\x05R\routsidePolicy\x128\n" +
+	"\x18witness_failure_headings\x18\x0f \x03(\tR\x16witnessFailureHeadings\x12G\n" +
+	" witness_failure_headings_omitted\x18\x10 \x01(\x05R\x1dwitnessFailureHeadingsOmittedJ\x04\b\x0e\x10\x0f\"\x8f\x01\n" +
 	"\x04Seed\x12%\n" +
 	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x12\x18\n" +
 	"\abackend\x18\x02 \x01(\tR\abackend\x12\x16\n" +
@@ -3875,7 +4263,14 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x19WITNESS_CLASS_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15WITNESS_CLASS_EXAMPLE\x10\x01\x12\x1a\n" +
 	"\x16WITNESS_CLASS_PROPERTY\x10\x02\x12 \n" +
-	"\x1cWITNESS_CLASS_ANALYZER_PROOF\x10\x03*y\n" +
+	"\x1cWITNESS_CLASS_ANALYZER_PROOF\x10\x03*\xe1\x01\n" +
+	"\x11HealthDisposition\x12\"\n" +
+	"\x1eHEALTH_DISPOSITION_UNSPECIFIED\x10\x00\x12\x1e\n" +
+	"\x1aHEALTH_DISPOSITION_HEALTHY\x10\x01\x12\"\n" +
+	"\x1eHEALTH_DISPOSITION_TEST_FAILED\x10\x02\x12#\n" +
+	"\x1fHEALTH_DISPOSITION_BUILD_FAILED\x10\x03\x12\x1e\n" +
+	"\x1aHEALTH_DISPOSITION_TIMEOUT\x10\x04\x12\x1f\n" +
+	"\x1bHEALTH_DISPOSITION_DEGRADED\x10\x05*y\n" +
 	"\x0eSignatureLabel\x12\x1f\n" +
 	"\x1bSIGNATURE_LABEL_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eSIGNATURE_LABEL_REARCHITECTURE\x10\x01\x12\"\n" +
@@ -3894,36 +4289,36 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\rGAP_STATE_DUE\x10\x02\x12\x16\n" +
 	"\x12GAP_STATE_RESOLVED\x10\x03BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
-var file_stipulator_v1_reports_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_stipulator_v1_reports_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
+var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_stipulator_v1_reports_proto_goTypes = []any{
 	(Resolution)(0),                // 0: stipulator.v1.Resolution
 	(ShapeState)(0),                // 1: stipulator.v1.ShapeState
 	(TestOutcome)(0),               // 2: stipulator.v1.TestOutcome
 	(WitnessClass)(0),              // 3: stipulator.v1.WitnessClass
-	(SignatureLabel)(0),            // 4: stipulator.v1.SignatureLabel
-	(Bucket)(0),                    // 5: stipulator.v1.Bucket
-	(GapState)(0),                  // 6: stipulator.v1.GapState
-	(*Problem)(nil),                // 7: stipulator.v1.Problem
-	(*BindingResult)(nil),          // 8: stipulator.v1.BindingResult
-	(*RegistrationResult)(nil),     // 9: stipulator.v1.RegistrationResult
-	(*VerifyReport)(nil),           // 10: stipulator.v1.VerifyReport
-	(*ChangeSignature)(nil),        // 11: stipulator.v1.ChangeSignature
-	(*RequirementCoverage)(nil),    // 12: stipulator.v1.RequirementCoverage
-	(*GapReport)(nil),              // 13: stipulator.v1.GapReport
-	(*CoverageReport)(nil),         // 14: stipulator.v1.CoverageReport
-	(*CoverageSummary)(nil),        // 15: stipulator.v1.CoverageSummary
-	(*VerifySummary)(nil),          // 16: stipulator.v1.VerifySummary
-	(*Seed)(nil),                   // 17: stipulator.v1.Seed
-	(*Decl)(nil),                   // 18: stipulator.v1.Decl
-	(*ContextReport)(nil),          // 19: stipulator.v1.ContextReport
-	(*Dossier)(nil),                // 20: stipulator.v1.Dossier
-	(*DossierReport)(nil),          // 21: stipulator.v1.DossierReport
-	(*PartitionComponent)(nil),     // 22: stipulator.v1.PartitionComponent
-	(*PartitionOverlap)(nil),       // 23: stipulator.v1.PartitionOverlap
-	(*PartitionReport)(nil),        // 24: stipulator.v1.PartitionReport
-	nil,                            // 25: stipulator.v1.VerifyReport.PackageFailuresEntry
-	nil,                            // 26: stipulator.v1.VerifySummary.PackageFailuresEntry
+	(HealthDisposition)(0),         // 4: stipulator.v1.HealthDisposition
+	(SignatureLabel)(0),            // 5: stipulator.v1.SignatureLabel
+	(Bucket)(0),                    // 6: stipulator.v1.Bucket
+	(GapState)(0),                  // 7: stipulator.v1.GapState
+	(*FailureDiagnostic)(nil),      // 8: stipulator.v1.FailureDiagnostic
+	(*Problem)(nil),                // 9: stipulator.v1.Problem
+	(*BindingResult)(nil),          // 10: stipulator.v1.BindingResult
+	(*RegistrationResult)(nil),     // 11: stipulator.v1.RegistrationResult
+	(*VerifyReport)(nil),           // 12: stipulator.v1.VerifyReport
+	(*ChangeSignature)(nil),        // 13: stipulator.v1.ChangeSignature
+	(*RequirementCoverage)(nil),    // 14: stipulator.v1.RequirementCoverage
+	(*GapReport)(nil),              // 15: stipulator.v1.GapReport
+	(*CoverageReport)(nil),         // 16: stipulator.v1.CoverageReport
+	(*CoverageSummary)(nil),        // 17: stipulator.v1.CoverageSummary
+	(*VerifySummary)(nil),          // 18: stipulator.v1.VerifySummary
+	(*Seed)(nil),                   // 19: stipulator.v1.Seed
+	(*Decl)(nil),                   // 20: stipulator.v1.Decl
+	(*ContextReport)(nil),          // 21: stipulator.v1.ContextReport
+	(*Dossier)(nil),                // 22: stipulator.v1.Dossier
+	(*DossierReport)(nil),          // 23: stipulator.v1.DossierReport
+	(*PartitionComponent)(nil),     // 24: stipulator.v1.PartitionComponent
+	(*PartitionOverlap)(nil),       // 25: stipulator.v1.PartitionOverlap
+	(*PartitionReport)(nil),        // 26: stipulator.v1.PartitionReport
 	(BindingRole)(0),               // 27: stipulator.v1.BindingRole
 	(ClauseKind)(0),                // 28: stipulator.v1.ClauseKind
 	(Keyword)(0),                   // 29: stipulator.v1.Keyword
@@ -3932,42 +4327,42 @@ var file_stipulator_v1_reports_proto_goTypes = []any{
 	(*RequirementAttestation)(nil), // 32: stipulator.v1.RequirementAttestation
 }
 var file_stipulator_v1_reports_proto_depIdxs = []int32{
-	27, // 0: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
-	0,  // 1: stipulator.v1.BindingResult.resolution:type_name -> stipulator.v1.Resolution
-	1,  // 2: stipulator.v1.BindingResult.shape:type_name -> stipulator.v1.ShapeState
-	2,  // 3: stipulator.v1.BindingResult.test_outcome:type_name -> stipulator.v1.TestOutcome
-	3,  // 4: stipulator.v1.BindingResult.witness_class:type_name -> stipulator.v1.WitnessClass
-	2,  // 5: stipulator.v1.RegistrationResult.outcome:type_name -> stipulator.v1.TestOutcome
-	7,  // 6: stipulator.v1.VerifyReport.problems:type_name -> stipulator.v1.Problem
-	8,  // 7: stipulator.v1.VerifyReport.results:type_name -> stipulator.v1.BindingResult
-	9,  // 8: stipulator.v1.VerifyReport.registrations:type_name -> stipulator.v1.RegistrationResult
-	11, // 9: stipulator.v1.VerifyReport.signatures:type_name -> stipulator.v1.ChangeSignature
-	25, // 10: stipulator.v1.VerifyReport.package_failures:type_name -> stipulator.v1.VerifyReport.PackageFailuresEntry
-	4,  // 11: stipulator.v1.ChangeSignature.label:type_name -> stipulator.v1.SignatureLabel
-	28, // 12: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
-	29, // 13: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
-	5,  // 14: stipulator.v1.RequirementCoverage.bucket:type_name -> stipulator.v1.Bucket
-	6,  // 15: stipulator.v1.GapReport.state:type_name -> stipulator.v1.GapState
-	12, // 16: stipulator.v1.CoverageReport.requirements:type_name -> stipulator.v1.RequirementCoverage
-	13, // 17: stipulator.v1.CoverageReport.gaps:type_name -> stipulator.v1.GapReport
-	11, // 18: stipulator.v1.VerifySummary.signatures:type_name -> stipulator.v1.ChangeSignature
-	26, // 19: stipulator.v1.VerifySummary.package_failures:type_name -> stipulator.v1.VerifySummary.PackageFailuresEntry
+	4,  // 0: stipulator.v1.FailureDiagnostic.disposition:type_name -> stipulator.v1.HealthDisposition
+	27, // 1: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
+	0,  // 2: stipulator.v1.BindingResult.resolution:type_name -> stipulator.v1.Resolution
+	1,  // 3: stipulator.v1.BindingResult.shape:type_name -> stipulator.v1.ShapeState
+	2,  // 4: stipulator.v1.BindingResult.test_outcome:type_name -> stipulator.v1.TestOutcome
+	3,  // 5: stipulator.v1.BindingResult.witness_class:type_name -> stipulator.v1.WitnessClass
+	2,  // 6: stipulator.v1.RegistrationResult.outcome:type_name -> stipulator.v1.TestOutcome
+	9,  // 7: stipulator.v1.VerifyReport.problems:type_name -> stipulator.v1.Problem
+	10, // 8: stipulator.v1.VerifyReport.results:type_name -> stipulator.v1.BindingResult
+	11, // 9: stipulator.v1.VerifyReport.registrations:type_name -> stipulator.v1.RegistrationResult
+	13, // 10: stipulator.v1.VerifyReport.signatures:type_name -> stipulator.v1.ChangeSignature
+	8,  // 11: stipulator.v1.VerifyReport.witness_diagnostics:type_name -> stipulator.v1.FailureDiagnostic
+	5,  // 12: stipulator.v1.ChangeSignature.label:type_name -> stipulator.v1.SignatureLabel
+	28, // 13: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
+	29, // 14: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
+	6,  // 15: stipulator.v1.RequirementCoverage.bucket:type_name -> stipulator.v1.Bucket
+	7,  // 16: stipulator.v1.GapReport.state:type_name -> stipulator.v1.GapState
+	14, // 17: stipulator.v1.CoverageReport.requirements:type_name -> stipulator.v1.RequirementCoverage
+	15, // 18: stipulator.v1.CoverageReport.gaps:type_name -> stipulator.v1.GapReport
+	13, // 19: stipulator.v1.VerifySummary.signatures:type_name -> stipulator.v1.ChangeSignature
 	27, // 20: stipulator.v1.Seed.role:type_name -> stipulator.v1.BindingRole
-	17, // 21: stipulator.v1.ContextReport.seeds:type_name -> stipulator.v1.Seed
-	18, // 22: stipulator.v1.ContextReport.declarations:type_name -> stipulator.v1.Decl
+	19, // 21: stipulator.v1.ContextReport.seeds:type_name -> stipulator.v1.Seed
+	20, // 22: stipulator.v1.ContextReport.declarations:type_name -> stipulator.v1.Decl
 	30, // 23: stipulator.v1.Dossier.requirement:type_name -> stipulator.v1.Requirement
-	12, // 24: stipulator.v1.Dossier.coverage:type_name -> stipulator.v1.RequirementCoverage
+	14, // 24: stipulator.v1.Dossier.coverage:type_name -> stipulator.v1.RequirementCoverage
 	31, // 25: stipulator.v1.Dossier.gap:type_name -> stipulator.v1.Gap
 	32, // 26: stipulator.v1.Dossier.attestation:type_name -> stipulator.v1.RequirementAttestation
-	8,  // 27: stipulator.v1.Dossier.bindings:type_name -> stipulator.v1.BindingResult
-	17, // 28: stipulator.v1.Dossier.seeds:type_name -> stipulator.v1.Seed
-	6,  // 29: stipulator.v1.Dossier.gap_state:type_name -> stipulator.v1.GapState
-	20, // 30: stipulator.v1.DossierReport.dossiers:type_name -> stipulator.v1.Dossier
-	7,  // 31: stipulator.v1.DossierReport.problems:type_name -> stipulator.v1.Problem
-	18, // 32: stipulator.v1.DossierReport.declarations:type_name -> stipulator.v1.Decl
-	17, // 33: stipulator.v1.PartitionComponent.seeds:type_name -> stipulator.v1.Seed
-	22, // 34: stipulator.v1.PartitionReport.components:type_name -> stipulator.v1.PartitionComponent
-	23, // 35: stipulator.v1.PartitionReport.overlaps:type_name -> stipulator.v1.PartitionOverlap
+	10, // 27: stipulator.v1.Dossier.bindings:type_name -> stipulator.v1.BindingResult
+	19, // 28: stipulator.v1.Dossier.seeds:type_name -> stipulator.v1.Seed
+	7,  // 29: stipulator.v1.Dossier.gap_state:type_name -> stipulator.v1.GapState
+	22, // 30: stipulator.v1.DossierReport.dossiers:type_name -> stipulator.v1.Dossier
+	9,  // 31: stipulator.v1.DossierReport.problems:type_name -> stipulator.v1.Problem
+	20, // 32: stipulator.v1.DossierReport.declarations:type_name -> stipulator.v1.Decl
+	19, // 33: stipulator.v1.PartitionComponent.seeds:type_name -> stipulator.v1.Seed
+	24, // 34: stipulator.v1.PartitionReport.components:type_name -> stipulator.v1.PartitionComponent
+	25, // 35: stipulator.v1.PartitionReport.overlaps:type_name -> stipulator.v1.PartitionOverlap
 	36, // [36:36] is the sub-list for method output_type
 	36, // [36:36] is the sub-list for method input_type
 	36, // [36:36] is the sub-list for extension type_name
@@ -3987,8 +4382,8 @@ func file_stipulator_v1_reports_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_reports_proto_rawDesc), len(file_stipulator_v1_reports_proto_rawDesc)),
-			NumEnums:      7,
-			NumMessages:   20,
+			NumEnums:      8,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

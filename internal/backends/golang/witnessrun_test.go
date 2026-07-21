@@ -684,8 +684,8 @@ func TestFine(t *testing.T) {}
 	if got, ok := degraded.Outcomes["example.com/degrade/broken.TestFine"]; ok {
 		t.Errorf("unbuildable package produced outcome %v", got)
 	}
-	if degraded.PackageFailures["example.com/degrade/broken"] == "" {
-		t.Errorf("unbuildable package carries no package-keyed diagnostic: %+v", degraded.PackageFailures)
+	if packageDiagOutput(degraded, "example.com/degrade/broken") == "" {
+		t.Errorf("unbuildable package carries no package-level diagnostic row: %+v", degraded.Diagnostics)
 	}
 	if degraded.Uncached != degraded.Ran {
 		t.Errorf("uncached=%d ran=%d, want every executed subject counted uncacheable", degraded.Uncached, degraded.Ran)
@@ -849,10 +849,10 @@ func TestSleeps(t *testing.T) {
 	if tr.Fresh != 0 || tr.Ran != 0 || tr.OutsidePolicy != 0 {
 		t.Errorf("fresh=%d ran=%d outside=%d, want 0/0/0: denied subjects belong to no bucket", tr.Fresh, tr.Ran, tr.OutsidePolicy)
 	}
-	// The denied subjects' visibility is their package-keyed diagnostic:
-	// the cutoff must be traceable from the result.
-	if tr.PackageFailures["example.com/cutoff/cut"] == "" {
-		t.Errorf("cut-off package carries no package-keyed diagnostic: %+v", tr.PackageFailures)
+	// The denied subjects' visibility is their package-level diagnostic
+	// row: the cutoff must be traceable from the result.
+	if packageDiagOutput(tr, "example.com/cutoff/cut") == "" {
+		t.Errorf("cut-off package carries no package-level diagnostic row: %+v", tr.Diagnostics)
 	}
 	if len(witnesscache.Load(tmp)) != 0 {
 		t.Errorf("a cut-off process published records: %+v", witnesscache.Load(tmp))
@@ -1801,4 +1801,15 @@ func TestValue(t *testing.T) {
 	if bare.Uncached != 1 {
 		t.Fatalf("unasserted first run uncached=%d, want 1 (reasons=%v)", bare.Uncached, bare.UncacheableReasons)
 	}
+}
+
+// packageDiagOutput returns the retained output of the package-level
+// diagnostic row (one no single test owns) for pkg, or "" when none.
+func packageDiagOutput(tr *verify.TestRun, pkg string) string {
+	for _, d := range tr.Diagnostics {
+		if d.GetTest() == "" && d.GetPackage() == pkg {
+			return d.GetOutput()
+		}
+	}
+	return ""
 }

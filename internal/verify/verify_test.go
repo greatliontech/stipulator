@@ -215,6 +215,16 @@ func TestRecordHygiene(t *testing.T) {
 // "GEN" means GeneratedFile.
 type fakeBackend map[string]string
 
+// SymbolPackage answers with everything before the last slash-free
+// dotted tail — a fake resolution; the pin is that verify carries the
+// backend's answer onto the row, not how the backend computes it.
+func (f fakeBackend) SymbolPackage(symbol string) (string, error) {
+	if i := strings.LastIndexByte(symbol, '.'); i >= 0 {
+		return symbol[:i], nil
+	}
+	return "", nil
+}
+
 func (f fakeBackend) Resolve(symbol string) (Resolution, string, error) {
 	shape, ok := f[symbol]
 	switch {
@@ -269,6 +279,11 @@ func TestBackendResolution(t *testing.T) {
 	}
 	if gone == nil || gone.Resolution != NotFound {
 		t.Fatalf("missing NotFound result: %+v", gone)
+	}
+	// Every row carries the backend-resolved owning package: the one
+	// source for package-scoped correlation, never a symbol re-parse.
+	if gone.Package != "example.com/p" {
+		t.Fatalf("row package = %q, want the backend's answer", gone.Package)
 	}
 	if rep.ShapeUnpinned != 1 { // p.F resolved, shape pin unset
 		t.Fatalf("shape unpinned = %d", rep.ShapeUnpinned)
@@ -367,18 +382,18 @@ func TestWitnessCorrelation(t *testing.T) {
 			{Package: "example.com/p", Test: "TestA", Requirement: "REQ-v-b"},     // NOT backed by TestA
 			{Package: "example.com/p", Test: "TestD", Requirement: "REQ-v-b"},     // backed by a proves-role binding
 		},
-		OutsidePolicy:   2,
-		PackageFailures: map[string]string{"example.com/p": "package abort"},
+		OutsidePolicy: 2,
+		Diagnostics:   []*stipulatorv1.FailureDiagnostic{packageAbortDiag("example.com/p", "package abort")},
 	}
 	rep := Run(spec, store, nil, tr)
 	if rep.TestsPassed != 2 || rep.TestsFailed != 1 {
 		t.Fatalf("tests passed=%d failed=%d", rep.TestsPassed, rep.TestsFailed)
 	}
 	// The witnessed run's visibility facts ride the report: the
-	// outside-policy count and the package-keyed diagnostics reach every
+	// outside-policy count and the typed diagnostic rows reach every
 	// report surface, never stop at the test run.
-	if rep.OutsidePolicy != 2 || rep.PackageFailures["example.com/p"] != "package abort" {
-		t.Fatalf("report lost witnessing facts: outside=%d failures=%v", rep.OutsidePolicy, rep.PackageFailures)
+	if rep.OutsidePolicy != 2 || len(rep.Diagnostics) != 1 || rep.Diagnostics[0].GetPackage() != "example.com/p" || rep.Diagnostics[0].GetOutput() != "package abort" {
+		t.Fatalf("report lost witnessing facts: outside=%d diags=%v", rep.OutsidePolicy, rep.Diagnostics)
 	}
 	if rep.TestsNotRun != 1 { // TestC bound but produced no outcome
 		t.Fatalf("tests not-run = %d (unwitnessed bound test must surface)", rep.TestsNotRun)
@@ -637,4 +652,13 @@ func TestChangeSignatures(t *testing.T) {
 	if len(rep3.Signatures) != 0 {
 		t.Fatalf("unwitnessed run classified: %+v", rep3.Signatures)
 	}
+}
+
+// packageAbortDiag builds a package-level failure diagnostic (no owning
+// test).
+func packageAbortDiag(pkg, out string) *stipulatorv1.FailureDiagnostic {
+	d := &stipulatorv1.FailureDiagnostic{}
+	d.SetPackage(pkg)
+	d.SetOutput(out)
+	return d
 }

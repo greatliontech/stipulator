@@ -21,70 +21,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// HealthDisposition is the terminal health of a policy invocation or a
-// selected package. There is deliberately no cancelled value: a cancelled
-// execution discards its partial results and reports no terminal
-// disposition at all; cancellation is visible only as a progress-event
-// terminal cause.
-type HealthDisposition int32
-
-const (
-	HealthDisposition_HEALTH_DISPOSITION_UNSPECIFIED HealthDisposition = 0
-	HealthDisposition_HEALTH_DISPOSITION_HEALTHY     HealthDisposition = 1
-	// Tests ran and at least one assertion failed.
-	HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED HealthDisposition = 2
-	// The package (or an invocation member) failed to build.
-	HealthDisposition_HEALTH_DISPOSITION_BUILD_FAILED HealthDisposition = 3
-	// The invocation exceeded its policy-declared timeout.
-	HealthDisposition_HEALTH_DISPOSITION_TIMEOUT HealthDisposition = 4
-	// Environment-induced failure: a silent or malformed command stream,
-	// a run that ended without a usable report. Named distinctly from an
-	// assertion failure so the two are never indistinguishable.
-	HealthDisposition_HEALTH_DISPOSITION_DEGRADED HealthDisposition = 5
-)
-
-// Enum value maps for HealthDisposition.
-var (
-	HealthDisposition_name = map[int32]string{
-		0: "HEALTH_DISPOSITION_UNSPECIFIED",
-		1: "HEALTH_DISPOSITION_HEALTHY",
-		2: "HEALTH_DISPOSITION_TEST_FAILED",
-		3: "HEALTH_DISPOSITION_BUILD_FAILED",
-		4: "HEALTH_DISPOSITION_TIMEOUT",
-		5: "HEALTH_DISPOSITION_DEGRADED",
-	}
-	HealthDisposition_value = map[string]int32{
-		"HEALTH_DISPOSITION_UNSPECIFIED":  0,
-		"HEALTH_DISPOSITION_HEALTHY":      1,
-		"HEALTH_DISPOSITION_TEST_FAILED":  2,
-		"HEALTH_DISPOSITION_BUILD_FAILED": 3,
-		"HEALTH_DISPOSITION_TIMEOUT":      4,
-		"HEALTH_DISPOSITION_DEGRADED":     5,
-	}
-)
-
-func (x HealthDisposition) Enum() *HealthDisposition {
-	p := new(HealthDisposition)
-	*p = x
-	return p
-}
-
-func (x HealthDisposition) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (HealthDisposition) Descriptor() protoreflect.EnumDescriptor {
-	return file_stipulator_v1_execution_proto_enumTypes[0].Descriptor()
-}
-
-func (HealthDisposition) Type() protoreflect.EnumType {
-	return &file_stipulator_v1_execution_proto_enumTypes[0]
-}
-
-func (x HealthDisposition) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
 // ObligationDisposition classifies a completeness finding.
 type ObligationDisposition int32
 
@@ -122,11 +58,11 @@ func (x ObligationDisposition) String() string {
 }
 
 func (ObligationDisposition) Descriptor() protoreflect.EnumDescriptor {
-	return file_stipulator_v1_execution_proto_enumTypes[1].Descriptor()
+	return file_stipulator_v1_execution_proto_enumTypes[0].Descriptor()
 }
 
 func (ObligationDisposition) Type() protoreflect.EnumType {
-	return &file_stipulator_v1_execution_proto_enumTypes[1]
+	return &file_stipulator_v1_execution_proto_enumTypes[0]
 }
 
 func (x ObligationDisposition) Number() protoreflect.EnumNumber {
@@ -185,11 +121,11 @@ func (x Phase) String() string {
 }
 
 func (Phase) Descriptor() protoreflect.EnumDescriptor {
-	return file_stipulator_v1_execution_proto_enumTypes[2].Descriptor()
+	return file_stipulator_v1_execution_proto_enumTypes[1].Descriptor()
 }
 
 func (Phase) Type() protoreflect.EnumType {
-	return &file_stipulator_v1_execution_proto_enumTypes[2]
+	return &file_stipulator_v1_execution_proto_enumTypes[1]
 }
 
 func (x Phase) Number() protoreflect.EnumNumber {
@@ -245,11 +181,11 @@ func (x TerminalCause) String() string {
 }
 
 func (TerminalCause) Descriptor() protoreflect.EnumDescriptor {
-	return file_stipulator_v1_execution_proto_enumTypes[3].Descriptor()
+	return file_stipulator_v1_execution_proto_enumTypes[2].Descriptor()
 }
 
 func (TerminalCause) Type() protoreflect.EnumType {
-	return &file_stipulator_v1_execution_proto_enumTypes[3]
+	return &file_stipulator_v1_execution_proto_enumTypes[2]
 }
 
 func (x TerminalCause) Number() protoreflect.EnumNumber {
@@ -1409,256 +1345,6 @@ func (b0 ObligationReport_builder) Build() *ObligationReport {
 	return m0
 }
 
-// FailureDiagnostic is the retained output of one failing or degraded
-// unit of policy execution — an invocation, a package, or a named test.
-// Retained failure output is part of the verdict, not a courtesy: without
-// it an environment-induced failure and a real regression are
-// indistinguishable.
-type FailureDiagnostic struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Invocation  *string                `protobuf:"bytes,1,opt,name=invocation"`
-	xxx_hidden_Package     *string                `protobuf:"bytes,2,opt,name=package"`
-	xxx_hidden_Test        *string                `protobuf:"bytes,3,opt,name=test"`
-	xxx_hidden_Disposition HealthDisposition      `protobuf:"varint,4,opt,name=disposition,enum=stipulator.v1.HealthDisposition"`
-	xxx_hidden_Output      *string                `protobuf:"bytes,5,opt,name=output"`
-	xxx_hidden_Truncated   bool                   `protobuf:"varint,6,opt,name=truncated"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
-}
-
-func (x *FailureDiagnostic) Reset() {
-	*x = FailureDiagnostic{}
-	mi := &file_stipulator_v1_execution_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *FailureDiagnostic) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*FailureDiagnostic) ProtoMessage() {}
-
-func (x *FailureDiagnostic) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_execution_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-func (x *FailureDiagnostic) GetInvocation() string {
-	if x != nil {
-		if x.xxx_hidden_Invocation != nil {
-			return *x.xxx_hidden_Invocation
-		}
-		return ""
-	}
-	return ""
-}
-
-func (x *FailureDiagnostic) GetPackage() string {
-	if x != nil {
-		if x.xxx_hidden_Package != nil {
-			return *x.xxx_hidden_Package
-		}
-		return ""
-	}
-	return ""
-}
-
-func (x *FailureDiagnostic) GetTest() string {
-	if x != nil {
-		if x.xxx_hidden_Test != nil {
-			return *x.xxx_hidden_Test
-		}
-		return ""
-	}
-	return ""
-}
-
-func (x *FailureDiagnostic) GetDisposition() HealthDisposition {
-	if x != nil {
-		if protoimpl.X.Present(&(x.XXX_presence[0]), 3) {
-			return x.xxx_hidden_Disposition
-		}
-	}
-	return HealthDisposition_HEALTH_DISPOSITION_UNSPECIFIED
-}
-
-func (x *FailureDiagnostic) GetOutput() string {
-	if x != nil {
-		if x.xxx_hidden_Output != nil {
-			return *x.xxx_hidden_Output
-		}
-		return ""
-	}
-	return ""
-}
-
-func (x *FailureDiagnostic) GetTruncated() bool {
-	if x != nil {
-		return x.xxx_hidden_Truncated
-	}
-	return false
-}
-
-func (x *FailureDiagnostic) SetInvocation(v string) {
-	x.xxx_hidden_Invocation = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
-}
-
-func (x *FailureDiagnostic) SetPackage(v string) {
-	x.xxx_hidden_Package = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 6)
-}
-
-func (x *FailureDiagnostic) SetTest(v string) {
-	x.xxx_hidden_Test = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 6)
-}
-
-func (x *FailureDiagnostic) SetDisposition(v HealthDisposition) {
-	x.xxx_hidden_Disposition = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
-}
-
-func (x *FailureDiagnostic) SetOutput(v string) {
-	x.xxx_hidden_Output = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
-}
-
-func (x *FailureDiagnostic) SetTruncated(v bool) {
-	x.xxx_hidden_Truncated = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 6)
-}
-
-func (x *FailureDiagnostic) HasInvocation() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
-}
-
-func (x *FailureDiagnostic) HasPackage() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
-}
-
-func (x *FailureDiagnostic) HasTest() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
-}
-
-func (x *FailureDiagnostic) HasDisposition() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
-}
-
-func (x *FailureDiagnostic) HasOutput() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
-}
-
-func (x *FailureDiagnostic) HasTruncated() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
-}
-
-func (x *FailureDiagnostic) ClearInvocation() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
-	x.xxx_hidden_Invocation = nil
-}
-
-func (x *FailureDiagnostic) ClearPackage() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
-	x.xxx_hidden_Package = nil
-}
-
-func (x *FailureDiagnostic) ClearTest() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
-	x.xxx_hidden_Test = nil
-}
-
-func (x *FailureDiagnostic) ClearDisposition() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
-	x.xxx_hidden_Disposition = HealthDisposition_HEALTH_DISPOSITION_UNSPECIFIED
-}
-
-func (x *FailureDiagnostic) ClearOutput() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
-	x.xxx_hidden_Output = nil
-}
-
-func (x *FailureDiagnostic) ClearTruncated() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
-	x.xxx_hidden_Truncated = false
-}
-
-type FailureDiagnostic_builder struct {
-	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
-
-	// Canonical invocation name from the policy record.
-	Invocation *string
-	// Set when the diagnostic is package-scoped.
-	Package *string
-	// Set when the diagnostic is test-scoped (a failed or degraded
-	// witness).
-	Test *string
-	// Names a degraded execution distinctly from an assertion failure.
-	Disposition *HealthDisposition
-	// Retained output, bounded by the executor.
-	Output    *string
-	Truncated *bool
-}
-
-func (b0 FailureDiagnostic_builder) Build() *FailureDiagnostic {
-	m0 := &FailureDiagnostic{}
-	b, x := &b0, m0
-	_, _ = b, x
-	if b.Invocation != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
-		x.xxx_hidden_Invocation = b.Invocation
-	}
-	if b.Package != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 6)
-		x.xxx_hidden_Package = b.Package
-	}
-	if b.Test != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 6)
-		x.xxx_hidden_Test = b.Test
-	}
-	if b.Disposition != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
-		x.xxx_hidden_Disposition = *b.Disposition
-	}
-	if b.Output != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
-		x.xxx_hidden_Output = b.Output
-	}
-	if b.Truncated != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 6)
-		x.xxx_hidden_Truncated = *b.Truncated
-	}
-	return m0
-}
-
 // CompletedObservation is the runtime-input evidence of one completed
 // process: the canonical gofresh v1 manifest built from the process's own
 // testlog, and its integrity digest — the encoding downstream witness
@@ -1677,7 +1363,7 @@ type CompletedObservation struct {
 
 func (x *CompletedObservation) Reset() {
 	*x = CompletedObservation{}
-	mi := &file_stipulator_v1_execution_proto_msgTypes[7]
+	mi := &file_stipulator_v1_execution_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1689,7 +1375,7 @@ func (x *CompletedObservation) String() string {
 func (*CompletedObservation) ProtoMessage() {}
 
 func (x *CompletedObservation) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_execution_proto_msgTypes[7]
+	mi := &file_stipulator_v1_execution_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1798,7 +1484,7 @@ type Observation struct {
 
 func (x *Observation) Reset() {
 	*x = Observation{}
-	mi := &file_stipulator_v1_execution_proto_msgTypes[8]
+	mi := &file_stipulator_v1_execution_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1810,7 +1496,7 @@ func (x *Observation) String() string {
 func (*Observation) ProtoMessage() {}
 
 func (x *Observation) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_execution_proto_msgTypes[8]
+	mi := &file_stipulator_v1_execution_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1993,7 +1679,7 @@ func (b0 Observation_builder) Build() *Observation {
 type case_Observation_Evidence protoreflect.FieldNumber
 
 func (x case_Observation_Evidence) String() string {
-	md := file_stipulator_v1_execution_proto_msgTypes[8].Descriptor()
+	md := file_stipulator_v1_execution_proto_msgTypes[7].Descriptor()
 	if x == 0 {
 		return "not set"
 	}
@@ -2037,7 +1723,7 @@ type ExecutionReport struct {
 
 func (x *ExecutionReport) Reset() {
 	*x = ExecutionReport{}
-	mi := &file_stipulator_v1_execution_proto_msgTypes[9]
+	mi := &file_stipulator_v1_execution_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2049,7 +1735,7 @@ func (x *ExecutionReport) String() string {
 func (*ExecutionReport) ProtoMessage() {}
 
 func (x *ExecutionReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_execution_proto_msgTypes[9]
+	mi := &file_stipulator_v1_execution_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2167,7 +1853,7 @@ type ProgressEvent struct {
 
 func (x *ProgressEvent) Reset() {
 	*x = ProgressEvent{}
-	mi := &file_stipulator_v1_execution_proto_msgTypes[10]
+	mi := &file_stipulator_v1_execution_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2179,7 +1865,7 @@ func (x *ProgressEvent) String() string {
 func (*ProgressEvent) ProtoMessage() {}
 
 func (x *ProgressEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_execution_proto_msgTypes[10]
+	mi := &file_stipulator_v1_execution_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2430,16 +2116,7 @@ const file_stipulator_v1_execution_proto_rawDesc = "" +
 	"obligation\x18\x02 \x01(\tR\n" +
 	"obligation\x12F\n" +
 	"\vdisposition\x18\x03 \x01(\x0e2$.stipulator.v1.ObligationDispositionR\vdisposition\x12 \n" +
-	"\vinvocations\x18\x04 \x03(\tR\vinvocations\"\xdb\x01\n" +
-	"\x11FailureDiagnostic\x12\x1e\n" +
-	"\n" +
-	"invocation\x18\x01 \x01(\tR\n" +
-	"invocation\x12\x18\n" +
-	"\apackage\x18\x02 \x01(\tR\apackage\x12\x12\n" +
-	"\x04test\x18\x03 \x01(\tR\x04test\x12B\n" +
-	"\vdisposition\x18\x04 \x01(\x0e2 .stipulator.v1.HealthDispositionR\vdisposition\x12\x16\n" +
-	"\x06output\x18\x05 \x01(\tR\x06output\x12\x1c\n" +
-	"\ttruncated\x18\x06 \x01(\bR\ttruncated\"J\n" +
+	"\vinvocations\x18\x04 \x03(\tR\vinvocations\"J\n" +
 	"\x14CompletedObservation\x12\x1a\n" +
 	"\bmanifest\x18\x01 \x01(\tR\bmanifest\x12\x16\n" +
 	"\x06digest\x18\x02 \x01(\tR\x06digest\"\xe4\x01\n" +
@@ -2464,14 +2141,7 @@ const file_stipulator_v1_execution_proto_rawDesc = "" +
 	"\aelapsed\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\aelapsed\x12\x1c\n" +
 	"\tcompleted\x18\x04 \x01(\x05R\tcompleted\x12\x14\n" +
 	"\x05total\x18\x05 \x01(\x05R\x05total\x12C\n" +
-	"\x0eterminal_cause\x18\x06 \x01(\x0e2\x1c.stipulator.v1.TerminalCauseR\rterminalCause*\xe1\x01\n" +
-	"\x11HealthDisposition\x12\"\n" +
-	"\x1eHEALTH_DISPOSITION_UNSPECIFIED\x10\x00\x12\x1e\n" +
-	"\x1aHEALTH_DISPOSITION_HEALTHY\x10\x01\x12\"\n" +
-	"\x1eHEALTH_DISPOSITION_TEST_FAILED\x10\x02\x12#\n" +
-	"\x1fHEALTH_DISPOSITION_BUILD_FAILED\x10\x03\x12\x1e\n" +
-	"\x1aHEALTH_DISPOSITION_TIMEOUT\x10\x04\x12\x1f\n" +
-	"\x1bHEALTH_DISPOSITION_DEGRADED\x10\x05*\x91\x01\n" +
+	"\x0eterminal_cause\x18\x06 \x01(\x0e2\x1c.stipulator.v1.TerminalCauseR\rterminalCause*\x91\x01\n" +
 	"\x15ObligationDisposition\x12&\n" +
 	"\"OBLIGATION_DISPOSITION_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eOBLIGATION_DISPOSITION_OMITTED\x10\x01\x12,\n" +
@@ -2492,51 +2162,50 @@ const file_stipulator_v1_execution_proto_rawDesc = "" +
 	"\x1bTERMINAL_CAUSE_TEST_FAILURE\x10\x04\x12!\n" +
 	"\x1dTERMINAL_CAUSE_SERVER_FAILURE\x10\x05BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
-var file_stipulator_v1_execution_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_stipulator_v1_execution_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_stipulator_v1_execution_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_stipulator_v1_execution_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_stipulator_v1_execution_proto_goTypes = []any{
-	(HealthDisposition)(0),       // 0: stipulator.v1.HealthDisposition
-	(ObligationDisposition)(0),   // 1: stipulator.v1.ObligationDisposition
-	(Phase)(0),                   // 2: stipulator.v1.Phase
-	(TerminalCause)(0),           // 3: stipulator.v1.TerminalCause
-	(*ProducerIdentity)(nil),     // 4: stipulator.v1.ProducerIdentity
-	(*PackageHealth)(nil),        // 5: stipulator.v1.PackageHealth
-	(*InvocationHealth)(nil),     // 6: stipulator.v1.InvocationHealth
-	(*GoResolvedConfig)(nil),     // 7: stipulator.v1.GoResolvedConfig
-	(*TestResult)(nil),           // 8: stipulator.v1.TestResult
-	(*ObligationReport)(nil),     // 9: stipulator.v1.ObligationReport
-	(*FailureDiagnostic)(nil),    // 10: stipulator.v1.FailureDiagnostic
-	(*CompletedObservation)(nil), // 11: stipulator.v1.CompletedObservation
-	(*Observation)(nil),          // 12: stipulator.v1.Observation
-	(*ExecutionReport)(nil),      // 13: stipulator.v1.ExecutionReport
-	(*ProgressEvent)(nil),        // 14: stipulator.v1.ProgressEvent
-	(TestOutcome)(0),             // 15: stipulator.v1.TestOutcome
+	(ObligationDisposition)(0),   // 0: stipulator.v1.ObligationDisposition
+	(Phase)(0),                   // 1: stipulator.v1.Phase
+	(TerminalCause)(0),           // 2: stipulator.v1.TerminalCause
+	(*ProducerIdentity)(nil),     // 3: stipulator.v1.ProducerIdentity
+	(*PackageHealth)(nil),        // 4: stipulator.v1.PackageHealth
+	(*InvocationHealth)(nil),     // 5: stipulator.v1.InvocationHealth
+	(*GoResolvedConfig)(nil),     // 6: stipulator.v1.GoResolvedConfig
+	(*TestResult)(nil),           // 7: stipulator.v1.TestResult
+	(*ObligationReport)(nil),     // 8: stipulator.v1.ObligationReport
+	(*CompletedObservation)(nil), // 9: stipulator.v1.CompletedObservation
+	(*Observation)(nil),          // 10: stipulator.v1.Observation
+	(*ExecutionReport)(nil),      // 11: stipulator.v1.ExecutionReport
+	(*ProgressEvent)(nil),        // 12: stipulator.v1.ProgressEvent
+	(HealthDisposition)(0),       // 13: stipulator.v1.HealthDisposition
+	(TestOutcome)(0),             // 14: stipulator.v1.TestOutcome
+	(*FailureDiagnostic)(nil),    // 15: stipulator.v1.FailureDiagnostic
 	(*durationpb.Duration)(nil),  // 16: google.protobuf.Duration
 }
 var file_stipulator_v1_execution_proto_depIdxs = []int32{
-	0,  // 0: stipulator.v1.PackageHealth.disposition:type_name -> stipulator.v1.HealthDisposition
-	0,  // 1: stipulator.v1.InvocationHealth.disposition:type_name -> stipulator.v1.HealthDisposition
-	5,  // 2: stipulator.v1.InvocationHealth.packages:type_name -> stipulator.v1.PackageHealth
-	7,  // 3: stipulator.v1.InvocationHealth.go:type_name -> stipulator.v1.GoResolvedConfig
-	15, // 4: stipulator.v1.TestResult.outcome:type_name -> stipulator.v1.TestOutcome
-	4,  // 5: stipulator.v1.TestResult.producer:type_name -> stipulator.v1.ProducerIdentity
-	1,  // 6: stipulator.v1.ObligationReport.disposition:type_name -> stipulator.v1.ObligationDisposition
-	0,  // 7: stipulator.v1.FailureDiagnostic.disposition:type_name -> stipulator.v1.HealthDisposition
-	4,  // 8: stipulator.v1.Observation.producer:type_name -> stipulator.v1.ProducerIdentity
-	11, // 9: stipulator.v1.Observation.completed:type_name -> stipulator.v1.CompletedObservation
-	6,  // 10: stipulator.v1.ExecutionReport.invocations:type_name -> stipulator.v1.InvocationHealth
-	8,  // 11: stipulator.v1.ExecutionReport.tests:type_name -> stipulator.v1.TestResult
-	9,  // 12: stipulator.v1.ExecutionReport.obligations:type_name -> stipulator.v1.ObligationReport
-	10, // 13: stipulator.v1.ExecutionReport.diagnostics:type_name -> stipulator.v1.FailureDiagnostic
-	12, // 14: stipulator.v1.ExecutionReport.observations:type_name -> stipulator.v1.Observation
-	2,  // 15: stipulator.v1.ProgressEvent.phase:type_name -> stipulator.v1.Phase
-	16, // 16: stipulator.v1.ProgressEvent.elapsed:type_name -> google.protobuf.Duration
-	3,  // 17: stipulator.v1.ProgressEvent.terminal_cause:type_name -> stipulator.v1.TerminalCause
-	18, // [18:18] is the sub-list for method output_type
-	18, // [18:18] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	13, // 0: stipulator.v1.PackageHealth.disposition:type_name -> stipulator.v1.HealthDisposition
+	13, // 1: stipulator.v1.InvocationHealth.disposition:type_name -> stipulator.v1.HealthDisposition
+	4,  // 2: stipulator.v1.InvocationHealth.packages:type_name -> stipulator.v1.PackageHealth
+	6,  // 3: stipulator.v1.InvocationHealth.go:type_name -> stipulator.v1.GoResolvedConfig
+	14, // 4: stipulator.v1.TestResult.outcome:type_name -> stipulator.v1.TestOutcome
+	3,  // 5: stipulator.v1.TestResult.producer:type_name -> stipulator.v1.ProducerIdentity
+	0,  // 6: stipulator.v1.ObligationReport.disposition:type_name -> stipulator.v1.ObligationDisposition
+	3,  // 7: stipulator.v1.Observation.producer:type_name -> stipulator.v1.ProducerIdentity
+	9,  // 8: stipulator.v1.Observation.completed:type_name -> stipulator.v1.CompletedObservation
+	5,  // 9: stipulator.v1.ExecutionReport.invocations:type_name -> stipulator.v1.InvocationHealth
+	7,  // 10: stipulator.v1.ExecutionReport.tests:type_name -> stipulator.v1.TestResult
+	8,  // 11: stipulator.v1.ExecutionReport.obligations:type_name -> stipulator.v1.ObligationReport
+	15, // 12: stipulator.v1.ExecutionReport.diagnostics:type_name -> stipulator.v1.FailureDiagnostic
+	10, // 13: stipulator.v1.ExecutionReport.observations:type_name -> stipulator.v1.Observation
+	1,  // 14: stipulator.v1.ProgressEvent.phase:type_name -> stipulator.v1.Phase
+	16, // 15: stipulator.v1.ProgressEvent.elapsed:type_name -> google.protobuf.Duration
+	2,  // 16: stipulator.v1.ProgressEvent.terminal_cause:type_name -> stipulator.v1.TerminalCause
+	17, // [17:17] is the sub-list for method output_type
+	17, // [17:17] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_execution_proto_init() }
@@ -2548,7 +2217,7 @@ func file_stipulator_v1_execution_proto_init() {
 	file_stipulator_v1_execution_proto_msgTypes[2].OneofWrappers = []any{
 		(*invocationHealth_Go)(nil),
 	}
-	file_stipulator_v1_execution_proto_msgTypes[8].OneofWrappers = []any{
+	file_stipulator_v1_execution_proto_msgTypes[7].OneofWrappers = []any{
 		(*observation_Completed)(nil),
 		(*observation_IncompleteReason)(nil),
 	}
@@ -2557,8 +2226,8 @@ func file_stipulator_v1_execution_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_execution_proto_rawDesc), len(file_stipulator_v1_execution_proto_rawDesc)),
-			NumEnums:      4,
-			NumMessages:   11,
+			NumEnums:      3,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

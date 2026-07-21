@@ -14,25 +14,6 @@ import "stipulator/v1/reports.proto";
 // an execution report is derived — computed by executing the policy, never
 // persisted as an input.
 
-// HealthDisposition is the terminal health of a policy invocation or a
-// selected package. There is deliberately no cancelled value: a cancelled
-// execution discards its partial results and reports no terminal
-// disposition at all; cancellation is visible only as a progress-event
-// terminal cause.
-enum HealthDisposition {
-  HEALTH_DISPOSITION_UNSPECIFIED = 0;
-  HEALTH_DISPOSITION_HEALTHY = 1;
-  // Tests ran and at least one assertion failed.
-  HEALTH_DISPOSITION_TEST_FAILED = 2;
-  // The package (or an invocation member) failed to build.
-  HEALTH_DISPOSITION_BUILD_FAILED = 3;
-  // The invocation exceeded its policy-declared timeout.
-  HEALTH_DISPOSITION_TIMEOUT = 4;
-  // Environment-induced failure: a silent or malformed command stream,
-  // a run that ended without a usable report. Named distinctly from an
-  // assertion failure so the two are never indistinguishable.
-  HEALTH_DISPOSITION_DEGRADED = 5;
-}
 
 // ProducerIdentity binds an outcome or observation to the exact policy
 // invocation and operating-system process that produced it. Work from
@@ -147,26 +128,6 @@ message ObligationReport {
   ObligationDisposition disposition = 3;
   // Canonical names of the selecting invocations, when multiply selected.
   repeated string invocations = 4;
-}
-
-// FailureDiagnostic is the retained output of one failing or degraded
-// unit of policy execution — an invocation, a package, or a named test.
-// Retained failure output is part of the verdict, not a courtesy: without
-// it an environment-induced failure and a real regression are
-// indistinguishable.
-message FailureDiagnostic {
-  // Canonical invocation name from the policy record.
-  string invocation = 1;
-  // Set when the diagnostic is package-scoped.
-  string package = 2;
-  // Set when the diagnostic is test-scoped (a failed or degraded
-  // witness).
-  string test = 3;
-  // Names a degraded execution distinctly from an assertion failure.
-  HealthDisposition disposition = 4;
-  // Retained output, bounded by the executor.
-  string output = 5;
-  bool truncated = 6;
 }
 
 // CompletedObservation is the runtime-input evidence of one completed

@@ -135,8 +135,10 @@ func (b *Backend) SymbolFile(symbol string) (string, bool) {
 }
 
 // SymbolPackage returns the loaded package path owning the symbol
-// reference — external test variants folded onto their production path —
-// or "" when no loaded package matches.
+// reference (verify.SymbolLocator) — external test variants folded onto
+// their production path — or "" when no loaded package matches. The one
+// source for package-scoped correlation: a symbol string alone cannot
+// be split reliably (dotted path elements vs method receivers).
 func (b *Backend) SymbolPackage(symbol string) string {
 	p, _ := b.splitSymbol(symbol)
 	return p

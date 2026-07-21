@@ -43,7 +43,7 @@ func (r *Report) Proto() *stipulatorv1.VerifyReport {
 	}
 	out.SetRegistrations(regs)
 	out.SetOutsidePolicy(int32(r.OutsidePolicy))
-	out.SetPackageFailures(r.PackageFailures)
+	out.SetWitnessDiagnostics(r.Diagnostics)
 	return out
 }
 
@@ -97,6 +97,7 @@ func BindingResultProto(br BindingResult) *stipulatorv1.BindingResult {
 		m.SetWitnessClass(classProto[br.WitnessClass])
 	}
 	m.SetRaceEnabled(br.RaceEnabled)
+	m.SetPackage(br.Package)
 	return m
 }
 

@@ -143,4 +143,9 @@ func TestCheckDefaultRedWitnessFailsWithDiagnostics(t *testing.T) {
 	if !strings.Contains(failed.GetOutput(), "broken arithmetic") {
 		t.Errorf("retained output %q does not carry the failure text", failed.GetOutput())
 	}
+	// One fact, one home per payload: the rows ride the check level, so
+	// the verify sub-message carries none.
+	if dup := res.GetVerify().GetWitnessDiagnostics(); len(dup) != 0 {
+		t.Errorf("verify sub-message duplicates %d diagnostic rows", len(dup))
+	}
 }

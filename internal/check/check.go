@@ -144,7 +144,14 @@ func Run(ctx context.Context, dir string, full bool) (*stipulatorv1.CheckResult,
 	backends := map[string]verify.Backend{"go": gb}
 	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
 	vr := verify.Run(spec, store, backends, testRun)
-	res.SetVerify(vr.Proto())
+	vp := vr.Proto()
+	// The typed failure rows already ride the check payload — at the
+	// check level on the witness-evidence form, on the execution report
+	// when health is judged — so the verify sub-message leaves its rows
+	// empty: one fact, one home per payload
+	// (REQ-mcp-response-contract).
+	vp.SetWitnessDiagnostics(nil)
+	res.SetVerify(vp)
 
 	manifest, err := corpus.LoadManifest(fsys)
 	if err != nil {

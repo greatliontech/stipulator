@@ -107,11 +107,6 @@ type TestRun struct {
 	// Outcomes: a red witness must be diagnosable from the run that saw it,
 	// not by re-running the suite by hand.
 	Failures map[string]string
-	// PackageFailures carries the failure diagnostics no single test owns
-	// — an envelope cutoff, a package abort, a build failure — keyed by
-	// import path, occurrences joined like Failures: an expected subject
-	// denied an outcome must be diagnosable from the run that denied it.
-	PackageFailures map[string]string
 	// Diagnostics carries the same failures as typed rows — disposition,
 	// truncation, and retained output intact — for consumers that must
 	// name a degraded execution distinctly from an assertion failure
@@ -163,8 +158,11 @@ type BindingResult struct {
 	Path          string
 	RequirementId string
 	Symbol        string
-	Backend       string
-	Role          stipulatorv1.BindingRole
+	// Package is the symbol's owning package as the backend resolved it
+	// (SymbolLocator); empty when no backend answer exists.
+	Package string
+	Backend string
+	Role    stipulatorv1.BindingRole
 	// ContentPinned reports whether the content-hash pin matches the
 	// requirement's current hash.
 	ContentPinned bool
@@ -202,6 +200,14 @@ func witnessRole(role stipulatorv1.BindingRole) bool {
 // the code, what class of witness a bound test yields.
 type WitnessClassifier interface {
 	WitnessClass(symbol string) WitnessClass
+}
+
+// SymbolLocator is an optional Backend extension: the symbol's owning
+// package as the backend resolves it. A symbol string alone cannot be
+// split reliably (dotted path elements vs method receivers), so any
+// package-scoped correlation reads this one source, never a re-parse.
+type SymbolLocator interface {
+	SymbolPackage(symbol string) (string, error)
 }
 
 // Decl is one declaration fact from a code slice.
@@ -254,12 +260,12 @@ type Report struct {
 	// carried from the test run so every report surface renders the gap
 	// as a visible number, never silence. Zero in unwitnessed runs.
 	OutsidePolicy int
-	// PackageFailures carries the witnessed run's failure diagnostics no
-	// single test owns — an envelope cutoff, a package abort, a build
-	// failure — keyed by import path: a bound test reading unwitnessed is
-	// diagnosable from the same report that says so. Nil in unwitnessed
-	// runs.
-	PackageFailures map[string]string
+	// Diagnostics carries the witnessed run's failure diagnostics as
+	// typed rows — test- and package-scoped alike, disposition and
+	// truncation intact — the one home for retained failure output in a
+	// verify report: a subject denied an outcome is diagnosable from the
+	// same report that says so. Nil in unwitnessed runs.
+	Diagnostics []*stipulatorv1.FailureDiagnostic
 	// Attestations holds the verified state of every well-formed
 	// requirement attestation, in store order.
 	Attestations []AttestationResult
@@ -368,6 +374,16 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 				rep.Stale++
 			}
 
+			if sl, ok := backends[b.GetBackend()].(SymbolLocator); ok {
+				// A locator fault leaves the row package-less: scoped
+				// diagnostic correlation then drops the row's package,
+				// never mismatches it — and the same faulted backend
+				// surfaces the run-level error through Resolve below.
+				if pkg, err := sl.SymbolPackage(b.GetSymbol()); err == nil {
+					result.Package = pkg
+				}
+			}
+
 			if testRun != nil && witnessRole(b.GetRole()) {
 				result.TestOutcome = testRun.Outcomes[b.GetSymbol()]
 				// RaceEnabled qualifies a witness; a row without a passing
@@ -426,7 +442,7 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 
 	if testRun != nil {
 		rep.OutsidePolicy = testRun.OutsidePolicy
-		rep.PackageFailures = testRun.PackageFailures
+		rep.Diagnostics = testRun.Diagnostics
 		// Cross-check runtime registrations: every registration must be
 		// backed by a witness-role binding (tests or proves) for the same
 		// requirement on the registration's top-level test — the binding

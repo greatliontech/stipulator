@@ -28,6 +28,16 @@ import (
 // the serve loop ends). Requests are serialized — one in flight — which
 // matches how every consumer drives the Backend surface: sequentially,
 // from one goroutine.
+// The owned resolver is the production verify backend: the optional
+// extensions it answers (witness classing, symbol location) must stay
+// satisfied, or the consumers degrade silently to their absent-answer
+// paths.
+var (
+	_ verify.Backend           = (*Owned)(nil)
+	_ verify.SymbolLocator     = (*Owned)(nil)
+	_ verify.WitnessClassifier = (*Owned)(nil)
+)
+
 type Owned struct {
 	exe  string
 	args []string

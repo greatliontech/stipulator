@@ -90,10 +90,11 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   export's uncapped form at the tool seam; a callee swap would survive the suite. *Lands:
   when the witness path gains an execution-class seam or observability hook a test can
   assert against.*
-- **[check-result-duplicate-package-failure](check-result-duplicate-package-failure.md)** — a
-  package failure rides the check result as both a typed witness_diagnostics row and the
-  verify.package_failures text; one fact, one wire home. *Lands: when the check result's
-  wire shape next changes.*
+- **[scope-prefix-boundary-semantics](scope-prefix-boundary-semantics.md)** — view scoping
+  is raw-prefix (`example.com/p` keeps `example.com/p2`; `docs/spec` matches `docs/specs.md`)
+  across docs, symbols, and diagnostics alike, and Path-empty scopes drop a build-broken
+  package's diagnostic while keeping its Broken row; over-inclusion/visibility only, verdict
+  unaffected. *Lands: when scope matching semantics are next deliberately changed.*
 - **[structural-call-absence-verb](structural-call-absence-verb.md)** — "never constructs
   X" structural clauses have no verb: NoImport is transitive (stdlib forbiddance fails
   through any real dependency) and the shape verbs state presence, not capability absence;

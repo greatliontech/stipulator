@@ -9,7 +9,7 @@ chunk runs the adversarial loop and the corpus check stays green.
   default (witness-concurrency-saturates-host)
 - [x] 2. Witness store GC: a maintenance surface evicting departed
   identities' variants (witness-store-gc)
-- [ ] 3. Check-result wire cleanup: one home for package failures
+- [x] 3. Check-result wire cleanup: one home for package failures
   (check-result-duplicate-package-failure; its Lands fires by this change)
 - [ ] 4. Symlinked member validation: resolve or refuse escaping members
   (symlinked-member-escapes-lexical-validation)

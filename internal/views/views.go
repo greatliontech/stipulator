@@ -275,17 +275,19 @@ func VerifyView(vr *verify.Report, facts Facts, view string, scope Scope) (proto
 		out.SetTestsFailed(int32(vr.TestsFailed))
 		out.SetTestsNotRun(int32(vr.TestsNotRun))
 		out.SetOutsidePolicy(int32(vr.OutsidePolicy))
-		// Package-failure values are retained test output — a runtime
-		// product the summary must bound (REQ-mcp-response-contract): each
-		// entry keeps a capped prefix with the truncation stated; the CLI
-		// rendering carries the full retained output.
-		if len(vr.PackageFailures) > 0 {
-			capped := make(map[string]string, len(vr.PackageFailures))
-			for pkg, out := range vr.PackageFailures {
-				capped[pkg] = truncateOutput(out, packageFailureCap)
-			}
-			out.SetPackageFailures(capped)
+		// Failure-diagnostic bodies are runtime products the summary
+		// omits (REQ-mcp-response-contract): it carries capped heading
+		// words with the omitted remainder counted, and the typed rows
+		// ride the full result for drill-down.
+		var headings []string
+		for _, d := range vr.Diagnostics {
+			headings = append(headings, diagnosticHeadingWord(d))
 		}
+		if len(headings) > headingCap {
+			out.SetWitnessFailureHeadingsOmitted(int32(len(headings) - headingCap))
+			headings = headings[:headingCap]
+		}
+		out.SetWitnessFailureHeadings(headings)
 		var sigs []*stipulatorv1.ChangeSignature
 		for _, cs := range vr.Signatures {
 			m := &stipulatorv1.ChangeSignature{}
@@ -311,35 +313,43 @@ func VerifyView(vr *verify.Report, facts Facts, view string, scope Scope) (proto
 			}
 			sliced.Results = rows
 			// A scope narrows the WHOLE report (REQ-mcp-views): the
-			// package-keyed diagnostics follow the kept rows, so filtered
-			// triage is never polluted by out-of-scope packages' failures.
+			// typed diagnostics follow the kept rows, so filtered triage
+			// is never polluted by out-of-scope packages' failures.
 			// OutsidePolicy stays GLOBAL exactly like the gate verdict — a
 			// scoped slice says nothing about what the policy leaves
 			// outside the tree-wide witnessing.
-			kept := map[string]string{}
-			for pkg, out := range vr.PackageFailures {
+			var keptDiags []*stipulatorv1.FailureDiagnostic
+			for _, d := range vr.Diagnostics {
+				// A path scope keeps a package-scoped diagnostic
+				// directly, row or no row — the same raw-prefix rule
+				// keeps applies to symbols. Without it a build-broken
+				// package would lose the one diagnostic explaining its
+				// breakage exactly when scoped onto: its rows resolve
+				// to no package. An invocation-level diagnostic has an
+				// empty package, which no non-empty path prefixes. A
+				// Path-empty scope (ids, filter, bucket) has nothing to
+				// rescue with, so a broken package's diagnostic drops
+				// from those scoped views; the unscoped view, summary
+				// headings, and check-level rows still carry it.
+				if scope.Path != "" && strings.HasPrefix(d.GetPackage(), scope.Path) {
+					keptDiags = append(keptDiags, d)
+					continue
+				}
 				for _, br := range rows {
-					if strings.HasPrefix(br.Symbol, pkg+".") {
-						kept[pkg] = out
+					// Match on the row's backend-resolved package — the
+					// symbol string alone is ambiguous (dotted path
+					// elements vs method receivers), so it is never
+					// re-parsed here. A row without a resolved package
+					// identifies no package and claims no diagnostic.
+					if br.Package != "" && br.Package == d.GetPackage() {
+						keptDiags = append(keptDiags, d)
 						break
 					}
 				}
 			}
-			sliced.PackageFailures = kept
+			sliced.Diagnostics = keptDiags
 		}
 		return sliced.Proto(), nil
 	}
 	return nil, fmt.Errorf("unknown view %q (summary, bindings)", view)
-}
-
-// packageFailureCap bounds one package-failure entry in the verify
-// summary; the remainder is announced, never silently dropped.
-const packageFailureCap = 2048
-
-// truncateOutput caps retained output with a stated truncation.
-func truncateOutput(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n] + "\n…(truncated; the CLI rendering carries the full retained output)"
 }

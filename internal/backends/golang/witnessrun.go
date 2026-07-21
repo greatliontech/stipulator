@@ -37,7 +37,7 @@ import (
 // identity — but their witness evidence stays aligned with the
 // health-judged form's. Visibility
 // has two homes on the result: the counts (outside-policy, uncacheable)
-// and the package-keyed failure diagnostics — an envelope cutoff, a
+// and the package-level failure-diagnostic rows — an envelope cutoff, a
 // package abort, a build failure — so an expected subject denied an
 // outcome is traceable to the process event that denied it. Any fault on
 // the freshness path serves nothing and executes every covered subject:
@@ -1054,16 +1054,8 @@ func consumeMerge(tr *verify.TestRun, m *execMerge, ranTop map[string]bool) {
 		if d.GetTest() == "" {
 			// A diagnostic no single test owns — an envelope cutoff, a
 			// package abort, a build failure — is the visibility story of
-			// the subjects it denied: it rides the result keyed by package.
-			if tr.PackageFailures == nil {
-				tr.PackageFailures = map[string]string{}
-			}
-			pkg := d.GetPackage()
-			if prev, ok := tr.PackageFailures[pkg]; ok {
-				tr.PackageFailures[pkg] = prev + "\n" + d.GetOutput()
-			} else {
-				tr.PackageFailures[pkg] = d.GetOutput()
-			}
+			// the subjects it denied: it rides the result as its typed
+			// row alone (one fact, one home).
 			continue
 		}
 		if tr.Failures == nil {

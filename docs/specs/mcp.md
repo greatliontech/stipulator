@@ -71,10 +71,13 @@ never a passthrough. One wire encoding of the payload — the
 structured result beside a one-line text summary, or, for a
 document-valued result like a spec bundle, the document as the text
 content beside a size-only structured result — never a duplicate
-serialization of the whole payload. The surfaces that grow without
-bound (per-test reason maps, pairwise partition overlap terms,
-diagnostic collections and dossiers) travel in full only through the
-full view or the export form.
+serialization of the whole payload, and one home per fact within it —
+a collection travels in exactly one of the payload's messages, so a
+payload embedding another report message leaves every copy of a
+collection the result carries anywhere else in the payload empty. The
+surfaces that grow without bound (per-test reason maps, pairwise
+partition overlap terms, diagnostic collections and dossiers) travel
+in full only through the full view or the export form.
 
 **REQ-mcp-progress** (behavior): A long-running tool call MUST report
 progress as bounded notifications — the current phase, and per-invocation
