@@ -410,7 +410,7 @@ func NewWitnessRecorder(ctx context.Context, dir string, p *stipulatorv1.TestPol
 		for _, s := range subjects {
 			// A subject that fails to fingerprint simply stays
 			// unpublishable; its execution and evidence are untouched.
-			if fp, err := view.Capture(s); err == nil {
+			if fp, err := view.Capture(ctx, s); err == nil {
 				g.fps[s] = fp
 			}
 		}
@@ -710,7 +710,7 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 			}
 		}
 		if complete && len(g.candidates) > 0 {
-			if err := g.observed.ValidateObserved(ctx); err != nil {
+			if err := g.observed.Validate(ctx); err != nil {
 				if ctx.Err() != nil {
 					return nil, nil, "", ctx.Err()
 				}

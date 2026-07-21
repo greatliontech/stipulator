@@ -478,7 +478,7 @@ func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, ca
 			// subject that fails to capture simply stays unpublishable;
 			// its execution and evidence are untouched.
 			wg.stale[s.Package] = append(wg.stale[s.Package], s.Symbol)
-			if fp, err := view.Capture(s); err == nil {
+			if fp, err := view.Capture(ctx, s); err == nil {
 				wg.fps[s] = fp
 			}
 		}
@@ -769,7 +769,7 @@ func publishExecuted(ctx context.Context, wg *witnessGroup, m *execMerge) ([]wit
 			}
 		}
 		if complete && len(wg.candidates) > 0 {
-			if err := wg.observed.ValidateObserved(ctx); err != nil {
+			if err := wg.observed.Validate(ctx); err != nil {
 				if ctx.Err() != nil {
 					return nil, nil, ctx.Err()
 				}
@@ -922,7 +922,7 @@ func retryDrifted(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, n
 		if view, err := wg.engine.NewView(ctx, subjects, dir); err == nil {
 			st.view = view
 			for _, s := range subjects {
-				if fp, err := view.Capture(s); err == nil {
+				if fp, err := view.Capture(ctx, s); err == nil {
 					st.fps[s] = fp
 				}
 			}

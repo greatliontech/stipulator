@@ -42,7 +42,7 @@ func checkFingerprints(ctx context.Context, view *gofresh.View, recorded map[gof
 		maps.Copy(verdicts, batch)
 	}
 	if len(plain) != 0 {
-		batch, err := view.CheckRefinedBatch(ctx, plain)
+		batch, err := view.CheckBatch(ctx, plain)
 		if err != nil {
 			return nil, err
 		}
