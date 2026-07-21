@@ -11,6 +11,7 @@
 package verify
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -96,6 +97,13 @@ type TestRun struct {
 	// the full suite (REQ-evidence-freshness-degrade); empty on the
 	// freshness path proper.
 	Degraded string
+	// SelectiveServing marks the run's execution class: true when the
+	// selective witness runner produced it — proven-fresh records served
+	// with selective execution of the stale remainder, the degraded
+	// empty-served form included — false for one whole policy execution.
+	// Consumers the spec pins to the serving class
+	// (REQ-gap-resolved-pruned) refuse a run without the mark.
+	SelectiveServing bool
 	// OutsidePolicy counts expected witness subjects the accepted test
 	// policy leaves outside selective witnessing — subjects whose package
 	// no invocation covers, only a non-race invocation covers, or more
@@ -196,6 +204,21 @@ func witnessRole(role stipulatorv1.BindingRole) bool {
 		role == stipulatorv1.BindingRole_BINDING_ROLE_PROVES
 }
 
+// ServingClassRequired refuses witness evidence that is not the serving
+// class: proven-fresh records with selective execution of the stale
+// remainder, never one whole policy execution demanded for the caller's
+// operation alone (REQ-gap-resolved-pruned). A nil run carries no
+// witness evidence and passes — the caller declared no-test semantics.
+func ServingClassRequired(tr *TestRun) error {
+	if tr != nil && !tr.SelectiveServing {
+		return ErrNotServingClass
+	}
+	return nil
+}
+
+// ErrNotServingClass names the refused execution class.
+var ErrNotServingClass = errors.New("this operation takes serving-class witness evidence (proven-fresh records with selective execution of the stale remainder), never a whole policy execution")
+
 // WitnessClassifier is an optional Backend extension: it resolves, from
 // the code, what class of witness a bound test yields.
 type WitnessClassifier interface {
@@ -266,6 +289,10 @@ type Report struct {
 	// verify report: a subject denied an outcome is diagnosable from the
 	// same report that says so. Nil in unwitnessed runs.
 	Diagnostics []*stipulatorv1.FailureDiagnostic
+	// ServingEvidence carries the witness run's execution-class mark
+	// (TestRun.SelectiveServing) so serving-class-mandated consumers
+	// (REQ-gap-resolved-pruned) can enforce it from the report alone.
+	ServingEvidence bool
 	// Attestations holds the verified state of every well-formed
 	// requirement attestation, in store order.
 	Attestations []AttestationResult
@@ -443,6 +470,7 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 	if testRun != nil {
 		rep.OutsidePolicy = testRun.OutsidePolicy
 		rep.Diagnostics = testRun.Diagnostics
+		rep.ServingEvidence = testRun.SelectiveServing
 		// Cross-check runtime registrations: every registration must be
 		// backed by a witness-role binding (tests or proves) for the same
 		// requirement on the registration's top-level test — the binding

@@ -187,8 +187,10 @@ discoverable from a run already made; the gate never deletes records
 itself. `prune --check` reports a resolved gap
 that lingers without deleting anything. The resolved-record evaluation
 takes its witness evidence from the serving class — proven-fresh records
-with selective execution of the stale remainder (REQ-core-one-execution)
-— never a whole policy execution demanded for pruning alone.
+with selective execution of the stale remainder (REQ-core-one-execution),
+the serving path's degraded full-execution fallback included: the class
+is the path, not the served count — never a whole policy execution
+demanded for pruning alone.
 
 **REQ-gap-prune-dangling** (behavior): An explicit dangling mode of
 `prune` — with a check form — MUST delete dangling gap records in bulk,

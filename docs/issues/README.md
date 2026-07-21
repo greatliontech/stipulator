@@ -61,11 +61,12 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   measured at 30 MB across two heavy-development corpora — below any actionable bar.
   *Lands: when store size or load-time validation first becomes a measured cost on a
   real corpus.*
-- **[prune-serving-class-unpinned](prune-serving-class-unpinned.md)** — call-path identity
-  choices without dedicated pins: prune's serving-class witness source, and the partitions
-  export's uncapped form at the tool seam; a callee swap would survive the suite. *Lands:
-  when the witness path gains an execution-class seam or observability hook a test can
-  assert against.*
+- **[partitions-uncapped-seam-unpinned](partitions-uncapped-seam-unpinned.md)** — the
+  partitions export form's `ProtoUncapped()` call is unpinned at the tool seam (a capped
+  swap needs a disproportionate 12-component fixture); carries the CLI prune call-site
+  residual of the same class. *Lands: when an MCP fixture exceeding OverlapCap becomes
+  proportionate, when the partitions tool seam next changes, or (prune residual) when
+  prune's CLI seam next changes.*
 - **[scope-prefix-boundary-semantics](scope-prefix-boundary-semantics.md)** — view scoping
   is raw-prefix (`example.com/p` keeps `example.com/p2`; `docs/spec` matches `docs/specs.md`)
   across docs, symbols, and diagnostics alike, and Path-empty scopes drop a build-broken

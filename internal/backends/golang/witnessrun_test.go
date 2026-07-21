@@ -687,6 +687,11 @@ func TestFine(t *testing.T) {}
 	if packageDiagOutput(degraded, "example.com/degrade/broken") == "" {
 		t.Errorf("unbuildable package carries no package-level diagnostic row: %+v", degraded.Diagnostics)
 	}
+	// Even the degraded empty-served form is the serving class: the mark
+	// is the runner's identity, not a success bit.
+	if !degraded.SelectiveServing {
+		t.Error("degraded selective run lost its serving-class mark")
+	}
 	if degraded.Uncached != degraded.Ran {
 		t.Errorf("uncached=%d ran=%d, want every executed subject counted uncacheable", degraded.Uncached, degraded.Ran)
 	}

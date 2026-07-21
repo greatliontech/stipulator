@@ -317,7 +317,10 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 	// green evidence, and the isolation pass's solo processes carry their
 	// own dispositions — then the surviving served records, whose keys are
 	// disjoint from every executed subject's by construction.
-	tr := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}, RaceEnabled: true, OutsidePolicy: outside}
+	// The selective runner is the serving class by identity — the degraded
+	// empty-served form included (REQ-gap-resolved-pruned's consumers
+	// enforce the mark).
+	tr := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}, RaceEnabled: true, OutsidePolicy: outside, SelectiveServing: true}
 	for _, wg := range groups {
 		for s, why := range wg.executedWhy {
 			if why == "" {

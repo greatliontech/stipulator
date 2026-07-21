@@ -1112,6 +1112,12 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
+	// The resolved-record evaluation is pinned to the serving class
+	// (REQ-gap-resolved-pruned); the producer's mark makes a wrong
+	// witness source a loud refusal.
+	if !rep.ServingEvidence {
+		return nil, writeOut{}, terminalToolError(prog, ctx, verify.ErrNotServingClass)
+	}
 	if len(rep.Problems) > 0 {
 		msgs := make([]string, 0, len(rep.Problems))
 		for _, p := range rep.Problems {

@@ -80,8 +80,9 @@ func harness(t *testing.T, files map[string]string) (*mcp.ClientSession, map[str
 		},
 		runTests: func(context.Context) (*verify.TestRun, error) {
 			return &verify.TestRun{
-				RaceEnabled: true,
-				Outcomes:    map[string]verify.TestOutcome{"example.com/p.TestA": verify.TestPassed},
+				RaceEnabled:      true,
+				SelectiveServing: true,
+				Outcomes:         map[string]verify.TestOutcome{"example.com/p.TestA": verify.TestPassed},
 			}, nil
 		},
 		write: func(path string, content []byte) error {
@@ -422,6 +423,48 @@ func TestToolListExact(t *testing.T) {
 	}
 	if !strings.Contains(targetsDescription, "binding surfaces") || strings.Contains(targetsDescription, "mutation") || strings.Contains(targetsDescription, "reqs") {
 		t.Fatalf("targets description is stale: %q", targetsDescription)
+	}
+}
+
+// Prune's resolved-record evaluation is pinned to the serving class:
+// witness evidence without the selective runner's mark refuses the
+// operation instead of pruning on whole-execution evidence
+// (REQ-gap-resolved-pruned).
+//
+//gofresh:pure
+func TestPruneRefusesNonServingEvidence(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-resolved-pruned")
+	fsys := fstest.MapFS{
+		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
+		"specs/a.md":                     {Data: []byte(doc)},
+	}
+	s := &Server{
+		fsys: func() fs.FS { return fsys },
+		backends: func(context.Context) (map[string]verify.Backend, error) {
+			return map[string]verify.Backend{"go": fakeBackend{}}, nil
+		},
+		runTests: func(context.Context) (*verify.TestRun, error) {
+			// A whole-execution run: no serving-class mark.
+			return &verify.TestRun{RaceEnabled: true}, nil
+		},
+	}
+	ct, st := mcp.NewInMemoryTransports()
+	go func() { _ = s.MCP().Run(context.Background(), st) }()
+	client := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "v0"}, nil)
+	sess, err := client.Connect(context.Background(), ct, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sess.Close()
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "prune", Arguments: map[string]any{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.IsError {
+		t.Fatalf("prune accepted whole-execution evidence: %+v", res)
+	}
+	if text := res.Content[0].(*mcp.TextContent).Text; !strings.Contains(text, "serving-class witness evidence") {
+		t.Fatalf("refusal does not name the mandated class: %q", text)
 	}
 }
 

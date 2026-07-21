@@ -374,7 +374,7 @@ func progressPipelineHarness(t *testing.T) (*mcp.ClientSession, *notificationLog
 			return map[string]verify.Backend{"go": fakeBackend{}}, nil
 		},
 		runTests: func(context.Context) (*verify.TestRun, error) {
-			return &verify.TestRun{RaceEnabled: true, Outcomes: map[string]verify.TestOutcome{}}, nil
+			return &verify.TestRun{RaceEnabled: true, SelectiveServing: true, Outcomes: map[string]verify.TestOutcome{}}, nil
 		},
 	}
 	ct, st := mcp.NewInMemoryTransports()

@@ -382,8 +382,9 @@ func TestWitnessCorrelation(t *testing.T) {
 			{Package: "example.com/p", Test: "TestA", Requirement: "REQ-v-b"},     // NOT backed by TestA
 			{Package: "example.com/p", Test: "TestD", Requirement: "REQ-v-b"},     // backed by a proves-role binding
 		},
-		OutsidePolicy: 2,
-		Diagnostics:   []*stipulatorv1.FailureDiagnostic{packageAbortDiag("example.com/p", "package abort")},
+		OutsidePolicy:    2,
+		SelectiveServing: true,
+		Diagnostics:      []*stipulatorv1.FailureDiagnostic{packageAbortDiag("example.com/p", "package abort")},
 	}
 	rep := Run(spec, store, nil, tr)
 	if rep.TestsPassed != 2 || rep.TestsFailed != 1 {
@@ -394,6 +395,15 @@ func TestWitnessCorrelation(t *testing.T) {
 	// report surface, never stop at the test run.
 	if rep.OutsidePolicy != 2 || len(rep.Diagnostics) != 1 || rep.Diagnostics[0].GetPackage() != "example.com/p" || rep.Diagnostics[0].GetOutput() != "package abort" {
 		t.Fatalf("report lost witnessing facts: outside=%d diags=%v", rep.OutsidePolicy, rep.Diagnostics)
+	}
+	if !rep.ServingEvidence {
+		t.Fatal("report lost the run's serving-class mark")
+	}
+	if err := ServingClassRequired(&TestRun{}); err == nil {
+		t.Fatal("whole-execution evidence accepted where the serving class is mandated")
+	}
+	if err := ServingClassRequired(nil); err != nil {
+		t.Fatalf("no-test semantics refused: %v", err)
 	}
 	if rep.TestsNotRun != 1 { // TestC bound but produced no outcome
 		t.Fatalf("tests not-run = %d (unwitnessed bound test must surface)", rep.TestsNotRun)

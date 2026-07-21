@@ -65,6 +65,12 @@ func pruneCmd() *cobra.Command {
 				if testRun, err = witnessRun(cmd.Context()); err != nil {
 					return err
 				}
+				// The resolved-record evaluation is pinned to the serving
+				// class (REQ-gap-resolved-pruned); the producer's mark
+				// makes a wrong witness source a loud refusal.
+				if err := verify.ServingClassRequired(testRun); err != nil {
+					return err
+				}
 			}
 			backends, err := makeBackends(cmd.Context(), chdir)
 			if err != nil {

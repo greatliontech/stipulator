@@ -19,7 +19,7 @@ chunk runs the adversarial loop and the corpus check stays green.
   (impact-preview-omission-bounds)
 - [x] 8. Go module-rename bulk symbol retarget
   (go-module-rename-lacks-symbol-migration)
-- [ ] 9. Prune serving-class pin: assess the seam, pin or redefer
+- [x] 9. Prune serving-class pin: assess the seam, pin or redefer
   (prune-serving-class-unpinned)
 - [ ] 10. Final sweep: explicit disposition per remaining condition-parked
   doc (design-tier features whose triggers have not fired; externally
