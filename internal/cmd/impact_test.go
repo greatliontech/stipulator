@@ -31,6 +31,7 @@ func TestImpactRenderNamesCandidatesAndAdvisoryFooter(t *testing.T) {
 			Requirement: "REQ-x",
 			Symbol:      "example.com/m/mid.TestQuad",
 		}},
+		Unconsulted: 1,
 	}
 	var out bytes.Buffer
 	renderImpact(&out, r)
@@ -40,6 +41,7 @@ func TestImpactRenderNamesCandidatesAndAdvisoryFooter(t *testing.T) {
 		"spec: text-changed REQ-x",
 		"bound: REQ-x  implements  example.com/m/leaf.Double  (leaf/leaf.go)",
 		"witness reached: REQ-x  example.com/m/mid.TestQuad",
+		"1 binding on backends the preview does not consult",
 		"preview only",
 		"advisory, not proof",
 	} {

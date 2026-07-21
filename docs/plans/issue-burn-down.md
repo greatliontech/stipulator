@@ -15,7 +15,7 @@ chunk runs the adversarial loop and the corpus check stays green.
   (symlinked-member-escapes-lexical-validation)
 - [x] 5. Empty binding-surface guidance (targets-empty-surface-lacks-guidance)
 - [x] 6. Gap violation-class scoping (standing-gap-absorbs-unrelated-red)
-- [ ] 7. Impact-preview spec-amend candidates: dispose both
+- [x] 7. Impact-preview spec-amend candidates: dispose both
   (impact-preview-omission-bounds)
 - [ ] 8. Go module-rename bulk symbol retarget
   (go-module-rename-lacks-symbol-migration)

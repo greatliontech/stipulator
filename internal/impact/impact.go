@@ -2,11 +2,17 @@
 // HEAD plausibly touches: requirements whose spec content moved (through
 // the diff semantics), requirements bound to symbols declared in changed
 // source files, and the witness subjects whose packages the change
-// reaches through the import graph. The preview executes no test and
+// reaches through the import graph and compile-time embed couplings.
+// The preview executes no test and
 // claims no freshness verdict — it names candidates for the witnessed
 // surfaces to decide, and its omissions are bounded by what symbol
-// resolution and import reach can see, so an empty preview is advisory,
-// never proof of no impact (REQ-change-impact). Version-control access
+// resolution and import reach can see and by the backends the preview
+// implements (bindings on other backends are counted as unconsulted,
+// never silently dropped), so an empty preview is advisory,
+// never proof of no impact (REQ-change-impact). Symbols resolve in the
+// working tree alone: a pure code deletion leaves nothing to resolve
+// and its candidates surface at verification, while a spec-side
+// deletion does report — the committed corpus still names it. Version-control access
 // stays behind the gitfs adapter (REQ-core-vcs-free).
 package impact
 
@@ -53,6 +59,9 @@ type Report struct {
 	// Witnesses lists witness subjects whose packages the change reaches,
 	// ordered by requirement then symbol.
 	Witnesses []WitnessHit
+	// Unconsulted counts bindings on backends the preview does not
+	// implement: outside the candidate set by bound, never silently.
+	Unconsulted int
 }
 
 // Preview computes the impact preview for the corpus rooted at dir. It
@@ -97,6 +106,8 @@ func Preview(ctx context.Context, dir string) (*Report, error) {
 		for _, b := range bf.Set.GetBindings() {
 			if b.GetBackend() == "go" {
 				goBound = true
+			} else {
+				r.Unconsulted++
 			}
 		}
 	}

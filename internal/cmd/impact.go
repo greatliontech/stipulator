@@ -18,7 +18,7 @@ func impactCmd() *cobra.Command {
 		Long: "Joins the worktree-vs-HEAD change set with the corpus and the committed\n" +
 			"bindings: which requirements' spec content moved, which bindings' symbols\n" +
 			"declare in changed files, and which witness subjects the change reaches\n" +
-			"through the import graph. Executes nothing and claims no freshness\n" +
+			"through the import graph and embed couplings. Executes nothing and claims no freshness\n" +
 			"verdict — the preview names candidates for the witnessed surfaces\n" +
 			"(check, verify) to decide, and an empty preview is advisory, never\n" +
 			"proof of no impact: reach through non-import couplings is invisible here.",
@@ -62,6 +62,13 @@ func renderImpact(w io.Writer, r *impact.Report) {
 	}
 	for _, h := range r.Witnesses {
 		fmt.Fprintf(w, "witness reached: %s  %s\n", h.Requirement, h.Symbol)
+	}
+	if r.Unconsulted > 0 {
+		noun := "bindings"
+		if r.Unconsulted == 1 {
+			noun = "binding"
+		}
+		fmt.Fprintln(w, dim(fmt.Sprintf("%d %s on backends the preview does not consult", r.Unconsulted, noun)))
 	}
 	fmt.Fprintln(w, dim("preview only — the witnessed surfaces decide; empty is advisory, not proof"))
 }

@@ -2,6 +2,8 @@ package impact
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -119,6 +121,97 @@ func TestPreviewJoinsBindingsAndImportReach(t *testing.T) {
 	want := []string{"example.com/imp/mid.TestQuad", "example.com/imp/other.TestHold"}
 	if len(got) != 2 || got[0] != want[0] || got[1] != want[1] {
 		t.Fatalf("Witnesses = %v, want %v (island.TestStand must stay outside the reach)", got, want)
+	}
+}
+
+// An embedded asset is a compile-time input: editing it seeds the
+// embedding package exactly like a source edit, so its witness — and
+// everything importing the package — is reached (REQ-change-impact's
+// embed-coupling reach). Bindings on backends the preview does not
+// implement are counted as unconsulted, never silently dropped.
+//
+//gofresh:pure
+func TestPreviewReachesEmbedCouplingsAndCountsUnconsulted(t *testing.T) {
+	stipulate.Covers(t, "REQ-change-impact")
+	withEmbed := map[string]string{}
+	for k, v := range fixture {
+		withEmbed[k] = v
+	}
+	withEmbed["specs/spec.md"] = fixture["specs/spec.md"] +
+		"\n**REQ-imp-asset** (behavior): Asset MUST load.\n"
+	withEmbed["asset/asset.go"] = "package asset\n\nimport _ \"embed\"\n\n//go:embed data.txt\nvar Data string\n"
+	withEmbed["asset/data.txt"] = "v1\n"
+	withEmbed["asset/asset_test.go"] = "package asset\n\nimport \"testing\"\n\n" +
+		"func TestAsset(t *testing.T) { _ = Data }\n"
+	withEmbed[".stipulator/bindings/all.textproto"] = fixture[".stipulator/bindings/all.textproto"] +
+		"bindings { requirement_id: \"REQ-imp-asset\" backend: \"go\" symbol: \"example.com/imp/asset.TestAsset\" role: BINDING_ROLE_TESTS }\n" +
+		"bindings { requirement_id: \"REQ-imp-asset\" backend: \"proto\" symbol: \"asset.v1.Data\" role: BINDING_ROLE_IMPLEMENTS }\n"
+	dir := repoWith(t, withEmbed, map[string]string{
+		"asset/data.txt": "v2\n",
+	})
+	r, err := Preview(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, w := range r.Witnesses {
+		got = append(got, w.Symbol)
+	}
+	if len(got) != 1 || got[0] != "example.com/imp/asset.TestAsset" {
+		t.Fatalf("Witnesses = %v, want the embedding package's witness reached by the asset edit", got)
+	}
+	if r.Unconsulted != 1 {
+		t.Fatalf("Unconsulted = %d, want the proto binding counted", r.Unconsulted)
+	}
+}
+
+// Deletion is asymmetric by declared bound: a worktree-deleted spec
+// identity reports (the committed corpus still names it, and the diff
+// orients HEAD-to-worktree as removed), while a deleted bound symbol's
+// file yields no code-side candidate — symbols resolve in the working
+// tree alone, where nothing remains to resolve — and only the change
+// set and the advisory footer say anything (REQ-change-impact).
+//
+//gofresh:pure
+func TestPreviewDeletionAsymmetry(t *testing.T) {
+	stipulate.Covers(t, "REQ-change-impact")
+	// Spec side: the worktree drops one requirement's section.
+	specDeleted := "# Spec\n\n" +
+		"**REQ-imp-leaf** (behavior): Leaf MUST double.\n\n" +
+		"**REQ-imp-mid** (behavior): Mid MUST quadruple.\n\n" +
+		"**REQ-imp-other** (behavior): Other MUST hold.\n"
+	dir := repoWith(t, fixture, map[string]string{"specs/spec.md": specDeleted})
+	r, err := Preview(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	removed := false
+	for _, id := range r.Spec.RemovedRequirements {
+		if id == "REQ-imp-island" {
+			removed = true
+		}
+	}
+	if !removed {
+		t.Fatalf("worktree-deleted requirement not reported as removed: %+v", r.Spec)
+	}
+
+	// Code side: the worktree deletes the bound symbol's file. Nothing
+	// remains to resolve, so no bound candidate — the owned asymmetry.
+	dir = repoWith(t, fixture, nil)
+	if err := os.Remove(filepath.Join(dir, "leaf", "leaf.go")); err != nil {
+		t.Fatal(err)
+	}
+	r, err = Preview(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Changed) != 1 || r.Changed[0] != "leaf/leaf.go" {
+		t.Fatalf("Changed = %v, want the deleted file in the change set", r.Changed)
+	}
+	for _, h := range r.Bound {
+		if h.Requirement == "REQ-imp-leaf" {
+			t.Fatalf("pure deletion produced a code-side candidate: %+v", r.Bound)
+		}
 	}
 }
 

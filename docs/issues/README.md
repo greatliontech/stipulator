@@ -65,11 +65,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   measured at 30 MB across two heavy-development corpora — below any actionable bar.
   *Lands: when store size or load-time validation first becomes a measured cost on a
   real corpus.*
-- **[impact-preview-omission-bounds](impact-preview-omission-bounds.md)** — two
-  REQ-change-impact spec-amend candidates: worktree-only symbol resolution leaves pure
-  deletion invisible code-side (spec-side deletions do report), and non-implemented
-  backends are skipped with no user-visible statement. *Lands: when the user disposes
-  the REQ-change-impact spec-amend candidates.*
 - **[prune-serving-class-unpinned](prune-serving-class-unpinned.md)** — call-path identity
   choices without dedicated pins: prune's serving-class witness source, and the partitions
   export's uncapped form at the tool seam; a callee swap would survive the suite. *Lands:

@@ -28,13 +28,20 @@ invocation.
 the working tree's whole change set against HEAD, the requirements the
 change plausibly touches — those whose spec documents changed, resolved
 through the diff semantics to the identities whose content moved, and
-those bound to symbols resolving into changed source files — together
+those bound to symbols resolving, in the working tree, into changed
+source files — together
 with the expected witness subjects whose packages the change set reaches
-through the import graph, all without executing any test, loading no more
+through the import graph and compile-time embed couplings, all without
+executing any test, loading no more
 than symbol resolution requires, and never claiming a freshness verdict:
 the preview names candidates for the witnessed surfaces to decide, and
 its omissions are bounded by what symbol resolution and import reach can
-see — a runtime-input edit reaches witnesses no import edge names, so an
+see and by the backends the preview implements — bindings on other
+backends are counted as unconsulted, never silently dropped; symbols
+resolve in the working tree alone, so a pure code deletion leaves
+nothing to resolve and its candidates surface at verification, while a
+spec-side deletion does report (the committed corpus still names it);
+and a runtime-input edit reaches witnesses no import edge names — so an
 empty preview is advisory, never a proof of no impact. Version-control
 access stays confined to the adapter (REQ-core-vcs-free); a tree outside
 any repository reports that plainly instead of guessing.

@@ -55,7 +55,8 @@ func newContext(ctx context.Context, dir string) (*Backend, error) {
 		cfg := &packages.Config{
 			Context: ctx,
 			Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax |
-				packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports,
+				packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports |
+				packages.NeedEmbedFiles,
 			Dir:   filepath.Join(dir, m),
 			Env:   env,
 			Tests: true,
@@ -147,7 +148,9 @@ func (b *Backend) SymbolPackage(symbol string) string {
 // ReachedPackages returns the packages — named by production import path,
 // test variants folded in — that the given tree-relative files reach
 // through the reverse import graph: the packages the files belong to,
-// plus every package importing one of those, transitively. Paths not
+// plus every package importing one of those, transitively. A file a
+// package embeds at compile time seeds it exactly like a source file.
+// Paths not
 // belonging to any loaded package contribute nothing; reach through
 // non-import couplings (runtime inputs, generated artifacts) is invisible
 // here by construction, which is why an impact preview is advisory.
@@ -171,7 +174,10 @@ func (b *Backend) ReachedPackages(files []string) map[string]bool {
 			}
 			rev[norm(target)] = append(rev[norm(target)], np)
 		}
-		for _, list := range [][]string{pkg.GoFiles, pkg.OtherFiles} {
+		// EmbedFiles seed exactly like source files: an embed is a
+		// compile-time input the loader names, so an asset edit reaches
+		// its embedding package and everything importing it.
+		for _, list := range [][]string{pkg.GoFiles, pkg.OtherFiles, pkg.EmbedFiles} {
 			for _, f := range list {
 				rel, err := filepath.Rel(b.dir, f)
 				if err != nil {
