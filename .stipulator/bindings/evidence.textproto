@@ -693,3 +693,21 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "98da65eb98f87b9eb91dde2c118129d8923061e88a9176c2e913d177bdd57127"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "433e1ea34d553f17344737da5c4ba7492a2c99ab4ba183e09246c4d6a2db6a8e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoNormalizeBracketPaths"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "49f1ef6baedbd6a5817ec445fb84e2dcfc2e22597a54a90974dfcd181e56834f"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "433e1ea34d553f17344737da5c4ba7492a2c99ab4ba183e09246c4d6a2db6a8e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesBracketPathBindsExternalFile"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "fd2811d78a5f03df7dbab330c729eb12c3495ef4db0936db8c62eebd34847863"
+}
