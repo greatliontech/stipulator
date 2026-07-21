@@ -315,3 +315,30 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "d8a09bd01517a591f611c611eb9fac8085d4feb5d435a965107da980cc4b6424"
 }
+
+bindings {
+  requirement_id: "REQ-change-retarget"
+  content_hash: "8fc58b1a1a4969a623330d1b6382f598bc7ec2a945b12035331bae951df761b5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestRetargetSymbolsRewritesAtBoundaryAllOrNothing"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "501b2d4b2721bd4cb4c3bc9c379569e74bcb1fc4bbf312dd9cc220b5ef3462cd"
+}
+
+bindings {
+  requirement_id: "REQ-change-retarget"
+  content_hash: "8fc58b1a1a4969a623330d1b6382f598bc7ec2a945b12035331bae951df761b5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestRetargetToolCheckWritesNothing"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ee0294b39fa18aca9dbf7c0c74df0b2fdae00edf95fe54ddcd07b615c810dd1e"
+}
+
+bindings {
+  requirement_id: "REQ-change-retarget"
+  content_hash: "8fc58b1a1a4969a623330d1b6382f598bc7ec2a945b12035331bae951df761b5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.RetargetSymbols"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "391b5eeb0de1c5df19a79206a1d5ea6aca7bda7263a783b38c9d407020c256eb"
+}
