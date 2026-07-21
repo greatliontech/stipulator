@@ -7,7 +7,7 @@ chunk runs the adversarial loop and the corpus check stays green.
 
 - [x] 1. Witness concurrency knob: reviewed policy bound + pressure-honest
   default (witness-concurrency-saturates-host)
-- [ ] 2. Witness store GC: a maintenance surface evicting departed
+- [x] 2. Witness store GC: a maintenance surface evicting departed
   identities' variants (witness-store-gc)
 - [ ] 3. Check-result wire cleanup: one home for package failures
   (check-result-duplicate-package-failure; its Lands fires by this change)

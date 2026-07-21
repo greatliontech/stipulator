@@ -76,9 +76,10 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   client (emission audit landed; the live token observation remains, and the same
   restart validates that the client renders structuredContent-only payloads).*
 - **[witness-store-gc](witness-store-gc.md)** — departed identities' witness variants
-  accumulate without bound (eviction fires only on same-identity installs); cost-only.
-  *Lands: when the store next gains a maintenance surface, or when store size first
-  becomes a measured cost.*
+  accumulate without bound (eviction fires only on same-identity installs); cost-only,
+  measured at 30 MB across two heavy-development corpora — below any actionable bar.
+  *Lands: when store size or load-time validation first becomes a measured cost on a
+  real corpus.*
 - **[impact-preview-omission-bounds](impact-preview-omission-bounds.md)** — two
   REQ-change-impact spec-amend candidates: worktree-only symbol resolution leaves pure
   deletion invisible code-side (spec-side deletions do report), and non-implemented
