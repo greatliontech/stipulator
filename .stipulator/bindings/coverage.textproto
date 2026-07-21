@@ -66,7 +66,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gate-no-undeclared"
-  content_hash: "a5bba70d63a95ef2987e48478583ab53304a229ad29e2ac84178dba6ead64841"
+  content_hash: "ede46f11ab5457e6d30d9aa17ad6e81955f02a2dbb09c5996f8e220b6c8083ef"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.Evaluate"
   role: BINDING_ROLE_IMPLEMENTS
@@ -75,7 +75,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gate-no-undeclared"
-  content_hash: "a5bba70d63a95ef2987e48478583ab53304a229ad29e2ac84178dba6ead64841"
+  content_hash: "ede46f11ab5457e6d30d9aa17ad6e81955f02a2dbb09c5996f8e220b6c8083ef"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestGate"
   role: BINDING_ROLE_TESTS

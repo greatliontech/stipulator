@@ -138,7 +138,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-impact"
-  content_hash: "b86078b3ea2956f061875147d3365783174547df341f985cd9b15d54b0816c37"
+  content_hash: "136b6cf5fe92b4ab1f48290e9f6ab2d854a1d6280a8abf49811e10d67c8bbccb"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/impact.Preview"
   role: BINDING_ROLE_IMPLEMENTS
@@ -147,7 +147,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-impact"
-  content_hash: "b86078b3ea2956f061875147d3365783174547df341f985cd9b15d54b0816c37"
+  content_hash: "136b6cf5fe92b4ab1f48290e9f6ab2d854a1d6280a8abf49811e10d67c8bbccb"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/impact.TestPreviewJoinsBindingsAndImportReach"
   role: BINDING_ROLE_TESTS
@@ -156,7 +156,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-impact"
-  content_hash: "b86078b3ea2956f061875147d3365783174547df341f985cd9b15d54b0816c37"
+  content_hash: "136b6cf5fe92b4ab1f48290e9f6ab2d854a1d6280a8abf49811e10d67c8bbccb"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/impact.TestPreviewNamesSpecDeltaWithoutVerdict"
   role: BINDING_ROLE_TESTS
@@ -165,7 +165,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-impact"
-  content_hash: "b86078b3ea2956f061875147d3365783174547df341f985cd9b15d54b0816c37"
+  content_hash: "136b6cf5fe92b4ab1f48290e9f6ab2d854a1d6280a8abf49811e10d67c8bbccb"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/impact.TestPreviewCleanTreeAndNonRepo"
   role: BINDING_ROLE_TESTS
@@ -174,7 +174,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-impact"
-  content_hash: "b86078b3ea2956f061875147d3365783174547df341f985cd9b15d54b0816c37"
+  content_hash: "136b6cf5fe92b4ab1f48290e9f6ab2d854a1d6280a8abf49811e10d67c8bbccb"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestSymbolFileNamesDeclaringFile"
   role: BINDING_ROLE_TESTS
@@ -183,7 +183,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-impact"
-  content_hash: "b86078b3ea2956f061875147d3365783174547df341f985cd9b15d54b0816c37"
+  content_hash: "136b6cf5fe92b4ab1f48290e9f6ab2d854a1d6280a8abf49811e10d67c8bbccb"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestReachedPackagesReverseClosure"
   role: BINDING_ROLE_TESTS
@@ -192,7 +192,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-impact"
-  content_hash: "b86078b3ea2956f061875147d3365783174547df341f985cd9b15d54b0816c37"
+  content_hash: "136b6cf5fe92b4ab1f48290e9f6ab2d854a1d6280a8abf49811e10d67c8bbccb"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/impact.TestPreviewSpecOnlyCorpusNeedsNoGoTree"
   role: BINDING_ROLE_TESTS
@@ -201,7 +201,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-impact"
-  content_hash: "b86078b3ea2956f061875147d3365783174547df341f985cd9b15d54b0816c37"
+  content_hash: "136b6cf5fe92b4ab1f48290e9f6ab2d854a1d6280a8abf49811e10d67c8bbccb"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestImpactRenderNamesCandidatesAndAdvisoryFooter"
   role: BINDING_ROLE_TESTS
@@ -210,7 +210,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-impact"
-  content_hash: "b86078b3ea2956f061875147d3365783174547df341f985cd9b15d54b0816c37"
+  content_hash: "136b6cf5fe92b4ab1f48290e9f6ab2d854a1d6280a8abf49811e10d67c8bbccb"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestImpactRenderEmptyChangeSetStillShowsSpecDelta"
   role: BINDING_ROLE_TESTS
@@ -219,7 +219,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-impact"
-  content_hash: "b86078b3ea2956f061875147d3365783174547df341f985cd9b15d54b0816c37"
+  content_hash: "136b6cf5fe92b4ab1f48290e9f6ab2d854a1d6280a8abf49811e10d67c8bbccb"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/impact.TestPreviewCleanGoBoundTreeSkipsGoLoad"
   role: BINDING_ROLE_TESTS
@@ -296,4 +296,22 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestAttestationEvidence"
   role: BINDING_ROLE_TESTS
   shape_hash: "a22e47ab5e32c428a00eb136eb5a4c7c814fa8c460933cd8bb08a1b83f325d81"
+}
+
+bindings {
+  requirement_id: "REQ-change-impact"
+  content_hash: "136b6cf5fe92b4ab1f48290e9f6ab2d854a1d6280a8abf49811e10d67c8bbccb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/impact.TestPreviewDeletionAsymmetry"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7f414fbd39b82c2628a05ead4d38bae000ca69e41d775367a9e13650f469b533"
+}
+
+bindings {
+  requirement_id: "REQ-change-impact"
+  content_hash: "136b6cf5fe92b4ab1f48290e9f6ab2d854a1d6280a8abf49811e10d67c8bbccb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/impact.TestPreviewReachesEmbedCouplingsAndCountsUnconsulted"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "d8a09bd01517a591f611c611eb9fac8085d4feb5d435a965107da980cc4b6424"
 }
