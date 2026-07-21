@@ -151,7 +151,9 @@ the stale variant's verdict with its moved inputs — while a test with
 no prior record needs no reason beyond the absence. Human renderings
 aggregate the reasons; the per-test attribution rides the machine
 result. Witness packages
-execute concurrently under a processor-count bound, which assumes what
+execute concurrently under the invocation's reviewed concurrency bound —
+half the processor count by default, since each package process is itself
+a parallel process tree — which assumes what
 standard Go tooling already assumes of them (`go test` runs packages
 in parallel by default): witnesses do not mutate inputs other packages
 observe. A suite violating that is caught whenever the interference

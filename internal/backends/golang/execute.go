@@ -100,8 +100,8 @@ type packageRun struct {
 
 // ExecuteInvocation executes one normalized invocation's selected packages
 // — the package obligations of selection — each in its own owned,
-// cancellable `go test -json` process, fanned out under a
-// GOMAXPROCS-derived concurrency bound with the invocation's reviewed
+// cancellable `go test -json` process, fanned out under the invocation's
+// reviewed concurrency bound with the invocation's reviewed
 // envelope timeout governing the whole invocation as a context deadline.
 // Every selected package executes whole: the exported executor accepts
 // no test selection, so the health-judged path is structurally unable to
@@ -154,16 +154,13 @@ func spawnOrdinals() func() int32 {
 	}
 }
 
-// runSelectedPackages fans the packages out under a GOMAXPROCS-derived
-// concurrency bound, one owned process per package narrowed to its tests
-// selection, with invCtx — the invocation envelope — governing every
-// spawn. Runs the envelope denied before their spawn come back with no
-// terminal disposition for the caller to classify.
+// runSelectedPackages fans the packages out under the invocation's
+// reviewed concurrency bound, one owned process per package narrowed to
+// its tests selection, with invCtx — the invocation envelope — governing
+// every spawn. Runs the envelope denied before their spawn come back
+// with no terminal disposition for the caller to classify.
 func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, pkgs []string, tests TestSelection, spawnOrdinal func() int32) []packageRun {
-	bound := runtime.GOMAXPROCS(0)
-	if bound < 1 {
-		bound = 1
-	}
+	bound := witnessSpawnBound(n)
 	sem := make(chan struct{}, bound)
 	runs := make([]packageRun, len(pkgs))
 	rep := progress.FromContext(ctx)
@@ -311,6 +308,22 @@ func selectedPackages(selection []Obligation) []string {
 	}
 	sort.Strings(pkgs)
 	return pkgs
+}
+
+// witnessSpawnBound derives the package fan-out bound: the invocation's
+// reviewed witness_concurrency when set, else max(1, GOMAXPROCS/2) —
+// each unit is itself a parallel process tree, so a full
+// processor-count fan-out multiplies into host-freezing load that
+// nice(1)'s CPU priority does not cover.
+func witnessSpawnBound(n *NormalizedInvocation) int {
+	if n.WitnessConcurrency > 0 {
+		return int(n.WitnessConcurrency)
+	}
+	bound := runtime.GOMAXPROCS(0) / 2
+	if bound < 1 {
+		bound = 1
+	}
+	return bound
 }
 
 // runPackage executes one package's `go test -json` in an owned child

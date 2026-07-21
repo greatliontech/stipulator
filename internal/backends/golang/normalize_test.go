@@ -298,6 +298,26 @@ func TestGoNormalizeTreeInteriorTempRootDegradesUnderModuleRoot(t *testing.T) {
 	}
 }
 
+// witness_concurrency is positive-when-present: an explicit zero (or
+// negative) refuses normalization instead of silently meaning default.
+func TestGoNormalizeWitnessConcurrencyPositiveWhenPresent(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-explicit")
+	neutralAmbient(t)
+	zero := &stipulatorv1.GoInvocationConfig{}
+	zero.SetPackages([]string{"./..."})
+	zero.SetWitnessConcurrency(0)
+	if _, err := NormalizeInvocation(context.Background(), discoverFixture(t), goInvocation("wc", zero)); err == nil {
+		t.Error("witness_concurrency 0 accepted; positive-when-present must refuse")
+	}
+	ok := &stipulatorv1.GoInvocationConfig{}
+	ok.SetPackages([]string{"./..."})
+	ok.SetWitnessConcurrency(4)
+	n, err := NormalizeInvocation(context.Background(), discoverFixture(t), goInvocation("wc", ok))
+	if err != nil || n.WitnessConcurrency != 4 {
+		t.Fatalf("explicit bound not carried: %v %v", n, err)
+	}
+}
+
 // tempRootFromEnv mirrors os.TempDir against the frozen environment —
 // TMPDIR raw when set, the platform default otherwise — and
 // usableTempRoot degrades what cannot serve: a ".."-carrying TMPDIR

@@ -184,4 +184,12 @@ message GoInvocationConfig {
   // gofresh:pure remains for narrower claims; gofresh:external is never
   // suppressed and still wins.
   bool assume_pure = 21;
+  // Reviewed witness fan-out bound: at most this many package test
+  // processes run at once. Each unit is itself a parallel process tree
+  // (compilers plus a GOMAXPROCS-threaded race-instrumented binary), so
+  // the absent-field default is max(1, GOMAXPROCS/2) - a full
+  // processor-count fan-out multiplies into load that can freeze an
+  // interactive host on memory and IO pressure, which nice(1) does not
+  // cover. Must be positive when present.
+  int32 witness_concurrency = 22;
 }

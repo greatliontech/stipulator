@@ -5,7 +5,7 @@ witness path, change.md for impact, mcp.md for tool surfaces). Eliminates
 the standing issue inventory on the now-proven serving substrate; every
 chunk runs the adversarial loop and the corpus check stays green.
 
-- [ ] 1. Witness concurrency knob: reviewed policy bound + pressure-honest
+- [x] 1. Witness concurrency knob: reviewed policy bound + pressure-honest
   default (witness-concurrency-saturates-host)
 - [ ] 2. Witness store GC: a maintenance surface evicting departed
   identities' variants (witness-store-gc)

@@ -46,6 +46,9 @@ type NormalizedInvocation struct {
 	BracketPaths []string
 	// AssumePure carries the invocation-wide reviewed purity assertion.
 	AssumePure bool
+	// WitnessConcurrency is the reviewed spawn fan-out bound; zero means
+	// the pressure-honest default.
+	WitnessConcurrency int32
 	// Timeout is the envelope's explicit, reviewed timeout.
 	Timeout time.Duration
 	// Toolchain is the effective toolchain identity (`go env GOVERSION`).
@@ -130,6 +133,10 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	}
 	n.CacheBypass = cfg.GetCacheMode() == stipulatorv1.GoCacheMode_GO_CACHE_MODE_BYPASS
 	n.AssumePure = cfg.GetAssumePure()
+	if cfg.HasWitnessConcurrency() && cfg.GetWitnessConcurrency() < 1 {
+		return nil, fmt.Errorf("invocation %q: witness_concurrency must be positive when present", inv.GetName())
+	}
+	n.WitnessConcurrency = cfg.GetWitnessConcurrency()
 
 	abs, err := filepath.Abs(filepath.Join(dir, filepath.FromSlash(cfg.GetModuleRoot())))
 	if err != nil {

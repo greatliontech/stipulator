@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -923,5 +924,22 @@ func TestGoExecuteDiagnosticOutputBounded(t *testing.T) {
 	}
 	if !d.GetTruncated() {
 		t.Error("truncation not marked on a capped diagnostic")
+	}
+}
+
+// The witness fan-out bound is the invocation's reviewed value when
+// set, else half the processor count - each unit is itself a parallel
+// process tree, so a full fan-out multiplies into host-freezing load
+// (REQ-policy-explicit).
+func TestWitnessSpawnBound(t *testing.T) {
+	if got := witnessSpawnBound(&NormalizedInvocation{WitnessConcurrency: 3}); got != 3 {
+		t.Fatalf("explicit bound = %d, want 3", got)
+	}
+	want := runtime.GOMAXPROCS(0) / 2
+	if want < 1 {
+		want = 1
+	}
+	if got := witnessSpawnBound(&NormalizedInvocation{}); got != want {
+		t.Fatalf("default bound = %d, want %d", got, want)
 	}
 }
