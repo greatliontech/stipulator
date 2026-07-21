@@ -14,6 +14,9 @@ invocations {
     bracket_paths: "/usr/bin/sh"
     bracket_paths: "/usr/bin/git"
     bracket_paths: "go.work"
+    bracket_paths: "internal"
+    bracket_paths: "go.mod"
+    bracket_paths: "go.sum"
   }
 }
 invocations {
@@ -29,6 +32,9 @@ invocations {
     bracket_paths: "/usr/bin/sh"
     bracket_paths: "/usr/bin/git"
     bracket_paths: "go.work"
+    bracket_paths: "internal"
+    bracket_paths: "go.mod"
+    bracket_paths: "go.sum"
     args: "-test.timeout=30m"
   }
 }
@@ -45,6 +51,9 @@ invocations {
     bracket_paths: "/usr/bin/sh"
     bracket_paths: "/usr/bin/git"
     bracket_paths: "go.work"
+    bracket_paths: "internal"
+    bracket_paths: "go.mod"
+    bracket_paths: "go.sum"
     args: "-test.timeout=30m"
   }
 }
@@ -61,6 +70,9 @@ invocations {
     bracket_paths: "/usr/bin/sh"
     bracket_paths: "/usr/bin/git"
     bracket_paths: "go.work"
+    bracket_paths: "internal"
+    bracket_paths: "go.mod"
+    bracket_paths: "go.sum"
     args: "-test.timeout=30m"
   }
 }
