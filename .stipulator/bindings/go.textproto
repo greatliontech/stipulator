@@ -21,7 +21,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-structural-provers"
-  content_hash: "1ea7a734a891a59843cd706995a062845505813005723e09001cdd3d3451751a"
+  content_hash: "81a8e422fb9673e8ab459941c3b98159b7825f0f21d638e542c2d946c1a79b6d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/stipulate/structural.NoImport"
   role: BINDING_ROLE_IMPLEMENTS
@@ -30,7 +30,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-structural-provers"
-  content_hash: "1ea7a734a891a59843cd706995a062845505813005723e09001cdd3d3451751a"
+  content_hash: "81a8e422fb9673e8ab459941c3b98159b7825f0f21d638e542c2d946c1a79b6d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/stipulate/structural.Implements"
   role: BINDING_ROLE_IMPLEMENTS
@@ -39,7 +39,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-structural-provers"
-  content_hash: "1ea7a734a891a59843cd706995a062845505813005723e09001cdd3d3451751a"
+  content_hash: "81a8e422fb9673e8ab459941c3b98159b7825f0f21d638e542c2d946c1a79b6d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestWitnessClassProof"
   role: BINDING_ROLE_TESTS
@@ -48,7 +48,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-structural-provers"
-  content_hash: "1ea7a734a891a59843cd706995a062845505813005723e09001cdd3d3451751a"
+  content_hash: "81a8e422fb9673e8ab459941c3b98159b7825f0f21d638e542c2d946c1a79b6d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestAnalyzerProofSatisfiesStructural"
   role: BINDING_ROLE_TESTS
@@ -57,7 +57,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-structural-provers"
-  content_hash: "1ea7a734a891a59843cd706995a062845505813005723e09001cdd3d3451751a"
+  content_hash: "81a8e422fb9673e8ab459941c3b98159b7825f0f21d638e542c2d946c1a79b6d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/arch.TestBackendSatisfiesVerifierSurfaces"
   role: BINDING_ROLE_TESTS
