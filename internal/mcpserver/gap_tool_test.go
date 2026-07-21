@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/greatliontech/stipulator/stipulate"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // The gap tool mirrors the operation's batch semantics: comma-separated

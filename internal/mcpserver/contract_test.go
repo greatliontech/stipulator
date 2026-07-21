@@ -7,9 +7,9 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/stipulate"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // The bind tool authors many claims in one call, all-or-nothing: two

@@ -10,16 +10,16 @@ package mcpserver
 import (
 	"bytes"
 	"context"
-	pathpkg "path"
-	"sync"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
+	pathpkg "path"
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -65,7 +65,7 @@ type Server struct {
 	// applyMu serializes record applies: the SDK dispatches tool calls
 	// concurrently, and CAS is only sound when check-then-write is one
 	// critical section per process.
-	applyMu sync.Mutex
+	applyMu  sync.Mutex
 	srv      *mcp.Server
 	indexed  map[string]bool
 	fsys     func() fs.FS
@@ -621,11 +621,11 @@ func scopeFrom(ids, bucket, filter, pathPrefix string) (views.Scope, error) {
 }
 
 type bindIn struct {
-	Requirement string `json:"requirement,omitempty" jsonschema:"requirement identifier (single-claim form)"`
-	Symbol      string `json:"symbol,omitempty" jsonschema:"backend-scoped symbol reference (single-claim form)"`
-	Role        string `json:"role,omitempty" jsonschema:"implements, tests, or proves (single-claim form)"`
-	Backend     string `json:"backend,omitempty" jsonschema:"language backend (default go; shared by batch claims lacking one)"`
-	File        string `json:"file,omitempty" jsonschema:"target binding file (derived when empty)"`
+	Requirement string      `json:"requirement,omitempty" jsonschema:"requirement identifier (single-claim form)"`
+	Symbol      string      `json:"symbol,omitempty" jsonschema:"backend-scoped symbol reference (single-claim form)"`
+	Role        string      `json:"role,omitempty" jsonschema:"implements, tests, or proves (single-claim form)"`
+	Backend     string      `json:"backend,omitempty" jsonschema:"language backend (default go; shared by batch claims lacking one)"`
+	File        string      `json:"file,omitempty" jsonschema:"target binding file (derived when empty)"`
 	Claims      []bindClaim `json:"claims,omitempty" jsonschema:"batch claims validated all-or-nothing - a failure anywhere authors nothing; alternative to the single-claim fields"`
 }
 
