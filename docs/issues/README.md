@@ -37,10 +37,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   lint mirrors the same semantics deliberately — fix both together on rune boundaries. *Lands:
   when a corpus declares non-ASCII term names.*
 
-- **[targets-empty-surface-lacks-guidance](targets-empty-surface-lacks-guidance.md)** — an empty
-  binding-surface export does not explain that implementation bindings are missing. *Lands: when
-  the binding-surface report diagnostics next change.*
-
 - **[go-module-rename-lacks-symbol-migration](go-module-rename-lacks-symbol-migration.md)** — a
   Go module-path change invalidates large stored-symbol sets, with no validated bulk retarget
   command or actionable remediation. *Lands: before a corpus with stored Go symbol references

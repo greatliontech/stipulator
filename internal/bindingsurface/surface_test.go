@@ -179,6 +179,69 @@ func TestDeriveEmptyReport(t *testing.T) {
 	}
 }
 
+// Guidance names the binding class an author must repair when a
+// derivation is empty or witness-less, and stays silent on a healthy
+// graph; it is presentation beside the document, never inside it.
+//
+//gofresh:pure
+func TestGuidanceNamesTheMissingBindingClass(t *testing.T) {
+	stipulate.Covers(t, "REQ-advisory-targets")
+	impl := stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS
+	tests := stipulatorv1.BindingRole_BINDING_ROLE_TESTS
+	cases := []struct {
+		name     string
+		bindings []*stipulatorv1.Binding
+		want     string
+	}{
+		{"empty store", nil, "holds no bindings"},
+		{"witnesses only", []*stipulatorv1.Binding{
+			binding("REQ-a", "go", "p.TestA", tests),
+			binding("REQ-a", "go", "p.TestB", tests),
+		}, "2 tests/proves binding(s) but no implements bindings"},
+		{"implements without witnesses", []*stipulatorv1.Binding{
+			binding("REQ-a", "go", "p.F", impl),
+		}, "1 of 1 surface(s) carry no associated tests or proves bindings"},
+		{"healthy graph", []*stipulatorv1.Binding{
+			binding("REQ-a", "go", "p.F", impl),
+			binding("REQ-a", "go", "p.TestF", tests),
+		}, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			store := testStore(tc.bindings...)
+			report, err := Derive(testSpec("REQ-a"), store)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := Guidance(store, report)
+			if tc.want == "" && got != "" {
+				t.Fatalf("guidance = %q, want silence on a healthy graph", got)
+			}
+			if tc.want != "" && !strings.Contains(got, tc.want) {
+				t.Fatalf("guidance = %q, want it to contain %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// A refused filter names the unfiltered surface count, so an author can
+// tell an over-narrow filter from an unauthored graph.
+//
+//gofresh:pure
+func TestFilterRefusalNamesUnfilteredCount(t *testing.T) {
+	stipulate.Covers(t, "REQ-advisory-filtering")
+	report, err := Derive(testSpec("REQ-a"), testStore(
+		binding("REQ-a", "go", "p.F", stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS),
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = Filter(report, nil, []string{"proto"}, nil)
+	if err == nil || !strings.Contains(err.Error(), "the unfiltered corpus derives 1") {
+		t.Fatalf("filter refusal = %v, want the unfiltered count named", err)
+	}
+}
+
 func TestDeriveIsPermutationInvariant(t *testing.T) {
 	stipulate.Covers(t, "REQ-advisory-surface-id")
 	spec := testSpec("REQ-a", "REQ-b")

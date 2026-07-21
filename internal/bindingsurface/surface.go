@@ -163,12 +163,53 @@ func Filter(report *surfacewire.Report, requirements, backends, symbols []string
 	}
 	filtered.SetSurfaces(surfaces)
 	if len(surfaces) == 0 && (len(requirements) != 0 || len(backends) != 0 || len(symbols) != 0) {
-		return nil, fmt.Errorf("no binding surfaces match the supplied filters")
+		return nil, fmt.Errorf("no binding surfaces match the supplied filters (the unfiltered corpus derives %d)", len(report.GetSurfaces()))
 	}
 	if err := surfacewire.Validate(filtered); err != nil {
 		return nil, fmt.Errorf("filter binding surfaces: %w", err)
 	}
 	return filtered, nil
+}
+
+// Guidance explains an empty or witness-less derivation in terms of the
+// binding classes the store actually holds, so an author can repair the
+// binding graph without reverse-engineering the surface model: surfaces
+// are keyed by implements bindings alone, and tests/proves bindings
+// attach through the requirements those implements bindings claim.
+// Empty when the report needs no explanation. Presentation only — it
+// never rides the wire document, whose shape is the versioned contract.
+func Guidance(store *records.Store, report *surfacewire.Report) string {
+	var implements, witnesses int
+	for _, file := range store.Bindings {
+		for _, b := range file.Set.GetBindings() {
+			// Guidance runs only on a store Derive already validated,
+			// so every non-implements role here is tests or proves.
+			if b.GetRole() == stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS {
+				implements++
+			} else {
+				witnesses++
+			}
+		}
+	}
+	if len(report.GetSurfaces()) == 0 {
+		switch {
+		case implements == 0 && witnesses == 0:
+			return "the binding store holds no bindings; author implements bindings first — surfaces are keyed by them"
+		case implements == 0:
+			return fmt.Sprintf("the store holds %d tests/proves binding(s) but no implements bindings; surfaces are keyed by implements bindings — author them for the implementation symbols", witnesses)
+		}
+		return ""
+	}
+	bare := 0
+	for _, surface := range report.GetSurfaces() {
+		if len(surface.GetBindings()) == 0 {
+			bare++
+		}
+	}
+	if bare > 0 {
+		return fmt.Sprintf("%d of %d surface(s) carry no associated tests or proves bindings; their implemented requirements have no witness bindings to correlate against", bare, len(report.GetSurfaces()))
+	}
+	return ""
 }
 
 func stringSet(values []string) map[string]bool {

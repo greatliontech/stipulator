@@ -44,6 +44,14 @@ func targetsCmd() *cobra.Command {
 				return err
 			}
 			doc = append(doc, '\n')
+			// Guidance is presentation: it rides stderr beside the
+			// machine-valid document, never inside it
+			// (REQ-advisory-output pins the document rendering).
+			// Stderr in both output modes, so inline consumers keep a
+			// clean stdout and the two modes read alike.
+			if g := bindingsurface.Guidance(store, report); g != "" {
+				fmt.Fprintln(cmd.ErrOrStderr(), g)
+			}
 			if out == "" {
 				_, err := cmd.OutOrStdout().Write(doc)
 				return err

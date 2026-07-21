@@ -1430,11 +1430,21 @@ func (s *Server) toolTargets(ctx context.Context, req *mcp.CallToolRequest, in t
 	// write), with only its location on the wire — a consuming tool
 	// reads the file instead of an inline copy of a large surface.
 	if in.ExportPath != "" {
-		return s.exportTo(in.ExportPath, doc, "targets")
+		res, out, err := s.exportTo(in.ExportPath, doc, "targets")
+		if err == nil {
+			if g := bindingsurface.Guidance(store, report); g != "" {
+				res = textOnly(res.Content[0].(*mcp.TextContent).Text + " — " + g)
+			}
+		}
+		return res, out, err
 	}
 	var m map[string]any
 	if err := json.Unmarshal(doc, &m); err != nil {
 		return nil, nil, err
 	}
-	return textOnly(fmt.Sprintf("targets: %d surfaces", len(report.GetSurfaces()))), m, nil
+	text := fmt.Sprintf("targets: %d surfaces", len(report.GetSurfaces()))
+	if g := bindingsurface.Guidance(store, report); g != "" {
+		text += " — " + g
+	}
+	return textOnly(text), m, nil
 }

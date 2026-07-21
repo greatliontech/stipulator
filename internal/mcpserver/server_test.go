@@ -441,6 +441,11 @@ func TestTargetsToolWiring(t *testing.T) {
 	if surfaces, ok := structured["surfaces"].([]any); !ok || len(surfaces) != 0 {
 		t.Fatalf("empty surfaces = %#v", structured["surfaces"])
 	}
+	// The empty report stays machine-valid; the guidance rides the text
+	// summary so an author learns which binding class to repair.
+	if text := res.Content[0].(*mcp.TextContent).Text; !strings.Contains(text, "holds no bindings") {
+		t.Fatalf("empty-report text = %q, want authoring guidance", text)
+	}
 
 	bindings := pinnedBinding(t) + `bindings {
   requirement_id: "REQ-m-a"
