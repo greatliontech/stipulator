@@ -175,4 +175,13 @@ message GoInvocationConfig {
   // declared path one package's test WRITES moves every concurrent
   // package's in-flight bracket - conservative, but a whole-run seal.
   repeated string bracket_paths = 20;
+  // The invocation-wide reviewed purity assertion: every subject of
+  // this invocation is asserted pure under REQ-purity-responsibility,
+  // the caller-assertion attribution riding every record. Use when a
+  // corpus's suites are deterministic by discipline and infrastructure
+  // dynamism - generated-code globals, injection seams in dependencies -
+  // would otherwise flag whole packages open-world. Per-symbol
+  // gofresh:pure remains for narrower claims; gofresh:external is never
+  // suppressed and still wins.
+  bool assume_pure = 21;
 }

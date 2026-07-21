@@ -169,6 +169,9 @@ func DeriveTestRun(report *stipulatorv1.ExecutionReport) *verify.TestRun {
 type captureGroup struct {
 	tags []string
 	env  []string
+	// assumePure carries the invocations' reviewed whole-invocation
+	// purity assertion into the engine (REQ-purity-responsibility).
+	assumePure bool
 	// pkgInv names the one invocation of this group selecting each
 	// package; a package two invocations select never publishes, because
 	// its record would have no single producing invocation.
@@ -285,15 +288,19 @@ func capturePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) 
 			}
 		}
 		key := strings.Join(n.Tags, ",") + "\x00" + strings.Join(n.Env, "\x01")
+		if n.AssumePure {
+			key += "\x02pure"
+		}
 		g := byKey[key]
 		if g == nil {
 			g = &captureGroup{
-				tags:      n.Tags,
-				env:       n.Env,
-				pkgInv:    map[string]string{},
-				ambiguous: map[string]bool{},
-				tests:     map[string][]string{},
-				solo:      map[string]bool{},
+				tags:       n.Tags,
+				env:        n.Env,
+				assumePure: n.AssumePure,
+				pkgInv:     map[string]string{},
+				ambiguous:  map[string]bool{},
+				tests:      map[string][]string{},
+				solo:       map[string]bool{},
 			}
 			byKey[key] = g
 			keys = append(keys, key)
@@ -345,16 +352,24 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Eng
 	if len(g.tags) > 0 {
 		flags = append(flags, "-tags="+strings.Join(g.tags, ","))
 	}
-	return gofresh.New(
+	opts := []gofresh.Option{
 		gofresh.WithDir(dir),
 		gofresh.WithBuildFlags(flags...),
 		gofresh.WithEnv(g.env...),
+	}
+	if g.assumePure {
+		// The invocation-wide reviewed purity assertion: recorded as
+		// caller-assertion attribution on every record; an explicit
+		// gofresh:external declaration is never suppressed by it.
+		opts = append(opts, gofresh.WithAssumePure(func(gofresh.Subject) bool { return true }))
+	}
+	return gofresh.New(append(opts,
 		// Freshness capture and validation are the longest silent
 		// stretches of a witnessed run; gofresh's own analysis steps
 		// feed the operation's progress seam as rate-limited
 		// keep-alives in whatever phase the operation is in.
 		gofresh.WithProgress(func(gofresh.Progress) { progress.FromContext(ctx).Keepalive() }),
-	)
+	)...)
 }
 
 // NewWitnessRecorder prepares freshness publication for one execution of

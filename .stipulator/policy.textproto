@@ -17,6 +17,7 @@ invocations {
     bracket_paths: "internal"
     bracket_paths: "go.mod"
     bracket_paths: "go.sum"
+    assume_pure: true
   }
 }
 invocations {
@@ -35,6 +36,7 @@ invocations {
     bracket_paths: "internal"
     bracket_paths: "go.mod"
     bracket_paths: "go.sum"
+    assume_pure: true
     args: "-test.timeout=30m"
   }
 }
@@ -54,6 +56,7 @@ invocations {
     bracket_paths: "internal"
     bracket_paths: "go.mod"
     bracket_paths: "go.sum"
+    assume_pure: true
     args: "-test.timeout=30m"
   }
 }
@@ -73,6 +76,7 @@ invocations {
     bracket_paths: "internal"
     bracket_paths: "go.mod"
     bracket_paths: "go.sum"
+    assume_pure: true
     args: "-test.timeout=30m"
   }
 }

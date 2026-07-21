@@ -711,3 +711,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "fd2811d78a5f03df7dbab330c729eb12c3495ef4db0936db8c62eebd34847863"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "433e1ea34d553f17344737da5c4ba7492a2c99ab4ba183e09246c4d6a2db6a8e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesAssumePureRecoversOpenWorldSubjects"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "861550a2d48cd50d574be6f67dce798224e875a108fe758d333ec9ebec909a66"
+}

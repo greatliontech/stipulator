@@ -1732,3 +1732,73 @@ func TestReadsPinnedExternal(*testing.T) {
 		t.Fatalf("undeclared first run uncached=%d, want 1 (reasons=%v)", bare.Uncached, bare.UncacheableReasons)
 	}
 }
+
+// The invocation-wide reviewed purity assertion recovers reuse a
+// mutated dynamic global would otherwise deny: without it the subject
+// flags open-world and never publishes; with it the record publishes
+// under the caller-assertion attribution and serves
+// (REQ-purity-responsibility via the policy's assume_pure).
+func TestGoRunWitnessesAssumePureRecoversOpenWorldSubjects(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented selective run over a temporary module")
+	}
+	neutralAmbient(t)
+	files := map[string]string{
+		"go.mod": "module example.com/openworld\n\ngo 1.26\n",
+		"pkg/pkg.go": `package pkg
+
+var hook = func() int { return 1 }
+
+// Rebind makes hook a mutated-after-init dynamic global, the
+// shared-dynamic-state downgrade's trigger.
+func Rebind(f func() int) { hook = f }
+
+func Value() int { return hook() }
+`,
+		"pkg/pkg_test.go": `package pkg
+
+import "testing"
+
+func TestValue(t *testing.T) {
+	if Value() != 1 {
+		t.Fatal("hook moved")
+	}
+}
+`,
+	}
+	run := func(assume bool) (*verify.TestRun, *verify.TestRun) {
+		t.Helper()
+		t.Setenv("XDG_CACHE_HOME", t.TempDir())
+		tmp := writeModule(t, files)
+		cfg := &stipulatorv1.GoInvocationConfig{}
+		cfg.SetPackages([]string{"./pkg"})
+		cfg.SetRace(true)
+		cfg.SetAssumePure(assume)
+		p := &stipulatorv1.TestPolicy{}
+		p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
+		writePolicyRecord(t, tmp, p)
+		first, err := RunWitnesses(context.Background(), tmp)
+		if err != nil {
+			t.Fatal(err)
+		}
+		second, err := RunWitnesses(context.Background(), tmp)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return first, second
+	}
+
+	first, second := run(true)
+	if first.Ran != 1 || first.Uncached != 0 {
+		t.Fatalf("assumed-pure first run ran=%d uncached=%d, want 1/0 (reasons=%v)", first.Ran, first.Uncached, first.UncacheableReasons)
+	}
+	if second.Fresh != 1 || second.Ran != 0 {
+		t.Fatalf("assumed-pure second run fresh=%d ran=%d, want 1/0", second.Fresh, second.Ran)
+	}
+
+	bare, _ := run(false)
+	if bare.Uncached != 1 {
+		t.Fatalf("unasserted first run uncached=%d, want 1 (reasons=%v)", bare.Uncached, bare.UncacheableReasons)
+	}
+}

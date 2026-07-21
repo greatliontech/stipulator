@@ -44,6 +44,8 @@ type NormalizedInvocation struct {
 	// roots - process images and fixed external files its tests consume -
 	// validated to clean absolute or tree-relative slash form.
 	BracketPaths []string
+	// AssumePure carries the invocation-wide reviewed purity assertion.
+	AssumePure bool
 	// Timeout is the envelope's explicit, reviewed timeout.
 	Timeout time.Duration
 	// Toolchain is the effective toolchain identity (`go env GOVERSION`).
@@ -127,6 +129,7 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		n.PGO = cfg.GetPgo()
 	}
 	n.CacheBypass = cfg.GetCacheMode() == stipulatorv1.GoCacheMode_GO_CACHE_MODE_BYPASS
+	n.AssumePure = cfg.GetAssumePure()
 
 	abs, err := filepath.Abs(filepath.Join(dir, filepath.FromSlash(cfg.GetModuleRoot())))
 	if err != nil {
