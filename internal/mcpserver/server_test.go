@@ -75,6 +75,7 @@ func harness(t *testing.T, files map[string]string) (*mcp.ClientSession, map[str
 			return map[string]verify.Backend{"go": fakeBackend{
 				"example.com/p.TestA": strings.Repeat("s", 64),
 				"example.com/p.F":     strings.Repeat("f", 64),
+				"example.com/q.TestA": strings.Repeat("q", 64),
 			}}, nil
 		},
 		runTests: func(context.Context) (*verify.TestRun, error) {
@@ -407,7 +408,7 @@ func TestToolListExact(t *testing.T) {
 			targetsDescription = tool.Description
 		}
 	}
-	want := []string{"compile", "verify", "gate", "check", "bind", "unbind", "gap", "pin", "prune", "read_spec", "context", "partitions", "dispose", "targets", "attest_requirement"}
+	want := []string{"compile", "verify", "gate", "check", "bind", "unbind", "gap", "pin", "prune", "read_spec", "context", "partitions", "dispose", "retarget", "targets", "attest_requirement"}
 	for _, w := range want {
 		if !got[w] {
 			t.Fatalf("tool %s missing from the wire list: %v", w, got)
@@ -421,6 +422,40 @@ func TestToolListExact(t *testing.T) {
 	}
 	if !strings.Contains(targetsDescription, "binding surfaces") || strings.Contains(targetsDescription, "mutation") || strings.Contains(targetsDescription, "reqs") {
 		t.Fatalf("targets description is stale: %q", targetsDescription)
+	}
+}
+
+// The retarget tool's check form runs the full validation and writes
+// nothing; the applying form rewrites the store and reports every
+// old-to-new identity (REQ-change-retarget).
+//
+//gofresh:pure
+func TestRetargetToolCheckWritesNothing(t *testing.T) {
+	stipulate.Covers(t, "REQ-change-retarget")
+	sess, writes := harness(t, map[string]string{".stipulator/bindings/m.textproto": pinnedBinding(t)})
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "retarget", Arguments: map[string]any{
+		"from": "example.com/p", "to": "example.com/q", "check": true,
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("retarget check = %+v, %v", res, err)
+	}
+	if len(writes) != 0 {
+		t.Fatalf("check form wrote: %v", writes)
+	}
+	text := res.Content[0].(*mcp.TextContent).Text
+	if !strings.Contains(text, "1 binding(s) would retarget") {
+		t.Fatalf("check text = %q", text)
+	}
+
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "retarget", Arguments: map[string]any{
+		"from": "example.com/p", "to": "example.com/q",
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("retarget = %+v, %v", res, err)
+	}
+	got, ok := writes[".stipulator/bindings/m.textproto"]
+	if !ok || !strings.Contains(string(got), "example.com/q.TestA") {
+		t.Fatalf("applying form did not rewrite the store: %q", got)
 	}
 }
 

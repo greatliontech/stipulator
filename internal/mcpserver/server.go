@@ -53,7 +53,7 @@ const serverInstructions = "stipulator verifies code against a compiled requirem
 	"The loop: check answers \"does this tree pass\" (summary view by default; it serves fresh witness evidence and executes only what moved, so warm calls are cheap; full=true additionally judges suite health). " +
 	"gate/verify give coverage and binding detail (summary default; views/scopes opt-in). " +
 	"read_spec and context orient before writing code; partitions splits red work into disjoint components. " +
-	"Authoring: bind (claims batch, all-or-nothing), gap (declare/fire/retract, batch), attest_requirement, pin (re-consent after spec edits), dispose (editorial/retire/supersede), prune (resolved records; dangling=true repairs orphans). " +
+	"Authoring: bind (claims batch, all-or-nothing), gap (declare/fire/retract, batch), attest_requirement, pin (re-consent after spec edits), dispose (editorial/retire/supersede), retarget (bulk symbol-prefix rewrite after a module rename; check=true previews), prune (resolved records; dangling=true repairs orphans). " +
 	"targets exports binding surfaces (export_path under .stipulator/exports/ for large handoffs, e.g. gomutant). " +
 	"Long calls (check/gate/verify/prune/context/partitions) report phase progress when the request carries a progress token - send one and be patient rather than assuming a hang; results state the phase a deadline expired in. " +
 	"All writes stay under .stipulator/; spec documents and source are never edited."
@@ -215,6 +215,10 @@ func (s *Server) MCP() *mcp.Server {
 		Name:        "dispose",
 		Description: "Apply a spec-change disposition: kind editorial (re-pin after meaning-preserving edit), retire (tombstone a removed identity), or supersede (tombstone sources, retarget bindings to declaring successors).",
 	}, guarded(s, s.toolDispose))
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "retarget",
+		Description: "Rewrite stored binding symbols of one backend under an exact old-to-new prefix mapping (module-rename repair). All-or-nothing: replacements must resolve, collisions refuse the batch, shape pins re-derive (unpinned stays unpinned), content pins ride unchanged. check=true previews without writing - run it first when sibling modules share a dotted prefix (a member dot and a dotted path element are lexically ambiguous).",
+	}, guarded(s, s.toolRetarget))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "prune",
 		Description: "Delete resolved gap records — requirement covered and any manual landing condition explicitly fired: satisfied dead weight the gate advertises. Pass check=true to report what would be pruned without deleting. Writes only under .stipulator/gaps/.",
@@ -992,6 +996,42 @@ type disposeIn struct {
 	From        string `json:"from,omitempty" jsonschema:"comma-separated sources for supersede"`
 	Into        string `json:"into,omitempty" jsonschema:"comma-separated successors for supersede"`
 	Force       bool   `json:"force,omitempty" jsonschema:"retire even when no record names the identity"`
+}
+
+type retargetIn struct {
+	Backend string `json:"backend,omitempty" jsonschema:"backend whose symbols retarget (default go)"`
+	From    string `json:"from" jsonschema:"old symbol prefix (module path)"`
+	To      string `json:"to" jsonschema:"new symbol prefix"`
+	Check   bool   `json:"check,omitempty" jsonschema:"report affected identities without writing"`
+}
+
+func (s *Server) toolRetarget(ctx context.Context, req *mcp.CallToolRequest, in retargetIn) (*mcp.CallToolResult, writeOut, error) {
+	backend := in.Backend
+	if backend == "" {
+		backend = "go"
+	}
+	backends, err := s.backends(ctx)
+	if err != nil {
+		return nil, writeOut{}, err
+	}
+	ups, rows, err := author.RetargetSymbols(s.fsys(), backends, backend, in.From, in.To)
+	if err != nil {
+		return nil, writeOut{}, err
+	}
+	notes := make([]string, 0, len(rows))
+	for _, r := range rows {
+		notes = append(notes, r.Requirement+": "+r.Old+" -> "+r.New)
+	}
+	if in.Check {
+		out := writeOut{Notes: notes}
+		return textOnly(fmt.Sprintf("retarget check: %d binding(s) would retarget", len(rows))), out, nil
+	}
+	out, err := s.apply(ups)
+	if err != nil {
+		return nil, writeOut{}, err
+	}
+	out.Notes = notes
+	return textOnly(fmt.Sprintf("retargeted %d binding(s)", len(rows))), out, nil
 }
 
 func (s *Server) toolDispose(ctx context.Context, req *mcp.CallToolRequest, in disposeIn) (*mcp.CallToolResult, writeOut, error) {

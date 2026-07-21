@@ -17,7 +17,7 @@ chunk runs the adversarial loop and the corpus check stays green.
 - [x] 6. Gap violation-class scoping (standing-gap-absorbs-unrelated-red)
 - [x] 7. Impact-preview spec-amend candidates: dispose both
   (impact-preview-omission-bounds)
-- [ ] 8. Go module-rename bulk symbol retarget
+- [x] 8. Go module-rename bulk symbol retarget
   (go-module-rename-lacks-symbol-migration)
 - [ ] 9. Prune serving-class pin: assess the seam, pin or redefer
   (prune-serving-class-unpinned)

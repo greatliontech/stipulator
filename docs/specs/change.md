@@ -70,6 +70,18 @@ stale by contract.
 **REQ-change-retire** (behavior): A retire disposition MUST tombstone the
 identity and delete its bindings and gap records.
 
+**REQ-change-retarget** (behavior): A symbol-retarget operation MUST
+rewrite stored binding symbols for one backend under an exact
+old-prefix-to-new-prefix mapping, matching only at a path or member
+boundary, all-or-nothing: every replacement symbol resolves through the
+backend in the current tree, a rewrite colliding with any post-rewrite
+binding of the same requirement, backend, symbol, and role is refused,
+and partial application never happens. Shape pins re-derive from the
+resolved replacements; content pins ride unchanged — the requirement
+text did not move. The result reports every old-to-new identity, a
+check form reports the affected records without writing, and records
+outside the binding store stay untouched.
+
 **REQ-change-transient** (invariant): Dispositions MUST NOT accrete a stored
 log; their only persistent effect is the rewritten state of the
 corpus-adjacent records and the tombstone registry.

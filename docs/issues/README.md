@@ -37,10 +37,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   lint mirrors the same semantics deliberately — fix both together on rune boundaries. *Lands:
   when a corpus declares non-ASCII term names.*
 
-- **[go-module-rename-lacks-symbol-migration](go-module-rename-lacks-symbol-migration.md)** — a
-  Go module-path change invalidates large stored-symbol sets, with no validated bulk retarget
-  command or actionable remediation. *Lands: before a corpus with stored Go symbol references
-  changes module path, or when the binding rewrite surface next changes.*
 - **[go-subprocess-tree-ownership](go-subprocess-tree-ownership.md)** — Unix Go backend work
   (witness runs, normalization, discovery, and symbol loading via the owned resolver child)
   owns its process groups with descendant termination proven, but Windows descendant

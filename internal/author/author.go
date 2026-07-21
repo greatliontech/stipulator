@@ -412,6 +412,140 @@ func Unbind(fsys fs.FS, requirement, symbol string, role stipulatorv1.BindingRol
 	return out, removed, nil
 }
 
+// RetargetRow reports one rewritten binding identity.
+type RetargetRow struct {
+	Requirement string
+	Old, New    string
+	Role        stipulatorv1.BindingRole
+}
+
+// RetargetSymbols rewrites stored binding symbols for one backend under
+// an exact old-prefix-to-new-prefix mapping — the module-rename repair
+// (REQ-change-retarget). A symbol matches only at a path or member
+// boundary, so a prefix never captures a sibling that merely shares
+// characters. All-or-nothing: every replacement must resolve through
+// the backend (shape pins re-derive from those resolutions; content
+// pins ride unchanged — the requirement text did not move), and a
+// rewrite colliding with any post-rewrite binding of the same
+// requirement, backend, symbol, and role refuses the whole batch. The
+// returned rows report every old-to-new identity; callers preview by
+// discarding the updates.
+func RetargetSymbols(fsys fs.FS, backends map[string]verify.Backend, backend, oldPrefix, newPrefix string) ([]Update, []RetargetRow, error) {
+	if backend == "" || oldPrefix == "" || newPrefix == "" {
+		return nil, nil, fmt.Errorf("a backend, an old prefix, and a new prefix are required")
+	}
+	if !KnownBackends[backend] {
+		return nil, nil, fmt.Errorf("unknown backend %q (go, proto)", backend)
+	}
+	if oldPrefix == newPrefix {
+		return nil, nil, fmt.Errorf("old and new prefixes are identical; nothing to retarget")
+	}
+	be, loaded := backends[backend]
+	if !loaded {
+		return nil, nil, fmt.Errorf("no %s backend is loaded to resolve replacements; a retarget that cannot validate its rewrites is refused, not recorded", backend)
+	}
+	store, err := records.Load(fsys)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// A prefix matches at a boundary only: the next rune after it is a
+	// path separator or the member dot, never a bare character run.
+	matches := func(symbol string) bool {
+		if !strings.HasPrefix(symbol, oldPrefix) || len(symbol) == len(oldPrefix) {
+			return false
+		}
+		return symbol[len(oldPrefix)] == '/' || symbol[len(oldPrefix)] == '.'
+	}
+
+	type identity struct {
+		requirement, backend, symbol string
+		role                         stipulatorv1.BindingRole
+	}
+	var rows []RetargetRow
+	var out []Update
+	seen := map[identity]bool{}
+	type rewrite struct {
+		b   *stipulatorv1.Binding
+		new string
+	}
+	var rewrites []rewrite
+	for _, bf := range store.Bindings {
+		for _, b := range bf.Set.GetBindings() {
+			target := b.GetBackend() == backend && matches(b.GetSymbol())
+			sym := b.GetSymbol()
+			if target {
+				sym = newPrefix + b.GetSymbol()[len(oldPrefix):]
+				rewrites = append(rewrites, rewrite{b: b, new: sym})
+			}
+			id := identity{requirement: b.GetRequirementId(), backend: b.GetBackend(), symbol: sym, role: b.GetRole()}
+			if seen[id] {
+				return nil, nil, fmt.Errorf("retarget collides: the post-rewrite store would carry %s %s %s %s twice", id.requirement, id.backend, sym, id.role)
+			}
+			seen[id] = true
+		}
+	}
+	if len(rewrites) == 0 {
+		return nil, nil, fmt.Errorf("no %s binding symbol matches prefix %q", backend, oldPrefix)
+	}
+	shapes := make(map[string]string, len(rewrites))
+	for _, rw := range rewrites {
+		if _, ok := shapes[rw.new]; ok {
+			continue
+		}
+		res, shape, err := be.Resolve(rw.new)
+		if err != nil {
+			return nil, nil, fmt.Errorf("resolving replacement %s: %w", rw.new, err)
+		}
+		switch res {
+		case verify.NotFound:
+			return nil, nil, fmt.Errorf("replacement symbol %s not found; the whole retarget is refused", rw.new)
+		case verify.GeneratedFile:
+			return nil, nil, fmt.Errorf("replacement symbol %s is declared in a generated file; the whole retarget is refused", rw.new)
+		}
+		shapes[rw.new] = shape
+	}
+	touched := map[string]bool{}
+	for _, bf := range store.Bindings {
+		for _, b := range bf.Set.GetBindings() {
+			if b.GetBackend() != backend || !matches(b.GetSymbol()) {
+				continue
+			}
+			old := b.GetSymbol()
+			newSym := newPrefix + old[len(oldPrefix):]
+			rows = append(rows, RetargetRow{Requirement: b.GetRequirementId(), Old: old, New: newSym, Role: b.GetRole()})
+			b.SetSymbol(newSym)
+			// Re-derive means exactly that: a pinned shape follows the
+			// resolved replacement, an unpinned binding stays unpinned —
+			// backfilling a pin is the pin verb's consent action, never
+			// a retarget side effect (REQ-change-remediation).
+			if b.GetShapeHash() != "" {
+				b.SetShapeHash(shapes[newSym])
+			}
+			touched[bf.Path] = true
+		}
+	}
+	for _, bf := range store.Bindings {
+		if !touched[bf.Path] {
+			continue
+		}
+		content, err := records.Render(bf)
+		if err != nil {
+			return nil, nil, err
+		}
+		out = append(out, Update{Path: bf.Path, Content: content})
+	}
+	sort.Slice(rows, func(i, j int) bool {
+		if rows[i].Requirement != rows[j].Requirement {
+			return rows[i].Requirement < rows[j].Requirement
+		}
+		return rows[i].Old < rows[j].Old
+	})
+	sortUpdates(out)
+	StampPriors(store, out)
+	return out, rows, nil
+}
+
 // Gap validates and authors a gap record: the requirement must exist and
 // a reason and a landing condition are required. Declaring over an
 // existing gap updates it in place — a gap's reason evolves with the

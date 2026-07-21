@@ -69,7 +69,7 @@ func newRootCmd() *cobra.Command {
 		chdir = root
 		return nil
 	}
-	c.AddCommand(compileCmd(), checkCmd(), verifyCmd(), gateCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), impactCmd(), pruneCmd(), pinCmd(), disposeCmd(), targetsCmd(), attestCmd(), initCmd(), policyCmd(), mcpCmd(), internalResolveCmd())
+	c.AddCommand(compileCmd(), checkCmd(), verifyCmd(), gateCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), impactCmd(), pruneCmd(), pinCmd(), disposeCmd(), retargetCmd(), targetsCmd(), attestCmd(), initCmd(), policyCmd(), mcpCmd(), internalResolveCmd())
 	return c
 }
 
