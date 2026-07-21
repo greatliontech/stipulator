@@ -50,10 +50,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   owns its process groups with descendant termination proven, but Windows descendant
   termination cannot be proven without a Windows host. *Lands: when Windows descendant
   termination is proven with a real spawned child (Windows host unavailable here).*
-- **[symlinked-member-escapes-lexical-validation](symlinked-member-escapes-lexical-validation.md)** — an
-  in-tree symlink pointing outside the tree passes the lexical escape checks in workspace member
-  and policy module-root validation. *Lands: when validation resolves symlinks or execution refuses
-  escaping resolved members.*
 - **[closure-edit-revert-inside-run-span](closure-edit-revert-inside-run-span.md)** — a source
   edit and its exact revert both landing inside one package's capture-compile-run span restore
   the recorded closure hash over outcomes a transiently-edited binary produced; the

@@ -630,3 +630,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "7960587a31790ea45c6951f95c215c567f14dbc13e7c22ac76904b9a253c7788"
 }
+
+bindings {
+  requirement_id: "REQ-policy-explicit"
+  content_hash: "2ba187b1e0d0b9fb218ca978eb57a2424d4b7a0780d3038c71e0fdc292ef1e0e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoNormalizeWitnessConcurrencyPositiveWhenPresent"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "2ddb74e083ef93323368dbe13b329fbc45c7cf1c9002a6d73265783d4c35e7f4"
+}

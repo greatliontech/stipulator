@@ -30,6 +30,10 @@ func workspaceMembers(dir string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parsing go.work: %w", err)
 	}
+	root, err := resolvedTreeRoot(dir)
+	if err != nil {
+		return nil, err
+	}
 	var members []string
 	for _, u := range wf.Use {
 		clean := filepath.Clean(u.Path)
@@ -39,12 +43,52 @@ func workspaceMembers(dir string) ([]string, error) {
 			// silently bent.
 			return nil, fmt.Errorf("go.work member %q escapes the verification tree; members must lie within it", u.Path)
 		}
+		// The lexical check above refuses what the committed text says;
+		// the resolved check refuses what the filesystem makes of it (an
+		// in-tree symlink pointing out).
+		if err := resolvedUnder(root, dir, clean); err != nil {
+			return nil, fmt.Errorf("go.work member %q: %w", u.Path, err)
+		}
 		members = append(members, clean)
 	}
 	if len(members) == 0 {
 		return nil, fmt.Errorf("go.work declares no members")
 	}
 	return members, nil
+}
+
+// resolvedTreeRoot resolves the verification tree root once for a batch
+// of member checks.
+func resolvedTreeRoot(dir string) (string, error) {
+	root, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		return "", fmt.Errorf("resolving verification tree root: %w", err)
+	}
+	return root, nil
+}
+
+// resolvedUnder refuses a tree-relative directory whose resolved
+// location leaves the resolved tree root: a lexically in-tree path that
+// is (or crosses) a symlink out of the tree would let verification
+// operate outside the tree it claims to verify — hermeticity is refused
+// away, never silently bent (REQ-go-workspace). An absent path resolves
+// to nothing and passes: whatever later consumes it fails on its own
+// terms, and nothing outside the tree was reached. The check binds
+// validation time; a path re-pointed between validation and consumption
+// is the same hold-still assumption the observation-coherence span
+// already accepts for the run's reads.
+func resolvedUnder(root, dir, rel string) error {
+	p, err := filepath.EvalSymlinks(filepath.Join(dir, rel))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("resolving %q: %w", rel, err)
+	}
+	if p != root && !strings.HasPrefix(p, root+string(filepath.Separator)) {
+		return fmt.Errorf("%q resolves to %q, outside the verification tree; members must lie within it", rel, p)
+	}
+	return nil
 }
 
 // goworkEnv pins workspace mode for a spawned go command or package load:

@@ -540,3 +540,21 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "d626336875239d68aed14e5f5956b7e516648d7ed5f560778bc5ee704a2bed61"
 }
+
+bindings {
+  requirement_id: "REQ-go-workspace"
+  content_hash: "5c240637a17d955e66a44aba3fc93545c94bcc9226a66a4464b33818448b85eb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoSymlinkedMemberEscapeRefused"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "10c563a727df7203fd365496d509a7f80a6eabf9ae36e2da33f21c6599d7e563"
+}
+
+bindings {
+  requirement_id: "REQ-go-workspace"
+  content_hash: "5c240637a17d955e66a44aba3fc93545c94bcc9226a66a4464b33818448b85eb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoSymlinkedMemberInsideTreeAccepted"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5f156c32d8e05b8ab388278f4b7edf88a37415fe3738fa88dfd577f4080c246c"
+}

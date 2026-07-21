@@ -142,6 +142,17 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	if err != nil {
 		return nil, fmt.Errorf("invocation %q: resolving module root: %w", inv.GetName(), err)
 	}
+	// The record's module_root validated lexically; the working directory
+	// every execution consumes must also RESOLVE under the tree, or an
+	// in-tree symlink pointing out would run witnesses outside the tree
+	// the record claims to verify (REQ-go-workspace).
+	root, err := resolvedTreeRoot(dir)
+	if err != nil {
+		return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
+	}
+	if err := resolvedUnder(root, dir, filepath.FromSlash(cfg.GetModuleRoot())); err != nil {
+		return nil, fmt.Errorf("invocation %q: module_root: %w", inv.GetName(), err)
+	}
 	n.Dir = abs
 
 	// Workspace mode: absent derives from the workspace declaration.

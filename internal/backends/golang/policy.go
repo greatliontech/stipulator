@@ -406,6 +406,10 @@ func policyMembers(dir string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parsing go.work: %w", err)
 	}
+	root, err := resolvedTreeRoot(dir)
+	if err != nil {
+		return nil, err
+	}
 	var members []string
 	for _, u := range wf.Use {
 		clean := path.Clean(u.Path)
@@ -417,6 +421,12 @@ func policyMembers(dir string) ([]string, error) {
 		}
 		if clean == "." {
 			clean = ""
+		}
+		// The lexical check above refuses what the committed text says;
+		// the resolved check refuses what the filesystem makes of it (an
+		// in-tree symlink pointing out).
+		if err := resolvedUnder(root, dir, filepath.FromSlash(clean)); err != nil {
+			return nil, fmt.Errorf("go.work member %q: %w", u.Path, err)
 		}
 		members = append(members, clean)
 	}

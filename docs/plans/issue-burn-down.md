@@ -11,7 +11,7 @@ chunk runs the adversarial loop and the corpus check stays green.
   identities' variants (witness-store-gc)
 - [x] 3. Check-result wire cleanup: one home for package failures
   (check-result-duplicate-package-failure; its Lands fires by this change)
-- [ ] 4. Symlinked member validation: resolve or refuse escaping members
+- [x] 4. Symlinked member validation: resolve or refuse escaping members
   (symlinked-member-escapes-lexical-validation)
 - [ ] 5. Empty binding-surface guidance (targets-empty-surface-lacks-guidance)
 - [ ] 6. Gap violation-class scoping (standing-gap-absorbs-unrelated-red)
