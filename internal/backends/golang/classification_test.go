@@ -38,6 +38,9 @@ func TestWitnessClassProof(t *testing.T) {
 	if got := backend.WitnessClass(mod + "/internal/arch.TestBackendSatisfiesVerifierSurfaces"); got != verify.AnalyzerProof {
 		t.Fatalf("generic structural invocation classified %v", got)
 	}
+	if got := backend.WitnessClass(mod + "/internal/backends/golang.TestImportAllowlistProof"); got != verify.AnalyzerProof {
+		t.Fatalf("import allowlist invocation classified %v", got)
+	}
 	if got := backend.WitnessClass(mod + "/internal/backends/golang.TestFieldHelperOnly"); got != verify.ExampleWitness {
 		t.Fatalf("structural helper-only test classified %v, want example", got)
 	}
@@ -45,6 +48,13 @@ func TestWitnessClassProof(t *testing.T) {
 	if got := backend.WitnessClass(mod + "/internal/backends/golang.notATest"); got == verify.AnalyzerProof {
 		t.Fatal("plain function classified as proof; it never runs in a witness run")
 	}
+}
+
+// Deliberately not //gofresh:pure: the assertion reads the production import graph.
+func TestImportAllowlistProof(t *testing.T) {
+	structural.ImportAllowlist(t, mod+"/internal/canon", map[string]structural.ImportRule{
+		mod + "/internal/canon": {ThirdParty: []string{"golang.org/x/text/unicode/norm"}},
+	})
 }
 
 //gofresh:pure

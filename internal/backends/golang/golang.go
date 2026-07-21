@@ -258,7 +258,7 @@ const structuralPkg = "github.com/greatliontech/stipulator/stipulate/structural"
 
 func structuralAssertion(name string) bool {
 	switch name {
-	case "NoImport", "Implements", "ExportedData", "FunctionSignature":
+	case "ImportAllowlist", "NoImport", "Implements", "ExportedData", "FunctionSignature":
 		return true
 	default:
 		return false

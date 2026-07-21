@@ -8,12 +8,100 @@ package structural
 import (
 	"go/token"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
 
 	"golang.org/x/tools/go/packages"
 )
+
+// ImportRule declares the direct production imports one package may use.
+// Internal and ThirdParty are always exact allowlists. StandardLibrary is
+// exact when RestrictStandardLibrary is true and documentary otherwise.
+type ImportRule struct {
+	Internal                []string
+	ThirdParty              []string
+	StandardLibrary         []string
+	RestrictStandardLibrary bool
+}
+
+// ImportAllowlist asserts that every production package matched by fromPattern
+// has a policy row and that its direct imports obey that row. Same-module and
+// third-party imports are always denied unless listed. Standard-library imports
+// remain open unless a row sets RestrictStandardLibrary, which lets capability
+// boundaries enumerate their complete stdlib surface.
+func ImportAllowlist(tb testing.TB, fromPattern string, rules map[string]ImportRule) {
+	tb.Helper()
+	pkgs, err := packages.Load(&packages.Config{
+		Mode: packages.NeedName | packages.NeedFiles | packages.NeedImports | packages.NeedModule,
+	}, fromPattern)
+	if err != nil {
+		tb.Fatalf("structural.ImportAllowlist: loading %s: %v", fromPattern, err)
+		return
+	}
+	if len(pkgs) == 0 {
+		tb.Fatalf("structural.ImportAllowlist: %s matches no packages — the constraint is vacuous", fromPattern)
+		return
+	}
+	sort.Slice(pkgs, func(i, j int) bool { return pkgs[i].PkgPath < pkgs[j].PkgPath })
+	matched := make(map[string]bool, len(pkgs))
+	modulePath := ""
+	for _, pkg := range pkgs {
+		if len(pkg.Errors) > 0 {
+			tb.Fatalf("structural.ImportAllowlist: %s has load errors: %v", pkg.PkgPath, pkg.Errors[0])
+			return
+		}
+		if len(pkg.GoFiles) == 0 {
+			continue
+		}
+		if pkg.Module == nil || pkg.Module.Path == "" {
+			tb.Fatalf("structural.ImportAllowlist: %s is not in a module", pkg.PkgPath)
+			return
+		}
+		if modulePath == "" {
+			modulePath = pkg.Module.Path
+		} else if pkg.Module.Path != modulePath {
+			tb.Fatalf("structural.ImportAllowlist: pattern spans modules %s and %s", modulePath, pkg.Module.Path)
+			return
+		}
+		matched[pkg.PkgPath] = true
+		rule, ok := rules[pkg.PkgPath]
+		if !ok {
+			tb.Errorf("structural.ImportAllowlist: production package %s has no policy row", pkg.PkgPath)
+			continue
+		}
+		for _, importPath := range sortedImportPaths(pkg.Imports) {
+			imported := pkg.Imports[importPath]
+			switch {
+			case imported.Module != nil && imported.Module.Path == modulePath:
+				if !slices.Contains(rule.Internal, importPath) {
+					tb.Errorf("structural.ImportAllowlist: %s imports unlisted internal package %s", pkg.PkgPath, importPath)
+				}
+			case imported.Module != nil:
+				if !slices.Contains(rule.ThirdParty, importPath) {
+					tb.Errorf("structural.ImportAllowlist: %s imports unlisted third-party package %s", pkg.PkgPath, importPath)
+				}
+			case rule.RestrictStandardLibrary && !slices.Contains(rule.StandardLibrary, importPath):
+				tb.Errorf("structural.ImportAllowlist: %s imports unlisted standard-library package %s", pkg.PkgPath, importPath)
+			}
+		}
+	}
+	for pkg := range rules {
+		if !matched[pkg] {
+			tb.Errorf("structural.ImportAllowlist: policy row %s matches no production package", pkg)
+		}
+	}
+}
+
+func sortedImportPaths(imports map[string]*packages.Package) []string {
+	paths := make([]string, 0, len(imports))
+	for path := range imports {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+	return paths
+}
 
 // Field describes one exported field in an ExportedData assertion.
 type Field struct {

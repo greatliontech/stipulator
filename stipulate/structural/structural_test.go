@@ -60,6 +60,96 @@ func (r *recorder) Errorf(f string, a ...any) { r.errors = append(r.errors, fmt.
 func (r *recorder) Fatalf(f string, a ...any) { r.fatals = append(r.fatals, fmt.Sprintf(f, a...)) }
 
 const mod = "github.com/greatliontech/stipulator"
+const structuralMod = mod + "/stipulate/structural"
+
+func importFixtureRules() map[string]ImportRule {
+	return map[string]ImportRule{
+		structuralMod + "/internal/importallowfixture/a": {
+			Internal:                []string{structuralMod + "/internal/importallowfixture/b"},
+			ThirdParty:              []string{"golang.org/x/tools/go/packages"},
+			StandardLibrary:         []string{"fmt"},
+			RestrictStandardLibrary: true,
+		},
+		structuralMod + "/internal/importallowfixture/b": {},
+	}
+}
+
+// Deliberately not //gofresh:pure: this assertion reads the production import graph.
+func TestImportAllowlist(t *testing.T) {
+	const pattern = structuralMod + "/internal/importallowfixture/..."
+	t.Run("complete policy passes", func(t *testing.T) {
+		r := &recorder{}
+		ImportAllowlist(r, pattern, importFixtureRules())
+		if len(r.errors)+len(r.fatals) != 0 {
+			t.Fatalf("complete policy failed: %v %v", r.errors, r.fatals)
+		}
+	})
+	t.Run("missing package row fails", func(t *testing.T) {
+		r := &recorder{}
+		rules := importFixtureRules()
+		delete(rules, structuralMod+"/internal/importallowfixture/b")
+		ImportAllowlist(r, pattern, rules)
+		if !containsMessage(r.errors, "has no policy row") {
+			t.Fatalf("missing row accepted: %v", r.errors)
+		}
+	})
+	for _, test := range []struct {
+		name, field, want string
+	}{
+		{"internal", "internal", "unlisted internal package"},
+		{"third party", "third", "unlisted third-party package"},
+		{"standard library", "standard", "unlisted standard-library package"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			r := &recorder{}
+			rules := importFixtureRules()
+			rule := rules[structuralMod+"/internal/importallowfixture/a"]
+			switch test.field {
+			case "internal":
+				rule.Internal = nil
+			case "third":
+				rule.ThirdParty = nil
+			case "standard":
+				rule.StandardLibrary = nil
+			}
+			rules[structuralMod+"/internal/importallowfixture/a"] = rule
+			ImportAllowlist(r, pattern, rules)
+			if !containsMessage(r.errors, test.want) {
+				t.Fatalf("unlisted %s import accepted: %v", test.name, r.errors)
+			}
+		})
+	}
+	t.Run("unrestricted standard library passes", func(t *testing.T) {
+		r := &recorder{}
+		rules := importFixtureRules()
+		rule := rules[structuralMod+"/internal/importallowfixture/a"]
+		rule.StandardLibrary = nil
+		rule.RestrictStandardLibrary = false
+		rules[structuralMod+"/internal/importallowfixture/a"] = rule
+		ImportAllowlist(r, pattern, rules)
+		if len(r.errors)+len(r.fatals) != 0 {
+			t.Fatalf("open stdlib surface failed: %v %v", r.errors, r.fatals)
+		}
+	})
+	t.Run("stale row fails", func(t *testing.T) {
+		r := &recorder{}
+		rules := importFixtureRules()
+		rules[structuralMod+"/internal/importallowfixture/missing"] = ImportRule{}
+		ImportAllowlist(r, pattern, rules)
+		if !containsMessage(r.errors, "matches no production package") {
+			t.Fatalf("stale row accepted: %v", r.errors)
+		}
+	})
+}
+
+func containsMessage(messages []string, want string) bool {
+	for _, message := range messages {
+		if strings.Contains(message, want) {
+			return true
+		}
+	}
+	return false
+}
 
 // Deliberately not //gofresh:pure: the verdict depends on the import
 // graph of module packages outside this test binary's closure, read

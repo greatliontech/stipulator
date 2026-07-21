@@ -90,9 +90,9 @@ be a verification error; the binding store is the only claim source.
 ## Structural provers
 
 **REQ-go-structural-provers** (behavior): The Go backend MUST provide
-analyzer assertions — import constraints (a package set does not import
-another, transitively) and interface satisfaction (a named type implements
-a named interface) as the initial set — authored as tests invoking the
+analyzer assertions — transitive import exclusions, exhaustive direct-import
+allowlists with total package rows and optionally exact standard-library surfaces,
+and interface satisfaction — authored as tests invoking the
 `stipulate/structural` library, with the proof class resolved from the
 invoking code exactly as witness classes are: never declared. Parameters
 live in the test source, type-checked and reviewable, and the assertion
