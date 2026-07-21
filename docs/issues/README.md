@@ -55,13 +55,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   support binding closure content to the compile that consumed it, or when witness records are
   next redesigned.*
 
-- **[standing-gap-absorbs-unrelated-red](standing-gap-absorbs-unrelated-red.md)** — a covered
-  requirement carrying an open manual-condition gap can later go red for an unrelated reason
-  and the gate raises no violation, while the gap's reason describes the original class —
-  witnessed regressions still surface through suite health; the blind spot is auditability.
-  *Lands: when gap records gain violation-class scoping, or when the gap lifecycle next
-  changes.*
-
 - **[mcp-progress-not-observed](mcp-progress-not-observed.md)** — suite-running MCP tools
   surfaced no progress to a live agent client; every call was backgrounded at the client's
   timeout. *Lands: when the harness MCP server is next restarted against a live agent

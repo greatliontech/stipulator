@@ -14,7 +14,7 @@ chunk runs the adversarial loop and the corpus check stays green.
 - [x] 4. Symlinked member validation: resolve or refuse escaping members
   (symlinked-member-escapes-lexical-validation)
 - [x] 5. Empty binding-surface guidance (targets-empty-surface-lacks-guidance)
-- [ ] 6. Gap violation-class scoping (standing-gap-absorbs-unrelated-red)
+- [x] 6. Gap violation-class scoping (standing-gap-absorbs-unrelated-red)
 - [ ] 7. Impact-preview spec-amend candidates: dispose both
   (impact-preview-omission-bounds)
 - [ ] 8. Go module-rename bulk symbol retarget

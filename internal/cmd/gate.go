@@ -90,7 +90,7 @@ func gateCmd() *cobra.Command {
 			if !cov.GatePasses() {
 				if !quiet && !jsonOut {
 					for _, v := range cov.Violations {
-						fmt.Fprintf(os.Stderr, "%s %s is red and no gap names it\n", red("violation:"), bold(v))
+						fmt.Fprintf(os.Stderr, "%s %s is red and no gap excuses it\n", red("violation:"), bold(v))
 					}
 					fmt.Println(red("gate: fail"))
 				}

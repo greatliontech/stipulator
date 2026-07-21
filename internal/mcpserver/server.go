@@ -789,6 +789,7 @@ type gapIn struct {
 	Manual      string `json:"manual,omitempty" jsonschema:"lands on this externally judged condition, fired explicitly"`
 	Fired       bool   `json:"fired,omitempty" jsonschema:"mark the manual condition fired (without manual: fire the existing gaps)"`
 	Retract     bool   `json:"retract,omitempty" jsonschema:"delete the gap records instead of declaring (dangling records included)"`
+	Excuses     string `json:"excuses,omitempty" jsonschema:"violation classes the gap excuses, comma-separated from uncovered|stale|broken (default: uncovered alone)"`
 }
 
 func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn) (*mcp.CallToolResult, writeOut, error) {
@@ -796,7 +797,7 @@ func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn
 	if err != nil {
 		return nil, writeOut{}, err
 	}
-	conditioned := in.Covered != "" || in.Exists != "" || in.Manual != "" || in.Reason != ""
+	conditioned := in.Covered != "" || in.Exists != "" || in.Manual != "" || in.Reason != "" || in.Excuses != ""
 	switch {
 	case in.Retract:
 		if conditioned || in.Fired {
@@ -829,7 +830,17 @@ func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn
 	if lcErr != nil {
 		return nil, writeOut{}, lcErr
 	}
-	ups, notes, err := author.Gaps(s.fsys(), reqs, in.Reason, lc)
+	var excuseNames []string
+	for _, n := range strings.Split(in.Excuses, ",") {
+		if n = strings.TrimSpace(n); n != "" {
+			excuseNames = append(excuseNames, n)
+		}
+	}
+	excuses, err := author.NewExcuses(excuseNames)
+	if err != nil {
+		return nil, writeOut{}, err
+	}
+	ups, notes, err := author.Gaps(s.fsys(), reqs, in.Reason, lc, excuses)
 	if err != nil {
 		return nil, writeOut{}, err
 	}

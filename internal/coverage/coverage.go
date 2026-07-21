@@ -330,9 +330,11 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 	}
 
 	gapped := map[string]bool{}
+	excused := map[string]map[Bucket]bool{}
 	for _, gf := range store.Gaps {
 		id := gf.Gap.GetRequirementId()
 		gapped[id] = true
+		excused[id] = excuseSet(gf.Gap.GetExcuses())
 		state := Open
 		switch {
 		case buckets[id] == Covered && !manualUnfired(gf.Gap.GetLands()):
@@ -348,14 +350,75 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		rep.Gaps = append(rep.Gaps, Gap{Path: gf.Path, RequirementId: id, State: state})
 	}
 
-	for _, r := range rep.Requirements {
+	for i := range rep.Requirements {
+		r := &rep.Requirements[i]
 		red := r.Bucket == Uncovered || r.Bucket == Stale || r.Bucket == Broken
-		if red && !gapped[r.Id] {
+		if !red {
+			continue
+		}
+		// A gap excuses only the violation classes it declares
+		// (REQ-gate-no-undeclared): a standing gap never absorbs a
+		// later red of a different class, and the mismatch is surfaced
+		// on the requirement so the gap's reason is never read as
+		// explaining a red it does not.
+		if gapped[r.Id] && !excused[r.Id][r.Bucket] {
+			r.Reasons = append(r.Reasons, fmt.Sprintf("the gap record naming this requirement excuses %s, not %s — declare the class deliberately or repair the red", excuseNames(excused[r.Id]), bucketName(r.Bucket)))
+		}
+		if !gapped[r.Id] || !excused[r.Id][r.Bucket] {
 			rep.Violations = append(rep.Violations, r.Id)
 		}
 	}
 	sort.Strings(rep.Violations)
 	return rep
+}
+
+// excuseSet expands a record's declared excuse classes; an empty
+// declaration excuses uncovered alone — a gap is declared about missing
+// evidence unless it says otherwise (REQ-gap-record).
+func excuseSet(declared []stipulatorv1.GapExcuse) map[Bucket]bool {
+	if len(declared) == 0 {
+		return map[Bucket]bool{Uncovered: true}
+	}
+	set := map[Bucket]bool{}
+	for _, x := range declared {
+		switch x {
+		case stipulatorv1.GapExcuse_GAP_EXCUSE_UNCOVERED:
+			set[Uncovered] = true
+		case stipulatorv1.GapExcuse_GAP_EXCUSE_STALE:
+			set[Stale] = true
+		case stipulatorv1.GapExcuse_GAP_EXCUSE_BROKEN:
+			set[Broken] = true
+		}
+	}
+	return set
+}
+
+func bucketName(b Bucket) string {
+	switch b {
+	case Uncovered:
+		return "uncovered"
+	case Stale:
+		return "stale"
+	case Broken:
+		return "broken"
+	}
+	return "red"
+}
+
+func excuseNames(set map[Bucket]bool) string {
+	var names []string
+	for _, b := range []Bucket{Uncovered, Stale, Broken} {
+		if set[b] {
+			names = append(names, bucketName(b))
+		}
+	}
+	// A hand-edited record can carry out-of-range enum numbers: they
+	// load (open enum), excuse nothing (fail-closed), and must still
+	// render a coherent mismatch.
+	if len(names) == 0 {
+		return "no recognized class"
+	}
+	return strings.Join(names, ", ")
 }
 
 func hasAnyBinding(vr *verify.Report, id string) bool {

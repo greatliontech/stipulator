@@ -99,6 +99,9 @@ func RenderGap(g *stipulatorv1.Gap) []byte {
 			fmt.Fprintf(&b, "lands { manual { condition: %s } }\n", strconv.Quote(a.GetCondition()))
 		}
 	}
+	for _, x := range g.GetExcuses() {
+		fmt.Fprintf(&b, "excuses: %s\n", x.String())
+	}
 	return []byte(b.String())
 }
 

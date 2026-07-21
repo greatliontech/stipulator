@@ -56,6 +56,19 @@ message Gap {
   // process artifacts.
   string reason = 2;
   LandingCondition lands = 3;
+  // The violation classes this gap excuses at the gate. Empty means
+  // uncovered alone: a gap is declared about a specific violation
+  // class, and a later red of an undeclared class is its own finding,
+  // never absorbed by the standing record.
+  repeated GapExcuse excuses = 4;
+}
+
+// GapExcuse names one red bucket a gap record excuses.
+enum GapExcuse {
+  GAP_EXCUSE_UNSPECIFIED = 0;
+  GAP_EXCUSE_UNCOVERED = 1;
+  GAP_EXCUSE_STALE = 2;
+  GAP_EXCUSE_BROKEN = 3;
 }
 
 // RequirementAttestation is the weakest evidence (REQ-evidence-ladder):

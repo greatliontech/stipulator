@@ -270,3 +270,21 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "784b0a8e7f4ee775138f5daa878260f3119ce7679beac3384a5ae560445ff9c9"
 }
+
+bindings {
+  requirement_id: "REQ-advisory-targets"
+  content_hash: "a742f6ad0fad0cff4669a3e6c3ebecc7c5d8d7cdd893e586c45988e633e55dd6"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/bindingsurface.TestGuidanceNamesTheMissingBindingClass"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7e422bc30020a5372e271983ae05fb642cbdbb8f4d3c58a7c03e01e3e86f0b67"
+}
+
+bindings {
+  requirement_id: "REQ-advisory-filtering"
+  content_hash: "6536c2f5f52cfd9614eeea697adb63511ea433850c351dd194dac2aa1a1bf0c2"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/bindingsurface.TestFilterRefusalNamesUnfilteredCount"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "56009567721cd396bca81ba2a3e4dd8ee62410c1d9886a83b5cc2af99cd62501"
+}

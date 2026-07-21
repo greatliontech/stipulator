@@ -10,7 +10,7 @@ import (
 )
 
 func gapCmd() *cobra.Command {
-	var reqs []string
+	var reqs, excuseNames []string
 	var reason, coveredID, existsID, manual string
 	var fired, retract bool
 	c := &cobra.Command{
@@ -24,7 +24,7 @@ func gapCmd() *cobra.Command {
 			"the dangling state's repair, and it never touches the tombstone registry.\n" +
 			"Batches apply all-or-nothing.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			conditioned := coveredID != "" || existsID != "" || manual != "" || reason != ""
+			conditioned := coveredID != "" || existsID != "" || manual != "" || reason != "" || len(excuseNames) > 0
 			switch {
 			case retract:
 				if conditioned || fired {
@@ -49,7 +49,11 @@ func gapCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			ups, notes, err := author.Gaps(os.DirFS(chdir), reqs, reason, lc)
+			excuses, err := author.NewExcuses(excuseNames)
+			if err != nil {
+				return err
+			}
+			ups, notes, err := author.Gaps(os.DirFS(chdir), reqs, reason, lc, excuses)
 			if err != nil {
 				return err
 			}
@@ -64,6 +68,7 @@ func gapCmd() *cobra.Command {
 	c.Flags().StringVar(&coveredID, "covered", "", "lands when this requirement is covered (self = each requirement's own coverage)")
 	c.Flags().StringVar(&existsID, "exists", "", "lands when this requirement exists")
 	c.Flags().StringVar(&manual, "manual", "", "lands on this externally judged condition, fired explicitly")
+	c.Flags().StringArrayVar(&excuseNames, "excuses", nil, "violation class the gap excuses: uncovered, stale, or broken (repeatable; default uncovered alone)")
 	c.Flags().BoolVar(&fired, "fired", false, "mark the manual condition fired (alone: fire existing gaps)")
 	c.Flags().BoolVar(&retract, "retract", false, "delete the gap records instead of declaring (dangling records included)")
 	registerReqCompletions(c, "req", "covered", "exists")

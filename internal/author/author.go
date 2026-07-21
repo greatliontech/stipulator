@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -51,6 +52,52 @@ func ParseRole(s string) (stipulatorv1.BindingRole, error) {
 // flag values; more than one set is an error. Fired marks a manual
 // condition already discharged at declaration time — it is meaningless
 // on the machine-evaluable conditions.
+// NewExcuses parses declared excuse classes — uncovered, stale, broken
+// — validating each name (REQ-gap-verb). Empty input declares nothing:
+// the record's default, uncovered alone, applies (REQ-gap-record).
+func NewExcuses(names []string) ([]stipulatorv1.GapExcuse, error) {
+	var out []stipulatorv1.GapExcuse
+	for _, n := range names {
+		switch n {
+		case "uncovered":
+			out = append(out, stipulatorv1.GapExcuse_GAP_EXCUSE_UNCOVERED)
+		case "stale":
+			out = append(out, stipulatorv1.GapExcuse_GAP_EXCUSE_STALE)
+		case "broken":
+			out = append(out, stipulatorv1.GapExcuse_GAP_EXCUSE_BROKEN)
+		default:
+			return nil, fmt.Errorf("unknown excuse class %q (uncovered, stale, broken)", n)
+		}
+	}
+	return out, nil
+}
+
+// ExcuseString renders one excuse class for messages.
+func ExcuseString(x stipulatorv1.GapExcuse) string {
+	switch x {
+	case stipulatorv1.GapExcuse_GAP_EXCUSE_UNCOVERED:
+		return "uncovered"
+	case stipulatorv1.GapExcuse_GAP_EXCUSE_STALE:
+		return "stale"
+	case stipulatorv1.GapExcuse_GAP_EXCUSE_BROKEN:
+		return "broken"
+	}
+	return x.String()
+}
+
+// ExcusesString renders a declared excuse set, naming the default when
+// nothing is declared.
+func ExcusesString(xs []stipulatorv1.GapExcuse) string {
+	if len(xs) == 0 {
+		return "uncovered (default)"
+	}
+	names := make([]string, 0, len(xs))
+	for _, x := range xs {
+		names = append(names, ExcuseString(x))
+	}
+	return strings.Join(names, ", ")
+}
+
 func NewLandingCondition(covered, exists, manual string, fired bool) (*stipulatorv1.LandingCondition, error) {
 	set := 0
 	for _, v := range []string{covered, exists, manual} {
@@ -393,6 +440,21 @@ func Gap(fsys fs.FS, g *stipulatorv1.Gap) (*Update, *stipulatorv1.Gap, error) {
 	if !g.HasLands() {
 		return nil, nil, fmt.Errorf("a landing condition is required")
 	}
+	seenExcuse := map[stipulatorv1.GapExcuse]bool{}
+	for _, x := range g.GetExcuses() {
+		if x != stipulatorv1.GapExcuse_GAP_EXCUSE_UNCOVERED &&
+			x != stipulatorv1.GapExcuse_GAP_EXCUSE_STALE &&
+			x != stipulatorv1.GapExcuse_GAP_EXCUSE_BROKEN {
+			return nil, nil, fmt.Errorf("excuse classes are uncovered, stale, or broken")
+		}
+		if seenExcuse[x] {
+			return nil, nil, fmt.Errorf("excuse class %s repeats", ExcuseString(x))
+		}
+		seenExcuse[x] = true
+	}
+	// Canonical order by enum value: declaration order carries no
+	// meaning, so equal sets compare equal and never read as a rescope.
+	slices.Sort(g.GetExcuses())
 	store, err := records.Load(fsys)
 	if err != nil {
 		return nil, nil, err
@@ -499,7 +561,7 @@ const SelfSentinel = "self"
 // so a typo mid-list declares nothing. Updated gaps whose landing
 // condition changed are surfaced in the returned notes — a retarget is
 // never silent.
-func Gaps(fsys fs.FS, reqs []string, reason string, lands *stipulatorv1.LandingCondition) ([]Update, []string, error) {
+func Gaps(fsys fs.FS, reqs []string, reason string, lands *stipulatorv1.LandingCondition, excuses []stipulatorv1.GapExcuse) ([]Update, []string, error) {
 	if len(reqs) == 0 {
 		return nil, nil, fmt.Errorf("at least one requirement is required")
 	}
@@ -510,6 +572,7 @@ func Gaps(fsys fs.FS, reqs []string, reason string, lands *stipulatorv1.LandingC
 		g := &stipulatorv1.Gap{}
 		g.SetRequirementId(id)
 		g.SetReason(reason)
+		g.SetExcuses(excuses)
 		wantUnfired := false
 		if lands != nil {
 			each := proto.CloneOf(lands)
@@ -531,6 +594,12 @@ func Gaps(fsys fs.FS, reqs []string, reason string, lands *stipulatorv1.LandingC
 		case prior != nil && !proto.Equal(prior.GetLands(), g.GetLands()):
 			notes = append(notes, id+": landing retargeted "+
 				LandingConditionString(prior.GetLands())+" -> "+LandingConditionString(g.GetLands()))
+		// A changed excuse set is surfaced exactly as a changed landing
+		// condition is (REQ-gap-verb): rescoping which reds a standing
+		// record absorbs is never silent.
+		case prior != nil && !slices.Equal(prior.GetExcuses(), g.GetExcuses()):
+			notes = append(notes, id+": excuses rescoped "+
+				ExcusesString(prior.GetExcuses())+" -> "+ExcusesString(g.GetExcuses()))
 		// Preservation overriding an explicitly unfired declaration is
 		// surfaced like any other non-silent consequence (REQ-gap-verb):
 		// after preservation the old and new conditions compare equal, so

@@ -24,7 +24,7 @@ func TestGapsSelfSentinel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ups, _, err := Gaps(fsys, []string{"REQ-au-x", "REQ-au-y"}, "spec ahead of code", lc)
+	ups, _, err := Gaps(fsys, []string{"REQ-au-x", "REQ-au-y"}, "spec ahead of code", lc, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +172,7 @@ func TestGapFiredPreservedOnRedeclare(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, notes, err := Gaps(fsys, []string{"REQ-au-a"}, "new reason", lcUnfired)
+	_, notes, err := Gaps(fsys, []string{"REQ-au-a"}, "new reason", lcUnfired, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +207,7 @@ func TestUnchangedRedeclareIsSilent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, notes, err := Gaps(fsys, []string{"REQ-au-a"}, "r2", lc)
+	_, notes, err := Gaps(fsys, []string{"REQ-au-a"}, "r2", lc, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

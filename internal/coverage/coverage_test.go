@@ -369,6 +369,90 @@ func TestGapStates(t *testing.T) {
 	}
 }
 
+// A gap excuses only the violation classes it declares — uncovered
+// alone when it declares none — so a standing gap never absorbs a later
+// red of a different class, and the mismatch is surfaced on the
+// requirement's own reasons (REQ-gate-no-undeclared, REQ-gap-record).
+//
+//gofresh:pure
+func TestGateGapExcusesBindTheViolationClass(t *testing.T) {
+	stipulate.Covers(t, "REQ-gate-no-undeclared", "REQ-gap-record")
+	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n"
+
+	t.Run("default gap does not absorb a broken red", func(t *testing.T) {
+		spec, store := fixture(t, doc, map[string]string{
+			".stipulator/gaps/a.textproto": "requirement_id: \"REQ-c-a\"\nreason: \"awaiting evidence\"\nlands { manual { condition: \"later\" } }\n",
+		})
+		vr := &verify.Report{Results: []verify.BindingResult{
+			result("REQ-c-a", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestFailed),
+		}}
+		rep := Evaluate(spec, vr, store, true, nil)
+		if rep.GatePasses() || len(rep.Violations) != 1 || rep.Violations[0] != "REQ-c-a" {
+			t.Fatalf("violations = %v, want the class-mismatched red raised", rep.Violations)
+		}
+		var reasons []string
+		for _, r := range rep.Requirements {
+			if r.Id == "REQ-c-a" {
+				reasons = r.Reasons
+			}
+		}
+		found := false
+		for _, reason := range reasons {
+			if strings.Contains(reason, "excuses uncovered, not broken") {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("requirement reasons = %v, want the excuse mismatch surfaced", reasons)
+		}
+	})
+	t.Run("declared class excuses its red", func(t *testing.T) {
+		spec, store := fixture(t, doc, map[string]string{
+			".stipulator/gaps/a.textproto": "requirement_id: \"REQ-c-a\"\nreason: \"symbol rename in flight\"\nlands { manual { condition: \"later\" } }\nexcuses: GAP_EXCUSE_BROKEN\n",
+		})
+		vr := &verify.Report{Results: []verify.BindingResult{
+			result("REQ-c-a", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestFailed),
+		}}
+		rep := Evaluate(spec, vr, store, true, nil)
+		if !rep.GatePasses() {
+			t.Fatalf("declared broken excuse did not excuse the broken red: %v", rep.Violations)
+		}
+	})
+	t.Run("out-of-range enum number excuses nothing, coherently", func(t *testing.T) {
+		spec, store := fixture(t, doc, map[string]string{
+			".stipulator/gaps/a.textproto": "requirement_id: \"REQ-c-a\"\nreason: \"r\"\nlands { manual { condition: \"later\" } }\nexcuses: 7\n",
+		})
+		rep := Evaluate(spec, &verify.Report{}, store, true, nil)
+		if rep.GatePasses() || len(rep.Violations) != 1 {
+			t.Fatalf("violations = %v, want fail-closed on an unrecognized class", rep.Violations)
+		}
+		var reasons []string
+		for _, r := range rep.Requirements {
+			if r.Id == "REQ-c-a" {
+				reasons = r.Reasons
+			}
+		}
+		found := false
+		for _, reason := range reasons {
+			if strings.Contains(reason, "excuses no recognized class, not uncovered") {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("requirement reasons = %v, want a coherent unrecognized-class mismatch", reasons)
+		}
+	})
+	t.Run("declaring a class replaces the default", func(t *testing.T) {
+		spec, store := fixture(t, doc, map[string]string{
+			".stipulator/gaps/a.textproto": "requirement_id: \"REQ-c-a\"\nreason: \"r\"\nlands { manual { condition: \"later\" } }\nexcuses: GAP_EXCUSE_BROKEN\n",
+		})
+		rep := Evaluate(spec, &verify.Report{}, store, true, nil)
+		if rep.GatePasses() || len(rep.Violations) != 1 {
+			t.Fatalf("violations = %v, want the uncovered red raised: broken-only excuse does not cover it", rep.Violations)
+		}
+	})
+}
+
 // TestGate pins REQ-gate-no-undeclared exactly, and REQ-coverage-no-scalar
 // with it: verdicts follow the red-without-gap set, never any aggregate
 // ratio — one undeclared red among many covered fails; all-red-all-gapped

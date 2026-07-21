@@ -271,7 +271,7 @@ func TestGap(t *testing.T) {
 		fsys[up2.Path] = &fstest.MapFile{Data: up2.Content}
 		lc := &stipulatorv1.LandingCondition{}
 		lc.SetExists("REQ-au-b")
-		_, notes, err := Gaps(fsys, []string{"REQ-au-a"}, "retargeted", lc)
+		_, notes, err := Gaps(fsys, []string{"REQ-au-a"}, "retargeted", lc, nil)
 		if err != nil || len(notes) != 1 || !strings.Contains(notes[0], "covered(REQ-au-b) -> exists(REQ-au-b)") {
 			t.Fatalf("retarget not surfaced: %v %v", err, notes)
 		}
@@ -394,7 +394,7 @@ func TestGapsBulk(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ups, _, err := Gaps(fsys, []string{"REQ-au-a", "REQ-au-b"}, "spec ahead of code", lc)
+	ups, _, err := Gaps(fsys, []string{"REQ-au-a", "REQ-au-b"}, "spec ahead of code", lc, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -406,14 +406,71 @@ func TestGapsBulk(t *testing.T) {
 			t.Fatalf("shared reason missing:\n%s", up.Content)
 		}
 	}
-	if _, _, err := Gaps(fsys, []string{"REQ-au-a", "REQ-au-ghost"}, "r", lc); err == nil {
+	if _, _, err := Gaps(fsys, []string{"REQ-au-a", "REQ-au-ghost"}, "r", lc, nil); err == nil {
 		t.Fatal("typo mid-list declared gaps anyway")
 	}
-	if _, _, err := Gaps(fsys, []string{"REQ-au-a", "REQ-au-a"}, "r", lc); err == nil {
+	if _, _, err := Gaps(fsys, []string{"REQ-au-a", "REQ-au-a"}, "r", lc, nil); err == nil {
 		t.Fatal("duplicate requirement accepted")
 	}
-	if _, _, err := Gaps(fsys, nil, "r", lc); err == nil {
+	if _, _, err := Gaps(fsys, nil, "r", lc, nil); err == nil {
 		t.Fatal("empty list accepted")
+	}
+}
+
+// Declared excuse classes are validated at write time, ride the record,
+// and a rescoped set is surfaced exactly as a retargeted landing
+// condition is (REQ-gap-verb, REQ-gap-record).
+//
+//gofresh:pure
+func TestGapExcusesValidatedAndRescopeSurfaced(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-verb", "REQ-gap-record")
+	fsys := testFS(nil)
+	lc, err := NewLandingCondition("", "", "later", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := NewExcuses([]string{"uncovered", "bogus"}); err == nil {
+		t.Fatal("unknown excuse class accepted")
+	}
+	dup, err := NewExcuses([]string{"broken", "broken"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := Gaps(fsys, []string{"REQ-au-a"}, "r", lc, dup); err == nil {
+		t.Fatal("repeated excuse class accepted at write time")
+	}
+
+	declared, err := NewExcuses([]string{"broken"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ups, notes, err := Gaps(fsys, []string{"REQ-au-a"}, "r", lc, declared)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(notes) != 0 {
+		t.Fatalf("fresh declaration produced notes: %v", notes)
+	}
+	if !strings.Contains(string(ups[0].Content), "excuses: GAP_EXCUSE_BROKEN") {
+		t.Fatalf("declared excuse missing from the record:\n%s", ups[0].Content)
+	}
+
+	rescopeFS := testFS(map[string]string{
+		".stipulator/gaps/a.textproto": "requirement_id: \"REQ-au-a\"\nreason: \"r\"\nlands { manual { condition: \"later\" } }\nexcuses: GAP_EXCUSE_BROKEN\n",
+	})
+	_, notes, err = Gaps(rescopeFS, []string{"REQ-au-a"}, "r", lc, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rescoped := false
+	for _, n := range notes {
+		if strings.Contains(n, "excuses rescoped broken -> uncovered (default)") {
+			rescoped = true
+		}
+	}
+	if !rescoped {
+		t.Fatalf("rescope silent: notes = %v", notes)
 	}
 }
 

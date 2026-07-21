@@ -125,7 +125,7 @@ func renderCheck(stdout, stderr io.Writer, res *stipulatorv1.CheckResult) {
 		}
 	}
 	for _, v := range cov.GetViolations() {
-		fmt.Fprintf(stderr, "%s %s is red and no gap names it\n", red("violation:"), bold(v))
+		fmt.Fprintf(stderr, "%s %s is red and no gap excuses it\n", red("violation:"), bold(v))
 	}
 	for _, path := range res.GetPruneResidue() {
 		fmt.Fprintf(stderr, "%s resolved gap lingers: %s — run %s\n", red("prune residue:"), path, bold("stipulator prune"))

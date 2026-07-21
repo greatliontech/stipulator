@@ -104,7 +104,10 @@ the operation — no stored version counters, no lock files.
 
 **REQ-gap-record** (behavior): A gap MUST be a committed textproto record
 under `.stipulator/gaps/` naming exactly one requirement identifier, a
-reason, and a landing condition.
+reason, a landing condition, and the violation classes it excuses —
+`uncovered`, `stale`, or `broken`, defaulting to `uncovered` alone when
+it declares none: a gap is declared about a specific violation class,
+so the record states which reds its reason actually explains.
 
 **REQ-gap-verb** (behavior): Gap records MUST be writable through a tool
 operation that validates the requirement identifier against the compiled
@@ -112,7 +115,9 @@ corpus and requires a reason and a landing condition at write time,
 updating an existing declaration in place — a changed landing condition
 is surfaced, never silently retargeted — and refusing to overwrite a
 record that names a different requirement — with a manual condition's
-fired bit expressible through the operation, and re-declaring a record
+fired bit expressible through the operation, declared excuse classes
+validated at write time and a changed excuse set surfaced exactly as a
+changed landing condition is, and re-declaring a record
 whose manual condition text is unchanged preserving its fired state,
 the preservation surfaced when it overrides an unfired
 declaration: an unfire is a lifecycle retarget, so it happens only
@@ -120,7 +125,8 @@ through an explicit changed declaration, never as a side effect of
 re-declaring.
 
 **REQ-gap-bulk** (behavior): The declaring operation MUST accept many
-requirements in one call sharing one reason and landing condition,
+requirements in one call sharing one reason, landing condition, and
+excuse set,
 validating all-or-nothing so a typo mid-list declares nothing, together
 with a self landing sentinel resolving to each named requirement's own
 coverage — the design-stage idiom where every declared requirement
@@ -180,7 +186,12 @@ declared (a gap names it) or a violation. Pre-existing reds need declarations
 exactly like new ones, which is what makes the migration window auditable.
 
 **REQ-gate-no-undeclared** (behavior): The gate MUST fail exactly when some
-requirement is `uncovered`, `stale`, or `broken` and no gap record names it.
+requirement is `uncovered`, `stale`, or `broken` and no gap record names
+it excusing that class. A gap excuses only the violation classes it
+declares, so a standing gap never absorbs a later red of a different
+class — the reader trusting the gap's reason is never misattributing
+the red — and the class mismatch is surfaced on the requirement, not
+silently equated with an undeclared red.
 
 ## The unified check
 

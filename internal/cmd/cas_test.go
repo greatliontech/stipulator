@@ -136,7 +136,7 @@ func TestVerbsStampPriors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fresh, _, err := author.Gaps(fsys, []string{"REQ-cas-b"}, "new", lc)
+	fresh, _, err := author.Gaps(fsys, []string{"REQ-cas-b"}, "new", lc, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
