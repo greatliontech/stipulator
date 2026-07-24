@@ -271,7 +271,11 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 				e.reasons = append(e.reasons, fmt.Sprintf("bound test %s failed", r.Symbol))
 			case verify.TestNotRun:
 				e.broken = true
-				e.reasons = append(e.reasons, fmt.Sprintf("bound test %s produced no outcome (unwitnessed)", r.Symbol))
+				if r.OutsideWitnessSelection {
+					e.reasons = append(e.reasons, fmt.Sprintf("bound test %s is outside the policy's witness-eligible selection - witness evidence derives only from race invocations; cover its package with a race: true invocation", r.Symbol))
+				} else {
+					e.reasons = append(e.reasons, fmt.Sprintf("bound test %s produced no outcome (unwitnessed)", r.Symbol))
+				}
 			}
 		}
 	}

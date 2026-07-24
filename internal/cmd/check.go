@@ -95,6 +95,15 @@ func renderCheck(stdout, stderr io.Writer, res *stipulatorv1.CheckResult) {
 	} else if !res.GetSuiteHealthJudged() && res.GetPolicyProblem() == nil && len(res.GetCompileProblems()) == 0 {
 		fmt.Fprintln(stderr, dim(fmt.Sprintf("witnessed: %d served fresh, %d executed, %d uncacheable",
 			res.GetTestsServed(), res.GetTestsExecuted(), res.GetTestsUncacheable())))
+		if outside := res.GetTestsOutsidePolicy(); outside > 0 {
+			fmt.Fprintln(stderr, dim(fmt.Sprintf("outside the witness-eligible selection: %d", outside)))
+		}
+		if p := res.GetWitnessSelectionProblem(); p != "" {
+			// Rendered red though it does not itself fail the verdict: with
+			// zero behavior bindings the tree can pass while the selection
+			// cannot witness anything - the line warns, the bindings fail.
+			fmt.Fprintln(stderr, red(p))
+		}
 		renderReasonHistogram(stderr, "re-executed", res.GetExecutedReasons())
 		renderUncacheableHistogram(stderr, res.GetUncacheableReasons())
 		if d := res.GetWitnessPublicationDegraded(); d != "" {

@@ -638,3 +638,166 @@ func TestCheckCancelledRunYieldsNoVerdict(t *testing.T) {
 		}
 	})
 }
+
+// A policy whose witness-eligible selection covers no expected witness -
+// every invocation non-race - names its execution-layer cause once at
+// result level and classes each affected binding's reason, instead of
+// reporting every binding as an unexplained tree defect
+// (REQ-check-witness-selection).
+func TestCheckNamesAnEmptyWitnessSelection(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-witness-selection")
+	if testing.Short() {
+		t.Skip("runs the witness pass over a temporary corpus")
+	}
+	neutralAmbient(t)
+	dir := writeTree(t, baseTree(map[string]string{
+		"specs/check.md": "# Check\n\n**REQ-fix-bound** (behavior): The fixture MUST double.\n",
+		".stipulator/bindings/bound.textproto": "bindings {\n" +
+			"  requirement_id: \"REQ-fix-bound\"\n" +
+			"  backend: \"go\"\n" +
+			"  symbol: \"example.com/checkfix/ok.TestDouble\"\n" +
+			"  role: BINDING_ROLE_TESTS\n" +
+			"}\n",
+	}))
+	res, err := Run(context.Background(), dir, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.GetPassed() {
+		t.Error("check passed with an unwitnessable binding")
+	}
+	if res.GetTestsExecuted() != 0 || res.GetTestsServed() != 0 {
+		t.Fatalf("executed=%d served=%d, want the zero-witness shape", res.GetTestsExecuted(), res.GetTestsServed())
+	}
+	if res.GetTestsOutsidePolicy() == 0 {
+		t.Fatal("outside-selection count missing from the result")
+	}
+	if p := res.GetWitnessSelectionProblem(); !strings.Contains(p, "covered no expected witness") || !strings.Contains(p, "race") {
+		t.Fatalf("witness selection problem = %q, want the execution-layer cause named", p)
+	}
+	reason := ""
+	for _, row := range res.GetCoverage().GetRequirements() {
+		if row.GetId() == "REQ-fix-bound" {
+			reason = strings.Join(row.GetReasons(), "; ")
+		}
+	}
+	if !strings.Contains(reason, "outside the policy's witness-eligible selection") || !strings.Contains(reason, "race: true") {
+		t.Fatalf("binding reason = %q, want the selection class named per binding", reason)
+	}
+}
+
+// With a race invocation covering the package, the same corpus witnesses
+// and the selection problem stays absent - the diagnostic never fires on a
+// healthy selection (REQ-check-witness-selection).
+func TestCheckWitnessSelectionProblemAbsentUnderRacePolicy(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-witness-selection")
+	if testing.Short() {
+		t.Skip("runs the witness pass over a temporary corpus")
+	}
+	neutralAmbient(t)
+	dir := writeTree(t, baseTree(map[string]string{
+		".stipulator/policy.textproto": racePolicy,
+		"specs/check.md":               "# Check\n\n**REQ-fix-bound** (behavior): The fixture MUST double.\n",
+		".stipulator/bindings/bound.textproto": "bindings {\n" +
+			"  requirement_id: \"REQ-fix-bound\"\n" +
+			"  backend: \"go\"\n" +
+			"  symbol: \"example.com/checkfix/ok.TestDouble\"\n" +
+			"  role: BINDING_ROLE_TESTS\n" +
+			"}\n",
+	}))
+	res, err := Run(context.Background(), dir, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.GetWitnessSelectionProblem() != "" {
+		t.Fatalf("selection problem fired on a healthy selection: %q", res.GetWitnessSelectionProblem())
+	}
+	if res.GetTestsOutsidePolicy() != 0 {
+		t.Fatalf("outside=%d on a fully covered selection", res.GetTestsOutsidePolicy())
+	}
+	if res.GetTestsExecuted()+res.GetTestsServed() == 0 {
+		t.Fatal("nothing witnessed under the race policy")
+	}
+}
+
+// The witness-eligible selection boundary holds on the health-judged form:
+// a race-uncovered subject counts and classes identically, and the healthy
+// all-non-race tree fires the result-level cause - non-race legs execute
+// but can never grant (REQ-check-witness-selection's form-neutral arm).
+func TestCheckFullFormNamesRaceUncoveredSubjects(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-witness-selection")
+	if testing.Short() {
+		t.Skip("executes the whole policy over a temporary corpus")
+	}
+	neutralAmbient(t)
+	dir := writeTree(t, baseTree(map[string]string{
+		"specs/check.md": "# Check\n\n**REQ-fix-bound** (behavior): The fixture MUST double.\n",
+		".stipulator/bindings/bound.textproto": "bindings {\n" +
+			"  requirement_id: \"REQ-fix-bound\"\n" +
+			"  backend: \"go\"\n" +
+			"  symbol: \"example.com/checkfix/ok.TestDouble\"\n" +
+			"  role: BINDING_ROLE_TESTS\n" +
+			"}\n",
+	}))
+	res, err := Run(context.Background(), dir, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.GetTestsOutsidePolicy() == 0 {
+		t.Fatal("full form dropped the outside-selection count")
+	}
+	if p := res.GetWitnessSelectionProblem(); !strings.Contains(p, "race") {
+		t.Fatalf("full form selection problem = %q", p)
+	}
+	reason := ""
+	for _, row := range res.GetCoverage().GetRequirements() {
+		if row.GetId() == "REQ-fix-bound" {
+			reason = strings.Join(row.GetReasons(), "; ")
+		}
+	}
+	if !strings.Contains(reason, "outside the policy's witness-eligible selection") {
+		t.Fatalf("full-form binding reason = %q, want the selection class", reason)
+	}
+}
+
+// A subject selected only by multiple non-race invocations executes -
+// failures would count - but can never witness: it is outside the eligible
+// selection, and the executing legs do not mask the result-level cause
+// (REQ-check-witness-selection; the multiply-non-race shape).
+func TestCheckMultiplyNonRaceSelectedSubjectsAreOutside(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-witness-selection")
+	if testing.Short() {
+		t.Skip("runs the witness pass over a temporary corpus")
+	}
+	neutralAmbient(t)
+	twoPlain := "invocations {\n  name: \"a\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./ok\"\n  }\n}\ninvocations {\n  name: \"b\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./ok\"\n  }\n}\n"
+	dir := writeTree(t, baseTree(map[string]string{
+		".stipulator/policy.textproto": twoPlain,
+		"specs/check.md":               "# Check\n\n**REQ-fix-bound** (behavior): The fixture MUST double.\n",
+		".stipulator/bindings/bound.textproto": "bindings {\n" +
+			"  requirement_id: \"REQ-fix-bound\"\n" +
+			"  backend: \"go\"\n" +
+			"  symbol: \"example.com/checkfix/ok.TestDouble\"\n" +
+			"  role: BINDING_ROLE_TESTS\n" +
+			"}\n",
+	}))
+	res, err := Run(context.Background(), dir, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.GetTestsOutsidePolicy() == 0 {
+		t.Fatal("multiply-non-race-selected subject not counted outside")
+	}
+	if p := res.GetWitnessSelectionProblem(); !strings.Contains(p, "covered no expected witness") {
+		t.Fatalf("executing non-race legs masked the cause: %q", p)
+	}
+	reason := ""
+	for _, row := range res.GetCoverage().GetRequirements() {
+		if row.GetId() == "REQ-fix-bound" {
+			reason = strings.Join(row.GetReasons(), "; ")
+		}
+	}
+	if !strings.Contains(reason, "outside the policy's witness-eligible selection") {
+		t.Fatalf("multiply-non-race binding reason = %q", reason)
+	}
+}

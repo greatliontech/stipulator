@@ -87,6 +87,18 @@ message CheckResult {
   // assertion failure (REQ-check-diagnostics). Empty under the
   // health-judged form.
   repeated FailureDiagnostic witness_diagnostics = 13;
+  // Expected witness subjects the accepted policy's witness-eligible
+  // selection does not cover: witness evidence derives from race
+  // invocations, so a subject selected only by non-race invocations - or
+  // by none - can never witness. The count keeps an empty or partial
+  // eligible selection loud while the affected bindings still classify
+  // unwitnessed.
+  int32 tests_outside_policy = 17;
+  // Set exactly when the witness-evidence form served and executed
+  // nothing while expected witnesses sat outside the eligible selection:
+  // the execution-layer cause of an all-unwitnessed verdict, named once
+  // at result level instead of only per binding.
+  string witness_selection_problem = 18;
 }
 
 // CheckSummary is the check operation's summary view: the verdict with
@@ -143,6 +155,8 @@ message CheckSummary {
   repeated string witness_failure_headings = 22;
   int32 witness_failure_headings_omitted = 26;
   string witness_publication_degraded = 23;
+  int32 tests_outside_policy = 27;
+  string witness_selection_problem = 28;
 }
 
 // CheckRedRow is one red coverage row in the summary: enough to act on

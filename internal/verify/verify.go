@@ -97,6 +97,11 @@ type TestRun struct {
 	// the full suite (REQ-evidence-freshness-degrade); empty on the
 	// freshness path proper.
 	Degraded string
+	// OutsideSubjects marks, by "<import-path>.<TestName>", each expected
+	// witness subject the accepted policy's witness-eligible selection
+	// does not cover - witness evidence derives from race invocations, so
+	// these can never witness until the policy covers them.
+	OutsideSubjects map[string]bool
 	// SelectiveServing marks the run's execution class: true when the
 	// selective witness runner produced it — proven-fresh records served
 	// with selective execution of the stale remainder, the degraded
@@ -181,6 +186,11 @@ type BindingResult struct {
 	TestOutcome  TestOutcome
 	WitnessClass WitnessClass
 	RaceEnabled  bool
+	// OutsideWitnessSelection marks a tests- or proves-role binding whose
+	// subject the accepted policy's witness-eligible selection does not
+	// cover: it cannot witness until the policy covers it, and its
+	// TestNotRun outcome names that class rather than a tree defect.
+	OutsideWitnessSelection bool
 }
 
 // WitnessClass classifies what a bound test quantifies over.
@@ -413,6 +423,7 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 
 			if testRun != nil && witnessRole(b.GetRole()) {
 				result.TestOutcome = testRun.Outcomes[b.GetSymbol()]
+				result.OutsideWitnessSelection = testRun.OutsideSubjects[b.GetSymbol()]
 				// RaceEnabled qualifies a witness; a row without a passing
 				// outcome carries no witness to qualify, so it never claims
 				// the run's rigor for an outcome another invocation (or no

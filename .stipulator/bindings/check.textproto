@@ -234,3 +234,39 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "d5c23d9037313a1782e8eef59c64bd8058490645e7f4f1bdea18b5af23d349a8"
 }
+
+bindings {
+  requirement_id: "REQ-check-witness-selection"
+  content_hash: "92f332d7f5c74f22111b9843fced3037ac16cf37fc0bb9e57c78e08b6c83bae2"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckNamesAnEmptyWitnessSelection"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "f542116080c79c211209d810611cd052dd0ff7518395f4a2e8b21da2e5be0bb0"
+}
+
+bindings {
+  requirement_id: "REQ-check-witness-selection"
+  content_hash: "92f332d7f5c74f22111b9843fced3037ac16cf37fc0bb9e57c78e08b6c83bae2"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckWitnessSelectionProblemAbsentUnderRacePolicy"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "3997da851228ceaee3ac24e90d38bb6fa4a53a4c71387f6ece337b72fde18154"
+}
+
+bindings {
+  requirement_id: "REQ-check-witness-selection"
+  content_hash: "92f332d7f5c74f22111b9843fced3037ac16cf37fc0bb9e57c78e08b6c83bae2"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckFullFormNamesRaceUncoveredSubjects"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "8603015249af6d3c60466e1f35f11fe1c9c2c6e076c52d3ff6f1be0ae6ab0987"
+}
+
+bindings {
+  requirement_id: "REQ-check-witness-selection"
+  content_hash: "92f332d7f5c74f22111b9843fced3037ac16cf37fc0bb9e57c78e08b6c83bae2"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckMultiplyNonRaceSelectedSubjectsAreOutside"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "792b26ad4f9c59ce3d53f0194984fea28df83183332bbb4aec893fabbeb8e279"
+}

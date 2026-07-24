@@ -244,6 +244,14 @@ func TestGoRunWitnessesServeExecuteOutsideDisjoint(t *testing.T) {
 			if got, ok := tr.Outcomes[key]; ok {
 				t.Errorf("%s: outside-policy subject %s carries outcome %v", phase, key, got)
 			}
+			if !tr.OutsideSubjects[key] {
+				t.Errorf("%s: outside-policy subject %s not marked in OutsideSubjects", phase, key)
+			}
+		}
+		for key := range tr.Outcomes {
+			if tr.OutsideSubjects[key] {
+				t.Errorf("%s: subject %s both witnessed and outside the selection", phase, key)
+			}
 		}
 		wantReg := verify.Registration{Package: "example.com/wit/covered", Test: "TestOne", Requirement: "REQ-wit-probe"}
 		found := false

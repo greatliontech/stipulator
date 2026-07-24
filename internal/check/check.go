@@ -131,6 +131,17 @@ func Run(ctx context.Context, dir string, full bool) (*stipulatorv1.CheckResult,
 		res.SetWitnessDiagnostics(testRun.Diagnostics)
 	}
 	res.SetTestsExecuted(int32(testRun.Ran))
+	res.SetTestsOutsidePolicy(int32(testRun.OutsidePolicy))
+	// The catastrophic shape - nothing served and no witness outcome
+	// granted while expected witnesses sit outside the eligible selection
+	// - names its execution-layer cause once at result level; without it
+	// every affected binding reads as a tree defect (its per-binding
+	// reason still carries the class). Keying on granted outcomes rather
+	// than executions keeps non-race legs - which run but can never
+	// grant - from masking the cause, and holds on both evidence forms.
+	if testRun.Fresh == 0 && len(testRun.Outcomes) == 0 && testRun.OutsidePolicy > 0 {
+		res.SetWitnessSelectionProblem(fmt.Sprintf("the witness-eligible selection covered no expected witness: %d expected witnesses are outside it - witness evidence derives only from race: true invocations", testRun.OutsidePolicy))
+	}
 	res.SetTestsUncacheable(int32(testRun.Uncached))
 	res.SetUncacheableReasons(testRun.UncacheableReasons)
 	res.SetExecutedReasons(testRun.ExecutedReasons)

@@ -841,6 +841,46 @@ func ExecutePolicyWitnessed(ctx context.Context, dir string, p *stipulatorv1.Tes
 	if err != nil {
 		return nil, nil, err
 	}
+	// The witness-eligible selection boundary holds on this form too: a
+	// subject whose every executing invocation is non-race can never be
+	// granted a witness outcome, and an expected witness no invocation
+	// executed cannot either - both are outside, counted and marked
+	// exactly as the selective form counts them
+	// (REQ-check-witness-selection). Universe discovery degrades
+	// silently: without it only executed subjects classify.
+	facts := indexInvocations(report)
+	raceCovered := map[string]bool{}
+	executed := map[string]bool{}
+	for _, row := range report.GetTests() {
+		top := topLevel(row.GetTest())
+		if strings.HasPrefix(top, "Example") {
+			continue
+		}
+		key := row.GetPackage() + "." + top
+		executed[key] = true
+		if facts.race[row.GetProducer().GetInvocation()] {
+			raceCovered[key] = true
+		}
+	}
+	outsideSubjects := map[string]bool{}
+	for key := range executed {
+		if !raceCovered[key] {
+			outsideSubjects[key] = true
+		}
+	}
+	if universe, uerr := discoverUniverse(ctx, dir); uerr == nil {
+		for _, o := range universe {
+			if o.Kind != ObligationTest && o.Kind != ObligationFuzz {
+				continue
+			}
+			key := o.Package + "." + o.Name
+			if !raceCovered[key] {
+				outsideSubjects[key] = true
+			}
+		}
+	}
+	tr.OutsideSubjects = outsideSubjects
+	tr.OutsidePolicy = len(outsideSubjects)
 	return report, tr, nil
 }
 

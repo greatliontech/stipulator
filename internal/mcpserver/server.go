@@ -356,10 +356,11 @@ func (s *Server) toolCompile(ctx context.Context, req *mcp.CallToolRequest, in s
 		reqs, terms, edges := len(spec.GetRequirements()), len(spec.GetTerms()), len(spec.GetEdges())
 		out.Requirements, out.Terms, out.Edges = &reqs, &terms, &edges
 	}
-	return textOnly(compileLine(out)), out, nil
+	return textOnly(digest(compileLine(out), out.Diagnostics)), out, nil
 }
 
-// compileLine is the one-line text beside the structured compile result.
+// compileLine is the verdict line beside the structured compile result;
+// the caller composes it with the capped diagnostic rows.
 func compileLine(out compileOut) string {
 	if n := len(out.Diagnostics) + out.DiagnosticsOmitted; n > 0 {
 		return fmt.Sprintf("compile: %d diagnostics", n)
@@ -501,7 +502,22 @@ func (s *Server) toolCheck(ctx context.Context, req *mcp.CallToolRequest, in che
 	if err != nil {
 		return nil, nil, err
 	}
-	return summarized(checkLine(res), view)
+	var redRows []string
+	for _, r := range res.GetCoverage().GetRequirements() {
+		switch r.GetBucket() {
+		case stipulatorv1.Bucket_BUCKET_UNCOVERED, stipulatorv1.Bucket_BUCKET_STALE, stipulatorv1.Bucket_BUCKET_BROKEN:
+			row := fmt.Sprintf("%s [%s]", r.GetId(), enumWord(r.GetBucket().String(), "BUCKET_"))
+			if reasons := r.GetReasons(); len(reasons) > 0 {
+				row += ": " + reasons[0]
+			}
+			redRows = append(redRows, row)
+		}
+	}
+	line := checkLine(res)
+	if p := res.GetWitnessSelectionProblem(); p != "" {
+		line += "\n" + p
+	}
+	return summarized(digest(line, redRows), view)
 }
 
 // checkLine is the one-line text beside the structured result: the
@@ -1218,7 +1234,18 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 		}
 		return s.exportTo(in.ExportPath, doc, "context")
 	}
-	return summarized(fmt.Sprintf("context: %d dossiers", len(out.GetDossiers())), out)
+	var dossierRows []string
+	for _, d := range out.GetDossiers() {
+		row := d.GetRequirement().GetId()
+		if cov := d.GetCoverage(); cov != nil {
+			row += " [" + enumWord(cov.GetBucket().String(), "BUCKET_") + "]"
+			if reasons := cov.GetReasons(); len(reasons) > 0 {
+				row += ": " + reasons[0]
+			}
+		}
+		dossierRows = append(dossierRows, row)
+	}
+	return summarized(digest(fmt.Sprintf("context: %d dossiers", len(out.GetDossiers())), dossierRows), out)
 }
 
 type partitionsIn struct {
@@ -1278,7 +1305,16 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 		return s.exportTo(in.ExportPath, doc, "partitions")
 	}
 	m := pr.Proto()
-	return summarized(fmt.Sprintf("partitions: %d components, %d overlaps (%d omitted)", len(m.GetComponents()), len(m.GetOverlaps()), m.GetOverlapsOmitted()), m)
+	var componentRows []string
+	for i, component := range m.GetComponents() {
+		ids := component.GetRequirementIds()
+		head := strings.Join(ids, ", ")
+		if len(ids) > 3 {
+			head = strings.Join(ids[:3], ", ") + fmt.Sprintf(" +%d", len(ids)-3)
+		}
+		componentRows = append(componentRows, fmt.Sprintf("component %d (%d pkgs): %s", i+1, len(component.GetPackages()), head))
+	}
+	return summarized(digest(fmt.Sprintf("partitions: %d components, %d overlaps (%d omitted)", len(m.GetComponents()), len(m.GetOverlaps()), m.GetOverlapsOmitted()), componentRows), m)
 }
 
 // splitIDsLoose splits a comma list; empty input is an empty selection,
@@ -1431,17 +1467,78 @@ func textOnly(line string) *mcp.CallToolResult {
 	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: line}}}
 }
 
-// viewLine names one view result for the text line.
+// digestRowCap bounds the action rows a text digest carries beside the
+// structured payload (REQ-mcp-response-contract's bounded text digest).
+const digestRowCap = 10
+
+// digest composes the verdict line with capped action rows: a lossy
+// projection for clients that expose text content only, never a second
+// encoding of the payload. Truncation is counted, not silent.
+func digest(line string, rows []string) string {
+	omitted := 0
+	if len(rows) > digestRowCap {
+		omitted = len(rows) - digestRowCap
+		rows = rows[:digestRowCap]
+	}
+	var b strings.Builder
+	b.WriteString(line)
+	for _, row := range rows {
+		b.WriteString("\n")
+		b.WriteString(row)
+	}
+	if omitted > 0 {
+		b.WriteString(fmt.Sprintf("\n… and %d more", omitted))
+	}
+	return b.String()
+}
+
+// enumWord renders a proto enum constant under its type prefix as
+// lower-case words: enumWord("RESOLUTION_NOT_FOUND", "RESOLUTION_") ->
+// "not found". Taking the last segment instead would invert multi-word
+// values ("not found" -> "found") - a red row reading healthy.
+func enumWord(name, prefix string) string {
+	return strings.ToLower(strings.ReplaceAll(strings.TrimPrefix(name, prefix), "_", " "))
+}
+
+// viewLine names one view result for the text content: the verdict line
+// plus capped action rows, so a text-only client can identify what to
+// repair without the structured payload (REQ-mcp-response-contract).
 func viewLine(op string, m proto.Message) string {
 	switch v := m.(type) {
 	case *stipulatorv1.VerifySummary:
-		return fmt.Sprintf("verify: %d problems, %d stale, %d broken", v.GetProblems(), v.GetStale(), v.GetBroken())
+		return digest(fmt.Sprintf("verify: %d problems, %d stale, %d broken", v.GetProblems(), v.GetStale(), v.GetBroken()),
+			v.GetWitnessFailureHeadings())
+	case *stipulatorv1.VerifyReport:
+		var rows []string
+		for _, p := range v.GetProblems() {
+			rows = append(rows, p.GetPath()+": "+p.GetMessage())
+		}
+		if len(rows) == 0 {
+			for _, r := range v.GetResults() {
+				rows = append(rows, fmt.Sprintf("%s ← %s [%s, %s]", r.GetRequirementId(), r.GetSymbol(), enumWord(r.GetResolution().String(), "RESOLUTION_"), enumWord(r.GetTestOutcome().String(), "TEST_OUTCOME_")))
+			}
+		}
+		return digest(fmt.Sprintf("verify: %d problems, %d bindings", len(v.GetProblems()), len(v.GetResults())), rows)
 	case *stipulatorv1.CoverageSummary:
 		word := "pass"
 		if !v.GetGatePasses() {
 			word = "fail"
 		}
-		return fmt.Sprintf("gate: %s, %d violations", word, len(v.GetViolations()))
+		return digest(fmt.Sprintf("gate: %s, %d violations", word, len(v.GetViolations())), v.GetViolations())
+	case *stipulatorv1.CoverageReport:
+		word := "pass"
+		if !v.GetGatePasses() {
+			word = "fail"
+		}
+		var rows []string
+		for _, r := range v.GetRequirements() {
+			row := fmt.Sprintf("%s [%s]", r.GetId(), enumWord(r.GetBucket().String(), "BUCKET_"))
+			if reasons := r.GetReasons(); len(reasons) > 0 {
+				row += ": " + reasons[0]
+			}
+			rows = append(rows, row)
+		}
+		return digest(fmt.Sprintf("gate: %s, %d requirements, %d violations", word, len(v.GetRequirements()), len(v.GetViolations())), rows)
 	}
 	return op + " (structured content carries the payload)"
 }
@@ -1503,5 +1600,9 @@ func (s *Server) toolTargets(ctx context.Context, req *mcp.CallToolRequest, in t
 	if g := bindingsurface.Guidance(store, report); g != "" {
 		text += " — " + g
 	}
-	return textOnly(text), m, nil
+	var surfaceRows []string
+	for _, surface := range report.GetSurfaces() {
+		surfaceRows = append(surfaceRows, surface.GetId())
+	}
+	return textOnly(digest(text, surfaceRows)), m, nil
 }

@@ -68,10 +68,13 @@ result may scale with is a runtime product: test output volumes,
 failure counts, or pairwise combinations grow without the caller
 having authored anything, and those surfaces take a cap or an export,
 never a passthrough. One wire encoding of the payload — the
-structured result beside a one-line text summary, or, for a
+structured result beside a bounded text digest (the verdict line plus
+a capped action-row set with counted omissions: enough for a client
+that exposes text content only to identify the file, requirement,
+symbol, or record to repair, and a lossy projection, never a second
+serialization of the whole payload), or, for a
 document-valued result like a spec bundle, the document as the text
-content beside a size-only structured result — never a duplicate
-serialization of the whole payload, and one home per fact within it —
+content beside a size-only structured result — and one home per fact within it —
 a collection travels in exactly one of the payload's messages, so a
 payload embedding another report message leaves every copy of a
 collection the result carries anywhere else in the payload empty. The

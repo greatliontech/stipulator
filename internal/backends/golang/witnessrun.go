@@ -163,6 +163,7 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 	multiSel := map[string]TestSelection{}
 	multiNonRace := map[string]TestSelection{}
 	multiExecuted := map[gofresh.Subject]bool{}
+	multiRaceCovered := map[gofresh.Subject]bool{}
 	for _, ic := range pc.invocations {
 		dst := multiSel
 		if !ic.n.Race {
@@ -182,12 +183,22 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 			}
 			sel[o.Package] = append(sel[o.Package], o.Name)
 			multiExecuted[gofresh.Subject{Package: o.Package, Symbol: o.Name}] = true
+			if ic.n.Race {
+				multiRaceCovered[gofresh.Subject{Package: o.Package, Symbol: o.Name}] = true
+			}
 		}
 	}
+	// Outside the witness-eligible selection means no race-legged
+	// coverage anywhere: a multiply-selected subject whose every covering
+	// invocation is non-race still executes (failures count), but its
+	// legs can never grant a witness outcome, so it is outside exactly as
+	// an unselected subject is (REQ-check-witness-selection).
 	outside := 0
+	outsideSubjects := map[string]bool{}
 	for s := range expected {
-		if !inPolicy[s] && !multiExecuted[s] {
+		if !inPolicy[s] && !multiRaceCovered[s] {
 			outside++
+			outsideSubjects[s.Package+"."+s.Symbol] = true
 		}
 	}
 
@@ -320,7 +331,7 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 	// The selective runner is the serving class by identity — the degraded
 	// empty-served form included (REQ-gap-resolved-pruned's consumers
 	// enforce the mark).
-	tr := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}, RaceEnabled: true, OutsidePolicy: outside, SelectiveServing: true}
+	tr := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}, RaceEnabled: true, OutsidePolicy: outside, OutsideSubjects: outsideSubjects, SelectiveServing: true}
 	for _, wg := range groups {
 		for s, why := range wg.executedWhy {
 			if why == "" {

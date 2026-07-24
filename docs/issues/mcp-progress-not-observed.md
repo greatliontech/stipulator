@@ -15,11 +15,10 @@ minutes cannot complete through this client regardless of what the
 server emits, and the binding constraint is suite wall-time, not
 notification emission; the serving flywheel reaching the consuming
 corpus is the real fix, with view/scope narrowing second). The same
-restart also validates the response contract's single-encoding change:
-tool text content now carries a one-line summary while the payload
-rides structuredContent only — confirm the live client renders
-structured payloads; a text-only client class would see the summary
-line and need the duplication debate reopened.
+restart also observes the response contract's bounded text digest
+(verdict line plus capped action rows), which resolved the text-only
+client class: such clients act on the digest, structured clients on the
+payload — the restart confirms both render as intended.
 
 ## Observed
 

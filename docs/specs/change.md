@@ -246,6 +246,24 @@ which evidence class produced it, so a witness-evidence verdict is never
 mistaken for a health-judged one. A cancelled check yields no verdict at
 all — cancellation is an operational abort, never a pass or a fail.
 
+**REQ-check-witness-selection** (behavior): Witness evidence derives from
+race-detecting invocations: a subject the accepted policy selects only
+through non-race invocations — or through none — can never witness, and
+the check MUST keep that selection boundary loud rather than letting it
+read as tree defects. The result carries the count of expected witness
+subjects outside the witness-eligible selection; each affected tests- or
+proves-role binding's reason names the selection class with the repair
+(cover the package with a race invocation), never the bare unwitnessed
+text; and when the pass serves nothing and grants no witness outcome
+while expected witnesses sit outside the eligible selection, the result
+names that execution-layer cause once at result level — an
+all-unwitnessed verdict must be distinguishable from a broken tree by
+the result alone, without a second invocation or a CLI fallback; a
+non-race leg that executes but can never grant does not mask the
+cause. The boundary holds on both evidence forms — the health-judged
+form counts and classes its race-uncovered subjects identically. The
+diagnostic never fires on a healthy selection.
+
 **REQ-check-diagnostics** (behavior): A failing check MUST surface the
 retained output of every failing policy invocation and every failed or
 degraded witness, naming a degraded execution distinctly from an

@@ -122,6 +122,8 @@ func checkSummary(res *stipulatorv1.CheckResult) *stipulatorv1.CheckSummary {
 	out.SetTestsServed(res.GetTestsServed())
 	out.SetTestsExecuted(res.GetTestsExecuted())
 	out.SetTestsUncacheable(res.GetTestsUncacheable())
+	out.SetTestsOutsidePolicy(res.GetTestsOutsidePolicy())
+	out.SetWitnessSelectionProblem(res.GetWitnessSelectionProblem())
 	out.SetUncacheableReasonCounts(histogram(res.GetUncacheableReasons()))
 	out.SetExecutedReasonCounts(histogram(res.GetExecutedReasons()))
 	out.SetCompileProblems(res.GetCompileProblems())
