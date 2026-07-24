@@ -51,11 +51,21 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   support binding closure content to the compile that consumed it, or when witness records are
   next redesigned.*
 
+- **[check-witnesses-nothing-executed](check-witnesses-nothing-executed.md)** — check
+  stably serves and executes zero witnesses on a warm green tree, failing every behavior
+  binding as per-test `unwitnessed` reds with no execution-layer diagnostic; callers cannot
+  distinguish a wrong tree from a witness engine that never ran. *Lands: when the check
+  result distinguishes execution-layer failure from binding-level red.*
 - **[mcp-progress-not-observed](mcp-progress-not-observed.md)** — suite-running MCP tools
   surfaced no progress to a live agent client; every call was backgrounded at the client's
   timeout. *Lands: when the harness MCP server is next restarted against a live agent
   client (emission audit landed; the live token observation remains, and the same
   restart validates that the client renders structuredContent-only payloads).*
+- **[mcp-structured-content-invisible](mcp-structured-content-invisible.md)** — OpenCode
+  renders Stipulator's one-line MCP summaries but exposes none of the structured payload,
+  leaving compile diagnostics and rich gate, verify, and context views non-actionable.
+  *Lands: when OpenCode consumes structured results or the response contract supplies a
+  bounded actionable fallback for text-only clients.*
 - **[witness-store-gc](witness-store-gc.md)** — departed identities' witness variants
   accumulate without bound (eviction fires only on same-identity installs); cost-only,
   measured at 30 MB across two heavy-development corpora — below any actionable bar.
