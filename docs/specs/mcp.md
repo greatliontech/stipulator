@@ -88,7 +88,12 @@ progress with elapsed time and counts — never inside result payloads, with
 a call that ends at a deadline identifying the phase in which the deadline
 expired and the terminal cause, so a client can distinguish long-running
 work, deadline expiry, cancellation, test failure, and server failure
-without guessing. An operation that exceeds its client's deadline while
+without guessing. A completed suite-running call additionally stamps its
+phase timings as one bounded line of its text digest — the
+notification-blind fallback: a client that saw no notifications (none
+requested, or dropped in transit) still distinguishes slow work from a
+hang after the fact, and the one line is a timing record, not a progress
+stream, so the never-inside-result-payloads rule keeps its point. An operation that exceeds its client's deadline while
 reporting nothing is unusable through the agent surface even when the
 identical CLI operation is healthy. A server-observed deadline expiry
 carries the deadline cause; a client-side deadline surfaces as the

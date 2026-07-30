@@ -421,7 +421,7 @@ func (s *Server) toolVerify(ctx context.Context, req *mcp.CallToolRequest, in ve
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-	return summarized(viewLine("verify", m), m)
+	return summarized(withStamps(viewLine("verify", m), prog), m)
 }
 
 type gateIn struct {
@@ -460,7 +460,7 @@ func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in gate
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-	return summarized(viewLine("gate", m), m)
+	return summarized(withStamps(viewLine("gate", m), prog), m)
 }
 
 // checkIn selects the check's evidence class: full demands suite
@@ -529,7 +529,7 @@ func (s *Server) toolCheck(ctx context.Context, req *mcp.CallToolRequest, in che
 			line += fmt.Sprintf("\n%d requirements are red solely on that boundary (policy-blocked; rows on the full view)", blocked)
 		}
 	}
-	return summarized(digest(line, redRows), view)
+	return summarized(withStamps(digest(line, redRows), prog), view)
 }
 
 // checkLine is the one-line text beside the structured result: the
@@ -553,6 +553,30 @@ func checkLine(res *stipulatorv1.CheckResult) string {
 	return fmt.Sprintf("check: %s (%s; %d served, %d executed, %d uncacheable; %d violations)",
 		verdict, class, res.GetTestsServed(), res.GetTestsExecuted(), res.GetTestsUncacheable(),
 		len(res.GetCoverage().GetViolations()))
+}
+
+// withStamps appends the operation's phase-timing line to the text
+// content — the notification-blind client's after-the-fact record that
+// slow work was work, not a hang (REQ-mcp-progress's completed-call
+// fallback). One bounded line; empty reporters append nothing.
+func withStamps(text string, prog *progress.Reporter) string {
+	if stamps := prog.Stamps(); stamps != "" {
+		return text + "\n" + stamps
+	}
+	return text
+}
+
+// stampedResult is withStamps for write-shaped results: the timing line
+// rides the TEXT content only — never writeOut's structured Notes, which
+// enumerate operation consequences (REQ-mcp-progress's text-digest-only
+// carve-out).
+func stampedResult(res *mcp.CallToolResult, prog *progress.Reporter) *mcp.CallToolResult {
+	if stamps := prog.Stamps(); stamps != "" && len(res.Content) > 0 {
+		if tc, ok := res.Content[0].(*mcp.TextContent); ok {
+			tc.Text += "\n" + stamps
+		}
+	}
+	return res
 }
 
 // summarized emits one wire encoding of the payload: the structured
@@ -1179,14 +1203,14 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 			out.Notes = append(out.Notes, "resolved gap lingers: "+up.Path)
 		}
 		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-		return out.result(), out, nil
+		return stampedResult(out.result(), prog), out, nil
 	}
 	out, err := s.apply(prunes)
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-	return out.result(), out, nil
+	return stampedResult(out.result(), prog), out, nil
 }
 
 type contextIn struct {
@@ -1264,7 +1288,7 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 		}
 		dossierRows = append(dossierRows, row)
 	}
-	return summarized(digest(fmt.Sprintf("context: %d dossiers", len(out.GetDossiers())), dossierRows), out)
+	return summarized(withStamps(digest(fmt.Sprintf("context: %d dossiers", len(out.GetDossiers())), dossierRows), prog), out)
 }
 
 type partitionsIn struct {
@@ -1333,7 +1357,7 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 		}
 		componentRows = append(componentRows, fmt.Sprintf("component %d (%d pkgs): %s", i+1, len(component.GetPackages()), head))
 	}
-	return summarized(digest(fmt.Sprintf("partitions: %d components, %d overlaps (%d omitted)", len(m.GetComponents()), len(m.GetOverlaps()), m.GetOverlapsOmitted()), componentRows), m)
+	return summarized(withStamps(digest(fmt.Sprintf("partitions: %d components, %d overlaps (%d omitted)", len(m.GetComponents()), len(m.GetOverlaps()), m.GetOverlapsOmitted()), componentRows), prog), m)
 }
 
 // splitIDsLoose splits a comma list; empty input is an empty selection,

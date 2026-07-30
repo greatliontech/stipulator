@@ -22,6 +22,8 @@ package progress
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -48,7 +50,16 @@ type Reporter struct {
 	// the current phase: concurrent completion reports race to the lock,
 	// so a non-increasing count is stale evidence, suppressed.
 	maxDone map[string]int32
-	done    bool
+	// stamps records each phase transition's entry time, in order - the
+	// material of the completed-call timing line (REQ-mcp-progress's
+	// notification-blind fallback).
+	stamps []phaseStamp
+	done   bool
+}
+
+type phaseStamp struct {
+	phase   stipulatorv1.Phase
+	entered time.Time
 }
 
 // Option configures a Reporter.
@@ -103,6 +114,7 @@ func (r *Reporter) Phase(p stipulatorv1.Phase) {
 	r.phase = p
 	r.inv, r.completed, r.total = "", 0, 0
 	r.maxDone = nil
+	r.stamps = append(r.stamps, phaseStamp{phase: p, entered: time.Now()})
 	r.emitLocked(stipulatorv1.TerminalCause_TERMINAL_CAUSE_UNSPECIFIED)
 }
 
@@ -248,6 +260,47 @@ func NonBlocking(send func(*stipulatorv1.ProgressEvent)) func(*stipulatorv1.Prog
 		default:
 		}
 	}
+}
+
+// Stamps renders the operation's phase timings as one bounded line
+// ("took 9.8s: compile 300ms, execution 7.4s, verification 2.1s") - the
+// notification-blind client's after-the-fact record that slow work was
+// work, not a hang (REQ-mcp-progress). Empty when no phase was entered.
+// Boundedness rests on the operations' linear phase graphs: only
+// adjacent re-entry dedups, so a phase genuinely revisited would render
+// twice - honestly, and every current operation's phases are linear.
+func (r *Reporter) Stamps() string {
+	if r == nil {
+		return ""
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if len(r.stamps) == 0 {
+		return ""
+	}
+	now := time.Now()
+	var b strings.Builder
+	fmt.Fprintf(&b, "took %s: ", roundDuration(now.Sub(r.start)))
+	for i, st := range r.stamps {
+		end := now
+		if i+1 < len(r.stamps) {
+			end = r.stamps[i+1].entered
+		}
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		fmt.Fprintf(&b, "%s %s", Word(st.phase), roundDuration(end.Sub(st.entered)))
+	}
+	return b.String()
+}
+
+// roundDuration renders a duration at tenth-of-a-second precision - the
+// stamp is orientation, not measurement.
+func roundDuration(d time.Duration) string {
+	if d < 0 {
+		d = 0
+	}
+	return d.Round(100 * time.Millisecond).String()
 }
 
 // Word names a phase for human-facing attribution, e.g. a deadline

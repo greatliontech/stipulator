@@ -2,6 +2,7 @@ package progress
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -240,5 +241,40 @@ func TestNilReporterAndSinkAreInert(t *testing.T) {
 	ctx := NewContext(context.Background(), sinkless)
 	if FromContext(ctx) != sinkless {
 		t.Error("context round trip lost the reporter")
+	}
+}
+
+// The completed-call timing line: entered phases render in order under
+// one total — the notification-blind client's after-the-fact record
+// (REQ-mcp-progress). ADJACENT re-entry adds no stamp (the operations'
+// phase graphs are linear, which is what bounds the line); a reporter
+// that never entered a phase stamps nothing.
+func TestStampsRenderAdjacentDedupedPhases(t *testing.T) {
+	r := New(nil)
+	r.Phase(stipulatorv1.Phase_PHASE_COMPILE)
+	r.Phase(stipulatorv1.Phase_PHASE_COMPILE)
+	r.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
+	r.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
+	got := r.Stamps()
+	if !strings.HasPrefix(got, "took ") {
+		t.Fatalf("stamps = %q, want a total-led line", got)
+	}
+	for _, want := range []string{"compile ", "execution ", "verification "} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("stamps = %q, missing %q", got, want)
+		}
+	}
+	if strings.Count(got, "compile ") != 1 {
+		t.Fatalf("re-entered phase stamped twice: %q", got)
+	}
+	if ci, ei := strings.Index(got, "compile"), strings.Index(got, "execution"); ci > ei {
+		t.Fatalf("stamps out of order: %q", got)
+	}
+	if fresh := New(nil).Stamps(); fresh != "" {
+		t.Fatalf("phaseless reporter stamped %q", fresh)
+	}
+	var nilReporter *Reporter
+	if nilReporter.Stamps() != "" {
+		t.Fatal("nil reporter stamped")
 	}
 }

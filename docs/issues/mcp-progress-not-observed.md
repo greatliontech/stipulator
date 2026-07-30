@@ -1,24 +1,17 @@
 # Suite-running MCP tools surfaced no progress to a live agent client
 
-Lands: when the harness MCP server is next restarted against a live
-agent client (the emission audit landed: every suite-running tool arms
-the progress seam, and the server instructions teach clients to send a
-token; what remains is the live observation — token presence from a
-real Claude Code client, notifications flowing — and, if tokens are
-absent, the observable silence is the spec's own "only when the client
-asked" clause, not an emission defect. Client patience observed: 120
-seconds, tighter than the 600s cap previously assumed; live dogfood
-2026-07-20 against the agent-first server sharpened both numbers: the
-client backgrounds the call at exactly 120s and then kills the
-backgrounded task at a hard 600s cap — so any check longer than ten
-minutes cannot complete through this client regardless of what the
-server emits, and the binding constraint is suite wall-time, not
-notification emission; the serving flywheel reaching the consuming
-corpus is the real fix, with view/scope narrowing second). The same
-restart also observes the response contract's bounded text digest
-(verdict line plus capped action rows), which resolved the text-only
-client class: such clients act on the digest, structured clients on the
-payload — the restart confirms both render as intended.
+Lands: when the harness MCP server is next restarted against a live agent
+client - the remaining arm is purely observational: token presence from a
+real Claude Code client and notifications flowing (or their absence
+confirmed as the spec's own "only when the client asked" clause). The
+notification-blind fallback is no longer pending: every completed
+suite-running call now stamps its phase timings as one bounded text line
+(REQ-mcp-progress's completed-call fallback), so even a client that saw
+no notifications distinguishes slow work from a hang after the fact.
+Client patience observed: 120 seconds to backgrounding, hard 600s cap -
+any check longer than ten minutes cannot complete through this client
+class regardless of emission, so the binding constraint there is suite
+wall-time (the serving flywheel), not notifications.
 
 ## Observed
 

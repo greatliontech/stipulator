@@ -338,6 +338,17 @@ func TestCheckToolProgressRidesNotificationsNotPayload(t *testing.T) {
 	if err := protojson.Unmarshal(b, &stipulatorv1.CheckResult{}); err != nil {
 		t.Fatalf("result payload is not a strict CheckResult: %v\n%s", err, b)
 	}
+
+	// The completed call's TEXT carries the one bounded timing line - the
+	// notification-blind fallback: entered phases with durations under a
+	// total (REQ-mcp-progress).
+	tc, ok := res.Content[0].(*mcp.TextContent)
+	if !ok {
+		t.Fatalf("no text content on the result: %T", res.Content[0])
+	}
+	if !strings.Contains(tc.Text, "took ") || !strings.Contains(tc.Text, "compile ") || !strings.Contains(tc.Text, "execution ") {
+		t.Fatalf("completed call carries no phase-timing line: %s", tc.Text)
+	}
 	for _, leak := range []string{"terminalCause", "\"phase\"", "\"elapsed\""} {
 		if strings.Contains(string(b), leak) {
 			t.Errorf("progress vocabulary %s leaked into the result payload: %s", leak, b)
@@ -444,6 +455,7 @@ func TestGateAndContextToolsReportPhasedProgress(t *testing.T) {
 	if cause != stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED {
 		t.Errorf("gate terminal cause = %v, want COMPLETED", cause)
 	}
+	assertStampedText(t, res, "gate")
 
 	sess2, log2 := progressPipelineHarness(t)
 	params = &mcp.CallToolParams{Name: "context", Arguments: map[string]any{"ids": "REQ-m-a", "slice": true}}
@@ -466,6 +478,7 @@ func TestGateAndContextToolsReportPhasedProgress(t *testing.T) {
 	if cause != stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED {
 		t.Errorf("context terminal cause = %v, want COMPLETED", cause)
 	}
+	assertStampedText(t, res, "context")
 }
 
 // TestVerifyPrunePartitionsToolsReportPhasedProgress pins the shared
@@ -511,7 +524,27 @@ func TestVerifyPrunePartitionsToolsReportPhasedProgress(t *testing.T) {
 			if cause != stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED {
 				t.Errorf("%s terminal cause = %v, want COMPLETED", tc.tool, cause)
 			}
+			assertStampedText(t, res, tc.tool)
 		})
+	}
+}
+
+// assertStampedText pins the completed-call timing line on one tool's
+// TEXT content — and its absence from any structured notes, where a
+// timing record would pollute consequence enumeration
+// (REQ-mcp-progress's text-digest-only fallback).
+func assertStampedText(t *testing.T, res *mcp.CallToolResult, tool string) {
+	t.Helper()
+	tc, ok := res.Content[0].(*mcp.TextContent)
+	if !ok {
+		t.Fatalf("%s: no text content: %T", tool, res.Content[0])
+	}
+	if !strings.Contains(tc.Text, "took ") {
+		t.Fatalf("%s: completed call carries no phase-timing line: %s", tool, tc.Text)
+	}
+	b, _ := json.Marshal(res.StructuredContent)
+	if strings.Contains(string(b), "took ") {
+		t.Fatalf("%s: timing record leaked into the structured payload: %s", tool, b)
 	}
 }
 
