@@ -30,12 +30,17 @@ func TestPinNeverRewritesDifferingContent(t *testing.T) {
 	stipulate.Covers(t, "REQ-pin-backfill")
 	stale := strings.Repeat("0", 64)
 	current := strings.Repeat("1", 64)
-	store := storeWith(t, "bindings {\n  requirement_id: \"REQ-r-a\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n  content_hash: \""+stale+"\"\n}\n")
-	ups, err := Pin(store, map[string]string{"REQ-r-a": current}, nil)
+	store := storeWith(t, "bindings {\n  requirement_id: \"REQ-r-b\"\n  backend: \"go\"\n  symbol: \"example.com/p.G\"\n  role: BINDING_ROLE_IMPLEMENTS\n  content_hash: \""+stale+"\"\n}\n\nbindings {\n  requirement_id: \"REQ-r-a\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n  content_hash: \""+stale+"\"\n}\n\nbindings {\n  requirement_id: \"REQ-r-a\"\n  backend: \"go\"\n  symbol: \"example.com/p.F2\"\n  role: BINDING_ROLE_TESTS\n  content_hash: \""+stale+"\"\n}\n")
+	ups, preserved, err := Pin(store, map[string]string{"REQ-r-a": current, "REQ-r-b": current}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(ups) != 0 {
-		t.Fatalf("differing content pin rewritten by the blanket form: %v", ups)
+		t.Fatalf("differing content pins rewritten by the blanket form: %v", ups)
+	}
+	// Deduplicated across bindings of one requirement, sorted for a
+	// deterministic response line.
+	if len(preserved) != 2 || preserved[0] != "REQ-r-a" || preserved[1] != "REQ-r-b" {
+		t.Fatalf("preserved differing pins = %v, want [REQ-r-a REQ-r-b]", preserved)
 	}
 }

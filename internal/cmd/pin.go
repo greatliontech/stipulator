@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -20,8 +21,10 @@ func pinCmd() *cobra.Command {
 		Short: "Backfill binding content and shape pins; --req re-consents named requirements",
 		Long: "Without flags, backfills unset content pins and refreshes shape pins" +
 			" - a differing content pin is never rewritten by the blanket form, so" +
-			" staleness cannot be laundered. Naming requirements with --req is the" +
-			" editorial re-consent: their bindings re-pin to the current clause text.",
+			" staleness cannot be laundered; the requirements whose differing pins" +
+			" were preserved are named as awaiting re-consent. Naming requirements" +
+			" with --req is the editorial re-consent: their bindings re-pin to the" +
+			" current clause text.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(reqs) > 0 {
 				for _, id := range reqs {
@@ -72,7 +75,7 @@ func pinCmd() *cobra.Command {
 					}
 				}
 			}
-			updates, err := records.Pin(store, hashes, shapes)
+			updates, preserved, err := records.Pin(store, hashes, shapes)
 			if err != nil {
 				return err
 			}
@@ -89,8 +92,16 @@ func pinCmd() *cobra.Command {
 			if err := applyUpdates(chdir, ups); err != nil {
 				return err
 			}
-			if len(updates) == 0 {
+			// A no-op beside preserved differing pins must not read as
+			// quiescence: "all pins current" is false exactly then.
+			switch {
+			case len(updates) == 0 && len(preserved) == 0:
 				fmt.Println("all pins current")
+			case len(updates) == 0:
+				fmt.Println("no pins backfilled")
+			}
+			if len(preserved) > 0 {
+				fmt.Printf("awaiting re-consent (pin --req): %s\n", strings.Join(preserved, ", "))
 			}
 			return nil
 		},

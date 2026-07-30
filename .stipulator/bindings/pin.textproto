@@ -3,16 +3,16 @@
 
 bindings {
   requirement_id: "REQ-pin-backfill"
-  content_hash: "be845e9bf500e2eba60b0b94360a52cbaa188666f8bf02c72c7feba8b3b1d48f"
+  content_hash: "f7561f31b402d727dc1c39e122d6618f208047e3fbaf499ae87993744ba13cb6"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/records.Pin"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "e31622871c78a83e626362dfa3ffb292b8c61528fce2eb964b665627ebbfc09b"
+  shape_hash: "c87ad2c6f2975e5445c0f3254848056089d2de1653b9ba3978d3dfa04f5c3abc"
 }
 
 bindings {
   requirement_id: "REQ-pin-backfill"
-  content_hash: "be845e9bf500e2eba60b0b94360a52cbaa188666f8bf02c72c7feba8b3b1d48f"
+  content_hash: "f7561f31b402d727dc1c39e122d6618f208047e3fbaf499ae87993744ba13cb6"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.TestPin"
   role: BINDING_ROLE_TESTS
@@ -21,7 +21,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-pin-backfill"
-  content_hash: "be845e9bf500e2eba60b0b94360a52cbaa188666f8bf02c72c7feba8b3b1d48f"
+  content_hash: "f7561f31b402d727dc1c39e122d6618f208047e3fbaf499ae87993744ba13cb6"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPinTool"
   role: BINDING_ROLE_TESTS
@@ -30,9 +30,18 @@ bindings {
 
 bindings {
   requirement_id: "REQ-pin-backfill"
-  content_hash: "be845e9bf500e2eba60b0b94360a52cbaa188666f8bf02c72c7feba8b3b1d48f"
+  content_hash: "f7561f31b402d727dc1c39e122d6618f208047e3fbaf499ae87993744ba13cb6"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/records.TestPinNeverRewritesDifferingContent"
   role: BINDING_ROLE_TESTS
   shape_hash: "460d30164510577693cc7be3622368b6589d51bed9bf3c8382ceabed799b94dc"
+}
+
+bindings {
+  requirement_id: "REQ-pin-backfill"
+  content_hash: "f7561f31b402d727dc1c39e122d6618f208047e3fbaf499ae87993744ba13cb6"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestPinCLINamesPreservedDifferingPins"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "bb186ab6b5c4ca3142325292e03b3743fa5a365cb0f42e04ab490bb68a71c65f"
 }

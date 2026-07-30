@@ -53,7 +53,7 @@ const serverInstructions = "stipulator verifies code against a compiled requirem
 	"The loop: check answers \"does this tree pass\" (summary view by default; it serves fresh witness evidence and executes only what moved, so warm calls are cheap; full=true additionally judges suite health). " +
 	"gate/verify give coverage and binding detail (summary default; views/scopes opt-in). " +
 	"read_spec and context orient before writing code; partitions splits red work into disjoint components. " +
-	"Authoring: bind (claims batch, all-or-nothing), gap (declare/fire/retract, batch), attest_requirement, pin (re-consent after spec edits), dispose (editorial/retire/supersede), retarget (bulk symbol-prefix rewrite after a module rename; check=true previews), prune (resolved records; dangling=true repairs orphans). " +
+	"Authoring: bind (claims batch, all-or-nothing), gap (declare/fire/retract, batch), attest_requirement, pin (blanket backfills unset pins only and names differing pins awaiting re-consent; ids = editorial re-consent that rewrites them), dispose (editorial/retire/supersede), retarget (bulk symbol-prefix rewrite after a module rename; check=true previews), prune (resolved records; dangling=true repairs orphans). " +
 	"targets exports binding surfaces (export_path under .stipulator/exports/ for large handoffs, e.g. gomutant). " +
 	"Long calls (check/gate/verify/prune/context/partitions) report phase progress when the request carries a progress token - send one and be patient rather than assuming a hang; results state the phase a deadline expired in. " +
 	"All writes stay under .stipulator/; spec documents and source are never edited."
@@ -209,7 +209,7 @@ func (s *Server) MCP() *mcp.Server {
 	}, guarded(s, s.toolAttestRequirement))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "pin",
-		Description: "Backfill unset content pins and refresh shape pins; with ids, editorially re-pin those requirements' bindings to the current clause text (re-consent). Never silent: no-ops say so.",
+		Description: "Backfill unset content pins and refresh shape pins; a differing content pin is never rewritten — the response names those requirements as awaiting re-consent. With ids, editorially re-pin those requirements' bindings to the current clause text (re-consent). Never silent: no-ops say so.",
 	}, guarded(s, s.toolPin))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "dispose",
@@ -962,7 +962,7 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 			}
 		}
 	}
-	updates, err := records.Pin(store, hashes, shapes)
+	updates, preserved, err := records.Pin(store, hashes, shapes)
 	if err != nil {
 		return nil, writeOut{}, err
 	}
@@ -977,10 +977,17 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 	if err != nil {
 		return nil, writeOut{}, err
 	}
-	if len(out.Wrote) == 0 {
-		// A no-op must say so: a silent {} reads as "did something,
-		// reported nothing".
+	// A no-op must say so: a silent {} reads as "did something, reported
+	// nothing". Beside preserved differing pins the wording shifts —
+	// "all pins current" is false exactly then.
+	switch {
+	case len(out.Wrote) == 0 && len(preserved) == 0:
 		out.Notes = []string{"all pins current"}
+	case len(out.Wrote) == 0:
+		out.Notes = []string{"no pins backfilled"}
+	}
+	if len(preserved) > 0 {
+		out.Notes = append(out.Notes, "awaiting re-consent (pass ids): "+strings.Join(preserved, ", "))
 	}
 	slices.Sort(out.Wrote)
 	return out.result(), out, nil

@@ -832,7 +832,31 @@ func TestPinTool(t *testing.T) {
 	sess, writes := harness(t, map[string]string{
 		".stipulator/bindings/stale.textproto": "bindings {\n  requirement_id: \"REQ-m-a\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n  content_hash: \"" + strings.Repeat("0", 64) + "\"\n}\n",
 	})
-	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "pin", Arguments: map[string]any{
+	// The blanket form never rewrites the differing pin, and it names the
+	// requirement awaiting re-consent in its own response — the caller
+	// must not need a later staleness report to learn about it.
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "pin", Arguments: map[string]any{}})
+	if err != nil || res.IsError {
+		t.Fatalf("blanket pin over differing pin: %v %v", err, res)
+	}
+	if text := toolPayload(t, res); !strings.Contains(text, "awaiting re-consent") || !strings.Contains(text, "REQ-m-a") {
+		t.Fatalf("blanket pin conceals the preserved differing pin: %s", text)
+	}
+	if content, ok := writes[".stipulator/bindings/stale.textproto"]; ok && !strings.Contains(string(content), strings.Repeat("0", 64)) {
+		t.Fatalf("blanket pin laundered the differing content pin: %s", content)
+	}
+
+	// A repeat blanket run writes nothing, yet the differing pin still
+	// awaits: the no-op wording must not claim quiescence.
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "pin", Arguments: map[string]any{}})
+	if err != nil || res.IsError {
+		t.Fatalf("repeat blanket pin: %v %v", err, res)
+	}
+	if text := toolPayload(t, res); strings.Contains(text, "all pins current") || !strings.Contains(text, "no pins backfilled") {
+		t.Fatalf("no-op beside a preserved differing pin misreported: %s", text)
+	}
+
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "pin", Arguments: map[string]any{
 		"ids": "REQ-m-a",
 	}})
 	if err != nil || res.IsError {

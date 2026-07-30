@@ -7,13 +7,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   verdict arm, and a corpus barred from race runs has no sanctioned path to an informative
   verdict. *Lands: when the zero-covered-witness case gets its own verdict state and non-race
   witness eligibility is expressible or its absence documented.*
-- **[pin-check-staleness-disagreement](pin-check-staleness-disagreement.md)** — resolved to a
-  narrower finding: the blanket pin's anti-laundering refusal is by design, but its "all pins
-  current" response conceals the differing content pins awaiting `--req` re-consent, and the
-  MCP docstring describes the blanket form as the re-consent it deliberately is not. *Lands:
-  when the blanket response names the preserved pins and the MCP description states the
-  split.*
-
 - **[proto-backend](proto-backend.md)** — descriptor-level verification via protocompile;
   spec exists, five requirements gapped. *Lands: when a corpus needs wire evidence that
   shape pins and Go witnesses cannot cover.*

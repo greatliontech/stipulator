@@ -126,7 +126,10 @@ func TestPin(t *testing.T) {
 	})
 	_ = rep
 	hashes := map[string]string{"REQ-v-a": strings.Repeat("a", 64)}
-	updates, err := records.Pin(store, hashes, nil)
+	updates, preserved, err := records.Pin(store, hashes, nil)
+	if len(preserved) != 0 {
+		t.Fatalf("nothing differs yet, preserved = %v", preserved)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,15 +152,21 @@ func TestPin(t *testing.T) {
 	store3, _ := records.Load(fstest.MapFS{
 		".stipulator/bindings/x.textproto": {Data: []byte(binding("REQ-v-a", strings.Repeat("0", 64)))},
 	})
-	if ups, err := records.Pin(store3, hashes, nil); err != nil || len(ups) != 0 {
+	ups, preserved3, err := records.Pin(store3, hashes, nil)
+	if err != nil || len(ups) != 0 {
 		t.Fatalf("differing pin laundered by pin: %v %v", ups, err)
+	}
+	// The preserved pin is named in the return so every surface can report
+	// what awaits re-consent. (REQ-pin-backfill)
+	if len(preserved3) != 1 || preserved3[0] != "REQ-v-a" {
+		t.Fatalf("preserved differing pins = %v, want [REQ-v-a]", preserved3)
 	}
 
 	// Deterministic: pinning twice produces identical bytes.
 	store2, _ := records.Load(fstest.MapFS{
 		".stipulator/bindings/x.textproto": {Data: got},
 	})
-	if again, err := records.Pin(store2, hashes, nil); err != nil || len(again) != 0 {
+	if again, _, err := records.Pin(store2, hashes, nil); err != nil || len(again) != 0 {
 		t.Fatalf("re-pin of pinned file produced changes: %v %v", again, err)
 	}
 }
@@ -169,7 +178,7 @@ func TestPinRefusesCommentedFile(t *testing.T) {
 		".stipulator/bindings/x.textproto": header + binding("REQ-v-a", "") +
 			"# reviewed by hand, keep\n" + binding("REQ-v-b", ""),
 	})
-	_, err := records.Pin(store, map[string]string{
+	_, _, err := records.Pin(store, map[string]string{
 		"REQ-v-a": strings.Repeat("a", 64),
 		"REQ-v-b": strings.Repeat("b", 64),
 	}, nil)
@@ -293,7 +302,7 @@ func TestBackendResolution(t *testing.T) {
 	}
 
 	// Pin the shape, re-run: shape pinned.
-	updates, err := records.Pin(store, nil, map[string]string{
+	updates, _, err := records.Pin(store, nil, map[string]string{
 		records.ShapeKey("go", "example.com/p.F"): strings.Repeat("s", 64),
 	})
 	if err != nil {

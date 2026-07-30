@@ -33,7 +33,10 @@ is never rewritten without naming the requirement, so staleness cannot be
 laundered by a blanket re-pin. Naming requirements explicitly is the
 editorial re-consent (REQ-change-editorial), surfaced under pin as well
 as the dispose verb, and a pin invocation that changes nothing reports
-the no-op rather than returning silence.
+the no-op rather than returning silence. The blanket form also names the
+requirements whose differing content pins it preserved: refusing to
+launder is only honest when the caller learns what awaits re-consent from
+the pin response itself, not from a later staleness report.
 
 **REQ-evidence-record-verbs** (behavior): Binding records MUST be writable
 through tool operations that validate at write time — the requirement

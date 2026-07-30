@@ -2,6 +2,7 @@ package records
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -13,23 +14,29 @@ func ShapeKey(backend, symbol string) string { return backend + "|" + symbol }
 // current hash) and shape pins (set or differing — shapes come from
 // resolution and cannot lie). A differing content pin is never rewritten:
 // that is an editorial disposition, and staleness must not be laundered by
-// a blanket re-pin. Unknown requirements are left untouched — reporting
-// them is the verifier's job. Files whose pins are all current are omitted
-// from the result.
+// a blanket re-pin. The requirements whose differing pins were preserved
+// are returned (sorted, deduplicated) so every surface can name what
+// awaits editorial re-consent (REQ-pin-backfill). Unknown requirements
+// are left untouched — reporting them is the verifier's job. Files whose
+// pins are all current are omitted from the result.
 //
 // Output is rendered by hand rather than through prototext.Marshal: the
 // protobuf-go text marshaler deliberately randomizes its whitespace, and
 // pin output is observable state that determinism rules over. The leading
 // comment header of each file (its '#' lines) is preserved.
-func Pin(store *Store, hashes, shapes map[string]string) (map[string][]byte, error) {
+func Pin(store *Store, hashes, shapes map[string]string) (map[string][]byte, []string, error) {
 	out := map[string][]byte{}
+	preservedSet := map[string]bool{}
 	for _, bf := range store.Bindings {
 		changed := false
 		for _, b := range bf.Set.GetBindings() {
 			h, ok := hashes[b.GetRequirementId()]
-			if ok && b.GetContentHash() == "" {
+			switch {
+			case ok && b.GetContentHash() == "":
 				b.SetContentHash(h)
 				changed = true
+			case ok && b.GetContentHash() != h:
+				preservedSet[b.GetRequirementId()] = true
 			}
 			s, ok := shapes[ShapeKey(b.GetBackend(), b.GetSymbol())]
 			if ok && b.GetShapeHash() != s {
@@ -44,11 +51,16 @@ func Pin(store *Store, hashes, shapes map[string]string) (map[string][]byte, err
 		// commentary outside the leading header, so refuse instead of
 		// silently dropping it.
 		if line := commentOutsideHeader(bf.Raw); line > 0 {
-			return nil, fmt.Errorf("%s:%d: comment outside the leading header block; move commentary to the commit message before pinning", bf.Path, line)
+			return nil, nil, fmt.Errorf("%s:%d: comment outside the leading header block; move commentary to the commit message before pinning", bf.Path, line)
 		}
 		out[bf.Path] = renderBindingSet(bf)
 	}
-	return out, nil
+	preserved := make([]string, 0, len(preservedSet))
+	for id := range preservedSet {
+		preserved = append(preserved, id)
+	}
+	sort.Strings(preserved)
+	return out, preserved, nil
 }
 
 // commentOutsideHeader returns the 1-based line of the first comment after
