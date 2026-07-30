@@ -1714,16 +1714,17 @@ func (b0 ChangeSignature_builder) Build() *ChangeSignature {
 
 // RequirementCoverage is one requirement's evaluated bucket.
 type RequirementCoverage struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Id          *string                `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_Kind        ClauseKind             `protobuf:"varint,2,opt,name=kind,enum=stipulator.v1.ClauseKind"`
-	xxx_hidden_Keyword     Keyword                `protobuf:"varint,3,opt,name=keyword,enum=stipulator.v1.Keyword"`
-	xxx_hidden_Bucket      Bucket                 `protobuf:"varint,4,opt,name=bucket,enum=stipulator.v1.Bucket"`
-	xxx_hidden_Reasons     []string               `protobuf:"bytes,5,rep,name=reasons"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	state                              protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id                      *string                `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Kind                    ClauseKind             `protobuf:"varint,2,opt,name=kind,enum=stipulator.v1.ClauseKind"`
+	xxx_hidden_Keyword                 Keyword                `protobuf:"varint,3,opt,name=keyword,enum=stipulator.v1.Keyword"`
+	xxx_hidden_Bucket                  Bucket                 `protobuf:"varint,4,opt,name=bucket,enum=stipulator.v1.Bucket"`
+	xxx_hidden_Reasons                 []string               `protobuf:"bytes,5,rep,name=reasons"`
+	xxx_hidden_WitnessSelectionBlocked bool                   `protobuf:"varint,6,opt,name=witness_selection_blocked,json=witnessSelectionBlocked"`
+	XXX_raceDetectHookData             protoimpl.RaceDetectHookData
+	XXX_presence                       [1]uint32
+	unknownFields                      protoimpl.UnknownFields
+	sizeCache                          protoimpl.SizeCache
 }
 
 func (x *RequirementCoverage) Reset() {
@@ -1795,28 +1796,40 @@ func (x *RequirementCoverage) GetReasons() []string {
 	return nil
 }
 
+func (x *RequirementCoverage) GetWitnessSelectionBlocked() bool {
+	if x != nil {
+		return x.xxx_hidden_WitnessSelectionBlocked
+	}
+	return false
+}
+
 func (x *RequirementCoverage) SetId(v string) {
 	x.xxx_hidden_Id = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
 }
 
 func (x *RequirementCoverage) SetKind(v ClauseKind) {
 	x.xxx_hidden_Kind = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 6)
 }
 
 func (x *RequirementCoverage) SetKeyword(v Keyword) {
 	x.xxx_hidden_Keyword = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 6)
 }
 
 func (x *RequirementCoverage) SetBucket(v Bucket) {
 	x.xxx_hidden_Bucket = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
 }
 
 func (x *RequirementCoverage) SetReasons(v []string) {
 	x.xxx_hidden_Reasons = v
+}
+
+func (x *RequirementCoverage) SetWitnessSelectionBlocked(v bool) {
+	x.xxx_hidden_WitnessSelectionBlocked = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 6)
 }
 
 func (x *RequirementCoverage) HasId() bool {
@@ -1847,6 +1860,13 @@ func (x *RequirementCoverage) HasBucket() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
 }
 
+func (x *RequirementCoverage) HasWitnessSelectionBlocked() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
 func (x *RequirementCoverage) ClearId() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Id = nil
@@ -1867,6 +1887,11 @@ func (x *RequirementCoverage) ClearBucket() {
 	x.xxx_hidden_Bucket = Bucket_BUCKET_UNSPECIFIED
 }
 
+func (x *RequirementCoverage) ClearWitnessSelectionBlocked() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_WitnessSelectionBlocked = false
+}
+
 type RequirementCoverage_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -1875,6 +1900,13 @@ type RequirementCoverage_builder struct {
 	Keyword *Keyword
 	Bucket  *Bucket
 	Reasons []string
+	// The row is red solely because its bound tests sit outside the
+	// policy's witness-eligible selection: a policy-level cause restated
+	// per requirement, so bounded projections can fold these rows into a
+	// count behind the one result-level diagnostic instead of flooding
+	// the summary with identical restatements
+	// (REQ-check-witness-selection).
+	WitnessSelectionBlocked *bool
 }
 
 func (b0 RequirementCoverage_builder) Build() *RequirementCoverage {
@@ -1882,22 +1914,26 @@ func (b0 RequirementCoverage_builder) Build() *RequirementCoverage {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
 		x.xxx_hidden_Id = b.Id
 	}
 	if b.Kind != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 6)
 		x.xxx_hidden_Kind = *b.Kind
 	}
 	if b.Keyword != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 6)
 		x.xxx_hidden_Keyword = *b.Keyword
 	}
 	if b.Bucket != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
 		x.xxx_hidden_Bucket = *b.Bucket
 	}
 	x.xxx_hidden_Reasons = b.Reasons
+	if b.WitnessSelectionBlocked != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 6)
+		x.xxx_hidden_WitnessSelectionBlocked = *b.WitnessSelectionBlocked
+	}
 	return m0
 }
 
@@ -4142,13 +4178,14 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x0fChangeSignature\x12%\n" +
 	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x123\n" +
 	"\x05label\x18\x02 \x01(\x0e2\x1d.stipulator.v1.SignatureLabelR\x05label\x12\x1a\n" +
-	"\bevidence\x18\x03 \x03(\tR\bevidence\"\xcf\x01\n" +
+	"\bevidence\x18\x03 \x03(\tR\bevidence\"\x8b\x02\n" +
 	"\x13RequirementCoverage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12-\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x19.stipulator.v1.ClauseKindR\x04kind\x120\n" +
 	"\akeyword\x18\x03 \x01(\x0e2\x16.stipulator.v1.KeywordR\akeyword\x12-\n" +
 	"\x06bucket\x18\x04 \x01(\x0e2\x15.stipulator.v1.BucketR\x06bucket\x12\x18\n" +
-	"\areasons\x18\x05 \x03(\tR\areasons\"u\n" +
+	"\areasons\x18\x05 \x03(\tR\areasons\x12:\n" +
+	"\x19witness_selection_blocked\x18\x06 \x01(\bR\x17witnessSelectionBlocked\"u\n" +
 	"\tGapReport\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12%\n" +
 	"\x0erequirement_id\x18\x02 \x01(\tR\rrequirementId\x12-\n" +

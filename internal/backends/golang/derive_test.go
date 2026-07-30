@@ -522,3 +522,17 @@ func TestGrantingRunNamesRefusals(t *testing.T) {
 		t.Errorf("no-terminal refusal = %q", why)
 	}
 }
+
+// A race invocation and a plain-witness admission sharing tags and env
+// must not share a capture group: race is a build input and a
+// witness-class boundary (REQ-check-witness-selection).
+func TestGroupKeySeparatesRaceTiers(t *testing.T) {
+	race := &NormalizedInvocation{Race: true}
+	plain := &NormalizedInvocation{PlainWitness: true}
+	if groupKey(race) == groupKey(plain) {
+		t.Fatal("race and plain-witness invocations share a capture-group key")
+	}
+	if groupKey(plain) != groupKey(&NormalizedInvocation{}) {
+		t.Fatal("plain-witness admission changed the build-shaping key: the admission is a witness-tier fact, not a build input")
+	}
+}

@@ -75,9 +75,14 @@ const (
 // material witnesses are derived from. Producing it is backend work;
 // correlating it is this package's.
 type TestRun struct {
-	// RaceEnabled records whether the run enabled the race detector: a
-	// rigor attribute every witness inherits.
+	// RaceEnabled records whether the run's witness grants derive from
+	// race-enabled invocations: the rigor attribute a witness inherits
+	// unless PlainWitness marks its key downgraded.
 	RaceEnabled bool
+	// PlainWitness marks, by "<import-path>.<TestName>", outcomes granted
+	// exclusively by an explicit plain-witness admission: the recorded
+	// tier downgrade (REQ-check-witness-selection).
+	PlainWitness map[string]bool
 	// Outcomes maps "<import-path>.<TestName>[/<subtest>...]" to the
 	// observed outcome.
 	Outcomes map[string]TestOutcome
@@ -428,7 +433,7 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 				// outcome carries no witness to qualify, so it never claims
 				// the run's rigor for an outcome another invocation (or no
 				// execution at all) produced.
-				result.RaceEnabled = testRun.RaceEnabled && result.TestOutcome == TestPassed
+				result.RaceEnabled = testRun.RaceEnabled && result.TestOutcome == TestPassed && !testRun.PlainWitness[b.GetSymbol()]
 				if wc, ok := backends[b.GetBackend()].(WitnessClassifier); ok {
 					result.WitnessClass = wc.WitnessClass(b.GetSymbol())
 				}

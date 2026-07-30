@@ -193,6 +193,13 @@ message RequirementCoverage {
   Keyword keyword = 3;
   Bucket bucket = 4;
   repeated string reasons = 5;
+  // The row is red solely because its bound tests sit outside the
+  // policy's witness-eligible selection: a policy-level cause restated
+  // per requirement, so bounded projections can fold these rows into a
+  // count behind the one result-level diagnostic instead of flooding
+  // the summary with identical restatements
+  // (REQ-check-witness-selection).
+  bool witness_selection_blocked = 6;
 }
 
 // GapReport is one gap record's evaluated state.

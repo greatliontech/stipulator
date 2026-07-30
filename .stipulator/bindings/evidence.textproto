@@ -720,3 +720,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "861550a2d48cd50d574be6f67dce798224e875a108fe758d333ec9ebec909a66"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "6684ecf6368116b763cb47713b06ee274a88710cac18c9b3a06d92cbc0c4f1b1"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckTierFlipNeverServesCrossTier"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e15a53587921e54434c44abf667a90cf7d830607c140ed6115d63b1e1d4ff814"
+}

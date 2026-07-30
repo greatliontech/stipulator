@@ -83,6 +83,11 @@ type Requirement struct {
 	Bucket  Bucket
 	// Reasons explain red buckets, deterministic order.
 	Reasons []string
+	// WitnessSelectionBlocked marks a row red solely because its bound
+	// tests sit outside the policy's witness-eligible selection — the
+	// policy-level cause restated per requirement, foldable behind the
+	// one result-level diagnostic (REQ-check-witness-selection).
+	WitnessSelectionBlocked bool
 }
 
 // Gap is one gap record's evaluated state.
@@ -201,7 +206,13 @@ type evidence struct {
 	attested      bool
 	attestReasons []string
 	broken, stale bool
-	reasons       []string
+	// outsideSelection counts broken causes that are the policy's
+	// witness-selection boundary; otherRed marks any red cause that is
+	// not. Together they class a red row as policy-blocked — red SOLELY
+	// because of the selection boundary (REQ-check-witness-selection).
+	outsideSelection int
+	otherRed         bool
+	reasons          []string
 }
 
 // witness reports any executed witness, of either class.
@@ -231,10 +242,12 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		switch r.Resolution {
 		case verify.NotFound:
 			e.broken = true
+			e.otherRed = true
 			e.reasons = append(e.reasons, fmt.Sprintf("symbol %s not found", r.Symbol))
 		case verify.Resolved:
 			switch r.Shape {
 			case verify.ShapeMismatch:
+				e.otherRed = true
 				e.broken = true
 				e.reasons = append(e.reasons, fmt.Sprintf("shape of %s moved — re-pin after review: stipulator pin", r.Symbol))
 			case verify.ShapeUnpinned:
@@ -259,6 +272,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 						// as an analyzer proof grants nothing — never
 						// example evidence — and the report names the
 						// drift, not just the missing evidence.
+						e.otherRed = true
 						e.reasons = append(e.reasons, fmt.Sprintf("proves claim %s passed but no longer classifies as an analyzer proof", r.Symbol))
 					case r.WitnessClass == verify.PropertyWitness:
 						e.property = true
@@ -268,12 +282,15 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 				}
 			case verify.TestFailed:
 				e.broken = true
+				e.otherRed = true
 				e.reasons = append(e.reasons, fmt.Sprintf("bound test %s failed", r.Symbol))
 			case verify.TestNotRun:
 				e.broken = true
 				if r.OutsideWitnessSelection {
-					e.reasons = append(e.reasons, fmt.Sprintf("bound test %s is outside the policy's witness-eligible selection - witness evidence derives only from race invocations; cover its package with a race: true invocation", r.Symbol))
+					e.outsideSelection++
+					e.reasons = append(e.reasons, fmt.Sprintf("bound test %s is outside the policy's witness-eligible selection - witness evidence derives only from race: true invocations or explicit plain_witness: true admissions; cover its package with one", r.Symbol))
 				} else {
+					e.otherRed = true
 					e.reasons = append(e.reasons, fmt.Sprintf("bound test %s produced no outcome (unwitnessed)", r.Symbol))
 				}
 			}
@@ -330,6 +347,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		rep.Requirements = append(rep.Requirements, Requirement{
 			Id: r.GetId(), Kind: r.GetKind(), Keyword: r.GetKeyword(),
 			Bucket: b, Reasons: e.reasons,
+			WitnessSelectionBlocked: b == Broken && e.outsideSelection > 0 && !e.otherRed && !e.stale,
 		})
 	}
 

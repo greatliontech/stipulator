@@ -155,9 +155,20 @@ func checkSummary(res *stipulatorv1.CheckResult) *stipulatorv1.CheckSummary {
 		out.SetGatePasses(cov.GetGatePasses())
 		var reds []*stipulatorv1.CheckRedRow
 		omitted := int32(0)
+		blocked := int32(0)
 		for _, r := range cov.GetRequirements() {
 			switch r.GetBucket() {
 			case stipulatorv1.Bucket_BUCKET_UNCOVERED, stipulatorv1.Bucket_BUCKET_STALE, stipulatorv1.Bucket_BUCKET_BROKEN:
+				// Rows red solely because of the witness-selection
+				// boundary restate the one result-level diagnostic; when
+				// that diagnostic fired, they fold into a count so the
+				// summary carries the cause once and the real reds stay
+				// visible (REQ-check-witness-selection). The rows ride
+				// the full view.
+				if res.GetWitnessSelectionProblem() != "" && r.GetWitnessSelectionBlocked() {
+					blocked++
+					continue
+				}
 				if len(reds) == redRowCap {
 					omitted++
 					continue
@@ -173,6 +184,7 @@ func checkSummary(res *stipulatorv1.CheckResult) *stipulatorv1.CheckSummary {
 		}
 		out.SetReds(reds)
 		out.SetRedsOmitted(omitted)
+		out.SetRedsPolicyBlocked(blocked)
 		var open, due, resolved int32
 		for _, g := range cov.GetGaps() {
 			switch g.GetState() {

@@ -58,13 +58,15 @@ func SuiteHealthy(report *stipulatorv1.ExecutionReport) bool {
 // package within it.
 type invocationFacts struct {
 	race       map[string]bool
+	plain      map[string]bool
 	healthyPkg map[string]bool
 }
 
 func indexInvocations(report *stipulatorv1.ExecutionReport) invocationFacts {
-	f := invocationFacts{race: map[string]bool{}, healthyPkg: map[string]bool{}}
+	f := invocationFacts{race: map[string]bool{}, plain: map[string]bool{}, healthyPkg: map[string]bool{}}
 	for _, h := range report.GetInvocations() {
 		f.race[h.GetInvocation()] = h.GetGo().GetRace()
+		f.plain[h.GetInvocation()] = h.GetGo().GetPlainWitness()
 		for _, p := range h.GetPackages() {
 			if p.GetDisposition() == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
 				f.healthyPkg[h.GetInvocation()+"\x00"+p.GetPackage()] = true
@@ -91,11 +93,12 @@ func indexInvocations(report *stipulatorv1.ExecutionReport) invocationFacts {
 // run that saw it.
 func DeriveTestRun(report *stipulatorv1.ExecutionReport) *verify.TestRun {
 	facts := indexInvocations(report)
-	// Every witness outcome this derivation grants comes from a
-	// race-enabled invocation by construction, so the run's witness rigor
-	// attribute is race-enabled; results that never become witnesses
-	// carry no rigor claim.
-	tr := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}, RaceEnabled: true}
+	// Witness grants derive from witness-eligible invocations: race legs
+	// at the strongest tier, explicit plain-witness admissions at the
+	// plain tier with the downgrade recorded per test (PlainWitness);
+	// results that never become witnesses carry no rigor claim.
+	tr := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}, RaceEnabled: true, PlainWitness: map[string]bool{}}
+	grantedRace := map[string]bool{}
 	rank := func(o verify.TestOutcome) int {
 		switch o {
 		case verify.TestFailed:
@@ -119,8 +122,11 @@ func DeriveTestRun(report *stipulatorv1.ExecutionReport) *verify.TestRun {
 		case stipulatorv1.TestOutcome_TEST_OUTCOME_SKIPPED:
 			outcome = verify.TestSkipped
 		case stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED:
-			if facts.healthyPkg[inv+"\x00"+pkg] && facts.race[inv] {
+			if facts.healthyPkg[inv+"\x00"+pkg] && (facts.race[inv] || facts.plain[inv]) {
 				outcome = verify.TestPassed
+				if facts.race[inv] {
+					grantedRace[key] = true
+				}
 			}
 		}
 		if outcome != verify.TestNotRun && rank(outcome) > rank(tr.Outcomes[key]) {
@@ -141,6 +147,14 @@ func DeriveTestRun(report *stipulatorv1.ExecutionReport) *verify.TestRun {
 		}
 	}
 	tr.Ran = len(ranTop)
+	// A key granted by any race leg holds the race tier even when a plain
+	// leg also passed it; only keys granted exclusively at the plain tier
+	// carry the recorded downgrade.
+	for key, outcome := range tr.Outcomes {
+		if outcome == verify.TestPassed && !grantedRace[key] {
+			tr.PlainWitness[key] = true
+		}
+	}
 	for _, d := range report.GetDiagnostics() {
 		if d.GetTest() == "" {
 			continue
@@ -162,13 +176,21 @@ func DeriveTestRun(report *stipulatorv1.ExecutionReport) *verify.TestRun {
 }
 
 // captureGroup is one freshness-capture configuration class: every
-// race-enabled invocation whose closure-shaping configuration (build tags
+// witness-eligible invocation whose closure-shaping configuration (build tags
 // and normalized environment) is identical shares one analysis view, so
 // a fingerprint is always captured under the same build selection its
 // test executed under.
 type captureGroup struct {
 	tags []string
 	env  []string
+	// race is the group's witness tier AND a build input: the analysis
+	// engine's flags must describe the binary the tests actually run as,
+	// and the flag rides the build-config guard into every fingerprint,
+	// so records produced at one tier can never serve the other - a
+	// policy flip between race and plain_witness re-executes instead of
+	// laundering the tier (REQ-evidence-witness-freshness's race flag as
+	// a caller-supplied build input).
+	race bool
 	// assumePure carries the invocations' reviewed whole-invocation
 	// purity assertion into the engine (REQ-purity-responsibility).
 	assumePure bool
@@ -242,8 +264,28 @@ type policyCapture struct {
 	groups      []*captureGroup
 }
 
+// groupKey is one invocation's capture-group identity: the
+// closure-shaping configuration (build tags, normalized environment,
+// the invocation-wide purity assertion) plus the race bit — race is a
+// build input and a witness-class boundary, so a race and a
+// plain-witness invocation sharing tags and env must not share a
+// capture group, or one group's fingerprints would describe two
+// different binaries and two witness tiers.
+func groupKey(n *NormalizedInvocation) string {
+	key := strings.Join(n.Tags, ",") + "\x00" + strings.Join(n.Env, "\x01")
+	if n.AssumePure {
+		key += "\x02pure"
+	}
+	if n.Race {
+		key += "\x03race"
+	}
+	return key
+}
+
 // capturePolicy normalizes and discovers every Go invocation of the
-// policy and folds the race-enabled ones into capture groups.
+// policy and folds the witness-eligible ones (race-enabled, plus
+// explicit plain-witness admissions) into capture groups, each carrying
+// its tier.
 func capturePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (*policyCapture, error) {
 	pc := &policyCapture{globalCount: map[string]int{}}
 	var entries []invocationCapture
@@ -268,7 +310,7 @@ func capturePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) 
 		for pkg := range selected {
 			pc.globalCount[pkg]++
 		}
-		if n.Race {
+		if n.WitnessEligible() {
 			entries = append(entries, ic)
 		}
 	}
@@ -287,15 +329,13 @@ func capturePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) 
 				runnables[o.Package]++
 			}
 		}
-		key := strings.Join(n.Tags, ",") + "\x00" + strings.Join(n.Env, "\x01")
-		if n.AssumePure {
-			key += "\x02pure"
-		}
+		key := groupKey(n)
 		g := byKey[key]
 		if g == nil {
 			g = &captureGroup{
 				tags:       n.Tags,
 				env:        n.Env,
+				race:       n.Race,
 				assumePure: n.AssumePure,
 				pkgInv:     map[string]string{},
 				ambiguous:  map[string]bool{},
@@ -348,7 +388,10 @@ func groupSubjects(g *captureGroup, globalCount map[string]int) []gofresh.Subjec
 // groupEngine constructs the gofresh engine for one capture group's
 // closure-shaping configuration.
 func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Engine, error) {
-	flags := []string{"-race"}
+	var flags []string
+	if g.race {
+		flags = append(flags, "-race")
+	}
 	if len(g.tags) > 0 {
 		flags = append(flags, "-tags="+strings.Join(g.tags, ","))
 	}
@@ -473,13 +516,13 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 			tr.UncacheableReasons[key] = "freshness path degraded: " + degraded
 		}
 	case len(r.groups) == 0:
-		// Nothing was capturable (no race-enabled invocation, or no
+		// Nothing was capturable (no witness-eligible invocation, or no
 		// expected tests): every executed test is uncacheable and the
 		// existing cache is left alone.
 		tr.Uncached = tr.Ran
 		tr.UncacheableReasons = map[string]string{}
 		for key := range executedTop {
-			tr.UncacheableReasons[key] = "no capture group: no race-enabled invocation covers the package"
+			tr.UncacheableReasons[key] = "no capture group: no witness-eligible invocation covers the package"
 		}
 	default:
 		if tr.Ran > len(published) {
@@ -842,14 +885,14 @@ func ExecutePolicyWitnessed(ctx context.Context, dir string, p *stipulatorv1.Tes
 		return nil, nil, err
 	}
 	// The witness-eligible selection boundary holds on this form too: a
-	// subject whose every executing invocation is non-race can never be
+	// subject whose every executing invocation is ineligible can never be
 	// granted a witness outcome, and an expected witness no invocation
 	// executed cannot either - both are outside, counted and marked
 	// exactly as the selective form counts them
 	// (REQ-check-witness-selection). Universe discovery degrades
 	// silently: without it only executed subjects classify.
 	facts := indexInvocations(report)
-	raceCovered := map[string]bool{}
+	eligibleCovered := map[string]bool{}
 	executed := map[string]bool{}
 	for _, row := range report.GetTests() {
 		top := topLevel(row.GetTest())
@@ -858,13 +901,14 @@ func ExecutePolicyWitnessed(ctx context.Context, dir string, p *stipulatorv1.Tes
 		}
 		key := row.GetPackage() + "." + top
 		executed[key] = true
-		if facts.race[row.GetProducer().GetInvocation()] {
-			raceCovered[key] = true
+		inv := row.GetProducer().GetInvocation()
+		if facts.race[inv] || facts.plain[inv] {
+			eligibleCovered[key] = true
 		}
 	}
 	outsideSubjects := map[string]bool{}
 	for key := range executed {
-		if !raceCovered[key] {
+		if !eligibleCovered[key] {
 			outsideSubjects[key] = true
 		}
 	}
@@ -874,7 +918,7 @@ func ExecutePolicyWitnessed(ctx context.Context, dir string, p *stipulatorv1.Tes
 				continue
 			}
 			key := o.Package + "." + o.Name
-			if !raceCovered[key] {
+			if !eligibleCovered[key] {
 				outsideSubjects[key] = true
 			}
 		}

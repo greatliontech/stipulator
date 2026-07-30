@@ -307,3 +307,22 @@ func TestGoPolicyConfigStaticValidation(t *testing.T) {
 		}
 	}
 }
+
+// One invocation, one tier: plain_witness on a race invocation is
+// refused at static record validation — a race invocation already
+// grants at the stronger tier, so the combination can only mislead
+// (REQ-check-witness-selection).
+func TestValidateConfigRefusesPlainWitnessOnRaceInvocation(t *testing.T) {
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./..."})
+	cfg.SetRace(true)
+	cfg.SetPlainWitness(true)
+	err := validateConfig(cfg)
+	if err == nil || !strings.Contains(err.Error(), "plain_witness") {
+		t.Fatalf("race+plain_witness accepted: %v", err)
+	}
+	cfg.SetRace(false)
+	if err := validateConfig(cfg); err != nil {
+		t.Fatalf("plain_witness on a non-race invocation refused: %v", err)
+	}
+}

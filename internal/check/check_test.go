@@ -14,6 +14,7 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
+	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -652,13 +653,36 @@ func TestCheckNamesAnEmptyWitnessSelection(t *testing.T) {
 	neutralAmbient(t)
 	dir := writeTree(t, baseTree(map[string]string{
 		"specs/check.md": "# Check\n\n**REQ-fix-bound** (behavior): The fixture MUST double.\n",
-		".stipulator/bindings/bound.textproto": "bindings {\n" +
-			"  requirement_id: \"REQ-fix-bound\"\n" +
-			"  backend: \"go\"\n" +
-			"  symbol: \"example.com/checkfix/ok.TestDouble\"\n" +
-			"  role: BINDING_ROLE_TESTS\n" +
-			"}\n",
 	}))
+	// The binding is fully pinned (content and shape) so the row's ONLY
+	// red cause is the selection boundary — the policy-blocked class
+	// asserted below is defined for exactly that purity.
+	spec, _, err := compile.Compile(os.DirFS(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	gb, err := golang.NewOwned(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolution, shape, err := gb.Resolve("example.com/checkfix/ok.TestDouble")
+	gb.Close()
+	if err != nil || resolution != verify.Resolved {
+		t.Fatalf("resolving the fixture test: %v %v", resolution, err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, ".stipulator", "bindings"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".stipulator", "bindings", "bound.textproto"), []byte("bindings {\n"+
+		"  requirement_id: \"REQ-fix-bound\"\n"+
+		"  content_hash: \""+spec.GetRequirements()[0].GetContentHash()+"\"\n"+
+		"  backend: \"go\"\n"+
+		"  symbol: \"example.com/checkfix/ok.TestDouble\"\n"+
+		"  role: BINDING_ROLE_TESTS\n"+
+		"  shape_hash: \""+shape+"\"\n"+
+		"}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	res, err := Run(context.Background(), dir, false)
 	if err != nil {
 		t.Fatal(err)
@@ -676,13 +700,21 @@ func TestCheckNamesAnEmptyWitnessSelection(t *testing.T) {
 		t.Fatalf("witness selection problem = %q, want the execution-layer cause named", p)
 	}
 	reason := ""
+	blocked := false
 	for _, row := range res.GetCoverage().GetRequirements() {
 		if row.GetId() == "REQ-fix-bound" {
 			reason = strings.Join(row.GetReasons(), "; ")
+			blocked = row.GetWitnessSelectionBlocked()
 		}
 	}
 	if !strings.Contains(reason, "outside the policy's witness-eligible selection") || !strings.Contains(reason, "race: true") {
 		t.Fatalf("binding reason = %q, want the selection class named per binding", reason)
+	}
+	// The row is red solely on the selection boundary, so it carries the
+	// policy-blocked class that lets bounded projections fold it behind
+	// the result-level diagnostic (REQ-check-witness-selection).
+	if !blocked {
+		t.Fatal("selection-boundary red not classed policy-blocked")
 	}
 }
 
@@ -800,4 +832,181 @@ func TestCheckMultiplyNonRaceSelectedSubjectsAreOutside(t *testing.T) {
 	if !strings.Contains(reason, "outside the policy's witness-eligible selection") {
 		t.Fatalf("multiply-non-race binding reason = %q", reason)
 	}
+}
+
+// A policy admitting a non-race invocation at the plain tier grants
+// witness evidence from it: the check witnesses, the selection problem
+// stays absent, and the granted witness records the downgrade — its
+// race attribute reads false (REQ-check-witness-selection).
+func TestCheckPlainWitnessAdmissionGrantsPlainTierWitnesses(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-witness-selection")
+	if testing.Short() {
+		t.Skip("runs the witness pass over a temporary corpus")
+	}
+	neutralAmbient(t)
+	plainWitnessPolicy := "invocations {\n  name: \"plain\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./...\"\n    plain_witness: true\n  }\n}\n"
+	dir := writeTree(t, baseTree(map[string]string{
+		".stipulator/policy.textproto": plainWitnessPolicy,
+		"specs/check.md":               "# Check\n\n**REQ-fix-bound** (behavior): The fixture MUST double.\n",
+		".stipulator/bindings/bound.textproto": "bindings {\n" +
+			"  requirement_id: \"REQ-fix-bound\"\n" +
+			"  backend: \"go\"\n" +
+			"  symbol: \"example.com/checkfix/ok.TestDouble\"\n" +
+			"  role: BINDING_ROLE_TESTS\n" +
+			"}\n",
+	}))
+	res, err := Run(context.Background(), dir, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p := res.GetWitnessSelectionProblem(); p != "" {
+		t.Fatalf("selection problem fired under an admitted plain invocation: %q", p)
+	}
+	if res.GetTestsOutsidePolicy() != 0 {
+		t.Fatalf("outside-selection count = %d under an admitted plain invocation", res.GetTestsOutsidePolicy())
+	}
+	var bound *stipulatorv1.BindingResult
+	for _, r := range res.GetVerify().GetResults() {
+		if r.GetSymbol() == "example.com/checkfix/ok.TestDouble" {
+			bound = r
+		}
+	}
+	if bound == nil || bound.GetTestOutcome() != stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED {
+		t.Fatalf("bound test outcome = %+v, want a granted pass", bound)
+	}
+	// The downgrade is recorded: a plain-tier witness never claims race
+	// rigor.
+	if bound.GetRaceEnabled() {
+		t.Fatal("plain-tier witness claims race rigor")
+	}
+
+	// The full (health-judged) form grants and classes identically.
+	full, err := Run(context.Background(), dir, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fullBound *stipulatorv1.BindingResult
+	for _, r := range full.GetVerify().GetResults() {
+		if r.GetSymbol() == "example.com/checkfix/ok.TestDouble" {
+			fullBound = r
+		}
+	}
+	if fullBound == nil || fullBound.GetTestOutcome() != stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED || fullBound.GetRaceEnabled() {
+		t.Fatalf("health-judged form's plain witness = %+v, want granted pass without race rigor", fullBound)
+	}
+	// The boundary holds identically on the health-judged form: an
+	// admitted plain invocation's subjects are inside the selection, so
+	// neither the count nor the diagnostic fires
+	// (REQ-check-witness-selection's both-forms sentence).
+	if full.GetTestsOutsidePolicy() != 0 || full.GetWitnessSelectionProblem() != "" {
+		t.Fatalf("health-judged form classes admitted subjects outside: outside=%d problem=%q", full.GetTestsOutsidePolicy(), full.GetWitnessSelectionProblem())
+	}
+	for _, row := range full.GetCoverage().GetRequirements() {
+		if row.GetId() == "REQ-fix-bound" && row.GetWitnessSelectionBlocked() {
+			t.Fatal("health-judged form classed an admitted subject's requirement policy-blocked")
+		}
+	}
+}
+
+// A key granted by any race leg holds the race tier: a multiply-selected
+// package covered by one race and one plain-admitted invocation grants
+// under both legs, and the witness records race rigor — the downgrade
+// marks only keys granted exclusively at the plain tier
+// (REQ-check-witness-selection).
+func TestCheckRaceLegPrecedenceOverPlainAdmission(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-witness-selection")
+	if testing.Short() {
+		t.Skip("runs the witness pass over a temporary corpus")
+	}
+	neutralAmbient(t)
+	mixedPolicy := "invocations {\n  name: \"plain\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./...\"\n    plain_witness: true\n  }\n}\n" +
+		"invocations {\n  name: \"race\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./...\"\n    race: true\n  }\n}\n"
+	dir := writeTree(t, baseTree(map[string]string{
+		".stipulator/policy.textproto": mixedPolicy,
+		"specs/check.md":               "# Check\n\n**REQ-fix-bound** (behavior): The fixture MUST double.\n",
+		".stipulator/bindings/bound.textproto": "bindings {\n" +
+			"  requirement_id: \"REQ-fix-bound\"\n" +
+			"  backend: \"go\"\n" +
+			"  symbol: \"example.com/checkfix/ok.TestDouble\"\n" +
+			"  role: BINDING_ROLE_TESTS\n" +
+			"}\n",
+	}))
+	for _, full := range []bool{false, true} {
+		res, err := Run(context.Background(), dir, full)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var bound *stipulatorv1.BindingResult
+		for _, r := range res.GetVerify().GetResults() {
+			if r.GetSymbol() == "example.com/checkfix/ok.TestDouble" {
+				bound = r
+			}
+		}
+		if bound == nil || bound.GetTestOutcome() != stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED {
+			t.Fatalf("full=%v: bound outcome = %+v, want a granted pass", full, bound)
+		}
+		if !bound.GetRaceEnabled() {
+			t.Fatalf("full=%v: race-legged grant downgraded to the plain tier", full)
+		}
+	}
+}
+
+// Records produced at one witness tier never serve the other: the race
+// flag is a caller-supplied build input of every fingerprint
+// (REQ-evidence-witness-freshness), so flipping an invocation between
+// plain_witness and race re-executes instead of laundering the tier —
+// in either direction (REQ-check-witness-selection's auditable-downgrade
+// sentence).
+func TestCheckTierFlipNeverServesCrossTier(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-witness-selection", "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("runs the witness pass over a temporary corpus")
+	}
+	neutralAmbient(t)
+	plainWitnessPolicy := "invocations {\n  name: \"suite\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./...\"\n    plain_witness: true\n  }\n}\n"
+	raceSuitePolicy := "invocations {\n  name: \"suite\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./...\"\n    race: true\n  }\n}\n"
+	dir := writeTree(t, baseTree(map[string]string{
+		".stipulator/policy.textproto": plainWitnessPolicy,
+		"specs/check.md":               "# Check\n\n**REQ-fix-bound** (behavior): The fixture MUST double.\n",
+		".stipulator/bindings/bound.textproto": "bindings {\n" +
+			"  requirement_id: \"REQ-fix-bound\"\n" +
+			"  backend: \"go\"\n" +
+			"  symbol: \"example.com/checkfix/ok.TestDouble\"\n" +
+			"  role: BINDING_ROLE_TESTS\n" +
+			"}\n",
+	}))
+	run := func(wantServed bool, wantRace bool) {
+		t.Helper()
+		res, err := Run(context.Background(), dir, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if served := res.GetTestsServed() > 0; served != wantServed {
+			t.Fatalf("served=%v (executed %d), want served=%v", served, res.GetTestsExecuted(), wantServed)
+		}
+		for _, r := range res.GetVerify().GetResults() {
+			if r.GetSymbol() == "example.com/checkfix/ok.TestDouble" {
+				if r.GetTestOutcome() != stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED || r.GetRaceEnabled() != wantRace {
+					t.Fatalf("witness = outcome %v race %v, want passed race=%v", r.GetTestOutcome(), r.GetRaceEnabled(), wantRace)
+				}
+			}
+		}
+	}
+	writePolicy := func(p string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, ".stipulator", "policy.textproto"), []byte(p), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run(false, false) // plain: executes, publishes plain-tier records
+	run(true, false)  // plain again: serves its own tier
+	writePolicy(raceSuitePolicy)
+	run(false, true) // flip to race: the plain records must NOT serve
+	writePolicy(plainWitnessPolicy)
+	// Flip back: the ORIGINAL plain-tier record is still an installed
+	// variant and legitimately serves — at its own tier, race rigor
+	// unclaimed. The race-produced record cannot serve here (its
+	// fingerprint pins the race build input), so a served pass with
+	// race_enabled=false is the only sound outcome.
+	run(true, false)
 }

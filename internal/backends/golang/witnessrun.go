@@ -27,12 +27,12 @@ import (
 // health exists on this path (REQ-evidence-freshness-no-health). The
 // expected witness set derives from policy discovery against the tree's
 // obligation universe; a subject whose package exactly one invocation
-// covers and that invocation is non-race is outside the policy — it
+// covers and that invocation is witness-ineligible is outside the policy — it
 // neither serves nor executes, and the count of such subjects rides the
 // result so the gap is a visible number, never silence
 // (REQ-policy-conservation's visibility principle). A multiply-selected
 // package's subjects execute every run under each covering invocation —
-// race legs granting outcomes, non-race legs contributing failures and
+// eligible legs granting outcomes, ineligible legs contributing failures and
 // registrations only: they cannot serve — a record has no per-invocation
 // identity — but their witness evidence stays aligned with the
 // health-judged form's. Visibility
@@ -156,18 +156,20 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 	// from every covering invocation, so the witness-evidence form
 	// executes them under each covering invocation from that invocation's
 	// own discovery (same-group duplicates included) and the merge takes
-	// the worst outcome. Race legs grant outcomes; non-race legs
-	// contribute failures only — a non-race pass never grants witness
-	// evidence — keeping the two forms' evidence aligned
+	// the worst outcome. Witness-eligible legs (race, or an explicit
+	// plain-witness admission) grant outcomes; ineligible legs
+	// contribute failures only — an unadmitted non-race pass never
+	// grants witness evidence — keeping the two forms' evidence aligned
 	// (REQ-check-verdict).
 	multiSel := map[string]TestSelection{}
-	multiNonRace := map[string]TestSelection{}
+	multiIneligible := map[string]TestSelection{}
 	multiExecuted := map[gofresh.Subject]bool{}
 	multiRaceCovered := map[gofresh.Subject]bool{}
+	multiEligibleCovered := map[gofresh.Subject]bool{}
 	for _, ic := range pc.invocations {
 		dst := multiSel
-		if !ic.n.Race {
-			dst = multiNonRace
+		if !ic.n.WitnessEligible() {
+			dst = multiIneligible
 		}
 		for _, o := range ic.obligations {
 			if o.Kind != ObligationTest && o.Kind != ObligationFuzz {
@@ -186,17 +188,20 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 			if ic.n.Race {
 				multiRaceCovered[gofresh.Subject{Package: o.Package, Symbol: o.Name}] = true
 			}
+			if ic.n.WitnessEligible() {
+				multiEligibleCovered[gofresh.Subject{Package: o.Package, Symbol: o.Name}] = true
+			}
 		}
 	}
-	// Outside the witness-eligible selection means no race-legged
-	// coverage anywhere: a multiply-selected subject whose every covering
-	// invocation is non-race still executes (failures count), but its
+	// Outside the witness-eligible selection means no eligible coverage
+	// anywhere: a multiply-selected subject whose every covering
+	// invocation is ineligible still executes (failures count), but its
 	// legs can never grant a witness outcome, so it is outside exactly as
 	// an unselected subject is (REQ-check-witness-selection).
 	outside := 0
 	outsideSubjects := map[string]bool{}
 	for s := range expected {
-		if !inPolicy[s] && !multiRaceCovered[s] {
+		if !inPolicy[s] && !multiEligibleCovered[s] {
 			outside++
 			outsideSubjects[s.Package+"."+s.Symbol] = true
 		}
@@ -248,7 +253,7 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 		}
 	}
 	// Multiply-selected subjects execute every run, under each covering
-	// race invocation, alongside that invocation's stale selection.
+	// eligible invocation, alongside that invocation's stale selection.
 	for inv, sel := range multiSel {
 		dst := staleSel[inv]
 		if dst == nil {
@@ -274,14 +279,14 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 	if err := executeSelections(ctx, p, normalized, staleSel, m); err != nil {
 		return nil, err
 	}
-	var nonRaceMerge *execMerge
-	if len(multiNonRace) > 0 {
-		// Non-race covering legs of multiply-selected packages: their
+	var ineligibleMerge *execMerge
+	if len(multiIneligible) > 0 {
+		// Ineligible covering legs of multiply-selected packages: their
 		// failures are evidence the health-judged form would surface, so
 		// they execute here in the execution phase and fold after the
 		// main merges — failures and registrations only, never a grant.
-		nonRaceMerge = newExecMerge()
-		if err := executeSelections(ctx, p, normalized, multiNonRace, nonRaceMerge); err != nil {
+		ineligibleMerge = newExecMerge()
+		if err := executeSelections(ctx, p, normalized, multiIneligible, ineligibleMerge); err != nil {
 			return nil, err
 		}
 	}
@@ -289,6 +294,7 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
 	var published []witnesscache.Record
 	var servedRecords []witnesscache.Record
+	plainServedKey := map[string]bool{}
 	uncacheableWhy := map[gofresh.Subject]string{}
 	retryMerge := newExecMerge()
 	if degraded == "" {
@@ -310,6 +316,12 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 			for _, s := range wg.served {
 				if !isDrifted[s] {
 					servedRecords = append(servedRecords, wg.recorded[s])
+					// The record fingerprints under its covering
+					// invocation's build inputs, so the invocation's
+					// tier is the served witness's tier.
+					if n := covering[s.Package]; n != nil && n.PlainWitness {
+						plainServedKey[s.Package+"."+s.Symbol] = true
+					}
 				}
 			}
 		}
@@ -331,7 +343,17 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 	// The selective runner is the serving class by identity — the degraded
 	// empty-served form included (REQ-gap-resolved-pruned's consumers
 	// enforce the mark).
-	tr := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}, RaceEnabled: true, OutsidePolicy: outside, OutsideSubjects: outsideSubjects, SelectiveServing: true}
+	tr := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}, RaceEnabled: true, PlainWitness: map[string]bool{}, OutsidePolicy: outside, OutsideSubjects: outsideSubjects, SelectiveServing: true}
+	// Tier attribution across every grant source: a key granted by any
+	// race leg holds the race tier; a key granted only by plain-witness
+	// admissions carries the recorded downgrade
+	// (REQ-check-witness-selection).
+	raceGranted := map[string]bool{}
+	plainGranted := map[string]bool{}
+	plainInv := map[string]bool{}
+	for name, n := range normalized {
+		plainInv[name] = n.PlainWitness
+	}
 	for _, wg := range groups {
 		for s, why := range wg.executedWhy {
 			if why == "" {
@@ -344,18 +366,29 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 		}
 	}
 	ranTop := map[string]bool{}
-	consumeMerge(tr, m, ranTop)
-	consumeMerge(tr, retryMerge, ranTop)
-	if nonRaceMerge != nil {
-		consumeMergeFailuresOnly(tr, nonRaceMerge, ranTop)
+	consumeMerge(tr, m, ranTop, plainInv, raceGranted, plainGranted)
+	consumeMerge(tr, retryMerge, ranTop, plainInv, raceGranted, plainGranted)
+	if ineligibleMerge != nil {
+		consumeMergeFailuresOnly(tr, ineligibleMerge, ranTop)
 	}
 	tr.Ran = len(ranTop)
 	for _, rec := range servedRecords {
+		plainRecord := plainServedKey[rec.Package+"."+rec.Test]
 		for key, out := range rec.Outcomes {
 			tr.Outcomes[key] = outcomeFromString(out)
+			if plainRecord {
+				plainGranted[key] = true
+			} else {
+				raceGranted[key] = true
+			}
 		}
 		tr.Registrations = append(tr.Registrations, rec.Regs...)
 		tr.Fresh++
+	}
+	for key, out := range tr.Outcomes {
+		if out == verify.TestPassed && plainGranted[key] && !raceGranted[key] {
+			tr.PlainWitness[key] = true
+		}
 	}
 	sortRegs(tr)
 	tr.Degraded = degraded
@@ -1024,10 +1057,12 @@ func consumeMergeFailuresOnly(tr *verify.TestRun, m *execMerge, ranTop map[strin
 		stripped.SetProducer(row.GetProducer())
 		filtered.rows = append(filtered.rows, stripped)
 	}
-	consumeMerge(tr, filtered, ranTop)
+	// Stripped passes carry no outcome, so the tier maps see nothing:
+	// an ineligible leg can neither grant nor class a witness.
+	consumeMerge(tr, filtered, ranTop, nil, map[string]bool{}, map[string]bool{})
 }
 
-func consumeMerge(tr *verify.TestRun, m *execMerge, ranTop map[string]bool) {
+func consumeMerge(tr *verify.TestRun, m *execMerge, ranTop map[string]bool, plainInv, raceGranted, plainGranted map[string]bool) {
 	tr.Diagnostics = append(tr.Diagnostics, m.diags...)
 	rank := func(o verify.TestOutcome) int {
 		switch o {
@@ -1052,6 +1087,11 @@ func consumeMerge(tr *verify.TestRun, m *execMerge, ranTop map[string]bool) {
 		case stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED:
 			if m.disp[keyOfProducer(row.GetProducer())] == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
 				outcome = verify.TestPassed
+				if plainInv[row.GetProducer().GetInvocation()] {
+					plainGranted[key] = true
+				} else {
+					raceGranted[key] = true
+				}
 			}
 		}
 		if outcome != verify.TestNotRun && rank(outcome) > rank(tr.Outcomes[key]) {

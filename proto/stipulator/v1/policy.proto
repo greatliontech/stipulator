@@ -108,9 +108,10 @@ message GoInvocationConfig {
   // accepts them (e.g. "./..."). Patterns must not escape the tree and
   // must not begin with "-".
   repeated string packages = 2;
-  // Run under the race detector. Only race-enabled invocations can grant
-  // Go witness evidence; a non-race invocation contributes suite health
-  // alone.
+  // Run under the race detector. A race-enabled invocation grants Go
+  // witness evidence at the strongest tier; a non-race invocation
+  // contributes suite health alone unless it explicitly accepts the
+  // plain witness tier below.
   bool race = 3;
   // Pin-at-load. Present: the required toolchain selection, exported as
   // GOTOOLCHAIN to the invocation. Absent: the effective toolchain the
@@ -192,4 +193,13 @@ message GoInvocationConfig {
   // interactive host on memory and IO pressure, which nice(1) does not
   // cover. Must be positive when present.
   int32 witness_concurrency = 22;
+  // Accept witness evidence from this non-race invocation at the plain
+  // tier. The race detector requires cgo; a repository where race
+  // instrumentation is off the table (static/musl builds, resource
+  // policies) declares here — explicitly, reviewed with the rest of the
+  // record — that a plain pass is its witness evidence. The downgrade is
+  // recorded on every witness (the run-attribute race flag reads false),
+  // so the tier is auditable, never laundered. Meaningless beside
+  // race: true and refused there — one invocation has one tier.
+  bool plain_witness = 23;
 }

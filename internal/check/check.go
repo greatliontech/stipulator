@@ -140,7 +140,7 @@ func Run(ctx context.Context, dir string, full bool) (*stipulatorv1.CheckResult,
 	// than executions keeps non-race legs - which run but can never
 	// grant - from masking the cause, and holds on both evidence forms.
 	if testRun.Fresh == 0 && len(testRun.Outcomes) == 0 && testRun.OutsidePolicy > 0 {
-		res.SetWitnessSelectionProblem(fmt.Sprintf("the witness-eligible selection covered no expected witness: %d expected witnesses are outside it - witness evidence derives only from race: true invocations", testRun.OutsidePolicy))
+		res.SetWitnessSelectionProblem(fmt.Sprintf("the witness-eligible selection covered no expected witness: %d expected witnesses are outside it - witness evidence derives only from race: true invocations or explicit plain_witness: true admissions", testRun.OutsidePolicy))
 	}
 	res.SetTestsUncacheable(int32(testRun.Uncached))
 	res.SetUncacheableReasons(testRun.UncacheableReasons)

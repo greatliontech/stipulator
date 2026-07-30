@@ -247,13 +247,24 @@ mistaken for a health-judged one. A cancelled check yields no verdict at
 all — cancellation is an operational abort, never a pass or a fail.
 
 **REQ-check-witness-selection** (behavior): Witness evidence derives from
-race-detecting invocations: a subject the accepted policy selects only
-through non-race invocations — or through none — can never witness, and
+the witness-eligible selection: race-detecting invocations, plus non-race
+invocations the accepted policy explicitly admits at the plain tier
+(`plain_witness` — the race detector requires cgo, and a repository where
+race instrumentation is off the table would otherwise be structurally
+excluded from an informative verdict). The admission is a reviewed policy
+declaration, never a default; declaring it on a race invocation is refused
+at record validation (one invocation, one tier); and the downgrade is
+recorded on every witness it grants — the run-attribute race flag reads
+false on the granted witness (REQ-evidence-run-attributes), a key granted
+by any race leg holds the race tier — so the tier is auditable, never
+laundered. A subject the accepted policy selects only
+through ineligible invocations — or through none — can never witness, and
 the check MUST keep that selection boundary loud rather than letting it
 read as tree defects. The result carries the count of expected witness
 subjects outside the witness-eligible selection; each affected tests- or
 proves-role binding's reason names the selection class with the repair
-(cover the package with a race invocation), never the bare unwitnessed
+(cover the package with a race invocation, or an explicit plain-tier
+admission), never the bare unwitnessed
 text; and when the pass serves nothing and grants no witness outcome
 while expected witnesses sit outside the eligible selection, the result
 names that execution-layer cause once at result level — an
@@ -262,7 +273,12 @@ the result alone, without a second invocation or a CLI fallback; a
 non-race leg that executes but can never grant does not mask the
 cause. The boundary holds on both evidence forms — the health-judged
 form counts and classes its race-uncovered subjects identically. The
-diagnostic never fires on a healthy selection.
+diagnostic never fires on a healthy selection. A requirement red solely
+on that boundary is classed policy-blocked, and when the result-level
+diagnostic fires, bounded projections fold the policy-blocked rows into
+a count behind it — the cause states itself once, a red for any other
+reason stays a visible row, and the folded rows remain on the full
+view.
 
 **REQ-check-diagnostics** (behavior): A failing check MUST surface the
 retained output of every failing policy invocation and every failed or

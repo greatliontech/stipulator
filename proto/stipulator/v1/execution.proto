@@ -80,10 +80,14 @@ message GoResolvedConfig {
   bool workspace_on = 7;
   // Whether the invocation ran under the race detector. The flag is a
   // rigor attribute of every outcome the invocation produced: witness
-  // derivation grants Go witness evidence only from race-enabled
+  // derivation grants Go witness evidence only from witness-eligible
   // invocations, so the report itself must say which invocations those
   // were.
   bool race = 8;
+  // Whether the policy explicitly admitted this non-race invocation into
+  // the witness-eligible selection at the plain tier - the recorded
+  // downgrade witness derivation reads (REQ-check-witness-selection).
+  bool plain_witness = 9;
 }
 
 // TestResult is one named test's outcome, attributed to its producer.

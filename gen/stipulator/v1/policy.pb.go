@@ -475,6 +475,7 @@ type GoInvocationConfig struct {
 	xxx_hidden_BracketPaths       []string               `protobuf:"bytes,20,rep,name=bracket_paths,json=bracketPaths"`
 	xxx_hidden_AssumePure         bool                   `protobuf:"varint,21,opt,name=assume_pure,json=assumePure"`
 	xxx_hidden_WitnessConcurrency int32                  `protobuf:"varint,22,opt,name=witness_concurrency,json=witnessConcurrency"`
+	xxx_hidden_PlainWitness       bool                   `protobuf:"varint,23,opt,name=plain_witness,json=plainWitness"`
 	XXX_raceDetectHookData        protoimpl.RaceDetectHookData
 	XXX_presence                  [1]uint32
 	unknownFields                 protoimpl.UnknownFields
@@ -670,9 +671,16 @@ func (x *GoInvocationConfig) GetWitnessConcurrency() int32 {
 	return 0
 }
 
+func (x *GoInvocationConfig) GetPlainWitness() bool {
+	if x != nil {
+		return x.xxx_hidden_PlainWitness
+	}
+	return false
+}
+
 func (x *GoInvocationConfig) SetModuleRoot(v string) {
 	x.xxx_hidden_ModuleRoot = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 20)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 21)
 }
 
 func (x *GoInvocationConfig) SetPackages(v []string) {
@@ -681,12 +689,12 @@ func (x *GoInvocationConfig) SetPackages(v []string) {
 
 func (x *GoInvocationConfig) SetRace(v bool) {
 	x.xxx_hidden_Race = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 20)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 21)
 }
 
 func (x *GoInvocationConfig) SetToolchain(v string) {
 	x.xxx_hidden_Toolchain = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 20)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 21)
 }
 
 func (x *GoInvocationConfig) SetEnvironment(v []string) {
@@ -699,17 +707,17 @@ func (x *GoInvocationConfig) SetEnvDeny(v []string) {
 
 func (x *GoInvocationConfig) SetGoos(v string) {
 	x.xxx_hidden_Goos = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 20)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 21)
 }
 
 func (x *GoInvocationConfig) SetGoarch(v string) {
 	x.xxx_hidden_Goarch = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 20)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 21)
 }
 
 func (x *GoInvocationConfig) SetCgoEnabled(v bool) {
 	x.xxx_hidden_CgoEnabled = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 20)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 21)
 }
 
 func (x *GoInvocationConfig) SetTags(v []string) {
@@ -718,32 +726,32 @@ func (x *GoInvocationConfig) SetTags(v []string) {
 
 func (x *GoInvocationConfig) SetGoflags(v string) {
 	x.xxx_hidden_Goflags = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 20)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 21)
 }
 
 func (x *GoInvocationConfig) SetWorkspaceMode(v GoWorkspaceMode) {
 	x.xxx_hidden_WorkspaceMode = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 20)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 21)
 }
 
 func (x *GoInvocationConfig) SetModuleMode(v GoModuleMode) {
 	x.xxx_hidden_ModuleMode = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 20)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 21)
 }
 
 func (x *GoInvocationConfig) SetPgo(v string) {
 	x.xxx_hidden_Pgo = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 13, 20)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 13, 21)
 }
 
 func (x *GoInvocationConfig) SetCount(v int32) {
 	x.xxx_hidden_Count = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 14, 20)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 14, 21)
 }
 
 func (x *GoInvocationConfig) SetCacheMode(v GoCacheMode) {
 	x.xxx_hidden_CacheMode = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 15, 20)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 15, 21)
 }
 
 func (x *GoInvocationConfig) SetArgs(v []string) {
@@ -756,12 +764,17 @@ func (x *GoInvocationConfig) SetBracketPaths(v []string) {
 
 func (x *GoInvocationConfig) SetAssumePure(v bool) {
 	x.xxx_hidden_AssumePure = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 18, 20)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 18, 21)
 }
 
 func (x *GoInvocationConfig) SetWitnessConcurrency(v int32) {
 	x.xxx_hidden_WitnessConcurrency = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 19, 20)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 19, 21)
+}
+
+func (x *GoInvocationConfig) SetPlainWitness(v bool) {
+	x.xxx_hidden_PlainWitness = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 20, 21)
 }
 
 func (x *GoInvocationConfig) HasModuleRoot() bool {
@@ -862,6 +875,13 @@ func (x *GoInvocationConfig) HasWitnessConcurrency() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 19)
 }
 
+func (x *GoInvocationConfig) HasPlainWitness() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 20)
+}
+
 func (x *GoInvocationConfig) ClearModuleRoot() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_ModuleRoot = nil
@@ -932,6 +952,11 @@ func (x *GoInvocationConfig) ClearWitnessConcurrency() {
 	x.xxx_hidden_WitnessConcurrency = 0
 }
 
+func (x *GoInvocationConfig) ClearPlainWitness() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 20)
+	x.xxx_hidden_PlainWitness = false
+}
+
 type GoInvocationConfig_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -942,9 +967,10 @@ type GoInvocationConfig_builder struct {
 	// accepts them (e.g. "./..."). Patterns must not escape the tree and
 	// must not begin with "-".
 	Packages []string
-	// Run under the race detector. Only race-enabled invocations can grant
-	// Go witness evidence; a non-race invocation contributes suite health
-	// alone.
+	// Run under the race detector. A race-enabled invocation grants Go
+	// witness evidence at the strongest tier; a non-race invocation
+	// contributes suite health alone unless it explicitly accepts the
+	// plain witness tier below.
 	Race *bool
 	// Pin-at-load. Present: the required toolchain selection, exported as
 	// GOTOOLCHAIN to the invocation. Absent: the effective toolchain the
@@ -1025,6 +1051,15 @@ type GoInvocationConfig_builder struct {
 	// interactive host on memory and IO pressure, which nice(1) does not
 	// cover. Must be positive when present.
 	WitnessConcurrency *int32
+	// Accept witness evidence from this non-race invocation at the plain
+	// tier. The race detector requires cgo; a repository where race
+	// instrumentation is off the table (static/musl builds, resource
+	// policies) declares here — explicitly, reviewed with the rest of the
+	// record — that a plain pass is its witness evidence. The downgrade is
+	// recorded on every witness (the run-attribute race flag reads false),
+	// so the tier is auditable, never laundered. Meaningless beside
+	// race: true and refused there — one invocation has one tier.
+	PlainWitness *bool
 }
 
 func (b0 GoInvocationConfig_builder) Build() *GoInvocationConfig {
@@ -1032,66 +1067,70 @@ func (b0 GoInvocationConfig_builder) Build() *GoInvocationConfig {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.ModuleRoot != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 20)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 21)
 		x.xxx_hidden_ModuleRoot = b.ModuleRoot
 	}
 	x.xxx_hidden_Packages = b.Packages
 	if b.Race != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 20)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 21)
 		x.xxx_hidden_Race = *b.Race
 	}
 	if b.Toolchain != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 20)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 21)
 		x.xxx_hidden_Toolchain = b.Toolchain
 	}
 	x.xxx_hidden_Environment = b.Environment
 	x.xxx_hidden_EnvDeny = b.EnvDeny
 	if b.Goos != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 20)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 21)
 		x.xxx_hidden_Goos = b.Goos
 	}
 	if b.Goarch != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 20)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 21)
 		x.xxx_hidden_Goarch = b.Goarch
 	}
 	if b.CgoEnabled != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 20)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 21)
 		x.xxx_hidden_CgoEnabled = *b.CgoEnabled
 	}
 	x.xxx_hidden_Tags = b.Tags
 	if b.Goflags != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 20)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 21)
 		x.xxx_hidden_Goflags = b.Goflags
 	}
 	if b.WorkspaceMode != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 20)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 21)
 		x.xxx_hidden_WorkspaceMode = *b.WorkspaceMode
 	}
 	if b.ModuleMode != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 20)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 21)
 		x.xxx_hidden_ModuleMode = *b.ModuleMode
 	}
 	if b.Pgo != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 13, 20)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 13, 21)
 		x.xxx_hidden_Pgo = b.Pgo
 	}
 	if b.Count != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 14, 20)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 14, 21)
 		x.xxx_hidden_Count = *b.Count
 	}
 	if b.CacheMode != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 15, 20)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 15, 21)
 		x.xxx_hidden_CacheMode = *b.CacheMode
 	}
 	x.xxx_hidden_Args = b.Args
 	x.xxx_hidden_BracketPaths = b.BracketPaths
 	if b.AssumePure != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 18, 20)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 18, 21)
 		x.xxx_hidden_AssumePure = *b.AssumePure
 	}
 	if b.WitnessConcurrency != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 19, 20)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 19, 21)
 		x.xxx_hidden_WitnessConcurrency = *b.WitnessConcurrency
+	}
+	if b.PlainWitness != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 20, 21)
+		x.xxx_hidden_PlainWitness = *b.PlainWitness
 	}
 	return m0
 }
@@ -1108,7 +1147,7 @@ const file_stipulator_v1_policy_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x123\n" +
 	"\atimeout\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\atimeout\x123\n" +
 	"\x02go\x18\x03 \x01(\v2!.stipulator.v1.GoInvocationConfigH\x00R\x02goB\b\n" +
-	"\x06configJ\x04\b\x04\x10\bR\x06labelsR\x05group\"\xba\x05\n" +
+	"\x06configJ\x04\b\x04\x10\bR\x06labelsR\x05group\"\xdf\x05\n" +
 	"\x12GoInvocationConfig\x12\x1f\n" +
 	"\vmodule_root\x18\x01 \x01(\tR\n" +
 	"moduleRoot\x12\x1a\n" +
@@ -1135,7 +1174,8 @@ const file_stipulator_v1_policy_proto_rawDesc = "" +
 	"\rbracket_paths\x18\x14 \x03(\tR\fbracketPaths\x12\x1f\n" +
 	"\vassume_pure\x18\x15 \x01(\bR\n" +
 	"assumePure\x12/\n" +
-	"\x13witness_concurrency\x18\x16 \x01(\x05R\x12witnessConcurrencyJ\x04\b\x12\x10\x13J\x04\b\x13\x10\x14*p\n" +
+	"\x13witness_concurrency\x18\x16 \x01(\x05R\x12witnessConcurrency\x12#\n" +
+	"\rplain_witness\x18\x17 \x01(\bR\fplainWitnessJ\x04\b\x12\x10\x13J\x04\b\x13\x10\x14*p\n" +
 	"\x0fGoWorkspaceMode\x12!\n" +
 	"\x1dGO_WORKSPACE_MODE_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bGO_WORKSPACE_MODE_WORKSPACE\x10\x01\x12\x19\n" +

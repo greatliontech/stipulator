@@ -711,3 +711,49 @@ func TestShapeFindingsNameRePin(t *testing.T) {
 		t.Fatalf("unpinned shape withholds the backfill: %v", got)
 	}
 }
+
+// The policy-blocked class is defined for purity: a row is marked only
+// when the selection boundary is its SOLE red cause — a failed sibling
+// binding, an unwitnessed non-boundary binding, or pin staleness each
+// disqualify, so folding can never hide a red the caller must read
+// (REQ-check-witness-selection).
+//
+//gofresh:pure
+func TestWitnessSelectionBlockedRequiresBoundaryOnlyRedness(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-witness-selection")
+	doc := "# A\n\n**REQ-c-pure** (behavior): It MUST a.\n\n**REQ-c-failed** (behavior): It MUST b.\n\n**REQ-c-unwitnessed** (behavior): It MUST c.\n\n**REQ-c-stale** (behavior): It MUST d.\n\n**REQ-c-shape** (behavior): It MUST e.\n\n**REQ-c-missing** (behavior): It MUST f.\n"
+	spec, store := fixture(t, doc, nil)
+	outside := func(id string, pinned bool) verify.BindingResult {
+		r := result(id, stipulatorv1.BindingRole_BINDING_ROLE_TESTS, pinned, verify.Resolved, verify.ShapeMatch, verify.TestNotRun)
+		r.OutsideWitnessSelection = true
+		return r
+	}
+	vr := &verify.Report{Results: []verify.BindingResult{
+		outside("REQ-c-pure", true),
+		outside("REQ-c-failed", true),
+		result("REQ-c-failed", stipulatorv1.BindingRole_BINDING_ROLE_TESTS, true, verify.Resolved, verify.ShapeMatch, verify.TestFailed),
+		outside("REQ-c-unwitnessed", true),
+		result("REQ-c-unwitnessed", stipulatorv1.BindingRole_BINDING_ROLE_TESTS, true, verify.Resolved, verify.ShapeMatch, verify.TestNotRun),
+		outside("REQ-c-stale", false),
+		// A shape mismatch beside the boundary: the moved-shape red must
+		// stay a visible row, never fold.
+		outside("REQ-c-shape", true),
+		result("REQ-c-shape", stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS, true, verify.Resolved, verify.ShapeMismatch, verify.TestNotRun),
+		// A deleted implementation symbol beside the boundary: same rule.
+		outside("REQ-c-missing", true),
+		result("REQ-c-missing", stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS, true, verify.NotFound, verify.ShapeUnknown, verify.TestNotRun),
+	}}
+	rep := Evaluate(spec, vr, store, true, nil)
+	blocked := map[string]bool{}
+	for _, r := range rep.Requirements {
+		blocked[r.Id] = r.WitnessSelectionBlocked
+	}
+	if !blocked["REQ-c-pure"] {
+		t.Fatal("boundary-only red not classed policy-blocked")
+	}
+	for _, id := range []string{"REQ-c-failed", "REQ-c-unwitnessed", "REQ-c-stale", "REQ-c-shape", "REQ-c-missing"} {
+		if blocked[id] {
+			t.Fatalf("%s classed policy-blocked despite a non-boundary red cause", id)
+		}
+	}
+}

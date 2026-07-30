@@ -258,3 +258,63 @@ func TestVerifySummaryOmitsFailureDiagnosticOutput(t *testing.T) {
 		t.Fatalf("capped headings = %d, omitted = %d", len(sum.GetWitnessFailureHeadings()), sum.GetWitnessFailureHeadingsOmitted())
 	}
 }
+
+// When the result-level witness-selection diagnostic fires, rows red
+// solely on that boundary fold into reds_policy_blocked behind it; a red
+// for any other reason stays a visible row, and without the diagnostic
+// the marker alone folds nothing (REQ-check-witness-selection).
+//
+//gofresh:pure
+func TestCheckSummaryFoldsPolicyBlockedRows(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-witness-selection")
+	blocked := &stipulatorv1.RequirementCoverage{}
+	blocked.SetId("REQ-blocked")
+	blocked.SetBucket(stipulatorv1.Bucket_BUCKET_BROKEN)
+	blocked.SetReasons([]string{"bound test x is outside the policy's witness-eligible selection - ..."})
+	blocked.SetWitnessSelectionBlocked(true)
+	failing := &stipulatorv1.RequirementCoverage{}
+	failing.SetId("REQ-failing")
+	failing.SetBucket(stipulatorv1.Bucket_BUCKET_BROKEN)
+	failing.SetReasons([]string{"bound test y failed"})
+	cov := &stipulatorv1.CoverageReport{}
+	cov.SetRequirements([]*stipulatorv1.RequirementCoverage{blocked, failing, redRow("REQ-unbound")})
+	res := &stipulatorv1.CheckResult{}
+	res.SetCoverage(cov)
+	res.SetWitnessSelectionProblem("the witness-eligible selection covered no expected witness: ...")
+
+	view, err := CheckView(res, "summary", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := view.(*stipulatorv1.CheckSummary)
+	if sum.GetRedsPolicyBlocked() != 1 {
+		t.Fatalf("reds_policy_blocked = %d, want 1", sum.GetRedsPolicyBlocked())
+	}
+	ids := map[string]bool{}
+	for _, r := range sum.GetReds() {
+		ids[r.GetId()] = true
+	}
+	if ids["REQ-blocked"] || !ids["REQ-failing"] || !ids["REQ-unbound"] {
+		t.Fatalf("summary reds = %v, want the blocked row folded and the real reds visible", ids)
+	}
+
+	// The full view keeps every row — the fold is a projection.
+	full, err := CheckView(res, "full", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := len(full.(*stipulatorv1.CheckResult).GetCoverage().GetRequirements()); got != 3 {
+		t.Fatalf("full view rows = %d, want 3", got)
+	}
+
+	// Marker without the result-level diagnostic folds nothing.
+	res.SetWitnessSelectionProblem("")
+	view, err = CheckView(res, "summary", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum = view.(*stipulatorv1.CheckSummary)
+	if sum.GetRedsPolicyBlocked() != 0 || len(sum.GetReds()) != 3 {
+		t.Fatalf("no-diagnostic fold: blocked=%d reds=%d, want 0 and 3", sum.GetRedsPolicyBlocked(), len(sum.GetReds()))
+	}
+}

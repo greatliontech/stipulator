@@ -15,6 +15,7 @@ func (r *Report) Proto() *stipulatorv1.CoverageReport {
 		m.SetKeyword(rc.Keyword)
 		m.SetBucket(bucketProto[rc.Bucket])
 		m.SetReasons(rc.Reasons)
+		m.SetWitnessSelectionBlocked(rc.WitnessSelectionBlocked)
 		reqs = append(reqs, m)
 	}
 	out.SetRequirements(reqs)

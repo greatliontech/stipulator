@@ -503,9 +503,18 @@ func (s *Server) toolCheck(ctx context.Context, req *mcp.CallToolRequest, in che
 		return nil, nil, err
 	}
 	var redRows []string
+	blocked := 0
 	for _, r := range res.GetCoverage().GetRequirements() {
 		switch r.GetBucket() {
 		case stipulatorv1.Bucket_BUCKET_UNCOVERED, stipulatorv1.Bucket_BUCKET_STALE, stipulatorv1.Bucket_BUCKET_BROKEN:
+			// Policy-blocked rows restate the result-level diagnostic;
+			// fold them behind it so the text digest carries the cause
+			// once and the real reds stay visible
+			// (REQ-check-witness-selection).
+			if res.GetWitnessSelectionProblem() != "" && r.GetWitnessSelectionBlocked() {
+				blocked++
+				continue
+			}
 			row := fmt.Sprintf("%s [%s]", r.GetId(), enumWord(r.GetBucket().String(), "BUCKET_"))
 			if reasons := r.GetReasons(); len(reasons) > 0 {
 				row += ": " + reasons[0]
@@ -516,6 +525,9 @@ func (s *Server) toolCheck(ctx context.Context, req *mcp.CallToolRequest, in che
 	line := checkLine(res)
 	if p := res.GetWitnessSelectionProblem(); p != "" {
 		line += "\n" + p
+		if blocked > 0 {
+			line += fmt.Sprintf("\n%d requirements are red solely on that boundary (policy-blocked; rows on the full view)", blocked)
+		}
 	}
 	return summarized(digest(line, redRows), view)
 }

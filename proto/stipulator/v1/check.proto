@@ -157,6 +157,10 @@ message CheckSummary {
   string witness_publication_degraded = 23;
   int32 tests_outside_policy = 27;
   string witness_selection_problem = 28;
+  // Red rows folded out of `reds` because their only cause is the
+  // witness-selection boundary named once by witness_selection_problem;
+  // the per-requirement rows stay on the full view.
+  int32 reds_policy_blocked = 29;
 }
 
 // CheckRedRow is one red coverage row in the summary: enough to act on

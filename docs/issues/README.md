@@ -2,11 +2,6 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
-- **[policy-blocked-verdict-shape](policy-blocked-verdict-shape.md)** — a witness-policy
-  mismatch answers hundreds of identical per-requirement reds instead of one policy-level
-  verdict arm, and a corpus barred from race runs has no sanctioned path to an informative
-  verdict. *Lands: when the zero-covered-witness case gets its own verdict state and non-race
-  witness eligibility is expressible or its absence documented.*
 - **[proto-backend](proto-backend.md)** — descriptor-level verification via protocompile;
   spec exists, five requirements gapped. *Lands: when a corpus needs wire evidence that
   shape pins and Go witnesses cannot cover.*

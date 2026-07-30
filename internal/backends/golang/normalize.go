@@ -29,6 +29,11 @@ type NormalizedInvocation struct {
 	// Packages is the invocation's package pattern scope.
 	Packages []string
 	Race     bool
+	// PlainWitness marks a non-race invocation the policy explicitly
+	// admits into the witness-eligible selection at the plain tier; the
+	// downgrade is recorded on every witness it grants (the run-attribute
+	// race flag reads false).
+	PlainWitness bool
 	// ToolchainRoot and ModuleCacheRoot are the effective GOROOT and
 	// GOMODCACHE: guard-covered observation roots — reads under them are
 	// already pinned by the toolchain and build-config guards.
@@ -118,15 +123,16 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	env = setEnv(env, "GOPACKAGESDRIVER", "off")
 
 	n := &NormalizedInvocation{
-		Name:       inv.GetName(),
-		ModuleRoot: cfg.GetModuleRoot(),
-		Packages:   append([]string(nil), cfg.GetPackages()...),
-		Race:       cfg.GetRace(),
-		Timeout:    inv.GetTimeout().AsDuration(),
-		Tags:       append([]string(nil), cfg.GetTags()...),
-		ModuleMode: cfg.GetModuleMode(),
-		Count:      cfg.GetCount(),
-		Args:       append([]string(nil), cfg.GetArgs()...),
+		Name:         inv.GetName(),
+		ModuleRoot:   cfg.GetModuleRoot(),
+		Packages:     append([]string(nil), cfg.GetPackages()...),
+		Race:         cfg.GetRace(),
+		PlainWitness: cfg.GetPlainWitness(),
+		Timeout:      inv.GetTimeout().AsDuration(),
+		Tags:         append([]string(nil), cfg.GetTags()...),
+		ModuleMode:   cfg.GetModuleMode(),
+		Count:        cfg.GetCount(),
+		Args:         append([]string(nil), cfg.GetArgs()...),
 	}
 	if cfg.HasPgo() {
 		n.PGO = cfg.GetPgo()
@@ -453,4 +459,11 @@ func resolveOrSelf(p string) string {
 		return r
 	}
 	return p
+}
+
+// WitnessEligible reports whether the invocation can grant Go witness
+// evidence: race-enabled, or a non-race invocation whose policy
+// explicitly admits the plain tier (REQ-check-witness-selection).
+func (n *NormalizedInvocation) WitnessEligible() bool {
+	return n.Race || n.PlainWitness
 }
