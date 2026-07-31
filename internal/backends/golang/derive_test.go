@@ -295,13 +295,17 @@ func TestDeriveCachedOutcomeGrantsNoHealthOrEvidence(t *testing.T) {
 		Package: "example.com/m/redmain",
 		Test:    "TestGreen",
 		Fingerprint: witnesscache.Fingerprint{
-			MaximalClosure: "00112233445566778899aabbccddeeff",
-			Toolchain:      "go1.26",
-			BuildConfig:    "00112233445566778899aabbccddeeff",
-			RuntimeInputs:  "eyJ2IjoxfQ",
-			RuntimeDigest:  "00112233445566778899aabbccddeeff",
-			ResultKind:     gofresh.CodeResult,
+			MaximalClosure:     "00112233445566778899aabbccddeeff",
+			TestVariantClosure: "00112233445566778899aabbccddeeff",
+			Toolchain:          "go1.26",
+			BuildConfig:        "00112233445566778899aabbccddeeff",
+			RuntimeInputs:      "eyJ2IjoxfQ",
+			RuntimeDigest:      "00112233445566778899aabbccddeeff",
+			ResultKind:         gofresh.CodeResult,
 		},
+		CompartmentLedger: &witnesscache.CompartmentLedger{Declarations: []witnesscache.CompartmentDeclaration{
+			{File: "seed_test.go", Kind: "func", Name: "TestGreen", Hash: "00112233445566778899aabbccddeeff"},
+		}},
 		Outcomes: map[string]string{"example.com/m/redmain.TestGreen": "passed"},
 	}); err != nil {
 		t.Fatal(err)

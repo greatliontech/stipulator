@@ -11,6 +11,7 @@ import (
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
+	gofresh "github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/runtimeinput"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -313,6 +314,186 @@ func TestGoRunWitnessesServeExecuteOutsideDisjoint(t *testing.T) {
 		t.Fatal(err)
 	}
 	requirePartition("stale sibling", staleRun, 1, 2)
+}
+
+// TestGoRunWitnessesServeUnderInertSiblingAddition pins
+// REQ-evidence-witness-freshness's inert-growth carve-out end to end:
+// adding a sibling test beside a cached witness moves only the package's
+// test-variant compartment, so the cached witness serves — the movement is
+// an addition no unchanged declaration can observe — while the added test
+// itself executes; the served record republishes under the current
+// compartment, so the following run serves both plainly; and a non-inert
+// compartment movement (an added init function in a test file) refuses the
+// carve-out and re-executes the package.
+func TestGoRunWitnessesServeUnderInertSiblingAddition(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented selective run over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":     "module example.com/grow\n\ngo 1.26\n",
+		"pkg/pkg.go": "package pkg\n\nfunc Value() string { return \"v1\" }\n",
+		"pkg/pkg_test.go": `package pkg
+
+import "testing"
+
+//gofresh:pure
+func TestBase(t *testing.T) {
+	if Value() == "" {
+		t.Fatal("empty")
+	}
+}
+`,
+	})
+	race := &stipulatorv1.GoInvocationConfig{}
+	race.SetPackages([]string{"./pkg"})
+	race.SetRace(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", race)})
+	writePolicyRecord(t, tmp, p)
+
+	requireRun := func(phase string, fresh, ran int) *verify.TestRun {
+		t.Helper()
+		tr, err := RunWitnesses(context.Background(), tmp)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if tr.Degraded != "" {
+			t.Fatalf("%s: freshness path degraded: %s", phase, tr.Degraded)
+		}
+		if tr.Fresh != fresh || tr.Ran != ran {
+			t.Fatalf("%s: fresh=%d ran=%d, want %d/%d", phase, tr.Fresh, tr.Ran, fresh, ran)
+		}
+		return tr
+	}
+	requireRun("cold", 0, 1)
+	requireRun("warm", 1, 0)
+
+	// An added sibling test in a new file is an inert compartment
+	// movement: the cached witness serves while only the new test runs.
+	if err := os.WriteFile(filepath.Join(tmp, "pkg", "more_test.go"), []byte(`package pkg
+
+import "testing"
+
+//gofresh:pure
+func TestMore(t *testing.T) {
+	if Value() != "v1" {
+		t.Fatal(Value())
+	}
+}
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	grown := requireRun("inert sibling addition", 1, 1)
+	if got := grown.Outcomes["example.com/grow/pkg.TestBase"]; got != verify.TestPassed {
+		t.Fatalf("served witness outcome = %v, want PASSED", got)
+	}
+	// The served record republished under the current compartment: a
+	// TestBase variant now carries the same test-variant closure the added
+	// test's fresh record pinned, and the next run serves both without
+	// re-proving the delta.
+	moreRec := cacheRecord(t, witnesscache.Load(tmp), "example.com/grow/pkg", "TestMore")
+	if moreRec == nil {
+		t.Fatal("added test published no record")
+	}
+	refreshed := false
+	for _, rec := range witnesscache.Load(tmp) {
+		if rec.Test == "TestBase" && rec.Fingerprint.TestVariantClosure == moreRec.Fingerprint.TestVariantClosure {
+			refreshed = true
+		}
+	}
+	if !refreshed {
+		t.Fatal("carve-out serve did not republish the record under the current compartment")
+	}
+	requireRun("regrown warm", 2, 0)
+
+	// An added init function in a test file is not inert: the carve-out
+	// refuses and the package re-executes.
+	if err := os.WriteFile(filepath.Join(tmp, "pkg", "init_test.go"), []byte("package pkg\n\nfunc init() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	requireRun("non-inert addition", 0, 2)
+}
+
+// TestCompartmentGrownServeGates pins the carve-out's gate directly
+// (REQ-evidence-witness-freshness): only the exact stale "test variants"
+// verdict with a persisted, inert-diffing compartment ledger serves — any
+// other stale reason, a missing ledger, or a non-inert delta refuses — and
+// a serve refreshes only the compartment pin, never the closure the
+// verdict certified.
+func TestCompartmentGrownServeGates(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("builds a gofresh view over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":          "module example.com/gate\n\ngo 1.26\n",
+		"pkg/pkg.go":      "package pkg\n\nfunc V() int { return 1 }\n",
+		"pkg/pkg_test.go": "package pkg\n\nimport \"testing\"\n\nfunc TestV(t *testing.T) {\n\tif V() != 1 {\n\t\tt.Fail()\n\t}\n}\n",
+	})
+	engine, err := gofresh.New(gofresh.WithDir(tmp))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := gofresh.Subject{Package: "example.com/gate/pkg", Symbol: "TestV"}
+	view, err := engine.NewView(context.Background(), []gofresh.Subject{s}, tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fp, err := view.Capture(context.Background(), s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ledger, err := view.TestVariantLedger(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := witnesscache.Record{
+		Package: s.Package, Test: s.Symbol,
+		Fingerprint:       witnesscache.FromGofresh(fp),
+		CompartmentLedger: witnesscache.LedgerFromGofresh(ledger),
+		Outcomes:          map[string]string{s.Package + "." + s.Symbol: "passed"},
+	}
+	variants := gofresh.Verdict{Status: gofresh.Stale, Reason: "test variants"}
+	if _, ok := compartmentGrownServe(context.Background(), view, rec, gofresh.Verdict{Status: gofresh.Stale, Reason: "maximal closure"}, s); ok {
+		t.Fatal("a non-compartment stale reason rode the carve-out")
+	}
+	ledgerless := rec
+	ledgerless.CompartmentLedger = nil
+	if _, ok := compartmentGrownServe(context.Background(), view, ledgerless, variants, s); ok {
+		t.Fatal("a ledgerless record rode the carve-out")
+	}
+	tampered := rec
+	tampered.CompartmentLedger = witnesscache.LedgerFromGofresh(ledger)
+	if len(tampered.CompartmentLedger.Declarations) == 0 {
+		t.Fatal("fixture ledger carries no declarations")
+	}
+	tampered.CompartmentLedger.Declarations[0].Hash = "ffffffffffffffffffffffffffffffff"
+	if _, ok := compartmentGrownServe(context.Background(), view, tampered, variants, s); ok {
+		t.Fatal("a changed declaration rode the carve-out")
+	}
+	// The compartment comparison precedes the environment tiers in
+	// gofresh's ladder, so a moved guard can hide behind the "test
+	// variants" reason: the carve-out's own revalidation of the refreshed
+	// fingerprint must catch it.
+	guardMoved := rec
+	guardMoved.Fingerprint.Toolchain = "go0.0-never"
+	if _, ok := compartmentGrownServe(context.Background(), view, guardMoved, variants, s); ok {
+		t.Fatal("a moved toolchain hid behind the compartment verdict and rode the carve-out")
+	}
+	served, ok := compartmentGrownServe(context.Background(), view, rec, variants, s)
+	if !ok {
+		t.Fatal("an inert delta under the exact verdict refused")
+	}
+	if served.Fingerprint.TestVariantClosure != rec.Fingerprint.TestVariantClosure ||
+		served.Fingerprint.MaximalClosure != rec.Fingerprint.MaximalClosure ||
+		served.CompartmentLedger == nil {
+		t.Fatalf("refresh rewrote the wrong pins: %+v", served.Fingerprint)
+	}
 }
 
 // TestGoRunWitnessesIsolatesDeniedOutcomes pins that the selective

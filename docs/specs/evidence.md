@@ -92,9 +92,30 @@ beside it checks valid against the current tree, because a valid fingerprint
 proves the test's source closure and produced environment are those that
 produced the outcome: the served outcome is the current run's verification
 by proven equivalence, not a trust extension, so REQ-evidence-promotion
-holds. Anything short of valid — a stale or unverifiable verdict, an absent
-or unreadable record — runs the test; absence of proof never serves an
-outcome. The fingerprint pins the closure and environment guards with the
+holds. One precisely scoped carve-out extends the proof past the
+compartment pin: a verdict of exactly stale `test variants` certifies the
+subject's own source closure unchanged and nothing more — Gofresh orders
+the compartment comparison after the core and before the environment
+tiers, so a moved guard or runtime input can hide behind that reason
+(witness fingerprints never carry a refinement) — so the carve-out
+completes the proof itself: the record's persisted compartment ledger must
+diff inert against the current view's ledger per Gofresh's classifier (the
+only movement is added declarations no unchanged declaration can observe),
+and the recorded fingerprint refreshed to the current compartment hash
+must check plainly valid against the current tree, enforcing every
+remaining pin exactly as an ordinary serve. A record passing both serves
+and republishes under the current compartment hash and ledger: the proven
+extension is recorded, so the next run reads plain validity instead of
+re-proving the same delta.
+This is what Gofresh's test-variant partition exists for: sibling test
+declarations live outside the subject's core closure precisely so their
+provably unobservable additions stop re-executing every cached witness in
+the package; the carve-out accepts framework-level test interleaving within
+one process as outside the equivalence claim, exactly as the closure-based
+claim always has. Anything else short of valid — any other stale reason,
+an unverifiable verdict, a non-inert delta, a record without a ledger, an
+absent or unreadable record — runs the test; absence of proof never serves
+an outcome. The fingerprint pins the closure and environment guards with the
 race flag as a caller-supplied build input, and the run's observed
 runtime-input manifest is captured per package under the same environment
 as the witness invocation and attached to every test fingerprinted from
@@ -214,16 +235,29 @@ name-content agreement check absorbing the truncation's collision risk. The fing
 digests are Gofresh-owned integrity values, outside REQ-model-hash-func
 entirely. Files install atomically, so distinct tree
 states of one test coexist as variants and alternating between branches evicts
-nothing. Each file carries one record object with integer `version` equal to `4`,
-string `package` and `test`, object `fingerprint`, object `outcomes`, and optional
-array `registrations`. Its fingerprint keys are `maximalClosure`, `toolchain`,
+nothing. Each file carries one record object with integer `version` equal to `5`,
+string `package` and `test`, object `fingerprint`, object `compartmentLedger`,
+object `outcomes`, and optional
+array `registrations`. Its fingerprint keys are `maximalClosure`,
+`testVariantClosure`, `toolchain`,
 `buildConfig`, an optional `observationAssertion` plus `observationProof` pair, and
 optional `purityAssertion`,
-`runtimeInputs`, `runtimeDigest`, and numeric `resultKind`; closure, build, and runtime
+`runtimeInputs`, `runtimeDigest`, and numeric `resultKind`; closure (maximal and
+test-variant), build, and runtime
 digests are 16-byte lowercase hexadecimal values, the observation assertion and proof
 are structurally encoded attributable Gofresh evidence for the record's subject, the runtime
 manifest is canonical Gofresh v1, purity is empty or a recognized Gofresh attribution,
-measurement fields are absent, and result kind is Gofresh code-result. An
+measurement fields are absent, and result kind is Gofresh code-result. The
+`compartmentLedger` object carries the producing compartment's declaration
+ledger — the witness-freshness carve-out's diff base — as an optional
+`declarations` array (string `file`, `kind`, `name`, optional `receiver`,
+and 16-byte lowercase hexadecimal `hash`) and an optional `fileHeaders`
+array (string `file`, 16-byte lowercase hexadecimal `hash`, optional
+boolean `embedded`), each omitted when empty; the declarations name the
+record's own test as a receiverless `func` — a witness subject's own
+declaration lives in its compartment, and a ledger that omits it would let
+that declaration ride an inert diff as an addition, the observation proof's
+identity agreement check applied to the ledger. An
 `observationProof` object has string keys `strategy`, `package`, `symbol`, optional
 `reason`, and `evidence`, plus required non-null boolean `observable`; its package and symbol equal the
 record identity, `reason` is absent exactly when `observable` is true, and `evidence`

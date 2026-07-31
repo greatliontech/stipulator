@@ -120,7 +120,11 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 		Package:     generated.ObservationProof.Subject.Package,
 		Test:        generated.ObservationProof.Subject.Symbol,
 		Fingerprint: FromGofresh(generated),
-		Outcomes:    map[string]string{"example.com/cacheproof.TestObserved": "passed"},
+		CompartmentLedger: &CompartmentLedger{
+			Declarations: []CompartmentDeclaration{{File: "observed_test.go", Kind: "func", Name: "TestObserved", Hash: "00112233445566778899aabbccddeeff"}},
+			FileHeaders:  []CompartmentFileHeader{{File: "observed_test.go", Hash: "ffeeddccbbaa99887766554433221100"}},
+		},
+		Outcomes: map[string]string{"example.com/cacheproof.TestObserved": "passed"},
 	}
 	path := seedOne(rec)
 	got := Load(dir)
@@ -235,6 +239,33 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 	tamper(path, `"outcomes":`, `"registrations": null, "outcomes":`)
 	requireAbsent("null registrations")
 
+	broken = rec
+	broken.CompartmentLedger = nil
+	seedOne(broken)
+	requireAbsent("ledgerless record")
+
+	broken = rec
+	broken.CompartmentLedger = &CompartmentLedger{Declarations: []CompartmentDeclaration{{File: "f_test.go", Kind: "func", Name: "T", Hash: "not-a-digest"}}}
+	seedOne(broken)
+	requireAbsent("malformed ledger declaration digest")
+
+	broken = rec
+	broken.CompartmentLedger = &CompartmentLedger{FileHeaders: []CompartmentFileHeader{{File: "", Hash: "00112233445566778899aabbccddeeff"}}}
+	seedOne(broken)
+	requireAbsent("ledger header without a file")
+
+	broken = rec
+	broken.CompartmentLedger = &CompartmentLedger{Declarations: []CompartmentDeclaration{
+		{File: "observed_test.go", Kind: "func", Name: "TestOther", Hash: "00112233445566778899aabbccddeeff"},
+	}}
+	seedOne(broken)
+	requireAbsent("ledger omitting the record's own declaration")
+
+	withVariantPin := rec
+	withVariantPin.Fingerprint.TestVariantClosure = "zz112233445566778899aabbccddeeff"
+	seedOne(withVariantPin)
+	requireAbsent("malformed test-variant closure digest")
+
 	path = seedOne(rec)
 	renamed := filepath.Join(filepath.Dir(path), identityDigest(rec.Package, rec.Test)+"-"+strings.Repeat("0", 16)+".json")
 	if err := os.Rename(path, renamed); err != nil {
@@ -266,13 +297,20 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 		Package:     generated.ObservationProof.Subject.Package,
 		Test:        generated.ObservationProof.Subject.Symbol,
 		Fingerprint: FromGofresh(generated),
-		Outcomes:    map[string]string{"example.com/cacheproof.TestObserved": "passed"},
+		CompartmentLedger: &CompartmentLedger{
+			Declarations: []CompartmentDeclaration{{File: "observed_test.go", Kind: "func", Name: "TestObserved", Hash: "00112233445566778899aabbccddeeff"}},
+			FileHeaders:  []CompartmentFileHeader{{File: "observed_test.go", Hash: "ffeeddccbbaa99887766554433221100"}},
+		},
+		Outcomes: map[string]string{"example.com/cacheproof.TestObserved": "passed"},
 	}
 	sibling := rec
 	sibling.Test = "TestSibling"
 	siblingProof := *rec.Fingerprint.ObservationProof
 	siblingProof.Symbol = "TestSibling"
 	sibling.Fingerprint.ObservationProof = &siblingProof
+	sibling.CompartmentLedger = &CompartmentLedger{
+		Declarations: []CompartmentDeclaration{{File: "observed_test.go", Kind: "func", Name: "TestSibling", Hash: "00112233445566778899aabbccddeeff"}},
+	}
 	sibling.Outcomes = map[string]string{sibling.Key(): "passed"}
 	if err := Install(dir, rec); err != nil {
 		t.Fatal(err)

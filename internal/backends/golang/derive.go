@@ -827,21 +827,11 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 			continue
 		}
 		gs := eligible[subject]
-		regs := append([]verify.Registration(nil), gs.regs...)
-		sort.Slice(regs, func(i, j int) bool {
-			a, b := regs[i], regs[j]
-			if a.Test != b.Test {
-				return a.Test < b.Test
-			}
-			return a.Requirement < b.Requirement
-		})
-		records = append(records, witnesscache.Record{
-			Package:     subject.Package,
-			Test:        subject.Symbol,
-			Fingerprint: witnesscache.FromGofresh(fp),
-			Outcomes:    gs.outcomes,
-			Regs:        compactRegs(regs),
-		})
+		rec, ok := assembleWitnessRecord(g.view, subject, fp, gs.outcomes, gs.regs)
+		if !ok {
+			continue
+		}
+		records = append(records, rec)
 		delete(reasons, subject)
 	}
 	return records, reasons, "", nil

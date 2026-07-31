@@ -71,19 +71,25 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 	// record this execution never touched is retained, never silently
 	// dropped.
 	seedFP := witnesscache.Fingerprint{
-		MaximalClosure: "00112233445566778899aabbccddeeff",
-		Toolchain:      "go1.26",
-		BuildConfig:    "00112233445566778899aabbccddeeff",
-		RuntimeInputs:  "eyJ2IjoxfQ",
-		RuntimeDigest:  "00112233445566778899aabbccddeeff",
-		ResultKind:     gofresh.CodeResult,
+		MaximalClosure:     "00112233445566778899aabbccddeeff",
+		TestVariantClosure: "00112233445566778899aabbccddeeff",
+		Toolchain:          "go1.26",
+		BuildConfig:        "00112233445566778899aabbccddeeff",
+		RuntimeInputs:      "eyJ2IjoxfQ",
+		RuntimeDigest:      "00112233445566778899aabbccddeeff",
+		ResultKind:         gofresh.CodeResult,
+	}
+	seedLedger := func(test string) *witnesscache.CompartmentLedger {
+		return &witnesscache.CompartmentLedger{Declarations: []witnesscache.CompartmentDeclaration{
+			{File: "seed_test.go", Kind: "func", Name: test, Hash: "00112233445566778899aabbccddeeff"},
+		}}
 	}
 	for _, rec := range []witnesscache.Record{
-		{Package: "example.com/exec/redmain", Test: "TestGreen", Fingerprint: seedFP,
+		{Package: "example.com/exec/redmain", Test: "TestGreen", Fingerprint: seedFP, CompartmentLedger: seedLedger("TestGreen"),
 			Outcomes: map[string]string{"example.com/exec/redmain.TestGreen": "passed"}},
-		{Package: "example.com/exec/ok", Test: "TestDouble", Fingerprint: seedFP,
+		{Package: "example.com/exec/ok", Test: "TestDouble", Fingerprint: seedFP, CompartmentLedger: seedLedger("TestDouble"),
 			Outcomes: map[string]string{"example.com/exec/ok.TestDouble": "failed"}},
-		{Package: "example.com/exec/killmid", Test: "TestShadowedByKill", Fingerprint: seedFP,
+		{Package: "example.com/exec/killmid", Test: "TestShadowedByKill", Fingerprint: seedFP, CompartmentLedger: seedLedger("TestShadowedByKill"),
 			Outcomes: map[string]string{"example.com/exec/killmid.TestShadowedByKill": "passed"}},
 	} {
 		if err := witnesscache.Install(tmp, rec); err != nil {

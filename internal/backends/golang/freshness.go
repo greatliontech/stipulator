@@ -3,12 +3,14 @@ package golang
 import (
 	"context"
 	"maps"
+	"sort"
 	"strings"
 
 	gofresh "github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/runtimeinput"
 
 	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
 
 // Freshness helpers shared by the witness surfaces: the selective
@@ -93,4 +95,32 @@ func outcomeFromString(s string) verify.TestOutcome {
 		return verify.TestSkipped
 	}
 	return verify.TestNotRun
+}
+
+// assembleWitnessRecord builds one publishable witness record: the
+// compartment ledger reads from the same view snapshot the fingerprint's
+// compartment hash pinned (the inert-growth carve-out's diff base,
+// REQ-evidence-witness-freshness), and the registrations sort canonically.
+// A subject the view cannot ledger returns false — it stays unpublishable.
+func assembleWitnessRecord(view *gofresh.View, s gofresh.Subject, fp gofresh.Fingerprint, outcomes map[string]string, regs []verify.Registration) (witnesscache.Record, bool) {
+	ledger, err := view.TestVariantLedger(s)
+	if err != nil {
+		return witnesscache.Record{}, false
+	}
+	sorted := append([]verify.Registration(nil), regs...)
+	sort.Slice(sorted, func(i, j int) bool {
+		a, b := sorted[i], sorted[j]
+		if a.Test != b.Test {
+			return a.Test < b.Test
+		}
+		return a.Requirement < b.Requirement
+	})
+	return witnesscache.Record{
+		Package:           s.Package,
+		Test:              s.Symbol,
+		Fingerprint:       witnesscache.FromGofresh(fp),
+		CompartmentLedger: witnesscache.LedgerFromGofresh(ledger),
+		Outcomes:          outcomes,
+		Regs:              compactRegs(sorted),
+	}, true
 }

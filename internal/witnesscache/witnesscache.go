@@ -31,7 +31,7 @@ import (
 // fingerprints pin the toolchain and platform, so a committed cache would
 // ping-pong across machines, and a repo-local one dies with every fresh
 // worktree (REQ-evidence-witness-cache-format).
-const version = 4
+const version = 5
 
 // variantBound caps how many tree-state variants one test identity
 // retains; eviction is by install recency and costs only execution.
@@ -149,6 +149,7 @@ func uniqueObjectFields(data []byte) (map[string]json.RawMessage, error) {
 // wire form (gofresh REQ-fresh-fingerprint-data).
 type Fingerprint struct {
 	MaximalClosure       string            `json:"maximalClosure"`
+	TestVariantClosure   string            `json:"testVariantClosure"`
 	Toolchain            string            `json:"toolchain"`
 	BuildConfig          string            `json:"buildConfig"`
 	Machine              string            `json:"machine,omitempty"`
@@ -195,7 +196,8 @@ func (f *Fingerprint) UnmarshalJSON(data []byte) error {
 // ToGofresh converts to the engine's form.
 func (f Fingerprint) ToGofresh() gofresh.Fingerprint {
 	fp := gofresh.Fingerprint{
-		MaximalClosure: f.MaximalClosure,
+		MaximalClosure:     f.MaximalClosure,
+		TestVariantClosure: f.TestVariantClosure,
 		Guards: guard.Guards{
 			Toolchain:     f.Toolchain,
 			BuildConfig:   f.BuildConfig,
@@ -224,6 +226,7 @@ func (f Fingerprint) ToGofresh() gofresh.Fingerprint {
 func FromGofresh(fp gofresh.Fingerprint) Fingerprint {
 	f := Fingerprint{
 		MaximalClosure:       fp.MaximalClosure,
+		TestVariantClosure:   fp.TestVariantClosure,
 		Toolchain:            fp.Guards.Toolchain,
 		BuildConfig:          fp.Guards.BuildConfig,
 		Machine:              fp.Guards.Machine,
@@ -247,15 +250,100 @@ func FromGofresh(fp gofresh.Fingerprint) Fingerprint {
 	return f
 }
 
+// CompartmentDeclaration is one persisted test-variant declaration entry.
+type CompartmentDeclaration struct {
+	File     string `json:"file"`
+	Kind     string `json:"kind"`
+	Name     string `json:"name"`
+	Receiver string `json:"receiver,omitempty"`
+	Hash     string `json:"hash"`
+}
+
+// CompartmentFileHeader is one compartment file's persisted header identity.
+type CompartmentFileHeader struct {
+	File     string `json:"file"`
+	Hash     string `json:"hash"`
+	Embedded bool   `json:"embedded,omitempty"`
+}
+
+// CompartmentLedger is the record package's persisted test-variant
+// declaration ledger: recorded at publish from the same view snapshot the
+// fingerprint's compartment hash pinned, and diffed at serve time against
+// the current view's ledger so the inert-growth carve-out can classify how
+// the compartment moved (REQ-evidence-witness-freshness).
+type CompartmentLedger struct {
+	Declarations []CompartmentDeclaration `json:"declarations,omitempty"`
+	FileHeaders  []CompartmentFileHeader  `json:"fileHeaders,omitempty"`
+}
+
+// LedgerFromGofresh converts gofresh's ledger to the wire encoding.
+func LedgerFromGofresh(ledger gofresh.TestVariantLedger) *CompartmentLedger {
+	out := &CompartmentLedger{
+		Declarations: make([]CompartmentDeclaration, 0, len(ledger.Declarations)),
+		FileHeaders:  make([]CompartmentFileHeader, 0, len(ledger.FileHeaders)),
+	}
+	for _, declaration := range ledger.Declarations {
+		out.Declarations = append(out.Declarations, CompartmentDeclaration(declaration))
+	}
+	for _, header := range ledger.FileHeaders {
+		out.FileHeaders = append(out.FileHeaders, CompartmentFileHeader(header))
+	}
+	return out
+}
+
+// ToGofresh converts the wire encoding back to gofresh's ledger type.
+func (l *CompartmentLedger) ToGofresh() gofresh.TestVariantLedger {
+	out := gofresh.TestVariantLedger{
+		Declarations: make([]gofresh.TestVariantDeclaration, 0, len(l.Declarations)),
+		FileHeaders:  make([]gofresh.TestVariantFileHeader, 0, len(l.FileHeaders)),
+	}
+	for _, declaration := range l.Declarations {
+		out.Declarations = append(out.Declarations, gofresh.TestVariantDeclaration(declaration))
+	}
+	for _, header := range l.FileHeaders {
+		out.FileHeaders = append(out.FileHeaders, gofresh.TestVariantFileHeader(header))
+	}
+	return out
+}
+
+// validLedger validates the ledger's structure and its coherence with the
+// record identity: a witness subject's own declaration lives in its
+// package's test-variant compartment, so a ledger that does not name the
+// record's test is incoherent — served, it would let the subject's own
+// declaration ride an inert diff as an addition (the observationProof
+// identity check's sibling).
+func validLedger(l *CompartmentLedger, test string) bool {
+	if l == nil {
+		return false
+	}
+	owns := false
+	for _, declaration := range l.Declarations {
+		if declaration.File == "" || declaration.Kind == "" || !validDigest(declaration.Hash) {
+			return false
+		}
+		if declaration.Kind == "func" && declaration.Receiver == "" && declaration.Name == test {
+			owns = true
+		}
+	}
+	for _, header := range l.FileHeaders {
+		if header.File == "" || !validDigest(header.Hash) {
+			return false
+		}
+	}
+	return owns
+}
+
 // Record is one top-level test's cached witness: the fingerprint that
-// produced it, every outcome key it owns ("pkg.Test" and "pkg.Test/sub"),
-// and its runtime registrations.
+// produced it, the producing compartment's declaration ledger, every
+// outcome key it owns ("pkg.Test" and "pkg.Test/sub"), and its runtime
+// registrations.
 type Record struct {
-	Package     string                `json:"package"`
-	Test        string                `json:"test"`
-	Fingerprint Fingerprint           `json:"fingerprint"`
-	Outcomes    map[string]string     `json:"outcomes"`
-	Regs        []verify.Registration `json:"registrations,omitempty"`
+	Package           string                `json:"package"`
+	Test              string                `json:"test"`
+	Fingerprint       Fingerprint           `json:"fingerprint"`
+	CompartmentLedger *CompartmentLedger    `json:"compartmentLedger"`
+	Outcomes          map[string]string     `json:"outcomes"`
+	Regs              []verify.Registration `json:"registrations,omitempty"`
 }
 
 func (r *Record) UnmarshalJSON(data []byte) error {
@@ -266,6 +354,9 @@ func (r *Record) UnmarshalJSON(data []byte) error {
 	}
 	if value, ok := fields["registrations"]; ok && isJSONNull(value) {
 		return errors.New("witnesscache: registrations are null")
+	}
+	if value, ok := fields["compartmentLedger"]; ok && isJSONNull(value) {
+		return errors.New("witnesscache: compartment ledger is null")
 	}
 	var decoded plain
 	dec := json.NewDecoder(bytes.NewReader(data))
@@ -283,12 +374,13 @@ func isJSONNull(value json.RawMessage) bool {
 
 // entry is one variant file's content: a versioned single record.
 type entry struct {
-	Version     int                   `json:"version"`
-	Package     string                `json:"package"`
-	Test        string                `json:"test"`
-	Fingerprint Fingerprint           `json:"fingerprint"`
-	Outcomes    map[string]string     `json:"outcomes"`
-	Regs        []verify.Registration `json:"registrations,omitempty"`
+	Version           int                   `json:"version"`
+	Package           string                `json:"package"`
+	Test              string                `json:"test"`
+	Fingerprint       Fingerprint           `json:"fingerprint"`
+	CompartmentLedger *CompartmentLedger    `json:"compartmentLedger"`
+	Outcomes          map[string]string     `json:"outcomes"`
+	Regs              []verify.Registration `json:"registrations,omitempty"`
 }
 
 // Load reads every variant record of the corpus rooted at dir. A missing
@@ -347,11 +439,11 @@ func loadEntry(store, name, dir string, manifests map[string]bool) (Record, bool
 	if dec.Decode(&e) != nil || dec.Decode(&struct{}{}) != io.EOF || e.Version != version {
 		return Record{}, false
 	}
-	rec := Record{Package: e.Package, Test: e.Test, Fingerprint: e.Fingerprint, Outcomes: e.Outcomes, Regs: e.Regs}
+	rec := Record{Package: e.Package, Test: e.Test, Fingerprint: e.Fingerprint, CompartmentLedger: e.CompartmentLedger, Outcomes: e.Outcomes, Regs: e.Regs}
 	proof := rec.Fingerprint.ObservationProof
 	if rec.Package == "" || rec.Test == "" || name != fileName(rec) ||
 		(proof != nil && (proof.Package != rec.Package || proof.Symbol != rec.Test)) ||
-		!validOutcomes(rec) || !rec.Fingerprint.valid(dir, manifests) {
+		!validOutcomes(rec) || !rec.Fingerprint.valid(dir, manifests) || !validLedger(rec.CompartmentLedger, rec.Test) {
 		return Record{}, false
 	}
 	return rec, true
@@ -387,7 +479,7 @@ func (f Fingerprint) valid(dir string, manifests map[string]bool) bool {
 		validManifest = err == nil
 		manifests[f.RuntimeInputs] = validManifest
 	}
-	return validDigest(f.MaximalClosure) && f.Toolchain != "" && validDigest(f.BuildConfig) &&
+	return validDigest(f.MaximalClosure) && validDigest(f.TestVariantClosure) && f.Toolchain != "" && validDigest(f.BuildConfig) &&
 		f.Machine == "" && f.RuntimeConfig == "" &&
 		validObservation(f) && validPurity(f.PurityAssertion) && validManifest && validDigest(f.RuntimeDigest) &&
 		f.ResultKind == gofresh.CodeResult
@@ -432,7 +524,7 @@ func Install(dir string, rec Record) error {
 	if err := os.MkdirAll(store, 0o755); err != nil {
 		return err
 	}
-	e := entry{Version: version, Package: rec.Package, Test: rec.Test, Fingerprint: rec.Fingerprint, Outcomes: rec.Outcomes, Regs: rec.Regs}
+	e := entry{Version: version, Package: rec.Package, Test: rec.Test, Fingerprint: rec.Fingerprint, CompartmentLedger: rec.CompartmentLedger, Outcomes: rec.Outcomes, Regs: rec.Regs}
 	data, err := json.MarshalIndent(e, "", "  ")
 	if err != nil {
 		return err
