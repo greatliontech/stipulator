@@ -131,9 +131,11 @@ the exemption classes below, nowhere else. Each producing process's completed ob
 observation bracket captured before the process spawns, declaring the
 package's own directory — module-relative under the verification tree,
 with the VCS bookkeeping tree excluded — together with the invocation's
-reviewed bracket paths (process images and fixed external files its
-tests deliberately consume, each a clean absolute or tree-relative
-path, fingerprinted present or absent) as its roots: a change under
+reviewed bracket paths (process images, fixed external files, and fixed
+data directories its tests deliberately consume — a documentation corpus
+the witnesses read is the canonical directory case — each a clean
+absolute or tree-relative path, a regular file or a directory tree,
+fingerprinted present or absent) as its roots: a change under
 any declared root persisting across the run-to-ingest span moves the
 bracket — a restore is tolerated only when it reproduces content and
 metadata alike — and the observation seals unverifiable, while a read

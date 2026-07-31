@@ -417,6 +417,88 @@ func TestMore(t *testing.T) {
 	requireRun("non-inert addition", 0, 2)
 }
 
+// TestGoRunWitnessesBindReadsUnderDirectoryBracketRoot pins the
+// documentation-corpus shape end to end: a test reading a repo-root data
+// file through a parent traversal serves warm when the policy declares the
+// data directory as a bracket root — the traversal resolves congruently
+// (gofresh REQ-inputs-path-congruence), the read binds to the bracket
+// instead of sealing out-of-bracket, and an edit of the bound file stales
+// the witness, proving the read is pinned rather than excused. The
+// reader is a solo runnable whose read results are deliberately unused:
+// the observed proof is what lifts file-I/O closure conservatism
+// (REQ-inputs-observation-disposition confines that lift to the proof),
+// today's proof admits value-unused reads only — content-asserting
+// readers stay uncacheable until the observed proof admits value-used
+// reads — and proofs attach to solo processes.
+func TestGoRunWitnessesBindReadsUnderDirectoryBracketRoot(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented selective run over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":             "module example.com/corpus\n\ngo 1.26\n",
+		"docs/law/source.md": "the corpus text\n",
+		"pkg/data.txt":       "local\n",
+		"pkg/pkg.go":         "package pkg\n\nfunc Kind() string { return \"corpus\" }\n",
+		"pkg/pkg_test.go": `package pkg
+
+import (
+	"os"
+	"testing"
+)
+
+func TestReadsCorpus(t *testing.T) {
+	data, _ := os.ReadFile("../docs/law/source.md")
+	_ = data
+	_ = Kind()
+}
+`,
+	})
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./pkg"})
+	cfg.SetRace(true)
+	cfg.SetBracketPaths([]string{"docs/law"})
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
+	writePolicyRecord(t, tmp, p)
+
+	requireRun := func(phase string, fresh, ran, uncached int) {
+		t.Helper()
+		tr, err := RunWitnesses(context.Background(), tmp)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if tr.Degraded != "" {
+			t.Fatalf("%s: freshness path degraded: %s", phase, tr.Degraded)
+		}
+		if tr.Fresh != fresh || tr.Ran != ran || tr.Uncached != uncached {
+			t.Fatalf("%s: fresh=%d ran=%d uncached=%d, want %d/%d/%d; uncacheable: %v", phase, tr.Fresh, tr.Ran, tr.Uncached, fresh, ran, uncached, tr.UncacheableReasons)
+		}
+	}
+	requireRun("cold", 0, 1, 0)
+	requireRun("warm", 1, 0, 0)
+
+	// The bound file's content is a recorded runtime input: an edit stales
+	// the witness and it re-executes with the moved input named,
+	// republishing under the new digest.
+	if err := os.WriteFile(filepath.Join(tmp, "docs", "law", "source.md"), []byte("the corpus text, amended\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	tr, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.Degraded != "" || tr.Fresh != 0 || tr.Ran != 1 || tr.Uncached != 0 {
+		t.Fatalf("edited corpus: %+v", tr)
+	}
+	if why := tr.ExecutedReasons["example.com/corpus/pkg.TestReadsCorpus"]; !strings.Contains(why, "source.md") {
+		t.Fatalf("edited-corpus re-execution does not name the moved input: %q", why)
+	}
+	requireRun("re-warm", 1, 0, 0)
+}
+
 // TestCompartmentGrownServeGates pins the carve-out's gate directly
 // (REQ-evidence-witness-freshness): only the exact stale "test variants"
 // verdict with a persisted, inert-diffing compartment ledger serves — any
