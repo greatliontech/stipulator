@@ -417,6 +417,204 @@ func TestMore(t *testing.T) {
 	requireRun("non-inert addition", 0, 2)
 }
 
+// A pin moving BEHIND the compartment verdict must re-execute even when
+// the compartment delta itself is inert: gofresh orders the compartment
+// comparison before the runtime tier, so a moved runtime input hides
+// behind the stale "test variants" reason, and the carve-out's batched
+// re-check of the refreshed fingerprint is what catches the mover
+// (REQ-evidence-witness-freshness — the carve-out completes the proof
+// itself, never widens it).
+func TestGoRunWitnessesRerunsWhenMoverHidesBehindInertCompartmentGrowth(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented selective run over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":          "module example.com/hidden\n\ngo 1.26\n",
+		"pkg/fixture.txt": "state-v1\n",
+		"pkg/pkg_test.go": `package pkg
+
+import (
+	"os"
+	"testing"
+)
+
+func TestReadsFixture(t *testing.T) {
+	b, err := os.ReadFile("fixture.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(b) == 0 {
+		t.Fatal("empty fixture")
+	}
+}
+`,
+	})
+	race := &stipulatorv1.GoInvocationConfig{}
+	race.SetPackages([]string{"./pkg"})
+	race.SetRace(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", race)})
+	writePolicyRecord(t, tmp, p)
+
+	requireRun := func(phase string, fresh, ran int) {
+		t.Helper()
+		tr, err := RunWitnesses(context.Background(), tmp)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if tr.Degraded != "" {
+			t.Fatalf("%s: freshness path degraded: %s", phase, tr.Degraded)
+		}
+		if tr.Fresh != fresh || tr.Ran != ran {
+			t.Fatalf("%s: fresh=%d ran=%d, want %d/%d", phase, tr.Fresh, tr.Ran, fresh, ran)
+		}
+	}
+	requireRun("cold", 0, 1)
+	requireRun("warm", 1, 0)
+
+	// One edit adds an inert sibling test AND moves the recorded
+	// fixture read: the verdict reads stale "test variants" (the
+	// compartment tier precedes the runtime tier), the refresh gate
+	// passes on the inert delta, and only the batched re-check sees the
+	// moved runtime input — the fixture reader must re-execute, never
+	// serve.
+	if err := os.WriteFile(filepath.Join(tmp, "pkg", "more_test.go"), []byte(`package pkg
+
+import "testing"
+
+//gofresh:pure
+func TestMore(t *testing.T) {}
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmp, "pkg", "fixture.txt"), []byte("state-v2\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	tr, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.Degraded != "" {
+		t.Fatalf("mover behind inert growth: freshness path degraded: %s", tr.Degraded)
+	}
+	if tr.Fresh != 0 || tr.Ran != 2 {
+		t.Fatalf("mover behind inert growth: fresh=%d ran=%d, want 0/2", tr.Fresh, tr.Ran)
+	}
+	// The refusal is the carve-out re-check's own — it names the moved
+	// input the compartment verdict hid, never the post-run drift
+	// discard a wrongly-accepted serve would fall back to.
+	reason := tr.ExecutedReasons["example.com/hidden/pkg.TestReadsFixture"]
+	if strings.HasPrefix(reason, "mid-run drift:") {
+		t.Fatalf("the hidden mover was served and only caught post-run: %q", reason)
+	}
+	if !strings.Contains(reason, "fixture.txt") {
+		t.Fatalf("the refusal does not name the hidden mover: %q", reason)
+	}
+}
+
+// A source mover landing during execution is invisible to the deferred
+// checks — they compare same-generation facts and their closing base
+// observation rides validation — so the group's closing validation is
+// the one gate that catches it: every served outcome of the group is
+// discarded with the validation's reason and re-derived by the run's
+// single retry (REQ-evidence-witness-freshness's post-run revalidation).
+func TestGoRunWitnessesSourceMoverDiscardsServedGroup(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented selective run over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":        "module example.com/srcmover\n\ngo 1.26\n",
+		"served/lib.go": "package served\n\nfunc V() int { return 1 }\n",
+		"served/served_test.go": `package served
+
+import "testing"
+
+//gofresh:pure
+func TestServed(t *testing.T) {
+	if V() != 1 {
+		t.Fail()
+	}
+}
+`,
+		"writer/writer.go": "package writer\n",
+		"writer/writer_test.go": `package writer
+
+import (
+	"os"
+	"strconv"
+	"testing"
+)
+
+func TestWriter(t *testing.T) {
+	n := 0
+	if b, err := os.ReadFile("counter.txt"); err == nil {
+		n, _ = strconv.Atoi(string(b))
+	}
+	n++
+	if err := os.WriteFile("counter.txt", []byte(strconv.Itoa(n)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if n == 2 {
+		src, err := os.ReadFile("../served/lib.go")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile("../served/lib.go", append(src, []byte("\n// moved mid-run\n")...), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+`,
+	})
+	race := &stipulatorv1.GoInvocationConfig{}
+	race.SetPackages([]string{"./..."})
+	race.SetRace(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", race)})
+	writePolicyRecord(t, tmp, p)
+
+	first, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Degraded != "" {
+		t.Fatalf("first run degraded: %s", first.Degraded)
+	}
+	if first.Ran != 2 || first.Fresh != 0 {
+		t.Fatalf("first run: ran=%d fresh=%d, want both executed", first.Ran, first.Fresh)
+	}
+
+	// Second run: the pure test serves at prepare time; the writer (its
+	// own runtime inputs moved, so it never serves) re-executes and
+	// moves the served package's source mid-run. The deferred re-check
+	// cannot see a source mover; the closing validation refuses, the
+	// serve is discarded with the validation's reason, and the retry
+	// re-derives the outcome — nothing stale ever stands.
+	second, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Degraded != "" {
+		t.Fatalf("second run degraded: %s", second.Degraded)
+	}
+	if second.Fresh != 0 || second.Ran != 2 {
+		t.Fatalf("second run: fresh=%d ran=%d, want the discarded serve re-derived by the retry", second.Fresh, second.Ran)
+	}
+	reason := second.ExecutedReasons["example.com/srcmover/served.TestServed"]
+	if !strings.Contains(reason, "source producer validation failed") {
+		t.Fatalf("discarded serve's reason = %q, want the closing validation's refusal", reason)
+	}
+	if got := second.Outcomes["example.com/srcmover/served.TestServed"]; got != verify.TestPassed {
+		t.Fatalf("retried subject outcome = %v, want PASSED from the retry's execution", got)
+	}
+}
+
 // TestGoRunWitnessesBindReadsUnderDirectoryBracketRoot pins the
 // documentation-corpus shape end to end: a test reading a repo-root data
 // file through a parent traversal serves warm when the policy declares the
@@ -541,12 +739,12 @@ func TestCompartmentGrownServeGates(t *testing.T) {
 		Outcomes:          map[string]string{s.Package + "." + s.Symbol: "passed"},
 	}
 	variants := gofresh.Verdict{Status: gofresh.Stale, Reason: "test variants"}
-	if _, ok := compartmentGrownServe(context.Background(), view, rec, gofresh.Verdict{Status: gofresh.Stale, Reason: "maximal closure"}, s); ok {
+	if _, _, ok := compartmentGrownRefresh(context.Background(), view, rec, gofresh.Verdict{Status: gofresh.Stale, Reason: "maximal closure"}, s); ok {
 		t.Fatal("a non-compartment stale reason rode the carve-out")
 	}
 	ledgerless := rec
 	ledgerless.CompartmentLedger = nil
-	if _, ok := compartmentGrownServe(context.Background(), view, ledgerless, variants, s); ok {
+	if _, _, ok := compartmentGrownRefresh(context.Background(), view, ledgerless, variants, s); ok {
 		t.Fatal("a ledgerless record rode the carve-out")
 	}
 	tampered := rec
@@ -555,21 +753,37 @@ func TestCompartmentGrownServeGates(t *testing.T) {
 		t.Fatal("fixture ledger carries no declarations")
 	}
 	tampered.CompartmentLedger.Declarations[0].Hash = "ffffffffffffffffffffffffffffffff"
-	if _, ok := compartmentGrownServe(context.Background(), view, tampered, variants, s); ok {
+	if _, _, ok := compartmentGrownRefresh(context.Background(), view, tampered, variants, s); ok {
 		t.Fatal("a changed declaration rode the carve-out")
 	}
 	// The compartment comparison precedes the environment tiers in
 	// gofresh's ladder, so a moved guard can hide behind the "test
-	// variants" reason: the carve-out's own revalidation of the refreshed
-	// fingerprint must catch it.
+	// variants" reason: the refresh alone must NOT serve — the batched
+	// re-check of the refreshed fingerprint is what catches the mover,
+	// exactly as the production rounds compose it.
 	guardMoved := rec
 	guardMoved.Fingerprint.Toolchain = "go0.0-never"
-	if _, ok := compartmentGrownServe(context.Background(), view, guardMoved, variants, s); ok {
-		t.Fatal("a moved toolchain hid behind the compartment verdict and rode the carve-out")
+	_, movedFP, ok := compartmentGrownRefresh(context.Background(), view, guardMoved, variants, s)
+	if !ok {
+		t.Fatal("the refresh half refused a gate-passing record; the re-check owns guard movement")
 	}
-	served, ok := compartmentGrownServe(context.Background(), view, rec, variants, s)
+	movedVerdicts, err := checkFingerprints(context.Background(), view, map[gofresh.Subject]gofresh.Fingerprint{s: movedFP})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if movedVerdicts[s].Status == gofresh.Valid {
+		t.Fatal("a moved toolchain hid behind the compartment verdict and re-checked valid")
+	}
+	served, servedFP, ok := compartmentGrownRefresh(context.Background(), view, rec, variants, s)
 	if !ok {
 		t.Fatal("an inert delta under the exact verdict refused")
+	}
+	servedVerdicts, err := checkFingerprints(context.Background(), view, map[gofresh.Subject]gofresh.Fingerprint{s: servedFP})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if servedVerdicts[s].Status != gofresh.Valid {
+		t.Fatalf("an inert delta's refreshed fingerprint re-checked %+v, want valid", servedVerdicts[s])
 	}
 	if served.Fingerprint.TestVariantClosure != rec.Fingerprint.TestVariantClosure ||
 		served.Fingerprint.MaximalClosure != rec.Fingerprint.MaximalClosure ||

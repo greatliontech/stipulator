@@ -407,6 +407,14 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Eng
 		opts = append(opts, gofresh.WithAssumePure(func(gofresh.Subject) bool { return true }))
 	}
 	return gofresh.New(append(opts,
+		// Every consumer of these views' verdicts follows the
+		// producer-view discipline — the served set stands only after
+		// finishGroup validates, and publication only after the
+		// publish-side closing validate — so checks defer their closing
+		// base observation to that one validation instead of paying a
+		// full re-observation per call (gofresh's deferred-close
+		// contract).
+		gofresh.WithDeferredCheckClose(),
 		// Freshness capture and validation are the longest silent
 		// stretches of a witnessed run; gofresh's own analysis steps
 		// feed the operation's progress seam as rate-limited
@@ -463,7 +471,7 @@ func NewWitnessRecorder(ctx context.Context, dir string, p *stipulatorv1.TestPol
 				g.candidates = append(g.candidates, s)
 			}
 		}
-		g.observed, g.observedFPs = observedView(ctx, engine, g.candidates, dir)
+		g.observed, g.observedFPs = observedView(ctx, g.view, g.candidates)
 		r.groups = append(r.groups, g)
 	}
 	// Release transient package-loading memory before the caller spawns
@@ -621,15 +629,6 @@ type groupSubject struct {
 func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, facts invocationFacts, selectCount map[string]int, rowsByInvPkg map[string][]*stipulatorv1.TestResult, obsByProducer map[producerKey]*ProcessObservation) ([]witnesscache.Record, map[gofresh.Subject]string, string, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, "", err
-	}
-	// Source producer validation: the analysis view must still describe
-	// the tree after execution, or every fingerprint of the group is a
-	// hash of a tree the outcomes may not have come from.
-	if err := g.view.Validate(ctx); err != nil {
-		if ctx.Err() != nil {
-			return nil, nil, "", ctx.Err()
-		}
-		return nil, nil, fmt.Sprintf("source producer validation failed: %v", err), nil
 	}
 	reasons := map[gofresh.Subject]string{}
 
@@ -818,6 +817,17 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 				reasons[subject] = "post-run validation: " + verdict.Reason
 			}
 		}
+	}
+	// Source producer validation, last on the view as the deferred
+	// close: the analysis view must still describe the tree after
+	// execution — or every fingerprint of the group is a hash of a tree
+	// the outcomes may not have come from — and the checks above are
+	// provisional until this one closing observation agrees.
+	if err := g.view.Validate(ctx); err != nil {
+		if ctx.Err() != nil {
+			return nil, nil, "", ctx.Err()
+		}
+		return nil, nil, fmt.Sprintf("source producer validation failed: %v", err), nil
 	}
 
 	var records []witnesscache.Record

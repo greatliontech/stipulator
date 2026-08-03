@@ -393,11 +393,12 @@ func TestGoRunWitnessesServingRoundTrip(t *testing.T) {
 // TestGoRunWitnessesSelectsRaceSources pins that freshness analyzes the
 // same race-selected sources as the covering race invocation executes
 // (REQ-go-race). The default-only declaration's purity assertion must not
-// apply to its race-selected counterpart, and an edit to a race-only
-// helper must stale the test that reaches it. Each package has one
-// selected test, so process isolation permits proof selection; the race
-// I/O test still reruns because its diagnostic error path is not covered
-// by a positive observation proof.
+// apply to its race-selected counterpart — the published record carries
+// the observation proof and no purity attribution — and an edit to a
+// race-only helper must stale the test that reaches it. Each package has
+// one selected test, so process isolation permits proof selection; the
+// race I/O test's fixture read and harness failure channel are covered
+// by its positive observation proof, so it serves like its sibling.
 //
 //gofresh:pure
 func TestGoRunWitnessesSelectsRaceSources(t *testing.T) {
@@ -429,8 +430,28 @@ func TestGoRunWitnessesSelectsRaceSources(t *testing.T) {
 		t.Fatal(err)
 	}
 	fresh(t, second, "second run")
-	if second.Ran != 1 || second.Fresh != 1 {
-		t.Fatalf("second run: ran=%d fresh=%d, want the unasserted race I/O test rerun and closure test served", second.Ran, second.Fresh)
+	if second.Ran != 0 || second.Fresh != 2 {
+		t.Fatalf("second run: ran=%d fresh=%d, want both tests served — the race I/O test under its observation proof", second.Ran, second.Fresh)
+	}
+	// The race-selected record serves under its own observation proof,
+	// never the default-only declaration's purity assertion: a laundered
+	// assertion would appear as purity attribution on the published
+	// fingerprint.
+	purityRecorded := false
+	for _, rec := range witnesscache.Load(tmp) {
+		if rec.Package != "example.com/racefixture/racepurity" || rec.Test != "TestRacePurity" {
+			continue
+		}
+		purityRecorded = true
+		if rec.Fingerprint.PurityAssertion != "" {
+			t.Fatalf("race-selected record carries purity attribution %q — the default-only assertion rode across the build constraint", rec.Fingerprint.PurityAssertion)
+		}
+		if rec.Fingerprint.ObservationProof == nil || !rec.Fingerprint.ObservationProof.Observable {
+			t.Fatalf("race-selected record serves without an observable proof: %+v", rec.Fingerprint.ObservationProof)
+		}
+	}
+	if !purityRecorded {
+		t.Fatal("no published record for the race-selected I/O test")
 	}
 
 	helperPath := filepath.Join(tmp, "raceclosure", "value_race.go")
@@ -451,8 +472,8 @@ func TestGoRunWitnessesSelectsRaceSources(t *testing.T) {
 		t.Fatal(err)
 	}
 	fresh(t, third, "race helper edit")
-	if third.Ran != 2 || third.Fresh != 0 {
-		t.Fatalf("race helper edit: ran=%d fresh=%d, want both tests run", third.Ran, third.Fresh)
+	if third.Ran != 1 || third.Fresh != 1 {
+		t.Fatalf("race helper edit: ran=%d fresh=%d, want the closure test re-run on its race-only helper edit and the I/O test served", third.Ran, third.Fresh)
 	}
 	if third.Outcomes["example.com/racefixture/raceclosure.TestRaceClosure"] != verify.TestPassed {
 		t.Fatalf("race-selected closure test did not pass after re-witnessing: %v", third.Outcomes)
@@ -463,7 +484,7 @@ func TestGoRunWitnessesSelectsRaceSources(t *testing.T) {
 		t.Fatal(err)
 	}
 	fresh(t, fourth, "post-edit steady state")
-	if fourth.Ran != 1 || fourth.Fresh != 1 {
-		t.Fatalf("post-edit steady state: ran=%d fresh=%d, want the unasserted race I/O test rerun and recaptured closure test served", fourth.Ran, fourth.Fresh)
+	if fourth.Ran != 0 || fourth.Fresh != 2 {
+		t.Fatalf("post-edit steady state: ran=%d fresh=%d, want both served — the recaptured closure test beside the proof-served I/O test", fourth.Ran, fourth.Fresh)
 	}
 }

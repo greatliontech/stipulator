@@ -31,6 +31,11 @@ func neutralAmbient(t *testing.T) {
 	// An empty variable defers to the persistent go env config file; GOENV
 	// off makes the values set here the only ambient source.
 	t.Setenv("GOENV", "off")
+	// An exported ambient workspace — a mutation-probe or CI harness
+	// exporting this repo's own go.work — would leak into fixture
+	// modules' go invocations and refuse their loads; the witness runner
+	// pins GOWORK per module, and hermetic tests pin it off themselves.
+	t.Setenv("GOWORK", "off")
 	t.Helper()
 	// The witness store lives under the user cache directory; tests must
 	// never touch the real one.

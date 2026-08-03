@@ -2,6 +2,10 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
+- **[publication-ladder-collapse](publication-ladder-collapse.md)** — publishGroup and
+  publishExecuted are near-duplicate publication ladders; collapsing them onto one would
+  also fold the serving path's two per-group closing validations into one and drop the
+  retry's redundant pre-publish validate. *Lands: user decision.*
 - **[proto-backend](proto-backend.md)** — descriptor-level verification via protocompile;
   spec exists, five requirements gapped. *Lands: when a corpus needs wire evidence that
   shape pins and Go witnesses cannot cover.*
@@ -78,8 +82,3 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   a direct-call-absence verb (structural.NoCall) would carry them. *Lands: when a
   structural requirement next needs a call-absence proof and the signature/import verbs
   demonstrably cannot carry it.*
-- **[check-view-cardinality](check-view-cardinality.md)** — measured: 24 observation passes
-  are 86% of the fully-warm check's 109s floor (and the v0.43.8 memo bump alone cut the
-  pre-memo 1,048s floor 9.6×); one shared view per tree generation is the fix family.
-  *Lands: alongside the gomutant observation-pass-cardinality item — one fix family, both
-  callers.*

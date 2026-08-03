@@ -58,12 +58,18 @@ func validatedObservation(fingerprint gofresh.Fingerprint, state runtimeinput.St
 }
 
 // observedView selects observation-completeness proof for every unasserted
-// subject in one batch. Failure leaves the ordinary maximal captures in force.
-func observedView(ctx context.Context, engine *gofresh.Engine, subjects []gofresh.Subject, dir string) (*gofresh.View, map[gofresh.Subject]gofresh.Fingerprint) {
+// subject in one batch, on a sibling of the group's own analysis view:
+// the derivation itself observes nothing — the sibling serves the
+// parent's one observation, so the proof leg's evidence and the group's
+// share one tree generation by construction — while the proof capture
+// still runs its own bracketed pass to make the new proofs record-grade,
+// and the sibling owns its attach/validate transaction. Failure leaves
+// the ordinary maximal captures in force.
+func observedView(ctx context.Context, parent *gofresh.View, subjects []gofresh.Subject) (*gofresh.View, map[gofresh.Subject]gofresh.Fingerprint) {
 	if len(subjects) == 0 {
 		return nil, nil
 	}
-	view, err := engine.NewView(ctx, subjects, dir)
+	view, err := parent.Sibling(subjects)
 	if err != nil {
 		return nil, nil
 	}

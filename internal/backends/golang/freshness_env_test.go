@@ -22,7 +22,10 @@ func simpleModule(t *testing.T) string {
 	// fixture test reads it — the volatile observation under test. Global
 	// and system git config are pinned away: a child process's config
 	// reads are outside the testlog, so ambient config must not be able
-	// to shape recorded fixture state.
+	// to shape recorded fixture state. The fixture test also spawns a
+	// child process of its own — an effect no positive observation proof
+	// covers — so its record stays unpublishable and the run's cache
+	// shrinkage stays a visible, testable number.
 	git := exec.Command("git", "init", "-q", tmp)
 	git.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null", "GIT_CONFIG_NOSYSTEM=1")
 	if out, err := git.CombinedOutput(); err != nil {
@@ -32,6 +35,7 @@ func simpleModule(t *testing.T) string {
 
 import (
 	"os"
+	"os/exec"
 	"testing"
 )
 
@@ -41,6 +45,9 @@ func TestReadsVolatileState(t *testing.T) {
 	}
 	if _, err := os.ReadFile(".git/HEAD"); err != nil {
 		t.Fatal(err)
+	}
+	if err := exec.Command("git", "--version").Run(); err != nil {
+		t.Skip("git unavailable")
 	}
 }
 `
@@ -90,11 +97,13 @@ func TestGoRunWitnessesUnderForeignWorkspace(t *testing.T) {
 	if tr.Outcomes["example.com/envfix.TestReadsVolatileState"] == 0 {
 		t.Fatalf("fixture test outcome missing: %v", tr.Outcomes)
 	}
-	// The fixture's file-I/O closure is unverifiable and its test carries
-	// no //gofresh:pure directive. Its single-test process is isolated, but
-	// the excluded volatile reads do not provide guarded outcomes from which
-	// a positive observation proof can derive its error branches, so its
-	// record cannot publish and the shrinkage stays visible as a number.
+	// The fixture test spawns a child process — an effect no positive
+	// observation proof covers — and carries no //gofresh:pure directive,
+	// so its record cannot publish and the shrinkage stays visible as a
+	// number. (Its volatile reads alone would no longer refuse: the
+	// observation proof covers observed reads and the audited harness
+	// failure channel, and the root/VCS exclusion is the spec's accepted
+	// assertion.)
 	if tr.Uncached != tr.Ran || tr.Uncached == 0 {
 		t.Fatalf("uncached = %d with ran = %d; cache shrinkage must be counted", tr.Uncached, tr.Ran)
 	}
