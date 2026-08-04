@@ -408,3 +408,27 @@ func TestGoNormalizeBracketPaths(t *testing.T) {
 		}
 	}
 }
+
+func TestGoNormalizeExcludedPaths(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	neutralAmbient(t)
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./..."})
+	cfg.SetExcludedPaths([]string{".claude", "tmp/session"})
+	n, err := NormalizeInvocation(context.Background(), discoverFixture(t), goInvocation("ex", cfg))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(n.ExcludedPaths) != 2 || n.ExcludedPaths[0] != ".claude" || n.ExcludedPaths[1] != "tmp/session" {
+		t.Fatalf("ExcludedPaths = %v", n.ExcludedPaths)
+	}
+	tmpAbs := filepath.Join(discoverFixture(t), "sub")
+	for _, bad := range []string{"", "a/../b", "./rel", "../escape", "/unclean//x", "a\x01b", tmpAbs} {
+		c := &stipulatorv1.GoInvocationConfig{}
+		c.SetPackages([]string{"./..."})
+		c.SetExcludedPaths([]string{bad})
+		if _, err := NormalizeInvocation(context.Background(), discoverFixture(t), goInvocation("ex", c)); err == nil {
+			t.Errorf("excluded path %q accepted", bad)
+		}
+	}
+}

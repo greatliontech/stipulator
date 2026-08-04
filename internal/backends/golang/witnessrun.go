@@ -452,6 +452,52 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 	return tr, nil
 }
 
+// roundCandidates selects round N's checkable fingerprints: each
+// unproven subject's Nth variant, gated on its licensing exclusions. A
+// gate-refused variant counts as round progress — refusal must never
+// end the walk while later variants remain, or a poisoned early
+// variant would permanently mask a serveable one (spurious re-run,
+// forever). A record's observation proves nothing about the surfaces
+// its capture-time exclusions elided, so it serves only while the
+// current policy still asserts every one of them: a withdrawn
+// exclusion re-runs the witnesses it licensed, while an added
+// exclusion serves existing evidence unchanged (its identities are in
+// the manifest and simply revalidate).
+func roundCandidates(subjects []gofresh.Subject, cached map[string][]witnesscache.Record, valid map[gofresh.Subject]bool, round int, current []string, refused func(gofresh.Subject)) (map[gofresh.Subject]gofresh.Fingerprint, bool) {
+	fps := map[gofresh.Subject]gofresh.Fingerprint{}
+	advanced := false
+	for _, s := range subjects {
+		vars := cached[s.Package+"."+s.Symbol]
+		if valid[s] || round >= len(vars) {
+			continue
+		}
+		advanced = true
+		if !exclusionsStillAsserted(vars[round].ObservationExclusions, current) {
+			refused(s)
+			continue
+		}
+		fps[s] = vars[round].Fingerprint.ToGofresh()
+	}
+	return fps, advanced
+}
+
+// exclusionsStillAsserted reports whether every capture-time exclusion
+// is still in the group's current canonical set — the serving condition
+// for evidence whose manifest elided those identities. Both sides are
+// canonical (sorted, deduplicated), so the check is a linear merge.
+func exclusionsStillAsserted(recorded, current []string) bool {
+	i := 0
+	for _, want := range recorded {
+		for i < len(current) && current[i] < want {
+			i++
+		}
+		if i >= len(current) || current[i] != want {
+			return false
+		}
+	}
+	return true
+}
+
 // prepareWitnessGroups builds each capture group's serving state: the
 // analysis view over its in-policy subjects, the pre-execution
 // fingerprint check partitioning served from stale, the stale captures,
@@ -491,14 +537,16 @@ func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, ca
 		// execution.
 		valid := map[gofresh.Subject]bool{}
 		for round := 0; ; round++ {
-			fps := map[gofresh.Subject]gofresh.Fingerprint{}
-			for _, s := range subjects {
-				if vars := cached[s.Package+"."+s.Symbol]; !valid[s] && round < len(vars) {
-					fps[s] = vars[round].Fingerprint.ToGofresh()
-				}
+			fps, advanced := roundCandidates(subjects, cached, valid, round, g.excludedPaths, func(s gofresh.Subject) {
+				wg.executedWhy[s] = "recorded under a withdrawn observation exclusion"
+			})
+			if !advanced {
+				break
 			}
 			if len(fps) == 0 {
-				break
+				// Every variant this round was gate-refused; later
+				// variants may still prove equivalent.
+				continue
 			}
 			verdicts, err := checkFingerprints(ctx, view, fps)
 			if err != nil {
@@ -1030,7 +1078,7 @@ func publishExecuted(ctx context.Context, wg *witnessGroup, m *execMerge) ([]wit
 			continue
 		}
 		sr := eligible[s]
-		rec, ok := assembleWitnessRecord(wg.view, s, fp, sr.outcomes, sr.regs)
+		rec, ok := assembleWitnessRecord(wg.view, s, fp, sr.outcomes, sr.regs, wg.g.excludedPaths)
 		if !ok {
 			continue
 		}

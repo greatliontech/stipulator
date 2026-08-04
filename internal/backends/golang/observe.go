@@ -228,7 +228,7 @@ func completedObservation(n *NormalizedInvocation, pkg string, producer *stipula
 	opts := []runtimeinput.TestLogOption{
 		runtimeinput.WithCompletedProcess(processIdentity(n, producer, pkg)),
 		runtimeinput.WithBracket(*frame.bracket),
-		runtimeinput.WithExcludedPaths(".", ".git"),
+		runtimeinput.WithExcludedPaths(append([]string{".", ".git"}, n.ExcludedPaths...)...),
 	}
 	// Toolchain and module-cache reads classify guard-covered: the
 	// toolchain guard pins the toolchain root's contents, module trees

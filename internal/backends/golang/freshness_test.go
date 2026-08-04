@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/greatliontech/gofresh"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
@@ -486,5 +487,209 @@ func TestGoRunWitnessesSelectsRaceSources(t *testing.T) {
 	fresh(t, fourth, "post-edit steady state")
 	if fourth.Ran != 0 || fourth.Fresh != 2 {
 		t.Fatalf("post-edit steady state: ran=%d fresh=%d, want both served — the recaptured closure test beside the proof-served I/O test", fourth.Ran, fourth.Fresh)
+	}
+}
+
+// TestGoRunWitnessesConfigExcludedPathHonored pins the reviewed
+// invocation-config exclusion end to end: a witness reading a session
+// tool's bookkeeping file outside its package bracket is uncacheable —
+// the read seals out-of-bracket — until the policy declares the
+// directory excluded, after which the identity records nothing and the
+// witness serves across content drift the exclusion asserts is no
+// input.
+func TestGoRunWitnessesConfigExcludedPathHonored(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("runs go test per package")
+	}
+	files := map[string]string{
+		"go.mod":         "module example.com/exclfixture\n\ngo 1.26\n",
+		".claude/marker": "session-state-1\n",
+		"lib/lib.go":     "package lib\n\nfunc Two() int { return 2 }\n",
+		"lib/lib_test.go": `package lib
+
+import (
+	"os"
+	"testing"
+)
+
+func TestReadsSession(t *testing.T) {
+	_, _ = os.ReadFile("../.claude/marker")
+	if Two() != 2 {
+		t.Fatal("wrong")
+	}
+}
+`,
+	}
+	for _, tc := range []struct {
+		name       string
+		excluded   bool
+		wantServed int
+	}{
+		{name: "declared exclusion serves across drift", excluded: true, wantServed: 1},
+		{name: "undeclared stays uncacheable", excluded: false, wantServed: 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("XDG_CACHE_HOME", t.TempDir())
+			neutralAmbient(t)
+			tmp := writeModule(t, files)
+			cfg := &stipulatorv1.GoInvocationConfig{}
+			cfg.SetPackages([]string{"./..."})
+			cfg.SetRace(true)
+			if tc.excluded {
+				cfg.SetExcludedPaths([]string{".claude"})
+			}
+			p := &stipulatorv1.TestPolicy{}
+			p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", cfg)})
+			writePolicyRecord(t, tmp, p)
+			first, err := RunWitnesses(context.Background(), tmp)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if first.Ran != 1 || first.Fresh != 0 {
+				t.Fatalf("first run: ran=%d fresh=%d uncached=%d outcomes=%v, want 1 ran", first.Ran, first.Fresh, first.Uncached, first.Outcomes)
+			}
+			if err := os.WriteFile(filepath.Join(tmp, ".claude", "marker"), []byte("session-state-2\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			second, err := RunWitnesses(context.Background(), tmp)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if second.Fresh != tc.wantServed || second.Ran != 1-tc.wantServed {
+				t.Fatalf("second run: ran=%d fresh=%d, want fresh=%d", second.Ran, second.Fresh, tc.wantServed)
+			}
+			if !tc.excluded {
+				if second.Uncached != 1 {
+					t.Fatalf("second run: uncached=%d, want the out-of-bracket read permanently uncacheable", second.Uncached)
+				}
+				return
+			}
+			// Additions serve existing evidence unchanged: the new
+			// entry's identities are in no record's licensing set.
+			widened := &stipulatorv1.GoInvocationConfig{}
+			widened.SetPackages([]string{"./..."})
+			widened.SetRace(true)
+			widened.SetExcludedPaths([]string{".claude", "unrelated"})
+			pw := &stipulatorv1.TestPolicy{}
+			pw.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", widened)})
+			writePolicyRecord(t, tmp, pw)
+			third, err := RunWitnesses(context.Background(), tmp)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if third.Fresh != 1 || third.Ran != 0 {
+				t.Fatalf("widened run: ran=%d fresh=%d, want served", third.Ran, third.Fresh)
+			}
+			// Withdrawal re-runs the witnesses the entry licensed: the
+			// record's observation proves nothing about the elided
+			// surface, and the current policy no longer asserts it.
+			bare := &stipulatorv1.GoInvocationConfig{}
+			bare.SetPackages([]string{"./..."})
+			bare.SetRace(true)
+			pb := &stipulatorv1.TestPolicy{}
+			pb.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", bare)})
+			writePolicyRecord(t, tmp, pb)
+			if err := os.WriteFile(filepath.Join(tmp, ".claude", "marker"), []byte("session-state-3\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			fourth, err := RunWitnesses(context.Background(), tmp)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if fourth.Ran != 1 || fourth.Fresh != 0 {
+				t.Fatalf("withdrawn run: ran=%d fresh=%d, want re-executed", fourth.Ran, fourth.Fresh)
+			}
+		})
+	}
+}
+
+// TestRoundCandidatesAdvancesPastGateRefusal pins the variant-walk
+// contract under the exclusion gate: a gate-refused variant is round
+// progress, never the walk's end, so a poisoned early variant can
+// never permanently mask a serveable later one.
+func TestRoundCandidatesAdvancesPastGateRefusal(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	s := gofresh.Subject{Package: "p", Symbol: "T"}
+	cached := map[string][]witnesscache.Record{"p.T": {
+		{ObservationExclusions: []string{"withdrawn"}},
+		{},
+	}}
+	refused := 0
+	fps, advanced := roundCandidates([]gofresh.Subject{s}, cached, map[gofresh.Subject]bool{}, 0, nil, func(gofresh.Subject) { refused++ })
+	if !advanced || len(fps) != 0 || refused != 1 {
+		t.Fatalf("round 0: advanced=%v fps=%d refused=%d, want advancement past the gate-refused variant", advanced, len(fps), refused)
+	}
+	if fps, advanced = roundCandidates([]gofresh.Subject{s}, cached, map[gofresh.Subject]bool{}, 1, nil, func(gofresh.Subject) { refused++ }); !advanced || len(fps) != 1 {
+		t.Fatalf("round 1: advanced=%v fps=%d, want the later variant checked", advanced, len(fps))
+	}
+	if _, advanced = roundCandidates([]gofresh.Subject{s}, cached, map[gofresh.Subject]bool{}, 2, nil, func(gofresh.Subject) { refused++ }); advanced {
+		t.Fatal("round past the last variant still advances")
+	}
+}
+
+// TestGoRunWitnessesWithdrawnVariantNeverMasksServeable is the
+// integration net over the same contract: after a withdrawal republish,
+// two variants coexist — the gate-refused one must not end the walk
+// before the recorded one proves equivalent, whatever the load order.
+func TestGoRunWitnessesWithdrawnVariantNeverMasksServeable(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("runs go test per package")
+	}
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":          "module example.com/maskfixture\n\ngo 1.26\n",
+		"lib/cache/state": "warm\n",
+		"lib/lib.go":      "package lib\n\nfunc Two() int { return 2 }\n",
+		"lib/lib_test.go": `package lib
+
+import (
+	"os"
+	"testing"
+)
+
+func TestReadsCache(t *testing.T) {
+	_, _ = os.ReadFile("cache/state")
+	if Two() != 2 {
+		t.Fatal("wrong")
+	}
+}
+`,
+	})
+	policy := func(excluded []string) {
+		cfg := &stipulatorv1.GoInvocationConfig{}
+		cfg.SetPackages([]string{"./..."})
+		cfg.SetRace(true)
+		if len(excluded) > 0 {
+			cfg.SetExcludedPaths(excluded)
+		}
+		p := &stipulatorv1.TestPolicy{}
+		p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", cfg)})
+		writePolicyRecord(t, tmp, p)
+	}
+	policy([]string{"lib/cache"})
+	first, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Ran != 1 {
+		t.Fatalf("first run: ran=%d, want 1", first.Ran)
+	}
+	policy(nil)
+	second, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Ran != 1 || second.Fresh != 0 {
+		t.Fatalf("withdrawal run: ran=%d fresh=%d, want re-executed", second.Ran, second.Fresh)
+	}
+	third, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if third.Fresh != 1 || third.Ran != 0 {
+		t.Fatalf("post-republish run: ran=%d fresh=%d, want the recorded variant served", third.Ran, third.Fresh)
 	}
 }

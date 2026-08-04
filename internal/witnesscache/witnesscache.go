@@ -344,6 +344,13 @@ type Record struct {
 	CompartmentLedger *CompartmentLedger    `json:"compartmentLedger"`
 	Outcomes          map[string]string     `json:"outcomes"`
 	Regs              []verify.Registration `json:"registrations,omitempty"`
+	// ObservationExclusions is the canonical reviewed exclusion set the
+	// record's observation was captured under: every identity here was
+	// elided from the manifest, so the evidence proves nothing about
+	// those surfaces and serves only while the current policy still
+	// asserts each one. Absent means the capture ran with no reviewed
+	// exclusions (the built-in pair is tool semantics, never recorded).
+	ObservationExclusions []string `json:"observationExclusions,omitempty"`
 }
 
 func (r *Record) UnmarshalJSON(data []byte) error {
@@ -381,6 +388,10 @@ type entry struct {
 	CompartmentLedger *CompartmentLedger    `json:"compartmentLedger"`
 	Outcomes          map[string]string     `json:"outcomes"`
 	Regs              []verify.Registration `json:"registrations,omitempty"`
+	// ObservationExclusions mirrors Record's field; absent in stores
+	// written before reviewed exclusions existed, which is exactly the
+	// empty capture-time set.
+	ObservationExclusions []string `json:"observationExclusions,omitempty"`
 }
 
 // Load reads every variant record of the corpus rooted at dir. A missing
@@ -439,7 +450,7 @@ func loadEntry(store, name, dir string, manifests map[string]bool) (Record, bool
 	if dec.Decode(&e) != nil || dec.Decode(&struct{}{}) != io.EOF || e.Version != version {
 		return Record{}, false
 	}
-	rec := Record{Package: e.Package, Test: e.Test, Fingerprint: e.Fingerprint, CompartmentLedger: e.CompartmentLedger, Outcomes: e.Outcomes, Regs: e.Regs}
+	rec := Record{Package: e.Package, Test: e.Test, Fingerprint: e.Fingerprint, CompartmentLedger: e.CompartmentLedger, Outcomes: e.Outcomes, Regs: e.Regs, ObservationExclusions: e.ObservationExclusions}
 	proof := rec.Fingerprint.ObservationProof
 	if rec.Package == "" || rec.Test == "" || name != fileName(rec) ||
 		(proof != nil && (proof.Package != rec.Package || proof.Symbol != rec.Test)) ||
@@ -524,7 +535,7 @@ func Install(dir string, rec Record) error {
 	if err := os.MkdirAll(store, 0o755); err != nil {
 		return err
 	}
-	e := entry{Version: version, Package: rec.Package, Test: rec.Test, Fingerprint: rec.Fingerprint, CompartmentLedger: rec.CompartmentLedger, Outcomes: rec.Outcomes, Regs: rec.Regs}
+	e := entry{Version: version, Package: rec.Package, Test: rec.Test, Fingerprint: rec.Fingerprint, CompartmentLedger: rec.CompartmentLedger, Outcomes: rec.Outcomes, Regs: rec.Regs, ObservationExclusions: rec.ObservationExclusions}
 	data, err := json.MarshalIndent(e, "", "  ")
 	if err != nil {
 		return err

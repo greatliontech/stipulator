@@ -120,10 +120,20 @@ race flag as a caller-supplied build input, and the run's observed
 runtime-input manifest is captured per package under the same environment
 as the witness invocation and attached to every test fingerprinted from
 that run — an over-approximation whose failure direction is a spurious
-re-run, never a spurious reuse, with one declared exception: the
+re-run, never a spurious reuse, with one declared exception class: the
 observation excludes the repository root listing and the VCS bookkeeping
 tree (`.` and `.git`), whose digests move under unrelated tooling and are
-asserted to be no witness's input. The exclusion carries the caller-side
+asserted to be no witness's input, together with the invocation's
+reviewed exclusions — committed policy entries, each a tree-relative
+slash path or clean absolute host path, naming surfaces the repository
+asserts the same way (a session tool's bookkeeping directory is the
+canonical case). A record's observation proves nothing about the
+surfaces its capture-time reviewed exclusions elided, so every record
+carries that set and serves only while the current policy still asserts
+each entry: a withdrawn or narrowed exclusion re-executes the witnesses
+it licensed, while an added exclusion serves existing evidence unchanged
+— its identities are in the manifest and simply revalidate. Every
+exclusion carries the caller-side
 soundness responsibility gofresh's exclusion contract assigns it — its
 failure direction is a spurious reuse, accepted exactly there and — each
 scoped to the stated assumption whose violation would convert it — in
@@ -239,8 +249,11 @@ entirely. Files install atomically, so distinct tree
 states of one test coexist as variants and alternating between branches evicts
 nothing. Each file carries one record object with integer `version` equal to `5`,
 string `package` and `test`, object `fingerprint`, object `compartmentLedger`,
-object `outcomes`, and optional
-array `registrations`. Its fingerprint keys are `maximalClosure`,
+object `outcomes`, optional
+array `registrations`, and optional array `observationExclusions` — the
+canonical reviewed exclusion set the record's observation was captured
+under, absent meaning the capture ran with none, which is exactly what
+every pre-field record's capture did. Its fingerprint keys are `maximalClosure`,
 `testVariantClosure`, `toolchain`,
 `buildConfig`, an optional `observationAssertion` plus `observationProof` pair, and
 optional `purityAssertion`,

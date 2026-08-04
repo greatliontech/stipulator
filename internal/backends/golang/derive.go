@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"maps"
 	"runtime/debug"
+	"slices"
 	"sort"
 	"strings"
 
@@ -194,6 +195,14 @@ type captureGroup struct {
 	// assumePure carries the invocations' reviewed whole-invocation
 	// purity assertion into the engine (REQ-purity-responsibility).
 	assumePure bool
+	// excludedPaths is the group's canonical (sorted, deduplicated)
+	// reviewed observation-exclusion set. It partitions the group key —
+	// two exclusion sets are two observation semantics — and every
+	// record the group publishes carries it, so serving can refuse
+	// evidence whose licensing exclusions the current policy has
+	// withdrawn (the withdrawal re-runs; additions serve existing
+	// evidence unchanged).
+	excludedPaths []string
 	// pkgInv names the one invocation of this group selecting each
 	// package; a package two invocations select never publishes, because
 	// its record would have no single producing invocation.
@@ -279,7 +288,19 @@ func groupKey(n *NormalizedInvocation) string {
 	if n.Race {
 		key += "\x03race"
 	}
+	if len(n.ExcludedPaths) > 0 {
+		key += "\x04" + strings.Join(canonicalExclusions(n.ExcludedPaths), "\x01")
+	}
 	return key
+}
+
+// canonicalExclusions sorts and deduplicates a reviewed exclusion set so
+// group identity, record provenance, and the serving subset check all
+// compare one canonical form.
+func canonicalExclusions(paths []string) []string {
+	out := append([]string(nil), paths...)
+	sort.Strings(out)
+	return slices.Compact(out)
 }
 
 // capturePolicy normalizes and discovers every Go invocation of the
@@ -333,14 +354,15 @@ func capturePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) 
 		g := byKey[key]
 		if g == nil {
 			g = &captureGroup{
-				tags:       n.Tags,
-				env:        n.Env,
-				race:       n.Race,
-				assumePure: n.AssumePure,
-				pkgInv:     map[string]string{},
-				ambiguous:  map[string]bool{},
-				tests:      map[string][]string{},
-				solo:       map[string]bool{},
+				tags:          n.Tags,
+				env:           n.Env,
+				race:          n.Race,
+				assumePure:    n.AssumePure,
+				excludedPaths: canonicalExclusions(n.ExcludedPaths),
+				pkgInv:        map[string]string{},
+				ambiguous:     map[string]bool{},
+				tests:         map[string][]string{},
+				solo:          map[string]bool{},
 			}
 			byKey[key] = g
 			keys = append(keys, key)
@@ -837,7 +859,7 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 			continue
 		}
 		gs := eligible[subject]
-		rec, ok := assembleWitnessRecord(g.view, subject, fp, gs.outcomes, gs.regs)
+		rec, ok := assembleWitnessRecord(g.view, subject, fp, gs.outcomes, gs.regs, g.excludedPaths)
 		if !ok {
 			continue
 		}

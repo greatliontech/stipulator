@@ -205,4 +205,15 @@ message GoInvocationConfig {
   // so the tier is auditable, never laundered. Meaningless beside
   // race: true and refused there — one invocation has one tier.
   bool plain_witness = 23;
+  // Reviewed observation exclusions joining the built-in pair (the
+  // repository root listing and the VCS bookkeeping tree): each entry
+  // is a tree-relative slash path or clean absolute host path whose
+  // observations are asserted to be no witness's input — a session
+  // tool's bookkeeping directory whose digests move under unrelated
+  // tooling is the canonical case. The exclusion carries the
+  // caller-side soundness responsibility gofresh's exclusion contract
+  // assigns it: its failure direction is a spurious reuse, so entries
+  // belong here — committed and reviewed — never in per-machine
+  // tooling, and stay narrow.
+  repeated string excluded_paths = 24;
 }

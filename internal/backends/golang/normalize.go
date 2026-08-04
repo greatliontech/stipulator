@@ -49,6 +49,11 @@ type NormalizedInvocation struct {
 	// roots - process images and fixed external files its tests consume -
 	// validated to clean absolute or tree-relative slash form.
 	BracketPaths []string
+	// ExcludedPaths are the invocation's reviewed observation exclusions
+	// joining the built-in pair (the root listing and the VCS
+	// bookkeeping tree), same validated form as bracket paths; the
+	// caller-side soundness responsibility rides the review.
+	ExcludedPaths []string
 	// AssumePure carries the invocation-wide reviewed purity assertion.
 	AssumePure bool
 	// WitnessConcurrency is the reviewed spawn fan-out bound; zero means
@@ -278,7 +283,50 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		}
 		n.BracketPaths = append(n.BracketPaths, p)
 	}
+	for _, p := range cfg.GetExcludedPaths() {
+		if err := validateExcludedPath(p, treeRoot(n)); err != nil {
+			return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
+		}
+		n.ExcludedPaths = append(n.ExcludedPaths, p)
+	}
 	return n, nil
+}
+
+// validateExcludedPath admits the identity forms gofresh's exclusion
+// contract can act on: a clean tree-relative slash path, or a clean
+// absolute path outside the verification tree. An absolute path inside
+// the tree would validate yet exclude nothing (in-tree reads classify
+// relative), so it is refused loudly as the misconfiguration it is.
+func validateExcludedPath(p, root string) error {
+	if p == "" {
+		return fmt.Errorf("excluded path is empty")
+	}
+	// Control runes never survive a legitimate review, and the group-key
+	// encoding joins entries on control bytes — refusing them here keeps
+	// distinct reviewed sets distinct.
+	for _, r := range p {
+		if r < 0x20 || r == 0x7f {
+			return fmt.Errorf("excluded path %q carries a control character", p)
+		}
+	}
+	for _, segment := range strings.Split(filepath.ToSlash(p), "/") {
+		if segment == ".." {
+			return fmt.Errorf("excluded path %q carries a parent traversal", p)
+		}
+	}
+	if filepath.IsAbs(p) {
+		if filepath.Clean(p) != p {
+			return fmt.Errorf("excluded path %q is not clean", p)
+		}
+		if rel, err := filepath.Rel(root, p); err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return fmt.Errorf("excluded path %q is inside the verification tree and would exclude nothing; use the tree-relative form %q", p, filepath.ToSlash(rel))
+		}
+		return nil
+	}
+	if path.Clean(p) != p {
+		return fmt.Errorf("excluded path %q is not a clean slash path", p)
+	}
+	return nil
 }
 
 // validateBracketPath admits exactly the forms the observation bracket
