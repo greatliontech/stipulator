@@ -1,1 +1,0 @@
-{"surfaces":[{"id":"e64e68a110d5d4cf0171ba9c43bea04225bd1b540afa55b340d8eef3cbc0be62", "backend":"go", "symbol":"example.com/café.F", "requirementIds":["REQ-fixture-unicode"], "bindings":[{"backend":"go", "role":"BINDING_ROLE_TESTS", "symbol":"example.com/café.Test"}]}], "format":"stipulator.binding-surfaces/v1"}

@@ -61,47 +61,6 @@ func TestBindToolBatchClaims(t *testing.T) {
 	}
 }
 
-// The targets export writes the identical document under
-// .stipulator/exports/ and returns only its location; a path outside
-// the record-store home is refused (REQ-mcp-tools,
-// REQ-mcp-writes-confined).
-//
-//gofresh:pure
-func TestTargetsToolExportPath(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-tools", "REQ-mcp-writes-confined")
-	sess, writes := harness(t, map[string]string{
-		".stipulator/bindings/m.textproto": pinnedBinding(t),
-	})
-	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "targets", Arguments: map[string]any{
-		"export_path": ".stipulator/exports/surfaces.json",
-	}})
-	if err != nil || res.IsError {
-		t.Fatalf("targets export: %v %+v", err, res)
-	}
-	doc, ok := writes[".stipulator/exports/surfaces.json"]
-	if !ok || !strings.Contains(string(doc), "binding-surfaces") {
-		t.Fatalf("export not written: %s", doc)
-	}
-	// Only the location rides the wire — not an inline copy.
-	if payload := toolPayload(t, res); strings.Contains(payload, "binding-surfaces") || !strings.Contains(payload, "exported") {
-		t.Fatalf("export result carries the document inline: %s", payload)
-	}
-
-	for _, bad := range []string{"/tmp/out.json", "../out.json", "docs/out.json", ".stipulator/exports/../../x.json"} {
-		res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "targets", Arguments: map[string]any{
-			"export_path": bad,
-		}})
-		if err != nil || !res.IsError {
-			t.Fatalf("export path %q accepted", bad)
-		}
-	}
-}
-
-// Every tool outside a corpus fails with the CLI's guided message —
-// the upward search and the init pointer — never a raw open error
-// (REQ-mcp-server).
-//
-//gofresh:pure
 func TestToolsOutsideCorpusGuideToInit(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-server")
 	sess := bareHarness(t)

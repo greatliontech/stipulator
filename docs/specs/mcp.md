@@ -26,15 +26,10 @@ duplication without a distinct consumer.
 
 **REQ-mcp-tools** (wire): The server MUST expose tools `compile`, `verify`,
 `gate`, `check`, `bind`, `unbind`, `gap`, `pin`, `prune`, `read_spec`,
-`context`, `partitions`, `dispose`, `targets`, and `attest_requirement`,
+`context`, `partitions`, `dispose`, `retarget`, and `attest_requirement`,
 mirroring the
 operation semantics exactly, with report-shaped results rendered from the
-report messages as JSON. The `targets` tool accepts arrays of exact requirement
-identifiers, implementation backends, and implementation symbols; it has no
-staged-diff input and returns `BindingSurfaceReport` as a structured
-result, with an opt-in caller-named export path writing the identical
-structure to a file — the artifact handoff that spares a consuming tool
-the inline copy of a large surface. The `bind` tool accepts many claims
+report messages as JSON. The `bind` tool accepts many claims
 in one call, validating all-or-nothing like the gap surface.
 
 **REQ-mcp-views** (behavior): The gate and verify tools MUST

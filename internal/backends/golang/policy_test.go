@@ -143,7 +143,7 @@ func TestGoPolicyPayloadValidation(t *testing.T) {
 		cfg.SetRace(true)
 		return cfg
 	}
-	accept := []string{"", "bindingsurface", "stipulate/structural"}
+	accept := []string{"", "stipulate/structural"}
 	for _, root := range accept {
 		if err := (Policy{}).ValidateInvocation("race", mk(root)); err != nil {
 			t.Errorf("module_root %q refused: %v", root, err)

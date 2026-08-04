@@ -399,17 +399,14 @@ func TestToolListExact(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := map[string]bool{}
-	var contextDescription, targetsDescription string
+	var contextDescription string
 	for _, tool := range list.Tools {
 		got[tool.Name] = true
 		if tool.Name == "context" {
 			contextDescription = tool.Description
 		}
-		if tool.Name == "targets" {
-			targetsDescription = tool.Description
-		}
 	}
-	want := []string{"compile", "verify", "gate", "check", "bind", "unbind", "gap", "pin", "prune", "read_spec", "context", "partitions", "dispose", "retarget", "targets", "attest_requirement"}
+	want := []string{"compile", "verify", "gate", "check", "bind", "unbind", "gap", "pin", "prune", "read_spec", "context", "partitions", "dispose", "retarget", "attest_requirement"}
 	for _, w := range want {
 		if !got[w] {
 			t.Fatalf("tool %s missing from the wire list: %v", w, got)
@@ -420,9 +417,6 @@ func TestToolListExact(t *testing.T) {
 	}
 	if !strings.Contains(contextDescription, "closure seeds") || strings.Contains(contextDescription, "hardening") {
 		t.Fatalf("context description is stale: %q", contextDescription)
-	}
-	if !strings.Contains(targetsDescription, "binding surfaces") || strings.Contains(targetsDescription, "mutation") || strings.Contains(targetsDescription, "reqs") {
-		t.Fatalf("targets description is stale: %q", targetsDescription)
 	}
 }
 
@@ -502,73 +496,6 @@ func TestRetargetToolCheckWritesNothing(t *testing.T) {
 	}
 }
 
-// TestTargetsToolWiring pins the read-only structured report, valid empty
-// corpus, intersecting array filters, and retired input rejection.
-//
-//gofresh:pure
-func TestTargetsToolWiring(t *testing.T) {
-	sess, _ := harness(t, nil)
-	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "targets", Arguments: map[string]any{}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	structured, ok := res.StructuredContent.(map[string]any)
-	if res.IsError || !ok || structured["format"] != "stipulator.binding-surfaces/v1" {
-		t.Fatalf("empty surface report = %+v", res)
-	}
-	if surfaces, ok := structured["surfaces"].([]any); !ok || len(surfaces) != 0 {
-		t.Fatalf("empty surfaces = %#v", structured["surfaces"])
-	}
-	// The empty report stays machine-valid; the guidance rides the text
-	// summary so an author learns which binding class to repair.
-	if text := res.Content[0].(*mcp.TextContent).Text; !strings.Contains(text, "holds no bindings") {
-		t.Fatalf("empty-report text = %q, want authoring guidance", text)
-	}
-
-	bindings := pinnedBinding(t) + `bindings {
-  requirement_id: "REQ-m-a"
-  backend: "go"
-  symbol: "example.com/p.F"
-  role: BINDING_ROLE_IMPLEMENTS
-}
-`
-	sess, _ = harness(t, map[string]string{".stipulator/bindings/m.textproto": bindings})
-	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "targets", Arguments: map[string]any{
-		"requirements": []string{"REQ-m-a", "REQ-absent"},
-		"backends":     []string{"go"},
-		"symbols":      []string{"example.com/p.F"},
-	}})
-	if err != nil || res.IsError {
-		t.Fatalf("filtered report = %+v, %v", res, err)
-	}
-	structured, ok = res.StructuredContent.(map[string]any)
-	if !ok {
-		t.Fatalf("filtered structured content = %#v", res.StructuredContent)
-	}
-	surfaces, ok := structured["surfaces"].([]any)
-	if !ok || len(surfaces) != 1 {
-		t.Fatalf("filtered surfaces = %#v", structured["surfaces"])
-	}
-	for _, arguments := range []map[string]any{
-		{"backends": []string{"absent"}},
-		{"requirements": []string{"REQ-m-b"}},
-		{"symbols": []string{"example.com/p.Missing"}},
-		{"out": "targets.json"},
-		{"staged_diff": true},
-		{"reqs": "REQ-m-a"},
-	} {
-		res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "targets", Arguments: arguments})
-		if err == nil && !res.IsError {
-			t.Fatalf("targets accepted invalid or empty selection input %v: %+v", arguments, res)
-		}
-	}
-}
-
-// TestCompileToolCounts pins the compile result's two arms: a clean corpus
-// reports the IR counts, an erroring corpus omits them entirely rather than
-// reporting a misleading zero — absent means "no IR, not computed".
-//
-//gofresh:pure
 func TestCompileToolCounts(t *testing.T) {
 	// Clean arm: counts present and correct.
 	sess, _ := harness(t, nil)

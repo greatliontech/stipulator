@@ -25,11 +25,9 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
-	surfacewire "github.com/greatliontech/stipulator/bindingsurface"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
-	"github.com/greatliontech/stipulator/internal/bindingsurface"
 	"github.com/greatliontech/stipulator/internal/bundle"
 	"github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/compile"
@@ -54,7 +52,7 @@ const serverInstructions = "stipulator verifies code against a compiled requirem
 	"gate/verify give coverage and binding detail (summary default; views/scopes opt-in). " +
 	"read_spec and context orient before writing code; partitions splits red work into disjoint components. " +
 	"Authoring: bind (claims batch, all-or-nothing), gap (declare/fire/retract, batch), attest_requirement, pin (blanket backfills unset pins only and names differing pins awaiting re-consent; ids = editorial re-consent that rewrites them), dispose (editorial/retire/supersede), retarget (bulk symbol-prefix rewrite after a module rename; check=true previews), prune (resolved records; dangling=true repairs orphans). " +
-	"targets exports binding surfaces (export_path under .stipulator/exports/ for large handoffs, e.g. gomutant). " +
+
 	"Long calls (check/gate/verify/prune/context/partitions) report phase progress when the request carries a progress token - send one and be patient rather than assuming a hang; results state the phase a deadline expired in. " +
 	"All writes stay under .stipulator/; spec documents and source are never edited."
 
@@ -171,10 +169,6 @@ func (s *Server) MCP() *mcp.Server {
 		Instructions: serverInstructions,
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "targets",
-		Description: "Derive backend-independent binding surfaces. Exact requirement, backend, and symbol arrays filter whole surfaces; the result is a structured BindingSurfaceReport. export_path (under .stipulator/exports/) writes the document to a file and returns only its location - the handoff for large surfaces (gomutant reads the same format).",
-	}, guarded(s, s.toolTargets))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "compile",
 		Description: "Compile the spec corpus; returns diagnostics (empty means clean) and counts.",
@@ -1592,60 +1586,4 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return string(r[:n]) + "…"
-}
-
-type targetsIn struct {
-	Requirements []string `json:"requirements,omitempty" jsonschema:"exact implementing requirement identifiers; alternatives"`
-	Backends     []string `json:"backends,omitempty" jsonschema:"exact implementation backends; alternatives"`
-	Symbols      []string `json:"symbols,omitempty" jsonschema:"exact implementation symbols; alternatives"`
-	ExportPath   string   `json:"export_path,omitempty" jsonschema:"write the binding-surfaces document to this path under .stipulator/exports/ and return only its location - the artifact handoff for large surfaces (e.g. gomutant's targets input)"`
-}
-
-func (s *Server) toolTargets(ctx context.Context, req *mcp.CallToolRequest, in targetsIn) (*mcp.CallToolResult, map[string]any, error) {
-	spec, err := s.compileFresh()
-	if err != nil {
-		return nil, nil, err
-	}
-	store, err := records.Load(s.fsys())
-	if err != nil {
-		return nil, nil, err
-	}
-	report, err := bindingsurface.Derive(spec, store)
-	if err != nil {
-		return nil, nil, err
-	}
-	report, err = bindingsurface.Filter(report, in.Requirements, in.Backends, in.Symbols)
-	if err != nil {
-		return nil, nil, err
-	}
-	doc, err := surfacewire.MarshalJSON(report)
-	if err != nil {
-		return nil, nil, err
-	}
-	// The artifact handoff: the identical document written under the
-	// record-store home (REQ-mcp-writes-confined bounds every server
-	// write), with only its location on the wire — a consuming tool
-	// reads the file instead of an inline copy of a large surface.
-	if in.ExportPath != "" {
-		res, out, err := s.exportTo(in.ExportPath, doc, "targets")
-		if err == nil {
-			if g := bindingsurface.Guidance(store, report); g != "" {
-				res = textOnly(res.Content[0].(*mcp.TextContent).Text + " — " + g)
-			}
-		}
-		return res, out, err
-	}
-	var m map[string]any
-	if err := json.Unmarshal(doc, &m); err != nil {
-		return nil, nil, err
-	}
-	text := fmt.Sprintf("targets: %d surfaces", len(report.GetSurfaces()))
-	if g := bindingsurface.Guidance(store, report); g != "" {
-		text += " — " + g
-	}
-	var surfaceRows []string
-	for _, surface := range report.GetSurfaces() {
-		surfaceRows = append(surfaceRows, surface.GetId())
-	}
-	return textOnly(digest(text, surfaceRows)), m, nil
 }

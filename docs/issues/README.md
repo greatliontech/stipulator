@@ -19,11 +19,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[out-of-process-backends](out-of-process-backends.md)** — trusted backend surfaces can move
   behind a wire protocol while Stipulator continues deriving evidence in the current run;
   mutation findings remain gomutant-owned. *Lands: when a second language backend is planned.*
-- **[advisory-context-attachments](advisory-context-attachments.md)** — binding surfaces have
-  no generic channel for producer-owned material in context dossiers; current consumers read
-  producer-owned typed results directly. *Lands: when a consumer needs producer-owned material
-  rendered in Stipulator context dossiers instead of consuming the producer's typed output
-  directly.*
 - **[slice-frontier-uncertainty](slice-frontier-uncertainty.md)** — typed frontiers miss
   reflection, build tags, and init effects; pew's closure model (sound floor, provably-safe
   refinement, resolve/widen/unverifiable dispositions) is the reference shape. *Lands: when a
@@ -31,10 +26,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[prover-trust-tiers](prover-trust-tiers.md)** — the proof rung assumes near-sound provers;
   a heuristic analyzer must not inherit it. *Lands: when a heuristic analyzer prover is
   proposed.*
-- **[witness-subset-adequacy](witness-subset-adequacy.md)** — a binding surface's union mutation
-  oracle cannot say whether each requirement's own witnesses have teeth; an opt-in
-  per-requirement probe is measurable without attribution claims. *Lands: when a requirement's
-  risk profile demands per-requirement witness adequacy.*
 
 - **[performance-evidence-axis](performance-evidence-axis.md)** — no clause kind or evidence
   class measures performance; pew recordings (guard-derived validity) are the binding-pin

@@ -20,11 +20,6 @@ invocations {
     assume_pure: true
   }
 }
-invocations {
-  name: "race:bindingsurface"
-  timeout {
-    seconds: 2700
-  }
   go {
     module_root: "bindingsurface"
     packages: "./..."
