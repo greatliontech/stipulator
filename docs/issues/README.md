@@ -2,6 +2,10 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
+- **[cerebro-uncacheable-mass-measured](cerebro-uncacheable-mass-measured.md)** — 2,407
+  uncacheable witnesses make the cerebro check re-execute everything (~22 min vs a ~2-min
+  floor family); reason classes quantified, fixes owned by gofresh's bracket/classifier
+  items plus the shared-view fix here. *Lands: on the re-measurement after those land.*
 - **[publication-ladder-collapse](publication-ladder-collapse.md)** — publishGroup and
   publishExecuted are near-duplicate publication ladders; collapsing them onto one would
   also fold the serving path's two per-group closing validations into one and drop the
