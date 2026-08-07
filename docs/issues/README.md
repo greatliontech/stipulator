@@ -55,6 +55,11 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   timeout. *Lands: when the harness MCP server is next restarted against a live agent
   client (emission audit landed; the live token observation remains, and the same
   restart confirms both the structured payload and the bounded text digest render as intended).*
+- **[witness-evidence-published-only-at-run-end](witness-evidence-published-only-at-run-end.md)** —
+  a check's witness run installs all produced records in one batch after the run completes;
+  a mid-run death (crash, OOM, kill) persists nothing and re-pays every completed execution,
+  measured at an hour-plus on a cold heavy corpus. Cost-only; the per-record atomic store
+  already supports incremental installs. *Lands: user decision.*
 - **[witness-store-gc](witness-store-gc.md)** — departed identities' witness variants
   accumulate without bound (eviction fires only on same-identity installs); cost-only,
   measured at 30 MB across two heavy-development corpora — below any actionable bar.
