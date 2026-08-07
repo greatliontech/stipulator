@@ -33,4 +33,4 @@ exactly on the corpora where a check is most expensive.
 gomutant's incremental findings persistence (a dying campaign keeps
 every committed verdict) is the in-family reference shape.
 
-Lands: user decision.
+Lands: cross-tool train chunk 18.

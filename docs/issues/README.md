@@ -59,7 +59,12 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   a check's witness run installs all produced records in one batch after the run completes;
   a mid-run death (crash, OOM, kill) persists nothing and re-pays every completed execution,
   measured at an hour-plus on a cold heavy corpus. Cost-only; the per-record atomic store
-  already supports incremental installs. *Lands: user decision.*
+  already supports incremental installs. *Lands: cross-tool train chunk 18.*
+- **[cold-check-bracket-digest-amplification](cold-check-bracket-digest-amplification.md)** —
+  every executed witness digests its bracket trees at both endpoints with no per-run sharing:
+  ~2·N·S hashing reads, measured at 3+ TB for a 450 MB corpus on a cold store; warm floor
+  unaffected, but cold stores and permanently-uncacheable witnesses pay it every run.
+  *Lands: cross-tool train chunk 19.*
 - **[witness-store-gc](witness-store-gc.md)** — departed identities' witness variants
   accumulate without bound (eviction fires only on same-identity installs); cost-only,
   measured at 30 MB across two heavy-development corpora — below any actionable bar.
