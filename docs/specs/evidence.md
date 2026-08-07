@@ -250,7 +250,11 @@ states of one test coexist as variants and alternating between branches evicts
 nothing. Records install the moment their witness group completes — its last
 covering invocation executed and its closing validation passed — never as an
 end-of-run batch: a run dying mid-execution keeps every record already
-produced, and the degraded path still installs nothing. Each file carries one record object with integer `version` equal to `5`,
+produced, and the degraded path still installs nothing. Each file carries one record object with integer `version` equal to `6` —
+bumped from `5` when the persisted compartment ledger gained each
+declaration's package clause and referenced names, both consumed by the
+test-variants serve carve-out's diff, so field-blind prior records fail
+closed to re-execution —
 string `package` and `test`, object `fingerprint`, object `compartmentLedger`,
 object `outcomes`, optional
 array `registrations`, and optional array `observationExclusions` — the

@@ -31,7 +31,7 @@ import (
 // fingerprints pin the toolchain and platform, so a committed cache would
 // ping-pong across machines, and a repo-local one dies with every fresh
 // worktree (REQ-evidence-witness-cache-format).
-const version = 5
+const version = 6
 
 // variantBound caps how many tree-state variants one test identity
 // retains; eviction is by install recency and costs only execution.
@@ -257,6 +257,13 @@ type CompartmentDeclaration struct {
 	Name     string `json:"name"`
 	Receiver string `json:"receiver,omitempty"`
 	Hash     string `json:"hash"`
+	// Package and References ride the diff identity and the inert
+	// classifier's fold soundness (gofresh's compartment ledger); a
+	// record persisted without them cannot be diffed faithfully, which
+	// is why their introduction bumped the record version - prior
+	// versions fail closed to re-execution.
+	Package    string   `json:"package,omitempty"`
+	References []string `json:"references,omitempty"`
 }
 
 // CompartmentFileHeader is one compartment file's persisted header identity.
@@ -283,7 +290,15 @@ func LedgerFromGofresh(ledger gofresh.TestVariantLedger) *CompartmentLedger {
 		FileHeaders:  make([]CompartmentFileHeader, 0, len(ledger.FileHeaders)),
 	}
 	for _, declaration := range ledger.Declarations {
-		out.Declarations = append(out.Declarations, CompartmentDeclaration(declaration))
+		out.Declarations = append(out.Declarations, CompartmentDeclaration{
+			File:       declaration.File,
+			Kind:       declaration.Kind,
+			Name:       declaration.Name,
+			Receiver:   declaration.Receiver,
+			Hash:       declaration.Hash,
+			Package:    declaration.Package,
+			References: declaration.References,
+		})
 	}
 	for _, header := range ledger.FileHeaders {
 		out.FileHeaders = append(out.FileHeaders, CompartmentFileHeader(header))
@@ -298,7 +313,15 @@ func (l *CompartmentLedger) ToGofresh() gofresh.TestVariantLedger {
 		FileHeaders:  make([]gofresh.TestVariantFileHeader, 0, len(l.FileHeaders)),
 	}
 	for _, declaration := range l.Declarations {
-		out.Declarations = append(out.Declarations, gofresh.TestVariantDeclaration(declaration))
+		out.Declarations = append(out.Declarations, gofresh.TestVariantDeclaration{
+			File:       declaration.File,
+			Kind:       declaration.Kind,
+			Name:       declaration.Name,
+			Receiver:   declaration.Receiver,
+			Hash:       declaration.Hash,
+			Package:    declaration.Package,
+			References: declaration.References,
+		})
 	}
 	for _, header := range l.FileHeaders {
 		out.FileHeaders = append(out.FileHeaders, gofresh.TestVariantFileHeader(header))
