@@ -55,11 +55,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   timeout. *Lands: when the harness MCP server is next restarted against a live agent
   client (emission audit landed; the live token observation remains, and the same
   restart confirms both the structured payload and the bounded text digest render as intended).*
-- **[cold-check-bracket-digest-amplification](cold-check-bracket-digest-amplification.md)** —
-  every executed witness digests its bracket trees at both endpoints with no per-run sharing:
-  ~2·N·S hashing reads, measured at 3+ TB for a 450 MB corpus on a cold store; warm floor
-  unaffected, but cold stores and permanently-uncacheable witnesses pay it every run.
-  *Lands: cross-tool train chunk 19.*
 - **[witness-store-gc](witness-store-gc.md)** — departed identities' witness variants
   accumulate without bound (eviction fires only on same-identity installs); cost-only,
   measured at 30 MB across two heavy-development corpora — below any actionable bar.
