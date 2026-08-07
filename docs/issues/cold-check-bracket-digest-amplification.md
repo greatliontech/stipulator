@@ -14,9 +14,10 @@ open-fd walk through the bracketed docs tree).
 Scope of the cost: warm runs mostly avoid it (served witnesses do not
 execute), so the warm floor is unaffected — but a cold store, an
 evicted store, and every permanently-uncacheable residual witness pay
-it on each run. It compounds the run-end publication defect
-(witness-evidence-published-only-at-run-end.md): a mid-run death
-re-pays the full digest bill.
+it on each run. Records now install at group completion
+(REQ-evidence-witness-cache-format's completed-group durability), so a
+mid-run death re-pays only the interrupted groups' digests - the
+amplification itself is untouched.
 
 Mechanism home is cross-cutting: the endpoint digests are gofresh's
 observation-bracket evaluation; the per-run sharing opportunity (one
