@@ -247,7 +247,10 @@ name-content agreement check absorbing the truncation's collision risk. The fing
 digests are Gofresh-owned integrity values, outside REQ-model-hash-func
 entirely. Files install atomically, so distinct tree
 states of one test coexist as variants and alternating between branches evicts
-nothing. Each file carries one record object with integer `version` equal to `5`,
+nothing. Records install the moment their witness group completes — its last
+covering invocation executed and its closing validation passed — never as an
+end-of-run batch: a run dying mid-execution keeps every record already
+produced, and the degraded path still installs nothing. Each file carries one record object with integer `version` equal to `5`,
 string `package` and `test`, object `fingerprint`, object `compartmentLedger`,
 object `outcomes`, optional
 array `registrations`, and optional array `observationExclusions` — the

@@ -281,7 +281,60 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 	debug.FreeOSMemory()
 	rep.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
 	m := newExecMerge()
-	if err := executeSelections(ctx, p, normalized, staleSel, m); err != nil {
+	// Completed-group durability: each witness group finishes and
+	// installs the moment its last covering invocation completes, while
+	// later invocations still execute - a run dying mid-execution keeps
+	// every record already produced. Groups with nothing executing (all
+	// served) finish in the verification pass; the degraded path
+	// executes with no groups and publishes nothing.
+	var published []witnesscache.Record
+	uncacheableWhy := map[gofresh.Subject]string{}
+	driftedByGroup := map[*witnessGroup][]gofresh.Subject{}
+	finished := map[*witnessGroup]bool{}
+	installNow := func(records []witnesscache.Record) {
+		for _, rec := range records {
+			_ = witnesscache.Install(dir, rec)
+		}
+	}
+	pendingInvs := map[*witnessGroup]map[string]bool{}
+	invGroups := map[string][]*witnessGroup{}
+	for _, wg := range groups {
+		for pkg := range wg.stale {
+			n := covering[pkg]
+			if n == nil {
+				// Defensive only: every stale subject's covering
+				// invocation was dereferenced when its selection was
+				// built.
+				continue
+			}
+			if pendingInvs[wg] == nil {
+				pendingInvs[wg] = map[string]bool{}
+			}
+			if !pendingInvs[wg][n.Name] {
+				pendingInvs[wg][n.Name] = true
+				invGroups[n.Name] = append(invGroups[n.Name], wg)
+			}
+		}
+	}
+	onInvocationDone := func(name string) error {
+		for _, wg := range invGroups[name] {
+			delete(pendingInvs[wg], name)
+			if len(pendingInvs[wg]) > 0 || finished[wg] {
+				continue
+			}
+			groupDrifted, records, reasons, err := finishGroup(ctx, wg, m)
+			if err != nil {
+				return err
+			}
+			maps.Copy(uncacheableWhy, reasons)
+			published = append(published, records...)
+			driftedByGroup[wg] = groupDrifted
+			finished[wg] = true
+			installNow(records)
+		}
+		return nil
+	}
+	if err := executeSelections(ctx, p, normalized, staleSel, m, onInvocationDone); err != nil {
 		return nil, err
 	}
 	var ineligibleMerge *execMerge
@@ -291,28 +344,32 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 		// they execute here in the execution phase and fold after the
 		// main merges — failures and registrations only, never a grant.
 		ineligibleMerge = newExecMerge()
-		if err := executeSelections(ctx, p, normalized, multiIneligible, ineligibleMerge); err != nil {
+		if err := executeSelections(ctx, p, normalized, multiIneligible, ineligibleMerge, nil); err != nil {
 			return nil, err
 		}
 	}
 
 	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
-	var published []witnesscache.Record
 	var servedRecords []witnesscache.Record
 	plainServedKey := map[string]bool{}
-	uncacheableWhy := map[gofresh.Subject]string{}
 	retryMerge := newExecMerge()
 	if degraded == "" {
 		var drifted []gofresh.Subject
-		driftedByGroup := map[*witnessGroup][]gofresh.Subject{}
 		for _, wg := range groups {
-			groupDrifted, records, reasons, err := finishGroup(ctx, wg, m)
-			if err != nil {
-				return nil, err
+			if !finished[wg] {
+				// All-served groups finish here; executing groups
+				// finished and installed at their last covering
+				// invocation's completion.
+				groupDrifted, records, reasons, err := finishGroup(ctx, wg, m)
+				if err != nil {
+					return nil, err
+				}
+				maps.Copy(uncacheableWhy, reasons)
+				published = append(published, records...)
+				driftedByGroup[wg] = groupDrifted
+				installNow(records)
 			}
-			maps.Copy(uncacheableWhy, reasons)
-			published = append(published, records...)
-			driftedByGroup[wg] = groupDrifted
+			groupDrifted := driftedByGroup[wg]
 			drifted = append(drifted, groupDrifted...)
 			isDrifted := map[gofresh.Subject]bool{}
 			for _, s := range groupDrifted {
@@ -337,6 +394,7 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 			}
 			maps.Copy(uncacheableWhy, retryReasons)
 			published = append(published, retryPublished...)
+			installNow(retryPublished)
 		}
 	}
 
@@ -437,18 +495,13 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 		}
 	}
 
-	// Publication installs exactly what this run produced: each published
-	// record lands as its own variant file, atomically, bounding the
-	// identity's variant set. Untouched records — served, outside-policy,
-	// departed — need no rewrite: the store is per-record, so nothing is
-	// clobbered and a concurrent runner's installs interleave instead of
-	// last-writer-winning a whole document. On the degraded path nothing
-	// publishes and the store is left alone.
-	if degraded == "" && len(groups) > 0 {
-		for _, rec := range published {
-			_ = witnesscache.Install(dir, rec)
-		}
-	}
+	// Publication installed at production: each record landed as its own
+	// variant file, atomically, the moment its group finished — at its
+	// last covering invocation's completion for executing groups, in the
+	// verification pass for all-served groups, after the retry for
+	// drifted subjects. Untouched records — served, outside-policy,
+	// departed — need no rewrite, and on the degraded path nothing
+	// executed under groups, so nothing installed.
 	return tr, nil
 }
 
@@ -718,11 +771,13 @@ func (m *execMerge) add(res *SelectionResult) {
 	}
 }
 
-// executeSelections runs each invocation's selection in record order —
-// concurrency lives inside ExecuteSelection, bounded per package, and
-// each invocation's reviewed envelope bounds its own packages' selective
-// execution, isolation re-runs included.
-func executeSelections(ctx context.Context, p *stipulatorv1.TestPolicy, normalized map[string]*NormalizedInvocation, staleSel map[string]TestSelection, m *execMerge) error {
+// executeSelections runs the invocations serially; onCompleted, when
+// non-nil, fires after each invocation's outcomes merge - the hook
+// that lets a witness group finish and install the moment its last
+// covering invocation completes, so a run dying mid-execution keeps
+// every record already produced (REQ-evidence-witness-cache-format's
+// completed-group durability).
+func executeSelections(ctx context.Context, p *stipulatorv1.TestPolicy, normalized map[string]*NormalizedInvocation, staleSel map[string]TestSelection, m *execMerge, onCompleted func(invocation string) error) error {
 	for _, inv := range p.GetInvocations() {
 		sel := staleSel[inv.GetName()]
 		if len(sel) == 0 {
@@ -733,6 +788,11 @@ func executeSelections(ctx context.Context, p *stipulatorv1.TestPolicy, normaliz
 			return err
 		}
 		m.add(res)
+		if onCompleted != nil {
+			if err := onCompleted(inv.GetName()); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -1165,7 +1225,7 @@ func retryDrifted(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, n
 		st.observed, st.observedFPs = observedView(ctx, st.view, st.candidates)
 		states = append(states, st)
 	}
-	if err := executeSelections(ctx, p, normalized, retrySel, m); err != nil {
+	if err := executeSelections(ctx, p, normalized, retrySel, m, nil); err != nil {
 		return nil, nil, err
 	}
 	var published []witnesscache.Record

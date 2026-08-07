@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/greatliontech/gofresh"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -691,5 +692,96 @@ func TestReadsCache(t *testing.T) {
 	}
 	if third.Fresh != 1 || third.Ran != 0 {
 		t.Fatalf("post-republish run: ran=%d fresh=%d, want the recorded variant served", third.Ran, third.Fresh)
+	}
+}
+
+// TestGoRunWitnessesCompletedGroupSurvivesLaterInvocationFailure pins
+// completed-group durability: records install the moment their last
+// covering invocation completes, so a later invocation's failure — the
+// run erroring out mid-execution — keeps every record already produced
+// (REQ-evidence-witness-cache-format).
+//
+//gofresh:pure
+func TestGoRunWitnessesCompletedGroupSurvivesLaterInvocationFailure(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-cache-format")
+	if testing.Short() {
+		t.Skip("executes selective runs over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":            "module example.com/durable\n\ngo 1.26\n",
+		"good/good.go":      "package good\n\nfunc Fine() int { return 1 }\n",
+		"good/good_test.go": "package good\n\nimport \"testing\"\n\nfunc TestFine(t *testing.T) {\n\tif Fine() != 1 {\n\t\tt.Fatal(\"fine\")\n\t}\n}\n",
+		"slow/slow.go":      "package slow\n\nfunc Steady() int { return 1 }\n",
+		"slow/slow_test.go": "package slow\n\nimport (\n\t\"testing\"\n\t\"time\"\n)\n\nfunc TestSteady(t *testing.T) {\n\ttime.Sleep(90 * time.Second)\n\tif Steady() != 1 {\n\t\tt.Fatal(\"steady\")\n\t}\n}\n",
+	})
+	goodCfg := &stipulatorv1.GoInvocationConfig{}
+	goodCfg.SetPackages([]string{"./good/..."})
+	goodCfg.SetRace(true)
+	slowCfg := &stipulatorv1.GoInvocationConfig{}
+	slowCfg.SetPackages([]string{"./slow/..."})
+	slowCfg.SetRace(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{
+		goInvocation("good", goodCfg),
+		goInvocation("slow", slowCfg),
+	})
+	writePolicyRecord(t, tmp, p)
+
+	hasGood := func() bool {
+		for _, rec := range witnesscache.Load(tmp) {
+			if rec.Package == "example.com/durable/good" && rec.Test == "TestFine" {
+				return true
+			}
+		}
+		return false
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		_, err := RunWitnesses(ctx, tmp)
+		done <- err
+	}()
+	deadline := time.Now().Add(120 * time.Second)
+	for !hasGood() {
+		select {
+		case err := <-done:
+			t.Fatalf("run ended before the completed group installed: %v (store: %+v)", err, witnesscache.Load(tmp))
+		default:
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("completed group never installed mid-run (store: %+v)", witnesscache.Load(tmp))
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	// The discriminating assertion: at the moment the completed group's
+	// record is first observable, the slow group's must be absent - an
+	// end-of-run batch installs both together, incremental publication
+	// installs each at its own group's completion.
+	hasSlow := func() bool {
+		for _, rec := range witnesscache.Load(tmp) {
+			if rec.Package == "example.com/durable/slow" {
+				return true
+			}
+		}
+		return false
+	}
+	if hasSlow() {
+		t.Fatal("slow group's record present alongside the completed group's - end-of-run batching")
+	}
+	cancel()
+	// Cancellation mid-execution may surface as an errored run or as a
+	// completed run whose interrupted process carries a red disposition
+	// (the run survives any single process outcome); the durability
+	// claim is the same either way - the completed group's record,
+	// installed before the interruption, stands, and the cancelled
+	// slow group never publishes.
+	<-done
+	if !hasGood() {
+		t.Fatal("completed group's record lost to the cancellation")
+	}
+	if hasSlow() {
+		t.Fatal("cancelled slow group published a record")
 	}
 }
