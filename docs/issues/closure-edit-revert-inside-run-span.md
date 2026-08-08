@@ -1,9 +1,6 @@
 # A mid-run source edit and exact revert escapes closure revalidation
 
-Lands: when witness fingerprints gain pre-run-evaluation support able to
-bind closure content to the compile that consumed it, or when witness
-records are next redesigned.
-
+Lands: cross-tool train chunk 46.
 ## Context
 
 Witness closure fingerprints are captured before execution and served

@@ -1,7 +1,6 @@
 # Scope matching is raw-prefix, not element-bounded, and ids scopes drop package-less diagnostics
 
-Lands: when scope matching semantics are next deliberately changed.
-
+Lands: cross-tool train chunk 42.
 Two related looseness classes in view scoping, both over-inclusion or
 visibility-narrowing only — never a verdict change (the gate verdict
 stays global under every scope):

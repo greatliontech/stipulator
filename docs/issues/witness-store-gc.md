@@ -1,8 +1,6 @@
 # Departed identities' witness variants accumulate without bound
 
-Lands: when the witness store next gains a maintenance surface, or when
-a long-lived corpus's store size first becomes a measured cost.
-
+Lands: cross-tool train chunk 42.
 ## Observed
 
 Per-identity variant eviction fires only on a new install of the same

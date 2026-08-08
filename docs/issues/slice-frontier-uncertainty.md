@@ -1,9 +1,6 @@
 # Slice frontiers are silent about reflection, build tags, and init effects
 
-Lands: when a corpus relies on slice completeness for automated context
-assembly over code using reflection, build tags, or init-effect
-registration.
-
+Lands: cross-tool train chunk 45.
 REQ-go-slice returns the typed transitive dependency frontier — facts
 only. Go code can depend on symbols the type graph never references:
 reflection, `init` side effects, blank imports, plugin-style

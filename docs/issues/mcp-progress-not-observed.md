@@ -1,18 +1,6 @@
 # Suite-running MCP tools surfaced no progress to a live agent client
 
-Lands: when the harness MCP server is next restarted against a live agent
-client - the remaining arm is purely observational: token presence from a
-real Claude Code client and notifications flowing (or their absence
-confirmed as the spec's own "only when the client asked" clause). The
-notification-blind fallback is no longer pending: every completed
-suite-running call now stamps its phase timings as one bounded text line
-(REQ-mcp-progress's completed-call fallback), so even a client that saw
-no notifications distinguishes slow work from a hang after the fact.
-Client patience observed: 120 seconds to backgrounding, hard 600s cap -
-any check longer than ten minutes cannot complete through this client
-class regardless of emission, so the binding constraint there is suite
-wall-time (the serving flywheel), not notifications.
-
+Lands: cross-tool train chunk 41.
 ## Observed
 
 REQ-mcp-progress requires bounded progress notifications from

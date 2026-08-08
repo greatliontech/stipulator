@@ -1,7 +1,6 @@
 # gopter-driven tests classify as example witnesses
 
-Lands: when a corpus standardized on gopter needs invariant coverage.
-
+Lands: cross-tool train chunk 42.
 The witness classifier recognizes two property-witness shapes: native fuzz
 targets (`*testing.F`) and `pgregory.net/rapid` check drivers
 (`rapid.Check` / `rapid.MakeCheck`), per REQ-go-witness-class. A

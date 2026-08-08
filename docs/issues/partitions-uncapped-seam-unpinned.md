@@ -1,9 +1,6 @@
 # The partitions export form's uncapped call is unpinned at the tool seam
 
-Lands: when an MCP fixture with a closure exceeding OverlapCap becomes
-proportionate, when the partitions tool seam next changes, or — for the
-prune residual below — when prune's CLI seam next changes.
-
+Lands: cross-tool train chunk 42.
 The partitions tool's export form calls `ProtoUncapped()` — pinned at
 the facts layer (the method itself is uncapped) — but a tool-seam swap
 back to the capped `Proto()` is undetectable with small fixtures: a

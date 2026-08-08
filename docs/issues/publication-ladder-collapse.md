@@ -22,4 +22,4 @@ shadowed by finishGroup's close on the main path) depends on the pair
 staying together — a collapse must re-derive which close gates what
 and re-anchor the source-mover discard net accordingly.
 
-Lands: user decision.
+Lands: cross-tool train chunk 43.

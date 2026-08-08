@@ -9,20 +9,19 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[publication-ladder-collapse](publication-ladder-collapse.md)** — publishGroup and
   publishExecuted are near-duplicate publication ladders; collapsing them onto one would
   also fold the serving path's two per-group closing validations into one and drop the
-  retry's redundant pre-publish validate. *Lands: user decision.*
+  retry's redundant pre-publish validate. *Lands: cross-tool train chunk 43.*
 - **[proto-backend](proto-backend.md)** — descriptor-level verification via protocompile;
   spec exists, five requirements gapped. *Lands: when a corpus needs wire evidence that
   shape pins and Go witnesses cannot cover.*
 - **[gopter-property-recognition](gopter-property-recognition.md)** — gopter-driven tests
   classify as example witnesses; the classifier recognizes fuzz targets and rapid drivers
-  only. *Lands: when a corpus standardized on gopter needs invariant coverage.*
+  only. *Lands: cross-tool train chunk 42.*
 - **[out-of-process-backends](out-of-process-backends.md)** — trusted backend surfaces can move
   behind a wire protocol while Stipulator continues deriving evidence in the current run;
   mutation findings remain gomutant-owned. *Lands: when a second language backend is planned.*
 - **[slice-frontier-uncertainty](slice-frontier-uncertainty.md)** — typed frontiers miss
   reflection, build tags, and init effects; pew's closure model (sound floor, provably-safe
-  refinement, resolve/widen/unverifiable dispositions) is the reference shape. *Lands: when a
-  corpus relies on slice completeness for automated context assembly over such code.*
+  refinement, resolve/widen/unverifiable dispositions) is the reference shape. *Lands: cross-tool train chunk 45.*
 - **[prover-trust-tiers](prover-trust-tiers.md)** — the proof rung assumes near-sound provers;
   a heuristic analyzer must not inherit it. *Lands: when a heuristic analyzer prover is
   proposed.*
@@ -33,44 +32,31 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   corpus declares a performance requirement.*
 - **[term-matcher-ascii-boundaries](term-matcher-ascii-boundaries.md)** — `\b` is ASCII-only,
   so non-ASCII term names may never match a use site (silently missing uses-term edges); the
-  lint mirrors the same semantics deliberately — fix both together on rune boundaries. *Lands:
-  when a corpus declares non-ASCII term names.*
+  lint mirrors the same semantics deliberately — fix both together on rune boundaries. *Lands: cross-tool train chunk 42.*
 
-- **[go-subprocess-tree-ownership](go-subprocess-tree-ownership.md)** — Unix Go backend work
-  (witness runs, normalization, discovery, and symbol loading via the owned resolver child)
-  owns its process groups with descendant termination proven, but Windows descendant
-  termination cannot be proven without a Windows host. *Lands: when Windows descendant
-  termination is proven with a real spawned child (Windows host unavailable here).*
 - **[closure-edit-revert-inside-run-span](closure-edit-revert-inside-run-span.md)** — a source
   edit and its exact revert both landing inside one package's capture-compile-run span restore
   the recorded closure hash over outcomes a transiently-edited binary produced; the
   runtime-input half of this family is narrowed by observation brackets (a
   content-and-metadata-exact restore within the span stays the shared residual), while closure
-  fingerprints hash content alone. *Lands: when witness fingerprints gain pre-run-evaluation
-  support binding closure content to the compile that consumed it, or when witness records are
-  next redesigned.*
+  fingerprints hash content alone. *Lands: cross-tool train chunk 46.*
 
 - **[mcp-progress-not-observed](mcp-progress-not-observed.md)** — suite-running MCP tools
   surfaced no progress to a live agent client; every call was backgrounded at the client's
-  timeout. *Lands: when the harness MCP server is next restarted against a live agent
-  client (emission audit landed; the live token observation remains, and the same
-  restart confirms both the structured payload and the bounded text digest render as intended).*
+  timeout. *Lands: cross-tool train chunk 41.*
 - **[witness-store-gc](witness-store-gc.md)** — departed identities' witness variants
   accumulate without bound (eviction fires only on same-identity installs); cost-only,
   measured at 30 MB across two heavy-development corpora — below any actionable bar.
-  *Lands: when store size or load-time validation first becomes a measured cost on a
-  real corpus.*
+  *Lands: cross-tool train chunk 42.*
 - **[partitions-uncapped-seam-unpinned](partitions-uncapped-seam-unpinned.md)** — the
   partitions export form's `ProtoUncapped()` call is unpinned at the tool seam (a capped
   swap needs a disproportionate 12-component fixture); carries the CLI prune call-site
-  residual of the same class. *Lands: when an MCP fixture exceeding OverlapCap becomes
-  proportionate, when the partitions tool seam next changes, or (prune residual) when
-  prune's CLI seam next changes.*
+  residual of the same class. *Lands: cross-tool train chunk 42.*
 - **[scope-prefix-boundary-semantics](scope-prefix-boundary-semantics.md)** — view scoping
   is raw-prefix (`example.com/p` keeps `example.com/p2`; `docs/spec` matches `docs/specs.md`)
   across docs, symbols, and diagnostics alike, and Path-empty scopes drop a build-broken
   package's diagnostic while keeping its Broken row; over-inclusion/visibility only, verdict
-  unaffected. *Lands: when scope matching semantics are next deliberately changed.*
+  unaffected. *Lands: cross-tool train chunk 42.*
 - **[structural-call-absence-verb](structural-call-absence-verb.md)** — "never constructs
   X" structural clauses have no verb: NoImport is transitive (stdlib forbiddance fails
   through any real dependency) and the shape verbs state presence, not capability absence;

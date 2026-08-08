@@ -1,7 +1,6 @@
 # Term matching uses ASCII word boundaries — non-ASCII term names may never match
 
-Lands: when a corpus declares non-ASCII term names.
-
+Lands: cross-tool train chunk 42.
 `newTermMatcher` builds `\b` + QuoteMeta(name) + `\b` per term, and Go's
 `\b` is ASCII-only: a term name beginning or ending in a non-ASCII rune
 (é, Greek, CJK) can fail to match at any use site, silently dropping
