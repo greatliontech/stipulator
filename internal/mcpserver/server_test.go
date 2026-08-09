@@ -6,11 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"reflect"
 	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
 
+	"github.com/greatliontech/gofresh"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -61,6 +63,13 @@ func (f fakeBackend) Resolve(symbol string) (verify.Resolution, string, error) {
 // harness builds a test server over an in-memory tree with captured writes.
 func harness(t *testing.T, files map[string]string) (*mcp.ClientSession, map[string][]byte) {
 	t.Helper()
+	return harnessWith(t, files, nil)
+}
+
+// harnessWith additionally lets a test override the server's injectable
+// function fields before the session starts.
+func harnessWith(t *testing.T, files map[string]string, mut func(*Server)) (*mcp.ClientSession, map[string][]byte) {
+	t.Helper()
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
 		"specs/a.md":                     {Data: []byte(doc)},
@@ -98,6 +107,9 @@ func harness(t *testing.T, files map[string]string) (*mcp.ClientSession, map[str
 			delete(fsys, path)
 			return nil
 		},
+	}
+	if mut != nil {
+		mut(s)
 	}
 	ct, st := mcp.NewInMemoryTransports()
 	go func() {
@@ -406,7 +418,7 @@ func TestToolListExact(t *testing.T) {
 			contextDescription = tool.Description
 		}
 	}
-	want := []string{"compile", "verify", "gate", "check", "bind", "unbind", "gap", "pin", "prune", "read_spec", "context", "partitions", "dispose", "retarget", "attest_requirement"}
+	want := []string{"compile", "verify", "gate", "check", "bind", "unbind", "gap", "pin", "prune", "read_spec", "context", "partitions", "dispose", "retarget", "attest_requirement", "explain"}
 	for _, w := range want {
 		if !got[w] {
 			t.Fatalf("tool %s missing from the wire list: %v", w, got)
@@ -1003,5 +1015,127 @@ func TestVerifyToolNamesPolicyRecordProblem(t *testing.T) {
 	}
 	if cause != stipulatorv1.TerminalCause_TERMINAL_CAUSE_TEST_FAILURE {
 		t.Fatalf("terminal cause = %v, want TEST_FAILURE: a record problem is a tree fact, not a server fault", cause)
+	}
+}
+
+// The explain tool's reason parser and its guided refusals
+// (REQ-mcp-explain).
+//
+//gofresh:pure
+func TestExplainToolParsesAndRefuses(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-explain")
+	pkg, sym, ok := culpritFromReason("post-run validation: package graph shares mutated dynamic state: github.com/x/internal/books: github.com/x/internal/books.normativeThresholds registers function values outside the environment-free audit")
+	if !ok || pkg != "github.com/x/internal/books" || sym != "normativeThresholds" {
+		t.Fatalf("parse = %q %q %v", pkg, sym, ok)
+	}
+	pkg, sym, ok = culpritFromReason("github.com/x/reg: github.com/x/reg.Registry escapes writable")
+	if !ok || pkg != "github.com/x/reg" || sym != "Registry" {
+		t.Fatalf("parse = %q %q %v", pkg, sym, ok)
+	}
+	pkg, sym, ok = culpritFromReason("example.com/u: example.com/u.Ω registers function values outside the environment-free audit")
+	if !ok || pkg != "example.com/u" || sym != "Ω" {
+		t.Fatalf("unicode identifier parse = %q %q %v", pkg, sym, ok)
+	}
+	if _, _, ok := culpritFromReason("reaches testing.Run (test runtime execution)"); ok {
+		t.Fatal("effect-plane reason parsed a culprit")
+	}
+	sess, _ := harness(t, nil)
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "explain", Arguments: map[string]any{
+		"reason": "reaches testing.Run (test runtime execution)",
+	}})
+	if err != nil || !res.IsError {
+		t.Fatalf("unparseable reason accepted: %v %+v", err, res)
+	}
+	if text := toolText(t, res); !strings.Contains(text, "pass package and symbol") {
+		t.Fatalf("refusal lacks guidance: %s", text)
+	}
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "explain", Arguments: map[string]any{
+		"package": "example.com/reg",
+	}})
+	if err != nil || !res.IsError {
+		t.Fatalf("partial input accepted: %v %+v", err, res)
+	}
+	if text := toolText(t, res); !strings.Contains(text, "package and symbol travel together") {
+		t.Fatalf("partial-input refusal lacks guidance: %s", text)
+	}
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "explain", Arguments: map[string]any{
+		"symbol": "Registry",
+		"reason": "github.com/x/reg: github.com/x/reg.Other escapes writable",
+	}})
+	if err != nil || !res.IsError {
+		t.Fatalf("lone symbol silently discarded for the reason: %v %+v", err, res)
+	}
+	if text := toolText(t, res); !strings.Contains(text, "package and symbol travel together") {
+		t.Fatalf("lone-symbol refusal lacks guidance: %s", text)
+	}
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "explain", Arguments: map[string]any{}})
+	if err != nil || !res.IsError {
+		t.Fatalf("empty input accepted: %v %+v", err, res)
+	}
+	if text := toolText(t, res); !strings.Contains(text, "pass a reason to parse, or package and symbol") {
+		t.Fatalf("empty-input refusal lacks guidance: %s", text)
+	}
+}
+
+// The tool's wire projection is pinned end to end: the explicit
+// package-and-symbol arm reaches the backend verbatim, every chain
+// link field and the omission count cross into the structured result,
+// and the digest names the arm, link count, and answering view - with
+// an empty chain stated as such (REQ-mcp-explain,
+// REQ-mcp-response-contract).
+//
+//gofresh:pure
+func TestExplainToolProjectsChain(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-explain")
+	var gotPkg, gotSym string
+	chain := gofresh.Chain{
+		Arm: "environment-audit",
+		Links: []gofresh.ChainLink{
+			{Kind: "edge", Package: "example.com/reg", Symbol: "Registry", Callee: "gen", Clause: "a binding source refused", Pos: "reg.go:12"},
+			{Kind: "refusal", Package: "example.com/reg", Symbol: "gen", Clause: "a stored value refused", Pos: "reg.go:7"},
+		},
+		Omitted: 3,
+	}
+	sess, _ := harnessWith(t, nil, func(s *Server) {
+		s.explain = func(_ context.Context, pkgPath, symbol string) (gofresh.Chain, string, error) {
+			gotPkg, gotSym = pkgPath, symbol
+			if symbol == "Missing" {
+				return gofresh.Chain{}, "", nil
+			}
+			return chain, "race", nil
+		}
+	})
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "explain", Arguments: map[string]any{
+		"package": "example.com/reg", "symbol": "Registry",
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("explain failed: %v %+v", err, res)
+	}
+	if gotPkg != "example.com/reg" || gotSym != "Registry" {
+		t.Fatalf("explicit culprit not forwarded: %q %q", gotPkg, gotSym)
+	}
+	var out explainOut
+	b, _ := json.Marshal(res.StructuredContent)
+	if err := json.Unmarshal(b, &out); err != nil {
+		t.Fatal(err)
+	}
+	want := explainOut{Arm: "environment-audit", View: "race", Omitted: 3, Links: []explainLink{
+		{Kind: "edge", Package: "example.com/reg", Symbol: "Registry", Callee: "gen", Clause: "a binding source refused", Pos: "reg.go:12"},
+		{Kind: "refusal", Package: "example.com/reg", Symbol: "gen", Clause: "a stored value refused", Pos: "reg.go:7"},
+	}}
+	if !reflect.DeepEqual(out, want) {
+		t.Fatalf("projection = %+v, want %+v", out, want)
+	}
+	if text := toolText(t, res); text != "explain: environment-audit, 2 links in the structured result; view: race; 3 omitted" {
+		t.Fatalf("digest = %q", text)
+	}
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "explain", Arguments: map[string]any{
+		"package": "example.com/reg", "symbol": "Missing",
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("empty-chain call failed: %v %+v", err, res)
+	}
+	if text := toolText(t, res); !strings.Contains(text, "no chain") {
+		t.Fatalf("empty chain not stated in the digest: %q", text)
 	}
 }

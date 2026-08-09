@@ -207,6 +207,9 @@ type captureGroup struct {
 	// package; a package two invocations select never publishes, because
 	// its record would have no single producing invocation.
 	pkgInv map[string]string
+	// invs names the group's member invocations in policy order; the
+	// explain surface reports them as the answering view's identity.
+	invs []string
 	// ambiguous marks packages selected by more than one invocation
 	// within the group.
 	ambiguous map[string]bool
@@ -366,6 +369,9 @@ func capturePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) 
 			}
 			byKey[key] = g
 			keys = append(keys, key)
+		}
+		if !slices.Contains(g.invs, n.Name) {
+			g.invs = append(g.invs, n.Name)
 		}
 		for pkg, names := range tests {
 			if prev, taken := g.pkgInv[pkg]; taken && prev != n.Name {

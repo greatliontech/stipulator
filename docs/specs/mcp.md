@@ -26,11 +26,28 @@ duplication without a distinct consumer.
 
 **REQ-mcp-tools** (wire): The server MUST expose tools `compile`, `verify`,
 `gate`, `check`, `bind`, `unbind`, `gap`, `pin`, `prune`, `read_spec`,
-`context`, `partitions`, `dispose`, `retarget`, and `attest_requirement`,
+`context`, `partitions`, `dispose`, `retarget`, `attest_requirement`,
+and `explain`,
 mirroring the
 operation semantics exactly, with report-shaped results rendered from the
 report messages as JSON. The `bind` tool accepts many claims
 in one call, validating all-or-nothing like the gap surface.
+
+**REQ-mcp-explain** (behavior): The explain tool MUST answer a
+dynamic-state refusal with its derivation chain, derived against the
+same policy-scoped views the verdicts derive over (the freshness
+library's explain contract): given a witness's uncacheable reason -
+the culprit parsed from its package-and-variable tail - or an
+explicit package and symbol, the structured result carries the
+chain's links (kind, package, symbol, callee, clause, position) with
+counted omissions, beside a one-line text digest naming the arm and
+link count. A reason naming no parseable culprit refuses with
+guidance; a culprit no policy view knows answers with an empty chain,
+stated as such in the digest. Views are tried in a deterministic
+policy order and the first yielding a chain answers, the result
+naming the answering view's invocations - a caller holding a reason
+produced under a different view sees the mismatch instead of
+mistaking the chain for that view's derivation.
 
 **REQ-mcp-views** (behavior): The gate and verify tools MUST
 answer at the summary view by default — the roll-up most calls want —

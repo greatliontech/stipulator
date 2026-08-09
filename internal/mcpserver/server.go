@@ -17,10 +17,12 @@ import (
 	"os"
 	pathpkg "path"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
 
+	"github.com/greatliontech/gofresh"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -51,6 +53,7 @@ const serverInstructions = "stipulator verifies code against a compiled requirem
 	"The loop: check answers \"does this tree pass\" (summary view by default; it serves fresh witness evidence and executes only what moved, so warm calls are cheap; full=true additionally judges suite health). " +
 	"gate/verify give coverage and binding detail (summary default; views/scopes opt-in). " +
 	"read_spec and context orient before writing code; partitions splits red work into disjoint components. " +
+	"explain answers a witness's dynamic-state uncacheable reason with its derivation chain - pass the reason, or an explicit package and symbol. " +
 	"Authoring: bind (claims batch, all-or-nothing), gap (declare/fire/retract, batch), attest_requirement, pin (blanket backfills unset pins only and names differing pins awaiting re-consent; ids = editorial re-consent that rewrites them), dispose (editorial/retire/supersede), retarget (bulk symbol-prefix rewrite after a module rename; check=true previews), prune (resolved records; dangling=true repairs orphans). " +
 
 	"Long calls (check/gate/verify/prune/context/partitions) report phase progress when the request carries a progress token - send one and be patient rather than assuming a hang; results state the phase a deadline expired in. " +
@@ -70,6 +73,7 @@ type Server struct {
 	backends func(context.Context) (map[string]verify.Backend, error)
 	runTests func(context.Context) (*verify.TestRun, error)
 	runCheck func(context.Context, bool) (*stipulatorv1.CheckResult, error)
+	explain  func(ctx context.Context, pkgPath, symbol string) (gofresh.Chain, string, error)
 	write    func(path string, content []byte) error
 	remove   func(path string) error
 }
@@ -83,6 +87,13 @@ func New(dir string) *Server {
 		runTests: func(ctx context.Context) (*verify.TestRun, error) { return golang.RunWitnesses(ctx, dir) },
 		runCheck: func(ctx context.Context, full bool) (*stipulatorv1.CheckResult, error) {
 			return check.Run(ctx, dir, full)
+		},
+		explain: func(ctx context.Context, pkgPath, symbol string) (gofresh.Chain, string, error) {
+			pol, _, err := policy.Load(dir, map[string]policy.Backend{"go": golang.Policy{}})
+			if err != nil {
+				return gofresh.Chain{}, "", fmt.Errorf("policy: %w", err)
+			}
+			return golang.ExplainDynamicState(ctx, dir, pol, pkgPath, symbol)
 		},
 		write: func(path string, content []byte) error {
 			// The server is corpus-bound: every record update must remain
@@ -229,6 +240,10 @@ func (s *Server) MCP() *mcp.Server {
 		Name:        "read_spec",
 		Description: "Read the self-contained bundle for requirement ids (comma-separated): the requirements, their closure, terms, and context. Mirrors the bundle resource for clients without resource support.",
 	}, guarded(s, s.toolReadSpec))
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "explain",
+		Description: "Derivation chain for a dynamic-state refusal: pass a witness's uncacheable reason (or package and symbol) and receive the chain from culprit to the innermost refusing expression, derived against the policy-scoped views verdicts use.",
+	}, guarded(s, s.toolExplain))
 
 	srv.AddResourceTemplate(&mcp.ResourceTemplate{
 		URITemplate: "stipulator://req/{id}",
@@ -1041,6 +1056,82 @@ func (s *Server) toolReadSpec(ctx context.Context, req *mcp.CallToolRequest, in 
 		return nil, readSpecOut{}, err
 	}
 	return textOnly(fmt.Sprintf("bundle: %d bytes in the structured result", len(md))), readSpecOut{Spec: md}, nil
+}
+
+type explainIn struct {
+	Reason  string `json:"reason,omitempty" jsonschema:"a witness's uncacheable reason to parse the culprit from"`
+	Package string `json:"package,omitempty" jsonschema:"culprit package path (with symbol, overrides reason)"`
+	Symbol  string `json:"symbol,omitempty" jsonschema:"culprit variable name"`
+}
+
+type explainLink struct {
+	Kind    string `json:"kind"`
+	Package string `json:"package"`
+	Symbol  string `json:"symbol,omitempty"`
+	Callee  string `json:"callee,omitempty"`
+	Clause  string `json:"clause,omitempty"`
+	Pos     string `json:"pos,omitempty"`
+}
+
+type explainOut struct {
+	Arm     string        `json:"arm"`
+	View    string        `json:"view,omitempty" jsonschema:"the answering view's invocations - may differ from the view behind the caller's reason"`
+	Links   []explainLink `json:"links"`
+	Omitted int           `json:"omitted,omitempty"`
+}
+
+// culpritFromReason extracts the dynamic-state culprit a composed
+// reason names: the "<pkg>: <pkg>.<var> <verdict text>" tail every
+// shared-dynamic-state downgrade carries.
+var culpritReason = regexp.MustCompile(`([^\s:]+): ([^\s:]+)\.([\p{L}_][\p{L}\p{Nd}_]*) `)
+
+func culpritFromReason(reason string) (string, string, bool) {
+	for _, m := range culpritReason.FindAllStringSubmatch(reason+" ", -1) {
+		if m[1] == m[2] {
+			return m[1], m[3], true
+		}
+	}
+	return "", "", false
+}
+
+func (s *Server) toolExplain(ctx context.Context, req *mcp.CallToolRequest, in explainIn) (*mcp.CallToolResult, explainOut, error) {
+	if (in.Package == "") != (in.Symbol == "") {
+		// A lone package or symbol is never silently discarded in favor
+		// of the reason - the caller typed it for a reason.
+		return nil, explainOut{}, fmt.Errorf("explain: package and symbol travel together")
+	}
+	pkgPath, symbol := in.Package, in.Symbol
+	if pkgPath == "" {
+		if in.Reason == "" {
+			return nil, explainOut{}, fmt.Errorf("explain: pass a reason to parse, or package and symbol")
+		}
+		var ok bool
+		pkgPath, symbol, ok = culpritFromReason(in.Reason)
+		if !ok {
+			return nil, explainOut{}, fmt.Errorf("explain: no culprit parsed from the reason; pass package and symbol")
+		}
+	}
+	chain, view, err := s.explain(ctx, pkgPath, symbol)
+	if err != nil {
+		// The freshness library prefixes its own explain errors; only
+		// unprefixed causes (policy load, view construction) gain one.
+		if strings.HasPrefix(err.Error(), "explain: ") {
+			return nil, explainOut{}, err
+		}
+		return nil, explainOut{}, fmt.Errorf("explain: %w", err)
+	}
+	out := explainOut{Arm: chain.Arm, View: view, Omitted: chain.Omitted, Links: []explainLink{}}
+	for _, l := range chain.Links {
+		out.Links = append(out.Links, explainLink{Kind: l.Kind, Package: l.Package, Symbol: l.Symbol, Callee: l.Callee, Clause: l.Clause, Pos: l.Pos})
+	}
+	digest := "explain: no chain - not a culprit in the policy views"
+	if chain.Arm != "" {
+		digest = fmt.Sprintf("explain: %s, %d links in the structured result; view: %s", chain.Arm, len(out.Links), view)
+		if chain.Omitted > 0 {
+			digest += fmt.Sprintf("; %d omitted", chain.Omitted)
+		}
+	}
+	return textOnly(digest), out, nil
 }
 
 type disposeIn struct {
