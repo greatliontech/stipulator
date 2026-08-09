@@ -192,6 +192,9 @@ type captureGroup struct {
 	// laundering the tier (REQ-evidence-witness-freshness's race flag as
 	// a caller-supplied build input).
 	race bool
+	// vouches carries the group's reviewed dynamic-state vouch set into
+	// the engine; part of the group key, so one group has one set.
+	vouches []string
 	// assumePure carries the invocations' reviewed whole-invocation
 	// purity assertion into the engine (REQ-purity-responsibility).
 	assumePure bool
@@ -294,6 +297,11 @@ func groupKey(n *NormalizedInvocation) string {
 	if len(n.ExcludedPaths) > 0 {
 		key += "\x04" + strings.Join(canonicalExclusions(n.ExcludedPaths), "\x01")
 	}
+	if len(n.Vouches) > 0 {
+		// Vouches change verdicts, so two vouch sets are two capture
+		// groups - evidence produced under one never serves the other.
+		key += "\x05" + strings.Join(n.Vouches, "\x01")
+	}
 	return key
 }
 
@@ -361,6 +369,7 @@ func capturePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) 
 				env:           n.Env,
 				race:          n.Race,
 				assumePure:    n.AssumePure,
+				vouches:       n.Vouches,
 				excludedPaths: canonicalExclusions(n.ExcludedPaths),
 				pkgInv:        map[string]string{},
 				ambiguous:     map[string]bool{},
@@ -433,6 +442,11 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Eng
 		// caller-assertion attribution on every record; an explicit
 		// gofresh:external declaration is never suppressed by it.
 		opts = append(opts, gofresh.WithAssumePure(func(gofresh.Subject) bool { return true }))
+	}
+	if len(g.vouches) > 0 {
+		// The reviewed dynamic-state vouch set: discharging vouches ride
+		// every record's evidence, so acceptance is auditable there.
+		opts = append(opts, gofresh.WithDynamicStateVouches(g.vouches...))
 	}
 	return gofresh.New(append(opts,
 		// Every consumer of these views' verdicts follows the

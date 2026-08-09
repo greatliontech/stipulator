@@ -432,3 +432,51 @@ func TestGoNormalizeExcludedPaths(t *testing.T) {
 		}
 	}
 }
+
+// Vouch entries canonicalize (sorted, deduplicated) and malformed
+// identities refuse at policy acceptance: a bare package would silently
+// confer nothing (REQ-evidence-witness-freshness's vouch discipline).
+func TestGoNormalizeVouchesCanonicalizeAndRefuse(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	neutralAmbient(t)
+	dir := discoverFixture(t)
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./..."})
+	cfg.SetRace(true)
+	cfg.SetDynamicStateVouches([]*stipulatorv1.DynamicStateVouch{
+		vouchEntry("b.example/dep", "Var"), vouchEntry("a.example/dep", "Var"), vouchEntry("b.example/dep", "Var"),
+	})
+	n, err := NormalizeInvocation(context.Background(), dir, goInvocation("vouched", cfg))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(n.Vouches) != 2 || n.Vouches[0] != "a.example/dep.Var" || n.Vouches[1] != "b.example/dep.Var" {
+		t.Fatalf("vouches = %v, want sorted deduplicated pair", n.Vouches)
+	}
+	for _, bad := range []*stipulatorv1.DynamicStateVouch{
+		vouchEntry("", "Var"),
+		vouchEntry("a.example/dep", ""),
+		vouchEntry("a.example/dep\n", "Var"),
+		vouchEntry("a.example/dep ", "Var"),
+		vouchEntry("a.example/dep\x01b.example/dep", "Var"),
+		vouchEntry("a.example/dep", "not-an-identifier"),
+		vouchEntry("a.example/dep", "9lives"),
+		vouchEntry("a.example/dep", "Var.Sub"),
+		vouchEntry("a.example/dep", "Var "),
+	} {
+		cfg := &stipulatorv1.GoInvocationConfig{}
+		cfg.SetPackages([]string{"./..."})
+		cfg.SetRace(true)
+		cfg.SetDynamicStateVouches([]*stipulatorv1.DynamicStateVouch{bad})
+		if _, err := NormalizeInvocation(context.Background(), dir, goInvocation("bad", cfg)); err == nil || !strings.Contains(err.Error(), "dynamic_state_vouches") {
+			t.Fatalf("malformed vouch %+v accepted: %v", bad, err)
+		}
+	}
+}
+
+func vouchEntry(pkg, variable string) *stipulatorv1.DynamicStateVouch {
+	v := &stipulatorv1.DynamicStateVouch{}
+	v.SetPackage(pkg)
+	v.SetVariable(variable)
+	return v
+}

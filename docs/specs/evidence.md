@@ -137,7 +137,19 @@ exclusion carries the caller-side
 soundness responsibility gofresh's exclusion contract assigns it — its
 failure direction is a spurious reuse, accepted exactly there and — each
 scoped to the stated assumption whose violation would convert it — in
-the exemption classes below, nowhere else. Each producing process's completed observation is sealed against an
+the exemption classes below, nowhere else. The invocation's reviewed
+dynamic-state vouches ride the same review discipline: each names a
+version-pinned dependency package and exactly one of its package-level
+variables accepted as stable after initialization (gofresh's vouch
+contract; the pair form makes a bare package unrepresentable, and a
+malformed component — control or space characters, a variable that is
+not one Go identifier — refuses at policy acceptance), the vouch set
+partitions capture groups (execution never mixes two reviewed sets),
+serving is licensed by the current policy's engine alone, the vouches
+that licensed a verdict ride the recorded evidence, and a withdrawn
+vouch resurfaces its culprit in the current derivation — the records
+it licensed refuse on their own — while an added vouch serves
+existing evidence unchanged. Each producing process's completed observation is sealed against an
 observation bracket captured before the process spawns, declaring the
 package's own directory — module-relative under the verification tree,
 with the VCS bookkeeping tree excluded — together with the invocation's

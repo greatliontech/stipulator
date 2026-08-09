@@ -157,6 +157,7 @@ type Fingerprint struct {
 	ObservationAssertion string            `json:"observationAssertion,omitempty"`
 	ObservationProof     *observationProof `json:"observationProof,omitempty"`
 	PurityAssertion      string            `json:"purityAssertion,omitempty"`
+	DynamicStateVouches  string            `json:"dynamicStateVouches,omitempty"`
 	RuntimeInputs        string            `json:"runtimeInputs,omitempty"`
 	RuntimeDigest        string            `json:"runtimeDigest,omitempty"`
 	ResultKind           gofresh.Kind      `json:"resultKind"`
@@ -206,6 +207,7 @@ func (f Fingerprint) ToGofresh() gofresh.Fingerprint {
 		},
 		ObservationAssertion: f.ObservationAssertion,
 		PurityAssertion:      f.PurityAssertion,
+		DynamicStateVouches:  f.DynamicStateVouches,
 		RuntimeInputs:        f.RuntimeInputs,
 		RuntimeDigest:        f.RuntimeDigest,
 		ResultKind:           f.ResultKind,
@@ -233,6 +235,7 @@ func FromGofresh(fp gofresh.Fingerprint) Fingerprint {
 		RuntimeConfig:        fp.Guards.RuntimeConfig,
 		ObservationAssertion: fp.ObservationAssertion,
 		PurityAssertion:      fp.PurityAssertion,
+		DynamicStateVouches:  fp.DynamicStateVouches,
 		RuntimeInputs:        fp.RuntimeInputs,
 		RuntimeDigest:        fp.RuntimeDigest,
 		ResultKind:           fp.ResultKind,

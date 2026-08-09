@@ -390,6 +390,7 @@ func TestFingerprintRoundTrip(t *testing.T) {
 	want := generatedObservationFingerprint(t)
 	want.Guards = guard.Guards{Toolchain: "toolchain", BuildConfig: "build"}
 	want.PurityAssertion = "source directive"
+	want.DynamicStateVouches = "a.example/dep.Var,b.example/dep.W"
 	want.RuntimeInputs = "manifest"
 	want.RuntimeDigest = "digest"
 	if got := FromGofresh(want).ToGofresh(); !reflect.DeepEqual(got, want) {

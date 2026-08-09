@@ -540,3 +540,20 @@ func TestGroupKeySeparatesRaceTiers(t *testing.T) {
 		t.Fatal("plain-witness admission changed the build-shaping key: the admission is a witness-tier fact, not a build input")
 	}
 }
+
+// Two vouch sets are two capture groups: vouches change verdicts, so
+// evidence produced under one set never serves another
+// (REQ-evidence-witness-freshness's vouch discipline).
+func TestGroupKeySeparatesVouchSets(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	vouched := &NormalizedInvocation{Race: true, Vouches: []string{"a.example/dep.Var"}}
+	other := &NormalizedInvocation{Race: true, Vouches: []string{"a.example/dep.Other"}}
+	bare := &NormalizedInvocation{Race: true}
+	if groupKey(vouched) == groupKey(bare) || groupKey(vouched) == groupKey(other) {
+		t.Fatal("vouch sets share a capture-group key")
+	}
+	same := &NormalizedInvocation{Race: true, Vouches: []string{"a.example/dep.Var"}}
+	if groupKey(vouched) != groupKey(same) {
+		t.Fatal("equal vouch sets split capture groups")
+	}
+}

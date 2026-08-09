@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 )
@@ -56,6 +57,11 @@ type NormalizedInvocation struct {
 	ExcludedPaths []string
 	// AssumePure carries the invocation-wide reviewed purity assertion.
 	AssumePure bool
+	// Vouches are the invocation's reviewed dynamic-state vouches:
+	// canonical "<import path>.<Variable>" identities of version-pinned
+	// dependency variables accepted as stable after initialization
+	// (gofresh's vouch contract), sorted and deduplicated.
+	Vouches []string
 	// WitnessConcurrency is the reviewed spawn fan-out bound; zero means
 	// the pressure-honest default.
 	WitnessConcurrency int32
@@ -289,7 +295,48 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		}
 		n.ExcludedPaths = append(n.ExcludedPaths, p)
 	}
+	seenVouch := map[string]bool{}
+	for _, v := range cfg.GetDynamicStateVouches() {
+		identity, err := vouchIdentity(v)
+		if err != nil {
+			return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
+		}
+		if !seenVouch[identity] {
+			seenVouch[identity] = true
+			n.Vouches = append(n.Vouches, identity)
+		}
+	}
+	sort.Strings(n.Vouches)
 	return n, nil
+}
+
+// vouchIdentity composes gofresh's canonical "<import path>.<Variable>"
+// key from the pair form. The pair exists so a bare package can never
+// parse as a vouch; the components still refuse control and space
+// characters (they join into the capture-group key, where an embedded
+// joiner byte would collide two reviewed sets into one group) and the
+// variable must be one Go identifier - anything else is unmatchable in
+// gofresh and would silently confer nothing.
+func vouchIdentity(v *stipulatorv1.DynamicStateVouch) (string, error) {
+	pkg, name := v.GetPackage(), v.GetVariable()
+	if pkg == "" {
+		return "", fmt.Errorf("dynamic_state_vouches entry needs a package import path")
+	}
+	for _, r := range pkg {
+		if r <= ' ' || r == 0x7f || unicode.IsControl(r) {
+			return "", fmt.Errorf("dynamic_state_vouches package %q carries a control or space character", pkg)
+		}
+	}
+	if name == "" {
+		return "", fmt.Errorf("dynamic_state_vouches entry for %q needs a variable name", pkg)
+	}
+	for i, r := range name {
+		letter := unicode.IsLetter(r) || r == '_'
+		if (i == 0 && !letter) || (i > 0 && !letter && !unicode.IsDigit(r)) {
+			return "", fmt.Errorf("dynamic_state_vouches variable %q is not one Go identifier", name)
+		}
+	}
+	return pkg + "." + name, nil
 }
 
 // validateExcludedPath admits the identity forms gofresh's exclusion

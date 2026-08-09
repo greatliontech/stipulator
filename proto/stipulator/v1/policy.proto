@@ -216,4 +216,26 @@ message GoInvocationConfig {
   // belong here — committed and reviewed — never in per-machine
   // tooling, and stay narrow.
   repeated string excluded_paths = 24;
+  // Dynamic-state vouches: package-level variables in version-pinned
+  // dependencies the repository accepts as stable after
+  // initialization (gofresh's vouch contract). Each vouch names
+  // exactly one variable, discharges only that variable's
+  // shared-dynamic-state downgrade, and confers nothing on
+  // mutable-local source; the vouches that licensed a verdict ride
+  // the recorded evidence, so acceptance is committed, reviewed, and
+  // auditable — never a per-machine flag. The pair form exists so a
+  // bare package can never parse as a vouch: an import path's final
+  // element may itself contain a dot, so a flat identity string
+  // cannot be validated.
+  repeated DynamicStateVouch dynamic_state_vouches = 25;
+}
+
+// DynamicStateVouch names one package-level dependency variable
+// accepted as stable after initialization.
+message DynamicStateVouch {
+  // Import path of the version-pinned dependency package declaring
+  // the variable.
+  string package = 1;
+  // The package-level variable's name — one Go identifier.
+  string variable = 2;
 }
