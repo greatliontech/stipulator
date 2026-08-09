@@ -654,6 +654,7 @@ func TestPruneTool(t *testing.T) {
 
 //gofresh:pure
 func TestReadSpecToolMirrorsBundle(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-response-contract")
 	sess, _ := harness(t, nil)
 	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "read_spec", Arguments: map[string]any{
 		"ids": "REQ-m-a",
@@ -661,10 +662,24 @@ func TestReadSpecToolMirrorsBundle(t *testing.T) {
 	if err != nil || res.IsError {
 		t.Fatalf("read_spec: %v %v", err, res)
 	}
-	// The bundle rides the text content once; the structured result
-	// carries only its size (REQ-mcp-response-contract).
-	if text := toolText(t, res); !strings.Contains(text, "widget") {
-		t.Fatalf("read_spec lacks closure content: %s", text)
+	// The bundle rides the structured result once - the channel
+	// structured-preferring clients read - beside a size-only text
+	// digest (REQ-mcp-response-contract).
+	sc, err := json.Marshal(res.StructuredContent)
+	if err != nil {
+		t.Fatalf("structured content: %v", err)
+	}
+	var out struct {
+		Spec string `json:"spec"`
+	}
+	if err := json.Unmarshal(sc, &out); err != nil {
+		t.Fatalf("structured shape: %v: %s", err, sc)
+	}
+	if !strings.Contains(out.Spec, "widget") {
+		t.Fatalf("structured result lacks closure content: %s", sc)
+	}
+	if text := toolText(t, res); strings.Contains(text, "widget") || !strings.Contains(text, "bytes") {
+		t.Fatalf("text side is not the size-only digest: %s", text)
 	}
 }
 

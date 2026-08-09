@@ -17,22 +17,8 @@ invocations {
     bracket_paths: "internal"
     bracket_paths: "go.mod"
     bracket_paths: "go.sum"
+    bracket_paths: ".stipulator/policy.textproto"
     assume_pure: true
-  }
-}
-  go {
-    module_root: "bindingsurface"
-    packages: "./..."
-    race: true
-    bracket_paths: "/bin/sh"
-    bracket_paths: "/usr/bin/sh"
-    bracket_paths: "/usr/bin/git"
-    bracket_paths: "go.work"
-    bracket_paths: "internal"
-    bracket_paths: "go.mod"
-    bracket_paths: "go.sum"
-    assume_pure: true
-    args: "-test.timeout=30m"
   }
 }
 invocations {
@@ -51,6 +37,7 @@ invocations {
     bracket_paths: "internal"
     bracket_paths: "go.mod"
     bracket_paths: "go.sum"
+    bracket_paths: ".stipulator/policy.textproto"
     assume_pure: true
     args: "-test.timeout=30m"
   }
@@ -71,6 +58,7 @@ invocations {
     bracket_paths: "internal"
     bracket_paths: "go.mod"
     bracket_paths: "go.sum"
+    bracket_paths: ".stipulator/policy.textproto"
     assume_pure: true
     args: "-test.timeout=30m"
   }

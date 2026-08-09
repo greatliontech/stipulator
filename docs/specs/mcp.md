@@ -68,8 +68,10 @@ a capped action-row set with counted omissions: enough for a client
 that exposes text content only to identify the file, requirement,
 symbol, or record to repair, and a lossy projection, never a second
 serialization of the whole payload), or, for a
-document-valued result like a spec bundle, the document as the text
-content beside a size-only structured result — and one home per fact within it —
+document-valued result like a spec bundle, the document in the
+structured result beside a size-only text digest — clients that
+prefer structured content drop text blocks, so the document must ride
+the channel such clients read — and one home per fact within it —
 a collection travels in exactly one of the payload's messages, so a
 payload embedding another report message leaves every copy of a
 collection the result carries anywhere else in the payload empty. The

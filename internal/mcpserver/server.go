@@ -1028,11 +1028,11 @@ type readSpecIn struct {
 }
 
 type readSpecOut struct {
-	// Bytes counts the markdown carried in the text content — the one
-	// wire encoding of the bundle; duplicating the whole document into
-	// the structured result would double the payload
-	// (REQ-mcp-response-contract).
-	Bytes int `json:"bytes"`
+	// Spec carries the bundle markdown — the one wire encoding of the
+	// document, homed in the structured result because
+	// structured-preferring clients drop text blocks; the text side is
+	// the size-only digest (REQ-mcp-response-contract).
+	Spec string `json:"spec" jsonschema:"the requested requirements' self-contained bundle, markdown"`
 }
 
 func (s *Server) toolReadSpec(ctx context.Context, req *mcp.CallToolRequest, in readSpecIn) (*mcp.CallToolResult, readSpecOut, error) {
@@ -1040,7 +1040,7 @@ func (s *Server) toolReadSpec(ctx context.Context, req *mcp.CallToolRequest, in 
 	if err != nil {
 		return nil, readSpecOut{}, err
 	}
-	return textOnly(md), readSpecOut{Bytes: len(md)}, nil
+	return textOnly(fmt.Sprintf("bundle: %d bytes in the structured result", len(md))), readSpecOut{Spec: md}, nil
 }
 
 type disposeIn struct {
