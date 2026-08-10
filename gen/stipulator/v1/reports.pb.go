@@ -404,6 +404,10 @@ const (
 	GapState_GAP_STATE_OPEN        GapState = 1
 	GapState_GAP_STATE_DUE         GapState = 2
 	GapState_GAP_STATE_RESOLVED    GapState = 3
+	// The record names a requirement no longer in the corpus - a
+	// records-and-corpus fact, listed for triage, repaired by retraction
+	// or the dangling prune.
+	GapState_GAP_STATE_DANGLING GapState = 4
 )
 
 // Enum value maps for GapState.
@@ -413,12 +417,14 @@ var (
 		1: "GAP_STATE_OPEN",
 		2: "GAP_STATE_DUE",
 		3: "GAP_STATE_RESOLVED",
+		4: "GAP_STATE_DANGLING",
 	}
 	GapState_value = map[string]int32{
 		"GAP_STATE_UNSPECIFIED": 0,
 		"GAP_STATE_OPEN":        1,
 		"GAP_STATE_DUE":         2,
 		"GAP_STATE_RESOLVED":    3,
+		"GAP_STATE_DANGLING":    4,
 	}
 )
 
@@ -1969,12 +1975,17 @@ func (b0 RequirementCoverage_builder) Build() *RequirementCoverage {
 	return m0
 }
 
-// GapReport is one gap record's evaluated state.
+// GapReport is one gap record's evaluated state beside the record's own
+// declaration fields - the triage row (id, reason, condition, fired,
+// state), so due work is named, never only counted.
 type GapReport struct {
 	state                    protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Path          *string                `protobuf:"bytes,1,opt,name=path"`
 	xxx_hidden_RequirementId *string                `protobuf:"bytes,2,opt,name=requirement_id,json=requirementId"`
 	xxx_hidden_State         GapState               `protobuf:"varint,3,opt,name=state,enum=stipulator.v1.GapState"`
+	xxx_hidden_Reason        *string                `protobuf:"bytes,4,opt,name=reason"`
+	xxx_hidden_Condition     *string                `protobuf:"bytes,5,opt,name=condition"`
+	xxx_hidden_Fired         bool                   `protobuf:"varint,6,opt,name=fired"`
 	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
 	XXX_presence             [1]uint32
 	unknownFields            protoimpl.UnknownFields
@@ -2035,19 +2046,61 @@ func (x *GapReport) GetState() GapState {
 	return GapState_GAP_STATE_UNSPECIFIED
 }
 
+func (x *GapReport) GetReason() string {
+	if x != nil {
+		if x.xxx_hidden_Reason != nil {
+			return *x.xxx_hidden_Reason
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *GapReport) GetCondition() string {
+	if x != nil {
+		if x.xxx_hidden_Condition != nil {
+			return *x.xxx_hidden_Condition
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *GapReport) GetFired() bool {
+	if x != nil {
+		return x.xxx_hidden_Fired
+	}
+	return false
+}
+
 func (x *GapReport) SetPath(v string) {
 	x.xxx_hidden_Path = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
 }
 
 func (x *GapReport) SetRequirementId(v string) {
 	x.xxx_hidden_RequirementId = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 6)
 }
 
 func (x *GapReport) SetState(v GapState) {
 	x.xxx_hidden_State = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 6)
+}
+
+func (x *GapReport) SetReason(v string) {
+	x.xxx_hidden_Reason = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
+}
+
+func (x *GapReport) SetCondition(v string) {
+	x.xxx_hidden_Condition = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
+}
+
+func (x *GapReport) SetFired(v bool) {
+	x.xxx_hidden_Fired = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 6)
 }
 
 func (x *GapReport) HasPath() bool {
@@ -2071,6 +2124,27 @@ func (x *GapReport) HasState() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
 }
 
+func (x *GapReport) HasReason() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *GapReport) HasCondition() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *GapReport) HasFired() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
 func (x *GapReport) ClearPath() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Path = nil
@@ -2086,12 +2160,34 @@ func (x *GapReport) ClearState() {
 	x.xxx_hidden_State = GapState_GAP_STATE_UNSPECIFIED
 }
 
+func (x *GapReport) ClearReason() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_Reason = nil
+}
+
+func (x *GapReport) ClearCondition() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_Condition = nil
+}
+
+func (x *GapReport) ClearFired() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_Fired = false
+}
+
 type GapReport_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	Path          *string
 	RequirementId *string
 	State         *GapState
+	Reason        *string
+	// The landing condition, rendered: "covered(<id>)", "exists(<id>)",
+	// or "manual: <text>".
+	Condition *string
+	// The manual condition's fired bit; always false for machine
+	// conditions.
+	Fired *bool
 }
 
 func (b0 GapReport_builder) Build() *GapReport {
@@ -2099,16 +2195,28 @@ func (b0 GapReport_builder) Build() *GapReport {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Path != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
 		x.xxx_hidden_Path = b.Path
 	}
 	if b.RequirementId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 6)
 		x.xxx_hidden_RequirementId = b.RequirementId
 	}
 	if b.State != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 6)
 		x.xxx_hidden_State = *b.State
+	}
+	if b.Reason != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
+		x.xxx_hidden_Reason = b.Reason
+	}
+	if b.Condition != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
+		x.xxx_hidden_Condition = b.Condition
+	}
+	if b.Fired != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 6)
+		x.xxx_hidden_Fired = *b.Fired
 	}
 	return m0
 }
@@ -4218,11 +4326,14 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x06bucket\x18\x04 \x01(\x0e2\x15.stipulator.v1.BucketR\x06bucket\x12\x18\n" +
 	"\areasons\x18\x05 \x03(\tR\areasons\x12:\n" +
 	"\x19witness_selection_blocked\x18\x06 \x01(\bR\x17witnessSelectionBlocked\x12#\n" +
-	"\rscope_blocked\x18\a \x01(\bR\fscopeBlocked\"u\n" +
+	"\rscope_blocked\x18\a \x01(\bR\fscopeBlocked\"\xc1\x01\n" +
 	"\tGapReport\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12%\n" +
 	"\x0erequirement_id\x18\x02 \x01(\tR\rrequirementId\x12-\n" +
-	"\x05state\x18\x03 \x01(\x0e2\x17.stipulator.v1.GapStateR\x05state\"\xf2\x01\n" +
+	"\x05state\x18\x03 \x01(\x0e2\x17.stipulator.v1.GapStateR\x05state\x12\x16\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\x12\x1c\n" +
+	"\tcondition\x18\x05 \x01(\tR\tcondition\x12\x14\n" +
+	"\x05fired\x18\x06 \x01(\bR\x05fired\"\xf2\x01\n" +
 	"\x0eCoverageReport\x12F\n" +
 	"\frequirements\x18\x01 \x03(\v2\".stipulator.v1.RequirementCoverageR\frequirements\x12,\n" +
 	"\x04gaps\x18\x02 \x03(\v2\x18.stipulator.v1.GapReportR\x04gaps\x12\x1e\n" +
@@ -4352,12 +4463,13 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\rBUCKET_BROKEN\x10\x03\x12\x12\n" +
 	"\x0eBUCKET_COVERED\x10\x04\x12\x11\n" +
 	"\rBUCKET_EXEMPT\x10\x05\x12\x13\n" +
-	"\x0fBUCKET_ATTESTED\x10\x06*d\n" +
+	"\x0fBUCKET_ATTESTED\x10\x06*|\n" +
 	"\bGapState\x12\x19\n" +
 	"\x15GAP_STATE_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eGAP_STATE_OPEN\x10\x01\x12\x11\n" +
 	"\rGAP_STATE_DUE\x10\x02\x12\x16\n" +
-	"\x12GAP_STATE_RESOLVED\x10\x03BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
+	"\x12GAP_STATE_RESOLVED\x10\x03\x12\x16\n" +
+	"\x12GAP_STATE_DANGLING\x10\x04BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
 var file_stipulator_v1_reports_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
 var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 19)

@@ -195,6 +195,9 @@ func fixtureCheckResult() proto.Message {
 	gap.SetPath(".stipulator/gaps/y.textproto")
 	gap.SetRequirementId("REQ-y")
 	gap.SetState(stipulatorv1.GapState_GAP_STATE_RESOLVED)
+	gap.SetReason("witness pending")
+	gap.SetCondition("manual: judged done")
+	gap.SetFired(true)
 	coverage := &stipulatorv1.CoverageReport{}
 	coverage.SetRequirements([]*stipulatorv1.RequirementCoverage{cov})
 	coverage.SetGaps([]*stipulatorv1.GapReport{gap})

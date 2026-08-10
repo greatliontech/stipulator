@@ -184,6 +184,10 @@ enum GapState {
   GAP_STATE_OPEN = 1;
   GAP_STATE_DUE = 2;
   GAP_STATE_RESOLVED = 3;
+  // The record names a requirement no longer in the corpus - a
+  // records-and-corpus fact, listed for triage, repaired by retraction
+  // or the dangling prune.
+  GAP_STATE_DANGLING = 4;
 }
 
 // RequirementCoverage is one requirement's evaluated bucket.
@@ -205,11 +209,20 @@ message RequirementCoverage {
   bool scope_blocked = 7;
 }
 
-// GapReport is one gap record's evaluated state.
+// GapReport is one gap record's evaluated state beside the record's own
+// declaration fields - the triage row (id, reason, condition, fired,
+// state), so due work is named, never only counted.
 message GapReport {
   string path = 1;
   string requirement_id = 2;
   GapState state = 3;
+  string reason = 4;
+  // The landing condition, rendered: "covered(<id>)", "exists(<id>)",
+  // or "manual: <text>".
+  string condition = 5;
+  // The manual condition's fired bit; always false for machine
+  // conditions.
+  bool fired = 6;
 }
 
 // CoverageReport is the coverage evaluation and gate verdict. There are

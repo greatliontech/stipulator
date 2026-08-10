@@ -94,11 +94,20 @@ type Requirement struct {
 	ScopeBlocked bool
 }
 
-// Gap is one gap record's evaluated state.
+// Gap is one gap record's evaluated state beside the record's own
+// declaration fields - the triage row, so due work is named, never
+// only counted.
 type Gap struct {
 	Path          string
 	RequirementId string
 	State         GapState
+	Reason        string
+	// Condition is the landing condition rendered: "covered(<id>)",
+	// "exists(<id>)", or "manual: <text>".
+	Condition string
+	// Fired is the manual condition's fired bit; false for machine
+	// conditions.
+	Fired bool
 }
 
 // Report is the coverage evaluation and gate verdict.
@@ -402,7 +411,12 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		case conditionHolds(gf.Gap.GetLands(), buckets, spec):
 			state = Due
 		}
-		rep.Gaps = append(rep.Gaps, Gap{Path: gf.Path, RequirementId: id, State: state})
+		rep.Gaps = append(rep.Gaps, Gap{
+			Path: gf.Path, RequirementId: id, State: state,
+			Reason:    gf.Gap.GetReason(),
+			Condition: ConditionText(gf.Gap.GetLands()),
+			Fired:     gf.Gap.GetLands().GetManual().GetFired(),
+		})
 	}
 
 	for i := range rep.Requirements {
@@ -606,6 +620,20 @@ func requiredEvidence(pol *Policy, kind stipulatorv1.ClauseKind, kw stipulatorv1
 // coverage-shaped, so coverage resolves them as satisfied.
 func manualUnfired(lc *stipulatorv1.LandingCondition) bool {
 	return lc.HasManual() && !lc.GetManual().GetFired()
+}
+
+// ConditionText renders a landing condition for the triage surfaces:
+// "covered(<id>)", "exists(<id>)", or "manual: <text>".
+func ConditionText(lc *stipulatorv1.LandingCondition) string {
+	switch {
+	case lc.GetCovered() != "":
+		return "covered(" + lc.GetCovered() + ")"
+	case lc.GetExists() != "":
+		return "exists(" + lc.GetExists() + ")"
+	case lc.GetManual() != nil:
+		return "manual: " + lc.GetManual().GetCondition()
+	}
+	return ""
 }
 
 // conditionHolds evaluates a machine landing condition; manual

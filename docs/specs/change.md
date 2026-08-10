@@ -179,6 +179,23 @@ coverage is not a state an exempt cell can reach, so the condition alone
 defines completion, and without this arm the record would have no
 reachable terminal state.
 
+**REQ-gap-list** (behavior): The gap surface MUST offer a read operation
+listing every gap record's declaration fields — requirement identifier,
+reason, landing condition, manual fired bit — beside its evaluated
+lifecycle state, taking its witness evidence exactly as resolved-record
+pruning does (the gap-relevant scope; no witness evidence when no bound
+witness can move a gap-relevant bucket; the empty answer skips witness
+evidence, never corpus compilation and its diagnostics). The rows are
+wire `GapReport` messages — states in the wire enum spelling; human
+renderings print the lowercase words. A record naming a requirement
+outside the corpus lists as `dangling` rather than refusing — the list
+is where dangling records are found; its repairs are retraction and the
+dangling prune. Verification problems accompany the listing as a stated
+caveat rather than a refusal: a misreported read is triage input, a
+deletion on one is not (contrast REQ-gap-resolved-pruned). The
+operation writes nothing — editing a gap record happens only through
+re-declaration (REQ-gap-verb).
+
 **REQ-gap-resolved-pruned** (behavior): The `prune` operation MUST delete
 resolved gap records — a resolved gap is satisfied, dead record weight.
 Detecting resolution is the coverage evaluation `gate` already performs,

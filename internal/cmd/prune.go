@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"sort"
 
 	"github.com/spf13/cobra"
 
@@ -81,29 +80,10 @@ func pruneCmd() *cobra.Command {
 				// stale-remainder execution narrows to those
 				// requirements' bound subjects. A gap id outside the
 				// corpus is dangling - never resolvable, owned by the
-				// explicit dangling mode - so it is filtered here rather
-				// than refused; the dangling record still surfaces as a
-				// verification problem below.
-				known := map[string]bool{}
-				for _, r := range spec.GetRequirements() {
-					known[r.GetId()] = true
-				}
-				inScope := map[string]bool{}
-				var gapIds []string
-				add := func(id string) {
-					if known[id] && !inScope[id] {
-						inScope[id] = true
-						gapIds = append(gapIds, id)
-					}
-				}
-				for _, g := range store.Gaps {
-					add(g.Gap.GetRequirementId())
-					if c := g.Gap.GetLands().GetCovered(); c != "" {
-						add(c)
-					}
-				}
-				sort.Strings(gapIds)
-				scope, err := checkpkg.ScopeSubjects(spec, store, gapIds)
+				// explicit dangling mode - filtered rather than refused;
+				// the dangling record still surfaces as a verification
+				// problem below.
+				scope, gapIds, err := checkpkg.GapScope(spec, store)
 				if err != nil {
 					return err
 				}

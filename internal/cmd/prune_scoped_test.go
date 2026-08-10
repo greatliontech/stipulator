@@ -95,6 +95,17 @@ func TestPruneScopedWitnessEvaluationAndDeletionOnlyFastPath(t *testing.T) {
 	// into the scope: the resolution judgment reads the target's
 	// coverage, so its witness joins the evaluation.
 	run(0, "gap", "--req", "REQ-pr-a", "--reason", "lands with the sibling", "--covered", "REQ-pr-b")
+
+	// The list read surface shares the same scoped evaluation: the row
+	// carries the declaration fields beside the evaluated state.
+	out = run(0, "gap", "--list")
+	if !strings.Contains(out, "scoped to 2 gapped requirements") {
+		t.Fatalf("list did not scope to the gap-relevant requirements:\n%s", out)
+	}
+	if !strings.Contains(out, "resolved  REQ-pr-a  covered(REQ-pr-b)") {
+		t.Fatalf("list row missing the evaluated state and condition:\n%s", out)
+	}
+
 	out = run(0, "prune")
 	if !strings.Contains(out, "scoped to 2 gapped requirements") {
 		t.Fatalf("condition target not folded into the scope:\n%s", out)

@@ -264,11 +264,12 @@ func TestVerifySummaryOmitsFailureDiagnosticOutput(t *testing.T) {
 // for any other reason stays a visible row, and without the diagnostic
 // the marker alone folds nothing (REQ-check-witness-selection).
 //
-//gofresh:pure
 // The summary mirrors the scoped-class flag and scope ids, and folds
 // requirements red solely on the scope boundary to a count — the cause
 // stated once by scope_partial, the rows riding the full view. Without
 // the partial flag the row marker folds nothing.
+//
+//gofresh:pure
 func TestCheckSummaryMirrorsScopeAndFoldsScopeBlockedRows(t *testing.T) {
 	stipulate.Covers(t, "REQ-check-verdict", "REQ-report-check-result")
 	blocked := &stipulatorv1.RequirementCoverage{}

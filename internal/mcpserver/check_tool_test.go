@@ -736,7 +736,6 @@ func TestCheckToolClientCancellationSealsProgress(t *testing.T) {
 	t.Fatalf("no terminal CANCELLED event reached the session: %v", log.snapshot())
 }
 
-
 // The ids parameter reaches the pass itself: the tool forwards it to
 // runCheck, selecting the scoped witness-evidence class - never a
 // display-only filter (REQ-mcp-views' check exception).

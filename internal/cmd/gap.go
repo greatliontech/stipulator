@@ -1,30 +1,44 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/greatliontech/stipulator/internal/author"
+	checkpkg "github.com/greatliontech/stipulator/internal/check"
+	"github.com/greatliontech/stipulator/internal/corpus"
+	"github.com/greatliontech/stipulator/internal/coverage"
+	"github.com/greatliontech/stipulator/internal/records"
+	"github.com/greatliontech/stipulator/internal/verify"
 )
 
 func gapCmd() *cobra.Command {
 	var reqs, excuseNames []string
 	var reason, coveredID, existsID, manual string
-	var fired, retract bool
+	var fired, retract, list bool
 	c := &cobra.Command{
 		Use:   "gap",
-		Short: "Declare, fire, or retract a coverage gap",
+		Short: "Declare, fire, retract, or list coverage gaps",
 		Long: "Declares coverage gaps with a landing condition (--req repeatable; all\n" +
 			"share the reason and condition; --covered self lands each requirement on\n" +
 			"its own coverage). --fired alone marks existing gaps' manual conditions\n" +
 			"fired — the external judgment entering through the validated path.\n" +
 			"--retract deletes gap records — dangling records included: retraction is\n" +
 			"the dangling state's repair, and it never touches the tombstone registry.\n" +
-			"Batches apply all-or-nothing.",
+			"--list prints every record with its evaluated state — the read surface,\n" +
+			"witnessing only the gap-relevant requirements; editing a gap is\n" +
+			"re-declaring it. Batches apply all-or-nothing.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			conditioned := coveredID != "" || existsID != "" || manual != "" || reason != "" || len(excuseNames) > 0
+			if list {
+				if len(reqs) > 0 || conditioned || fired || retract {
+					return fmt.Errorf("--list is the read surface and combines with no write flag: editing a gap is re-declaring it")
+				}
+				return gapListRun(cmd.Context())
+			}
 			switch {
 			case retract:
 				if conditioned || fired {
@@ -71,6 +85,87 @@ func gapCmd() *cobra.Command {
 	c.Flags().StringArrayVar(&excuseNames, "excuses", nil, "violation class the gap excuses: uncovered, stale, or broken (repeatable; default uncovered alone)")
 	c.Flags().BoolVar(&fired, "fired", false, "mark the manual condition fired (alone: fire existing gaps)")
 	c.Flags().BoolVar(&retract, "retract", false, "delete the gap records instead of declaring (dangling records included)")
+	c.Flags().BoolVar(&list, "list", false, "list every gap record with its evaluated state (open|due|resolved|dangling); witness evidence gathers only for the gap-relevant requirements")
 	registerReqCompletions(c, "req", "covered", "exists")
 	return c
+}
+
+// gapListRun is the gap surface's read form: every record's declaration
+// fields beside its evaluated lifecycle state, the evaluation scoped to
+// the gap-relevant requirements exactly as prune's is, with dangling
+// records listed rather than refused. It writes nothing; editing a gap
+// is re-declaring it.
+func gapListRun(ctx context.Context) error {
+	spec, err := mustCompile(chdir)
+	if err != nil {
+		return err
+	}
+	fsys := os.DirFS(chdir)
+	store, err := records.Load(fsys)
+	if err != nil {
+		return err
+	}
+	if len(store.Gaps) == 0 {
+		fmt.Println("no gap records")
+		return nil
+	}
+	scope, gapIds, err := checkpkg.GapScope(spec, store)
+	if err != nil {
+		return err
+	}
+	var testRun *verify.TestRun
+	if len(scope) > 0 {
+		// An empty scope means no bound witness can move any
+		// gap-relevant bucket, so the evaluation is witness-free.
+		why := fmt.Sprintf("scoped to %d gapped requirements", len(gapIds))
+		if testRun, err = witnessRunScoped(ctx, scope, why); err != nil {
+			return err
+		}
+	}
+	backends, err := makeBackends(ctx, chdir)
+	if err != nil {
+		return err
+	}
+	rep := verify.Run(spec, store, backends, testRun)
+	if len(rep.Problems) > 0 {
+		fmt.Fprintln(os.Stderr, yellow(fmt.Sprintf("%d verification problems - evaluated states may misreport; run stipulator verify", len(rep.Problems))))
+	}
+	manifest, err := corpus.LoadManifest(fsys)
+	if err != nil {
+		return err
+	}
+	pol, err := coverage.PolicyFromManifest(manifest)
+	if err != nil {
+		return err
+	}
+	cov := coverage.Evaluate(spec, rep, store, testRun != nil, pol)
+	row := func(state, id, condition string, manualFired bool, reason string) {
+		fired := ""
+		if manualFired {
+			fired = " fired"
+		}
+		fmt.Printf("%-9s %s  %s%s  %s\n", state, id, condition, fired, dim(reason))
+	}
+	known := map[string]bool{}
+	for _, r := range spec.GetRequirements() {
+		known[r.GetId()] = true
+	}
+	for _, g := range cov.Gaps {
+		// The evaluation's row for an out-of-corpus record is a
+		// meaningless Open; the dangling classification below owns it.
+		if !known[g.RequirementId] {
+			continue
+		}
+		row(g.State.String(), g.RequirementId, g.Condition, g.Fired, g.Reason)
+	}
+	// Dangling records are a triage fact, not a refusal: the list is
+	// where they are found (their repairs are retraction and the
+	// dangling prune).
+	for _, gf := range store.Gaps {
+		if known[gf.Gap.GetRequirementId()] {
+			continue
+		}
+		row("dangling", gf.Gap.GetRequirementId(), coverage.ConditionText(gf.Gap.GetLands()), gf.Gap.GetLands().GetManual().GetFired(), gf.Gap.GetReason())
+	}
+	return nil
 }

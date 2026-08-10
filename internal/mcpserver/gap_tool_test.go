@@ -8,7 +8,9 @@ import (
 
 	"github.com/greatliontech/gofresh"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"google.golang.org/protobuf/encoding/protojson"
 
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
 )
@@ -140,6 +142,155 @@ func TestPruneToolDanglingMode(t *testing.T) {
 	}
 	if _, touched := writes[livePath]; touched {
 		t.Fatal("dangling mode deleted a live record")
+	}
+}
+
+// The gap list is the read surface: every record's declaration fields
+// beside its evaluated state — resolved, due, open, dangling — with the
+// witness evaluation scoped exactly as prune's, dangling records listed
+// rather than refused, verification problems a stated caveat, and the
+// write forms refused in combination (REQ-gap-list).
+func TestGapToolListRowsStatesAndScope(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-list", "REQ-gap-lifecycle", "REQ-mcp-tools")
+	var got map[gofresh.Subject]bool
+	sess, writes := harnessWith(t, map[string]string{
+		".stipulator/bindings/a.textproto": pinnedBindingFor(t, "REQ-m-a", "example.com/p.TestA", "s"),
+		".stipulator/gaps/m-a.textproto": "requirement_id: \"REQ-m-a\"\nreason: \"external judgment\"\n" +
+			"lands {\n  manual {\n    condition: \"judged done\"\n    fired: true\n  }\n}\n",
+		".stipulator/gaps/m-b.textproto": "requirement_id: \"REQ-m-b\"\nreason: \"lands with the sibling\"\n" +
+			"lands {\n  covered: \"REQ-m-a\"\n}\n",
+		".stipulator/gaps/ghost.textproto": "requirement_id: \"REQ-m-ghost\"\nreason: \"left behind\"\n" +
+			"lands {\n  manual {\n    condition: \"c\"\n  }\n}\n",
+	}, func(s *Server) {
+		s.runTests = func(_ context.Context, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {
+			got = scope
+			return &verify.TestRun{
+				RaceEnabled:      true,
+				SelectiveServing: true,
+				Outcomes:         map[string]verify.TestOutcome{"example.com/p.TestA": verify.TestPassed},
+			}, nil
+		}
+	})
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "gap", Arguments: map[string]any{"list": true}})
+	if err != nil || res.IsError {
+		t.Fatalf("gap list: %v %+v", err, res)
+	}
+	if len(got) != 1 || !got[gofresh.Subject{Package: "example.com/p", Symbol: "TestA"}] {
+		t.Fatalf("witness scope = %v, want exactly the gap-relevant bound subject", got)
+	}
+	b, _ := json.Marshal(res.StructuredContent)
+	var out struct {
+		Gaps  []json.RawMessage `json:"gaps"`
+		Notes []string          `json:"notes"`
+	}
+	if err := json.Unmarshal(b, &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Gaps) != 3 {
+		t.Fatalf("rows = %d, want 3:\n%s", len(out.Gaps), b)
+	}
+	states := map[string]*stipulatorv1.GapReport{}
+	for _, raw := range out.Gaps {
+		g := &stipulatorv1.GapReport{}
+		if err := protojson.Unmarshal(raw, g); err != nil {
+			t.Fatalf("row is not a strict GapReport: %v\n%s", err, raw)
+		}
+		states[g.GetRequirementId()] = g
+	}
+	if g := states["REQ-m-a"]; g.GetState() != stipulatorv1.GapState_GAP_STATE_RESOLVED ||
+		!g.GetFired() || g.GetCondition() != "manual: judged done" || g.GetReason() != "external judgment" {
+		t.Fatalf("resolved row wrong: %v", g)
+	}
+	if g := states["REQ-m-b"]; g.GetState() != stipulatorv1.GapState_GAP_STATE_DUE ||
+		g.GetCondition() != "covered(REQ-m-a)" || g.GetFired() {
+		t.Fatalf("due row wrong: %v", g)
+	}
+	if g := states["REQ-m-ghost"]; g.GetState() != stipulatorv1.GapState_GAP_STATE_DANGLING {
+		t.Fatalf("dangling row wrong: %v", g)
+	}
+	// The dangling record is a verification problem — a caveat on the
+	// listing, never a refusal.
+	if len(out.Notes) == 0 || !strings.Contains(out.Notes[0], "verification problems") {
+		t.Fatalf("problems caveat missing: %s", b)
+	}
+	if text := toolText(t, res); !strings.Contains(text, "3 gap records") || !strings.Contains(text, "1 due") {
+		t.Fatalf("list line does not carry the counts: %q", text)
+	}
+	if len(writes) != 0 {
+		t.Fatalf("the read surface wrote: %v", writes)
+	}
+
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "gap", Arguments: map[string]any{"list": true, "requirement": "REQ-m-a"}})
+	if err != nil || !res.IsError {
+		t.Fatalf("list combined with a write field did not refuse: %v %+v", err, res)
+	}
+}
+
+// A gapless tree lists empty without gathering witness evidence — while
+// a broken corpus still refuses: the empty answer skips evidence, never
+// diagnostics.
+func TestGapToolListNoGapsSkipsWitnessEvaluation(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-list")
+	called := false
+	sess, _ := harnessWith(t, map[string]string{}, func(s *Server) {
+		s.runTests = func(context.Context, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+			called = true
+			return &verify.TestRun{SelectiveServing: true}, nil
+		}
+	})
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "gap", Arguments: map[string]any{"list": true}})
+	if err != nil || res.IsError {
+		t.Fatalf("gap list: %v %+v", err, res)
+	}
+	if called {
+		t.Fatal("witness evaluation ran with no gap records")
+	}
+	if text := toolText(t, res); !strings.Contains(text, "no gap records") {
+		t.Fatalf("empty list does not name itself: %q", text)
+	}
+
+	broken, _ := harnessWith(t, map[string]string{
+		".stipulator/manifest.textproto": ":::garbage\n",
+	}, func(s *Server) {
+		s.runTests = func(context.Context, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+			t.Error("witness evaluation ran on a broken corpus")
+			return &verify.TestRun{SelectiveServing: true}, nil
+		}
+	})
+	res, err = broken.CallTool(context.Background(), &mcp.CallToolParams{Name: "gap", Arguments: map[string]any{"list": true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.IsError {
+		t.Fatalf("broken corpus listed as success: %+v", res)
+	}
+}
+
+// With gap records present but no gap-relevant bound witness, the
+// evaluation is witness-free — the skip that lets spec-only design
+// trees list (REQ-gap-list).
+func TestGapToolListEmptyScopeSkipsWitnessRun(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-list")
+	called := false
+	sess, _ := harnessWith(t, map[string]string{
+		".stipulator/gaps/m-b.textproto": "requirement_id: \"REQ-m-b\"\nreason: \"spec ahead of code\"\n" +
+			"lands {\n  manual {\n    condition: \"c\"\n  }\n}\n",
+	}, func(s *Server) {
+		s.runTests = func(context.Context, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+			called = true
+			return &verify.TestRun{SelectiveServing: true}, nil
+		}
+	})
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "gap", Arguments: map[string]any{"list": true}})
+	if err != nil || res.IsError {
+		t.Fatalf("gap list: %v %+v", err, res)
+	}
+	if called {
+		t.Fatal("witness evaluation ran with no gap-relevant bound witness")
+	}
+	b, _ := json.Marshal(res.StructuredContent)
+	if !strings.Contains(string(b), "GAP_STATE_OPEN") || !strings.Contains(string(b), "REQ-m-b") {
+		t.Fatalf("unbound gapped requirement's row missing or misclassified: %s", b)
 	}
 }
 

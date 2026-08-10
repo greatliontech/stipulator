@@ -8,7 +8,10 @@
   "coverage": {
     "gaps": [
       {
+        "condition": "manual: judged done",
+        "fired": true,
         "path": ".stipulator/gaps/y.textproto",
+        "reason": "witness pending",
         "requirementId": "REQ-y",
         "state": "GAP_STATE_RESOLVED"
       }

@@ -986,7 +986,9 @@ func TestVerifyToolNamesPolicyRecordProblem(t *testing.T) {
 		backends: func(context.Context) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{"go": fakeBackend{}}, nil
 		},
-		runTests: func(ctx context.Context, _ map[gofresh.Subject]bool) (*verify.TestRun, error) { return golang.RunWitnesses(ctx, dir) },
+		runTests: func(ctx context.Context, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
+			return golang.RunWitnesses(ctx, dir)
+		},
 	}
 	ct, st := mcp.NewInMemoryTransports()
 	go func() { _ = s.MCP().Run(context.Background(), st) }()

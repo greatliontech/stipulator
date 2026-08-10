@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/greatliontech/gofresh"
@@ -283,6 +284,38 @@ func ScopeSubjects(spec *stipulatorv1.Spec, store *records.Store, ids []string) 
 		}
 	}
 	return scope, nil
+}
+
+// GapScope derives the requirements a gap evaluation reads - the
+// gap-named ids plus covered(<id>) landing-condition targets, filtered
+// to the corpus (an out-of-corpus id is dangling: never resolvable,
+// owned by the dangling surfaces) - and resolves them to their bound
+// witness subjects. The one derivation prune and the gap list share.
+func GapScope(spec *stipulatorv1.Spec, store *records.Store) (map[gofresh.Subject]bool, []string, error) {
+	known := map[string]bool{}
+	for _, r := range spec.GetRequirements() {
+		known[r.GetId()] = true
+	}
+	seen := map[string]bool{}
+	var ids []string
+	add := func(id string) {
+		if known[id] && !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
+	for _, g := range store.Gaps {
+		add(g.Gap.GetRequirementId())
+		if c := g.Gap.GetLands().GetCovered(); c != "" {
+			add(c)
+		}
+	}
+	sort.Strings(ids)
+	scope, err := ScopeSubjects(spec, store, ids)
+	if err != nil {
+		return nil, nil, err
+	}
+	return scope, ids, nil
 }
 
 // scopedGatePasses is the scoped verdict's gate term: every violation

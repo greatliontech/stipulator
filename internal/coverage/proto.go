@@ -28,6 +28,9 @@ func (r *Report) Proto() *stipulatorv1.CoverageReport {
 		m.SetPath(g.Path)
 		m.SetRequirementId(g.RequirementId)
 		m.SetState(gapProto[g.State])
+		m.SetReason(g.Reason)
+		m.SetCondition(g.Condition)
+		m.SetFired(g.Fired)
 		gaps = append(gaps, m)
 	}
 	out.SetGaps(gaps)

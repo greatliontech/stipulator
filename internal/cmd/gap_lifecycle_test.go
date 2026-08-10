@@ -18,7 +18,7 @@ import (
 //
 // Deliberately not //gofresh:pure: builds and executes the CLI binary.
 func TestGapLifecycleCLI(t *testing.T) {
-	stipulate.Covers(t, "REQ-gap-bulk", "REQ-gap-retract", "REQ-gap-prune-dangling")
+	stipulate.Covers(t, "REQ-gap-bulk", "REQ-gap-retract", "REQ-gap-prune-dangling", "REQ-gap-list")
 	if testing.Short() {
 		t.Skip("builds the CLI")
 	}
@@ -97,6 +97,21 @@ func TestGapLifecycleCLI(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, ".stipulator/gaps/gl-b.textproto")); err != nil {
 		t.Fatal("check deleted the record — must be dry-run")
 	}
+	// The list read surface works on a spec-only tree - no go module, no
+	// policy record: with no bound witness in the gap-relevant scope the
+	// evaluation is witness-free - and names the dangling record beside
+	// the in-corpus rows. It combines with no write flag.
+	out = run(0, "gap", "--list")
+	if !strings.Contains(out, "dangling") || !strings.Contains(out, "REQ-gl-b") {
+		t.Fatalf("list did not name the dangling record:\n%s", out)
+	}
+	// The dangling record is a verification problem — a stated caveat on
+	// the listing, never a refusal.
+	if !strings.Contains(out, "evaluated states may misreport") {
+		t.Fatalf("problems caveat missing:\n%s", out)
+	}
+	run(2, "gap", "--list", "--req", "REQ-gl-a")
+
 	run(0, "prune", "--dangling")
 	if _, err := os.Stat(filepath.Join(dir, ".stipulator/gaps/gl-b.textproto")); !os.IsNotExist(err) {
 		t.Fatal("dangling repair left the record behind")
