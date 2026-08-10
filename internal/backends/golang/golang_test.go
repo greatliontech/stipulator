@@ -205,6 +205,30 @@ func TestWitnessClass(t *testing.T) {
 	}
 }
 
+// The classification verdict names what the bound body lacks: the
+// near-miss (a recognized library referenced without its classifying
+// call) is named exactly, so a helper-indirected property test is
+// diagnosed from the row.
+func TestWitnessClassVerdicts(t *testing.T) {
+	fb := fixtureBackend(t)
+	for _, tc := range []struct {
+		symbol string
+		class  verify.WitnessClass
+		reason string
+	}{
+		{"example.com/fixture/lib.TestPropRapidCheck", verify.PropertyWitness, ""},
+		{"example.com/fixture/lib.TestPropRapidGeneratorOnly", verify.ExampleWitness, "rapid.Check not invoked in the bound body"},
+		{"example.com/fixture/lib.TestAdd", verify.ExampleWitness, "no property driver or analyzer call in the bound body"},
+		{"example.com/fixture/lib.TestPropDotImported", verify.ExampleWitness, "recognized library reached through a dot import - only a qualified call classifies"},
+		{"example.com/fixture/lib.Add", verify.ExampleWitness, "not a runnable test witness"},
+	} {
+		class, reason := fb.WitnessClassVerdict(tc.symbol)
+		if class != tc.class || reason != tc.reason {
+			t.Errorf("WitnessClassVerdict(%s) = %v %q, want %v %q", tc.symbol, class, reason, tc.class, tc.reason)
+		}
+	}
+}
+
 // TestSlice pins the slice facts: the seed's declaration plus the named
 // module-local types its signature reaches, transitively, shape-pinned and
 // canonically ordered — and nothing from outside the module.

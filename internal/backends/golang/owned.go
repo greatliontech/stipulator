@@ -188,12 +188,21 @@ func (o *Owned) Resolve(symbol string) (verify.Resolution, string, error) {
 // property — while the fault itself surfaces as a verification error
 // from Resolve, which every classifying run also performs per binding.
 func (o *Owned) WitnessClass(symbol string) verify.WitnessClass {
+	class, _ := o.WitnessClassVerdict(symbol)
+	return class
+}
+
+// WitnessClassVerdict implements verify.WitnessClassVerdicts through
+// the resolver child: the class plus the example-classification verdict
+// reason. A faulted transport reads as the weakest class with no
+// verdict, exactly as WitnessClass's no-error contract.
+func (o *Owned) WitnessClassVerdict(symbol string) (verify.WitnessClass, string) {
 	resp, err := o.roundTrip(resolverRequest{Op: "witnessclass", Symbol: symbol})
 	if err != nil {
-		return verify.ExampleWitness
+		return verify.ExampleWitness, ""
 	}
 	if c, ok := classFromWire(resp.Class); ok {
-		return c
+		return c, resp.ClassReason
 	}
 	// An unrecognized wire class is a protocol fault like any other: record
 	// it sticky so the run's next Resolve surfaces a problem instead of the
@@ -203,7 +212,7 @@ func (o *Owned) WitnessClass(symbol string) verify.WitnessClass {
 		_ = o.fault(fmt.Errorf("unknown witness class %q", resp.Class))
 	}
 	o.mu.Unlock()
-	return verify.ExampleWitness
+	return verify.ExampleWitness, ""
 }
 
 // Slice implements verify.Slicer through the resolver child.

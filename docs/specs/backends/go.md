@@ -44,7 +44,17 @@ analyzer library (indirection through a helper does not classify),
 its own body directly drives `pgregory.net/rapid` (a qualified or aliased
 `rapid.Check` / `rapid.MakeCheck` selector call — a dot-imported call or
 generator construction alone does not classify), and `example` otherwise;
-the classification is resolved from the code, never declared.
+the classification is resolved from the code, never declared. An
+`example` classification carries a verdict naming what the bound body
+lacks — a recognized library referenced without its classifying call is
+named exactly (`rapid.Check not invoked in the bound body`; `no
+structural assertion invoked in the bound body`), a recognized library
+reached only through a dot import is named as such, a body touching
+neither reads that no property driver or analyzer call appears, and a
+non-runnable symbol is named as such — and an uncovered requirement's
+report surfaces the classification verdict per bound witness beside the
+required-evidence reason, a property-classified witness on a
+proof-requiring cell named symmetrically.
 
 **REQ-go-race** (behavior): A Go witness MUST derive only from a
 race-enabled policy invocation, so every witness is race-attributed; an

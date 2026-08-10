@@ -32,12 +32,13 @@ type resolverRequest struct {
 // result. Error alongside Resolution mirrors Resolve's contract, where
 // a resolution outcome and a verification error travel together.
 type resolverResponse struct {
-	Ready      bool           `json:"ready,omitempty"`
-	Error      string         `json:"error,omitempty"`
-	Resolution string         `json:"resolution,omitempty"`
-	Shape      string         `json:"shape,omitempty"`
-	Class      string         `json:"class,omitempty"`
-	Decls      []resolverDecl `json:"decls,omitempty"`
+	Ready       bool           `json:"ready,omitempty"`
+	Error       string         `json:"error,omitempty"`
+	Resolution  string         `json:"resolution,omitempty"`
+	Shape       string         `json:"shape,omitempty"`
+	Class       string         `json:"class,omitempty"`
+	ClassReason string         `json:"classReason,omitempty"`
+	Decls       []resolverDecl `json:"decls,omitempty"`
 	// File and Found carry a symbolfile result; Found travels explicitly
 	// because an empty path is a legitimate not-found, never a default.
 	File  string `json:"file,omitempty"`
@@ -150,7 +151,9 @@ func ServeResolver(ctx context.Context, dir string, r io.Reader, w io.Writer) er
 				resp.Error = err.Error()
 			}
 		case "witnessclass":
-			resp.Class = classWire(b.WitnessClass(req.Symbol))
+			class, reason := b.WitnessClassVerdict(req.Symbol)
+			resp.Class = classWire(class)
+			resp.ClassReason = reason
 		case "slice":
 			decls, err := b.Slice(req.Symbols)
 			if err != nil {

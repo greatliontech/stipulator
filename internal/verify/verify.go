@@ -190,7 +190,11 @@ type BindingResult struct {
 	// witnessed tests; WitnessClass and RaceEnabled qualify the witness.
 	TestOutcome  TestOutcome
 	WitnessClass WitnessClass
-	RaceEnabled  bool
+	// WitnessClassReason names, for an example classification, what the
+	// bound body lacks - surfaced on uncovered rows so a misclassified
+	// witness is diagnosed from the output.
+	WitnessClassReason string
+	RaceEnabled        bool
 	// OutsideWitnessSelection marks a tests- or proves-role binding whose
 	// subject the accepted policy's witness-eligible selection does not
 	// cover: it cannot witness until the policy covers it, and its
@@ -238,6 +242,13 @@ var ErrNotServingClass = errors.New("this operation takes serving-class witness 
 // the code, what class of witness a bound test yields.
 type WitnessClassifier interface {
 	WitnessClass(symbol string) WitnessClass
+}
+
+// WitnessClassVerdicts is an optional refinement of WitnessClassifier:
+// the class plus, for an example classification, the verdict naming
+// what the bound body lacks.
+type WitnessClassVerdicts interface {
+	WitnessClassVerdict(symbol string) (WitnessClass, string)
 }
 
 // SymbolLocator is an optional Backend extension: the symbol's owning
@@ -434,7 +445,9 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 				// the run's rigor for an outcome another invocation (or no
 				// execution at all) produced.
 				result.RaceEnabled = testRun.RaceEnabled && result.TestOutcome == TestPassed && !testRun.PlainWitness[b.GetSymbol()]
-				if wc, ok := backends[b.GetBackend()].(WitnessClassifier); ok {
+				if wc, ok := backends[b.GetBackend()].(WitnessClassVerdicts); ok {
+					result.WitnessClass, result.WitnessClassReason = wc.WitnessClassVerdict(b.GetSymbol())
+				} else if wc, ok := backends[b.GetBackend()].(WitnessClassifier); ok {
 					result.WitnessClass = wc.WitnessClass(b.GetSymbol())
 				}
 				switch result.TestOutcome {

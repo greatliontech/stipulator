@@ -44,6 +44,9 @@ func TestWitnessClassProof(t *testing.T) {
 	if got := backend.WitnessClass(mod + "/internal/backends/golang.TestFieldHelperOnly"); got != verify.ExampleWitness {
 		t.Fatalf("structural helper-only test classified %v, want example", got)
 	}
+	if _, reason := backend.WitnessClassVerdict(mod + "/internal/backends/golang.TestFieldHelperOnly"); reason != "no structural assertion invoked in the bound body" {
+		t.Fatalf("structural near-miss verdict = %q, want the missing assertion named", reason)
+	}
 	notATest(t)
 	if got := backend.WitnessClass(mod + "/internal/backends/golang.notATest"); got == verify.AnalyzerProof {
 		t.Fatal("plain function classified as proof; it never runs in a witness run")

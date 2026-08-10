@@ -200,6 +200,7 @@ func (p *Policy) minimum(kind stipulatorv1.ClauseKind, kw stipulatorv1.Keyword) 
 // dead code.
 type evidence struct {
 	example, property, static, proof bool
+	classVerdicts                    []string
 	// attested: a current, reason-carrying attestation exists — the
 	// weakest rung, granted only where a policy cell admits it and never
 	// aggregated into the stronger kinds above.
@@ -276,8 +277,20 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 						e.reasons = append(e.reasons, fmt.Sprintf("proves claim %s passed but no longer classifies as an analyzer proof", r.Symbol))
 					case r.WitnessClass == verify.PropertyWitness:
 						e.property = true
+						// Symmetric with the example verdict: a
+						// proof-requiring cell names the property
+						// classification when the row ends uncovered.
+						e.classVerdicts = append(e.classVerdicts, fmt.Sprintf("bound witness %s classified property: not an analyzer proof", r.Symbol))
 					default:
 						e.example = true
+						if r.WitnessClassReason != "" {
+							// The classification verdict rides beside the
+							// evidence bits: it surfaces only when the
+							// requirement ends uncovered for want of a
+							// stronger class, naming exactly what the
+							// bound body lacks.
+							e.classVerdicts = append(e.classVerdicts, fmt.Sprintf("bound witness %s classified example: %s", r.Symbol, r.WitnessClassReason))
+						}
 					}
 				}
 			case verify.TestFailed:
@@ -338,6 +351,11 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		default:
 			b = Uncovered
 			e.reasons = append(e.reasons, requiredEvidence(pol, r.GetKind(), r.GetKeyword()))
+			// The per-witness classification verdicts land beside the
+			// need. Reasons sort alphabetically, which today puts
+			// "bound witness ..." verdicts ahead of "needs ..." - an
+			// incidental ordering, not a contract.
+			e.reasons = append(e.reasons, e.classVerdicts...)
 			for _, ar := range e.attestReasons {
 				e.reasons = append(e.reasons, fmt.Sprintf("attestation recorded (%q) is not admitted here — the cell %s", ar, requiredEvidence(pol, r.GetKind(), r.GetKeyword())))
 			}

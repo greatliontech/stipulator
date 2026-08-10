@@ -280,16 +280,53 @@ func rapidDriver(name string) bool { return name == "Check" || name == "MakeChec
 // driver calls — is an example witness. Resolved from the code, never
 // declared.
 func (b *Backend) WitnessClass(symbol string) verify.WitnessClass {
+	class, _ := b.WitnessClassVerdict(symbol)
+	return class
+}
+
+// WitnessClassVerdict implements verify.WitnessClassVerdicts: the class
+// plus, for an example classification, the verdict naming what the
+// bound body lacks - a recognized library referenced without its
+// classifying call is named exactly, so a property test misclassified
+// by helper indirection is diagnosed from the row, never by
+// trial-and-error edits.
+func (b *Backend) WitnessClassVerdict(symbol string) (verify.WitnessClass, string) {
 	// Proof outranks property, property outranks example: resolved from
 	// the body's callees. Only a test the witness run executes can
 	// classify above example — a structural or rapid invocation in a
 	// plain function never runs.
 	if fd, pkg, err := b.funcDecl(symbol); err == nil && fd.Body != nil && runnableWitness(fd, pkg) {
-		proof, property := false, false
+		proof, property, rapidRef, structuralRef, dotImported := false, false, false, false, false
 		ast.Inspect(fd.Body, func(n ast.Node) bool {
+			if proof {
+				return false
+			}
+			if ident, ok := n.(*ast.Ident); ok {
+				// A dot-imported use resolves the bare ident to the
+				// library: named as its own near-miss, since the
+				// classifying call must be a qualified selector.
+				if obj := pkg.TypesInfo.Uses[ident]; obj != nil && obj.Pkg() != nil {
+					if p := obj.Pkg().Path(); p == rapidPkg || p == structuralPkg {
+						dotImported = true
+					}
+				}
+			}
+			if sel, ok := n.(*ast.SelectorExpr); ok {
+				// A reference without the classifying call is the
+				// diagnosable near-miss: record which library the body
+				// touches.
+				if obj := pkg.TypesInfo.Uses[sel.Sel]; obj != nil && obj.Pkg() != nil {
+					switch obj.Pkg().Path() {
+					case rapidPkg:
+						rapidRef = true
+					case structuralPkg:
+						structuralRef = true
+					}
+				}
+			}
 			call, ok := n.(*ast.CallExpr)
-			if !ok || proof {
-				return !proof
+			if !ok {
+				return true
 			}
 			// A generic instantiation wraps the selector in an index
 			// expression: structural.Implements[io.Reader](t, x) is
@@ -316,11 +353,34 @@ func (b *Backend) WitnessClass(symbol string) verify.WitnessClass {
 		})
 		switch {
 		case proof:
-			return verify.AnalyzerProof
+			return verify.AnalyzerProof, ""
 		case property:
-			return verify.PropertyWitness
+			return verify.PropertyWitness, ""
+		}
+		// A fuzz target quantifies by its harness whatever its body
+		// calls - the signature check below classifies it property.
+		if b.fuzzTargetClass(symbol) == verify.PropertyWitness {
+			return verify.PropertyWitness, ""
+		}
+		switch {
+		case rapidRef:
+			return verify.ExampleWitness, "rapid.Check not invoked in the bound body"
+		case structuralRef:
+			return verify.ExampleWitness, "no structural assertion invoked in the bound body"
+		case dotImported:
+			return verify.ExampleWitness, "recognized library reached through a dot import - only a qualified call classifies"
+		default:
+			return verify.ExampleWitness, "no property driver or analyzer call in the bound body"
 		}
 	}
+	class := b.fuzzTargetClass(symbol)
+	if class == verify.PropertyWitness {
+		return class, ""
+	}
+	return verify.ExampleWitness, "not a runnable test witness"
+}
+
+func (b *Backend) fuzzTargetClass(symbol string) verify.WitnessClass {
 	pkgPath, rest := b.splitSymbol(symbol)
 	if pkgPath == "" {
 		return verify.ExampleWitness

@@ -56,6 +56,56 @@ const (
 	tests = stipulatorv1.BindingRole_BINDING_ROLE_TESTS
 )
 
+// An uncovered requirement surfaces the classification verdict per
+// bound witness beside the required-evidence reason: the row names what
+// the bound body lacks, and sorted reasons put the verdict first
+// (REQ-go-witness-class).
+//
+//gofresh:pure
+func TestExampleClassificationVerdictSurfaces(t *testing.T) {
+	doc := "# T\n\n**REQ-v-inv** (invariant): It MUST hold.\n"
+	spec, store := fixture(t, doc, nil)
+	r := result("REQ-v-inv", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed)
+	r.WitnessClassReason = "rapid.Check not invoked in the bound body"
+	rep := Evaluate(spec, &verify.Report{Results: []verify.BindingResult{r}}, store, true, nil)
+	row := bucketOf(t, rep, "REQ-v-inv")
+	if row.Bucket != Uncovered {
+		t.Fatalf("bucket = %v, want uncovered", row.Bucket)
+	}
+	joined := strings.Join(row.Reasons, "; ")
+	if !strings.Contains(joined, "bound witness example.com/p.S classified example: rapid.Check not invoked in the bound body") {
+		t.Fatalf("reasons %q lack the classification verdict", joined)
+	}
+	if !strings.Contains(joined, "needs a property witness or analyzer proof") {
+		t.Fatalf("reasons %q lack the required-evidence need", joined)
+	}
+	if !strings.HasPrefix(row.Reasons[0], "bound witness ") {
+		t.Fatalf("reasons[0] = %q, want the actionable verdict first", row.Reasons[0])
+	}
+	// A proof-requiring cell names a property classification
+	// symmetrically.
+	strDoc := "# T\n\n**REQ-v-str** (structural): It MUST NOT depend.\n"
+	strSpec, strStore := fixture(t, strDoc, nil)
+	rp := result("REQ-v-str", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed)
+	rp.WitnessClass = verify.PropertyWitness
+	strRep := Evaluate(strSpec, &verify.Report{Results: []verify.BindingResult{rp}}, strStore, true, nil)
+	strRow := bucketOf(t, strRep, "REQ-v-str")
+	if strRow.Bucket != Uncovered || !strings.Contains(strings.Join(strRow.Reasons, " "), "classified property: not an analyzer proof") {
+		t.Fatalf("structural row = %v %q, want the property classification named", strRow.Bucket, strRow.Reasons)
+	}
+	// A covered requirement never carries the verdict: the class was
+	// sufficient, nothing is lacking.
+	behDoc := "# T\n\n**REQ-v-beh** (behavior): It MUST x.\n"
+	behSpec, behStore := fixture(t, behDoc, nil)
+	rb := result("REQ-v-beh", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed)
+	rb.WitnessClassReason = "no property driver or analyzer call in the bound body"
+	behRep := Evaluate(behSpec, &verify.Report{Results: []verify.BindingResult{rb}}, behStore, true, nil)
+	behRow := bucketOf(t, behRep, "REQ-v-beh")
+	if behRow.Bucket != Covered || strings.Contains(strings.Join(behRow.Reasons, " "), "classified example") {
+		t.Fatalf("covered row = %v %q, want covered with no classification verdict", behRow.Bucket, behRow.Reasons)
+	}
+}
+
 // TestPolicyDefaults pins the (kind, keyword) → minimum-evidence table and
 // with it the evidence ladder: a witness satisfies behavior, a static
 // binding does not; a static binding satisfies SHOULD; structural

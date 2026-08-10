@@ -138,6 +138,11 @@ func TestOwnedResolverProtocolRoundTrips(t *testing.T) {
 		if got, want := owned.WitnessClass(symbol), inproc.WitnessClass(symbol); got != want {
 			t.Errorf("WitnessClass(%s) = %v, in-process %v", symbol, got, want)
 		}
+		gotClass, gotReason := owned.WitnessClassVerdict(symbol)
+		wantClass, wantReason := inproc.WitnessClassVerdict(symbol)
+		if gotClass != wantClass || gotReason != wantReason {
+			t.Errorf("WitnessClassVerdict(%s) = %v %q, in-process %v %q", symbol, gotClass, gotReason, wantClass, wantReason)
+		}
 	}
 
 	wantDecls, wantErr := inproc.Slice([]string{"example.com/fixture/lib.W"})
