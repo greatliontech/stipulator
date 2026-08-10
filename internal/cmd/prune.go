@@ -3,10 +3,12 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/spf13/cobra"
 
 	"github.com/greatliontech/stipulator/internal/author"
+	checkpkg "github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/records"
@@ -60,9 +62,53 @@ func pruneCmd() *cobra.Command {
 				fmt.Printf("prune: %d dangling gaps deleted\n", len(prunes))
 				return nil
 			}
+			// Deletion-only fast path: no gap records means nothing can
+			// resolve, so no witness evidence is gathered at all
+			// (REQ-gap-resolved-pruned).
+			if len(store.Gaps) == 0 {
+				if check {
+					fmt.Println(green("prune: clean"))
+					return nil
+				}
+				fmt.Println("prune: no gap records - nothing to evaluate")
+				return nil
+			}
 			var testRun *verify.TestRun
 			if !noTest {
-				if testRun, err = witnessRun(cmd.Context()); err != nil {
+				// Resolution reads the gapped requirements' coverage -
+				// and, for a gap with a covered(<id>) landing condition,
+				// the condition target's coverage - so the
+				// stale-remainder execution narrows to those
+				// requirements' bound subjects. A gap id outside the
+				// corpus is dangling - never resolvable, owned by the
+				// explicit dangling mode - so it is filtered here rather
+				// than refused; the dangling record still surfaces as a
+				// verification problem below.
+				known := map[string]bool{}
+				for _, r := range spec.GetRequirements() {
+					known[r.GetId()] = true
+				}
+				inScope := map[string]bool{}
+				var gapIds []string
+				add := func(id string) {
+					if known[id] && !inScope[id] {
+						inScope[id] = true
+						gapIds = append(gapIds, id)
+					}
+				}
+				for _, g := range store.Gaps {
+					add(g.Gap.GetRequirementId())
+					if c := g.Gap.GetLands().GetCovered(); c != "" {
+						add(c)
+					}
+				}
+				sort.Strings(gapIds)
+				scope, err := checkpkg.ScopeSubjects(spec, store, gapIds)
+				if err != nil {
+					return err
+				}
+				why := fmt.Sprintf("scoped to %d gapped requirements", len(gapIds))
+				if testRun, err = witnessRunScoped(cmd.Context(), scope, why); err != nil {
 					return err
 				}
 				// The resolved-record evaluation is pinned to the serving
@@ -72,6 +118,7 @@ func pruneCmd() *cobra.Command {
 					return err
 				}
 			}
+			fmt.Fprintln(os.Stderr, dim(fmt.Sprintf("evaluated %d gap records", len(store.Gaps))))
 			backends, err := makeBackends(cmd.Context(), chdir)
 			if err != nil {
 				return err

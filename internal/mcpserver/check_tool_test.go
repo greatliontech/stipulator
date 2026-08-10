@@ -16,6 +16,8 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/greatliontech/gofresh"
+
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/verify"
@@ -475,7 +477,7 @@ func progressPipelineHarness(t *testing.T) (*mcp.ClientSession, *notificationLog
 		backends: func(context.Context) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{"go": fakeBackend{}}, nil
 		},
-		runTests: func(context.Context) (*verify.TestRun, error) {
+		runTests: func(context.Context, map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			return &verify.TestRun{RaceEnabled: true, SelectiveServing: true, Outcomes: map[string]verify.TestOutcome{}}, nil
 		},
 	}
@@ -656,7 +658,7 @@ func TestVerifyToolDeadlineNamesExpiredPhaseAndCause(t *testing.T) {
 		backends: func(context.Context) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{"go": fakeBackend{}}, nil
 		},
-		runTests: func(ctx context.Context) (*verify.TestRun, error) {
+		runTests: func(ctx context.Context, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			// The policy execution outlasts any deadline.
 			<-ctx.Done()
 			return nil, ctx.Err()

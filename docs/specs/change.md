@@ -190,7 +190,15 @@ takes its witness evidence from the serving class — proven-fresh records
 with selective execution of the stale remainder (REQ-core-one-execution),
 the serving path's degraded full-execution fallback included: the class
 is the path, not the served count — never a whole policy execution
-demanded for pruning alone.
+demanded for pruning alone. The stale remainder narrows further to the
+subjects bound to the requirements a resolution judgment reads: the
+gap-named requirements and, for a gap with a `covered(<id>)` landing
+condition, the condition's target — nothing else feeds a gap's
+resolved state, so a witness bound only to requirements outside that
+set never executes for pruning, and a tree with no gap records gathers
+no witness evidence at all (corpus compilation and its diagnostics
+remain). The operation names the evaluation it performed: the
+gap-record count and the served and executed witness counts.
 
 **REQ-gap-prune-dangling** (behavior): An explicit dangling mode of
 `prune` — with a check form — MUST delete dangling gap records in bulk,

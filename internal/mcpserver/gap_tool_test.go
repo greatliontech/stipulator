@@ -6,8 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/greatliontech/stipulator/stipulate"
+	"github.com/greatliontech/gofresh"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/stipulate"
 )
 
 // The gap tool mirrors the operation's batch semantics: comma-separated
@@ -112,10 +115,15 @@ func TestPruneToolDanglingMode(t *testing.T) {
 
 	// The ordinary resolved-mode prune never deletes a dangling record:
 	// the dangling gap is a verification problem, and problems refuse the
-	// resolved-mode prune outright.
+	// resolved-mode prune outright — the dangling id is filtered from the
+	// witness scope rather than refused as an unknown identifier, so the
+	// refusal names the real cause.
 	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "prune", Arguments: map[string]any{}})
 	if err != nil || !res.IsError {
 		t.Fatalf("resolved-mode prune over a dangling record did not refuse: %v %+v", err, res)
+	}
+	if txt := toolText(t, res); !strings.Contains(txt, "verification problems") {
+		t.Fatalf("refusal does not name the verification problems: %q", txt)
 	}
 	if _, touched := writes[danglingPath]; touched {
 		t.Fatal("resolved-mode prune touched the dangling record")
@@ -132,5 +140,126 @@ func TestPruneToolDanglingMode(t *testing.T) {
 	}
 	if _, touched := writes[livePath]; touched {
 		t.Fatal("dangling mode deleted a live record")
+	}
+}
+
+// A resolved-mode prune gathers witness evidence only for the gapped
+// requirements: the scope handed to the witness run is exactly the
+// gap-bound subjects — a witness bound only to ungapped requirements
+// never executes for pruning — and the result names the evaluation
+// performed (REQ-gap-resolved-pruned).
+func TestPruneToolScopesWitnessEvaluationToGappedRequirements(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-resolved-pruned", "REQ-mcp-tools")
+	gapPath := ".stipulator/gaps/m-a.textproto"
+	var got map[gofresh.Subject]bool
+	sess, writes := harnessWith(t, map[string]string{
+		".stipulator/bindings/a.textproto": pinnedBindingFor(t, "REQ-m-a", "example.com/p.TestA", "s"),
+		".stipulator/bindings/b.textproto": pinnedBindingFor(t, "REQ-m-b", "example.com/q.TestA", "q"),
+		gapPath: "requirement_id: \"REQ-m-a\"\nreason: \"pending\"\n" +
+			"lands {\n  manual {\n    condition: \"judged done\"\n    fired: true\n  }\n}\n",
+	}, func(s *Server) {
+		s.runTests = func(_ context.Context, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {
+			got = scope
+			return &verify.TestRun{
+				RaceEnabled:      true,
+				SelectiveServing: true,
+				Outcomes:         map[string]verify.TestOutcome{"example.com/p.TestA": verify.TestPassed},
+			}, nil
+		}
+	})
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "prune", Arguments: map[string]any{}})
+	if err != nil || res.IsError {
+		t.Fatalf("prune: %v %+v", err, res)
+	}
+	if len(got) != 1 || !got[gofresh.Subject{Package: "example.com/p", Symbol: "TestA"}] {
+		t.Fatalf("witness scope = %v, want exactly the gap-bound subject", got)
+	}
+	if c, ok := writes[gapPath]; !ok || c != nil {
+		t.Fatalf("resolved gap not deleted (ok=%v)", ok)
+	}
+	if b, _ := json.Marshal(res.StructuredContent); !strings.Contains(string(b), "evaluated 1 gap records") {
+		t.Fatalf("result does not name the evaluation performed: %s", b)
+	}
+}
+
+// A gap's covered(<id>) landing condition reads the target
+// requirement's coverage, so the target's bound subjects join the
+// witness scope — without them an exempt-arm resolution would misread
+// a stale target as unresolved while the gate advertises the gap
+// resolved (REQ-gap-resolved-pruned, REQ-gap-lifecycle).
+func TestPruneToolScopeIncludesConditionTargets(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-resolved-pruned")
+	var got map[gofresh.Subject]bool
+	sess, _ := harnessWith(t, map[string]string{
+		".stipulator/bindings/a.textproto": pinnedBindingFor(t, "REQ-m-a", "example.com/p.TestA", "s"),
+		".stipulator/bindings/b.textproto": pinnedBindingFor(t, "REQ-m-b", "example.com/q.TestA", "q"),
+		".stipulator/gaps/m-a.textproto": "requirement_id: \"REQ-m-a\"\nreason: \"pending\"\n" +
+			"lands {\n  covered: \"REQ-m-b\"\n}\n",
+	}, func(s *Server) {
+		s.runTests = func(_ context.Context, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {
+			got = scope
+			return &verify.TestRun{
+				RaceEnabled:      true,
+				SelectiveServing: true,
+				Outcomes: map[string]verify.TestOutcome{
+					"example.com/p.TestA": verify.TestPassed,
+					"example.com/q.TestA": verify.TestPassed,
+				},
+			}, nil
+		}
+	})
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "prune", Arguments: map[string]any{"check": true}})
+	if err != nil || res.IsError {
+		t.Fatalf("prune: %v %+v", err, res)
+	}
+	if len(got) != 2 || !got[gofresh.Subject{Package: "example.com/q", Symbol: "TestA"}] {
+		t.Fatalf("witness scope = %v, want the condition target's subject included", got)
+	}
+}
+
+// The gapless fast path skips witness evidence, never corpus
+// diagnostics: a broken corpus still refuses a gapless prune
+// (REQ-gap-resolved-pruned).
+func TestPruneToolGaplessTreeStillCompilesTheCorpus(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-resolved-pruned")
+	sess, _ := harnessWith(t, map[string]string{
+		".stipulator/manifest.textproto": ":::garbage\n",
+	}, func(s *Server) {
+		s.runTests = func(context.Context, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+			t.Error("witness evaluation ran on a gapless tree")
+			return &verify.TestRun{SelectiveServing: true}, nil
+		}
+	})
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "prune", Arguments: map[string]any{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.IsError {
+		t.Fatalf("broken corpus did not refuse a gapless prune: %+v", res)
+	}
+}
+
+// With no gap records a resolved-mode prune gathers no witness evidence
+// at all — deletion work only (REQ-gap-resolved-pruned).
+func TestPruneToolNoGapsSkipsWitnessEvaluation(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-resolved-pruned")
+	called := false
+	sess, _ := harnessWith(t, map[string]string{
+		".stipulator/bindings/a.textproto": pinnedBindingFor(t, "REQ-m-a", "example.com/p.TestA", "s"),
+	}, func(s *Server) {
+		s.runTests = func(context.Context, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+			called = true
+			return &verify.TestRun{RaceEnabled: true, SelectiveServing: true}, nil
+		}
+	})
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "prune", Arguments: map[string]any{}})
+	if err != nil || res.IsError {
+		t.Fatalf("prune: %v %+v", err, res)
+	}
+	if called {
+		t.Fatal("witness evaluation ran with no gap records")
+	}
+	if b, _ := json.Marshal(res.StructuredContent); !strings.Contains(string(b), "no gap records - nothing to evaluate") {
+		t.Fatalf("fast path does not name itself: %s", b)
 	}
 }

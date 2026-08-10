@@ -7,6 +7,8 @@ import (
 	"os"
 	"sort"
 
+	"github.com/greatliontech/gofresh"
+
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/internal/verify"
@@ -26,6 +28,26 @@ func witnessRun(ctx context.Context) (*verify.TestRun, error) {
 		if errors.Is(err, policy.ErrRecord) {
 			return nil, fmt.Errorf("%s: %w", policy.Path, err)
 		}
+		return nil, err
+	}
+	printWitnessSummary(tr)
+	return tr, nil
+}
+
+// witnessRunScoped is witnessRun narrowed to a caller-named subject
+// scope: fresh records still serve whole-tree, only stale subjects
+// inside the scope execute.
+func witnessRunScoped(ctx context.Context, scope map[gofresh.Subject]bool, why string) (*verify.TestRun, error) {
+	fmt.Fprintln(os.Stderr, dim("witnessing: selective execution of the accepted test policy, "+why))
+	pol, _, err := policy.Load(chdir, map[string]policy.Backend{"go": golang.Policy{}})
+	if err != nil {
+		if errors.Is(err, policy.ErrRecord) {
+			return nil, fmt.Errorf("%s: %w", policy.Path, err)
+		}
+		return nil, err
+	}
+	tr, err := golang.RunWitnessesScoped(ctx, chdir, pol, scope)
+	if err != nil {
 		return nil, err
 	}
 	printWitnessSummary(tr)

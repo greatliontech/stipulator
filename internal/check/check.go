@@ -134,7 +134,7 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		res.SetExecution(report)
 		res.SetSuiteHealthJudged(true)
 	} else if len(scopeIds) > 0 {
-		scope, scopeErr := scopeSubjects(spec, store, scopeIds)
+		scope, scopeErr := ScopeSubjects(spec, store, scopeIds)
 		if scopeErr != nil {
 			return nil, scopeErr
 		}
@@ -244,11 +244,14 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	return res, nil
 }
 
-// scopeSubjects resolves the named requirement identifiers to the
-// witness subjects their tests- and proves-role bindings name. Unknown
-// identifiers refuse - a typo must not silently produce an empty scope
-// that executes nothing and passes.
-func scopeSubjects(spec *stipulatorv1.Spec, store *records.Store, ids []string) (map[gofresh.Subject]bool, error) {
+// ScopeSubjects resolves the named requirement identifiers to the
+// witness subjects their tests- and proves-role bindings name - the one
+// derivation every id-scoped witness evaluation shares (the scoped
+// check, prune's gap-scoped resolution detection). Unknown identifiers
+// refuse - a typo must not silently produce an empty scope that
+// executes nothing and passes; callers whose id sets legitimately carry
+// out-of-corpus entries filter them first.
+func ScopeSubjects(spec *stipulatorv1.Spec, store *records.Store, ids []string) (map[gofresh.Subject]bool, error) {
 	known := map[string]bool{}
 	for _, r := range spec.GetRequirements() {
 		known[r.GetId()] = true

@@ -71,7 +71,10 @@ type Server struct {
 	indexed  map[string]bool
 	fsys     func() fs.FS
 	backends func(context.Context) (map[string]verify.Backend, error)
-	runTests func(context.Context) (*verify.TestRun, error)
+	// runTests is the one witnessing surface (REQ-core-one-execution); a
+	// nil scope is the whole-tree selective run, a non-nil scope narrows
+	// the stale-remainder execution to the named subjects.
+	runTests func(context.Context, map[gofresh.Subject]bool) (*verify.TestRun, error)
 	runCheck func(context.Context, bool, []string) (*stipulatorv1.CheckResult, error)
 	explain  func(ctx context.Context, pkgPath, symbol string) (gofresh.Chain, string, error)
 	write    func(path string, content []byte) error
@@ -84,7 +87,16 @@ func New(dir string) *Server {
 		root:     dir,
 		fsys:     func() fs.FS { return os.DirFS(dir) },
 		backends: func(ctx context.Context) (map[string]verify.Backend, error) { return makeBackends(ctx, dir) },
-		runTests: func(ctx context.Context) (*verify.TestRun, error) { return golang.RunWitnesses(ctx, dir) },
+		runTests: func(ctx context.Context, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {
+			if scope == nil {
+				return golang.RunWitnesses(ctx, dir)
+			}
+			pol, _, err := policy.Load(dir, map[string]policy.Backend{"go": golang.Policy{}})
+			if err != nil {
+				return nil, err
+			}
+			return golang.RunWitnessesScoped(ctx, dir, pol, scope)
+		},
 		runCheck: func(ctx context.Context, full bool, scopeIds []string) (*stipulatorv1.CheckResult, error) {
 			return check.Run(ctx, dir, full, scopeIds)
 		},
@@ -226,7 +238,7 @@ func (s *Server) MCP() *mcp.Server {
 	}, guarded(s, s.toolRetarget))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "prune",
-		Description: "Delete resolved gap records — requirement covered and any manual landing condition explicitly fired: satisfied dead weight the gate advertises. Pass check=true to report what would be pruned without deleting. Writes only under .stipulator/gaps/.",
+		Description: "Delete resolved gap records — requirement covered and any manual landing condition explicitly fired: satisfied dead weight the gate advertises. Witness evidence is gathered only for the gapped requirements (stale execution narrows to their bound subjects; no gaps, no evaluation), so deletion is cheap on a warm tree. Pass check=true to report what would be pruned without deleting. Writes only under .stipulator/gaps/.",
 	}, guarded(s, s.toolPrune))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "context",
@@ -406,7 +418,7 @@ func (s *Server) verifyPipeline(ctx context.Context, noTest bool) (*stipulatorv1
 	var tr *verify.TestRun
 	if !noTest {
 		rep.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
-		tr, err = s.runTests(ctx)
+		tr, err = s.runTests(ctx, nil)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -1280,10 +1292,65 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 		return out.result(), out, nil
 	}
 	ctx, prog := s.startProgress(ctx, req)
-	spec, rep, store, err := s.verifyPipeline(ctx, false)
+	store, err := records.Load(s.fsys())
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
+	prog.Phase(stipulatorv1.Phase_PHASE_COMPILE)
+	spec, err := s.compileFresh()
+	if err != nil {
+		return nil, writeOut{}, terminalToolError(prog, ctx, err)
+	}
+	// Deletion-only fast path: no gap records means nothing can resolve,
+	// so no witness evidence is gathered at all - the corpus compile and
+	// its diagnostics remain (REQ-gap-resolved-pruned).
+	if len(store.Gaps) == 0 {
+		out := writeOut{Notes: []string{"no gap records - nothing to evaluate"}}
+		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
+		return stampedResult(out.result(), prog), out, nil
+	}
+	// Resolution reads the gapped requirements' coverage - and, for a
+	// gap with a covered(<id>) landing condition, the condition target's
+	// coverage - so the stale-remainder execution narrows to those
+	// requirements' bound subjects. A gap id outside the corpus is
+	// dangling - never resolvable, owned by the explicit dangling mode -
+	// so it is filtered here rather than refused; the dangling record
+	// still surfaces as a verification problem below.
+	known := map[string]bool{}
+	for _, r := range spec.GetRequirements() {
+		known[r.GetId()] = true
+	}
+	inScope := map[string]bool{}
+	var gapIds []string
+	add := func(id string) {
+		if known[id] && !inScope[id] {
+			inScope[id] = true
+			gapIds = append(gapIds, id)
+		}
+	}
+	for _, g := range store.Gaps {
+		add(g.Gap.GetRequirementId())
+		if c := g.Gap.GetLands().GetCovered(); c != "" {
+			add(c)
+		}
+	}
+	slices.Sort(gapIds)
+	scope, err := check.ScopeSubjects(spec, store, gapIds)
+	if err != nil {
+		return nil, writeOut{}, terminalToolError(prog, ctx, err)
+	}
+	backends, err := s.backends(ctx)
+	if err != nil {
+		return nil, writeOut{}, terminalToolError(prog, ctx, err)
+	}
+	prog.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
+	tr, err := s.runTests(ctx, scope)
+	if err != nil {
+		return nil, writeOut{}, terminalToolError(prog, ctx, err)
+	}
+	prog.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
+	rep := verify.Run(spec, store, backends, tr)
+	evaluated := fmt.Sprintf("evaluated %d gap records: %d witnesses served, %d executed", len(store.Gaps), tr.Fresh, tr.Ran)
 	// The resolved-record evaluation is pinned to the serving class
 	// (REQ-gap-resolved-pruned); the producer's mark makes a wrong
 	// witness source a loud refusal.
@@ -1311,7 +1378,7 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 	}
 	prunes := author.PruneResolvedGaps(store, resolved)
 	if in.Check {
-		out := writeOut{}
+		out := writeOut{Notes: []string{evaluated}}
 		for _, up := range prunes {
 			out.Notes = append(out.Notes, "resolved gap lingers: "+up.Path)
 		}
@@ -1322,6 +1389,7 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
+	out.Notes = append(out.Notes, evaluated)
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	return stampedResult(out.result(), prog), out, nil
 }

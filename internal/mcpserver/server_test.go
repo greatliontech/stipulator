@@ -31,6 +31,14 @@ const doc = "# T\n\n**widget** (term): a gadget.\n\n" +
 // stale.
 func pinnedBinding(t *testing.T) string {
 	t.Helper()
+	return pinnedBindingFor(t, "REQ-m-a", "example.com/p.TestA", "s")
+}
+
+// pinnedBindingFor is pinnedBinding for any fixture requirement and
+// symbol; shapeChar repeats to the shape hash the fake backend answers
+// for the symbol.
+func pinnedBindingFor(t *testing.T, req, sym, shapeChar string) string {
+	t.Helper()
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
 		"specs/a.md":                     {Data: []byte(doc)},
@@ -41,13 +49,13 @@ func pinnedBinding(t *testing.T) string {
 	}
 	hash := ""
 	for _, r := range spec.GetRequirements() {
-		if r.GetId() == "REQ-m-a" {
+		if r.GetId() == req {
 			hash = r.GetContentHash()
 		}
 	}
-	return "bindings {\n  requirement_id: \"REQ-m-a\"\n  content_hash: \"" + hash +
-		"\"\n  backend: \"go\"\n  symbol: \"example.com/p.TestA\"\n  role: BINDING_ROLE_TESTS\n  shape_hash: \"" +
-		strings.Repeat("s", 64) + "\"\n}\n"
+	return "bindings {\n  requirement_id: \"" + req + "\"\n  content_hash: \"" + hash +
+		"\"\n  backend: \"go\"\n  symbol: \"" + sym + "\"\n  role: BINDING_ROLE_TESTS\n  shape_hash: \"" +
+		strings.Repeat(shapeChar, 64) + "\"\n}\n"
 }
 
 type fakeBackend map[string]string
@@ -87,7 +95,7 @@ func harnessWith(t *testing.T, files map[string]string, mut func(*Server)) (*mcp
 				"example.com/q.TestA": strings.Repeat("q", 64),
 			}}, nil
 		},
-		runTests: func(context.Context) (*verify.TestRun, error) {
+		runTests: func(context.Context, map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			return &verify.TestRun{
 				RaceEnabled:      true,
 				SelectiveServing: true,
@@ -138,7 +146,7 @@ func TestCanceledToolCallStopsWitnessRun(t *testing.T) {
 		backends: func(context.Context) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{}, nil
 		},
-		runTests: func(ctx context.Context) (*verify.TestRun, error) {
+		runTests: func(ctx context.Context, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			close(started)
 			<-ctx.Done()
 			close(stopped)
@@ -443,13 +451,16 @@ func TestPruneRefusesNonServingEvidence(t *testing.T) {
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
 		"specs/a.md":                     {Data: []byte(doc)},
+		// A gap record, so the evaluation actually runs: a gapless tree
+		// takes the deletion-only fast path and never reads evidence.
+		".stipulator/gaps/m-a.textproto": {Data: []byte("requirement_id: \"REQ-m-a\"\nreason: \"pending\"\nlands {\n  manual {\n    condition: \"c\"\n  }\n}\n")},
 	}
 	s := &Server{
 		fsys: func() fs.FS { return fsys },
 		backends: func(context.Context) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{"go": fakeBackend{}}, nil
 		},
-		runTests: func(context.Context) (*verify.TestRun, error) {
+		runTests: func(context.Context, map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			// A whole-execution run: no serving-class mark.
 			return &verify.TestRun{RaceEnabled: true}, nil
 		},
@@ -975,7 +986,7 @@ func TestVerifyToolNamesPolicyRecordProblem(t *testing.T) {
 		backends: func(context.Context) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{"go": fakeBackend{}}, nil
 		},
-		runTests: func(ctx context.Context) (*verify.TestRun, error) { return golang.RunWitnesses(ctx, dir) },
+		runTests: func(ctx context.Context, _ map[gofresh.Subject]bool) (*verify.TestRun, error) { return golang.RunWitnesses(ctx, dir) },
 	}
 	ct, st := mcp.NewInMemoryTransports()
 	go func() { _ = s.MCP().Run(context.Background(), st) }()
