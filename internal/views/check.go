@@ -12,7 +12,7 @@ import (
 // redRowCap bounds the summary's red-row list; the remainder rides
 // reds_omitted so the truncation is never silent
 // (REQ-mcp-response-contract).
-const redRowCap = 100
+const redRowCap = 25
 
 // CheckView projects one check result into the requested view: the
 // summary (default) or the full result message, either scoped to
@@ -102,7 +102,7 @@ func scopeCheck(res *stipulatorv1.CheckResult, ids []string) *stipulatorv1.Check
 	return out
 }
 
-// checkSummary is the bounded projection: counts, histograms, capped
+// checkSummary is the bounded projection: counts, blocker rows, capped
 // red rows, and heading-only diagnostics.
 func checkSummary(res *stipulatorv1.CheckResult) *stipulatorv1.CheckSummary {
 	out := &stipulatorv1.CheckSummary{}
@@ -128,8 +128,12 @@ func checkSummary(res *stipulatorv1.CheckResult) *stipulatorv1.CheckSummary {
 	out.SetWitnessSelectionProblem(res.GetWitnessSelectionProblem())
 	out.SetScopePartial(res.GetScopePartial())
 	out.SetScopeIds(res.GetScopeIds())
-	out.SetUncacheableReasonCounts(histogram(res.GetUncacheableReasons()))
-	out.SetExecutedReasonCounts(histogram(res.GetExecutedReasons()))
+	uncacheable, uncacheableOmitted := blockerRows(res.GetUncacheableReasons())
+	out.SetUncacheableBlockers(uncacheable)
+	out.SetUncacheableReasonsOmitted(uncacheableOmitted)
+	executed, executedOmitted := blockerRows(res.GetExecutedReasons())
+	out.SetExecutedBlockers(executed)
+	out.SetExecutedReasonsOmitted(executedOmitted)
 	out.SetCompileProblems(res.GetCompileProblems())
 	if p := res.GetPolicyProblem(); p != nil {
 		out.SetPolicyProblem(p)
@@ -242,25 +246,28 @@ func checkSummary(res *stipulatorv1.CheckResult) *stipulatorv1.CheckSummary {
 // headingCap bounds the summary's diagnostic-heading list.
 const headingCap = 50
 
-// histogramKeyCap bounds the histogram's distinct-key count: reasons
-// that name per-test movers can degenerate toward one key per test,
-// which would rebuild the very map the histogram replaces.
-const histogramKeyCap = 64
+// blockerRowCap bounds the summary's blocker rows: the top reasons are
+// the actionable ones, the remainder is a count - the raw per-test
+// maps ride only the full view.
+const blockerRowCap = 5
 
-// histogram folds a per-test reason map into distinct-reason counts —
-// the bounded form. When distinct reasons exceed the cap, the heaviest
-// keep their keys and the tail folds into one counted remainder entry,
-// so the truncation is never silent.
-func histogram(reasons map[string]string) map[string]int32 {
+// blockerRows reduces a per-test reason map to the actionable form:
+// the top reasons by witness count, one exemplar test each, ordered by
+// count descending then reason ascending; the exemplar is the
+// lexicographically-smallest affected test so identical runs render
+// identically. The second return counts the distinct reasons the cap
+// dropped.
+func blockerRows(reasons map[string]string) ([]*stipulatorv1.CheckBlockerRow, int32) {
 	if len(reasons) == 0 {
-		return nil
+		return nil, 0
 	}
 	counts := map[string]int32{}
-	for _, why := range reasons {
+	exemplar := map[string]string{}
+	for test, why := range reasons {
 		counts[why]++
-	}
-	if len(counts) <= histogramKeyCap {
-		return counts
+		if e, ok := exemplar[why]; !ok || test < e {
+			exemplar[why] = test
+		}
 	}
 	type entry struct {
 		why string
@@ -276,17 +283,20 @@ func histogram(reasons map[string]string) map[string]int32 {
 		}
 		return entries[i].why < entries[j].why
 	})
-	out := map[string]int32{}
-	var rest int32
-	for i, e := range entries {
-		if i < histogramKeyCap {
-			out[e.why] = e.n
-			continue
-		}
-		rest += e.n
+	omitted := int32(0)
+	if len(entries) > blockerRowCap {
+		omitted = int32(len(entries) - blockerRowCap)
+		entries = entries[:blockerRowCap]
 	}
-	out[fmt.Sprintf("(and %d more distinct reasons)", len(entries)-histogramKeyCap)] = rest
-	return out
+	rows := make([]*stipulatorv1.CheckBlockerRow, 0, len(entries))
+	for _, e := range entries {
+		row := &stipulatorv1.CheckBlockerRow{}
+		row.SetReason(e.why)
+		row.SetWitnesses(e.n)
+		row.SetExemplar(exemplar[e.why])
+		rows = append(rows, row)
+	}
+	return rows, omitted
 }
 
 // diagnosticHeadingWord names one diagnostic's unit and disposition

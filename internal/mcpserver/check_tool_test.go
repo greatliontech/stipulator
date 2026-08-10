@@ -426,10 +426,11 @@ func TestCheckToolProgressRidesNotificationsNotPayload(t *testing.T) {
 	}
 
 	// Progress stays off the result payload: the structured content is a
-	// strict CheckResult and no progress vocabulary leaks into it.
+	// strict CheckSummary (the default view) and no progress vocabulary
+	// leaks into it.
 	b, _ := json.Marshal(res.StructuredContent)
-	if err := protojson.Unmarshal(b, &stipulatorv1.CheckResult{}); err != nil {
-		t.Fatalf("result payload is not a strict CheckResult: %v\n%s", err, b)
+	if err := protojson.Unmarshal(b, &stipulatorv1.CheckSummary{}); err != nil {
+		t.Fatalf("result payload is not a strict CheckSummary: %v\n%s", err, b)
 	}
 
 	// The completed call's TEXT carries the one bounded timing line - the

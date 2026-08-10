@@ -610,8 +610,9 @@ func (b0 CheckResult_builder) Build() *CheckResult {
 
 // CheckSummary is the check operation's summary view: the verdict with
 // the counts and red entries an agent acts on, every reason map
-// aggregated to a bounded histogram, diagnostic bodies reduced to
-// subject headings. A projection of CheckResult — never a second
+// reduced to its top blocker rows (reason, witness count, one exemplar
+// test; the dropped distinct-reason count stated), diagnostic bodies
+// reduced to subject headings. A projection of CheckResult — never a second
 // derivation — sized for an agent's context window where the full
 // result is not (REQ-mcp-response-contract).
 type CheckSummary struct {
@@ -622,8 +623,6 @@ type CheckSummary struct {
 	xxx_hidden_TestsServed                   int32                  `protobuf:"varint,4,opt,name=tests_served,json=testsServed"`
 	xxx_hidden_TestsExecuted                 int32                  `protobuf:"varint,5,opt,name=tests_executed,json=testsExecuted"`
 	xxx_hidden_TestsUncacheable              int32                  `protobuf:"varint,6,opt,name=tests_uncacheable,json=testsUncacheable"`
-	xxx_hidden_UncacheableReasonCounts       map[string]int32       `protobuf:"bytes,7,rep,name=uncacheable_reason_counts,json=uncacheableReasonCounts" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
-	xxx_hidden_ExecutedReasonCounts          map[string]int32       `protobuf:"bytes,8,rep,name=executed_reason_counts,json=executedReasonCounts" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
 	xxx_hidden_CompileProblems               *[]*Problem            `protobuf:"bytes,9,rep,name=compile_problems,json=compileProblems"`
 	xxx_hidden_PolicyProblem                 *Problem               `protobuf:"bytes,10,opt,name=policy_problem,json=policyProblem"`
 	xxx_hidden_VerifyProblems                int32                  `protobuf:"varint,11,opt,name=verify_problems,json=verifyProblems"`
@@ -648,8 +647,12 @@ type CheckSummary struct {
 	xxx_hidden_ScopePartial                  bool                   `protobuf:"varint,30,opt,name=scope_partial,json=scopePartial"`
 	xxx_hidden_ScopeIds                      []string               `protobuf:"bytes,31,rep,name=scope_ids,json=scopeIds"`
 	xxx_hidden_RedsScopeBlocked              int32                  `protobuf:"varint,32,opt,name=reds_scope_blocked,json=redsScopeBlocked"`
+	xxx_hidden_UncacheableBlockers           *[]*CheckBlockerRow    `protobuf:"bytes,33,rep,name=uncacheable_blockers,json=uncacheableBlockers"`
+	xxx_hidden_UncacheableReasonsOmitted     int32                  `protobuf:"varint,34,opt,name=uncacheable_reasons_omitted,json=uncacheableReasonsOmitted"`
+	xxx_hidden_ExecutedBlockers              *[]*CheckBlockerRow    `protobuf:"bytes,35,rep,name=executed_blockers,json=executedBlockers"`
+	xxx_hidden_ExecutedReasonsOmitted        int32                  `protobuf:"varint,36,opt,name=executed_reasons_omitted,json=executedReasonsOmitted"`
 	XXX_raceDetectHookData                   protoimpl.RaceDetectHookData
-	XXX_presence                             [1]uint32
+	XXX_presence                             [2]uint32
 	unknownFields                            protoimpl.UnknownFields
 	sizeCache                                protoimpl.SizeCache
 }
@@ -719,20 +722,6 @@ func (x *CheckSummary) GetTestsUncacheable() int32 {
 		return x.xxx_hidden_TestsUncacheable
 	}
 	return 0
-}
-
-func (x *CheckSummary) GetUncacheableReasonCounts() map[string]int32 {
-	if x != nil {
-		return x.xxx_hidden_UncacheableReasonCounts
-	}
-	return nil
-}
-
-func (x *CheckSummary) GetExecutedReasonCounts() map[string]int32 {
-	if x != nil {
-		return x.xxx_hidden_ExecutedReasonCounts
-	}
-	return nil
 }
 
 func (x *CheckSummary) GetCompileProblems() []*Problem {
@@ -913,42 +902,66 @@ func (x *CheckSummary) GetRedsScopeBlocked() int32 {
 	return 0
 }
 
+func (x *CheckSummary) GetUncacheableBlockers() []*CheckBlockerRow {
+	if x != nil {
+		if x.xxx_hidden_UncacheableBlockers != nil {
+			return *x.xxx_hidden_UncacheableBlockers
+		}
+	}
+	return nil
+}
+
+func (x *CheckSummary) GetUncacheableReasonsOmitted() int32 {
+	if x != nil {
+		return x.xxx_hidden_UncacheableReasonsOmitted
+	}
+	return 0
+}
+
+func (x *CheckSummary) GetExecutedBlockers() []*CheckBlockerRow {
+	if x != nil {
+		if x.xxx_hidden_ExecutedBlockers != nil {
+			return *x.xxx_hidden_ExecutedBlockers
+		}
+	}
+	return nil
+}
+
+func (x *CheckSummary) GetExecutedReasonsOmitted() int32 {
+	if x != nil {
+		return x.xxx_hidden_ExecutedReasonsOmitted
+	}
+	return 0
+}
+
 func (x *CheckSummary) SetPassed(v bool) {
 	x.xxx_hidden_Passed = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 34)
 }
 
 func (x *CheckSummary) SetSuiteHealthJudged(v bool) {
 	x.xxx_hidden_SuiteHealthJudged = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 34)
 }
 
 func (x *CheckSummary) SetSuiteHealthy(v bool) {
 	x.xxx_hidden_SuiteHealthy = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 34)
 }
 
 func (x *CheckSummary) SetTestsServed(v int32) {
 	x.xxx_hidden_TestsServed = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 34)
 }
 
 func (x *CheckSummary) SetTestsExecuted(v int32) {
 	x.xxx_hidden_TestsExecuted = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 34)
 }
 
 func (x *CheckSummary) SetTestsUncacheable(v int32) {
 	x.xxx_hidden_TestsUncacheable = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 32)
-}
-
-func (x *CheckSummary) SetUncacheableReasonCounts(v map[string]int32) {
-	x.xxx_hidden_UncacheableReasonCounts = v
-}
-
-func (x *CheckSummary) SetExecutedReasonCounts(v map[string]int32) {
-	x.xxx_hidden_ExecutedReasonCounts = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 34)
 }
 
 func (x *CheckSummary) SetCompileProblems(v []*Problem) {
@@ -961,27 +974,27 @@ func (x *CheckSummary) SetPolicyProblem(v *Problem) {
 
 func (x *CheckSummary) SetVerifyProblems(v int32) {
 	x.xxx_hidden_VerifyProblems = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 34)
 }
 
 func (x *CheckSummary) SetBindingsStale(v int32) {
 	x.xxx_hidden_BindingsStale = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 34)
 }
 
 func (x *CheckSummary) SetBindingsBroken(v int32) {
 	x.xxx_hidden_BindingsBroken = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 34)
 }
 
 func (x *CheckSummary) SetBindingsShapeMismatch(v int32) {
 	x.xxx_hidden_BindingsShapeMismatch = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 13, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 34)
 }
 
 func (x *CheckSummary) SetGatePasses(v bool) {
 	x.xxx_hidden_GatePasses = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 14, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 34)
 }
 
 func (x *CheckSummary) SetReds(v []*CheckRedRow) {
@@ -990,22 +1003,22 @@ func (x *CheckSummary) SetReds(v []*CheckRedRow) {
 
 func (x *CheckSummary) SetRedsOmitted(v int32) {
 	x.xxx_hidden_RedsOmitted = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 16, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 14, 34)
 }
 
 func (x *CheckSummary) SetGapsOpen(v int32) {
 	x.xxx_hidden_GapsOpen = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 17, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 15, 34)
 }
 
 func (x *CheckSummary) SetGapsDue(v int32) {
 	x.xxx_hidden_GapsDue = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 18, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 16, 34)
 }
 
 func (x *CheckSummary) SetGapsResolved(v int32) {
 	x.xxx_hidden_GapsResolved = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 19, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 17, 34)
 }
 
 func (x *CheckSummary) SetViolations(v []string) {
@@ -1014,7 +1027,7 @@ func (x *CheckSummary) SetViolations(v []string) {
 
 func (x *CheckSummary) SetViolationsOmitted(v int32) {
 	x.xxx_hidden_ViolationsOmitted = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 21, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 19, 34)
 }
 
 func (x *CheckSummary) SetPruneResidue(v []string) {
@@ -1027,32 +1040,32 @@ func (x *CheckSummary) SetWitnessFailureHeadings(v []string) {
 
 func (x *CheckSummary) SetWitnessFailureHeadingsOmitted(v int32) {
 	x.xxx_hidden_WitnessFailureHeadingsOmitted = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 24, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 22, 34)
 }
 
 func (x *CheckSummary) SetWitnessPublicationDegraded(v string) {
 	x.xxx_hidden_WitnessPublicationDegraded = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 25, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 23, 34)
 }
 
 func (x *CheckSummary) SetTestsOutsidePolicy(v int32) {
 	x.xxx_hidden_TestsOutsidePolicy = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 26, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 24, 34)
 }
 
 func (x *CheckSummary) SetWitnessSelectionProblem(v string) {
 	x.xxx_hidden_WitnessSelectionProblem = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 27, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 25, 34)
 }
 
 func (x *CheckSummary) SetRedsPolicyBlocked(v int32) {
 	x.xxx_hidden_RedsPolicyBlocked = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 28, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 26, 34)
 }
 
 func (x *CheckSummary) SetScopePartial(v bool) {
 	x.xxx_hidden_ScopePartial = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 29, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 27, 34)
 }
 
 func (x *CheckSummary) SetScopeIds(v []string) {
@@ -1061,7 +1074,25 @@ func (x *CheckSummary) SetScopeIds(v []string) {
 
 func (x *CheckSummary) SetRedsScopeBlocked(v int32) {
 	x.xxx_hidden_RedsScopeBlocked = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 31, 32)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 29, 34)
+}
+
+func (x *CheckSummary) SetUncacheableBlockers(v []*CheckBlockerRow) {
+	x.xxx_hidden_UncacheableBlockers = &v
+}
+
+func (x *CheckSummary) SetUncacheableReasonsOmitted(v int32) {
+	x.xxx_hidden_UncacheableReasonsOmitted = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 31, 34)
+}
+
+func (x *CheckSummary) SetExecutedBlockers(v []*CheckBlockerRow) {
+	x.xxx_hidden_ExecutedBlockers = &v
+}
+
+func (x *CheckSummary) SetExecutedReasonsOmitted(v int32) {
+	x.xxx_hidden_ExecutedReasonsOmitted = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[1]), 33, 34)
 }
 
 func (x *CheckSummary) HasPassed() bool {
@@ -1117,119 +1148,133 @@ func (x *CheckSummary) HasVerifyProblems() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 10)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 8)
 }
 
 func (x *CheckSummary) HasBindingsStale() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 11)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 9)
 }
 
 func (x *CheckSummary) HasBindingsBroken() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 12)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 10)
 }
 
 func (x *CheckSummary) HasBindingsShapeMismatch() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 13)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 11)
 }
 
 func (x *CheckSummary) HasGatePasses() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 14)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 12)
 }
 
 func (x *CheckSummary) HasRedsOmitted() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 16)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 14)
 }
 
 func (x *CheckSummary) HasGapsOpen() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 17)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 15)
 }
 
 func (x *CheckSummary) HasGapsDue() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 18)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 16)
 }
 
 func (x *CheckSummary) HasGapsResolved() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 19)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 17)
 }
 
 func (x *CheckSummary) HasViolationsOmitted() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 21)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 19)
 }
 
 func (x *CheckSummary) HasWitnessFailureHeadingsOmitted() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 24)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 22)
 }
 
 func (x *CheckSummary) HasWitnessPublicationDegraded() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 25)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 23)
 }
 
 func (x *CheckSummary) HasTestsOutsidePolicy() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 26)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 24)
 }
 
 func (x *CheckSummary) HasWitnessSelectionProblem() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 27)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 25)
 }
 
 func (x *CheckSummary) HasRedsPolicyBlocked() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 28)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 26)
 }
 
 func (x *CheckSummary) HasScopePartial() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 29)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 27)
 }
 
 func (x *CheckSummary) HasRedsScopeBlocked() bool {
 	if x == nil {
 		return false
 	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 29)
+}
+
+func (x *CheckSummary) HasUncacheableReasonsOmitted() bool {
+	if x == nil {
+		return false
+	}
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 31)
+}
+
+func (x *CheckSummary) HasExecutedReasonsOmitted() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[1]), 33)
 }
 
 func (x *CheckSummary) ClearPassed() {
@@ -1267,88 +1312,98 @@ func (x *CheckSummary) ClearPolicyProblem() {
 }
 
 func (x *CheckSummary) ClearVerifyProblems() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 10)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 8)
 	x.xxx_hidden_VerifyProblems = 0
 }
 
 func (x *CheckSummary) ClearBindingsStale() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 11)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 9)
 	x.xxx_hidden_BindingsStale = 0
 }
 
 func (x *CheckSummary) ClearBindingsBroken() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 12)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 10)
 	x.xxx_hidden_BindingsBroken = 0
 }
 
 func (x *CheckSummary) ClearBindingsShapeMismatch() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 13)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 11)
 	x.xxx_hidden_BindingsShapeMismatch = 0
 }
 
 func (x *CheckSummary) ClearGatePasses() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 14)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 12)
 	x.xxx_hidden_GatePasses = false
 }
 
 func (x *CheckSummary) ClearRedsOmitted() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 16)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 14)
 	x.xxx_hidden_RedsOmitted = 0
 }
 
 func (x *CheckSummary) ClearGapsOpen() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 17)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 15)
 	x.xxx_hidden_GapsOpen = 0
 }
 
 func (x *CheckSummary) ClearGapsDue() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 18)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 16)
 	x.xxx_hidden_GapsDue = 0
 }
 
 func (x *CheckSummary) ClearGapsResolved() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 19)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 17)
 	x.xxx_hidden_GapsResolved = 0
 }
 
 func (x *CheckSummary) ClearViolationsOmitted() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 21)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 19)
 	x.xxx_hidden_ViolationsOmitted = 0
 }
 
 func (x *CheckSummary) ClearWitnessFailureHeadingsOmitted() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 24)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 22)
 	x.xxx_hidden_WitnessFailureHeadingsOmitted = 0
 }
 
 func (x *CheckSummary) ClearWitnessPublicationDegraded() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 25)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 23)
 	x.xxx_hidden_WitnessPublicationDegraded = nil
 }
 
 func (x *CheckSummary) ClearTestsOutsidePolicy() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 26)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 24)
 	x.xxx_hidden_TestsOutsidePolicy = 0
 }
 
 func (x *CheckSummary) ClearWitnessSelectionProblem() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 27)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 25)
 	x.xxx_hidden_WitnessSelectionProblem = nil
 }
 
 func (x *CheckSummary) ClearRedsPolicyBlocked() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 28)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 26)
 	x.xxx_hidden_RedsPolicyBlocked = 0
 }
 
 func (x *CheckSummary) ClearScopePartial() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 29)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 27)
 	x.xxx_hidden_ScopePartial = false
 }
 
 func (x *CheckSummary) ClearRedsScopeBlocked() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 31)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 29)
 	x.xxx_hidden_RedsScopeBlocked = 0
+}
+
+func (x *CheckSummary) ClearUncacheableReasonsOmitted() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 31)
+	x.xxx_hidden_UncacheableReasonsOmitted = 0
+}
+
+func (x *CheckSummary) ClearExecutedReasonsOmitted() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[1]), 33)
+	x.xxx_hidden_ExecutedReasonsOmitted = 0
 }
 
 type CheckSummary_builder struct {
@@ -1364,11 +1419,6 @@ type CheckSummary_builder struct {
 	TestsServed      *int32
 	TestsExecuted    *int32
 	TestsUncacheable *int32
-	// Reason histograms: distinct reason -> count, aggregated from the
-	// full result's per-test maps. The per-test attribution rides only
-	// the full view.
-	UncacheableReasonCounts map[string]int32
-	ExecutedReasonCounts    map[string]int32
 	// Compilation and policy problems, verbatim — a summary that hides
 	// why the tree cannot even evaluate would force a second call.
 	CompileProblems []*Problem
@@ -1412,6 +1462,13 @@ type CheckSummary_builder struct {
 	ScopePartial     *bool
 	ScopeIds         []string
 	RedsScopeBlocked *int32
+	// The actionable reduction of the full result's per-test reason maps
+	// (REQ-mcp-views): the top blocker reasons by witness count, one
+	// exemplar test each, remainders counted - never the whole histogram.
+	UncacheableBlockers       []*CheckBlockerRow
+	UncacheableReasonsOmitted *int32
+	ExecutedBlockers          []*CheckBlockerRow
+	ExecutedReasonsOmitted    *int32
 }
 
 func (b0 CheckSummary_builder) Build() *CheckSummary {
@@ -1419,105 +1476,257 @@ func (b0 CheckSummary_builder) Build() *CheckSummary {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Passed != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 34)
 		x.xxx_hidden_Passed = *b.Passed
 	}
 	if b.SuiteHealthJudged != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 34)
 		x.xxx_hidden_SuiteHealthJudged = *b.SuiteHealthJudged
 	}
 	if b.SuiteHealthy != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 34)
 		x.xxx_hidden_SuiteHealthy = *b.SuiteHealthy
 	}
 	if b.TestsServed != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 34)
 		x.xxx_hidden_TestsServed = *b.TestsServed
 	}
 	if b.TestsExecuted != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 34)
 		x.xxx_hidden_TestsExecuted = *b.TestsExecuted
 	}
 	if b.TestsUncacheable != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 34)
 		x.xxx_hidden_TestsUncacheable = *b.TestsUncacheable
 	}
-	x.xxx_hidden_UncacheableReasonCounts = b.UncacheableReasonCounts
-	x.xxx_hidden_ExecutedReasonCounts = b.ExecutedReasonCounts
 	x.xxx_hidden_CompileProblems = &b.CompileProblems
 	x.xxx_hidden_PolicyProblem = b.PolicyProblem
 	if b.VerifyProblems != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 34)
 		x.xxx_hidden_VerifyProblems = *b.VerifyProblems
 	}
 	if b.BindingsStale != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 34)
 		x.xxx_hidden_BindingsStale = *b.BindingsStale
 	}
 	if b.BindingsBroken != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 34)
 		x.xxx_hidden_BindingsBroken = *b.BindingsBroken
 	}
 	if b.BindingsShapeMismatch != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 13, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 34)
 		x.xxx_hidden_BindingsShapeMismatch = *b.BindingsShapeMismatch
 	}
 	if b.GatePasses != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 14, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 34)
 		x.xxx_hidden_GatePasses = *b.GatePasses
 	}
 	x.xxx_hidden_Reds = &b.Reds
 	if b.RedsOmitted != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 16, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 14, 34)
 		x.xxx_hidden_RedsOmitted = *b.RedsOmitted
 	}
 	if b.GapsOpen != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 17, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 15, 34)
 		x.xxx_hidden_GapsOpen = *b.GapsOpen
 	}
 	if b.GapsDue != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 18, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 16, 34)
 		x.xxx_hidden_GapsDue = *b.GapsDue
 	}
 	if b.GapsResolved != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 19, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 17, 34)
 		x.xxx_hidden_GapsResolved = *b.GapsResolved
 	}
 	x.xxx_hidden_Violations = b.Violations
 	if b.ViolationsOmitted != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 21, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 19, 34)
 		x.xxx_hidden_ViolationsOmitted = *b.ViolationsOmitted
 	}
 	x.xxx_hidden_PruneResidue = b.PruneResidue
 	x.xxx_hidden_WitnessFailureHeadings = b.WitnessFailureHeadings
 	if b.WitnessFailureHeadingsOmitted != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 24, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 22, 34)
 		x.xxx_hidden_WitnessFailureHeadingsOmitted = *b.WitnessFailureHeadingsOmitted
 	}
 	if b.WitnessPublicationDegraded != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 25, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 23, 34)
 		x.xxx_hidden_WitnessPublicationDegraded = b.WitnessPublicationDegraded
 	}
 	if b.TestsOutsidePolicy != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 26, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 24, 34)
 		x.xxx_hidden_TestsOutsidePolicy = *b.TestsOutsidePolicy
 	}
 	if b.WitnessSelectionProblem != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 27, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 25, 34)
 		x.xxx_hidden_WitnessSelectionProblem = b.WitnessSelectionProblem
 	}
 	if b.RedsPolicyBlocked != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 28, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 26, 34)
 		x.xxx_hidden_RedsPolicyBlocked = *b.RedsPolicyBlocked
 	}
 	if b.ScopePartial != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 29, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 27, 34)
 		x.xxx_hidden_ScopePartial = *b.ScopePartial
 	}
 	x.xxx_hidden_ScopeIds = b.ScopeIds
 	if b.RedsScopeBlocked != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 31, 32)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 29, 34)
 		x.xxx_hidden_RedsScopeBlocked = *b.RedsScopeBlocked
+	}
+	x.xxx_hidden_UncacheableBlockers = &b.UncacheableBlockers
+	if b.UncacheableReasonsOmitted != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 31, 34)
+		x.xxx_hidden_UncacheableReasonsOmitted = *b.UncacheableReasonsOmitted
+	}
+	x.xxx_hidden_ExecutedBlockers = &b.ExecutedBlockers
+	if b.ExecutedReasonsOmitted != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[1]), 33, 34)
+		x.xxx_hidden_ExecutedReasonsOmitted = *b.ExecutedReasonsOmitted
+	}
+	return m0
+}
+
+// CheckBlockerRow is one reason's actionable roll-up on the check
+// summary: how many witnesses it affects and one exemplar test to
+// start from.
+type CheckBlockerRow struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Reason      *string                `protobuf:"bytes,1,opt,name=reason"`
+	xxx_hidden_Witnesses   int32                  `protobuf:"varint,2,opt,name=witnesses"`
+	xxx_hidden_Exemplar    *string                `protobuf:"bytes,3,opt,name=exemplar"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *CheckBlockerRow) Reset() {
+	*x = CheckBlockerRow{}
+	mi := &file_stipulator_v1_check_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckBlockerRow) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckBlockerRow) ProtoMessage() {}
+
+func (x *CheckBlockerRow) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_check_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *CheckBlockerRow) GetReason() string {
+	if x != nil {
+		if x.xxx_hidden_Reason != nil {
+			return *x.xxx_hidden_Reason
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *CheckBlockerRow) GetWitnesses() int32 {
+	if x != nil {
+		return x.xxx_hidden_Witnesses
+	}
+	return 0
+}
+
+func (x *CheckBlockerRow) GetExemplar() string {
+	if x != nil {
+		if x.xxx_hidden_Exemplar != nil {
+			return *x.xxx_hidden_Exemplar
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *CheckBlockerRow) SetReason(v string) {
+	x.xxx_hidden_Reason = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *CheckBlockerRow) SetWitnesses(v int32) {
+	x.xxx_hidden_Witnesses = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *CheckBlockerRow) SetExemplar(v string) {
+	x.xxx_hidden_Exemplar = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+}
+
+func (x *CheckBlockerRow) HasReason() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *CheckBlockerRow) HasWitnesses() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *CheckBlockerRow) HasExemplar() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *CheckBlockerRow) ClearReason() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Reason = nil
+}
+
+func (x *CheckBlockerRow) ClearWitnesses() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Witnesses = 0
+}
+
+func (x *CheckBlockerRow) ClearExemplar() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Exemplar = nil
+}
+
+type CheckBlockerRow_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Reason    *string
+	Witnesses *int32
+	Exemplar  *string
+}
+
+func (b0 CheckBlockerRow_builder) Build() *CheckBlockerRow {
+	m0 := &CheckBlockerRow{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Reason != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_Reason = b.Reason
+	}
+	if b.Witnesses != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		x.xxx_hidden_Witnesses = *b.Witnesses
+	}
+	if b.Exemplar != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_Exemplar = b.Exemplar
 	}
 	return m0
 }
@@ -1537,7 +1746,7 @@ type CheckRedRow struct {
 
 func (x *CheckRedRow) Reset() {
 	*x = CheckRedRow{}
-	mi := &file_stipulator_v1_check_proto_msgTypes[2]
+	mi := &file_stipulator_v1_check_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1549,7 +1758,7 @@ func (x *CheckRedRow) String() string {
 func (*CheckRedRow) ProtoMessage() {}
 
 func (x *CheckRedRow) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_check_proto_msgTypes[2]
+	mi := &file_stipulator_v1_check_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1699,16 +1908,14 @@ const file_stipulator_v1_check_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aE\n" +
 	"\x17UncacheableReasonsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb5\r\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x96\r\n" +
 	"\fCheckSummary\x12\x16\n" +
 	"\x06passed\x18\x01 \x01(\bR\x06passed\x12.\n" +
 	"\x13suite_health_judged\x18\x02 \x01(\bR\x11suiteHealthJudged\x12#\n" +
 	"\rsuite_healthy\x18\x03 \x01(\bR\fsuiteHealthy\x12!\n" +
 	"\ftests_served\x18\x04 \x01(\x05R\vtestsServed\x12%\n" +
 	"\x0etests_executed\x18\x05 \x01(\x05R\rtestsExecuted\x12+\n" +
-	"\x11tests_uncacheable\x18\x06 \x01(\x05R\x10testsUncacheable\x12t\n" +
-	"\x19uncacheable_reason_counts\x18\a \x03(\v28.stipulator.v1.CheckSummary.UncacheableReasonCountsEntryR\x17uncacheableReasonCounts\x12k\n" +
-	"\x16executed_reason_counts\x18\b \x03(\v25.stipulator.v1.CheckSummary.ExecutedReasonCountsEntryR\x14executedReasonCounts\x12A\n" +
+	"\x11tests_uncacheable\x18\x06 \x01(\x05R\x10testsUncacheable\x12A\n" +
 	"\x10compile_problems\x18\t \x03(\v2\x16.stipulator.v1.ProblemR\x0fcompileProblems\x12=\n" +
 	"\x0epolicy_problem\x18\n" +
 	" \x01(\v2\x16.stipulator.v1.ProblemR\rpolicyProblem\x12'\n" +
@@ -1736,47 +1943,48 @@ const file_stipulator_v1_check_proto_rawDesc = "" +
 	"\x13reds_policy_blocked\x18\x1d \x01(\x05R\x11redsPolicyBlocked\x12#\n" +
 	"\rscope_partial\x18\x1e \x01(\bR\fscopePartial\x12\x1b\n" +
 	"\tscope_ids\x18\x1f \x03(\tR\bscopeIds\x12,\n" +
-	"\x12reds_scope_blocked\x18  \x01(\x05R\x10redsScopeBlocked\x1aJ\n" +
-	"\x1cUncacheableReasonCountsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\x1aG\n" +
-	"\x19ExecutedReasonCountsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"M\n" +
+	"\x12reds_scope_blocked\x18  \x01(\x05R\x10redsScopeBlocked\x12Q\n" +
+	"\x14uncacheable_blockers\x18! \x03(\v2\x1e.stipulator.v1.CheckBlockerRowR\x13uncacheableBlockers\x12>\n" +
+	"\x1buncacheable_reasons_omitted\x18\" \x01(\x05R\x19uncacheableReasonsOmitted\x12K\n" +
+	"\x11executed_blockers\x18# \x03(\v2\x1e.stipulator.v1.CheckBlockerRowR\x10executedBlockers\x128\n" +
+	"\x18executed_reasons_omitted\x18$ \x01(\x05R\x16executedReasonsOmittedJ\x04\b\a\x10\bJ\x04\b\b\x10\tR\x19uncacheable_reason_countsR\x16executed_reason_counts\"c\n" +
+	"\x0fCheckBlockerRow\x12\x16\n" +
+	"\x06reason\x18\x01 \x01(\tR\x06reason\x12\x1c\n" +
+	"\twitnesses\x18\x02 \x01(\x05R\twitnesses\x12\x1a\n" +
+	"\bexemplar\x18\x03 \x01(\tR\bexemplar\"M\n" +
 	"\vCheckRedRow\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06bucket\x18\x02 \x01(\tR\x06bucket\x12\x16\n" +
 	"\x06reason\x18\x03 \x01(\tR\x06reasonBDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
-var file_stipulator_v1_check_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_stipulator_v1_check_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_stipulator_v1_check_proto_goTypes = []any{
 	(*CheckResult)(nil),       // 0: stipulator.v1.CheckResult
 	(*CheckSummary)(nil),      // 1: stipulator.v1.CheckSummary
-	(*CheckRedRow)(nil),       // 2: stipulator.v1.CheckRedRow
-	nil,                       // 3: stipulator.v1.CheckResult.ExecutedReasonsEntry
-	nil,                       // 4: stipulator.v1.CheckResult.UncacheableReasonsEntry
-	nil,                       // 5: stipulator.v1.CheckSummary.UncacheableReasonCountsEntry
-	nil,                       // 6: stipulator.v1.CheckSummary.ExecutedReasonCountsEntry
-	(*Problem)(nil),           // 7: stipulator.v1.Problem
-	(*ExecutionReport)(nil),   // 8: stipulator.v1.ExecutionReport
-	(*VerifyReport)(nil),      // 9: stipulator.v1.VerifyReport
-	(*CoverageReport)(nil),    // 10: stipulator.v1.CoverageReport
-	(*FailureDiagnostic)(nil), // 11: stipulator.v1.FailureDiagnostic
+	(*CheckBlockerRow)(nil),   // 2: stipulator.v1.CheckBlockerRow
+	(*CheckRedRow)(nil),       // 3: stipulator.v1.CheckRedRow
+	nil,                       // 4: stipulator.v1.CheckResult.ExecutedReasonsEntry
+	nil,                       // 5: stipulator.v1.CheckResult.UncacheableReasonsEntry
+	(*Problem)(nil),           // 6: stipulator.v1.Problem
+	(*ExecutionReport)(nil),   // 7: stipulator.v1.ExecutionReport
+	(*VerifyReport)(nil),      // 8: stipulator.v1.VerifyReport
+	(*CoverageReport)(nil),    // 9: stipulator.v1.CoverageReport
+	(*FailureDiagnostic)(nil), // 10: stipulator.v1.FailureDiagnostic
 }
 var file_stipulator_v1_check_proto_depIdxs = []int32{
-	7,  // 0: stipulator.v1.CheckResult.compile_problems:type_name -> stipulator.v1.Problem
-	8,  // 1: stipulator.v1.CheckResult.execution:type_name -> stipulator.v1.ExecutionReport
-	9,  // 2: stipulator.v1.CheckResult.verify:type_name -> stipulator.v1.VerifyReport
-	10, // 3: stipulator.v1.CheckResult.coverage:type_name -> stipulator.v1.CoverageReport
-	7,  // 4: stipulator.v1.CheckResult.policy_problem:type_name -> stipulator.v1.Problem
-	3,  // 5: stipulator.v1.CheckResult.executed_reasons:type_name -> stipulator.v1.CheckResult.ExecutedReasonsEntry
-	4,  // 6: stipulator.v1.CheckResult.uncacheable_reasons:type_name -> stipulator.v1.CheckResult.UncacheableReasonsEntry
-	11, // 7: stipulator.v1.CheckResult.witness_diagnostics:type_name -> stipulator.v1.FailureDiagnostic
-	5,  // 8: stipulator.v1.CheckSummary.uncacheable_reason_counts:type_name -> stipulator.v1.CheckSummary.UncacheableReasonCountsEntry
-	6,  // 9: stipulator.v1.CheckSummary.executed_reason_counts:type_name -> stipulator.v1.CheckSummary.ExecutedReasonCountsEntry
-	7,  // 10: stipulator.v1.CheckSummary.compile_problems:type_name -> stipulator.v1.Problem
-	7,  // 11: stipulator.v1.CheckSummary.policy_problem:type_name -> stipulator.v1.Problem
-	2,  // 12: stipulator.v1.CheckSummary.reds:type_name -> stipulator.v1.CheckRedRow
+	6,  // 0: stipulator.v1.CheckResult.compile_problems:type_name -> stipulator.v1.Problem
+	7,  // 1: stipulator.v1.CheckResult.execution:type_name -> stipulator.v1.ExecutionReport
+	8,  // 2: stipulator.v1.CheckResult.verify:type_name -> stipulator.v1.VerifyReport
+	9,  // 3: stipulator.v1.CheckResult.coverage:type_name -> stipulator.v1.CoverageReport
+	6,  // 4: stipulator.v1.CheckResult.policy_problem:type_name -> stipulator.v1.Problem
+	4,  // 5: stipulator.v1.CheckResult.executed_reasons:type_name -> stipulator.v1.CheckResult.ExecutedReasonsEntry
+	5,  // 6: stipulator.v1.CheckResult.uncacheable_reasons:type_name -> stipulator.v1.CheckResult.UncacheableReasonsEntry
+	10, // 7: stipulator.v1.CheckResult.witness_diagnostics:type_name -> stipulator.v1.FailureDiagnostic
+	6,  // 8: stipulator.v1.CheckSummary.compile_problems:type_name -> stipulator.v1.Problem
+	6,  // 9: stipulator.v1.CheckSummary.policy_problem:type_name -> stipulator.v1.Problem
+	3,  // 10: stipulator.v1.CheckSummary.reds:type_name -> stipulator.v1.CheckRedRow
+	2,  // 11: stipulator.v1.CheckSummary.uncacheable_blockers:type_name -> stipulator.v1.CheckBlockerRow
+	2,  // 12: stipulator.v1.CheckSummary.executed_blockers:type_name -> stipulator.v1.CheckBlockerRow
 	13, // [13:13] is the sub-list for method output_type
 	13, // [13:13] is the sub-list for method input_type
 	13, // [13:13] is the sub-list for extension type_name
@@ -1797,7 +2005,7 @@ func file_stipulator_v1_check_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_check_proto_rawDesc), len(file_stipulator_v1_check_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

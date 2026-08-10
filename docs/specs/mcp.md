@@ -62,8 +62,12 @@ filtered triage is never polluted by out-of-scope entries. The gate
 verdict a view reports stays the GLOBAL one — a scoped slice with no
 in-scope violation says nothing about whether the tree passes. The check
 tool answers at the summary view by default — the verdict, its evidence
-class, the counts, the violations and prune residue, and the reason
-maps aggregated to bounded histograms — with the full check result
+class, the counts, the violations and prune residue, and the per-test
+reason maps reduced to their actionable form: the top blocker reasons
+by witness count, one exemplar test each, the dropped distinct-reason
+count stated, never the whole histogram (the raw per-test maps ride
+only the full view) — with
+the full check result
 message and identifier scoping opt-in per call under the same
 refused-typo rule; the summary is a projection of the one result
 message, never a second derivation. Check's identifier scope narrows the

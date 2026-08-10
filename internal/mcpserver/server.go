@@ -206,7 +206,7 @@ func (s *Server) MCP() *mcp.Server {
 	}, guarded(s, s.toolGate))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "check",
-		Description: "One pass, one verdict: compiles the corpus, takes witness evidence — served from proven-fresh records with selective execution of only the stale remainder by default (fast on a warm tree), or one whole policy execution with full=true, which additionally judges suite health — verifies bindings against that evidence, evaluates coverage and gaps, and reports prune residue. Default view is the bounded summary (verdict, counts, capped red rows, reason histograms, diagnostic headings); view=full carries the whole CheckResult with per-test maps and retained output; ids scopes the pass itself - stale execution narrows to the named requirements and the verdict is flagged partial. A tree failing the check is a successful call carrying passed=false.",
+		Description: "One pass, one verdict: compiles the corpus, takes witness evidence — served from proven-fresh records with selective execution of only the stale remainder by default (fast on a warm tree), or one whole policy execution with full=true, which additionally judges suite health — verifies bindings against that evidence, evaluates coverage and gaps, and reports prune residue. Default view is the bounded summary (verdict, counts, capped red rows, top-blocker rows with one exemplar test each, diagnostic headings); view=full carries the whole CheckResult with per-test maps and retained output; ids scopes the pass itself - stale execution narrows to the named requirements and the verdict is flagged partial. A tree failing the check is a successful call carrying passed=false.",
 	}, guarded(s, s.toolCheck))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "bind",
@@ -490,7 +490,7 @@ func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in gate
 // (REQ-check-verdict).
 type checkIn struct {
 	Full bool   `json:"full,omitempty" jsonschema:"execute the whole accepted policy and judge suite health; default serves fresh witnesses and executes only the stale remainder"`
-	View string `json:"view,omitempty" jsonschema:"summary (default: verdict, counts, capped red rows, reason histograms, diagnostic headings) or full (the whole CheckResult with per-test maps and retained output)"`
+	View string `json:"view,omitempty" jsonschema:"summary (default: verdict, counts, capped red rows, top-blocker rows, diagnostic headings) or full (the whole CheckResult with per-test maps and retained output)"`
 	Ids  string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers scoping the pass itself: fresh witnesses still serve whole-tree, only stale subjects bound to these requirements execute, and the verdict is flagged partial (scope_partial) with scope-boundary reds excluded; unknown identifiers refuse; incompatible with full"`
 }
 

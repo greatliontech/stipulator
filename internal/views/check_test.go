@@ -20,10 +20,11 @@ func redRow(id string) *stipulatorv1.RequirementCoverage {
 	return r
 }
 
-// The summary aggregates per-test reason maps to distinct-reason
-// histograms, caps red rows with a stated remainder, and reduces
-// diagnostics to headings — bounded by construction while the full view
-// carries everything (REQ-mcp-response-contract, REQ-mcp-views).
+// The summary reduces per-test reason maps to top-blocker rows on both
+// axes (uncacheable and re-executed) with count ties broken by reason,
+// caps red rows with a stated remainder, and reduces diagnostics to
+// headings — bounded by construction while the full view carries
+// everything (REQ-mcp-response-contract, REQ-mcp-views).
 //
 //gofresh:pure
 func TestCheckViewSummaryBounds(t *testing.T) {
@@ -36,6 +37,12 @@ func TestCheckViewSummaryBounds(t *testing.T) {
 	}
 	reasons["pkg.TestOdd"] = "ephemeral /tmp input"
 	res.SetUncacheableReasons(reasons)
+	res.SetExecutedReasons(map[string]string{
+		"pkg.TestR1": "content changed",
+		"pkg.TestR2": "content changed",
+		"pkg.TestR3": "binding moved",
+		"pkg.TestR4": "binding moved",
+	})
 	cov := &stipulatorv1.CoverageReport{}
 	var rows []*stipulatorv1.RequirementCoverage
 	for i := 0; i < redRowCap+7; i++ {
@@ -59,8 +66,29 @@ func TestCheckViewSummaryBounds(t *testing.T) {
 		t.Fatal(err)
 	}
 	sum := m.(*stipulatorv1.CheckSummary)
-	if got := sum.GetUncacheableReasonCounts(); got["GOCACHE drift"] != 500 || got["ephemeral /tmp input"] != 1 {
-		t.Fatalf("histogram = %v", got)
+	blockers := sum.GetUncacheableBlockers()
+	if len(blockers) != 2 || blockers[0].GetReason() != "GOCACHE drift" || blockers[0].GetWitnesses() != 500 ||
+		blockers[1].GetReason() != "ephemeral /tmp input" || blockers[1].GetWitnesses() != 1 {
+		t.Fatalf("blockers = %v", blockers)
+	}
+	if blockers[0].GetExemplar() == "" || blockers[1].GetExemplar() != "pkg.TestOdd" {
+		t.Fatalf("blocker exemplars = %q, %q", blockers[0].GetExemplar(), blockers[1].GetExemplar())
+	}
+	if sum.GetUncacheableReasonsOmitted() != 0 {
+		t.Fatalf("under-cap omitted = %d, want 0", sum.GetUncacheableReasonsOmitted())
+	}
+	// The re-executed axis reduces identically, with equal witness
+	// counts tie-broken by reason ascending.
+	executed := sum.GetExecutedBlockers()
+	if len(executed) != 2 || executed[0].GetReason() != "binding moved" || executed[1].GetReason() != "content changed" ||
+		executed[0].GetWitnesses() != 2 || executed[1].GetWitnesses() != 2 {
+		t.Fatalf("executed blockers = %v, want count ties broken by reason", executed)
+	}
+	if executed[0].GetExemplar() != "pkg.TestR3" || executed[1].GetExemplar() != "pkg.TestR1" {
+		t.Fatalf("executed exemplars = %q, %q", executed[0].GetExemplar(), executed[1].GetExemplar())
+	}
+	if sum.GetExecutedReasonsOmitted() != 0 {
+		t.Fatalf("executed omitted = %d, want 0", sum.GetExecutedReasonsOmitted())
 	}
 	if len(sum.GetReds()) != redRowCap || sum.GetRedsOmitted() != 7 {
 		t.Fatalf("reds = %d, omitted = %d", len(sum.GetReds()), sum.GetRedsOmitted())
@@ -120,35 +148,51 @@ func TestCheckViewSummaryMatchesCanonicalJudgments(t *testing.T) {
 	}
 }
 
-// The histogram's key count is itself bounded: per-test-distinct
-// reasons fold into a counted remainder instead of rebuilding the
-// per-test map one key at a time.
+// The blocker rows are the actionable reduction: top reasons by
+// witness count with one deterministic exemplar each, capped with a
+// counted remainder — per-test-distinct reasons can never rebuild the
+// per-test map one row at a time.
 //
 //gofresh:pure
-func TestCheckViewHistogramKeyCap(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-response-contract")
+func TestCheckViewBlockerRowsCapAndDeterminism(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-response-contract", "REQ-mcp-views")
 	res := &stipulatorv1.CheckResult{}
 	reasons := map[string]string{}
-	for i := 0; i < histogramKeyCap+20; i++ {
-		reasons[fmt.Sprintf("pkg.Test%d", i)] = fmt.Sprintf("mid-run drift: mover-%d.txt", i)
+	// blockerRowCap+3 distinct reasons with descending weights, plus a
+	// heavy shared reason whose exemplar must be the smallest test name.
+	for i := 0; i < blockerRowCap+3; i++ {
+		for j := 0; j <= i; j++ {
+			reasons[fmt.Sprintf("pkg.Test%02d_%02d", i, j)] = fmt.Sprintf("mid-run drift: mover-%02d.txt", i)
+		}
+	}
+	reasons["pkg.TestZz"] = "GOCACHE drift"
+	reasons["pkg.TestAa"] = "GOCACHE drift"
+	for i := 0; i < 40; i++ {
+		reasons[fmt.Sprintf("pkg.TestG%02d", i)] = "GOCACHE drift"
 	}
 	res.SetUncacheableReasons(reasons)
 	m, err := CheckView(res, "summary", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := m.(*stipulatorv1.CheckSummary).GetUncacheableReasonCounts()
-	if len(got) != histogramKeyCap+1 {
-		t.Fatalf("histogram keys = %d, want cap %d + remainder entry", len(got), histogramKeyCap+1)
+	sum := m.(*stipulatorv1.CheckSummary)
+	rows := sum.GetUncacheableBlockers()
+	if len(rows) != blockerRowCap {
+		t.Fatalf("blocker rows = %d, want the cap %d", len(rows), blockerRowCap)
 	}
-	var rest int32
-	for k, n := range got {
-		if strings.Contains(k, "more distinct reasons") {
-			rest = n
+	if rows[0].GetReason() != "GOCACHE drift" || rows[0].GetWitnesses() != 42 {
+		t.Fatalf("top blocker = %v, want the heaviest reason first", rows[0])
+	}
+	if rows[0].GetExemplar() != "pkg.TestAa" {
+		t.Fatalf("exemplar = %q, want the lexicographically-smallest affected test", rows[0].GetExemplar())
+	}
+	for i := 1; i < len(rows); i++ {
+		if rows[i].GetWitnesses() > rows[i-1].GetWitnesses() {
+			t.Fatalf("rows not ordered by witness count: %v", rows)
 		}
 	}
-	if rest != 20 {
-		t.Fatalf("remainder entry counts %d, want 20", rest)
+	if sum.GetUncacheableReasonsOmitted() != int32(blockerRowCap+3+1-blockerRowCap) {
+		t.Fatalf("omitted = %d, want the dropped distinct-reason count", sum.GetUncacheableReasonsOmitted())
 	}
 }
 

@@ -111,8 +111,9 @@ message CheckResult {
 
 // CheckSummary is the check operation's summary view: the verdict with
 // the counts and red entries an agent acts on, every reason map
-// aggregated to a bounded histogram, diagnostic bodies reduced to
-// subject headings. A projection of CheckResult — never a second
+// reduced to its top blocker rows (reason, witness count, one exemplar
+// test; the dropped distinct-reason count stated), diagnostic bodies
+// reduced to subject headings. A projection of CheckResult — never a second
 // derivation — sized for an agent's context window where the full
 // result is not (REQ-mcp-response-contract).
 message CheckSummary {
@@ -126,11 +127,10 @@ message CheckSummary {
   int32 tests_served = 4;
   int32 tests_executed = 5;
   int32 tests_uncacheable = 6;
-  // Reason histograms: distinct reason -> count, aggregated from the
-  // full result's per-test maps. The per-test attribution rides only
-  // the full view.
-  map<string, int32> uncacheable_reason_counts = 7;
-  map<string, int32> executed_reason_counts = 8;
+  // The reason histograms that once rode every summary; the per-test
+  // maps live on the full view, the summary carries blocker rows.
+  reserved 7, 8;
+  reserved uncacheable_reason_counts, executed_reason_counts;
   // Compilation and policy problems, verbatim — a summary that hides
   // why the tree cannot even evaluate would force a second call.
   repeated Problem compile_problems = 9;
@@ -174,6 +174,22 @@ message CheckSummary {
   bool scope_partial = 30;
   repeated string scope_ids = 31;
   int32 reds_scope_blocked = 32;
+  // The actionable reduction of the full result's per-test reason maps
+  // (REQ-mcp-views): the top blocker reasons by witness count, one
+  // exemplar test each, remainders counted - never the whole histogram.
+  repeated CheckBlockerRow uncacheable_blockers = 33;
+  int32 uncacheable_reasons_omitted = 34;
+  repeated CheckBlockerRow executed_blockers = 35;
+  int32 executed_reasons_omitted = 36;
+}
+
+// CheckBlockerRow is one reason's actionable roll-up on the check
+// summary: how many witnesses it affects and one exemplar test to
+// start from.
+message CheckBlockerRow {
+  string reason = 1;
+  int32 witnesses = 2;
+  string exemplar = 3;
 }
 
 // CheckRedRow is one red coverage row in the summary: enough to act on
