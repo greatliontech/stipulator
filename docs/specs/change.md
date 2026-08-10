@@ -241,9 +241,20 @@ compilation fails, the accepted test policy record is missing or invalid
 REQ-gate-no-undeclared fails, or prune residue remains. A caller
 demanding suite judgment selects full execution: the policy executes
 whole, health derives from that same execution, and the verdict
-additionally fails when suite health is unhealthy. The result names
+additionally fails when suite health is unhealthy. A caller naming
+requirement identifiers selects the scoped witness-evidence class
+instead: fresh records still serve for the whole tree, only stale
+subjects bound to the named requirements execute (the degraded fallback
+is the scope's own full execution, never the tree's), a requirement red
+solely on that scope boundary is classed scope-blocked and excluded
+from the verdict's undeclared-red term, prune residue is not derived —
+resolved-gap evidence takes the serving class over the whole tree — and
+the result flags the verdict partial and echoes the scope; unknown
+identifiers refuse, and scoping composes with the default class only.
+The result names
 which evidence class produced it, so a witness-evidence verdict is never
-mistaken for a health-judged one. A cancelled check yields no verdict at
+mistaken for a health-judged one, nor a scoped verdict for a global
+one. A cancelled check yields no verdict at
 all — cancellation is an operational abort, never a pass or a fail.
 
 **REQ-check-witness-selection** (behavior): Witness evidence derives from

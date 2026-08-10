@@ -190,6 +190,7 @@ func fixtureCheckResult() proto.Message {
 	cov.SetKeyword(stipulatorv1.Keyword_KEYWORD_MUST)
 	cov.SetBucket(stipulatorv1.Bucket_BUCKET_BROKEN)
 	cov.SetReasons([]string{"bound test failed"})
+	cov.SetScopeBlocked(true)
 	gap := &stipulatorv1.GapReport{}
 	gap.SetPath(".stipulator/gaps/y.textproto")
 	gap.SetRequirementId("REQ-y")
@@ -216,6 +217,8 @@ func fixtureCheckResult() proto.Message {
 	c.SetTestsExecuted(12)
 	c.SetTestsUncacheable(3)
 	c.SetWitnessPublicationDegraded("source producer validation failed: view invalidated")
+	c.SetScopePartial(true)
+	c.SetScopeIds([]string{"REQ-x"})
 	return c
 }
 

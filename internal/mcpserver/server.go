@@ -72,7 +72,7 @@ type Server struct {
 	fsys     func() fs.FS
 	backends func(context.Context) (map[string]verify.Backend, error)
 	runTests func(context.Context) (*verify.TestRun, error)
-	runCheck func(context.Context, bool) (*stipulatorv1.CheckResult, error)
+	runCheck func(context.Context, bool, []string) (*stipulatorv1.CheckResult, error)
 	explain  func(ctx context.Context, pkgPath, symbol string) (gofresh.Chain, string, error)
 	write    func(path string, content []byte) error
 	remove   func(path string) error
@@ -85,8 +85,8 @@ func New(dir string) *Server {
 		fsys:     func() fs.FS { return os.DirFS(dir) },
 		backends: func(ctx context.Context) (map[string]verify.Backend, error) { return makeBackends(ctx, dir) },
 		runTests: func(ctx context.Context) (*verify.TestRun, error) { return golang.RunWitnesses(ctx, dir) },
-		runCheck: func(ctx context.Context, full bool) (*stipulatorv1.CheckResult, error) {
-			return check.Run(ctx, dir, full)
+		runCheck: func(ctx context.Context, full bool, scopeIds []string) (*stipulatorv1.CheckResult, error) {
+			return check.Run(ctx, dir, full, scopeIds)
 		},
 		explain: func(ctx context.Context, pkgPath, symbol string) (gofresh.Chain, string, error) {
 			pol, _, err := policy.Load(dir, map[string]policy.Backend{"go": golang.Policy{}})
@@ -194,7 +194,7 @@ func (s *Server) MCP() *mcp.Server {
 	}, guarded(s, s.toolGate))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "check",
-		Description: "One pass, one verdict: compiles the corpus, takes witness evidence — served from proven-fresh records with selective execution of only the stale remainder by default (fast on a warm tree), or one whole policy execution with full=true, which additionally judges suite health — verifies bindings against that evidence, evaluates coverage and gaps, and reports prune residue. Default view is the bounded summary (verdict, counts, capped red rows, reason histograms, diagnostic headings); view=full carries the whole CheckResult with per-test maps and retained output; ids scopes coverage rows while the verdict stays global. A tree failing the check is a successful call carrying passed=false.",
+		Description: "One pass, one verdict: compiles the corpus, takes witness evidence — served from proven-fresh records with selective execution of only the stale remainder by default (fast on a warm tree), or one whole policy execution with full=true, which additionally judges suite health — verifies bindings against that evidence, evaluates coverage and gaps, and reports prune residue. Default view is the bounded summary (verdict, counts, capped red rows, reason histograms, diagnostic headings); view=full carries the whole CheckResult with per-test maps and retained output; ids scopes the pass itself - stale execution narrows to the named requirements and the verdict is flagged partial. A tree failing the check is a successful call carrying passed=false.",
 	}, guarded(s, s.toolCheck))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "bind",
@@ -479,7 +479,7 @@ func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in gate
 type checkIn struct {
 	Full bool   `json:"full,omitempty" jsonschema:"execute the whole accepted policy and judge suite health; default serves fresh witnesses and executes only the stale remainder"`
 	View string `json:"view,omitempty" jsonschema:"summary (default: verdict, counts, capped red rows, reason histograms, diagnostic headings) or full (the whole CheckResult with per-test maps and retained output)"`
-	Ids  string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers scoping coverage rows, gaps, and violations; the verdict stays global"`
+	Ids  string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers scoping the pass itself: fresh witnesses still serve whole-tree, only stale subjects bound to these requirements execute, and the verdict is flagged partial (scope_partial) with scope-boundary reds excluded; unknown identifiers refuse; incompatible with full"`
 }
 
 func (s *Server) toolCheck(ctx context.Context, req *mcp.CallToolRequest, in checkIn) (*mcp.CallToolResult, map[string]any, error) {
@@ -493,7 +493,7 @@ func (s *Server) toolCheck(ctx context.Context, req *mcp.CallToolRequest, in che
 		return nil, nil, err
 	}
 	ctx, prog := s.startProgress(ctx, req)
-	res, err := s.runCheck(ctx, in.Full)
+	res, err := s.runCheck(ctx, in.Full, ids)
 	if err != nil {
 		// The error return is reserved for operational faults — a tree
 		// failing the check is a successful call carrying passed=false.
@@ -522,6 +522,12 @@ func (s *Server) toolCheck(ctx context.Context, req *mcp.CallToolRequest, in che
 			// (REQ-check-witness-selection).
 			if res.GetWitnessSelectionProblem() != "" && r.GetWitnessSelectionBlocked() {
 				blocked++
+				continue
+			}
+			// Scope-boundary rows restate the result's partial flag, and
+			// checkLine already carries their folded count — the digest
+			// keeps only the reds a scoped pass actually judged.
+			if res.GetScopePartial() && r.GetScopeBlocked() {
 				continue
 			}
 			row := fmt.Sprintf("%s [%s]", r.GetId(), enumWord(r.GetBucket().String(), "BUCKET_"))
@@ -559,9 +565,31 @@ func checkLine(res *stipulatorv1.CheckResult) string {
 	if res.GetSuiteHealthJudged() {
 		class = "health-judged"
 	}
-	return fmt.Sprintf("check: %s (%s; %d served, %d executed, %d uncacheable; %d violations)",
+	if res.GetScopePartial() {
+		class = "scoped-partial: " + strings.Join(res.GetScopeIds(), ",")
+	}
+	violations := 0
+	scopeBlocked := map[string]bool{}
+	for _, r := range res.GetCoverage().GetRequirements() {
+		if r.GetScopeBlocked() {
+			scopeBlocked[r.GetId()] = true
+		}
+	}
+	folded := 0
+	for _, v := range res.GetCoverage().GetViolations() {
+		if res.GetScopePartial() && scopeBlocked[v] {
+			folded++
+			continue
+		}
+		violations++
+	}
+	line := fmt.Sprintf("check: %s (%s; %d served, %d executed, %d uncacheable; %d violations)",
 		verdict, class, res.GetTestsServed(), res.GetTestsExecuted(), res.GetTestsUncacheable(),
-		len(res.GetCoverage().GetViolations()))
+		violations)
+	if folded > 0 {
+		line += fmt.Sprintf(" (%d scope-blocked rows not executed)", folded)
+	}
+	return line
 }
 
 // withStamps appends the operation's phase-timing line to the text

@@ -58,14 +58,24 @@ func RunWitnesses(ctx context.Context, dir string) (*verify.TestRun, error) {
 	if err != nil {
 		return nil, err
 	}
-	return runWitnesses(ctx, dir, p)
+	return runWitnesses(ctx, dir, p, nil)
 }
 
 // RunWitnessesPolicy is RunWitnesses over an already-loaded accepted
 // policy — the unified check loads the policy once for its own verdict
 // short-circuits and hands it through.
 func RunWitnessesPolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (*verify.TestRun, error) {
-	return runWitnesses(ctx, dir, p)
+	return runWitnesses(ctx, dir, p, nil)
+}
+
+// RunWitnessesScoped is the witness-only selective execution narrowed
+// further to a caller-named subject scope: fresh records still serve
+// for the whole tree, and only stale subjects inside the scope execute
+// - the remainder is recorded scope-skipped, never broken. The degraded
+// path expands to the scope's own full execution, never the tree's
+// (REQ-check-verdict's scoped class).
+func RunWitnessesScoped(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {
+	return runWitnesses(ctx, dir, p, scope)
 }
 
 // witnessGroup is one capture group's serving state: the analysis views
@@ -107,7 +117,7 @@ type witnessGroup struct {
 	observedFPs map[gofresh.Subject]gofresh.Fingerprint
 }
 
-func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (*verify.TestRun, error) {
+func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {
 	rep := progress.FromContext(ctx)
 	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	pc, err := capturePolicy(ctx, dir, p)
@@ -235,7 +245,16 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 	// their covering invocations — or, degraded, every in-policy subject:
 	// serving saves work, it never blocks or weakens witnessing.
 	staleSel := map[string]TestSelection{}
+	scopeSkipped := map[string]bool{}
 	addStale := func(s gofresh.Subject) {
+		if scope != nil && !scope[s] {
+			// A stale subject outside the caller's scope is skipped,
+			// recorded so its bindings read scope-skipped rather than
+			// broken; on the degraded path this same gate makes the
+			// fallback the scope's own full execution.
+			scopeSkipped[s.Package+"."+s.Symbol] = true
+			return
+		}
 		n := covering[s.Package]
 		sel := staleSel[n.Name]
 		if sel == nil {
@@ -266,7 +285,16 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 			staleSel[inv] = dst
 		}
 		for pkg, names := range sel {
-			dst[pkg] = append(dst[pkg], names...)
+			for _, name := range names {
+				if scope != nil && !scope[gofresh.Subject{Package: pkg, Symbol: name}] {
+					scopeSkipped[pkg+"."+name] = true
+					continue
+				}
+				dst[pkg] = append(dst[pkg], name)
+			}
+		}
+		if len(dst) == 0 {
+			delete(staleSel, inv)
 		}
 	}
 	for _, sel := range staleSel {
@@ -406,7 +434,7 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (
 	// The selective runner is the serving class by identity — the degraded
 	// empty-served form included (REQ-gap-resolved-pruned's consumers
 	// enforce the mark).
-	tr := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}, RaceEnabled: true, PlainWitness: map[string]bool{}, OutsidePolicy: outside, OutsideSubjects: outsideSubjects, SelectiveServing: true}
+	tr := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}, RaceEnabled: true, PlainWitness: map[string]bool{}, OutsidePolicy: outside, OutsideSubjects: outsideSubjects, ScopeSkipped: scopeSkipped, SelectiveServing: true}
 	// Tier attribution across every grant source: a key granted by any
 	// race leg holds the race tier; a key granted only by plain-witness
 	// admissions carries the recorded downgrade

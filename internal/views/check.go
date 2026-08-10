@@ -16,7 +16,9 @@ const redRowCap = 100
 
 // CheckView projects one check result into the requested view: the
 // summary (default) or the full result message, either scoped to
-// requirement identifiers. The verdict stays global under any scope —
+// requirement identifiers. The view itself never alters the verdict it
+// projects — a scoped check RUN carries its own flagged-partial verdict
+// (REQ-check-verdict), the gate's stays global under any view scope —
 // a scoped slice with no in-scope violation says nothing about whether
 // the tree passes (REQ-mcp-views). An unknown view word is refused, so
 // a typo never reads as an empty result.
@@ -124,6 +126,8 @@ func checkSummary(res *stipulatorv1.CheckResult) *stipulatorv1.CheckSummary {
 	out.SetTestsUncacheable(res.GetTestsUncacheable())
 	out.SetTestsOutsidePolicy(res.GetTestsOutsidePolicy())
 	out.SetWitnessSelectionProblem(res.GetWitnessSelectionProblem())
+	out.SetScopePartial(res.GetScopePartial())
+	out.SetScopeIds(res.GetScopeIds())
 	out.SetUncacheableReasonCounts(histogram(res.GetUncacheableReasons()))
 	out.SetExecutedReasonCounts(histogram(res.GetExecutedReasons()))
 	out.SetCompileProblems(res.GetCompileProblems())
@@ -156,6 +160,7 @@ func checkSummary(res *stipulatorv1.CheckResult) *stipulatorv1.CheckSummary {
 		var reds []*stipulatorv1.CheckRedRow
 		omitted := int32(0)
 		blocked := int32(0)
+		scopeBlocked := int32(0)
 		for _, r := range cov.GetRequirements() {
 			switch r.GetBucket() {
 			case stipulatorv1.Bucket_BUCKET_UNCOVERED, stipulatorv1.Bucket_BUCKET_STALE, stipulatorv1.Bucket_BUCKET_BROKEN:
@@ -167,6 +172,14 @@ func checkSummary(res *stipulatorv1.CheckResult) *stipulatorv1.CheckSummary {
 				// the full view.
 				if res.GetWitnessSelectionProblem() != "" && r.GetWitnessSelectionBlocked() {
 					blocked++
+					continue
+				}
+				// Scope-boundary rows restate the result's partial flag
+				// the same way: folded to a count on scoped passes, the
+				// cause stated once by scope_partial, the rows on the
+				// full view.
+				if res.GetScopePartial() && r.GetScopeBlocked() {
+					scopeBlocked++
 					continue
 				}
 				if len(reds) == redRowCap {
@@ -185,6 +198,7 @@ func checkSummary(res *stipulatorv1.CheckResult) *stipulatorv1.CheckSummary {
 		out.SetReds(reds)
 		out.SetRedsOmitted(omitted)
 		out.SetRedsPolicyBlocked(blocked)
+		out.SetRedsScopeBlocked(scopeBlocked)
 		var open, due, resolved int32
 		for _, g := range cov.GetGaps() {
 			switch g.GetState() {

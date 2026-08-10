@@ -25,7 +25,8 @@
         "kind": "CLAUSE_KIND_BEHAVIOR",
         "reasons": [
           "bound test failed"
-        ]
+        ],
+        "scopeBlocked": true
       }
     ],
     "violations": [
@@ -133,6 +134,10 @@
   "pruneResidue": [
     ".stipulator/gaps/y.textproto"
   ],
+  "scopeIds": [
+    "REQ-x"
+  ],
+  "scopePartial": true,
   "testsExecuted": 12,
   "testsUncacheable": 3,
   "verify": {

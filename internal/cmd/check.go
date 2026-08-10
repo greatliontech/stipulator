@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -15,6 +16,7 @@ import (
 
 func checkCmd() *cobra.Command {
 	var jsonOut, quiet, full bool
+	var ids string
 	c := &cobra.Command{
 		Use:   "check",
 		Short: "One pass, one verdict: does this tree pass",
@@ -39,7 +41,7 @@ func checkCmd() *cobra.Command {
 					fmt.Fprintln(os.Stderr, dim("checking: serving fresh witnesses, executing the stale remainder"))
 				}
 			}
-			res, err := check.Run(cmd.Context(), chdir, full)
+			res, err := check.Run(cmd.Context(), chdir, full, splitCommaIDs(ids))
 			if err != nil {
 				return err
 			}
@@ -66,6 +68,7 @@ func checkCmd() *cobra.Command {
 	c.Flags().BoolVar(&jsonOut, "json", false, "machine output: the check result as deterministic JSON")
 	c.Flags().BoolVarP(&quiet, "quiet", "q", false, "exit code only")
 	c.Flags().BoolVar(&full, "full", false, "execute the whole accepted policy and judge suite health")
+	c.Flags().StringVar(&ids, "ids", "", "comma-separated requirement identifiers scoping the pass: only stale subjects bound to them execute, the verdict is flagged partial")
 	return c
 }
 
@@ -133,15 +136,34 @@ func renderCheck(stdout, stderr io.Writer, res *stipulatorv1.CheckResult) {
 			fmt.Fprintf(stdout, "  %-9s %s%s\n", yellow(bucketWord(r.GetBucket())), r.GetId(), reason)
 		}
 	}
+	scopeBlocked := map[string]bool{}
+	if res.GetScopePartial() {
+		for _, r := range cov.GetRequirements() {
+			if r.GetScopeBlocked() {
+				scopeBlocked[r.GetId()] = true
+			}
+		}
+	}
 	for _, v := range cov.GetViolations() {
+		if scopeBlocked[v] {
+			// Red solely on the scope boundary: deliberately not
+			// executed, excluded from the scoped verdict.
+			fmt.Fprintf(stderr, "%s\n", dim("scope-blocked: "+v+" was not executed on this scoped pass"))
+			continue
+		}
 		fmt.Fprintf(stderr, "%s %s is red and no gap excuses it\n", red("violation:"), bold(v))
 	}
 	for _, path := range res.GetPruneResidue() {
 		fmt.Fprintf(stderr, "%s resolved gap lingers: %s — run %s\n", red("prune residue:"), path, bold("stipulator prune"))
 	}
-	if res.GetPassed() {
+	switch {
+	case res.GetScopePartial() && res.GetPassed():
+		fmt.Fprintln(stdout, green("check: pass (partial - scoped to "+strings.Join(res.GetScopeIds(), ", ")+")"))
+	case res.GetScopePartial():
+		fmt.Fprintln(stdout, red("check: fail (partial - scoped to "+strings.Join(res.GetScopeIds(), ", ")+")"))
+	case res.GetPassed():
 		fmt.Fprintln(stdout, green("check: pass"))
-	} else {
+	default:
 		fmt.Fprintln(stdout, red("check: fail"))
 	}
 }
@@ -224,4 +246,20 @@ func bucketWord(b stipulatorv1.Bucket) string {
 		return "broken"
 	}
 	return "uncovered"
+}
+
+// splitCommaIDs parses the --ids flag: empty means no scope, and blank
+// entries are dropped rather than refused - the shell's trailing comma
+// is not a typo worth a failed pass.
+func splitCommaIDs(s string) []string {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	var out []string
+	for _, part := range strings.Split(s, ",") {
+		if p := strings.TrimSpace(part); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }

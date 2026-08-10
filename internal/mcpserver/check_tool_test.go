@@ -43,7 +43,7 @@ func (l *notificationLog) snapshot() []*mcp.ProgressNotificationParams {
 
 // checkHarness builds a session against a server whose check operation is
 // injected, with the client capturing progress notifications.
-func checkHarness(t *testing.T, runCheck func(context.Context, bool) (*stipulatorv1.CheckResult, error)) (*mcp.ClientSession, *notificationLog) {
+func checkHarness(t *testing.T, runCheck func(context.Context, bool, []string) (*stipulatorv1.CheckResult, error)) (*mcp.ClientSession, *notificationLog) {
 	t.Helper()
 	s := &Server{
 		fsys: func() fs.FS {
@@ -93,7 +93,7 @@ func fixtureResult(t *testing.T) *stipulatorv1.CheckResult {
 func TestCheckToolStructuredResultMirrorsCheckResult(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-tools", "REQ-report-check-result", "REQ-mcp-views", "REQ-mcp-response-contract")
 	want := fixtureResult(t)
-	sess, _ := checkHarness(t, func(context.Context, bool) (*stipulatorv1.CheckResult, error) {
+	sess, _ := checkHarness(t, func(context.Context, bool, []string) (*stipulatorv1.CheckResult, error) {
 		return want, nil
 	})
 	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "check", Arguments: map[string]any{}})
@@ -139,6 +139,97 @@ func TestCheckToolStructuredResultMirrorsCheckResult(t *testing.T) {
 	}
 }
 
+// TestCheckLineScopedPartialClassAndFold pins the one-line text for a
+// scoped result: the scoped-partial class names the scope ids, and
+// violations red solely on the scope boundary fold to a stated count
+// instead of inflating the violation figure. Without the partial flag
+// the row marker changes nothing.
+func TestCheckLineScopedPartialClassAndFold(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-response-contract", "REQ-check-verdict")
+	blocked := &stipulatorv1.RequirementCoverage{}
+	blocked.SetId("REQ-blocked")
+	blocked.SetBucket(stipulatorv1.Bucket_BUCKET_BROKEN)
+	blocked.SetScopeBlocked(true)
+	cov := &stipulatorv1.CoverageReport{}
+	cov.SetRequirements([]*stipulatorv1.RequirementCoverage{blocked})
+	cov.SetViolations([]string{"REQ-blocked", "REQ-red"})
+	res := &stipulatorv1.CheckResult{}
+	res.SetPassed(true)
+	res.SetCoverage(cov)
+	res.SetScopePartial(true)
+	res.SetScopeIds([]string{"REQ-a", "REQ-b"})
+
+	line := checkLine(res)
+	if !strings.Contains(line, "scoped-partial: REQ-a,REQ-b") {
+		t.Errorf("scoped class not named: %q", line)
+	}
+	if !strings.Contains(line, "1 violations") || !strings.Contains(line, "(1 scope-blocked rows not executed)") {
+		t.Errorf("scope-blocked violation not folded to a stated count: %q", line)
+	}
+
+	res.SetScopePartial(false)
+	res.SetScopeIds(nil)
+	line = checkLine(res)
+	if !strings.Contains(line, "witness-evidence") || !strings.Contains(line, "2 violations") || strings.Contains(line, "scope-blocked") {
+		t.Errorf("global line altered by a stale scope marker: %q", line)
+	}
+}
+
+// TestCheckToolScopedCallShape pins what a real scoped MCP call
+// delivers: the summary mirrors the partial flag and echoes the scope,
+// the view's id scope keeps only the named requirements' rows (a named
+// requirement is never scope-blocked, so the summary carries no blocked
+// rows to fold), and the text digest lists no scope-blocked row — its
+// count rides checkLine, matching the summary, CLI, and one-line
+// surfaces.
+func TestCheckToolScopedCallShape(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-views", "REQ-check-verdict", "REQ-mcp-response-contract")
+	inScope := &stipulatorv1.RequirementCoverage{}
+	inScope.SetId("REQ-a")
+	inScope.SetBucket(stipulatorv1.Bucket_BUCKET_COVERED)
+	blocked := &stipulatorv1.RequirementCoverage{}
+	blocked.SetId("REQ-b")
+	blocked.SetBucket(stipulatorv1.Bucket_BUCKET_BROKEN)
+	blocked.SetReasons([]string{"bound test example.com/m.TestB not executed - outside the check's id scope"})
+	blocked.SetScopeBlocked(true)
+	cov := &stipulatorv1.CoverageReport{}
+	cov.SetRequirements([]*stipulatorv1.RequirementCoverage{inScope, blocked})
+	cov.SetViolations([]string{"REQ-b"})
+	scoped := &stipulatorv1.CheckResult{}
+	scoped.SetPassed(true)
+	scoped.SetCoverage(cov)
+	scoped.SetScopePartial(true)
+	scoped.SetScopeIds([]string{"REQ-a"})
+	sess, _ := checkHarness(t, func(_ context.Context, _ bool, ids []string) (*stipulatorv1.CheckResult, error) {
+		return scoped, nil
+	})
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "check", Arguments: map[string]any{"ids": "REQ-a"}})
+	if err != nil || res.IsError {
+		t.Fatalf("scoped check call: %v %v", err, res)
+	}
+	b, err := json.Marshal(res.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := &stipulatorv1.CheckSummary{}
+	if err := protojson.Unmarshal(b, sum); err != nil {
+		t.Fatalf("scoped structured content is not a strict CheckSummary: %v\n%s", err, b)
+	}
+	if !sum.GetScopePartial() || len(sum.GetScopeIds()) != 1 || sum.GetScopeIds()[0] != "REQ-a" {
+		t.Fatalf("scope mirror lost on the real call: partial=%t ids=%v", sum.GetScopePartial(), sum.GetScopeIds())
+	}
+	if len(sum.GetReds()) != 0 || sum.GetRedsScopeBlocked() != 0 {
+		t.Fatalf("view-scoped summary reds = %v blocked=%d, want the out-of-scope row excluded by the id scope", sum.GetReds(), sum.GetRedsScopeBlocked())
+	}
+	text := toolText(t, res)
+	if !strings.Contains(text, "scoped-partial: REQ-a") || !strings.Contains(text, "(1 scope-blocked rows not executed)") {
+		t.Errorf("text line does not name the scoped class and folded count: %q", text)
+	}
+	if strings.Contains(text, "REQ-b [") {
+		t.Errorf("digest lists a scope-blocked row as a red: %q", text)
+	}
+}
+
 // TestCheckToolFailingTreeIsSuccessfulCall pins the error split: a tree
 // failing the check is a successful call carrying passed=false — with the
 // terminal progress event naming the test failure, so a red suite is
@@ -155,7 +246,7 @@ func TestCheckToolFailingTreeIsSuccessfulCall(t *testing.T) {
 	failing.SetPassed(false)
 	failing.SetTestsExecuted(1)
 	failing.SetExecution(redExecution)
-	sess, log := checkHarness(t, func(context.Context, bool) (*stipulatorv1.CheckResult, error) {
+	sess, log := checkHarness(t, func(context.Context, bool, []string) (*stipulatorv1.CheckResult, error) {
 		return failing, nil
 	})
 	params := &mcp.CallToolParams{Name: "check", Arguments: map[string]any{}}
@@ -184,7 +275,7 @@ func TestCheckToolFailingTreeIsSuccessfulCall(t *testing.T) {
 		t.Errorf("terminal cause = %v, want TEST_FAILURE for a red suite", final.GetTerminalCause())
 	}
 
-	opSess, _ := checkHarness(t, func(context.Context, bool) (*stipulatorv1.CheckResult, error) {
+	opSess, _ := checkHarness(t, func(context.Context, bool, []string) (*stipulatorv1.CheckResult, error) {
 		return nil, errors.New("policy record unreadable: permission denied")
 	})
 	res, err = opSess.CallTool(context.Background(), &mcp.CallToolParams{Name: "check", Arguments: map[string]any{}})
@@ -215,7 +306,7 @@ func TestCheckToolViewsAndScopes(t *testing.T) {
 	res := &stipulatorv1.CheckResult{}
 	res.SetPassed(false)
 	res.SetCoverage(cov)
-	sess, _ := checkHarness(t, func(context.Context, bool) (*stipulatorv1.CheckResult, error) {
+	sess, _ := checkHarness(t, func(context.Context, bool, []string) (*stipulatorv1.CheckResult, error) {
 		return res, nil
 	})
 	for _, args := range []map[string]any{
@@ -275,7 +366,7 @@ func TestCheckToolProgressRidesNotificationsNotPayload(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-progress")
 	passing := &stipulatorv1.CheckResult{}
 	passing.SetPassed(true)
-	sess, log := checkHarness(t, func(ctx context.Context, _ bool) (*stipulatorv1.CheckResult, error) {
+	sess, log := checkHarness(t, func(ctx context.Context, _ bool, _ []string) (*stipulatorv1.CheckResult, error) {
 		rep := progress.FromContext(ctx)
 		rep.Phase(stipulatorv1.Phase_PHASE_COMPILE)
 		rep.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
@@ -594,7 +685,7 @@ func TestCheckToolClientCancellationSealsProgress(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-cancellation", "REQ-mcp-progress")
 	started := make(chan struct{})
 	stopped := make(chan struct{})
-	sess, log := checkHarness(t, func(ctx context.Context, _ bool) (*stipulatorv1.CheckResult, error) {
+	sess, log := checkHarness(t, func(ctx context.Context, _ bool, _ []string) (*stipulatorv1.CheckResult, error) {
 		progress.FromContext(ctx).Phase(stipulatorv1.Phase_PHASE_EXECUTION)
 		close(started)
 		<-ctx.Done()
@@ -641,4 +732,28 @@ func TestCheckToolClientCancellationSealsProgress(t *testing.T) {
 		time.Sleep(5 * time.Millisecond)
 	}
 	t.Fatalf("no terminal CANCELLED event reached the session: %v", log.snapshot())
+}
+
+
+// The ids parameter reaches the pass itself: the tool forwards it to
+// runCheck, selecting the scoped witness-evidence class - never a
+// display-only filter (REQ-mcp-views' check exception).
+func TestCheckToolForwardsIdsToThePass(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-tools", "REQ-mcp-views")
+	var got []string
+	srv := New(t.TempDir())
+	srv.runCheck = func(_ context.Context, _ bool, ids []string) (*stipulatorv1.CheckResult, error) {
+		got = append([]string(nil), ids...)
+		res := &stipulatorv1.CheckResult{}
+		res.SetPassed(true)
+		res.SetScopePartial(true)
+		res.SetScopeIds(ids)
+		return res, nil
+	}
+	if _, _, err := srv.toolCheck(context.Background(), &mcp.CallToolRequest{Params: &mcp.CallToolParamsRaw{Name: "check"}}, checkIn{Ids: "REQ-a,REQ-b"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0] != "REQ-a" || got[1] != "REQ-b" {
+		t.Fatalf("runCheck received ids %v, want the parsed scope forwarded", got)
+	}
 }

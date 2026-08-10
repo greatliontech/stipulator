@@ -99,6 +99,14 @@ message CheckResult {
   // the execution-layer cause of an all-unwitnessed verdict, named once
   // at result level instead of only per binding.
   string witness_selection_problem = 18;
+
+  // The scoped witness-evidence class (REQ-check-verdict): true when the
+  // caller named requirement identifiers, so only stale subjects bound to
+  // them executed and the verdict excludes scope-blocked rows - a partial
+  // answer, never mistaken for a global one.
+  bool scope_partial = 19;
+  // The requirement identifiers that scoped this pass; empty when global.
+  repeated string scope_ids = 20;
 }
 
 // CheckSummary is the check operation's summary view: the verdict with
@@ -161,6 +169,11 @@ message CheckSummary {
   // witness-selection boundary named once by witness_selection_problem;
   // the per-requirement rows stay on the full view.
   int32 reds_policy_blocked = 29;
+  // The scoped-class mirror (scope_partial/scope_ids on the result),
+  // with reds red solely on the scope boundary folded to a count.
+  bool scope_partial = 30;
+  repeated string scope_ids = 31;
+  int32 reds_scope_blocked = 32;
 }
 
 // CheckRedRow is one red coverage row in the summary: enough to act on

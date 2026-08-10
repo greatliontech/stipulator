@@ -66,7 +66,11 @@ class, the counts, the violations and prune residue, and the reason
 maps aggregated to bounded histograms — with the full check result
 message and identifier scoping opt-in per call under the same
 refused-typo rule; the summary is a projection of the one result
-message, never a second derivation.
+message, never a second derivation. Check's identifier scope narrows the
+pass itself, not only the view: it selects the scoped witness-evidence
+class (REQ-check-verdict), so the verdict a scoped check call reports is
+the flagged-partial scoped one — check's own exception to the
+global-verdict rule, which continues to govern the gate's views.
 
 **REQ-mcp-response-contract** (behavior): Every tool result MUST fit a
 declared budget by construction, in one of four forms: a bounded
@@ -138,8 +142,8 @@ and failure diagnostics.
 
 **REQ-report-check-result** (wire, refines REQ-report-messages): The
 unified check operation MUST return one protobuf check result carrying
-the compile outcome, the evidence class (witness-evidence or
-health-judged), suite health when judged, served, executed, and
+the compile outcome, the evidence class (witness-evidence,
+scoped-partial with the scope echoed, or health-judged), suite health when judged, served, executed, and
 uncacheable witness counts with per-test uncacheable and re-execution
 reasons,
 per-binding verification, coverage buckets, gap evaluation,

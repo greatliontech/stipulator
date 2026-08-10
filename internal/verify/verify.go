@@ -107,6 +107,10 @@ type TestRun struct {
 	// does not cover - witness evidence derives from race invocations, so
 	// these can never witness until the policy covers them.
 	OutsideSubjects map[string]bool
+	// ScopeSkipped marks, by "<import-path>.<TestName>", each stale
+	// subject a caller-named id scope left unexecuted: its bindings read
+	// scope-skipped, never broken (REQ-check-verdict's scoped class).
+	ScopeSkipped map[string]bool
 	// SelectiveServing marks the run's execution class: true when the
 	// selective witness runner produced it — proven-fresh records served
 	// with selective execution of the stale remainder, the degraded
@@ -200,6 +204,9 @@ type BindingResult struct {
 	// cover: it cannot witness until the policy covers it, and its
 	// TestNotRun outcome names that class rather than a tree defect.
 	OutsideWitnessSelection bool
+	// ScopeSkipped marks a tests- or proves-role binding whose stale
+	// subject the caller's id scope left unexecuted.
+	ScopeSkipped bool
 }
 
 // WitnessClass classifies what a bound test quantifies over.
@@ -440,6 +447,7 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 			if testRun != nil && witnessRole(b.GetRole()) {
 				result.TestOutcome = testRun.Outcomes[b.GetSymbol()]
 				result.OutsideWitnessSelection = testRun.OutsideSubjects[b.GetSymbol()]
+				result.ScopeSkipped = testRun.ScopeSkipped[b.GetSymbol()]
 				// RaceEnabled qualifies a witness; a row without a passing
 				// outcome carries no witness to qualify, so it never claims
 				// the run's rigor for an outcome another invocation (or no

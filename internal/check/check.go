@@ -21,6 +21,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
+
+	"github.com/greatliontech/gofresh"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
@@ -47,12 +50,23 @@ import (
 // same execution, and the verdict additionally fails when suite health
 // is unhealthy (REQ-check-verdict). A tree failing the check is a fact
 // in the result, never an error.
-func Run(ctx context.Context, dir string, full bool) (*stipulatorv1.CheckResult, error) {
+//
+// A non-empty scopeIds selects the scoped witness-evidence class:
+// fresh records still serve for the whole tree, only stale subjects
+// bound to the named requirements execute, requirements red solely on
+// that boundary are classed scope-blocked and excluded from the
+// verdict, prune residue is not derived, and the result names the
+// scope. Unknown identifiers refuse. Scoping composes with the default
+// class only - full demands the whole policy by definition.
+func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipulatorv1.CheckResult, error) {
 	// The entry guard keeps every verdict short circuit — compile problems
 	// and policy problems included — behind a live context: a cancelled
 	// run aborts before it can render any partial judgment.
 	if err := ctx.Err(); err != nil {
 		return nil, err
+	}
+	if full && len(scopeIds) > 0 {
+		return nil, errors.New("ids scoping composes with the default witness-evidence class only - suite judgment executes the whole policy by definition")
 	}
 	res := &stipulatorv1.CheckResult{}
 	fsys := os.DirFS(dir)
@@ -119,6 +133,19 @@ func Run(ctx context.Context, dir string, full bool) (*stipulatorv1.CheckResult,
 		}
 		res.SetExecution(report)
 		res.SetSuiteHealthJudged(true)
+	} else if len(scopeIds) > 0 {
+		scope, scopeErr := scopeSubjects(spec, store, scopeIds)
+		if scopeErr != nil {
+			return nil, scopeErr
+		}
+		testRun, err = golang.RunWitnessesScoped(ctx, dir, pol, scope)
+		if err != nil {
+			return nil, err
+		}
+		res.SetScopePartial(true)
+		res.SetScopeIds(append([]string(nil), scopeIds...))
+		res.SetTestsServed(int32(testRun.Fresh))
+		res.SetWitnessDiagnostics(testRun.Diagnostics)
 	} else {
 		testRun, err = golang.RunWitnessesPolicy(ctx, dir, pol)
 		if err != nil {
@@ -185,12 +212,17 @@ func Run(ctx context.Context, dir string, full bool) (*stipulatorv1.CheckResult,
 	// pass the lingering record is visible the moment its requirement
 	// reaches covered.
 	var residue []string
-	for _, g := range cov.Gaps {
-		if g.State == coverage.Resolved {
-			residue = append(residue, g.Path)
+	if len(scopeIds) == 0 {
+		for _, g := range cov.Gaps {
+			if g.State == coverage.Resolved {
+				residue = append(residue, g.Path)
+			}
 		}
+		res.SetPruneResidue(residue)
 	}
-	res.SetPruneResidue(residue)
+	// A scoped pass derives no residue: resolved-gap evidence takes the
+	// serving class over the whole tree (REQ-gap-resolved-pruned), which
+	// a scope deliberately does not provide.
 
 	// The witness-evidence form omits the health term: it demanded no
 	// suite-health disposition, so health can neither pass nor fail it.
@@ -198,9 +230,71 @@ func Run(ctx context.Context, dir string, full bool) (*stipulatorv1.CheckResult,
 	if full {
 		healthy = golang.SuiteHealthy(report)
 	}
+	gatePasses := cov.GatePasses()
+	if len(scopeIds) > 0 {
+		// The scoped verdict excludes rows red solely on the scope
+		// boundary: they were deliberately not executed, and the result
+		// is flagged partial so it is never mistaken for a global one.
+		gatePasses = scopedGatePasses(cov)
+	}
 	res.SetPassed(len(vr.Problems) == 0 &&
 		healthy &&
-		cov.GatePasses() &&
+		gatePasses &&
 		len(residue) == 0)
 	return res, nil
+}
+
+// scopeSubjects resolves the named requirement identifiers to the
+// witness subjects their tests- and proves-role bindings name. Unknown
+// identifiers refuse - a typo must not silently produce an empty scope
+// that executes nothing and passes.
+func scopeSubjects(spec *stipulatorv1.Spec, store *records.Store, ids []string) (map[gofresh.Subject]bool, error) {
+	known := map[string]bool{}
+	for _, r := range spec.GetRequirements() {
+		known[r.GetId()] = true
+	}
+	scope := map[gofresh.Subject]bool{}
+	want := map[string]bool{}
+	for _, id := range ids {
+		if !known[id] {
+			return nil, fmt.Errorf("unknown requirement identifier %q in ids scope", id)
+		}
+		want[id] = true
+	}
+	for _, bf := range store.Bindings {
+		for _, b := range bf.Set.GetBindings() {
+			if !want[b.GetRequirementId()] {
+				continue
+			}
+			role := b.GetRole()
+			if role != stipulatorv1.BindingRole_BINDING_ROLE_TESTS && role != stipulatorv1.BindingRole_BINDING_ROLE_PROVES {
+				continue
+			}
+			// A bound witness symbol is "<import-path>.<TestName>": the
+			// subject splits at the last dot, matching the witness run's
+			// expected-set keying.
+			sym := b.GetSymbol()
+			if i := strings.LastIndex(sym, "."); i > 0 {
+				scope[gofresh.Subject{Package: sym[:i], Symbol: sym[i+1:]}] = true
+			}
+		}
+	}
+	return scope, nil
+}
+
+// scopedGatePasses is the scoped verdict's gate term: every violation
+// whose row is red solely on the scope boundary is excluded.
+func scopedGatePasses(cov *coverage.Report) bool {
+	blocked := map[string]bool{}
+	for _, r := range cov.Requirements {
+		if r.ScopeBlocked {
+			blocked[r.Id] = true
+		}
+	}
+	for _, v := range cov.Violations {
+		if !blocked[v] {
+			return false
+		}
+	}
+	return true
 }

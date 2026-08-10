@@ -200,6 +200,9 @@ message RequirementCoverage {
   // the summary with identical restatements
   // (REQ-check-witness-selection).
   bool witness_selection_blocked = 6;
+  // Red solely because the caller's id scope left its stale bound
+  // witnesses unexecuted - excluded from a scoped check's verdict.
+  bool scope_blocked = 7;
 }
 
 // GapReport is one gap record's evaluated state.

@@ -88,6 +88,10 @@ type Requirement struct {
 	// policy-level cause restated per requirement, foldable behind the
 	// one result-level diagnostic (REQ-check-witness-selection).
 	WitnessSelectionBlocked bool
+	// ScopeBlocked marks a row red solely because the caller's id scope
+	// left its stale bound witnesses unexecuted - excluded from a scoped
+	// check's verdict, never from the gate's.
+	ScopeBlocked bool
 }
 
 // Gap is one gap record's evaluated state.
@@ -207,6 +211,10 @@ type evidence struct {
 	attested      bool
 	attestReasons []string
 	broken, stale bool
+	// scopeSkipped counts broken causes that are the caller's id-scope
+	// boundary: a stale witness the scoped pass deliberately left
+	// unexecuted.
+	scopeSkipped int
 	// outsideSelection counts broken causes that are the policy's
 	// witness-selection boundary; otherRed marks any red cause that is
 	// not. Together they class a red row as policy-blocked — red SOLELY
@@ -302,6 +310,12 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 				if r.OutsideWitnessSelection {
 					e.outsideSelection++
 					e.reasons = append(e.reasons, fmt.Sprintf("bound test %s is outside the policy's witness-eligible selection - witness evidence derives only from race: true invocations or explicit plain_witness: true admissions; cover its package with one", r.Symbol))
+				} else if r.ScopeSkipped {
+					// The caller's id scope left this stale subject
+					// unexecuted: a scope boundary, never a tree defect
+					// (REQ-check-verdict's scoped class).
+					e.scopeSkipped++
+					e.reasons = append(e.reasons, fmt.Sprintf("bound test %s not executed - outside the check's id scope", r.Symbol))
 				} else {
 					e.otherRed = true
 					e.reasons = append(e.reasons, fmt.Sprintf("bound test %s produced no outcome (unwitnessed)", r.Symbol))
@@ -365,7 +379,8 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		rep.Requirements = append(rep.Requirements, Requirement{
 			Id: r.GetId(), Kind: r.GetKind(), Keyword: r.GetKeyword(),
 			Bucket: b, Reasons: e.reasons,
-			WitnessSelectionBlocked: b == Broken && e.outsideSelection > 0 && !e.otherRed && !e.stale,
+			WitnessSelectionBlocked: b == Broken && e.outsideSelection > 0 && e.scopeSkipped == 0 && !e.otherRed && !e.stale,
+			ScopeBlocked:            b == Broken && e.scopeSkipped > 0 && e.outsideSelection == 0 && !e.otherRed && !e.stale,
 		})
 	}
 

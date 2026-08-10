@@ -2303,3 +2303,58 @@ func packageDiagOutput(tr *verify.TestRun, pkg string) string {
 	}
 	return ""
 }
+
+// A degraded freshness path under an id scope executes the scope's own
+// full set, never the tree's: the scope gate keeps holding, and every
+// out-of-scope in-policy subject records scope-skipped
+// (REQ-evidence-freshness-degrade's scoped rule).
+func TestGoRunWitnessesScopedDegradeExecutesScopeOnly(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-freshness-degrade")
+	neutralAmbient(t)
+	if testing.Short() {
+		t.Skip("executes go test over a fixture module")
+	}
+	tmp := writeModule(t, map[string]string{
+		"go.mod": "module example.com/scopedeg\n\ngo 1.26\n",
+		"fine/fine_test.go": `package fine
+
+import "testing"
+
+func TestOK(t *testing.T) {}
+`,
+		"other/other_test.go": `package other
+
+import "testing"
+
+func TestOther(t *testing.T) {}
+`,
+		// The second file fails to parse: view construction faults, the
+		// freshness path degrades.
+		"broken/ok_test.go":     "package broken\n\nimport \"testing\"\n\nfunc TestFine(t *testing.T) {}\n",
+		"broken/broken_test.go": "package broken\n\nfunc {\n",
+	})
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./..."})
+	cfg.SetRace(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", cfg)})
+	writePolicyRecord(t, tmp, p)
+
+	scope := map[gofresh.Subject]bool{{Package: "example.com/scopedeg/fine", Symbol: "TestOK"}: true}
+	tr, err := RunWitnessesScoped(context.Background(), tmp, p, scope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.Degraded == "" {
+		t.Fatal("freshness-path fault did not degrade")
+	}
+	if got := tr.Outcomes["example.com/scopedeg/fine.TestOK"]; got != verify.TestPassed {
+		t.Fatalf("in-scope subject = %v, want executed under the scoped degrade", got)
+	}
+	if _, ran := tr.Outcomes["example.com/scopedeg/other.TestOther"]; ran {
+		t.Fatal("out-of-scope subject executed under the scoped degrade - the fallback was the tree's, not the scope's")
+	}
+	if !tr.ScopeSkipped["example.com/scopedeg/other.TestOther"] {
+		t.Fatalf("out-of-scope subject not recorded scope-skipped: %v", tr.ScopeSkipped)
+	}
+}

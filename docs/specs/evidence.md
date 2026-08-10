@@ -323,7 +323,9 @@ work, it never blocks or weakens witnessing. On the witness-only
 selective path the full witnessing run is that path with an empty served
 set: every subject the accepted policy covers executes under its
 covering invocation, and work the policy leaves outside witnessing stays
-outside, degraded or not.
+outside, degraded or not. On an id-scoped pass the degraded full
+execution is the scope's own — every in-scope subject executes, and the
+scope boundary keeps holding — never the tree's.
 
 **REQ-evidence-attestation** (behavior): An attestation MUST carry its reason
 text and appear distinctly in every coverage output; it is the weakest

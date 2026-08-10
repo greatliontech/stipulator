@@ -86,6 +86,51 @@ func TestCheckRenderNamesDegradedDistinctly(t *testing.T) {
 	}
 }
 
+// A scoped pass renders its own verdict class — the partial line naming
+// the scope — and violations red solely on the scope boundary render as
+// dimmed scope-blocked notes, never as violations. Without the partial
+// flag the row marker changes nothing.
+func TestCheckRenderScopedPartialVerdictAndScopeBlockedRows(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-verdict")
+	blocked := &stipulatorv1.RequirementCoverage{}
+	blocked.SetId("REQ-blocked")
+	blocked.SetBucket(stipulatorv1.Bucket_BUCKET_BROKEN)
+	blocked.SetReasons([]string{"bound test example.com/m.TestB not executed - outside the check's id scope"})
+	blocked.SetScopeBlocked(true)
+	cov := &stipulatorv1.CoverageReport{}
+	cov.SetRequirements([]*stipulatorv1.RequirementCoverage{blocked})
+	cov.SetViolations([]string{"REQ-blocked"})
+	res := &stipulatorv1.CheckResult{}
+	res.SetPassed(true)
+	res.SetCoverage(cov)
+	res.SetScopePartial(true)
+	res.SetScopeIds([]string{"REQ-a"})
+
+	var stdout, stderr bytes.Buffer
+	renderCheck(&stdout, &stderr, res)
+	if !strings.Contains(stdout.String(), "check: pass (partial - scoped to REQ-a)") {
+		t.Errorf("scoped verdict line missing:\n%s", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "scope-blocked: REQ-blocked was not executed on this scoped pass") {
+		t.Errorf("scope-blocked note missing:\n%s", stderr.String())
+	}
+	if strings.Contains(stderr.String(), "is red and no gap excuses it") {
+		t.Errorf("scope-blocked row rendered as a violation:\n%s", stderr.String())
+	}
+
+	res.SetScopePartial(false)
+	res.SetScopeIds(nil)
+	stdout.Reset()
+	stderr.Reset()
+	renderCheck(&stdout, &stderr, res)
+	if !strings.Contains(stderr.String(), "violation:") || !strings.Contains(stderr.String(), "is red and no gap excuses it") {
+		t.Errorf("global pass hid a violation behind a stale scope marker:\n%s", stderr.String())
+	}
+	if strings.Contains(stdout.String(), "partial - scoped") {
+		t.Errorf("global verdict rendered as scoped:\n%s", stdout.String())
+	}
+}
+
 func TestCheckJSONProjectionIsDeterministic(t *testing.T) {
 	stipulate.Covers(t, "REQ-report-check-result")
 	// The exact-bytes pin is the determinism claim: protojson randomizes
