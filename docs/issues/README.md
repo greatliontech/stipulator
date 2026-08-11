@@ -63,3 +63,8 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   a direct-call-absence verb (structural.NoCall) would carry them. *Lands: when a
   structural requirement next needs a call-absence proof and the signature/import verbs
   demonstrably cannot carry it.*
+- **[build-tagged-symbol-binding](build-tagged-symbol-binding.md)** — binding-side symbol
+  resolution loads the tree with no build tags while execution discovery is tag-aware, so a
+  policy-run tag-gated test (the dst leg's witnesses) resolves NotFound and can never bind;
+  gaps whose planned enforcement is a DST arm cannot retire with enforcement bound.
+  *Lands: cross-tool train chunk 84 — needed before tugboat's lifecycle chunk 12.*
