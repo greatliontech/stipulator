@@ -45,3 +45,11 @@ file edit invalidates the right witnesses.
 Cross-tool train chunk 84 (gofresh `docs/plans/cross-tool-train.md`).
 Deadline pressure: needed before tugboat's lifecycle chunk 12 opens
 its close-out (the four-gap retirement above).
+
+**BLOCKING NOW (2026-08-13):** tugboat's lifecycle chunk 12 is open
+and at this gate. The consumer side is complete — the composed-fence
+DST sweep and its sibling legs exist, pass, and are the named
+enforcement for the four fired gaps (plus
+REQ-node-support-stability's) — and a probe bind of a dst-tagged
+symbol refuses with NotFound exactly as this issue describes. Five
+retirements and the plan's close-out wait on this capability alone.
