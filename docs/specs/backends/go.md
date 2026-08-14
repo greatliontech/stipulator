@@ -23,8 +23,10 @@ resolve the symbol through the Go type checker and compare shape hashes; a
 package load failure is a verification error, not an absence.
 
 **REQ-go-build-selections** (behavior): Symbol resolution MUST span the
-accepted policy's build-tag dimension - one package view
-per distinct invocation tag-set beside the default no-tag view, derived
+accepted policy's build-tag dimension - one package view per distinct
+invocation (tag-set, toolchain) pair beside the default no-tag view,
+each view loading under its own selection's toolchain exactly as its
+invocation executes, derived
 from the policy record itself (the policy is the authority on which
 selections exist; no separate configuration names them) - so a symbol
 declared only under a build tag resolves, shape-hashes, and binds
@@ -35,7 +37,11 @@ declaring view's file is the symbol's file for impact and freshness
 keying, so a tag-gated edit invalidates the witnesses it declares. A
 tree without a policy record resolves the default view alone; a
 malformed record is a verification error, never a silent narrowing to
-the default view.
+the default view. A tagged view that cannot load degrades to a named
+refusal - binding stays healthy for every symbol the loaded views
+resolve, while a reference they cannot answer refuses with the
+degraded view named, never a silent absence that masks an unloadable
+view.
 
 **REQ-go-workspace** (behavior): A verification tree MAY be a Go
 workspace: symbol resolution and witnessing span every `go.work` member,

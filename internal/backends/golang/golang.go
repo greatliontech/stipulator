@@ -32,6 +32,13 @@ import (
 // workspace whose go.work members are all in scope.
 type Backend struct {
 	pkgs []*packages.Package
+	// viewErrors names tagged views whose load failed whole (a broken
+	// or absent selection toolchain): binding stays healthy for every
+	// symbol the loaded views resolve, while a reference the loaded
+	// views cannot answer refuses with the degraded views named -
+	// never a silent NotFound that masks an unloadable view
+	// (REQ-go-build-selections).
+	viewErrors []string
 	// load labels each package with the packages.Load call that
 	// produced it: one load per (workspace member, build selection),
 	// each with its own token.FileSet, so position containment is only
@@ -64,10 +71,22 @@ func newContext(ctx context.Context, dir string) (*Backend, error) {
 		return nil, err
 	}
 	var pkgs []*packages.Package
+	var viewErrors []string
 	loadIndex := map[*packages.Package]int{}
 	loads := 0
-	for _, tags := range selections {
+	for _, sel := range selections {
+		viewEnv := env
+		if sel.toolchain != "" {
+			// The selection's view loads under the selection's
+			// toolchain, exactly as its invocation executes - a
+			// toolchain'd tag view under the ambient toolchain would
+			// miss the selection's own stdlib surface
+			// (REQ-go-build-selections).
+			viewEnv = append(dropEnv(append([]string(nil), env...), "GOTOOLCHAIN"), "GOTOOLCHAIN="+sel.toolchain)
+		}
 		var viewPkgs []*packages.Package
+		viewLoads := map[*packages.Package]int{}
+		viewFailed := false
 		for _, m := range members {
 			cfg := &packages.Config{
 				Context: ctx,
@@ -75,21 +94,36 @@ func newContext(ctx context.Context, dir string) (*Backend, error) {
 					packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports |
 					packages.NeedEmbedFiles,
 				Dir:   filepath.Join(dir, m),
-				Env:   env,
+				Env:   viewEnv,
 				Tests: true,
 			}
-			if len(tags) > 0 {
-				cfg.BuildFlags = []string{"-tags=" + strings.Join(tags, ",")}
+			if len(sel.tags) > 0 {
+				cfg.BuildFlags = []string{"-tags=" + strings.Join(sel.tags, ",")}
 			}
 			loaded, err := packages.Load(cfg, "./...")
 			if err != nil {
-				return nil, fmt.Errorf("loading Go packages in %s: %w", m, err)
+				if len(sel.tags) == 0 {
+					return nil, fmt.Errorf("loading Go packages in %s: %w", m, err)
+				}
+				// A tagged view that cannot load degrades to a named
+				// refusal instead of failing the whole binding context:
+				// the pre-existing views' binding health is the floor,
+				// and the view's own symbols refuse with this reason.
+				viewErrors = append(viewErrors, fmt.Sprintf("build selection -tags=%s (toolchain %q): loading Go packages in %s: %v", strings.Join(sel.tags, ","), sel.toolchain, m, err))
+				viewFailed = true
+				break
 			}
 			for _, pkg := range loaded {
-				loadIndex[pkg] = loads
+				viewLoads[pkg] = loads
 			}
 			loads++
 			viewPkgs = append(viewPkgs, loaded...)
+		}
+		if viewFailed {
+			continue
+		}
+		for pkg, load := range viewLoads {
+			loadIndex[pkg] = load
 		}
 		// Deterministic candidate order within a view; views concatenate
 		// in selection order - default first, then the policy's tagged
@@ -102,7 +136,7 @@ func newContext(ctx context.Context, dir string) (*Backend, error) {
 	if err != nil {
 		return nil, fmt.Errorf("resolving tree root %s: %w", dir, err)
 	}
-	return &Backend{pkgs: pkgs, load: loadIndex, dir: abs}, nil
+	return &Backend{pkgs: pkgs, load: loadIndex, viewErrors: viewErrors, dir: abs}, nil
 }
 
 // policyBuildSelections derives the resolution views from the accepted
@@ -114,10 +148,18 @@ func newContext(ctx context.Context, dir string) (*Backend, error) {
 // configuration surface. A tree without a record resolves the default
 // view alone; a malformed record is a verification error, never a
 // silent narrowing.
-func policyBuildSelections(dir string) ([][]string, error) {
+// buildSelection is one resolution view's identity: the invocation's
+// tag-set and its toolchain - a view is the pair, never the tags alone
+// (REQ-go-build-selections).
+type buildSelection struct {
+	tags      []string
+	toolchain string
+}
+
+func policyBuildSelections(dir string) ([]buildSelection, error) {
 	raw, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(policy.Path)))
 	if os.IsNotExist(err) {
-		return [][]string{nil}, nil
+		return []buildSelection{{}}, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("reading the accepted policy for resolution build selections: %w", err)
@@ -126,34 +168,45 @@ func policyBuildSelections(dir string) ([][]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("resolution build selections: %w", err)
 	}
-	selections := [][]string{nil}
+	selections := []buildSelection{{}}
 	seen := map[string]bool{}
 	for _, inv := range p.GetInvocations() {
 		tags := inv.GetGo().GetTags()
 		if len(tags) == 0 {
 			continue
 		}
+		toolchain := inv.GetGo().GetToolchain()
 		sorted := append([]string(nil), tags...)
 		sort.Strings(sorted)
-		key := strings.Join(sorted, ",")
+		key := strings.Join(sorted, ",") + "\x00" + toolchain
 		if seen[key] {
 			continue
 		}
 		seen[key] = true
-		selections = append(selections, append([]string(nil), tags...))
+		selections = append(selections, buildSelection{tags: append([]string(nil), tags...), toolchain: toolchain})
 	}
 	return selections, nil
 }
 
 // Resolve implements verify.Backend.
 func (b *Backend) Resolve(symbol string) (verify.Resolution, string, error) {
+	// The degraded-view refusal precedes every silent-NotFound arm: a
+	// reference the loaded views cannot even prefix-match could live in
+	// the unloadable view, and the amended contract forbids a silent
+	// absence that masks one (REQ-go-build-selections).
+	notFound := func() (verify.Resolution, string, error) {
+		if len(b.viewErrors) > 0 {
+			return verify.NotFound, "", fmt.Errorf("symbol unresolved and %d build-selection view(s) failed to load: %s", len(b.viewErrors), strings.Join(b.viewErrors, "; "))
+		}
+		return verify.NotFound, "", nil
+	}
 	pkgPath, rest := b.splitSymbol(symbol)
 	if pkgPath == "" {
-		return verify.NotFound, "", nil
+		return notFound()
 	}
 	parts := strings.Split(rest, ".")
 	if len(parts) == 0 || len(parts) > 2 {
-		return verify.NotFound, "", nil
+		return notFound()
 	}
 	for _, pkg := range b.pkgs {
 		if pkg.PkgPath != pkgPath && pkg.PkgPath != pkgPath+"_test" {
@@ -171,13 +224,16 @@ func (b *Backend) Resolve(symbol string) (verify.Resolution, string, error) {
 		}
 		return verify.Resolved, shapeHash(obj), nil
 	}
-	return verify.NotFound, "", nil
+	return notFound()
 }
 
 // SymbolFile returns the tree-relative, slash-separated path of the file
 // declaring the symbol, and false when the symbol does not resolve or its
 // declaration lies outside the loaded tree (a method promoted from an
-// out-of-tree embedded type declares elsewhere).
+// out-of-tree embedded type declares elsewhere). Best-effort by
+// contract: a degraded build-selection view yields false here - the
+// advisory impact preview omits the binding - while Resolve refuses
+// loudly for the same reference, which is what bind and verify consult.
 func (b *Backend) SymbolFile(symbol string) (string, bool) {
 	pkgPath, rest := b.splitSymbol(symbol)
 	if pkgPath == "" {

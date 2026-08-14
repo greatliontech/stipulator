@@ -289,3 +289,82 @@ func Which(x string) string { return x }
 		t.Fatalf("SymbolFile = %q %v, want the first tagged view's declaration", file, ok)
 	}
 }
+
+// A view's identity is the invocation's tag-set AND toolchain: the
+// selection's view loads under its own toolchain (a valid one
+// resolves; a broken one proves the env reached the load), an
+// unloadable tagged view degrades to a named refusal instead of
+// failing the whole binding context, and a reference the loaded views
+// cannot answer refuses with the degraded view named - never a silent
+// NotFound (REQ-go-build-selections).
+func TestTaggedViewLoadsUnderSelectionToolchain(t *testing.T) {
+	dir := buildSelectionModule(t)
+	write := func(toolchain string) {
+		t.Helper()
+		dstCfg := &stipulatorv1.GoInvocationConfig{}
+		dstCfg.SetPackages([]string{"./..."})
+		dstCfg.SetTags([]string{"dst"})
+		dstCfg.SetToolchain(toolchain)
+		plainCfg := &stipulatorv1.GoInvocationConfig{}
+		plainCfg.SetPackages([]string{"./..."})
+		p := &stipulatorv1.TestPolicy{}
+		p.SetInvocations([]*stipulatorv1.PolicyInvocation{
+			goInvocation("all", plainCfg),
+			goInvocation("dst", dstCfg),
+		})
+		writePolicyRecord(t, dir, p)
+	}
+
+	write("local")
+	b, err := newContext(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res, _, err := b.Resolve("example.com/tagged.TestCrashSchedule"); err != nil || res != verify.Resolved {
+		t.Fatalf("valid-toolchain dst view = %v, %v; want Resolved", res, err)
+	}
+
+	write("definitely-not-a-toolchain")
+	b, err = newContext(context.Background(), dir)
+	if err != nil {
+		t.Fatalf("a broken tagged view failed the whole binding context: %v", err)
+	}
+	if res, _, err := b.Resolve("example.com/tagged.Plain"); err != nil || res != verify.Resolved {
+		t.Fatalf("healthy remainder lost: %v, %v", res, err)
+	}
+	if _, _, err := b.Resolve("example.com/tagged.TestCrashSchedule"); err == nil || !strings.Contains(err.Error(), "build selection") {
+		t.Fatalf("dst reference err = %v, want the degraded view named", err)
+	}
+}
+
+// Two invocations sharing a tag-set under different toolchains are two
+// distinct views (REQ-go-build-selections).
+func TestPolicyBuildSelectionsSplitToolchains(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example.com/split\n\ngo 1.24\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	a := &stipulatorv1.GoInvocationConfig{}
+	a.SetPackages([]string{"./..."})
+	a.SetTags([]string{"dst"})
+	a.SetToolchain("go1.24.0")
+	b := &stipulatorv1.GoInvocationConfig{}
+	b.SetPackages([]string{"./..."})
+	b.SetTags([]string{"dst"})
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{
+		goInvocation("one", a),
+		goInvocation("two", b),
+	})
+	writePolicyRecord(t, dir, p)
+	selections, err := policyBuildSelections(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(selections) != 3 {
+		t.Fatalf("selections = %+v, want default + two distinct (tags, toolchain) views", selections)
+	}
+	if selections[1].toolchain != "go1.24.0" || selections[2].toolchain != "" {
+		t.Fatalf("selections = %+v, want toolchains split in policy order", selections)
+	}
+}
