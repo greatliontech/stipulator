@@ -11,6 +11,12 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   implicit race tag are invisible to both discovery and resolution; tag-set views cover
   only the tags dimension. *Lands: a policy declares a race-gated or goos-gated test the
   corpus must bind.*
+- **[multiply-selected-witness-identity](multiply-selected-witness-identity.md)** — on the
+  tugboat corpus every invocation selects `./...`, every witness is multiply-selected,
+  and records carry no per-invocation identity: 927/927 uncacheable, the serving path
+  never engages, every chunk-gate check re-executes the world. *Lands: with the
+  witness-record identity fix (shared-view family); verified by a tugboat warm-tree
+  check serving a nonzero witness majority.*
 - **[cerebro-uncacheable-mass-measured](cerebro-uncacheable-mass-measured.md)** — 2,407
   uncacheable witnesses make the cerebro check re-execute everything (~22 min vs a ~2-min
   floor family); reason classes quantified, fixes owned by gofresh's bracket/classifier

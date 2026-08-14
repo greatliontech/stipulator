@@ -3,6 +3,7 @@ package golang
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/greatliontech/gofresh/runtimeinput"
 
@@ -186,10 +187,34 @@ func incompleteObservationReason(st *streamState, waitErr error, disposition sti
 // it, which is why no test can distinguish dropping the spawn-side call
 // alone.
 func witnessProcessEnv(n *NormalizedInvocation, frame observationFrame) []string {
+	env := witnessWidthEnv(n)
 	if frame.frame.PkgDir == "" {
-		return n.Env
+		return env
 	}
-	return setEnv(append([]string(nil), n.Env...), "PWD", frame.frame.PkgDir)
+	return setEnv(env, "PWD", frame.frame.PkgDir)
+}
+
+// witnessWidthEnv applies the unit's inner-parallelism cap to the
+// frozen invocation environment as GOMAXPROCS - the one entry the go
+// tool's build workers and -p default, and the test binary's scheduler
+// and -parallel default, all honor; an explicit flag is deliberately
+// not emitted because it would override an environment bound the
+// default never does. The cap only ever narrows: an environment
+// already carrying a narrower positive GOMAXPROCS keeps it. Feeding
+// the single spawn-and-ingest source makes the injected value part of
+// the recorded observation environment by construction: a witness that
+// reads GOMAXPROCS records the value its process actually saw, and
+// exactly those witnesses re-execute when the width moves with the
+// unit bound - a mirror hiding the injection would serve stale
+// verdicts to width-sensitive witnesses instead.
+func witnessWidthEnv(n *NormalizedInvocation) []string {
+	width := witnessChildWidth(n)
+	if v, ok := lookupEnv(n.Env, "GOMAXPROCS"); ok {
+		if ambient, err := strconv.Atoi(v); err == nil && ambient > 0 && ambient <= width {
+			return n.Env
+		}
+	}
+	return setEnv(n.Env, "GOMAXPROCS", strconv.Itoa(width))
 }
 
 // incompleteObservation is the fail-closed record: a launched process

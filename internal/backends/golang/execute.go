@@ -326,6 +326,22 @@ func witnessSpawnBound(n *NormalizedInvocation) int {
 	return bound
 }
 
+// witnessChildWidth derives one unit's inner-parallelism width: the
+// parent's processor budget over the unit bound, floored at one, so
+// units x per-unit width stays at most the processor count - without
+// it each unit is a full-width process tree and the fan-out multiplies
+// into units x procs runnable threads, the load the unit bound alone
+// never limited. Deriving from the parent's own GOMAXPROCS budget
+// (not the raw core count) honors an operator who already narrowed
+// the stipulator process.
+func witnessChildWidth(n *NormalizedInvocation) int {
+	width := runtime.GOMAXPROCS(0) / witnessSpawnBound(n)
+	if width < 1 {
+		width = 1
+	}
+	return width
+}
+
 // runPackage executes one package's `go test -json` in an owned child
 // process — narrowed to the selected top-level runnables when selection
 // is non-nil, the test binary's testlog directed to a per-process capture

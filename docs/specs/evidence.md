@@ -201,7 +201,15 @@ aggregate the reasons; the per-test attribution rides the machine
 result. Witness packages
 execute concurrently under the invocation's reviewed concurrency bound —
 half the processor count by default, since each package process is itself
-a parallel process tree — which assumes what
+a parallel process tree — and each unit's inner parallelism is capped at
+the parent's processor budget over the unit bound, floored at one and
+delivered through the spawn environment (never widening an environment
+already narrower), so units times per-unit width stays at most the
+processor count instead of multiplying into a host-freezing fan-out; the
+spawn environment and the observation ingest environment are one source,
+so a witness that observably reads the delivered width records the value
+its process actually saw and re-executes exactly when the width moves
+with the unit bound. The concurrent execution assumes what
 standard Go tooling already assumes of them (`go test` runs packages
 in parallel by default): witnesses do not mutate inputs other packages
 observe. A suite violating that is caught whenever the interference

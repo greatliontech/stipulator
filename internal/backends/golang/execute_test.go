@@ -943,3 +943,96 @@ func TestWitnessSpawnBound(t *testing.T) {
 		t.Fatalf("default bound = %d, want %d", got, want)
 	}
 }
+
+// Each unit's inner width is the parent's processor budget over the
+// unit bound, floored at one, so units x per-unit width stays at most
+// the processor count (the evidence spec's concurrency clause).
+func TestWitnessChildWidth(t *testing.T) {
+	procs := runtime.GOMAXPROCS(0)
+	for _, test := range []struct {
+		concurrency int32
+		want        int
+	}{
+		{concurrency: 1, want: procs},
+		{concurrency: int32(procs), want: 1},
+		{concurrency: int32(10 * procs), want: 1},
+	} {
+		n := &NormalizedInvocation{WitnessConcurrency: test.concurrency}
+		if got := witnessChildWidth(n); got != test.want {
+			t.Errorf("width at concurrency %d = %d, want %d", test.concurrency, got, test.want)
+		}
+	}
+	units := witnessSpawnBound(&NormalizedInvocation{})
+	width := witnessChildWidth(&NormalizedInvocation{})
+	if units*width > procs+units {
+		t.Fatalf("default units %d x width %d overcommits %d processors", units, width, procs)
+	}
+}
+
+// The cap rides the single spawn-and-ingest environment source as
+// GOMAXPROCS and only ever narrows: an already-narrower ambient value
+// is kept, a wider or malformed one is replaced, and the framed arm
+// carries the PWD pin beside it (the evidence spec's concurrency
+// clause).
+func TestWitnessWidthEnv(t *testing.T) {
+	procs := runtime.GOMAXPROCS(0)
+	full := &NormalizedInvocation{WitnessConcurrency: int32(procs)} // width 1
+	if v, ok := lookupEnv(witnessWidthEnv(&NormalizedInvocation{WitnessConcurrency: int32(procs), Env: []string{"A=1"}}), "GOMAXPROCS"); !ok || v != "1" {
+		t.Fatalf("injected width = %q/%v, want 1", v, ok)
+	}
+	if procs > 1 {
+		wide := &NormalizedInvocation{WitnessConcurrency: 1, Env: []string{"GOMAXPROCS=1"}} // width procs
+		if v, _ := lookupEnv(witnessWidthEnv(wide), "GOMAXPROCS"); v != "1" {
+			t.Fatalf("narrower ambient replaced with %q, want kept at 1", v)
+		}
+	}
+	full.Env = []string{"GOMAXPROCS=9999"}
+	if v, _ := lookupEnv(witnessWidthEnv(full), "GOMAXPROCS"); v != "1" {
+		t.Fatalf("wider ambient = %q, want narrowed to 1", v)
+	}
+	full.Env = []string{"GOMAXPROCS=lots"}
+	if v, _ := lookupEnv(witnessWidthEnv(full), "GOMAXPROCS"); v != "1" {
+		t.Fatalf("malformed ambient = %q, want narrowed to 1", v)
+	}
+	framed := witnessProcessEnv(&NormalizedInvocation{WitnessConcurrency: int32(procs), Env: []string{"A=1"}}, observationFrame{})
+	if v, ok := lookupEnv(framed, "GOMAXPROCS"); !ok || v != "1" {
+		t.Fatalf("frameless spawn env width = %q/%v, want 1", v, ok)
+	}
+}
+
+// The cap genuinely reaches the witness process: the armed fixture
+// probe passes exactly when the child's GOMAXPROCS equals the derived
+// width, and the negative arm - a unit bound of one, whose width is
+// the full budget - proves the armed probe runs rather than skips, so
+// the positive arm's pass really discriminated the delivered
+// environment (the evidence spec's concurrency clause).
+func TestGoExecuteDeliversInnerParallelismCap(t *testing.T) {
+	neutralAmbient(t)
+	t.Setenv("STIPULATOR_FIXTURE_REQUIRE_WIDTH", "1")
+	procs := runtime.GOMAXPROCS(0)
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./widthprobe"})
+	cfg.SetWitnessConcurrency(int32(procs)) // width 1
+	health, tests, diags := executeInvocation(t, time.Minute, cfg, "widthcap")
+	if got := health.GetDisposition(); got != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+		t.Fatalf("capped probe disposition = %v, want HEALTHY - the width did not reach the child env (diags: %v)", got, diags)
+	}
+	tr := findTest(tests, "example.com/exec/widthprobe", "TestWidthDelivered")
+	if tr == nil || tr.GetOutcome() != stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED {
+		t.Fatalf("armed probe = %v, want PASSED under the delivered width", tr)
+	}
+	if procs == 1 {
+		t.Skip("single-processor host: the negative arm's width equals the armed value")
+	}
+	cfg = &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./widthprobe"})
+	cfg.SetWitnessConcurrency(1) // width = procs, not the armed 1
+	health, tests, _ = executeInvocation(t, time.Minute, cfg, "widthcap-negative")
+	if got := packageDisposition(t, health, "example.com/exec/widthprobe"); got != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED {
+		t.Fatalf("negative arm disposition = %v, want TEST_FAILED - the armed probe skipped or saw the wrong width", got)
+	}
+	tr = findTest(tests, "example.com/exec/widthprobe", "TestWidthDelivered")
+	if tr == nil || tr.GetOutcome() != stipulatorv1.TestOutcome_TEST_OUTCOME_FAILED {
+		t.Fatalf("negative-arm probe = %v, want FAILED at the full-budget width", tr)
+	}
+}
