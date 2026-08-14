@@ -91,17 +91,31 @@ func (b *Backend) Slice(symbols []string) ([]verify.Decl, error) {
 		walkType(obj.Type(), 0)
 	}
 
-	decls := make([]verify.Decl, 0, len(seen))
-	for obj := range seen {
+	// One row per fact: with one package view per build selection, the
+	// same declaration is reached through two views' object identities,
+	// and identity-keyed dedup would emit it twice. The key spans the
+	// shape hash - same-named facts that genuinely differ (two types'
+	// same-named methods, complementary tag variants) keep their rows -
+	// and the frontier's add order is deterministic, so the emitted set
+	// is canonical (REQ-go-slice, REQ-go-build-selections).
+	emitted := map[[3]string]bool{}
+	decls := make([]verify.Decl, 0, len(frontier))
+	for _, obj := range frontier {
 		pkgPath := ""
 		if obj.Pkg() != nil {
 			pkgPath = obj.Pkg().Path()
 		}
+		shape := shapeHash(obj)
+		key := [3]string{pkgPath, obj.Name(), shape}
+		if emitted[key] {
+			continue
+		}
+		emitted[key] = true
 		decls = append(decls, verify.Decl{
 			Package:     pkgPath,
 			Name:        obj.Name(),
 			Declaration: types.ObjectString(obj, func(p *types.Package) string { return p.Path() }),
-			ShapeHash:   shapeHash(obj),
+			ShapeHash:   shape,
 		})
 	}
 	sort.Slice(decls, func(i, j int) bool {

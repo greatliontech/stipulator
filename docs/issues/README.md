@@ -7,6 +7,10 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   requirements' content pins await re-consent, the summary diet's deleted histogram
   tests still have bindings, and several new tests register coverage unbacked. *Lands:
   before the next stipulator release tag.*
+- **[goos-race-build-dimensions](goos-race-build-dimensions.md)** — GOOS/GOARCH and the
+  implicit race tag are invisible to both discovery and resolution; tag-set views cover
+  only the tags dimension. *Lands: a policy declares a race-gated or goos-gated test the
+  corpus must bind.*
 - **[cerebro-uncacheable-mass-measured](cerebro-uncacheable-mass-measured.md)** — 2,407
   uncacheable witnesses make the cerebro check re-execute everything (~22 min vs a ~2-min
   floor family); reason classes quantified, fixes owned by gofresh's bracket/classifier
@@ -68,8 +72,3 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   a direct-call-absence verb (structural.NoCall) would carry them. *Lands: when a
   structural requirement next needs a call-absence proof and the signature/import verbs
   demonstrably cannot carry it.*
-- **[build-tagged-symbol-binding](build-tagged-symbol-binding.md)** — binding-side symbol
-  resolution loads the tree with no build tags while execution discovery is tag-aware, so a
-  policy-run tag-gated test (the dst leg's witnesses) resolves NotFound and can never bind;
-  gaps whose planned enforcement is a DST arm cannot retire with enforcement bound.
-  *Lands: cross-tool train chunk 84 — needed before tugboat's lifecycle chunk 12.*

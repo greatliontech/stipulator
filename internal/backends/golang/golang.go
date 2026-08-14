@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/types"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -20,6 +21,8 @@ import (
 	"unicode/utf8"
 
 	"golang.org/x/tools/go/packages"
+
+	"github.com/greatliontech/stipulator/internal/policy"
 
 	"github.com/greatliontech/stipulator/internal/canon"
 	"github.com/greatliontech/stipulator/internal/verify"
@@ -29,6 +32,12 @@ import (
 // workspace whose go.work members are all in scope.
 type Backend struct {
 	pkgs []*packages.Package
+	// load labels each package with the packages.Load call that
+	// produced it: one load per (workspace member, build selection),
+	// each with its own token.FileSet, so position containment is only
+	// meaningful between packages of the same load
+	// (REQ-go-build-selections).
+	load map[*packages.Package]int
 	// dir is the absolute tree root New loaded, kept to reconcile
 	// Fset-absolute file paths back to the tree-relative paths the corpus
 	// and the git layer speak in.
@@ -50,30 +59,90 @@ func newContext(ctx context.Context, dir string) (*Backend, error) {
 		return nil, err
 	}
 	env := goworkEnv(dir)
-	var pkgs []*packages.Package
-	for _, m := range members {
-		cfg := &packages.Config{
-			Context: ctx,
-			Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax |
-				packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports |
-				packages.NeedEmbedFiles,
-			Dir:   filepath.Join(dir, m),
-			Env:   env,
-			Tests: true,
-		}
-		loaded, err := packages.Load(cfg, "./...")
-		if err != nil {
-			return nil, fmt.Errorf("loading Go packages in %s: %w", m, err)
-		}
-		pkgs = append(pkgs, loaded...)
+	selections, err := policyBuildSelections(dir)
+	if err != nil {
+		return nil, err
 	}
-	// Deterministic candidate order regardless of load order.
-	sort.Slice(pkgs, func(i, j int) bool { return pkgs[i].ID < pkgs[j].ID })
+	var pkgs []*packages.Package
+	loadIndex := map[*packages.Package]int{}
+	loads := 0
+	for _, tags := range selections {
+		var viewPkgs []*packages.Package
+		for _, m := range members {
+			cfg := &packages.Config{
+				Context: ctx,
+				Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax |
+					packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports |
+					packages.NeedEmbedFiles,
+				Dir:   filepath.Join(dir, m),
+				Env:   env,
+				Tests: true,
+			}
+			if len(tags) > 0 {
+				cfg.BuildFlags = []string{"-tags=" + strings.Join(tags, ",")}
+			}
+			loaded, err := packages.Load(cfg, "./...")
+			if err != nil {
+				return nil, fmt.Errorf("loading Go packages in %s: %w", m, err)
+			}
+			for _, pkg := range loaded {
+				loadIndex[pkg] = loads
+			}
+			loads++
+			viewPkgs = append(viewPkgs, loaded...)
+		}
+		// Deterministic candidate order within a view; views concatenate
+		// in selection order - default first, then the policy's tagged
+		// views - so resolution's first-declaring-view rule falls out of
+		// plain iteration (REQ-go-build-selections).
+		sort.Slice(viewPkgs, func(i, j int) bool { return viewPkgs[i].ID < viewPkgs[j].ID })
+		pkgs = append(pkgs, viewPkgs...)
+	}
 	abs, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, fmt.Errorf("resolving tree root %s: %w", dir, err)
 	}
-	return &Backend{pkgs: pkgs, dir: abs}, nil
+	return &Backend{pkgs: pkgs, load: loadIndex, dir: abs}, nil
+}
+
+// policyBuildSelections derives the resolution views from the accepted
+// policy record: the default no-tag view first, then one view per
+// distinct invocation tag-set in the policy's canonical invocation
+// order (REQ-go-build-selections). The policy is the authority on
+// which build selections exist - execution discovery already runs
+// them - so resolution reads the same record rather than growing a
+// configuration surface. A tree without a record resolves the default
+// view alone; a malformed record is a verification error, never a
+// silent narrowing.
+func policyBuildSelections(dir string) ([][]string, error) {
+	raw, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(policy.Path)))
+	if os.IsNotExist(err) {
+		return [][]string{nil}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("reading the accepted policy for resolution build selections: %w", err)
+	}
+	p, err := policy.Parse(raw)
+	if err != nil {
+		return nil, fmt.Errorf("resolution build selections: %w", err)
+	}
+	selections := [][]string{nil}
+	seen := map[string]bool{}
+	for _, inv := range p.GetInvocations() {
+		tags := inv.GetGo().GetTags()
+		if len(tags) == 0 {
+			continue
+		}
+		sorted := append([]string(nil), tags...)
+		sort.Strings(sorted)
+		key := strings.Join(sorted, ",")
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		selections = append(selections, append([]string(nil), tags...))
+	}
+	return selections, nil
 }
 
 // Resolve implements verify.Backend.
@@ -97,7 +166,7 @@ func (b *Backend) Resolve(symbol string) (verify.Resolution, string, error) {
 		if obj == nil {
 			continue
 		}
-		if b.generated(obj) {
+		if b.generatedIn(pkg, obj) {
 			return verify.GeneratedFile, "", nil
 		}
 		return verify.Resolved, shapeHash(obj), nil
@@ -467,13 +536,23 @@ func shapeHash(obj types.Object) string {
 // so a method promoted from an embedded generated type is still detected.
 // A declaring package outside the load set cannot be checked and reads as
 // not generated.
-func (b *Backend) generated(obj types.Object) bool {
+// generatedIn judges the object within the resolving package's own
+// load: a promoted method's declaring file lives in the object's
+// origin package - possibly a sibling of the resolving package - so
+// the scan spans the load's packages sharing the origin path.
+// Position containment is only meaningful inside one load's FileSet:
+// with one package view per build selection, the same package path
+// recurs across views with incompatible FileSets, and a cross-load
+// scan would take the verdict from a foreign view's file
+// nondeterministically (REQ-go-build-selections).
+func (b *Backend) generatedIn(resolving *packages.Package, obj types.Object) bool {
 	pos := obj.Pos()
 	if !pos.IsValid() || obj.Pkg() == nil {
 		return false
 	}
+	load := b.load[resolving]
 	for _, pkg := range b.pkgs {
-		if pkg.PkgPath != obj.Pkg().Path() {
+		if b.load[pkg] != load || pkg.PkgPath != obj.Pkg().Path() {
 			continue
 		}
 		for _, f := range pkg.Syntax {
