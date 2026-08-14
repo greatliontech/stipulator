@@ -639,3 +639,30 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "2ddb74e083ef93323368dbe13b329fbc45c7cf1c9002a6d73265783d4c35e7f4"
 }
+
+bindings {
+  requirement_id: "REQ-policy-attribution"
+  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoObserveProcessForwardsClassificationRoots"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "0386ef685accabaa5dff74b51d36cfc04d22b061e9b7c0ba5969cdfb9865b632"
+}
+
+bindings {
+  requirement_id: "REQ-policy-attribution"
+  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoObservationFrameExcludesReviewedPathsFromBracket"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c1156b80fcc31b0604853cf945e5d9ac0ef90491933144b03b22a390eb0d1c78"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation"
+  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoObserveProcessConstructionErrorFailsClosed"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "3a91bd7dbe2799ad462030919cbe970dc5ce07d895c81591ee30582288d624e9"
+}

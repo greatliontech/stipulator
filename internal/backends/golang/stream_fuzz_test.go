@@ -96,7 +96,7 @@ func FuzzGoExecuteEventStream(f *testing.F) {
 				t.Fatalf("nondeterministic outcome %d: %v vs %v", i, run1.tests[i], run2.tests[i])
 			}
 		}
-		if r1, r2 := incompleteObservationReason(st1, waitErr, run1.disposition, "/tmp/log"), incompleteObservationReason(st2, waitErr, run2.disposition, "/tmp/log"); r1 != r2 {
+		if r1, r2 := incompleteObservationReason(st1, waitErr, run1.disposition), incompleteObservationReason(st2, waitErr, run2.disposition); r1 != r2 {
 			t.Fatalf("nondeterministic observation completeness: %q vs %q", r1, r2)
 		}
 
@@ -133,7 +133,7 @@ func FuzzGoExecuteEventStream(f *testing.F) {
 		}
 		// A completed-eligible classification never coexists with abort
 		// residue: eligibility implies nothing started stayed unfinished.
-		if incompleteObservationReason(st1, waitErr, run1.disposition, "/tmp/log") == "" {
+		if incompleteObservationReason(st1, waitErr, run1.disposition) == "" {
 			if len(startedTests(st1)) != 0 || st1.sawAbort || st1.terminal != "pass" {
 				t.Fatal("observation eligibility granted over an unproven testlog flush")
 			}

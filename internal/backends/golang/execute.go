@@ -403,7 +403,7 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, select
 	// pass consumes, not only diagnostic prose.
 	run.aborted = startedTests(st)
 	run.producer = producer
-	run.obs = observeProcess(n, pkg, producer, st, waitErr, run.disposition, logPath, frame)
+	run.obs = observeProcess(ctx, n, pkg, producer, st, waitErr, run.disposition, logPath, frame)
 	return run
 }
 

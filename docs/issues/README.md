@@ -2,6 +2,11 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
+- **[corpus-residue-post-summary-diet](corpus-residue-post-summary-diet.md)** — the five
+  spec commits after the last pin update left the whole-tree check red: eight
+  requirements' content pins await re-consent, the summary diet's deleted histogram
+  tests still have bindings, and several new tests register coverage unbacked. *Lands:
+  before the next stipulator release tag.*
 - **[cerebro-uncacheable-mass-measured](cerebro-uncacheable-mass-measured.md)** — 2,407
   uncacheable witnesses make the cerebro check re-execute everything (~22 min vs a ~2-min
   floor family); reason classes quantified, fixes owned by gofresh's bracket/classifier

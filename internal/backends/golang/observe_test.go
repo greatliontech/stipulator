@@ -172,7 +172,7 @@ func TestGoExecuteAbortOutputBlocksObservation(t *testing.T) {
 	if run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
 		t.Fatalf("disposition = %v, want HEALTHY (abort output is an observation fact, not a suite verdict)", run.disposition)
 	}
-	reason := incompleteObservationReason(st, nil, run.disposition, "/tmp/log")
+	reason := incompleteObservationReason(st, nil, run.disposition)
 	if !strings.Contains(reason, "abort output") {
 		t.Fatalf("completeness reason = %q, want the abort disqualification", reason)
 	}
@@ -283,26 +283,25 @@ func TestGoExecuteObservationCompletenessClassifier(t *testing.T) {
 		st          *streamState
 		waitErr     error
 		disposition stipulatorv1.HealthDisposition
-		logPath     string
 		wantReason  string
 	}{
 		"clean pass is eligible": {
-			st: base(), disposition: healthy, logPath: "/tmp/log", wantReason: "",
+			st: base(), disposition: healthy, wantReason: "",
 		},
-		"missing capture file": {
-			st: base(), disposition: healthy, logPath: "", wantReason: "testlog capture unavailable",
-		},
+		// Capture-file health (attached, present, readable, headed) is the
+		// facade's judgment now; gofresh's producer-facade witnesses and
+		// the executor-level tests here pin those folds end to end.
 		"unhealthy disposition": {
 			st: base(), disposition: stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED,
-			logPath: "/tmp/log", wantReason: "not HEALTHY",
+			wantReason: "not HEALTHY",
 		},
 		"no test process (terminal skip)": {
 			st:          &streamState{terminal: "skip", started: map[string]bool{}},
-			disposition: healthy, logPath: "/tmp/log", wantReason: "no test process ran",
+			disposition: healthy, wantReason: "no test process ran",
 		},
 		"abort output": {
 			st:          func() *streamState { st := base(); st.sawAbort = true; return st }(),
-			disposition: healthy, logPath: "/tmp/log", wantReason: "abort output",
+			disposition: healthy, wantReason: "abort output",
 		},
 		"started but unfinished": {
 			st: func() *streamState {
@@ -311,15 +310,15 @@ func TestGoExecuteObservationCompletenessClassifier(t *testing.T) {
 				st.startOrder = []string{"TestX"}
 				return st
 			}(),
-			disposition: healthy, logPath: "/tmp/log", wantReason: "started but unfinished",
+			disposition: healthy, wantReason: "started but unfinished",
 		},
 		"red exit": {
 			st: base(), waitErr: errors.New("exit status 1"),
-			disposition: healthy, logPath: "/tmp/log", wantReason: "exited with failure",
+			disposition: healthy, wantReason: "exited with failure",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			got := incompleteObservationReason(tc.st, tc.waitErr, tc.disposition, tc.logPath)
+			got := incompleteObservationReason(tc.st, tc.waitErr, tc.disposition)
 			if tc.wantReason == "" {
 				if got != "" {
 					t.Fatalf("eligible shape refused: %q", got)
@@ -659,7 +658,7 @@ func TestExternal(t *testing.T) {}
 	if o.Wire.GetCompleted() != nil {
 		t.Fatalf("an out-of-tree member produced completed evidence: %v", o.Wire)
 	}
-	if reason := o.Wire.GetIncompleteReason(); !strings.Contains(reason, "outside the verification tree") {
+	if reason := o.Wire.GetIncompleteReason(); !strings.Contains(reason, "lies outside the tree") || !strings.Contains(reason, string(filepath.Separator)+"ext") {
 		t.Errorf("incomplete reason = %q, want the out-of-tree directory named", reason)
 	}
 }
@@ -770,5 +769,199 @@ func TestGoExecuteRefusesPostTerminalEvents(t *testing.T) {
 	}
 	if len(run.diags) != 1 || !strings.Contains(run.diags[0].GetOutput(), "after the terminal package event") {
 		t.Errorf("post-terminal refusal not named in the diagnostic: %v", run.diags)
+	}
+}
+
+// Each classification-root declaration reaches the facade's ingest: a
+// read under a declared root binds (guard-covered, or the ephemeral
+// root's identity-only admission), while the same read with the root
+// undeclared seals per-identity unverifiable — so a completed
+// observation's digest is present exactly when the declaration
+// forwarded.
+func TestGoObserveProcessForwardsClassificationRoots(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-attribution")
+	for name, tc := range map[string]struct {
+		declare func(n *NormalizedInvocation, root string)
+		read    func(root string) string
+	}{
+		"toolchain root": {
+			declare: func(n *NormalizedInvocation, root string) { n.ToolchainRoot = root },
+			read:    func(root string) string { return filepath.Join(root, "VERSION") },
+		},
+		"module cache root": {
+			declare: func(n *NormalizedInvocation, root string) { n.ModuleCacheRoot = root },
+			read:    func(root string) string { return filepath.Join(root, "example.com", "dep@v1.0.0", "dep.go") },
+		},
+		"build cache root": {
+			declare: func(n *NormalizedInvocation, root string) { n.BuildCacheRoot = root },
+			read:    func(root string) string { return filepath.Join(root, "aa", "object") },
+		},
+		"ephemeral temp root": {
+			declare: func(n *NormalizedInvocation, root string) { n.TempRoot = root },
+			read:    func(root string) string { return root },
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			pkgDir := filepath.Join(dir, "pkg")
+			for path, content := range map[string]string{
+				filepath.Join(dir, "go.mod"):    "module example.com/m\n\ngo 1.24\n",
+				filepath.Join(pkgDir, "pkg.go"): "package pkg\n",
+			} {
+				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			declaredRoot := t.TempDir()
+			target := tc.read(declaredRoot)
+			if target != declaredRoot {
+				if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(target, []byte("content\n"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			logPath := filepath.Join(t.TempDir(), "roots.testlog")
+			if err := os.WriteFile(logPath, []byte("# test log\nopen "+target+"\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			observe := func(n *NormalizedInvocation) *ProcessObservation {
+				frame := captureObservationFrame(context.Background(), n, "example.com/m/pkg")
+				st := &streamState{terminal: "pass", started: map[string]bool{}}
+				producer := &stipulatorv1.ProducerIdentity{}
+				producer.SetInvocation(n.Name)
+				return observeProcess(context.Background(), n, "example.com/m/pkg", producer, st, nil,
+					stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY, logPath, frame)
+			}
+			base := func() *NormalizedInvocation {
+				return &NormalizedInvocation{
+					Name:    "roots",
+					Dir:     dir,
+					Env:     []string{"HOME=" + t.TempDir()},
+					PkgDirs: map[string]string{"example.com/m/pkg": pkgDir},
+				}
+			}
+			undeclared := observe(base())
+			if undeclared.Wire.GetCompleted() == nil {
+				t.Fatalf("undeclared run incomplete: %q", undeclared.Wire.GetIncompleteReason())
+			}
+			if undeclared.Wire.GetCompleted().GetDigest() != "" {
+				t.Fatal("an undeclared external read produced a verifiable digest; the seal the declaration lifts is gone")
+			}
+			n := base()
+			tc.declare(n, declaredRoot)
+			declared := observe(n)
+			if declared.Wire.GetCompleted() == nil {
+				t.Fatalf("declared run incomplete: %q", declared.Wire.GetIncompleteReason())
+			}
+			if declared.Wire.GetCompleted().GetDigest() == "" {
+				t.Fatalf("the %s declaration did not reach the facade's ingest: the read sealed unverifiable", name)
+			}
+		})
+	}
+}
+
+// The invocation's reviewed exclusions reach both endpoints: a declared
+// excluded path mutating between frame capture and ingest neither
+// enters the manifest nor churns the bracket, so the observation stays
+// verifiable — without the capture-side exclusion the same churn seals
+// it attributably unverifiable.
+func TestGoObservationFrameExcludesReviewedPathsFromBracket(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-attribution")
+	dir := t.TempDir()
+	pkgDir := filepath.Join(dir, "pkg")
+	churn := filepath.Join(pkgDir, "gen", "artifact")
+	for path, content := range map[string]string{
+		filepath.Join(dir, "go.mod"):    "module example.com/m\n\ngo 1.24\n",
+		filepath.Join(pkgDir, "pkg.go"): "package pkg\n",
+		churn:                           "one\n",
+	} {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	logPath := filepath.Join(t.TempDir(), "churn.testlog")
+	if err := os.WriteFile(logPath, []byte("# test log\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	observe := func(excluded []string) *ProcessObservation {
+		n := &NormalizedInvocation{
+			Name:          "churn",
+			Dir:           dir,
+			Env:           []string{"HOME=" + t.TempDir()},
+			PkgDirs:       map[string]string{"example.com/m/pkg": pkgDir},
+			ExcludedPaths: excluded,
+		}
+		frame := captureObservationFrame(context.Background(), n, "example.com/m/pkg")
+		if err := os.WriteFile(churn, []byte("two\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		st := &streamState{terminal: "pass", started: map[string]bool{}}
+		producer := &stipulatorv1.ProducerIdentity{}
+		producer.SetInvocation(n.Name)
+		return observeProcess(context.Background(), n, "example.com/m/pkg", producer, st, nil,
+			stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY, logPath, frame)
+	}
+	churned := observe(nil)
+	if churned.Wire.GetCompleted() == nil || churned.Wire.GetCompleted().GetDigest() != "" {
+		t.Fatalf("undeclared churn did not seal: %v", churned.Wire)
+	}
+	excluded := observe([]string{"pkg/gen"})
+	if excluded.Wire.GetCompleted() == nil {
+		t.Fatalf("excluded churn went incomplete: %q", excluded.Wire.GetIncompleteReason())
+	}
+	if excluded.Wire.GetCompleted().GetDigest() == "" {
+		t.Fatal("the reviewed exclusion did not reach the bracket: declared churn sealed the observation")
+	}
+}
+
+// A construction error out of the facade — here a context already
+// cancelled at ingest — still yields the fail-closed incomplete record,
+// never a lost observation and never completed evidence.
+func TestGoObserveProcessConstructionErrorFailsClosed(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-cancellation")
+	dir := t.TempDir()
+	pkgDir := filepath.Join(dir, "pkg")
+	for path, content := range map[string]string{
+		filepath.Join(dir, "go.mod"):    "module example.com/m\n\ngo 1.24\n",
+		filepath.Join(pkgDir, "pkg.go"): "package pkg\n",
+	} {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	logPath := filepath.Join(t.TempDir(), "cancelled.testlog")
+	if err := os.WriteFile(logPath, []byte("# test log\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	n := &NormalizedInvocation{
+		Name:    "cancelled",
+		Dir:     dir,
+		Env:     []string{"HOME=" + t.TempDir()},
+		PkgDirs: map[string]string{"example.com/m/pkg": pkgDir},
+	}
+	frame := captureObservationFrame(context.Background(), n, "example.com/m/pkg")
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	st := &streamState{terminal: "pass", started: map[string]bool{}}
+	producer := &stipulatorv1.ProducerIdentity{}
+	producer.SetInvocation(n.Name)
+	o := observeProcess(ctx, n, "example.com/m/pkg", producer, st, nil,
+		stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY, logPath, frame)
+	if o.Wire.GetCompleted() != nil {
+		t.Fatalf("cancelled ingest produced completed evidence: %v", o.Wire)
+	}
+	if reason := o.Wire.GetIncompleteReason(); !strings.Contains(reason, "observation construction failed") {
+		t.Fatalf("incomplete reason = %q, want the construction failure named", reason)
 	}
 }
