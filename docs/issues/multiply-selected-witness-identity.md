@@ -38,6 +38,19 @@ is paid on every chunk gate), and the fix wants the record to carry
 the (invocation, test) identity — per-invocation witness identity
 looks like the record-shape fix, not a classifier tweak.
 
+## Second reason class, same death
+
+A `full=true` check on the same corpus reports the same 930/930
+uncacheable mass under a DIFFERENT reason — same exemplar:
+
+```
+"reason": "no capture group: no witness-eligible invocation covers the package"
+```
+
+while scoped checks report the multiply-selected reason. Whether two
+causes or one cause with two reporting paths, the fix wants both
+verified: warm-tree serving must engage for scoped AND full passes.
+
 ## Reproduction
 
 Any `stipulator check` against the tugboat corpus
