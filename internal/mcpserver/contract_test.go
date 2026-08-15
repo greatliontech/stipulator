@@ -4,10 +4,14 @@ import (
 	"context"
 	"io/fs"
 	"strings"
+	"runtime"
 	"testing"
 	"testing/fstest"
+	"time"
 
+	"github.com/greatliontech/gofresh"
 	"github.com/greatliontech/stipulator/internal/author"
+	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -136,6 +140,12 @@ func TestContextAndPartitionsExportPath(t *testing.T) {
 	if payload := toolPayload(t, res); strings.Contains(payload, "dossiers\":") || !strings.Contains(payload, "exported") {
 		t.Fatalf("context export result carries the document inline: %s", payload)
 	}
+	// The export form is a completed suite-running call like any other:
+	// its result text carries the phase-timing stamps line
+	// (REQ-mcp-progress's notification-blind fallback).
+	if text := toolText(t, res); !strings.Contains(text, "took ") {
+		t.Fatalf("context export result missing the phase stamps: %s", text)
+	}
 
 	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "partitions", Arguments: map[string]any{
 		"ids": "REQ-m-a", "no_test": true, "export_path": ".stipulator/exports/partitions.json",
@@ -178,5 +188,139 @@ func TestServerApplyCompareAndSwap(t *testing.T) {
 	})
 	if err != nil || len(out.Deleted) != 1 {
 		t.Fatalf("matching prior refused: %v %+v", err, out)
+	}
+}
+
+// A tokenless client that set a log level still gets liveness: bounded
+// phase-transition log messages ride the token-free logging channel, so
+// slow work is distinguishable from a hang without a progress token
+// (REQ-mcp-progress's liveness bound).
+//
+//gofresh:pure
+func TestTokenlessCallEmitsPhaseLogMessages(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-progress")
+	fsys := fstest.MapFS{
+		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
+		"specs/a.md":                     {Data: []byte(doc)},
+		".stipulator/bindings/m.textproto": {Data: []byte(pinnedBinding(t))},
+	}
+	s := &Server{
+		fsys: func() fs.FS { return fsys },
+		backends: func(context.Context) (map[string]verify.Backend, error) {
+			return map[string]verify.Backend{"go": fakeBackend{
+				"example.com/p.TestA": strings.Repeat("s", 64),
+				"example.com/p.F":     strings.Repeat("f", 64),
+				"example.com/q.TestA": strings.Repeat("q", 64),
+			}}, nil
+		},
+		runTests: func(context.Context, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+			return &verify.TestRun{
+				RaceEnabled:      true,
+				SelectiveServing: true,
+				Outcomes:         map[string]verify.TestOutcome{"example.com/p.TestA": verify.TestPassed},
+			}, nil
+		},
+		write:  func(string, []byte) error { return nil },
+		remove: func(string) error { return nil },
+	}
+	ct, st := mcp.NewInMemoryTransports()
+	go func() {
+		_ = s.MCP().Run(context.Background(), st)
+	}()
+	logs := make(chan string, 64)
+	client := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "v0"}, &mcp.ClientOptions{
+		LoggingMessageHandler: func(_ context.Context, r *mcp.LoggingMessageRequest) {
+			if text, ok := r.Params.Data.(string); ok {
+				select {
+				case logs <- text:
+				default:
+				}
+			}
+		},
+	})
+	sess, err := client.Connect(context.Background(), ct, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { sess.Close() })
+	if err := sess.SetLoggingLevel(context.Background(), &mcp.SetLoggingLevelParams{Level: "info"}); err != nil {
+		t.Fatal(err)
+	}
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "gate", Arguments: map[string]any{}})
+	if err != nil || res.IsError {
+		t.Fatalf("gate: %v %+v", err, res)
+	}
+	deadline := time.After(3 * time.Second)
+	for {
+		select {
+		case line := <-logs:
+			if strings.Contains(line, "phase ") {
+				return
+			}
+		case <-deadline:
+			t.Fatal("no phase log message reached the tokenless client")
+		}
+	}
+}
+
+// The write seam itself asserts the .stipulator/ confinement
+// (REQ-mcp-writes-confined) - defense in depth at the one point every
+// record write passes, not a per-call-site convention.
+//
+//gofresh:pure
+func TestWriteSeamConfinesToStipulatorDir(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-writes-confined")
+	s := New(t.TempDir())
+	if err := s.write("outside.txt", []byte("x")); err == nil || !strings.Contains(err.Error(), ".stipulator/") {
+		t.Fatalf("out-of-home write admitted: %v", err)
+	}
+	if err := s.write("../escape.txt", []byte("x")); err == nil {
+		t.Fatal("root-escaping write admitted")
+	}
+	if err := s.write(".stipulator/../escape.txt", []byte("x")); err == nil {
+		t.Fatal("embedded-dotdot write admitted: the prefix held lexically while the write landed outside the home")
+	}
+	if err := s.write(".stipulator/gaps/ok.textproto", []byte("x")); err != nil {
+		t.Fatalf("in-home write refused: %v", err)
+	}
+}
+
+// Every armed tool seals its reporter on every exit: the NonBlocking
+// sender goroutine ends at the terminal event, so a long-lived server
+// does not strand one goroutine per pin/retarget call
+// (REQ-mcp-progress).
+//
+//gofresh:pure
+func TestPinAndRetargetSealTheirProgressReporters(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-progress")
+	sess, _ := harness(t, map[string]string{
+		".stipulator/bindings/m.textproto": pinnedBinding(t),
+	})
+	// Amplified: one stranded sender hides inside unrelated goroutine
+	// churn; sixteen do not.
+	const calls = 8
+	time.Sleep(50 * time.Millisecond)
+	before := runtime.NumGoroutine()
+	for i := 0; i < calls; i++ {
+		if res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "pin", Arguments: map[string]any{}}); err != nil || res.IsError {
+			t.Fatalf("pin: %v %+v", err, res)
+		}
+		// The unresolvable replacement makes retarget refuse - the
+		// error path must seal the reporter exactly like success.
+		if _, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "retarget", Arguments: map[string]any{
+			"from": "example.com/p", "to": "example.com/z", "check": true,
+		}}); err != nil {
+			t.Fatalf("retarget transport error: %v", err)
+		}
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		if runtime.NumGoroutine() < before+calls {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("progress sender goroutines stranded: %d before, %d after %d call pairs", before, runtime.NumGoroutine(), calls)
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }

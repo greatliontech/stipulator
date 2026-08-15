@@ -21,6 +21,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/greatliontech/gofresh"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -56,7 +57,7 @@ const serverInstructions = "stipulator verifies code against a compiled requirem
 	"explain answers a witness's dynamic-state uncacheable reason with its derivation chain - pass the reason, or an explicit package and symbol. " +
 	"Authoring: bind (claims batch, all-or-nothing), gap (declare/fire/retract, batch), attest_requirement, pin (blanket backfills unset pins only and names differing pins awaiting re-consent; ids = editorial re-consent that rewrites them), dispose (editorial/retire/supersede), retarget (bulk symbol-prefix rewrite after a module rename; check=true previews), prune (resolved records; dangling=true repairs orphans). " +
 
-	"Long calls (check/gate/verify/prune/context/partitions) report phase progress when the request carries a progress token - send one and be patient rather than assuming a hang; results state the phase a deadline expired in. " +
+	"Long calls (check/gate/verify/prune/context/partitions/gap list=true) report phase progress when the request carries a progress token - send one and be patient rather than assuming a hang; results state the phase a deadline expired in. " +
 	"All writes stay under .stipulator/; spec documents and source are never edited."
 
 type Server struct {
@@ -108,10 +109,17 @@ func New(dir string) *Server {
 			return golang.ExplainDynamicState(ctx, dir, pol, pkgPath, symbol)
 		},
 		write: func(path string, content []byte) error {
-			// The server is corpus-bound: every record update must remain
-			// within the tree.
+			// The server is corpus-bound and its writes stay under
+			// .stipulator/ (REQ-mcp-writes-confined) - asserted at the
+			// one seam every write passes, not per call site.
 			if !filepath.IsLocal(filepath.FromSlash(path)) {
 				return fmt.Errorf("path %q escapes the corpus root", path)
+			}
+			if path != pathpkg.Clean(path) || !strings.HasPrefix(path, ".stipulator/") {
+				// The prefix is judged on the clean spelling only: an
+				// embedded ".." would satisfy a lexical prefix check
+				// while writing outside the home.
+				return fmt.Errorf("path %q is outside .stipulator/ (the server writes nowhere else)", path)
 			}
 			full := filepath.Join(dir, filepath.FromSlash(path))
 			if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
@@ -672,6 +680,30 @@ func (s *Server) startProgress(ctx context.Context, req *mcp.CallToolRequest) (c
 				Progress:      seq,
 			})
 		})
+	} else if req != nil && req.Session != nil {
+		// No token: progress notifications are unaddressable, so the one
+		// remaining token-free channel carries a bounded liveness trace -
+		// phase transitions only, as info-level log messages. The SDK
+		// sends nothing unless the client has set a log level, so this is
+		// free for clients that cannot consume it; a client that set a
+		// level distinguishes slow work from a hang without a token
+		// (REQ-mcp-progress's liveness bound). The session guard covers
+		// direct in-process calls that carry no wire request.
+		session := req.Session
+		notifyCtx := context.WithoutCancel(ctx)
+		var lastPhase stipulatorv1.Phase
+		var phaseSeen bool
+		sink = progress.NonBlocking(func(e *stipulatorv1.ProgressEvent) {
+			if phaseSeen && e.GetPhase() == lastPhase {
+				return
+			}
+			lastPhase, phaseSeen = e.GetPhase(), true
+			_ = session.Log(notifyCtx, &mcp.LoggingMessageParams{
+				Level:  "info",
+				Logger: "stipulator",
+				Data:   fmt.Sprintf("phase %s (%s elapsed)", progress.Word(e.GetPhase()), e.GetElapsed().AsDuration().Round(time.Second)),
+			})
+		})
 	}
 	prog := progress.New(sink)
 	return progress.NewContext(ctx, prog), prog
@@ -848,19 +880,22 @@ func (s *Server) toolBind(ctx context.Context, req *mcp.CallToolRequest, in bind
 			Role: role, File: in.File,
 		})
 	}
+	ctx, prog := s.startProgress(ctx, req)
+	prog.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	backends, err := s.backends(ctx)
 	if err != nil {
-		return nil, writeOut{}, err
+		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
 	ups, err := author.Binds(s.fsys(), backends, reqs)
 	if err != nil {
-		return nil, writeOut{}, err
+		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
 	out, err := s.apply(ups)
 	if err != nil {
-		return nil, writeOut{}, err
+		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
-	return out.result(), out, nil
+	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
+	return stampedResult(out.result(), prog), out, nil
 }
 
 type unbindIn struct {
@@ -1155,9 +1190,11 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 	for _, r := range spec.GetRequirements() {
 		hashes[r.GetId()] = r.GetContentHash()
 	}
+	ctx, prog := s.startProgress(ctx, req)
+	prog.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	backends, err := s.backends(ctx)
 	if err != nil {
-		return nil, writeOut{}, err
+		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
 	shapes := map[string]string{}
 	for _, bf := range store.Bindings {
@@ -1173,7 +1210,7 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 	}
 	updates, preserved, err := records.Pin(store, hashes, shapes)
 	if err != nil {
-		return nil, writeOut{}, err
+		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
 	ups := make([]author.Update, 0, len(updates))
 	for p, c := range updates {
@@ -1184,8 +1221,9 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 	author.StampPriors(store, ups)
 	out, err := s.apply(ups)
 	if err != nil {
-		return nil, writeOut{}, err
+		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
+	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	// A no-op must say so: a silent {} reads as "did something, reported
 	// nothing". Beside preserved differing pins the wording shifts —
 	// "all pins current" is false exactly then.
@@ -1275,15 +1313,18 @@ func (s *Server) toolExplain(ctx context.Context, req *mcp.CallToolRequest, in e
 			return nil, explainOut{}, fmt.Errorf("explain: no culprit parsed from the reason; pass package and symbol")
 		}
 	}
+	ctx, prog := s.startProgress(ctx, req)
+	prog.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	chain, view, err := s.explain(ctx, pkgPath, symbol)
 	if err != nil {
 		// The freshness library prefixes its own explain errors; only
 		// unprefixed causes (policy load, view construction) gain one.
 		if strings.HasPrefix(err.Error(), "explain: ") {
-			return nil, explainOut{}, err
+			return nil, explainOut{}, terminalToolError(prog, ctx, err)
 		}
-		return nil, explainOut{}, fmt.Errorf("explain: %w", err)
+		return nil, explainOut{}, terminalToolError(prog, ctx, fmt.Errorf("explain: %w", err))
 	}
+	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	out := explainOut{Arm: chain.Arm, View: view, Omitted: chain.Omitted, Links: []explainLink{}}
 	for _, l := range chain.Links {
 		out.Links = append(out.Links, explainLink{Kind: l.Kind, Package: l.Package, Symbol: l.Symbol, Callee: l.Callee, Clause: l.Clause, Pos: l.Pos})
@@ -1318,26 +1359,30 @@ func (s *Server) toolRetarget(ctx context.Context, req *mcp.CallToolRequest, in 
 	if backend == "" {
 		backend = "go"
 	}
+	ctx, prog := s.startProgress(ctx, req)
+	prog.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	backends, err := s.backends(ctx)
 	if err != nil {
-		return nil, writeOut{}, err
+		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
 	ups, rows, err := author.RetargetSymbols(s.fsys(), backends, backend, in.From, in.To)
 	if err != nil {
-		return nil, writeOut{}, err
+		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
 	notes := make([]string, 0, len(rows))
 	for _, r := range rows {
 		notes = append(notes, r.Requirement+": "+r.Old+" -> "+r.New)
 	}
 	if in.Check {
+		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 		out := writeOut{Notes: notes}
 		return textOnly(fmt.Sprintf("retarget check: %d binding(s) would retarget", len(rows))), out, nil
 	}
 	out, err := s.apply(ups)
 	if err != nil {
-		return nil, writeOut{}, err
+		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
+	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	out.Notes = notes
 	return textOnly(fmt.Sprintf("retargeted %d binding(s)", len(rows))), out, nil
 }
@@ -1555,14 +1600,22 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 		}
 		out.SetDeclarations(facts.ContextProto(nil, decls).GetDeclarations())
 	}
-	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	if in.ExportPath != "" {
 		doc, err := protojson.Marshal(out)
 		if err != nil {
 			return nil, nil, err
 		}
-		return s.exportTo(in.ExportPath, doc, "context")
+		res, structured, err := s.exportTo(in.ExportPath, doc, "context")
+		if err != nil {
+			return nil, nil, terminalToolError(prog, ctx, err)
+		}
+		// Terminal after the export write - a failed write must not
+		// follow a COMPLETED event - and the export line carries the
+		// phase stamps like every completed suite-running result.
+		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
+		return stampedResult(res, prog), structured, nil
 	}
+	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	var dossierRows []string
 	for _, d := range out.GetDossiers() {
 		row := d.GetRequirement().GetId()
@@ -1623,16 +1676,23 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
-	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	// The export carries the FULL pairwise overlap set — the explicit
-	// request the capped wire default points at.
+	// request the capped wire default points at. Terminal after the
+	// export write; the export line carries the phase stamps like every
+	// completed suite-running result.
 	if in.ExportPath != "" {
 		doc, err := protojson.Marshal(pr.ProtoUncapped())
 		if err != nil {
 			return nil, nil, err
 		}
-		return s.exportTo(in.ExportPath, doc, "partitions")
+		res, structured, err := s.exportTo(in.ExportPath, doc, "partitions")
+		if err != nil {
+			return nil, nil, terminalToolError(prog, ctx, err)
+		}
+		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
+		return stampedResult(res, prog), structured, nil
 	}
+	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	m := pr.Proto()
 	var componentRows []string
 	for i, component := range m.GetComponents() {

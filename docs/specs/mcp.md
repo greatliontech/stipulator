@@ -3,7 +3,10 @@
 Agents consume stipulator over the Model Context Protocol: the compiled
 spec as resources (agents read the IR's truth, never raw profile syntax),
 and the operations as tools. The surface is observable contract — URIs and
-tool names are wire, and harness compatibility rests on them.
+tool names are wire, and harness compatibility rests on them. The MCP
+surface outranks the CLI in design priority: it serves an LLM agent in a
+harness, where every byte of output spends the consumer's context —
+minimal output, maximal usefulness governs every response shape.
 
 **REQ-mcp-server** (behavior): Stipulator MUST provide an MCP server over
 stdio exposing the compiled corpus as resources and the operations as
@@ -19,8 +22,10 @@ the CLI gives: the upward search that ran, and the init pointer.
 kind, keyword, content hash, edges, source), `stipulator://term/{name}`,
 and `stipulator://bundle/{ids}` (comma-separated identifiers, rendered
 as a self-contained document), with the resource list enumerating every
-requirement as of the most recent operation — reads themselves are
-always fresh. Coverage deliberately has no resource: the gate tool's
+requirement as of the most recent compiling operation — reads themselves
+are always fresh (each read recompiles), an unlisted-but-existing
+identity still reads, and a departed one refuses: the list is a hint,
+the read is the truth. Coverage deliberately has no resource: the gate tool's
 views are the one surface, and a resource duplicate would be
 duplication without a distinct consumer.
 
@@ -122,6 +127,14 @@ carries the deadline cause; a client-side deadline surfaces as the
 client's cancellation, carrying the cancellation cause and the expiring
 phase, which the client composes with its own locally known reason — the
 distinguishing never requires guessing.
+The liveness channels are bounded by the protocol: progress
+notifications require a client progress token, and log-channel messages
+require a client-set log level. For tokenless clients that set a level, the
+server emits bounded phase-transition log messages (info, one per phase
+change) so they still distinguish slow work from a hang; a
+client sending neither a token nor a level has exactly the completed
+call's stamps line and its own timeout policy — no server behavior can
+reach it mid-call.
 
 **REQ-mcp-cancellation** (behavior): A client cancellation MUST cancel the
 underlying operation end to end, reaching package discovery and every

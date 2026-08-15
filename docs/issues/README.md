@@ -52,9 +52,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   content-and-metadata-exact restore within the span stays the shared residual), while closure
   fingerprints hash content alone. *Lands: cross-tool train chunk 46.*
 
-- **[mcp-progress-not-observed](mcp-progress-not-observed.md)** — suite-running MCP tools
-  surfaced no progress to a live agent client; every call was backgrounded at the client's
-  timeout. *Lands: cross-tool train chunk 41.*
 - **[witness-store-gc](witness-store-gc.md)** — departed identities' witness variants
   accumulate without bound (eviction fires only on same-identity installs); cost-only,
   measured at 30 MB across two heavy-development corpora — below any actionable bar.
