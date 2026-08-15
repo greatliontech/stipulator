@@ -26,5 +26,6 @@ in a red state the tree has carried since:
 A scoped check on requirements outside this residue passes; the
 whole-tree verdict stays red until the walk lands.
 
-Lands: before the next stipulator release tag (the canonical gate must
-be green to cut a release).
+Lands: cross-tool train chunk 42 (the next stipulator chunk; the
+canonical gate must be green before any release tag, so the walk
+opens that chunk).

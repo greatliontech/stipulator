@@ -13,5 +13,4 @@ selections only) the GOOS/GOARCH pair; a cross-GOOS invocation cannot
 execute on-host, so its resolution-only view would bind witnesses no
 run can grant - that half needs its own design.
 
-Lands: a policy declares a race-gated or goos-gated test the corpus
-must bind.
+Lands: cross-tool train chunk 90.

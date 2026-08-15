@@ -58,6 +58,5 @@ Any `stipulator check` against the tugboat corpus
 observe `testsServed: 0`, `testsUncacheable: N == testsExecuted`,
 one blocker row with the multiply-selected reason.
 
-Lands: with the witness-record identity fix (gofresh/stipulator
-shared-view family); verified by a tugboat warm-tree check serving a
+Lands: cross-tool train chunk 46 (the record redesign); verified by a tugboat warm-tree check serving a
 nonzero witness majority.

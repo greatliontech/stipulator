@@ -13,5 +13,5 @@ bracket-declared-static-inputs and purity-bars-dynamic-and-fmt in gofresh
 docs/issues — plus the shared-view fix here; this record is the consumer-side
 measurement they land against.
 
-Lands: when the two gofresh items and the check-view-cardinality fix land, a
-re-measured cerebro check confirms the warm floor; delete on that measurement.
+Lands: cross-tool train chunk 16 (the re-measure; delete on that
+measurement).

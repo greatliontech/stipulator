@@ -5,22 +5,18 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[corpus-residue-post-summary-diet](corpus-residue-post-summary-diet.md)** — the five
   spec commits after the last pin update left the whole-tree check red: eight
   requirements' content pins await re-consent, the summary diet's deleted histogram
-  tests still have bindings, and several new tests register coverage unbacked. *Lands:
-  before the next stipulator release tag.*
+  tests still have bindings, and several new tests register coverage unbacked. *Lands: cross-tool train chunk 42.*
 - **[goos-race-build-dimensions](goos-race-build-dimensions.md)** — GOOS/GOARCH and the
   implicit race tag are invisible to both discovery and resolution; tag-set views cover
-  only the tags dimension. *Lands: a policy declares a race-gated or goos-gated test the
-  corpus must bind.*
+  only the tags dimension. *Lands: cross-tool train chunk 90.*
 - **[multiply-selected-witness-identity](multiply-selected-witness-identity.md)** — on the
   tugboat corpus every invocation selects `./...`, every witness is multiply-selected,
   and records carry no per-invocation identity: 927/927 uncacheable, the serving path
-  never engages, every chunk-gate check re-executes the world. *Lands: with the
-  witness-record identity fix (shared-view family); verified by a tugboat warm-tree
-  check serving a nonzero witness majority.*
+  never engages, every chunk-gate check re-executes the world. *Lands: cross-tool train chunk 46.*
 - **[cerebro-uncacheable-mass-measured](cerebro-uncacheable-mass-measured.md)** — 2,407
   uncacheable witnesses make the cerebro check re-execute everything (~22 min vs a ~2-min
   floor family); reason classes quantified, fixes owned by gofresh's bracket/classifier
-  items plus the shared-view fix here. *Lands: on the re-measurement after those land.*
+  items plus the shared-view fix here. *Lands: cross-tool train chunk 16.*
 - **[publication-ladder-collapse](publication-ladder-collapse.md)** — publishGroup and
   publishExecuted are near-duplicate publication ladders; collapsing them onto one would
   also fold the serving path's two per-group closing validations into one and drop the
