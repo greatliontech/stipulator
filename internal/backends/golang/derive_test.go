@@ -4,6 +4,7 @@ import (
 	"context"
 	"maps"
 	"os"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -538,6 +539,28 @@ func TestGroupKeySeparatesRaceTiers(t *testing.T) {
 	}
 	if groupKey(plain) != groupKey(&NormalizedInvocation{}) {
 		t.Fatal("plain-witness admission changed the build-shaping key: the admission is a witness-tier fact, not a build input")
+	}
+}
+
+// Two unit bounds delivering different inner widths are two capture
+// groups: witness evidence digests under the delivered environment,
+// and one group engine holds one producer environment - sharing a
+// group would serve evidence recorded under another width
+// (REQ-evidence-witness-freshness's concurrency clause).
+func TestGroupKeySeparatesWitnessWidths(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	procs := int32(runtime.GOMAXPROCS(0))
+	if procs < 2 {
+		t.Skip("single-processor host: every unit bound derives width 1")
+	}
+	narrow := &NormalizedInvocation{Race: true, WitnessConcurrency: procs}
+	wide := &NormalizedInvocation{Race: true, WitnessConcurrency: 1}
+	if groupKey(narrow) == groupKey(wide) {
+		t.Fatal("invocations delivering different widths share a capture-group key")
+	}
+	same := &NormalizedInvocation{Race: true, WitnessConcurrency: procs}
+	if groupKey(narrow) != groupKey(same) {
+		t.Fatal("equal widths split capture groups")
 	}
 }
 

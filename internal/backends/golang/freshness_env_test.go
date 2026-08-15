@@ -5,8 +5,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
 	"testing"
+
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/stipulate"
 )
 
 // simpleModule writes a self-contained module with one passing test
@@ -141,5 +146,66 @@ func TestAlwaysRed(t *testing.T) {
 	}
 	if !strings.Contains(tr.Failures[key], "the diagnostic that must survive the merge") {
 		t.Fatalf("failure diagnostics lost in the merge: %q", tr.Failures[key])
+	}
+}
+
+// TestGoRunWitnessesServeWidthReadingWitness pins the freshness loop
+// for a witness that observes the delivered inner-parallelism width: a
+// second identical run serves the record fresh, because revalidation
+// recomputes environment digests from the witness-process environment
+// (the analysis engine's producer env) rather than the uncapped
+// analysis env - which would refuse the record on every run and turn
+// the cap into a permanent cache miss for exactly the witnesses that
+// notice it (REQ-evidence-witness-freshness, the concurrency clause).
+func TestGoRunWitnessesServeWidthReadingWitness(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("runs a race-instrumented witness pass over a temporary module, twice")
+	}
+	neutralAmbient(t)
+	// An ambient GOMAXPROCS at or under the derived width would suppress
+	// the injection and make both arms vacuously agree on every host;
+	// pinning it wider than any derivable width forces the injection, so
+	// the witness discriminates the producer-env revalidation on every
+	// host geometry.
+	t.Setenv("GOMAXPROCS", strconv.Itoa(2*runtime.GOMAXPROCS(0)))
+	files := map[string]string{
+		"go.mod":     "module example.com/widthfixture\n\ngo 1.26\n",
+		"lib/lib.go": "package lib\n\nfunc Two() int { return 2 }\n",
+		"lib/lib_test.go": `package lib
+
+import (
+	"os"
+	"testing"
+)
+
+func TestReadsWidth(t *testing.T) {
+	_ = os.Getenv("GOMAXPROCS")
+	if Two() != 2 {
+		t.Fatal("wrong")
+	}
+}
+`,
+	}
+	tmp := writeModule(t, files)
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./..."})
+	cfg.SetRace(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", cfg)})
+	writePolicyRecord(t, tmp, p)
+	first, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Ran != 1 || first.Fresh != 0 {
+		t.Fatalf("first run: ran=%d fresh=%d uncached=%d, want 1 ran", first.Ran, first.Fresh, first.Uncached)
+	}
+	second, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Fresh != 1 || second.Ran != 0 {
+		t.Fatalf("second run: ran=%d fresh=%d uncached=%d - a width-reading witness must serve under the producer env", second.Ran, second.Fresh, second.Uncached)
 	}
 }

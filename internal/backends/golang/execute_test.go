@@ -1000,6 +1000,34 @@ func TestWitnessWidthEnv(t *testing.T) {
 	}
 }
 
+// The witness environment is derived exactly once, at normalization:
+// every consumer reads NormalizedInvocation.WitnessEnv, so one
+// invocation observes one width for its whole lifetime - per-call
+// re-derivation would race dynamic GOMAXPROCS movement and could
+// split the spawned environment from the recorded one.
+func TestWitnessEnvDerivedOnceAtNormalize(t *testing.T) {
+	neutralAmbient(t)
+	inv := &stipulatorv1.PolicyInvocation{}
+	inv.SetName("width")
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./ok"})
+	inv.SetGo(cfg)
+	n, err := NormalizeInvocation(context.Background(), executeFixture(t), inv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.WitnessEnv == nil {
+		t.Fatal("normalization left WitnessEnv underived")
+	}
+	spawn := witnessProcessEnv(n, observationFrame{})
+	if &spawn[0] != &n.WitnessEnv[0] {
+		t.Fatal("frameless spawn env re-derived instead of reading the normalization-time witness env")
+	}
+	if got := witnessEnvOf(n); &got[0] != &n.WitnessEnv[0] {
+		t.Fatal("witnessEnvOf re-derived for a normalized invocation")
+	}
+}
+
 // The cap genuinely reaches the witness process: the armed fixture
 // probe passes exactly when the child's GOMAXPROCS equals the derived
 // width, and the negative arm - a unit bound of one, whose width is

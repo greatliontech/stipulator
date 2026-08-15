@@ -182,31 +182,44 @@ func incompleteObservationReason(st *streamState, waitErr error, disposition sti
 // source for both, and the facade's ingest refuses an environment whose
 // PWD does not name the frame's package directory. The go tool
 // independently appends the same PWD=<package dir> when it spawns the
-// test binary, so the spawn-side pin is deliberately redundant: it keeps
-// the ingest mirror sound even if a future toolchain stopped supplying
-// it, which is why no test can distinguish dropping the spawn-side call
-// alone.
+// test binary, so the spawn-side PWD pin is deliberately redundant: it
+// keeps the ingest mirror sound even if a future toolchain stopped
+// supplying it, which is why no test can distinguish dropping the
+// spawn-side PWD pin alone. The width cap, by contrast, reaches the
+// child only through this call and is pinned by the execute tests.
 func witnessProcessEnv(n *NormalizedInvocation, frame observationFrame) []string {
-	env := witnessWidthEnv(n)
+	env := witnessEnvOf(n)
 	if frame.frame.PkgDir == "" {
 		return env
 	}
 	return setEnv(env, "PWD", frame.frame.PkgDir)
 }
 
-// witnessWidthEnv applies the unit's inner-parallelism cap to the
-// frozen invocation environment as GOMAXPROCS - the one entry the go
-// tool's build workers and -p default, and the test binary's scheduler
-// and -parallel default, all honor; an explicit flag is deliberately
-// not emitted because it would override an environment bound the
-// default never does. The cap only ever narrows: an environment
-// already carrying a narrower positive GOMAXPROCS keeps it. Feeding
-// the single spawn-and-ingest source makes the injected value part of
-// the recorded observation environment by construction: a witness that
-// reads GOMAXPROCS records the value its process actually saw, and
-// exactly those witnesses re-execute when the width moves with the
-// unit bound - a mirror hiding the injection would serve stale
-// verdicts to width-sensitive witnesses instead.
+// witnessEnvOf is every consumer's road to the invocation's witness
+// environment: the normalization-time derivation (n.WitnessEnv, whose
+// field doc carries the one-derivation rationale). The fallback
+// re-derivation exists only for hand-built values in tests -
+// production invocations always pass through NormalizeInvocation.
+func witnessEnvOf(n *NormalizedInvocation) []string {
+	if n.WitnessEnv != nil {
+		return n.WitnessEnv
+	}
+	return witnessWidthEnv(n)
+}
+
+// witnessWidthEnv derives the witness environment: the frozen
+// invocation environment with the unit's inner-parallelism cap applied
+// as GOMAXPROCS - the one entry the go tool's build workers and -p
+// default, and the test binary's scheduler and -parallel default, all
+// honor; an explicit flag is deliberately not emitted because it would
+// override an environment bound the default never does. The cap only
+// ever narrows: an environment already carrying a narrower positive
+// GOMAXPROCS keeps it. One derivation serves capture-group identity,
+// the group engine's producer env, spawn, and ingest (see
+// NormalizedInvocation.WitnessEnv): a witness that reads GOMAXPROCS
+// records the value its process actually saw, and a moved width
+// stales the group's evidence through the measurement guard's
+// runtime-config digest.
 func witnessWidthEnv(n *NormalizedInvocation) []string {
 	width := witnessChildWidth(n)
 	if v, ok := lookupEnv(n.Env, "GOMAXPROCS"); ok {

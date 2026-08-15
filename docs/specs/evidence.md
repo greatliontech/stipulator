@@ -204,14 +204,25 @@ half the processor count by default, since each package process is itself
 a parallel process tree — and each unit's inner parallelism is capped at
 the parent's processor budget over the unit bound, floored at one and
 delivered through the spawn environment (never widening an environment
-already narrower), so units times per-unit width stays at most the
-processor count instead of multiplying into a host-freezing fan-out; the
-spawn environment and the observation ingest environment are one source,
-so a witness that observably reads the delivered width records the value
-its process actually saw and re-executes exactly when the width moves
-with the unit bound. The concurrent execution assumes what
-standard Go tooling already assumes of them (`go test` runs packages
-in parallel by default): witnesses do not mutate inputs other packages
+already narrower), so at derived defaults units times per-unit width
+stays at most the processor count instead of multiplying into a
+host-freezing fan-out; explicit reviewed surfaces — a unit bound above
+the processor count, reviewed GOFLAGS or binary arguments carrying
+their own parallelism flags — may widen past the derived bound, an
+operator-explicit choice. The spawn environment, the observation
+ingest environment, and freshness revalidation are one environment
+(the analysis engine's declared producer environment), so a witness
+that observably reads the delivered width records the value its
+process actually saw and serves fresh under it; the measurement
+guard digests the runtime-configuration keys from that same
+environment, so a unit-bound change that moves the delivered width
+stales the group's evidence — the runtime reads those keys before
+execution, and evidence must never serve across a width the process
+never saw — and invocations delivering different widths occupy
+distinct capture groups, because one analysis engine declares one
+producer environment. The concurrent execution assumes what standard
+Go tooling already assumes of them (`go test` runs packages in
+parallel by default): witnesses do not mutate inputs other packages
 observe. A suite violating that is caught whenever the interference
 persists across the interfered process's run-to-ingest span: a
 persisting change under the record's declared bracket root moves its

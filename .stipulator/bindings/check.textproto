@@ -7,7 +7,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.Run"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "16d6dec06031f69a69a560250d15c8dffd5f9735d904a1d5ce001b3e6660104c"
+  shape_hash: "8e78a29532cb3df22640e42c5411308f892a651a225d3b4e9bde875df4ad27c3"
 }
 
 bindings {

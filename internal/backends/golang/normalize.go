@@ -65,6 +65,19 @@ type NormalizedInvocation struct {
 	// WitnessConcurrency is the reviewed spawn fan-out bound; zero means
 	// the pressure-honest default.
 	WitnessConcurrency int32
+	// WitnessEnv is the environment the invocation's witness processes
+	// run, ingest, and revalidate under: Env with the inner-parallelism
+	// cap applied, derived exactly once at normalization so every
+	// consumer - capture-group identity, the group engine's producer
+	// env, spawn, and ingest - observes one width for the invocation's
+	// whole lifetime. Per-call re-derivation would race Go 1.25's
+	// dynamic cgroup GOMAXPROCS updates: a mid-run width move could
+	// split the spawned environment from the recorded one and serve
+	// evidence for behavior the process never exhibited. The explicit
+	// GOMAXPROCS entry also pins the child runtime (dynamic updates
+	// apply only when the variable is unset), so the delivered width is
+	// deterministic per spawn.
+	WitnessEnv []string
 	// Timeout is the envelope's explicit, reviewed timeout.
 	Timeout time.Duration
 	// Toolchain is the effective toolchain identity (`go env GOVERSION`).
@@ -307,6 +320,9 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		}
 	}
 	sort.Strings(n.Vouches)
+	// The one witness-env derivation for this invocation's lifetime
+	// (see the WitnessEnv field doc).
+	n.WitnessEnv = witnessWidthEnv(n)
 	return n, nil
 }
 

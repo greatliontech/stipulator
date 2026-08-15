@@ -184,6 +184,11 @@ func DeriveTestRun(report *stipulatorv1.ExecutionReport) *verify.TestRun {
 type captureGroup struct {
 	tags []string
 	env  []string
+	// witnessEnv is the group's witness environment
+	// (NormalizedInvocation.WitnessEnv): revalidation recomputes env
+	// digests from it as the engine's producer env; loads and analysis
+	// stay on env.
+	witnessEnv []string
 	// race is the group's witness tier AND a build input: the analysis
 	// engine's flags must describe the binary the tests actually run as,
 	// and the flag rides the build-config guard into every fingerprint,
@@ -287,7 +292,11 @@ type policyCapture struct {
 // capture group, or one group's fingerprints would describe two
 // different binaries and two witness tiers.
 func groupKey(n *NormalizedInvocation) string {
-	key := strings.Join(n.Tags, ",") + "\x00" + strings.Join(n.Env, "\x01")
+	// The env component is the witness environment (the width cap
+	// applied; NormalizedInvocation.WitnessEnv): witness evidence
+	// digests under it, so two invocations whose delivered widths
+	// differ must not share a capture group.
+	key := strings.Join(n.Tags, ",") + "\x00" + strings.Join(witnessEnvOf(n), "\x01")
 	if n.AssumePure {
 		key += "\x02pure"
 	}
@@ -367,6 +376,7 @@ func capturePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) 
 			g = &captureGroup{
 				tags:          n.Tags,
 				env:           n.Env,
+				witnessEnv:    witnessEnvOf(n),
 				race:          n.Race,
 				assumePure:    n.AssumePure,
 				vouches:       n.Vouches,
@@ -436,6 +446,7 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Eng
 		gofresh.WithDir(dir),
 		gofresh.WithBuildFlags(flags...),
 		gofresh.WithEnv(g.env...),
+		gofresh.WithProducerEnv(g.witnessEnv...),
 	}
 	if g.assumePure {
 		// The invocation-wide reviewed purity assertion: recorded as
