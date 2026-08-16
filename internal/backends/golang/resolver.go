@@ -25,6 +25,9 @@ type resolverRequest struct {
 	Op      string   `json:"op"`
 	Symbol  string   `json:"symbol,omitempty"`
 	Symbols []string `json:"symbols,omitempty"`
+	// DeclaredPackages rides the slicefloor op: the declaration
+	// frontier's packages, computed once by the caller.
+	DeclaredPackages []string `json:"declaredPackages,omitempty"`
 }
 
 // resolverResponse is one child→parent protocol line: the handshake
@@ -171,7 +174,7 @@ func ServeResolver(ctx context.Context, dir string, r io.Reader, w io.Writer) er
 				}
 			}
 		case "slicefloor":
-			floor, err := b.SliceFloor(req.Symbols)
+			floor, err := b.SliceFloor(req.Symbols, req.DeclaredPackages)
 			if err != nil {
 				resp.Error = err.Error()
 			} else {

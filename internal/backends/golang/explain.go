@@ -24,7 +24,7 @@ func ExplainDynamicState(ctx context.Context, dir string, p *stipulatorv1.TestPo
 		return gofresh.Chain{}, "", err
 	}
 	for _, g := range pc.groups {
-		subjects := groupSubjects(g, pc.globalCount)
+		subjects := groupSubjects(g)
 		if len(subjects) == 0 {
 			continue
 		}

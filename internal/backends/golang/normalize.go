@@ -29,7 +29,28 @@ type NormalizedInvocation struct {
 	Dir string
 	// Packages is the invocation's package pattern scope.
 	Packages []string
-	Race     bool
+	// EnvOverrides and EnvDeny are the invocation's declared environment
+	// deltas, verbatim from the policy: the per-invocation environment
+	// semantics that partition record identity — never the merged
+	// ambient environment, whose equivalence the fingerprints own.
+	EnvOverrides []string
+	EnvDeny      []string
+	// DeclaredToolchain is the policy's toolchain pin, empty when the
+	// invocation rides the ambient toolchain: the declared form
+	// partitions record identity, the effective version stays the
+	// fingerprints' authority.
+	DeclaredToolchain string
+	// DeclaredGOOS, DeclaredGOARCH, DeclaredCgo, and DeclaredGOFLAGS are
+	// the policy's build-configuration pins in self-encoding form —
+	// "ambient" when undeclared, the quoted declared value otherwise —
+	// partitioning record identity without making ambient-resolved
+	// effective values identity-bearing (a drifted shell must neither
+	// orphan the store nor prune records the normal shell serves).
+	DeclaredGOOS    string
+	DeclaredGOARCH  string
+	DeclaredCgo     string
+	DeclaredGOFLAGS string
+	Race            bool
 	// PlainWitness marks a non-race invocation the policy explicitly
 	// admits into the witness-eligible selection at the plain tier; the
 	// downgrade is recorded on every witness it grants (the run-attribute
@@ -111,6 +132,19 @@ type NormalizedInvocation struct {
 	// process spawns. A package absent from the map gets no bracket and
 	// its observation fails closed as incomplete.
 	PkgDirs map[string]string
+	// PkgClosureDirs maps each listed package to the tree-relative slash
+	// paths of its test build's in-tree import-closure directories
+	// (its own directory excluded): the observation bracket declares
+	// them beside the package's own directory, sealing everything the
+	// consuming compile could read from the tree over the run-to-ingest
+	// span. Recorded by DiscoverInvocation from the toolchain's own
+	// dependency listing.
+	PkgClosureDirs map[string][]string
+	// ClosureDirsErr is non-empty when the dependency listing that feeds
+	// PkgClosureDirs failed: the bracket cannot declare what the compile
+	// may read, so observations fail closed as incomplete rather than
+	// sealing a weaker claim silently.
+	ClosureDirsErr string
 }
 
 // NormalizeInvocation resolves one policy invocation against the tree at
@@ -150,7 +184,14 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		Name:         inv.GetName(),
 		ModuleRoot:   cfg.GetModuleRoot(),
 		Packages:     append([]string(nil), cfg.GetPackages()...),
-		Race:         cfg.GetRace(),
+		EnvOverrides:      append([]string(nil), cfg.GetEnvironment()...),
+		EnvDeny:           append([]string(nil), cfg.GetEnvDeny()...),
+		DeclaredToolchain: cfg.GetToolchain(),
+		DeclaredGOOS:      declaredPin(cfg.HasGoos(), cfg.GetGoos()),
+		DeclaredGOARCH:    declaredPin(cfg.HasGoarch(), cfg.GetGoarch()),
+		DeclaredCgo:       declaredPin(cfg.HasCgoEnabled(), fmt.Sprintf("%t", cfg.GetCgoEnabled())),
+		DeclaredGOFLAGS:   declaredPin(cfg.HasGoflags(), cfg.GetGoflags()),
+		Race:              cfg.GetRace(),
 		PlainWitness: cfg.GetPlainWitness(),
 		Timeout:      inv.GetTimeout().AsDuration(),
 		Tags:         append([]string(nil), cfg.GetTags()...),
@@ -390,6 +431,17 @@ func validateExcludedPath(p, root string) error {
 		return fmt.Errorf("excluded path %q is not a clean slash path", p)
 	}
 	return nil
+}
+
+// declaredPin self-encodes one policy build-configuration pin for the
+// record-identity coordinate: "ambient" when undeclared, the quoted
+// declared value otherwise (quoting keeps the two ranges disjoint — a
+// quoted value always begins with '"').
+func declaredPin(has bool, v string) string {
+	if !has {
+		return "ambient"
+	}
+	return fmt.Sprintf("%q", v)
 }
 
 // validateBracketPath admits exactly the forms the observation bracket

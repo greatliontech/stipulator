@@ -86,11 +86,11 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 		}}
 	}
 	for _, rec := range []witnesscache.Record{
-		{Package: "example.com/exec/redmain", Test: "TestGreen", Fingerprint: seedFP, CompartmentLedger: seedLedger("TestGreen"),
+		{Group: "00112233aabbccdd", Package: "example.com/exec/redmain", Test: "TestGreen", Fingerprint: seedFP, CompartmentLedger: seedLedger("TestGreen"),
 			Outcomes: map[string]string{"example.com/exec/redmain.TestGreen": "passed"}},
-		{Package: "example.com/exec/ok", Test: "TestDouble", Fingerprint: seedFP, CompartmentLedger: seedLedger("TestDouble"),
+		{Group: "00112233aabbccdd", Package: "example.com/exec/ok", Test: "TestDouble", Fingerprint: seedFP, CompartmentLedger: seedLedger("TestDouble"),
 			Outcomes: map[string]string{"example.com/exec/ok.TestDouble": "failed"}},
-		{Package: "example.com/exec/killmid", Test: "TestShadowedByKill", Fingerprint: seedFP, CompartmentLedger: seedLedger("TestShadowedByKill"),
+		{Group: "00112233aabbccdd", Package: "example.com/exec/killmid", Test: "TestShadowedByKill", Fingerprint: seedFP, CompartmentLedger: seedLedger("TestShadowedByKill"),
 			Outcomes: map[string]string{"example.com/exec/killmid.TestShadowedByKill": "passed"}},
 	} {
 		if err := witnesscache.Install(tmp, rec); err != nil {
@@ -300,8 +300,9 @@ func TestSharedReads(t *testing.T) {
 	cfg.SetPackages([]string{"./..."})
 	cfg.SetRace(true)
 	// A second race invocation in another capture group (tag-widened)
-	// double-selects the shared package: it can never publish, and its
-	// ineligibility must leave the first group's proofs standing.
+	// double-selects the shared package: each group publishes its own
+	// record under its own build coordinate, and neither leg disturbs
+	// the first group's proofs.
 	dupCfg := &stipulatorv1.GoInvocationConfig{}
 	dupCfg.SetPackages([]string{"./shared"})
 	dupCfg.SetRace(true)
@@ -319,17 +320,23 @@ func TestSharedReads(t *testing.T) {
 	if !SuiteHealthy(report) {
 		t.Fatalf("fixture suite unexpectedly unhealthy: %v", report.GetInvocations())
 	}
-	// The double-selected package executes and counts uncacheable; its
-	// record never publishes.
-	if tr.Ran != 4 || tr.Uncached != 1 {
-		t.Errorf("ran=%d uncached=%d, want 4/1", tr.Ran, tr.Uncached)
+	// The double-selected package executes under both legs and
+	// publishes one record per capture group.
+	if tr.Ran != 4 || tr.Uncached != 0 {
+		t.Errorf("ran=%d uncached=%d, want 4/0", tr.Ran, tr.Uncached)
 	}
 	cache := witnesscache.Load(tmp)
-	if len(cache) != 3 {
-		t.Fatalf("published %d records, want 3: %+v", len(cache), cache)
+	if len(cache) != 5 {
+		t.Fatalf("published %d records, want 5 (shared publishes per group): %+v", len(cache), cache)
 	}
-	if cacheRecord(t, cache, "example.com/pub/shared", "TestSharedReads") != nil {
-		t.Error("record published for a package two invocations select")
+	sharedGroups := map[string]bool{}
+	for _, rec := range cache {
+		if rec.Package == "example.com/pub/shared" && rec.Test == "TestSharedReads" {
+			sharedGroups[rec.Group] = true
+		}
+	}
+	if len(sharedGroups) != 2 {
+		t.Errorf("shared package records span %d build coordinates, want one per selecting group", len(sharedGroups))
 	}
 	solo := cacheRecord(t, cache, "example.com/pub/solo", "TestReadsObserved")
 	if solo == nil {

@@ -93,7 +93,7 @@ func TestCount(t *testing.T) {
 			t.Fatalf("groups = %d, want 1", len(pc.groups))
 		}
 		g := pc.groups[0]
-		subjects := groupSubjects(g, pc.globalCount)
+		subjects := groupSubjects(g)
 		if len(subjects) == 0 {
 			t.Fatal("no witness subjects")
 		}
@@ -127,7 +127,7 @@ func TestCount(t *testing.T) {
 			t.Fatal(err)
 		}
 		g := pc.groups[0]
-		subjects := groupSubjects(g, pc.globalCount)
+		subjects := groupSubjects(g)
 		engine, err := groupEngine(ctx, dir, g)
 		if err != nil {
 			t.Fatal(err)

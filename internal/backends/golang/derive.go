@@ -2,6 +2,8 @@ package golang
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"maps"
 	"runtime/debug"
@@ -181,6 +183,15 @@ func DeriveTestRun(report *stipulatorv1.ExecutionReport) *verify.TestRun {
 // a fingerprint is always captured under the same build selection its
 // test executed under.
 type captureGroup struct {
+	// id is the group's stable record-identity digest over its build
+	// coordinate (groupIdentity): the record-addressable form of "one
+	// analysis engine declares one producer environment". Records carry
+	// it, so one test's evidence under two producer environments never
+	// shadows itself; groups differing only in exclusions, vouches, or
+	// purity share it deliberately — their records coexist as variants
+	// and each gate rides the record or fingerprint
+	// (REQ-evidence-witness-cache-format).
+	id   string
 	tags []string
 	env  []string
 	// witnessEnv is the group's witness environment
@@ -281,6 +292,8 @@ type policyCapture struct {
 	// candidates.
 	globalCount map[string]int
 	groups      []*captureGroup
+	// invGroup names each witness-eligible invocation's capture group.
+	invGroup map[string]*captureGroup
 }
 
 // groupKey is one invocation's capture-group identity: the
@@ -307,10 +320,100 @@ func groupKey(n *NormalizedInvocation) string {
 	}
 	if len(n.Vouches) > 0 {
 		// Vouches change verdicts, so two vouch sets are two capture
-		// groups - evidence produced under one never serves the other.
+		// groups - one view never mixes two reviewed sets. Records
+		// still share the identity coordinate across vouch sets: an
+		// added vouch serves existing evidence unchanged, and a
+		// withdrawn vouch's records refuse in the current derivation.
 		key += "\x05" + strings.Join(n.Vouches, "\x01")
 	}
 	return key
+}
+
+// groupIdentity is the record-identity coordinate of one invocation's
+// capture group: the POLICY-DECLARED build selection and per-invocation
+// semantics — tags, the race build input, the declared platform, cgo,
+// GOFLAGS and toolchain pins (empty when the invocation rides the
+// ambient value), workspace and module mode, the PGO profile, extra
+// binary arguments, the declared environment deltas
+// (order-canonicalized), and the declared concurrency bound — and
+// nothing more. Every ambient-resolved fact is deliberately excluded:
+// the merged ambient environment, the effective toolchain, platform,
+// GOFLAGS, GOEXPERIMENT, and the delivered width are the fingerprints'
+// authority — an identity digesting them would silently orphan the
+// whole store on a new shell, a toolchain upgrade, or a host-width
+// change (and a drifted shell's prune would delete records the normal
+// shell serves), while fingerprints refuse with a named reason and
+// variants coexist. Exclusions, vouches, and the purity assertion
+// partition capture groups (two observation semantics are two views)
+// but each carries its own serving rule riding the record or the
+// fingerprint (a widened exclusion set or an added vouch serves
+// existing evidence unchanged; a purity flip refuses by fingerprint),
+// so none of them may re-address records.
+func groupIdentity(n *NormalizedInvocation) string {
+	// Set-valued components join quoted: a value carrying the joiner
+	// byte must not alias two entries into one coordinate. Env deltas
+	// sort — duplicates are rejected at policy validation, so order is
+	// presentation, and a pure reorder must not orphan the store.
+	parts := []string{
+		"tags=" + quotedJoin(n.Tags),
+		fmt.Sprintf("race=%t", n.Race),
+		"goos=" + n.DeclaredGOOS,
+		"goarch=" + n.DeclaredGOARCH,
+		"cgo=" + n.DeclaredCgo,
+		"goflags=" + n.DeclaredGOFLAGS,
+		fmt.Sprintf("workspace=%t", n.WorkspaceOn),
+		"modulemode=" + n.ModuleMode.String(),
+		"pgo=" + n.PGO,
+		"toolchain=" + n.DeclaredToolchain,
+		"args=" + quotedJoin(n.Args),
+		"envset=" + quotedJoin(sortedCopy(n.EnvOverrides)),
+		"envdeny=" + quotedJoin(sortedCopy(n.EnvDeny)),
+		fmt.Sprintf("concurrency=%d", n.WitnessConcurrency),
+	}
+	return strings.Join(parts, "\x00")
+}
+
+func quotedJoin(values []string) string {
+	quoted := make([]string, len(values))
+	for i, v := range values {
+		quoted[i] = fmt.Sprintf("%q", v)
+	}
+	return strings.Join(quoted, ",")
+}
+
+func sortedCopy(values []string) []string {
+	out := append([]string(nil), values...)
+	sort.Strings(out)
+	return out
+}
+
+// LiveGroupDigests names the record-identity coordinates the current
+// policy can still address, for the store GC's cross-coordinate
+// eviction: a coordinate no invocation produces is retired, and its
+// records are cost no lookup will ever serve. A normalization fault
+// returns nil — the caller keeps every coordinate, because cost cleanup
+// must never guess.
+func LiveGroupDigests(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) map[string]bool {
+	out := map[string]bool{}
+	for _, inv := range p.GetInvocations() {
+		if inv.GetGo() == nil {
+			continue
+		}
+		n, err := NormalizeInvocation(ctx, dir, inv)
+		if err != nil {
+			return nil
+		}
+		out[groupDigest(groupIdentity(n))] = true
+	}
+	return out
+}
+
+// groupDigest folds a canonical identity key into its stable
+// record-identity coordinate (REQ-model-hash-func's digest,
+// name-economy truncated exactly as the store's file names are).
+func groupDigest(key string) string {
+	sum := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(sum[:8])
 }
 
 // canonicalExclusions sorts and deduplicates a reviewed exclusion set so
@@ -327,7 +430,7 @@ func canonicalExclusions(paths []string) []string {
 // explicit plain-witness admissions) into capture groups, each carrying
 // its tier.
 func capturePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (*policyCapture, error) {
-	pc := &policyCapture{globalCount: map[string]int{}}
+	pc := &policyCapture{globalCount: map[string]int{}, invGroup: map[string]*captureGroup{}}
 	var entries []invocationCapture
 	for _, inv := range p.GetInvocations() {
 		if inv.GetGo() == nil {
@@ -373,6 +476,7 @@ func capturePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) 
 		g := byKey[key]
 		if g == nil {
 			g = &captureGroup{
+				id:            groupDigest(groupIdentity(n)),
 				tags:          n.Tags,
 				env:           n.Env,
 				witnessEnv:    witnessEnvOf(n),
@@ -391,6 +495,7 @@ func capturePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) 
 		if !slices.Contains(g.invs, n.Name) {
 			g.invs = append(g.invs, n.Name)
 		}
+		pc.invGroup[n.Name] = g
 		for pkg, names := range tests {
 			if prev, taken := g.pkgInv[pkg]; taken && prev != n.Name {
 				g.ambiguous[pkg] = true
@@ -409,12 +514,16 @@ func capturePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) 
 }
 
 // groupSubjects enumerates one capture group's publishable subjects in
-// deterministic order: every expected witness of a package this group's
-// one invocation selects alone across the whole policy.
-func groupSubjects(g *captureGroup, globalCount map[string]int) []gofresh.Subject {
+// deterministic order: every expected witness of a package exactly one
+// invocation of this group selects. Selection by other groups is no
+// bar — each group publishes and serves its own record under its own
+// identity coordinate — only a within-group double selection (two
+// same-environment invocations naming one package) has no single
+// producing leg.
+func groupSubjects(g *captureGroup) []gofresh.Subject {
 	var subjects []gofresh.Subject
 	for pkg, names := range g.tests {
-		if globalCount[pkg] != 1 {
+		if g.ambiguous[pkg] {
 			continue
 		}
 		for _, name := range names {
@@ -496,7 +605,7 @@ func NewWitnessRecorder(ctx context.Context, dir string, p *stipulatorv1.TestPol
 		return degrade(err)
 	}
 	for _, g := range pc.groups {
-		subjects := groupSubjects(g, pc.globalCount)
+		subjects := groupSubjects(g)
 		if len(subjects) == 0 {
 			continue
 		}
@@ -585,8 +694,16 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 			tr.UncacheableReasons[key] = "no capture group: no witness-eligible invocation covers the package"
 		}
 	default:
-		if tr.Ran > len(published) {
-			tr.Uncached = tr.Ran - len(published)
+		// Published is a record count (one per group); Uncached is a
+		// subject count in Ran's unit, so distinct published subjects
+		// are the subtrahend — two group records for one shared package
+		// must not mask another subject's drop.
+		publishedSubjects := map[string]bool{}
+		for _, rec := range published {
+			publishedSubjects[rec.Package+"."+rec.Test] = true
+		}
+		if tr.Ran > len(publishedSubjects) {
+			tr.Uncached = tr.Ran - len(publishedSubjects)
 		}
 		// Per-test attribution mirrors the selective runner's: the
 		// ladder's own refusal reasons plus a structural fallback
@@ -636,15 +753,6 @@ func (r *WitnessRecorder) publish(ctx context.Context, report *stipulatorv1.Exec
 		return nil, nil, "", nil
 	}
 	facts := indexInvocations(report)
-	// A package under more than one invocation has no single producing
-	// invocation for its record; it executes and witnesses normally but
-	// never publishes.
-	selectCount := map[string]int{}
-	for _, h := range report.GetInvocations() {
-		for _, p := range h.GetPackages() {
-			selectCount[p.GetPackage()]++
-		}
-	}
 	rowsByInvPkg := map[string][]*stipulatorv1.TestResult{}
 	for _, row := range report.GetTests() {
 		k := row.GetProducer().GetInvocation() + "\x00" + row.GetPackage()
@@ -658,7 +766,7 @@ func (r *WitnessRecorder) publish(ctx context.Context, report *stipulatorv1.Exec
 	var published []witnesscache.Record
 	uncacheableWhy := map[gofresh.Subject]string{}
 	for _, g := range r.groups {
-		records, reasons, degraded, err := r.publishGroup(ctx, g, facts, selectCount, rowsByInvPkg, obsByProducer)
+		records, reasons, degraded, err := r.publishGroup(ctx, g, facts, rowsByInvPkg, obsByProducer)
 		if err != nil || degraded != "" {
 			return nil, nil, degraded, err
 		}
@@ -678,7 +786,7 @@ type groupSubject struct {
 	regs     []verify.Registration
 }
 
-func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, facts invocationFacts, selectCount map[string]int, rowsByInvPkg map[string][]*stipulatorv1.TestResult, obsByProducer map[producerKey]*ProcessObservation) ([]witnesscache.Record, map[gofresh.Subject]string, string, error) {
+func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, facts invocationFacts, rowsByInvPkg map[string][]*stipulatorv1.TestResult, obsByProducer map[producerKey]*ProcessObservation) ([]witnesscache.Record, map[gofresh.Subject]string, string, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, "", err
 	}
@@ -693,8 +801,8 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 			}
 		}
 		inv, ok := g.pkgInv[pkg]
-		if !ok || g.ambiguous[pkg] || selectCount[pkg] != 1 {
-			markAll("multiply-selected or ambiguous invocation coverage: a record has no per-invocation identity")
+		if !ok || g.ambiguous[pkg] {
+			markAll("two invocations of one capture group select the package; no single producing leg")
 			continue
 		}
 		if !facts.healthyPkg[inv+"\x00"+pkg] {
@@ -778,7 +886,7 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 	for s, gs := range eligible {
 		eligibleSubjects[s] = &pubSubject{obs: gs.obs, outcomes: gs.outcomes, regs: gs.regs, solo: gs.soloRun}
 	}
-	records, _, checkFault, closeFault, fatal := publishEligible(ctx, g.view, g.observed, g.observedFPs, g.candidates, order, eligibleSubjects, g.fps, g.excludedPaths, nil, nil, reasons)
+	records, _, checkFault, closeFault, fatal := publishEligible(ctx, g.id, g.view, g.observed, g.observedFPs, g.candidates, order, eligibleSubjects, g.fps, g.excludedPaths, nil, nil, reasons)
 	if fatal != nil {
 		return nil, nil, "", fatal
 	}

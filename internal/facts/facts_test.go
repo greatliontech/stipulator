@@ -220,11 +220,19 @@ func TestPartitionProtoCapsOverlaps(t *testing.T) {
 // an external row.
 type floorFake struct{ fakeSlicer }
 
-func (f floorFake) SliceFloor(symbols []string) ([]verify.FloorPackage, error) {
+func (f floorFake) SliceFloor(symbols []string, declaredPkgs []string) ([]verify.FloorPackage, error) {
+	declared := map[string]bool{}
+	for _, p := range declaredPkgs {
+		declared[p] = true
+	}
 	var out []verify.FloorPackage
 	for _, sym := range symbols {
 		if pkg, ok := f.fakeSlicer[sym]; ok {
-			out = append(out, verify.FloorPackage{Package: pkg, Disposition: "declared"})
+			d := "widened"
+			if declared[pkg] {
+				d = "declared"
+			}
+			out = append(out, verify.FloorPackage{Package: pkg, Disposition: d})
 		}
 	}
 	out = append(out, verify.FloorPackage{Package: "example.com/effects", Disposition: "widened"})

@@ -112,7 +112,7 @@ func outcomeFromString(s string) verify.TestOutcome {
 // compartment hash pinned (the inert-growth carve-out's diff base,
 // REQ-evidence-witness-freshness), and the registrations sort canonically.
 // A subject the view cannot ledger returns false — it stays unpublishable.
-func assembleWitnessRecord(view *gofresh.View, s gofresh.Subject, fp gofresh.Fingerprint, outcomes map[string]string, regs []verify.Registration, exclusions []string) (witnesscache.Record, bool) {
+func assembleWitnessRecord(group string, view *gofresh.View, s gofresh.Subject, fp gofresh.Fingerprint, outcomes map[string]string, regs []verify.Registration, exclusions []string) (witnesscache.Record, bool) {
 	ledger, err := view.TestVariantLedger(s)
 	if err != nil {
 		return witnesscache.Record{}, false
@@ -126,6 +126,7 @@ func assembleWitnessRecord(view *gofresh.View, s gofresh.Subject, fp gofresh.Fin
 		return a.Requirement < b.Requirement
 	})
 	return witnesscache.Record{
+		Group:                 group,
 		Package:               s.Package,
 		Test:                  s.Symbol,
 		Fingerprint:           witnesscache.FromGofresh(fp),

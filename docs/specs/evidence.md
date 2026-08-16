@@ -151,8 +151,16 @@ vouch resurfaces its culprit in the current derivation — the records
 it licensed refuse on their own — while an added vouch serves
 existing evidence unchanged. Each producing process's completed observation is sealed against an
 observation bracket captured before the process spawns, declaring the
-package's own directory — module-relative under the verification tree,
-with the VCS bookkeeping tree excluded — together with the invocation's
+package's own directory and its test build's in-tree import-closure
+directories — module-relative under the verification tree, with the VCS
+bookkeeping tree excluded, the closure resolved from the toolchain's
+own dependency listing so the bracket seals exactly what the consuming
+compile may read from the tree (a source edit and content-only revert
+anywhere in the closure completed inside the span moves the bracket;
+the content-and-metadata-exact restore stays the declared residual,
+and a closure the toolchain cannot list yields an incomplete
+observation rather than a record sealed over a weaker claim) —
+together with the invocation's
 reviewed bracket paths (process images, fixed external files, and fixed
 data directories its tests deliberately consume — a documentation corpus
 the witnesses read is the canonical directory case — each a clean
@@ -220,7 +228,35 @@ stales the group's evidence — the runtime reads those keys before
 execution, and evidence must never serve across a width the process
 never saw — and invocations delivering different widths occupy
 distinct capture groups, because one analysis engine declares one
-producer environment. The concurrent execution assumes what standard
+producer environment. A record's identity carries its producing capture
+group's build coordinate — the policy-declared build selection and
+per-invocation semantics: tags, the race build input, the declared
+platform, cgo, GOFLAGS, and toolchain pins (each marked undeclared
+when the invocation rides the ambient value), workspace and module
+mode, the PGO profile, extra binary arguments, the declared
+environment deltas (order-canonicalized), and the declared concurrency
+bound; deliberately never any ambient-resolved fact — the merged
+ambient environment, the effective toolchain, platform, GOFLAGS, or
+GOEXPERIMENT, and the ambient-derived delivered width are the
+fingerprints' authority. An identity digesting an ambient-resolved
+fact would silently orphan the store on a new shell, a toolchain
+upgrade, or a host-width change — and a drifted shell's store
+retirement would delete records the normal shell serves — where
+fingerprints refuse with a named reason and variants coexist. The store's garbage collection may
+retire coordinates no current invocation produces — their records are
+cost no lookup can serve. A test several eligible invocations
+select holds one record per coordinate, each serving only under a view
+whose fingerprints prove it, and the run's witness evidence merges the
+legs by worst outcome, a served pass never overriding another leg's
+failure. Served and executed counts share the subject unit: a subject
+several groups serve counts once, and a subject holding served or
+published evidence never counts uncacheable. Exclusions, vouches, and the purity assertion partition
+capture groups but never the record identity: each carries its own
+serving rule riding the record or the fingerprint, so a widened
+exclusion set or an added vouch still serves existing evidence
+unchanged. Only a within-group double selection (two same-environment
+invocations naming one package) has no single producing leg and stays
+unpublishable. The concurrent execution assumes what standard
 Go tooling already assumes of them (`go test` runs packages in
 parallel by default): witnesses do not mutate inputs other packages
 observe. A suite violating that is caught whenever the interference
@@ -269,7 +305,10 @@ outside the repository, under the user cache directory keyed by the corpus root'
 absolute path, as one JSON file per record variant — named by the record identity's
 digest joined with its fingerprint's digest, each name segment the first
 sixteen hexadecimal characters of the REQ-model-hash-func digest — the
-identity segment over the package, a NUL byte, and the test name; the
+identity segment over the producing capture group's build coordinate,
+the package, and the test name, NUL-separated (the coordinate itself
+the same truncated digest over the group's canonical
+declared-build-coordinate key); the
 fingerprint segment over the fingerprint's canonical JSON encoding; and
 the store's per-corpus directory the same truncation over the resolved
 corpus root's absolute path: a filename-length economy over the one
@@ -281,12 +320,14 @@ states of one test coexist as variants and alternating between branches evicts
 nothing. Records install the moment their witness group completes — its last
 covering invocation executed and its closing validation passed — never as an
 end-of-run batch: a run dying mid-execution keeps every record already
-produced, and the degraded path still installs nothing. Each file carries one record object with integer `version` equal to `6` —
-bumped from `5` when the persisted compartment ledger gained each
-declaration's package clause and referenced names, both consumed by the
-test-variants serve carve-out's diff, so field-blind prior records fail
-closed to re-execution —
-string `package` and `test`, object `fingerprint`, object `compartmentLedger`,
+produced, and the degraded path still installs nothing. Each file carries one record object with integer `version` equal to `7` —
+bumped from `6` when the record identity gained the producing capture
+group's coordinate, so a record is addressable only within the producer
+environment that made it, and from `5` when the persisted compartment
+ledger gained each declaration's package clause and referenced names,
+both consumed by the test-variants serve carve-out's diff — either way
+field-blind prior records fail closed to re-execution —
+string `group`, `package` and `test`, object `fingerprint`, object `compartmentLedger`,
 object `outcomes`, optional
 array `registrations`, and optional array `observationExclusions` — the
 canonical reviewed exclusion set the record's observation was captured

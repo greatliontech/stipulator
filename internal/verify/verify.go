@@ -701,5 +701,8 @@ type FloorPackage struct {
 // floor beside the declaration facts, so slice consumers get soundness
 // by construction instead of a silently incomplete frontier.
 type FloorSlicer interface {
-	SliceFloor(symbols []string) ([]FloorPackage, error)
+	// SliceFloor computes the floor for the symbols; declaredPkgs names
+	// the packages the caller's declaration frontier (Slice) already
+	// reached, so one slicing pass serves both surfaces.
+	SliceFloor(symbols []string, declaredPkgs []string) ([]FloorPackage, error)
 }

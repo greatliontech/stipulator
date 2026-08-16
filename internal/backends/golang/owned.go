@@ -216,8 +216,8 @@ func (o *Owned) WitnessClassVerdict(symbol string) (verify.WitnessClass, string)
 }
 
 // SliceFloor implements verify.FloorSlicer through the resolver child.
-func (o *Owned) SliceFloor(symbols []string) ([]verify.FloorPackage, error) {
-	resp, err := o.roundTrip(resolverRequest{Op: "slicefloor", Symbols: symbols})
+func (o *Owned) SliceFloor(symbols []string, declaredPkgs []string) ([]verify.FloorPackage, error) {
+	resp, err := o.roundTrip(resolverRequest{Op: "slicefloor", Symbols: symbols, DeclaredPackages: declaredPkgs})
 	if err != nil {
 		return nil, err
 	}

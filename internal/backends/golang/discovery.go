@@ -86,6 +86,7 @@ func DiscoverInvocation(ctx context.Context, n *NormalizedInvocation) ([]Obligat
 			n.PkgDirs[p.ImportPath] = p.Dir
 		}
 	}
+	listClosureDirs(ctx, n, pkgs)
 	seen := map[string]bool{}
 	var out []Obligation
 	add := func(o Obligation) {
@@ -195,6 +196,114 @@ func listPackages(ctx context.Context, n *NormalizedInvocation) ([]listedPackage
 		return nil, fmt.Errorf("invocation %q selects no packages", n.Name)
 	}
 	return pkgs, nil
+}
+
+// depListedPackage is one node of the toolchain's test build graph.
+type depListedPackage struct {
+	ImportPath string
+	Dir        string
+	ForTest    string
+	Deps       []string
+}
+
+// foldVariant strips a build-variant identity ("pkg [pkg.test]") to its
+// plain import path; a plain path passes through.
+func foldVariant(path string) string {
+	if i := strings.Index(path, " ["); i >= 0 {
+		return path[:i]
+	}
+	return path
+}
+
+// listClosureDirs records each selected package's in-tree test-build
+// import-closure directories (PkgClosureDirs) from the toolchain's own
+// dependency listing — the same graph the consuming compile walks, so
+// the observation bracket declares exactly what the compile may read
+// from the tree. A listing failure sets ClosureDirsErr and observations
+// fail closed as incomplete: a bracket that cannot declare the
+// compile's readable surface must not seal a weaker claim silently.
+func listClosureDirs(ctx context.Context, n *NormalizedInvocation, selected []listedPackage) {
+	args := []string{"list", "-e", "-deps", "-test", "-json=ImportPath,Dir,ForTest,Deps"}
+	if len(n.Tags) > 0 {
+		args = append(args, "-tags="+strings.Join(n.Tags, ","))
+	}
+	if flag := moduleModeFlag(n.ModuleMode); flag != "" {
+		args = append(args, flag)
+	}
+	args = append(args, n.Packages...)
+	cmd := commandContext(ctx, "go", args...)
+	cmd.Dir = n.Dir
+	cmd.Env = n.Env
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	runErr := cmd.Run()
+	if ctx.Err() != nil {
+		n.ClosureDirsErr = ctx.Err().Error()
+		return
+	}
+	// With -e, in-band package breakage still exits zero, so a nonzero
+	// exit is an infrastructure failure — even with partial JSON parsed,
+	// a truncated closure would seal a silently weaker bracket. Fail
+	// closed unconditionally.
+	if runErr != nil {
+		n.ClosureDirsErr = fmt.Sprintf("go list -deps for invocation %q: %v: %s", n.Name, runErr, stderr.String())
+		return
+	}
+	var nodes []depListedPackage
+	dec := json.NewDecoder(&stdout)
+	for dec.More() {
+		var p depListedPackage
+		if err := dec.Decode(&p); err != nil {
+			n.ClosureDirsErr = fmt.Sprintf("parsing go list -deps output for %q: %v", n.Name, err)
+			return
+		}
+		if p.ImportPath != "" {
+			nodes = append(nodes, p)
+		}
+	}
+	if len(nodes) == 0 {
+		n.ClosureDirsErr = fmt.Sprintf("go list -deps for invocation %q listed nothing", n.Name)
+		return
+	}
+	root := treeRoot(n)
+	dirByPath := map[string]string{}
+	nodesByPkg := map[string][]depListedPackage{}
+	for _, p := range nodes {
+		plain := foldVariant(p.ImportPath)
+		if p.Dir != "" {
+			dirByPath[plain] = p.Dir
+		}
+		owner := plain
+		if p.ForTest != "" {
+			owner = p.ForTest
+		}
+		nodesByPkg[owner] = append(nodesByPkg[owner], p)
+	}
+	n.PkgClosureDirs = make(map[string][]string, len(selected))
+	for _, sel := range selected {
+		if sel.Dir == "" {
+			continue
+		}
+		seen := map[string]bool{}
+		var rels []string
+		for _, node := range nodesByPkg[sel.ImportPath] {
+			for _, dep := range node.Deps {
+				dir := dirByPath[foldVariant(dep)]
+				if dir == "" || dir == sel.Dir || seen[dir] {
+					continue
+				}
+				seen[dir] = true
+				rel, err := filepath.Rel(root, dir)
+				if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+					continue
+				}
+				rels = append(rels, filepath.ToSlash(rel))
+			}
+		}
+		sort.Strings(rels)
+		n.PkgClosureDirs[sel.ImportPath] = rels
+	}
 }
 
 // committedSeeds returns the committed seed-corpus file names of one fuzz

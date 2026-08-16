@@ -284,20 +284,18 @@ func (b *Backend) ReachedPackages(files []string) map[string]bool {
 	for _, f := range files {
 		inFile[f] = true
 	}
-	norm := func(p string) string { return strings.TrimSuffix(p, "_test") }
 	rev := map[string][]string{}
 	seeds := map[string]bool{}
 	for _, pkg := range b.pkgs {
-		np := norm(pkg.PkgPath)
+		np := variantBase(pkg)
 		for _, imp := range pkg.Imports {
 			// Without NeedDeps an out-of-tree import is a stub whose only
 			// identity is its ID; in-tree imports share the fully loaded
-			// root nodes. Either way the import path is the edge key.
-			target := imp.PkgPath
-			if target == "" {
-				target = imp.ID
-			}
-			rev[norm(target)] = append(rev[norm(target)], np)
+			// root nodes. Either way the folded build identity is the
+			// edge key - never a path-spelling trim, which misfolds a
+			// real package whose import path ends in "_test".
+			target := variantBase(imp)
+			rev[target] = append(rev[target], np)
 		}
 		// EmbedFiles seed exactly like source files: an embed is a
 		// compile-time input the loader names, so an asset edit reaches
@@ -336,7 +334,7 @@ func (b *Backend) ReachedPackages(files []string) map[string]bool {
 func (b *Backend) splitSymbol(symbol string) (string, string) {
 	best := ""
 	for _, pkg := range b.pkgs {
-		p := strings.TrimSuffix(pkg.PkgPath, "_test")
+		p := variantBase(pkg)
 		if strings.HasPrefix(symbol, p+".") && len(p) > len(best) {
 			best = p
 		}

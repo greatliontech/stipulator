@@ -47,7 +47,19 @@ func TestGoSliceFloorDispositions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	floor, err := b.SliceFloor([]string{"example.com/floored/app.Use"})
+	decls, err := b.Slice([]string{"example.com/floored/app.Use"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	declared := map[string]bool{}
+	var declaredPkgs []string
+	for _, d := range decls {
+		if !declared[d.Package] {
+			declared[d.Package] = true
+			declaredPkgs = append(declaredPkgs, d.Package)
+		}
+	}
+	floor, err := b.SliceFloor([]string{"example.com/floored/app.Use"}, declaredPkgs)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -79,10 +79,39 @@ type observationFrame struct {
 // still returns its bracket: gofresh seals that observation attributably
 // unverifiable, which is the honest disposition — the process ran and
 // its evidence exists, it just cannot bind.
+// bracketRootsFor resolves the extra observation-bracket roots one
+// package's producing process declares beside its own directory: the
+// package's in-tree import-closure directories — everything the
+// consuming compile may read from the tree, sealed over the
+// run-to-ingest span, so a mid-span source edit persisting anywhere in
+// the closure, or a restore that does not reproduce content and
+// metadata alike, moves the bracket toward re-execution — followed by
+// the invocation's reviewed bracket paths. A closure the toolchain
+// could not list fails closed with the refusing reason: sealing only
+// the package directory would publish records carrying a weaker claim
+// silently.
+func bracketRootsFor(n *NormalizedInvocation, pkg string) ([]string, string) {
+	if n.ClosureDirsErr != "" {
+		return nil, "package import closure unresolved at spawn (" + n.ClosureDirsErr + "); no observation bracket was captured"
+	}
+	closure, ok := n.PkgClosureDirs[pkg]
+	if !ok {
+		return nil, "package import closure unknown at spawn; no observation bracket was captured"
+	}
+	if len(closure) == 0 {
+		return n.BracketPaths, ""
+	}
+	return append(append([]string(nil), closure...), n.BracketPaths...), ""
+}
+
 func captureObservationFrame(ctx context.Context, n *NormalizedInvocation, pkg string) observationFrame {
 	pkgDir, ok := n.PkgDirs[pkg]
 	if !ok {
 		return observationFrame{spawnReason: "package directory unknown at spawn; no observation bracket was captured"}
+	}
+	bracketPaths, refused := bracketRootsFor(n, pkg)
+	if refused != "" {
+		return observationFrame{spawnReason: refused}
 	}
 	// The invocation's reviewed exclusions apply at both endpoints: a
 	// path whose manifest reads the exclusion drops ("its digest moves
@@ -91,7 +120,7 @@ func captureObservationFrame(ctx context.Context, n *NormalizedInvocation, pkg s
 	// exists to keep cacheable. The caller-side soundness assertion the
 	// exclusion carries covers both uses.
 	return observationFrame{frame: runtimeinput.CaptureProducerFrame(ctx, treeRoot(n), pkgDir,
-		runtimeinput.FrameOptions{BracketPaths: n.BracketPaths, ExcludedPaths: n.ExcludedPaths})}
+		runtimeinput.FrameOptions{BracketPaths: bracketPaths, ExcludedPaths: n.ExcludedPaths})}
 }
 
 // observeProcess builds the observation one launched process owns, from

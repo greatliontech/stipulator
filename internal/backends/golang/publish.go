@@ -42,6 +42,7 @@ type pubSubject struct {
 // caller must treat every serve as discarded.
 func publishEligible(
 	ctx context.Context,
+	group string,
 	view, observed *gofresh.View,
 	observedFPs map[gofresh.Subject]gofresh.Fingerprint,
 	candidates []gofresh.Subject,
@@ -196,7 +197,7 @@ func publishEligible(
 			continue
 		}
 		ps := eligible[s]
-		rec, ok := assembleWitnessRecord(view, s, fp, ps.outcomes, ps.regs, excludedPaths)
+		rec, ok := assembleWitnessRecord(group, view, s, fp, ps.outcomes, ps.regs, excludedPaths)
 		if !ok {
 			continue
 		}

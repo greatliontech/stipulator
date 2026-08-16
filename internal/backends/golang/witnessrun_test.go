@@ -2358,3 +2358,164 @@ func TestOther(t *testing.T) {}
 		t.Fatalf("out-of-scope subject not recorded scope-skipped: %v", tr.ScopeSkipped)
 	}
 }
+
+// A package two producer environments select holds one record per
+// capture group: each group publishes and serves its own leg under its
+// own record identity, warm runs serve both legs, and a source edit
+// re-executes both — the record identity carries the group coordinate
+// (REQ-evidence-witness-freshness, REQ-evidence-witness-cache-format).
+func TestGoRunWitnessesPerGroupRecordsServeSharedPackage(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-evidence-witness-cache-format")
+	if testing.Short() {
+		t.Skip("executes race-instrumented selective runs over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":         "module example.com/grp\n\ngo 1.26\n",
+		"shared/lib.go":  "package shared\n\nfunc Lib() string { return \"lib-v1\" }\n",
+		"shared/shared_test.go": `package shared
+
+import "testing"
+
+//gofresh:pure
+func TestShared(t *testing.T) {
+	if Lib() == "" {
+		t.Fatal("empty")
+	}
+}
+`,
+	})
+	plainEnv := &stipulatorv1.GoInvocationConfig{}
+	plainEnv.SetPackages([]string{"./shared"})
+	plainEnv.SetRace(true)
+	tagged := &stipulatorv1.GoInvocationConfig{}
+	tagged.SetPackages([]string{"./shared"})
+	tagged.SetRace(true)
+	tagged.SetTags([]string{"grouptag"})
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{
+		goInvocation("host", plainEnv),
+		goInvocation("tagged", tagged),
+	})
+	writePolicyRecord(t, tmp, p)
+
+	key := "example.com/grp/shared.TestShared"
+	cold, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cold.Degraded != "" {
+		t.Fatalf("cold: degraded: %s", cold.Degraded)
+	}
+	if cold.Outcomes[key] != verify.TestPassed {
+		t.Fatalf("cold: %s = %v, want PASSED", key, cold.Outcomes[key])
+	}
+	if cold.Fresh != 0 || cold.OutsidePolicy != 0 {
+		t.Fatalf("cold: fresh=%d outside=%d, want 0/0", cold.Fresh, cold.OutsidePolicy)
+	}
+	cache := witnesscache.Load(tmp)
+	if len(cache) != 2 {
+		t.Fatalf("cold run published %d records, want one per capture group: %+v", len(cache), cache)
+	}
+	if cache[0].Group == cache[1].Group || cache[0].Group == "" || cache[1].Group == "" {
+		t.Fatalf("records do not carry distinct group coordinates: %q vs %q", cache[0].Group, cache[1].Group)
+	}
+	for _, rec := range cache {
+		if rec.Package != "example.com/grp/shared" || rec.Test != "TestShared" {
+			t.Fatalf("unexpected record identity %s.%s", rec.Package, rec.Test)
+		}
+	}
+
+	warm, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if warm.Degraded != "" {
+		t.Fatalf("warm: degraded: %s", warm.Degraded)
+	}
+	if warm.Fresh != 1 || warm.Ran != 0 {
+		t.Fatalf("warm: fresh=%d ran=%d, want the subject served (1/0 - Fresh counts subjects, both group legs behind it); uncacheable=%v executed=%v", warm.Fresh, warm.Ran, warm.UncacheableReasons, warm.ExecutedReasons)
+	}
+	if warm.Outcomes[key] != verify.TestPassed {
+		t.Fatalf("warm: %s = %v, want PASSED", key, warm.Outcomes[key])
+	}
+
+	// A source edit stales the closure in both producer environments:
+	// both legs re-execute and republish.
+	libPath := filepath.Join(tmp, "shared", "lib.go")
+	if err := os.WriteFile(libPath, []byte("package shared\n\nfunc Lib() string { return \"lib-v2\" }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stale, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stale.Degraded != "" {
+		t.Fatalf("stale: degraded: %s", stale.Degraded)
+	}
+	if stale.Fresh != 0 || stale.Ran != 1 {
+		t.Fatalf("stale: fresh=%d ran=%d, want 0/1", stale.Fresh, stale.Ran)
+	}
+}
+
+// A served pass never overrides another leg's executed failure: the
+// worst outcome wins across a subject's group legs exactly as it wins
+// across executed results (REQ-evidence-witness-freshness's evidence
+// merge; REQ-check-verdict's alignment). The host leg fails every run
+// (a failing outcome never caches), the tagged leg passes and serves
+// warm — the merged outcome must stay FAILED.
+func TestGoRunWitnessesServedPassNeverOverridesExecutedFailure(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes race-instrumented selective runs over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod": "module example.com/mrg\n\ngo 1.26\n",
+		"shared/value_default.go": "//go:build !grouptag\n\npackage shared\n\nfunc V() bool { return false }\n",
+		"shared/value_tagged.go":  "//go:build grouptag\n\npackage shared\n\nfunc V() bool { return true }\n",
+		"shared/shared_test.go": `package shared
+
+import "testing"
+
+//gofresh:pure
+func TestV(t *testing.T) {
+	if !V() {
+		t.Fatal("default build fails by design")
+	}
+}
+`,
+	})
+	host := &stipulatorv1.GoInvocationConfig{}
+	host.SetPackages([]string{"./shared"})
+	host.SetRace(true)
+	tagged := &stipulatorv1.GoInvocationConfig{}
+	tagged.SetPackages([]string{"./shared"})
+	tagged.SetRace(true)
+	tagged.SetTags([]string{"grouptag"})
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{
+		goInvocation("host", host),
+		goInvocation("tagged", tagged),
+	})
+	writePolicyRecord(t, tmp, p)
+
+	key := "example.com/mrg/shared.TestV"
+	cold, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cold.Outcomes[key] != verify.TestFailed {
+		t.Fatalf("cold: %s = %v, want FAILED (worst across legs)", key, cold.Outcomes[key])
+	}
+	warm, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if warm.Outcomes[key] != verify.TestFailed {
+		t.Fatalf("warm: %s = %v, want FAILED: a served pass overrode an executed failure", key, warm.Outcomes[key])
+	}
+	if warm.Fresh < 1 {
+		t.Fatalf("warm: fresh=%d, want the tagged leg served (the merge pin is vacuous otherwise)", warm.Fresh)
+	}
+}

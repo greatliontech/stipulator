@@ -149,11 +149,14 @@ invocations {
 	if arm != "environment-audit" || view != "c,d" {
 		t.Fatalf("multi-invocation group not named in full: arm=%q view=%q", arm, view)
 	}
-	arm, view, links, _ := explain("example.com/explainfix/both", "Registry")
-	if arm != "" || view != "" || links != 0 {
-		t.Fatalf("ambiguous package answered: arm=%q view=%q links=%d", arm, view, links)
+	// A package two groups select is covered by each; the first group in
+	// deterministic key order answers, exactly as a shared dependency
+	// does.
+	arm, view, _, _ = explain("example.com/explainfix/both", "Registry")
+	if arm != "environment-audit" || view != "a" {
+		t.Fatalf("cross-group package not answered by the first covering view: arm=%q view=%q", arm, view)
 	}
-	arm, view, links, _ = explain("example.com/explainfix/reg", "Missing")
+	arm, view, links, _ := explain("example.com/explainfix/reg", "Missing")
 	if arm != "" || view != "" || links != 0 {
 		t.Fatalf("non-culprit yielded a chain: arm=%q view=%q links=%d", arm, view, links)
 	}

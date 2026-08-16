@@ -96,9 +96,18 @@ func Context(spec *stipulatorv1.Spec, store *records.Store, backends map[string]
 		// The slice's package-level sound floor rides beside the
 		// declaration facts (REQ-go-slice): consumers judge packages
 		// from the floor, never from the silently narrower typed
-		// frontier.
+		// frontier. The frontier's own packages feed the floor call, so
+		// the declaration slice runs exactly once.
 		if fs, ok := backends[name].(verify.FloorSlicer); ok {
-			f, err := fs.SliceFloor(perBackend[name])
+			declaredPkgs := map[string]bool{}
+			var pkgs []string
+			for _, d := range ds {
+				if !declaredPkgs[d.Package] {
+					declaredPkgs[d.Package] = true
+					pkgs = append(pkgs, d.Package)
+				}
+			}
+			f, err := fs.SliceFloor(perBackend[name], pkgs)
 			if err != nil {
 				return nil, nil, nil, err
 			}

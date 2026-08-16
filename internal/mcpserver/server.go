@@ -1455,9 +1455,15 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 				}
 			}
 		}
+		var liveGroup func(string) bool
+		if p, _, perr := policy.Load(s.root, map[string]policy.Backend{"go": golang.Policy{}}); perr == nil {
+			if digests := golang.LiveGroupDigests(ctx, s.root, p); digests != nil {
+				liveGroup = func(group string) bool { return digests[group] }
+			}
+		}
 		removed, kept, err := witnesscache.GC(s.root, func(pkg, test string) bool {
 			return live[pkg+"."+test]
-		})
+		}, liveGroup)
 		if err != nil {
 			return nil, writeOut{}, err
 		}

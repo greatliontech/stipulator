@@ -29,12 +29,12 @@ import (
 // covers and that invocation is witness-ineligible is outside the policy — it
 // neither serves nor executes, and the count of such subjects rides the
 // result so the gap is a visible number, never silence
-// (REQ-policy-conservation's visibility principle). A multiply-selected
-// package's subjects execute every run under each covering invocation —
-// eligible legs granting outcomes, ineligible legs contributing failures and
-// registrations only: they cannot serve — a record has no per-invocation
-// identity — but their witness evidence stays aligned with the
-// health-judged form's. Visibility
+// (REQ-policy-conservation's visibility principle). A package several
+// eligible invocations select holds one record per capture group — the
+// record identity carries the group coordinate — so each group serves
+// or executes its own leg and the evidence merge takes the worst
+// outcome across legs; ineligible legs still execute every run,
+// contributing failures and registrations only. Visibility
 // has two homes on the result: the counts (outside-policy, uncacheable)
 // and the package-level failure-diagnostic rows — an envelope cutoff, a
 // package abort, a build failure — so an expected subject denied an
@@ -153,37 +153,57 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 		normalized[ic.n.Name] = ic.n
 	}
 
-	// The in-policy subjects and their covering invocations: exactly the
-	// capture groups' subjects (one covering race invocation across the
-	// whole policy). Everything else expected is outside the policy.
+	// The in-policy subjects: the union of every capture group's own
+	// subjects. A subject several eligible groups cover is in policy
+	// through each — each group serves or executes its own leg under its
+	// own record identity, and the evidence merge takes the worst
+	// outcome across legs (REQ-check-verdict's alignment with the
+	// health-judged form).
 	inPolicy := map[gofresh.Subject]bool{}
-	covering := map[string]*NormalizedInvocation{}
 	for _, g := range pc.groups {
-		for _, s := range groupSubjects(g, pc.globalCount) {
+		for _, s := range groupSubjects(g) {
 			inPolicy[s] = true
-			covering[s.Package] = normalized[g.pkgInv[s.Package]]
 		}
 	}
-	// A multiply-selected package's subjects cannot serve — a witness
-	// record has no per-invocation identity — but they must not read
-	// unwitnessed either: the health-judged form derives their evidence
-	// from every covering invocation, so the witness-evidence form
-	// executes them under each covering invocation from that invocation's
-	// own discovery (same-group duplicates included) and the merge takes
-	// the worst outcome. Witness-eligible legs (race, or an explicit
-	// plain-witness admission) grant outcomes; ineligible legs
-	// contribute failures only — an unadmitted non-race pass never
-	// grants witness evidence — keeping the two forms' evidence aligned
-	// (REQ-check-verdict).
-	multiSel := map[string]TestSelection{}
-	multiIneligible := map[string]TestSelection{}
-	multiExecuted := map[gofresh.Subject]bool{}
-	multiRaceCovered := map[gofresh.Subject]bool{}
-	multiEligibleCovered := map[gofresh.Subject]bool{}
+	// A within-group double selection (two same-environment invocations
+	// naming one package) has no single producing leg, so its subjects
+	// never serve or publish — but they are eligible-covered: they
+	// execute every run under each of the group's covering invocations,
+	// granting outcomes through the ordinary merge.
+	ambiguousSel := map[string]TestSelection{}
+	ambiguousSubjects := map[gofresh.Subject]bool{}
 	for _, ic := range pc.invocations {
-		dst := multiSel
-		if !ic.n.WitnessEligible() {
-			dst = multiIneligible
+		g := pc.invGroup[ic.n.Name]
+		if g == nil {
+			continue
+		}
+		for _, o := range ic.obligations {
+			if o.Kind != ObligationTest && o.Kind != ObligationFuzz {
+				continue
+			}
+			if !g.ambiguous[o.Package] {
+				continue
+			}
+			s := gofresh.Subject{Package: o.Package, Symbol: o.Name}
+			inPolicy[s] = true
+			ambiguousSubjects[s] = true
+			sel := ambiguousSel[ic.n.Name]
+			if sel == nil {
+				sel = TestSelection{}
+				ambiguousSel[ic.n.Name] = sel
+			}
+			sel[o.Package] = append(sel[o.Package], o.Name)
+		}
+	}
+	// Ineligible legs of packages other invocations also select: their
+	// failures are evidence the health-judged form would surface, so
+	// they execute every run — failures and registrations only, never a
+	// grant — an unadmitted non-race pass never grants witness
+	// evidence.
+	multiIneligible := map[string]TestSelection{}
+	for _, ic := range pc.invocations {
+		if ic.n.WitnessEligible() {
+			continue
 		}
 		for _, o := range ic.obligations {
 			if o.Kind != ObligationTest && o.Kind != ObligationFuzz {
@@ -192,30 +212,23 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 			if pc.globalCount[o.Package] <= 1 {
 				continue
 			}
-			sel := dst[ic.n.Name]
+			sel := multiIneligible[ic.n.Name]
 			if sel == nil {
 				sel = TestSelection{}
-				dst[ic.n.Name] = sel
+				multiIneligible[ic.n.Name] = sel
 			}
 			sel[o.Package] = append(sel[o.Package], o.Name)
-			multiExecuted[gofresh.Subject{Package: o.Package, Symbol: o.Name}] = true
-			if ic.n.Race {
-				multiRaceCovered[gofresh.Subject{Package: o.Package, Symbol: o.Name}] = true
-			}
-			if ic.n.WitnessEligible() {
-				multiEligibleCovered[gofresh.Subject{Package: o.Package, Symbol: o.Name}] = true
-			}
 		}
 	}
 	// Outside the witness-eligible selection means no eligible coverage
-	// anywhere: a multiply-selected subject whose every covering
-	// invocation is ineligible still executes (failures count), but its
-	// legs can never grant a witness outcome, so it is outside exactly as
-	// an unselected subject is (REQ-check-witness-selection).
+	// anywhere: a subject whose every covering invocation is ineligible
+	// still executes (failures count), but its legs can never grant a
+	// witness outcome, so it is outside exactly as an unselected subject
+	// is (REQ-check-witness-selection).
 	outside := 0
 	outsideSubjects := map[string]bool{}
 	for s := range expected {
-		if !inPolicy[s] && !multiEligibleCovered[s] {
+		if !inPolicy[s] {
 			outside++
 			outsideSubjects[s.Package+"."+s.Symbol] = true
 		}
@@ -224,9 +237,11 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 	cached := witnesscache.Load(dir)
 	// One identity may hold several tree-state variants; at most one can
 	// prove equivalent against the current tree, so serving tries each.
+	// Identity is group-scoped: a group looks up only records its own
+	// producer environment published.
 	cachedByKey := map[string][]witnesscache.Record{}
 	for _, rec := range cached {
-		cachedByKey[rec.Key()] = append(cachedByKey[rec.Key()], rec)
+		cachedByKey[rec.IdentityKey()] = append(cachedByKey[rec.IdentityKey()], rec)
 	}
 
 	var groups []*witnessGroup
@@ -245,7 +260,7 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 	// serving saves work, it never blocks or weakens witnessing.
 	staleSel := map[string]TestSelection{}
 	scopeSkipped := map[string]bool{}
-	addStale := func(s gofresh.Subject) {
+	addStale := func(g *captureGroup, s gofresh.Subject) {
 		if scope != nil && !scope[s] {
 			// A stale subject outside the caller's scope is skipped,
 			// recorded so its bindings read scope-skipped rather than
@@ -254,7 +269,10 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 			scopeSkipped[s.Package+"."+s.Symbol] = true
 			return
 		}
-		n := covering[s.Package]
+		// The subject's covering invocation within THIS group: a
+		// subject other groups also cover routes each leg to its own
+		// group's invocation.
+		n := normalized[g.pkgInv[s.Package]]
 		sel := staleSel[n.Name]
 		if sel == nil {
 			sel = TestSelection{}
@@ -263,21 +281,24 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 		sel[s.Package] = append(sel[s.Package], s.Symbol)
 	}
 	if degraded != "" {
-		for s := range inPolicy {
-			addStale(s)
+		for _, g := range pc.groups {
+			for _, s := range groupSubjects(g) {
+				addStale(g, s)
+			}
 		}
 	} else {
 		for _, wg := range groups {
 			for pkg, names := range wg.stale {
 				for _, name := range names {
-					addStale(gofresh.Subject{Package: pkg, Symbol: name})
+					addStale(wg.g, gofresh.Subject{Package: pkg, Symbol: name})
 				}
 			}
 		}
 	}
-	// Multiply-selected subjects execute every run, under each covering
-	// eligible invocation, alongside that invocation's stale selection.
-	for inv, sel := range multiSel {
+	// Ambiguously covered subjects execute every run, under each of
+	// their group's covering invocations, alongside that invocation's
+	// stale selection.
+	for inv, sel := range ambiguousSel {
 		dst := staleSel[inv]
 		if dst == nil {
 			dst = TestSelection{}
@@ -327,7 +348,7 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 	invGroups := map[string][]*witnessGroup{}
 	for _, wg := range groups {
 		for pkg := range wg.stale {
-			n := covering[pkg]
+			n := normalized[wg.g.pkgInv[pkg]]
 			if n == nil {
 				// Defensive only: every stale subject's covering
 				// invocation was dereferenced when its selection was
@@ -366,7 +387,7 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 	}
 	var ineligibleMerge *execMerge
 	if len(multiIneligible) > 0 {
-		// Ineligible covering legs of multiply-selected packages: their
+		// Ineligible covering legs of shared packages: their
 		// failures are evidence the health-judged form would surface, so
 		// they execute here in the execution phase and fold after the
 		// main merges — failures and registrations only, never a grant.
@@ -406,16 +427,17 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 				if !isDrifted[s] {
 					servedRecords = append(servedRecords, wg.recorded[s])
 					// The record fingerprints under its covering
-					// invocation's build inputs, so the invocation's
-					// tier is the served witness's tier.
-					if n := covering[s.Package]; n != nil && n.PlainWitness {
+					// invocation's build inputs, so that invocation's
+					// tier — within the record's own group — is the
+					// served witness's tier.
+					if n := normalized[wg.g.pkgInv[s.Package]]; n != nil && n.PlainWitness {
 						plainServedKey[s.Package+"."+s.Symbol] = true
 					}
 				}
 			}
 		}
 		if len(drifted) > 0 {
-			retryPublished, retryReasons, err := retryDrifted(ctx, dir, p, normalized, covering, driftedByGroup, retryMerge)
+			retryPublished, retryReasons, err := retryDrifted(ctx, dir, p, normalized, driftedByGroup, retryMerge)
 			if err != nil {
 				return nil, err
 			}
@@ -428,8 +450,8 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 	// Assemble the run's witness-evidence view: executed outcomes gated on
 	// their producing process's disposition — a red process yields no
 	// green evidence, and the isolation pass's solo processes carry their
-	// own dispositions — then the surviving served records, whose keys are
-	// disjoint from every executed subject's by construction.
+	// own dispositions — then the surviving served records, rank-merged:
+	// a subject one group serves and another executes carries both legs.
 	// The selective runner is the serving class by identity — the degraded
 	// empty-served form included (REQ-gap-resolved-pruned's consumers
 	// enforce the mark).
@@ -462,10 +484,29 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 		consumeMergeFailuresOnly(tr, ineligibleMerge, ranTop)
 	}
 	tr.Ran = len(ranTop)
+	// A served record's outcomes merge by worst-outcome rank, exactly as
+	// executed legs merge: a subject one group serves and another group
+	// executes holds every leg's evidence, and a served pass never
+	// papers over an executed failure (or another group's served
+	// failure).
+	servedRank := func(o verify.TestOutcome) int {
+		switch o {
+		case verify.TestFailed:
+			return 3
+		case verify.TestPassed:
+			return 2
+		case verify.TestSkipped:
+			return 1
+		}
+		return 0
+	}
 	for _, rec := range servedRecords {
 		plainRecord := plainServedKey[rec.Package+"."+rec.Test]
 		for key, out := range rec.Outcomes {
-			tr.Outcomes[key] = outcomeFromString(out)
+			o := outcomeFromString(out)
+			if servedRank(o) > servedRank(tr.Outcomes[key]) {
+				tr.Outcomes[key] = o
+			}
 			if plainRecord {
 				plainGranted[key] = true
 			} else {
@@ -473,8 +514,15 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 			}
 		}
 		tr.Registrations = append(tr.Registrations, rec.Regs...)
-		tr.Fresh++
 	}
+	// Fresh counts served subjects, not served records: a subject two
+	// groups serve is one saved test in the same unit Ran counts
+	// executed tests.
+	servedKey := map[string]bool{}
+	for _, rec := range servedRecords {
+		servedKey[rec.Package+"."+rec.Test] = true
+	}
+	tr.Fresh = len(servedKey)
 	for key, out := range tr.Outcomes {
 		if out == verify.TestPassed && plainGranted[key] && !raceGranted[key] {
 			tr.PlainWitness[key] = true
@@ -482,15 +530,25 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 	}
 	sortRegs(tr)
 	tr.Degraded = degraded
-	// Uncached is structural — executed subjects minus records that
-	// survived to publication — so every drop path counts: red or aborted
-	// processes, missing observations, failed captures, drifted post-run
-	// verdicts, and the degraded path (which publishes nothing) alike.
-	if tr.Ran > len(published) {
-		tr.Uncached = tr.Ran - len(published)
+	// Uncached is structural — executed subjects left with no reusable
+	// evidence after this run: neither a record published this run nor a
+	// record that served this run (a served subject whose ineligible
+	// shadow leg also executed holds evidence; counting it would name a
+	// gap that does not exist). Every genuine drop path still counts:
+	// red or aborted processes, missing observations, failed captures,
+	// drifted post-run verdicts, and the degraded path alike. Both
+	// counts are subject counts, one unit with Ran.
+	publishedKey := map[string]bool{}
+	for _, rec := range published {
+		publishedKey[rec.Package+"."+rec.Test] = true
+	}
+	for key := range ranTop {
+		if !publishedKey[key] && !servedKey[key] {
+			tr.Uncached++
+		}
 	}
 	// Per-test attribution for the uncacheable set: the ladder's own
-	// refusal reasons, the multiply-selected class, the degraded path,
+	// refusal reasons, the degraded path,
 	// and a structural fallback for anything a drop path missed
 	// (REQ-evidence-witness-freshness's diagnosable-set requirement).
 	if tr.Uncached > 0 || len(uncacheableWhy) > 0 {
@@ -498,18 +556,13 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 		for s, why := range uncacheableWhy {
 			tr.UncacheableReasons[s.Package+"."+s.Symbol] = why
 		}
-		for s := range multiExecuted {
+		for s := range ambiguousSubjects {
 			if _, ok := tr.UncacheableReasons[s.Package+"."+s.Symbol]; !ok {
-				tr.UncacheableReasons[s.Package+"."+s.Symbol] = "multiply-selected: a record has no per-invocation identity"
+				tr.UncacheableReasons[s.Package+"."+s.Symbol] = "two invocations of one capture group select the package; no single producing leg"
 			}
 		}
-		publishedKey := map[string]bool{}
-		for _, rec := range published {
-			publishedKey[rec.Package+"."+rec.Test] = true
-		}
 		for key := range ranTop {
-			if publishedKey[key] {
-				delete(tr.UncacheableReasons, key)
+			if publishedKey[key] || servedKey[key] {
 				continue
 			}
 			if _, ok := tr.UncacheableReasons[key]; !ok {
@@ -518,6 +571,14 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 				} else {
 					tr.UncacheableReasons[key] = "record not published"
 				}
+			}
+		}
+		// A subject holding served or published evidence never reads
+		// uncacheable — including one whose shadow leg never produced a
+		// row, so the key sits outside the executed set.
+		for key := range tr.UncacheableReasons {
+			if publishedKey[key] || servedKey[key] {
+				delete(tr.UncacheableReasons, key)
 			}
 		}
 	}
@@ -588,7 +649,7 @@ func exclusionsStillAsserted(recorded, current []string) bool {
 func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, cached map[string][]witnesscache.Record) ([]*witnessGroup, string) {
 	var out []*witnessGroup
 	for _, g := range pc.groups {
-		subjects := groupSubjects(g, pc.globalCount)
+		subjects := groupSubjects(g)
 		if len(subjects) == 0 {
 			continue
 		}
@@ -608,6 +669,13 @@ func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, ca
 			fps:         map[gofresh.Subject]gofresh.Fingerprint{},
 			refreshed:   map[gofresh.Subject]bool{},
 		}
+		// The group's own slice of the store: records this producer
+		// environment published, addressed by the test key.
+		groupCached := map[string][]witnesscache.Record{}
+		for _, s := range subjects {
+			key := s.Package + "." + s.Symbol
+			groupCached[key] = cached[g.id+"\x00"+key]
+		}
 		// Round-based variant checking: round N checks each unproven
 		// subject's Nth variant, and the first variant proving equivalent
 		// serves — deterministic by digest-sorted load order. Variants
@@ -617,7 +685,7 @@ func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, ca
 		// execution.
 		valid := map[gofresh.Subject]bool{}
 		for round := 0; ; round++ {
-			fps, advanced := roundCandidates(subjects, cached, valid, round, g.excludedPaths, func(s gofresh.Subject) {
+			fps, advanced := roundCandidates(subjects, groupCached, valid, round, g.excludedPaths, func(s gofresh.Subject) {
 				wg.executedWhy[s] = "recorded under a withdrawn observation exclusion"
 			})
 			if !advanced {
@@ -637,11 +705,11 @@ func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, ca
 			for s := range fps {
 				if verdicts[s].Status == gofresh.Valid {
 					valid[s] = true
-					wg.recorded[s] = cached[s.Package+"."+s.Symbol][round]
+					wg.recorded[s] = groupCached[s.Package+"."+s.Symbol][round]
 					delete(wg.executedWhy, s)
 					continue
 				}
-				if rec, fp, ok := compartmentGrownRefresh(ctx, view, cached[s.Package+"."+s.Symbol][round], verdicts[s], s); ok {
+				if rec, fp, ok := compartmentGrownRefresh(ctx, view, groupCached[s.Package+"."+s.Symbol][round], verdicts[s], s); ok {
 					// Exactly stale "test variants" with an inert
 					// recorded-to-current ledger delta: the movement is
 					// additions no unchanged declaration can observe, so the
@@ -1019,7 +1087,7 @@ func publishExecuted(ctx context.Context, wg *witnessGroup, m *execMerge) ([]wit
 		// selective candidate runs in a process of its own.
 		eligible[s] = &pubSubject{obs: sr.obs, outcomes: sr.outcomes, regs: sr.regs, solo: true}
 	}
-	records, discarded, _, _, fatal := publishEligible(ctx, wg.view, wg.observed, wg.observedFPs, wg.candidates, order, eligible, wg.fps, wg.g.excludedPaths, wg.served, wg.executedWhy, reasons)
+	records, discarded, _, _, fatal := publishEligible(ctx, wg.g.id, wg.view, wg.observed, wg.observedFPs, wg.candidates, order, eligible, wg.fps, wg.g.excludedPaths, wg.served, wg.executedWhy, reasons)
 	if fatal != nil {
 		return nil, nil, false, fatal
 	}
@@ -1033,7 +1101,7 @@ func publishExecuted(ctx context.Context, wg *witnessGroup, m *execMerge) ([]wit
 // the current tree before the retry executes; a retry whose record still
 // fails validation afterwards — still drifting — is dropped and counted
 // uncacheable, never retried again.
-func retryDrifted(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, normalized map[string]*NormalizedInvocation, covering map[string]*NormalizedInvocation, driftedByGroup map[*witnessGroup][]gofresh.Subject, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]string, error) {
+func retryDrifted(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, normalized map[string]*NormalizedInvocation, driftedByGroup map[*witnessGroup][]gofresh.Subject, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]string, error) {
 	// Fresh pre-retry capture per group: the old view described a tree the
 	// drift already left behind.
 	type retryState struct {
@@ -1058,7 +1126,7 @@ func retryDrifted(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, n
 			return a.Symbol < b.Symbol
 		})
 		for _, s := range subjects {
-			n := covering[s.Package]
+			n := normalized[wg.g.pkgInv[s.Package]]
 			sel := retrySel[n.Name]
 			if sel == nil {
 				sel = TestSelection{}

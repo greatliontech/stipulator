@@ -839,10 +839,11 @@ func TestGoObserveProcessForwardsClassificationRoots(t *testing.T) {
 			}
 			base := func() *NormalizedInvocation {
 				return &NormalizedInvocation{
-					Name:    "roots",
-					Dir:     dir,
-					Env:     []string{"HOME=" + t.TempDir()},
-					PkgDirs: map[string]string{"example.com/m/pkg": pkgDir},
+					Name:           "roots",
+					Dir:            dir,
+					Env:            []string{"HOME=" + t.TempDir()},
+					PkgDirs:        map[string]string{"example.com/m/pkg": pkgDir},
+					PkgClosureDirs: map[string][]string{"example.com/m/pkg": {}},
 				}
 			}
 			undeclared := observe(base())
@@ -893,11 +894,12 @@ func TestGoObservationFrameExcludesReviewedPathsFromBracket(t *testing.T) {
 	}
 	observe := func(excluded []string) *ProcessObservation {
 		n := &NormalizedInvocation{
-			Name:          "churn",
-			Dir:           dir,
-			Env:           []string{"HOME=" + t.TempDir()},
-			PkgDirs:       map[string]string{"example.com/m/pkg": pkgDir},
-			ExcludedPaths: excluded,
+			Name:           "churn",
+			Dir:            dir,
+			Env:            []string{"HOME=" + t.TempDir()},
+			PkgDirs:        map[string]string{"example.com/m/pkg": pkgDir},
+			PkgClosureDirs: map[string][]string{"example.com/m/pkg": {}},
+			ExcludedPaths:  excluded,
 		}
 		frame := captureObservationFrame(context.Background(), n, "example.com/m/pkg")
 		if err := os.WriteFile(churn, []byte("two\n"), 0o644); err != nil {
@@ -945,10 +947,11 @@ func TestGoObserveProcessConstructionErrorFailsClosed(t *testing.T) {
 		t.Fatal(err)
 	}
 	n := &NormalizedInvocation{
-		Name:    "cancelled",
-		Dir:     dir,
-		Env:     []string{"HOME=" + t.TempDir()},
-		PkgDirs: map[string]string{"example.com/m/pkg": pkgDir},
+		Name:           "cancelled",
+		Dir:            dir,
+		Env:            []string{"HOME=" + t.TempDir()},
+		PkgDirs:        map[string]string{"example.com/m/pkg": pkgDir},
+		PkgClosureDirs: map[string][]string{"example.com/m/pkg": {}},
 	}
 	frame := captureObservationFrame(context.Background(), n, "example.com/m/pkg")
 	ctx, cancel := context.WithCancel(context.Background())

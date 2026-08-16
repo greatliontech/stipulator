@@ -293,6 +293,7 @@ func TestDeriveCachedOutcomeGrantsNoHealthOrEvidence(t *testing.T) {
 	// a freshness-serving path — so ignoring it here is the derivation's
 	// choice, not a loader rejection.
 	if err := witnesscache.Install(tmp, witnesscache.Record{
+		Group:   "00112233aabbccdd",
 		Package: "example.com/m/redmain",
 		Test:    "TestGreen",
 		Fingerprint: witnesscache.Fingerprint{

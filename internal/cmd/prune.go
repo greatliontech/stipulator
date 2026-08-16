@@ -7,9 +7,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/greatliontech/stipulator/internal/author"
+	"github.com/greatliontech/stipulator/internal/backends/golang"
 	checkpkg "github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/coverage"
+	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
@@ -55,9 +57,15 @@ func pruneCmd() *cobra.Command {
 						}
 					}
 				}
+				var liveGroup func(string) bool
+				if p, _, perr := policy.Load(chdir, map[string]policy.Backend{"go": golang.Policy{}}); perr == nil {
+					if digests := golang.LiveGroupDigests(cmd.Context(), chdir, p); digests != nil {
+						liveGroup = func(group string) bool { return digests[group] }
+					}
+				}
 				removed, kept, err := witnesscache.GC(chdir, func(pkg, test string) bool {
 					return live[pkg+"."+test]
-				})
+				}, liveGroup)
 				if err != nil {
 					return err
 				}

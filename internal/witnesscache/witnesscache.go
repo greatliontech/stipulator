@@ -31,7 +31,11 @@ import (
 // fingerprints pin the toolchain and platform, so a committed cache would
 // ping-pong across machines, and a repo-local one dies with every fresh
 // worktree (REQ-evidence-witness-cache-format).
-const version = 6
+// Bumped from 6 when the record identity gained the capture-group
+// coordinate: a record without its producing group is ambiguous across
+// producer environments, so field-blind prior records fail closed to
+// re-execution.
+const version = 7
 
 // variantBound caps how many tree-state variants one test identity
 // retains; eviction is by install recency and costs only execution.
@@ -54,8 +58,8 @@ func StoreDir(dir string) (string, error) {
 	return filepath.Join(root, "stipulator", "witnesses", hex.EncodeToString(sum[:8])), nil
 }
 
-func identityDigest(pkg, test string) string {
-	sum := sha256.Sum256([]byte(pkg + "\x00" + test))
+func identityDigest(group, pkg, test string) string {
+	sum := sha256.Sum256([]byte(group + "\x00" + pkg + "\x00" + test))
 	return hex.EncodeToString(sum[:8])
 }
 
@@ -72,7 +76,7 @@ func fingerprintDigest(f Fingerprint) string {
 // fingerprint digest, so distinct tree states coexist as variants and a
 // name disagreeing with its content is refusable on read.
 func fileName(r Record) string {
-	return identityDigest(r.Package, r.Test) + "-" + fingerprintDigest(r.Fingerprint) + ".json"
+	return identityDigest(r.Group, r.Package, r.Test) + "-" + fingerprintDigest(r.Fingerprint) + ".json"
 }
 
 type observationProof struct {
@@ -364,6 +368,11 @@ func validLedger(l *CompartmentLedger, test string) bool {
 // outcome key it owns ("pkg.Test" and "pkg.Test/sub"), and its runtime
 // registrations.
 type Record struct {
+	// Group is the producing capture group's stable digest: the record's
+	// identity coordinate across producer environments. A test selected
+	// by several eligible invocations holds one record per group, each
+	// serving only the environment that produced it.
+	Group             string                `json:"group"`
 	Package           string                `json:"package"`
 	Test              string                `json:"test"`
 	Fingerprint       Fingerprint           `json:"fingerprint"`
@@ -408,6 +417,7 @@ func isJSONNull(value json.RawMessage) bool {
 // entry is one variant file's content: a versioned single record.
 type entry struct {
 	Version           int                   `json:"version"`
+	Group             string                `json:"group"`
 	Package           string                `json:"package"`
 	Test              string                `json:"test"`
 	Fingerprint       Fingerprint           `json:"fingerprint"`
@@ -476,9 +486,9 @@ func loadEntry(store, name, dir string, manifests map[string]bool) (Record, bool
 	if dec.Decode(&e) != nil || dec.Decode(&struct{}{}) != io.EOF || e.Version != version {
 		return Record{}, false
 	}
-	rec := Record{Package: e.Package, Test: e.Test, Fingerprint: e.Fingerprint, CompartmentLedger: e.CompartmentLedger, Outcomes: e.Outcomes, Regs: e.Regs, ObservationExclusions: e.ObservationExclusions}
+	rec := Record{Group: e.Group, Package: e.Package, Test: e.Test, Fingerprint: e.Fingerprint, CompartmentLedger: e.CompartmentLedger, Outcomes: e.Outcomes, Regs: e.Regs, ObservationExclusions: e.ObservationExclusions}
 	proof := rec.Fingerprint.ObservationProof
-	if rec.Package == "" || rec.Test == "" || name != fileName(rec) ||
+	if rec.Group == "" || rec.Package == "" || rec.Test == "" || name != fileName(rec) ||
 		(proof != nil && (proof.Package != rec.Package || proof.Symbol != rec.Test)) ||
 		!validOutcomes(rec) || !rec.Fingerprint.valid(dir, manifests) || !validLedger(rec.CompartmentLedger, rec.Test) {
 		return Record{}, false
@@ -561,7 +571,7 @@ func Install(dir string, rec Record) error {
 	if err := os.MkdirAll(store, 0o755); err != nil {
 		return err
 	}
-	e := entry{Version: version, Package: rec.Package, Test: rec.Test, Fingerprint: rec.Fingerprint, CompartmentLedger: rec.CompartmentLedger, Outcomes: rec.Outcomes, Regs: rec.Regs, ObservationExclusions: rec.ObservationExclusions}
+	e := entry{Version: version, Group: rec.Group, Package: rec.Package, Test: rec.Test, Fingerprint: rec.Fingerprint, CompartmentLedger: rec.CompartmentLedger, Outcomes: rec.Outcomes, Regs: rec.Regs, ObservationExclusions: rec.ObservationExclusions}
 	data, err := json.MarshalIndent(e, "", "  ")
 	if err != nil {
 		return err
@@ -587,7 +597,7 @@ func Install(dir string, rec Record) error {
 		os.Remove(tmp.Name())
 		return err
 	}
-	evictBeyondBound(store, identityDigest(rec.Package, rec.Test), filepath.Base(full))
+	evictBeyondBound(store, identityDigest(rec.Group, rec.Package, rec.Test), filepath.Base(full))
 	return nil
 }
 
@@ -625,13 +635,22 @@ func evictBeyondBound(store, identity, keep string) {
 // Key is the record's identity.
 func (r Record) Key() string { return r.Package + "." + r.Test }
 
+// IdentityKey is the record's full store identity: the producing
+// capture group's digest beside the test key, so one test's records
+// under two producer environments never shadow each other.
+func (r Record) IdentityKey() string { return r.Group + "\x00" + r.Package + "." + r.Test }
+
 // GC removes this corpus's store entries whose witness identity is not
 // live - absent from the caller-supplied obligation universe - plus
 // unreadable entries (cost, never evidence). It runs only as an
 // explicit verb: an identity absent from THIS tree state may be live
 // on another branch, and opportunistic eviction would undo the variant
 // store's branch-alternation serving (REQ-evidence-store-gc).
-func GC(dir string, live func(pkg, test string) bool) (removed, kept int, err error) {
+// liveGroup judges record-identity coordinates: nil keeps every
+// coordinate (cost cleanup never guesses), non-nil retires coordinates
+// no current invocation produces — their records are cost no lookup
+// will ever serve.
+func GC(dir string, live func(pkg, test string) bool, liveGroup func(group string) bool) (removed, kept int, err error) {
 	store, err := StoreDir(dir)
 	if err != nil {
 		return 0, 0, err
@@ -650,12 +669,17 @@ func GC(dir string, live func(pkg, test string) bool) (removed, kept int, err er
 		path := filepath.Join(store, e.Name())
 		data, readErr := os.ReadFile(path)
 		var rec struct {
+			Version int    `json:"version"`
+			Group   string `json:"group"`
 			Package string `json:"package"`
 			Test    string `json:"test"`
 		}
-		if readErr != nil || json.Unmarshal(data, &rec) != nil || rec.Package == "" || rec.Test == "" {
-			// Unreadable or identity-less: cost with no servable
-			// evidence behind it.
+		if readErr != nil || json.Unmarshal(data, &rec) != nil || rec.Package == "" || rec.Test == "" || rec.Version != version ||
+			(liveGroup != nil && !liveGroup(rec.Group)) {
+			// Unreadable, identity-less, a prior version the loader
+			// permanently refuses, or a retired coordinate no current
+			// invocation produces: cost with no servable evidence
+			// behind it.
 			if rmErr := os.Remove(path); rmErr == nil {
 				removed++
 			} else if err == nil {

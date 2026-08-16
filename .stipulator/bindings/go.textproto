@@ -700,5 +700,5 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend.SliceFloor"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "dadb90262c34eb009ea51586b47e8d41790d194c2d9ea3396483811a1bd12136"
+  shape_hash: "0c38fece25462c106881236a1951d1286d74a304981025c4ff109c9f8c65a60c"
 }

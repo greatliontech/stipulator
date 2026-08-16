@@ -118,6 +118,7 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 	generated.RuntimeInputs = "eyJ2IjoxfQ"
 	generated.RuntimeDigest = "3a79bf37b571938d1f2907afb6a643f4"
 	rec := Record{
+		Group:       "6772702d64696765",
 		Package:     generated.ObservationProof.Subject.Package,
 		Test:        generated.ObservationProof.Subject.Symbol,
 		Fingerprint: FromGofresh(generated),
@@ -142,8 +143,13 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 	tamper(path, fmt.Sprintf(`"version": %d`, version), fmt.Sprintf(`"version": %d`, version+1))
 	requireAbsent("version-mismatched file")
 
-	seedOne(Record{Package: rec.Package, Test: rec.Test, Outcomes: map[string]string{rec.Key(): "passed"}})
+	seedOne(Record{Group: rec.Group, Package: rec.Package, Test: rec.Test, Outcomes: map[string]string{rec.Key(): "passed"}})
 	requireAbsent("incomplete fingerprint")
+
+	groupless := rec
+	groupless.Group = ""
+	seedOne(groupless)
+	requireAbsent("record without a producing group")
 
 	broken := rec
 	broken.Fingerprint.ResultKind = 0
@@ -268,7 +274,7 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 	requireAbsent("malformed test-variant closure digest")
 
 	path = seedOne(rec)
-	renamed := filepath.Join(filepath.Dir(path), identityDigest(rec.Package, rec.Test)+"-"+strings.Repeat("0", 16)+".json")
+	renamed := filepath.Join(filepath.Dir(path), identityDigest(rec.Group, rec.Package, rec.Test)+"-"+strings.Repeat("0", 16)+".json")
 	if err := os.Rename(path, renamed); err != nil {
 		t.Fatal(err)
 	}
@@ -295,6 +301,7 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 	generated.RuntimeInputs = "eyJ2IjoxfQ"
 	generated.RuntimeDigest = "3a79bf37b571938d1f2907afb6a643f4"
 	rec := Record{
+		Group:       "6772702d64696765",
 		Package:     generated.ObservationProof.Subject.Package,
 		Test:        generated.ObservationProof.Subject.Symbol,
 		Fingerprint: FromGofresh(generated),
@@ -321,7 +328,7 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 	}
 
 	// A corrupt sibling file never discards the intact record.
-	matches, err := filepath.Glob(filepath.Join(store, identityDigest(sibling.Package, sibling.Test)+"-*.json"))
+	matches, err := filepath.Glob(filepath.Join(store, identityDigest(sibling.Group, sibling.Package, sibling.Test)+"-*.json"))
 	if err != nil || len(matches) != 1 {
 		t.Fatalf("sibling variants = %v (%v), want one", matches, err)
 	}
@@ -359,7 +366,7 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 		if err := Install(dir, next); err != nil {
 			t.Fatal(err)
 		}
-		name := identityDigest(next.Package, next.Test) + "-" + fingerprintDigest(next.Fingerprint) + ".json"
+		name := identityDigest(next.Group, next.Package, next.Test) + "-" + fingerprintDigest(next.Fingerprint) + ".json"
 		full := filepath.Join(store, name)
 		stamp := time.Unix(int64(1_700_000_000+i*10), 0)
 		if err := os.Chtimes(full, stamp, stamp); err != nil && !os.IsNotExist(err) {
@@ -367,7 +374,7 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 		}
 		installed = append(installed, full)
 	}
-	matches, err = filepath.Glob(filepath.Join(store, identityDigest(rec.Package, rec.Test)+"-*.json"))
+	matches, err = filepath.Glob(filepath.Join(store, identityDigest(rec.Group, rec.Package, rec.Test)+"-*.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -407,12 +414,17 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 	dir := t.TempDir()
 	install := func(pkg, test string) {
 		t.Helper()
-		if err := Install(dir, Record{Package: pkg, Test: test, Outcomes: map[string]string{pkg + "." + test: "passed"}, Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: "bb"}}); err != nil {
+		if err := Install(dir, Record{Group: "6772702d64696765", Package: pkg, Test: test, Outcomes: map[string]string{pkg + "." + test: "passed"}, Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: "bb"}}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	install("example.com/p", "TestLive")
 	install("example.com/p", "TestDeparted")
+	// A live test under a retired coordinate: liveness alone keeps it,
+	// coordinate retirement removes it.
+	if err := Install(dir, Record{Group: "feedfeedfeedfeed", Package: "example.com/p", Test: "TestLive", Outcomes: map[string]string{"example.com/p.TestLive": "passed"}, Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: "bb"}}); err != nil {
+		t.Fatal(err)
+	}
 	store, err := StoreDir(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -422,18 +434,18 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 	}
 	removed, kept, err := GC(dir, func(pkg, test string) bool {
 		return pkg == "example.com/p" && test == "TestLive"
-	})
+	}, func(group string) bool { return group == "6772702d64696765" })
 	if err != nil {
 		t.Fatal(err)
 	}
-	if removed != 2 || kept != 1 {
-		t.Fatalf("gc = %d removed, %d kept; want 2, 1", removed, kept)
+	if removed != 3 || kept != 1 {
+		t.Fatalf("gc = %d removed, %d kept; want 3 (departed identity, garbage, retired coordinate), 1", removed, kept)
 	}
 	entries, err := os.ReadDir(store)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(entries) != 1 || !strings.HasPrefix(entries[0].Name(), identityDigest("example.com/p", "TestLive")) {
+	if len(entries) != 1 || !strings.HasPrefix(entries[0].Name(), identityDigest("6772702d64696765", "example.com/p", "TestLive")) {
 		t.Fatalf("post-gc store entries = %v, want only the live identity's variant", entries)
 	}
 
@@ -445,7 +457,7 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer os.Chmod(store, 0o755)
-		removed, kept, err := GC(dir, func(string, string) bool { return false })
+		removed, kept, err := GC(dir, func(string, string) bool { return false }, nil)
 		if err == nil {
 			t.Fatalf("undeletable entries reported clean: %d removed, %d kept", removed, kept)
 		}

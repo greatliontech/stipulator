@@ -148,6 +148,30 @@ func (b *Backend) object(symbol string) types.Object {
 	return nil
 }
 
+// variantBase folds a test-variant build (the in-package
+// "pkg [pkg.test]" or the external "pkg_test [pkg.test]") into the
+// package under test, identified by build identity - never by path
+// spelling: a real package whose import path ends in "_test" keeps its
+// own path even when a sibling base package exists.
+func variantBase(pkg *packages.Package) string {
+	path := pkg.PkgPath
+	if path == "" {
+		path = pkg.ID
+	}
+	if strings.Contains(pkg.ID, " [") {
+		// The ID fallback can carry the bracketed build identity -
+		// strip it before the suffix trim. The current loader
+		// populates PkgPath even on rebuilt non-root variant stubs,
+		// so this arm guards drivers that surface only the ID,
+		// keeping the fallback sound.
+		if j := strings.Index(path, " ["); j >= 0 {
+			path = path[:j]
+		}
+		return strings.TrimSuffix(path, "_test")
+	}
+	return path
+}
+
 // SliceFloor implements verify.FloorSlicer: the symbols' packages'
 // transitive in-module import closure, each package carrying its
 // disposition. Imports are the sound package-level over-approximation
@@ -158,30 +182,7 @@ func (b *Backend) object(symbol string) types.Object {
 // false-complete (REQ-go-slice). A first-hop dependency outside the
 // loaded module is an explicit external row: the boundary is honest,
 // never a silent cut.
-func (b *Backend) SliceFloor(symbols []string) ([]verify.FloorPackage, error) {
-	// A test-variant build (the in-package "pkg [pkg.test]" or the
-	// external "pkg_test [pkg.test]") folds into the package under
-	// test, identified by build identity - never by path spelling: a
-	// real package whose import path ends in "_test" keeps its own
-	// path even when a sibling base package exists.
-	variantBase := func(pkg *packages.Package) string {
-		path := pkg.PkgPath
-		if path == "" {
-			path = pkg.ID
-		}
-		if strings.Contains(pkg.ID, " [") {
-			// The ID fallback can carry the bracketed build
-			// identity - strip it before the suffix trim. The
-			// current loader populates PkgPath even on rebuilt
-			// non-root variant stubs, so this arm guards drivers
-			// that surface only the ID, keeping the fallback sound.
-			if j := strings.Index(path, " ["); j >= 0 {
-				path = path[:j]
-			}
-			return strings.TrimSuffix(path, "_test")
-		}
-		return path
-	}
+func (b *Backend) SliceFloor(symbols []string, declaredPkgs []string) ([]verify.FloorPackage, error) {
 	local := map[string]bool{}
 	byPath := map[string][]*packages.Package{}
 	for _, pkg := range b.pkgs {
@@ -190,12 +191,8 @@ func (b *Backend) SliceFloor(symbols []string) ([]verify.FloorPackage, error) {
 		byPath[p] = append(byPath[p], pkg)
 	}
 	declared := map[string]bool{}
-	if decls, err := b.Slice(symbols); err == nil {
-		for _, d := range decls {
-			declared[d.Package] = true
-		}
-	} else {
-		return nil, err
+	for _, p := range declaredPkgs {
+		declared[p] = true
 	}
 	seeds := map[string]bool{}
 	for _, sym := range symbols {
