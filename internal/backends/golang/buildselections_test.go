@@ -9,6 +9,7 @@ import (
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/stipulate"
 )
 
 func buildSelectionModule(t *testing.T) string {
@@ -58,6 +59,7 @@ func dstPolicy(t *testing.T, dir string) {
 // policy record the same reference is NotFound, never a silent
 // default-view narrowing (REQ-go-build-selections).
 func TestResolveSpansPolicyBuildSelections(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-build-selections")
 	dir := buildSelectionModule(t)
 	symbol := "example.com/tagged.TestCrashSchedule"
 
@@ -91,6 +93,7 @@ func TestResolveSpansPolicyBuildSelections(t *testing.T) {
 // wins: resolution and the shape hash come from the first-declaring
 // view, deterministically (REQ-go-build-selections).
 func TestResolveFirstDeclaringViewWins(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-build-selections")
 	dir := t.TempDir()
 	files := map[string]string{
 		"go.mod": "module example.com/dual\n\ngo 1.24\n",
@@ -151,6 +154,7 @@ func Shape(x string) string { return x }
 // A malformed policy record is a verification error at load, never a
 // silent narrowing to the default view (REQ-go-build-selections).
 func TestResolveRefusesMalformedPolicyRecord(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-build-selections")
 	dir := buildSelectionModule(t)
 	full := filepath.Join(dir, filepath.FromSlash(".stipulator/policy.textproto"))
 	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
@@ -171,6 +175,7 @@ func TestResolveRefusesMalformedPolicyRecord(t *testing.T) {
 // REQ-go-generated-detect). Repeated runs guard the cross-view
 // FileSet-confusion regression, whose failure was order-dependent.
 func TestGeneratedVerdictJudgedInDeclaringView(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-build-selections")
 	dir := t.TempDir()
 	files := map[string]string{
 		"go.mod":      "module example.com/genview\n\ngo 1.24\n",
@@ -208,6 +213,7 @@ func TestCrashSchedule(t *testing.T) {}
 // - the first-reached declaration - never duplicate or conflicting
 // rows (REQ-go-slice, REQ-go-build-selections).
 func TestSliceDedupesAcrossViews(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-build-selections")
 	dir := t.TempDir()
 	files := map[string]string{
 		"go.mod":    "module example.com/sliced\n\ngo 1.24\n",
@@ -247,6 +253,7 @@ func Tagged(c Config) int { return c.N * 2 }
 // Between two tagged views, the policy's canonical invocation order
 // decides the declaring view (REQ-go-build-selections).
 func TestTaggedViewPrecedenceFollowsPolicyOrder(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-build-selections")
 	dir := t.TempDir()
 	files := map[string]string{
 		"go.mod": "module example.com/order\n\ngo 1.24\n",
@@ -298,6 +305,7 @@ func Which(x string) string { return x }
 // cannot answer refuses with the degraded view named - never a silent
 // NotFound (REQ-go-build-selections).
 func TestTaggedViewLoadsUnderSelectionToolchain(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-build-selections")
 	dir := buildSelectionModule(t)
 	write := func(toolchain string) {
 		t.Helper()
@@ -340,6 +348,7 @@ func TestTaggedViewLoadsUnderSelectionToolchain(t *testing.T) {
 // Two invocations sharing a tag-set under different toolchains are two
 // distinct views (REQ-go-build-selections).
 func TestPolicyBuildSelectionsSplitToolchains(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-build-selections")
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example.com/split\n\ngo 1.24\n"), 0o644); err != nil {
 		t.Fatal(err)

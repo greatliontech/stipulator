@@ -743,7 +743,12 @@ func TestGoRunWitnessesCompletedGroupSurvivesLaterInvocationFailure(t *testing.T
 		_, err := RunWitnesses(ctx, tmp)
 		done <- err
 	}()
-	deadline := time.Now().Add(120 * time.Second)
+	// The behavioral discriminator is the done-case below (a run that
+	// ends before the completed group is observable fails); this
+	// deadline only bounds the test's own runtime and must absorb
+	// nested race-build latency on a loaded machine - 120s was exceeded
+	// by a healthy run under a concurrent whole-tree check.
+	deadline := time.Now().Add(8 * time.Minute)
 	for !hasGood() {
 		select {
 		case err := <-done:

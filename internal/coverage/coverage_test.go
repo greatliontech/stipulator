@@ -63,6 +63,7 @@ const (
 //
 //gofresh:pure
 func TestExampleClassificationVerdictSurfaces(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-witness-class")
 	doc := "# T\n\n**REQ-v-inv** (invariant): It MUST hold.\n"
 	spec, store := fixture(t, doc, nil)
 	r := result("REQ-v-inv", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed)

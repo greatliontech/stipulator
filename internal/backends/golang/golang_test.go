@@ -210,6 +210,7 @@ func TestWitnessClass(t *testing.T) {
 // call) is named exactly, so a helper-indirected property test is
 // diagnosed from the row.
 func TestWitnessClassVerdicts(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-witness-class")
 	fb := fixtureBackend(t)
 	for _, tc := range []struct {
 		symbol string

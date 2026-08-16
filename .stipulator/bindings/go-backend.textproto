@@ -59,15 +59,6 @@ bindings {
   requirement_id: "REQ-go-generated-detect"
   content_hash: "38c7cbe064271ef81548745010e26a128a1a0adc30a1fc77d5a4798c57e23a6c"
   backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend.generated"
-  role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "0a47e2a3fef9c1f711ee03bedccf42e8dfa09adf3bb440ad0a074e6e954e4c5d"
-}
-
-bindings {
-  requirement_id: "REQ-go-generated-detect"
-  content_hash: "38c7cbe064271ef81548745010e26a128a1a0adc30a1fc77d5a4798c57e23a6c"
-  backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestResolve"
   role: BINDING_ROLE_TESTS
   shape_hash: "85ea47045266345362f7f5ce6f12cfd4fc9124e15f60cf82f47a0ed7565943e9"

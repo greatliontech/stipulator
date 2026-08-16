@@ -324,3 +324,34 @@ func TestPinAndRetargetSealTheirProgressReporters(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 }
+
+// The resource list is a hint, the read is the truth: a requirement
+// added to the spec after the last compiling operation reads
+// successfully - each read recompiles - even though no tool call has
+// refreshed the listed index (REQ-mcp-resources).
+//
+//gofresh:pure
+func TestResourceReadServesUnlistedButExistingRequirement(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-resources")
+	fsys := fstest.MapFS{
+		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
+		"specs/a.md":                     {Data: []byte(doc)},
+	}
+	var s *Server
+	sess, _ := harnessWith(t, nil, func(srv *Server) {
+		srv.fsys = func() fs.FS { return fsys }
+		s = srv
+	})
+	_ = s
+	if _, err := sess.ReadResource(context.Background(), &mcp.ReadResourceParams{URI: "stipulator://req/REQ-m-late"}); err == nil {
+		t.Fatal("not-yet-declared requirement served")
+	}
+	fsys["specs/late.md"] = &fstest.MapFile{Data: []byte("# Late\n\n**REQ-m-late** (behavior): It MUST exist.\n")}
+	rr, err := sess.ReadResource(context.Background(), &mcp.ReadResourceParams{URI: "stipulator://req/REQ-m-late"})
+	if err != nil {
+		t.Fatalf("unlisted-but-existing requirement refused: %v", err)
+	}
+	if !strings.Contains(rr.Contents[0].Text, "REQ-m-late") {
+		t.Fatalf("read served the wrong document:\n%s", rr.Contents[0].Text)
+	}
+}
