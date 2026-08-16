@@ -378,3 +378,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "397673c096c0294cf7e2c8594e07df786684b9462b83e2d79eb8e8fd0662b6ea"
 }
+
+bindings {
+  requirement_id: "REQ-gap-resolved-pruned"
+  content_hash: "15bb833109778d7ac84b82e73b309f16ee5f0096ab092f4d082892b796b2b3c0"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestPruneCallSitePinsServingClassRefusal"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b26f12c6c4b629cad43f9ad458e490f2c015b6489683cc61b3c74c2da469e012"
+}

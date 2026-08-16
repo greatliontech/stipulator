@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -395,5 +396,58 @@ func TestFingerprintRoundTrip(t *testing.T) {
 	want.RuntimeDigest = "digest"
 	if got := FromGofresh(want).ToGofresh(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("fingerprint round trip = %+v, want %+v", got, want)
+	}
+}
+
+// The store GC drops departed identities and unreadable entries, keeps
+// live ones, and is the only cross-identity eviction
+// (REQ-evidence-store-gc).
+func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	dir := t.TempDir()
+	install := func(pkg, test string) {
+		t.Helper()
+		if err := Install(dir, Record{Package: pkg, Test: test, Outcomes: map[string]string{pkg + "." + test: "passed"}, Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: "bb"}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	install("example.com/p", "TestLive")
+	install("example.com/p", "TestDeparted")
+	store, err := StoreDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(store, "garbage.json"), []byte("not json"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	removed, kept, err := GC(dir, func(pkg, test string) bool {
+		return pkg == "example.com/p" && test == "TestLive"
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if removed != 2 || kept != 1 {
+		t.Fatalf("gc = %d removed, %d kept; want 2, 1", removed, kept)
+	}
+	entries, err := os.ReadDir(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || !strings.HasPrefix(entries[0].Name(), identityDigest("example.com/p", "TestLive")) {
+		t.Fatalf("post-gc store entries = %v, want only the live identity's variant", entries)
+	}
+
+	// Removal failures surface beside the partial counts - a clean pass
+	// must never be reported over an undeletable entry.
+	if runtime.GOOS != "windows" {
+		install("example.com/p", "TestStuck")
+		if err := os.Chmod(store, 0o555); err != nil {
+			t.Fatal(err)
+		}
+		defer os.Chmod(store, 0o755)
+		removed, kept, err := GC(dir, func(string, string) bool { return false })
+		if err == nil {
+			t.Fatalf("undeletable entries reported clean: %d removed, %d kept", removed, kept)
+		}
 	}
 }

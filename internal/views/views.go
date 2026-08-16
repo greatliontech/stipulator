@@ -79,7 +79,7 @@ func (s Scope) keeps(row coverage.Requirement, doc string, symbols []string) boo
 			return false
 		}
 	}
-	if s.Path != "" && !strings.HasPrefix(doc, s.Path) && !anyPrefix(symbols, s.Path) {
+	if s.Path != "" && !elementPrefix(doc, s.Path) && !anyPrefix(symbols, s.Path) {
 		return false
 	}
 	return true
@@ -87,11 +87,33 @@ func (s Scope) keeps(row coverage.Requirement, doc string, symbols []string) boo
 
 func anyPrefix(items []string, prefix string) bool {
 	for _, it := range items {
-		if strings.HasPrefix(it, prefix) {
+		if elementPrefix(it, prefix) {
 			return true
 		}
 	}
 	return false
+}
+
+// elementPrefix reports whether s begins with prefix on an element
+// boundary: equal, the prefix's own last character a separator, or the
+// next character of s a separator ('/' for path and import-path
+// elements, '.' for symbol remainders). Raw prefixing kept
+// example.com/p2 under example.com/p and docs/specs.md under docs/spec
+// (REQ-mcp-views's element-boundary rule); one function serves
+// document, symbol, and diagnostic matching so the three can never
+// drift.
+func elementPrefix(s, prefix string) bool {
+	if !strings.HasPrefix(s, prefix) {
+		return false
+	}
+	if len(s) == len(prefix) {
+		return true
+	}
+	if last := prefix[len(prefix)-1]; last == '/' || last == '.' {
+		return true
+	}
+	next := s[len(prefix)]
+	return next == '/' || next == '.'
 }
 
 // Facts carries the per-requirement context scoping needs: declaring
@@ -318,33 +340,58 @@ func VerifyView(vr *verify.Report, facts Facts, view string, scope Scope) (proto
 			// OutsidePolicy stays GLOBAL exactly like the gate verdict — a
 			// scoped slice says nothing about what the policy leaves
 			// outside the tree-wide witnessing.
+			// A build-broken package's rows resolve to no package,
+			// which used to drop the one diagnostic explaining the
+			// breakage from every Path-empty scope (ids, filter,
+			// bucket). The row's bound SYMBOL still names the package
+			// textually; linking it against each diagnostic's own
+			// package string is boundary-safe in this direction - the
+			// package is known, never re-parsed from the symbol - but a
+			// dotted package path can prefix-link a symbol to its
+			// parent package too, so only the LONGEST linking package
+			// claims the row (REQ-mcp-views).
+			claimed := map[string]bool{}
+			for _, br := range rows {
+				if br.Package != "" {
+					continue
+				}
+				best := ""
+				for _, d := range vr.Diagnostics {
+					if p := d.GetPackage(); p != "" && len(p) > len(best) && elementPrefix(br.Symbol, p) {
+						best = p
+					}
+				}
+				if best != "" {
+					claimed[best] = true
+				}
+			}
 			var keptDiags []*stipulatorv1.FailureDiagnostic
 			for _, d := range vr.Diagnostics {
 				// A path scope keeps a package-scoped diagnostic
-				// directly, row or no row — the same raw-prefix rule
-				// keeps applies to symbols. Without it a build-broken
-				// package would lose the one diagnostic explaining its
-				// breakage exactly when scoped onto: its rows resolve
-				// to no package. An invocation-level diagnostic has an
-				// empty package, which no non-empty path prefixes. A
-				// Path-empty scope (ids, filter, bucket) has nothing to
-				// rescue with, so a broken package's diagnostic drops
-				// from those scoped views; the unscoped view, summary
-				// headings, and check-level rows still carry it.
-				if scope.Path != "" && strings.HasPrefix(d.GetPackage(), scope.Path) {
+				// directly, row or no row — the same element-boundary
+				// rule keeps applies to symbols. An invocation-level
+				// diagnostic has an empty package, which no non-empty
+				// path prefixes.
+				if scope.Path != "" && d.GetPackage() != "" && elementPrefix(d.GetPackage(), scope.Path) {
 					keptDiags = append(keptDiags, d)
 					continue
 				}
+				matched := d.GetPackage() != "" && claimed[d.GetPackage()]
 				for _, br := range rows {
+					if matched {
+						break
+					}
 					// Match on the row's backend-resolved package — the
 					// symbol string alone is ambiguous (dotted path
 					// elements vs method receivers), so it is never
-					// re-parsed here. A row without a resolved package
-					// identifies no package and claims no diagnostic.
+					// re-parsed here beyond the longest-link claim
+					// above.
 					if br.Package != "" && br.Package == d.GetPackage() {
-						keptDiags = append(keptDiags, d)
-						break
+						matched = true
 					}
+				}
+				if matched {
+					keptDiags = append(keptDiags, d)
 				}
 			}
 			sliced.Diagnostics = keptDiags

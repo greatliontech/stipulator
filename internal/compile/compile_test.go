@@ -454,3 +454,57 @@ func TestTermLint(t *testing.T) {
 		t.Fatalf("plural mid-word shadow warned: %v", msgs)
 	}
 }
+
+// Word boundaries are rune-level - Unicode letters and digits, with an
+// underscore as a boundary - so a non-ASCII term name matches exactly
+// as an ASCII one, and the lint judges containment with the same
+// definition (REQ-profile-term-matching, REQ-profile-term-lint).
+//
+//gofresh:pure
+func TestTermMatchingRuneBoundaries(t *testing.T) {
+	stipulate.Covers(t, "REQ-profile-term-matching", "REQ-profile-term-lint")
+	spec, diags := compileFiles(t, map[string]string{
+		"specs/a.md": "# T\n\n**épreuve** (term): a trial.\n\n**garantie** (term): a promise.\n\n**über** (term): the над.\n\n" +
+			"**REQ-x-a** (behavior): The Épreuve MUST pass.\n\n" +
+			"**REQ-x-b** (behavior): The épreuves MUST not bind the singular.\n\n" +
+			"**REQ-x-c** (behavior): The garantie_tier MUST treat the underscore as a boundary.\n\n" +
+			"**REQ-x-d** (behavior): The überæther MUST stay whole.\n",
+	})
+	wantClean(t, diags)
+	if !hasEdge(spec, stipulatorv1.EdgeKind_EDGE_KIND_USES_TERM, reqRef("REQ-x-a"), termRef("épreuve")) {
+		t.Fatal("non-ASCII term name did not match on rune boundaries")
+	}
+	if hasEdge(spec, stipulatorv1.EdgeKind_EDGE_KIND_USES_TERM, reqRef("REQ-x-b"), termRef("épreuve")) {
+		t.Fatal("term matched inside a longer word (épreuves)")
+	}
+	if !hasEdge(spec, stipulatorv1.EdgeKind_EDGE_KIND_USES_TERM, reqRef("REQ-x-c"), termRef("garantie")) {
+		t.Fatal("underscore did not act as a word boundary")
+	}
+	// The boundary character itself may be non-ASCII: a term fused to a
+	// following non-ASCII LETTER is inside a word, not on a boundary -
+	// the arm an ASCII-only word test cannot distinguish.
+	if hasEdge(spec, stipulatorv1.EdgeKind_EDGE_KIND_USES_TERM, reqRef("REQ-x-d"), termRef("über")) {
+		t.Fatal("term matched inside a word continued by a non-ASCII letter")
+	}
+}
+
+// The shadowing lint sees non-ASCII containment with the matcher's own
+// boundary definition (REQ-profile-term-lint).
+//
+//gofresh:pure
+func TestTermLintRuneBoundaries(t *testing.T) {
+	stipulate.Covers(t, "REQ-profile-term-lint")
+	_, diags := compileFiles(t, map[string]string{
+		".stipulator/manifest.textproto": "include: \"specs/**/*.md\"\nterm_lint { warn_shadowing: true }\n",
+		"specs/a.md": "# T\n\n**épreuve du feu** (term): the big trial.\n\n**épreuve** (term): a trial.\n",
+	})
+	warned := false
+	for _, d := range diags {
+		if d.Warning && strings.Contains(d.Message, "épreuve du feu") && strings.Contains(d.Message, "contains term") {
+			warned = true
+		}
+	}
+	if !warned {
+		t.Fatalf("non-ASCII shadowing unwarned: %+v", diags)
+	}
+}

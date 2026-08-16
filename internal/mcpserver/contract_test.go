@@ -11,6 +11,8 @@ import (
 
 	"github.com/greatliontech/gofresh"
 	"github.com/greatliontech/stipulator/internal/author"
+	"github.com/greatliontech/stipulator/internal/facts"
+	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -353,5 +355,97 @@ func TestResourceReadServesUnlistedButExistingRequirement(t *testing.T) {
 	}
 	if !strings.Contains(rr.Contents[0].Text, "REQ-m-late") {
 		t.Fatalf("read served the wrong document:\n%s", rr.Contents[0].Text)
+	}
+}
+
+// The partitions export form carries the UNCAPPED overlap set while the
+// wire default caps with the omission counted: the tool-seam call pair
+// (Proto vs ProtoUncapped) is pinned with a small fixture by lowering
+// the cap (REQ-mcp-response-contract).
+//
+//gofresh:pure
+func TestPartitionsExportCarriesUncappedOverlaps(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-response-contract")
+	prior := facts.OverlapCap
+	facts.OverlapCap = 0
+	defer func() { facts.OverlapCap = prior }()
+	sess, writes := harnessWith(t, map[string]string{
+		".stipulator/bindings/m.textproto": pinnedBinding(t),
+		".stipulator/bindings/n.textproto": pinnedBindingFor(t, "REQ-m-b", "example.com/p.F", "f"),
+	}, func(srv *Server) {
+		// Overlaps derive from slicer-provided packages; the plain fake
+		// is no slicer, so both components would carry none.
+		srv.backends = func(context.Context) (map[string]verify.Backend, error) {
+			return map[string]verify.Backend{"go": slicingFake{fakeBackend{
+				"example.com/p.TestA": strings.Repeat("s", 64),
+				"example.com/p.F":     strings.Repeat("f", 64),
+			}}}, nil
+		}
+	})
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "partitions", Arguments: map[string]any{
+		"no_test": true,
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("partitions: %v %+v", err, res)
+	}
+	if payload := toolPayload(t, res); !strings.Contains(payload, "overlapsOmitted") || strings.Contains(payload, "\"overlaps\":[{") {
+		t.Fatalf("capped default should omit overlaps and count them: %s", payload)
+	}
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "partitions", Arguments: map[string]any{
+		"no_test": true, "export_path": ".stipulator/exports/uncapped.json",
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("partitions export: %v %+v", err, res)
+	}
+	doc, ok := writes[".stipulator/exports/uncapped.json"]
+	if !ok || !strings.Contains(string(doc), "overlaps") || !strings.Contains(string(doc), "REQ-m-a") {
+		t.Fatalf("export missing the uncapped overlap set: %s", doc)
+	}
+	if !strings.Contains(string(doc), "\"overlaps\":[{") || strings.Contains(string(doc), "\"overlapsOmitted\":1") {
+		t.Fatalf("export must carry the overlap rows with nothing omitted: %s", doc)
+	}
+}
+
+// slicingFake is fakeBackend plus a Slice answer placing every symbol
+// in one shared package - the overlap fixture.
+type slicingFake struct{ fakeBackend }
+
+func (s slicingFake) Slice(symbols []string) ([]verify.Decl, error) {
+	var out []verify.Decl
+	for _, sym := range symbols {
+		out = append(out, verify.Decl{Package: "example.com/p", Name: sym})
+	}
+	return out, nil
+}
+
+// The prune tool's store mode garbage-collects the corpus's witness
+// store against the current obligation universe - explicit only,
+// composing with no other mode (REQ-evidence-store-gc).
+//
+//gofresh:pure
+func TestPruneToolStoreGC(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-store-gc")
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	root := t.TempDir()
+	install := func(pkg, test string) {
+		t.Helper()
+		if err := witnesscache.Install(root, witnesscache.Record{Package: pkg, Test: test, Outcomes: map[string]string{pkg + "." + test: "passed"}, Fingerprint: witnesscache.Fingerprint{MaximalClosure: "aa", TestVariantClosure: "bb"}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	install("example.com/p", "TestA")
+	install("example.com/p", "TestDeparted")
+	sess, _ := harnessWith(t, map[string]string{
+		".stipulator/bindings/m.textproto": pinnedBinding(t),
+	}, func(srv *Server) { srv.root = root })
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "prune", Arguments: map[string]any{"store": true}})
+	if err != nil || res.IsError {
+		t.Fatalf("prune store: %v %+v", err, res)
+	}
+	if text := toolText(t, res); !strings.Contains(text, "1 record variant(s) removed, 1 kept") {
+		t.Fatalf("store gc result = %s", text)
+	}
+	if res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "prune", Arguments: map[string]any{"store": true, "dangling": true}}); err != nil || !res.IsError {
+		t.Fatalf("composed store mode admitted: %v %+v", err, res)
 	}
 }

@@ -346,6 +346,20 @@ outside, degraded or not. On an id-scoped pass the degraded full
 execution is the scope's own — every in-scope subject executes, and the
 scope boundary keeps holding — never the tree's.
 
+**REQ-evidence-store-gc** (behavior): The witness store MUST offer an
+explicit garbage-collection verb, on both surfaces, that removes this
+corpus's record variants whose witness identity is absent from the
+current obligation universe — the bound tests-role symbols, matched by
+exact record-key equality, never by symbol parsing — plus unreadable
+entries (cost with no servable evidence behind them). The verb is the
+ONLY eviction across identities: an identity absent from this tree
+state may be live on another branch, so opportunistic eviction would
+undo the variant store's branch-alternation serving; per-identity
+variant bounds on install are unaffected. The result states removed
+and kept counts. Enforced by `TestWitnessStoreGCDropsDepartedIdentities`,
+`TestPruneToolStoreGC`, and the CLI arm of
+`TestPruneScopedWitnessEvaluationAndDeletionOnlyFastPath`.
+
 **REQ-evidence-attestation** (behavior): An attestation MUST carry its reason
 text and appear distinctly in every coverage output; it is the weakest
 evidence and is never silently aggregated into stronger kinds. A

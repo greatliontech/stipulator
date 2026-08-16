@@ -12,10 +12,13 @@ import (
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/internal/witnesscache"
+
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 )
 
 func pruneCmd() *cobra.Command {
-	var check, noTest, dangling bool
+	var check, noTest, dangling, storeGC bool
 	c := &cobra.Command{
 		Use:   "prune",
 		Short: "Delete resolved gap records",
@@ -26,6 +29,41 @@ func pruneCmd() *cobra.Command {
 			"alone, never part of resolved-record pruning. --check lints either mode:\n" +
 			"non-zero exit when records linger, deleting nothing.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Store GC is an identity-liveness fact: the current
+			// bound tests-role symbols ARE the obligation universe,
+			// matched by exact record-key equality - no symbol
+			// parsing - and it runs only as this explicit verb, never
+			// opportunistically: an identity absent from THIS tree
+			// state may be live on another branch, and silent
+			// eviction would undo the variant store's
+			// branch-alternation serving (REQ-evidence-store-gc). It
+			// judges from records alone - before compilation, so a
+			// broken spec never blocks cost cleanup.
+			if storeGC {
+				if check || dangling || noTest {
+					return fmt.Errorf("prune --store composes with no other prune mode or flag")
+				}
+				store, err := records.Load(os.DirFS(chdir))
+				if err != nil {
+					return err
+				}
+				live := map[string]bool{}
+				for _, bf := range store.Bindings {
+					for _, b := range bf.Set.GetBindings() {
+						if b.GetRole() == stipulatorv1.BindingRole_BINDING_ROLE_TESTS {
+							live[b.GetSymbol()] = true
+						}
+					}
+				}
+				removed, kept, err := witnesscache.GC(chdir, func(pkg, test string) bool {
+					return live[pkg+"."+test]
+				})
+				if err != nil {
+					return err
+				}
+				fmt.Printf("store gc: %d record variant(s) removed, %d kept\n", removed, kept)
+				return nil
+			}
 			spec, err := mustCompile(chdir)
 			if err != nil {
 				return err
@@ -151,5 +189,6 @@ func pruneCmd() *cobra.Command {
 	c.Flags().BoolVar(&check, "check", false, "lint: fail when records linger; delete nothing")
 	c.Flags().BoolVar(&noTest, "no-test", false, "skip the witness run (resolved-gap pruning may under-detect)")
 	c.Flags().BoolVar(&dangling, "dangling", false, "delete gap records naming requirements no longer in the corpus")
+	c.Flags().BoolVar(&storeGC, "store", false, "garbage-collect this corpus's witness store: drop record variants whose identity is absent from the current obligation universe (departed, renamed, or unbound tests) plus unreadable entries; explicit only - an identity absent here may be live on another branch")
 	return c
 }

@@ -2,6 +2,9 @@ package cmd
 
 import (
 	"bytes"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,7 +22,7 @@ import (
 //
 // Deliberately not //gofresh:pure: builds and executes the CLI binary.
 func TestPruneScopedWitnessEvaluationAndDeletionOnlyFastPath(t *testing.T) {
-	stipulate.Covers(t, "REQ-gap-resolved-pruned")
+	stipulate.Covers(t, "REQ-gap-resolved-pruned", "REQ-evidence-store-gc")
 	if testing.Short() {
 		t.Skip("builds the CLI and executes a policy over a fixture tree")
 	}
@@ -47,7 +50,7 @@ func TestPruneScopedWitnessEvaluationAndDeletionOnlyFastPath(t *testing.T) {
 	write(".stipulator/policy.textproto", "invocations {\n  name: \"race\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./...\"\n    race: true\n  }\n}\n")
 	write("specs/p.md", "# P\n\n**REQ-pr-a** (behavior): The fixture MUST double.\n\n**REQ-pr-b** (behavior): The fixture MUST triple.\n")
 
-	env := append(os.Environ(), "GOENV=off", "GOFLAGS=", "GOPACKAGESDRIVER=", "GOTOOLCHAIN=local", "NO_COLOR=1")
+	env := append(os.Environ(), "GOENV=off", "GOFLAGS=", "GOPACKAGESDRIVER=", "GOTOOLCHAIN=local", "NO_COLOR=1", "XDG_CACHE_HOME="+t.TempDir())
 	run := func(wantExit int, args ...string) string {
 		t.Helper()
 		cmd := exec.Command(bin, append([]string{"-C", dir}, args...)...)
@@ -125,5 +128,53 @@ func TestPruneScopedWitnessEvaluationAndDeletionOnlyFastPath(t *testing.T) {
 	out = run(0, "prune", "--check")
 	if !strings.Contains(out, "prune: clean") {
 		t.Fatalf("gapless prune --check not clean:\n%s", out)
+	}
+
+	// The store GC verb on the CLI surface: the witness run above
+	// installed records for both bound tests; unbinding one makes its
+	// identity departed, and only the explicit verb evicts it
+	// (REQ-evidence-store-gc).
+	run(0, "unbind", "--req", "REQ-pr-b", "--symbol", "example.com/prunefix/tri.TestTriple", "--role", "tests")
+	out = run(0, "prune", "--store")
+	if !strings.Contains(out, "removed") || !strings.Contains(out, "kept") || strings.Contains(out, "0 record variant(s) removed") {
+		t.Fatalf("store gc did not evict the departed identity:\n%s", out)
+	}
+	if out = run(0, "prune", "--store"); !strings.Contains(out, "0 record variant(s) removed") {
+		t.Fatalf("second store gc removed again:\n%s", out)
+	}
+}
+
+// The serving-class refusal is defense in depth - unreachable through a
+// healthy CLI run, since witnessRunScoped always produces the serving
+// class - so its call site cannot be pinned by execution: this test
+// parses the command source and asserts the guard call appears after
+// the scoped witness-run call in source order. (A structural calls-verb
+// prover would subsume this pin; that capability is an open design
+// question.)
+func TestPruneCallSitePinsServingClassRefusal(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-resolved-pruned")
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "prune.go", nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sawScoped, sawGuardAfter := false, false
+	ast.Inspect(f, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		if id, ok := call.Fun.(*ast.Ident); ok && id.Name == "witnessRunScoped" {
+			sawScoped = true
+		}
+		if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "ServingClassRequired" {
+			if x, ok := sel.X.(*ast.Ident); ok && x.Name == "verify" && sawScoped {
+				sawGuardAfter = true
+			}
+		}
+		return true
+	})
+	if !sawScoped || !sawGuardAfter {
+		t.Fatalf("prune.go call-site pin: witnessRunScoped=%v guard-after=%v - the serving-class guard must follow the scoped witness run", sawScoped, sawGuardAfter)
 	}
 }

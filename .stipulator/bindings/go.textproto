@@ -561,7 +561,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-witness-class"
-  content_hash: "26b6fa6a75f247e6f3f18fe0457bbbc4818b9555776c257be6d14482972057b9"
+  content_hash: "d401c2765bd960f7ea02e6001f43bc6853481f96c63eedf1171ece89ecd9fc08"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestWitnessClassVerdicts"
   role: BINDING_ROLE_TESTS
@@ -570,7 +570,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-witness-class"
-  content_hash: "26b6fa6a75f247e6f3f18fe0457bbbc4818b9555776c257be6d14482972057b9"
+  content_hash: "d401c2765bd960f7ea02e6001f43bc6853481f96c63eedf1171ece89ecd9fc08"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestWitnessClassProof"
   role: BINDING_ROLE_TESTS
@@ -579,7 +579,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-witness-class"
-  content_hash: "26b6fa6a75f247e6f3f18fe0457bbbc4818b9555776c257be6d14482972057b9"
+  content_hash: "d401c2765bd960f7ea02e6001f43bc6853481f96c63eedf1171ece89ecd9fc08"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestExampleClassificationVerdictSurfaces"
   role: BINDING_ROLE_TESTS

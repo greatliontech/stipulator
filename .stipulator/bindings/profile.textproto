@@ -45,3 +45,30 @@ bindings {
   role: BINDING_ROLE_IMPLEMENTS
   shape_hash: "f0db2ea5901b9f24e0afa13e07a65507a5a50d2d6ac3cc14becd4bfd7381fc7a"
 }
+
+bindings {
+  requirement_id: "REQ-profile-term-matching"
+  content_hash: "ccdc4a437d3376b02099c30f90c36982d1d10a57a1720512b19ae62848b4a7e0"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestTermMatchingRuneBoundaries"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7827759919c4e68e51158337149a668399272c3ebc03f87d711e910a6527952a"
+}
+
+bindings {
+  requirement_id: "REQ-profile-term-lint"
+  content_hash: "5ed9496e06c5649ea948f85c2020a37c23c53f841daee091153bd1e03d1c0c70"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestTermMatchingRuneBoundaries"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7827759919c4e68e51158337149a668399272c3ebc03f87d711e910a6527952a"
+}
+
+bindings {
+  requirement_id: "REQ-profile-term-lint"
+  content_hash: "5ed9496e06c5649ea948f85c2020a37c23c53f841daee091153bd1e03d1c0c70"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestTermLintRuneBoundaries"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "929d6f72e77bbe7140be6022c2c14ff04a264334640a67e4933d4f107fc88ff0"
+}

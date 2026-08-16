@@ -114,7 +114,10 @@ outside requirement text MUST be a compile error.
 **REQ-profile-term-matching** (behavior): The compiler MUST create a
 `uses-term` edge from a requirement or term to every term whose name occurs
 in the block's text, matched case-insensitively on word boundaries with
-longest match winning.
+longest match winning. Word characters are Unicode letters and digits in
+any script — an underscore is a boundary — so a term name beginning or
+ending in a non-ASCII letter matches exactly as an ASCII one; the term
+lint judges containment with the same definition.
 
 **REQ-profile-id-reference** (behavior): A requirement identifier token
 occurring in any block's interpreted text MUST compile to a `reference` from

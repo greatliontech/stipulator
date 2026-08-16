@@ -10,12 +10,14 @@
 package compile
 
 import (
+	"bytes"
 	"fmt"
 	"io/fs"
 	"regexp"
 	"slices"
 	"sort"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -439,17 +441,18 @@ func findTokens(segs []profile.Seg, re *regexp.Regexp) []string {
 
 // termMatcher finds term-name occurrences: case-insensitive, word-boundary,
 // longest match winning — a claimed occurrence is blanked so shorter names
-// cannot match inside it.
+// cannot match inside it. Boundaries are rune-level: word characters are
+// Unicode letters and digits (an underscore is a boundary), so non-ASCII
+// term names match exactly as ASCII ones — Go's regexp \b is ASCII-only
+// and silently missed them (REQ-profile-term-matching).
 type termMatcher struct {
 	names []string // lowercased, longest first
-	res   map[string]*regexp.Regexp
 }
 
 func newTermMatcher(terms map[string]*termBlock) *termMatcher {
-	m := &termMatcher{res: map[string]*regexp.Regexp{}}
+	m := &termMatcher{}
 	for name := range terms {
 		m.names = append(m.names, name)
-		m.res[name] = regexp.MustCompile(`\b` + regexp.QuoteMeta(name) + `\b`)
 	}
 	sort.Slice(m.names, func(i, j int) bool {
 		if len(m.names[i]) != len(m.names[j]) {
@@ -470,13 +473,22 @@ func (m *termMatcher) match(segs []profile.Seg, self string) []string {
 	}
 	var out []string
 	for _, name := range m.names {
-		re, matched := m.res[name], false
+		matched := false
 		for _, t := range texts {
-			for _, loc := range re.FindAllIndex(t, -1) {
-				matched = true
-				for i := loc[0]; i < loc[1]; i++ {
-					t[i] = 1 // blank claimed bytes: non-word, keeps boundaries
+			for from := 0; from+len(name) <= len(t); {
+				i := bytes.Index(t[from:], []byte(name))
+				if i < 0 {
+					break
 				}
+				start := from + i
+				end := start + len(name)
+				if runeBoundaryBefore(t, start) && runeBoundaryAfter(t, end) {
+					matched = true
+					for k := start; k < end; k++ {
+						t[k] = 1 // blank claimed bytes: non-word, keeps boundaries
+					}
+				}
+				from = start + 1
 			}
 		}
 		if matched && name != self {
@@ -485,6 +497,29 @@ func (m *termMatcher) match(segs []profile.Seg, self string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// isWordRune is the one word-character definition the matcher and the
+// term lint share: Unicode letters and digits; an underscore is a
+// boundary (REQ-profile-term-matching, REQ-profile-term-lint).
+func isWordRune(r rune) bool {
+	return unicode.IsLetter(r) || unicode.IsDigit(r)
+}
+
+func runeBoundaryBefore(t []byte, start int) bool {
+	if start == 0 {
+		return true
+	}
+	r, _ := utf8.DecodeLastRune(t[:start])
+	return !isWordRune(r)
+}
+
+func runeBoundaryAfter(t []byte, end int) bool {
+	if end == len(t) {
+		return true
+	}
+	r, _ := utf8.DecodeRune(t[end:])
+	return !isWordRune(r)
 }
 
 // lintTerms emits the opt-in term-name warnings (REQ-profile-term-lint):
@@ -525,22 +560,18 @@ func lintTerms(spec *stipulatorv1.Spec, cfg *stipulatorv1.TermLint, diags *[]Dia
 	}
 }
 
-// containsWord reports whether hay contains needle on word boundaries.
+// containsWord reports whether hay contains needle on word boundaries -
+// the matcher's rune-level definition, so lint warnings stay consistent
+// with actual binding behavior (REQ-profile-term-lint).
 func containsWord(hay, needle string) bool {
+	h := []byte(hay)
 	for i := 0; i+len(needle) <= len(hay); i++ {
 		if hay[i:i+len(needle)] != needle {
 			continue
 		}
-		beforeOK := i == 0 || !isWordByte(hay[i-1])
-		after := i + len(needle)
-		afterOK := after == len(hay) || !isWordByte(hay[after])
-		if beforeOK && afterOK {
+		if runeBoundaryBefore(h, i) && runeBoundaryAfter(h, i+len(needle)) {
 			return true
 		}
 	}
 	return false
-}
-
-func isWordByte(b byte) bool {
-	return b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z' || b >= '0' && b <= '9'
 }

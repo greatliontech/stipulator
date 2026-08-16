@@ -61,10 +61,13 @@ skipped test grants no witness without reading as `broken`.
 **REQ-go-witness-class** (behavior): A witness MUST be classified `proof`
 when its bound test's own body directly invokes the `stipulate/structural`
 analyzer library (indirection through a helper does not classify),
-`property` when it is a fuzz target (a function taking `*testing.F`) or
-its own body directly drives `pgregory.net/rapid` (a qualified or aliased
-`rapid.Check` / `rapid.MakeCheck` selector call — a dot-imported call or
-generator construction alone does not classify), and `example` otherwise;
+`property` when it is a fuzz target (a function taking `*testing.F`), its
+own body directly drives `pgregory.net/rapid` (a qualified or aliased
+`rapid.Check` / `rapid.MakeCheck` selector call), or its own body directly
+drives `github.com/leanovate/gopter` (a `Properties.TestingRun` selector
+call — property registration and generator construction alone do not
+classify, and a dot-imported call never does, for every recognized
+library), and `example` otherwise;
 the classification is resolved from the code, never declared. An
 `example` classification carries a verdict naming what the bound body
 lacks — a recognized library referenced without its classifying call is

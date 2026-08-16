@@ -873,3 +873,39 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "60e8a2388d92577a43ced02871292c6140d401899f070bbe2e62303008e747a0"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-store-gc"
+  content_hash: "8fd9c2ea724043d5de1961b7a93899de2e88c68117172c63a7673c37a5244ed0"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/witnesscache.TestWitnessStoreGCDropsDepartedIdentities"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "0ecff34d2abfee35f7af69157626a6e8b8b1d22037c595863c9d072b1deaab3b"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-store-gc"
+  content_hash: "8fd9c2ea724043d5de1961b7a93899de2e88c68117172c63a7673c37a5244ed0"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPruneToolStoreGC"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "96e6a4ed882cef567b145a692e69f51cf921533efa3834739f388557b8e47d73"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-store-gc"
+  content_hash: "8fd9c2ea724043d5de1961b7a93899de2e88c68117172c63a7673c37a5244ed0"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/witnesscache.GC"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "df5a56dd0724d6ba51817dc47fb3cbdb384c9150c8b7b4b5fe86352c35d2f01a"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-store-gc"
+  content_hash: "8fd9c2ea724043d5de1961b7a93899de2e88c68117172c63a7673c37a5244ed0"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestPruneScopedWitnessEvaluationAndDeletionOnlyFastPath"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b95e79bbc8e012e2362c2310483ef44afcf5352a48d5f6013ec936178a1ece06"
+}

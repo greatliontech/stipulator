@@ -334,6 +334,29 @@ func TestVerifyBindingsScopeDiagnosticsResolvedPackage(t *testing.T) {
 	if len(diags) != 1 || diags[0].GetPackage() != "example.com/broken" {
 		t.Fatalf("broken-package scope diagnostics = %v, want its build diagnostic kept", diags)
 	}
+
+	// A Path-empty scope (ids here) keeping the broken row keeps its
+	// diagnostic too: the bound symbol links it to the diagnostic's own
+	// package string on the element boundary - scoping onto breakage
+	// never hides the one output explaining it (REQ-mcp-views).
+	m, err = VerifyView(vr, Facts{Doc: map[string]string{"REQ-dp": "specs/a.md"}, Symbols: map[string][]string{}}, "bindings", Scope{Ids: []string{"REQ-dp"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	diags = m.(*stipulatorv1.VerifyReport).GetWitnessDiagnostics()
+	if len(diags) != 1 || diags[0].GetPackage() != "example.com/broken" {
+		t.Fatalf("ids-scoped broken diagnostics = %v, want the symbol-linked build diagnostic kept", diags)
+	}
+
+	// The element boundary holds for scoping too: a sibling package
+	// sharing the prefix is out of scope.
+	m, err = VerifyView(vr, Facts{Doc: map[string]string{"REQ-dp": "specs/a.md"}, Symbols: map[string][]string{}}, "bindings", Scope{Path: "example.com/brok"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := m.(*stipulatorv1.VerifyReport); len(got.GetResults()) != 0 || len(got.GetWitnessDiagnostics()) != 0 {
+		t.Fatalf("non-boundary prefix kept rows or diagnostics: %v %v", got.GetResults(), got.GetWitnessDiagnostics())
+	}
 }
 
 // packageDiag builds a package-level failure diagnostic (no owning test).
@@ -342,4 +365,31 @@ func packageDiag(pkg, out string) *stipulatorv1.FailureDiagnostic {
 	d.SetPackage(pkg)
 	d.SetOutput(out)
 	return d
+}
+
+// The path prefix matches on element boundaries - equal, or the next
+// character a separator - shared by document, symbol, and diagnostic
+// matching (REQ-mcp-views).
+//
+//gofresh:pure
+func TestElementPrefixBoundaries(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-views")
+	for _, tc := range []struct {
+		s, prefix string
+		want      bool
+	}{
+		{"example.com/p", "example.com/p", true},
+		{"example.com/p2", "example.com/p", false},
+		{"example.com/p/sub", "example.com/p", true},
+		{"example.com/p.F", "example.com/p", true},
+		{"docs/specs.md", "docs/spec", false},
+		{"docs/specs.md", "docs/specs.md", true},
+		{"docs/specs/a.md", "docs/specs/", true},
+		{"example.com/p.Type.Method", "example.com/p.", true},
+		{"example.com/p.Type.Method", "example.com/p.Type", true},
+	} {
+		if got := elementPrefix(tc.s, tc.prefix); got != tc.want {
+			t.Errorf("elementPrefix(%q, %q) = %v, want %v", tc.s, tc.prefix, got, tc.want)
+		}
+	}
 }

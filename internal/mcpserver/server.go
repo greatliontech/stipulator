@@ -44,6 +44,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/views"
 	"github.com/greatliontech/stipulator/internal/wire"
+	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
 
 // Server serves one repository. The function fields exist so tests can
@@ -1420,6 +1421,7 @@ func (s *Server) toolDispose(ctx context.Context, req *mcp.CallToolRequest, in d
 type pruneIn struct {
 	Check    bool `json:"check,omitempty" jsonschema:"report which records would be pruned, deleting nothing"`
 	Dangling bool `json:"dangling,omitempty" jsonschema:"delete gap records naming requirements no longer in the corpus (the bulk repair; corpus and records only, no tests)"`
+	Store    bool `json:"store,omitempty" jsonschema:"garbage-collect this corpus's witness store: drop record variants whose identity is absent from the current obligation universe (departed, renamed, or unbound tests) plus unreadable entries; explicit only - an identity absent here may be live on another branch; composes with no other mode"`
 }
 
 // toolPrune deletes resolved gap records. Detecting resolution is the
@@ -1429,6 +1431,38 @@ type pruneIn struct {
 // problem could misreport a bucket and prune a still-load-bearing gap.
 // It writes only under .stipulator/gaps/.
 func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pruneIn) (*mcp.CallToolResult, writeOut, error) {
+	// Store GC is an identity-liveness fact: the current bound
+	// tests-role symbols ARE the obligation universe, matched by exact
+	// record-key equality, and it runs only as this explicit mode -
+	// never opportunistically, since an identity absent from THIS tree
+	// state may be live on another branch (REQ-evidence-store-gc). The
+	// store lives in the user cache, outside the corpus - the
+	// .stipulator/ write confinement governs record writes, not the
+	// tool's own cache.
+	if in.Store {
+		if in.Check || in.Dangling {
+			return nil, writeOut{}, fmt.Errorf("prune: store composes with no other prune mode")
+		}
+		store, err := records.Load(s.fsys())
+		if err != nil {
+			return nil, writeOut{}, err
+		}
+		live := map[string]bool{}
+		for _, bf := range store.Bindings {
+			for _, b := range bf.Set.GetBindings() {
+				if b.GetRole() == stipulatorv1.BindingRole_BINDING_ROLE_TESTS {
+					live[b.GetSymbol()] = true
+				}
+			}
+		}
+		removed, kept, err := witnesscache.GC(s.root, func(pkg, test string) bool {
+			return live[pkg+"."+test]
+		})
+		if err != nil {
+			return nil, writeOut{}, err
+		}
+		return textOnly(fmt.Sprintf("store gc: %d record variant(s) removed, %d kept", removed, kept)), writeOut{}, nil
+	}
 	// Danglingness is a corpus-and-records fact: no witnesses, no symbol
 	// resolution, and no verification gate — a dangling gap IS a
 	// verification problem, so gating its repair on clean verification

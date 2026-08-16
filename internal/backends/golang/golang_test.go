@@ -203,6 +203,13 @@ func TestWitnessClass(t *testing.T) {
 	if got := fb.WitnessClass("example.com/fixture/lib.TestPropRapidGeneratorOnly"); got != verify.ExampleWitness {
 		t.Fatalf("generator-only test classified %v", got)
 	}
+	// The gopter check driver quantifies; registration alone does not.
+	if got := fb.WitnessClass("example.com/fixture/lib.TestGopterProp"); got != verify.PropertyWitness {
+		t.Fatalf("gopter TestingRun test classified %v", got)
+	}
+	if got := fb.WitnessClass("example.com/fixture/lib.TestGopterRegistrationOnly"); got != verify.ExampleWitness {
+		t.Fatalf("gopter registration-only test classified %v", got)
+	}
 }
 
 // The classification verdict names what the bound body lacks: the
@@ -219,6 +226,8 @@ func TestWitnessClassVerdicts(t *testing.T) {
 	}{
 		{"example.com/fixture/lib.TestPropRapidCheck", verify.PropertyWitness, ""},
 		{"example.com/fixture/lib.TestPropRapidGeneratorOnly", verify.ExampleWitness, "rapid.Check not invoked in the bound body"},
+		{"example.com/fixture/lib.TestGopterProp", verify.PropertyWitness, ""},
+		{"example.com/fixture/lib.TestGopterRegistrationOnly", verify.ExampleWitness, "gopter.Properties.TestingRun not invoked in the bound body"},
 		{"example.com/fixture/lib.TestAdd", verify.ExampleWitness, "no property driver or analyzer call in the bound body"},
 		{"example.com/fixture/lib.TestPropDotImported", verify.ExampleWitness, "recognized library reached through a dot import - only a qualified call classifies"},
 		{"example.com/fixture/lib.Add", verify.ExampleWitness, "not a runnable test witness"},

@@ -279,9 +279,11 @@ func (r *Report) Proto() *stipulatorv1.PartitionReport {
 	return out
 }
 
-// OverlapCap bounds the wire overlap list; the full pairwise set stays
+// OverlapCap bounds the wire overlap list; a variable so the
+// capped-vs-uncapped seam is pinnable with a small fixture (the export
+// form's ProtoUncapped call at the tool seam). The full pairwise set stays
 // available on the in-process Report.
-const OverlapCap = 64
+var OverlapCap = 64
 
 func intersects(a, b map[string]bool) bool {
 	if len(b) < len(a) {

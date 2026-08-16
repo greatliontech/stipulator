@@ -219,16 +219,16 @@ bindings {
 
 bindings {
   requirement_id: "REQ-profile-term-matching"
-  content_hash: "49a39f9449dc9f913f2acd45359e56c5a3af1c80d9e6c7ae9e63392639b9c336"
+  content_hash: "ccdc4a437d3376b02099c30f90c36982d1d10a57a1720512b19ae62848b4a7e0"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.termMatcher"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "39f35efbc6435619a782413bc570ac04dae51f63e9867ab5c52597f33addc241"
+  shape_hash: "ad47efd213f21db1d9a9cc33e86a08c9ecc9cde2b0f208d5b64be28f53bec9d2"
 }
 
 bindings {
   requirement_id: "REQ-profile-term-matching"
-  content_hash: "49a39f9449dc9f913f2acd45359e56c5a3af1c80d9e6c7ae9e63392639b9c336"
+  content_hash: "ccdc4a437d3376b02099c30f90c36982d1d10a57a1720512b19ae62848b4a7e0"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestTermMatching"
   role: BINDING_ROLE_TESTS

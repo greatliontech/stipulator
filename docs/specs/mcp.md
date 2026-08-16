@@ -58,12 +58,20 @@ mistaking the chain for that view's derivation.
 answer at the summary view by default — the roll-up most calls want —
 with richer views (per-requirement rows, per-binding rows, records with
 attestation prose) and scope filters (identifiers, bucket, identifier
-glob, document-or-symbol path prefix) opt-in per call, every view
+glob, document-or-symbol path prefix) opt-in per call — the path prefix
+matches on element boundaries (equal, or the next character a `/` or
+`.`), so `example.com/p` never keeps `example.com/p2` nor `docs/spec`
+`docs/specs.md`, with document, symbol, and diagnostic matching sharing
+the one rule, every view
 rendered by one renderer per report so no two surfaces can drift, and an
 unknown view or scope word refused — a typo never reads as an empty
 result. A scope narrows the WHOLE report, not only its rows: the gap and
 violation lists a view carries are filtered to the same requirements, so
-filtered triage is never polluted by out-of-scope entries. The gate
+filtered triage is never polluted by out-of-scope entries; a kept row
+keeps its explaining diagnostic even when the row's own package failed to
+resolve (a build-broken package's bound symbols link it on the same
+element-boundary rule), so scoping onto breakage never hides the one
+diagnostic that explains it. The gate
 verdict a view reports stays the GLOBAL one — a scoped slice with no
 in-scope violation says nothing about whether the tree passes. The check
 tool answers at the summary view by default — the verdict, its evidence

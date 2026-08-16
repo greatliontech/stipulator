@@ -395,6 +395,11 @@ func structuralAssertion(name string) bool {
 // alone does not quantify, so only the drivers classify.
 const rapidPkg = "pgregory.net/rapid"
 
+// gopterPkg is the third recognized property library: its check driver
+// is the Properties.TestingRun method - generator construction and
+// Property registration alone do not quantify (REQ-go-witness-class).
+const gopterPkg = "github.com/leanovate/gopter"
+
 func rapidDriver(name string) bool { return name == "Check" || name == "MakeCheck" }
 
 // WitnessClass implements verify.WitnessClassifier: a test invoking the
@@ -421,7 +426,7 @@ func (b *Backend) WitnessClassVerdict(symbol string) (verify.WitnessClass, strin
 	// classify above example — a structural or rapid invocation in a
 	// plain function never runs.
 	if fd, pkg, err := b.funcDecl(symbol); err == nil && fd.Body != nil && runnableWitness(fd, pkg) {
-		proof, property, rapidRef, structuralRef, dotImported := false, false, false, false, false
+		proof, property, rapidRef, structuralRef, gopterRef, dotImported := false, false, false, false, false, false
 		ast.Inspect(fd.Body, func(n ast.Node) bool {
 			if proof {
 				return false
@@ -431,7 +436,7 @@ func (b *Backend) WitnessClassVerdict(symbol string) (verify.WitnessClass, strin
 				// library: named as its own near-miss, since the
 				// classifying call must be a qualified selector.
 				if obj := pkg.TypesInfo.Uses[ident]; obj != nil && obj.Pkg() != nil {
-					if p := obj.Pkg().Path(); p == rapidPkg || p == structuralPkg {
+					if p := obj.Pkg().Path(); p == rapidPkg || p == structuralPkg || p == gopterPkg {
 						dotImported = true
 					}
 				}
@@ -446,6 +451,8 @@ func (b *Backend) WitnessClassVerdict(symbol string) (verify.WitnessClass, strin
 						rapidRef = true
 					case structuralPkg:
 						structuralRef = true
+					case gopterPkg:
+						gopterRef = true
 					}
 				}
 			}
@@ -471,6 +478,10 @@ func (b *Backend) WitnessClassVerdict(symbol string) (verify.WitnessClass, strin
 						return false
 					case obj.Pkg().Path() == rapidPkg && rapidDriver(sel.Sel.Name):
 						property = true
+					case obj.Pkg().Path() == gopterPkg && sel.Sel.Name == "TestingRun":
+						// The one gopter check driver; Property and
+						// generator calls register without running.
+						property = true
 					}
 				}
 			}
@@ -490,6 +501,8 @@ func (b *Backend) WitnessClassVerdict(symbol string) (verify.WitnessClass, strin
 		switch {
 		case rapidRef:
 			return verify.ExampleWitness, "rapid.Check not invoked in the bound body"
+		case gopterRef:
+			return verify.ExampleWitness, "gopter.Properties.TestingRun not invoked in the bound body"
 		case structuralRef:
 			return verify.ExampleWitness, "no structural assertion invoked in the bound body"
 		case dotImported:

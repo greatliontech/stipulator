@@ -624,3 +624,56 @@ func evictBeyondBound(store, identity, keep string) {
 
 // Key is the record's identity.
 func (r Record) Key() string { return r.Package + "." + r.Test }
+
+// GC removes this corpus's store entries whose witness identity is not
+// live - absent from the caller-supplied obligation universe - plus
+// unreadable entries (cost, never evidence). It runs only as an
+// explicit verb: an identity absent from THIS tree state may be live
+// on another branch, and opportunistic eviction would undo the variant
+// store's branch-alternation serving (REQ-evidence-store-gc).
+func GC(dir string, live func(pkg, test string) bool) (removed, kept int, err error) {
+	store, err := StoreDir(dir)
+	if err != nil {
+		return 0, 0, err
+	}
+	entries, err := os.ReadDir(store)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, 0, nil
+		}
+		return 0, 0, err
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") || strings.HasPrefix(e.Name(), ".") {
+			continue
+		}
+		path := filepath.Join(store, e.Name())
+		data, readErr := os.ReadFile(path)
+		var rec struct {
+			Package string `json:"package"`
+			Test    string `json:"test"`
+		}
+		if readErr != nil || json.Unmarshal(data, &rec) != nil || rec.Package == "" || rec.Test == "" {
+			// Unreadable or identity-less: cost with no servable
+			// evidence behind it.
+			if rmErr := os.Remove(path); rmErr == nil {
+				removed++
+			} else if err == nil {
+				err = rmErr
+			}
+			continue
+		}
+		if live(rec.Package, rec.Test) {
+			kept++
+			continue
+		}
+		if rmErr := os.Remove(path); rmErr == nil {
+			removed++
+		} else if err == nil {
+			// First failure wins; the counts still report the partial
+			// progress beside it.
+			err = rmErr
+		}
+	}
+	return removed, kept, err
+}
