@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 
+	"golang.org/x/tools/go/packages"
+
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
@@ -144,4 +146,107 @@ func (b *Backend) object(symbol string) types.Object {
 		}
 	}
 	return nil
+}
+
+// SliceFloor implements verify.FloorSlicer: the symbols' packages'
+// transitive in-module import closure, each package carrying its
+// disposition. Imports are the sound package-level over-approximation
+// of every dependency channel the typed frontier misses - a reflection
+// target must be linked, init effects and blank imports ride the
+// import edge, and build-tag file selection is already resolved in the
+// loaded view - so the floor over-approximates and never reads
+// false-complete (REQ-go-slice). A first-hop dependency outside the
+// loaded module is an explicit external row: the boundary is honest,
+// never a silent cut.
+func (b *Backend) SliceFloor(symbols []string) ([]verify.FloorPackage, error) {
+	// A test-variant build (the in-package "pkg [pkg.test]" or the
+	// external "pkg_test [pkg.test]") folds into the package under
+	// test, identified by build identity - never by path spelling: a
+	// real package whose import path ends in "_test" keeps its own
+	// path even when a sibling base package exists.
+	variantBase := func(pkg *packages.Package) string {
+		path := pkg.PkgPath
+		if path == "" {
+			path = pkg.ID
+		}
+		if strings.Contains(pkg.ID, " [") {
+			// The ID fallback can carry the bracketed build
+			// identity - strip it before the suffix trim. The
+			// current loader populates PkgPath even on rebuilt
+			// non-root variant stubs, so this arm guards drivers
+			// that surface only the ID, keeping the fallback sound.
+			if j := strings.Index(path, " ["); j >= 0 {
+				path = path[:j]
+			}
+			return strings.TrimSuffix(path, "_test")
+		}
+		return path
+	}
+	local := map[string]bool{}
+	byPath := map[string][]*packages.Package{}
+	for _, pkg := range b.pkgs {
+		p := variantBase(pkg)
+		local[p] = true
+		byPath[p] = append(byPath[p], pkg)
+	}
+	declared := map[string]bool{}
+	if decls, err := b.Slice(symbols); err == nil {
+		for _, d := range decls {
+			declared[d.Package] = true
+		}
+	} else {
+		return nil, err
+	}
+	seeds := map[string]bool{}
+	for _, sym := range symbols {
+		if pkg := b.SymbolPackage(sym); pkg != "" {
+			seeds[pkg] = true
+		}
+	}
+	floor := map[string]bool{}
+	external := map[string]bool{}
+	var walk func(path string)
+	walk = func(path string) {
+		if floor[path] {
+			return
+		}
+		floor[path] = true
+		for _, pkg := range byPath[path] {
+			for _, imp := range pkg.Imports {
+				target := variantBase(imp)
+				if local[target] {
+					walk(target)
+				} else if i := strings.IndexByte(target, '/'); (i > 0 && strings.Contains(target[:i], ".")) || (i < 0 && strings.Contains(target, ".")) {
+					// Module dependencies only: the standard library
+					// (no dot in the first path element) is excluded
+					// exactly as the closure model excludes it - stable
+					// under the pinned toolchain, not a frontier fact.
+					external[target] = true
+				}
+			}
+		}
+	}
+	for s := range seeds {
+		if local[s] {
+			walk(s)
+		}
+	}
+	var out []verify.FloorPackage
+	for p := range floor {
+		disposition := "widened"
+		if declared[p] {
+			disposition = "declared"
+		}
+		out = append(out, verify.FloorPackage{Package: p, Disposition: disposition})
+	}
+	for p := range external {
+		out = append(out, verify.FloorPackage{Package: p, Disposition: "external"})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Disposition != out[j].Disposition {
+			return out[i].Disposition < out[j].Disposition
+		}
+		return out[i].Package < out[j].Package
+	})
+	return out, nil
 }

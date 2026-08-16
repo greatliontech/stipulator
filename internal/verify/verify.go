@@ -685,3 +685,21 @@ func signatures(results []BindingResult) []ChangeSignature {
 	}
 	return out
 }
+
+// FloorPackage is one package of the slice's sound floor with its
+// disposition (REQ-go-slice): "declared" when the declaration frontier
+// reaches it, "widened" when only the import closure does - reflection,
+// init effects, blank imports, and build-tag selection can depend on it
+// though no signature names it - and "external" for a first-hop
+// dependency outside the loaded module, the floor's honest boundary.
+type FloorPackage struct {
+	Package     string
+	Disposition string
+}
+
+// FloorSlicer is an optional Slicer extension: the package-level sound
+// floor beside the declaration facts, so slice consumers get soundness
+// by construction instead of a silently incomplete frontier.
+type FloorSlicer interface {
+	SliceFloor(symbols []string) ([]FloorPackage, error)
+}

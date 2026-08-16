@@ -19,9 +19,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[out-of-process-backends](out-of-process-backends.md)** — trusted backend surfaces can move
   behind a wire protocol while Stipulator continues deriving evidence in the current run;
   mutation findings remain gomutant-owned. *Lands: when a second language backend is planned.*
-- **[slice-frontier-uncertainty](slice-frontier-uncertainty.md)** — typed frontiers miss
-  reflection, build tags, and init effects; pew's closure model (sound floor, provably-safe
-  refinement, resolve/widen/unverifiable dispositions) is the reference shape. *Lands: cross-tool train chunk 45.*
 - **[prover-trust-tiers](prover-trust-tiers.md)** — the proof rung assumes near-sound provers;
   a heuristic analyzer must not inherit it. *Lands: when a heuristic analyzer prover is
   proposed.*

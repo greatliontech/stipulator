@@ -116,7 +116,7 @@ func TestSeedsFromNeighborhood(t *testing.T) {
 //gofresh:pure
 func TestContextSlices(t *testing.T) {
 	spec, store := fixture(t)
-	seeds, decls, err := Context(spec, store, backends(), []string{"REQ-f-a"})
+	seeds, decls, _, err := Context(spec, store, backends(), []string{"REQ-f-a"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,5 +212,62 @@ func TestPartitionProtoCapsOverlaps(t *testing.T) {
 	full := r.ProtoUncapped()
 	if len(full.GetOverlaps()) != OverlapCap+9 || full.GetOverlapsOmitted() != 0 {
 		t.Fatalf("uncapped form = %d overlaps, %d omitted", len(full.GetOverlaps()), full.GetOverlapsOmitted())
+	}
+}
+
+// floorFake extends fakeSlicer with a sound floor: every symbol's own
+// package plus a shared widened package (the blank-import coupling) and
+// an external row.
+type floorFake struct{ fakeSlicer }
+
+func (f floorFake) SliceFloor(symbols []string) ([]verify.FloorPackage, error) {
+	var out []verify.FloorPackage
+	for _, sym := range symbols {
+		if pkg, ok := f.fakeSlicer[sym]; ok {
+			out = append(out, verify.FloorPackage{Package: pkg, Disposition: "declared"})
+		}
+	}
+	out = append(out, verify.FloorPackage{Package: "example.com/effects", Disposition: "widened"})
+	out = append(out, verify.FloorPackage{Package: "golang.org/x/dep", Disposition: "external"})
+	return out, nil
+}
+
+// Partition package sets come from the slice's sound floor: a blank
+// import couples two components' work though no signature crosses the
+// boundary, and judging overlap from the typed frontier would silently
+// split it; external rows stay out of the in-module partition
+// (REQ-go-slice's consumer rule).
+//
+//gofresh:pure
+func TestPartitionsJudgePackagesFromTheFloor(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-slice")
+	spec, store := fixture(t)
+	rep, err := Partitions(spec, store, map[string]verify.Backend{"go": floorFake{slicer}}, []string{"REQ-f-a", "REQ-f-lone"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rep.Components) != 2 {
+		t.Fatalf("components = %+v, want the two islands", rep.Components)
+	}
+	if len(rep.Overlaps) == 0 {
+		t.Fatalf("floor-coupled components report no overlap: %+v", rep.Components)
+	}
+	foundShared := false
+	for _, o := range rep.Overlaps {
+		for _, p := range o.Packages {
+			if p == "example.com/effects" {
+				foundShared = true
+			}
+		}
+	}
+	if !foundShared {
+		t.Fatalf("overlap misses the floor-only package: %+v", rep.Overlaps)
+	}
+	for _, c := range rep.Components {
+		for _, p := range c.Packages {
+			if p == "golang.org/x/dep" {
+				t.Fatalf("external row leaked into the in-module partition: %+v", c)
+			}
+		}
 	}
 }

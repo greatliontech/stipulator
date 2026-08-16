@@ -1628,11 +1628,13 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 		if err != nil {
 			return nil, nil, terminalToolError(prog, ctx, err)
 		}
-		_, decls, err := facts.Context(spec, store, backends, ids)
+		_, decls, floor, err := facts.Context(spec, store, backends, ids)
 		if err != nil {
 			return nil, nil, terminalToolError(prog, ctx, err)
 		}
-		out.SetDeclarations(facts.ContextProto(nil, decls).GetDeclarations())
+		cp := facts.ContextProto(nil, decls, floor)
+		out.SetDeclarations(cp.GetDeclarations())
+		out.SetFloor(cp.GetFloor())
 	}
 	if in.ExportPath != "" {
 		doc, err := protojson.Marshal(out)

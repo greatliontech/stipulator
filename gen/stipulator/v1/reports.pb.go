@@ -3548,11 +3548,16 @@ func (b0 Decl_builder) Build() *Decl {
 }
 
 // ContextReport carries the context facts for a requirement set: seeds
-// from the closure's bindings, and the slice of declarations they reach.
+// from the closure's bindings, the slice of declarations they reach,
+// and the slice's package-level sound floor (REQ-go-slice): imports
+// over-approximate every dependency channel the type graph misses, so
+// each floor package carries a disposition instead of the frontier
+// hiding a silent gap.
 type ContextReport struct {
 	state                   protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Seeds        *[]*Seed               `protobuf:"bytes,1,rep,name=seeds"`
 	xxx_hidden_Declarations *[]*Decl               `protobuf:"bytes,2,rep,name=declarations"`
+	xxx_hidden_Floor        *[]*SliceFloorPackage  `protobuf:"bytes,3,rep,name=floor"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -3600,6 +3605,15 @@ func (x *ContextReport) GetDeclarations() []*Decl {
 	return nil
 }
 
+func (x *ContextReport) GetFloor() []*SliceFloorPackage {
+	if x != nil {
+		if x.xxx_hidden_Floor != nil {
+			return *x.xxx_hidden_Floor
+		}
+	}
+	return nil
+}
+
 func (x *ContextReport) SetSeeds(v []*Seed) {
 	x.xxx_hidden_Seeds = &v
 }
@@ -3608,11 +3622,16 @@ func (x *ContextReport) SetDeclarations(v []*Decl) {
 	x.xxx_hidden_Declarations = &v
 }
 
+func (x *ContextReport) SetFloor(v []*SliceFloorPackage) {
+	x.xxx_hidden_Floor = &v
+}
+
 type ContextReport_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	Seeds        []*Seed
 	Declarations []*Decl
+	Floor        []*SliceFloorPackage
 }
 
 func (b0 ContextReport_builder) Build() *ContextReport {
@@ -3621,6 +3640,124 @@ func (b0 ContextReport_builder) Build() *ContextReport {
 	_, _ = b, x
 	x.xxx_hidden_Seeds = &b.Seeds
 	x.xxx_hidden_Declarations = &b.Declarations
+	x.xxx_hidden_Floor = &b.Floor
+	return m0
+}
+
+// SliceFloorPackage is one package of the slice's sound floor with its
+// disposition: "declared" (the declaration frontier reaches it),
+// "widened" (import-closure only - reflection, init effects, blank
+// imports, or build-tag selection can depend on it though no signature
+// names it), or "external" (a first-hop dependency outside the loaded
+// module - the floor's honest boundary, never a silent cut).
+type SliceFloorPackage struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Package     *string                `protobuf:"bytes,1,opt,name=package"`
+	xxx_hidden_Disposition *string                `protobuf:"bytes,2,opt,name=disposition"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *SliceFloorPackage) Reset() {
+	*x = SliceFloorPackage{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SliceFloorPackage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SliceFloorPackage) ProtoMessage() {}
+
+func (x *SliceFloorPackage) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *SliceFloorPackage) GetPackage() string {
+	if x != nil {
+		if x.xxx_hidden_Package != nil {
+			return *x.xxx_hidden_Package
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *SliceFloorPackage) GetDisposition() string {
+	if x != nil {
+		if x.xxx_hidden_Disposition != nil {
+			return *x.xxx_hidden_Disposition
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *SliceFloorPackage) SetPackage(v string) {
+	x.xxx_hidden_Package = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+}
+
+func (x *SliceFloorPackage) SetDisposition(v string) {
+	x.xxx_hidden_Disposition = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+}
+
+func (x *SliceFloorPackage) HasPackage() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *SliceFloorPackage) HasDisposition() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *SliceFloorPackage) ClearPackage() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Package = nil
+}
+
+func (x *SliceFloorPackage) ClearDisposition() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Disposition = nil
+}
+
+type SliceFloorPackage_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Package     *string
+	Disposition *string
+}
+
+func (b0 SliceFloorPackage_builder) Build() *SliceFloorPackage {
+	m0 := &SliceFloorPackage{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Package != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		x.xxx_hidden_Package = b.Package
+	}
+	if b.Disposition != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		x.xxx_hidden_Disposition = b.Disposition
+	}
 	return m0
 }
 
@@ -3645,7 +3782,7 @@ type Dossier struct {
 
 func (x *Dossier) Reset() {
 	*x = Dossier{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3657,7 +3794,7 @@ func (x *Dossier) String() string {
 func (*Dossier) ProtoMessage() {}
 
 func (x *Dossier) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3854,13 +3991,14 @@ type DossierReport struct {
 	xxx_hidden_Dossiers     *[]*Dossier            `protobuf:"bytes,1,rep,name=dossiers"`
 	xxx_hidden_Problems     *[]*Problem            `protobuf:"bytes,3,rep,name=problems"`
 	xxx_hidden_Declarations *[]*Decl               `protobuf:"bytes,2,rep,name=declarations"`
+	xxx_hidden_Floor        *[]*SliceFloorPackage  `protobuf:"bytes,4,rep,name=floor"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
 
 func (x *DossierReport) Reset() {
 	*x = DossierReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3872,7 +4010,7 @@ func (x *DossierReport) String() string {
 func (*DossierReport) ProtoMessage() {}
 
 func (x *DossierReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3910,6 +4048,15 @@ func (x *DossierReport) GetDeclarations() []*Decl {
 	return nil
 }
 
+func (x *DossierReport) GetFloor() []*SliceFloorPackage {
+	if x != nil {
+		if x.xxx_hidden_Floor != nil {
+			return *x.xxx_hidden_Floor
+		}
+	}
+	return nil
+}
+
 func (x *DossierReport) SetDossiers(v []*Dossier) {
 	x.xxx_hidden_Dossiers = &v
 }
@@ -3920,6 +4067,10 @@ func (x *DossierReport) SetProblems(v []*Problem) {
 
 func (x *DossierReport) SetDeclarations(v []*Decl) {
 	x.xxx_hidden_Declarations = &v
+}
+
+func (x *DossierReport) SetFloor(v []*SliceFloorPackage) {
+	x.xxx_hidden_Floor = &v
 }
 
 type DossierReport_builder struct {
@@ -3934,6 +4085,9 @@ type DossierReport_builder struct {
 	// Declarations carry the requested requirements' code-slice frontier
 	// when the caller asked for it — the expensive leg, off by default.
 	Declarations []*Decl
+	// Floor is the slice's package-level sound floor with dispositions,
+	// riding the same slice leg (REQ-go-slice).
+	Floor []*SliceFloorPackage
 }
 
 func (b0 DossierReport_builder) Build() *DossierReport {
@@ -3943,6 +4097,7 @@ func (b0 DossierReport_builder) Build() *DossierReport {
 	x.xxx_hidden_Dossiers = &b.Dossiers
 	x.xxx_hidden_Problems = &b.Problems
 	x.xxx_hidden_Declarations = &b.Declarations
+	x.xxx_hidden_Floor = &b.Floor
 	return m0
 }
 
@@ -3959,7 +4114,7 @@ type PartitionComponent struct {
 
 func (x *PartitionComponent) Reset() {
 	*x = PartitionComponent{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3971,7 +4126,7 @@ func (x *PartitionComponent) String() string {
 func (*PartitionComponent) ProtoMessage() {}
 
 func (x *PartitionComponent) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4050,7 +4205,7 @@ type PartitionOverlap struct {
 
 func (x *PartitionOverlap) Reset() {
 	*x = PartitionOverlap{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4062,7 +4217,7 @@ func (x *PartitionOverlap) String() string {
 func (*PartitionOverlap) ProtoMessage() {}
 
 func (x *PartitionOverlap) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4171,7 +4326,7 @@ type PartitionReport struct {
 
 func (x *PartitionReport) Reset() {
 	*x = PartitionReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[18]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4183,7 +4338,7 @@ func (x *PartitionReport) String() string {
 func (*PartitionReport) ProtoMessage() {}
 
 func (x *PartitionReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[18]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4390,10 +4545,14 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
 	"\vdeclaration\x18\x03 \x01(\tR\vdeclaration\x12\x1d\n" +
 	"\n" +
-	"shape_hash\x18\x04 \x01(\tR\tshapeHash\"s\n" +
+	"shape_hash\x18\x04 \x01(\tR\tshapeHash\"\xab\x01\n" +
 	"\rContextReport\x12)\n" +
 	"\x05seeds\x18\x01 \x03(\v2\x13.stipulator.v1.SeedR\x05seeds\x127\n" +
-	"\fdeclarations\x18\x02 \x03(\v2\x13.stipulator.v1.DeclR\fdeclarations\"\xa2\x03\n" +
+	"\fdeclarations\x18\x02 \x03(\v2\x13.stipulator.v1.DeclR\fdeclarations\x126\n" +
+	"\x05floor\x18\x03 \x03(\v2 .stipulator.v1.SliceFloorPackageR\x05floor\"O\n" +
+	"\x11SliceFloorPackage\x12\x18\n" +
+	"\apackage\x18\x01 \x01(\tR\apackage\x12 \n" +
+	"\vdisposition\x18\x02 \x01(\tR\vdisposition\"\xa2\x03\n" +
 	"\aDossier\x12<\n" +
 	"\vrequirement\x18\x01 \x01(\v2\x1a.stipulator.v1.RequirementR\vrequirement\x12>\n" +
 	"\bcoverage\x18\x02 \x01(\v2\".stipulator.v1.RequirementCoverageR\bcoverage\x12$\n" +
@@ -4401,11 +4560,12 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\vattestation\x18\x04 \x01(\v2%.stipulator.v1.RequirementAttestationR\vattestation\x128\n" +
 	"\bbindings\x18\x05 \x03(\v2\x1c.stipulator.v1.BindingResultR\bbindings\x12)\n" +
 	"\x05seeds\x18\a \x03(\v2\x13.stipulator.v1.SeedR\x05seeds\x124\n" +
-	"\tgap_state\x18\b \x01(\x0e2\x17.stipulator.v1.GapStateR\bgapStateJ\x04\b\x06\x10\aR\thardening\"\xb0\x01\n" +
+	"\tgap_state\x18\b \x01(\x0e2\x17.stipulator.v1.GapStateR\bgapStateJ\x04\b\x06\x10\aR\thardening\"\xe8\x01\n" +
 	"\rDossierReport\x122\n" +
 	"\bdossiers\x18\x01 \x03(\v2\x16.stipulator.v1.DossierR\bdossiers\x122\n" +
 	"\bproblems\x18\x03 \x03(\v2\x16.stipulator.v1.ProblemR\bproblems\x127\n" +
-	"\fdeclarations\x18\x02 \x03(\v2\x13.stipulator.v1.DeclR\fdeclarations\"\x84\x01\n" +
+	"\fdeclarations\x18\x02 \x03(\v2\x13.stipulator.v1.DeclR\fdeclarations\x126\n" +
+	"\x05floor\x18\x04 \x03(\v2 .stipulator.v1.SliceFloorPackageR\x05floor\"\x84\x01\n" +
 	"\x12PartitionComponent\x12'\n" +
 	"\x0frequirement_ids\x18\x01 \x03(\tR\x0erequirementIds\x12)\n" +
 	"\x05seeds\x18\x02 \x03(\v2\x13.stipulator.v1.SeedR\x05seeds\x12\x1a\n" +
@@ -4472,7 +4632,7 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x12GAP_STATE_DANGLING\x10\x04BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
 var file_stipulator_v1_reports_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
-var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_stipulator_v1_reports_proto_goTypes = []any{
 	(Resolution)(0),                // 0: stipulator.v1.Resolution
 	(ShapeState)(0),                // 1: stipulator.v1.ShapeState
@@ -4496,21 +4656,22 @@ var file_stipulator_v1_reports_proto_goTypes = []any{
 	(*Seed)(nil),                   // 19: stipulator.v1.Seed
 	(*Decl)(nil),                   // 20: stipulator.v1.Decl
 	(*ContextReport)(nil),          // 21: stipulator.v1.ContextReport
-	(*Dossier)(nil),                // 22: stipulator.v1.Dossier
-	(*DossierReport)(nil),          // 23: stipulator.v1.DossierReport
-	(*PartitionComponent)(nil),     // 24: stipulator.v1.PartitionComponent
-	(*PartitionOverlap)(nil),       // 25: stipulator.v1.PartitionOverlap
-	(*PartitionReport)(nil),        // 26: stipulator.v1.PartitionReport
-	(BindingRole)(0),               // 27: stipulator.v1.BindingRole
-	(ClauseKind)(0),                // 28: stipulator.v1.ClauseKind
-	(Keyword)(0),                   // 29: stipulator.v1.Keyword
-	(*Requirement)(nil),            // 30: stipulator.v1.Requirement
-	(*Gap)(nil),                    // 31: stipulator.v1.Gap
-	(*RequirementAttestation)(nil), // 32: stipulator.v1.RequirementAttestation
+	(*SliceFloorPackage)(nil),      // 22: stipulator.v1.SliceFloorPackage
+	(*Dossier)(nil),                // 23: stipulator.v1.Dossier
+	(*DossierReport)(nil),          // 24: stipulator.v1.DossierReport
+	(*PartitionComponent)(nil),     // 25: stipulator.v1.PartitionComponent
+	(*PartitionOverlap)(nil),       // 26: stipulator.v1.PartitionOverlap
+	(*PartitionReport)(nil),        // 27: stipulator.v1.PartitionReport
+	(BindingRole)(0),               // 28: stipulator.v1.BindingRole
+	(ClauseKind)(0),                // 29: stipulator.v1.ClauseKind
+	(Keyword)(0),                   // 30: stipulator.v1.Keyword
+	(*Requirement)(nil),            // 31: stipulator.v1.Requirement
+	(*Gap)(nil),                    // 32: stipulator.v1.Gap
+	(*RequirementAttestation)(nil), // 33: stipulator.v1.RequirementAttestation
 }
 var file_stipulator_v1_reports_proto_depIdxs = []int32{
 	4,  // 0: stipulator.v1.FailureDiagnostic.disposition:type_name -> stipulator.v1.HealthDisposition
-	27, // 1: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
+	28, // 1: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
 	0,  // 2: stipulator.v1.BindingResult.resolution:type_name -> stipulator.v1.Resolution
 	1,  // 3: stipulator.v1.BindingResult.shape:type_name -> stipulator.v1.ShapeState
 	2,  // 4: stipulator.v1.BindingResult.test_outcome:type_name -> stipulator.v1.TestOutcome
@@ -4522,34 +4683,36 @@ var file_stipulator_v1_reports_proto_depIdxs = []int32{
 	13, // 10: stipulator.v1.VerifyReport.signatures:type_name -> stipulator.v1.ChangeSignature
 	8,  // 11: stipulator.v1.VerifyReport.witness_diagnostics:type_name -> stipulator.v1.FailureDiagnostic
 	5,  // 12: stipulator.v1.ChangeSignature.label:type_name -> stipulator.v1.SignatureLabel
-	28, // 13: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
-	29, // 14: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
+	29, // 13: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
+	30, // 14: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
 	6,  // 15: stipulator.v1.RequirementCoverage.bucket:type_name -> stipulator.v1.Bucket
 	7,  // 16: stipulator.v1.GapReport.state:type_name -> stipulator.v1.GapState
 	14, // 17: stipulator.v1.CoverageReport.requirements:type_name -> stipulator.v1.RequirementCoverage
 	15, // 18: stipulator.v1.CoverageReport.gaps:type_name -> stipulator.v1.GapReport
 	13, // 19: stipulator.v1.VerifySummary.signatures:type_name -> stipulator.v1.ChangeSignature
-	27, // 20: stipulator.v1.Seed.role:type_name -> stipulator.v1.BindingRole
+	28, // 20: stipulator.v1.Seed.role:type_name -> stipulator.v1.BindingRole
 	19, // 21: stipulator.v1.ContextReport.seeds:type_name -> stipulator.v1.Seed
 	20, // 22: stipulator.v1.ContextReport.declarations:type_name -> stipulator.v1.Decl
-	30, // 23: stipulator.v1.Dossier.requirement:type_name -> stipulator.v1.Requirement
-	14, // 24: stipulator.v1.Dossier.coverage:type_name -> stipulator.v1.RequirementCoverage
-	31, // 25: stipulator.v1.Dossier.gap:type_name -> stipulator.v1.Gap
-	32, // 26: stipulator.v1.Dossier.attestation:type_name -> stipulator.v1.RequirementAttestation
-	10, // 27: stipulator.v1.Dossier.bindings:type_name -> stipulator.v1.BindingResult
-	19, // 28: stipulator.v1.Dossier.seeds:type_name -> stipulator.v1.Seed
-	7,  // 29: stipulator.v1.Dossier.gap_state:type_name -> stipulator.v1.GapState
-	22, // 30: stipulator.v1.DossierReport.dossiers:type_name -> stipulator.v1.Dossier
-	9,  // 31: stipulator.v1.DossierReport.problems:type_name -> stipulator.v1.Problem
-	20, // 32: stipulator.v1.DossierReport.declarations:type_name -> stipulator.v1.Decl
-	19, // 33: stipulator.v1.PartitionComponent.seeds:type_name -> stipulator.v1.Seed
-	24, // 34: stipulator.v1.PartitionReport.components:type_name -> stipulator.v1.PartitionComponent
-	25, // 35: stipulator.v1.PartitionReport.overlaps:type_name -> stipulator.v1.PartitionOverlap
-	36, // [36:36] is the sub-list for method output_type
-	36, // [36:36] is the sub-list for method input_type
-	36, // [36:36] is the sub-list for extension type_name
-	36, // [36:36] is the sub-list for extension extendee
-	0,  // [0:36] is the sub-list for field type_name
+	22, // 23: stipulator.v1.ContextReport.floor:type_name -> stipulator.v1.SliceFloorPackage
+	31, // 24: stipulator.v1.Dossier.requirement:type_name -> stipulator.v1.Requirement
+	14, // 25: stipulator.v1.Dossier.coverage:type_name -> stipulator.v1.RequirementCoverage
+	32, // 26: stipulator.v1.Dossier.gap:type_name -> stipulator.v1.Gap
+	33, // 27: stipulator.v1.Dossier.attestation:type_name -> stipulator.v1.RequirementAttestation
+	10, // 28: stipulator.v1.Dossier.bindings:type_name -> stipulator.v1.BindingResult
+	19, // 29: stipulator.v1.Dossier.seeds:type_name -> stipulator.v1.Seed
+	7,  // 30: stipulator.v1.Dossier.gap_state:type_name -> stipulator.v1.GapState
+	23, // 31: stipulator.v1.DossierReport.dossiers:type_name -> stipulator.v1.Dossier
+	9,  // 32: stipulator.v1.DossierReport.problems:type_name -> stipulator.v1.Problem
+	20, // 33: stipulator.v1.DossierReport.declarations:type_name -> stipulator.v1.Decl
+	22, // 34: stipulator.v1.DossierReport.floor:type_name -> stipulator.v1.SliceFloorPackage
+	19, // 35: stipulator.v1.PartitionComponent.seeds:type_name -> stipulator.v1.Seed
+	25, // 36: stipulator.v1.PartitionReport.components:type_name -> stipulator.v1.PartitionComponent
+	26, // 37: stipulator.v1.PartitionReport.overlaps:type_name -> stipulator.v1.PartitionOverlap
+	38, // [38:38] is the sub-list for method output_type
+	38, // [38:38] is the sub-list for method input_type
+	38, // [38:38] is the sub-list for extension type_name
+	38, // [38:38] is the sub-list for extension extendee
+	0,  // [0:38] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_reports_proto_init() }
@@ -4565,7 +4728,7 @@ func file_stipulator_v1_reports_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_reports_proto_rawDesc), len(file_stipulator_v1_reports_proto_rawDesc)),
 			NumEnums:      8,
-			NumMessages:   19,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

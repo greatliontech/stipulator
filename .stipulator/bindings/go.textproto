@@ -3,7 +3,7 @@
 
 bindings {
   requirement_id: "REQ-go-slice"
-  content_hash: "d651c96d3628e0a785cac20dc20793606b66f21cf5b01a2dd9148a3488d40cd8"
+  content_hash: "9941ca4ea41d8d2a995400b6029e32e1e6831b8588146befa10f556a2c384d4f"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend.Slice"
   role: BINDING_ROLE_IMPLEMENTS
@@ -12,7 +12,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-slice"
-  content_hash: "d651c96d3628e0a785cac20dc20793606b66f21cf5b01a2dd9148a3488d40cd8"
+  content_hash: "9941ca4ea41d8d2a995400b6029e32e1e6831b8588146befa10f556a2c384d4f"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestSlice"
   role: BINDING_ROLE_TESTS
@@ -674,4 +674,31 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend.Resolve"
   role: BINDING_ROLE_IMPLEMENTS
   shape_hash: "4acc92fdabfd2bf548a7aaa4923f0e70fa7f141b054583d0a5f33735d4dc3944"
+}
+
+bindings {
+  requirement_id: "REQ-go-slice"
+  content_hash: "9941ca4ea41d8d2a995400b6029e32e1e6831b8588146befa10f556a2c384d4f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoSliceFloorDispositions"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "0eab1a6c047386198f762581f3a2759bc1e7bfcc0d1c7b735307013feb7b4b76"
+}
+
+bindings {
+  requirement_id: "REQ-go-slice"
+  content_hash: "9941ca4ea41d8d2a995400b6029e32e1e6831b8588146befa10f556a2c384d4f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/facts.TestPartitionsJudgePackagesFromTheFloor"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ecb019c565717818c9335d149e80f77e598f258f8a63f3136c53531c36580c64"
+}
+
+bindings {
+  requirement_id: "REQ-go-slice"
+  content_hash: "9941ca4ea41d8d2a995400b6029e32e1e6831b8588146befa10f556a2c384d4f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend.SliceFloor"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "dadb90262c34eb009ea51586b47e8d41790d194c2d9ea3396483811a1bd12136"
 }

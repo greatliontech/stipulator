@@ -215,6 +215,22 @@ func (o *Owned) WitnessClassVerdict(symbol string) (verify.WitnessClass, string)
 	return verify.ExampleWitness, ""
 }
 
+// SliceFloor implements verify.FloorSlicer through the resolver child.
+func (o *Owned) SliceFloor(symbols []string) ([]verify.FloorPackage, error) {
+	resp, err := o.roundTrip(resolverRequest{Op: "slicefloor", Symbols: symbols})
+	if err != nil {
+		return nil, err
+	}
+	if resp.Error != "" {
+		return nil, errors.New(resp.Error)
+	}
+	floor := make([]verify.FloorPackage, 0, len(resp.Floor))
+	for _, f := range resp.Floor {
+		floor = append(floor, verify.FloorPackage{Package: f.Package, Disposition: f.Disposition})
+	}
+	return floor, nil
+}
+
 // Slice implements verify.Slicer through the resolver child.
 func (o *Owned) Slice(symbols []string) ([]verify.Decl, error) {
 	resp, err := o.roundTrip(resolverRequest{Op: "slice", Symbols: symbols})

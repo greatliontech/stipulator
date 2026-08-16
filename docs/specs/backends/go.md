@@ -139,6 +139,24 @@ return the declarations of their transitive dependency frontier —
 signatures and named types declared within the module, rendered by the
 object printer and shape-pinned, canonically ordered — returning facts
 only: no depth budgets, no exemplar selection, no rendering policy.
+Beside the declaration facts the backend reports the slice's
+package-level sound floor: the symbols' packages' transitive in-module
+import closure, each package carrying one disposition — `declared` when
+the declaration frontier reaches it, `widened` when only the import
+closure does (a reflection target has to be linked, init effects and
+blank imports ride the import edge, and build-tag file selection is
+resolved by the loaded view, so imports over-approximate every channel
+the type graph misses and the floor never reads false-complete), and
+`external` for a dependency edge leaving the loaded module members,
+recorded at the boundary and not traversed (the standard library
+excluded — stable under the pinned toolchain). The loaded view includes
+test packages, so test-file import edges ride the floor — the test
+channel is a dependency channel like any other.
+Slice consumers judging packages judge from the floor, never from the
+silently narrower typed frontier; the floor is a sound floor in the
+closure-analysis sense: over-approximate, dispositioned,
+never a silent gap. Enforced by `TestGoSliceFloorDispositions` and
+`TestPartitionsJudgePackagesFromTheFloor`.
 
 ## Generated code
 

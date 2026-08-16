@@ -67,16 +67,17 @@ func Seeds(spec *stipulatorv1.Spec, store *records.Store, ids []string) ([]Seed,
 
 // Context returns seeds plus the slice of declarations their go symbols
 // reach, through the backends that can slice.
-func Context(spec *stipulatorv1.Spec, store *records.Store, backends map[string]verify.Backend, ids []string) ([]Seed, []verify.Decl, error) {
+func Context(spec *stipulatorv1.Spec, store *records.Store, backends map[string]verify.Backend, ids []string) ([]Seed, []verify.Decl, []verify.FloorPackage, error) {
 	seeds, err := Seeds(spec, store, ids)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	perBackend := map[string][]string{}
 	for _, s := range seeds {
 		perBackend[s.Backend] = append(perBackend[s.Backend], s.Symbol)
 	}
 	var decls []verify.Decl
+	var floor []verify.FloorPackage
 	names := make([]string, 0, len(perBackend))
 	for name := range perBackend {
 		names = append(names, name)
@@ -89,11 +90,22 @@ func Context(spec *stipulatorv1.Spec, store *records.Store, backends map[string]
 		}
 		ds, err := slicer.Slice(perBackend[name])
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		decls = append(decls, ds...)
+		// The slice's package-level sound floor rides beside the
+		// declaration facts (REQ-go-slice): consumers judge packages
+		// from the floor, never from the silently narrower typed
+		// frontier.
+		if fs, ok := backends[name].(verify.FloorSlicer); ok {
+			f, err := fs.SliceFloor(perBackend[name])
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			floor = append(floor, f...)
+		}
 	}
-	return seeds, decls, nil
+	return seeds, decls, floor, nil
 }
 
 // Component is one candidate work unit.
@@ -166,11 +178,21 @@ func Partitions(spec *stipulatorv1.Spec, store *records.Store, backends map[stri
 	for _, r := range roots {
 		reqs := groups[r]
 		sort.Strings(reqs)
-		seeds, decls, err := Context(spec, store, backends, reqs)
+		seeds, decls, floor, err := Context(spec, store, backends, reqs)
 		if err != nil {
 			return nil, err
 		}
+		// Package sets come from the slice's sound floor (REQ-go-slice):
+		// the typed frontier misses reflection, init effects, blank
+		// imports, and build-tag selection, so partition overlap judged
+		// from it could silently split coupled work. External rows stay
+		// out - the components partition in-module work.
 		pkgSet := map[string]bool{}
+		for _, f := range floor {
+			if f.Disposition != "external" {
+				pkgSet[f.Package] = true
+			}
+		}
 		for _, d := range decls {
 			if d.Package != "" {
 				pkgSet[d.Package] = true
@@ -216,7 +238,7 @@ func (r *Report) ProtoUncapped() *stipulatorv1.PartitionReport {
 }
 
 // Proto renders the context facts as their wire message.
-func ContextProto(seeds []Seed, decls []verify.Decl) *stipulatorv1.ContextReport {
+func ContextProto(seeds []Seed, decls []verify.Decl, floor []verify.FloorPackage) *stipulatorv1.ContextReport {
 	out := &stipulatorv1.ContextReport{}
 	var ss []*stipulatorv1.Seed
 	for _, s := range seeds {
@@ -238,6 +260,14 @@ func ContextProto(seeds []Seed, decls []verify.Decl) *stipulatorv1.ContextReport
 		ds = append(ds, m)
 	}
 	out.SetDeclarations(ds)
+	var fs []*stipulatorv1.SliceFloorPackage
+	for _, f := range floor {
+		m := &stipulatorv1.SliceFloorPackage{}
+		m.SetPackage(f.Package)
+		m.SetDisposition(f.Disposition)
+		fs = append(fs, m)
+	}
+	out.SetFloor(fs)
 	return out
 }
 
@@ -248,7 +278,7 @@ func (r *Report) Proto() *stipulatorv1.PartitionReport {
 	for _, c := range r.Components {
 		m := &stipulatorv1.PartitionComponent{}
 		m.SetRequirementIds(c.Requirements)
-		cp := ContextProto(c.Seeds, nil)
+		cp := ContextProto(c.Seeds, nil, nil)
 		m.SetSeeds(cp.GetSeeds())
 		m.SetPackages(c.Packages)
 		comps = append(comps, m)

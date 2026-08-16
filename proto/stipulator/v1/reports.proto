@@ -313,10 +313,26 @@ message Decl {
 }
 
 // ContextReport carries the context facts for a requirement set: seeds
-// from the closure's bindings, and the slice of declarations they reach.
+// from the closure's bindings, the slice of declarations they reach,
+// and the slice's package-level sound floor (REQ-go-slice): imports
+// over-approximate every dependency channel the type graph misses, so
+// each floor package carries a disposition instead of the frontier
+// hiding a silent gap.
 message ContextReport {
   repeated Seed seeds = 1;
   repeated Decl declarations = 2;
+  repeated SliceFloorPackage floor = 3;
+}
+
+// SliceFloorPackage is one package of the slice's sound floor with its
+// disposition: "declared" (the declaration frontier reaches it),
+// "widened" (import-closure only - reflection, init effects, blank
+// imports, or build-tag selection can depend on it though no signature
+// names it), or "external" (a first-hop dependency outside the loaded
+// module - the floor's honest boundary, never a silent cut).
+message SliceFloorPackage {
+  string package = 1;
+  string disposition = 2;
 }
 
 // Dossier is one requirement's orientation view, assembled from the
@@ -357,6 +373,9 @@ message DossierReport {
   // Declarations carry the requested requirements' code-slice frontier
   // when the caller asked for it — the expensive leg, off by default.
   repeated Decl declarations = 2;
+  // Floor is the slice's package-level sound floor with dispositions,
+  // riding the same slice leg (REQ-go-slice).
+  repeated SliceFloorPackage floor = 4;
 }
 
 // PartitionComponent is one candidate work unit: requirements whose

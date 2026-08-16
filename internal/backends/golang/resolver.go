@@ -32,13 +32,14 @@ type resolverRequest struct {
 // result. Error alongside Resolution mirrors Resolve's contract, where
 // a resolution outcome and a verification error travel together.
 type resolverResponse struct {
-	Ready       bool           `json:"ready,omitempty"`
-	Error       string         `json:"error,omitempty"`
-	Resolution  string         `json:"resolution,omitempty"`
-	Shape       string         `json:"shape,omitempty"`
-	Class       string         `json:"class,omitempty"`
-	ClassReason string         `json:"classReason,omitempty"`
-	Decls       []resolverDecl `json:"decls,omitempty"`
+	Ready       bool            `json:"ready,omitempty"`
+	Error       string          `json:"error,omitempty"`
+	Resolution  string          `json:"resolution,omitempty"`
+	Shape       string          `json:"shape,omitempty"`
+	Class       string          `json:"class,omitempty"`
+	ClassReason string          `json:"classReason,omitempty"`
+	Decls       []resolverDecl  `json:"decls,omitempty"`
+	Floor       []resolverFloor `json:"floor,omitempty"`
 	// File and Found carry a symbolfile result; Found travels explicitly
 	// because an empty path is a legitimate not-found, never a default.
 	File  string `json:"file,omitempty"`
@@ -169,6 +170,16 @@ func ServeResolver(ctx context.Context, dir string, r io.Reader, w io.Writer) er
 					})
 				}
 			}
+		case "slicefloor":
+			floor, err := b.SliceFloor(req.Symbols)
+			if err != nil {
+				resp.Error = err.Error()
+			} else {
+				resp.Floor = make([]resolverFloor, 0, len(floor))
+				for _, f := range floor {
+					resp.Floor = append(resp.Floor, resolverFloor{Package: f.Package, Disposition: f.Disposition})
+				}
+			}
 		case "symbolfile":
 			resp.File, resp.Found = b.SymbolFile(req.Symbol)
 		case "symbolpackage":
@@ -205,4 +216,10 @@ func ResolverChildMain() {
 		os.Exit(1)
 	}
 	os.Exit(0)
+}
+
+// resolverFloor is one slice-floor row on the child protocol.
+type resolverFloor struct {
+	Package     string `json:"package"`
+	Disposition string `json:"disposition"`
 }
