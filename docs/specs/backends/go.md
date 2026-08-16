@@ -23,14 +23,23 @@ resolve the symbol through the Go type checker and compare shape hashes; a
 package load failure is a verification error, not an absence.
 
 **REQ-go-build-selections** (behavior): Symbol resolution MUST span the
-accepted policy's build-tag dimension - one package view per distinct
-invocation (tag-set, toolchain) pair beside the default no-tag view,
-each view loading under its own selection's toolchain exactly as its
+accepted policy's build-selection dimensions - one package view per
+distinct invocation (effective tag-set, toolchain) pair beside the
+default no-tag view, where the effective tag-set is the declared tags
+plus the implicit `race` tag of a race-detecting invocation, each view
+loading under its own selection's toolchain exactly as its
 invocation executes, derived
 from the policy record itself (the policy is the authority on which
 selections exist; no separate configuration names them) - so a symbol
-declared only under a build tag resolves, shape-hashes, and binds
-exactly as an untagged one. The default view is consulted first and
+declared only under a build tag, or under `//go:build race`, resolves,
+shape-hashes, and binds
+exactly as an untagged one. Execution discovery lists under the same
+effective tag-set, so a gated test is selected by exactly the
+invocations that would compile it. A declared GOOS/GOARCH equal to the
+host is the host view; a cross-platform selection cannot execute
+on-host, so it gets no resolution view and is a named refusal beside
+the unloadable-view class - a reference the loaded views cannot answer
+refuses with the unresolvable selection named, never a silent absence. The default view is consulted first and
 then each tagged view in the policy's canonical invocation order; the
 first declaring view supplies the resolution and shape hash, and the
 declaring view's file is the symbol's file for impact and freshness

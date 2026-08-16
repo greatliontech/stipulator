@@ -307,8 +307,14 @@ func groupKey(n *NormalizedInvocation) string {
 	// The env component is the witness environment (the width cap
 	// applied; NormalizedInvocation.WitnessEnv): witness evidence
 	// digests under it, so two invocations whose delivered widths
-	// differ must not share a capture group.
-	key := strings.Join(n.Tags, ",") + "\x00" + strings.Join(witnessEnvOf(n), "\x01")
+	// differ must not share a capture group. Module mode, the PGO
+	// profile, and extra binary arguments are build-selection
+	// dimensions - two invocations differing only there build or run
+	// two different things and must not share one analysis view -
+	// while Count is repetition of the same build and deliberately
+	// stays out.
+	key := strings.Join(n.Tags, ",") + "\x00" + strings.Join(witnessEnvOf(n), "\x01") +
+		"\x06" + n.ModuleMode.String() + "\x07" + fmt.Sprintf("%q", n.PGO) + "\x08" + quotedKeyJoin(n.Args)
 	if n.AssumePure {
 		key += "\x02pure"
 	}
@@ -414,6 +420,16 @@ func LiveGroupDigests(ctx context.Context, dir string, p *stipulatorv1.TestPolic
 func groupDigest(key string) string {
 	sum := sha256.Sum256([]byte(key))
 	return hex.EncodeToString(sum[:8])
+}
+
+// quotedKeyJoin joins key components quoted, so a value carrying a
+// joiner byte can never alias two entries into one capture group.
+func quotedKeyJoin(values []string) string {
+	quoted := make([]string, len(values))
+	for i, v := range values {
+		quoted[i] = fmt.Sprintf("%q", v)
+	}
+	return strings.Join(quoted, ",")
 }
 
 // canonicalExclusions sorts and deduplicates a reviewed exclusion set so

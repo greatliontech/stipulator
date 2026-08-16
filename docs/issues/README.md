@@ -2,9 +2,6 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
-- **[goos-race-build-dimensions](goos-race-build-dimensions.md)** — GOOS/GOARCH and the
-  implicit race tag are invisible to both discovery and resolution; tag-set views cover
-  only the tags dimension. *Lands: cross-tool train chunk 90.*
 - **[cerebro-uncacheable-mass-measured](cerebro-uncacheable-mass-measured.md)** — 2,407
   uncacheable witnesses make the cerebro check re-execute everything (~22 min vs a ~2-min
   floor family); reason classes quantified, fixes owned by gofresh's bracket/classifier

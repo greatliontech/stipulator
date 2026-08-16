@@ -159,8 +159,8 @@ type listedPackage struct {
 // selection through an owned, cancellable process boundary.
 func listPackages(ctx context.Context, n *NormalizedInvocation) ([]listedPackage, error) {
 	args := []string{"list", "-e", "-json=ImportPath,Dir,TestGoFiles,XTestGoFiles"}
-	if len(n.Tags) > 0 {
-		args = append(args, "-tags="+strings.Join(n.Tags, ","))
+	if tags := selectionTags(n); len(tags) > 0 {
+		args = append(args, "-tags="+strings.Join(tags, ","))
 	}
 	if flag := moduleModeFlag(n.ModuleMode); flag != "" {
 		args = append(args, flag)
@@ -198,6 +198,19 @@ func listPackages(ctx context.Context, n *NormalizedInvocation) ([]listedPackage
 	return pkgs, nil
 }
 
+// selectionTags is the invocation's effective build-constraint tag
+// set: the declared tags plus the implicit `race` tag a -race build
+// sets — a //go:build race test file is selected by exactly the
+// invocations that would compile it, so discovery sees what execution
+// builds (REQ-go-build-selections' dimension symmetry).
+func selectionTags(n *NormalizedInvocation) []string {
+	tags := append([]string(nil), n.Tags...)
+	if n.Race {
+		tags = append(tags, "race")
+	}
+	return tags
+}
+
 // depListedPackage is one node of the toolchain's test build graph.
 type depListedPackage struct {
 	ImportPath string
@@ -224,8 +237,8 @@ func foldVariant(path string) string {
 // compile's readable surface must not seal a weaker claim silently.
 func listClosureDirs(ctx context.Context, n *NormalizedInvocation, selected []listedPackage) {
 	args := []string{"list", "-e", "-deps", "-test", "-json=ImportPath,Dir,ForTest,Deps"}
-	if len(n.Tags) > 0 {
-		args = append(args, "-tags="+strings.Join(n.Tags, ","))
+	if tags := selectionTags(n); len(tags) > 0 {
+		args = append(args, "-tags="+strings.Join(tags, ","))
 	}
 	if flag := moduleModeFlag(n.ModuleMode); flag != "" {
 		args = append(args, flag)

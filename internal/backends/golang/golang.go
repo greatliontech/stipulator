@@ -15,6 +15,8 @@ import (
 	"go/types"
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"unicode"
@@ -66,12 +68,19 @@ func newContext(ctx context.Context, dir string) (*Backend, error) {
 		return nil, err
 	}
 	env := goworkEnv(dir)
-	selections, err := policyBuildSelections(dir)
+	selections, crossPlatform, err := policyBuildSelections(dir)
 	if err != nil {
 		return nil, err
 	}
 	var pkgs []*packages.Package
 	var viewErrors []string
+	// Cross-platform selections are named refusals, not silent
+	// absences: a reference the loaded views cannot answer refuses
+	// with the unresolvable selection named, exactly as an unloadable
+	// view does.
+	for _, cp := range crossPlatform {
+		viewErrors = append(viewErrors, cp+" (no on-host resolution view)")
+	}
 	loadIndex := map[*packages.Package]int{}
 	loads := 0
 	for _, sel := range selections {
@@ -149,43 +158,71 @@ func newContext(ctx context.Context, dir string) (*Backend, error) {
 // view alone; a malformed record is a verification error, never a
 // silent narrowing.
 // buildSelection is one resolution view's identity: the invocation's
-// tag-set and its toolchain - a view is the pair, never the tags alone
-// (REQ-go-build-selections).
+// effective tag-set (declared tags plus the implicit `race` tag of a
+// -race invocation) and its toolchain - a view is the pair, never the
+// tags alone (REQ-go-build-selections).
 type buildSelection struct {
 	tags      []string
 	toolchain string
 }
 
-func policyBuildSelections(dir string) ([]buildSelection, error) {
+func policyBuildSelections(dir string) ([]buildSelection, []string, error) {
 	raw, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(policy.Path)))
 	if os.IsNotExist(err) {
-		return []buildSelection{{}}, nil
+		return []buildSelection{{}}, nil, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("reading the accepted policy for resolution build selections: %w", err)
+		return nil, nil, fmt.Errorf("reading the accepted policy for resolution build selections: %w", err)
 	}
 	p, err := policy.Parse(raw)
 	if err != nil {
-		return nil, fmt.Errorf("resolution build selections: %w", err)
+		return nil, nil, fmt.Errorf("resolution build selections: %w", err)
 	}
 	selections := []buildSelection{{}}
 	seen := map[string]bool{}
+	var crossPlatform []string
 	for _, inv := range p.GetInvocations() {
-		tags := inv.GetGo().GetTags()
+		cfg := inv.GetGo()
+		if cfg == nil {
+			continue
+		}
+		// A cross-platform selection (declared GOOS/GOARCH differing
+		// from the host) cannot execute on-host, so a resolution-only
+		// view would bind witnesses no run can grant; it is refused by
+		// name rather than resolved silently — the on-host resolution
+		// design for that dimension is its own chunk of work. A
+		// declared value equal to the host is the host view.
+		if (cfg.HasGoos() && cfg.GetGoos() != runtime.GOOS) ||
+			(cfg.HasGoarch() && cfg.GetGoarch() != runtime.GOARCH) {
+			crossPlatform = append(crossPlatform,
+				fmt.Sprintf("invocation %q declares GOOS/GOARCH %q/%q off the %s/%s host",
+					inv.GetName(), cfg.GetGoos(), cfg.GetGoarch(), runtime.GOOS, runtime.GOARCH))
+			continue
+		}
+		tags := append([]string(nil), cfg.GetTags()...)
+		if cfg.GetRace() {
+			// The -race build sets the implicit race tag: a
+			// //go:build race declaration resolves in exactly the
+			// views whose invocations would compile it.
+			tags = append(tags, "race")
+		}
+		// The effective set is canonical (sorted, deduplicated): a
+		// declared literal "race" tag beside race:true is one
+		// selection, never a duplicate view's load cost.
+		sort.Strings(tags)
+		tags = slices.Compact(tags)
 		if len(tags) == 0 {
 			continue
 		}
-		toolchain := inv.GetGo().GetToolchain()
-		sorted := append([]string(nil), tags...)
-		sort.Strings(sorted)
-		key := strings.Join(sorted, ",") + "\x00" + toolchain
+		toolchain := cfg.GetToolchain()
+		key := strings.Join(tags, ",") + "\x00" + toolchain
 		if seen[key] {
 			continue
 		}
 		seen[key] = true
-		selections = append(selections, buildSelection{tags: append([]string(nil), tags...), toolchain: toolchain})
+		selections = append(selections, buildSelection{tags: tags, toolchain: toolchain})
 	}
-	return selections, nil
+	return selections, crossPlatform, nil
 }
 
 // Resolve implements verify.Backend.

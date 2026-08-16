@@ -366,7 +366,7 @@ func TestPolicyBuildSelectionsSplitToolchains(t *testing.T) {
 		goInvocation("two", b),
 	})
 	writePolicyRecord(t, dir, p)
-	selections, err := policyBuildSelections(dir)
+	selections, _, err := policyBuildSelections(dir)
 	if err != nil {
 		t.Fatal(err)
 	}

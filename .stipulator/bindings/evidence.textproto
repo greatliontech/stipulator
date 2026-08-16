@@ -981,3 +981,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "8b4cfbc4bad26dfe0001f3c7cb1f32c0c3119b68acf263e7318779aff45806ff"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "a7fbf97f678b36b6b60b58651ccec9c23af2890f278f1861f29260c3aab4e18c"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGroupKeySpansBuildDimensions"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "d5307e00792b4ef646794bb18a91b321269fe0318b2e75e760ec97172ddfd3e6"
+}
