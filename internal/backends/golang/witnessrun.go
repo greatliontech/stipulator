@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	gofresh "github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/runtimeinput"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/policy"
@@ -835,11 +834,14 @@ func executeSelections(ctx context.Context, p *stipulatorv1.TestPolicy, normaliz
 // executed evidence itself stands untouched. The error return is
 // reserved for caller cancellation.
 func finishGroup(ctx context.Context, wg *witnessGroup, m *execMerge) ([]gofresh.Subject, []witnesscache.Record, map[gofresh.Subject]string, error) {
-	// The re-check runs first and the validation follows as the deferred
-	// close: under the deferred-close engine every check's verdict is
-	// provisional until the view validates, so validation must be the
-	// LAST view operation before a served outcome stands — a change
-	// persisting to it discards the provisional verdicts with it.
+	// The re-check runs first; its verdicts are PROVISIONAL until the
+	// group's one closing validation - which now lives at the end of
+	// publishExecuted, after the publish-side checks, so a single
+	// validation gates the served outcomes and the published records
+	// alike (the deferred-close engine makes every check's verdict
+	// provisional until the view validates, and one close after the
+	// last check covers them all). Consumption of these verdicts
+	// therefore moves after publishExecuted returns.
 	servedFPs := map[gofresh.Subject]gofresh.Fingerprint{}
 	for _, s := range wg.served {
 		servedFPs[s] = wg.recorded[s].Fingerprint.ToGofresh()
@@ -863,23 +865,15 @@ func finishGroup(ctx context.Context, wg *witnessGroup, m *execMerge) ([]gofresh
 		}
 		return append([]gofresh.Subject(nil), wg.served...), nil, reasons, nil
 	}
-	if err := wg.view.Validate(ctx); err != nil {
-		if ctx.Err() != nil {
-			return nil, nil, nil, ctx.Err()
-		}
-		// Every discarded serve re-executes holding prior evidence, so
-		// each names why serving refused it (the spec's attribution for
-		// re-executed record holders), and the executed-but-unpublishable
-		// stale set carries the same cause on the uncacheable ledger.
-		reasons := map[gofresh.Subject]string{}
-		for pkg, names := range wg.stale {
-			for _, name := range names {
-				reasons[gofresh.Subject{Package: pkg, Symbol: name}] = "source producer validation failed: " + err.Error()
-			}
-		}
-		for _, s := range wg.served {
-			wg.executedWhy[s] = "source producer validation failed: " + err.Error()
-		}
+	records, reasons, servedDiscarded, err := publishExecuted(ctx, wg, m)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if servedDiscarded {
+		// The single close refused: every serve is discarded whole with
+		// the named cause (set by the close), nothing publishes, and no
+		// refreshed record reinstalls - the tree the run finished on
+		// disproved the view.
 		return append([]gofresh.Subject(nil), wg.served...), nil, reasons, nil
 	}
 	var drifted []gofresh.Subject
@@ -891,10 +885,6 @@ func finishGroup(ctx context.Context, wg *witnessGroup, m *execMerge) ([]gofresh
 			// executed-reason attribution, never a cold read.
 			wg.executedWhy[s] = "mid-run drift: " + verdicts[s].Reason
 		}
-	}
-	records, reasons, err := publishExecuted(ctx, wg, m)
-	if err != nil {
-		return nil, nil, nil, err
 	}
 	// A carve-out-served record that survived post-run revalidation
 	// installs refreshed — current compartment hash and ledger — so the
@@ -999,7 +989,7 @@ func grantingRun(s gofresh.Subject, m *execMerge) (*subjectRun, string) {
 // The error return is reserved for caller cancellation. The second
 // return names, per unpublished subject, the leg that refused
 // (REQ-evidence-witness-freshness's diagnosable-set requirement).
-func publishExecuted(ctx context.Context, wg *witnessGroup, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]string, error) {
+func publishExecuted(ctx context.Context, wg *witnessGroup, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]string, bool, error) {
 	var order []gofresh.Subject
 	for pkg, names := range wg.stale {
 		for _, name := range names {
@@ -1013,7 +1003,7 @@ func publishExecuted(ctx context.Context, wg *witnessGroup, m *execMerge) ([]wit
 		}
 		return a.Symbol < b.Symbol
 	})
-	eligible := map[gofresh.Subject]*subjectRun{}
+	eligible := map[gofresh.Subject]*pubSubject{}
 	reasons := map[gofresh.Subject]string{}
 	for _, s := range order {
 		if _, ok := wg.fps[s]; !ok {
@@ -1025,163 +1015,15 @@ func publishExecuted(ctx context.Context, wg *witnessGroup, m *execMerge) ([]wit
 			reasons[s] = why
 			continue
 		}
-		eligible[s] = sr
+		// Solo-ness is guaranteed upstream by candidate selection: a
+		// selective candidate runs in a process of its own.
+		eligible[s] = &pubSubject{obs: sr.obs, outcomes: sr.outcomes, regs: sr.regs, solo: true}
 	}
-
-	// Observation-completeness proofs attach only when every candidate of
-	// the group can attach: the observed view revalidates as one unit, so
-	// a single candidate whose process left no completed observation
-	// drops the proof leg whole and every candidate falls back to the
-	// plain per-process manifest.
-	attached := map[gofresh.Subject]gofresh.Fingerprint{}
-	attachedValid := map[gofresh.Subject]bool{}
-	if wg.observed != nil && len(wg.observedFPs) == len(wg.candidates) {
-		complete := true
-		for _, s := range wg.candidates {
-			sr, ok := eligible[s]
-			if !ok {
-				complete = false
-				break
-			}
-			fp, err := wg.observed.AttachObservation(s, wg.observedFPs[s], sr.obs.Runtime)
-			if err != nil {
-				complete = false
-				break
-			}
-			state, err := runtimeinput.CompletedState(sr.obs.Runtime)
-			if err != nil {
-				complete = false
-				break
-			}
-			attached[s] = fp
-			attachedValid[s] = validatedObservation(fp, state)
-			if !attachedValid[s] {
-				// The sealed state names the concrete input; the proof
-				// refusal names an analyzer class. Prefer the input.
-				switch {
-				case state.Unverifiable:
-					reasons[s] = "observation sealed: " + state.Reason
-				case !fp.ObservationProof.Observable:
-					reasons[s] = "observation proof refused: " + fp.ObservationProof.Reason
-				}
-			}
-		}
-		if complete && len(wg.candidates) > 0 {
-			if err := wg.observed.Validate(ctx); err != nil {
-				if ctx.Err() != nil {
-					return nil, nil, ctx.Err()
-				}
-				complete = false
-			}
-		}
-		if !complete {
-			attached = map[gofresh.Subject]gofresh.Fingerprint{}
-			attachedValid = map[gofresh.Subject]bool{}
-		}
+	records, discarded, _, _, fatal := publishEligible(ctx, wg.view, wg.observed, wg.observedFPs, wg.candidates, order, eligible, wg.fps, wg.g.excludedPaths, wg.served, wg.executedWhy, reasons)
+	if fatal != nil {
+		return nil, nil, false, fatal
 	}
-
-	// Finalize fingerprints: the proof-attached form where it validated,
-	// otherwise the plain form carrying the producing process's own
-	// runtime-input manifest.
-	final := map[gofresh.Subject]gofresh.Fingerprint{}
-	for _, s := range order {
-		sr := eligible[s]
-		if sr == nil {
-			continue
-		}
-		if fp, ok := attached[s]; ok {
-			final[s] = fp
-			continue
-		}
-		fp := wg.fps[s]
-		if fp.ObservationAssertion == "" {
-			state, err := runtimeinput.CompletedState(sr.obs.Runtime)
-			if err != nil {
-				continue
-			}
-			fp.RuntimeInputs, fp.RuntimeDigest = state.Manifest, state.Digest
-		}
-		final[s] = fp
-	}
-
-	verdicts := map[gofresh.Subject]gofresh.Verdict{}
-	unvalidated := map[gofresh.Subject]gofresh.Fingerprint{}
-	for s, fp := range final {
-		if attachedValid[s] {
-			verdicts[s] = gofresh.Verdict{Status: gofresh.Valid}
-		} else {
-			unvalidated[s] = fp
-		}
-	}
-	checked, err := checkFingerprints(ctx, wg.view, unvalidated)
-	if err != nil {
-		if ctx.Err() != nil {
-			return nil, nil, ctx.Err()
-		}
-		// A faulting post-run check publishes nothing for the group; the
-		// executed evidence stands and every subject counts uncacheable.
-		for _, s := range order {
-			if _, ok := reasons[s]; !ok {
-				reasons[s] = "post-run producer validation faulted: " + err.Error()
-			}
-		}
-		return nil, reasons, nil
-	}
-	maps.Copy(verdicts, checked)
-	for s, v := range checked {
-		if v.Status != gofresh.Valid {
-			if _, ok := reasons[s]; !ok {
-				// The verdict's own reason carries gofresh's attribution -
-				// moved inputs named per identity.
-				reasons[s] = "post-run validation: " + v.Reason
-			}
-		}
-	}
-	// The deferred close: the view's validation is the one closing
-	// observation for the post-run checks above — no record publishes
-	// unless the tree still agrees, and a refusal here discards the
-	// provisional verdicts exactly as gofresh's deferred-close contract
-	// requires. The executed evidence itself stands untouched. With
-	// nothing checked and nothing publishable there is no window to
-	// close and no record to gate: the fully-warm pass pays no
-	// observation here.
-	if len(final) != 0 {
-		if err := wg.view.Validate(ctx); err != nil {
-			if ctx.Err() != nil {
-				return nil, nil, ctx.Err()
-			}
-			for _, s := range order {
-				if _, ok := reasons[s]; !ok {
-					reasons[s] = "post-run producer validation failed: " + err.Error()
-				}
-			}
-			return nil, reasons, nil
-		}
-	}
-
-	var records []witnesscache.Record
-	for _, s := range order {
-		fp, ok := final[s]
-		if !ok || verdicts[s].Status != gofresh.Valid {
-			continue
-		}
-		sr := eligible[s]
-		rec, ok := assembleWitnessRecord(wg.view, s, fp, sr.outcomes, sr.regs, wg.g.excludedPaths)
-		if !ok {
-			continue
-		}
-		records = append(records, rec)
-		delete(reasons, s)
-	}
-	for _, s := range order {
-		if _, published := final[s]; published && verdicts[s].Status == gofresh.Valid {
-			continue
-		}
-		if _, ok := reasons[s]; !ok {
-			reasons[s] = "record not published"
-		}
-	}
-	return records, reasons, nil
+	return records, reasons, discarded, nil
 }
 
 // retryDrifted re-executes each drifted served subject exactly once,
@@ -1262,15 +1104,9 @@ func retryDrifted(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, n
 		if st.view == nil {
 			continue
 		}
-		if err := st.view.Validate(ctx); err != nil {
-			if ctx.Err() != nil {
-				return nil, nil, ctx.Err()
-			}
-			for rs := range st.fps {
-				reasons[rs] = "retry producer validation failed: " + err.Error()
-			}
-			continue
-		}
+		// No pre-publish validate here: it closed no checks (only
+		// captures ran on this view), and publishExecuted's single close
+		// refuses the same drift with per-subject reasons.
 		stale := map[string][]string{}
 		for s := range st.fps {
 			stale[s.Package] = append(stale[s.Package], s.Symbol)
@@ -1281,7 +1117,7 @@ func retryDrifted(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, n
 			g: st.wg.g, engine: st.wg.engine, view: st.view, stale: stale, fps: st.fps,
 			candidates: st.candidates, observed: st.observed, observedFPs: st.observedFPs,
 		}
-		records, retryReasons, err := publishExecuted(ctx, rwg, m)
+		records, retryReasons, _, err := publishExecuted(ctx, rwg, m)
 		if err != nil {
 			return nil, nil, err
 		}

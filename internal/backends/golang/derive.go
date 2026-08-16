@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	gofresh "github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/runtimeinput"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
@@ -461,12 +460,12 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Eng
 	}
 	return gofresh.New(append(opts,
 		// Every consumer of these views' verdicts follows the
-		// producer-view discipline — the served set stands only after
-		// finishGroup validates, and publication only after the
-		// publish-side closing validate — so checks defer their closing
-		// base observation to that one validation instead of paying a
-		// full re-observation per call (gofresh's deferred-close
-		// contract).
+		// producer-view discipline: each group's served outcomes AND its
+		// published records stand only after the group's ONE closing
+		// validation (publishEligible's closeGroup, last on the view),
+		// so checks defer their closing base observation to that single
+		// validation instead of paying a full re-observation per call
+		// (gofresh's deferred-close contract).
 		gofresh.WithDeferredCheckClose(),
 		// Freshness capture and validation are the longest silent
 		// stretches of a witnessed run; gofresh's own analysis steps
@@ -768,134 +767,26 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 		return a.Symbol < b.Symbol
 	})
 
-	// Observation-completeness proofs attach only when every candidate of
-	// the group can attach: the observed view revalidates as one unit, so
-	// a single candidate whose process left no completed observation (or
-	// did not run its subject alone) drops the proof leg whole and every
-	// candidate falls back to the plain per-package manifest.
-	attached := map[gofresh.Subject]gofresh.Fingerprint{}
-	attachedValid := map[gofresh.Subject]bool{}
-	if g.observed != nil && len(g.observedFPs) == len(g.candidates) {
-		complete := true
-		for _, subject := range g.candidates {
-			gs, ok := eligible[subject]
-			if !ok || !gs.soloRun {
-				complete = false
-				break
-			}
-			fp, err := g.observed.AttachObservation(subject, g.observedFPs[subject], gs.obs.Runtime)
-			if err != nil {
-				complete = false
-				break
-			}
-			state, err := runtimeinput.CompletedState(gs.obs.Runtime)
-			if err != nil {
-				complete = false
-				break
-			}
-			attached[subject] = fp
-			attachedValid[subject] = validatedObservation(fp, state)
-			if !attachedValid[subject] {
-				switch {
-				case state.Unverifiable:
-					reasons[subject] = "observation sealed: " + state.Reason
-				case !fp.ObservationProof.Observable:
-					reasons[subject] = "observation proof refused: " + fp.ObservationProof.Reason
-				}
-			}
-		}
-		if complete && len(g.candidates) > 0 {
-			if err := g.observed.Validate(ctx); err != nil {
-				if ctx.Err() != nil {
-					return nil, nil, "", ctx.Err()
-				}
-				complete = false
-			}
-		}
-		if !complete {
-			attached = map[gofresh.Subject]gofresh.Fingerprint{}
-			attachedValid = map[gofresh.Subject]bool{}
-		}
+	// The shared publication ladder (publishEligible) takes over from
+	// eligibility: proof leg, final fingerprints, post-run check, the
+	// one closing validation, record assembly. This full-execution path
+	// has no served outcomes; a check fault or closing refusal degrades
+	// the RUN with the named cause rather than filling per-subject
+	// reasons - the whole policy executed under one view, so a view
+	// this tree disproves poisons the run's evidence wholesale.
+	eligibleSubjects := map[gofresh.Subject]*pubSubject{}
+	for s, gs := range eligible {
+		eligibleSubjects[s] = &pubSubject{obs: gs.obs, outcomes: gs.outcomes, regs: gs.regs, solo: gs.soloRun}
 	}
-
-	// Finalize fingerprints: the proof-attached form where it validated,
-	// otherwise the plain form carrying the producing process's own
-	// runtime-input manifest.
-	final := map[gofresh.Subject]gofresh.Fingerprint{}
-	for _, subject := range order {
-		gs := eligible[subject]
-		if fp, ok := attached[subject]; ok {
-			final[subject] = fp
-			continue
-		}
-		fp := g.fps[subject]
-		if fp.ObservationAssertion == "" {
-			state, err := runtimeinput.CompletedState(gs.obs.Runtime)
-			if err != nil {
-				reasons[subject] = "observation state unavailable: " + err.Error()
-				continue
-			}
-			fp.RuntimeInputs, fp.RuntimeDigest = state.Manifest, state.Digest
-		}
-		final[subject] = fp
+	records, _, checkFault, closeFault, fatal := publishEligible(ctx, g.view, g.observed, g.observedFPs, g.candidates, order, eligibleSubjects, g.fps, g.excludedPaths, nil, nil, reasons)
+	if fatal != nil {
+		return nil, nil, "", fatal
 	}
-
-	// Runtime producer validation: each record publishes only when its
-	// post-run check returns valid against the current tree. A stale
-	// verdict is a mid-run drift of the record's source or runtime inputs
-	// — the executed outcome stands, the record is dropped so the next
-	// run re-derives it; an unverifiable verdict can never check valid
-	// and is dropped the same way. Both are visible as the uncacheable
-	// count, never silence.
-	verdicts := map[gofresh.Subject]gofresh.Verdict{}
-	unvalidated := map[gofresh.Subject]gofresh.Fingerprint{}
-	for subject, fp := range final {
-		if attachedValid[subject] {
-			verdicts[subject] = gofresh.Verdict{Status: gofresh.Valid}
-		} else {
-			unvalidated[subject] = fp
-		}
+	if checkFault != nil {
+		return nil, nil, fmt.Sprintf("runtime producer validation failed: %v", checkFault), nil
 	}
-	checked, err := checkFingerprints(ctx, g.view, unvalidated)
-	if err != nil {
-		if ctx.Err() != nil {
-			return nil, nil, "", ctx.Err()
-		}
-		return nil, nil, fmt.Sprintf("runtime producer validation failed: %v", err), nil
-	}
-	for subject, verdict := range checked {
-		verdicts[subject] = verdict
-		if verdict.Status != gofresh.Valid {
-			if _, ok := reasons[subject]; !ok {
-				reasons[subject] = "post-run validation: " + verdict.Reason
-			}
-		}
-	}
-	// Source producer validation, last on the view as the deferred
-	// close: the analysis view must still describe the tree after
-	// execution — or every fingerprint of the group is a hash of a tree
-	// the outcomes may not have come from — and the checks above are
-	// provisional until this one closing observation agrees.
-	if err := g.view.Validate(ctx); err != nil {
-		if ctx.Err() != nil {
-			return nil, nil, "", ctx.Err()
-		}
-		return nil, nil, fmt.Sprintf("source producer validation failed: %v", err), nil
-	}
-
-	var records []witnesscache.Record
-	for _, subject := range order {
-		fp, ok := final[subject]
-		if !ok || verdicts[subject].Status != gofresh.Valid {
-			continue
-		}
-		gs := eligible[subject]
-		rec, ok := assembleWitnessRecord(g.view, subject, fp, gs.outcomes, gs.regs, g.excludedPaths)
-		if !ok {
-			continue
-		}
-		records = append(records, rec)
-		delete(reasons, subject)
+	if closeFault != nil {
+		return nil, nil, fmt.Sprintf("source producer validation failed: %v", closeFault), nil
 	}
 	return records, reasons, "", nil
 }

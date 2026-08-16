@@ -25,7 +25,11 @@ import (
 // batch through the observed policy, the rest through the ordinary hierarchical
 // policy. Per-record checking multiplied full workspace observations by the
 // record count.
-func checkFingerprints(ctx context.Context, view *gofresh.View, recorded map[gofresh.Subject]gofresh.Fingerprint) (map[gofresh.Subject]gofresh.Verdict, error) {
+// checkFingerprints is a variable so the post-run check's FAULT arm -
+// an infrastructure failure no fixture can produce - is testable: the
+// run-degradation surface it feeds is contract
+// (REQ-evidence-freshness-degrade).
+var checkFingerprints = func(ctx context.Context, view *gofresh.View, recorded map[gofresh.Subject]gofresh.Fingerprint) (map[gofresh.Subject]gofresh.Verdict, error) {
 	observed := make(map[gofresh.Subject]gofresh.Fingerprint, len(recorded))
 	plain := make(map[gofresh.Subject]gofresh.Fingerprint, len(recorded))
 	for subject, fingerprint := range recorded {

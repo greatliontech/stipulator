@@ -2,6 +2,7 @@ package golang
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -609,5 +610,46 @@ func TestReadsOutsideBracket(t *testing.T) {
 	why := tr.UncacheableReasons["example.com/fullwhy/pkg.TestReadsOutsideBracket"]
 	if !strings.Contains(why, "shared.txt") {
 		t.Fatalf("full-form reason = %q (map %v), want the sealing input named", why, tr.UncacheableReasons)
+	}
+}
+
+// A FAULTING post-run producer check (infrastructure failure, not a
+// stale verdict) degrades the full-execution run with the named cause -
+// nothing publishes, the executed evidence stands
+// (REQ-evidence-freshness-degrade). The fault is injected: no fixture
+// can make the check itself fault.
+func TestGoDeriveCheckFaultDegradesRun(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-freshness-degrade")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented policy over a temporary module")
+	}
+	neutralAmbient(t)
+	restore := checkFingerprints
+	checkFingerprints = func(context.Context, *gofresh.View, map[gofresh.Subject]gofresh.Fingerprint) (map[gofresh.Subject]gofresh.Verdict, error) {
+		return nil, errors.New("injected check fault")
+	}
+	defer func() { checkFingerprints = restore }()
+	tmp := writeModule(t, map[string]string{
+		"go.mod":    "module example.com/faulty\n\ngo 1.26\n",
+		"f.go":      "package faulty\n\nfunc One() int { return 1 }\n",
+		"f_test.go": "package faulty\n\nimport \"testing\"\n\nfunc TestOne(t *testing.T) {\n\tif One() != 1 {\n\t\tt.Fatal()\n\t}\n}\n",
+	})
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./..."})
+	cfg.SetRace(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
+	_, tr, err := ExecutePolicyWitnessed(context.Background(), tmp, p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.Degraded == "" || !strings.Contains(tr.Degraded, "runtime producer validation failed") || !strings.Contains(tr.Degraded, "injected check fault") {
+		t.Fatalf("degraded = %q, want the named check fault", tr.Degraded)
+	}
+	if len(witnesscache.Load(tmp)) != 0 {
+		t.Fatal("a faulting check still published records")
+	}
+	if tr.Outcomes["example.com/faulty.TestOne"] != verify.TestPassed {
+		t.Fatalf("executed evidence lost under the degraded publish: %+v", tr.Outcomes)
 	}
 }

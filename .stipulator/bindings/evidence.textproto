@@ -909,3 +909,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "b95e79bbc8e012e2362c2310483ef44afcf5352a48d5f6013ec936178a1ece06"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-freshness-degrade"
+  content_hash: "f0f88ded1340f7028d5c9152504ec009f12a3f74498cd1733aa59035fc39bace"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoDeriveCheckFaultDegradesRun"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "551667197373ba2923d7c7e86487e1ffaceb3a47332b6e71f204934e5d6a1dae"
+}
