@@ -2,10 +2,6 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
-- **[cerebro-uncacheable-mass-measured](cerebro-uncacheable-mass-measured.md)** — 2,407
-  uncacheable witnesses make the cerebro check re-execute everything (~22 min vs a ~2-min
-  floor family); reason classes quantified, fixes owned by gofresh's bracket/classifier
-  items plus the shared-view fix here. *Lands: cross-tool train chunk 16.*
 - **[proto-backend](proto-backend.md)** — descriptor-level verification via protocompile;
   spec exists, five requirements gapped. *Lands: when a corpus needs wire evidence that
   shape pins and Go witnesses cannot cover.*
