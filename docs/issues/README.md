@@ -2,6 +2,18 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
+- **[multiply-selected-witnesses-uncacheable](multiply-selected-witnesses-uncacheable.md)** — every
+  check re-executes the whole corpus (~25 min warm); witness identity must not depend on the
+  selecting requirement set. *Lands: with the tool-phase stipulator visit.*
+- **[context-note-edits-escape-reconsent](context-note-edits-escape-reconsent.md)** — wire/layout
+  tables outside the hashed paragraph change without re-consent; soundness gap in the pin model.
+  *Lands: with the tool-phase stipulator visit.*
+- **[pin-forms-shape-guidance](pin-forms-shape-guidance.md)** — check's shape-moved guidance and the
+  ids-form "pins current" answer mislead exactly when shapes mismatch. *Lands: with the tool-phase
+  stipulator visit, or the next pin-surface change.*
+- **[witness-runner-environment-divergence](witness-runner-environment-divergence.md)** — a witness
+  red only inside the runner; the environment delta is uninspectable. *Lands: with the tool-phase
+  stipulator visit, or the next runner-vs-direct verdict flip.*
 - **[proto-backend](proto-backend.md)** — descriptor-level verification via protocompile;
   spec exists, five requirements gapped. *Lands: when a corpus needs wire evidence that
   shape pins and Go witnesses cannot cover.*
