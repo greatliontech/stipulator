@@ -35,10 +35,28 @@ MUST carry its original markdown source, for rendering fidelity in bundles
 and views; source is carried metadata, never hashed.
 
 **REQ-model-content-hash** (wire): Each requirement and term MUST carry a
-content hash computed over its canonical text: the lead paragraph excluding
-the lead-in span and metadata parenthetical, followed by the payload blocks
-in order, rendered to plain text, Unicode-NFC normalized, whitespace
-collapsed.
+content hash computed over its canonical text followed by its context
+extent: the lead paragraph excluding the lead-in span and metadata
+parenthetical, followed by the payload blocks in order, followed by the
+extent's note and annotation blocks in document order
+(REQ-profile-context-extent). The canonical text and each extent block
+canonicalize separately (plain text; control
+characters outside Unicode whitespace removed FIRST, then Unicode-NFC
+normalized, then whitespace collapsed — the order is contract: a
+control stripped after normalization would leave a decomposed pair
+composition never saw, so removal must precede it for the result to be
+as if the control were never there)
+and join with U+001E — unrepresentable in a canonical part, because
+canonicalization strips every non-whitespace control character, so a
+raw control byte in source cannot forge a boundary — with no
+re-canonicalization of the joined form, so block
+boundaries ride the preimage: moving words across the lead/extent
+boundary moves the hash even when the concatenated word sequence is
+unchanged, because that move changes the words' normative status. An
+identity with no extent hashes exactly its canonical text, so extent-free
+corpora keep their hashes. The carried `text` stays the canonical
+text alone — the hash preimage is wider than the displayed text exactly
+by the consent-bearing context.
 
 **REQ-model-location-metadata** (invariant): File path, section path, and
 source position MUST NOT contribute to identity, content hashes, closures, or
@@ -46,7 +64,12 @@ evidence pins; they are location metadata carried for reporting only.
 
 **REQ-model-layout-independence** (invariant): Two corpora containing the
 same blocks partitioned differently into files and sections MUST compile to
-IRs identical modulo location metadata.
+IRs identical modulo location metadata. The unit of partition is the
+identity with its payload and context extent: a repartition that moves a
+boundary (file, heading, or thematic break) between an identity and a
+block of its extent changes what the identity's consent surface covers —
+that is a semantic edit reported by diff, not a layout move, exactly as
+splitting a payload from its lead already was.
 
 ## Hashing
 

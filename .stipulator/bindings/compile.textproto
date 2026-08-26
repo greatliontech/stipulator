@@ -327,7 +327,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-model-content-hash"
-  content_hash: "68b80853ed0fb20fc048a4da58aaa82f71483727399127b477d386bcad5c9555"
+  content_hash: "c52b8f24bfe58c66d22970962acb7b5a7feaaf184a78677ce964a569894b3f23"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestHashStableUnderRewrap"
   role: BINDING_ROLE_TESTS
@@ -345,7 +345,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-model-layout-independence"
-  content_hash: "df7c1fc5b69983c7978231dd8075f2d1987702401b17a23874f7919352e025fb"
+  content_hash: "92d96f5f2e446e483b2ddca81156576c52f92dd2bcca831a673421a4c9f4acf1"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestLayoutIndependence"
   role: BINDING_ROLE_TESTS

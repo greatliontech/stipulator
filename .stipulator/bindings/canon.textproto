@@ -3,7 +3,7 @@
 
 bindings {
   requirement_id: "REQ-model-content-hash"
-  content_hash: "68b80853ed0fb20fc048a4da58aaa82f71483727399127b477d386bcad5c9555"
+  content_hash: "c52b8f24bfe58c66d22970962acb7b5a7feaaf184a78677ce964a569894b3f23"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/canon.Text"
   role: BINDING_ROLE_IMPLEMENTS
@@ -12,7 +12,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-model-content-hash"
-  content_hash: "68b80853ed0fb20fc048a4da58aaa82f71483727399127b477d386bcad5c9555"
+  content_hash: "c52b8f24bfe58c66d22970962acb7b5a7feaaf184a78677ce964a569894b3f23"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/canon.TestText"
   role: BINDING_ROLE_TESTS

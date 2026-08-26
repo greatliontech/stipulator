@@ -11,7 +11,9 @@ deliberately ahead of the code.
 
 **REQ-change-diff** (behavior): The `diff` operation MUST compare two
 compiled IRs and report, per identity: added, removed, text-changed (content
-hash delta), kind-changed (clause kind is marker metadata, invisible to the
+hash delta — the consent surface, deliberately wider than the displayed
+text: an extent-only edit reports here with the carried text unchanged,
+REQ-model-content-hash), kind-changed (clause kind is marker metadata, invisible to the
 content hash), metadata-only (location), and edge changes — text-changed and
 kind-changed are independent axes, reported together when both change, and a
 pure file reorganization reports no semantic delta.
@@ -73,7 +75,8 @@ identity and delete its bindings and gap records.
 **REQ-change-retarget** (behavior): A symbol-retarget operation MUST
 rewrite stored binding symbols for one backend under an exact
 old-prefix-to-new-prefix mapping, matching only at a path or member
-boundary, all-or-nothing: every replacement symbol resolves through the
+boundary — a full-symbol match is the degenerate member boundary, so the
+single-symbol rename repair is the same verb — all-or-nothing: every replacement symbol resolves through the
 backend in the current tree, a rewrite colliding with any post-rewrite
 binding of the same requirement, backend, symbol, and role is refused,
 and partial application never happens. Shape pins re-derive from the

@@ -72,3 +72,39 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "929d6f72e77bbe7140be6022c2c14ff04a264334640a67e4933d4f107fc88ff0"
 }
+
+bindings {
+  requirement_id: "REQ-profile-context-extent"
+  content_hash: "5d43693f3f4b6509030c7011ee94d485f19ac623a8510b5a6e2c40356a53f3a1"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestContextExtentRidesContentHash"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "103347efa619219ff5edb38fb0cdf646db82ddf26138d8eb92de44c9d4d64f3c"
+}
+
+bindings {
+  requirement_id: "REQ-profile-context-extent"
+  content_hash: "5d43693f3f4b6509030c7011ee94d485f19ac623a8510b5a6e2c40356a53f3a1"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestContextExtentBoundaries"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "9d3f43c69c2ff62ead75bc9c38d0459eb6867b4e516ca259371e2c5d0bcb01b5"
+}
+
+bindings {
+  requirement_id: "REQ-profile-context-extent"
+  content_hash: "5d43693f3f4b6509030c7011ee94d485f19ac623a8510b5a6e2c40356a53f3a1"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestContextExtentOnTerms"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "37258f7287558523007793fd108874e91a2a7c0e98215d170d0a28cd58ccae20"
+}
+
+bindings {
+  requirement_id: "REQ-profile-context-extent"
+  content_hash: "5d43693f3f4b6509030c7011ee94d485f19ac623a8510b5a6e2c40356a53f3a1"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.extentParts"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "ee9aadfbf34abe7659eb341e338ff05d704f1067401fed45ab852049bbbe80c7"
+}

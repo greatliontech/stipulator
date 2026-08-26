@@ -93,3 +93,27 @@ func TestRetargetSymbolsRewritesAtBoundaryAllOrNothing(t *testing.T) {
 		t.Fatal("missing backend accepted")
 	}
 }
+
+// A full-symbol --from is the degenerate member boundary: the
+// single-symbol rename repair rewrites exactly that binding and no
+// sibling sharing the prefix (REQ-change-retarget).
+//
+//gofresh:pure
+func TestRetargetFullSymbolIsDegenerateBoundary(t *testing.T) {
+	stipulate.Covers(t, "REQ-change-retarget")
+	fsys := testFS(map[string]string{
+		".stipulator/bindings/m.textproto": "" +
+			"bindings { requirement_id: \"REQ-au-a\" backend: \"go\" symbol: \"example.com/pkg.oldName\" role: BINDING_ROLE_IMPLEMENTS }\n" +
+			"bindings { requirement_id: \"REQ-au-a\" backend: \"go\" symbol: \"example.com/pkg.oldNameKeeps\" role: BINDING_ROLE_TESTS }\n",
+	})
+	resolver := map[string]verify.Backend{"go": fakeBackend{
+		"example.com/pkg.newName": strings.Repeat("n", 64),
+	}}
+	_, rows, err := RetargetSymbols(fsys, resolver, "go", "example.com/pkg.oldName", "example.com/pkg.newName")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].Old != "example.com/pkg.oldName" || rows[0].New != "example.com/pkg.newName" {
+		t.Fatalf("rows = %+v, want exactly the full-symbol rename", rows)
+	}
+}

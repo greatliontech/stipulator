@@ -2,16 +2,14 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
+- **[identity-walk-two-trackers](identity-walk-two-trackers.md)** — attachment and extent answer
+  "whose block is this" via two independent reset tables in two packages; the subset relationship
+  holds by coincidence. Collapse to one walk with two windows. *Lands: the next chunk touching the
+  profile walk, attachment semantics, or the extent boundary set.*
 - **[runtime-args-rekey-witness-store](runtime-args-rekey-witness-store.md)** — the capture-group
   key folds the whole `Args` list, so a runtime-only knob edit (`-test.timeout`) discards every
   stored record and forces a ~31m cold re-execution; partition build-affecting from runtime-only.
   *Lands: the next chunk that touches the capture-group identity or the record coordinate.*
-- **[multiply-selected-witnesses-uncacheable](multiply-selected-witnesses-uncacheable.md)** — every
-  check re-executes the whole corpus (~25 min warm); witness identity must not depend on the
-  selecting requirement set. *Lands: with the tool-phase stipulator visit.*
-- **[context-note-edits-escape-reconsent](context-note-edits-escape-reconsent.md)** — wire/layout
-  tables outside the hashed paragraph change without re-consent; soundness gap in the pin model.
-  *Lands: with the tool-phase stipulator visit.*
 - **[pin-forms-shape-guidance](pin-forms-shape-guidance.md)** — check's shape-moved guidance and the
   ids-form "pins current" answer mislead exactly when shapes mismatch. *Lands: with the tool-phase
   stipulator visit, or the next pin-surface change.*

@@ -296,7 +296,15 @@ func resolve(docs []*document, tombstones map[string]bool, diags *[]Diagnostic) 
 				ir.SetKeyword(keywords[kws[0]])
 			}
 			ir.SetText(canon.Text(text))
-			ir.SetContentHash(canon.Hash(text))
+			// The hash preimage is the canonical text followed by the
+			// context extent's blocks, block boundaries preserved
+			// (canon.HashParts): consent covers the vocabulary and
+			// layout context a reader takes as part of the contract,
+			// while the carried text stays the lead+payload alone — and
+			// moving words across the lead/extent boundary moves the
+			// hash, because that move changes normative status
+			// (REQ-model-content-hash, REQ-profile-context-extent).
+			ir.SetContentHash(canon.HashParts(extentParts(text, r.extent)...))
 			ir.SetSource(r.source)
 			ir.SetLocation(r.loc)
 			irReqs = append(irReqs, ir)
@@ -309,7 +317,7 @@ func resolve(docs []*document, tombstones map[string]bool, diags *[]Diagnostic) 
 			ir := &stipulatorv1.Term{}
 			ir.SetName(t.name)
 			ir.SetText(canon.Text(text))
-			ir.SetContentHash(canon.Hash(text))
+			ir.SetContentHash(canon.HashParts(extentParts(text, t.extent)...))
 			ir.SetSource(t.source)
 			ir.SetLocation(t.loc)
 			irTerms = append(irTerms, ir)
@@ -431,6 +439,20 @@ func detectionRuns(segs []profile.Seg) []string {
 
 // findTokens runs a regexp over the detection runs, returning matches in
 // document order.
+// extentParts assembles an identity's content-hash preimage parts: the
+// canonical text followed by the context extent's blocks in document
+// order (REQ-model-content-hash) — wider than the carried text exactly
+// by the consent-bearing context, with block boundaries preserved by
+// canon.HashParts.
+func extentParts(text string, extent [][]profile.Seg) []string {
+	parts := make([]string, 0, 1+len(extent))
+	parts = append(parts, text)
+	for _, segs := range extent {
+		parts = append(parts, profile.Plain(segs))
+	}
+	return parts
+}
+
 func findTokens(segs []profile.Seg, re *regexp.Regexp) []string {
 	var out []string
 	for _, run := range detectionRuns(segs) {

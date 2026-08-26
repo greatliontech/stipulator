@@ -452,8 +452,13 @@ func RetargetSymbols(fsys fs.FS, backends map[string]verify.Backend, backend, ol
 	// A prefix matches at a boundary only: the next rune after it is a
 	// path separator or the member dot, never a bare character run.
 	matches := func(symbol string) bool {
-		if !strings.HasPrefix(symbol, oldPrefix) || len(symbol) == len(oldPrefix) {
+		if !strings.HasPrefix(symbol, oldPrefix) {
 			return false
+		}
+		if len(symbol) == len(oldPrefix) {
+			// A full-symbol match is the degenerate member boundary —
+			// the single-symbol rename repair (REQ-change-retarget).
+			return true
 		}
 		return symbol[len(oldPrefix)] == '/' || symbol[len(oldPrefix)] == '.'
 	}

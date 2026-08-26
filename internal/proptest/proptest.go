@@ -116,7 +116,26 @@ func Gen(t *rapid.T, opts ...Option) Corpus {
 
 	if rapid.Bool().Draw(t, "annotation") {
 		target := rapid.SampledFrom(c.ReqIDs).Draw(t, "annotationTarget")
-		c.Blocks = append(c.Blocks, fmt.Sprintf("See %s for the details.", target))
+		ann := fmt.Sprintf("See %s for the details.", target)
+		switch rapid.IntRange(0, 2).Draw(t, "annotationPlacement") {
+		case 0:
+			// An extent member: context travels with its owning identity
+			// across every partition (REQ-profile-context-extent — the
+			// unit of partition is the identity with its extent), so it
+			// glues to the last requirement's block and the property
+			// quantifies extent layout-independence.
+			c.Blocks[len(c.Blocks)-1] += "\n\n" + ann
+		case 1:
+			// A deeper extent: an intervening note between the
+			// requirement and the annotation exercises the extent
+			// TRACKER (the walk must keep the extent open across
+			// multiple member blocks), not just the hash fold.
+			c.Blocks[len(c.Blocks)-1] += "\n\n> Bridging commentary.\n\n" + ann
+		default:
+			// Free-standing context: detached by a thematic break, so no
+			// layout can capture it into a preceding identity's extent.
+			c.Blocks = append(c.Blocks, "---\n\n"+ann)
+		}
 	}
 	return c
 }

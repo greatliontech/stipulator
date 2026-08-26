@@ -93,6 +93,18 @@ detection, term matching, and content hashing.
 note attached to the immediately preceding requirement or term in the same
 section, or to the enclosing section when none precedes it.
 
+**REQ-profile-context-extent** (behavior): Every note and annotation block
+following an identity's lead paragraph and payload, up to the next
+requirement or term lead, heading, or thematic break, MUST belong to that
+identity's context extent. The extent is consent surface, not normative
+text: its blocks stay outside keyword detection, reference attribution
+stays the note's own, and attachment semantics are unchanged — but the
+extent's canonical text rides the identity's content hash
+(REQ-model-content-hash), so editing a vocabulary table or layout block
+that reads as part of a requirement's contract demands the same
+re-consent as editing the paragraph itself. A thematic break detaches
+deliberately free-standing context from the preceding identity.
+
 ## Inert content
 
 **REQ-profile-code-inert** (behavior): Code spans and code blocks MUST be
