@@ -30,7 +30,7 @@ func TestGoSliceFloorDispositions(t *testing.T) {
 		"my_test/my.go":      "package mytest\n\nfunc init() {}\n",
 		"my/my.go":           "package my\n\nfunc My() {}\n",
 		"helpers/h.go":       "package helpers\n\nimport _ \"example.com/floored/app\"\n\nfunc H() {}\n",
-		"app/helper_test.go":  "package app\n\nimport _ \"example.com/floored/helpers\"\n",
+		"app/helper_test.go": "package app\n\nimport _ \"example.com/floored/helpers\"\n",
 		"types/types.go":     "package types\n\nimport _ \"example.com/floored/deep\"\n\ntype Config struct{ N int }\n",
 		"app/app.go":         "package app\n\nimport (\n\t\"fmt\"\n\n\t_ \"example.com/floored/effects\"\n\t_ \"example.com/floored/my_test\"\n\n\t\"pgregory.net/rapid\"\n\n\t\"example.com/floored/types\"\n)\n\nfunc Use(c types.Config) int { rapid.Check(); return len(fmt.Sprint(c.N)) }\n",
 	}

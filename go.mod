@@ -1,17 +1,12 @@
 module github.com/greatliontech/stipulator
 
-go 1.26.4
-
-require google.golang.org/protobuf v1.36.11
-
-require (
-	github.com/greatliontech/stipulator/stipulate v0.1.0
-	github.com/greatliontech/stipulator/stipulate/structural v0.2.0
-)
+go 1.27.0
 
 require (
 	github.com/go-git/go-git/v5 v5.19.1
-	github.com/greatliontech/gofresh v0.74.0
+	github.com/greatliontech/gofresh v0.85.1
+	github.com/greatliontech/stipulator/stipulate v0.1.0
+	github.com/greatliontech/stipulator/stipulate/structural v0.2.0
 	github.com/modelcontextprotocol/go-sdk v1.6.1
 	github.com/spf13/cobra v1.10.2
 	github.com/yuin/goldmark v1.8.2
@@ -19,6 +14,7 @@ require (
 	golang.org/x/sys v0.46.0
 	golang.org/x/text v0.38.0
 	golang.org/x/tools v0.47.0
+	google.golang.org/protobuf v1.36.11
 	pgregory.net/rapid v1.3.0
 )
 

@@ -2371,8 +2371,8 @@ func TestGoRunWitnessesPerGroupRecordsServeSharedPackage(t *testing.T) {
 	}
 	neutralAmbient(t)
 	tmp := writeModule(t, map[string]string{
-		"go.mod":         "module example.com/grp\n\ngo 1.26\n",
-		"shared/lib.go":  "package shared\n\nfunc Lib() string { return \"lib-v1\" }\n",
+		"go.mod":        "module example.com/grp\n\ngo 1.26\n",
+		"shared/lib.go": "package shared\n\nfunc Lib() string { return \"lib-v1\" }\n",
 		"shared/shared_test.go": `package shared
 
 import "testing"
@@ -2471,7 +2471,7 @@ func TestGoRunWitnessesServedPassNeverOverridesExecutedFailure(t *testing.T) {
 	}
 	neutralAmbient(t)
 	tmp := writeModule(t, map[string]string{
-		"go.mod": "module example.com/mrg\n\ngo 1.26\n",
+		"go.mod":                  "module example.com/mrg\n\ngo 1.26\n",
 		"shared/value_default.go": "//go:build !grouptag\n\npackage shared\n\nfunc V() bool { return false }\n",
 		"shared/value_tagged.go":  "//go:build grouptag\n\npackage shared\n\nfunc V() bool { return true }\n",
 		"shared/shared_test.go": `package shared

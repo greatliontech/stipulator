@@ -2,6 +2,7 @@ package witnesscache
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -395,14 +396,130 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 
 //gofresh:pure
 func TestFingerprintRoundTrip(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-cache-format")
+	positive := generatedObservationFingerprint(t)
+	if positive.DynamicStateStrategy == "" {
+		// The engine's contract: every capture records the strategy its
+		// evidence was computed under. An empty value here would retire
+		// this test's coverage of the validity field silently.
+		t.Fatal("engine capture carries no dynamic-state strategy")
+	}
+	seed := func(fp gofresh.Fingerprint) gofresh.Fingerprint {
+		fp.Guards = guard.Guards{Toolchain: "toolchain", BuildConfig: "build", Machine: "machine", RuntimeConfig: "runtime"}
+		fp.PurityAssertion = "source directive"
+		fp.DynamicStateVouches = "a.example/dep.Var,b.example/dep.W"
+		// Attestation-borne discharges: not armed by any engine this repo
+		// constructs (the field walk below fails when one arrives
+		// unseeded), but the round trip must stay faithful so an
+		// adoption cannot silently drop them.
+		fp.SingleSubjectDischarges = "s.example/dep.One"
+		fp.PackageProcessDischarges = "p.example/dep.Two"
+		fp.RuntimeInputs = "manifest"
+		fp.RuntimeDigest = "digest"
+		return fp
+	}
+	// Two seeds because a legal record cannot populate every proof field
+	// at once (a positive proof carries no reason): the engine's positive
+	// observation proof, and a negative proof whose Reason is set.
+	negative := positive
+	negative.ObservationProof = gofresh.ObservationProof{
+		Strategy:   positive.ObservationProof.Strategy,
+		Subject:    positive.ObservationProof.Subject,
+		Observable: false,
+		Reason:     "operation outside the observed set",
+	}
+	cases := []gofresh.Fingerprint{seed(positive), seed(negative)}
+	for i, want := range cases {
+		if got := FromGofresh(want).ToGofresh(); !reflect.DeepEqual(got, want) {
+			t.Fatalf("case %d: fingerprint round trip = %+v, want %+v", i, got, want)
+		}
+	}
+
+	// The wire form is a hand-maintained mirror of gofresh.Fingerprint:
+	// walk its fields recursively (nested STRUCT VALUES included —
+	// pointer/slice/interface fields would read as leaves, where a
+	// nil/empty value still fires) and require every leaf non-zero in
+	// at least one seed, so a field gofresh grows arrives here as a
+	// failure forcing the record-or-exempt decision instead of riding
+	// unrecorded through the next bump.
+	seeded := map[string]bool{}
+	for _, c := range cases {
+		collectSeededLeaves("", reflect.ValueOf(c), seeded)
+	}
+	for path, nonZero := range seeded {
+		if !nonZero {
+			t.Errorf("fingerprint field %s is zero in every round-trip seed: wire it (Fingerprint struct + both converters) and seed it, or exempt it here with the reason", path)
+		}
+	}
+}
+
+// collectSeededLeaves ORs each struct leaf's non-zeroness into acc:
+// order-independent across seeds, and a leaf never visited reads false
+// and errors (fail-closed).
+func collectSeededLeaves(prefix string, v reflect.Value, acc map[string]bool) {
+	for i := range v.NumField() {
+		f := v.Field(i)
+		name := prefix + v.Type().Field(i).Name
+		if f.Kind() == reflect.Struct {
+			collectSeededLeaves(name+".", f, acc)
+			continue
+		}
+		acc[name] = acc[name] || !f.IsZero()
+	}
+}
+
+// TestFingerprintWireKeySet binds REQ-evidence-witness-cache-format's
+// fingerprint key enumeration to the marshalled wire: the persisted key
+// set of a fingerprint populated to that enumeration is exactly the
+// spec's list, so a
+// new field or an accidental key rename (which would silently orphan
+// every stored record) fails here instead of drifting past review.
+func TestFingerprintWireKeySet(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-cache-format")
 	want := generatedObservationFingerprint(t)
+	// Populated to the spec's persisted key set, NOT every struct field:
+	// machine and runtimeConfig are measurement guards the code-record
+	// format forbids (UnmarshalJSON refuses them), deliberately unseeded
+	// here so they never marshal — the converters themselves stay
+	// format-agnostic (the round trip seeds them), and the record
+	// boundary is where the format's exclusion is enforced. The expected
+	// list is the enumeration in docs/specs/evidence.md's
+	// REQ-evidence-witness-cache-format, byte-for-byte.
 	want.Guards = guard.Guards{Toolchain: "toolchain", BuildConfig: "build"}
 	want.PurityAssertion = "source directive"
-	want.DynamicStateVouches = "a.example/dep.Var,b.example/dep.W"
+	want.DynamicStateVouches = "a.example/dep.Var"
+	want.SingleSubjectDischarges = "s.example/dep.One"
+	want.PackageProcessDischarges = "p.example/dep.Two"
 	want.RuntimeInputs = "manifest"
 	want.RuntimeDigest = "digest"
-	if got := FromGofresh(want).ToGofresh(); !reflect.DeepEqual(got, want) {
-		t.Fatalf("fingerprint round trip = %+v, want %+v", got, want)
+	data, err := json.Marshal(FromGofresh(want))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var keys map[string]json.RawMessage
+	if err := json.Unmarshal(data, &keys); err != nil {
+		t.Fatal(err)
+	}
+	spec := []string{
+		"maximalClosure", "testVariantClosure", "toolchain", "buildConfig",
+		"observationAssertion", "observationProof", "purityAssertion",
+		"dynamicStateVouches", "singleSubjectDischarges",
+		"packageProcessDischarges", "dynamicStateStrategy",
+		"runtimeInputs", "runtimeDigest", "resultKind",
+	}
+	specSet := map[string]bool{}
+	for _, k := range spec {
+		specSet[k] = true
+	}
+	for k := range keys {
+		if !specSet[k] {
+			t.Errorf("marshalled key %q is not in REQ-evidence-witness-cache-format's enumeration", k)
+		}
+	}
+	for _, k := range spec {
+		if _, ok := keys[k]; !ok {
+			t.Errorf("spec-enumerated key %q absent from the populated wire", k)
+		}
 	}
 }
 

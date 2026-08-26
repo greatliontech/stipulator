@@ -162,9 +162,19 @@ type Fingerprint struct {
 	ObservationProof     *observationProof `json:"observationProof,omitempty"`
 	PurityAssertion      string            `json:"purityAssertion,omitempty"`
 	DynamicStateVouches  string            `json:"dynamicStateVouches,omitempty"`
-	RuntimeInputs        string            `json:"runtimeInputs,omitempty"`
-	RuntimeDigest        string            `json:"runtimeDigest,omitempty"`
-	ResultKind           gofresh.Kind      `json:"resultKind"`
+	// SingleSubjectDischarges/PackageProcessDischarges are gofresh's
+	// attestation-borne discharge audit; DynamicStateStrategy is the
+	// shared-dynamic-state derivation the evidence was computed under —
+	// a validity field: the engine refuses to serve a record computed
+	// under another strategy, and a record persisted before the field
+	// reads as the empty strategy and fails closed to re-execution
+	// (the clean-break shape, no back-fill).
+	SingleSubjectDischarges  string       `json:"singleSubjectDischarges,omitempty"`
+	PackageProcessDischarges string       `json:"packageProcessDischarges,omitempty"`
+	DynamicStateStrategy     string       `json:"dynamicStateStrategy,omitempty"`
+	RuntimeInputs            string       `json:"runtimeInputs,omitempty"`
+	RuntimeDigest            string       `json:"runtimeDigest,omitempty"`
+	ResultKind               gofresh.Kind `json:"resultKind"`
 }
 
 func (f *Fingerprint) UnmarshalJSON(data []byte) error {
@@ -209,12 +219,15 @@ func (f Fingerprint) ToGofresh() gofresh.Fingerprint {
 			Machine:       f.Machine,
 			RuntimeConfig: f.RuntimeConfig,
 		},
-		ObservationAssertion: f.ObservationAssertion,
-		PurityAssertion:      f.PurityAssertion,
-		DynamicStateVouches:  f.DynamicStateVouches,
-		RuntimeInputs:        f.RuntimeInputs,
-		RuntimeDigest:        f.RuntimeDigest,
-		ResultKind:           f.ResultKind,
+		ObservationAssertion:     f.ObservationAssertion,
+		PurityAssertion:          f.PurityAssertion,
+		DynamicStateVouches:      f.DynamicStateVouches,
+		SingleSubjectDischarges:  f.SingleSubjectDischarges,
+		PackageProcessDischarges: f.PackageProcessDischarges,
+		DynamicStateStrategy:     f.DynamicStateStrategy,
+		RuntimeInputs:            f.RuntimeInputs,
+		RuntimeDigest:            f.RuntimeDigest,
+		ResultKind:               f.ResultKind,
 	}
 	if f.ObservationProof != nil {
 		fp.ObservationProof = gofresh.ObservationProof{
@@ -231,18 +244,21 @@ func (f Fingerprint) ToGofresh() gofresh.Fingerprint {
 // FromGofresh converts from the engine's form.
 func FromGofresh(fp gofresh.Fingerprint) Fingerprint {
 	f := Fingerprint{
-		MaximalClosure:       fp.MaximalClosure,
-		TestVariantClosure:   fp.TestVariantClosure,
-		Toolchain:            fp.Guards.Toolchain,
-		BuildConfig:          fp.Guards.BuildConfig,
-		Machine:              fp.Guards.Machine,
-		RuntimeConfig:        fp.Guards.RuntimeConfig,
-		ObservationAssertion: fp.ObservationAssertion,
-		PurityAssertion:      fp.PurityAssertion,
-		DynamicStateVouches:  fp.DynamicStateVouches,
-		RuntimeInputs:        fp.RuntimeInputs,
-		RuntimeDigest:        fp.RuntimeDigest,
-		ResultKind:           fp.ResultKind,
+		MaximalClosure:           fp.MaximalClosure,
+		TestVariantClosure:       fp.TestVariantClosure,
+		Toolchain:                fp.Guards.Toolchain,
+		BuildConfig:              fp.Guards.BuildConfig,
+		Machine:                  fp.Guards.Machine,
+		RuntimeConfig:            fp.Guards.RuntimeConfig,
+		ObservationAssertion:     fp.ObservationAssertion,
+		PurityAssertion:          fp.PurityAssertion,
+		DynamicStateVouches:      fp.DynamicStateVouches,
+		SingleSubjectDischarges:  fp.SingleSubjectDischarges,
+		PackageProcessDischarges: fp.PackageProcessDischarges,
+		DynamicStateStrategy:     fp.DynamicStateStrategy,
+		RuntimeInputs:            fp.RuntimeInputs,
+		RuntimeDigest:            fp.RuntimeDigest,
+		ResultKind:               fp.ResultKind,
 	}
 	if fp.ObservationProof != (gofresh.ObservationProof{}) {
 		f.ObservationProof = &observationProof{

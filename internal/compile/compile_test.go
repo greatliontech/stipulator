@@ -496,7 +496,7 @@ func TestTermLintRuneBoundaries(t *testing.T) {
 	stipulate.Covers(t, "REQ-profile-term-lint")
 	_, diags := compileFiles(t, map[string]string{
 		".stipulator/manifest.textproto": "include: \"specs/**/*.md\"\nterm_lint { warn_shadowing: true }\n",
-		"specs/a.md": "# T\n\n**épreuve du feu** (term): the big trial.\n\n**épreuve** (term): a trial.\n",
+		"specs/a.md":                     "# T\n\n**épreuve du feu** (term): the big trial.\n\n**épreuve** (term): a trial.\n",
 	})
 	warned := false
 	for _, d := range diags {

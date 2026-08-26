@@ -181,9 +181,9 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	env = setEnv(env, "GOPACKAGESDRIVER", "off")
 
 	n := &NormalizedInvocation{
-		Name:         inv.GetName(),
-		ModuleRoot:   cfg.GetModuleRoot(),
-		Packages:     append([]string(nil), cfg.GetPackages()...),
+		Name:              inv.GetName(),
+		ModuleRoot:        cfg.GetModuleRoot(),
+		Packages:          append([]string(nil), cfg.GetPackages()...),
 		EnvOverrides:      append([]string(nil), cfg.GetEnvironment()...),
 		EnvDeny:           append([]string(nil), cfg.GetEnvDeny()...),
 		DeclaredToolchain: cfg.GetToolchain(),
@@ -192,12 +192,12 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		DeclaredCgo:       declaredPin(cfg.HasCgoEnabled(), fmt.Sprintf("%t", cfg.GetCgoEnabled())),
 		DeclaredGOFLAGS:   declaredPin(cfg.HasGoflags(), cfg.GetGoflags()),
 		Race:              cfg.GetRace(),
-		PlainWitness: cfg.GetPlainWitness(),
-		Timeout:      inv.GetTimeout().AsDuration(),
-		Tags:         append([]string(nil), cfg.GetTags()...),
-		ModuleMode:   cfg.GetModuleMode(),
-		Count:        cfg.GetCount(),
-		Args:         append([]string(nil), cfg.GetArgs()...),
+		PlainWitness:      cfg.GetPlainWitness(),
+		Timeout:           inv.GetTimeout().AsDuration(),
+		Tags:              append([]string(nil), cfg.GetTags()...),
+		ModuleMode:        cfg.GetModuleMode(),
+		Count:             cfg.GetCount(),
+		Args:              append([]string(nil), cfg.GetArgs()...),
 	}
 	if cfg.HasPgo() {
 		n.PGO = cfg.GetPgo()

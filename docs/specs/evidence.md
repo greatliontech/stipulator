@@ -326,7 +326,17 @@ group's coordinate, so a record is addressable only within the producer
 environment that made it, and from `5` when the persisted compartment
 ledger gained each declaration's package clause and referenced names,
 both consumed by the test-variants serve carve-out's diff — either way
-field-blind prior records fail closed to re-execution —
+field-blind prior records fail closed to re-execution. A persisted-field
+addition earns a bump only when the version is the fail-closed mechanism,
+and the two bump-free arms differ: a field whose absence the engine's own
+recorded-evidence verdict already refuses (the dynamic-state strategy,
+judged stale by Gofresh when empty) fails closed by verdict instead of by
+version, while an audit-only field with no validity comparison (the vouch
+and discharge sets) cannot make serving wrong by its absence, so prior
+records serve unchanged with the audit set reading empty for the
+pre-field capture — the residual is auditability, not validity: an
+acceptance that was load-bearing at capture is invisible in that record's
+evidence until its next re-execution. The record carries
 string `group`, `package` and `test`, object `fingerprint`, object `compartmentLedger`,
 object `outcomes`, optional
 array `registrations`, and optional array `observationExclusions` — the
@@ -335,12 +345,21 @@ under, absent meaning the capture ran with none, which is exactly what
 every pre-field record's capture did. Its fingerprint keys are `maximalClosure`,
 `testVariantClosure`, `toolchain`,
 `buildConfig`, an optional `observationAssertion` plus `observationProof` pair, and
-optional `purityAssertion`,
+optional `purityAssertion`, `dynamicStateVouches`, `singleSubjectDischarges`,
+`packageProcessDischarges`, `dynamicStateStrategy`,
 `runtimeInputs`, `runtimeDigest`, and numeric `resultKind`; closure (maximal and
 test-variant), build, and runtime
 digests are 16-byte lowercase hexadecimal values, the observation assertion and proof
 are structurally encoded attributable Gofresh evidence for the record's subject, the runtime
 manifest is canonical Gofresh v1, purity is empty or a recognized Gofresh attribution,
+the vouch and discharge sets are Gofresh's canonical sorted comma-joined
+`<import path>.<Variable>` identities (vouches: the reviewed acceptances that
+discharged culprits for this fingerprint; the two discharge sets:
+attestation-borne acceptances, audit exactly as vouches), the dynamic-state
+strategy is the Gofresh strategy identifier the fingerprint was computed under
+(validity: the engine refuses to serve a record computed under another
+strategy, and a record persisted before the field reads as the empty strategy
+and fails closed to re-execution),
 measurement fields are absent, and result kind is Gofresh code-result. The
 `compartmentLedger` object carries the producing compartment's declaration
 ledger — the witness-freshness carve-out's diff base — as an optional

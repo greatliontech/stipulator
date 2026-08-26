@@ -120,11 +120,11 @@ func TestGoDiscoveryRecordsClosureDirs(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness")
 	neutralAmbient(t)
 	dir := writeModule(t, map[string]string{
-		"go.mod":         "module example.com/clo\n\ngo 1.26\n",
-		"deep/deep.go":   "package deep\n\nfunc Deep() {}\n",
-		"lib/lib.go":     "package lib\n\nimport \"example.com/clo/deep\"\n\nfunc Lib() { deep.Deep() }\n",
-		"tdep/tdep.go":   "package tdep\n\nfunc TDep() {}\n",
-		"app/app.go":     "package app\n\nimport \"example.com/clo/lib\"\n\nfunc App() { lib.Lib() }\n",
+		"go.mod":       "module example.com/clo\n\ngo 1.26\n",
+		"deep/deep.go": "package deep\n\nfunc Deep() {}\n",
+		"lib/lib.go":   "package lib\n\nimport \"example.com/clo/deep\"\n\nfunc Lib() { deep.Deep() }\n",
+		"tdep/tdep.go": "package tdep\n\nfunc TDep() {}\n",
+		"app/app.go":   "package app\n\nimport \"example.com/clo/lib\"\n\nfunc App() { lib.Lib() }\n",
 		"app/app_test.go": `package app
 
 import (

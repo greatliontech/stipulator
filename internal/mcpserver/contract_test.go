@@ -3,8 +3,8 @@ package mcpserver
 import (
 	"context"
 	"io/fs"
-	"strings"
 	"runtime"
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -12,8 +12,8 @@ import (
 	"github.com/greatliontech/gofresh"
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/facts"
-	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/stipulate"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -202,8 +202,8 @@ func TestServerApplyCompareAndSwap(t *testing.T) {
 func TestTokenlessCallEmitsPhaseLogMessages(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-progress")
 	fsys := fstest.MapFS{
-		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
-		"specs/a.md":                     {Data: []byte(doc)},
+		".stipulator/manifest.textproto":   {Data: []byte("include: \"specs/**/*.md\"\n")},
+		"specs/a.md":                       {Data: []byte(doc)},
 		".stipulator/bindings/m.textproto": {Data: []byte(pinnedBinding(t))},
 	}
 	s := &Server{
