@@ -999,3 +999,93 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "142ce4804b73f68573577da627053f1dbf1f22abbddfbeee569033846d8809c4"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-toolchain-provenance"
+  content_hash: "63e7d4445d629d56b649ba2b1b61d6ae8718cd0c27dc94db638f2d825302496b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGroupEngineRefusesToolchainSkew"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "de035d2c08654740f5d343d7bc88135f7fecc18b793d3597b09fb751750c13cd"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-toolchain-provenance"
+  content_hash: "63e7d4445d629d56b649ba2b1b61d6ae8718cd0c27dc94db638f2d825302496b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGroupEngineRefusesUnidentifiableToolchain"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "641d8d4de6a900bd94fa36f2bec2d8a7e0311ac6712008d4160239014ecaecd6"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-toolchain-provenance"
+  content_hash: "63e7d4445d629d56b649ba2b1b61d6ae8718cd0c27dc94db638f2d825302496b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.checkToolchainProvenance"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "adc8f699df8b5be3f9a620475d53251b2e47ec102892bbe28309f1926356c48b"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-toolchain-provenance"
+  content_hash: "63e7d4445d629d56b649ba2b1b61d6ae8718cd0c27dc94db638f2d825302496b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunWitnessesAbortsOnToolchainSkew"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a44a392fe9267d2bcbe9cb0bee89409f26528f6535239b465d6cff2fa688397e"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-toolchain-provenance"
+  content_hash: "63e7d4445d629d56b649ba2b1b61d6ae8718cd0c27dc94db638f2d825302496b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestNewWitnessRecorderAbortsOnToolchainSkew"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "0be0faaf7d341dd5416033453119fc19234a62ab3d100ab148ca29c2baa08e77"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-toolchain-provenance"
+  content_hash: "63e7d4445d629d56b649ba2b1b61d6ae8718cd0c27dc94db638f2d825302496b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestNewContextRefusesToolchainSkew"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5975da9c2e72b4edd3d0c66e9ab54edb47a59612b10ae9b9846f21506dd5b06e"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-toolchain-provenance"
+  content_hash: "63e7d4445d629d56b649ba2b1b61d6ae8718cd0c27dc94db638f2d825302496b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestCheckToolchainProvenanceDirectional"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "8c12191d6cd671b0d2efbdff27057c4d2d84e8b2acb3401e37891d87a121d80b"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-toolchain-provenance"
+  content_hash: "63e7d4445d629d56b649ba2b1b61d6ae8718cd0c27dc94db638f2d825302496b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestClassifyFaultRoutesProvenanceToAbort"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5c615da3f8ea5ca184eeba0ef1c20720566de8a73e272a285725c10dab261893"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-toolchain-provenance"
+  content_hash: "63e7d4445d629d56b649ba2b1b61d6ae8718cd0c27dc94db638f2d825302496b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.checkToolchainSkewIdentified"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "70f65d529fb925124db30671211521c76dd3dbcfadaf852da82b9dc544db1859"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-toolchain-provenance"
+  content_hash: "63e7d4445d629d56b649ba2b1b61d6ae8718cd0c27dc94db638f2d825302496b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.classifyFault"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "bff9a8449f1dd4f9a126f5dba35f3d3a96223e34008a78847a90fe5909b2c341"
+}

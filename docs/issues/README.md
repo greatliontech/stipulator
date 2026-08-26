@@ -2,6 +2,10 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
+- **[runtime-args-rekey-witness-store](runtime-args-rekey-witness-store.md)** — the capture-group
+  key folds the whole `Args` list, so a runtime-only knob edit (`-test.timeout`) discards every
+  stored record and forces a ~31m cold re-execution; partition build-affecting from runtime-only.
+  *Lands: the next chunk that touches the capture-group identity or the record coordinate.*
 - **[multiply-selected-witnesses-uncacheable](multiply-selected-witnesses-uncacheable.md)** — every
   check re-executes the whole corpus (~25 min warm); witness identity must not depend on the
   selecting requirement set. *Lands: with the tool-phase stipulator visit.*

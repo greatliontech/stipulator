@@ -406,6 +406,31 @@ outside, degraded or not. On an id-scoped pass the degraded full
 execution is the scope's own — every in-scope subject executes, and the
 scope boundary keeps holding — never the tree's.
 
+**REQ-evidence-toolchain-provenance** (behavior): Every frontend parse of
+the tree MUST refuse toolchain-provenance skew before its result feeds any
+verdict — engine construction before any freshness verdict, and a build
+selection's package-load view before any resolution: the effective
+toolchain is sampled as that consumer's own loads resolve it — `go env
+GOVERSION` at the tree root under the consumer's complete effective
+environment, a declared toolchain pin (invocation or selection) included —
+and judged by the Gofresh skew contract: directional within a major (an older compiled-in
+frontend refuses newer sources; a newer frontend reads older language under
+the Go 1 compatibility promise), total across majors, an unidentifiable
+version on either side refuses, and a failed sample refuses identically on
+the engine arm — its environment was normalized from a working toolchain,
+so an unsampleable one is anomalous — while on the selection arm an
+unsampleable toolchain loads no view at all and falls to the selection
+view's own named unloadable-view degradation (REQ-go-build-selections);
+an identified, skewed selection toolchain still refuses. The
+refusal aborts the run rather than degrading group by group — a skewed
+frontend misparsing sources would not fail a verdict, it would silently
+shift the evidence every verdict is computed from — and it is not a
+freshness-path fault: the degrade-to-full-execution rule never applies to
+it, because the full run would misread the same sources. A skew refusal
+names both language series and the rebuild that clears it; an
+unidentifiable or failed-sample refusal names what it could read and the
+failing sample.
+
 **REQ-evidence-store-gc** (behavior): The witness store MUST offer an
 explicit garbage-collection verb, on both surfaces, that removes this
 corpus's record variants whose witness identity is absent from the

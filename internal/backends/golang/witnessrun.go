@@ -249,7 +249,15 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 	if universeErr != nil {
 		degraded = universeErr.Error()
 	} else {
-		groups, degraded = prepareWitnessGroups(ctx, dir, pc, cachedByKey)
+		var prepErr error
+		groups, degraded, prepErr = prepareWitnessGroups(ctx, dir, pc, cachedByKey)
+		if prepErr != nil {
+			// A toolchain-provenance refusal is a run-level abort, never
+			// a degradation (REQ-evidence-toolchain-provenance): the
+			// degraded full execution would run over a tree the refused
+			// frontend also discovered and selected from.
+			return nil, prepErr
+		}
 		if degraded != "" && ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
@@ -643,10 +651,12 @@ func exclusionsStillAsserted(recorded, current []string) bool {
 // analysis view over its in-policy subjects, the pre-execution
 // fingerprint check partitioning served from stale, the stale captures,
 // and the observation-proof leg for packages executing exactly one
-// top-level runnable. Any fault returns the degraded reason: the caller
-// serves nothing and executes everything covered
-// (REQ-evidence-freshness-degrade).
-func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, cached map[string][]witnesscache.Record) ([]*witnessGroup, string) {
+// top-level runnable. Faults split by classifyFault: a
+// toolchain-provenance refusal returns as the error — a run-level
+// abort, never a degradation — while any other fault returns the
+// degraded reason: the caller serves nothing and executes everything
+// covered (REQ-evidence-freshness-degrade).
+func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, cached map[string][]witnesscache.Record) ([]*witnessGroup, string, error) {
 	var out []*witnessGroup
 	for _, g := range pc.groups {
 		subjects := groupSubjects(g)
@@ -655,11 +665,17 @@ func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, ca
 		}
 		engine, err := groupEngine(ctx, dir, g)
 		if err != nil {
-			return nil, err.Error()
+			if abort, reason := classifyFault(err); !abort {
+				return nil, reason, nil
+			}
+			return nil, "", err
 		}
 		view, err := engine.NewView(ctx, subjects, dir)
 		if err != nil {
-			return nil, err.Error()
+			if abort, reason := classifyFault(err); !abort {
+				return nil, reason, nil
+			}
+			return nil, "", err
 		}
 		wg := &witnessGroup{
 			g: g, engine: engine, view: view,
@@ -698,7 +714,10 @@ func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, ca
 			}
 			verdicts, err := checkFingerprints(ctx, view, fps)
 			if err != nil {
-				return nil, err.Error()
+				if abort, reason := classifyFault(err); !abort {
+					return nil, reason, nil
+				}
+				return nil, "", err
 			}
 			grown := map[gofresh.Subject]witnesscache.Record{}
 			refreshed := map[gofresh.Subject]gofresh.Fingerprint{}
@@ -753,7 +772,10 @@ func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, ca
 					}
 				}
 				if err != nil && ctx.Err() != nil {
-					return nil, err.Error()
+					if abort, reason := classifyFault(err); !abort {
+						return nil, reason, nil
+					}
+					return nil, "", err
 				}
 			}
 		}
@@ -792,7 +814,7 @@ func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, ca
 		wg.observed, wg.observedFPs = observedView(ctx, wg.view, wg.candidates)
 		out = append(out, wg)
 	}
-	return out, ""
+	return out, "", nil
 }
 
 // compartmentGrownRefresh applies REQ-evidence-witness-freshness's

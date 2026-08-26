@@ -559,6 +559,16 @@ func groupSubjects(g *captureGroup) []gofresh.Subject {
 // groupEngine constructs the gofresh engine for one capture group's
 // closure-shaping configuration.
 func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Engine, error) {
+	// Toolchain provenance is a prerequisite to constructing any
+	// engine: the sample resolves as this group's own loads do (the
+	// tree root under the group's normalized environment, its
+	// GOTOOLCHAIN pin included), so a frontend that cannot read what
+	// this group's toolchain builds refuses before any verdict —
+	// the go1.27 stale-binary episode's structural fix, shared with
+	// pew and gomutant.
+	if err := checkToolchainProvenance(dir, g.env); err != nil {
+		return nil, err
+	}
 	var flags []string
 	if g.race {
 		flags = append(flags, "-race")
@@ -607,14 +617,22 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Eng
 // no witness evidence, so nothing it produces may enter the cache a
 // freshness-serving run would grant evidence from. A fault while
 // preparing disables publication and is reported through the derived
-// run's degraded reason, never as an error: publication is optimization,
-// not correctness.
-func NewWitnessRecorder(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) *WitnessRecorder {
+// run's degraded reason, never as an error — publication is
+// optimization, not correctness — with one exception: a
+// toolchain-provenance refusal returns as the error, a run-level
+// abort (REQ-evidence-toolchain-provenance; classifyFault), because
+// the refused frontend also discovered and selected the suite the
+// degraded run would execute.
+func NewWitnessRecorder(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (*WitnessRecorder, error) {
 	r := &WitnessRecorder{dir: dir}
-	degrade := func(err error) *WitnessRecorder {
-		r.degraded = err.Error()
+	degrade := func(err error) (*WitnessRecorder, error) {
+		abort, reason := classifyFault(err)
+		if abort {
+			return nil, err
+		}
+		r.degraded = reason
 		r.groups = nil
-		return r
+		return r, nil
 	}
 	pc, err := capturePolicy(ctx, dir, p)
 	if err != nil {
@@ -655,7 +673,7 @@ func NewWitnessRecorder(ctx context.Context, dir string, p *stipulatorv1.TestPol
 	// race-instrumented builds; the views stay alive for post-execution
 	// producer validation.
 	debug.FreeOSMemory()
-	return r
+	return r, nil
 }
 
 // producerKey identifies one producing process for observation lookup.
@@ -940,7 +958,13 @@ func ExecutePolicyWitnessed(ctx context.Context, dir string, p *stipulatorv1.Tes
 	// Pre-execution capture normalizes and discovers the policy's
 	// invocations for itself: discovery-phase work.
 	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
-	recorder := NewWitnessRecorder(ctx, dir, p)
+	recorder, err := NewWitnessRecorder(ctx, dir, p)
+	if err != nil {
+		// A toolchain-provenance refusal aborts before the suite runs:
+		// the refused frontend discovered and selected it
+		// (REQ-evidence-toolchain-provenance).
+		return nil, nil, err
+	}
 	report, observations, err := ExecutePolicy(ctx, dir, p)
 	if err != nil {
 		return nil, nil, err

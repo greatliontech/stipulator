@@ -3,13 +3,18 @@
 
 invocations {
   name: "race"
+  # Budgets cover a cold FULL re-execution of the whole witness set
+  # under the gofresh v0.85.1 engine. Measured 2026-08-26: 30m43s
+  # whole-check wall for 446 executed / 0 served (the race binary's
+  # own share crossed the previous 30m test budget twice, aborting
+  # mid-suite at 1805s+). 100m/7200s is ~3x the measured cold wall.
   timeout {
-    seconds: 2700
+    seconds: 7200
   }
   go {
     packages: "./..."
     race: true
-    args: "-test.timeout=30m"
+    args: "-test.timeout=100m"
     bracket_paths: "/bin/sh"
     bracket_paths: "/usr/bin/sh"
     bracket_paths: "/usr/bin/git"

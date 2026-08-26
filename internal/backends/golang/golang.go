@@ -93,6 +93,17 @@ func newContext(ctx context.Context, dir string) (*Backend, error) {
 			// (REQ-go-build-selections).
 			viewEnv = append(dropEnv(append([]string(nil), env...), "GOTOOLCHAIN"), "GOTOOLCHAIN="+sel.toolchain)
 		}
+		// The selection view is a frontend parse of the selection's own
+		// sources, so it inherits the toolchain-provenance prerequisite:
+		// an identified selection toolchain this binary's frontend
+		// cannot read refuses the run
+		// (REQ-evidence-toolchain-provenance). A toolchain that cannot
+		// even be sampled loads no view — that case falls through to
+		// the per-view unloadable degradation below
+		// (REQ-go-build-selections).
+		if err := checkToolchainSkewIdentified(dir, viewEnv); err != nil {
+			return nil, err
+		}
 		var viewPkgs []*packages.Package
 		viewLoads := map[*packages.Package]int{}
 		viewFailed := false
