@@ -5,10 +5,10 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[identity-walk-two-trackers](identity-walk-two-trackers.md)** — attachment and extent answer
   "whose block is this" via two independent reset tables in two packages; the subset relationship
   holds by coincidence. Collapse to one walk with two windows. *Lands: cross-tool train chunk 131.*
-- **[runtime-args-rekey-witness-store](runtime-args-rekey-witness-store.md)** — the capture-group
-  key folds the whole `Args` list, so a runtime-only knob edit (`-test.timeout`) discards every
-  stored record and forces a ~31m cold re-execution; partition build-affecting from runtime-only.
-  *Lands: folds into cross-tool train chunk 82 (capture-group key soundness).*
+- **[timeout-kill-attribution](timeout-kill-attribution.md)** — a harness-timeout kill reds the
+  running test as if the tree failed; the envelope fact (budget exhausted) is never named in the
+  diagnostics. No evidence corruption — unhealthy packages publish nothing.
+  *Lands: cross-tool train chunk 114.*
 - **[pin-forms-shape-guidance](pin-forms-shape-guidance.md)** — check's shape-moved guidance and the
   ids-form "pins current" answer mislead exactly when shapes mismatch. *Lands: folds into cross-tool train chunk 112 (MCP doctrine audit).*
 - **[witness-runner-environment-divergence](witness-runner-environment-divergence.md)** — a witness

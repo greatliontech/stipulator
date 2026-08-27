@@ -298,6 +298,42 @@ type policyCapture struct {
 	invGroup map[string]*captureGroup
 }
 
+// runtimeOnlyArg reports whether one extra binary argument is a
+// reviewed runtime-only execution bound: witness evidence asserts a
+// COMPLETED passing observation whose validity never depended on the
+// bound — a bound can only prevent a measurement from completing, and
+// an uncompleted measurement publishes nothing — while a subject that
+// reads its remaining budget (the deadline readback) is unverifiable
+// and publishes no record, so no served evidence can depend on a
+// budget read. Records therefore serve
+// across a bound's edits: a budget knob must be tunable without
+// discarding the store. The classification fails closed: any argument
+// this table cannot prove runtime-only stays identity-bearing,
+// unrecognized spellings (the bare "-test.timeout" flag, the two-token
+// "-test.timeout 30m" form) included. The table is consulted per
+// token on the assumption that reviewed args are flag-per-token (the
+// "=" single-token form): a two-token flag whose VALUE token itself
+// spells "-test.timeout=..." would be misread as the reviewed bound —
+// a constructible but degenerate policy; the misread widens serving,
+// so keep multi-token flags out of reviewed args.
+func runtimeOnlyArg(arg string) bool {
+	return strings.HasPrefix(arg, "-test.timeout=")
+}
+
+// identityArgs is the identity-bearing partition of the invocation's
+// extra binary arguments: everything the reviewed runtime-only table
+// cannot discharge. Both the capture-group key and the record-identity
+// coordinate key on this partition alone.
+func identityArgs(args []string) []string {
+	out := make([]string, 0, len(args))
+	for _, a := range args {
+		if !runtimeOnlyArg(a) {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
 // groupKey is one invocation's capture-group identity: the
 // closure-shaping configuration (build tags, normalized environment,
 // the invocation-wide purity assertion) plus the race bit — race is a
@@ -305,44 +341,85 @@ type policyCapture struct {
 // plain-witness invocation sharing tags and env must not share a
 // capture group, or one group's fingerprints would describe two
 // different binaries and two witness tiers.
-func groupKey(n *NormalizedInvocation) string {
-	// The env component is the witness environment (the width cap
-	// applied; NormalizedInvocation.WitnessEnv): witness evidence
-	// digests under it, so two invocations whose delivered widths
-	// differ must not share a capture group. Module mode, the PGO
-	// profile, and extra binary arguments are build-selection
-	// dimensions - two invocations differing only there build or run
-	// two different things and must not share one analysis view -
-	// while Count is repetition of the same build and deliberately
-	// stays out.
-	key := strings.Join(n.Tags, ",") + "\x00" + strings.Join(witnessEnvOf(n), "\x01") +
-		"\x06" + n.ModuleMode.String() + "\x07" + fmt.Sprintf("%q", n.PGO) + "\x08" + quotedKeyJoin(n.Args)
-	if n.AssumePure {
-		key += "\x02pure"
-	}
-	if n.Race {
-		key += "\x03race"
-	}
-	if len(n.ExcludedPaths) > 0 {
-		key += "\x04" + strings.Join(canonicalExclusions(n.ExcludedPaths), "\x01")
-	}
-	if len(n.Vouches) > 0 {
-		// Vouches change verdicts, so two vouch sets are two capture
-		// groups - one view never mixes two reviewed sets. Records
-		// still share the identity coordinate across vouch sets: an
-		// added vouch serves existing evidence unchanged, and a
-		// withdrawn vouch's records refuse in the current derivation.
-		key += "\x05" + strings.Join(n.Vouches, "\x01")
-	}
-	return key
+// keyValue is a collision-free encoded segment value. The constructors
+// below are its only intended sources — none can emit a raw NUL, so a
+// segment built from them can never alias the join separator or a
+// neighboring segment, and handing a segment an unencoded
+// caller-influenced string fails to compile instead of waiting for a
+// review to notice.
+type keyValue string
+
+func quotedValue(v string) keyValue { return keyValue(fmt.Sprintf("%q", v)) }
+
+func quotedList(vs []string) keyValue { return keyValue(quotedJoin(vs)) }
+
+func boolValue(v bool) keyValue { return keyValue(fmt.Sprintf("%t", v)) }
+
+func intValue(v int32) keyValue { return keyValue(fmt.Sprintf("%d", v)) }
+
+// keySegment is one labeled component of a key. The segment table is
+// the ONE definition tests derive their equality tuples and
+// perturbation domains from — a field keyed here but absent there
+// fails the tests' label-exhaustiveness check instead of going
+// silently blind.
+type keySegment struct {
+	label string
+	value keyValue
 }
 
-// groupIdentity is the record-identity coordinate of one invocation's
-// capture group: the POLICY-DECLARED build selection and per-invocation
+func encodeSegments(segments []keySegment) string {
+	parts := make([]string, len(segments))
+	for i, s := range segments {
+		parts[i] = s.label + "=" + string(s.value)
+	}
+	return strings.Join(parts, "\x00")
+}
+
+// groupKeySegments is the capture-group key's canonical field table.
+// The env component is the witness environment (the width cap applied;
+// NormalizedInvocation.WitnessEnv): witness evidence digests under it,
+// so two invocations whose delivered widths differ must not share a
+// capture group. Module mode, the PGO profile, and the
+// identity-bearing extra binary arguments are selection dimensions -
+// two invocations differing only there build or run two different
+// things and must not share one analysis view - while Count is
+// repetition of the same build and the reviewed runtime-only bounds
+// are execution logistics; both deliberately stay out. Every
+// caller-influenced value is quoted, so no value (an env VALUE most of
+// all - the one caller-arbitrary byte string here) can alias a
+// separator or a neighboring segment into a colliding key.
+func groupKeySegments(n *NormalizedInvocation) []keySegment {
+	return []keySegment{
+		{"tags", quotedList(n.Tags)},
+		{"env", quotedList(witnessEnvOf(n))},
+		{"modulemode", quotedValue(n.ModuleMode.String())},
+		{"pgo", quotedValue(n.PGO)},
+		{"args", quotedList(identityArgs(n.Args))},
+		{"pure", boolValue(n.AssumePure)},
+		{"race", boolValue(n.Race)},
+		{"exclusions", quotedList(canonicalExclusions(n.ExcludedPaths))},
+		// Vouches change verdicts, so two vouch sets are two capture
+		// groups - one view never mixes two reviewed sets. Records
+		// still share the identity coordinate across vouch and
+		// exclusion sets: an added vouch serves existing evidence
+		// unchanged, and a withdrawn vouch's records refuse in the
+		// current derivation.
+		{"vouches", quotedList(n.Vouches)},
+	}
+}
+
+func groupKey(n *NormalizedInvocation) string {
+	return encodeSegments(groupKeySegments(n))
+}
+
+// groupIdentitySegments is the record-identity coordinate's canonical
+// field table (groupIdentity encodes it): the POLICY-DECLARED build
+// selection and per-invocation
 // semantics — tags, the race build input, the declared platform, cgo,
 // GOFLAGS and toolchain pins (empty when the invocation rides the
-// ambient value), workspace and module mode, the PGO profile, extra
-// binary arguments, the declared environment deltas
+// ambient value), workspace and module mode, the PGO profile, the
+// identity-bearing extra binary arguments (runtimeOnlyArg's reviewed
+// bounds re-address nothing), the declared environment deltas
 // (order-canonicalized), and the declared concurrency bound — and
 // nothing more. Every ambient-resolved fact is deliberately excluded:
 // the merged ambient environment, the effective toolchain, platform,
@@ -356,31 +433,40 @@ func groupKey(n *NormalizedInvocation) string {
 // but each carries its own serving rule riding the record or the
 // fingerprint (a widened exclusion set or an added vouch serves
 // existing evidence unchanged; a purity flip refuses by fingerprint),
-// so none of them may re-address records.
-func groupIdentity(n *NormalizedInvocation) string {
-	// Set-valued components join quoted: a value carrying the joiner
-	// byte must not alias two entries into one coordinate. Env deltas
-	// sort — duplicates are rejected at policy validation, so order is
-	// presentation, and a pure reorder must not orphan the store.
-	parts := []string{
-		"tags=" + quotedJoin(n.Tags),
-		fmt.Sprintf("race=%t", n.Race),
-		"goos=" + n.DeclaredGOOS,
-		"goarch=" + n.DeclaredGOARCH,
-		"cgo=" + n.DeclaredCgo,
-		"goflags=" + n.DeclaredGOFLAGS,
-		fmt.Sprintf("workspace=%t", n.WorkspaceOn),
-		"modulemode=" + n.ModuleMode.String(),
-		"pgo=" + n.PGO,
-		"toolchain=" + n.DeclaredToolchain,
-		"args=" + quotedJoin(n.Args),
-		"envset=" + quotedJoin(sortedCopy(n.EnvOverrides)),
-		"envdeny=" + quotedJoin(sortedCopy(n.EnvDeny)),
-		fmt.Sprintf("concurrency=%d", n.WitnessConcurrency),
+// so none of them may re-address records. Every caller-influenced
+// value is quoted — set-valued and scalar alike: a value carrying the
+// joiner byte or a "\x00label=" tail must not alias two coordinates,
+// and quoting only the set-valued components would leave the scalar
+// segments as the residual channel. Env deltas sort — duplicates are
+// rejected at policy validation, so order is presentation, and a pure
+// reorder must not orphan the store. The args segment carries the
+// identity-bearing partition alone: a reviewed runtime-only bound
+// (runtimeOnlyArg) edits without re-addressing the store.
+func groupIdentitySegments(n *NormalizedInvocation) []keySegment {
+	return []keySegment{
+		{"tags", quotedList(n.Tags)},
+		{"race", boolValue(n.Race)},
+		{"goos", quotedValue(n.DeclaredGOOS)},
+		{"goarch", quotedValue(n.DeclaredGOARCH)},
+		{"cgo", quotedValue(n.DeclaredCgo)},
+		{"goflags", quotedValue(n.DeclaredGOFLAGS)},
+		{"workspace", boolValue(n.WorkspaceOn)},
+		{"modulemode", quotedValue(n.ModuleMode.String())},
+		{"pgo", quotedValue(n.PGO)},
+		{"toolchain", quotedValue(n.DeclaredToolchain)},
+		{"args", quotedList(identityArgs(n.Args))},
+		{"envset", quotedList(sortedCopy(n.EnvOverrides))},
+		{"envdeny", quotedList(sortedCopy(n.EnvDeny))},
+		{"concurrency", intValue(n.WitnessConcurrency)},
 	}
-	return strings.Join(parts, "\x00")
 }
 
+func groupIdentity(n *NormalizedInvocation) string {
+	return encodeSegments(groupIdentitySegments(n))
+}
+
+// quotedJoin joins key components quoted, so a value carrying the
+// joiner byte can never alias two entries into one key or coordinate.
 func quotedJoin(values []string) string {
 	quoted := make([]string, len(values))
 	for i, v := range values {
@@ -422,16 +508,6 @@ func LiveGroupDigests(ctx context.Context, dir string, p *stipulatorv1.TestPolic
 func groupDigest(key string) string {
 	sum := sha256.Sum256([]byte(key))
 	return hex.EncodeToString(sum[:8])
-}
-
-// quotedKeyJoin joins key components quoted, so a value carrying a
-// joiner byte can never alias two entries into one capture group.
-func quotedKeyJoin(values []string) string {
-	quoted := make([]string, len(values))
-	for i, v := range values {
-		quoted[i] = fmt.Sprintf("%q", v)
-	}
-	return strings.Join(quoted, ",")
 }
 
 // canonicalExclusions sorts and deduplicates a reviewed exclusion set so

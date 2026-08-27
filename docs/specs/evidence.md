@@ -233,16 +233,35 @@ group's build coordinate — the policy-declared build selection and
 per-invocation semantics: tags, the race build input, the declared
 platform, cgo, GOFLAGS, and toolchain pins (each marked undeclared
 when the invocation rides the ambient value), workspace and module
-mode, the PGO profile, extra binary arguments, the declared
-environment deltas (order-canonicalized), and the declared concurrency
-bound; deliberately never any ambient-resolved fact — the merged
-ambient environment, the effective toolchain, platform, GOFLAGS, or
-GOEXPERIMENT, and the ambient-derived delivered width are the
-fingerprints' authority. An identity digesting an ambient-resolved
+mode, the PGO profile, the identity-bearing extra binary arguments,
+the declared environment deltas (order-canonicalized), and the
+declared concurrency bound; deliberately never any ambient-resolved
+fact — the merged ambient environment, the effective toolchain,
+platform, GOFLAGS, or GOEXPERIMENT, and the ambient-derived delivered
+width are the fingerprints' authority. An identity digesting an ambient-resolved
 fact would silently orphan the store on a new shell, a toolchain
 upgrade, or a host-width change — and a drifted shell's store
 retirement would delete records the normal shell serves — where
-fingerprints refuse with a named reason and variants coexist. The store's garbage collection may
+fingerprints refuse with a named reason and variants coexist. A
+reviewed runtime-only execution bound — the invocation
+envelope's timeout, the test binary's single-token timeout argument —
+is likewise not identity-bearing, because witness evidence asserts a
+COMPLETED passing observation whose validity never depended on the
+bound: an execution bound can only prevent a measurement from
+completing, and an uncompleted measurement publishes nothing (an
+unhealthy package never publishes). A run that exhausts its bound is
+that run's red suite health — an envelope fact surfaced honestly,
+never laundered into evidence — while previously completed
+observations keep serving: the same budget edit that reds a cold run
+leaves a warm store serving, and that divergence is the contract —
+health is the run's fact, evidence is the tree's. The envelope bound
+has no in-test readback at all; the binary bound's one readback is the
+deadline, and a subject reaching it is unverifiable — it publishes no
+record — so no served evidence can depend on a budget read. Editing
+a bound therefore re-addresses no record — an execution budget is
+tunable without discarding the store — while the classification fails
+closed, any argument not provably runtime-only staying
+identity-bearing. The store's garbage collection may
 retire coordinates no current invocation produces — their records are
 cost no lookup can serve. A test several eligible invocations
 select holds one record per coordinate, each serving only under a view
