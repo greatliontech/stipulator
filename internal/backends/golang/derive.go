@@ -5,7 +5,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"maps"
+	"os"
 	"runtime/debug"
 	"slices"
 	"sort"
@@ -606,8 +608,29 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Eng
 		// stretches of a witnessed run; gofresh's own analysis steps
 		// feed the operation's progress seam as rate-limited
 		// keep-alives in whatever phase the operation is in.
-		gofresh.WithProgress(func(gofresh.Progress) { progress.FromContext(ctx).Keepalive() }),
+		gofresh.WithProgress(func(p gofresh.Progress) {
+			emitEngineDiagnostic(p)
+			progress.FromContext(ctx).Keepalive()
+		}),
 	)...)
+}
+
+// engineDiagnostics receives payload-bearing gofresh diagnostics from
+// every engine a derivation builds; a var so tests can pin delivery.
+// The read is unsynchronized on analysis goroutines: tests may swap it
+// only while no engine is live, and only engine-free tests do.
+var engineDiagnostics io.Writer = os.Stderr
+
+// emitEngineDiagnostic writes a payload-bearing gofresh event
+// (per-subject analysis-unavailable provenance, the unlisted-toolchain
+// notice) to the operator's log unthrottled; detail-free keep-alives
+// stay silent — the keep-alive seam carries no message, and discarding
+// diagnostics by signature once spent the engine's one toolchain
+// announcement into a void.
+func emitEngineDiagnostic(p gofresh.Progress) {
+	if p.Detail != "" {
+		fmt.Fprintf(engineDiagnostics, "gofresh: %s %s — %s\n", p.Phase, p.Package, p.Detail)
+	}
 }
 
 // NewWitnessRecorder prepares freshness publication for one execution of
