@@ -17,5 +17,16 @@ shape mismatch it is not going to fix, says so instead of "pins
 current" — a tool answer that reads as "nothing to do" while the
 gate stays red is the defect.
 
-Lands: with the tool-phase stipulator visit, or the next pin-surface
-change.
+Third fix, same surface (gofresh estate repair review,
+2026-08-28): the blanket form rewrites differing SHAPE pins
+silently — `records.Pin` (internal/records/pin.go) returns only
+preserved content ids, so `pin`'s CLI and MCP surfaces can never
+report a moved shape, and `verify`'s ShapeMismatch bucket (the
+signal that a bound implementation moved) is cleared invisibly.
+Symmetric fix: return the rewritten shape keys and print them
+alongside `preserved`.
+
+Lands: folds into cross-tool train chunk 112 (MCP doctrine audit);
+the records.Pin shape-rewrite reporting fix rides the same visit —
+it changes what the pin surfaces answer, which is that audit's
+scope.
