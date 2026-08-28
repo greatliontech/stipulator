@@ -204,8 +204,10 @@ var adversarialList = rapid.SliceOfN(adversarialVal, 0, 3)
 // holds this map and the keys' segment tables in exact correspondence,
 // label sets AND label-to-field wiring.
 var perturbations = map[string]func(t *rapid.T, n *NormalizedInvocation){
-	"tags":       func(t *rapid.T, n *NormalizedInvocation) { n.Tags = adversarialList.Draw(t, "tags2") },
-	"env":        func(t *rapid.T, n *NormalizedInvocation) { n.WitnessEnv = append([]string{"K=V"}, adversarialList.Draw(t, "env2")...) },
+	"tags": func(t *rapid.T, n *NormalizedInvocation) { n.Tags = adversarialList.Draw(t, "tags2") },
+	"env": func(t *rapid.T, n *NormalizedInvocation) {
+		n.WitnessEnv = append([]string{"K=V"}, adversarialList.Draw(t, "env2")...)
+	},
 	"args":       func(t *rapid.T, n *NormalizedInvocation) { n.Args = adversarialList.Draw(t, "args2") },
 	"exclusions": func(t *rapid.T, n *NormalizedInvocation) { n.ExcludedPaths = adversarialList.Draw(t, "excl2") },
 	"vouches":    func(t *rapid.T, n *NormalizedInvocation) { n.Vouches = adversarialList.Draw(t, "vouches2") },
@@ -217,13 +219,15 @@ var perturbations = map[string]func(t *rapid.T, n *NormalizedInvocation){
 	"modulemode": func(t *rapid.T, n *NormalizedInvocation) {
 		n.ModuleMode = rapid.SampledFrom([]stipulatorv1.GoModuleMode{stipulatorv1.GoModuleMode_GO_MODULE_MODE_UNSPECIFIED, stipulatorv1.GoModuleMode_GO_MODULE_MODE_VENDOR}).Draw(t, "mode2")
 	},
-	"pgo":         func(t *rapid.T, n *NormalizedInvocation) { n.PGO = adversarialVal.Draw(t, "pgo2") },
-	"goos":        func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredGOOS = adversarialVal.Draw(t, "goos2") },
-	"goarch":      func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredGOARCH = adversarialVal.Draw(t, "goarch2") },
-	"cgo":         func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredCgo = adversarialVal.Draw(t, "cgo2") },
-	"goflags":     func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredGOFLAGS = adversarialVal.Draw(t, "goflags2") },
-	"toolchain":   func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredToolchain = adversarialVal.Draw(t, "toolchain2") },
-	"concurrency": func(t *rapid.T, n *NormalizedInvocation) { n.WitnessConcurrency = rapid.Int32Range(0, 2).Draw(t, "concurrency2") },
+	"pgo":       func(t *rapid.T, n *NormalizedInvocation) { n.PGO = adversarialVal.Draw(t, "pgo2") },
+	"goos":      func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredGOOS = adversarialVal.Draw(t, "goos2") },
+	"goarch":    func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredGOARCH = adversarialVal.Draw(t, "goarch2") },
+	"cgo":       func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredCgo = adversarialVal.Draw(t, "cgo2") },
+	"goflags":   func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredGOFLAGS = adversarialVal.Draw(t, "goflags2") },
+	"toolchain": func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredToolchain = adversarialVal.Draw(t, "toolchain2") },
+	"concurrency": func(t *rapid.T, n *NormalizedInvocation) {
+		n.WitnessConcurrency = rapid.Int32Range(0, 2).Draw(t, "concurrency2")
+	},
 }
 
 // keyedLabels is the union of both segment tables' labels, sorted. The
