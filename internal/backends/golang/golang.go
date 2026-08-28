@@ -415,6 +415,21 @@ func lookup(pkg *types.Package, parts []string) types.Object {
 		types.NewMethodSet(tn.Type()),
 	} {
 		for i := 0; i < ms.Len(); i++ {
+			// The method set includes PROMOTED methods: T.M resolves
+			// to the method Go's own selector semantics denote, the
+			// declared method of the embedded type. That is deliberate
+			// — the shape pin is taken over the DECLARED object, so if
+			// T later declares its own M the resolved shape changes
+			// and the pin stales into re-consent; the retarget is
+			// never silent. Generated-code detection likewise follows
+			// the declaring file (a hand-written wrapper never
+			// launders a generated method). The admission is exactly
+			// as wide as the method set: an embedded INTERFACE's
+			// method resolves (bodiless — no FuncDecl matches it, so
+			// it degrades to not-a-runnable-witness downstream), and
+			// a method promoted from an embedded FOREIGN type
+			// resolves to its foreign declaration, whose
+			// package-qualified path rides the shape hash.
 			if m := ms.At(i).Obj(); m.Name() == parts[1] {
 				return m
 			}
@@ -645,16 +660,16 @@ func shapeHash(obj types.Object) string {
 	}))
 }
 
-// generated reports whether the object's declaration lies in a generated
-// file, per the standard "Code generated ... DO NOT EDIT." marker. The
-// object's declaring package is scanned — not the resolution candidate —
-// so a method promoted from an embedded generated type is still detected.
-// A declaring package outside the load set cannot be checked and reads as
-// not generated.
-// generatedIn judges the object within the resolving package's own
-// load: a promoted method's declaring file lives in the object's
-// origin package - possibly a sibling of the resolving package - so
-// the scan spans the load's packages sharing the origin path.
+// generatedIn reports whether the object's declaration lies in a
+// generated file, per the standard "Code generated ... DO NOT EDIT."
+// marker. The object's declaring package is scanned — not the
+// resolution candidate — so a method promoted from an embedded
+// generated type is still detected; a declaring package outside the
+// load set cannot be checked and reads as not generated.
+// The judgment stays within the resolving package's own load: a
+// promoted method's declaring file lives in the object's origin
+// package - possibly a sibling of the resolving package - so the
+// scan spans the load's packages sharing the origin path.
 // Position containment is only meaningful inside one load's FileSet:
 // with one package view per build selection, the same package path
 // recurs across views with incompatible FileSets, and a cross-load
