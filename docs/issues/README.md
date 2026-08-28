@@ -29,7 +29,3 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   X" structural clauses have no verb: NoImport is transitive (stdlib forbiddance fails
   through any real dependency) and the shape verbs state presence, not capability absence;
   a direct-call-absence verb (structural.NoCall) would carry them. *Lands: capability charter — activates when a structural requirement needs a call-absence proof the signature/import verbs cannot carry.*
-
-  (b667e8f241ee) lags the repo HEAD (143be37af416); every check verdict on this machine runs
-  the older code (fleet sweep 2026-08-27). *Lands: cross-tool train chunk 134 (its gates run the
-  installed binary; install at the landed HEAD first).*
