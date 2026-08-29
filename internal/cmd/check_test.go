@@ -321,3 +321,18 @@ func TestCheckRenderUncacheableHistogram(t *testing.T) {
 		t.Fatalf("histogram missing or misordered:\n%s", out)
 	}
 }
+
+// Policy-tier notices render on the CLI face — the degradation must be
+// visible where the operator reads, not only on the wire
+// (REQ-check-policy-notices).
+func TestCheckRenderCarriesPolicyNotices(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-policy-notices")
+	res := &stipulatorv1.CheckResult{}
+	res.SetPassed(true)
+	res.SetPolicyNotices([]string{`invocation "tagged": toolchain-selection audit: selection "dup" under go1.X is unwalked`})
+	var stdout, stderr bytes.Buffer
+	renderCheck(&stdout, &stderr, res)
+	if !strings.Contains(stderr.String(), `invocation "tagged"`) || !strings.Contains(stderr.String(), `selection "dup"`) {
+		t.Errorf("policy notice not rendered:\n%s", stderr.String())
+	}
+}

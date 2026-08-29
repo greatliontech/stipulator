@@ -432,16 +432,23 @@ func compileLine(out compileOut) string {
 type verifyIn struct {
 	NoTest bool   `json:"no_test,omitempty" jsonschema:"skip running tests (no witnesses)"`
 	View   string `json:"view,omitempty" jsonschema:"summary (default: hygiene and witness counts with change signatures) or bindings (the per-binding rows)"`
-	Ids    string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers to scope binding rows to"`
+	Ids    string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers to scope binding rows to; unknown identifiers refuse"`
 	Filter string `json:"filter,omitempty" jsonschema:"requirement-id glob over binding rows"`
 	Path   string `json:"path,omitempty" jsonschema:"prefix over declaring document or symbol"`
 }
 
-func (s *Server) verifyPipeline(ctx context.Context, noTest bool) (*stipulatorv1.Spec, *verify.Report, *records.Store, error) {
+func (s *Server) verifyPipeline(ctx context.Context, noTest bool, scopeIDs string) (*stipulatorv1.Spec, *verify.Report, *records.Store, error) {
 	rep := progress.FromContext(ctx)
 	rep.Phase(stipulatorv1.Phase_PHASE_COMPILE)
 	spec, err := s.compileFresh()
 	if err != nil {
+		return nil, nil, nil, err
+	}
+	// The exact-id scope validates against the freshly compiled corpus
+	// and BEFORE the witness run — a typo is a refusal, never an empty
+	// result, and never one that costs the expensive pass to hear
+	// (REQ-mcp-response-contract); one compile serves both.
+	if err := refuseUnknownIDs(spec, scopeIDs); err != nil {
 		return nil, nil, nil, err
 	}
 	store, err := records.Load(s.fsys())
@@ -466,7 +473,7 @@ func (s *Server) verifyPipeline(ctx context.Context, noTest bool) (*stipulatorv1
 
 func (s *Server) toolVerify(ctx context.Context, req *mcp.CallToolRequest, in verifyIn) (*mcp.CallToolResult, map[string]any, error) {
 	ctx, prog := s.startProgress(ctx, req)
-	spec, rep, _, err := s.verifyPipeline(ctx, in.NoTest)
+	spec, rep, _, err := s.verifyPipeline(ctx, in.NoTest, in.Ids)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
@@ -484,7 +491,7 @@ func (s *Server) toolVerify(ctx context.Context, req *mcp.CallToolRequest, in ve
 
 type gateIn struct {
 	View   string `json:"view,omitempty" jsonschema:"summary (default: pass/fail + counts + violations), reds (red requirements with reasons), or full (every requirement)"`
-	Ids    string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers to scope to"`
+	Ids    string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers to scope to; unknown identifiers refuse"`
 	Bucket string `json:"bucket,omitempty" jsonschema:"scope to one bucket: uncovered, stale, broken, covered, exempt, attested"`
 	Filter string `json:"filter,omitempty" jsonschema:"requirement-id glob, e.g. REQ-arch-*"`
 	Path   string `json:"path,omitempty" jsonschema:"prefix over declaring spec document or bound symbols, e.g. docs/specs/change.md or internal/corpus"`
@@ -492,16 +499,12 @@ type gateIn struct {
 
 func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in gateIn) (*mcp.CallToolResult, map[string]any, error) {
 	ctx, prog := s.startProgress(ctx, req)
-	spec, rep, store, err := s.verifyPipeline(ctx, false)
+	spec, rep, store, err := s.verifyPipeline(ctx, false, in.Ids)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
-	if len(rep.Problems) > 0 {
-		msgs := make([]string, 0, len(rep.Problems))
-		for _, p := range rep.Problems {
-			msgs = append(msgs, p.String())
-		}
-		return nil, nil, terminalToolError(prog, ctx, fmt.Errorf("verification problems:\n%s", strings.Join(msgs, "\n")))
+	if err := verificationProblems(rep); err != nil {
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	pol, err := s.policy()
 	if err != nil {
@@ -587,6 +590,9 @@ func (s *Server) toolCheck(ctx context.Context, req *mcp.CallToolRequest, in che
 		}
 	}
 	line := checkLine(res)
+	for _, n := range res.GetPolicyNotices() {
+		line += "\n" + n
+	}
 	if p := res.GetWitnessSelectionProblem(); p != "" {
 		line += "\n" + p
 		if blocked > 0 {
@@ -806,6 +812,10 @@ type writeOut struct {
 	// Notes surface non-silent consequences, e.g. a gap's landing
 	// condition retarget.
 	Notes []string `json:"notes,omitempty"`
+	// Check marks a preview: nothing was written, the rows say what an
+	// apply would do - without it a zero-row check and a zero-write
+	// apply are indistinguishable on the wire.
+	Check bool `json:"check,omitempty"`
 }
 
 // apply lands a batch of record updates under compare-and-swap
@@ -969,6 +979,9 @@ type gapOut struct {
 	// Gaps is the list form's read surface - wire GapReport rows,
 	// protojson-shaped.
 	Gaps []map[string]any `json:"gaps,omitempty"`
+	// GapsOmitted counts rows beyond the response cap - the records on
+	// disk carry the full set (REQ-mcp-response-contract's envelope).
+	GapsOmitted int `json:"gapsOmitted,omitempty"`
 }
 
 func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn) (*mcp.CallToolResult, gapOut, error) {
@@ -1058,7 +1071,7 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 	// (REQ-gap-list).
 	if len(store.Gaps) == 0 {
 		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-		return stampedResult(textOnly("no gap records"), prog), gapOut{}, nil
+		return stampedResult(textOnly("no gap records"), prog), gapOut{writeOut: writeOut{Notes: []string{"no gap records"}}}, nil
 	}
 	scope, _, err := check.GapScope(spec, store)
 	if err != nil {
@@ -1085,10 +1098,7 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 	}
 	prog.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
 	cov := coverage.Evaluate(spec, rep, store, tr != nil, pol)
-	known := map[string]bool{}
-	for _, r := range spec.GetRequirements() {
-		known[r.GetId()] = true
-	}
+	known := corpusIDs(spec)
 	counts := map[stipulatorv1.GapState]int{}
 	var rows []map[string]any
 	addRow := func(m *stipulatorv1.GapReport) error {
@@ -1104,19 +1114,11 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 		rows = append(rows, row)
 		return nil
 	}
-	for _, g := range cov.Proto().GetGaps() {
-		// The evaluation's row for an out-of-corpus record is a
-		// meaningless Open; the dangling classification below owns it.
-		if !known[g.GetRequirementId()] {
-			continue
-		}
-		if err := addRow(g); err != nil {
-			return nil, gapOut{}, terminalToolError(prog, ctx, err)
-		}
-	}
 	// Dangling records are a triage fact, not a refusal: the list is
 	// where they are found (their repairs are retraction and the
-	// dangling prune).
+	// dangling prune). They lead the rows — the response cap keeps the
+	// head, and a capped list must drop ordinary evaluated rows before
+	// it drops the rows demanding repair.
 	for _, gf := range store.Gaps {
 		if known[gf.Gap.GetRequirementId()] {
 			continue
@@ -1132,7 +1134,22 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 			return nil, gapOut{}, terminalToolError(prog, ctx, err)
 		}
 	}
+	for _, g := range cov.Proto().GetGaps() {
+		// The evaluation's row for an out-of-corpus record is a
+		// meaningless Open; the dangling classification above owns it.
+		if !known[g.GetRequirementId()] {
+			continue
+		}
+		if err := addRow(g); err != nil {
+			return nil, gapOut{}, terminalToolError(prog, ctx, err)
+		}
+	}
 	out := gapOut{Gaps: rows}
+	const gapRowCap = 50
+	if len(out.Gaps) > gapRowCap {
+		out.GapsOmitted = len(out.Gaps) - gapRowCap
+		out.Gaps = out.Gaps[:gapRowCap]
+	}
 	if n := len(rep.Problems); n > 0 {
 		out.Notes = []string{fmt.Sprintf("%d verification problems - evaluated states may misreport; run verify", n)}
 	}
@@ -1190,10 +1207,14 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 			return nil, writeOut{}, err
 		}
 		out := writeOut{}
+		// The editorial writes run first: an unknown id refuses before
+		// any resolution cost is paid, and the shape judgment reads the
+		// post-write store (shape pins are untouched by clause
+		// re-consent, so the answers are order-independent).
+		repinned := map[string]int{}
 		for _, id := range ids {
 			ups, err := author.Editorial(s.fsys(), id)
 			if errors.Is(err, author.ErrNothingStale) {
-				out.Notes = append(out.Notes, id+": pins current")
 				continue
 			}
 			if err != nil {
@@ -1204,8 +1225,48 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 				return nil, writeOut{}, err
 			}
 			out.Wrote = append(out.Wrote, applied.Wrote...)
+			repinned[id] = len(ups)
 		}
-		return out.result(), out, nil
+		// The ids form re-consents clause text only; a shape mismatch
+		// on the named requirement's bindings would survive it
+		// untouched, so report it rather than let "pins current" read
+		// as quiescence while the gate stays red. Resolution is
+		// toolchain work — it reports phase progress like every long
+		// pin arm (REQ-mcp-progress).
+		ctx, prog := s.startProgress(ctx, req)
+		prog.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
+		store, err := records.Load(s.fsys())
+		if err != nil {
+			return nil, writeOut{}, terminalToolError(prog, ctx, err)
+		}
+		backends, err := s.backends(ctx)
+		if err != nil {
+			return nil, writeOut{}, terminalToolError(prog, ctx, err)
+		}
+		wanted := map[string]bool{}
+		for _, id := range ids {
+			wanted[id] = true
+		}
+		// A resolution fault IS state that can empty the mismatch
+		// answer: it rides Notes instead of silently reverting the
+		// response to the quiescence claim (REQ-pin-backfill).
+		mismatched := records.ShapeMismatched(store, ids, author.ResolveShapes(store, backends, wanted, func(symbol string, err error) {
+			out.Notes = append(out.Notes, fmt.Sprintf("shape resolution skipped %s: %v - a shape mismatch there would go unreported this call", symbol, err))
+		}))
+		for _, id := range ids {
+			syms := mismatched[id]
+			switch {
+			case repinned[id] > 0 && len(syms) > 0:
+				out.Notes = append(out.Notes, id+": shape of "+strings.Join(syms, ", ")+" moved — ids re-consent clause text only, a blanket pin (no ids) re-pins shapes")
+			case repinned[id] > 0:
+			case len(syms) > 0:
+				out.Notes = append(out.Notes, id+": clause pins current; shape of "+strings.Join(syms, ", ")+" moved — ids re-consent clause text only, a blanket pin (no ids) re-pins shapes")
+			default:
+				out.Notes = append(out.Notes, id+": pins current")
+			}
+		}
+		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
+		return stampedResult(out.result(), prog), out, nil
 	}
 	spec, err := s.compileFresh()
 	if err != nil {
@@ -1225,19 +1286,10 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
-	shapes := map[string]string{}
-	for _, bf := range store.Bindings {
-		for _, b := range bf.Set.GetBindings() {
-			be, ok := backends[b.GetBackend()]
-			if !ok {
-				continue
-			}
-			if res, shape, err := be.Resolve(b.GetSymbol()); err == nil && res == verify.Resolved {
-				shapes[records.ShapeKey(b.GetBackend(), b.GetSymbol())] = shape
-			}
-		}
-	}
-	updates, preserved, err := records.Pin(store, hashes, shapes)
+	var resolutionNotes []string
+	updates, preserved, reshaped, err := records.Pin(store, hashes, author.ResolveShapes(store, backends, nil, func(symbol string, err error) {
+		resolutionNotes = append(resolutionNotes, fmt.Sprintf("shape resolution skipped %s: %v - its shape pin was not judged this call", symbol, err))
+	}))
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
@@ -1261,6 +1313,10 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 		out.Notes = []string{"all pins current"}
 	case len(out.Wrote) == 0:
 		out.Notes = []string{"no pins backfilled"}
+	}
+	out.Notes = append(out.Notes, resolutionNotes...)
+	if len(reshaped) > 0 {
+		out.Notes = append(out.Notes, "shape pins refreshed (bound implementation moved): "+strings.Join(reshaped, ", "))
 	}
 	if len(preserved) > 0 {
 		out.Notes = append(out.Notes, "awaiting re-consent (pass ids): "+strings.Join(preserved, ", "))
@@ -1402,9 +1458,15 @@ func (s *Server) toolRetarget(ctx context.Context, req *mcp.CallToolRequest, in 
 	for _, r := range rows {
 		notes = append(notes, r.Requirement+": "+r.Old+" -> "+r.New)
 	}
+	// A rename that moved nothing is an answer with a next step - the
+	// prefix mismatches the recorded spelling or the rewrite already
+	// landed - never a bare zero.
+	if len(rows) == 0 {
+		notes = append(notes, fmt.Sprintf("prefix %q matched no bound symbols; verify view=bindings lists the recorded spellings", in.From))
+	}
 	if in.Check {
 		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-		out := writeOut{Notes: notes}
+		out := writeOut{Notes: notes, Check: true}
 		return textOnly(fmt.Sprintf("retarget check: %d binding(s) would retarget", len(rows))), out, nil
 	}
 	out, err := s.apply(ups)
@@ -1495,7 +1557,10 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 		if err != nil {
 			return nil, writeOut{}, err
 		}
-		return textOnly(fmt.Sprintf("store gc: %d record variant(s) removed, %d kept", removed, kept)), writeOut{}, nil
+		// The line rides Notes too: a structured-preferring client must
+		// not read an empty object where the text names the outcome.
+		out := writeOut{Notes: []string{fmt.Sprintf("store gc: %d record variant(s) removed, %d kept", removed, kept)}}
+		return textOnly(out.Notes[0]), out, nil
 	}
 	// Danglingness is a corpus-and-records fact: no witnesses, no symbol
 	// resolution, and no verification gate — a dangling gap IS a
@@ -1516,15 +1581,21 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 		}
 		prunes := author.PruneDanglingGaps(store, present)
 		if in.Check {
-			out := writeOut{}
+			out := writeOut{Check: true}
 			for _, up := range prunes {
 				out.Notes = append(out.Notes, "dangling gap lingers: "+up.Path)
+			}
+			if len(prunes) == 0 {
+				out.Notes = append(out.Notes, "no dangling gap records")
 			}
 			return out.result(), out, nil
 		}
 		out, err := s.apply(prunes)
 		if err != nil {
 			return nil, writeOut{}, err
+		}
+		if len(prunes) == 0 {
+			out.Notes = append(out.Notes, "no dangling gap records")
 		}
 		return out.result(), out, nil
 	}
@@ -1542,7 +1613,7 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 	// so no witness evidence is gathered at all - the corpus compile and
 	// its diagnostics remain (REQ-gap-resolved-pruned).
 	if len(store.Gaps) == 0 {
-		out := writeOut{Notes: []string{"no gap records - nothing to evaluate"}}
+		out := writeOut{Notes: []string{"no gap records - nothing to evaluate"}, Check: in.Check}
 		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 		return stampedResult(out.result(), prog), out, nil
 	}
@@ -1575,12 +1646,8 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 	if !rep.ServingEvidence {
 		return nil, writeOut{}, terminalToolError(prog, ctx, verify.ErrNotServingClass)
 	}
-	if len(rep.Problems) > 0 {
-		msgs := make([]string, 0, len(rep.Problems))
-		for _, p := range rep.Problems {
-			msgs = append(msgs, p.String())
-		}
-		return nil, writeOut{}, terminalToolError(prog, ctx, fmt.Errorf("verification problems:\n%s", strings.Join(msgs, "\n")))
+	if err := verificationProblems(rep); err != nil {
+		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
 	pol, err := s.policy()
 	if err != nil {
@@ -1596,9 +1663,12 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 	}
 	prunes := author.PruneResolvedGaps(store, resolved)
 	if in.Check {
-		out := writeOut{Notes: []string{evaluated}}
+		out := writeOut{Notes: []string{evaluated}, Check: true}
 		for _, up := range prunes {
 			out.Notes = append(out.Notes, "resolved gap lingers: "+up.Path)
+		}
+		if len(prunes) == 0 {
+			out.Notes = append(out.Notes, "no resolved gap records linger")
 		}
 		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 		return stampedResult(out.result(), prog), out, nil
@@ -1608,6 +1678,9 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
 	out.Notes = append(out.Notes, evaluated)
+	if len(prunes) == 0 {
+		out.Notes = append(out.Notes, "no resolved gap records linger")
+	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	return stampedResult(out.result(), prog), out, nil
 }
@@ -1628,7 +1701,7 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
-	spec, vr, store, err := s.verifyPipeline(ctx, in.NoTest)
+	spec, vr, store, err := s.verifyPipeline(ctx, in.NoTest, in.Ids)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
@@ -1673,7 +1746,7 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 	if in.ExportPath != "" {
 		doc, err := protojson.Marshal(out)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, terminalToolError(prog, ctx, err)
 		}
 		res, structured, err := s.exportTo(in.ExportPath, doc, "context")
 		if err != nil {
@@ -1697,7 +1770,11 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 		}
 		dossierRows = append(dossierRows, row)
 	}
-	return summarized(withStamps(digest(fmt.Sprintf("context: %d dossiers", len(out.GetDossiers())), dossierRows), prog), out)
+	line := fmt.Sprintf("context: %d dossiers", len(out.GetDossiers()))
+	if n := len(out.GetProblems()); n > 0 {
+		line += fmt.Sprintf("; %d verification problems - dossier states may misreport, run verify", n)
+	}
+	return summarized(withStamps(digest(line, dossierRows), prog), out)
 }
 
 type partitionsIn struct {
@@ -1711,12 +1788,12 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 		return nil, nil, err
 	}
 	ctx, prog := s.startProgress(ctx, req)
-	spec, rep, store, err := s.verifyPipeline(ctx, in.NoTest)
+	spec, rep, store, err := s.verifyPipeline(ctx, in.NoTest, in.Ids)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
-	if len(rep.Problems) > 0 {
-		return nil, nil, terminalToolError(prog, ctx, fmt.Errorf("verification problems; fix records first"))
+	if err := verificationProblems(rep); err != nil {
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	backends, err := s.backends(ctx)
 	if err != nil {
@@ -1753,7 +1830,7 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 	if in.ExportPath != "" {
 		doc, err := protojson.Marshal(pr.ProtoUncapped())
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, terminalToolError(prog, ctx, err)
 		}
 		res, structured, err := s.exportTo(in.ExportPath, doc, "partitions")
 		if err != nil {
@@ -1773,7 +1850,58 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 		}
 		componentRows = append(componentRows, fmt.Sprintf("component %d (%d pkgs): %s", i+1, len(component.GetPackages()), head))
 	}
-	return summarized(withStamps(digest(fmt.Sprintf("partitions: %d components, %d overlaps (%d omitted)", len(m.GetComponents()), len(m.GetOverlaps()), m.GetOverlapsOmitted()), componentRows), prog), m)
+	line := fmt.Sprintf("partitions: %d components, %d overlaps (%d omitted)", len(m.GetComponents()), len(m.GetOverlaps()), m.GetOverlapsOmitted())
+	if len(m.GetComponents()) == 0 && strings.TrimSpace(in.Ids) == "" {
+		line += " - no red requirements, nothing to partition"
+	}
+	return summarized(withStamps(digest(line, componentRows), prog), m)
+}
+
+// verificationProblems folds a report's problems into one teaching
+// refusal, every problem listed — the one rendering all three
+// problem-refusing tools share.
+func verificationProblems(rep *verify.Report) error {
+	if len(rep.Problems) == 0 {
+		return nil
+	}
+	msgs := make([]string, 0, len(rep.Problems))
+	for _, p := range rep.Problems {
+		msgs = append(msgs, p.String())
+	}
+	return fmt.Errorf("verification problems:\n%s", strings.Join(msgs, "\n"))
+}
+
+// corpusIDs is the compiled corpus's requirement-identifier set.
+func corpusIDs(spec *stipulatorv1.Spec) map[string]bool {
+	known := make(map[string]bool, len(spec.GetRequirements()))
+	for _, r := range spec.GetRequirements() {
+		known[r.GetId()] = true
+	}
+	return known
+}
+
+// refuseUnknownIDs validates an exact-identifier scope against the
+// compiled corpus: an unknown identifier is a typo, and scoping to it
+// would serve a bare zero-row answer whose next step the caller must
+// guess - the scoped check pass refuses the same way. Globs, buckets,
+// and paths stay unvalidated: an empty match there is an informative
+// answer, not a spelling error.
+func refuseUnknownIDs(spec *stipulatorv1.Spec, commaIDs string) error {
+	ids, err := splitIDsLoose(commaIDs)
+	if err != nil || len(ids) == 0 {
+		return err
+	}
+	known := corpusIDs(spec)
+	var unknown []string
+	for _, id := range ids {
+		if !known[id] {
+			unknown = append(unknown, id)
+		}
+	}
+	if len(unknown) > 0 {
+		return fmt.Errorf("unknown requirement identifier(s): %s (gate view=full lists the corpus's requirement identifiers)", strings.Join(unknown, ", "))
+	}
+	return nil
 }
 
 // splitIDsLoose splits a comma list; empty input is an empty selection,
@@ -1868,14 +1996,12 @@ func (s *Server) bundleMarkdown(commaIDs string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	var ids []string
-	for _, id := range strings.Split(commaIDs, ",") {
-		if id = strings.TrimSpace(id); id != "" {
-			ids = append(ids, id)
-		}
-	}
-	if len(ids) == 0 {
-		return "", fmt.Errorf("no requirement identifiers given")
+	// The shared splitter: a JSON-array-encoded ids field must parse
+	// here exactly as it does on every other ids-taking tool, not
+	// mangle into one unknown identifier.
+	ids, err := splitIDs(commaIDs)
+	if err != nil {
+		return "", err
 	}
 	b, err := bundle.Compute(spec, ids)
 	if err != nil {

@@ -326,6 +326,21 @@ assertion failure — a red witness whose output is discarded leaves an
 environment-induced failure and a real regression indistinguishable, so
 retained failure output is part of the verdict, not a courtesy.
 
+**REQ-check-policy-notices** (behavior): The check result MUST carry
+non-fatal policy-tier notices attributed to the invocation that
+authored the condition, and every serving face renders them — the CLI
+render, the MCP text digest, and the MCP structured summary alike: today,
+for each witness-eligible invocation whose effective build selection is
+outside the freshness engine's walked toolchain-selection audit, the
+engine's own notice for that selection prefixed with the invocation
+name. The degradation's cost — standard-library observation admissions
+disabled, serving degraded to execution — must be visible where the
+selection was declared (the policy record), not only mid-derivation on
+an engine diagnostic face attributed to the engine; the notice is
+advisory and never a verdict input, and the notice text itself is the
+engine's one owned rendering, so the policy tier and the derivation
+tier can never describe the same degradation differently.
+
 **REQ-gate-change-signature** (behavior): The verification report SHOULD
 classify the change signature per requirement, with the record pins as
 the baseline — no verification outcome is ever persisted, so "changed"

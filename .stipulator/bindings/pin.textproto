@@ -3,16 +3,16 @@
 
 bindings {
   requirement_id: "REQ-pin-backfill"
-  content_hash: "f7561f31b402d727dc1c39e122d6618f208047e3fbaf499ae87993744ba13cb6"
+  content_hash: "c0b6256171bb4ddd0453533055847d9cdb930f12b58dc0f954ad25cfe7907df9"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/records.Pin"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "c87ad2c6f2975e5445c0f3254848056089d2de1653b9ba3978d3dfa04f5c3abc"
+  shape_hash: "f325928751b018cddceaad7ea5acffb914d6d4a8fcf23a7b1031eb20f00485fd"
 }
 
 bindings {
   requirement_id: "REQ-pin-backfill"
-  content_hash: "f7561f31b402d727dc1c39e122d6618f208047e3fbaf499ae87993744ba13cb6"
+  content_hash: "c0b6256171bb4ddd0453533055847d9cdb930f12b58dc0f954ad25cfe7907df9"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.TestPin"
   role: BINDING_ROLE_TESTS
@@ -21,7 +21,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-pin-backfill"
-  content_hash: "f7561f31b402d727dc1c39e122d6618f208047e3fbaf499ae87993744ba13cb6"
+  content_hash: "c0b6256171bb4ddd0453533055847d9cdb930f12b58dc0f954ad25cfe7907df9"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPinTool"
   role: BINDING_ROLE_TESTS
@@ -30,7 +30,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-pin-backfill"
-  content_hash: "f7561f31b402d727dc1c39e122d6618f208047e3fbaf499ae87993744ba13cb6"
+  content_hash: "c0b6256171bb4ddd0453533055847d9cdb930f12b58dc0f954ad25cfe7907df9"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/records.TestPinNeverRewritesDifferingContent"
   role: BINDING_ROLE_TESTS
@@ -39,9 +39,72 @@ bindings {
 
 bindings {
   requirement_id: "REQ-pin-backfill"
-  content_hash: "f7561f31b402d727dc1c39e122d6618f208047e3fbaf499ae87993744ba13cb6"
+  content_hash: "c0b6256171bb4ddd0453533055847d9cdb930f12b58dc0f954ad25cfe7907df9"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestPinCLINamesPreservedDifferingPins"
   role: BINDING_ROLE_TESTS
   shape_hash: "bb186ab6b5c4ca3142325292e03b3743fa5a365cb0f42e04ab490bb68a71c65f"
+}
+
+bindings {
+  requirement_id: "REQ-pin-backfill"
+  content_hash: "c0b6256171bb4ddd0453533055847d9cdb930f12b58dc0f954ad25cfe7907df9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/records.ShapeMismatched"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "27330ee62a4ffb0f344c44b3f38bacf130fa1ef8870d665662fd5f336f960089"
+}
+
+bindings {
+  requirement_id: "REQ-pin-backfill"
+  content_hash: "c0b6256171bb4ddd0453533055847d9cdb930f12b58dc0f954ad25cfe7907df9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.ResolveShapes"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "4d788b8bfe0782d66a64639ecf4c246f13f96ab495761de793582b6e42800885"
+}
+
+bindings {
+  requirement_id: "REQ-pin-backfill"
+  content_hash: "c0b6256171bb4ddd0453533055847d9cdb930f12b58dc0f954ad25cfe7907df9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/records.TestPinReportsRewrittenShapePins"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "2fdfc527021b04b497154323e9ea8b34ad60dc8ff6711d9da756801ee600afe8"
+}
+
+bindings {
+  requirement_id: "REQ-pin-backfill"
+  content_hash: "c0b6256171bb4ddd0453533055847d9cdb930f12b58dc0f954ad25cfe7907df9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/records.TestShapeMismatchedReportsOnlyNamedDiffering"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5df8a93abc6db339e3b6aefd55e898e33d8d888b7d2962cbfaa3d0484ea829ef"
+}
+
+bindings {
+  requirement_id: "REQ-pin-backfill"
+  content_hash: "c0b6256171bb4ddd0453533055847d9cdb930f12b58dc0f954ad25cfe7907df9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPinToolReportsMovedShapes"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "45417b204b77c88af9d8cf6c3e59cb0249cef9c75169fb311b473cc84b69e839"
+}
+
+bindings {
+  requirement_id: "REQ-pin-backfill"
+  content_hash: "c0b6256171bb4ddd0453533055847d9cdb930f12b58dc0f954ad25cfe7907df9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestPinCLIReportsMovedShapes"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "90cc51f932d9365e59a13a4fa6afe7396c29a8b58776c66b37e8feb94da31886"
+}
+
+bindings {
+  requirement_id: "REQ-pin-backfill"
+  content_hash: "c0b6256171bb4ddd0453533055847d9cdb930f12b58dc0f954ad25cfe7907df9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestResolveShapesSurfacesFaultsAndScopesToWanted"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b52e10a52e628775c00a9add0d8b6e1120bccd93b9161336b32055ec2d214dd3"
 }

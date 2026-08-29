@@ -267,7 +267,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 			case verify.ShapeMismatch:
 				e.otherRed = true
 				e.broken = true
-				e.reasons = append(e.reasons, fmt.Sprintf("shape of %s moved — re-pin after review: stipulator pin", r.Symbol))
+				e.reasons = append(e.reasons, fmt.Sprintf("shape of %s moved — re-pin after review: blanket stipulator pin, no ids (the ids form re-consents clause text only)", r.Symbol))
 			case verify.ShapeUnpinned:
 				e.stale = true
 				e.reasons = append(e.reasons, fmt.Sprintf("binding %s has no shape pin — backfill: stipulator pin", r.Symbol))

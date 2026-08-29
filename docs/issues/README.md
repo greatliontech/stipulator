@@ -9,8 +9,10 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   running test as if the tree failed; the envelope fact (budget exhausted) is never named in the
   diagnostics. No evidence corruption — unhealthy packages publish nothing.
   *Lands: cross-tool train chunk 114.*
-- **[pin-forms-shape-guidance](pin-forms-shape-guidance.md)** — check's shape-moved guidance and the
-  ids-form "pins current" answer mislead exactly when shapes mismatch. *Lands: folds into cross-tool train chunk 112 (MCP doctrine audit).*
+- **[unresolvable-dependency-attribution](unresolvable-dependency-attribution.md)** — a tree
+  referencing symbols unresolvable under the module's own workspace degrades bind and the
+  witness classifier with raw loader errors or silent misclassification instead of naming the
+  dependency-resolution state. *Lands: with train chunk 114.*
 - **[witness-runner-environment-divergence](witness-runner-environment-divergence.md)** — a witness
   red only inside the runner; the environment delta is uninspectable. *Lands: cross-tool train chunk 114.*
 - **[proto-backend](proto-backend.md)** — descriptor-level verification via protocompile;
@@ -30,8 +32,3 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   through any real dependency) and the shape verbs state presence, not capability absence;
   a direct-call-absence verb (structural.NoCall) would carry them. *Lands: capability charter — activates when a structural requirement needs a call-absence proof the signature/import verbs cannot carry.*
 
-- **[tagged-selection-observation-surfacing](tagged-selection-observation-surfacing.md)** — tagged
-  policy invocations run under a toolchain selection gofresh fail-closes (stdlib observation
-  admissions disabled until the selection is walked); the posture is correct and the gofresh
-  notice loud, but nothing attributes it to the declaring invocation at the policy tier.
-  *Lands: with train chunk 112.*

@@ -11,6 +11,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	stipulator "github.com/greatliontech/stipulator"
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -179,5 +180,38 @@ func TestGuidanceToolServesOutsideACorpus(t *testing.T) {
 	}
 	if !res.IsError || !strings.Contains(guidanceText(t, res), "stipulator init") {
 		t.Fatalf("corpus tool outside a corpus: %v %q", res.IsError, guidanceText(t, res))
+	}
+}
+
+// Policy-tier notices ride the check tool's text digest — the MCP face
+// an agent reads first — beside the structured summary's verbatim copy
+// (REQ-check-policy-notices).
+func TestCheckToolDigestCarriesPolicyNotices(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-policy-notices")
+	notice := `invocation "tagged": toolchain-selection audit: selection "dup" is unwalked`
+	sess, _ := harnessWith(t, nil, func(s *Server) {
+		s.runCheck = func(context.Context, bool, []string) (*stipulatorv1.CheckResult, error) {
+			res := &stipulatorv1.CheckResult{}
+			res.SetPassed(true)
+			res.SetPolicyNotices([]string{notice})
+			return res, nil
+		}
+	})
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "check", Arguments: map[string]any{}})
+	if err != nil || res.IsError {
+		t.Fatalf("check: %v %v", err, res)
+	}
+	var text string
+	for _, c := range res.Content {
+		if tc, ok := c.(*mcp.TextContent); ok {
+			text += tc.Text
+		}
+	}
+	if !strings.Contains(text, notice) {
+		t.Fatalf("check digest lost the policy notice: %s", text)
+	}
+	b, _ := json.Marshal(res.StructuredContent)
+	if !strings.Contains(string(b), "toolchain-selection audit") {
+		t.Fatalf("summary lost the policy notice: %s", b)
 	}
 }

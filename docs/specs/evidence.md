@@ -36,7 +36,16 @@ as the dispose verb, and a pin invocation that changes nothing reports
 the no-op rather than returning silence. The blanket form also names the
 requirements whose differing content pins it preserved: refusing to
 launder is only honest when the caller learns what awaits re-consent from
-the pin response itself, not from a later staleness report.
+the pin response itself, not from a later staleness report. Symmetrically
+it names the symbols whose differing shape pins it rewrote — the rewrite
+clears verification's shape-mismatch signal, the one trace that a bound
+implementation moved, so clearing it invisibly hides the move (a
+backfilled unset shape pin cleared nothing and is not reported). And the
+named form re-pins clause text only: when a named requirement's bindings
+carry a shape mismatch it is not going to fix, the response says so
+instead of reporting quiescence — an answer reading as "nothing to do"
+while verification stays red on the same rows is the laundering this
+requirement forbids, in reporting clothing.
 
 **REQ-evidence-record-verbs** (behavior): Binding records MUST be writable
 through tool operations that validate at write time — the requirement

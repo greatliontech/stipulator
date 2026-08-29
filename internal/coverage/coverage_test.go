@@ -752,7 +752,7 @@ func TestShapeFindingsNameRePin(t *testing.T) {
 	moved := Evaluate(spec, &verify.Report{Results: []verify.BindingResult{
 		result("REQ-c-a", impl, true, verify.Resolved, verify.ShapeMismatch, verify.TestNotRun),
 	}}, store, true, nil)
-	if got := strings.Join(bucketOf(t, moved, "REQ-c-a").Reasons, " "); !strings.Contains(got, "re-pin after review: stipulator pin") {
+	if got := strings.Join(bucketOf(t, moved, "REQ-c-a").Reasons, " "); !strings.Contains(got, "re-pin after review: blanket stipulator pin, no ids") {
 		t.Fatalf("moved shape withholds the re-pin: %v", got)
 	}
 	unpinned := Evaluate(spec, &verify.Report{Results: []verify.BindingResult{

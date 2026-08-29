@@ -328,6 +328,26 @@ func TestGateTool(t *testing.T) {
 		t.Fatalf("unknown bucket accepted: %v %v", err, res)
 	}
 
+	// An unknown exact identifier refuses the same way, on both scoped
+	// read surfaces — scoping to a typo would otherwise serve a bare
+	// zero-row answer indistinguishable from a clean scope
+	// (REQ-mcp-response-contract).
+	for _, tool := range []string{"gate", "verify"} {
+		res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: tool, Arguments: map[string]any{"ids": "REQ-m-vanished"}})
+		if err != nil || !res.IsError {
+			t.Fatalf("%s accepted an unknown id: %v %v", tool, err, res)
+		}
+		var text string
+		for _, c := range res.Content {
+			if tc, ok := c.(*mcp.TextContent); ok {
+				text += tc.Text
+			}
+		}
+		if !strings.Contains(text, "unknown requirement identifier") || !strings.Contains(text, "REQ-m-vanished") {
+			t.Fatalf("%s unknown-id refusal unteaching: %s", tool, text)
+		}
+	}
+
 	// The failing direction must survive the wire too: undeclared red →
 	// gatePasses false with the violation named.
 	sess2, _ := harness(t, map[string]string{
@@ -652,6 +672,11 @@ func TestPruneTool(t *testing.T) {
 	if !strings.Contains(string(b), "m-a.textproto") {
 		t.Fatalf("check did not report the resolved gap: %s", b)
 	}
+	// The preview marks itself: a zero-row check and a zero-write apply
+	// must never be confusable on the wire.
+	if !strings.Contains(string(b), `"check":true`) {
+		t.Fatalf("check preview unmarked: %s", b)
+	}
 	if _, touched := writes[gapPath]; touched {
 		t.Fatal("check touched the gap record — must be dry-run")
 	}
@@ -672,6 +697,26 @@ func TestPruneTool(t *testing.T) {
 	b, _ = json.Marshal(res.StructuredContent)
 	if !strings.Contains(string(b), gapPath) {
 		t.Fatalf("deletion not reported in the result: %s", b)
+	}
+
+	// Quiescence says so: with the resolved gap already pruned, another
+	// pass names the empty result instead of a bare zero-write success.
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "prune", Arguments: map[string]any{}})
+	if err != nil || res.IsError {
+		t.Fatalf("quiescent prune: %v %v", err, res)
+	}
+	if b, _ = json.Marshal(res.StructuredContent); !strings.Contains(string(b), "no resolved gap records linger") {
+		t.Fatalf("quiescent prune said nothing: %s", b)
+	}
+
+	// The dangling mode's empty result is named too, on check and apply
+	// alike, with the check marked.
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "prune", Arguments: map[string]any{"dangling": true, "check": true}})
+	if err != nil || res.IsError {
+		t.Fatalf("dangling check: %v %v", err, res)
+	}
+	if b, _ = json.Marshal(res.StructuredContent); !strings.Contains(string(b), "no dangling gap records") || !strings.Contains(string(b), `"check":true`) {
+		t.Fatalf("empty dangling check unmarked or silent: %s", b)
 	}
 }
 
@@ -784,6 +829,67 @@ func toolPayload(t *testing.T, res *mcp.CallToolResult) string {
 		t.Fatal(err)
 	}
 	return string(b)
+}
+
+// TestPinToolReportsMovedShapes pins REQ-pin-backfill's shape-side
+// reporting on the wire: the ids form re-pins clause text only, so a
+// shape mismatch on the named requirement's bindings is reported instead
+// of an answer reading as quiescence, and the blanket form names the
+// symbols whose differing shape pins it rewrote — the rewrite clears
+// verification's shape-mismatch signal, the one trace that a bound
+// implementation moved.
+func TestPinToolReportsMovedShapes(t *testing.T) {
+	stipulate.Covers(t, "REQ-pin-backfill")
+	sess, writes := harness(t, map[string]string{
+		".stipulator/bindings/shape.textproto": "bindings {\n  requirement_id: \"REQ-m-a\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n  shape_hash: \"" + strings.Repeat("a", 64) + "\"\n}\n",
+	})
+	// ids over an unset content pin: the clause text re-pins, and the
+	// untouched shape mismatch is named beside the write.
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "pin", Arguments: map[string]any{"ids": "REQ-m-a"}})
+	if err != nil || res.IsError {
+		t.Fatalf("pin ids: %v %v", err, res)
+	}
+	text := toolPayload(t, res)
+	if !strings.Contains(text, "shape of example.com/p.F moved") || !strings.Contains(text, "blanket pin (no ids) re-pins shapes") {
+		t.Fatalf("ids form conceals the shape mismatch it will not fix: %s", text)
+	}
+	if content := writes[".stipulator/bindings/shape.textproto"]; !strings.Contains(string(content), strings.Repeat("a", 64)) {
+		t.Fatalf("ids form rewrote the shape pin: %s", content)
+	}
+
+	// ids again, clause now current: still no quiescence claim while the
+	// shape mismatch stands — "pins current" while verification stays red
+	// on the same rows is the defect this answer replaces.
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "pin", Arguments: map[string]any{"ids": "REQ-m-a"}})
+	if err != nil || res.IsError {
+		t.Fatalf("pin ids repeat: %v %v", err, res)
+	}
+	text = toolPayload(t, res)
+	if !strings.Contains(text, "clause pins current; shape of example.com/p.F moved") {
+		t.Fatalf("ids no-op beside a shape mismatch claims quiescence: %s", text)
+	}
+
+	// The blanket form rewrites the differing shape pin and says so.
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "pin", Arguments: map[string]any{}})
+	if err != nil || res.IsError {
+		t.Fatalf("blanket pin: %v %v", err, res)
+	}
+	text = toolPayload(t, res)
+	if !strings.Contains(text, "shape pins refreshed (bound implementation moved): example.com/p.F") {
+		t.Fatalf("blanket pin cleared the shape-mismatch signal invisibly: %s", text)
+	}
+	if content := writes[".stipulator/bindings/shape.textproto"]; strings.Contains(string(content), strings.Repeat("a", 64)) {
+		t.Fatalf("blanket pin left the differing shape pin: %s", content)
+	}
+
+	// Quiescence is once again a plain answer.
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "pin", Arguments: map[string]any{"ids": "REQ-m-a"}})
+	if err != nil || res.IsError {
+		t.Fatalf("pin ids final: %v %v", err, res)
+	}
+	if text = toolPayload(t, res); !strings.Contains(text, "REQ-m-a: pins current") || strings.Contains(text, "moved") {
+		t.Fatalf("quiescent ids answer wrong: %s", text)
+	}
 }
 
 // TestPinTool pins the refresh verb's contract: ids editorially re-pin a
@@ -921,15 +1027,15 @@ func TestContextDossier(t *testing.T) {
 		t.Fatalf("array ids rejected: %v %v", err, res)
 	}
 
-	// Unknown id: quoted cleanly, no mangling.
+	// Unknown id: refused before the pass it would scope, the id named.
 	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "context", Arguments: map[string]any{
 		"ids": "REQ-m-ghost",
 	}})
 	if err != nil || !res.IsError {
 		t.Fatal("unknown id accepted")
 	}
-	if msg := fmt.Sprint(res.Content[0]); !strings.Contains(msg, `"REQ-m-ghost" is not in the corpus`) {
-		t.Fatalf("unknown id not quoted cleanly: %s", msg)
+	if msg := fmt.Sprint(res.Content[0]); !strings.Contains(msg, "unknown requirement identifier(s): REQ-m-ghost") {
+		t.Fatalf("unknown id not refused cleanly: %s", msg)
 	}
 }
 
@@ -1150,5 +1256,49 @@ func TestExplainToolProjectsChain(t *testing.T) {
 	}
 	if text := toolText(t, res); !strings.Contains(text, "no chain") {
 		t.Fatalf("empty chain not stated in the digest: %q", text)
+	}
+}
+
+// The gap list leads with its dangling rows and caps with the
+// remainder counted: a capped list must drop ordinary evaluated rows
+// before the rows demanding repair, and the count line reports the
+// uncapped total (REQ-mcp-response-contract).
+func TestGapListLeadsWithDanglingAndCapsCounted(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-response-contract")
+	files := map[string]string{}
+	for i := 0; i < 53; i++ {
+		files[fmt.Sprintf(".stipulator/gaps/d%02d.textproto", i)] = fmt.Sprintf("requirement_id: \"REQ-dangling-%02d\"\nreason: \"r\"\nlands { manual { condition: \"x\" } }\n", i)
+	}
+	files[".stipulator/gaps/e1.textproto"] = "requirement_id: \"REQ-m-a\"\nreason: \"r\"\nlands { manual { condition: \"x\" } }\n"
+	files[".stipulator/gaps/e2.textproto"] = "requirement_id: \"REQ-m-b\"\nreason: \"r\"\nlands { manual { condition: \"x\" } }\n"
+	sess, _ := harness(t, files)
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "gap", Arguments: map[string]any{"list": true}})
+	if err != nil || res.IsError {
+		t.Fatalf("gap list: %v %v", err, res)
+	}
+	var text string
+	for _, c := range res.Content {
+		if tc, ok := c.(*mcp.TextContent); ok {
+			text += tc.Text
+		}
+	}
+	if !strings.Contains(text, "55 gap records") {
+		t.Fatalf("count line lost the uncapped total: %s", text)
+	}
+	b, _ := json.Marshal(res.StructuredContent)
+	var out struct {
+		Gaps        []map[string]any `json:"gaps"`
+		GapsOmitted int              `json:"gapsOmitted"`
+	}
+	if err := json.Unmarshal(b, &out); err != nil {
+		t.Fatalf("structured shape: %v: %s", err, b)
+	}
+	if len(out.Gaps) != 50 || out.GapsOmitted != 5 {
+		t.Fatalf("cap = %d rows, %d omitted; want 50 and 5", len(out.Gaps), out.GapsOmitted)
+	}
+	for i, row := range out.Gaps {
+		if state, _ := row["state"].(string); !strings.Contains(state, "DANGLING") {
+			t.Fatalf("row %d is %v — dangling rows must lead, so a capped list drops evaluated rows first", i, row["state"])
+		}
 	}
 }

@@ -413,4 +413,15 @@ func TestPruneToolNoGapsSkipsWitnessEvaluation(t *testing.T) {
 	if b, _ := json.Marshal(res.StructuredContent); !strings.Contains(string(b), "no gap records - nothing to evaluate") {
 		t.Fatalf("fast path does not name itself: %s", b)
 	}
+
+	// The gapless arm's preview marks itself too: a zero-row check and
+	// a zero-write apply must never be confusable on the wire
+	// (REQ-mcp-response-contract).
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "prune", Arguments: map[string]any{"check": true}})
+	if err != nil || res.IsError {
+		t.Fatalf("gapless prune check: %v %+v", err, res)
+	}
+	if b, _ := json.Marshal(res.StructuredContent); !strings.Contains(string(b), `"check":true`) {
+		t.Fatalf("gapless check preview unmarked: %s", b)
+	}
 }

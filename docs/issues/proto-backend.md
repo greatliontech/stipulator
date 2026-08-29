@@ -32,3 +32,10 @@ Design analysis to reuse when this lands:
   check belonging to the change model, not a static prover.
 - REQ-proto-provers likely needs an amendment to match the parameterless
   initial cut before implementation starts.
+
+Landing note (2026-08-29, pin shape reporting): the pin surfaces'
+reshaped and shape-mismatch rows key on the BARE bound symbol
+(records.Pin, records.ShapeMismatched) — sound while `go` is the only
+backend, but a second backend binding the same symbol string would
+merge two distinct rows. Backend-qualify those row keys when this
+lands.

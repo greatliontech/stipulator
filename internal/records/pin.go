@@ -16,7 +16,12 @@ func ShapeKey(backend, symbol string) string { return backend + "|" + symbol }
 // that is an editorial disposition, and staleness must not be laundered by
 // a blanket re-pin. The requirements whose differing pins were preserved
 // are returned (sorted, deduplicated) so every surface can name what
-// awaits editorial re-consent (REQ-pin-backfill). Unknown requirements
+// awaits editorial re-consent (REQ-pin-backfill), and the symbols whose
+// DIFFERING shape pins were rewritten are returned beside them — a
+// rewritten shape pin clears verify's shape-mismatch signal, the one
+// trace that a bound implementation moved, so the surfaces must name it
+// rather than clear it invisibly (a backfilled unset shape pin is not
+// reported: nothing was cleared). Unknown requirements
 // are left untouched — reporting them is the verifier's job. Files whose
 // pins are all current are omitted from the result.
 //
@@ -24,9 +29,10 @@ func ShapeKey(backend, symbol string) string { return backend + "|" + symbol }
 // protobuf-go text marshaler deliberately randomizes its whitespace, and
 // pin output is observable state that determinism rules over. The leading
 // comment header of each file (its '#' lines) is preserved.
-func Pin(store *Store, hashes, shapes map[string]string) (map[string][]byte, []string, error) {
+func Pin(store *Store, hashes, shapes map[string]string) (map[string][]byte, []string, []string, error) {
 	out := map[string][]byte{}
 	preservedSet := map[string]bool{}
+	reshapedSet := map[string]bool{}
 	for _, bf := range store.Bindings {
 		changed := false
 		for _, b := range bf.Set.GetBindings() {
@@ -40,6 +46,9 @@ func Pin(store *Store, hashes, shapes map[string]string) (map[string][]byte, []s
 			}
 			s, ok := shapes[ShapeKey(b.GetBackend(), b.GetSymbol())]
 			if ok && b.GetShapeHash() != s {
+				if b.GetShapeHash() != "" {
+					reshapedSet[b.GetSymbol()] = true
+				}
 				b.SetShapeHash(s)
 				changed = true
 			}
@@ -51,7 +60,7 @@ func Pin(store *Store, hashes, shapes map[string]string) (map[string][]byte, []s
 		// commentary outside the leading header, so refuse instead of
 		// silently dropping it.
 		if line := commentOutsideHeader(bf.Raw); line > 0 {
-			return nil, nil, fmt.Errorf("%s:%d: comment outside the leading header block; move commentary to the commit message before pinning", bf.Path, line)
+			return nil, nil, nil, fmt.Errorf("%s:%d: comment outside the leading header block; move commentary to the commit message before pinning", bf.Path, line)
 		}
 		out[bf.Path] = renderBindingSet(bf)
 	}
@@ -60,7 +69,50 @@ func Pin(store *Store, hashes, shapes map[string]string) (map[string][]byte, []s
 		preserved = append(preserved, id)
 	}
 	sort.Strings(preserved)
-	return out, preserved, nil
+	reshaped := make([]string, 0, len(reshapedSet))
+	for sym := range reshapedSet {
+		reshaped = append(reshaped, sym)
+	}
+	sort.Strings(reshaped)
+	return out, preserved, reshaped, nil
+}
+
+// ShapeMismatched reports, per requirement id, the bound symbols whose
+// resolved shape differs from the stored pin — the mismatch the ids
+// (editorial) form does not fix, so its surfaces can say so instead of
+// answering "pins current" while the gate stays red. Ids with no
+// mismatching binding are absent from the result; symbols per id are
+// sorted.
+func ShapeMismatched(store *Store, ids []string, shapes map[string]string) map[string][]string {
+	wanted := map[string]bool{}
+	for _, id := range ids {
+		wanted[id] = true
+	}
+	perID := map[string]map[string]bool{}
+	for _, bf := range store.Bindings {
+		for _, b := range bf.Set.GetBindings() {
+			if !wanted[b.GetRequirementId()] {
+				continue
+			}
+			s, ok := shapes[ShapeKey(b.GetBackend(), b.GetSymbol())]
+			if ok && b.GetShapeHash() != "" && b.GetShapeHash() != s {
+				if perID[b.GetRequirementId()] == nil {
+					perID[b.GetRequirementId()] = map[string]bool{}
+				}
+				perID[b.GetRequirementId()][b.GetSymbol()] = true
+			}
+		}
+	}
+	res := map[string][]string{}
+	for id, syms := range perID {
+		list := make([]string, 0, len(syms))
+		for sym := range syms {
+			list = append(list, sym)
+		}
+		sort.Strings(list)
+		res[id] = list
+	}
+	return res
 }
 
 // commentOutsideHeader returns the 1-based line of the first comment after

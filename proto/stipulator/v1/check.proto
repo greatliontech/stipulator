@@ -107,6 +107,16 @@ message CheckResult {
   bool scope_partial = 19;
   // The requirement identifiers that scoped this pass; empty when global.
   repeated string scope_ids = 20;
+
+  // Non-fatal policy-tier notices raised at load, each attributed to the
+  // invocation that authored the condition: today, per witness-eligible
+  // invocation, the toolchain-selection audit's fail-closed consequence
+  // when the invocation's effective build selection is unwalked (the
+  // freshness engine disables standard-library observation admissions
+  // and serving degrades to execution). Advisory - never a verdict
+  // input; the cost surfaces where the selection was declared instead
+  // of only mid-derivation on the engine's diagnostic face.
+  repeated string policy_notices = 21;
 }
 
 // CheckSummary is the check operation's summary view: the verdict with
@@ -181,6 +191,9 @@ message CheckSummary {
   int32 uncacheable_reasons_omitted = 34;
   repeated CheckBlockerRow executed_blockers = 35;
   int32 executed_reasons_omitted = 36;
+  // The result's policy-tier notices, verbatim - few and load-bearing,
+  // so the summary view carries them whole.
+  repeated string policy_notices = 37;
 }
 
 // CheckBlockerRow is one reason's actionable roll-up on the check

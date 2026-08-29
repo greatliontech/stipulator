@@ -17,7 +17,7 @@ before binding against the new text.
 **knobs:**
 - `no_test` (mcp, cli as `no-test`) — skip running tests (no witnesses).
 - `view` (mcp) — summary (default: hygiene and witness counts with change signatures) or bindings (the per-binding rows).
-- `ids` (mcp) — comma-separated requirement identifiers to scope binding rows to.
+- `ids` (mcp) — comma-separated requirement identifiers to scope binding rows to; unknown identifiers refuse.
 - `filter` (mcp) — requirement-id glob over binding rows.
 - `path` (mcp) — prefix over declaring document or symbol.
 **when:** use verify for binding hygiene and witness detail; prefer
@@ -30,7 +30,7 @@ one requirement's binding rows.
 **does:** Coverage gate: buckets and the gate verdict.
 **knobs:**
 - `view` (mcp, cli) — summary (default: pass/fail + counts + violations), reds (red requirements with reasons), or full (every requirement).
-- `ids` (mcp, cli as `req`) — requirement identifiers to scope to (comma-separated on mcp; repeatable on the cli).
+- `ids` (mcp, cli as `req`) — requirement identifiers to scope to (comma-separated on mcp; repeatable on the cli); unknown identifiers refuse on the mcp surface.
 - `bucket` (mcp, cli) — scope to one bucket: uncovered, stale, broken, covered, exempt, attested.
 - `filter` (mcp, cli) — requirement-id glob, e.g. REQ-arch-*.
 - `path` (mcp, cli) — prefix over declaring spec document or bound symbols.
@@ -131,8 +131,11 @@ operations review 2026-08".
 **when:** run the blanket form after any spec edit — a differing
 content pin is never rewritten by it, so staleness cannot be
 laundered; the response names requirements awaiting re-consent, and
-naming them is the editorial re-consent. Never silent: no-ops say
-so.
+naming them is the editorial re-consent. The blanket form is also
+what re-pins a moved shape, and it names the symbols whose differing
+shape pins it rewrote; naming requirements re-consents clause text
+only, and that form reports any shape mismatch it is not going to
+fix instead of claiming quiescence. Never silent: no-ops say so.
 **example:** pin, read the awaiting-re-consent list, then pin
 req=REQ-x for each requirement whose new text you consent to.
 

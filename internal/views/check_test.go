@@ -426,3 +426,19 @@ func TestCheckSummaryFoldsPolicyBlockedRows(t *testing.T) {
 		t.Fatalf("no-diagnostic fold: blocked=%d reds=%d, want 0 and 3", sum.GetRedsPolicyBlocked(), len(sum.GetReds()))
 	}
 }
+
+// Policy-tier notices survive the summary projection whole - they are
+// few and load-bearing, and dropping them at the default view would
+// hide the degradation exactly where operators read
+// (REQ-check-policy-notices).
+//
+//gofresh:pure
+func TestCheckSummaryCarriesPolicyNotices(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-policy-notices")
+	res := &stipulatorv1.CheckResult{}
+	res.SetPolicyNotices([]string{`invocation "tagged": toolchain-selection audit: selection "dup" is unwalked`})
+	out := checkSummary(res)
+	if got := out.GetPolicyNotices(); len(got) != 1 || got[0] != res.GetPolicyNotices()[0] {
+		t.Fatalf("summary notices = %v", got)
+	}
+}

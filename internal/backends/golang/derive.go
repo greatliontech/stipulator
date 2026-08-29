@@ -647,13 +647,7 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Eng
 	if err := checkToolchainProvenance(dir, g.env); err != nil {
 		return nil, err
 	}
-	var flags []string
-	if g.race {
-		flags = append(flags, "-race")
-	}
-	if len(g.tags) > 0 {
-		flags = append(flags, "-tags="+strings.Join(g.tags, ","))
-	}
+	flags := selectionBuildFlags(g.race, g.tags)
 	opts := []gofresh.Option{
 		gofresh.WithDir(dir),
 		gofresh.WithBuildFlags(flags...),

@@ -12,6 +12,8 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/greatliontech/gofresh/closure"
+
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 )
 
@@ -629,4 +631,48 @@ func resolveOrSelf(p string) string {
 // explicitly admits the plain tier (REQ-check-witness-selection).
 func (n *NormalizedInvocation) WitnessEligible() bool {
 	return n.Race || n.PlainWitness
+}
+
+// selectionBuildFlags renders a build selection (the race bit and the
+// declared tag set) as the go build flags gofresh's engines and the
+// toolchain-selection audit both classify — one construction, so the
+// policy-tier notice and the engine's own audit can never judge
+// different selections.
+func selectionBuildFlags(race bool, tags []string) []string {
+	var flags []string
+	if race {
+		flags = append(flags, "-race")
+	}
+	if len(tags) > 0 {
+		flags = append(flags, "-tags="+strings.Join(tags, ","))
+	}
+	return flags
+}
+
+// SelectionNotices reports, per witness-eligible invocation, gofresh's
+// toolchain-selection audit notice for the invocation's effective build
+// selection, attributed to the invocation by name — the policy tier's
+// account of a degradation that otherwise surfaces only mid-derivation
+// on the engine's diagnostic face, far from where the operator authored
+// the tags. Only witness-eligible invocations are judged: a non-witness
+// invocation builds no freshness engine, so no admission can degrade. A
+// normalization fault skips its invocation without comment — the
+// execution path surfaces the same fault as a failing check, and the
+// notices are advisory, never a verdict input.
+func SelectionNotices(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) []string {
+	var out []string
+	for _, inv := range p.GetInvocations() {
+		if inv.GetGo() == nil {
+			continue
+		}
+		n, err := NormalizeInvocation(ctx, dir, inv)
+		if err != nil || !n.WitnessEligible() {
+			continue
+		}
+		notice := closure.ToolchainSelectionNotice(selectionBuildFlags(n.Race, n.Tags), n.GOFLAGS, n.GOEXPERIMENT)
+		if notice != "" {
+			out = append(out, fmt.Sprintf("invocation %q: %s", n.Name, notice))
+		}
+	}
+	return out
 }

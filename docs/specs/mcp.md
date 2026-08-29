@@ -134,7 +134,15 @@ payload embedding another report message leaves every copy of a
 collection the result carries anywhere else in the payload empty. The
 surfaces that grow without bound (per-test reason maps, pairwise
 partition overlap terms, diagnostic collections and dossiers) travel
-in full only through the full view or the export form.
+in full only through the full view or the export form. An empty answer
+is an answer, never a bare zero-row success: an operation whose
+selection matched nothing names the state that emptied it and the next
+step — an unknown exact requirement identifier refuses outright and BEFORE
+the pass it would scope — a typo is a refusal, never an empty result,
+and never one that costs a witness run to hear — while a glob, bucket,
+or path matching nothing is an informative zero — and a preview form marks
+itself as such on the wire, so a zero-row check and a zero-write apply
+can never be confused.
 
 **REQ-mcp-progress** (behavior): A long-running tool call MUST report
 progress as bounded notifications — the current phase, and per-invocation

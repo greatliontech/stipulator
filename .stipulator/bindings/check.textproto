@@ -360,3 +360,48 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "b8e3b73e6b078ff35f271eee74bc919f16735c2ca47df09c116550f6ed9558df"
 }
+
+bindings {
+  requirement_id: "REQ-check-policy-notices"
+  content_hash: "5d63b0708897fbd98672fd20614e1c730b9714a5cc584a3d817aaeb20166c891"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.SelectionNotices"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "8c44a636e86ce94910318a3d4e79e427cfd75269b9fdfcfe05c83554c31c1264"
+}
+
+bindings {
+  requirement_id: "REQ-check-policy-notices"
+  content_hash: "5d63b0708897fbd98672fd20614e1c730b9714a5cc584a3d817aaeb20166c891"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestSelectionNoticesAttributeUnwalkedSelections"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "d10a07c2a886bff800ee0003336087476ed2615409cefa9cc2e435f162978b5c"
+}
+
+bindings {
+  requirement_id: "REQ-check-policy-notices"
+  content_hash: "5d63b0708897fbd98672fd20614e1c730b9714a5cc584a3d817aaeb20166c891"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/views.TestCheckSummaryCarriesPolicyNotices"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "63fc15b0abf0cd741d2edcd620e18a76a610cf9e1a79a84d0aee509e592a9a3c"
+}
+
+bindings {
+  requirement_id: "REQ-check-policy-notices"
+  content_hash: "5d63b0708897fbd98672fd20614e1c730b9714a5cc584a3d817aaeb20166c891"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestCheckRenderCarriesPolicyNotices"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "1ad66512e5eb48e89d8cbc0a7a5c975af50046466093ca55ada1e54927ee7817"
+}
+
+bindings {
+  requirement_id: "REQ-check-policy-notices"
+  content_hash: "5d63b0708897fbd98672fd20614e1c730b9714a5cc584a3d817aaeb20166c891"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolDigestCarriesPolicyNotices"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "296eddaf8562d08e8d028d2a2d7a7c05883e0844cfe77c4067ca30669e4fea88"
+}

@@ -121,6 +121,7 @@ func checkSummary(res *stipulatorv1.CheckResult) *stipulatorv1.CheckSummary {
 		}
 		out.SetSuiteHealthy(healthy)
 	}
+	out.SetPolicyNotices(res.GetPolicyNotices())
 	out.SetTestsServed(res.GetTestsServed())
 	out.SetTestsExecuted(res.GetTestsExecuted())
 	out.SetTestsUncacheable(res.GetTestsUncacheable())

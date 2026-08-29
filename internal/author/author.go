@@ -398,7 +398,7 @@ func Unbind(fsys fs.FS, requirement, symbol string, role stipulatorv1.BindingRol
 		return nil, 0, err
 	}
 	if removed == 0 {
-		return nil, 0, fmt.Errorf("no binding matches %s", requirement)
+		return nil, 0, fmt.Errorf("no binding matches %s + %s (%s); verify view=bindings lists the recorded rows", requirement, symbol, stipulatorv1.BindingRole_name[int32(role)])
 	}
 	var out []Update
 	for p, c := range updates {

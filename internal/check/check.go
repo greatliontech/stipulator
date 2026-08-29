@@ -121,6 +121,12 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		return res, nil
 	}
 
+	// Policy-tier notices surface at load, attributed to the invocation
+	// that authored the condition — a degradation must be visible where
+	// it was declared, not only mid-derivation on an engine's
+	// diagnostic face. Advisory: never a verdict input.
+	res.SetPolicyNotices(golang.SelectionNotices(ctx, dir, pol))
+
 	// The evidence-class fork (REQ-check-verdict): health judgment demands
 	// whole-policy execution, so the full form executes everything and the
 	// default form serves proven-fresh witnesses with witness-only
