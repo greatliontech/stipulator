@@ -20,7 +20,7 @@ func checkCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "check",
 		Short: guidanceShort("check"),
-		Long:  guidanceLong("check"),
+		Long:  guidanceHelp("check"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if jsonOut && quiet {
 				return fmt.Errorf("give either --json or --quiet")

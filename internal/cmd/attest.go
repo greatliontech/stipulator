@@ -24,7 +24,7 @@ func attestRequirementCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "requirement",
 		Short: guidanceShort("attest requirement"),
-		Long:  guidanceLong("attest requirement"),
+		Long:  guidanceHelp("attest requirement"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if retract {
 				up, prior, err := author.RetractAttestation(os.DirFS(chdir), req)

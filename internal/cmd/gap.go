@@ -22,7 +22,7 @@ func gapCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "gap",
 		Short: guidanceShort("gap"),
-		Long:  guidanceLong("gap"),
+		Long:  guidanceHelp("gap"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			conditioned := coveredID != "" || existsID != "" || manual != "" || reason != "" || len(excuseNames) > 0
 			if list {

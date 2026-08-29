@@ -70,18 +70,23 @@ func TestGuidanceCoversTheCLISurface(t *testing.T) {
 			t.Errorf("%q Short diverged:\ncli %q\ndoc %q", name, c.Short, short)
 		}
 		if c.Long != "" {
-			long, err := doc.Long("cli", name)
-			if err != nil || c.Long != long {
-				t.Errorf("%q Long diverged (err=%v):\ncli %q\ndoc %q", name, err, c.Long, long)
+			// The cobra Long is the knobless help rendering — cobra's
+			// own Flags: block carries the knob list on this surface.
+			help, err := doc.Help("cli", name)
+			if err != nil || c.Long != help {
+				t.Errorf("%q Long diverged from Help (err=%v):\ncli %q\ndoc %q", name, err, c.Long, help)
+			}
+			if strings.Contains(c.Long, "\nknobs:") {
+				t.Errorf("%q Long carries the knobs block beside cobra's Flags", name)
 			}
 		}
 	}
 	// The policy record path in the served guidance is the code's own
 	// constant — the document must not become a second, driftable home
 	// for it.
-	long, err := doc.Long("cli", "policy init")
+	long, err := doc.Help("cli", "policy init")
 	if err != nil || !strings.Contains(long, policy.Path) {
-		t.Errorf("policy init guidance does not carry policy.Path (%v): %q", err, long)
+		t.Errorf("policy init served help does not carry policy.Path (%v): %q", err, long)
 	}
 }
 

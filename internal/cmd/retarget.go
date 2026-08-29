@@ -15,7 +15,7 @@ func retargetCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "retarget",
 		Short: guidanceShort("retarget"),
-		Long:  guidanceLong("retarget"),
+		Long:  guidanceHelp("retarget"),
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			backends, err := makeBackends(cmd.Context(), chdir)

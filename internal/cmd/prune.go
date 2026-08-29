@@ -24,7 +24,7 @@ func pruneCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "prune",
 		Short: guidanceShort("prune"),
-		Long:  guidanceLong("prune"),
+		Long:  guidanceHelp("prune"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Store GC is an identity-liveness fact: the current
 			// bound tests-role symbols ARE the obligation universe,

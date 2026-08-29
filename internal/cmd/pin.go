@@ -19,7 +19,7 @@ func pinCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "pin",
 		Short: guidanceShort("pin"),
-		Long:  guidanceLong("pin"),
+		Long:  guidanceHelp("pin"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(reqs) > 0 {
 				for _, id := range reqs {

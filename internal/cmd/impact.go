@@ -15,7 +15,7 @@ func impactCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "impact",
 		Short: guidanceShort("impact"),
-		Long:  guidanceLong("impact"),
+		Long:  guidanceHelp("impact"),
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			r, err := impact.Preview(cmd.Context(), chdir)

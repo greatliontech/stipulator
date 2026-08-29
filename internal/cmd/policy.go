@@ -34,7 +34,7 @@ func policyInitCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "init",
 		Short: guidanceShort("policy init"),
-		Long:  guidanceLong("policy init"),
+		Long:  guidanceHelp("policy init"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !treeHasGoModule(chdir) {
 				return fmt.Errorf("no go.mod or go.work at the tree root; policy derivation needs a Go module or workspace")

@@ -190,11 +190,11 @@ spells this dispose with kind=supersede.
 **when:** use after a module rename; the prefix matches at a path
 or member boundary, and all-or-nothing — replacements must resolve,
 collisions refuse the batch, shape pins re-derive and content pins
-ride unchanged. Run check=true first when sibling modules share a
+ride unchanged. Run a check preview first when sibling modules share a
 dotted prefix: a member dot and a dotted path element are lexically
 ambiguous, so example.com/mod captures example.com/mod.v2 symbols.
 **example:** retarget from=example.com/old to=example.com/new
-check=true, read the preview, then run it for real.
+as a check preview, read it, then run for real.
 
 ### prune
 **does:** Delete resolved gap records; dangling and store modes repair orphans.
@@ -209,7 +209,7 @@ landing condition was explicitly fired: satisfied dead weight;
 witness evidence gathers only for the gapped requirements, so
 deletion is cheap on a warm tree. Writes only under
 .stipulator/gaps/ (store mode under the witness store).
-**example:** prune check=true to lint for lingering records at a
+**example:** a check preview to lint for lingering records at a
 chunk close.
 
 ### context
@@ -342,7 +342,7 @@ gap (declare/fire/retract, batch), attest_requirement, pin (blanket
 backfills unset pins only and names differing pins awaiting
 re-consent; naming ids is the editorial re-consent that rewrites
 them), dispose (editorial/retire/supersede), retarget (bulk
-symbol-prefix rewrite after a module rename; check=true previews),
+symbol-prefix rewrite after a module rename; check previews),
 prune (resolved records; dangling=true repairs orphans). Long calls
 (check/gate/verify/prune/context/partitions/gap list=true) report
 phase progress when the request carries a progress token — send one

@@ -15,7 +15,7 @@ func diffCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "diff [<old-root> <new-root>]",
 		Short: guidanceShort("diff"),
-		Long:  guidanceLong("diff"),
+		Long:  guidanceHelp("diff"),
 		Args:  cobra.RangeArgs(0, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var oldSpec, newSpec *stipulatorv1.Spec
