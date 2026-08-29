@@ -20,7 +20,7 @@ func gateCmd() *cobra.Command {
 	var jsonOut, quiet bool
 	c := &cobra.Command{
 		Use:   "gate",
-		Short: "Coverage buckets and the gate verdict",
+		Short: guidanceShort("gate"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if jsonOut && quiet {
 				return fmt.Errorf("give either --json or --quiet")

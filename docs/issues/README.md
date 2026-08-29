@@ -29,3 +29,9 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   X" structural clauses have no verb: NoImport is transitive (stdlib forbiddance fails
   through any real dependency) and the shape verbs state presence, not capability absence;
   a direct-call-absence verb (structural.NoCall) would carry them. *Lands: capability charter — activates when a structural requirement needs a call-absence proof the signature/import verbs cannot carry.*
+
+- **[tagged-selection-observation-surfacing](tagged-selection-observation-surfacing.md)** — tagged
+  policy invocations run under a toolchain selection gofresh fail-closes (stdlib observation
+  admissions disabled until the selection is walked); the posture is correct and the gofresh
+  notice loud, but nothing attributes it to the declaring invocation at the policy tier.
+  *Lands: with train chunk 112.*

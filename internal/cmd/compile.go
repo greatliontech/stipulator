@@ -12,7 +12,7 @@ func compileCmd() *cobra.Command {
 	var ir bool
 	c := &cobra.Command{
 		Use:   "compile",
-		Short: "Compile the corpus; print diagnostics",
+		Short: guidanceShort("compile"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			spec, err := mustCompile(chdir)
 			if err != nil {

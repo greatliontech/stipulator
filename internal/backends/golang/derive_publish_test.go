@@ -299,14 +299,25 @@ func TestSharedReads(t *testing.T) {
 	cfg := &stipulatorv1.GoInvocationConfig{}
 	cfg.SetPackages([]string{"./..."})
 	cfg.SetRace(true)
-	// A second race invocation in another capture group (tag-widened)
-	// double-selects the shared package: each group publishes its own
-	// record under its own build coordinate, and neither leg disturbs
-	// the first group's proofs.
+	// A second race invocation in another capture group — split by a
+	// DECLARED environment delta, which enters both the capture-group
+	// key and the record-identity coordinate directly, host-independent,
+	// and stays inside the toolchain-selection audit. The rejected
+	// discriminators, for the record: an arbitrary build tag is an
+	// unwalked toolchain selection gofresh fail-closes, stripping the
+	// very observation proof this test pins; a witness width reaches
+	// the key only through a GOMAXPROCS-derived env value that
+	// collides with the default at common host widths; and exclusions
+	// or vouches partition capture groups while deliberately sharing
+	// the identity coordinate, so the store would keep one record.
+	// The variable is inert — the segment differs, the behavior does
+	// not — and the leg double-selects the shared package: each group
+	// publishes its own record under its own coordinate, and neither
+	// leg disturbs the first group's proofs.
 	dupCfg := &stipulatorv1.GoInvocationConfig{}
 	dupCfg.SetPackages([]string{"./shared"})
 	dupCfg.SetRace(true)
-	dupCfg.SetTags([]string{"dup"})
+	dupCfg.SetEnvironment([]string{"PUB_GROUP_SPLIT=1"})
 	p := &stipulatorv1.TestPolicy{}
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", cfg), goInvocation("dup", dupCfg)})
 

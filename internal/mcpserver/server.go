@@ -8,6 +8,9 @@
 package mcpserver
 
 import (
+	guidancepkg "github.com/greatliontech/gofresh/guidance"
+	stipulator "github.com/greatliontech/stipulator"
+
 	"bytes"
 	"context"
 	"encoding/json"
@@ -50,16 +53,35 @@ import (
 // Server serves one repository. The function fields exist so tests can
 // inject trees, backends, and test runs; New wires production behavior.
 // serverInstructions teach an agent which tool answers which question,
-// so tool selection needs no trial calls (REQ-mcp-server).
-const serverInstructions = "stipulator verifies code against a compiled requirement corpus. " +
-	"The loop: check answers \"does this tree pass\" (summary view by default; it serves fresh witness evidence and executes only what moved, so warm calls are cheap; full=true additionally judges suite health). " +
-	"gate/verify give coverage and binding detail (summary default; views/scopes opt-in). " +
-	"read_spec and context orient before writing code; partitions splits red work into disjoint components. " +
-	"explain answers a witness's dynamic-state uncacheable reason with its derivation chain - pass the reason, or an explicit package and symbol. " +
-	"Authoring: bind (claims batch, all-or-nothing), gap (declare/fire/retract, batch), attest_requirement, pin (blanket backfills unset pins only and names differing pins awaiting re-consent; ids = editorial re-consent that rewrites them), dispose (editorial/retire/supersede), retarget (bulk symbol-prefix rewrite after a module rename; check=true previews), prune (resolved records; dangling=true repairs orphans). " +
+// so tool selection needs no trial calls (REQ-mcp-server). They are
+// the embedded guidance document's decision map, verbatim — the
+// single source (REQ-mcp-guidance); depth per verb is one guidance
+// call away.
+var serverInstructions = guidanceOrientation()
 
-	"Long calls (check/gate/verify/prune/context/partitions/gap list=true) report phase progress when the request carries a progress token - send one and be patient rather than assuming a hang; results state the phase a deadline expired in. " +
-	"All writes stay under .stipulator/; spec documents and source are never edited."
+// guidanceDoc is the embedded guidance document; a malformed document
+// is a build defect the parse-pinning test surfaces, so consumers
+// fail loudly rather than serving nothing.
+func guidanceDoc() *guidancepkg.Document {
+	doc, err := stipulator.GuidanceDocument()
+	if err != nil {
+		panic("mcpserver: embedded guidance document malformed: " + err.Error())
+	}
+	return doc
+}
+
+func guidanceOrientation() string { return guidanceDoc().Orientation() }
+
+// guidanceDescription is a tool's one-line purpose, served from the
+// guidance document under the tool's mcp spelling
+// (REQ-mcp-guidance).
+func guidanceDescription(verb string) string {
+	d, err := guidanceDoc().Description("mcp", verb)
+	if err != nil {
+		panic("mcpserver: " + err.Error())
+	}
+	return d
+}
 
 type Server struct {
 	// root is the launch directory the corpus search started from,
@@ -203,68 +225,74 @@ func (s *Server) MCP() *mcp.Server {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "compile",
-		Description: "Compile the spec corpus; returns diagnostics (empty means clean) and counts.",
+		Description: guidanceDescription("compile"),
 	}, guarded(s, s.toolCompile))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "verify",
-		Description: "Check records against corpus and code. Default view is the summary (hygiene and witness counts, change signatures); view=bindings for per-binding rows, scoped with ids/filter/path. Set no_test to skip witnessing.",
+		Description: guidanceDescription("verify"),
 	}, guarded(s, s.toolVerify))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "gate",
-		Description: "Coverage gate. Default view is the summary (gate_passes, counts, violations); view=reds or full for per-requirement rows; scope with ids/bucket/filter/path. Runs the test suite.",
+		Description: guidanceDescription("gate"),
 	}, guarded(s, s.toolGate))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "check",
-		Description: "One pass, one verdict: compiles the corpus, takes witness evidence — served from proven-fresh records with selective execution of only the stale remainder by default (fast on a warm tree), or one whole policy execution with full=true, which additionally judges suite health — verifies bindings against that evidence, evaluates coverage and gaps, and reports prune residue. Default view is the bounded summary (verdict, counts, capped red rows, top-blocker rows with one exemplar test each, diagnostic headings); view=full carries the whole CheckResult with per-test maps and retained output; ids scopes the pass itself - stale execution narrows to the named requirements and the verdict is flagged partial. A tree failing the check is a successful call carrying passed=false.",
+		Description: guidanceDescription("check"),
 	}, guarded(s, s.toolCheck))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "bind",
-		Description: "Author validated binding claims: the requirement must exist, the symbol must resolve (generated files rejected), pins applied immediately. One claim via requirement/symbol/role, or many via claims=[...] validated all-or-nothing — a failure anywhere authors nothing. Errors explain what to fix.",
+		Description: guidanceDescription("bind"),
 	}, guarded(s, s.toolBind))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "unbind",
-		Description: "Remove binding claims for a requirement, optionally narrowed by symbol and role. Matching nothing is an error.",
+		Description: guidanceDescription("unbind"),
 	}, guarded(s, s.toolUnbind))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "gap",
-		Description: "Declare, fire, retract, or list coverage gaps. Declaring takes comma-separated requirements sharing one reason and landing condition (covered/exists/manual; covered=self lands each requirement on its own coverage; manual with fired=true declares already-fired). fired=true alone marks existing gaps' manual conditions fired. retract=true deletes the records — dangling records included. list=true is the read surface: every record with its reason, condition, fired bit, and evaluated state (open|due|resolved|dangling), witness evidence gathered only for the gap-relevant requirements; editing a gap is re-declaring it. Batches apply all-or-nothing.",
+		Description: guidanceDescription("gap"),
 	}, guarded(s, s.toolGap))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "attest_requirement",
-		Description: "Author the weakest evidence: a reason-carrying voucher for a requirement, content-pinned; renders the distinct attested bucket only where the policy admits it, never covered.",
+		Description: guidanceDescription("attest_requirement"),
 	}, guarded(s, s.toolAttestRequirement))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "pin",
-		Description: "Backfill unset content pins and refresh shape pins; a differing content pin is never rewritten — the response names those requirements as awaiting re-consent. With ids, editorially re-pin those requirements' bindings to the current clause text (re-consent). Never silent: no-ops say so.",
+		Description: guidanceDescription("pin"),
 	}, guarded(s, s.toolPin))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "dispose",
-		Description: "Apply a spec-change disposition: kind editorial (re-pin after meaning-preserving edit), retire (tombstone a removed identity), or supersede (tombstone sources, retarget bindings to declaring successors).",
+		Description: guidanceDescription("dispose"),
 	}, guarded(s, s.toolDispose))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "retarget",
-		Description: "Rewrite stored binding symbols of one backend under an exact old-to-new prefix mapping (module-rename repair). All-or-nothing: replacements must resolve, collisions refuse the batch, shape pins re-derive (unpinned stays unpinned), content pins ride unchanged. check=true previews without writing - run it first when sibling modules share a dotted prefix (a member dot and a dotted path element are lexically ambiguous).",
+		Description: guidanceDescription("retarget"),
 	}, guarded(s, s.toolRetarget))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "prune",
-		Description: "Delete resolved gap records — requirement covered and any manual landing condition explicitly fired: satisfied dead weight the gate advertises. Witness evidence is gathered only for the gapped requirements (stale execution narrows to their bound subjects; no gaps, no evaluation), so deletion is cheap on a warm tree. Pass check=true to report what would be pruned without deleting. Writes only under .stipulator/gaps/.",
+		Description: guidanceDescription("prune"),
 	}, guarded(s, s.toolPrune))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "context",
-		Description: "Per-requirement dossier for ids (comma-separated): clause text with kind and keyword, coverage bucket with reasons, open gap, attestation, bindings with witness class and pin freshness, and closure seeds. Pass slice=true for the code-slice declaration frontier. Facts only — selection is yours.",
+		Description: guidanceDescription("context"),
 	}, guarded(s, s.toolContext))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "partitions",
-		Description: "Candidate work partitions for requirement ids (comma-separated; empty means all red requirements): closure-connected components with seeds, touched packages, and pairwise overlaps. Disjoint components can fan out in parallel.",
+		Description: guidanceDescription("partitions"),
 	}, guarded(s, s.toolPartitions))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "read_spec",
-		Description: "Read the self-contained bundle for requirement ids (comma-separated): the requirements, their closure, terms, and context. Mirrors the bundle resource for clients without resource support.",
+		Description: guidanceDescription("read_spec"),
 	}, guarded(s, s.toolReadSpec))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "explain",
-		Description: "Derivation chain for a dynamic-state refusal: pass a witness's uncacheable reason (or package and symbol) and receive the chain from culprit to the innermost refusing expression, derived against the policy-scoped views verdicts use.",
+		Description: guidanceDescription("explain"),
 	}, guarded(s, s.toolExplain))
+	// guidance serves embedded content and deliberately skips the
+	// corpus guard: orientation must work before a corpus exists.
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "guidance",
+		Description: guidanceDescription("guidance"),
+	}, s.toolGuidance)
 
 	srv.AddResourceTemplate(&mcp.ResourceTemplate{
 		URITemplate: "stipulator://req/{id}",
@@ -1980,4 +2008,23 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return string(r[:n]) + "…"
+}
+
+// guidanceIn asks for one verb's section or, empty, the decision map.
+type guidanceIn struct {
+	Verb string `json:"verb,omitempty" jsonschema:"the verb to describe; empty serves the decision map"`
+}
+
+// toolGuidance serves the embedded guidance document
+// (REQ-mcp-guidance): a verb's full section under its mcp spelling,
+// or the decision map for orientation.
+func (s *Server) toolGuidance(ctx context.Context, req *mcp.CallToolRequest, in guidanceIn) (*mcp.CallToolResult, any, error) {
+	if in.Verb == "" {
+		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: guidanceDoc().Orientation()}}}, nil, nil
+	}
+	long, err := guidanceDoc().Long("mcp", in.Verb)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%w; empty verb serves the decision map, which names every verb", err)
+	}
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: long}}}, nil, nil
 }

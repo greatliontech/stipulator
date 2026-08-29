@@ -32,11 +32,30 @@ duplication without a distinct consumer.
 **REQ-mcp-tools** (wire): The server MUST expose tools `compile`, `verify`,
 `gate`, `check`, `bind`, `unbind`, `gap`, `pin`, `prune`, `read_spec`,
 `context`, `partitions`, `dispose`, `retarget`, `attest_requirement`,
-and `explain`,
+`explain`, and `guidance`,
 mirroring the
 operation semantics exactly, with report-shaped results rendered from the
 report messages as JSON. The `bind` tool accepts many claims
 in one call, validating all-or-nothing like the gap surface.
+
+**REQ-mcp-guidance** (behavior): Tool-level served prose MUST be the
+embedded guidance document's projections (`docs/guidance.md`, in the
+fleet format gofresh's guidance spec defines): every tool description
+and CLI Short/Long is the document's rendering for that surface and
+spelling, the server instructions are the decision map verbatim, and
+the `guidance` tool (and CLI command, its verb positional) serves a
+verb's full section or, verbless, the decision map — refusing an
+unknown verb with the decision map named as the way to enumerate.
+Both surfaces bind the per-surface coverage judgment: every listed
+tool and schema property, and every visible leaf command and local
+flag, documented exactly, both directions. The document's knob
+prose is the authoritative superset; per-parameter schema and flag
+usage strings stay terse wire detail, and a schema or usage string
+contradicting the document is a defect of whichever is wrong — cobra's help and
+completion plumbing, grouping parents, the root-persistent chdir
+flag, and the hidden internal resolver are surface plumbing outside
+the judgment. The guidance surfaces work outside a corpus: the
+document is embedded, so orientation precedes scaffolding.
 
 **REQ-mcp-explain** (behavior): The explain tool MUST answer a
 dynamic-state refusal with its derivation chain, derived against the

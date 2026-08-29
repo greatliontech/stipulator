@@ -23,11 +23,8 @@ func attestRequirementCmd() *cobra.Command {
 	var retract bool
 	c := &cobra.Command{
 		Use:   "requirement",
-		Short: "Record the weakest evidence: a reason-carrying voucher for a requirement",
-		Long: "Author an attestation record — the bottom of the evidence ladder. It counts\n" +
-			"only where the manifest policy names attestation as a cell's minimum, renders\n" +
-			"as its own coverage bucket (never folded into covered), and re-stales when\n" +
-			"the requirement's text moves.",
+		Short: guidanceShort("attest requirement"),
+		Long:  guidanceLong("attest requirement"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if retract {
 				up, prior, err := author.RetractAttestation(os.DirFS(chdir), req)

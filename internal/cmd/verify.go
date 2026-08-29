@@ -16,7 +16,7 @@ func verifyCmd() *cobra.Command {
 	var noTest bool
 	c := &cobra.Command{
 		Use:   "verify",
-		Short: "Check records against the corpus and code",
+		Short: guidanceShort("verify"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			spec, err := mustCompile(chdir)
 			if err != nil {

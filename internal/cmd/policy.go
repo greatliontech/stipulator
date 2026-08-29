@@ -33,13 +33,8 @@ func policyBackends() map[string]policy.Backend {
 func policyInitCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "init",
-		Short: "Derive the universal-race test policy record when absent",
-		Long: "Derives the accepted test policy equivalent to the universal race\n" +
-			"suite witness execution currently assumes — one race-enabled ./...\n" +
-			"invocation per workspace member — and writes it to " + policy.Path + "\n" +
-			"only when no record exists. An existing record is the reviewed\n" +
-			"contract: a matching one makes this a no-op, a diverging one is an\n" +
-			"error, never a rewrite.",
+		Short: guidanceShort("policy init"),
+		Long:  guidanceLong("policy init"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !treeHasGoModule(chdir) {
 				return fmt.Errorf("no go.mod or go.work at the tree root; policy derivation needs a Go module or workspace")

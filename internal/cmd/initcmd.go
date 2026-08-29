@@ -13,7 +13,7 @@ import (
 func initCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "init",
-		Short: "Scaffold the manifest for a new corpus",
+		Short: guidanceShort("init"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			up, err := author.Init(os.DirFS(chdir))
 			if err != nil {

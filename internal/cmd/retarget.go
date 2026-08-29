@@ -14,17 +14,9 @@ func retargetCmd() *cobra.Command {
 	var check bool
 	c := &cobra.Command{
 		Use:   "retarget",
-		Short: "Rewrite stored binding symbols under an exact prefix mapping",
-		Long: "Rewrites every stored binding symbol of one backend whose prefix matches\n" +
-			"--from (at a path or member boundary) to carry --to instead — the module-\n" +
-			"rename repair. All-or-nothing: every replacement must resolve in the\n" +
-			"current tree, collisions refuse the whole batch, shape pins re-derive\n" +
-			"from the resolved replacements (unpinned bindings stay unpinned), and\n" +
-			"content pins ride unchanged. --check reports the affected identities\n" +
-			"without writing. Dotted path elements are lexically ambiguous with\n" +
-			"method members (example.com/mod captures example.com/mod.v2 symbols);\n" +
-			"run --check first when sibling modules share a dotted prefix.",
-		Args: cobra.NoArgs,
+		Short: guidanceShort("retarget"),
+		Long:  guidanceLong("retarget"),
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			backends, err := makeBackends(cmd.Context(), chdir)
 			if err != nil {

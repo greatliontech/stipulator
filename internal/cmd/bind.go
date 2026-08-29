@@ -13,7 +13,7 @@ func bindCmd() *cobra.Command {
 	var req, symbol, role, backendName, file string
 	c := &cobra.Command{
 		Use:   "bind",
-		Short: "Author a validated binding claim",
+		Short: guidanceShort("bind"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			r, err := author.ParseRole(role)
 			if err != nil {
@@ -48,7 +48,7 @@ func unbindCmd() *cobra.Command {
 	var req, symbol, role string
 	c := &cobra.Command{
 		Use:   "unbind",
-		Short: "Remove binding claims",
+		Short: guidanceShort("unbind"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			r, err := author.ParseRole(role)
 			if err != nil {

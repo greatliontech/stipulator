@@ -9,7 +9,7 @@ import (
 func mcpCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "mcp",
-		Short: "Serve the corpus and operations over MCP (stdio)",
+		Short: guidanceShort("mcp"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return mcpserver.New(chdir).Run(cmd.Context())
 		},

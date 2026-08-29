@@ -23,13 +23,8 @@ func pruneCmd() *cobra.Command {
 	var check, noTest, dangling, storeGC bool
 	c := &cobra.Command{
 		Use:   "prune",
-		Short: "Delete resolved gap records",
-		Long: "Deletes resolved gap records — requirement covered, any manual landing\n" +
-			"condition explicitly fired: a resolved gap is satisfied, dead record weight.\n" +
-			"--dangling instead deletes gap records naming requirements no longer in\n" +
-			"the corpus — the explicit bulk repair, judged from corpus and records\n" +
-			"alone, never part of resolved-record pruning. --check lints either mode:\n" +
-			"non-zero exit when records linger, deleting nothing.",
+		Short: guidanceShort("prune"),
+		Long:  guidanceLong("prune"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Store GC is an identity-liveness fact: the current
 			// bound tests-role symbols ARE the obligation universe,

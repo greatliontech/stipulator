@@ -19,17 +19,8 @@ func checkCmd() *cobra.Command {
 	var ids string
 	c := &cobra.Command{
 		Use:   "check",
-		Short: "One pass, one verdict: does this tree pass",
-		Long: "Runs the unified check: compiles the corpus, takes witness evidence\n" +
-			"— served from proven-fresh records with selective execution of the\n" +
-			"stale remainder by default, or one whole execution of the accepted\n" +
-			"test policy under --full — verifies bindings against that evidence,\n" +
-			"evaluates coverage and gaps, and reports prune residue: one\n" +
-			"in-process pass, one verdict. Fails exactly when compilation fails,\n" +
-			"the accepted policy record is missing or invalid, verification\n" +
-			"reports problems, a red requirement has no gap naming it, or a\n" +
-			"resolved gap record lingers unpruned; --full additionally fails on\n" +
-			"unhealthy suite health, which only whole execution can judge.",
+		Short: guidanceShort("check"),
+		Long:  guidanceLong("check"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if jsonOut && quiet {
 				return fmt.Errorf("give either --json or --quiet")

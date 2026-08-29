@@ -18,7 +18,7 @@ func disposeCmd() *cobra.Command {
 	var edReq string
 	editorial := &cobra.Command{
 		Use:   "editorial",
-		Short: "Re-pin a requirement's bindings after a meaning-preserving edit",
+		Short: guidanceShort("dispose editorial"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ups, err := author.Editorial(os.DirFS(chdir), edReq)
 			if err != nil {
@@ -34,7 +34,7 @@ func disposeCmd() *cobra.Command {
 	var force bool
 	retire := &cobra.Command{
 		Use:   "retire",
-		Short: "Tombstone an identity removed from the spec; delete its records",
+		Short: guidanceShort("dispose retire"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ups, err := author.Retire(os.DirFS(chdir), retireID, force)
 			if err != nil {
@@ -50,7 +50,7 @@ func disposeCmd() *cobra.Command {
 	supersede := &cobra.Command{
 		Use:     "supersede",
 		Aliases: []string{"split", "merge"},
-		Short:   "Tombstone sources and retarget their bindings to declaring successors",
+		Short:   guidanceShort("dispose supersede"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ups, err := author.Supersede(os.DirFS(chdir), splitList(from), splitList(into), false)
 			if err != nil {

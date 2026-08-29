@@ -14,11 +14,9 @@ func diffCmd() *cobra.Command {
 	var against string
 	c := &cobra.Command{
 		Use:   "diff [<old-root> <new-root>]",
-		Short: "Per-identity IR delta between two trees, or against a git revision",
-		Long: "Two forms: `diff <old-root> <new-root>` compares two checked-out trees;\n" +
-			"`diff --against <rev>` compares the corpus as committed at the revision\n" +
-			"(read straight from the object store — no checkout) with the working tree.",
-		Args: cobra.RangeArgs(0, 2),
+		Short: guidanceShort("diff"),
+		Long:  guidanceLong("diff"),
+		Args:  cobra.RangeArgs(0, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var oldSpec, newSpec *stipulatorv1.Spec
 			var err error

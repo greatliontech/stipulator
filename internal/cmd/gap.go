@@ -21,16 +21,8 @@ func gapCmd() *cobra.Command {
 	var fired, retract, list bool
 	c := &cobra.Command{
 		Use:   "gap",
-		Short: "Declare, fire, retract, or list coverage gaps",
-		Long: "Declares coverage gaps with a landing condition (--req repeatable; all\n" +
-			"share the reason and condition; --covered self lands each requirement on\n" +
-			"its own coverage). --fired alone marks existing gaps' manual conditions\n" +
-			"fired — the external judgment entering through the validated path.\n" +
-			"--retract deletes gap records — dangling records included: retraction is\n" +
-			"the dangling state's repair, and it never touches the tombstone registry.\n" +
-			"--list prints every record with its evaluated state — the read surface,\n" +
-			"witnessing only the gap-relevant requirements; editing a gap is\n" +
-			"re-declaring it. Batches apply all-or-nothing.",
+		Short: guidanceShort("gap"),
+		Long:  guidanceLong("gap"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			conditioned := coveredID != "" || existsID != "" || manual != "" || reason != "" || len(excuseNames) > 0
 			if list {

@@ -18,13 +18,8 @@ func pinCmd() *cobra.Command {
 	var reqs []string
 	c := &cobra.Command{
 		Use:   "pin",
-		Short: "Backfill binding content and shape pins; --req re-consents named requirements",
-		Long: "Without flags, backfills unset content pins and refreshes shape pins" +
-			" - a differing content pin is never rewritten by the blanket form, so" +
-			" staleness cannot be laundered; the requirements whose differing pins" +
-			" were preserved are named as awaiting re-consent. Naming requirements" +
-			" with --req is the editorial re-consent: their bindings re-pin to the" +
-			" current clause text.",
+		Short: guidanceShort("pin"),
+		Long:  guidanceLong("pin"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(reqs) > 0 {
 				for _, id := range reqs {

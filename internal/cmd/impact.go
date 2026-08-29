@@ -14,15 +14,9 @@ import (
 func impactCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "impact",
-		Short: "Preview what the working-tree change set plausibly touches",
-		Long: "Joins the worktree-vs-HEAD change set with the corpus and the committed\n" +
-			"bindings: which requirements' spec content moved, which bindings' symbols\n" +
-			"declare in changed files, and which witness subjects the change reaches\n" +
-			"through the import graph and embed couplings. Executes nothing and claims no freshness\n" +
-			"verdict — the preview names candidates for the witnessed surfaces\n" +
-			"(check, verify) to decide, and an empty preview is advisory, never\n" +
-			"proof of no impact: reach through non-import couplings is invisible here.",
-		Args: cobra.NoArgs,
+		Short: guidanceShort("impact"),
+		Long:  guidanceLong("impact"),
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			r, err := impact.Preview(cmd.Context(), chdir)
 			if err != nil {

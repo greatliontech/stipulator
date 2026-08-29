@@ -426,7 +426,7 @@ func TestToolListExact(t *testing.T) {
 			contextDescription = tool.Description
 		}
 	}
-	want := []string{"compile", "verify", "gate", "check", "bind", "unbind", "gap", "pin", "prune", "read_spec", "context", "partitions", "dispose", "retarget", "attest_requirement", "explain"}
+	want := []string{"compile", "verify", "gate", "check", "bind", "unbind", "gap", "pin", "prune", "read_spec", "context", "partitions", "dispose", "retarget", "attest_requirement", "explain", "guidance"}
 	for _, w := range want {
 		if !got[w] {
 			t.Fatalf("tool %s missing from the wire list: %v", w, got)
