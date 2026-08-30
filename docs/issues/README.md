@@ -15,6 +15,9 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   dependency-resolution state. *Lands: with train chunk 114.*
 - **[witness-runner-environment-divergence](witness-runner-environment-divergence.md)** — a witness
   red only inside the runner; the environment delta is uninspectable. *Lands: cross-tool train chunk 114.*
+- **[cli-repeated-flag-claims-silently-dropped](cli-repeated-flag-claims-silently-dropped.md)** — CLI
+  `bind` with repeated `--req`/`--symbol` flags exits 0 and writes only the last claim; batch or
+  refuse, never accept-and-drop. *Lands: with train chunk 114.*
 - **[proto-backend](proto-backend.md)** — descriptor-level verification via protocompile;
   spec exists, five requirements gapped. *Lands: capability charter (gofresh docs/plans/capability-charters.md) — activates when a corpus needs wire evidence shape pins and Go witnesses cannot cover.*
 - **[out-of-process-backends](out-of-process-backends.md)** — trusted backend surfaces can move
