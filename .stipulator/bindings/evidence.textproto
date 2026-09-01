@@ -1134,3 +1134,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "1e30c79196c059bb2239436c5fd9d18121b1d0daf762d9ece9254b6460c3976d"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "234b17b36a1a9d546b3e09fe4c4637672d940258a7d1952caf487319eb5123e5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSelectionIsolatesBinaryDeadlineVictims"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "6dec692994f249d1e93ecc9af7a5416fb000487fc850f7c2088f12785b5b7185"
+}

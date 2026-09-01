@@ -8,10 +8,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[identity-walk-two-trackers](identity-walk-two-trackers.md)** — attachment and extent answer
   "whose block is this" via two independent reset tables in two packages; the subset relationship
   holds by coincidence. Collapse to one walk with two windows. *Lands: cross-tool train chunk 131.*
-- **[timeout-kill-attribution](timeout-kill-attribution.md)** — a harness-timeout kill reds the
-  running test as if the tree failed; the envelope fact (budget exhausted) is never named in the
-  diagnostics. No evidence corruption — unhealthy packages publish nothing.
-  *Lands: cross-tool train chunk 114.*
 - **[unresolvable-dependency-attribution](unresolvable-dependency-attribution.md)** — a tree
   referencing symbols unresolvable under the module's own workspace degrades bind and the
   witness classifier with raw loader errors or silent misclassification instead of naming the

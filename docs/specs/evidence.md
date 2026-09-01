@@ -507,6 +507,19 @@ accepted record: the record's envelope and its reviewed arguments are the
 only sources of execution bounds, so an inherited default can never abort
 work the record admitted.
 
+**REQ-policy-budget-attribution** (behavior): A package run ended by an
+execution bound MUST attribute the red to the exhausted budget: the
+diagnostic names the bound from the reviewed record — the invocation
+envelope's timeout, or the declared binary deadline, with the testing
+runtime's deadline panic shape serving as detection only and a run
+never reclassified when its record declares no binary bound — and
+lists the subjects the exhaustion denied, taken from the runtime's own
+running-tests roster where the dump carries one. A budget sized too
+small is thus never read as the unlucky test's defect, a completed
+measurement — a failure whose terminal event flushed after the panic
+line included — is never erased by the deadline's bookkeeping, and a
+green stream is never reclassified by output shape.
+
 **REQ-policy-record-location** (wire): The accepted test policy MUST be
 stored as textproto at `.stipulator/policy.textproto` in canonical form:
 at least one invocation declared — a record accepting no test work names

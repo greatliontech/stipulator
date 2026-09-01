@@ -79,7 +79,7 @@ func FuzzGoExecuteEventStream(f *testing.F) {
 		}
 		parse := func() (*streamState, packageRun) {
 			st := parseTestStream("fuzz", "example.com/p", bytes.NewReader(data), producer)
-			return st, classifyRun("fuzz", "example.com/p", st, waitErr, &boundedBuffer{})
+			return st, classifyRun("fuzz", "example.com/p", st, waitErr, &boundedBuffer{}, "")
 		}
 		st1, run1 := parse()
 		st2, run2 := parse()

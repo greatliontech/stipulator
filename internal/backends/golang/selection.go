@@ -140,18 +140,24 @@ func ExecuteSelection(ctx context.Context, n *NormalizedInvocation, sel TestSele
 }
 
 // deniedTests derives the top-level runnables one selective process
-// denied an outcome. Only a red process — its suite failed, or its
-// stream is untrusted — denies anything: a test shadowed by a package
-// abort (started but unfinished, or selected yet reaching no terminal
-// event at all) and a completed pass inside the process, whose green
-// evidence the process's own red disposition voids. A test whose own
-// top-level failure is recorded is never denied — its failure stands. A
-// build failure or envelope expiry would deny a solo re-run identically,
-// so those dispositions isolate nothing.
+// denied an outcome. Only a red process — its suite failed, its stream
+// is untrusted, or its binary deadline expired — denies anything: a
+// test shadowed by a package abort (started but unfinished, or selected
+// yet reaching no terminal event at all) and a completed pass inside
+// the process, whose green evidence the process's own red disposition
+// voids. A test whose own top-level failure is recorded is never denied
+// — its failure stands. A build failure would fail a solo re-run
+// identically, so it isolates nothing. A TIMEOUT process isolates: a
+// binary-deadline package leaves the envelope's budget intact, and each
+// solo re-run gets a fresh binary bound of its own — one victim's
+// starvation never voids its siblings' evidence — while under a
+// spent envelope the loop denies each solo before it spawns, reported
+// as a TIMEOUT process outcome exactly as the surface documents.
 func deniedTests(r *packageRun, selected []string) []string {
 	switch r.disposition {
 	case stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED,
-		stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_DEGRADED:
+		stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_DEGRADED,
+		stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT:
 	default:
 		return nil
 	}

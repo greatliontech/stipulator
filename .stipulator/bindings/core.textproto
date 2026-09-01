@@ -126,3 +126,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "00de14bdac645eb165bd09b5c1fd6f12ad1ae254f28272cfba2a15c4587add1d"
 }
+
+bindings {
+  requirement_id: "REQ-core-one-execution"
+  content_hash: "27037830c846e6bd1e46201d4c5410eac7011f7c1805f54c2cdb095c122af3bc"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSelectionIsolatesBinaryDeadlineVictims"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "6dec692994f249d1e93ecc9af7a5416fb000487fc850f7c2088f12785b5b7185"
+}

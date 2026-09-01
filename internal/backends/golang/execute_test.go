@@ -239,7 +239,7 @@ func TestGoExecutePackagePanic(t *testing.T) {
 // dispose TIMEOUT — a terminal reported fact, not an error and not a
 // discarded run.
 func TestGoExecuteEnvelopeTimeout(t *testing.T) {
-	stipulate.Covers(t, "REQ-policy-explicit", "REQ-go-policy-complete")
+	stipulate.Covers(t, "REQ-policy-explicit", "REQ-go-policy-complete", "REQ-policy-budget-attribution")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
 	cfg.SetPackages([]string{"./sleepy"})
@@ -253,29 +253,79 @@ func TestGoExecuteEnvelopeTimeout(t *testing.T) {
 	if got := packageDisposition(t, health, "example.com/exec/sleepy"); got != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT {
 		t.Errorf("package disposition = %v, want TIMEOUT", got)
 	}
-	if d := findDiagnostic(diags, "example.com/exec/sleepy", ""); d == nil {
-		t.Error("no diagnostic for the envelope timeout")
+	d := findDiagnostic(diags, "example.com/exec/sleepy", "")
+	if d == nil {
+		t.Fatal("no diagnostic for the envelope timeout")
+	}
+	// The bound is always named; the cut-off subject roster depends on
+	// whether the envelope outlived the build phase, so its rendering is
+	// pinned deterministically by
+	// TestGoExecuteEnvelopeTimeoutListsCutOffSubjects.
+	if !strings.Contains(d.GetOutput(), "invocation timeout 1s expired before the package completed") {
+		t.Errorf("envelope bound not named in the diagnostic: %q", d.GetOutput())
 	}
 }
 
-// TestGoExecuteGoTestLevelTimeout pins the go-test-level timeout class: a
-// test binary aborted by its own -test.timeout fails the package exactly
-// as a direct `go test` would, with the timeout panic retained. The
-// timeout rides the typed args field — arguments handed to the test
-// binary — never an invented flag.
+// TestGoExecuteEnvelopeTimeoutListsCutOffSubjects pins the envelope
+// arm's attribution rendering: the classified TIMEOUT diagnostic names
+// the reviewed envelope bound and lists the subjects the cutoff left
+// unfinished — denied a completed measurement, never reported failed.
+func TestGoExecuteEnvelopeTimeoutListsCutOffSubjects(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-budget-attribution")
+	n := &NormalizedInvocation{Name: "inv", Timeout: 90 * time.Second}
+	r := packageRun{pkg: "example.com/x", aborted: []string{"TestCut", "TestAlsoCut"}}
+	if err := finalizeRun(n, &r, true, ""); err != nil {
+		t.Fatal(err)
+	}
+	if r.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT {
+		t.Fatalf("disposition = %v, want TIMEOUT", r.disposition)
+	}
+	if len(r.diags) != 1 {
+		t.Fatalf("diagnostics = %v, want exactly the timeout diagnostic", r.diags)
+	}
+	out := r.diags[0].GetOutput()
+	if !strings.Contains(out, "invocation timeout 1m30s expired before the package completed") {
+		t.Errorf("envelope bound not named: %q", out)
+	}
+	if !strings.Contains(out, "started but unfinished: TestCut, TestAlsoCut") {
+		t.Errorf("cut-off subjects not listed: %q", out)
+	}
+}
+
+// TestGoExecuteGoTestLevelTimeout pins the binary-deadline class: a test
+// binary aborted by its own -test.timeout reds the package as TIMEOUT
+// with the exhausted budget named in the diagnostic, and the test the
+// deadline cut off publishes no completed outcome — the budget is the
+// red fact, never the running test's failure. The timeout rides the
+// typed args field — arguments handed to the test binary — never an
+// invented flag.
 func TestGoExecuteGoTestLevelTimeout(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-policy-complete")
+	stipulate.Covers(t, "REQ-go-policy-complete", "REQ-policy-budget-attribution")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
 	cfg.SetPackages([]string{"./sleepy"})
 	cfg.SetArgs([]string{"-test.timeout=250ms"})
-	health, _, diags := executeInvocation(t, time.Minute, cfg, "sleepy-toolchain")
-	if got := health.GetDisposition(); got != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED {
-		t.Fatalf("invocation disposition = %v, want TEST_FAILED", got)
+	health, tests, diags := executeInvocation(t, time.Minute, cfg, "sleepy-toolchain")
+	if got := health.GetDisposition(); got != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT {
+		t.Fatalf("invocation disposition = %v, want TIMEOUT", got)
+	}
+	if got := packageDisposition(t, health, "example.com/exec/sleepy"); got != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT {
+		t.Errorf("package disposition = %v, want TIMEOUT", got)
 	}
 	d := findDiagnostic(diags, "example.com/exec/sleepy", "")
-	if d == nil || !strings.Contains(d.GetOutput(), "test timed out") {
+	if d == nil || !strings.Contains(d.GetOutput(), "test binary timeout 250ms exhausted") {
+		t.Fatalf("budget not named in the package diagnostic: %v", d)
+	}
+	if !strings.Contains(d.GetOutput(), "running when the budget expired: TestSleeps") {
+		t.Errorf("runtime roster not parsed from the real dump: %q", d.GetOutput())
+	}
+	if !strings.Contains(d.GetOutput(), "test timed out") {
 		t.Errorf("timeout panic not retained in the package diagnostic: %v", d)
+	}
+	for _, tr := range tests {
+		if tr.GetOutcome() == stipulatorv1.TestOutcome_TEST_OUTCOME_FAILED {
+			t.Errorf("deadline victim published a completed FAILED outcome: %s", tr.GetTest())
+		}
 	}
 }
 
@@ -509,7 +559,7 @@ func TestGoExecuteRefusesSilentStream(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			st := parseTestStream("inv", "example.com/x", strings.NewReader(""), nil)
-			run := classifyRun("inv", "example.com/x", st, tc.waitErr, &boundedBuffer{})
+			run := classifyRun("inv", "example.com/x", st, tc.waitErr, &boundedBuffer{}, "")
 			if run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_DEGRADED {
 				t.Fatalf("disposition = %v, want DEGRADED, never healthy and never a test failure", run.disposition)
 			}
@@ -537,7 +587,7 @@ func TestGoExecuteRefusesMalformedStream(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			st := parseTestStream("inv", "example.com/x", strings.NewReader(stream), nil)
-			run := classifyRun("inv", "example.com/x", st, nil, &boundedBuffer{})
+			run := classifyRun("inv", "example.com/x", st, nil, &boundedBuffer{}, "")
 			if run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_DEGRADED {
 				t.Fatalf("disposition = %v, want DEGRADED: a poisoned stream is never trusted", run.disposition)
 			}
@@ -868,6 +918,55 @@ func TestGoExecuteSelectionFuzzReplaysCommittedSeeds(t *testing.T) {
 	}
 }
 
+// TestGoExecuteSelectionIsolatesBinaryDeadlineVictims pins the isolation
+// pass's deadline class: a binary-deadline TIMEOUT process denies its
+// tests exactly as a red suite does — the completed pass inside it is
+// voided by the red producer and recovers solo from a healthy process
+// of its own (the envelope's budget is intact, and each solo re-run
+// carries a fresh binary bound), while the starving test's solo re-run
+// starves again under its own bound and gains no invented outcome.
+func TestGoExecuteSelectionIsolatesBinaryDeadlineVictims(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-budget-attribution", "REQ-evidence-witness-freshness", "REQ-core-one-execution")
+	neutralAmbient(t)
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./deadline"})
+	cfg.SetArgs([]string{"-test.timeout=1s"})
+	res := executeSelection(t, time.Minute, cfg, "isolate-deadline", TestSelection{
+		"example.com/exec/deadline": {"TestQuick", "TestStall"},
+	})
+	main := findProcess(res.Processes, "example.com/exec/deadline", "")
+	if main == nil || main.Disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT {
+		t.Fatalf("package-selection process = %+v, want TIMEOUT for the deadline-cut package", main)
+	}
+	d := findDiagnostic(res.Diagnostics, "example.com/exec/deadline", "")
+	if d == nil || !strings.Contains(d.GetOutput(), "test binary timeout 1s exhausted") {
+		t.Fatalf("budget not named in the package diagnostic: %v", d)
+	}
+	if !strings.Contains(d.GetOutput(), "running when the budget expired: TestStall") || strings.Contains(d.GetOutput(), "expired: TestQuick") {
+		t.Errorf("roster should name the starving test alone: %q", d.GetOutput())
+	}
+	quick := findProcess(res.Processes, "example.com/exec/deadline", "TestQuick")
+	if quick == nil || quick.Disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+		t.Fatalf("voided pass's solo process = %+v, want a healthy solo re-run", quick)
+	}
+	soloPass := false
+	for _, tr := range res.Tests {
+		if tr.GetTest() == "TestQuick" && tr.GetOutcome() == stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED && sameProcess(tr.GetProducer(), quick.Producer) {
+			soloPass = true
+		}
+	}
+	if !soloPass {
+		t.Error("no PASSED outcome attributed to the healthy solo process; the voided pass did not recover")
+	}
+	stall := findProcess(res.Processes, "example.com/exec/deadline", "TestStall")
+	if stall == nil || stall.Disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT {
+		t.Errorf("starving test's solo process = %+v, want its own TIMEOUT recorded", stall)
+	}
+	if tr := findTest(res.Tests, "example.com/exec/deadline", "TestStall"); tr != nil {
+		t.Errorf("a test the deadline cut off twice gained an outcome: %v", tr)
+	}
+}
+
 // TestGoExecuteRefusesTruncatedStream pins the refusal ladder for missing
 // terminals: a stream that ends without a terminal package event —
 // a killed binary, a truncated pipe — is DEGRADED.
@@ -876,7 +975,7 @@ func TestGoExecuteRefusesTruncatedStream(t *testing.T) {
 	stream := `{"Action":"start","Package":"example.com/x"}` + "\n" +
 		`{"Action":"run","Package":"example.com/x","Test":"TestX"}` + "\n"
 	st := parseTestStream("inv", "example.com/x", strings.NewReader(stream), nil)
-	run := classifyRun("inv", "example.com/x", st, nil, &boundedBuffer{})
+	run := classifyRun("inv", "example.com/x", st, nil, &boundedBuffer{}, "")
 	if run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_DEGRADED {
 		t.Fatalf("disposition = %v, want DEGRADED for a stream without a terminal event", run.disposition)
 	}
@@ -890,9 +989,214 @@ func TestGoExecuteRefusesGreenStreamRedExit(t *testing.T) {
 	stream := `{"Action":"start","Package":"example.com/x"}` + "\n" +
 		`{"Action":"pass","Package":"example.com/x"}` + "\n"
 	st := parseTestStream("inv", "example.com/x", strings.NewReader(stream), nil)
-	run := classifyRun("inv", "example.com/x", st, errors.New("exit status 2"), &boundedBuffer{})
+	run := classifyRun("inv", "example.com/x", st, errors.New("exit status 2"), &boundedBuffer{}, "")
 	if run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_DEGRADED {
 		t.Fatalf("disposition = %v, want DEGRADED for a green stream from a red process", run.disposition)
+	}
+}
+
+// TestGoExecuteBinaryTimeoutLateFlushKeepsCompletedFailure pins the
+// deadline classification against the toolchain's real event ordering:
+// test2json can flush a completed failure's fail event after the panic
+// line, so event ordering never identifies victims — the runtime's own
+// "running tests:" roster does. The completed failure keeps its FAILED
+// outcome and its own diagnostic; the roster victim gains no outcome
+// and no per-test diagnostic and stays in the started set the isolation
+// pass consumes; the package reds TIMEOUT naming the reviewed bound,
+// never the panic's printed value.
+func TestGoExecuteBinaryTimeoutLateFlushKeepsCompletedFailure(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-budget-attribution")
+	stream := `{"Action":"run","Package":"example.com/x","Test":"TestRed"}` + "\n" +
+		`{"Action":"output","Package":"example.com/x","Test":"TestRed","Output":"    x_test.go:4: genuine assertion failure\n"}` + "\n" +
+		`{"Action":"output","Package":"example.com/x","Test":"TestRed","Output":"--- FAIL: TestRed (0.00s)\n"}` + "\n" +
+		`{"Action":"run","Package":"example.com/x","Test":"TestGhost"}` + "\n" +
+		`{"Action":"run","Package":"example.com/x","Test":"TestSlow"}` + "\n" +
+		`{"Action":"output","Package":"example.com/x","Test":"TestSlow","Output":"panic: test timed out after 301ms\n"}` + "\n" +
+		`{"Action":"output","Package":"example.com/x","Test":"TestSlow","Output":"\trunning tests:\n"}` + "\n" +
+		`{"Action":"output","Package":"example.com/x","Test":"TestSlow","Output":"\t\tTestSlow (300ms)\n"}` + "\n" +
+		`{"Action":"output","Package":"example.com/x","Test":"TestSlow","Output":"goroutine 7 [sleeping]:\n"}` + "\n" +
+		`{"Action":"fail","Package":"example.com/x","Test":"TestRed"}` + "\n" +
+		`{"Action":"fail","Package":"example.com/x"}` + "\n"
+	st := parseTestStream("inv", "example.com/x", strings.NewReader(stream), nil)
+	run := classifyRun("inv", "example.com/x", st, errors.New("exit status 1"), &boundedBuffer{}, "300ms")
+	if run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT {
+		t.Fatalf("disposition = %v, want TIMEOUT", run.disposition)
+	}
+	if tr := findTest(run.tests, "example.com/x", "TestRed"); tr == nil || tr.GetOutcome() != stipulatorv1.TestOutcome_TEST_OUTCOME_FAILED {
+		t.Errorf("late-flushed completed failure lost its outcome: %v", tr)
+	}
+	if d := findDiagnostic(run.diags, "example.com/x", "TestRed"); d == nil || !strings.Contains(d.GetOutput(), "genuine assertion failure") {
+		t.Errorf("late-flushed completed failure lost its own diagnostic: %v", d)
+	}
+	if tr := findTest(run.tests, "example.com/x", "TestSlow"); tr != nil {
+		t.Errorf("deadline victim published a completed outcome: %v", tr)
+	}
+	if d := findDiagnostic(run.diags, "example.com/x", "TestSlow"); d != nil {
+		t.Errorf("deadline victim minted a per-test failure diagnostic: %v", d)
+	}
+	d := findDiagnostic(run.diags, "example.com/x", "")
+	if d == nil || !strings.Contains(d.GetOutput(), "test binary timeout 300ms exhausted") {
+		t.Fatalf("reviewed bound not named in the package diagnostic: %v", d)
+	}
+	// The runtime's roster is the victim list, not the started set:
+	// TestGhost started and reached no terminal event, yet the runtime
+	// did not report it running, so the diagnostic must not list it.
+	if !strings.Contains(d.GetOutput(), "running when the budget expired: TestSlow\n") {
+		t.Errorf("roster victim not listed alone as running at exhaustion: %q", d.GetOutput())
+	}
+	started := startedTests(st)
+	if !slices.Contains(started, "TestSlow") || slices.Contains(started, "TestRed") {
+		t.Errorf("started set = %v, want no completed test in the isolation feed", started)
+	}
+}
+
+// TestGoExecuteBinaryTimeoutRosterSurvivesInterleavedOutput pins the
+// roster scanner against the dump's non-atomicity: goroutines still
+// running while the panic dump prints can interleave writes — a bare
+// newline included — between roster entries, so any non-matching line
+// short of the goroutine section header skips rather than closes; the
+// header ends the roster and entry-shaped lines after it stay out.
+func TestGoExecuteBinaryTimeoutRosterSurvivesInterleavedOutput(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-budget-attribution")
+	stream := `{"Action":"run","Package":"example.com/x","Test":"TestA"}` + "\n" +
+		`{"Action":"run","Package":"example.com/x","Test":"TestB"}` + "\n" +
+		`{"Action":"output","Package":"example.com/x","Output":"panic: test timed out after 1s\n"}` + "\n" +
+		`{"Action":"output","Package":"example.com/x","Output":"\trunning tests:\n"}` + "\n" +
+		`{"Action":"output","Package":"example.com/x","Output":"\t\tTestA (1s)\n"}` + "\n" +
+		`{"Action":"output","Package":"example.com/x","Output":"a concurrent goroutine's own print\n"}` + "\n" +
+		`{"Action":"output","Package":"example.com/x","Output":"\n"}` + "\n" +
+		`{"Action":"output","Package":"example.com/x","Output":"\t\tTestB (1s)\n"}` + "\n" +
+		`{"Action":"output","Package":"example.com/x","Output":"\n"}` + "\n" +
+		`{"Action":"output","Package":"example.com/x","Output":"goroutine 9 [running]:\n"}` + "\n" +
+		`{"Action":"output","Package":"example.com/x","Output":"\t\tFakeEntry (1s)\n"}` + "\n" +
+		`{"Action":"fail","Package":"example.com/x"}` + "\n"
+	st := parseTestStream("inv", "example.com/x", strings.NewReader(stream), nil)
+	run := classifyRun("inv", "example.com/x", st, errors.New("exit status 1"), &boundedBuffer{}, "1s")
+	d := findDiagnostic(run.diags, "example.com/x", "")
+	if d == nil || !strings.Contains(d.GetOutput(), "running when the budget expired: TestA, TestB\n") {
+		t.Errorf("interleaved output corrupted the roster: %v", d)
+	}
+}
+
+// TestGoExecuteBinaryTimeoutRosterlessDumpFallsBackToStarted pins the
+// fallback: a deadline dump carrying no "running tests:" roster still
+// lists victims — the started-but-unfinished set stands in.
+func TestGoExecuteBinaryTimeoutRosterlessDumpFallsBackToStarted(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-budget-attribution")
+	stream := `{"Action":"run","Package":"example.com/x","Test":"TestSlow"}` + "\n" +
+		`{"Action":"output","Package":"example.com/x","Test":"TestSlow","Output":"panic: test timed out after 250ms\n"}` + "\n" +
+		`{"Action":"fail","Package":"example.com/x"}` + "\n"
+	st := parseTestStream("inv", "example.com/x", strings.NewReader(stream), nil)
+	run := classifyRun("inv", "example.com/x", st, errors.New("exit status 1"), &boundedBuffer{}, "250ms")
+	if run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT {
+		t.Fatalf("disposition = %v, want TIMEOUT", run.disposition)
+	}
+	d := findDiagnostic(run.diags, "example.com/x", "")
+	if d == nil || !strings.Contains(d.GetOutput(), "running when the budget expired: TestSlow") {
+		t.Errorf("started fallback not rendered without a roster: %v", d)
+	}
+}
+
+// TestGoExecuteBinaryTimeoutGreenStreamNotReclassified pins the guard: a
+// passing stream whose test printed the deadline panic's literal line
+// stays HEALTHY even under a declared binary bound — a green terminal
+// short-circuits before any deadline classification.
+func TestGoExecuteBinaryTimeoutGreenStreamNotReclassified(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-budget-attribution")
+	stream := `{"Action":"run","Package":"example.com/x","Test":"TestPrints"}` + "\n" +
+		`{"Action":"output","Package":"example.com/x","Test":"TestPrints","Output":"panic: test timed out after 9s\n"}` + "\n" +
+		`{"Action":"pass","Package":"example.com/x","Test":"TestPrints"}` + "\n" +
+		`{"Action":"pass","Package":"example.com/x"}` + "\n"
+	st := parseTestStream("inv", "example.com/x", strings.NewReader(stream), nil)
+	run := classifyRun("inv", "example.com/x", st, nil, &boundedBuffer{}, "9s")
+	if run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+		t.Fatalf("disposition = %v, want HEALTHY for a green stream", run.disposition)
+	}
+	if tr := findTest(run.tests, "example.com/x", "TestPrints"); tr == nil || tr.GetOutcome() != stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED {
+		t.Errorf("passing test lost its outcome to shape recognition: %v", tr)
+	}
+}
+
+// TestGoExecuteBinaryTimeoutUndeclaredBoundKeepsFailureClass pins the
+// reviewed-record gate: with no binary bound declared in the reviewed
+// args there is no budget to exhaust, so the panic shape in a test's
+// output — necessarily the test's own print — never reclassifies the
+// red, never suppresses a completed failure, and no diagnostic invents
+// a budget (REQ-policy-explicit: the record's envelope and reviewed
+// arguments are the only sources of execution bounds).
+func TestGoExecuteBinaryTimeoutUndeclaredBoundKeepsFailureClass(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-budget-attribution")
+	stream := `{"Action":"run","Package":"example.com/x","Test":"TestPrints"}` + "\n" +
+		`{"Action":"output","Package":"example.com/x","Test":"TestPrints","Output":"panic: test timed out after 9s\n"}` + "\n" +
+		`{"Action":"pass","Package":"example.com/x","Test":"TestPrints"}` + "\n" +
+		`{"Action":"run","Package":"example.com/x","Test":"TestRed"}` + "\n" +
+		`{"Action":"fail","Package":"example.com/x","Test":"TestRed"}` + "\n" +
+		`{"Action":"fail","Package":"example.com/x"}` + "\n"
+	st := parseTestStream("inv", "example.com/x", strings.NewReader(stream), nil)
+	run := classifyRun("inv", "example.com/x", st, errors.New("exit status 1"), &boundedBuffer{}, "")
+	if run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED {
+		t.Fatalf("disposition = %v, want TEST_FAILED with no declared binary bound", run.disposition)
+	}
+	if tr := findTest(run.tests, "example.com/x", "TestRed"); tr == nil || tr.GetOutcome() != stipulatorv1.TestOutcome_TEST_OUTCOME_FAILED {
+		t.Errorf("genuine failure lost its outcome to a printed panic shape: %v", tr)
+	}
+	for _, d := range run.diags {
+		if strings.Contains(d.GetOutput(), "budget") {
+			t.Errorf("diagnostic invents a budget no record declares: %q", d.GetOutput())
+		}
+	}
+}
+
+// TestGoExecuteBinaryTimeoutBuildFailureKeepsClass pins precedence: a
+// terminal fail naming a failed build stays BUILD_FAILED even when the
+// stream carried the deadline panic's shape under a declared bound — a
+// compilation red is never laundered into a budget fact.
+func TestGoExecuteBinaryTimeoutBuildFailureKeepsClass(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-budget-attribution")
+	stream := `{"Action":"output","Package":"example.com/x","Output":"panic: test timed out after 1s\n"}` + "\n" +
+		`{"Action":"fail","Package":"example.com/x","FailedBuild":"example.com/x"}` + "\n"
+	st := parseTestStream("inv", "example.com/x", strings.NewReader(stream), nil)
+	run := classifyRun("inv", "example.com/x", st, errors.New("exit status 1"), &boundedBuffer{}, "1s")
+	if run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_BUILD_FAILED {
+		t.Fatalf("disposition = %v, want BUILD_FAILED", run.disposition)
+	}
+	for _, d := range run.diags {
+		if strings.Contains(d.GetOutput(), "budget") {
+			t.Errorf("build failure diagnostic carries budget attribution: %q", d.GetOutput())
+		}
+	}
+}
+
+// TestGoExecuteDeclaredBinaryBound pins the reviewed-args extraction the
+// classifier's budget naming depends on: last -test.timeout wins in
+// both the joined and split spellings, and args declaring none yield
+// none.
+func TestGoExecuteDeclaredBinaryBound(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-budget-attribution")
+	cases := []struct {
+		args []string
+		want string
+	}{
+		{nil, ""},
+		{[]string{"-test.v"}, ""},
+		{[]string{"-test.timeout=30m"}, "30m"},
+		{[]string{"--test.timeout=45s"}, "45s"},
+		{[]string{"-test.timeout", "20s"}, "20s"},
+		{[]string{"-test.timeout=30m", "-test.timeout=1s"}, "1s"},
+		{[]string{"test.timeout=9s"}, ""},
+		// Zero and negative disable the runtime's alarm — the spelling
+		// that declares NO bound — and a non-duration value declares
+		// nothing; none may open the reclassification gate.
+		{[]string{"-test.timeout=0"}, ""},
+		{[]string{"-test.timeout=-1s"}, ""},
+		{[]string{"-test.timeout", "-test.v"}, ""},
+		{[]string{"-test.timeout=30m", "-test.timeout=0"}, ""},
+	}
+	for _, c := range cases {
+		n := &NormalizedInvocation{Args: c.args}
+		if got := declaredBinaryBound(n); got != c.want {
+			t.Errorf("declaredBinaryBound(%v) = %q, want %q", c.args, got, c.want)
+		}
 	}
 }
 
@@ -911,7 +1215,7 @@ func TestGoExecuteDiagnosticOutputBounded(t *testing.T) {
 	b.WriteString(`{"Action":"fail","Package":"example.com/x","Test":"TestBig"}` + "\n")
 	b.WriteString(`{"Action":"fail","Package":"example.com/x"}` + "\n")
 	st := parseTestStream("inv", "example.com/x", strings.NewReader(b.String()), nil)
-	run := classifyRun("inv", "example.com/x", st, errors.New("exit status 1"), &boundedBuffer{})
+	run := classifyRun("inv", "example.com/x", st, errors.New("exit status 1"), &boundedBuffer{}, "")
 	if run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED {
 		t.Fatalf("disposition = %v, want TEST_FAILED", run.disposition)
 	}

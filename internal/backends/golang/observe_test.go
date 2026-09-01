@@ -168,7 +168,7 @@ func TestGoExecuteAbortOutputBlocksObservation(t *testing.T) {
 		`{"Action":"output","Package":"example.com/x","Output":"panic: boom\n"}` + "\n" +
 		`{"Action":"pass","Package":"example.com/x"}` + "\n"
 	st := parseTestStream("inv", "example.com/x", strings.NewReader(stream), nil)
-	run := classifyRun("inv", "example.com/x", st, nil, &boundedBuffer{})
+	run := classifyRun("inv", "example.com/x", st, nil, &boundedBuffer{}, "")
 	if run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
 		t.Fatalf("disposition = %v, want HEALTHY (abort output is an observation fact, not a suite verdict)", run.disposition)
 	}
@@ -763,7 +763,7 @@ func TestGoExecuteRefusesPostTerminalEvents(t *testing.T) {
 		`{"Action":"run","Package":"example.com/x","Test":"TestLate"}` + "\n" +
 		`{"Action":"pass","Package":"example.com/x","Test":"TestLate"}` + "\n"
 	st := parseTestStream("inv", "example.com/x", strings.NewReader(stream), nil)
-	run := classifyRun("inv", "example.com/x", st, nil, &boundedBuffer{})
+	run := classifyRun("inv", "example.com/x", st, nil, &boundedBuffer{}, "")
 	if run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_DEGRADED {
 		t.Fatalf("disposition = %v, want DEGRADED for events after the terminal package event", run.disposition)
 	}

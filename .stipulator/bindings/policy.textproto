@@ -666,3 +666,102 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "3a91bd7dbe2799ad462030919cbe970dc5ce07d895c81591ee30582288d624e9"
 }
+
+bindings {
+  requirement_id: "REQ-policy-budget-attribution"
+  content_hash: "98897133f68db6f58f358ec7d8f2b5ba8432b353b1d02d275bb6c65edff3bf78"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteGoTestLevelTimeout"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b4bd70adf4341d21eee340269f0b2c7eafa643c71c7783593716cc527d99d410"
+}
+
+bindings {
+  requirement_id: "REQ-policy-budget-attribution"
+  content_hash: "98897133f68db6f58f358ec7d8f2b5ba8432b353b1d02d275bb6c65edff3bf78"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteEnvelopeTimeout"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "8aba0f2d5bca74e7fdea662d5a4f7fa54babe18c183a26b657c342d70817b6cd"
+}
+
+bindings {
+  requirement_id: "REQ-policy-budget-attribution"
+  content_hash: "98897133f68db6f58f358ec7d8f2b5ba8432b353b1d02d275bb6c65edff3bf78"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteBinaryTimeoutGreenStreamNotReclassified"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "f2612119d44e3dceb8ef88230a1967ef55fdaa16ef9a01ef016071b1faae3026"
+}
+
+bindings {
+  requirement_id: "REQ-policy-budget-attribution"
+  content_hash: "98897133f68db6f58f358ec7d8f2b5ba8432b353b1d02d275bb6c65edff3bf78"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteBinaryTimeoutBuildFailureKeepsClass"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "cf31d74b50881b6eba007940988fc7cc8411531ca3fec91bc098f18ee3f67c69"
+}
+
+bindings {
+  requirement_id: "REQ-policy-budget-attribution"
+  content_hash: "98897133f68db6f58f358ec7d8f2b5ba8432b353b1d02d275bb6c65edff3bf78"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteBinaryTimeoutLateFlushKeepsCompletedFailure"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "9dac76d799780d27892c266f05f048c5cdc1f67e995de79945298654ddceb3e0"
+}
+
+bindings {
+  requirement_id: "REQ-policy-budget-attribution"
+  content_hash: "98897133f68db6f58f358ec7d8f2b5ba8432b353b1d02d275bb6c65edff3bf78"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteBinaryTimeoutUndeclaredBoundKeepsFailureClass"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a9b571d8642f4124b655df7fb5bf861a346947e0a87edb6a274912acdb619600"
+}
+
+bindings {
+  requirement_id: "REQ-policy-budget-attribution"
+  content_hash: "98897133f68db6f58f358ec7d8f2b5ba8432b353b1d02d275bb6c65edff3bf78"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteDeclaredBinaryBound"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "f8d985221ec28f234f427dc3128ca5b51b18d593533d85f6e4362f79c86e7e1e"
+}
+
+bindings {
+  requirement_id: "REQ-policy-budget-attribution"
+  content_hash: "98897133f68db6f58f358ec7d8f2b5ba8432b353b1d02d275bb6c65edff3bf78"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSelectionIsolatesBinaryDeadlineVictims"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "6dec692994f249d1e93ecc9af7a5416fb000487fc850f7c2088f12785b5b7185"
+}
+
+bindings {
+  requirement_id: "REQ-policy-budget-attribution"
+  content_hash: "98897133f68db6f58f358ec7d8f2b5ba8432b353b1d02d275bb6c65edff3bf78"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteEnvelopeTimeoutListsCutOffSubjects"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "319f842c947fe3bb74e73c3a60af509c74366ff3b87197009954146729043d8e"
+}
+
+bindings {
+  requirement_id: "REQ-policy-budget-attribution"
+  content_hash: "98897133f68db6f58f358ec7d8f2b5ba8432b353b1d02d275bb6c65edff3bf78"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteBinaryTimeoutRosterlessDumpFallsBackToStarted"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c37e71a144f0b4166d8efe127357cb1058e8c80193600377cc53f90324966e5c"
+}
+
+bindings {
+  requirement_id: "REQ-policy-budget-attribution"
+  content_hash: "98897133f68db6f58f358ec7d8f2b5ba8432b353b1d02d275bb6c65edff3bf78"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteBinaryTimeoutRosterSurvivesInterleavedOutput"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "fc37ffd6e2b6245b83c34c30354cc2007d034593215dff52a92336614eabef35"
+}

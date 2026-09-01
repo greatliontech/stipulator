@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
@@ -42,6 +43,24 @@ const failureOutputCap = 64 << 10
 func isAbortOutput(s string) bool {
 	return strings.Contains(s, "panic: ") || strings.Contains(s, "fatal error: ")
 }
+
+// binaryTimeoutRe recognizes the test binary's own deadline panic — the
+// one shape the testing runtime prints when -test.timeout expires. It is
+// detection only: the bound the diagnostic names comes from the reviewed
+// record (REQ-policy-explicit — the record's envelope and its reviewed
+// arguments are the only sources of execution bounds), and a run whose
+// record declares no binary bound is never reclassified, so a test
+// printing this line can at worst relabel a package that is already red
+// under a declared bound. A green stream is never reclassified — the
+// recognition feeds classification of a terminal fail alone.
+var binaryTimeoutRe = regexp.MustCompile(`^panic: test timed out after (\S+)`)
+
+// timeoutRosterRe matches one entry of the deadline panic's own
+// "running tests:" roster — the testing runtime's account of which
+// subjects the deadline cut off. The entry shape (two tabs, a name, a
+// space, a parenthesized elapsed time) does not collide with goroutine
+// dump frames, whose call lines carry no space before the parenthesis.
+var timeoutRosterRe = regexp.MustCompile(`^\t\t(\S+) \(`)
 
 // boundedBuffer retains at most failureOutputCap bytes and records that it
 // dropped the rest.
@@ -404,6 +423,7 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, select
 
 	st := parseTestStream(n.Name, pkg, stdout, producer)
 	waitErr := cmd.Wait()
+	bound := declaredBinaryBound(n)
 	if ctx.Err() != nil {
 		// Keep the parsed residue: on envelope expiry the caller's
 		// timeout diagnostic names the tests the cutoff aborted, carries
@@ -413,7 +433,7 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, select
 		// observation.
 		return packageRun{pkg: pkg, aborted: startedTests(st), residue: cutoffResidue(st, &stderr), producer: producer}
 	}
-	run := classifyRun(n.Name, pkg, st, waitErr, &stderr)
+	run := classifyRun(n.Name, pkg, st, waitErr, &stderr, bound)
 	// A terminal run retains its started-but-unfinished tests: a package
 	// abort's shadowed tests are structural facts the selective isolation
 	// pass consumes, not only diagnostic prose.
@@ -492,6 +512,37 @@ func testCommandArgs(n *NormalizedInvocation, pkg string, selection []string, lo
 	return args
 }
 
+// declaredBinaryBound extracts the binary deadline the reviewed record
+// declares — the value of the last -test.timeout token in the reviewed
+// args, matching the test binary's own last-one-wins parse — and "" when
+// the record declares none. The reviewed record is the only source of
+// the bound the classifier may name (REQ-policy-explicit); the panic
+// shape in the child's output is detection, never the value.
+func declaredBinaryBound(n *NormalizedInvocation) string {
+	bound := ""
+	for i := 0; i < len(n.Args); i++ {
+		if !strings.HasPrefix(n.Args[i], "-") {
+			continue
+		}
+		arg := strings.TrimPrefix(strings.TrimPrefix(n.Args[i], "-"), "-")
+		switch {
+		case strings.HasPrefix(arg, "test.timeout="):
+			bound = strings.TrimPrefix(arg, "test.timeout=")
+		case arg == "test.timeout" && i+1 < len(n.Args):
+			i++
+			bound = n.Args[i]
+		}
+	}
+	// Zero and negative spellings declare no bound at all — the testing
+	// runtime disables its alarm for them, so no deadline panic can
+	// exist under such a record — and a value that is not a duration
+	// declares nothing either.
+	if d, err := time.ParseDuration(bound); err != nil || d <= 0 {
+		return ""
+	}
+	return bound
+}
+
 // treeRoot recovers the verification tree root from the normalized
 // invocation's absolute module directory and tree-relative module root.
 func treeRoot(n *NormalizedInvocation) string {
@@ -518,6 +569,20 @@ type streamState struct {
 	// sawAbort reports abort output (a panic, a runtime fatal) anywhere in
 	// the stream: the testlog flush of such a process cannot be trusted.
 	sawAbort bool
+	// binaryTimeout records that the test binary's own deadline panic
+	// ("panic: test timed out after <dur>") appeared, carrying the
+	// panic's printed duration. Detection only: the classifier
+	// reclassifies solely under a reviewed declared bound, and the
+	// diagnostic names that reviewed bound, never this printed value.
+	binaryTimeout string
+	// roster collects the deadline panic's own "running tests:" entries
+	// — the testing runtime's account of the subjects the deadline cut
+	// off. Event ordering cannot identify them: a completed failure's
+	// fail event may flush after the panic line, so the runtime's roster
+	// is the only trustworthy victim list.
+	roster []string
+	// rosterOpen tracks being inside the dump's roster block.
+	rosterOpen bool
 	// pkgOutput is package-level output: build diagnostics and package
 	// FAIL/ok lines.
 	pkgOutput boundedBuffer
@@ -575,8 +640,11 @@ func parseTestStream(invocation, pkg string, r io.Reader, producer *stipulatorv1
 			// classifier refuses anything that follows it.
 			st.postTerminal = true
 		}
-		if e.Action == "output" && isAbortOutput(e.Output) {
-			st.sawAbort = true
+		if e.Action == "output" {
+			if isAbortOutput(e.Output) {
+				st.sawAbort = true
+			}
+			st.scanTimeoutDump(e.Output)
 		}
 		switch e.Action {
 		case "build-output":
@@ -650,6 +718,41 @@ func parseTestStream(invocation, pkg string, r io.Reader, producer *stipulatorv1
 	return st
 }
 
+// scanTimeoutDump feeds one output event's lines to the deadline-panic
+// recognizer: the panic line itself, then the dump's "running tests:"
+// roster, closed by the dump's goroutine section header. Line-oriented
+// so the dump parses identically whether the toolchain delivers it as
+// one event or one event per line.
+func (st *streamState) scanTimeoutDump(s string) {
+	for line := range strings.Lines(s) {
+		line = strings.TrimSuffix(line, "\n")
+		switch {
+		case st.binaryTimeout == "":
+			if strings.HasPrefix(line, "panic: test timed out") {
+				if m := binaryTimeoutRe.FindStringSubmatch(line); m != nil {
+					st.binaryTimeout = m[1]
+				}
+			}
+		case line == "\trunning tests:":
+			st.rosterOpen = true
+		case st.rosterOpen:
+			if m := timeoutRosterRe.FindStringSubmatch(line); m != nil {
+				st.roster = append(st.roster, m[1])
+			} else if strings.HasPrefix(line, "goroutine ") {
+				// The dump's goroutine section header ends the roster.
+				// Goroutines still running while the dump prints can
+				// interleave their own writes — a bare newline included —
+				// between entries; skipping everything else instead of
+				// closing keeps the roster complete, and nothing after a
+				// dump can match the entry shape (frames are single-tab
+				// with no space before the parenthesis), so a roster the
+				// header never closes collects nothing further either.
+				st.rosterOpen = false
+			}
+		}
+	}
+}
+
 // cutoffResidue renders the bounded output a cut-off run leaves behind —
 // package-level output, each aborted test's buffered output, any unparsed
 // stream remainder, and the child's stderr, where the envelope kill's
@@ -713,7 +816,7 @@ func outcomeOf(action string) stipulatorv1.TestOutcome {
 // process that produced no events at all — exit status notwithstanding —
 // is degraded, never healthy, because a report that cannot prove the suite
 // ran cannot certify it passed.
-func classifyRun(invocation, pkg string, st *streamState, waitErr error, stderr *boundedBuffer) packageRun {
+func classifyRun(invocation, pkg string, st *streamState, waitErr error, stderr *boundedBuffer, binaryBound string) packageRun {
 	run := packageRun{pkg: pkg, tests: st.tests, diags: st.diags}
 	degrade := func(reason string) packageRun {
 		var out boundedBuffer
@@ -763,16 +866,41 @@ func classifyRun(invocation, pkg string, st *streamState, waitErr error, stderr 
 		run.disposition = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY
 		return run
 	}
-	// Terminal fail: a build failure when the toolchain says so, otherwise
-	// suite semantics — assertion failures, panics, red TestMain, a
-	// go-test-level timeout — exactly the failure classes a direct
-	// `go test` exits non-zero for.
-	if st.failedBuild {
+	// Terminal fail: a build failure when the toolchain says so; a binary
+	// deadline when the testing runtime's own panic appeared AND the
+	// reviewed record declares a binary bound — the reviewed bound is the
+	// red fact the diagnostic names (REQ-policy-budget-attribution), and
+	// detection alone never reclassifies a run whose record declares no
+	// deadline; otherwise suite semantics — assertion failures, panics,
+	// red TestMain — exactly the failure classes a direct `go test`
+	// exits non-zero for. Completed outcomes, a genuine failure whose
+	// fail event flushed after the panic line included, stand untouched
+	// in every arm.
+	deadline := st.binaryTimeout != "" && binaryBound != "" && !st.failedBuild
+	switch {
+	case st.failedBuild:
 		run.disposition = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_BUILD_FAILED
-	} else {
+	case deadline:
+		run.disposition = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT
+	default:
 		run.disposition = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED
 	}
 	var out boundedBuffer
+	if deadline {
+		out.write(fmt.Sprintf("test binary timeout %s exhausted before the package completed — the budget is the red fact, not the running tests", binaryBound))
+		// The runtime's own roster is the victim list; event ordering is
+		// not (a completed failure can flush after the panic line). The
+		// started set stands in only when the dump carried no roster.
+		names := st.roster
+		if len(names) == 0 {
+			names = startedTests(st)
+		}
+		if len(names) > 0 {
+			out.write("\nrunning when the budget expired: ")
+			out.write(strings.Join(names, ", "))
+		}
+		out.write("\n")
+	}
 	out.write(st.pkgOutput.b.String())
 	truncated := st.pkgOutput.truncated
 	for _, name := range st.startOrder {
