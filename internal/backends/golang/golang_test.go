@@ -364,3 +364,100 @@ func TestWorkspaceMembers(t *testing.T) {
 		t.Fatalf("escaping go.work member accepted: %v", err)
 	}
 }
+
+// TestGoLoadAttributionNamesDependencyResolutionState pins the
+// classified load failure: a package referencing a symbol its pinned
+// dependency does not provide refuses with the dependency-resolution
+// state named — the unresolved import, its providing module, the
+// committed pin that resolves it — beside the loader's own diagnostic,
+// so the operator's next step is a decision, not a diagnosis.
+//
+// This subject analyzes a committed fixture tree: its inputs are the
+// source closure and guard-covered toolchain state the fingerprint
+// already pins, asserted pure under REQ-purity-responsibility.
+//
+//gofresh:pure
+func TestGoLoadAttributionNamesDependencyResolutionState(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-load-attribution")
+	b, err := newContext(context.Background(), "testdata/depbroken")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, rerr := b.Resolve("example.com/depbroken.Use")
+	if rerr == nil {
+		t.Fatal("a load-errored package must refuse, never answer")
+	}
+	for _, want := range []string{
+		"dependency-resolution state",
+		`import "example.com/dep"`,
+		"module example.com/dep replaced to ./dep (go.mod)",
+		"undefined: dep.Missing",
+	} {
+		if !strings.Contains(rerr.Error(), want) {
+			t.Errorf("refusal %q does not name %q", rerr.Error(), want)
+		}
+	}
+}
+
+// TestGoLoadAttributionLeavesInTreeErrorsUnchanged pins the guard: an
+// in-tree defect with no dependency root surfaces the loader's
+// diagnostic unchanged — never a guessed attribution.
+//
+// This subject analyzes a committed fixture tree: its inputs are the
+// source closure and guard-covered toolchain state the fingerprint
+// already pins, asserted pure under REQ-purity-responsibility.
+//
+//gofresh:pure
+func TestGoLoadAttributionLeavesInTreeErrorsUnchanged(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-load-attribution")
+	b, err := newContext(context.Background(), "testdata/depbroken")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, rerr := b.Resolve("example.com/depbroken/selfbad.F")
+	if rerr == nil {
+		t.Fatal("a load-errored package must refuse, never answer")
+	}
+	if !strings.Contains(rerr.Error(), "has load errors") || strings.Contains(rerr.Error(), "dependency-resolution state") {
+		t.Errorf("in-tree defect misattributed: %q", rerr.Error())
+	}
+	// An undefined selector on a sibling package of the tree's OWN
+	// module is an in-tree defect too: the pin resolving it is the
+	// working copy itself, so attributing it to a pin would misdirect.
+	_, _, werr := b.Resolve("example.com/depbroken/wants.W")
+	if werr == nil {
+		t.Fatal("a load-errored package must refuse, never answer")
+	}
+	if !strings.Contains(werr.Error(), "has load errors") || strings.Contains(werr.Error(), "dependency-resolution state") {
+		t.Errorf("in-module selector misattributed to a pin: %q", werr.Error())
+	}
+}
+
+// TestGoWitnessClassVerdictNamesLoadFailure pins the classifier's
+// verdict on an unloadable bound body: classification is resolved from
+// the code, and a body that cannot load has none — the verdict names
+// the load failure (the dependency-resolution attribution included),
+// never a class derived from the body's absence.
+//
+// This subject analyzes a committed fixture tree: its inputs are the
+// source closure and guard-covered toolchain state the fingerprint
+// already pins, asserted pure under REQ-purity-responsibility.
+//
+//gofresh:pure
+func TestGoWitnessClassVerdictNamesLoadFailure(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-load-attribution", "REQ-go-witness-class")
+	b, err := newContext(context.Background(), "testdata/depbroken")
+	if err != nil {
+		t.Fatal(err)
+	}
+	class, verdict := b.WitnessClassVerdict("example.com/depbroken.TestUses")
+	if class != verify.ExampleWitness {
+		t.Fatalf("class = %v, want the weakest class for an unloadable body", class)
+	}
+	if !strings.Contains(verdict, "dependency-resolution state") {
+		t.Errorf("verdict %q does not name the load failure", verdict)
+	}
+	if verdict == "not a runnable test witness" {
+		t.Error("verdict derived from the absent body")
+	}
+}

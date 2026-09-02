@@ -19,6 +19,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"unicode"
 	"unicode/utf8"
 
@@ -51,6 +52,17 @@ type Backend struct {
 	// Fset-absolute file paths back to the tree-relative paths the corpus
 	// and the git layer speak in.
 	dir string
+	// pinsOnce/pinTable lazily derive the committed dependency-pin
+	// surface for load-failure attribution — error paths only, so a
+	// healthy resolution never pays the parse.
+	pinsOnce sync.Once
+	pinTable *pinTable
+}
+
+// pins derives the committed pin surface once per backend.
+func (b *Backend) pins() *pinTable {
+	b.pinsOnce.Do(func() { b.pinTable = loadPinTable(b.dir) })
+	return b.pinTable
 }
 
 // newContext loads the tree rooted at dir, including test packages: the
@@ -261,6 +273,14 @@ func (b *Backend) Resolve(symbol string) (verify.Resolution, string, error) {
 			continue
 		}
 		if len(pkg.Errors) > 0 {
+			// A dependency-rooted failure names the import, its module,
+			// and the committed directives that pin it, so the
+			// operator's next step is a decision, not a diagnosis; an
+			// in-tree failure surfaces the loader's diagnostic
+			// unchanged (REQ-go-load-attribution).
+			if msg, ok := b.loadErrorAttribution(pkg); ok {
+				return verify.NotFound, "", fmt.Errorf("package %s: %s", pkg.ID, msg)
+			}
 			return verify.NotFound, "", fmt.Errorf("package %s has load errors: %v", pkg.ID, pkg.Errors[0])
 		}
 		obj := lookup(pkg.Types, parts)
@@ -575,6 +595,14 @@ func (b *Backend) WitnessClassVerdict(symbol string) (verify.WitnessClass, strin
 	class := b.fuzzTargetClass(symbol)
 	if class == verify.PropertyWitness {
 		return class, ""
+	}
+	// Classification is resolved from the code (REQ-go-witness-class);
+	// a body that cannot even load has no code to resolve from, so the
+	// verdict names the load failure — the dependency-resolution
+	// attribution riding Resolve's error — never a class derived from
+	// the body's absence (REQ-go-load-attribution).
+	if _, _, err := b.Resolve(symbol); err != nil {
+		return verify.ExampleWitness, err.Error()
 	}
 	return verify.ExampleWitness, "not a runnable test witness"
 }

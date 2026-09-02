@@ -729,3 +729,156 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "f430f779b8e34846412c1144a62e8480d4561e50a7f6d28a52f2b7b26ac2628e"
 }
+
+bindings {
+  requirement_id: "REQ-go-load-attribution"
+  content_hash: "681c8d4bbd7c509f51a3f9a0f4f33f81659ac7c32bbaca7e7e3f1a7b3cd72b5f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoLoadAttributionNamesDependencyResolutionState"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e9fe567579b300dd0d7f048e7ac48ee125c16c71d219b9e74ba7e2e328f6f9d5"
+}
+
+bindings {
+  requirement_id: "REQ-go-load-attribution"
+  content_hash: "681c8d4bbd7c509f51a3f9a0f4f33f81659ac7c32bbaca7e7e3f1a7b3cd72b5f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoLoadAttributionLeavesInTreeErrorsUnchanged"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "13dad6d606c7a68ae7f9c3513e17c7206d7ee91651f5b26a0a93bdad4d55a047"
+}
+
+bindings {
+  requirement_id: "REQ-go-load-attribution"
+  content_hash: "681c8d4bbd7c509f51a3f9a0f4f33f81659ac7c32bbaca7e7e3f1a7b3cd72b5f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoWitnessClassVerdictNamesLoadFailure"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ff094cf2d5fe7bc1976b99847e82e710f068a219a087675f75aa157d5b3bacc1"
+}
+
+bindings {
+  requirement_id: "REQ-go-witness-class"
+  content_hash: "d401c2765bd960f7ea02e6001f43bc6853481f96c63eedf1171ece89ecd9fc08"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoWitnessClassVerdictNamesLoadFailure"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ff094cf2d5fe7bc1976b99847e82e710f068a219a087675f75aa157d5b3bacc1"
+}
+
+bindings {
+  requirement_id: "REQ-go-load-attribution"
+  content_hash: "681c8d4bbd7c509f51a3f9a0f4f33f81659ac7c32bbaca7e7e3f1a7b3cd72b5f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoPinTableClasses"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "6b2be5931b090c41d7ff0723a7482b14e3d7455d1bfb88908ee9ee1d7cefa795"
+}
+
+bindings {
+  requirement_id: "REQ-go-load-attribution"
+  content_hash: "681c8d4bbd7c509f51a3f9a0f4f33f81659ac7c32bbaca7e7e3f1a7b3cd72b5f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoMemberModuleFoldsExternalTestSuffix"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "6fcc3ea37735a5b24a000d0de9631054ba22f62d6985318c8847fb7ca35b6cef"
+}
+
+bindings {
+  requirement_id: "REQ-go-load-attribution"
+  content_hash: "681c8d4bbd7c509f51a3f9a0f4f33f81659ac7c32bbaca7e7e3f1a7b3cd72b5f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoDependencyImportMissingPackageShapes"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a7ad0b8feda70aff5cd34de04dbdd78ccd5358ada6213506c148a9acaa001041"
+}
+
+bindings {
+  requirement_id: "REQ-go-load-attribution"
+  content_hash: "681c8d4bbd7c509f51a3f9a0f4f33f81659ac7c32bbaca7e7e3f1a7b3cd72b5f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoImportForIdentRules"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "2a022e5ca03fc896390ff26b5c26c5f6fc0b083fe1b4d4b29e234ffd16a7af12"
+}
+
+bindings {
+  requirement_id: "REQ-go-load-attribution"
+  content_hash: "681c8d4bbd7c509f51a3f9a0f4f33f81659ac7c32bbaca7e7e3f1a7b3cd72b5f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoLoadAttributionNoCommittedPinArm"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "8946949e779aae544030e99dc90cee5f6b04587016f5a60ac3d6c420cabe2560"
+}
+
+bindings {
+  requirement_id: "REQ-go-load-attribution"
+  content_hash: "681c8d4bbd7c509f51a3f9a0f4f33f81659ac7c32bbaca7e7e3f1a7b3cd72b5f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoLoadAttributionFailsClosedOnUnidentifiedModule"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "41dc63228ebb60124784cf390edd6bfe200d1386b38ebc52294241cf139c75c2"
+}
+
+bindings {
+  requirement_id: "REQ-go-load-attribution"
+  content_hash: "681c8d4bbd7c509f51a3f9a0f4f33f81659ac7c32bbaca7e7e3f1a7b3cd72b5f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoLoadAttributionMemberClass"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "90097ec95dd89de11edc98b262fb0d27a5e855082aa8e184cdcd877be7f58608"
+}
+
+bindings {
+  requirement_id: "REQ-go-load-attribution"
+  content_hash: "681c8d4bbd7c509f51a3f9a0f4f33f81659ac7c32bbaca7e7e3f1a7b3cd72b5f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRequiresBySemverOrder"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "f6608f1ff54ca43aedf01738645d8833639cc6b88eaedf59e10185d11644bb04"
+}
+
+bindings {
+  requirement_id: "REQ-go-load-attribution"
+  content_hash: "681c8d4bbd7c509f51a3f9a0f4f33f81659ac7c32bbaca7e7e3f1a7b3cd72b5f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoLoaderTextRendering"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "69b49041fbab8943106833c3da19ae6f0e7a76def46bcb40595e7cf77bd382db"
+}
+
+bindings {
+  requirement_id: "REQ-go-load-attribution"
+  content_hash: "681c8d4bbd7c509f51a3f9a0f4f33f81659ac7c32bbaca7e7e3f1a7b3cd72b5f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoMemberModuleKeepsTestSuffixedMemberRoot"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b62b92bba8f38f641fb65f481b39bda98f6db668defeede4eac34e5292d9249c"
+}
+
+bindings {
+  requirement_id: "REQ-go-load-attribution"
+  content_hash: "681c8d4bbd7c509f51a3f9a0f4f33f81659ac7c32bbaca7e7e3f1a7b3cd72b5f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoMemberModuleNestedIsDeterministic"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "47ccef492c55e8f94d2b32a41df73fa2ffc0da30e988c513a13e3474b9a303b0"
+}
+
+bindings {
+  requirement_id: "REQ-go-load-attribution"
+  content_hash: "681c8d4bbd7c509f51a3f9a0f4f33f81659ac7c32bbaca7e7e3f1a7b3cd72b5f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoModuleOwnsPathBoundary"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "191d7e21a1389197026ca61c603cbf931715bad0a5ab46c038ed213438fa646e"
+}
+
+bindings {
+  requirement_id: "REQ-go-load-attribution"
+  content_hash: "681c8d4bbd7c509f51a3f9a0f4f33f81659ac7c32bbaca7e7e3f1a7b3cd72b5f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoCondReplacesBySemverOrder"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "9d1fb9890ddf501fd627a5d603a98249eeb408f50088acbcc33275b68141f3b2"
+}

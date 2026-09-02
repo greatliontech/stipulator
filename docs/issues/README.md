@@ -8,10 +8,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[identity-walk-two-trackers](identity-walk-two-trackers.md)** — attachment and extent answer
   "whose block is this" via two independent reset tables in two packages; the subset relationship
   holds by coincidence. Collapse to one walk with two windows. *Lands: cross-tool train chunk 131.*
-- **[unresolvable-dependency-attribution](unresolvable-dependency-attribution.md)** — a tree
-  referencing symbols unresolvable under the module's own workspace degrades bind and the
-  witness classifier with raw loader errors or silent misclassification instead of naming the
-  dependency-resolution state. *Lands: with train chunk 114.*
 - **[witness-runner-environment-divergence](witness-runner-environment-divergence.md)** — a witness
   red only inside the runner; the environment delta is uninspectable. *Lands: cross-tool train chunk 114.*
 - **[cli-repeated-flag-claims-silently-dropped](cli-repeated-flag-claims-silently-dropped.md)** — CLI

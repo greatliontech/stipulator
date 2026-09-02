@@ -22,6 +22,26 @@ pins, restored by re-pinning.
 resolve the symbol through the Go type checker and compare shape hashes; a
 package load failure is a verification error, not an absence.
 
+**REQ-go-load-attribution** (behavior): A package load failure MUST
+surface classified: a failure rooted in an imported dependency names the
+unresolved import, its providing module, and every committed directive
+that can apply to the import, composed together — disagreeing member
+requires all named in semantic-version order with selection left to
+minimal version selection, version-scoped replaces rendered beside
+whatever they condition and their absence of company stated when
+nothing stands beside them, and only an all-versions replace standing
+above the requires it supersedes — derived from the committed tree
+alone, so one commit yields one attribution on every run, and rendered
+single-line beside the loader's own diagnostic with its position where
+the loader supplies one; an in-tree failure, an unrecognized shape, and
+a package whose own module cannot be identified surface the loader's
+diagnostic unchanged, never a guessed attribution; the witness
+classifier — the backend surface every class rendering consumes —
+answers an unloadable bound symbol with the load failure as its verdict
+rather than a class derived from the absent body, so no consumer can
+present the absence as a classification, while the user-facing naming
+of the state rides the resolution error's verification problem.
+
 **REQ-go-build-selections** (behavior): Symbol resolution MUST span the
 accepted policy's build-selection dimensions - one package view per
 distinct invocation (effective tag-set, toolchain) pair beside the
