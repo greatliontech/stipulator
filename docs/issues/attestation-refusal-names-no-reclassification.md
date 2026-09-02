@@ -20,4 +20,4 @@ a for-all property is an invariant" — so the author is sent to the
 one edit that can render the decision rather than left to hunt for a
 gap-shaped excuse.
 
-Lands: user decision (consumer report from bldc, 2026-09-02 — the tool owner sequences).
+Lands: cross-tool train chunk 144 (gofresh docs/plans/cross-tool-train.md; bldc consumer report 2026-09-02 — rides the remedy-naming rider beside the keyword-lint message).
