@@ -21,6 +21,9 @@ import (
 //
 //gofresh:pure
 func TestExplainDynamicStateChainsThroughPolicyViews(t *testing.T) {
+	if testing.Short() {
+		t.Skip("measured heavy under the fast tier (in-process)")
+	}
 	stipulate.Covers(t, "REQ-mcp-explain")
 	tmp := t.TempDir()
 	write := func(rel, content string) {

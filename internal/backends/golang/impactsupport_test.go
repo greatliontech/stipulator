@@ -11,8 +11,12 @@ import (
 // and an unresolvable reference reports false instead of a guess.
 //
 // Deliberately not //gofresh:pure: the shared backend loads module
-// sources outside this binary's closure at package init.
+// sources outside this binary's closure, loaded in TestMain before the
+// testlog starts.
 func TestSymbolFileNamesDeclaringFile(t *testing.T) {
+	if testing.Short() {
+		t.Skip("reads the repository-tree backend the full tier loads before the testlog")
+	}
 	stipulate.Covers(t, "REQ-change-impact")
 	cases := []struct {
 		symbol string
@@ -40,6 +44,9 @@ func TestSymbolFileNamesDeclaringFile(t *testing.T) {
 //
 // Deliberately not //gofresh:pure: same shared-backend load as above.
 func TestReachedPackagesReverseClosure(t *testing.T) {
+	if testing.Short() {
+		t.Skip("reads the repository-tree backend the full tier loads before the testlog")
+	}
 	stipulate.Covers(t, "REQ-change-impact")
 	reach := backend.ReachedPackages([]string{"internal/canon/canon.go"})
 	for _, want := range []string{

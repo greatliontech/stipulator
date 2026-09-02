@@ -16,6 +16,9 @@ import (
 // committed seeds, and packages with no runnable test all appear; nothing
 // else does.
 func TestGoDiscoveryEnumeratesCompleteObligationSet(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-policy-conservation")
 	neutralAmbient(t)
 	dir := discoverFixture(t)
@@ -53,6 +56,9 @@ func TestGoDiscoveryEnumeratesCompleteObligationSet(t *testing.T) {
 // selection exactly as they move a direct `go test` of the same scope: the
 // build-tagged test exists only under its tag.
 func TestGoDiscoveryBuildSelectionChangesObligations(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-policy-conservation")
 	neutralAmbient(t)
 	dir := discoverFixture(t)
@@ -84,6 +90,9 @@ func TestGoDiscoveryBuildSelectionChangesObligations(t *testing.T) {
 // discovery: module roots scope the selection, so a member invocation
 // enumerates exactly its own obligations.
 func TestGoDiscoveryWorkspaceMemberScope(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-go-workspace")
 	neutralAmbient(t)
 	dir := discoverFixture(t)
@@ -117,6 +126,9 @@ func TestGoDiscoveryWorkspaceMemberScope(t *testing.T) {
 // the package's own directory and out-of-tree dependencies stay out
 // (REQ-evidence-witness-freshness's consuming-compile seal).
 func TestGoDiscoveryRecordsClosureDirs(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-evidence-witness-freshness")
 	neutralAmbient(t)
 	dir := writeModule(t, map[string]string{

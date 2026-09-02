@@ -32,6 +32,9 @@ func findObservation(observations []*ProcessObservation, pkg string) *ProcessObs
 // that process observed, and nothing from a sibling process's reads leaks
 // into it — no cross-process merging anywhere in the report.
 func TestGoExecuteObservationOwnership(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-policy-attribution")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
@@ -107,6 +110,9 @@ func TestGoExecuteObservationOwnership(t *testing.T) {
 // reason, never a completed record, even though bytes had entered the
 // testlog buffer before death.
 func TestGoExecuteKilledMidRunObservationIncomplete(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-policy-attribution")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
@@ -136,6 +142,9 @@ func TestGoExecuteKilledMidRunObservationIncomplete(t *testing.T) {
 // the untouched capture must read as a loudly incomplete observation,
 // never be ingested as a completed "no runtime inputs observed" record.
 func TestGoExecuteUnopenedCaptureObservationIncomplete(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-policy-attribution")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
@@ -182,6 +191,9 @@ func TestGoExecuteAbortOutputBlocksObservation(t *testing.T) {
 // a subtest's outcome and its runtime registrations ride under the exact
 // process that produced its parent, never a sibling package's process.
 func TestGoExecuteSubtestAttribution(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-policy-attribution")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
@@ -230,6 +242,9 @@ func TestGoExecuteSubtestAttribution(t *testing.T) {
 // experiment set, workspace resolution — exactly as normalization pinned
 // it at load.
 func TestGoExecuteResolvedConfigurationBound(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-policy-attribution")
 	neutralAmbient(t)
 	inv := &stipulatorv1.PolicyInvocation{}
@@ -371,6 +386,9 @@ func TestRewritesOwnInput(t *testing.T) {
 // moved root and carries no bound digest. The failure direction is
 // re-execution, never reuse.
 func TestGoExecuteSelfMutatedInputSealsUnverifiable(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-policy-attribution")
 	neutralAmbient(t)
 	tmp := selfMutatingModule(t)
@@ -432,6 +450,9 @@ func TestGoExecuteSelfMutatedInputSealsUnverifiable(t *testing.T) {
 // tree-wide sensitivity: the failure direction is re-execution, never a
 // wrong bind.
 func TestGoExecuteModuleRootPackageBracket(t *testing.T) {
+	if testing.Short() {
+		t.Skip("runs go test over a fixture module")
+	}
 	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-policy-attribution")
 	neutralAmbient(t)
 	execRoot := func(t *testing.T, files map[string]string) (*ProcessObservation, runtimeinput.State) {
@@ -531,6 +552,9 @@ func TestWritesSibling(t *testing.T) {
 // the completed observation carries no bound digest. A test wanting
 // cacheable fixtures keeps them under its own package directory.
 func TestGoExecuteOutOfRootReadSealsUnverifiable(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-policy-attribution")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
@@ -565,6 +589,9 @@ func TestGoExecuteOutOfRootReadSealsUnverifiable(t *testing.T) {
 // yields an incomplete observation naming the missing directory — never a
 // completed record sealed without a bracket.
 func TestGoExecuteUnknownPackageDirObservationIncomplete(t *testing.T) {
+	if testing.Short() {
+		t.Skip("measured heavy under the fast tier (in-process)")
+	}
 	stipulate.Covers(t, "REQ-policy-attribution")
 	neutralAmbient(t)
 	inv := &stipulatorv1.PolicyInvocation{}
@@ -606,6 +633,9 @@ func TestGoExecuteUnknownPackageDirObservationIncomplete(t *testing.T) {
 // it completes — owns an incomplete observation naming the out-of-tree
 // directory, never an unbracketed completed record.
 func TestGoExecuteExternalWorkspaceMemberObservationIncomplete(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-policy-attribution")
 	neutralAmbient(t)
 	parent := t.TempDir()
@@ -672,6 +702,9 @@ func TestExternal(t *testing.T) {}
 // module view would classify every recorded read as external
 // (per-identity unverifiable) — either way total, silent cache death.
 func TestGoExecuteSymlinkedTreeObservationBinds(t *testing.T) {
+	if testing.Short() {
+		t.Skip("measured heavy under the fast tier (in-process)")
+	}
 	stipulate.Covers(t, "REQ-policy-attribution", "REQ-evidence-witness-freshness")
 	neutralAmbient(t)
 	parent := t.TempDir()

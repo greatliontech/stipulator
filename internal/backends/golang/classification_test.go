@@ -25,9 +25,12 @@ func fixtureBackend(t *testing.T) *Backend {
 //
 // Deliberately not //gofresh:pure: the verdict depends on module
 // sources outside this binary's closure, loaded through the shared
-// backend at package init — before the testlog starts, so no digest
+// backend in TestMain — before the testlog starts, so no digest
 // guards them. The witness re-runs every gate.
 func TestWitnessClassProof(t *testing.T) {
+	if testing.Short() {
+		t.Skip("reads the repository-tree backend the full tier loads before the testlog")
+	}
 	stipulate.Covers(t, "REQ-go-structural-provers")
 	if got := backend.WitnessClass(mod + "/internal/arch.TestCoreNeverImportsBackends"); got != verify.AnalyzerProof {
 		t.Fatalf("structural test classified %v", got)

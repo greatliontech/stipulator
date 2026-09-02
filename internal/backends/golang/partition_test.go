@@ -104,6 +104,9 @@ func TestGoPartitionConservationProperty(t *testing.T) {
 // selected; an invocation widening the build selection with tags selects
 // its extra obligation without any spurious finding.
 func TestGoConservationReportWorkspace(t *testing.T) {
+	if testing.Short() {
+		t.Skip("runs go test over a fixture module")
+	}
 	stipulate.Covers(t, "REQ-policy-conservation")
 	stipulate.Covers(t, "REQ-go-workspace")
 	neutralAmbient(t)

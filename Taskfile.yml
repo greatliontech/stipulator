@@ -9,8 +9,13 @@ tasks:
     cmds:
       - go build github.com/greatliontech/stipulator/...
 
+  test:short:
+    desc: "The fast tier: the tool's code without go test over a tree (seconds; the inner-loop gate)"
+    cmds:
+      - go test -short -count=1 github.com/greatliontech/stipulator/...
+
   test:
-    desc: "Diagnostic: run the test suite directly (the canonical verdict is `task check`)"
+    desc: "Diagnostic: run the full test suite directly (minutes; the canonical verdict is `task check`)"
     cmds:
       - go test -race -timeout=40m github.com/greatliontech/stipulator/...
 
@@ -66,7 +71,7 @@ tasks:
       - cd stipulate/structural && go mod tidy -diff
 
   check:
-    desc: The pre-review gate — hygiene plus the one unified verdict (CI runs the hygiene tasks and the go suite; the check verdict's CI seat is an open issue)
+    desc: The pre-review gate — hygiene plus the one unified verdict (CI runs the hygiene tasks and the go suite; the check verdict has no CI seat by design — it lives at each chunk's close-out and in the weekly fleet sweep)
     deps: [vet]
     cmds:
       - task: fmt-check

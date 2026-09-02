@@ -96,6 +96,9 @@ var fixture = map[string]string{
 //
 //gofresh:pure
 func TestPreviewJoinsBindingsAndImportReach(t *testing.T) {
+	if testing.Short() {
+		t.Skip("spawns a toolchain child (go list, the resolver) — measured heavy under the fast tier")
+	}
 	stipulate.Covers(t, "REQ-change-impact")
 	dir := repoWith(t, fixture, map[string]string{
 		"leaf/leaf.go": "package leaf\n\nfunc Double(x int) int { return x + x }\n",
@@ -132,6 +135,9 @@ func TestPreviewJoinsBindingsAndImportReach(t *testing.T) {
 //
 //gofresh:pure
 func TestPreviewReachesEmbedCouplingsAndCountsUnconsulted(t *testing.T) {
+	if testing.Short() {
+		t.Skip("spawns a toolchain child (go list, the resolver) — measured heavy under the fast tier")
+	}
 	stipulate.Covers(t, "REQ-change-impact")
 	withEmbed := map[string]string{}
 	for k, v := range fixture {
@@ -174,6 +180,9 @@ func TestPreviewReachesEmbedCouplingsAndCountsUnconsulted(t *testing.T) {
 //
 //gofresh:pure
 func TestPreviewDeletionAsymmetry(t *testing.T) {
+	if testing.Short() {
+		t.Skip("spawns a toolchain child (go list, the resolver) — measured heavy under the fast tier")
+	}
 	stipulate.Covers(t, "REQ-change-impact")
 	// Spec side: the worktree drops one requirement's section.
 	specDeleted := "# Spec\n\n" +
@@ -223,6 +232,9 @@ func TestPreviewDeletionAsymmetry(t *testing.T) {
 //
 //gofresh:pure
 func TestPreviewNamesSpecDeltaWithoutVerdict(t *testing.T) {
+	if testing.Short() {
+		t.Skip("spawns a toolchain child (go list, the resolver) — measured heavy under the fast tier")
+	}
 	stipulate.Covers(t, "REQ-change-impact")
 	dir := repoWith(t, fixture, map[string]string{
 		"specs/spec.md": "# Spec\n\n" +

@@ -77,6 +77,9 @@ func rapidModule(t *testing.T) string {
 // property witness (REQ-go-witness-class,
 // REQ-evidence-witness-freshness).
 func TestRandomSeeded(t *testing.T) {
+	if testing.Short() {
+		t.Skip("reads the repository-tree backend the full tier loads before the testlog")
+	}
 	stipulate.Covers(t, "REQ-go-witness-class", "REQ-evidence-witness-freshness")
 	fb := fixtureBackend(t)
 	refused, err := fb.NeverServe([]string{

@@ -12,20 +12,18 @@ import (
 )
 
 // The backend is tested against this module itself: the repository's own
-// symbols are the fixture, exactly as the corpus is the compiler's.
-var backend = func() *Backend {
-	b, err := newContext(context.Background(), "../../..")
-	if err != nil {
-		panic(err)
-	}
-	return b
-}()
+// symbols are the fixture, exactly as the corpus is the compiler's. It
+// loads in TestMain — after flags parse, before m.Run starts the
+// testlog, so the tree read stays outside every witness's observation
+// exactly as a package-init load did — and only on the full tier: the
+// fast tier gates every test that reads it.
+var backend *Backend
 
 const mod = "github.com/greatliontech/stipulator"
 
 // Deliberately not //gofresh:pure: the verdict depends on module
 // sources outside this binary's closure, loaded through the shared
-// backend at package init — before the testlog starts, so no digest
+// backend in TestMain — before the testlog starts, so no digest
 // guards them. The witness re-runs every gate.
 // This subject analyzes the repository tree itself: its inputs are
 // the source closure and guard-covered toolchain state the fingerprint
@@ -33,6 +31,9 @@ const mod = "github.com/greatliontech/stipulator"
 //
 //gofresh:pure
 func TestResolve(t *testing.T) {
+	if testing.Short() {
+		t.Skip("reads the repository-tree backend the full tier loads before the testlog")
+	}
 	cases := []struct {
 		name, symbol string
 		want         verify.Resolution
@@ -75,7 +76,6 @@ func TestResolve(t *testing.T) {
 // the source closure and guard-covered toolchain state the fingerprint
 // already pins, asserted pure under REQ-purity-responsibility.
 //
-//gofresh:pure
 //gofresh:pure
 func TestFixtureModule(t *testing.T) {
 	b, err := newContext(context.Background(), "testdata/fixturemod")
@@ -123,7 +123,6 @@ func TestFixtureModule(t *testing.T) {
 // already pins, asserted pure under REQ-purity-responsibility.
 //
 //gofresh:pure
-//gofresh:pure
 func TestShapeHashIsPackageQualified(t *testing.T) {
 	fn := func(path string) *types.Func {
 		pkg := types.NewPackage(path, "p")
@@ -139,7 +138,7 @@ func TestShapeHashIsPackageQualified(t *testing.T) {
 
 // Deliberately not //gofresh:pure: the verdict depends on module
 // sources outside this binary's closure, loaded through the shared
-// backend at package init — before the testlog starts, so no digest
+// backend in TestMain — before the testlog starts, so no digest
 // guards them. The witness re-runs every gate.
 // This subject analyzes the repository tree itself: its inputs are
 // the source closure and guard-covered toolchain state the fingerprint
@@ -147,6 +146,9 @@ func TestShapeHashIsPackageQualified(t *testing.T) {
 //
 //gofresh:pure
 func TestShapeHashDistinguishesSignatures(t *testing.T) {
+	if testing.Short() {
+		t.Skip("reads the repository-tree backend the full tier loads before the testlog")
+	}
 	_, a, err := backend.Resolve(mod + "/internal/corpus.LoadManifest")
 	if err != nil {
 		t.Fatal(err)
@@ -173,7 +175,7 @@ func TestShapeHashDistinguishesSignatures(t *testing.T) {
 //
 // Deliberately not //gofresh:pure: the verdict depends on module
 // sources outside this binary's closure, loaded through the shared
-// backend at package init — before the testlog starts, so no digest
+// backend in TestMain — before the testlog starts, so no digest
 // guards them. The witness re-runs every gate.
 // This subject analyzes the repository tree itself: its inputs are
 // the source closure and guard-covered toolchain state the fingerprint
@@ -181,6 +183,9 @@ func TestShapeHashDistinguishesSignatures(t *testing.T) {
 //
 //gofresh:pure
 func TestWitnessClass(t *testing.T) {
+	if testing.Short() {
+		t.Skip("reads the repository-tree backend the full tier loads before the testlog")
+	}
 	if got := backend.WitnessClass(mod + "/internal/canon.FuzzTextProjection"); got != verify.PropertyWitness {
 		t.Fatalf("fuzz target classified %v", got)
 	}
@@ -245,7 +250,7 @@ func TestWitnessClassVerdicts(t *testing.T) {
 //
 // Deliberately not //gofresh:pure: the verdict depends on module
 // sources outside this binary's closure, loaded through the shared
-// backend at package init — before the testlog starts, so no digest
+// backend in TestMain — before the testlog starts, so no digest
 // guards them. The witness re-runs every gate.
 // This subject analyzes the repository tree itself: its inputs are
 // the source closure and guard-covered toolchain state the fingerprint
@@ -253,6 +258,9 @@ func TestWitnessClassVerdicts(t *testing.T) {
 //
 //gofresh:pure
 func TestSlice(t *testing.T) {
+	if testing.Short() {
+		t.Skip("reads the repository-tree backend the full tier loads before the testlog")
+	}
 	stipulate.Covers(t, "REQ-go-slice")
 	decls, err := backend.Slice([]string{mod + "/internal/corpus.LoadManifest"})
 	if err != nil {
@@ -300,8 +308,10 @@ func TestSlice(t *testing.T) {
 // already pins, asserted pure under REQ-purity-responsibility.
 //
 //gofresh:pure
-//gofresh:pure
 func TestWorkspaceMembers(t *testing.T) {
+	if testing.Short() {
+		t.Skip("runs go test over a fixture module")
+	}
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	stipulate.Covers(t, "REQ-go-static-binding", "REQ-go-witness", "REQ-go-workspace")
 	b, err := newContext(context.Background(), "testdata/workspacemod")

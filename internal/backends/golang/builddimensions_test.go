@@ -19,6 +19,9 @@ import (
 // discovery lists the same gated test the run would compile
 // (REQ-go-build-selections' race dimension).
 func TestRaceDimensionSpansResolutionAndDiscovery(t *testing.T) {
+	if testing.Short() {
+		t.Skip("measured heavy under the fast tier (in-process)")
+	}
 	stipulate.Covers(t, "REQ-go-build-selections")
 	dir := t.TempDir()
 	files := map[string]string{

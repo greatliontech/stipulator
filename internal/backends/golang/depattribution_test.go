@@ -330,6 +330,9 @@ func TestGoLoadAttributionFailsClosedOnUnidentifiedModule(t *testing.T) {
 //
 //gofresh:pure
 func TestGoLoadAttributionMemberClass(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-go-load-attribution")
 	b, err := newContext(context.Background(), "testdata/depws")
 	if err != nil {

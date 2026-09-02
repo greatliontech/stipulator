@@ -24,6 +24,9 @@ const mod = "github.com/greatliontech/stipulator"
 // could serve while an audited package drifts; the witness re-runs
 // every gate.
 func TestCoreNeverImportsBackends(t *testing.T) {
+	if testing.Short() {
+		t.Skip("spawns a toolchain child (go list, the resolver) — measured heavy under the fast tier")
+	}
 	stipulate.Covers(t, "REQ-backend-core-neutral")
 	for _, core := range []string{
 		mod + "/internal/canon", mod + "/internal/corpus", mod + "/internal/profile",
@@ -46,6 +49,9 @@ func TestCoreNeverImportsBackends(t *testing.T) {
 // could serve while an audited package drifts; the witness re-runs
 // every gate.
 func TestCoreIsVcsFree(t *testing.T) {
+	if testing.Short() {
+		t.Skip("spawns a toolchain child (go list, the resolver) — measured heavy under the fast tier")
+	}
 	stipulate.Covers(t, "REQ-core-vcs-free")
 	for _, core := range []string{
 		mod + "/internal/canon", mod + "/internal/corpus", mod + "/internal/profile",

@@ -36,7 +36,11 @@ jobs:
       # The workspace hygiene the Taskfile defines for exactly this
       # seat: gofmt cleanliness and per-module tidy go.mod/go.sum
       # ("workspace-mode CI cannot see per-module drift"). The check
-      # verdict's CI seat is docs/issues/ci-seat-for-the-check-verdict.
+      # verdict (the tool over its own tree) has no CI seat by design:
+      # it is a warm, minutes-class run that serves proven-fresh
+      # witnesses, so it lives at each chunk's close-out and in the
+      # weekly fleet sweep (gofresh scripts/fleet-sweep.sh), never on a
+      # cold runner.
       - run: go run github.com/go-task/task/v3/cmd/task@v3.53.1 fmt-check tidy-check
       - run: go build github.com/greatliontech/stipulator/...
       - run: go vet github.com/greatliontech/stipulator/...
@@ -53,6 +57,7 @@ jobs:
       # headroom, and a cold cache lands on the job ceiling, not this
       # flag. A budget overrun is a real finding (a hang, or a suite
       # outgrowing its budget) — re-measure before raising the number.
+      - run: go test -short github.com/greatliontech/stipulator/... -count=1 -timeout=5m
       - run: go test github.com/greatliontech/stipulator/... -count=1 -timeout=75m
 
   # The pre-release leg: go.dev/dl orders by version, newest first, so
@@ -109,5 +114,7 @@ jobs:
         run: go version && go build github.com/greatliontech/stipulator/...
       - if: steps.rc.outputs.version != ''
         run: go vet github.com/greatliontech/stipulator/...
+      - if: steps.rc.outputs.version != ''
+        run: go test -short github.com/greatliontech/stipulator/... -count=1 -timeout=5m
       - if: steps.rc.outputs.version != ''
         run: go test github.com/greatliontech/stipulator/... -count=1 -timeout=75m

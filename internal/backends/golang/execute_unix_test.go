@@ -24,6 +24,9 @@ import (
 // tests instead of reporting bare expiry. A hanging toolchain stand-in
 // makes the cutoff deterministic.
 func TestGoExecuteEnvelopeTimeoutNamesAbortedTests(t *testing.T) {
+	if testing.Short() {
+		t.Skip("measured heavy under the fast tier (in-process)")
+	}
 	stipulate.Covers(t, "REQ-go-policy-complete")
 	bin := t.TempDir()
 	stub := filepath.Join(bin, "go")
@@ -196,6 +199,9 @@ func TestGoExecuteCallerDeadlineSkipsDumpGrace(t *testing.T) {
 // completed pass, and the solo re-run of that pass wedges until the
 // envelope kills it.
 func TestGoExecuteSelectionEnvelopeBoundsIsolation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("measured heavy under the fast tier (in-process)")
+	}
 	stipulate.Covers(t, "REQ-core-one-execution", "REQ-evidence-witness-freshness")
 	bin := t.TempDir()
 	stub := filepath.Join(bin, "go")

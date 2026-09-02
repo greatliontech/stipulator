@@ -93,6 +93,9 @@ func findDiagnostic(diags []*stipulatorv1.FailureDiagnostic, pkg, test string) *
 // outcome — subtests and skips included — attributed to the producing
 // invocation and process.
 func TestGoExecuteHealthyPackagesAndAttribution(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-go-policy-complete", "REQ-policy-attribution")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
@@ -157,6 +160,9 @@ func TestGoExecuteBuildFailure(t *testing.T) {
 // direct `go test` would, while the green outcomes it produced remain
 // recorded.
 func TestGoExecuteRedTestMain(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-go-policy-complete")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
@@ -197,6 +203,9 @@ func TestGoExecuteDependencyBuildFailure(t *testing.T) {
 // panics fails before any test runs, disposing TEST_FAILED with the init
 // panic retained in the package diagnostic and no test outcome invented.
 func TestGoExecuteInitFailure(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-go-policy-complete")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
@@ -217,6 +226,9 @@ func TestGoExecuteInitFailure(t *testing.T) {
 // TestGoExecutePackagePanic pins the panic class: a panicking test fails
 // its package with the panic retained in the test's diagnostic.
 func TestGoExecutePackagePanic(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-go-policy-complete")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
@@ -240,6 +252,9 @@ func TestGoExecutePackagePanic(t *testing.T) {
 // dispose TIMEOUT — a terminal reported fact, not an error and not a
 // discarded run.
 func TestGoExecuteEnvelopeTimeout(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-policy-explicit", "REQ-go-policy-complete", "REQ-policy-budget-attribution")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
@@ -301,6 +316,9 @@ func TestGoExecuteEnvelopeTimeoutListsCutOffSubjects(t *testing.T) {
 // typed args field — arguments handed to the test binary — never an
 // invented flag.
 func TestGoExecuteGoTestLevelTimeout(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-go-policy-complete", "REQ-policy-budget-attribution")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
@@ -334,6 +352,9 @@ func TestGoExecuteGoTestLevelTimeout(t *testing.T) {
 // example passes, a failing example fails its package, and the got/want
 // mismatch is retained.
 func TestGoExecuteExamples(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-go-policy-complete")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
@@ -358,6 +379,9 @@ func TestGoExecuteExamples(t *testing.T) {
 // failing committed seed fails its fuzz target's deterministic replay,
 // named per seed.
 func TestGoExecuteFuzzSeedReplayFailure(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-go-policy-complete")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
@@ -377,6 +401,9 @@ func TestGoExecuteFuzzSeedReplayFailure(t *testing.T) {
 // are empty for a complete policy, and a failing member fails its own
 // invocation.
 func TestGoExecutePolicyWorkspaceReport(t *testing.T) {
+	if testing.Short() {
+		t.Skip("runs go test over a fixture module")
+	}
 	stipulate.Covers(t, "REQ-go-policy-complete", "REQ-policy-conservation", "REQ-policy-attribution")
 	neutralAmbient(t)
 	p := &stipulatorv1.TestPolicy{}
@@ -463,6 +490,9 @@ func TestGoExecutePolicyWorkspaceReport(t *testing.T) {
 // execution: a policy omitting a member's obligations reports every
 // omission beside the executed invocations, never silence.
 func TestGoExecutePolicyReportsOmissions(t *testing.T) {
+	if testing.Short() {
+		t.Skip("runs go test over a fixture module")
+	}
 	stipulate.Covers(t, "REQ-policy-conservation")
 	neutralAmbient(t)
 	p := &stipulatorv1.TestPolicy{}
@@ -496,6 +526,9 @@ func TestGoExecutePolicyReportsOmissions(t *testing.T) {
 // contract: a cancelled execution yields no invocation health, no test
 // outcome, no diagnostic — only the cancellation error.
 func TestGoExecuteCancellationDiscardsPartialReport(t *testing.T) {
+	if testing.Short() {
+		t.Skip("runs go test over a fixture module")
+	}
 	stipulate.Covers(t, "REQ-policy-cancellation")
 	neutralAmbient(t)
 	fixture := executeFixture(t)
@@ -757,6 +790,9 @@ func sameProcess(a, b *stipulatorv1.ProducerIdentity) bool {
 // produces no outcome at all, from one healthy package-selection process
 // whose producer is pinned.
 func TestGoExecuteSelectionRunsOnlySelected(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-core-one-execution", "REQ-policy-attribution")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
@@ -794,6 +830,9 @@ func TestGoExecuteSelectionRunsOnlySelected(t *testing.T) {
 // gains its outcome from its own producing process — while the killer's
 // re-run dies again and its failure stands, no outcome invented.
 func TestGoExecuteSelectionIsolatesAbortShadowedTests(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-core-one-execution", "REQ-policy-attribution")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
@@ -837,6 +876,9 @@ func TestGoExecuteSelectionIsolatesAbortShadowedTests(t *testing.T) {
 // own — with a completed observation — while the red sibling's failure
 // stands and is never re-run.
 func TestGoExecuteSelectionIsolatesGreenInRedProcess(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-policy-attribution")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
@@ -892,6 +934,9 @@ func TestGoExecuteSelectionIsolatesGreenInRedProcess(t *testing.T) {
 // (never isolation-eligible), and nothing outside the selected target
 // executes.
 func TestGoExecuteSelectionFuzzReplaysCommittedSeeds(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-go-policy-complete")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
@@ -927,6 +972,9 @@ func TestGoExecuteSelectionFuzzReplaysCommittedSeeds(t *testing.T) {
 // carries a fresh binary bound), while the starving test's solo re-run
 // starves again under its own bound and gains no invented outcome.
 func TestGoExecuteSelectionIsolatesBinaryDeadlineVictims(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-policy-budget-attribution", "REQ-evidence-witness-freshness", "REQ-core-one-execution")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
@@ -1358,6 +1406,9 @@ func TestWitnessEnvDerivedOnceAtNormalize(t *testing.T) {
 // the positive arm's pass really discriminated the delivered
 // environment (the evidence spec's concurrency clause).
 func TestGoExecuteDeliversInnerParallelismCap(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	neutralAmbient(t)
 	t.Setenv("STIPULATOR_FIXTURE_REQUIRE_WIDTH", "1")
 	procs := runtime.GOMAXPROCS(0)

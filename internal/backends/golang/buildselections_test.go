@@ -59,6 +59,9 @@ func dstPolicy(t *testing.T, dir string) {
 // policy record the same reference is NotFound, never a silent
 // default-view narrowing (REQ-go-build-selections).
 func TestResolveSpansPolicyBuildSelections(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-go-build-selections")
 	dir := buildSelectionModule(t)
 	symbol := "example.com/tagged.TestCrashSchedule"
@@ -175,6 +178,9 @@ func TestResolveRefusesMalformedPolicyRecord(t *testing.T) {
 // REQ-go-generated-detect). Repeated runs guard the cross-view
 // FileSet-confusion regression, whose failure was order-dependent.
 func TestGeneratedVerdictJudgedInDeclaringView(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-go-build-selections")
 	dir := t.TempDir()
 	files := map[string]string{
@@ -305,6 +311,9 @@ func Which(x string) string { return x }
 // cannot answer refuses with the degraded view named - never a silent
 // NotFound (REQ-go-build-selections).
 func TestTaggedViewLoadsUnderSelectionToolchain(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
 	stipulate.Covers(t, "REQ-go-build-selections")
 	dir := buildSelectionModule(t)
 	write := func(toolchain string) {

@@ -15,6 +15,9 @@ import (
 )
 
 func TestGateJSONIgnoresConsumerFindings(t *testing.T) {
+	if testing.Short() {
+		t.Skip("measured heavy under the fast tier (in-process)")
+	}
 	dir := t.TempDir()
 	files := map[string]string{
 		"go.mod":                         "module example.com/gatefixture\n\ngo 1.26.4\n",

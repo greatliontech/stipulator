@@ -66,6 +66,9 @@ func generatedObservationFingerprint(t *testing.T) gofresh.Fingerprint {
 //
 //gofresh:pure
 func TestLoadUnreadableIsEmpty(t *testing.T) {
+	if testing.Short() {
+		t.Skip("measured heavy under the fast tier (in-process)")
+	}
 	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-evidence-witness-cache-format")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
@@ -290,6 +293,9 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 //
 //gofresh:pure
 func TestStoreVariantsAndSiblings(t *testing.T) {
+	if testing.Short() {
+		t.Skip("measured heavy under the fast tier (in-process)")
+	}
 	stipulate.Covers(t, "REQ-evidence-witness-cache-format")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
@@ -396,6 +402,9 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 
 //gofresh:pure
 func TestFingerprintRoundTrip(t *testing.T) {
+	if testing.Short() {
+		t.Skip("measured heavy under the fast tier (in-process)")
+	}
 	stipulate.Covers(t, "REQ-evidence-witness-cache-format")
 	positive := generatedObservationFingerprint(t)
 	if positive.DynamicStateStrategy == "" {
@@ -475,6 +484,9 @@ func collectSeededLeaves(prefix string, v reflect.Value, acc map[string]bool) {
 // new field or an accidental key rename (which would silently orphan
 // every stored record) fails here instead of drifting past review.
 func TestFingerprintWireKeySet(t *testing.T) {
+	if testing.Short() {
+		t.Skip("measured heavy under the fast tier (in-process)")
+	}
 	stipulate.Covers(t, "REQ-evidence-witness-cache-format")
 	want := generatedObservationFingerprint(t)
 	// Populated to the spec's persisted key set, NOT every struct field:

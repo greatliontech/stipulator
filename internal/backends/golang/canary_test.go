@@ -16,6 +16,9 @@ import (
 // hash path itself sees type parameters and aliases, not only the
 // loader. Runs under the CI matrix's next-rc leg like every test.
 func TestLanguageShapeCanaries(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads a temp module per shape-corpus entry (the full tier and the rc leg run it)")
+	}
 	for _, entry := range shapecorpus.Entries() {
 		t.Run(entry.Name, func(t *testing.T) {
 			dir := t.TempDir()
