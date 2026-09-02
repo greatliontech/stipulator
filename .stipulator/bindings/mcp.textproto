@@ -891,3 +891,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "a4679e010c5456e7cca482061fe6b3974cd3d2b761ab3073e77148be3a57cf94"
 }
+
+bindings {
+  requirement_id: "REQ-mcp-response-contract"
+  content_hash: "4d13245b88101898d9c5b7ef7712de9e161eb4e903ed518b5236ffc7dd9942f3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckLineNamesObservedRed"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "66c8e4a174c71c114ee8c18cd6f9d2f7fcf46ae6344a2a26baa3d280c067eecb"
+}

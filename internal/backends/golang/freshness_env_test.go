@@ -92,7 +92,7 @@ func TestGoRunWitnessesUnderForeignWorkspace(t *testing.T) {
 	t.Setenv("GOWORK", work)
 
 	tmp := simpleModule(t)
-	tr, err := RunWitnesses(context.Background(), tmp)
+	tr, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestAlwaysRed(t *testing.T) {
 `,
 	})
 	writeRacePolicy(t, tmp)
-	tr, err := RunWitnesses(context.Background(), tmp)
+	tr, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,14 +194,14 @@ func TestReadsWidth(t *testing.T) {
 	p := &stipulatorv1.TestPolicy{}
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", cfg)})
 	writePolicyRecord(t, tmp, p)
-	first, err := RunWitnesses(context.Background(), tmp)
+	first, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if first.Ran != 1 || first.Fresh != 0 {
 		t.Fatalf("first run: ran=%d fresh=%d uncached=%d, want 1 ran", first.Ran, first.Fresh, first.Uncached)
 	}
-	second, err := RunWitnesses(context.Background(), tmp)
+	second, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}

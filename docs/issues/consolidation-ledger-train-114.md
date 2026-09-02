@@ -34,6 +34,16 @@ starts from findings, not recall.
   fold's review; the xtest fold partially collapsed via `moduleOwns`).
 - **Env-walk vocabularies.** `envIndex`/`sortedKeys` beside
   `lookupEnv`/`setEnv`/`dropEnv` in the witness-env fold.
+- **Publish refusal ladders, twice.** The selective runner's
+  `publishExecuted` (with `grantingRun`) and the full-form recorder's
+  `publishGroup` each walk the same refusal ladder per subject — the
+  random-seeded refusal, the missing pre-execution fingerprint, the
+  granting-process eligibility, the outcome-word fold with its
+  contradiction refusal — in two bodies with two reason vocabularies
+  ("no healthy process granted the outcome" beside "no healthy outcome
+  for the subject"); one per-subject publish judgment fed by each
+  form's producer lookup would collapse them (surfaced in the
+  verdict/serving-integrity fold).
 - **CLI residue.** `check --ids` takes a comma scalar where sibling
   verbs batch flags; `gap`'s value-based `conditioned` guard is less
   precise than flag presence (surfaced as nits in the claim-batching

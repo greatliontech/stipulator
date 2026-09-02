@@ -23,7 +23,12 @@ import (
 // (REQ-policy-explicit).
 func witnessRun(ctx context.Context) (*verify.TestRun, error) {
 	fmt.Fprintln(os.Stderr, dim("witnessing: selective execution of the accepted test policy"))
-	tr, err := golang.RunWitnesses(ctx, chdir)
+	gb, err := golang.NewOwned(ctx, chdir)
+	if err != nil {
+		return nil, err
+	}
+	defer gb.Close()
+	tr, err := golang.RunWitnesses(ctx, chdir, gb)
 	if err != nil {
 		if errors.Is(err, policy.ErrRecord) {
 			return nil, fmt.Errorf("%s: %w", policy.Path, err)
@@ -46,7 +51,12 @@ func witnessRunScoped(ctx context.Context, scope map[gofresh.Subject]bool, why s
 		}
 		return nil, err
 	}
-	tr, err := golang.RunWitnessesScoped(ctx, chdir, pol, scope)
+	gb, err := golang.NewOwned(ctx, chdir)
+	if err != nil {
+		return nil, err
+	}
+	defer gb.Close()
+	tr, err := golang.RunWitnessesScoped(ctx, chdir, pol, scope, gb)
 	if err != nil {
 		return nil, err
 	}

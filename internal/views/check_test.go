@@ -290,7 +290,7 @@ func TestVerifySummaryOmitsFailureDiagnosticOutput(t *testing.T) {
 	// Past the cap, the omitted remainder is counted — a truncation is
 	// never silent.
 	var many []*stipulatorv1.FailureDiagnostic
-	for i := 0; i < headingCap+3; i++ {
+	for i := 0; i < HeadingCap+3; i++ {
 		many = append(many, d)
 	}
 	m, err = VerifyView(&verify.Report{Diagnostics: many}, Facts{}, "summary", Scope{})
@@ -298,7 +298,7 @@ func TestVerifySummaryOmitsFailureDiagnosticOutput(t *testing.T) {
 		t.Fatal(err)
 	}
 	sum = m.(*stipulatorv1.VerifySummary)
-	if len(sum.GetWitnessFailureHeadings()) != headingCap || sum.GetWitnessFailureHeadingsOmitted() != 3 {
+	if len(sum.GetWitnessFailureHeadings()) != HeadingCap || sum.GetWitnessFailureHeadingsOmitted() != 3 {
 		t.Fatalf("capped headings = %d, omitted = %d", len(sum.GetWitnessFailureHeadings()), sum.GetWitnessFailureHeadingsOmitted())
 	}
 }

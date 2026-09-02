@@ -203,7 +203,7 @@ func TestRunWitnessesAbortsOnToolchainSkew(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeRacePolicy(t, tmp)
-	tr, err := RunWitnesses(context.Background(), tmp)
+	tr, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err == nil {
 		t.Fatalf("skewed serving run did not abort; degraded run = %+v", tr)
 	}
@@ -234,7 +234,7 @@ func TestNewWitnessRecorderAbortsOnToolchainSkew(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rec, err := NewWitnessRecorder(context.Background(), tmp, p)
+	rec, err := NewWitnessRecorder(context.Background(), tmp, p, noSeeding{})
 	if err == nil {
 		t.Fatalf("skewed recorder did not abort; degraded = %q", rec.degraded)
 	}

@@ -55,7 +55,7 @@ func TestGoRunWitnessesRequiresPolicyRecord(t *testing.T) {
 	tmp := writeModule(t, map[string]string{
 		"go.mod": "module example.com/nopolicy\n\ngo 1.26\n",
 	})
-	if _, err := RunWitnesses(context.Background(), tmp); !errors.Is(err, policy.ErrRecord) {
+	if _, err := RunWitnesses(context.Background(), tmp, noSeeding{}); !errors.Is(err, policy.ErrRecord) {
 		t.Errorf("missing policy record: err = %v, want policy.ErrRecord", err)
 	}
 
@@ -66,7 +66,7 @@ func TestGoRunWitnessesRequiresPolicyRecord(t *testing.T) {
 	if err := os.WriteFile(recordPath, []byte("not a policy record\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := RunWitnesses(context.Background(), tmp); !errors.Is(err, policy.ErrRecord) {
+	if _, err := RunWitnesses(context.Background(), tmp, noSeeding{}); !errors.Is(err, policy.ErrRecord) {
 		t.Errorf("invalid policy record: err = %v, want policy.ErrRecord", err)
 	}
 
@@ -77,7 +77,7 @@ func TestGoRunWitnessesRequiresPolicyRecord(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.Chmod(recordPath, 0o644)
-	_, err := RunWitnesses(context.Background(), tmp)
+	_, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err == nil {
 		t.Fatal("unreadable policy record did not fail the run")
 	}
@@ -267,7 +267,7 @@ func TestGoRunWitnessesServeExecuteOutsideDisjoint(t *testing.T) {
 		requireNoSentinels(t, tmp)
 	}
 
-	cold, err := RunWitnesses(context.Background(), tmp)
+	cold, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,7 +289,7 @@ func TestGoRunWitnessesServeExecuteOutsideDisjoint(t *testing.T) {
 		}
 	}
 
-	warm, err := RunWitnesses(context.Background(), tmp)
+	warm, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -309,7 +309,7 @@ func TestGoRunWitnessesServeExecuteOutsideDisjoint(t *testing.T) {
 	if err := os.WriteFile(onePath, []byte(edited), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	staleRun, err := RunWitnesses(context.Background(), tmp)
+	staleRun, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -356,7 +356,7 @@ func TestBase(t *testing.T) {
 
 	requireRun := func(phase string, fresh, ran int) *verify.TestRun {
 		t.Helper()
-		tr, err := RunWitnesses(context.Background(), tmp)
+		tr, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -461,7 +461,7 @@ func TestReadsFixture(t *testing.T) {
 
 	requireRun := func(phase string, fresh, ran int) {
 		t.Helper()
-		tr, err := RunWitnesses(context.Background(), tmp)
+		tr, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -493,7 +493,7 @@ func TestMore(t *testing.T) {}
 	if err := os.WriteFile(filepath.Join(tmp, "pkg", "fixture.txt"), []byte("state-v2\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	tr, err := RunWitnesses(context.Background(), tmp)
+	tr, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -579,7 +579,7 @@ func TestWriter(t *testing.T) {
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", race)})
 	writePolicyRecord(t, tmp, p)
 
-	first, err := RunWitnesses(context.Background(), tmp)
+	first, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -596,7 +596,7 @@ func TestWriter(t *testing.T) {
 	// cannot see a source mover; the closing validation refuses, the
 	// serve is discarded with the validation's reason, and the retry
 	// re-derives the outcome — nothing stale ever stands.
-	second, err := RunWitnesses(context.Background(), tmp)
+	second, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -664,7 +664,7 @@ func TestReadsCorpus(t *testing.T) {
 
 	requireRun := func(phase string, fresh, ran, uncached int) {
 		t.Helper()
-		tr, err := RunWitnesses(context.Background(), tmp)
+		tr, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -684,7 +684,7 @@ func TestReadsCorpus(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tmp, "docs", "law", "source.md"), []byte("the corpus text, amended\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	tr, err := RunWitnesses(context.Background(), tmp)
+	tr, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -853,7 +853,7 @@ func TestStateRed(t *testing.T) { t.Fail() }
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", cfg)})
 	writePolicyRecord(t, tmp, p)
 
-	tr, err := RunWitnesses(context.Background(), tmp)
+	tr, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -957,7 +957,7 @@ func TestWritesOnce(t *testing.T) {
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", cfg)})
 	writePolicyRecord(t, tmp, p)
 
-	cold, err := RunWitnesses(context.Background(), tmp)
+	cold, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -977,7 +977,7 @@ func TestWritesOnce(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tmp, "writer", "trigger.txt"), []byte("yes\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := RunWitnesses(context.Background(), tmp)
+	drift, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1007,7 +1007,7 @@ func TestWritesOnce(t *testing.T) {
 	}
 
 	// The settled tree serves the retried record beside the writer's.
-	settled, err := RunWitnesses(context.Background(), tmp)
+	settled, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1066,7 +1066,7 @@ func TestRewritesOwnInput(t *testing.T) {
 	writePolicyRecord(t, tmp, p)
 
 	for _, phase := range []string{"cold", "second"} {
-		tr, err := RunWitnesses(context.Background(), tmp)
+		tr, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1118,7 +1118,7 @@ func TestOK(t *testing.T) {}
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", cfg)})
 	writePolicyRecord(t, tmp, p)
 
-	cold, err := RunWitnesses(context.Background(), tmp)
+	cold, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1149,7 +1149,7 @@ func TestFine(t *testing.T) {}
 			t.Fatal(err)
 		}
 	}
-	degraded, err := RunWitnesses(context.Background(), tmp)
+	degraded, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1229,7 +1229,7 @@ func TestStable(t *testing.T) {}
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", cfg)})
 	writePolicyRecord(t, tmp, p)
 
-	red, err := RunWitnesses(context.Background(), tmp)
+	red, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1255,7 +1255,7 @@ func TestStable(t *testing.T) {}
 	if err := os.WriteFile(filepath.Join(tmp, "pkg", "flag.txt"), []byte("pass\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	solo, err := RunWitnesses(context.Background(), tmp)
+	solo, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1319,7 +1319,7 @@ func TestSleeps(t *testing.T) {
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{inv})
 	writePolicyRecord(t, tmp, p)
 
-	tr, err := RunWitnesses(context.Background(), tmp)
+	tr, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1380,7 +1380,7 @@ func TestOK(t *testing.T) {}
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", cfg)})
 	writePolicyRecord(t, tmp, p)
 
-	cold, err := RunWitnesses(context.Background(), tmp)
+	cold, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1403,7 +1403,7 @@ func TestOK(t *testing.T) {}
 	if err := os.WriteFile(filepath.Join(tmp, "empty", "go.mod"), []byte("module example.com/uni/empty\n\ngo 1.26\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	degraded, err := RunWitnesses(context.Background(), tmp)
+	degraded, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatalf("universe fault surfaced as an error instead of degrading: %v", err)
 	}
@@ -1503,7 +1503,7 @@ func TestSleeps(t *testing.T) {
 	rctx, rcancel := context.WithCancel(context.Background())
 	defer rcancel()
 	cancelOnSentinel(rctx, rcancel, runSentinel)
-	tr, err := RunWitnesses(rctx, runDir)
+	tr, err := RunWitnesses(rctx, runDir, noSeeding{})
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("RunWitnesses err = %v, want context.Canceled", err)
 	}
@@ -1559,7 +1559,7 @@ func TestSlowEnough(t *testing.T) {
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{inv1, inv2})
 	writePolicyRecord(t, tmp, p)
 
-	tr, err := RunWitnesses(context.Background(), tmp)
+	tr, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1623,7 +1623,7 @@ func TestGreenReg(t *testing.T) {
 	})
 	writePolicyRecord(t, tmp, p)
 
-	tr, err := RunWitnesses(context.Background(), tmp)
+	tr, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1679,7 +1679,7 @@ func TestGoRunWitnessesServesAcrossTreeAlternation(t *testing.T) {
 
 	run := func(phase string, wantFresh, wantRan int) {
 		t.Helper()
-		tr, err := RunWitnesses(context.Background(), tmp)
+		tr, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1759,7 +1759,7 @@ func TestReadsToolchain(t *testing.T) {
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
 	writePolicyRecord(t, tmp, p)
 
-	first, err := RunWitnesses(context.Background(), tmp)
+	first, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1769,7 +1769,7 @@ func TestReadsToolchain(t *testing.T) {
 	if first.Ran != 1 || first.Uncached != 0 {
 		t.Fatalf("first run ran=%d uncached=%d, want 1/0: the toolchain read must not seal the record unverifiable", first.Ran, first.Uncached)
 	}
-	second, err := RunWitnesses(context.Background(), tmp)
+	second, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1858,7 +1858,7 @@ func TestReadsBuildCacheAndTempRoot(t *testing.T) {
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
 	writePolicyRecord(t, tmp, p)
 
-	first, err := RunWitnesses(context.Background(), tmp)
+	first, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1871,7 +1871,7 @@ func TestReadsBuildCacheAndTempRoot(t *testing.T) {
 	if got := first.Outcomes["example.com/cacheread/pkg.TestReadsBuildCacheAndTempRoot"]; got != verify.TestPassed {
 		t.Fatalf("witness outcome = %v, want PASSED — the fixture's own environment assertions failed", got)
 	}
-	second, err := RunWitnesses(context.Background(), tmp)
+	second, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1961,7 +1961,7 @@ func TestReadsBeneathTempRoot(t *testing.T) {
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
 	writePolicyRecord(t, tmp, p)
 
-	first, err := RunWitnesses(context.Background(), tmp)
+	first, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1989,7 +1989,7 @@ func TestReadsBeneathTempRoot(t *testing.T) {
 	// Nothing published, so the second run re-executes — an
 	// over-admitting classification would have published cacheable
 	// records and served them here.
-	second, err := RunWitnesses(context.Background(), tmp)
+	second, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2033,7 +2033,7 @@ func TestReadsOutsideBracket(t *testing.T) {
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
 	writePolicyRecord(t, tmp, p)
 
-	tr, err := RunWitnesses(context.Background(), tmp)
+	tr, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2074,7 +2074,7 @@ func TestGoRunWitnessesAttributesDeniedAtZeroUncached(t *testing.T) {
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
 	writePolicyRecord(t, tmp, p)
 
-	tr, err := RunWitnesses(context.Background(), tmp)
+	tr, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2112,7 +2112,7 @@ func TestGoRunWitnessesNamesReExecutionReason(t *testing.T) {
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
 	writePolicyRecord(t, tmp, p)
 
-	first, err := RunWitnesses(context.Background(), tmp)
+	first, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2122,7 +2122,7 @@ func TestGoRunWitnessesNamesReExecutionReason(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tmp, "pkg", "testdata", "f.txt"), []byte("two"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	second, err := RunWitnesses(context.Background(), tmp)
+	second, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2180,7 +2180,7 @@ func TestReadsPinnedExternal(*testing.T) {
 		p := &stipulatorv1.TestPolicy{}
 		p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
 		writePolicyRecord(t, tmp, p)
-		first, err := RunWitnesses(context.Background(), tmp)
+		first, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -2191,7 +2191,7 @@ func TestReadsPinnedExternal(*testing.T) {
 			if first.Ran != 1 || first.Uncached != 0 {
 				t.Fatalf("declared first run ran=%d uncached=%d, want 1/0 (reasons=%v)", first.Ran, first.Uncached, first.UncacheableReasons)
 			}
-			second, err := RunWitnesses(context.Background(), tmp)
+			second, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -2202,7 +2202,7 @@ func TestReadsPinnedExternal(*testing.T) {
 			if err := os.WriteFile(external, []byte("v2"), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			third, err := RunWitnesses(context.Background(), tmp)
+			third, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -2268,11 +2268,11 @@ func TestValue(t *testing.T) {
 		p := &stipulatorv1.TestPolicy{}
 		p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
 		writePolicyRecord(t, tmp, p)
-		first, err := RunWitnesses(context.Background(), tmp)
+		first, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 		if err != nil {
 			t.Fatal(err)
 		}
-		second, err := RunWitnesses(context.Background(), tmp)
+		second, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -2341,7 +2341,7 @@ func TestOther(t *testing.T) {}
 	writePolicyRecord(t, tmp, p)
 
 	scope := map[gofresh.Subject]bool{{Package: "example.com/scopedeg/fine", Symbol: "TestOK"}: true}
-	tr, err := RunWitnessesScoped(context.Background(), tmp, p, scope)
+	tr, err := RunWitnessesScoped(context.Background(), tmp, p, scope, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2400,7 +2400,7 @@ func TestShared(t *testing.T) {
 	writePolicyRecord(t, tmp, p)
 
 	key := "example.com/grp/shared.TestShared"
-	cold, err := RunWitnesses(context.Background(), tmp)
+	cold, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2426,7 +2426,7 @@ func TestShared(t *testing.T) {
 		}
 	}
 
-	warm, err := RunWitnesses(context.Background(), tmp)
+	warm, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2446,7 +2446,7 @@ func TestShared(t *testing.T) {
 	if err := os.WriteFile(libPath, []byte("package shared\n\nfunc Lib() string { return \"lib-v2\" }\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	stale, err := RunWitnesses(context.Background(), tmp)
+	stale, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2501,14 +2501,14 @@ func TestV(t *testing.T) {
 	writePolicyRecord(t, tmp, p)
 
 	key := "example.com/mrg/shared.TestV"
-	cold, err := RunWitnesses(context.Background(), tmp)
+	cold, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if cold.Outcomes[key] != verify.TestFailed {
 		t.Fatalf("cold: %s = %v, want FAILED (worst across legs)", key, cold.Outcomes[key])
 	}
-	warm, err := RunWitnesses(context.Background(), tmp)
+	warm, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2563,7 +2563,7 @@ func TestAlwaysRed(t *testing.T) {
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("a-race", cfg)})
 	writePolicyRecord(t, tmp, p)
 
-	tr1, err := RunWitnesses(context.Background(), tmp)
+	tr1, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2578,7 +2578,7 @@ func TestAlwaysRed(t *testing.T) {
 		[]byte("package flip\n\nfunc V() int { return 2 }\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	tr2, err := RunWitnesses(context.Background(), tmp)
+	tr2, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}

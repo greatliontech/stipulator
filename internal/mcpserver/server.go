@@ -112,14 +112,19 @@ func New(dir string) *Server {
 		fsys:     func() fs.FS { return os.DirFS(dir) },
 		backends: func(ctx context.Context) (map[string]verify.Backend, error) { return makeBackends(ctx, dir) },
 		runTests: func(ctx context.Context, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {
+			gb, err := golang.NewOwned(ctx, dir)
+			if err != nil {
+				return nil, err
+			}
+			defer gb.Close()
 			if scope == nil {
-				return golang.RunWitnesses(ctx, dir)
+				return golang.RunWitnesses(ctx, dir, gb)
 			}
 			pol, _, err := policy.Load(dir, map[string]policy.Backend{"go": golang.Policy{}})
 			if err != nil {
 				return nil, err
 			}
-			return golang.RunWitnessesScoped(ctx, dir, pol, scope)
+			return golang.RunWitnessesScoped(ctx, dir, pol, scope, gb)
 		},
 		runCheck: func(ctx context.Context, full bool, scopeIds []string) (*stipulatorv1.CheckResult, error) {
 			return check.Run(ctx, dir, full, scopeIds)
@@ -643,6 +648,16 @@ func checkLine(res *stipulatorv1.CheckResult) string {
 		violations)
 	if folded > 0 {
 		line += fmt.Sprintf(" (%d scope-blocked rows not executed)", folded)
+	}
+	// Observed red fails the verdict on its own (REQ-check-verdict), so
+	// the line names it: a fail with zero violations must not read as
+	// unexplained. Counted per diagnostic row, the same rows the summary
+	// heads.
+	if red := len(res.GetWitnessDiagnostics()) + len(res.GetExecution().GetDiagnostics()); red > 0 {
+		line += fmt.Sprintf("; %d red executions (witness_failure_headings)", red)
+		if red > views.HeadingCap {
+			line += fmt.Sprintf(" — the first %d listed, the rest counted omitted", views.HeadingCap)
+		}
 	}
 	return line
 }

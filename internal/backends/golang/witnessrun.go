@@ -52,19 +52,19 @@ import (
 // outcomes and registrations (served plus executed), the served and
 // executed counts, the uncacheable count, the outside-policy count, and
 // the degraded reason when the freshness path faulted.
-func RunWitnesses(ctx context.Context, dir string) (*verify.TestRun, error) {
+func RunWitnesses(ctx context.Context, dir string, seeding verify.WitnessSeeding) (*verify.TestRun, error) {
 	p, _, err := policy.Load(dir, map[string]policy.Backend{"go": Policy{}})
 	if err != nil {
 		return nil, err
 	}
-	return runWitnesses(ctx, dir, p, nil)
+	return runWitnesses(ctx, dir, p, nil, seeding)
 }
 
 // RunWitnessesPolicy is RunWitnesses over an already-loaded accepted
 // policy — the unified check loads the policy once for its own verdict
 // short-circuits and hands it through.
-func RunWitnessesPolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (*verify.TestRun, error) {
-	return runWitnesses(ctx, dir, p, nil)
+func RunWitnessesPolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, seeding verify.WitnessSeeding) (*verify.TestRun, error) {
+	return runWitnesses(ctx, dir, p, nil, seeding)
 }
 
 // RunWitnessesScoped is the witness-only selective execution narrowed
@@ -73,8 +73,8 @@ func RunWitnessesPolicy(ctx context.Context, dir string, p *stipulatorv1.TestPol
 // - the remainder is recorded scope-skipped, never broken. The degraded
 // path expands to the scope's own full execution, never the tree's
 // (REQ-check-verdict's scoped class).
-func RunWitnessesScoped(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {
-	return runWitnesses(ctx, dir, p, scope)
+func RunWitnessesScoped(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, scope map[gofresh.Subject]bool, seeding verify.WitnessSeeding) (*verify.TestRun, error) {
+	return runWitnesses(ctx, dir, p, scope, seeding)
 }
 
 // witnessGroup is one capture group's serving state: the analysis views
@@ -116,12 +116,22 @@ type witnessGroup struct {
 	observedFPs map[gofresh.Subject]gofresh.Fingerprint
 }
 
-func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {
+func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, scope map[gofresh.Subject]bool, seeding verify.WitnessSeeding) (*verify.TestRun, error) {
 	rep := progress.FromContext(ctx)
 	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	pc, err := capturePolicy(ctx, dir, p)
 	if err != nil {
 		return nil, err
+	}
+	// Random-seeded witnesses are resolved before any serving decision:
+	// they execute every run (REQ-evidence-witness-freshness). A
+	// classification fault degrades serving whole — every in-policy
+	// subject executes and nothing publishes — the fail-closed
+	// direction, exactly as an engine fault degrades
+	// (REQ-evidence-freshness-degrade).
+	seedingErr := classifySeeded(pc, seeding)
+	if seedingErr != nil && ctx.Err() != nil {
+		return nil, ctx.Err()
 	}
 	// A universe fault is a freshness-path fault, not a selection fault:
 	// selection needs only the policy's own discovery, and the universe
@@ -199,7 +209,10 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 	// failures are evidence the health-judged form would surface, so
 	// they execute every run — failures and registrations only, never a
 	// grant — an unadmitted non-race pass never grants witness
-	// evidence.
+	// evidence. A caller-named scope narrows them exactly as it narrows
+	// every other every-run selection: an out-of-scope leg is left
+	// unexecuted, so a red it would have observed never reaches the
+	// scoped verdict (REQ-check-verdict's scoped class).
 	multiIneligible := map[string]TestSelection{}
 	for _, ic := range pc.invocations {
 		if ic.n.WitnessEligible() {
@@ -210,6 +223,9 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 				continue
 			}
 			if pc.globalCount[o.Package] <= 1 {
+				continue
+			}
+			if scope != nil && !scope[gofresh.Subject{Package: o.Package, Symbol: o.Name}] {
 				continue
 			}
 			sel := multiIneligible[ic.n.Name]
@@ -260,6 +276,8 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 	degraded := ""
 	if universeErr != nil {
 		degraded = universeErr.Error()
+	} else if seedingErr != nil {
+		degraded = seedingErr.Error()
 	} else {
 		var prepErr error
 		groups, degraded, prepErr = prepareWitnessGroups(ctx, dir, pc, cachedByKey)
@@ -706,13 +724,7 @@ func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, ca
 			fps:         map[gofresh.Subject]gofresh.Fingerprint{},
 			refreshed:   map[gofresh.Subject]bool{},
 		}
-		// The group's own slice of the store: records this producer
-		// environment published, addressed by the test key.
-		groupCached := map[string][]witnesscache.Record{}
-		for _, s := range subjects {
-			key := s.Package + "." + s.Symbol
-			groupCached[key] = cached[g.id+"\x00"+key]
-		}
+		serving, groupCached := servingCandidates(g.id, subjects, g.neverServes, cached, wg.executedWhy)
 		// Round-based variant checking: round N checks each unproven
 		// subject's Nth variant, and the first variant proving equivalent
 		// serves — deterministic by digest-sorted load order. Variants
@@ -722,7 +734,7 @@ func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, ca
 		// execution.
 		valid := map[gofresh.Subject]bool{}
 		for round := 0; ; round++ {
-			fps, advanced := roundCandidates(subjects, groupCached, valid, round, g.excludedPaths, func(s gofresh.Subject) {
+			fps, advanced := roundCandidates(serving, groupCached, valid, round, g.excludedPaths, func(s gofresh.Subject) {
 				wg.executedWhy[s] = "recorded under a withdrawn observation exclusion"
 			})
 			if !advanced {
@@ -810,8 +822,13 @@ func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, ca
 			// Anything short of valid — stale, unverifiable, absent —
 			// executes; absence of proof never serves an outcome. A
 			// subject that fails to capture simply stays unpublishable;
-			// its execution and evidence are untouched.
+			// its execution and evidence are untouched. A random-seeded
+			// witness publishes nothing by contract, so it is never
+			// fingerprinted.
 			wg.stale[s.Package] = append(wg.stale[s.Package], s.Symbol)
+			if _, refused := g.neverServes[s]; refused {
+				continue
+			}
 			if fp, err := view.Capture(ctx, s); err == nil {
 				wg.fps[s] = fp
 			}
@@ -836,6 +853,32 @@ func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, ca
 		out = append(out, wg)
 	}
 	return out, "", nil
+}
+
+// servingCandidates partitions one group's subjects for the serving
+// rounds: the subjects whose records may serve, with the group's own
+// slice of the store (records this producer environment published,
+// addressed by the test key). A subject serving refuses — a
+// random-seeded witness, an unclassifiable one — never enters the
+// rounds: its prior record, if one exists, is exactly the evidence the
+// contract refuses to serve, so it executes, and when a record existed
+// the refusal is attributed as its re-execution reason
+// (REQ-evidence-witness-freshness).
+func servingCandidates(groupID string, subjects []gofresh.Subject, neverServes map[gofresh.Subject]string, cached map[string][]witnesscache.Record, executedWhy map[gofresh.Subject]string) ([]gofresh.Subject, map[string][]witnesscache.Record) {
+	groupCached := map[string][]witnesscache.Record{}
+	var serving []gofresh.Subject
+	for _, s := range subjects {
+		key := s.Package + "." + s.Symbol
+		if why, refused := neverServes[s]; refused {
+			if len(cached[groupID+"\x00"+key]) > 0 {
+				executedWhy[s] = why
+			}
+			continue
+		}
+		serving = append(serving, s)
+		groupCached[key] = cached[groupID+"\x00"+key]
+	}
+	return serving, groupCached
 }
 
 // compartmentGrownRefresh applies REQ-evidence-witness-freshness's
@@ -965,7 +1008,15 @@ func finishGroup(ctx context.Context, wg *witnessGroup, m *execMerge) ([]gofresh
 		reasons := map[gofresh.Subject]string{}
 		for pkg, names := range wg.stale {
 			for _, name := range names {
-				reasons[gofresh.Subject{Package: pkg, Symbol: name}] = "post-run served-record revalidation faulted: " + err.Error()
+				s := gofresh.Subject{Package: pkg, Symbol: name}
+				// A subject serving refuses by contract keeps its own
+				// reason: the revalidation fault is about served
+				// records, which it never had.
+				if why, refused := wg.g.neverServes[s]; refused {
+					reasons[s] = why
+					continue
+				}
+				reasons[s] = "post-run served-record revalidation faulted: " + err.Error()
 			}
 		}
 		// The discarded serves re-execute holding prior evidence, so each
@@ -1117,6 +1168,10 @@ func publishExecuted(ctx context.Context, wg *witnessGroup, m *execMerge) ([]wit
 	eligible := map[gofresh.Subject]*pubSubject{}
 	reasons := map[gofresh.Subject]string{}
 	for _, s := range order {
+		if why, refused := wg.g.neverServes[s]; refused {
+			reasons[s] = why
+			continue
+		}
 		if _, ok := wg.fps[s]; !ok {
 			reasons[s] = "pre-execution fingerprint capture failed"
 			continue

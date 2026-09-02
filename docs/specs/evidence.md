@@ -163,7 +163,22 @@ one process as outside the equivalence claim, exactly as the closure-based
 claim always has. Anything else short of valid — any other stale reason,
 an unverifiable verdict, a non-inert delta, a record without a ledger, an
 absent or unreadable record — runs the test; absence of proof never serves
-an outcome. The fingerprint pins the closure and environment guards with the
+an outcome. A random-seeded witness — a subject the backend classifies
+`property` by a run-time-seeded driver (REQ-go-witness-class's seeded
+form), whose quantification draws its inputs from a seed no pin
+captures — never serves and never publishes: a valid fingerprint
+carries a deterministic outcome by equivalence, never one draw of a
+random one, so such a subject executes every run, its refusal
+attributed as uncacheable with that reason on both evidence forms,
+while a fuzz target replaying its committed seeds is deterministic
+over them and serves as any witness. The guarantee is exactly as
+strong as that classification: a driver reached only through a helper
+classifies `example` and serves as one. A subject the backend cannot
+classify at all is refused serving the same way under a reason naming
+the load gap — absence of proof never serves, and the refusal never
+reads as a property classification the code does not carry — and a
+classification fault degrades serving whole
+(REQ-evidence-freshness-degrade). The fingerprint pins the closure and environment guards with the
 race flag as a caller-supplied build input, and the run's observed
 runtime-input manifest is captured per package under the same environment
 as the witness invocation and attached to every test fingerprinted from

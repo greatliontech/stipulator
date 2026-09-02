@@ -35,14 +35,18 @@ type resolverRequest struct {
 // result. Error alongside Resolution mirrors Resolve's contract, where
 // a resolution outcome and a verification error travel together.
 type resolverResponse struct {
-	Ready       bool            `json:"ready,omitempty"`
-	Error       string          `json:"error,omitempty"`
-	Resolution  string          `json:"resolution,omitempty"`
-	Shape       string          `json:"shape,omitempty"`
-	Class       string          `json:"class,omitempty"`
-	ClassReason string          `json:"classReason,omitempty"`
-	Decls       []resolverDecl  `json:"decls,omitempty"`
-	Floor       []resolverFloor `json:"floor,omitempty"`
+	Ready       bool   `json:"ready,omitempty"`
+	Error       string `json:"error,omitempty"`
+	Resolution  string `json:"resolution,omitempty"`
+	Shape       string `json:"shape,omitempty"`
+	Class       string `json:"class,omitempty"`
+	ClassReason string `json:"classReason,omitempty"`
+	// NeverServes carries a witnessneverserve result: the asked symbols
+	// serving refuses, each with its reason (encoding/json sorts the
+	// keys, so the wire form is deterministic).
+	NeverServes map[string]string `json:"neverServes,omitempty"`
+	Decls       []resolverDecl    `json:"decls,omitempty"`
+	Floor       []resolverFloor   `json:"floor,omitempty"`
 	// File and Found carry a symbolfile result; Found travels explicitly
 	// because an empty path is a legitimate not-found, never a default.
 	File  string `json:"file,omitempty"`
@@ -158,6 +162,13 @@ func ServeResolver(ctx context.Context, dir string, r io.Reader, w io.Writer) er
 			class, reason := b.WitnessClassVerdict(req.Symbol)
 			resp.Class = classWire(class)
 			resp.ClassReason = reason
+		case "witnessneverserve":
+			refusals, err := b.NeverServe(req.Symbols)
+			if err != nil {
+				resp.Error = err.Error()
+			} else {
+				resp.NeverServes = refusals
+			}
 		case "slice":
 			decls, err := b.Slice(req.Symbols)
 			if err != nil {

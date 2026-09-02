@@ -8,7 +8,7 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[train-114-campaign-idle-window](train-114-campaign-idle-window.md)** — the runner-inspectability
   folds' `--changed` campaign priced itself day-class (63 targets, 4,913 candidates); gate rode the
   nineteen killed ephemeral probes; measured prefix committed, sweep resumes on a quiet host.
-  *Lands: first idle window with no concurrent campaign, or before cross-tool train chunk 141.*
+  *Lands: first idle window with no concurrent campaign after cross-tool train chunk 145 closes.*
 - **[consolidation-ledger-train-114](consolidation-ledger-train-114.md)** — structural-collapse
   candidates accumulated across the five folds (requirement index built six ways, consent-pin
   discipline per kind, sentinel split, per-requirement recompile, executor/load/env vocabulary
@@ -67,3 +67,10 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   contradicts by design has no state to say so, and the corpus reads green against a contradicted
   requirement. Ask: a `contradicted` state beside the gap, reported distinctly, resolving only on
   an explicit fire. *Lands: user decision (bldc consumer report 2026-09-05).*
+- **[witness-selection-guard-masked-by-ineligible-red](witness-selection-guard-masked-by-ineligible-red.md)** —
+  the empty-witness-selection diagnostic keys on any outcome, so an ineligible leg's failure masks
+  the cause; key on granted outcomes. *Lands: cross-tool train chunk 142.*
+- **[seeded-witness-serving-follows-direct-call-classifier](seeded-witness-serving-follows-direct-call-classifier.md)** —
+  the random-seeded serving exemption rides the direct-call witness classifier, so a
+  helper-indirected rapid driver still serves; a transitive seeding class or a helper-admitting
+  classification is a design choice. *Lands: user decision.*

@@ -258,6 +258,21 @@ type WitnessClassVerdicts interface {
 	WitnessClassVerdict(symbol string) (WitnessClass, string)
 }
 
+// WitnessSeeding is an optional Backend extension: which of the asked
+// witness subjects must execute every run because closure equivalence
+// cannot carry their outcome, each with the reason serving refuses it
+// — random-seeded property witnesses, whose driver draws the inputs it
+// quantifies over from a run-time seed no fingerprint pins
+// (REQ-go-witness-class's seeded form), and subjects the backend cannot
+// classify at all, since absence of proof never serves an outcome
+// (REQ-evidence-witness-freshness); the two are named distinctly so a
+// load gap never reads as a property witness. One call answers the
+// whole set; an error is a classification fault the caller fails
+// closed on.
+type WitnessSeeding interface {
+	NeverServe(symbols []string) (map[string]string, error)
+}
+
 // SymbolLocator is an optional Backend extension: the symbol's owning
 // package as the backend resolves it. A symbol string alone cannot be
 // split reliably (dotted path elements vs method receivers), so any

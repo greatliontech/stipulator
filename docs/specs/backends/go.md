@@ -97,7 +97,13 @@ drives `github.com/leanovate/gopter` (a `Properties.TestingRun` selector
 call — property registration and generator construction alone do not
 classify, and a dot-imported call never does, for every recognized
 library), and `example` otherwise;
-the classification is resolved from the code, never declared. An
+the classification is resolved from the code, never declared. A
+`property` classification additionally states its seeding: a
+driver-quantified body is random-seeded — the driver draws the inputs
+it quantifies over from a run-time seed — while a fuzz target's
+ordinary run replays its committed seeds deterministically and is not;
+the seeded form is what freshness serving consults
+(REQ-evidence-witness-freshness). An
 `example` classification carries a verdict naming what the bound body
 lacks — a recognized library referenced without its classifying call is
 named exactly (`rapid.Check not invoked in the bound body`; `no

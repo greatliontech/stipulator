@@ -287,7 +287,9 @@ claimed only by the full form, where health and witness evidence come
 from the same execution per REQ-core-one-execution, so a passing suite
 is never discarded and re-derived and a witness failure occurs inside
 the run whose health the gate judged. The default form is the warm
-loop's verdict: it re-runs exactly what moved and claims no health.
+loop's verdict: it re-runs exactly what moved and claims no health —
+no health over what it did not execute; every red it did observe is
+its verdict's.
 
 **REQ-check-verdict** (behavior): The unified check MUST derive its one
 verdict from a single evaluation pass — compilation, witness evidence,
@@ -298,14 +300,26 @@ records plus witness-only selective execution of the stale remainder — a
 witness-evidence invocation demanding no suite-health disposition
 (REQ-core-one-execution) — and the verdict fails exactly when
 compilation fails, the accepted test policy record is missing or invalid
-(REQ-policy-explicit), verification reports problems,
+(REQ-policy-explicit), verification reports problems, an execution the
+run performed disposed unhealthy — a failed test, a degraded,
+build-failed, or timed-out process, exactly the failure diagnostics
+REQ-check-diagnostics retains, whatever the failing test is bound to
+(observed red is a verdict input on every evidence form: a run that
+executed a policy selection and watched it fail cannot report the tree
+passing, and a witness the isolation pass re-granted solo does not
+launder the sibling red that forced the re-run) —
 REQ-gate-no-undeclared fails, or prune residue remains. A caller
 demanding suite judgment selects full execution: the policy executes
 whole, health derives from that same execution, and the verdict
 additionally fails when suite health is unhealthy. A caller naming
 requirement identifiers selects the scoped witness-evidence class
 instead: fresh records still serve for the whole tree, only stale
-subjects bound to the named requirements execute (the degraded fallback
+subjects bound to the named requirements execute — the every-run
+selections (ambiguously covered subjects, the ineligible legs of
+multiply-selected packages) narrow to the scope the same way, so a red
+an unexecuted out-of-scope leg would have observed never enters the
+partial verdict, while a red the scoped pass did observe fails it
+exactly as on the default class (the degraded fallback
 is the scope's own full execution, never the tree's), a requirement red
 solely on that scope boundary is classed scope-blocked and excluded
 from the verdict's undeclared-red term, prune residue is not derived —

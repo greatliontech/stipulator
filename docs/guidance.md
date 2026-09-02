@@ -57,9 +57,17 @@ cheap because fresh witnesses serve and only the stale remainder
 executes; use full=true when suite health must be judged, which only
 whole execution can do. The pass also reports prune residue. It
 fails exactly when compilation fails, the accepted policy record is
-missing or invalid, verification reports problems, a red
-requirement has no gap naming it, or a resolved gap record lingers
-unpruned; full additionally fails on unhealthy suite health. A tree
+missing or invalid, verification reports problems, an execution the
+run performed came out red (a failed test or a degraded, build-failed,
+or timed-out process — whatever the failing test is bound to; the
+summary's witness_failure_headings name it), a red requirement has no
+gap naming it, or a resolved gap record lingers unpruned; full
+additionally fails on unhealthy suite health. Random-seeded property
+witnesses (bodies directly driving rapid or gopter) never serve: they
+execute on every check and read as uncacheable with that reason; a
+witness the backend cannot classify at all (its package fails to load
+under the invocation's selection) is refused serving the same way
+under a reason naming the load gap. A tree
 failing the check is a successful call carrying passed=false.
 **example:** check before entering review; check with
 ids=REQ-go-static-binding while iterating on one requirement's fix.

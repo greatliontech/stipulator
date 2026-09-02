@@ -235,17 +235,19 @@ func checkSummary(res *stipulatorv1.CheckResult) *stipulatorv1.CheckSummary {
 			headings = append(headings, diagnosticHeadingWord(d))
 		}
 	}
-	if len(headings) > headingCap {
-		out.SetWitnessFailureHeadingsOmitted(int32(len(headings) - headingCap))
-		headings = headings[:headingCap]
+	if len(headings) > HeadingCap {
+		out.SetWitnessFailureHeadingsOmitted(int32(len(headings) - HeadingCap))
+		headings = headings[:HeadingCap]
 	}
 	out.SetWitnessFailureHeadings(headings)
 	out.SetWitnessPublicationDegraded(res.GetWitnessPublicationDegraded())
 	return out
 }
 
-// headingCap bounds the summary's diagnostic-heading list.
-const headingCap = 50
+// HeadingCap bounds the summary's diagnostic-heading list; the
+// remainder rides witness_failure_headings_omitted, and the text
+// digest counts against the same bound.
+const HeadingCap = 50
 
 // blockerRowCap bounds the summary's blocker rows: the top reasons are
 // the actionable ones, the remainder is a count - the raw per-test

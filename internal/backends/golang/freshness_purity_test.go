@@ -55,7 +55,7 @@ func TestObservationProofPublishesAndServes(t *testing.T) {
 	}
 	tmp := observedReaderModule(t)
 
-	first, err := RunWitnesses(context.Background(), tmp)
+	first, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestObservationProofPublishesAndServes(t *testing.T) {
 		t.Fatalf("published fingerprint lacks attributable positive observation proof: %+v", records)
 	}
 
-	second, err := RunWitnesses(context.Background(), tmp)
+	second, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +101,7 @@ func TestObservationProofNeverWaivesInputDigest(t *testing.T) {
 	}
 	tmp := observedReaderModule(t)
 
-	first, err := RunWitnesses(context.Background(), tmp)
+	first, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestObservationProofNeverWaivesInputDigest(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tmp, "data.txt"), []byte("v2\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	second, err := RunWitnesses(context.Background(), tmp)
+	second, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +156,7 @@ func TestStatsFixture(t *testing.T) {
 	}
 	writeRacePolicy(t, tmp)
 
-	result, err := RunWitnesses(context.Background(), tmp)
+	result, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +193,7 @@ func TestIncompatibleObservationEvidenceCannotServe(t *testing.T) {
 		t.Skip("executes a real race-instrumented witness suite")
 	}
 	tmp := observedReaderModule(t)
-	first, err := RunWitnesses(context.Background(), tmp)
+	first, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +229,7 @@ func TestIncompatibleObservationEvidenceCannotServe(t *testing.T) {
 		t.Fatalf("canonical incompatible proof was not structurally readable: %+v", got)
 	}
 
-	second, err := RunWitnesses(context.Background(), tmp)
+	second, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -286,7 +286,7 @@ func TestBDependsOnSiblingState(t *testing.T) {
 	}
 	writeRacePolicy(t, tmp)
 	for run := 1; run <= 2; run++ {
-		result, err := RunWitnesses(context.Background(), tmp)
+		result, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 		if err != nil {
 			t.Fatal(err)
 		}

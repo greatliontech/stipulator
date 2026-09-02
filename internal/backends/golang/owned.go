@@ -36,6 +36,7 @@ var (
 	_ verify.Backend           = (*Owned)(nil)
 	_ verify.SymbolLocator     = (*Owned)(nil)
 	_ verify.WitnessClassifier = (*Owned)(nil)
+	_ verify.WitnessSeeding    = (*Owned)(nil)
 )
 
 type Owned struct {
@@ -213,6 +214,24 @@ func (o *Owned) WitnessClassVerdict(symbol string) (verify.WitnessClass, string)
 	}
 	o.mu.Unlock()
 	return verify.ExampleWitness, ""
+}
+
+// NeverServe implements verify.WitnessSeeding through the resolver
+// child. A transport or child fault is an error for the caller to fail
+// closed on — serving degrades to execution — never a silent empty set
+// that would serve a random-seeded witness.
+func (o *Owned) NeverServe(symbols []string) (map[string]string, error) {
+	resp, err := o.roundTrip(resolverRequest{Op: "witnessneverserve", Symbols: symbols})
+	if err != nil {
+		return nil, err
+	}
+	if resp.Error != "" {
+		return nil, errors.New(resp.Error)
+	}
+	if resp.NeverServes == nil {
+		return map[string]string{}, nil
+	}
+	return resp.NeverServes, nil
 }
 
 // SliceFloor implements verify.FloorSlicer through the resolver child.

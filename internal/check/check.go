@@ -127,6 +127,16 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	// diagnostic face. Advisory: never a verdict input.
 	res.SetPolicyNotices(golang.SelectionNotices(ctx, dir, pol))
 
+	// The verification backend is opened before witnessing: the witness
+	// run consults its classifier for the random-seeded witnesses that
+	// never serve (REQ-evidence-witness-freshness), and the same child
+	// then resolves bindings — one load, one owned process.
+	gb, err := golang.NewOwned(ctx, dir)
+	if err != nil {
+		return nil, err
+	}
+	defer gb.Close()
+
 	// The evidence-class fork (REQ-check-verdict): health judgment demands
 	// whole-policy execution, so the full form executes everything and the
 	// default form serves proven-fresh witnesses with witness-only
@@ -134,7 +144,7 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	var testRun *verify.TestRun
 	var report *stipulatorv1.ExecutionReport
 	if full {
-		report, testRun, err = golang.ExecutePolicyWitnessed(ctx, dir, pol)
+		report, testRun, err = golang.ExecutePolicyWitnessed(ctx, dir, pol, gb)
 		if err != nil {
 			return nil, err
 		}
@@ -145,7 +155,7 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		if scopeErr != nil {
 			return nil, scopeErr
 		}
-		testRun, err = golang.RunWitnessesScoped(ctx, dir, pol, scope)
+		testRun, err = golang.RunWitnessesScoped(ctx, dir, pol, scope, gb)
 		if err != nil {
 			return nil, err
 		}
@@ -154,7 +164,7 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		res.SetTestsServed(int32(testRun.Fresh))
 		res.SetWitnessDiagnostics(testRun.Diagnostics)
 	} else {
-		testRun, err = golang.RunWitnessesPolicy(ctx, dir, pol)
+		testRun, err = golang.RunWitnessesPolicy(ctx, dir, pol, gb)
 		if err != nil {
 			return nil, err
 		}
@@ -181,11 +191,6 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	res.SetExecutedReasons(testRun.ExecutedReasons)
 	res.SetWitnessPublicationDegraded(testRun.Degraded)
 
-	gb, err := golang.NewOwned(ctx, dir)
-	if err != nil {
-		return nil, err
-	}
-	defer gb.Close()
 	backends := map[string]verify.Backend{"go": gb}
 	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
 	vr := verify.Run(spec, store, backends, testRun)
@@ -237,6 +242,16 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	if full {
 		healthy = golang.SuiteHealthy(report)
 	}
+	// Observed red is a verdict input on every form: an execution this
+	// run performed and watched dispose unhealthy — a failed test, a
+	// degraded, build-failed, or timed-out process — fails the tree
+	// whatever the failing test is bound to. The failure diagnostics are
+	// exactly those dispositions (REQ-check-diagnostics), homed on the
+	// result for the witness-evidence forms and on the execution report
+	// when health is judged; what the default form declines to claim is
+	// health over what it did NOT execute, never a pass over a red it
+	// saw (REQ-check-verdict).
+	observedRed := len(res.GetWitnessDiagnostics()) > 0 || len(report.GetDiagnostics()) > 0
 	gatePasses := cov.GatePasses()
 	if len(scopeIds) > 0 {
 		// The scoped verdict excludes rows red solely on the scope
@@ -246,6 +261,7 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	}
 	res.SetPassed(len(vr.Problems) == 0 &&
 		healthy &&
+		!observedRed &&
 		gatePasses &&
 		len(residue) == 0)
 	return res, nil

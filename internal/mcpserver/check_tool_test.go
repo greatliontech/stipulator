@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"github.com/greatliontech/stipulator/internal/views"
 	"io/fs"
 	"os"
 	"strings"
@@ -174,6 +176,54 @@ func TestCheckLineScopedPartialClassAndFold(t *testing.T) {
 	line = checkLine(res)
 	if !strings.Contains(line, "witness-evidence") || !strings.Contains(line, "2 violations") || strings.Contains(line, "scope-blocked") {
 		t.Errorf("global line altered by a stale scope marker: %q", line)
+	}
+	if strings.Contains(line, "red executions") {
+		t.Errorf("line names red executions with no diagnostic: %q", line)
+	}
+}
+
+// TestCheckLineNamesObservedRed pins the digest's explanation of the
+// observed-red verdict term: a failing witness-evidence check with zero
+// violations names its red executions, counted per diagnostic row
+// exactly as the summary heads them, so a fail is never unexplained
+// on the text surface (REQ-check-verdict, REQ-mcp-response-contract).
+func TestCheckLineNamesObservedRed(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-verdict", "REQ-mcp-response-contract")
+	failed := &stipulatorv1.FailureDiagnostic{}
+	failed.SetPackage("example.com/m")
+	failed.SetTest("TestGolden")
+	failed.SetDisposition(stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED)
+	pkg := &stipulatorv1.FailureDiagnostic{}
+	pkg.SetPackage("example.com/m")
+	pkg.SetDisposition(stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED)
+	res := &stipulatorv1.CheckResult{}
+	res.SetPassed(false)
+	res.SetWitnessDiagnostics([]*stipulatorv1.FailureDiagnostic{failed, pkg})
+	line := checkLine(res)
+	if !strings.Contains(line, "check: fail") || !strings.Contains(line, "0 violations") || !strings.Contains(line, "2 red executions (witness_failure_headings)") {
+		t.Errorf("observed-red fail line = %q, want the red executions counted beside zero violations", line)
+	}
+	// The health-judged form homes its rows on the execution report;
+	// the count reads that home too.
+	ex := &stipulatorv1.ExecutionReport{}
+	ex.SetDiagnostics([]*stipulatorv1.FailureDiagnostic{failed})
+	judged := &stipulatorv1.CheckResult{}
+	judged.SetPassed(false)
+	judged.SetSuiteHealthJudged(true)
+	judged.SetExecution(ex)
+	if line := checkLine(judged); !strings.Contains(line, "1 red executions") {
+		t.Errorf("health-judged fail line = %q, want the execution report's row counted", line)
+	}
+	// Past the summary's heading cap the digest says so, so the count
+	// never reads as the length of the list it points at.
+	many := make([]*stipulatorv1.FailureDiagnostic, views.HeadingCap+1)
+	for i := range many {
+		many[i] = failed
+	}
+	capped := &stipulatorv1.CheckResult{}
+	capped.SetWitnessDiagnostics(many)
+	if line := checkLine(capped); !strings.Contains(line, fmt.Sprintf("%d red executions", views.HeadingCap+1)) || !strings.Contains(line, fmt.Sprintf("the first %d listed, the rest counted omitted", views.HeadingCap)) {
+		t.Errorf("over-cap fail line = %q, want the cap named", line)
 	}
 }
 

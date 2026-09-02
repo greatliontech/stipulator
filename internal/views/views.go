@@ -305,9 +305,9 @@ func VerifyView(vr *verify.Report, facts Facts, view string, scope Scope) (proto
 		for _, d := range vr.Diagnostics {
 			headings = append(headings, diagnosticHeadingWord(d))
 		}
-		if len(headings) > headingCap {
-			out.SetWitnessFailureHeadingsOmitted(int32(len(headings) - headingCap))
-			headings = headings[:headingCap]
+		if len(headings) > HeadingCap {
+			out.SetWitnessFailureHeadingsOmitted(int32(len(headings) - HeadingCap))
+			headings = headings[:HeadingCap]
 		}
 		out.SetWitnessFailureHeadings(headings)
 		var sigs []*stipulatorv1.ChangeSignature

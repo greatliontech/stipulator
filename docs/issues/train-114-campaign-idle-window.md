@@ -25,6 +25,16 @@ Run: `gomutant run --changed 3b3b1f7` with the standing vouches, on a
 quiet machine (`mlock`), resuming the committed prefix. Open survivors
 disposition as usual — strengthen the test or attest, never keep.
 
+Redeferred at the verdict-integrity chunk's open (cross-tool train
+chunk 141): the window was idle, but the stipulator band 141–145 edits
+the very subsystems the sweep measures (witness serving, the verdict
+fold, the resolver protocol), and a campaign compiles its mutants
+against the tree at mutation time — running it under a tree being
+edited measures neither state. The sweep re-bases to the band's base
+ref when it runs; its committed prefix still serves for every symbol
+the band leaves untouched.
+
 Lands: first idle window on this host with no concurrent campaign
-(machine quiet, load nominal), before the verdict-integrity work
-(cross-tool train chunk 141) if one occurs sooner.
+(machine quiet, load nominal) after cross-tool train chunk 145 closes,
+run as `gomutant run --changed <the ref chunk 141 opened on>` with the
+standing vouches.

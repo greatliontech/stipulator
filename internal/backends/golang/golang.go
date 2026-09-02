@@ -502,6 +502,50 @@ func (b *Backend) WitnessClass(symbol string) verify.WitnessClass {
 // by helper indirection is diagnosed from the row, never by
 // trial-and-error edits.
 func (b *Backend) WitnessClassVerdict(symbol string) (verify.WitnessClass, string) {
+	v := b.classifyWitness(symbol)
+	return v.class, v.reason
+}
+
+// seededReason is the serving refusal a random-seeded witness carries
+// wherever a served or published record is refused: the uncacheable set
+// and the re-execution reasons alike (REQ-evidence-witness-freshness).
+const seededReason = "random-seeded property witness: executes every run, never served"
+
+// NeverServe implements verify.WitnessSeeding: the symbols whose
+// witness classification is property by a run-time-seeded driver —
+// rapid.Check / rapid.MakeCheck, gopter's Properties.TestingRun — carry
+// seededReason; never a fuzz target, whose ordinary run replays its
+// committed seeds deterministically (REQ-go-witness-class). A symbol
+// the loaded views cannot classify joins the set under its own reason
+// naming the load gap: with no body to inspect there is no proof of a
+// deterministic quantification, and absence of proof never serves
+// (REQ-evidence-witness-freshness) — but the refusal must never read
+// as a property classification the code does not carry.
+func (b *Backend) NeverServe(symbols []string) (map[string]string, error) {
+	out := map[string]string{}
+	for _, s := range symbols {
+		switch v := b.classifyWitness(s); {
+		case v.seeded:
+			out[s] = seededReason
+		case !v.inspected:
+			out[s] = "unclassifiable witness: executes every run, never served (absence of proof never serves): " + v.reason
+		}
+	}
+	return out, nil
+}
+
+// witnessVerdict is one bound symbol's resolved classification: the
+// class, the example-classification reason, whether a property
+// classification is random-seeded, and whether a runnable body was
+// inspected at all (REQ-go-witness-class).
+type witnessVerdict struct {
+	class     verify.WitnessClass
+	reason    string
+	seeded    bool
+	inspected bool
+}
+
+func (b *Backend) classifyWitness(symbol string) witnessVerdict {
 	// Proof outranks property, property outranks example: resolved from
 	// the body's callees. Only a test the witness run executes can
 	// classify above example — a structural or rapid invocation in a
@@ -570,31 +614,37 @@ func (b *Backend) WitnessClassVerdict(symbol string) (verify.WitnessClass, strin
 		})
 		switch {
 		case proof:
-			return verify.AnalyzerProof, ""
+			return witnessVerdict{class: verify.AnalyzerProof, inspected: true}
 		case property:
-			return verify.PropertyWitness, ""
+			// Driver-quantified: the driver draws the inputs from a
+			// run-time seed, so the witness is random-seeded.
+			return witnessVerdict{class: verify.PropertyWitness, seeded: true, inspected: true}
 		}
 		// A fuzz target quantifies by its harness whatever its body
-		// calls - the signature check below classifies it property.
+		// calls - the signature check below classifies it property. Its
+		// ordinary run replays the committed seeds: deterministic, never
+		// random-seeded.
 		if b.fuzzTargetClass(symbol) == verify.PropertyWitness {
-			return verify.PropertyWitness, ""
+			return witnessVerdict{class: verify.PropertyWitness, inspected: true}
+		}
+		example := func(reason string) witnessVerdict {
+			return witnessVerdict{class: verify.ExampleWitness, reason: reason, inspected: true}
 		}
 		switch {
 		case rapidRef:
-			return verify.ExampleWitness, "rapid.Check not invoked in the bound body"
+			return example("rapid.Check not invoked in the bound body")
 		case gopterRef:
-			return verify.ExampleWitness, "gopter.Properties.TestingRun not invoked in the bound body"
+			return example("gopter.Properties.TestingRun not invoked in the bound body")
 		case structuralRef:
-			return verify.ExampleWitness, "no structural assertion invoked in the bound body"
+			return example("no structural assertion invoked in the bound body")
 		case dotImported:
-			return verify.ExampleWitness, "recognized library reached through a dot import - only a qualified call classifies"
+			return example("recognized library reached through a dot import - only a qualified call classifies")
 		default:
-			return verify.ExampleWitness, "no property driver or analyzer call in the bound body"
+			return example("no property driver or analyzer call in the bound body")
 		}
 	}
-	class := b.fuzzTargetClass(symbol)
-	if class == verify.PropertyWitness {
-		return class, ""
+	if b.fuzzTargetClass(symbol) == verify.PropertyWitness {
+		return witnessVerdict{class: verify.PropertyWitness, inspected: true}
 	}
 	// Classification is resolved from the code (REQ-go-witness-class);
 	// a body that cannot even load has no code to resolve from, so the
@@ -602,9 +652,9 @@ func (b *Backend) WitnessClassVerdict(symbol string) (verify.WitnessClass, strin
 	// attribution riding Resolve's error — never a class derived from
 	// the body's absence (REQ-go-load-attribution).
 	if _, _, err := b.Resolve(symbol); err != nil {
-		return verify.ExampleWitness, err.Error()
+		return witnessVerdict{class: verify.ExampleWitness, reason: err.Error()}
 	}
-	return verify.ExampleWitness, "not a runnable test witness"
+	return witnessVerdict{class: verify.ExampleWitness, reason: "not a runnable test witness"}
 }
 
 func (b *Backend) fuzzTargetClass(symbol string) verify.WitnessClass {

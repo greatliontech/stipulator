@@ -1093,7 +1093,12 @@ func TestVerifyToolNamesPolicyRecordProblem(t *testing.T) {
 			return map[string]verify.Backend{"go": fakeBackend{}}, nil
 		},
 		runTests: func(ctx context.Context, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
-			return golang.RunWitnesses(ctx, dir)
+			gb, err := golang.NewOwned(ctx, dir)
+			if err != nil {
+				return nil, err
+			}
+			defer gb.Close()
+			return golang.RunWitnesses(ctx, dir, gb)
 		},
 	}
 	ct, st := mcp.NewInMemoryTransports()

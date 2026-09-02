@@ -561,7 +561,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-witness-class"
-  content_hash: "d401c2765bd960f7ea02e6001f43bc6853481f96c63eedf1171ece89ecd9fc08"
+  content_hash: "0249d9244ca8d238a7bd57b36e3821207d53d374b75f7a261d7b807f59fa36ff"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestWitnessClassVerdicts"
   role: BINDING_ROLE_TESTS
@@ -570,7 +570,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-witness-class"
-  content_hash: "d401c2765bd960f7ea02e6001f43bc6853481f96c63eedf1171ece89ecd9fc08"
+  content_hash: "0249d9244ca8d238a7bd57b36e3821207d53d374b75f7a261d7b807f59fa36ff"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestWitnessClassProof"
   role: BINDING_ROLE_TESTS
@@ -579,7 +579,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-witness-class"
-  content_hash: "d401c2765bd960f7ea02e6001f43bc6853481f96c63eedf1171ece89ecd9fc08"
+  content_hash: "0249d9244ca8d238a7bd57b36e3821207d53d374b75f7a261d7b807f59fa36ff"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestExampleClassificationVerdictSurfaces"
   role: BINDING_ROLE_TESTS
@@ -759,7 +759,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-witness-class"
-  content_hash: "d401c2765bd960f7ea02e6001f43bc6853481f96c63eedf1171ece89ecd9fc08"
+  content_hash: "0249d9244ca8d238a7bd57b36e3821207d53d374b75f7a261d7b807f59fa36ff"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoWitnessClassVerdictNamesLoadFailure"
   role: BINDING_ROLE_TESTS
@@ -881,4 +881,13 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoCondReplacesBySemverOrder"
   role: BINDING_ROLE_TESTS
   shape_hash: "9d1fb9890ddf501fd627a5d603a98249eeb408f50088acbcc33275b68141f3b2"
+}
+
+bindings {
+  requirement_id: "REQ-go-witness-class"
+  content_hash: "0249d9244ca8d238a7bd57b36e3821207d53d374b75f7a261d7b807f59fa36ff"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRandomSeeded"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e1ec97648cbca8596cf0190a40db5dbb1b184664a6fcc26c7041d3b47deba214"
 }

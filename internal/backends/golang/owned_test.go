@@ -2,6 +2,7 @@ package golang
 
 import (
 	"context"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -145,6 +146,23 @@ func TestOwnedResolverProtocolRoundTrips(t *testing.T) {
 		}
 	}
 
+	// The seeding answer crosses the protocol as the sorted seeded
+	// subset: parity with the in-process classifier, symbol by symbol.
+	seedingSymbols := []string{
+		"example.com/fixture/lib.TestAdd",
+		"example.com/fixture/lib.TestPropRapidCheck",
+		"example.com/fixture/lib.TestGopterProp",
+		"example.com/fixture/lib.NoSuchTest",
+	}
+	wantSeeded, wantSeedErr := inproc.NeverServe(seedingSymbols)
+	gotSeeded, gotSeedErr := owned.NeverServe(seedingSymbols)
+	if (wantSeedErr == nil) != (gotSeedErr == nil) || !maps.Equal(gotSeeded, wantSeeded) {
+		t.Errorf("NeverServe = %v (%v), in-process %v (%v)", gotSeeded, gotSeedErr, wantSeeded, wantSeedErr)
+	}
+	if gotSeeded["example.com/fixture/lib.TestPropRapidCheck"] == "" || gotSeeded["example.com/fixture/lib.TestAdd"] != "" {
+		t.Errorf("NeverServe over the wire = %v, want the rapid-driven test refused and the example not", gotSeeded)
+	}
+
 	wantDecls, wantErr := inproc.Slice([]string{"example.com/fixture/lib.W"})
 	if wantErr != nil {
 		t.Fatal(wantErr)
@@ -222,5 +240,11 @@ func TestOwnedResolverLoadErrorPropagates(t *testing.T) {
 	_, _, again := owned.Resolve("example.com/x.Y")
 	if again == nil {
 		t.Fatal("load fault was not sticky")
+	}
+	// The seeding query fails closed on the same fault: an error for the
+	// caller to degrade serving on, never an empty set that would serve
+	// every witness the child could not classify.
+	if refused, err := owned.NeverServe([]string{"example.com/x.TestY"}); err == nil {
+		t.Fatalf("NeverServe over a faulted child = %v with no error", refused)
 	}
 }

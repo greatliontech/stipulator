@@ -196,6 +196,11 @@ type captureGroup struct {
 	id   string
 	tags []string
 	env  []string
+	// neverServes maps each of the group's subjects serving refuses to
+	// its reason — random-seeded witnesses and unclassifiable subjects
+	// (REQ-evidence-witness-freshness); resolved once per policy
+	// capture, read by both witness forms' serving and publish paths.
+	neverServes map[gofresh.Subject]string
 	// witnessEnv is the group's witness environment
 	// (NormalizedInvocation.WitnessEnv): revalidation recomputes env
 	// digests from it as the engine's producer env; loads and analysis
@@ -296,6 +301,50 @@ type policyCapture struct {
 	groups      []*captureGroup
 	// invGroup names each witness-eligible invocation's capture group.
 	invGroup map[string]*captureGroup
+}
+
+// classifySeeded resolves, over every capture group's subjects, which
+// must execute every run — random-seeded witnesses
+// (REQ-go-witness-class's seeded form) and unclassifiable subjects —
+// and records each group's refusals on the group, the one owner both
+// witness forms read: they neither serve nor publish
+// (REQ-evidence-witness-freshness). One classifier call answers the
+// whole policy; a classification fault is returned for the caller to
+// fail closed on.
+func classifySeeded(pc *policyCapture, seeding verify.WitnessSeeding) error {
+	var symbols []string
+	seen := map[string]bool{}
+	for _, g := range pc.groups {
+		for _, s := range groupSubjects(g) {
+			if key := s.Package + "." + s.Symbol; !seen[key] {
+				seen[key] = true
+				symbols = append(symbols, key)
+			}
+		}
+	}
+	sort.Strings(symbols)
+	refusals := map[string]string{}
+	if len(symbols) > 0 {
+		var err error
+		if refusals, err = seeding.NeverServe(symbols); err != nil {
+			return fmt.Errorf("classifying random-seeded witnesses: %w", err)
+		}
+	}
+	for _, g := range pc.groups {
+		g.neverServes = map[gofresh.Subject]string{}
+		for _, s := range groupSubjects(g) {
+			if why, ok := refusals[s.Package+"."+s.Symbol]; ok {
+				// A refusal is attributed or it is not a refusal the
+				// spec admits: an implementor answering with an empty
+				// reason still refuses, under a reason that says so.
+				if why == "" {
+					why = "witness refused serving by the classifier without a stated reason: executes every run, never served"
+				}
+				g.neverServes[s] = why
+			}
+		}
+	}
+	return nil
 }
 
 // runtimeOnlyArg reports whether one extra binary argument is a
@@ -716,7 +765,7 @@ func emitEngineDiagnostic(p gofresh.Progress) {
 // abort (REQ-evidence-toolchain-provenance; classifyFault), because
 // the refused frontend also discovered and selected the suite the
 // degraded run would execute.
-func NewWitnessRecorder(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (*WitnessRecorder, error) {
+func NewWitnessRecorder(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, seeding verify.WitnessSeeding) (*WitnessRecorder, error) {
 	r := &WitnessRecorder{dir: dir}
 	degrade := func(err error) (*WitnessRecorder, error) {
 		abort, reason := classifyFault(err)
@@ -730,6 +779,16 @@ func NewWitnessRecorder(ctx context.Context, dir string, p *stipulatorv1.TestPol
 	pc, err := capturePolicy(ctx, dir, p)
 	if err != nil {
 		return degrade(err)
+	}
+	// A seeding-classification fault degrades the run exactly as an
+	// engine fault does: nothing publishes, so nothing can later serve
+	// a witness the fault left unclassified (fail closed).
+	if err := classifySeeded(pc, seeding); err != nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		r.degraded = err.Error()
+		return r, nil
 	}
 	for _, g := range pc.groups {
 		subjects := groupSubjects(g)
@@ -747,8 +806,13 @@ func NewWitnessRecorder(ctx context.Context, dir string, p *stipulatorv1.TestPol
 		g.view = view
 		g.fps = map[gofresh.Subject]gofresh.Fingerprint{}
 		for _, s := range subjects {
-			// A subject that fails to fingerprint simply stays
-			// unpublishable; its execution and evidence are untouched.
+			// A random-seeded witness never publishes, so it is never
+			// fingerprinted; any other subject that fails to fingerprint
+			// simply stays unpublishable. Execution and evidence are
+			// untouched either way.
+			if _, refused := g.neverServes[s]; refused {
+				continue
+			}
 			if fp, err := view.Capture(ctx, s); err == nil {
 				g.fps[s] = fp
 			}
@@ -957,6 +1021,10 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 		}
 		for _, name := range names {
 			subject := gofresh.Subject{Package: pkg, Symbol: name}
+			if why, refused := g.neverServes[subject]; refused {
+				reasons[subject] = why
+				continue
+			}
 			if _, captured := g.fps[subject]; !captured {
 				reasons[subject] = "pre-execution fingerprint capture failed"
 				continue
@@ -1046,12 +1114,12 @@ func compactRegs(regs []verify.Registration) []verify.Registration {
 // tree that compiled the binaries, and per-test records publish only
 // after source and runtime producer validation. Caller cancellation
 // anywhere discards the whole result.
-func ExecutePolicyWitnessed(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (*stipulatorv1.ExecutionReport, *verify.TestRun, error) {
+func ExecutePolicyWitnessed(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, seeding verify.WitnessSeeding) (*stipulatorv1.ExecutionReport, *verify.TestRun, error) {
 	rep := progress.FromContext(ctx)
 	// Pre-execution capture normalizes and discovers the policy's
 	// invocations for itself: discovery-phase work.
 	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
-	recorder, err := NewWitnessRecorder(ctx, dir, p)
+	recorder, err := NewWitnessRecorder(ctx, dir, p, seeding)
 	if err != nil {
 		// A toolchain-provenance refusal aborts before the suite runs:
 		// the refused frontend discovered and selected it

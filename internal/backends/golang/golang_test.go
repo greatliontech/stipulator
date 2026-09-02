@@ -327,7 +327,7 @@ func TestWorkspaceMembers(t *testing.T) {
 		t.Fatal(err)
 	}
 	writePolicyRecord(t, tmp, derived)
-	firstFresh, err := RunWitnesses(context.Background(), tmp)
+	firstFresh, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -350,7 +350,7 @@ func TestWorkspaceMembers(t *testing.T) {
 	if !found {
 		t.Fatalf("nested member registration lost: %v", firstFresh.Registrations)
 	}
-	secondFresh, err := RunWitnesses(context.Background(), tmp)
+	secondFresh, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
