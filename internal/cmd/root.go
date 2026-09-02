@@ -121,15 +121,6 @@ func makeBackends(ctx context.Context, dir string) (map[string]verify.Backend, e
 	return map[string]verify.Backend{"go": gb}, nil
 }
 
-func writeFileAt(dir, rel string, content []byte) error {
-	full := filepath.Join(dir, filepath.FromSlash(rel))
-	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
-		return err
-	}
-	fmt.Println("wrote", rel)
-	return os.WriteFile(full, content, 0o644)
-}
-
 // applyUpdates applies a batch under compare-and-swap: every
 // precondition is checked before the first write — a target that moved
 // since the operation read it refuses the WHOLE batch, so a concurrent

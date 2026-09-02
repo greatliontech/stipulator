@@ -15,56 +15,78 @@ func disposeCmd() *cobra.Command {
 		Short: "Apply a spec-change disposition to the records",
 	}
 
-	var edReq string
+	var edReq []string
 	editorial := &cobra.Command{
 		Use:   "editorial",
 		Short: guidanceShort("dispose editorial"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ups, err := author.Editorial(os.DirFS(chdir), edReq)
+			req, err := oneFlag("req", edReq)
+			if err != nil {
+				return err
+			}
+			ups, err := author.Editorial(os.DirFS(chdir), req)
 			if err != nil {
 				return err
 			}
 			return applyUpdates(chdir, ups)
 		},
 	}
-	editorial.Flags().StringVar(&edReq, "req", "", "requirement identifier")
+	editorial.Flags().StringArrayVar(&edReq, "req", nil, "requirement identifier")
 	registerReqCompletions(editorial, "req")
 
-	var retireID string
+	var retireID []string
 	var force bool
 	retire := &cobra.Command{
 		Use:   "retire",
 		Short: guidanceShort("dispose retire"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ups, err := author.Retire(os.DirFS(chdir), retireID, force)
+			id, err := oneFlag("id", retireID)
+			if err != nil {
+				return err
+			}
+			ups, err := author.Retire(os.DirFS(chdir), id, force)
 			if err != nil {
 				return err
 			}
 			return applyUpdates(chdir, ups)
 		},
 	}
-	retire.Flags().StringVar(&retireID, "id", "", "retired identity (requirement id or term name)")
+	retire.Flags().StringArrayVar(&retireID, "id", nil, "retired identity (requirement id or term name)")
 	retire.Flags().BoolVar(&force, "force", false, "retire even when no record names the identity")
 
-	var from, into string
+	var from, into []string
 	supersede := &cobra.Command{
 		Use:     "supersede",
 		Aliases: []string{"split", "merge"},
 		Short:   guidanceShort("dispose supersede"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ups, err := author.Supersede(os.DirFS(chdir), splitList(from), splitList(into), false)
+			// These flags already express multiplicity, so a repetition
+			// forms the batch: every occurrence's identifiers join
+			// (REQ-evidence-claim-batch's batch arm) — none dropped.
+			ups, err := author.Supersede(os.DirFS(chdir), splitLists(from), splitLists(into), false)
 			if err != nil {
 				return err
 			}
 			return applyUpdates(chdir, ups)
 		},
 	}
-	supersede.Flags().StringVar(&from, "from", "", "comma-separated source identifiers (removed from the spec)")
-	supersede.Flags().StringVar(&into, "into", "", "comma-separated successor identifiers (declaring supersedes)")
+	supersede.Flags().StringArrayVar(&from, "from", nil, "comma-separated source identifiers (removed from the spec; repeatable, occurrences join)")
+	supersede.Flags().StringArrayVar(&into, "into", nil, "comma-separated successor identifiers (declaring supersedes; repeatable, occurrences join)")
 	registerReqCompletions(supersede, "into")
 
 	c.AddCommand(editorial, retire, supersede)
 	return c
+}
+
+// splitLists joins every occurrence's comma-separated identifiers: the
+// repetition arm of the batch contract for flags that already express
+// multiplicity.
+func splitLists(vals []string) []string {
+	var out []string
+	for _, v := range vals {
+		out = append(out, splitList(v)...)
+	}
+	return out
 }
 
 func splitList(s string) []string {

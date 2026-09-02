@@ -67,16 +67,20 @@ ids=REQ-go-static-binding while iterating on one requirement's fix.
 ### bind
 **does:** Author validated binding claims; pins applied immediately.
 **knobs:**
-- `requirement` (mcp, cli as `req`) — requirement identifier (single-claim form).
-- `symbol` (mcp, cli) — backend-scoped symbol reference (single-claim form).
-- `role` (mcp, cli) — implements, tests, or proves (single-claim form).
-- `backend` (mcp, cli) — language backend (default go).
-- `file` (mcp, cli) — target binding file (derived when empty).
+- `requirement` (mcp, cli as `req`) — requirement identifier; on the cli each repetition starts a claim.
+- `symbol` (mcp, cli) — backend-scoped symbol reference; on the cli exactly one per claim.
+- `role` (mcp, cli) — implements, tests, or proves; on the cli once for all claims or one per claim.
+- `backend` (mcp, cli) — language backend (default go); on the cli once for all claims or one per claim.
+- `file` (mcp, cli) — target binding file (derived when empty); on the cli once for all claims or one per claim.
 - `claims` (mcp) — batch claims validated all-or-nothing — a failure anywhere authors nothing; alternative to the single-claim fields.
 **when:** use bind after the requirement exists and the symbol
 resolves; the requirement must exist, generated files are rejected,
-and errors explain what to fix. The mcp batch form validates
-all-or-nothing.
+and errors explain what to fix. Both surfaces batch all-or-nothing:
+repeated cli flag groups form claims exactly as the mcp claims list
+does — values pair with claims by each flag's own occurrence order,
+independent of how flags interleave on the command line — and a flag
+count matching neither one nor the claim count is refused; a claim is
+never silently dropped.
 **example:** bind req=REQ-guidance-coverage role=tests
 symbol=module/pkg.TestCoverage to claim a test enforces a clause.
 
@@ -87,8 +91,9 @@ symbol=module/pkg.TestCoverage to claim a test enforces a clause.
 - `symbol` (mcp, cli) — narrow to one symbol.
 - `role` (mcp, cli) — narrow to one role.
 **when:** use unbind when a claim is wrong or its symbol was renamed
-(bind the successor after); matching nothing is an error, never a
-silent no-op.
+(bind the successor after); its flags narrow one selection and form no
+batch, so a repeated flag is refused rather than last-wins; matching
+nothing is an error, never a silent no-op.
 **example:** unbind req=REQ-x symbol=module/pkg.TestOld before
 binding the renamed test.
 
@@ -96,10 +101,10 @@ binding the renamed test.
 **does:** Declare, fire, retract, or list coverage gaps.
 **knobs:**
 - `requirement` (mcp, cli as `req`) — requirement identifiers (comma-separated on mcp; repeatable on the cli; all share the reason and landing condition).
-- `reason` (mcp, cli) — why the gap exists (required unless retracting or firing).
-- `covered` (mcp, cli) — lands when this requirement is covered (self = each requirement's own coverage).
-- `exists` (mcp, cli) — lands when this requirement exists.
-- `manual` (mcp, cli) — lands on this externally judged condition, fired explicitly.
+- `reason` (mcp, cli) — why the gap exists (required unless retracting or firing; one shared value — a repeated cli flag is refused, never last-wins).
+- `covered` (mcp, cli) — lands when this requirement is covered (self = each requirement's own coverage; one shared value, repetition refused).
+- `exists` (mcp, cli) — lands when this requirement exists (one shared value, repetition refused).
+- `manual` (mcp, cli) — lands on this externally judged condition, fired explicitly (one shared value, repetition refused).
 - `fired` (mcp, cli) — mark the manual condition fired (without manual: fire the existing gaps).
 - `retract` (mcp, cli) — delete the gap records instead of declaring (dangling records included; retraction never touches the tombstone registry).
 - `excuses` (mcp, cli) — violation classes the gap excuses, from uncovered|stale|broken (comma-separated on mcp; repeatable on the cli; default uncovered alone).
@@ -114,8 +119,8 @@ the consumer leg" manual="the consumer binding lands".
 **surfaces:** mcp, cli as attest requirement
 **does:** Record the weakest evidence: a reason-carrying voucher for a requirement.
 **knobs:**
-- `requirement` (mcp, cli as `req`) — requirement identifier.
-- `reason` (mcp, cli) — why the requirement is judged satisfied (required unless retracting).
+- `requirement` (mcp, cli as `req`) — requirement identifier (taken once; repetition refused).
+- `reason` (mcp, cli) — why the requirement is judged satisfied (required unless retracting; taken once, repetition refused).
 - `retract` (mcp, cli) — withdraw the requirement's judgment instead of authoring one.
 **when:** use attestation only where the policy admits it as a cell's
 minimum — it renders as its own bucket, never covered, and re-stales
@@ -158,7 +163,7 @@ after splitting a clause.
 **surfaces:** cli
 **does:** Re-pin a requirement's bindings after a meaning-preserving edit.
 **knobs:**
-- `req` — requirement identifier.
+- `req` — requirement identifier (taken once; repetition refused).
 **when:** use after an edit that changes wording, not meaning; the
 mcp surface spells this dispose with kind=editorial.
 **example:** dispose editorial --req REQ-x after a typo fix.
@@ -167,7 +172,7 @@ mcp surface spells this dispose with kind=editorial.
 **surfaces:** cli
 **does:** Tombstone an identity removed from the spec; delete its records.
 **knobs:**
-- `id` — retired identity (requirement id or term name).
+- `id` — retired identity (requirement id or term name; taken once, repetition refused).
 - `force` — retire even when no record names the identity.
 **when:** use when a requirement or term left the spec for good; the
 mcp surface spells this dispose with kind=retire.
@@ -177,8 +182,8 @@ mcp surface spells this dispose with kind=retire.
 **surfaces:** cli
 **does:** Tombstone sources and retarget their bindings to declaring successors.
 **knobs:**
-- `from` — comma-separated source identifiers (removed from the spec).
-- `into` — comma-separated successor identifiers (declaring supersedes).
+- `from` — comma-separated source identifiers (removed from the spec); repeatable, every occurrence's identifiers join.
+- `into` — comma-separated successor identifiers (declaring supersedes); repeatable, occurrences join.
 **when:** use for splits and merges (the aliases); the mcp surface
 spells this dispose with kind=supersede.
 **example:** dispose supersede --from REQ-old --into REQ-a,REQ-b.
@@ -186,9 +191,9 @@ spells this dispose with kind=supersede.
 ### retarget
 **does:** Rewrite stored binding symbols under an exact prefix mapping (module-rename repair).
 **knobs:**
-- `backend` (mcp, cli) — backend whose symbols retarget (default go).
-- `from` (mcp, cli) — old symbol prefix (module path).
-- `to` (mcp, cli) — new symbol prefix.
+- `backend` (mcp, cli) — backend whose symbols retarget (default go; taken once, repetition refused).
+- `from` (mcp, cli) — old symbol prefix (module path; taken once, repetition refused).
+- `to` (mcp, cli) — new symbol prefix (taken once, repetition refused).
 - `check` (mcp, cli) — report affected identities without writing.
 **when:** use after a module rename; the prefix matches at a path
 or member boundary, and all-or-nothing — replacements must resolve,

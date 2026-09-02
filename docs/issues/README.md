@@ -12,9 +12,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[identity-walk-two-trackers](identity-walk-two-trackers.md)** — attachment and extent answer
   "whose block is this" via two independent reset tables in two packages; the subset relationship
   holds by coincidence. Collapse to one walk with two windows. *Lands: cross-tool train chunk 131.*
-- **[cli-repeated-flag-claims-silently-dropped](cli-repeated-flag-claims-silently-dropped.md)** — CLI
-  `bind` with repeated `--req`/`--symbol` flags exits 0 and writes only the last claim; batch or
-  refuse, never accept-and-drop. *Lands: with train chunk 114.*
 - **[gapped-requirement-spec-edits-invisible-to-pin](gapped-requirement-spec-edits-invisible-to-pin.md)** —
   gap records carry no content hash, so spec edits under a gapped requirement never trigger
   pin re-consent; the eventual binding consents to drifted text as the original contract.

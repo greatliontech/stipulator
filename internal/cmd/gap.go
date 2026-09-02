@@ -17,20 +17,45 @@ import (
 
 func gapCmd() *cobra.Command {
 	var reqs, excuseNames []string
-	var reason, coveredID, existsID, manual string
+	var reasonVals, coveredVals, existsVals, manualVals []string
 	var fired, retract, list bool
 	c := &cobra.Command{
 		Use:   "gap",
 		Short: guidanceShort("gap"),
 		Long:  guidanceHelp("gap"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			conditioned := coveredID != "" || existsID != "" || manual != "" || reason != "" || len(excuseNames) > 0
+			// The read surface's guard runs on the raw flag presence,
+			// so a --list misuse gets the precise message before any
+			// repetition refusal could preempt it.
+			written := len(coveredVals) > 0 || len(existsVals) > 0 || len(manualVals) > 0 || len(reasonVals) > 0 || len(excuseNames) > 0
 			if list {
-				if len(reqs) > 0 || conditioned || fired || retract {
+				if len(reqs) > 0 || written || fired || retract {
 					return fmt.Errorf("--list is the read surface and combines with no write flag: editing a gap is re-declaring it")
 				}
 				return gapListRun(cmd.Context())
 			}
+			// The bulk form shares ONE reason and landing condition
+			// across every --req (REQ-gap-bulk), so a repetition of the
+			// shared flags expresses a batch this verb cannot form and
+			// refuses rather than broadcasting the last value
+			// (REQ-evidence-claim-batch's refuse arm).
+			reason, err := oneFlag("reason", reasonVals)
+			if err != nil {
+				return err
+			}
+			coveredID, err := oneFlag("covered", coveredVals)
+			if err != nil {
+				return err
+			}
+			existsID, err := oneFlag("exists", existsVals)
+			if err != nil {
+				return err
+			}
+			manual, err := oneFlag("manual", manualVals)
+			if err != nil {
+				return err
+			}
+			conditioned := coveredID != "" || existsID != "" || manual != "" || reason != "" || len(excuseNames) > 0
 			switch {
 			case retract:
 				if conditioned || fired {
@@ -70,10 +95,10 @@ func gapCmd() *cobra.Command {
 		},
 	}
 	c.Flags().StringArrayVar(&reqs, "req", nil, "requirement identifier (repeatable; all share the reason and landing condition)")
-	c.Flags().StringVar(&reason, "reason", "", "why the gap exists")
-	c.Flags().StringVar(&coveredID, "covered", "", "lands when this requirement is covered (self = each requirement's own coverage)")
-	c.Flags().StringVar(&existsID, "exists", "", "lands when this requirement exists")
-	c.Flags().StringVar(&manual, "manual", "", "lands on this externally judged condition, fired explicitly")
+	c.Flags().StringArrayVar(&reasonVals, "reason", nil, "why the gap exists")
+	c.Flags().StringArrayVar(&coveredVals, "covered", nil, "lands when this requirement is covered (self = each requirement's own coverage)")
+	c.Flags().StringArrayVar(&existsVals, "exists", nil, "lands when this requirement exists")
+	c.Flags().StringArrayVar(&manualVals, "manual", nil, "lands on this externally judged condition, fired explicitly")
 	c.Flags().StringArrayVar(&excuseNames, "excuses", nil, "violation class the gap excuses: uncovered, stale, or broken (repeatable; default uncovered alone)")
 	c.Flags().BoolVar(&fired, "fired", false, "mark the manual condition fired (alone: fire existing gaps)")
 	c.Flags().BoolVar(&retract, "retract", false, "delete the gap records instead of declaring (dangling records included)")

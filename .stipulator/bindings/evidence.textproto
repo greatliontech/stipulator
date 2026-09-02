@@ -1206,3 +1206,39 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "7d91a8c00cc1ca8a44f655bbd8b91ce876fca64fe688508317c58d55cde8125d"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-claim-batch"
+  content_hash: "9de962ad5e0723638e6497194b2ad0d383dd32b0ec640b4729c2ecad34f07808"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestBindClaimsAlignment"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "12a0ac2ccd8e97c8789009b97ffa7cf5407ade4e4ab242269b245327b0891952"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-claim-batch"
+  content_hash: "9de962ad5e0723638e6497194b2ad0d383dd32b0ec640b4729c2ecad34f07808"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestBindCLIBatchAllOrNothing"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "cc32a427512d51e2fd6cb8321d424e9d3c3cbdf9d133fe375d7f71b2aeb3c408"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-claim-batch"
+  content_hash: "9de962ad5e0723638e6497194b2ad0d383dd32b0ec640b4729c2ecad34f07808"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestOneFlagRefusesRepetition"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "0b6eaf70834c73e27eb5d0e3f1a150ba59762de427f931aef7c2e2b1fe1e91ac"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-claim-batch"
+  content_hash: "9de962ad5e0723638e6497194b2ad0d383dd32b0ec640b4729c2ecad34f07808"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestSplitListsJoinsEveryOccurrence"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "2d0075c18a03c6e72b50fc6e5e13ac6f24a46a3a1a048a04a0df9addb7eb5750"
+}

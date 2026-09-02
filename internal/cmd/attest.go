@@ -19,13 +19,21 @@ func attestCmd() *cobra.Command {
 }
 
 func attestRequirementCmd() *cobra.Command {
-	var req, reason string
+	var reqVals, reasonVals []string
 	var retract bool
 	c := &cobra.Command{
 		Use:   "requirement",
 		Short: guidanceShort("attest requirement"),
 		Long:  guidanceHelp("attest requirement"),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			req, err := oneFlag("req", reqVals)
+			if err != nil {
+				return err
+			}
+			reason, err := oneFlag("reason", reasonVals)
+			if err != nil {
+				return err
+			}
 			if retract {
 				up, prior, err := author.RetractAttestation(os.DirFS(chdir), req)
 				if err != nil {
@@ -41,18 +49,21 @@ func attestRequirementCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := writeFileAt(chdir, up.Path, up.Content); err != nil {
+			// The write rides the CAS applier like every other record
+			// write: the Update's prior stamp is checked, so a
+			// concurrent agent's judgment refuses instead of being
+			// silently overwritten (REQ-record-cas).
+			if err := applyUpdates(chdir, []author.Update{*up}); err != nil {
 				return err
 			}
 			if prior != nil {
 				fmt.Printf("replaced judgment (was: %q)\n", prior.GetReason())
 			}
-			fmt.Printf("wrote %s\n", up.Path)
 			return nil
 		},
 	}
-	c.Flags().StringVar(&req, "req", "", "requirement identifier")
-	c.Flags().StringVar(&reason, "reason", "", "why the requirement is judged satisfied")
+	c.Flags().StringArrayVar(&reqVals, "req", nil, "requirement identifier")
+	c.Flags().StringArrayVar(&reasonVals, "reason", nil, "why the requirement is judged satisfied")
 	c.Flags().BoolVar(&retract, "retract", false, "withdraw the requirement's judgment instead of authoring one")
 	registerReqCompletions(c, "req")
 	return c

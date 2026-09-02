@@ -47,6 +47,17 @@ instead of reporting quiescence — an answer reading as "nothing to do"
 while verification stays red on the same rows is the laundering this
 requirement forbids, in reporting clothing.
 
+**REQ-evidence-claim-batch** (behavior): Every claim-writing surface
+MUST either form a batch from repeated claim arguments — validated
+all-or-nothing exactly as the tool surface's many-claims form — or
+refuse the repetition by name: accepting a repeated claim argument
+while writing fewer claims than were expressed is forbidden on every
+surface; values pair with claims by each argument's own occurrence
+order, independent of interleaving; and a per-claim argument list
+whose length matches neither one (applying to every claim) nor the
+claim count is refused with both counts named rather than aligned by
+guess.
+
 **REQ-evidence-record-verbs** (behavior): Binding records MUST be writable
 through tool operations that validate at write time — the requirement
 against the compiled corpus, the symbol through its backend when one exists
