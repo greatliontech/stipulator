@@ -15,6 +15,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unicode/utf8"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
@@ -76,6 +77,12 @@ func (bb *boundedBuffer) write(s string) {
 		return
 	}
 	if len(s) > room {
+		// The cap cut backs off to a rune boundary: process output is
+		// bytes, and a mid-rune cut would hand a proto string field the
+		// invalid UTF-8 its marshal validation refuses.
+		for room > 0 && !utf8.RuneStart(s[room]) {
+			room--
+		}
 		s = s[:room]
 		bb.truncated = true
 	}
@@ -179,7 +186,7 @@ func spawnOrdinals() func() int32 {
 // every spawn. Runs the envelope denied before their spawn come back
 // with no terminal disposition for the caller to classify.
 func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, pkgs []string, tests TestSelection, spawnOrdinal func() int32) []packageRun {
-	bound := witnessSpawnBound(n)
+	bound := spawnBoundOf(n)
 	sem := make(chan struct{}, bound)
 	runs := make([]packageRun, len(pkgs))
 	rep := progress.FromContext(ctx)
@@ -345,6 +352,19 @@ func witnessSpawnBound(n *NormalizedInvocation) int {
 	return bound
 }
 
+// spawnBoundOf is every post-normalize consumer's road to the fan-out
+// bound: the normalize-time freeze (n.SpawnBound), so the spawn and
+// every later report of it observe one value — a re-derivation at use
+// time would race dynamic GOMAXPROCS updates exactly as the WitnessEnv
+// field doc describes for the inner width. The fallback re-derivation
+// exists only for hand-built invocations in tests.
+func spawnBoundOf(n *NormalizedInvocation) int {
+	if n.SpawnBound > 0 {
+		return n.SpawnBound
+	}
+	return witnessSpawnBound(n)
+}
+
 // witnessChildWidth derives one unit's inner-parallelism width: the
 // parent's processor budget over the unit bound, floored at one, so
 // units x per-unit width stays at most the processor count - without
@@ -354,7 +374,7 @@ func witnessSpawnBound(n *NormalizedInvocation) int {
 // (not the raw core count) honors an operator who already narrowed
 // the stipulator process.
 func witnessChildWidth(n *NormalizedInvocation) int {
-	width := runtime.GOMAXPROCS(0) / witnessSpawnBound(n)
+	width := runtime.GOMAXPROCS(0) / spawnBoundOf(n)
 	if width < 1 {
 		width = 1
 	}

@@ -2519,3 +2519,83 @@ func TestV(t *testing.T) {
 		t.Fatalf("warm: fresh=%d, want the tagged leg served (the merge pin is vacuous otherwise)", warm.Fresh)
 	}
 }
+
+// TestGoRunWitnessesFlipCarriesEnvironmentReport pins the verdict-flip
+// report end to end: a witness that passed on a prior run (its record
+// installed) and fails on the current one carries the runner's
+// execution-environment report in its failure, while a failure with no
+// prior pass stays bare — a flip names candidate variables, an
+// ordinary red does not.
+func TestGoRunWitnessesFlipCarriesEnvironmentReport(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-flip-environment")
+	if testing.Short() {
+		t.Skip("executes race-instrumented selective runs over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":       "module example.com/flip\n\ngo 1.26\n",
+		"flip/flip.go": "package flip\n\nfunc V() int { return 1 }\n",
+		"flip/flip_test.go": `package flip
+
+import "testing"
+
+//gofresh:pure
+func TestFlip(t *testing.T) {
+	if V() != 1 {
+		t.Fatal("value moved")
+	}
+}
+`,
+		"alwaysred/red_test.go": `package alwaysred
+
+import "testing"
+
+//gofresh:pure
+func TestAlwaysRed(t *testing.T) {
+	t.Fatal("red from birth")
+}
+`,
+	})
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./flip", "./alwaysred"})
+	cfg.SetRace(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("a-race", cfg)})
+	writePolicyRecord(t, tmp, p)
+
+	tr1, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := tr1.Outcomes["example.com/flip/flip.TestFlip"]; got != verify.TestPassed {
+		t.Fatalf("run 1 TestFlip = %v, want PASSED", got)
+	}
+	if out := tr1.Failures["example.com/flip/alwaysred.TestAlwaysRed"]; strings.Contains(out, "runner execution environment") {
+		t.Errorf("run 1: a failure with no prior pass carries the flip report: %q", out)
+	}
+
+	if err := os.WriteFile(filepath.Join(tmp, "flip", "flip.go"),
+		[]byte("package flip\n\nfunc V() int { return 2 }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	tr2, err := RunWitnesses(context.Background(), tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := tr2.Outcomes["example.com/flip/flip.TestFlip"]; got != verify.TestFailed {
+		t.Fatalf("run 2 TestFlip = %v, want FAILED", got)
+	}
+	out := tr2.Failures["example.com/flip/flip.TestFlip"]
+	for _, want := range []string{
+		"runner execution environment",
+		"delivered parallelism width",
+		"value moved",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("run 2 flip failure lacks %q:\n%s", want, out)
+		}
+	}
+	if out := tr2.Failures["example.com/flip/alwaysred.TestAlwaysRed"]; strings.Contains(out, "runner execution environment") {
+		t.Errorf("run 2: a failure whose prior state is FAILED carries the flip report: %q", out)
+	}
+}

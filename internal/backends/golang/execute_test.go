@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
@@ -1271,6 +1272,24 @@ func TestWitnessChildWidth(t *testing.T) {
 	if units*width > procs+units {
 		t.Fatalf("default units %d x width %d overcommits %d processors", units, width, procs)
 	}
+	// The width derives from the invocation's FROZEN fan-out bound —
+	// the same value the spawn semaphore reads — never a live
+	// re-derivation: two frozen bounds must each yield their own width,
+	// which one live-derived value cannot satisfy, and the load-safety
+	// product holds against the frozen bound.
+	for _, bound := range []int{7, 13} {
+		frozen := &NormalizedInvocation{SpawnBound: bound}
+		want := procs / bound
+		if want < 1 {
+			want = 1
+		}
+		if got := witnessChildWidth(frozen); got != want {
+			t.Errorf("width at frozen bound %d = %d, want %d (the frozen value, not a re-derivation)", bound, got, want)
+		}
+		if got := spawnBoundOf(frozen); got != bound {
+			t.Errorf("spawnBoundOf(frozen %d) = %d", bound, got)
+		}
+	}
 }
 
 // The cap rides the single spawn-and-ingest environment source as
@@ -1366,5 +1385,21 @@ func TestGoExecuteDeliversInnerParallelismCap(t *testing.T) {
 	tr = findTest(tests, "example.com/exec/widthprobe", "TestWidthDelivered")
 	if tr == nil || tr.GetOutcome() != stipulatorv1.TestOutcome_TEST_OUTCOME_FAILED {
 		t.Fatalf("negative-arm probe = %v, want FAILED at the full-budget width", tr)
+	}
+}
+
+// TestGoBoundedBufferCapCutsAtRuneBoundary pins the retention cap's
+// rune safety: process output is bytes, and a cap cut through a
+// multi-byte rune would hand a proto string field the invalid UTF-8
+// its marshal validation refuses — the cut backs off to a boundary.
+func TestGoBoundedBufferCapCutsAtRuneBoundary(t *testing.T) {
+	var bb boundedBuffer
+	bb.write(strings.Repeat("x", failureOutputCap-1))
+	bb.write("日")
+	if !utf8.ValidString(bb.b.String()) {
+		t.Fatal("the cap cut split a rune; the buffer is not valid UTF-8")
+	}
+	if !bb.truncated {
+		t.Error("a capped write did not mark truncation")
 	}
 }

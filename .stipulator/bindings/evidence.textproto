@@ -1143,3 +1143,66 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "6dec692994f249d1e93ecc9af7a5416fb000487fc850f7c2088f12785b5b7185"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-flip-environment"
+  content_hash: "782fee38059add5846ca39b41cb5b6438ecdb987532ef1f07fe508e2e959e8fc"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoEnvDivergenceReportContent"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "9115806dc22fc6ed71618e9c4be82de9956e8bfb170d1e7f98b0bf5b5445a092"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-flip-environment"
+  content_hash: "782fee38059add5846ca39b41cb5b6438ecdb987532ef1f07fe508e2e959e8fc"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoEnrichFlipDiagnostics"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "6140b2f3e057217641da7f68eb963462ed3bfe236c4c0c7e4367695f25ce61b6"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-flip-environment"
+  content_hash: "782fee38059add5846ca39b41cb5b6438ecdb987532ef1f07fe508e2e959e8fc"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesFlipCarriesEnvironmentReport"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b4c00032ee6130d8f919ffb69bfec7ef7a638febc5dbfb3185fd895e527c2c25"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-flip-environment"
+  content_hash: "782fee38059add5846ca39b41cb5b6438ecdb987532ef1f07fe508e2e959e8fc"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoEnvDivergenceReportLimits"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ba163a4cc12c6adcc51d31cd3a74d2b5a632fdbe9e1e7d22500d0a53ff4703aa"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-flip-environment"
+  content_hash: "782fee38059add5846ca39b41cb5b6438ecdb987532ef1f07fe508e2e959e8fc"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoEnvDivergenceReportBoundedAtRender"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "2edde5669ee6c9d2547b628ea1568584d69869d3e4e3cf951c1e988ef4e25037"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-flip-environment"
+  content_hash: "782fee38059add5846ca39b41cb5b6438ecdb987532ef1f07fe508e2e959e8fc"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoEnvDivergenceReportValidUTF8"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a99162db8b88cd02d4b3f9ebbf0f35d4d09d924819f4aad57e4bb6813746383f"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-flip-environment"
+  content_hash: "782fee38059add5846ca39b41cb5b6438ecdb987532ef1f07fe508e2e959e8fc"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoTruncateValidUTF8"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7d91a8c00cc1ca8a44f655bbd8b91ce876fca64fe688508317c58d55cde8125d"
+}

@@ -243,6 +243,18 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 	for _, rec := range cached {
 		cachedByKey[rec.IdentityKey()] = append(cachedByKey[rec.IdentityKey()], rec)
 	}
+	// passedBefore indexes every outcome key any prior record holds as
+	// passed — any group, any variant: a failure on such a key flips
+	// prior witness state, and its diagnostic carries the runner's
+	// execution-environment report (REQ-evidence-flip-environment).
+	passedBefore := map[string]bool{}
+	for _, rec := range cached {
+		for key, out := range rec.Outcomes {
+			if out == "passed" {
+				passedBefore[key] = true
+			}
+		}
+	}
 
 	var groups []*witnessGroup
 	degraded := ""
@@ -485,6 +497,15 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 			tr.ExecutedReasons[s.Package+"."+s.Symbol] = why
 		}
 	}
+	// A failure that flips prior passing witness evidence carries the
+	// runner's execution-environment report before the merges fold into
+	// the run's failure map (REQ-evidence-flip-environment). The
+	// enriched set spans all three merges, so a shared-package subject
+	// failing in two of them still carries one report per invocation.
+	flipEnriched := map[string]bool{}
+	enrichFlipDiagnostics(m, normalized, passedBefore, flipEnriched)
+	enrichFlipDiagnostics(retryMerge, normalized, passedBefore, flipEnriched)
+	enrichFlipDiagnostics(ineligibleMerge, normalized, passedBefore, flipEnriched)
 	ranTop := map[string]bool{}
 	consumeMerge(tr, m, ranTop, plainInv, raceGranted, plainGranted)
 	consumeMerge(tr, retryMerge, ranTop, plainInv, raceGranted, plainGranted)

@@ -128,6 +128,17 @@ type NormalizedInvocation struct {
 	// plus overrides, with every backend-pinned key set from its one
 	// typed source.
 	Env []string
+	// Ambient is the raw inherited environment the normalization
+	// derived Env from, sampled once at normalize time: the divergence
+	// report diffs the curated environment against exactly the sample
+	// the curation consumed, never a re-sample the derivation did not
+	// see (REQ-evidence-flip-environment).
+	Ambient []string
+	// SpawnBound is the package fan-out bound frozen at normalize,
+	// beside WitnessEnv and for the same reason: the spawn and every
+	// later report of it observe one value, immune to dynamic
+	// GOMAXPROCS movement between derivation and use.
+	SpawnBound int
 	// PkgDirs maps each package the invocation's discovery listed to its
 	// absolute source directory, recorded by DiscoverInvocation so the
 	// executor can capture a package's observation bracket before its
@@ -164,7 +175,8 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	if err := validateConfig(cfg); err != nil {
 		return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
 	}
-	env, err := normalizeEnv(os.Environ())
+	ambient := os.Environ()
+	env, err := normalizeEnv(ambient)
 	if err != nil {
 		return nil, fmt.Errorf("invocation %q: inherited environment: %w", inv.GetName(), err)
 	}
@@ -184,6 +196,7 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 
 	n := &NormalizedInvocation{
 		Name:              inv.GetName(),
+		Ambient:           ambient,
 		ModuleRoot:        cfg.GetModuleRoot(),
 		Packages:          append([]string(nil), cfg.GetPackages()...),
 		EnvOverrides:      append([]string(nil), cfg.GetEnvironment()...),
@@ -365,6 +378,7 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	sort.Strings(n.Vouches)
 	// The one witness-env derivation for this invocation's lifetime
 	// (see the WitnessEnv field doc).
+	n.SpawnBound = witnessSpawnBound(n)
 	n.WitnessEnv = witnessWidthEnv(n)
 	return n, nil
 }

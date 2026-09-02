@@ -94,6 +94,30 @@ grants nothing, because a red suite never yields green evidence.
 attributes of the run that produced it, at minimum whether the race
 detector was enabled.
 
+**REQ-evidence-flip-environment** (behavior): A witness failure whose
+subject holds prior passing witness evidence MUST carry the runner's
+execution-environment report beside the failure output — the curated
+spawn environment's delta against the ambient sample the normalization
+consumed (runner-set and runner-changed entries, the ambient
+counterpart rendered only for the runner's own toolchain and width
+pins and withheld for a declared override that may exist to shadow a
+secret, removed entries by name), the go test working directory and
+the failing package's directory the test binary starts in, the
+delivered parallelism width exactly as the spawn environment carries
+it, and the process resource limits — derived from the same
+environment derivation the spawn used, at most one report per flipped
+subject per invocation — the same subject failing under two
+invocations failed under two curated environments, and each renders
+its own report — the combined output bounded within the failure
+diagnostic's own cap, the report itself bounded at render (values as
+bounded prefixes, the whole report capped below the diagnostic's cap)
+and the failure output yielding the remaining room, so neither side
+can starve the other, with truncation marked on the diagnostic exactly
+as execution marks it
+— so a runner-correlated verdict flip names its candidate variables
+instead of leaving them to be guessed, while a failure with no prior
+pass is not a flip and stays bare.
+
 **REQ-evidence-witness-freshness** (behavior): A witnessing run MAY serve a
 test's outcome — its subtest outcomes and runtime registrations riding with
 it — from a local cache exactly when the freshness fingerprint recorded

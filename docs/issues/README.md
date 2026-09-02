@@ -5,11 +5,13 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[attestation-refusal-names-no-reclassification](attestation-refusal-names-no-reclassification.md)** —
   the (invariant, MUST) attestation refusal is right but names no remedy; point the author at
   reclassification (a closed enumeration is a wire requirement). *Lands: user decision.*
+- **[process-output-utf8-marshal](process-output-utf8-marshal.md)** — raw process output (bytes,
+  not text) flows into edition-2023 proto string fields; one invalid byte makes the check result
+  unmarshallable. Cut-point half fixed; ingest-wide sanitization needs a design choice.
+  *Lands: first field-observed marshal failure, or with the next executor-diagnostics change set.*
 - **[identity-walk-two-trackers](identity-walk-two-trackers.md)** — attachment and extent answer
   "whose block is this" via two independent reset tables in two packages; the subset relationship
   holds by coincidence. Collapse to one walk with two windows. *Lands: cross-tool train chunk 131.*
-- **[witness-runner-environment-divergence](witness-runner-environment-divergence.md)** — a witness
-  red only inside the runner; the environment delta is uninspectable. *Lands: cross-tool train chunk 114.*
 - **[cli-repeated-flag-claims-silently-dropped](cli-repeated-flag-claims-silently-dropped.md)** — CLI
   `bind` with repeated `--req`/`--symbol` flags exits 0 and writes only the last claim; batch or
   refuse, never accept-and-drop. *Lands: with train chunk 114.*
