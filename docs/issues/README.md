@@ -2,6 +2,9 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
+- **[attestation-refusal-names-no-reclassification](attestation-refusal-names-no-reclassification.md)** —
+  the (invariant, MUST) attestation refusal is right but names no remedy; point the author at
+  reclassification (a closed enumeration is a wire requirement). *Lands: user decision.*
 - **[identity-walk-two-trackers](identity-walk-two-trackers.md)** — attachment and extent answer
   "whose block is this" via two independent reset tables in two packages; the subset relationship
   holds by coincidence. Collapse to one walk with two windows. *Lands: cross-tool train chunk 131.*
