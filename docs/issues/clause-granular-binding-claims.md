@@ -13,4 +13,4 @@ clause label the spec format admits), with coverage reporting the
 unclaimed clauses of an otherwise-bound requirement as a distinct
 bucket ("bound, clauses unclaimed") rather than green.
 
-Lands: user decision (consumer report from bldc, 2026-09-02 — the tool owner sequences).
+Lands: cross-tool train chunk 142 (gofresh docs/plans/cross-tool-train.md; bldc consumer report 2026-09-02).

@@ -12,4 +12,4 @@ was bound as an IMPLEMENTS symbol; `check` refused after the fact.
 Ask: surface `--view` and `--path` on CLI `verify` (and the
 `explain` verb), so the pre-deletion check is a query.
 
-Lands: user decision (consumer report from bldc, 2026-09-02 — the tool owner sequences).
+Lands: cross-tool train chunk 144 (gofresh docs/plans/cross-tool-train.md; bldc consumer report 2026-09-02).

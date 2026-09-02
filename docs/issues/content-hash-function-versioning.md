@@ -22,4 +22,4 @@ bulk without editorial consent); or have `pin --req` record the
 declaring document's blob hash beside the content hash, so a
 re-consent over unchanged text is self-evidently that.
 
-Lands: user decision (consumer report from bldc, 2026-09-02 — the tool owner sequences).
+Lands: cross-tool train chunk 143 (gofresh docs/plans/cross-tool-train.md; bldc consumer report 2026-09-02).

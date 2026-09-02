@@ -13,4 +13,4 @@ removed from the spec: tombstone it and accept the successor edge" —
 either as a dispose mode or as compile admitting a supersedes edge to
 an id present in the record's tombstones-or-pending set.
 
-Lands: user decision (consumer report from bldc, 2026-09-02 — the tool owner sequences).
+Lands: cross-tool train chunk 145 (gofresh docs/plans/cross-tool-train.md; bldc consumer report 2026-09-02).

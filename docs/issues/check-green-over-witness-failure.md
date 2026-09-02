@@ -13,4 +13,4 @@ shape. Ask: a failed witness execution fails the check, or at minimum
 the exit code is non-zero whenever witnessFailureHeadings is
 non-empty.
 
-Lands: user decision (consumer report from bldc, 2026-09-02 — the tool owner sequences).
+Lands: cross-tool train chunk 141 (gofresh docs/plans/cross-tool-train.md; bldc consumer report 2026-09-02).

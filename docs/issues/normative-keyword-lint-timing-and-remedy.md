@@ -14,4 +14,4 @@ four-clause MUST whose clauses had four enforcement states.
 Asks: a lint entry point (or a check at `pin --req` time) that
 compiles the corpus at the amendment; and the remedy in the message.
 
-Lands: user decision (consumer report from bldc, 2026-09-02 — the tool owner sequences).
+Lands: cross-tool train chunk 144 (gofresh docs/plans/cross-tool-train.md; bldc consumer report 2026-09-02).

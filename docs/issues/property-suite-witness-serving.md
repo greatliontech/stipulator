@@ -14,4 +14,4 @@ witnesses, so they re-execute on every check. Reproduction: bldc
 internal/record/lang TestEmitLinePreservationProperty at the pre-fix
 state with -rapid.seed=11290191475805212521.
 
-Lands: user decision (consumer report from bldc, 2026-09-02 — the tool owner sequences).
+Lands: cross-tool train chunk 141 (gofresh docs/plans/cross-tool-train.md; bldc consumer report 2026-09-02).

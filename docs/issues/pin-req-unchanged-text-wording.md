@@ -7,4 +7,4 @@ unchanged; nothing to re-consent" removes the doubt. (pin.go now
 distinguishes "clause pins current; shape moved"; the plain arm still
 reads as quiescence.)
 
-Lands: user decision (consumer report from bldc, 2026-09-02 — the tool owner sequences).
+Lands: cross-tool train chunk 143 (gofresh docs/plans/cross-tool-train.md; bldc consumer report 2026-09-02).

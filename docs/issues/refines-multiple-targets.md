@@ -9,4 +9,4 @@ unstated. bldc tracks its side as docs/issues/refines-single-target.md
 Ask: admit a list of refines targets (the canonical form ordering
 them), with the impact and coverage surfaces reading every edge.
 
-Lands: user decision (consumer report from bldc, 2026-09-02 — the tool owner sequences).
+Lands: cross-tool train chunk 145 (gofresh docs/plans/cross-tool-train.md; bldc consumer report 2026-09-02).
