@@ -5,6 +5,14 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[attestation-refusal-names-no-reclassification](attestation-refusal-names-no-reclassification.md)** —
   the (invariant, MUST) attestation refusal is right but names no remedy; point the author at
   reclassification (a closed enumeration is a wire requirement). *Lands: user decision.*
+- **[train-114-campaign-idle-window](train-114-campaign-idle-window.md)** — the runner-inspectability
+  folds' `--changed` campaign priced itself day-class (63 targets, 4,913 candidates); gate rode the
+  nineteen killed ephemeral probes; measured prefix committed, sweep resumes on a quiet host.
+  *Lands: first idle window with no concurrent campaign, or before cross-tool train chunk 141.*
+- **[consolidation-ledger-train-114](consolidation-ledger-train-114.md)** — structural-collapse
+  candidates accumulated across the five folds (requirement index built six ways, consent-pin
+  discipline per kind, sentinel split, per-requirement recompile, executor/load/env vocabulary
+  pairs, CLI residue). *Lands: with cross-tool train chunk 136.*
 - **[process-output-utf8-marshal](process-output-utf8-marshal.md)** — raw process output (bytes,
   not text) flows into edition-2023 proto string fields; one invalid byte makes the check result
   unmarshallable. Cut-point half fixed; ingest-wide sanitization needs a design choice.
