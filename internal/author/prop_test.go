@@ -85,7 +85,7 @@ func TestPropVerbsWriteOnlyRecords(t *testing.T) {
 					return nil, err
 				}
 				g.SetLands(lands)
-				up, _, err := Gap(fsys, g)
+				up, _, _, err := Gap(fsys, g)
 				if err != nil {
 					return nil, err
 				}

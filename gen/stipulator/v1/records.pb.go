@@ -441,6 +441,7 @@ type Gap struct {
 	xxx_hidden_Reason        *string                `protobuf:"bytes,2,opt,name=reason"`
 	xxx_hidden_Lands         *LandingCondition      `protobuf:"bytes,3,opt,name=lands"`
 	xxx_hidden_Excuses       []GapExcuse            `protobuf:"varint,4,rep,packed,name=excuses,enum=stipulator.v1.GapExcuse"`
+	xxx_hidden_ContentHash   *string                `protobuf:"bytes,5,opt,name=content_hash,json=contentHash"`
 	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
 	XXX_presence             [1]uint32
 	unknownFields            protoimpl.UnknownFields
@@ -506,14 +507,24 @@ func (x *Gap) GetExcuses() []GapExcuse {
 	return nil
 }
 
+func (x *Gap) GetContentHash() string {
+	if x != nil {
+		if x.xxx_hidden_ContentHash != nil {
+			return *x.xxx_hidden_ContentHash
+		}
+		return ""
+	}
+	return ""
+}
+
 func (x *Gap) SetRequirementId(v string) {
 	x.xxx_hidden_RequirementId = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 5)
 }
 
 func (x *Gap) SetReason(v string) {
 	x.xxx_hidden_Reason = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 5)
 }
 
 func (x *Gap) SetLands(v *LandingCondition) {
@@ -522,6 +533,11 @@ func (x *Gap) SetLands(v *LandingCondition) {
 
 func (x *Gap) SetExcuses(v []GapExcuse) {
 	x.xxx_hidden_Excuses = v
+}
+
+func (x *Gap) SetContentHash(v string) {
+	x.xxx_hidden_ContentHash = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 5)
 }
 
 func (x *Gap) HasRequirementId() bool {
@@ -545,6 +561,13 @@ func (x *Gap) HasLands() bool {
 	return x.xxx_hidden_Lands != nil
 }
 
+func (x *Gap) HasContentHash() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
 func (x *Gap) ClearRequirementId() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_RequirementId = nil
@@ -557,6 +580,11 @@ func (x *Gap) ClearReason() {
 
 func (x *Gap) ClearLands() {
 	x.xxx_hidden_Lands = nil
+}
+
+func (x *Gap) ClearContentHash() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_ContentHash = nil
 }
 
 type Gap_builder struct {
@@ -572,6 +600,12 @@ type Gap_builder struct {
 	// class, and a later red of an undeclared class is its own finding,
 	// never absorbed by the standing record.
 	Excuses []GapExcuse
+	// The content hash of the requirement text the gap was declared
+	// against — the consent surface, exactly as a binding's. A pin that
+	// differs from the current text suspends the excuse until re-consent;
+	// unset (a pre-field record) excuses as declared and backfills under
+	// the blanket pin.
+	ContentHash *string
 }
 
 func (b0 Gap_builder) Build() *Gap {
@@ -579,15 +613,19 @@ func (b0 Gap_builder) Build() *Gap {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.RequirementId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 5)
 		x.xxx_hidden_RequirementId = b.RequirementId
 	}
 	if b.Reason != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 5)
 		x.xxx_hidden_Reason = b.Reason
 	}
 	x.xxx_hidden_Lands = b.Lands
 	x.xxx_hidden_Excuses = b.Excuses
+	if b.ContentHash != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 5)
+		x.xxx_hidden_ContentHash = b.ContentHash
+	}
 	return m0
 }
 
@@ -1198,12 +1236,13 @@ const file_stipulator_v1_records_proto_rawDesc = "" +
 	"shape_hash\x18\x06 \x01(\tR\tshapeHash\"@\n" +
 	"\n" +
 	"BindingSet\x122\n" +
-	"\bbindings\x18\x01 \x03(\v2\x16.stipulator.v1.BindingR\bbindings\"\xaf\x01\n" +
+	"\bbindings\x18\x01 \x03(\v2\x16.stipulator.v1.BindingR\bbindings\"\xd2\x01\n" +
 	"\x03Gap\x12%\n" +
 	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x125\n" +
 	"\x05lands\x18\x03 \x01(\v2\x1f.stipulator.v1.LandingConditionR\x05lands\x122\n" +
-	"\aexcuses\x18\x04 \x03(\x0e2\x18.stipulator.v1.GapExcuseR\aexcuses\"z\n" +
+	"\aexcuses\x18\x04 \x03(\x0e2\x18.stipulator.v1.GapExcuseR\aexcuses\x12!\n" +
+	"\fcontent_hash\x18\x05 \x01(\tR\vcontentHash\"z\n" +
 	"\x16RequirementAttestation\x12%\n" +
 	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x12!\n" +
 	"\fcontent_hash\x18\x02 \x01(\tR\vcontentHash\x12\x16\n" +

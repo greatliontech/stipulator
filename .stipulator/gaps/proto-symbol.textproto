@@ -3,4 +3,5 @@
 
 requirement_id: "REQ-proto-symbol"
 reason: "proto backend deferred indefinitely: machinery large, cut partial, gain marginal while Go witnesses and shape pins cover wire behavior"
+content_hash: "24f95c4f62cc643c38df092f14bc339fd71821447c0aac43bc72a946a5b64e37"
 lands { manual { condition: "proto backend work is scheduled (docs/issues/proto-backend.md)" } }

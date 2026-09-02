@@ -108,6 +108,12 @@ type Gap struct {
 	// Fired is the manual condition's fired bit; false for machine
 	// conditions.
 	Fired bool
+	// StaleConsent marks a record whose content pin differs from its
+	// requirement's current text: it excuses nothing until re-consented
+	// (REQ-gap-consent). Surfaced on the record row too — the
+	// requirement-side reason appears only once the requirement is red,
+	// and a suspended excuse is a triage fact before that.
+	StaleConsent bool
 }
 
 // Report is the coverage evaluation and gate verdict.
@@ -395,10 +401,26 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 
 	gapped := map[string]bool{}
 	excused := map[string]map[Bucket]bool{}
+	staleConsent := map[string]bool{}
+	hashOf := map[string]string{}
+	for _, r := range spec.GetRequirements() {
+		hashOf[r.GetId()] = r.GetContentHash()
+	}
 	for _, gf := range store.Gaps {
 		id := gf.Gap.GetRequirementId()
 		gapped[id] = true
-		excused[id] = excuseSet(gf.Gap.GetExcuses())
+		// A drifted content pin suspends the excuse: the declaration
+		// consented to different text, and a standing gap must never
+		// absorb a red of text its declarer did not read
+		// (REQ-gap-consent). An unset pin is a pre-field record and
+		// excuses as declared until a pin ceremony stamps it (blanket
+		// backfill or a per-identity re-consent).
+		drifted := gf.Gap.GetContentHash() != "" && gf.Gap.GetContentHash() != hashOf[id]
+		if drifted {
+			staleConsent[id] = true
+		} else {
+			excused[id] = excuseSet(gf.Gap.GetExcuses())
+		}
 		state := Open
 		switch {
 		case buckets[id] == Covered && !manualUnfired(gf.Gap.GetLands()):
@@ -413,10 +435,18 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		}
 		rep.Gaps = append(rep.Gaps, Gap{
 			Path: gf.Path, RequirementId: id, State: state,
-			Reason:    gf.Gap.GetReason(),
-			Condition: ConditionText(gf.Gap.GetLands()),
-			Fired:     gf.Gap.GetLands().GetManual().GetFired(),
+			Reason:       gf.Gap.GetReason(),
+			Condition:    ConditionText(gf.Gap.GetLands()),
+			Fired:        gf.Gap.GetLands().GetManual().GetFired(),
+			StaleConsent: drifted,
 		})
+	}
+	// Suspension wins over any duplicate record's current pin: two
+	// records naming one requirement is already a verifier problem, but
+	// the excuse walk must not be order-dependent about it — a stale
+	// consent anywhere suspends the requirement's excuse entirely.
+	for id := range staleConsent {
+		delete(excused, id)
 	}
 
 	for i := range rep.Requirements {
@@ -430,7 +460,10 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		// later red of a different class, and the mismatch is surfaced
 		// on the requirement so the gap's reason is never read as
 		// explaining a red it does not.
-		if gapped[r.Id] && !excused[r.Id][r.Bucket] {
+		switch {
+		case gapped[r.Id] && staleConsent[r.Id]:
+			r.Reasons = append(r.Reasons, fmt.Sprintf("the gap record naming this requirement was declared against different text and excuses nothing until re-consented — re-consent: stipulator pin --req %s", r.Id))
+		case gapped[r.Id] && !excused[r.Id][r.Bucket]:
 			r.Reasons = append(r.Reasons, fmt.Sprintf("the gap record naming this requirement excuses %s, not %s — declare the class deliberately or repair the red", excuseNames(excused[r.Id]), bucketName(r.Bucket)))
 		}
 		if !gapped[r.Id] || !excused[r.Id][r.Bucket] {

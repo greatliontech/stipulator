@@ -17,6 +17,10 @@ import (
 // IDPattern is the requirement identifier grammar.
 const IDPattern = `REQ(-[a-z0-9]+)+`
 
+// ValidID reports whether s matches the requirement identifier grammar
+// in full — the one test for "could this string ever name a requirement".
+func ValidID(s string) bool { return idRe.MatchString(s) }
+
 var (
 	idRe = regexp.MustCompile(`^` + IDPattern + `$`)
 	// leadRe matches the plain-text prefix of a requirement lead:

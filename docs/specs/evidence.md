@@ -22,10 +22,11 @@ pinned), a backend, a symbol reference, a role, and — when the backend
 defines one — the shape hash of the bound symbol.
 
 **REQ-evidence-binding-machine-owned** (behavior): A tool rewrite of a
-binding file MUST fail when the file carries comments outside its leading
-header block, so hand-written commentary is never silently destroyed;
-binding rationale belongs in review and commit messages, not in record
-files.
+record file — a binding file or a gap record — MUST fail when the file
+carries comments outside its leading header block, preserving the
+file's leading header lines when it does rewrite, so hand-written
+commentary is never silently destroyed; record rationale belongs in
+review and commit messages, not in record files.
 
 **REQ-pin-backfill** (behavior): The pin operation MUST set only unset
 content pins and shape pins in its blanket form — a differing content pin
@@ -45,7 +46,10 @@ named form re-pins clause text only: when a named requirement's bindings
 carry a shape mismatch it is not going to fix, the response says so
 instead of reporting quiescence — an answer reading as "nothing to do"
 while verification stays red on the same rows is the laundering this
-requirement forbids, in reporting clothing.
+requirement forbids, in reporting clothing. Gap records ride the same
+discipline: the blanket form backfills their unset content pins and
+names the differing ones it preserved, and the named form re-stamps
+them (REQ-gap-consent).
 
 **REQ-evidence-claim-batch** (behavior): Every claim-writing surface
 MUST either form a batch from repeated claim arguments — validated

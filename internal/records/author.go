@@ -22,7 +22,7 @@ func AddBinding(store *Store, filePath string, b *stipulatorv1.Binding) ([]byte,
 		if bf.Path != filePath {
 			continue
 		}
-		if line := commentOutsideHeader(bf.Raw); line > 0 {
+		if line := CommentOutsideHeader(bf.Raw); line > 0 {
 			return nil, fmt.Errorf("%s:%d: comment outside the leading header block; move commentary to the commit message first", bf.Path, line)
 		}
 		bf.Set.SetBindings(append(bf.Set.GetBindings(), b))
@@ -55,7 +55,7 @@ func RemoveBindings(store *Store, fn func(*stipulatorv1.Binding) bool) (updates 
 		if matched == 0 {
 			continue
 		}
-		if line := commentOutsideHeader(bf.Raw); line > 0 {
+		if line := CommentOutsideHeader(bf.Raw); line > 0 {
 			return nil, nil, 0, fmt.Errorf("%s:%d: comment outside the leading header block; move commentary to the commit message first", bf.Path, line)
 		}
 		removed += matched
@@ -77,14 +77,20 @@ func GapPath(requirementID string) string {
 	return path.Join(GapsDir, strings.TrimPrefix(strings.ToLower(requirementID), "req-")+".textproto")
 }
 
-// RenderGap renders a gap record deterministically with the standard
-// header.
-func RenderGap(g *stipulatorv1.Gap) []byte {
+// renderGap renders a gap record body deterministically with the
+// standard header. Unexported deliberately: every caller outside this
+// file routes through RenderGapFile, so no future write path can reach
+// a raw writer that skips the machine-owned refusal and header
+// preservation (REQ-evidence-binding-machine-owned).
+func renderGap(g *stipulatorv1.Gap) []byte {
 	var b strings.Builder
 	b.WriteString(defaultHeader)
 	b.WriteString("# proto-message: stipulator.v1.Gap\n\n")
 	fmt.Fprintf(&b, "requirement_id: %s\n", strconv.Quote(g.GetRequirementId()))
 	fmt.Fprintf(&b, "reason: %s\n", strconv.Quote(g.GetReason()))
+	if g.GetContentHash() != "" {
+		fmt.Fprintf(&b, "content_hash: %s\n", strconv.Quote(g.GetContentHash()))
+	}
 	lc := g.GetLands()
 	switch {
 	case lc.HasCovered():
@@ -108,10 +114,53 @@ func RenderGap(g *stipulatorv1.Gap) []byte {
 // Render re-renders one binding file through the machine-owned writer,
 // refusing files carrying comments outside the leading header.
 func Render(bf BindingFile) ([]byte, error) {
-	if line := commentOutsideHeader(bf.Raw); line > 0 {
+	if line := CommentOutsideHeader(bf.Raw); line > 0 {
 		return nil, fmt.Errorf("%s:%d: comment outside the leading header block; move commentary to the commit message first", bf.Path, line)
 	}
 	return renderBindingSet(bf), nil
+}
+
+// RenderGapFile re-renders one gap file through the machine-owned
+// writer, exactly as Render does a binding file: a comment outside the
+// leading header refuses rather than being destroyed
+// (REQ-evidence-binding-machine-owned), and the file's own header lines
+// are preserved. Every tool rewrite of an EXISTING gap record goes
+// through here; a nil Raw renders the standard header for a record
+// born in this operation.
+func RenderGapFile(gf GapFile) ([]byte, error) {
+	if line := CommentOutsideHeader(gf.Raw); line > 0 {
+		return nil, fmt.Errorf("%s:%d: comment outside the leading header block; move commentary to the commit message first", gf.Path, line)
+	}
+	var b strings.Builder
+	for _, line := range strings.Split(string(gf.Raw), "\n") {
+		if !strings.HasPrefix(strings.TrimSpace(line), "#") {
+			break
+		}
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	body := renderGap(gf.Gap)
+	if b.Len() == 0 {
+		return body, nil
+	}
+	b.WriteByte('\n')
+	b.Write(bytesAfterHeader(body))
+	return []byte(b.String()), nil
+}
+
+// bytesAfterHeader strips renderGap's standard header block (its '#'
+// lines and the blank separator) so a preserved header replaces it.
+func bytesAfterHeader(raw []byte) []byte {
+	lines := strings.Split(string(raw), "\n")
+	i := 0
+	for ; i < len(lines); i++ {
+		t := strings.TrimSpace(lines[i])
+		if t == "" || strings.HasPrefix(t, "#") {
+			continue
+		}
+		break
+	}
+	return []byte(strings.Join(lines[i:], "\n"))
 }
 
 // RenderTombstones renders the tombstone registry deterministically.

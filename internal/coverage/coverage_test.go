@@ -1,6 +1,7 @@
 package coverage
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -806,5 +807,94 @@ func TestWitnessSelectionBlockedRequiresBoundaryOnlyRedness(t *testing.T) {
 		if blocked[id] {
 			t.Fatalf("%s classed policy-blocked despite a non-boundary red cause", id)
 		}
+	}
+}
+
+// TestGapStaleConsentSuspendsExcuse pins the consent surface: a gap
+// whose content pin differs from the requirement's current text
+// excuses nothing until re-consented — the requirement reds as a
+// violation with the re-consent operation named — while a matching pin
+// excuses as declared and an unset pin (a pre-field record) excuses as
+// declared until the blanket pin backfills it.
+//
+//gofresh:pure
+func TestGapStaleConsentSuspendsExcuse(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-consent")
+	doc := "# T\n\n**REQ-gc-a** (behavior): It MUST x.\n\n**REQ-gc-b** (behavior): It MUST y.\n\n**REQ-gc-c** (behavior): It MUST z.\n"
+	spec0, _ := fixture(t, doc, nil)
+	matching := ""
+	for _, r := range spec0.GetRequirements() {
+		if r.GetId() == "REQ-gc-b" {
+			matching = r.GetContentHash()
+		}
+	}
+	if matching == "" {
+		t.Fatal("fixture requirement missing")
+	}
+	drifted := strings.Repeat("0", 64)
+	gap := func(id, hash string) string {
+		s := "requirement_id: \"" + id + "\"\nreason: \"r\"\n"
+		if hash != "" {
+			s += "content_hash: \"" + hash + "\"\n"
+		}
+		return s + "lands { manual { condition: \"external\" } }\n"
+	}
+	spec, store := fixture(t, doc, map[string]string{
+		".stipulator/gaps/a.textproto": gap("REQ-gc-a", drifted),  // suspended: consent drifted
+		".stipulator/gaps/b.textproto": gap("REQ-gc-b", matching), // excused: consent current
+		".stipulator/gaps/c.textproto": gap("REQ-gc-c", ""),       // excused: pre-field record
+	})
+	rep := Evaluate(spec, &verify.Report{}, store, true, nil)
+	if !slices.Contains(rep.Violations, "REQ-gc-a") {
+		t.Fatalf("drifted-consent gap still excuses: violations = %v", rep.Violations)
+	}
+	for _, id := range []string{"REQ-gc-b", "REQ-gc-c"} {
+		if slices.Contains(rep.Violations, id) {
+			t.Errorf("%s not excused: violations = %v", id, rep.Violations)
+		}
+	}
+	found := false
+	for _, r := range rep.Requirements {
+		if r.Id != "REQ-gc-a" {
+			continue
+		}
+		for _, reason := range r.Reasons {
+			if strings.Contains(reason, "declared against different text") && strings.Contains(reason, "stipulator pin --req REQ-gc-a") {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Error("the suspension reason does not name the re-consent operation")
+	}
+	// The suspension is a triage fact on the record row itself
+	// (REQ-gap-list): the drifted record's row carries it, the current
+	// and pre-field rows do not.
+	rows := map[string]bool{}
+	for _, g := range rep.Gaps {
+		rows[g.RequirementId] = g.StaleConsent
+	}
+	if !rows["REQ-gc-a"] || rows["REQ-gc-b"] || rows["REQ-gc-c"] {
+		t.Errorf("record-row consent flags wrong: %v", rows)
+	}
+
+	// Duplicate records naming one requirement: a stale consent anywhere
+	// suspends the excuse entirely, regardless of record order — the
+	// duplicate with a current pin must not re-arm what the drifted one
+	// suspended (REQ-gap-consent).
+	specDup, storeDup := fixture(t, doc, map[string]string{
+		".stipulator/gaps/a1.textproto": gap("REQ-gc-a", drifted),
+		".stipulator/gaps/a2.textproto": gap("REQ-gc-a", func() string {
+			for _, r := range spec0.GetRequirements() {
+				if r.GetId() == "REQ-gc-a" {
+					return r.GetContentHash()
+				}
+			}
+			return ""
+		}()),
+	})
+	repDup := Evaluate(specDup, &verify.Report{}, storeDup, true, nil)
+	if !slices.Contains(repDup.Violations, "REQ-gc-a") {
+		t.Fatalf("duplicate current-pin record re-armed a suspended excuse: violations = %v", repDup.Violations)
 	}
 }

@@ -121,4 +121,3 @@ func pinCmd() *cobra.Command {
 	registerReqCompletions(c, "req")
 	return c
 }
-

@@ -3,4 +3,5 @@
 
 requirement_id: "REQ-proto-no-option-linkage"
 reason: "proto backend deferred indefinitely: machinery large, cut partial, gain marginal while Go witnesses and shape pins cover wire behavior"
+content_hash: "9c0adfb9edd8d4c066fdf7bd2149a2967ef504f331b5b8332232df9964a59c8e"
 lands { manual { condition: "proto backend work is scheduled (docs/issues/proto-backend.md)" } }

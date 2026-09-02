@@ -22,9 +22,9 @@ import (
 // nothing was probably a mistake), a clean no-op for pin --req.
 var ErrNothingStale = errors.New("nothing stale to re-pin")
 
-// Editorial re-pins a requirement's bindings to its current content hash:
-// the author's claim that a spec edit preserved meaning. The claim is
-// auditable in the diff, not machine-checkable.
+// Editorial re-pins a requirement's bindings and gap record to its
+// current content hash: the author's claim that a spec edit preserved
+// meaning. The claim is auditable in the diff, not machine-checkable.
 func Editorial(fsys fs.FS, requirement string) ([]Update, error) {
 	spec, err := compileClean(fsys)
 	if err != nil {
@@ -62,8 +62,25 @@ func Editorial(fsys fs.FS, requirement string) ([]Update, error) {
 			out = append(out, Update{Path: bf.Path, Content: content})
 		}
 	}
+	// The gap record's consent surface rides the same ceremony: an
+	// editorial re-pin consents the identity's records to the current
+	// text, and a gap pinned to the prior hash is exactly as stale as a
+	// binding's. An UNSET pin is stamped too, exactly as the binding arm
+	// above stamps one: the explicit per-identity ceremony is a consent
+	// to the current text, needing no pre-field grace (REQ-gap-consent).
+	for _, gf := range store.Gaps {
+		if gf.Gap.GetRequirementId() == requirement && gf.Gap.GetContentHash() != hash {
+			gf.Gap.SetContentHash(hash)
+			content, err := records.RenderGapFile(gf)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, Update{Path: gf.Path, Content: content})
+			repinned++
+		}
+	}
 	if repinned == 0 {
-		return nil, fmt.Errorf("no stale bindings for %s: %w", requirement, ErrNothingStale)
+		return nil, fmt.Errorf("no stale records for %s: %w", requirement, ErrNothingStale)
 	}
 	sortUpdates(out)
 	StampPriors(store, out)

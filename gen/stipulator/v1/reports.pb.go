@@ -1986,6 +1986,7 @@ type GapReport struct {
 	xxx_hidden_Reason        *string                `protobuf:"bytes,4,opt,name=reason"`
 	xxx_hidden_Condition     *string                `protobuf:"bytes,5,opt,name=condition"`
 	xxx_hidden_Fired         bool                   `protobuf:"varint,6,opt,name=fired"`
+	xxx_hidden_StaleConsent  bool                   `protobuf:"varint,7,opt,name=stale_consent,json=staleConsent"`
 	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
 	XXX_presence             [1]uint32
 	unknownFields            protoimpl.UnknownFields
@@ -2073,34 +2074,46 @@ func (x *GapReport) GetFired() bool {
 	return false
 }
 
+func (x *GapReport) GetStaleConsent() bool {
+	if x != nil {
+		return x.xxx_hidden_StaleConsent
+	}
+	return false
+}
+
 func (x *GapReport) SetPath(v string) {
 	x.xxx_hidden_Path = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 7)
 }
 
 func (x *GapReport) SetRequirementId(v string) {
 	x.xxx_hidden_RequirementId = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 7)
 }
 
 func (x *GapReport) SetState(v GapState) {
 	x.xxx_hidden_State = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 7)
 }
 
 func (x *GapReport) SetReason(v string) {
 	x.xxx_hidden_Reason = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 7)
 }
 
 func (x *GapReport) SetCondition(v string) {
 	x.xxx_hidden_Condition = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 7)
 }
 
 func (x *GapReport) SetFired(v bool) {
 	x.xxx_hidden_Fired = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 7)
+}
+
+func (x *GapReport) SetStaleConsent(v bool) {
+	x.xxx_hidden_StaleConsent = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 7)
 }
 
 func (x *GapReport) HasPath() bool {
@@ -2145,6 +2158,13 @@ func (x *GapReport) HasFired() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
 }
 
+func (x *GapReport) HasStaleConsent() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
 func (x *GapReport) ClearPath() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Path = nil
@@ -2175,6 +2195,11 @@ func (x *GapReport) ClearFired() {
 	x.xxx_hidden_Fired = false
 }
 
+func (x *GapReport) ClearStaleConsent() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	x.xxx_hidden_StaleConsent = false
+}
+
 type GapReport_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -2188,6 +2213,9 @@ type GapReport_builder struct {
 	// The manual condition's fired bit; always false for machine
 	// conditions.
 	Fired *bool
+	// The record's content pin differs from its requirement's current
+	// text: the excuse is suspended until re-consented.
+	StaleConsent *bool
 }
 
 func (b0 GapReport_builder) Build() *GapReport {
@@ -2195,28 +2223,32 @@ func (b0 GapReport_builder) Build() *GapReport {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Path != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 7)
 		x.xxx_hidden_Path = b.Path
 	}
 	if b.RequirementId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 7)
 		x.xxx_hidden_RequirementId = b.RequirementId
 	}
 	if b.State != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 7)
 		x.xxx_hidden_State = *b.State
 	}
 	if b.Reason != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 7)
 		x.xxx_hidden_Reason = b.Reason
 	}
 	if b.Condition != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 7)
 		x.xxx_hidden_Condition = b.Condition
 	}
 	if b.Fired != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 7)
 		x.xxx_hidden_Fired = *b.Fired
+	}
+	if b.StaleConsent != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 7)
+		x.xxx_hidden_StaleConsent = *b.StaleConsent
 	}
 	return m0
 }
@@ -4481,14 +4513,15 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x06bucket\x18\x04 \x01(\x0e2\x15.stipulator.v1.BucketR\x06bucket\x12\x18\n" +
 	"\areasons\x18\x05 \x03(\tR\areasons\x12:\n" +
 	"\x19witness_selection_blocked\x18\x06 \x01(\bR\x17witnessSelectionBlocked\x12#\n" +
-	"\rscope_blocked\x18\a \x01(\bR\fscopeBlocked\"\xc1\x01\n" +
+	"\rscope_blocked\x18\a \x01(\bR\fscopeBlocked\"\xe6\x01\n" +
 	"\tGapReport\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12%\n" +
 	"\x0erequirement_id\x18\x02 \x01(\tR\rrequirementId\x12-\n" +
 	"\x05state\x18\x03 \x01(\x0e2\x17.stipulator.v1.GapStateR\x05state\x12\x16\n" +
 	"\x06reason\x18\x04 \x01(\tR\x06reason\x12\x1c\n" +
 	"\tcondition\x18\x05 \x01(\tR\tcondition\x12\x14\n" +
-	"\x05fired\x18\x06 \x01(\bR\x05fired\"\xf2\x01\n" +
+	"\x05fired\x18\x06 \x01(\bR\x05fired\x12#\n" +
+	"\rstale_consent\x18\a \x01(\bR\fstaleConsent\"\xf2\x01\n" +
 	"\x0eCoverageReport\x12F\n" +
 	"\frequirements\x18\x01 \x03(\v2\".stipulator.v1.RequirementCoverageR\frequirements\x12,\n" +
 	"\x04gaps\x18\x02 \x03(\v2\x18.stipulator.v1.GapReportR\x04gaps\x12\x1e\n" +

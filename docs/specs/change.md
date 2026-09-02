@@ -60,7 +60,8 @@ disposition MUST leave every binding pinned to the prior hash stale; breakage
 is the default assumption.
 
 **REQ-change-editorial** (behavior): An editorial disposition MUST re-pin the
-identity's bindings to the new content hash without invalidation.
+identity's bindings and gap record to the new content hash without
+invalidation.
 
 **REQ-change-split-merge** (behavior): Split and merge dispositions MUST
 tombstone the source identities, verify that every successor declares a
@@ -126,10 +127,28 @@ the operation — no stored version counters, no lock files.
 
 **REQ-gap-record** (behavior): A gap MUST be a committed textproto record
 under `.stipulator/gaps/` naming exactly one requirement identifier, a
-reason, a landing condition, and the violation classes it excuses —
+reason, a landing condition, the violation classes it excuses —
 `uncovered`, `stale`, or `broken`, defaulting to `uncovered` alone when
 it declares none: a gap is declared about a specific violation class,
-so the record states which reds its reason actually explains.
+so the record states which reds its reason actually explains — and the
+content hash of the requirement text the declaration consented to
+(unset only in records written before the field existed).
+
+**REQ-gap-consent** (behavior): A gap whose content pin differs from
+its requirement's current text MUST excuse nothing until re-consented
+— the excuse consented to specific text, and the gapped window is
+exactly when a spec is most likely to be edited, so a drifted pin
+surfaces on the requirement with the re-consent operation named
+(REQ-change-remediation) instead of the gap silently absorbing a red
+of text its declarer never read. An unset pin is a pre-field record:
+it excuses as declared, and the blanket pin backfills it; a differing
+pin is preserved and named by the blanket form and re-stamped only by
+the named re-consent ceremonies (pin with explicit identifiers, the
+editorial disposition), exactly as a binding's content pin is. The
+per-identity ceremonies stamp an unset pin too: an explicit consent
+to the current text needs no pre-field grace. The suspension is a
+triage fact on the record's own listed row (REQ-gap-list), not only
+on the requirement once it goes red.
 
 **REQ-gap-verb** (behavior): Gap records MUST be writable through a tool
 operation that validates the requirement identifier against the compiled
@@ -144,7 +163,20 @@ whose manual condition text is unchanged preserving its fired state,
 the preservation surfaced when it overrides an unfired
 declaration: an unfire is a lifecycle retarget, so it happens only
 through an explicit changed declaration, never as a side effect of
-re-declaring.
+re-declaring. Each declaration stamps the requirement's current
+content hash — a re-declaration is a fresh consent, and a re-stamp
+over a differing prior consent is surfaced in the declaration's
+notes, never silent: discharging exactly the drift the consent pin
+exists to expose must be visible even when the declarer only meant to
+touch the reason. A machine-evaluable landing target that does not
+match the requirement identifier grammar is refused at write time,
+pointing prose at a manual condition: free text in covered/exists can
+never evaluate, so the gap would stand permanently open with no
+triage surface marking it due. A well-formed identifier absent from
+the compiled corpus is accepted — naming a requirement before it is
+authored is the prospective use these conditions exist for — and
+surfaced in the declaration's notes, so a typo'd identifier is loud
+at declaration without foreclosing the future one.
 
 **REQ-gap-bulk** (behavior): The declaring operation MUST accept many
 requirements in one call sharing one reason, landing condition, and
@@ -185,8 +217,9 @@ reachable terminal state.
 **REQ-gap-list** (behavior): The gap surface MUST offer a read operation
 listing every gap record's declaration fields — requirement identifier,
 reason, landing condition, manual fired bit — beside its evaluated
-lifecycle state, taking its witness evidence exactly as resolved-record
-pruning does (the gap-relevant scope; no witness evidence when no bound
+lifecycle state and its consent state (whether the record's content
+pin differs from the requirement's current text, REQ-gap-consent),
+taking its witness evidence exactly as resolved-record pruning does (the gap-relevant scope; no witness evidence when no bound
 witness can move a gap-relevant bucket; the empty answer skips witness
 evidence, never corpus compilation and its diagnostics). The rows are
 wire `GapReport` messages — states in the wire enum spelling; human

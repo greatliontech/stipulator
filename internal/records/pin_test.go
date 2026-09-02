@@ -5,6 +5,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -92,5 +93,88 @@ func TestShapeMismatchedReportsOnlyNamedDiffering(t *testing.T) {
 	got := ShapeMismatched(store, []string{"REQ-r-a"}, shapes)
 	if len(got) != 1 || len(got["REQ-r-a"]) != 1 || got["REQ-r-a"][0] != "example.com/p.Moved" {
 		t.Fatalf("ShapeMismatched = %v, want REQ-r-a -> [example.com/p.Moved]", got)
+	}
+}
+
+// TestPinBackfillsGapPins pins the gap side of the blanket discipline:
+// an unset gap content pin backfills to the current hash, a differing
+// one is preserved and its requirement named, and a current one leaves
+// the file untouched.
+//
+//gofresh:pure
+func TestPinBackfillsGapPins(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-consent", "REQ-pin-backfill")
+	current := strings.Repeat("a", 64)
+	drifted := strings.Repeat("0", 64)
+	gapFile := func(id, hash string) GapFile {
+		g := &stipulatorv1.Gap{}
+		g.SetRequirementId(id)
+		g.SetReason("r")
+		if hash != "" {
+			g.SetContentHash(hash)
+		}
+		lc := &stipulatorv1.LandingCondition{}
+		m := &stipulatorv1.ManualCondition{}
+		m.SetCondition("external")
+		lc.SetManual(m)
+		g.SetLands(lc)
+		return GapFile{Path: ".stipulator/gaps/" + id + ".textproto", Gap: g}
+	}
+	store := &Store{Gaps: []GapFile{
+		gapFile("REQ-pg-unset", ""),
+		gapFile("REQ-pg-drift", drifted),
+		gapFile("REQ-pg-current", current),
+	}}
+	hashes := map[string]string{
+		"REQ-pg-unset": current, "REQ-pg-drift": current, "REQ-pg-current": current,
+	}
+	out, preserved, _, err := Pin(store, hashes, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	backfilled, ok := out[".stipulator/gaps/REQ-pg-unset.textproto"]
+	if !ok || !strings.Contains(string(backfilled), current) {
+		t.Fatalf("unset gap pin not backfilled: %q", backfilled)
+	}
+	// A record with no leading header (legal on disk) gains the standard
+	// one through the rewrite — it must never come out headerless or
+	// blank-led (REQ-evidence-binding-machine-owned).
+	if !strings.HasPrefix(string(backfilled), "# proto-file:") {
+		t.Fatalf("headerless record rewrote without the standard header:\n%s", backfilled)
+	}
+	if _, ok := out[".stipulator/gaps/REQ-pg-drift.textproto"]; ok {
+		t.Fatal("a differing gap pin was rewritten; staleness laundered")
+	}
+	if _, ok := out[".stipulator/gaps/REQ-pg-current.textproto"]; ok {
+		t.Fatal("a current gap pin rewrote its file")
+	}
+	found := false
+	for _, id := range preserved {
+		if id == "REQ-pg-drift" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("preserved differing gap pin not named: %v", preserved)
+	}
+
+	// A gap file carrying a comment outside the leading header refuses
+	// the backfill rewrite rather than destroying the commentary — and a
+	// custom HEADER is preserved through it, both exactly as a binding
+	// file's (REQ-evidence-binding-machine-owned).
+	commented := gapFile("REQ-pg-commented", "")
+	commented.Raw = []byte("requirement_id: \"REQ-pg-commented\"\nreason: \"r\"\n# why: operator note\nlands { manual { condition: \"external\" } }\n")
+	if _, _, _, err := Pin(&Store{Gaps: []GapFile{commented}}, map[string]string{"REQ-pg-commented": current}, nil); err == nil || !strings.Contains(err.Error(), "comment outside the leading header") {
+		t.Fatalf("commented gap backfill = %v, want the machine-owned refusal", err)
+	}
+	headered := gapFile("REQ-pg-headered", "")
+	headered.Raw = []byte("# proto-file: custom/path.proto\n# proto-message: stipulator.v1.Gap\nrequirement_id: \"REQ-pg-headered\"\nreason: \"r\"\nlands { manual { condition: \"external\" } }\n")
+	hout, _, _, err := Pin(&Store{Gaps: []GapFile{headered}}, map[string]string{"REQ-pg-headered": current}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rew := string(hout[".stipulator/gaps/REQ-pg-headered.textproto"])
+	if !strings.Contains(rew, "# proto-file: custom/path.proto") || !strings.Contains(rew, current) {
+		t.Fatalf("header not preserved through the backfill rewrite:\n%s", rew)
 	}
 }

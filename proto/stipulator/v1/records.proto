@@ -61,6 +61,12 @@ message Gap {
   // class, and a later red of an undeclared class is its own finding,
   // never absorbed by the standing record.
   repeated GapExcuse excuses = 4;
+  // The content hash of the requirement text the gap was declared
+  // against — the consent surface, exactly as a binding's. A pin that
+  // differs from the current text suspends the excuse until re-consent;
+  // unset (a pre-field record) excuses as declared and backfills under
+  // the blanket pin.
+  string content_hash = 5;
 }
 
 // GapExcuse names one red bucket a gap record excuses.

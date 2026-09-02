@@ -3,4 +3,5 @@
 
 requirement_id: "REQ-core-proto-io"
 reason: "wire clause; descriptor proofs await the proto backend"
+content_hash: "fdf39bd8dde031ef09be16b828b1a811e4df2d37670ba2f5355bdd56d2cb0b11"
 lands { covered: "REQ-proto-provers" }

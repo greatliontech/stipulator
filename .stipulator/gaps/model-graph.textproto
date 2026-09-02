@@ -3,4 +3,5 @@
 
 requirement_id: "REQ-model-graph"
 reason: "wire clause; descriptor proofs await the proto backend"
+content_hash: "1b75b66169214a3c8963f571669498f63900964eb6d06a3ed52c524677a28b86"
 lands { covered: "REQ-proto-provers" }

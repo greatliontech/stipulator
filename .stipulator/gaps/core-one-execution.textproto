@@ -3,4 +3,5 @@
 
 requirement_id: "REQ-core-one-execution"
 reason: "the invariant holds by construction — check executes the accepted policy once, and standalone verify, gate, and prune consume the policy's witness-only selective execution with no independent suite beside it — but the invariant cell demands property-class evidence and every bound witness is an example anchor"
+content_hash: "27037830c846e6bd1e46201d4c5410eac7011f7c1805f54c2cdb095c122af3bc"
 lands { manual { condition: "a property witness or analyzer proof quantifies over policy execution: no reachable operation can execute test work outside the accepted policy" } }

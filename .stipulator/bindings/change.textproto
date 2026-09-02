@@ -3,7 +3,7 @@
 
 bindings {
   requirement_id: "REQ-change-editorial"
-  content_hash: "1e8f5860be1eb80d992cd04b7c2fc668caa3f69b461f8c811febf800745cd128"
+  content_hash: "ded37650cdc6a6d5a97437f52f6dd7cc0ede5d5fbc360d47577359ab648364db"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.Editorial"
   role: BINDING_ROLE_IMPLEMENTS
@@ -12,7 +12,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-editorial"
-  content_hash: "1e8f5860be1eb80d992cd04b7c2fc668caa3f69b461f8c811febf800745cd128"
+  content_hash: "ded37650cdc6a6d5a97437f52f6dd7cc0ede5d5fbc360d47577359ab648364db"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.TestEditorial"
   role: BINDING_ROLE_TESTS
@@ -120,7 +120,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-editorial"
-  content_hash: "1e8f5860be1eb80d992cd04b7c2fc668caa3f69b461f8c811febf800745cd128"
+  content_hash: "ded37650cdc6a6d5a97437f52f6dd7cc0ede5d5fbc360d47577359ab648364db"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPinTool"
   role: BINDING_ROLE_TESTS
@@ -350,4 +350,13 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/author.TestRetargetFullSymbolIsDegenerateBoundary"
   role: BINDING_ROLE_TESTS
   shape_hash: "b03cee1ec23c6e4cf2b8538491632cced3eaa0e7c7908937ec8fc53a6561643f"
+}
+
+bindings {
+  requirement_id: "REQ-change-editorial"
+  content_hash: "ded37650cdc6a6d5a97437f52f6dd7cc0ede5d5fbc360d47577359ab648364db"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestEditorialRestampsGapPin"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c67a463689269f60571747b777ee2c4fc0af88d06edbe2a02670163023002d73"
 }

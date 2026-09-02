@@ -156,12 +156,19 @@ func gapListRun(ctx context.Context) error {
 		return err
 	}
 	cov := coverage.Evaluate(spec, rep, store, testRun != nil, pol)
-	row := func(state, id, condition string, manualFired bool, reason string) {
+	row := func(state, id, condition string, manualFired, staleConsent bool, reason string) {
 		fired := ""
 		if manualFired {
 			fired = " fired"
 		}
-		fmt.Printf("%-9s %s  %s%s  %s\n", state, id, condition, fired, dim(reason))
+		// A suspended excuse is a triage fact on the record row itself:
+		// the requirement-side reason appears only once the requirement
+		// is red (REQ-gap-consent).
+		consent := ""
+		if staleConsent {
+			consent = " consent-stale"
+		}
+		fmt.Printf("%-9s %s  %s%s%s  %s\n", state, id, condition, fired, consent, dim(reason))
 	}
 	known := map[string]bool{}
 	for _, r := range spec.GetRequirements() {
@@ -173,7 +180,7 @@ func gapListRun(ctx context.Context) error {
 		if !known[g.RequirementId] {
 			continue
 		}
-		row(g.State.String(), g.RequirementId, g.Condition, g.Fired, g.Reason)
+		row(g.State.String(), g.RequirementId, g.Condition, g.Fired, g.StaleConsent, g.Reason)
 	}
 	// Dangling records are a triage fact, not a refusal: the list is
 	// where they are found (their repairs are retraction and the
@@ -182,7 +189,7 @@ func gapListRun(ctx context.Context) error {
 		if known[gf.Gap.GetRequirementId()] {
 			continue
 		}
-		row("dangling", gf.Gap.GetRequirementId(), coverage.ConditionText(gf.Gap.GetLands()), gf.Gap.GetLands().GetManual().GetFired(), gf.Gap.GetReason())
+		row("dangling", gf.Gap.GetRequirementId(), coverage.ConditionText(gf.Gap.GetLands()), gf.Gap.GetLands().GetManual().GetFired(), false, gf.Gap.GetReason())
 	}
 	return nil
 }

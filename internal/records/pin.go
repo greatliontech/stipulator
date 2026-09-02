@@ -21,7 +21,9 @@ func ShapeKey(backend, symbol string) string { return backend + "|" + symbol }
 // rewritten shape pin clears verify's shape-mismatch signal, the one
 // trace that a bound implementation moved, so the surfaces must name it
 // rather than clear it invisibly (a backfilled unset shape pin is not
-// reported: nothing was cleared). Unknown requirements
+// reported: nothing was cleared). Gap records ride the same discipline:
+// an unset gap pin backfills, a differing one is preserved and named
+// beside the bindings' (REQ-gap-consent). Unknown requirements
 // are left untouched — reporting them is the verifier's job. Files whose
 // pins are all current are omitted from the result.
 //
@@ -59,10 +61,32 @@ func Pin(store *Store, hashes, shapes map[string]string) (map[string][]byte, []s
 		// Binding files are machine-owned: rewriting would destroy any
 		// commentary outside the leading header, so refuse instead of
 		// silently dropping it.
-		if line := commentOutsideHeader(bf.Raw); line > 0 {
+		if line := CommentOutsideHeader(bf.Raw); line > 0 {
 			return nil, nil, nil, fmt.Errorf("%s:%d: comment outside the leading header block; move commentary to the commit message before pinning", bf.Path, line)
 		}
 		out[bf.Path] = renderBindingSet(bf)
+	}
+	// Gap records ride the same blanket discipline: an unset pin
+	// backfills to the current hash (a pre-field record gains its
+	// consent surface over text nobody edited), while a differing pin
+	// is a consent question the blanket form never answers — preserved
+	// and named, exactly as a binding's (REQ-gap-consent).
+	for _, gf := range store.Gaps {
+		h, ok := hashes[gf.Gap.GetRequirementId()]
+		if !ok {
+			continue
+		}
+		switch {
+		case gf.Gap.GetContentHash() == "":
+			gf.Gap.SetContentHash(h)
+			content, err := RenderGapFile(gf)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			out[gf.Path] = content
+		case gf.Gap.GetContentHash() != h:
+			preservedSet[gf.Gap.GetRequirementId()] = true
+		}
 	}
 	preserved := make([]string, 0, len(preservedSet))
 	for id := range preservedSet {
@@ -115,9 +139,11 @@ func ShapeMismatched(store *Store, ids []string, shapes map[string]string) map[s
 	return res
 }
 
-// commentOutsideHeader returns the 1-based line of the first comment after
-// the leading header block, or 0.
-func commentOutsideHeader(raw []byte) int {
+// CommentOutsideHeader returns the 1-based line of the first comment after
+// the leading header block, or 0 — the machine-owned-record test every
+// tool rewrite of a binding or gap file runs before destroying commentary
+// (REQ-evidence-binding-machine-owned).
+func CommentOutsideHeader(raw []byte) int {
 	inHeader := true
 	for i, line := range strings.Split(string(raw), "\n") {
 		t := strings.TrimSpace(line)
@@ -137,7 +163,7 @@ func commentOutsideHeader(raw []byte) int {
 func renderBindingSet(bf BindingFile) []byte {
 	var b strings.Builder
 	for _, line := range strings.Split(string(bf.Raw), "\n") {
-		// Match commentOutsideHeader's notion of a header line exactly, or
+		// Match CommentOutsideHeader's notion of a header line exactly, or
 		// an indented header comment would silently vanish on re-render.
 		if !strings.HasPrefix(strings.TrimSpace(line), "#") {
 			break

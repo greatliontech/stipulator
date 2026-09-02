@@ -1242,3 +1242,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "2d0075c18a03c6e72b50fc6e5e13ac6f24a46a3a1a048a04a0df9addb7eb5750"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-binding-machine-owned"
+  content_hash: "c654b30cc6c9dd7d30cc02c6f4a9ca2e56697db75cd15bb608af8fab1fc6f6d5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/records.TestPinBackfillsGapPins"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "85072548007215ef07ad8533286acb1748b9ab841d660c8e0da45236c53b1197"
+}

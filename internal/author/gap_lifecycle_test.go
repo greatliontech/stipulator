@@ -154,7 +154,7 @@ func TestGapFiredPreservedOnRedeclare(t *testing.T) {
 		g.SetLands(lc)
 		return g
 	}
-	up, _, err := Gap(fsys, redeclare("judged done"))
+	up, _, _, err := Gap(fsys, redeclare("judged done"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +179,7 @@ func TestGapFiredPreservedOnRedeclare(t *testing.T) {
 	if len(notes) != 1 || !strings.Contains(notes[0], "fired state preserved") {
 		t.Fatalf("preservation not surfaced: %v", notes)
 	}
-	up, _, err = Gap(fsys, redeclare("a different judgment"))
+	up, _, _, err = Gap(fsys, redeclare("a different judgment"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,5 +272,218 @@ func TestBindsBatchOverlay(t *testing.T) {
 	}
 	if _, err := Binds(testFS(nil), nil, nil); err == nil {
 		t.Fatal("empty batch accepted")
+	}
+}
+
+// The declaration stamps the requirement's current content hash — the
+// consent surface, exactly as a binding's. A machine-evaluable landing
+// target that does not match the identifier grammar refuses at write
+// time, pointing prose at a manual condition; a well-formed identifier
+// absent from the corpus is accepted — the prospective use covered and
+// exists exist for — and surfaced in the notes so a typo is loud
+// without foreclosing the future requirement.
+//
+//gofresh:pure
+func TestGapDeclarationStampsConsentAndValidatesTargets(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-consent", "REQ-gap-verb")
+	fsys := testFS(nil)
+	fsys["specs/b.md"] = &fstest.MapFile{Data: []byte(
+		"# T\n\n**REQ-au-x** (behavior): It MUST x.\n\n**REQ-au-y** (behavior): It MUST y.\n")}
+	lc, err := NewLandingCondition("REQ-au-y", "", "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := &stipulatorv1.Gap{}
+	g.SetRequirementId("REQ-au-x")
+	g.SetReason("spec ahead of code")
+	g.SetLands(lc)
+	up, _, notes, err := Gap(fsys, g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(notes) != 0 {
+		t.Fatalf("in-corpus target drew notes: %v", notes)
+	}
+	got := &stipulatorv1.Gap{}
+	if err := prototext.Unmarshal(stripHeader(up.Content), got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.GetContentHash()) != 64 {
+		t.Fatalf("declaration did not stamp a content pin: %q", got.GetContentHash())
+	}
+
+	// A free-text covered target is refused at declaration — a gap
+	// whose condition can never evaluate would stand permanently open.
+	bad := &stipulatorv1.Gap{}
+	bad.SetRequirementId("REQ-au-x")
+	bad.SetReason("r")
+	blc, _ := NewLandingCondition("the ingest plan's first chunk", "", "", false)
+	bad.SetLands(blc)
+	if _, _, _, err := Gap(fsys, bad); err == nil || !strings.Contains(err.Error(), "identifier grammar") || !strings.Contains(err.Error(), "manual") {
+		t.Fatalf("free-text covered target = %v, want a grammar refusal naming manual", err)
+	}
+
+	// A well-formed identifier the corpus does not (yet) hold is the
+	// prospective case: accepted, with a note naming the wait.
+	prosp := &stipulatorv1.Gap{}
+	prosp.SetRequirementId("REQ-au-x")
+	prosp.SetReason("r")
+	elc, _ := NewLandingCondition("", "REQ-not-yet-authored", "", false)
+	prosp.SetLands(elc)
+	pup, _, pnotes, err := Gap(fsys, prosp)
+	if err != nil {
+		t.Fatalf("prospective exists target refused: %v", err)
+	}
+	if pup == nil {
+		t.Fatal("prospective declaration wrote nothing")
+	}
+	if len(pnotes) != 1 || !strings.Contains(pnotes[0], "exists(REQ-not-yet-authored)") || !strings.Contains(pnotes[0], "names no current requirement") {
+		t.Fatalf("prospective target note = %v, want the unknown-target surfacing", pnotes)
+	}
+}
+
+// A re-declaration over a drifted consent re-stamps — a fresh consent —
+// and the discharge is surfaced in the notes, never silent.
+//
+//gofresh:pure
+func TestGapRedeclarationSurfacesConsentRestamp(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-verb", "REQ-gap-consent")
+	fsys := testFS(nil)
+	fsys["specs/b.md"] = &fstest.MapFile{Data: []byte(
+		"# T\n\n**REQ-au-x** (behavior): It MUST x.\n")}
+	stale := strings.Repeat("0", 64)
+	fsys[".stipulator/gaps/au-x.textproto"] = &fstest.MapFile{Data: []byte(
+		"requirement_id: \"REQ-au-x\"\nreason: \"r\"\ncontent_hash: \"" + stale + "\"\nlands { manual { condition: \"ops\" } }\n")}
+	g := &stipulatorv1.Gap{}
+	g.SetRequirementId("REQ-au-x")
+	g.SetReason("updated reason")
+	mlc, _ := NewLandingCondition("", "", "ops", false)
+	g.SetLands(mlc)
+	up, _, notes, err := Gap(fsys, g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, n := range notes {
+		if strings.Contains(n, "consent re-stamped") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("drift discharge not surfaced: notes = %v", notes)
+	}
+	got := &stipulatorv1.Gap{}
+	if err := prototext.Unmarshal(stripHeader(up.Content), got); err != nil {
+		t.Fatal(err)
+	}
+	if got.GetContentHash() == stale || len(got.GetContentHash()) != 64 {
+		t.Fatalf("re-declaration did not re-stamp: %q", got.GetContentHash())
+	}
+
+	// A body comment in the existing record refuses the rewrite rather
+	// than being destroyed (REQ-evidence-binding-machine-owned).
+	fsys[".stipulator/gaps/au-x.textproto"] = &fstest.MapFile{Data: []byte(
+		"requirement_id: \"REQ-au-x\"\nreason: \"r\"\n# why: operator note\nlands { manual { condition: \"ops\" } }\n")}
+	if _, _, _, err := Gap(fsys, g); err == nil || !strings.Contains(err.Error(), "comment outside the leading header") {
+		t.Fatalf("commented record rewrite = %v, want the machine-owned refusal", err)
+	}
+}
+
+// The editorial disposition re-stamps the identity's gap record beside
+// its bindings: the gap's consent surface rides the same ceremony.
+//
+//gofresh:pure
+func TestEditorialRestampsGapPin(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-consent", "REQ-change-editorial")
+	fsys := testFS(nil)
+	fsys["specs/b.md"] = &fstest.MapFile{Data: []byte(
+		"# T\n\n**REQ-au-x** (behavior): It MUST x.\n")}
+	stale := strings.Repeat("0", 64)
+	fsys[".stipulator/gaps/au-x.textproto"] = &fstest.MapFile{Data: []byte(
+		"requirement_id: \"REQ-au-x\"\nreason: \"r\"\ncontent_hash: \"" + stale + "\"\nlands { manual { condition: \"ops\" } }\n")}
+	ups, err := Editorial(fsys, "REQ-au-x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, up := range ups {
+		if up.Path != ".stipulator/gaps/au-x.textproto" {
+			continue
+		}
+		g := &stipulatorv1.Gap{}
+		if err := prototext.Unmarshal(stripHeader(up.Content), g); err != nil {
+			t.Fatal(err)
+		}
+		if g.GetContentHash() == stale || len(g.GetContentHash()) != 64 {
+			t.Fatalf("gap pin not re-stamped: %q", g.GetContentHash())
+		}
+		found = true
+	}
+	if !found {
+		t.Fatal("editorial disposition did not touch the stale gap record")
+	}
+
+	// An UNSET pin is stamped by the per-identity ceremony too: an
+	// explicit consent to the current text needs no pre-field grace
+	// (REQ-gap-consent) — only the blanket form is restricted to
+	// backfill.
+	fsys[".stipulator/gaps/au-x.textproto"] = &fstest.MapFile{Data: []byte(
+		"requirement_id: \"REQ-au-x\"\nreason: \"r\"\nlands { manual { condition: \"ops\" } }\n")}
+	ups, err = Editorial(fsys, "REQ-au-x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stamped := false
+	for _, up := range ups {
+		if up.Path != ".stipulator/gaps/au-x.textproto" {
+			continue
+		}
+		g := &stipulatorv1.Gap{}
+		if err := prototext.Unmarshal(stripHeader(up.Content), g); err != nil {
+			t.Fatal(err)
+		}
+		if len(g.GetContentHash()) == 64 {
+			stamped = true
+		}
+	}
+	if !stamped {
+		t.Fatal("editorial disposition left the unset gap pin unstamped")
+	}
+
+	// A body comment refuses the rewrite rather than being destroyed
+	// (REQ-evidence-binding-machine-owned).
+	fsys[".stipulator/gaps/au-x.textproto"] = &fstest.MapFile{Data: []byte(
+		"requirement_id: \"REQ-au-x\"\nreason: \"r\"\n# why: operator note\nlands { manual { condition: \"ops\" } }\n")}
+	if _, err := Editorial(fsys, "REQ-au-x"); err == nil || !strings.Contains(err.Error(), "comment outside the leading header") {
+		t.Fatalf("commented record re-pin = %v, want the machine-owned refusal", err)
+	}
+}
+
+// Firing a gap rewrites the record through the machine-owned gap writer
+// like every other rewrite: a body comment refuses, a custom header is
+// preserved (REQ-evidence-binding-machine-owned).
+//
+//gofresh:pure
+func TestFireGapsMachineOwnedRewrite(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-verb")
+	fsys := testFS(nil)
+	fsys["specs/b.md"] = &fstest.MapFile{Data: []byte(
+		"# T\n\n**REQ-au-x** (behavior): It MUST x.\n")}
+	fsys[".stipulator/gaps/au-x.textproto"] = &fstest.MapFile{Data: []byte(
+		"requirement_id: \"REQ-au-x\"\nreason: \"r\"\n# why this is still open\nlands { manual { condition: \"ops\" } }\n")}
+	if _, err := FireGaps(fsys, []string{"REQ-au-x"}); err == nil || !strings.Contains(err.Error(), "comment outside the leading header") {
+		t.Fatalf("firing a commented record = %v, want the machine-owned refusal", err)
+	}
+	fsys[".stipulator/gaps/au-x.textproto"] = &fstest.MapFile{Data: []byte(
+		"# proto-file: custom/path.proto\n# proto-message: stipulator.v1.Gap\nrequirement_id: \"REQ-au-x\"\nreason: \"r\"\nlands { manual { condition: \"ops\" } }\n")}
+	ups, err := FireGaps(fsys, []string{"REQ-au-x"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ups) != 1 {
+		t.Fatalf("fired updates = %d, want 1", len(ups))
+	}
+	if !strings.Contains(string(ups[0].Content), "# proto-file: custom/path.proto") || !strings.Contains(string(ups[0].Content), "fired: true") {
+		t.Fatalf("fire rewrite lost the header or the fired bit:\n%s", ups[0].Content)
 	}
 }

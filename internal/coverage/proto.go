@@ -31,6 +31,7 @@ func (r *Report) Proto() *stipulatorv1.CoverageReport {
 		m.SetReason(g.Reason)
 		m.SetCondition(g.Condition)
 		m.SetFired(g.Fired)
+		m.SetStaleConsent(g.StaleConsent)
 		gaps = append(gaps, m)
 	}
 	out.SetGaps(gaps)

@@ -201,7 +201,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-binding-machine-owned"
-  content_hash: "f70485ffd2fc09297d3b958f761b0212476f4b07427e886e3de5f609e69ab5ef"
+  content_hash: "c654b30cc6c9dd7d30cc02c6f4a9ca2e56697db75cd15bb608af8fab1fc6f6d5"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/records.Pin"
   role: BINDING_ROLE_IMPLEMENTS
@@ -210,7 +210,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-binding-machine-owned"
-  content_hash: "f70485ffd2fc09297d3b958f761b0212476f4b07427e886e3de5f609e69ab5ef"
+  content_hash: "c654b30cc6c9dd7d30cc02c6f4a9ca2e56697db75cd15bb608af8fab1fc6f6d5"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.TestPinRefusesCommentedFile"
   role: BINDING_ROLE_TESTS

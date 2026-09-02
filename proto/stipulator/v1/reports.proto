@@ -223,6 +223,9 @@ message GapReport {
   // The manual condition's fired bit; always false for machine
   // conditions.
   bool fired = 6;
+  // The record's content pin differs from its requirement's current
+  // text: the excuse is suspended until re-consented.
+  bool stale_consent = 7;
 }
 
 // CoverageReport is the coverage evaluation and gate verdict. There are

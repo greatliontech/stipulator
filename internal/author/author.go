@@ -18,6 +18,7 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/corpus"
+	"github.com/greatliontech/stipulator/internal/profile"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"google.golang.org/protobuf/proto"
@@ -556,38 +557,68 @@ func RetargetSymbols(fsys fs.FS, backends map[string]verify.Backend, backend, ol
 // existing gap updates it in place — a gap's reason evolves with the
 // code — and the prior record is returned so a changed landing condition
 // is surfaced, never silently retargeted.
-func Gap(fsys fs.FS, g *stipulatorv1.Gap) (*Update, *stipulatorv1.Gap, error) {
+func Gap(fsys fs.FS, g *stipulatorv1.Gap) (*Update, *stipulatorv1.Gap, []string, error) {
 	spec, diags, err := compile.Compile(fsys)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	if errs := compile.Errors(diags); len(errs) > 0 {
-		return nil, nil, fmt.Errorf("corpus does not compile: %s%s", errs[0], moreSuffix(len(errs)-1))
+		return nil, nil, nil, fmt.Errorf("corpus does not compile: %s%s", errs[0], moreSuffix(len(errs)-1))
 	}
-	found := false
+	inCorpus := map[string]bool{}
+	hashOf := map[string]string{}
 	for _, r := range spec.GetRequirements() {
-		if r.GetId() == g.GetRequirementId() {
-			found = true
-		}
+		inCorpus[r.GetId()] = true
+		hashOf[r.GetId()] = r.GetContentHash()
 	}
-	if !found {
-		return nil, nil, fmt.Errorf("requirement %s is not in the corpus", g.GetRequirementId())
+	if !inCorpus[g.GetRequirementId()] {
+		return nil, nil, nil, fmt.Errorf("requirement %s is not in the corpus", g.GetRequirementId())
 	}
 	if g.GetReason() == "" {
-		return nil, nil, fmt.Errorf("a reason is required")
+		return nil, nil, nil, fmt.Errorf("a reason is required")
 	}
 	if !g.HasLands() {
-		return nil, nil, fmt.Errorf("a landing condition is required")
+		return nil, nil, nil, fmt.Errorf("a landing condition is required")
 	}
+	// A machine-evaluable landing target must be able to name a
+	// requirement, or the gap is born unfireable: free-text prose in
+	// covered/exists would dangle forever with the gap permanently open
+	// and no triage surface marking it due — prose belongs in a manual
+	// condition (REQ-gap-conditions). A well-formed identifier absent
+	// from the corpus is NOT refused: naming a requirement before it is
+	// authored is the prospective use these conditions exist for
+	// (REQ-gap-verb) — it is surfaced in the notes instead, so a typo'd
+	// id is loud at declaration without foreclosing the future one.
+	var notes []string
+	for _, t := range []struct {
+		form   string
+		has    bool
+		target string
+	}{
+		{"covered", g.GetLands().HasCovered(), g.GetLands().GetCovered()},
+		{"exists", g.GetLands().HasExists(), g.GetLands().GetExists()},
+	} {
+		switch {
+		case !t.has:
+		case !profile.ValidID(t.target):
+			return nil, nil, nil, fmt.Errorf("%s(%s) does not match the requirement identifier grammar; a prose condition belongs in manual", t.form, t.target)
+		case !inCorpus[t.target]:
+			notes = append(notes, fmt.Sprintf("%s: %s(%s) names no current requirement — the condition waits for it to exist; retract and redeclare if this is a typo", g.GetRequirementId(), t.form, t.target))
+		}
+	}
+	// The declaration consents to the requirement's CURRENT text: the
+	// content pin is the consent surface, exactly as a binding's
+	// (REQ-gap-consent). A re-declaration is a fresh consent.
+	g.SetContentHash(hashOf[g.GetRequirementId()])
 	seenExcuse := map[stipulatorv1.GapExcuse]bool{}
 	for _, x := range g.GetExcuses() {
 		if x != stipulatorv1.GapExcuse_GAP_EXCUSE_UNCOVERED &&
 			x != stipulatorv1.GapExcuse_GAP_EXCUSE_STALE &&
 			x != stipulatorv1.GapExcuse_GAP_EXCUSE_BROKEN {
-			return nil, nil, fmt.Errorf("excuse classes are uncovered, stale, or broken")
+			return nil, nil, nil, fmt.Errorf("excuse classes are uncovered, stale, or broken")
 		}
 		if seenExcuse[x] {
-			return nil, nil, fmt.Errorf("excuse class %s repeats", ExcuseString(x))
+			return nil, nil, nil, fmt.Errorf("excuse class %s repeats", ExcuseString(x))
 		}
 		seenExcuse[x] = true
 	}
@@ -596,16 +627,25 @@ func Gap(fsys fs.FS, g *stipulatorv1.Gap) (*Update, *stipulatorv1.Gap, error) {
 	slices.Sort(g.GetExcuses())
 	store, err := records.Load(fsys)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	target := records.GapPath(g.GetRequirementId())
 	var prior *stipulatorv1.Gap
+	var priorRaw []byte
 	for _, gf := range store.Gaps {
 		if gf.Gap.GetRequirementId() == g.GetRequirementId() {
 			// Update in place, at the record's existing path.
 			target = gf.Path
 			prior = gf.Gap
+			priorRaw = gf.Raw
 		}
+	}
+	// A re-stamp over a differing consent is surfaced, never silent: the
+	// re-declaration is a fresh consent (REQ-gap-verb), but discharging
+	// the exact drift REQ-gap-consent exists to expose deserves a note
+	// even when the declarer only meant to touch the reason.
+	if prior != nil && prior.GetContentHash() != "" && prior.GetContentHash() != g.GetContentHash() {
+		notes = append(notes, fmt.Sprintf("%s: consent re-stamped — the requirement's text changed since the prior declaration", g.GetRequirementId()))
 	}
 	// An unchanged manual condition keeps its fired state: an unfire is a
 	// lifecycle retarget, so it only happens through an explicit changed
@@ -621,13 +661,20 @@ func Gap(fsys fs.FS, g *stipulatorv1.Gap) (*Update, *stipulatorv1.Gap, error) {
 		// overwrite it.
 		for _, gf := range store.Gaps {
 			if gf.Path == target {
-				return nil, nil, fmt.Errorf("%s holds a gap for %s; refusing to overwrite", target, gf.Gap.GetRequirementId())
+				return nil, nil, nil, fmt.Errorf("%s holds a gap for %s; refusing to overwrite", target, gf.Gap.GetRequirementId())
 			}
 		}
 	}
-	up := &Update{Path: target, Content: records.RenderGap(g)}
+	// Every write goes through the machine-owned gap writer — its comment
+	// refusal and header preservation (REQ-evidence-binding-machine-owned);
+	// a fresh record (nil Raw) renders with the standard header.
+	content, err := records.RenderGapFile(records.GapFile{Path: target, Raw: priorRaw, Gap: g})
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	up := &Update{Path: target, Content: content}
 	stampPrior(store, up)
-	return up, prior, nil
+	return up, prior, notes, nil
 }
 
 // LandingConditionString renders a landing condition human-readably, for
@@ -721,10 +768,11 @@ func Gaps(fsys fs.FS, reqs []string, reason string, lands *stipulatorv1.LandingC
 			wantUnfired = each.HasManual() && !each.GetManual().GetFired()
 			g.SetLands(each)
 		}
-		up, prior, err := Gap(fsys, g)
+		up, prior, gapNotes, err := Gap(fsys, g)
 		if err != nil {
 			return nil, nil, err
 		}
+		notes = append(notes, gapNotes...)
 		if seenPath[up.Path] {
 			return nil, nil, fmt.Errorf("requirement %s repeats in the list", id)
 		}
@@ -839,7 +887,11 @@ func FireGaps(fsys fs.FS, reqs []string) ([]Update, error) {
 			}
 			g := proto.CloneOf(gf.Gap)
 			g.GetLands().GetManual().SetFired(true)
-			out = append(out, Update{Path: gf.Path, Content: records.RenderGap(g)})
+			content, err := records.RenderGapFile(records.GapFile{Path: gf.Path, Raw: gf.Raw, Gap: g})
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, Update{Path: gf.Path, Content: content})
 		}
 		if !found {
 			return nil, fmt.Errorf("no gap record names %s; declare it before firing", id)

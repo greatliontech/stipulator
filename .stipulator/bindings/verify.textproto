@@ -30,7 +30,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-record"
-  content_hash: "9c20814aca2d9479b9a7d170b5440b70b80abb15d24304deab03c4eb1f4212d6"
+  content_hash: "c3215f6833af3827722530b93a679443acb0ca899cbae02196e665bce6de31bf"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/records.Load"
   role: BINDING_ROLE_IMPLEMENTS
@@ -39,7 +39,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-record"
-  content_hash: "9c20814aca2d9479b9a7d170b5440b70b80abb15d24304deab03c4eb1f4212d6"
+  content_hash: "c3215f6833af3827722530b93a679443acb0ca899cbae02196e665bce6de31bf"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
   role: BINDING_ROLE_TESTS

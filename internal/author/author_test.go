@@ -215,7 +215,7 @@ func TestGap(t *testing.T) {
 	}
 
 	t.Run("authors a parseable record at the canonical path", func(t *testing.T) {
-		up, _, err := Gap(testFS(nil), mkGap("REQ-au-a", "later", covered("REQ-au-b")))
+		up, _, _, err := Gap(testFS(nil), mkGap("REQ-au-a", "later", covered("REQ-au-b")))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -243,7 +243,7 @@ func TestGap(t *testing.T) {
 		}
 		for _, c := range cases {
 			t.Run(c.name, func(t *testing.T) {
-				if _, _, err := Gap(testFS(nil), c.gap); err == nil || !strings.Contains(err.Error(), c.want) {
+				if _, _, _, err := Gap(testFS(nil), c.gap); err == nil || !strings.Contains(err.Error(), c.want) {
 					t.Fatalf("err = %v", err)
 				}
 			})
@@ -252,14 +252,14 @@ func TestGap(t *testing.T) {
 
 	t.Run("declaring over an existing gap updates it in place", func(t *testing.T) {
 		fsys := testFS(nil)
-		up, prior, err := Gap(fsys, mkGap("REQ-au-a", "not yet implemented", covered("REQ-au-b")))
+		up, prior, _, err := Gap(fsys, mkGap("REQ-au-a", "not yet implemented", covered("REQ-au-b")))
 		if err != nil || prior != nil {
 			t.Fatalf("fresh gap: %v prior=%v", err, prior)
 		}
 		fsys[up.Path] = &fstest.MapFile{Data: up.Content}
 
 		// Same landing, evolved reason: quiet update, prior surfaced.
-		up2, prior2, err := Gap(fsys, mkGap("REQ-au-a", "implemented; awaiting witness", covered("REQ-au-b")))
+		up2, prior2, _, err := Gap(fsys, mkGap("REQ-au-a", "implemented; awaiting witness", covered("REQ-au-b")))
 		if err != nil || prior2 == nil || prior2.GetReason() != "not yet implemented" {
 			t.Fatalf("update: %v prior=%v", err, prior2)
 		}
@@ -282,7 +282,7 @@ func TestGap(t *testing.T) {
 			// REQ-au-b's record legally sits at REQ-au-a's canonical path.
 			".stipulator/gaps/au-a.textproto": "requirement_id: \"REQ-au-b\"\nreason: \"r\"\nlands { exists: \"REQ-au-a\" }\n",
 		})
-		if _, _, err := Gap(fsys, mkGap("REQ-au-a", "r", covered("REQ-au-b"))); err == nil || !strings.Contains(err.Error(), "refusing to overwrite") {
+		if _, _, _, err := Gap(fsys, mkGap("REQ-au-a", "r", covered("REQ-au-b"))); err == nil || !strings.Contains(err.Error(), "refusing to overwrite") {
 			t.Fatalf("foreign-path overwrite accepted: %v", err)
 		}
 	})
@@ -292,7 +292,7 @@ func TestGap(t *testing.T) {
 		a := &stipulatorv1.ManualCondition{}
 		a.SetCondition("external thing")
 		att.SetManual(a)
-		up, _, err := Gap(testFS(nil), mkGap("REQ-au-b", "r", att))
+		up, _, _, err := Gap(testFS(nil), mkGap("REQ-au-b", "r", att))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -340,7 +340,7 @@ func TestGapRefusesForeignPathCollision(t *testing.T) {
 	lc := &stipulatorv1.LandingCondition{}
 	lc.SetCovered("REQ-au-b")
 	g.SetLands(lc)
-	if _, _, err := Gap(fsys, g); err == nil || !strings.Contains(err.Error(), "refusing to overwrite") {
+	if _, _, _, err := Gap(fsys, g); err == nil || !strings.Contains(err.Error(), "refusing to overwrite") {
 		t.Fatalf("err = %v", err)
 	}
 }
