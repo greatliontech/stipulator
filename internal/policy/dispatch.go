@@ -74,6 +74,15 @@ func Dispatch(p *stipulatorv1.TestPolicy, backends map[string]Backend) ([]Invoca
 // operational fault says nothing about it.
 var ErrRecord = errors.New("policy record problem")
 
+// RecordError marks a fault as ErrRecord without reshaping its message:
+// a record problem a consumer discovers past loading — an invocation
+// whose selection the tree cannot resolve — is the same class as a
+// loading fault, a fact about the tree the check reports as its
+// verdict. Never an operational fault — a read error, a permission
+// denial, a cancellation — which says nothing about the record and
+// must stay an error.
+func RecordError(err error) error { return recordError{err} }
+
 // recordError marks a loading failure as ErrRecord without reshaping its
 // message.
 type recordError struct{ err error }

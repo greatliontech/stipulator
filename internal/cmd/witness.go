@@ -21,6 +21,16 @@ import (
 // loader's guidance, exactly as the check renders it: witness execution
 // consumes the accepted policy, never a fallback suite
 // (REQ-policy-explicit).
+// withRecordPath carries the record's path on a record problem —
+// whether the loader found it or the run's discovery did — exactly as
+// the check renders it; any other fault passes unchanged.
+func withRecordPath(err error) error {
+	if errors.Is(err, policy.ErrRecord) {
+		return fmt.Errorf("%s: %w", policy.Path, err)
+	}
+	return err
+}
+
 func witnessRun(ctx context.Context) (*verify.TestRun, error) {
 	fmt.Fprintln(os.Stderr, dim("witnessing: selective execution of the accepted test policy"))
 	gb, err := golang.NewOwned(ctx, chdir)
@@ -30,10 +40,7 @@ func witnessRun(ctx context.Context) (*verify.TestRun, error) {
 	defer gb.Close()
 	tr, err := golang.RunWitnesses(ctx, chdir, gb)
 	if err != nil {
-		if errors.Is(err, policy.ErrRecord) {
-			return nil, fmt.Errorf("%s: %w", policy.Path, err)
-		}
-		return nil, err
+		return nil, withRecordPath(err)
 	}
 	printWitnessSummary(tr)
 	return tr, nil
@@ -44,21 +51,18 @@ func witnessRun(ctx context.Context) (*verify.TestRun, error) {
 // inside the scope execute.
 func witnessRunScoped(ctx context.Context, scope map[gofresh.Subject]bool, why string) (*verify.TestRun, error) {
 	fmt.Fprintln(os.Stderr, dim("witnessing: selective execution of the accepted test policy, "+why))
-	pol, _, err := policy.Load(chdir, map[string]policy.Backend{"go": golang.Policy{}})
+	pc, err := golang.LoadCapture(ctx, chdir)
 	if err != nil {
-		if errors.Is(err, policy.ErrRecord) {
-			return nil, fmt.Errorf("%s: %w", policy.Path, err)
-		}
-		return nil, err
+		return nil, withRecordPath(err)
 	}
 	gb, err := golang.NewOwned(ctx, chdir)
 	if err != nil {
 		return nil, err
 	}
 	defer gb.Close()
-	tr, err := golang.RunWitnessesScoped(ctx, chdir, pol, scope, gb)
+	tr, err := golang.RunWitnessesScoped(ctx, pc, scope, gb)
 	if err != nil {
-		return nil, err
+		return nil, withRecordPath(err)
 	}
 	printWitnessSummary(tr)
 	return tr, nil

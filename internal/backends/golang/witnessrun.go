@@ -10,7 +10,6 @@ import (
 	gofresh "github.com/greatliontech/gofresh"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
-	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
@@ -53,18 +52,18 @@ import (
 // executed counts, the uncacheable count, the outside-policy count, and
 // the degraded reason when the freshness path faulted.
 func RunWitnesses(ctx context.Context, dir string, seeding verify.WitnessSeeding) (*verify.TestRun, error) {
-	p, _, err := policy.Load(dir, map[string]policy.Backend{"go": Policy{}})
+	pc, err := LoadCapture(ctx, dir)
 	if err != nil {
 		return nil, err
 	}
-	return runWitnesses(ctx, dir, p, nil, seeding)
+	return runWitnesses(ctx, pc, nil, seeding)
 }
 
-// RunWitnessesPolicy is RunWitnesses over an already-loaded accepted
-// policy — the unified check loads the policy once for its own verdict
-// short-circuits and hands it through.
-func RunWitnessesPolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, seeding verify.WitnessSeeding) (*verify.TestRun, error) {
-	return runWitnesses(ctx, dir, p, nil, seeding)
+// RunWitnessesPolicy is RunWitnesses over the operation's capture of
+// its already-loaded accepted policy — the unified check captures once
+// for its own notices and short-circuits and hands the capture through.
+func RunWitnessesPolicy(ctx context.Context, pc *Capture, seeding verify.WitnessSeeding) (*verify.TestRun, error) {
+	return runWitnesses(ctx, pc, nil, seeding)
 }
 
 // RunWitnessesScoped is the witness-only selective execution narrowed
@@ -73,8 +72,8 @@ func RunWitnessesPolicy(ctx context.Context, dir string, p *stipulatorv1.TestPol
 // - the remainder is recorded scope-skipped, never broken. The degraded
 // path expands to the scope's own full execution, never the tree's
 // (REQ-check-verdict's scoped class).
-func RunWitnessesScoped(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, scope map[gofresh.Subject]bool, seeding verify.WitnessSeeding) (*verify.TestRun, error) {
-	return runWitnesses(ctx, dir, p, scope, seeding)
+func RunWitnessesScoped(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bool, seeding verify.WitnessSeeding) (*verify.TestRun, error) {
+	return runWitnesses(ctx, pc, scope, seeding)
 }
 
 // witnessGroup is one capture group's serving state: the analysis views
@@ -116,10 +115,11 @@ type witnessGroup struct {
 	observedFPs map[gofresh.Subject]gofresh.Fingerprint
 }
 
-func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, scope map[gofresh.Subject]bool, seeding verify.WitnessSeeding) (*verify.TestRun, error) {
+func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bool, seeding verify.WitnessSeeding) (*verify.TestRun, error) {
 	rep := progress.FromContext(ctx)
 	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
-	pc, err := capturePolicy(ctx, dir, p)
+	dir := pc.dir
+	d, err := pc.discover(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 	// subject executes and nothing publishes — the fail-closed
 	// direction, exactly as an engine fault degrades
 	// (REQ-evidence-freshness-degrade).
-	seedingErr := classifySeeded(pc, seeding)
+	seedingErr := classifySeeded(d, seeding)
 	if seedingErr != nil && ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
@@ -137,9 +137,9 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 	// selection needs only the policy's own discovery, and the universe
 	// feeds the outside-policy accounting the degraded reason then names.
 	// It degrades exactly as an engine or view fault does
-	// (REQ-evidence-freshness-degrade) — capturePolicy faults, by
-	// contrast, error, because without them nothing can execute.
-	universe, universeErr := discoverUniverse(ctx, dir)
+	// (REQ-evidence-freshness-degrade) — capture and discovery faults,
+	// by contrast, error, because without them nothing can execute.
+	universe, universeErr := pc.ObligationUniverse(ctx)
 	if universeErr != nil && ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
@@ -157,10 +157,9 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 		}
 	}
 	addExpected(universe)
-	normalized := map[string]*NormalizedInvocation{}
-	for _, ic := range pc.invocations {
+	normalized := pc.byName()
+	for _, ic := range d.invocations {
 		addExpected(ic.obligations)
-		normalized[ic.n.Name] = ic.n
 	}
 
 	// The in-policy subjects: the union of every capture group's own
@@ -170,7 +169,7 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 	// outcome across legs (REQ-check-verdict's alignment with the
 	// health-judged form).
 	inPolicy := map[gofresh.Subject]bool{}
-	for _, g := range pc.groups {
+	for _, g := range d.groups {
 		for _, s := range groupSubjects(g) {
 			inPolicy[s] = true
 		}
@@ -182,8 +181,8 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 	// granting outcomes through the ordinary merge.
 	ambiguousSel := map[string]TestSelection{}
 	ambiguousSubjects := map[gofresh.Subject]bool{}
-	for _, ic := range pc.invocations {
-		g := pc.invGroup[ic.n.Name]
+	for _, ic := range d.invocations {
+		g := d.invGroup[ic.n.Name]
 		if g == nil {
 			continue
 		}
@@ -214,7 +213,7 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 	// unexecuted, so a red it would have observed never reaches the
 	// scoped verdict (REQ-check-verdict's scoped class).
 	multiIneligible := map[string]TestSelection{}
-	for _, ic := range pc.invocations {
+	for _, ic := range d.invocations {
 		if ic.n.WitnessEligible() {
 			continue
 		}
@@ -222,7 +221,7 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 			if o.Kind != ObligationTest && o.Kind != ObligationFuzz {
 				continue
 			}
-			if pc.globalCount[o.Package] <= 1 {
+			if d.globalCount[o.Package] <= 1 {
 				continue
 			}
 			if scope != nil && !scope[gofresh.Subject{Package: o.Package, Symbol: o.Name}] {
@@ -280,7 +279,7 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 		degraded = seedingErr.Error()
 	} else {
 		var prepErr error
-		groups, degraded, prepErr = prepareWitnessGroups(ctx, dir, pc, cachedByKey)
+		groups, degraded, prepErr = prepareWitnessGroups(ctx, dir, d, cachedByKey)
 		if prepErr != nil {
 			// A toolchain-provenance refusal is a run-level abort, never
 			// a degradation (REQ-evidence-toolchain-provenance): the
@@ -319,7 +318,7 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 		sel[s.Package] = append(sel[s.Package], s.Symbol)
 	}
 	if degraded != "" {
-		for _, g := range pc.groups {
+		for _, g := range d.groups {
 			for _, s := range groupSubjects(g) {
 				addStale(g, s)
 			}
@@ -420,7 +419,7 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 		}
 		return nil
 	}
-	if err := executeSelections(ctx, p, normalized, staleSel, m, onInvocationDone); err != nil {
+	if err := executeSelections(ctx, pc.normalized, staleSel, m, onInvocationDone); err != nil {
 		return nil, err
 	}
 	var ineligibleMerge *execMerge
@@ -430,7 +429,7 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 		// they execute here in the execution phase and fold after the
 		// main merges — failures and registrations only, never a grant.
 		ineligibleMerge = newExecMerge()
-		if err := executeSelections(ctx, p, normalized, multiIneligible, ineligibleMerge, nil); err != nil {
+		if err := executeSelections(ctx, pc.normalized, multiIneligible, ineligibleMerge, nil); err != nil {
 			return nil, err
 		}
 	}
@@ -475,7 +474,7 @@ func runWitnesses(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, s
 			}
 		}
 		if len(drifted) > 0 {
-			retryPublished, retryReasons, err := retryDrifted(ctx, dir, p, normalized, driftedByGroup, retryMerge)
+			retryPublished, retryReasons, err := retryDrifted(ctx, pc, driftedByGroup, retryMerge)
 			if err != nil {
 				return nil, err
 			}
@@ -695,13 +694,9 @@ func exclusionsStillAsserted(recorded, current []string) bool {
 // abort, never a degradation — while any other fault returns the
 // degraded reason: the caller serves nothing and executes everything
 // covered (REQ-evidence-freshness-degrade).
-func prepareWitnessGroups(ctx context.Context, dir string, pc *policyCapture, cached map[string][]witnesscache.Record) ([]*witnessGroup, string, error) {
+func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, cached map[string][]witnesscache.Record) ([]*witnessGroup, string, error) {
 	var out []*witnessGroup
-	for _, g := range pc.groups {
-		subjects := groupSubjects(g)
-		if len(subjects) == 0 {
-			continue
-		}
+	for g, subjects := range d.populatedGroups() {
 		engine, err := groupEngine(ctx, dir, g)
 		if err != nil {
 			if abort, reason := classifyFault(err); !abort {
@@ -958,19 +953,19 @@ func (m *execMerge) add(res *SelectionResult) {
 // covering invocation completes, so a run dying mid-execution keeps
 // every record already produced (REQ-evidence-witness-cache-format's
 // completed-group durability).
-func executeSelections(ctx context.Context, p *stipulatorv1.TestPolicy, normalized map[string]*NormalizedInvocation, staleSel map[string]TestSelection, m *execMerge, onCompleted func(invocation string) error) error {
-	for _, inv := range p.GetInvocations() {
-		sel := staleSel[inv.GetName()]
+func executeSelections(ctx context.Context, invocations []*NormalizedInvocation, staleSel map[string]TestSelection, m *execMerge, onCompleted func(invocation string) error) error {
+	for _, n := range invocations {
+		sel := staleSel[n.Name]
 		if len(sel) == 0 {
 			continue
 		}
-		res, err := ExecuteSelection(ctx, normalized[inv.GetName()], sel)
+		res, err := ExecuteSelection(ctx, n, sel)
 		if err != nil {
 			return err
 		}
 		m.add(res)
 		if onCompleted != nil {
-			if err := onCompleted(inv.GetName()); err != nil {
+			if err := onCompleted(n.Name); err != nil {
 				return err
 			}
 		}
@@ -1199,7 +1194,9 @@ func publishExecuted(ctx context.Context, wg *witnessGroup, m *execMerge) ([]wit
 // the current tree before the retry executes; a retry whose record still
 // fails validation afterwards — still drifting — is dropped and counted
 // uncacheable, never retried again.
-func retryDrifted(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, normalized map[string]*NormalizedInvocation, driftedByGroup map[*witnessGroup][]gofresh.Subject, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]string, error) {
+func retryDrifted(ctx context.Context, pc *Capture, driftedByGroup map[*witnessGroup][]gofresh.Subject, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]string, error) {
+	dir := pc.dir
+	normalized := pc.byName()
 	// Fresh pre-retry capture per group: the old view described a tree the
 	// drift already left behind.
 	type retryState struct {
@@ -1261,7 +1258,7 @@ func retryDrifted(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, n
 		st.observed, st.observedFPs = observedView(ctx, st.view, st.candidates)
 		states = append(states, st)
 	}
-	if err := executeSelections(ctx, p, normalized, retrySel, m, nil); err != nil {
+	if err := executeSelections(ctx, pc.normalized, retrySel, m, nil); err != nil {
 		return nil, nil, err
 	}
 	var published []witnesscache.Record

@@ -367,7 +367,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.SelectionNotices"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "8c44a636e86ce94910318a3d4e79e427cfd75269b9fdfcfe05c83554c31c1264"
+  shape_hash: "96d58df4dbfe72e961377477370170b0ea0ae7e22727ec95a24b2bb3ef7bf174"
 }
 
 bindings {
@@ -485,4 +485,76 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoNormalizeExcludedPathFormsRefuseBeforeAnySpawn"
   role: BINDING_ROLE_TESTS
   shape_hash: "baea49701c37b4b3e7a595ab6afe521ebe09c151dbabc198b05dd052822c5260"
+}
+
+bindings {
+  requirement_id: "REQ-check-derivation"
+  content_hash: "0c2b6c3d79a0909b05d4c55d29fbf1c6651c545b5f89959a429fd05f3d2266bf"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoCaptureDerivesEachInvocationOnce"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "885dbb92a1b92d3512253d987553d2b09e268625ce7fb63fde920c2f16fbfd8d"
+}
+
+bindings {
+  requirement_id: "REQ-check-derivation"
+  content_hash: "0c2b6c3d79a0909b05d4c55d29fbf1c6651c545b5f89959a429fd05f3d2266bf"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.CapturePolicy"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "9113b4e9af938a8a9773736e5f0fb44f7907fb657753732ebf3fc376c84f9063"
+}
+
+bindings {
+  requirement_id: "REQ-check-derivation"
+  content_hash: "0c2b6c3d79a0909b05d4c55d29fbf1c6651c545b5f89959a429fd05f3d2266bf"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoLiveGroupDigestsNameEveryPublishingCoordinate"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7ba881cd5070c1d574cb8eb6666d0f7d9e7e56b9c5e7b06ab6611ad84b6d1b9a"
+}
+
+bindings {
+  requirement_id: "REQ-check-derivation"
+  content_hash: "0c2b6c3d79a0909b05d4c55d29fbf1c6651c545b5f89959a429fd05f3d2266bf"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoCaptureDerivationProperty"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "248be6f268dcae71fffa64c78ce3aae627f29bb14bbfa356391181a29e8fce54"
+}
+
+bindings {
+  requirement_id: "REQ-check-derivation"
+  content_hash: "0c2b6c3d79a0909b05d4c55d29fbf1c6651c545b5f89959a429fd05f3d2266bf"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoCaptureExecutionReadersReuseTheDerivation"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "d5562e3492dca0ed11ec6bf8de497d534b7fb59fa56823f50ce671515e446ed4"
+}
+
+bindings {
+  requirement_id: "REQ-check-derivation"
+  content_hash: "0c2b6c3d79a0909b05d4c55d29fbf1c6651c545b5f89959a429fd05f3d2266bf"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoCapturePolicyFailsOnAnyNormalizationFault"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e7745b1481740fb431c763b6a1da87c2bd04b8e29b7ad4de9d263b65d3213491"
+}
+
+bindings {
+  requirement_id: "REQ-check-derivation"
+  content_hash: "0c2b6c3d79a0909b05d4c55d29fbf1c6651c545b5f89959a429fd05f3d2266bf"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoCaptureHoldsADiscoveryFaultForEveryReader"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7659f9864602bfe9fb310f1b8a8cb7b5b7e06d046fb28e822a1a7ebea46d60be"
+}
+
+bindings {
+  requirement_id: "REQ-check-verdict"
+  content_hash: "426a5a04a891b72c2a22cd2c968c9539604fa298eca342d880e973a46fba5319"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckUnresolvableSelectionIsTheRecordsProblem"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "1724257dd9cc7aa246b231cd2ea06f8c8daabfd83e8cdfa466e35643f4e905b1"
 }

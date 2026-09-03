@@ -137,7 +137,7 @@ func TestGoConservationReportWorkspace(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		reports, err := ConservationReport(ctx, dir, derived)
+		reports, err := ConservationReport(ctx, mustCapture(t, ctx, dir, derived))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -147,7 +147,7 @@ func TestGoConservationReportWorkspace(t *testing.T) {
 	})
 
 	t.Run("omitted member reported", func(t *testing.T) {
-		reports, err := ConservationReport(ctx, dir, mkPolicy(goInvocation("race", rootCfg())))
+		reports, err := ConservationReport(ctx, mustCapture(t, ctx, dir, mkPolicy(goInvocation("race", rootCfg()))))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -170,7 +170,7 @@ func TestGoConservationReportWorkspace(t *testing.T) {
 			goInvocation("race-again", rootCfg()),
 			goInvocation("race:sub", subCfg()),
 		)
-		reports, err := ConservationReport(ctx, dir, p)
+		reports, err := ConservationReport(ctx, mustCapture(t, ctx, dir, p))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -191,7 +191,7 @@ func TestGoConservationReportWorkspace(t *testing.T) {
 		wide := rootCfg()
 		wide.SetTags([]string{"special"})
 		p := mkPolicy(goInvocation("race", wide), goInvocation("race:sub", subCfg()))
-		reports, err := ConservationReport(ctx, dir, p)
+		reports, err := ConservationReport(ctx, mustCapture(t, ctx, dir, p))
 		if err != nil {
 			t.Fatal(err)
 		}

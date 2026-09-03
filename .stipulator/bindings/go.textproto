@@ -891,3 +891,21 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "e1ec97648cbca8596cf0190a40db5dbb1b184664a6fcc26c7041d3b47deba214"
 }
+
+bindings {
+  requirement_id: "REQ-go-race"
+  content_hash: "089f46b0cfbbb21a63a00ef63139cd6d310c24e9ad919d88e3a520e71f5307d0"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.discoverPolicy"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "454a158b9823f6cd341459999efde578a18c192f03922053aab9d6ee54d01a95"
+}
+
+bindings {
+  requirement_id: "REQ-go-policy-complete"
+  content_hash: "29ad9bb6ebf2b4d3d8f94dd3c3b3989b42a68cbaf565ca7912bdbc051063625e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoDiscoverRefusesAnUnmatchedPattern"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "02bb80a546e813b35b32245b640c51431517f1c46657574ee932d6a4ca65cea4"
+}

@@ -234,7 +234,7 @@ func TestNewWitnessRecorderAbortsOnToolchainSkew(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rec, err := NewWitnessRecorder(context.Background(), tmp, p, noSeeding{})
+	rec, err := NewWitnessRecorder(context.Background(), mustCapture(t, context.Background(), tmp, p), noSeeding{})
 	if err == nil {
 		t.Fatalf("skewed recorder did not abort; degraded = %q", rec.degraded)
 	}

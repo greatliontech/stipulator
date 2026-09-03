@@ -85,7 +85,7 @@ func TestCount(t *testing.T) {
 		if err := prototext.Unmarshal([]byte(raw), pol); err != nil {
 			t.Fatal(err)
 		}
-		pc, err := capturePolicy(ctx, dir, pol)
+		pc, err := mustCapture(t, ctx, dir, pol).discover(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -122,7 +122,7 @@ func TestCount(t *testing.T) {
 		if err := prototext.Unmarshal([]byte(raw), pol); err != nil {
 			t.Fatal(err)
 		}
-		pc, err := capturePolicy(ctx, dir, pol)
+		pc, err := mustCapture(t, ctx, dir, pol).discover(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}

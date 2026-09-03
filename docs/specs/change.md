@@ -303,6 +303,20 @@ record-hygiene half of verification before any witness executes. A
 refusal that surfaces after such a cost is wasted work the caller could
 not avoid.
 
+**REQ-check-derivation** (invariant): Every operation that consumes the
+accepted policy — the check on either evidence form, the witness run,
+prune's store cleanup, explain — MUST derive each policy invocation's
+normalized form and obligation selection, and the tree's obligation
+universe, at most once, however many of its readers consult them: the
+policy notices, the record-identity coordinates, witness selection,
+execution, and the outside-policy accounting read the one derivation,
+so the toolchain queries it costs are paid once and no reader can
+disagree with another. An invocation that fails to normalize fails the
+operation; it is never dropped from the derivation. A derivation that
+faults — cancellation included — holds the fault, and every later
+reader receives it and disposes of it as it disposes of its own: the
+witness run and execution error, the publishing recorder degrades.
+
 **REQ-check-verdict** (behavior): The unified check MUST derive its one
 verdict from a single evaluation pass — compilation, witness evidence,
 binding verification, coverage, gap evaluation, and prune residue —

@@ -85,57 +85,32 @@ func PartitionReports(universe []Obligation, selections []InvocationSelection) [
 	return reports
 }
 
-// ConservationReport discovers the tree's complete obligation universe —
-// every workspace member's "./..." under the tree's default build
-// selection, the same scope the derived policy declares — and each Go
-// invocation's own selection, then reports every omitted or multiply
-// selected obligation. Every subprocess it causes runs inside an owned,
-// cancellable process boundary.
-func ConservationReport(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) ([]*stipulatorv1.ObligationReport, error) {
-	universe, err := discoverUniverse(ctx, dir)
+// ConservationReport judges the capture's policy against the tree's
+// complete obligation universe — every workspace member's "./..." under
+// the tree's default build selection, the same scope the derived policy
+// declares — reporting every omitted or multiply selected obligation.
+// Every subprocess it causes runs inside an owned, cancellable process
+// boundary.
+func ConservationReport(ctx context.Context, pc *Capture) ([]*stipulatorv1.ObligationReport, error) {
+	universe, err := pc.ObligationUniverse(ctx)
 	if err != nil {
 		return nil, err
 	}
-	discovered, err := discoverInvocations(ctx, dir, p)
+	d, err := pc.discover(ctx)
 	if err != nil {
 		return nil, err
 	}
-	selections := make([]InvocationSelection, 0, len(discovered))
-	for _, d := range discovered {
-		selections = append(selections, d.selection)
-	}
-	return PartitionReports(universe, selections), nil
+	return PartitionReports(universe, d.selections()), nil
 }
 
-// invocationDiscovery pairs one Go invocation's normalized form with its
-// discovered obligation selection.
-type invocationDiscovery struct {
-	normalized *NormalizedInvocation
-	selection  InvocationSelection
-}
-
-// discoverInvocations normalizes and discovers every Go invocation of a
-// policy in record order.
-func discoverInvocations(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) ([]invocationDiscovery, error) {
-	var out []invocationDiscovery
-	for _, inv := range p.GetInvocations() {
-		if inv.GetGo() == nil {
-			continue
-		}
-		n, err := NormalizeInvocation(ctx, dir, inv)
-		if err != nil {
-			return nil, err
-		}
-		obs, err := DiscoverInvocation(ctx, n)
-		if err != nil {
-			return nil, fmt.Errorf("discovering invocation %q: %w", inv.GetName(), err)
-		}
-		out = append(out, invocationDiscovery{
-			normalized: n,
-			selection:  InvocationSelection{Invocation: inv.GetName(), Obligations: obs},
-		})
+// selections is the discovered leg's per-invocation obligation
+// selection, in record order.
+func (d *policyDiscovery) selections() []InvocationSelection {
+	out := make([]InvocationSelection, 0, len(d.invocations))
+	for _, ic := range d.invocations {
+		out = append(out, InvocationSelection{Invocation: ic.n.Name, Obligations: ic.obligations})
 	}
-	return out, nil
+	return out
 }
 
 // discoverUniverse enumerates the tree's complete obligation universe:

@@ -416,7 +416,7 @@ func TestGoExecutePolicyWorkspaceReport(t *testing.T) {
 		goInvocation("member", memberCfg),
 		goInvocation("root", rootCfg),
 	})
-	report, _, err := ExecutePolicy(context.Background(), executeFixture(t), p)
+	report, _, err := ExecutePolicy(context.Background(), mustCapture(t, context.Background(), executeFixture(t), p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -500,7 +500,7 @@ func TestGoExecutePolicyReportsOmissions(t *testing.T) {
 	cfg.SetModuleRoot("member")
 	cfg.SetPackages([]string{"./..."})
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("member", cfg)})
-	report, _, err := ExecutePolicy(context.Background(), executeFixture(t), p)
+	report, _, err := ExecutePolicy(context.Background(), mustCapture(t, context.Background(), executeFixture(t), p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -565,12 +565,13 @@ func TestGoExecuteCancellationDiscardsPartialReport(t *testing.T) {
 	// The policy path discards identically.
 	p := &stipulatorv1.TestPolicy{}
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{inv})
+	pc := mustCapture(t, context.Background(), fixture, p)
 	pctx, pcancel := context.WithCancel(context.Background())
 	go func() {
 		time.Sleep(300 * time.Millisecond)
 		pcancel()
 	}()
-	report, live, err := ExecutePolicy(pctx, fixture, p)
+	report, live, err := ExecutePolicy(pctx, pc)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("policy err = %v, want context.Canceled", err)
 	}

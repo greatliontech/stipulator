@@ -125,7 +125,7 @@ invocations {
 	}
 	explain := func(pkgPath, varName string) (arm, view string, links int, refusalPos string) {
 		t.Helper()
-		chain, v, err := ExplainDynamicState(context.Background(), tmp, pol, pkgPath, varName)
+		chain, v, err := ExplainDynamicState(context.Background(), mustCapture(t, context.Background(), tmp, pol), pkgPath, varName)
 		if err != nil {
 			t.Fatal(err)
 		}

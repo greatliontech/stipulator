@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/greatliontech/gofresh"
-	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 )
 
 // ExplainDynamicState derives the refusal chain for a dynamic-state
@@ -18,16 +17,13 @@ import (
 // comma-joined) so a caller holding a reason from a different view
 // can see the mismatch. A culprit no group's view knows yields an
 // empty chain, an empty view name, and no error.
-func ExplainDynamicState(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, pkgPath, varName string) (gofresh.Chain, string, error) {
-	pc, err := capturePolicy(ctx, dir, p)
+func ExplainDynamicState(ctx context.Context, pc *Capture, pkgPath, varName string) (gofresh.Chain, string, error) {
+	dir := pc.dir
+	d, err := pc.discover(ctx)
 	if err != nil {
 		return gofresh.Chain{}, "", err
 	}
-	for _, g := range pc.groups {
-		subjects := groupSubjects(g)
-		if len(subjects) == 0 {
-			continue
-		}
+	for g, subjects := range d.populatedGroups() {
 		engine, err := groupEngine(ctx, dir, g)
 		if err != nil {
 			return gofresh.Chain{}, "", err

@@ -112,7 +112,7 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 		goInvocation("z-plain", plainCfg),
 	})
 
-	report, tr, err := ExecutePolicyWitnessed(context.Background(), tmp, p, noSeeding{})
+	report, tr, err := ExecutePolicyWitnessed(context.Background(), mustCapture(t, context.Background(), tmp, p), noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -321,7 +321,7 @@ func TestSharedReads(t *testing.T) {
 	p := &stipulatorv1.TestPolicy{}
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", cfg), goInvocation("dup", dupCfg)})
 
-	report, tr, err := ExecutePolicyWitnessed(context.Background(), tmp, p, noSeeding{})
+	report, tr, err := ExecutePolicyWitnessed(context.Background(), mustCapture(t, context.Background(), tmp, p), noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -428,7 +428,7 @@ func TestMutatesSourceOnce(t *testing.T) {
 	p := &stipulatorv1.TestPolicy{}
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", cfg)})
 
-	report, tr, err := ExecutePolicyWitnessed(context.Background(), tmp, p, noSeeding{})
+	report, tr, err := ExecutePolicyWitnessed(context.Background(), mustCapture(t, context.Background(), tmp, p), noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -543,7 +543,7 @@ func TestCleanNoop(t *testing.T) {}
 		goInvocation("b-second", second),
 	})
 
-	report, tr, err := ExecutePolicyWitnessed(context.Background(), tmp, p, noSeeding{})
+	report, tr, err := ExecutePolicyWitnessed(context.Background(), mustCapture(t, context.Background(), tmp, p), noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -618,7 +618,7 @@ func TestReadsOutsideBracket(t *testing.T) {
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
 	writePolicyRecord(t, tmp, p)
 
-	_, tr, err := ExecutePolicyWitnessed(context.Background(), tmp, p, noSeeding{})
+	_, tr, err := ExecutePolicyWitnessed(context.Background(), mustCapture(t, context.Background(), tmp, p), noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -657,7 +657,7 @@ func TestGoDeriveCheckFaultDegradesRun(t *testing.T) {
 	cfg.SetRace(true)
 	p := &stipulatorv1.TestPolicy{}
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
-	_, tr, err := ExecutePolicyWitnessed(context.Background(), tmp, p, noSeeding{})
+	_, tr, err := ExecutePolicyWitnessed(context.Background(), mustCapture(t, context.Background(), tmp, p), noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}

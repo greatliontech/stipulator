@@ -582,18 +582,13 @@ func selectionBuildFlags(race bool, tags []string) []string {
 // account of a degradation that otherwise surfaces only mid-derivation
 // on the engine's diagnostic face, far from where the operator authored
 // the tags. Only witness-eligible invocations are judged: a non-witness
-// invocation builds no freshness engine, so no admission can degrade. A
-// normalization fault skips its invocation without comment — the
-// execution path surfaces the same fault as a failing check, and the
-// notices are advisory, never a verdict input.
-func SelectionNotices(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) []string {
+// invocation builds no freshness engine, so no admission can degrade.
+// Read from the operation's capture: the normalized forms it already
+// holds, no toolchain query of its own. Advisory, never a verdict input.
+func SelectionNotices(pc *Capture) []string {
 	var out []string
-	for _, inv := range p.GetInvocations() {
-		if inv.GetGo() == nil {
-			continue
-		}
-		n, err := NormalizeInvocation(ctx, dir, inv)
-		if err != nil || !n.WitnessEligible() {
+	for _, n := range pc.normalized {
+		if !n.WitnessEligible() {
 			continue
 		}
 		notice := closure.ToolchainSelectionNotice(selectionBuildFlags(n.Race, n.Tags), n.GOFLAGS, n.GOEXPERIMENT)

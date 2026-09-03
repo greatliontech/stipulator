@@ -2341,7 +2341,7 @@ func TestOther(t *testing.T) {}
 	writePolicyRecord(t, tmp, p)
 
 	scope := map[gofresh.Subject]bool{{Package: "example.com/scopedeg/fine", Symbol: "TestOK"}: true}
-	tr, err := RunWitnessesScoped(context.Background(), tmp, p, scope, noSeeding{})
+	tr, err := RunWitnessesScoped(context.Background(), mustCapture(t, context.Background(), tmp, p), scope, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2597,5 +2597,101 @@ func TestAlwaysRed(t *testing.T) {
 	}
 	if out := tr2.Failures["example.com/flip/alwaysred.TestAlwaysRed"]; strings.Contains(out, "runner execution environment") {
 		t.Errorf("run 2: a failure whose prior state is FAILED carries the flip report: %q", out)
+	}
+}
+
+// TestGoRunWitnessesServedDriftRetriesUnderItsOwnInvocation pins the
+// drift retry's dispatch: a served subject discarded for mid-run drift
+// re-executes under the invocation that covers it — its own environment,
+// build selection, and race tier — not under whichever invocation the
+// policy lists first. The reader's invocation carries a marker its test
+// demands, and the writer's invocation, listed first, does not.
+func TestGoRunWitnessesServedDriftRetriesUnderItsOwnInvocation(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes race-instrumented selective runs over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":          "module example.com/driftown\n\ngo 1.26\n",
+		"reader/data.txt": "v1\n",
+		"reader/reader_test.go": `package reader
+
+import (
+	"os"
+	"testing"
+)
+
+func TestReads(t *testing.T) {
+	if os.Getenv("READER_INVOCATION") == "" {
+		t.Fatal("executed outside the reader's own invocation")
+	}
+	_, _ = os.ReadFile("data.txt")
+}
+`,
+		"writer/trigger.txt": "no\n",
+		"writer/writer_test.go": `package writer
+
+import (
+	"os"
+	"strings"
+	"testing"
+)
+
+//gofresh:pure
+func TestWritesOnce(t *testing.T) {
+	raw, err := os.ReadFile("trigger.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.TrimSpace(string(raw)) != "yes" {
+		return
+	}
+	if err := os.WriteFile("../reader/data.txt", []byte("v2\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+`,
+	})
+	writers := &stipulatorv1.GoInvocationConfig{}
+	writers.SetPackages([]string{"./writer"})
+	writers.SetRace(true)
+	readers := &stipulatorv1.GoInvocationConfig{}
+	readers.SetPackages([]string{"./reader"})
+	readers.SetRace(true)
+	readers.SetEnvironment([]string{"READER_INVOCATION=1"})
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("a-writers", writers), goInvocation("b-readers", readers)})
+	writePolicyRecord(t, tmp, p)
+
+	cold, err := RunWitnesses(context.Background(), tmp, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cold.Degraded != "" {
+		t.Fatalf("cold: freshness path degraded: %s", cold.Degraded)
+	}
+	if cold.Fresh != 0 || cold.Ran != 2 {
+		t.Fatalf("cold: fresh=%d ran=%d, want 0/2", cold.Fresh, cold.Ran)
+	}
+	if cacheRecord(t, witnesscache.Load(tmp), "example.com/driftown/reader", "TestReads") == nil {
+		t.Fatal("cold run published no record for the reader; the drift would prove nothing")
+	}
+
+	if err := os.WriteFile(filepath.Join(tmp, "writer", "trigger.txt"), []byte("yes\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	drift, err := RunWitnesses(context.Background(), tmp, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if drift.Degraded != "" {
+		t.Fatalf("drift: freshness path degraded: %s", drift.Degraded)
+	}
+	if drift.Fresh != 0 || drift.Ran != 2 {
+		t.Errorf("drift: fresh=%d ran=%d, want 0/2: the drifted serve must be discarded and re-executed", drift.Fresh, drift.Ran)
+	}
+	if got := drift.Outcomes["example.com/driftown/reader.TestReads"]; got != verify.TestPassed {
+		t.Fatalf("drift: reader = %v, want PASSED: the retry ran outside the reader's own invocation", got)
 	}
 }

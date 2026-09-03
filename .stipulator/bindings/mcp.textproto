@@ -673,7 +673,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.ExplainDynamicState"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "21cbad21f6e8832c75e632fea6d7bd903257e22a4de5e537c23b01035abf3e8e"
+  shape_hash: "5282b6ffd3953198a5f7c1fd6ad7ac08ac93556543ebdb1f4f932963500bf5b2"
 }
 
 bindings {

@@ -120,21 +120,21 @@ func New(dir string) *Server {
 			if scope == nil {
 				return golang.RunWitnesses(ctx, dir, gb)
 			}
-			pol, _, err := policy.Load(dir, map[string]policy.Backend{"go": golang.Policy{}})
+			pc, err := golang.LoadCapture(ctx, dir)
 			if err != nil {
 				return nil, err
 			}
-			return golang.RunWitnessesScoped(ctx, dir, pol, scope, gb)
+			return golang.RunWitnessesScoped(ctx, pc, scope, gb)
 		},
 		runCheck: func(ctx context.Context, full bool, scopeIds []string) (*stipulatorv1.CheckResult, error) {
 			return check.Run(ctx, dir, full, scopeIds)
 		},
 		explain: func(ctx context.Context, pkgPath, symbol string) (gofresh.Chain, string, error) {
-			pol, _, err := policy.Load(dir, map[string]policy.Backend{"go": golang.Policy{}})
+			pc, err := golang.LoadCapture(ctx, dir)
 			if err != nil {
 				return gofresh.Chain{}, "", fmt.Errorf("policy: %w", err)
 			}
-			return golang.ExplainDynamicState(ctx, dir, pol, pkgPath, symbol)
+			return golang.ExplainDynamicState(ctx, pc, pkgPath, symbol)
 		},
 		write: func(path string, content []byte) error {
 			// The server is corpus-bound and its writes stay under
@@ -1561,10 +1561,11 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 			}
 		}
 		var liveGroup func(string) bool
-		if p, _, perr := policy.Load(s.root, map[string]policy.Backend{"go": golang.Policy{}}); perr == nil {
-			if digests := golang.LiveGroupDigests(ctx, s.root, p); digests != nil {
-				liveGroup = func(group string) bool { return digests[group] }
-			}
+		// A policy the operation cannot capture keeps every coordinate:
+		// cost cleanup never guesses.
+		if pc, cerr := golang.LoadCapture(ctx, s.root); cerr == nil {
+			digests := golang.LiveGroupDigests(pc)
+			liveGroup = func(group string) bool { return digests[group] }
 		}
 		removed, kept, err := witnesscache.GC(s.root, func(pkg, test string) bool {
 			return live[pkg+"."+test]

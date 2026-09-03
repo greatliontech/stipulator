@@ -1010,3 +1010,41 @@ func TestCheckTierFlipNeverServesCrossTier(t *testing.T) {
 	// race_enabled=false is the only sound outcome.
 	run(true, false)
 }
+
+// TestCheckUnresolvableSelectionIsTheRecordsProblem pins the outcome
+// class of a policy whose invocation selects a package this tree does
+// not have: the check fails as it fails for an invalid record — a
+// policy problem naming the invocation and the pattern — never an
+// operational error that leaves no verdict (REQ-policy-explicit).
+func TestCheckUnresolvableSelectionIsTheRecordsProblem(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-explicit", "REQ-check-verdict")
+	files := baseTree(nil)
+	files[".stipulator/policy.textproto"] = "invocations {\n  name: \"all\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./ok\"\n    packages: \"./vanished\"\n  }\n}\n"
+	dir := writeTree(t, files)
+	// Every evidence form: selective, health-judged, and scoped.
+	for _, form := range []struct {
+		name  string
+		full  bool
+		scope []string
+	}{{"selective", false, nil}, {"full", true, nil}, {"scoped", false, []string{"REQ-fix-may"}}} {
+		res, err := Run(context.Background(), dir, form.full, form.scope)
+		if err != nil {
+			t.Fatalf("%s: err = %v, want a verdict: the record's selection is a fact about the tree", form.name, err)
+		}
+		if res.GetPassed() {
+			t.Fatalf("%s: check passed under a selection the tree cannot honor", form.name)
+		}
+		p := res.GetPolicyProblem()
+		if p == nil {
+			t.Fatalf("%s: no policy problem reported", form.name)
+		}
+		for _, frag := range []string{`invocation "all"`, `"./vanished"`} {
+			if !strings.Contains(p.GetMessage(), frag) {
+				t.Fatalf("%s: policy problem %q does not name %q", form.name, p.GetMessage(), frag)
+			}
+		}
+		if res.GetScopePartial() {
+			t.Fatalf("%s: a record problem produced no evidence, yet the result claims scoped evidence", form.name)
+		}
+	}
+}

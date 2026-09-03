@@ -2,6 +2,7 @@ package golang
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -44,13 +45,31 @@ func TestSelectionNoticesAttributeUnwalkedSelections(t *testing.T) {
 		goInvocation("tagged", tagged),
 		goInvocation("vanilla", vanilla),
 	})
-	got := SelectionNotices(context.Background(), dir, pol)
+	got := SelectionNotices(mustCapture(t, context.Background(), dir, pol))
 	if len(got) != 1 {
 		t.Fatalf("notices = %v, want exactly the witness-eligible tagged invocation's", got)
 	}
 	for _, frag := range []string{`invocation "tagged"`, `selection "dup,race"`, "unwalked", "observation admissions are disabled"} {
 		if !strings.Contains(got[0], frag) {
 			t.Fatalf("notice %q missing %q", got[0], frag)
+		}
+	}
+	// Notices follow record order (REQ-core-determinism): several
+	// tagged invocations raise theirs in the order the record lists them.
+	var ordered []*stipulatorv1.PolicyInvocation
+	var wantOrder []string
+	for _, name := range []string{"tagged-d", "tagged-b", "tagged-a", "tagged-c"} {
+		ordered = append(ordered, goInvocation(name, tagged))
+		wantOrder = append(wantOrder, fmt.Sprintf("invocation %q", name))
+	}
+	pol.SetInvocations(ordered)
+	got = SelectionNotices(mustCapture(t, context.Background(), dir, pol))
+	if len(got) != len(wantOrder) {
+		t.Fatalf("notices = %v, want one per tagged invocation", got)
+	}
+	for i, prefix := range wantOrder {
+		if !strings.HasPrefix(got[i], prefix) {
+			t.Fatalf("notice %d = %q, want record order %v", i, got[i], wantOrder)
 		}
 	}
 }

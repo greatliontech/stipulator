@@ -113,15 +113,6 @@ bindings {
   requirement_id: "REQ-go-race"
   content_hash: "089f46b0cfbbb21a63a00ef63139cd6d310c24e9ad919d88e3a520e71f5307d0"
   backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.capturePolicy"
-  role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "bc07288391c3f47fff89044c657a263f3f20e969aeeb3d60d69e813e8643c637"
-}
-
-bindings {
-  requirement_id: "REQ-go-race"
-  content_hash: "089f46b0cfbbb21a63a00ef63139cd6d310c24e9ad919d88e3a520e71f5307d0"
-  backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesServeExecuteOutsideDisjoint"
   role: BINDING_ROLE_TESTS
   shape_hash: "9b96de75fbbd95b32e27c122ffa9ed75e2ea1dde6adaf211ff24a9ebc932f840"

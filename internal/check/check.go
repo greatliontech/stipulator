@@ -109,8 +109,16 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	// invocation. An operational fault reading the record — a permission
 	// error, not a record problem — stays an error: it says nothing about
 	// the tree.
-	pol, _, err := policy.Load(dir, map[string]policy.Backend{"go": golang.Policy{}})
-	if err != nil {
+	// The load is the operation's one capture of the accepted policy:
+	// every invocation normalized once here, and every reader below —
+	// the notices, selection, execution, the outside accounting —
+	// consults it (REQ-check-derivation). A normalization fault is the
+	// check's fault, before the verification backend opens a child.
+	// A record problem is the check's verdict, whether the loader
+	// found it or a later reader did — an invocation whose selection
+	// this tree cannot resolve is the record's fault against the tree
+	// (REQ-policy-explicit); an operational fault stays an error.
+	recordProblem := func(err error) (*stipulatorv1.CheckResult, error) {
 		if !errors.Is(err, policy.ErrRecord) {
 			return nil, err
 		}
@@ -120,12 +128,16 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		res.SetPolicyProblem(p)
 		return res, nil
 	}
+	pc, err := golang.LoadCapture(ctx, dir)
+	if err != nil {
+		return recordProblem(err)
+	}
 
 	// Policy-tier notices surface at load, attributed to the invocation
 	// that authored the condition — a degradation must be visible where
 	// it was declared, not only mid-derivation on an engine's
 	// diagnostic face. Advisory: never a verdict input.
-	res.SetPolicyNotices(golang.SelectionNotices(ctx, dir, pol))
+	res.SetPolicyNotices(golang.SelectionNotices(pc))
 
 	// The verification backend is opened before witnessing: the witness
 	// run consults its classifier for the random-seeded witnesses that
@@ -144,9 +156,9 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	var testRun *verify.TestRun
 	var report *stipulatorv1.ExecutionReport
 	if full {
-		report, testRun, err = golang.ExecutePolicyWitnessed(ctx, dir, pol, gb)
+		report, testRun, err = golang.ExecutePolicyWitnessed(ctx, pc, gb)
 		if err != nil {
-			return nil, err
+			return recordProblem(err)
 		}
 		res.SetExecution(report)
 		res.SetSuiteHealthJudged(true)
@@ -155,18 +167,18 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		if scopeErr != nil {
 			return nil, scopeErr
 		}
-		testRun, err = golang.RunWitnessesScoped(ctx, dir, pol, scope, gb)
+		testRun, err = golang.RunWitnessesScoped(ctx, pc, scope, gb)
 		if err != nil {
-			return nil, err
+			return recordProblem(err)
 		}
 		res.SetScopePartial(true)
 		res.SetScopeIds(append([]string(nil), scopeIds...))
 		res.SetTestsServed(int32(testRun.Fresh))
 		res.SetWitnessDiagnostics(testRun.Diagnostics)
 	} else {
-		testRun, err = golang.RunWitnessesPolicy(ctx, dir, pol, gb)
+		testRun, err = golang.RunWitnessesPolicy(ctx, pc, gb)
 		if err != nil {
-			return nil, err
+			return recordProblem(err)
 		}
 		res.SetTestsServed(int32(testRun.Fresh))
 		// No execution report exists to carry retained failure output on

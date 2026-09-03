@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
+	"iter"
 	"maps"
 	"os"
 	"runtime/debug"
@@ -16,6 +18,7 @@ import (
 	gofresh "github.com/greatliontech/gofresh"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
@@ -283,12 +286,62 @@ type invocationCapture struct {
 	obligations []Obligation
 }
 
-// policyCapture is the shared first pass over one accepted policy: every
-// Go invocation normalized and discovered in record order, the
-// policy-wide package selection count, and the race invocations' capture
-// groups (sorted by group key). It performs no gofresh work, so both the
-// witness recorder and the selective witness runner build on it.
-type policyCapture struct {
+// Capture is one operation's single derivation of its accepted policy:
+// every Go invocation normalized once, in record order, at construction
+// — the toolchain queries normalization pays are paid exactly once per
+// operation, whichever readers then consult it (REQ-check-derivation) —
+// and two legs derived on first demand and held for the operation's
+// life: the policy's discovery (each invocation's obligations, the
+// policy-wide selection count, the witness-eligible capture groups) and
+// the tree's obligation universe. Readers that need only the normalized
+// forms — the selection notices, the live record-identity coordinates
+// — never trigger either leg. A capture serves one operation on one
+// goroutine; it is not safe for concurrent use. It performs no gofresh
+// work, so the witness recorder, the selective witness runner, the
+// executor, and the explainer all build on it — and they share the
+// normalized forms, which discovery annotates in place (package
+// directories and closure directories): every reader of the capture
+// sees the one annotated form.
+type Capture struct {
+	dir        string
+	normalized []*NormalizedInvocation
+	discovered held[*policyDiscovery]
+	universe   held[[]Obligation]
+}
+
+// held is a derivation performed on first demand and kept for the
+// capture's life, its fault included: every later reader receives the
+// same value or the same error, so no two readers can disagree.
+type held[T any] struct {
+	done bool
+	v    T
+	err  error
+}
+
+func (h *held[T]) get(derive func() (T, error)) (T, error) {
+	if !h.done {
+		h.done = true
+		h.v, h.err = derive()
+	}
+	return h.v, h.err
+}
+
+// byName indexes the normalized forms by invocation name — names are
+// unique in an accepted policy — for readers that route a subject to
+// its covering invocation.
+func (pc *Capture) byName() map[string]*NormalizedInvocation {
+	out := make(map[string]*NormalizedInvocation, len(pc.normalized))
+	for _, n := range pc.normalized {
+		out[n.Name] = n
+	}
+	return out
+}
+
+// policyDiscovery is a capture's discovered leg: every invocation with
+// its obligations in record order, the policy-wide package selection
+// count, and the witness-eligible invocations' capture groups (sorted
+// by group key).
+type policyDiscovery struct {
 	invocations []invocationCapture
 	// globalCount counts, per package, the invocations selecting it — race
 	// or not, in any group. A package selected by more than one invocation
@@ -303,6 +356,47 @@ type policyCapture struct {
 	invGroup map[string]*captureGroup
 }
 
+// CapturePolicy normalizes every Go invocation of the accepted policy
+// once, in record order, into the operation's capture. A normalization
+// fault is the operation's fault: nothing downstream can derive without
+// the invocation's effective environment.
+func CapturePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (*Capture, error) {
+	pc := &Capture{dir: dir}
+	for _, inv := range p.GetInvocations() {
+		if inv.GetGo() == nil {
+			continue
+		}
+		n, err := NormalizeInvocation(ctx, dir, inv)
+		if err != nil {
+			return nil, err
+		}
+		pc.normalized = append(pc.normalized, n)
+	}
+	return pc, nil
+}
+
+// LoadCapture loads the tree's accepted policy record and captures it:
+// the one entry every operation that consumes the policy takes. A
+// record fault carries policy.ErrRecord for the caller's disposition;
+// a normalization fault is the operation's.
+func LoadCapture(ctx context.Context, dir string) (*Capture, error) {
+	p, _, err := policy.Load(dir, map[string]policy.Backend{"go": Policy{}})
+	if err != nil {
+		return nil, err
+	}
+	return CapturePolicy(ctx, dir, p)
+}
+
+// ObligationUniverse is the tree's complete obligation universe —
+// every workspace member's "./..." under the tree's default build
+// selection — discovered on the first call and held: an operation's
+// selection, execution, and outside-policy accounting all read the
+// one universe. A fault, cancellation included, is held with it; ctx
+// binds the first call only.
+func (pc *Capture) ObligationUniverse(ctx context.Context) ([]Obligation, error) {
+	return pc.universe.get(func() ([]Obligation, error) { return discoverUniverse(ctx, pc.dir) })
+}
+
 // classifySeeded resolves, over every capture group's subjects, which
 // must execute every run — random-seeded witnesses
 // (REQ-go-witness-class's seeded form) and unclassifiable subjects —
@@ -311,7 +405,7 @@ type policyCapture struct {
 // (REQ-evidence-witness-freshness). One classifier call answers the
 // whole policy; a classification fault is returned for the caller to
 // fail closed on.
-func classifySeeded(pc *policyCapture, seeding verify.WitnessSeeding) error {
+func classifySeeded(pc *policyDiscovery, seeding verify.WitnessSeeding) error {
 	var symbols []string
 	seen := map[string]bool{}
 	for _, g := range pc.groups {
@@ -533,19 +627,11 @@ func sortedCopy(values []string) []string {
 // LiveGroupDigests names the record-identity coordinates the current
 // policy can still address, for the store GC's cross-coordinate
 // eviction: a coordinate no invocation produces is retired, and its
-// records are cost no lookup will ever serve. A normalization fault
-// returns nil — the caller keeps every coordinate, because cost cleanup
-// must never guess.
-func LiveGroupDigests(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) map[string]bool {
+// records are cost no lookup will ever serve. Read from the capture's
+// normalized forms alone — no discovery, no toolchain query.
+func LiveGroupDigests(pc *Capture) map[string]bool {
 	out := map[string]bool{}
-	for _, inv := range p.GetInvocations() {
-		if inv.GetGo() == nil {
-			continue
-		}
-		n, err := NormalizeInvocation(ctx, dir, inv)
-		if err != nil {
-			return nil
-		}
+	for _, n := range pc.normalized {
 		out[groupDigest(groupIdentity(n))] = true
 	}
 	return out
@@ -568,23 +654,50 @@ func canonicalExclusions(paths []string) []string {
 	return slices.Compact(out)
 }
 
-// capturePolicy normalizes and discovers every Go invocation of the
-// policy and folds the witness-eligible ones (race-enabled, plus
-// explicit plain-witness admissions) into capture groups, each carrying
-// its tier.
-func capturePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (*policyCapture, error) {
-	pc := &policyCapture{globalCount: map[string]int{}, invGroup: map[string]*captureGroup{}}
+// discover is the capture's discovered leg, derived on the first call
+// and held: every invocation's obligations, the policy-wide selection
+// count, and the witness-eligible invocations (race-enabled, plus
+// explicit plain-witness admissions) folded into capture groups, each
+// carrying its tier. A fault, cancellation included, is held with it;
+// ctx binds the first call only.
+func (pc *Capture) discover(ctx context.Context) (*policyDiscovery, error) {
+	return pc.discovered.get(func() (*policyDiscovery, error) { return discoverPolicy(ctx, pc.normalized) })
+}
+
+// populatedGroups walks the capture groups that own at least one
+// publishable subject, each with its subjects in deterministic order —
+// the groups an engine is worth building for.
+func (d *policyDiscovery) populatedGroups() iter.Seq2[*captureGroup, []gofresh.Subject] {
+	return func(yield func(*captureGroup, []gofresh.Subject) bool) {
+		for _, g := range d.groups {
+			subjects := groupSubjects(g)
+			if len(subjects) == 0 {
+				continue
+			}
+			if !yield(g, subjects) {
+				return
+			}
+		}
+	}
+}
+
+func discoverPolicy(ctx context.Context, normalized []*NormalizedInvocation) (*policyDiscovery, error) {
+	pc := &policyDiscovery{globalCount: map[string]int{}, invGroup: map[string]*captureGroup{}}
 	var entries []invocationCapture
-	for _, inv := range p.GetInvocations() {
-		if inv.GetGo() == nil {
-			continue
-		}
-		n, err := NormalizeInvocation(ctx, dir, inv)
-		if err != nil {
-			return nil, err
-		}
+	for _, n := range normalized {
 		obligations, err := DiscoverInvocation(ctx, n)
 		if err != nil {
+			// Attributed to the invocation: the fault reaches every
+			// reader of the capture — as the recorder's degraded
+			// reason, as the run's error — far from the record line
+			// that named the selection. A selection the tree cannot
+			// honor is the record's problem, the check's verdict
+			// (REQ-policy-explicit); this walk is the record's, so the
+			// class is decided here and only here.
+			err = fmt.Errorf("discovering invocation %q: %w", n.Name, err)
+			if errors.As(err, new(unresolvedSelection)) {
+				err = policy.RecordError(err)
+			}
 			return nil, err
 		}
 		ic := invocationCapture{n: n, obligations: obligations}
@@ -765,7 +878,8 @@ func emitEngineDiagnostic(p gofresh.Progress) {
 // abort (REQ-evidence-toolchain-provenance; classifyFault), because
 // the refused frontend also discovered and selected the suite the
 // degraded run would execute.
-func NewWitnessRecorder(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, seeding verify.WitnessSeeding) (*WitnessRecorder, error) {
+func NewWitnessRecorder(ctx context.Context, pc *Capture, seeding verify.WitnessSeeding) (*WitnessRecorder, error) {
+	dir := pc.dir
 	r := &WitnessRecorder{dir: dir}
 	degrade := func(err error) (*WitnessRecorder, error) {
 		abort, reason := classifyFault(err)
@@ -776,25 +890,21 @@ func NewWitnessRecorder(ctx context.Context, dir string, p *stipulatorv1.TestPol
 		r.groups = nil
 		return r, nil
 	}
-	pc, err := capturePolicy(ctx, dir, p)
+	d, err := pc.discover(ctx)
 	if err != nil {
 		return degrade(err)
 	}
 	// A seeding-classification fault degrades the run exactly as an
 	// engine fault does: nothing publishes, so nothing can later serve
 	// a witness the fault left unclassified (fail closed).
-	if err := classifySeeded(pc, seeding); err != nil {
+	if err := classifySeeded(d, seeding); err != nil {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
 		r.degraded = err.Error()
 		return r, nil
 	}
-	for _, g := range pc.groups {
-		subjects := groupSubjects(g)
-		if len(subjects) == 0 {
-			continue
-		}
+	for g, subjects := range d.populatedGroups() {
 		engine, err := groupEngine(ctx, dir, g)
 		if err != nil {
 			return degrade(err)
@@ -1114,19 +1224,19 @@ func compactRegs(regs []verify.Registration) []verify.Registration {
 // tree that compiled the binaries, and per-test records publish only
 // after source and runtime producer validation. Caller cancellation
 // anywhere discards the whole result.
-func ExecutePolicyWitnessed(ctx context.Context, dir string, p *stipulatorv1.TestPolicy, seeding verify.WitnessSeeding) (*stipulatorv1.ExecutionReport, *verify.TestRun, error) {
+func ExecutePolicyWitnessed(ctx context.Context, pc *Capture, seeding verify.WitnessSeeding) (*stipulatorv1.ExecutionReport, *verify.TestRun, error) {
 	rep := progress.FromContext(ctx)
-	// Pre-execution capture normalizes and discovers the policy's
-	// invocations for itself: discovery-phase work.
+	// The pre-execution recorder derives the capture's discovered leg:
+	// discovery-phase work.
 	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
-	recorder, err := NewWitnessRecorder(ctx, dir, p, seeding)
+	recorder, err := NewWitnessRecorder(ctx, pc, seeding)
 	if err != nil {
 		// A toolchain-provenance refusal aborts before the suite runs:
 		// the refused frontend discovered and selected it
 		// (REQ-evidence-toolchain-provenance).
 		return nil, nil, err
 	}
-	report, observations, err := ExecutePolicy(ctx, dir, p)
+	report, observations, err := ExecutePolicy(ctx, pc)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1142,7 +1252,11 @@ func ExecutePolicyWitnessed(ctx context.Context, dir string, p *stipulatorv1.Tes
 	// granted a witness outcome, and an expected witness no invocation
 	// executed cannot either - both are outside, counted and marked
 	// exactly as the selective form counts them
-	// (REQ-check-witness-selection). Universe discovery degrades
+	// (REQ-check-witness-selection). The universe is the one the
+	// execution itself selected against — the capture's, discovered
+	// before the suite ran: a test the run could only have created
+	// mid-execution predates no policy, and a source edit mid-run
+	// discards the run's records anyway. A universe fault degrades
 	// silently: without it only executed subjects classify.
 	facts := indexInvocations(report)
 	eligibleCovered := map[string]bool{}
@@ -1165,7 +1279,7 @@ func ExecutePolicyWitnessed(ctx context.Context, dir string, p *stipulatorv1.Tes
 			outsideSubjects[key] = true
 		}
 	}
-	if universe, uerr := discoverUniverse(ctx, dir); uerr == nil {
+	if universe, uerr := pc.ObligationUniverse(ctx); uerr == nil {
 		for _, o := range universe {
 			if o.Kind != ObligationTest && o.Kind != ObligationFuzz {
 				continue

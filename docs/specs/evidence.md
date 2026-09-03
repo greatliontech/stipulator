@@ -559,7 +559,10 @@ review rather than aborted by an inherited ceiling — never an assumed
 universal invocation. No toolchain-implicit time bound survives the
 accepted record: the record's envelope and its reviewed arguments are the
 only sources of execution bounds, so an inherited default can never abort
-work the record admitted.
+work the record admitted. A record is invalid against a tree that cannot
+honor an invocation's selection — a package pattern the tree resolves to
+no package — and the check fails as it fails for a missing or invalid
+record, naming the invocation and the pattern.
 
 **REQ-policy-budget-attribution** (behavior): A package run ended by an
 execution bound MUST attribute the red to the exhausted budget: the

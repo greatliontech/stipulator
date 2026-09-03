@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/doc"
 	"go/parser"
 	"go/token"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -97,9 +99,6 @@ func DiscoverInvocation(ctx context.Context, n *NormalizedInvocation) ([]Obligat
 	}
 	for _, p := range pkgs {
 		add(Obligation{Kind: ObligationPackage, Package: p.ImportPath})
-		if p.Dir == "" {
-			continue
-		}
 		files := make([]string, 0, len(p.TestGoFiles)+len(p.XTestGoFiles))
 		files = append(files, p.TestGoFiles...)
 		files = append(files, p.XTestGoFiles...)
@@ -153,12 +152,75 @@ type listedPackage struct {
 	Dir          string
 	TestGoFiles  []string
 	XTestGoFiles []string
+	Error        *listError
 }
+
+// listError is the listing's per-entry fault under `-e`: a pattern
+// that resolved to no directory carries one, and so does a real package
+// whose load failed — the latter keeps its directory and stays an
+// obligation whose build failure execution observes.
+type listError struct {
+	Err string
+}
+
+// unresolvedSelection is a selection this tree cannot honor — a pattern
+// resolving to no package — as distinct from an operational fault the
+// listing met while resolving it. The policy walk marks it the record's
+// problem; the baseline universe walk, which selects nothing the record
+// authored, leaves it a fault of the walk.
+type unresolvedSelection struct{ err error }
+
+func (e unresolvedSelection) Error() string { return e.err.Error() }
+func (e unresolvedSelection) Unwrap() error { return e.err }
+
+// resolutionFault classifies a directory-less listing entry: the folded
+// one-line cause, and whether the tree demonstrably lacks what the
+// pattern names — an import path the build list provides no module for
+// (the toolchain's terminal answer under module lookup, or its
+// vendor-mode answer, where lookup is disabled by the record's own
+// choice), or a "./" pattern whose directory does not exist under the
+// invocation's module root ("." always resolves; a pattern leaving the
+// root is refused at policy acceptance). Fail-safe: any other cause is
+// operational and says nothing about the record — a permission denial,
+// an I/O fault, a lookup the toolchain could not perform (GOPROXY=off, a
+// failed fetch: the tree is not shown to lack the package, the toolchain
+// could not look), and an entry carrying no cause at all.
+func resolutionFault(n *NormalizedInvocation, p listedPackage) (why string, unresolved bool) {
+	if p.Error == nil || p.Error.Err == "" {
+		return "matched no packages", false
+	}
+	why = strings.Join(strings.Fields(p.Error.Err), " ")
+	if strings.HasPrefix(why, unprovidedPackagePrefix) {
+		return why, true
+	}
+	if strings.HasPrefix(why, unfoundPackagePrefix) && strings.HasSuffix(why, vendorLookupDisabledSuffix) {
+		return why, true
+	}
+	if strings.HasPrefix(p.ImportPath, "./") {
+		base := strings.TrimSuffix(p.ImportPath, "/...")
+		if _, err := os.Stat(filepath.Join(n.Dir, filepath.FromSlash(base))); errors.Is(err, fs.ErrNotExist) {
+			return why, true
+		}
+	}
+	return why, false
+}
+
+// The go command's own words for an import path it cannot resolve — a
+// string contract against the toolchain, pinned by the discovery tests
+// under module lookup, vendor mode, and a disabled proxy. The
+// "cannot find" phrasing alone is not evidence: it also opens every
+// lookup the toolchain could not perform, so only its vendor-mode
+// reason — lookup disabled by the record's own choice — counts.
+const (
+	unprovidedPackagePrefix    = "no required module provides package "
+	unfoundPackagePrefix       = "cannot find module providing package "
+	vendorLookupDisabledSuffix = ": import lookup disabled by -mod=vendor"
+)
 
 // listPackages lists the invocation's selected packages under its build
 // selection through an owned, cancellable process boundary.
 func listPackages(ctx context.Context, n *NormalizedInvocation) ([]listedPackage, error) {
-	args := []string{"list", "-e", "-json=ImportPath,Dir,TestGoFiles,XTestGoFiles"}
+	args := []string{"list", "-e", "-json=ImportPath,Dir,TestGoFiles,XTestGoFiles,Error"}
 	if tags := selectionTags(n); len(tags) > 0 {
 		args = append(args, "-tags="+strings.Join(tags, ","))
 	}
@@ -185,15 +247,35 @@ func listPackages(ctx context.Context, n *NormalizedInvocation) ([]listedPackage
 		if err := dec.Decode(&p); err != nil {
 			return nil, fmt.Errorf("parsing go list output for %q: %w", n.Name, err)
 		}
-		if p.ImportPath != "" {
-			pkgs = append(pkgs, p)
+		if p.ImportPath == "" {
+			continue
 		}
+		// Under -e an entry the listing could not resolve to a directory
+		// is still listed, named by the raw pattern. It is no obligation:
+		// executing it would fail as "matched no packages" under the
+		// invocation's health, far from the record line that authored
+		// the pattern, so the listing refuses here — typed as the
+		// selection's fault when the tree demonstrably lacks what the
+		// pattern names, and left an operational fault otherwise.
+		if p.Dir == "" {
+			why, unresolved := resolutionFault(n, p)
+			err := fmt.Errorf("invocation %q: %q %s", n.Name, p.ImportPath, why)
+			if unresolved {
+				return nil, unresolvedSelection{err}
+			}
+			return nil, err
+		}
+		pkgs = append(pkgs, p)
 	}
 	if len(pkgs) == 0 {
 		if runErr != nil {
 			return nil, fmt.Errorf("go list for invocation %q: %v: %s", n.Name, runErr, stderr.String())
 		}
-		return nil, fmt.Errorf("invocation %q selects no packages", n.Name)
+		// The listing ran clean and matched nothing — a directory that
+		// survives with no Go files, a tag selection excluding every
+		// file: the tree demonstrably lacks what the patterns name, the
+		// same fault as a single unresolved pattern, typed the same.
+		return nil, unresolvedSelection{fmt.Errorf("invocation %q: %q matched no packages", n.Name, n.Packages)}
 	}
 	return pkgs, nil
 }

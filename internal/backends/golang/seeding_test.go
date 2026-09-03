@@ -165,7 +165,7 @@ func TestClassifySeededAttributesEveryRefusal(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness")
 	s := gofresh.Subject{Package: "example.com/m", Symbol: "TestX"}
 	g := &captureGroup{tests: map[string][]string{"example.com/m": {"TestX"}}}
-	pc := &policyCapture{groups: []*captureGroup{g}}
+	pc := &policyDiscovery{groups: []*captureGroup{g}}
 	if err := classifySeeded(pc, emptyReasonSeeding{}); err != nil {
 		t.Fatal(err)
 	}
@@ -332,7 +332,7 @@ func TestExecutePolicyWitnessedSeedingFaultFailsClosed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	report, tr, err := ExecutePolicyWitnessed(context.Background(), tmp, p, faultingSeeding{})
+	report, tr, err := ExecutePolicyWitnessed(context.Background(), mustCapture(t, context.Background(), tmp, p), faultingSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -371,7 +371,7 @@ func TestExecutePolicyWitnessedRandomSeededNeverPublishes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	report, tr, err := ExecutePolicyWitnessed(context.Background(), tmp, p, seeding)
+	report, tr, err := ExecutePolicyWitnessed(context.Background(), mustCapture(t, context.Background(), tmp, p), seeding)
 	if err != nil {
 		t.Fatal(err)
 	}

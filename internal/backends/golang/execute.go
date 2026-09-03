@@ -984,28 +984,26 @@ func (f writerFunc) Write(p []byte) (int, error) { return f(p) }
 // bounded per package — so each invocation's envelope bounds only its own
 // span and the policy's wall time is the sum of what its invocations
 // spend, bounded overall only by the caller's context.
-func ExecutePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (*stipulatorv1.ExecutionReport, []*ProcessObservation, error) {
+func ExecutePolicy(ctx context.Context, pc *Capture) (*stipulatorv1.ExecutionReport, []*ProcessObservation, error) {
 	rep := progress.FromContext(ctx)
 	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
-	universe, err := discoverUniverse(ctx, dir)
+	universe, err := pc.ObligationUniverse(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
-	discovered, err := discoverInvocations(ctx, dir, p)
+	d, err := pc.discover(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
 	rep.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
 	var (
-		selections   []InvocationSelection
 		invocations  []*stipulatorv1.InvocationHealth
 		tests        []*stipulatorv1.TestResult
 		diags        []*stipulatorv1.FailureDiagnostic
 		observations []*ProcessObservation
 	)
-	for _, d := range discovered {
-		selections = append(selections, d.selection)
-		health, invTests, invDiags, invObs, err := ExecuteInvocation(ctx, d.normalized, d.selection.Obligations)
+	for _, ic := range d.invocations {
+		health, invTests, invDiags, invObs, err := ExecuteInvocation(ctx, ic.n, ic.obligations)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1020,7 +1018,7 @@ func ExecutePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) 
 	report := &stipulatorv1.ExecutionReport{}
 	report.SetInvocations(invocations)
 	report.SetTests(tests)
-	report.SetObligations(PartitionReports(universe, selections))
+	report.SetObligations(PartitionReports(universe, d.selections()))
 	report.SetDiagnostics(diags)
 	wire := make([]*stipulatorv1.Observation, len(observations))
 	for i, o := range observations {
