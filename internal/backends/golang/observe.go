@@ -142,12 +142,10 @@ func observeProcess(ctx context.Context, n *NormalizedInvocation, pkg string, pr
 		Identity:         processIdentity(n, producer, pkg),
 		Env:              witnessProcessEnv(n, frame),
 		IncompleteReason: callerReason,
-		Roots: runtimeinput.ClassificationRoots{
-			Toolchain:     n.ToolchainRoot,
-			ModuleCache:   n.ModuleCacheRoot,
-			BuildCache:    n.BuildCacheRoot,
-			EphemeralTemp: n.TempRoot,
-		},
+		// The classification roots — toolchain, module cache, build
+		// cache, temp — are the facade's to resolve from this very
+		// environment; a declaration could only restate or contradict
+		// them.
 		ExcludedPaths: n.ExcludedPaths,
 	})
 	if err != nil {

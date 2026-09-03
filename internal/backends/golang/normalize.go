@@ -6,7 +6,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -58,17 +57,6 @@ type NormalizedInvocation struct {
 	// downgrade is recorded on every witness it grants (the run-attribute
 	// race flag reads false).
 	PlainWitness bool
-	// ToolchainRoot and ModuleCacheRoot are the effective GOROOT and
-	// GOMODCACHE: guard-covered observation roots — reads under them are
-	// already pinned by the toolchain and build-config guards.
-	ToolchainRoot   string
-	ModuleCacheRoot string
-	// BuildCacheRoot is the effective GOCACHE (guard-covered on
-	// toolchain-mediated observational equivalence) and TempRoot the
-	// producing environment's temp directory (ephemeral, identity-only
-	// admission).
-	BuildCacheRoot string
-	TempRoot       string
 	// BracketPaths are the invocation's reviewed extra observation-bracket
 	// roots - process images and fixed external files its tests consume -
 	// validated to clean absolute or tree-relative slash form.
@@ -288,7 +276,7 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		env = setEnv(env, "GOFLAGS", cfg.GetGoflags())
 	}
 
-	version, goos, goarch, cgo, goflags, goexperiment, goroot, gomodcache, gocache, err := effectiveGoEnv(ctx, n.Dir, env)
+	version, goos, goarch, cgo, goflags, goexperiment, _, gomodcache, gocache, err := effectiveGoEnv(ctx, n.Dir, env)
 	if err != nil {
 		return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
 	}
@@ -338,20 +326,6 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		env = setEnv(env, "GOCACHE", gocache)
 	}
 	n.Env = env
-	// The toolchain and module-cache roots feed the guard-covered
-	// observation classification: the toolchain guard pins the toolchain
-	// root's contents, and module trees are pinned by version-addressed
-	// immutability, so reads under either must not seal witnesses
-	// unverifiable. gofresh refuses non-clean or relative roots outright -
-	// and a refused option would disable publication wholesale - so an
-	// unusable ambient value degrades to the unguarded posture instead.
-	n.ToolchainRoot = usableGuardRoot(goroot)
-	n.ModuleCacheRoot = usableGuardRoot(gomodcache)
-	n.BuildCacheRoot = usableGuardRoot(gocache)
-	// The interiority check runs against the verification tree root, not
-	// the module directory: observation refuses a root inside the TREE,
-	// and with module_root set the tree is a strict ancestor of n.Dir.
-	n.TempRoot = usableTempRoot(tempRootFromEnv(env), treeRoot(n))
 	for _, p := range cfg.GetBracketPaths() {
 		if err := validateBracketPath(p); err != nil {
 			return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
@@ -485,28 +459,6 @@ func validateBracketPath(p string) error {
 	return nil
 }
 
-// usableGuardRoot returns root cleaned when it can serve as a guard root,
-// and "" - the option-skipped posture - when it cannot: absence of a
-// guard costs re-execution, never a failed observation. A ".." component
-// is refused outright rather than cleaned: lexical elimination across a
-// symlink can rebind the path to an unrelated directory no guard pins -
-// the one direction this class must never risk.
-func usableGuardRoot(root string) string {
-	if root == "" {
-		return ""
-	}
-	for _, seg := range strings.Split(filepath.ToSlash(root), "/") {
-		if seg == ".." {
-			return ""
-		}
-	}
-	cleaned := filepath.Clean(root)
-	if !filepath.IsAbs(cleaned) {
-		return ""
-	}
-	return cleaned
-}
-
 // effectiveGoEnv queries the exec'd toolchain for the pin-at-load values in
 // one owned, cancellable subprocess.
 func effectiveGoEnv(ctx context.Context, dir string, env []string) (version, goos, goarch, cgo, goflags, goexperiment, goroot, gomodcache, gocache string, err error) {
@@ -585,49 +537,6 @@ func lookupEnv(env []string, key string) (string, bool) {
 		}
 	}
 	return "", false
-}
-
-// tempRootFromEnv resolves the producing environment's temp root the
-// way the child's os.TempDir will: TMPDIR when set, the platform
-// default otherwise. Windows children ignore TMPDIR (GetTempPath is
-// per-process), and plan9 stays undeclared as a conservative
-// cost-only posture, so no root is declared on either. The value is
-// returned raw — cleaning happens in usableGuardRoot, whose ".."
-// refusal must see the original components.
-func tempRootFromEnv(env []string) string {
-	if runtime.GOOS == "windows" || runtime.GOOS == "plan9" {
-		return ""
-	}
-	for _, kv := range env {
-		if v, ok := strings.CutPrefix(kv, "TMPDIR="); ok && v != "" {
-			return v
-		}
-	}
-	if runtime.GOOS == "android" {
-		return "/data/local/tmp"
-	}
-	return "/tmp"
-}
-
-// usableTempRoot additionally degrades a temp root lying inside the
-// verification tree — declared or resolved form — to the unguarded
-// posture: gofresh refuses a module-interior ephemeral root loudly,
-// which would disable witness publication wholesale, while absence of
-// the root only costs re-execution.
-func usableTempRoot(root, treeRoot string) string {
-	root = usableGuardRoot(root)
-	if root == "" {
-		return ""
-	}
-	sep := string(filepath.Separator)
-	for _, form := range []string{root, resolveOrSelf(root)} {
-		for _, tree := range []string{treeRoot, resolveOrSelf(treeRoot)} {
-			if form == tree || strings.HasPrefix(form, tree+sep) {
-				return ""
-			}
-		}
-	}
-	return root
 }
 
 // resolveOrSelf resolves symlinks when the path resolves at all, and

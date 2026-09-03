@@ -805,32 +805,30 @@ func TestGoExecuteRefusesPostTerminalEvents(t *testing.T) {
 	}
 }
 
-// Each classification-root declaration reaches the facade's ingest: a
-// read under a declared root binds (guard-covered, or the ephemeral
-// root's identity-only admission), while the same read with the root
-// undeclared seals per-identity unverifiable — so a completed
-// observation's digest is present exactly when the declaration
-// forwarded.
+// Each classification root the witness environment carries reaches the
+// facade's ingest, which resolves it from that environment: a read
+// under the environment's root binds (guard-covered, or the ephemeral
+// root's identity-only admission), while the same read under an
+// environment naming another root seals per-identity unverifiable — so
+// a completed observation's digest is present exactly when the
+// environment carried the root. The toolchain root is not carried: it
+// is what the pinned toolchain reports, the facade's own resolution.
 func TestGoObserveProcessForwardsClassificationRoots(t *testing.T) {
 	stipulate.Covers(t, "REQ-policy-attribution")
 	for name, tc := range map[string]struct {
 		declare func(n *NormalizedInvocation, root string)
 		read    func(root string) string
 	}{
-		"toolchain root": {
-			declare: func(n *NormalizedInvocation, root string) { n.ToolchainRoot = root },
-			read:    func(root string) string { return filepath.Join(root, "VERSION") },
-		},
 		"module cache root": {
-			declare: func(n *NormalizedInvocation, root string) { n.ModuleCacheRoot = root },
+			declare: func(n *NormalizedInvocation, root string) { n.WitnessEnv = setEnv(n.WitnessEnv, "GOMODCACHE", root) },
 			read:    func(root string) string { return filepath.Join(root, "example.com", "dep@v1.0.0", "dep.go") },
 		},
 		"build cache root": {
-			declare: func(n *NormalizedInvocation, root string) { n.BuildCacheRoot = root },
+			declare: func(n *NormalizedInvocation, root string) { n.WitnessEnv = setEnv(n.WitnessEnv, "GOCACHE", root) },
 			read:    func(root string) string { return filepath.Join(root, "aa", "object") },
 		},
 		"ephemeral temp root": {
-			declare: func(n *NormalizedInvocation, root string) { n.TempRoot = root },
+			declare: func(n *NormalizedInvocation, root string) { n.WitnessEnv = setEnv(n.WitnessEnv, "TMPDIR", root) },
 			read:    func(root string) string { return root },
 		},
 	} {
@@ -870,11 +868,17 @@ func TestGoObserveProcessForwardsClassificationRoots(t *testing.T) {
 				return observeProcess(context.Background(), n, "example.com/m/pkg", producer, st, nil,
 					stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY, logPath, frame)
 			}
+			// The witness environment names roots elsewhere — a home of
+			// its own, a temp root of its own — so the undeclared run's
+			// read lies under none of them.
+			elsewhere := t.TempDir()
 			base := func() *NormalizedInvocation {
+				env := setEnv(setEnv(setEnv(nil, "GOENV", "off"), "HOME", elsewhere), "TMPDIR", filepath.Join(elsewhere, "tmp"))
 				return &NormalizedInvocation{
 					Name:           "roots",
 					Dir:            dir,
-					Env:            []string{"HOME=" + t.TempDir()},
+					Env:            env,
+					WitnessEnv:     env,
 					PkgDirs:        map[string]string{"example.com/m/pkg": pkgDir},
 					PkgClosureDirs: map[string][]string{"example.com/m/pkg": {}},
 				}
@@ -896,6 +900,64 @@ func TestGoObserveProcessForwardsClassificationRoots(t *testing.T) {
 				t.Fatalf("the %s declaration did not reach the facade's ingest: the read sealed unverifiable", name)
 			}
 		})
+	}
+}
+
+// A temp root inside the verification tree declares nothing even when
+// the invocation's module root is a nested member: the frame is
+// captured over the TREE, of which the module directory is a strict
+// descendant, so the facade's interiority rule sees the tree and a read
+// under such a TMPDIR stays observed — while the same read under a
+// TMPDIR outside the tree admits (REQ-evidence-witness-freshness).
+func TestGoObserveProcessKeepsATreeInteriorTempRootObserved(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	tree := t.TempDir()
+	moduleDir := filepath.Join(tree, "sub")
+	pkgDir := filepath.Join(moduleDir, "pkg")
+	for path, content := range map[string]string{
+		filepath.Join(moduleDir, "go.mod"): "module example.com/m\n\ngo 1.24\n",
+		filepath.Join(pkgDir, "pkg.go"):    "package pkg\n",
+	} {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	observe := func(tmp string) *ProcessObservation {
+		// The root exists, as a temp root does: an absent deeper read
+		// admits only under an existing root.
+		if err := os.MkdirAll(tmp, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		env := setEnv(setEnv(setEnv(nil, "GOENV", "off"), "HOME", t.TempDir()), "TMPDIR", tmp)
+		n := &NormalizedInvocation{
+			Name: "interior", Dir: moduleDir, ModuleRoot: "sub", Env: env, WitnessEnv: env,
+			PkgDirs:        map[string]string{"example.com/m/pkg": pkgDir},
+			PkgClosureDirs: map[string][]string{"example.com/m/pkg": {}},
+		}
+		logPath := filepath.Join(t.TempDir(), "interior.testlog")
+		if err := os.WriteFile(logPath, []byte("# test log\nopen "+filepath.Join(tmp, "sub", "x")+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		frame := captureObservationFrame(context.Background(), n, "example.com/m/pkg")
+		st := &streamState{terminal: "pass", started: map[string]bool{}}
+		producer := &stipulatorv1.ProducerIdentity{}
+		producer.SetInvocation(n.Name)
+		return observeProcess(context.Background(), n, "example.com/m/pkg", producer, st, nil,
+			stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY, logPath, frame)
+	}
+	outside := observe(filepath.Join(t.TempDir(), "tmp"))
+	if outside.Wire.GetCompleted() == nil || outside.Wire.GetCompleted().GetDigest() == "" {
+		t.Fatalf("an absent read under an outside temp root did not admit: %q", outside.Wire.GetIncompleteReason())
+	}
+	interior := observe(filepath.Join(tree, ".tmp"))
+	if interior.Wire.GetCompleted() == nil {
+		t.Fatalf("interior run incomplete: %q", interior.Wire.GetIncompleteReason())
+	}
+	if interior.Wire.GetCompleted().GetDigest() != "" {
+		t.Fatal("a temp root inside the tree, outside the module directory, admitted a read: the frame was captured over the module directory, not the tree")
 	}
 }
 
