@@ -382,56 +382,193 @@ type AttestationResult struct {
 	ContentPinned bool
 }
 
+// Hygiene judges the record-only half of verification — every problem
+// the records carry against the compiled corpus alone: duplicate,
+// malformed, or out-of-corpus bindings; attestations without a
+// requirement or reason, duplicated, out of the corpus, or
+// contradicting a gap; gaps without a requirement, reason, or landing
+// condition, duplicated, or out of the corpus. It needs no backend and no witness, so an
+// operation refuses on it before any child process
+// (REQ-check-preparation); Run reports the same problems from the same
+// judgment, beside the resolved rows.
+func Hygiene(spec *stipulatorv1.Spec, store *records.Store) []Problem {
+	judge := newHygiene(spec, store)
+	var out []Problem
+	for _, bf := range store.Bindings {
+		for _, b := range bf.Set.GetBindings() {
+			problems, _ := judge.binding(bf.Path, b)
+			out = append(out, problems...)
+		}
+	}
+	for _, af := range store.Attestations {
+		for _, a := range af.Set.GetAttestations() {
+			problems, _ := judge.attestation(af.Path, a)
+			out = append(out, problems...)
+		}
+	}
+	for _, gf := range store.Gaps {
+		out = append(out, judge.gap(gf.Path, gf.Gap)...)
+	}
+	sortProblems(out)
+	return out
+}
+
+// sortProblems orders problems by path then message, the one order
+// every reporter renders.
+func sortProblems(problems []Problem) {
+	sort.Slice(problems, func(i, j int) bool {
+		a, b := problems[i], problems[j]
+		if a.Path != b.Path {
+			return a.Path < b.Path
+		}
+		return a.Message < b.Message
+	})
+}
+
+// hygiene is the record-only judgment, one instance per pass: it
+// remembers every claim seen so a duplicate is named on its second
+// appearance, and the gapped requirements so an attestation
+// contradicting a gap is named.
+type hygiene struct {
+	hashes   map[string]string
+	seen     map[string]bool
+	gapped   map[string]bool
+	attested map[string]string
+	seenGaps map[string]string
+}
+
+func newHygiene(spec *stipulatorv1.Spec, store *records.Store) *hygiene {
+	j := &hygiene{hashes: map[string]string{}, seen: map[string]bool{}, gapped: map[string]bool{}, attested: map[string]string{}, seenGaps: map[string]string{}}
+	for _, r := range spec.GetRequirements() {
+		j.hashes[r.GetId()] = r.GetContentHash()
+	}
+	for _, gf := range store.Gaps {
+		j.gapped[gf.Gap.GetRequirementId()] = true
+	}
+	return j
+}
+
+// binding judges one claim: its problems, and whether it is malformed —
+// unresolvable by any backend, so verification skips it.
+func (j *hygiene) binding(path string, b *stipulatorv1.Binding) (problems []Problem, malformed bool) {
+	problem := func(format string, args ...any) {
+		problems = append(problems, Problem{Path: path, Message: fmt.Sprintf(format, args...)})
+	}
+	id := b.GetRequirementId()
+	key := id + "|" + b.GetBackend() + "|" + b.GetSymbol() + "|" + b.GetRole().String()
+	if j.seen[key] {
+		problem("duplicate binding: %s %s %s", id, b.GetSymbol(), b.GetRole())
+	}
+	j.seen[key] = true
+	if id == "" {
+		problem("binding without requirement_id")
+		malformed = true
+	}
+	if b.GetBackend() == "" {
+		problem("binding for %s has no backend", id)
+		malformed = true
+	}
+	if b.GetSymbol() == "" {
+		problem("binding for %s has no symbol", id)
+		malformed = true
+	}
+	if b.GetRole() == stipulatorv1.BindingRole_BINDING_ROLE_UNSPECIFIED {
+		problem("binding for %s has no role", id)
+		malformed = true
+	}
+	if _, known := j.hashes[id]; id != "" && !known {
+		problem("binding names %s, which is not in the corpus — unbind it: stipulator unbind --req %s (or stipulator dispose retire --id %s if the requirement was removed deliberately)", id, id, id)
+		malformed = true
+	}
+	return problems, malformed
+}
+
+// attestation judges one judgment record: its problems, and whether it
+// stands — a standing attestation is the one judgment for its
+// requirement.
+func (j *hygiene) attestation(path string, a *stipulatorv1.RequirementAttestation) (problems []Problem, stands bool) {
+	problem := func(format string, args ...any) {
+		problems = append(problems, Problem{Path: path, Message: fmt.Sprintf(format, args...)})
+	}
+	id := a.GetRequirementId()
+	switch {
+	case id == "":
+		problem("attestation without requirement_id")
+		return problems, false
+	case a.GetReason() == "":
+		problem("attestation for %s has no reason", id)
+		return problems, false
+	}
+	if prior, dup := j.attested[id]; dup {
+		problem("attestation for %s duplicates %s; one judgment per requirement", id, prior)
+		return problems, false
+	}
+	j.attested[id] = path
+	if _, known := j.hashes[id]; !known {
+		problem("attestation names %s, which is not in the corpus — retract it: stipulator attest requirement --req %s --retract", id, id)
+		return problems, false
+	}
+	if j.gapped[id] {
+		// Deferred and judged-satisfied contradict: the records cannot
+		// both stand.
+		problem("%s is both gapped and attested; the records contradict — retract one: stipulator gap --req %s --retract, or stipulator attest requirement --req %s --retract", id, id, id)
+		return problems, false
+	}
+	return problems, true
+}
+
+// gap judges one deferral record: without a requirement, reason, or
+// landing condition, duplicated, or naming a requirement the corpus does
+// not have. Landing-condition targets are deliberately not resolved:
+// exists(...) and covered(...) may name requirements the spec does not
+// hold yet — that prospectiveness is their purpose.
+func (j *hygiene) gap(path string, g *stipulatorv1.Gap) (problems []Problem) {
+	problem := func(format string, args ...any) {
+		problems = append(problems, Problem{Path: path, Message: fmt.Sprintf(format, args...)})
+	}
+	id := g.GetRequirementId()
+	if id == "" {
+		problem("gap without requirement_id")
+	} else if _, known := j.hashes[id]; !known {
+		problem("gap names %s, which is not in the corpus — retract it: stipulator gap --req %s --retract (or prune --dangling for the bulk repair)", id, id)
+	}
+	if id != "" {
+		if prior, dup := j.seenGaps[id]; dup {
+			problem("gap for %s duplicates %s; one declaration per requirement", id, prior)
+		} else {
+			j.seenGaps[id] = path
+		}
+	}
+	if g.GetReason() == "" {
+		problem("gap for %s has no reason", id)
+	}
+	if !g.HasLands() {
+		problem("gap for %s has no landing condition", id)
+	}
+	return problems
+}
+
 // Run checks the store against the compiled spec, resolving symbols
 // through the supplied backends (keyed by backend name; nil skips all
 // symbol resolution) and correlating test outcomes from testRun (nil
 // skips witnessing: role-tests bindings read TestNotRun).
 func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Backend, testRun *TestRun) *Report {
-	hashes := map[string]string{}
-	for _, r := range spec.GetRequirements() {
-		hashes[r.GetId()] = r.GetContentHash()
-	}
-
+	judge := newHygiene(spec, store)
+	hashes := judge.hashes
 	rep := &Report{}
 	problem := func(path, format string, args ...any) {
 		rep.Problems = append(rep.Problems, Problem{Path: path, Message: fmt.Sprintf(format, args...)})
 	}
 
-	seen := map[string]bool{}
 	for _, bf := range store.Bindings {
 		for _, b := range bf.Set.GetBindings() {
-			id := b.GetRequirementId()
-			key := id + "|" + b.GetBackend() + "|" + b.GetSymbol() + "|" + b.GetRole().String()
-			if seen[key] {
-				problem(bf.Path, "duplicate binding: %s %s %s", id, b.GetSymbol(), b.GetRole())
-			}
-			seen[key] = true
-
-			malformed := false
-			if id == "" {
-				problem(bf.Path, "binding without requirement_id")
-				malformed = true
-			}
-			if b.GetBackend() == "" {
-				problem(bf.Path, "binding for %s has no backend", id)
-				malformed = true
-			}
-			if b.GetSymbol() == "" {
-				problem(bf.Path, "binding for %s has no symbol", id)
-				malformed = true
-			}
-			if b.GetRole() == stipulatorv1.BindingRole_BINDING_ROLE_UNSPECIFIED {
-				problem(bf.Path, "binding for %s has no role", id)
-				malformed = true
-			}
-			h, known := hashes[id]
-			if id != "" && !known {
-				problem(bf.Path, "binding names %s, which is not in the corpus — unbind it: stipulator unbind --req %s (or stipulator dispose retire --id %s if the requirement was removed deliberately)", id, id, id)
-				malformed = true
-			}
+			problems, malformed := judge.binding(bf.Path, b)
+			rep.Problems = append(rep.Problems, problems...)
 			if malformed {
 				continue
 			}
+			id := b.GetRequirementId()
+			h := hashes[id]
 
 			result := BindingResult{
 				Path:          bf.Path,
@@ -549,38 +686,15 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 		}
 	}
 
-	gappedIDs := map[string]bool{}
-	for _, gf := range store.Gaps {
-		gappedIDs[gf.Gap.GetRequirementId()] = true
-	}
-	attestedIDs := map[string]string{}
 	for _, af := range store.Attestations {
 		for _, a := range af.Set.GetAttestations() {
+			problems, stands := judge.attestation(af.Path, a)
+			rep.Problems = append(rep.Problems, problems...)
+			if !stands {
+				continue
+			}
 			id := a.GetRequirementId()
-			switch {
-			case id == "":
-				problem(af.Path, "attestation without requirement_id")
-				continue
-			case a.GetReason() == "":
-				problem(af.Path, "attestation for %s has no reason", id)
-				continue
-			}
-			if prior, dup := attestedIDs[id]; dup {
-				problem(af.Path, "attestation for %s duplicates %s; one judgment per requirement", id, prior)
-				continue
-			}
-			attestedIDs[id] = af.Path
-			hash, known := hashes[id]
-			if !known {
-				problem(af.Path, "attestation names %s, which is not in the corpus — retract it: stipulator attest requirement --req %s --retract", id, id)
-				continue
-			}
-			if gappedIDs[id] {
-				// Deferred and judged-satisfied contradict: the records
-				// cannot both stand.
-				problem(af.Path, "%s is both gapped and attested; the records contradict — retract one: stipulator gap --req %s --retract, or stipulator attest requirement --req %s --retract", id, id, id)
-				continue
-			}
+			hash := hashes[id]
 			rep.Attestations = append(rep.Attestations, AttestationResult{
 				RequirementId: id,
 				Reason:        a.GetReason(),
@@ -589,39 +703,11 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 		}
 	}
 
-	seenGaps := map[string]string{}
 	for _, gf := range store.Gaps {
-		id := gf.Gap.GetRequirementId()
-		if id == "" {
-			problem(gf.Path, "gap without requirement_id")
-		} else if _, known := hashes[id]; !known {
-			problem(gf.Path, "gap names %s, which is not in the corpus — retract it: stipulator gap --req %s --retract (or prune --dangling for the bulk repair)", id, id)
-		}
-		if id != "" {
-			if prior, dup := seenGaps[id]; dup {
-				problem(gf.Path, "gap for %s duplicates %s; one declaration per requirement", id, prior)
-			} else {
-				seenGaps[id] = gf.Path
-			}
-		}
-		if gf.Gap.GetReason() == "" {
-			problem(gf.Path, "gap for %s has no reason", id)
-		}
-		// Landing-condition targets are deliberately not resolved here:
-		// exists(...) and covered(...) may name requirements the spec does
-		// not hold yet — that prospectiveness is their purpose.
-		if !gf.Gap.HasLands() {
-			problem(gf.Path, "gap for %s has no landing condition", id)
-		}
+		rep.Problems = append(rep.Problems, judge.gap(gf.Path, gf.Gap)...)
 	}
 
-	sort.Slice(rep.Problems, func(i, j int) bool {
-		a, b := rep.Problems[i], rep.Problems[j]
-		if a.Path != b.Path {
-			return a.Path < b.Path
-		}
-		return a.Message < b.Message
-	})
+	sortProblems(rep.Problems)
 	if testRun != nil {
 		rep.Signatures = signatures(rep.Results)
 	}

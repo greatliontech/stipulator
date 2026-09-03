@@ -162,7 +162,7 @@ func TestGapToolListRowsStatesAndScope(t *testing.T) {
 		".stipulator/gaps/ghost.textproto": "requirement_id: \"REQ-m-ghost\"\nreason: \"left behind\"\n" +
 			"lands {\n  manual {\n    condition: \"c\"\n  }\n}\n",
 	}, func(s *Server) {
-		s.runTests = func(_ context.Context, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		s.runTests = func(_ context.Context, _ verify.WitnessSeeding, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			got = scope
 			return &verify.TestRun{
 				RaceEnabled:      true,
@@ -233,7 +233,7 @@ func TestGapToolListNoGapsSkipsWitnessEvaluation(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-list")
 	called := false
 	sess, _ := harnessWith(t, map[string]string{}, func(s *Server) {
-		s.runTests = func(context.Context, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		s.runTests = func(context.Context, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			called = true
 			return &verify.TestRun{SelectiveServing: true}, nil
 		}
@@ -252,7 +252,7 @@ func TestGapToolListNoGapsSkipsWitnessEvaluation(t *testing.T) {
 	broken, _ := harnessWith(t, map[string]string{
 		".stipulator/manifest.textproto": ":::garbage\n",
 	}, func(s *Server) {
-		s.runTests = func(context.Context, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		s.runTests = func(context.Context, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			t.Error("witness evaluation ran on a broken corpus")
 			return &verify.TestRun{SelectiveServing: true}, nil
 		}
@@ -276,7 +276,7 @@ func TestGapToolListEmptyScopeSkipsWitnessRun(t *testing.T) {
 		".stipulator/gaps/m-b.textproto": "requirement_id: \"REQ-m-b\"\nreason: \"spec ahead of code\"\n" +
 			"lands {\n  manual {\n    condition: \"c\"\n  }\n}\n",
 	}, func(s *Server) {
-		s.runTests = func(context.Context, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		s.runTests = func(context.Context, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			called = true
 			return &verify.TestRun{SelectiveServing: true}, nil
 		}
@@ -309,7 +309,7 @@ func TestPruneToolScopesWitnessEvaluationToGappedRequirements(t *testing.T) {
 		gapPath: "requirement_id: \"REQ-m-a\"\nreason: \"pending\"\n" +
 			"lands {\n  manual {\n    condition: \"judged done\"\n    fired: true\n  }\n}\n",
 	}, func(s *Server) {
-		s.runTests = func(_ context.Context, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		s.runTests = func(_ context.Context, _ verify.WitnessSeeding, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			got = scope
 			return &verify.TestRun{
 				RaceEnabled:      true,
@@ -347,7 +347,7 @@ func TestPruneToolScopeIncludesConditionTargets(t *testing.T) {
 		".stipulator/gaps/m-a.textproto": "requirement_id: \"REQ-m-a\"\nreason: \"pending\"\n" +
 			"lands {\n  covered: \"REQ-m-b\"\n}\n",
 	}, func(s *Server) {
-		s.runTests = func(_ context.Context, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		s.runTests = func(_ context.Context, _ verify.WitnessSeeding, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			got = scope
 			return &verify.TestRun{
 				RaceEnabled:      true,
@@ -376,7 +376,7 @@ func TestPruneToolGaplessTreeStillCompilesTheCorpus(t *testing.T) {
 	sess, _ := harnessWith(t, map[string]string{
 		".stipulator/manifest.textproto": ":::garbage\n",
 	}, func(s *Server) {
-		s.runTests = func(context.Context, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		s.runTests = func(context.Context, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			t.Error("witness evaluation ran on a gapless tree")
 			return &verify.TestRun{SelectiveServing: true}, nil
 		}
@@ -398,7 +398,7 @@ func TestPruneToolNoGapsSkipsWitnessEvaluation(t *testing.T) {
 	sess, _ := harnessWith(t, map[string]string{
 		".stipulator/bindings/a.textproto": pinnedBindingFor(t, "REQ-m-a", "example.com/p.TestA", "s"),
 	}, func(s *Server) {
-		s.runTests = func(context.Context, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		s.runTests = func(context.Context, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			called = true
 			return &verify.TestRun{RaceEnabled: true, SelectiveServing: true}, nil
 		}

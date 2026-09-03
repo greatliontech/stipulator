@@ -8,6 +8,7 @@ package views
 import (
 	"fmt"
 	"path"
+	"slices"
 	"strings"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -221,7 +222,7 @@ func CoverageView(cov *coverage.Report, facts Facts, view string, scope Scope) (
 	case "full":
 		return coverageReportProto(cov, kept, scopeKeep(scope, keptIDs)), nil
 	}
-	return nil, fmt.Errorf("unknown view %q (summary, reds, full)", view)
+	return nil, unknownView(view, coverageViews)
 }
 
 // scopeKeep returns the requirement-id set to narrow a report's gaps and
@@ -272,6 +273,33 @@ func coverageReportProto(cov *coverage.Report, rows []coverage.Requirement, keep
 	out := sliced.Proto()
 	out.SetGatePasses(cov.GatePasses())
 	return out
+}
+
+// The view vocabularies — one source each, read by the renderer's
+// refusal and by the validators a surface calls at request parse
+// (REQ-check-preparation). The empty word means summary.
+var (
+	coverageViews = []string{"summary", "reds", "full"}
+	verifyViews   = []string{"summary", "bindings"}
+)
+
+// ValidateCoverageView refuses an unknown coverage view word before any
+// evidence is gathered — the refusal CoverageView makes, at parse.
+func ValidateCoverageView(view string) error { return validateView(view, coverageViews) }
+
+// ValidateVerifyView refuses an unknown verify view word before any
+// evidence is gathered — the refusal VerifyView makes, at parse.
+func ValidateVerifyView(view string) error { return validateView(view, verifyViews) }
+
+func validateView(view string, words []string) error {
+	if view == "" || slices.Contains(words, view) {
+		return nil
+	}
+	return unknownView(view, words)
+}
+
+func unknownView(view string, words []string) error {
+	return fmt.Errorf("unknown view %q (%s)", view, strings.Join(words, ", "))
 }
 
 // VerifyView renders the verification report at a view: summary (record
@@ -398,5 +426,5 @@ func VerifyView(vr *verify.Report, facts Facts, view string, scope Scope) (proto
 		}
 		return sliced.Proto(), nil
 	}
-	return nil, fmt.Errorf("unknown view %q (summary, bindings)", view)
+	return nil, unknownView(view, verifyViews)
 }

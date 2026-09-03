@@ -5,13 +5,13 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/encoding/protojson"
 
-	"github.com/greatliontech/stipulator/internal/corpus"
+	"github.com/greatliontech/stipulator/internal/backends/golang"
+	checkpkg "github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/coverage"
-	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/views"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func gateCmd() *cobra.Command {
@@ -25,39 +25,44 @@ func gateCmd() *cobra.Command {
 			if jsonOut && quiet {
 				return fmt.Errorf("give either --json or --quiet")
 			}
-			spec, err := mustCompile(chdir)
+			// Every refusal the held inputs decide fires before the
+			// witness run: the corpus, the records' hygiene, the coverage
+			// policy, and the caller's vocabulary (REQ-check-preparation).
+			prepared, err := mustPrepare(chdir)
 			if err != nil {
 				return err
 			}
-			store, err := records.Load(os.DirFS(chdir))
+			spec, store, pol := prepared.Spec, prepared.Store, prepared.Coverage
+			scope := views.Scope{Ids: reqs, Bucket: bucket, Filter: filter, Path: pathPrefix}
+			if err := scope.Validate(); err != nil {
+				return err
+			}
+			if err := views.ValidateCoverageView(view); err != nil {
+				return err
+			}
+			if err := checkpkg.KnownIDs(spec, reqs); err != nil {
+				return err
+			}
+			if err := refuseHygiene(prepared.Hygiene); err != nil {
+				return err
+			}
+			gb, err := golang.NewOwned(cmd.Context(), chdir)
 			if err != nil {
 				return err
 			}
-			testRun, err := witnessRun(cmd.Context())
+			defer gb.Close()
+			testRun, err := witnessRun(cmd.Context(), gb)
 			if err != nil {
 				return err
 			}
-			backends, err := makeBackends(cmd.Context(), chdir)
-			if err != nil {
-				return err
-			}
-			rep := verify.Run(spec, store, backends, testRun)
+			rep := verify.Run(spec, store, map[string]verify.Backend{"go": gb}, testRun)
 			for _, p := range rep.Problems {
 				fmt.Fprintln(os.Stderr, red(p.String()))
 			}
 			if len(rep.Problems) > 0 {
 				os.Exit(1)
 			}
-			manifest, err := corpus.LoadManifest(os.DirFS(chdir))
-			if err != nil {
-				return err
-			}
-			pol, err := coverage.PolicyFromManifest(manifest)
-			if err != nil {
-				return err
-			}
 			cov := coverage.Evaluate(spec, rep, store, true, pol)
-			scope := views.Scope{Ids: reqs, Bucket: bucket, Filter: filter, Path: pathPrefix}
 			facts := views.FactsFrom(spec, rep)
 			switch {
 			case jsonOut:

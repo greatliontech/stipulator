@@ -7,6 +7,7 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -241,32 +242,185 @@ func TestCheckCoverageViolationFailsTheCheck(t *testing.T) {
 	}
 }
 
+// markerTree is baseTree whose one test writes a marker file when it
+// executes: the oracle for "no witness executed" — a refusal that fires
+// before the first child leaves no marker (REQ-check-preparation).
+func markerTree(t *testing.T, extra map[string]string) (dir, marker string) {
+	t.Helper()
+	marker = filepath.Join(t.TempDir(), "executed")
+	files := baseTree(extra)
+	files["ok/ok_test.go"] = "package ok\n\nimport (\n\t\"os\"\n\t\"testing\"\n)\n\n" +
+		"func TestDouble(t *testing.T) {\n\t_ = os.WriteFile(" + strconv.Quote(marker) + ", []byte(\"ran\"), 0o644)\n\tif Double(2) != 4 {\n\t\tt.Fatal(\"broken arithmetic\")\n\t}\n}\n"
+	return writeTree(t, files), marker
+}
+
+func executed(marker string) bool {
+	_, err := os.Stat(marker)
+	return err == nil
+}
+
+// TestCheckVerifyProblemFailsTheCheck pins the record-hygiene refusal:
+// a dangling binding fails the check as a verification problem, and
+// because the records alone decide it, no witness executes — the pass
+// takes its witness-free form before any child process
+// (REQ-check-preparation).
 func TestCheckVerifyProblemFailsTheCheck(t *testing.T) {
-	stipulate.Covers(t, "REQ-check-verdict")
+	stipulate.Covers(t, "REQ-check-verdict", "REQ-check-preparation")
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
 	neutralAmbient(t)
-	dir := writeTree(t, baseTree(map[string]string{
+	dir, marker := markerTree(t, map[string]string{
 		".stipulator/bindings/ghost.textproto": "bindings {\n" +
 			"  requirement_id: \"REQ-fix-ghost\"\n" +
 			"  backend: \"go\"\n" +
 			"  symbol: \"example.com/checkfix/ok.Double\"\n" +
 			"  role: BINDING_ROLE_IMPLEMENTS\n" +
 			"}\n",
-	}))
-	res, err := Run(context.Background(), dir, true, nil)
+		// A witness-backed requirement and a gap on it: the witness-free
+		// pass must judge neither as witnessed — the row cannot read
+		// broken for an outcome no run produced, and no residue derives.
+		".stipulator/bindings/may.textproto": "bindings {\n" +
+			"  requirement_id: \"REQ-fix-may\"\n" +
+			"  backend: \"go\"\n" +
+			"  symbol: \"example.com/checkfix/ok.TestDouble\"\n" +
+			"  role: BINDING_ROLE_TESTS\n" +
+			"}\n",
+		".stipulator/gaps/may.textproto": "requirement_id: \"REQ-fix-may\"\nreason: \"deferred\"\nlands { manual { condition: \"later\" } }\n",
+	})
+	// A current-pinned implements claim beside the witness claim: on an
+	// evaluation that witnessed nothing the gap must still not resolve,
+	// whatever the record-only evidence says.
+	spec, diags, err := compile.Compile(os.DirFS(dir))
+	if err != nil || len(compile.Errors(diags)) > 0 {
+		t.Fatalf("compile: %v %v", err, diags)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".stipulator", "bindings", "impl.textproto"), []byte("bindings {\n"+
+		"  requirement_id: \"REQ-fix-may\"\n"+
+		"  content_hash: \""+spec.GetRequirements()[0].GetContentHash()+"\"\n"+
+		"  backend: \"go\"\n"+
+		"  symbol: \"example.com/checkfix/ok.Double\"\n"+
+		"  role: BINDING_ROLE_IMPLEMENTS\n"+
+		"}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, full := range []bool{true, false} {
+		res, err := Run(context.Background(), dir, full, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res.GetPassed() {
+			t.Errorf("full=%v: check passed despite a verification problem", full)
+		}
+		if len(res.GetVerify().GetProblems()) == 0 {
+			t.Fatalf("full=%v: no verification problem reported for the dangling binding", full)
+		}
+		if res.GetExecution() != nil || executed(marker) {
+			t.Fatalf("full=%v: a witness executed under records that fail hygiene; the refusal fires before any child", full)
+		}
+		for _, r := range res.GetCoverage().GetRequirements() {
+			if r.GetId() != "REQ-fix-may" {
+				continue
+			}
+			if r.GetBucket() == stipulatorv1.Bucket_BUCKET_BROKEN || strings.Contains(strings.Join(r.GetReasons(), " "), "unwitnessed") {
+				t.Fatalf("full=%v: the witness-free pass judged %s as witnessed: bucket %v, reasons %v", full, r.GetId(), r.GetBucket(), r.GetReasons())
+			}
+		}
+		if len(res.GetPruneResidue()) != 0 {
+			t.Fatalf("full=%v: residue %v derived from an evaluation that witnessed nothing", full, res.GetPruneResidue())
+		}
+	}
+	// The policy term stands on the witness-free pass: an invalid record
+	// is reported beside the hygiene problems, still without a witness.
+	if err := os.WriteFile(filepath.Join(dir, ".stipulator/policy.textproto"), []byte("# empty on purpose\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res, err := Run(context.Background(), dir, false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.GetPassed() {
-		t.Error("check passed despite a verification problem")
+	if res.GetPolicyProblem() == nil || res.GetPassed() || executed(marker) {
+		t.Fatalf("witness-free pass over an invalid record: problem %v, passed %v, executed %v", res.GetPolicyProblem(), res.GetPassed(), executed(marker))
 	}
-	if len(res.GetVerify().GetProblems()) == 0 {
-		t.Fatal("no verification problem reported for the dangling binding")
+	if err := os.WriteFile(filepath.Join(dir, ".stipulator/policy.textproto"), []byte(plainPolicy), 0o644); err != nil {
+		t.Fatal(err)
 	}
-	if !golang.SuiteHealthy(res.GetExecution()) {
-		t.Error("suite leg red too; the scenario no longer isolates verification")
+	// Positive control: the same tree with the ghost binding removed
+	// executes its suite under the health-judged form.
+	if err := os.Remove(filepath.Join(dir, ".stipulator/bindings/ghost.textproto")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Run(context.Background(), dir, true, nil); err != nil {
+		t.Fatal(err)
+	}
+	if !executed(marker) {
+		t.Fatal("the clean tree executed no witness; the no-witness oracle above proves nothing")
+	}
+}
+
+// TestCheckDuplicatedCoverageCellRefusesBeforeAnyWitness pins the
+// manifest leg: a self-contradictory coverage policy refuses at
+// manifest read, before any child process.
+func TestCheckDuplicatedCoverageCellRefusesBeforeAnyWitness(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-preparation")
+	if testing.Short() {
+		t.Skip("executes a policy over a fixture tree")
+	}
+	neutralAmbient(t)
+	cell := "policy {\n  kind: CLAUSE_KIND_BEHAVIOR\n  keyword: KEYWORD_MUST\n  minimum: MINIMUM_EVIDENCE_WITNESS\n}\n"
+	dir, marker := markerTree(t, map[string]string{
+		".stipulator/manifest.textproto": fixtureManifest + cell + cell,
+	})
+	_, err := Run(context.Background(), dir, false, nil)
+	if err == nil || !strings.Contains(err.Error(), "twice") {
+		t.Fatalf("err = %v, want the duplicated cell refused", err)
+	}
+	if executed(marker) {
+		t.Fatal("a witness executed under a coverage policy that refuses; the refusal fires before any child")
+	}
+	// Positive control: one cell, the suite executes.
+	if err := os.WriteFile(filepath.Join(dir, ".stipulator/manifest.textproto"), []byte(fixtureManifest+cell), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Run(context.Background(), dir, true, nil); err != nil {
+		t.Fatal(err)
+	}
+	if !executed(marker) {
+		t.Fatal("the valid manifest executed no witness; the no-witness oracle above proves nothing")
+	}
+}
+
+// TestCheckUnknownScopeIdRefusesBeforeAnyWitness pins the vocabulary
+// leg: an identifier the corpus does not declare refuses at parse,
+// before any child process.
+func TestCheckUnknownScopeIdRefusesBeforeAnyWitness(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-preparation")
+	if testing.Short() {
+		t.Skip("executes a policy over a fixture tree")
+	}
+	neutralAmbient(t)
+	dir, marker := markerTree(t, map[string]string{
+		".stipulator/policy.textproto": racePolicy,
+		".stipulator/bindings/may.textproto": "bindings {\n" +
+			"  requirement_id: \"REQ-fix-may\"\n" +
+			"  backend: \"go\"\n" +
+			"  symbol: \"example.com/checkfix/ok.TestDouble\"\n" +
+			"  role: BINDING_ROLE_TESTS\n" +
+			"}\n",
+	})
+	_, err := Run(context.Background(), dir, false, []string{"REQ-fix-nope"})
+	if err == nil || !strings.Contains(err.Error(), "REQ-fix-nope") {
+		t.Fatalf("err = %v, want the unknown identifier refused", err)
+	}
+	if executed(marker) {
+		t.Fatal("a witness executed under an unknown scope identifier; the refusal fires before any child")
+	}
+	// Positive control: the declared identifier scopes and executes.
+	if _, err := Run(context.Background(), dir, false, []string{"REQ-fix-may"}); err != nil {
+		t.Fatal(err)
+	}
+	if !executed(marker) {
+		t.Fatal("the declared scope executed no witness; the no-witness oracle above proves nothing")
 	}
 }
 

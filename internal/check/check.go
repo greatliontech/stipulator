@@ -28,8 +28,6 @@ import (
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
-	"github.com/greatliontech/stipulator/internal/compile"
-	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/internal/progress"
@@ -76,7 +74,11 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	// installed (the CLI path) every mark is a no-op.
 	rep := progress.FromContext(ctx)
 	rep.Phase(stipulatorv1.Phase_PHASE_COMPILE)
-	spec, diags, err := compile.Compile(fsys)
+	// Everything the held inputs decide — compile errors, the manifest's
+	// coverage policy, the records' hygiene — is judged here, before the
+	// accepted policy is captured and before any child process
+	// (REQ-check-preparation).
+	prepared, err := Prepare(fsys)
 	if err != nil {
 		return nil, err
 	}
@@ -86,38 +88,29 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if errs := compile.Errors(diags); len(errs) > 0 {
-		problems := make([]*stipulatorv1.Problem, 0, len(errs))
-		for _, d := range errs {
-			p := &stipulatorv1.Problem{}
-			p.SetPath(fmt.Sprintf("%s:%d", d.Document, d.Line))
-			p.SetMessage(d.Message)
-			problems = append(problems, p)
-		}
+	if problems := prepared.CompileProblems(); len(problems) > 0 {
 		res.SetCompileProblems(problems)
 		return res, nil
 	}
-
-	store, err := records.Load(fsys)
-	if err != nil {
-		return nil, err
+	spec, store, covPol := prepared.Spec, prepared.Store, prepared.Coverage
+	// The caller's identifier vocabulary is judged at parse: unknown
+	// identifiers refuse before any evidence is gathered.
+	var scope map[gofresh.Subject]bool
+	if len(scopeIds) > 0 {
+		if scope, err = ScopeSubjects(spec, store, scopeIds); err != nil {
+			return nil, err
+		}
 	}
 
 	// The policy is explicit, never assumed: witness execution consumes the
 	// committed record, so a missing or invalid record is a failing check
 	// with the loader's guidance, not a silent fallback to some universal
-	// invocation. An operational fault reading the record — a permission
+	// invocation. A record problem is the check's verdict, whether the
+	// loader found it or a later reader did — an invocation whose
+	// selection this tree cannot resolve is the record's fault against
+	// the tree (REQ-policy-explicit); an operational fault — a permission
 	// error, not a record problem — stays an error: it says nothing about
 	// the tree.
-	// The load is the operation's one capture of the accepted policy:
-	// every invocation normalized once here, and every reader below —
-	// the notices, selection, execution, the outside accounting —
-	// consults it (REQ-check-derivation). A normalization fault is the
-	// check's fault, before the verification backend opens a child.
-	// A record problem is the check's verdict, whether the loader
-	// found it or a later reader did — an invocation whose selection
-	// this tree cannot resolve is the record's fault against the tree
-	// (REQ-policy-explicit); an operational fault stays an error.
 	recordProblem := func(err error) (*stipulatorv1.CheckResult, error) {
 		if !errors.Is(err, policy.ErrRecord) {
 			return nil, err
@@ -128,82 +121,106 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		res.SetPolicyProblem(p)
 		return res, nil
 	}
-	pc, err := golang.LoadCapture(ctx, dir)
-	if err != nil {
-		return recordProblem(err)
-	}
 
-	// Policy-tier notices surface at load, attributed to the invocation
-	// that authored the condition — a degradation must be visible where
-	// it was declared, not only mid-derivation on an engine's
-	// diagnostic face. Advisory: never a verdict input.
-	res.SetPolicyNotices(golang.SelectionNotices(pc))
-
-	// The verification backend is opened before witnessing: the witness
-	// run consults its classifier for the random-seeded witnesses that
-	// never serve (REQ-evidence-witness-freshness), and the same child
-	// then resolves bindings — one load, one owned process.
-	gb, err := golang.NewOwned(ctx, dir)
-	if err != nil {
-		return nil, err
-	}
-	defer gb.Close()
-
-	// The evidence-class fork (REQ-check-verdict): health judgment demands
-	// whole-policy execution, so the full form executes everything and the
-	// default form serves proven-fresh witnesses with witness-only
-	// selective execution of the stale remainder — claiming no health.
+	// Records that fail hygiene fail verification whatever a witness run
+	// would say, so the pass takes its witness-free form: no policy
+	// capture, no child process, and the verdict — verification problems
+	// — rendered from the records alone (REQ-check-preparation).
 	var testRun *verify.TestRun
 	var report *stipulatorv1.ExecutionReport
-	if full {
-		report, testRun, err = golang.ExecutePolicyWitnessed(ctx, pc, gb)
+	var backends map[string]verify.Backend
+	if len(prepared.Hygiene) == 0 {
+		// The load is the operation's one capture of the accepted
+		// policy: every invocation normalized once here, and every
+		// reader below — the notices, selection, execution, the outside
+		// accounting — consults it (REQ-check-derivation). A
+		// normalization fault is the check's fault, before the
+		// verification backend opens a child.
+		pc, err := golang.LoadCapture(ctx, dir)
 		if err != nil {
 			return recordProblem(err)
 		}
-		res.SetExecution(report)
-		res.SetSuiteHealthJudged(true)
-	} else if len(scopeIds) > 0 {
-		scope, scopeErr := ScopeSubjects(spec, store, scopeIds)
-		if scopeErr != nil {
-			return nil, scopeErr
-		}
-		testRun, err = golang.RunWitnessesScoped(ctx, pc, scope, gb)
-		if err != nil {
-			return recordProblem(err)
-		}
-		res.SetScopePartial(true)
-		res.SetScopeIds(append([]string(nil), scopeIds...))
-		res.SetTestsServed(int32(testRun.Fresh))
-		res.SetWitnessDiagnostics(testRun.Diagnostics)
-	} else {
-		testRun, err = golang.RunWitnessesPolicy(ctx, pc, gb)
-		if err != nil {
-			return recordProblem(err)
-		}
-		res.SetTestsServed(int32(testRun.Fresh))
-		// No execution report exists to carry retained failure output on
-		// this form, so the typed diagnostics ride the result directly —
-		// disposition and truncation intact (REQ-check-diagnostics).
-		res.SetWitnessDiagnostics(testRun.Diagnostics)
-	}
-	res.SetTestsExecuted(int32(testRun.Ran))
-	res.SetTestsOutsidePolicy(int32(testRun.OutsidePolicy))
-	// The catastrophic shape - nothing served and no witness outcome
-	// granted while expected witnesses sit outside the eligible selection
-	// - names its execution-layer cause once at result level; without it
-	// every affected binding reads as a tree defect (its per-binding
-	// reason still carries the class). Keying on granted outcomes rather
-	// than executions keeps non-race legs - which run but can never
-	// grant - from masking the cause, and holds on both evidence forms.
-	if testRun.Fresh == 0 && len(testRun.Outcomes) == 0 && testRun.OutsidePolicy > 0 {
-		res.SetWitnessSelectionProblem(fmt.Sprintf("the witness-eligible selection covered no expected witness: %d expected witnesses are outside it - witness evidence derives only from race: true invocations or explicit plain_witness: true admissions", testRun.OutsidePolicy))
-	}
-	res.SetTestsUncacheable(int32(testRun.Uncached))
-	res.SetUncacheableReasons(testRun.UncacheableReasons)
-	res.SetExecutedReasons(testRun.ExecutedReasons)
-	res.SetWitnessPublicationDegraded(testRun.Degraded)
 
-	backends := map[string]verify.Backend{"go": gb}
+		// Policy-tier notices surface at load, attributed to the
+		// invocation that authored the condition — a degradation must be
+		// visible where it was declared, not only mid-derivation on an
+		// engine's diagnostic face. Advisory: never a verdict input.
+		res.SetPolicyNotices(golang.SelectionNotices(pc))
+
+		// The verification backend is opened before witnessing: the
+		// witness run consults its classifier for the random-seeded
+		// witnesses that never serve (REQ-evidence-witness-freshness),
+		// and the same child then resolves bindings — one load, one
+		// owned process.
+		gb, err := golang.NewOwned(ctx, dir)
+		if err != nil {
+			return nil, err
+		}
+		defer gb.Close()
+		backends = map[string]verify.Backend{"go": gb}
+
+		// The evidence-class fork (REQ-check-verdict): health judgment
+		// demands whole-policy execution, so the full form executes
+		// everything and the default form serves proven-fresh witnesses
+		// with witness-only selective execution of the stale remainder —
+		// claiming no health.
+		if full {
+			report, testRun, err = golang.ExecutePolicyWitnessed(ctx, pc, gb)
+			if err != nil {
+				return recordProblem(err)
+			}
+			res.SetExecution(report)
+			res.SetSuiteHealthJudged(true)
+		} else if scope != nil {
+			testRun, err = golang.RunWitnessesScoped(ctx, pc, scope, gb)
+			if err != nil {
+				return recordProblem(err)
+			}
+			res.SetScopePartial(true)
+			res.SetScopeIds(append([]string(nil), scopeIds...))
+			res.SetTestsServed(int32(testRun.Fresh))
+			res.SetWitnessDiagnostics(testRun.Diagnostics)
+		} else {
+			testRun, err = golang.RunWitnessesPolicy(ctx, pc, gb)
+			if err != nil {
+				return recordProblem(err)
+			}
+			res.SetTestsServed(int32(testRun.Fresh))
+			// No execution report exists to carry retained failure output
+			// on this form, so the typed diagnostics ride the result
+			// directly — disposition and truncation intact
+			// (REQ-check-diagnostics).
+			res.SetWitnessDiagnostics(testRun.Diagnostics)
+		}
+		res.SetTestsExecuted(int32(testRun.Ran))
+		res.SetTestsOutsidePolicy(int32(testRun.OutsidePolicy))
+		// The catastrophic shape - nothing served and no witness outcome
+		// granted while expected witnesses sit outside the eligible selection
+		// - names its execution-layer cause once at result level; without it
+		// every affected binding reads as a tree defect (its per-binding
+		// reason still carries the class). Keying on granted outcomes rather
+		// than executions keeps non-race legs - which run but can never
+		// grant - from masking the cause, and holds on both evidence forms.
+		if testRun.Fresh == 0 && len(testRun.Outcomes) == 0 && testRun.OutsidePolicy > 0 {
+			res.SetWitnessSelectionProblem(fmt.Sprintf("the witness-eligible selection covered no expected witness: %d expected witnesses are outside it - witness evidence derives only from race: true invocations or explicit plain_witness: true admissions", testRun.OutsidePolicy))
+		}
+		res.SetTestsUncacheable(int32(testRun.Uncached))
+		res.SetUncacheableReasons(testRun.UncacheableReasons)
+		res.SetExecutedReasons(testRun.ExecutedReasons)
+		res.SetWitnessPublicationDegraded(testRun.Degraded)
+	} else if _, _, err := policy.Load(dir, map[string]policy.Backend{"go": golang.Policy{}}); err != nil {
+		// The policy term still stands on the witness-free pass: the
+		// record's static faults decide without a toolchain query
+		// (REQ-check-verdict). What the pass forgoes is the capture —
+		// the notices and the tree-resolved faults it would cost.
+		if !errors.Is(err, policy.ErrRecord) {
+			return nil, err
+		}
+		p := &stipulatorv1.Problem{}
+		p.SetPath(policy.Path)
+		p.SetMessage(err.Error())
+		res.SetPolicyProblem(p)
+	}
 	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
 	vr := verify.Run(spec, store, backends, testRun)
 	vp := vr.Proto()
@@ -215,16 +232,8 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	vp.SetWitnessDiagnostics(nil)
 	res.SetVerify(vp)
 
-	manifest, err := corpus.LoadManifest(fsys)
-	if err != nil {
-		return nil, err
-	}
-	covPol, err := coverage.PolicyFromManifest(manifest)
-	if err != nil {
-		return nil, err
-	}
 	rep.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
-	cov := coverage.Evaluate(spec, vr, store, true, covPol)
+	cov := coverage.Evaluate(spec, vr, store, testRun != nil, covPol)
 	res.SetCoverage(cov.Proto())
 
 	// Prune residue is echoed from this same witnessed gap evaluation —
@@ -236,7 +245,7 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	// pass the lingering record is visible the moment its requirement
 	// reaches covered.
 	var residue []string
-	if len(scopeIds) == 0 {
+	if len(scopeIds) == 0 && testRun != nil {
 		for _, g := range cov.Gaps {
 			if g.State == coverage.Resolved {
 				residue = append(residue, g.Path)
@@ -272,6 +281,7 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		gatePasses = scopedGatePasses(cov)
 	}
 	res.SetPassed(len(vr.Problems) == 0 &&
+		res.GetPolicyProblem() == nil &&
 		healthy &&
 		!observedRed &&
 		gatePasses &&

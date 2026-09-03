@@ -95,7 +95,7 @@ func harnessWith(t *testing.T, files map[string]string, mut func(*Server)) (*mcp
 				"example.com/q.TestA": strings.Repeat("q", 64),
 			}}, nil
 		},
-		runTests: func(context.Context, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		runTests: func(context.Context, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			return &verify.TestRun{
 				RaceEnabled:      true,
 				SelectiveServing: true,
@@ -146,7 +146,7 @@ func TestCanceledToolCallStopsWitnessRun(t *testing.T) {
 		backends: func(context.Context) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{}, nil
 		},
-		runTests: func(ctx context.Context, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		runTests: func(ctx context.Context, _ verify.WitnessSeeding, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			close(started)
 			<-ctx.Done()
 			close(stopped)
@@ -480,7 +480,7 @@ func TestPruneRefusesNonServingEvidence(t *testing.T) {
 		backends: func(context.Context) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{"go": fakeBackend{}}, nil
 		},
-		runTests: func(context.Context, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		runTests: func(context.Context, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			// A whole-execution run: no serving-class mark.
 			return &verify.TestRun{RaceEnabled: true}, nil
 		},
@@ -1092,7 +1092,7 @@ func TestVerifyToolNamesPolicyRecordProblem(t *testing.T) {
 		backends: func(context.Context) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{"go": fakeBackend{}}, nil
 		},
-		runTests: func(ctx context.Context, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		runTests: func(ctx context.Context, _ verify.WitnessSeeding, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			gb, err := golang.NewOwned(ctx, dir)
 			if err != nil {
 				return nil, err

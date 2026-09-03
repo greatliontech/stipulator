@@ -98,7 +98,7 @@ type Server struct {
 	// runTests is the one witnessing surface (REQ-core-one-execution); a
 	// nil scope is the whole-tree selective run, a non-nil scope narrows
 	// the stale-remainder execution to the named subjects.
-	runTests func(context.Context, map[gofresh.Subject]bool) (*verify.TestRun, error)
+	runTests func(context.Context, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error)
 	runCheck func(context.Context, bool, []string) (*stipulatorv1.CheckResult, error)
 	explain  func(ctx context.Context, pkgPath, symbol string) (gofresh.Chain, string, error)
 	write    func(path string, content []byte) error
@@ -111,20 +111,20 @@ func New(dir string) *Server {
 		root:     dir,
 		fsys:     func() fs.FS { return os.DirFS(dir) },
 		backends: func(ctx context.Context) (map[string]verify.Backend, error) { return makeBackends(ctx, dir) },
-		runTests: func(ctx context.Context, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {
-			gb, err := golang.NewOwned(ctx, dir)
-			if err != nil {
-				return nil, err
+		runTests: func(ctx context.Context, seeding verify.WitnessSeeding, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {
+			if seeding == nil {
+				// The witness run classifies through the tool's own
+				// resolver child; without one it must not guess.
+				return nil, errors.New("witness run without the tool's resolver child")
 			}
-			defer gb.Close()
 			if scope == nil {
-				return golang.RunWitnesses(ctx, dir, gb)
+				return golang.RunWitnesses(ctx, dir, seeding)
 			}
 			pc, err := golang.LoadCapture(ctx, dir)
 			if err != nil {
 				return nil, err
 			}
-			return golang.RunWitnessesScoped(ctx, pc, scope, gb)
+			return golang.RunWitnessesScoped(ctx, pc, scope, seeding)
 		},
 		runCheck: func(ctx context.Context, full bool, scopeIds []string) (*stipulatorv1.CheckResult, error) {
 			return check.Run(ctx, dir, full, scopeIds)
@@ -179,6 +179,16 @@ func New(dir string) *Server {
 			return os.Remove(filepath.Join(dir, filepath.FromSlash(path)))
 		},
 	}
+}
+
+// seedingOf is the witness run's classifier: the same owned child the
+// tool opened to resolve bindings, so one tool call owns one process
+// (REQ-check-preparation's shared resolver).
+func seedingOf(backends map[string]verify.Backend) verify.WitnessSeeding {
+	if seeding, ok := backends["go"].(verify.WitnessSeeding); ok {
+		return seeding
+	}
+	return nil
 }
 
 func makeBackends(ctx context.Context, dir string) (map[string]verify.Backend, error) {
@@ -365,6 +375,29 @@ func (s *Server) policy() (*coverage.Policy, error) {
 	return coverage.PolicyFromManifest(m)
 }
 
+// prepare gathers a tool's held inputs — corpus, records, coverage
+// policy, record hygiene — before its first child process, the one
+// preparation every witness-consuming tool shares with the check and
+// the CLI (REQ-check-preparation); a corpus that does not compile is
+// the tool's error, as compileFresh reports it.
+func (s *Server) prepare() (*check.Prepared, error) {
+	prepared, err := check.Prepare(s.fsys())
+	if err != nil {
+		return nil, err
+	}
+	if errs := compile.Errors(prepared.Diagnostics); len(errs) > 0 {
+		msgs := make([]string, 0, len(errs))
+		for _, d := range errs {
+			msgs = append(msgs, d.String())
+		}
+		return nil, fmt.Errorf("corpus does not compile:\n%s", strings.Join(msgs, "\n"))
+	}
+	if s.srv != nil {
+		s.syncIndex(prepared.Spec)
+	}
+	return prepared, nil
+}
+
 func (s *Server) compileFresh() (*stipulatorv1.Spec, error) {
 	spec, diags, err := compile.Compile(s.fsys())
 	if err != nil {
@@ -442,13 +475,19 @@ type verifyIn struct {
 	Path   string `json:"path,omitempty" jsonschema:"prefix over declaring document or symbol"`
 }
 
-func (s *Server) verifyPipeline(ctx context.Context, noTest bool, scopeIDs string) (*stipulatorv1.Spec, *verify.Report, *records.Store, error) {
+// verifyPipeline is the tools' shared verification pass: the prepared
+// inputs, the report, and the witness run the report was correlated
+// with — nil on the no-test form and on the record-only form a hygiene
+// fault selects, so a caller evaluating coverage knows whether the
+// pass witnessed.
+func (s *Server) verifyPipeline(ctx context.Context, noTest bool, scopeIDs string) (*check.Prepared, *verify.Report, *verify.TestRun, error) {
 	rep := progress.FromContext(ctx)
 	rep.Phase(stipulatorv1.Phase_PHASE_COMPILE)
-	spec, err := s.compileFresh()
+	prepared, err := s.prepare()
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	spec, store := prepared.Spec, prepared.Store
 	// The exact-id scope validates against the freshly compiled corpus
 	// and BEFORE the witness run — a typo is a refusal, never an empty
 	// result, and never one that costs the expensive pass to hear
@@ -456,9 +495,12 @@ func (s *Server) verifyPipeline(ctx context.Context, noTest bool, scopeIDs strin
 	if err := refuseUnknownIDs(spec, scopeIDs); err != nil {
 		return nil, nil, nil, err
 	}
-	store, err := records.Load(s.fsys())
-	if err != nil {
-		return nil, nil, nil, err
+	// Records that fail hygiene fail verification whatever a witness run
+	// or a resolution would say: the pass takes its record-only form,
+	// no child process (REQ-check-preparation).
+	if len(prepared.Hygiene) > 0 {
+		rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
+		return prepared, verify.Run(spec, store, nil, nil), nil, nil
 	}
 	backends, err := s.backends(ctx)
 	if err != nil {
@@ -467,25 +509,34 @@ func (s *Server) verifyPipeline(ctx context.Context, noTest bool, scopeIDs strin
 	var tr *verify.TestRun
 	if !noTest {
 		rep.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
-		tr, err = s.runTests(ctx, nil)
+		tr, err = s.runTests(ctx, seedingOf(backends), nil)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 	}
 	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
-	return spec, verify.Run(spec, store, backends, tr), store, nil
+	return prepared, verify.Run(spec, store, backends, tr), tr, nil
 }
 
 func (s *Server) toolVerify(ctx context.Context, req *mcp.CallToolRequest, in verifyIn) (*mcp.CallToolResult, map[string]any, error) {
 	ctx, prog := s.startProgress(ctx, req)
-	spec, rep, _, err := s.verifyPipeline(ctx, in.NoTest, in.Ids)
-	if err != nil {
-		return nil, nil, terminalToolError(prog, ctx, err)
-	}
+	// The caller's vocabulary is judged before the witness run: a typo
+	// refuses before any child process (REQ-check-preparation).
 	scope, err := scopeFrom(in.Ids, "", in.Filter, in.Path)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
+	if err := scope.Validate(); err != nil {
+		return nil, nil, terminalToolError(prog, ctx, err)
+	}
+	if err := views.ValidateVerifyView(in.View); err != nil {
+		return nil, nil, terminalToolError(prog, ctx, err)
+	}
+	prepared, rep, _, err := s.verifyPipeline(ctx, in.NoTest, in.Ids)
+	if err != nil {
+		return nil, nil, terminalToolError(prog, ctx, err)
+	}
+	spec := prepared.Spec
 	m, err := views.VerifyView(rep, views.FactsFrom(spec, rep), in.View, scope)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
@@ -504,23 +555,29 @@ type gateIn struct {
 
 func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in gateIn) (*mcp.CallToolResult, map[string]any, error) {
 	ctx, prog := s.startProgress(ctx, req)
-	spec, rep, store, err := s.verifyPipeline(ctx, false, in.Ids)
+	// The caller's vocabulary and the coverage policy are judged before
+	// the witness run: a typo or a duplicated coverage cell refuses
+	// before any child process (REQ-check-preparation).
+	scope, err := scopeFrom(in.Ids, in.Bucket, in.Filter, in.Path)
+	if err != nil {
+		return nil, nil, terminalToolError(prog, ctx, err)
+	}
+	if err := scope.Validate(); err != nil {
+		return nil, nil, terminalToolError(prog, ctx, err)
+	}
+	if err := views.ValidateCoverageView(in.View); err != nil {
+		return nil, nil, terminalToolError(prog, ctx, err)
+	}
+	prepared, rep, _, err := s.verifyPipeline(ctx, false, in.Ids)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	if err := verificationProblems(rep); err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
-	pol, err := s.policy()
-	if err != nil {
-		return nil, nil, terminalToolError(prog, ctx, err)
-	}
+	spec, store, pol := prepared.Spec, prepared.Store, prepared.Coverage
 	prog.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
 	cov := coverage.Evaluate(spec, rep, store, true, pol)
-	scope, err := scopeFrom(in.Ids, in.Bucket, in.Filter, in.Path)
-	if err != nil {
-		return nil, nil, terminalToolError(prog, ctx, err)
-	}
 	m, err := views.CoverageView(cov, views.FactsFrom(spec, rep), in.View, scope)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
@@ -1073,15 +1130,12 @@ func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn
 // rather than refused. It writes nothing.
 func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, gapOut, error) {
 	ctx, prog := s.startProgress(ctx, req)
-	store, err := records.Load(s.fsys())
-	if err != nil {
-		return nil, gapOut{}, terminalToolError(prog, ctx, err)
-	}
 	prog.Phase(stipulatorv1.Phase_PHASE_COMPILE)
-	spec, err := s.compileFresh()
+	prepared, err := s.prepare()
 	if err != nil {
 		return nil, gapOut{}, terminalToolError(prog, ctx, err)
 	}
+	spec, store, pol := prepared.Spec, prepared.Store, prepared.Coverage
 	// The empty answer skips witness evidence, never corpus diagnostics
 	// (REQ-gap-list).
 	if len(store.Gaps) == 0 {
@@ -1092,25 +1146,26 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 	if err != nil {
 		return nil, gapOut{}, terminalToolError(prog, ctx, err)
 	}
+	// The list is a read surface, not a verification verdict: dangling
+	// records are listed rather than refused (REQ-gap-list), so record
+	// hygiene warns here and never withholds the witness evidence the
+	// other gaps' states derive from. The coverage policy was judged
+	// before any child (REQ-check-preparation).
+	backends, err := s.backends(ctx)
+	if err != nil {
+		return nil, gapOut{}, terminalToolError(prog, ctx, err)
+	}
 	var tr *verify.TestRun
 	if len(scope) > 0 {
 		// An empty scope means no bound witness can move any
 		// gap-relevant bucket, so the evaluation is witness-free.
 		prog.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
-		if tr, err = s.runTests(ctx, scope); err != nil {
+		if tr, err = s.runTests(ctx, seedingOf(backends), scope); err != nil {
 			return nil, gapOut{}, terminalToolError(prog, ctx, err)
 		}
 	}
-	backends, err := s.backends(ctx)
-	if err != nil {
-		return nil, gapOut{}, terminalToolError(prog, ctx, err)
-	}
 	prog.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
 	rep := verify.Run(spec, store, backends, tr)
-	pol, err := s.policy()
-	if err != nil {
-		return nil, gapOut{}, terminalToolError(prog, ctx, err)
-	}
 	prog.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
 	cov := coverage.Evaluate(spec, rep, store, tr != nil, pol)
 	known := corpusIDs(spec)
@@ -1621,10 +1676,11 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
 	prog.Phase(stipulatorv1.Phase_PHASE_COMPILE)
-	spec, err := s.compileFresh()
+	prepared, err := s.prepare()
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
+	spec, pol := prepared.Spec, prepared.Coverage
 	// Deletion-only fast path: no gap records means nothing can resolve,
 	// so no witness evidence is gathered at all - the corpus compile and
 	// its diagnostics remain (REQ-gap-resolved-pruned).
@@ -1644,12 +1700,18 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
+	// A resolved gap is derived from coverage, which is only sound when
+	// verification is clean: the record-only half refuses before any
+	// child process (REQ-check-preparation).
+	if problems := prepared.Hygiene; len(problems) > 0 {
+		return nil, writeOut{}, terminalToolError(prog, ctx, verificationProblems(&verify.Report{Problems: problems}))
+	}
 	backends, err := s.backends(ctx)
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
 	prog.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
-	tr, err := s.runTests(ctx, scope)
+	tr, err := s.runTests(ctx, seedingOf(backends), scope)
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
@@ -1663,10 +1725,6 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 		return nil, writeOut{}, terminalToolError(prog, ctx, verify.ErrNotServingClass)
 	}
 	if err := verificationProblems(rep); err != nil {
-		return nil, writeOut{}, terminalToolError(prog, ctx, err)
-	}
-	pol, err := s.policy()
-	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
 	prog.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
@@ -1717,16 +1775,16 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
-	spec, vr, store, err := s.verifyPipeline(ctx, in.NoTest, in.Ids)
+	prepared, vr, tr, err := s.verifyPipeline(ctx, in.NoTest, in.Ids)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
-	pol, err := s.policy()
-	if err != nil {
-		return nil, nil, terminalToolError(prog, ctx, err)
-	}
+	spec, store, pol := prepared.Spec, prepared.Store, prepared.Coverage
 	prog.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
-	cr := coverage.Evaluate(spec, vr, store, !in.NoTest, pol)
+	// Witnessed exactly when the pipeline ran a witness: the no-test
+	// form and the record-only form a hygiene fault selects judge no
+	// witness-backed requirement against absent evidence.
+	cr := coverage.Evaluate(spec, vr, store, tr != nil, pol)
 	dossiers, err := dossier.Build(spec, vr, cr, store, ids)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
@@ -1804,13 +1862,14 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 		return nil, nil, err
 	}
 	ctx, prog := s.startProgress(ctx, req)
-	spec, rep, store, err := s.verifyPipeline(ctx, in.NoTest, in.Ids)
+	prepared, rep, _, err := s.verifyPipeline(ctx, in.NoTest, in.Ids)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	if err := verificationProblems(rep); err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
+	spec, store := prepared.Spec, prepared.Store
 	backends, err := s.backends(ctx)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
@@ -1907,15 +1966,8 @@ func refuseUnknownIDs(spec *stipulatorv1.Spec, commaIDs string) error {
 	if err != nil || len(ids) == 0 {
 		return err
 	}
-	known := corpusIDs(spec)
-	var unknown []string
-	for _, id := range ids {
-		if !known[id] {
-			unknown = append(unknown, id)
-		}
-	}
-	if len(unknown) > 0 {
-		return fmt.Errorf("unknown requirement identifier(s): %s (gate view=full lists the corpus's requirement identifiers)", strings.Join(unknown, ", "))
+	if err := check.KnownIDs(spec, ids); err != nil {
+		return err
 	}
 	return nil
 }

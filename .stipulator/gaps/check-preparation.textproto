@@ -2,6 +2,6 @@
 # proto-message: stipulator.v1.Gap
 
 requirement_id: "REQ-check-preparation"
-reason: "the clause is a for-all over every refusal class an operation decides from held inputs; example pins anchor the record class as it moved before the first spawn, the remaining classes are filed (docs/issues/check-preparation-legs.md), and a property witness over generated malformed records is pending"
+reason: "the clause is a for-all over every refusal class an operation decides from held inputs; every named class is pinned by example — a policy record's static faults at acceptance, a duplicated coverage cell at manifest read, unknown vocabulary at parse, record hygiene before any witness — each with a no-child oracle, and a property witness over generated refusing inputs is pending"
 content_hash: "221f271e519e5422845007a894aad1ddde9ab268713bdcfbec4157abb6ccfee5"
 lands { manual { condition: "a property witness or analyzer proof lands for this invariant" } }

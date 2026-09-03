@@ -6,16 +6,14 @@ import (
 
 	"github.com/spf13/cobra"
 
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	checkpkg "github.com/greatliontech/stipulator/internal/check"
-	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
-
-	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 )
 
 func pruneCmd() *cobra.Command {
@@ -67,15 +65,11 @@ func pruneCmd() *cobra.Command {
 				fmt.Printf("store gc: %d record variant(s) removed, %d kept\n", removed, kept)
 				return nil
 			}
-			spec, err := mustCompile(chdir)
+			prepared, err := mustPrepare(chdir)
 			if err != nil {
 				return err
 			}
-			fsys := os.DirFS(chdir)
-			store, err := records.Load(fsys)
-			if err != nil {
-				return err
-			}
+			spec, store, pol := prepared.Spec, prepared.Store, prepared.Coverage
 			// Danglingness is a corpus-and-records fact: no witnesses, no
 			// symbol resolution, and no verification gate — a dangling gap
 			// IS a verification problem, so gating its repair on clean
@@ -113,6 +107,17 @@ func pruneCmd() *cobra.Command {
 				fmt.Println("prune: no gap records - nothing to evaluate")
 				return nil
 			}
+			// A resolved gap is derived from coverage, which is only sound
+			// when verification is clean: the record-only half refuses
+			// before any child process (REQ-check-preparation).
+			if err := refuseHygiene(prepared.Hygiene); err != nil {
+				return err
+			}
+			gb, err := golang.NewOwned(cmd.Context(), chdir)
+			if err != nil {
+				return err
+			}
+			defer gb.Close()
 			var testRun *verify.TestRun
 			if !noTest {
 				// Resolution reads the gapped requirements' coverage -
@@ -129,7 +134,7 @@ func pruneCmd() *cobra.Command {
 					return err
 				}
 				why := fmt.Sprintf("scoped to %d gapped requirements", len(gapIds))
-				if testRun, err = witnessRunScoped(cmd.Context(), scope, why); err != nil {
+				if testRun, err = witnessRunScoped(cmd.Context(), gb, scope, why); err != nil {
 					return err
 				}
 				// The resolved-record evaluation is pinned to the serving
@@ -140,28 +145,16 @@ func pruneCmd() *cobra.Command {
 				}
 			}
 			fmt.Fprintln(os.Stderr, dim(fmt.Sprintf("evaluated %d gap records", len(store.Gaps))))
-			backends, err := makeBackends(cmd.Context(), chdir)
-			if err != nil {
-				return err
-			}
 			// A resolved gap is derived from coverage, which is only sound
 			// when verification is clean: a dangling or stale record could
 			// misreport a requirement's bucket and prune a gap that is still
 			// load-bearing. Refuse rather than delete on a shaky reading.
-			rep := verify.Run(spec, store, backends, testRun)
+			rep := verify.Run(spec, store, map[string]verify.Backend{"go": gb}, testRun)
 			if len(rep.Problems) > 0 {
 				for _, p := range rep.Problems {
 					fmt.Fprintln(os.Stderr, red(p.String()))
 				}
 				return fmt.Errorf("fix verification problems first")
-			}
-			manifest, err := corpus.LoadManifest(fsys)
-			if err != nil {
-				return err
-			}
-			pol, err := coverage.PolicyFromManifest(manifest)
-			if err != nil {
-				return err
 			}
 			cov := coverage.Evaluate(spec, rep, store, !noTest, pol)
 			resolved := map[string]bool{}

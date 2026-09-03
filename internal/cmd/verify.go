@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
-	"github.com/greatliontech/stipulator/internal/records"
+	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
@@ -18,27 +18,31 @@ func verifyCmd() *cobra.Command {
 		Use:   "verify",
 		Short: guidanceShort("verify"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			spec, err := mustCompile(chdir)
+			prepared, err := mustPrepare(chdir)
 			if err != nil {
 				return err
 			}
-			store, err := records.Load(os.DirFS(chdir))
+			spec, store := prepared.Spec, prepared.Store
+			// Record hygiene decides before any witness executes: the
+			// problems are the verification's answer whatever a run
+			// would say (REQ-check-preparation).
+			if err := refuseHygiene(prepared.Hygiene); err != nil {
+				return err
+			}
+			gb, err := golang.NewOwned(cmd.Context(), chdir)
 			if err != nil {
 				return err
 			}
+			defer gb.Close()
 			var testRun *verify.TestRun
 			if !noTest {
-				tr, err := witnessRun(cmd.Context())
+				tr, err := witnessRun(cmd.Context(), gb)
 				if err != nil {
 					return err
 				}
 				testRun = tr
 			}
-			backends, err := makeBackends(cmd.Context(), chdir)
-			if err != nil {
-				return err
-			}
-			rep := verify.Run(spec, store, backends, testRun)
+			rep := verify.Run(spec, store, map[string]verify.Backend{"go": gb}, testRun)
 			for _, p := range rep.Problems {
 				fmt.Fprintln(os.Stderr, red(p.String()))
 			}

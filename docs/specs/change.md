@@ -334,7 +334,12 @@ REQ-check-diagnostics retains, whatever the failing test is bound to
 executed a policy selection and watched it fail cannot report the tree
 passing, and a witness the isolation pass re-granted solo does not
 launder the sibling red that forced the re-run) —
-REQ-gate-no-undeclared fails, or prune residue remains. A caller
+REQ-gate-no-undeclared fails, or prune residue remains. A refusal an
+earlier term decides from held inputs cuts the pass short: the terms
+it makes moot — those needing the policy capture or a witness — are
+not evaluated; the terms it does not make moot — the record's static
+faults, decidable without a capture — still stand, and the verdict
+fails on whichever of the evaluated terms fail. A caller
 demanding suite judgment selects full execution: the policy executes
 whole, health derives from that same execution, and the verdict
 additionally fails when suite health is unhealthy. A caller naming
@@ -399,9 +404,10 @@ assertion failure — a red witness whose output is discarded leaves an
 environment-induced failure and a real regression indistinguishable, so
 retained failure output is part of the verdict, not a courtesy.
 
-**REQ-check-policy-notices** (behavior): The check result MUST carry
-non-fatal policy-tier notices attributed to the invocation that
-authored the condition, and every serving face renders them — the CLI
+**REQ-check-policy-notices** (behavior): A check that reaches its policy
+capture — one no earlier refusal cut short (REQ-check-preparation) —
+MUST carry non-fatal policy-tier notices attributed to the invocation
+that authored the condition, and every serving face renders them — the CLI
 render, the MCP text digest, and the MCP structured summary alike: today,
 for each witness-eligible invocation whose effective build selection is
 outside the freshness engine's walked toolchain-selection audit, the

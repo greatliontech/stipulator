@@ -215,7 +215,7 @@ func TestTokenlessCallEmitsPhaseLogMessages(t *testing.T) {
 				"example.com/q.TestA": strings.Repeat("q", 64),
 			}}, nil
 		},
-		runTests: func(context.Context, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		runTests: func(context.Context, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			return &verify.TestRun{
 				RaceEnabled:      true,
 				SelectiveServing: true,

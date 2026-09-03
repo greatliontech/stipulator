@@ -17,6 +17,7 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
+	"github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/verify"
@@ -75,6 +76,37 @@ func newRootCmd() *cobra.Command {
 	}
 	c.AddCommand(compileCmd(), checkCmd(), verifyCmd(), gateCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), impactCmd(), pruneCmd(), pinCmd(), disposeCmd(), retargetCmd(), attestCmd(), initCmd(), policyCmd(), mcpCmd(), guidanceCmd(), internalResolveCmd())
 	return c
+}
+
+// mustPrepare gathers an operation's held inputs — corpus, records,
+// coverage policy, record hygiene — before its first child process
+// (REQ-check-preparation), rendering compile diagnostics as mustCompile
+// does: errors end the command.
+func mustPrepare(dir string) (*check.Prepared, error) {
+	prepared, err := check.Prepare(os.DirFS(dir))
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) && strings.Contains(err.Error(), corpus.ManifestPath) {
+			return nil, fmt.Errorf("not a stipulator repository (no %s); run `stipulator init` to scaffold one", corpus.ManifestPath)
+		}
+		return nil, err
+	}
+	if _, err := mustClean(prepared.Spec, prepared.Diagnostics); err != nil {
+		return nil, err
+	}
+	return prepared, nil
+}
+
+// refuseHygiene prints the record-only verification problems and fails
+// the command before any witness executes: verification cannot pass
+// whatever a run would say (REQ-check-preparation).
+func refuseHygiene(problems []verify.Problem) error {
+	if len(problems) == 0 {
+		return nil
+	}
+	for _, p := range problems {
+		fmt.Fprintln(os.Stderr, red(p.String()))
+	}
+	return fmt.Errorf("fix verification problems first (%d)", len(problems))
 }
 
 // mustCompile compiles the corpus at dir, printing diagnostics and exiting

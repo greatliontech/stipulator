@@ -8,10 +8,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/greatliontech/stipulator/internal/author"
+	"github.com/greatliontech/stipulator/internal/backends/golang"
 	checkpkg "github.com/greatliontech/stipulator/internal/check"
-	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/coverage"
-	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
@@ -113,15 +112,11 @@ func gapCmd() *cobra.Command {
 // records listed rather than refused. It writes nothing; editing a gap
 // is re-declaring it.
 func gapListRun(ctx context.Context) error {
-	spec, err := mustCompile(chdir)
+	prepared, err := mustPrepare(chdir)
 	if err != nil {
 		return err
 	}
-	fsys := os.DirFS(chdir)
-	store, err := records.Load(fsys)
-	if err != nil {
-		return err
-	}
+	spec, store, pol := prepared.Spec, prepared.Store, prepared.Coverage
 	if len(store.Gaps) == 0 {
 		fmt.Println("no gap records")
 		return nil
@@ -130,30 +125,28 @@ func gapListRun(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	// The list is a read surface, not a verification verdict: dangling
+	// records are listed rather than refused (REQ-gap-list), so record
+	// hygiene warns below and never withholds the witness evidence the
+	// other gaps' states derive from — the MCP gap tool evaluates the
+	// same way. One owned child serves the run and the resolution.
+	gb, err := golang.NewOwned(ctx, chdir)
+	if err != nil {
+		return err
+	}
+	defer gb.Close()
 	var testRun *verify.TestRun
 	if len(scope) > 0 {
 		// An empty scope means no bound witness can move any
 		// gap-relevant bucket, so the evaluation is witness-free.
 		why := fmt.Sprintf("scoped to %d gapped requirements", len(gapIds))
-		if testRun, err = witnessRunScoped(ctx, scope, why); err != nil {
+		if testRun, err = witnessRunScoped(ctx, gb, scope, why); err != nil {
 			return err
 		}
 	}
-	backends, err := makeBackends(ctx, chdir)
-	if err != nil {
-		return err
-	}
-	rep := verify.Run(spec, store, backends, testRun)
+	rep := verify.Run(spec, store, map[string]verify.Backend{"go": gb}, testRun)
 	if len(rep.Problems) > 0 {
 		fmt.Fprintln(os.Stderr, yellow(fmt.Sprintf("%d verification problems - evaluated states may misreport; run stipulator verify", len(rep.Problems))))
-	}
-	manifest, err := corpus.LoadManifest(fsys)
-	if err != nil {
-		return err
-	}
-	pol, err := coverage.PolicyFromManifest(manifest)
-	if err != nil {
-		return err
 	}
 	cov := coverage.Evaluate(spec, rep, store, testRun != nil, pol)
 	row := func(state, id, condition string, manualFired, staleConsent bool, reason string) {

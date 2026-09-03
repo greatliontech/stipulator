@@ -31,13 +31,11 @@ func withRecordPath(err error) error {
 	return err
 }
 
-func witnessRun(ctx context.Context) (*verify.TestRun, error) {
+// The caller owns the verification backend's child: the witness run
+// consults its classifier and the same child then resolves bindings —
+// one owned process per command.
+func witnessRun(ctx context.Context, gb *golang.Owned) (*verify.TestRun, error) {
 	fmt.Fprintln(os.Stderr, dim("witnessing: selective execution of the accepted test policy"))
-	gb, err := golang.NewOwned(ctx, chdir)
-	if err != nil {
-		return nil, err
-	}
-	defer gb.Close()
 	tr, err := golang.RunWitnesses(ctx, chdir, gb)
 	if err != nil {
 		return nil, withRecordPath(err)
@@ -49,17 +47,12 @@ func witnessRun(ctx context.Context) (*verify.TestRun, error) {
 // witnessRunScoped is witnessRun narrowed to a caller-named subject
 // scope: fresh records still serve whole-tree, only stale subjects
 // inside the scope execute.
-func witnessRunScoped(ctx context.Context, scope map[gofresh.Subject]bool, why string) (*verify.TestRun, error) {
+func witnessRunScoped(ctx context.Context, gb *golang.Owned, scope map[gofresh.Subject]bool, why string) (*verify.TestRun, error) {
 	fmt.Fprintln(os.Stderr, dim("witnessing: selective execution of the accepted test policy, "+why))
 	pc, err := golang.LoadCapture(ctx, chdir)
 	if err != nil {
 		return nil, withRecordPath(err)
 	}
-	gb, err := golang.NewOwned(ctx, chdir)
-	if err != nil {
-		return nil, err
-	}
-	defer gb.Close()
 	tr, err := golang.RunWitnessesScoped(ctx, pc, scope, gb)
 	if err != nil {
 		return nil, withRecordPath(err)

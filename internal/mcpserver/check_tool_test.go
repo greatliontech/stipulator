@@ -528,7 +528,7 @@ func progressPipelineHarness(t *testing.T) (*mcp.ClientSession, *notificationLog
 		backends: func(context.Context) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{"go": fakeBackend{}}, nil
 		},
-		runTests: func(context.Context, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		runTests: func(context.Context, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			return &verify.TestRun{RaceEnabled: true, SelectiveServing: true, Outcomes: map[string]verify.TestOutcome{}}, nil
 		},
 	}
@@ -709,7 +709,7 @@ func TestVerifyToolDeadlineNamesExpiredPhaseAndCause(t *testing.T) {
 		backends: func(context.Context) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{"go": fakeBackend{}}, nil
 		},
-		runTests: func(ctx context.Context, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		runTests: func(ctx context.Context, _ verify.WitnessSeeding, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			// The policy execution outlasts any deadline.
 			<-ctx.Done()
 			return nil, ctx.Err()
