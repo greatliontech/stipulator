@@ -450,3 +450,39 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "29a3a95dbe19d39bf71dca882395a6226e10d281fe49a462be12625d380dda85"
 }
+
+bindings {
+  requirement_id: "REQ-check-preparation"
+  content_hash: "221f271e519e5422845007a894aad1ddde9ab268713bdcfbec4157abb6ccfee5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoPolicyConfigStaticValidation"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c8c377e7ba677b3d769e0104f104d6936b5c753547e02f3e1ad41175936d2f11"
+}
+
+bindings {
+  requirement_id: "REQ-check-preparation"
+  content_hash: "221f271e519e5422845007a894aad1ddde9ab268713bdcfbec4157abb6ccfee5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoNormalizeBracketPaths"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "49f1ef6baedbd6a5817ec445fb84e2dcfc2e22597a54a90974dfcd181e56834f"
+}
+
+bindings {
+  requirement_id: "REQ-check-preparation"
+  content_hash: "221f271e519e5422845007a894aad1ddde9ab268713bdcfbec4157abb6ccfee5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoNormalizeVouchesCanonicalizeAndRefuse"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "05c6dfaa513124f50912a47ccaf784a4a0a05da22e9417e28d85fd90d1c1de94"
+}
+
+bindings {
+  requirement_id: "REQ-check-preparation"
+  content_hash: "221f271e519e5422845007a894aad1ddde9ab268713bdcfbec4157abb6ccfee5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoNormalizeExcludedPathFormsRefuseBeforeAnySpawn"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "baea49701c37b4b3e7a595ab6afe521ebe09c151dbabc198b05dd052822c5260"
+}

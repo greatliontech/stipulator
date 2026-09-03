@@ -5,6 +5,10 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[attestation-refusal-names-no-reclassification](attestation-refusal-names-no-reclassification.md)** —
   the (invariant, MUST) attestation refusal is right but names no remedy; point the author at
   reclassification (a closed enumeration is a wire requirement). *Lands: cross-tool train chunk 144.*
+- **[check-preparation-legs](check-preparation-legs.md)** — REQ-check-preparation's coverage
+  cell, caller-vocabulary, and record-hygiene legs still refuse after the witness run in the
+  CLI and MCP consumers; each moves before the first child process. *Lands: cross-tool train
+  chunk 155.*
 - **[train-114-campaign-idle-window](train-114-campaign-idle-window.md)** — the runner-inspectability
   folds' `--changed` campaign priced itself day-class (63 targets, 4,913 candidates); gate rode the
   nineteen killed ephemeral probes; measured prefix committed, sweep resumes on a quiet host.

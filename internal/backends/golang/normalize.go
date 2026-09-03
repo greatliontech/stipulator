@@ -207,9 +207,6 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	}
 	n.CacheBypass = cfg.GetCacheMode() == stipulatorv1.GoCacheMode_GO_CACHE_MODE_BYPASS
 	n.AssumePure = cfg.GetAssumePure()
-	if cfg.HasWitnessConcurrency() && cfg.GetWitnessConcurrency() < 1 {
-		return nil, fmt.Errorf("invocation %q: witness_concurrency must be positive when present", inv.GetName())
-	}
 	n.WitnessConcurrency = cfg.GetWitnessConcurrency()
 
 	abs, err := filepath.Abs(filepath.Join(dir, filepath.FromSlash(cfg.GetModuleRoot())))
@@ -326,24 +323,19 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		env = setEnv(env, "GOCACHE", gocache)
 	}
 	n.Env = env
-	for _, p := range cfg.GetBracketPaths() {
-		if err := validateBracketPath(p); err != nil {
-			return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
-		}
-		n.BracketPaths = append(n.BracketPaths, p)
-	}
+	// The record's forms were accepted by validateConfig at the top; the
+	// loops build, and the one arm that needs the resolved tree —
+	// an absolute excluded path's position — decides here.
+	n.BracketPaths = append(n.BracketPaths, cfg.GetBracketPaths()...)
 	for _, p := range cfg.GetExcludedPaths() {
-		if err := validateExcludedPath(p, treeRoot(n)); err != nil {
+		if err := validateExcludedPathInTree(p, treeRoot(n)); err != nil {
 			return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
 		}
 		n.ExcludedPaths = append(n.ExcludedPaths, p)
 	}
 	seenVouch := map[string]bool{}
 	for _, v := range cfg.GetDynamicStateVouches() {
-		identity, err := vouchIdentity(v)
-		if err != nil {
-			return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
-		}
+		identity, _ := vouchIdentity(v)
 		if !seenVouch[identity] {
 			seenVouch[identity] = true
 			n.Vouches = append(n.Vouches, identity)
@@ -386,12 +378,27 @@ func vouchIdentity(v *stipulatorv1.DynamicStateVouch) (string, error) {
 	return pkg + "." + name, nil
 }
 
-// validateExcludedPath admits the identity forms gofresh's exclusion
-// contract can act on: a clean tree-relative slash path, or a clean
-// absolute path outside the verification tree. An absolute path inside
-// the tree would validate yet exclude nothing (in-tree reads classify
-// relative), so it is refused loudly as the misconfiguration it is.
-func validateExcludedPath(p, root string) error {
+// validateExcludedPathInTree is the one exclusion check that needs the
+// resolved tree: an absolute path inside the verification tree would
+// validate yet exclude nothing (in-tree reads classify relative), so it
+// is refused loudly as the misconfiguration it is. The path's form was
+// accepted at policy acceptance (validateExcludedPathForm).
+func validateExcludedPathInTree(p, root string) error {
+	if !filepath.IsAbs(p) {
+		return nil
+	}
+	if rel, err := filepath.Rel(root, p); err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("excluded path %q is inside the verification tree and would exclude nothing; use the tree-relative form %q", p, filepath.ToSlash(rel))
+	}
+	return nil
+}
+
+// validateExcludedPathForm is the record-only half of the exclusion
+// contract: a non-empty, control-free, traversal-free path, clean in
+// its absolute or slash-relative form. It decides at policy acceptance;
+// only an absolute path's position against the resolved tree waits for
+// normalization.
+func validateExcludedPathForm(p string) error {
 	if p == "" {
 		return fmt.Errorf("excluded path is empty")
 	}
@@ -411,9 +418,6 @@ func validateExcludedPath(p, root string) error {
 	if filepath.IsAbs(p) {
 		if filepath.Clean(p) != p {
 			return fmt.Errorf("excluded path %q is not clean", p)
-		}
-		if rel, err := filepath.Rel(root, p); err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-			return fmt.Errorf("excluded path %q is inside the verification tree and would exclude nothing; use the tree-relative form %q", p, filepath.ToSlash(rel))
 		}
 		return nil
 	}

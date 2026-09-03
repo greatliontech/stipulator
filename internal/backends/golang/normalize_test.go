@@ -312,6 +312,19 @@ func TestGoNormalizeBracketPaths(t *testing.T) {
 	if len(n.BracketPaths) != 3 || n.BracketPaths[0] != "/bin/sh" || n.BracketPaths[2] != "testdata/a..b.golden" {
 		t.Fatalf("BracketPaths = %v", n.BracketPaths)
 	}
+	// A malformed bracket path is a record fault: it refuses before any
+	// toolchain spawn (REQ-check-preparation). The hook's positive
+	// control first: a well-formed record does spawn through it.
+	spawns := 0
+	commandHook = func(string, []string) { spawns++ }
+	defer func() { commandHook = nil }()
+	if _, err := NormalizeInvocation(context.Background(), discoverFixture(t), goInvocation("bp", cfg)); err != nil {
+		t.Fatal(err)
+	}
+	if spawns == 0 {
+		t.Fatal("a well-formed record spawned nothing through the seam; the zero-spawn pins below would be vacuous")
+	}
+	spawns = 0
 	for _, bad := range []string{"", "/bin/../sh", "/unclean//sh", "a/../b", "./rel", "../escape", ".."} {
 		c := &stipulatorv1.GoInvocationConfig{}
 		c.SetPackages([]string{"./..."})
@@ -319,6 +332,9 @@ func TestGoNormalizeBracketPaths(t *testing.T) {
 		if _, err := NormalizeInvocation(context.Background(), discoverFixture(t), goInvocation("bp", c)); err == nil {
 			t.Errorf("bracket path %q accepted", bad)
 		}
+	}
+	if spawns != 0 {
+		t.Fatalf("malformed bracket paths cost %d toolchain spawns before refusing", spawns)
 	}
 }
 
@@ -381,9 +397,41 @@ func TestGoNormalizeVouchesCanonicalizeAndRefuse(t *testing.T) {
 		cfg.SetPackages([]string{"./..."})
 		cfg.SetRace(true)
 		cfg.SetDynamicStateVouches([]*stipulatorv1.DynamicStateVouch{bad})
-		if _, err := NormalizeInvocation(context.Background(), dir, goInvocation("bad", cfg)); err == nil || !strings.Contains(err.Error(), "dynamic_state_vouches") {
+		spawns := 0
+		commandHook = func(string, []string) { spawns++ }
+		_, err := NormalizeInvocation(context.Background(), dir, goInvocation("bad", cfg))
+		commandHook = nil
+		if err == nil || !strings.Contains(err.Error(), "dynamic_state_vouches") {
 			t.Fatalf("malformed vouch %+v accepted: %v", bad, err)
 		}
+		// The record decides the refusal: no toolchain spawn precedes it
+		// (evidence.md: "refuses at policy acceptance").
+		if spawns != 0 {
+			t.Fatalf("malformed vouch %+v cost %d toolchain spawns before refusing", bad, spawns)
+		}
+	}
+}
+
+// A malformed excluded path — empty, control-bearing, traversing, or
+// unclean — is a record fault refused before any toolchain spawn; only
+// an absolute path's position against the tree waits for normalization
+// (REQ-check-preparation).
+func TestGoNormalizeExcludedPathFormsRefuseBeforeAnySpawn(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-preparation")
+	neutralAmbient(t)
+	spawns := 0
+	commandHook = func(string, []string) { spawns++ }
+	defer func() { commandHook = nil }()
+	for _, bad := range []string{"", "a\x01b", "../x", "./x", "/unclean//x"} {
+		cfg := &stipulatorv1.GoInvocationConfig{}
+		cfg.SetPackages([]string{"./..."})
+		cfg.SetExcludedPaths([]string{bad})
+		if _, err := NormalizeInvocation(context.Background(), discoverFixture(t), goInvocation("ep", cfg)); err == nil {
+			t.Errorf("excluded path %q accepted", bad)
+		}
+	}
+	if spawns != 0 {
+		t.Fatalf("malformed excluded paths cost %d toolchain spawns before refusing", spawns)
 	}
 }
 

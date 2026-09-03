@@ -257,6 +257,19 @@ func TestGoPolicyConfigStaticValidation(t *testing.T) {
 			c.SetCount(2)
 		}},
 		{"args NUL", "NUL", func(c *stipulatorv1.GoInvocationConfig) { c.SetArgs([]string{"a\x00b"}) }},
+		{"bracket path traversal", "parent traversal", func(c *stipulatorv1.GoInvocationConfig) { c.SetBracketPaths([]string{"a/../b"}) }},
+		{"bracket path unclean", "not clean", func(c *stipulatorv1.GoInvocationConfig) { c.SetBracketPaths([]string{"/unclean//sh"}) }},
+		{"excluded path control", "control character", func(c *stipulatorv1.GoInvocationConfig) { c.SetExcludedPaths([]string{"a\x01b"}) }},
+		{"excluded path traversal", "parent traversal", func(c *stipulatorv1.GoInvocationConfig) { c.SetExcludedPaths([]string{"../x"}) }},
+		{"excluded path unclean", "not a clean slash path", func(c *stipulatorv1.GoInvocationConfig) { c.SetExcludedPaths([]string{"./x"}) }},
+		{"vouch not an identifier", "not one Go identifier", func(c *stipulatorv1.GoInvocationConfig) {
+			c.SetDynamicStateVouches([]*stipulatorv1.DynamicStateVouch{vouchEntry("a.example/dep", "Var ")})
+		}},
+		{"vouch without a package", "needs a package", func(c *stipulatorv1.GoInvocationConfig) {
+			c.SetDynamicStateVouches([]*stipulatorv1.DynamicStateVouch{vouchEntry("", "Var")})
+		}},
+		{"zero witness_concurrency", "positive when present", func(c *stipulatorv1.GoInvocationConfig) { c.SetWitnessConcurrency(0) }},
+		{"negative witness_concurrency", "positive when present", func(c *stipulatorv1.GoInvocationConfig) { c.SetWitnessConcurrency(-2) }},
 		{"args testlogfile", "capture file", func(c *stipulatorv1.GoInvocationConfig) {
 			c.SetArgs([]string{"-test.testlogfile=/dev/null"})
 		}},

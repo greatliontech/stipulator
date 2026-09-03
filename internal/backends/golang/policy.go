@@ -39,13 +39,35 @@ func (Policy) ValidateInvocation(invocation string, payload proto.Message) error
 	return validateConfig(cfg)
 }
 
-// validateConfig statically validates every typed field of one Go payload.
+// validateConfig statically validates every typed field of one Go payload
+// — the record alone decides each refusal here, so a malformed record
+// costs no toolchain query: the bracket paths, the vouch identities,
+// and the excluded paths' form are record facts (only an excluded
+// path's position against the resolved tree waits for normalization).
 func validateConfig(cfg *stipulatorv1.GoInvocationConfig) error {
 	if cfg.GetRace() && cfg.GetPlainWitness() {
 		return fmt.Errorf("plain_witness is meaningful only on a race: false invocation - a race invocation already grants at the stronger tier")
 	}
 	if err := validateModuleRoot(cfg.GetModuleRoot()); err != nil {
 		return err
+	}
+	for _, p := range cfg.GetBracketPaths() {
+		if err := validateBracketPath(p); err != nil {
+			return err
+		}
+	}
+	for _, p := range cfg.GetExcludedPaths() {
+		if err := validateExcludedPathForm(p); err != nil {
+			return err
+		}
+	}
+	for _, v := range cfg.GetDynamicStateVouches() {
+		if _, err := vouchIdentity(v); err != nil {
+			return err
+		}
+	}
+	if cfg.HasWitnessConcurrency() && cfg.GetWitnessConcurrency() < 1 {
+		return fmt.Errorf("witness_concurrency must be positive when present")
 	}
 	for _, p := range cfg.GetPackages() {
 		if err := validatePackagePattern(p); err != nil {

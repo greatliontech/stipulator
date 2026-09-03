@@ -291,6 +291,18 @@ loop's verdict: it re-runs exactly what moved and claims no health —
 no health over what it did not execute; every red it did observe is
 its verdict's.
 
+**REQ-check-preparation** (invariant): Every refusal an operation can
+decide from the inputs it already holds — the compiled corpus, the
+committed records, the accepted policy record, the manifest's coverage
+policy, and the caller's view, scope, and identifier vocabulary — MUST
+fire before the operation spawns its first child process or pays a
+toolchain query the refusal makes moot: a policy record's static faults
+at acceptance, a duplicated coverage cell at manifest read, an unknown
+view, bucket, filter, or requirement identifier at parse, and the
+record-hygiene half of verification before any witness executes. A
+refusal that surfaces after such a cost is wasted work the caller could
+not avoid.
+
 **REQ-check-verdict** (behavior): The unified check MUST derive its one
 verdict from a single evaluation pass — compilation, witness evidence,
 binding verification, coverage, gap evaluation, and prune residue —
