@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	gofresh "github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/guard"
@@ -31,11 +32,14 @@ import (
 // fingerprints pin the toolchain and platform, so a committed cache would
 // ping-pong across machines, and a repo-local one dies with every fresh
 // worktree (REQ-evidence-witness-cache-format).
-// Bumped from 6 when the record identity gained the capture-group
-// coordinate: a record without its producing group is ambiguous across
-// producer environments, so field-blind prior records fail closed to
+// Bumped from 7 when the compartment ledger left the record for the
+// content-addressed ledger store: a prior record's embedded ledger is an
+// unknown field, so field-blind prior records fail closed to
 // re-execution.
-const version = 7
+const version = 8
+
+// ledgerVersion is the ledger store's file version.
+const ledgerVersion = 1
 
 // variantBound caps how many tree-state variants one test identity
 // retains; eviction is by install recency and costs only execution.
@@ -352,37 +356,16 @@ func (l *CompartmentLedger) ToGofresh() gofresh.TestVariantLedger {
 	return out
 }
 
-// validLedger validates the ledger's structure and its coherence with the
-// record identity: a witness subject's own declaration lives in its
-// package's test-variant compartment, so a ledger that does not name the
-// record's test is incoherent — served, it would let the subject's own
-// declaration ride an inert diff as an addition (the observationProof
-// identity check's sibling).
-func validLedger(l *CompartmentLedger, test string) bool {
-	if l == nil {
-		return false
-	}
-	owns := false
-	for _, declaration := range l.Declarations {
-		if declaration.File == "" || declaration.Kind == "" || !validDigest(declaration.Hash) {
-			return false
-		}
-		if declaration.Kind == "func" && declaration.Receiver == "" && declaration.Name == test {
-			owns = true
-		}
-	}
-	for _, header := range l.FileHeaders {
-		if header.File == "" || !validDigest(header.Hash) {
-			return false
-		}
-	}
-	return owns
-}
-
 // Record is one top-level test's cached witness: the fingerprint that
-// produced it, the producing compartment's declaration ledger, every
-// outcome key it owns ("pkg.Test" and "pkg.Test/sub"), and its runtime
-// registrations.
+// produced it, every outcome key it owns ("pkg.Test" and "pkg.Test/sub"),
+// and its runtime registrations. CompartmentLedger is the producing
+// compartment's declaration ledger, persisted once per compartment in
+// the ledger store under the fingerprint's test-variant digest rather
+// than in the record: every test of a package shares its compartment,
+// so a per-record copy multiplied one ledger by the package's test
+// count, and reading them all made loading the store cost more than
+// the run it serves. Install writes it when set; Load leaves it nil, and
+// LoadLedger reads it back on demand.
 type Record struct {
 	// Group is the producing capture group's stable digest: the record's
 	// identity coordinate across producer environments. A test selected
@@ -392,7 +375,7 @@ type Record struct {
 	Package           string                `json:"package"`
 	Test              string                `json:"test"`
 	Fingerprint       Fingerprint           `json:"fingerprint"`
-	CompartmentLedger *CompartmentLedger    `json:"compartmentLedger"`
+	CompartmentLedger *CompartmentLedger    `json:"-"`
 	Outcomes          map[string]string     `json:"outcomes"`
 	Regs              []verify.Registration `json:"registrations,omitempty"`
 	// ObservationExclusions is the canonical reviewed exclusion set the
@@ -413,9 +396,6 @@ func (r *Record) UnmarshalJSON(data []byte) error {
 	if value, ok := fields["registrations"]; ok && isJSONNull(value) {
 		return errors.New("witnesscache: registrations are null")
 	}
-	if value, ok := fields["compartmentLedger"]; ok && isJSONNull(value) {
-		return errors.New("witnesscache: compartment ledger is null")
-	}
 	var decoded plain
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
@@ -432,14 +412,13 @@ func isJSONNull(value json.RawMessage) bool {
 
 // entry is one variant file's content: a versioned single record.
 type entry struct {
-	Version           int                   `json:"version"`
-	Group             string                `json:"group"`
-	Package           string                `json:"package"`
-	Test              string                `json:"test"`
-	Fingerprint       Fingerprint           `json:"fingerprint"`
-	CompartmentLedger *CompartmentLedger    `json:"compartmentLedger"`
-	Outcomes          map[string]string     `json:"outcomes"`
-	Regs              []verify.Registration `json:"registrations,omitempty"`
+	Version     int                   `json:"version"`
+	Group       string                `json:"group"`
+	Package     string                `json:"package"`
+	Test        string                `json:"test"`
+	Fingerprint Fingerprint           `json:"fingerprint"`
+	Outcomes    map[string]string     `json:"outcomes"`
+	Regs        []verify.Registration `json:"registrations,omitempty"`
 	// ObservationExclusions mirrors Record's field; absent in stores
 	// written before reviewed exclusions existed, which is exactly the
 	// empty capture-time set.
@@ -452,8 +431,19 @@ type entry struct {
 // trusted; refusal is per record and costs only that record's execution
 // (REQ-evidence-witness-cache-format). One identity may return several
 // variants: distinct tree states coexist, and serving picks whichever
-// fingerprint proves equivalence.
+// fingerprint proves equivalence. Variants come most recently installed
+// first (names break ties), so serving's first round tries the variant
+// the last state change produced — the one that proves equivalent
+// whenever the tree has not alternated since. Ledgers no record file
+// names are reclaimed here: the ledger store is bounded by the record
+// store, whose variant bound evicts records without reading them.
 func Load(dir string) []Record {
+	return loadSince(dir, time.Now())
+}
+
+// loadSince is Load with the moment the load is taken to begin: a
+// ledger no younger than it is a concurrent install's and is spared.
+func loadSince(dir string, started time.Time) []Record {
 	store, err := StoreDir(dir)
 	if err != nil {
 		return nil
@@ -465,51 +455,250 @@ func Load(dir string) []Record {
 	if err != nil {
 		return nil
 	}
-	// ReadDir returns name-sorted entries; dot-prefixed names are install
-	// temporaries, never records.
-	names := make([]string, 0, len(entries))
+	// Dot-prefixed names are install temporaries, never records; the
+	// ledger store is a subdirectory.
+	type aged struct {
+		name string
+		mod  int64
+	}
+	var files []aged
 	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") && !strings.HasPrefix(e.Name(), ".") {
-			names = append(names, e.Name())
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") || strings.HasPrefix(e.Name(), ".") {
+			continue
 		}
+		var mod int64
+		if info, err := e.Info(); err == nil {
+			mod = info.ModTime().UnixNano()
+		}
+		files = append(files, aged{e.Name(), mod})
+	}
+	sort.Slice(files, func(i, j int) bool {
+		if files[i].mod != files[j].mod {
+			return files[i].mod > files[j].mod
+		}
+		return files[i].name < files[j].name
+	})
+	names := make([]string, 0, len(files))
+	for _, f := range files {
+		names = append(names, f.name)
 	}
 	manifests := map[string]bool{}
 	var records []Record
+	referenced := map[string]bool{}
 	for _, name := range names {
-		rec, ok := loadEntry(store, name, dir, manifests)
+		rec, digest, ok := loadEntry(store, name, dir, manifests)
+		if digest != "" {
+			referenced[digest] = true
+		}
 		if ok {
 			records = append(records, rec)
 		}
 	}
+	// Records that landed while this load validated its snapshot name
+	// ledgers the snapshot never saw: they are read for their digests
+	// before the sweep, and a ledger younger than the load is left
+	// alone, so a concurrent install's ledger-then-record ordering holds
+	// for the sweep as it does for a reader.
+	if late, err := os.ReadDir(store); err == nil {
+		seen := map[string]bool{}
+		for _, name := range names {
+			seen[name] = true
+		}
+		for _, e := range late {
+			if e.IsDir() || seen[e.Name()] || !strings.HasSuffix(e.Name(), ".json") || strings.HasPrefix(e.Name(), ".") {
+				continue
+			}
+			if _, digest, _ := loadEntry(store, e.Name(), dir, manifests); digest != "" {
+				referenced[digest] = true
+			}
+		}
+	}
+	sweepLedgers(store, referenced, started)
 	return records
 }
 
-func loadEntry(store, name, dir string, manifests map[string]bool) (Record, bool) {
+// loadEntry reads one variant file: the record when it is valid, and
+// the compartment digest its fingerprint names whenever the file parses
+// at all — a refused record's ledger is kept referenced, so a refusal
+// this tree state decides (a manifest not current here) costs the
+// record's execution and nothing more.
+func loadEntry(store, name, dir string, manifests map[string]bool) (Record, string, bool) {
 	data, err := os.ReadFile(filepath.Join(store, name))
 	if err != nil {
-		return Record{}, false
+		return Record{}, "", false
 	}
 	var fields map[string]json.RawMessage
 	if json.Unmarshal(data, &fields) != nil {
-		return Record{}, false
+		return Record{}, "", false
 	}
+	var named struct {
+		TestVariantClosure string `json:"testVariantClosure"`
+	}
+	_ = json.Unmarshal(fields["fingerprint"], &named)
+	digest := named.TestVariantClosure
 	if value, ok := fields["registrations"]; ok && isJSONNull(value) {
-		return Record{}, false
+		return Record{}, digest, false
 	}
 	var e entry
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
 	if dec.Decode(&e) != nil || dec.Decode(&struct{}{}) != io.EOF || e.Version != version {
-		return Record{}, false
+		return Record{}, digest, false
 	}
-	rec := Record{Group: e.Group, Package: e.Package, Test: e.Test, Fingerprint: e.Fingerprint, CompartmentLedger: e.CompartmentLedger, Outcomes: e.Outcomes, Regs: e.Regs, ObservationExclusions: e.ObservationExclusions}
+	rec := Record{Group: e.Group, Package: e.Package, Test: e.Test, Fingerprint: e.Fingerprint, Outcomes: e.Outcomes, Regs: e.Regs, ObservationExclusions: e.ObservationExclusions}
 	proof := rec.Fingerprint.ObservationProof
 	if rec.Group == "" || rec.Package == "" || rec.Test == "" || name != fileName(rec) ||
 		(proof != nil && (proof.Package != rec.Package || proof.Symbol != rec.Test)) ||
-		!validOutcomes(rec) || !rec.Fingerprint.valid(dir, manifests) || !validLedger(rec.CompartmentLedger, rec.Test) {
-		return Record{}, false
+		!validOutcomes(rec) || !rec.Fingerprint.valid(dir, manifests) {
+		return Record{}, digest, false
 	}
-	return rec, true
+	return rec, digest, true
+}
+
+// sweepLedgers removes every ledger file whose digest no record file
+// names, sparing files younger than since — a concurrent install's
+// ledger, whose record is about to land; a removal failure costs
+// nothing but the file's bytes.
+func sweepLedgers(store string, referenced map[string]bool, since time.Time) error {
+	ledgers, err := os.ReadDir(filepath.Join(store, "ledgers"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	for _, e := range ledgers {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") || strings.HasPrefix(e.Name(), ".") {
+			continue
+		}
+		if referenced[strings.TrimSuffix(e.Name(), ".json")] {
+			continue
+		}
+		if info, statErr := e.Info(); statErr == nil && !info.ModTime().Before(since) {
+			continue
+		}
+		if rmErr := os.Remove(filepath.Join(store, "ledgers", e.Name())); rmErr != nil && err == nil {
+			err = rmErr
+		}
+	}
+	return err
+}
+
+// ledgerEntry is one ledger store file: the compartment ledger persisted
+// under its test-variant digest, the digest repeated inside so a file
+// disagreeing with its own name is refusable on read.
+type ledgerEntry struct {
+	Version            int                      `json:"version"`
+	TestVariantClosure string                   `json:"testVariantClosure"`
+	Declarations       []CompartmentDeclaration `json:"declarations,omitempty"`
+	FileHeaders        []CompartmentFileHeader  `json:"fileHeaders,omitempty"`
+}
+
+func ledgerPath(store, digest string) string {
+	return filepath.Join(store, "ledgers", digest+".json")
+}
+
+// LoadLedger reads the compartment ledger persisted under digest for the
+// record of test: nil when no ledger is stored, when the file is
+// malformed, of another version, or disagrees with its name, or when the
+// ledger does not declare test as a receiverless func — a witness's own
+// declaration lives in its compartment, so a ledger omitting it would let
+// that declaration ride an inert diff as an addition. Refusal costs only
+// the carve-out: the record still serves on plain validity.
+func LoadLedger(dir, digest, test string) *CompartmentLedger {
+	store, err := StoreDir(dir)
+	if err != nil {
+		return nil
+	}
+	ledger := readLedger(store, digest)
+	if ledger == nil {
+		return nil
+	}
+	for _, declaration := range ledger.Declarations {
+		if declaration.Kind == "func" && declaration.Receiver == "" && declaration.Name == test {
+			return ledger
+		}
+	}
+	return nil
+}
+
+// readLedger reads the ledger file under digest as far as its own
+// structure goes: nil when absent, malformed, of another version,
+// disagreeing with its name, or carrying an entry without a file or a
+// well-formed digest.
+func readLedger(store, digest string) *CompartmentLedger {
+	if !validDigest(digest) {
+		return nil
+	}
+	data, err := os.ReadFile(ledgerPath(store, digest))
+	if err != nil {
+		return nil
+	}
+	var e ledgerEntry
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	if dec.Decode(&e) != nil || dec.Decode(&struct{}{}) != io.EOF || e.Version != ledgerVersion || e.TestVariantClosure != digest {
+		return nil
+	}
+	for _, declaration := range e.Declarations {
+		if declaration.File == "" || declaration.Kind == "" || !validDigest(declaration.Hash) {
+			return nil
+		}
+	}
+	for _, header := range e.FileHeaders {
+		if header.File == "" || !validDigest(header.Hash) {
+			return nil
+		}
+	}
+	return &CompartmentLedger{Declarations: e.Declarations, FileHeaders: e.FileHeaders}
+}
+
+// installLedger persists rec's compartment ledger under its test-variant
+// digest. The digest addresses the compartment's content, so a file
+// present that reads back as a ledger is this ledger and stays; one that
+// does not — torn, of a prior version — is rewritten, so a refused file
+// never outlives the next install of its compartment.
+func installLedger(store string, rec Record) error {
+	digest := rec.Fingerprint.TestVariantClosure
+	if rec.CompartmentLedger == nil || !validDigest(digest) {
+		return nil
+	}
+	full := ledgerPath(store, digest)
+	if readLedger(store, digest) != nil {
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(ledgerEntry{Version: ledgerVersion, TestVariantClosure: digest, Declarations: rec.CompartmentLedger.Declarations, FileHeaders: rec.CompartmentLedger.FileHeaders}, "", "  ")
+	if err != nil {
+		return err
+	}
+	return WriteAtomic(filepath.Dir(full), ".ledger-*.json", full, data)
+}
+
+// WriteAtomic lands data at full through a temporary in dir matching
+// pattern and a rename, so a concurrent reader never sees a torn file
+// and a failed write leaves nothing behind.
+func WriteAtomic(dir, pattern, full string, data []byte) error {
+	tmp, err := os.CreateTemp(dir, pattern)
+	if err != nil {
+		return err
+	}
+	if _, err := tmp.Write(append(data, '\n')); err != nil {
+		tmp.Close()
+		os.Remove(tmp.Name())
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmp.Name())
+		return err
+	}
+	if err := os.Rename(tmp.Name(), full); err != nil {
+		os.Remove(tmp.Name())
+		return err
+	}
+	return nil
 }
 
 func validOutcomes(rec Record) bool {
@@ -587,7 +776,12 @@ func Install(dir string, rec Record) error {
 	if err := os.MkdirAll(store, 0o755); err != nil {
 		return err
 	}
-	e := entry{Version: version, Group: rec.Group, Package: rec.Package, Test: rec.Test, Fingerprint: rec.Fingerprint, CompartmentLedger: rec.CompartmentLedger, Outcomes: rec.Outcomes, Regs: rec.Regs, ObservationExclusions: rec.ObservationExclusions}
+	// The ledger lands before the record: a record present in the store
+	// finds its compartment's ledger present too.
+	if err := installLedger(store, rec); err != nil {
+		return err
+	}
+	e := entry{Version: version, Group: rec.Group, Package: rec.Package, Test: rec.Test, Fingerprint: rec.Fingerprint, Outcomes: rec.Outcomes, Regs: rec.Regs, ObservationExclusions: rec.ObservationExclusions}
 	data, err := json.MarshalIndent(e, "", "  ")
 	if err != nil {
 		return err
@@ -596,21 +790,7 @@ func Install(dir string, rec Record) error {
 	// Write-then-rename: a concurrent writer must never leave a torn
 	// file — a torn variant costs only its own record through the
 	// per-file refusal leg, and rename makes even that window vanish.
-	tmp, err := os.CreateTemp(store, ".variant-*.json")
-	if err != nil {
-		return err
-	}
-	if _, err := tmp.Write(append(data, '\n')); err != nil {
-		tmp.Close()
-		os.Remove(tmp.Name())
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		os.Remove(tmp.Name())
-		return err
-	}
-	if err := os.Rename(tmp.Name(), full); err != nil {
-		os.Remove(tmp.Name())
+	if err := WriteAtomic(store, ".variant-*.json", full, data); err != nil {
 		return err
 	}
 	evictBeyondBound(store, identityDigest(rec.Group, rec.Package, rec.Test), filepath.Base(full))
@@ -665,8 +845,15 @@ func (r Record) IdentityKey() string { return r.Group + "\x00" + r.Package + "."
 // liveGroup judges record-identity coordinates: nil keeps every
 // coordinate (cost cleanup never guesses), non-nil retires coordinates
 // no current invocation produces — their records are cost no lookup
-// will ever serve.
+// will ever serve. Ledgers no kept record's compartment digest names go
+// with their records; the counts are of record variants alone.
 func GC(dir string, live func(pkg, test string) bool, liveGroup func(group string) bool) (removed, kept int, err error) {
+	return gcSince(dir, live, liveGroup, time.Now())
+}
+
+// gcSince is GC with the moment it is taken to begin: as under a load,
+// a ledger no younger than it is a concurrent install's and is spared.
+func gcSince(dir string, live func(pkg, test string) bool, liveGroup func(group string) bool, started time.Time) (removed, kept int, err error) {
 	store, err := StoreDir(dir)
 	if err != nil {
 		return 0, 0, err
@@ -678,6 +865,7 @@ func GC(dir string, live func(pkg, test string) bool, liveGroup func(group strin
 		}
 		return 0, 0, err
 	}
+	referenced := map[string]bool{}
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") || strings.HasPrefix(e.Name(), ".") {
 			continue
@@ -685,10 +873,13 @@ func GC(dir string, live func(pkg, test string) bool, liveGroup func(group strin
 		path := filepath.Join(store, e.Name())
 		data, readErr := os.ReadFile(path)
 		var rec struct {
-			Version int    `json:"version"`
-			Group   string `json:"group"`
-			Package string `json:"package"`
-			Test    string `json:"test"`
+			Version     int    `json:"version"`
+			Group       string `json:"group"`
+			Package     string `json:"package"`
+			Test        string `json:"test"`
+			Fingerprint struct {
+				TestVariantClosure string `json:"testVariantClosure"`
+			} `json:"fingerprint"`
 		}
 		if readErr != nil || json.Unmarshal(data, &rec) != nil || rec.Package == "" || rec.Test == "" || rec.Version != version ||
 			(liveGroup != nil && !liveGroup(rec.Group)) {
@@ -705,6 +896,7 @@ func GC(dir string, live func(pkg, test string) bool, liveGroup func(group strin
 		}
 		if live(rec.Package, rec.Test) {
 			kept++
+			referenced[rec.Fingerprint.TestVariantClosure] = true
 			continue
 		}
 		if rmErr := os.Remove(path); rmErr == nil {
@@ -714,6 +906,9 @@ func GC(dir string, live func(pkg, test string) bool, liveGroup func(group strin
 			// progress beside it.
 			err = rmErr
 		}
+	}
+	if sweepErr := sweepLedgers(store, referenced, started); sweepErr != nil && err == nil {
+		err = sweepErr
 	}
 	return removed, kept, err
 }

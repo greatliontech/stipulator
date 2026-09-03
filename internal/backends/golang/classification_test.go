@@ -11,7 +11,7 @@ import (
 
 func fixtureBackend(t *testing.T) *Backend {
 	t.Helper()
-	b, err := newContext(context.Background(), "testdata/fixturemod")
+	b, err := newContext(context.Background(), "testdata/fixturemod", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

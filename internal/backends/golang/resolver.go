@@ -39,6 +39,7 @@ type resolverResponse struct {
 	Error       string `json:"error,omitempty"`
 	Resolution  string `json:"resolution,omitempty"`
 	Shape       string `json:"shape,omitempty"`
+	Selection   string `json:"selection,omitempty"`
 	Class       string `json:"class,omitempty"`
 	ClassReason string `json:"classReason,omitempty"`
 	// NeverServes carries a witnessneverserve result: the asked symbols
@@ -128,9 +129,9 @@ func classFromWire(s string) (verify.WitnessClass, bool) {
 // parent reports it exactly as an in-process load would have. Every
 // request line is answered with exactly one response line; the loop ends
 // cleanly when r reaches EOF — the parent closed the pipe or exited.
-func ServeResolver(ctx context.Context, dir string, r io.Reader, w io.Writer) error {
+func ServeResolver(ctx context.Context, dir string, patterns []string, r io.Reader, w io.Writer) error {
 	enc := json.NewEncoder(w)
-	b, err := newContext(ctx, dir)
+	b, err := newContext(ctx, dir, patterns)
 	if err != nil {
 		if encErr := enc.Encode(resolverResponse{Error: err.Error()}); encErr != nil {
 			return errors.Join(err, encErr)
@@ -152,9 +153,10 @@ func ServeResolver(ctx context.Context, dir string, r io.Reader, w io.Writer) er
 		var resp resolverResponse
 		switch req.Op {
 		case "resolve":
-			res, shape, err := b.Resolve(req.Symbol)
+			res, shape, selection, err := b.ResolveIn(req.Symbol)
 			resp.Resolution = resolutionWire(res)
 			resp.Shape = shape
+			resp.Selection = selection
 			if err != nil {
 				resp.Error = err.Error()
 			}
@@ -222,10 +224,10 @@ func ServeResolver(ctx context.Context, dir string, r io.Reader, w io.Writer) er
 // owned backend must call this from TestMain before running tests, or
 // the child invocation would run the test suite instead of a resolver.
 func ResolverChildMain() {
-	if len(os.Args) != 3 || os.Args[1] != ResolverSubcommand {
+	if len(os.Args) < 3 || os.Args[1] != ResolverSubcommand {
 		return
 	}
-	if err := ServeResolver(context.Background(), os.Args[2], os.Stdin, os.Stdout); err != nil {
+	if err := ServeResolver(context.Background(), os.Args[2], os.Args[3:], os.Stdin, os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

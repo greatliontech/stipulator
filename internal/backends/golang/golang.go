@@ -12,7 +12,10 @@ import (
 	"context"
 	"fmt"
 	"go/ast"
+	"go/parser"
+	"go/token"
 	"go/types"
+	"golang.org/x/mod/modfile"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -35,6 +38,9 @@ import (
 // workspace whose go.work members are all in scope.
 type Backend struct {
 	pkgs []*packages.Package
+	// generatedHeaders memoizes the generated-file verdict of declaring
+	// files outside the loads, by path.
+	generatedHeaders sync.Map
 	// viewErrors names tagged views whose load failed whole (a broken
 	// or absent selection toolchain): binding stays healthy for every
 	// symbol the loaded views resolve, while a reference the loaded
@@ -48,6 +54,10 @@ type Backend struct {
 	// meaningful between packages of the same load
 	// (REQ-go-build-selections).
 	load map[*packages.Package]int
+	// loadSelection names each load's build selection — the key a
+	// served resolution record carries, so a record serves only the
+	// view that produced it (REQ-evidence-resolution-freshness).
+	loadSelection map[int]string
 	// dir is the absolute tree root New loaded, kept to reconcile
 	// Fset-absolute file paths back to the tree-relative paths the corpus
 	// and the git layer speak in.
@@ -74,7 +84,15 @@ func (b *Backend) pins() *pinTable {
 // outside any owned process group, so the only cross-package door to
 // package discovery is the owned resolver client (NewOwned), keeping
 // REQ-go-owned-processes structurally satisfied for every consumer.
-func newContext(ctx context.Context, dir string) (*Backend, error) {
+// newContext loads the tree's resolution views: every workspace member
+// under every build selection, over "./..." — or, when patterns are
+// given, over exactly those packages, the scope a served resolution's
+// stale remainder needs (REQ-evidence-resolution-freshness). Their
+// dependencies stay export data; the one verdict that reads a
+// dependency's source — a promoted method's declaring file, for the
+// generated-file marker — reads that file's header itself
+// (generatedIn), so a scoped load answers as the whole-tree load does.
+func newContext(ctx context.Context, dir string, patterns []string) (*Backend, error) {
 	members, err := workspaceMembers(dir)
 	if err != nil {
 		return nil, err
@@ -94,17 +112,13 @@ func newContext(ctx context.Context, dir string) (*Backend, error) {
 		viewErrors = append(viewErrors, cp+" (no on-host resolution view)")
 	}
 	loadIndex := map[*packages.Package]int{}
+	loadSelection := map[int]string{}
 	loads := 0
+	// Pattern ownership is selection-independent: each member's go.mod
+	// is read once, not once per build selection.
+	owned := memberPatterns(dir, members, patterns)
 	for _, sel := range selections {
-		viewEnv := env
-		if sel.toolchain != "" {
-			// The selection's view loads under the selection's
-			// toolchain, exactly as its invocation executes - a
-			// toolchain'd tag view under the ambient toolchain would
-			// miss the selection's own stdlib surface
-			// (REQ-go-build-selections).
-			viewEnv = append(dropEnv(append([]string(nil), env...), "GOTOOLCHAIN"), "GOTOOLCHAIN="+sel.toolchain)
-		}
+		viewEnv := selectionViewEnv(env, sel)
 		// The selection view is a frontend parse of the selection's own
 		// sources, so it inherits the toolchain-provenance prerequisite:
 		// an identified selection toolchain this binary's frontend
@@ -120,6 +134,16 @@ func newContext(ctx context.Context, dir string) (*Backend, error) {
 		viewLoads := map[*packages.Package]int{}
 		viewFailed := false
 		for _, m := range members {
+			load := []string{"./..."}
+			if len(patterns) > 0 {
+				// A pattern loads from the one member whose module
+				// owns it: loading every member over the same import
+				// paths would hold each package once per member.
+				load = owned[m]
+				if len(load) == 0 {
+					continue
+				}
+			}
 			cfg := &packages.Config{
 				Context: ctx,
 				Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax |
@@ -129,10 +153,11 @@ func newContext(ctx context.Context, dir string) (*Backend, error) {
 				Env:   viewEnv,
 				Tests: true,
 			}
-			if len(sel.tags) > 0 {
-				cfg.BuildFlags = []string{"-tags=" + strings.Join(sel.tags, ",")}
+			cfg.BuildFlags = selectionViewFlags(sel)
+			loaded, err := packages.Load(cfg, load...)
+			if err == nil && len(patterns) > 0 {
+				loaded = matchedRoots(loaded)
 			}
-			loaded, err := packages.Load(cfg, "./...")
 			if err != nil {
 				if len(sel.tags) == 0 {
 					return nil, fmt.Errorf("loading Go packages in %s: %w", m, err)
@@ -148,6 +173,7 @@ func newContext(ctx context.Context, dir string) (*Backend, error) {
 			for _, pkg := range loaded {
 				viewLoads[pkg] = loads
 			}
+			loadSelection[loads] = SelectionKey(sel.tags, sel.toolchain)
 			loads++
 			viewPkgs = append(viewPkgs, loaded...)
 		}
@@ -168,7 +194,93 @@ func newContext(ctx context.Context, dir string) (*Backend, error) {
 	if err != nil {
 		return nil, fmt.Errorf("resolving tree root %s: %w", dir, err)
 	}
-	return &Backend{pkgs: pkgs, load: loadIndex, viewErrors: viewErrors, dir: abs}, nil
+	return &Backend{pkgs: pkgs, load: loadIndex, loadSelection: loadSelection, viewErrors: viewErrors, dir: abs}, nil
+}
+
+// matchedRoots drops the roots a scoped load's patterns matched nothing
+// for: go list answers a vanished package's path with an error entry
+// carrying no Go files, which "./..." never enumerates, so the scoped
+// load must not hold it either — its symbols answer not found, as the
+// whole-tree load answers, never a load error.
+func matchedRoots(loaded []*packages.Package) []*packages.Package {
+	kept := loaded[:0]
+	for _, pkg := range loaded {
+		if len(pkg.Errors) > 0 && len(pkg.GoFiles) == 0 {
+			continue
+		}
+		kept = append(kept, pkg)
+	}
+	return kept
+}
+
+// memberPatterns assigns each import-path pattern to the workspace
+// member whose module path is its longest prefix. A pattern no member's
+// module owns is loaded by nobody: under a workspace go list would
+// resolve it out of the module graph as a root — a dependency's
+// package, typed and shaped — where the whole-tree load answers not
+// found, and the scoped load must answer as the whole tree does.
+func memberPatterns(dir string, members, patterns []string) map[string][]string {
+	out := map[string][]string{}
+	if len(patterns) == 0 {
+		return out
+	}
+	modules := map[string]string{}
+	for _, m := range members {
+		data, err := os.ReadFile(filepath.Join(dir, m, "go.mod"))
+		if err != nil {
+			continue
+		}
+		if path := modfile.ModulePath(data); path != "" {
+			modules[m] = path
+		}
+	}
+	for _, pattern := range patterns {
+		owner, longest := "", -1
+		for m, path := range modules {
+			if (pattern == path || strings.HasPrefix(pattern, path+"/")) && len(path) > longest {
+				owner, longest = m, len(path)
+			}
+		}
+		if owner != "" {
+			out[owner] = append(out[owner], pattern)
+		}
+	}
+	return out
+}
+
+// selectionViewEnv is the environment a selection's view loads under:
+// the tree's workspace pin, and the selection's own toolchain when it
+// declares one — exactly as its invocation executes, since a
+// toolchain'd tag view under the ambient toolchain would miss the
+// selection's own stdlib surface (REQ-go-build-selections). The one
+// derivation the resolver child's typed views and the served
+// resolution's freshness views share, so a record's fingerprint is
+// checked under the environment that produced it.
+func selectionViewEnv(env []string, sel buildSelection) []string {
+	if sel.toolchain == "" {
+		return env
+	}
+	return append(dropEnv(append([]string(nil), env...), "GOTOOLCHAIN"), "GOTOOLCHAIN="+sel.toolchain)
+}
+
+// selectionViewFlags is the build selection's package-load flags: its
+// effective tag set, the race tag included as a tag (the views load
+// sources, they never instrument).
+func selectionViewFlags(sel buildSelection) []string {
+	if len(sel.tags) == 0 {
+		return nil
+	}
+	return []string{"-tags=" + strings.Join(sel.tags, ",")}
+}
+
+// SelectionKey is a build selection's stable key — its effective tag
+// set and toolchain — the coordinate a resolution record serves under.
+// The default selection (no tags, ambient toolchain) is "default".
+func SelectionKey(tags []string, toolchain string) string {
+	if len(tags) == 0 && toolchain == "" {
+		return "default"
+	}
+	return strings.Join(tags, ",") + "\x00" + toolchain
 }
 
 // policyBuildSelections derives the resolution views from the accepted
@@ -250,15 +362,23 @@ func policyBuildSelections(dir string) ([]buildSelection, []string, error) {
 
 // Resolve implements verify.Backend.
 func (b *Backend) Resolve(symbol string) (verify.Resolution, string, error) {
+	res, shape, _, err := b.ResolveIn(symbol)
+	return res, shape, err
+}
+
+// ResolveIn is Resolve naming the build selection whose view resolved
+// the symbol (SelectionKey), empty when it did not resolve: the
+// coordinate a resolution record is served under.
+func (b *Backend) ResolveIn(symbol string) (verify.Resolution, string, string, error) {
 	// The degraded-view refusal precedes every silent-NotFound arm: a
 	// reference the loaded views cannot even prefix-match could live in
 	// the unloadable view, and the amended contract forbids a silent
 	// absence that masks one (REQ-go-build-selections).
-	notFound := func() (verify.Resolution, string, error) {
+	notFound := func() (verify.Resolution, string, string, error) {
 		if len(b.viewErrors) > 0 {
-			return verify.NotFound, "", fmt.Errorf("symbol unresolved and %d build-selection view(s) failed to load: %s", len(b.viewErrors), strings.Join(b.viewErrors, "; "))
+			return verify.NotFound, "", "", fmt.Errorf("symbol unresolved and %d build-selection view(s) failed to load: %s", len(b.viewErrors), strings.Join(b.viewErrors, "; "))
 		}
-		return verify.NotFound, "", nil
+		return verify.NotFound, "", "", nil
 	}
 	pkgPath, rest := b.splitSymbol(symbol)
 	if pkgPath == "" {
@@ -279,18 +399,18 @@ func (b *Backend) Resolve(symbol string) (verify.Resolution, string, error) {
 			// in-tree failure surfaces the loader's diagnostic
 			// unchanged (REQ-go-load-attribution).
 			if msg, ok := b.loadErrorAttribution(pkg); ok {
-				return verify.NotFound, "", fmt.Errorf("package %s: %s", pkg.ID, msg)
+				return verify.NotFound, "", "", fmt.Errorf("package %s: %s", pkg.ID, msg)
 			}
-			return verify.NotFound, "", fmt.Errorf("package %s has load errors: %v", pkg.ID, pkg.Errors[0])
+			return verify.NotFound, "", "", fmt.Errorf("package %s has load errors: %v", pkg.ID, pkg.Errors[0])
 		}
 		obj := lookup(pkg.Types, parts)
 		if obj == nil {
 			continue
 		}
 		if b.generatedIn(pkg, obj) {
-			return verify.GeneratedFile, "", nil
+			return verify.GeneratedFile, "", b.loadSelection[b.load[pkg]], nil
 		}
-		return verify.Resolved, shapeHash(obj), nil
+		return verify.Resolved, shapeHash(obj), b.loadSelection[b.load[pkg]], nil
 	}
 	return notFound()
 }
@@ -742,8 +862,9 @@ func shapeHash(obj types.Object) string {
 // generated file, per the standard "Code generated ... DO NOT EDIT."
 // marker. The object's declaring package is scanned — not the
 // resolution candidate — so a method promoted from an embedded
-// generated type is still detected; a declaring package outside the
-// load set cannot be checked and reads as not generated.
+// generated type is still detected, and a declaring package outside
+// the load set (a dependency held as export data) is judged from its
+// declaring file's own header.
 // The judgment stays within the resolving package's own load: a
 // promoted method's declaring file lives in the object's origin
 // package - possibly a sibling of the resolving package - so the
@@ -769,5 +890,27 @@ func (b *Backend) generatedIn(resolving *packages.Package, obj types.Object) boo
 			}
 		}
 	}
+	// The declaring package is outside this load — a scoped load's
+	// dependency, held as export data — so the marker is read from the
+	// declaring file's own header, the same judgment ast.IsGenerated
+	// makes over a loaded file.
+	if name := resolving.Fset.Position(pos).Filename; name != "" {
+		return b.generatedHeader(name)
+	}
 	return false
+}
+
+// generatedHeader reports whether the file at path carries the
+// standard "Code generated ... DO NOT EDIT." marker, parsing only its
+// package clause and the comments before it, once per file.
+func (b *Backend) generatedHeader(path string) bool {
+	if verdict, ok := b.generatedHeaders.Load(path); ok {
+		return verdict.(bool)
+	}
+	verdict := false
+	if f, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.PackageClauseOnly|parser.ParseComments); err == nil {
+		verdict = ast.IsGenerated(f)
+	}
+	b.generatedHeaders.Store(path, verdict)
+	return verdict
 }

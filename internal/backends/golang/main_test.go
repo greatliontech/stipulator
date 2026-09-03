@@ -17,7 +17,7 @@ func TestMain(m *testing.M) {
 	ResolverChildMain()
 	flag.Parse()
 	if !testing.Short() {
-		b, err := newContext(context.Background(), "../../..")
+		b, err := newContext(context.Background(), "../../..", nil)
 		if err != nil {
 			panic(err)
 		}

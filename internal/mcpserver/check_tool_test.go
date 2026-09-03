@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/views"
 	"io/fs"
 	"os"
@@ -525,10 +526,11 @@ func progressPipelineHarness(t *testing.T) (*mcp.ClientSession, *notificationLog
 				".stipulator/gaps/m-b.textproto": {Data: []byte("requirement_id: \"REQ-m-b\"\nreason: \"later\"\nlands { manual { condition: \"x\" } }\n")},
 			}
 		},
-		backends: func(context.Context) (map[string]verify.Backend, error) {
+		backends: func(context.Context, []string) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{"go": fakeBackend{}}, nil
 		},
-		runTests: func(context.Context, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		capture: func(context.Context) (*golang.Capture, error) { return nil, nil },
+		runTests: func(context.Context, *golang.Capture, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			return &verify.TestRun{RaceEnabled: true, SelectiveServing: true, Outcomes: map[string]verify.TestOutcome{}}, nil
 		},
 	}
@@ -706,10 +708,11 @@ func TestVerifyToolDeadlineNamesExpiredPhaseAndCause(t *testing.T) {
 				"specs/a.md":                     {Data: []byte(doc)},
 			}
 		},
-		backends: func(context.Context) (map[string]verify.Backend, error) {
+		backends: func(context.Context, []string) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{"go": fakeBackend{}}, nil
 		},
-		runTests: func(ctx context.Context, _ verify.WitnessSeeding, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		capture: func(context.Context) (*golang.Capture, error) { return nil, nil },
+		runTests: func(ctx context.Context, _ *golang.Capture, _ verify.WitnessSeeding, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			// The policy execution outlasts any deadline.
 			<-ctx.Done()
 			return nil, ctx.Err()

@@ -280,7 +280,7 @@ func TestGoImportForIdentRules(t *testing.T) {
 //gofresh:pure
 func TestGoLoadAttributionNoCommittedPinArm(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
-	b, err := newContext(context.Background(), "testdata/depbroken")
+	b, err := newContext(context.Background(), "testdata/depbroken", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -305,7 +305,7 @@ func TestGoLoadAttributionNoCommittedPinArm(t *testing.T) {
 //gofresh:pure
 func TestGoLoadAttributionFailsClosedOnUnidentifiedModule(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
-	b, err := newContext(context.Background(), "testdata/depbroken")
+	b, err := newContext(context.Background(), "testdata/depbroken", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -334,7 +334,7 @@ func TestGoLoadAttributionMemberClass(t *testing.T) {
 		t.Skip("loads the tree")
 	}
 	stipulate.Covers(t, "REQ-go-load-attribution")
-	b, err := newContext(context.Background(), "testdata/depws")
+	b, err := newContext(context.Background(), "testdata/depws", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

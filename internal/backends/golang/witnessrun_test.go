@@ -739,13 +739,21 @@ func TestCompartmentGrownServeGates(t *testing.T) {
 		Outcomes:          map[string]string{s.Package + "." + s.Symbol: "passed"},
 	}
 	variants := gofresh.Verdict{Status: gofresh.Stale, Reason: "test variants"}
-	if _, _, ok := compartmentGrownRefresh(context.Background(), view, rec, gofresh.Verdict{Status: gofresh.Stale, Reason: "maximal closure"}, s); ok {
+	if _, _, ok := compartmentGrownRefresh(context.Background(), tmp, view, rec, gofresh.Verdict{Status: gofresh.Stale, Reason: "maximal closure"}, s); ok {
 		t.Fatal("a non-compartment stale reason rode the carve-out")
 	}
 	ledgerless := rec
 	ledgerless.CompartmentLedger = nil
-	if _, _, ok := compartmentGrownRefresh(context.Background(), view, ledgerless, variants, s); ok {
-		t.Fatal("a ledgerless record rode the carve-out")
+	if _, _, ok := compartmentGrownRefresh(context.Background(), tmp, view, ledgerless, variants, s); ok {
+		t.Fatal("a record whose ledger the store does not hold rode the carve-out")
+	}
+	// A loaded record carries no ledger; the store's, under the record's
+	// compartment digest, is what the carve-out diffs.
+	if err := witnesscache.Install(tmp, rec); err != nil {
+		t.Fatal(err)
+	}
+	if stored, _, ok := compartmentGrownRefresh(context.Background(), tmp, view, ledgerless, variants, s); !ok || stored.CompartmentLedger == nil {
+		t.Fatal("the stored ledger did not serve a ledgerless loaded record")
 	}
 	tampered := rec
 	tampered.CompartmentLedger = witnesscache.LedgerFromGofresh(ledger)
@@ -753,7 +761,7 @@ func TestCompartmentGrownServeGates(t *testing.T) {
 		t.Fatal("fixture ledger carries no declarations")
 	}
 	tampered.CompartmentLedger.Declarations[0].Hash = "ffffffffffffffffffffffffffffffff"
-	if _, _, ok := compartmentGrownRefresh(context.Background(), view, tampered, variants, s); ok {
+	if _, _, ok := compartmentGrownRefresh(context.Background(), tmp, view, tampered, variants, s); ok {
 		t.Fatal("a changed declaration rode the carve-out")
 	}
 	// The compartment comparison precedes the environment tiers in
@@ -763,7 +771,7 @@ func TestCompartmentGrownServeGates(t *testing.T) {
 	// exactly as the production rounds compose it.
 	guardMoved := rec
 	guardMoved.Fingerprint.Toolchain = "go0.0-never"
-	_, movedFP, ok := compartmentGrownRefresh(context.Background(), view, guardMoved, variants, s)
+	_, movedFP, ok := compartmentGrownRefresh(context.Background(), tmp, view, guardMoved, variants, s)
 	if !ok {
 		t.Fatal("the refresh half refused a gate-passing record; the re-check owns guard movement")
 	}
@@ -774,7 +782,7 @@ func TestCompartmentGrownServeGates(t *testing.T) {
 	if movedVerdicts[s].Status == gofresh.Valid {
 		t.Fatal("a moved toolchain hid behind the compartment verdict and re-checked valid")
 	}
-	served, servedFP, ok := compartmentGrownRefresh(context.Background(), view, rec, variants, s)
+	served, servedFP, ok := compartmentGrownRefresh(context.Background(), tmp, view, rec, variants, s)
 	if !ok {
 		t.Fatal("an inert delta under the exact verdict refused")
 	}

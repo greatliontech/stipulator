@@ -64,6 +64,14 @@ type Owned struct {
 // no owned child to spawn, and loading in-process instead would silently
 // reopen the unowned process boundary.
 func NewOwned(ctx context.Context, dir string) (*Owned, error) {
+	return NewOwnedScoped(ctx, dir, nil)
+}
+
+// NewOwnedScoped is NewOwned whose child loads exactly the named
+// packages and their dependencies instead of the whole tree — the
+// served resolution's stale remainder (REQ-evidence-resolution-
+// freshness); nil patterns load the whole tree.
+func NewOwnedScoped(ctx context.Context, dir string, patterns []string) (*Owned, error) {
 	exe, err := os.Executable()
 	if err != nil {
 		return nil, fmt.Errorf("resolving own executable for the owned resolver child: %w", err)
@@ -74,7 +82,7 @@ func NewOwned(ctx context.Context, dir string) (*Owned, error) {
 	if err != nil {
 		return nil, fmt.Errorf("resolving tree root %s: %w", dir, err)
 	}
-	return NewOwnedCommand(ctx, exe, ResolverSubcommand, abs), nil
+	return NewOwnedCommand(ctx, exe, append([]string{ResolverSubcommand, abs}, patterns...)...), nil
 }
 
 // NewOwnedCommand is NewOwned with an explicit child command line — the
@@ -169,18 +177,25 @@ func (o *Owned) roundTrip(req resolverRequest) (resolverResponse, error) {
 // transport fault is a verification error exactly as an unloadable tree
 // is: never an absence.
 func (o *Owned) Resolve(symbol string) (verify.Resolution, string, error) {
+	res, shape, _, err := o.ResolveIn(symbol)
+	return res, shape, err
+}
+
+// ResolveIn is Resolve through the child, naming the resolving build
+// selection (Backend.ResolveIn).
+func (o *Owned) ResolveIn(symbol string) (verify.Resolution, string, string, error) {
 	resp, err := o.roundTrip(resolverRequest{Op: "resolve", Symbol: symbol})
 	if err != nil {
-		return verify.NotFound, "", err
+		return verify.NotFound, "", "", err
 	}
 	res, ok := resolutionFromWire(resp.Resolution)
 	if !ok {
-		return verify.NotFound, "", fmt.Errorf("owned resolver child: unknown resolution %q for %s", resp.Resolution, symbol)
+		return verify.NotFound, "", "", fmt.Errorf("owned resolver child: unknown resolution %q for %s", resp.Resolution, symbol)
 	}
 	if resp.Error != "" {
-		return res, resp.Shape, errors.New(resp.Error)
+		return res, resp.Shape, resp.Selection, errors.New(resp.Error)
 	}
-	return res, resp.Shape, nil
+	return res, resp.Shape, resp.Selection, nil
 }
 
 // WitnessClass implements verify.WitnessClassifier through the resolver

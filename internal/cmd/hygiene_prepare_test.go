@@ -94,3 +94,45 @@ func neutralAmbient(t *testing.T) {
 	t.Setenv("GOPACKAGESDRIVER", "")
 	t.Setenv("GOTOOLCHAIN", "local")
 }
+
+// TestNoTestVerificationNeedsNoPolicyRecord pins that only a witness run
+// consumes the accepted policy: verify --no-test and prune --no-test
+// resolve their bindings on a tree that has no policy record at all
+// (REQ-policy-explicit binds witness execution, not resolution).
+func TestNoTestVerificationNeedsNoPolicyRecord(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	if testing.Short() {
+		t.Skip("resolves a fixture module through the verification backend")
+	}
+	neutralAmbient(t)
+	dir := t.TempDir()
+	files := map[string]string{
+		"go.mod":                           "module example.com/notest\n\ngo 1.26.4\n",
+		"ok/ok.go":                         "package ok\n\nfunc Double(x int) int { return 2 * x }\n",
+		"specs/check.md":                   "# Check\n\n**REQ-fix-may** (behavior): The fixture MAY pass.\n",
+		".stipulator/manifest.textproto":   "include: \"specs/**/*.md\"\n",
+		".stipulator/bindings/b.textproto": "bindings {\n  requirement_id: \"REQ-fix-may\"\n  backend: \"go\"\n  symbol: \"example.com/notest/ok.Double\"\n  role: BINDING_ROLE_IMPLEMENTS\n}\n",
+	}
+	for path, content := range files {
+		full := filepath.Join(dir, filepath.FromSlash(path))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	priorDir := chdir
+	chdir = dir
+	t.Cleanup(func() { chdir = priorDir })
+	for _, tc := range []struct {
+		name string
+		cmd  *cobra.Command
+		args []string
+	}{{"verify", verifyCmd(), []string{"--no-test"}}, {"prune", pruneCmd(), []string{"--no-test", "--check"}}} {
+		tc.cmd.SetArgs(tc.args)
+		if err := tc.cmd.ExecuteContext(context.Background()); err != nil {
+			t.Fatalf("%s without a policy record: %v", tc.name, err)
+		}
+	}
+}

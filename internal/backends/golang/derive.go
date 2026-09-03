@@ -809,15 +809,10 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Eng
 	if err := checkToolchainProvenance(dir, g.env); err != nil {
 		return nil, err
 	}
-	flags := selectionBuildFlags(g.race, g.tags)
-	opts := []gofresh.Option{
-		gofresh.WithDir(dir),
-		gofresh.WithBuildFlags(flags...),
-		gofresh.WithEnv(g.env...),
-		gofresh.WithProducerEnv(g.witnessEnv...),
-	}
+	opts := []gofresh.Option{gofresh.WithProducerEnv(g.witnessEnv...)}
 	if g.assumePure {
-		// The invocation-wide reviewed purity assertion: recorded as
+		// The reviewed purity assumption rides every subject of the
+		// group as a caller assertion; the recorded fingerprints carry
 		// caller-assertion attribution on every record; an explicit
 		// gofresh:external declaration is never suppressed by it.
 		opts = append(opts, gofresh.WithAssumePure(func(gofresh.Subject) bool { return true }))
@@ -827,24 +822,34 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Eng
 		// every record's evidence, so acceptance is auditable there.
 		opts = append(opts, gofresh.WithDynamicStateVouches(g.vouches...))
 	}
-	return gofresh.New(append(opts,
-		// Every consumer of these views' verdicts follows the
-		// producer-view discipline: each group's served outcomes AND its
-		// published records stand only after the group's ONE closing
-		// validation (publishEligible's closeGroup, last on the view),
-		// so checks defer their closing base observation to that single
-		// validation instead of paying a full re-observation per call
-		// (gofresh's deferred-close contract).
-		gofresh.WithDeferredCheckClose(),
-		// Freshness capture and validation are the longest silent
-		// stretches of a witnessed run; gofresh's own analysis steps
-		// feed the operation's progress seam as rate-limited
-		// keep-alives in whatever phase the operation is in.
+	// Every consumer of these views' verdicts follows the
+	// producer-view discipline: each group's served outcomes AND its
+	// published records stand only after the group's ONE closing
+	// validation (publishEligible's closeGroup, last on the view),
+	// so checks defer their closing base observation to that single
+	// validation instead of paying a full re-observation per call
+	// (gofresh's deferred-close contract).
+	opts = append(opts, gofresh.WithDeferredCheckClose())
+	return newEngine(ctx, dir, g.env, selectionBuildFlags(g.race, g.tags), opts...)
+}
+
+// newEngine is the one gofresh engine constructor: the tree root, the
+// view's environment and build flags, and the operation's progress
+// seam — freshness capture and validation are the longest silent
+// stretches of a run, so gofresh's own analysis steps feed the seam as
+// rate-limited keepalives and the engine diagnostic face. Callers add
+// their role's options.
+func newEngine(ctx context.Context, dir string, env, flags []string, extra ...gofresh.Option) (*gofresh.Engine, error) {
+	opts := []gofresh.Option{
+		gofresh.WithDir(dir),
+		gofresh.WithBuildFlags(flags...),
+		gofresh.WithEnv(env...),
 		gofresh.WithProgress(func(p gofresh.Progress) {
 			emitEngineDiagnostic(p)
 			progress.FromContext(ctx).Keepalive()
 		}),
-	)...)
+	}
+	return gofresh.New(append(opts, extra...)...)
 }
 
 // engineDiagnostics receives payload-bearing gofresh diagnostics from

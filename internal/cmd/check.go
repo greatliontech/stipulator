@@ -76,6 +76,9 @@ func renderCheck(stdout, stderr io.Writer, res *stipulatorv1.CheckResult) {
 	for _, n := range res.GetPolicyNotices() {
 		fmt.Fprintln(stderr, dim(n))
 	}
+	for _, n := range res.GetResolutionNotices() {
+		fmt.Fprintln(stderr, dim(n))
+	}
 	if ex := res.GetExecution(); ex != nil {
 		fmt.Fprintln(stderr, dim(fmt.Sprintf("witnessed: %d executed, %d uncacheable",
 			res.GetTestsExecuted(), res.GetTestsUncacheable())))

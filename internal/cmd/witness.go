@@ -11,6 +11,7 @@ import (
 
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/policy"
+	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
@@ -31,12 +32,13 @@ func withRecordPath(err error) error {
 	return err
 }
 
-// The caller owns the verification backend's child: the witness run
-// consults its classifier and the same child then resolves bindings —
-// one owned process per command.
-func witnessRun(ctx context.Context, gb *golang.Owned) (*verify.TestRun, error) {
+// The caller owns the verification backend and the policy capture: the
+// witness run consults the backend's classifier and the same backend
+// then resolves bindings — one served backend, at most one child, per
+// command (REQ-evidence-resolution-freshness).
+func witnessRun(ctx context.Context, pc *golang.Capture, seeding verify.WitnessSeeding) (*verify.TestRun, error) {
 	fmt.Fprintln(os.Stderr, dim("witnessing: selective execution of the accepted test policy"))
-	tr, err := golang.RunWitnesses(ctx, chdir, gb)
+	tr, err := golang.RunWitnessesPolicy(ctx, pc, seeding)
 	if err != nil {
 		return nil, withRecordPath(err)
 	}
@@ -47,13 +49,9 @@ func witnessRun(ctx context.Context, gb *golang.Owned) (*verify.TestRun, error) 
 // witnessRunScoped is witnessRun narrowed to a caller-named subject
 // scope: fresh records still serve whole-tree, only stale subjects
 // inside the scope execute.
-func witnessRunScoped(ctx context.Context, gb *golang.Owned, scope map[gofresh.Subject]bool, why string) (*verify.TestRun, error) {
+func witnessRunScoped(ctx context.Context, pc *golang.Capture, seeding verify.WitnessSeeding, scope map[gofresh.Subject]bool, why string) (*verify.TestRun, error) {
 	fmt.Fprintln(os.Stderr, dim("witnessing: selective execution of the accepted test policy, "+why))
-	pc, err := golang.LoadCapture(ctx, chdir)
-	if err != nil {
-		return nil, withRecordPath(err)
-	}
-	tr, err := golang.RunWitnessesScoped(ctx, pc, scope, gb)
+	tr, err := golang.RunWitnessesScoped(ctx, pc, scope, seeding)
 	if err != nil {
 		return nil, withRecordPath(err)
 	}
@@ -95,4 +93,31 @@ func sortedKeys(m map[string]string) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// servedBackend prepares a command's verification backend over the
+// operation's whole symbol set — the records' bound symbols and the
+// captured policy's witness subjects — so resolutions proven fresh serve
+// and the owned child opens only for the stale remainder. The record
+// path rides a record problem the capture surfaces.
+func servedBackend(ctx context.Context, store *records.Store, witnessed bool) (*golang.Capture, *golang.Served, error) {
+	var pc *golang.Capture
+	if witnessed {
+		// Only a witness run consumes the accepted policy: a read-only
+		// or --no-test operation resolves its bindings without one
+		// (REQ-policy-explicit binds witness execution).
+		var err error
+		if pc, err = golang.LoadCapture(ctx, chdir); err != nil {
+			return nil, nil, withRecordPath(err)
+		}
+	}
+	symbols, err := golang.OperationSymbols(ctx, store, pc)
+	if err != nil {
+		return nil, nil, withRecordPath(err)
+	}
+	served, err := golang.NewServed(ctx, chdir, symbols)
+	if err != nil {
+		return nil, nil, err
+	}
+	return pc, served, nil
 }

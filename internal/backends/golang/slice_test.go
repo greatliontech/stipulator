@@ -43,7 +43,7 @@ func TestGoSliceFloorDispositions(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	b, err := newContext(context.Background(), dir)
+	b, err := newContext(context.Background(), dir, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

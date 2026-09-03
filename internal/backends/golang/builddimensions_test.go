@@ -65,7 +65,7 @@ func TestRaceOnly(t *testing.T) {
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", raceCfg)})
 	writePolicyRecord(t, dir, p)
 
-	b, err := newContext(context.Background(), dir)
+	b, err := newContext(context.Background(), dir, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +141,7 @@ func PlanNineOnly(x int) int { return x }
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("cross", crossCfg)})
 	writePolicyRecord(t, dir, p)
 
-	b, err := newContext(context.Background(), dir)
+	b, err := newContext(context.Background(), dir, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +187,7 @@ func Tagged(x int) int { return x }
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("hosteq", cfg)})
 	writePolicyRecord(t, dir, p)
 
-	b, err := newContext(context.Background(), dir)
+	b, err := newContext(context.Background(), dir, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

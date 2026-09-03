@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
-	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
@@ -29,14 +28,14 @@ func verifyCmd() *cobra.Command {
 			if err := refuseHygiene(prepared.Hygiene); err != nil {
 				return err
 			}
-			gb, err := golang.NewOwned(cmd.Context(), chdir)
+			pc, gb, err := servedBackend(cmd.Context(), store, !noTest)
 			if err != nil {
 				return err
 			}
 			defer gb.Close()
 			var testRun *verify.TestRun
 			if !noTest {
-				tr, err := witnessRun(cmd.Context(), gb)
+				tr, err := witnessRun(cmd.Context(), pc, gb)
 				if err != nil {
 					return err
 				}

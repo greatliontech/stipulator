@@ -722,7 +722,9 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 		serving, groupCached := servingCandidates(g.id, subjects, g.neverServes, cached, wg.executedWhy)
 		// Round-based variant checking: round N checks each unproven
 		// subject's Nth variant, and the first variant proving equivalent
-		// serves — deterministic by digest-sorted load order. Variants
+		// serves — deterministic by load order, most recently installed
+		// first, so the first round tries the variant the last state
+		// change produced. Variants
 		// differing only in manifests or proof attachment can both prove
 		// equivalent; each is a proven equivalence, so either serves
 		// soundly. Rounds cost only fingerprint checks, never analysis or
@@ -756,7 +758,7 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 					delete(wg.executedWhy, s)
 					continue
 				}
-				if rec, fp, ok := compartmentGrownRefresh(ctx, view, groupCached[s.Package+"."+s.Symbol][round], verdicts[s], s); ok {
+				if rec, fp, ok := compartmentGrownRefresh(ctx, dir, view, groupCached[s.Package+"."+s.Symbol][round], verdicts[s], s); ok {
 					// Exactly stale "test variants" with an inert
 					// recorded-to-current ledger delta: the movement is
 					// additions no unchanged declaration can observe, so the
@@ -877,7 +879,9 @@ func servingCandidates(groupID string, subjects []gofresh.Subject, neverServes m
 }
 
 // compartmentGrownRefresh applies REQ-evidence-witness-freshness's
-// inert-growth carve-out to one refused variant, up to the re-check. A
+// inert-growth carve-out to one refused variant, up to the re-check. The
+// recorded ledger is read from the ledger store under the record's
+// compartment digest when the record does not already carry it. A
 // verdict of exactly stale "test variants" certifies only the subject's
 // core source closure — gofresh orders the compartment comparison after
 // the core and before the environment tiers, so a moved guard or runtime
@@ -891,11 +895,16 @@ func servingCandidates(groupID string, subjects []gofresh.Subject, neverServes m
 // caller batches that check across every candidate of the round. The
 // returned record carries the refreshed fingerprint and the current
 // ledger; it serves only when the batched check answers valid. Any fault
-// refuses — the subject just executes (REQ-evidence-freshness-degrade).
-// The nil-ledger guard is defense in depth: Load already refuses
-// ledgerless records.
-func compartmentGrownRefresh(ctx context.Context, view *gofresh.View, rec witnesscache.Record, verdict gofresh.Verdict, s gofresh.Subject) (witnesscache.Record, gofresh.Fingerprint, bool) {
-	if verdict.Status != gofresh.Stale || verdict.Reason != "test variants" || rec.CompartmentLedger == nil {
+// refuses — the subject just executes (REQ-evidence-freshness-degrade);
+// a record whose ledger the store no longer holds refuses the same way.
+func compartmentGrownRefresh(ctx context.Context, dir string, view *gofresh.View, rec witnesscache.Record, verdict gofresh.Verdict, s gofresh.Subject) (witnesscache.Record, gofresh.Fingerprint, bool) {
+	if verdict.Status != gofresh.Stale || verdict.Reason != "test variants" {
+		return witnesscache.Record{}, gofresh.Fingerprint{}, false
+	}
+	if rec.CompartmentLedger == nil {
+		rec.CompartmentLedger = witnesscache.LoadLedger(dir, rec.Fingerprint.TestVariantClosure, rec.Test)
+	}
+	if rec.CompartmentLedger == nil {
 		return witnesscache.Record{}, gofresh.Fingerprint{}, false
 	}
 	current, err := view.TestVariantLedger(s)

@@ -94,11 +94,15 @@ type Server struct {
 	srv      *mcp.Server
 	indexed  map[string]bool
 	fsys     func() fs.FS
-	backends func(context.Context) (map[string]verify.Backend, error)
+	backends func(context.Context, []string) (map[string]verify.Backend, error)
+	// capture is the one derivation of the accepted policy a witnessed
+	// tool makes (REQ-check-derivation); a test substitutes it as it
+	// substitutes the run.
+	capture func(context.Context) (*golang.Capture, error)
 	// runTests is the one witnessing surface (REQ-core-one-execution); a
 	// nil scope is the whole-tree selective run, a non-nil scope narrows
 	// the stale-remainder execution to the named subjects.
-	runTests func(context.Context, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error)
+	runTests func(context.Context, *golang.Capture, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error)
 	runCheck func(context.Context, bool, []string) (*stipulatorv1.CheckResult, error)
 	explain  func(ctx context.Context, pkgPath, symbol string) (gofresh.Chain, string, error)
 	write    func(path string, content []byte) error
@@ -108,21 +112,20 @@ type Server struct {
 // New returns a server rooted at dir.
 func New(dir string) *Server {
 	return &Server{
-		root:     dir,
-		fsys:     func() fs.FS { return os.DirFS(dir) },
-		backends: func(ctx context.Context) (map[string]verify.Backend, error) { return makeBackends(ctx, dir) },
-		runTests: func(ctx context.Context, seeding verify.WitnessSeeding, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		root: dir,
+		fsys: func() fs.FS { return os.DirFS(dir) },
+		backends: func(ctx context.Context, symbols []string) (map[string]verify.Backend, error) {
+			return makeBackends(ctx, dir, symbols)
+		},
+		capture: func(ctx context.Context) (*golang.Capture, error) { return golang.LoadCapture(ctx, dir) },
+		runTests: func(ctx context.Context, pc *golang.Capture, seeding verify.WitnessSeeding, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			if seeding == nil {
 				// The witness run classifies through the tool's own
-				// resolver child; without one it must not guess.
+				// verification backend; without one it must not guess.
 				return nil, errors.New("witness run without the tool's resolver child")
 			}
 			if scope == nil {
-				return golang.RunWitnesses(ctx, dir, seeding)
-			}
-			pc, err := golang.LoadCapture(ctx, dir)
-			if err != nil {
-				return nil, err
+				return golang.RunWitnessesPolicy(ctx, pc, seeding)
 			}
 			return golang.RunWitnessesScoped(ctx, pc, scope, seeding)
 		},
@@ -184,6 +187,16 @@ func New(dir string) *Server {
 // seedingOf is the witness run's classifier: the same owned child the
 // tool opened to resolve bindings, so one tool call owns one process
 // (REQ-check-preparation's shared resolver).
+// closeBackends releases a tool's backends: the served backend publishes
+// its records and closes its child; a plain child closes.
+func closeBackends(backends map[string]verify.Backend) {
+	for _, b := range backends {
+		if c, ok := b.(interface{ Close() error }); ok {
+			_ = c.Close()
+		}
+	}
+}
+
 func seedingOf(backends map[string]verify.Backend) verify.WitnessSeeding {
 	if seeding, ok := backends["go"].(verify.WitnessSeeding); ok {
 		return seeding
@@ -191,12 +204,17 @@ func seedingOf(backends map[string]verify.Backend) verify.WitnessSeeding {
 	return nil
 }
 
-func makeBackends(ctx context.Context, dir string) (map[string]verify.Backend, error) {
-	gb, err := golang.NewOwned(ctx, dir)
+// makeBackends prepares a tool's verification backend: served over the
+// operation's symbol set (resolutions proven fresh serve, the owned
+// child opens only for the stale remainder —
+// REQ-evidence-resolution-freshness); a declaration-reading tool passes
+// no symbols and reaches the whole-tree child through the same backend.
+func makeBackends(ctx context.Context, dir string, symbols []string) (map[string]verify.Backend, error) {
+	served, err := golang.NewServed(ctx, dir, symbols)
 	if err != nil {
 		return nil, err
 	}
-	return map[string]verify.Backend{"go": gb}, nil
+	return map[string]verify.Backend{"go": served}, nil
 }
 
 // Run serves MCP over stdio until the context ends.
@@ -502,14 +520,29 @@ func (s *Server) verifyPipeline(ctx context.Context, noTest bool, scopeIDs strin
 		rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
 		return prepared, verify.Run(spec, store, nil, nil), nil, nil
 	}
-	backends, err := s.backends(ctx)
+	// One capture of the accepted policy for the run and the served
+	// set alike (REQ-check-derivation); only a witness run consumes
+	// it, so the no-test form resolves without a record. A record
+	// problem is the tool's error, as it always was on this surface.
+	var pc *golang.Capture
+	if !noTest {
+		if pc, err = s.capture(ctx); err != nil {
+			return nil, nil, nil, err
+		}
+	}
+	symbols, err := golang.OperationSymbols(ctx, store, pc)
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	backends, err := s.backends(ctx, symbols)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	defer closeBackends(backends)
 	var tr *verify.TestRun
 	if !noTest {
 		rep.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
-		tr, err = s.runTests(ctx, seedingOf(backends), nil)
+		tr, err = s.runTests(ctx, pc, seedingOf(backends), nil)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -653,6 +686,14 @@ func (s *Server) toolCheck(ctx context.Context, req *mcp.CallToolRequest, in che
 	}
 	line := checkLine(res)
 	for _, n := range res.GetPolicyNotices() {
+		line += "\n" + n
+	}
+	for _, n := range res.GetResolutionNotices() {
+		if strings.HasPrefix(n, "resolution typed: ") {
+			// The per-symbol lines are the CLI's; the digest keeps the
+			// account and the degradations.
+			continue
+		}
 		line += "\n" + n
 	}
 	if p := res.GetWitnessSelectionProblem(); p != "" {
@@ -993,10 +1034,11 @@ func (s *Server) toolBind(ctx context.Context, req *mcp.CallToolRequest, in bind
 	}
 	ctx, prog := s.startProgress(ctx, req)
 	prog.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
-	backends, err := s.backends(ctx)
+	backends, err := s.backends(ctx, nil)
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
+	defer closeBackends(backends)
 	ups, err := author.Binds(s.fsys(), backends, reqs)
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
@@ -1151,16 +1193,27 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 	// hygiene warns here and never withholds the witness evidence the
 	// other gaps' states derive from. The coverage policy was judged
 	// before any child (REQ-check-preparation).
-	backends, err := s.backends(ctx)
+	var pc *golang.Capture
+	if len(scope) > 0 {
+		if pc, err = s.capture(ctx); err != nil {
+			return nil, gapOut{}, terminalToolError(prog, ctx, err)
+		}
+	}
+	symbols, err := golang.OperationSymbols(ctx, store, pc)
 	if err != nil {
 		return nil, gapOut{}, terminalToolError(prog, ctx, err)
 	}
+	backends, err := s.backends(ctx, symbols)
+	if err != nil {
+		return nil, gapOut{}, terminalToolError(prog, ctx, err)
+	}
+	defer closeBackends(backends)
 	var tr *verify.TestRun
 	if len(scope) > 0 {
 		// An empty scope means no bound witness can move any
 		// gap-relevant bucket, so the evaluation is witness-free.
 		prog.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
-		if tr, err = s.runTests(ctx, seedingOf(backends), scope); err != nil {
+		if tr, err = s.runTests(ctx, pc, seedingOf(backends), scope); err != nil {
 			return nil, gapOut{}, terminalToolError(prog, ctx, err)
 		}
 	}
@@ -1309,10 +1362,11 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 		if err != nil {
 			return nil, writeOut{}, terminalToolError(prog, ctx, err)
 		}
-		backends, err := s.backends(ctx)
+		backends, err := s.backends(ctx, nil)
 		if err != nil {
 			return nil, writeOut{}, terminalToolError(prog, ctx, err)
 		}
+		defer closeBackends(backends)
 		wanted := map[string]bool{}
 		for _, id := range ids {
 			wanted[id] = true
@@ -1352,10 +1406,11 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 	}
 	ctx, prog := s.startProgress(ctx, req)
 	prog.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
-	backends, err := s.backends(ctx)
+	backends, err := s.backends(ctx, nil)
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
+	defer closeBackends(backends)
 	var resolutionNotes []string
 	updates, preserved, reshaped, err := records.Pin(store, hashes, author.ResolveShapes(store, backends, nil, func(symbol string, err error) {
 		resolutionNotes = append(resolutionNotes, fmt.Sprintf("shape resolution skipped %s: %v - its shape pin was not judged this call", symbol, err))
@@ -1516,10 +1571,11 @@ func (s *Server) toolRetarget(ctx context.Context, req *mcp.CallToolRequest, in 
 	}
 	ctx, prog := s.startProgress(ctx, req)
 	prog.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
-	backends, err := s.backends(ctx)
+	backends, err := s.backends(ctx, nil)
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
+	defer closeBackends(backends)
 	ups, rows, err := author.RetargetSymbols(s.fsys(), backends, backend, in.From, in.To)
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
@@ -1618,7 +1674,8 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 		var liveGroup func(string) bool
 		// A policy the operation cannot capture keeps every coordinate:
 		// cost cleanup never guesses.
-		if pc, cerr := golang.LoadCapture(ctx, s.root); cerr == nil {
+		pc, cerr := s.capture(ctx)
+		if cerr == nil && pc != nil {
 			digests := golang.LiveGroupDigests(pc)
 			liveGroup = func(group string) bool { return digests[group] }
 		}
@@ -1631,7 +1688,16 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 		// The line rides Notes too: a structured-preferring client must
 		// not read an empty object where the text names the outcome.
 		out := writeOut{Notes: []string{fmt.Sprintf("store gc: %d record variant(s) removed, %d kept", removed, kept)}}
-		return textOnly(out.Notes[0]), out, nil
+		// The resolution records beside them, judged only under a
+		// captured policy, since the witness subjects come from it.
+		if cerr == nil && pc != nil {
+			resolutionsRemoved, resolutionsKept, err := golang.GCResolutions(ctx, s.root, store, pc)
+			if err != nil {
+				return nil, writeOut{}, err
+			}
+			out.Notes = append(out.Notes, fmt.Sprintf("store gc: %d resolution record(s) removed, %d kept", resolutionsRemoved, resolutionsKept))
+		}
+		return textOnly(strings.Join(out.Notes, "\n")), out, nil
 	}
 	// Danglingness is a corpus-and-records fact: no witnesses, no symbol
 	// resolution, and no verification gate — a dangling gap IS a
@@ -1706,12 +1772,21 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 	if problems := prepared.Hygiene; len(problems) > 0 {
 		return nil, writeOut{}, terminalToolError(prog, ctx, verificationProblems(&verify.Report{Problems: problems}))
 	}
-	backends, err := s.backends(ctx)
+	pc, err := s.capture(ctx)
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
+	symbols, err := golang.OperationSymbols(ctx, store, pc)
+	if err != nil {
+		return nil, writeOut{}, terminalToolError(prog, ctx, err)
+	}
+	backends, err := s.backends(ctx, symbols)
+	if err != nil {
+		return nil, writeOut{}, terminalToolError(prog, ctx, err)
+	}
+	defer closeBackends(backends)
 	prog.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
-	tr, err := s.runTests(ctx, seedingOf(backends), scope)
+	tr, err := s.runTests(ctx, pc, seedingOf(backends), scope)
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
@@ -1805,10 +1880,11 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 		// The declaration frontier is the expensive leg: it loads and
 		// walks the bound packages' sources.
 		prog.Phase(stipulatorv1.Phase_PHASE_CONTEXT_SLICE)
-		backends, err := s.backends(ctx)
+		backends, err := s.backends(ctx, nil)
 		if err != nil {
 			return nil, nil, terminalToolError(prog, ctx, err)
 		}
+		defer closeBackends(backends)
 		_, decls, floor, err := facts.Context(spec, store, backends, ids)
 		if err != nil {
 			return nil, nil, terminalToolError(prog, ctx, err)
@@ -1870,10 +1946,11 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	spec, store := prepared.Spec, prepared.Store
-	backends, err := s.backends(ctx)
+	backends, err := s.backends(ctx, nil)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
+	defer closeBackends(backends)
 	var ids []string
 	if strings.TrimSpace(in.Ids) != "" {
 		ids, err = splitIDs(in.Ids)

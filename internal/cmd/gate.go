@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	"github.com/greatliontech/stipulator/internal/backends/golang"
 	checkpkg "github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/verify"
@@ -46,12 +45,12 @@ func gateCmd() *cobra.Command {
 			if err := refuseHygiene(prepared.Hygiene); err != nil {
 				return err
 			}
-			gb, err := golang.NewOwned(cmd.Context(), chdir)
+			pc, gb, err := servedBackend(cmd.Context(), store, true)
 			if err != nil {
 				return err
 			}
 			defer gb.Close()
-			testRun, err := witnessRun(cmd.Context(), gb)
+			testRun, err := witnessRun(cmd.Context(), pc, gb)
 			if err != nil {
 				return err
 			}

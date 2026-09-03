@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"sort"
 	"strings"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -154,4 +155,23 @@ func eachTextproto(fsys fs.FS, dir string, fn func(string, []byte) error) error 
 		}
 	}
 	return nil
+}
+
+// BoundSymbols names every symbol the store's bindings claim under one
+// backend, once each, sorted — the bound half of an operation's symbol
+// set.
+func (s *Store) BoundSymbols(backend string) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, bf := range s.Bindings {
+		for _, b := range bf.Set.GetBindings() {
+			if b.GetBackend() != backend || b.GetSymbol() == "" || seen[b.GetSymbol()] {
+				continue
+			}
+			seen[b.GetSymbol()] = true
+			out = append(out, b.GetSymbol())
+		}
+	}
+	sort.Strings(out)
+	return out
 }

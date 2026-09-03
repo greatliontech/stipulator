@@ -27,7 +27,7 @@ func TestLanguageShapeCanaries(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			b, err := newContext(context.Background(), dir)
+			b, err := newContext(context.Background(), dir, nil)
 			if err != nil {
 				t.Errorf("canary load: %v", err)
 				return

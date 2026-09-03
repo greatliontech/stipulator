@@ -117,6 +117,11 @@ message CheckResult {
   // input; the cost surfaces where the selection was declared instead
   // of only mid-derivation on the engine's diagnostic face.
   repeated string policy_notices = 21;
+  // Resolution notices name, per build selection, a serving-path
+  // fault the check degraded to typed resolution
+  // (REQ-evidence-freshness-degrade), and the run's served-versus-typed
+  // account. Advisory - never a verdict input.
+  repeated string resolution_notices = 22;
 }
 
 // CheckSummary is the check operation's summary view: the verdict with

@@ -15,12 +15,12 @@ import (
 // corpus root, so root discovery is skipped for it.
 func internalResolveCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:    golang.ResolverSubcommand + " <dir>",
+		Use:    golang.ResolverSubcommand + " <dir> [package ...]",
 		Short:  "Serve the owned symbol-resolution protocol on stdio (internal)",
 		Hidden: true,
-		Args:   cobra.ExactArgs(1),
+		Args:   cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return golang.ServeResolver(cmd.Context(), args[0], cmd.InOrStdin(), cmd.OutOrStdout())
+			return golang.ServeResolver(cmd.Context(), args[0], args[1:], cmd.InOrStdin(), cmd.OutOrStdout())
 		},
 	}
 }

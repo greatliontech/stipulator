@@ -54,9 +54,11 @@ func raceAndPlainPolicy() *stipulatorv1.TestPolicy {
 // own spawns cross the seam — gofresh's engine and view loads do not —
 // so this is the derivation's cost, never the operation's whole
 // toolchain cost.
-type spawns struct{ env, list, test int }
+type spawns struct{ env, list, test, child int }
 
-func (s spawns) plus(o spawns) spawns { return spawns{s.env + o.env, s.list + o.list, s.test + o.test} }
+func (s spawns) plus(o spawns) spawns {
+	return spawns{s.env + o.env, s.list + o.list, s.test + o.test, s.child + o.child}
+}
 
 // derivation is the spawn count with execution masked out: the
 // quantity REQ-check-derivation bounds.
@@ -64,20 +66,26 @@ func (s spawns) derivation() spawns { return spawns{env: s.env, list: s.list} }
 
 // spawnCounter is the seam counter: execution fans out per package, so
 // the counts are atomic and read as a snapshot.
-type spawnCounter struct{ env, list, test atomic.Int64 }
+type spawnCounter struct{ env, list, test, child atomic.Int64 }
 
 func (c *spawnCounter) snapshot() spawns {
-	return spawns{int(c.env.Load()), int(c.list.Load()), int(c.test.Load())}
+	return spawns{int(c.env.Load()), int(c.list.Load()), int(c.test.Load()), int(c.child.Load())}
 }
 
-func (c *spawnCounter) reset() { c.env.Store(0); c.list.Store(0); c.test.Store(0) }
+func (c *spawnCounter) reset() { c.env.Store(0); c.list.Store(0); c.test.Store(0); c.child.Store(0) }
 
 // countSpawns installs the seam counter for the test's life.
 func countSpawns(t *testing.T) *spawnCounter {
 	t.Helper()
 	c := &spawnCounter{}
 	commandHook = func(name string, args []string) {
-		if name != "go" || len(args) == 0 {
+		if name != "go" {
+			// The owned resolver child — this binary in its resolver
+			// mode — the one seam spawn that is not the go tool.
+			c.child.Add(1)
+			return
+		}
+		if len(args) == 0 {
 			return
 		}
 		switch args[0] {

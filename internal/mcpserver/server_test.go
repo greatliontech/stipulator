@@ -88,14 +88,15 @@ func harnessWith(t *testing.T, files map[string]string, mut func(*Server)) (*mcp
 	writes := map[string][]byte{}
 	s := &Server{
 		fsys: func() fs.FS { return fsys },
-		backends: func(context.Context) (map[string]verify.Backend, error) {
+		backends: func(context.Context, []string) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{"go": fakeBackend{
 				"example.com/p.TestA": strings.Repeat("s", 64),
 				"example.com/p.F":     strings.Repeat("f", 64),
 				"example.com/q.TestA": strings.Repeat("q", 64),
 			}}, nil
 		},
-		runTests: func(context.Context, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		capture: func(context.Context) (*golang.Capture, error) { return nil, nil },
+		runTests: func(context.Context, *golang.Capture, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			return &verify.TestRun{
 				RaceEnabled:      true,
 				SelectiveServing: true,
@@ -143,10 +144,11 @@ func TestCanceledToolCallStopsWitnessRun(t *testing.T) {
 				"specs/a.md":                     {Data: []byte(doc)},
 			}
 		},
-		backends: func(context.Context) (map[string]verify.Backend, error) {
+		backends: func(context.Context, []string) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{}, nil
 		},
-		runTests: func(ctx context.Context, _ verify.WitnessSeeding, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		capture: func(context.Context) (*golang.Capture, error) { return nil, nil },
+		runTests: func(ctx context.Context, _ *golang.Capture, _ verify.WitnessSeeding, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			close(started)
 			<-ctx.Done()
 			close(stopped)
@@ -477,10 +479,11 @@ func TestPruneRefusesNonServingEvidence(t *testing.T) {
 	}
 	s := &Server{
 		fsys: func() fs.FS { return fsys },
-		backends: func(context.Context) (map[string]verify.Backend, error) {
+		backends: func(context.Context, []string) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{"go": fakeBackend{}}, nil
 		},
-		runTests: func(context.Context, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		capture: func(context.Context) (*golang.Capture, error) { return nil, nil },
+		runTests: func(context.Context, *golang.Capture, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			// A whole-execution run: no serving-class mark.
 			return &verify.TestRun{RaceEnabled: true}, nil
 		},
@@ -1089,10 +1092,11 @@ func TestVerifyToolNamesPolicyRecordProblem(t *testing.T) {
 				"specs/a.md":                     {Data: []byte(doc)},
 			}
 		},
-		backends: func(context.Context) (map[string]verify.Backend, error) {
+		backends: func(context.Context, []string) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{"go": fakeBackend{}}, nil
 		},
-		runTests: func(ctx context.Context, _ verify.WitnessSeeding, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		capture: func(context.Context) (*golang.Capture, error) { return nil, nil },
+		runTests: func(ctx context.Context, _ *golang.Capture, _ verify.WitnessSeeding, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			gb, err := golang.NewOwned(ctx, dir)
 			if err != nil {
 				return nil, err

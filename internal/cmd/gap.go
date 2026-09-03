@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/greatliontech/stipulator/internal/author"
-	"github.com/greatliontech/stipulator/internal/backends/golang"
 	checkpkg "github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/verify"
@@ -130,7 +129,7 @@ func gapListRun(ctx context.Context) error {
 	// hygiene warns below and never withholds the witness evidence the
 	// other gaps' states derive from — the MCP gap tool evaluates the
 	// same way. One owned child serves the run and the resolution.
-	gb, err := golang.NewOwned(ctx, chdir)
+	pc, gb, err := servedBackend(ctx, store, len(scope) > 0)
 	if err != nil {
 		return err
 	}
@@ -140,7 +139,7 @@ func gapListRun(ctx context.Context) error {
 		// An empty scope means no bound witness can move any
 		// gap-relevant bucket, so the evaluation is witness-free.
 		why := fmt.Sprintf("scoped to %d gapped requirements", len(gapIds))
-		if testRun, err = witnessRunScoped(ctx, gb, scope, why); err != nil {
+		if testRun, err = witnessRunScoped(ctx, pc, gb, scope, why); err != nil {
 			return err
 		}
 	}

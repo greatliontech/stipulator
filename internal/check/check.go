@@ -147,17 +147,27 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		// engine's diagnostic face. Advisory: never a verdict input.
 		res.SetPolicyNotices(golang.SelectionNotices(pc))
 
-		// The verification backend is opened before witnessing: the
-		// witness run consults its classifier for the random-seeded
-		// witnesses that never serve (REQ-evidence-witness-freshness),
-		// and the same child then resolves bindings — one load, one
-		// owned process.
-		gb, err := golang.NewOwned(ctx, dir)
+		// The verification backend is prepared before witnessing over
+		// the operation's whole symbol set: resolutions and witness
+		// classifications proven fresh serve from records, and the
+		// owned child opens only for the stale remainder
+		// (REQ-evidence-resolution-freshness); the witness run's
+		// classifier and the binding resolution share it.
+		symbols, err := golang.OperationSymbols(ctx, store, pc)
+		if err != nil {
+			return recordProblem(err)
+		}
+		gb, err := golang.NewServed(ctx, dir, symbols)
 		if err != nil {
 			return nil, err
 		}
 		defer gb.Close()
 		backends = map[string]verify.Backend{"go": gb}
+		// The serving path's account rides the result: what served,
+		// what resolved typed and why, and any selection the path
+		// degraded (REQ-evidence-freshness-degrade) — advisory, never a
+		// verdict input.
+		defer func() { res.SetResolutionNotices(gb.Notices()) }()
 
 		// The evidence-class fork (REQ-check-verdict): health judgment
 		// demands whole-policy execution, so the full form executes

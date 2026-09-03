@@ -78,7 +78,7 @@ func TestResolve(t *testing.T) {
 //
 //gofresh:pure
 func TestFixtureModule(t *testing.T) {
-	b, err := newContext(context.Background(), "testdata/fixturemod")
+	b, err := newContext(context.Background(), "testdata/fixturemod", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -314,7 +314,7 @@ func TestWorkspaceMembers(t *testing.T) {
 	}
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	stipulate.Covers(t, "REQ-go-static-binding", "REQ-go-witness", "REQ-go-workspace")
-	b, err := newContext(context.Background(), "testdata/workspacemod")
+	b, err := newContext(context.Background(), "testdata/workspacemod", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -370,7 +370,7 @@ func TestWorkspaceMembers(t *testing.T) {
 	}
 
 	// A member escaping the tree is refused: hermeticity, never bent.
-	if _, err := newContext(context.Background(), "testdata/escapemod"); err == nil || !strings.Contains(err.Error(), "escapes the verification tree") {
+	if _, err := newContext(context.Background(), "testdata/escapemod", nil); err == nil || !strings.Contains(err.Error(), "escapes the verification tree") {
 		t.Fatalf("escaping go.work member accepted: %v", err)
 	}
 }
@@ -389,7 +389,7 @@ func TestWorkspaceMembers(t *testing.T) {
 //gofresh:pure
 func TestGoLoadAttributionNamesDependencyResolutionState(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
-	b, err := newContext(context.Background(), "testdata/depbroken")
+	b, err := newContext(context.Background(), "testdata/depbroken", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -420,7 +420,7 @@ func TestGoLoadAttributionNamesDependencyResolutionState(t *testing.T) {
 //gofresh:pure
 func TestGoLoadAttributionLeavesInTreeErrorsUnchanged(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
-	b, err := newContext(context.Background(), "testdata/depbroken")
+	b, err := newContext(context.Background(), "testdata/depbroken", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -456,7 +456,7 @@ func TestGoLoadAttributionLeavesInTreeErrorsUnchanged(t *testing.T) {
 //gofresh:pure
 func TestGoWitnessClassVerdictNamesLoadFailure(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution", "REQ-go-witness-class")
-	b, err := newContext(context.Background(), "testdata/depbroken")
+	b, err := newContext(context.Background(), "testdata/depbroken", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

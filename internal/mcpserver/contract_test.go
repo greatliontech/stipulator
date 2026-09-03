@@ -2,6 +2,7 @@ package mcpserver
 
 import (
 	"context"
+	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"io/fs"
 	"runtime"
 	"strings"
@@ -208,14 +209,15 @@ func TestTokenlessCallEmitsPhaseLogMessages(t *testing.T) {
 	}
 	s := &Server{
 		fsys: func() fs.FS { return fsys },
-		backends: func(context.Context) (map[string]verify.Backend, error) {
+		backends: func(context.Context, []string) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{"go": fakeBackend{
 				"example.com/p.TestA": strings.Repeat("s", 64),
 				"example.com/p.F":     strings.Repeat("f", 64),
 				"example.com/q.TestA": strings.Repeat("q", 64),
 			}}, nil
 		},
-		runTests: func(context.Context, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		capture: func(context.Context) (*golang.Capture, error) { return nil, nil },
+		runTests: func(context.Context, *golang.Capture, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			return &verify.TestRun{
 				RaceEnabled:      true,
 				SelectiveServing: true,
@@ -375,7 +377,7 @@ func TestPartitionsExportCarriesUncappedOverlaps(t *testing.T) {
 	}, func(srv *Server) {
 		// Overlaps derive from slicer-provided packages; the plain fake
 		// is no slicer, so both components would carry none.
-		srv.backends = func(context.Context) (map[string]verify.Backend, error) {
+		srv.backends = func(context.Context, []string) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{"go": slicingFake{fakeBackend{
 				"example.com/p.TestA": strings.Repeat("s", 64),
 				"example.com/p.F":     strings.Repeat("f", 64),

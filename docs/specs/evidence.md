@@ -146,7 +146,8 @@ subject's own source closure unchanged and nothing more — Gofresh orders
 the compartment comparison after the core and before the environment
 tiers, so a moved guard or runtime input can hide behind that reason
 (witness fingerprints never carry a refinement) — so the carve-out
-completes the proof itself: the record's persisted compartment ledger must
+completes the proof itself: the compartment ledger persisted under the
+record's recorded compartment digest must
 diff inert against the current view's ledger per Gofresh's classifier (the
 only movement is added declarations no unchanged declaration can observe),
 and the recorded fingerprint refreshed to the current compartment hash
@@ -161,7 +162,8 @@ provably unobservable additions stop re-executing every cached witness in
 the package; the carve-out accepts framework-level test interleaving within
 one process as outside the equivalence claim, exactly as the closure-based
 claim always has. Anything else short of valid — any other stale reason,
-an unverifiable verdict, a non-inert delta, a record without a ledger, an
+an unverifiable verdict, a non-inert delta, a record whose compartment
+ledger the store does not hold, an
 absent or unreadable record — runs the test; absence of proof never serves
 an outcome. A random-seeded witness — a subject the backend classifies
 `property` by a run-time-seeded driver (REQ-go-witness-class's seeded
@@ -402,8 +404,10 @@ states of one test coexist as variants and alternating between branches evicts
 nothing. Records install the moment their witness group completes — its last
 covering invocation executed and its closing validation passed — never as an
 end-of-run batch: a run dying mid-execution keeps every record already
-produced, and the degraded path still installs nothing. Each file carries one record object with integer `version` equal to `7` —
-bumped from `6` when the record identity gained the producing capture
+produced, and the degraded path still installs nothing. Each file carries one record object with integer `version` equal to `8` —
+bumped from `7` when the compartment ledger left the record for the
+ledger store below (a prior record's inline ledger is an unknown field),
+from `6` when the record identity gained the producing capture
 group's coordinate, so a record is addressable only within the producer
 environment that made it, and from `5` when the persisted compartment
 ledger gained each declaration's package clause and referenced names,
@@ -419,7 +423,7 @@ records serve unchanged with the audit set reading empty for the
 pre-field capture — the residual is auditability, not validity: an
 acceptance that was load-bearing at capture is invisible in that record's
 evidence until its next re-execution. The record carries
-string `group`, `package` and `test`, object `fingerprint`, object `compartmentLedger`,
+string `group`, `package` and `test`, object `fingerprint`,
 object `outcomes`, optional
 array `registrations`, and optional array `observationExclusions` — the
 canonical reviewed exclusion set the record's observation was captured
@@ -443,16 +447,35 @@ strategy is the Gofresh strategy identifier the fingerprint was computed under
 strategy, and a record persisted before the field reads as the empty strategy
 and fails closed to re-execution),
 measurement fields are absent, and result kind is Gofresh code-result. The
-`compartmentLedger` object carries the producing compartment's declaration
-ledger — the witness-freshness carve-out's diff base — as an optional
+producing compartment's declaration ledger — the witness-freshness
+carve-out's diff base — is stored once per compartment, not per record:
+every test of a package shares its compartment, so the store's `ledgers`
+subdirectory holds one JSON file per compartment named by the
+fingerprint's `testVariantClosure` digest, installed atomically before
+its first record and rewritten only when the file present does not read
+back as a ledger (the digest addresses the content, so a readable file is
+this ledger; a torn or prior-version file never outlives the next install
+of its compartment), carrying integer `version` equal to `1`, string `testVariantClosure`
+equal to the file's name, an optional
 `declarations` array (string `file`, `kind`, `name`, optional `receiver`,
+optional `package`, optional `references` array,
 and 16-byte lowercase hexadecimal `hash`) and an optional `fileHeaders`
 array (string `file`, 16-byte lowercase hexadecimal `hash`, optional
-boolean `embedded`), each omitted when empty; the declarations name the
-record's own test as a receiverless `func` — a witness subject's own
+boolean `embedded`), each omitted when empty. A ledger is read for one
+record at a time, on the carve-out's demand, and must name that record's
+own test as a receiverless `func` — a witness subject's own
 declaration lives in its compartment, and a ledger that omits it would let
 that declaration ride an inert diff as an addition, the observation proof's
-identity agreement check applied to the ledger. An
+identity agreement check applied to the ledger; a ledger failing that,
+malformed, of another version, disagreeing with its name, or absent is no
+ledger for the record, which costs the carve-out alone — the record still
+serves on plain validity. Loading the store reads records only, never
+ledgers, and reclaims every ledger no record file names — a refused
+record's ledger stays, its refusal is the file's own, and a ledger
+younger than the load is a concurrent install's and stays until it has
+aged unreferenced — so the ledger
+store is bounded by the record store whose variant bound evicts records
+without reading them. An
 `observationProof` object has string keys `strategy`, `package`, `symbol`, optional
 `reason`, and `evidence`, plus required non-null boolean `observable`; its package and symbol equal the
 record identity, `reason` is absent exactly when `observable` is true, and `evidence`
@@ -469,7 +492,10 @@ makes that file alone an absent record — sibling records stay trusted, because
 refusal is per record and costs only that record's execution, while a record is
 never migrated or partially trusted. Per identity the store keeps a bounded set
 of the most recently installed variants; eviction is by recency and costs only
-execution.
+execution, and serving tries an identity's variants most recently installed
+first — the variant the last state change produced proves equivalent
+whenever the tree has not alternated since, so the first fingerprint check
+is usually the last.
 
 **REQ-evidence-freshness-no-health** (behavior): A freshness-served test
 outcome MUST NOT contribute to package, command, or suite health; serving
@@ -518,7 +544,8 @@ explicit garbage-collection verb, on both surfaces, that removes this
 corpus's record variants whose witness identity is absent from the
 current obligation universe — the bound tests-role symbols, matched by
 exact record-key equality, never by symbol parsing — plus unreadable
-entries (cost with no servable evidence behind them). The verb is the
+entries (cost with no servable evidence behind them), and with them
+every ledger no kept record's compartment digest names. The verb is the
 ONLY eviction across identities: an identity absent from this tree
 state may be live on another branch, so opportunistic eviction would
 undo the variant store's branch-alternation serving; per-identity
@@ -526,6 +553,59 @@ variant bounds on install are unaffected. The result states removed
 and kept counts. Enforced by `TestWitnessStoreGCDropsDepartedIdentities`,
 `TestPruneToolStoreGC`, and the CLI arm of
 `TestPruneScopedWitnessEvaluationAndDeletionOnlyFastPath`.
+
+**REQ-evidence-resolution-freshness** (behavior): A verification MAY serve a
+binding's resolution — the resolution verdict, the shape hash, the owning
+package, the witness classification with its reason, and the serving
+refusal a random-seeded or unclassifiable witness carries — from a local
+record exactly when the source-closure tiers of the Gofresh fingerprint
+recorded beside it — the maximal closure, the subject package's
+test-variant compartment, the toolchain, the build configuration — equal
+the current capture's for the bound symbol as a
+Gofresh subject under the build selection that resolved it, because
+equal closure tiers prove the symbol's source closure is the one the
+record was derived from — a witness's class and its serving refusal are
+functions of its own body, which lives in the compartment the core
+closure excludes (the result-serving tiers — dynamic state, purity,
+runtime inputs — judge a stored result, which a resolution is not): every recorded field is a function of that closure, so the served
+resolution is the current run's verification by proven equivalence, not
+a trust extension, and REQ-evidence-promotion holds exactly as it holds
+for a served witness (REQ-evidence-witness-freshness). A symbol without a
+valid record, a symbol the selected source no longer declares, and a
+symbol that is not a callable — a type, a constant, a variable — resolve
+through the typed load, whose scope is the packages of exactly those
+symbols — each pattern loaded once, from the workspace member whose
+module owns it, a pattern no member owns loaded by nobody, and a
+pattern that matches no package held by nobody, so a dependency's
+package and a vanished package answer not found as they do under the
+whole tree — and a serving backend built for a symbol set answers that set alone:
+a symbol outside it is refused, never forwarded to the scoped load,
+which would answer not found for what the tree declares, while a
+backend built for the declaration-reading roles names no set and its
+typed load is the whole tree; a
+record is written only from a typed
+resolution, never from a served one, and only when the symbol's
+fingerprint captured before the typed load opened equals the one
+captured after the resolution — a symbol that moved between them is
+not recorded. A fault anywhere on the serving path degrades to the typed
+load for the affected symbols (REQ-evidence-freshness-degrade).
+
+**REQ-evidence-resolution-cache-format** (behavior): The local resolution
+cache MUST live beside the witness cache under the user cache directory,
+keyed by the corpus root's absolute path, as one JSON file per record —
+named by the digest of the resolving build selection's key and the
+symbol, NUL-separated, joined with the digest of the fingerprint's
+canonical JSON encoding, each segment the first sixteen hexadecimal
+characters of the REQ-model-hash-func digest — carrying one record object
+with integer `version`, the selection key, the symbol, the fingerprint
+(source-closure tiers only: maximal closure, test-variant compartment,
+toolchain, build configuration, result kind), and the
+served fields REQ-evidence-resolution-freshness names. A malformed,
+field-blind, or prior-version record is ignored; a record whose
+fingerprint carries any observation, purity, or runtime tier is ignored,
+because resolution observes nothing at run time. A classifier change
+that alters what a record proves bumps the version, so a record of a
+prior classifier never serves.
 
 **REQ-evidence-attestation** (behavior): An attestation MUST carry its reason
 text and appear distinctly in every coverage output; it is the weakest

@@ -198,7 +198,7 @@ func TestGoRunWitnessesRandomSeededNeverServes(t *testing.T) {
 	neutralAmbient(t)
 	tmp := rapidModule(t)
 	writeRacePolicy(t, tmp)
-	seeding, err := newContext(context.Background(), tmp)
+	seeding, err := newContext(context.Background(), tmp, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -363,7 +363,7 @@ func TestExecutePolicyWitnessedRandomSeededNeverPublishes(t *testing.T) {
 	neutralAmbient(t)
 	tmp := rapidModule(t)
 	writeRacePolicy(t, tmp)
-	seeding, err := newContext(context.Background(), tmp)
+	seeding, err := newContext(context.Background(), tmp, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

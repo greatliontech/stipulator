@@ -68,6 +68,7 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   contradicts by design has no state to say so, and the corpus reads green against a contradicted
   requirement. Ask: a `contradicted` state beside the gap, reported distinctly, resolving only on
   an explicit fire. *Lands: user decision (bldc consumer report 2026-09-05).*
+- **[two-record-stores](two-record-stores.md)** — the witness cache and the resolution cache are one store shape written twice; one store by record kind, and the served backend as the owned child's one form. *Lands: user decision (the ledger files were the third kind; the atomic writer folded, the store unification remains).*
 - **[witness-selection-guard-masked-by-ineligible-red](witness-selection-guard-masked-by-ineligible-red.md)** —
   the empty-witness-selection diagnostic keys on any outcome, so an ineligible leg's failure masks
   the cause; key on granted outcomes. *Lands: cross-tool train chunk 142.*

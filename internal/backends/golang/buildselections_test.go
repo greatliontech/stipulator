@@ -66,7 +66,7 @@ func TestResolveSpansPolicyBuildSelections(t *testing.T) {
 	dir := buildSelectionModule(t)
 	symbol := "example.com/tagged.TestCrashSchedule"
 
-	bare, err := newContext(context.Background(), dir)
+	bare, err := newContext(context.Background(), dir, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestResolveSpansPolicyBuildSelections(t *testing.T) {
 	}
 
 	dstPolicy(t, dir)
-	b, err := newContext(context.Background(), dir)
+	b, err := newContext(context.Background(), dir, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,6 +89,18 @@ func TestResolveSpansPolicyBuildSelections(t *testing.T) {
 	}
 	if res, _, err := b.Resolve("example.com/tagged.Plain"); err != nil || res != verify.Resolved {
 		t.Fatalf("untagged symbol regressed: %v, %v", res, err)
+	}
+	// The resolving view is named: a served resolution record carries
+	// this key and serves only that view
+	// (REQ-evidence-resolution-freshness).
+	if _, _, selection, err := b.ResolveIn(symbol); err != nil || selection == "default" || selection == "" || !strings.Contains(selection, "dst") {
+		t.Fatalf("tag-gated symbol resolved in selection %q, %v; want the dst-tagged view named", selection, err)
+	}
+	if _, _, selection, err := b.ResolveIn("example.com/tagged.Plain"); err != nil || selection != "default" {
+		t.Fatalf("untagged symbol resolved in selection %q, %v; want the default view", selection, err)
+	}
+	if _, _, selection, err := b.ResolveIn("example.com/tagged.NoSuch"); err != nil || selection != "" {
+		t.Fatalf("unresolved symbol named selection %q, %v; want none", selection, err)
 	}
 }
 
@@ -119,7 +131,7 @@ func Shape(x string) string { return x }
 		}
 	}
 	dstPolicy(t, dir)
-	b, err := newContext(context.Background(), dir)
+	b, err := newContext(context.Background(), dir, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +150,7 @@ func Shape(x string) string { return x }
 			t.Fatal(err)
 		}
 	}
-	cb, err := newContext(context.Background(), control)
+	cb, err := newContext(context.Background(), control, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +178,7 @@ func TestResolveRefusesMalformedPolicyRecord(t *testing.T) {
 	if err := os.WriteFile(full, []byte("not a policy {"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := newContext(context.Background(), dir); err == nil || !strings.Contains(err.Error(), "resolution build selections") {
+	if _, err := newContext(context.Background(), dir, nil); err == nil || !strings.Contains(err.Error(), "resolution build selections") {
 		t.Fatalf("err = %v, want the malformed-record refusal", err)
 	}
 }
@@ -202,7 +214,7 @@ func TestCrashSchedule(t *testing.T) {}
 	}
 	dstPolicy(t, dir)
 	for range 100 {
-		b, err := newContext(context.Background(), dir)
+		b, err := newContext(context.Background(), dir, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -237,7 +249,7 @@ func Tagged(c Config) int { return c.N * 2 }
 		}
 	}
 	dstPolicy(t, dir)
-	b, err := newContext(context.Background(), dir)
+	b, err := newContext(context.Background(), dir, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -294,7 +306,7 @@ func Which(x string) string { return x }
 		goInvocation("b-beta", betaCfg),
 	})
 	writePolicyRecord(t, dir, p)
-	b, err := newContext(context.Background(), dir)
+	b, err := newContext(context.Background(), dir, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -333,7 +345,7 @@ func TestTaggedViewLoadsUnderSelectionToolchain(t *testing.T) {
 	}
 
 	write("local")
-	b, err := newContext(context.Background(), dir)
+	b, err := newContext(context.Background(), dir, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -342,7 +354,7 @@ func TestTaggedViewLoadsUnderSelectionToolchain(t *testing.T) {
 	}
 
 	write("definitely-not-a-toolchain")
-	b, err = newContext(context.Background(), dir)
+	b, err = newContext(context.Background(), dir, nil)
 	if err != nil {
 		t.Fatalf("a broken tagged view failed the whole binding context: %v", err)
 	}

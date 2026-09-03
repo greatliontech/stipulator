@@ -259,7 +259,7 @@ func TestNewContextRefusesToolchainSkew(t *testing.T) {
 		return "go99.1.0", nil
 	}
 	dir := buildSelectionModule(t)
-	if _, err := newContext(context.Background(), dir); err == nil {
+	if _, err := newContext(context.Background(), dir, nil); err == nil {
 		t.Fatal("skewed binding context did not refuse")
 	} else if !strings.Contains(err.Error(), "cross-major") {
 		t.Fatalf("refusal = %v, want the skew class named", err)

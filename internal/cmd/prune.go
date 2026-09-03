@@ -52,7 +52,8 @@ func pruneCmd() *cobra.Command {
 				var liveGroup func(string) bool
 				// A policy the operation cannot capture keeps every
 				// coordinate: cost cleanup never guesses.
-				if pc, cerr := golang.LoadCapture(cmd.Context(), chdir); cerr == nil {
+				pc, cerr := golang.LoadCapture(cmd.Context(), chdir)
+				if cerr == nil {
 					digests := golang.LiveGroupDigests(pc)
 					liveGroup = func(group string) bool { return digests[group] }
 				}
@@ -63,6 +64,17 @@ func pruneCmd() *cobra.Command {
 					return err
 				}
 				fmt.Printf("store gc: %d record variant(s) removed, %d kept\n", removed, kept)
+				// The resolution records beside them: a symbol no
+				// binding names and no witness subject carries serves
+				// no operation — judged only under a captured policy,
+				// since the witness subjects come from it.
+				if pc != nil {
+					resolutionsRemoved, resolutionsKept, err := golang.GCResolutions(cmd.Context(), chdir, store, pc)
+					if err != nil {
+						return err
+					}
+					fmt.Printf("store gc: %d resolution record(s) removed, %d kept\n", resolutionsRemoved, resolutionsKept)
+				}
 				return nil
 			}
 			prepared, err := mustPrepare(chdir)
@@ -113,7 +125,7 @@ func pruneCmd() *cobra.Command {
 			if err := refuseHygiene(prepared.Hygiene); err != nil {
 				return err
 			}
-			gb, err := golang.NewOwned(cmd.Context(), chdir)
+			pc, gb, err := servedBackend(cmd.Context(), store, !noTest)
 			if err != nil {
 				return err
 			}
@@ -134,7 +146,7 @@ func pruneCmd() *cobra.Command {
 					return err
 				}
 				why := fmt.Sprintf("scoped to %d gapped requirements", len(gapIds))
-				if testRun, err = witnessRunScoped(cmd.Context(), gb, scope, why); err != nil {
+				if testRun, err = witnessRunScoped(cmd.Context(), pc, gb, scope, why); err != nil {
 					return err
 				}
 				// The resolved-record evaluation is pinned to the serving

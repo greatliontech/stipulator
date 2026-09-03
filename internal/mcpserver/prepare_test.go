@@ -2,6 +2,7 @@ package mcpserver
 
 import (
 	"context"
+	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"strings"
 	"testing"
 
@@ -43,8 +44,11 @@ func TestWitnessedToolsRefuseBeforeAnyChildOnRecordHygiene(t *testing.T) {
 		".stipulator/bindings/ghost.textproto": "bindings {\n  requirement_id: \"REQ-ghost\"\n  backend: \"go\"\n  symbol: \"example.com/p.TestA\"\n  role: BINDING_ROLE_TESTS\n}\n",
 	}, func(s *Server) {
 		inner := s.backends
-		s.backends = func(ctx context.Context) (map[string]verify.Backend, error) { opened++; return inner(ctx) }
-		s.runTests = func(context.Context, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		s.backends = func(ctx context.Context, symbols []string) (map[string]verify.Backend, error) {
+			opened++
+			return inner(ctx, symbols)
+		}
+		s.runTests = func(context.Context, *golang.Capture, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			ran++
 			return &verify.TestRun{}, nil
 		}
@@ -72,8 +76,11 @@ func TestGateToolRefusesVocabularyBeforeAnyChild(t *testing.T) {
 	opened, ran := 0, 0
 	sess, _ := harnessWith(t, nil, func(s *Server) {
 		inner := s.backends
-		s.backends = func(ctx context.Context) (map[string]verify.Backend, error) { opened++; return inner(ctx) }
-		s.runTests = func(context.Context, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		s.backends = func(ctx context.Context, symbols []string) (map[string]verify.Backend, error) {
+			opened++
+			return inner(ctx, symbols)
+		}
+		s.runTests = func(context.Context, *golang.Capture, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			ran++
 			return &verify.TestRun{}, nil
 		}
@@ -107,11 +114,11 @@ func TestWitnessRunSharesTheToolsResolverChild(t *testing.T) {
 	opened := 0
 	var got verify.WitnessSeeding
 	sess, _ := harnessWith(t, nil, func(s *Server) {
-		s.backends = func(context.Context) (map[string]verify.Backend, error) {
+		s.backends = func(context.Context, []string) (map[string]verify.Backend, error) {
 			opened++
 			return map[string]verify.Backend{"go": backend}, nil
 		}
-		s.runTests = func(_ context.Context, seeding verify.WitnessSeeding, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		s.runTests = func(_ context.Context, _ *golang.Capture, seeding verify.WitnessSeeding, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			got = seeding
 			return &verify.TestRun{RaceEnabled: true, SelectiveServing: true}, nil
 		}
@@ -130,7 +137,7 @@ func TestWitnessRunSharesTheToolsResolverChild(t *testing.T) {
 // panicking.
 func TestWitnessRunRefusesWithoutAResolverChild(t *testing.T) {
 	stipulate.Covers(t, "REQ-check-preparation")
-	_, err := New(t.TempDir()).runTests(context.Background(), nil, nil)
+	_, err := New(t.TempDir()).runTests(context.Background(), nil, nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "resolver child") {
 		t.Fatalf("err = %v, want the missing-classifier refusal", err)
 	}
@@ -147,7 +154,7 @@ func TestContextToolJudgesNoWitnessOnTheRecordOnlyPass(t *testing.T) {
 		".stipulator/bindings/m.textproto":     pinnedBinding(t),
 		".stipulator/bindings/ghost.textproto": "bindings {\n  requirement_id: \"REQ-ghost\"\n  backend: \"go\"\n  symbol: \"example.com/p.TestA\"\n  role: BINDING_ROLE_TESTS\n}\n",
 	}, func(s *Server) {
-		s.runTests = func(context.Context, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		s.runTests = func(context.Context, *golang.Capture, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			ran++
 			return &verify.TestRun{}, nil
 		}
