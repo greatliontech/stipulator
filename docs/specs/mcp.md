@@ -170,7 +170,13 @@ its error stream — each phase transition once, an invocation's
 progress as completed of total packages, each decision line once — and
 ends a completed run with the phase timings as its pace line and an
 interrupted run with the phase it died in and what it kept, so a person
-at the CLI and an agent at the server read the same account. The
+at the CLI and an agent at the server read the same account. An
+interrupted CLI run then ends as what ended it: the signal, re-raised
+after the ending renders, so its caller observes a signal death — or,
+where a signal cannot be re-raised, the conventional status of that
+signal, 128 plus its number — never a verdict's status, which a
+failing verdict alone exits 1 with; a second signal during the ending
+ends the process outright. The
 stream is bounded by the policy — phases, invocations, persisting
 units — never by the test count.
 The liveness channels are bounded by the protocol: progress

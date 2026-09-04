@@ -380,11 +380,19 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	// Each install names its unit on the progress stream — the
 	// completing invocation, the verification pass's revalidation, the
 	// drift retry — so a cancelled run reports what it kept.
-	installNow := func(records []witnesscache.Record) int {
+	// installNow returns the records that landed: a record the store
+	// refused is not cached, and its subject's reason names the store's
+	// fault — a filesystem remedy, never the evidence's.
+	installNow := func(records []witnesscache.Record) []witnesscache.Record {
+		var installed []witnesscache.Record
 		for _, rec := range records {
-			_ = witnesscache.Install(dir, rec)
+			if err := witnesscache.Install(dir, rec); err != nil {
+				uncacheableWhy[gofresh.Subject{Package: rec.Package, Symbol: rec.Test}] = "the store refused the record: " + err.Error()
+				continue
+			}
+			installed = append(installed, rec)
 		}
-		return len(records)
+		return installed
 	}
 	// One decision line per executing invocation: what executes and the
 	// reason most of it serves no record — bounded by the policy, never
@@ -468,10 +476,11 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 				return err
 			}
 			maps.Copy(uncacheableWhy, reasons)
-			published = append(published, records...)
+			landed := installNow(records)
+			published = append(published, landed...)
 			driftedByGroup[wg] = groupDrifted
 			finished[wg] = true
-			installed += installNow(records)
+			installed += len(landed)
 		}
 		// The unit of persistence on the progress stream is the
 		// completing invocation: every group it closed, one note.
@@ -512,9 +521,10 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 					return nil, err
 				}
 				maps.Copy(uncacheableWhy, reasons)
-				published = append(published, records...)
+				landed := installNow(records)
+				published = append(published, landed...)
 				driftedByGroup[wg] = groupDrifted
-				revalidated += installNow(records)
+				revalidated += len(landed)
 			}
 			groupDrifted := driftedByGroup[wg]
 			drifted = append(drifted, groupDrifted...)
@@ -544,9 +554,10 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 				return nil, err
 			}
 			maps.Copy(uncacheableWhy, retryReasons)
-			published = append(published, retryPublished...)
-			if n := installNow(retryPublished); n > 0 {
-				rep.Persisted("drift retry", n)
+			landed := installNow(retryPublished)
+			published = append(published, landed...)
+			if len(landed) > 0 {
+				rep.Persisted("drift retry", len(landed))
 			}
 		}
 	}

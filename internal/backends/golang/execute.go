@@ -985,6 +985,16 @@ func (f writerFunc) Write(p []byte) (int, error) { return f(p) }
 // span and the policy's wall time is the sum of what its invocations
 // spend, bounded overall only by the caller's context.
 func ExecutePolicy(ctx context.Context, pc *Capture) (*stipulatorv1.ExecutionReport, []*ProcessObservation, error) {
+	return executePolicy(ctx, pc, nil)
+}
+
+// executePolicy is ExecutePolicy with a completion hook: after each
+// invocation's execution, onCompleted sees the report so far — every
+// invocation completed to that point, its tests, diagnostics, and
+// observations — the seam that lets a witness group install the moment
+// its last covering invocation completes on this form too
+// (REQ-evidence-witness-cache-format's completed-group durability).
+func executePolicy(ctx context.Context, pc *Capture, onCompleted func(invocation string, sofar *stipulatorv1.ExecutionReport, observations []*ProcessObservation) error) (*stipulatorv1.ExecutionReport, []*ProcessObservation, error) {
 	rep := progress.FromContext(ctx)
 	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	universe, err := pc.ObligationUniverse(ctx)
@@ -1011,6 +1021,15 @@ func ExecutePolicy(ctx context.Context, pc *Capture) (*stipulatorv1.ExecutionRep
 		tests = append(tests, invTests...)
 		diags = append(diags, invDiags...)
 		observations = append(observations, invObs...)
+		if onCompleted != nil {
+			sofar := &stipulatorv1.ExecutionReport{}
+			sofar.SetInvocations(invocations)
+			sofar.SetTests(tests)
+			sofar.SetDiagnostics(diags)
+			if err := onCompleted(ic.n.Name, sofar, observations); err != nil {
+				return nil, nil, err
+			}
+		}
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, nil, err

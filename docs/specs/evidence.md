@@ -404,7 +404,10 @@ states of one test coexist as variants and alternating between branches evicts
 nothing. Records install the moment their witness group completes — its last
 covering invocation executed and its closing validation passed — never as an
 end-of-run batch: a run dying mid-execution keeps every record already
-produced, and the degraded path still installs nothing. Each file carries one record object with integer `version` equal to `8` —
+produced, and a degraded run installs nothing further — records its
+groups installed before the fault stay, each validated by its own
+group's closing check, and the run's uncacheable account excludes
+them. Each file carries one record object with integer `version` equal to `8` —
 bumped from `7` when the compartment ledger left the record for the
 ledger store below (a prior record's inline ledger is an unknown field),
 from `6` when the record identity gained the producing capture
@@ -700,11 +703,10 @@ evidentiary record.
 discard its partial results — no outcome, observation, or health
 disposition from a cancelled run is persisted, served, or reported as
 terminal — with cancellation propagated to every child process of the
-execution, package discovery included. On the witness-only selective
-form the unit of persistence is the
-witness group at its last covering invocation's completion, while the
-health-judged form installs its records when its execution completes:
-what completed before the cancellation stays installed,
+execution, package discovery included. On every execution form the
+unit of persistence is the witness group at its last covering
+invocation's completion: what completed before the cancellation stays
+installed,
 and the cancelled run's ending names those units — the invocation, the
 revalidation pass, the drift retry, with their record counts — or
 states that it kept nothing, so a rerun's serving is foreseeable.

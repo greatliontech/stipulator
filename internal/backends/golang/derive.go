@@ -277,6 +277,14 @@ type WitnessRecorder struct {
 	dir      string
 	degraded string
 	groups   []*captureGroup
+	// completed names the invocations whose execution finished; a
+	// group publishes the moment every invocation covering one of its
+	// packages has — installed at once, named on the progress stream —
+	// and published marks it so Derive publishes only the remainder.
+	completed map[string]bool
+	published map[*captureGroup]bool
+	records   []witnesscache.Record
+	reasons   map[gofresh.Subject]string
 }
 
 // invocationCapture pairs one Go invocation's normalized form with its
@@ -885,7 +893,7 @@ func emitEngineDiagnostic(p gofresh.Progress) {
 // degraded run would execute.
 func NewWitnessRecorder(ctx context.Context, pc *Capture, seeding verify.WitnessSeeding) (*WitnessRecorder, error) {
 	dir := pc.dir
-	r := &WitnessRecorder{dir: dir}
+	r := &WitnessRecorder{dir: dir, completed: map[string]bool{}, published: map[*captureGroup]bool{}, reasons: map[gofresh.Subject]string{}}
 	degrade := func(err error) (*WitnessRecorder, error) {
 		abort, reason := classifyFault(err)
 		if abort {
@@ -977,18 +985,35 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 		return nil, err
 	}
 	tr := DeriveTestRun(report)
-	published, uncacheableWhy, degraded, err := r.publish(ctx, report, observations)
-	if err != nil {
-		return nil, err
-	}
+	published, uncacheableWhy, degraded := r.publish()
 	executedTop := executedTopKeys(report)
 	switch {
 	case degraded != "":
+		// The fault ended publication; what earlier groups installed
+		// stays — each validated by its own closing check — and only
+		// the rest reads uncacheable, so the run tells one story with
+		// the store and its ending.
 		tr.Degraded = degraded
-		tr.Uncached = tr.Ran
+		installed := map[string]bool{}
+		for _, rec := range published {
+			installed[rec.Package+"."+rec.Test] = true
+		}
+		// A subject the ladder refused before the fault keeps the
+		// ladder's own reason; the degrade explains only the rest.
+		tr.Uncached = 0
 		tr.UncacheableReasons = map[string]string{}
+		for s, why := range uncacheableWhy {
+			tr.UncacheableReasons[s.Package+"."+s.Symbol] = why
+		}
 		for key := range executedTop {
-			tr.UncacheableReasons[key] = "freshness path degraded: " + degraded
+			if installed[key] {
+				delete(tr.UncacheableReasons, key)
+				continue
+			}
+			tr.Uncached++
+			if _, ok := tr.UncacheableReasons[key]; !ok {
+				tr.UncacheableReasons[key] = "freshness path degraded: " + degraded
+			}
 		}
 	case len(r.groups) == 0:
 		// Nothing was capturable (no witness-eligible invocation, or no
@@ -1033,36 +1058,74 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 				}
 			}
 		}
-		// Publication installs exactly what this execution produced, one
-		// variant file per record. Records this run never touched — a
-		// shadowed sibling's, a package this policy never selected's —
-		// need no rewrite: the store is per-record, so retention is the
-		// default and nothing shrinks. A departed test's variants linger
-		// as dead weight — its identity never installs again, so no bound
-		// fires; store growth is cost, never correctness.
-		for _, rec := range published {
-			_ = witnesscache.Install(r.dir, rec)
-		}
-		// The health-judged form's one unit of persistence is the whole
-		// policy execution: named on the stream, so an ending after this
-		// install reports what it kept.
-		if len(published) > 0 {
-			progress.FromContext(ctx).Persisted("policy execution", len(published))
-		}
+		// Publication installed at production: each group's records
+		// landed as their own variant files the moment its last covering
+		// invocation completed. Records this
+		// run never touched — a shadowed sibling's, a package this policy
+		// never selected's — need no rewrite: the store is per-record, so
+		// retention is the default and nothing shrinks. A departed test's
+		// variants linger as dead weight — its identity never installs
+		// again, so no bound fires; store growth is cost, never
+		// correctness.
 	}
 	return tr, nil
 }
 
-// publish assembles and validates the freshness records one execution
-// report supports. It returns the publishable records, or the degraded
-// reason when a fault disabled publication whole; the error return is
-// reserved for caller cancellation.
-func (r *WitnessRecorder) publish(ctx context.Context, report *stipulatorv1.ExecutionReport, observations []*ProcessObservation) ([]witnesscache.Record, map[gofresh.Subject]string, string, error) {
-	if r.degraded != "" {
-		return nil, nil, r.degraded, nil
+// covered reports whether every invocation covering one of g's
+// packages has completed — the moment g's records can publish.
+func (r *WitnessRecorder) covered(g *captureGroup) bool {
+	for pkg := range g.tests {
+		if g.ambiguous[pkg] {
+			continue
+		}
+		if inv, ok := g.pkgInv[pkg]; ok && !r.completed[inv] {
+			return false
+		}
 	}
-	if len(r.groups) == 0 {
-		return nil, nil, "", nil
+	return true
+}
+
+// invocationCompleted is the completion hook of the health-judged
+// form: every group whose covering invocations have all completed
+// publishes now, from the report so far, and installs at once — the
+// unit of persistence is the witness group at its last covering
+// invocation's completion on this form as on the selective one
+// (REQ-policy-cancellation), named on the progress stream by the
+// completing invocation. A publication fault degrades the run whole,
+// as at the end; the error return is reserved for caller cancellation.
+func (r *WitnessRecorder) invocationCompleted(ctx context.Context, invocation string, sofar *stipulatorv1.ExecutionReport, observations []*ProcessObservation) error {
+	r.completed[invocation] = true
+	if r.degraded != "" {
+		return nil
+	}
+	installed, degraded, err := r.publishRemaining(ctx, sofar, observations, r.covered)
+	// What landed is named before any error returns: a cancellation
+	// between two groups' installs must not leave records on disk the
+	// ending never mentions.
+	if installed > 0 {
+		progress.FromContext(ctx).Persisted(invocation, installed)
+	}
+	if err != nil {
+		return err
+	}
+	if degraded != "" {
+		r.degraded = degraded
+	}
+	return nil
+}
+
+// publishRemaining assembles, validates, and installs the freshness
+// records the report supports for every group not yet published that
+// ready admits — a group is published once its records have been
+// offered to the store, and only the records that landed enter the
+// account, so the recorder's account and the store never disagree. It
+// returns the count installed, and the degraded reason when a fault
+// disabled further publication — records installed before the fault
+// stay, each validated by its own group's closing check; the error
+// return is reserved for caller cancellation.
+func (r *WitnessRecorder) publishRemaining(ctx context.Context, report *stipulatorv1.ExecutionReport, observations []*ProcessObservation, ready func(*captureGroup) bool) (int, string, error) {
+	if r.degraded != "" {
+		return 0, r.degraded, nil
 	}
 	facts := indexInvocations(report)
 	rowsByInvPkg := map[string][]*stipulatorv1.TestResult{}
@@ -1074,18 +1137,39 @@ func (r *WitnessRecorder) publish(ctx context.Context, report *stipulatorv1.Exec
 	for _, o := range observations {
 		obsByProducer[keyOfProducer(o.Wire.GetProducer())] = o
 	}
-
-	var published []witnesscache.Record
-	uncacheableWhy := map[gofresh.Subject]string{}
+	installed := 0
 	for _, g := range r.groups {
+		if r.published[g] || !ready(g) {
+			continue
+		}
 		records, reasons, degraded, err := r.publishGroup(ctx, g, facts, rowsByInvPkg, obsByProducer)
 		if err != nil || degraded != "" {
-			return nil, nil, degraded, err
+			return installed, degraded, err
 		}
-		maps.Copy(uncacheableWhy, reasons)
-		published = append(published, records...)
+		maps.Copy(r.reasons, reasons)
+		for _, rec := range records {
+			if err := witnesscache.Install(r.dir, rec); err != nil {
+				// The store's fault, named as such: the evidence
+				// qualified, the write did not land.
+				r.reasons[gofresh.Subject{Package: rec.Package, Symbol: rec.Test}] = "the store refused the record: " + err.Error()
+				continue
+			}
+			r.records = append(r.records, rec)
+			installed++
+		}
+		r.published[g] = true
 	}
-	return published, uncacheableWhy, "", nil
+	return installed, "", nil
+}
+
+// publish is the run's publication account: every record the
+// completion hook installed and every refusal reason, with the degraded
+// reason when a later group's fault ended publication. Every group is
+// covered by the time the last invocation completes — groups derive
+// from the invocations the executor walks — so nothing is left to
+// publish here.
+func (r *WitnessRecorder) publish() ([]witnesscache.Record, map[gofresh.Subject]string, string) {
+	return append([]witnesscache.Record(nil), r.records...), maps.Clone(r.reasons), r.degraded
 }
 
 // groupSubject is one publishable subject's execution-side material.
@@ -1195,9 +1279,10 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 	// eligibility: proof leg, final fingerprints, post-run check, the
 	// one closing validation, record assembly. This full-execution path
 	// has no served outcomes; a check fault or closing refusal degrades
-	// the RUN with the named cause rather than filling per-subject
-	// reasons - the whole policy executed under one view, so a view
-	// this tree disproves poisons the run's evidence wholesale.
+	// the run's further publication with the named cause rather than
+	// filling per-subject reasons — this group's evidence executed
+	// under one view a tree edit disproved wholesale; groups that
+	// closed before it keep what their own views validated.
 	eligibleSubjects := map[gofresh.Subject]*pubSubject{}
 	for s, gs := range eligible {
 		eligibleSubjects[s] = &pubSubject{obs: gs.obs, outcomes: gs.outcomes, regs: gs.regs, solo: gs.soloRun}
@@ -1247,7 +1332,9 @@ func ExecutePolicyWitnessed(ctx context.Context, pc *Capture, seeding verify.Wit
 		// (REQ-evidence-toolchain-provenance).
 		return nil, nil, err
 	}
-	report, observations, err := ExecutePolicy(ctx, pc)
+	report, observations, err := executePolicy(ctx, pc, func(invocation string, sofar *stipulatorv1.ExecutionReport, observations []*ProcessObservation) error {
+		return recorder.invocationCompleted(ctx, invocation, sofar, observations)
+	})
 	if err != nil {
 		return nil, nil, err
 	}

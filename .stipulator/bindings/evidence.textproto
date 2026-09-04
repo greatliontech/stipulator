@@ -138,7 +138,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-witness-cache-format"
-  content_hash: "ab6132055fa3e1f170c59cc45aa804bf4030922189d66e6b1fe0ea53380f8b45"
+  content_hash: "4ed7d667e4062252941b56b8e3faab626bbfa366c34687d53c18ed15314a0e62"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/witnesscache.Fingerprint.valid"
   role: BINDING_ROLE_IMPLEMENTS
@@ -147,7 +147,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-witness-cache-format"
-  content_hash: "ab6132055fa3e1f170c59cc45aa804bf4030922189d66e6b1fe0ea53380f8b45"
+  content_hash: "4ed7d667e4062252941b56b8e3faab626bbfa366c34687d53c18ed15314a0e62"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/witnesscache.TestLoadUnreadableIsEmpty"
   role: BINDING_ROLE_TESTS
@@ -156,7 +156,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-witness-cache-format"
-  content_hash: "ab6132055fa3e1f170c59cc45aa804bf4030922189d66e6b1fe0ea53380f8b45"
+  content_hash: "4ed7d667e4062252941b56b8e3faab626bbfa366c34687d53c18ed15314a0e62"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/witnesscache.TestFingerprintRoundTrip"
   role: BINDING_ROLE_TESTS
@@ -561,7 +561,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-witness-cache-format"
-  content_hash: "ab6132055fa3e1f170c59cc45aa804bf4030922189d66e6b1fe0ea53380f8b45"
+  content_hash: "4ed7d667e4062252941b56b8e3faab626bbfa366c34687d53c18ed15314a0e62"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/witnesscache.TestStoreVariantsAndSiblings"
   role: BINDING_ROLE_TESTS
@@ -570,7 +570,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-witness-cache-format"
-  content_hash: "ab6132055fa3e1f170c59cc45aa804bf4030922189d66e6b1fe0ea53380f8b45"
+  content_hash: "4ed7d667e4062252941b56b8e3faab626bbfa366c34687d53c18ed15314a0e62"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesServesAcrossTreeAlternation"
   role: BINDING_ROLE_TESTS
@@ -804,7 +804,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-witness-cache-format"
-  content_hash: "ab6132055fa3e1f170c59cc45aa804bf4030922189d66e6b1fe0ea53380f8b45"
+  content_hash: "4ed7d667e4062252941b56b8e3faab626bbfa366c34687d53c18ed15314a0e62"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesCompletedGroupSurvivesLaterInvocationFailure"
   role: BINDING_ROLE_TESTS
@@ -930,7 +930,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-witness-cache-format"
-  content_hash: "ab6132055fa3e1f170c59cc45aa804bf4030922189d66e6b1fe0ea53380f8b45"
+  content_hash: "4ed7d667e4062252941b56b8e3faab626bbfa366c34687d53c18ed15314a0e62"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoGroupIdentityIgnoresAmbientEnvironment"
   role: BINDING_ROLE_TESTS
@@ -948,7 +948,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-witness-cache-format"
-  content_hash: "ab6132055fa3e1f170c59cc45aa804bf4030922189d66e6b1fe0ea53380f8b45"
+  content_hash: "4ed7d667e4062252941b56b8e3faab626bbfa366c34687d53c18ed15314a0e62"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesPerGroupRecordsServeSharedPackage"
   role: BINDING_ROLE_TESTS
@@ -984,7 +984,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-witness-cache-format"
-  content_hash: "ab6132055fa3e1f170c59cc45aa804bf4030922189d66e6b1fe0ea53380f8b45"
+  content_hash: "4ed7d667e4062252941b56b8e3faab626bbfa366c34687d53c18ed15314a0e62"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/witnesscache.TestFingerprintWireKeySet"
   role: BINDING_ROLE_TESTS
@@ -1083,7 +1083,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-witness-cache-format"
-  content_hash: "ab6132055fa3e1f170c59cc45aa804bf4030922189d66e6b1fe0ea53380f8b45"
+  content_hash: "4ed7d667e4062252941b56b8e3faab626bbfa366c34687d53c18ed15314a0e62"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRuntimeOnlyArgsDoNotReaddressRecords"
   role: BINDING_ROLE_TESTS
@@ -1092,7 +1092,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-witness-cache-format"
-  content_hash: "ab6132055fa3e1f170c59cc45aa804bf4030922189d66e6b1fe0ea53380f8b45"
+  content_hash: "4ed7d667e4062252941b56b8e3faab626bbfa366c34687d53c18ed15314a0e62"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestKeyEncodingIsCollisionFree"
   role: BINDING_ROLE_TESTS
@@ -1119,7 +1119,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-witness-cache-format"
-  content_hash: "ab6132055fa3e1f170c59cc45aa804bf4030922189d66e6b1fe0ea53380f8b45"
+  content_hash: "4ed7d667e4062252941b56b8e3faab626bbfa366c34687d53c18ed15314a0e62"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestPerturbationDomainCoversEveryKeyedField"
   role: BINDING_ROLE_TESTS
@@ -1493,4 +1493,121 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestServedRecordsNothingThatMovedDuringTheRun"
   role: BINDING_ROLE_TESTS
   shape_hash: "a5f7c59c9c0265ad24c91c6b8ccb768a625e365a8993932624d8851788a41589"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-cache-format"
+  content_hash: "4ed7d667e4062252941b56b8e3faab626bbfa366c34687d53c18ed15314a0e62"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestHealthJudgedFormPersistsPerInvocation"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "82facd1761e92999706f802c88f77d48d77c2cdaf0691e624b83695451fb0b48"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-cache-format"
+  content_hash: "4ed7d667e4062252941b56b8e3faab626bbfa366c34687d53c18ed15314a0e62"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestHealthJudgedFormKeepsWhatClosedBeforeADegrade"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "f1818045ef148ebb1f69753f56c5ffa5ab7e315d99dd7a1c0e6b1c41abf54fc7"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-generated-code"
+  content_hash: "76796ff13d36c77c364c2ef28e4cd8033f3238a59162e6fbf2c23d80f05f9a2e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestScopedChildAnswersLikeTheWholeTree"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ff3e296aef51ed9623215bfa6c251c66d91ca687460f161a6610790518ecf6c4"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-resolution-freshness"
+  content_hash: "260bc4fff647ed582da895922a4f767748d2f20a20c0025ca580c7417e2434b8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestServedRefusesSymbolsOutsideTheOperation"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b8c40a9367e0d8114601ebcbe7542b48c4672dc6042feb5faf29ad0d6ada39ff"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-resolution-freshness"
+  content_hash: "260bc4fff647ed582da895922a4f767748d2f20a20c0025ca580c7417e2434b8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestServedWithoutASymbolSetAnswersTheWholeTree"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "715afa08ef8a646c30509d363921fbde3df7c90a41e1e383742a05dad8c2c381"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-generated-code"
+  content_hash: "76796ff13d36c77c364c2ef28e4cd8033f3238a59162e6fbf2c23d80f05f9a2e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGeneratedVerdictReadsADependencyDeclaringFile"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "f4df9bc7e7edfabfa455d9d29fb1b649c439fae3e2c3aca1a98125419fb26b35"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-resolution-freshness"
+  content_hash: "260bc4fff647ed582da895922a4f767748d2f20a20c0025ca580c7417e2434b8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestScopedLoadOwnsPatternsPerWorkspaceMember"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e691304b9b8403831b2b4b5b2943ecb0aa5309d04030e6805d482849c696c392"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-cache-format"
+  content_hash: "4ed7d667e4062252941b56b8e3faab626bbfa366c34687d53c18ed15314a0e62"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/witnesscache.TestLedgerStoreRefusesPerFile"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "de7e563a70eeb28074f675847319334d02ce273b8fdf801d015066350f4b7140"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "0b700e49dad7e92c2d3529f7ad1fad9916de756a0dd38153c5baa5d0fca73e8d"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/witnesscache.TestLedgerStoreRefusesPerFile"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "de7e563a70eeb28074f675847319334d02ce273b8fdf801d015066350f4b7140"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-cache-format"
+  content_hash: "4ed7d667e4062252941b56b8e3faab626bbfa366c34687d53c18ed15314a0e62"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/witnesscache.TestLoadReclaimsUnreferencedLedgers"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "3ea9d492050391b705ca9ee67605a2c2ecca189da289a6e8e8b3e448ad60821c"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-cache-format"
+  content_hash: "4ed7d667e4062252941b56b8e3faab626bbfa366c34687d53c18ed15314a0e62"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/witnesscache.TestLoadOrdersVariantsNewestFirst"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "9993209e557c396a5ea116b4eda3230c42babbb93b9bcd7f95b3c2e16eeb04ca"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-resolution-freshness"
+  content_hash: "260bc4fff647ed582da895922a4f767748d2f20a20c0025ca580c7417e2434b8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestServedDegradesASelectionToTyped"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "349a50b0491ae8eff2364a8d62c4f75f2c74365d7489228b3255dceef11357e6"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "0b700e49dad7e92c2d3529f7ad1fad9916de756a0dd38153c5baa5d0fca73e8d"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestStoreRefusalIsNamedPerSubject"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "fc955427dcd53b78d2f8adc67bf71d839d7ece432f647cf71c17b9a700abb952"
 }

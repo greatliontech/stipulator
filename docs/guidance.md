@@ -366,7 +366,11 @@ per-invocation counts, and decision lines naming what each invocation
 executes and why, and what persisted — send one and be patient rather
 than assuming a hang; without a token the same lines reach the log
 channel at info level; a deadline or cancellation names the phase it
-ended in and what the run kept. All writes stay under .stipulator/; spec
+ended in and what the run kept. At the CLI a failing verdict exits 1,
+an interrupted run renders the same ending and then dies by the
+signal that ended it (128 plus the signal's number where it cannot
+be re-raised; a second signal ends the process at once), and an
+operational fault exits 2. All writes stay under .stipulator/; spec
 documents and source are never edited. A policy invocation
 declaring build tags runs under a toolchain selection gofresh
 fail-closes until that selection's standard-library delta is walked

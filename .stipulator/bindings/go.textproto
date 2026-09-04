@@ -909,3 +909,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "02bb80a546e813b35b32245b640c51431517f1c46657574ee932d6a4ca65cea4"
 }
+
+bindings {
+  requirement_id: "REQ-go-witness-class"
+  content_hash: "0249d9244ca8d238a7bd57b36e3821207d53d374b75f7a261d7b807f59fa36ff"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestServedReresolvesWhenATestBodyChangesClass"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "2e64f22fcbbd6bf603f95dbcdceed423acba891242f58eca430f8859fa90b131"
+}

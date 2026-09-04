@@ -114,10 +114,10 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 		goInvocation("z-plain", plainCfg),
 	})
 
-	// The health-judged form names its one unit of persistence on the
-	// progress stream — the policy execution, with its record count —
-	// so an ending after the install reports what it kept
-	// (REQ-policy-cancellation).
+	// The health-judged form persists per witness group at its last
+	// covering invocation's completion, named on the progress stream by
+	// that invocation, so an ending after the install reports what it
+	// kept (REQ-policy-cancellation).
 	var events []*stipulatorv1.ProgressEvent
 	rep := progress.New(func(e *stipulatorv1.ProgressEvent) { events = append(events, e) }, progress.WithInterval(time.Hour))
 	ctx := progress.NewContext(context.Background(), rep)
@@ -134,11 +134,11 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 			persisted = append(persisted, e.GetNote())
 		}
 	}
-	if len(persisted) != 1 || !strings.HasPrefix(persisted[0], "persisted: policy execution (") || strings.HasPrefix(persisted[0], "persisted: policy execution (0 ") {
-		t.Fatalf("persisted notes = %v; want one naming the policy execution with its records", persisted)
+	if len(persisted) != 1 || !strings.HasPrefix(persisted[0], "persisted: a-race (") || strings.HasPrefix(persisted[0], "persisted: a-race (0 ") {
+		t.Fatalf("persisted notes = %v; want one naming the race invocation with its records", persisted)
 	}
-	if kept := rep.Kept(); len(kept) != 1 || !strings.HasPrefix(kept[0], "policy execution (") {
-		t.Fatalf("kept = %v; want the policy execution", kept)
+	if kept := rep.Kept(); len(kept) != 1 || !strings.HasPrefix(kept[0], "a-race (") {
+		t.Fatalf("kept = %v; want the race invocation", kept)
 	}
 	if SuiteHealthy(report) {
 		t.Error("suite with red packages read healthy")
@@ -690,5 +690,203 @@ func TestGoDeriveCheckFaultDegradesRun(t *testing.T) {
 	}
 	if tr.Outcomes["example.com/faulty.TestOne"] != verify.TestPassed {
 		t.Fatalf("executed evidence lost under the degraded publish: %+v", tr.Outcomes)
+	}
+}
+
+// TestHealthJudgedFormPersistsPerInvocation pins the health-judged
+// form's unit of persistence (REQ-policy-cancellation,
+// REQ-evidence-witness-cache-format): a group installs the moment its
+// last covering invocation completes, so a run cancelled after its
+// first invocation keeps that invocation's records — and its ending
+// names exactly them — while the second invocation's never land.
+//
+// Deliberately not //gofresh:pure: executes the fixture's tests.
+func TestHealthJudgedFormPersistsPerInvocation(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-cancellation", "REQ-evidence-witness-cache-format")
+	if testing.Short() {
+		t.Skip("executes two race invocations over a temporary module")
+	}
+	neutralAmbient(t)
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	tmp := writeModule(t, map[string]string{
+		"go.mod":      "module example.com/units\n\ngo 1.26\n",
+		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
+		"b/b_test.go": "package b\n\nimport \"testing\"\n\nfunc TestB(t *testing.T) {}\n",
+	})
+	first := &stipulatorv1.GoInvocationConfig{}
+	first.SetPackages([]string{"./a"})
+	first.SetRace(true)
+	// The second leg is its own capture group by environment rather
+	// than tags: a tag selection would run under gofresh's unwalked
+	// toolchain audit, which this test has no business exercising.
+	second := &stipulatorv1.GoInvocationConfig{}
+	second.SetPackages([]string{"./b"})
+	second.SetRace(true)
+	second.SetEnvironment([]string{"STIPULATOR_TEST_GROUP=second"})
+	pol := &stipulatorv1.TestPolicy{}
+	pol.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("first", first), goInvocation("second", second)})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// The sink cancels the run at the first persisted note: everything
+	// the first invocation's completion installed is on disk, nothing
+	// later is.
+	rep := progress.New(func(e *stipulatorv1.ProgressEvent) {
+		if strings.HasPrefix(e.GetNote(), "persisted: first (") {
+			cancel()
+		}
+	}, progress.WithInterval(time.Hour))
+	ctx = progress.NewContext(ctx, rep)
+	_, _, err := ExecutePolicyWitnessed(ctx, mustCapture(t, context.Background(), tmp, pol), noSeeding{})
+	if err == nil || !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled run returned %v; want the cancellation", err)
+	}
+	if kept := rep.Kept(); len(kept) != 1 || !strings.HasPrefix(kept[0], "first (") {
+		t.Fatalf("kept = %v; want the first invocation alone", kept)
+	}
+	tests := map[string]bool{}
+	for _, rec := range witnesscache.Load(tmp) {
+		tests[rec.Package+"."+rec.Test] = true
+	}
+	if !tests["example.com/units/a.TestA"] || tests["example.com/units/b.TestB"] {
+		t.Fatalf("store holds %v; want the first invocation's record and not the second's", tests)
+	}
+	// Uninterrupted, both invocations persist, each named.
+	var notes []string
+	rep2 := progress.New(func(e *stipulatorv1.ProgressEvent) {
+		if strings.HasPrefix(e.GetNote(), "persisted: ") {
+			notes = append(notes, e.GetNote())
+		}
+	}, progress.WithInterval(time.Hour))
+	ctx2 := progress.NewContext(context.Background(), rep2)
+	if _, _, err := ExecutePolicyWitnessed(ctx2, mustCapture(t, ctx2, tmp, pol), noSeeding{}); err != nil {
+		t.Fatal(err)
+	}
+	if len(notes) != 2 || !strings.HasPrefix(notes[0], "persisted: first (") || !strings.HasPrefix(notes[1], "persisted: second (") {
+		t.Fatalf("persisted notes = %v; want first then second", notes)
+	}
+}
+
+// TestHealthJudgedFormKeepsWhatClosedBeforeADegrade pins the degraded
+// account after per-invocation installs (REQ-policy-cancellation,
+// REQ-evidence-witness-cache-format): a later group's closing refusal
+// degrades further publication only — the first invocation's records
+// stay installed, its unit stays kept, and the run's uncacheable set
+// excludes the subjects it installed, so the run, the store, and the
+// ending tell one story.
+//
+// Deliberately not //gofresh:pure: executes the fixture's tests.
+func TestHealthJudgedFormKeepsWhatClosedBeforeADegrade(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-cancellation", "REQ-evidence-witness-cache-format")
+	if testing.Short() {
+		t.Skip("executes two race invocations over a temporary module")
+	}
+	neutralAmbient(t)
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	// The first invocation also runs a red package: its subject refuses
+	// on the ladder's own reason, which the later degrade must not
+	// overwrite.
+	tmp := writeModule(t, map[string]string{
+		"go.mod":      "module example.com/units\n\ngo 1.26\n",
+		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
+		"c/c_test.go": "package c\n\nimport \"testing\"\n\nfunc TestC(t *testing.T) { t.Fatal(\"red\") }\n",
+		"b/b.go":      "package b\n\nfunc V() int { return 1 }\n",
+		"b/b_test.go": "package b\n\nimport \"testing\"\n\nfunc TestB(t *testing.T) { _ = V() }\n",
+	})
+	first := &stipulatorv1.GoInvocationConfig{}
+	first.SetPackages([]string{"./a", "./c"})
+	first.SetRace(true)
+	second := &stipulatorv1.GoInvocationConfig{}
+	second.SetPackages([]string{"./b"})
+	second.SetRace(true)
+	second.SetEnvironment([]string{"STIPULATOR_TEST_GROUP=second"})
+	pol := &stipulatorv1.TestPolicy{}
+	pol.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("first", first), goInvocation("second", second)})
+	// Once the first invocation has installed, the second group's
+	// closure moves under it: its closing validation refuses, and the
+	// run degrades from there.
+	rep := progress.New(func(e *stipulatorv1.ProgressEvent) {
+		if strings.HasPrefix(e.GetNote(), "persisted: first (") {
+			if err := os.WriteFile(filepath.Join(tmp, "b", "b.go"), []byte("package b\n\nfunc V() int { return 2 }\n"), 0o644); err != nil {
+				t.Error(err)
+			}
+		}
+	}, progress.WithInterval(time.Hour))
+	ctx := progress.NewContext(context.Background(), rep)
+	_, tr, err := ExecutePolicyWitnessed(ctx, mustCapture(t, ctx, tmp, pol), noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.Degraded == "" {
+		t.Fatal("a closure moved under the second group and the run did not degrade")
+	}
+	if kept := rep.Kept(); len(kept) != 1 || !strings.HasPrefix(kept[0], "first (") {
+		t.Fatalf("kept = %v; want the first invocation alone", kept)
+	}
+	tests := map[string]bool{}
+	for _, rec := range witnesscache.Load(tmp) {
+		tests[rec.Package+"."+rec.Test] = true
+	}
+	if !tests["example.com/units/a.TestA"] || tests["example.com/units/b.TestB"] {
+		t.Fatalf("store holds %v; want the first invocation's record and not the second's", tests)
+	}
+	if tr.Uncached != 2 || tr.UncacheableReasons["example.com/units/a.TestA"] != "" ||
+		!strings.HasPrefix(tr.UncacheableReasons["example.com/units/b.TestB"], "freshness path degraded: ") ||
+		tr.UncacheableReasons["example.com/units/c.TestC"] != "producing package disposed unhealthy" {
+		t.Fatalf("uncacheable = %d %v; want the red subject on the ladder's reason and the second group's on the degrade", tr.Uncached, tr.UncacheableReasons)
+	}
+}
+
+// TestStoreRefusalIsNamedPerSubject pins the store-side leg of the
+// diagnosable set (REQ-evidence-witness-freshness): a record the store
+// cannot write — here a cache root that is not writable — counts its
+// subject uncacheable under a reason naming the store's fault, on the
+// health-judged form and the selective form alike, never the evidence
+// vocabulary's structural fallback.
+//
+// Deliberately not //gofresh:pure: executes the fixture's tests.
+func TestStoreRefusalIsNamedPerSubject(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes a race invocation over a temporary module")
+	}
+	if os.Getuid() == 0 {
+		t.Skip("root writes through a read-only directory")
+	}
+	neutralAmbient(t)
+	cache := t.TempDir()
+	if err := os.Chmod(cache, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(cache, 0o755) })
+	t.Setenv("XDG_CACHE_HOME", cache)
+	// Only the witness store lives under the unwritable root: the
+	// toolchain's build cache stays writable, so the run itself proceeds.
+	t.Setenv("GOCACHE", t.TempDir())
+	tmp := writeModule(t, map[string]string{
+		"go.mod":      "module example.com/refused\n\ngo 1.26\n",
+		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
+	})
+	race := &stipulatorv1.GoInvocationConfig{}
+	race.SetPackages([]string{"./a"})
+	race.SetRace(true)
+	pol := &stipulatorv1.TestPolicy{}
+	pol.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", race)})
+	ctx := context.Background()
+	pc := mustCapture(t, ctx, tmp, pol)
+	const key = "example.com/refused/a.TestA"
+	_, judged, err := ExecutePolicyWitnessed(ctx, pc, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if judged.Uncached != 1 || !strings.HasPrefix(judged.UncacheableReasons[key], "the store refused the record: ") {
+		t.Fatalf("health-judged form: uncacheable %d %v; want the subject named on the store's refusal", judged.Uncached, judged.UncacheableReasons)
+	}
+	// A capture serves one operation: the selective leg takes its own.
+	selective, err := RunWitnessesPolicy(ctx, mustCapture(t, ctx, tmp, pol), noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if selective.Uncached != 1 || !strings.HasPrefix(selective.UncacheableReasons[key], "the store refused the record: ") {
+		t.Fatalf("selective form: uncacheable %d %v; want the subject named on the store's refusal", selective.Uncached, selective.UncacheableReasons)
 	}
 }

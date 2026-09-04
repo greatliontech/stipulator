@@ -1,3 +1,5 @@
 # Rapid reproducer seeds are local test artifacts; commit one intentionally
 # with git add -f.
 **/testdata/rapid/**/*.fail
+/stipulator
+/stipulator.exe

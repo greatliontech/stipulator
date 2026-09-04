@@ -77,3 +77,5 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   helper-indirected rapid driver still serves; a transitive seeding class or a helper-admitting
   classification is a design choice. *Lands: user decision.*
 - **[per-stream-color](per-stream-color.md)** — color is one switch over stdout and stderr; a redirected stderr costs stdout its color. Per-stream styler. *Lands: user decision.*
+- **[two-completion-mechanisms](two-completion-mechanisms.md)** — the selective runner and the health-judged recorder each implement install-at-last-covering-invocation; one completion tracker over capture groups. *Lands: user decision.*
+- **[cli-test-binary-builds](cli-test-binary-builds.md)** — seven CLI-driving tests each build the binary; one once-built helper. *Lands: user decision.*
