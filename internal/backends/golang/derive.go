@@ -1043,6 +1043,12 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 		for _, rec := range published {
 			_ = witnesscache.Install(r.dir, rec)
 		}
+		// The health-judged form's one unit of persistence is the whole
+		// policy execution: named on the stream, so an ending after this
+		// install reports what it kept.
+		if len(published) > 0 {
+			progress.FromContext(ctx).Persisted("policy execution", len(published))
+		}
 	}
 	return tr, nil
 }

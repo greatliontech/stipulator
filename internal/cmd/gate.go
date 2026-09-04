@@ -59,7 +59,7 @@ func gateCmd() *cobra.Command {
 				fmt.Fprintln(os.Stderr, red(p.String()))
 			}
 			if len(rep.Problems) > 0 {
-				os.Exit(1)
+				return exitStatus(1)
 			}
 			cov := coverage.Evaluate(spec, rep, store, true, pol)
 			facts := views.FactsFrom(spec, rep)
@@ -98,7 +98,7 @@ func gateCmd() *cobra.Command {
 					}
 					fmt.Println(red("gate: fail"))
 				}
-				os.Exit(1)
+				return exitStatus(1)
 			}
 			if !quiet && !jsonOut {
 				fmt.Println(green("gate: pass"))

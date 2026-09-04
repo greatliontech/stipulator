@@ -839,13 +839,21 @@ func (s *Server) startProgress(ctx context.Context, req *mcp.CallToolRequest) (c
 		// direct in-process calls that carry no wire request.
 		session := req.Session
 		notifyCtx := context.WithoutCancel(ctx)
-		var lastPhase stipulatorv1.Phase
-		var phaseSeen bool
+		var phases progress.PhaseTracker
 		sink = progress.NonBlocking(func(e *stipulatorv1.ProgressEvent) {
-			if phaseSeen && e.GetPhase() == lastPhase {
+			// Notes are bounded by the policy (one per executing
+			// invocation, one per persisting unit), so they ride the
+			// liveness channel beside the phase transitions.
+			if note := e.GetNote(); note != "" {
+				_ = session.Log(notifyCtx, &mcp.LoggingMessageParams{
+					Level:  "info",
+					Logger: "stipulator",
+					Data:   fmt.Sprintf("%s (%s elapsed)", note, e.GetElapsed().AsDuration().Round(time.Second)),
+				})
+			}
+			if !phases.Changed(e) {
 				return
 			}
-			lastPhase, phaseSeen = e.GetPhase(), true
 			_ = session.Log(notifyCtx, &mcp.LoggingMessageParams{
 				Level:  "info",
 				Logger: "stipulator",
@@ -867,11 +875,11 @@ func (s *Server) startProgress(ctx context.Context, req *mcp.CallToolRequest) (c
 func terminalToolError(prog *progress.Reporter, ctx context.Context, err error) error {
 	switch ctx.Err() {
 	case context.DeadlineExceeded:
-		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_DEADLINE)
-		return fmt.Errorf("deadline expired in the %s phase: %w", progress.Word(prog.CurrentPhase()), err)
+		return fmt.Errorf("%s: %w", prog.Seal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_DEADLINE), err)
 	case context.Canceled:
-		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_CANCELLED)
-		return fmt.Errorf("cancelled by the client in the %s phase: %w", progress.Word(prog.CurrentPhase()), err)
+		// The client's cancellation: the line names the cause, the
+		// phase, and what the operation kept.
+		return fmt.Errorf("%s: %w", prog.SealBy(stipulatorv1.TerminalCause_TERMINAL_CAUSE_CANCELLED, "the client"), err)
 	}
 	if errors.Is(err, policy.ErrRecord) {
 		// A missing or invalid accepted test policy is a fact about the

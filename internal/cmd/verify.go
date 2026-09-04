@@ -79,7 +79,7 @@ func verifyCmd() *cobra.Command {
 			// verify fails only on verification errors; red evidence is
 			// bucket data for the gate, which decides gap-excusability.
 			if len(rep.Problems) > 0 {
-				os.Exit(1)
+				return exitStatus(1)
 			}
 			return nil
 		},

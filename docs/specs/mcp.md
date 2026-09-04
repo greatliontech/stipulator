@@ -145,8 +145,11 @@ itself as such on the wire, so a zero-row check and a zero-write apply
 can never be confused.
 
 **REQ-mcp-progress** (behavior): A long-running tool call MUST report
-progress as bounded notifications — the current phase, and per-invocation
-progress with elapsed time and counts — never inside result payloads, with
+progress as bounded notifications — the current phase, per-invocation
+progress with elapsed time and counts, and the decision lines, each
+one bounded line: one per executing invocation naming what executes
+and the reason most of it serves no record, one per unit whose records
+persisted naming it — never inside result payloads, with
 a call that ends at a deadline identifying the phase in which the deadline
 expired and the terminal cause, so a client can distinguish long-running
 work, deadline expiry, cancellation, test failure, and server failure
@@ -161,7 +164,15 @@ identical CLI operation is healthy. A server-observed deadline expiry
 carries the deadline cause; a client-side deadline surfaces as the
 client's cancellation, carrying the cancellation cause and the expiring
 phase, which the client composes with its own locally known reason — the
-distinguishing never requires guessing.
+distinguishing never requires guessing. Both surfaces report from
+one progress stream: the CLI renders the same events as status lines on
+its error stream — each phase transition once, an invocation's
+progress as completed of total packages, each decision line once — and
+ends a completed run with the phase timings as its pace line and an
+interrupted run with the phase it died in and what it kept, so a person
+at the CLI and an agent at the server read the same account. The
+stream is bounded by the policy — phases, invocations, persisting
+units — never by the test count.
 The liveness channels are bounded by the protocol: progress
 notifications require a client progress token, and log-channel messages
 require a client-set log level. For tokenless clients that set a level, the

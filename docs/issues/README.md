@@ -76,3 +76,4 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   the random-seeded serving exemption rides the direct-call witness classifier, so a
   helper-indirected rapid driver still serves; a transitive seeding class or a helper-admitting
   classification is a design choice. *Lands: user decision.*
+- **[per-stream-color](per-stream-color.md)** — color is one switch over stdout and stderr; a redirected stderr costs stdout its color. Per-stream styler. *Lands: user decision.*

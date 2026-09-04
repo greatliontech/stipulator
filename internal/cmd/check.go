@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/check"
+	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/wire"
 )
 
@@ -51,7 +51,7 @@ func checkCmd() *cobra.Command {
 				renderCheck(os.Stdout, os.Stderr, res)
 			}
 			if !res.GetPassed() {
-				os.Exit(1)
+				return exitStatus(1)
 			}
 			return nil
 		},
@@ -203,35 +203,18 @@ func renderReasonHistogram(stderr io.Writer, class string, reasons map[string]st
 	if len(reasons) == 0 {
 		return
 	}
-	counts := map[string]int{}
-	for _, why := range reasons {
-		counts[why]++
-	}
-	type entry struct {
-		why string
-		n   int
-	}
-	entries := make([]entry, 0, len(counts))
-	for why, n := range counts {
-		entries = append(entries, entry{why, n})
-	}
-	sort.Slice(entries, func(i, j int) bool {
-		if entries[i].n != entries[j].n {
-			return entries[i].n > entries[j].n
-		}
-		return entries[i].why < entries[j].why
-	})
+	entries := verify.ReasonHistogram(reasons)
 	const shown = 8
 	for i, e := range entries {
 		if i == shown {
 			rest := 0
 			for _, r := range entries[shown:] {
-				rest += r.n
+				rest += r.N
 			}
 			fmt.Fprintln(stderr, dim(fmt.Sprintf("  ... and %d more across %d reasons", rest, len(entries)-shown)))
 			break
 		}
-		fmt.Fprintln(stderr, dim(fmt.Sprintf("  %4d  %s: %s", e.n, class, e.why)))
+		fmt.Fprintln(stderr, dim(fmt.Sprintf("  %4d  %s: %s", e.N, class, e.Why)))
 	}
 }
 

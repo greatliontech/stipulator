@@ -229,4 +229,13 @@ message ProgressEvent {
   int32 total = 5;
   // Set only on the final event.
   TerminalCause terminal_cause = 6;
+  // A bounded, human-readable decision line: what an invocation is
+  // about to execute and the reason its subjects serve no record, or
+  // what a completed witness group persisted. At most one per executing
+  // invocation and one per persisted group, so the stream stays bounded
+  // by the policy, never by the test count.
+  string note = 7;
+  // The units whose records persisted so far - set on the final event,
+  // so a cancelled operation names what it kept.
+  repeated string kept = 8;
 }

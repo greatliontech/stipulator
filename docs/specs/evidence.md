@@ -700,7 +700,14 @@ evidentiary record.
 discard its partial results — no outcome, observation, or health
 disposition from a cancelled run is persisted, served, or reported as
 terminal — with cancellation propagated to every child process of the
-execution, package discovery included.
+execution, package discovery included. On the witness-only selective
+form the unit of persistence is the
+witness group at its last covering invocation's completion, while the
+health-judged form installs its records when its execution completes:
+what completed before the cancellation stays installed,
+and the cancelled run's ending names those units — the invocation, the
+revalidation pass, the drift retry, with their record counts — or
+states that it kept nothing, so a rerun's serving is foreseeable.
 
 ## Coverage
 

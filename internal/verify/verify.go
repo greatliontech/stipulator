@@ -807,3 +807,31 @@ type FloorSlicer interface {
 	// reached, so one slicing pass serves both surfaces.
 	SliceFloor(symbols []string, declaredPkgs []string) ([]FloorPackage, error)
 }
+
+// ReasonCount is one reason and how many subjects carry it.
+type ReasonCount struct {
+	Why string
+	N   int
+}
+
+// ReasonHistogram aggregates per-subject reasons for a human rendering:
+// most frequent first, ties broken on the reason text, so identical
+// runs render identically (REQ-core-determinism). The per-subject
+// attribution stays on the machine result.
+func ReasonHistogram(reasons map[string]string) []ReasonCount {
+	counts := map[string]int{}
+	for _, why := range reasons {
+		counts[why]++
+	}
+	out := make([]ReasonCount, 0, len(counts))
+	for why, n := range counts {
+		out = append(out, ReasonCount{why, n})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].N != out[j].N {
+			return out[i].N > out[j].N
+		}
+		return out[i].Why < out[j].Why
+	})
+	return out
+}

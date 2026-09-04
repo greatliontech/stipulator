@@ -9,9 +9,11 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/policy"
+	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/stipulate"
 	"pgregory.net/rapid"
 )
@@ -654,5 +656,105 @@ func TestGoCaptureOperationalDiscoveryFaultIsNoRecordProblem(t *testing.T) {
 		if !strings.Contains(err.Error(), "permission denied") {
 			t.Fatalf("%s: err = %v, want the listing's cause", pattern, err)
 		}
+	}
+}
+
+// TestWitnessRunNotesAreBoundedByThePolicy pins the decision lines'
+// bound and attribution (REQ-mcp-progress): a selective run over many
+// tests emits one executing note per executing invocation, named — the
+// eligible legs with the count and reason of what re-executes under
+// THEIR OWN group, the ineligible leg as failures-only — and one
+// persisted note per installing invocation; never one per test.
+//
+// Deliberately not //gofresh:pure: executes the fixture's tests.
+func TestWitnessRunNotesAreBoundedByThePolicy(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-progress")
+	if testing.Short() {
+		t.Skip("executes race and plain selective runs over a temporary module")
+	}
+	neutralAmbient(t)
+	files := map[string]string{"go.mod": "module example.com/notes\n\ngo 1.26\n"}
+	var body strings.Builder
+	body.WriteString("package many\n\nimport \"testing\"\n\n")
+	for i := 0; i < 12; i++ {
+		fmt.Fprintf(&body, "func TestMany%d(t *testing.T) {}\n", i)
+	}
+	files["many/many_test.go"] = body.String()
+	tmp := writeModule(t, files)
+	var events []*stipulatorv1.ProgressEvent
+	rep := progress.New(func(e *stipulatorv1.ProgressEvent) { events = append(events, e) }, progress.WithInterval(time.Hour))
+	ctx := progress.NewContext(context.Background(), rep)
+	notesOf := func() (executing, persisted map[string]string) {
+		executing, persisted = map[string]string{}, map[string]string{}
+		for _, e := range events {
+			note := e.GetNote()
+			switch {
+			case strings.HasPrefix(note, "executing "):
+				name := strings.TrimPrefix(note[:strings.Index(note, ":")], "executing ")
+				if _, dup := executing[name]; dup {
+					t.Fatalf("invocation %s noted twice: %q", name, note)
+				}
+				executing[name] = note
+			case strings.HasPrefix(note, "persisted: "):
+				name := strings.TrimPrefix(note[:strings.Index(note, " (")], "persisted: ")
+				if _, dup := persisted[name]; dup {
+					t.Fatalf("unit %s persisted twice: %q", name, note)
+				}
+				persisted[name] = note
+			case note != "":
+				t.Fatalf("unexpected note %q", note)
+			}
+		}
+		return executing, persisted
+	}
+	// Run one: a race leg and an ineligible plain leg. Both execute the
+	// package; each gets one line; only the eligible leg persists.
+	pc := mustCapture(t, ctx, tmp, raceAndPlainPolicy())
+	tr, err := RunWitnessesPolicy(ctx, pc, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.Ran < 12 {
+		t.Fatalf("ran %d, want the 12 tests executed", tr.Ran)
+	}
+	executing, persisted := notesOf()
+	if note := executing["race"]; !strings.Contains(note, "12 subjects in 1 package") || strings.Contains(note, "re-executed") {
+		t.Fatalf("first run's race note = %q; want twelve subjects, no prior evidence", note)
+	}
+	if note := executing["plain"]; !strings.Contains(note, "12 subjects in 1 package") || !strings.Contains(note, "ineligible") {
+		t.Fatalf("first run's plain note = %q; want the ineligible leg named", note)
+	}
+	if len(executing) != 2 || len(persisted) != 1 || persisted["race"] == "" || len(rep.Kept()) != 1 {
+		t.Fatalf("executing %v persisted %v kept %v", executing, persisted, rep.Kept())
+	}
+	// Run two, after a witness body moved, under a policy with a second
+	// eligible leg (a tagged race invocation, its own capture group): the
+	// race leg re-executes all twelve with a reason of its own records;
+	// the tagged leg, which holds no records, names none — the reason
+	// count and the attribution are per invocation, never pooled.
+	files["many/many_test.go"] = strings.Replace(files["many/many_test.go"], "func TestMany0(t *testing.T) {}", "func TestMany0(t *testing.T) { t.Log(\"moved\") }", 1)
+	if err := os.WriteFile(filepath.Join(tmp, "many", "many_test.go"), []byte(files["many/many_test.go"]), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	tagged := &stipulatorv1.GoInvocationConfig{}
+	tagged.SetPackages([]string{"./..."})
+	tagged.SetRace(true)
+	tagged.SetTags([]string{"grouptag"})
+	pol := raceAndPlainPolicy()
+	pol.SetInvocations(append(pol.GetInvocations(), goInvocation("tagged", tagged)))
+	events = nil
+	pc2 := mustCapture(t, ctx, tmp, pol)
+	if _, err := RunWitnessesPolicy(ctx, pc2, noSeeding{}); err != nil {
+		t.Fatal(err)
+	}
+	executing, persisted = notesOf()
+	if note := executing["race"]; !strings.Contains(note, "12 subjects in 1 package — 12 re-executed: ") {
+		t.Fatalf("second run's race note = %q; want all twelve re-executed with their reason", note)
+	}
+	if note := executing["tagged"]; !strings.Contains(note, "12 subjects in 1 package") || strings.Contains(note, "re-executed") {
+		t.Fatalf("second run's tagged note = %q; want twelve subjects and no reason borrowed from the race leg", note)
+	}
+	if len(executing) != 3 || len(persisted) != 2 || persisted["race"] == "" || persisted["tagged"] == "" {
+		t.Fatalf("executing %v persisted %v", executing, persisted)
 	}
 }

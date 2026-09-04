@@ -232,6 +232,15 @@ func TestCheckExitCodes(t *testing.T) {
 	}
 
 	pass := writeTree(passTree)
+	// The CLI renders the progress stream: phase lines as the run
+	// advances and the pace line at the end (REQ-mcp-progress's
+	// both-surface leg).
+	if _, _, stderr := run(pass, "check", "--quiet"); !strings.Contains(stderr, "phase compile (") || !strings.Contains(stderr, "took ") {
+		t.Fatalf("check stderr carries no phase or pace line:\n%s", stderr)
+	}
+	if code, _, stderr := run(writeTree(failTree), "check", "--quiet"); code != 1 || !strings.Contains(stderr, "took ") {
+		t.Fatalf("failing check exited %d without its pace line:\n%s", code, stderr)
+	}
 	if code, _, stderr := run(pass, "check", "--quiet"); code != 0 {
 		t.Errorf("passing tree exit = %d, want 0\n%s", code, stderr)
 	}

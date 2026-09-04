@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -20,15 +21,94 @@ import (
 	"github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/corpus"
+	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
 // chdir is the repository root, shared by every verb.
 var chdir string
 
-// Execute runs the CLI.
-func Execute() error {
-	return newRootCmd().Execute()
+// ExitStatus is a verb's failing verdict carried as an exit code: a
+// failing check, verify, gate, or compile returns it instead of exiting
+// in place, so every run — failing ones above all — passes through
+// execute's ending, which seals the verdict as a test failure.
+type ExitStatus struct{ Code int }
+
+func (e ExitStatus) Error() string { return fmt.Sprintf("exit status %d", e.Code) }
+
+func exitStatus(code int) error { return ExitStatus{Code: code} }
+
+// Interrupted is a run ended by its context — a cancellation or a
+// deadline — before a verdict: the verdict a verb produced under the
+// dying context is discarded, and the process's disposition is the
+// interruption's own, decided where the interruption is known (main,
+// from the signal it received), never a verdict's exit code.
+type Interrupted struct{ Cause error }
+
+func (e Interrupted) Error() string {
+	if e.Cause == nil {
+		return "interrupted"
+	}
+	return "interrupted: " + e.Cause.Error()
+}
+
+func (e Interrupted) Unwrap() error { return e.Cause }
+
+// Execute runs the CLI under ctx. One progress reporter serves the
+// whole invocation, rendering the same events the MCP surface carries
+// as notifications as dim stderr lines (REQ-mcp-progress's both-surface
+// leg); at the end a run that reached a verdict prints its phase
+// timings — the pace line — and an interrupted one names the phase it
+// died in and what it kept. The terminal cause follows the MCP
+// surface's vocabulary: a verdict that fails is a test failure, an
+// operational fault a failure, an interruption its own cause.
+func Execute(ctx context.Context) error {
+	status := dimWriter{os.Stderr}
+	return execute(ctx, os.Args[1:], progress.Stderr(status), status)
+}
+
+// execute is Execute over explicit arguments, progress sink, and the
+// status stream the pace line goes to: the seam the in-process tests
+// drive. An interrupted run returns Interrupted whatever its verb
+// returned — no partial verdict passes for a pass or a fail.
+func execute(ctx context.Context, args []string, sink func(*stipulatorv1.ProgressEvent), status io.Writer) error {
+	prog := progress.New(sink)
+	root := newRootCmd()
+	root.SetArgs(args)
+	err := root.ExecuteContext(progress.NewContext(ctx, prog))
+	var verdict ExitStatus
+	switch {
+	case errors.Is(ctx.Err(), context.Canceled):
+		prog.Seal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_CANCELLED)
+		return Interrupted{Cause: ctx.Err()}
+	case errors.Is(ctx.Err(), context.DeadlineExceeded):
+		prog.Seal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_DEADLINE)
+		return Interrupted{Cause: ctx.Err()}
+	default:
+		if stamps := prog.Stamps(); stamps != "" {
+			fmt.Fprintln(status, stamps)
+		}
+		switch {
+		case err == nil:
+			prog.Seal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
+		case errors.As(err, &verdict):
+			prog.Seal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_TEST_FAILURE)
+		default:
+			prog.Seal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_SERVER_FAILURE)
+		}
+	}
+	return err
+}
+
+// dimWriter renders each line the progress sink writes dim, the
+// stderr status style every verb uses.
+type dimWriter struct{ w io.Writer }
+
+func (d dimWriter) Write(p []byte) (int, error) {
+	if _, err := io.WriteString(d.w, dim(strings.TrimRight(string(p), "\n"))+"\n"); err != nil {
+		return 0, err
+	}
+	return len(p), nil
 }
 
 func newRootCmd() *cobra.Command {
@@ -140,7 +220,7 @@ func mustClean(spec *stipulatorv1.Spec, diags []compile.Diagnostic) (*stipulator
 		fmt.Fprintln(os.Stderr, d)
 	}
 	if len(compile.Errors(diags)) > 0 {
-		os.Exit(1)
+		return nil, exitStatus(1)
 	}
 	return spec, nil
 }

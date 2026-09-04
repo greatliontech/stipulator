@@ -1878,6 +1878,8 @@ type ProgressEvent struct {
 	xxx_hidden_Completed     int32                  `protobuf:"varint,4,opt,name=completed"`
 	xxx_hidden_Total         int32                  `protobuf:"varint,5,opt,name=total"`
 	xxx_hidden_TerminalCause TerminalCause          `protobuf:"varint,6,opt,name=terminal_cause,json=terminalCause,enum=stipulator.v1.TerminalCause"`
+	xxx_hidden_Note          *string                `protobuf:"bytes,7,opt,name=note"`
+	xxx_hidden_Kept          []string               `protobuf:"bytes,8,rep,name=kept"`
 	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
 	XXX_presence             [1]uint32
 	unknownFields            protoimpl.UnknownFields
@@ -1958,14 +1960,31 @@ func (x *ProgressEvent) GetTerminalCause() TerminalCause {
 	return TerminalCause_TERMINAL_CAUSE_UNSPECIFIED
 }
 
+func (x *ProgressEvent) GetNote() string {
+	if x != nil {
+		if x.xxx_hidden_Note != nil {
+			return *x.xxx_hidden_Note
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *ProgressEvent) GetKept() []string {
+	if x != nil {
+		return x.xxx_hidden_Kept
+	}
+	return nil
+}
+
 func (x *ProgressEvent) SetPhase(v Phase) {
 	x.xxx_hidden_Phase = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 8)
 }
 
 func (x *ProgressEvent) SetInvocation(v string) {
 	x.xxx_hidden_Invocation = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 8)
 }
 
 func (x *ProgressEvent) SetElapsed(v *durationpb.Duration) {
@@ -1974,17 +1993,26 @@ func (x *ProgressEvent) SetElapsed(v *durationpb.Duration) {
 
 func (x *ProgressEvent) SetCompleted(v int32) {
 	x.xxx_hidden_Completed = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 8)
 }
 
 func (x *ProgressEvent) SetTotal(v int32) {
 	x.xxx_hidden_Total = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 8)
 }
 
 func (x *ProgressEvent) SetTerminalCause(v TerminalCause) {
 	x.xxx_hidden_TerminalCause = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 8)
+}
+
+func (x *ProgressEvent) SetNote(v string) {
+	x.xxx_hidden_Note = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 8)
+}
+
+func (x *ProgressEvent) SetKept(v []string) {
+	x.xxx_hidden_Kept = v
 }
 
 func (x *ProgressEvent) HasPhase() bool {
@@ -2029,6 +2057,13 @@ func (x *ProgressEvent) HasTerminalCause() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
 }
 
+func (x *ProgressEvent) HasNote() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
 func (x *ProgressEvent) ClearPhase() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Phase = Phase_PHASE_UNSPECIFIED
@@ -2058,6 +2093,11 @@ func (x *ProgressEvent) ClearTerminalCause() {
 	x.xxx_hidden_TerminalCause = TerminalCause_TERMINAL_CAUSE_UNSPECIFIED
 }
 
+func (x *ProgressEvent) ClearNote() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	x.xxx_hidden_Note = nil
+}
+
 type ProgressEvent_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -2072,6 +2112,15 @@ type ProgressEvent_builder struct {
 	Total     *int32
 	// Set only on the final event.
 	TerminalCause *TerminalCause
+	// A bounded, human-readable decision line: what an invocation is
+	// about to execute and the reason its subjects serve no record, or
+	// what a completed witness group persisted. At most one per executing
+	// invocation and one per persisted group, so the stream stays bounded
+	// by the policy, never by the test count.
+	Note *string
+	// The units whose records persisted so far - set on the final event,
+	// so a cancelled operation names what it kept.
+	Kept []string
 }
 
 func (b0 ProgressEvent_builder) Build() *ProgressEvent {
@@ -2079,26 +2128,31 @@ func (b0 ProgressEvent_builder) Build() *ProgressEvent {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Phase != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 8)
 		x.xxx_hidden_Phase = *b.Phase
 	}
 	if b.Invocation != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 8)
 		x.xxx_hidden_Invocation = b.Invocation
 	}
 	x.xxx_hidden_Elapsed = b.Elapsed
 	if b.Completed != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 8)
 		x.xxx_hidden_Completed = *b.Completed
 	}
 	if b.Total != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 8)
 		x.xxx_hidden_Total = *b.Total
 	}
 	if b.TerminalCause != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 8)
 		x.xxx_hidden_TerminalCause = *b.TerminalCause
 	}
+	if b.Note != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 8)
+		x.xxx_hidden_Note = b.Note
+	}
+	x.xxx_hidden_Kept = b.Kept
 	return m0
 }
 
@@ -2166,7 +2220,7 @@ const file_stipulator_v1_execution_proto_rawDesc = "" +
 	"\x05tests\x18\x02 \x03(\v2\x19.stipulator.v1.TestResultR\x05tests\x12A\n" +
 	"\vobligations\x18\x03 \x03(\v2\x1f.stipulator.v1.ObligationReportR\vobligations\x12B\n" +
 	"\vdiagnostics\x18\x04 \x03(\v2 .stipulator.v1.FailureDiagnosticR\vdiagnostics\x12>\n" +
-	"\fobservations\x18\x05 \x03(\v2\x1a.stipulator.v1.ObservationR\fobservations\"\x89\x02\n" +
+	"\fobservations\x18\x05 \x03(\v2\x1a.stipulator.v1.ObservationR\fobservations\"\xb1\x02\n" +
 	"\rProgressEvent\x12*\n" +
 	"\x05phase\x18\x01 \x01(\x0e2\x14.stipulator.v1.PhaseR\x05phase\x12\x1e\n" +
 	"\n" +
@@ -2175,7 +2229,9 @@ const file_stipulator_v1_execution_proto_rawDesc = "" +
 	"\aelapsed\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\aelapsed\x12\x1c\n" +
 	"\tcompleted\x18\x04 \x01(\x05R\tcompleted\x12\x14\n" +
 	"\x05total\x18\x05 \x01(\x05R\x05total\x12C\n" +
-	"\x0eterminal_cause\x18\x06 \x01(\x0e2\x1c.stipulator.v1.TerminalCauseR\rterminalCause*\x91\x01\n" +
+	"\x0eterminal_cause\x18\x06 \x01(\x0e2\x1c.stipulator.v1.TerminalCauseR\rterminalCause\x12\x12\n" +
+	"\x04note\x18\a \x01(\tR\x04note\x12\x12\n" +
+	"\x04kept\x18\b \x03(\tR\x04kept*\x91\x01\n" +
 	"\x15ObligationDisposition\x12&\n" +
 	"\"OBLIGATION_DISPOSITION_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eOBLIGATION_DISPOSITION_OMITTED\x10\x01\x12,\n" +

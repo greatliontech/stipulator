@@ -278,3 +278,165 @@ func TestStampsRenderAdjacentDedupedPhases(t *testing.T) {
 		t.Fatal("nil reporter stamped")
 	}
 }
+
+// TestNotesAndKeptRideTheStream pins the decision lines and the kept
+// report (REQ-mcp-progress, REQ-policy-cancellation): a note emits at
+// once and exactly once, a persisted unit emits its note and joins the
+// kept list, and the terminal event — alone — carries every kept unit.
+func TestNotesAndKeptRideTheStream(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-progress", "REQ-policy-cancellation")
+	var events []*stipulatorv1.ProgressEvent
+	r := New(collect(&events), WithInterval(time.Hour))
+	r.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
+	r.Note("executing race: 3 subjects in 2 packages")
+	r.Step("race", 1, 2)
+	r.Persisted("race", 3)
+	r.Note("")
+	r.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_CANCELLED)
+	var notes []string
+	for _, e := range events {
+		if e.GetNote() != "" {
+			notes = append(notes, e.GetNote())
+		}
+		if e.GetTerminalCause() == stipulatorv1.TerminalCause_TERMINAL_CAUSE_UNSPECIFIED && len(e.GetKept()) != 0 {
+			t.Fatalf("an advisory event carried the kept list: %v", e)
+		}
+	}
+	want := []string{"executing race: 3 subjects in 2 packages", "persisted: race (3 records)"}
+	if strings.Join(notes, "|") != strings.Join(want, "|") {
+		t.Fatalf("notes = %v, want %v", notes, want)
+	}
+	final := events[len(events)-1]
+	if final.GetTerminalCause() != stipulatorv1.TerminalCause_TERMINAL_CAUSE_CANCELLED || len(final.GetKept()) != 1 || final.GetKept()[0] != "race (3 records)" {
+		t.Fatalf("terminal event = %v, want cancelled with kept race (3 records)", final)
+	}
+	if got := r.Kept(); len(got) != 1 || got[0] != "race (3 records)" {
+		t.Fatalf("Kept() = %v", got)
+	}
+	r.Note("after the end")
+	if events[len(events)-1] != final {
+		t.Fatal("a note after the terminal event emitted")
+	}
+}
+
+// TestStderrSinkRendersEachEventOnce pins the CLI leg of REQ-mcp-progress:
+// the stderr sink renders a phase transition once, an invocation's
+// progress as completed of total, a note verbatim, and the terminal
+// event as its cause with the phase and the kept units — or "kept
+// nothing" when a cancelled run persisted none.
+func TestStderrSinkRendersEachEventOnce(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-progress")
+	var out strings.Builder
+	r := New(Stderr(&out), WithInterval(time.Hour))
+	r.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
+	r.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
+	r.Step("race", 2, 2)
+	r.Note("executing plain: 1 subjects in 1 packages")
+	r.Persisted("plain", 1)
+	r.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_CANCELLED)
+	got := out.String()
+	for _, want := range []string{
+		"phase discovery (", "phase execution (", "race: 2/2 packages (",
+		"executing plain: 1 subjects in 1 packages (", "persisted: plain (1 records) (",
+		"cancelled in the execution phase; kept: plain (1 records)",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("stderr rendering lacks %q:\n%s", want, got)
+		}
+	}
+	if strings.Count(got, "phase execution (") != 1 {
+		t.Fatalf("phase line repeated:\n%s", got)
+	}
+	var empty strings.Builder
+	e := New(Stderr(&empty), WithInterval(time.Hour))
+	e.Phase(stipulatorv1.Phase_PHASE_COMPILE)
+	e.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_DEADLINE)
+	if !strings.Contains(empty.String(), "deadline expired in the compile phase; kept nothing") {
+		t.Fatalf("deadline rendering:\n%s", empty.String())
+	}
+	if line := TerminalLine(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED, stipulatorv1.Phase_PHASE_VERIFICATION, nil); line != "ended: completed" {
+		t.Fatalf("completed line = %q", line)
+	}
+	// A completed operation ends silently — its pace line is the
+	// caller's — and an operation that entered no phase prints nothing
+	// at all: no phantom transition, no ending.
+	var quiet strings.Builder
+	q := New(Stderr(&quiet), WithInterval(time.Hour))
+	q.Phase(stipulatorv1.Phase_PHASE_COMPILE)
+	q.Seal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
+	if got := quiet.String(); !strings.HasPrefix(got, "phase compile (") || strings.Count(got, "\n") != 1 {
+		t.Fatalf("completed run rendered %q, want the phase line alone", got)
+	}
+	// The unspecified phase is never entered: marking it changes
+	// nothing, stamps nothing, transitions nothing.
+	q2 := New(Stderr(&quiet), WithInterval(time.Hour))
+	q2.Phase(stipulatorv1.Phase_PHASE_UNSPECIFIED)
+	if q2.CurrentPhase() != stipulatorv1.Phase_PHASE_UNSPECIFIED || q2.Stamps() != "" || strings.Count(quiet.String(), "\n") != 1 {
+		t.Fatalf("the unspecified phase was entered: %q, stamps %q", quiet.String(), q2.Stamps())
+	}
+	// Nor is it entered FROM a phase: the reporter stays where it was,
+	// with one stamp and one rendered transition.
+	var from strings.Builder
+	q3 := New(Stderr(&from), WithInterval(time.Hour))
+	q3.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
+	q3.Phase(stipulatorv1.Phase_PHASE_UNSPECIFIED)
+	if q3.CurrentPhase() != stipulatorv1.Phase_PHASE_EXECUTION || strings.Count(q3.Stamps(), ",") != 0 || strings.Count(from.String(), "\n") != 1 {
+		t.Fatalf("marking the unspecified phase from execution: phase %v, stamps %q, rendered %q", q3.CurrentPhase(), q3.Stamps(), from.String())
+	}
+	var none strings.Builder
+	n := New(Stderr(&none), WithInterval(time.Hour))
+	n.Seal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_SERVER_FAILURE)
+	if none.Len() != 0 {
+		t.Fatalf("a run of no phase rendered %q", none.String())
+	}
+}
+
+// TestNotesAreOneBoundedLine pins the bound on decision lines
+// (REQ-mcp-progress): a note quoting a multi-line, multi-kilobyte
+// reason reaches the stream as its first line, capped.
+func TestNotesAreOneBoundedLine(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-progress")
+	var events []*stipulatorv1.ProgressEvent
+	r := New(collect(&events), WithInterval(time.Hour))
+	r.Note("executing race: 1 subject — 1 re-executed: build failed:\n./x.go:3:1: syntax error\n./y.go:9:2: more")
+	r.Note(strings.Repeat("é", 500))
+	if len(events) != 2 {
+		t.Fatalf("emitted %d events, want 2", len(events))
+	}
+	if got := events[0].GetNote(); strings.Contains(got, "\n") || !strings.HasSuffix(got, "build failed:") {
+		t.Fatalf("multi-line note = %q, want its first line", got)
+	}
+	if got := []rune(events[1].GetNote()); len(got) != noteBound || got[len(got)-1] != '…' {
+		t.Fatalf("long note = %d runes ending %q, want %d ending in an ellipsis", len(got), string(got[len(got)-1]), noteBound)
+	}
+}
+
+// TestSealRendersAndEmitsAtomically pins the sealed ending: Seal emits
+// the terminal event once, returns the same account the event carries,
+// and renders again without emitting.
+func TestSealRendersAndEmitsAtomically(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-progress", "REQ-policy-cancellation")
+	var events []*stipulatorv1.ProgressEvent
+	r := New(collect(&events), WithInterval(time.Hour))
+	r.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
+	r.Persisted("race", 2)
+	before := len(events)
+	line := r.Seal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_CANCELLED)
+	if line != "cancelled in the execution phase; kept: race (2 records)" {
+		t.Fatalf("sealed line = %q", line)
+	}
+	if len(events) != before+1 || events[len(events)-1].GetTerminalCause() != stipulatorv1.TerminalCause_TERMINAL_CAUSE_CANCELLED || len(events[len(events)-1].GetKept()) != 1 {
+		t.Fatalf("seal emitted %v", events[before:])
+	}
+	if again := r.Seal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_DEADLINE); again != line || len(events) != before+1 {
+		t.Fatalf("second seal rendered %q and emitted %d more", again, len(events)-before-1)
+	}
+	if got := (&Reporter{}).Seal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED); got == "" {
+		t.Fatal("a bare reporter sealed to nothing")
+	}
+	c := New(nil)
+	c.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
+	if got := c.SealBy(stipulatorv1.TerminalCause_TERMINAL_CAUSE_CANCELLED, "the client"); got != "cancelled by the client in the discovery phase; kept nothing" {
+		t.Fatalf("sealed by an actor = %q", got)
+	}
+}

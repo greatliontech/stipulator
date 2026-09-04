@@ -5,15 +5,21 @@ import (
 	"os"
 )
 
-// Human-facing color: on only for a terminal stdout without NO_COLOR. The
-// wire surfaces (MCP, protos) carry the same data uncolored; these verbs
-// are for people.
+// Human-facing color: on only when both streams the verbs tint —
+// stdout and stderr — are terminals and NO_COLOR is unset. The wire
+// surfaces (MCP, protos) carry the same data uncolored; these verbs are
+// for people, and a redirected stream must never receive escapes.
 var colorOn = func() bool {
 	if os.Getenv("NO_COLOR") != "" || os.Getenv("TERM") == "dumb" {
 		return false
 	}
-	fi, err := os.Stdout.Stat()
-	return err == nil && fi.Mode()&os.ModeCharDevice != 0
+	for _, f := range []*os.File{os.Stdout, os.Stderr} {
+		fi, err := f.Stat()
+		if err != nil || fi.Mode()&os.ModeCharDevice == 0 {
+			return false
+		}
+	}
+	return true
 }()
 
 func tint(code, s string) string {

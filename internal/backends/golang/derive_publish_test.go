@@ -8,11 +8,13 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	gofresh "github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/runtimeinput"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -112,12 +114,31 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 		goInvocation("z-plain", plainCfg),
 	})
 
-	report, tr, err := ExecutePolicyWitnessed(context.Background(), mustCapture(t, context.Background(), tmp, p), noSeeding{})
+	// The health-judged form names its one unit of persistence on the
+	// progress stream — the policy execution, with its record count —
+	// so an ending after the install reports what it kept
+	// (REQ-policy-cancellation).
+	var events []*stipulatorv1.ProgressEvent
+	rep := progress.New(func(e *stipulatorv1.ProgressEvent) { events = append(events, e) }, progress.WithInterval(time.Hour))
+	ctx := progress.NewContext(context.Background(), rep)
+	report, tr, err := ExecutePolicyWitnessed(ctx, mustCapture(t, ctx, tmp, p), noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if tr.Degraded != "" {
 		t.Fatalf("publication degraded: %s", tr.Degraded)
+	}
+	var persisted []string
+	for _, e := range events {
+		if strings.HasPrefix(e.GetNote(), "persisted: ") {
+			persisted = append(persisted, e.GetNote())
+		}
+	}
+	if len(persisted) != 1 || !strings.HasPrefix(persisted[0], "persisted: policy execution (") || strings.HasPrefix(persisted[0], "persisted: policy execution (0 ") {
+		t.Fatalf("persisted notes = %v; want one naming the policy execution with its records", persisted)
+	}
+	if kept := rep.Kept(); len(kept) != 1 || !strings.HasPrefix(kept[0], "policy execution (") {
+		t.Fatalf("kept = %v; want the policy execution", kept)
 	}
 	if SuiteHealthy(report) {
 		t.Error("suite with red packages read healthy")

@@ -2,6 +2,7 @@ package golang
 
 import (
 	"context"
+	"fmt"
 	"maps"
 	"runtime/debug"
 	"sort"
@@ -376,10 +377,64 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	uncacheableWhy := map[gofresh.Subject]string{}
 	driftedByGroup := map[*witnessGroup][]gofresh.Subject{}
 	finished := map[*witnessGroup]bool{}
-	installNow := func(records []witnesscache.Record) {
+	// Each install names its unit on the progress stream — the
+	// completing invocation, the verification pass's revalidation, the
+	// drift retry — so a cancelled run reports what it kept.
+	installNow := func(records []witnesscache.Record) int {
 		for _, rec := range records {
 			_ = witnesscache.Install(dir, rec)
 		}
+		return len(records)
+	}
+	// One decision line per executing invocation: what executes and the
+	// reason most of it serves no record — bounded by the policy, never
+	// the test count (REQ-mcp-progress); the per-test attribution rides
+	// the result. A subject's reason is its covering group's under THIS
+	// invocation: a subject several groups cover carries one reason per
+	// leg, each leg's line its own.
+	executingInvs := make([]string, 0, len(staleSel))
+	for inv := range staleSel {
+		executingInvs = append(executingInvs, inv)
+	}
+	sort.Strings(executingInvs)
+	for _, inv := range executingInvs {
+		sel := staleSel[inv]
+		subjects, reasons := 0, map[string]string{}
+		for pkg, names := range sel {
+			subjects += len(names)
+			for _, wg := range groups {
+				if n := normalized[wg.g.pkgInv[pkg]]; n == nil || n.Name != inv {
+					continue
+				}
+				for _, name := range names {
+					if why, ok := wg.executedWhy[gofresh.Subject{Package: pkg, Symbol: name}]; ok {
+						reasons[pkg+"."+name] = executedReason(why)
+					}
+				}
+			}
+		}
+		line := fmt.Sprintf("executing %s: %s in %s", inv, plural(subjects, "subject"), plural(len(sel), "package"))
+		if h := verify.ReasonHistogram(reasons); len(h) > 0 {
+			line += fmt.Sprintf(" — %d re-executed: %s", h[0].N, h[0].Why)
+		} else if degraded != "" {
+			line += " — freshness degraded: " + degraded
+		}
+		rep.Note(line)
+	}
+	// The ineligible legs of shared packages execute every run for
+	// their failures alone: their line says so, once per leg.
+	ineligibleInvs := make([]string, 0, len(multiIneligible))
+	for inv := range multiIneligible {
+		ineligibleInvs = append(ineligibleInvs, inv)
+	}
+	sort.Strings(ineligibleInvs)
+	for _, inv := range ineligibleInvs {
+		sel := multiIneligible[inv]
+		subjects := 0
+		for _, names := range sel {
+			subjects += len(names)
+		}
+		rep.Note(fmt.Sprintf("executing %s: %s in %s — ineligible leg of shared packages, failures only, never a witness outcome", inv, plural(subjects, "subject"), plural(len(sel), "package")))
 	}
 	pendingInvs := map[*witnessGroup]map[string]bool{}
 	invGroups := map[string][]*witnessGroup{}
@@ -402,6 +457,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 		}
 	}
 	onInvocationDone := func(name string) error {
+		installed := 0
 		for _, wg := range invGroups[name] {
 			delete(pendingInvs[wg], name)
 			if len(pendingInvs[wg]) > 0 || finished[wg] {
@@ -415,7 +471,12 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 			published = append(published, records...)
 			driftedByGroup[wg] = groupDrifted
 			finished[wg] = true
-			installNow(records)
+			installed += installNow(records)
+		}
+		// The unit of persistence on the progress stream is the
+		// completing invocation: every group it closed, one note.
+		if installed > 0 {
+			rep.Persisted(name, installed)
 		}
 		return nil
 	}
@@ -440,6 +501,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	retryMerge := newExecMerge()
 	if degraded == "" {
 		var drifted []gofresh.Subject
+		revalidated := 0
 		for _, wg := range groups {
 			if !finished[wg] {
 				// All-served groups finish here; executing groups
@@ -452,7 +514,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 				maps.Copy(uncacheableWhy, reasons)
 				published = append(published, records...)
 				driftedByGroup[wg] = groupDrifted
-				installNow(records)
+				revalidated += installNow(records)
 			}
 			groupDrifted := driftedByGroup[wg]
 			drifted = append(drifted, groupDrifted...)
@@ -473,6 +535,9 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 				}
 			}
 		}
+		if revalidated > 0 {
+			rep.Persisted("revalidation", revalidated)
+		}
 		if len(drifted) > 0 {
 			retryPublished, retryReasons, err := retryDrifted(ctx, pc, driftedByGroup, retryMerge)
 			if err != nil {
@@ -480,7 +545,9 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 			}
 			maps.Copy(uncacheableWhy, retryReasons)
 			published = append(published, retryPublished...)
-			installNow(retryPublished)
+			if n := installNow(retryPublished); n > 0 {
+				rep.Persisted("drift retry", n)
+			}
 		}
 	}
 
@@ -505,9 +572,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	}
 	for _, wg := range groups {
 		for s, why := range wg.executedWhy {
-			if why == "" {
-				why = "prior evidence stale"
-			}
+			why = executedReason(why)
 			if tr.ExecutedReasons == nil {
 				tr.ExecutedReasons = map[string]string{}
 			}
@@ -637,6 +702,24 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	// departed — need no rewrite, and on the degraded path nothing
 	// executed under groups, so nothing installed.
 	return tr, nil
+}
+
+// executedReason is a re-executed subject's reason as reported: a
+// refused variant's verdict names its moved inputs, and a bare stale
+// answer reads as prior evidence stale.
+func executedReason(why string) string {
+	if why == "" {
+		return "prior evidence stale"
+	}
+	return why
+}
+
+// plural renders a count with its noun.
+func plural(n int, noun string) string {
+	if n == 1 {
+		return fmt.Sprintf("1 %s", noun)
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
 }
 
 // roundCandidates selects round N's checkable fingerprints: each

@@ -237,7 +237,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  content_hash: "740d4d204d9ca0789017be5998130e4a11231554c848289df34e747f62623299"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoDiscoveryCancellationTerminatesDescendants"
   role: BINDING_ROLE_TESTS
@@ -327,7 +327,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  content_hash: "740d4d204d9ca0789017be5998130e4a11231554c848289df34e747f62623299"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteCancellationDiscardsPartialReport"
   role: BINDING_ROLE_TESTS
@@ -336,7 +336,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  content_hash: "740d4d204d9ca0789017be5998130e4a11231554c848289df34e747f62623299"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.ExecuteInvocation"
   role: BINDING_ROLE_IMPLEMENTS
@@ -426,7 +426,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  content_hash: "740d4d204d9ca0789017be5998130e4a11231554c848289df34e747f62623299"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckCancelledRunYieldsNoVerdict"
   role: BINDING_ROLE_TESTS
@@ -435,7 +435,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  content_hash: "740d4d204d9ca0789017be5998130e4a11231554c848289df34e747f62623299"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolClientCancellationKillsEveryChildProcess"
   role: BINDING_ROLE_TESTS
@@ -480,7 +480,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  content_hash: "740d4d204d9ca0789017be5998130e4a11231554c848289df34e747f62623299"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteCallerDeadlineSkipsDumpGrace"
   role: BINDING_ROLE_TESTS
@@ -552,7 +552,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  content_hash: "740d4d204d9ca0789017be5998130e4a11231554c848289df34e747f62623299"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesCancellationDiscardsRun"
   role: BINDING_ROLE_TESTS
@@ -597,7 +597,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  content_hash: "740d4d204d9ca0789017be5998130e4a11231554c848289df34e747f62623299"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoResolverCancellationTerminatesDescendants"
   role: BINDING_ROLE_TESTS
@@ -624,7 +624,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  content_hash: "740d4d204d9ca0789017be5998130e4a11231554c848289df34e747f62623299"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolServingPathCancellationKillsChildren"
   role: BINDING_ROLE_TESTS
@@ -660,7 +660,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  content_hash: "740d4d204d9ca0789017be5998130e4a11231554c848289df34e747f62623299"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoObserveProcessConstructionErrorFailsClosed"
   role: BINDING_ROLE_TESTS

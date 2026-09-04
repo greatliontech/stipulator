@@ -361,9 +361,12 @@ them), dispose (editorial/retire/supersede), retarget (bulk
 symbol-prefix rewrite after a module rename; check previews),
 prune (resolved records; dangling=true repairs orphans). Long calls
 (check/gate/verify/prune/context/partitions/gap list=true) report
-phase progress when the request carries a progress token — send one
-and be patient rather than assuming a hang; results state the phase
-a deadline expired in. All writes stay under .stipulator/; spec
+progress when the request carries a progress token — the phase,
+per-invocation counts, and decision lines naming what each invocation
+executes and why, and what persisted — send one and be patient rather
+than assuming a hang; without a token the same lines reach the log
+channel at info level; a deadline or cancellation names the phase it
+ended in and what the run kept. All writes stay under .stipulator/; spec
 documents and source are never edited. A policy invocation
 declaring build tags runs under a toolchain selection gofresh
 fail-closes until that selection's standard-library delta is walked

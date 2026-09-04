@@ -3,6 +3,7 @@ package verify
 import (
 	"io/fs"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -680,4 +681,18 @@ func packageAbortDiag(pkg, out string) *stipulatorv1.FailureDiagnostic {
 	d.SetPackage(pkg)
 	d.SetOutput(out)
 	return d
+}
+
+// TestReasonHistogramOrdersByCountThenText pins the one rendering of
+// per-subject reasons both faces share (REQ-core-determinism): most
+// frequent first, ties on the text.
+func TestReasonHistogramOrdersByCountThenText(t *testing.T) {
+	got := ReasonHistogram(map[string]string{"a.T1": "moved", "a.T2": "moved", "a.T3": "beta", "a.T4": "alpha", "a.T5": "alpha"})
+	want := []ReasonCount{{"alpha", 2}, {"moved", 2}, {"beta", 1}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("histogram = %v, want %v", got, want)
+	}
+	if got := ReasonHistogram(nil); len(got) != 0 {
+		t.Fatalf("empty histogram = %v", got)
+	}
 }

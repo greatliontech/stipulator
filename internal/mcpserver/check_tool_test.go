@@ -725,8 +725,8 @@ func TestVerifyToolDeadlineNamesExpiredPhaseAndCause(t *testing.T) {
 	if err == nil {
 		t.Fatal("deadline-terminated verify returned no error")
 	}
-	if !strings.Contains(err.Error(), "deadline expired in the execution phase") {
-		t.Errorf("error does not name the expired phase and cause: %v", err)
+	if !strings.Contains(err.Error(), "deadline expired in the execution phase; kept nothing") {
+		t.Errorf("error does not name the expired phase, cause, and kept set: %v", err)
 	}
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Errorf("context cause lost: %v", err)
