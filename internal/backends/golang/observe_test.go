@@ -871,7 +871,7 @@ func TestGoObserveProcessForwardsClassificationRoots(t *testing.T) {
 			// The witness environment names roots elsewhere — a home of
 			// its own, a temp root of its own — so the undeclared run's
 			// read lies under none of them.
-			elsewhere := t.TempDir()
+			elsewhere := hermeticGoHome(t)
 			base := func() *NormalizedInvocation {
 				env := setEnv(setEnv(setEnv(nil, "GOENV", "off"), "HOME", elsewhere), "TMPDIR", filepath.Join(elsewhere, "tmp"))
 				return &NormalizedInvocation{
@@ -931,7 +931,7 @@ func TestGoObserveProcessKeepsATreeInteriorTempRootObserved(t *testing.T) {
 		if err := os.MkdirAll(tmp, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		env := setEnv(setEnv(setEnv(nil, "GOENV", "off"), "HOME", t.TempDir()), "TMPDIR", tmp)
+		env := setEnv(setEnv(setEnv(nil, "GOENV", "off"), "HOME", hermeticGoHome(t)), "TMPDIR", tmp)
 		n := &NormalizedInvocation{
 			Name: "interior", Dir: moduleDir, ModuleRoot: "sub", Env: env, WitnessEnv: env,
 			PkgDirs:        map[string]string{"example.com/m/pkg": pkgDir},
@@ -991,7 +991,7 @@ func TestGoObservationFrameExcludesReviewedPathsFromBracket(t *testing.T) {
 		n := &NormalizedInvocation{
 			Name:           "churn",
 			Dir:            dir,
-			Env:            []string{"HOME=" + t.TempDir()},
+			Env:            []string{"HOME=" + hermeticGoHome(t)},
 			PkgDirs:        map[string]string{"example.com/m/pkg": pkgDir},
 			PkgClosureDirs: map[string][]string{"example.com/m/pkg": {}},
 			ExcludedPaths:  excluded,
@@ -1044,7 +1044,7 @@ func TestGoObserveProcessConstructionErrorFailsClosed(t *testing.T) {
 	n := &NormalizedInvocation{
 		Name:           "cancelled",
 		Dir:            dir,
-		Env:            []string{"HOME=" + t.TempDir()},
+		Env:            []string{"HOME=" + hermeticGoHome(t)},
 		PkgDirs:        map[string]string{"example.com/m/pkg": pkgDir},
 		PkgClosureDirs: map[string][]string{"example.com/m/pkg": {}},
 	}

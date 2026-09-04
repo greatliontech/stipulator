@@ -81,3 +81,4 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[cli-test-binary-builds](cli-test-binary-builds.md)** — seven CLI-driving tests each build the binary; one once-built helper. *Lands: user decision.*
 - **[knob-prose-identity](knob-prose-identity.md)** — schema tags and flag usage strings are pinned to the guidance document by name only; render or prefix-pin their text. *Lands: user decision.*
 - **[retarget-spec-enforcement-pointers](retarget-spec-enforcement-pointers.md)** — a spec clause's "Enforced by" pointer is neither rewritten by retarget nor checked against the store. *Lands: user decision.*
+- **[telemetry-sidecar-escapes-owned-process](telemetry-sidecar-escapes-owned-process.md)** — the toolchain's detached telemetry sidecar outlives a witness child's process group; turn it off per run or sanction the escape. *Lands: user decision.*
