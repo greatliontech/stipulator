@@ -80,3 +80,4 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[two-completion-mechanisms](two-completion-mechanisms.md)** — the selective runner and the health-judged recorder each implement install-at-last-covering-invocation; one completion tracker over capture groups. *Lands: user decision.*
 - **[cli-test-binary-builds](cli-test-binary-builds.md)** — seven CLI-driving tests each build the binary; one once-built helper. *Lands: user decision.*
 - **[knob-prose-identity](knob-prose-identity.md)** — schema tags and flag usage strings are pinned to the guidance document by name only; render or prefix-pin their text. *Lands: user decision.*
+- **[retarget-spec-enforcement-pointers](retarget-spec-enforcement-pointers.md)** — a spec clause's "Enforced by" pointer is neither rewritten by retarget nor checked against the store. *Lands: user decision.*

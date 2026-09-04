@@ -5,7 +5,7 @@
 ### compile
 **does:** Compile the spec corpus; returns diagnostics (empty means clean) and counts.
 **knobs:**
-- `ir` (cli) — print the compiled IR as textproto.
+- `ir` (cli) — print the compiled IR as textproto: an operator's inspection surface; the agent reads compiled requirements through the resources.
 **when:** use compile alone while authoring spec documents; every other
 verb recompiles for itself, so a clean compile is a precondition
 check, never a required first step.
@@ -16,10 +16,10 @@ before binding against the new text.
 **does:** Check records against the corpus and code.
 **knobs:**
 - `no_test` (mcp, cli as `no-test`) — the records-only judgment: no witness run, no policy capture; bindings resolve and hygiene is judged for authoring flows that need only the binding rows, while the witnessed form serves fresh witnesses and is cheap once the store is warm.
-- `view` (mcp) — summary (default: hygiene and witness counts with change signatures) or bindings (the per-binding rows).
-- `ids` (mcp) — comma-separated requirement identifiers to scope binding rows to; unknown identifiers refuse.
-- `filter` (mcp) — requirement-id glob over binding rows.
-- `path` (mcp) — prefix over declaring document or symbol.
+- `view` (mcp) — summary (default: hygiene and witness counts with change signatures) or bindings (the per-binding rows): the agent's token economy; the cli renders the counts and the broken rows for the operator.
+- `ids` (mcp) — comma-separated requirement identifiers to scope binding rows to; unknown identifiers refuse — the agent's token economy.
+- `filter` (mcp) — requirement-id glob over binding rows — the agent's token economy.
+- `path` (mcp) — prefix over declaring document or symbol — the agent's token economy.
 **when:** use verify for binding hygiene and witness detail; prefer
 check for the one-verdict pass, and gate when the question is
 coverage buckets rather than binding health.
@@ -34,8 +34,8 @@ one requirement's binding rows.
 - `bucket` (mcp, cli) — scope to one bucket: uncovered, stale, broken, covered, exempt, attested.
 - `filter` (mcp, cli) — requirement-id glob, e.g. REQ-arch-*.
 - `path` (mcp, cli) — prefix over declaring spec document or bound symbols.
-- `json` (cli) — machine output: the selected view as JSON.
-- `quiet` (cli) — exit code only.
+- `json` (cli) — machine output for CI and scripts: the selected view as JSON.
+- `quiet` (cli) — exit code only, for CI.
 **when:** use gate when the question is per-requirement coverage —
 which bucket, which reds, and whether the gate passes; prefer check
 for the unified pass with witness evidence and gap evaluation. Gate
@@ -48,10 +48,10 @@ their reasons.
 **does:** One pass, one verdict: does this tree pass.
 **knobs:**
 - `full` (mcp, cli) — execute the whole accepted policy and judge suite health; default serves fresh witnesses and executes only the stale remainder.
-- `view` (mcp) — summary (default: verdict, counts, capped red rows, top-blocker rows, diagnostic headings) or full (the whole CheckResult with per-test maps and retained output).
+- `view` (mcp) — summary (default: verdict, counts, capped red rows, top-blocker rows, diagnostic headings) or full (the whole CheckResult with per-test maps and retained output): the agent's token economy; the cli renders the red rows, the bounded histograms, and the counts, and `json` carries the whole result.
 - `ids` (mcp, cli) — comma-separated requirement identifiers scoping the pass itself: fresh witnesses still serve whole-tree, only stale subjects bound to them execute, the verdict is flagged partial (scope_partial) with scope-boundary reds excluded, and unknown identifiers refuse; incompatible with full.
-- `json` (cli) — machine output: the check result as deterministic JSON.
-- `quiet` (cli) — exit code only.
+- `json` (cli) — machine output for CI and scripts: the check result as deterministic JSON.
+- `quiet` (cli) — exit code only, for CI.
 **when:** use check as the default verdict surface — warm calls are
 cheap because fresh witnesses serve and only the stale remainder
 executes; use full=true when suite health must be judged, which only
@@ -80,7 +80,7 @@ ids=REQ-go-static-binding while iterating on one requirement's fix.
 - `role` (mcp, cli) — implements, tests, or proves; on the cli once for all claims or one per claim.
 - `backend` (mcp, cli) — language backend (default go); on the cli once for all claims or one per claim.
 - `file` (mcp, cli) — target binding file (derived when empty); on the cli once for all claims or one per claim.
-- `claims` (mcp) — batch claims validated all-or-nothing — a failure anywhere authors nothing; alternative to the single-claim fields.
+- `claims` (mcp) — batch claims validated all-or-nothing — a failure anywhere authors nothing; alternative to the single-claim fields — the agent's one-call authoring; the cli repeats its flags per claim.
 **when:** use bind after the requirement exists and the symbol
 resolves; the requirement must exist, generated files are rejected,
 and errors explain what to fix. Both surfaces batch all-or-nothing:
@@ -161,7 +161,7 @@ req=REQ-x for each requirement whose new text you consent to.
 - `from` — comma-separated sources for supersede.
 - `into` — comma-separated successors for supersede.
 - `force` — retire even when no record names the identity.
-**when:** use dispose when spec text changed shape — the cli spells
+**when:** use dispose — the agent's one-call kind= form — when spec text changed shape; the cli spells
 the same dispositions as three subcommands (dispose editorial,
 dispose retire, dispose supersede).
 **example:** dispose kind=supersede from=REQ-old into=REQ-a,REQ-b
@@ -172,7 +172,7 @@ after splitting a clause.
 **does:** Re-pin a requirement's bindings after a meaning-preserving edit.
 **knobs:**
 - `req` — requirement identifier (taken once; repetition refused).
-**when:** use after an edit that changes wording, not meaning; the
+**when:** use — the operator's shell spelling of dispose — after an edit that changes wording, not meaning; the
 mcp surface spells this dispose with kind=editorial.
 **example:** dispose editorial --req REQ-x after a typo fix.
 
@@ -182,7 +182,7 @@ mcp surface spells this dispose with kind=editorial.
 **knobs:**
 - `id` — retired identity (requirement id or term name; taken once, repetition refused).
 - `force` — retire even when no record names the identity.
-**when:** use when a requirement or term left the spec for good; the
+**when:** use — the operator's shell spelling of dispose — when a requirement or term left the spec for good; the
 mcp surface spells this dispose with kind=retire.
 **example:** dispose retire --id REQ-obsolete.
 
@@ -192,7 +192,7 @@ mcp surface spells this dispose with kind=retire.
 **knobs:**
 - `from` — comma-separated source identifiers (removed from the spec); repeatable, every occurrence's identifiers join.
 - `into` — comma-separated successor identifiers (declaring supersedes); repeatable, occurrences join.
-**when:** use for splits and merges (the aliases); the mcp surface
+**when:** use — the operator's shell spelling of dispose — for splits and merges (the aliases); the mcp surface
 spells this dispose with kind=supersede.
 **example:** dispose supersede --from REQ-old --into REQ-a,REQ-b.
 
@@ -236,7 +236,7 @@ chunk close.
 - `slice` — include the code-slice declaration frontier (the expensive leg).
 - `no_test` — the records-only judgment: no witness run, no policy capture; dossiers render from records alone.
 - `export_path` — write the dossier report to this path under .stipulator/exports/ and return only its location — the budget valve for many-id calls.
-**when:** use context to orient on requirements before writing code —
+**when:** use context — the agent's orientation — to orient on requirements before writing code:
 facts only, selection is yours; prefer read_spec when only the spec
 text is needed.
 **example:** context ids=REQ-a,REQ-b with slice=true before designing
@@ -249,7 +249,7 @@ a fix.
 - `ids` — comma-separated requirement identifiers; empty means all red requirements.
 - `no_test` — the records-only judgment: no witness run, no policy capture; partitions derive from records alone.
 - `export_path` — write the full report (uncapped overlaps) to this path under .stipulator/exports/ and return only its location.
-**when:** use partitions to split red work into disjoint components —
+**when:** use partitions — the agent's planning surface — to split red work into disjoint components;
 disjoint components can fan out in parallel.
 **example:** partitions with no ids to partition all red work.
 
@@ -258,7 +258,7 @@ disjoint components can fan out in parallel.
 **does:** Read the self-contained bundle for requirement ids: requirements, closure, terms, context.
 **knobs:**
 - `ids` — comma-separated requirement identifiers.
-**when:** use read_spec to read spec text without resource support —
+**when:** use read_spec — the agent's orientation without resource support — to read spec text;
 it mirrors the bundle resource; prefer context when records and
 coverage matter too.
 **example:** read_spec ids=REQ-mcp-tools before touching the MCP
@@ -271,7 +271,7 @@ surface.
 - `reason` — a witness's uncacheable reason to parse the culprit from.
 - `package` — culprit package path (with symbol, overrides reason).
 - `symbol` — culprit variable name.
-**when:** use explain when a witness reports a dynamic-state
+**when:** use explain — the agent's derivation walk — when a witness reports a dynamic-state
 uncacheable reason — pass the reason verbatim, or name the package
 and symbol; the chain derives against the policy-scoped views
 verdicts use.
@@ -283,7 +283,7 @@ result carried.
 **does:** Per-identity IR delta between two trees, or against a git revision.
 **knobs:**
 - `against` — git revision holding the old corpus (HEAD~1, branch, tag, hash).
-**when:** use diff to see what a spec edit changed semantically —
+**when:** use diff — the operator's preview at the shell — to see what a spec edit changed semantically —
 two roots compare checked-out trees; against reads the committed
 corpus straight from the object store, no checkout.
 **example:** diff --against HEAD~1 after a spec-editing commit.
@@ -292,7 +292,7 @@ corpus straight from the object store, no checkout.
 **surfaces:** cli
 **does:** Preview what the working-tree change set plausibly touches.
 **knobs:** none
-**when:** use impact for a cheap pre-check preview — it executes
+**when:** use impact — the operator's preview at the shell — for a cheap pre-check; it executes
 nothing and claims no freshness verdict; an empty preview is
 advisory, never proof of no impact, because reach through
 non-import couplings is invisible here. The witnessed surfaces
@@ -303,7 +303,7 @@ non-import couplings is invisible here. The witnessed surfaces
 **surfaces:** cli
 **does:** Derive the universal-race test policy record when absent.
 **knobs:** none
-**when:** use once at adoption — it derives the policy equivalent to
+**when:** use once at adoption, as the operator's scaffolding: it derives the policy equivalent to
 the universal race suite witness execution assumes (one race-enabled
 ./... invocation per workspace member) and writes it to
 .stipulator/policy.textproto only when no record exists; an existing
@@ -316,7 +316,7 @@ the record.
 **surfaces:** cli
 **does:** Scaffold the manifest for a new corpus.
 **knobs:** none
-**when:** use init once, exactly where the corpus should live —
+**when:** use init once — the operator's scaffolding — exactly where the corpus should live;
 nested corpora are deliberate, so init scaffolds where invoked and
 skips root discovery.
 **example:** init, then write a spec document and run compile.
@@ -325,7 +325,7 @@ skips root discovery.
 **surfaces:** cli
 **does:** Serve the corpus and operations over MCP (stdio).
 **knobs:** none
-**when:** use mcp as the server entry point for an MCP client;
+**when:** use mcp as the server entry point for an MCP client — the operator's process, never the agent's;
 outside a corpus the server still starts — corpus tools return the
 teaching error per request, while guidance still serves its
 embedded document.
@@ -334,7 +334,7 @@ embedded document.
 ### guidance
 **does:** Serve this guidance: a verb's full section, or the decision map.
 **knobs:**
-- `verb` (mcp) — the verb to describe; empty serves the decision map.
+- `verb` (mcp) — the verb to describe; empty serves the decision map — the agent's named parameter, where the cli takes the verb as its positional argument.
 **when:** use guidance to learn what a verb does, what a knob
 controls, and when to use which — the tool answers from its own
 embedded document, so served prose and repository documentation are

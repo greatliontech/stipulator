@@ -108,6 +108,30 @@ class (REQ-check-verdict), so the verdict a scoped check call reports is
 the flagged-partial scoped one — check's own exception to the
 global-verdict rule, which continues to govern the gate's views.
 
+**REQ-mcp-surfaces** (behavior): Per verb, each surface's default answer
+MUST be derived for its reader — the MCP surface's the token-conscious
+roll-up (the summary views, capped rows, the reason maps reduced to
+their actionable form, the whole result only on the full view), the
+CLI's the human account (the problems and red rows, the bounded
+reason histograms, the counts, the progress stream rendered as status
+lines with the pace line, color on a terminal) — and a knob or verb
+that exists on one surface only carries the reason in the guidance
+document, naming its reader, so every opt-in has a purpose or is
+deleted. The readers are two, and a reason names one: the CLI's
+reader is the operator at a shell and the CI and scripts behind it —
+machine output and exit-code-only (`json`, `quiet`, `ir`), the
+scaffolding and previews (`init`, `policy init`, `diff`, `impact`),
+the server process (`mcp`), the records-only sweep (`prune`'s
+`no-test`), and the shell spellings of `dispose`'s kinds; the MCP's
+reader is the agent — its token economy (verify's and check's `view`,
+and verify's `ids`, `filter`, and `path`, where the CLI has no
+per-binding rows to scope, only the counts and the broken ones, and
+the orientation verbs' `export_path`), its one-call all-or-nothing
+authoring (`bind`'s `claims`, `dispose`'s kind form), its orientation
+(`context`, `partitions`, `read_spec`, `explain`), and a named
+parameter where the CLI takes a positional (`guidance`'s verb).
+Enforced by `TestGuidanceNamesTheReaderOfEverySingleSurfaceElement`.
+
 **REQ-mcp-response-contract** (behavior): Every tool result MUST fit a
 declared budget by construction, in one of four forms: a bounded
 projection (summary-first defaults, capped lists whose omitted

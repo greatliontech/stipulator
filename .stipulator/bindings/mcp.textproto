@@ -963,3 +963,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "e53af13c54bc96958064b573f421eb9c325127019ca13795b6df714c3d92aec4"
 }
+
+bindings {
+  requirement_id: "REQ-mcp-surfaces"
+  content_hash: "5f1ca62175b7a00ce1ba3a6a4186e656984f492bd3d6840aa32c5a3eb350e596"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator.TestGuidanceNamesTheReaderOfEverySingleSurfaceElement"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "37aeed2fbf4e62ac6a79fe2d17e853914b916a568cf44aba1418a46c7abf4b31"
+}
