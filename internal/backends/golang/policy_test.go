@@ -268,8 +268,6 @@ func TestGoPolicyConfigStaticValidation(t *testing.T) {
 		{"vouch without a package", "needs a package", func(c *stipulatorv1.GoInvocationConfig) {
 			c.SetDynamicStateVouches([]*stipulatorv1.DynamicStateVouch{vouchEntry("", "Var")})
 		}},
-		{"zero witness_concurrency", "positive when present", func(c *stipulatorv1.GoInvocationConfig) { c.SetWitnessConcurrency(0) }},
-		{"negative witness_concurrency", "positive when present", func(c *stipulatorv1.GoInvocationConfig) { c.SetWitnessConcurrency(-2) }},
 		{"args testlogfile", "capture file", func(c *stipulatorv1.GoInvocationConfig) {
 			c.SetArgs([]string{"-test.testlogfile=/dev/null"})
 		}},

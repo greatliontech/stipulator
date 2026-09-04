@@ -506,8 +506,6 @@ func quotedList(vs []string) keyValue { return keyValue(quotedJoin(vs)) }
 
 func boolValue(v bool) keyValue { return keyValue(fmt.Sprintf("%t", v)) }
 
-func intValue(v int32) keyValue { return keyValue(fmt.Sprintf("%d", v)) }
-
 // keySegment is one labeled component of a key. The segment table is
 // the ONE definition tests derive their equality tuples and
 // perturbation domains from — a field keyed here but absent there
@@ -570,9 +568,8 @@ func groupKey(n *NormalizedInvocation) string {
 // GOFLAGS and toolchain pins (empty when the invocation rides the
 // ambient value), workspace and module mode, the PGO profile, the
 // identity-bearing extra binary arguments (runtimeOnlyArg's reviewed
-// bounds re-address nothing), the declared environment deltas
-// (order-canonicalized), and the declared concurrency bound — and
-// nothing more. Every ambient-resolved fact is deliberately excluded:
+// bounds re-address nothing), and the declared environment deltas
+// (order-canonicalized) — and nothing more. Every ambient-resolved fact is deliberately excluded:
 // the merged ambient environment, the effective toolchain, platform,
 // GOFLAGS, GOEXPERIMENT, and the delivered width are the fingerprints'
 // authority — an identity digesting them would silently orphan the
@@ -608,7 +605,6 @@ func groupIdentitySegments(n *NormalizedInvocation) []keySegment {
 		{"args", quotedList(identityArgs(n.Args))},
 		{"envset", quotedList(sortedCopy(n.EnvOverrides))},
 		{"envdeny", quotedList(sortedCopy(n.EnvDeny))},
-		{"concurrency", intValue(n.WitnessConcurrency)},
 	}
 }
 

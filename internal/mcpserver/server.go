@@ -486,7 +486,7 @@ func compileLine(out compileOut) string {
 }
 
 type verifyIn struct {
-	NoTest bool   `json:"no_test,omitempty" jsonschema:"skip running tests (no witnesses)"`
+	NoTest bool   `json:"no_test,omitempty" jsonschema:"the records-only judgment: no witness run, no policy capture"`
 	View   string `json:"view,omitempty" jsonschema:"summary (default: hygiene and witness counts with change signatures) or bindings (the per-binding rows)"`
 	Ids    string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers to scope binding rows to; unknown identifiers refuse"`
 	Filter string `json:"filter,omitempty" jsonschema:"requirement-id glob over binding rows"`
@@ -1845,7 +1845,7 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 type contextIn struct {
 	Ids        string `json:"ids" jsonschema:"comma-separated requirement identifiers"`
 	Slice      bool   `json:"slice,omitempty" jsonschema:"include the code-slice declaration frontier (the expensive leg)"`
-	NoTest     bool   `json:"no_test,omitempty" jsonschema:"skip running tests (no witnesses); dossiers render from records alone"`
+	NoTest     bool   `json:"no_test,omitempty" jsonschema:"the records-only judgment: no witness run, no policy capture; dossiers render from records alone"`
 	ExportPath string `json:"export_path,omitempty" jsonschema:"write the dossier report to this path under .stipulator/exports/ and return only its location - the budget valve for many-id calls"`
 }
 
@@ -1937,7 +1937,7 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 
 type partitionsIn struct {
 	Ids        string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers; empty means all red requirements"`
-	NoTest     bool   `json:"no_test,omitempty" jsonschema:"skip running tests (no witnesses); partitions derive from records alone"`
+	NoTest     bool   `json:"no_test,omitempty" jsonschema:"the records-only judgment: no witness run, no policy capture; partitions derive from records alone"`
 	ExportPath string `json:"export_path,omitempty" jsonschema:"write the full report (uncapped overlaps) to this path under .stipulator/exports/ and return only its location"`
 }
 

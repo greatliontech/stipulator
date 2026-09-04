@@ -272,16 +272,17 @@ the stale variant's verdict with its moved inputs — while a test with
 no prior record needs no reason beyond the absence. Human renderings
 aggregate the reasons; the per-test attribution rides the machine
 result. Witness packages
-execute concurrently under the invocation's reviewed concurrency bound —
-half the processor count by default, since each package process is itself
-a parallel process tree — and each unit's inner parallelism is capped at
+execute concurrently under a derived concurrency bound —
+half the processor count, since each package process is itself
+a parallel process tree; the bound is never declared — and each unit's inner parallelism is capped at
 the parent's processor budget over the unit bound, floored at one and
 delivered through the spawn environment (never widening an environment
 already narrower), so at derived defaults units times per-unit width
 stays at most the processor count instead of multiplying into a
-host-freezing fan-out; explicit reviewed surfaces — a unit bound above
-the processor count, reviewed GOFLAGS or binary arguments carrying
-their own parallelism flags — may widen past the derived bound, an
+host-freezing fan-out; the explicit reviewed surfaces — reviewed
+GOFLAGS or binary arguments carrying their own parallelism flags — may
+widen past the derived bound, and a reviewed environment delta
+declaring a narrower GOMAXPROCS narrows the delivered width, each an
 operator-explicit choice. The spawn environment, the observation
 ingest environment, and freshness revalidation are one environment
 (the analysis engine's declared producer environment), so a witness
@@ -291,16 +292,17 @@ guard digests the runtime-configuration keys from that same
 environment, so a unit-bound change that moves the delivered width
 stales the group's evidence — the runtime reads those keys before
 execution, and evidence must never serve across a width the process
-never saw — and invocations delivering different widths occupy
-distinct capture groups, because one analysis engine declares one
-producer environment. A record's identity carries its producing capture
+never saw; invocations delivering different widths occupy distinct
+capture groups through the environment coordinate their witness
+environment carries, because one analysis engine declares one producer
+environment. A record's identity carries its producing capture
 group's build coordinate — the policy-declared build selection and
 per-invocation semantics: tags, the race build input, the declared
 platform, cgo, GOFLAGS, and toolchain pins (each marked undeclared
 when the invocation rides the ambient value), workspace and module
 mode, the PGO profile, the identity-bearing extra binary arguments,
-the declared environment deltas (order-canonicalized), and the
-declared concurrency bound; deliberately never any ambient-resolved
+and the declared environment deltas (order-canonicalized);
+deliberately never any ambient-resolved
 fact — the merged ambient environment, the effective toolchain,
 platform, GOFLAGS, or GOEXPERIMENT, and the ambient-derived delivered
 width are the fingerprints' authority. An identity digesting an ambient-resolved

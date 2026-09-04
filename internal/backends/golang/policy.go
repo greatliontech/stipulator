@@ -66,9 +66,6 @@ func validateConfig(cfg *stipulatorv1.GoInvocationConfig) error {
 			return err
 		}
 	}
-	if cfg.HasWitnessConcurrency() && cfg.GetWitnessConcurrency() < 1 {
-		return fmt.Errorf("witness_concurrency must be positive when present")
-	}
 	for _, p := range cfg.GetPackages() {
 		if err := validatePackagePattern(p); err != nil {
 			return err
@@ -363,7 +360,11 @@ func validateModuleRoot(root string) error {
 // The legacy suite bounded each test binary at thirty minutes with no
 // invocation-level ceiling, so a member running many binaries was admitted
 // far beyond thirty minutes serially; two hours is a generous explicit
-// envelope the migration review sees and can tighten.
+// envelope the migration review sees and can tighten — the measurement
+// to tighten it from is the check's own pace line (`took …: execution
+// …`) over a cold run, with headroom for a loaded host. The timeout
+// stays reviewed and explicit: a derived bound could abort admitted work
+// (REQ-policy-explicit).
 const derivedTimeout = 2 * time.Hour
 
 // derivedBinaryTimeout is the per-binary bound the derived record carries,

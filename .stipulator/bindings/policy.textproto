@@ -632,15 +632,6 @@ bindings {
 }
 
 bindings {
-  requirement_id: "REQ-policy-explicit"
-  content_hash: "8a316edb29fe9412d4a9df6f64e98b84086969046fa19969395d0cec67e5dbbb"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoNormalizeWitnessConcurrencyPositiveWhenPresent"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "2ddb74e083ef93323368dbe13b329fbc45c7cf1c9002a6d73265783d4c35e7f4"
-}
-
-bindings {
   requirement_id: "REQ-policy-attribution"
   content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
   backend: "go"

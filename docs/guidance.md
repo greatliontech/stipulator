@@ -15,7 +15,7 @@ before binding against the new text.
 ### verify
 **does:** Check records against the corpus and code.
 **knobs:**
-- `no_test` (mcp, cli as `no-test`) — skip running tests (no witnesses).
+- `no_test` (mcp, cli as `no-test`) — the records-only judgment: no witness run, no policy capture; bindings resolve and hygiene is judged for authoring flows that need only the binding rows, while the witnessed form serves fresh witnesses and is cheap once the store is warm.
 - `view` (mcp) — summary (default: hygiene and witness counts with change signatures) or bindings (the per-binding rows).
 - `ids` (mcp) — comma-separated requirement identifiers to scope binding rows to; unknown identifiers refuse.
 - `filter` (mcp) — requirement-id glob over binding rows.
@@ -218,7 +218,7 @@ as a check preview, read it, then run for real.
 - `check` (mcp, cli) — lint: non-zero exit when records linger, deleting nothing.
 - `dangling` (mcp, cli) — delete gap records naming requirements no longer in the corpus (the bulk repair; corpus and records only, no tests).
 - `store` (mcp, cli) — garbage-collect this corpus's witness store: drop record variants whose identity is absent from the current obligation universe (departed, renamed, or unbound tests) plus unreadable entries; explicit only — an identity absent here may be live on another branch; composes with no other mode.
-- `no-test` (cli) — skip the witness run (resolved-gap pruning may under-detect).
+- `no-test` (cli) — the records-only judgment: no witness run, no policy capture; resolved-gap pruning may under-detect without witness evidence, so the operator's records-only sweep is the reason it exists here.
 **when:** use prune when check or gate advertises resolved-record
 residue — resolved means the requirement is covered and any manual
 landing condition was explicitly fired: satisfied dead weight;
@@ -234,7 +234,7 @@ chunk close.
 **knobs:**
 - `ids` — comma-separated requirement identifiers.
 - `slice` — include the code-slice declaration frontier (the expensive leg).
-- `no_test` — skip running tests (no witnesses); dossiers render from records alone.
+- `no_test` — the records-only judgment: no witness run, no policy capture; dossiers render from records alone.
 - `export_path` — write the dossier report to this path under .stipulator/exports/ and return only its location — the budget valve for many-id calls.
 **when:** use context to orient on requirements before writing code —
 facts only, selection is yours; prefer read_spec when only the spec
@@ -247,7 +247,7 @@ a fix.
 **does:** Candidate work partitions: closure-connected components with seeds and overlaps.
 **knobs:**
 - `ids` — comma-separated requirement identifiers; empty means all red requirements.
-- `no_test` — skip running tests (no witnesses); partitions derive from records alone.
+- `no_test` — the records-only judgment: no witness run, no policy capture; partitions derive from records alone.
 - `export_path` — write the full report (uncapped overlaps) to this path under .stipulator/exports/ and return only its location.
 **when:** use partitions to split red work into disjoint components —
 disjoint components can fan out in parallel.

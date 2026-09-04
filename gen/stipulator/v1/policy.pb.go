@@ -474,7 +474,6 @@ type GoInvocationConfig struct {
 	xxx_hidden_Args                []string               `protobuf:"bytes,17,rep,name=args"`
 	xxx_hidden_BracketPaths        []string               `protobuf:"bytes,20,rep,name=bracket_paths,json=bracketPaths"`
 	xxx_hidden_AssumePure          bool                   `protobuf:"varint,21,opt,name=assume_pure,json=assumePure"`
-	xxx_hidden_WitnessConcurrency  int32                  `protobuf:"varint,22,opt,name=witness_concurrency,json=witnessConcurrency"`
 	xxx_hidden_PlainWitness        bool                   `protobuf:"varint,23,opt,name=plain_witness,json=plainWitness"`
 	xxx_hidden_ExcludedPaths       []string               `protobuf:"bytes,24,rep,name=excluded_paths,json=excludedPaths"`
 	xxx_hidden_DynamicStateVouches *[]*DynamicStateVouch  `protobuf:"bytes,25,rep,name=dynamic_state_vouches,json=dynamicStateVouches"`
@@ -666,13 +665,6 @@ func (x *GoInvocationConfig) GetAssumePure() bool {
 	return false
 }
 
-func (x *GoInvocationConfig) GetWitnessConcurrency() int32 {
-	if x != nil {
-		return x.xxx_hidden_WitnessConcurrency
-	}
-	return 0
-}
-
 func (x *GoInvocationConfig) GetPlainWitness() bool {
 	if x != nil {
 		return x.xxx_hidden_PlainWitness
@@ -698,7 +690,7 @@ func (x *GoInvocationConfig) GetDynamicStateVouches() []*DynamicStateVouch {
 
 func (x *GoInvocationConfig) SetModuleRoot(v string) {
 	x.xxx_hidden_ModuleRoot = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 23)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 22)
 }
 
 func (x *GoInvocationConfig) SetPackages(v []string) {
@@ -707,12 +699,12 @@ func (x *GoInvocationConfig) SetPackages(v []string) {
 
 func (x *GoInvocationConfig) SetRace(v bool) {
 	x.xxx_hidden_Race = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 23)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 22)
 }
 
 func (x *GoInvocationConfig) SetToolchain(v string) {
 	x.xxx_hidden_Toolchain = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 23)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 22)
 }
 
 func (x *GoInvocationConfig) SetEnvironment(v []string) {
@@ -725,17 +717,17 @@ func (x *GoInvocationConfig) SetEnvDeny(v []string) {
 
 func (x *GoInvocationConfig) SetGoos(v string) {
 	x.xxx_hidden_Goos = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 23)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 22)
 }
 
 func (x *GoInvocationConfig) SetGoarch(v string) {
 	x.xxx_hidden_Goarch = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 23)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 22)
 }
 
 func (x *GoInvocationConfig) SetCgoEnabled(v bool) {
 	x.xxx_hidden_CgoEnabled = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 23)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 22)
 }
 
 func (x *GoInvocationConfig) SetTags(v []string) {
@@ -744,32 +736,32 @@ func (x *GoInvocationConfig) SetTags(v []string) {
 
 func (x *GoInvocationConfig) SetGoflags(v string) {
 	x.xxx_hidden_Goflags = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 23)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 22)
 }
 
 func (x *GoInvocationConfig) SetWorkspaceMode(v GoWorkspaceMode) {
 	x.xxx_hidden_WorkspaceMode = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 23)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 22)
 }
 
 func (x *GoInvocationConfig) SetModuleMode(v GoModuleMode) {
 	x.xxx_hidden_ModuleMode = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 23)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 22)
 }
 
 func (x *GoInvocationConfig) SetPgo(v string) {
 	x.xxx_hidden_Pgo = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 13, 23)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 13, 22)
 }
 
 func (x *GoInvocationConfig) SetCount(v int32) {
 	x.xxx_hidden_Count = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 14, 23)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 14, 22)
 }
 
 func (x *GoInvocationConfig) SetCacheMode(v GoCacheMode) {
 	x.xxx_hidden_CacheMode = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 15, 23)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 15, 22)
 }
 
 func (x *GoInvocationConfig) SetArgs(v []string) {
@@ -782,17 +774,12 @@ func (x *GoInvocationConfig) SetBracketPaths(v []string) {
 
 func (x *GoInvocationConfig) SetAssumePure(v bool) {
 	x.xxx_hidden_AssumePure = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 18, 23)
-}
-
-func (x *GoInvocationConfig) SetWitnessConcurrency(v int32) {
-	x.xxx_hidden_WitnessConcurrency = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 19, 23)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 18, 22)
 }
 
 func (x *GoInvocationConfig) SetPlainWitness(v bool) {
 	x.xxx_hidden_PlainWitness = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 20, 23)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 19, 22)
 }
 
 func (x *GoInvocationConfig) SetExcludedPaths(v []string) {
@@ -894,18 +881,11 @@ func (x *GoInvocationConfig) HasAssumePure() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 18)
 }
 
-func (x *GoInvocationConfig) HasWitnessConcurrency() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 19)
-}
-
 func (x *GoInvocationConfig) HasPlainWitness() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 20)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 19)
 }
 
 func (x *GoInvocationConfig) ClearModuleRoot() {
@@ -973,13 +953,8 @@ func (x *GoInvocationConfig) ClearAssumePure() {
 	x.xxx_hidden_AssumePure = false
 }
 
-func (x *GoInvocationConfig) ClearWitnessConcurrency() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 19)
-	x.xxx_hidden_WitnessConcurrency = 0
-}
-
 func (x *GoInvocationConfig) ClearPlainWitness() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 20)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 19)
 	x.xxx_hidden_PlainWitness = false
 }
 
@@ -1072,14 +1047,6 @@ type GoInvocationConfig_builder struct {
 	// gofresh:pure remains for narrower claims; gofresh:external is never
 	// suppressed and still wins.
 	AssumePure *bool
-	// Reviewed witness fan-out bound: at most this many package test
-	// processes run at once. Each unit is itself a parallel process tree
-	// (compilers plus a GOMAXPROCS-threaded race-instrumented binary), so
-	// the absent-field default is max(1, GOMAXPROCS/2) - a full
-	// processor-count fan-out multiplies into load that can freeze an
-	// interactive host on memory and IO pressure, which nice(1) does not
-	// cover. Must be positive when present.
-	WitnessConcurrency *int32
 	// Accept witness evidence from this non-race invocation at the plain
 	// tier. The race detector requires cgo; a repository where race
 	// instrumentation is off the table (static/musl builds, resource
@@ -1119,69 +1086,65 @@ func (b0 GoInvocationConfig_builder) Build() *GoInvocationConfig {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.ModuleRoot != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 23)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 22)
 		x.xxx_hidden_ModuleRoot = b.ModuleRoot
 	}
 	x.xxx_hidden_Packages = b.Packages
 	if b.Race != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 23)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 22)
 		x.xxx_hidden_Race = *b.Race
 	}
 	if b.Toolchain != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 23)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 22)
 		x.xxx_hidden_Toolchain = b.Toolchain
 	}
 	x.xxx_hidden_Environment = b.Environment
 	x.xxx_hidden_EnvDeny = b.EnvDeny
 	if b.Goos != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 23)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 22)
 		x.xxx_hidden_Goos = b.Goos
 	}
 	if b.Goarch != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 23)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 22)
 		x.xxx_hidden_Goarch = b.Goarch
 	}
 	if b.CgoEnabled != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 23)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 22)
 		x.xxx_hidden_CgoEnabled = *b.CgoEnabled
 	}
 	x.xxx_hidden_Tags = b.Tags
 	if b.Goflags != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 23)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 22)
 		x.xxx_hidden_Goflags = b.Goflags
 	}
 	if b.WorkspaceMode != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 23)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 22)
 		x.xxx_hidden_WorkspaceMode = *b.WorkspaceMode
 	}
 	if b.ModuleMode != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 23)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 22)
 		x.xxx_hidden_ModuleMode = *b.ModuleMode
 	}
 	if b.Pgo != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 13, 23)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 13, 22)
 		x.xxx_hidden_Pgo = b.Pgo
 	}
 	if b.Count != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 14, 23)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 14, 22)
 		x.xxx_hidden_Count = *b.Count
 	}
 	if b.CacheMode != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 15, 23)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 15, 22)
 		x.xxx_hidden_CacheMode = *b.CacheMode
 	}
 	x.xxx_hidden_Args = b.Args
 	x.xxx_hidden_BracketPaths = b.BracketPaths
 	if b.AssumePure != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 18, 23)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 18, 22)
 		x.xxx_hidden_AssumePure = *b.AssumePure
 	}
-	if b.WitnessConcurrency != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 19, 23)
-		x.xxx_hidden_WitnessConcurrency = *b.WitnessConcurrency
-	}
 	if b.PlainWitness != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 20, 23)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 19, 22)
 		x.xxx_hidden_PlainWitness = *b.PlainWitness
 	}
 	x.xxx_hidden_ExcludedPaths = b.ExcludedPaths
@@ -1317,7 +1280,7 @@ const file_stipulator_v1_policy_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x123\n" +
 	"\atimeout\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\atimeout\x123\n" +
 	"\x02go\x18\x03 \x01(\v2!.stipulator.v1.GoInvocationConfigH\x00R\x02goB\b\n" +
-	"\x06configJ\x04\b\x04\x10\bR\x06labelsR\x05group\"\xdc\x06\n" +
+	"\x06configJ\x04\b\x04\x10\bR\x06labelsR\x05group\"\xb1\x06\n" +
 	"\x12GoInvocationConfig\x12\x1f\n" +
 	"\vmodule_root\x18\x01 \x01(\tR\n" +
 	"moduleRoot\x12\x1a\n" +
@@ -1343,11 +1306,10 @@ const file_stipulator_v1_policy_proto_rawDesc = "" +
 	"\x04args\x18\x11 \x03(\tR\x04args\x12#\n" +
 	"\rbracket_paths\x18\x14 \x03(\tR\fbracketPaths\x12\x1f\n" +
 	"\vassume_pure\x18\x15 \x01(\bR\n" +
-	"assumePure\x12/\n" +
-	"\x13witness_concurrency\x18\x16 \x01(\x05R\x12witnessConcurrency\x12#\n" +
+	"assumePure\x12#\n" +
 	"\rplain_witness\x18\x17 \x01(\bR\fplainWitness\x12%\n" +
 	"\x0eexcluded_paths\x18\x18 \x03(\tR\rexcludedPaths\x12T\n" +
-	"\x15dynamic_state_vouches\x18\x19 \x03(\v2 .stipulator.v1.DynamicStateVouchR\x13dynamicStateVouchesJ\x04\b\x12\x10\x13J\x04\b\x13\x10\x14\"I\n" +
+	"\x15dynamic_state_vouches\x18\x19 \x03(\v2 .stipulator.v1.DynamicStateVouchR\x13dynamicStateVouchesJ\x04\b\x12\x10\x13J\x04\b\x13\x10\x14J\x04\b\x16\x10\x17\"I\n" +
 	"\x11DynamicStateVouch\x12\x18\n" +
 	"\apackage\x18\x01 \x01(\tR\apackage\x12\x1a\n" +
 	"\bvariable\x18\x02 \x01(\tR\bvariable*p\n" +

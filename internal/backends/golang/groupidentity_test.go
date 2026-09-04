@@ -50,17 +50,12 @@ func TestGoGroupIdentityIgnoresAmbientEnvironment(t *testing.T) {
 	}
 	// The ambient-derived delivered width must NOT move the coordinate
 	// (a host cgroup change would silently orphan the store; the
-	// runtime-config fingerprint owns width equivalence) — only the
-	// DECLARED concurrency bound partitions.
+	// runtime-config fingerprint owns width equivalence) — the fan-out
+	// bound is derived, never declared, so no coordinate carries it.
 	widthed := base()
 	widthed.WitnessEnv = []string{"HOME=/one", "GOMAXPROCS=4"}
 	if groupIdentity(base()) != groupIdentity(widthed) {
 		t.Error("ambient-delivered width moved the coordinate")
-	}
-	bounded := base()
-	bounded.WitnessConcurrency = 3
-	if groupIdentity(base()) == groupIdentity(bounded) {
-		t.Error("declared concurrency bound did not move the coordinate")
 	}
 	pinned := base()
 	pinned.DeclaredToolchain = "go1.26.5"

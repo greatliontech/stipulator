@@ -131,6 +131,10 @@ func TestPolicyRecordParseRefusesMalformedWhole(t *testing.T) {
 	}{
 		{"syntax error", `invocations { name: `},
 		{"unknown field", `invocations { name: "a" timeout { seconds: 1 } go {} flaky: true }`},
+		// A retired field is an unknown one: a record carrying the old
+		// declared fan-out bound refuses whole rather than loading with
+		// the knob silently ignored.
+		{"retired witness_concurrency", `invocations { name: "a" timeout { seconds: 1 } go { witness_concurrency: 4 } }`},
 		{"duplicate scalar field", `invocations { name: "a" name: "b" timeout { seconds: 1 } go {} }`},
 		{"non-canonical order", `invocations { name: "b" timeout { seconds: 1 } go {} }
 invocations { name: "a" timeout { seconds: 1 } go {} }`},

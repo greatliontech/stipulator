@@ -4,7 +4,6 @@ import (
 	"context"
 	"maps"
 	"os"
-	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -543,25 +542,44 @@ func TestGroupKeySeparatesRaceTiers(t *testing.T) {
 	}
 }
 
-// Two unit bounds delivering different inner widths are two capture
-// groups: witness evidence digests under the delivered environment,
-// and one group engine holds one producer environment - sharing a
-// group would serve evidence recorded under another width
-// (REQ-evidence-witness-freshness's concurrency clause).
-func TestGroupKeySeparatesWitnessWidths(t *testing.T) {
+// Two invocations delivering different inner widths are two capture
+// groups, and the reviewed environment delta is the surface that
+// moves a delivered width: a declared narrower GOMAXPROCS is kept, its
+// sibling takes the derived width, and the capture-group key's
+// environment coordinate — the width-capped witness environment —
+// keeps their evidence apart (REQ-evidence-witness-freshness's
+// concurrency clause).
+func TestGroupKeySeparatesDeclaredWidths(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness")
-	procs := int32(runtime.GOMAXPROCS(0))
-	if procs < 2 {
-		t.Skip("single-processor host: every unit bound derives width 1")
+	// The guard is the mechanism's own: a declaration of one is
+	// narrower exactly when the derived width exceeds one — which it
+	// does inside the tool's own witness children, where this test
+	// must run.
+	if witnessChildWidth(&NormalizedInvocation{}) < 2 {
+		t.Skip("the derived width is one on this host: no narrower declaration exists")
 	}
-	narrow := &NormalizedInvocation{Race: true, WitnessConcurrency: procs}
-	wide := &NormalizedInvocation{Race: true, WitnessConcurrency: 1}
-	if groupKey(narrow) == groupKey(wide) {
+	neutralAmbient(t)
+	dir := discoverFixture(t)
+	plain := &stipulatorv1.GoInvocationConfig{}
+	plain.SetPackages([]string{"./..."})
+	narrow := &stipulatorv1.GoInvocationConfig{}
+	narrow.SetPackages([]string{"./..."})
+	narrow.SetEnvironment([]string{"GOMAXPROCS=1"})
+	wide, err := NormalizeInvocation(context.Background(), dir, goInvocation("wide", plain))
+	if err != nil {
+		t.Fatal(err)
+	}
+	narrowed, err := NormalizeInvocation(context.Background(), dir, goInvocation("narrow", narrow))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wideWidth, _ := lookupEnv(wide.WitnessEnv, "GOMAXPROCS")
+	narrowWidth, _ := lookupEnv(narrowed.WitnessEnv, "GOMAXPROCS")
+	if narrowWidth != "1" || wideWidth == "1" {
+		t.Fatalf("delivered widths: declared %q, derived %q; want the declaration kept narrower", narrowWidth, wideWidth)
+	}
+	if groupKey(wide) == groupKey(narrowed) {
 		t.Fatal("invocations delivering different widths share a capture-group key")
-	}
-	same := &NormalizedInvocation{Race: true, WitnessConcurrency: procs}
-	if groupKey(narrow) != groupKey(same) {
-		t.Fatal("equal widths split capture groups")
 	}
 }
 

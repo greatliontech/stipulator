@@ -73,9 +73,6 @@ type NormalizedInvocation struct {
 	// dependency variables accepted as stable after initialization
 	// (gofresh's vouch contract), sorted and deduplicated.
 	Vouches []string
-	// WitnessConcurrency is the reviewed spawn fan-out bound; zero means
-	// the pressure-honest default.
-	WitnessConcurrency int32
 	// WitnessEnv is the environment the invocation's witness processes
 	// run, ingest, and revalidate under: Env with the inner-parallelism
 	// cap applied, derived exactly once at normalization so every
@@ -207,7 +204,6 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	}
 	n.CacheBypass = cfg.GetCacheMode() == stipulatorv1.GoCacheMode_GO_CACHE_MODE_BYPASS
 	n.AssumePure = cfg.GetAssumePure()
-	n.WitnessConcurrency = cfg.GetWitnessConcurrency()
 
 	abs, err := filepath.Abs(filepath.Join(dir, filepath.FromSlash(cfg.GetModuleRoot())))
 	if err != nil {
@@ -344,7 +340,7 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	sort.Strings(n.Vouches)
 	// The one witness-env derivation for this invocation's lifetime
 	// (see the WitnessEnv field doc).
-	n.SpawnBound = witnessSpawnBound(n)
+	n.SpawnBound = witnessSpawnBound()
 	n.WitnessEnv = witnessWidthEnv(n)
 	return n, nil
 }

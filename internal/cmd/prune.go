@@ -195,7 +195,7 @@ func pruneCmd() *cobra.Command {
 		},
 	}
 	c.Flags().BoolVar(&check, "check", false, "lint: fail when records linger; delete nothing")
-	c.Flags().BoolVar(&noTest, "no-test", false, "skip the witness run (resolved-gap pruning may under-detect)")
+	c.Flags().BoolVar(&noTest, "no-test", false, "the records-only judgment: no witness run, no policy capture (resolved-gap pruning may under-detect)")
 	c.Flags().BoolVar(&dangling, "dangling", false, "delete gap records naming requirements no longer in the corpus")
 	c.Flags().BoolVar(&storeGC, "store", false, "garbage-collect this corpus's witness store: drop record variants whose identity is absent from the current obligation universe (departed, renamed, or unbound tests) plus unreadable entries; explicit only - an identity absent here may be live on another branch")
 	return c

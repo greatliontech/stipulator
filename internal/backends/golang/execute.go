@@ -126,8 +126,8 @@ type packageRun struct {
 
 // ExecuteInvocation executes one normalized invocation's selected packages
 // — the package obligations of selection — each in its own owned,
-// cancellable `go test -json` process, fanned out under the invocation's
-// reviewed concurrency bound with the invocation's reviewed
+// cancellable `go test -json` process, fanned out under the derived
+// concurrency bound with the invocation's reviewed
 // envelope timeout governing the whole invocation as a context deadline.
 // Every selected package executes whole: the exported executor accepts
 // no test selection, so the health-judged path is structurally unable to
@@ -180,8 +180,8 @@ func spawnOrdinals() func() int32 {
 	}
 }
 
-// runSelectedPackages fans the packages out under the invocation's
-// reviewed concurrency bound, one owned process per package narrowed to
+// runSelectedPackages fans the packages out under the derived
+// concurrency bound, one owned process per package narrowed to
 // its tests selection, with invCtx — the invocation envelope — governing
 // every spawn. Runs the envelope denied before their spawn come back
 // with no terminal disposition for the caller to classify.
@@ -336,15 +336,13 @@ func selectedPackages(selection []Obligation) []string {
 	return pkgs
 }
 
-// witnessSpawnBound derives the package fan-out bound: the invocation's
-// reviewed witness_concurrency when set, else max(1, GOMAXPROCS/2) —
-// each unit is itself a parallel process tree, so a full
-// processor-count fan-out multiplies into host-freezing load that
-// nice(1)'s CPU priority does not cover.
-func witnessSpawnBound(n *NormalizedInvocation) int {
-	if n.WitnessConcurrency > 0 {
-		return int(n.WitnessConcurrency)
-	}
+// witnessSpawnBound derives the package fan-out bound: max(1,
+// GOMAXPROCS/2) — each unit is itself a parallel process tree, so a
+// full processor-count fan-out multiplies into host-freezing load that
+// nice(1)'s CPU priority does not cover. The bound is derived, never
+// declared: reviewed GOFLAGS or binary arguments carrying their own
+// parallelism flags are the operator's explicit surface.
+func witnessSpawnBound() int {
 	bound := runtime.GOMAXPROCS(0) / 2
 	if bound < 1 {
 		bound = 1
@@ -362,7 +360,7 @@ func spawnBoundOf(n *NormalizedInvocation) int {
 	if n.SpawnBound > 0 {
 		return n.SpawnBound
 	}
-	return witnessSpawnBound(n)
+	return witnessSpawnBound()
 }
 
 // witnessChildWidth derives one unit's inner-parallelism width: the

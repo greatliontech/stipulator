@@ -84,6 +84,6 @@ func verifyCmd() *cobra.Command {
 			return nil
 		},
 	}
-	c.Flags().BoolVar(&noTest, "no-test", false, "skip running tests (no witnesses)")
+	c.Flags().BoolVar(&noTest, "no-test", false, "the records-only judgment: no witness run, no policy capture")
 	return c
 }

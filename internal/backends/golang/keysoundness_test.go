@@ -76,11 +76,10 @@ type keyFieldTuple struct {
 	strs  [][]string
 	flags []bool
 	one   []string
-	ints  []int32
 }
 
 func tupleEqual(a, b keyFieldTuple) bool {
-	if !slices.Equal(a.flags, b.flags) || !slices.Equal(a.one, b.one) || !slices.Equal(a.ints, b.ints) || len(a.strs) != len(b.strs) {
+	if !slices.Equal(a.flags, b.flags) || !slices.Equal(a.one, b.one) || len(a.strs) != len(b.strs) {
 		return false
 	}
 	for i := range a.strs {
@@ -105,7 +104,6 @@ func groupIdentityFields(n *NormalizedInvocation) keyFieldTuple {
 		flags: []bool{n.Race, n.WorkspaceOn},
 		one: []string{n.DeclaredGOOS, n.DeclaredGOARCH, n.DeclaredCgo, n.DeclaredGOFLAGS,
 			n.ModuleMode.String(), n.PGO, n.DeclaredToolchain},
-		ints: []int32{n.WitnessConcurrency},
 	}
 }
 
@@ -142,24 +140,23 @@ func TestKeyEncodingIsCollisionFree(t *testing.T) {
 	}
 	gen := rapid.Custom(func(t *rapid.T) *NormalizedInvocation {
 		return &NormalizedInvocation{
-			Tags:               adversarialList.Draw(t, "tags"),
-			WitnessEnv:         append([]string{"K=V"}, adversarialList.Draw(t, "env")...),
-			Args:               adversarialList.Draw(t, "args"),
-			ExcludedPaths:      adversarialList.Draw(t, "excl"),
-			Vouches:            adversarialList.Draw(t, "vouches"),
-			EnvOverrides:       adversarialList.Draw(t, "envset"),
-			EnvDeny:            adversarialList.Draw(t, "envdeny"),
-			AssumePure:         rapid.Bool().Draw(t, "pure"),
-			Race:               rapid.Bool().Draw(t, "race"),
-			WorkspaceOn:        rapid.Bool().Draw(t, "workspace"),
-			ModuleMode:         rapid.SampledFrom([]stipulatorv1.GoModuleMode{stipulatorv1.GoModuleMode_GO_MODULE_MODE_UNSPECIFIED, stipulatorv1.GoModuleMode_GO_MODULE_MODE_VENDOR}).Draw(t, "mode"),
-			PGO:                adversarialVal.Draw(t, "pgo"),
-			DeclaredGOOS:       adversarialVal.Draw(t, "goos"),
-			DeclaredGOARCH:     adversarialVal.Draw(t, "goarch"),
-			DeclaredCgo:        adversarialVal.Draw(t, "cgo"),
-			DeclaredGOFLAGS:    adversarialVal.Draw(t, "goflags"),
-			DeclaredToolchain:  adversarialVal.Draw(t, "toolchain"),
-			WitnessConcurrency: rapid.Int32Range(0, 2).Draw(t, "concurrency"),
+			Tags:              adversarialList.Draw(t, "tags"),
+			WitnessEnv:        append([]string{"K=V"}, adversarialList.Draw(t, "env")...),
+			Args:              adversarialList.Draw(t, "args"),
+			ExcludedPaths:     adversarialList.Draw(t, "excl"),
+			Vouches:           adversarialList.Draw(t, "vouches"),
+			EnvOverrides:      adversarialList.Draw(t, "envset"),
+			EnvDeny:           adversarialList.Draw(t, "envdeny"),
+			AssumePure:        rapid.Bool().Draw(t, "pure"),
+			Race:              rapid.Bool().Draw(t, "race"),
+			WorkspaceOn:       rapid.Bool().Draw(t, "workspace"),
+			ModuleMode:        rapid.SampledFrom([]stipulatorv1.GoModuleMode{stipulatorv1.GoModuleMode_GO_MODULE_MODE_UNSPECIFIED, stipulatorv1.GoModuleMode_GO_MODULE_MODE_VENDOR}).Draw(t, "mode"),
+			PGO:               adversarialVal.Draw(t, "pgo"),
+			DeclaredGOOS:      adversarialVal.Draw(t, "goos"),
+			DeclaredGOARCH:    adversarialVal.Draw(t, "goarch"),
+			DeclaredCgo:       adversarialVal.Draw(t, "cgo"),
+			DeclaredGOFLAGS:   adversarialVal.Draw(t, "goflags"),
+			DeclaredToolchain: adversarialVal.Draw(t, "toolchain"),
 		}
 	})
 	// The perturbation draws a segment LABEL and replaces that field
@@ -225,9 +222,6 @@ var perturbations = map[string]func(t *rapid.T, n *NormalizedInvocation){
 	"cgo":       func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredCgo = adversarialVal.Draw(t, "cgo2") },
 	"goflags":   func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredGOFLAGS = adversarialVal.Draw(t, "goflags2") },
 	"toolchain": func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredToolchain = adversarialVal.Draw(t, "toolchain2") },
-	"concurrency": func(t *rapid.T, n *NormalizedInvocation) {
-		n.WitnessConcurrency = rapid.Int32Range(0, 2).Draw(t, "concurrency2")
-	},
 }
 
 // keyedLabels is the union of both segment tables' labels, sorted. The
