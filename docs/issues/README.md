@@ -62,3 +62,8 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[property-suite-witness-serving](property-suite-witness-serving.md)** — served witnesses hide
   random-seed property flake (1026 served / 84 executed); re-execute property witnesses.
   *Lands: cross-tool train chunk 141.*
+- **[gap-cannot-say-contradicted](gap-cannot-say-contradicted.md)** — a gap means
+  "unwitnessed"; a consumer promoting a position to spec tier whose letter the shipped tree
+  contradicts by design has no state to say so, and the corpus reads green against a contradicted
+  requirement. Ask: a `contradicted` state beside the gap, reported distinctly, resolving only on
+  an explicit fire. *Lands: user decision (bldc consumer report 2026-09-05).*
