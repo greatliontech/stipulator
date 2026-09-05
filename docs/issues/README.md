@@ -5,7 +5,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[attestation-refusal-names-no-reclassification](attestation-refusal-names-no-reclassification.md)** —
   the (invariant, MUST) attestation refusal is right but names no remedy; point the author at
   reclassification (a closed enumeration is a wire requirement). *Lands: cross-tool train chunk 144.*
-- **[cmd-pins-oracle-baseline](cmd-pins-oracle-baseline.md)** — gomutant's ephemeral oracle refuses a green internal/cmd baseline; the CLI hygiene pin carries no mutation evidence. *Lands: cross-tool train chunk 156.*
 - **[train-114-campaign-idle-window](train-114-campaign-idle-window.md)** — the runner-inspectability
   folds' `--changed` campaign priced itself day-class (63 targets, 4,913 candidates); gate rode the
   nineteen killed ephemeral probes; measured prefix committed, sweep resumes on a quiet host.

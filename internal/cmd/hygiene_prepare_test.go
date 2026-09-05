@@ -48,11 +48,15 @@ func TestCommandsRefuseHygieneBeforeAnyWitness(t *testing.T) {
 	chdir = dir
 	t.Cleanup(func() { chdir = priorDir })
 	executed := func() bool { _, err := os.Stat(marker); return err == nil }
+	// Every argument list is non-nil: cobra reads the process arguments
+	// for a nil list, and the test binary's own flags ride there — under
+	// a mutation oracle the rapid pinning flags, which no command
+	// accepts.
 	for _, tc := range []struct {
 		name string
 		cmd  *cobra.Command
 		args []string
-	}{{"gate", gateCmd(), []string{"--quiet"}}, {"verify", verifyCmd(), nil}, {"prune", pruneCmd(), []string{"--check"}}} {
+	}{{"gate", gateCmd(), []string{"--quiet"}}, {"verify", verifyCmd(), []string{}}, {"prune", pruneCmd(), []string{"--check"}}} {
 		tc.cmd.SetArgs(tc.args)
 		err := tc.cmd.ExecuteContext(context.Background())
 		if err == nil || !strings.Contains(err.Error(), "fix verification problems first") {
