@@ -43,11 +43,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[normative-keyword-lint-timing-and-remedy](normative-keyword-lint-timing-and-remedy.md)** — the
   one-keyword rule surfaces at the next write op; the message names the count, not the remedy.
   *Lands: cross-tool train chunk 144.*
-- **[pin-req-unchanged-text-wording](pin-req-unchanged-text-wording.md)** — "pins current" for
-  unchanged text reads as a skipped re-consent. *Lands: cross-tool train chunk 143.*
-- **[content-hash-function-versioning](content-hash-function-versioning.md)** — a tool rebuild moved
-  four content hashes over unchanged text; the re-consent is indistinguishable from an amendment.
-  *Lands: cross-tool train chunk 143.*
 - **[refines-multiple-targets](refines-multiple-targets.md)** — `refines` admits one target; the
   second relationship is lost. *Lands: cross-tool train chunk 145.*
 - **[cli-verify-view-path-and-explain](cli-verify-view-path-and-explain.md)** — the symbol-claims
