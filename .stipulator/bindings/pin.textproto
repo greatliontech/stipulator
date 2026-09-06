@@ -140,3 +140,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "8ee39b24ac6f3c43a63540145df1a7a9dc84047587a08aaa8d54c12620590fc6"
 }
+
+bindings {
+  requirement_id: "REQ-pin-backfill"
+  content_hash: "d297d1db31d91e191927293b69599f8aa1a2a0d2a46f9b162403e360f712da04"
+  source_hash: "22e6f7a945e556dc73a68b57dcf6f19151f23e12453c5926fcd4dda1d9c11dc8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestEditorialNoOpNamesItsReason"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ccb01bc5130d259aab5d89088daeb5e5f499e727540155cc3a05d642689f32b2"
+}
