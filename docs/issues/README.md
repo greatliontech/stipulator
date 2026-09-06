@@ -34,11 +34,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   through any real dependency) and the shape verbs state presence, not capability absence;
   a direct-call-absence verb (structural.NoCall) would carry them. *Lands: capability charter — activates when a structural requirement needs a call-absence proof the signature/import verbs cannot carry.*
 
-- **[supersede-removed-source-one-step](supersede-removed-source-one-step.md)** — superseding a
-  requirement removed in the same edit needs three writes (drop edges, retire, re-add); a one-step
-  removed-source flow. *Lands: cross-tool train chunk 145.*
-- **[refines-multiple-targets](refines-multiple-targets.md)** — `refines` admits one target; the
-  second relationship is lost. *Lands: cross-tool train chunk 145.*
 - **[check-green-over-witness-failure](check-green-over-witness-failure.md)** — `check` exited green
   naming a failed witness as uncacheable-blocked; owner to confirm against the `healthy` term.
   *Lands: cross-tool train chunk 141.*
