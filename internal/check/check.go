@@ -208,10 +208,12 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		// granted while expected witnesses sit outside the eligible selection
 		// - names its execution-layer cause once at result level; without it
 		// every affected binding reads as a tree defect (its per-binding
-		// reason still carries the class). Keying on granted outcomes rather
-		// than executions keeps non-race legs - which run but can never
-		// grant - from masking the cause, and holds on both evidence forms.
-		if testRun.Fresh == 0 && len(testRun.Outcomes) == 0 && testRun.OutsidePolicy > 0 {
+		// reason still carries the class). Keying on granted outcomes
+		// rather than recorded ones keeps non-race legs - which run, and
+		// whose failures and skips are recorded, but which can never grant
+		// - from masking the cause; a pass is recorded only where a grant
+		// is made, on both evidence forms.
+		if testRun.Fresh == 0 && testRun.Granted() == 0 && testRun.OutsidePolicy > 0 {
 			res.SetWitnessSelectionProblem(fmt.Sprintf("the witness-eligible selection covered no expected witness: %d expected witnesses are outside it - witness evidence derives only from race: true invocations or explicit plain_witness: true admissions", testRun.OutsidePolicy))
 		}
 		res.SetTestsUncacheable(int32(testRun.Uncached))

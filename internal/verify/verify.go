@@ -873,3 +873,35 @@ func ReasonHistogram(reasons map[string]string) []ReasonCount {
 	})
 	return out
 }
+
+// Granted counts the witness outcomes granted: the passes. A pass enters
+// the outcome map only where a grant is made — a witness-eligible leg
+// with a healthy disposition, or a served record — on both evidence
+// forms, so the passes ARE the grant set and no second record of it is
+// kept. A failure is recorded whatever leg produced it (red is a fact)
+// and a skip grants no evidence, so neither says the eligible selection
+// granted anything (REQ-check-witness-selection).
+func (tr *TestRun) Granted() int {
+	n := 0
+	for _, o := range tr.Outcomes {
+		if o == TestPassed {
+			n++
+		}
+	}
+	return n
+}
+
+// OutcomeRank orders outcomes worst-first for every merge that folds
+// several results of one test into one: a red occurrence is never
+// papered over by a green sibling, and every merge ranks alike.
+func OutcomeRank(o TestOutcome) int {
+	switch o {
+	case TestFailed:
+		return 3
+	case TestPassed:
+		return 2
+	case TestSkipped:
+		return 1
+	}
+	return 0
+}

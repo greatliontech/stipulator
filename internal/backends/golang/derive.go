@@ -106,17 +106,6 @@ func DeriveTestRun(report *stipulatorv1.ExecutionReport) *verify.TestRun {
 	// results that never become witnesses carry no rigor claim.
 	tr := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}, RaceEnabled: true, PlainWitness: map[string]bool{}}
 	grantedRace := map[string]bool{}
-	rank := func(o verify.TestOutcome) int {
-		switch o {
-		case verify.TestFailed:
-			return 3
-		case verify.TestPassed:
-			return 2
-		case verify.TestSkipped:
-			return 1
-		}
-		return 0
-	}
 	ranTop := map[string]bool{}
 	for _, row := range report.GetTests() {
 		pkg, test := row.GetPackage(), row.GetTest()
@@ -136,7 +125,7 @@ func DeriveTestRun(report *stipulatorv1.ExecutionReport) *verify.TestRun {
 				}
 			}
 		}
-		if outcome != verify.TestNotRun && rank(outcome) > rank(tr.Outcomes[key]) {
+		if outcome != verify.TestNotRun && verify.OutcomeRank(outcome) > verify.OutcomeRank(tr.Outcomes[key]) {
 			tr.Outcomes[key] = outcome
 		}
 		for _, req := range row.GetRegistrations() {

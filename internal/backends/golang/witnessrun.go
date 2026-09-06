@@ -611,22 +611,11 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	// executes holds every leg's evidence, and a served pass never
 	// papers over an executed failure (or another group's served
 	// failure).
-	servedRank := func(o verify.TestOutcome) int {
-		switch o {
-		case verify.TestFailed:
-			return 3
-		case verify.TestPassed:
-			return 2
-		case verify.TestSkipped:
-			return 1
-		}
-		return 0
-	}
 	for _, rec := range servedRecords {
 		plainRecord := plainServedKey[rec.Package+"."+rec.Test]
 		for key, out := range rec.Outcomes {
 			o := outcomeFromString(out)
-			if servedRank(o) > servedRank(tr.Outcomes[key]) {
+			if verify.OutcomeRank(o) > verify.OutcomeRank(tr.Outcomes[key]) {
 				tr.Outcomes[key] = o
 			}
 			if plainRecord {
@@ -1431,17 +1420,6 @@ func consumeMergeFailuresOnly(tr *verify.TestRun, m *execMerge, ranTop map[strin
 
 func consumeMerge(tr *verify.TestRun, m *execMerge, ranTop map[string]bool, plainInv, raceGranted, plainGranted map[string]bool) {
 	tr.Diagnostics = append(tr.Diagnostics, m.diags...)
-	rank := func(o verify.TestOutcome) int {
-		switch o {
-		case verify.TestFailed:
-			return 3
-		case verify.TestPassed:
-			return 2
-		case verify.TestSkipped:
-			return 1
-		}
-		return 0
-	}
 	for _, row := range m.rows {
 		pkg, test := row.GetPackage(), row.GetTest()
 		key := pkg + "." + test
@@ -1461,7 +1439,7 @@ func consumeMerge(tr *verify.TestRun, m *execMerge, ranTop map[string]bool, plai
 				}
 			}
 		}
-		if outcome != verify.TestNotRun && rank(outcome) > rank(tr.Outcomes[key]) {
+		if outcome != verify.TestNotRun && verify.OutcomeRank(outcome) > verify.OutcomeRank(tr.Outcomes[key]) {
 			tr.Outcomes[key] = outcome
 		}
 		for _, req := range row.GetRegistrations() {

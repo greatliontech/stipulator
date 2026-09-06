@@ -693,3 +693,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "e1ddbb124bd4a1c9f72d9ea0d7ed81a9346fbd02fc9c58bdbeb9d278424d61d8"
 }
+
+bindings {
+  requirement_id: "REQ-check-witness-selection"
+  content_hash: "222398c6f983cd8fd6088f01b8cd02bb6f574f434fd92494cfcfdcff9ec3cfc8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckIneligibleLegOutcomesDoNotMaskTheSelectionCause"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "1f38cb934d6e36cbcf7cb2bc5519fa54b59e3104827fa5d04db35d75e29ad000"
+}

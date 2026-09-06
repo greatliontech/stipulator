@@ -988,6 +988,58 @@ func TestCheckMultiplyNonRaceSelectedSubjectsAreOutside(t *testing.T) {
 	}
 }
 
+// An ineligible leg's failure or skip is recorded — red is a fact
+// whatever leg produced it, and a skip is an execution fact — but
+// neither grants anything, so neither may read as "the eligible
+// selection granted a witness" and silence the result-level diagnostic:
+// with every subject outside the eligible selection, a failing or a
+// skipping test in the only-ineligibly-covered package still names the
+// selection cause once at result level, on both evidence forms
+// (REQ-check-witness-selection).
+func TestCheckIneligibleLegOutcomesDoNotMaskTheSelectionCause(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-witness-selection")
+	if testing.Short() {
+		t.Skip("runs the witness pass over a temporary corpus")
+	}
+	twoPlain := "invocations {\n  name: \"a\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./ok\"\n  }\n}\ninvocations {\n  name: \"b\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./ok\"\n  }\n}\n"
+	for _, c := range []struct {
+		name, body string
+		full       bool
+	}{
+		{"failure, selective form", "t.Fatal(\"deliberately red\")", false},
+		{"skip, selective form", "t.Skip(\"deliberately skipped\")", false},
+		{"failure, health-judged form", "t.Fatal(\"deliberately red\")", true},
+		{"skip, health-judged form", "t.Skip(\"deliberately skipped\")", true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			neutralAmbient(t)
+			dir := writeTree(t, baseTree(map[string]string{
+				".stipulator/policy.textproto": twoPlain,
+				"ok/ok_test.go": "package ok\n\nimport \"testing\"\n\n" +
+					"func TestDouble(t *testing.T) {\n\tif Double(2) != 4 {\n\t\tt.Fatal(\"broken arithmetic\")\n\t}\n}\n" +
+					"func TestSibling(t *testing.T) {\n\t" + c.body + "\n}\n",
+				"specs/check.md": "# Check\n\n**REQ-fix-bound** (behavior): The fixture MUST double.\n",
+				".stipulator/bindings/bound.textproto": "bindings {\n" +
+					"  requirement_id: \"REQ-fix-bound\"\n" +
+					"  backend: \"go\"\n" +
+					"  symbol: \"example.com/checkfix/ok.TestDouble\"\n" +
+					"  role: BINDING_ROLE_TESTS\n" +
+					"}\n",
+			}))
+			res, err := Run(context.Background(), dir, c.full, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if res.GetTestsOutsidePolicy() == 0 {
+				t.Fatal("multiply-non-race-selected subjects not counted outside")
+			}
+			if p := res.GetWitnessSelectionProblem(); !strings.Contains(p, "covered no expected witness") {
+				t.Fatalf("an ineligible leg's outcome masked the selection cause: %q", p)
+			}
+		})
+	}
+}
+
 // A policy admitting a non-race invocation at the plain tier grants
 // witness evidence from it: the check witnesses, the selection problem
 // stays absent, and the granted witness records the downgrade — its

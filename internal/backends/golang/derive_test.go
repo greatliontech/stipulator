@@ -177,19 +177,28 @@ func TestDeriveShadowedTestGrantsNothing(t *testing.T) {
 }
 
 // TestDeriveWorstOutcomeWins pins occurrence merging: when one test name
-// carries several results (an invocation running with -count above one),
-// a single red occurrence beats any green one, and the merge does not
-// depend on result order.
+// carries several results, a single red occurrence beats any green one,
+// and the merge does not depend on result order. The green occurrence
+// must be a GRANTED pass for the rank to be exercised at all — a pass
+// inside a failed package never becomes an outcome — so the pass comes
+// from a second eligible invocation whose package is healthy.
 func TestDeriveWorstOutcomeWins(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness")
-	inv := synthInvocation("race", true, map[string]stipulatorv1.HealthDisposition{"example.com/m/a": testFailed})
-	rows := []*stipulatorv1.TestResult{
-		synthRow("race", "example.com/m/a", "TestFlaky", passed),
-		synthRow("race", "example.com/m/a", "TestFlaky", failed),
+	invs := []*stipulatorv1.InvocationHealth{
+		synthInvocation("green", true, map[string]stipulatorv1.HealthDisposition{"example.com/m/a": healthy}),
+		synthInvocation("red", true, map[string]stipulatorv1.HealthDisposition{"example.com/m/a": testFailed}),
 	}
-	forward := DeriveTestRun(synthReport([]*stipulatorv1.InvocationHealth{inv}, rows))
+	rows := []*stipulatorv1.TestResult{
+		synthRow("green", "example.com/m/a", "TestFlaky", passed),
+		synthRow("red", "example.com/m/a", "TestFlaky", failed),
+	}
+	// The pass alone is granted: the rank is what the red row must beat.
+	if solo := DeriveTestRun(synthReport(invs[:1], rows[:1])); solo.Outcomes["example.com/m/a.TestFlaky"] != verify.TestPassed {
+		t.Fatalf("the green invocation's pass was not granted: %v", solo.Outcomes)
+	}
+	forward := DeriveTestRun(synthReport(invs, rows))
 	slices.Reverse(rows)
-	backward := DeriveTestRun(synthReport([]*stipulatorv1.InvocationHealth{inv}, rows))
+	backward := DeriveTestRun(synthReport(invs, rows))
 	if forward.Outcomes["example.com/m/a.TestFlaky"] != verify.TestFailed ||
 		backward.Outcomes["example.com/m/a.TestFlaky"] != verify.TestFailed {
 		t.Errorf("flaky merge = %v / %v, want FAILED regardless of order",
