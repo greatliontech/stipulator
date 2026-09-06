@@ -91,6 +91,9 @@ func renderGap(g *stipulatorv1.Gap) []byte {
 	if g.GetContentHash() != "" {
 		fmt.Fprintf(&b, "content_hash: %s\n", strconv.Quote(g.GetContentHash()))
 	}
+	if g.GetSourceHash() != "" {
+		fmt.Fprintf(&b, "source_hash: %s\n", strconv.Quote(g.GetSourceHash()))
+	}
 	lc := g.GetLands()
 	switch {
 	case lc.HasCovered():
@@ -128,18 +131,33 @@ func Render(bf BindingFile) ([]byte, error) {
 // through here; a nil Raw renders the standard header for a record
 // born in this operation.
 func RenderGapFile(gf GapFile) ([]byte, error) {
-	if line := CommentOutsideHeader(gf.Raw); line > 0 {
-		return nil, fmt.Errorf("%s:%d: comment outside the leading header block; move commentary to the commit message first", gf.Path, line)
+	return renderPreservingHeader(gf.Path, gf.Raw, renderGap(gf.Gap))
+}
+
+// RenderAttestationFile renders an attestation file with its leading
+// header preserved, refusing a file carrying commentary outside it —
+// the one header policy every machine-owned record file shares
+// (REQ-evidence-binding-machine-owned).
+func RenderAttestationFile(af AttestationFile) ([]byte, error) {
+	return renderPreservingHeader(af.Path, af.Raw, RenderAttestations(af.Set))
+}
+
+// renderPreservingHeader replaces a record file's body while keeping
+// the leading '#' header lines the file already carries; a comment
+// outside that header refuses, since the rewrite would destroy it. An
+// absent file (nil raw) takes the body's default header.
+func renderPreservingHeader(path string, raw, body []byte) ([]byte, error) {
+	if line := CommentOutsideHeader(raw); line > 0 {
+		return nil, fmt.Errorf("%s:%d: comment outside the leading header block; move commentary to the commit message first", path, line)
 	}
 	var b strings.Builder
-	for _, line := range strings.Split(string(gf.Raw), "\n") {
+	for _, line := range strings.Split(string(raw), "\n") {
 		if !strings.HasPrefix(strings.TrimSpace(line), "#") {
 			break
 		}
 		b.WriteString(line)
 		b.WriteByte('\n')
 	}
-	body := renderGap(gf.Gap)
 	if b.Len() == 0 {
 		return body, nil
 	}
@@ -212,6 +230,9 @@ func RenderAttestations(set *stipulatorv1.AttestationSet) []byte {
 		b.WriteString("\nattestations {\n")
 		fmt.Fprintf(&b, "  requirement_id: %s\n", strconv.Quote(a.GetRequirementId()))
 		fmt.Fprintf(&b, "  content_hash: %s\n", strconv.Quote(a.GetContentHash()))
+		if a.GetSourceHash() != "" {
+			fmt.Fprintf(&b, "  source_hash: %s\n", strconv.Quote(a.GetSourceHash()))
+		}
 		fmt.Fprintf(&b, "  reason: %s\n", strconv.Quote(a.GetReason()))
 		b.WriteString("}\n")
 	}

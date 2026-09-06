@@ -4,6 +4,7 @@
 bindings {
   requirement_id: "REQ-profile-manifest"
   content_hash: "4e79a58e0e0609c00e982a0bf17db03ffbc7366e56ad4047320a78c8141fe0a5"
+  source_hash: "fe1276969b73334623fe4a2d5f046723ece0b8bf332c362ed6a7fcf753684780"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.LoadManifest"
   role: BINDING_ROLE_IMPLEMENTS
@@ -13,6 +14,7 @@ bindings {
 bindings {
   requirement_id: "REQ-profile-manifest"
   content_hash: "4e79a58e0e0609c00e982a0bf17db03ffbc7366e56ad4047320a78c8141fe0a5"
+  source_hash: "fe1276969b73334623fe4a2d5f046723ece0b8bf332c362ed6a7fcf753684780"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.TestLoadManifest"
   role: BINDING_ROLE_TESTS
@@ -22,6 +24,7 @@ bindings {
 bindings {
   requirement_id: "REQ-profile-enumeration"
   content_hash: "8b13b9f876147e6d104ceca92c018c50c2ac142d97a8f92ca18a55bdff605494"
+  source_hash: "5a1019fc0311d7a88fabb2b5ae8413ecdfa3d575258ac702c012f04f63b00d27"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.Enumerate"
   role: BINDING_ROLE_IMPLEMENTS
@@ -31,6 +34,7 @@ bindings {
 bindings {
   requirement_id: "REQ-profile-enumeration"
   content_hash: "8b13b9f876147e6d104ceca92c018c50c2ac142d97a8f92ca18a55bdff605494"
+  source_hash: "5a1019fc0311d7a88fabb2b5ae8413ecdfa3d575258ac702c012f04f63b00d27"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.TestEnumerate"
   role: BINDING_ROLE_TESTS
@@ -40,6 +44,7 @@ bindings {
 bindings {
   requirement_id: "REQ-profile-glob"
   content_hash: "c2c4c4c69acfafb9ab547e1f6d415c7f656c4f4e07ca697166c2489e3f41beb2"
+  source_hash: "9eed3eaddde90eb507df71716a91ccd1a902725e44e101273b57e7357a3851b4"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.matchGlob"
   role: BINDING_ROLE_IMPLEMENTS
@@ -49,6 +54,7 @@ bindings {
 bindings {
   requirement_id: "REQ-profile-glob"
   content_hash: "c2c4c4c69acfafb9ab547e1f6d415c7f656c4f4e07ca697166c2489e3f41beb2"
+  source_hash: "9eed3eaddde90eb507df71716a91ccd1a902725e44e101273b57e7357a3851b4"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.validateGlob"
   role: BINDING_ROLE_IMPLEMENTS
@@ -58,6 +64,7 @@ bindings {
 bindings {
   requirement_id: "REQ-profile-glob"
   content_hash: "c2c4c4c69acfafb9ab547e1f6d415c7f656c4f4e07ca697166c2489e3f41beb2"
+  source_hash: "9eed3eaddde90eb507df71716a91ccd1a902725e44e101273b57e7357a3851b4"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.TestMatchGlob"
   role: BINDING_ROLE_TESTS

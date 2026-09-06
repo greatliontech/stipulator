@@ -4,4 +4,5 @@
 requirement_id: "REQ-proto-shape-hash"
 reason: "proto backend deferred indefinitely: machinery large, cut partial, gain marginal while Go witnesses and shape pins cover wire behavior"
 content_hash: "710e714af2ffed9e6ad3ff6f3c731d51cf079bbeb07605cd6f94d0a1a00e67b2"
+source_hash: "bf29a9a81a1abe39e686d5be3e8b9502bc55325f0cf468b694caa4d1d5b2f6ec"
 lands { manual { condition: "proto backend work is scheduled (docs/issues/proto-backend.md)" } }

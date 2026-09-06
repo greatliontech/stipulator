@@ -479,6 +479,7 @@ type Requirement struct {
 	xxx_hidden_Source      *string                `protobuf:"bytes,6,opt,name=source"`
 	xxx_hidden_Location    *Location              `protobuf:"bytes,7,opt,name=location"`
 	xxx_hidden_Clauses     *[]*Clause             `protobuf:"bytes,8,rep,name=clauses"`
+	xxx_hidden_SourceHash  *string                `protobuf:"bytes,9,opt,name=source_hash,json=sourceHash"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -584,34 +585,44 @@ func (x *Requirement) GetClauses() []*Clause {
 	return nil
 }
 
+func (x *Requirement) GetSourceHash() string {
+	if x != nil {
+		if x.xxx_hidden_SourceHash != nil {
+			return *x.xxx_hidden_SourceHash
+		}
+		return ""
+	}
+	return ""
+}
+
 func (x *Requirement) SetId(v string) {
 	x.xxx_hidden_Id = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 9)
 }
 
 func (x *Requirement) SetKind(v ClauseKind) {
 	x.xxx_hidden_Kind = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 9)
 }
 
 func (x *Requirement) SetKeyword(v Keyword) {
 	x.xxx_hidden_Keyword = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 9)
 }
 
 func (x *Requirement) SetText(v string) {
 	x.xxx_hidden_Text = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 9)
 }
 
 func (x *Requirement) SetContentHash(v string) {
 	x.xxx_hidden_ContentHash = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 9)
 }
 
 func (x *Requirement) SetSource(v string) {
 	x.xxx_hidden_Source = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 9)
 }
 
 func (x *Requirement) SetLocation(v *Location) {
@@ -620,6 +631,11 @@ func (x *Requirement) SetLocation(v *Location) {
 
 func (x *Requirement) SetClauses(v []*Clause) {
 	x.xxx_hidden_Clauses = &v
+}
+
+func (x *Requirement) SetSourceHash(v string) {
+	x.xxx_hidden_SourceHash = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 9)
 }
 
 func (x *Requirement) HasId() bool {
@@ -671,6 +687,13 @@ func (x *Requirement) HasLocation() bool {
 	return x.xxx_hidden_Location != nil
 }
 
+func (x *Requirement) HasSourceHash() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 8)
+}
+
 func (x *Requirement) ClearId() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Id = nil
@@ -705,6 +728,11 @@ func (x *Requirement) ClearLocation() {
 	x.xxx_hidden_Location = nil
 }
 
+func (x *Requirement) ClearSourceHash() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 8)
+	x.xxx_hidden_SourceHash = nil
+}
+
 type Requirement_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -728,6 +756,15 @@ type Requirement_builder struct {
 	// coverage judgment, never a second identity: they carry no hash and
 	// no location of their own.
 	Clauses []*Clause
+	// The consent-source digest: the SHA-256 of the newline-joined
+	// SHA-256 hex digests of the consent surface's raw markdown blocks —
+	// the lead paragraph with its payload, then each context-extent
+	// block in document order — with no canonicalization. Provenance of
+	// the same surface the content hash covers, so a record whose source
+	// pin still matches while its content pin differs consented to
+	// byte-identical text: the canonical form moved, not the text
+	// (REQ-model-consent-source).
+	SourceHash *string
 }
 
 func (b0 Requirement_builder) Build() *Requirement {
@@ -735,31 +772,35 @@ func (b0 Requirement_builder) Build() *Requirement {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 9)
 		x.xxx_hidden_Id = b.Id
 	}
 	if b.Kind != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 9)
 		x.xxx_hidden_Kind = *b.Kind
 	}
 	if b.Keyword != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 9)
 		x.xxx_hidden_Keyword = *b.Keyword
 	}
 	if b.Text != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 9)
 		x.xxx_hidden_Text = b.Text
 	}
 	if b.ContentHash != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 9)
 		x.xxx_hidden_ContentHash = b.ContentHash
 	}
 	if b.Source != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 9)
 		x.xxx_hidden_Source = b.Source
 	}
 	x.xxx_hidden_Location = b.Location
 	x.xxx_hidden_Clauses = &b.Clauses
+	if b.SourceHash != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 9)
+		x.xxx_hidden_SourceHash = b.SourceHash
+	}
 	return m0
 }
 
@@ -2031,7 +2072,7 @@ const file_stipulator_v1_ir_proto_rawDesc = "" +
 	"\bLocation\x12\x1a\n" +
 	"\bdocument\x18\x01 \x01(\tR\bdocument\x12!\n" +
 	"\fsection_path\x18\x02 \x03(\tR\vsectionPath\x12\x12\n" +
-	"\x04line\x18\x03 \x01(\x05R\x04line\"\xb3\x02\n" +
+	"\x04line\x18\x03 \x01(\x05R\x04line\"\xd4\x02\n" +
 	"\vRequirement\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12-\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x19.stipulator.v1.ClauseKindR\x04kind\x120\n" +
@@ -2040,7 +2081,9 @@ const file_stipulator_v1_ir_proto_rawDesc = "" +
 	"\fcontent_hash\x18\x05 \x01(\tR\vcontentHash\x12\x16\n" +
 	"\x06source\x18\x06 \x01(\tR\x06source\x123\n" +
 	"\blocation\x18\a \x01(\v2\x17.stipulator.v1.LocationR\blocation\x12/\n" +
-	"\aclauses\x18\b \x03(\v2\x15.stipulator.v1.ClauseR\aclauses\"L\n" +
+	"\aclauses\x18\b \x03(\v2\x15.stipulator.v1.ClauseR\aclauses\x12\x1f\n" +
+	"\vsource_hash\x18\t \x01(\tR\n" +
+	"sourceHash\"L\n" +
 	"\x06Clause\x12\x18\n" +
 	"\aordinal\x18\x01 \x01(\rR\aordinal\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x12\n" +

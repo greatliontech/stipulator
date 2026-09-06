@@ -1353,6 +1353,7 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 		// moved. The writes still apply per id in order, each computed
 		// over the store the previous id left — two ids sharing a
 		// binding file must not race one compare-and-swap precondition.
+		noOp := map[string]string{}
 		for _, id := range ids {
 			if _, _, err := author.Editorial(s.fsys(), id); err != nil && !errors.Is(err, author.ErrNothingStale) {
 				return nil, writeOut{}, err
@@ -1361,6 +1362,7 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 		for _, id := range ids {
 			ups, consented, err := author.Editorial(s.fsys(), id)
 			if errors.Is(err, author.ErrNothingStale) {
+				noOp[id] = author.NoOpNote(err)
 				continue
 			}
 			if err != nil {
@@ -1410,9 +1412,9 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 				out.Notes = append(out.Notes, id+": shape of "+strings.Join(syms, ", ")+" moved — ids re-consent clause text only, a blanket pin (no ids) re-pins shapes")
 			case repinned[id] > 0:
 			case len(syms) > 0:
-				out.Notes = append(out.Notes, id+": clause pins current; shape of "+strings.Join(syms, ", ")+" moved — ids re-consent clause text only, a blanket pin (no ids) re-pins shapes")
+				out.Notes = append(out.Notes, id+": "+noOp[id]+" — shape of "+strings.Join(syms, ", ")+" moved, and ids re-consent clause text only: a blanket pin (no ids) re-pins shapes")
 			default:
-				out.Notes = append(out.Notes, id+": pins current")
+				out.Notes = append(out.Notes, id+": "+noOp[id])
 			}
 		}
 		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
@@ -1426,10 +1428,6 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 	if err != nil {
 		return nil, writeOut{}, err
 	}
-	hashes := map[string]string{}
-	for _, r := range spec.GetRequirements() {
-		hashes[r.GetId()] = r.GetContentHash()
-	}
 	ctx, prog := s.startProgress(ctx, req)
 	prog.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	backends, err := s.backends(ctx, nil)
@@ -1438,7 +1436,7 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 	}
 	defer closeBackends(backends)
 	var resolutionNotes []string
-	updates, preserved, reshaped, err := records.Pin(store, hashes, author.ResolveShapes(store, backends, nil, func(symbol string, err error) {
+	updates, preserved, reshaped, rehashed, err := records.Pin(store, records.HashesOf(spec), author.ResolveShapes(store, backends, nil, func(symbol string, err error) {
 		resolutionNotes = append(resolutionNotes, fmt.Sprintf("shape resolution skipped %s: %v - its shape pin was not judged this call", symbol, err))
 	}))
 	if err != nil {
@@ -1468,6 +1466,9 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 	out.Notes = append(out.Notes, resolutionNotes...)
 	if len(reshaped) > 0 {
 		out.Notes = append(out.Notes, "shape pins refreshed (bound implementation moved): "+strings.Join(reshaped, ", "))
+	}
+	if len(rehashed) > 0 {
+		out.Notes = append(out.Notes, "rehashed ("+records.RehashNote+"): "+strings.Join(rehashed, ", "))
 	}
 	if len(preserved) > 0 {
 		out.Notes = append(out.Notes, "awaiting re-consent (pass ids): "+strings.Join(preserved, ", "))

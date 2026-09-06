@@ -1,6 +1,7 @@
 package author
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -242,5 +243,103 @@ func TestEditorialNamesTheClauseEachClaimNowDenotes(t *testing.T) {
 	fsys["specs/a.md"] = &fstest.MapFile{Data: []byte(strings.Replace(newDoc, "**alpha** first", "first, unlabeled", 1))}
 	if _, _, err := Editorial(fsys, "REQ-au-a"); err == nil || !strings.Contains(err.Error(), "names clause `alpha`, which REQ-au-a no longer declares") {
 		t.Fatalf("dangling clause claim re-consented: %v", err)
+	}
+}
+
+// Every authoring verb stamps the consent-source pin beside the content
+// pin, and the named re-pin over a rehashed record names it as such —
+// the operator asked to re-consent and learns there was nothing to
+// consent to for that record (REQ-evidence-consent-current,
+// REQ-change-editorial).
+//
+//gofresh:pure
+func TestAuthoringStampsTheSourcePinAndEditorialNamesRehashes(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-consent-current")
+	fsys := attestableFS(nil)
+	spec, err := compileClean(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var source string
+	for _, r := range spec.GetRequirements() {
+		if r.GetId() == "REQ-au-a" {
+			source = r.GetSourceHash()
+		}
+	}
+	up, err := Bind(fsys, backends, bindReq("REQ-au-a", "example.com/p.F"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(up.Content), "source_hash: \""+source+"\"") {
+		t.Fatalf("bind did not stamp the source pin:\n%s", up.Content)
+	}
+	g := &stipulatorv1.Gap{}
+	g.SetRequirementId("REQ-au-b")
+	g.SetReason("r")
+	lands, err := NewLandingCondition("", "", "c", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.SetLands(lands)
+	gup, _, _, err := Gap(fsys, g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(gup.Content), "source_hash: \"") {
+		t.Fatalf("gap did not stamp the source pin:\n%s", gup.Content)
+	}
+	aup, _, err := AttestRequirement(fsys, "REQ-au-s", "judged")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(aup.Content), "source_hash: \"") {
+		t.Fatalf("attest did not stamp the source pin:\n%s", aup.Content)
+	}
+	// A rehashed binding under the named re-pin: re-pinned and named.
+	fsys[".stipulator/bindings/au.textproto"] = &fstest.MapFile{Data: []byte(
+		"bindings {\n  requirement_id: \"REQ-au-a\"\n  content_hash: \"" + strings.Repeat("0", 64) + "\"\n  source_hash: \"" + source + "\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n}\n")}
+	ups, consented, err := Editorial(fsys, "REQ-au-a")
+	if err != nil || len(ups) != 1 {
+		t.Fatalf("editorial over a rehash: %v %v", ups, err)
+	}
+	if len(consented) != 1 || consented[0] != "example.com/p.F rehashed — "+records.RehashNote {
+		t.Fatalf("consented = %v, want the rehash named", consented)
+	}
+}
+
+// The named re-pin's no-op states a fact: "text unchanged" only when
+// records consent to the current text, "no records" when none name the
+// requirement, and the re-attest ceremony when the only consent not
+// holding is an attestation's — a judgment the editorial re-pin never
+// rewrites (REQ-pin-backfill).
+//
+//gofresh:pure
+func TestEditorialNoOpNamesItsReason(t *testing.T) {
+	stipulate.Covers(t, "REQ-pin-backfill")
+	fsys := attestableFS(nil)
+	_, _, err := Editorial(fsys, "REQ-au-b")
+	if !errors.Is(err, ErrNothingStale) || NoOpNote(err) != "no records name it; nothing to re-consent" {
+		t.Fatalf("no records: err=%v note=%q", err, NoOpNote(err))
+	}
+	up, err := Bind(fsys, backends, bindReq("REQ-au-b", "example.com/p.F"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fsys[up.Path] = &fstest.MapFile{Data: up.Content}
+	_, _, err = Editorial(fsys, "REQ-au-b")
+	if !errors.Is(err, ErrNothingStale) || NoOpNote(err) != "text unchanged; nothing to re-consent" {
+		t.Fatalf("current binding: err=%v note=%q", err, NoOpNote(err))
+	}
+	// An attestation vouched for other text: the editorial re-pin does
+	// not rewrite it, and the note says which ceremony does.
+	aup, _, err := AttestRequirement(fsys, "REQ-au-s", "judged")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fsys[aup.Path] = &fstest.MapFile{Data: []byte(strings.Replace(string(aup.Content), "content_hash: \"", "content_hash: \"0", 1))}
+	fsys[aup.Path] = &fstest.MapFile{Data: []byte(strings.Replace(string(fsys[aup.Path].Data), "source_hash: \"", "source_hash: \"0", 1))}
+	_, _, err = Editorial(fsys, "REQ-au-s")
+	if !errors.Is(err, ErrNothingStale) || !strings.Contains(NoOpNote(err), "re-attest: stipulator attest requirement --req REQ-au-s") {
+		t.Fatalf("stale attestation only: err=%v note=%q", err, NoOpNote(err))
 	}
 }

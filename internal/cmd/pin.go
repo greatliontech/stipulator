@@ -45,9 +45,9 @@ func pinCmd() *cobra.Command {
 					ups, consented, err := author.Editorial(os.DirFS(chdir), id)
 					if errors.Is(err, author.ErrNothingStale) {
 						if syms := mismatched[id]; len(syms) > 0 {
-							fmt.Printf("%s: clause pins current; shape of %s moved — the ids form re-consents clause text only, blanket stipulator pin re-pins shapes\n", id, strings.Join(syms, ", "))
+							fmt.Printf("%s: %s — shape of %s moved, and the ids form re-consents clause text only: blanket stipulator pin re-pins shapes\n", id, author.NoOpNote(err), strings.Join(syms, ", "))
 						} else {
-							fmt.Printf("%s: pins current\n", id)
+							fmt.Printf("%s: %s\n", id, author.NoOpNote(err))
 						}
 						continue
 					}
@@ -79,15 +79,11 @@ func pinCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			hashes := map[string]string{}
-			for _, r := range spec.GetRequirements() {
-				hashes[r.GetId()] = r.GetContentHash()
-			}
 			backends, err := makeBackends(cmd.Context(), chdir)
 			if err != nil {
 				return err
 			}
-			updates, preserved, reshaped, err := records.Pin(store, hashes, author.ResolveShapes(store, backends, nil, func(symbol string, err error) {
+			updates, preserved, reshaped, rehashed, err := records.Pin(store, records.HashesOf(spec), author.ResolveShapes(store, backends, nil, func(symbol string, err error) {
 				fmt.Fprintf(os.Stderr, "pin: skipping %s: %v\n", symbol, err)
 			}))
 			if err != nil {
@@ -116,6 +112,9 @@ func pinCmd() *cobra.Command {
 			}
 			if len(reshaped) > 0 {
 				fmt.Printf("shape pins refreshed (bound implementation moved): %s\n", strings.Join(reshaped, ", "))
+			}
+			if len(rehashed) > 0 {
+				fmt.Printf("rehashed (%s): %s\n", records.RehashNote, strings.Join(rehashed, ", "))
 			}
 			if len(preserved) > 0 {
 				fmt.Printf("awaiting re-consent (pin --req): %s\n", strings.Join(preserved, ", "))

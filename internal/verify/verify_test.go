@@ -127,7 +127,7 @@ func TestPin(t *testing.T) {
 	})
 	_ = rep
 	hashes := map[string]string{"REQ-v-a": strings.Repeat("a", 64)}
-	updates, preserved, _, err := records.Pin(store, hashes, nil)
+	updates, preserved, _, _, err := records.Pin(store, records.Hashes{Content: hashes}, nil)
 	if len(preserved) != 0 {
 		t.Fatalf("nothing differs yet, preserved = %v", preserved)
 	}
@@ -153,7 +153,7 @@ func TestPin(t *testing.T) {
 	store3, _ := records.Load(fstest.MapFS{
 		".stipulator/bindings/x.textproto": {Data: []byte(binding("REQ-v-a", strings.Repeat("0", 64)))},
 	})
-	ups, preserved3, _, err := records.Pin(store3, hashes, nil)
+	ups, preserved3, _, _, err := records.Pin(store3, records.Hashes{Content: hashes}, nil)
 	if err != nil || len(ups) != 0 {
 		t.Fatalf("differing pin laundered by pin: %v %v", ups, err)
 	}
@@ -167,7 +167,7 @@ func TestPin(t *testing.T) {
 	store2, _ := records.Load(fstest.MapFS{
 		".stipulator/bindings/x.textproto": {Data: got},
 	})
-	if again, _, _, err := records.Pin(store2, hashes, nil); err != nil || len(again) != 0 {
+	if again, _, _, _, err := records.Pin(store2, records.Hashes{Content: hashes}, nil); err != nil || len(again) != 0 {
 		t.Fatalf("re-pin of pinned file produced changes: %v %v", again, err)
 	}
 }
@@ -179,10 +179,10 @@ func TestPinRefusesCommentedFile(t *testing.T) {
 		".stipulator/bindings/x.textproto": header + binding("REQ-v-a", "") +
 			"# reviewed by hand, keep\n" + binding("REQ-v-b", ""),
 	})
-	_, _, _, err := records.Pin(store, map[string]string{
+	_, _, _, _, err := records.Pin(store, records.Hashes{Content: map[string]string{
 		"REQ-v-a": strings.Repeat("a", 64),
 		"REQ-v-b": strings.Repeat("b", 64),
-	}, nil)
+	}}, nil)
 	if err == nil || !strings.Contains(err.Error(), "comment outside the leading header") {
 		t.Fatalf("want comment refusal, got %v", err)
 	}
@@ -303,7 +303,7 @@ func TestBackendResolution(t *testing.T) {
 	}
 
 	// Pin the shape, re-run: shape pinned.
-	updates, _, _, err := records.Pin(store, nil, map[string]string{
+	updates, _, _, _, err := records.Pin(store, records.Hashes{}, map[string]string{
 		records.ShapeKey("go", "example.com/p.F"): strings.Repeat("s", 64),
 	})
 	if err != nil {
@@ -756,4 +756,67 @@ func TestClauseClaimHygiene(t *testing.T) {
 		})
 		wantProblem(t, rep, "duplicate binding: REQ-v-c example.com/p.F BINDING_ROLE_IMPLEMENTS clause 2 (second)")
 	})
+}
+
+// A record whose content pin differs while its source pin matches the
+// requirement's consent-source digest consented to byte-identical text:
+// verification reads it as pinned (a rehash, counted), never stale — on
+// bindings and attestations alike — while a differing source pin, or
+// none, leaves the differing content pin stale
+// (REQ-evidence-consent-current).
+//
+//gofresh:pure
+func TestConsentHoldsByRehash(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-consent-current")
+	spec0, diags, err := compile.Compile(fstest.MapFS{
+		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
+		"specs/a.md":                     {Data: []byte(goodDoc)},
+	})
+	if err != nil || len(diags) > 0 {
+		t.Fatalf("compile: %v %v", err, diags)
+	}
+	source := ""
+	for _, r := range spec0.GetRequirements() {
+		if r.GetId() == "REQ-v-a" {
+			source = r.GetSourceHash()
+		}
+	}
+	old := strings.Repeat("0", 64)
+	rec := func(sym, content, src string) string {
+		b := "bindings {\n  requirement_id: \"REQ-v-a\"\n  content_hash: \"" + content + "\"\n"
+		if src != "" {
+			b += "  source_hash: \"" + src + "\"\n"
+		}
+		return b + "  backend: \"go\"\n  symbol: \"" + sym + "\"\n  role: BINDING_ROLE_IMPLEMENTS\n}\n"
+	}
+	rep, _ := run(t, map[string]string{
+		".stipulator/bindings/x.textproto":     rec("example.com/p.Rehash", old, source) + rec("example.com/p.Moved", old, strings.Repeat("6", 64)) + rec("example.com/p.Prefield", old, ""),
+		".stipulator/attestations/a.textproto": "attestations {\n  requirement_id: \"REQ-v-b\"\n  content_hash: \"" + old + "\"\n  source_hash: \"" + strings.Repeat("7", 64) + "\"\n  reason: \"judged\"\n}\n",
+	})
+	want := map[string][2]bool{"example.com/p.Rehash": {true, true}, "example.com/p.Moved": {false, false}, "example.com/p.Prefield": {false, false}}
+	for _, r := range rep.Results {
+		w := want[r.Symbol]
+		if r.ContentPinned != w[0] || r.Rehash != w[1] {
+			t.Errorf("%s: pinned=%v rehash=%v, want %v %v", r.Symbol, r.ContentPinned, r.Rehash, w[0], w[1])
+		}
+	}
+	if rep.Pinned != 1 || rep.Stale != 2 || rep.Rehash != 1 {
+		t.Fatalf("counts pinned=%d stale=%d rehash=%d, want 1 2 1", rep.Pinned, rep.Stale, rep.Rehash)
+	}
+	if len(rep.Attestations) != 1 || rep.Attestations[0].ContentPinned {
+		t.Fatalf("attestation with a differing source pin read as current: %+v", rep.Attestations)
+	}
+	// The attestation rehashes too when its source pin matches.
+	sourceB := ""
+	for _, r := range spec0.GetRequirements() {
+		if r.GetId() == "REQ-v-b" {
+			sourceB = r.GetSourceHash()
+		}
+	}
+	rep, _ = run(t, map[string]string{
+		".stipulator/attestations/a.textproto": "attestations {\n  requirement_id: \"REQ-v-b\"\n  content_hash: \"" + old + "\"\n  source_hash: \"" + sourceB + "\"\n  reason: \"judged\"\n}\n",
+	})
+	if len(rep.Attestations) != 1 || !rep.Attestations[0].ContentPinned || rep.Rehash != 1 {
+		t.Fatalf("attestation rehash not current: %+v rehash=%d", rep.Attestations, rep.Rehash)
+	}
 }

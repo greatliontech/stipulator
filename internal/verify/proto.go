@@ -102,6 +102,7 @@ func BindingResultProto(br BindingResult) *stipulatorv1.BindingResult {
 		m.SetClauseOrdinal(br.Clause.GetOrdinal())
 		m.SetClauseLabel(br.Clause.GetLabel())
 	}
+	m.SetRehash(br.Rehash)
 	return m
 }
 

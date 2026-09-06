@@ -835,6 +835,7 @@ type BindingResult struct {
 	xxx_hidden_Package       *string                `protobuf:"bytes,12,opt,name=package"`
 	xxx_hidden_ClauseOrdinal uint32                 `protobuf:"varint,13,opt,name=clause_ordinal,json=clauseOrdinal"`
 	xxx_hidden_ClauseLabel   *string                `protobuf:"bytes,14,opt,name=clause_label,json=clauseLabel"`
+	xxx_hidden_Rehash        bool                   `protobuf:"varint,15,opt,name=rehash"`
 	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
 	XXX_presence             [1]uint32
 	unknownFields            protoimpl.UnknownFields
@@ -992,74 +993,86 @@ func (x *BindingResult) GetClauseLabel() string {
 	return ""
 }
 
+func (x *BindingResult) GetRehash() bool {
+	if x != nil {
+		return x.xxx_hidden_Rehash
+	}
+	return false
+}
+
 func (x *BindingResult) SetPath(v string) {
 	x.xxx_hidden_Path = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 15)
 }
 
 func (x *BindingResult) SetRequirementId(v string) {
 	x.xxx_hidden_RequirementId = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 15)
 }
 
 func (x *BindingResult) SetSymbol(v string) {
 	x.xxx_hidden_Symbol = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 15)
 }
 
 func (x *BindingResult) SetBackend(v string) {
 	x.xxx_hidden_Backend = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 15)
 }
 
 func (x *BindingResult) SetRole(v BindingRole) {
 	x.xxx_hidden_Role = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 15)
 }
 
 func (x *BindingResult) SetContentPinned(v bool) {
 	x.xxx_hidden_ContentPinned = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 15)
 }
 
 func (x *BindingResult) SetResolution(v Resolution) {
 	x.xxx_hidden_Resolution = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 15)
 }
 
 func (x *BindingResult) SetShape(v ShapeState) {
 	x.xxx_hidden_Shape = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 15)
 }
 
 func (x *BindingResult) SetTestOutcome(v TestOutcome) {
 	x.xxx_hidden_TestOutcome = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 15)
 }
 
 func (x *BindingResult) SetWitnessClass(v WitnessClass) {
 	x.xxx_hidden_WitnessClass = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 15)
 }
 
 func (x *BindingResult) SetRaceEnabled(v bool) {
 	x.xxx_hidden_RaceEnabled = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 15)
 }
 
 func (x *BindingResult) SetPackage(v string) {
 	x.xxx_hidden_Package = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 15)
 }
 
 func (x *BindingResult) SetClauseOrdinal(v uint32) {
 	x.xxx_hidden_ClauseOrdinal = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 15)
 }
 
 func (x *BindingResult) SetClauseLabel(v string) {
 	x.xxx_hidden_ClauseLabel = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 13, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 13, 15)
+}
+
+func (x *BindingResult) SetRehash(v bool) {
+	x.xxx_hidden_Rehash = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 14, 15)
 }
 
 func (x *BindingResult) HasPath() bool {
@@ -1160,6 +1173,13 @@ func (x *BindingResult) HasClauseLabel() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 13)
 }
 
+func (x *BindingResult) HasRehash() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 14)
+}
+
 func (x *BindingResult) ClearPath() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Path = nil
@@ -1230,6 +1250,11 @@ func (x *BindingResult) ClearClauseLabel() {
 	x.xxx_hidden_ClauseLabel = nil
 }
 
+func (x *BindingResult) ClearRehash() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 14)
+	x.xxx_hidden_Rehash = false
+}
+
 type BindingResult_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -1254,6 +1279,9 @@ type BindingResult_builder struct {
 	// Both unset for a whole-requirement claim.
 	ClauseOrdinal *uint32
 	ClauseLabel   *string
+	// The consent holds by the source pin alone: a rehash awaiting the
+	// blanket pin's rewrite (REQ-evidence-consent-current).
+	Rehash *bool
 }
 
 func (b0 BindingResult_builder) Build() *BindingResult {
@@ -1261,60 +1289,64 @@ func (b0 BindingResult_builder) Build() *BindingResult {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Path != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 15)
 		x.xxx_hidden_Path = b.Path
 	}
 	if b.RequirementId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 15)
 		x.xxx_hidden_RequirementId = b.RequirementId
 	}
 	if b.Symbol != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 15)
 		x.xxx_hidden_Symbol = b.Symbol
 	}
 	if b.Backend != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 15)
 		x.xxx_hidden_Backend = b.Backend
 	}
 	if b.Role != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 15)
 		x.xxx_hidden_Role = *b.Role
 	}
 	if b.ContentPinned != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 15)
 		x.xxx_hidden_ContentPinned = *b.ContentPinned
 	}
 	if b.Resolution != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 15)
 		x.xxx_hidden_Resolution = *b.Resolution
 	}
 	if b.Shape != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 15)
 		x.xxx_hidden_Shape = *b.Shape
 	}
 	if b.TestOutcome != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 15)
 		x.xxx_hidden_TestOutcome = *b.TestOutcome
 	}
 	if b.WitnessClass != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 15)
 		x.xxx_hidden_WitnessClass = *b.WitnessClass
 	}
 	if b.RaceEnabled != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 15)
 		x.xxx_hidden_RaceEnabled = *b.RaceEnabled
 	}
 	if b.Package != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 15)
 		x.xxx_hidden_Package = b.Package
 	}
 	if b.ClauseOrdinal != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 15)
 		x.xxx_hidden_ClauseOrdinal = *b.ClauseOrdinal
 	}
 	if b.ClauseLabel != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 13, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 13, 15)
 		x.xxx_hidden_ClauseLabel = b.ClauseLabel
+	}
+	if b.Rehash != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 14, 15)
+		x.xxx_hidden_Rehash = *b.Rehash
 	}
 	return m0
 }
@@ -2873,6 +2905,7 @@ type VerifySummary struct {
 	xxx_hidden_OutsidePolicy                 int32                  `protobuf:"varint,13,opt,name=outside_policy,json=outsidePolicy"`
 	xxx_hidden_WitnessFailureHeadings        []string               `protobuf:"bytes,15,rep,name=witness_failure_headings,json=witnessFailureHeadings"`
 	xxx_hidden_WitnessFailureHeadingsOmitted int32                  `protobuf:"varint,16,opt,name=witness_failure_headings_omitted,json=witnessFailureHeadingsOmitted"`
+	xxx_hidden_Rehash                        int32                  `protobuf:"varint,17,opt,name=rehash"`
 	XXX_raceDetectHookData                   protoimpl.RaceDetectHookData
 	XXX_presence                             [1]uint32
 	unknownFields                            protoimpl.UnknownFields
@@ -3011,59 +3044,66 @@ func (x *VerifySummary) GetWitnessFailureHeadingsOmitted() int32 {
 	return 0
 }
 
+func (x *VerifySummary) GetRehash() int32 {
+	if x != nil {
+		return x.xxx_hidden_Rehash
+	}
+	return 0
+}
+
 func (x *VerifySummary) SetProblems(v int32) {
 	x.xxx_hidden_Problems = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 15)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 16)
 }
 
 func (x *VerifySummary) SetPinned(v int32) {
 	x.xxx_hidden_Pinned = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 15)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 16)
 }
 
 func (x *VerifySummary) SetStale(v int32) {
 	x.xxx_hidden_Stale = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 15)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 16)
 }
 
 func (x *VerifySummary) SetShapePinned(v int32) {
 	x.xxx_hidden_ShapePinned = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 15)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 16)
 }
 
 func (x *VerifySummary) SetShapeUnpinned(v int32) {
 	x.xxx_hidden_ShapeUnpinned = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 15)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 16)
 }
 
 func (x *VerifySummary) SetShapeMismatch(v int32) {
 	x.xxx_hidden_ShapeMismatch = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 15)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 16)
 }
 
 func (x *VerifySummary) SetBroken(v int32) {
 	x.xxx_hidden_Broken = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 15)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 16)
 }
 
 func (x *VerifySummary) SetUnverified(v int32) {
 	x.xxx_hidden_Unverified = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 15)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 16)
 }
 
 func (x *VerifySummary) SetTestsPassed(v int32) {
 	x.xxx_hidden_TestsPassed = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 15)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 16)
 }
 
 func (x *VerifySummary) SetTestsFailed(v int32) {
 	x.xxx_hidden_TestsFailed = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 15)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 16)
 }
 
 func (x *VerifySummary) SetTestsNotRun(v int32) {
 	x.xxx_hidden_TestsNotRun = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 15)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 16)
 }
 
 func (x *VerifySummary) SetSignatures(v []*ChangeSignature) {
@@ -3072,7 +3112,7 @@ func (x *VerifySummary) SetSignatures(v []*ChangeSignature) {
 
 func (x *VerifySummary) SetOutsidePolicy(v int32) {
 	x.xxx_hidden_OutsidePolicy = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 15)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 16)
 }
 
 func (x *VerifySummary) SetWitnessFailureHeadings(v []string) {
@@ -3081,7 +3121,12 @@ func (x *VerifySummary) SetWitnessFailureHeadings(v []string) {
 
 func (x *VerifySummary) SetWitnessFailureHeadingsOmitted(v int32) {
 	x.xxx_hidden_WitnessFailureHeadingsOmitted = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 14, 15)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 14, 16)
+}
+
+func (x *VerifySummary) SetRehash(v int32) {
+	x.xxx_hidden_Rehash = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 15, 16)
 }
 
 func (x *VerifySummary) HasProblems() bool {
@@ -3175,6 +3220,13 @@ func (x *VerifySummary) HasWitnessFailureHeadingsOmitted() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 14)
 }
 
+func (x *VerifySummary) HasRehash() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 15)
+}
+
 func (x *VerifySummary) ClearProblems() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Problems = 0
@@ -3240,6 +3292,11 @@ func (x *VerifySummary) ClearWitnessFailureHeadingsOmitted() {
 	x.xxx_hidden_WitnessFailureHeadingsOmitted = 0
 }
 
+func (x *VerifySummary) ClearRehash() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 15)
+	x.xxx_hidden_Rehash = 0
+}
+
 type VerifySummary_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -3265,6 +3322,13 @@ type VerifySummary_builder struct {
 	// is never silent (REQ-mcp-response-contract).
 	WitnessFailureHeadings        []string
 	WitnessFailureHeadingsOmitted *int32
+	// Rehash counts consent records — bindings and standing attestations
+	// alike — whose consent holds by the source pin alone: the canonical
+	// form moved over byte-identical text, and a blanket pin rewrites
+	// their content pins with no consent question
+	// (REQ-evidence-consent-current). Never counted as stale; the binding
+	// rows carry the per-row flag.
+	Rehash *int32
 }
 
 func (b0 VerifySummary_builder) Build() *VerifySummary {
@@ -3272,58 +3336,62 @@ func (b0 VerifySummary_builder) Build() *VerifySummary {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Problems != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 15)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 16)
 		x.xxx_hidden_Problems = *b.Problems
 	}
 	if b.Pinned != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 15)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 16)
 		x.xxx_hidden_Pinned = *b.Pinned
 	}
 	if b.Stale != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 15)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 16)
 		x.xxx_hidden_Stale = *b.Stale
 	}
 	if b.ShapePinned != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 15)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 16)
 		x.xxx_hidden_ShapePinned = *b.ShapePinned
 	}
 	if b.ShapeUnpinned != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 15)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 16)
 		x.xxx_hidden_ShapeUnpinned = *b.ShapeUnpinned
 	}
 	if b.ShapeMismatch != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 15)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 16)
 		x.xxx_hidden_ShapeMismatch = *b.ShapeMismatch
 	}
 	if b.Broken != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 15)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 16)
 		x.xxx_hidden_Broken = *b.Broken
 	}
 	if b.Unverified != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 15)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 16)
 		x.xxx_hidden_Unverified = *b.Unverified
 	}
 	if b.TestsPassed != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 15)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 16)
 		x.xxx_hidden_TestsPassed = *b.TestsPassed
 	}
 	if b.TestsFailed != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 15)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 16)
 		x.xxx_hidden_TestsFailed = *b.TestsFailed
 	}
 	if b.TestsNotRun != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 15)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 16)
 		x.xxx_hidden_TestsNotRun = *b.TestsNotRun
 	}
 	x.xxx_hidden_Signatures = &b.Signatures
 	if b.OutsidePolicy != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 15)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 16)
 		x.xxx_hidden_OutsidePolicy = *b.OutsidePolicy
 	}
 	x.xxx_hidden_WitnessFailureHeadings = b.WitnessFailureHeadings
 	if b.WitnessFailureHeadingsOmitted != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 14, 15)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 14, 16)
 		x.xxx_hidden_WitnessFailureHeadingsOmitted = *b.WitnessFailureHeadingsOmitted
+	}
+	if b.Rehash != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 15, 16)
+		x.xxx_hidden_Rehash = *b.Rehash
 	}
 	return m0
 }
@@ -4576,7 +4644,7 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\ttruncated\x18\x06 \x01(\bR\ttruncated\"7\n" +
 	"\aProblem\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\xc7\x04\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\xdf\x04\n" +
 	"\rBindingResult\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12%\n" +
 	"\x0erequirement_id\x18\x02 \x01(\tR\rrequirementId\x12\x16\n" +
@@ -4594,7 +4662,8 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\frace_enabled\x18\v \x01(\bR\vraceEnabled\x12\x18\n" +
 	"\apackage\x18\f \x01(\tR\apackage\x12%\n" +
 	"\x0eclause_ordinal\x18\r \x01(\rR\rclauseOrdinal\x12!\n" +
-	"\fclause_label\x18\x0e \x01(\tR\vclauseLabel\"\x9f\x01\n" +
+	"\fclause_label\x18\x0e \x01(\tR\vclauseLabel\x12\x16\n" +
+	"\x06rehash\x18\x0f \x01(\bR\x06rehash\"\x9f\x01\n" +
 	"\x12RegistrationResult\x12\x18\n" +
 	"\apackage\x18\x01 \x01(\tR\apackage\x12\x12\n" +
 	"\x04test\x18\x02 \x01(\tR\x04test\x12%\n" +
@@ -4654,7 +4723,7 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x10policy_overrides\x18\n" +
 	" \x03(\tR\x0fpolicyOverrides\x124\n" +
 	"\x16resolved_gaps_prunable\x18\v \x01(\x05R\x14resolvedGapsPrunable\x12\x18\n" +
-	"\apartial\x18\f \x01(\x05R\apartial\"\xdc\x04\n" +
+	"\apartial\x18\f \x01(\x05R\apartial\"\xf4\x04\n" +
 	"\rVerifySummary\x12\x1a\n" +
 	"\bproblems\x18\x01 \x01(\x05R\bproblems\x12\x16\n" +
 	"\x06pinned\x18\x02 \x01(\x05R\x06pinned\x12\x14\n" +
@@ -4675,7 +4744,8 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"signatures\x12%\n" +
 	"\x0eoutside_policy\x18\r \x01(\x05R\routsidePolicy\x128\n" +
 	"\x18witness_failure_headings\x18\x0f \x03(\tR\x16witnessFailureHeadings\x12G\n" +
-	" witness_failure_headings_omitted\x18\x10 \x01(\x05R\x1dwitnessFailureHeadingsOmittedJ\x04\b\x0e\x10\x0f\"\x8f\x01\n" +
+	" witness_failure_headings_omitted\x18\x10 \x01(\x05R\x1dwitnessFailureHeadingsOmitted\x12\x16\n" +
+	"\x06rehash\x18\x11 \x01(\x05R\x06rehashJ\x04\b\x0e\x10\x0f\"\x8f\x01\n" +
 	"\x04Seed\x12%\n" +
 	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x12\x18\n" +
 	"\abackend\x18\x02 \x01(\tR\abackend\x12\x16\n" +

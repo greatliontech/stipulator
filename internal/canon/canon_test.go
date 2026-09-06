@@ -170,3 +170,31 @@ func TestPropCanonProjection(t *testing.T) {
 		}
 	})
 }
+
+// SourceDigest is wire state: its preimage — the newline-joined SHA-256
+// hex digests of the raw blocks, digested once more — is pinned by
+// known vectors, so the join, the per-block hashing, and the absence of
+// canonicalization are each observable (REQ-model-consent-source).
+//
+//gofresh:pure
+func TestSourceDigest(t *testing.T) {
+	stipulate.Covers(t, "REQ-model-consent-source")
+	// sha256("abc") = ba78…15ad; sha256("de") = the second line;
+	// the digest is sha256("<hex(abc)>\n<hex(de)>").
+	const two = "fa361645e64d3f87193044e641acfb63277512752e3c891ae61eba18de631743"
+	if got := SourceDigest("abc", "de"); got != two {
+		t.Fatalf("SourceDigest(abc, de) = %q, want %q", got, two)
+	}
+	const one = "dfe7a23fefeea519e9bbfdd1a6be94c4b2e4529dd6b7cbea83f9959c2621b13c"
+	if got := SourceDigest("abc"); got != one {
+		t.Fatalf("SourceDigest(abc) = %q, want %q", got, one)
+	}
+	// No canonicalization: whitespace and controls are bytes here.
+	if SourceDigest("a  b") == SourceDigest("a b") || SourceDigest("a\x00b") == SourceDigest("ab") {
+		t.Fatal("SourceDigest canonicalized its input")
+	}
+	// Block boundaries ride the preimage.
+	if SourceDigest("ab", "c") == SourceDigest("a", "bc") {
+		t.Fatal("SourceDigest lost a block boundary")
+	}
+}

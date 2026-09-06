@@ -4,6 +4,7 @@
 bindings {
   requirement_id: "REQ-model-graph"
   content_hash: "1b75b66169214a3c8963f571669498f63900964eb6d06a3ed52c524677a28b86"
+  source_hash: "b97d1fe74f8c8c15bc562fdfb77da990747f4154aa9865119a1cd64735418379"
   backend: "proto"
   symbol: "stipulator.v1.Spec"
   role: BINDING_ROLE_IMPLEMENTS
@@ -11,7 +12,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-binding-store"
-  content_hash: "2b3a140276564c9cd7a88b6ce942288797a79116414b6130ab1bc8c19709d41d"
+  content_hash: "b6aa8be60641cf655b18e86b61ea1009f64c1953bb9e4c7155ce966d83f3799f"
+  source_hash: "ca3ee5683c772a3d28f13225cb160fdfc52fb9422cea891d1a0cef5d362e898d"
   backend: "proto"
   symbol: "stipulator.v1.Binding"
   role: BINDING_ROLE_IMPLEMENTS
@@ -20,6 +22,7 @@ bindings {
 bindings {
   requirement_id: "REQ-evidence-binding-roles"
   content_hash: "dcf6d579b728fce524e20298cfb68bbbbd205df0ef19e428bc1cf5c7a523113b"
+  source_hash: "fbfb184d4b422264abe213f0d2bb4edb7c0063ba188f098e87ac34d8e48ef7b7"
   backend: "proto"
   symbol: "stipulator.v1.BindingRole"
   role: BINDING_ROLE_IMPLEMENTS
@@ -27,7 +30,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-record"
-  content_hash: "c3215f6833af3827722530b93a679443acb0ca899cbae02196e665bce6de31bf"
+  content_hash: "fa52c0c5cfe2cd18cacc4eca687fb489119d347451bffc57097b177786b7fd43"
+  source_hash: "ee7bbf7edfb288019ccdfe2ee9065fbf912f0b82215a6dc5b7b589ea4bcbbc98"
   backend: "proto"
   symbol: "stipulator.v1.Gap"
   role: BINDING_ROLE_IMPLEMENTS
@@ -36,6 +40,7 @@ bindings {
 bindings {
   requirement_id: "REQ-gap-conditions"
   content_hash: "13a40af8e6a229927b3e15516d441576192cede92c878677ec03747746115fe4"
+  source_hash: "b1b2d45848cb1fcc3ed0b75ca97c30ffdf12659359c5e84f340701ea01b8d75c"
   backend: "proto"
   symbol: "stipulator.v1.LandingCondition"
   role: BINDING_ROLE_IMPLEMENTS
@@ -44,6 +49,7 @@ bindings {
 bindings {
   requirement_id: "REQ-model-tombstones"
   content_hash: "0e8503c9cc74485a5879cbd85ca8a82fb972056aa91e116b18940c70de3cc0bf"
+  source_hash: "03ade28c8b354a05a60f8334ded746d9e74086ec7d59876eb8ad02b8b155edfc"
   backend: "proto"
   symbol: "stipulator.v1.Tombstones"
   role: BINDING_ROLE_IMPLEMENTS
@@ -52,6 +58,7 @@ bindings {
 bindings {
   requirement_id: "REQ-core-proto-io"
   content_hash: "fdf39bd8dde031ef09be16b828b1a811e4df2d37670ba2f5355bdd56d2cb0b11"
+  source_hash: "72929eb427c5ffa4143a1700079524616fe36bb1032e87008315771fd712f29f"
   backend: "proto"
   symbol: "stipulator.v1.Manifest"
   role: BINDING_ROLE_IMPLEMENTS

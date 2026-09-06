@@ -31,20 +31,63 @@ func ShapeKey(backend, symbol string) string { return backend + "|" + symbol }
 // protobuf-go text marshaler deliberately randomizes its whitespace, and
 // pin output is observable state that determinism rules over. The leading
 // comment header of each file (its '#' lines) is preserved.
-func Pin(store *Store, hashes, shapes map[string]string) (map[string][]byte, []string, []string, error) {
+//
+// The consent-source pin rides the same pass (REQ-evidence-consent-current):
+// a record whose content pin differs while its source pin matches the
+// requirement's current consent-source digest consented to byte-identical
+// text — the canonical form moved, not the text — so the blanket form
+// rewrites its content pin with no consent question and names the
+// requirement as rehashed; a record current by content has its source
+// pin set to the current digest (backfilled when unset, refreshed when
+// a rewrap or marker edit moved it — an equal content pin proves consent
+// to the current text, so its provenance follows). A differing content
+// pin with no matching source pin is the consent question the blanket
+// form never answers.
+func Pin(store *Store, hashes Hashes, shapes map[string]string) (updates map[string][]byte, preserved, reshaped, rehashed []string, err error) {
 	out := map[string][]byte{}
 	preservedSet := map[string]bool{}
 	reshapedSet := map[string]bool{}
+	rehashedSet := map[string]bool{}
+	// consentPass applies the blanket discipline to one record's pins,
+	// returning whether it changed them: backfill an unset content pin,
+	// rewrite a rehash, refresh the source pin of a record current by
+	// content (an equal content pin proves consent to the current text,
+	// so its provenance follows — a rewrap or a marker edit moves the
+	// digest under a standing content hash, and a stale source pin
+	// would silently disarm the rehash rescue for that record),
+	// preserve and name a differing content pin.
+	consentPass := func(id string, get func() (content, source string), set func(content, source string)) bool {
+		h, ok := hashes.Content[id]
+		if !ok {
+			return false
+		}
+		content, source := get()
+		switch hashes.Judge(id, content, source) {
+		case Current:
+			if source != hashes.Source[id] {
+				set(h, hashes.Source[id])
+				return true
+			}
+			return false
+		case Rehash:
+			rehashedSet[id] = true
+			set(h, hashes.Source[id])
+			return true
+		}
+		if content == "" {
+			set(h, hashes.Source[id])
+			return true
+		}
+		preservedSet[id] = true
+		return false
+	}
 	for _, bf := range store.Bindings {
 		changed := false
 		for _, b := range bf.Set.GetBindings() {
-			h, ok := hashes[b.GetRequirementId()]
-			switch {
-			case ok && b.GetContentHash() == "":
-				b.SetContentHash(h)
+			if consentPass(b.GetRequirementId(),
+				func() (string, string) { return b.GetContentHash(), b.GetSourceHash() },
+				func(c, s string) { b.SetContentHash(c); b.SetSourceHash(s) }) {
 				changed = true
-			case ok && b.GetContentHash() != h:
-				preservedSet[b.GetRequirementId()] = true
 			}
 			s, ok := shapes[ShapeKey(b.GetBackend(), b.GetSymbol())]
 			if ok && b.GetShapeHash() != s {
@@ -62,7 +105,7 @@ func Pin(store *Store, hashes, shapes map[string]string) (map[string][]byte, []s
 		// commentary outside the leading header, so refuse instead of
 		// silently dropping it.
 		if line := CommentOutsideHeader(bf.Raw); line > 0 {
-			return nil, nil, nil, fmt.Errorf("%s:%d: comment outside the leading header block; move commentary to the commit message before pinning", bf.Path, line)
+			return nil, nil, nil, nil, fmt.Errorf("%s:%d: comment outside the leading header block; move commentary to the commit message before pinning", bf.Path, line)
 		}
 		out[bf.Path] = renderBindingSet(bf)
 	}
@@ -72,33 +115,46 @@ func Pin(store *Store, hashes, shapes map[string]string) (map[string][]byte, []s
 	// is a consent question the blanket form never answers — preserved
 	// and named, exactly as a binding's (REQ-gap-consent).
 	for _, gf := range store.Gaps {
-		h, ok := hashes[gf.Gap.GetRequirementId()]
-		if !ok {
-			continue
-		}
-		switch {
-		case gf.Gap.GetContentHash() == "":
-			gf.Gap.SetContentHash(h)
+		if consentPass(gf.Gap.GetRequirementId(),
+			func() (string, string) { return gf.Gap.GetContentHash(), gf.Gap.GetSourceHash() },
+			func(c, s string) { gf.Gap.SetContentHash(c); gf.Gap.SetSourceHash(s) }) {
 			content, err := RenderGapFile(gf)
 			if err != nil {
-				return nil, nil, nil, err
+				return nil, nil, nil, nil, err
 			}
 			out[gf.Path] = content
-		case gf.Gap.GetContentHash() != h:
-			preservedSet[gf.Gap.GetRequirementId()] = true
 		}
 	}
-	preserved := make([]string, 0, len(preservedSet))
-	for id := range preservedSet {
-		preserved = append(preserved, id)
+	// Attestations too: a rehash or a missing source pin is no
+	// judgment question, so the blanket form settles it; a differing
+	// content pin stays the re-attest ceremony's.
+	for _, af := range store.Attestations {
+		changed := false
+		for _, a := range af.Set.GetAttestations() {
+			if consentPass(a.GetRequirementId(),
+				func() (string, string) { return a.GetContentHash(), a.GetSourceHash() },
+				func(c, s string) { a.SetContentHash(c); a.SetSourceHash(s) }) {
+				changed = true
+			}
+		}
+		if !changed {
+			continue
+		}
+		content, err := RenderAttestationFile(af)
+		if err != nil {
+			return nil, nil, nil, nil, err
+		}
+		out[af.Path] = content
 	}
-	sort.Strings(preserved)
-	reshaped := make([]string, 0, len(reshapedSet))
-	for sym := range reshapedSet {
-		reshaped = append(reshaped, sym)
+	sorted := func(set map[string]bool) []string {
+		keys := make([]string, 0, len(set))
+		for k := range set {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		return keys
 	}
-	sort.Strings(reshaped)
-	return out, preserved, reshaped, nil
+	return out, sorted(preservedSet), sorted(reshapedSet), sorted(rehashedSet), nil
 }
 
 // ShapeMismatched reports, per requirement id, the bound symbols whose
@@ -175,6 +231,7 @@ func renderBindingSet(bf BindingFile) []byte {
 		b.WriteString("\nbindings {\n")
 		writeField(&b, "requirement_id", bind.GetRequirementId())
 		writeField(&b, "content_hash", bind.GetContentHash())
+		writeField(&b, "source_hash", bind.GetSourceHash())
 		writeField(&b, "backend", bind.GetBackend())
 		writeField(&b, "symbol", bind.GetSymbol())
 		fmt.Fprintf(&b, "  role: %s\n", bind.GetRole())

@@ -1069,3 +1069,27 @@ func TestPartialIsTheUncoveredClassInPart(t *testing.T) {
 		t.Fatalf("partial + admitted attestation = %v, want attested", r.Bucket)
 	}
 }
+
+// A gap whose content pin differs while its source pin matches consented
+// to byte-identical text: it keeps excusing — a rehash, not a drift
+// (REQ-gap-consent, REQ-evidence-consent-current).
+//
+//gofresh:pure
+func TestGapConsentHoldsByRehash(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-consent", "REQ-evidence-consent-current")
+	doc := "# T\n\n**REQ-gc-a** (behavior): It MUST x.\n"
+	spec0, _ := fixture(t, doc, nil)
+	source := spec0.GetRequirements()[0].GetSourceHash()
+	old := strings.Repeat("0", 64)
+	gap := func(src string) string {
+		return "requirement_id: \"REQ-gc-a\"\nreason: \"r\"\ncontent_hash: \"" + old + "\"\nsource_hash: \"" + src + "\"\nlands { manual { condition: \"external\" } }\n"
+	}
+	spec, store := fixture(t, doc, map[string]string{".stipulator/gaps/a.textproto": gap(source)})
+	if rep := Evaluate(spec, &verify.Report{}, store, true, nil); !rep.GatePasses() || rep.Gaps[0].StaleConsent {
+		t.Fatalf("rehashed gap read as drifted: violations=%v stale=%v", rep.Violations, rep.Gaps[0].StaleConsent)
+	}
+	spec, store = fixture(t, doc, map[string]string{".stipulator/gaps/a.textproto": gap(strings.Repeat("6", 64))})
+	if rep := Evaluate(spec, &verify.Report{}, store, true, nil); rep.GatePasses() || !rep.Gaps[0].StaleConsent {
+		t.Fatalf("gap with a differing source pin still excuses: violations=%v", rep.Violations)
+	}
+}

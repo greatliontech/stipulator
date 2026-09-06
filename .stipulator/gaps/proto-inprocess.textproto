@@ -4,4 +4,5 @@
 requirement_id: "REQ-proto-inprocess"
 reason: "proto backend deferred indefinitely: machinery large, cut partial, gain marginal while Go witnesses and shape pins cover wire behavior"
 content_hash: "26f764bfe71c3566540203804a94684b746c7c7ca4d0b2263f510a7ecee87b3c"
+source_hash: "8fcb34d8c64d85be40a1568a2f56734bbe34ada935d50124a546f22e671e834b"
 lands { manual { condition: "proto backend work is scheduled (docs/issues/proto-backend.md)" } }

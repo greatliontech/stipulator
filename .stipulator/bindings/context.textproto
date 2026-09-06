@@ -4,6 +4,7 @@
 bindings {
   requirement_id: "REQ-context-seeds"
   content_hash: "b22ba056852674eaabc62c5971a50228a488656ca84dc371802e2f825e33eeb0"
+  source_hash: "3b0aac241fff9246347d6a8ea2977e0eb607eb1f33b526c8a63bff0557b66a38"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/facts.Seeds"
   role: BINDING_ROLE_IMPLEMENTS
@@ -13,6 +14,7 @@ bindings {
 bindings {
   requirement_id: "REQ-context-seeds"
   content_hash: "b22ba056852674eaabc62c5971a50228a488656ca84dc371802e2f825e33eeb0"
+  source_hash: "3b0aac241fff9246347d6a8ea2977e0eb607eb1f33b526c8a63bff0557b66a38"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/facts.TestSeedsFromNeighborhood"
   role: BINDING_ROLE_TESTS
@@ -22,6 +24,7 @@ bindings {
 bindings {
   requirement_id: "REQ-context-partitions"
   content_hash: "1cacbcaf795a039d82c6cae730c367559d0d43233356d53ec2a5e753372637ce"
+  source_hash: "8f3afadff006035393240c1b53c7e6cc160fd8dae44e9c334e513b1563e883a0"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/facts.Partitions"
   role: BINDING_ROLE_IMPLEMENTS
@@ -31,6 +34,7 @@ bindings {
 bindings {
   requirement_id: "REQ-context-partitions"
   content_hash: "1cacbcaf795a039d82c6cae730c367559d0d43233356d53ec2a5e753372637ce"
+  source_hash: "8f3afadff006035393240c1b53c7e6cc160fd8dae44e9c334e513b1563e883a0"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/facts.TestPartitions"
   role: BINDING_ROLE_TESTS
@@ -40,6 +44,7 @@ bindings {
 bindings {
   requirement_id: "REQ-context-dossier"
   content_hash: "0fe0236ac239eb006dbee86bcbba45f4a2bee8b4138b343753879ed76db83ede"
+  source_hash: "eb0586480d0df9601f058dd003ba367eef7c059ab21e6579046f67b20aa3f7ad"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestContextDossier"
   role: BINDING_ROLE_TESTS
@@ -49,6 +54,7 @@ bindings {
 bindings {
   requirement_id: "REQ-context-dossier"
   content_hash: "0fe0236ac239eb006dbee86bcbba45f4a2bee8b4138b343753879ed76db83ede"
+  source_hash: "eb0586480d0df9601f058dd003ba367eef7c059ab21e6579046f67b20aa3f7ad"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/dossier.Build"
   role: BINDING_ROLE_IMPLEMENTS

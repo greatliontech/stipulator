@@ -148,7 +148,7 @@ func TestPinCLIReportsMovedShapes(t *testing.T) {
 		t.Fatalf("ids form concealed the shape mismatch beside the re-pin:\n%s", out)
 	}
 	out = run("pin", "--req", "REQ-sh-a")
-	if !strings.Contains(out, "clause pins current; shape of example.com/shapes.F moved") {
+	if !strings.Contains(out, "text unchanged; nothing to re-consent — shape of example.com/shapes.F moved") {
 		t.Fatalf("ids no-op beside a shape mismatch claims quiescence:\n%s", out)
 	}
 	out = run("pin")
@@ -156,7 +156,7 @@ func TestPinCLIReportsMovedShapes(t *testing.T) {
 		t.Fatalf("blanket pin cleared the shape-mismatch signal invisibly:\n%s", out)
 	}
 	out = run("pin", "--req", "REQ-sh-a")
-	if !strings.Contains(out, "REQ-sh-a: pins current") || strings.Contains(out, "moved") {
+	if !strings.Contains(out, "REQ-sh-a: text unchanged; nothing to re-consent") || strings.Contains(out, "moved") {
 		t.Fatalf("quiescent ids answer wrong:\n%s", out)
 	}
 }

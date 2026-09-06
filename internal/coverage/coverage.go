@@ -498,10 +498,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 	gapped := map[string]bool{}
 	excused := map[string]map[Bucket]bool{}
 	staleConsent := map[string]bool{}
-	hashOf := map[string]string{}
-	for _, r := range spec.GetRequirements() {
-		hashOf[r.GetId()] = r.GetContentHash()
-	}
+	hashes := records.HashesOf(spec)
 	for _, gf := range store.Gaps {
 		id := gf.Gap.GetRequirementId()
 		gapped[id] = true
@@ -511,7 +508,10 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		// (REQ-gap-consent). An unset pin is a pre-field record and
 		// excuses as declared until a pin ceremony stamps it (blanket
 		// backfill or a per-identity re-consent).
-		drifted := gf.Gap.GetContentHash() != "" && gf.Gap.GetContentHash() != hashOf[id]
+		// A gap's consent is judged as a binding's: a matching source
+		// pin under a differing content pin is a rehash, not a drift
+		// (REQ-evidence-consent-current).
+		drifted := gf.Gap.GetContentHash() != "" && !hashes.Judge(id, gf.Gap.GetContentHash(), gf.Gap.GetSourceHash()).Holds()
 		if drifted {
 			staleConsent[id] = true
 		} else {

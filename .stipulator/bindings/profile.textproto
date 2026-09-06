@@ -4,6 +4,7 @@
 bindings {
   requirement_id: "REQ-profile-glob"
   content_hash: "c2c4c4c69acfafb9ab547e1f6d415c7f656c4f4e07ca697166c2489e3f41beb2"
+  source_hash: "9eed3eaddde90eb507df71716a91ccd1a902725e44e101273b57e7357a3851b4"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.TestValidateGlobErrors"
   role: BINDING_ROLE_TESTS
@@ -13,6 +14,7 @@ bindings {
 bindings {
   requirement_id: "REQ-profile-root"
   content_hash: "6512ba35768513f76a3026e0a8284ea6c83a2e8cc21dc756313a583e4cc97914"
+  source_hash: "2c01bc0826e548f8e820cf1874fedb43313de7802c549eff86d8dd0ae6b73b8e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.FindRoot"
   role: BINDING_ROLE_IMPLEMENTS
@@ -22,6 +24,7 @@ bindings {
 bindings {
   requirement_id: "REQ-profile-root"
   content_hash: "6512ba35768513f76a3026e0a8284ea6c83a2e8cc21dc756313a583e4cc97914"
+  source_hash: "2c01bc0826e548f8e820cf1874fedb43313de7802c549eff86d8dd0ae6b73b8e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/corpus.TestFindRoot"
   role: BINDING_ROLE_TESTS
@@ -31,6 +34,7 @@ bindings {
 bindings {
   requirement_id: "REQ-profile-term-lint"
   content_hash: "5ed9496e06c5649ea948f85c2020a37c23c53f841daee091153bd1e03d1c0c70"
+  source_hash: "7ebe64203c7a17d00a5d43f70959e0773263ee20072dba9bf79c95b6c3969952"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestTermLint"
   role: BINDING_ROLE_TESTS
@@ -40,6 +44,7 @@ bindings {
 bindings {
   requirement_id: "REQ-profile-term-lint"
   content_hash: "5ed9496e06c5649ea948f85c2020a37c23c53f841daee091153bd1e03d1c0c70"
+  source_hash: "7ebe64203c7a17d00a5d43f70959e0773263ee20072dba9bf79c95b6c3969952"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.lintTerms"
   role: BINDING_ROLE_IMPLEMENTS
@@ -49,6 +54,7 @@ bindings {
 bindings {
   requirement_id: "REQ-profile-term-matching"
   content_hash: "ccdc4a437d3376b02099c30f90c36982d1d10a57a1720512b19ae62848b4a7e0"
+  source_hash: "f9848380987d57b733561d9efe61a531db5eef286374ce1f46d6baaaf1476933"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestTermMatchingRuneBoundaries"
   role: BINDING_ROLE_TESTS
@@ -58,6 +64,7 @@ bindings {
 bindings {
   requirement_id: "REQ-profile-term-lint"
   content_hash: "5ed9496e06c5649ea948f85c2020a37c23c53f841daee091153bd1e03d1c0c70"
+  source_hash: "7ebe64203c7a17d00a5d43f70959e0773263ee20072dba9bf79c95b6c3969952"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestTermMatchingRuneBoundaries"
   role: BINDING_ROLE_TESTS
@@ -67,6 +74,7 @@ bindings {
 bindings {
   requirement_id: "REQ-profile-term-lint"
   content_hash: "5ed9496e06c5649ea948f85c2020a37c23c53f841daee091153bd1e03d1c0c70"
+  source_hash: "7ebe64203c7a17d00a5d43f70959e0773263ee20072dba9bf79c95b6c3969952"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestTermLintRuneBoundaries"
   role: BINDING_ROLE_TESTS
@@ -76,6 +84,7 @@ bindings {
 bindings {
   requirement_id: "REQ-profile-context-extent"
   content_hash: "5d43693f3f4b6509030c7011ee94d485f19ac623a8510b5a6e2c40356a53f3a1"
+  source_hash: "3eeb9d72b139b413b376b3f5af39ad23a78d17cc4bb65aeb7074653ee0af963d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestContextExtentRidesContentHash"
   role: BINDING_ROLE_TESTS
@@ -85,6 +94,7 @@ bindings {
 bindings {
   requirement_id: "REQ-profile-context-extent"
   content_hash: "5d43693f3f4b6509030c7011ee94d485f19ac623a8510b5a6e2c40356a53f3a1"
+  source_hash: "3eeb9d72b139b413b376b3f5af39ad23a78d17cc4bb65aeb7074653ee0af963d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestContextExtentBoundaries"
   role: BINDING_ROLE_TESTS
@@ -94,6 +104,7 @@ bindings {
 bindings {
   requirement_id: "REQ-profile-context-extent"
   content_hash: "5d43693f3f4b6509030c7011ee94d485f19ac623a8510b5a6e2c40356a53f3a1"
+  source_hash: "3eeb9d72b139b413b376b3f5af39ad23a78d17cc4bb65aeb7074653ee0af963d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestContextExtentOnTerms"
   role: BINDING_ROLE_TESTS
@@ -103,6 +114,7 @@ bindings {
 bindings {
   requirement_id: "REQ-profile-context-extent"
   content_hash: "5d43693f3f4b6509030c7011ee94d485f19ac623a8510b5a6e2c40356a53f3a1"
+  source_hash: "3eeb9d72b139b413b376b3f5af39ad23a78d17cc4bb65aeb7074653ee0af963d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.extentParts"
   role: BINDING_ROLE_IMPLEMENTS
@@ -112,6 +124,7 @@ bindings {
 bindings {
   requirement_id: "REQ-profile-clauses"
   content_hash: "85cc060a9859e856c61f4c5515bfa3496bc6e962d8f0a9b61d31bf4c07c6fca1"
+  source_hash: "92aae6e17413b72403383bca41630b453c508ab239a0703d0f5dd5dc78d53ecb"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestClausesAreThePayloadListItems"
   role: BINDING_ROLE_TESTS

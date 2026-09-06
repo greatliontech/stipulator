@@ -4,6 +4,7 @@
 bindings {
   requirement_id: "REQ-change-diff"
   content_hash: "c9ca60e62b3f89e064a31016e782def2b29bd5552c3ac2df38ceed960016289e"
+  source_hash: "5b09d1db0bc06994327f7fa6b098c73ac56e7bd02a9aa4dcaa11871a95242dda"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/diff.Diff"
   role: BINDING_ROLE_IMPLEMENTS
@@ -13,6 +14,7 @@ bindings {
 bindings {
   requirement_id: "REQ-change-diff"
   content_hash: "c9ca60e62b3f89e064a31016e782def2b29bd5552c3ac2df38ceed960016289e"
+  source_hash: "5b09d1db0bc06994327f7fa6b098c73ac56e7bd02a9aa4dcaa11871a95242dda"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/diff.TestDiff"
   role: BINDING_ROLE_TESTS
@@ -22,6 +24,7 @@ bindings {
 bindings {
   requirement_id: "REQ-model-layout-independence"
   content_hash: "92d96f5f2e446e483b2ddca81156576c52f92dd2bcca831a673421a4c9f4acf1"
+  source_hash: "47419492a3f7f6df4490cc50d9e0513b03e75447e7ddca15ce8f5834f9e711cd"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/diff.TestDiff"
   role: BINDING_ROLE_TESTS

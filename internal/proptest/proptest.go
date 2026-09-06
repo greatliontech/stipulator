@@ -221,9 +221,18 @@ func BindingTextPinned(id, contentHash, shapeHash string) string {
 // the spelling names (an ordinal's digits or a label; empty claims the
 // whole requirement).
 func BindingTextClause(id, contentHash, shapeHash, clause string) string {
+	return BindingTextPins(id, contentHash, "", shapeHash, clause)
+}
+
+// BindingTextPins renders one binding record with every pin the record
+// schema carries: content, consent-source, shape, and the clause.
+func BindingTextPins(id, contentHash, sourceHash, shapeHash, clause string) string {
 	b := "bindings {\n  requirement_id: \"" + id + "\"\n"
 	if contentHash != "" {
 		b += "  content_hash: \"" + contentHash + "\"\n"
+	}
+	if sourceHash != "" {
+		b += "  source_hash: \"" + sourceHash + "\"\n"
 	}
 	if shapeHash != "" {
 		b += "  shape_hash: \"" + shapeHash + "\"\n"

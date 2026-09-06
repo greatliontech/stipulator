@@ -3,6 +3,7 @@ package profile
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/yuin/goldmark"
@@ -109,11 +110,32 @@ var md = goldmark.New(
 // transformer installed, returning the normalized tree and any transform-
 // time diagnostics.
 func Parse(src []byte) (gast.Node, []Diagnostic) {
+	root, _, diags := ParseDocument(src)
+	return root, diags
+}
+
+// ParseDocument parses one document and also returns the labels of its
+// link reference definitions, sorted — the one document-scoped input a
+// block's canonical text depends on under this profile's parser
+// (CommonMark resolves `[label]` through a definition anywhere in the
+// document, and a resolved link contributes its label text to the
+// canonical form while its destination and title reach nothing; the
+// only enabled extension, tables, adds no document-scoped state). The
+// consent-source digest carries each label as its own part, so a block
+// whose own bytes are unchanged but whose canonical text moved through
+// a definition elsewhere is never read as a rehash, and no label can
+// forge another's boundary (REQ-model-consent-source).
+func ParseDocument(src []byte) (gast.Node, []string, []Diagnostic) {
 	var diags []Diagnostic
 	pc := parser.NewContext()
 	pc.Set(diagKey, &diags)
 	root := md.Parser().Parse(gtext.NewReader(src), parser.WithContext(pc))
-	return root, diags
+	var labels []string
+	for _, r := range pc.References() {
+		labels = append(labels, string(r.Label()))
+	}
+	sort.Strings(labels)
+	return root, labels, diags
 }
 
 type transformer struct{}

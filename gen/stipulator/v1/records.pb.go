@@ -130,6 +130,7 @@ type Binding struct {
 	xxx_hidden_Role          BindingRole            `protobuf:"varint,5,opt,name=role,enum=stipulator.v1.BindingRole"`
 	xxx_hidden_ShapeHash     *string                `protobuf:"bytes,6,opt,name=shape_hash,json=shapeHash"`
 	xxx_hidden_Clause        isBinding_Clause       `protobuf_oneof:"clause"`
+	xxx_hidden_SourceHash    *string                `protobuf:"bytes,9,opt,name=source_hash,json=sourceHash"`
 	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
 	XXX_presence             [1]uint32
 	unknownFields            protoimpl.UnknownFields
@@ -238,34 +239,44 @@ func (x *Binding) GetClauseLabel() string {
 	return ""
 }
 
+func (x *Binding) GetSourceHash() string {
+	if x != nil {
+		if x.xxx_hidden_SourceHash != nil {
+			return *x.xxx_hidden_SourceHash
+		}
+		return ""
+	}
+	return ""
+}
+
 func (x *Binding) SetRequirementId(v string) {
 	x.xxx_hidden_RequirementId = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 8)
 }
 
 func (x *Binding) SetContentHash(v string) {
 	x.xxx_hidden_ContentHash = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 8)
 }
 
 func (x *Binding) SetBackend(v string) {
 	x.xxx_hidden_Backend = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 8)
 }
 
 func (x *Binding) SetSymbol(v string) {
 	x.xxx_hidden_Symbol = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 8)
 }
 
 func (x *Binding) SetRole(v BindingRole) {
 	x.xxx_hidden_Role = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 8)
 }
 
 func (x *Binding) SetShapeHash(v string) {
 	x.xxx_hidden_ShapeHash = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 8)
 }
 
 func (x *Binding) SetClauseOrdinal(v uint32) {
@@ -274,6 +285,11 @@ func (x *Binding) SetClauseOrdinal(v uint32) {
 
 func (x *Binding) SetClauseLabel(v string) {
 	x.xxx_hidden_Clause = &binding_ClauseLabel{v}
+}
+
+func (x *Binding) SetSourceHash(v string) {
+	x.xxx_hidden_SourceHash = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 8)
 }
 
 func (x *Binding) HasRequirementId() bool {
@@ -341,6 +357,13 @@ func (x *Binding) HasClauseLabel() bool {
 	return ok
 }
 
+func (x *Binding) HasSourceHash() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 7)
+}
+
 func (x *Binding) ClearRequirementId() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_RequirementId = nil
@@ -385,6 +408,11 @@ func (x *Binding) ClearClauseLabel() {
 	if _, ok := x.xxx_hidden_Clause.(*binding_ClauseLabel); ok {
 		x.xxx_hidden_Clause = nil
 	}
+}
+
+func (x *Binding) ClearSourceHash() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 7)
+	x.xxx_hidden_SourceHash = nil
 }
 
 const Binding_Clause_not_set_case case_Binding_Clause = 0
@@ -432,6 +460,13 @@ type Binding_builder struct {
 	ClauseOrdinal *uint32
 	ClauseLabel   *string
 	// -- end of xxx_hidden_Clause
+	// The consent-source digest of the requirement at consent: provenance
+	// of the same surface the content pin covers, over raw bytes. A
+	// record whose source pin still matches while its content pin differs
+	// consented to byte-identical text — the canonical form moved, not the
+	// text — and stays current (REQ-evidence-consent-current). Unset on a
+	// record written before the field existed.
+	SourceHash *string
 }
 
 func (b0 Binding_builder) Build() *Binding {
@@ -439,27 +474,27 @@ func (b0 Binding_builder) Build() *Binding {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.RequirementId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 8)
 		x.xxx_hidden_RequirementId = b.RequirementId
 	}
 	if b.ContentHash != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 8)
 		x.xxx_hidden_ContentHash = b.ContentHash
 	}
 	if b.Backend != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 8)
 		x.xxx_hidden_Backend = b.Backend
 	}
 	if b.Symbol != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 8)
 		x.xxx_hidden_Symbol = b.Symbol
 	}
 	if b.Role != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 8)
 		x.xxx_hidden_Role = *b.Role
 	}
 	if b.ShapeHash != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 8)
 		x.xxx_hidden_ShapeHash = b.ShapeHash
 	}
 	if b.ClauseOrdinal != nil {
@@ -467,6 +502,10 @@ func (b0 Binding_builder) Build() *Binding {
 	}
 	if b.ClauseLabel != nil {
 		x.xxx_hidden_Clause = &binding_ClauseLabel{*b.ClauseLabel}
+	}
+	if b.SourceHash != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 8)
+		x.xxx_hidden_SourceHash = b.SourceHash
 	}
 	return m0
 }
@@ -569,6 +608,7 @@ type Gap struct {
 	xxx_hidden_Lands         *LandingCondition      `protobuf:"bytes,3,opt,name=lands"`
 	xxx_hidden_Excuses       []GapExcuse            `protobuf:"varint,4,rep,packed,name=excuses,enum=stipulator.v1.GapExcuse"`
 	xxx_hidden_ContentHash   *string                `protobuf:"bytes,5,opt,name=content_hash,json=contentHash"`
+	xxx_hidden_SourceHash    *string                `protobuf:"bytes,6,opt,name=source_hash,json=sourceHash"`
 	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
 	XXX_presence             [1]uint32
 	unknownFields            protoimpl.UnknownFields
@@ -644,14 +684,24 @@ func (x *Gap) GetContentHash() string {
 	return ""
 }
 
+func (x *Gap) GetSourceHash() string {
+	if x != nil {
+		if x.xxx_hidden_SourceHash != nil {
+			return *x.xxx_hidden_SourceHash
+		}
+		return ""
+	}
+	return ""
+}
+
 func (x *Gap) SetRequirementId(v string) {
 	x.xxx_hidden_RequirementId = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
 }
 
 func (x *Gap) SetReason(v string) {
 	x.xxx_hidden_Reason = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 6)
 }
 
 func (x *Gap) SetLands(v *LandingCondition) {
@@ -664,7 +714,12 @@ func (x *Gap) SetExcuses(v []GapExcuse) {
 
 func (x *Gap) SetContentHash(v string) {
 	x.xxx_hidden_ContentHash = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
+}
+
+func (x *Gap) SetSourceHash(v string) {
+	x.xxx_hidden_SourceHash = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 6)
 }
 
 func (x *Gap) HasRequirementId() bool {
@@ -695,6 +750,13 @@ func (x *Gap) HasContentHash() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
 }
 
+func (x *Gap) HasSourceHash() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
 func (x *Gap) ClearRequirementId() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_RequirementId = nil
@@ -712,6 +774,11 @@ func (x *Gap) ClearLands() {
 func (x *Gap) ClearContentHash() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
 	x.xxx_hidden_ContentHash = nil
+}
+
+func (x *Gap) ClearSourceHash() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_SourceHash = nil
 }
 
 type Gap_builder struct {
@@ -733,6 +800,9 @@ type Gap_builder struct {
 	// unset (a pre-field record) excuses as declared and backfills under
 	// the blanket pin.
 	ContentHash *string
+	// The consent-source digest at declaration, as on a binding
+	// (REQ-evidence-consent-current).
+	SourceHash *string
 }
 
 func (b0 Gap_builder) Build() *Gap {
@@ -740,18 +810,22 @@ func (b0 Gap_builder) Build() *Gap {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.RequirementId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
 		x.xxx_hidden_RequirementId = b.RequirementId
 	}
 	if b.Reason != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 6)
 		x.xxx_hidden_Reason = b.Reason
 	}
 	x.xxx_hidden_Lands = b.Lands
 	x.xxx_hidden_Excuses = b.Excuses
 	if b.ContentHash != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
 		x.xxx_hidden_ContentHash = b.ContentHash
+	}
+	if b.SourceHash != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 6)
+		x.xxx_hidden_SourceHash = b.SourceHash
 	}
 	return m0
 }
@@ -767,6 +841,7 @@ type RequirementAttestation struct {
 	xxx_hidden_RequirementId *string                `protobuf:"bytes,1,opt,name=requirement_id,json=requirementId"`
 	xxx_hidden_ContentHash   *string                `protobuf:"bytes,2,opt,name=content_hash,json=contentHash"`
 	xxx_hidden_Reason        *string                `protobuf:"bytes,3,opt,name=reason"`
+	xxx_hidden_SourceHash    *string                `protobuf:"bytes,4,opt,name=source_hash,json=sourceHash"`
 	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
 	XXX_presence             [1]uint32
 	unknownFields            protoimpl.UnknownFields
@@ -828,19 +903,34 @@ func (x *RequirementAttestation) GetReason() string {
 	return ""
 }
 
+func (x *RequirementAttestation) GetSourceHash() string {
+	if x != nil {
+		if x.xxx_hidden_SourceHash != nil {
+			return *x.xxx_hidden_SourceHash
+		}
+		return ""
+	}
+	return ""
+}
+
 func (x *RequirementAttestation) SetRequirementId(v string) {
 	x.xxx_hidden_RequirementId = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
 }
 
 func (x *RequirementAttestation) SetContentHash(v string) {
 	x.xxx_hidden_ContentHash = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
 }
 
 func (x *RequirementAttestation) SetReason(v string) {
 	x.xxx_hidden_Reason = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
+}
+
+func (x *RequirementAttestation) SetSourceHash(v string) {
+	x.xxx_hidden_SourceHash = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
 }
 
 func (x *RequirementAttestation) HasRequirementId() bool {
@@ -864,6 +954,13 @@ func (x *RequirementAttestation) HasReason() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
 }
 
+func (x *RequirementAttestation) HasSourceHash() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
 func (x *RequirementAttestation) ClearRequirementId() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_RequirementId = nil
@@ -879,12 +976,20 @@ func (x *RequirementAttestation) ClearReason() {
 	x.xxx_hidden_Reason = nil
 }
 
+func (x *RequirementAttestation) ClearSourceHash() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_SourceHash = nil
+}
+
 type RequirementAttestation_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	RequirementId *string
 	ContentHash   *string
 	Reason        *string
+	// The consent-source digest at attestation, as on a binding
+	// (REQ-evidence-consent-current).
+	SourceHash *string
 }
 
 func (b0 RequirementAttestation_builder) Build() *RequirementAttestation {
@@ -892,16 +997,20 @@ func (b0 RequirementAttestation_builder) Build() *RequirementAttestation {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.RequirementId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
 		x.xxx_hidden_RequirementId = b.RequirementId
 	}
 	if b.ContentHash != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
 		x.xxx_hidden_ContentHash = b.ContentHash
 	}
 	if b.Reason != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
 		x.xxx_hidden_Reason = b.Reason
+	}
+	if b.SourceHash != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		x.xxx_hidden_SourceHash = b.SourceHash
 	}
 	return m0
 }
@@ -1352,7 +1461,7 @@ var File_stipulator_v1_records_proto protoreflect.FileDescriptor
 
 const file_stipulator_v1_records_proto_rawDesc = "" +
 	"\n" +
-	"\x1bstipulator/v1/records.proto\x12\rstipulator.v1\"\xac\x02\n" +
+	"\x1bstipulator/v1/records.proto\x12\rstipulator.v1\"\xcd\x02\n" +
 	"\aBinding\x12%\n" +
 	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x12!\n" +
 	"\fcontent_hash\x18\x02 \x01(\tR\vcontentHash\x12\x18\n" +
@@ -1362,21 +1471,27 @@ const file_stipulator_v1_records_proto_rawDesc = "" +
 	"\n" +
 	"shape_hash\x18\x06 \x01(\tR\tshapeHash\x12'\n" +
 	"\x0eclause_ordinal\x18\a \x01(\rH\x00R\rclauseOrdinal\x12#\n" +
-	"\fclause_label\x18\b \x01(\tH\x00R\vclauseLabelB\b\n" +
+	"\fclause_label\x18\b \x01(\tH\x00R\vclauseLabel\x12\x1f\n" +
+	"\vsource_hash\x18\t \x01(\tR\n" +
+	"sourceHashB\b\n" +
 	"\x06clause\"@\n" +
 	"\n" +
 	"BindingSet\x122\n" +
-	"\bbindings\x18\x01 \x03(\v2\x16.stipulator.v1.BindingR\bbindings\"\xd2\x01\n" +
+	"\bbindings\x18\x01 \x03(\v2\x16.stipulator.v1.BindingR\bbindings\"\xf3\x01\n" +
 	"\x03Gap\x12%\n" +
 	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x125\n" +
 	"\x05lands\x18\x03 \x01(\v2\x1f.stipulator.v1.LandingConditionR\x05lands\x122\n" +
 	"\aexcuses\x18\x04 \x03(\x0e2\x18.stipulator.v1.GapExcuseR\aexcuses\x12!\n" +
-	"\fcontent_hash\x18\x05 \x01(\tR\vcontentHash\"z\n" +
+	"\fcontent_hash\x18\x05 \x01(\tR\vcontentHash\x12\x1f\n" +
+	"\vsource_hash\x18\x06 \x01(\tR\n" +
+	"sourceHash\"\x9b\x01\n" +
 	"\x16RequirementAttestation\x12%\n" +
 	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x12!\n" +
 	"\fcontent_hash\x18\x02 \x01(\tR\vcontentHash\x12\x16\n" +
-	"\x06reason\x18\x03 \x01(\tR\x06reason\"[\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\x12\x1f\n" +
+	"\vsource_hash\x18\x04 \x01(\tR\n" +
+	"sourceHash\"[\n" +
 	"\x0eAttestationSet\x12I\n" +
 	"\fattestations\x18\x01 \x03(\v2%.stipulator.v1.RequirementAttestationR\fattestations\"\x8f\x01\n" +
 	"\x10LandingCondition\x12\x1a\n" +

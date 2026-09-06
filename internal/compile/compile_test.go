@@ -556,3 +556,110 @@ func TestClausesAreThePayloadListItems(t *testing.T) {
 	_, diags = compileFiles(t, map[string]string{"specs/a.md": "# T\n\n**REQ-x-c** (behavior): It MUST hold:\n\n- **same** one\n- other\n- **same** again\n"})
 	wantDiag(t, diags, `REQ-x-c declares clause label "same" twice (clauses 1 and 3)`)
 }
+
+// The consent-source digest is provenance of the consent surface over
+// raw bytes: it survives a repartition (block sources intact), it moves
+// with a whitespace-only rewrap the content hash ignores, it moves with
+// an extent edit exactly as the content hash does, and it never
+// canonicalizes — so byte-identical source digests identically whatever
+// the canonical form does (REQ-model-consent-source).
+//
+//gofresh:pure
+func TestConsentSourceDigestFollowsRawBytes(t *testing.T) {
+	stipulate.Covers(t, "REQ-model-consent-source")
+	lead := "**REQ-x-a** (behavior): It MUST hold:\n\n- point\n\n> Commentary.\n"
+	one, diags := compileFiles(t, map[string]string{"specs/a.md": "# T\n\n" + lead})
+	wantClean(t, diags)
+	base := req(t, one, "REQ-x-a")
+	if len(base.GetSourceHash()) != 64 {
+		t.Fatalf("source hash = %q, want 64 hex characters", base.GetSourceHash())
+	}
+	// Repartition: the same blocks under another heading tree.
+	two, diags := compileFiles(t, map[string]string{"specs/a.md": "# T\n\n## S\n\n" + lead})
+	wantClean(t, diags)
+	if got := req(t, two, "REQ-x-a"); got.GetSourceHash() != base.GetSourceHash() || got.GetContentHash() != base.GetContentHash() {
+		t.Fatal("a repartition moved the source digest or the content hash")
+	}
+	// A rewrap: the content hash stands, the source digest moves — the
+	// harmless direction (a current content pin needs no source pin).
+	three, diags := compileFiles(t, map[string]string{"specs/a.md": "# T\n\n**REQ-x-a** (behavior): It MUST\nhold:\n\n- point\n\n> Commentary.\n"})
+	wantClean(t, diags)
+	if got := req(t, three, "REQ-x-a"); got.GetContentHash() != base.GetContentHash() || got.GetSourceHash() == base.GetSourceHash() {
+		t.Fatal("a rewrap moved the content hash or kept the source digest")
+	}
+	// An extent edit: both move — the digest covers the consent surface,
+	// not the lead alone.
+	four, diags := compileFiles(t, map[string]string{"specs/a.md": "# T\n\n**REQ-x-a** (behavior): It MUST hold:\n\n- point\n\n> Other commentary.\n"})
+	wantClean(t, diags)
+	if got := req(t, four, "REQ-x-a"); got.GetContentHash() == base.GetContentHash() || got.GetSourceHash() == base.GetSourceHash() {
+		t.Fatal("an extent edit left the source digest or the content hash unchanged")
+	}
+	// Block boundaries ride the preimage: the same bytes split across
+	// two extent blocks is a different surface.
+	five, diags := compileFiles(t, map[string]string{"specs/a.md": "# T\n\n**REQ-x-a** (behavior): It MUST hold:\n\n- point\n\n> Commentary.\n\nA free line.\n"})
+	wantClean(t, diags)
+	six, diags := compileFiles(t, map[string]string{"specs/a.md": "# T\n\n**REQ-x-a** (behavior): It MUST hold:\n\n- point\n\n> Commentary.\nA free line.\n"})
+	wantClean(t, diags)
+	if req(t, five, "REQ-x-a").GetSourceHash() == req(t, six, "REQ-x-a").GetSourceHash() {
+		t.Fatal("a block boundary move did not move the source digest")
+	}
+	// A link reference definition ANYWHERE in the document resolves a
+	// `[label]` in the requirement's text: the block's own bytes stand
+	// while its canonical text moves, so the document's definition
+	// table rides the digest — never a rehash.
+	ref := "# T\n\n**REQ-x-a** (behavior): The engine MUST honour [foo] at all times.\n\n## Refs\n\nNothing here.\n"
+	unresolved, diags := compileFiles(t, map[string]string{"specs/a.md": ref})
+	wantClean(t, diags)
+	resolved, diags := compileFiles(t, map[string]string{"specs/a.md": ref + "\n[foo]: https://example.com\n"})
+	wantClean(t, diags)
+	if req(t, unresolved, "REQ-x-a").GetContentHash() == req(t, resolved, "REQ-x-a").GetContentHash() {
+		t.Fatal("fixture: the reference definition did not move the content hash")
+	}
+	if req(t, unresolved, "REQ-x-a").GetSourceHash() == req(t, resolved, "REQ-x-a").GetSourceHash() {
+		t.Fatal("a reference definition elsewhere moved the text but not the source digest: a rehash that launders")
+	}
+	// Each label is its own digested part, so a title carrying what
+	// looks like another definition cannot forge one: one definition
+	// with a newline-and-tab title versus two definitions differ in
+	// their label SET, and the digests differ with them.
+	// The definitions sit BEFORE the requirement: not in its extent, so
+	// only the label set can tell the two documents apart.
+	forged := "# T\n\n[a]: http://x \"T\nb\thttp://y\t\"\n\n**REQ-x-b** (behavior): The engine MUST honour [b] at all times.\n"
+	genuine := "# T\n\n[a]: http://x \"T\"\n[b]: http://y\n\n**REQ-x-b** (behavior): The engine MUST honour [b] at all times.\n"
+	f, diags := compileFiles(t, map[string]string{"specs/a.md": forged})
+	wantClean(t, diags)
+	g, diags := compileFiles(t, map[string]string{"specs/a.md": genuine})
+	wantClean(t, diags)
+	if req(t, f, "REQ-x-b").GetContentHash() == req(t, g, "REQ-x-b").GetContentHash() {
+		t.Fatal("fixture: the forged and genuine documents share a content hash")
+	}
+	if req(t, f, "REQ-x-b").GetSourceHash() == req(t, g, "REQ-x-b").GetSourceHash() {
+		t.Fatal("a definition title forged a second definition's boundary in the source digest")
+	}
+	// Labels themselves may span lines (goldmark keeps the raw label):
+	// one definition labelled "a⏎b" versus two labelled "a" and "b"
+	// differ in their label set, and only a per-label part keeps the
+	// digests apart — a joined table would read them as one.
+	spanning := "# T\n\n[a\nb]: http://x\n\n**REQ-x-b** (behavior): The engine MUST honour [b] at all times.\n"
+	split := "# T\n\n[a]: http://x\n[b]: http://y\n\n**REQ-x-b** (behavior): The engine MUST honour [b] at all times.\n"
+	sp, diags := compileFiles(t, map[string]string{"specs/a.md": spanning})
+	wantClean(t, diags)
+	sl, diags := compileFiles(t, map[string]string{"specs/a.md": split})
+	wantClean(t, diags)
+	if req(t, sp, "REQ-x-b").GetContentHash() == req(t, sl, "REQ-x-b").GetContentHash() {
+		t.Fatal("fixture: the spanning and split label documents share a content hash")
+	}
+	if req(t, sp, "REQ-x-b").GetSourceHash() == req(t, sl, "REQ-x-b").GetSourceHash() {
+		t.Fatal("a line-spanning label forged two labels' boundary in the source digest")
+	}
+	// A destination or title edit reaches no canonical text, so it
+	// moves neither hash when the definition lies outside the
+	// requirement's extent: the rehash rescue survives the common edit.
+	// (A definition inside the extent is an extent block like any
+	// other — its bytes ride the digest, the harmless direction.)
+	retitled, diags := compileFiles(t, map[string]string{"specs/a.md": strings.Replace(genuine, "[b]: http://y", "[b]: http://z \"new title\"", 1)})
+	wantClean(t, diags)
+	if req(t, retitled, "REQ-x-b").GetSourceHash() != req(t, g, "REQ-x-b").GetSourceHash() || req(t, retitled, "REQ-x-b").GetContentHash() != req(t, g, "REQ-x-b").GetContentHash() {
+		t.Fatal("a destination or title edit moved a hash")
+	}
+}

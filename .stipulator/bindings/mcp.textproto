@@ -4,6 +4,7 @@
 bindings {
   requirement_id: "REQ-mcp-server"
   content_hash: "46d6e4b84b059eb55528cec277da1662b93dab5b2eee7013fc607668dbdb50bf"
+  source_hash: "33ea066dc7479d4409f5cef02e27020980891135e3fd25fc0fad3762bedef6ee"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestResourceIndexAndReads"
   role: BINDING_ROLE_TESTS
@@ -13,6 +14,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-resources"
   content_hash: "58ac098894a3a8d579c6aa19df5cf46cc54bf922a454431e77532b86af440b0b"
+  source_hash: "6d850b1f6e8d2bec859561eab83ba9af3529db43077186858f6305bc744eb728"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.Server.readResource"
   role: BINDING_ROLE_IMPLEMENTS
@@ -22,6 +24,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-resources"
   content_hash: "58ac098894a3a8d579c6aa19df5cf46cc54bf922a454431e77532b86af440b0b"
+  source_hash: "6d850b1f6e8d2bec859561eab83ba9af3529db43077186858f6305bc744eb728"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestResourceIndexAndReads"
   role: BINDING_ROLE_TESTS
@@ -31,6 +34,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-tools"
   content_hash: "6b2b8a2aa4383fc2474ad1f5d05d94369a47f7a99d7f894aeb7ebb03cc03d82a"
+  source_hash: "907c19930157684af5df5d4aeced75338fa5ff09de72b3fb235bad6e23de7c7e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGateTool"
   role: BINDING_ROLE_TESTS
@@ -40,6 +44,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-writes-confined"
   content_hash: "04367cfdbcaf32eb9ba0536c4aca2ef7b331e3bd285bedec8d005aedf4562cfc"
+  source_hash: "a0b9130cd2ca9dbcf1763a64b943931a19518c02f0e1d8968d1be105a16b9a4f"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestBindToolWritesConfined"
   role: BINDING_ROLE_TESTS
@@ -49,6 +54,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-tools"
   content_hash: "6b2b8a2aa4383fc2474ad1f5d05d94369a47f7a99d7f894aeb7ebb03cc03d82a"
+  source_hash: "907c19930157684af5df5d4aeced75338fa5ff09de72b3fb235bad6e23de7c7e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestToolListExact"
   role: BINDING_ROLE_TESTS
@@ -58,6 +64,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-tools"
   content_hash: "6b2b8a2aa4383fc2474ad1f5d05d94369a47f7a99d7f894aeb7ebb03cc03d82a"
+  source_hash: "907c19930157684af5df5d4aeced75338fa5ff09de72b3fb235bad6e23de7c7e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestAttestTools"
   role: BINDING_ROLE_TESTS
@@ -67,6 +74,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-views"
   content_hash: "46e282f6063af71d86c54c40b84af062bc431e9c4843f3a532d47914e31eee39"
+  source_hash: "6e2b8b86afc4794908c83763bae2d1621739b776bcec6be3121623bcd68c0557"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.TestVerifyViews"
   role: BINDING_ROLE_TESTS
@@ -76,6 +84,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-views"
   content_hash: "46e282f6063af71d86c54c40b84af062bc431e9c4843f3a532d47914e31eee39"
+  source_hash: "6e2b8b86afc4794908c83763bae2d1621739b776bcec6be3121623bcd68c0557"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.TestScopeValidate"
   role: BINDING_ROLE_TESTS
@@ -85,6 +94,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-views"
   content_hash: "46e282f6063af71d86c54c40b84af062bc431e9c4843f3a532d47914e31eee39"
+  source_hash: "6e2b8b86afc4794908c83763bae2d1621739b776bcec6be3121623bcd68c0557"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGateTool"
   role: BINDING_ROLE_TESTS
@@ -94,6 +104,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-views"
   content_hash: "46e282f6063af71d86c54c40b84af062bc431e9c4843f3a532d47914e31eee39"
+  source_hash: "6e2b8b86afc4794908c83763bae2d1621739b776bcec6be3121623bcd68c0557"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.CoverageView"
   role: BINDING_ROLE_IMPLEMENTS
@@ -103,6 +114,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-views"
   content_hash: "46e282f6063af71d86c54c40b84af062bc431e9c4843f3a532d47914e31eee39"
+  source_hash: "6e2b8b86afc4794908c83763bae2d1621739b776bcec6be3121623bcd68c0557"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.VerifyView"
   role: BINDING_ROLE_IMPLEMENTS
@@ -112,6 +124,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-views"
   content_hash: "46e282f6063af71d86c54c40b84af062bc431e9c4843f3a532d47914e31eee39"
+  source_hash: "6e2b8b86afc4794908c83763bae2d1621739b776bcec6be3121623bcd68c0557"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.TestCoverageViewScopesGapsAndViolations"
   role: BINDING_ROLE_TESTS
@@ -121,6 +134,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-views"
   content_hash: "46e282f6063af71d86c54c40b84af062bc431e9c4843f3a532d47914e31eee39"
+  source_hash: "6e2b8b86afc4794908c83763bae2d1621739b776bcec6be3121623bcd68c0557"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.ScopeReport"
   role: BINDING_ROLE_IMPLEMENTS
@@ -130,6 +144,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-views"
   content_hash: "46e282f6063af71d86c54c40b84af062bc431e9c4843f3a532d47914e31eee39"
+  source_hash: "6e2b8b86afc4794908c83763bae2d1621739b776bcec6be3121623bcd68c0557"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.TestCoverageSummaryPinsCountsAndGapState"
   role: BINDING_ROLE_TESTS
@@ -139,6 +154,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-tools"
   content_hash: "6b2b8a2aa4383fc2474ad1f5d05d94369a47f7a99d7f894aeb7ebb03cc03d82a"
+  source_hash: "907c19930157684af5df5d4aeced75338fa5ff09de72b3fb235bad6e23de7c7e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPruneTool"
   role: BINDING_ROLE_TESTS
@@ -148,6 +164,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-tools"
   content_hash: "6b2b8a2aa4383fc2474ad1f5d05d94369a47f7a99d7f894aeb7ebb03cc03d82a"
+  source_hash: "907c19930157684af5df5d4aeced75338fa5ff09de72b3fb235bad6e23de7c7e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.Server.MCP"
   role: BINDING_ROLE_IMPLEMENTS
@@ -157,6 +174,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-server"
   content_hash: "46d6e4b84b059eb55528cec277da1662b93dab5b2eee7013fc607668dbdb50bf"
+  source_hash: "33ea066dc7479d4409f5cef02e27020980891135e3fd25fc0fad3762bedef6ee"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.New"
   role: BINDING_ROLE_IMPLEMENTS
@@ -166,6 +184,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-writes-confined"
   content_hash: "04367cfdbcaf32eb9ba0536c4aca2ef7b331e3bd285bedec8d005aedf4562cfc"
+  source_hash: "a0b9130cd2ca9dbcf1763a64b943931a19518c02f0e1d8968d1be105a16b9a4f"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.New"
   role: BINDING_ROLE_IMPLEMENTS
@@ -175,6 +194,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-server"
   content_hash: "46d6e4b84b059eb55528cec277da1662b93dab5b2eee7013fc607668dbdb50bf"
+  source_hash: "33ea066dc7479d4409f5cef02e27020980891135e3fd25fc0fad3762bedef6ee"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCanceledToolCallStopsWitnessRun"
   role: BINDING_ROLE_TESTS
@@ -184,6 +204,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-tools"
   content_hash: "6b2b8a2aa4383fc2474ad1f5d05d94369a47f7a99d7f894aeb7ebb03cc03d82a"
+  source_hash: "907c19930157684af5df5d4aeced75338fa5ff09de72b3fb235bad6e23de7c7e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestContextAndPartitionsNoTestSkipWitnessing"
   role: BINDING_ROLE_TESTS
@@ -193,6 +214,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-tools"
   content_hash: "6b2b8a2aa4383fc2474ad1f5d05d94369a47f7a99d7f894aeb7ebb03cc03d82a"
+  source_hash: "907c19930157684af5df5d4aeced75338fa5ff09de72b3fb235bad6e23de7c7e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.Server.toolCheck"
   role: BINDING_ROLE_IMPLEMENTS
@@ -202,6 +224,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-tools"
   content_hash: "6b2b8a2aa4383fc2474ad1f5d05d94369a47f7a99d7f894aeb7ebb03cc03d82a"
+  source_hash: "907c19930157684af5df5d4aeced75338fa5ff09de72b3fb235bad6e23de7c7e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolStructuredResultMirrorsCheckResult"
   role: BINDING_ROLE_TESTS
@@ -211,6 +234,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-tools"
   content_hash: "6b2b8a2aa4383fc2474ad1f5d05d94369a47f7a99d7f894aeb7ebb03cc03d82a"
+  source_hash: "907c19930157684af5df5d4aeced75338fa5ff09de72b3fb235bad6e23de7c7e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolFailingTreeIsSuccessfulCall"
   role: BINDING_ROLE_TESTS
@@ -220,6 +244,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-tools"
   content_hash: "6b2b8a2aa4383fc2474ad1f5d05d94369a47f7a99d7f894aeb7ebb03cc03d82a"
+  source_hash: "907c19930157684af5df5d4aeced75338fa5ff09de72b3fb235bad6e23de7c7e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/wire.TestCheckSurfacesRenderEquivalentFacts"
   role: BINDING_ROLE_TESTS
@@ -229,6 +254,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/progress.New"
   role: BINDING_ROLE_IMPLEMENTS
@@ -238,6 +264,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.Server.startProgress"
   role: BINDING_ROLE_IMPLEMENTS
@@ -247,6 +274,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.terminalToolError"
   role: BINDING_ROLE_IMPLEMENTS
@@ -256,6 +284,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/progress.TestReporterBoundsEventFlood"
   role: BINDING_ROLE_TESTS
@@ -265,6 +294,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/progress.TestReporterPhaseTransitionsAlwaysEmit"
   role: BINDING_ROLE_TESTS
@@ -274,6 +304,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/progress.TestReporterTerminalEmitsOnceAndSeals"
   role: BINDING_ROLE_TESTS
@@ -283,6 +314,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/progress.TestNilReporterAndSinkAreInert"
   role: BINDING_ROLE_TESTS
@@ -292,6 +324,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolProgressRidesNotificationsNotPayload"
   role: BINDING_ROLE_TESTS
@@ -301,6 +334,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolDeadlineNamesExpiredPhaseAndCause"
   role: BINDING_ROLE_TESTS
@@ -310,6 +344,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolClientCancellationSealsProgress"
   role: BINDING_ROLE_TESTS
@@ -319,6 +354,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-cancellation"
   content_hash: "e6d4373361a4a4c5ce7ec78e505048d48ff414702f4ea8aab6f74ecad347f03b"
+  source_hash: "f7e5f377eaf8abd79f37403da87e583ee677956cfb0467b513c7b701dc77bd0a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolClientCancellationSealsProgress"
   role: BINDING_ROLE_TESTS
@@ -328,6 +364,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-cancellation"
   content_hash: "e6d4373361a4a4c5ce7ec78e505048d48ff414702f4ea8aab6f74ecad347f03b"
+  source_hash: "f7e5f377eaf8abd79f37403da87e583ee677956cfb0467b513c7b701dc77bd0a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolClientCancellationKillsEveryChildProcess"
   role: BINDING_ROLE_TESTS
@@ -337,6 +374,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckReportsPhaseTransitions"
   role: BINDING_ROLE_TESTS
@@ -346,6 +384,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGateAndContextToolsReportPhasedProgress"
   role: BINDING_ROLE_TESTS
@@ -355,6 +394,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteReportsPerInvocationProgress"
   role: BINDING_ROLE_TESTS
@@ -364,6 +404,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolFailingTreeIsSuccessfulCall"
   role: BINDING_ROLE_TESTS
@@ -373,6 +414,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/progress.NonBlocking"
   role: BINDING_ROLE_IMPLEMENTS
@@ -382,6 +424,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/progress.TestNonBlockingSinkShieldsOperationFromStalledConsumer"
   role: BINDING_ROLE_TESTS
@@ -391,6 +434,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/progress.TestReporterStepKeepsCompletedCountsIncreasing"
   role: BINDING_ROLE_TESTS
@@ -400,6 +444,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestVerifyPrunePartitionsToolsReportPhasedProgress"
   role: BINDING_ROLE_TESTS
@@ -409,6 +454,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestVerifyToolDeadlineNamesExpiredPhaseAndCause"
   role: BINDING_ROLE_TESTS
@@ -418,6 +464,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestVerifyToolNamesPolicyRecordProblem"
   role: BINDING_ROLE_TESTS
@@ -427,6 +474,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-cancellation"
   content_hash: "e6d4373361a4a4c5ce7ec78e505048d48ff414702f4ea8aab6f74ecad347f03b"
+  source_hash: "f7e5f377eaf8abd79f37403da87e583ee677956cfb0467b513c7b701dc77bd0a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolServingPathCancellationKillsChildren"
   role: BINDING_ROLE_TESTS
@@ -436,6 +484,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-response-contract"
   content_hash: "4d13245b88101898d9c5b7ef7712de9e161eb4e903ed518b5236ffc7dd9942f3"
+  source_hash: "637045af11e83657de36de93b33d2a87995b1c4d568ba15956ba470cba14bcc8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.CheckView"
   role: BINDING_ROLE_IMPLEMENTS
@@ -445,6 +494,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-response-contract"
   content_hash: "4d13245b88101898d9c5b7ef7712de9e161eb4e903ed518b5236ffc7dd9942f3"
+  source_hash: "637045af11e83657de36de93b33d2a87995b1c4d568ba15956ba470cba14bcc8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.TestCheckViewSummaryBounds"
   role: BINDING_ROLE_TESTS
@@ -454,6 +504,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-response-contract"
   content_hash: "4d13245b88101898d9c5b7ef7712de9e161eb4e903ed518b5236ffc7dd9942f3"
+  source_hash: "637045af11e83657de36de93b33d2a87995b1c4d568ba15956ba470cba14bcc8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolStructuredResultMirrorsCheckResult"
   role: BINDING_ROLE_TESTS
@@ -463,6 +514,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-views"
   content_hash: "46e282f6063af71d86c54c40b84af062bc431e9c4843f3a532d47914e31eee39"
+  source_hash: "6e2b8b86afc4794908c83763bae2d1621739b776bcec6be3121623bcd68c0557"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.TestCheckViewScopeFiltersWholeReport"
   role: BINDING_ROLE_TESTS
@@ -472,6 +524,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-views"
   content_hash: "46e282f6063af71d86c54c40b84af062bc431e9c4843f3a532d47914e31eee39"
+  source_hash: "6e2b8b86afc4794908c83763bae2d1621739b776bcec6be3121623bcd68c0557"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolViewsAndScopes"
   role: BINDING_ROLE_TESTS
@@ -481,6 +534,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-tools"
   content_hash: "6b2b8a2aa4383fc2474ad1f5d05d94369a47f7a99d7f894aeb7ebb03cc03d82a"
+  source_hash: "907c19930157684af5df5d4aeced75338fa5ff09de72b3fb235bad6e23de7c7e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestBindToolBatchClaims"
   role: BINDING_ROLE_TESTS
@@ -490,6 +544,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-tools"
   content_hash: "6b2b8a2aa4383fc2474ad1f5d05d94369a47f7a99d7f894aeb7ebb03cc03d82a"
+  source_hash: "907c19930157684af5df5d4aeced75338fa5ff09de72b3fb235bad6e23de7c7e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.TestBindsBatchOverlay"
   role: BINDING_ROLE_TESTS
@@ -499,6 +554,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-tools"
   content_hash: "6b2b8a2aa4383fc2474ad1f5d05d94369a47f7a99d7f894aeb7ebb03cc03d82a"
+  source_hash: "907c19930157684af5df5d4aeced75338fa5ff09de72b3fb235bad6e23de7c7e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.Binds"
   role: BINDING_ROLE_IMPLEMENTS
@@ -508,6 +564,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-server"
   content_hash: "46d6e4b84b059eb55528cec277da1662b93dab5b2eee7013fc607668dbdb50bf"
+  source_hash: "33ea066dc7479d4409f5cef02e27020980891135e3fd25fc0fad3762bedef6ee"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestToolsOutsideCorpusGuideToInit"
   role: BINDING_ROLE_TESTS
@@ -517,6 +574,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-server"
   content_hash: "46d6e4b84b059eb55528cec277da1662b93dab5b2eee7013fc607668dbdb50bf"
+  source_hash: "33ea066dc7479d4409f5cef02e27020980891135e3fd25fc0fad3762bedef6ee"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestServerDeclaresInstructions"
   role: BINDING_ROLE_TESTS
@@ -526,6 +584,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-response-contract"
   content_hash: "4d13245b88101898d9c5b7ef7712de9e161eb4e903ed518b5236ffc7dd9942f3"
+  source_hash: "637045af11e83657de36de93b33d2a87995b1c4d568ba15956ba470cba14bcc8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/facts.TestPartitionProtoCapsOverlaps"
   role: BINDING_ROLE_TESTS
@@ -535,6 +594,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-views"
   content_hash: "46e282f6063af71d86c54c40b84af062bc431e9c4843f3a532d47914e31eee39"
+  source_hash: "6e2b8b86afc4794908c83763bae2d1621739b776bcec6be3121623bcd68c0557"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolStructuredResultMirrorsCheckResult"
   role: BINDING_ROLE_TESTS
@@ -544,6 +604,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-response-contract"
   content_hash: "4d13245b88101898d9c5b7ef7712de9e161eb4e903ed518b5236ffc7dd9942f3"
+  source_hash: "637045af11e83657de36de93b33d2a87995b1c4d568ba15956ba470cba14bcc8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestContextAndPartitionsExportPath"
   role: BINDING_ROLE_TESTS
@@ -553,6 +614,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-tools"
   content_hash: "6b2b8a2aa4383fc2474ad1f5d05d94369a47f7a99d7f894aeb7ebb03cc03d82a"
+  source_hash: "907c19930157684af5df5d4aeced75338fa5ff09de72b3fb235bad6e23de7c7e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGapToolBatchFireRetract"
   role: BINDING_ROLE_TESTS
@@ -562,6 +624,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-tools"
   content_hash: "6b2b8a2aa4383fc2474ad1f5d05d94369a47f7a99d7f894aeb7ebb03cc03d82a"
+  source_hash: "907c19930157684af5df5d4aeced75338fa5ff09de72b3fb235bad6e23de7c7e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPruneToolDanglingMode"
   role: BINDING_ROLE_TESTS
@@ -571,6 +634,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-views"
   content_hash: "46e282f6063af71d86c54c40b84af062bc431e9c4843f3a532d47914e31eee39"
+  source_hash: "6e2b8b86afc4794908c83763bae2d1621739b776bcec6be3121623bcd68c0557"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.TestCheckViewSummaryBounds"
   role: BINDING_ROLE_TESTS
@@ -580,6 +644,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-response-contract"
   content_hash: "4d13245b88101898d9c5b7ef7712de9e161eb4e903ed518b5236ffc7dd9942f3"
+  source_hash: "637045af11e83657de36de93b33d2a87995b1c4d568ba15956ba470cba14bcc8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.TestCheckViewSummaryMatchesCanonicalJudgments"
   role: BINDING_ROLE_TESTS
@@ -589,6 +654,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-views"
   content_hash: "46e282f6063af71d86c54c40b84af062bc431e9c4843f3a532d47914e31eee39"
+  source_hash: "6e2b8b86afc4794908c83763bae2d1621739b776bcec6be3121623bcd68c0557"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.TestCheckViewSummaryMatchesCanonicalJudgments"
   role: BINDING_ROLE_TESTS
@@ -598,6 +664,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-response-contract"
   content_hash: "4d13245b88101898d9c5b7ef7712de9e161eb4e903ed518b5236ffc7dd9942f3"
+  source_hash: "637045af11e83657de36de93b33d2a87995b1c4d568ba15956ba470cba14bcc8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.TestVerifySummaryOmitsFailureDiagnosticOutput"
   role: BINDING_ROLE_TESTS
@@ -607,6 +674,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-views"
   content_hash: "46e282f6063af71d86c54c40b84af062bc431e9c4843f3a532d47914e31eee39"
+  source_hash: "6e2b8b86afc4794908c83763bae2d1621739b776bcec6be3121623bcd68c0557"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.TestVerifyBindingsScopeDiagnosticsResolvedPackage"
   role: BINDING_ROLE_TESTS
@@ -616,6 +684,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-response-contract"
   content_hash: "4d13245b88101898d9c5b7ef7712de9e161eb4e903ed518b5236ffc7dd9942f3"
+  source_hash: "637045af11e83657de36de93b33d2a87995b1c4d568ba15956ba470cba14bcc8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestViewDigestsCarryActionRowsBounded"
   role: BINDING_ROLE_TESTS
@@ -625,6 +694,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/progress.TestStampsRenderAdjacentDedupedPhases"
   role: BINDING_ROLE_TESTS
@@ -634,6 +704,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-response-contract"
   content_hash: "4d13245b88101898d9c5b7ef7712de9e161eb4e903ed518b5236ffc7dd9942f3"
+  source_hash: "637045af11e83657de36de93b33d2a87995b1c4d568ba15956ba470cba14bcc8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestReadSpecToolMirrorsBundle"
   role: BINDING_ROLE_TESTS
@@ -643,6 +714,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-explain"
   content_hash: "e98b391e7db1ba9a695f57993cef70f0da2419ba1fba9b6e980d77fa559bce67"
+  source_hash: "6406a959ba1bccc309088a3b92158ce340ce57b67ad8de220effe8e44e9b2585"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestExplainDynamicStateChainsThroughPolicyViews"
   role: BINDING_ROLE_TESTS
@@ -652,6 +724,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-explain"
   content_hash: "e98b391e7db1ba9a695f57993cef70f0da2419ba1fba9b6e980d77fa559bce67"
+  source_hash: "6406a959ba1bccc309088a3b92158ce340ce57b67ad8de220effe8e44e9b2585"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestExplainToolParsesAndRefuses"
   role: BINDING_ROLE_TESTS
@@ -661,6 +734,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-explain"
   content_hash: "e98b391e7db1ba9a695f57993cef70f0da2419ba1fba9b6e980d77fa559bce67"
+  source_hash: "6406a959ba1bccc309088a3b92158ce340ce57b67ad8de220effe8e44e9b2585"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.Server.toolExplain"
   role: BINDING_ROLE_IMPLEMENTS
@@ -670,6 +744,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-explain"
   content_hash: "e98b391e7db1ba9a695f57993cef70f0da2419ba1fba9b6e980d77fa559bce67"
+  source_hash: "6406a959ba1bccc309088a3b92158ce340ce57b67ad8de220effe8e44e9b2585"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.ExplainDynamicState"
   role: BINDING_ROLE_IMPLEMENTS
@@ -679,6 +754,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-explain"
   content_hash: "e98b391e7db1ba9a695f57993cef70f0da2419ba1fba9b6e980d77fa559bce67"
+  source_hash: "6406a959ba1bccc309088a3b92158ce340ce57b67ad8de220effe8e44e9b2585"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestExplainToolProjectsChain"
   role: BINDING_ROLE_TESTS
@@ -688,6 +764,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPinAndRetargetSealTheirProgressReporters"
   role: BINDING_ROLE_TESTS
@@ -697,6 +774,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestTokenlessCallEmitsPhaseLogMessages"
   role: BINDING_ROLE_TESTS
@@ -706,6 +784,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-response-contract"
   content_hash: "4d13245b88101898d9c5b7ef7712de9e161eb4e903ed518b5236ffc7dd9942f3"
+  source_hash: "637045af11e83657de36de93b33d2a87995b1c4d568ba15956ba470cba14bcc8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckLineScopedPartialClassAndFold"
   role: BINDING_ROLE_TESTS
@@ -715,6 +794,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-response-contract"
   content_hash: "4d13245b88101898d9c5b7ef7712de9e161eb4e903ed518b5236ffc7dd9942f3"
+  source_hash: "637045af11e83657de36de93b33d2a87995b1c4d568ba15956ba470cba14bcc8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolScopedCallShape"
   role: BINDING_ROLE_TESTS
@@ -724,6 +804,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-response-contract"
   content_hash: "4d13245b88101898d9c5b7ef7712de9e161eb4e903ed518b5236ffc7dd9942f3"
+  source_hash: "637045af11e83657de36de93b33d2a87995b1c4d568ba15956ba470cba14bcc8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.TestCheckViewBlockerRowsCapAndDeterminism"
   role: BINDING_ROLE_TESTS
@@ -733,6 +814,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-tools"
   content_hash: "6b2b8a2aa4383fc2474ad1f5d05d94369a47f7a99d7f894aeb7ebb03cc03d82a"
+  source_hash: "907c19930157684af5df5d4aeced75338fa5ff09de72b3fb235bad6e23de7c7e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolForwardsIdsToThePass"
   role: BINDING_ROLE_TESTS
@@ -742,6 +824,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-tools"
   content_hash: "6b2b8a2aa4383fc2474ad1f5d05d94369a47f7a99d7f894aeb7ebb03cc03d82a"
+  source_hash: "907c19930157684af5df5d4aeced75338fa5ff09de72b3fb235bad6e23de7c7e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGapToolListRowsStatesAndScope"
   role: BINDING_ROLE_TESTS
@@ -751,6 +834,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-tools"
   content_hash: "6b2b8a2aa4383fc2474ad1f5d05d94369a47f7a99d7f894aeb7ebb03cc03d82a"
+  source_hash: "907c19930157684af5df5d4aeced75338fa5ff09de72b3fb235bad6e23de7c7e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPruneToolScopesWitnessEvaluationToGappedRequirements"
   role: BINDING_ROLE_TESTS
@@ -760,6 +844,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-views"
   content_hash: "46e282f6063af71d86c54c40b84af062bc431e9c4843f3a532d47914e31eee39"
+  source_hash: "6e2b8b86afc4794908c83763bae2d1621739b776bcec6be3121623bcd68c0557"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolForwardsIdsToThePass"
   role: BINDING_ROLE_TESTS
@@ -769,6 +854,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-views"
   content_hash: "46e282f6063af71d86c54c40b84af062bc431e9c4843f3a532d47914e31eee39"
+  source_hash: "6e2b8b86afc4794908c83763bae2d1621739b776bcec6be3121623bcd68c0557"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolScopedCallShape"
   role: BINDING_ROLE_TESTS
@@ -778,6 +864,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-views"
   content_hash: "46e282f6063af71d86c54c40b84af062bc431e9c4843f3a532d47914e31eee39"
+  source_hash: "6e2b8b86afc4794908c83763bae2d1621739b776bcec6be3121623bcd68c0557"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.TestCheckViewBlockerRowsCapAndDeterminism"
   role: BINDING_ROLE_TESTS
@@ -787,6 +874,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-writes-confined"
   content_hash: "04367cfdbcaf32eb9ba0536c4aca2ef7b331e3bd285bedec8d005aedf4562cfc"
+  source_hash: "a0b9130cd2ca9dbcf1763a64b943931a19518c02f0e1d8968d1be105a16b9a4f"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestWriteSeamConfinesToStipulatorDir"
   role: BINDING_ROLE_TESTS
@@ -796,6 +884,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-resources"
   content_hash: "58ac098894a3a8d579c6aa19df5cf46cc54bf922a454431e77532b86af440b0b"
+  source_hash: "6d850b1f6e8d2bec859561eab83ba9af3529db43077186858f6305bc744eb728"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestResourceReadServesUnlistedButExistingRequirement"
   role: BINDING_ROLE_TESTS
@@ -805,6 +894,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-response-contract"
   content_hash: "4d13245b88101898d9c5b7ef7712de9e161eb4e903ed518b5236ffc7dd9942f3"
+  source_hash: "637045af11e83657de36de93b33d2a87995b1c4d568ba15956ba470cba14bcc8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPartitionsExportCarriesUncappedOverlaps"
   role: BINDING_ROLE_TESTS
@@ -814,6 +904,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-views"
   content_hash: "46e282f6063af71d86c54c40b84af062bc431e9c4843f3a532d47914e31eee39"
+  source_hash: "6e2b8b86afc4794908c83763bae2d1621739b776bcec6be3121623bcd68c0557"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.TestElementPrefixBoundaries"
   role: BINDING_ROLE_TESTS
@@ -823,6 +914,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-guidance"
   content_hash: "7ce8f0d870d2cf71346eaad5841ee31f9ed2554e4738f2981d124985803d9157"
+  source_hash: "c8a2c04d354278aa42320b5458e8d6ecf6b230b2bcdbdef67cafa2b515215036"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGuidanceCoversTheWireSurface"
   role: BINDING_ROLE_TESTS
@@ -832,6 +924,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-guidance"
   content_hash: "7ce8f0d870d2cf71346eaad5841ee31f9ed2554e4738f2981d124985803d9157"
+  source_hash: "c8a2c04d354278aa42320b5458e8d6ecf6b230b2bcdbdef67cafa2b515215036"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGuidanceToolServesTheDocument"
   role: BINDING_ROLE_TESTS
@@ -841,6 +934,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-guidance"
   content_hash: "7ce8f0d870d2cf71346eaad5841ee31f9ed2554e4738f2981d124985803d9157"
+  source_hash: "c8a2c04d354278aa42320b5458e8d6ecf6b230b2bcdbdef67cafa2b515215036"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestGuidanceCoversTheCLISurface"
   role: BINDING_ROLE_TESTS
@@ -850,6 +944,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-guidance"
   content_hash: "7ce8f0d870d2cf71346eaad5841ee31f9ed2554e4738f2981d124985803d9157"
+  source_hash: "c8a2c04d354278aa42320b5458e8d6ecf6b230b2bcdbdef67cafa2b515215036"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestGuidanceCommandServesTheDocument"
   role: BINDING_ROLE_TESTS
@@ -859,6 +954,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-guidance"
   content_hash: "7ce8f0d870d2cf71346eaad5841ee31f9ed2554e4738f2981d124985803d9157"
+  source_hash: "c8a2c04d354278aa42320b5458e8d6ecf6b230b2bcdbdef67cafa2b515215036"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGuidanceToolServesOutsideACorpus"
   role: BINDING_ROLE_TESTS
@@ -868,6 +964,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-response-contract"
   content_hash: "4d13245b88101898d9c5b7ef7712de9e161eb4e903ed518b5236ffc7dd9942f3"
+  source_hash: "637045af11e83657de36de93b33d2a87995b1c4d568ba15956ba470cba14bcc8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPruneTool"
   role: BINDING_ROLE_TESTS
@@ -877,6 +974,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-response-contract"
   content_hash: "4d13245b88101898d9c5b7ef7712de9e161eb4e903ed518b5236ffc7dd9942f3"
+  source_hash: "637045af11e83657de36de93b33d2a87995b1c4d568ba15956ba470cba14bcc8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGateTool"
   role: BINDING_ROLE_TESTS
@@ -886,6 +984,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-response-contract"
   content_hash: "4d13245b88101898d9c5b7ef7712de9e161eb4e903ed518b5236ffc7dd9942f3"
+  source_hash: "637045af11e83657de36de93b33d2a87995b1c4d568ba15956ba470cba14bcc8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGapListLeadsWithDanglingAndCapsCounted"
   role: BINDING_ROLE_TESTS
@@ -895,6 +994,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-response-contract"
   content_hash: "4d13245b88101898d9c5b7ef7712de9e161eb4e903ed518b5236ffc7dd9942f3"
+  source_hash: "637045af11e83657de36de93b33d2a87995b1c4d568ba15956ba470cba14bcc8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckLineNamesObservedRed"
   role: BINDING_ROLE_TESTS
@@ -904,6 +1004,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestWitnessRunNotesAreBoundedByThePolicy"
   role: BINDING_ROLE_TESTS
@@ -913,6 +1014,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestExecuteSealsEachEndingWithItsCause"
   role: BINDING_ROLE_TESTS
@@ -922,6 +1024,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestInterruptedRunEndsBySignalAfterItsEnding"
   role: BINDING_ROLE_TESTS
@@ -931,6 +1034,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/progress.TestNotesAndKeptRideTheStream"
   role: BINDING_ROLE_TESTS
@@ -940,6 +1044,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/progress.TestStderrSinkRendersEachEventOnce"
   role: BINDING_ROLE_TESTS
@@ -949,6 +1054,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/progress.TestNotesAreOneBoundedLine"
   role: BINDING_ROLE_TESTS
@@ -958,6 +1064,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-progress"
   content_hash: "9d1a53dd0648d5c042213504fcd238e51a9296e651178e2d87b50b9395957aca"
+  source_hash: "b670d368d904f7206ace137f3a5b73f43dd2b985e4335bf982a23c17c30e3e80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/progress.TestSealRendersAndEmitsAtomically"
   role: BINDING_ROLE_TESTS
@@ -967,6 +1074,7 @@ bindings {
 bindings {
   requirement_id: "REQ-mcp-surfaces"
   content_hash: "5f1ca62175b7a00ce1ba3a6a4186e656984f492bd3d6840aa32c5a3eb350e596"
+  source_hash: "4ba774ace438a2c1b378c0c992c47f707e7055ba09f2e1a5ed6d2ed4b1c1459c"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator.TestGuidanceNamesTheReaderOfEverySingleSurfaceElement"
   role: BINDING_ROLE_TESTS

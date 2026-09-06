@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
@@ -61,6 +62,11 @@ func verifyCmd() *cobra.Command {
 			}
 			fmt.Printf("claims:    %d bindings (%s stale), %d gaps, %d registrations\n",
 				rep.Pinned+rep.Stale, num(rep.Stale, yellow), len(store.Gaps), len(rep.Registrations))
+			if rep.Rehash > 0 {
+				// Bindings and attestations alike: the count is of
+				// consent records, its own line beside the faces.
+				fmt.Printf("rehash:    %d record(s) current by source pin alone — %s; blanket stipulator pin rewrites them\n", rep.Rehash, records.RehashNote)
+			}
 			fmt.Printf("shapes:    %d pinned, %s unpinned, %s moved\n",
 				rep.ShapePinned, num(rep.ShapeUnpinned, yellow), num(rep.ShapeMismatch, red))
 			fmt.Printf("witnesses: %d passed, %s failed, %s unwitnessed\n",

@@ -57,7 +57,9 @@ tool guarantees consistency, not semantics.
 
 **REQ-change-default-normative** (behavior): A content-hash change without a
 disposition MUST leave every binding pinned to the prior hash stale; breakage
-is the default assumption.
+is the default assumption — except where the record's consent-source pin
+still matches, which proves the text byte-identical and the change a
+rehash (REQ-evidence-consent-current).
 
 **REQ-change-editorial** (behavior): An editorial disposition MUST re-pin the
 identity's bindings and gap record to the new content hash without
@@ -136,11 +138,14 @@ reason, a landing condition, the violation classes it excuses —
 `uncovered`, `stale`, or `broken`, defaulting to `uncovered` alone when
 it declares none: a gap is declared about a specific violation class,
 so the record states which reds its reason actually explains — and the
-content hash of the requirement text the declaration consented to
-(unset only in records written before the field existed).
+content hash of the requirement text the declaration consented to,
+with its consent-source digest beside it
+(both unset only in records written before the fields existed).
 
-**REQ-gap-consent** (behavior): A gap whose content pin differs from
-its requirement's current text MUST excuse nothing until re-consented
+**REQ-gap-consent** (behavior): A gap whose consent does not hold
+(REQ-evidence-consent-current: a content pin differing from its
+requirement's current text with no matching consent-source pin) MUST
+excuse nothing until re-consented
 — the excuse consented to specific text, and the gapped window is
 exactly when a spec is most likely to be edited, so a drifted pin
 surfaces on the requirement with the re-consent operation named

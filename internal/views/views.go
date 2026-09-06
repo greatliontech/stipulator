@@ -319,6 +319,7 @@ func VerifyView(vr *verify.Report, facts Facts, view string, scope Scope) (proto
 		out.SetProblems(int32(len(vr.Problems)))
 		out.SetPinned(int32(vr.Pinned))
 		out.SetStale(int32(vr.Stale))
+		out.SetRehash(int32(vr.Rehash))
 		out.SetShapePinned(int32(vr.ShapePinned))
 		out.SetShapeUnpinned(int32(vr.ShapeUnpinned))
 		out.SetShapeMismatch(int32(vr.ShapeMismatch))

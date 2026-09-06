@@ -4,6 +4,7 @@
 bindings {
   requirement_id: "REQ-model-content-hash"
   content_hash: "c52b8f24bfe58c66d22970962acb7b5a7feaaf184a78677ce964a569894b3f23"
+  source_hash: "debec01efe6806fb54df2fcea52316ab9781604eed7d0d392ebbdaba61ed5134"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/canon.Text"
   role: BINDING_ROLE_IMPLEMENTS
@@ -13,6 +14,7 @@ bindings {
 bindings {
   requirement_id: "REQ-model-content-hash"
   content_hash: "c52b8f24bfe58c66d22970962acb7b5a7feaaf184a78677ce964a569894b3f23"
+  source_hash: "debec01efe6806fb54df2fcea52316ab9781604eed7d0d392ebbdaba61ed5134"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/canon.TestText"
   role: BINDING_ROLE_TESTS
@@ -22,6 +24,7 @@ bindings {
 bindings {
   requirement_id: "REQ-model-hash-func"
   content_hash: "547692af2bb65b46a1145e0b14ad8d23bba6fcfc71aff690a8369f31c40e7062"
+  source_hash: "f162d906425cb9decddacf8a4381d2f4ab64c2c0a81a02c9fea255110e66fd1b"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/canon.Hash"
   role: BINDING_ROLE_IMPLEMENTS
@@ -31,6 +34,7 @@ bindings {
 bindings {
   requirement_id: "REQ-model-hash-func"
   content_hash: "547692af2bb65b46a1145e0b14ad8d23bba6fcfc71aff690a8369f31c40e7062"
+  source_hash: "f162d906425cb9decddacf8a4381d2f4ab64c2c0a81a02c9fea255110e66fd1b"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/canon.TestHash"
   role: BINDING_ROLE_TESTS
@@ -40,6 +44,7 @@ bindings {
 bindings {
   requirement_id: "REQ-model-hash-canonical-form"
   content_hash: "eb86411e15cd6f995fe5aeb118d5b2d06e41ca00f41b4aeb0334e8e72ae6b1aa"
+  source_hash: "00b54a8b2119b9ab72412c0414b4b6780b754d16bbd6789a130e5bfff0831ac4"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/canon.FuzzTextProjection"
   role: BINDING_ROLE_TESTS

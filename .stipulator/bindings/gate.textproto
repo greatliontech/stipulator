@@ -4,6 +4,7 @@
 bindings {
   requirement_id: "REQ-gate-change-signature"
   content_hash: "04985749b39df1fed2701454db3bfc38001d0197d957cc7b9ae6a03e25a7e65b"
+  source_hash: "994fe20f1b3de988db3db695294aaf6f72bf6daceb0c9859022781a64883e9f0"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.TestChangeSignatures"
   role: BINDING_ROLE_TESTS
@@ -13,6 +14,7 @@ bindings {
 bindings {
   requirement_id: "REQ-gate-change-signature"
   content_hash: "04985749b39df1fed2701454db3bfc38001d0197d957cc7b9ae6a03e25a7e65b"
+  source_hash: "994fe20f1b3de988db3db695294aaf6f72bf6daceb0c9859022781a64883e9f0"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.signatures"
   role: BINDING_ROLE_IMPLEMENTS
@@ -22,6 +24,7 @@ bindings {
 bindings {
   requirement_id: "REQ-gate-no-undeclared"
   content_hash: "d8fac5aec0780854cb91e13134ad1229f98fef3ba7f8983954779375ee2854df"
+  source_hash: "fd1e54584cd8e7e35acea840dceb2ec7a2beb2a0161469c7155bd958ce749647"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestGateGapExcusesBindTheViolationClass"
   role: BINDING_ROLE_TESTS
@@ -31,6 +34,7 @@ bindings {
 bindings {
   requirement_id: "REQ-gate-no-undeclared"
   content_hash: "d8fac5aec0780854cb91e13134ad1229f98fef3ba7f8983954779375ee2854df"
+  source_hash: "fd1e54584cd8e7e35acea840dceb2ec7a2beb2a0161469c7155bd958ce749647"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestPartialIsTheUncoveredClassInPart"
   role: BINDING_ROLE_TESTS

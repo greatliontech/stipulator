@@ -4,6 +4,7 @@
 bindings {
   requirement_id: "REQ-core-vcs-free"
   content_hash: "54f6faa1e618120c103a1cb3d996f6053d7f902c93457e2a5f104975583e69e0"
+  source_hash: "aa0f631d615be2d22a0b17053ad724edd6a6a258a2fe3bec0f9bdcd9c99cfed1"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/arch.TestCoreIsVcsFree"
   role: BINDING_ROLE_PROVES
@@ -13,6 +14,7 @@ bindings {
 bindings {
   requirement_id: "REQ-core-determinism"
   content_hash: "c62f4d3906f9283749c3e19928e7c3f678aa706749914b6e6fe706da9112124f"
+  source_hash: "15e74e6574a1e5af6e7ef8cae83039c9e6215bdbcd586d84c9c2adc5a126df93"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestPropPipelineDeterminism"
   role: BINDING_ROLE_TESTS
@@ -22,6 +24,7 @@ bindings {
 bindings {
   requirement_id: "REQ-core-claims-untrusted"
   content_hash: "fc13bd888d33996087f697b06137befa9a1bcf827c3f001b621098ab0cc63610"
+  source_hash: "d97a00052f68d45c6fa956179698a84bc03384fefb2825348df9f97e20674c67"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestPropEvidenceOnlyFromCurrentRun"
   role: BINDING_ROLE_TESTS
@@ -31,6 +34,7 @@ bindings {
 bindings {
   requirement_id: "REQ-core-scope"
   content_hash: "95ad033a4917ae6b64325472813ea59ece2ab8f5c7d33e3e1f2679ccd98162e9"
+  source_hash: "c9f3a56e0a665e514e8598b8d9d130babafa684dbe0c3cd00b0f0d65bd5cfa30"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.TestPropVerbsWriteOnlyRecords"
   role: BINDING_ROLE_TESTS
@@ -40,6 +44,7 @@ bindings {
 bindings {
   requirement_id: "REQ-core-determinism"
   content_hash: "c62f4d3906f9283749c3e19928e7c3f678aa706749914b6e6fe706da9112124f"
+  source_hash: "15e74e6574a1e5af6e7ef8cae83039c9e6215bdbcd586d84c9c2adc5a126df93"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/bundle.TestPropBundleDeterminism"
   role: BINDING_ROLE_TESTS
@@ -49,6 +54,7 @@ bindings {
 bindings {
   requirement_id: "REQ-core-determinism"
   content_hash: "c62f4d3906f9283749c3e19928e7c3f678aa706749914b6e6fe706da9112124f"
+  source_hash: "15e74e6574a1e5af6e7ef8cae83039c9e6215bdbcd586d84c9c2adc5a126df93"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/diff.TestPropDiffDeterminism"
   role: BINDING_ROLE_TESTS
@@ -58,6 +64,7 @@ bindings {
 bindings {
   requirement_id: "REQ-core-determinism"
   content_hash: "c62f4d3906f9283749c3e19928e7c3f678aa706749914b6e6fe706da9112124f"
+  source_hash: "15e74e6574a1e5af6e7ef8cae83039c9e6215bdbcd586d84c9c2adc5a126df93"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/facts.TestPropSeedsDeterminism"
   role: BINDING_ROLE_TESTS
@@ -67,6 +74,7 @@ bindings {
 bindings {
   requirement_id: "REQ-core-one-execution"
   content_hash: "27037830c846e6bd1e46201d4c5410eac7011f7c1805f54c2cdb095c122af3bc"
+  source_hash: "4f2748afe980fea70c2e9c2386289f174d0389a3801bf849b1e7defe4cfb4628"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteCommandArgsRendering"
   role: BINDING_ROLE_TESTS
@@ -76,6 +84,7 @@ bindings {
 bindings {
   requirement_id: "REQ-core-one-execution"
   content_hash: "27037830c846e6bd1e46201d4c5410eac7011f7c1805f54c2cdb095c122af3bc"
+  source_hash: "4f2748afe980fea70c2e9c2386289f174d0389a3801bf849b1e7defe4cfb4628"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSelectionRunsOnlySelected"
   role: BINDING_ROLE_TESTS
@@ -85,6 +94,7 @@ bindings {
 bindings {
   requirement_id: "REQ-core-one-execution"
   content_hash: "27037830c846e6bd1e46201d4c5410eac7011f7c1805f54c2cdb095c122af3bc"
+  source_hash: "4f2748afe980fea70c2e9c2386289f174d0389a3801bf849b1e7defe4cfb4628"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSelectionIsolatesAbortShadowedTests"
   role: BINDING_ROLE_TESTS
@@ -94,6 +104,7 @@ bindings {
 bindings {
   requirement_id: "REQ-core-one-execution"
   content_hash: "27037830c846e6bd1e46201d4c5410eac7011f7c1805f54c2cdb095c122af3bc"
+  source_hash: "4f2748afe980fea70c2e9c2386289f174d0389a3801bf849b1e7defe4cfb4628"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSelectionEnvelopeBoundsIsolation"
   role: BINDING_ROLE_TESTS
@@ -103,6 +114,7 @@ bindings {
 bindings {
   requirement_id: "REQ-core-one-execution"
   content_hash: "27037830c846e6bd1e46201d4c5410eac7011f7c1805f54c2cdb095c122af3bc"
+  source_hash: "4f2748afe980fea70c2e9c2386289f174d0389a3801bf849b1e7defe4cfb4628"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesServeExecuteOutsideDisjoint"
   role: BINDING_ROLE_TESTS
@@ -112,6 +124,7 @@ bindings {
 bindings {
   requirement_id: "REQ-core-one-execution"
   content_hash: "27037830c846e6bd1e46201d4c5410eac7011f7c1805f54c2cdb095c122af3bc"
+  source_hash: "4f2748afe980fea70c2e9c2386289f174d0389a3801bf849b1e7defe4cfb4628"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesMultiplySelectedRunsEveryRaceLeg"
   role: BINDING_ROLE_TESTS
@@ -121,6 +134,7 @@ bindings {
 bindings {
   requirement_id: "REQ-core-one-execution"
   content_hash: "27037830c846e6bd1e46201d4c5410eac7011f7c1805f54c2cdb095c122af3bc"
+  source_hash: "4f2748afe980fea70c2e9c2386289f174d0389a3801bf849b1e7defe4cfb4628"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesMultiplySelectedRunsNonRaceLeg"
   role: BINDING_ROLE_TESTS
@@ -130,6 +144,7 @@ bindings {
 bindings {
   requirement_id: "REQ-core-one-execution"
   content_hash: "27037830c846e6bd1e46201d4c5410eac7011f7c1805f54c2cdb095c122af3bc"
+  source_hash: "4f2748afe980fea70c2e9c2386289f174d0389a3801bf849b1e7defe4cfb4628"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSelectionIsolatesBinaryDeadlineVictims"
   role: BINDING_ROLE_TESTS

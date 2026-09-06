@@ -17,10 +17,39 @@ import (
 // deleted gaps, and the tombstone registry. Nothing is logged; git holds
 // history.
 
-// ErrNothingStale marks an editorial re-pin that found every binding
-// already current: an error for dispose (a disposition that changed
-// nothing was probably a mistake), a clean no-op for pin --req.
+// ErrNothingStale marks an editorial re-pin that found nothing to
+// re-pin: an error for dispose (a disposition that changed nothing was
+// probably a mistake), a clean no-op for pin --req. The wrapping
+// NothingStaleError says WHY, so the no-op line states a fact — "text
+// unchanged" only when records consent to the current text, "no
+// records" when none name the requirement, and the re-attest ceremony
+// when the only stale consent is an attestation's, which the
+// editorial re-pin never touches (REQ-pin-backfill).
 var ErrNothingStale = errors.New("nothing stale to re-pin")
+
+// NothingStaleError is ErrNothingStale with its reason: Note is the
+// user-facing phrase the no-op surfaces render after the identifier.
+type NothingStaleError struct {
+	Requirement string
+	Note        string
+}
+
+func (e *NothingStaleError) Error() string        { return e.Requirement + ": " + e.Note }
+func (e *NothingStaleError) Is(target error) bool { return target == ErrNothingStale }
+func (e *NothingStaleError) Unwrap() error        { return ErrNothingStale }
+
+// NoOpNote is the phrase a no-op re-pin surfaces for err, when err is
+// ErrNothingStale; empty otherwise.
+func NoOpNote(err error) string {
+	var nse *NothingStaleError
+	if errors.As(err, &nse) {
+		return nse.Note
+	}
+	if errors.Is(err, ErrNothingStale) {
+		return "text unchanged; nothing to re-consent"
+	}
+	return ""
+}
 
 // Editorial re-pins a requirement's bindings and gap record to its
 // current content hash: the author's claim that a spec edit preserved
@@ -36,11 +65,11 @@ func Editorial(fsys fs.FS, requirement string) (ups []Update, consented []string
 	if err != nil {
 		return nil, nil, err
 	}
-	hash := ""
+	hash, source := "", ""
 	var target *stipulatorv1.Requirement
 	for _, r := range spec.GetRequirements() {
 		if r.GetId() == requirement {
-			hash = r.GetContentHash()
+			hash, source = r.GetContentHash(), r.GetSourceHash()
 			target = r
 		}
 	}
@@ -66,7 +95,14 @@ func Editorial(fsys fs.FS, requirement string) (ups []Update, consented []string
 			if clause != nil {
 				consented = append(consented, fmt.Sprintf("%s now claims %s", b.GetSymbol(), records.ClauseHeading(clause)))
 			}
+			// A rehash under the named form is named too: the operator
+			// asked to re-consent, and learns there was nothing to
+			// consent to for this record (REQ-evidence-consent-current).
+			if records.JudgeConsent(b.GetContentHash(), b.GetSourceHash(), hash, source) == records.Rehash {
+				consented = append(consented, fmt.Sprintf("%s rehashed — %s", b.GetSymbol(), records.RehashNote))
+			}
 			b.SetContentHash(hash)
+			b.SetSourceHash(source)
 			changed = true
 			repinned++
 		}
@@ -87,6 +123,7 @@ func Editorial(fsys fs.FS, requirement string) (ups []Update, consented []string
 	for _, gf := range store.Gaps {
 		if gf.Gap.GetRequirementId() == requirement && gf.Gap.GetContentHash() != hash {
 			gf.Gap.SetContentHash(hash)
+			gf.Gap.SetSourceHash(source)
 			content, err := records.RenderGapFile(gf)
 			if err != nil {
 				return nil, nil, err
@@ -96,7 +133,7 @@ func Editorial(fsys fs.FS, requirement string) (ups []Update, consented []string
 		}
 	}
 	if repinned == 0 {
-		return nil, nil, fmt.Errorf("no stale records for %s: %w", requirement, ErrNothingStale)
+		return nil, nil, &NothingStaleError{Requirement: requirement, Note: nothingStaleNote(store, requirement, hash, source)}
 	}
 	sortUpdates(out)
 	sort.Strings(consented)
@@ -352,4 +389,41 @@ func (o overlayFS) ReadFile(name string) ([]byte, error) {
 		return o.data, nil
 	}
 	return fs.ReadFile(o.FS, name)
+}
+
+// nothingStaleNote states why a named re-pin has nothing to do: the
+// requirement's bindings and gap consent to the current text, or no
+// record names it at all, or the only consent not holding is an
+// attestation's — a judgment the editorial re-pin never rewrites, so
+// the note names the re-attest ceremony instead of claiming the text
+// unchanged.
+func nothingStaleNote(store *records.Store, requirement, hash, source string) string {
+	named := false
+	for _, bf := range store.Bindings {
+		for _, b := range bf.Set.GetBindings() {
+			if b.GetRequirementId() == requirement {
+				named = true
+			}
+		}
+	}
+	for _, gf := range store.Gaps {
+		if gf.Gap.GetRequirementId() == requirement {
+			named = true
+		}
+	}
+	for _, af := range store.Attestations {
+		for _, a := range af.Set.GetAttestations() {
+			if a.GetRequirementId() != requirement {
+				continue
+			}
+			named = true
+			if !records.JudgeConsent(a.GetContentHash(), a.GetSourceHash(), hash, source).Holds() {
+				return "no binding or gap awaits re-consent; its attestation was vouched for different text and the editorial re-pin never rewrites a judgment — re-attest: stipulator attest requirement --req " + requirement
+			}
+		}
+	}
+	if !named {
+		return "no records name it; nothing to re-consent"
+	}
+	return "text unchanged; nothing to re-consent"
 }

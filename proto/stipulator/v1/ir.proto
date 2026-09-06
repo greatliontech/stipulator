@@ -82,6 +82,15 @@ message Requirement {
   // coverage judgment, never a second identity: they carry no hash and
   // no location of their own.
   repeated Clause clauses = 8;
+  // The consent-source digest: the SHA-256 of the newline-joined
+  // SHA-256 hex digests of the consent surface's raw markdown blocks —
+  // the lead paragraph with its payload, then each context-extent
+  // block in document order — with no canonicalization. Provenance of
+  // the same surface the content hash covers, so a record whose source
+  // pin still matches while its content pin differs consented to
+  // byte-identical text: the canonical form moved, not the text
+  // (REQ-model-consent-source).
+  string source_hash = 9;
 }
 
 // Clause is one sub-obligation of a requirement: a payload list item,

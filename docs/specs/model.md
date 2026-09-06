@@ -83,6 +83,31 @@ specified canonical form; serialized protobuf bytes are not a canonical form.
 observable hash MUST be the SHA-256 digest of the UTF-8 bytes of the
 canonical form, rendered as sixty-four lowercase hexadecimal characters.
 
+**REQ-model-consent-source** (wire, refines REQ-model-hash-canonical-form):
+Each requirement MUST carry a consent-source digest beside its content
+hash: the SHA-256 of the newline-joined SHA-256 hex digests of the
+consent surface's raw markdown blocks — the lead paragraph with its
+payload first, then each context-extent block in document order
+(REQ-profile-context-extent), then the document's link reference
+definition labels, sorted, each its own part — with no canonicalization
+anywhere. The digest is provenance of everything the surface's canonical
+text depends on, over bytes instead of canonical text: the blocks' own
+bytes, and the one document-scoped input the profile's parser reads
+when interpreting them — a `[label]` resolves through a definition
+anywhere in its document and then contributes its label text, while a
+definition's destination and title reach no canonical text and so ride
+no digest. Every part is digested on its own before the parts join, so
+no part's content can forge a boundary. So an equal digest under a differing content
+hash is the canonical form having moved, never the text; a block
+boundary rides the preimage as it rides the content hash; a
+repartition that keeps blocks intact keeps the digest
+(REQ-model-layout-independence); and a whitespace-only rewrap or a
+lead-marker edit moves the digest while the content hash stands — the
+harmless direction, since a record current by content consents to the
+current text and its provenance simply follows. It is computed from the
+tree alone (REQ-core-vcs-free) and, like the source it digests, never
+enters the content hash.
+
 ## Closure and bundles
 
 **REQ-model-closure** (behavior): The closure of a requirement set MUST be

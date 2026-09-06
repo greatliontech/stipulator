@@ -114,11 +114,11 @@ func Compile(fsys fs.FS) (*stipulatorv1.Spec, []Diagnostic, error) {
 			diags = append(diags, Diagnostic{Document: p, Line: 1, Message: "document is not valid UTF-8"})
 			continue
 		}
-		root, pdiags := profile.Parse(src)
+		root, refLabels, pdiags := profile.ParseDocument(src)
 		for _, pd := range pdiags {
 			diags = append(diags, Diagnostic{Document: p, Line: pd.Line, Message: pd.Message})
 		}
-		docs = append(docs, extractDocument(p, root, src))
+		docs = append(docs, extractDocument(p, root, src, refLabels))
 	}
 
 	spec := resolve(docs, tombstones, &diags)
@@ -304,8 +304,15 @@ func resolve(docs []*document, tombstones map[string]bool, diags *[]Diagnostic) 
 			// moving words across the lead/extent boundary moves the
 			// hash, because that move changes normative status
 			// (REQ-model-content-hash, REQ-profile-context-extent).
-			ir.SetContentHash(canon.HashParts(extentParts(text, r.extent)...))
+			ir.SetContentHash(canon.HashParts(extentParts(text, r.extent.segs)...))
 			ir.SetSource(r.source)
+			// The digest's preimage: the lead with its payload, each
+			// extent block, then each of the document's link reference
+			// definition labels — the one document-scoped input the
+			// canonical text of those blocks depends on — every part
+			// digested on its own, so no part can forge a boundary
+			// (REQ-model-consent-source).
+			ir.SetSourceHash(canon.SourceDigest(append(append([]string{r.source}, r.extent.source...), d.refLabels...)...))
 			ir.SetLocation(r.loc)
 			// Clauses ride the IR as a refinement of the requirement:
 			// ordinal from 1 in payload order, the declared label when
@@ -338,7 +345,7 @@ func resolve(docs []*document, tombstones map[string]bool, diags *[]Diagnostic) 
 			ir := &stipulatorv1.Term{}
 			ir.SetName(t.name)
 			ir.SetText(canon.Text(text))
-			ir.SetContentHash(canon.HashParts(extentParts(text, t.extent)...))
+			ir.SetContentHash(canon.HashParts(extentParts(text, t.extent.segs)...))
 			ir.SetSource(t.source)
 			ir.SetLocation(t.loc)
 			irTerms = append(irTerms, ir)

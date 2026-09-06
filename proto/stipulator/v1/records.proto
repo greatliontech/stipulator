@@ -48,6 +48,13 @@ message Binding {
     uint32 clause_ordinal = 7;
     string clause_label = 8;
   }
+  // The consent-source digest of the requirement at consent: provenance
+  // of the same surface the content pin covers, over raw bytes. A
+  // record whose source pin still matches while its content pin differs
+  // consented to byte-identical text — the canonical form moved, not the
+  // text — and stays current (REQ-evidence-consent-current). Unset on a
+  // record written before the field existed.
+  string source_hash = 9;
 }
 
 // BindingSet is the root message of a binding file; grouping bindings into
@@ -77,6 +84,9 @@ message Gap {
   // unset (a pre-field record) excuses as declared and backfills under
   // the blanket pin.
   string content_hash = 5;
+  // The consent-source digest at declaration, as on a binding
+  // (REQ-evidence-consent-current).
+  string source_hash = 6;
 }
 
 // GapExcuse names one red bucket a gap record excuses.
@@ -97,6 +107,9 @@ message RequirementAttestation {
   string requirement_id = 1;
   string content_hash = 2;
   string reason = 3;
+  // The consent-source digest at attestation, as on a binding
+  // (REQ-evidence-consent-current).
+  string source_hash = 4;
 }
 
 // AttestationSet is one attestation record file.

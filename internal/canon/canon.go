@@ -69,3 +69,27 @@ func HashParts(parts ...string) string {
 	sum := sha256.Sum256([]byte(strings.Join(canonical, "\x1e")))
 	return hex.EncodeToString(sum[:])
 }
+
+// SourceDigest returns the consent-source digest of an identity: the
+// SHA-256, as 64 lowercase hexadecimal characters, of the newline-joined
+// SHA-256 hex digests of its parts — the consent surface's raw markdown
+// blocks (the lead paragraph with its payload first, then each
+// context-extent block in document order) followed by the document's
+// link reference definition labels, sorted, one part each — with no
+// canonicalization anywhere (REQ-model-consent-source). Raw bytes, so
+// byte-identical input digests identically whatever the canonical form
+// does; per-part digests, so a part boundary rides the preimage exactly
+// as a block boundary rides the content hash, and no part's content
+// can forge one.
+func SourceDigest(blocks ...string) string {
+	var joined strings.Builder
+	for i, b := range blocks {
+		if i > 0 {
+			joined.WriteByte('\n')
+		}
+		sum := sha256.Sum256([]byte(b))
+		joined.WriteString(hex.EncodeToString(sum[:]))
+	}
+	sum := sha256.Sum256([]byte(joined.String()))
+	return hex.EncodeToString(sum[:])
+}

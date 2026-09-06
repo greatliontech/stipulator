@@ -19,9 +19,31 @@ it.
 textproto files under `.stipulator/bindings/`, each naming a requirement
 identifier, the content hash it was authored against (unset when not yet
 pinned), a backend, a symbol reference, a role, — when the backend
-defines one — the shape hash of the bound symbol, and — when the claim is
+defines one — the shape hash of the bound symbol, — when the claim is
 scoped to one clause — that clause by ordinal or by label, one field for
-both forms so a claim naming two clauses is unrepresentable.
+both forms so a claim naming two clauses is unrepresentable, and the
+requirement's consent-source digest at consent (unset on a record
+written before the field existed).
+
+**REQ-evidence-consent-current** (behavior): A record's consent to its
+requirement's text — a binding's, a gap's, or an attestation's content
+pin — MUST be judged current exactly when the content pin equals the
+requirement's content hash, or the record's consent-source pin equals
+the requirement's consent-source digest (REQ-model-consent-source):
+an equal digest covers the blocks' bytes and the document input their
+parse depends on, so a differing content hash over an equal digest is
+the canonical form having moved, not the text — a rehash, current for
+every judgment, counted and named
+as pending on the verification summary, and rewritten by the blanket
+pin with no consent question (REQ-pin-backfill) because no laundering
+direction exists over identical bytes. A record whose content pin
+differs with no matching source pin — a differing one, or none on a
+pre-field record — is stale until a named re-consent, exactly as
+before; an unset content pin is never current. Every consenting verb
+stamps the source pin beside the content pin, the blanket pin keeps a
+current record's source pin at the current digest, and the named
+re-consent names each record it re-pins that was a rehash, so the
+operator learns there was nothing to consent to for it.
 
 **REQ-evidence-clause-claim** (behavior): A binding scoped to one
 clause of its requirement (REQ-profile-clauses), by the clause's ordinal
@@ -51,10 +73,25 @@ review and commit messages, not in record files.
 **REQ-pin-backfill** (behavior): The pin operation MUST set only unset
 content pins and shape pins in its blanket form — a differing content pin
 is never rewritten without naming the requirement, so staleness cannot be
-laundered by a blanket re-pin. Naming requirements explicitly is the
+laundered by a blanket re-pin — with one exception that launders nothing:
+a differing content pin whose consent-source pin equals the
+requirement's current digest is a rehash over byte-identical text
+(REQ-evidence-consent-current), rewritten by the blanket form and named
+as rehashed, and a record current by content — its content pin equal,
+so consent to the current text is proven — has its source pin set to
+the current digest (backfilled when unset, refreshed when a rewrap or
+marker edit moved it), so the rehash rescue never silently disarms.
+The blanket form judges every consent record alike — bindings, gaps,
+and attestations (whose differing content pin stays the re-attest
+ceremony's). Naming requirements explicitly is the
 editorial re-consent (REQ-change-editorial), surfaced under pin as well
 as the dispose verb, and a pin invocation that changes nothing reports
-the no-op rather than returning silence. The blanket form also names the
+the no-op rather than returning silence — the named form's no-op states
+its reason: "text unchanged; nothing to re-consent" when records
+consent to the current text, "no records name it" when none do, and
+the re-attest ceremony when the only consent not holding is an
+attestation's, which the editorial re-pin never rewrites — never a
+bare "current" that reads as a skipped ceremony. The blanket form also names the
 requirements whose differing content pins it preserved: refusing to
 launder is only honest when the caller learns what awaits re-consent from
 the pin response itself, not from a later staleness report. Symmetrically

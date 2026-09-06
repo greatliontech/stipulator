@@ -4,6 +4,7 @@
 bindings {
   requirement_id: "REQ-change-dangling"
   content_hash: "7619c6d1f63f39923813148c69641b957a07dcd0820d52db7779f41c8d97605f"
+  source_hash: "3e82cf5eb15e880ad341859495d0e0a3049729ea11a8b2a3b7d15f63fe86a60d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.Run"
   role: BINDING_ROLE_IMPLEMENTS
@@ -13,6 +14,7 @@ bindings {
 bindings {
   requirement_id: "REQ-change-dangling"
   content_hash: "7619c6d1f63f39923813148c69641b957a07dcd0820d52db7779f41c8d97605f"
+  source_hash: "3e82cf5eb15e880ad341859495d0e0a3049729ea11a8b2a3b7d15f63fe86a60d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
   role: BINDING_ROLE_TESTS
@@ -21,7 +23,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-binding-store"
-  content_hash: "2b3a140276564c9cd7a88b6ce942288797a79116414b6130ab1bc8c19709d41d"
+  content_hash: "b6aa8be60641cf655b18e86b61ea1009f64c1953bb9e4c7155ce966d83f3799f"
+  source_hash: "ca3ee5683c772a3d28f13225cb160fdfc52fb9422cea891d1a0cef5d362e898d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/records.Load"
   role: BINDING_ROLE_IMPLEMENTS
@@ -30,7 +33,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-record"
-  content_hash: "c3215f6833af3827722530b93a679443acb0ca899cbae02196e665bce6de31bf"
+  content_hash: "fa52c0c5cfe2cd18cacc4eca687fb489119d347451bffc57097b177786b7fd43"
+  source_hash: "ee7bbf7edfb288019ccdfe2ee9065fbf912f0b82215a6dc5b7b589ea4bcbbc98"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/records.Load"
   role: BINDING_ROLE_IMPLEMENTS
@@ -39,7 +43,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gap-record"
-  content_hash: "c3215f6833af3827722530b93a679443acb0ca899cbae02196e665bce6de31bf"
+  content_hash: "fa52c0c5cfe2cd18cacc4eca687fb489119d347451bffc57097b177786b7fd43"
+  source_hash: "ee7bbf7edfb288019ccdfe2ee9065fbf912f0b82215a6dc5b7b589ea4bcbbc98"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
   role: BINDING_ROLE_TESTS
@@ -49,6 +54,7 @@ bindings {
 bindings {
   requirement_id: "REQ-gap-conditions"
   content_hash: "13a40af8e6a229927b3e15516d441576192cede92c878677ec03747746115fe4"
+  source_hash: "b1b2d45848cb1fcc3ed0b75ca97c30ffdf12659359c5e84f340701ea01b8d75c"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
   role: BINDING_ROLE_TESTS

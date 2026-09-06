@@ -4,6 +4,7 @@
 bindings {
   requirement_id: "REQ-model-closure"
   content_hash: "d60f045c53652cd08a8b08365016a47d6101ce3862ffc8c6d448615244e0c559"
+  source_hash: "f1f0c4d194dddb2a36c76f1c4cd77d279f0e7ea7e70798f1e36b36b63e2e20f8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/bundle.Compute"
   role: BINDING_ROLE_IMPLEMENTS
@@ -13,6 +14,7 @@ bindings {
 bindings {
   requirement_id: "REQ-model-closure"
   content_hash: "d60f045c53652cd08a8b08365016a47d6101ce3862ffc8c6d448615244e0c559"
+  source_hash: "f1f0c4d194dddb2a36c76f1c4cd77d279f0e7ea7e70798f1e36b36b63e2e20f8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/bundle.TestClosure"
   role: BINDING_ROLE_TESTS
@@ -22,6 +24,7 @@ bindings {
 bindings {
   requirement_id: "REQ-model-bundle"
   content_hash: "c37fa813c12f3165c2028debabebe4102ffc6ad91ced366a140ac26ac9c85fb4"
+  source_hash: "893fe00274ccf17da363e2b9b7c68590596f37aef55a6b4301e6ff20b971e874"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/bundle.Markdown"
   role: BINDING_ROLE_IMPLEMENTS
@@ -31,6 +34,7 @@ bindings {
 bindings {
   requirement_id: "REQ-model-bundle"
   content_hash: "c37fa813c12f3165c2028debabebe4102ffc6ad91ced366a140ac26ac9c85fb4"
+  source_hash: "893fe00274ccf17da363e2b9b7c68590596f37aef55a6b4301e6ff20b971e874"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/bundle.TestBundleSelfContained"
   role: BINDING_ROLE_TESTS
@@ -40,6 +44,7 @@ bindings {
 bindings {
   requirement_id: "REQ-model-layout-independence"
   content_hash: "92d96f5f2e446e483b2ddca81156576c52f92dd2bcca831a673421a4c9f4acf1"
+  source_hash: "47419492a3f7f6df4490cc50d9e0513b03e75447e7ddca15ce8f5834f9e711cd"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestPropLayoutIndependence"
   role: BINDING_ROLE_TESTS
@@ -49,6 +54,7 @@ bindings {
 bindings {
   requirement_id: "REQ-model-location-metadata"
   content_hash: "5da370a62aeaf018b254c036671a6fc0901d76dade38fa15b6d4e66938d9476c"
+  source_hash: "a9150a67529fddea498a81b4e193effda2f64734c924b5b4c5d06d36a28e81ae"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestPropLayoutIndependence"
   role: BINDING_ROLE_TESTS
@@ -58,6 +64,7 @@ bindings {
 bindings {
   requirement_id: "REQ-model-identity"
   content_hash: "d3280e79f2568eb2b7b7316c10773110b25b43b224fceb970688e96ad71a6a87"
+  source_hash: "9f36920a80e876d552ff31443552e0dae7b324a69aa2d7c04d54a064865bb0c3"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestPropTombstonedIdentityNeverRedeclared"
   role: BINDING_ROLE_TESTS
@@ -67,6 +74,7 @@ bindings {
 bindings {
   requirement_id: "REQ-model-content-hash"
   content_hash: "c52b8f24bfe58c66d22970962acb7b5a7feaaf184a78677ce964a569894b3f23"
+  source_hash: "debec01efe6806fb54df2fcea52316ab9781604eed7d0d392ebbdaba61ed5134"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestContextExtentRidesContentHash"
   role: BINDING_ROLE_TESTS
@@ -76,6 +84,7 @@ bindings {
 bindings {
   requirement_id: "REQ-model-content-hash"
   content_hash: "c52b8f24bfe58c66d22970962acb7b5a7feaaf184a78677ce964a569894b3f23"
+  source_hash: "debec01efe6806fb54df2fcea52316ab9781604eed7d0d392ebbdaba61ed5134"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestExtentBoundaryRidesPreimage"
   role: BINDING_ROLE_TESTS
@@ -85,6 +94,7 @@ bindings {
 bindings {
   requirement_id: "REQ-model-content-hash"
   content_hash: "c52b8f24bfe58c66d22970962acb7b5a7feaaf184a78677ce964a569894b3f23"
+  source_hash: "debec01efe6806fb54df2fcea52316ab9781604eed7d0d392ebbdaba61ed5134"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestRawSeparatorCannotForgeBoundary"
   role: BINDING_ROLE_TESTS
@@ -94,6 +104,7 @@ bindings {
 bindings {
   requirement_id: "REQ-model-content-hash"
   content_hash: "c52b8f24bfe58c66d22970962acb7b5a7feaaf184a78677ce964a569894b3f23"
+  source_hash: "debec01efe6806fb54df2fcea52316ab9781604eed7d0d392ebbdaba61ed5134"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/canon.HashParts"
   role: BINDING_ROLE_IMPLEMENTS
@@ -103,6 +114,7 @@ bindings {
 bindings {
   requirement_id: "REQ-model-content-hash"
   content_hash: "c52b8f24bfe58c66d22970962acb7b5a7feaaf184a78677ce964a569894b3f23"
+  source_hash: "debec01efe6806fb54df2fcea52316ab9781604eed7d0d392ebbdaba61ed5134"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/canon.TestTextStripsControlCharacters"
   role: BINDING_ROLE_TESTS
@@ -112,8 +124,19 @@ bindings {
 bindings {
   requirement_id: "REQ-model-content-hash"
   content_hash: "c52b8f24bfe58c66d22970962acb7b5a7feaaf184a78677ce964a569894b3f23"
+  source_hash: "debec01efe6806fb54df2fcea52316ab9781604eed7d0d392ebbdaba61ed5134"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/canon.TestPropCanonProjection"
   role: BINDING_ROLE_TESTS
   shape_hash: "c9b625c2e1e1057cebf7a31fc44fb483163cb989ae5f41b60228e34b661ee168"
+}
+
+bindings {
+  requirement_id: "REQ-model-consent-source"
+  content_hash: "e5ffa226e492acebd31d3dd1adfc59e122ae55a14134a2e3cb11b1c5635debcc"
+  source_hash: "1a79fdb8fe815a1eec8e96f710d71de48167d2c073806aedc8b78ac293acf15c"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestConsentSourceDigestFollowsRawBytes"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "07eebac3e3a95026f5a66297d805bd11996817ffb8a622a7768a3766ae4db449"
 }

@@ -207,11 +207,11 @@ func Bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Upd
 	if errs := compile.Errors(diags); len(errs) > 0 {
 		return nil, fmt.Errorf("corpus does not compile: %s%s", errs[0], moreSuffix(len(errs)-1))
 	}
-	var contentHash string
+	var contentHash, sourceHash string
 	var target *stipulatorv1.Requirement
 	for _, r := range spec.GetRequirements() {
 		if r.GetId() == req.Requirement {
-			contentHash = r.GetContentHash()
+			contentHash, sourceHash = r.GetContentHash(), r.GetSourceHash()
 			target = r
 		}
 	}
@@ -287,6 +287,7 @@ func Bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Upd
 	b := claim
 	b.SetRequirementId(req.Requirement)
 	b.SetContentHash(contentHash)
+	b.SetSourceHash(sourceHash)
 	b.SetBackend(req.Backend)
 	b.SetSymbol(req.Symbol)
 	b.SetRole(req.Role)
@@ -598,11 +599,10 @@ func Gap(fsys fs.FS, g *stipulatorv1.Gap) (*Update, *stipulatorv1.Gap, []string,
 	if errs := compile.Errors(diags); len(errs) > 0 {
 		return nil, nil, nil, fmt.Errorf("corpus does not compile: %s%s", errs[0], moreSuffix(len(errs)-1))
 	}
+	hashes := records.HashesOf(spec)
 	inCorpus := map[string]bool{}
-	hashOf := map[string]string{}
 	for _, r := range spec.GetRequirements() {
 		inCorpus[r.GetId()] = true
-		hashOf[r.GetId()] = r.GetContentHash()
 	}
 	if !inCorpus[g.GetRequirementId()] {
 		return nil, nil, nil, fmt.Errorf("requirement %s is not in the corpus", g.GetRequirementId())
@@ -642,7 +642,8 @@ func Gap(fsys fs.FS, g *stipulatorv1.Gap) (*Update, *stipulatorv1.Gap, []string,
 	// The declaration consents to the requirement's CURRENT text: the
 	// content pin is the consent surface, exactly as a binding's
 	// (REQ-gap-consent). A re-declaration is a fresh consent.
-	g.SetContentHash(hashOf[g.GetRequirementId()])
+	g.SetContentHash(hashes.Content[g.GetRequirementId()])
+	g.SetSourceHash(hashes.Source[g.GetRequirementId()])
 	seenExcuse := map[stipulatorv1.GapExcuse]bool{}
 	for _, x := range g.GetExcuses() {
 		if x != stipulatorv1.GapExcuse_GAP_EXCUSE_UNCOVERED &&

@@ -4,6 +4,7 @@
 bindings {
   requirement_id: "REQ-record-cas"
   content_hash: "ce32d16bf821ab6abb13c06b90d0f7b8e5bd399a8c76492aa17ea7e321ba7ae3"
+  source_hash: "a90025bbda2bb888ef63812bda9afc82fc3895be549d439c5eb2a9dc502f6f3d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.StampPriors"
   role: BINDING_ROLE_IMPLEMENTS
@@ -13,6 +14,7 @@ bindings {
 bindings {
   requirement_id: "REQ-record-cas"
   content_hash: "ce32d16bf821ab6abb13c06b90d0f7b8e5bd399a8c76492aa17ea7e321ba7ae3"
+  source_hash: "a90025bbda2bb888ef63812bda9afc82fc3895be549d439c5eb2a9dc502f6f3d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.Server.apply"
   role: BINDING_ROLE_IMPLEMENTS
@@ -22,6 +24,7 @@ bindings {
 bindings {
   requirement_id: "REQ-record-cas"
   content_hash: "ce32d16bf821ab6abb13c06b90d0f7b8e5bd399a8c76492aa17ea7e321ba7ae3"
+  source_hash: "a90025bbda2bb888ef63812bda9afc82fc3895be549d439c5eb2a9dc502f6f3d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/records.TestLoadSkipsHiddenFiles"
   role: BINDING_ROLE_TESTS
@@ -31,6 +34,7 @@ bindings {
 bindings {
   requirement_id: "REQ-record-cas"
   content_hash: "ce32d16bf821ab6abb13c06b90d0f7b8e5bd399a8c76492aa17ea7e321ba7ae3"
+  source_hash: "a90025bbda2bb888ef63812bda9afc82fc3895be549d439c5eb2a9dc502f6f3d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestPropApplyRefusesIffAnyTargetMoved"
   role: BINDING_ROLE_TESTS
@@ -40,6 +44,7 @@ bindings {
 bindings {
   requirement_id: "REQ-record-cas"
   content_hash: "ce32d16bf821ab6abb13c06b90d0f7b8e5bd399a8c76492aa17ea7e321ba7ae3"
+  source_hash: "a90025bbda2bb888ef63812bda9afc82fc3895be549d439c5eb2a9dc502f6f3d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestApplyUpdatesCompareAndSwap"
   role: BINDING_ROLE_TESTS
@@ -49,6 +54,7 @@ bindings {
 bindings {
   requirement_id: "REQ-record-cas"
   content_hash: "ce32d16bf821ab6abb13c06b90d0f7b8e5bd399a8c76492aa17ea7e321ba7ae3"
+  source_hash: "a90025bbda2bb888ef63812bda9afc82fc3895be549d439c5eb2a9dc502f6f3d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestVerbsStampPriors"
   role: BINDING_ROLE_TESTS
@@ -58,6 +64,7 @@ bindings {
 bindings {
   requirement_id: "REQ-record-cas"
   content_hash: "ce32d16bf821ab6abb13c06b90d0f7b8e5bd399a8c76492aa17ea7e321ba7ae3"
+  source_hash: "a90025bbda2bb888ef63812bda9afc82fc3895be549d439c5eb2a9dc502f6f3d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestServerApplyCompareAndSwap"
   role: BINDING_ROLE_TESTS

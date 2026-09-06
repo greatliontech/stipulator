@@ -25,12 +25,12 @@ func AttestRequirement(fsys fs.FS, requirement, reason string) (*Update, *stipul
 	if err != nil {
 		return nil, nil, err
 	}
-	contentHash := ""
+	contentHash, sourceHash := "", ""
 	var kind stipulatorv1.ClauseKind
 	var keyword stipulatorv1.Keyword
 	for _, r := range spec.GetRequirements() {
 		if r.GetId() == requirement {
-			contentHash = r.GetContentHash()
+			contentHash, sourceHash = r.GetContentHash(), r.GetSourceHash()
 			kind, keyword = r.GetKind(), r.GetKeyword()
 		}
 	}
@@ -87,10 +87,17 @@ func AttestRequirement(fsys fs.FS, requirement, reason string) (*Update, *stipul
 	a := &stipulatorv1.RequirementAttestation{}
 	a.SetRequirementId(requirement)
 	a.SetContentHash(contentHash)
+	a.SetSourceHash(sourceHash)
 	a.SetReason(reason)
 	set := &stipulatorv1.AttestationSet{}
 	set.SetAttestations(append(keep, a))
-	up := &Update{Path: target, Content: records.RenderAttestations(set)}
+	// The file's leading header survives the rewrite, as every
+	// machine-owned record file's does; an absent file takes the default.
+	content, err := records.RenderAttestationFile(records.AttestationFile{Path: target, Raw: rawOf(store, target), Set: set})
+	if err != nil {
+		return nil, nil, err
+	}
+	up := &Update{Path: target, Content: content}
 	stampPrior(store, up)
 	return up, prior, nil
 }
@@ -124,9 +131,24 @@ func RetractAttestation(fsys fs.FS, requirement string) (*Update, *stipulatorv1.
 		}
 		set := &stipulatorv1.AttestationSet{}
 		set.SetAttestations(keep)
-		up := &Update{Path: af.Path, Content: records.RenderAttestations(set)}
+		content, err := records.RenderAttestationFile(records.AttestationFile{Path: af.Path, Raw: af.Raw, Set: set})
+		if err != nil {
+			return nil, nil, err
+		}
+		up := &Update{Path: af.Path, Content: content}
 		stampPrior(store, up)
 		return up, retracted, nil
 	}
 	return nil, nil, fmt.Errorf("no attestation records %s; nothing to retract", requirement)
+}
+
+// rawOf is the loaded content of one attestation file, nil when the
+// store holds no file at that path.
+func rawOf(store *records.Store, path string) []byte {
+	for _, af := range store.Attestations {
+		if af.Path == path {
+			return af.Raw
+		}
+	}
+	return nil
 }

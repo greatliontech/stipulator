@@ -147,11 +147,21 @@ operations review 2026-08".
 **when:** run the blanket form after any spec edit — a differing
 content pin is never rewritten by it, so staleness cannot be
 laundered; the response names requirements awaiting re-consent, and
-naming them is the editorial re-consent. The blanket form is also
+naming them is the editorial re-consent. One rewrite launders nothing
+and the blanket form makes it: a content pin that differs while the
+record's consent-source pin still matches consented to byte-identical
+text (a tool rebuild moved the canonical form, not the spec) — such
+records are current all along, the verification summary counts them
+rehash-pending, and the blanket form rewrites them naming the
+requirements as "rehashed (text unchanged)"; a current record with no
+source pin gains one the same way. The blanket form is also
 what re-pins a moved shape, and it names the symbols whose differing
 shape pins it rewrote; naming requirements re-consents clause text
 only, and that form reports any shape mismatch it is not going to
-fix instead of claiming quiescence. Never silent: no-ops say so. A
+fix instead of claiming quiescence. Never silent: no-ops say so —
+a named requirement whose text is unchanged answers "text unchanged;
+nothing to re-consent", and a named re-pin over a rehashed record
+names it so. A
 named re-pin also names the clause each re-consented clause claim now
 denotes — an ordinal follows its item's position, so read those lines
 before trusting the re-pin — and refuses, writing nothing, when a

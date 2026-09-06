@@ -4,6 +4,7 @@
 bindings {
   requirement_id: "REQ-backend-core-neutral"
   content_hash: "854736dde30f1ba926e775de6338e1e3e0270c57caf3986410d4e82740a2e6a1"
+  source_hash: "932836ec7bed667423999b02f57f934e8beeee2c7fe5abb80a45242232c9443b"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/arch.TestCoreNeverImportsBackends"
   role: BINDING_ROLE_PROVES

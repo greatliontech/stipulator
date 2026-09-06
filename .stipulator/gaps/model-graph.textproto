@@ -4,4 +4,5 @@
 requirement_id: "REQ-model-graph"
 reason: "wire clause; descriptor proofs await the proto backend"
 content_hash: "1b75b66169214a3c8963f571669498f63900964eb6d06a3ed52c524677a28b86"
+source_hash: "b97d1fe74f8c8c15bc562fdfb77da990747f4154aa9865119a1cd64735418379"
 lands { covered: "REQ-proto-provers" }

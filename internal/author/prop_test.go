@@ -1,7 +1,9 @@
 package author
 
 import (
+	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -93,12 +95,33 @@ func TestPropVerbsWriteOnlyRecords(t *testing.T) {
 				return []Update{*up}, nil
 			}
 		case "editorial":
-			// A stale binding to re-pin is part of the generated state.
+			// A stale binding to re-pin is part of the generated state;
+			// half the draws make it a rehash (a wrong content pin under
+			// the requirement's own source digest), which the named form
+			// re-pins and names exactly as a stale one.
+			rehash := rapid.Bool().Draw(rt, "rehash")
 			run = func(fsys fstest.MapFS) ([]Update, error) {
-				fsys[".stipulator/bindings/gen.textproto"] = &fstest.MapFile{
-					Data: []byte(proptest.BindingTextClause(target, strings.Repeat("0", 64), "", clause)),
+				source := ""
+				if rehash {
+					spec, err := compileClean(fsys)
+					if err != nil {
+						return nil, err
+					}
+					for _, r := range spec.GetRequirements() {
+						if r.GetId() == target {
+							source = r.GetSourceHash()
+						}
+					}
 				}
-				ups, _, err := Editorial(fsys, target)
+				fsys[".stipulator/bindings/gen.textproto"] = &fstest.MapFile{
+					Data: []byte(proptest.BindingTextPins(target, strings.Repeat("0", 64), source, "", clause)),
+				}
+				ups, consented, err := Editorial(fsys, target)
+				if err == nil && rehash != slices.ContainsFunc(consented, func(l string) bool {
+					return strings.HasSuffix(l, "rehashed — "+records.RehashNote)
+				}) {
+					return nil, fmt.Errorf("rehash=%v but consented=%v", rehash, consented)
+				}
 				return ups, err
 			}
 		case "retire":

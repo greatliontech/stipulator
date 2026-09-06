@@ -191,11 +191,17 @@ type BindingResult struct {
 	Package string
 	Backend string
 	Role    stipulatorv1.BindingRole
-	// ContentPinned reports whether the content-hash pin matches the
-	// requirement's current hash.
+	// ContentPinned reports whether the record's consent to the
+	// requirement's text holds: the content pin equals the current hash,
+	// or the source pin equals the current consent-source digest
+	// (REQ-evidence-consent-current).
 	ContentPinned bool
-	Resolution    Resolution
-	Shape         ShapeState
+	// Rehash marks a consent that holds by the source pin alone: the
+	// canonical form moved over byte-identical text, and the content
+	// pin awaits the blanket pin's rewrite.
+	Rehash     bool
+	Resolution Resolution
+	Shape      ShapeState
 	// TestOutcome is set for tests- and proves-role bindings when the run
 	// witnessed tests; WitnessClass and RaceEnabled qualify the witness.
 	TestOutcome  TestOutcome
@@ -316,9 +322,13 @@ type Report struct {
 	// Results holds the verified state of every well-formed binding, in
 	// store order.
 	Results []BindingResult
-	// Pinned counts bindings whose content-hash pin matches the current
-	// corpus; Stale counts bindings whose pin is unset or differs.
-	Pinned, Stale int
+	// Pinned counts bindings whose consent holds; Stale counts bindings
+	// whose consent does not (an unset or differing content pin with no
+	// matching source pin). Rehash counts consent RECORDS — bindings
+	// and standing attestations alike — held by the source pin alone:
+	// current, awaiting the blanket pin's rewrite
+	// (REQ-evidence-consent-current).
+	Pinned, Stale, Rehash int
 	// ShapePinned, ShapeUnpinned, and ShapeMismatch count resolved
 	// bindings by shape-pin state; Broken counts bindings whose symbol
 	// did not resolve; Unverified counts bindings whose backend has no
@@ -436,7 +446,7 @@ func sortProblems(problems []Problem) {
 // appearance, and the gapped requirements so an attestation
 // contradicting a gap is named.
 type hygiene struct {
-	hashes   map[string]string
+	hashes   records.Hashes
 	reqs     map[string]*stipulatorv1.Requirement
 	seen     map[string]bool
 	gapped   map[string]bool
@@ -445,9 +455,8 @@ type hygiene struct {
 }
 
 func newHygiene(spec *stipulatorv1.Spec, store *records.Store) *hygiene {
-	j := &hygiene{hashes: map[string]string{}, reqs: map[string]*stipulatorv1.Requirement{}, seen: map[string]bool{}, gapped: map[string]bool{}, attested: map[string]string{}, seenGaps: map[string]string{}}
+	j := &hygiene{hashes: records.HashesOf(spec), reqs: map[string]*stipulatorv1.Requirement{}, seen: map[string]bool{}, gapped: map[string]bool{}, attested: map[string]string{}, seenGaps: map[string]string{}}
 	for _, r := range spec.GetRequirements() {
-		j.hashes[r.GetId()] = r.GetContentHash()
 		j.reqs[r.GetId()] = r
 	}
 	for _, gf := range store.Gaps {
@@ -490,7 +499,7 @@ func (j *hygiene) binding(path string, b *stipulatorv1.Binding) (problems []Prob
 		problem("binding for %s has no role", id)
 		malformed = true
 	}
-	if _, known := j.hashes[id]; id != "" && !known {
+	if id != "" && !j.hashes.Known(id) {
 		problem("binding names %s, which is not in the corpus — unbind it: stipulator unbind --req %s (or stipulator dispose retire --id %s if the requirement was removed deliberately)", id, id, id)
 		malformed = true
 	} else if id != "" {
@@ -541,7 +550,7 @@ func (j *hygiene) attestation(path string, a *stipulatorv1.RequirementAttestatio
 		return problems, false
 	}
 	j.attested[id] = path
-	if _, known := j.hashes[id]; !known {
+	if !j.hashes.Known(id) {
 		problem("attestation names %s, which is not in the corpus — retract it: stipulator attest requirement --req %s --retract", id, id)
 		return problems, false
 	}
@@ -566,7 +575,7 @@ func (j *hygiene) gap(path string, g *stipulatorv1.Gap) (problems []Problem) {
 	id := g.GetRequirementId()
 	if id == "" {
 		problem("gap without requirement_id")
-	} else if _, known := j.hashes[id]; !known {
+	} else if !j.hashes.Known(id) {
 		problem("gap names %s, which is not in the corpus — retract it: stipulator gap --req %s --retract (or prune --dangling for the bulk repair)", id, id)
 	}
 	if id != "" {
@@ -591,7 +600,6 @@ func (j *hygiene) gap(path string, g *stipulatorv1.Gap) (problems []Problem) {
 // skips witnessing: role-tests bindings read TestNotRun).
 func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Backend, testRun *TestRun) *Report {
 	judge := newHygiene(spec, store)
-	hashes := judge.hashes
 	rep := &Report{}
 	problem := func(path, format string, args ...any) {
 		rep.Problems = append(rep.Problems, Problem{Path: path, Message: fmt.Sprintf(format, args...)})
@@ -605,7 +613,7 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 				continue
 			}
 			id := b.GetRequirementId()
-			h := hashes[id]
+			consent := judge.hashes.Judge(id, b.GetContentHash(), b.GetSourceHash())
 
 			result := BindingResult{
 				Path:          bf.Path,
@@ -614,7 +622,8 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 				Clause:        clause,
 				Backend:       b.GetBackend(),
 				Role:          b.GetRole(),
-				ContentPinned: b.GetContentHash() == h,
+				ContentPinned: consent.Holds(),
+				Rehash:        consent == records.Rehash,
 				Resolution:    Unverified,
 				Shape:         ShapeUnknown,
 			}
@@ -622,6 +631,9 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 				rep.Pinned++
 			} else {
 				rep.Stale++
+			}
+			if result.Rehash {
+				rep.Rehash++
 			}
 
 			if sl, ok := backends[b.GetBackend()].(SymbolLocator); ok {
@@ -732,12 +744,15 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 				continue
 			}
 			id := a.GetRequirementId()
-			hash := hashes[id]
+			consent := judge.hashes.Judge(id, a.GetContentHash(), a.GetSourceHash())
 			rep.Attestations = append(rep.Attestations, AttestationResult{
 				RequirementId: id,
 				Reason:        a.GetReason(),
-				ContentPinned: a.GetContentHash() == hash,
+				ContentPinned: consent.Holds(),
 			})
+			if consent == records.Rehash {
+				rep.Rehash++
+			}
 		}
 	}
 

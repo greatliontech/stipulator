@@ -868,7 +868,7 @@ func TestPinToolReportsMovedShapes(t *testing.T) {
 		t.Fatalf("pin ids repeat: %v %v", err, res)
 	}
 	text = toolPayload(t, res)
-	if !strings.Contains(text, "clause pins current; shape of example.com/p.F moved") {
+	if !strings.Contains(text, "text unchanged; nothing to re-consent — shape of example.com/p.F moved") {
 		t.Fatalf("ids no-op beside a shape mismatch claims quiescence: %s", text)
 	}
 
@@ -890,7 +890,7 @@ func TestPinToolReportsMovedShapes(t *testing.T) {
 	if err != nil || res.IsError {
 		t.Fatalf("pin ids final: %v %v", err, res)
 	}
-	if text = toolPayload(t, res); !strings.Contains(text, "REQ-m-a: pins current") || strings.Contains(text, "moved") {
+	if text = toolPayload(t, res); !strings.Contains(text, "REQ-m-a: text unchanged; nothing to re-consent") || strings.Contains(text, "moved") {
 		t.Fatalf("quiescent ids answer wrong: %s", text)
 	}
 }
@@ -941,7 +941,8 @@ func TestPinTool(t *testing.T) {
 		t.Fatalf("stale pin not refreshed: %s", content)
 	}
 
-	// Re-pinning a current requirement is a reported no-op.
+	// Re-pinning a requirement with nothing to re-pin is a reported
+	// no-op that states its reason: REQ-m-b has no records at all.
 	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "pin", Arguments: map[string]any{
 		"ids": "REQ-m-b",
 	}})
@@ -949,8 +950,19 @@ func TestPinTool(t *testing.T) {
 		t.Fatalf("pin current: %v %v", err, res)
 	}
 	text := toolPayload(t, res)
-	if !strings.Contains(text, "pins current") {
-		t.Fatalf("no-op silent: %s", text)
+	if !strings.Contains(text, "REQ-m-b: no records name it; nothing to re-consent") {
+		t.Fatalf("no-op silent or wrong: %s", text)
+	}
+	// And a requirement whose records consent to the current text says
+	// the text is unchanged.
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "pin", Arguments: map[string]any{
+		"ids": "REQ-m-a",
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("pin current: %v %v", err, res)
+	}
+	if text := toolPayload(t, res); !strings.Contains(text, "REQ-m-a: text unchanged; nothing to re-consent") {
+		t.Fatalf("no-op wrong: %s", text)
 	}
 
 	// The blanket form is never a silent empty object: run it to

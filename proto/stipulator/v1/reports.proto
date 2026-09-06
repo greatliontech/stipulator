@@ -118,6 +118,9 @@ message BindingResult {
   // Both unset for a whole-requirement claim.
   uint32 clause_ordinal = 13;
   string clause_label = 14;
+  // The consent holds by the source pin alone: a rehash awaiting the
+  // blanket pin's rewrite (REQ-evidence-consent-current).
+  bool rehash = 15;
 }
 
 // RegistrationResult is a cross-checked runtime coverage claim.
@@ -307,6 +310,13 @@ message VerifySummary {
   // is never silent (REQ-mcp-response-contract).
   repeated string witness_failure_headings = 15;
   int32 witness_failure_headings_omitted = 16;
+  // Rehash counts consent records — bindings and standing attestations
+  // alike — whose consent holds by the source pin alone: the canonical
+  // form moved over byte-identical text, and a blanket pin rewrites
+  // their content pins with no consent question
+  // (REQ-evidence-consent-current). Never counted as stale; the binding
+  // rows carry the per-row flag.
+  int32 rehash = 17;
 }
 
 

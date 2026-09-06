@@ -16,12 +16,12 @@ type reqBlock struct {
 	segs   []profile.Seg
 	source string
 	loc    *stipulatorv1.Location
-	// extent is the context extent's blocks in document order — the
-	// note and annotation blocks following this requirement up to the
-	// next identity lead, heading, or thematic break
-	// (REQ-profile-context-extent). Consent surface only: it rides the
-	// content hash, never the text.
-	extent [][]profile.Seg
+	// extent is the context extent — the note and annotation blocks
+	// following this requirement up to the next identity lead, heading,
+	// or thematic break (REQ-profile-context-extent). Consent surface
+	// only: it rides the content hash and the consent-source digest,
+	// never the text.
+	extent extent
 	// clauses are the payload's top-level list items in order
 	// (REQ-profile-clauses); each carries its own location for the
 	// duplicate-label diagnostic.
@@ -40,7 +40,15 @@ type termBlock struct {
 	source string
 	loc    *stipulatorv1.Location
 	// extent as on reqBlock (REQ-profile-context-extent).
-	extent [][]profile.Seg
+	extent extent
+}
+
+// extent is an identity's context extent: each member block's text
+// segments and its raw markdown, in document order, appended together
+// so the two can never disagree in length or order.
+type extent struct {
+	segs   [][]profile.Seg
+	source []string
 }
 
 type noteBlock struct {
@@ -63,22 +71,26 @@ type headingBlock struct {
 }
 
 type document struct {
-	path     string
-	title    string
-	sections []*stipulatorv1.Section
-	reqs     []*reqBlock
-	terms    []*termBlock
-	notes    []*noteBlock
-	anns     []*annBlock
-	headings []headingBlock
+	path string
+	// refLabels are the document's link reference definition labels,
+	// sorted: the consent-source digest's trailing preimage parts, one
+	// per label (REQ-model-consent-source).
+	refLabels []string
+	title     string
+	sections  []*stipulatorv1.Section
+	reqs      []*reqBlock
+	terms     []*termBlock
+	notes     []*noteBlock
+	anns      []*annBlock
+	headings  []headingBlock
 }
 
 // extractDocument walks a profile-normalized tree into IR building blocks.
 // The tree is already classified — this pass only records nodes, section
 // paths, and locations.
-func extractDocument(path string, root gast.Node, src []byte) *document {
+func extractDocument(path string, root gast.Node, src []byte, refLabels []string) *document {
 	li := profile.NewLineIndex(src)
-	d := &document{path: path}
+	d := &document{path: path, refLabels: refLabels}
 	var sectionPath []string
 	var sectionLevels []int
 
@@ -97,10 +109,11 @@ func extractDocument(path string, root gast.Node, src []byte) *document {
 	// (REQ-profile-context-extent). One pointer, so "two identities
 	// open at once" is unrepresentable; nil means no extent is open (a
 	// section-attached block joins none).
-	var openExtent *[][]profile.Seg
-	extend := func(segs []profile.Seg) {
+	var openExtent *extent
+	extend := func(segs []profile.Seg, source string) {
 		if openExtent != nil {
-			*openExtent = append(*openExtent, segs)
+			openExtent.segs = append(openExtent.segs, segs)
+			openExtent.source = append(openExtent.source, source)
 		}
 	}
 	for child := root.FirstChild(); child != nil; child = child.NextSibling() {
@@ -163,7 +176,7 @@ func extractDocument(path string, root gast.Node, src []byte) *document {
 				nb.attachedTerm = a.Name
 			}
 			d.notes = append(d.notes, nb)
-			extend(nb.segs)
+			extend(nb.segs, nb.source)
 		case *gast.ThematicBreak:
 			// A thematic break detaches deliberately free-standing
 			// context from the preceding identity
@@ -176,7 +189,7 @@ func extractDocument(path string, root gast.Node, src []byte) *document {
 				loc:    loc(node),
 			}
 			d.anns = append(d.anns, ab)
-			extend(ab.segs)
+			extend(ab.segs, ab.source)
 		}
 	}
 	return d
