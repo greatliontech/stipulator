@@ -10,8 +10,15 @@ import (
 	"github.com/greatliontech/stipulator/internal/author"
 	checkpkg "github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/coverage"
+	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
+
+// conditionFlags are the gap verb's condition flags — the ones whose
+// presence makes a call a declaration rather than a bare fire,
+// retraction, or listing. Every name is a registered flag (pinned by
+// test: an unregistered name would read as never present).
+var conditionFlags = []string{"covered", "exists", "manual", "reason", "excuses"}
 
 func gapCmd() *cobra.Command {
 	var reqs, excuseNames []string
@@ -22,12 +29,18 @@ func gapCmd() *cobra.Command {
 		Short: guidanceShort("gap"),
 		Long:  guidanceHelp("gap"),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// A condition flag conditions by PRESENCE: `--reason ""` is a
+			// condition the operator spelled, refused where conditions
+			// do not apply, never read as absent.
+			conditioned := false
+			for _, name := range conditionFlags {
+				conditioned = conditioned || cmd.Flags().Changed(name)
+			}
 			// The read surface's guard runs on the raw flag presence,
 			// so a --list misuse gets the precise message before any
 			// repetition refusal could preempt it.
-			written := len(coveredVals) > 0 || len(existsVals) > 0 || len(manualVals) > 0 || len(reasonVals) > 0 || len(excuseNames) > 0
 			if list {
-				if len(reqs) > 0 || written || fired || retract {
+				if len(reqs) > 0 || conditioned || fired || retract {
 					return fmt.Errorf("--list is the read surface and combines with no write flag: editing a gap is re-declaring it")
 				}
 				return gapListRun(cmd.Context())
@@ -53,7 +66,6 @@ func gapCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			conditioned := coveredID != "" || existsID != "" || manual != "" || reason != "" || len(excuseNames) > 0
 			switch {
 			case retract:
 				if conditioned || fired {
@@ -162,14 +174,11 @@ func gapListRun(ctx context.Context) error {
 		}
 		fmt.Printf("%-9s %s  %s%s%s  %s\n", state, id, condition, fired, consent, dim(reason))
 	}
-	known := map[string]bool{}
-	for _, r := range spec.GetRequirements() {
-		known[r.GetId()] = true
-	}
+	known := records.HashesOf(spec)
 	for _, g := range cov.Gaps {
 		// The evaluation's row for an out-of-corpus record is a
 		// meaningless Open; the dangling classification below owns it.
-		if !known[g.RequirementId] {
+		if !known.Known(g.RequirementId) {
 			continue
 		}
 		row(g.State.String(), g.RequirementId, g.Condition, g.Fired, g.StaleConsent, g.Reason)
@@ -178,7 +187,7 @@ func gapListRun(ctx context.Context) error {
 	// where they are found (their repairs are retraction and the
 	// dangling prune).
 	for _, gf := range store.Gaps {
-		if known[gf.Gap.GetRequirementId()] {
+		if known.Known(gf.Gap.GetRequirementId()) {
 			continue
 		}
 		row("dangling", gf.Gap.GetRequirementId(), coverage.ConditionText(gf.Gap.GetLands()), gf.Gap.GetLands().GetManual().GetFired(), false, gf.Gap.GetReason())

@@ -87,13 +87,10 @@ func Prepare(fsys fs.FS) (*Prepared, error) {
 // — at request parse, before any evidence is gathered: a typo must
 // never read as an empty scope that executes nothing and passes.
 func KnownIDs(spec *stipulatorv1.Spec, ids []string) error {
-	known := make(map[string]bool, len(spec.GetRequirements()))
-	for _, r := range spec.GetRequirements() {
-		known[r.GetId()] = true
-	}
+	known := records.HashesOf(spec)
 	var unknown []string
 	for _, id := range ids {
-		if !known[id] {
+		if !known.Known(id) {
 			unknown = append(unknown, id)
 		}
 	}

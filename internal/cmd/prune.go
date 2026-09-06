@@ -87,11 +87,7 @@ func pruneCmd() *cobra.Command {
 			// IS a verification problem, so gating its repair on clean
 			// verification would deadlock the repair.
 			if dangling {
-				present := map[string]bool{}
-				for _, r := range spec.GetRequirements() {
-					present[r.GetId()] = true
-				}
-				prunes := author.PruneDanglingGaps(store, present)
+				prunes := author.PruneDanglingGaps(store, records.HashesOf(spec))
 				if check {
 					for _, up := range prunes {
 						fmt.Printf("%s dangling gap lingers: %s\n", yellow("prunable:"), up.Path)

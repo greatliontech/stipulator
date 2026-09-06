@@ -465,10 +465,7 @@ type hygiene struct {
 }
 
 func newHygiene(spec *stipulatorv1.Spec, store *records.Store) *hygiene {
-	j := &hygiene{hashes: records.HashesOf(spec), reqs: map[string]*stipulatorv1.Requirement{}, seen: map[string]bool{}, gapped: map[string]bool{}, attested: map[string]string{}, seenGaps: map[string]string{}}
-	for _, r := range spec.GetRequirements() {
-		j.reqs[r.GetId()] = r
-	}
+	j := &hygiene{hashes: records.HashesOf(spec), reqs: records.ByID(spec), seen: map[string]bool{}, gapped: map[string]bool{}, attested: map[string]string{}, seenGaps: map[string]string{}}
 	for _, gf := range store.Gaps {
 		j.gapped[gf.Gap.GetRequirementId()] = true
 	}

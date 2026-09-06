@@ -16,7 +16,6 @@ import (
 	"testing/fstest"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
-	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/profile"
 	"github.com/greatliontech/stipulator/internal/records"
@@ -200,24 +199,15 @@ func stampPrior(store *records.Store, up *Update) {
 // content pin is always captured. A binding identical to an existing one is
 // refused.
 func Bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Update, error) {
-	spec, diags, err := compile.Compile(fsys)
+	spec, err := compileClean(fsys)
 	if err != nil {
 		return nil, err
 	}
-	if refusal := compile.Refusal(diags); refusal != "" {
-		return nil, fmt.Errorf("corpus does not compile: %s", refusal)
-	}
-	var contentHash, sourceHash string
-	var target *stipulatorv1.Requirement
-	for _, r := range spec.GetRequirements() {
-		if r.GetId() == req.Requirement {
-			contentHash, sourceHash = r.GetContentHash(), r.GetSourceHash()
-			target = r
-		}
-	}
-	if contentHash == "" {
+	target, ok := records.ByID(spec)[req.Requirement]
+	if !ok {
 		return nil, fmt.Errorf("requirement %s is not in the corpus", req.Requirement)
 	}
+	contentHash, sourceHash := target.GetContentHash(), target.GetSourceHash()
 	claim := &stipulatorv1.Binding{}
 	if err := records.SetClause(claim, req.Clause); err != nil {
 		return nil, fmt.Errorf("claim on %s: %w", req.Requirement, err)
@@ -586,26 +576,38 @@ func RetargetSymbols(fsys fs.FS, backends map[string]verify.Backend, backend, ol
 	return out, rows, nil
 }
 
-// Gap validates and authors a gap record: the requirement must exist and
-// a reason and a landing condition are required. Declaring over an
+// Gap validates and authors one gap record: the requirement must exist
+// and a reason and a landing condition are required. Declaring over an
 // existing gap updates it in place — a gap's reason evolves with the
 // code — and the prior record is returned so a changed landing condition
-// is surfaced, never silently retargeted.
+// is surfaced, never silently retargeted. Every surface declares through
+// Gaps; this single form is the bulk form of one, kept for the unit
+// pins that read the prior record and the notes per declaration.
 func Gap(fsys fs.FS, g *stipulatorv1.Gap) (*Update, *stipulatorv1.Gap, []string, error) {
-	spec, diags, err := compile.Compile(fsys)
+	spec, err := compileClean(fsys)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	if refusal := compile.Refusal(diags); refusal != "" {
-		return nil, nil, nil, fmt.Errorf("corpus does not compile: %s", refusal)
+	store, err := records.Load(fsys)
+	if err != nil {
+		return nil, nil, nil, err
 	}
+	return gapOver(spec, store, g)
+}
+
+// gapOver declares one gap against an already compiled corpus and
+// loaded store — the one declaration path, so the bulk form compiles
+// and loads once for every requirement it names and the single form
+// is the bulk form of one. A covered(self) landing condition resolves
+// here to the requirement's own coverage (REQ-gap-bulk): the sentinel
+// and its validation live on one side of the entry point.
+func gapOver(spec *stipulatorv1.Spec, store *records.Store, g *stipulatorv1.Gap) (*Update, *stipulatorv1.Gap, []string, error) {
 	hashes := records.HashesOf(spec)
-	inCorpus := map[string]bool{}
-	for _, r := range spec.GetRequirements() {
-		inCorpus[r.GetId()] = true
-	}
-	if !inCorpus[g.GetRequirementId()] {
+	if !hashes.Known(g.GetRequirementId()) {
 		return nil, nil, nil, fmt.Errorf("requirement %s is not in the corpus", g.GetRequirementId())
+	}
+	if g.HasLands() && g.GetLands().HasCovered() && g.GetLands().GetCovered() == SelfSentinel {
+		g.GetLands().SetCovered(g.GetRequirementId())
 	}
 	if g.GetReason() == "" {
 		return nil, nil, nil, fmt.Errorf("a reason is required")
@@ -635,7 +637,7 @@ func Gap(fsys fs.FS, g *stipulatorv1.Gap) (*Update, *stipulatorv1.Gap, []string,
 		case !t.has:
 		case !profile.ValidID(t.target):
 			return nil, nil, nil, fmt.Errorf("%s(%s) does not match the requirement identifier grammar; a prose condition belongs in manual", t.form, t.target)
-		case !inCorpus[t.target]:
+		case !hashes.Known(t.target):
 			notes = append(notes, fmt.Sprintf("%s: %s(%s) names no current requirement — the condition waits for it to exist; retract and redeclare if this is a typo", g.GetRequirementId(), t.form, t.target))
 		}
 	}
@@ -659,10 +661,6 @@ func Gap(fsys fs.FS, g *stipulatorv1.Gap) (*Update, *stipulatorv1.Gap, []string,
 	// Canonical order by enum value: declaration order carries no
 	// meaning, so equal sets compare equal and never read as a rescope.
 	slices.Sort(g.GetExcuses())
-	store, err := records.Load(fsys)
-	if err != nil {
-		return nil, nil, nil, err
-	}
 	target := records.GapPath(g.GetRequirementId())
 	var prior *stipulatorv1.Gap
 	var priorRaw []byte
@@ -785,6 +783,16 @@ func Gaps(fsys fs.FS, reqs []string, reason string, lands *stipulatorv1.LandingC
 	if len(reqs) == 0 {
 		return nil, nil, fmt.Errorf("at least one requirement is required")
 	}
+	// One compile and one load for the whole list: each record is an
+	// ordinary declaration over the same corpus.
+	spec, err := compileClean(fsys)
+	if err != nil {
+		return nil, nil, err
+	}
+	store, err := records.Load(fsys)
+	if err != nil {
+		return nil, nil, err
+	}
 	var out []Update
 	var notes []string
 	seenPath := map[string]bool{}
@@ -796,13 +804,10 @@ func Gaps(fsys fs.FS, reqs []string, reason string, lands *stipulatorv1.LandingC
 		wantUnfired := false
 		if lands != nil {
 			each := proto.CloneOf(lands)
-			if each.HasCovered() && each.GetCovered() == SelfSentinel {
-				each.SetCovered(id)
-			}
 			wantUnfired = each.HasManual() && !each.GetManual().GetFired()
 			g.SetLands(each)
 		}
-		up, prior, gapNotes, err := Gap(fsys, g)
+		up, prior, gapNotes, err := gapOver(spec, store, g)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -884,17 +889,11 @@ func FireGaps(fsys fs.FS, reqs []string) ([]Update, error) {
 	if len(reqs) == 0 {
 		return nil, fmt.Errorf("at least one requirement is required")
 	}
-	spec, diags, err := compile.Compile(fsys)
+	spec, err := compileClean(fsys)
 	if err != nil {
 		return nil, err
 	}
-	if refusal := compile.Refusal(diags); refusal != "" {
-		return nil, fmt.Errorf("corpus does not compile: %s", refusal)
-	}
-	present := map[string]bool{}
-	for _, r := range spec.GetRequirements() {
-		present[r.GetId()] = true
-	}
+	corpus := records.HashesOf(spec)
 	store, err := records.Load(fsys)
 	if err != nil {
 		return nil, err
@@ -906,7 +905,7 @@ func FireGaps(fsys fs.FS, reqs []string) ([]Update, error) {
 			return nil, fmt.Errorf("requirement %s repeats in the list", id)
 		}
 		seen[id] = true
-		if !present[id] {
+		if !corpus.Known(id) {
 			return nil, fmt.Errorf("%s is not in the corpus; a dangling gap's repair is retraction, not firing", id)
 		}
 		found := false
@@ -939,10 +938,10 @@ func FireGaps(fsys fs.FS, reqs []string) ([]Update, error) {
 // PruneDanglingGaps returns deletions for every gap record naming a
 // requirement absent from the corpus — the explicit bulk repair,
 // judged against the compiled corpus alone (REQ-gap-prune-dangling).
-func PruneDanglingGaps(store *records.Store, present map[string]bool) []Update {
+func PruneDanglingGaps(store *records.Store, corpus records.Hashes) []Update {
 	var out []Update
 	for _, gf := range store.Gaps {
-		if !present[gf.Gap.GetRequirementId()] {
+		if !corpus.Known(gf.Gap.GetRequirementId()) {
 			out = append(out, Update{Path: gf.Path, Content: nil})
 		}
 	}

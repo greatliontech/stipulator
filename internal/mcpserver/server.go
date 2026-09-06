@@ -356,9 +356,8 @@ func (s *Server) MCP() *mcp.Server {
 // syncIndex reconciles the listed requirement resources with the compiled
 // corpus: additions listed, retirements removed.
 func (s *Server) syncIndex(spec *stipulatorv1.Spec) {
-	current := map[string]bool{}
+	current := records.HashesOf(spec)
 	for _, r := range spec.GetRequirements() {
-		current[r.GetId()] = true
 		if !s.indexed[r.GetId()] {
 			s.srv.AddResource(&mcp.Resource{
 				URI:         "stipulator://req/" + r.GetId(),
@@ -370,7 +369,7 @@ func (s *Server) syncIndex(spec *stipulatorv1.Spec) {
 		}
 	}
 	for id := range s.indexed {
-		if !current[id] {
+		if !current.Known(id) {
 			s.srv.RemoveResources("stipulator://req/" + id)
 			delete(s.indexed, id)
 		}
@@ -1226,7 +1225,7 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 	rep := verify.Run(spec, store, backends, tr)
 	prog.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
 	cov := coverage.Evaluate(spec, rep, store, tr != nil, pol)
-	known := corpusIDs(spec)
+	known := records.HashesOf(spec)
 	counts := map[stipulatorv1.GapState]int{}
 	var rows []map[string]any
 	addRow := func(m *stipulatorv1.GapReport) error {
@@ -1248,7 +1247,7 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 	// head, and a capped list must drop ordinary evaluated rows before
 	// it drops the rows demanding repair.
 	for _, gf := range store.Gaps {
-		if known[gf.Gap.GetRequirementId()] {
+		if known.Known(gf.Gap.GetRequirementId()) {
 			continue
 		}
 		m := &stipulatorv1.GapReport{}
@@ -1265,7 +1264,7 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 	for _, g := range cov.Proto().GetGaps() {
 		// The evaluation's row for an out-of-corpus record is a
 		// meaningless Open; the dangling classification above owns it.
-		if !known[g.GetRequirementId()] {
+		if !known.Known(g.GetRequirementId()) {
 			continue
 		}
 		if err := addRow(g); err != nil {
@@ -1709,11 +1708,7 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 		if err != nil {
 			return nil, writeOut{}, err
 		}
-		present := map[string]bool{}
-		for _, r := range spec.GetRequirements() {
-			present[r.GetId()] = true
-		}
-		prunes := author.PruneDanglingGaps(store, present)
+		prunes := author.PruneDanglingGaps(store, records.HashesOf(spec))
 		if in.Check {
 			out := writeOut{Check: true}
 			for _, up := range prunes {
@@ -2019,15 +2014,6 @@ func verificationProblems(rep *verify.Report) error {
 	return fmt.Errorf("verification problems:\n%s", strings.Join(msgs, "\n"))
 }
 
-// corpusIDs is the compiled corpus's requirement-identifier set.
-func corpusIDs(spec *stipulatorv1.Spec) map[string]bool {
-	known := make(map[string]bool, len(spec.GetRequirements()))
-	for _, r := range spec.GetRequirements() {
-		known[r.GetId()] = true
-	}
-	return known
-}
-
 // refuseUnknownIDs validates an exact-identifier scope against the
 // compiled corpus: an unknown identifier is a typo, and scoping to it
 // would serve a bare zero-row answer whose next step the caller must
@@ -2098,15 +2084,13 @@ func (s *Server) readResource(ctx context.Context, req *mcp.ReadResourceRequest)
 		if err != nil {
 			return nil, err
 		}
-		for _, r := range spec.GetRequirements() {
-			if r.GetId() == id {
-				md := fmt.Sprintf("%s\n\n> id: %s | kind: %s | keyword: %s | content_hash: %s\n",
-					r.GetSource(), r.GetId(),
-					strings.ToLower(strings.TrimPrefix(r.GetKind().String(), "CLAUSE_KIND_")),
-					strings.TrimPrefix(r.GetKeyword().String(), "KEYWORD_"),
-					r.GetContentHash())
-				return textResource(uri, "text/markdown", md), nil
-			}
+		if r, ok := records.ByID(spec)[id]; ok {
+			md := fmt.Sprintf("%s\n\n> id: %s | kind: %s | keyword: %s | content_hash: %s\n",
+				r.GetSource(), r.GetId(),
+				strings.ToLower(strings.TrimPrefix(r.GetKind().String(), "CLAUSE_KIND_")),
+				strings.TrimPrefix(r.GetKeyword().String(), "KEYWORD_"),
+				r.GetContentHash())
+			return textResource(uri, "text/markdown", md), nil
 		}
 		return nil, mcp.ResourceNotFoundError(uri)
 	case strings.HasPrefix(uri, "stipulator://term/"):

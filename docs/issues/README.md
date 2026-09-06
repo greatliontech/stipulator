@@ -6,10 +6,18 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   folds' `--changed` campaign priced itself day-class (63 targets, 4,913 candidates); gate rode the
   nineteen killed ephemeral probes; measured prefix committed, sweep resumes on a quiet host.
   *Lands: first idle window with no concurrent campaign after cross-tool train chunk 145 closes.*
-- **[consolidation-ledger-train-114](consolidation-ledger-train-114.md)** — structural-collapse
-  candidates accumulated across the five folds (requirement index built six ways, consent-pin
-  discipline per kind, sentinel split, per-requirement recompile, executor/load/env vocabulary
-  pairs, CLI residue). *Lands: with cross-tool train chunk 136.*
+- **[executor-diagnostics-trio](executor-diagnostics-trio.md)** — the budget renderer, residue
+  classifier, and abort predicate walk the same run inputs three times with three vocabularies.
+  *Lands: with the next change set touching the executor's run classification.*
+- **[go-backend-load-path-pairs](go-backend-load-path-pairs.md)** — workspace double-parse under
+  two error policies, the view-error/attribution wording split, the classifier's double-resolve.
+  *Lands: with the next change set touching the Go backend's package load path.*
+- **[env-walk-vocabularies](env-walk-vocabularies.md)** — the environment report's indexed walk
+  beside the normalizer's positional edits (and a second `sortedKeys` in cmd). *Lands: with the
+  next change set touching the runner environment.*
+- **[publish-refusal-ladders](publish-refusal-ladders.md)** — the selective runner and the
+  full-form recorder each walk the per-subject publish refusal ladder with their own reason
+  vocabulary. *Lands: with the next change set touching witness publication in either form.*
 - **[process-output-utf8-marshal](process-output-utf8-marshal.md)** — raw process output (bytes,
   not text) flows into edition-2023 proto string fields; one invalid byte makes the check result
   unmarshallable. Cut-point half fixed; ingest-wide sanitization needs a design choice.

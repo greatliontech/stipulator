@@ -65,23 +65,36 @@ func Editorial(fsys fs.FS, requirement string) (ups []Update, consented []string
 	if err != nil {
 		return nil, nil, err
 	}
-	hash, source := "", ""
-	var target *stipulatorv1.Requirement
-	for _, r := range spec.GetRequirements() {
-		if r.GetId() == requirement {
-			hash, source = r.GetContentHash(), r.GetSourceHash()
-			target = r
-		}
-	}
-	if hash == "" {
+	target, ok := records.ByID(spec)[requirement]
+	if !ok {
 		return nil, nil, fmt.Errorf("requirement %s is not in the corpus", requirement)
 	}
+	hash, source := target.GetContentHash(), target.GetSourceHash()
 	store, err := records.Load(fsys)
 	if err != nil {
 		return nil, nil, err
 	}
 	var out []Update
 	repinned := 0
+	// repin is the one named re-consent over a record's pins, whatever
+	// kind carries them: a record already consenting to the current
+	// text is left alone; a rehash under the named form is named too —
+	// the operator asked to re-consent, and learns there was nothing to
+	// consent to for this record (REQ-evidence-consent-current); an
+	// UNSET pin is stamped like any other — the explicit per-identity
+	// ceremony is a consent to the current text, needing no pre-field
+	// grace.
+	repin := func(name, content, src string, set func(content, source string)) bool {
+		if content == hash {
+			return false
+		}
+		if records.JudgeConsent(content, src, hash, source) == records.Rehash {
+			consented = append(consented, fmt.Sprintf("%s rehashed — %s", name, records.RehashNote))
+		}
+		set(hash, source)
+		repinned++
+		return true
+	}
 	for _, bf := range store.Bindings {
 		changed := false
 		for _, b := range bf.Set.GetBindings() {
@@ -95,16 +108,9 @@ func Editorial(fsys fs.FS, requirement string) (ups []Update, consented []string
 			if clause != nil {
 				consented = append(consented, fmt.Sprintf("%s now claims %s", b.GetSymbol(), records.ClauseHeading(clause)))
 			}
-			// A rehash under the named form is named too: the operator
-			// asked to re-consent, and learns there was nothing to
-			// consent to for this record (REQ-evidence-consent-current).
-			if records.JudgeConsent(b.GetContentHash(), b.GetSourceHash(), hash, source) == records.Rehash {
-				consented = append(consented, fmt.Sprintf("%s rehashed — %s", b.GetSymbol(), records.RehashNote))
+			if repin(b.GetSymbol(), b.GetContentHash(), b.GetSourceHash(), func(c, s string) { b.SetContentHash(c); b.SetSourceHash(s) }) {
+				changed = true
 			}
-			b.SetContentHash(hash)
-			b.SetSourceHash(source)
-			changed = true
-			repinned++
 		}
 		if changed {
 			content, err := records.Render(bf)
@@ -114,22 +120,19 @@ func Editorial(fsys fs.FS, requirement string) (ups []Update, consented []string
 			out = append(out, Update{Path: bf.Path, Content: content})
 		}
 	}
-	// The gap record's consent surface rides the same ceremony: an
-	// editorial re-pin consents the identity's records to the current
-	// text, and a gap pinned to the prior hash is exactly as stale as a
-	// binding's. An UNSET pin is stamped too, exactly as the binding arm
-	// above stamps one: the explicit per-identity ceremony is a consent
-	// to the current text, needing no pre-field grace (REQ-gap-consent).
+	// The gap record's consent surface rides the same ceremony: a gap
+	// pinned to the prior hash is exactly as stale as a binding's
+	// (REQ-gap-consent).
 	for _, gf := range store.Gaps {
-		if gf.Gap.GetRequirementId() == requirement && gf.Gap.GetContentHash() != hash {
-			gf.Gap.SetContentHash(hash)
-			gf.Gap.SetSourceHash(source)
+		if gf.Gap.GetRequirementId() != requirement {
+			continue
+		}
+		if repin("gap "+gf.Path, gf.Gap.GetContentHash(), gf.Gap.GetSourceHash(), func(c, s string) { gf.Gap.SetContentHash(c); gf.Gap.SetSourceHash(s) }) {
 			content, err := records.RenderGapFile(gf)
 			if err != nil {
 				return nil, nil, err
 			}
 			out = append(out, Update{Path: gf.Path, Content: content})
-			repinned++
 		}
 	}
 	if repinned == 0 {
@@ -235,12 +238,9 @@ func retire(fsys fs.FS, identities, successors []string, force bool) ([]Update, 
 	if errs := compile.Errors(diags); len(errs) > 0 {
 		return nil, fmt.Errorf("cannot validate the retirement; corpus does not compile: %s%s", errs[0], moreSuffix(len(errs)-1))
 	}
-	inCorpus := map[string]bool{}
-	for _, r := range spec.GetRequirements() {
-		inCorpus[r.GetId()] = true
-	}
+	corpus := records.HashesOf(spec)
 	for _, s := range successors {
-		if !inCorpus[s] {
+		if !corpus.Known(s) {
 			return nil, fmt.Errorf("successor %s is not in the corpus", s)
 		}
 	}

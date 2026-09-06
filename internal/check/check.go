@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 
@@ -97,6 +98,9 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	// identifiers refuse before any evidence is gathered.
 	var scope map[gofresh.Subject]bool
 	if len(scopeIds) > 0 {
+		// The scope is a set: the result names each id once, in one
+		// order, however the caller spelled the list.
+		scopeIds = slices.Compact(slices.Sorted(slices.Values(scopeIds)))
 		if scope, err = ScopeSubjects(spec, store, scopeIds); err != nil {
 			return nil, err
 		}
@@ -309,14 +313,11 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 // executes nothing and passes; callers whose id sets legitimately carry
 // out-of-corpus entries filter them first.
 func ScopeSubjects(spec *stipulatorv1.Spec, store *records.Store, ids []string) (map[gofresh.Subject]bool, error) {
-	known := map[string]bool{}
-	for _, r := range spec.GetRequirements() {
-		known[r.GetId()] = true
-	}
+	known := records.HashesOf(spec)
 	scope := map[gofresh.Subject]bool{}
 	want := map[string]bool{}
 	for _, id := range ids {
-		if !known[id] {
+		if !known.Known(id) {
 			return nil, fmt.Errorf("unknown requirement identifier %q in ids scope", id)
 		}
 		want[id] = true
@@ -348,14 +349,11 @@ func ScopeSubjects(spec *stipulatorv1.Spec, store *records.Store, ids []string) 
 // owned by the dangling surfaces) - and resolves them to their bound
 // witness subjects. The one derivation prune and the gap list share.
 func GapScope(spec *stipulatorv1.Spec, store *records.Store) (map[gofresh.Subject]bool, []string, error) {
-	known := map[string]bool{}
-	for _, r := range spec.GetRequirements() {
-		known[r.GetId()] = true
-	}
+	known := records.HashesOf(spec)
 	seen := map[string]bool{}
 	var ids []string
 	add := func(id string) {
-		if known[id] && !seen[id] {
+		if known.Known(id) && !seen[id] {
 			seen[id] = true
 			ids = append(ids, id)
 		}

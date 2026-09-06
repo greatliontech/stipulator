@@ -208,7 +208,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.PruneDanglingGaps"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "28bf2eff24dfc4b12c2ebdf0d1c92ec65d9d14738bbf8242c3ab8b93dca9b7f3"
+  shape_hash: "923d0efafd456690a16ccfbf43bfa416fdb7ac3e3e67947a3c741adb39bf3fa6"
 }
 
 bindings {
@@ -559,4 +559,24 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestGapConsentHoldsByRehash"
   role: BINDING_ROLE_TESTS
   shape_hash: "3955cd66d1c1e842cce5f04d3783c1d9648cdef9a08257708203a5c61d9fef49"
+}
+
+bindings {
+  requirement_id: "REQ-gap-bulk"
+  content_hash: "ad6166bb45b342354de8c2c27e1becbddf11a7663cac037df1b705504eac763a"
+  source_hash: "86173d23b79f836a4609c6ce4f04e41b03b01023a86d4e710c262e5699d02cdd"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestGapsCompileOnce"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e3d41e595f4b8374e13aa0f797d907370b7996ee5183250ff0c684ceea609735"
+}
+
+bindings {
+  requirement_id: "REQ-gap-retract"
+  content_hash: "c9a90b5bb061e655238ec4f2b2d17502ed8d79a79003dd66de67ed167ab14a84"
+  source_hash: "1682ee607ee2514076c96e9a2401633b88e2dad51c76b023cf4f91b8242cdca5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestGapConditionFlagsAreRegistered"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7aea8358d42420eeaf9c54bb3815ebb5ad5f953e3ec17e7baeded4c6f014abd1"
 }

@@ -308,6 +308,67 @@ func TestAuthoringStampsTheSourcePinAndEditorialNamesRehashes(t *testing.T) {
 	if len(consented) != 1 || consented[0] != "example.com/p.F rehashed — "+records.RehashNote {
 		t.Fatalf("consented = %v, want the rehash named", consented)
 	}
+	// A rehashed gap under the named re-pin is named exactly as a
+	// binding's: one re-consent judgment, whatever kind carries the pin.
+	fsys[".stipulator/gaps/au-a.textproto"] = &fstest.MapFile{Data: []byte(
+		"requirement_id: \"REQ-au-a\"\nreason: \"r\"\nlands { manual { condition: \"c\" } }\ncontent_hash: \"" + strings.Repeat("0", 64) + "\"\nsource_hash: \"" + source + "\"\n")}
+	ups, consented, err = Editorial(fsys, "REQ-au-a")
+	if err != nil || len(ups) != 2 {
+		t.Fatalf("editorial over a rehashed binding and gap: %v %v", ups, err)
+	}
+	if len(consented) != 2 || consented[0] != "example.com/p.F rehashed — "+records.RehashNote || consented[1] != "gap .stipulator/gaps/au-a.textproto rehashed — "+records.RehashNote {
+		t.Fatalf("consented = %v, want both rehashes named", consented)
+	}
+	// Both pins are stamped on the gap record, not the content pin
+	// alone: a content-only stamp would leave the source pin at the
+	// prior digest, and a later revert would judge as a rehash over
+	// text the gap never consented to.
+	for _, up := range ups {
+		if !strings.HasPrefix(up.Path, ".stipulator/gaps/") {
+			continue
+		}
+		g := &stipulatorv1.Gap{}
+		if err := prototext.Unmarshal(stripHeader(up.Content), g); err != nil {
+			t.Fatal(err)
+		}
+		want := records.ByID(spec)["REQ-au-a"]
+		if g.GetContentHash() != want.GetContentHash() || g.GetSourceHash() != source {
+			t.Fatalf("re-pinned gap carries content %q source %q, want %q / %q", g.GetContentHash(), g.GetSourceHash(), want.GetContentHash(), source)
+		}
+	}
+	// STALE records — neither pin current — are where the source stamp
+	// is load-bearing: a content-only stamp leaves the source pin at
+	// the prior digest, and a later revert of the text would judge the
+	// record a rehash over text it never consented to.
+	stale := strings.Repeat("f", 64)
+	fsys[".stipulator/bindings/au.textproto"] = &fstest.MapFile{Data: []byte(
+		"bindings {\n  requirement_id: \"REQ-au-a\"\n  content_hash: \"" + stale + "\"\n  source_hash: \"" + stale + "\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n}\n")}
+	fsys[".stipulator/gaps/au-a.textproto"] = &fstest.MapFile{Data: []byte(
+		"requirement_id: \"REQ-au-a\"\nreason: \"r\"\nlands { manual { condition: \"c\" } }\ncontent_hash: \"" + stale + "\"\nsource_hash: \"" + stale + "\"\n")}
+	ups, consented, err = Editorial(fsys, "REQ-au-a")
+	if err != nil || len(ups) != 2 || len(consented) != 0 {
+		t.Fatalf("editorial over stale records: %v %v %v", ups, consented, err)
+	}
+	want := records.ByID(spec)["REQ-au-a"]
+	for _, up := range ups {
+		var content, src string
+		if strings.HasPrefix(up.Path, ".stipulator/gaps/") {
+			g := &stipulatorv1.Gap{}
+			if err := prototext.Unmarshal(stripHeader(up.Content), g); err != nil {
+				t.Fatal(err)
+			}
+			content, src = g.GetContentHash(), g.GetSourceHash()
+		} else {
+			set := &stipulatorv1.BindingSet{}
+			if err := prototext.Unmarshal(stripHeader(up.Content), set); err != nil {
+				t.Fatal(err)
+			}
+			content, src = set.GetBindings()[0].GetContentHash(), set.GetBindings()[0].GetSourceHash()
+		}
+		if content != want.GetContentHash() || src != source {
+			t.Fatalf("%s re-pinned from stale carries content %q source %q, want %q / %q", up.Path, content, src, want.GetContentHash(), source)
+		}
+	}
 }
 
 // The named re-pin's no-op states a fact: "text unchanged" only when
@@ -332,6 +393,24 @@ func TestEditorialNoOpNamesItsReason(t *testing.T) {
 	_, _, err = Editorial(fsys, "REQ-au-b")
 	if !errors.Is(err, ErrNothingStale) || NoOpNote(err) != "text unchanged; nothing to re-consent" {
 		t.Fatalf("current binding: err=%v note=%q", err, NoOpNote(err))
+	}
+	// A current gap is as current as a current binding: the named
+	// re-pin over a requirement whose only record is a gap consenting
+	// to the present text writes nothing and says so.
+	lc, err := NewLandingCondition("", "", "later", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gups, _, err := Gaps(fsys, []string{"REQ-au-a"}, "spec ahead of code", lc, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, g := range gups {
+		fsys[g.Path] = &fstest.MapFile{Data: g.Content}
+	}
+	_, _, err = Editorial(fsys, "REQ-au-a")
+	if !errors.Is(err, ErrNothingStale) || NoOpNote(err) != "text unchanged; nothing to re-consent" {
+		t.Fatalf("current gap: err=%v note=%q", err, NoOpNote(err))
 	}
 	// An attestation vouched for other text: the editorial re-pin does
 	// not rewrite it, and the note says which ceremony does.

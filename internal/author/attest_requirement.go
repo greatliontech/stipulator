@@ -25,18 +25,12 @@ func AttestRequirement(fsys fs.FS, requirement, reason string) (*Update, *stipul
 	if err != nil {
 		return nil, nil, err
 	}
-	contentHash, sourceHash := "", ""
-	var kind stipulatorv1.ClauseKind
-	var keyword stipulatorv1.Keyword
-	for _, r := range spec.GetRequirements() {
-		if r.GetId() == requirement {
-			contentHash, sourceHash = r.GetContentHash(), r.GetSourceHash()
-			kind, keyword = r.GetKind(), r.GetKeyword()
-		}
-	}
-	if contentHash == "" {
+	r, ok := records.ByID(spec)[requirement]
+	if !ok {
 		return nil, nil, fmt.Errorf("requirement %s is not in the corpus", requirement)
 	}
+	contentHash, sourceHash := r.GetContentHash(), r.GetSourceHash()
+	kind, keyword := r.GetKind(), r.GetKeyword()
 	// Born-valid, like the bind verb's proves-role refusal: an
 	// attestation on a cell whose policy can never render the attested
 	// bucket is refused at write time with the cell's real demand, not

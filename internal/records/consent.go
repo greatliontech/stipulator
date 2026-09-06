@@ -24,7 +24,20 @@ func HashesOf(spec *stipulatorv1.Spec) Hashes {
 	return h
 }
 
-// Known reports whether the corpus declares the requirement.
+// ByID indexes the compiled corpus's requirements by identifier — the
+// one lookup every "the requirement named id" site shares.
+func ByID(spec *stipulatorv1.Spec) map[string]*stipulatorv1.Requirement {
+	byID := make(map[string]*stipulatorv1.Requirement, len(spec.GetRequirements()))
+	for _, r := range spec.GetRequirements() {
+		byID[r.GetId()] = r
+	}
+	return byID
+}
+
+// Known reports whether the corpus declares the requirement — the one
+// membership judgment every "is this requirement in the corpus" site
+// shares, so a scoped or partial spec cannot reach a walk that reads a
+// missing id as drift.
 func (h Hashes) Known(id string) bool {
 	_, ok := h.Content[id]
 	return ok

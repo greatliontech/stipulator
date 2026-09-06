@@ -1,6 +1,8 @@
 package author
 
 import (
+	"io/fs"
+	"maps"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -9,6 +11,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/stipulate"
 	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 )
 
 // The self sentinel resolves to each named requirement's own coverage —
@@ -43,6 +46,67 @@ func TestGapsSelfSentinel(t *testing.T) {
 	// The sentinel must not leak into the caller's shared condition.
 	if lc.GetCovered() != SelfSentinel {
 		t.Errorf("shared condition mutated to %q", lc.GetCovered())
+	}
+	// The single form is the bulk form of one: the sentinel resolves on
+	// the declaration path, not in the list walk.
+	one := &stipulatorv1.Gap{}
+	one.SetRequirementId("REQ-au-x")
+	one.SetReason("spec ahead of code")
+	one.SetLands(proto.CloneOf(lc))
+	up, _, _, err := Gap(fsys, one)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := &stipulatorv1.Gap{}
+	if err := prototext.Unmarshal(stripHeader(up.Content), g); err != nil {
+		t.Fatal(err)
+	}
+	if g.GetLands().GetCovered() != "REQ-au-x" {
+		t.Errorf("single form lands on %q, want itself", g.GetLands().GetCovered())
+	}
+}
+
+// countingFS counts opens per path, so the bulk form's single compile
+// and single store load are observable.
+type countingFS struct {
+	inner fs.FS // Open only, so every read funnels through the count
+	opens map[string]int
+}
+
+func (c *countingFS) Open(name string) (fs.File, error) {
+	c.opens[name]++
+	return c.inner.Open(name)
+}
+
+// The bulk form compiles the corpus and loads the store once for the
+// whole list: each declaration reads the same compiled spec.
+//
+//gofresh:pure
+func TestGapsCompileOnce(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-bulk")
+	m := testFS(nil)
+	m["specs/b.md"] = &fstest.MapFile{Data: []byte(
+		"# T\n\n**REQ-au-x** (behavior): It MUST x.\n\n**REQ-au-y** (behavior): It MUST y.\n\n**REQ-au-z** (behavior): It MUST z.\n")}
+	lc, err := NewLandingCondition(SelfSentinel, "", "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The reads a declaration performs do not scale with the list: a
+	// three-requirement declaration opens every corpus and store path
+	// exactly as often as a one-requirement declaration does.
+	one := &countingFS{inner: m, opens: map[string]int{}}
+	if _, _, err := Gaps(one, []string{"REQ-au-x"}, "spec ahead of code", lc, nil); err != nil {
+		t.Fatal(err)
+	}
+	three := &countingFS{inner: m, opens: map[string]int{}}
+	if _, _, err := Gaps(three, []string{"REQ-au-x", "REQ-au-y", "REQ-au-z"}, "spec ahead of code", lc, nil); err != nil {
+		t.Fatal(err)
+	}
+	if n := three.opens["specs/b.md"]; n != 1 {
+		t.Fatalf("corpus document opened %d times for a three-requirement declaration, want 1", n)
+	}
+	if !maps.Equal(one.opens, three.opens) {
+		t.Fatalf("opens scale with the list:\none  = %v\nthree = %v", one.opens, three.opens)
 	}
 }
 

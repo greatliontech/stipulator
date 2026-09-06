@@ -82,6 +82,12 @@ func TestGapLifecycleCLI(t *testing.T) {
 	if c := read(".stipulator/gaps/gl-a.textproto"); !strings.Contains(c, "fired: true") {
 		t.Fatalf("firing left the record unfired:\n%s", c)
 	}
+	// A condition flag is a condition by presence: an empty reason is a
+	// spelled condition retraction refuses, never an absent one; the
+	// excuse set is a condition like the others.
+	run(2, "gap", "--req", "REQ-gl-a", "--retract", "--reason", "")
+	run(2, "gap", "--req", "REQ-gl-a", "--retract", "--excuses", "uncovered")
+	run(2, "gap", "--req", "REQ-gl-a", "--fired", "--excuses", "uncovered")
 	run(0, "gap", "--req", "REQ-gl-a", "--retract")
 	if _, err := os.Stat(filepath.Join(dir, ".stipulator/gaps/gl-a.textproto")); !os.IsNotExist(err) {
 		t.Fatal("retraction left the record behind")
@@ -117,4 +123,19 @@ func TestGapLifecycleCLI(t *testing.T) {
 		t.Fatal("dangling repair left the record behind")
 	}
 	run(0, "prune", "--dangling", "--check")
+}
+
+// Every condition flag the gap verb's presence guard consults is a
+// registered flag — an unregistered name reads as never present, which
+// would silently admit a spelled condition on a destructive call.
+//
+//gofresh:pure
+func TestGapConditionFlagsAreRegistered(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-retract")
+	c := gapCmd()
+	for _, name := range conditionFlags {
+		if c.Flags().Lookup(name) == nil {
+			t.Errorf("condition flag %q is not registered on the gap verb", name)
+		}
+	}
 }

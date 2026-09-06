@@ -540,9 +540,9 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		// Coverage is not a state an exempt cell can reach, so the landing
 		// condition alone defines completion — without this arm the record
 		// would have no reachable terminal state (REQ-gap-lifecycle).
-		case buckets[id] == Exempt && conditionHolds(gf.Gap.GetLands(), buckets, spec):
+		case buckets[id] == Exempt && conditionHolds(gf.Gap.GetLands(), buckets, hashes):
 			state = Resolved
-		case conditionHolds(gf.Gap.GetLands(), buckets, spec):
+		case conditionHolds(gf.Gap.GetLands(), buckets, hashes):
 			state = Due
 		}
 		rep.Gaps = append(rep.Gaps, Gap{
@@ -800,19 +800,14 @@ func ConditionText(lc *stipulatorv1.LandingCondition) string {
 
 // conditionHolds evaluates a machine landing condition; manual
 // conditions hold only when explicitly fired.
-func conditionHolds(lc *stipulatorv1.LandingCondition, buckets map[string]Bucket, spec *stipulatorv1.Spec) bool {
+func conditionHolds(lc *stipulatorv1.LandingCondition, buckets map[string]Bucket, corpus records.Hashes) bool {
 	switch {
 	case lc == nil:
 		return false
 	case lc.HasCovered():
 		return buckets[lc.GetCovered()] == Covered
 	case lc.HasExists():
-		for _, r := range spec.GetRequirements() {
-			if r.GetId() == lc.GetExists() {
-				return true
-			}
-		}
-		return false
+		return corpus.Known(lc.GetExists())
 	case lc.HasManual():
 		return lc.GetManual().GetFired()
 	}

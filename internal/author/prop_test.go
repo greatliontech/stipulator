@@ -166,9 +166,9 @@ func TestPropVerbsWriteOnlyRecords(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				present := map[string]bool{}
+				present := records.Hashes{Content: map[string]string{}}
 				for _, id := range c.ReqIDs {
-					present[id] = true
+					present.Content[id] = ""
 				}
 				return PruneDanglingGaps(store, present), nil
 			}

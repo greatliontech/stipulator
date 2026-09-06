@@ -17,7 +17,7 @@ import (
 
 func checkCmd() *cobra.Command {
 	var jsonOut, quiet, full bool
-	var ids string
+	var ids []string
 	c := &cobra.Command{
 		Use:   "check",
 		Short: guidanceShort("check"),
@@ -33,7 +33,7 @@ func checkCmd() *cobra.Command {
 					fmt.Fprintln(os.Stderr, dim("checking: serving fresh witnesses, executing the stale remainder"))
 				}
 			}
-			res, err := check.Run(cmd.Context(), chdir, full, splitCommaIDs(ids))
+			res, err := check.Run(cmd.Context(), chdir, full, splitLists(ids))
 			if err != nil {
 				return err
 			}
@@ -60,7 +60,7 @@ func checkCmd() *cobra.Command {
 	c.Flags().BoolVar(&jsonOut, "json", false, "machine output: the check result as deterministic JSON")
 	c.Flags().BoolVarP(&quiet, "quiet", "q", false, "exit code only")
 	c.Flags().BoolVar(&full, "full", false, "execute the whole accepted policy and judge suite health")
-	c.Flags().StringVar(&ids, "ids", "", "comma-separated requirement identifiers scoping the pass: only stale subjects bound to them execute, the verdict is flagged partial")
+	c.Flags().StringArrayVar(&ids, "ids", nil, "comma-separated requirement identifiers scoping the pass (repeatable; occurrences join): only stale subjects bound to them execute, the verdict is flagged partial")
 	return c
 }
 
@@ -228,20 +228,4 @@ func bucketWord(b stipulatorv1.Bucket) string {
 		return "partial"
 	}
 	return "uncovered"
-}
-
-// splitCommaIDs parses the --ids flag: empty means no scope, and blank
-// entries are dropped rather than refused - the shell's trailing comma
-// is not a typo worth a failed pass.
-func splitCommaIDs(s string) []string {
-	if strings.TrimSpace(s) == "" {
-		return nil
-	}
-	var out []string
-	for _, part := range strings.Split(s, ",") {
-		if p := strings.TrimSpace(part); p != "" {
-			out = append(out, p)
-		}
-	}
-	return out
 }

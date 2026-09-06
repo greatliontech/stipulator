@@ -268,6 +268,25 @@ func TestCheckExitCodes(t *testing.T) {
 	if code, _, _ := run(t.TempDir(), "check"); code != 2 {
 		t.Errorf("non-corpus dir exit = %d, want 2", code)
 	}
+
+	// --ids is a batch flag: repeated occurrences and comma lists join
+	// into one scope. A two-occurrence spelling reaches the scope with
+	// both ids — an unknown id in the FIRST occurrence is refused, which
+	// only a joined scope does (a last-occurrence-wins flag would pass).
+	if code, _, stderr := run(pass, "check", "--quiet", "--ids", "REQ-fix-ghost", "--ids", "REQ-fix-may"); code != 2 || !strings.Contains(stderr, "REQ-fix-ghost") {
+		t.Fatalf("first --ids occurrence not joined into the scope: exit %d\n%s", code, stderr)
+	}
+	code, stdout, _ = run(pass, "check", "--json", "--ids", "REQ-fix-may", "--ids", "REQ-fix-may")
+	if code != 0 {
+		t.Fatalf("repeated --ids exit = %d, want 0", code)
+	}
+	scoped := &stipulatorv1.CheckResult{}
+	if err := protojson.Unmarshal([]byte(stdout), scoped); err != nil {
+		t.Fatalf("repeated --ids stdout is not a CheckResult: %v\n%s", err, stdout)
+	}
+	if !scoped.GetScopePartial() || len(scoped.GetScopeIds()) != 1 || scoped.GetScopeIds()[0] != "REQ-fix-may" {
+		t.Fatalf("repeated --ids scope = partial %v ids %v, want partial [REQ-fix-may]", scoped.GetScopePartial(), scoped.GetScopeIds())
+	}
 }
 
 // The serving form has no execution report, so its diagnostics render
