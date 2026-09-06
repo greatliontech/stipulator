@@ -1692,3 +1692,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "e6233bb8cbbf04f17651310c1a9addf89c8783944923c370d555f15fb30345c5"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-clause-claim"
+  content_hash: "4fddcfc83c3c08b0e4869c06387c2ce2d6c0acb083655a1b4b2fcaacf7d71ef3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestBindToolClauseClaims"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c099ebc221af607fcc60fee3941b8353426791a7e4f02ad33f64e058f00e0324"
+}

@@ -360,3 +360,12 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "c67a463689269f60571747b777ee2c4fc0af88d06edbe2a02670163023002d73"
 }
+
+bindings {
+  requirement_id: "REQ-change-editorial"
+  content_hash: "68b439db23da378c5e24f356d7b414e4c0ee53e2843065be95c3dbd802026d34"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPinToolIdsFormIsAllOrNothingOrHonest"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "8d228352bb0ca66b0363d64cdbc9ad0174fd4be2a266e5969b2f78750667c355"
+}
