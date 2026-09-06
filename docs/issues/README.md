@@ -2,9 +2,6 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
-- **[attestation-refusal-names-no-reclassification](attestation-refusal-names-no-reclassification.md)** —
-  the (invariant, MUST) attestation refusal is right but names no remedy; point the author at
-  reclassification (a closed enumeration is a wire requirement). *Lands: cross-tool train chunk 144.*
 - **[train-114-campaign-idle-window](train-114-campaign-idle-window.md)** — the runner-inspectability
   folds' `--changed` campaign priced itself day-class (63 targets, 4,913 candidates); gate rode the
   nineteen killed ephemeral probes; measured prefix committed, sweep resumes on a quiet host.
@@ -40,14 +37,8 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[supersede-removed-source-one-step](supersede-removed-source-one-step.md)** — superseding a
   requirement removed in the same edit needs three writes (drop edges, retire, re-add); a one-step
   removed-source flow. *Lands: cross-tool train chunk 145.*
-- **[normative-keyword-lint-timing-and-remedy](normative-keyword-lint-timing-and-remedy.md)** — the
-  one-keyword rule surfaces at the next write op; the message names the count, not the remedy.
-  *Lands: cross-tool train chunk 144.*
 - **[refines-multiple-targets](refines-multiple-targets.md)** — `refines` admits one target; the
   second relationship is lost. *Lands: cross-tool train chunk 145.*
-- **[cli-verify-view-path-and-explain](cli-verify-view-path-and-explain.md)** — the symbol-claims
-  query is MCP-only; CLI `verify` lacks `--view`/`--path`, no CLI `explain`.
-  *Lands: cross-tool train chunk 144.*
 - **[check-green-over-witness-failure](check-green-over-witness-failure.md)** — `check` exited green
   naming a failed witness as uncacheable-blocked; owner to confirm against the `healthy` term.
   *Lands: cross-tool train chunk 141.*
