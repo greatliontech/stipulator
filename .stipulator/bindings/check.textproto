@@ -780,3 +780,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "1f38cb934d6e36cbcf7cb2bc5519fa54b59e3104827fa5d04db35d75e29ad000"
 }
+
+bindings {
+  requirement_id: "REQ-check-preparation"
+  content_hash: "221f271e519e5422845007a894aad1ddde9ab268713bdcfbec4157abb6ccfee5"
+  source_hash: "acf2f98da884aa3e987326da4de58dc42d1a7739f5eee7955355d06acd92cd05"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestVerifyBindingsViewAnswersWhatClaimsThisSymbol"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "8040ae2b15bf8cf90827ec322db78cfdf9408fe714a624b08f9c476766c70209"
+}

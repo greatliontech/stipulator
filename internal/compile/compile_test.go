@@ -163,13 +163,16 @@ func TestLeadErrors(t *testing.T) {
 
 //gofresh:pure
 func TestKeywordDiscipline(t *testing.T) {
+	// The refusal names the remedy for the count found, and the lint
+	// entry point — the message is where an author reads it, on
+	// whatever operation compiled the corpus (REQ-change-remediation).
 	t.Run("zero keywords", func(t *testing.T) {
 		_, diags := compileFiles(t, map[string]string{"specs/a.md": "# T\n\n**REQ-x-a** (behavior): It does the thing.\n"})
-		wantDiag(t, diags, "has 0 normative keyword occurrences")
+		wantDiag(t, diags, "has 0 normative keyword occurrences, want exactly 1 — state the obligation with one of MUST, MUST NOT, SHOULD, SHOULD NOT, MAY, or demote the paragraph to prose by dropping its lead (stipulator compile is the lint after every spec edit)")
 	})
 	t.Run("two keywords", func(t *testing.T) {
 		_, diags := compileFiles(t, map[string]string{"specs/a.md": "# T\n\n**REQ-x-a** (behavior): It MUST x and SHOULD y.\n"})
-		wantDiag(t, diags, "has 2 normative keyword occurrences")
+		wantDiag(t, diags, "has 2 normative keyword occurrences, want exactly 1 — split the clauses into their own requirements, or coordinate them under one keyword (stipulator compile is the lint after every spec edit)")
 	})
 	t.Run("code spans are inert", func(t *testing.T) {
 		_, diags := compileFiles(t, map[string]string{

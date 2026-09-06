@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	checkpkg "github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/views"
@@ -27,24 +26,11 @@ func gateCmd() *cobra.Command {
 			// Every refusal the held inputs decide fires before the
 			// witness run: the corpus, the records' hygiene, the coverage
 			// policy, and the caller's vocabulary (REQ-check-preparation).
-			prepared, err := mustPrepare(chdir)
+			prepared, scope, err := prepareScoped(views.Scope{Ids: reqs, Bucket: bucket, Filter: filter, Path: pathPrefix}, views.ValidateCoverageView, view)
 			if err != nil {
 				return err
 			}
 			spec, store, pol := prepared.Spec, prepared.Store, prepared.Coverage
-			scope := views.Scope{Ids: reqs, Bucket: bucket, Filter: filter, Path: pathPrefix}
-			if err := scope.Validate(); err != nil {
-				return err
-			}
-			if err := views.ValidateCoverageView(view); err != nil {
-				return err
-			}
-			if err := checkpkg.KnownIDs(spec, reqs); err != nil {
-				return err
-			}
-			if err := refuseHygiene(prepared.Hygiene); err != nil {
-				return err
-			}
 			pc, gb, err := servedBackend(cmd.Context(), store, true)
 			if err != nil {
 				return err

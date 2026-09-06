@@ -1164,19 +1164,19 @@ func TestVerifyToolNamesPolicyRecordProblem(t *testing.T) {
 //gofresh:pure
 func TestExplainToolParsesAndRefuses(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-explain")
-	pkg, sym, ok := culpritFromReason("post-run validation: package graph shares mutated dynamic state: github.com/x/internal/books: github.com/x/internal/books.normativeThresholds registers function values outside the environment-free audit")
+	pkg, sym, ok := golang.CulpritFromReason("post-run validation: package graph shares mutated dynamic state: github.com/x/internal/books: github.com/x/internal/books.normativeThresholds registers function values outside the environment-free audit")
 	if !ok || pkg != "github.com/x/internal/books" || sym != "normativeThresholds" {
 		t.Fatalf("parse = %q %q %v", pkg, sym, ok)
 	}
-	pkg, sym, ok = culpritFromReason("github.com/x/reg: github.com/x/reg.Registry escapes writable")
+	pkg, sym, ok = golang.CulpritFromReason("github.com/x/reg: github.com/x/reg.Registry escapes writable")
 	if !ok || pkg != "github.com/x/reg" || sym != "Registry" {
 		t.Fatalf("parse = %q %q %v", pkg, sym, ok)
 	}
-	pkg, sym, ok = culpritFromReason("example.com/u: example.com/u.Ω registers function values outside the environment-free audit")
+	pkg, sym, ok = golang.CulpritFromReason("example.com/u: example.com/u.Ω registers function values outside the environment-free audit")
 	if !ok || pkg != "example.com/u" || sym != "Ω" {
 		t.Fatalf("unicode identifier parse = %q %q %v", pkg, sym, ok)
 	}
-	if _, _, ok := culpritFromReason("reaches testing.Run (test runtime execution)"); ok {
+	if _, _, ok := golang.CulpritFromReason("reaches testing.Run (test runtime execution)"); ok {
 		t.Fatal("effect-plane reason parsed a culprit")
 	}
 	sess, _ := harness(t, nil)
@@ -1212,7 +1212,7 @@ func TestExplainToolParsesAndRefuses(t *testing.T) {
 	if err != nil || !res.IsError {
 		t.Fatalf("empty input accepted: %v %+v", err, res)
 	}
-	if text := toolText(t, res); !strings.Contains(text, "pass a reason to parse, or package and symbol") {
+	if text := toolText(t, res); !strings.Contains(text, "pass reason to parse, or package and symbol") {
 		t.Fatalf("empty-input refusal lacks guidance: %s", text)
 	}
 }

@@ -92,8 +92,10 @@ func BindingResultProto(br BindingResult) *stipulatorv1.BindingResult {
 	m.SetContentPinned(br.ContentPinned)
 	m.SetResolution(resolutionProto[br.Resolution])
 	m.SetShape(shapeProto[br.Shape])
-	m.SetTestOutcome(outcomeProto[br.TestOutcome])
+	// Outcome and class are witness facts: an implements row carries
+	// neither, so its wire row never reads as a test that never ran.
 	if witnessRole(br.Role) {
+		m.SetTestOutcome(outcomeProto[br.TestOutcome])
 		m.SetWitnessClass(classProto[br.WitnessClass])
 	}
 	m.SetRaceEnabled(br.RaceEnabled)

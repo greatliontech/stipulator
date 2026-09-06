@@ -20,7 +20,6 @@ import (
 	"os"
 	pathpkg "path"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -133,11 +132,7 @@ func New(dir string) *Server {
 			return check.Run(ctx, dir, full, scopeIds)
 		},
 		explain: func(ctx context.Context, pkgPath, symbol string) (gofresh.Chain, string, error) {
-			pc, err := golang.LoadCapture(ctx, dir)
-			if err != nil {
-				return gofresh.Chain{}, "", fmt.Errorf("policy: %w", err)
-			}
-			return golang.ExplainDynamicState(ctx, pc, pkgPath, symbol)
+			return golang.Explain(ctx, dir, pkgPath, symbol)
 		},
 		write: func(path string, content []byte) error {
 			// The server is corpus-bound and its writes stay under
@@ -1519,47 +1514,16 @@ type explainOut struct {
 	Omitted int           `json:"omitted,omitempty"`
 }
 
-// culpritFromReason extracts the dynamic-state culprit a composed
-// reason names: the "<pkg>: <pkg>.<var> <verdict text>" tail every
-// shared-dynamic-state downgrade carries.
-var culpritReason = regexp.MustCompile(`([^\s:]+): ([^\s:]+)\.([\p{L}_][\p{L}\p{Nd}_]*) `)
-
-func culpritFromReason(reason string) (string, string, bool) {
-	for _, m := range culpritReason.FindAllStringSubmatch(reason+" ", -1) {
-		if m[1] == m[2] {
-			return m[1], m[3], true
-		}
-	}
-	return "", "", false
-}
-
 func (s *Server) toolExplain(ctx context.Context, req *mcp.CallToolRequest, in explainIn) (*mcp.CallToolResult, explainOut, error) {
-	if (in.Package == "") != (in.Symbol == "") {
-		// A lone package or symbol is never silently discarded in favor
-		// of the reason - the caller typed it for a reason.
-		return nil, explainOut{}, fmt.Errorf("explain: package and symbol travel together")
-	}
-	pkgPath, symbol := in.Package, in.Symbol
-	if pkgPath == "" {
-		if in.Reason == "" {
-			return nil, explainOut{}, fmt.Errorf("explain: pass a reason to parse, or package and symbol")
-		}
-		var ok bool
-		pkgPath, symbol, ok = culpritFromReason(in.Reason)
-		if !ok {
-			return nil, explainOut{}, fmt.Errorf("explain: no culprit parsed from the reason; pass package and symbol")
-		}
+	pkgPath, symbol, err := golang.ResolveCulprit(in.Reason, in.Package, in.Symbol, func(name string) string { return name })
+	if err != nil {
+		return nil, explainOut{}, err
 	}
 	ctx, prog := s.startProgress(ctx, req)
 	prog.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	chain, view, err := s.explain(ctx, pkgPath, symbol)
 	if err != nil {
-		// The freshness library prefixes its own explain errors; only
-		// unprefixed causes (policy load, view construction) gain one.
-		if strings.HasPrefix(err.Error(), "explain: ") {
-			return nil, explainOut{}, terminalToolError(prog, ctx, err)
-		}
-		return nil, explainOut{}, terminalToolError(prog, ctx, fmt.Errorf("explain: %w", err))
+		return nil, explainOut{}, terminalToolError(prog, ctx, err)
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	out := explainOut{Arm: chain.Arm, View: view, Omitted: chain.Omitted, Links: []explainLink{}}

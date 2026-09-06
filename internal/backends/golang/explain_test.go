@@ -164,3 +164,32 @@ invocations {
 		t.Fatalf("non-culprit yielded a chain: arm=%q view=%q links=%d", arm, view, links)
 	}
 }
+
+// Explain is the one entry both surfaces call: a policy fault carries
+// the "explain: policy:" shape, and ResolveCulprit's refusals spell the
+// argument names the calling surface hands it (REQ-mcp-explain).
+//
+//gofresh:pure
+func TestExplainEntryShapesItsRefusals(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-explain")
+	if _, _, err := Explain(context.Background(), t.TempDir(), "example.com/p", "V"); err == nil || !strings.HasPrefix(err.Error(), "explain: policy: ") {
+		t.Fatalf("policy fault shape: %v", err)
+	}
+	cli := func(name string) string { return "--" + name }
+	if _, _, err := ResolveCulprit("", "example.com/p", "", cli); err == nil || err.Error() != "explain: --package and --symbol travel together" {
+		t.Fatalf("lone package: %v", err)
+	}
+	if _, _, err := ResolveCulprit("", "", "", func(n string) string { return n }); err == nil || err.Error() != "explain: pass reason to parse, or package and symbol" {
+		t.Fatalf("nothing given: %v", err)
+	}
+	if _, _, err := ResolveCulprit("nothing here", "", "", cli); err == nil || err.Error() != "explain: no culprit parsed from the reason; pass --package and --symbol" {
+		t.Fatalf("unparseable reason: %v", err)
+	}
+	pkg, sym, err := ResolveCulprit("github.com/x/reg: github.com/x/reg.Registry escapes writable", "", "", cli)
+	if err != nil || pkg != "github.com/x/reg" || sym != "Registry" {
+		t.Fatalf("parsed culprit = %q %q %v", pkg, sym, err)
+	}
+	if pkg, sym, err := ResolveCulprit("ignored", "example.com/p", "V", cli); err != nil || pkg != "example.com/p" || sym != "V" {
+		t.Fatalf("explicit culprit overrides the reason: %q %q %v", pkg, sym, err)
+	}
+}

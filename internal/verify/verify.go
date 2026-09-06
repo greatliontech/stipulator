@@ -32,7 +32,9 @@ func (p Problem) String() string { return p.Path + ": " + p.Message }
 type Resolution int
 
 const (
-	// Unverified: no backend was available for the binding.
+	// Unverified: no backend answer for the binding — no backend
+	// registered, a resolve that faulted (its problem reported beside),
+	// or a served backend answering that it did not verify.
 	Unverified Resolution = iota
 	// Resolved: the symbol exists; its shape hash accompanies it.
 	Resolved
@@ -329,10 +331,15 @@ type Report struct {
 	// current, awaiting the blanket pin's rewrite
 	// (REQ-evidence-consent-current).
 	Pinned, Stale, Rehash int
+	// Witnessed records whether the run executed (or served) tests:
+	// the witness counters mean nothing on an unwitnessed report.
+	Witnessed bool
 	// ShapePinned, ShapeUnpinned, and ShapeMismatch count resolved
 	// bindings by shape-pin state; Broken counts bindings whose symbol
-	// did not resolve; Unverified counts bindings whose backend has no
-	// verifier in this run.
+	// did not resolve; Unverified counts bindings with no backend
+	// answer in this run — no backend registered, a resolve that
+	// faulted (its problem is reported beside), or a served backend
+	// answering that it did not verify.
 	ShapePinned, ShapeUnpinned, ShapeMismatch, Broken, Unverified int
 	// Registrations holds the cross-checked runtime coverage claims;
 	// TestsPassed, TestsFailed, and TestsNotRun count tests- and
@@ -396,6 +403,9 @@ type AttestationResult struct {
 	RequirementId string
 	Reason        string
 	ContentPinned bool
+	// Rehash: the consent holds by the source pin alone
+	// (REQ-evidence-consent-current).
+	Rehash bool
 }
 
 // Hygiene judges the record-only half of verification — every problem
@@ -627,14 +637,6 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 				Resolution:    Unverified,
 				Shape:         ShapeUnknown,
 			}
-			if result.ContentPinned {
-				rep.Pinned++
-			} else {
-				rep.Stale++
-			}
-			if result.Rehash {
-				rep.Rehash++
-			}
 
 			if sl, ok := backends[b.GetBackend()].(SymbolLocator); ok {
 				// A locator fault leaves the row package-less: scoped
@@ -660,17 +662,6 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 				} else if wc, ok := backends[b.GetBackend()].(WitnessClassifier); ok {
 					result.WitnessClass = wc.WitnessClass(b.GetSymbol())
 				}
-				switch result.TestOutcome {
-				case TestPassed:
-					rep.TestsPassed++
-				case TestFailed:
-					rep.TestsFailed++
-				case TestNotRun:
-					// No outcome in a witnessed run: the test never ran
-					// (package build failure, sibling panic aborting the
-					// binary) — unwitnessed, reads as broken.
-					rep.TestsNotRun++
-				}
 			}
 
 			if backend, ok := backends[b.GetBackend()]; ok {
@@ -684,23 +675,23 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 					problem(bf.Path, "symbol %s is declared in a generated file; bind the generating artifact instead", b.GetSymbol())
 				case res == NotFound:
 					result.Resolution = NotFound
-					rep.Broken++
+				case res == Unverified:
+					// A served backend can answer that it did not
+					// verify (an out-of-process resolver with no
+					// verifier loaded): the row stays unverified — never
+					// resolved with a shape verdict it did not compute.
+					result.Resolution = Unverified
 				default:
 					result.Resolution = Resolved
 					switch {
 					case b.GetShapeHash() == "":
 						result.Shape = ShapeUnpinned
-						rep.ShapeUnpinned++
 					case b.GetShapeHash() == shape:
 						result.Shape = ShapeMatch
-						rep.ShapePinned++
 					default:
 						result.Shape = ShapeMismatch
-						rep.ShapeMismatch++
 					}
 				}
-			} else {
-				rep.Unverified++
 			}
 			rep.Results = append(rep.Results, result)
 		}
@@ -749,10 +740,8 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 				RequirementId: id,
 				Reason:        a.GetReason(),
 				ContentPinned: consent.Holds(),
+				Rehash:        consent == records.Rehash,
 			})
-			if consent == records.Rehash {
-				rep.Rehash++
-			}
 		}
 	}
 
@@ -761,10 +750,66 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 	}
 
 	sortProblems(rep.Problems)
-	if testRun != nil {
+	rep.Witnessed = testRun != nil
+	if rep.Witnessed {
 		rep.Signatures = signatures(rep.Results)
 	}
+	rep.Tally()
 	return rep
+}
+
+// Tally derives the report's counters from its rows — the one
+// derivation, so a report sliced to a scope re-tallies the same way
+// the whole tree was tallied (REQ-mcp-views: a scope narrows the whole
+// report). Witness outcomes count only on a witnessed report: an
+// unwitnessed row's zero outcome is not a test that never ran.
+func (r *Report) Tally() {
+	r.Pinned, r.Stale, r.Rehash = 0, 0, 0
+	r.ShapePinned, r.ShapeUnpinned, r.ShapeMismatch, r.Broken, r.Unverified = 0, 0, 0, 0, 0
+	r.TestsPassed, r.TestsFailed, r.TestsNotRun = 0, 0, 0
+	for _, br := range r.Results {
+		if br.ContentPinned {
+			r.Pinned++
+		} else {
+			r.Stale++
+		}
+		if br.Rehash {
+			r.Rehash++
+		}
+		if r.Witnessed && witnessRole(br.Role) {
+			switch br.TestOutcome {
+			case TestPassed:
+				r.TestsPassed++
+			case TestFailed:
+				r.TestsFailed++
+			case TestNotRun:
+				// No outcome in a witnessed run: the test never ran
+				// (package build failure, sibling panic aborting the
+				// binary) — unwitnessed, reads as broken.
+				r.TestsNotRun++
+			}
+		}
+		switch br.Resolution {
+		case Unverified:
+			r.Unverified++
+		case NotFound:
+			r.Broken++
+		case Resolved:
+			switch br.Shape {
+			case ShapeUnpinned:
+				r.ShapeUnpinned++
+			case ShapeMatch:
+				r.ShapePinned++
+			case ShapeMismatch:
+				r.ShapeMismatch++
+			}
+		}
+	}
+	for _, a := range r.Attestations {
+		if a.Rehash {
+			r.Rehash++
+		}
+	}
 }
 
 // signatures classifies each requirement's change shape from one run's

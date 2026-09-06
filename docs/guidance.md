@@ -16,21 +16,25 @@ before binding against the new text.
 **does:** Check records against the corpus and code.
 **knobs:**
 - `no_test` (mcp, cli as `no-test`) — the records-only judgment: no witness run, no policy capture; bindings resolve and hygiene is judged for authoring flows that need only the binding rows, while the witnessed form serves fresh witnesses and is cheap once the store is warm.
-- `view` (mcp) — summary (default: hygiene and witness counts with change signatures) or bindings (the per-binding rows): the agent's token economy; the cli renders the counts and the broken rows for the operator.
-- `ids` (mcp) — comma-separated requirement identifiers to scope binding rows to; unknown identifiers refuse — the agent's token economy.
-- `filter` (mcp) — requirement-id glob over binding rows — the agent's token economy.
-- `path` (mcp) — prefix over declaring document or symbol — the agent's token economy.
+- `view` (mcp, cli) — summary (default: hygiene and witness counts with change signatures) or bindings (one row per claim: requirement, role, clause, symbol, consent, resolution, outcome); the cli's summary is the operator's counts and broken rows, its bindings view the same rows as text. A scope narrows both: the summary's counts, signatures, and diagnostics are re-tallied over what the scope keeps, while the problems and the outside-policy count stay tree-wide.
+- `ids` (mcp, cli as `req`) — requirement identifiers to scope the report to (comma-separated on mcp; repeatable on the cli); unknown identifiers refuse before any witness runs.
+- `filter` (mcp, cli) — requirement-id glob to scope the report to.
+- `path` (mcp, cli) — prefix over declaring document or bound symbol to scope the report to: "what claims this symbol" — the query to run before deleting or moving an exported symbol, so the answer is a view, never a grep over the record files.
+- `json` (cli) — machine output for CI and scripts: the selected view as JSON.
 **when:** use verify for binding hygiene and witness detail; prefer
 check for the one-verdict pass, and gate when the question is
-coverage buckets rather than binding health.
+coverage buckets rather than binding health. Before deleting a
+symbol, verify with view=bindings and path=<package.Symbol> (cli:
+`--view bindings --path`) lists every claim on it.
 **example:** verify with view=bindings and ids=REQ-model-graph to read
-one requirement's binding rows.
+one requirement's binding rows; `stipulator verify --no-test --view
+bindings --path example.com/kernel.Round` before removing `Round`.
 
 ### gate
 **does:** Coverage gate: buckets and the gate verdict.
 **knobs:**
 - `view` (mcp, cli) — summary (default: pass/fail + counts + violations), reds (red requirements with reasons), or full (every requirement).
-- `ids` (mcp, cli as `req`) — requirement identifiers to scope to (comma-separated on mcp; repeatable on the cli); unknown identifiers refuse on the mcp surface.
+- `ids` (mcp, cli as `req`) — requirement identifiers to scope to (comma-separated on mcp; repeatable on the cli); unknown identifiers refuse before any witness runs.
 - `bucket` (mcp, cli) — scope to one bucket: uncovered, partial, stale, broken, covered, exempt, attested.
 - `filter` (mcp, cli) — requirement-id glob, e.g. REQ-arch-*.
 - `path` (mcp, cli) — prefix over declaring spec document or bound symbols.
@@ -287,16 +291,16 @@ coverage matter too.
 surface.
 
 ### explain
-**surfaces:** mcp
 **does:** Derivation chain for a dynamic-state refusal, from culprit to the innermost refusing expression.
 **knobs:**
-- `reason` — a witness's uncacheable reason to parse the culprit from.
-- `package` — culprit package path (with symbol, overrides reason).
-- `symbol` — culprit variable name.
-**when:** use explain — the agent's derivation walk — when a witness reports a dynamic-state
+- `reason` (mcp, cli) — a witness's uncacheable reason to parse the culprit from.
+- `package` (mcp, cli) — culprit package path (with symbol, overrides reason).
+- `symbol` (mcp, cli) — culprit variable name.
+**when:** use explain when a witness reports a dynamic-state
 uncacheable reason — pass the reason verbatim, or name the package
 and symbol; the chain derives against the policy-scoped views
-verdicts use.
+verdicts use. The mcp returns the structured links; the cli prints
+them one per line.
 **example:** explain with the uncacheable reason string a check
 result carried.
 
@@ -401,7 +405,7 @@ for the tagged leg (a loud toolchain-unaudited notice names it), so
 prefer untagged or race-only invocations unless the tag selection
 has been walked. CLI-only: diff, impact,
 policy init, init, and mcp itself; MCP-only: context, partitions,
-read_spec, explain, and the dispose kind= form the cli spells as
+read_spec, and the dispose kind= form the cli spells as
 three subcommands. The guidance verb serves any verb's full section
 — knobs, when-to-use, example — from the tool's own embedded
 document.

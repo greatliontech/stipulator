@@ -83,6 +83,15 @@ func TestAttestRequirement(t *testing.T) {
 		!strings.Contains(err.Error(), "executed witness") {
 		t.Fatalf("MUST-cell attestation error = %v, want the cell's demand", err)
 	}
+	// The invariant cell's refusal states what the kinds mean, so an
+	// author whose requirement enumerates a closed set is pointed at
+	// the classification the need follows from — stated, never
+	// prescribed (REQ-change-remediation).
+	fsys["specs/inv.md"] = &fstest.MapFile{Data: []byte("# I\n\n**REQ-au-inv** (invariant): The verb set MUST be exactly these.\n")}
+	if _, _, err := AttestRequirement(fsys, "REQ-au-inv", "the inventory walk checks the list"); err == nil ||
+		!strings.Contains(err.Error(), "the need follows from the kind: an invariant is a property over all reachable states or runs; a closed set observable across the wire or a restart (an encoding, a format, a served inventory) is a wire requirement") {
+		t.Fatalf("invariant-cell attestation error = %v, want the reclassification remedy", err)
+	}
 }
 
 // TestAttestRequirementMultiRecordFile pins the two-pass replace: in a

@@ -393,3 +393,86 @@ func TestElementPrefixBoundaries(t *testing.T) {
 		}
 	}
 }
+
+// A scope narrows the whole report on the summary view too: the counts,
+// signatures, attestations, and diagnostics are re-tallied over the kept
+// rows; problems and the outside-policy count stay tree-wide like the
+// gate verdict (REQ-mcp-views).
+//
+//gofresh:pure
+func TestVerifySummaryHonoursScope(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-views")
+	vr := &verify.Report{
+		Witnessed: true,
+		Results: []verify.BindingResult{
+			{RequirementId: "REQ-v-a", Symbol: "example.com/p.TestA", Package: "example.com/p", Role: stipulatorv1.BindingRole_BINDING_ROLE_TESTS, ContentPinned: true, Resolution: verify.Resolved, Shape: verify.ShapeMatch, TestOutcome: verify.TestPassed},
+			{RequirementId: "REQ-v-b", Symbol: "example.com/q.TestB", Package: "example.com/q", Role: stipulatorv1.BindingRole_BINDING_ROLE_TESTS, Resolution: verify.NotFound, TestOutcome: verify.TestFailed},
+			{RequirementId: "REQ-v-b", Symbol: "example.com/q.F", Package: "example.com/q", Role: stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS, ContentPinned: true, Rehash: true, Resolution: verify.Resolved, Shape: verify.ShapeUnpinned},
+		},
+		OutsidePolicy: 3,
+		Problems:      []verify.Problem{{Path: "x", Message: "tree-wide"}},
+		Diagnostics: []*stipulatorv1.FailureDiagnostic{
+			packageDiag("example.com/q", "build failed: boom"),
+			packageDiag("example.com/p", "package abort: poof"),
+		},
+		Signatures:   []verify.ChangeSignature{{RequirementId: "REQ-v-a", Label: verify.SemanticDrift, Evidence: []string{"e"}}, {RequirementId: "REQ-v-b", Label: verify.Rearchitecture}},
+		Attestations: []verify.AttestationResult{{RequirementId: "REQ-v-a", Rehash: true, ContentPinned: true}},
+	}
+	vr.Tally()
+	facts := Facts{Doc: map[string]string{"REQ-v-a": "specs/a.md", "REQ-v-b": "specs/b.md"}, Symbols: map[string][]string{}}
+	whole, err := VerifyView(vr, facts, "summary", Scope{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w := whole.(*stipulatorv1.VerifySummary); w.GetPinned() != 2 || w.GetStale() != 1 || w.GetRehash() != 2 || w.GetBroken() != 1 || w.GetTestsPassed() != 1 || w.GetTestsFailed() != 1 || len(w.GetSignatures()) != 2 {
+		t.Fatalf("whole summary: %v", w)
+	}
+	m, err := VerifyView(vr, facts, "summary", Scope{Path: "example.com/p"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := m.(*stipulatorv1.VerifySummary)
+	if s.GetPinned() != 1 || s.GetStale() != 0 || s.GetRehash() != 1 || s.GetBroken() != 0 || s.GetShapePinned() != 1 || s.GetShapeUnpinned() != 0 || s.GetTestsPassed() != 1 || s.GetTestsFailed() != 0 {
+		t.Fatalf("scoped summary counts: %v", s)
+	}
+	if len(s.GetSignatures()) != 1 || s.GetSignatures()[0].GetRequirementId() != "REQ-v-a" {
+		t.Fatalf("scoped signatures: %v", s.GetSignatures())
+	}
+	if h := s.GetWitnessFailureHeadings(); len(h) != 1 || h[0] != "failed: example.com/p" {
+		t.Fatalf("scoped headings: %v", h)
+	}
+	if s.GetProblems() != 1 || s.GetOutsidePolicy() != 3 {
+		t.Fatalf("problems and outside-policy must stay tree-wide: %v", s)
+	}
+	// The whole report is untouched by the slice.
+	if vr.Pinned != 2 || len(vr.Results) != 3 {
+		t.Fatal("scoping mutated the source report")
+	}
+	// An attested requirement ordinarily has no binding row: a scope
+	// naming it keeps its attestation (and its rehash count) all the
+	// same, by the scope's judgment of the requirement, not by rows.
+	vr.Attestations = append(vr.Attestations, verify.AttestationResult{RequirementId: "REQ-v-att", Rehash: true, ContentPinned: true})
+	facts.Doc["REQ-v-att"] = "specs/att.md"
+	vr.Tally()
+	m, err = VerifyView(vr, facts, "summary", Scope{Ids: []string{"REQ-v-att"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s := m.(*stipulatorv1.VerifySummary); s.GetRehash() != 1 || s.GetPinned() != 0 {
+		t.Fatalf("ids scope on an attested, row-less requirement: %v", s)
+	}
+	m, err = VerifyView(vr, facts, "summary", Scope{Path: "specs/att.md"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s := m.(*stipulatorv1.VerifySummary); s.GetRehash() != 1 {
+		t.Fatalf("path scope by document on an attested requirement: %v", s)
+	}
+	m, err = VerifyView(vr, facts, "summary", Scope{Ids: []string{"REQ-v-b"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s := m.(*stipulatorv1.VerifySummary); s.GetRehash() != 1 {
+		t.Fatalf("ids scope elsewhere kept a foreign attestation: %v", s)
+	}
+}

@@ -315,6 +315,20 @@ func VerifyView(vr *verify.Report, facts Facts, view string, scope Scope) (proto
 	}
 	switch view {
 	case "", "summary":
+		// A scope narrows the whole report (REQ-mcp-views): the summary
+		// counts, the change signatures, and the diagnostics are
+		// re-tallied over the kept rows exactly as the bindings view
+		// keeps them, so the roll-up an operator reads beside a --path
+		// is the roll-up of that path. Problems and the outside-policy
+		// count stay global, like the gate verdict: hygiene and the
+		// policy's selection are tree properties a slice cannot judge.
+		if !scope.Empty() {
+			sliced, err := scopeVerifyReport(vr, facts, scope)
+			if err != nil {
+				return nil, err
+			}
+			vr = sliced
+		}
 		out := &stipulatorv1.VerifySummary{}
 		out.SetProblems(int32(len(vr.Problems)))
 		out.SetPinned(int32(vr.Pinned))
@@ -353,82 +367,139 @@ func VerifyView(vr *verify.Report, facts Facts, view string, scope Scope) (proto
 		out.SetSignatures(sigs)
 		return out, nil
 	case "bindings":
-		sliced := *vr
-		if !scope.Empty() {
-			var rows []verify.BindingResult
-			for _, br := range vr.Results {
-				row := coverage.Requirement{Id: br.RequirementId}
-				if scope.Bucket != "" {
-					return nil, fmt.Errorf("bucket scope applies to coverage views, not binding rows")
-				}
-				if scope.keeps(row, facts.Doc[br.RequirementId], []string{br.Symbol}) {
-					rows = append(rows, br)
-				}
-			}
-			sliced.Results = rows
-			// A scope narrows the WHOLE report (REQ-mcp-views): the
-			// typed diagnostics follow the kept rows, so filtered triage
-			// is never polluted by out-of-scope packages' failures.
-			// OutsidePolicy stays GLOBAL exactly like the gate verdict — a
-			// scoped slice says nothing about what the policy leaves
-			// outside the tree-wide witnessing.
-			// A build-broken package's rows resolve to no package,
-			// which used to drop the one diagnostic explaining the
-			// breakage from every Path-empty scope (ids, filter,
-			// bucket). The row's bound SYMBOL still names the package
-			// textually; linking it against each diagnostic's own
-			// package string is boundary-safe in this direction - the
-			// package is known, never re-parsed from the symbol - but a
-			// dotted package path can prefix-link a symbol to its
-			// parent package too, so only the LONGEST linking package
-			// claims the row (REQ-mcp-views).
-			claimed := map[string]bool{}
-			for _, br := range rows {
-				if br.Package != "" {
-					continue
-				}
-				best := ""
-				for _, d := range vr.Diagnostics {
-					if p := d.GetPackage(); p != "" && len(p) > len(best) && elementPrefix(br.Symbol, p) {
-						best = p
-					}
-				}
-				if best != "" {
-					claimed[best] = true
-				}
-			}
-			var keptDiags []*stipulatorv1.FailureDiagnostic
-			for _, d := range vr.Diagnostics {
-				// A path scope keeps a package-scoped diagnostic
-				// directly, row or no row — the same element-boundary
-				// rule keeps applies to symbols. An invocation-level
-				// diagnostic has an empty package, which no non-empty
-				// path prefixes.
-				if scope.Path != "" && d.GetPackage() != "" && elementPrefix(d.GetPackage(), scope.Path) {
-					keptDiags = append(keptDiags, d)
-					continue
-				}
-				matched := d.GetPackage() != "" && claimed[d.GetPackage()]
-				for _, br := range rows {
-					if matched {
-						break
-					}
-					// Match on the row's backend-resolved package — the
-					// symbol string alone is ambiguous (dotted path
-					// elements vs method receivers), so it is never
-					// re-parsed here beyond the longest-link claim
-					// above.
-					if br.Package != "" && br.Package == d.GetPackage() {
-						matched = true
-					}
-				}
-				if matched {
-					keptDiags = append(keptDiags, d)
-				}
-			}
-			sliced.Diagnostics = keptDiags
+		if scope.Empty() {
+			return vr.Proto(), nil
+		}
+		sliced, err := scopeVerifyReport(vr, facts, scope)
+		if err != nil {
+			return nil, err
 		}
 		return sliced.Proto(), nil
 	}
 	return nil, unknownView(view, verifyViews)
+}
+
+// scopeVerifyReport narrows a verification report to a scope: the rows
+// the scope keeps, the signatures and attestations of the kept
+// requirements, the diagnostics the kept rows or the path claim, and
+// the counters re-tallied over what is kept (REQ-mcp-views).
+func scopeVerifyReport(vr *verify.Report, facts Facts, scope Scope) (*verify.Report, error) {
+	sliced := *vr
+	{
+		var rows []verify.BindingResult
+		for _, br := range vr.Results {
+			row := coverage.Requirement{Id: br.RequirementId}
+			if scope.Bucket != "" {
+				return nil, fmt.Errorf("bucket scope applies to coverage views, not binding rows")
+			}
+			if scope.keeps(row, facts.Doc[br.RequirementId], []string{br.Symbol}) {
+				rows = append(rows, br)
+			}
+		}
+		sliced.Results = rows
+		// A scope narrows the WHOLE report (REQ-mcp-views): the
+		// typed diagnostics follow the kept rows, so filtered triage
+		// is never polluted by out-of-scope packages' failures.
+		// OutsidePolicy stays GLOBAL exactly like the gate verdict — a
+		// scoped slice says nothing about what the policy leaves
+		// outside the tree-wide witnessing.
+		// A build-broken package's rows resolve to no package,
+		// which used to drop the one diagnostic explaining the
+		// breakage from every Path-empty scope (ids, filter,
+		// bucket). The row's bound SYMBOL still names the package
+		// textually; linking it against each diagnostic's own
+		// package string is boundary-safe in this direction - the
+		// package is known, never re-parsed from the symbol - but a
+		// dotted package path can prefix-link a symbol to its
+		// parent package too, so only the LONGEST linking package
+		// claims the row (REQ-mcp-views).
+		claimed := map[string]bool{}
+		for _, br := range rows {
+			if br.Package != "" {
+				continue
+			}
+			best := ""
+			for _, d := range vr.Diagnostics {
+				if p := d.GetPackage(); p != "" && len(p) > len(best) && elementPrefix(br.Symbol, p) {
+					best = p
+				}
+			}
+			if best != "" {
+				claimed[best] = true
+			}
+		}
+		var keptDiags []*stipulatorv1.FailureDiagnostic
+		for _, d := range vr.Diagnostics {
+			// A path scope keeps a package-scoped diagnostic
+			// directly, row or no row — the same element-boundary
+			// rule keeps applies to symbols. An invocation-level
+			// diagnostic has an empty package, which no non-empty
+			// path prefixes.
+			if scope.Path != "" && d.GetPackage() != "" && elementPrefix(d.GetPackage(), scope.Path) {
+				keptDiags = append(keptDiags, d)
+				continue
+			}
+			matched := d.GetPackage() != "" && claimed[d.GetPackage()]
+			for _, br := range rows {
+				if matched {
+					break
+				}
+				// Match on the row's backend-resolved package — the
+				// symbol string alone is ambiguous (dotted path
+				// elements vs method receivers), so it is never
+				// re-parsed here beyond the longest-link claim
+				// above.
+				if br.Package != "" && br.Package == d.GetPackage() {
+					matched = true
+				}
+			}
+			if matched {
+				keptDiags = append(keptDiags, d)
+			}
+		}
+		sliced.Diagnostics = keptDiags
+	}
+	// Requirement-level members follow the scope's own judgment of the
+	// requirement, not the surviving rows: an attested requirement
+	// ordinarily has no binding row, and a scope naming it keeps its
+	// attestation. A path scope keeps by document or symbol; an
+	// attestation has no symbol, so only its document can keep it.
+	kept := map[string]bool{}
+	for _, br := range sliced.Results {
+		kept[br.RequirementId] = true
+	}
+	keepsID := func(id string) bool {
+		if kept[id] {
+			return true
+		}
+		return scope.keeps(coverage.Requirement{Id: id}, facts.Doc[id], nil)
+	}
+	var sigs []verify.ChangeSignature
+	for _, cs := range vr.Signatures {
+		if keepsID(cs.RequirementId) {
+			sigs = append(sigs, cs)
+		}
+	}
+	sliced.Signatures = sigs
+	var atts []verify.AttestationResult
+	for _, a := range vr.Attestations {
+		if keepsID(a.RequirementId) {
+			atts = append(atts, a)
+		}
+	}
+	sliced.Attestations = atts
+	sliced.Tally()
+	return &sliced, nil
+}
+
+// VerifyBindings is the bindings view typed: the report the scope keeps,
+// for a renderer that reads rows rather than a wire message.
+func VerifyBindings(vr *verify.Report, facts Facts, scope Scope) (*verify.Report, error) {
+	if err := scope.Validate(); err != nil {
+		return nil, err
+	}
+	if scope.Empty() {
+		return vr, nil
+	}
+	return scopeVerifyReport(vr, facts, scope)
 }

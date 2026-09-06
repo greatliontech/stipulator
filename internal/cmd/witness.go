@@ -38,7 +38,7 @@ func withRecordPath(err error) error {
 // command (REQ-evidence-resolution-freshness).
 func witnessRun(ctx context.Context, pc *golang.Capture, seeding verify.WitnessSeeding) (*verify.TestRun, error) {
 	fmt.Fprintln(os.Stderr, dim("witnessing: selective execution of the accepted test policy"))
-	tr, err := golang.RunWitnessesPolicy(ctx, pc, seeding)
+	tr, err := runWitnessesPolicy(ctx, pc, seeding)
 	if err != nil {
 		return nil, withRecordPath(err)
 	}
@@ -121,3 +121,9 @@ func servedBackend(ctx context.Context, store *records.Store, witnessed bool) (*
 	}
 	return pc, served, nil
 }
+
+// runWitnessesPolicy is the one witnessing entry the CLI's whole-tree
+// verbs call, held in a variable so an in-process test can observe
+// whether a verb reached it — the oracle for "no witness executed
+// under a refused vocabulary" that needs no runtime input of its own.
+var runWitnessesPolicy = golang.RunWitnessesPolicy

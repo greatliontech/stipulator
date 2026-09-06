@@ -223,6 +223,14 @@ func keywordName(k stipulatorv1.Keyword) string {
 	return strings.ToLower(strings.ReplaceAll(strings.TrimPrefix(k.String(), "KEYWORD_"), "_", " "))
 }
 
+// Overridden reports whether the manifest overrides the cell's minimum
+// — the predicate the kind hint is suppressed on, for a surface
+// composing the hint outside this package.
+func (p *Policy) Overridden(kind stipulatorv1.ClauseKind, kw stipulatorv1.Keyword) bool {
+	_, ok := p.minimum(kind, kw)
+	return ok
+}
+
 // minimum reports the overridden minimum for a cell, if any.
 func (p *Policy) minimum(kind stipulatorv1.ClauseKind, kw stipulatorv1.Keyword) (stipulatorv1.MinimumEvidence, bool) {
 	if p == nil {
@@ -472,9 +480,17 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 			e.reasons = append(e.reasons, unmet...)
 			e.reasons = append(e.reasons, e.classVerdicts...)
 			e.reasons = append(e.reasons, clauseVerdicts...)
+			// The kind hint rides the row once, whatever the clause
+			// count — it explains the need, not each clause.
+			if hint := KindHint(r.GetKind(), r.GetKeyword()); hint != "" && !overridden {
+				e.reasons = append(e.reasons, hint)
+			}
 		default:
 			b = Uncovered
 			e.reasons = append(e.reasons, requiredEvidence(pol, r.GetKind(), r.GetKeyword()))
+			if hint := KindHint(r.GetKind(), r.GetKeyword()); hint != "" && !overridden {
+				e.reasons = append(e.reasons, hint)
+			}
 			// The per-witness classification verdicts land beside the
 			// need. Reasons sort alphabetically, which today puts
 			// "bound witness ..." verdicts ahead of "needs ..." - an
@@ -697,6 +713,25 @@ func satisfied(pol *Policy, kind stipulatorv1.ClauseKind, kw stipulatorv1.Keywor
 		return e.static || e.witness() || e.proof
 	}
 	return false
+}
+
+// KindHint states, beside an invariant cell's need, what the kinds
+// mean — so an author whose requirement enumerates a closed set rather
+// than stating a for-all property is pointed at the classification the
+// need follows from, and never left to hunt for a gap-shaped excuse.
+// It states the taxonomy (the clause kind definitions) and prescribes
+// nothing: which kind a requirement is remains the author's judgment
+// (REQ-change-remediation). Empty for every other kind.
+func KindHint(kind stipulatorv1.ClauseKind, kw stipulatorv1.Keyword) string {
+	if kind != stipulatorv1.ClauseKind_CLAUSE_KIND_INVARIANT {
+		return ""
+	}
+	// Only a MUST cell's need follows from the kind; SHOULD and MAY
+	// needs follow from the keyword alone.
+	if kw != stipulatorv1.Keyword_KEYWORD_MUST && kw != stipulatorv1.Keyword_KEYWORD_MUST_NOT {
+		return ""
+	}
+	return "the need follows from the kind: an invariant is a property over all reachable states or runs; a closed set observable across the wire or a restart (an encoding, a format, a served inventory) is a wire requirement; dependency direction, boundaries, and interface satisfaction are structural"
 }
 
 func requiredEvidence(pol *Policy, kind stipulatorv1.ClauseKind, kw stipulatorv1.Keyword) string {

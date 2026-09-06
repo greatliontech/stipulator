@@ -1940,3 +1940,23 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "f0c8efd01632524906e16fa8bccfb4bff506322f014163f315437efff63c2d96"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-witness"
+  content_hash: "e22a6e3886e24459029537b7ca47306a843b4cede5b1a9e2342557c72c33ba6b"
+  source_hash: "7d638aa018e09322e2b8581a995432a231ce4d6b172f8cee99c4faeb1492acdc"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verify.TestUnwitnessedReportCountsNoOutcomes"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "fda06984a52cc6062b975e4900d3fd71856940d3850ce9853fb9017ab82fd0a0"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-promotion"
+  content_hash: "cd111698d940da3cbb7584ce86616a68538ccc610ba3b3db525bbe1c1f37bcfc"
+  source_hash: "40eeecfe1e5c5498198890c96ff45ccb576391d0ca36e35cdb53b5db21df2925"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verify.TestServedUnverifiedStaysUnverified"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "d4a18a14eea9d7c91c531f2391e4ab00eef0f2b1406e2204cf1053c9ba5443db"
+}

@@ -81,6 +81,19 @@ func TestExampleClassificationVerdictSurfaces(t *testing.T) {
 	if !strings.Contains(joined, "needs a property witness or analyzer proof") {
 		t.Fatalf("reasons %q lack the required-evidence need", joined)
 	}
+	// The invariant cell's need carries the kind hint once per row: an
+	// uncovered requirement is pointed at the classification its need
+	// follows from, never told which kind it is (REQ-change-remediation).
+	if !strings.Contains(joined, "the need follows from the kind: an invariant is a property over all reachable states or runs; a closed set observable across the wire or a restart") {
+		t.Fatalf("reasons %q lack the kind hint", joined)
+	}
+	// A SHOULD invariant's need follows from the keyword, so no hint.
+	shouldDoc := "# T\n\n**REQ-v-sh** (invariant): It SHOULD hold.\n"
+	sspec, sstore := fixture(t, shouldDoc, nil)
+	srow := bucketOf(t, Evaluate(sspec, &verify.Report{}, sstore, true, nil), "REQ-v-sh")
+	if strings.Contains(strings.Join(srow.Reasons, " "), "the need follows from the kind") {
+		t.Fatalf("SHOULD invariant carries the kind hint: %v", srow.Reasons)
+	}
 	if !strings.HasPrefix(row.Reasons[0], "bound witness ") {
 		t.Fatalf("reasons[0] = %q, want the actionable verdict first", row.Reasons[0])
 	}

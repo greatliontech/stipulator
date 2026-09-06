@@ -50,10 +50,20 @@ func AttestRequirement(fsys fs.FS, requirement, reason string) (*Update, *stipul
 		return nil, nil, err
 	}
 	if !coverage.AdmitsAttestation(pol, kind, keyword) {
-		return nil, nil, fmt.Errorf("the (%s, %s) cell never admits attestation — it %s; an attestation that can never render is refused, not recorded",
+		// The need carries its remedy: on the invariant cell that is the
+		// reclassification, so the author is sent to the one edit that
+		// renders the decision rather than left to hunt for a gap
+		// (REQ-change-remediation).
+		hint := ""
+		if !pol.Overridden(kind, keyword) {
+			if h := coverage.KindHint(kind, keyword); h != "" {
+				hint = "; " + h
+			}
+		}
+		return nil, nil, fmt.Errorf("the (%s, %s) cell never admits attestation — it %s; an attestation that can never render is refused, not recorded%s",
 			strings.ToLower(strings.TrimPrefix(kind.String(), "CLAUSE_KIND_")),
 			strings.ReplaceAll(strings.TrimPrefix(keyword.String(), "KEYWORD_"), "_", " "),
-			coverage.RequiredEvidence(pol, kind, keyword))
+			coverage.RequiredEvidence(pol, kind, keyword), hint)
 	}
 	store, err := records.Load(fsys)
 	if err != nil {

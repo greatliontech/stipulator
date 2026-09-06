@@ -23,6 +23,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/internal/views"
 )
 
 // chdir is the repository root, shared by every verb.
@@ -154,7 +155,7 @@ func newRootCmd() *cobra.Command {
 		chdir = root
 		return nil
 	}
-	c.AddCommand(compileCmd(), checkCmd(), verifyCmd(), gateCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), impactCmd(), pruneCmd(), pinCmd(), disposeCmd(), retargetCmd(), attestCmd(), initCmd(), policyCmd(), mcpCmd(), guidanceCmd(), internalResolveCmd())
+	c.AddCommand(compileCmd(), checkCmd(), verifyCmd(), gateCmd(), explainCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), impactCmd(), pruneCmd(), pinCmd(), disposeCmd(), retargetCmd(), attestCmd(), initCmd(), policyCmd(), mcpCmd(), guidanceCmd(), internalResolveCmd())
 	return c
 }
 
@@ -333,4 +334,30 @@ func checkPrior(dir string, up author.Update) error {
 		return fmt.Errorf("%s changed since the operation read it (a concurrent write?); re-run against the current tree", up.Path)
 	}
 	return nil
+}
+
+// prepareScoped is the prologue every scoped query verb shares: the
+// corpus and records prepared, then every refusal the held inputs
+// decide — the scope vocabulary, the view word, the requirement
+// identifiers, and the records' hygiene — fired before any witness
+// executes (REQ-check-preparation). One prologue, so a verb cannot
+// validate its vocabulary after the run it was meant to spare.
+func prepareScoped(scope views.Scope, validateView func(string) error, view string) (*check.Prepared, views.Scope, error) {
+	prepared, err := mustPrepare(chdir)
+	if err != nil {
+		return nil, scope, err
+	}
+	if err := scope.Validate(); err != nil {
+		return nil, scope, err
+	}
+	if err := validateView(view); err != nil {
+		return nil, scope, err
+	}
+	if err := check.KnownIDs(prepared.Spec, scope.Ids); err != nil {
+		return nil, scope, err
+	}
+	if err := refuseHygiene(prepared.Hygiene); err != nil {
+		return nil, scope, err
+	}
+	return prepared, scope, nil
 }

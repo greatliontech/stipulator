@@ -57,15 +57,17 @@ flag, and the hidden internal resolver are surface plumbing outside
 the judgment. The guidance surfaces work outside a corpus: the
 document is embedded, so orientation precedes scaffolding.
 
-**REQ-mcp-explain** (behavior): The explain tool MUST answer a
-dynamic-state refusal with its derivation chain, derived against the
-same policy-scoped views the verdicts derive over (the freshness
-library's explain contract): given a witness's uncacheable reason -
-the culprit parsed from its package-and-variable tail - or an
-explicit package and symbol, the structured result carries the
-chain's links (kind, package, symbol, callee, clause, position) with
-counted omissions, beside a one-line text digest naming the arm and
-link count. A reason naming no parseable culprit refuses with
+**REQ-mcp-explain** (behavior): The explain verb, on both surfaces,
+MUST answer a dynamic-state refusal with its derivation chain,
+derived against the same policy-scoped views the verdicts derive over
+(the freshness library's explain contract): given a witness's
+uncacheable reason - the culprit parsed from its package-and-variable
+tail - or an explicit package and symbol (a lone one refused: the
+caller typed it for a reason), the MCP's structured result carries
+the chain's links (kind, package, symbol, callee, clause, position)
+with counted omissions, beside a one-line text digest naming the arm
+and link count, and the CLI prints the same links one per line with
+the omitted count. A reason naming no parseable culprit refuses with
 guidance; a culprit no policy view knows answers with an empty chain,
 stated as such in the digest. Views are tried in a deterministic
 policy order and the first yielding a chain answers, the result
@@ -123,13 +125,17 @@ machine output and exit-code-only (`json`, `quiet`, `ir`), the
 scaffolding and previews (`init`, `policy init`, `diff`, `impact`),
 the server process (`mcp`), the records-only sweep (`prune`'s
 `no-test`), and the shell spellings of `dispose`'s kinds; the MCP's
-reader is the agent — its token economy (verify's and check's `view`,
-and verify's `ids`, `filter`, and `path`, where the CLI has no
-per-binding rows to scope, only the counts and the broken ones, and
-the orientation verbs' `export_path`), its one-call all-or-nothing
+reader is the agent — its token economy (check's `view` and the
+orientation verbs' `export_path`), its one-call all-or-nothing
 authoring (`bind`'s `claims`, `dispose`'s kind form), its orientation
-(`context`, `partitions`, `read_spec`, `explain`), and a named
-parameter where the CLI takes a positional (`guidance`'s verb).
+(`context`, `partitions`, `read_spec`), and a named parameter where
+the CLI takes a positional (`guidance`'s verb). A query both readers
+need is on both surfaces: "what claims this symbol" — verify's
+binding rows scoped by `view`, `ids`, `filter`, and `path` — answers
+the operator before a deletion exactly as it answers the agent, so
+the CLI never sends an operator to grep the record files; and
+`explain` derives a dynamic-state refusal for whoever holds the
+reason.
 Enforced by `TestGuidanceNamesTheReaderOfEverySingleSurfaceElement`.
 
 **REQ-mcp-response-contract** (behavior): Every tool result MUST fit a

@@ -224,7 +224,7 @@ func resolve(docs []*document, tombstones map[string]bool, diags *[]Diagnostic) 
 			from := reqRef(r.id)
 			kws := findTokens(r.segs, keywordRe)
 			if len(kws) != 1 {
-				diag(r.loc, "requirement %s has %d normative keyword occurrences, want exactly 1", r.id, len(kws))
+				diag(r.loc, "requirement %s has %d normative keyword occurrences, want exactly 1 — %s (stipulator compile is the lint after every spec edit)", r.id, len(kws), keywordRemedy(len(kws)))
 			}
 			for _, ref := range checkRefs(r.segs, r.loc) {
 				addEdge(from, ref, stipulatorv1.EdgeKind_EDGE_KIND_REFERENCE)
@@ -624,4 +624,16 @@ func containsWord(hay, needle string) bool {
 		}
 	}
 	return false
+}
+
+// keywordRemedy names the edit that satisfies the one-keyword rule for
+// the count found: a requirement with several keywords is several
+// clauses with several enforcement states (split them, or coordinate
+// them under one keyword), one with none is prose that never binds
+// (REQ-profile-one-keyword).
+func keywordRemedy(count int) string {
+	if count == 0 {
+		return "state the obligation with one of MUST, MUST NOT, SHOULD, SHOULD NOT, MAY, or demote the paragraph to prose by dropping its lead"
+	}
+	return "split the clauses into their own requirements, or coordinate them under one keyword"
 }

@@ -820,3 +820,49 @@ func TestConsentHoldsByRehash(t *testing.T) {
 		t.Fatalf("attestation rehash not current: %+v rehash=%d", rep.Attestations, rep.Rehash)
 	}
 }
+
+// An unwitnessed report counts no test outcomes: a tests-role row's
+// zero outcome is not a test that never ran, so the roll-up an operator
+// reads after --no-test says nothing false about witnesses.
+//
+//gofresh:pure
+func TestUnwitnessedReportCountsNoOutcomes(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness")
+	rep, _ := run(t, map[string]string{
+		".stipulator/bindings/x.textproto": "bindings {\n  requirement_id: \"REQ-v-a\"\n  backend: \"go\"\n  symbol: \"example.com/p.TestA\"\n  role: BINDING_ROLE_TESTS\n}\n",
+	})
+	if rep.Witnessed || rep.TestsNotRun != 0 || rep.TestsPassed != 0 || rep.TestsFailed != 0 {
+		t.Fatalf("unwitnessed report counted outcomes: witnessed=%v notrun=%d passed=%d failed=%d", rep.Witnessed, rep.TestsNotRun, rep.TestsPassed, rep.TestsFailed)
+	}
+}
+
+// A backend answering that it did not verify a symbol leaves the row
+// unverified — never resolved with a shape verdict it did not compute —
+// and the row counts among the unverified, as a resolve fault does.
+//
+//gofresh:pure
+func TestServedUnverifiedStaysUnverified(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-promotion")
+	fsys := fstest.MapFS{
+		".stipulator/manifest.textproto":   {Data: []byte("include: \"specs/**/*.md\"\n")},
+		"specs/a.md":                       {Data: []byte(goodDoc)},
+		".stipulator/bindings/x.textproto": {Data: []byte(binding("REQ-v-a", ""))},
+	}
+	spec, diags, err := compile.Compile(fsys)
+	if err != nil || len(diags) > 0 {
+		t.Fatalf("compile: %v %v", err, diags)
+	}
+	store, err := records.Load(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep := Run(spec, store, map[string]Backend{"go": unverifiedBackend{}}, nil)
+	if len(rep.Results) != 1 || rep.Results[0].Resolution != Unverified || rep.Results[0].Shape != ShapeUnknown || rep.Unverified != 1 || rep.ShapeUnpinned != 0 {
+		t.Fatalf("served unverified answer: %+v unverified=%d shapeUnpinned=%d", rep.Results, rep.Unverified, rep.ShapeUnpinned)
+	}
+}
+
+// unverifiedBackend answers every symbol as not verified.
+type unverifiedBackend struct{}
+
+func (unverifiedBackend) Resolve(string) (Resolution, string, error) { return Unverified, "", nil }
