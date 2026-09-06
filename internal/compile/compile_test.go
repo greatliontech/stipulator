@@ -1,11 +1,13 @@
 package compile
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/bundle"
 	"github.com/greatliontech/stipulator/stipulate"
 	"google.golang.org/protobuf/proto"
 )
@@ -261,12 +263,136 @@ func TestIdentity(t *testing.T) {
 		}
 		wantClean(t, diags)
 	})
-	t.Run("supersedes unknown fails", func(t *testing.T) {
+	t.Run("supersedes unknown fails, naming the one-step disposition", func(t *testing.T) {
 		_, diags := compileFiles(t, map[string]string{
 			"specs/a.md": "# T\n\n**REQ-x-new** (behavior, supersedes REQ-x-ghost): It MUST x.\n",
 		})
-		wantDiag(t, diags, "neither declared nor tombstoned")
+		// The mid-disposition state is what the supersede disposition
+		// consumes; the refusal must send the author there, not to a
+		// prior edit that makes the corpus compile
+		// (REQ-change-split-merge, REQ-change-remediation).
+		wantDiag(t, diags, "requirement REQ-x-new supersedes REQ-x-ghost, which is neither declared nor tombstoned")
+		wantDiag(t, diags, "if REQ-x-ghost was removed by this edit, the supersede disposition tombstones and accepts the edges in one step: stipulator dispose supersede --from REQ-x-ghost --into REQ-x-new (mcp: dispose kind=supersede; add --force when no record names a source)")
 	})
+	// The remedy is computed over the disposition's unit — the
+	// connected component of removed sources and declaring successors
+	// — so a merge names every source and a split every successor: a
+	// per-edge command would loop on the merge and burn the identity
+	// on one successor of the split.
+	remedies := func(diags []Diagnostic) []string {
+		var out []string
+		for _, d := range diags {
+			if i := strings.Index(d.Message, "stipulator dispose supersede "); i >= 0 {
+				out = append(out, d.Message[i:])
+			}
+		}
+		return out
+	}
+	t.Run("merge names every source, once", func(t *testing.T) {
+		_, diags := compileFiles(t, map[string]string{
+			"specs/a.md": "# T\n\n**REQ-x-n** (behavior, supersedes REQ-x-b REQ-x-a): It MUST n.\n",
+		})
+		if got := remedies(diags); len(got) != 1 || !strings.HasPrefix(got[0], "stipulator dispose supersede --from REQ-x-a,REQ-x-b --into REQ-x-n ") {
+			t.Fatalf("merge remedies = %v", got)
+		}
+		wantDiag(t, diags, "if REQ-x-a, REQ-x-b were removed by this edit")
+	})
+	t.Run("split names every successor, once", func(t *testing.T) {
+		_, diags := compileFiles(t, map[string]string{
+			"specs/a.md": "# T\n\n**REQ-x-c** (behavior, supersedes REQ-x-a): It MUST c.\n\n**REQ-x-b** (behavior, supersedes REQ-x-a): It MUST b.\n",
+		})
+		if got := remedies(diags); len(got) != 1 || !strings.HasPrefix(got[0], "stipulator dispose supersede --from REQ-x-a --into REQ-x-b,REQ-x-c ") {
+			t.Fatalf("split remedies = %v", got)
+		}
+	})
+	t.Run("a chain joins into one component, once", func(t *testing.T) {
+		// c supersedes a and b; d supersedes b: one component {a,b} → {c,d};
+		// a declared target never joins. Three dangling edges, one remedy.
+		_, diags := compileFiles(t, map[string]string{
+			"specs/a.md": "# T\n\n**REQ-x-c** (behavior, supersedes REQ-x-a REQ-x-b): It MUST c.\n\n**REQ-x-d** (behavior, supersedes REQ-x-b REQ-x-e): It MUST d.\n\n**REQ-x-e** (behavior): It MUST e.\n",
+		})
+		if got := remedies(diags); len(got) != 1 || !strings.HasPrefix(got[0], "stipulator dispose supersede --from REQ-x-a,REQ-x-b --into REQ-x-c,REQ-x-d ") {
+			t.Fatalf("chain remedies = %v", got)
+		}
+		edges := 0
+		for _, d := range diags {
+			if strings.Contains(d.Message, "neither declared nor tombstoned") {
+				edges++
+			}
+		}
+		if edges != 3 {
+			t.Fatalf("dangling edges reported = %d, want 3 (each edge is a fault)", edges)
+		}
+	})
+	t.Run("two components get two remedies", func(t *testing.T) {
+		_, diags := compileFiles(t, map[string]string{
+			"specs/a.md": "# T\n\n**REQ-x-c** (behavior, supersedes REQ-x-a): It MUST c.\n\n**REQ-x-d** (behavior, supersedes REQ-x-b): It MUST d.\n",
+		})
+		got := remedies(diags)
+		if len(got) != 2 || !strings.HasPrefix(got[0], "stipulator dispose supersede --from REQ-x-a --into REQ-x-c ") || !strings.HasPrefix(got[1], "stipulator dispose supersede --from REQ-x-b --into REQ-x-d ") {
+			t.Fatalf("two-component remedies = %v", got)
+		}
+	})
+}
+
+// An edge clause admits a target list, and a clause may repeat: every
+// target yields exactly one edge, the edge list is canonically ordered
+// whatever the spelling, and the closure reaches every target — a
+// requirement refining two broader ones states both relationships
+// (REQ-profile-metadata, REQ-model-canonical-order, REQ-model-closure).
+//
+//gofresh:pure
+func TestEdgeClausesAdmitTargetLists(t *testing.T) {
+	stipulate.Covers(t, "REQ-profile-metadata", "REQ-model-closure", "REQ-model-canonical-order")
+	base := "# T\n\n**REQ-e-one** (behavior): It MUST one.\n\n**REQ-e-two** (behavior): It MUST two.\n\n"
+	list := base + "**REQ-e-both** (behavior, refines REQ-e-two REQ-e-one): It MUST both.\n"
+	repeated := base + "**REQ-e-both** (behavior, refines REQ-e-one, refines REQ-e-two): It MUST both.\n"
+	specList, diags := compileFiles(t, map[string]string{"specs/a.md": list})
+	wantClean(t, diags)
+	specRepeated, diags := compileFiles(t, map[string]string{"specs/a.md": repeated})
+	wantClean(t, diags)
+	edgesOf := func(spec *stipulatorv1.Spec) []string {
+		var out []string
+		for _, e := range spec.GetEdges() {
+			if e.GetKind() == stipulatorv1.EdgeKind_EDGE_KIND_REFINES {
+				out = append(out, e.GetFrom().GetRequirementId()+"→"+e.GetTo().GetRequirementId())
+			}
+		}
+		return out
+	}
+	want := []string{"REQ-e-both→REQ-e-one", "REQ-e-both→REQ-e-two"}
+	if got := edgesOf(specList); !slices.Equal(got, want) {
+		t.Fatalf("list form edges = %v, want %v (every target, canonical order)", got, want)
+	}
+	if got := edgesOf(specRepeated); !slices.Equal(got, want) {
+		t.Fatalf("repeated-clause form edges = %v, want %v", got, want)
+	}
+	// Mixed kinds keep their own lists.
+	mixed := base + "**REQ-e-both** (behavior, refines REQ-e-one REQ-e-two, depends REQ-e-two): It MUST both.\n"
+	specMixed, diags := compileFiles(t, map[string]string{"specs/a.md": mixed})
+	wantClean(t, diags)
+	depends := 0
+	for _, e := range specMixed.GetEdges() {
+		if e.GetKind() == stipulatorv1.EdgeKind_EDGE_KIND_DEPENDS {
+			depends++
+		}
+	}
+	if got := edgesOf(specMixed); !slices.Equal(got, want) || depends != 1 {
+		t.Fatalf("mixed clauses: refines=%v depends=%d", got, depends)
+	}
+	// The closure reaches every target: a bundle of the refining
+	// requirement carries both refined ones.
+	b, err := bundle.Compute(specList, []string{"REQ-e-both"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ids []string
+	for _, r := range b.GetRequirements() {
+		ids = append(ids, r.GetId())
+	}
+	if !slices.Contains(ids, "REQ-e-one") || !slices.Contains(ids, "REQ-e-two") {
+		t.Fatalf("closure over a target list = %v, want both targets", ids)
+	}
 }
 
 //gofresh:pure

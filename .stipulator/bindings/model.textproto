@@ -150,3 +150,23 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "3e29f8610fe401825bc33a686681e8eaeb4d6f9247834296293d0ae769f0674e"
 }
+
+bindings {
+  requirement_id: "REQ-model-closure"
+  content_hash: "d60f045c53652cd08a8b08365016a47d6101ce3862ffc8c6d448615244e0c559"
+  source_hash: "f1f0c4d194dddb2a36c76f1c4cd77d279f0e7ea7e70798f1e36b36b63e2e20f8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestEdgeClausesAdmitTargetLists"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "6bbbb7894bddc75189fe76e4131322ef9119f165ed23858dd6ca06f8bf55d2fa"
+}
+
+bindings {
+  requirement_id: "REQ-model-canonical-order"
+  content_hash: "7f27ad3ba6fa43b5f16ab33d643080778f9a2ffad1cf16f061bd11a351cf6345"
+  source_hash: "74b468acefbdb6dc256419adc1e5db047d93b87ca758eaa4cc9594ca4e968894"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestEdgeClausesAdmitTargetLists"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "6bbbb7894bddc75189fe76e4131322ef9119f165ed23858dd6ca06f8bf55d2fa"
+}

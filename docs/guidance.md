@@ -187,7 +187,13 @@ req=REQ-x for each requirement whose new text you consent to.
 the same dispositions as three subcommands (dispose editorial,
 dispose retire, dispose supersede). An editorial disposition's notes
 name the clause each re-consented clause claim now denotes, and a
-clause claim the new text no longer resolves refuses it.
+clause claim the new text no longer resolves refuses it. A supersede
+runs on the corpus as edited — the sources already removed, the
+successors declaring `supersedes` — in one step: the base corpus
+need not compile (its refusal for the undeclared source names this
+disposition), the tombstones are written, the edges accepted, and the
+sources' bindings retargeted stale; a source no record names needs
+force, the typo guard.
 **example:** dispose kind=supersede from=REQ-old into=REQ-a,REQ-b
 after splitting a clause.
 
@@ -218,8 +224,15 @@ mcp surface spells this dispose with kind=retire.
 **knobs:**
 - `from` — comma-separated source identifiers (removed from the spec); repeatable, every occurrence's identifiers join.
 - `into` — comma-separated successor identifiers (declaring supersedes); repeatable, occurrences join.
+- `force` — supersede a source no record names; the typo guard otherwise refuses.
 **when:** use — the operator's shell spelling of dispose — for splits and merges (the aliases); the mcp surface
-spells this dispose with kind=supersede.
+spells this dispose with kind=supersede. Run it on the corpus as
+edited: the sources removed and the successors declaring
+`supersedes` — the corpus need not compile first, the disposition
+validates through the tombstones it writes. Name every source and
+every successor of one split or merge in one call (the compile
+refusal spells the whole component); a prose mention of a removed
+source elsewhere is a dangling reference the same edit rewrites.
 **example:** dispose supersede --from REQ-old --into REQ-a,REQ-b.
 
 ### retarget

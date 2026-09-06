@@ -2,10 +2,13 @@ package author
 
 import (
 	"errors"
+	"slices"
+	"sort"
 	"strings"
 	"testing"
 	"testing/fstest"
 
+	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/stipulate"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -187,7 +190,7 @@ func TestSupersede(t *testing.T) {
 			"**REQ-au-a1** (behavior): It MUST x1.\n"
 		fsys2 := disposeFS(t, oldDoc, noEdge, nil)
 		_, err := Supersede(fsys2, []string{"REQ-au-a"}, []string{"REQ-au-a1"}, false)
-		if err == nil || !strings.Contains(err.Error(), "does not declare") {
+		if err == nil || !strings.Contains(err.Error(), "declares `supersedes` for none of REQ-au-a") {
 			t.Fatalf("err = %v", err)
 		}
 	})
@@ -342,4 +345,164 @@ func TestEditorialNoOpNamesItsReason(t *testing.T) {
 	if !errors.Is(err, ErrNothingStale) || !strings.Contains(NoOpNote(err), "re-attest: stipulator attest requirement --req REQ-au-s") {
 		t.Fatalf("stale attestation only: err=%v note=%q", err, NoOpNote(err))
 	}
+}
+
+// The removed-source supersede is one step: on the corpus as edited —
+// the source gone, the successor declaring — the base does not compile
+// (its refusal names this disposition), and the disposition still
+// tombstones the source, accepts the edge, and retargets the source's
+// binding; a source no record names needs force, the typo guard
+// (REQ-change-split-merge).
+//
+//gofresh:pure
+func TestSupersedeConsumesTheMidDispositionCorpus(t *testing.T) {
+	stipulate.Covers(t, "REQ-change-split-merge")
+	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST x.\n\n**REQ-au-b** (behavior): It MUST y.\n"
+	rewritten := "# T\n\n**REQ-au-b** (behavior): It MUST y.\n\n**REQ-au-n** (behavior, supersedes REQ-au-a): It MUST x, rewritten.\n"
+	fsys := disposeFS(t, oldDoc, rewritten, nil)
+	// Every authoring verb's refusal on the base carries the fault AND
+	// the one-step remedy — the consumer met the fault on a gap declare
+	// and had nowhere to look — while the remedy is its own diagnostic
+	// class, never counted as an error.
+	if _, err := compileClean(fsys); err == nil || !strings.Contains(err.Error(), "supersedes REQ-au-a, which is neither declared nor tombstoned; remedy: if REQ-au-a was removed by this edit") || !strings.Contains(err.Error(), "stipulator dispose supersede --from REQ-au-a --into REQ-au-n") {
+		t.Fatalf("mid-disposition base: %v, want the fault with its remedy", err)
+	}
+	if !remedyNamed(t, fsys, "stipulator dispose supersede --from REQ-au-a --into REQ-au-n") {
+		t.Fatal("the base's diagnostics do not name the one-step disposition")
+	}
+	ups, err := Supersede(fsys, []string{"REQ-au-a"}, []string{"REQ-au-n"}, false)
+	if err != nil {
+		t.Fatalf("one-step supersede over a non-compiling base: %v", err)
+	}
+	for _, up := range ups {
+		fsys[up.Path] = &fstest.MapFile{Data: up.Content}
+		if up.Content == nil {
+			delete(fsys, up.Path)
+		}
+	}
+	spec, err := compileClean(fsys)
+	if err != nil {
+		t.Fatalf("after the disposition the corpus must compile: %v", err)
+	}
+	edges := 0
+	for _, e := range spec.GetEdges() {
+		if e.GetKind() == stipulatorv1.EdgeKind_EDGE_KIND_SUPERSEDES && e.GetTo().GetRequirementId() == "REQ-au-a" {
+			edges++
+		}
+	}
+	if edges != 1 {
+		t.Fatalf("supersedes edge to the tombstoned source = %d, want 1", edges)
+	}
+	store, err := records.Load(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(store.Tombstones, "REQ-au-a") {
+		t.Fatalf("source not tombstoned: %v", store.Tombstones)
+	}
+	retargeted := false
+	for _, bf := range store.Bindings {
+		for _, b := range bf.Set.GetBindings() {
+			if b.GetRequirementId() == "REQ-au-n" && b.GetSymbol() == "example.com/p.F" && b.GetContentHash() == "" {
+				retargeted = true
+			}
+		}
+	}
+	if !retargeted {
+		t.Fatal("the source's binding was not retargeted stale to the successor")
+	}
+	// An unrecorded source: the typo guard names force.
+	unrecorded := disposeFS(t, oldDoc, "# T\n\n**REQ-au-a** (behavior): It MUST x.\n\n**REQ-au-m** (behavior, supersedes REQ-au-b): It MUST y, rewritten.\n", nil)
+	if _, err := Supersede(unrecorded, []string{"REQ-au-b"}, []string{"REQ-au-m"}, false); err == nil || !strings.Contains(err.Error(), "requires --force") {
+		t.Fatalf("unrecorded source without force: %v", err)
+	}
+	if _, err := Supersede(unrecorded, []string{"REQ-au-b"}, []string{"REQ-au-m"}, true); err != nil {
+		t.Fatalf("unrecorded source with force: %v", err)
+	}
+}
+
+// The disposition's unit is the connected component and its bindings
+// follow the declared edges: in a chain — c supersedes a and b, d
+// supersedes b — one call tombstones both sources, a's binding
+// retargets to c alone, b's to c and d, and no binding lands on a
+// successor that does not declare its source; a source no named
+// successor declares refuses naming it (REQ-change-split-merge).
+//
+//gofresh:pure
+func TestSupersedeFollowsTheDeclaredEdges(t *testing.T) {
+	stipulate.Covers(t, "REQ-change-split-merge")
+	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST a.\n\n**REQ-au-b** (behavior): It MUST b.\n"
+	chain := "# T\n\n**REQ-au-c** (behavior, supersedes REQ-au-a REQ-au-b): It MUST c.\n\n**REQ-au-d** (behavior, supersedes REQ-au-b): It MUST d.\n"
+	fsys := disposeFS(t, oldDoc, chain, map[string]string{
+		".stipulator/bindings/b.textproto": "bindings {\n  requirement_id: \"REQ-au-b\"\n  backend: \"go\"\n  symbol: \"example.com/p.G\"\n  role: BINDING_ROLE_TESTS\n}\n",
+	})
+	// The remedy on the mid-disposition base spells the whole component.
+	if !remedyNamed(t, fsys, "--from REQ-au-a,REQ-au-b --into REQ-au-c,REQ-au-d") {
+		t.Fatal("the base's diagnostics do not spell the whole component")
+	}
+	// A partial invocation refuses quoting the FAULT the overlay still
+	// carries — never a remedy computed for the overlay's hypothetical
+	// state, which would name a call that cannot work from the base.
+	if _, err := Supersede(fsys, []string{"REQ-au-a"}, []string{"REQ-au-c"}, false); err == nil || !strings.Contains(err.Error(), "supersedes REQ-au-b, which is neither declared nor tombstoned") || strings.Contains(err.Error(), "dispose supersede") {
+		t.Fatalf("partial invocation refusal: %v, want the fault alone", err)
+	}
+	ups, err := Supersede(fsys, []string{"REQ-au-a", "REQ-au-b"}, []string{"REQ-au-c", "REQ-au-d"}, false)
+	if err != nil {
+		t.Fatalf("one call over a chain: %v", err)
+	}
+	for _, up := range ups {
+		if up.Content == nil {
+			delete(fsys, up.Path)
+			continue
+		}
+		fsys[up.Path] = &fstest.MapFile{Data: up.Content}
+	}
+	if _, err := compileClean(fsys); err != nil {
+		t.Fatalf("after the disposition: %v", err)
+	}
+	store, err := records.Load(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string][]string{}
+	for _, bf := range store.Bindings {
+		for _, b := range bf.Set.GetBindings() {
+			got[b.GetRequirementId()] = append(got[b.GetRequirementId()], b.GetSymbol())
+		}
+	}
+	for id := range got {
+		sort.Strings(got[id])
+	}
+	want := map[string][]string{
+		"REQ-au-c": {"example.com/p.F", "example.com/p.G"}, // declares a and b
+		"REQ-au-d": {"example.com/p.G"},                    // declares b only
+	}
+	for id, syms := range want {
+		if !slices.Equal(got[id], syms) {
+			t.Fatalf("bindings on %s = %v, want %v (retarget follows the declared edges); all: %v", id, got[id], syms, got)
+		}
+	}
+	if _, has := got["REQ-au-a"]; has {
+		t.Fatalf("the source kept bindings: %v", got)
+	}
+	// A named source no named successor declares refuses, naming it.
+	if _, err := Supersede(disposeFS(t, oldDoc, chain, nil), []string{"REQ-au-a", "REQ-au-b"}, []string{"REQ-au-d"}, true); err == nil || !strings.Contains(err.Error(), "no named successor declares `supersedes REQ-au-a`") {
+		t.Fatalf("undeclared source: %v", err)
+	}
+}
+
+// remedyNamed reports whether compiling fsys yields a remedy diagnostic
+// containing text.
+func remedyNamed(t *testing.T, fsys fstest.MapFS, text string) bool {
+	t.Helper()
+	_, diags, err := compile.Compile(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range diags {
+		if d.Remedy && strings.Contains(d.Message, text) {
+			return true
+		}
+	}
+	return false
 }

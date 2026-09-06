@@ -199,7 +199,7 @@ func retire(fsys fs.FS, identities, successors []string, force bool) ([]Update, 
 				}
 			}
 			if !named {
-				return nil, fmt.Errorf("no record names %s; retiring an unrecorded identity requires force", id)
+				return nil, fmt.Errorf("no record names %s; retiring an unrecorded identity requires --force (mcp: force)", id)
 			}
 		}
 	}
@@ -229,6 +229,9 @@ func retire(fsys fs.FS, identities, successors []string, force bool) ([]Update, 
 	if err != nil {
 		return nil, err
 	}
+	// The overlay is a hypothetical corpus — the named sources already
+	// tombstoned — so a remedy it computes names a call that cannot
+	// work from the base; the refusal quotes its faults alone.
 	if errs := compile.Errors(diags); len(errs) > 0 {
 		return nil, fmt.Errorf("cannot validate the retirement; corpus does not compile: %s%s", errs[0], moreSuffix(len(errs)-1))
 	}
@@ -241,8 +244,8 @@ func retire(fsys fs.FS, identities, successors []string, force bool) ([]Update, 
 			return nil, fmt.Errorf("successor %s is not in the corpus", s)
 		}
 	}
+	declared := map[string]map[string]bool{}
 	if len(successors) > 0 {
-		declared := map[string]map[string]bool{}
 		for _, e := range spec.GetEdges() {
 			if e.GetKind() == stipulatorv1.EdgeKind_EDGE_KIND_SUPERSEDES && e.GetFrom().HasRequirementId() {
 				from := e.GetFrom().GetRequirementId()
@@ -252,11 +255,29 @@ func retire(fsys fs.FS, identities, successors []string, force bool) ([]Update, 
 				declared[from][e.GetTo().GetRequirementId()] = true
 			}
 		}
+		// The disposition follows the declared edges: every named
+		// successor must declare at least one named source and every
+		// named source must be declared by at least one named
+		// successor, so a connected split-or-merge component — a chain
+		// included — is one call, and a source's bindings retarget to
+		// exactly the successors that declare it, never to one that
+		// does not (REQ-change-split-merge).
 		for _, s := range successors {
+			any := false
 			for _, id := range identities {
-				if !declared[s][id] {
-					return nil, fmt.Errorf("successor %s does not declare `supersedes %s` in its metadata; edges are spec-owned — add the clause first", s, id)
-				}
+				any = any || declared[s][id]
+			}
+			if !any {
+				return nil, fmt.Errorf("successor %s declares `supersedes` for none of %s in its metadata; edges are spec-owned — add the clause first, or leave %s out", s, strings.Join(identities, ", "), s)
+			}
+		}
+		for _, id := range identities {
+			any := false
+			for _, s := range successors {
+				any = any || declared[s][id]
+			}
+			if !any {
+				return nil, fmt.Errorf("no named successor declares `supersedes %s` in its metadata; edges are spec-owned — add the clause to the successor that took it over, or name that successor", id)
 			}
 		}
 	}
@@ -284,9 +305,14 @@ func retire(fsys fs.FS, identities, successors []string, force bool) ([]Update, 
 		deleted[p] = true
 	}
 
-	// Retarget to successors: same symbol and role, content pin cleared.
+	// Retarget along the declared edges: a source's bindings go to the
+	// successors that declare it, same symbol and role, content pin
+	// cleared. A retire (no successors) carries nothing.
 	for _, succ := range successors {
 		for _, old := range carried {
+			if !declared[succ][old.GetRequirementId()] {
+				continue
+			}
 			nb := &stipulatorv1.Binding{}
 			nb.SetRequirementId(succ)
 			nb.SetBackend(old.GetBackend())
@@ -347,8 +373,8 @@ func compileClean(fsys fs.FS) (*stipulatorv1.Spec, error) {
 	if err != nil {
 		return nil, err
 	}
-	if errs := compile.Errors(diags); len(errs) > 0 {
-		return nil, fmt.Errorf("corpus does not compile: %s%s", errs[0], moreSuffix(len(errs)-1))
+	if refusal := compile.Refusal(diags); refusal != "" {
+		return nil, fmt.Errorf("corpus does not compile: %s", refusal)
 	}
 	return spec, nil
 }

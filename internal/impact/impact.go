@@ -84,11 +84,14 @@ func Preview(ctx context.Context, dir string) (*Report, error) {
 	if err != nil {
 		return nil, fmt.Errorf("no HEAD corpus to preview against (the last commit is the baseline): %w", err)
 	}
-	oldSpec, err := compileClean(headFS, "HEAD")
+	// HEAD is a historical corpus: a remedy computed for it would name
+	// a disposition against a past commit, so its refusal quotes faults
+	// alone; the working tree is live and carries its remedies.
+	oldSpec, err := compileClean(headFS, "HEAD", false)
 	if err != nil {
 		return nil, err
 	}
-	newSpec, err := compileClean(os.DirFS(dir), "working tree")
+	newSpec, err := compileClean(os.DirFS(dir), "working tree", true)
 	if err != nil {
 		return nil, err
 	}
@@ -187,14 +190,19 @@ func Preview(ctx context.Context, dir string) (*Report, error) {
 // compileClean compiles one corpus and turns compile-error diagnostics
 // into an error naming the tree they came from: the preview refuses to
 // guess over a broken contract.
-func compileClean(fsys fs.FS, label string) (*stipulatorv1.Spec, error) {
+func compileClean(fsys fs.FS, label string, live bool) (*stipulatorv1.Spec, error) {
 	spec, diags, err := compile.Compile(fsys)
 	if err != nil {
 		return nil, fmt.Errorf("compiling the %s corpus: %w", label, err)
 	}
+	if live {
+		if refusal := compile.Refusal(diags); refusal != "" {
+			return nil, fmt.Errorf("the %s corpus does not compile: %s", label, refusal)
+		}
+		return spec, nil
+	}
 	if errs := compile.Errors(diags); len(errs) > 0 {
-		return nil, fmt.Errorf("the %s corpus does not compile: %s:%d: %s",
-			label, errs[0].Document, errs[0].Line, errs[0].Message)
+		return nil, fmt.Errorf("the %s corpus does not compile: %s", label, errs[0])
 	}
 	return spec, nil
 }

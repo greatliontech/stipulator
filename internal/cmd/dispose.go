@@ -62,6 +62,7 @@ func disposeCmd() *cobra.Command {
 	retire.Flags().BoolVar(&force, "force", false, "retire even when no record names the identity")
 
 	var from, into []string
+	var forceSupersede bool
 	supersede := &cobra.Command{
 		Use:     "supersede",
 		Aliases: []string{"split", "merge"},
@@ -70,7 +71,7 @@ func disposeCmd() *cobra.Command {
 			// These flags already express multiplicity, so a repetition
 			// forms the batch: every occurrence's identifiers join
 			// (REQ-evidence-claim-batch's batch arm) — none dropped.
-			ups, err := author.Supersede(os.DirFS(chdir), splitLists(from), splitLists(into), false)
+			ups, err := author.Supersede(os.DirFS(chdir), splitLists(from), splitLists(into), forceSupersede)
 			if err != nil {
 				return err
 			}
@@ -79,6 +80,7 @@ func disposeCmd() *cobra.Command {
 	}
 	supersede.Flags().StringArrayVar(&from, "from", nil, "comma-separated source identifiers (removed from the spec; repeatable, occurrences join)")
 	supersede.Flags().StringArrayVar(&into, "into", nil, "comma-separated successor identifiers (declaring supersedes; repeatable, occurrences join)")
+	supersede.Flags().BoolVar(&forceSupersede, "force", false, "supersede a source no record names (the typo guard otherwise refuses)")
 	registerReqCompletions(supersede, "into")
 
 	c.AddCommand(editorial, retire, supersede)

@@ -519,3 +519,25 @@ func TestBindToolClauseClaims(t *testing.T) {
 		t.Fatalf("unbind by clause spelling removed the wrong claims:\n%s", c)
 	}
 }
+
+// A refusal on a broken corpus carries the compile's remedies beside
+// its faults on the agent surface too: a gap declared against the
+// mid-disposition corpus names the one-step supersede
+// (REQ-change-remediation, REQ-change-split-merge).
+//
+//gofresh:pure
+func TestCorpusRefusalCarriesRemediesOnTheAgentSurface(t *testing.T) {
+	stipulate.Covers(t, "REQ-change-remediation")
+	mid := "# T\n\n**REQ-m-new** (behavior, supersedes REQ-m-gone): It MUST new.\n"
+	sess, _ := harness(t, map[string]string{"specs/a.md": mid})
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "gap", Arguments: map[string]any{
+		"requirement": "REQ-m-new", "reason": "r", "manual": "later",
+	}})
+	if err != nil || !res.IsError {
+		t.Fatalf("gap on a broken corpus did not refuse: %v %+v", err, res)
+	}
+	text := toolText(t, res)
+	if !strings.Contains(text, "supersedes REQ-m-gone, which is neither declared nor tombstoned") || !strings.Contains(text, "remedy: if REQ-m-gone was removed by this edit") || !strings.Contains(text, "dispose kind=supersede") {
+		t.Fatalf("refusal lacks the fault or its remedy: %s", text)
+	}
+}

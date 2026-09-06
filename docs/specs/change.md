@@ -71,11 +71,27 @@ longer resolves refuses the disposition with nothing written, because
 consent to a dangling claim is no consent.
 
 **REQ-change-split-merge** (behavior): Split and merge dispositions MUST
-tombstone the source identities, verify that every successor declares a
-`supersedes` edge to its sources — edges are spec-owned, authored in the
-successor's metadata, never written by the tool — and retarget existing
-bindings to the successors with their content pins cleared, which reads as
-stale by contract.
+tombstone the source identities, verify the declared `supersedes` edges
+— edges are spec-owned, authored in the successor's metadata, never
+written by the tool: every named successor declares at least one named
+source and every named source is declared by at least one named
+successor — and retarget each source's existing bindings along those
+edges, to exactly the successors declaring it, with their content pins
+cleared, which reads as stale by contract; a binding never lands on a
+successor that does not declare its source. The disposition's unit is
+therefore the connected component of sources and declaring successors
+— a merge, a split, or a chain of either — in one call. It consumes
+the corpus as edited — the sources already removed, the successors
+declaring — and validates the result through an overlay carrying the
+new tombstones, so the base corpus need not compile: a successor's
+`supersedes` edge to a source that is neither declared nor tombstoned
+is exactly the mid-disposition state, and the compile refusal names
+this one-step disposition once per component, spelling every source
+and every successor of that component and the force knob a source no
+record names needs, rather than a prior edit. The one step covers the
+identity graph; a prose mention of a removed source elsewhere in the
+corpus is a dangling reference the same edit must rewrite, and the
+overlay names it.
 
 **REQ-change-retire** (behavior): A retire disposition MUST tombstone the
 identity and delete its bindings and gap records.

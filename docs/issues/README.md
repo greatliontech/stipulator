@@ -54,6 +54,9 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   with clauses still admits whole-requirement `tests` claims, so the false-green channel closes
   only where authors choose clause claims; whether to refuse whole claims on clause-structured
   requirements (a discipline choice). *Lands: user decision.*
+- **[remedy-spellings-one-source](remedy-spellings-one-source.md)** — remedy literals are composed
+  by hand at seven sites with nothing parsing them against the command tree; one composing source
+  and one parse test. *Lands: user decision.*
 - **[two-record-stores](two-record-stores.md)** — the witness cache and the resolution cache are one store shape written twice; one store by record kind, and the served backend as the owned child's one form. *Lands: user decision (the ledger files were the third kind; the atomic writer folded, the store unification remains).*
 - **[seeded-witness-serving-follows-direct-call-classifier](seeded-witness-serving-follows-direct-call-classifier.md)** —
   the random-seeded serving exemption rides the direct-call witness classifier, so a

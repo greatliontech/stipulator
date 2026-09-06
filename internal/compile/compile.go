@@ -28,17 +28,25 @@ import (
 )
 
 // Diagnostic is a profile violation, or — when Warning is set — an
-// opt-in lint observation that surfaces without failing compilation.
+// opt-in lint observation that surfaces without failing compilation,
+// or — when Remedy is set — the operation that renders a violation's
+// state, computed once for the faults it accompanies: never a fault
+// itself, never counted as one, and never quoted as one by a surface
+// that judges a hypothetical corpus (REQ-change-remediation).
 type Diagnostic struct {
 	Document string
 	Line     int
 	Message  string
 	Warning  bool
+	Remedy   bool
 }
 
 func (d Diagnostic) String() string {
-	if d.Warning {
+	switch {
+	case d.Warning:
 		return fmt.Sprintf("%s:%d: warning: %s", d.Document, d.Line, d.Message)
+	case d.Remedy:
+		return fmt.Sprintf("%s:%d: remedy: %s", d.Document, d.Line, d.Message)
 	}
 	return fmt.Sprintf("%s:%d: %s", d.Document, d.Line, d.Message)
 }
@@ -46,6 +54,46 @@ func (d Diagnostic) String() string {
 // Errors filters lint warnings out: the corpus is clean iff no
 // error-severity diagnostic remains.
 func Errors(diags []Diagnostic) []Diagnostic {
+	var out []Diagnostic
+	for _, d := range diags {
+		if !d.Warning && !d.Remedy {
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
+// Refusal is the one-line refusal a verb gives on a broken corpus: the
+// first error with the remainder counted, followed by every remedy the
+// compile computed — so the operation that renders the state reaches
+// the reader of the refusal, whichever verb met it
+// (REQ-change-remediation). Empty when the corpus compiles.
+func Refusal(diags []Diagnostic) string {
+	errs := Errors(diags)
+	if len(errs) == 0 {
+		return ""
+	}
+	out := errs[0].String()
+	if n := len(errs) - 1; n > 0 {
+		out += fmt.Sprintf(" (and %d more)", n)
+	}
+	for _, d := range diags {
+		if d.Remedy {
+			out += "; remedy: " + d.Message
+		}
+	}
+	return out
+}
+
+// Faults is what a surface renders when it refuses on a broken corpus:
+// the errors AND the remedies that accompany them, warnings left out —
+// so the operation that renders a violation's state reaches every
+// reader of the refusal, not only the compile verb's
+// (REQ-change-remediation). Empty exactly when Errors is.
+func Faults(diags []Diagnostic) []Diagnostic {
+	if len(Errors(diags)) == 0 {
+		return nil
+	}
 	var out []Diagnostic
 	for _, d := range diags {
 		if !d.Warning {
@@ -148,6 +196,14 @@ func resolve(docs []*document, tombstones map[string]bool, diags *[]Diagnostic) 
 			Message:  fmt.Sprintf(format, args...),
 		})
 	}
+	remedy := func(loc *stipulatorv1.Location, format string, args ...any) {
+		*diags = append(*diags, Diagnostic{
+			Document: loc.GetDocument(),
+			Line:     int(loc.GetLine()),
+			Message:  fmt.Sprintf(format, args...),
+			Remedy:   true,
+		})
+	}
 
 	// Identity maps and uniqueness.
 	reqs := map[string]*reqBlock{}
@@ -216,6 +272,16 @@ func resolve(docs []*document, tombstones map[string]bool, diags *[]Diagnostic) 
 		}
 	}
 
+	// The supersede disposition's unit is the connected component of
+	// removed sources and the successors declaring them — a merge names
+	// several sources, a split several successors — so the refusal for
+	// a dangling supersedes edge names the disposition over the whole
+	// component, never a per-edge fragment that would loop (merge) or
+	// burn the identity on one successor (split)
+	// (REQ-change-split-merge, REQ-change-remediation).
+	components := supersedeComponents(docs, reqs, tombstones)
+	remedied := map[*supersedeComponent]bool{}
+
 	for _, d := range docs {
 		for _, r := range d.reqs {
 			if reqs[r.id] != r {
@@ -238,7 +304,24 @@ func resolve(docs []*document, tombstones map[string]bool, diags *[]Diagnostic) 
 					_, inCorpus := reqs[target]
 					if kind == stipulatorv1.EdgeKind_EDGE_KIND_SUPERSEDES {
 						if !inCorpus && !tombstones[strings.ToLower(target)] {
+							// The mid-disposition corpus — the source
+							// already removed, the successor declaring —
+							// is exactly the state the supersede
+							// disposition consumes: it validates through
+							// the tombstone overlay and needs no compiling
+							// base, so the refusal names that one step
+							// rather than reading as "make it compile
+							// first" (REQ-change-split-merge,
+							// REQ-change-remediation).
 							diag(r.loc, "requirement %s supersedes %s, which is neither declared nor tombstoned", r.id, target)
+							// The remedy once per component, at the first
+							// dangling edge met in corpus order: every
+							// dangling edge of the component names the
+							// same one step.
+							if c := components[target]; c != nil && !remedied[c] {
+								remedied[c] = true
+								remedy(r.loc, "if %s removed by this edit, the supersede disposition tombstones and accepts the edges in one step: stipulator dispose supersede --from %s --into %s (mcp: dispose kind=supersede; add --force when no record names a source)", wasOrWere(c.sources), strings.Join(c.sources, ","), strings.Join(c.successors, ","))
+							}
 							continue
 						}
 					} else if !inCorpus {
@@ -636,4 +719,93 @@ func keywordRemedy(count int) string {
 		return "state the obligation with one of MUST, MUST NOT, SHOULD, SHOULD NOT, MAY, or demote the paragraph to prose by dropping its lead"
 	}
 	return "split the clauses into their own requirements, or coordinate them under one keyword"
+}
+
+// supersedeComponent is one connected component of the mid-disposition
+// graph: the removed sources and the successors declaring them, each
+// sorted — the disposition's unit, and the remedy's spelling.
+type supersedeComponent struct {
+	sources, successors []string
+}
+
+// supersedeComponents groups every dangling supersedes target (neither
+// declared nor tombstoned) with the successors declaring it, closed
+// under "shares a successor" and "shares a source": a successor
+// superseding two removed sources merges them, two successors
+// superseding one source split it, and chains of either join. Keyed by
+// source.
+func supersedeComponents(docs []*document, reqs map[string]*reqBlock, tombstones map[string]bool) map[string]*supersedeComponent {
+	declares := map[string]map[string]bool{} // successor → dangling sources
+	declaredBy := map[string]map[string]bool{}
+	for _, d := range docs {
+		for _, r := range d.reqs {
+			if reqs[r.id] != r {
+				continue
+			}
+			for _, de := range r.edges {
+				if edgeKinds[de.Kind] != stipulatorv1.EdgeKind_EDGE_KIND_SUPERSEDES {
+					continue
+				}
+				for _, target := range de.Targets {
+					if _, inCorpus := reqs[target]; inCorpus || tombstones[strings.ToLower(target)] {
+						continue
+					}
+					if declares[r.id] == nil {
+						declares[r.id] = map[string]bool{}
+					}
+					declares[r.id][target] = true
+					if declaredBy[target] == nil {
+						declaredBy[target] = map[string]bool{}
+					}
+					declaredBy[target][r.id] = true
+				}
+			}
+		}
+	}
+	out := map[string]*supersedeComponent{}
+	for source := range declaredBy {
+		if _, done := out[source]; done {
+			continue
+		}
+		sources := map[string]bool{source: true}
+		successors := map[string]bool{}
+		queue := []string{source}
+		for len(queue) > 0 {
+			s := queue[0]
+			queue = queue[1:]
+			for succ := range declaredBy[s] {
+				if successors[succ] {
+					continue
+				}
+				successors[succ] = true
+				for other := range declares[succ] {
+					if !sources[other] {
+						sources[other] = true
+						queue = append(queue, other)
+					}
+				}
+			}
+		}
+		c := &supersedeComponent{}
+		for s := range sources {
+			c.sources = append(c.sources, s)
+		}
+		for s := range successors {
+			c.successors = append(c.successors, s)
+		}
+		sort.Strings(c.sources)
+		sort.Strings(c.successors)
+		for s := range sources {
+			out[s] = c
+		}
+	}
+	return out
+}
+
+// wasOrWere renders a source list for the remedy sentence.
+func wasOrWere(sources []string) string {
+	if len(sources) == 1 {
+		return sources[0] + " was"
+	}
+	return strings.Join(sources, ", ") + " were"
 }

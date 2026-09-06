@@ -34,18 +34,23 @@ type Prepared struct {
 	Hygiene []verify.Problem
 }
 
-// CompileProblems renders the corpus's compile errors as problems; empty
-// means the corpus compiled.
+// CompileProblems renders the corpus's compile faults — the errors and
+// the remedies beside them — as problems; empty means the corpus
+// compiled.
 func (p *Prepared) CompileProblems() []*stipulatorv1.Problem {
-	errs := compile.Errors(p.Diagnostics)
-	if len(errs) == 0 {
+	faults := compile.Faults(p.Diagnostics)
+	if len(faults) == 0 {
 		return nil
 	}
-	problems := make([]*stipulatorv1.Problem, 0, len(errs))
-	for _, d := range errs {
+	problems := make([]*stipulatorv1.Problem, 0, len(faults))
+	for _, d := range faults {
 		pr := &stipulatorv1.Problem{}
 		pr.SetPath(fmt.Sprintf("%s:%d", d.Document, d.Line))
-		pr.SetMessage(d.Message)
+		msg := d.Message
+		if d.Remedy {
+			msg = "remedy: " + msg
+		}
+		pr.SetMessage(msg)
 		problems = append(problems, pr)
 	}
 	return problems

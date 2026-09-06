@@ -130,3 +130,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "c870fde1e6f01bf6cb6d36bcad35bcbb88ff8899b333f3fdcc2169fe41c8b85a"
 }
+
+bindings {
+  requirement_id: "REQ-profile-metadata"
+  content_hash: "508f02a6fd830b61fd5f42e13ec5e29d76741eb4bb738da7c5ea5c1ed7752e69"
+  source_hash: "f43a80b55b1b4773967fd6787feb8d2335c5882154066fb4515c6feee1cf5f1a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestEdgeClausesAdmitTargetLists"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "6bbbb7894bddc75189fe76e4131322ef9119f165ed23858dd6ca06f8bf55d2fa"
+}

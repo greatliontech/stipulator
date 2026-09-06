@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	git "github.com/go-git/go-git/v5"
@@ -328,5 +329,28 @@ func TestPreviewCleanTreeAndNonRepo(t *testing.T) {
 	}
 	if _, err := Preview(context.Background(), t.TempDir()); err == nil {
 		t.Fatal("a tree outside any repository previewed without error")
+	}
+}
+
+// The preview's refusal on a broken corpus follows the tree's
+// liveness: the working tree carries the compile's remedies (the
+// one-step disposition for a mid-disposition edit), while HEAD — a
+// historical corpus a remedy would misdirect against — quotes its
+// faults alone (REQ-change-impact, REQ-change-remediation).
+//
+//gofresh:pure
+func TestCompileCleanCarriesRemediesOnlyForTheLiveTree(t *testing.T) {
+	stipulate.Covers(t, "REQ-change-remediation")
+	mid := fstest.MapFS{
+		".stipulator/manifest.textproto": &fstest.MapFile{Data: []byte("include: \"specs/**/*.md\"\n")},
+		"specs/a.md":                     &fstest.MapFile{Data: []byte("# T\n\n**REQ-i-new** (behavior, supersedes REQ-i-gone): It MUST new.\n")},
+	}
+	_, err := compileClean(mid, "working tree", true)
+	if err == nil || !strings.Contains(err.Error(), "the working tree corpus does not compile: specs/a.md:3: requirement REQ-i-new supersedes REQ-i-gone, which is neither declared nor tombstoned; remedy: if REQ-i-gone was removed by this edit") {
+		t.Fatalf("live refusal: %v", err)
+	}
+	_, err = compileClean(mid, "HEAD", false)
+	if err == nil || !strings.Contains(err.Error(), "the HEAD corpus does not compile: specs/a.md:3: requirement REQ-i-new supersedes REQ-i-gone, which is neither declared nor tombstoned") || strings.Contains(err.Error(), "remedy") {
+		t.Fatalf("historical refusal: %v", err)
 	}
 }

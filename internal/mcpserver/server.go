@@ -398,9 +398,9 @@ func (s *Server) prepare() (*check.Prepared, error) {
 	if err != nil {
 		return nil, err
 	}
-	if errs := compile.Errors(prepared.Diagnostics); len(errs) > 0 {
-		msgs := make([]string, 0, len(errs))
-		for _, d := range errs {
+	if faults := compile.Faults(prepared.Diagnostics); len(faults) > 0 {
+		msgs := make([]string, 0, len(faults))
+		for _, d := range faults {
 			msgs = append(msgs, d.String())
 		}
 		return nil, fmt.Errorf("corpus does not compile:\n%s", strings.Join(msgs, "\n"))
@@ -416,9 +416,9 @@ func (s *Server) compileFresh() (*stipulatorv1.Spec, error) {
 	if err != nil {
 		return nil, err
 	}
-	if errs := compile.Errors(diags); len(errs) > 0 {
-		msgs := make([]string, 0, len(errs))
-		for _, d := range errs {
+	if faults := compile.Faults(diags); len(faults) > 0 {
+		msgs := make([]string, 0, len(faults))
+		for _, d := range faults {
 			msgs = append(msgs, d.String())
 		}
 		return nil, fmt.Errorf("corpus does not compile:\n%s", strings.Join(msgs, "\n"))

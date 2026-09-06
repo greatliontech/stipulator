@@ -204,8 +204,8 @@ func Bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Upd
 	if err != nil {
 		return nil, err
 	}
-	if errs := compile.Errors(diags); len(errs) > 0 {
-		return nil, fmt.Errorf("corpus does not compile: %s%s", errs[0], moreSuffix(len(errs)-1))
+	if refusal := compile.Refusal(diags); refusal != "" {
+		return nil, fmt.Errorf("corpus does not compile: %s", refusal)
 	}
 	var contentHash, sourceHash string
 	var target *stipulatorv1.Requirement
@@ -596,8 +596,8 @@ func Gap(fsys fs.FS, g *stipulatorv1.Gap) (*Update, *stipulatorv1.Gap, []string,
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	if errs := compile.Errors(diags); len(errs) > 0 {
-		return nil, nil, nil, fmt.Errorf("corpus does not compile: %s%s", errs[0], moreSuffix(len(errs)-1))
+	if refusal := compile.Refusal(diags); refusal != "" {
+		return nil, nil, nil, fmt.Errorf("corpus does not compile: %s", refusal)
 	}
 	hashes := records.HashesOf(spec)
 	inCorpus := map[string]bool{}
@@ -888,8 +888,8 @@ func FireGaps(fsys fs.FS, reqs []string) ([]Update, error) {
 	if err != nil {
 		return nil, err
 	}
-	if errs := compile.Errors(diags); len(errs) > 0 {
-		return nil, fmt.Errorf("corpus does not compile: %s%s", errs[0], moreSuffix(len(errs)-1))
+	if refusal := compile.Refusal(diags); refusal != "" {
+		return nil, fmt.Errorf("corpus does not compile: %s", refusal)
 	}
 	present := map[string]bool{}
 	for _, r := range spec.GetRequirements() {

@@ -43,8 +43,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-split-merge"
-  content_hash: "2407a5c48e1480371dc0a6b93085370308b21a7a68d309bad6f7d99061a704f8"
-  source_hash: "aa79fc195ebf9385353285ea883251e49aa6506252c8172b26fe3cdf87cebe7a"
+  content_hash: "3e62fa83690082e37efe65cdae913db8b7fa953849499dc4029407a976870cf9"
+  source_hash: "b71682101896517e9066f116fc3929e01153531212a45fa01cbb2dcbade7fa56"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.Supersede"
   role: BINDING_ROLE_IMPLEMENTS
@@ -53,8 +53,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-split-merge"
-  content_hash: "2407a5c48e1480371dc0a6b93085370308b21a7a68d309bad6f7d99061a704f8"
-  source_hash: "aa79fc195ebf9385353285ea883251e49aa6506252c8172b26fe3cdf87cebe7a"
+  content_hash: "3e62fa83690082e37efe65cdae913db8b7fa953849499dc4029407a976870cf9"
+  source_hash: "b71682101896517e9066f116fc3929e01153531212a45fa01cbb2dcbade7fa56"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.TestSupersede"
   role: BINDING_ROLE_TESTS
@@ -409,4 +409,64 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPinToolIdsFormIsAllOrNothingOrHonest"
   role: BINDING_ROLE_TESTS
   shape_hash: "8d228352bb0ca66b0363d64cdbc9ad0174fd4be2a266e5969b2f78750667c355"
+}
+
+bindings {
+  requirement_id: "REQ-change-split-merge"
+  content_hash: "3e62fa83690082e37efe65cdae913db8b7fa953849499dc4029407a976870cf9"
+  source_hash: "b71682101896517e9066f116fc3929e01153531212a45fa01cbb2dcbade7fa56"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestSupersedeConsumesTheMidDispositionCorpus"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b2f3952c30d1262209235f164eab2b65e8dd58669ec22a0476be58e32e88e9fc"
+}
+
+bindings {
+  requirement_id: "REQ-change-split-merge"
+  content_hash: "3e62fa83690082e37efe65cdae913db8b7fa953849499dc4029407a976870cf9"
+  source_hash: "b71682101896517e9066f116fc3929e01153531212a45fa01cbb2dcbade7fa56"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestDisposeSupersedeCLIIsOneStep"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "bac7c117dd0156214b7971348babbfaa15dd3ff2308d7c0dbe36564f63650832"
+}
+
+bindings {
+  requirement_id: "REQ-change-split-merge"
+  content_hash: "3e62fa83690082e37efe65cdae913db8b7fa953849499dc4029407a976870cf9"
+  source_hash: "b71682101896517e9066f116fc3929e01153531212a45fa01cbb2dcbade7fa56"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestSupersedeFollowsTheDeclaredEdges"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "2f27383697050289c691ee914322889d76e94de1d86a7f708a86df244e6339d9"
+}
+
+bindings {
+  requirement_id: "REQ-change-remediation"
+  content_hash: "89f8aa44ad68598bf477d06395078b24e2162314cb1eca834c8af80105966fb0"
+  source_hash: "a2c2ac9b27426a692de1a003130628c26c11db46039ce0aeed290d0c52d18cc4"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCorpusRefusalCarriesRemediesOnTheAgentSurface"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "2723e302f59049663549dd8e6e11aae0ae1694d2f64ebb93148bd6f35b9a5676"
+}
+
+bindings {
+  requirement_id: "REQ-change-remediation"
+  content_hash: "89f8aa44ad68598bf477d06395078b24e2162314cb1eca834c8af80105966fb0"
+  source_hash: "a2c2ac9b27426a692de1a003130628c26c11db46039ce0aeed290d0c52d18cc4"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCompileProblemsCarryRemedies"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "f8287b76ee3c859bdcaef8c2deeb65a56f83664fe8597e0231bdef1115a9222c"
+}
+
+bindings {
+  requirement_id: "REQ-change-remediation"
+  content_hash: "89f8aa44ad68598bf477d06395078b24e2162314cb1eca834c8af80105966fb0"
+  source_hash: "a2c2ac9b27426a692de1a003130628c26c11db46039ce0aeed290d0c52d18cc4"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/impact.TestCompileCleanCarriesRemediesOnlyForTheLiveTree"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5ef793f55ea74032fead4b79b1cc8588bfd043b88474ac8211e9108dee7f298f"
 }
