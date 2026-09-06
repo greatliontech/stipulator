@@ -107,7 +107,7 @@ func gateCmd() *cobra.Command {
 		},
 	}
 	c.Flags().StringArrayVar(&reqs, "req", nil, "scope to requirement identifier (repeatable)")
-	c.Flags().StringVar(&bucket, "bucket", "", "scope to one bucket: uncovered, stale, broken, covered, exempt, attested")
+	c.Flags().StringVar(&bucket, "bucket", "", "scope to one bucket: uncovered, partial, stale, broken, covered, exempt, attested")
 	c.Flags().StringVar(&filter, "filter", "", "requirement-id glob, e.g. 'REQ-arch-*'")
 	c.Flags().StringVar(&pathPrefix, "path", "", "prefix over declaring document or bound symbols")
 	c.Flags().StringVar(&view, "view", "", "JSON view: summary (default), reds, full")
@@ -160,9 +160,9 @@ func printCoverage(cov *coverage.Report) {
 		}
 		fmt.Printf("  %-9s %-*s  %s  %s\n", bucket, width, r.Id, gapNote, reason)
 	}
-	fmt.Printf("coverage: %s covered, %s attested, %s uncovered, %s stale, %s broken, %d exempt; gaps: %d\n",
+	fmt.Printf("coverage: %s covered, %s attested, %s uncovered, %s partial, %s stale, %s broken, %d exempt; gaps: %d\n",
 		green(fmt.Sprint(counts[coverage.Covered])), num(counts[coverage.Attested], yellow),
-		num(counts[coverage.Uncovered], yellow),
+		num(counts[coverage.Uncovered], yellow), num(counts[coverage.Partial], yellow),
 		num(counts[coverage.Stale], yellow), num(counts[coverage.Broken], red),
 		counts[coverage.Exempt], len(cov.Gaps))
 	if _, prunable := coverage.GapCounts(cov.Gaps, nil); prunable > 0 {

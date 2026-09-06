@@ -22,6 +22,16 @@ type reqBlock struct {
 	// (REQ-profile-context-extent). Consent surface only: it rides the
 	// content hash, never the text.
 	extent [][]profile.Seg
+	// clauses are the payload's top-level list items in order
+	// (REQ-profile-clauses); each carries its own location for the
+	// duplicate-label diagnostic.
+	clauses []clauseBlock
+}
+
+type clauseBlock struct {
+	label string
+	segs  []profile.Seg
+	loc   *stipulatorv1.Location
 }
 
 type termBlock struct {
@@ -125,6 +135,9 @@ func extractDocument(path string, root gast.Node, src []byte) *document {
 				segs:   profile.BlockSegs(node, src),
 				source: profile.Source(node, src),
 				loc:    loc(node),
+			}
+			for _, c := range profile.Clauses(node, src) {
+				rb.clauses = append(rb.clauses, clauseBlock{label: c.Label, segs: c.Segs, loc: loc(c.Item)})
 			}
 			d.reqs = append(d.reqs, rb)
 			openExtent = &rb.extent

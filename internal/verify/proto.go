@@ -98,6 +98,10 @@ func BindingResultProto(br BindingResult) *stipulatorv1.BindingResult {
 	}
 	m.SetRaceEnabled(br.RaceEnabled)
 	m.SetPackage(br.Package)
+	if br.Clause != nil {
+		m.SetClauseOrdinal(br.Clause.GetOrdinal())
+		m.SetClauseLabel(br.Clause.GetLabel())
+	}
 	return m
 }
 

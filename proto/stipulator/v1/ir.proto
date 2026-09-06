@@ -76,6 +76,25 @@ message Requirement {
   // fidelity in bundles; carried, never hashed.
   string source = 6;
   Location location = 7;
+  // The requirement's clauses: the top-level items of its payload lists
+  // in payload order, ordinals from 1. Empty for a requirement whose
+  // payload holds no list. Clauses are a refinement of the requirement's
+  // coverage judgment, never a second identity: they carry no hash and
+  // no location of their own.
+  repeated Clause clauses = 8;
+}
+
+// Clause is one sub-obligation of a requirement: a payload list item,
+// addressed by ordinal or by the label it declares.
+message Clause {
+  // 1-based position among the requirement's clauses.
+  uint32 ordinal = 1;
+  // The label the item declares through a leading strong-emphasis span
+  // matching [a-z][a-z0-9]*(-[a-z0-9]+)*; empty when the item declares
+  // none. Unique within the requirement.
+  string label = 2;
+  // The item's canonical text, for reporting.
+  string text = 3;
 }
 
 // Term is a definition; its identity is its name.

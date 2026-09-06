@@ -180,13 +180,13 @@ func TestUnbind(t *testing.T) {
 	fsys[up.Path] = &fstest.MapFile{Data: up.Content}
 
 	t.Run("no match is an error", func(t *testing.T) {
-		if _, _, err := Unbind(fsys, "REQ-au-b", "", 0); err == nil {
+		if _, _, err := Unbind(fsys, "REQ-au-b", "", 0, ""); err == nil {
 			t.Fatal("matched nothing yet succeeded")
 		}
 	})
 
 	t.Run("removing the last binding deletes the file", func(t *testing.T) {
-		ups, removed, err := Unbind(fsys, "REQ-au-a", "", 0)
+		ups, removed, err := Unbind(fsys, "REQ-au-a", "", 0, "")
 		if err != nil || removed != 1 {
 			t.Fatalf("removed=%d err=%v", removed, err)
 		}
@@ -558,5 +558,93 @@ func TestProvesDischarge(t *testing.T) {
 	// is refused rather than recorded.
 	if _, err := Bind(fsys, map[string]verify.Backend{}, req); err == nil || !strings.Contains(err.Error(), "cannot be checked") {
 		t.Fatalf("unloaded backend accepted a proof: %v", err)
+	}
+}
+
+// A clause claim resolves against the compiled requirement at write time:
+// an ordinal or label the requirement declares is recorded in the
+// machine-owned form, one that it does not is refused naming what it
+// offers, and a claim that differs only in its clause is its own claim
+// (REQ-evidence-clause-claim, REQ-evidence-record-verbs).
+//
+//gofresh:pure
+func TestBindClauseClaims(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-clause-claim")
+	clauseDoc := doc + "\n**REQ-au-c** (behavior): It MUST hold:\n\n- **alpha** first\n- second\n"
+	fsys := testFS(map[string]string{"specs/a.md": clauseDoc})
+	claim := func(clause string) BindRequest {
+		r := bindReq("REQ-au-c", "example.com/p.F")
+		r.Clause = clause
+		return r
+	}
+	for _, c := range []struct{ clause, want string }{
+		{"alpha", `clause_label: "alpha"`},
+		{"2", "clause_ordinal: 2"},
+		{"", ""},
+	} {
+		up, err := Bind(fsys, backends, claim(c.clause))
+		if err != nil {
+			t.Fatalf("clause %q: %v", c.clause, err)
+		}
+		if c.want != "" && !strings.Contains(string(up.Content), c.want) {
+			t.Fatalf("clause %q rendered without %q:\n%s", c.clause, c.want, up.Content)
+		}
+		if c.want == "" && strings.Contains(string(up.Content), "clause_") {
+			t.Fatalf("whole-requirement claim rendered a clause:\n%s", up.Content)
+		}
+		set := &stipulatorv1.BindingSet{}
+		if err := prototext.Unmarshal(up.Content, set); err != nil {
+			t.Fatalf("clause %q: output does not parse: %v", c.clause, err)
+		}
+	}
+	for _, c := range []struct{ clause, want string }{
+		{"3", "declares no clause 3: its clauses are clause 1 `alpha` (alpha first); clause 2 (second)"},
+		{"beta", "declares no clause `beta`"},
+		{"0", "clauses count from 1"},
+		{"Not-A-Label", "neither an ordinal nor a label"},
+	} {
+		_, err := Bind(fsys, backends, claim(c.clause))
+		if err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Fatalf("clause %q: err = %v, want %q", c.clause, err, c.want)
+		}
+	}
+	// A list-less requirement takes only whole-requirement claims.
+	r := bindReq("REQ-au-a", "example.com/p.F")
+	r.Clause = "1"
+	if _, err := Bind(fsys, backends, r); err == nil || !strings.Contains(err.Error(), "has no payload list") {
+		t.Fatalf("clause on a list-less requirement: %v", err)
+	}
+	// The clause is part of a claim's identity: the same symbol on
+	// another clause is not "identical".
+	existing := map[string]string{
+		"specs/a.md":                        clauseDoc,
+		".stipulator/bindings/au.textproto": "bindings {\n  requirement_id: \"REQ-au-c\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n  clause_label: \"alpha\"\n}\n",
+	}
+	if _, err := Bind(testFS(existing), backends, claim("alpha")); err == nil || !strings.Contains(err.Error(), "identical binding") {
+		t.Fatalf("same clause claim twice: %v", err)
+	}
+	// The identity is the resolved clause: the ordinal spelling of the
+	// labelled clause is the same claim.
+	if _, err := Bind(testFS(existing), backends, claim("1")); err == nil || !strings.Contains(err.Error(), "identical binding") {
+		t.Fatalf("the same clause by ordinal accepted as a second claim: %v", err)
+	}
+	if _, err := Bind(testFS(existing), backends, claim("2")); err != nil {
+		t.Fatalf("a claim differing only in its clause refused: %v", err)
+	}
+	if _, err := Bind(testFS(existing), backends, claim("")); err != nil {
+		t.Fatalf("a whole-requirement claim beside a clause claim refused: %v", err)
+	}
+	// Unbind narrows by the claim's own spelling, so one of two claims
+	// on a symbol is removable — and a dangling claim reachable.
+	two := map[string]string{
+		"specs/a.md":                        clauseDoc,
+		".stipulator/bindings/au.textproto": "bindings {\n  requirement_id: \"REQ-au-c\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n  clause_label: \"gone\"\n}\nbindings {\n  requirement_id: \"REQ-au-c\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n  clause_ordinal: 2\n}\n",
+	}
+	ups, removed, err := Unbind(testFS(two), "REQ-au-c", "example.com/p.F", 0, "gone")
+	if err != nil || removed != 1 || !strings.Contains(string(ups[0].Content), "clause_ordinal: 2") || strings.Contains(string(ups[0].Content), "gone") {
+		t.Fatalf("unbind --clause gone: removed=%d err=%v %v", removed, err, ups)
+	}
+	if _, _, err := Unbind(testFS(two), "REQ-au-c", "example.com/p.F", 0, "3"); err == nil || !strings.Contains(err.Error(), "clause 3; the recorded claims there are example.com/p.F implements clause 2; example.com/p.F implements clause gone") {
+		t.Fatalf("unbind on an absent clause spelling does not list the recorded spellings: %v", err)
 	}
 }

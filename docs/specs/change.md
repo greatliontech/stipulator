@@ -61,7 +61,12 @@ is the default assumption.
 
 **REQ-change-editorial** (behavior): An editorial disposition MUST re-pin the
 identity's bindings and gap record to the new content hash without
-invalidation.
+invalidation — naming, for each re-pinned clause claim
+(REQ-evidence-clause-claim), the clause it denotes under the new text,
+since an ordinal claim follows its item's position and the consent must
+see what the edit made it point at; a clause claim the new text no
+longer resolves refuses the disposition with nothing written, because
+consent to a dangling claim is no consent.
 
 **REQ-change-split-merge** (behavior): Split and merge dispositions MUST
 tombstone the source identities, verify that every successor declares a
@@ -268,12 +273,13 @@ declared (a gap names it) or a violation. Pre-existing reds need declarations
 exactly like new ones, which is what makes the migration window auditable.
 
 **REQ-gate-no-undeclared** (behavior): The gate MUST fail exactly when some
-requirement is `uncovered`, `stale`, or `broken` and no gap record names
-it excusing that class. A gap excuses only the violation classes it
-declares, so a standing gap never absorbs a later red of a different
-class — the reader trusting the gap's reason is never misattributing
-the red — and the class mismatch is surfaced on the requirement, not
-silently equated with an undeclared red.
+requirement is `uncovered`, `partial`, `stale`, or `broken` and no gap
+record names it excusing that class — `partial` being the `uncovered`
+class in part, excused by an `uncovered` excuse. A gap excuses only the
+violation classes it declares, so a standing gap never absorbs a later
+red of a different class — the reader trusting the gap's reason is
+never misattributing the red — and the class mismatch is surfaced on
+the requirement, not silently equated with an undeclared red.
 
 ## The unified check
 

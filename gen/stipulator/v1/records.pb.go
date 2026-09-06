@@ -129,6 +129,7 @@ type Binding struct {
 	xxx_hidden_Symbol        *string                `protobuf:"bytes,4,opt,name=symbol"`
 	xxx_hidden_Role          BindingRole            `protobuf:"varint,5,opt,name=role,enum=stipulator.v1.BindingRole"`
 	xxx_hidden_ShapeHash     *string                `protobuf:"bytes,6,opt,name=shape_hash,json=shapeHash"`
+	xxx_hidden_Clause        isBinding_Clause       `protobuf_oneof:"clause"`
 	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
 	XXX_presence             [1]uint32
 	unknownFields            protoimpl.UnknownFields
@@ -219,34 +220,60 @@ func (x *Binding) GetShapeHash() string {
 	return ""
 }
 
+func (x *Binding) GetClauseOrdinal() uint32 {
+	if x != nil {
+		if x, ok := x.xxx_hidden_Clause.(*binding_ClauseOrdinal); ok {
+			return x.ClauseOrdinal
+		}
+	}
+	return 0
+}
+
+func (x *Binding) GetClauseLabel() string {
+	if x != nil {
+		if x, ok := x.xxx_hidden_Clause.(*binding_ClauseLabel); ok {
+			return x.ClauseLabel
+		}
+	}
+	return ""
+}
+
 func (x *Binding) SetRequirementId(v string) {
 	x.xxx_hidden_RequirementId = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 7)
 }
 
 func (x *Binding) SetContentHash(v string) {
 	x.xxx_hidden_ContentHash = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 7)
 }
 
 func (x *Binding) SetBackend(v string) {
 	x.xxx_hidden_Backend = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 7)
 }
 
 func (x *Binding) SetSymbol(v string) {
 	x.xxx_hidden_Symbol = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 7)
 }
 
 func (x *Binding) SetRole(v BindingRole) {
 	x.xxx_hidden_Role = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 7)
 }
 
 func (x *Binding) SetShapeHash(v string) {
 	x.xxx_hidden_ShapeHash = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 7)
+}
+
+func (x *Binding) SetClauseOrdinal(v uint32) {
+	x.xxx_hidden_Clause = &binding_ClauseOrdinal{v}
+}
+
+func (x *Binding) SetClauseLabel(v string) {
+	x.xxx_hidden_Clause = &binding_ClauseLabel{v}
 }
 
 func (x *Binding) HasRequirementId() bool {
@@ -291,6 +318,29 @@ func (x *Binding) HasShapeHash() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
 }
 
+func (x *Binding) HasClause() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Clause != nil
+}
+
+func (x *Binding) HasClauseOrdinal() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Clause.(*binding_ClauseOrdinal)
+	return ok
+}
+
+func (x *Binding) HasClauseLabel() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Clause.(*binding_ClauseLabel)
+	return ok
+}
+
 func (x *Binding) ClearRequirementId() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_RequirementId = nil
@@ -321,6 +371,40 @@ func (x *Binding) ClearShapeHash() {
 	x.xxx_hidden_ShapeHash = nil
 }
 
+func (x *Binding) ClearClause() {
+	x.xxx_hidden_Clause = nil
+}
+
+func (x *Binding) ClearClauseOrdinal() {
+	if _, ok := x.xxx_hidden_Clause.(*binding_ClauseOrdinal); ok {
+		x.xxx_hidden_Clause = nil
+	}
+}
+
+func (x *Binding) ClearClauseLabel() {
+	if _, ok := x.xxx_hidden_Clause.(*binding_ClauseLabel); ok {
+		x.xxx_hidden_Clause = nil
+	}
+}
+
+const Binding_Clause_not_set_case case_Binding_Clause = 0
+const Binding_ClauseOrdinal_case case_Binding_Clause = 7
+const Binding_ClauseLabel_case case_Binding_Clause = 8
+
+func (x *Binding) WhichClause() case_Binding_Clause {
+	if x == nil {
+		return Binding_Clause_not_set_case
+	}
+	switch x.xxx_hidden_Clause.(type) {
+	case *binding_ClauseOrdinal:
+		return Binding_ClauseOrdinal_case
+	case *binding_ClauseLabel:
+		return Binding_ClauseLabel_case
+	default:
+		return Binding_Clause_not_set_case
+	}
+}
+
 type Binding_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -337,6 +421,17 @@ type Binding_builder struct {
 	// The bound symbol's shape hash, when the backend defines one. Unset
 	// means never pinned.
 	ShapeHash *string
+	// The clause the claim is scoped to, when it does not claim the whole
+	// requirement: one of the requirement's payload clauses, named by its
+	// ordinal (1-based, payload order) or by the label the clause declares.
+	// A clause-scoped claim grants evidence to that clause alone; an
+	// unscoped claim grants to every clause. One field, so a claim naming
+	// two clauses that disagree is unrepresentable.
+
+	// Fields of oneof xxx_hidden_Clause:
+	ClauseOrdinal *uint32
+	ClauseLabel   *string
+	// -- end of xxx_hidden_Clause
 }
 
 func (b0 Binding_builder) Build() *Binding {
@@ -344,31 +439,63 @@ func (b0 Binding_builder) Build() *Binding {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.RequirementId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 7)
 		x.xxx_hidden_RequirementId = b.RequirementId
 	}
 	if b.ContentHash != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 7)
 		x.xxx_hidden_ContentHash = b.ContentHash
 	}
 	if b.Backend != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 7)
 		x.xxx_hidden_Backend = b.Backend
 	}
 	if b.Symbol != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 7)
 		x.xxx_hidden_Symbol = b.Symbol
 	}
 	if b.Role != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 7)
 		x.xxx_hidden_Role = *b.Role
 	}
 	if b.ShapeHash != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 7)
 		x.xxx_hidden_ShapeHash = b.ShapeHash
+	}
+	if b.ClauseOrdinal != nil {
+		x.xxx_hidden_Clause = &binding_ClauseOrdinal{*b.ClauseOrdinal}
+	}
+	if b.ClauseLabel != nil {
+		x.xxx_hidden_Clause = &binding_ClauseLabel{*b.ClauseLabel}
 	}
 	return m0
 }
+
+type case_Binding_Clause protoreflect.FieldNumber
+
+func (x case_Binding_Clause) String() string {
+	md := file_stipulator_v1_records_proto_msgTypes[0].Descriptor()
+	if x == 0 {
+		return "not set"
+	}
+	return protoimpl.X.MessageFieldStringOf(md, protoreflect.FieldNumber(x))
+}
+
+type isBinding_Clause interface {
+	isBinding_Clause()
+}
+
+type binding_ClauseOrdinal struct {
+	ClauseOrdinal uint32 `protobuf:"varint,7,opt,name=clause_ordinal,json=clauseOrdinal,oneof"`
+}
+
+type binding_ClauseLabel struct {
+	ClauseLabel string `protobuf:"bytes,8,opt,name=clause_label,json=clauseLabel,oneof"`
+}
+
+func (*binding_ClauseOrdinal) isBinding_Clause() {}
+
+func (*binding_ClauseLabel) isBinding_Clause() {}
 
 // BindingSet is the root message of a binding file; grouping bindings into
 // files is free (per package, per document, per feature) — file layout of
@@ -1225,7 +1352,7 @@ var File_stipulator_v1_records_proto protoreflect.FileDescriptor
 
 const file_stipulator_v1_records_proto_rawDesc = "" +
 	"\n" +
-	"\x1bstipulator/v1/records.proto\x12\rstipulator.v1\"\xd4\x01\n" +
+	"\x1bstipulator/v1/records.proto\x12\rstipulator.v1\"\xac\x02\n" +
 	"\aBinding\x12%\n" +
 	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x12!\n" +
 	"\fcontent_hash\x18\x02 \x01(\tR\vcontentHash\x12\x18\n" +
@@ -1233,7 +1360,10 @@ const file_stipulator_v1_records_proto_rawDesc = "" +
 	"\x06symbol\x18\x04 \x01(\tR\x06symbol\x12.\n" +
 	"\x04role\x18\x05 \x01(\x0e2\x1a.stipulator.v1.BindingRoleR\x04role\x12\x1d\n" +
 	"\n" +
-	"shape_hash\x18\x06 \x01(\tR\tshapeHash\"@\n" +
+	"shape_hash\x18\x06 \x01(\tR\tshapeHash\x12'\n" +
+	"\x0eclause_ordinal\x18\a \x01(\rH\x00R\rclauseOrdinal\x12#\n" +
+	"\fclause_label\x18\b \x01(\tH\x00R\vclauseLabelB\b\n" +
+	"\x06clause\"@\n" +
 	"\n" +
 	"BindingSet\x122\n" +
 	"\bbindings\x18\x01 \x03(\v2\x16.stipulator.v1.BindingR\bbindings\"\xd2\x01\n" +
@@ -1303,6 +1433,10 @@ func init() { file_stipulator_v1_records_proto_init() }
 func file_stipulator_v1_records_proto_init() {
 	if File_stipulator_v1_records_proto != nil {
 		return
+	}
+	file_stipulator_v1_records_proto_msgTypes[0].OneofWrappers = []any{
+		(*binding_ClauseOrdinal)(nil),
+		(*binding_ClauseLabel)(nil),
 	}
 	file_stipulator_v1_records_proto_msgTypes[5].OneofWrappers = []any{
 		(*landingCondition_Covered)(nil),

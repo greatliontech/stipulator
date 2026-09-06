@@ -16,8 +16,10 @@ only, with references originating from identity-less blocks recorded on the
 block's own node.
 
 **REQ-model-canonical-order** (wire): Every collection in the IR MUST be
-canonically ordered — identified nodes by identifier, location metadata by
-path — so that corpus enumeration order is not observable in the IR.
+canonically ordered — identified nodes by identifier, a requirement's
+clauses by ordinal (their payload order, which is their identity),
+location metadata by path — so that corpus enumeration order is not
+observable in the IR.
 
 ## Identity
 

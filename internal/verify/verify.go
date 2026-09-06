@@ -180,6 +180,12 @@ type BindingResult struct {
 	Path          string
 	RequirementId string
 	Symbol        string
+	// Clause is the payload clause the claim is scoped to, resolved
+	// against the current corpus; nil for a whole-requirement claim
+	// (REQ-evidence-clause-claim). A claim naming a clause the
+	// requirement no longer declares is malformed and never reaches a
+	// result.
+	Clause *stipulatorv1.Clause
 	// Package is the symbol's owning package as the backend resolved it
 	// (SymbolLocator); empty when no backend answer exists.
 	Package string
@@ -396,7 +402,7 @@ func Hygiene(spec *stipulatorv1.Spec, store *records.Store) []Problem {
 	var out []Problem
 	for _, bf := range store.Bindings {
 		for _, b := range bf.Set.GetBindings() {
-			problems, _ := judge.binding(bf.Path, b)
+			problems, _, _ := judge.binding(bf.Path, b)
 			out = append(out, problems...)
 		}
 	}
@@ -431,6 +437,7 @@ func sortProblems(problems []Problem) {
 // contradicting a gap is named.
 type hygiene struct {
 	hashes   map[string]string
+	reqs     map[string]*stipulatorv1.Requirement
 	seen     map[string]bool
 	gapped   map[string]bool
 	attested map[string]string
@@ -438,9 +445,10 @@ type hygiene struct {
 }
 
 func newHygiene(spec *stipulatorv1.Spec, store *records.Store) *hygiene {
-	j := &hygiene{hashes: map[string]string{}, seen: map[string]bool{}, gapped: map[string]bool{}, attested: map[string]string{}, seenGaps: map[string]string{}}
+	j := &hygiene{hashes: map[string]string{}, reqs: map[string]*stipulatorv1.Requirement{}, seen: map[string]bool{}, gapped: map[string]bool{}, attested: map[string]string{}, seenGaps: map[string]string{}}
 	for _, r := range spec.GetRequirements() {
 		j.hashes[r.GetId()] = r.GetContentHash()
+		j.reqs[r.GetId()] = r
 	}
 	for _, gf := range store.Gaps {
 		j.gapped[gf.Gap.GetRequirementId()] = true
@@ -448,16 +456,22 @@ func newHygiene(spec *stipulatorv1.Spec, store *records.Store) *hygiene {
 	return j
 }
 
-// binding judges one claim: its problems, and whether it is malformed —
-// unresolvable by any backend, so verification skips it.
-func (j *hygiene) binding(path string, b *stipulatorv1.Binding) (problems []Problem, malformed bool) {
+// binding judges one claim: its problems, whether it is malformed —
+// unresolvable by any backend, so verification skips it — and the
+// clause the claim resolves to (nil for a whole-requirement claim),
+// resolved once here for every consumer.
+func (j *hygiene) binding(path string, b *stipulatorv1.Binding) (problems []Problem, malformed bool, clause *stipulatorv1.Clause) {
 	problem := func(format string, args ...any) {
 		problems = append(problems, Problem{Path: path, Message: fmt.Sprintf(format, args...)})
 	}
 	id := b.GetRequirementId()
-	key := id + "|" + b.GetBackend() + "|" + b.GetSymbol() + "|" + b.GetRole().String()
+	// Two claims naming one clause — by ordinal and by label — are one
+	// claim: the key carries the resolved clause, not its spelling.
+	key := id + "|" + b.GetBackend() + "|" + b.GetSymbol() + "|" + b.GetRole().String() + "|" + records.ClaimClauseKey(j.reqs[id], b)
 	if j.seen[key] {
-		problem("duplicate binding: %s %s %s", id, b.GetSymbol(), b.GetRole())
+		// The message names the clause as the corpus resolves it, so a
+		// pair spelled by ordinal and by label reads as one clause.
+		problem("duplicate binding: %s %s %s%s", id, b.GetSymbol(), b.GetRole(), resolvedClauseSuffix(j.reqs[id], b))
 	}
 	j.seen[key] = true
 	if id == "" {
@@ -479,8 +493,31 @@ func (j *hygiene) binding(path string, b *stipulatorv1.Binding) (problems []Prob
 	if _, known := j.hashes[id]; id != "" && !known {
 		problem("binding names %s, which is not in the corpus — unbind it: stipulator unbind --req %s (or stipulator dispose retire --id %s if the requirement was removed deliberately)", id, id, id)
 		malformed = true
+	} else if id != "" {
+		// A clause claim on a clause the requirement no longer declares
+		// is a dangling record exactly as an out-of-corpus id is: it can
+		// grant nothing and must not vanish into an uncovered row
+		// (REQ-evidence-clause-claim).
+		var ok bool
+		if clause, ok = records.ResolveClause(j.reqs[id], b); !ok {
+			problem("binding %s on %s names %s, which %s no longer declares — rebind against its current clauses or unbind it: stipulator unbind --req %s --symbol %s --clause %s", b.GetSymbol(), id, records.ClauseName(b), id, id, b.GetSymbol(), records.ClauseSpelling(b))
+			malformed = true
+		}
 	}
-	return problems, malformed
+	return problems, malformed, clause
+}
+
+// resolvedClauseSuffix renders a binding's clause for a message, with a
+// leading space — as the corpus resolves it when it does, as spelled
+// otherwise; empty for a whole-requirement claim.
+func resolvedClauseSuffix(req *stipulatorv1.Requirement, b *stipulatorv1.Binding) string {
+	if c, ok := records.ResolveClause(req, b); ok && c != nil {
+		return " " + records.ClauseHeading(c)
+	}
+	if name := records.ClauseName(b); name != "" {
+		return " " + name
+	}
+	return ""
 }
 
 // attestation judges one judgment record: its problems, and whether it
@@ -562,7 +599,7 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 
 	for _, bf := range store.Bindings {
 		for _, b := range bf.Set.GetBindings() {
-			problems, malformed := judge.binding(bf.Path, b)
+			problems, malformed, clause := judge.binding(bf.Path, b)
 			rep.Problems = append(rep.Problems, problems...)
 			if malformed {
 				continue
@@ -574,6 +611,7 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 				Path:          bf.Path,
 				RequirementId: id,
 				Symbol:        b.GetSymbol(),
+				Clause:        clause,
 				Backend:       b.GetBackend(),
 				Role:          b.GetRole(),
 				ContentPinned: b.GetContentHash() == h,

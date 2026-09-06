@@ -42,7 +42,7 @@ func pinCmd() *cobra.Command {
 					fmt.Fprintf(os.Stderr, "pin: skipping %s: %v\n", symbol, err)
 				}))
 				for _, id := range reqs {
-					ups, err := author.Editorial(os.DirFS(chdir), id)
+					ups, consented, err := author.Editorial(os.DirFS(chdir), id)
 					if errors.Is(err, author.ErrNothingStale) {
 						if syms := mismatched[id]; len(syms) > 0 {
 							fmt.Printf("%s: clause pins current; shape of %s moved — the ids form re-consents clause text only, blanket stipulator pin re-pins shapes\n", id, strings.Join(syms, ", "))
@@ -61,6 +61,12 @@ func pinCmd() *cobra.Command {
 						fmt.Printf("%s: %d file(s) re-pinned; shape of %s moved — blanket stipulator pin re-pins shapes\n", id, len(ups), strings.Join(syms, ", "))
 					} else {
 						fmt.Printf("%s: %d file(s) re-pinned\n", id, len(ups))
+					}
+					// The clause each re-consented claim now denotes
+					// rides the response: an ordinal moved by the edit
+					// is visible here, not in a later coverage row.
+					for _, line := range consented {
+						fmt.Printf("%s: %s\n", id, line)
 					}
 				}
 				return nil

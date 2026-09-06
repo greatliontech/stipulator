@@ -33,7 +33,23 @@ const (
 	// one — the weakest evidence, rendered distinctly, never folded into
 	// covered (REQ-evidence-attestation).
 	Attested
+	// Partial: a clause-structured requirement some of whose clauses
+	// meet policy while at least one does not — bound, clauses
+	// unclaimed. Red, and the `uncovered` violation class in part: a
+	// gap excusing uncovered excuses it (REQ-coverage-buckets).
+	Partial
 )
+
+// Red reports whether the bucket is a violation class — the one
+// membership every red-row surface and the gate consult, so a bucket
+// added to the ladder is red everywhere or nowhere (REQ-gate-no-undeclared).
+func (b Bucket) Red() bool {
+	switch b {
+	case Uncovered, Partial, Stale, Broken:
+		return true
+	}
+	return false
+}
 
 func (b Bucket) String() string {
 	switch b {
@@ -47,6 +63,8 @@ func (b Bucket) String() string {
 		return "exempt"
 	case Attested:
 		return "attested"
+	case Partial:
+		return "partial"
 	}
 	return "uncovered"
 }
@@ -242,6 +260,23 @@ type evidence struct {
 // witness reports any executed witness, of either class.
 func (e *evidence) witness() bool { return e.example || e.property }
 
+// join is the evidence one clause holds: the whole-requirement grants
+// (every unscoped claim grants to every clause) joined with the grants
+// of the claims scoped to that clause. Red facts and attestations are
+// requirement-level and stay on the whole (REQ-evidence-clause-claim).
+func (e *evidence) join(c *evidence) *evidence {
+	if c == nil {
+		return e
+	}
+	out := *e
+	out.example = e.example || c.example
+	out.property = e.property || c.property
+	out.static = e.static || c.static
+	out.proof = e.proof || c.proof
+	out.classVerdicts = append(append([]string(nil), e.classVerdicts...), c.classVerdicts...)
+	return &out
+}
+
 // Evaluate computes buckets, gap states, and the gate verdict. witnessed
 // states whether the verify run executed tests: without witnesses, no
 // witness-tier evidence exists. pol carries the manifest's policy
@@ -256,9 +291,33 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		}
 		return e
 	}
+	// clauseEv holds the grants of clause-scoped claims, keyed by the
+	// resolved clause's ordinal; a label claim and an ordinal claim on
+	// one clause land in one cell.
+	clauseEv := map[string]map[uint32]*evidence{}
+	getClause := func(id string, ordinal uint32) *evidence {
+		m, ok := clauseEv[id]
+		if !ok {
+			m = map[uint32]*evidence{}
+			clauseEv[id] = m
+		}
+		e, ok := m[ordinal]
+		if !ok {
+			e = &evidence{}
+			m[ordinal] = e
+		}
+		return e
+	}
 
 	for _, r := range vr.Results {
 		e := get(r.RequirementId)
+		// grant receives what the claim proves: the whole requirement
+		// for an unscoped claim, the named clause alone otherwise. Red
+		// facts always land on the requirement.
+		grant := e
+		if r.Clause != nil {
+			grant = getClause(r.RequirementId, r.Clause.GetOrdinal())
+		}
 		if !r.ContentPinned {
 			e.stale = true
 			e.reasons = append(e.reasons, fmt.Sprintf("binding %s has a stale content pin — re-consent: stipulator pin --req %s", r.Symbol, r.RequirementId))
@@ -279,7 +338,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 				e.reasons = append(e.reasons, fmt.Sprintf("binding %s has no shape pin — backfill: stipulator pin", r.Symbol))
 			case verify.ShapeMatch:
 				if r.ContentPinned {
-					e.static = true
+					grant.static = true
 				}
 			}
 		}
@@ -290,7 +349,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 				if r.ContentPinned && r.Resolution == verify.Resolved {
 					switch {
 					case r.WitnessClass == verify.AnalyzerProof:
-						e.proof = true
+						grant.proof = true
 					case r.Role == stipulatorv1.BindingRole_BINDING_ROLE_PROVES:
 						// A proves claim whose symbol no longer resolves
 						// as an analyzer proof grants nothing — never
@@ -299,20 +358,20 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 						e.otherRed = true
 						e.reasons = append(e.reasons, fmt.Sprintf("proves claim %s passed but no longer classifies as an analyzer proof", r.Symbol))
 					case r.WitnessClass == verify.PropertyWitness:
-						e.property = true
+						grant.property = true
 						// Symmetric with the example verdict: a
 						// proof-requiring cell names the property
 						// classification when the row ends uncovered.
-						e.classVerdicts = append(e.classVerdicts, fmt.Sprintf("bound witness %s classified property: not an analyzer proof", r.Symbol))
+						grant.classVerdicts = append(grant.classVerdicts, fmt.Sprintf("bound witness %s classified property: not an analyzer proof", r.Symbol))
 					default:
-						e.example = true
+						grant.example = true
 						if r.WitnessClassReason != "" {
 							// The classification verdict rides beside the
 							// evidence bits: it surfaces only when the
 							// requirement ends uncovered for want of a
 							// stronger class, naming exactly what the
 							// bound body lacks.
-							e.classVerdicts = append(e.classVerdicts, fmt.Sprintf("bound witness %s classified example: %s", r.Symbol, r.WitnessClassReason))
+							grant.classVerdicts = append(grant.classVerdicts, fmt.Sprintf("bound witness %s classified example: %s", r.Symbol, r.WitnessClassReason))
 						}
 					}
 				}
@@ -353,13 +412,44 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		e.attestReasons = append(e.attestReasons, a.Reason)
 	}
 
+	boundIDs := map[string]bool{}
+	for _, r := range vr.Results {
+		boundIDs[r.RequirementId] = true
+	}
 	rep := &Report{PolicyOverrides: pol.Active()}
 	buckets := map[string]Bucket{}
 	for _, r := range spec.GetRequirements() {
 		e := get(r.GetId())
-		bound := len(e.reasons) > 0 || e.witness() || e.static || e.stale || e.broken || e.attested || hasAnyBinding(vr, r.GetId())
+		bound := len(e.reasons) > 0 || e.witness() || e.static || e.stale || e.broken || e.attested || boundIDs[r.GetId()]
 		min, overridden := pol.minimum(r.GetKind(), r.GetKeyword())
 		exemptCell := overridden && min == stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_EXEMPT
+		// The policy is judged per clause: every clause holds the
+		// whole-requirement grants joined with its own. A requirement
+		// without clauses is judged once, on the whole
+		// (REQ-evidence-clause-claim).
+		allMet, anyMet := true, false
+		// unmet names each unmet clause with the evidence it needs;
+		// clauseVerdicts carries the classification verdicts of the
+		// clause-scoped witnesses on unmet clauses — what each bound
+		// body lacks — surfaced on the partial and uncovered rows alike.
+		var unmet, clauseVerdicts []string
+		if len(r.GetClauses()) == 0 {
+			allMet = satisfied(pol, r.GetKind(), r.GetKeyword(), e)
+			anyMet = allMet
+		} else {
+			for _, c := range r.GetClauses() {
+				ce := e.join(clauseEv[r.GetId()][c.GetOrdinal()])
+				if satisfied(pol, r.GetKind(), r.GetKeyword(), ce) {
+					anyMet = true
+					continue
+				}
+				allMet = false
+				unmet = append(unmet, fmt.Sprintf("%s %s", records.ClauseHeading(c), requiredEvidence(pol, r.GetKind(), r.GetKeyword())))
+				if own := clauseEv[r.GetId()][c.GetOrdinal()]; own != nil {
+					clauseVerdicts = append(clauseVerdicts, own.classVerdicts...)
+				}
+			}
+		}
 		var b Bucket
 		switch {
 		case exemptCell && !bound:
@@ -370,13 +460,18 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 			b = Broken
 		case e.stale:
 			b = Stale
-		case satisfied(pol, r.GetKind(), r.GetKeyword(), e):
+		case allMet:
 			b = Covered
 		case e.attested && admitsAttestation(overridden, min, r.GetKeyword()):
 			b = Attested
 			for _, ar := range e.attestReasons {
 				e.reasons = append(e.reasons, "attested: "+ar)
 			}
+		case anyMet:
+			b = Partial
+			e.reasons = append(e.reasons, unmet...)
+			e.reasons = append(e.reasons, e.classVerdicts...)
+			e.reasons = append(e.reasons, clauseVerdicts...)
 		default:
 			b = Uncovered
 			e.reasons = append(e.reasons, requiredEvidence(pol, r.GetKind(), r.GetKeyword()))
@@ -385,6 +480,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 			// "bound witness ..." verdicts ahead of "needs ..." - an
 			// incidental ordering, not a contract.
 			e.reasons = append(e.reasons, e.classVerdicts...)
+			e.reasons = append(e.reasons, clauseVerdicts...)
 			for _, ar := range e.attestReasons {
 				e.reasons = append(e.reasons, fmt.Sprintf("attestation recorded (%q) is not admitted here — the cell %s", ar, requiredEvidence(pol, r.GetKind(), r.GetKeyword())))
 			}
@@ -451,9 +547,14 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 
 	for i := range rep.Requirements {
 		r := &rep.Requirements[i]
-		red := r.Bucket == Uncovered || r.Bucket == Stale || r.Bucket == Broken
-		if !red {
+		if !r.Bucket.Red() {
 			continue
+		}
+		// Partial is the uncovered class in part: the excuse walk judges
+		// it as uncovered (REQ-gate-no-undeclared).
+		class := r.Bucket
+		if class == Partial {
+			class = Uncovered
 		}
 		// A gap excuses only the violation classes it declares
 		// (REQ-gate-no-undeclared): a standing gap never absorbs a
@@ -463,10 +564,10 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		switch {
 		case gapped[r.Id] && staleConsent[r.Id]:
 			r.Reasons = append(r.Reasons, fmt.Sprintf("the gap record naming this requirement was declared against different text and excuses nothing until re-consented — re-consent: stipulator pin --req %s", r.Id))
-		case gapped[r.Id] && !excused[r.Id][r.Bucket]:
-			r.Reasons = append(r.Reasons, fmt.Sprintf("the gap record naming this requirement excuses %s, not %s — declare the class deliberately or repair the red", excuseNames(excused[r.Id]), bucketName(r.Bucket)))
+		case gapped[r.Id] && !excused[r.Id][class]:
+			r.Reasons = append(r.Reasons, fmt.Sprintf("the gap record naming this requirement excuses %s, not %s — declare the class deliberately or repair the red", excuseNames(excused[r.Id]), bucketName(class)))
 		}
-		if !gapped[r.Id] || !excused[r.Id][r.Bucket] {
+		if !gapped[r.Id] || !excused[r.Id][class] {
 			rep.Violations = append(rep.Violations, r.Id)
 		}
 	}
@@ -503,6 +604,8 @@ func bucketName(b Bucket) string {
 		return "stale"
 	case Broken:
 		return "broken"
+	case Partial:
+		return "partial"
 	}
 	return "red"
 }
@@ -521,15 +624,6 @@ func excuseNames(set map[Bucket]bool) string {
 		return "no recognized class"
 	}
 	return strings.Join(names, ", ")
-}
-
-func hasAnyBinding(vr *verify.Report, id string) bool {
-	for _, r := range vr.Results {
-		if r.RequirementId == id {
-			return true
-		}
-	}
-	return false
 }
 
 // admitsAttestation reports whether the effective policy accepts an

@@ -282,7 +282,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-model-canonical-order"
-  content_hash: "83b27961f73c62ce5a245048ac29e18457abc225a88482be7d74213a3098623e"
+  content_hash: "7f27ad3ba6fa43b5f16ab33d643080778f9a2ffad1cf16f061bd11a351cf6345"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.resolve"
   role: BINDING_ROLE_IMPLEMENTS
@@ -291,7 +291,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-model-canonical-order"
-  content_hash: "83b27961f73c62ce5a245048ac29e18457abc225a88482be7d74213a3098623e"
+  content_hash: "7f27ad3ba6fa43b5f16ab33d643080778f9a2ffad1cf16f061bd11a351cf6345"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestLayoutIndependence"
   role: BINDING_ROLE_TESTS

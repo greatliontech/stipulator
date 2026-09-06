@@ -898,3 +898,174 @@ func TestGapStaleConsentSuspendsExcuse(t *testing.T) {
 		t.Fatalf("duplicate current-pin record re-armed a suspended excuse: violations = %v", repDup.Violations)
 	}
 }
+
+// clauseResult is a passing example witness scoped to one clause of the
+// requirement, resolved as the verifier would resolve it.
+func clauseResult(t *testing.T, spec *stipulatorv1.Spec, id, symbol, clause string) verify.BindingResult {
+	t.Helper()
+	b := &stipulatorv1.Binding{}
+	if err := records.SetClause(b, clause); err != nil {
+		t.Fatal(err)
+	}
+	var target *stipulatorv1.Requirement
+	for _, r := range spec.GetRequirements() {
+		if r.GetId() == id {
+			target = r
+		}
+	}
+	c, ok := records.ResolveClause(target, b)
+	if !ok {
+		t.Fatalf("%s declares no clause %q", id, clause)
+	}
+	return verify.BindingResult{
+		Path: "x", RequirementId: id, Symbol: symbol, Backend: "go", Clause: c,
+		Role: tests, ContentPinned: true, Resolution: verify.Resolved, Shape: verify.ShapeMatch, TestOutcome: verify.TestPassed,
+	}
+}
+
+// The policy is judged per clause: an unscoped claim grants to every
+// clause, a clause claim to its clause alone; a requirement some of
+// whose clauses meet policy while others do not reads partial — red,
+// naming the unmet clauses — and the ladder keeps broken and stale
+// above it, covered and an admitted attestation too
+// (REQ-evidence-clause-claim, REQ-coverage-buckets).
+//
+//gofresh:pure
+func TestClauseClaimsGrantToTheirClauseAlone(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-clause-claim", "REQ-coverage-buckets")
+	doc := "# T\n\n**REQ-c-cl** (behavior): It MUST hold:\n\n- **alpha** first\n- second\n- **gamma** third\n"
+	spec, store := fixture(t, doc, nil)
+	whole := result("REQ-c-cl", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed)
+	alpha := clauseResult(t, spec, "REQ-c-cl", "example.com/p.TestAlpha", "alpha")
+	second := clauseResult(t, spec, "REQ-c-cl", "example.com/p.TestSecond", "2")
+	gammaByOrdinal := clauseResult(t, spec, "REQ-c-cl", "example.com/p.TestGamma", "3")
+	eval := func(rs ...verify.BindingResult) Requirement {
+		return bucketOf(t, Evaluate(spec, &verify.Report{Results: rs}, store, true, nil), "REQ-c-cl")
+	}
+
+	if r := eval(whole); r.Bucket != Covered {
+		t.Fatalf("unscoped witness = %v %v, want covered (grants to every clause)", r.Bucket, r.Reasons)
+	}
+	r := eval(alpha)
+	if r.Bucket != Partial {
+		t.Fatalf("one clause witnessed = %v %v, want partial", r.Bucket, r.Reasons)
+	}
+	joined := strings.Join(r.Reasons, "\n")
+	for _, want := range []string{"clause 2 (second) needs", "clause 3 `gamma` (gamma third) needs"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("partial reasons lack %q:\n%s", want, joined)
+		}
+	}
+	if strings.Contains(joined, "clause 1 `alpha`") {
+		t.Errorf("the met clause is named as unmet:\n%s", joined)
+	}
+	if bucketProto[r.Bucket] != stipulatorv1.Bucket_BUCKET_PARTIAL {
+		t.Fatalf("wire bucket = %v", bucketProto[r.Bucket])
+	}
+	if r := eval(alpha, second, gammaByOrdinal); r.Bucket != Covered {
+		t.Fatalf("every clause witnessed by label or ordinal = %v %v, want covered", r.Bucket, r.Reasons)
+	}
+	// A label claim and an ordinal claim on one clause land in one cell.
+	if r := eval(alpha, clauseResult(t, spec, "REQ-c-cl", "example.com/p.TestAlpha2", "1"), second); r.Bucket != Partial {
+		t.Fatalf("two claims on clause 1 plus clause 2 = %v, want partial (clause 3 unmet)", r.Bucket)
+	}
+	// Ladder: stale and broken outrank partial.
+	if r := eval(alpha, result("REQ-c-cl", impl, false, verify.Resolved, verify.ShapeMatch, verify.TestNotRun)); r.Bucket != Stale {
+		t.Fatalf("partial + stale = %v, want stale", r.Bucket)
+	}
+	if r := eval(alpha, result("REQ-c-cl", impl, true, verify.NotFound, verify.ShapeUnknown, verify.TestNotRun)); r.Bucket != Broken {
+		t.Fatalf("partial + broken = %v, want broken", r.Bucket)
+	}
+	// A clause-less requirement is judged once, on the whole.
+	plain := "# T\n\n**REQ-c-pl** (behavior): It MUST hold.\n"
+	pspec, pstore := fixture(t, plain, nil)
+	if r := bucketOf(t, Evaluate(pspec, &verify.Report{Results: []verify.BindingResult{result("REQ-c-pl", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed)}}, pstore, true, nil), "REQ-c-pl"); r.Bucket != Covered {
+		t.Fatalf("clause-less requirement = %v, want covered", r.Bucket)
+	}
+	// Partial evidence that never meets policy on any clause is
+	// uncovered, not partial.
+	static := result("REQ-c-cl", impl, true, verify.Resolved, verify.ShapeMatch, verify.TestNotRun)
+	if r := eval(static); r.Bucket != Uncovered {
+		t.Fatalf("static binding on a behavior MUST = %v, want uncovered", r.Bucket)
+	}
+	// The grant is role-agnostic: a clause-scoped static binding meets
+	// a static cell for its clause alone, a clause-scoped analyzer
+	// proof a proof cell for its clause alone.
+	shouldDoc := "# T\n\n**REQ-c-sh** (behavior): It SHOULD hold:\n\n- **alpha** first\n- second\n"
+	sspec, sstore := fixture(t, shouldDoc, nil)
+	staticAlpha := clauseResult(t, sspec, "REQ-c-sh", "example.com/p.Alpha", "alpha")
+	staticAlpha.Role, staticAlpha.TestOutcome = impl, verify.TestNotRun
+	if r := bucketOf(t, Evaluate(sspec, &verify.Report{Results: []verify.BindingResult{staticAlpha}}, sstore, true, nil), "REQ-c-sh"); r.Bucket != Partial {
+		t.Fatalf("clause-scoped static binding on a SHOULD = %v %v, want partial", r.Bucket, r.Reasons)
+	}
+	structDoc := "# T\n\n**REQ-c-st** (structural): It MUST hold:\n\n- **alpha** first\n- second\n"
+	stspec, ststore := fixture(t, structDoc, nil)
+	proofAlpha := clauseResult(t, stspec, "REQ-c-st", "example.com/p.TestProof", "alpha")
+	proofAlpha.Role, proofAlpha.WitnessClass = stipulatorv1.BindingRole_BINDING_ROLE_PROVES, verify.AnalyzerProof
+	if r := bucketOf(t, Evaluate(stspec, &verify.Report{Results: []verify.BindingResult{proofAlpha}}, ststore, true, nil), "REQ-c-st"); r.Bucket != Partial {
+		t.Fatalf("clause-scoped analyzer proof on a structural MUST = %v %v, want partial", r.Bucket, r.Reasons)
+	}
+	proofSecond := clauseResult(t, stspec, "REQ-c-st", "example.com/p.TestProof2", "2")
+	proofSecond.Role, proofSecond.WitnessClass = stipulatorv1.BindingRole_BINDING_ROLE_PROVES, verify.AnalyzerProof
+	if r := bucketOf(t, Evaluate(stspec, &verify.Report{Results: []verify.BindingResult{proofAlpha, proofSecond}}, ststore, true, nil), "REQ-c-st"); r.Bucket != Covered {
+		t.Fatalf("both clauses proven = %v %v, want covered", r.Bucket, r.Reasons)
+	}
+	// A clause-scoped witness's classification verdict rides the
+	// uncovered row too: an example on an invariant clause names what
+	// the bound body lacks whether the row ends partial or uncovered.
+	invDoc := "# T\n\n**REQ-c-inv** (invariant): It MUST hold:\n\n- **alpha** first\n- second\n"
+	ispec, istore := fixture(t, invDoc, nil)
+	exampleAlpha := clauseResult(t, ispec, "REQ-c-inv", "example.com/p.TestAlpha", "alpha")
+	exampleAlpha.WitnessClassReason = "no property driver or analyzer call in the bound body"
+	r = bucketOf(t, Evaluate(ispec, &verify.Report{Results: []verify.BindingResult{exampleAlpha}}, istore, true, nil), "REQ-c-inv")
+	if r.Bucket != Uncovered || !strings.Contains(strings.Join(r.Reasons, "\n"), "bound witness example.com/p.TestAlpha classified example: no property driver") {
+		t.Fatalf("clause-scoped example on an invariant = %v %v, want uncovered naming the classification", r.Bucket, r.Reasons)
+	}
+}
+
+// Partial is the uncovered violation class in part: the gate raises it
+// as a violation, and a gap excusing uncovered excuses it; an admitted
+// attestation stands above partial as it stands above uncovered
+// (REQ-gate-no-undeclared, REQ-evidence-attestation).
+//
+//gofresh:pure
+func TestPartialIsTheUncoveredClassInPart(t *testing.T) {
+	stipulate.Covers(t, "REQ-gate-no-undeclared", "REQ-evidence-clause-claim")
+	doc := "# T\n\n**REQ-c-cl** (behavior): It MUST hold:\n\n- **alpha** first\n- second\n"
+	spec, store := fixture(t, doc, nil)
+	alpha := clauseResult(t, spec, "REQ-c-cl", "example.com/p.TestAlpha", "alpha")
+	rep := Evaluate(spec, &verify.Report{Results: []verify.BindingResult{alpha}}, store, true, nil)
+	if rep.GatePasses() || !slices.Contains(rep.Violations, "REQ-c-cl") {
+		t.Fatalf("partial with no gap: violations = %v, want REQ-c-cl raised", rep.Violations)
+	}
+	_, gapped := fixture(t, doc, map[string]string{
+		".stipulator/gaps/a.textproto": "requirement_id: \"REQ-c-cl\"\nreason: \"clause 2 awaits its harness\"\nlands { manual { condition: \"later\" } }\n",
+	})
+	rep = Evaluate(spec, &verify.Report{Results: []verify.BindingResult{alpha}}, gapped, true, nil)
+	if !rep.GatePasses() {
+		t.Fatalf("a gap excusing uncovered did not excuse partial: %v %v", rep.Violations, bucketOf(t, rep, "REQ-c-cl").Reasons)
+	}
+	_, brokenGap := fixture(t, doc, map[string]string{
+		".stipulator/gaps/a.textproto": "requirement_id: \"REQ-c-cl\"\nreason: \"rename in flight\"\nlands { manual { condition: \"later\" } }\nexcuses: GAP_EXCUSE_BROKEN\n",
+	})
+	rep = Evaluate(spec, &verify.Report{Results: []verify.BindingResult{alpha}}, brokenGap, true, nil)
+	if rep.GatePasses() || !strings.Contains(strings.Join(bucketOf(t, rep, "REQ-c-cl").Reasons, " "), "excuses broken, not uncovered") {
+		t.Fatalf("a broken-only gap excused partial or did not name the class: %v %v", rep.Violations, bucketOf(t, rep, "REQ-c-cl").Reasons)
+	}
+
+	manifest := &stipulatorv1.Manifest{}
+	o := &stipulatorv1.PolicyOverride{}
+	o.SetKind(stipulatorv1.ClauseKind_CLAUSE_KIND_BEHAVIOR)
+	o.SetKeyword(stipulatorv1.Keyword_KEYWORD_MUST)
+	o.SetMinimum(stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_ATTESTATION)
+	manifest.SetPolicy([]*stipulatorv1.PolicyOverride{o})
+	pol, err := PolicyFromManifest(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	att := verify.AttestationResult{RequirementId: "REQ-c-cl", Reason: "judged whole", ContentPinned: true}
+	rep = Evaluate(spec, &verify.Report{Results: []verify.BindingResult{alpha}, Attestations: []verify.AttestationResult{att}}, store, true, pol)
+	if r := bucketOf(t, rep, "REQ-c-cl"); r.Bucket != Attested {
+		t.Fatalf("partial + admitted attestation = %v, want attested", r.Bucket)
+	}
+}

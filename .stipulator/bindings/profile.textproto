@@ -108,3 +108,12 @@ bindings {
   role: BINDING_ROLE_IMPLEMENTS
   shape_hash: "ee9aadfbf34abe7659eb341e338ff05d704f1067401fed45ab852049bbbe80c7"
 }
+
+bindings {
+  requirement_id: "REQ-profile-clauses"
+  content_hash: "85cc060a9859e856c61f4c5515bfa3496bc6e962d8f0a9b61d31bf4c07c6fca1"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestClausesAreThePayloadListItems"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c870fde1e6f01bf6cb6d36bcad35bcbb88ff8899b333f3fdcc2169fe41c8b85a"
+}

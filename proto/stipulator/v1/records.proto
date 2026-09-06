@@ -38,6 +38,16 @@ message Binding {
   // The bound symbol's shape hash, when the backend defines one. Unset
   // means never pinned.
   string shape_hash = 6;
+  // The clause the claim is scoped to, when it does not claim the whole
+  // requirement: one of the requirement's payload clauses, named by its
+  // ordinal (1-based, payload order) or by the label the clause declares.
+  // A clause-scoped claim grants evidence to that clause alone; an
+  // unscoped claim grants to every clause. One field, so a claim naming
+  // two clauses that disagree is unrepresentable.
+  oneof clause {
+    uint32 clause_ordinal = 7;
+    string clause_label = 8;
+  }
 }
 
 // BindingSet is the root message of a binding file; grouping bindings into

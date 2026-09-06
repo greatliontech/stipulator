@@ -1311,3 +1311,64 @@ func TestGapListLeadsWithDanglingAndCapsCounted(t *testing.T) {
 		}
 	}
 }
+
+// The ids-form pin judges every id before the first write: a refusal
+// anywhere (here a clause claim the edited text no longer resolves)
+// writes nothing, and a conflict that surfaces only while applying — a
+// concurrent writer moving a later id's file — names the files already
+// re-pinned instead of reporting nothing written
+// (REQ-change-editorial, REQ-record-cas).
+//
+//gofresh:pure
+func TestPinToolIdsFormIsAllOrNothingOrHonest(t *testing.T) {
+	stipulate.Covers(t, "REQ-change-editorial")
+	clauseDoc := doc + "\n**REQ-m-c** (behavior): It MUST hold:\n\n- **alpha** first\n- second\n"
+	stale := func(id, extra string) string {
+		return "bindings {\n  requirement_id: \"" + id + "\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n  content_hash: \"" + strings.Repeat("0", 64) + "\"\n" + extra + "}\n"
+	}
+	sess, writes := harness(t, map[string]string{
+		"specs/a.md":                       clauseDoc,
+		".stipulator/bindings/a.textproto": stale("REQ-m-a", ""),
+		".stipulator/bindings/c.textproto": stale("REQ-m-c", "  clause_label: \"gone\"\n"),
+	})
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "pin", Arguments: map[string]any{"ids": "REQ-m-a,REQ-m-c"}})
+	if err != nil || !res.IsError {
+		t.Fatalf("a dangling clause claim did not refuse the batch: %v %v", err, res)
+	}
+	if text := toolText(t, res); !strings.Contains(text, "names clause `gone`, which REQ-m-c no longer declares") || strings.Contains(text, "already re-pinned") {
+		t.Fatalf("refusal text: %s", text)
+	}
+	if len(writes) != 0 {
+		t.Fatalf("a refused batch wrote records: %v", writes)
+	}
+
+	// A conflict only the apply pass can see: the first id's write is
+	// the moment a concurrent writer moves the second id's file.
+	var moved fstest.MapFS
+	sess2, writes2 := harnessWith(t, map[string]string{
+		".stipulator/bindings/a.textproto": stale("REQ-m-a", ""),
+		".stipulator/bindings/b.textproto": stale("REQ-m-b", ""),
+	}, func(s *Server) {
+		inner := s.write
+		s.write = func(path string, content []byte) error {
+			if err := inner(path, content); err != nil {
+				return err
+			}
+			if path == ".stipulator/bindings/a.textproto" {
+				moved = s.fsys().(fstest.MapFS)
+				moved[".stipulator/bindings/b.textproto"] = &fstest.MapFile{Data: []byte(stale("REQ-m-b", "") + "\n# moved by another writer\n")}
+			}
+			return nil
+		}
+	})
+	res, err = sess2.CallTool(context.Background(), &mcp.CallToolParams{Name: "pin", Arguments: map[string]any{"ids": "REQ-m-a,REQ-m-b"}})
+	if err != nil || !res.IsError {
+		t.Fatalf("a mid-batch conflict did not error: %v %v", err, res)
+	}
+	if text := toolText(t, res); !strings.Contains(text, "already re-pinned before the refusal: .stipulator/bindings/a.textproto") {
+		t.Fatalf("mid-batch conflict conceals what was written: %s", text)
+	}
+	if _, ok := writes2[".stipulator/bindings/a.textproto"]; !ok {
+		t.Fatal("the first id's re-pin was not written before the conflict")
+	}
+}

@@ -307,6 +307,27 @@ func resolve(docs []*document, tombstones map[string]bool, diags *[]Diagnostic) 
 			ir.SetContentHash(canon.HashParts(extentParts(text, r.extent)...))
 			ir.SetSource(r.source)
 			ir.SetLocation(r.loc)
+			// Clauses ride the IR as a refinement of the requirement:
+			// ordinal from 1 in payload order, the declared label when
+			// the item leads with one, unique per requirement — two
+			// items answering to one label would make a clause claim
+			// ambiguous (REQ-profile-clauses).
+			labels := map[string]int{}
+			var clauses []*stipulatorv1.Clause
+			for i, c := range r.clauses {
+				cl := &stipulatorv1.Clause{}
+				cl.SetOrdinal(uint32(i + 1))
+				cl.SetText(canon.Text(profile.Plain(c.segs)))
+				if c.label != "" {
+					if prev, dup := labels[c.label]; dup {
+						diag(c.loc, "requirement %s declares clause label %q twice (clauses %d and %d)", r.id, c.label, prev, i+1)
+					}
+					labels[c.label] = i + 1
+					cl.SetLabel(c.label)
+				}
+				clauses = append(clauses, cl)
+			}
+			ir.SetClauses(clauses)
 			irReqs = append(irReqs, ir)
 		}
 		for _, t := range d.terms {

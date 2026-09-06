@@ -59,7 +59,8 @@ func TestPropPipelineDeterminism(t *testing.T) {
 		for f := range rapid.IntRange(1, 3).Draw(rt, "bindFiles") {
 			var b strings.Builder
 			for range rapid.IntRange(1, 2).Draw(rt, "bindsPerFile") {
-				b.WriteString(proptest.BindingText(rapid.SampledFrom(c.ReqIDs).Draw(rt, "bound"), ""))
+				bound := rapid.SampledFrom(c.ReqIDs).Draw(rt, "bound")
+				b.WriteString(proptest.BindingTextClause(bound, "", "", proptest.DrawClause(rt, c, bound)))
 			}
 			extra[fmt.Sprintf(".stipulator/bindings/p%d.textproto", f)] = b.String()
 		}
@@ -124,7 +125,7 @@ func TestPropEvidenceOnlyFromCurrentRun(t *testing.T) {
 		shape := strings.Repeat("s", 64)
 		backends := map[string]verify.Backend{"go": propBackend{shape}}
 		extra := map[string]string{
-			".stipulator/bindings/p.textproto": proptest.BindingTextPinned(bound, contentHash, shape),
+			".stipulator/bindings/p.textproto": proptest.BindingTextClause(bound, contentHash, shape, proptest.DrawClause(rt, c, bound)),
 		}
 
 		spec, _, cr := pipeline(rt, files, extra, backends)

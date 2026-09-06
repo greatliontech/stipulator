@@ -508,3 +508,51 @@ func TestTermLintRuneBoundaries(t *testing.T) {
 		t.Fatalf("non-ASCII shadowing unwarned: %+v", diags)
 	}
 }
+
+// A requirement's clauses are its payload's top-level list items in
+// payload order, ordinals from 1; a `**label**`-led item declares its
+// label; nested items and tables contribute none; a label declared
+// twice is a compile error, so a clause claim is never ambiguous
+// (REQ-profile-clauses).
+//
+//gofresh:pure
+func TestClausesAreThePayloadListItems(t *testing.T) {
+	stipulate.Covers(t, "REQ-profile-clauses")
+	doc := "# T\n\n**REQ-x-a** (behavior): It MUST hold:\n\n" +
+		"- **first** — the first obligation\n" +
+		"  - a nested detail, part of the first clause\n" +
+		"- plain second item\n\n" +
+		"| col | val |\n|---|---|\n| a | b |\n\n" +
+		"1. **Third Thing.** capitalized emphasis is no label\n" +
+		"2. **third-c1** a hyphenated label\n" +
+		"3. *single* emphasis is no label\n"
+	spec, diags := compileFiles(t, map[string]string{"specs/a.md": doc})
+	wantClean(t, diags)
+	clauses := req(t, spec, "REQ-x-a").GetClauses()
+	if len(clauses) != 5 {
+		t.Fatalf("clauses = %d, want the five list items (tables and nested items contribute none): %v", len(clauses), clauses)
+	}
+	for i, want := range []struct {
+		label, text string
+	}{
+		{"first", "first — the first obligation a nested detail"},
+		{"", "plain second item"},
+		{"", "Third Thing. capitalized"},
+		{"third-c1", "third-c1 a hyphenated label"},
+		{"", "single emphasis is no label"},
+	} {
+		c := clauses[i]
+		if c.GetOrdinal() != uint32(i+1) || c.GetLabel() != want.label || !strings.Contains(c.GetText(), want.text) {
+			t.Errorf("clause %d = %d %q %q, want ordinal %d label %q text containing %q", i+1, c.GetOrdinal(), c.GetLabel(), c.GetText(), i+1, want.label, want.text)
+		}
+	}
+	// No payload list: no clauses.
+	spec, diags = compileFiles(t, map[string]string{"specs/a.md": "# T\n\n**REQ-x-b** (behavior): It MUST hold.\n"})
+	wantClean(t, diags)
+	if n := len(req(t, spec, "REQ-x-b").GetClauses()); n != 0 {
+		t.Fatalf("clauses on a list-less requirement = %d, want none", n)
+	}
+	// A duplicate label is a compile error naming both positions.
+	_, diags = compileFiles(t, map[string]string{"specs/a.md": "# T\n\n**REQ-x-c** (behavior): It MUST hold:\n\n- **same** one\n- other\n- **same** again\n"})
+	wantDiag(t, diags, `REQ-x-c declares clause label "same" twice (clauses 1 and 3)`)
+}

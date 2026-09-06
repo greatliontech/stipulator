@@ -15,6 +15,7 @@ package proptest
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"testing/fstest"
 
@@ -31,6 +32,11 @@ type Corpus struct {
 	ReqIDs []string
 	// TermNames are the declared term names.
 	TermNames []string
+	// Clauses maps each requirement to its payload clauses' labels in
+	// ordinal order (an empty label for an unlabeled item), so a
+	// generated clause claim can name a clause the requirement
+	// declares.
+	Clauses map[string][]string
 }
 
 // termPool holds prefix-free names so longest-match term resolution never
@@ -69,7 +75,7 @@ func Gen(t *rapid.T, opts ...Option) Corpus {
 	for _, o := range opts {
 		o(&cfg)
 	}
-	var c Corpus
+	c := Corpus{Clauses: map[string][]string{}}
 
 	nTerms := rapid.IntRange(0, 2).Draw(t, "terms")
 	for i := range nTerms {
@@ -101,12 +107,24 @@ func Gen(t *rapid.T, opts ...Option) Corpus {
 		var block strings.Builder
 		fmt.Fprintf(&block, "**%s** (%s): %s %s hold case %d.", id, meta, subject, kw, variant)
 
+		var labels []string
 		for j := range rapid.IntRange(0, 2).Draw(t, "payload") {
 			if j == 0 {
 				block.WriteString("\n")
 			}
-			fmt.Fprintf(&block, "\n- item %d", rapid.IntRange(0, 3).Draw(t, "item"))
+			// A labelled item declares a clause label, unique per
+			// requirement by its ordinal; an unlabeled item is a clause
+			// addressable by ordinal alone (REQ-profile-clauses).
+			label := ""
+			if rapid.Bool().Draw(t, "labelled") {
+				label = fmt.Sprintf("l%d", j)
+				fmt.Fprintf(&block, "\n- **%s** item %d", label, rapid.IntRange(0, 3).Draw(t, "item"))
+			} else {
+				fmt.Fprintf(&block, "\n- item %d", rapid.IntRange(0, 3).Draw(t, "item"))
+			}
+			labels = append(labels, label)
 		}
+		c.Clauses[id] = labels
 		if rapid.Bool().Draw(t, "note") {
 			fmt.Fprintf(&block, "\n\n> Commentary %d.", rapid.IntRange(0, 3).Draw(t, "noteText"))
 		}
@@ -191,11 +209,18 @@ func FS(files map[string]string, extra map[string]string) fstest.MapFS {
 
 // BindingText renders one binding record naming the requirement.
 func BindingText(id, contentHash string) string {
-	return BindingTextPinned(id, contentHash, "")
+	return BindingTextClause(id, contentHash, "", "")
 }
 
 // BindingTextPinned renders one binding record with both pins.
 func BindingTextPinned(id, contentHash, shapeHash string) string {
+	return BindingTextClause(id, contentHash, shapeHash, "")
+}
+
+// BindingTextClause renders one binding record, scoped to the clause
+// the spelling names (an ordinal's digits or a label; empty claims the
+// whole requirement).
+func BindingTextClause(id, contentHash, shapeHash, clause string) string {
 	b := "bindings {\n  requirement_id: \"" + id + "\"\n"
 	if contentHash != "" {
 		b += "  content_hash: \"" + contentHash + "\"\n"
@@ -203,7 +228,32 @@ func BindingTextPinned(id, contentHash, shapeHash string) string {
 	if shapeHash != "" {
 		b += "  shape_hash: \"" + shapeHash + "\"\n"
 	}
-	return b + "  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n}\n"
+	b += "  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n"
+	if clause != "" {
+		if _, err := strconv.Atoi(clause); err == nil {
+			b += "  clause_ordinal: " + clause + "\n"
+		} else {
+			b += "  clause_label: \"" + clause + "\"\n"
+		}
+	}
+	return b + "}\n"
+}
+
+// DrawClause draws a clause spelling for a claim on id: the whole
+// requirement (empty), or one of its clauses by ordinal or — where the
+// item declares one — by label. Every draw resolves against the
+// generated corpus, so a property quantifying over valid records stays
+// in-spec.
+func DrawClause(t *rapid.T, c Corpus, id string) string {
+	labels := c.Clauses[id]
+	if len(labels) == 0 || rapid.Bool().Draw(t, "wholeClaim") {
+		return ""
+	}
+	i := rapid.IntRange(0, len(labels)-1).Draw(t, "clause")
+	if labels[i] != "" && rapid.Bool().Draw(t, "byLabel") {
+		return labels[i]
+	}
+	return strconv.Itoa(i + 1)
 }
 
 // GapText renders one gap record naming the requirement; fired marks the

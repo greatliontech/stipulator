@@ -696,3 +696,64 @@ func TestReasonHistogramOrdersByCountThenText(t *testing.T) {
 		t.Fatalf("empty histogram = %v", got)
 	}
 }
+
+// A clause claim on a clause its requirement no longer declares is a
+// dangling record exactly as an out-of-corpus id: malformed, named with
+// its remedy, never a silently uncovered row; the clause is part of the
+// duplicate key; a resolving claim carries its clause onto the row
+// (REQ-evidence-clause-claim).
+//
+//gofresh:pure
+func TestClauseClaimHygiene(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-clause-claim")
+	clauseDoc := goodDoc + "\n**REQ-v-c** (behavior): It MUST hold:\n\n- **alpha** first\n- second\n"
+	clauseBinding := func(clause string) string {
+		return "bindings {\n  requirement_id: \"REQ-v-c\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n  " + clause + "\n}\n"
+	}
+	t.Run("dangling clause is malformed with its remedy", func(t *testing.T) {
+		for _, clause := range []string{`clause_label: "gamma"`, "clause_ordinal: 3"} {
+			rep, _ := run(t, map[string]string{
+				"specs/a.md":                       clauseDoc,
+				".stipulator/bindings/x.textproto": clauseBinding(clause),
+			})
+			wantProblem(t, rep, "which REQ-v-c no longer declares — rebind against its current clauses or unbind it: stipulator unbind --req REQ-v-c --symbol example.com/p.F --clause ")
+			for _, r := range rep.Results {
+				if r.RequirementId == "REQ-v-c" {
+					t.Fatalf("dangling clause claim reached a result row: %+v", r)
+				}
+			}
+		}
+	})
+	t.Run("clause rides the row and the duplicate key is the resolved clause", func(t *testing.T) {
+		rep, _ := run(t, map[string]string{
+			"specs/a.md":                       clauseDoc,
+			".stipulator/bindings/x.textproto": clauseBinding(`clause_label: "alpha"`) + clauseBinding("clause_ordinal: 2"),
+		})
+		for _, p := range rep.Problems {
+			if strings.Contains(p.Message, "duplicate") {
+				t.Fatalf("claims on distinct clauses read as duplicates: %v", p)
+			}
+		}
+		var ordinals []uint32
+		for _, r := range rep.Results {
+			if r.RequirementId == "REQ-v-c" {
+				ordinals = append(ordinals, r.Clause.GetOrdinal())
+			}
+		}
+		if len(ordinals) != 2 || ordinals[0] != 1 || ordinals[1] != 2 {
+			t.Fatalf("resolved clauses = %v, want [1 2]", ordinals)
+		}
+		// One clause named by label and by ordinal is one claim: the
+		// second spelling is a duplicate, never a second grant.
+		rep, _ = run(t, map[string]string{
+			"specs/a.md":                       clauseDoc,
+			".stipulator/bindings/x.textproto": clauseBinding(`clause_label: "alpha"`) + clauseBinding("clause_ordinal: 1"),
+		})
+		wantProblem(t, rep, "duplicate binding: REQ-v-c example.com/p.F BINDING_ROLE_IMPLEMENTS clause 1 `alpha` (alpha first)")
+		rep, _ = run(t, map[string]string{
+			"specs/a.md":                       clauseDoc,
+			".stipulator/bindings/x.textproto": clauseBinding("clause_ordinal: 2") + clauseBinding("clause_ordinal: 2"),
+		})
+		wantProblem(t, rep, "duplicate binding: REQ-v-c example.com/p.F BINDING_ROLE_IMPLEMENTS clause 2 (second)")
+	})
+}

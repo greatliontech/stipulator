@@ -20,7 +20,8 @@ leaving selection and ordering entirely to the caller.
 stipulator MUST assemble the orientation dossier in one call — the
 compiled clause with kind and keyword, the coverage bucket with its
 reasons, any gap record's reason, landing condition, and evaluated
-state, any attestation, and each binding with role, witness class, and pin
+state, any attestation, and each binding with role, the clause it is
+scoped to when it is, witness class, and pin
 freshness — so answering "tell me everything
 about this requirement" never requires reading the record stores' file
 layout. The `Dossier` wire message reserves field number 6 and field name

@@ -581,7 +581,7 @@ func (s *Server) toolVerify(ctx context.Context, req *mcp.CallToolRequest, in ve
 type gateIn struct {
 	View   string `json:"view,omitempty" jsonschema:"summary (default: pass/fail + counts + violations), reds (red requirements with reasons), or full (every requirement)"`
 	Ids    string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers to scope to; unknown identifiers refuse"`
-	Bucket string `json:"bucket,omitempty" jsonschema:"scope to one bucket: uncovered, stale, broken, covered, exempt, attested"`
+	Bucket string `json:"bucket,omitempty" jsonschema:"scope to one bucket: uncovered, partial, stale, broken, covered, exempt, attested"`
 	Filter string `json:"filter,omitempty" jsonschema:"requirement-id glob, e.g. REQ-arch-*"`
 	Path   string `json:"path,omitempty" jsonschema:"prefix over declaring spec document or bound symbols, e.g. docs/specs/change.md or internal/corpus"`
 }
@@ -661,8 +661,7 @@ func (s *Server) toolCheck(ctx context.Context, req *mcp.CallToolRequest, in che
 	var redRows []string
 	blocked := 0
 	for _, r := range res.GetCoverage().GetRequirements() {
-		switch r.GetBucket() {
-		case stipulatorv1.Bucket_BUCKET_UNCOVERED, stipulatorv1.Bucket_BUCKET_STALE, stipulatorv1.Bucket_BUCKET_BROKEN:
+		if coverage.RedBucket(r.GetBucket()) {
 			// Policy-blocked rows restate the result-level diagnostic;
 			// fold them behind it so the text digest carries the cause
 			// once and the real reds stay visible
@@ -915,6 +914,7 @@ type bindIn struct {
 	Role        string      `json:"role,omitempty" jsonschema:"implements, tests, or proves (single-claim form)"`
 	Backend     string      `json:"backend,omitempty" jsonschema:"language backend (default go; shared by batch claims lacking one)"`
 	File        string      `json:"file,omitempty" jsonschema:"target binding file (derived when empty)"`
+	Clause      string      `json:"clause,omitempty" jsonschema:"scope the claim to one payload clause of the requirement: its ordinal (from 1) or its label; empty claims the whole requirement (single-claim form)"`
 	Claims      []bindClaim `json:"claims,omitempty" jsonschema:"batch claims validated all-or-nothing - a failure anywhere authors nothing; alternative to the single-claim fields"`
 }
 
@@ -924,6 +924,7 @@ type bindClaim struct {
 	Role        string `json:"role" jsonschema:"implements, tests, or proves"`
 	Backend     string `json:"backend,omitempty" jsonschema:"language backend (defaults to the call's backend, then go)"`
 	File        string `json:"file,omitempty" jsonschema:"target binding file (derived when empty)"`
+	Clause      string `json:"clause,omitempty" jsonschema:"scope the claim to one payload clause: ordinal (from 1) or label; empty claims the whole requirement"`
 }
 
 type writeOut struct {
@@ -1013,7 +1014,7 @@ func (s *Server) toolBind(ctx context.Context, req *mcp.CallToolRequest, in bind
 	var reqs []author.BindRequest
 	switch {
 	case len(in.Claims) > 0:
-		if in.Requirement != "" || in.Symbol != "" || in.Role != "" || in.File != "" {
+		if in.Requirement != "" || in.Symbol != "" || in.Role != "" || in.File != "" || in.Clause != "" {
 			return nil, writeOut{}, fmt.Errorf("give either claims or the single-claim fields, not both")
 		}
 		for _, c := range in.Claims {
@@ -1027,7 +1028,7 @@ func (s *Server) toolBind(ctx context.Context, req *mcp.CallToolRequest, in bind
 			}
 			reqs = append(reqs, author.BindRequest{
 				Requirement: c.Requirement, Symbol: c.Symbol, Backend: backendName,
-				Role: role, File: c.File,
+				Role: role, File: c.File, Clause: c.Clause,
 			})
 		}
 	default:
@@ -1037,7 +1038,7 @@ func (s *Server) toolBind(ctx context.Context, req *mcp.CallToolRequest, in bind
 		}
 		reqs = append(reqs, author.BindRequest{
 			Requirement: in.Requirement, Symbol: in.Symbol, Backend: defaultBackend,
-			Role: role, File: in.File,
+			Role: role, File: in.File, Clause: in.Clause,
 		})
 	}
 	ctx, prog := s.startProgress(ctx, req)
@@ -1063,6 +1064,7 @@ type unbindIn struct {
 	Requirement string `json:"requirement" jsonschema:"requirement identifier"`
 	Symbol      string `json:"symbol,omitempty" jsonschema:"narrow to one symbol"`
 	Role        string `json:"role,omitempty" jsonschema:"narrow to one role"`
+	Clause      string `json:"clause,omitempty" jsonschema:"narrow to the claim scoped to this clause, as the claim spells it (ordinal or label)"`
 }
 
 func (s *Server) toolUnbind(ctx context.Context, req *mcp.CallToolRequest, in unbindIn) (*mcp.CallToolResult, writeOut, error) {
@@ -1070,7 +1072,7 @@ func (s *Server) toolUnbind(ctx context.Context, req *mcp.CallToolRequest, in un
 	if err != nil {
 		return nil, writeOut{}, err
 	}
-	ups, removed, err := author.Unbind(s.fsys(), in.Requirement, in.Symbol, role)
+	ups, removed, err := author.Unbind(s.fsys(), in.Requirement, in.Symbol, role, in.Clause)
 	if err != nil {
 		return nil, writeOut{}, err
 	}
@@ -1343,20 +1345,36 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 		// post-write store (shape pins are untouched by clause
 		// re-consent, so the answers are order-independent).
 		repinned := map[string]int{}
+		// Every id is judged before the first write: a refusal (an id
+		// outside the corpus, a clause claim the text no longer
+		// resolves, a hand-commented record) refuses the whole batch
+		// with nothing written, instead of surfacing after earlier ids
+		// were applied and reporting "nothing written" over files that
+		// moved. The writes still apply per id in order, each computed
+		// over the store the previous id left — two ids sharing a
+		// binding file must not race one compare-and-swap precondition.
 		for _, id := range ids {
-			ups, err := author.Editorial(s.fsys(), id)
+			if _, _, err := author.Editorial(s.fsys(), id); err != nil && !errors.Is(err, author.ErrNothingStale) {
+				return nil, writeOut{}, err
+			}
+		}
+		for _, id := range ids {
+			ups, consented, err := author.Editorial(s.fsys(), id)
 			if errors.Is(err, author.ErrNothingStale) {
 				continue
 			}
 			if err != nil {
-				return nil, writeOut{}, err
+				return nil, writeOut{}, partialPinError(out, err)
 			}
 			applied, err := s.apply(ups)
 			if err != nil {
-				return nil, writeOut{}, err
+				return nil, writeOut{}, partialPinError(out, err)
 			}
 			out.Wrote = append(out.Wrote, applied.Wrote...)
 			repinned[id] = len(ups)
+			for _, line := range consented {
+				out.Notes = append(out.Notes, id+": "+line)
+			}
 		}
 		// The ids form re-consents clause text only; a shape mismatch
 		// on the named requirement's bindings would survive it
@@ -1614,10 +1632,15 @@ func (s *Server) toolRetarget(ctx context.Context, req *mcp.CallToolRequest, in 
 
 func (s *Server) toolDispose(ctx context.Context, req *mcp.CallToolRequest, in disposeIn) (*mcp.CallToolResult, writeOut, error) {
 	var ups []author.Update
+	var notes []string
 	var err error
 	switch in.Kind {
 	case "editorial":
-		ups, err = author.Editorial(s.fsys(), in.Requirement)
+		var consented []string
+		ups, consented, err = author.Editorial(s.fsys(), in.Requirement)
+		for _, line := range consented {
+			notes = append(notes, in.Requirement+": "+line)
+		}
 	case "retire":
 		ups, err = author.Retire(s.fsys(), in.Requirement, in.Force)
 	case "supersede":
@@ -1639,6 +1662,7 @@ func (s *Server) toolDispose(ctx context.Context, req *mcp.CallToolRequest, in d
 	if err != nil {
 		return nil, writeOut{}, err
 	}
+	out.Notes = append(out.Notes, notes...)
 	return out.result(), out, nil
 }
 
@@ -1973,8 +1997,7 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 		prog.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
 		cov := coverage.Evaluate(spec, rep, store, !in.NoTest, pol)
 		for _, r := range cov.Requirements {
-			switch r.Bucket {
-			case coverage.Uncovered, coverage.Stale, coverage.Broken:
+			if r.Bucket.Red() {
 				ids = append(ids, r.Id)
 			}
 		}
@@ -2306,4 +2329,14 @@ func (s *Server) toolGuidance(ctx context.Context, req *mcp.CallToolRequest, in 
 		return nil, nil, fmt.Errorf("%w; empty verb serves the decision map, which names every verb", err)
 	}
 	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: long}}}, nil, nil
+}
+
+// partialPinError names what an interrupted ids-form pin already wrote:
+// a later id's refusal must never read as "nothing written" over files
+// the earlier ids moved.
+func partialPinError(out writeOut, err error) error {
+	if len(out.Wrote) == 0 {
+		return err
+	}
+	return fmt.Errorf("%w (already re-pinned before the refusal: %s)", err, strings.Join(out.Wrote, ", "))
 }

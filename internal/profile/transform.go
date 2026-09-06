@@ -21,6 +21,56 @@ const IDPattern = `REQ(-[a-z0-9]+)+`
 // in full — the one test for "could this string ever name a requirement".
 func ValidID(s string) bool { return idRe.MatchString(s) }
 
+// ClauseLabelPattern is the grammar of a clause label: the text of a
+// strong-emphasis span leading a payload list item that names the item
+// as a claimable clause (REQ-profile-clauses). Lowercase and
+// hyphen-joined, starting with a letter, so a label is never mistaken
+// for an ordinal and a capitalized emphasis stays plain emphasis.
+const ClauseLabelPattern = `[a-z][a-z0-9]*(-[a-z0-9]+)*`
+
+var clauseLabelRe = regexp.MustCompile(`^` + ClauseLabelPattern + `$`)
+
+// ValidClauseLabel reports whether s is a clause label.
+func ValidClauseLabel(s string) bool { return clauseLabelRe.MatchString(s) }
+
+// Clause is one payload list item of a requirement, in payload order.
+type Clause struct {
+	// Label is the leading strong span's text when it matches the
+	// clause-label grammar; empty otherwise.
+	Label string
+	// Segs is the item's text, every descendant block included.
+	Segs []Seg
+	// Item is the list item node, for locating diagnostics.
+	Item gast.Node
+}
+
+// Clauses lists a requirement's clauses: the top-level items of the
+// payload's list blocks, in order. Table blocks and nested items
+// contribute none — a nested item is its parent clause's text.
+func Clauses(req *Requirement, src []byte) []Clause {
+	var out []Clause
+	for block := req.FirstChild(); block != nil; block = block.NextSibling() {
+		list, ok := block.(*gast.List)
+		if !ok {
+			continue
+		}
+		for item := list.FirstChild(); item != nil; item = item.NextSibling() {
+			c := Clause{Segs: BlockSegs(item, src), Item: item}
+			// The item's first block is its text block; a strong span
+			// leading it is the label candidate.
+			if first := item.FirstChild(); first != nil {
+				if strong, ok := first.FirstChild().(*gast.Emphasis); ok && strong.Level == 2 {
+					if label := strings.TrimSpace(Plain(InlineSegs(strong, src))); ValidClauseLabel(label) {
+						c.Label = label
+					}
+				}
+			}
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
 var (
 	idRe = regexp.MustCompile(`^` + IDPattern + `$`)
 	// leadRe matches the plain-text prefix of a requirement lead:

@@ -457,7 +457,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.Editorial"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "04eef98e5d53a752275af7063c87e888690041c6bb2a1cccb89906b7a8b3b5b4"
+  shape_hash: "81928fb28b51c604b913dd976c69bf38488db261db81ee90664bd07515e94326"
 }
 
 bindings {

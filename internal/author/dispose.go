@@ -25,39 +25,55 @@ var ErrNothingStale = errors.New("nothing stale to re-pin")
 // Editorial re-pins a requirement's bindings and gap record to its
 // current content hash: the author's claim that a spec edit preserved
 // meaning. The claim is auditable in the diff, not machine-checkable.
-func Editorial(fsys fs.FS, requirement string) ([]Update, error) {
+// Every re-pinned clause claim is named with the clause it now
+// denotes (consented is one line per claim): an ordinal follows its
+// item's position, so the re-consent must see what the edit made it
+// point at; a clause claim the edited text no longer resolves refuses
+// the whole re-pin — consent to a dangling claim is no consent
+// (REQ-evidence-clause-claim).
+func Editorial(fsys fs.FS, requirement string) (ups []Update, consented []string, err error) {
 	spec, err := compileClean(fsys)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	hash := ""
+	var target *stipulatorv1.Requirement
 	for _, r := range spec.GetRequirements() {
 		if r.GetId() == requirement {
 			hash = r.GetContentHash()
+			target = r
 		}
 	}
 	if hash == "" {
-		return nil, fmt.Errorf("requirement %s is not in the corpus", requirement)
+		return nil, nil, fmt.Errorf("requirement %s is not in the corpus", requirement)
 	}
 	store, err := records.Load(fsys)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var out []Update
 	repinned := 0
 	for _, bf := range store.Bindings {
 		changed := false
 		for _, b := range bf.Set.GetBindings() {
-			if b.GetRequirementId() == requirement && b.GetContentHash() != hash {
-				b.SetContentHash(hash)
-				changed = true
-				repinned++
+			if b.GetRequirementId() != requirement || b.GetContentHash() == hash {
+				continue
 			}
+			clause, ok := records.ResolveClause(target, b)
+			if !ok {
+				return nil, nil, fmt.Errorf("binding %s names %s, which %s no longer declares — rebind against its current clauses or unbind it before re-consenting: stipulator unbind --req %s --symbol %s --clause %s", b.GetSymbol(), records.ClauseName(b), requirement, requirement, b.GetSymbol(), records.ClauseSpelling(b))
+			}
+			if clause != nil {
+				consented = append(consented, fmt.Sprintf("%s now claims %s", b.GetSymbol(), records.ClauseHeading(clause)))
+			}
+			b.SetContentHash(hash)
+			changed = true
+			repinned++
 		}
 		if changed {
 			content, err := records.Render(bf)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			out = append(out, Update{Path: bf.Path, Content: content})
 		}
@@ -73,18 +89,19 @@ func Editorial(fsys fs.FS, requirement string) ([]Update, error) {
 			gf.Gap.SetContentHash(hash)
 			content, err := records.RenderGapFile(gf)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			out = append(out, Update{Path: gf.Path, Content: content})
 			repinned++
 		}
 	}
 	if repinned == 0 {
-		return nil, fmt.Errorf("no stale records for %s: %w", requirement, ErrNothingStale)
+		return nil, nil, fmt.Errorf("no stale records for %s: %w", requirement, ErrNothingStale)
 	}
 	sortUpdates(out)
+	sort.Strings(consented)
 	StampPriors(store, out)
-	return out, nil
+	return out, consented, nil
 }
 
 // Retire tombstones an identity already removed from the corpus and

@@ -47,6 +47,7 @@ var bucketProto = map[Bucket]stipulatorv1.Bucket{
 	Broken:    stipulatorv1.Bucket_BUCKET_BROKEN,
 	Covered:   stipulatorv1.Bucket_BUCKET_COVERED,
 	Exempt:    stipulatorv1.Bucket_BUCKET_EXEMPT,
+	Partial:   stipulatorv1.Bucket_BUCKET_PARTIAL,
 }
 
 var gapProto = map[GapState]stipulatorv1.GapState{
@@ -60,3 +61,15 @@ func BucketProto(b Bucket) stipulatorv1.Bucket { return bucketProto[b] }
 
 // GapStateProto maps a gap state to its wire enum, for report composers.
 func GapStateProto(s GapState) stipulatorv1.GapState { return gapProto[s] }
+
+// RedBucket is Bucket.Red over the wire enum: the same membership for
+// composers and renderers that read the report rather than the
+// evaluation.
+func RedBucket(b stipulatorv1.Bucket) bool {
+	for k, v := range bucketProto {
+		if v == b {
+			return k.Red()
+		}
+	}
+	return false
+}

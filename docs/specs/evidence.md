@@ -18,8 +18,28 @@ it.
 **REQ-evidence-binding-store** (behavior): Binding claims MUST be stored as
 textproto files under `.stipulator/bindings/`, each naming a requirement
 identifier, the content hash it was authored against (unset when not yet
-pinned), a backend, a symbol reference, a role, and — when the backend
-defines one — the shape hash of the bound symbol.
+pinned), a backend, a symbol reference, a role, — when the backend
+defines one — the shape hash of the bound symbol, and — when the claim is
+scoped to one clause — that clause by ordinal or by label, one field for
+both forms so a claim naming two clauses is unrepresentable.
+
+**REQ-evidence-clause-claim** (behavior): A binding scoped to one
+clause of its requirement (REQ-profile-clauses), by the clause's ordinal
+or its label, MUST grant its evidence to that clause alone, while an
+unscoped claim grants to every clause and a requirement without clauses
+is judged once on the whole — coverage judges the policy per clause.
+The claim resolves against the compiled requirement when written — a
+clause the requirement does not declare is refused, naming the clauses
+it offers — and again at every verification, where a claim naming a
+clause the requirement no longer declares is malformed exactly as a
+claim naming an identifier outside the corpus is; the resolved clause is
+part of a claim's identity, so two claims on distinct clauses are two
+claims and one clause named by ordinal and by label is one claim. An
+ordinal claim
+follows its item's position — inserting an item above it retargets the
+claim, surfaced by the content pin the edit stales and named by the
+re-consent that rewrites the pin — while a label claim follows its
+label.
 
 **REQ-evidence-binding-machine-owned** (behavior): A tool rewrite of a
 record file — a binding file or a gap record — MUST fail when the file
@@ -734,16 +754,21 @@ unbound `MAY` requirements exempt from coverage.
 
 **REQ-coverage-buckets** (behavior): Each non-exempt requirement MUST be
 reported in exactly one bucket — any broken binding forces `broken`, else
-any stale binding forces `stale`, then the policy decides `covered` against
-`uncovered`; claim hygiene is part of coverage, so red claims downgrade a
-requirement even when other evidence satisfies the policy:
+any stale binding forces `stale`, then the policy decides `covered`
+(every clause met, or the whole met for a requirement without clauses)
+against `partial` (some clauses met, at least one not, each unmet clause
+named with the evidence it needs) and `uncovered` (no clause met), an
+admitted attestation standing between covered and partial; claim hygiene
+is part of coverage, so red claims downgrade a requirement even when
+other evidence satisfies the policy:
 
 | Bucket | Meaning |
 |---|---|
-| `covered` | policy met by current evidence |
+| `covered` | policy met by current evidence on every clause |
 | `broken` | a binding fails to resolve, its shape hash mismatches, or its bound test fails or produces no outcome in a witnessed run |
 | `stale` | a binding whose content-hash pin is unset or differs from the current one |
-| `uncovered` | no evidence meets policy |
+| `partial` | a clause-structured requirement with some clauses meeting policy and at least one not — bound, clauses unclaimed |
+| `uncovered` | no evidence meets policy on any clause |
 
 **REQ-coverage-no-scalar** (behavior): Stipulator MUST NOT gate on aggregate
 percentages; gating is expressed only over requirement sets and buckets.

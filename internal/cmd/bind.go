@@ -10,12 +10,12 @@ import (
 )
 
 func bindCmd() *cobra.Command {
-	var reqs, symbols, roles, backendNames, files []string
+	var reqs, symbols, roles, backendNames, files, clauses []string
 	c := &cobra.Command{
 		Use:   "bind",
 		Short: guidanceShort("bind"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			claims, err := bindClaims(reqs, symbols, roles, backendNames, files)
+			claims, err := bindClaims(reqs, symbols, roles, backendNames, files, clauses)
 			if err != nil {
 				return err
 			}
@@ -35,6 +35,7 @@ func bindCmd() *cobra.Command {
 	c.Flags().StringArrayVar(&roles, "role", nil, "implements, tests, or proves (once for all claims, or one per claim)")
 	c.Flags().StringArrayVar(&backendNames, "backend", nil, "language backend (default go; once for all claims, or one per claim)")
 	c.Flags().StringArrayVar(&files, "file", nil, "target binding file (derived from the requirement when empty; once for all claims, or one per claim)")
+	c.Flags().StringArrayVar(&clauses, "clause", nil, "scope the claim to one payload clause of its requirement: ordinal (from 1) or label; empty claims the whole requirement (one per claim)")
 	registerReqCompletions(c, "req")
 	_ = c.RegisterFlagCompletionFunc("role", completeRoles)
 	_ = c.RegisterFlagCompletionFunc("backend", completeBackends)
@@ -48,7 +49,7 @@ func bindCmd() *cobra.Command {
 // named — a silent alignment would drop or misassign a claim the
 // caller expressed, the accept-and-drop this surface forbids
 // (REQ-evidence-claim-batch).
-func bindClaims(reqs, symbols, roles, backendNames, files []string) ([]author.BindRequest, error) {
+func bindClaims(reqs, symbols, roles, backendNames, files, clauses []string) ([]author.BindRequest, error) {
 	n := len(reqs)
 	if n == 0 {
 		return nil, fmt.Errorf("at least one --req is required")
@@ -79,6 +80,18 @@ func bindClaims(reqs, symbols, roles, backendNames, files []string) ([]author.Bi
 	if err != nil {
 		return nil, err
 	}
+	// A clause names one claim's scope, never every claim's: given at
+	// all, it is given exactly once per claim (an empty entry keeps
+	// that claim whole).
+	if len(clauses) != 0 && len(clauses) != n {
+		return nil, fmt.Errorf("%d --clause flag(s) for %d claim(s): give exactly one per claim (empty for a whole-requirement claim), or none", len(clauses), n)
+	}
+	clause := func(i int) string {
+		if len(clauses) == 0 {
+			return ""
+		}
+		return clauses[i]
+	}
 	claims := make([]author.BindRequest, 0, n)
 	for i := range reqs {
 		r, err := author.ParseRole(role(i))
@@ -87,7 +100,7 @@ func bindClaims(reqs, symbols, roles, backendNames, files []string) ([]author.Bi
 		}
 		claims = append(claims, author.BindRequest{
 			Requirement: reqs[i], Symbol: symbols[i], Backend: backend(i),
-			Role: r, File: file(i),
+			Role: r, File: file(i), Clause: clause(i),
 		})
 	}
 	return claims, nil
@@ -111,7 +124,7 @@ func oneFlag(name string, vals []string) (string, error) {
 }
 
 func unbindCmd() *cobra.Command {
-	var reqs, symbols, roles []string
+	var reqs, symbols, roles, clauses []string
 	c := &cobra.Command{
 		Use:   "unbind",
 		Short: guidanceShort("unbind"),
@@ -132,7 +145,11 @@ func unbindCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			ups, removed, err := author.Unbind(os.DirFS(chdir), req, symbol, r)
+			clause, err := oneFlag("clause", clauses)
+			if err != nil {
+				return err
+			}
+			ups, removed, err := author.Unbind(os.DirFS(chdir), req, symbol, r, clause)
 			if err != nil {
 				return err
 			}
@@ -145,6 +162,7 @@ func unbindCmd() *cobra.Command {
 	}
 	c.Flags().StringArrayVar(&reqs, "req", nil, "requirement identifier")
 	c.Flags().StringArrayVar(&symbols, "symbol", nil, "narrow to one symbol")
+	c.Flags().StringArrayVar(&clauses, "clause", nil, "narrow to the claim scoped to this clause, as the claim spells it (ordinal or label)")
 	c.Flags().StringArrayVar(&roles, "role", nil, "narrow to one role")
 	registerReqCompletions(c, "req")
 	_ = c.RegisterFlagCompletionFunc("role", completeRoles)

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/coverage"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -167,8 +168,7 @@ func checkSummary(res *stipulatorv1.CheckResult) *stipulatorv1.CheckSummary {
 		blocked := int32(0)
 		scopeBlocked := int32(0)
 		for _, r := range cov.GetRequirements() {
-			switch r.GetBucket() {
-			case stipulatorv1.Bucket_BUCKET_UNCOVERED, stipulatorv1.Bucket_BUCKET_STALE, stipulatorv1.Bucket_BUCKET_BROKEN:
+			if coverage.RedBucket(r.GetBucket()) {
 				// Rows red solely because of the witness-selection
 				// boundary restate the one result-level diagnostic; when
 				// that diagnostic fired, they fold into a count so the

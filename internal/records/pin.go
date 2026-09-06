@@ -179,6 +179,12 @@ func renderBindingSet(bf BindingFile) []byte {
 		writeField(&b, "symbol", bind.GetSymbol())
 		fmt.Fprintf(&b, "  role: %s\n", bind.GetRole())
 		writeField(&b, "shape_hash", bind.GetShapeHash())
+		switch {
+		case bind.HasClauseOrdinal():
+			fmt.Fprintf(&b, "  clause_ordinal: %d\n", bind.GetClauseOrdinal())
+		case bind.HasClauseLabel():
+			writeField(&b, "clause_label", bind.GetClauseLabel())
+		}
 		b.WriteString("}\n")
 	}
 	return []byte(b.String())

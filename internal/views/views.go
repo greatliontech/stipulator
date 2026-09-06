@@ -40,6 +40,7 @@ var bucketNames = map[string]coverage.Bucket{
 	"covered":   coverage.Covered,
 	"exempt":    coverage.Exempt,
 	"attested":  coverage.Attested,
+	"partial":   coverage.Partial,
 }
 
 // Validate refuses unknown scope vocabulary before any filtering happens
@@ -47,7 +48,7 @@ var bucketNames = map[string]coverage.Bucket{
 func (s Scope) Validate() error {
 	if s.Bucket != "" {
 		if _, ok := bucketNames[strings.ToLower(s.Bucket)]; !ok {
-			return fmt.Errorf("unknown bucket %q (uncovered, stale, broken, covered, exempt, attested)", s.Bucket)
+			return fmt.Errorf("unknown bucket %q (uncovered, partial, stale, broken, covered, exempt, attested)", s.Bucket)
 		}
 	}
 	if s.Filter != "" {
@@ -172,7 +173,7 @@ func CoverageView(cov *coverage.Report, facts Facts, view string, scope Scope) (
 		// The gate verdict is the global one: a slice passing means
 		// nothing when the tree fails.
 		out.SetGatePasses(cov.GatePasses())
-		var c, a, u, st, b, e int32
+		var c, a, u, p, st, b, e int32
 		for _, r := range kept {
 			switch r.Bucket {
 			case coverage.Covered:
@@ -181,6 +182,8 @@ func CoverageView(cov *coverage.Report, facts Facts, view string, scope Scope) (
 				a++
 			case coverage.Uncovered:
 				u++
+			case coverage.Partial:
+				p++
 			case coverage.Stale:
 				st++
 			case coverage.Broken:
@@ -192,6 +195,7 @@ func CoverageView(cov *coverage.Report, facts Facts, view string, scope Scope) (
 		out.SetCovered(c)
 		out.SetAttested(a)
 		out.SetUncovered(u)
+		out.SetPartial(p)
 		out.SetStale(st)
 		out.SetBroken(b)
 		out.SetExempt(e)
@@ -213,8 +217,7 @@ func CoverageView(cov *coverage.Report, facts Facts, view string, scope Scope) (
 	case "reds":
 		var red []coverage.Requirement
 		for _, r := range kept {
-			switch r.Bucket {
-			case coverage.Uncovered, coverage.Stale, coverage.Broken:
+			if r.Bucket.Red() {
 				red = append(red, r)
 			}
 		}

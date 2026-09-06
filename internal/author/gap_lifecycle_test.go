@@ -401,7 +401,7 @@ func TestEditorialRestampsGapPin(t *testing.T) {
 	stale := strings.Repeat("0", 64)
 	fsys[".stipulator/gaps/au-x.textproto"] = &fstest.MapFile{Data: []byte(
 		"requirement_id: \"REQ-au-x\"\nreason: \"r\"\ncontent_hash: \"" + stale + "\"\nlands { manual { condition: \"ops\" } }\n")}
-	ups, err := Editorial(fsys, "REQ-au-x")
+	ups, _, err := Editorial(fsys, "REQ-au-x")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -429,7 +429,7 @@ func TestEditorialRestampsGapPin(t *testing.T) {
 	// backfill.
 	fsys[".stipulator/gaps/au-x.textproto"] = &fstest.MapFile{Data: []byte(
 		"requirement_id: \"REQ-au-x\"\nreason: \"r\"\nlands { manual { condition: \"ops\" } }\n")}
-	ups, err = Editorial(fsys, "REQ-au-x")
+	ups, _, err = Editorial(fsys, "REQ-au-x")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -454,7 +454,7 @@ func TestEditorialRestampsGapPin(t *testing.T) {
 	// (REQ-evidence-binding-machine-owned).
 	fsys[".stipulator/gaps/au-x.textproto"] = &fstest.MapFile{Data: []byte(
 		"requirement_id: \"REQ-au-x\"\nreason: \"r\"\n# why: operator note\nlands { manual { condition: \"ops\" } }\n")}
-	if _, err := Editorial(fsys, "REQ-au-x"); err == nil || !strings.Contains(err.Error(), "comment outside the leading header") {
+	if _, _, err := Editorial(fsys, "REQ-au-x"); err == nil || !strings.Contains(err.Error(), "comment outside the leading header") {
 		t.Fatalf("commented record re-pin = %v, want the machine-owned refusal", err)
 	}
 }

@@ -42,7 +42,7 @@ func TestEditorial(t *testing.T) {
 	// files and the update list is canonically ordered.
 	fsys[".stipulator/bindings/zz-extra.textproto"] = &fstest.MapFile{Data: []byte(
 		"bindings {\n  requirement_id: \"REQ-au-a\"\n  content_hash: \"" + strings.Repeat("0", 64) + "\"\n  backend: \"go\"\n  symbol: \"example.com/p.G\"\n  role: BINDING_ROLE_TESTS\n}\n")}
-	ups, err := Editorial(fsys, "REQ-au-a")
+	ups, _, err := Editorial(fsys, "REQ-au-a")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,22 +71,22 @@ func TestEditorial(t *testing.T) {
 		t.Fatal("editorial did not re-pin to the current hash")
 	}
 
-	if _, err := Editorial(fsys, "REQ-au-b"); err == nil {
+	if _, _, err := Editorial(fsys, "REQ-au-b"); err == nil {
 		t.Fatal("editorial with nothing stale succeeded")
 	}
-	if _, err := Editorial(fsys, "REQ-au-ghost"); err == nil {
+	if _, _, err := Editorial(fsys, "REQ-au-ghost"); err == nil {
 		t.Fatal("unknown requirement accepted")
 	}
 
 	// Error arms propagate for both a corpus that no longer compiles and a
 	// broken store.
 	fsys["specs/broken.md"] = &fstest.MapFile{Data: []byte("# B\n\n**REQ-au-a** (behavior): Redeclared, it MUST clash.\n")}
-	if _, err := Editorial(fsys, "REQ-au-a"); err == nil {
+	if _, _, err := Editorial(fsys, "REQ-au-a"); err == nil {
 		t.Fatal("non-compiling corpus swallowed")
 	}
 	delete(fsys, "specs/broken.md")
 	fsys[".stipulator/bindings/broken.textproto"] = &fstest.MapFile{Data: []byte("not textproto {{{")}
-	if _, err := Editorial(fsys, "REQ-au-a"); err == nil {
+	if _, _, err := Editorial(fsys, "REQ-au-a"); err == nil {
 		t.Fatal("broken store swallowed")
 	}
 }
@@ -196,4 +196,51 @@ func TestSupersede(t *testing.T) {
 			t.Fatal("unknown successor accepted")
 		}
 	})
+}
+
+// An editorial re-pin names the clause each re-consented clause claim
+// now denotes — an ordinal moved by the edit is visible in the
+// response — and refuses when a clause claim no longer resolves, so
+// consent to a dangling claim is never recorded
+// (REQ-evidence-clause-claim, REQ-change-editorial).
+//
+//gofresh:pure
+func TestEditorialNamesTheClauseEachClaimNowDenotes(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-clause-claim")
+	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST hold:\n\n- **alpha** first\n- second\n\n**REQ-au-b** (behavior): It MUST y.\n"
+	// The edit inserts an item above the second: ordinal 2 now denotes
+	// the inserted text.
+	newDoc := "# T\n\n**REQ-au-a** (behavior): It MUST hold:\n\n- **alpha** first\n- inserted\n- second\n\n**REQ-au-b** (behavior): It MUST y.\n"
+	fsys := testFS(nil)
+	fsys["specs/a.md"] = &fstest.MapFile{Data: []byte(oldDoc)}
+	for _, clause := range []string{"alpha", "2"} {
+		r := bindReq("REQ-au-a", "example.com/p.F")
+		r.Role, r.Clause = stipulatorv1.BindingRole_BINDING_ROLE_TESTS, clause
+		up, err := Bind(fsys, backends, r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fsys[up.Path] = &fstest.MapFile{Data: up.Content}
+	}
+	fsys["specs/a.md"] = &fstest.MapFile{Data: []byte(newDoc)}
+	ups, consented, err := Editorial(fsys, "REQ-au-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ups) != 1 {
+		t.Fatalf("updates = %d", len(ups))
+	}
+	want := []string{
+		"example.com/p.F now claims clause 1 `alpha` (alpha first)",
+		"example.com/p.F now claims clause 2 (inserted)",
+	}
+	if strings.Join(consented, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("consented =\n%s\nwant\n%s", strings.Join(consented, "\n"), strings.Join(want, "\n"))
+	}
+	// The label is removed: its claim dangles, and the re-pin refuses
+	// before writing anything.
+	fsys["specs/a.md"] = &fstest.MapFile{Data: []byte(strings.Replace(newDoc, "**alpha** first", "first, unlabeled", 1))}
+	if _, _, err := Editorial(fsys, "REQ-au-a"); err == nil || !strings.Contains(err.Error(), "names clause `alpha`, which REQ-au-a no longer declares") {
+		t.Fatalf("dangling clause claim re-consented: %v", err)
+	}
 }

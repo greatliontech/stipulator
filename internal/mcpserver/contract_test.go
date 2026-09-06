@@ -451,3 +451,71 @@ func TestPruneToolStoreGC(t *testing.T) {
 		t.Fatalf("composed store mode admitted: %v %+v", err, res)
 	}
 }
+
+// A clause rides both bind forms: on a batch claim it scopes that claim,
+// on the single-claim form it scopes the one claim, and a call's clause
+// beside a claims list is the mixed form the tool refuses — never a
+// clause silently dropped into a whole-requirement record
+// (REQ-evidence-clause-claim, REQ-evidence-claim-batch). unbind narrows
+// by the claim's spelling.
+//
+//gofresh:pure
+func TestBindToolClauseClaims(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-clause-claim")
+	clauseDoc := doc + "\n**REQ-m-c** (behavior): It MUST hold:\n\n- **alpha** first\n- second\n"
+	sess, writes := harness(t, map[string]string{"specs/a.md": clauseDoc})
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "bind", Arguments: map[string]any{
+		"claims": []map[string]any{
+			{"requirement": "REQ-m-c", "symbol": "example.com/p.TestA", "role": "tests", "clause": "alpha"},
+			{"requirement": "REQ-m-c", "symbol": "example.com/p.F", "role": "implements", "clause": "2"},
+		},
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("bind batch with clauses: %v %+v", err, res)
+	}
+	c := string(writes[".stipulator/bindings/m.textproto"])
+	if !strings.Contains(c, `clause_label: "alpha"`) || !strings.Contains(c, "clause_ordinal: 2") {
+		t.Fatalf("batch clauses not recorded:\n%s", c)
+	}
+	// The call-level clause beside a claims list is the mixed form.
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "bind", Arguments: map[string]any{
+		"clause": "alpha",
+		"claims": []map[string]any{{"requirement": "REQ-m-c", "symbol": "example.com/p.TestA", "role": "tests"}},
+	}})
+	if err != nil || !res.IsError || !strings.Contains(toolText(t, res), "either claims or the single-claim fields") {
+		t.Fatalf("call-level clause beside claims accepted: %v %+v", err, res)
+	}
+	// Single-claim form, and a clause the requirement does not declare.
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "bind", Arguments: map[string]any{
+		"requirement": "REQ-m-c", "symbol": "example.com/p.TestA", "role": "tests", "clause": "gamma",
+	}})
+	if err != nil || !res.IsError || !strings.Contains(toolText(t, res), "declares no clause `gamma`") {
+		t.Fatalf("unknown clause accepted: %v %+v", err, res)
+	}
+	// The single-claim form records the clause; the same clause by its
+	// ordinal for the same symbol and role is the same claim (refused).
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "bind", Arguments: map[string]any{
+		"requirement": "REQ-m-c", "symbol": "example.com/p.TestA", "role": "tests", "clause": "1",
+	}})
+	if err != nil || !res.IsError || !strings.Contains(toolText(t, res), "identical binding") {
+		t.Fatalf("the labelled clause by ordinal accepted as a second claim: %v %s", err, toolText(t, res))
+	}
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "bind", Arguments: map[string]any{
+		"requirement": "REQ-m-c", "symbol": "example.com/p.TestA", "role": "tests",
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("single-claim whole beside a clause claim: %v %s", err, toolText(t, res))
+	}
+	// unbind narrows by the claim's spelling: the label claim goes, the
+	// whole claim on the same symbol and the other clause's claim stay.
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "unbind", Arguments: map[string]any{
+		"requirement": "REQ-m-c", "symbol": "example.com/p.TestA", "clause": "alpha",
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("unbind --clause: %v %s", err, toolText(t, res))
+	}
+	c = string(writes[".stipulator/bindings/m.textproto"])
+	if strings.Contains(c, `clause_label: "alpha"`) || !strings.Contains(c, "clause_ordinal: 2") || strings.Count(c, "example.com/p.TestA") != 1 {
+		t.Fatalf("unbind by clause spelling removed the wrong claims:\n%s", c)
+	}
+}

@@ -30,7 +30,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-coverage-buckets"
-  content_hash: "1f6932ca4794b4517e6afbb58531daea32a868238afe04d22879f5b343db58db"
+  content_hash: "5373f7ebcb8f936222f84b8840466ff96fea237a128ddf151042e10acbca8fbd"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.Evaluate"
   role: BINDING_ROLE_IMPLEMENTS
@@ -39,7 +39,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-coverage-buckets"
-  content_hash: "1f6932ca4794b4517e6afbb58531daea32a868238afe04d22879f5b343db58db"
+  content_hash: "5373f7ebcb8f936222f84b8840466ff96fea237a128ddf151042e10acbca8fbd"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestBuckets"
   role: BINDING_ROLE_TESTS
@@ -66,7 +66,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gate-no-undeclared"
-  content_hash: "ede46f11ab5457e6d30d9aa17ad6e81955f02a2dbb09c5996f8e220b6c8083ef"
+  content_hash: "d8fac5aec0780854cb91e13134ad1229f98fef3ba7f8983954779375ee2854df"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.Evaluate"
   role: BINDING_ROLE_IMPLEMENTS
@@ -75,7 +75,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gate-no-undeclared"
-  content_hash: "ede46f11ab5457e6d30d9aa17ad6e81955f02a2dbb09c5996f8e220b6c8083ef"
+  content_hash: "d8fac5aec0780854cb91e13134ad1229f98fef3ba7f8983954779375ee2854df"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestGate"
   role: BINDING_ROLE_TESTS
@@ -183,7 +183,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-binding-store"
-  content_hash: "deef3300be8bfd9f00faa07bf610351480a51d7794162e88cdfc8273ea492acd"
+  content_hash: "2b3a140276564c9cd7a88b6ce942288797a79116414b6130ab1bc8c19709d41d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/verify.TestConsistency"
   role: BINDING_ROLE_TESTS
@@ -233,4 +233,13 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/coverage.PolicyFromManifest"
   role: BINDING_ROLE_IMPLEMENTS
   shape_hash: "ddfb32a3630e2769434d4538488b454d8a766bc5985646d00a4aa313676eae49"
+}
+
+bindings {
+  requirement_id: "REQ-coverage-buckets"
+  content_hash: "5373f7ebcb8f936222f84b8840466ff96fea237a128ddf151042e10acbca8fbd"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.TestClauseClaimsGrantToTheirClauseAlone"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ff7f3277b5330537c008c624fcbcc809bfc4978a6b4b8a3a8c3166447f568f5f"
 }

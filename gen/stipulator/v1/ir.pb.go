@@ -478,6 +478,7 @@ type Requirement struct {
 	xxx_hidden_ContentHash *string                `protobuf:"bytes,5,opt,name=content_hash,json=contentHash"`
 	xxx_hidden_Source      *string                `protobuf:"bytes,6,opt,name=source"`
 	xxx_hidden_Location    *Location              `protobuf:"bytes,7,opt,name=location"`
+	xxx_hidden_Clauses     *[]*Clause             `protobuf:"bytes,8,rep,name=clauses"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -574,38 +575,51 @@ func (x *Requirement) GetLocation() *Location {
 	return nil
 }
 
+func (x *Requirement) GetClauses() []*Clause {
+	if x != nil {
+		if x.xxx_hidden_Clauses != nil {
+			return *x.xxx_hidden_Clauses
+		}
+	}
+	return nil
+}
+
 func (x *Requirement) SetId(v string) {
 	x.xxx_hidden_Id = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 8)
 }
 
 func (x *Requirement) SetKind(v ClauseKind) {
 	x.xxx_hidden_Kind = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 8)
 }
 
 func (x *Requirement) SetKeyword(v Keyword) {
 	x.xxx_hidden_Keyword = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 8)
 }
 
 func (x *Requirement) SetText(v string) {
 	x.xxx_hidden_Text = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 8)
 }
 
 func (x *Requirement) SetContentHash(v string) {
 	x.xxx_hidden_ContentHash = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 8)
 }
 
 func (x *Requirement) SetSource(v string) {
 	x.xxx_hidden_Source = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 8)
 }
 
 func (x *Requirement) SetLocation(v *Location) {
 	x.xxx_hidden_Location = v
+}
+
+func (x *Requirement) SetClauses(v []*Clause) {
+	x.xxx_hidden_Clauses = &v
 }
 
 func (x *Requirement) HasId() bool {
@@ -708,6 +722,12 @@ type Requirement_builder struct {
 	// fidelity in bundles; carried, never hashed.
 	Source   *string
 	Location *Location
+	// The requirement's clauses: the top-level items of its payload lists
+	// in payload order, ordinals from 1. Empty for a requirement whose
+	// payload holds no list. Clauses are a refinement of the requirement's
+	// coverage judgment, never a second identity: they carry no hash and
+	// no location of their own.
+	Clauses []*Clause
 }
 
 func (b0 Requirement_builder) Build() *Requirement {
@@ -715,30 +735,179 @@ func (b0 Requirement_builder) Build() *Requirement {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 8)
 		x.xxx_hidden_Id = b.Id
 	}
 	if b.Kind != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 8)
 		x.xxx_hidden_Kind = *b.Kind
 	}
 	if b.Keyword != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 8)
 		x.xxx_hidden_Keyword = *b.Keyword
 	}
 	if b.Text != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 8)
 		x.xxx_hidden_Text = b.Text
 	}
 	if b.ContentHash != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 8)
 		x.xxx_hidden_ContentHash = b.ContentHash
 	}
 	if b.Source != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 8)
 		x.xxx_hidden_Source = b.Source
 	}
 	x.xxx_hidden_Location = b.Location
+	x.xxx_hidden_Clauses = &b.Clauses
+	return m0
+}
+
+// Clause is one sub-obligation of a requirement: a payload list item,
+// addressed by ordinal or by the label it declares.
+type Clause struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Ordinal     uint32                 `protobuf:"varint,1,opt,name=ordinal"`
+	xxx_hidden_Label       *string                `protobuf:"bytes,2,opt,name=label"`
+	xxx_hidden_Text        *string                `protobuf:"bytes,3,opt,name=text"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *Clause) Reset() {
+	*x = Clause{}
+	mi := &file_stipulator_v1_ir_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Clause) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Clause) ProtoMessage() {}
+
+func (x *Clause) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_ir_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Clause) GetOrdinal() uint32 {
+	if x != nil {
+		return x.xxx_hidden_Ordinal
+	}
+	return 0
+}
+
+func (x *Clause) GetLabel() string {
+	if x != nil {
+		if x.xxx_hidden_Label != nil {
+			return *x.xxx_hidden_Label
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *Clause) GetText() string {
+	if x != nil {
+		if x.xxx_hidden_Text != nil {
+			return *x.xxx_hidden_Text
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *Clause) SetOrdinal(v uint32) {
+	x.xxx_hidden_Ordinal = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *Clause) SetLabel(v string) {
+	x.xxx_hidden_Label = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *Clause) SetText(v string) {
+	x.xxx_hidden_Text = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+}
+
+func (x *Clause) HasOrdinal() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *Clause) HasLabel() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *Clause) HasText() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *Clause) ClearOrdinal() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Ordinal = 0
+}
+
+func (x *Clause) ClearLabel() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Label = nil
+}
+
+func (x *Clause) ClearText() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Text = nil
+}
+
+type Clause_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// 1-based position among the requirement's clauses.
+	Ordinal *uint32
+	// The label the item declares through a leading strong-emphasis span
+	// matching [a-z][a-z0-9]*(-[a-z0-9]+)*; empty when the item declares
+	// none. Unique within the requirement.
+	Label *string
+	// The item's canonical text, for reporting.
+	Text *string
+}
+
+func (b0 Clause_builder) Build() *Clause {
+	m0 := &Clause{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Ordinal != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_Ordinal = *b.Ordinal
+	}
+	if b.Label != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		x.xxx_hidden_Label = b.Label
+	}
+	if b.Text != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_Text = b.Text
+	}
 	return m0
 }
 
@@ -758,7 +927,7 @@ type Term struct {
 
 func (x *Term) Reset() {
 	*x = Term{}
-	mi := &file_stipulator_v1_ir_proto_msgTypes[3]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -770,7 +939,7 @@ func (x *Term) String() string {
 func (*Term) ProtoMessage() {}
 
 func (x *Term) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_ir_proto_msgTypes[3]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -967,7 +1136,7 @@ type Note struct {
 
 func (x *Note) Reset() {
 	*x = Note{}
-	mi := &file_stipulator_v1_ir_proto_msgTypes[4]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -979,7 +1148,7 @@ func (x *Note) String() string {
 func (*Note) ProtoMessage() {}
 
 func (x *Note) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_ir_proto_msgTypes[4]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1148,7 +1317,7 @@ type Annotation struct {
 
 func (x *Annotation) Reset() {
 	*x = Annotation{}
-	mi := &file_stipulator_v1_ir_proto_msgTypes[5]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1160,7 +1329,7 @@ func (x *Annotation) String() string {
 func (*Annotation) ProtoMessage() {}
 
 func (x *Annotation) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_ir_proto_msgTypes[5]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1297,7 +1466,7 @@ type NodeRef struct {
 
 func (x *NodeRef) Reset() {
 	*x = NodeRef{}
-	mi := &file_stipulator_v1_ir_proto_msgTypes[6]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1309,7 +1478,7 @@ func (x *NodeRef) String() string {
 func (*NodeRef) ProtoMessage() {}
 
 func (x *NodeRef) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_ir_proto_msgTypes[6]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1428,7 +1597,7 @@ func (b0 NodeRef_builder) Build() *NodeRef {
 type case_NodeRef_Ref protoreflect.FieldNumber
 
 func (x case_NodeRef_Ref) String() string {
-	md := file_stipulator_v1_ir_proto_msgTypes[6].Descriptor()
+	md := file_stipulator_v1_ir_proto_msgTypes[7].Descriptor()
 	if x == 0 {
 		return "not set"
 	}
@@ -1464,7 +1633,7 @@ type Edge struct {
 
 func (x *Edge) Reset() {
 	*x = Edge{}
-	mi := &file_stipulator_v1_ir_proto_msgTypes[7]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1476,7 +1645,7 @@ func (x *Edge) String() string {
 func (*Edge) ProtoMessage() {}
 
 func (x *Edge) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_ir_proto_msgTypes[7]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1593,7 +1762,7 @@ type Document struct {
 
 func (x *Document) Reset() {
 	*x = Document{}
-	mi := &file_stipulator_v1_ir_proto_msgTypes[8]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1605,7 +1774,7 @@ func (x *Document) String() string {
 func (*Document) ProtoMessage() {}
 
 func (x *Document) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_ir_proto_msgTypes[8]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1721,7 +1890,7 @@ type Section struct {
 
 func (x *Section) Reset() {
 	*x = Section{}
-	mi := &file_stipulator_v1_ir_proto_msgTypes[9]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1733,7 +1902,7 @@ func (x *Section) String() string {
 func (*Section) ProtoMessage() {}
 
 func (x *Section) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_ir_proto_msgTypes[9]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1862,7 +2031,7 @@ const file_stipulator_v1_ir_proto_rawDesc = "" +
 	"\bLocation\x12\x1a\n" +
 	"\bdocument\x18\x01 \x01(\tR\bdocument\x12!\n" +
 	"\fsection_path\x18\x02 \x03(\tR\vsectionPath\x12\x12\n" +
-	"\x04line\x18\x03 \x01(\x05R\x04line\"\x82\x02\n" +
+	"\x04line\x18\x03 \x01(\x05R\x04line\"\xb3\x02\n" +
 	"\vRequirement\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12-\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x19.stipulator.v1.ClauseKindR\x04kind\x120\n" +
@@ -1870,7 +2039,12 @@ const file_stipulator_v1_ir_proto_rawDesc = "" +
 	"\x04text\x18\x04 \x01(\tR\x04text\x12!\n" +
 	"\fcontent_hash\x18\x05 \x01(\tR\vcontentHash\x12\x16\n" +
 	"\x06source\x18\x06 \x01(\tR\x06source\x123\n" +
-	"\blocation\x18\a \x01(\v2\x17.stipulator.v1.LocationR\blocation\"\x9e\x01\n" +
+	"\blocation\x18\a \x01(\v2\x17.stipulator.v1.LocationR\blocation\x12/\n" +
+	"\aclauses\x18\b \x03(\v2\x15.stipulator.v1.ClauseR\aclauses\"L\n" +
+	"\x06Clause\x12\x18\n" +
+	"\aordinal\x18\x01 \x01(\rR\aordinal\x12\x14\n" +
+	"\x05label\x18\x02 \x01(\tR\x05label\x12\x12\n" +
+	"\x04text\x18\x03 \x01(\tR\x04text\"\x9e\x01\n" +
 	"\x04Term\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12!\n" +
@@ -1933,7 +2107,7 @@ const file_stipulator_v1_ir_proto_rawDesc = "" +
 	"\x14EDGE_KIND_SUPERSEDES\x10\x05BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
 var file_stipulator_v1_ir_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_stipulator_v1_ir_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_stipulator_v1_ir_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_stipulator_v1_ir_proto_goTypes = []any{
 	(ClauseKind)(0),     // 0: stipulator.v1.ClauseKind
 	(Keyword)(0),        // 1: stipulator.v1.Keyword
@@ -1941,39 +2115,41 @@ var file_stipulator_v1_ir_proto_goTypes = []any{
 	(*Spec)(nil),        // 3: stipulator.v1.Spec
 	(*Location)(nil),    // 4: stipulator.v1.Location
 	(*Requirement)(nil), // 5: stipulator.v1.Requirement
-	(*Term)(nil),        // 6: stipulator.v1.Term
-	(*Note)(nil),        // 7: stipulator.v1.Note
-	(*Annotation)(nil),  // 8: stipulator.v1.Annotation
-	(*NodeRef)(nil),     // 9: stipulator.v1.NodeRef
-	(*Edge)(nil),        // 10: stipulator.v1.Edge
-	(*Document)(nil),    // 11: stipulator.v1.Document
-	(*Section)(nil),     // 12: stipulator.v1.Section
+	(*Clause)(nil),      // 6: stipulator.v1.Clause
+	(*Term)(nil),        // 7: stipulator.v1.Term
+	(*Note)(nil),        // 8: stipulator.v1.Note
+	(*Annotation)(nil),  // 9: stipulator.v1.Annotation
+	(*NodeRef)(nil),     // 10: stipulator.v1.NodeRef
+	(*Edge)(nil),        // 11: stipulator.v1.Edge
+	(*Document)(nil),    // 12: stipulator.v1.Document
+	(*Section)(nil),     // 13: stipulator.v1.Section
 }
 var file_stipulator_v1_ir_proto_depIdxs = []int32{
-	11, // 0: stipulator.v1.Spec.documents:type_name -> stipulator.v1.Document
+	12, // 0: stipulator.v1.Spec.documents:type_name -> stipulator.v1.Document
 	5,  // 1: stipulator.v1.Spec.requirements:type_name -> stipulator.v1.Requirement
-	6,  // 2: stipulator.v1.Spec.terms:type_name -> stipulator.v1.Term
-	7,  // 3: stipulator.v1.Spec.notes:type_name -> stipulator.v1.Note
-	8,  // 4: stipulator.v1.Spec.annotations:type_name -> stipulator.v1.Annotation
-	10, // 5: stipulator.v1.Spec.edges:type_name -> stipulator.v1.Edge
+	7,  // 2: stipulator.v1.Spec.terms:type_name -> stipulator.v1.Term
+	8,  // 3: stipulator.v1.Spec.notes:type_name -> stipulator.v1.Note
+	9,  // 4: stipulator.v1.Spec.annotations:type_name -> stipulator.v1.Annotation
+	11, // 5: stipulator.v1.Spec.edges:type_name -> stipulator.v1.Edge
 	0,  // 6: stipulator.v1.Requirement.kind:type_name -> stipulator.v1.ClauseKind
 	1,  // 7: stipulator.v1.Requirement.keyword:type_name -> stipulator.v1.Keyword
 	4,  // 8: stipulator.v1.Requirement.location:type_name -> stipulator.v1.Location
-	4,  // 9: stipulator.v1.Term.location:type_name -> stipulator.v1.Location
-	9,  // 10: stipulator.v1.Note.attached_to:type_name -> stipulator.v1.NodeRef
-	9,  // 11: stipulator.v1.Note.references:type_name -> stipulator.v1.NodeRef
-	4,  // 12: stipulator.v1.Note.location:type_name -> stipulator.v1.Location
-	9,  // 13: stipulator.v1.Annotation.references:type_name -> stipulator.v1.NodeRef
-	4,  // 14: stipulator.v1.Annotation.location:type_name -> stipulator.v1.Location
-	9,  // 15: stipulator.v1.Edge.from:type_name -> stipulator.v1.NodeRef
-	9,  // 16: stipulator.v1.Edge.to:type_name -> stipulator.v1.NodeRef
-	2,  // 17: stipulator.v1.Edge.kind:type_name -> stipulator.v1.EdgeKind
-	12, // 18: stipulator.v1.Document.sections:type_name -> stipulator.v1.Section
-	19, // [19:19] is the sub-list for method output_type
-	19, // [19:19] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	6,  // 9: stipulator.v1.Requirement.clauses:type_name -> stipulator.v1.Clause
+	4,  // 10: stipulator.v1.Term.location:type_name -> stipulator.v1.Location
+	10, // 11: stipulator.v1.Note.attached_to:type_name -> stipulator.v1.NodeRef
+	10, // 12: stipulator.v1.Note.references:type_name -> stipulator.v1.NodeRef
+	4,  // 13: stipulator.v1.Note.location:type_name -> stipulator.v1.Location
+	10, // 14: stipulator.v1.Annotation.references:type_name -> stipulator.v1.NodeRef
+	4,  // 15: stipulator.v1.Annotation.location:type_name -> stipulator.v1.Location
+	10, // 16: stipulator.v1.Edge.from:type_name -> stipulator.v1.NodeRef
+	10, // 17: stipulator.v1.Edge.to:type_name -> stipulator.v1.NodeRef
+	2,  // 18: stipulator.v1.Edge.kind:type_name -> stipulator.v1.EdgeKind
+	13, // 19: stipulator.v1.Document.sections:type_name -> stipulator.v1.Section
+	20, // [20:20] is the sub-list for method output_type
+	20, // [20:20] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_ir_proto_init() }
@@ -1981,7 +2157,7 @@ func file_stipulator_v1_ir_proto_init() {
 	if File_stipulator_v1_ir_proto != nil {
 		return
 	}
-	file_stipulator_v1_ir_proto_msgTypes[6].OneofWrappers = []any{
+	file_stipulator_v1_ir_proto_msgTypes[7].OneofWrappers = []any{
 		(*nodeRef_RequirementId)(nil),
 		(*nodeRef_TermName)(nil),
 	}
@@ -1991,7 +2167,7 @@ func file_stipulator_v1_ir_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_ir_proto_rawDesc), len(file_stipulator_v1_ir_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

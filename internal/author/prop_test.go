@@ -55,6 +55,7 @@ func TestPropVerbsWriteOnlyRecords(t *testing.T) {
 		c := proptest.Gen(rt)
 		files := c.Partition(rt, "p")
 		target := rapid.SampledFrom(c.ReqIDs).Draw(rt, "target")
+		clause := proptest.DrawClause(rt, c, target)
 
 		// All randomness is drawn here; the verb closure is a pure
 		// function of (filesystem, drawn values), so running it twice
@@ -68,7 +69,7 @@ func TestPropVerbsWriteOnlyRecords(t *testing.T) {
 			}
 			run = func(fsys fstest.MapFS) ([]Update, error) {
 				up, err := Bind(fsys, nil, BindRequest{
-					Requirement: target, Symbol: "example.com/p.F", Backend: "go", Role: role,
+					Requirement: target, Symbol: "example.com/p.F", Backend: "go", Role: role, Clause: clause,
 				})
 				if err != nil {
 					return nil, err
@@ -95,9 +96,10 @@ func TestPropVerbsWriteOnlyRecords(t *testing.T) {
 			// A stale binding to re-pin is part of the generated state.
 			run = func(fsys fstest.MapFS) ([]Update, error) {
 				fsys[".stipulator/bindings/gen.textproto"] = &fstest.MapFile{
-					Data: []byte(proptest.BindingText(target, strings.Repeat("0", 64))),
+					Data: []byte(proptest.BindingTextClause(target, strings.Repeat("0", 64), "", clause)),
 				}
-				return Editorial(fsys, target)
+				ups, _, err := Editorial(fsys, target)
+				return ups, err
 			}
 		case "retire":
 			// The victim is absent from the corpus but named by a
@@ -111,9 +113,9 @@ func TestPropVerbsWriteOnlyRecords(t *testing.T) {
 		case "unbind":
 			run = func(fsys fstest.MapFS) ([]Update, error) {
 				fsys[".stipulator/bindings/gen.textproto"] = &fstest.MapFile{
-					Data: []byte(proptest.BindingText(target, "")),
+					Data: []byte(proptest.BindingTextClause(target, "", "", clause)),
 				}
-				ups, _, err := Unbind(fsys, target, "example.com/p.F", stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS)
+				ups, _, err := Unbind(fsys, target, "example.com/p.F", stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS, clause)
 				return ups, err
 			}
 		case "gapretract":

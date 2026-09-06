@@ -21,7 +21,7 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-binding-store"
-  content_hash: "deef3300be8bfd9f00faa07bf610351480a51d7794162e88cdfc8273ea492acd"
+  content_hash: "2b3a140276564c9cd7a88b6ce942288797a79116414b6130ab1bc8c19709d41d"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/records.Load"
   role: BINDING_ROLE_IMPLEMENTS

@@ -89,6 +89,18 @@ immediately following a requirement's lead paragraph MUST be the
 requirement's payload — part of its text for keyword detection, reference
 detection, term matching, and content hashing.
 
+**REQ-profile-clauses** (behavior, refines REQ-profile-payload): The
+top-level items of a requirement's payload lists MUST compile to the
+requirement's clauses, numbered from 1 in payload order — an item whose
+first inline is a strong-emphasis span matching `[a-z][a-z0-9]*(-[a-z0-9]+)*`
+declares that span's text as the clause's label, unique within the
+requirement (a label declared twice is a compile error), while table
+blocks and nested items contribute no clauses (a nested item is its
+parent clause's text). A clause is a refinement of its requirement, never
+a second identity: it carries no hash and no location of its own, its
+text rides the requirement's canonical text exactly as any payload text
+does, and a requirement whose payload holds no list has no clauses.
+
 **REQ-profile-note** (behavior): A blockquote MUST compile to a non-normative
 note attached to the immediately preceding requirement or term in the same
 section, or to the enclosing section when none precedes it.

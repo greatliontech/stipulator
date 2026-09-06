@@ -350,6 +350,10 @@ const (
 	// Satisfied only by an attestation on a cell that admits one: the
 	// weakest evidence, rendered distinctly, never folded into covered.
 	Bucket_BUCKET_ATTESTED Bucket = 6
+	// A clause-structured requirement some of whose clauses meet policy
+	// while at least one does not — bound, clauses unclaimed. Red; the
+	// uncovered violation class in part.
+	Bucket_BUCKET_PARTIAL Bucket = 7
 )
 
 // Enum value maps for Bucket.
@@ -362,6 +366,7 @@ var (
 		4: "BUCKET_COVERED",
 		5: "BUCKET_EXEMPT",
 		6: "BUCKET_ATTESTED",
+		7: "BUCKET_PARTIAL",
 	}
 	Bucket_value = map[string]int32{
 		"BUCKET_UNSPECIFIED": 0,
@@ -371,6 +376,7 @@ var (
 		"BUCKET_COVERED":     4,
 		"BUCKET_EXEMPT":      5,
 		"BUCKET_ATTESTED":    6,
+		"BUCKET_PARTIAL":     7,
 	}
 )
 
@@ -827,6 +833,8 @@ type BindingResult struct {
 	xxx_hidden_WitnessClass  WitnessClass           `protobuf:"varint,10,opt,name=witness_class,json=witnessClass,enum=stipulator.v1.WitnessClass"`
 	xxx_hidden_RaceEnabled   bool                   `protobuf:"varint,11,opt,name=race_enabled,json=raceEnabled"`
 	xxx_hidden_Package       *string                `protobuf:"bytes,12,opt,name=package"`
+	xxx_hidden_ClauseOrdinal uint32                 `protobuf:"varint,13,opt,name=clause_ordinal,json=clauseOrdinal"`
+	xxx_hidden_ClauseLabel   *string                `protobuf:"bytes,14,opt,name=clause_label,json=clauseLabel"`
 	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
 	XXX_presence             [1]uint32
 	unknownFields            protoimpl.UnknownFields
@@ -967,64 +975,91 @@ func (x *BindingResult) GetPackage() string {
 	return ""
 }
 
+func (x *BindingResult) GetClauseOrdinal() uint32 {
+	if x != nil {
+		return x.xxx_hidden_ClauseOrdinal
+	}
+	return 0
+}
+
+func (x *BindingResult) GetClauseLabel() string {
+	if x != nil {
+		if x.xxx_hidden_ClauseLabel != nil {
+			return *x.xxx_hidden_ClauseLabel
+		}
+		return ""
+	}
+	return ""
+}
+
 func (x *BindingResult) SetPath(v string) {
 	x.xxx_hidden_Path = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 14)
 }
 
 func (x *BindingResult) SetRequirementId(v string) {
 	x.xxx_hidden_RequirementId = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 14)
 }
 
 func (x *BindingResult) SetSymbol(v string) {
 	x.xxx_hidden_Symbol = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 14)
 }
 
 func (x *BindingResult) SetBackend(v string) {
 	x.xxx_hidden_Backend = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 14)
 }
 
 func (x *BindingResult) SetRole(v BindingRole) {
 	x.xxx_hidden_Role = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 14)
 }
 
 func (x *BindingResult) SetContentPinned(v bool) {
 	x.xxx_hidden_ContentPinned = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 14)
 }
 
 func (x *BindingResult) SetResolution(v Resolution) {
 	x.xxx_hidden_Resolution = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 14)
 }
 
 func (x *BindingResult) SetShape(v ShapeState) {
 	x.xxx_hidden_Shape = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 14)
 }
 
 func (x *BindingResult) SetTestOutcome(v TestOutcome) {
 	x.xxx_hidden_TestOutcome = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 14)
 }
 
 func (x *BindingResult) SetWitnessClass(v WitnessClass) {
 	x.xxx_hidden_WitnessClass = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 14)
 }
 
 func (x *BindingResult) SetRaceEnabled(v bool) {
 	x.xxx_hidden_RaceEnabled = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 14)
 }
 
 func (x *BindingResult) SetPackage(v string) {
 	x.xxx_hidden_Package = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 12)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 14)
+}
+
+func (x *BindingResult) SetClauseOrdinal(v uint32) {
+	x.xxx_hidden_ClauseOrdinal = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 14)
+}
+
+func (x *BindingResult) SetClauseLabel(v string) {
+	x.xxx_hidden_ClauseLabel = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 13, 14)
 }
 
 func (x *BindingResult) HasPath() bool {
@@ -1111,6 +1146,20 @@ func (x *BindingResult) HasPackage() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 11)
 }
 
+func (x *BindingResult) HasClauseOrdinal() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 12)
+}
+
+func (x *BindingResult) HasClauseLabel() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 13)
+}
+
 func (x *BindingResult) ClearPath() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Path = nil
@@ -1171,6 +1220,16 @@ func (x *BindingResult) ClearPackage() {
 	x.xxx_hidden_Package = nil
 }
 
+func (x *BindingResult) ClearClauseOrdinal() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 12)
+	x.xxx_hidden_ClauseOrdinal = 0
+}
+
+func (x *BindingResult) ClearClauseLabel() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 13)
+	x.xxx_hidden_ClauseLabel = nil
+}
+
 type BindingResult_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -1190,6 +1249,11 @@ type BindingResult_builder struct {
 	// ambiguous: dotted path elements vs method receivers). Empty when
 	// resolution found no owning package.
 	Package *string
+	// The clause the claim is scoped to, resolved against the current
+	// corpus: its ordinal and, when the item declares one, its label.
+	// Both unset for a whole-requirement claim.
+	ClauseOrdinal *uint32
+	ClauseLabel   *string
 }
 
 func (b0 BindingResult_builder) Build() *BindingResult {
@@ -1197,52 +1261,60 @@ func (b0 BindingResult_builder) Build() *BindingResult {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Path != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 14)
 		x.xxx_hidden_Path = b.Path
 	}
 	if b.RequirementId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 14)
 		x.xxx_hidden_RequirementId = b.RequirementId
 	}
 	if b.Symbol != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 14)
 		x.xxx_hidden_Symbol = b.Symbol
 	}
 	if b.Backend != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 14)
 		x.xxx_hidden_Backend = b.Backend
 	}
 	if b.Role != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 14)
 		x.xxx_hidden_Role = *b.Role
 	}
 	if b.ContentPinned != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 14)
 		x.xxx_hidden_ContentPinned = *b.ContentPinned
 	}
 	if b.Resolution != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 14)
 		x.xxx_hidden_Resolution = *b.Resolution
 	}
 	if b.Shape != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 14)
 		x.xxx_hidden_Shape = *b.Shape
 	}
 	if b.TestOutcome != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 14)
 		x.xxx_hidden_TestOutcome = *b.TestOutcome
 	}
 	if b.WitnessClass != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 14)
 		x.xxx_hidden_WitnessClass = *b.WitnessClass
 	}
 	if b.RaceEnabled != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 14)
 		x.xxx_hidden_RaceEnabled = *b.RaceEnabled
 	}
 	if b.Package != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 12)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 14)
 		x.xxx_hidden_Package = b.Package
+	}
+	if b.ClauseOrdinal != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 14)
+		x.xxx_hidden_ClauseOrdinal = *b.ClauseOrdinal
+	}
+	if b.ClauseLabel != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 13, 14)
+		x.xxx_hidden_ClauseLabel = b.ClauseLabel
 	}
 	return m0
 }
@@ -2411,6 +2483,7 @@ type CoverageSummary struct {
 	xxx_hidden_GapsOpen             int32                  `protobuf:"varint,9,opt,name=gaps_open,json=gapsOpen"`
 	xxx_hidden_PolicyOverrides      []string               `protobuf:"bytes,10,rep,name=policy_overrides,json=policyOverrides"`
 	xxx_hidden_ResolvedGapsPrunable int32                  `protobuf:"varint,11,opt,name=resolved_gaps_prunable,json=resolvedGapsPrunable"`
+	xxx_hidden_Partial              int32                  `protobuf:"varint,12,opt,name=partial"`
 	XXX_raceDetectHookData          protoimpl.RaceDetectHookData
 	XXX_presence                    [1]uint32
 	unknownFields                   protoimpl.UnknownFields
@@ -2519,39 +2592,46 @@ func (x *CoverageSummary) GetResolvedGapsPrunable() int32 {
 	return 0
 }
 
+func (x *CoverageSummary) GetPartial() int32 {
+	if x != nil {
+		return x.xxx_hidden_Partial
+	}
+	return 0
+}
+
 func (x *CoverageSummary) SetGatePasses(v bool) {
 	x.xxx_hidden_GatePasses = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 12)
 }
 
 func (x *CoverageSummary) SetCovered(v int32) {
 	x.xxx_hidden_Covered = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 12)
 }
 
 func (x *CoverageSummary) SetAttested(v int32) {
 	x.xxx_hidden_Attested = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 12)
 }
 
 func (x *CoverageSummary) SetUncovered(v int32) {
 	x.xxx_hidden_Uncovered = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 12)
 }
 
 func (x *CoverageSummary) SetStale(v int32) {
 	x.xxx_hidden_Stale = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 12)
 }
 
 func (x *CoverageSummary) SetBroken(v int32) {
 	x.xxx_hidden_Broken = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 12)
 }
 
 func (x *CoverageSummary) SetExempt(v int32) {
 	x.xxx_hidden_Exempt = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 12)
 }
 
 func (x *CoverageSummary) SetViolations(v []string) {
@@ -2560,7 +2640,7 @@ func (x *CoverageSummary) SetViolations(v []string) {
 
 func (x *CoverageSummary) SetGapsOpen(v int32) {
 	x.xxx_hidden_GapsOpen = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 12)
 }
 
 func (x *CoverageSummary) SetPolicyOverrides(v []string) {
@@ -2569,7 +2649,12 @@ func (x *CoverageSummary) SetPolicyOverrides(v []string) {
 
 func (x *CoverageSummary) SetResolvedGapsPrunable(v int32) {
 	x.xxx_hidden_ResolvedGapsPrunable = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 12)
+}
+
+func (x *CoverageSummary) SetPartial(v int32) {
+	x.xxx_hidden_Partial = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 12)
 }
 
 func (x *CoverageSummary) HasGatePasses() bool {
@@ -2635,6 +2720,13 @@ func (x *CoverageSummary) HasResolvedGapsPrunable() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 10)
 }
 
+func (x *CoverageSummary) HasPartial() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 11)
+}
+
 func (x *CoverageSummary) ClearGatePasses() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_GatePasses = false
@@ -2680,6 +2772,11 @@ func (x *CoverageSummary) ClearResolvedGapsPrunable() {
 	x.xxx_hidden_ResolvedGapsPrunable = 0
 }
 
+func (x *CoverageSummary) ClearPartial() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 11)
+	x.xxx_hidden_Partial = 0
+}
+
 type CoverageSummary_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -2702,6 +2799,10 @@ type CoverageSummary_builder struct {
 	// deletes. Surfaced so the cleanup is discoverable from a gate run
 	// already made; the gate never deletes records itself.
 	ResolvedGapsPrunable *int32
+	// Partial counts clause-structured requirements with some clauses met
+	// and at least one not (BUCKET_PARTIAL): red, listed in violations
+	// unless a gap excuses uncovered.
+	Partial *int32
 }
 
 func (b0 CoverageSummary_builder) Build() *CoverageSummary {
@@ -2709,42 +2810,46 @@ func (b0 CoverageSummary_builder) Build() *CoverageSummary {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.GatePasses != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 12)
 		x.xxx_hidden_GatePasses = *b.GatePasses
 	}
 	if b.Covered != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 12)
 		x.xxx_hidden_Covered = *b.Covered
 	}
 	if b.Attested != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 12)
 		x.xxx_hidden_Attested = *b.Attested
 	}
 	if b.Uncovered != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 12)
 		x.xxx_hidden_Uncovered = *b.Uncovered
 	}
 	if b.Stale != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 12)
 		x.xxx_hidden_Stale = *b.Stale
 	}
 	if b.Broken != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 12)
 		x.xxx_hidden_Broken = *b.Broken
 	}
 	if b.Exempt != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 12)
 		x.xxx_hidden_Exempt = *b.Exempt
 	}
 	x.xxx_hidden_Violations = b.Violations
 	if b.GapsOpen != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 12)
 		x.xxx_hidden_GapsOpen = *b.GapsOpen
 	}
 	x.xxx_hidden_PolicyOverrides = b.PolicyOverrides
 	if b.ResolvedGapsPrunable != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 12)
 		x.xxx_hidden_ResolvedGapsPrunable = *b.ResolvedGapsPrunable
+	}
+	if b.Partial != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 12)
+		x.xxx_hidden_Partial = *b.Partial
 	}
 	return m0
 }
@@ -4471,7 +4576,7 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\ttruncated\x18\x06 \x01(\bR\ttruncated\"7\n" +
 	"\aProblem\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\xfd\x03\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\xc7\x04\n" +
 	"\rBindingResult\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12%\n" +
 	"\x0erequirement_id\x18\x02 \x01(\tR\rrequirementId\x12\x16\n" +
@@ -4487,7 +4592,9 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\rwitness_class\x18\n" +
 	" \x01(\x0e2\x1b.stipulator.v1.WitnessClassR\fwitnessClass\x12!\n" +
 	"\frace_enabled\x18\v \x01(\bR\vraceEnabled\x12\x18\n" +
-	"\apackage\x18\f \x01(\tR\apackage\"\x9f\x01\n" +
+	"\apackage\x18\f \x01(\tR\apackage\x12%\n" +
+	"\x0eclause_ordinal\x18\r \x01(\rR\rclauseOrdinal\x12!\n" +
+	"\fclause_label\x18\x0e \x01(\tR\vclauseLabel\"\x9f\x01\n" +
 	"\x12RegistrationResult\x12\x18\n" +
 	"\apackage\x18\x01 \x01(\tR\apackage\x12\x12\n" +
 	"\x04test\x18\x02 \x01(\tR\x04test\x12%\n" +
@@ -4530,7 +4637,7 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"violations\x12\x1f\n" +
 	"\vgate_passes\x18\x04 \x01(\bR\n" +
 	"gatePasses\x12)\n" +
-	"\x10policy_overrides\x18\x05 \x03(\tR\x0fpolicyOverrides\"\xea\x02\n" +
+	"\x10policy_overrides\x18\x05 \x03(\tR\x0fpolicyOverrides\"\x84\x03\n" +
 	"\x0fCoverageSummary\x12\x1f\n" +
 	"\vgate_passes\x18\x01 \x01(\bR\n" +
 	"gatePasses\x12\x18\n" +
@@ -4546,7 +4653,8 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\tgaps_open\x18\t \x01(\x05R\bgapsOpen\x12)\n" +
 	"\x10policy_overrides\x18\n" +
 	" \x03(\tR\x0fpolicyOverrides\x124\n" +
-	"\x16resolved_gaps_prunable\x18\v \x01(\x05R\x14resolvedGapsPrunable\"\xdc\x04\n" +
+	"\x16resolved_gaps_prunable\x18\v \x01(\x05R\x14resolvedGapsPrunable\x12\x18\n" +
+	"\apartial\x18\f \x01(\x05R\apartial\"\xdc\x04\n" +
 	"\rVerifySummary\x12\x1a\n" +
 	"\bproblems\x18\x01 \x01(\x05R\bproblems\x12\x16\n" +
 	"\x06pinned\x18\x02 \x01(\x05R\x06pinned\x12\x14\n" +
@@ -4648,7 +4756,7 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x0eSignatureLabel\x12\x1f\n" +
 	"\x1bSIGNATURE_LABEL_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eSIGNATURE_LABEL_REARCHITECTURE\x10\x01\x12\"\n" +
-	"\x1eSIGNATURE_LABEL_SEMANTIC_DRIFT\x10\x02*\x97\x01\n" +
+	"\x1eSIGNATURE_LABEL_SEMANTIC_DRIFT\x10\x02*\xab\x01\n" +
 	"\x06Bucket\x12\x16\n" +
 	"\x12BUCKET_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10BUCKET_UNCOVERED\x10\x01\x12\x10\n" +
@@ -4656,7 +4764,8 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\rBUCKET_BROKEN\x10\x03\x12\x12\n" +
 	"\x0eBUCKET_COVERED\x10\x04\x12\x11\n" +
 	"\rBUCKET_EXEMPT\x10\x05\x12\x13\n" +
-	"\x0fBUCKET_ATTESTED\x10\x06*|\n" +
+	"\x0fBUCKET_ATTESTED\x10\x06\x12\x12\n" +
+	"\x0eBUCKET_PARTIAL\x10\a*|\n" +
 	"\bGapState\x12\x19\n" +
 	"\x15GAP_STATE_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eGAP_STATE_OPEN\x10\x01\x12\x11\n" +

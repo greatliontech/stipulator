@@ -113,6 +113,11 @@ message BindingResult {
   // ambiguous: dotted path elements vs method receivers). Empty when
   // resolution found no owning package.
   string package = 12;
+  // The clause the claim is scoped to, resolved against the current
+  // corpus: its ordinal and, when the item declares one, its label.
+  // Both unset for a whole-requirement claim.
+  uint32 clause_ordinal = 13;
+  string clause_label = 14;
 }
 
 // RegistrationResult is a cross-checked runtime coverage claim.
@@ -176,6 +181,10 @@ enum Bucket {
   // Satisfied only by an attestation on a cell that admits one: the
   // weakest evidence, rendered distinctly, never folded into covered.
   BUCKET_ATTESTED = 6;
+  // A clause-structured requirement some of whose clauses meet policy
+  // while at least one does not — bound, clauses unclaimed. Red; the
+  // uncovered violation class in part.
+  BUCKET_PARTIAL = 7;
 }
 
 // GapState classifies a gap record.
@@ -266,6 +275,10 @@ message CoverageSummary {
   // deletes. Surfaced so the cleanup is discoverable from a gate run
   // already made; the gate never deletes records itself.
   int32 resolved_gaps_prunable = 11;
+  // Partial counts clause-structured requirements with some clauses met
+  // and at least one not (BUCKET_PARTIAL): red, listed in violations
+  // unless a gap excuses uncovered.
+  int32 partial = 12;
 }
 
 // VerifySummary is the verification roll-up: record hygiene and witness

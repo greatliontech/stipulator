@@ -25,7 +25,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.Unbind"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "bb5524cee26866607ce902b7bd2c4c2fe8e546656f7028c4fa3a398a84b6fc89"
+  shape_hash: "2f70da297c88d67574a73cb3c910de67fdbf6ec2c2eea5663b368328641413ed"
 }
 
 bindings {
@@ -1646,4 +1646,49 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGroupKeySeparatesDeclaredWidths"
   role: BINDING_ROLE_TESTS
   shape_hash: "ea20d78388c212e7c9b4e8850da2b9721bf3b2f31b39f332c2521f32e29be37b"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-clause-claim"
+  content_hash: "4fddcfc83c3c08b0e4869c06387c2ce2d6c0acb083655a1b4b2fcaacf7d71ef3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.TestClauseClaimsGrantToTheirClauseAlone"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ff7f3277b5330537c008c624fcbcc809bfc4978a6b4b8a3a8c3166447f568f5f"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-clause-claim"
+  content_hash: "4fddcfc83c3c08b0e4869c06387c2ce2d6c0acb083655a1b4b2fcaacf7d71ef3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.TestPartialIsTheUncoveredClassInPart"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "1b0969e8f3680b817fe22617db93dd837a273842fafaba27215886b59283e7cb"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-clause-claim"
+  content_hash: "4fddcfc83c3c08b0e4869c06387c2ce2d6c0acb083655a1b4b2fcaacf7d71ef3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestBindClauseClaims"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "400202378901163e8fec74fbf0a9ff9afe0f48cc89bbe770785d270256823c00"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-clause-claim"
+  content_hash: "4fddcfc83c3c08b0e4869c06387c2ce2d6c0acb083655a1b4b2fcaacf7d71ef3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verify.TestClauseClaimHygiene"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "3699367506cc96cee71edb0182b7b2f760f1fc30840c69c1038cb0ffc3ad8da3"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-clause-claim"
+  content_hash: "4fddcfc83c3c08b0e4869c06387c2ce2d6c0acb083655a1b4b2fcaacf7d71ef3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestEditorialNamesTheClauseEachClaimNowDenotes"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e6233bb8cbbf04f17651310c1a9addf89c8783944923c370d555f15fb30345c5"
 }

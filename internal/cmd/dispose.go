@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -24,11 +25,17 @@ func disposeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			ups, err := author.Editorial(os.DirFS(chdir), req)
+			ups, consented, err := author.Editorial(os.DirFS(chdir), req)
 			if err != nil {
 				return err
 			}
-			return applyUpdates(chdir, ups)
+			if err := applyUpdates(chdir, ups); err != nil {
+				return err
+			}
+			for _, line := range consented {
+				fmt.Printf("%s: %s\n", req, line)
+			}
+			return nil
 		},
 	}
 	editorial.Flags().StringArrayVar(&edReq, "req", nil, "requirement identifier")

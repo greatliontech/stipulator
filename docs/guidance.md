@@ -31,7 +31,7 @@ one requirement's binding rows.
 **knobs:**
 - `view` (mcp, cli) — summary (default: pass/fail + counts + violations), reds (red requirements with reasons), or full (every requirement).
 - `ids` (mcp, cli as `req`) — requirement identifiers to scope to (comma-separated on mcp; repeatable on the cli); unknown identifiers refuse on the mcp surface.
-- `bucket` (mcp, cli) — scope to one bucket: uncovered, stale, broken, covered, exempt, attested.
+- `bucket` (mcp, cli) — scope to one bucket: uncovered, partial, stale, broken, covered, exempt, attested.
 - `filter` (mcp, cli) — requirement-id glob, e.g. REQ-arch-*.
 - `path` (mcp, cli) — prefix over declaring spec document or bound symbols.
 - `json` (cli) — machine output for CI and scripts: the selected view as JSON.
@@ -80,6 +80,7 @@ ids=REQ-go-static-binding while iterating on one requirement's fix.
 - `role` (mcp, cli) — implements, tests, or proves; on the cli once for all claims or one per claim.
 - `backend` (mcp, cli) — language backend (default go); on the cli once for all claims or one per claim.
 - `file` (mcp, cli) — target binding file (derived when empty); on the cli once for all claims or one per claim.
+- `clause` (mcp, cli) — scope the claim to one payload clause of its requirement — the clause's ordinal (from 1, payload order) or the label a `**label**`-led list item declares; empty claims the whole requirement. A clause claim grants evidence to that clause alone, so a requirement whose remaining clauses hold no policy-meeting evidence reads `partial`, never covered; on the cli exactly one per claim when given at all (empty keeps that claim whole). An ordinal follows the item's position, counted from 1 whatever number the list displays: inserting an item above it retargets the claim, which the stale content pin surfaces and the named re-pin names — prefer labels where the spec declares them.
 - `claims` (mcp) — batch claims validated all-or-nothing — a failure anywhere authors nothing; alternative to the single-claim fields — the agent's one-call authoring; the cli repeats its flags per claim.
 **when:** use bind after the requirement exists and the symbol
 resolves; the requirement must exist, generated files are rejected,
@@ -90,7 +91,8 @@ independent of how flags interleave on the command line — and a flag
 count matching neither one nor the claim count is refused; a claim is
 never silently dropped.
 **example:** bind req=REQ-guidance-coverage role=tests
-symbol=module/pkg.TestCoverage to claim a test enforces a clause.
+symbol=module/pkg.TestCoverage to claim a test enforces a requirement;
+add clause=2 (or clause=label) to claim only its second payload clause.
 
 ### unbind
 **does:** Remove binding claims for a requirement, optionally narrowed by symbol and role.
@@ -98,6 +100,7 @@ symbol=module/pkg.TestCoverage to claim a test enforces a clause.
 - `requirement` (mcp, cli as `req`) — requirement identifier.
 - `symbol` (mcp, cli) — narrow to one symbol.
 - `role` (mcp, cli) — narrow to one role.
+- `clause` (mcp, cli) — narrow to the claim scoped to this clause, as the claim spells it (ordinal or label); the way to remove one of two claims on a symbol, or a claim whose clause the corpus no longer declares.
 **when:** use unbind when a claim is wrong or its symbol was renamed
 (bind the successor after); its flags narrow one selection and form no
 batch, so a repeated flag is refused rather than last-wins; matching
@@ -148,7 +151,12 @@ naming them is the editorial re-consent. The blanket form is also
 what re-pins a moved shape, and it names the symbols whose differing
 shape pins it rewrote; naming requirements re-consents clause text
 only, and that form reports any shape mismatch it is not going to
-fix instead of claiming quiescence. Never silent: no-ops say so.
+fix instead of claiming quiescence. Never silent: no-ops say so. A
+named re-pin also names the clause each re-consented clause claim now
+denotes — an ordinal follows its item's position, so read those lines
+before trusting the re-pin — and refuses, writing nothing, when a
+clause claim names a clause the edited text no longer declares (rebind
+or unbind it first); on mcp every id is judged before the first write.
 **example:** pin, read the awaiting-re-consent list, then pin
 req=REQ-x for each requirement whose new text you consent to.
 
@@ -163,7 +171,9 @@ req=REQ-x for each requirement whose new text you consent to.
 - `force` — retire even when no record names the identity.
 **when:** use dispose — the agent's one-call kind= form — when spec text changed shape; the cli spells
 the same dispositions as three subcommands (dispose editorial,
-dispose retire, dispose supersede).
+dispose retire, dispose supersede). An editorial disposition's notes
+name the clause each re-consented clause claim now denotes, and a
+clause claim the new text no longer resolves refuses it.
 **example:** dispose kind=supersede from=REQ-old into=REQ-a,REQ-b
 after splitting a clause.
 
@@ -173,7 +183,9 @@ after splitting a clause.
 **knobs:**
 - `req` — requirement identifier (taken once; repetition refused).
 **when:** use — the operator's shell spelling of dispose — after an edit that changes wording, not meaning; the
-mcp surface spells this dispose with kind=editorial.
+mcp surface spells this dispose with kind=editorial. The response
+names the clause each re-consented clause claim now denotes, and a
+clause claim the new text no longer resolves refuses the disposition.
 **example:** dispose editorial --req REQ-x after a typo fix.
 
 ### dispose retire

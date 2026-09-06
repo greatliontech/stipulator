@@ -10,6 +10,7 @@ import (
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/check"
+	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/wire"
 )
@@ -121,8 +122,7 @@ func renderCheck(stdout, stderr io.Writer, res *stipulatorv1.CheckResult) {
 	}
 	cov := res.GetCoverage()
 	for _, r := range cov.GetRequirements() {
-		switch r.GetBucket() {
-		case stipulatorv1.Bucket_BUCKET_UNCOVERED, stipulatorv1.Bucket_BUCKET_STALE, stipulatorv1.Bucket_BUCKET_BROKEN:
+		if coverage.RedBucket(r.GetBucket()) {
 			reason := ""
 			if rs := r.GetReasons(); len(rs) > 0 {
 				reason = "  " + dim(rs[0])
@@ -224,6 +224,8 @@ func bucketWord(b stipulatorv1.Bucket) string {
 		return "stale"
 	case stipulatorv1.Bucket_BUCKET_BROKEN:
 		return "broken"
+	case stipulatorv1.Bucket_BUCKET_PARTIAL:
+		return "partial"
 	}
 	return "uncovered"
 }

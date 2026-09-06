@@ -143,6 +143,10 @@ type BindRequest struct {
 	// File overrides the target binding file; empty derives
 	// .stipulator/bindings/<second-id-segment>.textproto.
 	File string
+	// Clause scopes the claim to one payload clause of the requirement:
+	// an ordinal (all digits, from 1) or a label; empty claims the
+	// whole requirement (REQ-evidence-clause-claim).
+	Clause string
 }
 
 // Update is a file write the caller must apply.
@@ -204,13 +208,25 @@ func Bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Upd
 		return nil, fmt.Errorf("corpus does not compile: %s%s", errs[0], moreSuffix(len(errs)-1))
 	}
 	var contentHash string
+	var target *stipulatorv1.Requirement
 	for _, r := range spec.GetRequirements() {
 		if r.GetId() == req.Requirement {
 			contentHash = r.GetContentHash()
+			target = r
 		}
 	}
 	if contentHash == "" {
 		return nil, fmt.Errorf("requirement %s is not in the corpus", req.Requirement)
+	}
+	claim := &stipulatorv1.Binding{}
+	if err := records.SetClause(claim, req.Clause); err != nil {
+		return nil, fmt.Errorf("claim on %s: %w", req.Requirement, err)
+	}
+	// A clause claim resolves against the compiled requirement at write
+	// time, so a claim on a clause that does not exist is refused, never
+	// recorded to read as a dangling record later.
+	if _, ok := records.ResolveClause(target, claim); !ok {
+		return nil, fmt.Errorf("%s declares no %s: %s", req.Requirement, records.ClauseName(claim), records.ClausesOffered(target))
 	}
 	if req.Role == stipulatorv1.BindingRole_BINDING_ROLE_UNSPECIFIED {
 		return nil, fmt.Errorf("a role is required (implements, tests, or proves)")
@@ -261,13 +277,14 @@ func Bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Upd
 	for _, bf := range store.Bindings {
 		for _, b := range bf.Set.GetBindings() {
 			if b.GetRequirementId() == req.Requirement && b.GetSymbol() == req.Symbol &&
-				b.GetBackend() == req.Backend && b.GetRole() == req.Role {
+				b.GetBackend() == req.Backend && b.GetRole() == req.Role &&
+				records.ClaimClauseKey(target, b) == records.ClaimClauseKey(target, claim) {
 				return nil, fmt.Errorf("identical binding already exists in %s", bf.Path)
 			}
 		}
 	}
 
-	b := &stipulatorv1.Binding{}
+	b := claim
 	b.SetRequirementId(req.Requirement)
 	b.SetContentHash(contentHash)
 	b.SetBackend(req.Backend)
@@ -378,11 +395,16 @@ func (o batchFS) ReadDir(name string) ([]fs.DirEntry, error) {
 
 // Unbind removes bindings matching the request (symbol and role narrowing
 // optional) and returns the file writes; matching nothing is an error.
-func Unbind(fsys fs.FS, requirement, symbol string, role stipulatorv1.BindingRole) ([]Update, int, error) {
+func Unbind(fsys fs.FS, requirement, symbol string, role stipulatorv1.BindingRole, clause string) ([]Update, int, error) {
 	store, err := records.Load(fsys)
 	if err != nil {
 		return nil, 0, err
 	}
+	// The clause narrows by the claim's own spelling, never by
+	// resolution: unbind is the remedy for a claim whose clause the
+	// corpus no longer declares, so it must reach a record the corpus
+	// cannot resolve.
+	clause = strings.TrimSpace(clause)
 	updates, deletions, removed, err := records.RemoveBindings(store, func(b *stipulatorv1.Binding) bool {
 		if b.GetRequirementId() != requirement {
 			return false
@@ -393,12 +415,23 @@ func Unbind(fsys fs.FS, requirement, symbol string, role stipulatorv1.BindingRol
 		if role != stipulatorv1.BindingRole_BINDING_ROLE_UNSPECIFIED && b.GetRole() != role {
 			return false
 		}
+		if clause != "" && records.ClauseSpelling(b) != clause {
+			return false
+		}
 		return true
 	})
 	if err != nil {
 		return nil, 0, err
 	}
 	if removed == 0 {
+		if clause != "" {
+			// The clause narrows by spelling, and a claim may be spelled
+			// by the other name of its clause: the refusal lists what is
+			// recorded for the requirement and symbol so the operator
+			// can name it — a dangling claim never reaches a binding
+			// row, so no report can list it in its place.
+			return nil, 0, fmt.Errorf("no binding matches %s + %s (%s) clause %s; the recorded claims there are %s", requirement, symbol, stipulatorv1.BindingRole_name[int32(role)], clause, recordedClaims(store, requirement, symbol))
+		}
 		return nil, 0, fmt.Errorf("no binding matches %s + %s (%s); verify view=bindings lists the recorded rows", requirement, symbol, stipulatorv1.BindingRole_name[int32(role)])
 	}
 	var out []Update
@@ -929,4 +962,30 @@ func PruneResolvedGaps(store *records.Store, resolved map[string]bool) []Update 
 	sortUpdates(out)
 	StampPriors(store, out)
 	return out
+}
+
+// recordedClaims lists the claims recorded for a requirement (and a
+// symbol, when given) by role and clause spelling, for a refusal that
+// must name what an unbind could have matched.
+func recordedClaims(store *records.Store, requirement, symbol string) string {
+	var out []string
+	for _, bf := range store.Bindings {
+		for _, b := range bf.Set.GetBindings() {
+			if b.GetRequirementId() != requirement || (symbol != "" && b.GetSymbol() != symbol) {
+				continue
+			}
+			entry := b.GetSymbol() + " " + strings.ToLower(strings.TrimPrefix(b.GetRole().String(), "BINDING_ROLE_"))
+			if sp := records.ClauseSpelling(b); sp != "" {
+				entry += " clause " + sp
+			} else {
+				entry += " (whole requirement)"
+			}
+			out = append(out, entry)
+		}
+	}
+	if len(out) == 0 {
+		return "none"
+	}
+	sort.Strings(out)
+	return strings.Join(out, "; ")
 }

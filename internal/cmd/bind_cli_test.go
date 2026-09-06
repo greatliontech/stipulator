@@ -29,6 +29,7 @@ func TestBindClaimsAlignment(t *testing.T) {
 		[]string{"tests"},
 		nil,
 		nil,
+		nil,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -50,12 +51,18 @@ func TestBindClaimsAlignment(t *testing.T) {
 		[]string{"tests", "implements"},
 		[]string{"go", "go"},
 		[]string{"", "custom.textproto"},
+		[]string{"", "ledger"},
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if perClaim[1].Role != stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS || perClaim[1].File != "custom.textproto" {
-		t.Errorf("per-claim values misassigned: %+v", perClaim[1])
+	if perClaim[1].Role != stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS || perClaim[1].File != "custom.textproto" || perClaim[1].Clause != "ledger" || perClaim[0].Clause != "" {
+		t.Errorf("per-claim values misassigned: %+v", perClaim)
+	}
+	// A clause is a per-claim scope: one for two claims is refused with
+	// both counts named, never applied to every claim.
+	if _, err := bindClaims([]string{"REQ-a", "REQ-b"}, []string{"x.A", "x.B"}, []string{"tests"}, nil, nil, []string{"2"}); err == nil || !strings.Contains(err.Error(), "1 --clause") || !strings.Contains(err.Error(), "2 claim") {
+		t.Errorf("one --clause over two claims: %v; want the refusal naming both counts", err)
 	}
 	for _, c := range []struct {
 		reqs, symbols, roles []string
@@ -66,7 +73,7 @@ func TestBindClaimsAlignment(t *testing.T) {
 		{nil, nil, nil, []string{"at least one --req"}},
 		{[]string{"REQ-a", "REQ-b"}, []string{"x.A", "x.B"}, []string{"tests", "bogus"}, []string{"claim 2 (REQ-b)"}},
 	} {
-		_, err := bindClaims(c.reqs, c.symbols, c.roles, nil, nil)
+		_, err := bindClaims(c.reqs, c.symbols, c.roles, nil, nil, nil)
 		if err == nil {
 			t.Fatalf("mismatch %v/%v/%v accepted", c.reqs, c.symbols, c.roles)
 		}
