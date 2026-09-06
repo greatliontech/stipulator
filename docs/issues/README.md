@@ -45,9 +45,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   *Lands: cross-tool train chunk 144.*
 - **[pin-req-unchanged-text-wording](pin-req-unchanged-text-wording.md)** — "pins current" for
   unchanged text reads as a skipped re-consent. *Lands: cross-tool train chunk 143.*
-- **[clause-granular-binding-claims](clause-granular-binding-claims.md)** — coverage's unit is the
-  requirement, so a multi-clause requirement reads green with a clause unenforced; clause-naming
-  claims. *Lands: cross-tool train chunk 142.*
 - **[content-hash-function-versioning](content-hash-function-versioning.md)** — a tool rebuild moved
   four content hashes over unchanged text; the re-consent is indistinguishable from an amendment.
   *Lands: cross-tool train chunk 143.*
@@ -67,10 +64,11 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   contradicts by design has no state to say so, and the corpus reads green against a contradicted
   requirement. Ask: a `contradicted` state beside the gap, reported distinctly, resolving only on
   an explicit fire. *Lands: user decision (bldc consumer report 2026-09-05).*
+- **[clause-structured-whole-claims](clause-structured-whole-claims.md)** — a requirement
+  with clauses still admits whole-requirement `tests` claims, so the false-green channel closes
+  only where authors choose clause claims; whether to refuse whole claims on clause-structured
+  requirements (a discipline choice). *Lands: user decision.*
 - **[two-record-stores](two-record-stores.md)** — the witness cache and the resolution cache are one store shape written twice; one store by record kind, and the served backend as the owned child's one form. *Lands: user decision (the ledger files were the third kind; the atomic writer folded, the store unification remains).*
-- **[witness-selection-guard-masked-by-ineligible-red](witness-selection-guard-masked-by-ineligible-red.md)** —
-  the empty-witness-selection diagnostic keys on any outcome, so an ineligible leg's failure masks
-  the cause; key on granted outcomes. *Lands: cross-tool train chunk 142.*
 - **[seeded-witness-serving-follows-direct-call-classifier](seeded-witness-serving-follows-direct-call-classifier.md)** —
   the random-seeded serving exemption rides the direct-call witness classifier, so a
   helper-indirected rapid driver still serves; a transitive seeding class or a helper-admitting
