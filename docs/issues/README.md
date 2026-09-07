@@ -2,6 +2,11 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
+- **[vmm-witness-cache-refusals](vmm-witness-cache-refusals.md)** - adopt the Go 1.27
+  experiment-identity repair and independently classify VMM's witness publication
+  refusals without conflating policy success with reusable freshness.
+  *Lands: user decision.*
+
 - **[train-114-campaign-idle-window](train-114-campaign-idle-window.md)** — the runner-inspectability
   folds' `--changed` campaign priced itself day-class (63 targets, 4,913 candidates); gate rode the
   nineteen killed ephemeral probes; measured prefix committed, sweep resumes on a quiet host.
@@ -39,12 +44,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   through any real dependency) and the shape verbs state presence, not capability absence;
   a direct-call-absence verb (structural.NoCall) would carry them. *Lands: capability charter — activates when a structural requirement needs a call-absence proof the signature/import verbs cannot carry.*
 
-- **[check-green-over-witness-failure](check-green-over-witness-failure.md)** — `check` exited green
-  naming a failed witness as uncacheable-blocked; owner to confirm against the `healthy` term.
-  *Lands: cross-tool train chunk 141.*
-- **[property-suite-witness-serving](property-suite-witness-serving.md)** — served witnesses hide
-  random-seed property flake (1026 served / 84 executed); re-execute property witnesses.
-  *Lands: cross-tool train chunk 141.*
 - **[gap-cannot-say-contradicted](gap-cannot-say-contradicted.md)** — a gap means
   "unwitnessed"; a consumer promoting a position to spec tier whose letter the shipped tree
   contradicts by design has no state to say so, and the corpus reads green against a contradicted
