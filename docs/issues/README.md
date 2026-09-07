@@ -53,7 +53,7 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[clause-structured-whole-claims](clause-structured-whole-claims.md)** — a requirement
   with clauses still admits whole-requirement `tests` claims, so the false-green channel closes
   only where authors choose clause claims; whether to refuse whole claims on clause-structured
-  requirements (a discipline choice). *Lands: user decision.*
+  requirements (a discipline choice). *Lands: cross-tool train chunk 176 (refuse by default, manifest opt-out — user ruling 2026-09-07)*
 - **[remedy-spellings-one-source](remedy-spellings-one-source.md)** — remedy literals are composed
   by hand at seven sites with nothing parsing them against the command tree; one composing source
   and one parse test. *Lands: cross-tool train chunk 169*

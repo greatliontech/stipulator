@@ -18,4 +18,4 @@ per corpus or the default, is a discipline choice the consumers own:
 it trades authoring friction (every clause-structured requirement
 needs one claim per clause) for a closed channel.
 
-Lands: user decision
+Lands: cross-tool train chunk 176 (refuse by default, manifest opt-out — user ruling 2026-09-07)
