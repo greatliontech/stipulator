@@ -11,4 +11,4 @@ name resolves to a tests- or proves-role binding of that requirement —
 by a document-level walk, and `retarget` rewriting pointers alongside
 binding symbols.
 
-Lands: user decision
+Lands: cross-tool train chunk 167

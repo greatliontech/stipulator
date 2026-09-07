@@ -17,4 +17,4 @@ home, since no environment variable sets the mode), making the
 descendant tree exactly what the runner owns, or the clause states
 the toolchain's detached telemetry as the one sanctioned escape.
 
-Lands: user decision
+Lands: cross-tool train chunk 166

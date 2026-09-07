@@ -49,24 +49,24 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   "unwitnessed"; a consumer promoting a position to spec tier whose letter the shipped tree
   contradicts by design has no state to say so, and the corpus reads green against a contradicted
   requirement. Ask: a `contradicted` state beside the gap, reported distinctly, resolving only on
-  an explicit fire. *Lands: user decision (bldc consumer report 2026-09-05).*
+  an explicit fire. *Lands: cross-tool train chunk 161*
 - **[clause-structured-whole-claims](clause-structured-whole-claims.md)** — a requirement
   with clauses still admits whole-requirement `tests` claims, so the false-green channel closes
   only where authors choose clause claims; whether to refuse whole claims on clause-structured
   requirements (a discipline choice). *Lands: user decision.*
 - **[remedy-spellings-one-source](remedy-spellings-one-source.md)** — remedy literals are composed
   by hand at seven sites with nothing parsing them against the command tree; one composing source
-  and one parse test. *Lands: user decision.*
-- **[two-record-stores](two-record-stores.md)** — the witness cache and the resolution cache are one store shape written twice; one store by record kind, and the served backend as the owned child's one form. *Lands: user decision (the ledger files were the third kind; the atomic writer folded, the store unification remains).*
+  and one parse test. *Lands: cross-tool train chunk 169*
+- **[two-record-stores](two-record-stores.md)** — the witness cache and the resolution cache are one store shape written twice; one store by record kind, and the served backend as the owned child's one form. *Lands: cross-tool train chunk 170*
 - **[seeded-witness-serving-follows-direct-call-classifier](seeded-witness-serving-follows-direct-call-classifier.md)** —
   the random-seeded serving exemption rides the direct-call witness classifier, so a
   helper-indirected rapid driver still serves; a transitive seeding class or a helper-admitting
-  classification is a design choice. *Lands: user decision.*
-- **[per-stream-color](per-stream-color.md)** — color is one switch over stdout and stderr; a redirected stderr costs stdout its color. Per-stream styler. *Lands: user decision.*
-- **[two-completion-mechanisms](two-completion-mechanisms.md)** — the selective runner and the health-judged recorder each implement install-at-last-covering-invocation; one completion tracker over capture groups. *Lands: user decision.*
-- **[cli-test-binary-builds](cli-test-binary-builds.md)** — seven CLI-driving tests each build the binary; one once-built helper. *Lands: user decision.*
-- **[knob-prose-identity](knob-prose-identity.md)** — schema tags and flag usage strings are pinned to the guidance document by name only; render or prefix-pin their text. *Lands: user decision.*
-- **[retarget-spec-enforcement-pointers](retarget-spec-enforcement-pointers.md)** — a spec clause's "Enforced by" pointer is neither rewritten by retarget nor checked against the store. *Lands: user decision.*
-- **[telemetry-sidecar-escapes-owned-process](telemetry-sidecar-escapes-owned-process.md)** — the toolchain's detached telemetry sidecar outlives a witness child's process group; turn it off per run or sanction the escape. *Lands: user decision.*
+  classification is a design choice. *Lands: cross-tool train chunk 159*
+- **[per-stream-color](per-stream-color.md)** — color is one switch over stdout and stderr; a redirected stderr costs stdout its color. Per-stream styler. *Lands: cross-tool train chunk 172*
+- **[two-completion-mechanisms](two-completion-mechanisms.md)** — the selective runner and the health-judged recorder each implement install-at-last-covering-invocation; one completion tracker over capture groups. *Lands: cross-tool train chunk 171*
+- **[cli-test-binary-builds](cli-test-binary-builds.md)** — seven CLI-driving tests each build the binary; one once-built helper. *Lands: cross-tool train chunk 172*
+- **[knob-prose-identity](knob-prose-identity.md)** — schema tags and flag usage strings are pinned to the guidance document by name only; render or prefix-pin their text. *Lands: cross-tool train chunk 169*
+- **[retarget-spec-enforcement-pointers](retarget-spec-enforcement-pointers.md)** — a spec clause's "Enforced by" pointer is neither rewritten by retarget nor checked against the store. *Lands: cross-tool train chunk 167*
+- **[telemetry-sidecar-escapes-owned-process](telemetry-sidecar-escapes-owned-process.md)** — the toolchain's detached telemetry sidecar outlives a witness child's process group; turn it off per run or sanction the escape. *Lands: cross-tool train chunk 166*
 - **[extractor-context-block-shapes](extractor-context-block-shapes.md)** — the compile extractor keeps two identical context-block shapes (noteBlock, annBlock) and two near-identical IR loops differing only in the attachment set. *Lands: the next change to the extractor's block types or the note/annotation IR loops.*
 - **[witnesscache-fingerprint-mirror](witnesscache-fingerprint-mirror.md)** — the witness cache mirrors gofresh's fingerprint field by field with two conversions and a reflective guard; every gofresh field addition is a red build here. *Lands: the next gofresh fingerprint field addition, or the next change to the witness-cache record format.*

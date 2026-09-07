@@ -21,6 +21,4 @@ over the owned child (`golang.Owned`) re-stating each verification role;
 folding the two into one backend whose typed path is the degenerate
 served path is the same collapse one level up.
 
-Lands: user decision — the ledger files were the third on-disk kind, and
-the shared writer was the fold that fit the change set that made them;
-the store unification is a refactor of its own.
+Lands: cross-tool train chunk 170

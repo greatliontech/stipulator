@@ -13,4 +13,4 @@ terminal verdict (`out.dim(...)`, `errs.red(...)`) — and every tinting
 call site named by the stream it writes to; the global switch and the
 stream-blind helpers are deleted.
 
-Lands: user decision
+Lands: cross-tool train chunk 172

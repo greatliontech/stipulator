@@ -1,6 +1,6 @@
 # A gap cannot say "the tree is witnessed to contradict this requirement"
 
-Lands: user decision (bldc consumer report 2026-09-05).
+Lands: cross-tool train chunk 161
 
 A gap record means "unwitnessed": the requirement has no witness, or
 its witness class is not what the cell admits, and the reason says why

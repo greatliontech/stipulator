@@ -29,4 +29,4 @@ does not make today:
   in-module helper indirection, which changes what `property`
   evidence means on the ladder.
 
-Lands: user decision.
+Lands: cross-tool train chunk 159

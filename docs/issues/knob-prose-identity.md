@@ -14,4 +14,4 @@ document's knob text (the terse wire detail as its first clause), or
 pinned as a verbatim prefix of it by the coverage tests — one
 mechanism, no hand copies.
 
-Lands: user decision
+Lands: cross-tool train chunk 169
