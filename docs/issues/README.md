@@ -22,9 +22,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   not text) flows into edition-2023 proto string fields; one invalid byte makes the check result
   unmarshallable. Cut-point half fixed; ingest-wide sanitization needs a design choice.
   *Lands: first field-observed marshal failure, or with the next executor-diagnostics change set.*
-- **[identity-walk-two-trackers](identity-walk-two-trackers.md)** — attachment and extent answer
-  "whose block is this" via two independent reset tables in two packages; the subset relationship
-  holds by coincidence. Collapse to one walk with two windows. *Lands: cross-tool train chunk 131.*
 - **[proto-backend](proto-backend.md)** — descriptor-level verification via protocompile;
   spec exists, five requirements gapped. *Lands: capability charter (gofresh docs/plans/capability-charters.md) — activates when a corpus needs wire evidence shape pins and Go witnesses cannot cover.*
 - **[out-of-process-backends](out-of-process-backends.md)** — trusted backend surfaces can move
@@ -71,4 +68,5 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[knob-prose-identity](knob-prose-identity.md)** — schema tags and flag usage strings are pinned to the guidance document by name only; render or prefix-pin their text. *Lands: user decision.*
 - **[retarget-spec-enforcement-pointers](retarget-spec-enforcement-pointers.md)** — a spec clause's "Enforced by" pointer is neither rewritten by retarget nor checked against the store. *Lands: user decision.*
 - **[telemetry-sidecar-escapes-owned-process](telemetry-sidecar-escapes-owned-process.md)** — the toolchain's detached telemetry sidecar outlives a witness child's process group; turn it off per run or sanction the escape. *Lands: user decision.*
-- **[gofresh-corpus-pin-lag](gofresh-corpus-pin-lag.md)** — `go.mod` pins gofresh v0.95.0 while v0.97.0 is tagged; the two releases behind are chunk 138's evidence-root anchoring and bracket-root preflight, which gomutant already consumes (fleet sweep 2026-09-07). *Lands: cross-tool train chunk 131 (stipulator's next chunk; the bump rides its change set).*
+- **[extractor-context-block-shapes](extractor-context-block-shapes.md)** — the compile extractor keeps two identical context-block shapes (noteBlock, annBlock) and two near-identical IR loops differing only in the attachment set. *Lands: the next change to the extractor's block types or the note/annotation IR loops.*
+- **[witnesscache-fingerprint-mirror](witnesscache-fingerprint-mirror.md)** — the witness cache mirrors gofresh's fingerprint field by field with two conversions and a reflective guard; every gofresh field addition is a red build here. *Lands: the next gofresh fingerprint field addition, or the next change to the witness-cache record format.*

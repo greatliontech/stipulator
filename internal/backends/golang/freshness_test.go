@@ -89,7 +89,9 @@ func TestMutatesSourceOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile("mutate.go", append(source, []byte("\n// changed during run\n")...), 0o644); err != nil {
+	// A declaration, not a comment: the canonical member form ignores
+	// comments, so only a member moves the closure.
+	if err := os.WriteFile("mutate.go", append(source, []byte("\nvar changedDuringRun int\n")...), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile("mutated.once", nil, 0o644); err != nil {

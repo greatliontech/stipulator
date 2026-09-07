@@ -494,7 +494,7 @@ every pre-field record's capture did. Its fingerprint keys are `maximalClosure`,
 `testVariantClosure`, `toolchain`,
 `buildConfig`, an optional `observationAssertion` plus `observationProof` pair, and
 optional `purityAssertion`, `dynamicStateVouches`, `singleSubjectDischarges`,
-`packageProcessDischarges`, `dynamicStateStrategy`,
+`packageProcessDischarges`, `dynamicStateStrategy`, `closureStrategy`,
 `runtimeInputs`, `runtimeDigest`, and numeric `resultKind`; closure (maximal and
 test-variant), build, and runtime
 digests are 16-byte lowercase hexadecimal values, the observation assertion and proof
@@ -557,7 +557,12 @@ of the most recently installed variants; eviction is by recency and costs only
 execution, and serving tries an identity's variants most recently installed
 first — the variant the last state change produced proves equivalent
 whenever the tree has not alternated since, so the first fingerprint check
-is usually the last.
+is usually the last. A record carries every derivation-strategy field the engine
+stamps on its fingerprint (the `…Strategy` keys the enumeration above lists): a strategy is a validity field the engine compares,
+so a record persisted before a strategy field reads as the empty strategy
+and fails closed to re-execution once, never serving a verdict computed
+under semantics the engine no longer implements; the machine and runtime
+guard fields are never persisted.
 
 **REQ-evidence-freshness-no-health** (behavior): A freshness-served test
 outcome MUST NOT contribute to package, command, or suite health; serving

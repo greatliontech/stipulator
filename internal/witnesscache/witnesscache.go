@@ -173,12 +173,19 @@ type Fingerprint struct {
 	// under another strategy, and a record persisted before the field
 	// reads as the empty strategy and fails closed to re-execution
 	// (the clean-break shape, no back-fill).
-	SingleSubjectDischarges  string       `json:"singleSubjectDischarges,omitempty"`
-	PackageProcessDischarges string       `json:"packageProcessDischarges,omitempty"`
-	DynamicStateStrategy     string       `json:"dynamicStateStrategy,omitempty"`
-	RuntimeInputs            string       `json:"runtimeInputs,omitempty"`
-	RuntimeDigest            string       `json:"runtimeDigest,omitempty"`
-	ResultKind               gofresh.Kind `json:"resultKind"`
+	SingleSubjectDischarges  string `json:"singleSubjectDischarges,omitempty"`
+	PackageProcessDischarges string `json:"packageProcessDischarges,omitempty"`
+	DynamicStateStrategy     string `json:"dynamicStateStrategy,omitempty"`
+	// ClosureStrategy is the closure identity's derivation the two
+	// closure hashes were folded under (gofresh
+	// REQ-closure-identity-strategy) — a validity field exactly as
+	// DynamicStateStrategy: the engine compares it, so a record persisted
+	// before the field reads as the empty strategy and fails closed to
+	// re-execution once (the clean-break shape, no back-fill).
+	ClosureStrategy string       `json:"closureStrategy,omitempty"`
+	RuntimeInputs   string       `json:"runtimeInputs,omitempty"`
+	RuntimeDigest   string       `json:"runtimeDigest,omitempty"`
+	ResultKind      gofresh.Kind `json:"resultKind"`
 }
 
 func (f *Fingerprint) UnmarshalJSON(data []byte) error {
@@ -229,6 +236,7 @@ func (f Fingerprint) ToGofresh() gofresh.Fingerprint {
 		SingleSubjectDischarges:  f.SingleSubjectDischarges,
 		PackageProcessDischarges: f.PackageProcessDischarges,
 		DynamicStateStrategy:     f.DynamicStateStrategy,
+		ClosureStrategy:          f.ClosureStrategy,
 		RuntimeInputs:            f.RuntimeInputs,
 		RuntimeDigest:            f.RuntimeDigest,
 		ResultKind:               f.ResultKind,
@@ -260,6 +268,7 @@ func FromGofresh(fp gofresh.Fingerprint) Fingerprint {
 		SingleSubjectDischarges:  fp.SingleSubjectDischarges,
 		PackageProcessDischarges: fp.PackageProcessDischarges,
 		DynamicStateStrategy:     fp.DynamicStateStrategy,
+		ClosureStrategy:          fp.ClosureStrategy,
 		RuntimeInputs:            fp.RuntimeInputs,
 		RuntimeDigest:            fp.RuntimeDigest,
 		ResultKind:               fp.ResultKind,

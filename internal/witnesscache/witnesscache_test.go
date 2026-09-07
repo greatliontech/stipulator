@@ -760,7 +760,7 @@ func TestFingerprintWireKeySet(t *testing.T) {
 		"maximalClosure", "testVariantClosure", "toolchain", "buildConfig",
 		"observationAssertion", "observationProof", "purityAssertion",
 		"dynamicStateVouches", "singleSubjectDischarges",
-		"packageProcessDischarges", "dynamicStateStrategy",
+		"packageProcessDischarges", "dynamicStateStrategy", "closureStrategy",
 		"runtimeInputs", "runtimeDigest", "resultKind",
 	}
 	specSet := map[string]bool{}

@@ -83,8 +83,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-profile-context-extent"
-  content_hash: "5d43693f3f4b6509030c7011ee94d485f19ac623a8510b5a6e2c40356a53f3a1"
-  source_hash: "3eeb9d72b139b413b376b3f5af39ad23a78d17cc4bb65aeb7074653ee0af963d"
+  content_hash: "ec079bb8ceb961207cfb91cc24d75f6cb792ce7c31d4942acb340aaac2489eb5"
+  source_hash: "c518af60ee356d15533acb47b82a7f8ea59cfe9c6a436bdd795a2a72a80d9c0f"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestContextExtentRidesContentHash"
   role: BINDING_ROLE_TESTS
@@ -93,8 +93,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-profile-context-extent"
-  content_hash: "5d43693f3f4b6509030c7011ee94d485f19ac623a8510b5a6e2c40356a53f3a1"
-  source_hash: "3eeb9d72b139b413b376b3f5af39ad23a78d17cc4bb65aeb7074653ee0af963d"
+  content_hash: "ec079bb8ceb961207cfb91cc24d75f6cb792ce7c31d4942acb340aaac2489eb5"
+  source_hash: "c518af60ee356d15533acb47b82a7f8ea59cfe9c6a436bdd795a2a72a80d9c0f"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestContextExtentBoundaries"
   role: BINDING_ROLE_TESTS
@@ -103,8 +103,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-profile-context-extent"
-  content_hash: "5d43693f3f4b6509030c7011ee94d485f19ac623a8510b5a6e2c40356a53f3a1"
-  source_hash: "3eeb9d72b139b413b376b3f5af39ad23a78d17cc4bb65aeb7074653ee0af963d"
+  content_hash: "ec079bb8ceb961207cfb91cc24d75f6cb792ce7c31d4942acb340aaac2489eb5"
+  source_hash: "c518af60ee356d15533acb47b82a7f8ea59cfe9c6a436bdd795a2a72a80d9c0f"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestContextExtentOnTerms"
   role: BINDING_ROLE_TESTS
@@ -113,8 +113,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-profile-context-extent"
-  content_hash: "5d43693f3f4b6509030c7011ee94d485f19ac623a8510b5a6e2c40356a53f3a1"
-  source_hash: "3eeb9d72b139b413b376b3f5af39ad23a78d17cc4bb65aeb7074653ee0af963d"
+  content_hash: "ec079bb8ceb961207cfb91cc24d75f6cb792ce7c31d4942acb340aaac2489eb5"
+  source_hash: "c518af60ee356d15533acb47b82a7f8ea59cfe9c6a436bdd795a2a72a80d9c0f"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/compile.extentParts"
   role: BINDING_ROLE_IMPLEMENTS
@@ -139,4 +139,54 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/compile.TestEdgeClausesAdmitTargetLists"
   role: BINDING_ROLE_TESTS
   shape_hash: "6bbbb7894bddc75189fe76e4131322ef9119f165ed23858dd6ca06f8bf55d2fa"
+}
+
+bindings {
+  requirement_id: "REQ-profile-note"
+  content_hash: "e39ea6ad606d1a3b5586ff083ab9aca7d0425227c57c8a930bd4be74c202d7b4"
+  source_hash: "7dcd0c9a5f33dc365288bfca5a10f6243a6ff4c1c349e0e8a86f3ecb6c574b2a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/profile.TestOneWalkAnswersAttachmentAndExtent"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "31af2226a9e30fb75a3c6cf53d06e026188fe16951566cf2005659d15fca23ab"
+}
+
+bindings {
+  requirement_id: "REQ-profile-context-extent"
+  content_hash: "ec079bb8ceb961207cfb91cc24d75f6cb792ce7c31d4942acb340aaac2489eb5"
+  source_hash: "c518af60ee356d15533acb47b82a7f8ea59cfe9c6a436bdd795a2a72a80d9c0f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/profile.TestOneWalkAnswersAttachmentAndExtent"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "31af2226a9e30fb75a3c6cf53d06e026188fe16951566cf2005659d15fca23ab"
+}
+
+bindings {
+  requirement_id: "REQ-profile-note"
+  content_hash: "e39ea6ad606d1a3b5586ff083ab9aca7d0425227c57c8a930bd4be74c202d7b4"
+  source_hash: "7dcd0c9a5f33dc365288bfca5a10f6243a6ff4c1c349e0e8a86f3ecb6c574b2a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/profile.TestNoteAttachmentWindowEdges"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c79e5d87d5662c5612aaacd36ce7650cc6ebf721442189fcdc94db8256ed10a0"
+}
+
+bindings {
+  requirement_id: "REQ-profile-context-extent"
+  content_hash: "ec079bb8ceb961207cfb91cc24d75f6cb792ce7c31d4942acb340aaac2489eb5"
+  source_hash: "c518af60ee356d15533acb47b82a7f8ea59cfe9c6a436bdd795a2a72a80d9c0f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/profile.TestNoteAttachmentWindowEdges"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c79e5d87d5662c5612aaacd36ce7650cc6ebf721442189fcdc94db8256ed10a0"
+}
+
+bindings {
+  requirement_id: "REQ-profile-context-extent"
+  content_hash: "ec079bb8ceb961207cfb91cc24d75f6cb792ce7c31d4942acb340aaac2489eb5"
+  source_hash: "c518af60ee356d15533acb47b82a7f8ea59cfe9c6a436bdd795a2a72a80d9c0f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestDetachedNoteInExtentRidesTheHash"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "784dc457fda8629fd5d3e50d8a3760f2200d0c5d6d8648565b966339a82eaa1e"
 }

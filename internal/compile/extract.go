@@ -1,6 +1,7 @@
 package compile
 
 import (
+	"fmt"
 	"strings"
 
 	gast "github.com/yuin/goldmark/ast"
@@ -103,17 +104,15 @@ func extractDocument(path string, root gast.Node, src []byte, refLabels []string
 		return l
 	}
 
-	// openExtent is the open context extent: the identity whose consent
-	// surface absorbs following note and annotation blocks until the
-	// next identity lead, heading, or thematic break
-	// (REQ-profile-context-extent). One pointer, so "two identities
-	// open at once" is unrepresentable; nil means no extent is open (a
-	// section-attached block joins none).
-	var openExtent *extent
-	extend := func(segs []profile.Seg, source string) {
-		if openExtent != nil {
-			openExtent.segs = append(openExtent.segs, segs)
-			openExtent.source = append(openExtent.source, source)
+	// Which extent a note or annotation joins is the profile walk's
+	// answer (Note.Context, Annotation.Context — REQ-profile-context-
+	// extent); this pass only maps each identity node to its extent and
+	// extends it. No boundary rule lives here.
+	extentOf := map[gast.Node]*extent{}
+	extend := func(identity gast.Node, segs []profile.Seg, source string) {
+		if e := extentOf[identity]; e != nil {
+			e.segs = append(e.segs, segs)
+			e.source = append(e.source, source)
 		}
 	}
 	for child := root.FirstChild(); child != nil; child = child.NextSibling() {
@@ -139,7 +138,6 @@ func extractDocument(path string, root gast.Node, src []byte, refLabels []string
 				d.sections = append(d.sections, s)
 			}
 			d.headings = append(d.headings, headingBlock{segs: segs, loc: loc(node)})
-			openExtent = nil
 		case *profile.Requirement:
 			rb := &reqBlock{
 				id:     node.ID,
@@ -153,7 +151,7 @@ func extractDocument(path string, root gast.Node, src []byte, refLabels []string
 				rb.clauses = append(rb.clauses, clauseBlock{label: c.Label, segs: c.Segs, loc: loc(c.Item)})
 			}
 			d.reqs = append(d.reqs, rb)
-			openExtent = &rb.extent
+			extentOf[node] = &rb.extent
 		case *profile.Term:
 			tb := &termBlock{
 				name:   node.Name,
@@ -162,34 +160,37 @@ func extractDocument(path string, root gast.Node, src []byte, refLabels []string
 				loc:    loc(node),
 			}
 			d.terms = append(d.terms, tb)
-			openExtent = &tb.extent
+			extentOf[node] = &tb.extent
 		case *profile.Note:
 			nb := &noteBlock{
 				segs:   profile.BlockSegs(node, src),
 				source: profile.Source(node, src),
 				loc:    loc(node),
 			}
-			switch a := node.AttachedTo.(type) {
+			switch a := node.AttachedTo().(type) {
 			case *profile.Requirement:
 				nb.attachedReq = a.ID
 			case *profile.Term:
 				nb.attachedTerm = a.Name
 			}
 			d.notes = append(d.notes, nb)
-			extend(nb.segs, nb.source)
-		case *gast.ThematicBreak:
-			// A thematic break detaches deliberately free-standing
-			// context from the preceding identity
-			// (REQ-profile-context-extent).
-			openExtent = nil
-		default:
+			extend(node.Context, nb.segs, nb.source)
+		case *profile.Annotation:
 			ab := &annBlock{
 				segs:   profile.BlockSegs(node, src),
 				source: profile.Source(node, src),
 				loc:    loc(node),
 			}
 			d.anns = append(d.anns, ab)
-			extend(ab.segs, ab.source)
+			extend(node.Context, ab.segs, ab.source)
+		case *gast.ThematicBreak:
+			// Structure only: the profile walk already closed the
+			// extent at it, and a break carries no text.
+		default:
+			// The profile walk wraps every other block; a node reaching
+			// here is a profile bug, never a document shape — dropping
+			// it silently would lose its text from every check.
+			panic(fmt.Sprintf("compile: profile walk left a %T unwrapped", child))
 		}
 	}
 	return d

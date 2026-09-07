@@ -75,9 +75,10 @@ func TestCheckDefaultExecutesOnlyTheStaleRemainder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Behavior-preserving byte change: the closure hash moves, the test
-	// stays green.
-	if err := writeFileUnder(dir, "ok/ok.go", fixtureOK+"\n// moved\n"); err != nil {
+	// Behavior-preserving source change — a declaration, not a comment:
+	// the canonical member form ignores comments, so only a member
+	// moves the closure hash; the test stays green.
+	if err := writeFileUnder(dir, "ok/ok.go", fixtureOK+"\nvar moved int\n"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -245,7 +246,7 @@ func TestCheckScopedIdsExecutesOnlyInScopeStale(t *testing.T) {
 	// Leg one: only the in-scope witness is stale. The scoped pass
 	// executes it and nothing else, while the out-of-scope requirement
 	// stays covered by its served fresh evidence - serving is whole-tree.
-	if err := writeFileUnder(dir, "ok/ok.go", fixtureOK+"\n// moved\n"); err != nil {
+	if err := writeFileUnder(dir, "ok/ok.go", fixtureOK+"\nvar moved int\n"); err != nil {
 		t.Fatal(err)
 	}
 	scoped, err := Run(context.Background(), dir, false, []string{"REQ-fix-a"})
@@ -278,10 +279,10 @@ func TestCheckScopedIdsExecutesOnlyInScopeStale(t *testing.T) {
 	// Leg two: both witnesses stale. The out-of-scope one is deliberately
 	// not executed and its requirement classes scope-blocked, never
 	// failing the scoped verdict on the boundary alone.
-	if err := writeFileUnder(dir, "ok/ok.go", fixtureOK+"\n// moved twice\n"); err != nil {
+	if err := writeFileUnder(dir, "ok/ok.go", fixtureOK+"\nvar movedTwice int\n"); err != nil {
 		t.Fatal(err)
 	}
-	if err := writeFileUnder(dir, "tri/tri.go", "package tri\n\nfunc Triple(n int) int { return 3 * n }\n\n// moved\n"); err != nil {
+	if err := writeFileUnder(dir, "tri/tri.go", "package tri\n\nfunc Triple(n int) int { return 3 * n }\n\nvar moved int\n"); err != nil {
 		t.Fatal(err)
 	}
 	scoped, err = Run(context.Background(), dir, false, []string{"REQ-fix-a"})

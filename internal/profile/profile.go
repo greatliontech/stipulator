@@ -6,8 +6,15 @@
 // goldmark parses a document, the transformer classifies paragraphs and
 // restructures the tree into typed nodes — a Requirement owns its lead
 // paragraph (marker stripped) and its payload blocks as children, a Note
-// carries its attachment as a field. Downstream consumers walk a normalized
-// tree and never re-derive structure.
+// carries its attachment and its context identity as fields, and every
+// other block becomes an Annotation carrying its context identity.
+// Downstream consumers walk a normalized tree and never re-derive
+// structure: "whose block is this" is answered once, by one walk with one
+// reset table, in two windows — the narrow attachment window (immediate
+// adjacency, REQ-profile-note) inside the wide extent window (up to the
+// next identity lead, heading, or thematic break,
+// REQ-profile-context-extent) — so a note's attachment is always an
+// identity whose extent it belongs to.
 //
 // The package is protobuf-free: it maps markdown to typed AST, and the
 // compile package maps typed AST to the IR.
@@ -26,6 +33,8 @@ var (
 	KindTerm = gast.NewNodeKind("Term")
 	// KindNote identifies Note nodes.
 	KindNote = gast.NewNodeKind("Note")
+	// KindAnnotation identifies Annotation nodes.
+	KindAnnotation = gast.NewNodeKind("Annotation")
 )
 
 // DeclaredEdge is an edge clause from a requirement's metadata
@@ -73,12 +82,52 @@ func (n *Term) Dump(src []byte, level int) {
 	gast.DumpHelper(n, src, level, map[string]string{"Name": n.Name}, nil)
 }
 
-// Note is a non-normative blockquote. Its child is the original blockquote;
-// AttachedTo points at the immediately preceding Requirement or Term in the
-// same section, or is nil when the note attaches to its enclosing section.
+// Note is a non-normative blockquote. Its child is the original blockquote.
+// Context is the identity whose context extent the note belongs to — the
+// last Requirement or Term since the last heading or thematic break — or
+// nil when the note joins no extent (REQ-profile-context-extent); the
+// note attaches to Context or to its enclosing section (REQ-profile-note):
+// attachment is the extent's adjacency window.
 type Note struct {
+	contextual
+	// Attached reports that the note lies in Context's attachment window
+	// — immediately after the identity's lead and payload, blockquotes
+	// only — so it attaches to Context; false attaches it to the
+	// enclosing section. A note attached to an identity other than its
+	// extent's is unrepresentable.
+	Attached bool
+}
+
+// AttachedTo returns the identity the note attaches to: Context when
+// Attached, nil for a section-attached note (REQ-profile-note).
+func (n *Note) AttachedTo() gast.Node {
+	if n.Attached {
+		return n.Context
+	}
+	return nil
+}
+
+// Annotation is any other block — ordinary prose, a list or table outside
+// a payload, code, HTML. Its child is the original block; Context is the
+// identity whose context extent it belongs to, or nil when it joins none
+// (REQ-profile-annotations, REQ-profile-context-extent).
+type Annotation struct {
+	contextual
+}
+
+// contextual is the shape a context block shares: one wrapped child and
+// the identity whose context extent it belongs to, or nil.
+type contextual struct {
 	gast.BaseBlock
-	AttachedTo gast.Node
+	Context gast.Node
+}
+
+// Kind reports the node kind.
+func (n *Annotation) Kind() gast.NodeKind { return KindAnnotation }
+
+// Dump renders the node for debugging.
+func (n *Annotation) Dump(src []byte, level int) {
+	gast.DumpHelper(n, src, level, nil, nil)
 }
 
 // Kind reports the node kind.

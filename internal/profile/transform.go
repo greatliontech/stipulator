@@ -150,7 +150,16 @@ func (t *transformer) Transform(doc *gast.Document, reader gtext.Reader, pc pars
 	}
 
 	titles := 0
-	var lastIdentity gast.Node // last Requirement or Term in the current section
+	// One identity window with one reset table answers "whose block is
+	// this" in two widths: identity is the open context extent's
+	// identity — the last Requirement or Term since the last heading or
+	// thematic break (REQ-profile-context-extent) — and adjacent says
+	// whether the walk is still in its attachment window — immediately
+	// after the lead and payload, blockquotes only (REQ-profile-note).
+	// A note attaches to identity exactly when adjacent, so an attached
+	// note always belongs to the extent it attaches to.
+	var identity gast.Node
+	adjacent := false
 
 	child := doc.FirstChild()
 	for child != nil {
@@ -160,22 +169,28 @@ func (t *transformer) Transform(doc *gast.Document, reader gtext.Reader, pc pars
 			if node.Level == 1 {
 				titles++
 			}
-			lastIdentity = nil
+			identity, adjacent = nil, false
+		case *gast.ThematicBreak:
+			// A thematic break detaches deliberately free-standing
+			// context from the preceding identity.
+			identity, adjacent = nil, false
 		case *gast.Paragraph:
 			if built := t.paragraph(doc, node, src, report); built != nil {
 				if _, isReq := built.(*Requirement); isReq {
 					next = adoptPayload(doc, built)
 				}
-				lastIdentity = built
+				identity, adjacent = built, true
 			} else {
-				lastIdentity = nil
+				annotate(doc, node, identity)
+				adjacent = false
 			}
 		case *gast.Blockquote:
-			note := &Note{AttachedTo: lastIdentity}
+			note := &Note{contextual: contextual{Context: identity}, Attached: adjacent}
 			doc.ReplaceChild(doc, node, note)
 			note.AppendChild(note, node)
 		default:
-			lastIdentity = nil
+			annotate(doc, node, identity)
+			adjacent = false
 		}
 		child = next
 	}
@@ -186,6 +201,14 @@ func (t *transformer) Transform(doc *gast.Document, reader gtext.Reader, pc pars
 			Message: fmt.Sprintf("document must contain exactly one level-1 heading, found %d", titles),
 		})
 	}
+}
+
+// annotate wraps a block that is neither identity, note, heading, nor
+// thematic break in an Annotation carrying its context identity.
+func annotate(doc *gast.Document, node gast.Node, identity gast.Node) {
+	ann := &Annotation{contextual: contextual{Context: identity}}
+	doc.ReplaceChild(doc, node, ann)
+	ann.AppendChild(ann, node)
 }
 
 // paragraph classifies a paragraph, replacing it with a Requirement or Term

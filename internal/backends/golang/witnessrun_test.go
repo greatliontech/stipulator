@@ -565,7 +565,9 @@ func TestWriter(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile("../served/lib.go", append(src, []byte("\n// moved mid-run\n")...), 0o644); err != nil {
+		// A declaration, not a comment: the canonical member form
+		// ignores comments, so only a member moves the closure.
+		if err := os.WriteFile("../served/lib.go", append(src, []byte("\nvar movedMidRun int\n")...), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -175,3 +175,42 @@ func TestRawSeparatorCannotForgeBoundary(t *testing.T) {
 		t.Fatalf("carried text retains the control byte: %q", f.GetText())
 	}
 }
+
+// A note that lies in an identity's extent without attaching to it — an
+// ordinary paragraph stands between — still rides the identity's content
+// hash, while a note after a heading rides nothing: the two windows
+// differ exactly here (REQ-profile-context-extent, REQ-profile-note).
+func TestDetachedNoteInExtentRidesTheHash(t *testing.T) {
+	stipulate.Covers(t, "REQ-profile-context-extent")
+	base := map[string]string{
+		"specs/a.md": "# Doc\n\n**REQ-a** (behavior): A MUST hold.\n\nProse between.\n\n> Detached note.\n\n## Section\n\n> Section note.\n",
+	}
+	spec, diags := compileFiles(t, base)
+	wantClean(t, diags)
+	orig := req(t, spec, "REQ-a").GetContentHash()
+	var attached int
+	for _, n := range spec.GetNotes() {
+		if n.HasAttachedTo() {
+			attached++
+		}
+	}
+	if attached != 0 {
+		t.Fatalf("%d notes attached, want none (prose stands between, the other follows a heading)", attached)
+	}
+	edited := map[string]string{
+		"specs/a.md": "# Doc\n\n**REQ-a** (behavior): A MUST hold.\n\nProse between.\n\n> EDITED detached note.\n\n## Section\n\n> Section note.\n",
+	}
+	spec2, diags := compileFiles(t, edited)
+	wantClean(t, diags)
+	if req(t, spec2, "REQ-a").GetContentHash() == orig {
+		t.Fatal("editing a detached note inside the extent did not move the hash")
+	}
+	sectionEdited := map[string]string{
+		"specs/a.md": "# Doc\n\n**REQ-a** (behavior): A MUST hold.\n\nProse between.\n\n> Detached note.\n\n## Section\n\n> EDITED section note.\n",
+	}
+	spec3, diags := compileFiles(t, sectionEdited)
+	wantClean(t, diags)
+	if req(t, spec3, "REQ-a").GetContentHash() != orig {
+		t.Fatal("editing a note past a heading moved REQ-a's hash")
+	}
+}

@@ -115,7 +115,10 @@ extent's canonical text rides the identity's content hash
 (REQ-model-content-hash), so editing a vocabulary table or layout block
 that reads as part of a requirement's contract demands the same
 re-consent as editing the paragraph itself. A thematic break detaches
-deliberately free-standing context from the preceding identity.
+deliberately free-standing context from the preceding identity. Attachment
+is the extent's adjacency window: a note attached to an identity belongs to
+that identity's extent — one answer to "whose block is this" in two widths,
+never two answers.
 
 ## Inert content
 
@@ -161,4 +164,5 @@ content (REQ-profile-code-inert), which is exempt from reference detection.
 
 **REQ-profile-annotations** (behavior): Content that is neither a requirement
 nor a term nor a note MUST compile to an annotation node attached to its
-enclosing section, preserved in the IR and carried into bundles for context.
+enclosing section, preserved in the IR and carried into bundles for context;
+which context extent it belongs to is REQ-profile-context-extent's rule.
