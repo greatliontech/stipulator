@@ -1,6 +1,10 @@
 # VMM passes the policy while every executed witness remains uncacheable
 
-Lands: user decision
+Lands: cross-tool train chunk 159 — stipulator's next gofresh bump (past
+v0.98.1, whose chunk 119 audited the nodwarf5 key the pinned v0.98.0
+refuses) re-verifies the report at 159's triage; closes if the
+uncacheable witnesses become cacheable under the audited key, re-slots
+at their root otherwise.
 
 ## Consumer Evidence
 
