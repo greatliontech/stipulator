@@ -2,7 +2,7 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
-- **[vmm-witness-cache-refusals](vmm-witness-cache-refusals.md)** - adopt the Go 1.27
+- **[vmm-witness-cache-refusals](vmm-witness-cache-refusals.md)** - adopt the Go 1.27 Lands: cross-tool train chunk 159 (re-verified at the gofresh bump past v0.98.1).
   experiment-identity repair and independently classify VMM's witness publication
   refusals without conflating policy success with reusable freshness.
   *Lands: user decision.*
