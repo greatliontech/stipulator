@@ -2,6 +2,10 @@ package golang
 
 import (
 	"context"
+	"go/ast"
+	"go/token"
+	"go/types"
+	"golang.org/x/tools/go/packages"
 
 	"errors"
 	"github.com/greatliontech/gofresh"
@@ -384,5 +388,242 @@ func TestExecutePolicyWitnessedRandomSeededNeverPublishes(t *testing.T) {
 	records := witnesscache.Load(tmp)
 	if len(records) != 1 || records[0].Test != "TestExample" {
 		t.Fatalf("records after a full execution = %+v, want the deterministic witness alone", records)
+	}
+}
+
+// A driver reached only through in-module helpers keeps its example
+// evidence class and is refused serving under a reason naming the first
+// helper — one hop, two hops, a method helper, and a helper that recurses
+// before driving alike — while a helper that reaches no driver serves,
+// a driverless cycle among helpers terminating the walk,
+// (REQ-evidence-witness-freshness's transitive seeding class beside
+// REQ-go-witness-class's direct-call classification).
+func TestHelperIndirectedDriverRefusesServing(t *testing.T) {
+	if testing.Short() {
+		t.Skip("reads the fixture backend the full tier loads")
+	}
+	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-go-witness-class")
+	fb := fixtureBackend(t)
+	symbols := []string{
+		"example.com/fixture/lib.TestPropViaHelper",
+		"example.com/fixture/lib.TestPropViaTwoHops",
+		"example.com/fixture/lib.TestPropViaMethod",
+		"example.com/fixture/lib.TestPropViaCycle",
+		"example.com/fixture/lib.TestPlainViaHelper",
+		"example.com/fixture/lib.TestPlainViaCycle",
+		"example.com/fixture/lib.TestPropViaOtherPackage",
+		"example.com/fixture/lib.TestPropViaGenericMethod",
+		"example.com/fixture/lib.TestPropViaDependencyHelper",
+		"example.com/fixture/lib.TestPropRapidCheck",
+		"example.com/fixture/lib.TestProofThenDrive",
+		"example.com/fixture/lib.TestDriveThenProof",
+		"example.com/fixture/lib.TestProofViaHelper",
+	}
+	for _, sym := range symbols[:9] {
+		if got := fb.WitnessClass(sym); got != verify.ExampleWitness {
+			t.Errorf("%s classified %v, want example — the evidence class stays direct-call", sym, got)
+		}
+	}
+	refused, err := fb.NeverServe(symbols)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"example.com/fixture/lib.TestPropViaHelper":  seededThroughReason("example.com/fixture/lib.runProp"),
+		"example.com/fixture/lib.TestPropViaTwoHops": seededThroughReason("example.com/fixture/lib.runPropTwice"),
+		"example.com/fixture/lib.TestPropViaMethod":  seededThroughReason("(example.com/fixture/lib.propRunner).Run"),
+		"example.com/fixture/lib.TestPropViaCycle":   seededThroughReason("example.com/fixture/lib.spin"),
+		// The other package's helper, the instantiated generic method
+		// (resolved to its origin); the dependency's own helper is
+		// outside the walk and serves.
+		"example.com/fixture/lib.TestPropViaOtherPackage":  seededThroughReason("example.com/fixture/helpers.Run"),
+		"example.com/fixture/lib.TestPropViaGenericMethod": seededThroughReason("(example.com/fixture/lib.runner[T]).Run"),
+		"example.com/fixture/lib.TestPropRapidCheck":       seededReason,
+		// Proof outranks property on the ladder and carries its seeding:
+		// a direct driver in either order, or a hop through a helper.
+		"example.com/fixture/lib.TestProofThenDrive": seededReason,
+		"example.com/fixture/lib.TestDriveThenProof": seededReason,
+		"example.com/fixture/lib.TestProofViaHelper": seededThroughReason("example.com/fixture/lib.runProp"),
+	}
+	if !maps.Equal(refused, want) {
+		t.Fatalf("NeverServe = %v, want %v", refused, want)
+	}
+	for _, sym := range symbols[len(symbols)-3:] {
+		if got := fb.WitnessClass(sym); got != verify.AnalyzerProof {
+			t.Errorf("%s classified %v, want proof — the ladder's top, seeded all the same", sym, got)
+		}
+	}
+	_, reason := fb.WitnessClassVerdict("example.com/fixture/lib.TestPropViaHelper")
+	if !strings.Contains(reason, "reached through example.com/fixture/lib.runProp") {
+		t.Fatalf("example reason = %q, want the hop named", reason)
+	}
+}
+
+// The walk answers the same under a scoped load: a helper in an
+// in-module package the scope did not hold is loaded on demand, so the
+// served backend's per-symbol scope never serves what the whole-tree
+// load refuses (REQ-evidence-witness-freshness).
+func TestScopedLoadReachesInModuleHelpers(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the fixture module scoped to one package")
+	}
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	scoped, err := newContext(context.Background(), "testdata/fixturemod", []string{"example.com/fixture/lib"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	scoped.walkMu.Lock()
+	ownership := scoped.inModule("example.com/fixture/helpers") != "" && scoped.inModule("pgregory.net/rapid") == ""
+	scoped.walkMu.Unlock()
+	if !ownership {
+		t.Fatal("module ownership wrong")
+	}
+	refused, err := scoped.NeverServe([]string{
+		"example.com/fixture/lib.TestPropViaOtherPackage",
+		"example.com/fixture/lib.TestPropViaDependencyHelper",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{"example.com/fixture/lib.TestPropViaOtherPackage": seededThroughReason("example.com/fixture/helpers.Run")}
+	if !maps.Equal(refused, want) {
+		t.Fatalf("scoped NeverServe = %v, want %v", refused, want)
+	}
+}
+
+// The walk fails closed where it has no declaration to read: a call the
+// type information cannot resolve (a helper package no view selects),
+// and an in-module package that will not load — never a silent serve
+// (REQ-evidence-witness-freshness's absence-of-proof rule).
+func TestSeedingWalkFailsClosedWithoutADeclaration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("reads the fixture backend the full tier loads")
+	}
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	fb := fixtureBackend(t)
+	refused, err := fb.NeverServe([]string{
+		"example.com/fixture/unresolved.TestViaTagged",
+		"example.com/fixture/lib.TestPropViaBadHelper",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A witness whose own package cannot resolve an import refuses
+	// through its own load gap, before any walk.
+	if why := refused["example.com/fixture/unresolved.TestViaTagged"]; !strings.HasPrefix(why, "unclassifiable witness:") || !strings.Contains(why, "load errors") {
+		t.Fatalf("unresolved import served or misattributed: %q", why)
+	}
+	// A helper whose body calls something undeclared loads with errors
+	// but indexes; the walk names the unresolved call.
+	if why := refused["example.com/fixture/lib.TestPropViaBadHelper"]; !strings.HasPrefix(why, "unclassifiable seeding:") || !strings.Contains(why, "call of mystery in example.com/fixture/badhelper.Run resolves to no declaration") {
+		t.Fatalf("unresolved call in a helper served or misattributed: %q", why)
+	}
+	// An in-module package whose on-demand load fails refuses serving
+	// under the seeding spelling — witnessed by injection: a scoped
+	// backend whose lazy configuration points at an empty directory.
+	scoped, err := newContext(context.Background(), "testdata/fixturemod", []string{"example.com/fixture/lib"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, cfgs := range scoped.lazyCfg {
+		for _, cfg := range cfgs {
+			cfg.Dir = t.TempDir()
+		}
+	}
+	broken, err := scoped.NeverServe([]string{"example.com/fixture/lib.TestPropViaOtherPackage"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if why := broken["example.com/fixture/lib.TestPropViaOtherPackage"]; !strings.HasPrefix(why, "unclassifiable seeding:") || !strings.Contains(why, "example.com/fixture/helpers") {
+		t.Fatalf("failed on-demand load served or misattributed: %q", why)
+	}
+	// An in-module package path the module does not hold: the on-demand
+	// load fails and the walk reports it, never nil.
+	pkg := types.NewPackage("example.com/fixture/nosuch", "nosuch")
+	ghost := types.NewFunc(token.NoPos, pkg, "Run", types.NewSignatureType(nil, nil, nil, nil, nil, false))
+	fb.walkMu.Lock()
+	fd, _, err := fb.funcDeclOf(SelectionKey(nil, ""), ghost)
+	fb.walkMu.Unlock()
+	if err == nil || fd != nil || !strings.Contains(err.Error(), "example.com/fixture/nosuch") {
+		t.Fatalf("ghost package: fd=%v err=%v; want a load error naming the package", fd, err)
+	}
+	// A dependency's function is outside the walk: nil and no error.
+	dep := types.NewPackage("pgregory.net/rapid", "rapid")
+	fd, _, err = func() (*ast.FuncDecl, *packages.Package, error) {
+		fb.walkMu.Lock()
+		defer fb.walkMu.Unlock()
+		return fb.funcDeclOf(SelectionKey(nil, ""), types.NewFunc(token.NoPos, dep, "Check", types.NewSignatureType(nil, nil, nil, nil, nil, false)))
+	}()
+	if err != nil || fd != nil {
+		t.Fatalf("dependency function: fd=%v err=%v; want the branch to end quietly", fd, err)
+	}
+}
+
+// The walk runs under each view's own selection: a helper split by
+// build tag drives the runner in one view and not the other, and
+// serving — one answer for the symbol — refuses because the tagged
+// view seeds it, while the default view alone would have served it
+// (REQ-evidence-witness-freshness across REQ-go-build-selections).
+func TestSeedingWalkIsPerSelection(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads a fixture module under two views")
+	}
+	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-go-build-selections")
+	neutralAmbient(t)
+	dir := writeModule(t, map[string]string{
+		"go.mod":            "module example.com/split\n\ngo 1.26\n\nrequire pgregory.net/rapid v1.3.0\n",
+		"go.sum":            "pgregory.net/rapid v1.3.0 h1:vBvO0VSqti75J1jjYqpgPNBLKMd1+gxa9fYo7vk/Exc=\npgregory.net/rapid v1.3.0/go.mod h1:dPlE4OBBxgXPqkP79flB6sJL1dx5azpI7HQ9MY9Z7uk=\n",
+		"lib/lib.go":        "package lib\n\nfunc Add(a, b int) int { return a + b }\n",
+		"lib/plain.go":      "//go:build !dst\n\npackage lib\n\nimport (\n\t\"testing\"\n\n\t\"pgregory.net/rapid\"\n)\n\nfunc splitDrive(t *testing.T, body func(*rapid.T)) {\n\tif Add(1, 1) != 2 {\n\t\tt.Fatal(\"broken\")\n\t}\n}\n",
+		"lib/dst.go":        "//go:build dst\n\npackage lib\n\nimport (\n\t\"testing\"\n\n\t\"pgregory.net/rapid\"\n)\n\nfunc splitDrive(t *testing.T, body func(*rapid.T)) {\n\trapid.Check(t, body)\n}\n",
+		"lib/split_test.go": "package lib\n\nimport (\n\t\"testing\"\n\n\t\"pgregory.net/rapid\"\n)\n\nfunc TestSplit(t *testing.T) {\n\tsplitDrive(t, func(rt *rapid.T) {\n\t\tif Add(2, 2) != 4 {\n\t\t\trt.Fatal(\"broken\")\n\t\t}\n\t})\n}\n",
+		// The same symbol declared twice by tag: a plain body in the
+		// default view, a DIRECT driver call in the dst view.
+		"lib/direct_default_test.go": "//go:build !dst\n\npackage lib\n\nimport \"testing\"\n\nfunc TestSplitDirect(t *testing.T) {\n\tif Add(3, 3) != 6 {\n\t\tt.Fatal(\"broken\")\n\t}\n}\n",
+		"lib/direct_dst_test.go":     "//go:build dst\n\npackage lib\n\nimport (\n\t\"testing\"\n\n\t\"pgregory.net/rapid\"\n)\n\nfunc TestSplitDirect(t *testing.T) {\n\trapid.Check(t, func(rt *rapid.T) {\n\t\tif Add(3, 3) != 6 {\n\t\t\trt.Fatal(\"broken\")\n\t\t}\n\t})\n}\n",
+		// A fuzz target declared twice by tag: a plain harness body in
+		// the default view, a rapid driver inside the dst callback —
+		// the fuzz classification must not bypass the union.
+		"lib/fuzz_default_test.go": "//go:build !dst\n\npackage lib\n\nimport \"testing\"\n\nfunc FuzzThing(f *testing.F) {\n\tf.Fuzz(func(t *testing.T, x int) {\n\t\tif Add(x, 0) != x {\n\t\t\tt.Fatal(\"broken\")\n\t\t}\n\t})\n}\n",
+		"lib/fuzz_dst_test.go":     "//go:build dst\n\npackage lib\n\nimport (\n\t\"testing\"\n\n\t\"pgregory.net/rapid\"\n)\n\nfunc FuzzThing(f *testing.F) {\n\tf.Fuzz(func(t *testing.T, x int) {\n\t\trapid.Check(t, func(rt *rapid.T) {\n\t\t\tif Add(x, 0) != x {\n\t\t\t\trt.Fatal(\"broken\")\n\t\t\t}\n\t\t})\n\t})\n}\n",
+	})
+	const symbol = "example.com/split/lib.TestSplit"
+	const direct = "example.com/split/lib.TestSplitDirect"
+	const fuzz = "example.com/split/lib.FuzzThing"
+	plain, err := newContext(context.Background(), dir, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	served, err := plain.NeverServe([]string{symbol, direct, fuzz})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(served) != 0 {
+		t.Fatalf("default view alone refused %v; neither default body drives", served)
+	}
+	dstPolicy(t, dir)
+	both, err := newContext(context.Background(), dir, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refused, err := both.NeverServe([]string{symbol, direct, fuzz})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		symbol: seededThroughReason("example.com/split/lib.splitDrive"),
+		direct: seededReason,
+		fuzz:   seededReason,
+	}
+	if !maps.Equal(refused, want) {
+		t.Fatalf("under the dst view: NeverServe = %v, want %v", refused, want)
+	}
+	for _, sym := range []string{symbol, direct} {
+		if got := both.WitnessClass(sym); got != verify.ExampleWitness {
+			t.Fatalf("%s class %v, want the first view's example class", sym, got)
+		}
+	}
+	if got := both.WitnessClass(fuzz); got != verify.PropertyWitness {
+		t.Fatalf("fuzz target class %v, want property by harness in every view", got)
 	}
 }

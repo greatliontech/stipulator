@@ -230,9 +230,29 @@ carries a deterministic outcome by equivalence, never one draw of a
 random one, so such a subject executes every run, its refusal
 attributed as uncacheable with that reason on both evidence forms,
 while a fuzz target replaying its committed seeds is deterministic
-over them and serves as any witness. The guarantee is exactly as
-strong as that classification: a driver reached only through a helper
-classifies `example` and serves as one. A subject the backend cannot
+over them and serves as any witness. Serving consults a TRANSITIVE
+seeding class beside that classification: a bound body that reaches a
+recognized run-time-seeded driver only through in-module helpers — the
+static callees the type information resolves (a plain or qualified
+call, a method call, an instantiated generic resolved to its origin),
+each declaration read from the loaded packages or loaded on demand from
+the member module owning its package under the walking witness's own
+build selection, so the walk answers the same whatever the load's
+scope, answers per selection where a helper is split by build tag, and
+stops where the module does — keeps its `example` evidence class (the
+classification is direct-call by contract) and is refused serving under
+a reason naming the first helper, since its executed quantification
+draws from a run-time seed exactly as a direct driver's does; serving
+is one answer for the symbol, so a direct driver call in any loaded
+view's body, or a hop found in any view, seeds it — whatever the
+resolved view's class, a proof witness or a fuzz target included; an
+in-module package the walk cannot load, a declaration the
+selection's view does not carry, or a call the type information resolves
+to no declaration refuses serving under a reason naming it (absence of
+proof never serves), a hop found outranking such a refusal; a driver
+reached only through a dependency's helper, a function value, or an
+interface dispatch is outside the walk and serves as an example
+witness. A subject the backend cannot
 classify at all is refused serving the same way under a reason naming
 the load gap — absence of proof never serves, and the refusal never
 reads as a property classification the code does not carry — and a

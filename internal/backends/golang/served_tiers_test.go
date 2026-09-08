@@ -120,8 +120,12 @@ func TestServedReresolvesWhenATestBodyChangesClass(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := ask(t, first, symbol); got.class != verify.ExampleWitness || got.refusal != "" {
-		t.Fatalf("a helper-driven test classed %+v; want example, no refusal", got)
+	// The helper-driven form keeps its example class and is already
+	// refused serving through the helper (the transitive seeding class);
+	// the inlined form below re-resolves to the direct refusal, so the
+	// record still moves with the compartment.
+	if got := ask(t, first, symbol); got.class != verify.ExampleWitness || got.refusal != seededThroughReason("example.com/seeded/lib.drive") {
+		t.Fatalf("a helper-driven test classed %+v; want example, refused through the helper", got)
 	}
 	if err := first.Close(); err != nil {
 		t.Fatal(err)
@@ -147,6 +151,25 @@ func TestServedReresolvesWhenATestBodyChangesClass(t *testing.T) {
 		if rec.Symbol == symbol && (rec.WitnessClass != "property" || rec.NeverServe != seededReason) {
 			t.Fatalf("republished record %+v carries no seeded refusal", rec)
 		}
+	}
+	// The class now depends on the helper's body too: restore the
+	// helper-driven TestB and drop the driver from the helper — the
+	// record re-resolves to a served example witness with no refusal.
+	if err := os.WriteFile(filepath.Join(dir, "lib", "b_test.go"), []byte("package lib\n\nimport \"testing\"\n\nfunc TestB(t *testing.T) {\n\tdrive(t)\n}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "lib", "a_test.go"), []byte("package lib\n\nimport \"testing\"\n\nfunc drive(t *testing.T) {\n\tif Add(1, 1) != 2 {\n\t\tt.Fatal(\"broken\")\n\t}\n}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	third, err := NewServed(ctx, dir, []string{symbol})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := ask(t, third, symbol); got.class != verify.ExampleWitness || got.refusal != "" {
+		t.Fatalf("after the helper lost the driver: %+v; want example, no refusal", got)
+	}
+	if err := third.Close(); err != nil {
+		t.Fatal(err)
 	}
 }
 

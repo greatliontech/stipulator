@@ -1020,3 +1020,23 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "2e64f22fcbbd6bf603f95dbcdceed423acba891242f58eca430f8859fa90b131"
 }
+
+bindings {
+  requirement_id: "REQ-go-witness-class"
+  content_hash: "0249d9244ca8d238a7bd57b36e3821207d53d374b75f7a261d7b807f59fa36ff"
+  source_hash: "f33a79c38d55f291a0249091c133287f7645262834994a4572a42faa0af4b7ff"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestHelperIndirectedDriverRefusesServing"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "62528deb1bd0a44e8bec9dd841864eff285956b521b72d1a32900b08bddb6728"
+}
+
+bindings {
+  requirement_id: "REQ-go-build-selections"
+  content_hash: "2cc9b8dbd6bb50dcbea35068fa5aa468b5b21ec7f57f9afde896eb04d83f42f7"
+  source_hash: "e2ecbaa2f99c44917925f016c9b1a767dc945191933946a94f328d4ff4ae5449"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestSeedingWalkIsPerSelection"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "820697ab80910e2ce858b24279608621e36e7b64d542e8d149b2f9b027dcc316"
+}

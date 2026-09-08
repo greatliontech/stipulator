@@ -2,11 +2,8 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
-- **[vmm-witness-cache-refusals](vmm-witness-cache-refusals.md)** - adopt the Go 1.27 Lands: cross-tool train chunk 159 (re-verified at the gofresh bump past v0.98.1).
-  experiment-identity repair and independently classify VMM's witness publication
-  refusals without conflating policy success with reusable freshness.
-  *Lands: user decision.*
-
+- **[witness-verdict-one-body-classifier](witness-verdict-one-body-classifier.md)** — the classifier inspects a body three ways (the rich resolved-view pass, the other-view direct test, the helper walk) and folds the union beside the class switch; one per-view classifyBody with a fold over views. *Lands: the next change to the witness classifier's verdict shape, or to the serving refusal set*
+- **[seeding-walk-unreached-routes](seeding-walk-unreached-routes.md)** — the transitive seeding walk stops at dependency helpers, function values, and interface dispatch, each a served-flake shape the spec states; gofresh's reachable closure would answer all three. *Lands: a field report of a served flake through one of these routes, or the next change to the seeding walk's callee resolution*
 - **[train-114-campaign-idle-window](train-114-campaign-idle-window.md)** — the runner-inspectability
   folds' `--changed` campaign priced itself day-class (63 targets, 4,913 candidates); gate rode the
   nineteen killed ephemeral probes; measured prefix committed, sweep resumes on a quiet host.
@@ -57,10 +54,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   by hand at seven sites with nothing parsing them against the command tree; one composing source
   and one parse test. *Lands: cross-tool train chunk 169*
 - **[two-record-stores](two-record-stores.md)** — the witness cache and the resolution cache are one store shape written twice; one store by record kind, and the served backend as the owned child's one form. *Lands: cross-tool train chunk 170*
-- **[seeded-witness-serving-follows-direct-call-classifier](seeded-witness-serving-follows-direct-call-classifier.md)** —
-  the random-seeded serving exemption rides the direct-call witness classifier, so a
-  helper-indirected rapid driver still serves; a transitive seeding class or a helper-admitting
-  classification is a design choice. *Lands: cross-tool train chunk 159*
 - **[per-stream-color](per-stream-color.md)** — color is one switch over stdout and stderr; a redirected stderr costs stdout its color. Per-stream styler. *Lands: cross-tool train chunk 172*
 - **[two-completion-mechanisms](two-completion-mechanisms.md)** — the selective runner and the health-judged recorder each implement install-at-last-covering-invocation; one completion tracker over capture groups. *Lands: cross-tool train chunk 171*
 - **[cli-test-binary-builds](cli-test-binary-builds.md)** — seven CLI-driving tests each build the binary; one once-built helper. *Lands: cross-tool train chunk 172*

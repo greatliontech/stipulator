@@ -19,3 +19,7 @@ func MakeCheck(prop func(*T)) func(*testing.T) {
 // Int mirrors a generator constructor: construction alone must not
 // classify as a property witness.
 func Int() int { return 0 }
+
+// Drive is a helper inside the dependency itself: a test driving through
+// it reaches the runner only outside the module.
+func Drive(t *testing.T, prop func(*T)) { Check(t, prop) }

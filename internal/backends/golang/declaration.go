@@ -3,6 +3,7 @@ package golang
 import (
 	"fmt"
 	"go/ast"
+	"go/types"
 
 	"golang.org/x/tools/go/packages"
 
@@ -22,16 +23,18 @@ func (b *Backend) funcDecl(symbol string) (*ast.FuncDecl, *packages.Package, err
 	if obj == nil {
 		return nil, nil, fmt.Errorf("symbol %s has no object", symbol)
 	}
-	for _, pkg := range b.pkgs {
-		for _, f := range pkg.Syntax {
-			for _, decl := range f.Decls {
-				fd, ok := decl.(*ast.FuncDecl)
-				if !ok {
-					continue
-				}
-				if pkg.TypesInfo.Defs[fd.Name] == obj {
-					return fd, pkg, nil
-				}
+	if fn, ok := obj.(*types.Func); ok {
+		// The object came from the first declaring view; its
+		// declaration is read from that same view, never another's.
+		if owner := b.typesPkg[fn.Pkg()]; owner != nil {
+			b.walkMu.Lock()
+			fd, pkg, err := b.funcDeclOf(b.selectionOf(owner), fn)
+			b.walkMu.Unlock()
+			if err != nil {
+				return nil, nil, err
+			}
+			if fd != nil {
+				return fd, pkg, nil
 			}
 		}
 	}
