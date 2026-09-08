@@ -318,10 +318,10 @@ func TestParseRoleAndConditions(t *testing.T) {
 	if r, err := ParseRole(""); err != nil || r != stipulatorv1.BindingRole_BINDING_ROLE_UNSPECIFIED {
 		t.Fatalf("empty role = %v %v", r, err)
 	}
-	if _, err := NewLandingCondition("REQ-au-a", "", "also", false); err == nil {
+	if _, err := NewLandingCondition("REQ-au-a", "", "also", false, false); err == nil {
 		t.Fatal("conflicting conditions accepted")
 	}
-	lc, err := NewLandingCondition("", "", "external", false)
+	lc, err := NewLandingCondition("", "", "external", false, false)
 	if err != nil || !lc.HasManual() {
 		t.Fatalf("manual condition: %v %v", lc, err)
 	}
@@ -390,7 +390,7 @@ func TestGapsBulk(t *testing.T) {
 	fsys := testFS(nil)
 	fsys["specs/a.md"] = &fstest.MapFile{Data: []byte(
 		"# T\n\n**REQ-au-a** (behavior): It MUST x.\n\n**REQ-au-b** (behavior): It MUST y.\n")}
-	lc, err := NewLandingCondition("", "", "later", false)
+	lc, err := NewLandingCondition("", "", "later", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -425,7 +425,7 @@ func TestGapsBulk(t *testing.T) {
 func TestGapExcusesValidatedAndRescopeSurfaced(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-verb", "REQ-gap-record")
 	fsys := testFS(nil)
-	lc, err := NewLandingCondition("", "", "later", false)
+	lc, err := NewLandingCondition("", "", "later", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}

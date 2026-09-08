@@ -303,6 +303,41 @@ func TestVerifySummaryOmitsFailureDiagnosticOutput(t *testing.T) {
 	}
 }
 
+// The check summary's gap tallies derive from the one shared tally:
+// open and due are the unresolved states, resolved apart, and the
+// contradicted count is the subset of the unresolved rows declared
+// contradicted — a resolved contradicted row leaves it
+// (REQ-gap-lifecycle).
+//
+//gofresh:pure
+func TestCheckSummaryCountsContradictedGapsApart(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-lifecycle", "REQ-report-check-result")
+	row := func(id string, state stipulatorv1.GapState, contradicted bool) *stipulatorv1.GapReport {
+		g := &stipulatorv1.GapReport{}
+		g.SetRequirementId(id)
+		g.SetState(state)
+		g.SetContradicted(contradicted)
+		return g
+	}
+	cov := &stipulatorv1.CoverageReport{}
+	cov.SetGaps([]*stipulatorv1.GapReport{
+		row("REQ-a", stipulatorv1.GapState_GAP_STATE_OPEN, true),
+		row("REQ-b", stipulatorv1.GapState_GAP_STATE_DUE, true),
+		row("REQ-c", stipulatorv1.GapState_GAP_STATE_RESOLVED, true),
+		row("REQ-d", stipulatorv1.GapState_GAP_STATE_OPEN, false),
+	})
+	res := &stipulatorv1.CheckResult{}
+	res.SetCoverage(cov)
+	view, err := CheckView(res, "summary", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := view.(*stipulatorv1.CheckSummary)
+	if sum.GetGapsOpen() != 2 || sum.GetGapsDue() != 1 || sum.GetGapsResolved() != 1 || sum.GetGapsContradicted() != 2 {
+		t.Fatalf("gap tallies = open %d due %d resolved %d contradicted %d, want 2/1/1/2", sum.GetGapsOpen(), sum.GetGapsDue(), sum.GetGapsResolved(), sum.GetGapsContradicted())
+	}
+}
+
 // When the result-level witness-selection diagnostic fires, rows red
 // solely on that boundary fold into reds_policy_blocked behind it; a red
 // for any other reason stays a visible row, and without the diagnostic

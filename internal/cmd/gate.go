@@ -12,6 +12,18 @@ import (
 	"github.com/greatliontech/stipulator/internal/views"
 )
 
+// gateGapNote spells a red requirement's standing gap on the gate's
+// row: its lifecycle state, and the contradicted class named beside it
+// — a known debt with a trigger reads apart from a coverage hole on
+// the triage surface too (REQ-gap-lifecycle).
+func gateGapNote(g coverage.Gap) string {
+	note := "gap " + g.State.String()
+	if g.Contradicted {
+		note += ", contradicted"
+	}
+	return note
+}
+
 func gateCmd() *cobra.Command {
 	var reqs []string
 	var bucket, filter, pathPrefix, view string
@@ -135,7 +147,7 @@ func printCoverage(cov *coverage.Report) {
 		if r.Bucket == coverage.Attested {
 			gapNote = dim("evidence")
 		} else if g, ok := gapByReq[r.Id]; ok {
-			gapNote = dim("gap " + g.State.String())
+			gapNote = dim(gateGapNote(g))
 		}
 		reason := ""
 		if len(r.Reasons) > 0 {
@@ -146,12 +158,14 @@ func printCoverage(cov *coverage.Report) {
 		}
 		fmt.Printf("  %-9s %-*s  %s  %s\n", bucket, width, r.Id, gapNote, reason)
 	}
-	fmt.Printf("coverage: %s covered, %s attested, %s uncovered, %s partial, %s stale, %s broken, %d exempt; gaps: %d\n",
+	tally := coverage.GapCounts(cov.Gaps, nil)
+	prunable := tally.Resolved
+	fmt.Printf("coverage: %s covered, %s attested, %s uncovered, %s partial, %s stale, %s broken, %d exempt; gaps: %s open, %d resolved\n",
 		green(fmt.Sprint(counts[coverage.Covered])), num(counts[coverage.Attested], yellow),
 		num(counts[coverage.Uncovered], yellow), num(counts[coverage.Partial], yellow),
 		num(counts[coverage.Stale], yellow), num(counts[coverage.Broken], red),
-		counts[coverage.Exempt], len(cov.Gaps))
-	if _, prunable := coverage.GapCounts(cov.Gaps, nil); prunable > 0 {
+		counts[coverage.Exempt], coverage.GapCountsString(tally.Standing(), tally.Contradicted), prunable)
+	if prunable > 0 {
 		noun := "gap"
 		if prunable > 1 {
 			noun = "gaps"

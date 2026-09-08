@@ -1290,13 +1290,14 @@ func (*landingCondition_Exists) isLandingCondition_Condition() {}
 func (*landingCondition_Manual) isLandingCondition_Condition() {}
 
 type ManualCondition struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Condition   *string                `protobuf:"bytes,1,opt,name=condition"`
-	xxx_hidden_Fired       bool                   `protobuf:"varint,2,opt,name=fired"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Condition    *string                `protobuf:"bytes,1,opt,name=condition"`
+	xxx_hidden_Fired        bool                   `protobuf:"varint,2,opt,name=fired"`
+	xxx_hidden_Contradicted bool                   `protobuf:"varint,3,opt,name=contradicted"`
+	XXX_raceDetectHookData  protoimpl.RaceDetectHookData
+	XXX_presence            [1]uint32
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *ManualCondition) Reset() {
@@ -1341,14 +1342,26 @@ func (x *ManualCondition) GetFired() bool {
 	return false
 }
 
+func (x *ManualCondition) GetContradicted() bool {
+	if x != nil {
+		return x.xxx_hidden_Contradicted
+	}
+	return false
+}
+
 func (x *ManualCondition) SetCondition(v string) {
 	x.xxx_hidden_Condition = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
 }
 
 func (x *ManualCondition) SetFired(v bool) {
 	x.xxx_hidden_Fired = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *ManualCondition) SetContradicted(v bool) {
+	x.xxx_hidden_Contradicted = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
 }
 
 func (x *ManualCondition) HasCondition() bool {
@@ -1365,6 +1378,13 @@ func (x *ManualCondition) HasFired() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
 }
 
+func (x *ManualCondition) HasContradicted() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
 func (x *ManualCondition) ClearCondition() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Condition = nil
@@ -1375,12 +1395,25 @@ func (x *ManualCondition) ClearFired() {
 	x.xxx_hidden_Fired = false
 }
 
+func (x *ManualCondition) ClearContradicted() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Contradicted = false
+}
+
 type ManualCondition_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	// The external condition, in prose, that cannot be machine-evaluated.
 	Condition *string
 	Fired     *bool
+	// The tree is witnessed to contradict the requirement's letter by
+	// design until the condition fires — a known debt with a trigger,
+	// not a coverage hole. The class lives on the manual condition
+	// because a contradicted letter has no coverage-defined terminal: a
+	// passing witness while unfired is the vacuous test the record
+	// exists to catch, so only the explicit fire can end it, and a
+	// machine condition cannot carry the class at all.
+	Contradicted *bool
 }
 
 func (b0 ManualCondition_builder) Build() *ManualCondition {
@@ -1388,12 +1421,16 @@ func (b0 ManualCondition_builder) Build() *ManualCondition {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Condition != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
 		x.xxx_hidden_Condition = b.Condition
 	}
 	if b.Fired != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
 		x.xxx_hidden_Fired = *b.Fired
+	}
+	if b.Contradicted != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_Contradicted = *b.Contradicted
 	}
 	return m0
 }
@@ -1498,10 +1535,11 @@ const file_stipulator_v1_records_proto_rawDesc = "" +
 	"\acovered\x18\x01 \x01(\tH\x00R\acovered\x12\x18\n" +
 	"\x06exists\x18\x02 \x01(\tH\x00R\x06exists\x128\n" +
 	"\x06manual\x18\x03 \x01(\v2\x1e.stipulator.v1.ManualConditionH\x00R\x06manualB\v\n" +
-	"\tcondition\"E\n" +
+	"\tcondition\"i\n" +
 	"\x0fManualCondition\x12\x1c\n" +
 	"\tcondition\x18\x01 \x01(\tR\tcondition\x12\x14\n" +
-	"\x05fired\x18\x02 \x01(\bR\x05fired\"&\n" +
+	"\x05fired\x18\x02 \x01(\bR\x05fired\x12\"\n" +
+	"\fcontradicted\x18\x03 \x01(\bR\fcontradicted\"&\n" +
 	"\n" +
 	"Tombstones\x12\x18\n" +
 	"\aretired\x18\x01 \x03(\tR\aretired*y\n" +

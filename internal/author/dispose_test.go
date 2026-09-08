@@ -279,7 +279,7 @@ func TestAuthoringStampsTheSourcePinAndEditorialNamesRehashes(t *testing.T) {
 	g := &stipulatorv1.Gap{}
 	g.SetRequirementId("REQ-au-b")
 	g.SetReason("r")
-	lands, err := NewLandingCondition("", "", "c", false)
+	lands, err := NewLandingCondition("", "", "c", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -397,7 +397,7 @@ func TestEditorialNoOpNamesItsReason(t *testing.T) {
 	// A current gap is as current as a current binding: the named
 	// re-pin over a requirement whose only record is a gap consenting
 	// to the present text writes nothing and says so.
-	lc, err := NewLandingCondition("", "", "later", false)
+	lc, err := NewLandingCondition("", "", "later", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}

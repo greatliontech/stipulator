@@ -2,12 +2,14 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -18,7 +20,7 @@ import (
 //
 // Deliberately not //gofresh:pure: builds and executes the CLI binary.
 func TestGapLifecycleCLI(t *testing.T) {
-	stipulate.Covers(t, "REQ-gap-bulk", "REQ-gap-retract", "REQ-gap-prune-dangling", "REQ-gap-list")
+	stipulate.Covers(t, "REQ-gap-bulk", "REQ-gap-retract", "REQ-gap-prune-dangling", "REQ-gap-list", "REQ-gap-verb")
 	if testing.Short() {
 		t.Skip("builds the CLI")
 	}
@@ -92,6 +94,15 @@ func TestGapLifecycleCLI(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, ".stipulator/gaps/gl-a.textproto")); !os.IsNotExist(err) {
 		t.Fatal("retraction left the record behind")
 	}
+	// The contradicted class rides a manual condition only, and is a
+	// declaration flag: refused on a retract and on a bare fire.
+	run(2, "gap", "--req", "REQ-gl-b", "--reason", "x", "--covered", "self", "--contradicted")
+	run(0, "gap", "--req", "REQ-gl-b", "--reason", "the schema contradicts the letter", "--manual", "the derivation lands", "--contradicted")
+	if c := read(".stipulator/gaps/gl-b.textproto"); !strings.Contains(c, "contradicted: true") {
+		t.Fatalf("declaration lost the class:\n%s", c)
+	}
+	run(2, "gap", "--req", "REQ-gl-b", "--retract", "--contradicted")
+	run(2, "gap", "--req", "REQ-gl-b", "--fired", "--contradicted")
 
 	// Orphan the remaining gap by dropping its requirement, then repair:
 	// check reports without deleting, the repair deletes, check goes clean.
@@ -108,8 +119,8 @@ func TestGapLifecycleCLI(t *testing.T) {
 	// evaluation is witness-free - and names the dangling record beside
 	// the in-corpus rows. It combines with no write flag.
 	out = run(0, "gap", "--list")
-	if !strings.Contains(out, "dangling") || !strings.Contains(out, "REQ-gl-b") {
-		t.Fatalf("list did not name the dangling record:\n%s", out)
+	if !strings.Contains(out, "dangling") || !strings.Contains(out, "REQ-gl-b") || !strings.Contains(out, " contradicted") {
+		t.Fatalf("list did not name the dangling record with its class:\n%s", out)
 	}
 	// The dangling record is a verification problem — a stated caveat on
 	// the listing, never a refusal.
@@ -137,5 +148,69 @@ func TestGapConditionFlagsAreRegistered(t *testing.T) {
 		if c.Flags().Lookup(name) == nil {
 			t.Errorf("condition flag %q is not registered on the gap verb", name)
 		}
+	}
+}
+
+// A stray --contradicted is a declaration flag: it refuses on a retract
+// and on a bare fire before any record is read, exactly as the served
+// face refuses it (REQ-gap-verb).
+//
+//gofresh:pure
+func TestGapContradictedFlagRefusesOnRetractAndBareFire(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-verb")
+	priorDir := chdir
+	chdir = t.TempDir()
+	t.Cleanup(func() { chdir = priorDir })
+	run := func(args ...string) error {
+		cmd := gapCmd()
+		cmd.SetArgs(args)
+		return cmd.ExecuteContext(context.Background())
+	}
+	if err := run("--req", "REQ-x", "--retract", "--contradicted"); err == nil || !strings.Contains(err.Error(), "--retract takes only --req") {
+		t.Fatalf("retract with --contradicted = %v, want refused", err)
+	}
+	if err := run("--req", "REQ-x", "--fired", "--contradicted"); err == nil || !strings.Contains(err.Error(), "--fired alone fires existing gaps") {
+		t.Fatalf("bare fire with --contradicted = %v, want refused", err)
+	}
+	// The read surface combines with no write flag, the class included —
+	// exactly as the served face refuses it.
+	if err := run("--list", "--contradicted"); err == nil || !strings.Contains(err.Error(), "--list is the read surface") {
+		t.Fatalf("list with --contradicted = %v, want refused", err)
+	}
+	// A condition by presence: the spelled-false form conditions too.
+	if err := run("--req", "REQ-x", "--retract", "--contradicted=false"); err == nil || !strings.Contains(err.Error(), "--retract takes only --req") {
+		t.Fatalf("retract with --contradicted=false = %v, want refused", err)
+	}
+}
+
+// The gate's red rows name the class beside the gap's state — a
+// contradicted debt never reads as a plain coverage hole on the triage
+// surface (REQ-gap-lifecycle).
+//
+//gofresh:pure
+func TestGateRowNamesTheContradictedClass(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-lifecycle")
+	if got := gateGapNote(coverage.Gap{State: coverage.Open, Contradicted: true}); got != "gap open, contradicted" {
+		t.Fatalf("note = %q", got)
+	}
+	if got := gateGapNote(coverage.Gap{State: coverage.Due}); got != "gap due" {
+		t.Fatalf("plain note = %q", got)
+	}
+}
+
+// One list row spells its declared bits in the shared order after the
+// condition, the class on an in-corpus row exactly as on a dangling
+// one, and the consent state after them (REQ-gap-list).
+//
+//gofresh:pure
+func TestGapListLineSpellsTheDeclaredBits(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-list")
+	t.Setenv("NO_COLOR", "1")
+	line := gapListLine("open", coverage.Gap{RequirementId: "REQ-x", Condition: "manual: the work lands", Fired: true, Contradicted: true, StaleConsent: true, Reason: "why"})
+	if !strings.Contains(line, "REQ-x  manual: the work lands contradicted fired consent-stale") {
+		t.Fatalf("row = %q", line)
+	}
+	if line := gapListLine("due", coverage.Gap{RequirementId: "REQ-y", Condition: "covered(REQ-x)", Reason: "why"}); strings.Contains(line, "contradicted") || strings.Contains(line, "fired") {
+		t.Fatalf("plain row carries bits: %q", line)
 	}
 }

@@ -98,7 +98,7 @@ func ExcusesString(xs []stipulatorv1.GapExcuse) string {
 	return strings.Join(names, ", ")
 }
 
-func NewLandingCondition(covered, exists, manual string, fired bool) (*stipulatorv1.LandingCondition, error) {
+func NewLandingCondition(covered, exists, manual string, fired, contradicted bool) (*stipulatorv1.LandingCondition, error) {
 	set := 0
 	for _, v := range []string{covered, exists, manual} {
 		if v != "" {
@@ -110,6 +110,11 @@ func NewLandingCondition(covered, exists, manual string, fired bool) (*stipulato
 	}
 	if fired && manual == "" {
 		return nil, fmt.Errorf("fired accompanies a manual condition (fire an existing gap with the fired flag alone)")
+	}
+	// A contradicted letter has no coverage-defined terminal, so the
+	// class rides only a manual condition (REQ-gap-conditions).
+	if contradicted && manual == "" {
+		return nil, fmt.Errorf("contradicted accompanies a manual condition: a contradicted letter has no coverage-defined terminal, name the condition that lands it")
 	}
 	lc := &stipulatorv1.LandingCondition{}
 	switch {
@@ -125,6 +130,9 @@ func NewLandingCondition(covered, exists, manual string, fired bool) (*stipulato
 		// record that simply lacks it.
 		if fired {
 			a.SetFired(true)
+		}
+		if contradicted {
+			a.SetContradicted(true)
 		}
 		lc.SetManual(a)
 	default:
@@ -721,8 +729,8 @@ func LandingConditionString(lc *stipulatorv1.LandingCondition) string {
 		return "exists(" + lc.GetExists() + ")"
 	case lc.HasManual():
 		s := "manual(" + lc.GetManual().GetCondition() + ")"
-		if lc.GetManual().GetFired() {
-			s += " [fired]"
+		for _, flag := range records.ManualFlags(lc.GetManual().GetContradicted(), lc.GetManual().GetFired()) {
+			s += " [" + flag + "]"
 		}
 		return s
 	}
@@ -828,8 +836,10 @@ func Gaps(fsys fs.FS, reqs []string, reason string, lands *stipulatorv1.LandingC
 				ExcusesString(prior.GetExcuses())+" -> "+ExcusesString(g.GetExcuses()))
 		// Preservation overriding an explicitly unfired declaration is
 		// surfaced like any other non-silent consequence (REQ-gap-verb):
-		// after preservation the old and new conditions compare equal, so
-		// the retarget note above cannot fire for it.
+		// with the condition otherwise unchanged the old and new compare
+		// equal after preservation, so the retarget note above cannot
+		// fire for it; a class flip on the same text is a retarget, whose
+		// note shows the preserved firing on its right-hand side.
 		case wantUnfired && g.GetLands().GetManual().GetFired():
 			notes = append(notes, id+": fired state preserved (unfire requires a changed condition, or retract and redeclare)")
 		}

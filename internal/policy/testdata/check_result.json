@@ -9,6 +9,7 @@
     "gaps": [
       {
         "condition": "manual: judged done",
+        "contradicted": true,
         "fired": true,
         "path": ".stipulator/gaps/y.textproto",
         "reason": "witness pending",

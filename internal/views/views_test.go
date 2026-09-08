@@ -186,10 +186,13 @@ func TestCoverageSummaryPinsCountsAndGapState(t *testing.T) {
 		},
 		// Asymmetric on purpose — two open, one resolved — so a
 		// resolved/open misclassification changes at least one tally.
+		// A due row is unresolved too: it counts among gaps_open and,
+		// contradicted, among gaps_contradicted.
 		Gaps: []coverage.Gap{
 			{RequirementId: "REQ-c", State: coverage.Open},
-			{RequirementId: "REQ-d", State: coverage.Open},
-			{RequirementId: "REQ-a", State: coverage.Resolved},
+			{RequirementId: "REQ-d", State: coverage.Open, Contradicted: true},
+			{RequirementId: "REQ-e", State: coverage.Due, Contradicted: true},
+			{RequirementId: "REQ-a", State: coverage.Resolved, Contradicted: true},
 		},
 	}
 	facts := Facts{Doc: map[string]string{}, Symbols: map[string][]string{}}
@@ -205,8 +208,11 @@ func TestCoverageSummaryPinsCountsAndGapState(t *testing.T) {
 	if sum.GetResolvedGapsPrunable() != 1 {
 		t.Fatalf("resolved_gaps_prunable = %d, want 1 (only REQ-a's gap is resolved)", sum.GetResolvedGapsPrunable())
 	}
-	if sum.GetGapsOpen() != 2 {
-		t.Fatalf("gaps_open = %d, want 2 (the resolved gap is excluded)", sum.GetGapsOpen())
+	if sum.GetGapsOpen() != 3 {
+		t.Fatalf("gaps_open = %d, want 3 (open and due; the resolved gap is excluded)", sum.GetGapsOpen())
+	}
+	if sum.GetGapsContradicted() != 2 {
+		t.Fatalf("gaps_contradicted = %d, want 2 (the open and the due contradicted gaps; the resolved one left the class)", sum.GetGapsContradicted())
 	}
 }
 

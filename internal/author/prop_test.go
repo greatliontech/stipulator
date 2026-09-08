@@ -83,7 +83,7 @@ func TestPropVerbsWriteOnlyRecords(t *testing.T) {
 				g := &stipulatorv1.Gap{}
 				g.SetRequirementId(target)
 				g.SetReason("generated reason")
-				lands, err := NewLandingCondition("", "", "generated condition", false)
+				lands, err := NewLandingCondition("", "", "generated condition", false, false)
 				if err != nil {
 					return nil, err
 				}

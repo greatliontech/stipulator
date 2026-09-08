@@ -23,7 +23,7 @@ func TestGapsSelfSentinel(t *testing.T) {
 	fsys := testFS(nil)
 	fsys["specs/b.md"] = &fstest.MapFile{Data: []byte(
 		"# T\n\n**REQ-au-x** (behavior): It MUST x.\n\n**REQ-au-y** (behavior): It MUST y.\n")}
-	lc, err := NewLandingCondition(SelfSentinel, "", "", false)
+	lc, err := NewLandingCondition(SelfSentinel, "", "", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestGapsCompileOnce(t *testing.T) {
 	m := testFS(nil)
 	m["specs/b.md"] = &fstest.MapFile{Data: []byte(
 		"# T\n\n**REQ-au-x** (behavior): It MUST x.\n\n**REQ-au-y** (behavior): It MUST y.\n\n**REQ-au-z** (behavior): It MUST z.\n")}
-	lc, err := NewLandingCondition(SelfSentinel, "", "", false)
+	lc, err := NewLandingCondition(SelfSentinel, "", "", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,7 +211,7 @@ func TestGapFiredPreservedOnRedeclare(t *testing.T) {
 		g := &stipulatorv1.Gap{}
 		g.SetRequirementId("REQ-au-a")
 		g.SetReason("new reason")
-		lc, err := NewLandingCondition("", "", condition, false)
+		lc, err := NewLandingCondition("", "", condition, false, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -232,7 +232,7 @@ func TestGapFiredPreservedOnRedeclare(t *testing.T) {
 	// The bulk surface surfaces the preservation when it overrides an
 	// explicitly unfired declaration — after preservation the conditions
 	// compare equal, so the ordinary retarget note cannot fire.
-	lcUnfired, err := NewLandingCondition("", "", "judged done", false)
+	lcUnfired, err := NewLandingCondition("", "", "judged done", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -256,6 +256,67 @@ func TestGapFiredPreservedOnRedeclare(t *testing.T) {
 	}
 }
 
+// The contradicted class rides only a manual condition — a contradicted
+// letter has no coverage-defined terminal — round-trips on the record,
+// renders in the condition's spelling, and flipping it on re-declaration
+// is a landing retarget surfaced like any other, the fired state still
+// preserved across an unchanged condition text (REQ-gap-conditions,
+// REQ-gap-verb, REQ-gap-record).
+//
+//gofresh:pure
+func TestGapContradictedClassRidesTheManualCondition(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-conditions", "REQ-gap-verb", "REQ-gap-record")
+	for _, machine := range [][2]string{{"REQ-au-a", ""}, {"", "REQ-au-a"}} {
+		if _, err := NewLandingCondition(machine[0], machine[1], "", false, true); err == nil || !strings.Contains(err.Error(), "contradicted accompanies a manual condition") {
+			t.Fatalf("contradicted with a machine condition %v = %v, want refused", machine, err)
+		}
+	}
+	lc, err := NewLandingCondition("", "", "the derivation lands", false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !lc.GetManual().GetContradicted() || LandingConditionString(lc) != "manual(the derivation lands) [contradicted]" {
+		t.Fatalf("condition = %s / %+v, want the class carried and rendered", LandingConditionString(lc), lc)
+	}
+	fsys := testFS(nil)
+	ups, notes, err := Gaps(fsys, []string{"REQ-au-a"}, "the shipped schema contradicts the letter", lc, nil)
+	if err != nil || len(notes) != 0 {
+		t.Fatalf("declare = %v %v", notes, err)
+	}
+	if !strings.Contains(string(ups[0].Content), "contradicted: true") {
+		t.Fatalf("record lacks the class:\n%s", ups[0].Content)
+	}
+	fsys[ups[0].Path] = &fstest.MapFile{Data: ups[0].Content}
+	// Fire it: the class stays, the condition fires.
+	fired, err := FireGaps(fsys, []string{"REQ-au-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c := string(fired[0].Content); !strings.Contains(c, "contradicted: true") || !strings.Contains(c, "fired: true") {
+		t.Fatalf("fire dropped a field:\n%s", c)
+	}
+	fsys[fired[0].Path] = &fstest.MapFile{Data: fired[0].Content}
+	// Dropping the class on re-declaration is a retarget, never silent,
+	// and the unchanged condition text keeps its fired state.
+	plain, err := NewLandingCondition("", "", "the derivation lands", false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ups, notes, err = Gaps(fsys, []string{"REQ-au-a"}, "re-judged", plain, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The flip is a retarget (the conditions compare unequal), so the
+	// preservation note is the retarget's right-hand side, not a second
+	// note.
+	if len(notes) != 1 || !strings.Contains(notes[0], "landing retargeted manual(the derivation lands) [contradicted] [fired] -> manual(the derivation lands) [fired]") {
+		t.Fatalf("class flip not surfaced as a retarget: %v", notes)
+	}
+	if c := string(ups[0].Content); strings.Contains(c, "contradicted") || !strings.Contains(c, "fired: true") {
+		t.Fatalf("re-declaration = %s, want the class gone and the firing preserved", c)
+	}
+}
+
 // Re-declaring an unchanged UNFIRED manual gap is silent: the built
 // condition must not carry explicit fired=false presence, which would
 // make proto.Equal see a retarget against every prior record that
@@ -267,7 +328,7 @@ func TestUnchangedRedeclareIsSilent(t *testing.T) {
 	fsys := testFS(map[string]string{
 		".stipulator/gaps/a.textproto": "requirement_id: \"REQ-au-a\"\nreason: \"r\"\nlands { manual { condition: \"c\" } }\n",
 	})
-	lc, err := NewLandingCondition("", "", "c", false)
+	lc, err := NewLandingCondition("", "", "c", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -285,10 +346,10 @@ func TestUnchangedRedeclareIsSilent(t *testing.T) {
 //gofresh:pure
 func TestNewLandingConditionFired(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-verb")
-	if _, err := NewLandingCondition("REQ-au-a", "", "", true); err == nil {
+	if _, err := NewLandingCondition("REQ-au-a", "", "", true, false); err == nil {
 		t.Fatal("fired accepted on a machine condition")
 	}
-	lc, err := NewLandingCondition("", "", "external", true)
+	lc, err := NewLandingCondition("", "", "external", true, false)
 	if err != nil || !lc.GetManual().GetFired() {
 		t.Fatalf("declare-fired: %v %v", lc, err)
 	}
@@ -353,7 +414,7 @@ func TestGapDeclarationStampsConsentAndValidatesTargets(t *testing.T) {
 	fsys := testFS(nil)
 	fsys["specs/b.md"] = &fstest.MapFile{Data: []byte(
 		"# T\n\n**REQ-au-x** (behavior): It MUST x.\n\n**REQ-au-y** (behavior): It MUST y.\n")}
-	lc, err := NewLandingCondition("REQ-au-y", "", "", false)
+	lc, err := NewLandingCondition("REQ-au-y", "", "", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -381,7 +442,7 @@ func TestGapDeclarationStampsConsentAndValidatesTargets(t *testing.T) {
 	bad := &stipulatorv1.Gap{}
 	bad.SetRequirementId("REQ-au-x")
 	bad.SetReason("r")
-	blc, _ := NewLandingCondition("the ingest plan's first chunk", "", "", false)
+	blc, _ := NewLandingCondition("the ingest plan's first chunk", "", "", false, false)
 	bad.SetLands(blc)
 	if _, _, _, err := Gap(fsys, bad); err == nil || !strings.Contains(err.Error(), "identifier grammar") || !strings.Contains(err.Error(), "manual") {
 		t.Fatalf("free-text covered target = %v, want a grammar refusal naming manual", err)
@@ -392,7 +453,7 @@ func TestGapDeclarationStampsConsentAndValidatesTargets(t *testing.T) {
 	prosp := &stipulatorv1.Gap{}
 	prosp.SetRequirementId("REQ-au-x")
 	prosp.SetReason("r")
-	elc, _ := NewLandingCondition("", "REQ-not-yet-authored", "", false)
+	elc, _ := NewLandingCondition("", "REQ-not-yet-authored", "", false, false)
 	prosp.SetLands(elc)
 	pup, _, pnotes, err := Gap(fsys, prosp)
 	if err != nil {
@@ -421,7 +482,7 @@ func TestGapRedeclarationSurfacesConsentRestamp(t *testing.T) {
 	g := &stipulatorv1.Gap{}
 	g.SetRequirementId("REQ-au-x")
 	g.SetReason("updated reason")
-	mlc, _ := NewLandingCondition("", "", "ops", false)
+	mlc, _ := NewLandingCondition("", "", "ops", false, false)
 	g.SetLands(mlc)
 	up, _, notes, err := Gap(fsys, g)
 	if err != nil {

@@ -155,3 +155,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "b8e3b73e6b078ff35f271eee74bc919f16735c2ca47df09c116550f6ed9558df"
 }
+
+bindings {
+  requirement_id: "REQ-report-check-result"
+  content_hash: "a853d263988e750118f37bf6b0ad798622761c49ccdde4e9291a206a2021a31a"
+  source_hash: "cb7c5b2b9625ea709087af9136b3bd27a3259290465d6587e9a58aa259a6696f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/views.TestCheckSummaryCountsContradictedGapsApart"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5cdf0022b887a089faf68c300e16f17ac7f37d0370add82dc6d842d9869925bc"
+}

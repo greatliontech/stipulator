@@ -41,11 +41,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   through any real dependency) and the shape verbs state presence, not capability absence;
   a direct-call-absence verb (structural.NoCall) would carry them. *Lands: capability charter — activates when a structural requirement needs a call-absence proof the signature/import verbs cannot carry.*
 
-- **[gap-cannot-say-contradicted](gap-cannot-say-contradicted.md)** — a gap means
-  "unwitnessed"; a consumer promoting a position to spec tier whose letter the shipped tree
-  contradicts by design has no state to say so, and the corpus reads green against a contradicted
-  requirement. Ask: a `contradicted` state beside the gap, reported distinctly, resolving only on
-  an explicit fire. *Lands: cross-tool train chunk 161*
 - **[clause-structured-whole-claims](clause-structured-whole-claims.md)** — a requirement
   with clauses still admits whole-requirement `tests` claims, so the false-green channel closes
   only where authors choose clause claims; whether to refuse whole claims on clause-structured

@@ -134,6 +134,14 @@ message ManualCondition {
   // The external condition, in prose, that cannot be machine-evaluated.
   string condition = 1;
   bool fired = 2;
+  // The tree is witnessed to contradict the requirement's letter by
+  // design until the condition fires — a known debt with a trigger,
+  // not a coverage hole. The class lives on the manual condition
+  // because a contradicted letter has no coverage-defined terminal: a
+  // passing witness while unfired is the vacuous test the record
+  // exists to catch, so only the explicit fire can end it, and a
+  // machine condition cannot carry the class at all.
+  bool contradicted = 3;
 }
 
 // Tombstones is the permanent registry of retired identities — requirement

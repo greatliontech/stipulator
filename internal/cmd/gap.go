@@ -18,12 +18,12 @@ import (
 // presence makes a call a declaration rather than a bare fire,
 // retraction, or listing. Every name is a registered flag (pinned by
 // test: an unregistered name would read as never present).
-var conditionFlags = []string{"covered", "exists", "manual", "reason", "excuses"}
+var conditionFlags = []string{"covered", "exists", "manual", "reason", "excuses", "contradicted"}
 
 func gapCmd() *cobra.Command {
 	var reqs, excuseNames []string
 	var reasonVals, coveredVals, existsVals, manualVals []string
-	var fired, retract, list bool
+	var fired, contradicted, retract, list bool
 	c := &cobra.Command{
 		Use:   "gap",
 		Short: guidanceShort("gap"),
@@ -86,7 +86,7 @@ func gapCmd() *cobra.Command {
 				}
 				return applyUpdates(chdir, ups)
 			}
-			lc, err := author.NewLandingCondition(coveredID, existsID, manual, fired)
+			lc, err := author.NewLandingCondition(coveredID, existsID, manual, fired, contradicted)
 			if err != nil {
 				return err
 			}
@@ -111,8 +111,9 @@ func gapCmd() *cobra.Command {
 	c.Flags().StringArrayVar(&manualVals, "manual", nil, "lands on this externally judged condition, fired explicitly")
 	c.Flags().StringArrayVar(&excuseNames, "excuses", nil, "violation class the gap excuses: uncovered, stale, or broken (repeatable; default uncovered alone)")
 	c.Flags().BoolVar(&fired, "fired", false, "mark the manual condition fired (alone: fire existing gaps)")
+	c.Flags().BoolVar(&contradicted, "contradicted", false, "with --manual: the tree contradicts the requirement's letter by design until the condition fires — reported apart from unwitnessed gaps, resolving only on the explicit fire")
 	c.Flags().BoolVar(&retract, "retract", false, "delete the gap records instead of declaring (dangling records included)")
-	c.Flags().BoolVar(&list, "list", false, "list every gap record with its evaluated state (open|due|resolved|dangling); witness evidence gathers only for the gap-relevant requirements")
+	c.Flags().BoolVar(&list, "list", false, "list every gap record with its evaluated state (open|due|resolved|dangling) and class (contradicted); witness evidence gathers only for the gap-relevant requirements")
 	registerReqCompletions(c, "req", "covered", "exists")
 	return c
 }
@@ -160,20 +161,6 @@ func gapListRun(ctx context.Context) error {
 		fmt.Fprintln(os.Stderr, yellow(fmt.Sprintf("%d verification problems - evaluated states may misreport; run stipulator verify", len(rep.Problems))))
 	}
 	cov := coverage.Evaluate(spec, rep, store, testRun != nil, pol)
-	row := func(state, id, condition string, manualFired, staleConsent bool, reason string) {
-		fired := ""
-		if manualFired {
-			fired = " fired"
-		}
-		// A suspended excuse is a triage fact on the record row itself:
-		// the requirement-side reason appears only once the requirement
-		// is red (REQ-gap-consent).
-		consent := ""
-		if staleConsent {
-			consent = " consent-stale"
-		}
-		fmt.Printf("%-9s %s  %s%s%s  %s\n", state, id, condition, fired, consent, dim(reason))
-	}
 	known := records.HashesOf(spec)
 	for _, g := range cov.Gaps {
 		// The evaluation's row for an out-of-corpus record is a
@@ -181,7 +168,7 @@ func gapListRun(ctx context.Context) error {
 		if !known.Known(g.RequirementId) {
 			continue
 		}
-		row(g.State.String(), g.RequirementId, g.Condition, g.Fired, g.StaleConsent, g.Reason)
+		fmt.Println(gapListLine(g.State.String(), g))
 	}
 	// Dangling records are a triage fact, not a refusal: the list is
 	// where they are found (their repairs are retraction and the
@@ -190,7 +177,29 @@ func gapListRun(ctx context.Context) error {
 		if known.Known(gf.Gap.GetRequirementId()) {
 			continue
 		}
-		row("dangling", gf.Gap.GetRequirementId(), coverage.ConditionText(gf.Gap.GetLands()), gf.Gap.GetLands().GetManual().GetFired(), false, gf.Gap.GetReason())
+		manual := gf.Gap.GetLands().GetManual()
+		fmt.Println(gapListLine("dangling", coverage.Gap{
+			RequirementId: gf.Gap.GetRequirementId(), Reason: gf.Gap.GetReason(),
+			Condition: coverage.ConditionText(gf.Gap.GetLands()),
+			Fired:     manual.GetFired(), Contradicted: manual.GetContradicted(),
+		}))
 	}
 	return nil
+}
+
+// gapListLine renders one list row: the state word, the requirement,
+// its condition with the declared bits in the one shared order, the
+// consent state, and the reason. A suspended excuse is a triage fact
+// on the record row itself: the requirement-side reason appears only
+// once the requirement is red (REQ-gap-consent).
+func gapListLine(state string, g coverage.Gap) string {
+	flags := ""
+	for _, flag := range records.ManualFlags(g.Contradicted, g.Fired) {
+		flags += " " + flag
+	}
+	consent := ""
+	if g.StaleConsent {
+		consent = " consent-stale"
+	}
+	return fmt.Sprintf("%-9s %s  %s%s%s  %s", state, g.RequirementId, g.Condition, flags, consent, dim(g.Reason))
 }

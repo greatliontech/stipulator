@@ -126,6 +126,12 @@ type Gap struct {
 	// Fired is the manual condition's fired bit; false for machine
 	// conditions.
 	Fired bool
+	// Contradicted marks a manual condition declaring the letter
+	// contradicted by design until it fires: a known debt with a
+	// trigger, its own row class, never a coverage hole; it resolves
+	// through the manual fire alone, exactly as any unfired manual gap
+	// stays open on a covered requirement (REQ-gap-lifecycle).
+	Contradicted bool
 	// StaleConsent marks a record whose content pin differs from its
 	// requirement's current text: it excuses nothing until re-consented
 	// (REQ-gap-consent). Surfaced on the record row too — the
@@ -150,22 +156,63 @@ type Report struct {
 // GatePasses reports the gate verdict.
 func (r *Report) GatePasses() bool { return len(r.Violations) == 0 }
 
-// GapCounts tallies gaps by disposition among the kept requirements
-// (keep == nil counts all): open is the unresolved count, resolved is the
-// prunable count. The summary's counters and the gate's prunable hint both
-// derive from this one tally, so the two surfaces cannot drift.
-func GapCounts(gaps []Gap, keep map[string]bool) (open, resolved int) {
+// GapCounts tallies the report's gaps among the kept requirements
+// (keep == nil counts all) into the one GapTally every summary derives
+// from — the coverage summary's counters, the gate's line and prunable
+// hint, and, through GapCountsWire over the wire rows, the check
+// summary and the served list line — so no two surfaces can drift.
+func GapCounts(gaps []Gap, keep map[string]bool) GapTally {
+	var t GapTally
 	for _, g := range gaps {
 		if keep != nil && !keep[g.RequirementId] {
 			continue
 		}
-		if g.State == Resolved {
-			resolved++
-		} else {
-			open++
-		}
+		t.Add(g.State == Resolved, g.State == Due, g.Contradicted)
 	}
-	return
+	return t
+}
+
+// GapTally is the one gap tally every summary derives from, over the
+// evaluated rows in either form (the report's Gap or the wire
+// GapReport): Open and Due are the unresolved states, and Contradicted
+// is the subset of the unresolved rows declared contradicted — a known
+// debt with a trigger, named apart from the coverage holes
+// (REQ-gap-lifecycle). A dangling wire row is a records-and-corpus
+// fact outside the lifecycle and tallies nowhere here.
+type GapTally struct {
+	Open, Due, Resolved, Contradicted int
+}
+
+// Standing is the unresolved count, open and due together.
+func (t GapTally) Standing() int { return t.Open + t.Due }
+
+// Add tallies one row from its three facts.
+func (t *GapTally) Add(resolved, due, contradicted bool) {
+	switch {
+	case resolved:
+		t.Resolved++
+		return
+	case due:
+		t.Due++
+	default:
+		t.Open++
+	}
+	if contradicted {
+		t.Contradicted++
+	}
+}
+
+// GapCountsWire tallies wire rows exactly as GapCounts tallies report
+// rows — one predicate, two spellings of the row.
+func GapCountsWire(rows []*stipulatorv1.GapReport) GapTally {
+	var t GapTally
+	for _, g := range rows {
+		if g.GetState() == stipulatorv1.GapState_GAP_STATE_DANGLING {
+			continue
+		}
+		t.Add(g.GetState() == stipulatorv1.GapState_GAP_STATE_RESOLVED, g.GetState() == stipulatorv1.GapState_GAP_STATE_DUE, g.GetContradicted())
+	}
+	return t
 }
 
 // Policy resolves each (clause kind, keyword) cell to its minimum
@@ -550,6 +597,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 			Reason:       gf.Gap.GetReason(),
 			Condition:    ConditionText(gf.Gap.GetLands()),
 			Fired:        gf.Gap.GetLands().GetManual().GetFired(),
+			Contradicted: gf.Gap.GetLands().GetManual().GetContradicted(),
 			StaleConsent: drifted,
 		})
 	}
@@ -796,6 +844,17 @@ func ConditionText(lc *stipulatorv1.LandingCondition) string {
 		return "manual: " + lc.GetManual().GetCondition()
 	}
 	return ""
+}
+
+// GapCountsString renders the standing gaps for the human summaries:
+// the unresolved count, and the contradicted subset named beside it
+// whenever it is non-zero — a known debt with a trigger reads apart
+// from a coverage hole.
+func GapCountsString(open, contradicted int) string {
+	if contradicted == 0 {
+		return fmt.Sprint(open)
+	}
+	return fmt.Sprintf("%d (%d contradicted)", open, contradicted)
 }
 
 // conditionHolds evaluates a machine landing condition; manual

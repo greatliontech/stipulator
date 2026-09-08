@@ -121,9 +121,10 @@ binding the renamed test.
 - `exists` (mcp, cli) — lands when this requirement exists (one shared value, repetition refused).
 - `manual` (mcp, cli) — lands on this externally judged condition, fired explicitly (one shared value, repetition refused).
 - `fired` (mcp, cli) — mark the manual condition fired (without manual: fire the existing gaps).
+- `contradicted` (mcp, cli) — with manual: the tree contradicts the requirement's letter by design until the condition fires; reported apart from unwitnessed gaps (its own count and row class), resolving only on the explicit fire — a passing witness while unfired is the vacuous test the record exists to catch; refused with a machine condition.
 - `retract` (mcp, cli) — delete the gap records instead of declaring (dangling records included; retraction never touches the tombstone registry).
 - `excuses` (mcp, cli) — violation classes the gap excuses, from uncovered|stale|broken (comma-separated on mcp; repeatable on the cli; default uncovered alone).
-- `list` (mcp, cli) — list every gap record with its declaration fields and evaluated state (open|due|resolved|dangling) — the read surface, witness evidence gathering only for the gap-relevant requirements; editing a gap is re-declaring it.
+- `list` (mcp, cli) — list every gap record with its declaration fields, evaluated state (open|due|resolved|dangling), and class (contradicted) — the read surface, witness evidence gathering only for the gap-relevant requirements; editing a gap is re-declaring it.
 **when:** use gap to record a known coverage hole with the condition
 that lands it — never to silence a red without a reason; batches
 apply all-or-nothing, and list is the read surface.

@@ -102,11 +102,17 @@ func renderGap(g *stipulatorv1.Gap) []byte {
 		fmt.Fprintf(&b, "lands { exists: %s }\n", strconv.Quote(lc.GetExists()))
 	case lc.HasManual():
 		a := lc.GetManual()
+		// The firing and the class are rendered in field order, each
+		// only when set, so a record without them stays byte-identical
+		// to one written before the fields existed.
+		flags := ""
 		if a.GetFired() {
-			fmt.Fprintf(&b, "lands { manual { condition: %s fired: true } }\n", strconv.Quote(a.GetCondition()))
-		} else {
-			fmt.Fprintf(&b, "lands { manual { condition: %s } }\n", strconv.Quote(a.GetCondition()))
+			flags += " fired: true"
 		}
+		if a.GetContradicted() {
+			flags += " contradicted: true"
+		}
+		fmt.Fprintf(&b, "lands { manual { condition: %s%s } }\n", strconv.Quote(a.GetCondition()), flags)
 	}
 	for _, x := range g.GetExcuses() {
 		fmt.Fprintf(&b, "excuses: %s\n", x.String())
@@ -121,6 +127,20 @@ func Render(bf BindingFile) ([]byte, error) {
 		return nil, fmt.Errorf("%s:%d: comment outside the leading header block; move commentary to the commit message first", bf.Path, line)
 	}
 	return renderBindingSet(bf), nil
+}
+
+// ManualFlags spells a manual condition's declared bits in the one
+// order every human surface uses — the class before the firing — so a
+// list row and a landing-condition rendering never disagree.
+func ManualFlags(contradicted, fired bool) []string {
+	var flags []string
+	if contradicted {
+		flags = append(flags, "contradicted")
+	}
+	if fired {
+		flags = append(flags, "fired")
+	}
+	return flags
 }
 
 // RenderGapFile re-renders one gap file through the machine-owned

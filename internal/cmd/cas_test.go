@@ -132,7 +132,7 @@ func TestVerbsStampPriors(t *testing.T) {
 		t.Fatalf("retraction prior = %q absent=%v, want the record's bytes", ups[0].Prior, ups[0].PriorAbsent)
 	}
 
-	lc, err := author.NewLandingCondition("", "", "later", false)
+	lc, err := author.NewLandingCondition("", "", "later", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}

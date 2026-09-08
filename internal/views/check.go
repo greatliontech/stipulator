@@ -204,20 +204,11 @@ func checkSummary(res *stipulatorv1.CheckResult) *stipulatorv1.CheckSummary {
 		out.SetRedsOmitted(omitted)
 		out.SetRedsPolicyBlocked(blocked)
 		out.SetRedsScopeBlocked(scopeBlocked)
-		var open, due, resolved int32
-		for _, g := range cov.GetGaps() {
-			switch g.GetState() {
-			case stipulatorv1.GapState_GAP_STATE_DUE:
-				due++
-			case stipulatorv1.GapState_GAP_STATE_RESOLVED:
-				resolved++
-			default:
-				open++
-			}
-		}
-		out.SetGapsOpen(open)
-		out.SetGapsDue(due)
-		out.SetGapsResolved(resolved)
+		tally := coverage.GapCountsWire(cov.GetGaps())
+		out.SetGapsOpen(int32(tally.Open))
+		out.SetGapsDue(int32(tally.Due))
+		out.SetGapsResolved(int32(tally.Resolved))
+		out.SetGapsContradicted(int32(tally.Contradicted))
 		violations := cov.GetViolations()
 		if len(violations) > redRowCap {
 			out.SetViolationsOmitted(int32(len(violations) - redRowCap))

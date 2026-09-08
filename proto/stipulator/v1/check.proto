@@ -167,6 +167,9 @@ message CheckSummary {
   int32 gaps_open = 17;
   int32 gaps_due = 18;
   int32 gaps_resolved = 19;
+  // The subset of gaps_open and gaps_due declared contradicted, named
+  // apart from the coverage holes.
+  int32 gaps_contradicted = 38;
   // Capped like the red rows; the omitted counters keep every
   // truncation loud.
   repeated string violations = 20;

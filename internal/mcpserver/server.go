@@ -1079,15 +1079,16 @@ func (s *Server) toolUnbind(ctx context.Context, req *mcp.CallToolRequest, in un
 }
 
 type gapIn struct {
-	Requirement string `json:"requirement,omitempty" jsonschema:"requirement identifiers, comma-separated (all share the reason and landing condition; not with list)"`
-	Reason      string `json:"reason,omitempty" jsonschema:"why the gap exists (required unless retracting or firing)"`
-	Covered     string `json:"covered,omitempty" jsonschema:"lands when this requirement is covered (self = each requirement's own coverage)"`
-	Exists      string `json:"exists,omitempty" jsonschema:"lands when this requirement exists"`
-	Manual      string `json:"manual,omitempty" jsonschema:"lands on this externally judged condition, fired explicitly"`
-	Fired       bool   `json:"fired,omitempty" jsonschema:"mark the manual condition fired (without manual: fire the existing gaps)"`
-	Retract     bool   `json:"retract,omitempty" jsonschema:"delete the gap records instead of declaring (dangling records included)"`
-	Excuses     string `json:"excuses,omitempty" jsonschema:"violation classes the gap excuses, comma-separated from uncovered|stale|broken (default: uncovered alone)"`
-	List        bool   `json:"list,omitempty" jsonschema:"list every gap record with its declaration fields and evaluated state (open|due|resolved|dangling) - the read surface; witness evidence gathers only for the gap-relevant requirements; combines with no write field (editing a gap is re-declaring it)"`
+	Requirement  string `json:"requirement,omitempty" jsonschema:"requirement identifiers, comma-separated (all share the reason and landing condition; not with list)"`
+	Reason       string `json:"reason,omitempty" jsonschema:"why the gap exists (required unless retracting or firing)"`
+	Covered      string `json:"covered,omitempty" jsonschema:"lands when this requirement is covered (self = each requirement's own coverage)"`
+	Exists       string `json:"exists,omitempty" jsonschema:"lands when this requirement exists"`
+	Manual       string `json:"manual,omitempty" jsonschema:"lands on this externally judged condition, fired explicitly"`
+	Fired        bool   `json:"fired,omitempty" jsonschema:"mark the manual condition fired (without manual: fire the existing gaps)"`
+	Contradicted bool   `json:"contradicted,omitempty" jsonschema:"with manual: the tree contradicts the requirement's letter by design until the condition fires - reported apart from unwitnessed gaps, resolving only on the explicit fire"`
+	Retract      bool   `json:"retract,omitempty" jsonschema:"delete the gap records instead of declaring (dangling records included)"`
+	Excuses      string `json:"excuses,omitempty" jsonschema:"violation classes the gap excuses, comma-separated from uncovered|stale|broken (default: uncovered alone)"`
+	List         bool   `json:"list,omitempty" jsonschema:"list every gap record with its declaration fields, evaluated state (open|due|resolved|dangling), and class (contradicted) - the read surface; witness evidence gathers only for the gap-relevant requirements; combines with no write field (editing a gap is re-declaring it)"`
 }
 
 // gapOut is the gap tool's result: the write fields, plus the list
@@ -1103,7 +1104,7 @@ type gapOut struct {
 }
 
 func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn) (*mcp.CallToolResult, gapOut, error) {
-	conditioned := in.Covered != "" || in.Exists != "" || in.Manual != "" || in.Reason != "" || in.Excuses != ""
+	conditioned := in.Covered != "" || in.Exists != "" || in.Manual != "" || in.Reason != "" || in.Excuses != "" || in.Contradicted
 	if in.List {
 		if in.Requirement != "" || conditioned || in.Fired || in.Retract {
 			return nil, gapOut{}, fmt.Errorf("list is the read surface and combines with no write field: editing a gap is re-declaring it")
@@ -1142,7 +1143,7 @@ func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn
 		}
 		return out.result(), gapOut{writeOut: out}, nil
 	}
-	lc, lcErr := author.NewLandingCondition(in.Covered, in.Exists, in.Manual, in.Fired)
+	lc, lcErr := author.NewLandingCondition(in.Covered, in.Exists, in.Manual, in.Fired, in.Contradicted)
 	if lcErr != nil {
 		return nil, gapOut{}, lcErr
 	}
@@ -1226,10 +1227,14 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 	prog.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
 	cov := coverage.Evaluate(spec, rep, store, tr != nil, pol)
 	known := records.HashesOf(spec)
-	counts := map[stipulatorv1.GapState]int{}
+	dangling := 0
+	var reports []*stipulatorv1.GapReport
 	var rows []map[string]any
 	addRow := func(m *stipulatorv1.GapReport) error {
-		counts[m.GetState()]++
+		if m.GetState() == stipulatorv1.GapState_GAP_STATE_DANGLING {
+			dangling++
+		}
+		reports = append(reports, m)
 		b, err := protojson.Marshal(m)
 		if err != nil {
 			return err
@@ -1257,6 +1262,7 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 		m.SetReason(gf.Gap.GetReason())
 		m.SetCondition(coverage.ConditionText(gf.Gap.GetLands()))
 		m.SetFired(gf.Gap.GetLands().GetManual().GetFired())
+		m.SetContradicted(gf.Gap.GetLands().GetManual().GetContradicted())
 		if err := addRow(m); err != nil {
 			return nil, gapOut{}, terminalToolError(prog, ctx, err)
 		}
@@ -1280,12 +1286,13 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 	if n := len(rep.Problems); n > 0 {
 		out.Notes = []string{fmt.Sprintf("%d verification problems - evaluated states may misreport; run verify", n)}
 	}
-	line := fmt.Sprintf("%d gap records: %d open, %d due, %d resolved, %d dangling",
-		len(rows),
-		counts[stipulatorv1.GapState_GAP_STATE_OPEN],
-		counts[stipulatorv1.GapState_GAP_STATE_DUE],
-		counts[stipulatorv1.GapState_GAP_STATE_RESOLVED],
-		counts[stipulatorv1.GapState_GAP_STATE_DANGLING])
+	// Every count on the line comes from the one shared tally, rows
+	// capped or not, the class named apart over the unresolved
+	// in-corpus rows; a dangling row is outside the lifecycle and counts
+	// in dangling alone (REQ-gap-list).
+	tally := coverage.GapCountsWire(reports)
+	line := fmt.Sprintf("%d gap records: %d open, %d due, %d resolved, %d dangling, %d contradicted",
+		len(rows), tally.Open, tally.Due, tally.Resolved, dangling, tally.Contradicted)
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	return stampedResult(textOnly(line), prog), out, nil
 }

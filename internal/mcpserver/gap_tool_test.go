@@ -51,6 +51,30 @@ func TestGapToolBatchFireRetract(t *testing.T) {
 	}}); err != nil || res.IsError {
 		t.Fatalf("gap manual: %v %+v", err, res)
 	}
+	// The contradicted class rides a manual condition only, and is a
+	// declaration field: refused on a retract, a bare fire, and the list.
+	if res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "gap", Arguments: map[string]any{
+		"requirement": "REQ-m-b", "reason": "the schema contradicts the letter", "covered": "self", "contradicted": true,
+	}}); err != nil || !res.IsError {
+		t.Fatalf("contradicted with a machine condition did not refuse: %v %+v", err, res)
+	}
+	for _, args := range []map[string]any{
+		{"requirement": "REQ-m-a", "retract": true, "contradicted": true},
+		{"requirement": "REQ-m-a", "fired": true, "contradicted": true},
+		{"list": true, "contradicted": true},
+	} {
+		if res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "gap", Arguments: args}); err != nil || !res.IsError {
+			t.Fatalf("%v did not refuse the stray class: %v %+v", args, err, res)
+		}
+	}
+	if res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "gap", Arguments: map[string]any{
+		"requirement": "REQ-m-b", "reason": "the schema contradicts the letter", "manual": "the derivation lands", "contradicted": true,
+	}}); err != nil || res.IsError {
+		t.Fatalf("gap contradicted: %v %+v", err, res)
+	}
+	if c := writes[bPath]; !strings.Contains(string(c), "contradicted: true") {
+		t.Fatalf("declaration lost the class:\n%s", c)
+	}
 	if res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "gap", Arguments: map[string]any{
 		"requirement": "REQ-m-a", "fired": true,
 	}}); err != nil || res.IsError {
@@ -154,14 +178,38 @@ func TestPruneToolDanglingMode(t *testing.T) {
 func TestGapToolListRowsStatesAndScope(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-list", "REQ-gap-lifecycle", "REQ-mcp-tools")
 	var got map[gofresh.Subject]bool
+	// The class rides every row shape: a resolved row keeps it and
+	// leaves the count, an open row carries it and counts, a machine row
+	// cannot carry it, and a dangling row names it while counting in
+	// dangling alone.
 	sess, writes := harnessWith(t, map[string]string{
+		// Every count on the line pairwise distinct — 5 open, 3 due, 1
+		// resolved, 2 dangling, 4 contradicted — so a count sourced from
+		// the wrong field, or two counts swapped, changes the string.
+		"specs/a.md":                       doc + "\n**REQ-m-c** (behavior): It MUST z.\n\n**REQ-m-d** (behavior): It MUST w.\n\n**REQ-m-e** (behavior): It MUST v.\n\n**REQ-m-f** (behavior): It MUST u.\n\n**REQ-m-g** (behavior): It MUST t.\n\n**REQ-m-h** (behavior): It MUST s.\n\n**REQ-m-i** (behavior): It MUST r.\n",
 		".stipulator/bindings/a.textproto": pinnedBindingFor(t, "REQ-m-a", "example.com/p.TestA", "s"),
 		".stipulator/gaps/m-a.textproto": "requirement_id: \"REQ-m-a\"\nreason: \"external judgment\"\n" +
-			"lands {\n  manual {\n    condition: \"judged done\"\n    fired: true\n  }\n}\n",
+			"lands {\n  manual {\n    condition: \"judged done\"\n    fired: true\n    contradicted: true\n  }\n}\n",
 		".stipulator/gaps/m-b.textproto": "requirement_id: \"REQ-m-b\"\nreason: \"lands with the sibling\"\n" +
 			"lands {\n  covered: \"REQ-m-a\"\n}\n",
-		".stipulator/gaps/ghost.textproto": "requirement_id: \"REQ-m-ghost\"\nreason: \"left behind\"\n" +
+		".stipulator/gaps/m-c.textproto": "requirement_id: \"REQ-m-c\"\nreason: \"the letter is contradicted by design\"\n" +
+			"lands {\n  manual {\n    condition: \"the derivation lands\"\n    contradicted: true\n  }\n}\n",
+		".stipulator/gaps/m-d.textproto": "requirement_id: \"REQ-m-d\"\nreason: \"the other letter is contradicted by design\"\n" +
+			"lands {\n  manual {\n    condition: \"the second derivation lands\"\n    contradicted: true\n  }\n}\n",
+		".stipulator/gaps/m-e.textproto": "requirement_id: \"REQ-m-e\"\nreason: \"deferred\"\n" +
+			"lands {\n  manual {\n    condition: \"ops signs off\"\n  }\n}\n",
+		".stipulator/gaps/m-f.textproto": "requirement_id: \"REQ-m-f\"\nreason: \"deferred\"\n" +
+			"lands {\n  manual {\n    condition: \"ops signs off\"\n  }\n}\n",
+		".stipulator/gaps/m-g.textproto": "requirement_id: \"REQ-m-g\"\nreason: \"deferred\"\n" +
+			"lands {\n  manual {\n    condition: \"ops signs off\"\n  }\n}\n",
+		".stipulator/gaps/m-h.textproto": "requirement_id: \"REQ-m-h\"\nreason: \"contradicted until the fire, fired\"\n" +
+			"lands {\n  manual {\n    condition: \"the third derivation lands\"\n    fired: true\n    contradicted: true\n  }\n}\n",
+		".stipulator/gaps/m-i.textproto": "requirement_id: \"REQ-m-i\"\nreason: \"contradicted until the fire, fired\"\n" +
+			"lands {\n  manual {\n    condition: \"the fourth derivation lands\"\n    fired: true\n    contradicted: true\n  }\n}\n",
+		".stipulator/gaps/ghost2.textproto": "requirement_id: \"REQ-m-ghost2\"\nreason: \"left behind too\"\n" +
 			"lands {\n  manual {\n    condition: \"c\"\n  }\n}\n",
+		".stipulator/gaps/ghost.textproto": "requirement_id: \"REQ-m-ghost\"\nreason: \"left behind\"\n" +
+			"lands {\n  manual {\n    condition: \"c\"\n    contradicted: true\n  }\n}\n",
 	}, func(s *Server) {
 		s.runTests = func(_ context.Context, _ *golang.Capture, _ verify.WitnessSeeding, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {
 			got = scope
@@ -187,8 +235,8 @@ func TestGapToolListRowsStatesAndScope(t *testing.T) {
 	if err := json.Unmarshal(b, &out); err != nil {
 		t.Fatal(err)
 	}
-	if len(out.Gaps) != 3 {
-		t.Fatalf("rows = %d, want 3:\n%s", len(out.Gaps), b)
+	if len(out.Gaps) != 11 {
+		t.Fatalf("rows = %d, want 11:\n%s", len(out.Gaps), b)
 	}
 	states := map[string]*stipulatorv1.GapReport{}
 	for _, raw := range out.Gaps {
@@ -199,23 +247,45 @@ func TestGapToolListRowsStatesAndScope(t *testing.T) {
 		states[g.GetRequirementId()] = g
 	}
 	if g := states["REQ-m-a"]; g.GetState() != stipulatorv1.GapState_GAP_STATE_RESOLVED ||
-		!g.GetFired() || g.GetCondition() != "manual: judged done" || g.GetReason() != "external judgment" {
+		!g.GetFired() || !g.GetContradicted() || g.GetCondition() != "manual: judged done" || g.GetReason() != "external judgment" {
 		t.Fatalf("resolved row wrong: %v", g)
+	}
+	for _, id := range []string{"REQ-m-c", "REQ-m-d"} {
+		if g := states[id]; g.GetState() != stipulatorv1.GapState_GAP_STATE_OPEN || !g.GetContradicted() || g.GetFired() {
+			t.Fatalf("open contradicted row %s wrong: %v", id, g)
+		}
+	}
+	// A fired contradicted gap on an uncovered requirement is due — the
+	// condition holds, the witness is still wanted — and counts among
+	// the contradicted like any unresolved row.
+	for _, id := range []string{"REQ-m-h", "REQ-m-i"} {
+		if g := states[id]; g.GetState() != stipulatorv1.GapState_GAP_STATE_DUE || !g.GetContradicted() || !g.GetFired() {
+			t.Fatalf("due contradicted row %s wrong: %v", id, g)
+		}
 	}
 	if g := states["REQ-m-b"]; g.GetState() != stipulatorv1.GapState_GAP_STATE_DUE ||
 		g.GetCondition() != "covered(REQ-m-a)" || g.GetFired() {
 		t.Fatalf("due row wrong: %v", g)
 	}
-	if g := states["REQ-m-ghost"]; g.GetState() != stipulatorv1.GapState_GAP_STATE_DANGLING {
-		t.Fatalf("dangling row wrong: %v", g)
+	if g := states["REQ-m-ghost"]; g.GetState() != stipulatorv1.GapState_GAP_STATE_DANGLING || !g.GetContradicted() {
+		t.Fatalf("dangling row wrong (state and class): %v", g)
+	}
+	if g := states["REQ-m-ghost2"]; g.GetState() != stipulatorv1.GapState_GAP_STATE_DANGLING || g.GetContradicted() {
+		t.Fatalf("plain dangling row wrong: %v", g)
+	}
+	if g := states["REQ-m-b"]; g.GetContradicted() {
+		t.Fatalf("a machine row carries the class: %v", g)
 	}
 	// The dangling record is a verification problem — a caveat on the
 	// listing, never a refusal.
 	if len(out.Notes) == 0 || !strings.Contains(out.Notes[0], "verification problems") {
 		t.Fatalf("problems caveat missing: %s", b)
 	}
-	if text := toolText(t, res); !strings.Contains(text, "3 gap records") || !strings.Contains(text, "1 due") {
-		t.Fatalf("list line does not carry the counts: %q", text)
+	// Four contradicted on the line (two open, two due): the resolved
+	// row left the count and the dangling row counts in dangling alone;
+	// every count distinct, so no swap of two reproduces the string.
+	if text := toolText(t, res); !strings.Contains(text, "11 gap records: 5 open, 3 due, 1 resolved, 2 dangling, 4 contradicted") {
+		t.Fatalf("list line does not carry the counts, the class apart: %q", text)
 	}
 	if len(writes) != 0 {
 		t.Fatalf("the read surface wrote: %v", writes)

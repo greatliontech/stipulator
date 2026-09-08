@@ -675,6 +675,7 @@ type CheckSummary struct {
 	xxx_hidden_GapsOpen                      int32                  `protobuf:"varint,17,opt,name=gaps_open,json=gapsOpen"`
 	xxx_hidden_GapsDue                       int32                  `protobuf:"varint,18,opt,name=gaps_due,json=gapsDue"`
 	xxx_hidden_GapsResolved                  int32                  `protobuf:"varint,19,opt,name=gaps_resolved,json=gapsResolved"`
+	xxx_hidden_GapsContradicted              int32                  `protobuf:"varint,38,opt,name=gaps_contradicted,json=gapsContradicted"`
 	xxx_hidden_Violations                    []string               `protobuf:"bytes,20,rep,name=violations"`
 	xxx_hidden_ViolationsOmitted             int32                  `protobuf:"varint,25,opt,name=violations_omitted,json=violationsOmitted"`
 	xxx_hidden_PruneResidue                  []string               `protobuf:"bytes,21,rep,name=prune_residue,json=pruneResidue"`
@@ -853,6 +854,13 @@ func (x *CheckSummary) GetGapsResolved() int32 {
 	return 0
 }
 
+func (x *CheckSummary) GetGapsContradicted() int32 {
+	if x != nil {
+		return x.xxx_hidden_GapsContradicted
+	}
+	return 0
+}
+
 func (x *CheckSummary) GetViolations() []string {
 	if x != nil {
 		return x.xxx_hidden_Violations
@@ -984,32 +992,32 @@ func (x *CheckSummary) GetPolicyNotices() []string {
 
 func (x *CheckSummary) SetPassed(v bool) {
 	x.xxx_hidden_Passed = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 36)
 }
 
 func (x *CheckSummary) SetSuiteHealthJudged(v bool) {
 	x.xxx_hidden_SuiteHealthJudged = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 36)
 }
 
 func (x *CheckSummary) SetSuiteHealthy(v bool) {
 	x.xxx_hidden_SuiteHealthy = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 36)
 }
 
 func (x *CheckSummary) SetTestsServed(v int32) {
 	x.xxx_hidden_TestsServed = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 36)
 }
 
 func (x *CheckSummary) SetTestsExecuted(v int32) {
 	x.xxx_hidden_TestsExecuted = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 36)
 }
 
 func (x *CheckSummary) SetTestsUncacheable(v int32) {
 	x.xxx_hidden_TestsUncacheable = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 36)
 }
 
 func (x *CheckSummary) SetCompileProblems(v []*Problem) {
@@ -1022,27 +1030,27 @@ func (x *CheckSummary) SetPolicyProblem(v *Problem) {
 
 func (x *CheckSummary) SetVerifyProblems(v int32) {
 	x.xxx_hidden_VerifyProblems = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 36)
 }
 
 func (x *CheckSummary) SetBindingsStale(v int32) {
 	x.xxx_hidden_BindingsStale = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 36)
 }
 
 func (x *CheckSummary) SetBindingsBroken(v int32) {
 	x.xxx_hidden_BindingsBroken = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 36)
 }
 
 func (x *CheckSummary) SetBindingsShapeMismatch(v int32) {
 	x.xxx_hidden_BindingsShapeMismatch = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 36)
 }
 
 func (x *CheckSummary) SetGatePasses(v bool) {
 	x.xxx_hidden_GatePasses = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 36)
 }
 
 func (x *CheckSummary) SetReds(v []*CheckRedRow) {
@@ -1051,22 +1059,27 @@ func (x *CheckSummary) SetReds(v []*CheckRedRow) {
 
 func (x *CheckSummary) SetRedsOmitted(v int32) {
 	x.xxx_hidden_RedsOmitted = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 14, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 14, 36)
 }
 
 func (x *CheckSummary) SetGapsOpen(v int32) {
 	x.xxx_hidden_GapsOpen = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 15, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 15, 36)
 }
 
 func (x *CheckSummary) SetGapsDue(v int32) {
 	x.xxx_hidden_GapsDue = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 16, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 16, 36)
 }
 
 func (x *CheckSummary) SetGapsResolved(v int32) {
 	x.xxx_hidden_GapsResolved = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 17, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 17, 36)
+}
+
+func (x *CheckSummary) SetGapsContradicted(v int32) {
+	x.xxx_hidden_GapsContradicted = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 18, 36)
 }
 
 func (x *CheckSummary) SetViolations(v []string) {
@@ -1075,7 +1088,7 @@ func (x *CheckSummary) SetViolations(v []string) {
 
 func (x *CheckSummary) SetViolationsOmitted(v int32) {
 	x.xxx_hidden_ViolationsOmitted = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 19, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 20, 36)
 }
 
 func (x *CheckSummary) SetPruneResidue(v []string) {
@@ -1088,32 +1101,32 @@ func (x *CheckSummary) SetWitnessFailureHeadings(v []string) {
 
 func (x *CheckSummary) SetWitnessFailureHeadingsOmitted(v int32) {
 	x.xxx_hidden_WitnessFailureHeadingsOmitted = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 22, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 23, 36)
 }
 
 func (x *CheckSummary) SetWitnessPublicationDegraded(v string) {
 	x.xxx_hidden_WitnessPublicationDegraded = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 23, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 24, 36)
 }
 
 func (x *CheckSummary) SetTestsOutsidePolicy(v int32) {
 	x.xxx_hidden_TestsOutsidePolicy = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 24, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 25, 36)
 }
 
 func (x *CheckSummary) SetWitnessSelectionProblem(v string) {
 	x.xxx_hidden_WitnessSelectionProblem = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 25, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 26, 36)
 }
 
 func (x *CheckSummary) SetRedsPolicyBlocked(v int32) {
 	x.xxx_hidden_RedsPolicyBlocked = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 26, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 27, 36)
 }
 
 func (x *CheckSummary) SetScopePartial(v bool) {
 	x.xxx_hidden_ScopePartial = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 27, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 28, 36)
 }
 
 func (x *CheckSummary) SetScopeIds(v []string) {
@@ -1122,7 +1135,7 @@ func (x *CheckSummary) SetScopeIds(v []string) {
 
 func (x *CheckSummary) SetRedsScopeBlocked(v int32) {
 	x.xxx_hidden_RedsScopeBlocked = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 29, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 30, 36)
 }
 
 func (x *CheckSummary) SetUncacheableBlockers(v []*CheckBlockerRow) {
@@ -1131,7 +1144,7 @@ func (x *CheckSummary) SetUncacheableBlockers(v []*CheckBlockerRow) {
 
 func (x *CheckSummary) SetUncacheableReasonsOmitted(v int32) {
 	x.xxx_hidden_UncacheableReasonsOmitted = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 31, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[1]), 32, 36)
 }
 
 func (x *CheckSummary) SetExecutedBlockers(v []*CheckBlockerRow) {
@@ -1140,7 +1153,7 @@ func (x *CheckSummary) SetExecutedBlockers(v []*CheckBlockerRow) {
 
 func (x *CheckSummary) SetExecutedReasonsOmitted(v int32) {
 	x.xxx_hidden_ExecutedReasonsOmitted = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[1]), 33, 35)
+	protoimpl.X.SetPresent(&(x.XXX_presence[1]), 34, 36)
 }
 
 func (x *CheckSummary) SetPolicyNotices(v []string) {
@@ -1259,74 +1272,81 @@ func (x *CheckSummary) HasGapsResolved() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 17)
 }
 
+func (x *CheckSummary) HasGapsContradicted() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 18)
+}
+
 func (x *CheckSummary) HasViolationsOmitted() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 19)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 20)
 }
 
 func (x *CheckSummary) HasWitnessFailureHeadingsOmitted() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 22)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 23)
 }
 
 func (x *CheckSummary) HasWitnessPublicationDegraded() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 23)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 24)
 }
 
 func (x *CheckSummary) HasTestsOutsidePolicy() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 24)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 25)
 }
 
 func (x *CheckSummary) HasWitnessSelectionProblem() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 25)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 26)
 }
 
 func (x *CheckSummary) HasRedsPolicyBlocked() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 26)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 27)
 }
 
 func (x *CheckSummary) HasScopePartial() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 27)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 28)
 }
 
 func (x *CheckSummary) HasRedsScopeBlocked() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 29)
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 30)
 }
 
 func (x *CheckSummary) HasUncacheableReasonsOmitted() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 31)
+	return protoimpl.X.Present(&(x.XXX_presence[1]), 32)
 }
 
 func (x *CheckSummary) HasExecutedReasonsOmitted() bool {
 	if x == nil {
 		return false
 	}
-	return protoimpl.X.Present(&(x.XXX_presence[1]), 33)
+	return protoimpl.X.Present(&(x.XXX_presence[1]), 34)
 }
 
 func (x *CheckSummary) ClearPassed() {
@@ -1408,53 +1428,58 @@ func (x *CheckSummary) ClearGapsResolved() {
 	x.xxx_hidden_GapsResolved = 0
 }
 
+func (x *CheckSummary) ClearGapsContradicted() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 18)
+	x.xxx_hidden_GapsContradicted = 0
+}
+
 func (x *CheckSummary) ClearViolationsOmitted() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 19)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 20)
 	x.xxx_hidden_ViolationsOmitted = 0
 }
 
 func (x *CheckSummary) ClearWitnessFailureHeadingsOmitted() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 22)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 23)
 	x.xxx_hidden_WitnessFailureHeadingsOmitted = 0
 }
 
 func (x *CheckSummary) ClearWitnessPublicationDegraded() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 23)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 24)
 	x.xxx_hidden_WitnessPublicationDegraded = nil
 }
 
 func (x *CheckSummary) ClearTestsOutsidePolicy() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 24)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 25)
 	x.xxx_hidden_TestsOutsidePolicy = 0
 }
 
 func (x *CheckSummary) ClearWitnessSelectionProblem() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 25)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 26)
 	x.xxx_hidden_WitnessSelectionProblem = nil
 }
 
 func (x *CheckSummary) ClearRedsPolicyBlocked() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 26)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 27)
 	x.xxx_hidden_RedsPolicyBlocked = 0
 }
 
 func (x *CheckSummary) ClearScopePartial() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 27)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 28)
 	x.xxx_hidden_ScopePartial = false
 }
 
 func (x *CheckSummary) ClearRedsScopeBlocked() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 29)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 30)
 	x.xxx_hidden_RedsScopeBlocked = 0
 }
 
 func (x *CheckSummary) ClearUncacheableReasonsOmitted() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 31)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[1]), 32)
 	x.xxx_hidden_UncacheableReasonsOmitted = 0
 }
 
 func (x *CheckSummary) ClearExecutedReasonsOmitted() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[1]), 33)
+	protoimpl.X.ClearPresent(&(x.XXX_presence[1]), 34)
 	x.xxx_hidden_ExecutedReasonsOmitted = 0
 }
 
@@ -1492,6 +1517,9 @@ type CheckSummary_builder struct {
 	GapsOpen     *int32
 	GapsDue      *int32
 	GapsResolved *int32
+	// The subset of gaps_open and gaps_due declared contradicted, named
+	// apart from the coverage holes.
+	GapsContradicted *int32
 	// Capped like the red rows; the omitted counters keep every
 	// truncation loud.
 	Violations        []string
@@ -1531,112 +1559,116 @@ func (b0 CheckSummary_builder) Build() *CheckSummary {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Passed != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 36)
 		x.xxx_hidden_Passed = *b.Passed
 	}
 	if b.SuiteHealthJudged != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 36)
 		x.xxx_hidden_SuiteHealthJudged = *b.SuiteHealthJudged
 	}
 	if b.SuiteHealthy != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 36)
 		x.xxx_hidden_SuiteHealthy = *b.SuiteHealthy
 	}
 	if b.TestsServed != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 36)
 		x.xxx_hidden_TestsServed = *b.TestsServed
 	}
 	if b.TestsExecuted != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 36)
 		x.xxx_hidden_TestsExecuted = *b.TestsExecuted
 	}
 	if b.TestsUncacheable != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 36)
 		x.xxx_hidden_TestsUncacheable = *b.TestsUncacheable
 	}
 	x.xxx_hidden_CompileProblems = &b.CompileProblems
 	x.xxx_hidden_PolicyProblem = b.PolicyProblem
 	if b.VerifyProblems != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 36)
 		x.xxx_hidden_VerifyProblems = *b.VerifyProblems
 	}
 	if b.BindingsStale != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 36)
 		x.xxx_hidden_BindingsStale = *b.BindingsStale
 	}
 	if b.BindingsBroken != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 36)
 		x.xxx_hidden_BindingsBroken = *b.BindingsBroken
 	}
 	if b.BindingsShapeMismatch != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 36)
 		x.xxx_hidden_BindingsShapeMismatch = *b.BindingsShapeMismatch
 	}
 	if b.GatePasses != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 36)
 		x.xxx_hidden_GatePasses = *b.GatePasses
 	}
 	x.xxx_hidden_Reds = &b.Reds
 	if b.RedsOmitted != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 14, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 14, 36)
 		x.xxx_hidden_RedsOmitted = *b.RedsOmitted
 	}
 	if b.GapsOpen != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 15, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 15, 36)
 		x.xxx_hidden_GapsOpen = *b.GapsOpen
 	}
 	if b.GapsDue != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 16, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 16, 36)
 		x.xxx_hidden_GapsDue = *b.GapsDue
 	}
 	if b.GapsResolved != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 17, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 17, 36)
 		x.xxx_hidden_GapsResolved = *b.GapsResolved
+	}
+	if b.GapsContradicted != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 18, 36)
+		x.xxx_hidden_GapsContradicted = *b.GapsContradicted
 	}
 	x.xxx_hidden_Violations = b.Violations
 	if b.ViolationsOmitted != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 19, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 20, 36)
 		x.xxx_hidden_ViolationsOmitted = *b.ViolationsOmitted
 	}
 	x.xxx_hidden_PruneResidue = b.PruneResidue
 	x.xxx_hidden_WitnessFailureHeadings = b.WitnessFailureHeadings
 	if b.WitnessFailureHeadingsOmitted != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 22, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 23, 36)
 		x.xxx_hidden_WitnessFailureHeadingsOmitted = *b.WitnessFailureHeadingsOmitted
 	}
 	if b.WitnessPublicationDegraded != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 23, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 24, 36)
 		x.xxx_hidden_WitnessPublicationDegraded = b.WitnessPublicationDegraded
 	}
 	if b.TestsOutsidePolicy != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 24, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 25, 36)
 		x.xxx_hidden_TestsOutsidePolicy = *b.TestsOutsidePolicy
 	}
 	if b.WitnessSelectionProblem != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 25, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 26, 36)
 		x.xxx_hidden_WitnessSelectionProblem = b.WitnessSelectionProblem
 	}
 	if b.RedsPolicyBlocked != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 26, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 27, 36)
 		x.xxx_hidden_RedsPolicyBlocked = *b.RedsPolicyBlocked
 	}
 	if b.ScopePartial != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 27, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 28, 36)
 		x.xxx_hidden_ScopePartial = *b.ScopePartial
 	}
 	x.xxx_hidden_ScopeIds = b.ScopeIds
 	if b.RedsScopeBlocked != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 29, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 30, 36)
 		x.xxx_hidden_RedsScopeBlocked = *b.RedsScopeBlocked
 	}
 	x.xxx_hidden_UncacheableBlockers = &b.UncacheableBlockers
 	if b.UncacheableReasonsOmitted != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 31, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[1]), 32, 36)
 		x.xxx_hidden_UncacheableReasonsOmitted = *b.UncacheableReasonsOmitted
 	}
 	x.xxx_hidden_ExecutedBlockers = &b.ExecutedBlockers
 	if b.ExecutedReasonsOmitted != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[1]), 33, 35)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[1]), 34, 36)
 		x.xxx_hidden_ExecutedReasonsOmitted = *b.ExecutedReasonsOmitted
 	}
 	x.xxx_hidden_PolicyNotices = b.PolicyNotices
@@ -1967,7 +1999,7 @@ const file_stipulator_v1_check_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aE\n" +
 	"\x17UncacheableReasonsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xbd\r\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xea\r\n" +
 	"\fCheckSummary\x12\x16\n" +
 	"\x06passed\x18\x01 \x01(\bR\x06passed\x12.\n" +
 	"\x13suite_health_judged\x18\x02 \x01(\bR\x11suiteHealthJudged\x12#\n" +
@@ -1988,7 +2020,8 @@ const file_stipulator_v1_check_proto_rawDesc = "" +
 	"\freds_omitted\x18\x10 \x01(\x05R\vredsOmitted\x12\x1b\n" +
 	"\tgaps_open\x18\x11 \x01(\x05R\bgapsOpen\x12\x19\n" +
 	"\bgaps_due\x18\x12 \x01(\x05R\agapsDue\x12#\n" +
-	"\rgaps_resolved\x18\x13 \x01(\x05R\fgapsResolved\x12\x1e\n" +
+	"\rgaps_resolved\x18\x13 \x01(\x05R\fgapsResolved\x12+\n" +
+	"\x11gaps_contradicted\x18& \x01(\x05R\x10gapsContradicted\x12\x1e\n" +
 	"\n" +
 	"violations\x18\x14 \x03(\tR\n" +
 	"violations\x12-\n" +

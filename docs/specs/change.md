@@ -150,7 +150,10 @@ the operation — no stored version counters, no lock files.
 
 **REQ-gap-record** (behavior): A gap MUST be a committed textproto record
 under `.stipulator/gaps/` naming exactly one requirement identifier, a
-reason, a landing condition, the violation classes it excuses —
+reason, a landing condition (a manual condition carrying, where
+declared, the contradicted class: the tree contradicts the
+requirement's letter by design until the condition fires), the
+violation classes it excuses —
 `uncovered`, `stale`, or `broken`, defaulting to `uncovered` alone when
 it declares none: a gap is declared about a specific violation class,
 so the record states which reds its reason actually explains — and the
@@ -182,7 +185,9 @@ corpus and requires a reason and a landing condition at write time,
 updating an existing declaration in place — a changed landing condition
 is surfaced, never silently retargeted — and refusing to overwrite a
 record that names a different requirement — with a manual condition's
-fired bit expressible through the operation, declared excuse classes
+fired bit and contradicted class expressible through the operation —
+the class refused with a machine condition, since a contradicted letter
+has no coverage-defined terminal — declared excuse classes
 validated at write time and a changed excuse set surfaced exactly as a
 changed landing condition is, and re-declaring a record
 whose manual condition text is unchanged preserving its fired state,
@@ -226,14 +231,22 @@ retraction as its repair.
 **REQ-gap-conditions** (behavior): A landing condition MUST be either
 machine-evaluable — `covered(<id>)`, `exists(<id>)` — or manual, firing
 only when explicitly marked fired: an external judgment distinct from
-attestation evidence.
+attestation evidence. Only a manual condition can declare the letter
+contradicted: the class is a property of the condition's record, so a
+contradicted gap with a machine condition is not expressible.
 
 **REQ-gap-lifecycle** (behavior): Verification MUST classify each gap as
 `open`, `due` (its landing condition holds), or `resolved` (its requirement
 is covered — and, for a gap with a manual landing condition, the condition
 has also been explicitly fired: a manual condition is an external judgment
 coverage cannot make, so a covered requirement with an unfired manual gap
-stays `open`, a declared violation that outlives green witnesses). A gap
+stays `open`, a declared violation that outlives green witnesses — and
+a contradicted gap in particular never resolves on a passing witness
+while unfired, a passing witness against a contradicted letter being
+the vacuous test the record exists to catch; once fired, the
+requirement wants a witness like any other). Every summary that counts
+gaps counts the contradicted ones among its `open` and `due` rows
+apart, and every row that lists a gap names the class. A gap
 on a requirement the active policy renders exempt is `resolved` when its
 landing condition holds — explicitly fired, for a manual condition:
 coverage is not a state an exempt cell can reach, so the condition alone
@@ -242,8 +255,9 @@ reachable terminal state.
 
 **REQ-gap-list** (behavior): The gap surface MUST offer a read operation
 listing every gap record's declaration fields — requirement identifier,
-reason, landing condition, manual fired bit — beside its evaluated
-lifecycle state and its consent state (whether the record's content
+reason, landing condition, manual fired bit, contradicted class —
+beside its evaluated lifecycle state and its consent state (whether
+the record's content
 pin differs from the requirement's current text, REQ-gap-consent),
 taking its witness evidence exactly as resolved-record pruning does (the gap-relevant scope; no witness evidence when no bound
 witness can move a gap-relevant bucket; the empty answer skips witness
@@ -252,9 +266,11 @@ wire `GapReport` messages — states in the wire enum spelling; human
 renderings print the lowercase words. A record naming a requirement
 outside the corpus lists as `dangling` rather than refusing — the list
 is where dangling records are found; its repairs are retraction and the
-dangling prune. Verification problems accompany the listing as a stated
-caveat rather than a refusal: a misreported read is triage input, a
-deletion on one is not (contrast REQ-gap-resolved-pruned). The
+dangling prune — and names its class like any row while counting in
+`dangling` alone, never among the contradicted. Verification problems
+accompany the listing as a stated caveat rather than a refusal: a
+misreported read is triage input, a deletion on one is not (contrast
+REQ-gap-resolved-pruned). The
 operation writes nothing — editing a gap record happens only through
 re-declaration (REQ-gap-verb).
 

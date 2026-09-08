@@ -395,7 +395,7 @@ func TestClaimsGrantNothingUnverified(t *testing.T) {
 //gofresh:pure
 func TestGapStates(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-lifecycle", "REQ-gap-conditions")
-	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n\n**REQ-c-b** (behavior): It MUST y.\n\n**REQ-c-c** (behavior): It MUST z.\n\n**REQ-c-d** (behavior): It MUST w.\n\n**REQ-c-e** (behavior): It MUST v.\n\n**REQ-c-f** (behavior): It MUST u.\n\n**REQ-c-g** (behavior): It MUST t.\n\n**REQ-c-h** (behavior): It MAY s.\n\n**REQ-c-i** (behavior): It MAY r.\n\n**REQ-c-j** (behavior): It MAY q.\n"
+	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n\n**REQ-c-b** (behavior): It MUST y.\n\n**REQ-c-c** (behavior): It MUST z.\n\n**REQ-c-d** (behavior): It MUST w.\n\n**REQ-c-e** (behavior): It MUST v.\n\n**REQ-c-f** (behavior): It MUST u.\n\n**REQ-c-g** (behavior): It MUST t.\n\n**REQ-c-h** (behavior): It MAY s.\n\n**REQ-c-i** (behavior): It MAY r.\n\n**REQ-c-j** (behavior): It MAY q.\n\n**REQ-c-k** (behavior): It MUST p.\n\n**REQ-c-l** (behavior): It MUST o.\n"
 	gap := func(id, lands string) string {
 		return "requirement_id: \"" + id + "\"\nreason: \"r\"\nlands { " + lands + " }\n"
 	}
@@ -412,22 +412,36 @@ func TestGapStates(t *testing.T) {
 		".stipulator/gaps/h.textproto": gap("REQ-c-h", `manual { condition: "external" fired: true }`), // resolved: h exempt, condition fired
 		".stipulator/gaps/i.textproto": gap("REQ-c-i", `manual { condition: "external" }`),             // open: i exempt, unfired
 		".stipulator/gaps/j.textproto": gap("REQ-c-j", `covered: "REQ-c-d"`),                           // resolved: j exempt, machine condition holds
+		// The contradicted class: covered and unfired stays open — a
+		// passing witness against a contradicted letter is the vacuous
+		// test the record exists to catch; fired resolves like any manual.
+		".stipulator/gaps/k.textproto": gap("REQ-c-k", `manual { condition: "external" contradicted: true }`),             // open: k covered, contradicted unfired
+		".stipulator/gaps/l.textproto": gap("REQ-c-l", `manual { condition: "external" contradicted: true fired: true }`), // resolved: l covered, contradicted fired
 	})
 	vr := &verify.Report{Results: []verify.BindingResult{
 		result("REQ-c-d", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed),
 		result("REQ-c-e", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed),
 		result("REQ-c-f", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed),
+		result("REQ-c-k", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed),
+		result("REQ-c-l", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed),
 	}}
 	rep := Evaluate(spec, vr, store, true, nil)
 	want := map[string]GapState{
 		"REQ-c-a": Due, "REQ-c-b": Open, "REQ-c-c": Due, "REQ-c-d": Resolved,
 		"REQ-c-e": Resolved, "REQ-c-f": Open, "REQ-c-g": Open,
 		"REQ-c-h": Resolved, "REQ-c-i": Open, "REQ-c-j": Resolved,
+		"REQ-c-k": Open, "REQ-c-l": Resolved,
 	}
 	for _, g := range rep.Gaps {
 		if w, ok := want[g.RequirementId]; !ok || g.State != w {
 			t.Errorf("gap %s = %v, want %v", g.RequirementId, g.State, want[g.RequirementId])
 		}
+		if wantClass := g.RequirementId == "REQ-c-k" || g.RequirementId == "REQ-c-l"; g.Contradicted != wantClass {
+			t.Errorf("gap %s contradicted = %v, want %v", g.RequirementId, g.Contradicted, wantClass)
+		}
+	}
+	if tally := GapCounts(rep.Gaps, nil); tally.Contradicted != 1 || tally.Standing() != 7 || tally.Due != 2 || tally.Resolved != 5 {
+		t.Errorf("tally = %+v, want 5 open + 2 due standing, 5 resolved, 1 contradicted (the fired contradicted gap resolved and left the class count)", tally)
 	}
 	if !rep.GatePasses() {
 		t.Fatalf("all reds gapped, yet gate fails: %v", rep.Violations)
@@ -709,6 +723,66 @@ func TestAttestationEvidence(t *testing.T) {
 	}
 }
 
+// A contradicted gap resolves only through its explicit fire, over the
+// whole domain the lifecycle ranges: every (bucket, fired) pair of a
+// contradicted manual gap enumerated — covered or exempt AND fired
+// resolves, unfired never does whatever the bucket, and the fired
+// uncovered one is due like any fired manual gap (REQ-gap-lifecycle).
+//
+//gofresh:pure
+func TestContradictedGapResolvesOnlyByFire(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-lifecycle")
+	doc := "# T\n\n**REQ-x-a** (behavior): It MUST a.\n\n**REQ-x-b** (behavior): It MUST b.\n\n**REQ-x-c** (behavior): It MUST c.\n\n**REQ-x-d** (behavior): It MUST d.\n\n**REQ-x-e** (behavior): It MAY e.\n\n**REQ-x-f** (behavior): It MAY f.\n"
+	gap := func(id string, fired bool) string {
+		f := ""
+		if fired {
+			f = " fired: true"
+		}
+		return "requirement_id: \"" + id + "\"\nreason: \"the letter is contradicted by design\"\nlands { manual { condition: \"the work lands\" contradicted: true" + f + " } }\n"
+	}
+	spec, store := fixture(t, doc, map[string]string{
+		".stipulator/gaps/a.textproto": gap("REQ-x-a", false), // covered, unfired
+		".stipulator/gaps/b.textproto": gap("REQ-x-b", true),  // covered, fired
+		".stipulator/gaps/c.textproto": gap("REQ-x-c", false), // uncovered, unfired
+		".stipulator/gaps/d.textproto": gap("REQ-x-d", true),  // uncovered, fired
+		".stipulator/gaps/e.textproto": gap("REQ-x-e", false), // exempt, unfired
+		".stipulator/gaps/f.textproto": gap("REQ-x-f", true),  // exempt, fired
+	})
+	vr := &verify.Report{Results: []verify.BindingResult{
+		result("REQ-x-a", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed),
+		result("REQ-x-b", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestPassed),
+	}}
+	rep := Evaluate(spec, vr, store, true, nil)
+	want := map[string]GapState{"REQ-x-a": Open, "REQ-x-b": Resolved, "REQ-x-c": Open, "REQ-x-d": Due, "REQ-x-e": Open, "REQ-x-f": Resolved}
+	for _, g := range rep.Gaps {
+		if g.State != want[g.RequirementId] || !g.Contradicted {
+			t.Errorf("gap %s = %v (contradicted %v), want %v contradicted", g.RequirementId, g.State, g.Contradicted, want[g.RequirementId])
+		}
+		if g.State == Resolved && !g.Fired {
+			t.Errorf("gap %s resolved unfired", g.RequirementId)
+		}
+	}
+	if tally := GapCounts(rep.Gaps, nil); tally.Standing() != 4 || tally.Resolved != 2 || tally.Contradicted != 4 {
+		t.Errorf("tally = %+v, want 4 standing, 2 resolved, 4 contradicted", tally)
+	}
+	// The wire tally is the same predicate over the wire rows, a
+	// dangling row tallying nowhere.
+	wire := rep.Proto().GetGaps()
+	dangling := &stipulatorv1.GapReport{}
+	dangling.SetRequirementId("REQ-x-ghost")
+	dangling.SetState(stipulatorv1.GapState_GAP_STATE_DANGLING)
+	dangling.SetContradicted(true)
+	if tally := GapCountsWire(append(wire, dangling)); tally != GapCounts(rep.Gaps, nil) {
+		t.Errorf("wire tally = %+v, want the report tally %+v", tally, GapCounts(rep.Gaps, nil))
+	}
+	if got := GapCountsString(6, 4); got != "6 (4 contradicted)" {
+		t.Errorf("summary tally = %q", got)
+	}
+	if got := GapCountsString(6, 0); got != "6" {
+		t.Errorf("summary tally without the class = %q", got)
+	}
+}
+
 // TestGapCounts pins the shared gap tally that both the gate summary and the
 // human prunable hint derive from: open counts unresolved, resolved counts
 // prunable, and keep (nil = all) scopes both. Asymmetric on purpose so a
@@ -724,13 +798,13 @@ func TestGapCounts(t *testing.T) {
 		{RequirementId: "out", State: Resolved}, // out of a scoped keep
 	}
 	// Unscoped (keep == nil): every gap counts.
-	if open, resolved := GapCounts(gaps, nil); open != 2 || resolved != 2 {
-		t.Fatalf("unscoped counts = open %d resolved %d, want 2/2", open, resolved)
+	if tally := GapCounts(gaps, nil); tally.Standing() != 2 || tally.Resolved != 2 || tally.Contradicted != 0 {
+		t.Fatalf("unscoped tally = %+v, want 2 standing, 2 resolved", tally)
 	}
 	// Scoped: "out" is excluded, so one resolved drops.
 	keep := map[string]bool{"a": true, "b": true, "c": true}
-	if open, resolved := GapCounts(gaps, keep); open != 2 || resolved != 1 {
-		t.Fatalf("scoped counts = open %d resolved %d, want 2/1", open, resolved)
+	if tally := GapCounts(gaps, keep); tally.Standing() != 2 || tally.Resolved != 1 || tally.Contradicted != 0 {
+		t.Fatalf("scoped tally = %+v, want 2 standing, 1 resolved", tally)
 	}
 }
 
