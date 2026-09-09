@@ -151,6 +151,37 @@ type Report struct {
 	// Violations lists red requirements no gap names: the gate fails
 	// exactly when this is non-empty.
 	Violations []string
+	// DanglingPointers lists every enforcement pointer that resolves to
+	// no tests- or proves-role binding of its requirement, in
+	// requirement then text order (REQ-change-enforcement-pointers).
+	DanglingPointers []DanglingPointer
+}
+
+// DanglingPointer is one enforcement pointer no binding of its
+// requirement resolves.
+type DanglingPointer struct {
+	Requirement, Name string
+}
+
+// PointerRemedy spells the two ways a dangling pointer resolves: a
+// binding of the named symbol, or the retarget of a renamed one.
+func PointerRemedy(requirement, name string) string {
+	return fmt.Sprintf("enforcement pointer `%s` names no tests/proves binding of %s: bind --req %s --role tests --symbol <package>.%s, or retarget the renamed symbol", name, requirement, requirement, name)
+}
+
+// DanglingPointerCount tallies the dangling pointers among the kept
+// requirements (keep == nil counts all) — the tally the in-memory
+// summaries derive from; the check summary counts its scoped wire
+// rows, which ScopeReport narrows the same way.
+func DanglingPointerCount(ps []DanglingPointer, keep map[string]bool) int32 {
+	var n int32
+	for _, p := range ps {
+		if keep != nil && !keep[p.Requirement] {
+			continue
+		}
+		n++
+	}
+	return n
 }
 
 // GatePasses reports the gate verdict.
@@ -364,6 +395,43 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		return e
 	}
 
+	// The enforcement pointers: each resolves to a tests- or proves-role
+	// binding of its own requirement whose member name it is, or the
+	// requirement is red in the pointer's own class
+	// (REQ-change-enforcement-pointers).
+	members := map[string]map[string]bool{}
+	if store != nil {
+		for _, bf := range store.Bindings {
+			for _, b := range bf.Set.GetBindings() {
+				if b.GetRole() != stipulatorv1.BindingRole_BINDING_ROLE_TESTS && b.GetRole() != stipulatorv1.BindingRole_BINDING_ROLE_PROVES {
+					continue
+				}
+				m, ok := members[b.GetRequirementId()]
+				if !ok {
+					m = map[string]bool{}
+					members[b.GetRequirementId()] = m
+				}
+				m[records.SymbolMember(b.GetSymbol())] = true
+			}
+		}
+	}
+	var dangling []DanglingPointer
+	danglingIDs := map[string]bool{}
+	for _, r := range spec.GetRequirements() {
+		for _, ep := range r.GetEnforcementPointers() {
+			p := ep.GetName()
+			if members[r.GetId()][p] {
+				continue
+			}
+			e := get(r.GetId())
+			e.broken = true
+			e.otherRed = true
+			e.reasons = append(e.reasons, PointerRemedy(r.GetId(), p))
+			dangling = append(dangling, DanglingPointer{Requirement: r.GetId(), Name: p})
+			danglingIDs[r.GetId()] = true
+		}
+	}
+
 	for _, r := range vr.Results {
 		e := get(r.RequirementId)
 		// grant receives what the claim proves: the whole requirement
@@ -471,7 +539,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 	for _, r := range vr.Results {
 		boundIDs[r.RequirementId] = true
 	}
-	rep := &Report{PolicyOverrides: pol.Active()}
+	rep := &Report{PolicyOverrides: pol.Active(), DanglingPointers: dangling}
 	buckets := map[string]Bucket{}
 	for _, r := range spec.GetRequirements() {
 		e := get(r.GetId())
@@ -631,7 +699,13 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		case gapped[r.Id] && !excused[r.Id][class]:
 			r.Reasons = append(r.Reasons, fmt.Sprintf("the gap record naming this requirement excuses %s, not %s — declare the class deliberately or repair the red", excuseNames(excused[r.Id]), bucketName(class)))
 		}
-		if !gapped[r.Id] || !excused[r.Id][class] {
+		// A dangling enforcement pointer is a corpus-to-store
+		// inconsistency, not a coverage hole: no gap excuses it
+		// (REQ-change-enforcement-pointers).
+		if danglingIDs[r.Id] && gapped[r.Id] {
+			r.Reasons = append(r.Reasons, "the gap record naming this requirement excuses nothing about its dangling enforcement pointer")
+		}
+		if danglingIDs[r.Id] || !gapped[r.Id] || !excused[r.Id][class] {
 			rep.Violations = append(rep.Violations, r.Id)
 		}
 	}

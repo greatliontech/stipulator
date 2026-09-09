@@ -28,10 +28,11 @@ func TestRetargetSymbolsRewritesAtBoundaryAllOrNothing(t *testing.T) {
 		"example.com/new.TestX": strings.Repeat("t", 64),
 	}}
 
-	ups, rows, err := RetargetSymbols(fsys, resolver, "go", "example.com/old", "example.com/new")
+	res, err := Retarget(fsys, resolver, "go", "example.com/old", "example.com/new")
 	if err != nil {
 		t.Fatal(err)
 	}
+	ups, rows := res.Updates, res.Rows
 	if len(rows) != 2 ||
 		rows[0].Old != "example.com/old.TestX" || rows[0].New != "example.com/new.TestX" ||
 		rows[1].Old != "example.com/old/pkg.F" || rows[1].New != "example.com/new/pkg.F" {
@@ -66,7 +67,7 @@ func TestRetargetSymbolsRewritesAtBoundaryAllOrNothing(t *testing.T) {
 	}
 
 	// All-or-nothing: an unresolvable replacement refuses the batch.
-	if _, _, err := RetargetSymbols(fsys, map[string]verify.Backend{"go": fakeBackend{
+	if _, err := Retarget(fsys, map[string]verify.Backend{"go": fakeBackend{
 		"example.com/new/pkg.F": "x",
 	}}, "go", "example.com/old", "example.com/new"); err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("unresolvable replacement accepted: %v", err)
@@ -78,18 +79,18 @@ func TestRetargetSymbolsRewritesAtBoundaryAllOrNothing(t *testing.T) {
 			"bindings { requirement_id: \"REQ-au-a\" backend: \"go\" symbol: \"example.com/old.TestX\" role: BINDING_ROLE_TESTS }\n" +
 			"bindings { requirement_id: \"REQ-au-a\" backend: \"go\" symbol: \"example.com/new.TestX\" role: BINDING_ROLE_TESTS }\n",
 	})
-	if _, _, err := RetargetSymbols(collideFS, resolver, "go", "example.com/old", "example.com/new"); err == nil || !strings.Contains(err.Error(), "collides") {
+	if _, err := Retarget(collideFS, resolver, "go", "example.com/old", "example.com/new"); err == nil || !strings.Contains(err.Error(), "collides") {
 		t.Fatalf("collision accepted: %v", err)
 	}
 
 	// Nothing matched is an error, never a silent no-op.
-	if _, _, err := RetargetSymbols(fsys, resolver, "go", "example.com/ghost", "example.com/new"); err == nil {
+	if _, err := Retarget(fsys, resolver, "go", "example.com/ghost", "example.com/new"); err == nil {
 		t.Fatal("prefix matching nothing accepted")
 	}
-	if _, _, err := RetargetSymbols(fsys, resolver, "go", "example.com/old", "example.com/old"); err == nil {
+	if _, err := Retarget(fsys, resolver, "go", "example.com/old", "example.com/old"); err == nil {
 		t.Fatal("identical prefixes accepted")
 	}
-	if _, _, err := RetargetSymbols(fsys, map[string]verify.Backend{}, "go", "example.com/old", "example.com/new"); err == nil {
+	if _, err := Retarget(fsys, map[string]verify.Backend{}, "go", "example.com/old", "example.com/new"); err == nil {
 		t.Fatal("missing backend accepted")
 	}
 }
@@ -109,10 +110,11 @@ func TestRetargetFullSymbolIsDegenerateBoundary(t *testing.T) {
 	resolver := map[string]verify.Backend{"go": fakeBackend{
 		"example.com/pkg.newName": strings.Repeat("n", 64),
 	}}
-	_, rows, err := RetargetSymbols(fsys, resolver, "go", "example.com/pkg.oldName", "example.com/pkg.newName")
+	res, err := Retarget(fsys, resolver, "go", "example.com/pkg.oldName", "example.com/pkg.newName")
 	if err != nil {
 		t.Fatal(err)
 	}
+	rows := res.Rows
 	if len(rows) != 1 || rows[0].Old != "example.com/pkg.oldName" || rows[0].New != "example.com/pkg.newName" {
 		t.Fatalf("rows = %+v, want exactly the full-symbol rename", rows)
 	}

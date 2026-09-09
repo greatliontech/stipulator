@@ -40,21 +40,27 @@ func retargetCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			ups, rows, err := author.RetargetSymbols(os.DirFS(chdir), backends, backend, from, to)
+			res, err := author.Retarget(os.DirFS(chdir), backends, backend, from, to)
 			if err != nil {
 				return err
 			}
-			for _, r := range rows {
+			for _, r := range res.Rows {
 				fmt.Fprintf(cmd.OutOrStdout(), "%s  %s -> %s\n", r.Requirement, r.Old, r.New)
 			}
+			for _, p := range res.Pointers {
+				fmt.Fprintf(cmd.OutOrStdout(), "%s  pointer `%s` -> `%s` in %s\n", p.Requirement, p.Old, p.New, p.Document)
+			}
+			for _, c := range res.Consented {
+				fmt.Fprintln(cmd.OutOrStdout(), c)
+			}
 			if check {
-				fmt.Fprintf(cmd.OutOrStdout(), "check only: %d binding(s) would retarget\n", len(rows))
+				fmt.Fprintf(cmd.OutOrStdout(), "check only: %d binding(s)%s would retarget\n", len(res.Rows), res.PointerClause())
 				return nil
 			}
-			if err := applyUpdates(chdir, ups); err != nil {
+			if err := applyUpdates(chdir, res.Updates); err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "retargeted %d binding(s)\n", len(rows))
+			fmt.Fprintf(cmd.OutOrStdout(), "retargeted %d binding(s)%s\n", len(res.Rows), res.PointerClause())
 			return nil
 		},
 	}

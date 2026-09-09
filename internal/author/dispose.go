@@ -1,11 +1,14 @@
 package author
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/fs"
+	"path"
 	"sort"
 	"strings"
+	"time"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/compile"
@@ -228,7 +231,7 @@ func retire(fsys fs.FS, identities, successors []string, force bool) ([]Update, 
 	// Validate the post-disposition corpus through an overlay: nothing may
 	// still reference the identities, and successors must exist and
 	// declare their supersedes edges.
-	spec, diags, err := compile.Compile(overlayFS{FS: fsys, path: records.TombstonesPath, data: tombstones})
+	spec, diags, err := compile.Compile(overlayFS{FS: fsys, files: map[string][]byte{records.TombstonesPath: tombstones}})
 	if err != nil {
 		return nil, err
 	}
@@ -402,20 +405,45 @@ func storeOf(bf records.BindingFile) *records.Store {
 	return &records.Store{Bindings: []records.BindingFile{bf}}
 }
 
-// overlayFS serves one synthetic file over a base tree, for validating a
-// disposition before any write happens.
+// overlayFS serves synthetic files over a base tree — a disposition's
+// tombstones, a retarget's rewritten documents and store files — for
+// validating and re-consenting before any write happens. Both the
+// ReadFile and the Open road serve the overlay, so no reader sees the
+// base tree's bytes for an overlaid path.
 type overlayFS struct {
 	fs.FS
-	path string
-	data []byte
+	files map[string][]byte
 }
 
 func (o overlayFS) ReadFile(name string) ([]byte, error) {
-	if name == o.path {
-		return o.data, nil
+	if data, ok := o.files[name]; ok {
+		return data, nil
 	}
 	return fs.ReadFile(o.FS, name)
 }
+
+func (o overlayFS) Open(name string) (fs.File, error) {
+	if data, ok := o.files[name]; ok {
+		return &overlayFile{name: path.Base(name), Reader: bytes.NewReader(data), size: int64(len(data))}, nil
+	}
+	return o.FS.Open(name)
+}
+
+// overlayFile is an in-memory regular file.
+type overlayFile struct {
+	name string
+	*bytes.Reader
+	size int64
+}
+
+func (f *overlayFile) Stat() (fs.FileInfo, error) { return f, nil }
+func (f *overlayFile) Close() error               { return nil }
+func (f *overlayFile) Name() string               { return f.name }
+func (f *overlayFile) Size() int64                { return f.size }
+func (f *overlayFile) Mode() fs.FileMode          { return 0o644 }
+func (f *overlayFile) ModTime() time.Time         { return time.Time{} }
+func (f *overlayFile) IsDir() bool                { return false }
+func (f *overlayFile) Sys() any                   { return nil }
 
 // nothingStaleNote states why a named re-pin has nothing to do: the
 // requirement's bindings and gap consent to the current text, or no

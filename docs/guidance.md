@@ -59,20 +59,21 @@ their reasons.
 **when:** use check as the default verdict surface — warm calls are
 cheap because fresh witnesses serve and only the stale remainder
 executes; use full=true when suite health must be judged, which only
-whole execution can do. The pass also reports prune residue. It
-fails exactly when compilation fails, the accepted policy record is
-missing or invalid, verification reports problems, an execution the
-run performed came out red (a failed test or a degraded, build-failed,
-or timed-out process — whatever the failing test is bound to; the
+whole execution can do. The pass also reports prune residue. It fails
+exactly when compilation fails, the accepted policy record is missing
+or invalid, verification reports problems, an execution the run
+performed came out red (a failed test or a degraded, build-failed, or
+timed-out process — whatever the failing test is bound to; the
 summary's witness_failure_headings name it), a red requirement has no
-gap naming it, or a resolved gap record lingers unpruned; full
-additionally fails on unhealthy suite health. Random-seeded property
-witnesses (bodies directly driving rapid or gopter) never serve: they
-execute on every check and read as uncacheable with that reason; a
-witness the backend cannot classify at all (its package fails to load
-under the invocation's selection) is refused serving the same way
-under a reason naming the load gap. A tree
-failing the check is a successful call carrying passed=false.
+gap naming it, an enforcement pointer names no tests- or proves-role
+binding of its requirement (pointers dangling), or a resolved gap
+record lingers unpruned; full additionally fails on unhealthy suite
+health. Random-seeded property witnesses (bodies directly driving
+rapid or gopter) never serve: they execute on every check and read as
+uncacheable with that reason; a witness the backend cannot classify at
+all (its package fails to load under the invocation's selection) is
+refused serving the same way under a reason naming the load gap. A
+tree failing the check is a successful call carrying passed=false.
 **example:** check before entering review; check with
 ids=REQ-go-static-binding while iterating on one requirement's fix.
 
@@ -237,7 +238,7 @@ source elsewhere is a dangling reference the same edit rewrites.
 **example:** dispose supersede --from REQ-old --into REQ-a,REQ-b.
 
 ### retarget
-**does:** Rewrite stored binding symbols under an exact prefix mapping (module-rename repair).
+**does:** Rewrite stored binding symbols under an exact prefix mapping (module-rename repair), and the spec's enforcement pointers that named the moved members.
 **knobs:**
 - `backend` (mcp, cli) — backend whose symbols retarget (default go; taken once, repetition refused).
 - `from` (mcp, cli) — old symbol prefix (module path; taken once, repetition refused).
@@ -248,7 +249,12 @@ or member boundary, and all-or-nothing — replacements must resolve,
 collisions refuse the batch, shape pins re-derive and content pins
 ride unchanged. Run a check preview first when sibling modules share a
 dotted prefix: a member dot and a dotted path element are lexically
-ambiguous, so example.com/mod captures example.com/mod.v2 symbols.
+ambiguous, so example.com/mod captures example.com/mod.v2 symbols. A
+rewrite that moves a bound symbol's member name also rewrites every
+"Enforced by" pointer naming the old member in that binding's
+requirement — the one edit the tool makes to a spec document — and
+re-pins that requirement's content itself; the check preview lists
+the pointer rewrites beside the binding rewrites.
 **example:** retarget from=example.com/old to=example.com/new
 as a check preview, read it, then run for real.
 
@@ -411,7 +417,8 @@ an interrupted run renders the same ending and then dies by the
 signal that ended it (128 plus the signal's number where it cannot
 be re-raised; a second signal ends the process at once), and an
 operational fault exits 2. All writes stay under .stipulator/; spec
-documents and source are never edited. A policy invocation
+documents and source are never edited, with one exception: retarget
+rewrites the enforcement pointers a symbol rename moved. A policy invocation
 declaring build tags runs under a toolchain selection gofresh
 fail-closes until that selection's standard-library delta is walked
 and listed: standard-library observation admissions are disabled

@@ -170,6 +170,10 @@ message CheckSummary {
   // The subset of gaps_open and gaps_due declared contradicted, named
   // apart from the coverage holes.
   int32 gaps_contradicted = 38;
+  // PointersDangling mirrors the coverage summary's count: enforcement
+  // pointers resolving to no binding of their requirement
+  // (REQ-change-enforcement-pointers).
+  int32 pointers_dangling = 39;
   // Capped like the red rows; the omitted counters keep every
   // truncation loud.
   repeated string violations = 20;

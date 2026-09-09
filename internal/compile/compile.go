@@ -418,6 +418,15 @@ func resolve(docs []*document, tombstones map[string]bool, diags *[]Diagnostic) 
 				clauses = append(clauses, cl)
 			}
 			ir.SetClauses(clauses)
+			var pointers []*stipulatorv1.EnforcementPointer
+			for _, p := range r.pointers {
+				ep := &stipulatorv1.EnforcementPointer{}
+				ep.SetName(p.name)
+				ep.SetStart(int32(p.start))
+				ep.SetEnd(int32(p.end))
+				pointers = append(pointers, ep)
+			}
+			ir.SetEnforcementPointers(pointers)
 			irReqs = append(irReqs, ir)
 		}
 		for _, t := range d.terms {

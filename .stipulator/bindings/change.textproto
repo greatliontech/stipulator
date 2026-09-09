@@ -353,8 +353,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-retarget"
-  content_hash: "f7c56e8155efac0104abc1bd72ac0c368944340bdb99028a517b4c656accfedc"
-  source_hash: "a54872242645a9a3ec17e0f661376e923b06c9355b8d565bf41fd24ea905a9ef"
+  content_hash: "209bf54874f01b3ef7384017faf88f16b93a245654ff53f8ca4204fe0e41d651"
+  source_hash: "2d3e85963a000bfa71998ceec034df1f6d4524321155a3337d0f3de8f134f7c5"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.TestRetargetSymbolsRewritesAtBoundaryAllOrNothing"
   role: BINDING_ROLE_TESTS
@@ -363,8 +363,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-retarget"
-  content_hash: "f7c56e8155efac0104abc1bd72ac0c368944340bdb99028a517b4c656accfedc"
-  source_hash: "a54872242645a9a3ec17e0f661376e923b06c9355b8d565bf41fd24ea905a9ef"
+  content_hash: "209bf54874f01b3ef7384017faf88f16b93a245654ff53f8ca4204fe0e41d651"
+  source_hash: "2d3e85963a000bfa71998ceec034df1f6d4524321155a3337d0f3de8f134f7c5"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestRetargetToolCheckWritesNothing"
   role: BINDING_ROLE_TESTS
@@ -373,8 +373,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-retarget"
-  content_hash: "f7c56e8155efac0104abc1bd72ac0c368944340bdb99028a517b4c656accfedc"
-  source_hash: "a54872242645a9a3ec17e0f661376e923b06c9355b8d565bf41fd24ea905a9ef"
+  content_hash: "209bf54874f01b3ef7384017faf88f16b93a245654ff53f8ca4204fe0e41d651"
+  source_hash: "2d3e85963a000bfa71998ceec034df1f6d4524321155a3337d0f3de8f134f7c5"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.RetargetSymbols"
   role: BINDING_ROLE_IMPLEMENTS
@@ -383,8 +383,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-retarget"
-  content_hash: "f7c56e8155efac0104abc1bd72ac0c368944340bdb99028a517b4c656accfedc"
-  source_hash: "a54872242645a9a3ec17e0f661376e923b06c9355b8d565bf41fd24ea905a9ef"
+  content_hash: "209bf54874f01b3ef7384017faf88f16b93a245654ff53f8ca4204fe0e41d651"
+  source_hash: "2d3e85963a000bfa71998ceec034df1f6d4524321155a3337d0f3de8f134f7c5"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.TestRetargetFullSymbolIsDegenerateBoundary"
   role: BINDING_ROLE_TESTS
@@ -469,4 +469,74 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/impact.TestCompileCleanCarriesRemediesOnlyForTheLiveTree"
   role: BINDING_ROLE_TESTS
   shape_hash: "5ef793f55ea74032fead4b79b1cc8588bfd043b88474ac8211e9108dee7f298f"
+}
+
+bindings {
+  requirement_id: "REQ-change-enforcement-pointers"
+  content_hash: "42bbd091a4a46d760b41ff40405fed7140b5900252f927bfda22a5dc41cdaee1"
+  source_hash: "a7ef8d971eee9bbfa545911375b91b548e590c0e88323671bc09b1d5fed6983f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestEnforcementPointersAreTheSentencesCodeSpans"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e2ba6894bef96c96c5a53a9adaa6d14914a29d7d8cec33e8cedd5c3277ab7035"
+}
+
+bindings {
+  requirement_id: "REQ-change-enforcement-pointers"
+  content_hash: "42bbd091a4a46d760b41ff40405fed7140b5900252f927bfda22a5dc41cdaee1"
+  source_hash: "a7ef8d971eee9bbfa545911375b91b548e590c0e88323671bc09b1d5fed6983f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.TestEnforcementPointersAreJudgedAgainstTheRequirementsBindings"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "cb96654c2f24f08a761f686ef69537d8d133122e9da730211563e78ffa3798c2"
+}
+
+bindings {
+  requirement_id: "REQ-change-enforcement-pointers"
+  content_hash: "42bbd091a4a46d760b41ff40405fed7140b5900252f927bfda22a5dc41cdaee1"
+  source_hash: "a7ef8d971eee9bbfa545911375b91b548e590c0e88323671bc09b1d5fed6983f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestRetargetRewritesEnforcementPointersAndRepins"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "2f400faab498f3cb61be22a62950e5976984ad1ffe608cfa15a85f3664ce6128"
+}
+
+bindings {
+  requirement_id: "REQ-change-retarget"
+  content_hash: "209bf54874f01b3ef7384017faf88f16b93a245654ff53f8ca4204fe0e41d651"
+  source_hash: "2d3e85963a000bfa71998ceec034df1f6d4524321155a3337d0f3de8f134f7c5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestRetargetRewritesEnforcementPointersAndRepins"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "2f400faab498f3cb61be22a62950e5976984ad1ffe608cfa15a85f3664ce6128"
+}
+
+bindings {
+  requirement_id: "REQ-change-enforcement-pointers"
+  content_hash: "42bbd091a4a46d760b41ff40405fed7140b5900252f927bfda22a5dc41cdaee1"
+  source_hash: "a7ef8d971eee9bbfa545911375b91b548e590c0e88323671bc09b1d5fed6983f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestRetargetToolRewritesEnforcementPointers"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "fd9f2725fcc45810ed71c1218d682a05027a35ebcdea76472223c5b576c625ac"
+}
+
+bindings {
+  requirement_id: "REQ-change-enforcement-pointers"
+  content_hash: "42bbd091a4a46d760b41ff40405fed7140b5900252f927bfda22a5dc41cdaee1"
+  source_hash: "a7ef8d971eee9bbfa545911375b91b548e590c0e88323671bc09b1d5fed6983f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.TestOwnCorpusPointersResolve"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b273a633b58efe3dc0f764c20b50146c5a210b376974a5e734901fbe16b93381"
+}
+
+bindings {
+  requirement_id: "REQ-change-enforcement-pointers"
+  content_hash: "42bbd091a4a46d760b41ff40405fed7140b5900252f927bfda22a5dc41cdaee1"
+  source_hash: "a7ef8d971eee9bbfa545911375b91b548e590c0e88323671bc09b1d5fed6983f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/views.TestSummariesCountDanglingPointersScoped"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "06a5139077ac940d1db3893b862a085d5a878d42ef0c0ba40e0d63f1eaed456d"
 }

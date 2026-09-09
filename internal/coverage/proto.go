@@ -21,6 +21,14 @@ func (r *Report) Proto() *stipulatorv1.CoverageReport {
 	}
 	out.SetRequirements(reqs)
 	out.SetPolicyOverrides(r.PolicyOverrides)
+	var dangling []*stipulatorv1.DanglingPointer
+	for _, p := range r.DanglingPointers {
+		d := &stipulatorv1.DanglingPointer{}
+		d.SetRequirementId(p.Requirement)
+		d.SetName(p.Name)
+		dangling = append(dangling, d)
+	}
+	out.SetDanglingPointers(dangling)
 
 	var gaps []*stipulatorv1.GapReport
 	for _, g := range r.Gaps {

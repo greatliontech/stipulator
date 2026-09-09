@@ -44,6 +44,16 @@ type AttestationFile struct {
 	Set  *stipulatorv1.AttestationSet
 }
 
+// SymbolMember is the member name a symbol ends in — the part past its
+// last dot — the spelling an enforcement pointer names
+// (REQ-change-enforcement-pointers).
+func SymbolMember(symbol string) string {
+	if i := strings.LastIndexByte(symbol, '.'); i >= 0 {
+		return symbol[i+1:]
+	}
+	return symbol
+}
+
 type Store struct {
 	Bindings     []BindingFile
 	Gaps         []GapFile

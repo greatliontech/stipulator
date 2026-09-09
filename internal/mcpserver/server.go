@@ -3,13 +3,17 @@
 //
 // Every read serves fresh state — the corpus is recompiled and records
 // reloaded per request — and all writes are confined to the record stores
-// under .stipulator/: the server never edits spec documents or source
+// under .stipulator/: the server never edits spec documents or source —
+// with one exception, the enforcement pointers a retarget's symbol
+// rename moved (REQ-change-enforcement-pointers) —
 // code. Tool results carry the report messages as JSON.
 package mcpserver
 
 import (
 	guidancepkg "github.com/greatliontech/gofresh/guidance"
 	stipulator "github.com/greatliontech/stipulator"
+	"github.com/greatliontech/stipulator/internal/corpus"
+	"slices"
 
 	"bytes"
 	"context"
@@ -20,7 +24,6 @@ import (
 	"os"
 	pathpkg "path"
 	"path/filepath"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -36,7 +39,6 @@ import (
 	"github.com/greatliontech/stipulator/internal/bundle"
 	"github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/compile"
-	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/dossier"
 	"github.com/greatliontech/stipulator/internal/facts"
@@ -104,7 +106,7 @@ type Server struct {
 	runTests func(context.Context, *golang.Capture, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error)
 	runCheck func(context.Context, bool, []string) (*stipulatorv1.CheckResult, error)
 	explain  func(ctx context.Context, pkgPath, symbol string) (gofresh.Chain, string, error)
-	write    func(path string, content []byte) error
+	write    func(path string, content []byte, document bool) error
 	remove   func(path string) error
 }
 
@@ -134,18 +136,13 @@ func New(dir string) *Server {
 		explain: func(ctx context.Context, pkgPath, symbol string) (gofresh.Chain, string, error) {
 			return golang.Explain(ctx, dir, pkgPath, symbol)
 		},
-		write: func(path string, content []byte) error {
+		write: func(path string, content []byte, document bool) error {
 			// The server is corpus-bound and its writes stay under
-			// .stipulator/ (REQ-mcp-writes-confined) - asserted at the
-			// one seam every write passes, not per call site.
-			if !filepath.IsLocal(filepath.FromSlash(path)) {
-				return fmt.Errorf("path %q escapes the corpus root", path)
-			}
-			if path != pathpkg.Clean(path) || !strings.HasPrefix(path, ".stipulator/") {
-				// The prefix is judged on the clean spelling only: an
-				// embedded ".." would satisfy a lexical prefix check
-				// while writing outside the home.
-				return fmt.Errorf("path %q is outside .stipulator/ (the server writes nowhere else)", path)
+			// .stipulator/ (REQ-mcp-writes-confined) — with the one
+			// exception, a corpus document's pointer rewrite — asserted
+			// at the one seam every write passes, not per call site.
+			if err := admitWrite(os.DirFS(dir), path, document); err != nil {
+				return err
 			}
 			full := filepath.Join(dir, filepath.FromSlash(path))
 			if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
@@ -970,6 +967,15 @@ func (s *Server) apply(ups []author.Update) (writeOut, error) {
 			return writeOut{}, fmt.Errorf("%s changed since the operation read it (a concurrent write?); re-run against the current tree", up.Path)
 		}
 	}
+	// Admissibility is judged for the whole batch before any write: a
+	// document the seam would refuse refuses the batch with nothing
+	// written, never after the store half has landed
+	// (REQ-change-retarget's all-or-nothing).
+	for _, up := range ups {
+		if err := admitWrite(s.fsys(), up.Path, up.Content != nil && up.Document); err != nil {
+			return writeOut{}, err
+		}
+	}
 	out := writeOut{}
 	for _, up := range ups {
 		if up.Content == nil {
@@ -979,12 +985,47 @@ func (s *Server) apply(ups []author.Update) (writeOut, error) {
 			out.Deleted = append(out.Deleted, up.Path)
 			continue
 		}
-		if err := s.write(up.Path, up.Content); err != nil {
+		if err := s.write(up.Path, up.Content, up.Document); err != nil {
 			return writeOut{}, err
 		}
 		out.Wrote = append(out.Wrote, up.Path)
 	}
 	return out, nil
+}
+
+// admitWrite is the confinement judgment (REQ-mcp-writes-confined): a
+// clean local path under .stipulator/, or — for an update marked as a
+// document rewrite — a document the corpus's manifest names, so a
+// retarget's pointer rewrite lands in the spec document that names the
+// pointer and nowhere else.
+func admitWrite(fsys fs.FS, path string, document bool) error {
+	if !filepath.IsLocal(filepath.FromSlash(path)) {
+		return fmt.Errorf("path %q escapes the corpus root", path)
+	}
+	// The prefix is judged on the clean spelling only: an embedded ".."
+	// would satisfy a lexical prefix check while writing outside the
+	// home.
+	if path != pathpkg.Clean(path) {
+		return fmt.Errorf("path %q is not a clean path", path)
+	}
+	if strings.HasPrefix(path, ".stipulator/") {
+		return nil
+	}
+	if !document {
+		return fmt.Errorf("path %q is outside .stipulator/ (the server writes nowhere else)", path)
+	}
+	m, err := corpus.LoadManifest(fsys)
+	if err != nil {
+		return fmt.Errorf("document rewrite of %q: %w", path, err)
+	}
+	docs, err := corpus.Enumerate(fsys, m)
+	if err != nil {
+		return fmt.Errorf("document rewrite of %q: %w", path, err)
+	}
+	if !slices.Contains(docs, path) {
+		return fmt.Errorf("path %q is not a corpus document (the server rewrites enforcement pointers in corpus documents and nothing else)", path)
+	}
+	return nil
 }
 
 // result is the one-line Content beside the structured writeOut
@@ -1573,14 +1614,19 @@ func (s *Server) toolRetarget(ctx context.Context, req *mcp.CallToolRequest, in 
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
 	defer closeBackends(backends)
-	ups, rows, err := author.RetargetSymbols(s.fsys(), backends, backend, in.From, in.To)
+	res, err := author.Retarget(s.fsys(), backends, backend, in.From, in.To)
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
-	notes := make([]string, 0, len(rows))
+	rows, ups := res.Rows, res.Updates
+	notes := make([]string, 0, len(rows)+len(res.Pointers))
 	for _, r := range rows {
 		notes = append(notes, r.Requirement+": "+r.Old+" -> "+r.New)
 	}
+	for _, p := range res.Pointers {
+		notes = append(notes, p.Requirement+": pointer `"+p.Old+"` -> `"+p.New+"` in "+p.Document)
+	}
+	notes = append(notes, res.Consented...)
 	// A rename that moved nothing is an answer with a next step - the
 	// prefix mismatches the recorded spelling or the rewrite already
 	// landed - never a bare zero.
@@ -1590,7 +1636,7 @@ func (s *Server) toolRetarget(ctx context.Context, req *mcp.CallToolRequest, in 
 	if in.Check {
 		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 		out := writeOut{Notes: notes, Check: true}
-		return textOnly(fmt.Sprintf("retarget check: %d binding(s) would retarget", len(rows))), out, nil
+		return textOnly(fmt.Sprintf("retarget check: %d binding(s)%s would retarget", len(rows), res.PointerClause())), out, nil
 	}
 	out, err := s.apply(ups)
 	if err != nil {
@@ -2156,7 +2202,7 @@ func (s *Server) exportTo(exportPath string, doc []byte, what string) (*mcp.Call
 	if err := validExportPath(exportPath); err != nil {
 		return nil, nil, err
 	}
-	if err := s.write(exportPath, doc); err != nil {
+	if err := s.write(exportPath, doc, false); err != nil {
 		return nil, nil, err
 	}
 	out := map[string]any{"exported": exportPath, "bytes": len(doc)}

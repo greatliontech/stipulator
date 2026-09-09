@@ -2392,16 +2392,17 @@ func (b0 GapReport_builder) Build() *GapReport {
 // CoverageReport is the coverage evaluation and gate verdict. There are
 // deliberately no aggregate ratios: the verdict is the violation set.
 type CoverageReport struct {
-	state                      protoimpl.MessageState  `protogen:"opaque.v1"`
-	xxx_hidden_Requirements    *[]*RequirementCoverage `protobuf:"bytes,1,rep,name=requirements"`
-	xxx_hidden_Gaps            *[]*GapReport           `protobuf:"bytes,2,rep,name=gaps"`
-	xxx_hidden_Violations      []string                `protobuf:"bytes,3,rep,name=violations"`
-	xxx_hidden_GatePasses      bool                    `protobuf:"varint,4,opt,name=gate_passes,json=gatePasses"`
-	xxx_hidden_PolicyOverrides []string                `protobuf:"bytes,5,rep,name=policy_overrides,json=policyOverrides"`
-	XXX_raceDetectHookData     protoimpl.RaceDetectHookData
-	XXX_presence               [1]uint32
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	state                       protoimpl.MessageState  `protogen:"opaque.v1"`
+	xxx_hidden_Requirements     *[]*RequirementCoverage `protobuf:"bytes,1,rep,name=requirements"`
+	xxx_hidden_Gaps             *[]*GapReport           `protobuf:"bytes,2,rep,name=gaps"`
+	xxx_hidden_Violations       []string                `protobuf:"bytes,3,rep,name=violations"`
+	xxx_hidden_GatePasses       bool                    `protobuf:"varint,4,opt,name=gate_passes,json=gatePasses"`
+	xxx_hidden_PolicyOverrides  []string                `protobuf:"bytes,5,rep,name=policy_overrides,json=policyOverrides"`
+	xxx_hidden_DanglingPointers *[]*DanglingPointer     `protobuf:"bytes,6,rep,name=dangling_pointers,json=danglingPointers"`
+	XXX_raceDetectHookData      protoimpl.RaceDetectHookData
+	XXX_presence                [1]uint32
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
 }
 
 func (x *CoverageReport) Reset() {
@@ -2468,6 +2469,15 @@ func (x *CoverageReport) GetPolicyOverrides() []string {
 	return nil
 }
 
+func (x *CoverageReport) GetDanglingPointers() []*DanglingPointer {
+	if x != nil {
+		if x.xxx_hidden_DanglingPointers != nil {
+			return *x.xxx_hidden_DanglingPointers
+		}
+	}
+	return nil
+}
+
 func (x *CoverageReport) SetRequirements(v []*RequirementCoverage) {
 	x.xxx_hidden_Requirements = &v
 }
@@ -2482,11 +2492,15 @@ func (x *CoverageReport) SetViolations(v []string) {
 
 func (x *CoverageReport) SetGatePasses(v bool) {
 	x.xxx_hidden_GatePasses = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
 }
 
 func (x *CoverageReport) SetPolicyOverrides(v []string) {
 	x.xxx_hidden_PolicyOverrides = v
+}
+
+func (x *CoverageReport) SetDanglingPointers(v []*DanglingPointer) {
+	x.xxx_hidden_DanglingPointers = &v
 }
 
 func (x *CoverageReport) HasGatePasses() bool {
@@ -2513,6 +2527,10 @@ type CoverageReport_builder struct {
 	// ordered: contract-tier configuration is surfaced in every coverage
 	// output, never applied silently.
 	PolicyOverrides []string
+	// Enforcement pointers resolving to no tests- or proves-role binding
+	// of their requirement, in requirement then text order
+	// (REQ-change-enforcement-pointers).
+	DanglingPointers []*DanglingPointer
 }
 
 func (b0 CoverageReport_builder) Build() *CoverageReport {
@@ -2523,10 +2541,124 @@ func (b0 CoverageReport_builder) Build() *CoverageReport {
 	x.xxx_hidden_Gaps = &b.Gaps
 	x.xxx_hidden_Violations = b.Violations
 	if b.GatePasses != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
 		x.xxx_hidden_GatePasses = *b.GatePasses
 	}
 	x.xxx_hidden_PolicyOverrides = b.PolicyOverrides
+	x.xxx_hidden_DanglingPointers = &b.DanglingPointers
+	return m0
+}
+
+// DanglingPointer is one enforcement pointer no binding of its
+// requirement resolves.
+type DanglingPointer struct {
+	state                    protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_RequirementId *string                `protobuf:"bytes,1,opt,name=requirement_id,json=requirementId"`
+	xxx_hidden_Name          *string                `protobuf:"bytes,2,opt,name=name"`
+	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
+	XXX_presence             [1]uint32
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
+}
+
+func (x *DanglingPointer) Reset() {
+	*x = DanglingPointer{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DanglingPointer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DanglingPointer) ProtoMessage() {}
+
+func (x *DanglingPointer) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *DanglingPointer) GetRequirementId() string {
+	if x != nil {
+		if x.xxx_hidden_RequirementId != nil {
+			return *x.xxx_hidden_RequirementId
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *DanglingPointer) GetName() string {
+	if x != nil {
+		if x.xxx_hidden_Name != nil {
+			return *x.xxx_hidden_Name
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *DanglingPointer) SetRequirementId(v string) {
+	x.xxx_hidden_RequirementId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+}
+
+func (x *DanglingPointer) SetName(v string) {
+	x.xxx_hidden_Name = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+}
+
+func (x *DanglingPointer) HasRequirementId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *DanglingPointer) HasName() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *DanglingPointer) ClearRequirementId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_RequirementId = nil
+}
+
+func (x *DanglingPointer) ClearName() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Name = nil
+}
+
+type DanglingPointer_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	RequirementId *string
+	Name          *string
+}
+
+func (b0 DanglingPointer_builder) Build() *DanglingPointer {
+	m0 := &DanglingPointer{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.RequirementId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		x.xxx_hidden_RequirementId = b.RequirementId
+	}
+	if b.Name != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		x.xxx_hidden_Name = b.Name
+	}
 	return m0
 }
 
@@ -2549,6 +2681,7 @@ type CoverageSummary struct {
 	xxx_hidden_ResolvedGapsPrunable int32                  `protobuf:"varint,11,opt,name=resolved_gaps_prunable,json=resolvedGapsPrunable"`
 	xxx_hidden_Partial              int32                  `protobuf:"varint,12,opt,name=partial"`
 	xxx_hidden_GapsContradicted     int32                  `protobuf:"varint,13,opt,name=gaps_contradicted,json=gapsContradicted"`
+	xxx_hidden_PointersDangling     int32                  `protobuf:"varint,14,opt,name=pointers_dangling,json=pointersDangling"`
 	XXX_raceDetectHookData          protoimpl.RaceDetectHookData
 	XXX_presence                    [1]uint32
 	unknownFields                   protoimpl.UnknownFields
@@ -2557,7 +2690,7 @@ type CoverageSummary struct {
 
 func (x *CoverageSummary) Reset() {
 	*x = CoverageSummary{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2569,7 +2702,7 @@ func (x *CoverageSummary) String() string {
 func (*CoverageSummary) ProtoMessage() {}
 
 func (x *CoverageSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2671,39 +2804,46 @@ func (x *CoverageSummary) GetGapsContradicted() int32 {
 	return 0
 }
 
+func (x *CoverageSummary) GetPointersDangling() int32 {
+	if x != nil {
+		return x.xxx_hidden_PointersDangling
+	}
+	return 0
+}
+
 func (x *CoverageSummary) SetGatePasses(v bool) {
 	x.xxx_hidden_GatePasses = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 14)
 }
 
 func (x *CoverageSummary) SetCovered(v int32) {
 	x.xxx_hidden_Covered = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 14)
 }
 
 func (x *CoverageSummary) SetAttested(v int32) {
 	x.xxx_hidden_Attested = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 14)
 }
 
 func (x *CoverageSummary) SetUncovered(v int32) {
 	x.xxx_hidden_Uncovered = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 14)
 }
 
 func (x *CoverageSummary) SetStale(v int32) {
 	x.xxx_hidden_Stale = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 14)
 }
 
 func (x *CoverageSummary) SetBroken(v int32) {
 	x.xxx_hidden_Broken = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 14)
 }
 
 func (x *CoverageSummary) SetExempt(v int32) {
 	x.xxx_hidden_Exempt = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 14)
 }
 
 func (x *CoverageSummary) SetViolations(v []string) {
@@ -2712,7 +2852,7 @@ func (x *CoverageSummary) SetViolations(v []string) {
 
 func (x *CoverageSummary) SetGapsOpen(v int32) {
 	x.xxx_hidden_GapsOpen = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 14)
 }
 
 func (x *CoverageSummary) SetPolicyOverrides(v []string) {
@@ -2721,17 +2861,22 @@ func (x *CoverageSummary) SetPolicyOverrides(v []string) {
 
 func (x *CoverageSummary) SetResolvedGapsPrunable(v int32) {
 	x.xxx_hidden_ResolvedGapsPrunable = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 14)
 }
 
 func (x *CoverageSummary) SetPartial(v int32) {
 	x.xxx_hidden_Partial = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 14)
 }
 
 func (x *CoverageSummary) SetGapsContradicted(v int32) {
 	x.xxx_hidden_GapsContradicted = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 13)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 14)
+}
+
+func (x *CoverageSummary) SetPointersDangling(v int32) {
+	x.xxx_hidden_PointersDangling = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 13, 14)
 }
 
 func (x *CoverageSummary) HasGatePasses() bool {
@@ -2811,6 +2956,13 @@ func (x *CoverageSummary) HasGapsContradicted() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 12)
 }
 
+func (x *CoverageSummary) HasPointersDangling() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 13)
+}
+
 func (x *CoverageSummary) ClearGatePasses() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_GatePasses = false
@@ -2866,6 +3018,11 @@ func (x *CoverageSummary) ClearGapsContradicted() {
 	x.xxx_hidden_GapsContradicted = 0
 }
 
+func (x *CoverageSummary) ClearPointersDangling() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 13)
+	x.xxx_hidden_PointersDangling = 0
+}
+
 type CoverageSummary_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -2895,6 +3052,11 @@ type CoverageSummary_builder struct {
 	// GapsContradicted is the subset of gaps_open declared contradicted —
 	// a known debt with a trigger, named apart from the coverage holes.
 	GapsContradicted *int32
+	// PointersDangling counts enforcement pointers among the scoped
+	// requirements that resolve to no tests- or proves-role binding of
+	// their requirement — red rows of their own class
+	// (REQ-change-enforcement-pointers).
+	PointersDangling *int32
 }
 
 func (b0 CoverageSummary_builder) Build() *CoverageSummary {
@@ -2902,50 +3064,54 @@ func (b0 CoverageSummary_builder) Build() *CoverageSummary {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.GatePasses != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 14)
 		x.xxx_hidden_GatePasses = *b.GatePasses
 	}
 	if b.Covered != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 14)
 		x.xxx_hidden_Covered = *b.Covered
 	}
 	if b.Attested != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 14)
 		x.xxx_hidden_Attested = *b.Attested
 	}
 	if b.Uncovered != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 14)
 		x.xxx_hidden_Uncovered = *b.Uncovered
 	}
 	if b.Stale != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 14)
 		x.xxx_hidden_Stale = *b.Stale
 	}
 	if b.Broken != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 14)
 		x.xxx_hidden_Broken = *b.Broken
 	}
 	if b.Exempt != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 14)
 		x.xxx_hidden_Exempt = *b.Exempt
 	}
 	x.xxx_hidden_Violations = b.Violations
 	if b.GapsOpen != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 14)
 		x.xxx_hidden_GapsOpen = *b.GapsOpen
 	}
 	x.xxx_hidden_PolicyOverrides = b.PolicyOverrides
 	if b.ResolvedGapsPrunable != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 14)
 		x.xxx_hidden_ResolvedGapsPrunable = *b.ResolvedGapsPrunable
 	}
 	if b.Partial != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 14)
 		x.xxx_hidden_Partial = *b.Partial
 	}
 	if b.GapsContradicted != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 13)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 14)
 		x.xxx_hidden_GapsContradicted = *b.GapsContradicted
+	}
+	if b.PointersDangling != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 13, 14)
+		x.xxx_hidden_PointersDangling = *b.PointersDangling
 	}
 	return m0
 }
@@ -2978,7 +3144,7 @@ type VerifySummary struct {
 
 func (x *VerifySummary) Reset() {
 	*x = VerifySummary{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2990,7 +3156,7 @@ func (x *VerifySummary) String() string {
 func (*VerifySummary) ProtoMessage() {}
 
 func (x *VerifySummary) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3475,7 +3641,7 @@ type Seed struct {
 
 func (x *Seed) Reset() {
 	*x = Seed{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3487,7 +3653,7 @@ func (x *Seed) String() string {
 func (*Seed) ProtoMessage() {}
 
 func (x *Seed) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3652,7 +3818,7 @@ type Decl struct {
 
 func (x *Decl) Reset() {
 	*x = Decl{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3664,7 +3830,7 @@ func (x *Decl) String() string {
 func (*Decl) ProtoMessage() {}
 
 func (x *Decl) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3833,7 +3999,7 @@ type ContextReport struct {
 
 func (x *ContextReport) Reset() {
 	*x = ContextReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3845,7 +4011,7 @@ func (x *ContextReport) String() string {
 func (*ContextReport) ProtoMessage() {}
 
 func (x *ContextReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3931,7 +4097,7 @@ type SliceFloorPackage struct {
 
 func (x *SliceFloorPackage) Reset() {
 	*x = SliceFloorPackage{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3943,7 +4109,7 @@ func (x *SliceFloorPackage) String() string {
 func (*SliceFloorPackage) ProtoMessage() {}
 
 func (x *SliceFloorPackage) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4051,7 +4217,7 @@ type Dossier struct {
 
 func (x *Dossier) Reset() {
 	*x = Dossier{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4063,7 +4229,7 @@ func (x *Dossier) String() string {
 func (*Dossier) ProtoMessage() {}
 
 func (x *Dossier) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4267,7 +4433,7 @@ type DossierReport struct {
 
 func (x *DossierReport) Reset() {
 	*x = DossierReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4279,7 +4445,7 @@ func (x *DossierReport) String() string {
 func (*DossierReport) ProtoMessage() {}
 
 func (x *DossierReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4383,7 +4549,7 @@ type PartitionComponent struct {
 
 func (x *PartitionComponent) Reset() {
 	*x = PartitionComponent{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4395,7 +4561,7 @@ func (x *PartitionComponent) String() string {
 func (*PartitionComponent) ProtoMessage() {}
 
 func (x *PartitionComponent) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4474,7 +4640,7 @@ type PartitionOverlap struct {
 
 func (x *PartitionOverlap) Reset() {
 	*x = PartitionOverlap{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[18]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4486,7 +4652,7 @@ func (x *PartitionOverlap) String() string {
 func (*PartitionOverlap) ProtoMessage() {}
 
 func (x *PartitionOverlap) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[18]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4595,7 +4761,7 @@ type PartitionReport struct {
 
 func (x *PartitionReport) Reset() {
 	*x = PartitionReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[19]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4607,7 +4773,7 @@ func (x *PartitionReport) String() string {
 func (*PartitionReport) ProtoMessage() {}
 
 func (x *PartitionReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[19]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4762,7 +4928,7 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\tcondition\x18\x05 \x01(\tR\tcondition\x12\x14\n" +
 	"\x05fired\x18\x06 \x01(\bR\x05fired\x12#\n" +
 	"\rstale_consent\x18\a \x01(\bR\fstaleConsent\x12\"\n" +
-	"\fcontradicted\x18\b \x01(\bR\fcontradicted\"\xf2\x01\n" +
+	"\fcontradicted\x18\b \x01(\bR\fcontradicted\"\xbf\x02\n" +
 	"\x0eCoverageReport\x12F\n" +
 	"\frequirements\x18\x01 \x03(\v2\".stipulator.v1.RequirementCoverageR\frequirements\x12,\n" +
 	"\x04gaps\x18\x02 \x03(\v2\x18.stipulator.v1.GapReportR\x04gaps\x12\x1e\n" +
@@ -4771,7 +4937,11 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"violations\x12\x1f\n" +
 	"\vgate_passes\x18\x04 \x01(\bR\n" +
 	"gatePasses\x12)\n" +
-	"\x10policy_overrides\x18\x05 \x03(\tR\x0fpolicyOverrides\"\xb1\x03\n" +
+	"\x10policy_overrides\x18\x05 \x03(\tR\x0fpolicyOverrides\x12K\n" +
+	"\x11dangling_pointers\x18\x06 \x03(\v2\x1e.stipulator.v1.DanglingPointerR\x10danglingPointers\"L\n" +
+	"\x0fDanglingPointer\x12%\n" +
+	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"\xde\x03\n" +
 	"\x0fCoverageSummary\x12\x1f\n" +
 	"\vgate_passes\x18\x01 \x01(\bR\n" +
 	"gatePasses\x12\x18\n" +
@@ -4789,7 +4959,8 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	" \x03(\tR\x0fpolicyOverrides\x124\n" +
 	"\x16resolved_gaps_prunable\x18\v \x01(\x05R\x14resolvedGapsPrunable\x12\x18\n" +
 	"\apartial\x18\f \x01(\x05R\apartial\x12+\n" +
-	"\x11gaps_contradicted\x18\r \x01(\x05R\x10gapsContradicted\"\xf4\x04\n" +
+	"\x11gaps_contradicted\x18\r \x01(\x05R\x10gapsContradicted\x12+\n" +
+	"\x11pointers_dangling\x18\x0e \x01(\x05R\x10pointersDangling\"\xf4\x04\n" +
 	"\rVerifySummary\x12\x1a\n" +
 	"\bproblems\x18\x01 \x01(\x05R\bproblems\x12\x16\n" +
 	"\x06pinned\x18\x02 \x01(\x05R\x06pinned\x12\x14\n" +
@@ -4910,7 +5081,7 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x12GAP_STATE_DANGLING\x10\x04BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
 var file_stipulator_v1_reports_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
-var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_stipulator_v1_reports_proto_goTypes = []any{
 	(Resolution)(0),                // 0: stipulator.v1.Resolution
 	(ShapeState)(0),                // 1: stipulator.v1.ShapeState
@@ -4929,27 +5100,28 @@ var file_stipulator_v1_reports_proto_goTypes = []any{
 	(*RequirementCoverage)(nil),    // 14: stipulator.v1.RequirementCoverage
 	(*GapReport)(nil),              // 15: stipulator.v1.GapReport
 	(*CoverageReport)(nil),         // 16: stipulator.v1.CoverageReport
-	(*CoverageSummary)(nil),        // 17: stipulator.v1.CoverageSummary
-	(*VerifySummary)(nil),          // 18: stipulator.v1.VerifySummary
-	(*Seed)(nil),                   // 19: stipulator.v1.Seed
-	(*Decl)(nil),                   // 20: stipulator.v1.Decl
-	(*ContextReport)(nil),          // 21: stipulator.v1.ContextReport
-	(*SliceFloorPackage)(nil),      // 22: stipulator.v1.SliceFloorPackage
-	(*Dossier)(nil),                // 23: stipulator.v1.Dossier
-	(*DossierReport)(nil),          // 24: stipulator.v1.DossierReport
-	(*PartitionComponent)(nil),     // 25: stipulator.v1.PartitionComponent
-	(*PartitionOverlap)(nil),       // 26: stipulator.v1.PartitionOverlap
-	(*PartitionReport)(nil),        // 27: stipulator.v1.PartitionReport
-	(BindingRole)(0),               // 28: stipulator.v1.BindingRole
-	(ClauseKind)(0),                // 29: stipulator.v1.ClauseKind
-	(Keyword)(0),                   // 30: stipulator.v1.Keyword
-	(*Requirement)(nil),            // 31: stipulator.v1.Requirement
-	(*Gap)(nil),                    // 32: stipulator.v1.Gap
-	(*RequirementAttestation)(nil), // 33: stipulator.v1.RequirementAttestation
+	(*DanglingPointer)(nil),        // 17: stipulator.v1.DanglingPointer
+	(*CoverageSummary)(nil),        // 18: stipulator.v1.CoverageSummary
+	(*VerifySummary)(nil),          // 19: stipulator.v1.VerifySummary
+	(*Seed)(nil),                   // 20: stipulator.v1.Seed
+	(*Decl)(nil),                   // 21: stipulator.v1.Decl
+	(*ContextReport)(nil),          // 22: stipulator.v1.ContextReport
+	(*SliceFloorPackage)(nil),      // 23: stipulator.v1.SliceFloorPackage
+	(*Dossier)(nil),                // 24: stipulator.v1.Dossier
+	(*DossierReport)(nil),          // 25: stipulator.v1.DossierReport
+	(*PartitionComponent)(nil),     // 26: stipulator.v1.PartitionComponent
+	(*PartitionOverlap)(nil),       // 27: stipulator.v1.PartitionOverlap
+	(*PartitionReport)(nil),        // 28: stipulator.v1.PartitionReport
+	(BindingRole)(0),               // 29: stipulator.v1.BindingRole
+	(ClauseKind)(0),                // 30: stipulator.v1.ClauseKind
+	(Keyword)(0),                   // 31: stipulator.v1.Keyword
+	(*Requirement)(nil),            // 32: stipulator.v1.Requirement
+	(*Gap)(nil),                    // 33: stipulator.v1.Gap
+	(*RequirementAttestation)(nil), // 34: stipulator.v1.RequirementAttestation
 }
 var file_stipulator_v1_reports_proto_depIdxs = []int32{
 	4,  // 0: stipulator.v1.FailureDiagnostic.disposition:type_name -> stipulator.v1.HealthDisposition
-	28, // 1: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
+	29, // 1: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
 	0,  // 2: stipulator.v1.BindingResult.resolution:type_name -> stipulator.v1.Resolution
 	1,  // 3: stipulator.v1.BindingResult.shape:type_name -> stipulator.v1.ShapeState
 	2,  // 4: stipulator.v1.BindingResult.test_outcome:type_name -> stipulator.v1.TestOutcome
@@ -4961,36 +5133,37 @@ var file_stipulator_v1_reports_proto_depIdxs = []int32{
 	13, // 10: stipulator.v1.VerifyReport.signatures:type_name -> stipulator.v1.ChangeSignature
 	8,  // 11: stipulator.v1.VerifyReport.witness_diagnostics:type_name -> stipulator.v1.FailureDiagnostic
 	5,  // 12: stipulator.v1.ChangeSignature.label:type_name -> stipulator.v1.SignatureLabel
-	29, // 13: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
-	30, // 14: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
+	30, // 13: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
+	31, // 14: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
 	6,  // 15: stipulator.v1.RequirementCoverage.bucket:type_name -> stipulator.v1.Bucket
 	7,  // 16: stipulator.v1.GapReport.state:type_name -> stipulator.v1.GapState
 	14, // 17: stipulator.v1.CoverageReport.requirements:type_name -> stipulator.v1.RequirementCoverage
 	15, // 18: stipulator.v1.CoverageReport.gaps:type_name -> stipulator.v1.GapReport
-	13, // 19: stipulator.v1.VerifySummary.signatures:type_name -> stipulator.v1.ChangeSignature
-	28, // 20: stipulator.v1.Seed.role:type_name -> stipulator.v1.BindingRole
-	19, // 21: stipulator.v1.ContextReport.seeds:type_name -> stipulator.v1.Seed
-	20, // 22: stipulator.v1.ContextReport.declarations:type_name -> stipulator.v1.Decl
-	22, // 23: stipulator.v1.ContextReport.floor:type_name -> stipulator.v1.SliceFloorPackage
-	31, // 24: stipulator.v1.Dossier.requirement:type_name -> stipulator.v1.Requirement
-	14, // 25: stipulator.v1.Dossier.coverage:type_name -> stipulator.v1.RequirementCoverage
-	32, // 26: stipulator.v1.Dossier.gap:type_name -> stipulator.v1.Gap
-	33, // 27: stipulator.v1.Dossier.attestation:type_name -> stipulator.v1.RequirementAttestation
-	10, // 28: stipulator.v1.Dossier.bindings:type_name -> stipulator.v1.BindingResult
-	19, // 29: stipulator.v1.Dossier.seeds:type_name -> stipulator.v1.Seed
-	7,  // 30: stipulator.v1.Dossier.gap_state:type_name -> stipulator.v1.GapState
-	23, // 31: stipulator.v1.DossierReport.dossiers:type_name -> stipulator.v1.Dossier
-	9,  // 32: stipulator.v1.DossierReport.problems:type_name -> stipulator.v1.Problem
-	20, // 33: stipulator.v1.DossierReport.declarations:type_name -> stipulator.v1.Decl
-	22, // 34: stipulator.v1.DossierReport.floor:type_name -> stipulator.v1.SliceFloorPackage
-	19, // 35: stipulator.v1.PartitionComponent.seeds:type_name -> stipulator.v1.Seed
-	25, // 36: stipulator.v1.PartitionReport.components:type_name -> stipulator.v1.PartitionComponent
-	26, // 37: stipulator.v1.PartitionReport.overlaps:type_name -> stipulator.v1.PartitionOverlap
-	38, // [38:38] is the sub-list for method output_type
-	38, // [38:38] is the sub-list for method input_type
-	38, // [38:38] is the sub-list for extension type_name
-	38, // [38:38] is the sub-list for extension extendee
-	0,  // [0:38] is the sub-list for field type_name
+	17, // 19: stipulator.v1.CoverageReport.dangling_pointers:type_name -> stipulator.v1.DanglingPointer
+	13, // 20: stipulator.v1.VerifySummary.signatures:type_name -> stipulator.v1.ChangeSignature
+	29, // 21: stipulator.v1.Seed.role:type_name -> stipulator.v1.BindingRole
+	20, // 22: stipulator.v1.ContextReport.seeds:type_name -> stipulator.v1.Seed
+	21, // 23: stipulator.v1.ContextReport.declarations:type_name -> stipulator.v1.Decl
+	23, // 24: stipulator.v1.ContextReport.floor:type_name -> stipulator.v1.SliceFloorPackage
+	32, // 25: stipulator.v1.Dossier.requirement:type_name -> stipulator.v1.Requirement
+	14, // 26: stipulator.v1.Dossier.coverage:type_name -> stipulator.v1.RequirementCoverage
+	33, // 27: stipulator.v1.Dossier.gap:type_name -> stipulator.v1.Gap
+	34, // 28: stipulator.v1.Dossier.attestation:type_name -> stipulator.v1.RequirementAttestation
+	10, // 29: stipulator.v1.Dossier.bindings:type_name -> stipulator.v1.BindingResult
+	20, // 30: stipulator.v1.Dossier.seeds:type_name -> stipulator.v1.Seed
+	7,  // 31: stipulator.v1.Dossier.gap_state:type_name -> stipulator.v1.GapState
+	24, // 32: stipulator.v1.DossierReport.dossiers:type_name -> stipulator.v1.Dossier
+	9,  // 33: stipulator.v1.DossierReport.problems:type_name -> stipulator.v1.Problem
+	21, // 34: stipulator.v1.DossierReport.declarations:type_name -> stipulator.v1.Decl
+	23, // 35: stipulator.v1.DossierReport.floor:type_name -> stipulator.v1.SliceFloorPackage
+	20, // 36: stipulator.v1.PartitionComponent.seeds:type_name -> stipulator.v1.Seed
+	26, // 37: stipulator.v1.PartitionReport.components:type_name -> stipulator.v1.PartitionComponent
+	27, // 38: stipulator.v1.PartitionReport.overlaps:type_name -> stipulator.v1.PartitionOverlap
+	39, // [39:39] is the sub-list for method output_type
+	39, // [39:39] is the sub-list for method input_type
+	39, // [39:39] is the sub-list for extension type_name
+	39, // [39:39] is the sub-list for extension extendee
+	0,  // [0:39] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_reports_proto_init() }
@@ -5006,7 +5179,7 @@ func file_stipulator_v1_reports_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_reports_proto_rawDesc), len(file_stipulator_v1_reports_proto_rawDesc)),
 			NumEnums:      8,
-			NumMessages:   20,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

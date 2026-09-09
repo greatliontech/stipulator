@@ -100,14 +100,39 @@ identity and delete its bindings and gap records.
 rewrite stored binding symbols for one backend under an exact
 old-prefix-to-new-prefix mapping, matching only at a path or member
 boundary — a full-symbol match is the degenerate member boundary, so the
-single-symbol rename repair is the same verb — all-or-nothing: every replacement symbol resolves through the
-backend in the current tree, a rewrite colliding with any post-rewrite
-binding of the same requirement, backend, symbol, and role is refused,
-and partial application never happens. Shape pins re-derive from the
-resolved replacements; content pins ride unchanged — the requirement
-text did not move. The result reports every old-to-new identity, a
-check form reports the affected records without writing, and records
-outside the binding store stay untouched.
+single-symbol rename repair is the same verb — all-or-nothing: every
+replacement symbol resolves through the backend in the current tree, a
+rewrite colliding with any post-rewrite binding of the same requirement,
+backend, symbol, and role is refused, and partial application never
+happens. Shape pins re-derive from the resolved replacements; content
+pins ride unchanged — the requirement text did not move — except where
+the rewrite moved an enforcement pointer in it
+(REQ-change-enforcement-pointers), whose requirement the operation
+re-pins itself. The result
+reports every old-to-new identity, a check form reports the affected
+records without writing, and records outside the binding store and the
+rewritten pointers stay untouched.
+
+**REQ-change-enforcement-pointers** (behavior): Every enforcement
+pointer a requirement names — a code span in a sentence of the
+requirement's text that begins "Enforced by" (the sentence runs to the
+next period in running text; a code span that is not an identifier is
+not a pointer; the phrase inside a sentence is prose), the one
+sanctioned spec-to-code cross-reference — MUST resolve to a tests- or
+proves-role binding of that requirement whose symbol's member name is
+the pointer, judged against the store at every verb that judges
+coverage: an unresolved pointer is a red requirement in the broken
+bucket, counted apart as pointers dangling, named with its remedy, and
+excused by no gap — a corpus-to-store inconsistency is not a coverage
+hole — a binding of the named symbol, or the retarget of a renamed one.
+A symbol retarget whose rewrite moves a bound symbol's member name
+rewrites every pointer naming the old member in that binding's
+requirement, in the document — the one edit the tool makes to a spec
+document — and re-pins that requirement's content — its bindings, gaps,
+and attestations — by the same operation, its own mechanical edit being
+its own consent; the check form reports the pointer rewrites beside the
+binding rewrites without writing, and a pointer rewrite that cannot be
+placed refuses the whole retarget.
 
 **REQ-change-transient** (invariant): Dispositions MUST NOT accrete a stored
 log; their only persistent effect is the rewritten state of the

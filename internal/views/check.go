@@ -74,6 +74,13 @@ func scopeCheck(res *stipulatorv1.CheckResult, ids []string) *stipulatorv1.Check
 		}
 	}
 	cov.SetViolations(violations)
+	var dangling []*stipulatorv1.DanglingPointer
+	for _, p := range cov.GetDanglingPointers() {
+		if keep[p.GetRequirementId()] {
+			dangling = append(dangling, p)
+		}
+	}
+	cov.SetDanglingPointers(dangling)
 	// Residue paths join to requirements through the unfiltered gap rows
 	// — the scope narrows the WHOLE report (REQ-mcp-views), so an
 	// out-of-scope requirement's record path must not pollute scoped
@@ -209,6 +216,7 @@ func checkSummary(res *stipulatorv1.CheckResult) *stipulatorv1.CheckSummary {
 		out.SetGapsDue(int32(tally.Due))
 		out.SetGapsResolved(int32(tally.Resolved))
 		out.SetGapsContradicted(int32(tally.Contradicted))
+		out.SetPointersDangling(int32(len(cov.GetDanglingPointers())))
 		violations := cov.GetViolations()
 		if len(violations) > redRowCap {
 			out.SetViolationsOmitted(int32(len(violations) - redRowCap))

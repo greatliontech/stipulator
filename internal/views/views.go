@@ -210,6 +210,7 @@ func CoverageView(cov *coverage.Report, facts Facts, view string, scope Scope) (
 		out.SetGapsOpen(int32(tally.Standing()))
 		out.SetGapsContradicted(int32(tally.Contradicted))
 		out.SetResolvedGapsPrunable(int32(tally.Resolved))
+		out.SetPointersDangling(coverage.DanglingPointerCount(cov.DanglingPointers, keptIDs))
 		// The trust settlement: an override shapes the verdict and every
 		// count, so even the roll-up surfaces it, never applies it
 		// silently.
@@ -265,6 +266,13 @@ func ScopeReport(cov *coverage.Report, rows []coverage.Requirement, keep map[str
 			}
 		}
 		sliced.Violations = viol
+		ptrs := make([]coverage.DanglingPointer, 0, len(cov.DanglingPointers))
+		for _, p := range cov.DanglingPointers {
+			if keep[p.Requirement] {
+				ptrs = append(ptrs, p)
+			}
+		}
+		sliced.DanglingPointers = ptrs
 	}
 	return sliced
 }

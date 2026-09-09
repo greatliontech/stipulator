@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"io/fs"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -174,7 +176,7 @@ func TestServerApplyCompareAndSwap(t *testing.T) {
 	writes := map[string][]byte{}
 	s := &Server{
 		fsys:   func() fs.FS { return mem },
-		write:  func(p string, c []byte) error { writes[p] = c; return nil },
+		write:  func(p string, c []byte, _ bool) error { writes[p] = c; return nil },
 		remove: func(p string) error { writes[p] = nil; return nil },
 	}
 	if _, err := s.apply([]author.Update{
@@ -224,7 +226,7 @@ func TestTokenlessCallEmitsPhaseLogMessages(t *testing.T) {
 				Outcomes:         map[string]verify.TestOutcome{"example.com/p.TestA": verify.TestPassed},
 			}, nil
 		},
-		write:  func(string, []byte) error { return nil },
+		write:  func(string, []byte, bool) error { return nil },
 		remove: func(string) error { return nil },
 	}
 	ct, st := mcp.NewInMemoryTransports()
@@ -274,18 +276,87 @@ func TestTokenlessCallEmitsPhaseLogMessages(t *testing.T) {
 //gofresh:pure
 func TestWriteSeamConfinesToStipulatorDir(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-writes-confined")
-	s := New(t.TempDir())
-	if err := s.write("outside.txt", []byte("x")); err == nil || !strings.Contains(err.Error(), ".stipulator/") {
+	dir := t.TempDir()
+	s := New(dir)
+	if err := s.write("outside.txt", []byte("x"), false); err == nil || !strings.Contains(err.Error(), "outside .stipulator/") {
 		t.Fatalf("out-of-home write admitted: %v", err)
 	}
-	if err := s.write("../escape.txt", []byte("x")); err == nil {
+	if err := s.write("../escape.txt", []byte("x"), false); err == nil {
 		t.Fatal("root-escaping write admitted")
 	}
-	if err := s.write(".stipulator/../escape.txt", []byte("x")); err == nil {
+	if err := s.write(".stipulator/../escape.txt", []byte("x"), false); err == nil {
 		t.Fatal("embedded-dotdot write admitted: the prefix held lexically while the write landed outside the home")
 	}
-	if err := s.write(".stipulator/gaps/ok.textproto", []byte("x")); err != nil {
+	if err := s.write(".stipulator/gaps/ok.textproto", []byte("x"), false); err != nil {
 		t.Fatalf("in-home write refused: %v", err)
+	}
+	// The one exception: a document rewrite is admitted for a document
+	// the corpus names and nothing else — not a source file, not a
+	// document outside the manifest, not without a manifest.
+	if err := s.write("specs/a.md", []byte("x"), true); err == nil {
+		t.Fatal("a document rewrite was admitted with no corpus manifest")
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".stipulator", "manifest.textproto"), []byte("include: \"specs/**/*.md\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "specs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "specs", "a.md"), []byte("# T\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.write("specs/a.md", []byte("# T\n\nrewritten\n"), true); err != nil {
+		t.Fatalf("a corpus document's rewrite refused: %v", err)
+	}
+	if err := s.write("main.go", []byte("package x\n"), true); err == nil {
+		t.Fatal("a source file was admitted as a document rewrite")
+	}
+	if err := s.write("notes/b.md", []byte("x"), true); err == nil {
+		t.Fatal("a document outside the manifest was admitted")
+	}
+	// The mark is what admits a corpus document: the same path unmarked
+	// is an out-of-home write, refused as one.
+	if err := s.write("specs/a.md", []byte("x"), false); err == nil || !strings.Contains(err.Error(), "outside .stipulator/") {
+		t.Fatalf("an unmarked corpus-document write was not refused as out-of-home: %v", err)
+	}
+	// Admissibility is judged for the whole batch before any write: a
+	// batch whose document the seam would refuse writes nothing — not
+	// even the store file listed before it.
+	mem := fstest.MapFS{
+		".stipulator/manifest.textproto":   {Data: []byte("include: \"specs/**/*.md\"\n")},
+		".stipulator/bindings/m.textproto": {Data: []byte("bindings { requirement_id: \"REQ-a\" backend: \"go\" symbol: \"example.com/p.T\" role: BINDING_ROLE_TESTS }\n")},
+		"specs/a.md":                       {Data: []byte("# T\n")},
+		"notes/b.md":                       {Data: []byte("x\n")},
+	}
+	writes := map[string][]byte{}
+	batch := &Server{
+		fsys:   func() fs.FS { return mem },
+		write:  func(p string, c []byte, _ bool) error { writes[p] = c; return nil },
+		remove: func(p string) error { writes[p] = nil; return nil },
+	}
+	if _, err := batch.apply([]author.Update{
+		{Path: ".stipulator/bindings/m.textproto", Content: []byte("rewritten\n"), Prior: mem[".stipulator/bindings/m.textproto"].Data},
+		{Path: "notes/b.md", Content: []byte("y\n"), Prior: mem["notes/b.md"].Data, Document: true},
+	}); err == nil || !strings.Contains(err.Error(), "not a corpus document") {
+		t.Fatalf("a batch with an inadmissible document: %v; want a refusal naming it", err)
+	}
+	if len(writes) != 0 {
+		t.Fatalf("a refused batch wrote %v; want nothing", writes)
+	}
+	if _, err := batch.apply([]author.Update{
+		{Path: ".stipulator/bindings/m.textproto", Content: []byte("rewritten\n"), Prior: mem[".stipulator/bindings/m.textproto"].Data},
+		{Path: "specs/a.md", Content: []byte("# T\n\nrewritten\n"), Prior: mem["specs/a.md"].Data, Document: true},
+	}); err != nil || len(writes) != 2 {
+		t.Fatalf("an admissible batch: %v, wrote %v", err, writes)
+	}
+	// The deletion road is under the same confinement: a delete outside
+	// the home is refused before anything is written or removed.
+	writes = map[string][]byte{}
+	if _, err := batch.apply([]author.Update{
+		{Path: ".stipulator/bindings/m.textproto", Content: []byte("again\n"), Prior: mem[".stipulator/bindings/m.textproto"].Data},
+		{Path: "specs/a.md", Prior: mem["specs/a.md"].Data},
+	}); err == nil || !strings.Contains(err.Error(), "outside .stipulator/") || len(writes) != 0 {
+		t.Fatalf("a delete outside the home: %v, wrote %v", err, writes)
 	}
 }
 

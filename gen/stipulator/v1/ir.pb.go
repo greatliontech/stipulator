@@ -470,20 +470,21 @@ func (b0 Location_builder) Build() *Location {
 // Requirement is a single normative statement; the unit of identity,
 // coverage, and chunking.
 type Requirement struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Id          *string                `protobuf:"bytes,1,opt,name=id"`
-	xxx_hidden_Kind        ClauseKind             `protobuf:"varint,2,opt,name=kind,enum=stipulator.v1.ClauseKind"`
-	xxx_hidden_Keyword     Keyword                `protobuf:"varint,3,opt,name=keyword,enum=stipulator.v1.Keyword"`
-	xxx_hidden_Text        *string                `protobuf:"bytes,4,opt,name=text"`
-	xxx_hidden_ContentHash *string                `protobuf:"bytes,5,opt,name=content_hash,json=contentHash"`
-	xxx_hidden_Source      *string                `protobuf:"bytes,6,opt,name=source"`
-	xxx_hidden_Location    *Location              `protobuf:"bytes,7,opt,name=location"`
-	xxx_hidden_Clauses     *[]*Clause             `protobuf:"bytes,8,rep,name=clauses"`
-	xxx_hidden_SourceHash  *string                `protobuf:"bytes,9,opt,name=source_hash,json=sourceHash"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	state                          protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id                  *string                `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Kind                ClauseKind             `protobuf:"varint,2,opt,name=kind,enum=stipulator.v1.ClauseKind"`
+	xxx_hidden_Keyword             Keyword                `protobuf:"varint,3,opt,name=keyword,enum=stipulator.v1.Keyword"`
+	xxx_hidden_Text                *string                `protobuf:"bytes,4,opt,name=text"`
+	xxx_hidden_ContentHash         *string                `protobuf:"bytes,5,opt,name=content_hash,json=contentHash"`
+	xxx_hidden_Source              *string                `protobuf:"bytes,6,opt,name=source"`
+	xxx_hidden_Location            *Location              `protobuf:"bytes,7,opt,name=location"`
+	xxx_hidden_Clauses             *[]*Clause             `protobuf:"bytes,8,rep,name=clauses"`
+	xxx_hidden_SourceHash          *string                `protobuf:"bytes,9,opt,name=source_hash,json=sourceHash"`
+	xxx_hidden_EnforcementPointers *[]*EnforcementPointer `protobuf:"bytes,10,rep,name=enforcement_pointers,json=enforcementPointers"`
+	XXX_raceDetectHookData         protoimpl.RaceDetectHookData
+	XXX_presence                   [1]uint32
+	unknownFields                  protoimpl.UnknownFields
+	sizeCache                      protoimpl.SizeCache
 }
 
 func (x *Requirement) Reset() {
@@ -595,34 +596,43 @@ func (x *Requirement) GetSourceHash() string {
 	return ""
 }
 
+func (x *Requirement) GetEnforcementPointers() []*EnforcementPointer {
+	if x != nil {
+		if x.xxx_hidden_EnforcementPointers != nil {
+			return *x.xxx_hidden_EnforcementPointers
+		}
+	}
+	return nil
+}
+
 func (x *Requirement) SetId(v string) {
 	x.xxx_hidden_Id = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 10)
 }
 
 func (x *Requirement) SetKind(v ClauseKind) {
 	x.xxx_hidden_Kind = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 10)
 }
 
 func (x *Requirement) SetKeyword(v Keyword) {
 	x.xxx_hidden_Keyword = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 10)
 }
 
 func (x *Requirement) SetText(v string) {
 	x.xxx_hidden_Text = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 10)
 }
 
 func (x *Requirement) SetContentHash(v string) {
 	x.xxx_hidden_ContentHash = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 10)
 }
 
 func (x *Requirement) SetSource(v string) {
 	x.xxx_hidden_Source = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 10)
 }
 
 func (x *Requirement) SetLocation(v *Location) {
@@ -635,7 +645,11 @@ func (x *Requirement) SetClauses(v []*Clause) {
 
 func (x *Requirement) SetSourceHash(v string) {
 	x.xxx_hidden_SourceHash = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 10)
+}
+
+func (x *Requirement) SetEnforcementPointers(v []*EnforcementPointer) {
+	x.xxx_hidden_EnforcementPointers = &v
 }
 
 func (x *Requirement) HasId() bool {
@@ -765,6 +779,13 @@ type Requirement_builder struct {
 	// byte-identical text: the canonical form moved, not the text
 	// (REQ-model-consent-source).
 	SourceHash *string
+	// The requirement's enforcement pointers: the code spans of a
+	// sentence of its text beginning "Enforced by", in text order — the
+	// one sanctioned spec-to-code cross-reference, judged against the
+	// requirement's tests- and proves-role bindings, each with the span
+	// a retarget rewrites (REQ-change-enforcement-pointers). Carried,
+	// never hashed: the text already carries them.
+	EnforcementPointers []*EnforcementPointer
 }
 
 func (b0 Requirement_builder) Build() *Requirement {
@@ -772,34 +793,176 @@ func (b0 Requirement_builder) Build() *Requirement {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 10)
 		x.xxx_hidden_Id = b.Id
 	}
 	if b.Kind != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 10)
 		x.xxx_hidden_Kind = *b.Kind
 	}
 	if b.Keyword != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 10)
 		x.xxx_hidden_Keyword = *b.Keyword
 	}
 	if b.Text != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 10)
 		x.xxx_hidden_Text = b.Text
 	}
 	if b.ContentHash != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 10)
 		x.xxx_hidden_ContentHash = b.ContentHash
 	}
 	if b.Source != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 10)
 		x.xxx_hidden_Source = b.Source
 	}
 	x.xxx_hidden_Location = b.Location
 	x.xxx_hidden_Clauses = &b.Clauses
 	if b.SourceHash != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 10)
 		x.xxx_hidden_SourceHash = b.SourceHash
+	}
+	x.xxx_hidden_EnforcementPointers = &b.EnforcementPointers
+	return m0
+}
+
+// EnforcementPointer is one enforcement pointer: the symbol member
+// name it spells and the byte span of that spelling in the
+// requirement's raw source (end exclusive).
+type EnforcementPointer struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Name        *string                `protobuf:"bytes,1,opt,name=name"`
+	xxx_hidden_Start       int32                  `protobuf:"varint,2,opt,name=start"`
+	xxx_hidden_End         int32                  `protobuf:"varint,3,opt,name=end"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *EnforcementPointer) Reset() {
+	*x = EnforcementPointer{}
+	mi := &file_stipulator_v1_ir_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnforcementPointer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnforcementPointer) ProtoMessage() {}
+
+func (x *EnforcementPointer) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_ir_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *EnforcementPointer) GetName() string {
+	if x != nil {
+		if x.xxx_hidden_Name != nil {
+			return *x.xxx_hidden_Name
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *EnforcementPointer) GetStart() int32 {
+	if x != nil {
+		return x.xxx_hidden_Start
+	}
+	return 0
+}
+
+func (x *EnforcementPointer) GetEnd() int32 {
+	if x != nil {
+		return x.xxx_hidden_End
+	}
+	return 0
+}
+
+func (x *EnforcementPointer) SetName(v string) {
+	x.xxx_hidden_Name = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *EnforcementPointer) SetStart(v int32) {
+	x.xxx_hidden_Start = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *EnforcementPointer) SetEnd(v int32) {
+	x.xxx_hidden_End = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+}
+
+func (x *EnforcementPointer) HasName() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *EnforcementPointer) HasStart() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *EnforcementPointer) HasEnd() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *EnforcementPointer) ClearName() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Name = nil
+}
+
+func (x *EnforcementPointer) ClearStart() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Start = 0
+}
+
+func (x *EnforcementPointer) ClearEnd() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_End = 0
+}
+
+type EnforcementPointer_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Name  *string
+	Start *int32
+	End   *int32
+}
+
+func (b0 EnforcementPointer_builder) Build() *EnforcementPointer {
+	m0 := &EnforcementPointer{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Name != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_Name = b.Name
+	}
+	if b.Start != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		x.xxx_hidden_Start = *b.Start
+	}
+	if b.End != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_End = *b.End
 	}
 	return m0
 }
@@ -819,7 +982,7 @@ type Clause struct {
 
 func (x *Clause) Reset() {
 	*x = Clause{}
-	mi := &file_stipulator_v1_ir_proto_msgTypes[3]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -831,7 +994,7 @@ func (x *Clause) String() string {
 func (*Clause) ProtoMessage() {}
 
 func (x *Clause) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_ir_proto_msgTypes[3]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -968,7 +1131,7 @@ type Term struct {
 
 func (x *Term) Reset() {
 	*x = Term{}
-	mi := &file_stipulator_v1_ir_proto_msgTypes[4]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -980,7 +1143,7 @@ func (x *Term) String() string {
 func (*Term) ProtoMessage() {}
 
 func (x *Term) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_ir_proto_msgTypes[4]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1177,7 +1340,7 @@ type Note struct {
 
 func (x *Note) Reset() {
 	*x = Note{}
-	mi := &file_stipulator_v1_ir_proto_msgTypes[5]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1189,7 +1352,7 @@ func (x *Note) String() string {
 func (*Note) ProtoMessage() {}
 
 func (x *Note) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_ir_proto_msgTypes[5]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1358,7 +1521,7 @@ type Annotation struct {
 
 func (x *Annotation) Reset() {
 	*x = Annotation{}
-	mi := &file_stipulator_v1_ir_proto_msgTypes[6]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1370,7 +1533,7 @@ func (x *Annotation) String() string {
 func (*Annotation) ProtoMessage() {}
 
 func (x *Annotation) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_ir_proto_msgTypes[6]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1507,7 +1670,7 @@ type NodeRef struct {
 
 func (x *NodeRef) Reset() {
 	*x = NodeRef{}
-	mi := &file_stipulator_v1_ir_proto_msgTypes[7]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1519,7 +1682,7 @@ func (x *NodeRef) String() string {
 func (*NodeRef) ProtoMessage() {}
 
 func (x *NodeRef) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_ir_proto_msgTypes[7]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1638,7 +1801,7 @@ func (b0 NodeRef_builder) Build() *NodeRef {
 type case_NodeRef_Ref protoreflect.FieldNumber
 
 func (x case_NodeRef_Ref) String() string {
-	md := file_stipulator_v1_ir_proto_msgTypes[7].Descriptor()
+	md := file_stipulator_v1_ir_proto_msgTypes[8].Descriptor()
 	if x == 0 {
 		return "not set"
 	}
@@ -1674,7 +1837,7 @@ type Edge struct {
 
 func (x *Edge) Reset() {
 	*x = Edge{}
-	mi := &file_stipulator_v1_ir_proto_msgTypes[8]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1686,7 +1849,7 @@ func (x *Edge) String() string {
 func (*Edge) ProtoMessage() {}
 
 func (x *Edge) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_ir_proto_msgTypes[8]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1803,7 +1966,7 @@ type Document struct {
 
 func (x *Document) Reset() {
 	*x = Document{}
-	mi := &file_stipulator_v1_ir_proto_msgTypes[9]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1815,7 +1978,7 @@ func (x *Document) String() string {
 func (*Document) ProtoMessage() {}
 
 func (x *Document) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_ir_proto_msgTypes[9]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1931,7 +2094,7 @@ type Section struct {
 
 func (x *Section) Reset() {
 	*x = Section{}
-	mi := &file_stipulator_v1_ir_proto_msgTypes[10]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1943,7 +2106,7 @@ func (x *Section) String() string {
 func (*Section) ProtoMessage() {}
 
 func (x *Section) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_ir_proto_msgTypes[10]
+	mi := &file_stipulator_v1_ir_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2072,7 +2235,7 @@ const file_stipulator_v1_ir_proto_rawDesc = "" +
 	"\bLocation\x12\x1a\n" +
 	"\bdocument\x18\x01 \x01(\tR\bdocument\x12!\n" +
 	"\fsection_path\x18\x02 \x03(\tR\vsectionPath\x12\x12\n" +
-	"\x04line\x18\x03 \x01(\x05R\x04line\"\xd4\x02\n" +
+	"\x04line\x18\x03 \x01(\x05R\x04line\"\xaa\x03\n" +
 	"\vRequirement\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12-\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x19.stipulator.v1.ClauseKindR\x04kind\x120\n" +
@@ -2083,7 +2246,13 @@ const file_stipulator_v1_ir_proto_rawDesc = "" +
 	"\blocation\x18\a \x01(\v2\x17.stipulator.v1.LocationR\blocation\x12/\n" +
 	"\aclauses\x18\b \x03(\v2\x15.stipulator.v1.ClauseR\aclauses\x12\x1f\n" +
 	"\vsource_hash\x18\t \x01(\tR\n" +
-	"sourceHash\"L\n" +
+	"sourceHash\x12T\n" +
+	"\x14enforcement_pointers\x18\n" +
+	" \x03(\v2!.stipulator.v1.EnforcementPointerR\x13enforcementPointers\"P\n" +
+	"\x12EnforcementPointer\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
+	"\x05start\x18\x02 \x01(\x05R\x05start\x12\x10\n" +
+	"\x03end\x18\x03 \x01(\x05R\x03end\"L\n" +
 	"\x06Clause\x12\x18\n" +
 	"\aordinal\x18\x01 \x01(\rR\aordinal\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x12\n" +
@@ -2150,49 +2319,51 @@ const file_stipulator_v1_ir_proto_rawDesc = "" +
 	"\x14EDGE_KIND_SUPERSEDES\x10\x05BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
 var file_stipulator_v1_ir_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_stipulator_v1_ir_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_stipulator_v1_ir_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_stipulator_v1_ir_proto_goTypes = []any{
-	(ClauseKind)(0),     // 0: stipulator.v1.ClauseKind
-	(Keyword)(0),        // 1: stipulator.v1.Keyword
-	(EdgeKind)(0),       // 2: stipulator.v1.EdgeKind
-	(*Spec)(nil),        // 3: stipulator.v1.Spec
-	(*Location)(nil),    // 4: stipulator.v1.Location
-	(*Requirement)(nil), // 5: stipulator.v1.Requirement
-	(*Clause)(nil),      // 6: stipulator.v1.Clause
-	(*Term)(nil),        // 7: stipulator.v1.Term
-	(*Note)(nil),        // 8: stipulator.v1.Note
-	(*Annotation)(nil),  // 9: stipulator.v1.Annotation
-	(*NodeRef)(nil),     // 10: stipulator.v1.NodeRef
-	(*Edge)(nil),        // 11: stipulator.v1.Edge
-	(*Document)(nil),    // 12: stipulator.v1.Document
-	(*Section)(nil),     // 13: stipulator.v1.Section
+	(ClauseKind)(0),            // 0: stipulator.v1.ClauseKind
+	(Keyword)(0),               // 1: stipulator.v1.Keyword
+	(EdgeKind)(0),              // 2: stipulator.v1.EdgeKind
+	(*Spec)(nil),               // 3: stipulator.v1.Spec
+	(*Location)(nil),           // 4: stipulator.v1.Location
+	(*Requirement)(nil),        // 5: stipulator.v1.Requirement
+	(*EnforcementPointer)(nil), // 6: stipulator.v1.EnforcementPointer
+	(*Clause)(nil),             // 7: stipulator.v1.Clause
+	(*Term)(nil),               // 8: stipulator.v1.Term
+	(*Note)(nil),               // 9: stipulator.v1.Note
+	(*Annotation)(nil),         // 10: stipulator.v1.Annotation
+	(*NodeRef)(nil),            // 11: stipulator.v1.NodeRef
+	(*Edge)(nil),               // 12: stipulator.v1.Edge
+	(*Document)(nil),           // 13: stipulator.v1.Document
+	(*Section)(nil),            // 14: stipulator.v1.Section
 }
 var file_stipulator_v1_ir_proto_depIdxs = []int32{
-	12, // 0: stipulator.v1.Spec.documents:type_name -> stipulator.v1.Document
+	13, // 0: stipulator.v1.Spec.documents:type_name -> stipulator.v1.Document
 	5,  // 1: stipulator.v1.Spec.requirements:type_name -> stipulator.v1.Requirement
-	7,  // 2: stipulator.v1.Spec.terms:type_name -> stipulator.v1.Term
-	8,  // 3: stipulator.v1.Spec.notes:type_name -> stipulator.v1.Note
-	9,  // 4: stipulator.v1.Spec.annotations:type_name -> stipulator.v1.Annotation
-	11, // 5: stipulator.v1.Spec.edges:type_name -> stipulator.v1.Edge
+	8,  // 2: stipulator.v1.Spec.terms:type_name -> stipulator.v1.Term
+	9,  // 3: stipulator.v1.Spec.notes:type_name -> stipulator.v1.Note
+	10, // 4: stipulator.v1.Spec.annotations:type_name -> stipulator.v1.Annotation
+	12, // 5: stipulator.v1.Spec.edges:type_name -> stipulator.v1.Edge
 	0,  // 6: stipulator.v1.Requirement.kind:type_name -> stipulator.v1.ClauseKind
 	1,  // 7: stipulator.v1.Requirement.keyword:type_name -> stipulator.v1.Keyword
 	4,  // 8: stipulator.v1.Requirement.location:type_name -> stipulator.v1.Location
-	6,  // 9: stipulator.v1.Requirement.clauses:type_name -> stipulator.v1.Clause
-	4,  // 10: stipulator.v1.Term.location:type_name -> stipulator.v1.Location
-	10, // 11: stipulator.v1.Note.attached_to:type_name -> stipulator.v1.NodeRef
-	10, // 12: stipulator.v1.Note.references:type_name -> stipulator.v1.NodeRef
-	4,  // 13: stipulator.v1.Note.location:type_name -> stipulator.v1.Location
-	10, // 14: stipulator.v1.Annotation.references:type_name -> stipulator.v1.NodeRef
-	4,  // 15: stipulator.v1.Annotation.location:type_name -> stipulator.v1.Location
-	10, // 16: stipulator.v1.Edge.from:type_name -> stipulator.v1.NodeRef
-	10, // 17: stipulator.v1.Edge.to:type_name -> stipulator.v1.NodeRef
-	2,  // 18: stipulator.v1.Edge.kind:type_name -> stipulator.v1.EdgeKind
-	13, // 19: stipulator.v1.Document.sections:type_name -> stipulator.v1.Section
-	20, // [20:20] is the sub-list for method output_type
-	20, // [20:20] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	7,  // 9: stipulator.v1.Requirement.clauses:type_name -> stipulator.v1.Clause
+	6,  // 10: stipulator.v1.Requirement.enforcement_pointers:type_name -> stipulator.v1.EnforcementPointer
+	4,  // 11: stipulator.v1.Term.location:type_name -> stipulator.v1.Location
+	11, // 12: stipulator.v1.Note.attached_to:type_name -> stipulator.v1.NodeRef
+	11, // 13: stipulator.v1.Note.references:type_name -> stipulator.v1.NodeRef
+	4,  // 14: stipulator.v1.Note.location:type_name -> stipulator.v1.Location
+	11, // 15: stipulator.v1.Annotation.references:type_name -> stipulator.v1.NodeRef
+	4,  // 16: stipulator.v1.Annotation.location:type_name -> stipulator.v1.Location
+	11, // 17: stipulator.v1.Edge.from:type_name -> stipulator.v1.NodeRef
+	11, // 18: stipulator.v1.Edge.to:type_name -> stipulator.v1.NodeRef
+	2,  // 19: stipulator.v1.Edge.kind:type_name -> stipulator.v1.EdgeKind
+	14, // 20: stipulator.v1.Document.sections:type_name -> stipulator.v1.Section
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_ir_proto_init() }
@@ -2200,7 +2371,7 @@ func file_stipulator_v1_ir_proto_init() {
 	if File_stipulator_v1_ir_proto != nil {
 		return
 	}
-	file_stipulator_v1_ir_proto_msgTypes[7].OneofWrappers = []any{
+	file_stipulator_v1_ir_proto_msgTypes[8].OneofWrappers = []any{
 		(*nodeRef_RequirementId)(nil),
 		(*nodeRef_TermName)(nil),
 	}
@@ -2210,7 +2381,7 @@ func file_stipulator_v1_ir_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_ir_proto_rawDesc), len(file_stipulator_v1_ir_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

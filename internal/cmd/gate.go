@@ -160,11 +160,15 @@ func printCoverage(cov *coverage.Report) {
 	}
 	tally := coverage.GapCounts(cov.Gaps, nil)
 	prunable := tally.Resolved
-	fmt.Printf("coverage: %s covered, %s attested, %s uncovered, %s partial, %s stale, %s broken, %d exempt; gaps: %s open, %d resolved\n",
+	pointers := ""
+	if n := coverage.DanglingPointerCount(cov.DanglingPointers, nil); n > 0 {
+		pointers = fmt.Sprintf("; pointers: %s dangling", red(fmt.Sprint(n)))
+	}
+	fmt.Printf("coverage: %s covered, %s attested, %s uncovered, %s partial, %s stale, %s broken, %d exempt; gaps: %s open, %d resolved%s\n",
 		green(fmt.Sprint(counts[coverage.Covered])), num(counts[coverage.Attested], yellow),
 		num(counts[coverage.Uncovered], yellow), num(counts[coverage.Partial], yellow),
 		num(counts[coverage.Stale], yellow), num(counts[coverage.Broken], red),
-		counts[coverage.Exempt], coverage.GapCountsString(tally.Standing(), tally.Contradicted), prunable)
+		counts[coverage.Exempt], coverage.GapCountsString(tally.Standing(), tally.Contradicted), prunable, pointers)
 	if prunable > 0 {
 		noun := "gap"
 		if prunable > 1 {

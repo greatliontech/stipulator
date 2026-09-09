@@ -255,6 +255,17 @@ message CoverageReport {
   // ordered: contract-tier configuration is surfaced in every coverage
   // output, never applied silently.
   repeated string policy_overrides = 5;
+  // Enforcement pointers resolving to no tests- or proves-role binding
+  // of their requirement, in requirement then text order
+  // (REQ-change-enforcement-pointers).
+  repeated DanglingPointer dangling_pointers = 6;
+}
+
+// DanglingPointer is one enforcement pointer no binding of its
+// requirement resolves.
+message DanglingPointer {
+  string requirement_id = 1;
+  string name = 2;
 }
 
 // CoverageSummary is the coverage roll-up: the answer most gate calls
@@ -288,6 +299,11 @@ message CoverageSummary {
   // GapsContradicted is the subset of gaps_open declared contradicted —
   // a known debt with a trigger, named apart from the coverage holes.
   int32 gaps_contradicted = 13;
+  // PointersDangling counts enforcement pointers among the scoped
+  // requirements that resolve to no tests- or proves-role binding of
+  // their requirement — red rows of their own class
+  // (REQ-change-enforcement-pointers).
+  int32 pointers_dangling = 14;
 }
 
 // VerifySummary is the verification roll-up: record hygiene and witness

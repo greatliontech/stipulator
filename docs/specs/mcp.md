@@ -224,8 +224,12 @@ child process per REQ-policy-cancellation.
 
 **REQ-mcp-writes-confined** (behavior): The server MUST NOT write outside
 the record stores and the export home under `.stipulator/` — it never
-edits spec documents or source code, so wiring it into any harness is
-low-risk by construction.
+edits spec documents or source code, with one exception: the enforcement
+pointers a retarget's symbol rename moved, written to the corpus
+document that names them and to no other path
+(REQ-change-enforcement-pointers), and judged admissible for the whole
+batch before any write — so wiring it into any harness is low-risk by
+construction.
 
 **REQ-report-messages** (wire, refines REQ-core-proto-io): Verification and
 coverage reports MUST be expressible as the protobuf report messages,

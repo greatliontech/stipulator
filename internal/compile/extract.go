@@ -2,6 +2,7 @@ package compile
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	gast "github.com/yuin/goldmark/ast"
@@ -38,6 +39,77 @@ type reqBlock struct {
 	// (REQ-profile-clauses); each carries its own location for the
 	// duplicate-label diagnostic.
 	clauses []clauseBlock
+	// pointers are the enforcement pointers the text names, in text
+	// order (enforcementPointers).
+	pointers []pointer
+}
+
+// pointer is one enforcement pointer: its name and the byte span of
+// its code span's content in the requirement's raw source — the one
+// grammar's answer to both "what does the text name" and "where would
+// a rename land".
+type pointer struct {
+	name       string
+	start, end int
+}
+
+// enforcementPointers scans a requirement's segments for its
+// enforcement pointers: every code span in a sentence that begins
+// "Enforced by" — the sentence runs from the phrase to the next period
+// in running text, so a qualifying phrase ("the CLI arm of") and a
+// list joined by commas and "and" both read as one sentence; a code
+// span that is not an identifier is not a pointer; the phrase inside a
+// sentence is prose (REQ-change-enforcement-pointers). Spans are made
+// relative to sourceStart, the requirement block's first byte.
+func enforcementPointers(segs []profile.Seg, sourceStart int) []pointer {
+	const phrase = "Enforced by"
+	var out []pointer
+	collecting := false
+	for _, s := range segs {
+		if s.Inert {
+			if collecting && identifierRe.MatchString(s.Text) && s.Start >= 0 {
+				out = append(out, pointer{name: s.Text, start: s.Start - sourceStart, end: s.End - sourceStart})
+			}
+			continue
+		}
+		text := s.Text
+		if !collecting {
+			i := sentenceStart(text, phrase)
+			if i < 0 {
+				continue
+			}
+			collecting = true
+			text = text[i+len(phrase):]
+		}
+		if strings.Contains(text, ".") {
+			collecting = false
+		}
+	}
+	return out
+}
+
+var identifierRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
+// sentenceStart is the index of phrase where it begins a sentence in
+// text — at the text's start or after a sentence end and whitespace —
+// or -1: "Enforced by" inside a sentence is prose, not a pointer list.
+func sentenceStart(text, phrase string) int {
+	from := 0
+	for {
+		i := strings.Index(text[from:], phrase)
+		if i < 0 {
+			return -1
+		}
+		i += from
+		j := i - 1
+		for j >= 0 && (text[j] == ' ' || text[j] == '\n' || text[j] == '\t') {
+			j--
+		}
+		if i == 0 || (j >= 0 && j < i-1 && (text[j] == '.' || text[j] == '!' || text[j] == '?')) {
+			return i
+		}
+		from = i + len(phrase)
+	}
 }
 
 type clauseBlock struct {
@@ -156,6 +228,8 @@ func extractDocument(path string, root gast.Node, src []byte, refLabels []string
 			for _, c := range profile.Clauses(node, src) {
 				rb.clauses = append(rb.clauses, clauseBlock{label: c.Label, segs: c.Segs, loc: loc(c.Item)})
 			}
+			blockStart, _ := profile.Span(node, src)
+			rb.pointers = enforcementPointers(rb.segs, blockStart)
 			d.reqs = append(d.reqs, rb)
 			extentOf[node] = &rb.extent
 		case *profile.Term:

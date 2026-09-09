@@ -91,6 +91,7 @@ func harnessWith(t *testing.T, files map[string]string, mut func(*Server)) (*mcp
 		backends: func(context.Context, []string) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{"go": fakeBackend{
 				"example.com/p.TestA": strings.Repeat("s", 64),
+				"example.com/p.TestB": strings.Repeat("b", 64),
 				"example.com/p.F":     strings.Repeat("f", 64),
 				"example.com/q.TestA": strings.Repeat("q", 64),
 			}}, nil
@@ -103,7 +104,7 @@ func harnessWith(t *testing.T, files map[string]string, mut func(*Server)) (*mcp
 				Outcomes:         map[string]verify.TestOutcome{"example.com/p.TestA": verify.TestPassed},
 			}, nil
 		},
-		write: func(path string, content []byte) error {
+		write: func(path string, content []byte, _ bool) error {
 			// Captured AND fed back: the real server reads the tree it
 			// writes, and read-after-write flows (pin to quiescence,
 			// re-declare over an update) depend on it.
@@ -539,6 +540,40 @@ func TestRetargetToolCheckWritesNothing(t *testing.T) {
 	got, ok := writes[".stipulator/bindings/m.textproto"]
 	if !ok || !strings.Contains(string(got), "example.com/q.TestA") {
 		t.Fatalf("applying form did not rewrite the store: %q", got)
+	}
+}
+
+// The served retarget names the pointer rewrites beside the binding
+// rewrites, its check form writes nothing, and the applying form writes
+// the document beside the store (REQ-change-enforcement-pointers).
+func TestRetargetToolRewritesEnforcementPointers(t *testing.T) {
+	stipulate.Covers(t, "REQ-change-enforcement-pointers")
+	pointed := strings.Replace(doc, "Using the widget it MUST x.", "Using the widget it MUST x. Enforced by `TestA`.", 1)
+	sess, writes := harness(t, map[string]string{"specs/a.md": pointed, ".stipulator/bindings/m.textproto": pinnedBinding(t)})
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "retarget", Arguments: map[string]any{
+		"from": "example.com/p.TestA", "to": "example.com/p.TestB", "check": true,
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("retarget check = %+v, %v", res, err)
+	}
+	if len(writes) != 0 {
+		t.Fatalf("check form wrote: %v", writes)
+	}
+	text := res.Content[0].(*mcp.TextContent).Text
+	if !strings.Contains(text, "1 binding(s) and 1 pointer(s) would retarget") {
+		t.Fatalf("check text = %q", text)
+	}
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "retarget", Arguments: map[string]any{
+		"from": "example.com/p.TestA", "to": "example.com/p.TestB",
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("retarget = %+v, %v", res, err)
+	}
+	if got, ok := writes["specs/a.md"]; !ok || !strings.Contains(string(got), "Enforced by `TestB`.") {
+		t.Fatalf("the document was not rewritten: %q", got)
+	}
+	if got, ok := writes[".stipulator/bindings/m.textproto"]; !ok || !strings.Contains(string(got), "example.com/p.TestB") {
+		t.Fatalf("the store was not rewritten: %q", got)
 	}
 }
 
@@ -1362,8 +1397,8 @@ func TestPinToolIdsFormIsAllOrNothingOrHonest(t *testing.T) {
 		".stipulator/bindings/b.textproto": stale("REQ-m-b", ""),
 	}, func(s *Server) {
 		inner := s.write
-		s.write = func(path string, content []byte) error {
-			if err := inner(path, content); err != nil {
+		s.write = func(path string, content []byte, document bool) error {
+			if err := inner(path, content, document); err != nil {
 				return err
 			}
 			if path == ".stipulator/bindings/a.textproto" {

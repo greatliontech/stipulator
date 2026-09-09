@@ -91,6 +91,22 @@ message Requirement {
   // byte-identical text: the canonical form moved, not the text
   // (REQ-model-consent-source).
   string source_hash = 9;
+  // The requirement's enforcement pointers: the code spans of a
+  // sentence of its text beginning "Enforced by", in text order — the
+  // one sanctioned spec-to-code cross-reference, judged against the
+  // requirement's tests- and proves-role bindings, each with the span
+  // a retarget rewrites (REQ-change-enforcement-pointers). Carried,
+  // never hashed: the text already carries them.
+  repeated EnforcementPointer enforcement_pointers = 10;
+}
+
+// EnforcementPointer is one enforcement pointer: the symbol member
+// name it spells and the byte span of that spelling in the
+// requirement's raw source (end exclusive).
+message EnforcementPointer {
+  string name = 1;
+  int32 start = 2;
+  int32 end = 3;
 }
 
 // Clause is one sub-obligation of a requirement: a payload list item,

@@ -43,8 +43,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-writes-confined"
-  content_hash: "04367cfdbcaf32eb9ba0536c4aca2ef7b331e3bd285bedec8d005aedf4562cfc"
-  source_hash: "a0b9130cd2ca9dbcf1763a64b943931a19518c02f0e1d8968d1be105a16b9a4f"
+  content_hash: "5090084f3732cf5d73ba7f5a191aca28e57ac186db6c4c3c689cdb5b2eeec86c"
+  source_hash: "8b0952f17d6036a2e97cf21fdebf7ef7b763b8c7d948422618c0d1e37a180d67"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestBindToolWritesConfined"
   role: BINDING_ROLE_TESTS
@@ -183,8 +183,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-writes-confined"
-  content_hash: "04367cfdbcaf32eb9ba0536c4aca2ef7b331e3bd285bedec8d005aedf4562cfc"
-  source_hash: "a0b9130cd2ca9dbcf1763a64b943931a19518c02f0e1d8968d1be105a16b9a4f"
+  content_hash: "5090084f3732cf5d73ba7f5a191aca28e57ac186db6c4c3c689cdb5b2eeec86c"
+  source_hash: "8b0952f17d6036a2e97cf21fdebf7ef7b763b8c7d948422618c0d1e37a180d67"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.New"
   role: BINDING_ROLE_IMPLEMENTS
@@ -873,8 +873,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-writes-confined"
-  content_hash: "04367cfdbcaf32eb9ba0536c4aca2ef7b331e3bd285bedec8d005aedf4562cfc"
-  source_hash: "a0b9130cd2ca9dbcf1763a64b943931a19518c02f0e1d8968d1be105a16b9a4f"
+  content_hash: "5090084f3732cf5d73ba7f5a191aca28e57ac186db6c4c3c689cdb5b2eeec86c"
+  source_hash: "8b0952f17d6036a2e97cf21fdebf7ef7b763b8c7d948422618c0d1e37a180d67"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestWriteSeamConfinesToStipulatorDir"
   role: BINDING_ROLE_TESTS
@@ -1129,4 +1129,14 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestExplainEntryShapesItsRefusals"
   role: BINDING_ROLE_TESTS
   shape_hash: "fbf829a68c1f5352e78f766ffd84d1c735985e8a7d3568e3ad140d8f0688a668"
+}
+
+bindings {
+  requirement_id: "REQ-mcp-views"
+  content_hash: "46e282f6063af71d86c54c40b84af062bc431e9c4843f3a532d47914e31eee39"
+  source_hash: "6e2b8b86afc4794908c83763bae2d1621739b776bcec6be3121623bcd68c0557"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/views.TestSummariesCountDanglingPointersScoped"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "06a5139077ac940d1db3893b862a085d5a878d42ef0c0ba40e0d63f1eaed456d"
 }

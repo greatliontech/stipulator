@@ -18,6 +18,17 @@ import (
 type Seg struct {
 	Text  string
 	Inert bool
+	// Start and End are the byte offsets of the segment's text in the
+	// document source, End exclusive — the one place a consumer that
+	// must edit the source at a segment (the enforcement-pointer
+	// rewrite) learns where; -1 for a segment with no source of its
+	// own (a separator, a soft break's space).
+	Start, End int
+}
+
+// sourceless is a segment that stands for no bytes of the source.
+func sourceless(text string, inert bool) Seg {
+	return Seg{Text: text, Inert: inert, Start: -1, End: -1}
 }
 
 // Plain concatenates segments into the plain-text rendering.
@@ -35,24 +46,29 @@ func InlineSegs(n gast.Node, src []byte) []Seg {
 	for c := n.FirstChild(); c != nil; c = c.NextSibling() {
 		switch v := c.(type) {
 		case *gast.Text:
-			out = append(out, Seg{Text: string(v.Segment.Value(src))})
+			out = append(out, Seg{Text: string(v.Segment.Value(src)), Start: v.Segment.Start, End: v.Segment.Stop})
 			if v.SoftLineBreak() || v.HardLineBreak() {
-				out = append(out, Seg{Text: " "})
+				out = append(out, sourceless(" ", false))
 			}
 		case *gast.String:
-			out = append(out, Seg{Text: string(v.Value)})
+			out = append(out, sourceless(string(v.Value), false))
 		case *gast.CodeSpan:
 			var b bytes.Buffer
+			start, end := -1, -1
 			for t := c.FirstChild(); t != nil; t = t.NextSibling() {
 				if tx, ok := t.(*gast.Text); ok {
 					b.Write(tx.Segment.Value(src))
+					if start < 0 {
+						start = tx.Segment.Start
+					}
+					end = tx.Segment.Stop
 				}
 			}
-			out = append(out, Seg{Text: b.String(), Inert: true})
+			out = append(out, Seg{Text: b.String(), Inert: true, Start: start, End: end})
 		case *gast.AutoLink:
-			out = append(out, Seg{Text: string(v.URL(src)), Inert: true})
+			out = append(out, sourceless(string(v.URL(src)), true))
 		case *gast.RawHTML:
-			out = append(out, Seg{Text: segmentsText(v.Segments, src), Inert: true})
+			out = append(out, sourceless(segmentsText(v.Segments, src), true))
 		default:
 			// Emphasis, links, images: recurse into inline children.
 			out = append(out, InlineSegs(c, src)...)
@@ -68,13 +84,13 @@ func BlockSegs(n gast.Node, src []byte) []Seg {
 	var out []Seg
 	switch v := n.(type) {
 	case *gast.FencedCodeBlock, *gast.CodeBlock:
-		out = append(out, Seg{Text: linesText(n, src), Inert: true})
+		out = append(out, sourceless(linesText(n, src), true))
 	case *gast.HTMLBlock:
 		t := linesText(n, src)
 		if v.HasClosure() {
 			t += string(v.ClosureLine.Value(src))
 		}
-		out = append(out, Seg{Text: t, Inert: true})
+		out = append(out, sourceless(t, true))
 	case *gast.ThematicBreak:
 	default:
 		if hasInlineChildren(n) {
@@ -82,7 +98,7 @@ func BlockSegs(n gast.Node, src []byte) []Seg {
 		}
 		for c := n.FirstChild(); c != nil; c = c.NextSibling() {
 			if len(out) > 0 {
-				out = append(out, Seg{Text: " "})
+				out = append(out, sourceless(" ", false))
 			}
 			out = append(out, BlockSegs(c, src)...)
 		}
