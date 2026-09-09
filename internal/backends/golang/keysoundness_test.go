@@ -94,7 +94,7 @@ func groupKeyFields(n *NormalizedInvocation) keyFieldTuple {
 	return keyFieldTuple{
 		strs:  [][]string{n.Tags, witnessEnvOf(n), identityArgs(n.Args), canonicalExclusions(n.ExcludedPaths), n.Vouches},
 		flags: []bool{n.AssumePure, n.Race},
-		one:   []string{n.ModuleMode.String(), n.PGO},
+		one:   []string{n.ModuleMode.String(), n.ModuleRoot, n.PGO},
 	}
 }
 
@@ -103,7 +103,7 @@ func groupIdentityFields(n *NormalizedInvocation) keyFieldTuple {
 		strs:  [][]string{n.Tags, identityArgs(n.Args), sortedCopy(n.EnvOverrides), sortedCopy(n.EnvDeny)},
 		flags: []bool{n.Race, n.WorkspaceOn},
 		one: []string{n.DeclaredGOOS, n.DeclaredGOARCH, n.DeclaredCgo, n.DeclaredGOFLAGS,
-			n.ModuleMode.String(), n.PGO, n.DeclaredToolchain},
+			n.ModuleMode.String(), n.ModuleRoot, n.PGO, n.DeclaredToolchain},
 	}
 }
 
@@ -151,6 +151,7 @@ func TestKeyEncodingIsCollisionFree(t *testing.T) {
 			Race:              rapid.Bool().Draw(t, "race"),
 			WorkspaceOn:       rapid.Bool().Draw(t, "workspace"),
 			ModuleMode:        rapid.SampledFrom([]stipulatorv1.GoModuleMode{stipulatorv1.GoModuleMode_GO_MODULE_MODE_UNSPECIFIED, stipulatorv1.GoModuleMode_GO_MODULE_MODE_VENDOR}).Draw(t, "mode"),
+			ModuleRoot:        adversarialVal.Draw(t, "module_root"),
 			PGO:               adversarialVal.Draw(t, "pgo"),
 			DeclaredGOOS:      adversarialVal.Draw(t, "goos"),
 			DeclaredGOARCH:    adversarialVal.Draw(t, "goarch"),
@@ -216,7 +217,10 @@ var perturbations = map[string]func(t *rapid.T, n *NormalizedInvocation){
 	"modulemode": func(t *rapid.T, n *NormalizedInvocation) {
 		n.ModuleMode = rapid.SampledFrom([]stipulatorv1.GoModuleMode{stipulatorv1.GoModuleMode_GO_MODULE_MODE_UNSPECIFIED, stipulatorv1.GoModuleMode_GO_MODULE_MODE_VENDOR}).Draw(t, "mode2")
 	},
-	"pgo":       func(t *rapid.T, n *NormalizedInvocation) { n.PGO = adversarialVal.Draw(t, "pgo2") },
+	"pgo": func(t *rapid.T, n *NormalizedInvocation) { n.PGO = adversarialVal.Draw(t, "pgo2") },
+	"module_root": func(t *rapid.T, n *NormalizedInvocation) {
+		n.ModuleRoot = adversarialVal.Draw(t, "module_root2")
+	},
 	"goos":      func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredGOOS = adversarialVal.Draw(t, "goos2") },
 	"goarch":    func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredGOARCH = adversarialVal.Draw(t, "goarch2") },
 	"cgo":       func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredCgo = adversarialVal.Draw(t, "cgo2") },

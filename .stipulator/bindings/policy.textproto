@@ -930,3 +930,23 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "e53af13c54bc96958064b573f421eb9c325127019ca13795b6df714c3d92aec4"
 }
+
+bindings {
+  requirement_id: "REQ-policy-cancellation"
+  content_hash: "6c436827f955f3059fa81568b2ff568cb9ad406c95867a3e439e912d5de666c9"
+  source_hash: "99de00451d0d93cc49be2d5f1edddfe795cb791b016a678c1215daf36c5a9da4"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestProvenanceProbeRunsInTheOwnedBoundary"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e6db69bbbf5db52d51856a7d0daf9eb14b80824af0d85890e7dc0d86ee43badf"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation"
+  content_hash: "6c436827f955f3059fa81568b2ff568cb9ad406c95867a3e439e912d5de666c9"
+  source_hash: "99de00451d0d93cc49be2d5f1edddfe795cb791b016a678c1215daf36c5a9da4"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestCancelledProbeReturnsWithinItsWaitBound"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "dc3f604f00446748aa736645cd523d88c986614d79d339777ea63977b05463c6"
+}

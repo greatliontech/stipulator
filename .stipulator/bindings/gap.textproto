@@ -334,7 +334,7 @@ bindings {
 bindings {
   requirement_id: "REQ-gap-list"
   content_hash: "cf6f0d0a282b4313f64bad4610f5e5160675d88e6bde5f9d521904136aedb917"
-  source_hash: "5b978e9b54be543a7d1700c14618697cdf129a25d8ec0172a53a9a582110110a"
+  source_hash: "4e192ab5caabe52663b1e7266a9b2aa9863186a01a3e545d09be4575025c60ca"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestGapLifecycleCLI"
   role: BINDING_ROLE_TESTS
@@ -344,7 +344,7 @@ bindings {
 bindings {
   requirement_id: "REQ-gap-list"
   content_hash: "cf6f0d0a282b4313f64bad4610f5e5160675d88e6bde5f9d521904136aedb917"
-  source_hash: "5b978e9b54be543a7d1700c14618697cdf129a25d8ec0172a53a9a582110110a"
+  source_hash: "4e192ab5caabe52663b1e7266a9b2aa9863186a01a3e545d09be4575025c60ca"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGapToolListEmptyScopeSkipsWitnessRun"
   role: BINDING_ROLE_TESTS
@@ -354,7 +354,7 @@ bindings {
 bindings {
   requirement_id: "REQ-gap-list"
   content_hash: "cf6f0d0a282b4313f64bad4610f5e5160675d88e6bde5f9d521904136aedb917"
-  source_hash: "5b978e9b54be543a7d1700c14618697cdf129a25d8ec0172a53a9a582110110a"
+  source_hash: "4e192ab5caabe52663b1e7266a9b2aa9863186a01a3e545d09be4575025c60ca"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGapToolListNoGapsSkipsWitnessEvaluation"
   role: BINDING_ROLE_TESTS
@@ -364,7 +364,7 @@ bindings {
 bindings {
   requirement_id: "REQ-gap-list"
   content_hash: "cf6f0d0a282b4313f64bad4610f5e5160675d88e6bde5f9d521904136aedb917"
-  source_hash: "5b978e9b54be543a7d1700c14618697cdf129a25d8ec0172a53a9a582110110a"
+  source_hash: "4e192ab5caabe52663b1e7266a9b2aa9863186a01a3e545d09be4575025c60ca"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGapToolListRowsStatesAndScope"
   role: BINDING_ROLE_TESTS
@@ -654,7 +654,7 @@ bindings {
 bindings {
   requirement_id: "REQ-gap-list"
   content_hash: "cf6f0d0a282b4313f64bad4610f5e5160675d88e6bde5f9d521904136aedb917"
-  source_hash: "5b978e9b54be543a7d1700c14618697cdf129a25d8ec0172a53a9a582110110a"
+  source_hash: "4e192ab5caabe52663b1e7266a9b2aa9863186a01a3e545d09be4575025c60ca"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestGapListLineSpellsTheDeclaredBits"
   role: BINDING_ROLE_TESTS

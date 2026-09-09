@@ -1180,3 +1180,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "b4b90fba1c74e13130aa318b5328a7fb2c3c4632cf09006cea5492c4c9fc6cf8"
 }
+
+bindings {
+  requirement_id: "REQ-go-owned-processes"
+  content_hash: "15dd9fca99753c86fe1b101bf4d11d300b2aff95e785f7f4aec77c9f36a0d50a"
+  source_hash: "3d3703271f24f76905948b44d6eca3aff8e980b968493f07a3dc87860480c231"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestProvenanceProbeRunsInTheOwnedBoundary"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e6db69bbbf5db52d51856a7d0daf9eb14b80824af0d85890e7dc0d86ee43badf"
+}

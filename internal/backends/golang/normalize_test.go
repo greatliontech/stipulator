@@ -4,13 +4,13 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
-	"google.golang.org/protobuf/types/known/durationpb"
-
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/stipulate"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 // discoverFixture is the workspace fixture the normalization and discovery
@@ -420,4 +420,27 @@ func vouchEntry(pkg, variable string) *stipulatorv1.DynamicStateVouch {
 	v.SetPackage(pkg)
 	v.SetVariable(variable)
 	return v
+}
+
+// One flag construction describes the binary the witnesses run as: the
+// selection, the module mode, and the profile, shared by the engine's
+// loads and the witness command (the latter resolving a committed
+// profile against the tree root, since the child runs in its module).
+func TestBuildFlagsCarryModeAndProfile(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	got := buildFlags(true, []string{"a", "b"}, stipulatorv1.GoModuleMode_GO_MODULE_MODE_VENDOR, "prof.pgo")
+	want := []string{"-race", "-tags=a,b", "-mod=vendor", "-pgo=prof.pgo"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("buildFlags = %v, want %v", got, want)
+	}
+	if bare := buildFlags(false, nil, stipulatorv1.GoModuleMode_GO_MODULE_MODE_UNSPECIFIED, ""); len(bare) != 0 {
+		t.Fatalf("bare selection = %v, want none", bare)
+	}
+	n := &NormalizedInvocation{Dir: filepath.Join(string(filepath.Separator), "tree", "sub"), ModuleRoot: "sub", Race: true, ModuleMode: stipulatorv1.GoModuleMode_GO_MODULE_MODE_VENDOR, PGO: "prof.pgo"}
+	args := strings.Join(testCommandArgs(n, "example.com/p", nil, ""), " ")
+	for _, flag := range []string{"-race", "-mod=vendor", "-pgo=" + filepath.Join(string(filepath.Separator), "tree", "prof.pgo")} {
+		if !strings.Contains(args, " "+flag+" ") && !strings.HasSuffix(args, " "+flag) {
+			t.Fatalf("witness command %q lacks %q", args, flag)
+		}
+	}
 }

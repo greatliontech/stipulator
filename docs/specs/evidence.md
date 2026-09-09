@@ -258,7 +258,10 @@ the load gap — absence of proof never serves, and the refusal never
 reads as a property classification the code does not carry — and a
 classification fault degrades serving whole
 (REQ-evidence-freshness-degrade). The fingerprint pins the closure and environment guards with the
-race flag as a caller-supplied build input, and the run's observed
+witness build's own inputs supplied by the caller — the race flag, the
+module mode, and the PGO profile, the profile's content riding the
+build-configuration guard as an opaque input so an edit at a stable
+path re-executes — and the run's observed
 runtime-input manifest is captured per package under the same environment
 as the witness invocation and attached to every test fingerprinted from
 that run — an over-approximation whose failure direction is a spurious
@@ -377,8 +380,10 @@ group's build coordinate — the policy-declared build selection and
 per-invocation semantics: tags, the race build input, the declared
 platform, cgo, GOFLAGS, and toolchain pins (each marked undeclared
 when the invocation rides the ambient value), workspace and module
-mode, the PGO profile, the identity-bearing extra binary arguments,
-and the declared environment deltas (order-canonicalized);
+mode, the module root (the go.mod that governs the build, so one
+package selected from two roots is two coordinates), the PGO profile,
+the identity-bearing extra binary arguments, and the declared
+environment deltas (order-canonicalized);
 deliberately never any ambient-resolved
 fact — the merged ambient environment, the effective toolchain,
 platform, GOFLAGS, or GOEXPERIMENT, and the ambient-derived delivered
@@ -625,17 +630,24 @@ the tree MUST refuse toolchain-provenance skew before its result feeds any
 verdict — engine construction before any freshness verdict, and a build
 selection's package-load view before any resolution: the effective
 toolchain is sampled as that consumer's own loads resolve it — `go env
-GOVERSION` at the tree root under the consumer's complete effective
-environment, a declared toolchain pin (invocation or selection) included —
-and judged by the Gofresh skew contract: directional within a major (an older compiled-in
+GOVERSION` in the target module's directory (a capture group's module
+root; each member's own directory for a selection view, the child's
+and the served form's alike — under GOTOOLCHAIN=auto the selected
+toolchain is per module, so the tree root is not a member's sample)
+under the consumer's complete effective environment, a declared
+toolchain pin (invocation or selection) included — and judged by the
+Gofresh skew contract: directional within a major (an older compiled-in
 frontend refuses newer sources; a newer frontend reads older language under
 the Go 1 compatibility promise), total across majors, an unidentifiable
 version on either side refuses, and a failed sample refuses identically on
 the engine arm — its environment was normalized from a working toolchain,
-so an unsampleable one is anomalous — while on the selection arm an
-unsampleable toolchain loads no view at all and falls to the selection
-view's own named unloadable-view degradation (REQ-go-build-selections);
-an identified, skewed selection toolchain still refuses. The
+so an unsampleable one is anomalous — while on the selection arm a
+member whose toolchain cannot be sampled is left to its loads: the
+child's typed view loads no view for it and falls to the selection
+view's own named unloadable-view degradation (REQ-go-build-selections),
+and the served form's engine proceeds, resolving the member's symbols
+as its own loads allow; an identified, skewed selection toolchain still
+refuses on both forms. The
 refusal aborts the run rather than degrading group by group — a skewed
 frontend misparsing sources would not fail a verdict, it would silently
 shift the evidence every verdict is computed from — and it is not a

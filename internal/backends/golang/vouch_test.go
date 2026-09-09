@@ -165,6 +165,21 @@ func TestCount(t *testing.T) {
 	}
 	culprit := m[1] + "." + m[3]
 
+	// The repository's own vouch file is declined: a file entry naming
+	// the culprit while the policy names no vouch neither discharges
+	// nor licenses — the policy is the reviewed set's one home
+	// (REQ-vouch-input's consumer rule).
+	if err := os.WriteFile(filepath.Join(dir, "vouches"), []byte(m[1]+":"+m[3]+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	reasonFile, dischargesFile := capture(base)
+	if dischargesFile != "" || !strings.Contains(reasonFile+" ", culprit+" ") {
+		t.Fatalf("the repository vouch file licensed the engine: discharges %q, verdict %q", dischargesFile, reasonFile)
+	}
+	if err := os.Remove(filepath.Join(dir, "vouches")); err != nil {
+		t.Fatal(err)
+	}
+
 	vouched := `invocations {
   name: "race"
   timeout { seconds: 600 }

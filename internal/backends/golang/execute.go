@@ -499,24 +499,13 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, select
 // disabled at the go level, never overridden per binary.
 func testCommandArgs(n *NormalizedInvocation, pkg string, selection []string, logPath string) []string {
 	args := []string{"test", "-json", "-timeout=0"}
-	if n.Race {
-		args = append(args, "-race")
+	pgo := n.PGO
+	if pgo != "" && pgo != "auto" && pgo != "off" {
+		// The committed value is tree-relative; the child runs in the
+		// module root, so resolve against the tree root.
+		pgo = filepath.Join(treeRoot(n), filepath.FromSlash(pgo))
 	}
-	if len(n.Tags) > 0 {
-		args = append(args, "-tags="+strings.Join(n.Tags, ","))
-	}
-	if flag := moduleModeFlag(n.ModuleMode); flag != "" {
-		args = append(args, flag)
-	}
-	if n.PGO != "" {
-		pgo := n.PGO
-		if pgo != "auto" && pgo != "off" {
-			// The committed value is tree-relative; the child runs in the
-			// module root, so resolve against the tree root.
-			pgo = filepath.Join(treeRoot(n), filepath.FromSlash(pgo))
-		}
-		args = append(args, "-pgo="+pgo)
-	}
+	args = append(args, buildFlags(n.Race, n.Tags, n.ModuleMode, pgo)...)
 	switch {
 	case n.CacheBypass:
 		args = append(args, "-count=1")

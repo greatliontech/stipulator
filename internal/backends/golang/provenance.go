@@ -1,12 +1,15 @@
 package golang
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/greatliontech/gofresh"
 )
@@ -50,20 +53,29 @@ func classifyFault(err error) (abort bool, reason string) {
 // and each group's environment are fixed inputs).
 var goVersionSampler = memoizedSampler(sampleGoVersion)
 
-func memoizedSampler(sample func(dir string, env []string) (string, error)) func(dir string, env []string) (string, error) {
+func memoizedSampler(sample func(ctx context.Context, dir string, env []string) (string, error)) func(ctx context.Context, dir string, env []string) (string, error) {
 	type result struct {
 		version string
 		err     error
 	}
 	var mu sync.Mutex
 	memo := map[string]result{}
-	return func(dir string, env []string) (string, error) {
+	return func(ctx context.Context, dir string, env []string) (string, error) {
+		// A cancelled operation is answered with its cancellation
+		// whatever the memo holds — one rule for every arm.
+		if err := ctx.Err(); err != nil {
+			return "", err
+		}
 		key := dir + "\x00" + strings.Join(env, "\x00")
 		mu.Lock()
 		got, ok := memo[key]
 		mu.Unlock()
 		if !ok {
-			got.version, got.err = sample(dir, env)
+			got.version, got.err = sample(ctx, dir, env)
+			if ctx.Err() != nil {
+				// A cancelled sample is no sample: never memoized.
+				return "", ctx.Err()
+			}
 			mu.Lock()
 			memo[key] = got
 			mu.Unlock()
@@ -72,9 +84,21 @@ func memoizedSampler(sample func(dir string, env []string) (string, error)) func
 	}
 }
 
-func sampleGoVersion(dir string, env []string) (string, error) {
-	cmd := goVersionCmd(dir, env)
+func sampleGoVersion(ctx context.Context, dir string, env []string) (string, error) {
+	cmd := goVersionCmd(ctx, dir, env)
 	out, err := cmd.Output()
+	if errors.Is(err, exec.ErrWaitDelay) && ctx.Err() == nil {
+		// The process exited with its answer written; a descendant a
+		// wrapper left holding the pipe delayed the close, which says
+		// nothing about the answer — take it rather than refuse (and
+		// memoize a refusal) over a wrapper's housekeeping. The answer
+		// is the first line alone: `go env GOVERSION` writes exactly
+		// one, and whatever the descendant wrote after it is its own.
+		answer, _, _ := strings.Cut(strings.TrimSpace(string(out)), "\n")
+		if strings.HasPrefix(answer, "go") {
+			return answer, nil
+		}
+	}
 	if err != nil {
 		if ee, ok := err.(*exec.ExitError); ok && len(ee.Stderr) > 0 {
 			return "", fmt.Errorf("go env GOVERSION: %v: %s", err, strings.TrimSpace(string(ee.Stderr)))
@@ -86,12 +110,27 @@ func sampleGoVersion(dir string, env []string) (string, error) {
 
 // goVersionCmd is pure construction, split so the Dir/Env wiring is
 // unit-pinnable: the sample must resolve exactly as the group's own
-// loads and executions do — the tree root under the group's complete
-// normalized environment (its GOTOOLCHAIN pin included, so a
-// per-invocation declared toolchain is what gets judged). A nil env
-// inherits the process environment.
-func goVersionCmd(dir string, env []string) *exec.Cmd {
-	cmd := exec.Command("go", "env", "GOVERSION")
+// loads and executions do — the target module's directory under the
+// group's complete normalized environment (its GOTOOLCHAIN pin
+// included, so a per-invocation declared toolchain is what gets
+// judged; its owned telemetry home included, as every Go child's).
+// The probe is bound to the operation's context — a cancelled
+// operation kills it — but deliberately NOT through commandContext's
+// group isolation: `go env` has no descendants to sweep (a toolchain
+// switch replaces the process), and a spawn in its own process group
+// would escape the sweep an owner performs on the caller's group when
+// it kills the caller outright (the served resolver child's client
+// does exactly that), so the descendant-free query stays in its
+// caller's group, inside the boundary the caller's owner sweeps
+// (REQ-go-owned-processes). A nil env inherits the process
+// environment.
+func goVersionCmd(ctx context.Context, dir string, env []string) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, "go", "env", "GOVERSION")
+	// The kill reaches the process alone, so a descendant a shim left
+	// holding the output pipe could keep the read open past it: the
+	// wait is bounded, and the cancellation returns within the bound
+	// (REQ-policy-cancellation is a liveness contract).
+	cmd.WaitDelay = probeWaitDelay
 	cmd.Dir = dir
 	if len(env) > 0 {
 		cmd.Env = env
@@ -99,33 +138,20 @@ func goVersionCmd(dir string, env []string) *exec.Cmd {
 	return cmd
 }
 
-// checkToolchainSkewIdentified is the selection-view arm's guard: an
-// IDENTIFIED, skewed toolchain refuses, while a failed sample returns
-// nil — on that arm an unsampleable toolchain cannot load a view at
-// all, and the unloadable view degrades to its own named per-view
-// refusal (REQ-go-build-selections) instead of failing the whole
-// binding context. The engine arm keeps the stricter rule: its env
-// was normalized from a working toolchain, so a failed sample there
-// is anomalous and refuses (checkToolchainProvenance).
-func checkToolchainSkewIdentified(dir string, env []string) error {
-	ambient, err := goVersionSampler(dir, env)
-	if err != nil {
-		return nil
-	}
-	if err := gofresh.ToolchainSkew(ambient); err != nil {
-		return &toolchainProvenanceError{err: err}
-	}
-	return nil
-}
-
 // checkToolchainProvenance refuses the states where this binary's
 // compiled-in analysis frontend cannot faithfully read what the
 // group's toolchain builds (gofresh.ToolchainSkew: directional within
 // a major, total across majors, unidentifiable refuses) — the guard
 // every engine construction inherits through groupEngine, so no
-// witness verdict is computed over a tree the binary misparses.
-func checkToolchainProvenance(dir string, env []string) error {
-	ambient, err := goVersionSampler(dir, env)
+// witness verdict is computed over a tree the binary misparses. The
+// record-judging arms read it — a group's engine samples in the
+// group's module root — and an unidentifiable ambient toolchain
+// refuses there (gofresh's toolchain-skew clause); the selection-view
+// arms read checkSelectionMembers, which samples each member where
+// its view loads and keeps the view's own per-view degradation for a
+// sample that fails.
+func checkToolchainProvenance(ctx context.Context, dir string, env []string) error {
+	ambient, err := goVersionSampler(ctx, dir, env)
 	if err != nil {
 		// A failed sample leaves the ambient side unidentifiable —
 		// gofresh's contract refuses that, so the sampling failure is
@@ -136,6 +162,40 @@ func checkToolchainProvenance(dir string, env []string) error {
 	}
 	if err := gofresh.ToolchainSkew(ambient); err != nil {
 		return &toolchainProvenanceError{err: err}
+	}
+	return nil
+}
+
+// probeWaitDelay bounds how long a cancelled provenance probe may hold
+// its caller after the kill: long enough for a real `go env` to be
+// reaped, short enough that a shim's orphan cannot stall a cancelled
+// operation.
+const probeWaitDelay = 2 * time.Second
+
+// checkSelectionMembers is the selection-view arms' guard, the child's
+// typed views and the served form's alike: every member is sampled in
+// its own directory, where its view loads (under GOTOOLCHAIN=auto the
+// selected toolchain is per module, so the tree root is not a member's
+// sample); an IDENTIFIED, skewed toolchain refuses the run, while a
+// member whose toolchain cannot be sampled is left to its view — an
+// unsampleable toolchain loads no view, and the unloadable view
+// degrades to its own named per-view refusal (REQ-go-build-selections),
+// so binding stays healthy for every view that does load; the served
+// form's engine proceeds and resolves the member's symbols as its own
+// loads allow. A cancelled operation returns its cancellation whatever
+// the memo already holds.
+func checkSelectionMembers(ctx context.Context, dir string, env, members []string) error {
+	for _, m := range members {
+		ambient, err := goVersionSampler(ctx, filepath.Join(dir, m), env)
+		if err != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			continue
+		}
+		if err := gofresh.ToolchainSkew(ambient); err != nil {
+			return &toolchainProvenanceError{err: err}
+		}
 	}
 	return nil
 }

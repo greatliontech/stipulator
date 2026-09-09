@@ -1,24 +1,30 @@
 package golang
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"fmt"
 	"maps"
 	"os"
+	"path/filepath"
+	"reflect"
+	"runtime/pprof"
 	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
-
-	"pgregory.net/rapid"
+	"time"
 
 	gofresh "github.com/greatliontech/gofresh"
-
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/stipulate"
+	"google.golang.org/protobuf/encoding/prototext"
+	"pgregory.net/rapid"
 )
 
 const (
@@ -606,5 +612,184 @@ func TestGroupKeySeparatesVouchSets(t *testing.T) {
 	same := &NormalizedInvocation{Race: true, Vouches: []string{"a.example/dep.Var"}}
 	if groupKey(vouched) != groupKey(same) {
 		t.Fatal("equal vouch sets split capture groups")
+	}
+}
+
+// The module root is a build coordinate: the go.mod that governs the
+// build, so one package selected from two roots is two identities and
+// two capture groups; equal roots share both.
+func TestGroupCoordinatesSeparateModuleRoots(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	root := &NormalizedInvocation{Race: true}
+	nested := &NormalizedInvocation{Race: true, ModuleRoot: "sub"}
+	same := &NormalizedInvocation{Race: true, ModuleRoot: "sub"}
+	if groupIdentity(root) == groupIdentity(nested) {
+		t.Fatal("two module roots share a record-identity coordinate")
+	}
+	if groupKey(root) == groupKey(nested) {
+		t.Fatal("two module roots share a capture-group key")
+	}
+	if groupIdentity(nested) != groupIdentity(same) || groupKey(nested) != groupKey(same) {
+		t.Fatal("equal module roots split")
+	}
+}
+
+// The profile's content is the build input: a committed path digests
+// its bytes, auto digests every default.pgo under the group's module
+// root (vendor and VCS trees excluded), off and absent contribute
+// nothing, and an unreadable committed profile refuses.
+func TestPGOBuildInputsDigestTheProfileContent(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	dir := writeModule(t, map[string]string{
+		"go.mod":             "module example.com/p\n\ngo 1.26\n",
+		"prof.pgo":           "one",
+		"sub/default.pgo":    "two",
+		"sub/x/default.pgo":  "three",
+		"vendor/default.pgo": "never",
+		".git/default.pgo":   "never",
+		"other/default.pgo":  "four",
+		"a-b/default.pgo":    "five",
+		"a/default.pgo":      "six",
+	})
+	for _, pgo := range []string{"", "off"} {
+		if inputs, err := pgoBuildInputs(dir, "", pgo); err != nil || len(inputs) != 0 {
+			t.Fatalf("pgo %q: inputs %v, err %v", pgo, inputs, err)
+		}
+	}
+	one, err := pgoBuildInputs(dir, "", "prof.pgo")
+	if err != nil || len(one) != 1 || one[0] != fmt.Sprintf("pgo:%x", sha256.Sum256([]byte("one"))) {
+		t.Fatalf("committed profile: %v, %v", one, err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "prof.pgo"), []byte("edited"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if edited, err := pgoBuildInputs(dir, "", "prof.pgo"); err != nil || edited[0] == one[0] {
+		t.Fatalf("an edited profile at a stable path kept its input: %v, %v", edited, err)
+	}
+	auto, err := pgoBuildInputs(dir, "", "auto")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Sorted, not walked: `a-b` sorts before `a/` yet walks after it.
+	want := []string{
+		fmt.Sprintf("pgo:a-b/default.pgo=%x", sha256.Sum256([]byte("five"))),
+		fmt.Sprintf("pgo:a/default.pgo=%x", sha256.Sum256([]byte("six"))),
+		fmt.Sprintf("pgo:other/default.pgo=%x", sha256.Sum256([]byte("four"))),
+		fmt.Sprintf("pgo:sub/default.pgo=%x", sha256.Sum256([]byte("two"))),
+		fmt.Sprintf("pgo:sub/x/default.pgo=%x", sha256.Sum256([]byte("three"))),
+	}
+	if !reflect.DeepEqual(auto, want) {
+		t.Fatalf("auto over the tree = %v, want %v", auto, want)
+	}
+	nested, err := pgoBuildInputs(dir, "sub", "auto")
+	if err != nil || !reflect.DeepEqual(nested, want[3:]) {
+		t.Fatalf("auto under the module root = %v, %v, want %v", nested, err, want[3:])
+	}
+	// A directory the walk cannot list refuses: traverse permission
+	// alone lets the build open a profile inside it by name, so a
+	// skip would leave that profile unguarded.
+	for _, mode := range []os.FileMode{0, 0o111} {
+		if err := os.Chmod(filepath.Join(dir, "other"), mode); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pgoBuildInputs(dir, "", "auto"); err == nil || !strings.Contains(err.Error(), "other") {
+			t.Fatalf("auto over an unlistable directory (mode %o) = %v, want a refusal naming it", mode, err)
+		}
+	}
+	if err := os.Chmod(filepath.Join(dir, "other"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pgoBuildInputs(dir, "", "missing.pgo"); err == nil {
+		t.Fatal("an unreadable committed profile did not refuse")
+	}
+}
+
+// The group engine carries the profile: two captures over one tree
+// differing only in the committed profile's bytes fingerprint under
+// distinct guards, so the edit re-executes instead of serving.
+//
+//gofresh:pure
+func TestProfileContentMovesTheFingerprint(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds gofresh views")
+	}
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	dir := writeModule(t, map[string]string{
+		"go.mod":    "module example.com/p\n\ngo 1.26\n",
+		"p.go":      "package p\n\nfunc F() int { return 1 }\n",
+		"p_test.go": "package p\n\nimport \"testing\"\n\nfunc TestF(t *testing.T) {\n\tif F() != 1 {\n\t\tt.Fatal()\n\t}\n}\n",
+	})
+	// Two real profiles (the toolchain parses a committed profile at
+	// every build, discovery's included), distinct in their bytes.
+	profile := func() []byte {
+		t.Helper()
+		var buf bytes.Buffer
+		if err := pprof.StartCPUProfile(&buf); err != nil {
+			t.Fatal(err)
+		}
+		deadline := time.Now().Add(20 * time.Millisecond)
+		for time.Now().Before(deadline) {
+		}
+		pprof.StopCPUProfile()
+		return buf.Bytes()
+	}
+	first, second := profile(), profile()
+	if bytes.Equal(first, second) {
+		t.Fatal("two profiles with one content")
+	}
+	if err := os.WriteFile(filepath.Join(dir, "prof.pgo"), first, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	capture := func(goConfig string) gofresh.Fingerprint {
+		t.Helper()
+		pol := &stipulatorv1.TestPolicy{}
+		if err := prototext.Unmarshal([]byte(`invocations {
+  name: "plain"
+  timeout { seconds: 600 }
+  go { packages: "./..." race: true `+goConfig+` }
+}
+`), pol); err != nil {
+			t.Fatal(err)
+		}
+		pc, err := mustCapture(t, ctx, dir, pol).discover(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(pc.groups) != 1 {
+			t.Fatalf("groups = %d; discovery %+v", len(pc.groups), pc)
+		}
+		g := pc.groups[0]
+		subjects := groupSubjects(g)
+		engine, err := groupEngine(ctx, dir, g)
+		if err != nil {
+			t.Fatal(err)
+		}
+		view, err := engine.NewView(ctx, subjects, dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fp, err := view.Capture(ctx, subjects[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+		return fp
+	}
+	before := capture(`pgo: "prof.pgo"`)
+	if err := os.WriteFile(filepath.Join(dir, "prof.pgo"), second, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	after := capture(`pgo: "prof.pgo"`)
+	if reflect.DeepEqual(before.Guards, after.Guards) {
+		t.Fatal("a profile edit at a stable path left the build guards unchanged")
+	}
+	// The flags themselves are build inputs: the module mode and the
+	// profile flag each move the guards with the profile's bytes fixed.
+	if mode := capture(`pgo: "prof.pgo" module_mode: GO_MODULE_MODE_MOD`); reflect.DeepEqual(after.Guards, mode.Guards) {
+		t.Fatal("the module mode left the build guards unchanged")
+	}
+	if off := capture(`pgo: "off"`); reflect.DeepEqual(capture(``).Guards, off.Guards) {
+		t.Fatal("the profile flag left the build guards unchanged")
 	}
 }

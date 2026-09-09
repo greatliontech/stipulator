@@ -7,9 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"iter"
 	"maps"
 	"os"
+	"path/filepath"
 	"runtime/debug"
 	"slices"
 	"sort"
@@ -206,6 +208,14 @@ type captureGroup struct {
 	// laundering the tier (REQ-evidence-witness-freshness's race flag as
 	// a caller-supplied build input).
 	race bool
+	// moduleRoot, moduleMode, and pgo are the group's build inputs
+	// beyond the selection: each partitions the group key, so one group
+	// has one of each, and the engine's flags and build inputs describe
+	// the binary the witnesses run as (REQ-evidence-witness-freshness's
+	// caller-supplied build inputs).
+	moduleRoot string
+	moduleMode stipulatorv1.GoModuleMode
+	pgo        string
 	// vouches carries the group's reviewed dynamic-state vouch set into
 	// the engine; part of the group key, so one group has one set.
 	vouches []string
@@ -531,6 +541,7 @@ func groupKeySegments(n *NormalizedInvocation) []keySegment {
 		{"tags", quotedList(n.Tags)},
 		{"env", quotedList(witnessEnvOf(n))},
 		{"modulemode", quotedValue(n.ModuleMode.String())},
+		{"module_root", quotedValue(n.ModuleRoot)},
 		{"pgo", quotedValue(n.PGO)},
 		{"args", quotedList(identityArgs(n.Args))},
 		{"pure", boolValue(n.AssumePure)},
@@ -555,7 +566,9 @@ func groupKey(n *NormalizedInvocation) string {
 // selection and per-invocation
 // semantics — tags, the race build input, the declared platform, cgo,
 // GOFLAGS and toolchain pins (empty when the invocation rides the
-// ambient value), workspace and module mode, the PGO profile, the
+// ambient value), workspace and module mode, the module root (the
+// go.mod that governs the build, so the same package selected from two
+// roots is two coordinates), the PGO profile, the
 // identity-bearing extra binary arguments (runtimeOnlyArg's reviewed
 // bounds re-address nothing), and the declared environment deltas
 // (order-canonicalized) — and nothing more. Every ambient-resolved fact is deliberately excluded:
@@ -589,6 +602,7 @@ func groupIdentitySegments(n *NormalizedInvocation) []keySegment {
 		{"goflags", quotedValue(n.DeclaredGOFLAGS)},
 		{"workspace", boolValue(n.WorkspaceOn)},
 		{"modulemode", quotedValue(n.ModuleMode.String())},
+		{"module_root", quotedValue(n.ModuleRoot)},
 		{"pgo", quotedValue(n.PGO)},
 		{"toolchain", quotedValue(n.DeclaredToolchain)},
 		{"args", quotedList(identityArgs(n.Args))},
@@ -730,6 +744,9 @@ func discoverPolicy(ctx context.Context, normalized []*NormalizedInvocation) (*p
 				env:           n.Env,
 				witnessEnv:    witnessEnvOf(n),
 				race:          n.Race,
+				moduleRoot:    n.ModuleRoot,
+				moduleMode:    n.ModuleMode,
+				pgo:           n.PGO,
 				assumePure:    n.AssumePure,
 				vouches:       n.Vouches,
 				excludedPaths: canonicalExclusions(n.ExcludedPaths),
@@ -793,16 +810,24 @@ func groupSubjects(g *captureGroup) []gofresh.Subject {
 // closure-shaping configuration.
 func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Engine, error) {
 	// Toolchain provenance is a prerequisite to constructing any
-	// engine: the sample resolves as this group's own loads do (the
-	// tree root under the group's normalized environment, its
-	// GOTOOLCHAIN pin included), so a frontend that cannot read what
-	// this group's toolchain builds refuses before any verdict —
-	// the go1.27 stale-binary episode's structural fix, shared with
-	// pew and gomutant.
-	if err := checkToolchainProvenance(dir, g.env); err != nil {
+	// engine: the sample resolves as this group's own witnesses do —
+	// the group's module root (under GOTOOLCHAIN=auto the selected
+	// toolchain is per module) under the group's normalized
+	// environment, its GOTOOLCHAIN pin included — so a frontend that
+	// cannot read what this group's toolchain builds refuses before any
+	// verdict (REQ-fresh-toolchain-skew) — the go1.27 stale-binary
+	// episode's structural fix, shared with pew and gomutant.
+	if err := checkToolchainProvenance(ctx, filepath.Join(dir, filepath.FromSlash(g.moduleRoot)), g.env); err != nil {
 		return nil, err
 	}
-	opts := []gofresh.Option{gofresh.WithProducerEnv(g.witnessEnv...)}
+	// The profile's content is build evidence no flag carries: it
+	// rides the build-configuration guard as an opaque input, so a
+	// profile edit at a stable path re-executes instead of serving.
+	inputs, err := pgoBuildInputs(dir, g.moduleRoot, g.pgo)
+	if err != nil {
+		return nil, err
+	}
+	opts := []gofresh.Option{gofresh.WithProducerEnv(g.witnessEnv...), gofresh.WithBuildInputs(inputs...)}
 	if g.assumePure {
 		// The reviewed purity assumption rides every subject of the
 		// group as a caller assertion; the recorded fingerprints carry
@@ -823,7 +848,7 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Eng
 	// validation instead of paying a full re-observation per call
 	// (gofresh's deferred-close contract).
 	opts = append(opts, gofresh.WithDeferredCheckClose())
-	return newEngine(ctx, dir, g.env, selectionBuildFlags(g.race, g.tags), opts...)
+	return newEngine(ctx, dir, g.env, buildFlags(g.race, g.tags, g.moduleMode, g.pgo), opts...)
 }
 
 // newEngine is the one gofresh engine constructor: the tree root, the
@@ -837,6 +862,11 @@ func newEngine(ctx context.Context, dir string, env, flags []string, extra ...go
 		gofresh.WithDir(dir),
 		gofresh.WithBuildFlags(flags...),
 		gofresh.WithEnv(env...),
+		// The policy is the one home of the reviewed vouch set: the
+		// repository's own vouch file is declined on every engine, so
+		// a file entry never licenses a verdict the policy did not
+		// review (REQ-vouch-input's one-set-one-home rule).
+		gofresh.WithoutRepositoryVouches(),
 		gofresh.WithProgress(func(p gofresh.Progress) {
 			emitEngineDiagnostic(p)
 			progress.FromContext(ctx).Keepalive()
@@ -1390,4 +1420,61 @@ func executedTopKeys(report *stipulatorv1.ExecutionReport) map[string]bool {
 		}
 	}
 	return keys
+}
+
+// pgoBuildInputs digests the profile content a group's witnesses build
+// under: a committed tree-relative profile is one digest, and `auto`
+// digests every default.pgo under the group's module root (a superset
+// of the profiles the toolchain may select for a tested main package —
+// an unused profile's edit over-stales, never under-serves; a
+// directory the walk cannot list refuses, since the build may still
+// open a profile inside it by name); `off` and an absent setting
+// contribute nothing. A named profile that cannot be read refuses:
+// every build under it would fail.
+func pgoBuildInputs(dir, moduleRoot, pgo string) ([]string, error) {
+	switch pgo {
+	case "", "off":
+		return nil, nil
+	case "auto":
+		var inputs []string
+		root := filepath.Join(dir, filepath.FromSlash(moduleRoot))
+		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				// A directory the walk cannot list may still hold a
+				// profile the build opens by name (traverse permission
+				// alone suffices for that), so skipping it would leave
+				// that profile's edits unguarded: refuse, naming it.
+				return err
+			}
+			if d.IsDir() {
+				if name := d.Name(); path != root && (name == ".git" || name == "vendor") {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if d.Name() != "default.pgo" {
+				return nil
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			rel, err := filepath.Rel(dir, path)
+			if err != nil {
+				return err
+			}
+			inputs = append(inputs, fmt.Sprintf("pgo:%s=%x", filepath.ToSlash(rel), sha256.Sum256(data)))
+			return nil
+		})
+		if err != nil {
+			return nil, fmt.Errorf("pgo auto: %w", err)
+		}
+		sort.Strings(inputs)
+		return inputs, nil
+	}
+	data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(pgo)))
+	if err != nil {
+		return nil, fmt.Errorf("pgo profile %s: %w", pgo, err)
+	}
+	return []string{fmt.Sprintf("pgo:%x", sha256.Sum256(data))}, nil
 }

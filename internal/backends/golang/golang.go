@@ -195,14 +195,14 @@ func newContext(ctx context.Context, dir string, patterns []string) (*Backend, e
 	for _, sel := range selections {
 		viewEnv := selectionViewEnv(env, sel)
 		// The selection view is a frontend parse of the selection's own
-		// sources, so it inherits the toolchain-provenance prerequisite:
-		// an identified selection toolchain this binary's frontend
-		// cannot read refuses the run
-		// (REQ-evidence-toolchain-provenance). A toolchain that cannot
-		// even be sampled loads no view — that case falls through to
-		// the per-view unloadable degradation below
+		// sources, so it inherits the toolchain-provenance prerequisite,
+		// sampled per member where each view loads: an identified
+		// selection toolchain this binary's frontend cannot read refuses
+		// the run (REQ-evidence-toolchain-provenance), while a member
+		// whose toolchain cannot be sampled loads no view and falls
+		// through to the per-view unloadable degradation below
 		// (REQ-go-build-selections).
-		if err := checkToolchainSkewIdentified(dir, viewEnv); err != nil {
+		if err := checkSelectionMembers(ctx, dir, viewEnv, members); err != nil {
 			return nil, err
 		}
 		var viewPkgs []*packages.Package

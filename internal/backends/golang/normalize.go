@@ -575,10 +575,12 @@ func (n *NormalizedInvocation) WitnessEligible() bool {
 }
 
 // selectionBuildFlags renders a build selection (the race bit and the
-// declared tag set) as the go build flags gofresh's engines and the
-// toolchain-selection audit both classify — one construction, so the
-// policy-tier notice and the engine's own audit can never judge
-// different selections.
+// declared tag set) as go build flags — the selection axis the
+// toolchain-selection audit classifies, which the policy-tier notice
+// hands it directly; the engine reads buildFlags, this construction
+// extended with the build inputs beyond the selection, so the notice
+// and the engine's own audit read one selection spelling and can
+// never judge different selections.
 func selectionBuildFlags(race bool, tags []string) []string {
 	var flags []string
 	if race {
@@ -586,6 +588,26 @@ func selectionBuildFlags(race bool, tags []string) []string {
 	}
 	if len(tags) > 0 {
 		flags = append(flags, "-tags="+strings.Join(tags, ","))
+	}
+	return flags
+}
+
+// buildFlags renders the go build flags a group's binary is built
+// under — the selection (selectionBuildFlags, the audit's axis) and
+// the build inputs beyond it: the module mode and the PGO profile
+// (pgoValue as the toolchain resolves it from the process's working
+// directory: tree-relative for the engine's loads at the tree root,
+// absolute for a witness running in its module root) — one
+// construction the engine and the witness command share, so the
+// analysis describes the binary the tests actually run as
+// (REQ-evidence-witness-freshness).
+func buildFlags(race bool, tags []string, mode stipulatorv1.GoModuleMode, pgoValue string) []string {
+	flags := selectionBuildFlags(race, tags)
+	if flag := moduleModeFlag(mode); flag != "" {
+		flags = append(flags, flag)
+	}
+	if pgoValue != "" {
+		flags = append(flags, "-pgo="+pgoValue)
 	}
 	return flags
 }

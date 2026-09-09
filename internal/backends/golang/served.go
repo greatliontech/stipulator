@@ -30,12 +30,17 @@ func selectionEngine(ctx context.Context, dir string, sel buildSelection) (*gofr
 	}
 	env := selectionViewEnv(base, sel)
 	// The same provenance prerequisite the child's typed view enforces,
-	// in the same form: an identified selection toolchain this binary's
-	// frontend cannot read refuses before any verdict, while a toolchain
-	// that cannot be sampled loads no view (REQ-evidence-toolchain-
-	// provenance; newContext) — so a served view exists exactly when the
-	// child's would.
-	if err := checkToolchainSkewIdentified(dir, env); err != nil {
+	// in the same form — every member sampled where its view loads
+	// (checkSelectionMembers): an identified selection toolchain this
+	// binary's frontend cannot read refuses before any verdict, while a
+	// member whose toolchain cannot be sampled is left to this engine's
+	// own loads (REQ-evidence-toolchain-provenance) — so a served view
+	// refuses exactly when the child's would.
+	members, err := workspaceMembers(dir)
+	if err != nil {
+		return nil, err
+	}
+	if err := checkSelectionMembers(ctx, dir, env, members); err != nil {
 		return nil, err
 	}
 	return newEngine(ctx, dir, env, selectionViewFlags(sel))
