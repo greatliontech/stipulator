@@ -7,11 +7,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/greatliontech/stipulator/internal/author"
+	"github.com/greatliontech/stipulator/internal/remedy"
 )
 
 func attestCmd() *cobra.Command {
 	c := &cobra.Command{
-		Use:   "attest",
+		Use:   remedy.VerbAttest,
 		Short: "Record a human judgment as a requirement's weakest evidence",
 	}
 	c.AddCommand(attestRequirementCmd())
@@ -22,7 +23,7 @@ func attestRequirementCmd() *cobra.Command {
 	var reqVals, reasonVals []string
 	var retract bool
 	c := &cobra.Command{
-		Use:   "requirement",
+		Use:   remedy.VerbAttestRequirement,
 		Short: guidanceShort("attest requirement"),
 		Long:  guidanceHelp("attest requirement"),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -62,9 +63,9 @@ func attestRequirementCmd() *cobra.Command {
 			return nil
 		},
 	}
-	c.Flags().StringArrayVar(&reqVals, "req", nil, "requirement identifier")
-	c.Flags().StringArrayVar(&reasonVals, "reason", nil, "why the requirement is judged satisfied")
-	c.Flags().BoolVar(&retract, "retract", false, "withdraw the requirement's judgment instead of authoring one")
+	c.Flags().StringArrayVar(&reqVals, remedy.FlagReq, nil, "")
+	c.Flags().StringArrayVar(&reasonVals, "reason", nil, "")
+	c.Flags().BoolVar(&retract, remedy.FlagRetract, false, "")
 	registerReqCompletions(c, "req")
 	return c
 }

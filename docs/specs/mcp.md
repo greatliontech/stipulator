@@ -50,8 +50,12 @@ Both surfaces bind the per-surface coverage judgment: every listed
 tool and schema property, and every visible leaf command and local
 flag, documented exactly, both directions. The document's knob
 prose is the authoritative superset; per-parameter schema and flag
-usage strings stay terse wire detail, and a schema or usage string
-contradicting the document is a defect of whichever is wrong — cobra's help and
+usage strings are the document's rendering — each knob's terse first
+clause, up to its first semicolon outside parentheses with its
+trailing period trimmed, set at registration and never a second
+literal beside the document — so a schema or usage string
+cannot contradict the document, and the coverage judgment compares
+the rendered text, never the names alone — cobra's help and
 completion plumbing, grouping parents, the root-persistent chdir
 flag, and the hidden internal resolver are surface plumbing outside
 the judgment. The guidance surfaces work outside a corpus: the

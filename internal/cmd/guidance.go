@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	guidancepkg "github.com/greatliontech/gofresh/guidance"
 	stipulator "github.com/greatliontech/stipulator"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 // guidanceDoc is the embedded guidance document; a malformed document
@@ -63,4 +65,37 @@ func guidanceCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// renderKnobUsage sets every visible leaf command's local flag usage to
+// the guidance document's knob text for that flag — the knob's terse
+// first clause — so the usage strings are the document's rendering and
+// never a second literal; a flag the document does not knob is a build
+// defect the coverage judgment also refuses (REQ-mcp-guidance).
+func renderKnobUsage(root *cobra.Command) {
+	doc := guidanceDoc()
+	var walk func(prefix string, c *cobra.Command)
+	walk = func(prefix string, c *cobra.Command) {
+		for _, child := range c.Commands() {
+			if child.Hidden || child.Name() == "help" || child.Name() == "completion" {
+				continue
+			}
+			name := strings.TrimSpace(prefix + " " + child.Name())
+			if child.HasSubCommands() {
+				walk(name, child)
+				continue
+			}
+			child.LocalFlags().VisitAll(func(f *pflag.Flag) {
+				if f.Name == "help" {
+					return
+				}
+				k, err := doc.Knob("cli", name, f.Name)
+				if err != nil {
+					panic("cmd: " + err.Error())
+				}
+				f.Usage = stipulator.KnobClause(k.Text)
+			})
+		}
+	}
+	walk("", root)
 }

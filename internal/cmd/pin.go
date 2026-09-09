@@ -11,12 +11,13 @@ import (
 
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/records"
+	"github.com/greatliontech/stipulator/internal/remedy"
 )
 
 func pinCmd() *cobra.Command {
 	var reqs []string
 	c := &cobra.Command{
-		Use:   "pin",
+		Use:   remedy.VerbPin,
 		Short: guidanceShort("pin"),
 		Long:  guidanceHelp("pin"),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -45,7 +46,7 @@ func pinCmd() *cobra.Command {
 					ups, consented, err := author.Editorial(os.DirFS(chdir), id)
 					if errors.Is(err, author.ErrNothingStale) {
 						if syms := mismatched[id]; len(syms) > 0 {
-							fmt.Printf("%s: %s — shape of %s moved, and the ids form re-consents clause text only: blanket stipulator pin re-pins shapes\n", id, author.NoOpNote(err), strings.Join(syms, ", "))
+							fmt.Printf("%s: %s — shape of %s moved, and the ids form re-consents clause text only: blanket %s re-pins shapes\n", id, author.NoOpNote(err), strings.Join(syms, ", "), remedy.Pin())
 						} else {
 							fmt.Printf("%s: %s\n", id, author.NoOpNote(err))
 						}
@@ -58,7 +59,7 @@ func pinCmd() *cobra.Command {
 						return err
 					}
 					if syms := mismatched[id]; len(syms) > 0 {
-						fmt.Printf("%s: %d file(s) re-pinned; shape of %s moved — blanket stipulator pin re-pins shapes\n", id, len(ups), strings.Join(syms, ", "))
+						fmt.Printf("%s: %d file(s) re-pinned; shape of %s moved — blanket %s re-pins shapes\n", id, len(ups), strings.Join(syms, ", "), remedy.Pin())
 					} else {
 						fmt.Printf("%s: %d file(s) re-pinned\n", id, len(ups))
 					}
@@ -122,7 +123,7 @@ func pinCmd() *cobra.Command {
 			return nil
 		},
 	}
-	c.Flags().StringArrayVar(&reqs, "req", nil, "requirement identifier to editorially re-pin (repeatable)")
+	c.Flags().StringArrayVar(&reqs, remedy.FlagReq, nil, "")
 	registerReqCompletions(c, "req")
 	return c
 }

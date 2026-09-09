@@ -7,12 +7,13 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/greatliontech/stipulator/internal/author"
+	"github.com/greatliontech/stipulator/internal/remedy"
 )
 
 func bindCmd() *cobra.Command {
 	var reqs, symbols, roles, backendNames, files, clauses []string
 	c := &cobra.Command{
-		Use:   "bind",
+		Use:   remedy.VerbBind,
 		Short: guidanceShort("bind"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			claims, err := bindClaims(reqs, symbols, roles, backendNames, files, clauses)
@@ -30,12 +31,12 @@ func bindCmd() *cobra.Command {
 			return applyUpdates(chdir, ups)
 		},
 	}
-	c.Flags().StringArrayVar(&reqs, "req", nil, "requirement identifier (each repetition starts a claim)")
-	c.Flags().StringArrayVar(&symbols, "symbol", nil, "backend-scoped symbol reference (one per claim)")
-	c.Flags().StringArrayVar(&roles, "role", nil, "implements, tests, or proves (once for all claims, or one per claim)")
-	c.Flags().StringArrayVar(&backendNames, "backend", nil, "language backend (default go; once for all claims, or one per claim)")
-	c.Flags().StringArrayVar(&files, "file", nil, "target binding file (derived from the requirement when empty; once for all claims, or one per claim)")
-	c.Flags().StringArrayVar(&clauses, "clause", nil, "scope the claim to one payload clause of its requirement: ordinal (from 1) or label; empty claims the whole requirement (one per claim)")
+	c.Flags().StringArrayVar(&reqs, remedy.FlagReq, nil, "")
+	c.Flags().StringArrayVar(&symbols, remedy.FlagSymbol, nil, "")
+	c.Flags().StringArrayVar(&roles, remedy.FlagRole, nil, "")
+	c.Flags().StringArrayVar(&backendNames, "backend", nil, "")
+	c.Flags().StringArrayVar(&files, "file", nil, "")
+	c.Flags().StringArrayVar(&clauses, remedy.FlagClause, nil, "")
 	registerReqCompletions(c, "req")
 	_ = c.RegisterFlagCompletionFunc("role", completeRoles)
 	_ = c.RegisterFlagCompletionFunc("backend", completeBackends)
@@ -126,7 +127,7 @@ func oneFlag(name string, vals []string) (string, error) {
 func unbindCmd() *cobra.Command {
 	var reqs, symbols, roles, clauses []string
 	c := &cobra.Command{
-		Use:   "unbind",
+		Use:   remedy.VerbUnbind,
 		Short: guidanceShort("unbind"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			req, err := oneFlag("req", reqs)
@@ -160,10 +161,10 @@ func unbindCmd() *cobra.Command {
 			return nil
 		},
 	}
-	c.Flags().StringArrayVar(&reqs, "req", nil, "requirement identifier")
-	c.Flags().StringArrayVar(&symbols, "symbol", nil, "narrow to one symbol")
-	c.Flags().StringArrayVar(&clauses, "clause", nil, "narrow to the claim scoped to this clause, as the claim spells it (ordinal or label)")
-	c.Flags().StringArrayVar(&roles, "role", nil, "narrow to one role")
+	c.Flags().StringArrayVar(&reqs, remedy.FlagReq, nil, "")
+	c.Flags().StringArrayVar(&symbols, remedy.FlagSymbol, nil, "")
+	c.Flags().StringArrayVar(&clauses, remedy.FlagClause, nil, "")
+	c.Flags().StringArrayVar(&roles, remedy.FlagRole, nil, "")
 	registerReqCompletions(c, "req")
 	_ = c.RegisterFlagCompletionFunc("role", completeRoles)
 	return c

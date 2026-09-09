@@ -7,13 +7,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/greatliontech/stipulator/internal/author"
+	"github.com/greatliontech/stipulator/internal/remedy"
 )
 
 func retargetCmd() *cobra.Command {
 	var backendVals, fromVals, toVals []string
 	var check bool
 	c := &cobra.Command{
-		Use:   "retarget",
+		Use:   remedy.VerbRetarget,
 		Short: guidanceShort("retarget"),
 		Long:  guidanceHelp("retarget"),
 		Args:  cobra.NoArgs,
@@ -64,9 +65,9 @@ func retargetCmd() *cobra.Command {
 			return nil
 		},
 	}
-	c.Flags().StringArrayVar(&backendVals, "backend", nil, "backend whose symbols retarget (default go)")
-	c.Flags().StringArrayVar(&fromVals, "from", nil, "old symbol prefix (module path)")
-	c.Flags().StringArrayVar(&toVals, "to", nil, "new symbol prefix")
-	c.Flags().BoolVar(&check, "check", false, "report affected identities without writing")
+	c.Flags().StringArrayVar(&backendVals, "backend", nil, "")
+	c.Flags().StringArrayVar(&fromVals, "from", nil, "")
+	c.Flags().StringArrayVar(&toVals, "to", nil, "")
+	c.Flags().BoolVar(&check, "check", false, "")
 	return c
 }

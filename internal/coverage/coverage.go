@@ -16,6 +16,7 @@ import (
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/records"
+	"github.com/greatliontech/stipulator/internal/remedy"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
@@ -166,7 +167,7 @@ type DanglingPointer struct {
 // PointerRemedy spells the two ways a dangling pointer resolves: a
 // binding of the named symbol, or the retarget of a renamed one.
 func PointerRemedy(requirement, name string) string {
-	return fmt.Sprintf("enforcement pointer `%s` names no tests/proves binding of %s: bind --req %s --role tests --symbol <package>.%s, or retarget the renamed symbol", name, requirement, requirement, name)
+	return fmt.Sprintf("enforcement pointer `%s` names no tests/proves binding of %s: %s, or %s the renamed symbol", name, requirement, remedy.Bind(requirement, "tests", "<package>."+name), remedy.Retarget())
 }
 
 // DanglingPointerCount tallies the dangling pointers among the kept
@@ -443,7 +444,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		}
 		if !r.ContentPinned {
 			e.stale = true
-			e.reasons = append(e.reasons, fmt.Sprintf("binding %s has a stale content pin — re-consent: stipulator pin --req %s", r.Symbol, r.RequirementId))
+			e.reasons = append(e.reasons, fmt.Sprintf("binding %s has a stale content pin — re-consent: %s", r.Symbol, remedy.Pin(r.RequirementId)))
 		}
 		switch r.Resolution {
 		case verify.NotFound:
@@ -455,10 +456,10 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 			case verify.ShapeMismatch:
 				e.otherRed = true
 				e.broken = true
-				e.reasons = append(e.reasons, fmt.Sprintf("shape of %s moved — re-pin after review: blanket stipulator pin, no ids (the ids form re-consents clause text only)", r.Symbol))
+				e.reasons = append(e.reasons, fmt.Sprintf("shape of %s moved — re-pin after review: blanket %s, no ids (the ids form re-consents clause text only)", r.Symbol, remedy.Pin()))
 			case verify.ShapeUnpinned:
 				e.stale = true
-				e.reasons = append(e.reasons, fmt.Sprintf("binding %s has no shape pin — backfill: stipulator pin", r.Symbol))
+				e.reasons = append(e.reasons, fmt.Sprintf("binding %s has no shape pin — backfill: %s", r.Symbol, remedy.Pin()))
 			case verify.ShapeMatch:
 				if r.ContentPinned {
 					grant.static = true
@@ -528,7 +529,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		e := get(a.RequirementId)
 		if !a.ContentPinned {
 			e.stale = true
-			e.reasons = append(e.reasons, fmt.Sprintf("attestation has a stale content pin (the requirement moved since it was vouched for) — review the moved clause and re-attest: stipulator attest requirement --req %s", a.RequirementId))
+			e.reasons = append(e.reasons, fmt.Sprintf("attestation has a stale content pin (the requirement moved since it was vouched for) — review the moved clause and re-attest: %s", remedy.AttestRequirement(a.RequirementId)))
 			continue
 		}
 		e.attested = true
@@ -695,7 +696,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		// explaining a red it does not.
 		switch {
 		case gapped[r.Id] && staleConsent[r.Id]:
-			r.Reasons = append(r.Reasons, fmt.Sprintf("the gap record naming this requirement was declared against different text and excuses nothing until re-consented — re-consent: stipulator pin --req %s", r.Id))
+			r.Reasons = append(r.Reasons, fmt.Sprintf("the gap record naming this requirement was declared against different text and excuses nothing until re-consented — re-consent: %s", remedy.Pin(r.Id)))
 		case gapped[r.Id] && !excused[r.Id][class]:
 			r.Reasons = append(r.Reasons, fmt.Sprintf("the gap record naming this requirement excuses %s, not %s — declare the class deliberately or repair the red", excuseNames(excused[r.Id]), bucketName(class)))
 		}

@@ -8,11 +8,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/greatliontech/stipulator/internal/author"
+	"github.com/greatliontech/stipulator/internal/remedy"
 )
 
 func disposeCmd() *cobra.Command {
 	c := &cobra.Command{
-		Use:   "dispose",
+		Use:   remedy.VerbDispose,
 		Short: "Apply a spec-change disposition to the records",
 	}
 
@@ -38,13 +39,13 @@ func disposeCmd() *cobra.Command {
 			return nil
 		},
 	}
-	editorial.Flags().StringArrayVar(&edReq, "req", nil, "requirement identifier")
+	editorial.Flags().StringArrayVar(&edReq, "req", nil, "")
 	registerReqCompletions(editorial, "req")
 
 	var retireID []string
 	var force bool
 	retire := &cobra.Command{
-		Use:   "retire",
+		Use:   remedy.VerbDisposeRetire,
 		Short: guidanceShort("dispose retire"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := oneFlag("id", retireID)
@@ -58,13 +59,13 @@ func disposeCmd() *cobra.Command {
 			return applyUpdates(chdir, ups)
 		},
 	}
-	retire.Flags().StringArrayVar(&retireID, "id", nil, "retired identity (requirement id or term name)")
-	retire.Flags().BoolVar(&force, "force", false, "retire even when no record names the identity")
+	retire.Flags().StringArrayVar(&retireID, remedy.FlagID, nil, "")
+	retire.Flags().BoolVar(&force, remedy.FlagForce, false, "")
 
 	var from, into []string
 	var forceSupersede bool
 	supersede := &cobra.Command{
-		Use:     "supersede",
+		Use:     remedy.VerbDisposeSupersede,
 		Aliases: []string{"split", "merge"},
 		Short:   guidanceShort("dispose supersede"),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -78,9 +79,9 @@ func disposeCmd() *cobra.Command {
 			return applyUpdates(chdir, ups)
 		},
 	}
-	supersede.Flags().StringArrayVar(&from, "from", nil, "comma-separated source identifiers (removed from the spec; repeatable, occurrences join)")
-	supersede.Flags().StringArrayVar(&into, "into", nil, "comma-separated successor identifiers (declaring supersedes; repeatable, occurrences join)")
-	supersede.Flags().BoolVar(&forceSupersede, "force", false, "supersede a source no record names (the typo guard otherwise refuses)")
+	supersede.Flags().StringArrayVar(&from, remedy.FlagFrom, nil, "")
+	supersede.Flags().StringArrayVar(&into, remedy.FlagInto, nil, "")
+	supersede.Flags().BoolVar(&forceSupersede, remedy.FlagForce, false, "")
 	registerReqCompletions(supersede, "into")
 
 	c.AddCommand(editorial, retire, supersede)

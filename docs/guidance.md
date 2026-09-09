@@ -83,7 +83,7 @@ ids=REQ-go-static-binding while iterating on one requirement's fix.
 - `requirement` (mcp, cli as `req`) — requirement identifier; on the cli each repetition starts a claim.
 - `symbol` (mcp, cli) — backend-scoped symbol reference; on the cli exactly one per claim.
 - `role` (mcp, cli) — implements, tests, or proves; on the cli once for all claims or one per claim.
-- `backend` (mcp, cli) — language backend (default go); on the cli once for all claims or one per claim.
+- `backend` (mcp, cli) — language backend (default go; a claim's defaults to the call's); on the cli once for all claims or one per claim.
 - `file` (mcp, cli) — target binding file (derived when empty); on the cli once for all claims or one per claim.
 - `clause` (mcp, cli) — scope the claim to one payload clause of its requirement — the clause's ordinal (from 1, payload order) or the label a `**label**`-led list item declares; empty claims the whole requirement. A clause claim grants evidence to that clause alone, so a requirement whose remaining clauses hold no policy-meeting evidence reads `partial`, never covered; on the cli exactly one per claim when given at all (empty keeps that claim whole). An ordinal follows the item's position, counted from 1 whatever number the list displays: inserting an item above it retargets the claim, which the stale content pin surfaces and the named re-pin names — prefer labels where the spec declares them.
 - `claims` (mcp) — batch claims validated all-or-nothing — a failure anywhere authors nothing; alternative to the single-claim fields — the agent's one-call authoring; the cli repeats its flags per claim.

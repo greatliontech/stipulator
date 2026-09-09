@@ -48,9 +48,9 @@ func explainCmd() *cobra.Command {
 			return nil
 		},
 	}
-	c.Flags().StringVar(&reason, "reason", "", "a witness's uncacheable reason to parse the culprit from")
-	c.Flags().StringVar(&pkgPath, "package", "", "culprit package path (with --symbol, overrides --reason)")
-	c.Flags().StringVar(&symbol, "symbol", "", "culprit variable name")
+	c.Flags().StringVar(&reason, "reason", "", "")
+	c.Flags().StringVar(&pkgPath, "package", "", "")
+	c.Flags().StringVar(&symbol, "symbol", "", "")
 	return c
 }
 

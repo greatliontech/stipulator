@@ -22,6 +22,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/progress"
+	"github.com/greatliontech/stipulator/internal/remedy"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/views"
 )
@@ -156,6 +157,7 @@ func newRootCmd() *cobra.Command {
 		return nil
 	}
 	c.AddCommand(compileCmd(), checkCmd(), verifyCmd(), gateCmd(), explainCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), impactCmd(), pruneCmd(), pinCmd(), disposeCmd(), retargetCmd(), attestCmd(), initCmd(), policyCmd(), mcpCmd(), guidanceCmd(), internalResolveCmd())
+	renderKnobUsage(c)
 	return c
 }
 
@@ -167,7 +169,7 @@ func mustPrepare(dir string) (*check.Prepared, error) {
 	prepared, err := check.Prepare(os.DirFS(dir))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) && strings.Contains(err.Error(), corpus.ManifestPath) {
-			return nil, fmt.Errorf("not a stipulator repository (no %s); run `stipulator init` to scaffold one", corpus.ManifestPath)
+			return nil, fmt.Errorf("not a stipulator repository (no %s); run `%s` to scaffold one", corpus.ManifestPath, remedy.Init())
 		}
 		return nil, err
 	}
@@ -196,7 +198,7 @@ func mustCompile(dir string) (*stipulatorv1.Spec, error) {
 	spec, diags, err := compile.Compile(os.DirFS(dir))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) && strings.Contains(err.Error(), corpus.ManifestPath) {
-			return nil, fmt.Errorf("not a stipulator repository (no %s); run `stipulator init` to scaffold one", corpus.ManifestPath)
+			return nil, fmt.Errorf("not a stipulator repository (no %s); run `%s` to scaffold one", corpus.ManifestPath, remedy.Init())
 		}
 		return nil, err
 	}

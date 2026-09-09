@@ -13,6 +13,7 @@ import (
 	guidancepkg "github.com/greatliontech/gofresh/guidance"
 	stipulator "github.com/greatliontech/stipulator"
 	"github.com/greatliontech/stipulator/internal/corpus"
+	"github.com/greatliontech/stipulator/internal/remedy"
 	"slices"
 
 	"bytes"
@@ -28,6 +29,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/greatliontech/gofresh"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -72,6 +74,40 @@ func guidanceDoc() *guidancepkg.Document {
 }
 
 func guidanceOrientation() string { return guidanceDoc().Orientation() }
+
+// knobbedTool is a served tool whose input schema's property
+// descriptions are the guidance document's knob text — each knob's
+// terse first clause (stipulator.KnobClause) — rendered at
+// registration, never a second literal beside the document, at every
+// depth of the schema: a nested object's properties (the batch
+// authoring form's claims) take the same verb's knobs by name. A
+// property the document does not knob is a build defect
+// (REQ-mcp-guidance).
+func knobbedTool[In any](verb string) *mcp.Tool {
+	schema, err := jsonschema.For[In](nil)
+	if err != nil {
+		panic("mcpserver: input schema for " + verb + ": " + err.Error())
+	}
+	knobSchema(guidanceDoc(), verb, schema)
+	return &mcp.Tool{Name: verb, Description: guidanceDescription(verb), InputSchema: schema}
+}
+
+// knobSchema renders every property description under schema, into
+// arrays and nested objects.
+func knobSchema(doc *guidancepkg.Document, verb string, schema *jsonschema.Schema) {
+	if schema == nil {
+		return
+	}
+	for name, prop := range schema.Properties {
+		k, err := doc.Knob("mcp", verb, name)
+		if err != nil {
+			panic("mcpserver: " + err.Error())
+		}
+		prop.Description = stipulator.KnobClause(k.Text)
+		knobSchema(doc, verb, prop)
+	}
+	knobSchema(doc, verb, schema.Items)
+}
 
 // guidanceDescription is a tool's one-line purpose, served from the
 // guidance document under the tool's mcp spelling
@@ -224,7 +260,7 @@ func (s *Server) ensureCorpus() error {
 		if where == "" {
 			where = "."
 		}
-		return fmt.Errorf("not inside a stipulator repository (no %s under %s, searched upward at server start); run `stipulator init` to scaffold one", corpus.ManifestPath, where)
+		return fmt.Errorf("not inside a stipulator repository (no %s under %s, searched upward at server start); run `%s` to scaffold one", corpus.ManifestPath, where, remedy.Init())
 	}
 	return nil
 }
@@ -248,76 +284,25 @@ func (s *Server) MCP() *mcp.Server {
 		Instructions: serverInstructions,
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "compile",
-		Description: guidanceDescription("compile"),
-	}, guarded(s, s.toolCompile))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "verify",
-		Description: guidanceDescription("verify"),
-	}, guarded(s, s.toolVerify))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "gate",
-		Description: guidanceDescription("gate"),
-	}, guarded(s, s.toolGate))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "check",
-		Description: guidanceDescription("check"),
-	}, guarded(s, s.toolCheck))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "bind",
-		Description: guidanceDescription("bind"),
-	}, guarded(s, s.toolBind))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "unbind",
-		Description: guidanceDescription("unbind"),
-	}, guarded(s, s.toolUnbind))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "gap",
-		Description: guidanceDescription("gap"),
-	}, guarded(s, s.toolGap))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "attest_requirement",
-		Description: guidanceDescription("attest_requirement"),
-	}, guarded(s, s.toolAttestRequirement))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "pin",
-		Description: guidanceDescription("pin"),
-	}, guarded(s, s.toolPin))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "dispose",
-		Description: guidanceDescription("dispose"),
-	}, guarded(s, s.toolDispose))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "retarget",
-		Description: guidanceDescription("retarget"),
-	}, guarded(s, s.toolRetarget))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "prune",
-		Description: guidanceDescription("prune"),
-	}, guarded(s, s.toolPrune))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "context",
-		Description: guidanceDescription("context"),
-	}, guarded(s, s.toolContext))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "partitions",
-		Description: guidanceDescription("partitions"),
-	}, guarded(s, s.toolPartitions))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "read_spec",
-		Description: guidanceDescription("read_spec"),
-	}, guarded(s, s.toolReadSpec))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "explain",
-		Description: guidanceDescription("explain"),
-	}, guarded(s, s.toolExplain))
+	mcp.AddTool(srv, knobbedTool[struct{}]("compile"), guarded(s, s.toolCompile))
+	mcp.AddTool(srv, knobbedTool[verifyIn]("verify"), guarded(s, s.toolVerify))
+	mcp.AddTool(srv, knobbedTool[gateIn]("gate"), guarded(s, s.toolGate))
+	mcp.AddTool(srv, knobbedTool[checkIn]("check"), guarded(s, s.toolCheck))
+	mcp.AddTool(srv, knobbedTool[bindIn]("bind"), guarded(s, s.toolBind))
+	mcp.AddTool(srv, knobbedTool[unbindIn]("unbind"), guarded(s, s.toolUnbind))
+	mcp.AddTool(srv, knobbedTool[gapIn]("gap"), guarded(s, s.toolGap))
+	mcp.AddTool(srv, knobbedTool[attestRequirementIn]("attest_requirement"), guarded(s, s.toolAttestRequirement))
+	mcp.AddTool(srv, knobbedTool[pinIn]("pin"), guarded(s, s.toolPin))
+	mcp.AddTool(srv, knobbedTool[disposeIn]("dispose"), guarded(s, s.toolDispose))
+	mcp.AddTool(srv, knobbedTool[retargetIn]("retarget"), guarded(s, s.toolRetarget))
+	mcp.AddTool(srv, knobbedTool[pruneIn]("prune"), guarded(s, s.toolPrune))
+	mcp.AddTool(srv, knobbedTool[contextIn]("context"), guarded(s, s.toolContext))
+	mcp.AddTool(srv, knobbedTool[partitionsIn]("partitions"), guarded(s, s.toolPartitions))
+	mcp.AddTool(srv, knobbedTool[readSpecIn]("read_spec"), guarded(s, s.toolReadSpec))
+	mcp.AddTool(srv, knobbedTool[explainIn]("explain"), guarded(s, s.toolExplain))
 	// guidance serves embedded content and deliberately skips the
 	// corpus guard: orientation must work before a corpus exists.
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "guidance",
-		Description: guidanceDescription("guidance"),
-	}, s.toolGuidance)
+	mcp.AddTool(srv, knobbedTool[guidanceIn]("guidance"), s.toolGuidance)
 
 	srv.AddResourceTemplate(&mcp.ResourceTemplate{
 		URITemplate: "stipulator://req/{id}",
@@ -477,11 +462,11 @@ func compileLine(out compileOut) string {
 }
 
 type verifyIn struct {
-	NoTest bool   `json:"no_test,omitempty" jsonschema:"the records-only judgment: no witness run, no policy capture"`
-	View   string `json:"view,omitempty" jsonschema:"summary (default: hygiene and witness counts with change signatures) or bindings (the per-binding rows)"`
-	Ids    string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers to scope binding rows to; unknown identifiers refuse"`
-	Filter string `json:"filter,omitempty" jsonschema:"requirement-id glob over binding rows"`
-	Path   string `json:"path,omitempty" jsonschema:"prefix over declaring document or symbol"`
+	NoTest bool   `json:"no_test,omitempty"`
+	View   string `json:"view,omitempty"`
+	Ids    string `json:"ids,omitempty"`
+	Filter string `json:"filter,omitempty"`
+	Path   string `json:"path,omitempty"`
 }
 
 // verifyPipeline is the tools' shared verification pass: the prepared
@@ -570,11 +555,11 @@ func (s *Server) toolVerify(ctx context.Context, req *mcp.CallToolRequest, in ve
 }
 
 type gateIn struct {
-	View   string `json:"view,omitempty" jsonschema:"summary (default: pass/fail + counts + violations), reds (red requirements with reasons), or full (every requirement)"`
-	Ids    string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers to scope to; unknown identifiers refuse"`
-	Bucket string `json:"bucket,omitempty" jsonschema:"scope to one bucket: uncovered, partial, stale, broken, covered, exempt, attested"`
-	Filter string `json:"filter,omitempty" jsonschema:"requirement-id glob, e.g. REQ-arch-*"`
-	Path   string `json:"path,omitempty" jsonschema:"prefix over declaring spec document or bound symbols, e.g. docs/specs/change.md or internal/corpus"`
+	View   string `json:"view,omitempty"`
+	Ids    string `json:"ids,omitempty"`
+	Bucket string `json:"bucket,omitempty"`
+	Filter string `json:"filter,omitempty"`
+	Path   string `json:"path,omitempty"`
 }
 
 func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in gateIn) (*mcp.CallToolResult, map[string]any, error) {
@@ -615,9 +600,9 @@ func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in gate
 // witnesses and selectively executes the stale remainder
 // (REQ-check-verdict).
 type checkIn struct {
-	Full bool   `json:"full,omitempty" jsonschema:"execute the whole accepted policy and judge suite health; default serves fresh witnesses and executes only the stale remainder"`
-	View string `json:"view,omitempty" jsonschema:"summary (default: verdict, counts, capped red rows, top-blocker rows, diagnostic headings) or full (the whole CheckResult with per-test maps and retained output)"`
-	Ids  string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers scoping the pass itself: fresh witnesses still serve whole-tree, only stale subjects bound to these requirements execute, and the verdict is flagged partial (scope_partial) with scope-boundary reds excluded; unknown identifiers refuse; incompatible with full"`
+	Full bool   `json:"full,omitempty"`
+	View string `json:"view,omitempty"`
+	Ids  string `json:"ids,omitempty"`
 }
 
 func (s *Server) toolCheck(ctx context.Context, req *mcp.CallToolRequest, in checkIn) (*mcp.CallToolResult, map[string]any, error) {
@@ -900,22 +885,22 @@ func scopeFrom(ids, bucket, filter, pathPrefix string) (views.Scope, error) {
 }
 
 type bindIn struct {
-	Requirement string      `json:"requirement,omitempty" jsonschema:"requirement identifier (single-claim form)"`
-	Symbol      string      `json:"symbol,omitempty" jsonschema:"backend-scoped symbol reference (single-claim form)"`
-	Role        string      `json:"role,omitempty" jsonschema:"implements, tests, or proves (single-claim form)"`
-	Backend     string      `json:"backend,omitempty" jsonschema:"language backend (default go; shared by batch claims lacking one)"`
-	File        string      `json:"file,omitempty" jsonschema:"target binding file (derived when empty)"`
-	Clause      string      `json:"clause,omitempty" jsonschema:"scope the claim to one payload clause of the requirement: its ordinal (from 1) or its label; empty claims the whole requirement (single-claim form)"`
-	Claims      []bindClaim `json:"claims,omitempty" jsonschema:"batch claims validated all-or-nothing - a failure anywhere authors nothing; alternative to the single-claim fields"`
+	Requirement string      `json:"requirement,omitempty"`
+	Symbol      string      `json:"symbol,omitempty"`
+	Role        string      `json:"role,omitempty"`
+	Backend     string      `json:"backend,omitempty"`
+	File        string      `json:"file,omitempty"`
+	Clause      string      `json:"clause,omitempty"`
+	Claims      []bindClaim `json:"claims,omitempty"`
 }
 
 type bindClaim struct {
-	Requirement string `json:"requirement" jsonschema:"requirement identifier"`
-	Symbol      string `json:"symbol" jsonschema:"backend-scoped symbol reference"`
-	Role        string `json:"role" jsonschema:"implements, tests, or proves"`
-	Backend     string `json:"backend,omitempty" jsonschema:"language backend (defaults to the call's backend, then go)"`
-	File        string `json:"file,omitempty" jsonschema:"target binding file (derived when empty)"`
-	Clause      string `json:"clause,omitempty" jsonschema:"scope the claim to one payload clause: ordinal (from 1) or label; empty claims the whole requirement"`
+	Requirement string `json:"requirement"`
+	Symbol      string `json:"symbol"`
+	Role        string `json:"role"`
+	Backend     string `json:"backend,omitempty"`
+	File        string `json:"file,omitempty"`
+	Clause      string `json:"clause,omitempty"`
 }
 
 type writeOut struct {
@@ -1096,10 +1081,10 @@ func (s *Server) toolBind(ctx context.Context, req *mcp.CallToolRequest, in bind
 }
 
 type unbindIn struct {
-	Requirement string `json:"requirement" jsonschema:"requirement identifier"`
-	Symbol      string `json:"symbol,omitempty" jsonschema:"narrow to one symbol"`
-	Role        string `json:"role,omitempty" jsonschema:"narrow to one role"`
-	Clause      string `json:"clause,omitempty" jsonschema:"narrow to the claim scoped to this clause, as the claim spells it (ordinal or label)"`
+	Requirement string `json:"requirement"`
+	Symbol      string `json:"symbol,omitempty"`
+	Role        string `json:"role,omitempty"`
+	Clause      string `json:"clause,omitempty"`
 }
 
 func (s *Server) toolUnbind(ctx context.Context, req *mcp.CallToolRequest, in unbindIn) (*mcp.CallToolResult, writeOut, error) {
@@ -1120,16 +1105,16 @@ func (s *Server) toolUnbind(ctx context.Context, req *mcp.CallToolRequest, in un
 }
 
 type gapIn struct {
-	Requirement  string `json:"requirement,omitempty" jsonschema:"requirement identifiers, comma-separated (all share the reason and landing condition; not with list)"`
-	Reason       string `json:"reason,omitempty" jsonschema:"why the gap exists (required unless retracting or firing)"`
-	Covered      string `json:"covered,omitempty" jsonschema:"lands when this requirement is covered (self = each requirement's own coverage)"`
-	Exists       string `json:"exists,omitempty" jsonschema:"lands when this requirement exists"`
-	Manual       string `json:"manual,omitempty" jsonschema:"lands on this externally judged condition, fired explicitly"`
-	Fired        bool   `json:"fired,omitempty" jsonschema:"mark the manual condition fired (without manual: fire the existing gaps)"`
-	Contradicted bool   `json:"contradicted,omitempty" jsonschema:"with manual: the tree contradicts the requirement's letter by design until the condition fires - reported apart from unwitnessed gaps, resolving only on the explicit fire"`
-	Retract      bool   `json:"retract,omitempty" jsonschema:"delete the gap records instead of declaring (dangling records included)"`
-	Excuses      string `json:"excuses,omitempty" jsonschema:"violation classes the gap excuses, comma-separated from uncovered|stale|broken (default: uncovered alone)"`
-	List         bool   `json:"list,omitempty" jsonschema:"list every gap record with its declaration fields, evaluated state (open|due|resolved|dangling), and class (contradicted) - the read surface; witness evidence gathers only for the gap-relevant requirements; combines with no write field (editing a gap is re-declaring it)"`
+	Requirement  string `json:"requirement,omitempty"`
+	Reason       string `json:"reason,omitempty"`
+	Covered      string `json:"covered,omitempty"`
+	Exists       string `json:"exists,omitempty"`
+	Manual       string `json:"manual,omitempty"`
+	Fired        bool   `json:"fired,omitempty"`
+	Contradicted bool   `json:"contradicted,omitempty"`
+	Retract      bool   `json:"retract,omitempty"`
+	Excuses      string `json:"excuses,omitempty"`
+	List         bool   `json:"list,omitempty"`
 }
 
 // gapOut is the gap tool's result: the write fields, plus the list
@@ -1339,9 +1324,9 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 }
 
 type attestRequirementIn struct {
-	Requirement string `json:"requirement" jsonschema:"requirement identifier"`
-	Reason      string `json:"reason,omitempty" jsonschema:"why the requirement is judged satisfied (required unless retracting)"`
-	Retract     bool   `json:"retract,omitempty" jsonschema:"withdraw the requirement's judgment instead of authoring one"`
+	Requirement string `json:"requirement"`
+	Reason      string `json:"reason,omitempty"`
+	Retract     bool   `json:"retract,omitempty"`
 }
 
 func (s *Server) toolAttestRequirement(ctx context.Context, req *mcp.CallToolRequest, in attestRequirementIn) (*mcp.CallToolResult, writeOut, error) {
@@ -1372,7 +1357,7 @@ func (s *Server) toolAttestRequirement(ctx context.Context, req *mcp.CallToolReq
 }
 
 type pinIn struct {
-	Ids string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers to editorially re-pin; empty backfills unset pins"`
+	Ids string `json:"ids,omitempty"`
 }
 
 func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn) (*mcp.CallToolResult, writeOut, error) {
@@ -1520,7 +1505,7 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 }
 
 type readSpecIn struct {
-	Ids string `json:"ids" jsonschema:"comma-separated requirement identifiers"`
+	Ids string `json:"ids"`
 }
 
 type readSpecOut struct {
@@ -1540,9 +1525,9 @@ func (s *Server) toolReadSpec(ctx context.Context, req *mcp.CallToolRequest, in 
 }
 
 type explainIn struct {
-	Reason  string `json:"reason,omitempty" jsonschema:"a witness's uncacheable reason to parse the culprit from"`
-	Package string `json:"package,omitempty" jsonschema:"culprit package path (with symbol, overrides reason)"`
-	Symbol  string `json:"symbol,omitempty" jsonschema:"culprit variable name"`
+	Reason  string `json:"reason,omitempty"`
+	Package string `json:"package,omitempty"`
+	Symbol  string `json:"symbol,omitempty"`
 }
 
 type explainLink struct {
@@ -1588,18 +1573,18 @@ func (s *Server) toolExplain(ctx context.Context, req *mcp.CallToolRequest, in e
 }
 
 type disposeIn struct {
-	Kind        string `json:"kind" jsonschema:"editorial, retire, or supersede"`
-	Requirement string `json:"requirement,omitempty" jsonschema:"target for editorial/retire"`
-	From        string `json:"from,omitempty" jsonschema:"comma-separated sources for supersede"`
-	Into        string `json:"into,omitempty" jsonschema:"comma-separated successors for supersede"`
-	Force       bool   `json:"force,omitempty" jsonschema:"retire even when no record names the identity"`
+	Kind        string `json:"kind"`
+	Requirement string `json:"requirement,omitempty"`
+	From        string `json:"from,omitempty"`
+	Into        string `json:"into,omitempty"`
+	Force       bool   `json:"force,omitempty"`
 }
 
 type retargetIn struct {
-	Backend string `json:"backend,omitempty" jsonschema:"backend whose symbols retarget (default go)"`
-	From    string `json:"from" jsonschema:"old symbol prefix (module path)"`
-	To      string `json:"to" jsonschema:"new symbol prefix"`
-	Check   bool   `json:"check,omitempty" jsonschema:"report affected identities without writing"`
+	Backend string `json:"backend,omitempty"`
+	From    string `json:"from"`
+	To      string `json:"to"`
+	Check   bool   `json:"check,omitempty"`
 }
 
 func (s *Server) toolRetarget(ctx context.Context, req *mcp.CallToolRequest, in retargetIn) (*mcp.CallToolResult, writeOut, error) {
@@ -1684,9 +1669,9 @@ func (s *Server) toolDispose(ctx context.Context, req *mcp.CallToolRequest, in d
 }
 
 type pruneIn struct {
-	Check    bool `json:"check,omitempty" jsonschema:"report which records would be pruned, deleting nothing"`
-	Dangling bool `json:"dangling,omitempty" jsonschema:"delete gap records naming requirements no longer in the corpus (the bulk repair; corpus and records only, no tests)"`
-	Store    bool `json:"store,omitempty" jsonschema:"garbage-collect this corpus's witness store: drop record variants whose identity is absent from the current obligation universe (departed, renamed, or unbound tests) plus unreadable entries; explicit only - an identity absent here may be live on another branch; composes with no other mode"`
+	Check    bool `json:"check,omitempty"`
+	Dangling bool `json:"dangling,omitempty"`
+	Store    bool `json:"store,omitempty"`
 }
 
 // toolPrune deletes resolved gap records. Detecting resolution is the
@@ -1880,10 +1865,10 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 }
 
 type contextIn struct {
-	Ids        string `json:"ids" jsonschema:"comma-separated requirement identifiers"`
-	Slice      bool   `json:"slice,omitempty" jsonschema:"include the code-slice declaration frontier (the expensive leg)"`
-	NoTest     bool   `json:"no_test,omitempty" jsonschema:"the records-only judgment: no witness run, no policy capture; dossiers render from records alone"`
-	ExportPath string `json:"export_path,omitempty" jsonschema:"write the dossier report to this path under .stipulator/exports/ and return only its location - the budget valve for many-id calls"`
+	Ids        string `json:"ids"`
+	Slice      bool   `json:"slice,omitempty"`
+	NoTest     bool   `json:"no_test,omitempty"`
+	ExportPath string `json:"export_path,omitempty"`
 }
 
 func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in contextIn) (*mcp.CallToolResult, map[string]any, error) {
@@ -1973,9 +1958,9 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 }
 
 type partitionsIn struct {
-	Ids        string `json:"ids,omitempty" jsonschema:"comma-separated requirement identifiers; empty means all red requirements"`
-	NoTest     bool   `json:"no_test,omitempty" jsonschema:"the records-only judgment: no witness run, no policy capture; partitions derive from records alone"`
-	ExportPath string `json:"export_path,omitempty" jsonschema:"write the full report (uncapped overlaps) to this path under .stipulator/exports/ and return only its location"`
+	Ids        string `json:"ids,omitempty"`
+	NoTest     bool   `json:"no_test,omitempty"`
+	ExportPath string `json:"export_path,omitempty"`
 }
 
 func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, in partitionsIn) (*mcp.CallToolResult, map[string]any, error) {
@@ -2316,7 +2301,7 @@ func truncate(s string, n int) string {
 
 // guidanceIn asks for one verb's section or, empty, the decision map.
 type guidanceIn struct {
-	Verb string `json:"verb,omitempty" jsonschema:"the verb to describe; empty serves the decision map"`
+	Verb string `json:"verb,omitempty"`
 }
 
 // toolGuidance serves the embedded guidance document

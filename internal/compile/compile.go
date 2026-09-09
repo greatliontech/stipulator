@@ -25,6 +25,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/profile"
 	"github.com/greatliontech/stipulator/internal/records"
+	remedypkg "github.com/greatliontech/stipulator/internal/remedy"
 )
 
 // Diagnostic is a profile violation, or — when Warning is set — an
@@ -290,7 +291,7 @@ func resolve(docs []*document, tombstones map[string]bool, diags *[]Diagnostic) 
 			from := reqRef(r.id)
 			kws := findTokens(r.segs, keywordRe)
 			if len(kws) != 1 {
-				diag(r.loc, "requirement %s has %d normative keyword occurrences, want exactly 1 — %s (stipulator compile is the lint after every spec edit)", r.id, len(kws), keywordRemedy(len(kws)))
+				diag(r.loc, "requirement %s has %d normative keyword occurrences, want exactly 1 — %s (%s is the lint after every spec edit)", r.id, len(kws), keywordRemedy(len(kws)), remedypkg.Compile())
 			}
 			for _, ref := range checkRefs(r.segs, r.loc) {
 				addEdge(from, ref, stipulatorv1.EdgeKind_EDGE_KIND_REFERENCE)
@@ -320,7 +321,7 @@ func resolve(docs []*document, tombstones map[string]bool, diags *[]Diagnostic) 
 							// same one step.
 							if c := components[target]; c != nil && !remedied[c] {
 								remedied[c] = true
-								remedy(r.loc, "if %s removed by this edit, the supersede disposition tombstones and accepts the edges in one step: stipulator dispose supersede --from %s --into %s (mcp: dispose kind=supersede; add --force when no record names a source)", wasOrWere(c.sources), strings.Join(c.sources, ","), strings.Join(c.successors, ","))
+								remedy(r.loc, "if %s removed by this edit, the supersede disposition tombstones and accepts the edges in one step: %s (mcp: %s kind=%s; add --%s when no record names a source)", wasOrWere(c.sources), remedypkg.Supersede(c.sources, c.successors, false), remedypkg.VerbDispose, remedypkg.VerbDisposeSupersede, remedypkg.FlagForce)
 							}
 							continue
 						}

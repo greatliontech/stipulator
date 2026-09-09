@@ -11,6 +11,7 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/coverage"
+	"github.com/greatliontech/stipulator/internal/remedy"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/wire"
 )
@@ -57,10 +58,10 @@ func checkCmd() *cobra.Command {
 			return nil
 		},
 	}
-	c.Flags().BoolVar(&jsonOut, "json", false, "machine output: the check result as deterministic JSON")
-	c.Flags().BoolVarP(&quiet, "quiet", "q", false, "exit code only")
-	c.Flags().BoolVar(&full, "full", false, "execute the whole accepted policy and judge suite health")
-	c.Flags().StringArrayVar(&ids, "ids", nil, "comma-separated requirement identifiers scoping the pass (repeatable; occurrences join): only stale subjects bound to them execute, the verdict is flagged partial")
+	c.Flags().BoolVar(&jsonOut, "json", false, "")
+	c.Flags().BoolVarP(&quiet, "quiet", "q", false, "")
+	c.Flags().BoolVar(&full, "full", false, "")
+	c.Flags().StringArrayVar(&ids, "ids", nil, "")
 	return c
 }
 
@@ -151,7 +152,7 @@ func renderCheck(stdout, stderr io.Writer, res *stipulatorv1.CheckResult) {
 		fmt.Fprintf(stderr, "%s %s is red and no gap excuses it\n", red("violation:"), bold(v))
 	}
 	for _, path := range res.GetPruneResidue() {
-		fmt.Fprintf(stderr, "%s resolved gap lingers: %s — run %s\n", red("prune residue:"), path, bold("stipulator prune"))
+		fmt.Fprintf(stderr, "%s resolved gap lingers: %s — run %s\n", red("prune residue:"), path, bold(remedy.Prune(false)))
 	}
 	switch {
 	case res.GetScopePartial() && res.GetPassed():

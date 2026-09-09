@@ -79,7 +79,63 @@ func TestGuidanceCoversTheWireSurface(t *testing.T) {
 			t.Fatalf("%s: %v", tool.Name, err)
 		}
 		var params []string
-		for name := range schema.Properties {
+		// Nested objects (an array's item properties) are judged too: the
+		// batch authoring form's claims carry their own descriptions.
+		var nested func(prefix string, props map[string]json.RawMessage)
+		nested = func(prefix string, props map[string]json.RawMessage) {
+			for name, raw := range props {
+				var prop struct {
+					Description string                     `json:"description"`
+					Properties  map[string]json.RawMessage `json:"properties"`
+					Items       *struct {
+						Properties map[string]json.RawMessage `json:"properties"`
+					} `json:"items"`
+				}
+				if err := json.Unmarshal(raw, &prop); err != nil {
+					t.Fatalf("%s.%s%s: %v", tool.Name, prefix, name, err)
+				}
+				if k, err := doc.Knob("mcp", tool.Name, name); err != nil {
+					t.Errorf("%s.%s%s: %v", tool.Name, prefix, name, err)
+				} else if want := firstClause(k.Text); prop.Description != want || prop.Description == "" {
+					t.Errorf("%s.%s%s description %q diverged from the document's %q", tool.Name, prefix, name, prop.Description, want)
+				}
+				nested(prefix+name+".", prop.Properties)
+				if prop.Items != nil {
+					nested(prefix+name+"[].", prop.Items.Properties)
+				}
+			}
+		}
+		for name, raw := range schema.Properties {
+			// The property description is the document's knob text,
+			// its terse first clause — identity, never a name match.
+			var prop struct {
+				Description string                     `json:"description"`
+				Properties  map[string]json.RawMessage `json:"properties"`
+				Items       *struct {
+					Properties map[string]json.RawMessage `json:"properties"`
+				} `json:"items"`
+			}
+			if err := json.Unmarshal(raw, &prop); err != nil {
+				t.Fatalf("%s.%s: %v", tool.Name, name, err)
+			}
+			nested(name+".", prop.Properties)
+			if prop.Items != nil {
+				nested(name+"[].", prop.Items.Properties)
+			}
+			if tool.Name == "bind" && name == "claims" && (prop.Items == nil || len(prop.Items.Properties) < 6) {
+				t.Errorf("bind.claims items carry %v; want the six claim properties documented", prop.Items)
+			}
+			if k, err := doc.Knob("mcp", tool.Name, name); err != nil {
+				t.Errorf("%s.%s: %v", tool.Name, name, err)
+			} else if want := firstClause(k.Text); prop.Description != want || prop.Description == "" {
+				t.Errorf("%s.%s description %q diverged from the document's %q", tool.Name, name, prop.Description, want)
+			}
+			if tool.Name == "verify" && name == "ids" && prop.Description != "requirement identifiers to scope the report to (comma-separated on mcp; repeatable on the cli)" {
+				t.Errorf("verify.ids description = %q; want the parenthesis kept whole", prop.Description)
+			}
+			if tool.Name == "verify" && name == "no_test" && prop.Description != "the records-only judgment: no witness run, no policy capture" {
+				t.Errorf("verify.no_test description = %q; want the document's first clause", prop.Description)
+			}
 			params = append(params, name)
 		}
 		registered[tool.Name] = params
@@ -214,4 +270,28 @@ func TestCheckToolDigestCarriesPolicyNotices(t *testing.T) {
 	if !strings.Contains(string(b), "toolchain-selection audit") {
 		t.Fatalf("summary lost the policy notice: %s", b)
 	}
+}
+
+// firstClause is the test's own reading of the clause rule: the text up
+// to the first semicolon outside parentheses — independent of the
+// rendering it judges — its trailing period trimmed as the rendering trims it.
+//
+//gofresh:pure
+func firstClause(text string) string {
+	depth := 0
+	for i := 0; i < len(text); i++ {
+		switch text[i] {
+		case '(':
+			depth++
+		case ')':
+			if depth > 0 {
+				depth--
+			}
+		case ';':
+			if depth == 0 {
+				return strings.TrimSuffix(strings.TrimSpace(text[:i]), ".")
+			}
+		}
+	}
+	return strings.TrimSuffix(strings.TrimSpace(text), ".")
 }

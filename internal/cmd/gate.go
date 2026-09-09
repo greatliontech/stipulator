@@ -8,6 +8,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/greatliontech/stipulator/internal/coverage"
+	"github.com/greatliontech/stipulator/internal/remedy"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/views"
 )
@@ -104,13 +105,13 @@ func gateCmd() *cobra.Command {
 			return nil
 		},
 	}
-	c.Flags().StringArrayVar(&reqs, "req", nil, "scope to requirement identifier (repeatable)")
-	c.Flags().StringVar(&bucket, "bucket", "", "scope to one bucket: uncovered, partial, stale, broken, covered, exempt, attested")
-	c.Flags().StringVar(&filter, "filter", "", "requirement-id glob, e.g. 'REQ-arch-*'")
-	c.Flags().StringVar(&pathPrefix, "path", "", "prefix over declaring document or bound symbols")
-	c.Flags().StringVar(&view, "view", "", "JSON view: summary (default), reds, full")
-	c.Flags().BoolVar(&jsonOut, "json", false, "machine output: the selected view as JSON")
-	c.Flags().BoolVarP(&quiet, "quiet", "q", false, "exit code only")
+	c.Flags().StringArrayVar(&reqs, "req", nil, "")
+	c.Flags().StringVar(&bucket, "bucket", "", "")
+	c.Flags().StringVar(&filter, "filter", "", "")
+	c.Flags().StringVar(&pathPrefix, "path", "", "")
+	c.Flags().StringVar(&view, "view", "", "")
+	c.Flags().BoolVar(&jsonOut, "json", false, "")
+	c.Flags().BoolVarP(&quiet, "quiet", "q", false, "")
 	registerReqCompletions(c, "req")
 	return c
 }
@@ -174,6 +175,6 @@ func printCoverage(cov *coverage.Report) {
 		if prunable > 1 {
 			noun = "gaps"
 		}
-		fmt.Printf("prunable: %d resolved %s — run %s\n", prunable, noun, bold("stipulator prune"))
+		fmt.Printf("prunable: %d resolved %s — run %s\n", prunable, noun, bold(remedy.Prune(false)))
 	}
 }

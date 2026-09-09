@@ -11,6 +11,7 @@ import (
 	checkpkg "github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/records"
+	"github.com/greatliontech/stipulator/internal/remedy"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
@@ -25,7 +26,7 @@ func gapCmd() *cobra.Command {
 	var reasonVals, coveredVals, existsVals, manualVals []string
 	var fired, contradicted, retract, list bool
 	c := &cobra.Command{
-		Use:   "gap",
+		Use:   remedy.VerbGap,
 		Short: guidanceShort("gap"),
 		Long:  guidanceHelp("gap"),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -104,16 +105,16 @@ func gapCmd() *cobra.Command {
 			return applyUpdates(chdir, ups)
 		},
 	}
-	c.Flags().StringArrayVar(&reqs, "req", nil, "requirement identifier (repeatable; all share the reason and landing condition)")
-	c.Flags().StringArrayVar(&reasonVals, "reason", nil, "why the gap exists")
-	c.Flags().StringArrayVar(&coveredVals, "covered", nil, "lands when this requirement is covered (self = each requirement's own coverage)")
-	c.Flags().StringArrayVar(&existsVals, "exists", nil, "lands when this requirement exists")
-	c.Flags().StringArrayVar(&manualVals, "manual", nil, "lands on this externally judged condition, fired explicitly")
-	c.Flags().StringArrayVar(&excuseNames, "excuses", nil, "violation class the gap excuses: uncovered, stale, or broken (repeatable; default uncovered alone)")
-	c.Flags().BoolVar(&fired, "fired", false, "mark the manual condition fired (alone: fire existing gaps)")
-	c.Flags().BoolVar(&contradicted, "contradicted", false, "with --manual: the tree contradicts the requirement's letter by design until the condition fires — reported apart from unwitnessed gaps, resolving only on the explicit fire")
-	c.Flags().BoolVar(&retract, "retract", false, "delete the gap records instead of declaring (dangling records included)")
-	c.Flags().BoolVar(&list, "list", false, "list every gap record with its evaluated state (open|due|resolved|dangling) and class (contradicted); witness evidence gathers only for the gap-relevant requirements")
+	c.Flags().StringArrayVar(&reqs, remedy.FlagReq, nil, "")
+	c.Flags().StringArrayVar(&reasonVals, "reason", nil, "")
+	c.Flags().StringArrayVar(&coveredVals, "covered", nil, "")
+	c.Flags().StringArrayVar(&existsVals, "exists", nil, "")
+	c.Flags().StringArrayVar(&manualVals, "manual", nil, "")
+	c.Flags().StringArrayVar(&excuseNames, "excuses", nil, "")
+	c.Flags().BoolVar(&fired, "fired", false, "")
+	c.Flags().BoolVar(&contradicted, "contradicted", false, "")
+	c.Flags().BoolVar(&retract, remedy.FlagRetract, false, "")
+	c.Flags().BoolVar(&list, "list", false, "")
 	registerReqCompletions(c, "req", "covered", "exists")
 	return c
 }
@@ -158,7 +159,7 @@ func gapListRun(ctx context.Context) error {
 	}
 	rep := verify.Run(spec, store, map[string]verify.Backend{"go": gb}, testRun)
 	if len(rep.Problems) > 0 {
-		fmt.Fprintln(os.Stderr, yellow(fmt.Sprintf("%d verification problems - evaluated states may misreport; run stipulator verify", len(rep.Problems))))
+		fmt.Fprintln(os.Stderr, yellow(fmt.Sprintf("%d verification problems - evaluated states may misreport; run %s", len(rep.Problems), remedy.Verify())))
 	}
 	cov := coverage.Evaluate(spec, rep, store, testRun != nil, pol)
 	known := records.HashesOf(spec)

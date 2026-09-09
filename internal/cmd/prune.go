@@ -12,6 +12,7 @@ import (
 	checkpkg "github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/records"
+	"github.com/greatliontech/stipulator/internal/remedy"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
@@ -19,7 +20,7 @@ import (
 func pruneCmd() *cobra.Command {
 	var check, noTest, dangling, storeGC bool
 	c := &cobra.Command{
-		Use:   "prune",
+		Use:   remedy.VerbPrune,
 		Short: guidanceShort("prune"),
 		Long:  guidanceHelp("prune"),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -190,9 +191,9 @@ func pruneCmd() *cobra.Command {
 			return nil
 		},
 	}
-	c.Flags().BoolVar(&check, "check", false, "lint: fail when records linger; delete nothing")
-	c.Flags().BoolVar(&noTest, "no-test", false, "the records-only judgment: no witness run, no policy capture (resolved-gap pruning may under-detect)")
-	c.Flags().BoolVar(&dangling, "dangling", false, "delete gap records naming requirements no longer in the corpus")
-	c.Flags().BoolVar(&storeGC, "store", false, "garbage-collect this corpus's witness store: drop record variants whose identity is absent from the current obligation universe (departed, renamed, or unbound tests) plus unreadable entries; explicit only - an identity absent here may be live on another branch")
+	c.Flags().BoolVar(&check, "check", false, "")
+	c.Flags().BoolVar(&noTest, "no-test", false, "")
+	c.Flags().BoolVar(&dangling, remedy.FlagDangling, false, "")
+	c.Flags().BoolVar(&storeGC, "store", false, "")
 	return c
 }

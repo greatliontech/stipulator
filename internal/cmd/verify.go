@@ -9,6 +9,7 @@ import (
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/records"
+	"github.com/greatliontech/stipulator/internal/remedy"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/views"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -19,7 +20,7 @@ func verifyCmd() *cobra.Command {
 	var view, filter, pathPrefix string
 	var reqs []string
 	c := &cobra.Command{
-		Use:   "verify",
+		Use:   remedy.VerbVerify,
 		Short: guidanceShort("verify"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			prepared, scope, err := prepareScoped(views.Scope{Ids: reqs, Filter: filter, Path: pathPrefix}, views.ValidateVerifyView, view)
@@ -97,7 +98,7 @@ func verifyCmd() *cobra.Command {
 			if rep.Rehash > 0 {
 				// Bindings and attestations alike: the count is of
 				// consent records, its own line beside the faces.
-				fmt.Printf("rehash:    %d record(s) current by source pin alone — %s; blanket stipulator pin rewrites them\n", rep.Rehash, records.RehashNote)
+				fmt.Printf("rehash:    %d record(s) current by source pin alone — %s; blanket %s rewrites them\n", rep.Rehash, records.RehashNote, remedy.Pin())
 			}
 			fmt.Printf("shapes:    %d pinned, %s unpinned, %s moved\n",
 				rep.ShapePinned, num(rep.ShapeUnpinned, yellow), num(rep.ShapeMismatch, red))
@@ -122,12 +123,12 @@ func verifyCmd() *cobra.Command {
 			return nil
 		},
 	}
-	c.Flags().BoolVar(&noTest, "no-test", false, "the records-only judgment: no witness run, no policy capture")
-	c.Flags().StringVar(&view, "view", "", "view: summary (default) or bindings (one row per claim)")
-	c.Flags().StringArrayVar(&reqs, "req", nil, "scope the report to a requirement identifier (repeatable): its rows, counts, signatures, and diagnostics")
-	c.Flags().StringVar(&filter, "filter", "", "scope the report to a requirement-id glob, e.g. 'REQ-arch-*'")
-	c.Flags().StringVar(&pathPrefix, "path", "", "scope the report to a prefix over declaring document or bound symbols — 'what claims this symbol' before a deletion")
-	c.Flags().BoolVar(&jsonOut, "json", false, "machine output: the selected view as JSON")
+	c.Flags().BoolVar(&noTest, "no-test", false, "")
+	c.Flags().StringVar(&view, "view", "", "")
+	c.Flags().StringArrayVar(&reqs, "req", nil, "")
+	c.Flags().StringVar(&filter, "filter", "", "")
+	c.Flags().StringVar(&pathPrefix, "path", "", "")
+	c.Flags().BoolVar(&jsonOut, "json", false, "")
 	registerReqCompletions(c, "req")
 	return c
 }

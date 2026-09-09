@@ -52,7 +52,7 @@ func diffCmd() *cobra.Command {
 			return nil
 		},
 	}
-	c.Flags().StringVar(&against, "against", "", "git revision holding the old corpus (HEAD~1, branch, tag, hash)")
+	c.Flags().StringVar(&against, "against", "", "")
 	return c
 }
 

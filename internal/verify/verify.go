@@ -18,6 +18,7 @@ import (
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/records"
+	"github.com/greatliontech/stipulator/internal/remedy"
 )
 
 // Problem is a record inconsistency; any problem fails verification.
@@ -507,7 +508,7 @@ func (j *hygiene) binding(path string, b *stipulatorv1.Binding) (problems []Prob
 		malformed = true
 	}
 	if id != "" && !j.hashes.Known(id) {
-		problem("binding names %s, which is not in the corpus — unbind it: stipulator unbind --req %s (or stipulator dispose retire --id %s if the requirement was removed deliberately)", id, id, id)
+		problem("binding names %s, which is not in the corpus — unbind it: %s (or %s if the requirement was removed deliberately)", id, remedy.Unbind(id, "", ""), remedy.Retire(id))
 		malformed = true
 	} else if id != "" {
 		// A clause claim on a clause the requirement no longer declares
@@ -516,7 +517,7 @@ func (j *hygiene) binding(path string, b *stipulatorv1.Binding) (problems []Prob
 		// (REQ-evidence-clause-claim).
 		var ok bool
 		if clause, ok = records.ResolveClause(j.reqs[id], b); !ok {
-			problem("binding %s on %s names %s, which %s no longer declares — rebind against its current clauses or unbind it: stipulator unbind --req %s --symbol %s --clause %s", b.GetSymbol(), id, records.ClauseName(b), id, id, b.GetSymbol(), records.ClauseSpelling(b))
+			problem("binding %s on %s names %s, which %s no longer declares — rebind against its current clauses or unbind it: %s", b.GetSymbol(), id, records.ClauseName(b), id, remedy.Unbind(id, b.GetSymbol(), records.ClauseSpelling(b)))
 			malformed = true
 		}
 	}
@@ -558,13 +559,13 @@ func (j *hygiene) attestation(path string, a *stipulatorv1.RequirementAttestatio
 	}
 	j.attested[id] = path
 	if !j.hashes.Known(id) {
-		problem("attestation names %s, which is not in the corpus — retract it: stipulator attest requirement --req %s --retract", id, id)
+		problem("attestation names %s, which is not in the corpus — retract it: %s", id, remedy.AttestRetract(id))
 		return problems, false
 	}
 	if j.gapped[id] {
 		// Deferred and judged-satisfied contradict: the records cannot
 		// both stand.
-		problem("%s is both gapped and attested; the records contradict — retract one: stipulator gap --req %s --retract, or stipulator attest requirement --req %s --retract", id, id, id)
+		problem("%s is both gapped and attested; the records contradict — retract one: %s, or %s", id, remedy.GapRetract(id), remedy.AttestRetract(id))
 		return problems, false
 	}
 	return problems, true
@@ -583,7 +584,7 @@ func (j *hygiene) gap(path string, g *stipulatorv1.Gap) (problems []Problem) {
 	if id == "" {
 		problem("gap without requirement_id")
 	} else if !j.hashes.Known(id) {
-		problem("gap names %s, which is not in the corpus — retract it: stipulator gap --req %s --retract (or prune --dangling for the bulk repair)", id, id)
+		problem("gap names %s, which is not in the corpus — retract it: %s (or %s for the bulk repair)", id, remedy.GapRetract(id), remedy.Prune(true))
 	}
 	if id != "" {
 		if prior, dup := j.seenGaps[id]; dup {
@@ -875,7 +876,7 @@ func signatures(results []BindingResult) []ChangeSignature {
 				ev = append(ev, "proof failed: "+sym)
 			}
 			ev = append(ev, fmt.Sprintf("behavior green: %d witnesses", st.behaviorGreen))
-			ev = append(ev, "shape re-pin available: stipulator pin")
+			ev = append(ev, "shape re-pin available: "+remedy.Pin())
 			out = append(out, ChangeSignature{RequirementId: id, Label: Rearchitecture, Evidence: ev})
 		}
 	}

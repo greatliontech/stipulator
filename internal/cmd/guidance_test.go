@@ -44,6 +44,22 @@ func TestGuidanceCoversTheCLISurface(t *testing.T) {
 					return
 				}
 				flags = append(flags, f.Name)
+				// The usage string is the document's knob text, its
+				// terse first clause — identity, never a name match.
+				k, err := doc.Knob("cli", name, f.Name)
+				if err != nil {
+					t.Errorf("%s --%s: %v", name, f.Name, err)
+					return
+				}
+				if want := firstClause(k.Text); f.Usage != want || f.Usage == "" {
+					t.Errorf("%s --%s usage %q diverged from the document's %q", name, f.Name, f.Usage, want)
+				}
+				if name == "verify" && f.Name == "req" && f.Usage != "requirement identifiers to scope the report to (comma-separated on mcp; repeatable on the cli)" {
+					t.Errorf("verify --req usage = %q; want the parenthesis kept whole", f.Usage)
+				}
+				if name == "verify" && f.Name == "no-test" && f.Usage != "the records-only judgment: no witness run, no policy capture" {
+					t.Errorf("verify --no-test usage = %q; want the document's first clause", f.Usage)
+				}
 			})
 			registered[name] = flags
 		}
@@ -131,4 +147,28 @@ func TestGuidanceCommandServesTheDocument(t *testing.T) {
 	if _, err = run("-C", dir, "guidance", "vanished"); err == nil || !strings.Contains(err.Error(), "decision map") {
 		t.Fatalf("unknown verb: err = %v", err)
 	}
+}
+
+// firstClause is the test's own reading of the clause rule: the text up
+// to the first semicolon outside parentheses — independent of the
+// rendering it judges — its trailing period trimmed as the rendering trims it.
+//
+//gofresh:pure
+func firstClause(text string) string {
+	depth := 0
+	for i := 0; i < len(text); i++ {
+		switch text[i] {
+		case '(':
+			depth++
+		case ')':
+			if depth > 0 {
+				depth--
+			}
+		case ';':
+			if depth == 0 {
+				return strings.TrimSuffix(strings.TrimSpace(text[:i]), ".")
+			}
+		}
+	}
+	return strings.TrimSuffix(strings.TrimSpace(text), ".")
 }

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/remedy"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -103,7 +104,7 @@ func (recordError) Is(target error) bool {
 func Load(root string, backends map[string]Backend) (*stipulatorv1.TestPolicy, []Invocation, error) {
 	raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(Path)))
 	if errors.Is(err, fs.ErrNotExist) {
-		return nil, nil, recordError{fmt.Errorf("no accepted test policy at %s; run `stipulator policy init` to derive one", Path)}
+		return nil, nil, recordError{fmt.Errorf("no accepted test policy at %s; run `%s` to derive one", Path, remedy.PolicyInit())}
 	}
 	if err != nil {
 		return nil, nil, err

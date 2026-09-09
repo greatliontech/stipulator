@@ -913,8 +913,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-guidance"
-  content_hash: "7ce8f0d870d2cf71346eaad5841ee31f9ed2554e4738f2981d124985803d9157"
-  source_hash: "c8a2c04d354278aa42320b5458e8d6ecf6b230b2bcdbdef67cafa2b515215036"
+  content_hash: "0acca862f89d916dde48ddfe0b5dd629b6d135c7845b79f27747aa72982b426f"
+  source_hash: "aed7a6c52c34a4d59c85fafa8ffafda52d3112c6b484eabfbb599a351e4398f6"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGuidanceCoversTheWireSurface"
   role: BINDING_ROLE_TESTS
@@ -923,8 +923,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-guidance"
-  content_hash: "7ce8f0d870d2cf71346eaad5841ee31f9ed2554e4738f2981d124985803d9157"
-  source_hash: "c8a2c04d354278aa42320b5458e8d6ecf6b230b2bcdbdef67cafa2b515215036"
+  content_hash: "0acca862f89d916dde48ddfe0b5dd629b6d135c7845b79f27747aa72982b426f"
+  source_hash: "aed7a6c52c34a4d59c85fafa8ffafda52d3112c6b484eabfbb599a351e4398f6"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGuidanceToolServesTheDocument"
   role: BINDING_ROLE_TESTS
@@ -933,8 +933,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-guidance"
-  content_hash: "7ce8f0d870d2cf71346eaad5841ee31f9ed2554e4738f2981d124985803d9157"
-  source_hash: "c8a2c04d354278aa42320b5458e8d6ecf6b230b2bcdbdef67cafa2b515215036"
+  content_hash: "0acca862f89d916dde48ddfe0b5dd629b6d135c7845b79f27747aa72982b426f"
+  source_hash: "aed7a6c52c34a4d59c85fafa8ffafda52d3112c6b484eabfbb599a351e4398f6"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestGuidanceCoversTheCLISurface"
   role: BINDING_ROLE_TESTS
@@ -943,8 +943,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-guidance"
-  content_hash: "7ce8f0d870d2cf71346eaad5841ee31f9ed2554e4738f2981d124985803d9157"
-  source_hash: "c8a2c04d354278aa42320b5458e8d6ecf6b230b2bcdbdef67cafa2b515215036"
+  content_hash: "0acca862f89d916dde48ddfe0b5dd629b6d135c7845b79f27747aa72982b426f"
+  source_hash: "aed7a6c52c34a4d59c85fafa8ffafda52d3112c6b484eabfbb599a351e4398f6"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestGuidanceCommandServesTheDocument"
   role: BINDING_ROLE_TESTS
@@ -953,8 +953,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-guidance"
-  content_hash: "7ce8f0d870d2cf71346eaad5841ee31f9ed2554e4738f2981d124985803d9157"
-  source_hash: "c8a2c04d354278aa42320b5458e8d6ecf6b230b2bcdbdef67cafa2b515215036"
+  content_hash: "0acca862f89d916dde48ddfe0b5dd629b6d135c7845b79f27747aa72982b426f"
+  source_hash: "aed7a6c52c34a4d59c85fafa8ffafda52d3112c6b484eabfbb599a351e4398f6"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGuidanceToolServesOutsideACorpus"
   role: BINDING_ROLE_TESTS

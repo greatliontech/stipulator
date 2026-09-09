@@ -74,7 +74,7 @@ func TestConsistency(t *testing.T) {
 		rep, _ := run(t, map[string]string{
 			".stipulator/gaps/ghost.textproto": "requirement_id: \"REQ-v-ghost\"\nreason: \"r\"\nlands { manual { condition: \"c\" } }\n",
 		})
-		wantProblem(t, rep, "gap names REQ-v-ghost, which is not in the corpus — retract it: stipulator gap --req REQ-v-ghost --retract (or prune --dangling for the bulk repair)")
+		wantProblem(t, rep, "gap names REQ-v-ghost, which is not in the corpus — retract it: stipulator gap --req REQ-v-ghost --retract (or stipulator prune --dangling for the bulk repair)")
 	})
 	t.Run("unset pin is stale, current pin is pinned", func(t *testing.T) {
 		rep, store := run(t, map[string]string{

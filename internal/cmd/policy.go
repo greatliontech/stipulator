@@ -13,11 +13,12 @@ import (
 
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/policy"
+	"github.com/greatliontech/stipulator/internal/remedy"
 )
 
 func policyCmd() *cobra.Command {
 	c := &cobra.Command{
-		Use:   "policy",
+		Use:   remedy.VerbPolicy,
 		Short: "Manage the accepted test policy record",
 	}
 	c.AddCommand(policyInitCmd())
@@ -32,7 +33,7 @@ func policyBackends() map[string]policy.Backend {
 
 func policyInitCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "init",
+		Use:   remedy.VerbInit,
 		Short: guidanceShort("policy init"),
 		Long:  guidanceHelp("policy init"),
 		RunE: func(cmd *cobra.Command, args []string) error {

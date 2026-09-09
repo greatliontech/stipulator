@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/greatliontech/stipulator/internal/remedy"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -11,7 +12,7 @@ import (
 func compileCmd() *cobra.Command {
 	var ir bool
 	c := &cobra.Command{
-		Use:   "compile",
+		Use:   remedy.VerbCompile,
 		Short: guidanceShort("compile"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			spec, err := mustCompile(chdir)
@@ -32,6 +33,6 @@ func compileCmd() *cobra.Command {
 			return nil
 		},
 	}
-	c.Flags().BoolVar(&ir, "ir", false, "print the compiled IR as textproto")
+	c.Flags().BoolVar(&ir, "ir", false, "")
 	return c
 }

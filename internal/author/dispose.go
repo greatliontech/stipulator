@@ -13,6 +13,7 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/records"
+	"github.com/greatliontech/stipulator/internal/remedy"
 )
 
 // Dispositions are operations, never records: each returns the file
@@ -106,7 +107,7 @@ func Editorial(fsys fs.FS, requirement string) (ups []Update, consented []string
 			}
 			clause, ok := records.ResolveClause(target, b)
 			if !ok {
-				return nil, nil, fmt.Errorf("binding %s names %s, which %s no longer declares — rebind against its current clauses or unbind it before re-consenting: stipulator unbind --req %s --symbol %s --clause %s", b.GetSymbol(), records.ClauseName(b), requirement, requirement, b.GetSymbol(), records.ClauseSpelling(b))
+				return nil, nil, fmt.Errorf("binding %s names %s, which %s no longer declares — rebind against its current clauses or unbind it before re-consenting: %s", b.GetSymbol(), records.ClauseName(b), requirement, remedy.Unbind(requirement, b.GetSymbol(), records.ClauseSpelling(b)))
 			}
 			if clause != nil {
 				consented = append(consented, fmt.Sprintf("%s now claims %s", b.GetSymbol(), records.ClauseHeading(clause)))
@@ -472,7 +473,7 @@ func nothingStaleNote(store *records.Store, requirement, hash, source string) st
 			}
 			named = true
 			if !records.JudgeConsent(a.GetContentHash(), a.GetSourceHash(), hash, source).Holds() {
-				return "no binding or gap awaits re-consent; its attestation was vouched for different text and the editorial re-pin never rewrites a judgment — re-attest: stipulator attest requirement --req " + requirement
+				return "no binding or gap awaits re-consent; its attestation was vouched for different text and the editorial re-pin never rewrites a judgment — re-attest: " + remedy.AttestRequirement(requirement)
 			}
 		}
 	}

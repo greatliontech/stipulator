@@ -2,6 +2,7 @@ package corpus
 
 import (
 	"fmt"
+	"github.com/greatliontech/stipulator/internal/remedy"
 	"os"
 	"path/filepath"
 )
@@ -21,7 +22,7 @@ func FindRoot(start string) (string, error) {
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return "", fmt.Errorf("not inside a stipulator repository (no %s in %s or any parent); run `stipulator init` to scaffold one", ManifestPath, start)
+			return "", fmt.Errorf("not inside a stipulator repository (no %s in %s or any parent); run `%s` to scaffold one", ManifestPath, start, remedy.Init())
 		}
 		dir = parent
 	}

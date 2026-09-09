@@ -8,11 +8,12 @@ import (
 
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/corpus"
+	"github.com/greatliontech/stipulator/internal/remedy"
 )
 
 func initCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "init",
+		Use:   remedy.VerbInit,
 		Short: guidanceShort("init"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			up, err := author.Init(os.DirFS(chdir))
@@ -23,7 +24,7 @@ func initCmd() *cobra.Command {
 				return err
 			}
 			fmt.Printf("initialized: corpus is %s\n", corpus.DefaultInclude)
-			fmt.Println(dim("next: write a spec document, then `stipulator compile`"))
+			fmt.Println(dim("next: write a spec document, then `" + remedy.Compile() + "`"))
 			return nil
 		},
 	}

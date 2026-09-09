@@ -150,10 +150,13 @@ one-to-one, so the verb name carries across — the stale content pin its
 re-consent, the moved or unpinned shape its re-pin, the dangling record
 its retraction or unbinding, the contradictory record pair both
 retractions, the inadmissible attestation the evidence its cell
-demands. A finding whose repair is the operator's own judgment (a red
-witness, an unresolved symbol) names no operation: the tool computes
-remediations, never prescribes fixes, and a wrong spelling misleads
-worse than silence.
+demands. Every remedy is composed from the one spelling source the
+command tree registers its verb and flag names from, and every
+composition parses against that tree — a spelling the tree would
+refuse is a build defect, never a served one. A finding whose repair
+is the operator's own judgment (a red witness, an unresolved symbol)
+names no operation: the tool computes remediations, never prescribes
+fixes, and a wrong spelling misleads worse than silence.
 
 **REQ-record-cas** (invariant): Every record write MUST carry the
 content the computing operation read for its target file — absence
