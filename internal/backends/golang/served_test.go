@@ -3,6 +3,7 @@ package golang
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/greatliontech/gofresh"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/internal/resolutioncache"
@@ -445,5 +447,135 @@ func TestServedTakesTheNewestOfADuplicatedIdentity(t *testing.T) {
 	}
 	if got := c.snapshot(); got.child != 0 {
 		t.Fatalf("the served run opened %d children", got.child)
+	}
+}
+
+// The whole-tree form is the typed path alone: it reads no policy at
+// construction, so a policy the tree cannot
+// parse refuses it only where it refused the typed path before — at
+// the first answer, through the child — while the serving form, which
+// keys its records by the policy's selections, refuses at construction
+// (REQ-evidence-resolution-freshness).
+//
+//gofresh:pure
+func TestWholeTreeFormReadsNoPolicy(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	if testing.Short() {
+		t.Skip("loads a fixture module's types")
+	}
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	neutralAmbient(t)
+	dir := servedModule(t)
+	policyPath := filepath.Join(dir, filepath.FromSlash(policy.Path))
+	if err := os.MkdirAll(filepath.Dir(policyPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(policyPath, []byte("this is not a policy {"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if _, err := NewServed(ctx, dir, servedSymbols[:1]); err == nil || !strings.Contains(err.Error(), policy.Path) {
+		t.Fatalf("the serving form's construction = %v, want the policy refusal", err)
+	}
+	whole, err := NewWholeTree(ctx, dir)
+	if err != nil {
+		t.Fatalf("the whole-tree form's construction read the policy: %v", err)
+	}
+	defer whole.Close()
+	if _, _, err := whole.Resolve("example.com/served/p.F"); err == nil || !strings.Contains(err.Error(), policy.Path) {
+		t.Fatalf("the whole-tree form's first answer = %v, want the child's policy refusal", err)
+	}
+	if whole.ServedCount() != 0 || len(whole.Degraded()) != 0 {
+		t.Fatalf("the whole-tree form served %d, degraded %v", whole.ServedCount(), whole.Degraded())
+	}
+}
+
+// The whole-tree form publishes nothing: symbols resolved and
+// classified through it leave no record at close, so a
+// declaration-reading role never writes evidence a serving run would
+// key by a selection it never read (REQ-evidence-resolution-freshness).
+//
+//gofresh:pure
+func TestWholeTreeFormPublishesNothing(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	if testing.Short() {
+		t.Skip("loads a fixture module's types")
+	}
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	neutralAmbient(t)
+	dir := servedModule(t)
+	whole, err := NewWholeTree(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, symbol := range servedSymbols {
+		ask(t, whole, symbol)
+	}
+	if _, err := whole.NeverServe(servedSymbols[2:4]); err != nil {
+		t.Fatal(err)
+	}
+	// One more symbol classified but never resolved: the notice counts
+	// resolutions, not answers.
+	whole.WitnessClass("example.com/served/p.TestExt2")
+	if notices := whole.Notices(); len(notices) == 0 || notices[0] != fmt.Sprintf("resolution: 0 served from records, %d resolved typed", len(servedSymbols)) {
+		t.Fatalf("whole-tree notices = %v", notices)
+	}
+	// The form accumulates no publication row and asks the child
+	// nothing beyond the answer: publication is not merely blocked at
+	// close, it is never prepared.
+	if len(whole.pending) != 0 {
+		t.Fatalf("the whole-tree form prepared %d publication rows", len(whole.pending))
+	}
+	if err := whole.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if got := resolutioncache.Load(dir); len(got) != 0 {
+		t.Fatalf("the whole-tree form published %d records", len(got))
+	}
+	// A serving-refusal query on a fresh whole-tree backend resolves
+	// nothing typed first: that resolve exists to publish the class,
+	// and the form publishes nothing.
+	fresh, err := NewWholeTree(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fresh.Close()
+	if _, err := fresh.NeverServe(servedSymbols[2:4]); err != nil {
+		t.Fatal(err)
+	}
+	if len(fresh.answers) != 0 {
+		t.Fatalf("the serving-refusal query resolved %d symbols typed", len(fresh.answers))
+	}
+}
+
+// A serving operation whose symbol set came up empty admits every
+// symbol over a whole-tree child, exactly as the whole-tree form does,
+// and publishes nothing at close: the policy is read, nothing is served
+// (REQ-evidence-resolution-freshness).
+//
+//gofresh:pure
+func TestEmptySetServingFormAdmitsItsWholeTree(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	if testing.Short() {
+		t.Skip("loads a fixture module's types")
+	}
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	neutralAmbient(t)
+	dir := servedModule(t)
+	s, err := NewServed(context.Background(), dir, []string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := ask(t, s, "example.com/served/p.F"); got.res != verify.Resolved {
+		t.Fatalf("an empty-set serving backend answered %+v; want resolved through a whole-tree child", got)
+	}
+	if _, err := s.NeverServe(servedSymbols[2:3]); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if s.ServedCount() != 0 || len(resolutioncache.Load(dir)) != 0 {
+		t.Fatalf("the empty-set serving form served %d and published %d", s.ServedCount(), len(resolutioncache.Load(dir)))
 	}
 }

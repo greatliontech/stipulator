@@ -20,7 +20,7 @@ import (
 // the requirement's only possible red is the witness itself.
 func bindPinned(t *testing.T, ctx context.Context, dir, req, symbol string) {
 	t.Helper()
-	gb, err := golang.NewOwned(ctx, dir)
+	gb, err := golang.NewWholeTree(ctx, dir)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -191,7 +191,7 @@ func TestCheckScopedIdsExecutesOnlyInScopeStale(t *testing.T) {
 	for _, r := range spec.GetRequirements() {
 		hashOf[r.GetId()] = r.GetContentHash()
 	}
-	gb, err := golang.NewOwned(context.Background(), dir)
+	gb, err := golang.NewWholeTree(context.Background(), dir)
 	if err != nil {
 		t.Fatal(err)
 	}

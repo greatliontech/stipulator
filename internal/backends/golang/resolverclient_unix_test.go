@@ -59,7 +59,7 @@ func TestGoResolverCancellationTerminatesDescendants(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	owned := NewOwnedCommand(ctx, bin, ResolverSubcommand, mod)
+	owned := newResolverClientCommand(ctx, bin, ResolverSubcommand, mod)
 	defer owned.Close()
 	done := make(chan error, 1)
 	go func() {
@@ -125,7 +125,7 @@ func TestGoResolverCancellationTerminatesDescendants(t *testing.T) {
 	}
 }
 
-// TestOwnedResolverChildCrashErrors pins the crash path: a child that
+// TestResolverClientChildCrashErrors pins the crash path: a child that
 // dies before or after its handshake yields prompt errors from the
 // client — a verification error, never a hang and never a silent
 // degradation to unowned in-process loading.
@@ -134,12 +134,12 @@ func TestGoResolverCancellationTerminatesDescendants(t *testing.T) {
 // and the inline scripts are source.
 //
 //gofresh:pure
-func TestOwnedResolverChildCrashErrors(t *testing.T) {
+func TestResolverClientChildCrashErrors(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-owned-processes")
 	t.Run("before handshake", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		owned := NewOwnedCommand(ctx, "/bin/sh", "-c", "exit 1")
+		owned := newResolverClientCommand(ctx, "/bin/sh", "-c", "exit 1")
 		defer owned.Close()
 		_, _, err := owned.Resolve("example.com/x.Y")
 		if err == nil || !strings.Contains(err.Error(), "owned resolver child") {
@@ -149,7 +149,7 @@ func TestOwnedResolverChildCrashErrors(t *testing.T) {
 	t.Run("after handshake", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		owned := NewOwnedCommand(ctx, "/bin/sh", "-c", `printf '{"ready":true}\n'`)
+		owned := newResolverClientCommand(ctx, "/bin/sh", "-c", `printf '{"ready":true}\n'`)
 		defer owned.Close()
 		_, _, err := owned.Resolve("example.com/x.Y")
 		if err == nil || !strings.Contains(err.Error(), "owned resolver child") {
@@ -172,11 +172,11 @@ func TestOwnedResolverChildCrashErrors(t *testing.T) {
 //
 //gofresh:pure
 //gofresh:pure
-func TestOwnedResolverProtocolErrorSurfaces(t *testing.T) {
+func TestResolverClientProtocolErrorSurfaces(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-owned-processes")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	owned := NewOwnedCommand(ctx, "/bin/sh", "-c",
+	owned := newResolverClientCommand(ctx, "/bin/sh", "-c",
 		`echo '{"ready":true}'; while read -r line; do echo '{"error":"unknown resolver op"}'; done`)
 	defer owned.Close()
 	if _, _, err := owned.SymbolFile("m.X"); err == nil || !strings.Contains(err.Error(), "unknown resolver op") {

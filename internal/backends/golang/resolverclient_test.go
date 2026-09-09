@@ -82,7 +82,7 @@ func TestResolverWireMappingsRoundTrip(t *testing.T) {
 	}
 }
 
-// TestOwnedResolverProtocolRoundTrips pins the owned client against the
+// TestResolverClientProtocolRoundTrips pins the owned client against the
 // real resolver child over the fixture module: resolution outcomes,
 // shape hashes, load-error text, witness classes, and slices all match
 // the in-process backend's answers exactly — the child is the same
@@ -91,7 +91,7 @@ func TestResolverWireMappingsRoundTrip(t *testing.T) {
 // Deliberately not //gofresh:pure: the verdict depends on module sources
 // outside this binary's closure, loaded through go/packages children the
 // testlog cannot observe.
-func TestOwnedResolverProtocolRoundTrips(t *testing.T) {
+func TestResolverClientProtocolRoundTrips(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-owned-processes")
 	if testing.Short() {
 		t.Skip("builds the CLI and spawns a resolver child")
@@ -107,7 +107,7 @@ func TestOwnedResolverProtocolRoundTrips(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	owned := NewOwnedCommand(ctx, bin, ResolverSubcommand, dir)
+	owned := newResolverClientCommand(ctx, bin, ResolverSubcommand, dir)
 	defer owned.Close()
 
 	for _, symbol := range []string{
@@ -205,7 +205,7 @@ func TestOwnedResolverProtocolRoundTrips(t *testing.T) {
 	}
 }
 
-// TestOwnedResolverLoadErrorPropagates pins load-error propagation
+// TestResolverClientLoadErrorPropagates pins load-error propagation
 // through the owned boundary: an unloadable tree surfaces from the first
 // use as a verification error carrying the child's load-error text —
 // exactly the error the in-process load reports — and the fault is
@@ -213,7 +213,7 @@ func TestOwnedResolverProtocolRoundTrips(t *testing.T) {
 //
 // Deliberately not //gofresh:pure: the verdict depends on go/packages
 // children the testlog cannot observe.
-func TestOwnedResolverLoadErrorPropagates(t *testing.T) {
+func TestResolverClientLoadErrorPropagates(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-owned-processes", "REQ-go-static-binding")
 	if testing.Short() {
 		t.Skip("builds the CLI and spawns a resolver child")
@@ -228,7 +228,7 @@ func TestOwnedResolverLoadErrorPropagates(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	owned := NewOwnedCommand(ctx, bin, ResolverSubcommand, dir)
+	owned := newResolverClientCommand(ctx, bin, ResolverSubcommand, dir)
 	defer owned.Close()
 	_, _, err := owned.Resolve("example.com/x.Y")
 	if err == nil {

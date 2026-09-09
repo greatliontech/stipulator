@@ -50,10 +50,16 @@ func selectionEngine(ctx context.Context, dir string, sel buildSelection) (*gofr
 // child starts. It performs the child's roles for verification: symbol
 // resolution, package location, witness classification, and the
 // serving refusals of random-seeded witnesses; the slice roles that
-// read declarations keep the child (NewOwned).
+// read declarations keep the child: NewWholeTree builds the whole-tree
+// form — no record served or published, no policy read, the child
+// over the whole tree.
 type Served struct {
-	ctx    context.Context
-	dir    string
+	ctx context.Context
+	dir string
+	// whole marks the whole-tree form: nothing is served or published,
+	// the child loads the whole tree, and no selection is read — the
+	// form the declaration-reading roles take (NewWholeTree).
+	whole  bool
 	sels   map[string]buildSelection
 	served map[string]resolutioncache.Record
 	// set is the operation's symbol set. When it names symbols the
@@ -71,7 +77,7 @@ type Served struct {
 	// child's snapshot is never recorded under a fingerprint of a tree
 	// that moved after it (the straddle check).
 	opening map[string]map[gofresh.Subject]gofresh.Fingerprint
-	child   *Owned
+	child   *resolverClient
 	answers map[string]childAnswer
 	pending map[string][]string
 	// refusals holds, per symbol the child was asked about, its serving
@@ -83,6 +89,15 @@ type Served struct {
 	reasons  map[string]string
 	degraded []string
 }
+
+var (
+	_ verify.Backend           = (*Served)(nil)
+	_ verify.Slicer            = (*Served)(nil)
+	_ verify.FloorSlicer       = (*Served)(nil)
+	_ verify.SymbolLocator     = (*Served)(nil)
+	_ verify.WitnessClassifier = (*Served)(nil)
+	_ verify.WitnessSeeding    = (*Served)(nil)
+)
 
 // childAnswer is one symbol's typed resolution this run, kept so the
 // record it publishes and every later reader share one answer.
@@ -101,32 +116,40 @@ type childAnswer struct {
 	err       error
 }
 
-// NewServed prepares the served backend: records loaded, each
-// selection's recorded subjects viewed under that selection's engine
-// and batch-checked, the valid ones served, everything else stale. A
-// fault on the serving path degrades the affected symbols to the typed
-// resolution, never the operation (REQ-evidence-freshness-degrade).
+// NewServed prepares the serving form of the backend: records loaded,
+// each selection's recorded subjects viewed under that selection's
+// engine and batch-checked, the valid ones served, everything else
+// stale — a fault on the serving path degrades the affected symbols to
+// the typed resolution, never the operation
+// (REQ-evidence-freshness-degrade). An empty symbol set serves nothing
+// and scopes the child to the whole tree; the policy is read either
+// way, since every record it publishes is keyed by a selection.
 func NewServed(ctx context.Context, dir string, symbols []string) (*Served, error) {
-	abs, err := filepath.Abs(dir)
+	s, err := newServed(ctx, dir)
 	if err != nil {
 		return nil, err
 	}
+	abs := s.dir
 	sels, _, err := policyBuildSelections(abs)
 	if err != nil {
 		return nil, err
 	}
-	s := &Served{ctx: ctx, dir: abs, sels: map[string]buildSelection{}, served: map[string]resolutioncache.Record{}, answers: map[string]childAnswer{}, pending: map[string][]string{}, reasons: map[string]string{}}
 	for _, sel := range sels {
 		s.sels[SelectionKey(sel.tags, sel.toolchain)] = sel
 	}
-	wanted := map[string]bool{}
-	for _, sym := range symbols {
-		wanted[sym] = true
+	// An operation that named symbols is scoped to them; one that named
+	// none leaves the set nil, which admits every symbol — the one
+	// encoding the whole-tree form shares.
+	if len(symbols) > 0 {
+		wanted := map[string]bool{}
+		for _, sym := range symbols {
+			wanted[sym] = true
+		}
+		s.set = wanted
 	}
-	s.set = wanted
 	bySelection := map[string][]resolutioncache.Record{}
 	for _, rec := range resolutioncache.Load(abs) {
-		if !wanted[rec.Symbol] {
+		if !s.set[rec.Symbol] {
 			continue
 		}
 		if _, known := s.sels[rec.Selection]; !known {
@@ -148,6 +171,30 @@ func NewServed(ctx context.Context, dir string, symbols []string) (*Served, erro
 		}
 	}
 	return s, nil
+}
+
+// NewWholeTree prepares the whole-tree form: the typed path over the
+// whole tree with nothing served or published and no selection read,
+// so a policy the tree cannot parse refuses only where the typed path
+// refuses it — at the first answer, through the child. The
+// declaration-reading roles (binding, pinning, retargeting, impact)
+// take this form.
+func NewWholeTree(ctx context.Context, dir string) (*Served, error) {
+	s, err := newServed(ctx, dir)
+	if err != nil {
+		return nil, err
+	}
+	s.whole = true
+	return s, nil
+}
+
+// newServed is the backend before its form is chosen.
+func newServed(ctx context.Context, dir string) (*Served, error) {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, err
+	}
+	return &Served{ctx: ctx, dir: abs, sels: map[string]buildSelection{}, served: map[string]resolutioncache.Record{}, answers: map[string]childAnswer{}, pending: map[string][]string{}, reasons: map[string]string{}}, nil
 }
 
 // packageOf derives a symbol's import path — everything before the
@@ -373,7 +420,19 @@ func closureMoved(recorded witnesscache.Fingerprint, current gofresh.Fingerprint
 // never a verdict input.
 func (s *Served) Notices() []string {
 	var out []string
-	out = append(out, fmt.Sprintf("resolution: %d served from records, %d resolved typed", len(s.served), len(s.unserved)))
+	// The serving form's typed count is its stale remainder; the
+	// whole-tree form resolves everything typed, so its count is the
+	// symbols it resolved (a classified-only symbol is not among them).
+	typed := len(s.unserved)
+	if s.whole {
+		typed = 0
+		for _, a := range s.answers {
+			if a.resolved {
+				typed++
+			}
+		}
+	}
+	out = append(out, fmt.Sprintf("resolution: %d served from records, %d resolved typed", len(s.served), typed))
 	for _, d := range s.degraded {
 		out = append(out, "resolution degraded to typed: "+d)
 	}
@@ -415,14 +474,14 @@ func (s *Served) Degraded() []string { return append([]string(nil), s.degraded..
 // ServedCount is the number of symbols answered from records this run.
 func (s *Served) ServedCount() int { return len(s.served) }
 
-func (s *Served) ensureChild() (*Owned, error) {
+func (s *Served) ensureChild() (*resolverClient, error) {
 	if s.child == nil {
 		// The opening capture precedes the child's snapshot: a record
 		// publishes under a fingerprint no later than the answer it
 		// carries.
 		s.openingCapture()
 		patterns := s.childPatterns()
-		child, err := NewOwnedScoped(s.ctx, s.dir, patterns)
+		child, err := newResolverClientScoped(s.ctx, s.dir, patterns)
 		if err != nil {
 			return nil, err
 		}
@@ -470,11 +529,14 @@ func (s *Served) typed(symbol string) childAnswer {
 	}
 	res, shape, selection, err := child.ResolveIn(symbol)
 	a.res, a.shape, a.selection, a.err = res, shape, selection, err
-	if err == nil && res != verify.NotFound {
+	// The serving form records every resolved symbol for publication,
+	// its package read once so the record can carry it; the whole-tree
+	// form publishes nothing and asks nothing more.
+	if !s.whole && err == nil && res != verify.NotFound {
 		if pkg, perr := child.SymbolPackage(symbol); perr == nil {
 			a.pkg = pkg
 		}
-		if _, known := s.sels[selection]; known && a.pkg != "" {
+		if a.pkg != "" {
 			s.pending[selection] = append(s.pending[selection], symbol)
 		}
 	}
@@ -498,6 +560,26 @@ func (s *Served) ResolveIn(symbol string) (verify.Resolution, string, string, er
 	return a.res, a.shape, a.selection, a.err
 }
 
+// SymbolFile answers a symbol's declaring file through the child: a
+// record names a package, never a file.
+func (s *Served) SymbolFile(symbol string) (string, bool, error) {
+	child, err := s.ensureChild()
+	if err != nil {
+		return "", false, err
+	}
+	return child.SymbolFile(symbol)
+}
+
+// ReachedPackages answers the packages a set of changed files reaches
+// through the child.
+func (s *Served) ReachedPackages(files []string) (map[string]bool, error) {
+	child, err := s.ensureChild()
+	if err != nil {
+		return nil, err
+	}
+	return child.ReachedPackages(files)
+}
+
 // SymbolPackage implements verify.SymbolLocator.
 func (s *Served) SymbolPackage(symbol string) (string, error) {
 	if rec, ok := s.served[symbol]; ok {
@@ -516,17 +598,21 @@ func (s *Served) SymbolPackage(symbol string) (string, error) {
 	return child.SymbolPackage(symbol)
 }
 
-// admits reports whether the backend answers symbol: every symbol when
-// the operation named no set (the child is the whole tree), else the
-// set's own — the one admission every role consults, so the boundary
-// cannot drift between them.
+// admits is the symbol set's own — the one admission every
+// symbol-resolving role consults (resolution, classification, package
+// location, serving refusal), so the boundary cannot drift between
+// them. A nil set is a backend that named no symbols — the whole-tree
+// form, or a serving operation whose set came up empty — and admits
+// every symbol; its child loads the whole tree. The declaration-reading
+// roles (Slice, SliceFloor, SymbolFile) and ReachedPackages, which
+// takes files, read the tree as it is and consult no set.
 func (s *Served) admits(symbol string) bool {
 	if _, ok := packageOf(symbol); !ok {
 		// No package to scope by: the child answers not found for it
 		// under any load, never a narrowed frontier's not found.
 		return true
 	}
-	return len(s.set) == 0 || s.set[symbol]
+	return s.set == nil || s.set[symbol]
 }
 
 // outsideSet is the refusal for a symbol the operation never named:
@@ -597,9 +683,11 @@ func (s *Served) NeverServe(symbols []string) (map[string]string, error) {
 	}
 	// A witness classified typed is resolved typed too, so its record
 	// — refusal included — publishes at close and the next run's
-	// classification serves.
-	for _, symbol := range ask {
-		s.typed(symbol)
+	// classification serves; the whole-tree form publishes nothing.
+	if !s.whole {
+		for _, symbol := range ask {
+			s.typed(symbol)
+		}
 	}
 	refusals, err := child.NeverServe(ask)
 	if err != nil {

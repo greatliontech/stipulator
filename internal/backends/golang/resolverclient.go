@@ -14,10 +14,11 @@ import (
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
-// Owned is a verify.Backend whose go/packages symbol loading runs in an
-// owned resolver child: this binary self-exec'd as the hidden resolver
-// subcommand, spawned through the same owned-cancellation machinery as
-// every other child of Go policy work, so the package launcher and its
+// resolverClient is the backend's typed path: a verify.Backend whose
+// go/packages symbol loading runs in an owned resolver child — this
+// binary self-exec'd as the hidden resolver subcommand, spawned through
+// the same owned-cancellation machinery as every other child of Go
+// policy work, so the package launcher and its
 // entire descendant tree — every go list, compile, and VCS subprocess —
 // terminates with the operation's cancellation (REQ-go-owned-processes).
 // The in-process implementation stays: the child runs newContext; the
@@ -28,18 +29,20 @@ import (
 // the serve loop ends). Requests are serialized — one in flight — which
 // matches how every consumer drives the Backend surface: sequentially,
 // from one goroutine.
-// The owned resolver is the production verify backend: the optional
+// The client is the one production route to the resolver; every
+// consumer reaches it through Served, whose whole-tree form (no symbol
+// set) is exactly this client over the whole tree. The optional
 // extensions it answers (witness classing, symbol location) must stay
 // satisfied, or the consumers degrade silently to their absent-answer
 // paths.
 var (
-	_ verify.Backend           = (*Owned)(nil)
-	_ verify.SymbolLocator     = (*Owned)(nil)
-	_ verify.WitnessClassifier = (*Owned)(nil)
-	_ verify.WitnessSeeding    = (*Owned)(nil)
+	_ verify.Backend           = (*resolverClient)(nil)
+	_ verify.SymbolLocator     = (*resolverClient)(nil)
+	_ verify.WitnessClassifier = (*resolverClient)(nil)
+	_ verify.WitnessSeeding    = (*resolverClient)(nil)
 )
 
-type Owned struct {
+type resolverClient struct {
 	exe  string
 	args []string
 
@@ -58,20 +61,21 @@ type Owned struct {
 	err error
 }
 
-// NewOwned returns an owned-child backend for the tree rooted at dir,
+// newResolverClient returns a client for the tree rooted at dir,
 // self-exec'd from this process's own executable. It fails closed when
 // the executable path cannot be resolved: without a self path there is
 // no owned child to spawn, and loading in-process instead would silently
 // reopen the unowned process boundary.
-func NewOwned(ctx context.Context, dir string) (*Owned, error) {
-	return NewOwnedScoped(ctx, dir, nil)
+func newResolverClient(ctx context.Context, dir string) (*resolverClient, error) {
+	return newResolverClientScoped(ctx, dir, nil)
 }
 
-// NewOwnedScoped is NewOwned whose child loads exactly the named
-// packages and their dependencies instead of the whole tree — the
+// newResolverClientScoped is newResolverClient whose child loads
+// exactly the named packages and their dependencies instead of the
+// whole tree — the
 // served resolution's stale remainder (REQ-evidence-resolution-
 // freshness); nil patterns load the whole tree.
-func NewOwnedScoped(ctx context.Context, dir string, patterns []string) (*Owned, error) {
+func newResolverClientScoped(ctx context.Context, dir string, patterns []string) (*resolverClient, error) {
 	exe, err := os.Executable()
 	if err != nil {
 		return nil, fmt.Errorf("resolving own executable for the owned resolver child: %w", err)
@@ -82,46 +86,47 @@ func NewOwnedScoped(ctx context.Context, dir string, patterns []string) (*Owned,
 	if err != nil {
 		return nil, fmt.Errorf("resolving tree root %s: %w", dir, err)
 	}
-	return NewOwnedCommand(ctx, exe, append([]string{ResolverSubcommand, abs}, patterns...)...), nil
+	return newResolverClientCommand(ctx, exe, append([]string{ResolverSubcommand, abs}, patterns...)...), nil
 }
 
-// NewOwnedCommand is NewOwned with an explicit child command line — the
-// testable seam; the command must lead the spawned process into
+// newResolverClientCommand is newResolverClient with an explicit child
+// command line — the testable seam; the command must lead the spawned
+// process into
 // ServeResolver. Child lifetime is bound to ctx.
-func NewOwnedCommand(ctx context.Context, exe string, args ...string) *Owned {
-	return &Owned{ctx: ctx, exe: exe, args: args}
+func newResolverClientCommand(ctx context.Context, exe string, args ...string) *resolverClient {
+	return &resolverClient{ctx: ctx, exe: exe, args: args}
 }
 
 // ensure spawns the resolver child and completes the handshake; the
-// caller holds o.mu.
-func (o *Owned) ensure() error {
-	if o.err != nil {
-		return o.err
+// caller holds c.mu.
+func (c *resolverClient) ensure() error {
+	if c.err != nil {
+		return c.err
 	}
-	if o.cmd != nil {
+	if c.cmd != nil {
 		return nil
 	}
-	cctx, stop := context.WithCancel(o.ctx)
-	cmd := commandContext(cctx, o.exe, o.args...)
+	cctx, stop := context.WithCancel(c.ctx)
+	cmd := commandContext(cctx, c.exe, c.args...)
 	// Child diagnostics pass straight through: protocol errors travel on
 	// stdout, and a shared capture buffer would race the reaper's Wait.
 	cmd.Stderr = os.Stderr
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		stop()
-		return o.fault(fmt.Errorf("opening stdin pipe: %w", err))
+		return c.fault(fmt.Errorf("opening stdin pipe: %w", err))
 	}
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		stop()
-		return o.fault(fmt.Errorf("opening stdout pipe: %w", err))
+		return c.fault(fmt.Errorf("opening stdout pipe: %w", err))
 	}
 	if err := cmd.Start(); err != nil {
 		stop()
-		return o.fault(fmt.Errorf("starting %s: %w", o.exe, err))
+		return c.fault(fmt.Errorf("starting %s: %w", c.exe, err))
 	}
-	o.cmd, o.stop, o.stdin = cmd, stop, stdin
-	o.enc, o.dec = json.NewEncoder(stdin), json.NewDecoder(stdout)
+	c.cmd, c.stop, c.stdin = cmd, stop, stdin
+	c.enc, c.dec = json.NewEncoder(stdin), json.NewDecoder(stdout)
 	// The reaper solely owns Wait: the kill path is the owned-group
 	// cancellation configured by commandContext, and Wait afterwards
 	// keeps a long-lived parent (the MCP server) from accumulating
@@ -131,44 +136,44 @@ func (o *Owned) ensure() error {
 		_ = cmd.Wait()
 	}()
 	var resp resolverResponse
-	if err := o.dec.Decode(&resp); err != nil {
-		return o.fault(fmt.Errorf("reading handshake: %w", err))
+	if err := c.dec.Decode(&resp); err != nil {
+		return c.fault(fmt.Errorf("reading handshake: %w", err))
 	}
 	if resp.Error != "" {
 		// The tree's load error text is carried verbatim; the sticky fault
 		// wraps it with the child's provenance, so the rendered error names
 		// both the boundary and the cause.
-		return o.fault(errors.New(resp.Error))
+		return c.fault(errors.New(resp.Error))
 	}
 	if !resp.Ready {
-		return o.fault(errors.New("handshake neither ready nor a load error"))
+		return c.fault(errors.New("handshake neither ready nor a load error"))
 	}
 	return nil
 }
 
 // fault records the sticky error and kills the child's process group;
-// the caller holds o.mu.
-func (o *Owned) fault(err error) error {
-	o.err = fmt.Errorf("owned resolver child: %w", err)
-	if o.stop != nil {
-		o.stop()
+// the caller holds c.mu.
+func (c *resolverClient) fault(err error) error {
+	c.err = fmt.Errorf("owned resolver child: %w", err)
+	if c.stop != nil {
+		c.stop()
 	}
-	return o.err
+	return c.err
 }
 
 // roundTrip sends one request and reads its one response, serialized.
-func (o *Owned) roundTrip(req resolverRequest) (resolverResponse, error) {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	if err := o.ensure(); err != nil {
+func (c *resolverClient) roundTrip(req resolverRequest) (resolverResponse, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if err := c.ensure(); err != nil {
 		return resolverResponse{}, err
 	}
-	if err := o.enc.Encode(req); err != nil {
-		return resolverResponse{}, o.fault(fmt.Errorf("writing %s request: %w", req.Op, err))
+	if err := c.enc.Encode(req); err != nil {
+		return resolverResponse{}, c.fault(fmt.Errorf("writing %s request: %w", req.Op, err))
 	}
 	var resp resolverResponse
-	if err := o.dec.Decode(&resp); err != nil {
-		return resolverResponse{}, o.fault(fmt.Errorf("reading %s response: %w", req.Op, err))
+	if err := c.dec.Decode(&resp); err != nil {
+		return resolverResponse{}, c.fault(fmt.Errorf("reading %s response: %w", req.Op, err))
 	}
 	return resp, nil
 }
@@ -176,15 +181,15 @@ func (o *Owned) roundTrip(req resolverRequest) (resolverResponse, error) {
 // Resolve implements verify.Backend through the resolver child. A child
 // transport fault is a verification error exactly as an unloadable tree
 // is: never an absence.
-func (o *Owned) Resolve(symbol string) (verify.Resolution, string, error) {
-	res, shape, _, err := o.ResolveIn(symbol)
+func (c *resolverClient) Resolve(symbol string) (verify.Resolution, string, error) {
+	res, shape, _, err := c.ResolveIn(symbol)
 	return res, shape, err
 }
 
 // ResolveIn is Resolve through the child, naming the resolving build
 // selection (Backend.ResolveIn).
-func (o *Owned) ResolveIn(symbol string) (verify.Resolution, string, string, error) {
-	resp, err := o.roundTrip(resolverRequest{Op: "resolve", Symbol: symbol})
+func (c *resolverClient) ResolveIn(symbol string) (verify.Resolution, string, string, error) {
+	resp, err := c.roundTrip(resolverRequest{Op: "resolve", Symbol: symbol})
 	if err != nil {
 		return verify.NotFound, "", "", err
 	}
@@ -203,8 +208,8 @@ func (o *Owned) ResolveIn(symbol string) (verify.Resolution, string, string, err
 // reads as the weakest class — example, never an upgraded proof or
 // property — while the fault itself surfaces as a verification error
 // from Resolve, which every classifying run also performs per binding.
-func (o *Owned) WitnessClass(symbol string) verify.WitnessClass {
-	class, _ := o.WitnessClassVerdict(symbol)
+func (c *resolverClient) WitnessClass(symbol string) verify.WitnessClass {
+	class, _ := c.WitnessClassVerdict(symbol)
 	return class
 }
 
@@ -212,8 +217,8 @@ func (o *Owned) WitnessClass(symbol string) verify.WitnessClass {
 // the resolver child: the class plus the example-classification verdict
 // reason. A faulted transport reads as the weakest class with no
 // verdict, exactly as WitnessClass's no-error contract.
-func (o *Owned) WitnessClassVerdict(symbol string) (verify.WitnessClass, string) {
-	resp, err := o.roundTrip(resolverRequest{Op: "witnessclass", Symbol: symbol})
+func (c *resolverClient) WitnessClassVerdict(symbol string) (verify.WitnessClass, string) {
+	resp, err := c.roundTrip(resolverRequest{Op: "witnessclass", Symbol: symbol})
 	if err != nil {
 		return verify.ExampleWitness, ""
 	}
@@ -223,11 +228,11 @@ func (o *Owned) WitnessClassVerdict(symbol string) (verify.WitnessClass, string)
 	// An unrecognized wire class is a protocol fault like any other: record
 	// it sticky so the run's next Resolve surfaces a problem instead of the
 	// weakest class standing in silently.
-	o.mu.Lock()
-	if o.err == nil {
-		_ = o.fault(fmt.Errorf("unknown witness class %q", resp.Class))
+	c.mu.Lock()
+	if c.err == nil {
+		_ = c.fault(fmt.Errorf("unknown witness class %q", resp.Class))
 	}
-	o.mu.Unlock()
+	c.mu.Unlock()
 	return verify.ExampleWitness, ""
 }
 
@@ -235,8 +240,8 @@ func (o *Owned) WitnessClassVerdict(symbol string) (verify.WitnessClass, string)
 // child. A transport or child fault is an error for the caller to fail
 // closed on — serving degrades to execution — never a silent empty set
 // that would serve a random-seeded witness.
-func (o *Owned) NeverServe(symbols []string) (map[string]string, error) {
-	resp, err := o.roundTrip(resolverRequest{Op: "witnessneverserve", Symbols: symbols})
+func (c *resolverClient) NeverServe(symbols []string) (map[string]string, error) {
+	resp, err := c.roundTrip(resolverRequest{Op: "witnessneverserve", Symbols: symbols})
 	if err != nil {
 		return nil, err
 	}
@@ -250,8 +255,8 @@ func (o *Owned) NeverServe(symbols []string) (map[string]string, error) {
 }
 
 // SliceFloor implements verify.FloorSlicer through the resolver child.
-func (o *Owned) SliceFloor(symbols []string, declaredPkgs []string) ([]verify.FloorPackage, error) {
-	resp, err := o.roundTrip(resolverRequest{Op: "slicefloor", Symbols: symbols, DeclaredPackages: declaredPkgs})
+func (c *resolverClient) SliceFloor(symbols []string, declaredPkgs []string) ([]verify.FloorPackage, error) {
+	resp, err := c.roundTrip(resolverRequest{Op: "slicefloor", Symbols: symbols, DeclaredPackages: declaredPkgs})
 	if err != nil {
 		return nil, err
 	}
@@ -266,8 +271,8 @@ func (o *Owned) SliceFloor(symbols []string, declaredPkgs []string) ([]verify.Fl
 }
 
 // Slice implements verify.Slicer through the resolver child.
-func (o *Owned) Slice(symbols []string) ([]verify.Decl, error) {
-	resp, err := o.roundTrip(resolverRequest{Op: "slice", Symbols: symbols})
+func (c *resolverClient) Slice(symbols []string) ([]verify.Decl, error) {
+	resp, err := c.roundTrip(resolverRequest{Op: "slice", Symbols: symbols})
 	if err != nil {
 		return nil, err
 	}
@@ -290,8 +295,8 @@ func (o *Owned) Slice(symbols []string) ([]verify.Decl, error) {
 // the in-process form it returns transport faults explicitly: a preview
 // must distinguish "does not resolve" from "the boundary died", or a
 // faulted child would silently empty the code-side candidates.
-func (o *Owned) SymbolFile(symbol string) (string, bool, error) {
-	resp, err := o.roundTrip(resolverRequest{Op: "symbolfile", Symbol: symbol})
+func (c *resolverClient) SymbolFile(symbol string) (string, bool, error) {
+	resp, err := c.roundTrip(resolverRequest{Op: "symbolfile", Symbol: symbol})
 	if err != nil {
 		return "", false, err
 	}
@@ -302,8 +307,8 @@ func (o *Owned) SymbolFile(symbol string) (string, bool, error) {
 }
 
 // SymbolPackage is Backend.SymbolPackage through the resolver child.
-func (o *Owned) SymbolPackage(symbol string) (string, error) {
-	resp, err := o.roundTrip(resolverRequest{Op: "symbolpackage", Symbol: symbol})
+func (c *resolverClient) SymbolPackage(symbol string) (string, error) {
+	resp, err := c.roundTrip(resolverRequest{Op: "symbolpackage", Symbol: symbol})
 	if err != nil {
 		return "", err
 	}
@@ -314,8 +319,8 @@ func (o *Owned) SymbolPackage(symbol string) (string, error) {
 }
 
 // ReachedPackages is Backend.ReachedPackages through the resolver child.
-func (o *Owned) ReachedPackages(files []string) (map[string]bool, error) {
-	resp, err := o.roundTrip(resolverRequest{Op: "reached", Symbols: files})
+func (c *resolverClient) ReachedPackages(files []string) (map[string]bool, error) {
+	resp, err := c.roundTrip(resolverRequest{Op: "reached", Symbols: files})
 	if err != nil {
 		return nil, err
 	}
@@ -332,14 +337,14 @@ func (o *Owned) ReachedPackages(files []string) (map[string]bool, error) {
 // Close terminates the resolver child's process group; the reaper
 // collects it. Safe on a client that never spawned; the client is
 // unusable afterwards.
-func (o *Owned) Close() error {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	if o.stop != nil {
-		o.stop()
+func (c *resolverClient) Close() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.stop != nil {
+		c.stop()
 	}
-	if o.err == nil {
-		o.err = errors.New("owned resolver child: closed")
+	if c.err == nil {
+		c.err = errors.New("owned resolver child: closed")
 	}
 	return nil
 }

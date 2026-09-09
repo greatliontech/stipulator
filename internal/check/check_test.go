@@ -486,7 +486,7 @@ func TestCheckWitnessResolvedGapIsResidueUntilPruned(t *testing.T) {
 	// Author the witness binding through the same authoring path the CLI
 	// uses, so the content and shape pins are captured for real.
 	ctx := context.Background()
-	gb, err := golang.NewOwned(ctx, dir)
+	gb, err := golang.NewWholeTree(ctx, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -573,7 +573,7 @@ func TestCheckUnfiredManualGapOutlivesGreenWitnesses(t *testing.T) {
 		gapPath:                        unfired,
 	}))
 	ctx := context.Background()
-	gb, err := golang.NewOwned(ctx, dir)
+	gb, err := golang.NewWholeTree(ctx, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -815,7 +815,7 @@ func TestCheckNamesAnEmptyWitnessSelection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	gb, err := golang.NewOwned(context.Background(), dir)
+	gb, err := golang.NewWholeTree(context.Background(), dir)
 	if err != nil {
 		t.Fatal(err)
 	}

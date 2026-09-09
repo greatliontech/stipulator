@@ -228,12 +228,19 @@ func mustClean(spec *stipulatorv1.Spec, diags []compile.Diagnostic) (*stipulator
 	return spec, nil
 }
 
-func makeBackends(ctx context.Context, dir string) (map[string]verify.Backend, error) {
-	gb, err := golang.NewOwned(ctx, dir)
+// makeBackends builds the declaration-reading backends and the closer
+// that ends their children — the backend's own Close, so a verb that
+// defers it ends the resolver child with the verb, not with the
+// process. The whole-tree form publishes nothing, so the close's error
+// is the child's end and no verb's result depends on it. A variable so
+// a test can stand in a recording backend and pin that every verb
+// closes what it built.
+var makeBackends = func(ctx context.Context, dir string) (map[string]verify.Backend, func() error, error) {
+	gb, err := golang.NewWholeTree(ctx, dir)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return map[string]verify.Backend{"go": gb}, nil
+	return map[string]verify.Backend{"go": gb}, gb.Close, nil
 }
 
 // applyUpdates applies a batch under compare-and-swap: every

@@ -151,7 +151,8 @@ func (b *Backend) pins() *pinTable {
 // per the spec, an unloadable tree is a verification error, never an
 // absence. Deliberately unexported: in-process loading spawns go list
 // outside any owned process group, so the only cross-package door to
-// package discovery is the owned resolver client (NewOwned), keeping
+// package discovery is the owned resolver client (NewWholeTree — the
+// client alone), keeping
 // REQ-go-owned-processes structurally satisfied for every consumer.
 // newContext loads the tree's resolution views: every workspace member
 // under every build selection, over "./..." — or, when patterns are

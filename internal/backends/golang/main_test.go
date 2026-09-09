@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// TestMain routes resolver-child re-execs — a NewOwned client self-execs
+// TestMain routes resolver-child re-execs — a resolver client self-execs
 // os.Executable(), this binary — and loads the shared repository-tree
 // backend: after flags parse, before m.Run installs the testlog, so
 // the tree read stays outside every witness's observation exactly as

@@ -31,10 +31,11 @@ func pinCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				backends, err := makeBackends(cmd.Context(), chdir)
+				backends, closeBackends, err := makeBackends(cmd.Context(), chdir)
 				if err != nil {
 					return err
 				}
+				defer closeBackends()
 				wanted := map[string]bool{}
 				for _, id := range reqs {
 					wanted[id] = true
@@ -80,10 +81,11 @@ func pinCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			backends, err := makeBackends(cmd.Context(), chdir)
+			backends, closeBackends, err := makeBackends(cmd.Context(), chdir)
 			if err != nil {
 				return err
 			}
+			defer closeBackends()
 			updates, preserved, reshaped, rehashed, err := records.Pin(store, records.HashesOf(spec), author.ResolveShapes(store, backends, nil, func(symbol string, err error) {
 				fmt.Fprintf(os.Stderr, "pin: skipping %s: %v\n", symbol, err)
 			}))

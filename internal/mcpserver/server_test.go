@@ -1144,7 +1144,7 @@ func TestVerifyToolNamesPolicyRecordProblem(t *testing.T) {
 		},
 		capture: func(context.Context) (*golang.Capture, error) { return nil, nil },
 		runTests: func(ctx context.Context, _ *golang.Capture, _ verify.WitnessSeeding, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
-			gb, err := golang.NewOwned(ctx, dir)
+			gb, err := golang.NewWholeTree(ctx, dir)
 			if err != nil {
 				return nil, err
 			}

@@ -249,12 +249,12 @@ func TestScopedChildAnswersLikeTheWholeTree(t *testing.T) {
 	// A package that lists but fails to type-check keeps its load error
 	// under both loads: only a pattern matching nothing is dropped.
 	symbols := []string{"example.com/scoped/q.F", "example.com/scoped/q.T.Gen", "example.com/scoped/q.T", "example.com/scoped/gone.X", "example.com/scoped/x.X", "example.com/scoped/bad.B"}
-	whole, err := NewOwned(ctx, dir)
+	whole, err := newResolverClient(ctx, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer whole.Close()
-	scoped, err := NewOwnedScoped(ctx, dir, []string{"example.com/scoped/q", "example.com/scoped/gone", "example.com/scoped/x", "example.com/scoped/bad"})
+	scoped, err := newResolverClientScoped(ctx, dir, []string{"example.com/scoped/q", "example.com/scoped/gone", "example.com/scoped/x", "example.com/scoped/bad"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -353,7 +353,7 @@ func TestServedWithoutASymbolSetAnswersTheWholeTree(t *testing.T) {
 		"s/s.go":      "package s\n\nfunc Unrelated() {}\n",
 		"s/s_test.go": "package s\n\nimport \"testing\"\n\nfunc TestS(t *testing.T) {}\n",
 	})
-	served, err := NewServed(context.Background(), dir, nil)
+	served, err := NewWholeTree(context.Background(), dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -395,7 +395,7 @@ func TestGeneratedVerdictReadsADependencyDeclaringFile(t *testing.T) {
 		"main/go.mod": "module example.com/main\n\ngo 1.26\n\nrequire example.com/gen v0.0.0\n\nreplace example.com/gen => ../gen\n",
 		"main/q/q.go": "package q\n\nimport \"example.com/gen\"\n\ntype T struct{ gen.Base }\n\nfunc F() int { return T{}.Gen() }\n",
 	})
-	whole, err := NewOwned(context.Background(), filepath.Join(root, "main"))
+	whole, err := newResolverClient(context.Background(), filepath.Join(root, "main"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -413,7 +413,7 @@ func TestGeneratedVerdictReadsADependencyDeclaringFile(t *testing.T) {
 	if res, _, _, err := whole.ResolveIn("example.com/gen.Base.Gen"); err != nil || res != verify.NotFound {
 		t.Fatalf("dependency symbol under the whole tree: %v, %v; want not found", res, err)
 	}
-	scoped, err := NewOwnedScoped(context.Background(), filepath.Join(root, "main"), []string{"example.com/gen"})
+	scoped, err := newResolverClientScoped(context.Background(), filepath.Join(root, "main"), []string{"example.com/gen"})
 	if err != nil {
 		t.Fatal(err)
 	}

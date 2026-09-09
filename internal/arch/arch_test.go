@@ -96,7 +96,7 @@ func TestBackendSatisfiesVerifierSurfaces(t *testing.T) {
 	structural.Implements[verify.Backend](t, (*golang.Backend)(nil))
 	structural.Implements[verify.Slicer](t, (*golang.Backend)(nil))
 	structural.Implements[verify.WitnessClassifier](t, (*golang.Backend)(nil))
-	structural.Implements[verify.Backend](t, (*golang.Owned)(nil))
-	structural.Implements[verify.Slicer](t, (*golang.Owned)(nil))
-	structural.Implements[verify.WitnessClassifier](t, (*golang.Owned)(nil))
+	structural.Implements[verify.Backend](t, (*golang.Served)(nil))
+	structural.Implements[verify.Slicer](t, (*golang.Served)(nil))
+	structural.Implements[verify.WitnessClassifier](t, (*golang.Served)(nil))
 }

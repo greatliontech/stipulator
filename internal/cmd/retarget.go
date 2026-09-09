@@ -37,10 +37,11 @@ func retargetCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			backends, err := makeBackends(cmd.Context(), chdir)
+			backends, closeBackends, err := makeBackends(cmd.Context(), chdir)
 			if err != nil {
 				return err
 			}
+			defer closeBackends()
 			res, err := author.Retarget(os.DirFS(chdir), backends, backend, from, to)
 			if err != nil {
 				return err

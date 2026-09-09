@@ -124,7 +124,7 @@ func Preview(ctx context.Context, dir string) (*Report, error) {
 	if !goBound || len(changed) == 0 {
 		return r, nil
 	}
-	be, err := golang.NewOwned(ctx, dir)
+	be, err := golang.NewWholeTree(ctx, dir)
 	if err != nil {
 		return nil, err
 	}
