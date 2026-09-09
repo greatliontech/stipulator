@@ -13,5 +13,8 @@ report and the normalizer would collapse them; the reported
 environment equalling the executed one (REQ-evidence-flip-environment) is
 the invariant to preserve.
 
-Lands: with the next change set touching the runner environment
-(the report or the normalizer's environment edits).
+Lands: with the next change set that ADDS a key-equality decision to
+the runner environment (a case rule, the `=`-in-value edge, a duplicated
+key) in the report or the normalizer's environment edits — the
+telemetry-home entry went through the existing list view alone and
+decided no equality rule, so it did not fire this.

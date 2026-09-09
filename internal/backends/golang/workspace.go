@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"golang.org/x/mod/modfile"
@@ -96,7 +97,7 @@ func resolvedUnder(root, dir, rel string) error {
 // go command discovers workspace files by walking UP, so an enclosing
 // repository's workspace would otherwise leak into fixture or corpus
 // trees that are not its members and refuse their "./..." patterns.
-func goworkEnv(dir string) []string {
+func goworkEnv(dir string) ([]string, error) {
 	work := filepath.Join(dir, "go.work")
 	pin := "GOWORK=off"
 	if _, err := os.Stat(work); err == nil {
@@ -105,17 +106,13 @@ func goworkEnv(dir string) []string {
 		}
 		pin = "GOWORK=" + work
 	}
-	// Replace, never append beside, an ambient GOWORK: exec semantics
-	// tolerate a duplicate key (last wins), a strict environment
-	// normalizer refuses it — and this env now also feeds the
-	// freshness engine's analysis.
-	env := make([]string, 0, len(os.Environ())+2)
-	for _, kv := range os.Environ() {
-		if strings.HasPrefix(kv, "GOWORK=") || strings.HasPrefix(kv, "GOPACKAGESDRIVER=") {
-			continue
-		}
-		env = append(env, kv)
-	}
+	// Sorted, as setEnv's contract wants (normalize.go's helpers); the
+	// pins below replace any ambient GOWORK or GOPACKAGESDRIVER, never
+	// append beside one — exec semantics tolerate a duplicate key, a
+	// strict environment normalizer refuses it, and this env also feeds
+	// the freshness engine's analysis.
+	env := append([]string(nil), os.Environ()...)
+	sort.Strings(env)
 	// An ambient external package driver never shapes verification
 	// (REQ-go-owned-processes), so the driver is pinned off: symbol
 	// loading and toolchain queries always go through the real toolchain.
@@ -123,7 +120,11 @@ func goworkEnv(dir string) []string {
 	// accepted, reviewed invocation record exists for the ambient control
 	// to contradict; this environment backs no reviewed record, so the
 	// pin — not a refusal — is the right shape here.
-	return append(env, "GOPACKAGESDRIVER=off", pin)
+	env = setEnv(env, "GOPACKAGESDRIVER", "off")
+	env = setEnv(env, "GOWORK", strings.TrimPrefix(pin, "GOWORK="))
+	// The toolchain's telemetry is owned at this root as at the policy
+	// normalizer's (telemetry.go).
+	return telemetryOffEnv(env)
 }
 
 // Toolchain reports the identity of the go command the engine invokes in
@@ -136,9 +137,13 @@ func Toolchain(dir string) (string, error) {
 
 // ToolchainContext reports the invoked Go toolchain while honoring ctx.
 func ToolchainContext(ctx context.Context, dir string) (string, error) {
+	env, err := goworkEnv(dir)
+	if err != nil {
+		return "", err
+	}
 	cmd := commandContext(ctx, "go", "env", "GOVERSION", "GOOS", "GOARCH")
 	cmd.Dir = dir
-	cmd.Env = goworkEnv(dir)
+	cmd.Env = env
 	out, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("resolving toolchain identity: %w", err)

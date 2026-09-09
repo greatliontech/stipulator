@@ -166,7 +166,10 @@ func newContext(ctx context.Context, dir string, patterns []string) (*Backend, e
 	if err != nil {
 		return nil, err
 	}
-	env := goworkEnv(dir)
+	env, err := goworkEnv(dir)
+	if err != nil {
+		return nil, err
+	}
 	selections, crossPlatform, err := policyBuildSelections(dir)
 	if err != nil {
 		return nil, err

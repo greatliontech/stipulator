@@ -86,6 +86,11 @@ type NormalizedInvocation struct {
 	// apply only when the variable is unset), so the delivered width is
 	// deterministic per spawn.
 	WitnessEnv []string
+	// TelemetrySource is the config home the owned telemetry home in
+	// Env stands in for (telemetry.go) — the fact that re-establishes
+	// the home before a spawn if something swept it; empty where the
+	// environment has no config home or the platform no seam.
+	TelemetrySource string
 	// Timeout is the envelope's explicit, reviewed timeout.
 	Timeout time.Duration
 	// Toolchain is the effective toolchain identity (`go env GOVERSION`).
@@ -269,6 +274,14 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		env = setEnv(env, "GOFLAGS", cfg.GetGoflags())
 	}
 
+	// Every child of this invocation — the load-time query included —
+	// runs with the toolchain's telemetry owned (telemetry.go).
+	owned, source, ownErr := telemetryOffEnvSource(env)
+	if ownErr != nil {
+		return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), ownErr)
+	}
+	env = owned
+	n.TelemetrySource = source
 	version, goos, goarch, cgo, goflags, goexperiment, _, gomodcache, gocache, err := effectiveGoEnv(ctx, n.Dir, env)
 	if err != nil {
 		return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
@@ -462,6 +475,11 @@ func validateBracketPath(p string) error {
 // effectiveGoEnv queries the exec'd toolchain for the pin-at-load values in
 // one owned, cancellable subprocess.
 func effectiveGoEnv(ctx context.Context, dir string, env []string) (version, goos, goarch, cgo, goflags, goexperiment, goroot, gomodcache, gocache string, err error) {
+	// The query is a Go child like every other: it runs only under an
+	// environment whose telemetry is owned (telemetry.go).
+	if !telemetryOwned(env) {
+		return "", "", "", "", "", "", "", "", "", fmt.Errorf("resolving effective go env: the query environment's toolchain telemetry is not owned")
+	}
 	cmd := commandContext(ctx, "go", "env", "GOVERSION", "GOOS", "GOARCH", "CGO_ENABLED", "GOFLAGS", "GOEXPERIMENT", "GOROOT", "GOMODCACHE", "GOCACHE")
 	cmd.Dir = dir
 	cmd.Env = env

@@ -134,12 +134,39 @@ selection as the executing host resolves it at load: obligations reachable only 
 widening are a reviewed coverage addition, selected without an omission
 finding elsewhere.
 
-**REQ-go-owned-processes** (behavior): Every child process spawned for Go
-policy execution or package discovery MUST run inside an owned, cancellable
-process boundary whose entire descendant tree terminates with the
-operation's cancellation — package loading owns its launcher's descendants
-exactly as test invocations own theirs, and an ambient external package
-driver never shapes verification.
+**REQ-go-owned-processes** (behavior): Every child process spawned for
+Go policy execution or package discovery MUST run inside an owned,
+cancellable process boundary whose entire descendant tree terminates
+with the operation's cancellation — package loading owns its launcher's
+descendants exactly as test invocations own theirs, and an ambient
+external package driver never shapes verification. The toolchain's
+telemetry, on by default, forks a detached upload sidecar outside that
+boundary on its daily check, and no variable names its directory: on
+unix the environment every Go child runs under — the witnesses', the
+loads', the toolchain queries' — therefore points the toolchain's config
+home (`XDG_CONFIG_HOME`) at an owned home — a directory of the user's
+own, private, never a symlink, under a parent nobody else can rename it
+out of, under the user cache, or under `/tmp` when the cache cannot host
+it so a verb that loads symbols still runs where only the witness store
+refuses — one per source config home (the child's own `XDG_CONFIG_HOME`,
+else its own `HOME`'s `.config`; a child with neither has no config home
+and nothing to own; one directory is one source whatever its spelling,
+and a source that is not absolute is a refusal), holding
+`go/telemetry/mode` = `off` — created once, never swept, nothing written
+under it by a toolchain whose telemetry is off, and re-established,
+through the same secured root, before every spawn that reuses a derived
+environment — each witness process's, each package listing's. The owned
+home's path is a recorded environment coordinate: its stability is the
+host's. The whole config home moves with it; what a Go child reads there
+is pinned back to the source home: `GOENV` names the source home's go
+env file unless the environment names one, and the owned home's
+`git/config` names the source home's ignore and attributes files as
+git's defaults and includes the source home's config, so a child's go
+configuration and its git's global configuration do not move with the
+telemetry. An owned home that cannot be prepared is a refusal naming the
+reason. On platforms whose config home no variable selects, the
+toolchain's detached telemetry is the one sanctioned escape from the
+boundary.
 
 **REQ-go-fuzz-exploration** (behavior): A fuzzing campaign MUST NOT feed the
 gate directly — campaigns are time-bounded and nondeterministic; their

@@ -17,6 +17,7 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[env-walk-vocabularies](env-walk-vocabularies.md)** — the environment report's indexed walk
   beside the normalizer's positional edits (and a second `sortedKeys` in cmd). *Lands: with the
   next change set touching the runner environment.*
+- **[cache-root-layout-one-helper](cache-root-layout-one-helper.md)** — the witness store, the resolution store, and the owned telemetry home each spell `<cache>/stipulator/<kind>/<digest>` themselves. *Lands: the next change set touching any of the three layouts*
 - **[publish-refusal-ladders](publish-refusal-ladders.md)** — the selective runner and the
   full-form recorder each walk the per-subject publish refusal ladder with their own reason
   vocabulary. *Lands: with the next change set touching witness publication in either form.*
@@ -54,6 +55,5 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[cli-test-binary-builds](cli-test-binary-builds.md)** — seven CLI-driving tests each build the binary; one once-built helper. *Lands: cross-tool train chunk 172*
 - **[knob-prose-identity](knob-prose-identity.md)** — schema tags and flag usage strings are pinned to the guidance document by name only; render or prefix-pin their text. *Lands: cross-tool train chunk 169*
 - **[retarget-spec-enforcement-pointers](retarget-spec-enforcement-pointers.md)** — a spec clause's "Enforced by" pointer is neither rewritten by retarget nor checked against the store. *Lands: cross-tool train chunk 167*
-- **[telemetry-sidecar-escapes-owned-process](telemetry-sidecar-escapes-owned-process.md)** — the toolchain's detached telemetry sidecar outlives a witness child's process group; turn it off per run or sanction the escape. *Lands: cross-tool train chunk 166*
 - **[extractor-context-block-shapes](extractor-context-block-shapes.md)** — the compile extractor keeps two identical context-block shapes (noteBlock, annBlock) and two near-identical IR loops differing only in the attachment set. *Lands: the next change to the extractor's block types or the note/annotation IR loops.*
 - **[witnesscache-fingerprint-mirror](witnesscache-fingerprint-mirror.md)** — the witness cache mirrors gofresh's fingerprint field by field with two conversions and a reflective guard; every gofresh field addition is a red build here. *Lands: the next gofresh fingerprint field addition, or the next change to the witness-cache record format.*

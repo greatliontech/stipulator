@@ -24,7 +24,11 @@ import (
 // no runtime input, so every check closes its own window: no deferred
 // close, no producer environment.
 func selectionEngine(ctx context.Context, dir string, sel buildSelection) (*gofresh.Engine, error) {
-	env := selectionViewEnv(goworkEnv(dir), sel)
+	base, err := goworkEnv(dir)
+	if err != nil {
+		return nil, err
+	}
+	env := selectionViewEnv(base, sel)
 	// The same provenance prerequisite the child's typed view enforces,
 	// in the same form: an identified selection toolchain this binary's
 	// frontend cannot read refuses before any verdict, while a toolchain

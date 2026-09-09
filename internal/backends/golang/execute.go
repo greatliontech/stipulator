@@ -409,6 +409,17 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, select
 	// persisting across the run-to-ingest span moves it. A capture failure
 	// never blocks execution — the process's observation is incomplete for
 	// the stated reason, exactly as a failed capture-file creation.
+	// Every witness process reuses the invocation's derived environment:
+	// its owned telemetry home is re-established before each spawn, in
+	// case something swept it since normalization — a fan-out runs for
+	// minutes, and a later package's process must not fork the sidecar.
+	// Before the bracket is captured, so a repair write precedes it.
+	if err := ensureTelemetryOwned(n.Env, n.TelemetrySource); err != nil {
+		if ctx.Err() != nil {
+			return packageRun{pkg: pkg}
+		}
+		return degradedRun(n.Name, pkg, fmt.Sprintf("spawning go test: %v", err), false)
+	}
 	frame := captureObservationFrame(ctx, n, pkg)
 	cmd := commandContext(ctx, "go", testCommandArgs(n, pkg, selection, logPath)...)
 	cmd.Dir = n.Dir

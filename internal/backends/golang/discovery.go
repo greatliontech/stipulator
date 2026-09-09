@@ -220,6 +220,11 @@ const (
 // listPackages lists the invocation's selected packages under its build
 // selection through an owned, cancellable process boundary.
 func listPackages(ctx context.Context, n *NormalizedInvocation) ([]listedPackage, error) {
+	// A spawn reusing the derived environment: the owned telemetry home
+	// is re-established first (telemetry.go).
+	if err := ensureTelemetryOwned(n.Env, n.TelemetrySource); err != nil {
+		return nil, fmt.Errorf("invocation %q: %w", n.Name, err)
+	}
 	args := []string{"list", "-e", "-json=ImportPath,Dir,TestGoFiles,XTestGoFiles,Error"}
 	if tags := selectionTags(n); len(tags) > 0 {
 		args = append(args, "-tags="+strings.Join(tags, ","))
@@ -318,6 +323,10 @@ func foldVariant(path string) string {
 // fail closed as incomplete: a bracket that cannot declare the
 // compile's readable surface must not seal a weaker claim silently.
 func listClosureDirs(ctx context.Context, n *NormalizedInvocation, selected []listedPackage) {
+	if err := ensureTelemetryOwned(n.Env, n.TelemetrySource); err != nil {
+		n.ClosureDirsErr = fmt.Sprintf("invocation %q: %v", n.Name, err)
+		return
+	}
 	args := []string{"list", "-e", "-deps", "-test", "-json=ImportPath,Dir,ForTest,Deps"}
 	if tags := selectionTags(n); len(tags) > 0 {
 		args = append(args, "-tags="+strings.Join(tags, ","))
