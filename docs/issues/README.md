@@ -11,7 +11,7 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   *Lands: first idle window with no concurrent campaign after cross-tool train chunk 145 closes.*
 - **[executor-diagnostics-trio](executor-diagnostics-trio.md)** — the budget renderer, residue
   classifier, and abort predicate walk the same run inputs three times with three vocabularies.
-  *Lands: with the next change set touching the executor's run classification.*
+  *Lands: cross-tool train chunk 223*
 - **[go-backend-load-path-pairs](go-backend-load-path-pairs.md)** — workspace double-parse under
   two error policies, the view-error/attribution wording split, the classifier's double-resolve.
   *Lands: with the next change set touching the Go backend's package load path.*
@@ -20,7 +20,7 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   next change set touching the runner environment.*
 - **[publish-refusal-ladders](publish-refusal-ladders.md)** — the selective runner and the
   full-form recorder each walk the per-subject publish refusal ladder with their own reason
-  vocabulary. *Lands: with the next change set touching witness publication in either form.*
+  vocabulary. *Lands: cross-tool train chunk 223*
 - **[process-output-utf8-marshal](process-output-utf8-marshal.md)** — raw process output (bytes,
   not text) flows into edition-2023 proto string fields; one invalid byte makes the check result
   unmarshallable. Cut-point half fixed; ingest-wide sanitization needs a design choice.
