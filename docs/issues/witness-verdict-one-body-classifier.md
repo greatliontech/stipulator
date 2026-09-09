@@ -17,5 +17,5 @@ class, the union of every view's seeding). The three spellings become
 one; a new verdict field cannot be carried by one branch and dropped by
 another.
 
-Lands: the next change to the witness classifier's verdict shape, or
+Lands: cross-tool train chunk 226
 to the serving refusal set.

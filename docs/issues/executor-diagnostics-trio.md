@@ -13,5 +13,5 @@ value that `classifyRun` consumes — would collapse them; the outcome
 classes `classifyRun` assigns and the attribution REQ-policy-budget-attribution
 requires are the invariants to preserve.
 
-Lands: with the next change set touching the executor's run
+Lands: cross-tool train chunk 223
 classification (`classifyRun` or the helpers above).

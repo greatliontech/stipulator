@@ -7,4 +7,4 @@ their own temp directory — seven builds per package run.
 Resolution: one `buildCLI(t)` helper backed by `sync.Once` per test
 binary, every CLI-driving test calling it.
 
-Lands: cross-tool train chunk 172
+Lands: cross-tool train chunk 228

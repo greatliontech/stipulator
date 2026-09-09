@@ -39,3 +39,16 @@ reshaped and shape-mismatch rows key on the BARE bound symbol
 backend, but a second backend binding the same symbol string would
 merge two distinct rows. Backend-qualify those row keys when this
 lands.
+
+Audit 196 (2026-09-09): the corpus's two root wire clauses
+(REQ-core-proto-io, REQ-model-graph) are gapped on `covered:
+REQ-proto-provers`, whose own gap reads "deferred indefinitely" — a
+condition that cannot fire — and twelve bindings name `backend: "proto"`,
+which verification skips because no such backend is registered:
+records that can never become evidence. The scheduling call is the
+user's: retire docs/specs/backends/proto.md through `dispose` and drop
+the twelve bindings, or retarget the two root gaps to conditions that
+can fire.
+
+Lands: user decision — retire or retarget; the "when a corpus needs wire
+evidence" condition above stays the adoption trigger.

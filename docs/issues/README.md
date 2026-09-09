@@ -3,7 +3,7 @@
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
 - **[ledger-store-as-a-record-kind](ledger-store-as-a-record-kind.md)** — the witness cache's compartment ledger sub-store implements the record-store mechanics by hand beside the core; folding it needs a one-segment naming form. *Lands: cross-tool train chunk 185*
-- **[witness-verdict-one-body-classifier](witness-verdict-one-body-classifier.md)** — the classifier inspects a body three ways (the rich resolved-view pass, the other-view direct test, the helper walk) and folds the union beside the class switch; one per-view classifyBody with a fold over views. *Lands: the next change to the witness classifier's verdict shape, or to the serving refusal set*
+- **[witness-verdict-one-body-classifier](witness-verdict-one-body-classifier.md)** — the classifier inspects a body three ways (the rich resolved-view pass, the other-view direct test, the helper walk) and folds the union beside the class switch; one per-view classifyBody with a fold over views. *Lands: cross-tool train chunk 226*
 - **[seeding-walk-unreached-routes](seeding-walk-unreached-routes.md)** — the transitive seeding walk stops at dependency helpers, function values, and interface dispatch, each a served-flake shape the spec states; gofresh's reachable closure would answer all three. *Lands: a field report of a served flake through one of these routes, or the next change to the seeding walk's callee resolution*
 - **[train-114-campaign-idle-window](train-114-campaign-idle-window.md)** — the runner-inspectability
   folds' `--changed` campaign priced itself day-class (63 targets, 4,913 candidates); gate rode the
@@ -47,7 +47,7 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   only where authors choose clause claims; whether to refuse whole claims on clause-structured
   requirements (a discipline choice). *Lands: cross-tool train chunk 176 (refuse by default, manifest opt-out — user ruling 2026-09-07)*
 - **[per-stream-color](per-stream-color.md)** — color is one switch over stdout and stderr; a redirected stderr costs stdout its color. Per-stream styler. *Lands: cross-tool train chunk 172*
-- **[two-completion-mechanisms](two-completion-mechanisms.md)** — the selective runner and the health-judged recorder each implement install-at-last-covering-invocation; one completion tracker over capture groups. *Lands: cross-tool train chunk 171*
-- **[cli-test-binary-builds](cli-test-binary-builds.md)** — seven CLI-driving tests each build the binary; one once-built helper. *Lands: cross-tool train chunk 172*
+- **[two-completion-mechanisms](two-completion-mechanisms.md)** — the selective runner and the health-judged recorder each implement install-at-last-covering-invocation; one completion tracker over capture groups. *Lands: cross-tool train chunk 223*
+- **[cli-test-binary-builds](cli-test-binary-builds.md)** — seven CLI-driving tests each build the binary; one once-built helper. *Lands: cross-tool train chunk 228*
 - **[witnesscache-fingerprint-mirror](witnesscache-fingerprint-mirror.md)** — the witness cache mirrors gofresh's fingerprint field by field with two conversions and a reflective guard; every gofresh field addition is a red build here. *Lands: the next gofresh fingerprint field addition, or the next change to the witness-cache record format.*
 - **[knob-terse-clause-per-face](knob-terse-clause-per-face.md)** — one knob line serves both faces, so a rendered terse clause can carry the other face's prose. *Lands: cross-tool train chunk 184*

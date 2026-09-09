@@ -15,5 +15,5 @@ them; the serving-integrity rule (a served witness was granted by a
 healthy process whose fingerprint was taken before execution,
 REQ-evidence-freshness-no-health) is the invariant to preserve.
 
-Lands: with the next change set touching witness publication in
+Lands: cross-tool train chunk 223
 either form (`publishExecuted`, `grantingRun`, or `publishGroup`).
