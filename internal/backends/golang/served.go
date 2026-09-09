@@ -277,6 +277,11 @@ func (s *Served) serveSelection(key string, recs []resolutioncache.Record) {
 		if !ok {
 			continue
 		}
+		// Records come newest first; a subject met twice (a partial
+		// install left two files of one identity) keeps its newest.
+		if _, seen := bySubject[subject]; seen {
+			continue
+		}
 		subjects = append(subjects, subject)
 		bySubject[subject] = rec
 	}

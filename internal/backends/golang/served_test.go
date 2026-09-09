@@ -2,13 +2,16 @@ package golang
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/greatliontech/gofresh"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/records"
+	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/internal/resolutioncache"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
@@ -364,4 +367,83 @@ func bindingSet(symbols ...string) *stipulatorv1.BindingSet {
 	}
 	set.SetBindings(bindings)
 	return set
+}
+
+// A duplicated identity — two record files of one selection and symbol,
+// which a partial install can leave — serves its newest: the records
+// come most recently installed first and the first per subject is
+// kept, so an older stale twin never displaces the current record into
+// a typed resolution (REQ-evidence-record-store-layout).
+//
+//gofresh:pure
+func TestServedTakesTheNewestOfADuplicatedIdentity(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-record-store-layout")
+	if testing.Short() {
+		t.Skip("loads a fixture module's types and views")
+	}
+	neutralAmbient(t)
+	dir := servedModule(t)
+	ctx := context.Background()
+	c := countSpawns(t)
+
+	first, err := NewServed(ctx, dir, servedSymbols)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, symbol := range servedSymbols {
+		ask(t, first, symbol)
+	}
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+	var current resolutioncache.Record
+	for _, rec := range resolutioncache.Load(dir) {
+		if rec.Symbol == "example.com/served/p.F" {
+			current = rec
+		}
+	}
+	if current.Symbol == "" {
+		t.Fatal("the first run published no record for p.F")
+	}
+	twin := current
+	twin.Fingerprint.MaximalClosure = strings.Repeat("0", 32)
+	twin.Shape = "stale twin"
+	store, err := resolutioncache.StoreDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(map[string]any{
+		"version": 1, "selection": twin.Selection, "symbol": twin.Symbol, "fingerprint": twin.Fingerprint,
+		"resolution": twin.Resolution, "shape": twin.Shape, "package": twin.Package,
+		"witnessClass": twin.WitnessClass, "witnessClassReason": twin.WitnessClassReason,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	older := filepath.Join(store, recordstore.Name([]string{twin.Selection, twin.Symbol}, twin.Fingerprint))
+	if err := os.WriteFile(older, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	past := time.Now().Add(-time.Hour)
+	if err := os.Chtimes(older, past, past); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(resolutioncache.Load(dir)); got != 5 {
+		t.Fatalf("the store loads %d records, want the four published and the twin", got)
+	}
+
+	c.reset()
+	second, err := NewServed(ctx, dir, servedSymbols)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := second.ServedCount(); got != 4 {
+		t.Fatalf("served %d symbols, want four: the twin displaced p.F (reasons %v)", got, second.Reasons())
+	}
+	if got := ask(t, second, "example.com/served/p.F"); got.shape == "stale twin" {
+		t.Fatalf("p.F served the older twin: %+v", got)
+	}
+	if got := c.snapshot(); got.child != 0 {
+		t.Fatalf("the served run opened %d children", got.child)
+	}
 }

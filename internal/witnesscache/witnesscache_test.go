@@ -14,6 +14,7 @@ import (
 
 	"github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/guard"
+	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -270,7 +271,7 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 	requireAbsent("malformed test-variant closure digest")
 
 	path = seedOne(rec)
-	renamed := filepath.Join(filepath.Dir(path), identityDigest(rec.Group, rec.Package, rec.Test)+"-"+strings.Repeat("0", 16)+".json")
+	renamed := filepath.Join(filepath.Dir(path), recordstore.Digest(rec.Group, rec.Package, rec.Test)+"-"+strings.Repeat("0", 16)+".json")
 	if err := os.Rename(path, renamed); err != nil {
 		t.Fatal(err)
 	}
@@ -579,7 +580,7 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 	}
 
 	// A corrupt sibling file never discards the intact record.
-	matches, err := filepath.Glob(filepath.Join(store, identityDigest(sibling.Group, sibling.Package, sibling.Test)+"-*.json"))
+	matches, err := filepath.Glob(filepath.Join(store, recordstore.Digest(sibling.Group, sibling.Package, sibling.Test)+"-*.json"))
 	if err != nil || len(matches) != 1 {
 		t.Fatalf("sibling variants = %v (%v), want one", matches, err)
 	}
@@ -617,7 +618,7 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 		if err := Install(dir, next); err != nil {
 			t.Fatal(err)
 		}
-		name := identityDigest(next.Group, next.Package, next.Test) + "-" + fingerprintDigest(next.Fingerprint) + ".json"
+		name := fileName(next)
 		full := filepath.Join(store, name)
 		stamp := time.Unix(int64(1_700_000_000+i*10), 0)
 		if err := os.Chtimes(full, stamp, stamp); err != nil && !os.IsNotExist(err) {
@@ -625,7 +626,7 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 		}
 		installed = append(installed, full)
 	}
-	matches, err = filepath.Glob(filepath.Join(store, identityDigest(rec.Group, rec.Package, rec.Test)+"-*.json"))
+	matches, err = filepath.Glob(filepath.Join(store, recordstore.Digest(rec.Group, rec.Package, rec.Test)+"-*.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -639,7 +640,7 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 		t.Fatalf("oldest install survived recency eviction: %v", err)
 	}
 	// Atomic installs leave no temporaries behind.
-	if residue, _ := filepath.Glob(filepath.Join(store, ".variant-*")); len(residue) != 0 {
+	if residue, _ := filepath.Glob(filepath.Join(store, ".*")); len(residue) != 0 {
 		t.Fatalf("install temporaries persist: %v", residue)
 	}
 }
@@ -814,14 +815,25 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(store, "ledgers", "garbage.json"), []byte("not json"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// A live record under a name that disagrees with its content: Load
+	// never serves it, so the verb removes it.
+	liveName := recordstore.Name([]string{"6772702d64696765", "example.com/p", "TestLive"}, Fingerprint{MaximalClosure: "aa", TestVariantClosure: digests["TestLive"]})
+	liveData, err := os.ReadFile(filepath.Join(store, liveName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	misnamed := recordstore.Name([]string{"6772702d64696765", "example.com/p", "TestLive"}, Fingerprint{MaximalClosure: "zz", TestVariantClosure: digests["TestLive"]})
+	if err := os.WriteFile(filepath.Join(store, misnamed), liveData, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	removed, kept, err := GC(dir, func(pkg, test string) bool {
 		return pkg == "example.com/p" && test == "TestLive"
 	}, func(group string) bool { return group == "6772702d64696765" })
 	if err != nil {
 		t.Fatal(err)
 	}
-	if removed != 3 || kept != 1 {
-		t.Fatalf("gc = %d removed, %d kept; want 3 (departed identity, garbage, retired coordinate), 1", removed, kept)
+	if removed != 4 || kept != 1 {
+		t.Fatalf("gc = %d removed, %d kept; want 4 (departed identity, garbage, retired coordinate, misnamed), 1", removed, kept)
 	}
 	entries, err := os.ReadDir(store)
 	if err != nil {
@@ -835,7 +847,7 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 		}
 		names = append(names, e.Name())
 	}
-	if len(names) != 2 || names[0] != identityDigest("6772702d64696765", "example.com/p", "TestLive")+"-"+fingerprintDigest(Fingerprint{MaximalClosure: "aa", TestVariantClosure: digests["TestLive"]})+".json" || names[1] != "ledgers/" {
+	if len(names) != 2 || names[0] != recordstore.Name([]string{"6772702d64696765", "example.com/p", "TestLive"}, Fingerprint{MaximalClosure: "aa", TestVariantClosure: digests["TestLive"]}) || names[1] != "ledgers/" {
 		t.Fatalf("post-gc store entries = %v, want only the live identity's variant beside the ledger store", names)
 	}
 	ledgers, err := os.ReadDir(filepath.Join(store, "ledgers"))
@@ -876,5 +888,46 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 		if err == nil {
 			t.Fatalf("undeletable entries reported clean: %d removed, %d kept", removed, kept)
 		}
+	}
+}
+
+// A record that lands between the load's snapshot and its ledger sweep
+// keeps its ledger: the late scan reads the records the snapshot never
+// saw for their compartment digests, so a concurrent install's
+// ledger-then-record ordering holds for the sweep as it does for a
+// reader (REQ-evidence-witness-cache-format).
+//
+//gofresh:pure
+func TestLateRecordsKeepTheirLedgers(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-cache-format")
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	dir := t.TempDir()
+	store, err := StoreDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := strings.Repeat("e", 32)
+	rec := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestLate", Outcomes: map[string]string{"example.com/p.TestLate": "passed"}, Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: digest}, CompartmentLedger: &CompartmentLedger{Declarations: []CompartmentDeclaration{{File: "p_test.go", Kind: "func", Name: "TestLate", Hash: "00112233445566778899aabbccddeeff"}}}}
+	// Another record first, so the store exists and the snapshot is
+	// non-empty.
+	if err := Install(dir, Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestFirst", Outcomes: map[string]string{"example.com/p.TestFirst": "passed"}, Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: strings.Repeat("f", 32)}}); err != nil {
+		t.Fatal(err)
+	}
+	started := time.Now()
+	betweenScans = func() {
+		if err := Install(dir, rec); err != nil {
+			t.Fatal(err)
+		}
+		// The ledger is older than the load: only the late scan's
+		// reference spares it from the sweep.
+		past := started.Add(-time.Hour)
+		if err := os.Chtimes(ledgerPath(store, digest), past, past); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Cleanup(func() { betweenScans = nil })
+	loadSince(dir, started)
+	if _, err := os.Stat(ledgerPath(store, digest)); err != nil {
+		t.Fatalf("the late record's ledger was swept: %v", err)
 	}
 }

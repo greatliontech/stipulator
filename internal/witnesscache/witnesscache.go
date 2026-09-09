@@ -9,14 +9,12 @@ package witnesscache
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -24,6 +22,7 @@ import (
 	"github.com/greatliontech/gofresh/guard"
 	"github.com/greatliontech/gofresh/runtimeinput"
 
+	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
@@ -47,40 +46,21 @@ const variantBound = 4
 
 // StoreDir is the witness store for the corpus rooted at dir.
 func StoreDir(dir string) (string, error) {
-	abs, err := filepath.Abs(dir)
+	store, err := open(dir)
 	if err != nil {
 		return "", err
 	}
-	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
-		abs = resolved
-	}
-	root, err := os.UserCacheDir()
-	if err != nil {
-		return "", err
-	}
-	sum := sha256.Sum256([]byte(abs))
-	return filepath.Join(root, "stipulator", "witnesses", hex.EncodeToString(sum[:8])), nil
+	return store.Path(), nil
 }
 
-func identityDigest(group, pkg, test string) string {
-	sum := sha256.Sum256([]byte(group + "\x00" + pkg + "\x00" + test))
-	return hex.EncodeToString(sum[:8])
-}
+// open is the witness kind's record store for the corpus rooted at dir.
+func open(dir string) (recordstore.Store, error) { return recordstore.Open("witnesses", dir) }
 
-func fingerprintDigest(f Fingerprint) string {
-	data, err := json.Marshal(f)
-	if err != nil {
-		return ""
-	}
-	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:8])
-}
-
-// fileName is the record's store name: identity digest joined with
-// fingerprint digest, so distinct tree states coexist as variants and a
-// name disagreeing with its content is refusable on read.
+// fileName is a record variant's file: the identity digest over the
+// group's coordinate, the package, and the test, joined with the
+// fingerprint's (REQ-evidence-witness-cache-format).
 func fileName(r Record) string {
-	return identityDigest(r.Group, r.Package, r.Test) + "-" + fingerprintDigest(r.Fingerprint) + ".json"
+	return recordstore.Name([]string{r.Group, r.Package, r.Test}, r.Fingerprint)
 }
 
 type observationProof struct {
@@ -450,52 +430,31 @@ func Load(dir string) []Record {
 	return loadSince(dir, time.Now())
 }
 
+// betweenScans, when set, runs after the load's snapshot and before its
+// late scan — the window a concurrent install lands in; a test installs
+// there to witness that the late scan keeps the landed record's ledger.
+var betweenScans func()
+
 // loadSince is Load with the moment the load is taken to begin: a
 // ledger no younger than it is a concurrent install's and is spared.
 func loadSince(dir string, started time.Time) []Record {
-	store, err := StoreDir(dir)
+	store, err := open(dir)
 	if err != nil {
 		return nil
 	}
 	// The legacy in-repo cache is never read again; remove it best-effort
 	// once per load so migrated corpora stop carrying it.
 	os.RemoveAll(filepath.Join(dir, ".stipulator", "cache"))
-	entries, err := os.ReadDir(store)
+	names, err := store.Names()
 	if err != nil {
 		return nil
-	}
-	// Dot-prefixed names are install temporaries, never records; the
-	// ledger store is a subdirectory.
-	type aged struct {
-		name string
-		mod  int64
-	}
-	var files []aged
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") || strings.HasPrefix(e.Name(), ".") {
-			continue
-		}
-		var mod int64
-		if info, err := e.Info(); err == nil {
-			mod = info.ModTime().UnixNano()
-		}
-		files = append(files, aged{e.Name(), mod})
-	}
-	sort.Slice(files, func(i, j int) bool {
-		if files[i].mod != files[j].mod {
-			return files[i].mod > files[j].mod
-		}
-		return files[i].name < files[j].name
-	})
-	names := make([]string, 0, len(files))
-	for _, f := range files {
-		names = append(names, f.name)
 	}
 	manifests := map[string]bool{}
 	var records []Record
 	referenced := map[string]bool{}
 	for _, name := range names {
-		rec, digest, ok := loadEntry(store, name, dir, manifests)
+		data, _ := store.Read(name)
+		rec, digest, ok := loadEntry(name, data, dir, manifests)
 		if digest != "" {
 			referenced[digest] = true
 		}
@@ -508,21 +467,24 @@ func loadSince(dir string, started time.Time) []Record {
 	// before the sweep, and a ledger younger than the load is left
 	// alone, so a concurrent install's ledger-then-record ordering holds
 	// for the sweep as it does for a reader.
-	if late, err := os.ReadDir(store); err == nil {
-		seen := map[string]bool{}
-		for _, name := range names {
-			seen[name] = true
+	seen := map[string]bool{}
+	for _, name := range names {
+		seen[name] = true
+	}
+	if betweenScans != nil {
+		betweenScans()
+	}
+	late, _ := store.Names()
+	for _, name := range late {
+		if seen[name] {
+			continue
 		}
-		for _, e := range late {
-			if e.IsDir() || seen[e.Name()] || !strings.HasSuffix(e.Name(), ".json") || strings.HasPrefix(e.Name(), ".") {
-				continue
-			}
-			if _, digest, _ := loadEntry(store, e.Name(), dir, manifests); digest != "" {
-				referenced[digest] = true
-			}
+		data, _ := store.Read(name)
+		if _, digest, _ := loadEntry(name, data, dir, manifests); digest != "" {
+			referenced[digest] = true
 		}
 	}
-	sweepLedgers(store, referenced, started)
+	sweepLedgers(store.Path(), referenced, started)
 	return records
 }
 
@@ -531,11 +493,27 @@ func loadSince(dir string, started time.Time) []Record {
 // at all — a refused record's ledger is kept referenced, so a refusal
 // this tree state decides (a manifest not current here) costs the
 // record's execution and nothing more.
-func loadEntry(store, name, dir string, manifests map[string]bool) (Record, string, bool) {
-	data, err := os.ReadFile(filepath.Join(store, name))
-	if err != nil {
-		return Record{}, "", false
+func loadEntry(name string, data []byte, dir string, manifests map[string]bool) (Record, string, bool) {
+	rec, digest, ok := decodeRecord(name, data)
+	if !ok {
+		return Record{}, digest, false
 	}
+	proof := rec.Fingerprint.ObservationProof
+	if (proof != nil && (proof.Package != rec.Package || proof.Symbol != rec.Test)) ||
+		!validOutcomes(rec) || !rec.Fingerprint.valid(dir, manifests) {
+		return Record{}, digest, false
+	}
+	return rec, digest, true
+}
+
+// decodeRecord is the one admission every reader of a variant file
+// shares — the loader and the garbage collector alike: the file
+// parses whole, is of this version, carries its identity, and is named
+// by its content; the compartment digest is returned whenever the file
+// parses at all, so a refused record's ledger stays referenced. What
+// a file passes here and still fails is the tree's judgment (validity
+// against the current state), never the store's.
+func decodeRecord(name string, data []byte) (Record, string, bool) {
 	var fields map[string]json.RawMessage
 	if json.Unmarshal(data, &fields) != nil {
 		return Record{}, "", false
@@ -555,10 +533,7 @@ func loadEntry(store, name, dir string, manifests map[string]bool) (Record, stri
 		return Record{}, digest, false
 	}
 	rec := Record{Group: e.Group, Package: e.Package, Test: e.Test, Fingerprint: e.Fingerprint, Outcomes: e.Outcomes, Regs: e.Regs, ObservationExclusions: e.ObservationExclusions}
-	proof := rec.Fingerprint.ObservationProof
-	if rec.Group == "" || rec.Package == "" || rec.Test == "" || name != fileName(rec) ||
-		(proof != nil && (proof.Package != rec.Package || proof.Symbol != rec.Test)) ||
-		!validOutcomes(rec) || !rec.Fingerprint.valid(dir, manifests) {
+	if rec.Group == "" || rec.Package == "" || rec.Test == "" || name != fileName(rec) {
 		return Record{}, digest, false
 	}
 	return rec, digest, true
@@ -636,7 +611,7 @@ func LoadLedger(dir, digest, test string) *CompartmentLedger {
 // disagreeing with its name, or carrying an entry without a file or a
 // well-formed digest.
 func readLedger(store, digest string) *CompartmentLedger {
-	if !validDigest(digest) {
+	if !ValidDigest(digest) {
 		return nil
 	}
 	data, err := os.ReadFile(ledgerPath(store, digest))
@@ -650,12 +625,12 @@ func readLedger(store, digest string) *CompartmentLedger {
 		return nil
 	}
 	for _, declaration := range e.Declarations {
-		if declaration.File == "" || declaration.Kind == "" || !validDigest(declaration.Hash) {
+		if declaration.File == "" || declaration.Kind == "" || !ValidDigest(declaration.Hash) {
 			return nil
 		}
 	}
 	for _, header := range e.FileHeaders {
-		if header.File == "" || !validDigest(header.Hash) {
+		if header.File == "" || !ValidDigest(header.Hash) {
 			return nil
 		}
 	}
@@ -669,7 +644,7 @@ func readLedger(store, digest string) *CompartmentLedger {
 // never outlives the next install of its compartment.
 func installLedger(store string, rec Record) error {
 	digest := rec.Fingerprint.TestVariantClosure
-	if rec.CompartmentLedger == nil || !validDigest(digest) {
+	if rec.CompartmentLedger == nil || !ValidDigest(digest) {
 		return nil
 	}
 	full := ledgerPath(store, digest)
@@ -683,31 +658,7 @@ func installLedger(store string, rec Record) error {
 	if err != nil {
 		return err
 	}
-	return WriteAtomic(filepath.Dir(full), ".ledger-*.json", full, data)
-}
-
-// WriteAtomic lands data at full through a temporary in dir matching
-// pattern and a rename, so a concurrent reader never sees a torn file
-// and a failed write leaves nothing behind.
-func WriteAtomic(dir, pattern, full string, data []byte) error {
-	tmp, err := os.CreateTemp(dir, pattern)
-	if err != nil {
-		return err
-	}
-	if _, err := tmp.Write(append(data, '\n')); err != nil {
-		tmp.Close()
-		os.Remove(tmp.Name())
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		os.Remove(tmp.Name())
-		return err
-	}
-	if err := os.Rename(tmp.Name(), full); err != nil {
-		os.Remove(tmp.Name())
-		return err
-	}
-	return nil
+	return recordstore.WriteAtomic(filepath.Dir(full), ".ledger-*.json", full, data)
 }
 
 func validOutcomes(rec Record) bool {
@@ -740,9 +691,9 @@ func (f Fingerprint) valid(dir string, manifests map[string]bool) bool {
 		validManifest = err == nil
 		manifests[f.RuntimeInputs] = validManifest
 	}
-	return validDigest(f.MaximalClosure) && validDigest(f.TestVariantClosure) && f.Toolchain != "" && validDigest(f.BuildConfig) &&
+	return ValidDigest(f.MaximalClosure) && ValidDigest(f.TestVariantClosure) && f.Toolchain != "" && ValidDigest(f.BuildConfig) &&
 		f.Machine == "" && f.RuntimeConfig == "" &&
-		validObservation(f) && validPurity(f.PurityAssertion) && validManifest && validDigest(f.RuntimeDigest) &&
+		validObservation(f) && validPurity(f.PurityAssertion) && validManifest && ValidDigest(f.RuntimeDigest) &&
 		f.ResultKind == gofresh.CodeResult
 }
 
@@ -757,10 +708,12 @@ func validObservation(f Fingerprint) bool {
 		f.ObservationProof.Strategy == gofresh.ObservationRTA &&
 		f.ObservationProof.Package != "" && f.ObservationProof.Symbol != "" &&
 		f.ObservationProof.Observable == (f.ObservationProof.Reason == "") &&
-		validDigest(f.ObservationProof.Evidence)
+		ValidDigest(f.ObservationProof.Evidence)
 }
 
-func validDigest(value string) bool {
+// ValidDigest is a Gofresh-owned 16-byte digest in lowercase hex — the
+// form every fingerprint tier and every ledger name carries.
+func ValidDigest(value string) bool {
 	decoded, err := hex.DecodeString(value)
 	return err == nil && len(decoded) == 16 && strings.ToLower(value) == value
 }
@@ -778,16 +731,13 @@ func validPurity(value string) bool {
 // identity's variant set: beyond variantBound, the least recently
 // installed variants are evicted — eviction costs only execution.
 func Install(dir string, rec Record) error {
-	store, err := StoreDir(dir)
+	store, err := open(dir)
 	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(store, 0o755); err != nil {
 		return err
 	}
 	// The ledger lands before the record: a record present in the store
 	// finds its compartment's ledger present too.
-	if err := installLedger(store, rec); err != nil {
+	if err := installLedger(store.Path(), rec); err != nil {
 		return err
 	}
 	e := entry{Version: version, Group: rec.Group, Package: rec.Package, Test: rec.Test, Fingerprint: rec.Fingerprint, Outcomes: rec.Outcomes, Regs: rec.Regs, ObservationExclusions: rec.ObservationExclusions}
@@ -795,46 +745,10 @@ func Install(dir string, rec Record) error {
 	if err != nil {
 		return err
 	}
-	full := filepath.Join(store, fileName(rec))
-	// Write-then-rename: a concurrent writer must never leave a torn
-	// file — a torn variant costs only its own record through the
-	// per-file refusal leg, and rename makes even that window vanish.
-	if err := WriteAtomic(store, ".variant-*.json", full, data); err != nil {
-		return err
-	}
-	evictBeyondBound(store, identityDigest(rec.Group, rec.Package, rec.Test), filepath.Base(full))
-	return nil
-}
-
-// evictBeyondBound removes the oldest variants of one identity past
-// variantBound, never the just-installed file. On mtime ties a concurrent
-// runner's fresh variant can be evicted — execution cost on its next run,
-// never wrong serving.
-func evictBeyondBound(store, identity, keep string) {
-	matches, err := filepath.Glob(filepath.Join(store, identity+"-*.json"))
-	if err != nil || len(matches) <= variantBound {
-		return
-	}
-	type aged struct {
-		path string
-		mod  int64
-	}
-	var others []aged
-	for _, m := range matches {
-		if filepath.Base(m) == keep {
-			continue
-		}
-		info, err := os.Stat(m)
-		if err != nil {
-			continue
-		}
-		others = append(others, aged{m, info.ModTime().UnixNano()})
-	}
-	sort.Slice(others, func(i, j int) bool { return others[i].mod < others[j].mod })
-	for len(others) > variantBound-1 {
-		os.Remove(others[0].path)
-		others = others[1:]
-	}
+	// A torn variant costs only its own record through the per-file
+	// refusal leg, and the store's atomic install makes even that
+	// window vanish.
+	return store.Install(variantBound, recordstore.Entry{Name: fileName(rec), Data: data})
 }
 
 // Key is the record's identity.
@@ -863,60 +777,27 @@ func GC(dir string, live func(pkg, test string) bool, liveGroup func(group strin
 // gcSince is GC with the moment it is taken to begin: as under a load,
 // a ledger no younger than it is a concurrent install's and is spared.
 func gcSince(dir string, live func(pkg, test string) bool, liveGroup func(group string) bool, started time.Time) (removed, kept int, err error) {
-	store, err := StoreDir(dir)
+	store, err := open(dir)
 	if err != nil {
-		return 0, 0, err
-	}
-	entries, err := os.ReadDir(store)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return 0, 0, nil
-		}
 		return 0, 0, err
 	}
 	referenced := map[string]bool{}
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") || strings.HasPrefix(e.Name(), ".") {
-			continue
+	removed, kept, err = store.Sweep(func(name string, data []byte) bool {
+		rec, _, ok := decodeRecord(name, data)
+		if !ok || (liveGroup != nil && !liveGroup(rec.Group)) {
+			// What the loader permanently refuses — unreadable,
+			// identity-less, of a prior version, field-blind, misnamed —
+			// or a retired coordinate no current invocation produces:
+			// cost with no servable evidence behind it.
+			return false
 		}
-		path := filepath.Join(store, e.Name())
-		data, readErr := os.ReadFile(path)
-		var rec struct {
-			Version     int    `json:"version"`
-			Group       string `json:"group"`
-			Package     string `json:"package"`
-			Test        string `json:"test"`
-			Fingerprint struct {
-				TestVariantClosure string `json:"testVariantClosure"`
-			} `json:"fingerprint"`
+		if !live(rec.Package, rec.Test) {
+			return false
 		}
-		if readErr != nil || json.Unmarshal(data, &rec) != nil || rec.Package == "" || rec.Test == "" || rec.Version != version ||
-			(liveGroup != nil && !liveGroup(rec.Group)) {
-			// Unreadable, identity-less, a prior version the loader
-			// permanently refuses, or a retired coordinate no current
-			// invocation produces: cost with no servable evidence
-			// behind it.
-			if rmErr := os.Remove(path); rmErr == nil {
-				removed++
-			} else if err == nil {
-				err = rmErr
-			}
-			continue
-		}
-		if live(rec.Package, rec.Test) {
-			kept++
-			referenced[rec.Fingerprint.TestVariantClosure] = true
-			continue
-		}
-		if rmErr := os.Remove(path); rmErr == nil {
-			removed++
-		} else if err == nil {
-			// First failure wins; the counts still report the partial
-			// progress beside it.
-			err = rmErr
-		}
-	}
-	if sweepErr := sweepLedgers(store, referenced, started); sweepErr != nil && err == nil {
+		referenced[rec.Fingerprint.TestVariantClosure] = true
+		return true
+	})
+	if sweepErr := sweepLedgers(store.Path(), referenced, started); sweepErr != nil && err == nil {
 		err = sweepErr
 	}
 	return removed, kept, err

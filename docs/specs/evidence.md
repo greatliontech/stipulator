@@ -463,23 +463,42 @@ selected top-level runnable — executable examples counted among them — so no
 sibling runnable in the process can contribute unrecorded process state to
 the subject's outcome; an ordinary freshness check never infers proof selection.
 
-**REQ-evidence-witness-cache-format** (behavior): The local witness cache MUST live
-outside the repository, under the user cache directory keyed by the corpus root's
-absolute path, as one JSON file per record variant — named by the record identity's
-digest joined with its fingerprint's digest, each name segment the first
-sixteen hexadecimal characters of the REQ-model-hash-func digest — the
-identity segment over the producing capture group's build coordinate,
-the package, and the test name, NUL-separated (the coordinate itself
-the same truncated digest over the group's canonical
-declared-build-coordinate key); the
-fingerprint segment over the fingerprint's canonical JSON encoding; and
-the store's per-corpus directory the same truncation over the resolved
-corpus root's absolute path: a filename-length economy over the one
-hash the model defines, never a second hash function, with the per-file
-name-content agreement check absorbing the truncation's collision risk. The fingerprint's own 16-byte
+**REQ-evidence-record-store-layout** (behavior): Every machine-local
+record store MUST live outside the repository, under the user cache
+directory in a per-kind directory keyed by the corpus root's resolved
+absolute path, as one JSON file per record — named by the record
+identity's digest joined with its fingerprint's digest, each name
+segment the first sixteen hexadecimal characters of the
+REQ-model-hash-func digest, the identity segment over the kind's
+NUL-separated identity parts, the fingerprint segment over the
+fingerprint's canonical JSON encoding, and the store's per-corpus
+directory the same truncation over the root's path: a filename-length
+economy over the one hash the model defines, never a second hash
+function, with the per-file name-content agreement check absorbing the
+truncation's collision risk. Files install atomically through a
+dot-prefixed temporary and a rename, and a dot-prefixed name is never a
+record, so a reader never sees a torn file and garbage collection never
+claims an installing record's temporary. Records are read most recently
+installed first; a kind that admits one record per identity takes the
+first it meets, and a kind retaining variants tries them in that order. A record's refusal — malformed, field-blind, of a prior
+version, or disagreeing with its file name — is that record alone
+absent; sibling records stay trusted. Each kind states its identity
+parts, its retention bound per identity (the least recently installed
+variants beyond it evicted on install, a batch's later entry outranking
+its earlier one), its record version, and its fields. Enforced by
+`TestInstallKeepsTheNewestVariantsPerIdentity`, `TestNamesOrderAndTemporaries`,
+`TestInstallNeverEvictsAnUntouchedIdentity`, `TestSweepCountsAndSparesTemporaries`,
+`TestLayout`, `TestServedTakesTheNewestOfADuplicatedIdentity`.
+
+**REQ-evidence-witness-cache-format** (behavior): The local witness cache MUST be
+a record store (REQ-evidence-record-store-layout) of one file per record
+variant, its identity parts the producing capture group's build
+coordinate, the package, and the test name (the coordinate itself the
+same truncated digest over the group's canonical
+declared-build-coordinate key). The fingerprint's own 16-byte
 digests are Gofresh-owned integrity values, outside REQ-model-hash-func
-entirely. Files install atomically, so distinct tree
-states of one test coexist as variants and alternating between branches evicts
+entirely. Distinct tree states of one test coexist as variants, at most
+four per identity, and alternating between branches evicts
 nothing. Records install the moment their witness group completes — its last
 covering invocation executed and its closing validation passed — never as an
 end-of-run batch: a run dying mid-execution keeps every record already
@@ -678,19 +697,17 @@ not recorded. A fault anywhere on the serving path degrades to the typed
 load for the affected symbols (REQ-evidence-freshness-degrade).
 
 **REQ-evidence-resolution-cache-format** (behavior): The local resolution
-cache MUST live beside the witness cache under the user cache directory,
-keyed by the corpus root's absolute path, as one JSON file per record —
-named by the digest of the resolving build selection's key and the
-symbol, NUL-separated, joined with the digest of the fingerprint's
-canonical JSON encoding, each segment the first sixteen hexadecimal
-characters of the REQ-model-hash-func digest — carrying one record object
-with integer `version`, the selection key, the symbol, the fingerprint
-(source-closure tiers only: maximal closure, test-variant compartment,
-toolchain, build configuration, result kind), and the
-served fields REQ-evidence-resolution-freshness names. A malformed,
-field-blind, or prior-version record is ignored; a record whose
-fingerprint carries any observation, purity, or runtime tier is ignored,
-because resolution observes nothing at run time. A classifier change
+cache MUST be a record store (REQ-evidence-record-store-layout) beside
+the witness cache, its identity parts the resolving build selection's
+key and the symbol, holding one record per identity — a record
+installed under another fingerprint supersedes the identity's prior
+one — each carrying one record object with integer `version`, the
+selection key, the symbol, the fingerprint (source-closure tiers only:
+maximal closure, test-variant compartment, toolchain, build
+configuration, result kind), and the served fields
+REQ-evidence-resolution-freshness names. A record whose fingerprint
+carries any observation, purity, or runtime tier is ignored, because
+resolution observes nothing at run time. A classifier change
 that alters what a record proves bumps the version, so a record of a
 prior classifier never serves.
 

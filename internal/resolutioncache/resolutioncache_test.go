@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/greatliontech/gofresh"
+	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/stipulate"
 )
@@ -36,7 +37,7 @@ func TestRecordsRoundTripOnePerIdentity(t *testing.T) {
 		t.Fatalf("loaded %+v, want %+v", got, rec)
 	}
 	store, _ := StoreDir(dir)
-	if entries, _ := os.ReadDir(store); len(entries) != 1 || !strings.HasPrefix(entries[0].Name(), digest("race", "example.com/p.F")+"-") {
+	if entries, _ := os.ReadDir(store); len(entries) != 1 || !strings.HasPrefix(entries[0].Name(), recordstore.Digest("race", "example.com/p.F")+"-") {
 		t.Fatalf("store holds %v, want one file named by the identity digest", entries)
 	}
 	later := rec
@@ -91,26 +92,92 @@ func TestRecordsRefuseWhatTheStoreDoesNotServe(t *testing.T) {
 		t.Fatal(err)
 	}
 	store, _ := StoreDir(dir)
-	write := func(name string, mutate func(map[string]any)) {
+	// Each planted file is named by the record it carries — its
+	// identity and its own (distinct) fingerprint — so the file passes
+	// the name-content check and the refusal is the ladder's.
+	write := func(closure string, mutate func(map[string]any)) {
 		t.Helper()
 		e := map[string]any{}
 		data, _ := os.ReadFile(filepath.Join(store, fileName(good)))
 		if err := json.Unmarshal(data, &e); err != nil {
 			t.Fatal(err)
 		}
+		e["fingerprint"].(map[string]any)["maximalClosure"] = strings.Repeat(closure, 32)
 		mutate(e)
+		fp, _ := json.Marshal(e["fingerprint"])
+		var planted witnesscache.Fingerprint
+		if err := json.Unmarshal(fp, &planted); err != nil {
+			t.Fatal(err)
+		}
+		name := fileName(Record{Selection: good.Selection, Symbol: good.Symbol, Fingerprint: planted})
 		out, _ := json.Marshal(e)
 		if err := os.WriteFile(filepath.Join(store, name), out, 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
-	write("prior-version.json", func(e map[string]any) { e["version"] = version - 1 })
-	write("unknown-field.json", func(e map[string]any) { e["resolvedBy"] = "someone" })
-	write("unresolved.json", func(e map[string]any) { e["resolution"] = "not_found" })
-	write("runtime-tier.json", func(e map[string]any) {
+	write("1", func(e map[string]any) { e["version"] = version - 1 })
+	write("2", func(e map[string]any) { e["resolvedBy"] = "someone" })
+	write("3", func(e map[string]any) { e["resolution"] = "not_found" })
+	write("4", func(e map[string]any) {
 		e["fingerprint"].(map[string]any)["runtimeInputs"] = strings.Repeat("9", 32)
 	})
+	write("5", func(e map[string]any) { e["selection"] = "" })
 	if got := Load(dir); len(got) != 1 || got[0] != good {
 		t.Fatalf("loaded %+v, want the one good record", got)
+	}
+}
+
+// A record whose file name disagrees with the record inside is ignored
+// — the store serves nothing it did not name — and an install temporary
+// beside the records is never read and never swept: a concurrent
+// installer's rename is about to claim it.
+//
+//gofresh:pure
+func TestMisnamedRecordsAndTemporariesAreNotRecords(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-resolution-cache-format")
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	dir := t.TempDir()
+	rec := Record{Selection: "race", Symbol: "example.com/p.F", Fingerprint: fingerprint("a"), Resolution: "resolved", Shape: "func", Package: "example.com/p"}
+	if err := Install(dir, rec); err != nil {
+		t.Fatal(err)
+	}
+	store, _ := StoreDir(dir)
+	sameIdentity := rec
+	sameIdentity.Fingerprint = fingerprint("e")
+	if err := os.Rename(filepath.Join(store, fileName(rec)), filepath.Join(store, fileName(sameIdentity))); err != nil {
+		t.Fatal(err)
+	}
+	if got := Load(dir); len(got) != 0 {
+		t.Fatalf("a record under another fingerprint's name served: %+v", got)
+	}
+	// Live by identity and still collected: nothing serves it.
+	if removed, kept, err := GC(dir, func(string, string) bool { return true }); err != nil || removed != 1 || kept != 0 {
+		t.Fatalf("gc of the fingerprint-misnamed record = %d removed, %d kept, %v", removed, kept, err)
+	}
+	if err := Install(dir, rec); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(filepath.Join(store, fileName(rec)), filepath.Join(store, fileName(sameIdentity))); err != nil {
+		t.Fatal(err)
+	}
+	other := Record{Selection: "plain", Symbol: "example.com/p.G", Fingerprint: fingerprint("a")}
+	if err := os.Rename(filepath.Join(store, fileName(sameIdentity)), filepath.Join(store, fileName(other))); err != nil {
+		t.Fatal(err)
+	}
+	if got := Load(dir); len(got) != 0 {
+		t.Fatalf("a record under another identity's name served: %+v", got)
+	}
+	temp := filepath.Join(store, ".resolutions-live.json")
+	if err := os.WriteFile(temp, []byte("{"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// The misnamed record is live by identity and still goes: nothing
+	// serves it.
+	removed, kept, err := GC(dir, func(string, string) bool { return true })
+	if err != nil || removed != 1 || kept != 0 {
+		t.Fatalf("gc = %d removed, %d kept, %v; want the misnamed record alone removed", removed, kept, err)
+	}
+	if _, err := os.Stat(temp); err != nil {
+		t.Fatalf("the temporary was swept: %v", err)
 	}
 }

@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+
+	"github.com/greatliontech/stipulator/internal/recordstore"
 )
 
 // The toolchain's telemetry, on by default, forks a detached upload
@@ -134,8 +136,8 @@ func telemetryOffHome(source string) (string, error) {
 	sum := sha256.Sum256([]byte(source))
 	key := hex.EncodeToString(sum[:8])
 	var roots []string
-	if cache, err := os.UserCacheDir(); err == nil {
-		roots = append(roots, filepath.Join(cache, "stipulator", "telemetry-off"))
+	if root, err := recordstore.Root("telemetry-off"); err == nil {
+		roots = append(roots, root)
 	}
 	roots = append(roots, filepath.Join(telemetryTempRoot, "stipulator-telemetry-off-"+strconv.Itoa(os.Getuid())))
 	var errs []error

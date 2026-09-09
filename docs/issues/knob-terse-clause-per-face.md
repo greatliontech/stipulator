@@ -12,4 +12,4 @@ terse clause, or the clause rule stops at a parenthesis naming the
 other face, or the cross-face prose is accepted as the price of one
 line — a surface-doctrine judgment.
 
-Lands: user decision
+Lands: cross-tool train chunk 184
