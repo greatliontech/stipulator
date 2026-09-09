@@ -407,7 +407,7 @@ func resolve(docs []*document, tombstones map[string]bool, diags *[]Diagnostic) 
 			for i, c := range r.clauses {
 				cl := &stipulatorv1.Clause{}
 				cl.SetOrdinal(uint32(i + 1))
-				cl.SetText(canon.Text(profile.Plain(c.segs)))
+				cl.SetText(plainCanon(c.segs))
 				if c.label != "" {
 					if prev, dup := labels[c.label]; dup {
 						diag(c.loc, "requirement %s declares clause label %q twice (clauses %d and %d)", r.id, c.label, prev, i+1)
@@ -433,29 +433,32 @@ func resolve(docs []*document, tombstones map[string]bool, diags *[]Diagnostic) 
 			ir.SetLocation(t.loc)
 			irTerms = append(irTerms, ir)
 		}
-		for _, n := range d.notes {
-			checkOrphan(n.segs, n.loc)
-			ir := &stipulatorv1.Note{}
-			ir.SetText(canon.Text(profile.Plain(n.segs)))
-			ir.SetSource(n.source)
-			switch {
-			case n.attachedReq != "":
-				ir.SetAttachedTo(reqRef(n.attachedReq))
-			case n.attachedTerm != "":
-				ir.SetAttachedTo(termRef(n.attachedTerm))
+		// One walk over the context blocks: the canonical text, source,
+		// reference check, orphan-keyword check, and location are one
+		// concept for a note and an annotation; only the IR message and
+		// the note's attachment differ.
+		for _, c := range d.contexts {
+			checkOrphan(c.segs, c.loc)
+			text := plainCanon(c.segs)
+			refs := checkRefs(c.segs, c.loc)
+			if !c.note {
+				ir := &stipulatorv1.Annotation{}
+				ir.SetText(text)
+				ir.SetSource(c.source)
+				ir.SetReferences(refs)
+				ir.SetLocation(c.loc)
+				irAnns = append(irAnns, ir)
+				continue
 			}
-			ir.SetReferences(checkRefs(n.segs, n.loc))
-			ir.SetLocation(n.loc)
+			ir := &stipulatorv1.Note{}
+			ir.SetText(text)
+			ir.SetSource(c.source)
+			if c.attached != nil {
+				ir.SetAttachedTo(c.attached)
+			}
+			ir.SetReferences(refs)
+			ir.SetLocation(c.loc)
 			irNotes = append(irNotes, ir)
-		}
-		for _, a := range d.anns {
-			checkOrphan(a.segs, a.loc)
-			ir := &stipulatorv1.Annotation{}
-			ir.SetText(canon.Text(profile.Plain(a.segs)))
-			ir.SetSource(a.source)
-			ir.SetReferences(checkRefs(a.segs, a.loc))
-			ir.SetLocation(a.loc)
-			irAnns = append(irAnns, ir)
 		}
 	}
 
@@ -504,6 +507,12 @@ func resolve(docs []*document, tombstones map[string]bool, diags *[]Diagnostic) 
 	spec.SetAnnotations(irAnns)
 	spec.SetEdges(irEdges)
 	return spec
+}
+
+// plainCanon is the canonical text of a block's segments — the one
+// spelling every IR text field derives from.
+func plainCanon(segs []profile.Seg) string {
+	return canon.Text(profile.Plain(segs))
 }
 
 func reqRef(id string) *stipulatorv1.NodeRef {

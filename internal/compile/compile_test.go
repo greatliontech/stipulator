@@ -427,6 +427,11 @@ func TestReferences(t *testing.T) {
 		if len(anns) != 1 || len(anns[0].GetReferences()) != 1 {
 			t.Fatalf("annotations = %v", anns)
 		}
+		// The raw source rides the IR and is the annotation order's one
+		// key: bundles render it, never the text.
+		if anns[0].GetSource() != "See REQ-x-a for details." {
+			t.Fatalf("annotation source = %q", anns[0].GetSource())
+		}
 		for _, e := range spec.GetEdges() {
 			if e.GetKind() == stipulatorv1.EdgeKind_EDGE_KIND_REFERENCE && !e.GetFrom().HasRequirementId() && !e.GetFrom().HasTermName() {
 				t.Fatal("identity-less edge in global edge list")
@@ -482,6 +487,19 @@ func TestNotes(t *testing.T) {
 	}
 	if n := byText["Section commentary."]; n.HasAttachedTo() {
 		t.Errorf("section note should have no attachment, got %v", n.GetAttachedTo())
+	}
+	// The raw source rides the IR: bundles render it, never the text.
+	if n := byText["Attached commentary."]; n.GetSource() != "> Attached commentary." {
+		t.Errorf("note source = %q", n.GetSource())
+	}
+	// A note following a term attaches to the term, never to the
+	// requirement before it.
+	spec, diags = compileFiles(t, map[string]string{
+		"specs/b.md": "# T\n\n**REQ-x-b** (behavior): It MUST y.\n\n**widget** (term): a gadget.\n\n> Term commentary.\n",
+	})
+	wantClean(t, diags)
+	if notes := spec.GetNotes(); len(notes) != 1 || notes[0].GetAttachedTo().GetTermName() != "widget" || notes[0].GetAttachedTo().GetRequirementId() != "" {
+		t.Errorf("term note attachment = %v", notes)
 	}
 }
 

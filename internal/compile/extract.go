@@ -10,13 +10,24 @@ import (
 	"github.com/greatliontech/stipulator/internal/profile"
 )
 
-type reqBlock struct {
-	id     string
-	kind   string
-	edges  []profile.DeclaredEdge
+// blockCore is what every extracted block carries: its text segments,
+// its raw markdown, and its location — the facts the extent tracker,
+// the reference and orphan checks, and every IR emit read.
+type blockCore struct {
 	segs   []profile.Seg
 	source string
 	loc    *stipulatorv1.Location
+}
+
+func core(node gast.Node, src []byte, loc *stipulatorv1.Location) blockCore {
+	return blockCore{segs: profile.BlockSegs(node, src), source: profile.Source(node, src), loc: loc}
+}
+
+type reqBlock struct {
+	blockCore
+	id    string
+	kind  string
+	edges []profile.DeclaredEdge
 	// extent is the context extent — the note and annotation blocks
 	// following this requirement up to the next identity lead, heading,
 	// or thematic break (REQ-profile-context-extent). Consent surface
@@ -36,10 +47,8 @@ type clauseBlock struct {
 }
 
 type termBlock struct {
-	name   string
-	segs   []profile.Seg
-	source string
-	loc    *stipulatorv1.Location
+	blockCore
+	name string
 	// extent as on reqBlock (REQ-profile-context-extent).
 	extent extent
 }
@@ -52,18 +61,18 @@ type extent struct {
 	source []string
 }
 
-type noteBlock struct {
-	segs         []profile.Seg
-	source       string
-	attachedReq  string
-	attachedTerm string
-	loc          *stipulatorv1.Location
-}
-
-type annBlock struct {
-	segs   []profile.Seg
-	source string
-	loc    *stipulatorv1.Location
+// contextBlock is one context block — a note or an annotation: the
+// profile hands both down as one shape with a Context identity, a
+// note additionally attached to the requirement or term whose
+// attachment window it lies in, otherwise unattached (REQ-profile-note);
+// an annotation is never attached. One block type for two profile
+// kinds makes an attached annotation representable; the profile's own
+// walk never constructs one (an Annotation has no AttachedTo), so the
+// emit trusts the note flag rather than re-deriving the kind.
+type contextBlock struct {
+	blockCore
+	note     bool
+	attached *stipulatorv1.NodeRef
 }
 
 type headingBlock struct {
@@ -81,8 +90,7 @@ type document struct {
 	sections  []*stipulatorv1.Section
 	reqs      []*reqBlock
 	terms     []*termBlock
-	notes     []*noteBlock
-	anns      []*annBlock
+	contexts  []*contextBlock
 	headings  []headingBlock
 }
 
@@ -140,12 +148,10 @@ func extractDocument(path string, root gast.Node, src []byte, refLabels []string
 			d.headings = append(d.headings, headingBlock{segs: segs, loc: loc(node)})
 		case *profile.Requirement:
 			rb := &reqBlock{
-				id:     node.ID,
-				kind:   node.ClauseKind,
-				edges:  node.Edges,
-				segs:   profile.BlockSegs(node, src),
-				source: profile.Source(node, src),
-				loc:    loc(node),
+				blockCore: core(node, src, loc(node)),
+				id:        node.ID,
+				kind:      node.ClauseKind,
+				edges:     node.Edges,
 			}
 			for _, c := range profile.Clauses(node, src) {
 				rb.clauses = append(rb.clauses, clauseBlock{label: c.Label, segs: c.Segs, loc: loc(c.Item)})
@@ -154,35 +160,25 @@ func extractDocument(path string, root gast.Node, src []byte, refLabels []string
 			extentOf[node] = &rb.extent
 		case *profile.Term:
 			tb := &termBlock{
-				name:   node.Name,
-				segs:   profile.BlockSegs(node, src),
-				source: profile.Source(node, src),
-				loc:    loc(node),
+				blockCore: core(node, src, loc(node)),
+				name:      node.Name,
 			}
 			d.terms = append(d.terms, tb)
 			extentOf[node] = &tb.extent
 		case *profile.Note:
-			nb := &noteBlock{
-				segs:   profile.BlockSegs(node, src),
-				source: profile.Source(node, src),
-				loc:    loc(node),
-			}
+			cb := &contextBlock{blockCore: core(node, src, loc(node)), note: true}
 			switch a := node.AttachedTo().(type) {
 			case *profile.Requirement:
-				nb.attachedReq = a.ID
+				cb.attached = reqRef(a.ID)
 			case *profile.Term:
-				nb.attachedTerm = a.Name
+				cb.attached = termRef(a.Name)
 			}
-			d.notes = append(d.notes, nb)
-			extend(node.Context, nb.segs, nb.source)
+			d.contexts = append(d.contexts, cb)
+			extend(node.Context, cb.segs, cb.source)
 		case *profile.Annotation:
-			ab := &annBlock{
-				segs:   profile.BlockSegs(node, src),
-				source: profile.Source(node, src),
-				loc:    loc(node),
-			}
-			d.anns = append(d.anns, ab)
-			extend(node.Context, ab.segs, ab.source)
+			cb := &contextBlock{blockCore: core(node, src, loc(node))}
+			d.contexts = append(d.contexts, cb)
+			extend(node.Context, cb.segs, cb.source)
 		case *gast.ThematicBreak:
 			// Structure only: the profile walk already closed the
 			// extent at it, and a break carries no text.
