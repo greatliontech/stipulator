@@ -260,6 +260,25 @@ func ServingClassRequired(tr *TestRun) error {
 // ErrNotServingClass names the refused execution class.
 var ErrNotServingClass = errors.New("this operation takes serving-class witness evidence (proven-fresh records with selective execution of the stale remainder), never a whole policy execution")
 
+// CloseBackends releases an operation's backends: a backend that owns a
+// child or a store closes it.
+func CloseBackends(backends map[string]Backend) {
+	for _, b := range backends {
+		if c, ok := b.(interface{ Close() error }); ok {
+			_ = c.Close()
+		}
+	}
+}
+
+// SeedingOf is the Go backend's seeding view, nil when the operation
+// holds none.
+func SeedingOf(backends map[string]Backend) WitnessSeeding {
+	if seeding, ok := backends["go"].(WitnessSeeding); ok {
+		return seeding
+	}
+	return nil
+}
+
 // WitnessClassifier is an optional Backend extension: it resolves, from
 // the code, what class of witness a bound test yields.
 type WitnessClassifier interface {
@@ -361,10 +380,6 @@ type Report struct {
 	// verify report: a subject denied an outcome is diagnosable from the
 	// same report that says so. Nil in unwitnessed runs.
 	Diagnostics []*stipulatorv1.FailureDiagnostic
-	// ServingEvidence carries the witness run's execution-class mark
-	// (TestRun.SelectiveServing) so serving-class-mandated consumers
-	// (REQ-gap-resolved-pruned) can enforce it from the report alone.
-	ServingEvidence bool
 	// Attestations holds the verified state of every well-formed
 	// requirement attestation, in store order.
 	Attestations []AttestationResult
@@ -698,7 +713,6 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 	if testRun != nil {
 		rep.OutsidePolicy = testRun.OutsidePolicy
 		rep.Diagnostics = testRun.Diagnostics
-		rep.ServingEvidence = testRun.SelectiveServing
 		// Cross-check runtime registrations: every registration must be
 		// backed by a witness-role binding (tests or proves) for the same
 		// requirement on the registration's top-level test — the binding

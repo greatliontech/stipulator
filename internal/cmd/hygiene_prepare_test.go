@@ -111,11 +111,12 @@ func TestNoTestVerificationNeedsNoPolicyRecord(t *testing.T) {
 	neutralAmbient(t)
 	dir := t.TempDir()
 	files := map[string]string{
-		"go.mod":                           "module example.com/notest\n\ngo 1.26.4\n",
-		"ok/ok.go":                         "package ok\n\nfunc Double(x int) int { return 2 * x }\n",
-		"specs/check.md":                   "# Check\n\n**REQ-fix-may** (behavior): The fixture MAY pass.\n",
-		".stipulator/manifest.textproto":   "include: \"specs/**/*.md\"\n",
-		".stipulator/bindings/b.textproto": "bindings {\n  requirement_id: \"REQ-fix-may\"\n  backend: \"go\"\n  symbol: \"example.com/notest/ok.Double\"\n  role: BINDING_ROLE_IMPLEMENTS\n}\n",
+		"go.mod":                             "module example.com/notest\n\ngo 1.26.4\n",
+		"ok/ok.go":                           "package ok\n\nfunc Double(x int) int { return 2 * x }\n",
+		"specs/check.md":                     "# Check\n\n**REQ-fix-may** (behavior): The fixture MAY pass.\n",
+		".stipulator/manifest.textproto":     "include: \"specs/**/*.md\"\n",
+		".stipulator/gaps/fix-may.textproto": "requirement_id: \"REQ-fix-may\"\nreason: \"pending\"\nlands {\n  manual {\n    condition: \"judged done\"\n  }\n}\n",
+		".stipulator/bindings/b.textproto":   "bindings {\n  requirement_id: \"REQ-fix-may\"\n  backend: \"go\"\n  symbol: \"example.com/notest/ok.Double\"\n  role: BINDING_ROLE_IMPLEMENTS\n}\n",
 	}
 	for path, content := range files {
 		full := filepath.Join(dir, filepath.FromSlash(path))

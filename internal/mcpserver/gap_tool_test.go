@@ -385,6 +385,8 @@ func TestPruneToolScopesWitnessEvaluationToGappedRequirements(t *testing.T) {
 			return &verify.TestRun{
 				RaceEnabled:      true,
 				SelectiveServing: true,
+				Ran:              1,
+				Fresh:            2,
 				Outcomes:         map[string]verify.TestOutcome{"example.com/p.TestA": verify.TestPassed},
 			}, nil
 		}
@@ -399,7 +401,9 @@ func TestPruneToolScopesWitnessEvaluationToGappedRequirements(t *testing.T) {
 	if c, ok := writes[gapPath]; !ok || c != nil {
 		t.Fatalf("resolved gap not deleted (ok=%v)", ok)
 	}
-	if b, _ := json.Marshal(res.StructuredContent); !strings.Contains(string(b), "evaluated 1 gap records") {
+	// The evaluation line names the gap-record count and the served
+	// and executed witness counts, in that order (REQ-gap-resolved-pruned).
+	if b, _ := json.Marshal(res.StructuredContent); !strings.Contains(string(b), "evaluated 1 gap records: 2 witnesses served, 1 executed") {
 		t.Fatalf("result does not name the evaluation performed: %s", b)
 	}
 }

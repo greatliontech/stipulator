@@ -512,6 +512,9 @@ func TestPruneToolStoreGC(t *testing.T) {
 	install("example.com/p", "TestDeparted")
 	sess, _ := harnessWith(t, map[string]string{
 		".stipulator/bindings/m.textproto": pinnedBinding(t),
+		// A non-tests-role binding naming the departed symbol confers no
+		// obligation: the universe is the tests-role symbols alone.
+		".stipulator/bindings/impl.textproto": "bindings {\n  requirement_id: \"REQ-m-a\"\n  backend: \"go\"\n  symbol: \"example.com/p.TestDeparted\"\n  role: BINDING_ROLE_IMPLEMENTS\n}\n",
 	}, func(srv *Server) { srv.root = root })
 	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "prune", Arguments: map[string]any{"store": true}})
 	if err != nil || res.IsError {

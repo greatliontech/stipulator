@@ -2190,3 +2190,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "b4abccbb7a2220df7d6cb8a3042298b1d4310799d68167e22ef251633a9bd2e8"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-store-gc"
+  content_hash: "90481a965a01f43b763e82a7a47fdee7b61852160f3975472cd4b9c6ec3aa2bf"
+  source_hash: "95444b13fe15a058e607da84eb2f28fa89087ba903a4c9a3d79f21c29f6d3ee4"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/prune.TestModeRefusesStoreCompositions"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c6aa4b70c8804e5ec59d04c3221c20c51ae54402279e120c788b01dc592369f3"
+}

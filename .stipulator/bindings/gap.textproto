@@ -426,9 +426,9 @@ bindings {
   content_hash: "15bb833109778d7ac84b82e73b309f16ee5f0096ab092f4d082892b796b2b3c0"
   source_hash: "ac9c2f391c06123d3fb21126cde04b19835eb6c78f3c3ec50c66f9214d65bcc9"
   backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestPruneCallSitePinsServingClassRefusal"
+  symbol: "github.com/greatliontech/stipulator/internal/prune.TestPruneCallSitePinsServingClassRefusal"
   role: BINDING_ROLE_TESTS
-  shape_hash: "b26f12c6c4b629cad43f9ad458e490f2c015b6489683cc61b3c74c2da469e012"
+  shape_hash: "32b06e61914759c895f90d6507e1b5cb4483a71cb538916ebe49a666bf178c87"
 }
 
 bindings {
@@ -669,4 +669,44 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestGateRowNamesTheContradictedClass"
   role: BINDING_ROLE_TESTS
   shape_hash: "7a442ab7ab525a8557a361e0b9604189c6e9627de21fcd72741363b60a08ff7c"
+}
+
+bindings {
+  requirement_id: "REQ-gap-resolved-pruned"
+  content_hash: "15bb833109778d7ac84b82e73b309f16ee5f0096ab092f4d082892b796b2b3c0"
+  source_hash: "ac9c2f391c06123d3fb21126cde04b19835eb6c78f3c3ec50c66f9214d65bcc9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/prune.TestEvaluateGathersNothingWithoutGapRecords"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a0b28d951a81c2af1618fc78d3cbe66a7cb16d64314e939fe4eac14ba0d48948"
+}
+
+bindings {
+  requirement_id: "REQ-gap-prune-dangling"
+  content_hash: "5b5353cc8875e8573622c2fea39a4cd9afe4673919c3f7bb9fcb5a959f42bbf0"
+  source_hash: "908f8357230734f8b54e077076e775ef7a717fc417d7385fcb461a8d8e3b367b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/prune.TestDanglingJudgesFromTheCorpusAlone"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b2cfb3ddc96dfaa7d45cd02da66353fc543fbc3a3a33c59d6ae090ea351ea6b7"
+}
+
+bindings {
+  requirement_id: "REQ-gap-resolved-pruned"
+  content_hash: "15bb833109778d7ac84b82e73b309f16ee5f0096ab092f4d082892b796b2b3c0"
+  source_hash: "ac9c2f391c06123d3fb21126cde04b19835eb6c78f3c3ec50c66f9214d65bcc9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/prune.TestEvaluateRefusesHygieneBeforeAnyChild"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "47768cb5cf42df7be3e77b14413accbfc94eb2542bffde8528a491b741a49920"
+}
+
+bindings {
+  requirement_id: "REQ-gap-resolved-pruned"
+  content_hash: "15bb833109778d7ac84b82e73b309f16ee5f0096ab092f4d082892b796b2b3c0"
+  source_hash: "ac9c2f391c06123d3fb21126cde04b19835eb6c78f3c3ec50c66f9214d65bcc9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPruneRefusesOnAVerificationProblem"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c80ede28c5d17ce3c9cfd348c075812508a060db134d30e992de090d954fa3eb"
 }

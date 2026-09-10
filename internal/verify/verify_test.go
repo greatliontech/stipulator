@@ -406,9 +406,6 @@ func TestWitnessCorrelation(t *testing.T) {
 	if rep.OutsidePolicy != 2 || len(rep.Diagnostics) != 1 || rep.Diagnostics[0].GetPackage() != "example.com/p" || rep.Diagnostics[0].GetOutput() != "package abort" {
 		t.Fatalf("report lost witnessing facts: outside=%d diags=%v", rep.OutsidePolicy, rep.Diagnostics)
 	}
-	if !rep.ServingEvidence {
-		t.Fatal("report lost the run's serving-class mark")
-	}
 	if err := ServingClassRequired(&TestRun{}); err == nil {
 		t.Fatal("whole-execution evidence accepted where the serving class is mandated")
 	}

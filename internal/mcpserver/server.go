@@ -46,11 +46,11 @@ import (
 	"github.com/greatliontech/stipulator/internal/facts"
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/internal/progress"
+	"github.com/greatliontech/stipulator/internal/prune"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/views"
 	"github.com/greatliontech/stipulator/internal/wire"
-	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
 
 // Server serves one repository. The function fields exist so tests can
@@ -212,37 +212,13 @@ func New(dir string) *Server {
 	}
 }
 
-// seedingOf is the witness run's classifier: the same owned child the
-// tool opened to resolve bindings, so one tool call owns one process
-// (REQ-check-preparation's shared resolver).
-// closeBackends releases a tool's backends: the served backend publishes
-// its records and closes its child; a plain child closes.
-func closeBackends(backends map[string]verify.Backend) {
-	for _, b := range backends {
-		if c, ok := b.(interface{ Close() error }); ok {
-			_ = c.Close()
-		}
-	}
-}
-
-func seedingOf(backends map[string]verify.Backend) verify.WitnessSeeding {
-	if seeding, ok := backends["go"].(verify.WitnessSeeding); ok {
-		return seeding
-	}
-	return nil
-}
-
 // makeBackends prepares a tool's verification backend: served over the
 // operation's symbol set (resolutions proven fresh serve, the owned
 // child opens only for the stale remainder —
 // REQ-evidence-resolution-freshness); a declaration-reading tool passes
 // no symbols and reaches the whole-tree child through the same backend.
 func makeBackends(ctx context.Context, dir string, symbols []string) (map[string]verify.Backend, error) {
-	served, err := golang.NewServed(ctx, dir, symbols)
-	if err != nil {
-		return nil, err
-	}
-	return map[string]verify.Backend{"go": served}, nil
+	return golang.Backends(ctx, dir, symbols)
 }
 
 // Run serves MCP over stdio until the context ends.
@@ -514,11 +490,11 @@ func (s *Server) verifyPipeline(ctx context.Context, noTest bool, scopeIDs strin
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	defer closeBackends(backends)
+	defer verify.CloseBackends(backends)
 	var tr *verify.TestRun
 	if !noTest {
 		rep.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
-		tr, err = s.runTests(ctx, pc, seedingOf(backends), nil)
+		tr, err = s.runTests(ctx, pc, verify.SeedingOf(backends), nil)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -1067,7 +1043,7 @@ func (s *Server) toolBind(ctx context.Context, req *mcp.CallToolRequest, in bind
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
-	defer closeBackends(backends)
+	defer verify.CloseBackends(backends)
 	ups, err := author.Binds(s.fsys(), backends, reqs)
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
@@ -1238,13 +1214,13 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 	if err != nil {
 		return nil, gapOut{}, terminalToolError(prog, ctx, err)
 	}
-	defer closeBackends(backends)
+	defer verify.CloseBackends(backends)
 	var tr *verify.TestRun
 	if len(scope) > 0 {
 		// An empty scope means no bound witness can move any
 		// gap-relevant bucket, so the evaluation is witness-free.
 		prog.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
-		if tr, err = s.runTests(ctx, pc, seedingOf(backends), scope); err != nil {
+		if tr, err = s.runTests(ctx, pc, verify.SeedingOf(backends), scope); err != nil {
 			return nil, gapOut{}, terminalToolError(prog, ctx, err)
 		}
 	}
@@ -1421,7 +1397,7 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 		if err != nil {
 			return nil, writeOut{}, terminalToolError(prog, ctx, err)
 		}
-		defer closeBackends(backends)
+		defer verify.CloseBackends(backends)
 		wanted := map[string]bool{}
 		for _, id := range ids {
 			wanted[id] = true
@@ -1461,7 +1437,7 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
-	defer closeBackends(backends)
+	defer verify.CloseBackends(backends)
 	var resolutionNotes []string
 	updates, preserved, reshaped, rehashed, err := records.Pin(store, records.HashesOf(spec), author.ResolveShapes(store, backends, nil, func(symbol string, err error) {
 		resolutionNotes = append(resolutionNotes, fmt.Sprintf("shape resolution skipped %s: %v - its shape pin was not judged this call", symbol, err))
@@ -1598,7 +1574,7 @@ func (s *Server) toolRetarget(ctx context.Context, req *mcp.CallToolRequest, in 
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
-	defer closeBackends(backends)
+	defer verify.CloseBackends(backends)
 	res, err := author.Retarget(s.fsys(), backends, backend, in.From, in.To)
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
@@ -1681,72 +1657,42 @@ type pruneIn struct {
 // problem could misreport a bucket and prune a still-load-bearing gap.
 // It writes only under .stipulator/gaps/.
 func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pruneIn) (*mcp.CallToolResult, writeOut, error) {
-	// Store GC is an identity-liveness fact: the current bound
-	// tests-role symbols ARE the obligation universe, matched by exact
-	// record-key equality, and it runs only as this explicit mode -
-	// never opportunistically, since an identity absent from THIS tree
-	// state may be live on another branch (REQ-evidence-store-gc). The
-	// store lives in the user cache, outside the corpus - the
+	mode := prune.Mode{Check: in.Check, Dangling: in.Dangling, Store: in.Store}
+	if err := mode.Validate(); err != nil {
+		return nil, writeOut{}, err
+	}
+	deps := prune.Deps{
+		Root:     s.root,
+		Prepare:  s.prepare,
+		Compile:  s.compileFresh,
+		Load:     func() (*records.Store, error) { return records.Load(s.fsys()) },
+		Capture:  s.capture,
+		Backends: s.backends,
+		RunTests: func(ctx context.Context, pc *golang.Capture, seeding verify.WitnessSeeding, scope map[gofresh.Subject]bool, _ string) (*verify.TestRun, error) {
+			return s.runTests(ctx, pc, seeding, scope)
+		},
+	}
+	// The store lives in the user cache, outside the corpus - the
 	// .stipulator/ write confinement governs record writes, not the
 	// tool's own cache.
-	if in.Store {
-		if in.Check || in.Dangling {
-			return nil, writeOut{}, fmt.Errorf("prune: store composes with no other prune mode")
-		}
-		store, err := records.Load(s.fsys())
-		if err != nil {
-			return nil, writeOut{}, err
-		}
-		live := map[string]bool{}
-		for _, bf := range store.Bindings {
-			for _, b := range bf.Set.GetBindings() {
-				if b.GetRole() == stipulatorv1.BindingRole_BINDING_ROLE_TESTS {
-					live[b.GetSymbol()] = true
-				}
-			}
-		}
-		var liveGroup func(string) bool
-		// A policy the operation cannot capture keeps every coordinate:
-		// cost cleanup never guesses.
-		pc, cerr := s.capture(ctx)
-		if cerr == nil && pc != nil {
-			digests := golang.LiveGroupDigests(pc)
-			liveGroup = func(group string) bool { return digests[group] }
-		}
-		removed, kept, err := witnesscache.GC(s.root, func(pkg, test string) bool {
-			return live[pkg+"."+test]
-		}, liveGroup)
+	if mode.Store {
+		res, err := prune.StoreGC(ctx, deps)
 		if err != nil {
 			return nil, writeOut{}, err
 		}
 		// The line rides Notes too: a structured-preferring client must
 		// not read an empty object where the text names the outcome.
-		out := writeOut{Notes: []string{fmt.Sprintf("store gc: %d record variant(s) removed, %d kept", removed, kept)}}
-		// The resolution records beside them, judged only under a
-		// captured policy, since the witness subjects come from it.
-		if cerr == nil && pc != nil {
-			resolutionsRemoved, resolutionsKept, err := golang.GCResolutions(ctx, s.root, store, pc)
-			if err != nil {
-				return nil, writeOut{}, err
-			}
-			out.Notes = append(out.Notes, fmt.Sprintf("store gc: %d resolution record(s) removed, %d kept", resolutionsRemoved, resolutionsKept))
+		out := writeOut{Notes: []string{fmt.Sprintf("store gc: %d record variant(s) removed, %d kept", res.Removed, res.Kept)}}
+		if res.Resolutions != nil {
+			out.Notes = append(out.Notes, fmt.Sprintf("store gc: %d resolution record(s) removed, %d kept", res.Resolutions.Removed, res.Resolutions.Kept))
 		}
 		return textOnly(strings.Join(out.Notes, "\n")), out, nil
 	}
-	// Danglingness is a corpus-and-records fact: no witnesses, no symbol
-	// resolution, and no verification gate — a dangling gap IS a
-	// verification problem, so gating its repair on clean verification
-	// would deadlock the repair.
-	if in.Dangling {
-		spec, err := s.compileFresh()
+	if mode.Dangling {
+		prunes, err := prune.Dangling(deps)
 		if err != nil {
 			return nil, writeOut{}, err
 		}
-		store, err := records.Load(s.fsys())
-		if err != nil {
-			return nil, writeOut{}, err
-		}
-		prunes := author.PruneDanglingGaps(store, records.HashesOf(spec))
 		if in.Check {
 			out := writeOut{Check: true}
 			for _, up := range prunes {
@@ -1767,97 +1713,38 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 		return out.result(), out, nil
 	}
 	ctx, prog := s.startProgress(ctx, req)
-	store, err := records.Load(s.fsys())
+	deps.Phase = prog.Phase
+	res, err := prune.Evaluate(ctx, deps, false)
 	if err != nil {
+		var pe *prune.ProblemsError
+		if errors.As(err, &pe) {
+			err = verificationProblems(&verify.Report{Problems: pe.Problems})
+		}
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
-	prog.Phase(stipulatorv1.Phase_PHASE_COMPILE)
-	prepared, err := s.prepare()
-	if err != nil {
-		return nil, writeOut{}, terminalToolError(prog, ctx, err)
-	}
-	spec, pol := prepared.Spec, prepared.Coverage
-	// Deletion-only fast path: no gap records means nothing can resolve,
-	// so no witness evidence is gathered at all - the corpus compile and
-	// its diagnostics remain (REQ-gap-resolved-pruned).
-	if len(store.Gaps) == 0 {
+	if !res.Evaluated {
 		out := writeOut{Notes: []string{"no gap records - nothing to evaluate"}, Check: in.Check}
 		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 		return stampedResult(out.result(), prog), out, nil
 	}
-	// Resolution reads the gapped requirements' coverage - and, for a
-	// gap with a covered(<id>) landing condition, the condition target's
-	// coverage - so the stale-remainder execution narrows to those
-	// requirements' bound subjects. A gap id outside the corpus is
-	// dangling - never resolvable, owned by the explicit dangling mode -
-	// filtered rather than refused; the dangling record still surfaces
-	// as a verification problem below.
-	scope, _, err := check.GapScope(spec, store)
-	if err != nil {
-		return nil, writeOut{}, terminalToolError(prog, ctx, err)
-	}
-	// A resolved gap is derived from coverage, which is only sound when
-	// verification is clean: the record-only half refuses before any
-	// child process (REQ-check-preparation).
-	if problems := prepared.Hygiene; len(problems) > 0 {
-		return nil, writeOut{}, terminalToolError(prog, ctx, verificationProblems(&verify.Report{Problems: problems}))
-	}
-	pc, err := s.capture(ctx)
-	if err != nil {
-		return nil, writeOut{}, terminalToolError(prog, ctx, err)
-	}
-	symbols, err := golang.OperationSymbols(ctx, store, pc)
-	if err != nil {
-		return nil, writeOut{}, terminalToolError(prog, ctx, err)
-	}
-	backends, err := s.backends(ctx, symbols)
-	if err != nil {
-		return nil, writeOut{}, terminalToolError(prog, ctx, err)
-	}
-	defer closeBackends(backends)
-	prog.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
-	tr, err := s.runTests(ctx, pc, seedingOf(backends), scope)
-	if err != nil {
-		return nil, writeOut{}, terminalToolError(prog, ctx, err)
-	}
-	prog.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
-	rep := verify.Run(spec, store, backends, tr)
-	evaluated := fmt.Sprintf("evaluated %d gap records: %d witnesses served, %d executed", len(store.Gaps), tr.Fresh, tr.Ran)
-	// The resolved-record evaluation is pinned to the serving class
-	// (REQ-gap-resolved-pruned); the producer's mark makes a wrong
-	// witness source a loud refusal.
-	if !rep.ServingEvidence {
-		return nil, writeOut{}, terminalToolError(prog, ctx, verify.ErrNotServingClass)
-	}
-	if err := verificationProblems(rep); err != nil {
-		return nil, writeOut{}, terminalToolError(prog, ctx, err)
-	}
-	prog.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
-	cov := coverage.Evaluate(spec, rep, store, true, pol)
-	resolved := map[string]bool{}
-	for _, g := range cov.Gaps {
-		if g.State == coverage.Resolved {
-			resolved[g.RequirementId] = true
-		}
-	}
-	prunes := author.PruneResolvedGaps(store, resolved)
+	evaluated := res.Line()
 	if in.Check {
 		out := writeOut{Notes: []string{evaluated}, Check: true}
-		for _, up := range prunes {
+		for _, up := range res.Prunes {
 			out.Notes = append(out.Notes, "resolved gap lingers: "+up.Path)
 		}
-		if len(prunes) == 0 {
+		if len(res.Prunes) == 0 {
 			out.Notes = append(out.Notes, "no resolved gap records linger")
 		}
 		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 		return stampedResult(out.result(), prog), out, nil
 	}
-	out, err := s.apply(prunes)
+	out, err := s.apply(res.Prunes)
 	if err != nil {
 		return nil, writeOut{}, terminalToolError(prog, ctx, err)
 	}
 	out.Notes = append(out.Notes, evaluated)
-	if len(prunes) == 0 {
+	if len(res.Prunes) == 0 {
 		out.Notes = append(out.Notes, "no resolved gap records linger")
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
@@ -1914,7 +1801,7 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 		if err != nil {
 			return nil, nil, terminalToolError(prog, ctx, err)
 		}
-		defer closeBackends(backends)
+		defer verify.CloseBackends(backends)
 		_, decls, floor, err := facts.Context(spec, store, backends, ids)
 		if err != nil {
 			return nil, nil, terminalToolError(prog, ctx, err)
@@ -1980,7 +1867,7 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
-	defer closeBackends(backends)
+	defer verify.CloseBackends(backends)
 	var ids []string
 	if strings.TrimSpace(in.Ids) != "" {
 		ids, err = splitIDs(in.Ids)

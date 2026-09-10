@@ -178,6 +178,17 @@ func NewServed(ctx context.Context, dir string, symbols []string) (*Served, erro
 	return s, nil
 }
 
+// Backends is the verification backend set an operation runs over: the
+// served Go backend under its name, the one spelling every face and
+// core reads (verify.CloseBackends releases it).
+func Backends(ctx context.Context, dir string, symbols []string) (map[string]verify.Backend, error) {
+	served, err := NewServed(ctx, dir, symbols)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]verify.Backend{"go": served}, nil
+}
+
 // NewWholeTree prepares the whole-tree form: the typed path over the
 // whole tree with nothing served or published and no selection read,
 // so a policy the tree cannot parse refuses only where the typed path

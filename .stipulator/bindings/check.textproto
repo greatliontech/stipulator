@@ -790,3 +790,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "8040ae2b15bf8cf90827ec322db78cfdf9408fe714a624b08f9c476766c70209"
 }
+
+bindings {
+  requirement_id: "REQ-check-preparation"
+  content_hash: "221f271e519e5422845007a894aad1ddde9ab268713bdcfbec4157abb6ccfee5"
+  source_hash: "acf2f98da884aa3e987326da4de58dc42d1a7739f5eee7955355d06acd92cd05"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/prune.TestEvaluateRefusesHygieneBeforeAnyChild"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "47768cb5cf42df7be3e77b14413accbfc94eb2542bffde8528a491b741a49920"
+}
