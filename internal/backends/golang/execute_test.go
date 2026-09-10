@@ -1095,6 +1095,11 @@ func TestGoExecuteBinaryTimeoutLateFlushKeepsCompletedFailure(t *testing.T) {
 	if !strings.Contains(d.GetOutput(), "running when the budget expired: TestSlow\n") {
 		t.Errorf("roster victim not listed alone as running at exhaustion: %q", d.GetOutput())
 	}
+	// Nor does the residue name it: it left no output, so it has no
+	// aborted section; the roster is the one attribution.
+	if strings.Contains(d.GetOutput(), "TestGhost") {
+		t.Errorf("a started test outside the roster named in the budget diagnostic: %q", d.GetOutput())
+	}
 	started := startedTests(st)
 	if !slices.Contains(started, "TestSlow") || slices.Contains(started, "TestRed") {
 		t.Errorf("started set = %v, want no completed test in the isolation feed", started)

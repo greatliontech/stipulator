@@ -1010,3 +1010,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "7552ee7dac9803efd35097489031a1ef94ac1c7834ace4452032c121d81d7201"
 }
+
+bindings {
+  requirement_id: "REQ-policy-budget-attribution"
+  content_hash: "98897133f68db6f58f358ec7d8f2b5ba8432b353b1d02d275bb6c65edff3bf78"
+  source_hash: "b74a52dd9b2392994d57668c92761e0e1472a6fed1169a8c5bb706d4cc2c458a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunResidueIsOneCompositionOnEveryArm"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "de74f5ba1d8a038d8efba71bcf8fc7969ae960e5ad40808c4a33bbcd83878696"
+}

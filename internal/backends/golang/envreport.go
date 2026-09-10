@@ -5,7 +5,6 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"unicode/utf8"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 )
@@ -74,14 +73,7 @@ func truncateValidUTF8(s string, limit int) string {
 	// byte it replaces, so scrubbing after the cut could expand the
 	// result past the limit — the cut then operates on valid text and
 	// the boundary backoff is exact.
-	s = strings.ToValidUTF8(s, "�")
-	if len(s) > limit {
-		for limit > 0 && !utf8.RuneStart(s[limit]) {
-			limit--
-		}
-		s = s[:limit]
-	}
-	return s
+	return cutAtRune(strings.ToValidUTF8(s, "�"), limit)
 }
 
 // envDivergenceReport renders one invocation's runner execution

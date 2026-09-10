@@ -63,6 +63,11 @@ var binaryTimeoutRe = regexp.MustCompile(`^panic: test timed out after (\S+)`)
 // dump frames, whose call lines carry no space before the parenthesis.
 var timeoutRosterRe = regexp.MustCompile(`^\t\t(\S+) \(`)
 
+// remainderShare bounds the unparsed stream remainder a diagnostic
+// renders: a quarter of the cap identifies the poison and leaves the
+// package output its room.
+const remainderShare = failureOutputCap / 4
+
 // boundedBuffer retains at most failureOutputCap bytes and records that it
 // dropped the rest.
 type boundedBuffer struct {
@@ -80,13 +85,27 @@ func (bb *boundedBuffer) write(s string) {
 		// The cap cut backs off to a rune boundary: process output is
 		// bytes, and a mid-rune cut would hand a proto string field the
 		// invalid UTF-8 its marshal validation refuses.
-		for room > 0 && !utf8.RuneStart(s[room]) {
-			room--
-		}
-		s = s[:room]
+		s = cutAtRune(s, room)
 		bb.truncated = true
 	}
 	bb.b.WriteString(s)
+}
+
+// cutAtRune is the one byte-limit cut over text: at most limit bytes
+// (none for a limit at or below zero), backed off to a rune boundary
+// so the cut never splits a character — the cap's, the remainder
+// share's, and the environment report's.
+func cutAtRune(s string, limit int) string {
+	if limit <= 0 {
+		return ""
+	}
+	if len(s) <= limit {
+		return s
+	}
+	for limit > 0 && !utf8.RuneStart(s[limit]) {
+		limit--
+	}
+	return s[:limit]
 }
 
 func (bb *boundedBuffer) empty() bool { return bb.b.Len() == 0 && !bb.truncated }
@@ -459,8 +478,9 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, select
 		// the bounded output the cut-off process left behind — the
 		// kill-time goroutine dump arrives on the child's stdout and
 		// stderr — and the launched process gains its incomplete
-		// observation.
-		return packageRun{pkg: pkg, aborted: startedTests(st), residue: cutoffResidue(st, &stderr), producer: producer}
+		// observation. The process exit is withheld: the envelope kill's
+		// own signal is the runner's act, not a fact of the run.
+		return packageRun{pkg: pkg, aborted: startedTests(st), residue: runResidue(st, &stderr, nil, ""), producer: producer}
 	}
 	run := classifyRun(n.Name, pkg, st, waitErr, &stderr, bound)
 	// A terminal run retains its started-but-unfinished tests: a package
@@ -579,7 +599,9 @@ type streamState struct {
 	// naming a failed build.
 	failedBuild bool
 	events      int
-	// malformed retains the first unparseable bytes, when any.
+	// malformed retains the first unparseable bytes, when any; the
+	// diagnostic renders a bounded share of it (remainderShare) and
+	// marks the cut.
 	malformed string
 	// postTerminal reports events after the terminal package event — a
 	// shape the toolchain never produces, refused rather than trusted.
@@ -771,37 +793,75 @@ func (st *streamState) scanTimeoutDump(s string) {
 	}
 }
 
-// cutoffResidue renders the bounded output a cut-off run leaves behind —
-// package-level output, each aborted test's buffered output, any unparsed
-// stream remainder, and the child's stderr, where the envelope kill's
-// goroutine dump lands — for the caller's timeout diagnostic.
-func cutoffResidue(st *streamState, stderr *boundedBuffer) *boundedBuffer {
+// runResidue renders what a run left behind, in one order for every
+// diagnostic that carries it — the caller's head (a degrade reason, a
+// deadline sentence, none), then the unparsed stream remainder when
+// the stream was poisoned (the refusal's own evidence, ahead of
+// anything the cap could spend on: the classifier refuses a poisoned
+// stream before its terminal ladder, so only the degrade and cut-off
+// diagnostics carry it), the package-level output, each
+// started-but-unfinished test's name with its buffered output where
+// it left any (a test with no terminal event died with the package,
+// and its output is the failure's residue under its name; on the
+// deadline arm the head's roster is what attributes the denied
+// subjects — an unfinished test the runtime did not list is sectioned
+// for its output alone), the child's stderr (where an
+// envelope kill's goroutine dump lands), and the process exit —
+// truncation propagated from every buffer rendered. The remainder is
+// rendered as a bounded share (remainderShare) with its cut marked: a
+// poison is identified by its prefix, and a cap-sized remainder must
+// not displace the package output — a poisoned build stream's
+// compiler diagnostic — that the rest of the cap retains. The cut-off,
+// degrade, and terminal-fail diagnostics are this one composition
+// with their own head.
+func runResidue(st *streamState, stderr *boundedBuffer, waitErr error, head string) *boundedBuffer {
 	var out boundedBuffer
+	section := func(s string) {
+		if !out.empty() {
+			out.write("\n")
+		}
+		out.write(s)
+	}
+	if head != "" {
+		section(head)
+	}
+	if st.malformed != "" {
+		section("malformed stream: ")
+		// Raw stream bytes: scrubbed to valid text, since the
+		// diagnostic rides a UTF-8-validated proto field whose marshal
+		// refuses the whole report otherwise (the JSON-decoded sections
+		// are valid by decoding; this one and stderr are not).
+		scrubbed := strings.ToValidUTF8(st.malformed, "\uFFFD")
+		remainder := cutAtRune(scrubbed, remainderShare)
+		if len(remainder) < len(scrubbed) {
+			// The mark compares the cut against the text it cut: the
+			// scrub can widen a byte into a three-byte rune, so the raw
+			// length is no measure of it.
+			out.truncated = true
+		}
+		out.write(remainder)
+	}
 	if !st.pkgOutput.empty() {
-		out.write("package output:\n")
+		section("package output:\n")
 		out.write(st.pkgOutput.b.String())
 		out.truncated = out.truncated || st.pkgOutput.truncated
 	}
 	for _, name := range st.startOrder {
-		if !st.started[name] {
-			continue
-		}
 		bb := st.perTest[name]
-		if bb == nil || bb.empty() {
+		if !st.started[name] || bb == nil || bb.empty() {
 			continue
 		}
-		out.write(fmt.Sprintf("\n--- aborted: %s ---\n", name))
+		section(fmt.Sprintf("--- aborted: %s ---\n", name))
 		out.write(bb.b.String())
 		out.truncated = out.truncated || bb.truncated
 	}
-	if st.malformed != "" {
-		out.write("\nmalformed stream: ")
-		out.write(st.malformed)
-	}
 	if !stderr.empty() {
-		out.write("\nstderr:\n")
-		out.write(stderr.b.String())
+		section("stderr:\n")
+		out.write(strings.ToValidUTF8(stderr.b.String(), "�"))
 		out.truncated = out.truncated || stderr.truncated
+	}
+	if waitErr != nil {
+		section(fmt.Sprintf("process exit: %v", waitErr))
 	}
 	return &out
 }
@@ -837,30 +897,14 @@ func outcomeOf(action string) stipulatorv1.TestOutcome {
 func classifyRun(invocation, pkg string, st *streamState, waitErr error, stderr *boundedBuffer, binaryBound string) packageRun {
 	run := packageRun{pkg: pkg, tests: st.tests, diags: st.diags}
 	degrade := func(reason string) packageRun {
-		var out boundedBuffer
-		out.write(reason)
-		if !st.pkgOutput.empty() {
-			out.write("\npackage output:\n")
-			out.write(st.pkgOutput.b.String())
-		}
-		if !stderr.empty() {
-			out.write("\nstderr:\n")
-			out.write(stderr.b.String())
-		}
-		if st.malformed != "" {
-			out.write("\nmalformed stream: ")
-			out.write(st.malformed)
-		}
-		if waitErr != nil {
-			out.write(fmt.Sprintf("\nprocess exit: %v", waitErr))
-		}
+		out := runResidue(st, stderr, waitErr, reason)
 		run.disposition = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_DEGRADED
 		d := &stipulatorv1.FailureDiagnostic{}
 		d.SetInvocation(invocation)
 		d.SetPackage(pkg)
 		d.SetDisposition(run.disposition)
 		d.SetOutput(out.b.String())
-		d.SetTruncated(out.truncated || st.pkgOutput.truncated || stderr.truncated)
+		d.SetTruncated(out.truncated)
 		run.diags = append(run.diags, d)
 		return run
 	}
@@ -903,9 +947,9 @@ func classifyRun(invocation, pkg string, st *streamState, waitErr error, stderr 
 	default:
 		run.disposition = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED
 	}
-	var out boundedBuffer
+	head := ""
 	if deadline {
-		out.write(fmt.Sprintf("test binary timeout %s exhausted before the package completed — the budget is the red fact, not the running tests", binaryBound))
+		head = fmt.Sprintf("test binary timeout %s exhausted before the package completed — the budget is the red fact, not the running tests", binaryBound)
 		// The runtime's own roster is the victim list; event ordering is
 		// not (a completed failure can flush after the panic line). The
 		// started set stands in only when the dump carried no roster.
@@ -914,32 +958,16 @@ func classifyRun(invocation, pkg string, st *streamState, waitErr error, stderr 
 			names = startedTests(st)
 		}
 		if len(names) > 0 {
-			out.write("\nrunning when the budget expired: ")
-			out.write(strings.Join(names, ", "))
-		}
-		out.write("\n")
-	}
-	out.write(st.pkgOutput.b.String())
-	truncated := st.pkgOutput.truncated
-	for _, name := range st.startOrder {
-		if !st.started[name] {
-			continue
-		}
-		// A started test with no terminal event died with the package;
-		// its buffered output is the failure's residue (a timeout panic,
-		// an abort) and belongs to the package diagnostic.
-		out.write(fmt.Sprintf("\n--- aborted: %s ---\n", name))
-		if bb := st.perTest[name]; bb != nil {
-			out.write(bb.b.String())
-			truncated = truncated || bb.truncated
+			head += "\nrunning when the budget expired: " + strings.Join(names, ", ")
 		}
 	}
+	out := runResidue(st, stderr, waitErr, head)
 	d := &stipulatorv1.FailureDiagnostic{}
 	d.SetInvocation(invocation)
 	d.SetPackage(pkg)
 	d.SetDisposition(run.disposition)
 	d.SetOutput(out.b.String())
-	d.SetTruncated(out.truncated || truncated)
+	d.SetTruncated(out.truncated)
 	run.diags = append(run.diags, d)
 	return run
 }

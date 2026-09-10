@@ -9,9 +9,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   folds' `--changed` campaign priced itself day-class (63 targets, 4,913 candidates); gate rode the
   nineteen killed ephemeral probes; measured prefix committed, sweep resumes on a quiet host.
   *Lands: first idle window with no concurrent campaign after cross-tool train chunk 145 closes.*
-- **[executor-diagnostics-trio](executor-diagnostics-trio.md)** — the budget renderer, residue
-  classifier, and abort predicate walk the same run inputs three times with three vocabularies.
-  *Lands: cross-tool train chunk 223*
 - **[go-backend-load-path-pairs](go-backend-load-path-pairs.md)** — workspace double-parse under
   two error policies, the view-error/attribution wording split, the classifier's double-resolve.
   *Lands: with the next change set touching the Go backend's package load path.*
@@ -51,3 +48,4 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[selection-views-carry-the-selection-only](selection-views-carry-the-selection-only.md)** — symbol-resolution views load under the tag set and toolchain alone while witness engines carry the module mode and profile; whether module mode is a selection dimension is 222's (REQ-go-build-selections). *Lands: cross-tool train chunk 222*
 - **[capture-group-package-facts-two-maps](capture-group-package-facts-two-maps.md)** — a capture group's package names and covering invocations are two maps that must agree; one map of package entries deletes the guards. *Lands: cross-tool train chunk 227*
 - **[solo-rule-four-mechanisms](solo-rule-four-mechanisms.md)** — three discovery-time predictions of a solo process (g.solo, the selective candidate gate, the retry gate) beside the rows-derived fact the judgment observes; one rule. *Lands: cross-tool train chunk 227*
+- **[deadline-roster-head-unbounded](deadline-roster-head-unbounded.md)** — the budget diagnostic's roster head has no bound of its own below the cap; a roster that large starves the residue. *Lands: a field report of a deadline diagnostic whose roster displaced its residue*
