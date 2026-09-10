@@ -83,7 +83,7 @@ func TestGoPolicyDeriveGoldenByteIdentical(t *testing.T) {
 // only by the invocation envelope, not what the legacy suite ran — under
 // the derived invocation envelope.
 func TestGoPolicyDeriveMirrorsLegacySuite(t *testing.T) {
-	stipulate.Covers(t, "REQ-policy-explicit")
+	stipulate.Covers(t, "REQ-policy-explicit", "REQ-policy-init-immutable")
 	p, err := DerivePolicy(filepath.Join("testdata", "policyderive", "workspace"))
 	if err != nil {
 		t.Fatal(err)

@@ -44,11 +44,17 @@ of the state rides the resolution error's verification problem.
 
 **REQ-go-build-selections** (behavior): Symbol resolution MUST span the
 accepted policy's build-selection dimensions - one package view per
-distinct invocation (effective tag-set, toolchain) pair beside the
-default no-tag view, where the effective tag-set is the declared tags
-plus the implicit `race` tag of a race-detecting invocation, each view
-loading under its own selection's toolchain exactly as its
-invocation executes, derived
+distinct invocation (effective tag-set, toolchain, module mode) triple
+beside the default view (no tags, the ambient toolchain, the
+toolchain's own module mode), where the effective tag-set is the
+declared tags plus the implicit `race` tag of a race-detecting
+invocation and the module mode is the record's declared module mode,
+an undeclared mode being the toolchain's default for the tree
+(a vendor tree and the module cache resolve one import to different
+package graphs, so a view loaded under the wrong mode misresolves the
+witnesses' own symbols; the PGO profile shapes the binary, never
+resolution, and stays out), each view loading under its own selection's
+toolchain and module mode exactly as its invocation executes, derived
 from the policy record itself (the policy is the authority on which
 selections exist; no separate configuration names them) - so a symbol
 declared only under a build tag, or under `//go:build race`, resolves,
@@ -166,7 +172,20 @@ configuration and its git's global configuration do not move with the
 telemetry. An owned home that cannot be prepared is a refusal naming the
 reason. On platforms whose config home no variable selects, the
 toolchain's detached telemetry is the one sanctioned escape from the
-boundary.
+boundary. The Go children are `go env` (the workspace's and
+normalization's samples through the owned boundary; the provenance
+probe's toolchain sample, a descendant-free query in its caller's own
+process group), `go list` (discovery's listings through the owned
+boundary; the package loader's — spawned by an in-process loader
+rather than through the owned command boundary, run by the resolver
+child's typed views, by the analysis engines the parent process
+hosts, and by a witness's own structural proofs — each swept with the
+operation that owns it),
+`go test` (execution through the owned boundary), and the analysis
+engines' own `go version` and `go env` samples (descendant-free
+queries); every one runs under the owned environment. This binary's
+own children (the self-executed resolver child and, on Windows, the
+tree-kill helper) are the boundary's mechanism, not Go children.
 
 **REQ-go-fuzz-exploration** (behavior): A fuzzing campaign MUST NOT feed the
 gate directly — campaigns are time-bounded and nondeterministic; their

@@ -203,8 +203,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-init-immutable"
-  content_hash: "173ac10501ef200c18df729c88c380692d30aaec83925c4edfd1e196a9d39f67"
-  source_hash: "14bb95805d61cb4d578baeb232207a6ac60a7feca93ad2de2131a3c8e05e80f7"
+  content_hash: "132e2ab44ea3a01d6b7a3216264c10bdb35026fdeb13298263394fda46fd4dae"
+  source_hash: "dbddd5425488471072aa4f68d1902b109306e5fe25f1a009e9a86239e236b7b8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestPolicyInitIsIdempotentAndRefusesDivergence"
   role: BINDING_ROLE_TESTS
@@ -213,8 +213,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-init-immutable"
-  content_hash: "173ac10501ef200c18df729c88c380692d30aaec83925c4edfd1e196a9d39f67"
-  source_hash: "14bb95805d61cb4d578baeb232207a6ac60a7feca93ad2de2131a3c8e05e80f7"
+  content_hash: "132e2ab44ea3a01d6b7a3216264c10bdb35026fdeb13298263394fda46fd4dae"
+  source_hash: "dbddd5425488471072aa4f68d1902b109306e5fe25f1a009e9a86239e236b7b8"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestPolicyInitRoutesThroughRootCommand"
   role: BINDING_ROLE_TESTS
@@ -1019,4 +1019,14 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRunResidueIsOneCompositionOnEveryArm"
   role: BINDING_ROLE_TESTS
   shape_hash: "de74f5ba1d8a038d8efba71bcf8fc7969ae960e5ad40808c4a33bbcd83878696"
+}
+
+bindings {
+  requirement_id: "REQ-policy-init-immutable"
+  content_hash: "132e2ab44ea3a01d6b7a3216264c10bdb35026fdeb13298263394fda46fd4dae"
+  source_hash: "dbddd5425488471072aa4f68d1902b109306e5fe25f1a009e9a86239e236b7b8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoPolicyDeriveMirrorsLegacySuite"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "bb67803b4c5465bd7a06cae18cd9f77de0cb3ee42b3c66d6695f493f72708549"
 }

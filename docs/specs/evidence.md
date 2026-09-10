@@ -459,7 +459,10 @@ discarding it changes no verdict, only the work — a flaky test's served
 outcome is that flake pinned until its inputs move or the cache is
 discarded, which is a finding about the test, not the cache. A test whose
 fixture reads leave it unverifiable re-runs every time until its author
-asserts purity in source, the deliberate opt-in. A clean witness invocation
+asserts purity in source, the deliberate opt-in, or the accepted policy
+asserts it for the invocation whole — the record's reviewed blanket
+assertion, one per invocation, carrying the same caller-side soundness
+responsibility as the in-source form. A clean witness invocation
 instead may publish without that assertion when its completed testlog is
 attached to a compatible caller-selected Gofresh observation-completeness proof
 captured before execution and both are revalidated after execution. Stipulator
@@ -786,8 +789,14 @@ refused whole, never reordered, defaulted, or partially loaded: the record
 is reviewed contract, and what runs must be what was reviewed.
 
 **REQ-policy-init-immutable** (behavior): `stipulator policy init` MUST NOT
-modify an existing policy record: absent, it writes the derived record and
-reports the configuration break; byte-identical, it succeeds as a no-op;
+modify an existing policy record: absent, it writes the derived record —
+one race-enabled `./...` invocation per workspace member (the root module
+alone without a workspace), named `race` for the root and, for any
+other member, `race:` plus its module root, which the record stores
+tree-relative, under a two-hour invocation envelope (a generous default
+the legacy suite had no equivalent of) carrying the legacy suite's own
+thirty-minute per-binary bound (`-test.timeout=30m`), both explicit so
+review sees and tightens them — and reports the configuration break; byte-identical, it succeeds as a no-op;
 divergent, it fails naming the first differing line — an accepted record
 changes only by review, never by derivation.
 
