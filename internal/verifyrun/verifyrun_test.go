@@ -114,3 +114,70 @@ func TestRunCapturesThePolicyOnce(t *testing.T) {
 		t.Fatalf("captures = %d, run received the capture = %v; want one capture reaching the run", captures, ran == captured)
 	}
 }
+
+// The scoped pass captures the policy and runs exactly when the scope
+// holds a subject: a records-only judgment (nil scope) and a scope no
+// bound witness can move (empty) capture nothing, run nothing, and
+// report with a nil run; a populated scope captures once and hands
+// the run that scope (REQ-gap-resolved-pruned, REQ-gap-list).
+func TestScopedCapturesOnlyWhenAsked(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-resolved-pruned", "REQ-gap-list")
+	prepared := &check.Prepared{Spec: &stipulatorv1.Spec{}, Store: &records.Store{}}
+	deps := untouchable(t, prepared)
+	deps.Backends = func(context.Context, []string) (map[string]verify.Backend, error) {
+		return map[string]verify.Backend{}, nil
+	}
+	for _, scope := range []map[gofresh.Subject]bool{nil, {}} {
+		rep, tr, err := Scoped(context.Background(), deps, prepared, scope, "")
+		if err != nil || tr != nil || rep == nil || rep.Witnessed {
+			t.Fatalf("scope %v: scoped pass = %v %v %v", scope, rep, tr, err)
+		}
+	}
+	scope := map[gofresh.Subject]bool{{Package: "example.com/p", Symbol: "TestA"}: true}
+	captured := &golang.Capture{}
+	captures := 0
+	deps.Capture = func(context.Context) (*golang.Capture, error) { captures++; return captured, nil }
+	var got map[gofresh.Subject]bool
+	deps.RunTests = func(_ context.Context, pc *golang.Capture, _ verify.WitnessSeeding, s map[gofresh.Subject]bool, why string) (*verify.TestRun, error) {
+		if pc != captured || why != "why" {
+			t.Fatalf("run received pc=%v why=%q", pc == captured, why)
+		}
+		got = s
+		return &verify.TestRun{SelectiveServing: true}, nil
+	}
+	rep, tr, err := Scoped(context.Background(), deps, prepared, scope, "why")
+	if err != nil || tr == nil || !rep.Witnessed || captures != 1 || len(got) != 1 || !got[gofresh.Subject{Package: "example.com/p", Symbol: "TestA"}] {
+		t.Fatalf("witnessed scoped pass = %v %v %v captures=%d scope=%v", rep, tr, err, captures, got)
+	}
+}
+
+// A store without gap records skips the witness evidence, never the
+// compilation: the coverage is nil and no capture, backend, or run
+// happens (REQ-gap-list).
+func TestGapsGathersNothingWithoutGapRecords(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-list")
+	prepared := &check.Prepared{Spec: &stipulatorv1.Spec{}, Store: &records.Store{}}
+	p, rep, cov, err := Gaps(context.Background(), untouchable(t, prepared))
+	if err != nil || p != prepared || rep != nil || cov != nil {
+		t.Fatalf("gapless list = %v %v %v %v", p, rep, cov, err)
+	}
+}
+
+// A gap whose requirement binds no witness yields an empty scope: no
+// bound witness can move a gap-relevant bucket, so no witness evidence
+// is taken — no capture, no run — while the report and the coverage
+// still evaluate over the records (REQ-gap-list).
+func TestGapsCapturesNothingWithoutAScope(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-list")
+	id := "REQ-x"
+	store := &records.Store{Gaps: []records.GapFile{{Path: ".stipulator/gaps/x.textproto", Gap: stipulatorv1.Gap_builder{RequirementId: &id}.Build()}}}
+	prepared := &check.Prepared{Spec: &stipulatorv1.Spec{}, Store: store}
+	deps := untouchable(t, prepared)
+	deps.Backends = func(context.Context, []string) (map[string]verify.Backend, error) {
+		return map[string]verify.Backend{}, nil
+	}
+	_, rep, cov, err := Gaps(context.Background(), deps)
+	if err != nil || rep == nil || cov == nil || rep.Witnessed {
+		t.Fatalf("unbound gap list = %v %v %v", rep, cov, err)
+	}
+}

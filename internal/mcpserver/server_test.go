@@ -474,14 +474,17 @@ func TestPruneRefusesNonServingEvidence(t *testing.T) {
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
 		"specs/a.md":                     {Data: []byte(doc)},
-		// A gap record, so the evaluation actually runs: a gapless tree
-		// takes the deletion-only fast path and never reads evidence.
-		".stipulator/gaps/m-a.textproto": {Data: []byte("requirement_id: \"REQ-m-a\"\nreason: \"pending\"\nlands {\n  manual {\n    condition: \"c\"\n  }\n}\n")},
+		// A gap record on a requirement with a bound witness, so the
+		// evaluation actually runs: a gapless tree takes the
+		// deletion-only fast path, and a gap no bound witness can move
+		// takes no witness evidence at all.
+		".stipulator/bindings/a.textproto": {Data: []byte(pinnedBindingFor(t, "REQ-m-a", "example.com/p.TestA", "s"))},
+		".stipulator/gaps/m-a.textproto":   {Data: []byte("requirement_id: \"REQ-m-a\"\nreason: \"pending\"\nlands {\n  manual {\n    condition: \"c\"\n  }\n}\n")},
 	}
 	s := &Server{
 		fsys: func() fs.FS { return fsys },
 		backends: func(context.Context, []string) (map[string]verify.Backend, error) {
-			return map[string]verify.Backend{"go": fakeBackend{}}, nil
+			return map[string]verify.Backend{"go": fakeBackend{"example.com/p.TestA": strings.Repeat("s", 64)}}, nil
 		},
 		capture: func(context.Context) (*golang.Capture, error) { return nil, nil },
 		runTests: func(context.Context, *golang.Capture, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {

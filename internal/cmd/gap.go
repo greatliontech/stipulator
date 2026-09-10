@@ -8,11 +8,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/greatliontech/stipulator/internal/author"
-	checkpkg "github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/remedy"
-	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/internal/verifyrun"
 )
 
 // conditionFlags are the gap verb's condition flags — the ones whose
@@ -125,43 +124,18 @@ func gapCmd() *cobra.Command {
 // records listed rather than refused. It writes nothing; editing a gap
 // is re-declaring it.
 func gapListRun(ctx context.Context) error {
-	prepared, err := mustPrepare(chdir)
-	if err != nil {
-		return err
-	}
-	spec, store, pol := prepared.Spec, prepared.Store, prepared.Coverage
-	if len(store.Gaps) == 0 {
-		fmt.Println("no gap records")
-		return nil
-	}
-	scope, gapIds, err := checkpkg.GapScope(spec, store)
-	if err != nil {
-		return err
-	}
-	// The list is a read surface, not a verification verdict: dangling
-	// records are listed rather than refused (REQ-gap-list), so record
-	// hygiene warns below and never withholds the witness evidence the
-	// other gaps' states derive from — the MCP gap tool evaluates the
-	// same way. One owned child serves the run and the resolution.
-	pc, gb, err := servedBackend(ctx, store, len(scope) > 0)
+	prepared, rep, cov, err := verifyrun.Gaps(ctx, cliDeps())
 	if err != nil {
 		return withRecordPath(err)
 	}
-	defer gb.Close()
-	var testRun *verify.TestRun
-	if len(scope) > 0 {
-		// An empty scope means no bound witness can move any
-		// gap-relevant bucket, so the evaluation is witness-free.
-		why := fmt.Sprintf("scoped to %d gapped requirements", len(gapIds))
-		if testRun, err = witnessRun(ctx, pc, gb, scope, why); err != nil {
-			return withRecordPath(err)
-		}
+	spec, store := prepared.Spec, prepared.Store
+	if cov == nil {
+		fmt.Println("no gap records")
+		return nil
 	}
-	rep := verify.Run(spec, store, map[string]verify.Backend{"go": gb}, testRun)
 	if len(rep.Problems) > 0 {
 		fmt.Fprintln(os.Stderr, yellow(fmt.Sprintf("%d verification problems - evaluated states may misreport; run %s", len(rep.Problems), remedy.Verify())))
 	}
-	cov := coverage.Evaluate(spec, rep, store, testRun != nil, pol)
 	known := records.HashesOf(spec)
 	for _, g := range cov.Gaps {
 		// The evaluation's row for an out-of-corpus record is a

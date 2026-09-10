@@ -710,3 +710,43 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "c80ede28c5d17ce3c9cfd348c075812508a060db134d30e992de090d954fa3eb"
 }
+
+bindings {
+  requirement_id: "REQ-gap-resolved-pruned"
+  content_hash: "15bb833109778d7ac84b82e73b309f16ee5f0096ab092f4d082892b796b2b3c0"
+  source_hash: "ac9c2f391c06123d3fb21126cde04b19835eb6c78f3c3ec50c66f9214d65bcc9"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verifyrun.TestScopedCapturesOnlyWhenAsked"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5402f1d3f92714c52b683866c629035013717f50884ae321244cecd49e32e934"
+}
+
+bindings {
+  requirement_id: "REQ-gap-list"
+  content_hash: "cf6f0d0a282b4313f64bad4610f5e5160675d88e6bde5f9d521904136aedb917"
+  source_hash: "4e192ab5caabe52663b1e7266a9b2aa9863186a01a3e545d09be4575025c60ca"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verifyrun.TestGapsGathersNothingWithoutGapRecords"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "445641c101c5a08a4b113ab2d568c3a2cd99658699932a27345b4a9dcc12b67d"
+}
+
+bindings {
+  requirement_id: "REQ-gap-list"
+  content_hash: "cf6f0d0a282b4313f64bad4610f5e5160675d88e6bde5f9d521904136aedb917"
+  source_hash: "4e192ab5caabe52663b1e7266a9b2aa9863186a01a3e545d09be4575025c60ca"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verifyrun.TestGapsCapturesNothingWithoutAScope"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5525198d4ae2c189ba6ea5e0566eb0e154cf80c14f009287a498a031b813e3fc"
+}
+
+bindings {
+  requirement_id: "REQ-gap-list"
+  content_hash: "cf6f0d0a282b4313f64bad4610f5e5160675d88e6bde5f9d521904136aedb917"
+  source_hash: "4e192ab5caabe52663b1e7266a9b2aa9863186a01a3e545d09be4575025c60ca"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verifyrun.TestScopedCapturesOnlyWhenAsked"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5402f1d3f92714c52b683866c629035013717f50884ae321244cecd49e32e934"
+}

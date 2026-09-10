@@ -20,7 +20,7 @@ import (
 )
 
 // The resolved-record evaluation is pinned to the serving class: the
-// core's source has the guard call after the witness-run call in
+// core's source has the guard call after the scoped-pass call in
 // source order, so a wrong witness source is a loud refusal on both
 // faces at once (REQ-gap-resolved-pruned). (A structural calls-verb
 // prover would subsume this pin; that capability is an open design
@@ -42,8 +42,10 @@ func TestPruneCallSitePinsServingClassRefusal(t *testing.T) {
 		if !ok {
 			return true
 		}
-		if sel.Sel.Name == "RunTests" {
-			sawRun = true
+		if sel.Sel.Name == "Scoped" {
+			if x, ok := sel.X.(*ast.Ident); ok && x.Name == "verifyrun" {
+				sawRun = true
+			}
 		}
 		if sel.Sel.Name == "ServingClassRequired" {
 			if x, ok := sel.X.(*ast.Ident); ok && x.Name == "verify" && sawRun {
@@ -53,7 +55,7 @@ func TestPruneCallSitePinsServingClassRefusal(t *testing.T) {
 		return true
 	})
 	if !sawRun || !sawGuardAfter {
-		t.Fatalf("prune.go call-site pin: RunTests=%v guard-after=%v - the serving-class guard must follow the witness run", sawRun, sawGuardAfter)
+		t.Fatalf("prune.go call-site pin: Scoped=%v guard-after=%v - the serving-class guard must follow the scoped pass", sawRun, sawGuardAfter)
 	}
 }
 

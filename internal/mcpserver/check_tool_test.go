@@ -522,12 +522,15 @@ func progressPipelineHarness(t *testing.T) (*mcp.ClientSession, *notificationLog
 			return fstest.MapFS{
 				".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
 				"specs/a.md":                     {Data: []byte(doc)},
-				".stipulator/gaps/m-a.textproto": {Data: []byte("requirement_id: \"REQ-m-a\"\nreason: \"later\"\nlands { manual { condition: \"x\" } }\n")},
-				".stipulator/gaps/m-b.textproto": {Data: []byte("requirement_id: \"REQ-m-b\"\nreason: \"later\"\nlands { manual { condition: \"x\" } }\n")},
+				// A bound witness on a gapped requirement, so prune's
+				// scoped pass has a subject to execute for.
+				".stipulator/bindings/a.textproto": {Data: []byte(pinnedBindingFor(t, "REQ-m-a", "example.com/p.TestA", "s"))},
+				".stipulator/gaps/m-a.textproto":   {Data: []byte("requirement_id: \"REQ-m-a\"\nreason: \"later\"\nlands { manual { condition: \"x\" } }\n")},
+				".stipulator/gaps/m-b.textproto":   {Data: []byte("requirement_id: \"REQ-m-b\"\nreason: \"later\"\nlands { manual { condition: \"x\" } }\n")},
 			}
 		},
 		backends: func(context.Context, []string) (map[string]verify.Backend, error) {
-			return map[string]verify.Backend{"go": fakeBackend{}}, nil
+			return map[string]verify.Backend{"go": fakeBackend{"example.com/p.TestA": strings.Repeat("s", 64)}}, nil
 		},
 		capture: func(context.Context) (*golang.Capture, error) { return nil, nil },
 		runTests: func(context.Context, *golang.Capture, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {

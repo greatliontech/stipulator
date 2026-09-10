@@ -1147,55 +1147,15 @@ func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn
 // rather than refused. It writes nothing.
 func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, gapOut, error) {
 	ctx, prog := s.startProgress(ctx, req)
-	prog.Phase(stipulatorv1.Phase_PHASE_COMPILE)
-	prepared, err := s.prepare()
+	prepared, rep, cov, err := verifyrun.Gaps(ctx, s.deps())
 	if err != nil {
 		return nil, gapOut{}, terminalToolError(prog, ctx, err)
 	}
-	spec, store, pol := prepared.Spec, prepared.Store, prepared.Coverage
-	// The empty answer skips witness evidence, never corpus diagnostics
-	// (REQ-gap-list).
-	if len(store.Gaps) == 0 {
+	spec, store := prepared.Spec, prepared.Store
+	if cov == nil {
 		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 		return stampedResult(textOnly("no gap records"), prog), gapOut{writeOut: writeOut{Notes: []string{"no gap records"}}}, nil
 	}
-	scope, _, err := check.GapScope(spec, store)
-	if err != nil {
-		return nil, gapOut{}, terminalToolError(prog, ctx, err)
-	}
-	// The list is a read surface, not a verification verdict: dangling
-	// records are listed rather than refused (REQ-gap-list), so record
-	// hygiene warns here and never withholds the witness evidence the
-	// other gaps' states derive from. The coverage policy was judged
-	// before any child (REQ-check-preparation).
-	var pc *golang.Capture
-	if len(scope) > 0 {
-		if pc, err = s.capture(ctx); err != nil {
-			return nil, gapOut{}, terminalToolError(prog, ctx, err)
-		}
-	}
-	symbols, err := golang.OperationSymbols(ctx, store, pc)
-	if err != nil {
-		return nil, gapOut{}, terminalToolError(prog, ctx, err)
-	}
-	backends, err := s.backends(ctx, symbols)
-	if err != nil {
-		return nil, gapOut{}, terminalToolError(prog, ctx, err)
-	}
-	defer verify.CloseBackends(backends)
-	var tr *verify.TestRun
-	if len(scope) > 0 {
-		// An empty scope means no bound witness can move any
-		// gap-relevant bucket, so the evaluation is witness-free.
-		prog.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
-		if tr, err = s.runTests(ctx, pc, verify.SeedingOf(backends), scope); err != nil {
-			return nil, gapOut{}, terminalToolError(prog, ctx, err)
-		}
-	}
-	prog.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
-	rep := verify.Run(spec, store, backends, tr)
-	prog.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
-	cov := coverage.Evaluate(spec, rep, store, tr != nil, pol)
 	known := records.HashesOf(spec)
 	dangling := 0
 	var reports []*stipulatorv1.GapReport

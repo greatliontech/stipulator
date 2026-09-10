@@ -23,6 +23,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/internal/verifyrun"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
 
@@ -191,9 +192,8 @@ func Evaluate(ctx context.Context, d Deps, noTest bool) (Resolved, error) {
 	if len(prepared.Hygiene) > 0 {
 		return Resolved{}, &ProblemsError{Problems: prepared.Hygiene}
 	}
-	var pc *golang.Capture
 	var scope map[gofresh.Subject]bool
-	var gapIds []string
+	var why string
 	if !noTest {
 		// Resolution reads the gapped requirements' coverage — and, for
 		// a gap with a covered(<id>) landing condition, the condition
@@ -202,43 +202,29 @@ func Evaluate(ctx context.Context, d Deps, noTest bool) (Resolved, error) {
 		// corpus is dangling — never resolvable, owned by the explicit
 		// dangling mode — filtered rather than refused; the dangling
 		// record still surfaces as a verification problem below.
+		var gapIds []string
 		if scope, gapIds, err = check.GapScope(spec, store); err != nil {
 			return Resolved{}, err
 		}
-		if pc, err = d.Capture(ctx); err != nil {
-			return Resolved{}, err
-		}
+		why = fmt.Sprintf("scoped to %d gapped requirements", len(gapIds))
 	}
-	symbols, err := golang.OperationSymbols(ctx, store, pc)
+	rep, tr, err := verifyrun.Scoped(ctx, d.Deps, prepared, scope, why)
 	if err != nil {
 		return Resolved{}, err
 	}
-	backends, err := d.Backends(ctx, symbols)
-	if err != nil {
+	// The resolved-record evaluation is pinned to the serving class
+	// (REQ-gap-resolved-pruned); the producer's mark makes a wrong
+	// witness source a loud refusal, a nil run — the caller's declared
+	// no-test semantics, or a scope no bound witness can move — no
+	// evidence to judge.
+	if err := verify.ServingClassRequired(tr); err != nil {
 		return Resolved{}, err
 	}
-	defer verify.CloseBackends(backends)
-	var tr *verify.TestRun
-	if !noTest {
-		prog.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
-		why := fmt.Sprintf("scoped to %d gapped requirements", len(gapIds))
-		if tr, err = d.RunTests(ctx, pc, verify.SeedingOf(backends), scope, why); err != nil {
-			return Resolved{}, err
-		}
-		// The resolved-record evaluation is pinned to the serving class
-		// (REQ-gap-resolved-pruned); the producer's mark makes a wrong
-		// witness source a loud refusal.
-		if err := verify.ServingClassRequired(tr); err != nil {
-			return Resolved{}, err
-		}
-	}
-	prog.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
-	rep := verify.Run(spec, store, backends, tr)
 	if len(rep.Problems) > 0 {
 		return Resolved{}, &ProblemsError{Problems: rep.Problems}
 	}
 	prog.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
-	cov := coverage.Evaluate(spec, rep, store, !noTest, pol)
+	cov := coverage.Evaluate(spec, rep, store, tr != nil, pol)
 	resolved := map[string]bool{}
 	for _, g := range cov.Gaps {
 		if g.State == coverage.Resolved {

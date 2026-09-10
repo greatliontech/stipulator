@@ -12,21 +12,12 @@ import (
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/policy"
-	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
-// witnessRun performs the selective witness run of the tree's accepted
-// test policy — the one witnessing surface every standalone command
-// shares with the unified check (REQ-core-one-execution). A policy
-// record problem fails the command carrying the record's path beside the
-// loader's guidance, exactly as the check renders it: witness execution
-// consumes the accepted policy, never a fallback suite
-// (REQ-policy-explicit).
-// withRecordPath carries the record's path on a record problem —
-// whether the loader found it or the run's discovery did — exactly as
-// the check renders it; any other fault passes unchanged.
+// withRecordPath names the accepted policy's path on a record error —
+// the verb's one attribution point.
 func withRecordPath(err error) error {
 	if errors.Is(err, policy.ErrRecord) {
 		return fmt.Errorf("%s: %w", policy.Path, err)
@@ -96,33 +87,6 @@ func sortedKeys(m map[string]string) []string {
 	}
 	sort.Strings(keys)
 	return keys
-}
-
-// servedBackend prepares a command's verification backend over the
-// operation's whole symbol set — the records' bound symbols and the
-// captured policy's witness subjects — so resolutions proven fresh serve
-// and the owned child opens only for the stale remainder. The record
-// path rides a record problem the capture surfaces.
-func servedBackend(ctx context.Context, store *records.Store, witnessed bool) (*golang.Capture, *golang.Served, error) {
-	var pc *golang.Capture
-	if witnessed {
-		// Only a witness run consumes the accepted policy: a read-only
-		// or --no-test operation resolves its bindings without one
-		// (REQ-policy-explicit binds witness execution).
-		var err error
-		if pc, err = golang.LoadCapture(ctx, chdir); err != nil {
-			return nil, nil, err
-		}
-	}
-	symbols, err := golang.OperationSymbols(ctx, store, pc)
-	if err != nil {
-		return nil, nil, err
-	}
-	served, err := golang.NewServed(ctx, chdir, symbols)
-	if err != nil {
-		return nil, nil, err
-	}
-	return pc, served, nil
 }
 
 // runWitnessesPolicy is the one witnessing entry the CLI's whole-tree
