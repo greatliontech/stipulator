@@ -13,7 +13,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/verifyrun"
 	"github.com/greatliontech/stipulator/internal/views"
-	"google.golang.org/protobuf/encoding/protojson"
+	"github.com/greatliontech/stipulator/internal/wire"
 )
 
 func verifyCmd() *cobra.Command {
@@ -48,11 +48,13 @@ func verifyCmd() *cobra.Command {
 				if verr != nil {
 					return verr
 				}
-				out, verr := protojson.Marshal(m)
+				out, verr := wire.CanonicalJSON(m)
 				if verr != nil {
 					return verr
 				}
-				fmt.Println(string(out))
+				if _, err := os.Stdout.Write(out); err != nil {
+					return err
+				}
 				if len(rep.Problems) > 0 {
 					return exitStatus(1)
 				}

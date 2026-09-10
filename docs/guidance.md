@@ -3,7 +3,7 @@
 ## verbs
 
 ### compile
-**does:** Compile the spec corpus; returns diagnostics (empty means clean) and counts.
+**does:** Compile the spec corpus; returns its diagnostics — none when clean — and counts.
 **knobs:**
 - `ir` (cli) — print the compiled IR as textproto: an operator's inspection surface; the agent reads compiled requirements through the resources.
 **when:** use compile alone while authoring spec documents; every other

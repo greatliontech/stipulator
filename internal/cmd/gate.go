@@ -5,12 +5,12 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/remedy"
 	"github.com/greatliontech/stipulator/internal/verifyrun"
 	"github.com/greatliontech/stipulator/internal/views"
+	"github.com/greatliontech/stipulator/internal/wire"
 )
 
 // gateGapNote spells a red requirement's standing gap on the gate's
@@ -66,11 +66,13 @@ func gateCmd() *cobra.Command {
 				if verr != nil {
 					return verr
 				}
-				out, verr := protojson.Marshal(m)
+				out, verr := wire.CanonicalJSON(m)
 				if verr != nil {
 					return verr
 				}
-				fmt.Println(string(out))
+				if _, err := os.Stdout.Write(out); err != nil {
+					return err
+				}
 			case quiet:
 				// Exit code only, for CI.
 			default:

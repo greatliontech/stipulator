@@ -2,7 +2,9 @@ package mcpserver
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
+	"google.golang.org/protobuf/encoding/protojson"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -13,9 +15,11 @@ import (
 	"time"
 
 	"github.com/greatliontech/gofresh"
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/facts"
 	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/internal/wire"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/stipulate"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -471,11 +475,20 @@ func TestPartitionsExportCarriesUncappedOverlaps(t *testing.T) {
 		t.Fatalf("partitions export: %v %+v", err, res)
 	}
 	doc, ok := writes[".stipulator/exports/uncapped.json"]
-	if !ok || !strings.Contains(string(doc), "overlaps") || !strings.Contains(string(doc), "REQ-m-a") {
-		t.Fatalf("export missing the uncapped overlap set: %s", doc)
+	if !ok {
+		t.Fatal("export not written")
 	}
-	if !strings.Contains(string(doc), "\"overlaps\":[{") || strings.Contains(string(doc), "\"overlapsOmitted\":1") {
+	// The export is the canonical projection of the uncapped report:
+	// strict to decode, every overlap row present, nothing omitted.
+	exported := &stipulatorv1.PartitionReport{}
+	if err := protojson.Unmarshal(doc, exported); err != nil {
+		t.Fatalf("export is not a strict PartitionReport: %v\n%s", err, doc)
+	}
+	if len(exported.GetOverlaps()) == 0 || exported.GetOverlapsOmitted() != 0 || !strings.Contains(string(doc), "REQ-m-a") {
 		t.Fatalf("export must carry the overlap rows with nothing omitted: %s", doc)
+	}
+	if canonical, err := wire.CanonicalJSON(exported); err != nil || string(doc) != string(canonical) {
+		t.Fatalf("export is not the canonical projection (%v)", err)
 	}
 }
 
@@ -589,6 +602,11 @@ func TestBindToolClauseClaims(t *testing.T) {
 	}})
 	if err != nil || res.IsError {
 		t.Fatalf("unbind --clause: %v %s", err, toolText(t, res))
+	}
+	// The removed-claim count rides the structured result, not the
+	// text line alone (REQ-mcp-tools).
+	if b, _ := json.Marshal(res.StructuredContent); !strings.Contains(string(b), `"removed":1`) {
+		t.Fatalf("structured result lacks the removed count: %s", b)
 	}
 	c = string(writes[".stipulator/bindings/m.textproto"])
 	if strings.Contains(c, `clause_label: "alpha"`) || !strings.Contains(c, "clause_ordinal: 2") || strings.Count(c, "example.com/p.TestA") != 1 {

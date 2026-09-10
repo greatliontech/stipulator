@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"google.golang.org/protobuf/encoding/protojson"
 	"io"
 	"os"
 	"path/filepath"
@@ -11,8 +12,10 @@ import (
 	"testing"
 
 	gofresh "github.com/greatliontech/gofresh"
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/internal/wire"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -45,7 +48,7 @@ func captureStdout(t *testing.T, fn func() error) (string, error) {
 // vocabulary refuses before any witness executes
 // (REQ-mcp-surfaces, REQ-check-preparation).
 func TestVerifyBindingsViewAnswersWhatClaimsThisSymbol(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-surfaces", "REQ-check-preparation")
+	stipulate.Covers(t, "REQ-mcp-surfaces", "REQ-check-preparation", "REQ-mcp-tools")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented policy over a fixture tree")
 	}
@@ -155,6 +158,15 @@ func TestVerifyBindingsViewAnswersWhatClaimsThisSymbol(t *testing.T) {
 			RequirementId string `json:"requirementId"`
 			Symbol        string `json:"symbol"`
 		} `json:"results"`
+	}
+	// The bytes are the one canonical projection of a strict
+	// VerifyReport — never a raw marshal (REQ-mcp-tools).
+	decoded := &stipulatorv1.VerifyReport{}
+	if perr := protojson.Unmarshal([]byte(out), decoded); perr != nil {
+		t.Fatalf("verify --json is not a strict VerifyReport: %v\n%s", perr, out)
+	}
+	if canonical, cerr := wire.CanonicalJSON(decoded); cerr != nil || out != string(canonical) {
+		t.Fatalf("verify --json is not the canonical projection (%v):\n%s", cerr, out)
 	}
 	if jerr := json.Unmarshal([]byte(out), &rep); jerr != nil || len(rep.Results) != 1 || rep.Results[0].RequirementId != "REQ-fix-a" || !strings.HasSuffix(rep.Results[0].Symbol, "TestDouble") {
 		t.Fatalf("json bindings view scoped by --req: %v\n%s", jerr, out)

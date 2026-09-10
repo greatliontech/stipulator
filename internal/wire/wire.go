@@ -5,6 +5,7 @@
 package wire
 
 import (
+	"bytes"
 	"encoding/json"
 
 	"google.golang.org/protobuf/encoding/protojson"
@@ -24,11 +25,18 @@ func CanonicalJSON(m proto.Message) ([]byte, error) {
 	if err := json.Unmarshal(b, &v); err != nil {
 		return nil, err
 	}
-	out, err := json.MarshalIndent(v, "", "  ")
-	if err != nil {
+	// The re-serialization is for determinism alone: sorted keys, fixed
+	// indentation, one trailing newline — never a second dialect, so
+	// the encoder's HTML escaping is off and `<`, `>`, `&` stay as
+	// ProtoJSON wrote them.
+	var out bytes.Buffer
+	enc := json.NewEncoder(&out)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(v); err != nil {
 		return nil, err
 	}
-	return append(out, '\n'), nil
+	return out.Bytes(), nil
 }
 
 // StructuredContent renders the same ProtoJSON projection as the generic

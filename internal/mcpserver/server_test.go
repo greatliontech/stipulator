@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"io/fs"
-	"reflect"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -1292,17 +1293,38 @@ func TestExplainToolProjectsChain(t *testing.T) {
 	if gotPkg != "example.com/reg" || gotSym != "Registry" {
 		t.Fatalf("explicit culprit not forwarded: %q %q", gotPkg, gotSym)
 	}
-	var out explainOut
 	b, _ := json.Marshal(res.StructuredContent)
-	if err := json.Unmarshal(b, &out); err != nil {
-		t.Fatal(err)
+	out := &stipulatorv1.ExplainResult{}
+	if err := protojson.Unmarshal(b, out); err != nil {
+		t.Fatalf("projection is not a strict ExplainResult: %v\n%s", err, b)
 	}
-	want := explainOut{Arm: "environment-audit", View: "race", Omitted: 3, Links: []explainLink{
-		{Kind: "edge", Package: "example.com/reg", Symbol: "Registry", Callee: "gen", Clause: "a binding source refused", Pos: "reg.go:12"},
-		{Kind: "refusal", Package: "example.com/reg", Symbol: "gen", Clause: "a stored value refused", Pos: "reg.go:7"},
-	}}
-	if !reflect.DeepEqual(out, want) {
-		t.Fatalf("projection = %+v, want %+v", out, want)
+	// The expectation is a literal message, never the tool's own
+	// builder: a uniform builder fault must fail here.
+	edge := &stipulatorv1.ExplainLink{}
+	edge.SetKind("edge")
+	edge.SetPackage("example.com/reg")
+	edge.SetSymbol("Registry")
+	edge.SetCallee("gen")
+	edge.SetClause("a binding source refused")
+	edge.SetPos("reg.go:12")
+	refusal := &stipulatorv1.ExplainLink{}
+	refusal.SetKind("refusal")
+	refusal.SetPackage("example.com/reg")
+	refusal.SetSymbol("gen")
+	refusal.SetClause("a stored value refused")
+	refusal.SetPos("reg.go:7")
+	want := &stipulatorv1.ExplainResult{}
+	want.SetArm("environment-audit")
+	want.SetView("race")
+	want.SetOmitted(3)
+	want.SetLinks([]*stipulatorv1.ExplainLink{edge, refusal})
+	if !proto.Equal(out, want) {
+		t.Fatalf("projection = %v, want %v", out, want)
+	}
+	// Presence on the wire: a link's unset fields are absent, never
+	// present-and-empty (REQ-mcp-tools) — the second link has no callee.
+	if strings.Contains(string(b), `"callee":""`) || strings.Count(string(b), `"callee"`) != 1 {
+		t.Fatalf("empty link fields present on the wire: %s", b)
 	}
 	if text := toolText(t, res); text != "explain: environment-audit, 2 links in the structured result; view: race; 3 omitted" {
 		t.Fatalf("digest = %q", text)
@@ -1315,6 +1337,10 @@ func TestExplainToolProjectsChain(t *testing.T) {
 	}
 	if text := toolText(t, res); !strings.Contains(text, "no chain") {
 		t.Fatalf("empty chain not stated in the digest: %q", text)
+	}
+	// An empty chain carries no view and no links on the wire.
+	if b, _ := json.Marshal(res.StructuredContent); strings.Contains(string(b), `"view"`) || strings.Contains(string(b), `"links"`) {
+		t.Fatalf("empty chain carries empty fields on the wire: %s", b)
 	}
 }
 
@@ -1420,5 +1446,37 @@ func TestPinToolIdsFormIsAllOrNothingOrHonest(t *testing.T) {
 	}
 	if _, ok := writes2[".stipulator/bindings/a.textproto"]; !ok {
 		t.Fatal("the first id's re-pin was not written before the conflict")
+	}
+}
+
+// The compile result's diagnostic list is capped and the remainder
+// counted — never a silent truncation — and the count rides the
+// projection under its wire spelling (REQ-mcp-response-contract,
+// REQ-mcp-tools).
+func TestCompileToolCapsDiagnosticsAndCountsTheRemainder(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-response-contract", "REQ-mcp-tools")
+	var bad strings.Builder
+	bad.WriteString("# Bad\n\n")
+	for i := 0; i < compileDiagnosticCap+2; i++ {
+		fmt.Fprintf(&bad, "The system MUST work here, line %d.\n\n", i)
+	}
+	sess, _ := harness(t, map[string]string{"specs/bad.md": bad.String()})
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "compile", Arguments: map[string]any{}})
+	if err != nil || res.IsError {
+		t.Fatalf("compile: %v %v", err, res)
+	}
+	b, _ := json.Marshal(res.StructuredContent)
+	var out struct {
+		Diagnostics []string `json:"diagnostics"`
+		Omitted     int      `json:"diagnosticsOmitted"`
+	}
+	if err := json.Unmarshal(b, &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Diagnostics) != compileDiagnosticCap || out.Omitted != 2 {
+		t.Fatalf("diagnostics = %d, omitted = %d; want %d and 2: %s", len(out.Diagnostics), out.Omitted, compileDiagnosticCap, b)
+	}
+	if text := toolText(t, res); !strings.Contains(text, fmt.Sprintf("%d diagnostics", compileDiagnosticCap+2)) {
+		t.Fatalf("text line does not count every diagnostic: %s", text)
 	}
 }

@@ -7,9 +7,10 @@ option go_package = "github.com/greatliontech/stipulator/gen/stipulator/v1;stipu
 import "stipulator/v1/ir.proto";
 import "stipulator/v1/records.proto";
 
-// Report messages: the wire forms of verification and coverage results.
-// Reports are always derived — computed fresh from the tree at every trust
-// boundary and never persisted as inputs.
+// Report messages: the wire forms of verification and coverage results,
+// and of every tool result beside them. Reports are always derived —
+// computed fresh from the tree at every trust boundary and never
+// persisted as inputs.
 
 // Resolution classifies a backend's answer for a symbol reference.
 enum Resolution {
@@ -451,4 +452,68 @@ message PartitionReport {
   // truncation is never silent (REQ-mcp-response-contract).
   repeated PartitionOverlap overlaps = 2;
   int32 overlaps_omitted = 3;
+}
+
+// CompileResult is the compile tool's result: the corpus's diagnostics
+// (capped, the remainder counted) and its sizes when it compiled.
+message CompileResult {
+  repeated string diagnostics = 1;
+  int32 diagnostics_omitted = 2;
+  int32 requirements = 3;
+  int32 terms = 4;
+  int32 edges = 5;
+}
+
+// WriteResult is a record-writing tool's result: what it wrote and
+// deleted, the notes a client must not miss, and whether the call was a
+// preview that wrote nothing.
+message WriteResult {
+  repeated string wrote = 1;
+  repeated string deleted = 2;
+  int32 removed = 3;
+  repeated string notes = 4;
+  bool check = 5;
+}
+
+// GapListResult is the gap tool's list form: the write result's fields
+// beside the rows (capped, the remainder counted).
+message GapListResult {
+  repeated string wrote = 1;
+  repeated string deleted = 2;
+  int32 removed = 3;
+  repeated string notes = 4;
+  bool check = 5;
+  repeated GapReport gaps = 6;
+  int32 gaps_omitted = 7;
+}
+
+// ExplainLink is one link of a derivation chain.
+message ExplainLink {
+  string kind = 1;
+  string package = 2;
+  string symbol = 3;
+  string callee = 4;
+  string clause = 5;
+  string pos = 6;
+}
+
+// ExplainResult is the explain tool's result: the chain's arm, the
+// answering view, and its links (capped, the remainder counted).
+message ExplainResult {
+  string arm = 1;
+  string view = 2;
+  repeated ExplainLink links = 3;
+  int32 omitted = 4;
+}
+
+// ReadSpecResult carries a spec bundle's markdown — the one wire
+// encoding of the document.
+message ReadSpecResult {
+  string spec = 1;
+}
+
+// ExportResult names a written export and its size.
+message ExportResult {
+  string exported = 1;
+  int32 bytes = 2;
 }

@@ -4858,6 +4858,1124 @@ func (b0 PartitionReport_builder) Build() *PartitionReport {
 	return m0
 }
 
+// CompileResult is the compile tool's result: the corpus's diagnostics
+// (capped, the remainder counted) and its sizes when it compiled.
+type CompileResult struct {
+	state                         protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Diagnostics        []string               `protobuf:"bytes,1,rep,name=diagnostics"`
+	xxx_hidden_DiagnosticsOmitted int32                  `protobuf:"varint,2,opt,name=diagnostics_omitted,json=diagnosticsOmitted"`
+	xxx_hidden_Requirements       int32                  `protobuf:"varint,3,opt,name=requirements"`
+	xxx_hidden_Terms              int32                  `protobuf:"varint,4,opt,name=terms"`
+	xxx_hidden_Edges              int32                  `protobuf:"varint,5,opt,name=edges"`
+	XXX_raceDetectHookData        protoimpl.RaceDetectHookData
+	XXX_presence                  [1]uint32
+	unknownFields                 protoimpl.UnknownFields
+	sizeCache                     protoimpl.SizeCache
+}
+
+func (x *CompileResult) Reset() {
+	*x = CompileResult{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CompileResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CompileResult) ProtoMessage() {}
+
+func (x *CompileResult) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *CompileResult) GetDiagnostics() []string {
+	if x != nil {
+		return x.xxx_hidden_Diagnostics
+	}
+	return nil
+}
+
+func (x *CompileResult) GetDiagnosticsOmitted() int32 {
+	if x != nil {
+		return x.xxx_hidden_DiagnosticsOmitted
+	}
+	return 0
+}
+
+func (x *CompileResult) GetRequirements() int32 {
+	if x != nil {
+		return x.xxx_hidden_Requirements
+	}
+	return 0
+}
+
+func (x *CompileResult) GetTerms() int32 {
+	if x != nil {
+		return x.xxx_hidden_Terms
+	}
+	return 0
+}
+
+func (x *CompileResult) GetEdges() int32 {
+	if x != nil {
+		return x.xxx_hidden_Edges
+	}
+	return 0
+}
+
+func (x *CompileResult) SetDiagnostics(v []string) {
+	x.xxx_hidden_Diagnostics = v
+}
+
+func (x *CompileResult) SetDiagnosticsOmitted(v int32) {
+	x.xxx_hidden_DiagnosticsOmitted = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 5)
+}
+
+func (x *CompileResult) SetRequirements(v int32) {
+	x.xxx_hidden_Requirements = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 5)
+}
+
+func (x *CompileResult) SetTerms(v int32) {
+	x.xxx_hidden_Terms = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 5)
+}
+
+func (x *CompileResult) SetEdges(v int32) {
+	x.xxx_hidden_Edges = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 5)
+}
+
+func (x *CompileResult) HasDiagnosticsOmitted() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *CompileResult) HasRequirements() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *CompileResult) HasTerms() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *CompileResult) HasEdges() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *CompileResult) ClearDiagnosticsOmitted() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_DiagnosticsOmitted = 0
+}
+
+func (x *CompileResult) ClearRequirements() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Requirements = 0
+}
+
+func (x *CompileResult) ClearTerms() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_Terms = 0
+}
+
+func (x *CompileResult) ClearEdges() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_Edges = 0
+}
+
+type CompileResult_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Diagnostics        []string
+	DiagnosticsOmitted *int32
+	Requirements       *int32
+	Terms              *int32
+	Edges              *int32
+}
+
+func (b0 CompileResult_builder) Build() *CompileResult {
+	m0 := &CompileResult{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Diagnostics = b.Diagnostics
+	if b.DiagnosticsOmitted != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 5)
+		x.xxx_hidden_DiagnosticsOmitted = *b.DiagnosticsOmitted
+	}
+	if b.Requirements != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 5)
+		x.xxx_hidden_Requirements = *b.Requirements
+	}
+	if b.Terms != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 5)
+		x.xxx_hidden_Terms = *b.Terms
+	}
+	if b.Edges != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 5)
+		x.xxx_hidden_Edges = *b.Edges
+	}
+	return m0
+}
+
+// WriteResult is a record-writing tool's result: what it wrote and
+// deleted, the notes a client must not miss, and whether the call was a
+// preview that wrote nothing.
+type WriteResult struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Wrote       []string               `protobuf:"bytes,1,rep,name=wrote"`
+	xxx_hidden_Deleted     []string               `protobuf:"bytes,2,rep,name=deleted"`
+	xxx_hidden_Removed     int32                  `protobuf:"varint,3,opt,name=removed"`
+	xxx_hidden_Notes       []string               `protobuf:"bytes,4,rep,name=notes"`
+	xxx_hidden_Check       bool                   `protobuf:"varint,5,opt,name=check"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *WriteResult) Reset() {
+	*x = WriteResult{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WriteResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WriteResult) ProtoMessage() {}
+
+func (x *WriteResult) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *WriteResult) GetWrote() []string {
+	if x != nil {
+		return x.xxx_hidden_Wrote
+	}
+	return nil
+}
+
+func (x *WriteResult) GetDeleted() []string {
+	if x != nil {
+		return x.xxx_hidden_Deleted
+	}
+	return nil
+}
+
+func (x *WriteResult) GetRemoved() int32 {
+	if x != nil {
+		return x.xxx_hidden_Removed
+	}
+	return 0
+}
+
+func (x *WriteResult) GetNotes() []string {
+	if x != nil {
+		return x.xxx_hidden_Notes
+	}
+	return nil
+}
+
+func (x *WriteResult) GetCheck() bool {
+	if x != nil {
+		return x.xxx_hidden_Check
+	}
+	return false
+}
+
+func (x *WriteResult) SetWrote(v []string) {
+	x.xxx_hidden_Wrote = v
+}
+
+func (x *WriteResult) SetDeleted(v []string) {
+	x.xxx_hidden_Deleted = v
+}
+
+func (x *WriteResult) SetRemoved(v int32) {
+	x.xxx_hidden_Removed = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 5)
+}
+
+func (x *WriteResult) SetNotes(v []string) {
+	x.xxx_hidden_Notes = v
+}
+
+func (x *WriteResult) SetCheck(v bool) {
+	x.xxx_hidden_Check = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 5)
+}
+
+func (x *WriteResult) HasRemoved() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *WriteResult) HasCheck() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *WriteResult) ClearRemoved() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Removed = 0
+}
+
+func (x *WriteResult) ClearCheck() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_Check = false
+}
+
+type WriteResult_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Wrote   []string
+	Deleted []string
+	Removed *int32
+	Notes   []string
+	Check   *bool
+}
+
+func (b0 WriteResult_builder) Build() *WriteResult {
+	m0 := &WriteResult{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Wrote = b.Wrote
+	x.xxx_hidden_Deleted = b.Deleted
+	if b.Removed != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 5)
+		x.xxx_hidden_Removed = *b.Removed
+	}
+	x.xxx_hidden_Notes = b.Notes
+	if b.Check != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 5)
+		x.xxx_hidden_Check = *b.Check
+	}
+	return m0
+}
+
+// GapListResult is the gap tool's list form: the write result's fields
+// beside the rows (capped, the remainder counted).
+type GapListResult struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Wrote       []string               `protobuf:"bytes,1,rep,name=wrote"`
+	xxx_hidden_Deleted     []string               `protobuf:"bytes,2,rep,name=deleted"`
+	xxx_hidden_Removed     int32                  `protobuf:"varint,3,opt,name=removed"`
+	xxx_hidden_Notes       []string               `protobuf:"bytes,4,rep,name=notes"`
+	xxx_hidden_Check       bool                   `protobuf:"varint,5,opt,name=check"`
+	xxx_hidden_Gaps        *[]*GapReport          `protobuf:"bytes,6,rep,name=gaps"`
+	xxx_hidden_GapsOmitted int32                  `protobuf:"varint,7,opt,name=gaps_omitted,json=gapsOmitted"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *GapListResult) Reset() {
+	*x = GapListResult{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GapListResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GapListResult) ProtoMessage() {}
+
+func (x *GapListResult) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *GapListResult) GetWrote() []string {
+	if x != nil {
+		return x.xxx_hidden_Wrote
+	}
+	return nil
+}
+
+func (x *GapListResult) GetDeleted() []string {
+	if x != nil {
+		return x.xxx_hidden_Deleted
+	}
+	return nil
+}
+
+func (x *GapListResult) GetRemoved() int32 {
+	if x != nil {
+		return x.xxx_hidden_Removed
+	}
+	return 0
+}
+
+func (x *GapListResult) GetNotes() []string {
+	if x != nil {
+		return x.xxx_hidden_Notes
+	}
+	return nil
+}
+
+func (x *GapListResult) GetCheck() bool {
+	if x != nil {
+		return x.xxx_hidden_Check
+	}
+	return false
+}
+
+func (x *GapListResult) GetGaps() []*GapReport {
+	if x != nil {
+		if x.xxx_hidden_Gaps != nil {
+			return *x.xxx_hidden_Gaps
+		}
+	}
+	return nil
+}
+
+func (x *GapListResult) GetGapsOmitted() int32 {
+	if x != nil {
+		return x.xxx_hidden_GapsOmitted
+	}
+	return 0
+}
+
+func (x *GapListResult) SetWrote(v []string) {
+	x.xxx_hidden_Wrote = v
+}
+
+func (x *GapListResult) SetDeleted(v []string) {
+	x.xxx_hidden_Deleted = v
+}
+
+func (x *GapListResult) SetRemoved(v int32) {
+	x.xxx_hidden_Removed = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 7)
+}
+
+func (x *GapListResult) SetNotes(v []string) {
+	x.xxx_hidden_Notes = v
+}
+
+func (x *GapListResult) SetCheck(v bool) {
+	x.xxx_hidden_Check = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 7)
+}
+
+func (x *GapListResult) SetGaps(v []*GapReport) {
+	x.xxx_hidden_Gaps = &v
+}
+
+func (x *GapListResult) SetGapsOmitted(v int32) {
+	x.xxx_hidden_GapsOmitted = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 7)
+}
+
+func (x *GapListResult) HasRemoved() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *GapListResult) HasCheck() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *GapListResult) HasGapsOmitted() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
+func (x *GapListResult) ClearRemoved() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Removed = 0
+}
+
+func (x *GapListResult) ClearCheck() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_Check = false
+}
+
+func (x *GapListResult) ClearGapsOmitted() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	x.xxx_hidden_GapsOmitted = 0
+}
+
+type GapListResult_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Wrote       []string
+	Deleted     []string
+	Removed     *int32
+	Notes       []string
+	Check       *bool
+	Gaps        []*GapReport
+	GapsOmitted *int32
+}
+
+func (b0 GapListResult_builder) Build() *GapListResult {
+	m0 := &GapListResult{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Wrote = b.Wrote
+	x.xxx_hidden_Deleted = b.Deleted
+	if b.Removed != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 7)
+		x.xxx_hidden_Removed = *b.Removed
+	}
+	x.xxx_hidden_Notes = b.Notes
+	if b.Check != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 7)
+		x.xxx_hidden_Check = *b.Check
+	}
+	x.xxx_hidden_Gaps = &b.Gaps
+	if b.GapsOmitted != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 7)
+		x.xxx_hidden_GapsOmitted = *b.GapsOmitted
+	}
+	return m0
+}
+
+// ExplainLink is one link of a derivation chain.
+type ExplainLink struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Kind        *string                `protobuf:"bytes,1,opt,name=kind"`
+	xxx_hidden_Package     *string                `protobuf:"bytes,2,opt,name=package"`
+	xxx_hidden_Symbol      *string                `protobuf:"bytes,3,opt,name=symbol"`
+	xxx_hidden_Callee      *string                `protobuf:"bytes,4,opt,name=callee"`
+	xxx_hidden_Clause      *string                `protobuf:"bytes,5,opt,name=clause"`
+	xxx_hidden_Pos         *string                `protobuf:"bytes,6,opt,name=pos"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *ExplainLink) Reset() {
+	*x = ExplainLink{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExplainLink) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExplainLink) ProtoMessage() {}
+
+func (x *ExplainLink) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *ExplainLink) GetKind() string {
+	if x != nil {
+		if x.xxx_hidden_Kind != nil {
+			return *x.xxx_hidden_Kind
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *ExplainLink) GetPackage() string {
+	if x != nil {
+		if x.xxx_hidden_Package != nil {
+			return *x.xxx_hidden_Package
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *ExplainLink) GetSymbol() string {
+	if x != nil {
+		if x.xxx_hidden_Symbol != nil {
+			return *x.xxx_hidden_Symbol
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *ExplainLink) GetCallee() string {
+	if x != nil {
+		if x.xxx_hidden_Callee != nil {
+			return *x.xxx_hidden_Callee
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *ExplainLink) GetClause() string {
+	if x != nil {
+		if x.xxx_hidden_Clause != nil {
+			return *x.xxx_hidden_Clause
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *ExplainLink) GetPos() string {
+	if x != nil {
+		if x.xxx_hidden_Pos != nil {
+			return *x.xxx_hidden_Pos
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *ExplainLink) SetKind(v string) {
+	x.xxx_hidden_Kind = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
+}
+
+func (x *ExplainLink) SetPackage(v string) {
+	x.xxx_hidden_Package = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 6)
+}
+
+func (x *ExplainLink) SetSymbol(v string) {
+	x.xxx_hidden_Symbol = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 6)
+}
+
+func (x *ExplainLink) SetCallee(v string) {
+	x.xxx_hidden_Callee = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
+}
+
+func (x *ExplainLink) SetClause(v string) {
+	x.xxx_hidden_Clause = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
+}
+
+func (x *ExplainLink) SetPos(v string) {
+	x.xxx_hidden_Pos = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 6)
+}
+
+func (x *ExplainLink) HasKind() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *ExplainLink) HasPackage() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *ExplainLink) HasSymbol() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *ExplainLink) HasCallee() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *ExplainLink) HasClause() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *ExplainLink) HasPos() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *ExplainLink) ClearKind() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Kind = nil
+}
+
+func (x *ExplainLink) ClearPackage() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Package = nil
+}
+
+func (x *ExplainLink) ClearSymbol() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Symbol = nil
+}
+
+func (x *ExplainLink) ClearCallee() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_Callee = nil
+}
+
+func (x *ExplainLink) ClearClause() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_Clause = nil
+}
+
+func (x *ExplainLink) ClearPos() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_Pos = nil
+}
+
+type ExplainLink_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Kind    *string
+	Package *string
+	Symbol  *string
+	Callee  *string
+	Clause  *string
+	Pos     *string
+}
+
+func (b0 ExplainLink_builder) Build() *ExplainLink {
+	m0 := &ExplainLink{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Kind != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
+		x.xxx_hidden_Kind = b.Kind
+	}
+	if b.Package != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 6)
+		x.xxx_hidden_Package = b.Package
+	}
+	if b.Symbol != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 6)
+		x.xxx_hidden_Symbol = b.Symbol
+	}
+	if b.Callee != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
+		x.xxx_hidden_Callee = b.Callee
+	}
+	if b.Clause != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
+		x.xxx_hidden_Clause = b.Clause
+	}
+	if b.Pos != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 6)
+		x.xxx_hidden_Pos = b.Pos
+	}
+	return m0
+}
+
+// ExplainResult is the explain tool's result: the chain's arm, the
+// answering view, and its links (capped, the remainder counted).
+type ExplainResult struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Arm         *string                `protobuf:"bytes,1,opt,name=arm"`
+	xxx_hidden_View        *string                `protobuf:"bytes,2,opt,name=view"`
+	xxx_hidden_Links       *[]*ExplainLink        `protobuf:"bytes,3,rep,name=links"`
+	xxx_hidden_Omitted     int32                  `protobuf:"varint,4,opt,name=omitted"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *ExplainResult) Reset() {
+	*x = ExplainResult{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExplainResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExplainResult) ProtoMessage() {}
+
+func (x *ExplainResult) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *ExplainResult) GetArm() string {
+	if x != nil {
+		if x.xxx_hidden_Arm != nil {
+			return *x.xxx_hidden_Arm
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *ExplainResult) GetView() string {
+	if x != nil {
+		if x.xxx_hidden_View != nil {
+			return *x.xxx_hidden_View
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *ExplainResult) GetLinks() []*ExplainLink {
+	if x != nil {
+		if x.xxx_hidden_Links != nil {
+			return *x.xxx_hidden_Links
+		}
+	}
+	return nil
+}
+
+func (x *ExplainResult) GetOmitted() int32 {
+	if x != nil {
+		return x.xxx_hidden_Omitted
+	}
+	return 0
+}
+
+func (x *ExplainResult) SetArm(v string) {
+	x.xxx_hidden_Arm = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
+}
+
+func (x *ExplainResult) SetView(v string) {
+	x.xxx_hidden_View = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
+}
+
+func (x *ExplainResult) SetLinks(v []*ExplainLink) {
+	x.xxx_hidden_Links = &v
+}
+
+func (x *ExplainResult) SetOmitted(v int32) {
+	x.xxx_hidden_Omitted = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
+}
+
+func (x *ExplainResult) HasArm() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *ExplainResult) HasView() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *ExplainResult) HasOmitted() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *ExplainResult) ClearArm() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Arm = nil
+}
+
+func (x *ExplainResult) ClearView() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_View = nil
+}
+
+func (x *ExplainResult) ClearOmitted() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_Omitted = 0
+}
+
+type ExplainResult_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Arm     *string
+	View    *string
+	Links   []*ExplainLink
+	Omitted *int32
+}
+
+func (b0 ExplainResult_builder) Build() *ExplainResult {
+	m0 := &ExplainResult{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Arm != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		x.xxx_hidden_Arm = b.Arm
+	}
+	if b.View != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
+		x.xxx_hidden_View = b.View
+	}
+	x.xxx_hidden_Links = &b.Links
+	if b.Omitted != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		x.xxx_hidden_Omitted = *b.Omitted
+	}
+	return m0
+}
+
+// ReadSpecResult carries a spec bundle's markdown — the one wire
+// encoding of the document.
+type ReadSpecResult struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Spec        *string                `protobuf:"bytes,1,opt,name=spec"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *ReadSpecResult) Reset() {
+	*x = ReadSpecResult{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReadSpecResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReadSpecResult) ProtoMessage() {}
+
+func (x *ReadSpecResult) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *ReadSpecResult) GetSpec() string {
+	if x != nil {
+		if x.xxx_hidden_Spec != nil {
+			return *x.xxx_hidden_Spec
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *ReadSpecResult) SetSpec(v string) {
+	x.xxx_hidden_Spec = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 1)
+}
+
+func (x *ReadSpecResult) HasSpec() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *ReadSpecResult) ClearSpec() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Spec = nil
+}
+
+type ReadSpecResult_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Spec *string
+}
+
+func (b0 ReadSpecResult_builder) Build() *ReadSpecResult {
+	m0 := &ReadSpecResult{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Spec != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 1)
+		x.xxx_hidden_Spec = b.Spec
+	}
+	return m0
+}
+
+// ExportResult names a written export and its size.
+type ExportResult struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Exported    *string                `protobuf:"bytes,1,opt,name=exported"`
+	xxx_hidden_Bytes       int32                  `protobuf:"varint,2,opt,name=bytes"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *ExportResult) Reset() {
+	*x = ExportResult{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExportResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExportResult) ProtoMessage() {}
+
+func (x *ExportResult) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *ExportResult) GetExported() string {
+	if x != nil {
+		if x.xxx_hidden_Exported != nil {
+			return *x.xxx_hidden_Exported
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *ExportResult) GetBytes() int32 {
+	if x != nil {
+		return x.xxx_hidden_Bytes
+	}
+	return 0
+}
+
+func (x *ExportResult) SetExported(v string) {
+	x.xxx_hidden_Exported = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+}
+
+func (x *ExportResult) SetBytes(v int32) {
+	x.xxx_hidden_Bytes = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+}
+
+func (x *ExportResult) HasExported() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *ExportResult) HasBytes() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *ExportResult) ClearExported() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Exported = nil
+}
+
+func (x *ExportResult) ClearBytes() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Bytes = 0
+}
+
+type ExportResult_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Exported *string
+	Bytes    *int32
+}
+
+func (b0 ExportResult_builder) Build() *ExportResult {
+	m0 := &ExportResult{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Exported != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		x.xxx_hidden_Exported = b.Exported
+	}
+	if b.Bytes != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		x.xxx_hidden_Bytes = *b.Bytes
+	}
+	return m0
+}
+
 var File_stipulator_v1_reports_proto protoreflect.FileDescriptor
 
 const file_stipulator_v1_reports_proto_rawDesc = "" +
@@ -5027,7 +6145,44 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"components\x18\x01 \x03(\v2!.stipulator.v1.PartitionComponentR\n" +
 	"components\x12;\n" +
 	"\boverlaps\x18\x02 \x03(\v2\x1f.stipulator.v1.PartitionOverlapR\boverlaps\x12)\n" +
-	"\x10overlaps_omitted\x18\x03 \x01(\x05R\x0foverlapsOmitted*\x95\x01\n" +
+	"\x10overlaps_omitted\x18\x03 \x01(\x05R\x0foverlapsOmitted\"\xb2\x01\n" +
+	"\rCompileResult\x12 \n" +
+	"\vdiagnostics\x18\x01 \x03(\tR\vdiagnostics\x12/\n" +
+	"\x13diagnostics_omitted\x18\x02 \x01(\x05R\x12diagnosticsOmitted\x12\"\n" +
+	"\frequirements\x18\x03 \x01(\x05R\frequirements\x12\x14\n" +
+	"\x05terms\x18\x04 \x01(\x05R\x05terms\x12\x14\n" +
+	"\x05edges\x18\x05 \x01(\x05R\x05edges\"\x83\x01\n" +
+	"\vWriteResult\x12\x14\n" +
+	"\x05wrote\x18\x01 \x03(\tR\x05wrote\x12\x18\n" +
+	"\adeleted\x18\x02 \x03(\tR\adeleted\x12\x18\n" +
+	"\aremoved\x18\x03 \x01(\x05R\aremoved\x12\x14\n" +
+	"\x05notes\x18\x04 \x03(\tR\x05notes\x12\x14\n" +
+	"\x05check\x18\x05 \x01(\bR\x05check\"\xd6\x01\n" +
+	"\rGapListResult\x12\x14\n" +
+	"\x05wrote\x18\x01 \x03(\tR\x05wrote\x12\x18\n" +
+	"\adeleted\x18\x02 \x03(\tR\adeleted\x12\x18\n" +
+	"\aremoved\x18\x03 \x01(\x05R\aremoved\x12\x14\n" +
+	"\x05notes\x18\x04 \x03(\tR\x05notes\x12\x14\n" +
+	"\x05check\x18\x05 \x01(\bR\x05check\x12,\n" +
+	"\x04gaps\x18\x06 \x03(\v2\x18.stipulator.v1.GapReportR\x04gaps\x12!\n" +
+	"\fgaps_omitted\x18\a \x01(\x05R\vgapsOmitted\"\x95\x01\n" +
+	"\vExplainLink\x12\x12\n" +
+	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x18\n" +
+	"\apackage\x18\x02 \x01(\tR\apackage\x12\x16\n" +
+	"\x06symbol\x18\x03 \x01(\tR\x06symbol\x12\x16\n" +
+	"\x06callee\x18\x04 \x01(\tR\x06callee\x12\x16\n" +
+	"\x06clause\x18\x05 \x01(\tR\x06clause\x12\x10\n" +
+	"\x03pos\x18\x06 \x01(\tR\x03pos\"\x81\x01\n" +
+	"\rExplainResult\x12\x10\n" +
+	"\x03arm\x18\x01 \x01(\tR\x03arm\x12\x12\n" +
+	"\x04view\x18\x02 \x01(\tR\x04view\x120\n" +
+	"\x05links\x18\x03 \x03(\v2\x1a.stipulator.v1.ExplainLinkR\x05links\x12\x18\n" +
+	"\aomitted\x18\x04 \x01(\x05R\aomitted\"$\n" +
+	"\x0eReadSpecResult\x12\x12\n" +
+	"\x04spec\x18\x01 \x01(\tR\x04spec\"@\n" +
+	"\fExportResult\x12\x1a\n" +
+	"\bexported\x18\x01 \x01(\tR\bexported\x12\x14\n" +
+	"\x05bytes\x18\x02 \x01(\x05R\x05bytes*\x95\x01\n" +
 	"\n" +
 	"Resolution\x12\x1a\n" +
 	"\x16RESOLUTION_UNSPECIFIED\x10\x00\x12\x19\n" +
@@ -5081,7 +6236,7 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x12GAP_STATE_DANGLING\x10\x04BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
 var file_stipulator_v1_reports_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
-var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_stipulator_v1_reports_proto_goTypes = []any{
 	(Resolution)(0),                // 0: stipulator.v1.Resolution
 	(ShapeState)(0),                // 1: stipulator.v1.ShapeState
@@ -5112,16 +6267,23 @@ var file_stipulator_v1_reports_proto_goTypes = []any{
 	(*PartitionComponent)(nil),     // 26: stipulator.v1.PartitionComponent
 	(*PartitionOverlap)(nil),       // 27: stipulator.v1.PartitionOverlap
 	(*PartitionReport)(nil),        // 28: stipulator.v1.PartitionReport
-	(BindingRole)(0),               // 29: stipulator.v1.BindingRole
-	(ClauseKind)(0),                // 30: stipulator.v1.ClauseKind
-	(Keyword)(0),                   // 31: stipulator.v1.Keyword
-	(*Requirement)(nil),            // 32: stipulator.v1.Requirement
-	(*Gap)(nil),                    // 33: stipulator.v1.Gap
-	(*RequirementAttestation)(nil), // 34: stipulator.v1.RequirementAttestation
+	(*CompileResult)(nil),          // 29: stipulator.v1.CompileResult
+	(*WriteResult)(nil),            // 30: stipulator.v1.WriteResult
+	(*GapListResult)(nil),          // 31: stipulator.v1.GapListResult
+	(*ExplainLink)(nil),            // 32: stipulator.v1.ExplainLink
+	(*ExplainResult)(nil),          // 33: stipulator.v1.ExplainResult
+	(*ReadSpecResult)(nil),         // 34: stipulator.v1.ReadSpecResult
+	(*ExportResult)(nil),           // 35: stipulator.v1.ExportResult
+	(BindingRole)(0),               // 36: stipulator.v1.BindingRole
+	(ClauseKind)(0),                // 37: stipulator.v1.ClauseKind
+	(Keyword)(0),                   // 38: stipulator.v1.Keyword
+	(*Requirement)(nil),            // 39: stipulator.v1.Requirement
+	(*Gap)(nil),                    // 40: stipulator.v1.Gap
+	(*RequirementAttestation)(nil), // 41: stipulator.v1.RequirementAttestation
 }
 var file_stipulator_v1_reports_proto_depIdxs = []int32{
 	4,  // 0: stipulator.v1.FailureDiagnostic.disposition:type_name -> stipulator.v1.HealthDisposition
-	29, // 1: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
+	36, // 1: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
 	0,  // 2: stipulator.v1.BindingResult.resolution:type_name -> stipulator.v1.Resolution
 	1,  // 3: stipulator.v1.BindingResult.shape:type_name -> stipulator.v1.ShapeState
 	2,  // 4: stipulator.v1.BindingResult.test_outcome:type_name -> stipulator.v1.TestOutcome
@@ -5133,22 +6295,22 @@ var file_stipulator_v1_reports_proto_depIdxs = []int32{
 	13, // 10: stipulator.v1.VerifyReport.signatures:type_name -> stipulator.v1.ChangeSignature
 	8,  // 11: stipulator.v1.VerifyReport.witness_diagnostics:type_name -> stipulator.v1.FailureDiagnostic
 	5,  // 12: stipulator.v1.ChangeSignature.label:type_name -> stipulator.v1.SignatureLabel
-	30, // 13: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
-	31, // 14: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
+	37, // 13: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
+	38, // 14: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
 	6,  // 15: stipulator.v1.RequirementCoverage.bucket:type_name -> stipulator.v1.Bucket
 	7,  // 16: stipulator.v1.GapReport.state:type_name -> stipulator.v1.GapState
 	14, // 17: stipulator.v1.CoverageReport.requirements:type_name -> stipulator.v1.RequirementCoverage
 	15, // 18: stipulator.v1.CoverageReport.gaps:type_name -> stipulator.v1.GapReport
 	17, // 19: stipulator.v1.CoverageReport.dangling_pointers:type_name -> stipulator.v1.DanglingPointer
 	13, // 20: stipulator.v1.VerifySummary.signatures:type_name -> stipulator.v1.ChangeSignature
-	29, // 21: stipulator.v1.Seed.role:type_name -> stipulator.v1.BindingRole
+	36, // 21: stipulator.v1.Seed.role:type_name -> stipulator.v1.BindingRole
 	20, // 22: stipulator.v1.ContextReport.seeds:type_name -> stipulator.v1.Seed
 	21, // 23: stipulator.v1.ContextReport.declarations:type_name -> stipulator.v1.Decl
 	23, // 24: stipulator.v1.ContextReport.floor:type_name -> stipulator.v1.SliceFloorPackage
-	32, // 25: stipulator.v1.Dossier.requirement:type_name -> stipulator.v1.Requirement
+	39, // 25: stipulator.v1.Dossier.requirement:type_name -> stipulator.v1.Requirement
 	14, // 26: stipulator.v1.Dossier.coverage:type_name -> stipulator.v1.RequirementCoverage
-	33, // 27: stipulator.v1.Dossier.gap:type_name -> stipulator.v1.Gap
-	34, // 28: stipulator.v1.Dossier.attestation:type_name -> stipulator.v1.RequirementAttestation
+	40, // 27: stipulator.v1.Dossier.gap:type_name -> stipulator.v1.Gap
+	41, // 28: stipulator.v1.Dossier.attestation:type_name -> stipulator.v1.RequirementAttestation
 	10, // 29: stipulator.v1.Dossier.bindings:type_name -> stipulator.v1.BindingResult
 	20, // 30: stipulator.v1.Dossier.seeds:type_name -> stipulator.v1.Seed
 	7,  // 31: stipulator.v1.Dossier.gap_state:type_name -> stipulator.v1.GapState
@@ -5159,11 +6321,13 @@ var file_stipulator_v1_reports_proto_depIdxs = []int32{
 	20, // 36: stipulator.v1.PartitionComponent.seeds:type_name -> stipulator.v1.Seed
 	26, // 37: stipulator.v1.PartitionReport.components:type_name -> stipulator.v1.PartitionComponent
 	27, // 38: stipulator.v1.PartitionReport.overlaps:type_name -> stipulator.v1.PartitionOverlap
-	39, // [39:39] is the sub-list for method output_type
-	39, // [39:39] is the sub-list for method input_type
-	39, // [39:39] is the sub-list for extension type_name
-	39, // [39:39] is the sub-list for extension extendee
-	0,  // [0:39] is the sub-list for field type_name
+	15, // 39: stipulator.v1.GapListResult.gaps:type_name -> stipulator.v1.GapReport
+	32, // 40: stipulator.v1.ExplainResult.links:type_name -> stipulator.v1.ExplainLink
+	41, // [41:41] is the sub-list for method output_type
+	41, // [41:41] is the sub-list for method input_type
+	41, // [41:41] is the sub-list for extension type_name
+	41, // [41:41] is the sub-list for extension extendee
+	0,  // [0:41] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_reports_proto_init() }
@@ -5179,7 +6343,7 @@ func file_stipulator_v1_reports_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_reports_proto_rawDesc), len(file_stipulator_v1_reports_proto_rawDesc)),
 			NumEnums:      8,
-			NumMessages:   21,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

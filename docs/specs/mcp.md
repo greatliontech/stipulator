@@ -34,8 +34,23 @@ duplication without a distinct consumer.
 `context`, `partitions`, `dispose`, `retarget`, `attest_requirement`,
 `explain`, and `guidance`,
 mirroring the
-operation semantics exactly, with report-shaped results rendered from the
-report messages as JSON. The `bind` tool accepts many claims
+operation semantics exactly, with every result carrying a structured
+payload — the ProtoJSON projection of its wire message and nothing
+else; `guidance` serves prose alone — one projection feeding the CLI's JSON
+and the structured tool result, so the two surfaces cannot drift and no
+result carries a second encoding. The messages beside the reports:
+`CompileResult` (the diagnostics, capped with the remainder counted;
+the requirement, term, and edge counts when the corpus compiled),
+`WriteResult` for every record-writing tool (the paths written and
+deleted, the claims removed, the notes a client must not miss, the
+preview flag), `GapListResult` for the `gap` tool's every form (the write fields
+beside the `GapReport` rows, the rows absent on a declare, fire, or
+retract, capped with the remainder counted on a list), `ExplainResult` (the chain's
+arm, the answering view, the links capped with the remainder counted),
+`ReadSpecResult` (the bundle markdown), and `ExportResult` (the export's
+path and size). An empty list is absent, never present-and-empty; a
+zero count and an unset flag likewise. The
+`bind` tool accepts many claims
 in one call, validating all-or-nothing like the gap surface.
 
 **REQ-mcp-guidance** (behavior): Tool-level served prose MUST be the

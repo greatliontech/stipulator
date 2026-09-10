@@ -397,22 +397,41 @@ func (s *Server) compileFresh() (*stipulatorv1.Spec, error) {
 type compileOut struct {
 	// Capped; DiagnosticsOmitted counts the remainder so the truncation
 	// is never silent (REQ-mcp-response-contract).
-	Diagnostics        []string `json:"diagnostics"`
-	DiagnosticsOmitted int      `json:"diagnostics_omitted,omitempty"`
-	Requirements       *int     `json:"requirements,omitempty"`
-	Terms              *int     `json:"terms,omitempty"`
-	Edges              *int     `json:"edges,omitempty"`
+	Diagnostics        []string
+	DiagnosticsOmitted int
+	Requirements       *int
+	Terms              *int
+	Edges              *int
+}
+
+// proto is the compile result's wire message.
+func (c compileOut) proto() *stipulatorv1.CompileResult {
+	m := &stipulatorv1.CompileResult{}
+	m.SetDiagnostics(c.Diagnostics)
+	if c.DiagnosticsOmitted > 0 {
+		m.SetDiagnosticsOmitted(int32(c.DiagnosticsOmitted))
+	}
+	if c.Requirements != nil {
+		m.SetRequirements(int32(*c.Requirements))
+	}
+	if c.Terms != nil {
+		m.SetTerms(int32(*c.Terms))
+	}
+	if c.Edges != nil {
+		m.SetEdges(int32(*c.Edges))
+	}
+	return m
 }
 
 // compileDiagnosticCap bounds the compile tool's diagnostic list.
 const compileDiagnosticCap = 50
 
-func (s *Server) toolCompile(ctx context.Context, req *mcp.CallToolRequest, in struct{}) (*mcp.CallToolResult, compileOut, error) {
+func (s *Server) toolCompile(ctx context.Context, req *mcp.CallToolRequest, in struct{}) (*mcp.CallToolResult, map[string]any, error) {
 	spec, diags, err := compile.Compile(s.fsys())
 	if err != nil {
-		return nil, compileOut{}, err
+		return nil, nil, err
 	}
-	out := compileOut{Diagnostics: []string{}}
+	out := compileOut{}
 	for _, d := range diags {
 		if len(out.Diagnostics) == compileDiagnosticCap {
 			out.DiagnosticsOmitted = len(diags) - compileDiagnosticCap
@@ -424,7 +443,7 @@ func (s *Server) toolCompile(ctx context.Context, req *mcp.CallToolRequest, in s
 		reqs, terms, edges := len(spec.GetRequirements()), len(spec.GetTerms()), len(spec.GetEdges())
 		out.Requirements, out.Terms, out.Edges = &reqs, &terms, &edges
 	}
-	return textOnly(digest(compileLine(out), out.Diagnostics)), out, nil
+	return projected(textOnly(digest(compileLine(out), out.Diagnostics)), out.proto())
 }
 
 // compileLine is the verdict line beside the structured compile result;
@@ -708,11 +727,7 @@ func stampedResult(res *mcp.CallToolResult, prog *progress.Reporter) *mcp.CallTo
 // the SDK serialize the whole payload a second time as text
 // (REQ-mcp-response-contract).
 func summarized(line string, m proto.Message) (*mcp.CallToolResult, map[string]any, error) {
-	out, err := wire.StructuredContent(m)
-	if err != nil {
-		return nil, nil, err
-	}
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: line}}}, out, nil
+	return projected(textOnly(line), m)
 }
 
 // startProgress arms one tool call's progress seam: the returned context
@@ -848,16 +863,16 @@ type bindClaim struct {
 }
 
 type writeOut struct {
-	Wrote   []string `json:"wrote,omitempty"`
-	Deleted []string `json:"deleted,omitempty"`
-	Removed int      `json:"removed,omitempty"`
+	Wrote   []string
+	Deleted []string
+	Removed int
 	// Notes surface non-silent consequences, e.g. a gap's landing
 	// condition retarget.
-	Notes []string `json:"notes,omitempty"`
+	Notes []string
 	// Check marks a preview: nothing was written, the rows say what an
 	// apply would do - without it a zero-row check and a zero-write
 	// apply are indistinguishable on the wire.
-	Check bool `json:"check,omitempty"`
+	Check bool
 }
 
 // apply lands a batch of record updates under compare-and-swap
@@ -957,6 +972,32 @@ func admitWrite(fsys fs.FS, path string, document bool) error {
 	return nil
 }
 
+// proto is the write result's wire message: zero counts and an unset
+// preview stay absent, as the projection's omitted fields.
+func (w writeOut) proto() *stipulatorv1.WriteResult {
+	m := &stipulatorv1.WriteResult{}
+	m.SetWrote(w.Wrote)
+	m.SetDeleted(w.Deleted)
+	if w.Removed > 0 {
+		m.SetRemoved(int32(w.Removed))
+	}
+	m.SetNotes(w.Notes)
+	if w.Check {
+		m.SetCheck(true)
+	}
+	return m
+}
+
+// projected pairs a tool's text result with its structured content: the
+// one ProtoJSON projection of the result message (REQ-mcp-tools).
+func projected(res *mcp.CallToolResult, m proto.Message) (*mcp.CallToolResult, map[string]any, error) {
+	out, err := wire.StructuredContent(m)
+	if err != nil {
+		return nil, nil, err
+	}
+	return res, out, nil
+}
+
 // result is the one-line Content beside the structured writeOut
 // (REQ-mcp-response-contract's single payload encoding).
 func (w writeOut) result() *mcp.CallToolResult {
@@ -970,7 +1011,7 @@ func (w writeOut) result() *mcp.CallToolResult {
 	return textOnly(line)
 }
 
-func (s *Server) toolBind(ctx context.Context, req *mcp.CallToolRequest, in bindIn) (*mcp.CallToolResult, writeOut, error) {
+func (s *Server) toolBind(ctx context.Context, req *mcp.CallToolRequest, in bindIn) (*mcp.CallToolResult, map[string]any, error) {
 	defaultBackend := in.Backend
 	if defaultBackend == "" {
 		defaultBackend = "go"
@@ -979,12 +1020,12 @@ func (s *Server) toolBind(ctx context.Context, req *mcp.CallToolRequest, in bind
 	switch {
 	case len(in.Claims) > 0:
 		if in.Requirement != "" || in.Symbol != "" || in.Role != "" || in.File != "" || in.Clause != "" {
-			return nil, writeOut{}, fmt.Errorf("give either claims or the single-claim fields, not both")
+			return nil, nil, fmt.Errorf("give either claims or the single-claim fields, not both")
 		}
 		for _, c := range in.Claims {
 			role, err := author.ParseRole(c.Role)
 			if err != nil {
-				return nil, writeOut{}, err
+				return nil, nil, err
 			}
 			backendName := c.Backend
 			if backendName == "" {
@@ -998,7 +1039,7 @@ func (s *Server) toolBind(ctx context.Context, req *mcp.CallToolRequest, in bind
 	default:
 		role, err := author.ParseRole(in.Role)
 		if err != nil {
-			return nil, writeOut{}, err
+			return nil, nil, err
 		}
 		reqs = append(reqs, author.BindRequest{
 			Requirement: in.Requirement, Symbol: in.Symbol, Backend: defaultBackend,
@@ -1009,19 +1050,19 @@ func (s *Server) toolBind(ctx context.Context, req *mcp.CallToolRequest, in bind
 	prog.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	backends, err := s.backends(ctx, nil)
 	if err != nil {
-		return nil, writeOut{}, terminalToolError(prog, ctx, err)
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	defer verify.CloseBackends(backends)
 	ups, err := author.Binds(s.fsys(), backends, reqs)
 	if err != nil {
-		return nil, writeOut{}, terminalToolError(prog, ctx, err)
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	out, err := s.apply(ups)
 	if err != nil {
-		return nil, writeOut{}, terminalToolError(prog, ctx, err)
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-	return stampedResult(out.result(), prog), out, nil
+	return projected(stampedResult(out.result(), prog), out.proto())
 }
 
 type unbindIn struct {
@@ -1031,21 +1072,21 @@ type unbindIn struct {
 	Clause      string `json:"clause,omitempty"`
 }
 
-func (s *Server) toolUnbind(ctx context.Context, req *mcp.CallToolRequest, in unbindIn) (*mcp.CallToolResult, writeOut, error) {
+func (s *Server) toolUnbind(ctx context.Context, req *mcp.CallToolRequest, in unbindIn) (*mcp.CallToolResult, map[string]any, error) {
 	role, err := author.ParseRole(in.Role)
 	if err != nil {
-		return nil, writeOut{}, err
+		return nil, nil, err
 	}
 	ups, removed, err := author.Unbind(s.fsys(), in.Requirement, in.Symbol, role, in.Clause)
 	if err != nil {
-		return nil, writeOut{}, err
+		return nil, nil, err
 	}
 	out, err := s.apply(ups)
 	if err != nil {
-		return nil, writeOut{}, err
+		return nil, nil, err
 	}
 	out.Removed = removed
-	return out.result(), out, nil
+	return projected(out.result(), out.proto())
 }
 
 type gapIn struct {
@@ -1065,57 +1106,76 @@ type gapIn struct {
 // form's read rows.
 type gapOut struct {
 	writeOut
-	// Gaps is the list form's read surface - wire GapReport rows,
-	// protojson-shaped.
-	Gaps []map[string]any `json:"gaps,omitempty"`
+	// Gaps is the list form's read surface - the wire GapReport rows.
+	Gaps []*stipulatorv1.GapReport
 	// GapsOmitted counts rows beyond the response cap - the records on
 	// disk carry the full set (REQ-mcp-response-contract's envelope).
-	GapsOmitted int `json:"gapsOmitted,omitempty"`
+	GapsOmitted int
 }
 
-func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn) (*mcp.CallToolResult, gapOut, error) {
+// proto is the list's wire message.
+func (g gapOut) proto() *stipulatorv1.GapListResult {
+	w := g.writeOut.proto()
+	m := &stipulatorv1.GapListResult{}
+	m.SetWrote(w.GetWrote())
+	m.SetDeleted(w.GetDeleted())
+	if w.HasRemoved() {
+		m.SetRemoved(w.GetRemoved())
+	}
+	m.SetNotes(w.GetNotes())
+	if w.HasCheck() {
+		m.SetCheck(true)
+	}
+	m.SetGaps(g.Gaps)
+	if g.GapsOmitted > 0 {
+		m.SetGapsOmitted(int32(g.GapsOmitted))
+	}
+	return m
+}
+
+func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn) (*mcp.CallToolResult, map[string]any, error) {
 	conditioned := in.Covered != "" || in.Exists != "" || in.Manual != "" || in.Reason != "" || in.Excuses != "" || in.Contradicted
 	if in.List {
 		if in.Requirement != "" || conditioned || in.Fired || in.Retract {
-			return nil, gapOut{}, fmt.Errorf("list is the read surface and combines with no write field: editing a gap is re-declaring it")
+			return nil, nil, fmt.Errorf("list is the read surface and combines with no write field: editing a gap is re-declaring it")
 		}
 		return s.gapList(ctx, req)
 	}
 	reqs, err := splitIDs(in.Requirement)
 	if err != nil {
-		return nil, gapOut{}, err
+		return nil, nil, err
 	}
 	switch {
 	case in.Retract:
 		if conditioned || in.Fired {
-			return nil, gapOut{}, fmt.Errorf("retract takes only requirements: retraction deletes the record, conditions do not apply")
+			return nil, nil, fmt.Errorf("retract takes only requirements: retraction deletes the record, conditions do not apply")
 		}
 		ups, err := author.RetractGaps(s.fsys(), reqs)
 		if err != nil {
-			return nil, gapOut{}, err
+			return nil, nil, err
 		}
 		out, err := s.apply(ups)
 		if err != nil {
-			return nil, gapOut{}, err
+			return nil, nil, err
 		}
-		return out.result(), gapOut{writeOut: out}, nil
+		return projected(out.result(), gapOut{writeOut: out}.proto())
 	case in.Fired && in.Manual == "":
 		if conditioned {
-			return nil, gapOut{}, fmt.Errorf("fired alone fires existing gaps; declaring a new fired gap takes manual with fired")
+			return nil, nil, fmt.Errorf("fired alone fires existing gaps; declaring a new fired gap takes manual with fired")
 		}
 		ups, err := author.FireGaps(s.fsys(), reqs)
 		if err != nil {
-			return nil, gapOut{}, err
+			return nil, nil, err
 		}
 		out, err := s.apply(ups)
 		if err != nil {
-			return nil, gapOut{}, err
+			return nil, nil, err
 		}
-		return out.result(), gapOut{writeOut: out}, nil
+		return projected(out.result(), gapOut{writeOut: out}.proto())
 	}
 	lc, lcErr := author.NewLandingCondition(in.Covered, in.Exists, in.Manual, in.Fired, in.Contradicted)
 	if lcErr != nil {
-		return nil, gapOut{}, lcErr
+		return nil, nil, lcErr
 	}
 	var excuseNames []string
 	for _, n := range strings.Split(in.Excuses, ",") {
@@ -1125,19 +1185,19 @@ func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn
 	}
 	excuses, err := author.NewExcuses(excuseNames)
 	if err != nil {
-		return nil, gapOut{}, err
+		return nil, nil, err
 	}
 	ups, notes, err := author.Gaps(s.fsys(), reqs, in.Reason, lc, excuses)
 	if err != nil {
-		return nil, gapOut{}, err
+		return nil, nil, err
 	}
 	out, err := s.apply(ups)
 	if err != nil {
-		return nil, gapOut{}, err
+		return nil, nil, err
 	}
 	// A retarget is never silent: the wire result names old and new.
 	out.Notes = notes
-	return out.result(), gapOut{writeOut: out}, nil
+	return projected(out.result(), gapOut{writeOut: out}.proto())
 }
 
 // gapList is the gap tool's read surface: every record's declaration
@@ -1145,36 +1205,25 @@ func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn
 // the gap-relevant requirements exactly as prune's is
 // (REQ-gap-resolved-pruned's narrowing), with dangling records listed
 // rather than refused. It writes nothing.
-func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, gapOut, error) {
+func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, map[string]any, error) {
 	ctx, prog := s.startProgress(ctx, req)
 	prepared, rep, cov, err := verifyrun.Gaps(ctx, s.deps())
 	if err != nil {
-		return nil, gapOut{}, terminalToolError(prog, ctx, err)
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	spec, store := prepared.Spec, prepared.Store
 	if cov == nil {
 		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-		return stampedResult(textOnly("no gap records"), prog), gapOut{writeOut: writeOut{Notes: []string{"no gap records"}}}, nil
+		return projected(stampedResult(textOnly("no gap records"), prog), gapOut{writeOut: writeOut{Notes: []string{"no gap records"}}}.proto())
 	}
 	known := records.HashesOf(spec)
 	dangling := 0
 	var reports []*stipulatorv1.GapReport
-	var rows []map[string]any
-	addRow := func(m *stipulatorv1.GapReport) error {
+	addRow := func(m *stipulatorv1.GapReport) {
 		if m.GetState() == stipulatorv1.GapState_GAP_STATE_DANGLING {
 			dangling++
 		}
 		reports = append(reports, m)
-		b, err := protojson.Marshal(m)
-		if err != nil {
-			return err
-		}
-		row := map[string]any{}
-		if err := json.Unmarshal(b, &row); err != nil {
-			return err
-		}
-		rows = append(rows, row)
-		return nil
 	}
 	// Dangling records are a triage fact, not a refusal: the list is
 	// where they are found (their repairs are retraction and the
@@ -1193,9 +1242,7 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 		m.SetCondition(coverage.ConditionText(gf.Gap.GetLands()))
 		m.SetFired(gf.Gap.GetLands().GetManual().GetFired())
 		m.SetContradicted(gf.Gap.GetLands().GetManual().GetContradicted())
-		if err := addRow(m); err != nil {
-			return nil, gapOut{}, terminalToolError(prog, ctx, err)
-		}
+		addRow(m)
 	}
 	for _, g := range cov.Proto().GetGaps() {
 		// The evaluation's row for an out-of-corpus record is a
@@ -1203,11 +1250,9 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 		if !known.Known(g.GetRequirementId()) {
 			continue
 		}
-		if err := addRow(g); err != nil {
-			return nil, gapOut{}, terminalToolError(prog, ctx, err)
-		}
+		addRow(g)
 	}
-	out := gapOut{Gaps: rows}
+	out := gapOut{Gaps: reports}
 	const gapRowCap = 50
 	if len(out.Gaps) > gapRowCap {
 		out.GapsOmitted = len(out.Gaps) - gapRowCap
@@ -1222,9 +1267,9 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 	// in dangling alone (REQ-gap-list).
 	tally := coverage.GapCountsWire(reports)
 	line := fmt.Sprintf("%d gap records: %d open, %d due, %d resolved, %d dangling, %d contradicted",
-		len(rows), tally.Open, tally.Due, tally.Resolved, dangling, tally.Contradicted)
+		len(reports), tally.Open, tally.Due, tally.Resolved, dangling, tally.Contradicted)
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-	return stampedResult(textOnly(line), prog), out, nil
+	return projected(stampedResult(textOnly(line), prog), out.proto())
 }
 
 type attestRequirementIn struct {
@@ -1233,42 +1278,42 @@ type attestRequirementIn struct {
 	Retract     bool   `json:"retract,omitempty"`
 }
 
-func (s *Server) toolAttestRequirement(ctx context.Context, req *mcp.CallToolRequest, in attestRequirementIn) (*mcp.CallToolResult, writeOut, error) {
+func (s *Server) toolAttestRequirement(ctx context.Context, req *mcp.CallToolRequest, in attestRequirementIn) (*mcp.CallToolResult, map[string]any, error) {
 	if in.Retract {
 		up, prior, err := author.RetractAttestation(s.fsys(), in.Requirement)
 		if err != nil {
-			return nil, writeOut{}, err
+			return nil, nil, err
 		}
 		out, err := s.apply([]author.Update{*up})
 		if err != nil {
-			return nil, writeOut{}, err
+			return nil, nil, err
 		}
 		out.Notes = []string{"retracted judgment: " + prior.GetReason()}
-		return out.result(), out, nil
+		return projected(out.result(), out.proto())
 	}
 	up, prior, err := author.AttestRequirement(s.fsys(), in.Requirement, in.Reason)
 	if err != nil {
-		return nil, writeOut{}, err
+		return nil, nil, err
 	}
 	out, err := s.apply([]author.Update{*up})
 	if err != nil {
-		return nil, writeOut{}, err
+		return nil, nil, err
 	}
 	if prior != nil {
 		out.Notes = []string{"replaced judgment: " + prior.GetReason()}
 	}
-	return out.result(), out, nil
+	return projected(out.result(), out.proto())
 }
 
 type pinIn struct {
 	Ids string `json:"ids,omitempty"`
 }
 
-func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn) (*mcp.CallToolResult, writeOut, error) {
+func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn) (*mcp.CallToolResult, map[string]any, error) {
 	if in.Ids != "" {
 		ids, err := splitIDs(in.Ids)
 		if err != nil {
-			return nil, writeOut{}, err
+			return nil, nil, err
 		}
 		out := writeOut{}
 		// The editorial writes run first: an unknown id refuses before
@@ -1287,7 +1332,7 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 		noOp := map[string]string{}
 		for _, id := range ids {
 			if _, _, err := author.Editorial(s.fsys(), id); err != nil && !errors.Is(err, author.ErrNothingStale) {
-				return nil, writeOut{}, err
+				return nil, nil, err
 			}
 		}
 		for _, id := range ids {
@@ -1297,11 +1342,11 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 				continue
 			}
 			if err != nil {
-				return nil, writeOut{}, partialPinError(out, err)
+				return nil, nil, partialPinError(out, err)
 			}
 			applied, err := s.apply(ups)
 			if err != nil {
-				return nil, writeOut{}, partialPinError(out, err)
+				return nil, nil, partialPinError(out, err)
 			}
 			out.Wrote = append(out.Wrote, applied.Wrote...)
 			repinned[id] = len(ups)
@@ -1319,11 +1364,11 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 		prog.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 		store, err := records.Load(s.fsys())
 		if err != nil {
-			return nil, writeOut{}, terminalToolError(prog, ctx, err)
+			return nil, nil, terminalToolError(prog, ctx, err)
 		}
 		backends, err := s.backends(ctx, nil)
 		if err != nil {
-			return nil, writeOut{}, terminalToolError(prog, ctx, err)
+			return nil, nil, terminalToolError(prog, ctx, err)
 		}
 		defer verify.CloseBackends(backends)
 		wanted := map[string]bool{}
@@ -1349,21 +1394,21 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 			}
 		}
 		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-		return stampedResult(out.result(), prog), out, nil
+		return projected(stampedResult(out.result(), prog), out.proto())
 	}
 	spec, err := s.compileFresh()
 	if err != nil {
-		return nil, writeOut{}, err
+		return nil, nil, err
 	}
 	store, err := records.Load(s.fsys())
 	if err != nil {
-		return nil, writeOut{}, err
+		return nil, nil, err
 	}
 	ctx, prog := s.startProgress(ctx, req)
 	prog.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	backends, err := s.backends(ctx, nil)
 	if err != nil {
-		return nil, writeOut{}, terminalToolError(prog, ctx, err)
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	defer verify.CloseBackends(backends)
 	var resolutionNotes []string
@@ -1371,7 +1416,7 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 		resolutionNotes = append(resolutionNotes, fmt.Sprintf("shape resolution skipped %s: %v - its shape pin was not judged this call", symbol, err))
 	}))
 	if err != nil {
-		return nil, writeOut{}, terminalToolError(prog, ctx, err)
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	ups := make([]author.Update, 0, len(updates))
 	for p, c := range updates {
@@ -1382,7 +1427,7 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 	author.StampPriors(store, ups)
 	out, err := s.apply(ups)
 	if err != nil {
-		return nil, writeOut{}, terminalToolError(prog, ctx, err)
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	// A no-op must say so: a silent {} reads as "did something, reported
@@ -1405,27 +1450,21 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 		out.Notes = append(out.Notes, "awaiting re-consent (pass ids): "+strings.Join(preserved, ", "))
 	}
 	slices.Sort(out.Wrote)
-	return out.result(), out, nil
+	return projected(out.result(), out.proto())
 }
 
 type readSpecIn struct {
 	Ids string `json:"ids"`
 }
 
-type readSpecOut struct {
-	// Spec carries the bundle markdown — the one wire encoding of the
-	// document, homed in the structured result because
-	// structured-preferring clients drop text blocks; the text side is
-	// the size-only digest (REQ-mcp-response-contract).
-	Spec string `json:"spec" jsonschema:"the requested requirements' self-contained bundle, markdown"`
-}
-
-func (s *Server) toolReadSpec(ctx context.Context, req *mcp.CallToolRequest, in readSpecIn) (*mcp.CallToolResult, readSpecOut, error) {
+func (s *Server) toolReadSpec(ctx context.Context, req *mcp.CallToolRequest, in readSpecIn) (*mcp.CallToolResult, map[string]any, error) {
 	md, err := s.bundleMarkdown(in.Ids)
 	if err != nil {
-		return nil, readSpecOut{}, err
+		return nil, nil, err
 	}
-	return textOnly(fmt.Sprintf("bundle: %d bytes in the structured result", len(md))), readSpecOut{Spec: md}, nil
+	m := &stipulatorv1.ReadSpecResult{}
+	m.SetSpec(md)
+	return projected(textOnly(fmt.Sprintf("bundle: %d bytes in the structured result", len(md))), m)
 }
 
 type explainIn struct {
@@ -1435,34 +1474,63 @@ type explainIn struct {
 }
 
 type explainLink struct {
-	Kind    string `json:"kind"`
-	Package string `json:"package"`
-	Symbol  string `json:"symbol,omitempty"`
-	Callee  string `json:"callee,omitempty"`
-	Clause  string `json:"clause,omitempty"`
-	Pos     string `json:"pos,omitempty"`
+	Kind    string
+	Package string
+	Symbol  string
+	Callee  string
+	Clause  string
+	Pos     string
 }
 
 type explainOut struct {
-	Arm     string        `json:"arm"`
-	View    string        `json:"view,omitempty" jsonschema:"the answering view's invocations - may differ from the view behind the caller's reason"`
-	Links   []explainLink `json:"links"`
-	Omitted int           `json:"omitted,omitempty"`
+	Arm     string
+	View    string
+	Links   []explainLink
+	Omitted int
 }
 
-func (s *Server) toolExplain(ctx context.Context, req *mcp.CallToolRequest, in explainIn) (*mcp.CallToolResult, explainOut, error) {
+// proto is the explain result's wire message.
+func (e explainOut) proto() *stipulatorv1.ExplainResult {
+	m := &stipulatorv1.ExplainResult{}
+	m.SetArm(e.Arm)
+	if e.View != "" {
+		m.SetView(e.View)
+	}
+	links := make([]*stipulatorv1.ExplainLink, 0, len(e.Links))
+	for _, l := range e.Links {
+		lm := &stipulatorv1.ExplainLink{}
+		lm.SetKind(l.Kind)
+		lm.SetPackage(l.Package)
+		for _, f := range []struct {
+			v   string
+			set func(string)
+		}{{l.Symbol, lm.SetSymbol}, {l.Callee, lm.SetCallee}, {l.Clause, lm.SetClause}, {l.Pos, lm.SetPos}} {
+			if f.v != "" {
+				f.set(f.v)
+			}
+		}
+		links = append(links, lm)
+	}
+	m.SetLinks(links)
+	if e.Omitted > 0 {
+		m.SetOmitted(int32(e.Omitted))
+	}
+	return m
+}
+
+func (s *Server) toolExplain(ctx context.Context, req *mcp.CallToolRequest, in explainIn) (*mcp.CallToolResult, map[string]any, error) {
 	pkgPath, symbol, err := golang.ResolveCulprit(in.Reason, in.Package, in.Symbol, func(name string) string { return name })
 	if err != nil {
-		return nil, explainOut{}, err
+		return nil, nil, err
 	}
 	ctx, prog := s.startProgress(ctx, req)
 	prog.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	chain, view, err := s.explain(ctx, pkgPath, symbol)
 	if err != nil {
-		return nil, explainOut{}, terminalToolError(prog, ctx, err)
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-	out := explainOut{Arm: chain.Arm, View: view, Omitted: chain.Omitted, Links: []explainLink{}}
+	out := explainOut{Arm: chain.Arm, View: view, Omitted: chain.Omitted}
 	for _, l := range chain.Links {
 		out.Links = append(out.Links, explainLink{Kind: l.Kind, Package: l.Package, Symbol: l.Symbol, Callee: l.Callee, Clause: l.Clause, Pos: l.Pos})
 	}
@@ -1473,7 +1541,7 @@ func (s *Server) toolExplain(ctx context.Context, req *mcp.CallToolRequest, in e
 			digest += fmt.Sprintf("; %d omitted", chain.Omitted)
 		}
 	}
-	return textOnly(digest), out, nil
+	return projected(textOnly(digest), out.proto())
 }
 
 type disposeIn struct {
@@ -1491,7 +1559,7 @@ type retargetIn struct {
 	Check   bool   `json:"check,omitempty"`
 }
 
-func (s *Server) toolRetarget(ctx context.Context, req *mcp.CallToolRequest, in retargetIn) (*mcp.CallToolResult, writeOut, error) {
+func (s *Server) toolRetarget(ctx context.Context, req *mcp.CallToolRequest, in retargetIn) (*mcp.CallToolResult, map[string]any, error) {
 	backend := in.Backend
 	if backend == "" {
 		backend = "go"
@@ -1500,12 +1568,12 @@ func (s *Server) toolRetarget(ctx context.Context, req *mcp.CallToolRequest, in 
 	prog.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	backends, err := s.backends(ctx, nil)
 	if err != nil {
-		return nil, writeOut{}, terminalToolError(prog, ctx, err)
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	defer verify.CloseBackends(backends)
 	res, err := author.Retarget(s.fsys(), backends, backend, in.From, in.To)
 	if err != nil {
-		return nil, writeOut{}, terminalToolError(prog, ctx, err)
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	rows, ups := res.Rows, res.Updates
 	notes := make([]string, 0, len(rows)+len(res.Pointers))
@@ -1525,18 +1593,18 @@ func (s *Server) toolRetarget(ctx context.Context, req *mcp.CallToolRequest, in 
 	if in.Check {
 		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 		out := writeOut{Notes: notes, Check: true}
-		return textOnly(fmt.Sprintf("retarget check: %d binding(s)%s would retarget", len(rows), res.PointerClause())), out, nil
+		return projected(textOnly(fmt.Sprintf("retarget check: %d binding(s)%s would retarget", len(rows), res.PointerClause())), out.proto())
 	}
 	out, err := s.apply(ups)
 	if err != nil {
-		return nil, writeOut{}, terminalToolError(prog, ctx, err)
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	out.Notes = notes
-	return textOnly(fmt.Sprintf("retargeted %d binding(s)", len(rows))), out, nil
+	return projected(textOnly(fmt.Sprintf("retargeted %d binding(s)", len(rows))), out.proto())
 }
 
-func (s *Server) toolDispose(ctx context.Context, req *mcp.CallToolRequest, in disposeIn) (*mcp.CallToolResult, writeOut, error) {
+func (s *Server) toolDispose(ctx context.Context, req *mcp.CallToolRequest, in disposeIn) (*mcp.CallToolResult, map[string]any, error) {
 	var ups []author.Update
 	var notes []string
 	var err error
@@ -1552,24 +1620,24 @@ func (s *Server) toolDispose(ctx context.Context, req *mcp.CallToolRequest, in d
 	case "supersede":
 		var from, into []string
 		if from, err = splitIDs(in.From); err != nil {
-			return nil, writeOut{}, fmt.Errorf("from: %w", err)
+			return nil, nil, fmt.Errorf("from: %w", err)
 		}
 		if into, err = splitIDs(in.Into); err != nil {
-			return nil, writeOut{}, fmt.Errorf("into: %w", err)
+			return nil, nil, fmt.Errorf("into: %w", err)
 		}
 		ups, err = author.Supersede(s.fsys(), from, into, in.Force)
 	default:
-		return nil, writeOut{}, fmt.Errorf("unknown disposition kind %q (editorial, retire, supersede)", in.Kind)
+		return nil, nil, fmt.Errorf("unknown disposition kind %q (editorial, retire, supersede)", in.Kind)
 	}
 	if err != nil {
-		return nil, writeOut{}, err
+		return nil, nil, err
 	}
 	out, err := s.apply(ups)
 	if err != nil {
-		return nil, writeOut{}, err
+		return nil, nil, err
 	}
 	out.Notes = append(out.Notes, notes...)
-	return out.result(), out, nil
+	return projected(out.result(), out.proto())
 }
 
 type pruneIn struct {
@@ -1584,10 +1652,10 @@ type pruneIn struct {
 // fired — and pruning is refused on a shaky reading: a verification
 // problem could misreport a bucket and prune a still-load-bearing gap.
 // It writes only under .stipulator/gaps/.
-func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pruneIn) (*mcp.CallToolResult, writeOut, error) {
+func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pruneIn) (*mcp.CallToolResult, map[string]any, error) {
 	mode := prune.Mode{Check: in.Check, Dangling: in.Dangling, Store: in.Store}
 	if err := mode.Validate(); err != nil {
-		return nil, writeOut{}, err
+		return nil, nil, err
 	}
 	deps := prune.Deps{
 		Deps:    s.deps(),
@@ -1601,7 +1669,7 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 	if mode.Store {
 		res, err := prune.StoreGC(ctx, deps)
 		if err != nil {
-			return nil, writeOut{}, err
+			return nil, nil, err
 		}
 		// The line rides Notes too: a structured-preferring client must
 		// not read an empty object where the text names the outcome.
@@ -1609,12 +1677,12 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 		if res.Resolutions != nil {
 			out.Notes = append(out.Notes, fmt.Sprintf("store gc: %d resolution record(s) removed, %d kept", res.Resolutions.Removed, res.Resolutions.Kept))
 		}
-		return textOnly(strings.Join(out.Notes, "\n")), out, nil
+		return projected(textOnly(strings.Join(out.Notes, "\n")), out.proto())
 	}
 	if mode.Dangling {
 		prunes, err := prune.Dangling(deps)
 		if err != nil {
-			return nil, writeOut{}, err
+			return nil, nil, err
 		}
 		if in.Check {
 			out := writeOut{Check: true}
@@ -1624,16 +1692,16 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 			if len(prunes) == 0 {
 				out.Notes = append(out.Notes, "no dangling gap records")
 			}
-			return out.result(), out, nil
+			return projected(out.result(), out.proto())
 		}
 		out, err := s.apply(prunes)
 		if err != nil {
-			return nil, writeOut{}, err
+			return nil, nil, err
 		}
 		if len(prunes) == 0 {
 			out.Notes = append(out.Notes, "no dangling gap records")
 		}
-		return out.result(), out, nil
+		return projected(out.result(), out.proto())
 	}
 	ctx, prog := s.startProgress(ctx, req)
 	res, err := prune.Evaluate(ctx, deps, false)
@@ -1642,12 +1710,12 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 		if errors.As(err, &pe) {
 			err = verificationProblems(&verify.Report{Problems: pe.Problems})
 		}
-		return nil, writeOut{}, terminalToolError(prog, ctx, err)
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	if !res.Evaluated {
 		out := writeOut{Notes: []string{"no gap records - nothing to evaluate"}, Check: in.Check}
 		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-		return stampedResult(out.result(), prog), out, nil
+		return projected(stampedResult(out.result(), prog), out.proto())
 	}
 	evaluated := res.Line()
 	if in.Check {
@@ -1659,18 +1727,18 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 			out.Notes = append(out.Notes, "no resolved gap records linger")
 		}
 		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-		return stampedResult(out.result(), prog), out, nil
+		return projected(stampedResult(out.result(), prog), out.proto())
 	}
 	out, err := s.apply(res.Prunes)
 	if err != nil {
-		return nil, writeOut{}, terminalToolError(prog, ctx, err)
+		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	out.Notes = append(out.Notes, evaluated)
 	if len(res.Prunes) == 0 {
 		out.Notes = append(out.Notes, "no resolved gap records linger")
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-	return stampedResult(out.result(), prog), out, nil
+	return projected(stampedResult(out.result(), prog), out.proto())
 }
 
 type contextIn struct {
@@ -1733,7 +1801,7 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 		out.SetFloor(cp.GetFloor())
 	}
 	if in.ExportPath != "" {
-		doc, err := protojson.Marshal(out)
+		doc, err := wire.CanonicalJSON(out)
 		if err != nil {
 			return nil, nil, terminalToolError(prog, ctx, err)
 		}
@@ -1818,7 +1886,7 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 	// export write; the export line carries the phase stamps like every
 	// completed suite-running result.
 	if in.ExportPath != "" {
-		doc, err := protojson.Marshal(pr.ProtoUncapped())
+		doc, err := wire.CanonicalJSON(pr.ProtoUncapped())
 		if err != nil {
 			return nil, nil, terminalToolError(prog, ctx, err)
 		}
@@ -1982,8 +2050,10 @@ func (s *Server) exportTo(exportPath string, doc []byte, what string) (*mcp.Call
 	if err := s.write(exportPath, doc, false); err != nil {
 		return nil, nil, err
 	}
-	out := map[string]any{"exported": exportPath, "bytes": len(doc)}
-	return textOnly(fmt.Sprintf("%s: exported %d bytes to %s", what, len(doc), exportPath)), out, nil
+	m := &stipulatorv1.ExportResult{}
+	m.SetExported(exportPath)
+	m.SetBytes(int32(len(doc)))
+	return projected(textOnly(fmt.Sprintf("%s: exported %d bytes to %s", what, len(doc), exportPath)), m)
 }
 
 // validExportPath refuses anything outside the export home. Tools with

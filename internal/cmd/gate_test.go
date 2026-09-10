@@ -11,11 +11,13 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/wire"
 	"github.com/greatliontech/stipulator/stipulate"
 	"github.com/spf13/cobra"
 )
 
 func TestGateJSONIgnoresConsumerFindings(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-tools")
 	if testing.Short() {
 		t.Skip("measured heavy under the fast tier (in-process)")
 	}
@@ -67,6 +69,12 @@ func TestGateJSONIgnoresConsumerFindings(t *testing.T) {
 	summary := &stipulatorv1.CoverageSummary{}
 	if err := protojson.Unmarshal(out, summary); err != nil {
 		t.Fatalf("gate output is not a strict CoverageSummary: %v\n%s", err, out)
+	}
+	// The bytes are the one canonical projection — sorted keys, fixed
+	// indentation, a trailing newline — never a raw marshal
+	// (REQ-mcp-tools).
+	if canonical, err := wire.CanonicalJSON(summary); err != nil || string(out) != string(canonical) {
+		t.Fatalf("gate --json is not the canonical projection (%v):\n%s\nwant:\n%s", err, out, canonical)
 	}
 	if !summary.GetGatePasses() || summary.GetExempt() != 1 {
 		t.Fatalf("gate summary = %v", summary)
