@@ -338,13 +338,13 @@ func TestCheckRenderUncacheableHistogram(t *testing.T) {
 	res.SetUncacheableReasons(map[string]string{
 		"p.TestA": "observation sealed: runtime input not covered by observation bracket: x.txt",
 		"p.TestB": "observation sealed: runtime input not covered by observation bracket: x.txt",
-		"p.TestC": "no healthy process granted the outcome",
+		"p.TestC": "producing package disposed unhealthy",
 	})
 	var stdout, stderr bytes.Buffer
 	renderCheck(&stdout, &stderr, res)
 	out := stderr.String()
 	first := strings.Index(out, "2  uncacheable: observation sealed: runtime input not covered by observation bracket: x.txt")
-	second := strings.Index(out, "1  uncacheable: no healthy process granted the outcome")
+	second := strings.Index(out, "1  uncacheable: producing package disposed unhealthy")
 	if first < 0 || second < 0 || first > second {
 		t.Fatalf("histogram missing or misordered:\n%s", out)
 	}

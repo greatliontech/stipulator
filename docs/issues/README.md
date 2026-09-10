@@ -18,9 +18,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[env-walk-vocabularies](env-walk-vocabularies.md)** — the environment report's indexed walk
   beside the normalizer's positional edits (and a second `sortedKeys` in cmd). *Lands: with the
   next change set touching the runner environment.*
-- **[publish-refusal-ladders](publish-refusal-ladders.md)** — the selective runner and the
-  full-form recorder each walk the per-subject publish refusal ladder with their own reason
-  vocabulary. *Lands: cross-tool train chunk 223*
 - **[process-output-utf8-marshal](process-output-utf8-marshal.md)** — raw process output (bytes,
   not text) flows into edition-2023 proto string fields; one invalid byte makes the check result
   unmarshallable. Cut-point half fixed; ingest-wide sanitization needs a design choice.
@@ -47,10 +44,10 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   only where authors choose clause claims; whether to refuse whole claims on clause-structured
   requirements (a discipline choice). *Lands: cross-tool train chunk 176 (refuse by default, manifest opt-out — user ruling 2026-09-07)*
 - **[per-stream-color](per-stream-color.md)** — color is one switch over stdout and stderr; a redirected stderr costs stdout its color. Per-stream styler. *Lands: cross-tool train chunk 172*
-- **[two-completion-mechanisms](two-completion-mechanisms.md)** — the selective runner and the health-judged recorder each implement install-at-last-covering-invocation; one completion tracker over capture groups. *Lands: cross-tool train chunk 223*
 - **[cli-test-binary-builds](cli-test-binary-builds.md)** — seven CLI-driving tests each build the binary; one once-built helper. *Lands: cross-tool train chunk 228*
 - **[witnesscache-fingerprint-mirror](witnesscache-fingerprint-mirror.md)** — the witness cache mirrors gofresh's fingerprint field by field with two conversions and a reflective guard; every gofresh field addition is a red build here. *Lands: the next gofresh fingerprint field addition, or the next change to the witness-cache record format.*
 - **[knob-terse-clause-per-face](knob-terse-clause-per-face.md)** — one knob line serves both faces, so a rendered terse clause can carry the other face's prose. *Lands: cross-tool train chunk 184*
 - **[resolver-child-kill-orphans-owned-groups](resolver-child-kill-orphans-owned-groups.md)** — the served resolver child, killed outright by its client, would leave a group-isolated spawn alive — none reachable at HEAD (REQ-go-owned-processes). *Lands: a resolver-child request path first spawning through commandContext*
 - **[selection-views-carry-the-selection-only](selection-views-carry-the-selection-only.md)** — symbol-resolution views load under the tag set and toolchain alone while witness engines carry the module mode and profile; whether module mode is a selection dimension is 222's (REQ-go-build-selections). *Lands: cross-tool train chunk 222*
 - **[capture-group-package-facts-two-maps](capture-group-package-facts-two-maps.md)** — a capture group's package names and covering invocations are two maps that must agree; one map of package entries deletes the guards. *Lands: cross-tool train chunk 227*
+- **[solo-rule-four-mechanisms](solo-rule-four-mechanisms.md)** — three discovery-time predictions of a solo process (g.solo, the selective candidate gate, the retry gate) beside the rows-derived fact the judgment observes; one rule. *Lands: cross-tool train chunk 227*

@@ -833,7 +833,7 @@ func TestHealthJudgedFormKeepsWhatClosedBeforeADegrade(t *testing.T) {
 	}
 	if tr.Uncached != 2 || tr.UncacheableReasons["example.com/units/a.TestA"] != "" ||
 		!strings.HasPrefix(tr.UncacheableReasons["example.com/units/b.TestB"], "freshness path degraded: ") ||
-		tr.UncacheableReasons["example.com/units/c.TestC"] != "producing package disposed unhealthy" {
+		tr.UncacheableReasons["example.com/units/c.TestC"] != reasonProducerUnhealthy {
 		t.Fatalf("uncacheable = %d %v; want the red subject on the ladder's reason and the second group's on the degrade", tr.Uncached, tr.UncacheableReasons)
 	}
 }

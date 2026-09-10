@@ -14,9 +14,8 @@ import (
 // publication ladder: the granting process's owned observation, the
 // subject's outcomes and registrations from that process alone, and
 // whether the subject ran alone in its process (the proof leg's
-// precondition). Both eligibility judges - the full-execution path's
-// per-package facts and the selective path's per-process grantingRun -
-// produce this one shape.
+// precondition). The one eligibility judgment, judgeSubject, produces
+// it on both forms from the candidates each form offers.
 type pubSubject struct {
 	obs      *ProcessObservation
 	outcomes map[string]string

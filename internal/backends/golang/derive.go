@@ -135,13 +135,10 @@ func DeriveTestRun(report *stipulatorv1.ExecutionReport) *verify.TestRun {
 				Package: pkg, Test: test, Requirement: req,
 			})
 		}
-		// Ran counts executed top-level tests and fuzz replays; examples
-		// execute too but never enter the freshness cache, so counting
-		// them would permanently inflate the uncacheable number. The
-		// Example prefix is the toolchain's own dispatch rule, not a
-		// heuristic.
-		if top := topLevel(test); !strings.HasPrefix(top, "Example") {
-			ranTop[pkg+"."+top] = true
+		// Ran counts executed top-level tests and fuzz replays, never
+		// examples.
+		if key, ok := executedTopKey(pkg, test); ok {
+			ranTop[key] = true
 		}
 	}
 	tr.Ran = len(ranTop)
@@ -1195,102 +1192,42 @@ func (r *WitnessRecorder) publish() ([]witnesscache.Record, map[gofresh.Subject]
 	return append([]witnesscache.Record(nil), r.records...), maps.Clone(r.reasons), r.degraded
 }
 
-// reasonNoProducingLeg refuses the subjects of a package two
-// invocations of one capture group select.
-const reasonNoProducingLeg = "two invocations of one capture group select the package; no single producing leg"
-
-// groupSubject is one publishable subject's execution-side material.
-type groupSubject struct {
-	subject  gofresh.Subject
-	obs      *ProcessObservation
-	rows     []*stipulatorv1.TestResult
-	soloRun  bool
-	outcomes map[string]string
-	regs     []verify.Registration
-}
-
 func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, facts invocationFacts, rowsByInvPkg map[string][]*stipulatorv1.TestResult, obsByProducer map[producerKey]*ProcessObservation) ([]witnesscache.Record, map[gofresh.Subject]string, string, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, "", err
 	}
 	reasons := map[gofresh.Subject]string{}
 
-	eligible := map[gofresh.Subject]*groupSubject{}
+	eligible := map[gofresh.Subject]*pubSubject{}
 	var order []gofresh.Subject
 	for pkg, names := range g.tests {
-		markAll := func(why string) {
-			for _, name := range names {
-				reasons[gofresh.Subject{Package: pkg, Symbol: name}] = why
-			}
-		}
 		if g.ambiguous[pkg] {
 			// Refused at discovery; the reason already stands.
 			continue
 		}
+		// The package's one producing process under its covering
+		// invocation is every subject's single candidate, rows or none:
+		// the executor launches exactly one process per selected package
+		// per invocation, so every row under the key shares one
+		// producer, and a package with no row still carries its
+		// disposition.
 		inv := g.pkgInv[pkg]
-		if !facts.healthyPkg[inv+"\x00"+pkg] {
-			markAll("producing package disposed unhealthy")
-			continue
-		}
 		rows := rowsByInvPkg[inv+"\x00"+pkg]
-		if len(rows) == 0 {
-			markAll("no terminal event from the producing process")
-			continue
+		candidate := producerCandidate{healthy: facts.healthyPkg[inv+"\x00"+pkg], rows: rows}
+		if len(rows) > 0 {
+			candidate.obs = obsByProducer[keyOfProducer(rows[0].GetProducer())]
 		}
-		// The executor launches exactly one process per selected package per
-		// invocation, so every row under this key shares one producer.
-		producer := keyOfProducer(rows[0].GetProducer())
-		obs := obsByProducer[producer]
-		if obs == nil || obs.Wire.GetCompleted() == nil {
-			// The producing process's testlog flush is unproven: its
-			// tests execute and witness, they just cannot cache.
-			markAll("producing process's testlog flush unproven")
-			continue
-		}
-		tops := map[string]bool{}
-		for _, row := range rows {
-			tops[topLevel(row.GetTest())] = true
-		}
+		candidates := []producerCandidate{candidate}
 		for _, name := range names {
 			subject := gofresh.Subject{Package: pkg, Symbol: name}
-			if why, refused := g.neverServes[subject]; refused {
-				reasons[subject] = why
+			why, refused := g.neverServes[subject]
+			_, captured := g.fps[subject]
+			ps, reason := judgeSubject(subject, why, refused, captured, candidates)
+			if ps == nil {
+				reasons[subject] = reason
 				continue
 			}
-			if _, captured := g.fps[subject]; !captured {
-				reasons[subject] = "pre-execution fingerprint capture failed"
-				continue
-			}
-			gs := &groupSubject{subject: subject, obs: obs, soloRun: len(tops) == 1 && tops[name]}
-			gs.outcomes = map[string]string{}
-			contradicted := false
-			for _, row := range rows {
-				test := row.GetTest()
-				if test != name && !strings.HasPrefix(test, name+"/") {
-					continue
-				}
-				var word string
-				switch row.GetOutcome() {
-				case stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED:
-					word = "passed"
-				case stipulatorv1.TestOutcome_TEST_OUTCOME_SKIPPED:
-					word = "skipped"
-				default:
-					// A failed result inside a healthy package is a
-					// contradiction; refuse the record rather than cache
-					// either side of it.
-					contradicted = true
-				}
-				gs.outcomes[row.GetPackage()+"."+test] = word
-				for _, req := range row.GetRegistrations() {
-					gs.regs = append(gs.regs, verify.Registration{Package: pkg, Test: test, Requirement: req})
-				}
-			}
-			if contradicted || gs.outcomes[pkg+"."+name] == "" {
-				reasons[subject] = "no healthy outcome for the subject"
-				continue
-			}
-			eligible[subject] = gs
+			eligible[subject] = ps
 			order = append(order, subject)
 		}
 	}
@@ -1310,11 +1247,7 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 	// filling per-subject reasons — this group's evidence executed
 	// under one view a tree edit disproved wholesale; groups that
 	// closed before it keep what their own views validated.
-	eligibleSubjects := map[gofresh.Subject]*pubSubject{}
-	for s, gs := range eligible {
-		eligibleSubjects[s] = &pubSubject{obs: gs.obs, outcomes: gs.outcomes, regs: gs.regs, solo: gs.soloRun}
-	}
-	records, _, checkFault, closeFault, fatal := publishEligible(ctx, g.id, g.view, g.observed, g.observedFPs, g.candidates, order, eligibleSubjects, g.fps, g.excludedPaths, nil, nil, reasons)
+	records, _, checkFault, closeFault, fatal := publishEligible(ctx, g.id, g.view, g.observed, g.observedFPs, g.candidates, order, eligible, g.fps, g.excludedPaths, nil, nil, reasons)
 	if fatal != nil {
 		return nil, nil, "", fatal
 	}
@@ -1387,11 +1320,10 @@ func ExecutePolicyWitnessed(ctx context.Context, pc *Capture, seeding verify.Wit
 	eligibleCovered := map[string]bool{}
 	executed := map[string]bool{}
 	for _, row := range report.GetTests() {
-		top := topLevel(row.GetTest())
-		if strings.HasPrefix(top, "Example") {
+		key, ok := executedTopKey(row.GetPackage(), row.GetTest())
+		if !ok {
 			continue
 		}
-		key := row.GetPackage() + "." + top
 		executed[key] = true
 		inv := row.GetProducer().GetInvocation()
 		if facts.race[inv] || facts.plain[inv] {
@@ -1427,8 +1359,8 @@ func ExecutePolicyWitnessed(ctx context.Context, pc *Capture, seeding verify.Wit
 func executedTopKeys(report *stipulatorv1.ExecutionReport) map[string]bool {
 	keys := map[string]bool{}
 	for _, row := range report.GetTests() {
-		if top := topLevel(row.GetTest()); !strings.HasPrefix(top, "Example") {
-			keys[row.GetPackage()+"."+top] = true
+		if key, ok := executedTopKey(row.GetPackage(), row.GetTest()); ok {
+			keys[key] = true
 		}
 	}
 	return keys

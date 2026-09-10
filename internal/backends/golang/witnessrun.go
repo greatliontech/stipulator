@@ -6,7 +6,6 @@ import (
 	"maps"
 	"runtime/debug"
 	"sort"
-	"strings"
 
 	gofresh "github.com/greatliontech/gofresh"
 
@@ -1126,88 +1125,6 @@ func finishGroup(ctx context.Context, wg *witnessGroup, m *execMerge) ([]gofresh
 	return drifted, records, reasons, nil
 }
 
-// subjectRun is one executed subject's cache-eligible material: the
-// granting process's owned observation and the subject's outcomes and
-// registrations from that process alone (REQ-policy-attribution).
-type subjectRun struct {
-	obs      *ProcessObservation
-	outcomes map[string]string
-	regs     []verify.Registration
-}
-
-// grantingRun finds the one selective process whose disposition permits
-// caching subject's outcome: a process classified HEALTHY — the
-// per-process verdict, never a package or invocation health, none exists
-// on this path — that produced the subject's top-level terminal event
-// and owns a completed observation. A subject whose package process
-// disposed red gets its chance from the isolation pass's solo process; a
-// subject no healthy process granted stays uncacheable.
-func grantingRun(s gofresh.Subject, m *execMerge) (*subjectRun, string) {
-	byProducer := map[producerKey][]*stipulatorv1.TestResult{}
-	var order []producerKey
-	for _, row := range m.rows {
-		if row.GetPackage() != s.Package {
-			continue
-		}
-		test := row.GetTest()
-		if test != s.Symbol && !strings.HasPrefix(test, s.Symbol+"/") {
-			continue
-		}
-		k := keyOfProducer(row.GetProducer())
-		if _, ok := byProducer[k]; !ok {
-			order = append(order, k)
-		}
-		byProducer[k] = append(byProducer[k], row)
-	}
-	sawUnhealthy, sawUnproven := false, false
-	for _, k := range order {
-		if m.disp[k] != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
-			sawUnhealthy = true
-			continue
-		}
-		obs := m.obs[k]
-		if obs == nil || obs.Wire.GetCompleted() == nil {
-			// The producing process's testlog flush is unproven: its tests
-			// execute and witness, they just cannot cache.
-			sawUnproven = true
-			continue
-		}
-		sr := &subjectRun{obs: obs, outcomes: map[string]string{}}
-		contradicted := false
-		for _, row := range byProducer[k] {
-			var word string
-			switch row.GetOutcome() {
-			case stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED:
-				word = "passed"
-			case stipulatorv1.TestOutcome_TEST_OUTCOME_SKIPPED:
-				word = "skipped"
-			default:
-				// A failed result inside a healthy process is a
-				// contradiction; refuse the record rather than cache
-				// either side of it.
-				contradicted = true
-			}
-			sr.outcomes[row.GetPackage()+"."+row.GetTest()] = word
-			for _, req := range row.GetRegistrations() {
-				sr.regs = append(sr.regs, verify.Registration{Package: s.Package, Test: row.GetTest(), Requirement: req})
-			}
-		}
-		if contradicted || sr.outcomes[s.Package+"."+s.Symbol] == "" {
-			sawUnhealthy = sawUnhealthy || contradicted
-			continue
-		}
-		return sr, ""
-	}
-	switch {
-	case sawUnproven:
-		return nil, "producing process's testlog flush unproven"
-	case sawUnhealthy:
-		return nil, "no healthy process granted the outcome"
-	default:
-		return nil, "no process produced the subject's terminal event"
-	}
-}
-
 // publishExecuted assembles the cache records one group's executed
 // subjects support, reusing the producer-validation ladder: per-process
 // eligibility, the observation-proof leg where every candidate of the
@@ -1234,22 +1151,14 @@ func publishExecuted(ctx context.Context, wg *witnessGroup, m *execMerge) ([]wit
 	eligible := map[gofresh.Subject]*pubSubject{}
 	reasons := map[gofresh.Subject]string{}
 	for _, s := range order {
-		if why, refused := wg.g.neverServes[s]; refused {
-			reasons[s] = why
+		why, refused := wg.g.neverServes[s]
+		_, captured := wg.fps[s]
+		ps, reason := judgeSubject(s, why, refused, captured, producersOf(s, wg.g, m))
+		if ps == nil {
+			reasons[s] = reason
 			continue
 		}
-		if _, ok := wg.fps[s]; !ok {
-			reasons[s] = "pre-execution fingerprint capture failed"
-			continue
-		}
-		sr, why := grantingRun(s, m)
-		if sr == nil {
-			reasons[s] = why
-			continue
-		}
-		// Solo-ness is guaranteed upstream by candidate selection: a
-		// selective candidate runs in a process of its own.
-		eligible[s] = &pubSubject{obs: sr.obs, outcomes: sr.outcomes, regs: sr.regs, solo: true}
+		eligible[s] = ps
 	}
 	records, discarded, _, _, fatal := publishEligible(ctx, wg.g.id, wg.view, wg.observed, wg.observedFPs, wg.candidates, order, eligible, wg.fps, wg.g.excludedPaths, wg.served, wg.executedWhy, reasons)
 	if fatal != nil {
@@ -1426,7 +1335,9 @@ func consumeMerge(tr *verify.TestRun, m *execMerge, ranTop map[string]bool, plai
 				Package: pkg, Test: test, Requirement: req,
 			})
 		}
-		ranTop[pkg+"."+topLevel(test)] = true
+		if key, ok := executedTopKey(pkg, test); ok {
+			ranTop[key] = true
+		}
 	}
 	for _, d := range m.diags {
 		if d.GetTest() == "" {

@@ -12,6 +12,7 @@ import (
 	gofresh "github.com/greatliontech/gofresh"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
+	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/stipulate"
 )
@@ -281,5 +282,57 @@ func TestMixedGroupPublishesOnlyItsSinglySelectedPackage(t *testing.T) {
 	}
 	if len(notes) != 1 || !strings.HasPrefix(notes[0], "persisted: first (") {
 		t.Fatalf("persisted notes = %v; want the group installed at the first invocation — its one executing package's", notes)
+	}
+}
+
+// Examples execute but never enter the freshness cache: the executed
+// count excludes them on both forms, so the uncacheable number a run
+// reports is a number a warm cache can drive to zero
+// (REQ-evidence-witness-freshness's diagnosable set is over executed
+// subjects).
+//
+// Deliberately not //gofresh:pure: executes the fixture's tests.
+func TestExecutedCountExcludesExamplesOnBothForms(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes race invocations over a temporary module")
+	}
+	neutralAmbient(t)
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	files := map[string]string{
+		"go.mod":      "module example.com/units\n\ngo 1.26\n",
+		"a/a.go":      "package a\n\n// A is the example's subject.\nfunc A() string { return \"a\" }\n",
+		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n\n// ExampleA runs (an Output comment, empty) without an ambient effect\n// that would refuse the compartment's other witness.\nfunc ExampleA() {\n\t_ = A()\n\t// Output:\n}\n",
+	}
+	// The race invocation is the witness leg; the plain one runs the
+	// package whole on the selective form too, so the example executes
+	// there as well.
+	race := &stipulatorv1.GoInvocationConfig{}
+	race.SetPackages([]string{"./a"})
+	race.SetRace(true)
+	plain := &stipulatorv1.GoInvocationConfig{}
+	plain.SetPackages([]string{"./a"})
+	pol := &stipulatorv1.TestPolicy{}
+	pol.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", race), goInvocation("plain", plain)})
+	ctx := context.Background()
+	const example = "example.com/units/a.ExampleA"
+	_, fullRun, err := ExecutePolicyWitnessed(ctx, mustCapture(t, ctx, writeModule(t, files), pol), noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fullRun.Ran != 1 || fullRun.Uncached != 0 || fullRun.Outcomes[example] != verify.TestPassed {
+		t.Fatalf("full form: ran %d, uncached %d, example outcome %v (reasons %v); want the example executed and counted in neither", fullRun.Ran, fullRun.Uncached, fullRun.Outcomes[example], fullRun.UncacheableReasons)
+	}
+	// The selective form over a cold module: the witness executes under
+	// the race leg, the example under the plain one — whose pass
+	// outcomes the run strips by contract (a plain leg indicts, never
+	// grants), so the example's row reaches the executed count alone;
+	// the same count.
+	serving, err := RunWitnessesScoped(ctx, mustCapture(t, ctx, writeModule(t, files), pol), nil, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if serving.Ran != 1 || serving.Uncached != 0 {
+		t.Fatalf("selective form: ran %d, uncached %d (reasons %v); want the example counted in neither", serving.Ran, serving.Uncached, serving.UncacheableReasons)
 	}
 }

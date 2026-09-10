@@ -514,33 +514,110 @@ func TestDeriveNamesUncacheableWithoutGroups(t *testing.T) {
 	}
 }
 
-// TestGrantingRunNamesRefusals pins the granting ladder's distinct
-// refusals: an unhealthy process, an unproven testlog flush, and a
-// subject with no terminal event each name their own leg.
-func TestGrantingRunNamesRefusals(t *testing.T) {
+// TestJudgeSubjectNamesRefusalsInOneVocabulary pins the one judgment's
+// ladder and vocabulary: every refusal leg names itself, in the
+// recorded precedence, and a grant carries the granting process's own
+// material and solo fact (REQ-evidence-witness-freshness's diagnosable
+// set).
+//
+//gofresh:pure
+func TestJudgeSubjectNamesRefusalsInOneVocabulary(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	subject := gofresh.Subject{Package: "p", Symbol: "TestX"}
+	row := func(test string, outcome stipulatorv1.TestOutcome) *stipulatorv1.TestResult {
+		r := &stipulatorv1.TestResult{}
+		r.SetPackage("p")
+		r.SetTest(test)
+		r.SetOutcome(outcome)
+		return r
+	}
+	passed, failed := stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED, stipulatorv1.TestOutcome_TEST_OUTCOME_FAILED
+	proven := &ProcessObservation{Wire: completedWire()}
+	for _, c := range []struct {
+		name       string
+		refused    bool
+		captured   bool
+		candidates []producerCandidate
+		want       string
+	}{
+		{"classifier refusal first", true, false, nil, "seeded"},
+		{"no fingerprint", false, false, nil, reasonNoFingerprint},
+		{"no terminal event", false, true, nil, reasonNoTerminalEvent},
+		{"a healthy process that died before its first terminal event", false, true, []producerCandidate{{healthy: true, obs: proven}}, reasonNoTerminalEvent},
+		{"an unhealthy process with no row", false, true, []producerCandidate{{healthy: false}}, reasonProducerUnhealthy},
+		{"flush unproven", false, true, []producerCandidate{{healthy: true, obs: nil, rows: []*stipulatorv1.TestResult{row("TestX", passed)}}}, reasonFlushUnproven},
+		{"flush unproven: an incomplete observation", false, true, []producerCandidate{{healthy: true, obs: &ProcessObservation{Wire: &stipulatorv1.Observation{}}, rows: []*stipulatorv1.TestResult{row("TestX", passed)}}}, reasonFlushUnproven},
+		{"unhealthy producer", false, true, []producerCandidate{{healthy: false, obs: proven, rows: []*stipulatorv1.TestResult{row("TestX", passed)}}}, reasonProducerUnhealthy},
+		{"contradiction", false, true, []producerCandidate{{healthy: true, obs: proven, rows: []*stipulatorv1.TestResult{row("TestX", failed)}}}, reasonNoHealthyOutcome},
+		{"missing outcome", false, true, []producerCandidate{{healthy: true, obs: proven, rows: []*stipulatorv1.TestResult{row("TestY", passed)}}}, reasonNoHealthyOutcome},
+		{"unproven outranks unhealthy", false, true, []producerCandidate{{healthy: false, obs: proven, rows: []*stipulatorv1.TestResult{row("TestX", passed)}}, {healthy: true, obs: nil, rows: []*stipulatorv1.TestResult{row("TestX", passed)}}}, reasonFlushUnproven},
+		{"a contradiction beside an unhealthy process", false, true, []producerCandidate{{healthy: false, obs: proven, rows: []*stipulatorv1.TestResult{row("TestX", passed)}}, {healthy: true, obs: proven, rows: []*stipulatorv1.TestResult{row("TestX", failed)}}}, reasonNoHealthyOutcome},
+	} {
+		ps, why := judgeSubject(subject, "seeded", c.refused, c.captured, c.candidates)
+		if ps != nil || why != c.want {
+			t.Fatalf("%s: judgment %+v, reason %q, want %q", c.name, ps, why, c.want)
+		}
+	}
+	// The isolation pass's solo process grants after the whole-package
+	// process was disposed red; solo is the granting process's own
+	// fact, derived from its rows.
+	ps, why := judgeSubject(subject, "", false, true, []producerCandidate{
+		{healthy: false, obs: proven, rows: []*stipulatorv1.TestResult{row("TestX", passed), row("TestY", passed)}},
+		{healthy: true, obs: proven, rows: []*stipulatorv1.TestResult{row("TestX", passed), row("TestX/sub", stipulatorv1.TestOutcome_TEST_OUTCOME_SKIPPED)}},
+	})
+	if ps == nil || why != "" || !ps.solo || ps.outcomes["p.TestX"] != "passed" || ps.outcomes["p.TestX/sub"] != "skipped" {
+		t.Fatalf("the solo process did not grant: %+v, %q", ps, why)
+	}
+	// A healthy whole-package process that ran a sibling grants without
+	// the solo fact.
+	ps, why = judgeSubject(subject, "", false, true, []producerCandidate{
+		{healthy: true, obs: proven, rows: []*stipulatorv1.TestResult{row("TestX", passed), row("TestY", passed)}},
+	})
+	if ps == nil || why != "" || ps.solo {
+		t.Fatalf("the shared process granted solo: %+v, %q", ps, why)
+	}
+}
+
+// producersOf offers a group's own legs' processes alone, in the
+// order the merge saw them — the whole-package process before the
+// isolation pass's — each with every row it produced for the package
+// (REQ-policy-attribution: a group publishes under its own witness
+// class, so another group's process sharing the package cannot grant).
+//
+//gofresh:pure
+func TestProducersOfOffersTheGroupsOwnLegsInMergeOrder(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-attribution")
 	subject := gofresh.Subject{Package: "example.com/m/pkg", Symbol: "TestX"}
-	row := synthRow("race", "example.com/m/pkg", "TestX", passed)
-	key := keyOfProducer(row.GetProducer())
-
-	unhealthy := newExecMerge()
-	unhealthy.rows = append(unhealthy.rows, row)
-	unhealthy.disp[key] = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED
-	if _, why := grantingRun(subject, unhealthy); !strings.Contains(why, "no healthy process") {
-		t.Errorf("unhealthy refusal = %q", why)
+	g := &captureGroup{invs: []string{"race"}}
+	m := newExecMerge()
+	// A plain-witness group's process first in the merge, then the
+	// race group's whole-package process — a sibling and a subtest row
+	// beside the subject's, one candidate — then its isolation process.
+	foreign := synthRow("plain", "example.com/m/pkg", "TestX", passed)
+	foreign.GetProducer().SetProcessId(1)
+	whole := synthRow("race", "example.com/m/pkg", "TestX", passed)
+	whole.GetProducer().SetProcessId(2)
+	sibling := synthRow("race", "example.com/m/pkg", "TestY", passed)
+	sibling.SetProducer(whole.GetProducer())
+	sub := synthRow("race", "example.com/m/pkg", "TestX/sub", passed)
+	sub.SetProducer(whole.GetProducer())
+	solo := synthRow("race", "example.com/m/pkg", "TestX", passed)
+	solo.GetProducer().SetProcessId(3)
+	m.rows = append(m.rows, foreign, whole, sibling, sub, solo)
+	m.disp[keyOfProducer(whole.GetProducer())] = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED
+	m.disp[keyOfProducer(solo.GetProducer())] = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY
+	m.disp[keyOfProducer(foreign.GetProducer())] = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY
+	got := producersOf(subject, g, m)
+	if len(got) != 2 || got[0].healthy || len(got[0].rows) != 3 || !got[1].healthy || len(got[1].rows) != 1 {
+		t.Fatalf("candidates = %+v; want the race group's whole-package process once (three rows, red) then its solo one (one row, healthy), the plain group's process excluded", got)
 	}
+}
 
-	unproven := newExecMerge()
-	unproven.rows = append(unproven.rows, row)
-	unproven.disp[key] = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY
-	if _, why := grantingRun(subject, unproven); !strings.Contains(why, "testlog flush unproven") {
-		t.Errorf("unproven refusal = %q", why)
-	}
-
-	empty := newExecMerge()
-	if _, why := grantingRun(subject, empty); !strings.Contains(why, "no process produced") {
-		t.Errorf("no-terminal refusal = %q", why)
-	}
+// completedWire is an observation whose testlog flush is proven.
+func completedWire() *stipulatorv1.Observation {
+	w := &stipulatorv1.Observation{}
+	w.SetCompleted(&stipulatorv1.CompletedObservation{})
+	return w
 }
 
 // A race invocation and a plain-witness admission sharing tags and env

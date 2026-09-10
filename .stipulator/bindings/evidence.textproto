@@ -686,16 +686,6 @@ bindings {
   content_hash: "f3657237fb2a8025e5b1bd1d73b62ee164eacb0267b7485f7d8e5a3fa9818a86"
   source_hash: "57dcdbf838a0bc364fff46a50f10f1422069887a35e664b10449703b32c3d232"
   backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGrantingRunNamesRefusals"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "a54a2e104b38c59d6fda708e37c82f4c59a11de0c82628d41c8ae64d67124fbf"
-}
-
-bindings {
-  requirement_id: "REQ-evidence-witness-freshness"
-  content_hash: "f3657237fb2a8025e5b1bd1d73b62ee164eacb0267b7485f7d8e5a3fa9818a86"
-  source_hash: "57dcdbf838a0bc364fff46a50f10f1422069887a35e664b10449703b32c3d232"
-  backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesAttributesDeniedAtZeroUncached"
   role: BINDING_ROLE_TESTS
   shape_hash: "e116bf28cc376b48eebe4bcbc13ecb5f66aa861abf78f756ab9d62fed778d0b6"
@@ -2179,4 +2169,24 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestMixedGroupPublishesOnlyItsSinglySelectedPackage"
   role: BINDING_ROLE_TESTS
   shape_hash: "64e47ec5e46fef741e96fc09694180d94f856a58588faad1c9770aa05b3ae296"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "f3657237fb2a8025e5b1bd1d73b62ee164eacb0267b7485f7d8e5a3fa9818a86"
+  source_hash: "57dcdbf838a0bc364fff46a50f10f1422069887a35e664b10449703b32c3d232"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestJudgeSubjectNamesRefusalsInOneVocabulary"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5f82179eef6a1fc4a7b0f3db25c341349aeb3dee6122724987fcd2f50ff3400e"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "f3657237fb2a8025e5b1bd1d73b62ee164eacb0267b7485f7d8e5a3fa9818a86"
+  source_hash: "57dcdbf838a0bc364fff46a50f10f1422069887a35e664b10449703b32c3d232"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestExecutedCountExcludesExamplesOnBothForms"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b4abccbb7a2220df7d6cb8a3042298b1d4310799d68167e22ef251633a9bd2e8"
 }

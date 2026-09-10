@@ -1000,3 +1000,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "7de15deae4aded27da2d11f99dbccb68603ebca20d644c0e60f238f3ea59415e"
 }
+
+bindings {
+  requirement_id: "REQ-policy-attribution"
+  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
+  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestProducersOfOffersTheGroupsOwnLegsInMergeOrder"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7552ee7dac9803efd35097489031a1ef94ac1c7834ace4452032c121d81d7201"
+}

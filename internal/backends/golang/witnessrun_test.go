@@ -2095,7 +2095,7 @@ func TestGoRunWitnessesAttributesDeniedAtZeroUncached(t *testing.T) {
 	if !ok {
 		t.Fatalf("denied subject unattributed (uncached=%d reasons=%v)", tr.Uncached, tr.UncacheableReasons)
 	}
-	if !strings.Contains(why, "no process produced") && !strings.Contains(why, "terminal") {
+	if why != reasonNoTerminalEvent {
 		t.Errorf("denied reason = %q, want the denial leg named", why)
 	}
 }
