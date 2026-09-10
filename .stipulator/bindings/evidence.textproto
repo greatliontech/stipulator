@@ -2160,3 +2160,23 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "fcb485133095f49c3efb1a25f4c17aeb01362619e3d2ec75c17d666dd0b6f1aa"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "f3657237fb2a8025e5b1bd1d73b62ee164eacb0267b7485f7d8e5a3fa9818a86"
+  source_hash: "57dcdbf838a0bc364fff46a50f10f1422069887a35e664b10449703b32c3d232"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestDoublySelectedPackageIsRefusedAtDiscovery"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "be26646073c5257839fc07ae9c7a7a904cb10dffcc2700dd79082dab280d1d71"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "f3657237fb2a8025e5b1bd1d73b62ee164eacb0267b7485f7d8e5a3fa9818a86"
+  source_hash: "57dcdbf838a0bc364fff46a50f10f1422069887a35e664b10449703b32c3d232"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestMixedGroupPublishesOnlyItsSinglySelectedPackage"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "64e47ec5e46fef741e96fc09694180d94f856a58588faad1c9770aa05b3ae296"
+}

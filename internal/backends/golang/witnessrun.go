@@ -376,7 +376,6 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	var published []witnesscache.Record
 	uncacheableWhy := map[gofresh.Subject]string{}
 	driftedByGroup := map[*witnessGroup][]gofresh.Subject{}
-	finished := map[*witnessGroup]bool{}
 	// Each install names its unit on the progress stream — the
 	// completing invocation, the verification pass's revalidation, the
 	// drift retry — so a cancelled run reports what it kept.
@@ -384,15 +383,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	// refused is not cached, and its subject's reason names the store's
 	// fault — a filesystem remedy, never the evidence's.
 	installNow := func(records []witnesscache.Record) []witnesscache.Record {
-		var installed []witnesscache.Record
-		for _, rec := range records {
-			if err := witnesscache.Install(dir, rec); err != nil {
-				uncacheableWhy[gofresh.Subject{Package: rec.Package, Symbol: rec.Test}] = "the store refused the record: " + err.Error()
-				continue
-			}
-			installed = append(installed, rec)
-		}
-		return installed
+		return installRecords(dir, records, uncacheableWhy)
 	}
 	// One decision line per executing invocation: what executes and the
 	// reason most of it serves no record — bounded by the policy, never
@@ -444,33 +435,22 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 		}
 		rep.Note(fmt.Sprintf("executing %s: %s in %s — ineligible leg of shared packages, failures only, never a witness outcome", inv, plural(subjects, "subject"), plural(len(sel), "package")))
 	}
-	pendingInvs := map[*witnessGroup]map[string]bool{}
-	invGroups := map[string][]*witnessGroup{}
+	// The one completion rule: a group's executing packages are the
+	// stale ones this run selects for execution — a stale package the
+	// caller's scope left out executes nothing and covers nothing, so
+	// a scoped run's group still installs at its last executing
+	// invocation's completion; the tracker owns the covering set.
+	byGroup := map[*captureGroup]*witnessGroup{}
+	captureGroups := make([]*captureGroup, 0, len(groups))
 	for _, wg := range groups {
-		for pkg := range wg.stale {
-			n := normalized[wg.g.pkgInv[pkg]]
-			if n == nil {
-				// Defensive only: every stale subject's covering
-				// invocation was dereferenced when its selection was
-				// built.
-				continue
-			}
-			if pendingInvs[wg] == nil {
-				pendingInvs[wg] = map[string]bool{}
-			}
-			if !pendingInvs[wg][n.Name] {
-				pendingInvs[wg][n.Name] = true
-				invGroups[n.Name] = append(invGroups[n.Name], wg)
-			}
-		}
+		byGroup[wg.g] = wg
+		captureGroups = append(captureGroups, wg.g)
 	}
+	tracker := newGroupTracker(captureGroups, selectedStalePackages(staleSel))
 	onInvocationDone := func(name string) error {
 		installed := 0
-		for _, wg := range invGroups[name] {
-			delete(pendingInvs[wg], name)
-			if len(pendingInvs[wg]) > 0 || finished[wg] {
-				continue
-			}
+		for _, g := range tracker.invocationDone(name) {
+			wg := byGroup[g]
 			groupDrifted, records, reasons, err := finishGroup(ctx, wg, m)
 			if err != nil {
 				return err
@@ -479,7 +459,6 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 			landed := installNow(records)
 			published = append(published, landed...)
 			driftedByGroup[wg] = groupDrifted
-			finished[wg] = true
 			installed += len(landed)
 		}
 		// The unit of persistence on the progress stream is the
@@ -512,7 +491,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 		var drifted []gofresh.Subject
 		revalidated := 0
 		for _, wg := range groups {
-			if !finished[wg] {
+			if tracker.finish(wg.g) {
 				// All-served groups finish here; executing groups
 				// finished and installed at their last covering
 				// invocation's completion.
@@ -669,7 +648,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 		}
 		for s := range ambiguousSubjects {
 			if _, ok := tr.UncacheableReasons[s.Package+"."+s.Symbol]; !ok {
-				tr.UncacheableReasons[s.Package+"."+s.Symbol] = "two invocations of one capture group select the package; no single producing leg"
+				tr.UncacheableReasons[s.Package+"."+s.Symbol] = reasonNoProducingLeg
 			}
 		}
 		for key := range ranTop {

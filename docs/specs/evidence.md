@@ -822,7 +822,11 @@ invocation's completion: what completed before the cancellation stays
 installed,
 and the cancelled run's ending names those units — the invocation, the
 revalidation pass, the drift retry, with their record counts — or
-states that it kept nothing, so a rerun's serving is foreseeable.
+states that it kept nothing, so a rerun's serving is foreseeable. A
+group's covering invocations are those of the packages the run
+executes for it: every package on the full form, the stale packages
+the selection names on the selective one; a package two invocations
+select covers nothing.
 
 ## Coverage
 
