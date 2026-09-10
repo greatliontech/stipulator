@@ -1,22 +1,16 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 
-	"github.com/greatliontech/gofresh"
-
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
-	"github.com/greatliontech/stipulator/internal/backends/golang"
-	checkpkg "github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/prune"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/remedy"
-	"github.com/greatliontech/stipulator/internal/verify"
 )
 
 func pruneCmd() *cobra.Command {
@@ -31,20 +25,10 @@ func pruneCmd() *cobra.Command {
 				return err
 			}
 			deps := prune.Deps{
+				Deps:    cliDeps(),
 				Root:    chdir,
-				Prepare: func() (*checkpkg.Prepared, error) { return mustPrepare(chdir) },
 				Compile: func() (*stipulatorv1.Spec, error) { return mustCompile(chdir) },
 				Load:    func() (*records.Store, error) { return records.Load(os.DirFS(chdir)) },
-				Capture: func(ctx context.Context) (*golang.Capture, error) {
-					pc, err := golang.LoadCapture(ctx, chdir)
-					return pc, withRecordPath(err)
-				},
-				Backends: func(ctx context.Context, symbols []string) (map[string]verify.Backend, error) {
-					return golang.Backends(ctx, chdir, symbols)
-				},
-				RunTests: func(ctx context.Context, pc *golang.Capture, seeding verify.WitnessSeeding, scope map[gofresh.Subject]bool, why string) (*verify.TestRun, error) {
-					return witnessRunScoped(ctx, pc, seeding, scope, why)
-				},
 			}
 			if mode.Store {
 				res, err := prune.StoreGC(cmd.Context(), deps)

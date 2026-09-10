@@ -11,6 +11,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/remedy"
 	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/internal/verifyrun"
 	"github.com/greatliontech/stipulator/internal/views"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -23,25 +24,18 @@ func verifyCmd() *cobra.Command {
 		Use:   remedy.VerbVerify,
 		Short: guidanceShort("verify"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			prepared, scope, err := prepareScoped(views.Scope{Ids: reqs, Filter: filter, Path: pathPrefix}, views.ValidateVerifyView, view)
+			scope := views.Scope{Ids: reqs, Filter: filter, Path: pathPrefix}
+			if err := validateScoped(scope, views.ValidateVerifyView, view); err != nil {
+				return err
+			}
+			prepared, rep, testRun, err := verifyrun.Run(cmd.Context(), cliDeps(), noTest, scope.Ids)
 			if err != nil {
+				return withRecordPath(err)
+			}
+			if err := refuseHygiene(prepared.Hygiene); err != nil {
 				return err
 			}
 			spec, store := prepared.Spec, prepared.Store
-			pc, gb, err := servedBackend(cmd.Context(), store, !noTest)
-			if err != nil {
-				return err
-			}
-			defer gb.Close()
-			var testRun *verify.TestRun
-			if !noTest {
-				tr, err := witnessRun(cmd.Context(), pc, gb)
-				if err != nil {
-					return err
-				}
-				testRun = tr
-			}
-			rep := verify.Run(spec, store, map[string]verify.Backend{"go": gb}, testRun)
 			for _, p := range rep.Problems {
 				fmt.Fprintln(os.Stderr, red(p.String()))
 			}

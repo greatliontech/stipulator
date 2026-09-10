@@ -10,8 +10,10 @@ import (
 	"github.com/greatliontech/gofresh"
 
 	"github.com/greatliontech/stipulator/internal/backends/golang"
+	"github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/internal/records"
+	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
@@ -32,28 +34,29 @@ func withRecordPath(err error) error {
 	return err
 }
 
-// The caller owns the verification backend and the policy capture: the
-// witness run consults the backend's classifier and the same backend
-// then resolves bindings — one served backend, at most one child, per
-// command (REQ-evidence-resolution-freshness).
-func witnessRun(ctx context.Context, pc *golang.Capture, seeding verify.WitnessSeeding) (*verify.TestRun, error) {
-	fmt.Fprintln(os.Stderr, dim("witnessing: selective execution of the accepted test policy"))
-	tr, err := runWitnessesPolicy(ctx, pc, seeding)
-	if err != nil {
-		return nil, withRecordPath(err)
+// witnessRun executes the accepted policy's witnesses — whole when scope
+// is nil, the scoped selection otherwise, why naming the scope — and
+// announces the run on stderr. The caller owns the verification backend
+// and the policy capture: the run consults the backend's classifier and
+// the same backend then resolves bindings — one served backend, at most
+// one child, per command (REQ-evidence-resolution-freshness). Errors
+// pass through unattributed: the verb's own return is the one point
+// that names the record path.
+func witnessRun(ctx context.Context, pc *golang.Capture, seeding verify.WitnessSeeding, scope map[gofresh.Subject]bool, why string) (*verify.TestRun, error) {
+	line := "witnessing: selective execution of the accepted test policy"
+	if scope != nil {
+		line += ", " + why
 	}
-	printWitnessSummary(tr)
-	return tr, nil
-}
-
-// witnessRunScoped is witnessRun narrowed to a caller-named subject
-// scope: fresh records still serve whole-tree, only stale subjects
-// inside the scope execute.
-func witnessRunScoped(ctx context.Context, pc *golang.Capture, seeding verify.WitnessSeeding, scope map[gofresh.Subject]bool, why string) (*verify.TestRun, error) {
-	fmt.Fprintln(os.Stderr, dim("witnessing: selective execution of the accepted test policy, "+why))
-	tr, err := golang.RunWitnessesScoped(ctx, pc, scope, seeding)
+	fmt.Fprintln(os.Stderr, dim(line))
+	var tr *verify.TestRun
+	var err error
+	if scope == nil {
+		tr, err = runWitnessesPolicy(ctx, pc, seeding)
+	} else {
+		tr, err = golang.RunWitnessesScoped(ctx, pc, scope, seeding)
+	}
 	if err != nil {
-		return nil, withRecordPath(err)
+		return nil, err
 	}
 	printWitnessSummary(tr)
 	return tr, nil
@@ -108,12 +111,12 @@ func servedBackend(ctx context.Context, store *records.Store, witnessed bool) (*
 		// (REQ-policy-explicit binds witness execution).
 		var err error
 		if pc, err = golang.LoadCapture(ctx, chdir); err != nil {
-			return nil, nil, withRecordPath(err)
+			return nil, nil, err
 		}
 	}
 	symbols, err := golang.OperationSymbols(ctx, store, pc)
 	if err != nil {
-		return nil, nil, withRecordPath(err)
+		return nil, nil, err
 	}
 	served, err := golang.NewServed(ctx, chdir, symbols)
 	if err != nil {
@@ -127,3 +130,19 @@ func servedBackend(ctx context.Context, store *records.Store, witnessed bool) (*
 // whether a verb reached it — the oracle for "no witness executed
 // under a refused vocabulary" that needs no runtime input of its own.
 var runWitnessesPolicy = golang.RunWitnessesPolicy
+
+// cliDeps is the verb cores' view of this face: the preparation with
+// the CLI's diagnostics, the policy capture, the served backend set,
+// and the witness run that announces itself on stderr. A core's error
+// reaches the verb unattributed; the verb's return names the record
+// path once (withRecordPath).
+func cliDeps() verbcore.Deps {
+	return verbcore.Deps{
+		Prepare: func() (*check.Prepared, error) { return mustPrepare(chdir) },
+		Capture: func(ctx context.Context) (*golang.Capture, error) { return golang.LoadCapture(ctx, chdir) },
+		Backends: func(ctx context.Context, symbols []string) (map[string]verify.Backend, error) {
+			return golang.Backends(ctx, chdir, symbols)
+		},
+		RunTests: witnessRun,
+	}
+}

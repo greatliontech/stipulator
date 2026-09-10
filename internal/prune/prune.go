@@ -19,19 +19,20 @@ import (
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/coverage"
+	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/records"
+	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
 
-// Deps is what a face supplies to the core.
+// Deps is what a face supplies to the core: the shared verb
+// dependencies and the three legs only this verb reads.
 type Deps struct {
+	verbcore.Deps
 	// Root is the tree root: the witness store's and the resolution
 	// records' coordinate.
 	Root string
-	// Prepare compiles the corpus and loads the records (the face's
-	// preparation, with its own diagnostics rendering).
-	Prepare func() (*check.Prepared, error)
 	// Compile compiles the corpus alone — the dangling repair judges
 	// against the compiled corpus and the records, nothing else, so it
 	// never meets the preparation's other refusals.
@@ -39,23 +40,6 @@ type Deps struct {
 	// Load reads the records alone — the store mode judges from records
 	// before any compilation, so a broken spec never blocks cost cleanup.
 	Load func() (*records.Store, error)
-	// Capture loads the accepted policy for a witnessed evaluation.
-	Capture func(context.Context) (*golang.Capture, error)
-	// Backends builds the verification backends over the operation's
-	// symbols.
-	Backends func(context.Context, []string) (map[string]verify.Backend, error)
-	// RunTests executes the scoped witness run; why names the scope for
-	// a face that announces it.
-	RunTests func(ctx context.Context, pc *golang.Capture, seeding verify.WitnessSeeding, scope map[gofresh.Subject]bool, why string) (*verify.TestRun, error)
-	// Phase reports a progress phase; nil on a face without a progress
-	// channel.
-	Phase func(stipulatorv1.Phase)
-}
-
-func (d Deps) phase(p stipulatorv1.Phase) {
-	if d.Phase != nil {
-		d.Phase(p)
-	}
 }
 
 // Mode is the verb's mode selection. Store composes with nothing else.
@@ -191,7 +175,8 @@ func (r Resolved) Line() string {
 // gapped requirements bind (REQ-gap-resolved-pruned); noTest is the
 // caller's records-only judgment, no witness run at all.
 func Evaluate(ctx context.Context, d Deps, noTest bool) (Resolved, error) {
-	d.phase(stipulatorv1.Phase_PHASE_COMPILE)
+	prog := progress.FromContext(ctx)
+	prog.Phase(stipulatorv1.Phase_PHASE_COMPILE)
 	prepared, err := d.Prepare()
 	if err != nil {
 		return Resolved{}, err
@@ -235,7 +220,7 @@ func Evaluate(ctx context.Context, d Deps, noTest bool) (Resolved, error) {
 	defer verify.CloseBackends(backends)
 	var tr *verify.TestRun
 	if !noTest {
-		d.phase(stipulatorv1.Phase_PHASE_EXECUTION)
+		prog.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
 		why := fmt.Sprintf("scoped to %d gapped requirements", len(gapIds))
 		if tr, err = d.RunTests(ctx, pc, verify.SeedingOf(backends), scope, why); err != nil {
 			return Resolved{}, err
@@ -247,12 +232,12 @@ func Evaluate(ctx context.Context, d Deps, noTest bool) (Resolved, error) {
 			return Resolved{}, err
 		}
 	}
-	d.phase(stipulatorv1.Phase_PHASE_VERIFICATION)
+	prog.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
 	rep := verify.Run(spec, store, backends, tr)
 	if len(rep.Problems) > 0 {
 		return Resolved{}, &ProblemsError{Problems: rep.Problems}
 	}
-	d.phase(stipulatorv1.Phase_PHASE_COVERAGE)
+	prog.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
 	cov := coverage.Evaluate(spec, rep, store, !noTest, pol)
 	resolved := map[string]bool{}
 	for _, g := range cov.Gaps {

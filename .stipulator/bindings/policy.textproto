@@ -1030,3 +1030,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "bb67803b4c5465bd7a06cae18cd9f77de0cb3ee42b3c66d6695f493f72708549"
 }
+
+bindings {
+  requirement_id: "REQ-policy-explicit"
+  content_hash: "8a316edb29fe9412d4a9df6f64e98b84086969046fa19969395d0cec67e5dbbb"
+  source_hash: "141a80b1fd43670a6448aaffa66e49137ef89ec9d824ba233da3860156422141"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestVerbsAttributeTheRecordPathOnce"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ed39db67a94bfb402c6b2c6295cbbd0646f89e56f18930c666cd04687c625c6e"
+}

@@ -179,9 +179,10 @@ func mustPrepare(dir string) (*check.Prepared, error) {
 	return prepared, nil
 }
 
-// refuseHygiene prints the record-only verification problems and fails
-// the command before any witness executes: verification cannot pass
-// whatever a run would say (REQ-check-preparation).
+// refuseHygiene renders the record-only half of verification's
+// problems and fails the command; the verification pass itself already
+// took its record-only form, so no witness executed
+// (REQ-check-preparation).
 func refuseHygiene(problems []verify.Problem) error {
 	if len(problems) == 0 {
 		return nil
@@ -345,28 +346,13 @@ func checkPrior(dir string, up author.Update) error {
 	return nil
 }
 
-// prepareScoped is the prologue every scoped query verb shares: the
-// corpus and records prepared, then every refusal the held inputs
-// decide — the scope vocabulary, the view word, the requirement
-// identifiers, and the records' hygiene — fired before any witness
-// executes (REQ-check-preparation). One prologue, so a verb cannot
-// validate its vocabulary after the run it was meant to spare.
-func prepareScoped(scope views.Scope, validateView func(string) error, view string) (*check.Prepared, views.Scope, error) {
-	prepared, err := mustPrepare(chdir)
-	if err != nil {
-		return nil, scope, err
-	}
+// validateScoped judges the caller's vocabulary — the scope words and
+// the view name — before anything is compiled: a typo refuses before
+// any cost (REQ-check-preparation); the exact ids validate against the
+// compiled corpus inside the verification pass.
+func validateScoped(scope views.Scope, validateView func(string) error, view string) error {
 	if err := scope.Validate(); err != nil {
-		return nil, scope, err
+		return err
 	}
-	if err := validateView(view); err != nil {
-		return nil, scope, err
-	}
-	if err := check.KnownIDs(prepared.Spec, scope.Ids); err != nil {
-		return nil, scope, err
-	}
-	if err := refuseHygiene(prepared.Hygiene); err != nil {
-		return nil, scope, err
-	}
-	return prepared, scope, nil
+	return validateView(view)
 }

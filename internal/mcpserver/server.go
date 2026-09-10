@@ -48,7 +48,9 @@ import (
 	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/prune"
 	"github.com/greatliontech/stipulator/internal/records"
+	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/internal/verifyrun"
 	"github.com/greatliontech/stipulator/internal/views"
 	"github.com/greatliontech/stipulator/internal/wire"
 )
@@ -445,62 +447,28 @@ type verifyIn struct {
 	Path   string `json:"path,omitempty"`
 }
 
-// verifyPipeline is the tools' shared verification pass: the prepared
-// inputs, the report, and the witness run the report was correlated
-// with — nil on the no-test form and on the record-only form a hygiene
-// fault selects, so a caller evaluating coverage knows whether the
-// pass witnessed.
-func (s *Server) verifyPipeline(ctx context.Context, noTest bool, scopeIDs string) (*check.Prepared, *verify.Report, *verify.TestRun, error) {
-	rep := progress.FromContext(ctx)
-	rep.Phase(stipulatorv1.Phase_PHASE_COMPILE)
-	prepared, err := s.prepare()
+// deps is the verb cores' view of this server: its injectable seams
+// under the shared shape, so a test that swaps a seam swaps it for
+// every core at once.
+func (s *Server) deps() verbcore.Deps {
+	return verbcore.Deps{
+		Prepare:  s.prepare,
+		Capture:  s.capture,
+		Backends: s.backends,
+		RunTests: func(ctx context.Context, pc *golang.Capture, seeding verify.WitnessSeeding, scope map[gofresh.Subject]bool, _ string) (*verify.TestRun, error) {
+			return s.runTests(ctx, pc, seeding, scope)
+		},
+	}
+}
+
+// verifyPass runs the shared verification pass over the caller's
+// comma-separated exact-id scope.
+func (s *Server) verifyPass(ctx context.Context, noTest bool, scopeIDs string) (*check.Prepared, *verify.Report, *verify.TestRun, error) {
+	ids, err := splitIDsLoose(scopeIDs)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	spec, store := prepared.Spec, prepared.Store
-	// The exact-id scope validates against the freshly compiled corpus
-	// and BEFORE the witness run — a typo is a refusal, never an empty
-	// result, and never one that costs the expensive pass to hear
-	// (REQ-mcp-response-contract); one compile serves both.
-	if err := refuseUnknownIDs(spec, scopeIDs); err != nil {
-		return nil, nil, nil, err
-	}
-	// Records that fail hygiene fail verification whatever a witness run
-	// or a resolution would say: the pass takes its record-only form,
-	// no child process (REQ-check-preparation).
-	if len(prepared.Hygiene) > 0 {
-		rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
-		return prepared, verify.Run(spec, store, nil, nil), nil, nil
-	}
-	// One capture of the accepted policy for the run and the served
-	// set alike (REQ-check-derivation); only a witness run consumes
-	// it, so the no-test form resolves without a record. A record
-	// problem is the tool's error, as it always was on this surface.
-	var pc *golang.Capture
-	if !noTest {
-		if pc, err = s.capture(ctx); err != nil {
-			return nil, nil, nil, err
-		}
-	}
-	symbols, err := golang.OperationSymbols(ctx, store, pc)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	backends, err := s.backends(ctx, symbols)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	defer verify.CloseBackends(backends)
-	var tr *verify.TestRun
-	if !noTest {
-		rep.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
-		tr, err = s.runTests(ctx, pc, verify.SeedingOf(backends), nil)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-	}
-	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
-	return prepared, verify.Run(spec, store, backends, tr), tr, nil
+	return verifyrun.Run(ctx, s.deps(), noTest, ids)
 }
 
 func (s *Server) toolVerify(ctx context.Context, req *mcp.CallToolRequest, in verifyIn) (*mcp.CallToolResult, map[string]any, error) {
@@ -517,7 +485,7 @@ func (s *Server) toolVerify(ctx context.Context, req *mcp.CallToolRequest, in ve
 	if err := views.ValidateVerifyView(in.View); err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
-	prepared, rep, _, err := s.verifyPipeline(ctx, in.NoTest, in.Ids)
+	prepared, rep, _, err := s.verifyPass(ctx, in.NoTest, in.Ids)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
@@ -553,7 +521,7 @@ func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in gate
 	if err := views.ValidateCoverageView(in.View); err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
-	prepared, rep, _, err := s.verifyPipeline(ctx, false, in.Ids)
+	prepared, rep, _, err := s.verifyPass(ctx, false, in.Ids)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
@@ -1662,15 +1630,10 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 		return nil, writeOut{}, err
 	}
 	deps := prune.Deps{
-		Root:     s.root,
-		Prepare:  s.prepare,
-		Compile:  s.compileFresh,
-		Load:     func() (*records.Store, error) { return records.Load(s.fsys()) },
-		Capture:  s.capture,
-		Backends: s.backends,
-		RunTests: func(ctx context.Context, pc *golang.Capture, seeding verify.WitnessSeeding, scope map[gofresh.Subject]bool, _ string) (*verify.TestRun, error) {
-			return s.runTests(ctx, pc, seeding, scope)
-		},
+		Deps:    s.deps(),
+		Root:    s.root,
+		Compile: s.compileFresh,
+		Load:    func() (*records.Store, error) { return records.Load(s.fsys()) },
 	}
 	// The store lives in the user cache, outside the corpus - the
 	// .stipulator/ write confinement governs record writes, not the
@@ -1713,7 +1676,6 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 		return out.result(), out, nil
 	}
 	ctx, prog := s.startProgress(ctx, req)
-	deps.Phase = prog.Phase
 	res, err := prune.Evaluate(ctx, deps, false)
 	if err != nil {
 		var pe *prune.ProblemsError
@@ -1767,7 +1729,7 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
-	prepared, vr, tr, err := s.verifyPipeline(ctx, in.NoTest, in.Ids)
+	prepared, vr, tr, err := s.verifyPass(ctx, in.NoTest, in.Ids)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
@@ -1855,7 +1817,7 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 		return nil, nil, err
 	}
 	ctx, prog := s.startProgress(ctx, req)
-	prepared, rep, _, err := s.verifyPipeline(ctx, in.NoTest, in.Ids)
+	prepared, rep, _, err := s.verifyPass(ctx, in.NoTest, in.Ids)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
@@ -1937,23 +1899,6 @@ func verificationProblems(rep *verify.Report) error {
 		msgs = append(msgs, p.String())
 	}
 	return fmt.Errorf("verification problems:\n%s", strings.Join(msgs, "\n"))
-}
-
-// refuseUnknownIDs validates an exact-identifier scope against the
-// compiled corpus: an unknown identifier is a typo, and scoping to it
-// would serve a bare zero-row answer whose next step the caller must
-// guess - the scoped check pass refuses the same way. Globs, buckets,
-// and paths stay unvalidated: an empty match there is an informative
-// answer, not a spelling error.
-func refuseUnknownIDs(spec *stipulatorv1.Spec, commaIDs string) error {
-	ids, err := splitIDsLoose(commaIDs)
-	if err != nil || len(ids) == 0 {
-		return err
-	}
-	if err := check.KnownIDs(spec, ids); err != nil {
-		return err
-	}
-	return nil
 }
 
 // splitIDsLoose splits a comma list; empty input is an empty selection,

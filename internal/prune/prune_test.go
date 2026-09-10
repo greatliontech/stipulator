@@ -14,6 +14,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/records"
+	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
 )
@@ -60,23 +61,24 @@ func TestPruneCallSitePinsServingClassRefusal(t *testing.T) {
 func untouchable(t *testing.T, prepared *check.Prepared) Deps {
 	t.Helper()
 	return Deps{
-		Root:    t.TempDir(),
-		Prepare: func() (*check.Prepared, error) { return prepared, nil },
+		Root: t.TempDir(),
+		Deps: verbcore.Deps{
+			Prepare: func() (*check.Prepared, error) { return prepared, nil },
+			Capture: func(context.Context) (*golang.Capture, error) {
+				t.Fatal("the policy was captured")
+				return nil, nil
+			},
+			Backends: func(context.Context, []string) (map[string]verify.Backend, error) {
+				t.Fatal("backends were built")
+				return nil, nil
+			},
+			RunTests: func(context.Context, *golang.Capture, verify.WitnessSeeding, map[gofresh.Subject]bool, string) (*verify.TestRun, error) {
+				t.Fatal("a witness run started")
+				return nil, nil
+			},
+		},
 		Compile: func() (*stipulatorv1.Spec, error) { return prepared.Spec, nil },
 		Load:    func() (*records.Store, error) { return prepared.Store, nil },
-		Capture: func(context.Context) (*golang.Capture, error) {
-			t.Fatal("the policy was captured")
-			return nil, nil
-		},
-		Backends: func(context.Context, []string) (map[string]verify.Backend, error) {
-			t.Fatal("backends were built")
-			return nil, nil
-		},
-		RunTests: func(context.Context, *golang.Capture, verify.WitnessSeeding, map[gofresh.Subject]bool, string) (*verify.TestRun, error) {
-			t.Fatal("a witness run started")
-			return nil, nil
-		},
-		Phase: func(stipulatorv1.Phase) {},
 	}
 }
 

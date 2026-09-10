@@ -145,7 +145,7 @@ func gapListRun(ctx context.Context) error {
 	// same way. One owned child serves the run and the resolution.
 	pc, gb, err := servedBackend(ctx, store, len(scope) > 0)
 	if err != nil {
-		return err
+		return withRecordPath(err)
 	}
 	defer gb.Close()
 	var testRun *verify.TestRun
@@ -153,8 +153,8 @@ func gapListRun(ctx context.Context) error {
 		// An empty scope means no bound witness can move any
 		// gap-relevant bucket, so the evaluation is witness-free.
 		why := fmt.Sprintf("scoped to %d gapped requirements", len(gapIds))
-		if testRun, err = witnessRunScoped(ctx, pc, gb, scope, why); err != nil {
-			return err
+		if testRun, err = witnessRun(ctx, pc, gb, scope, why); err != nil {
+			return withRecordPath(err)
 		}
 	}
 	rep := verify.Run(spec, store, map[string]verify.Backend{"go": gb}, testRun)

@@ -2200,3 +2200,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "c6aa4b70c8804e5ec59d04c3221c20c51ae54402279e120c788b01dc592369f3"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-resolution-freshness"
+  content_hash: "0e0aa0afbbba0805686525d4620cf898768bff1da94afaceb8fa1414a167c70e"
+  source_hash: "cdbdccfe8f10721a9f3c99a74e9141ead3d7098acf291b54897ac3df197de39b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verifyrun.TestRunNoTestCapturesNoPolicy"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "f17c6c7122a87621d78b9349d903af0723a4ddcc5948aa790e8fe75d37d1f7bc"
+}

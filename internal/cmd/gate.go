@@ -9,7 +9,7 @@ import (
 
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/remedy"
-	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/internal/verifyrun"
 	"github.com/greatliontech/stipulator/internal/views"
 )
 
@@ -36,24 +36,22 @@ func gateCmd() *cobra.Command {
 			if jsonOut && quiet {
 				return fmt.Errorf("give either --json or --quiet")
 			}
-			// Every refusal the held inputs decide fires before the
-			// witness run: the corpus, the records' hygiene, the coverage
-			// policy, and the caller's vocabulary (REQ-check-preparation).
-			prepared, scope, err := prepareScoped(views.Scope{Ids: reqs, Bucket: bucket, Filter: filter, Path: pathPrefix}, views.ValidateCoverageView, view)
+			// The caller's vocabulary is judged before anything compiles;
+			// the exact ids, the hygiene, and the coverage policy refuse
+			// inside the verification pass, before any child process
+			// (REQ-check-preparation).
+			scope := views.Scope{Ids: reqs, Bucket: bucket, Filter: filter, Path: pathPrefix}
+			if err := validateScoped(scope, views.ValidateCoverageView, view); err != nil {
+				return err
+			}
+			prepared, rep, _, err := verifyrun.Run(cmd.Context(), cliDeps(), false, scope.Ids)
 			if err != nil {
+				return withRecordPath(err)
+			}
+			if err := refuseHygiene(prepared.Hygiene); err != nil {
 				return err
 			}
 			spec, store, pol := prepared.Spec, prepared.Store, prepared.Coverage
-			pc, gb, err := servedBackend(cmd.Context(), store, true)
-			if err != nil {
-				return err
-			}
-			defer gb.Close()
-			testRun, err := witnessRun(cmd.Context(), pc, gb)
-			if err != nil {
-				return err
-			}
-			rep := verify.Run(spec, store, map[string]verify.Backend{"go": gb}, testRun)
 			for _, p := range rep.Problems {
 				fmt.Fprintln(os.Stderr, red(p.String()))
 			}

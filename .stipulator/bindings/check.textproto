@@ -800,3 +800,33 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "47768cb5cf42df7be3e77b14413accbfc94eb2542bffde8528a491b741a49920"
 }
+
+bindings {
+  requirement_id: "REQ-check-preparation"
+  content_hash: "221f271e519e5422845007a894aad1ddde9ab268713bdcfbec4157abb6ccfee5"
+  source_hash: "acf2f98da884aa3e987326da4de58dc42d1a7739f5eee7955355d06acd92cd05"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verifyrun.TestRunRefusesUnknownIDsBeforeAnyChild"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "0c509e16da06aae751fa5b5122715b656f3a4d488bd362399509402cb1ae3e34"
+}
+
+bindings {
+  requirement_id: "REQ-check-preparation"
+  content_hash: "221f271e519e5422845007a894aad1ddde9ab268713bdcfbec4157abb6ccfee5"
+  source_hash: "acf2f98da884aa3e987326da4de58dc42d1a7739f5eee7955355d06acd92cd05"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verifyrun.TestRunTakesTheRecordOnlyFormUnderHygieneProblems"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "cbeca01e72579418e64dd5f608bbf3611050937b05f14cab02e579b7576ea48c"
+}
+
+bindings {
+  requirement_id: "REQ-check-derivation"
+  content_hash: "0c2b6c3d79a0909b05d4c55d29fbf1c6651c545b5f89959a429fd05f3d2266bf"
+  source_hash: "1aa76f5f20b3ae08e203cbf2c37f81f7bc7c8fac6e7ac4a581bcff5fab2f78b3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verifyrun.TestRunCapturesThePolicyOnce"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "637aef8dfdd419bb4aacfbce489ed7cdf915f7bd34b3dcca0167d65d4fa9e440"
+}
