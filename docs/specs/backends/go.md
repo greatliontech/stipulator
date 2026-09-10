@@ -185,7 +185,21 @@ operation that owns it),
 engines' own `go version` and `go env` samples (descendant-free
 queries); every one runs under the owned environment. This binary's
 own children (the self-executed resolver child and, on Windows, the
-tree-kill helper) are the boundary's mechanism, not Go children.
+tree-kill helper) are the boundary's mechanism, not Go children. The
+resolver child's handshake line — ready or the tree's load error alike —
+carries the child's executable identity (the size and modification time
+of the file it runs as and, where the platform exposes one, its inode,
+sampled when its process starts), and the parent refuses, before reading
+anything else the child says, a child whose identity is not the file the
+parent chose to spawn: its own image as sampled at its own start on the
+self-executed path, so a binary replaced under a running server is a
+refusal naming both sides rather than a build answering with fields this
+one never wrote; a child answering no identity is refused as an older
+build; a parent that cannot read its own image refuses every child.
+Enforced by `TestSelfExecutedChildIsRefusedWhenTheParentsImageMoved`,
+`TestSelfExecutedChildsLoadErrorIsItsOwn`,
+`TestResolverClientRefusesAChildOfAnotherBuild`, and
+`TestFileIdentityMovesWithTheFile`.
 
 **REQ-go-fuzz-exploration** (behavior): A fuzzing campaign MUST NOT feed the
 gate directly — campaigns are time-bounded and nondeterministic; their

@@ -45,6 +45,14 @@ var (
 type resolverClient struct {
 	exe  string
 	args []string
+	// identity is the executable the client chose to spawn — this
+	// process's own image on the self-executed path, the given file on
+	// the explicit-command seam — which the child's handshake line must
+	// match; identityErr is set when that file could not be read, and
+	// the client then refuses every child rather than trust a build it
+	// cannot name.
+	identity    string
+	identityErr error
 
 	mu sync.Mutex
 	// ctx bounds the child's lifetime — a process, not one call — so it
@@ -86,7 +94,12 @@ func newResolverClientScoped(ctx context.Context, dir string, patterns []string)
 	if err != nil {
 		return nil, fmt.Errorf("resolving tree root %s: %w", dir, err)
 	}
-	return newResolverClientCommand(ctx, exe, append([]string{ResolverSubcommand, abs}, patterns...)...), nil
+	c := newResolverClientCommand(ctx, exe, append([]string{ResolverSubcommand, abs}, patterns...)...)
+	// The child is this process's own binary: the identity to meet is
+	// the image this process started as, not whatever the path names
+	// when the lazy spawn happens.
+	c.identity, c.identityErr = selfIdentity, selfIdentityErr
+	return c, nil
 }
 
 // newResolverClientCommand is newResolverClient with an explicit child
@@ -94,7 +107,8 @@ func newResolverClientScoped(ctx context.Context, dir string, patterns []string)
 // process into
 // ServeResolver. Child lifetime is bound to ctx.
 func newResolverClientCommand(ctx context.Context, exe string, args ...string) *resolverClient {
-	return &resolverClient{ctx: ctx, exe: exe, args: args}
+	identity, err := fileIdentity(exe)
+	return &resolverClient{ctx: ctx, exe: exe, args: args, identity: identity, identityErr: err}
 }
 
 // ensure spawns the resolver child and completes the handshake; the
@@ -105,6 +119,11 @@ func (c *resolverClient) ensure() error {
 	}
 	if c.cmd != nil {
 		return nil
+	}
+	// A parent that cannot read its own image cannot tell its build
+	// from another's: it refuses before starting anything.
+	if c.identityErr != nil {
+		return c.fault(fmt.Errorf("cannot verify the child's build: reading this process's own image: %w", c.identityErr))
 	}
 	cctx, stop := context.WithCancel(c.ctx)
 	cmd := commandContext(cctx, c.exe, c.args...)
@@ -138,6 +157,18 @@ func (c *resolverClient) ensure() error {
 	var resp resolverResponse
 	if err := c.dec.Decode(&resp); err != nil {
 		return c.fault(fmt.Errorf("reading handshake: %w", err))
+	}
+	// The child is spawned lazily, so a binary replaced on disk between
+	// this process's start and its first question would answer with
+	// fields this build never wrote — decoded as absent answers, never
+	// refused — and would report its own load error as this tree's. The
+	// identity on the handshake line is judged before anything else the
+	// child says: the mismatch is a refusal naming both sides.
+	switch {
+	case resp.Identity == "":
+		return c.fault(fmt.Errorf("the executable changed since this process started (expected %s; the child sent no identity — an older build); restart the parent", c.identity))
+	case resp.Identity != c.identity:
+		return c.fault(fmt.Errorf("the executable changed since this process started (expected %s, the child is %s); restart the parent", c.identity, resp.Identity))
 	}
 	if resp.Error != "" {
 		// The tree's load error text is carried verbatim; the sticky fault

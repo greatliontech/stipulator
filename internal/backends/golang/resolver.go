@@ -35,8 +35,13 @@ type resolverRequest struct {
 // result. Error alongside Resolution mirrors Resolve's contract, where
 // a resolution outcome and a verification error travel together.
 type resolverResponse struct {
-	Ready       bool   `json:"ready,omitempty"`
-	Error       string `json:"error,omitempty"`
+	Ready bool   `json:"ready,omitempty"`
+	Error string `json:"error,omitempty"`
+	// Identity is the child's own executable identity on the handshake
+	// line, ready or error alike: the parent refuses a child that is not
+	// the file it chose to spawn (a running server outlives a reinstall)
+	// before it reads anything else the child says.
+	Identity    string `json:"identity,omitempty"`
 	Resolution  string `json:"resolution,omitempty"`
 	Shape       string `json:"shape,omitempty"`
 	Selection   string `json:"selection,omitempty"`
@@ -133,12 +138,12 @@ func ServeResolver(ctx context.Context, dir string, patterns []string, r io.Read
 	enc := json.NewEncoder(w)
 	b, err := newContext(ctx, dir, patterns)
 	if err != nil {
-		if encErr := enc.Encode(resolverResponse{Error: err.Error()}); encErr != nil {
+		if encErr := enc.Encode(resolverResponse{Error: err.Error(), Identity: selfIdentity}); encErr != nil {
 			return errors.Join(err, encErr)
 		}
 		return err
 	}
-	if err := enc.Encode(resolverResponse{Ready: true}); err != nil {
+	if err := enc.Encode(resolverResponse{Ready: true, Identity: selfIdentity}); err != nil {
 		return err
 	}
 	dec := json.NewDecoder(r)

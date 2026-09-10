@@ -5,4 +5,4 @@ requirement_id: "REQ-go-build-selections"
 reason: "the clause's module-mode dimension is decided at the spec tier: the resolution views load under the effective tag set (selectionViewFlags) and toolchain (selectionViewEnv) alone, so an invocation under -mod=vendor or -mod=mod resolves symbols under the toolchain's default mode's package graph"
 content_hash: "bf2f77fc4ce1f92821d94f11d502ef7af095f8e2b0b98314e67f720faf18c36d"
 source_hash: "39ec6d6c52d19fde4368cd5beeb22632d892cbd8cc9608cf98f1a5c522cbd906"
-lands { manual { condition: "the resolution views carry the invocation's module mode — one view per (tags, toolchain, module mode) triple (cross-tool train chunk 224)" contradicted: true } }
+lands { manual { condition: "the resolution views carry the invocation's module mode — one view per (tags, toolchain, module mode) triple (cross-tool train chunk 226, the resolution subsystem's split)" contradicted: true } }

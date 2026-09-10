@@ -5,6 +5,7 @@ package golang
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -149,7 +150,9 @@ func TestResolverClientChildCrashErrors(t *testing.T) {
 	t.Run("after handshake", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		owned := newResolverClientCommand(ctx, "/bin/sh", "-c", `printf '{"ready":true}\n'`)
+		// The fake child answers the seam's own identity, as a child of
+		// the spawned file does.
+		owned := newResolverClientCommand(ctx, "/bin/sh", "-c", fmt.Sprintf(`printf '{"ready":true,"identity":"%s"}\n'`, shIdentity(t)))
 		defer owned.Close()
 		_, _, err := owned.Resolve("example.com/x.Y")
 		if err == nil || !strings.Contains(err.Error(), "owned resolver child") {
@@ -177,7 +180,7 @@ func TestResolverClientProtocolErrorSurfaces(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	owned := newResolverClientCommand(ctx, "/bin/sh", "-c",
-		`echo '{"ready":true}'; while read -r line; do echo '{"error":"unknown resolver op"}'; done`)
+		fmt.Sprintf(`echo '{"ready":true,"identity":"%s"}'; while read -r line; do echo '{"error":"unknown resolver op"}'; done`, shIdentity(t)))
 	defer owned.Close()
 	if _, _, err := owned.SymbolFile("m.X"); err == nil || !strings.Contains(err.Error(), "unknown resolver op") {
 		t.Errorf("SymbolFile error = %v, want the child's protocol error", err)
