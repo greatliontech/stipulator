@@ -114,6 +114,14 @@ type TestRun struct {
 	// subject a caller-named id scope left unexecuted: its bindings read
 	// scope-skipped, never broken (REQ-check-verdict's scoped class).
 	ScopeSkipped map[string]bool
+	// NoOutcome names, by "<import-path>.<TestName>", the execution-layer
+	// cause for each expected subject the witness-eligible selection
+	// covers but the run granted nothing — no result, or a result its
+	// package's process denied a grant: the producing invocation and the
+	// package's disposition (a timeout, a build failure) — so its
+	// bindings read broken for that cause, never as outside the
+	// selection (REQ-check-witness-selection).
+	NoOutcome map[string]string
 	// SelectiveServing marks the run's execution class: true when the
 	// selective witness runner produced it — proven-fresh records served
 	// with selective execution of the stale remainder, the degraded
@@ -219,6 +227,11 @@ type BindingResult struct {
 	// cover: it cannot witness until the policy covers it, and its
 	// TestNotRun outcome names that class rather than a tree defect.
 	OutsideWitnessSelection bool
+	// NoOutcomeCause names, for a tests- or proves-role binding the
+	// eligible selection covers but the run granted nothing, the
+	// producing invocation and its package's disposition
+	// (REQ-check-witness-selection); empty otherwise.
+	NoOutcomeCause string
 	// ScopeSkipped marks a tests- or proves-role binding whose stale
 	// subject the caller's id scope left unexecuted.
 	ScopeSkipped bool
@@ -664,6 +677,7 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 			if testRun != nil && witnessRole(b.GetRole()) {
 				result.TestOutcome = testRun.Outcomes[b.GetSymbol()]
 				result.OutsideWitnessSelection = testRun.OutsideSubjects[b.GetSymbol()]
+				result.NoOutcomeCause = testRun.NoOutcome[b.GetSymbol()]
 				result.ScopeSkipped = testRun.ScopeSkipped[b.GetSymbol()]
 				// RaceEnabled qualifies a witness; a row without a passing
 				// outcome carries no witness to qualify, so it never claims

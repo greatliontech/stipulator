@@ -863,3 +863,39 @@ func TestServedUnverifiedStaysUnverified(t *testing.T) {
 type unverifiedBackend struct{}
 
 func (unverifiedBackend) Resolve(string) (Resolution, string, error) { return Unverified, "", nil }
+
+// The run's unreached cause reaches the binding row exactly as the
+// outside mark does: a tests-role binding on a subject the run names
+// no-outcome carries the cause, and nothing else does
+// (REQ-check-witness-selection).
+//
+//gofresh:pure
+func TestRunProjectsTheNoOutcomeCauseOntoTheRow(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-witness-selection")
+	fsys := fstest.MapFS{
+		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
+		"specs/a.md":                     {Data: []byte(goodDoc)},
+		".stipulator/bindings/x.textproto": {Data: []byte(
+			strings.ReplaceAll(strings.ReplaceAll(binding("REQ-v-a", ""), "example.com/p.F", "example.com/p.TestReached"), "BINDING_ROLE_IMPLEMENTS", "BINDING_ROLE_TESTS") +
+				strings.ReplaceAll(strings.ReplaceAll(binding("REQ-v-b", ""), "example.com/p.F", "example.com/p.TestUnreached"), "BINDING_ROLE_IMPLEMENTS", "BINDING_ROLE_TESTS"))},
+	}
+	spec, diags, err := compile.Compile(fsys)
+	if err != nil || len(diags) > 0 {
+		t.Fatalf("compile: %v %v", err, diags)
+	}
+	store, err := records.Load(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	backends := map[string]Backend{"go": fakeBackend{"example.com/p.TestReached": strings.Repeat("s", 64), "example.com/p.TestUnreached": strings.Repeat("s", 64)}}
+	run := &TestRun{Outcomes: map[string]TestOutcome{"example.com/p.TestReached": TestPassed}, RaceEnabled: true,
+		NoOutcome: map[string]string{"example.com/p.TestUnreached": "invocation race: package example.com/p timeout"}}
+	rep := Run(spec, store, backends, run)
+	causes := map[string]string{}
+	for _, r := range rep.Results {
+		causes[r.Symbol] = r.NoOutcomeCause
+	}
+	if causes["example.com/p.TestUnreached"] != "invocation race: package example.com/p timeout" || causes["example.com/p.TestReached"] != "" {
+		t.Fatalf("no-outcome causes on the rows = %v", causes)
+	}
+}

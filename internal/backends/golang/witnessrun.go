@@ -162,18 +162,6 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 		addExpected(ic.obligations)
 	}
 
-	// The in-policy subjects: the union of every capture group's own
-	// subjects. A subject several eligible groups cover is in policy
-	// through each — each group serves or executes its own leg under its
-	// own record identity, and the evidence merge takes the worst
-	// outcome across legs (REQ-check-verdict's alignment with the
-	// health-judged form).
-	inPolicy := map[gofresh.Subject]bool{}
-	for _, g := range d.groups {
-		for _, s := range groupSubjects(g) {
-			inPolicy[s] = true
-		}
-	}
 	// A within-group double selection (two same-environment invocations
 	// naming one package) has no single producing leg, so its subjects
 	// never serve or publish — but they are eligible-covered: they
@@ -194,7 +182,6 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 				continue
 			}
 			s := gofresh.Subject{Package: o.Package, Symbol: o.Name}
-			inPolicy[s] = true
 			ambiguousSubjects[s] = true
 			sel := ambiguousSel[ic.n.Name]
 			if sel == nil {
@@ -239,15 +226,11 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	// anywhere: a subject whose every covering invocation is ineligible
 	// still executes (failures count), but its legs can never grant a
 	// witness outcome, so it is outside exactly as an unselected subject
-	// is (REQ-check-witness-selection).
-	outside := 0
-	outsideSubjects := map[string]bool{}
-	for s := range expected {
-		if !inPolicy[s] {
-			outside++
-			outsideSubjects[s.Package+"."+s.Symbol] = true
-		}
-	}
+	// is — the one classification the health-judged form answers with,
+	// applied here before the run for the count and again after it for
+	// the subjects the run granted nothing (REQ-check-witness-selection).
+	outsideSubjects := d.classifyWitnesses(universe, nil, nil, nil).outside
+	outside := len(outsideSubjects)
 
 	cached := witnesscache.Load(dir)
 	// One identity may hold several tree-state variants; at most one can
@@ -576,6 +559,17 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	flipEnriched := map[string]bool{}
 	enrichFlipDiagnostics(m, normalized, passedBefore, flipEnriched)
 	enrichFlipDiagnostics(retryMerge, normalized, passedBefore, flipEnriched)
+	// The retry's process dispositions join the first pass's per
+	// package, the worse of the two standing: a retry timeout is the
+	// cause of what it denied, and a healthy retry over the drifted
+	// subjects alone never erases a red first pass that denied the rest
+	// — the run's own worst-outcome discipline, applied to causes.
+	for key, disposition := range retryMerge.pkgDisp {
+		if first, ok := m.pkgDisp[key]; ok {
+			disposition = worseDisposition(first, disposition)
+		}
+		m.pkgDisp[key] = disposition
+	}
 	enrichFlipDiagnostics(ineligibleMerge, normalized, passedBefore, flipEnriched)
 	ranTop := map[string]bool{}
 	consumeMerge(tr, m, ranTop, plainInv, raceGranted, plainGranted)
@@ -672,6 +666,17 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 		}
 	}
 
+	// An eligible-covered subject the run granted nothing — no result,
+	// or a result its package's process denied a grant — carries the
+	// package's disposition under its invocation as its cause, never the
+	// outside class; a scope-skipped subject was left unexecuted by the
+	// caller, not by the execution (REQ-check-witness-selection).
+	tr.NoOutcome = map[string]string{}
+	for key, cause := range d.classifyWitnesses(universe, nil, tr.Outcomes, m.packageCause).noOutcome {
+		if !scopeSkipped[key] {
+			tr.NoOutcome[key] = cause
+		}
+	}
 	// Publication installed at production: each record landed as its own
 	// variant file, atomically, the moment its group finished — at its
 	// last covering invocation's completion for executing groups, in the
@@ -995,21 +1000,42 @@ type execMerge struct {
 	diags []*stipulatorv1.FailureDiagnostic
 	disp  map[producerKey]stipulatorv1.HealthDisposition
 	obs   map[producerKey]*ProcessObservation
+	// pkgDisp records each package-scoped process's disposition by
+	// invocation and package — the execution-layer cause an eligible
+	// subject the run granted nothing is named by
+	// (REQ-check-witness-selection).
+	pkgDisp map[string]stipulatorv1.HealthDisposition
+}
+
+// packageCause answers the recorded disposition of a package's process
+// under an invocation as its cause.
+func (m *execMerge) packageCause(invocation, pkg string) (string, bool) {
+	disposition, ok := m.pkgDisp[invocation+"\x00"+pkg]
+	if !ok {
+		return "", false
+	}
+	return dispositionCause(invocation, pkg, disposition), true
 }
 
 func newExecMerge() *execMerge {
 	return &execMerge{
-		disp: map[producerKey]stipulatorv1.HealthDisposition{},
-		obs:  map[producerKey]*ProcessObservation{},
+		disp:    map[producerKey]stipulatorv1.HealthDisposition{},
+		obs:     map[producerKey]*ProcessObservation{},
+		pkgDisp: map[string]stipulatorv1.HealthDisposition{},
 	}
 }
 
-func (m *execMerge) add(res *SelectionResult) {
+func (m *execMerge) add(invocation string, res *SelectionResult) {
 	m.rows = append(m.rows, res.Tests...)
 	m.diags = append(m.diags, res.Diagnostics...)
 	for _, p := range res.Processes {
 		if p.Producer != nil {
 			m.disp[keyOfProducer(p.Producer)] = p.Disposition
+		}
+		// A package's process carries its disposition whether or not it
+		// spawned — an envelope denied before the spawn disposes it too.
+		if p.Package != "" && p.Test == "" {
+			m.pkgDisp[invocation+"\x00"+p.Package] = p.Disposition
 		}
 	}
 	for _, o := range res.Observations {
@@ -1033,7 +1059,7 @@ func executeSelections(ctx context.Context, invocations []*NormalizedInvocation,
 		if err != nil {
 			return err
 		}
-		m.add(res)
+		m.add(n.Name, res)
 		if onCompleted != nil {
 			if err := onCompleted(n.Name); err != nil {
 				return err

@@ -1180,3 +1180,31 @@ func TestGapConsentHoldsByRehash(t *testing.T) {
 		t.Fatalf("gap with a differing source pin still excuses: violations=%v", rep.Violations)
 	}
 }
+
+// TestUngrantedWitnessNamesItsCauseNeverTheSelection pins the
+// selection/execution distinction: a bound witness the eligible
+// selection covers but the run granted nothing reads broken for the
+// producing package's disposition, is never classed policy-blocked,
+// and never carries the admission advice (REQ-check-witness-selection).
+//
+//gofresh:pure
+func TestUngrantedWitnessNamesItsCauseNeverTheSelection(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-witness-selection")
+	doc := "# A\n\n**REQ-u-timeout** (behavior): It MUST a.\n"
+	spec, store := fixture(t, doc, nil)
+	r := result("REQ-u-timeout", stipulatorv1.BindingRole_BINDING_ROLE_TESTS, true, verify.Resolved, verify.ShapeMatch, verify.TestNotRun)
+	r.NoOutcomeCause = "invocation race: package example.com/m/interp timeout"
+	vr := &verify.Report{Results: []verify.BindingResult{r}}
+	rep := Evaluate(spec, vr, store, true, nil)
+	if len(rep.Requirements) != 1 {
+		t.Fatalf("requirements = %+v", rep.Requirements)
+	}
+	req := rep.Requirements[0]
+	if req.WitnessSelectionBlocked {
+		t.Fatal("an unreached witness classed policy-blocked")
+	}
+	joined := strings.Join(req.Reasons, "\n")
+	if !strings.Contains(joined, "bound test "+r.Symbol+" has no witness outcome: invocation race: package example.com/m/interp timeout") || strings.Contains(joined, "witness-eligible selection") || strings.Contains(joined, "unwitnessed") {
+		t.Fatalf("reasons = %q; want the execution-layer cause alone", req.Reasons)
+	}
+}

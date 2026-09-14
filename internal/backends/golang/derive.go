@@ -1305,51 +1305,117 @@ func ExecutePolicyWitnessed(ctx context.Context, pc *Capture, seeding verify.Wit
 	if err != nil {
 		return nil, nil, err
 	}
-	// The witness-eligible selection boundary holds on this form too: a
-	// subject whose every executing invocation is ineligible can never be
-	// granted a witness outcome, and an expected witness no invocation
-	// executed cannot either - both are outside, counted and marked
-	// exactly as the selective form counts them
-	// (REQ-check-witness-selection). The universe is the one the
-	// execution itself selected against — the capture's, discovered
-	// before the suite ran: a test the run could only have created
-	// mid-execution predates no policy, and a source edit mid-run
-	// discards the run's records anyway. A universe fault degrades
-	// silently: without it only executed subjects classify.
-	facts := indexInvocations(report)
-	eligibleCovered := map[string]bool{}
-	executed := map[string]bool{}
-	for _, row := range report.GetTests() {
-		key, ok := executedTopKey(row.GetPackage(), row.GetTest())
+	// The witness-eligible selection boundary holds on this form
+	// exactly as on the selective one — one classification on the
+	// discovery, the run's outcomes as the evidence and the report's
+	// invocation health as the cause (REQ-check-witness-selection). The
+	// universe is the one the execution itself selected against — the
+	// capture's, discovered before the suite ran: a test the run could
+	// only have created mid-execution predates no policy, and a source
+	// edit mid-run discards the run's records anyway. A universe fault
+	// degrades silently: without it only the invocations' own
+	// obligations classify.
+	d, err := pc.discover(ctx) // the held leg: discovered before the suite ran
+	if err != nil {
+		return nil, nil, err
+	}
+	universe, _ := pc.ObligationUniverse(ctx)
+	health := reportPackageHealth(report)
+	classes := d.classifyWitnesses(universe, executedTopPackages(report), tr.Outcomes, func(invocation, pkg string) (string, bool) {
+		disposition, ok := health[invocation+"\x00"+pkg]
 		if !ok {
-			continue
+			return "", false
 		}
-		executed[key] = true
-		inv := row.GetProducer().GetInvocation()
-		if facts.race[inv] || facts.plain[inv] {
-			eligibleCovered[key] = true
+		return dispositionCause(invocation, pkg, disposition), true
+	})
+	tr.OutsideSubjects = classes.outside
+	tr.OutsidePolicy = len(classes.outside)
+	tr.NoOutcome = classes.noOutcome
+	return report, tr, nil
+}
+
+// reportPackageHealth indexes the report's package dispositions by
+// invocation and package.
+func reportPackageHealth(report *stipulatorv1.ExecutionReport) map[string]stipulatorv1.HealthDisposition {
+	health := map[string]stipulatorv1.HealthDisposition{}
+	for _, h := range report.GetInvocations() {
+		for _, p := range h.GetPackages() {
+			health[h.GetInvocation()+"\x00"+p.GetPackage()] = p.GetDisposition()
 		}
 	}
-	outsideSubjects := map[string]bool{}
-	for key := range executed {
-		if !eligibleCovered[key] {
-			outsideSubjects[key] = true
+	return health
+}
+
+// witnessClasses is one classification of every expected witness
+// subject: outside when no eligible invocation selects it; no witness
+// outcome, with the execution-layer cause, when the eligible selection
+// covers it but the run granted it nothing (REQ-check-witness-selection).
+type witnessClasses struct {
+	outside   map[string]bool
+	noOutcome map[string]string
+}
+
+// classifyWitnesses is the one rule both evidence forms answer with. The
+// expected subjects are the universe's test and fuzz obligations and
+// every invocation's own; an executed subject the universe lacks is
+// expected too (executed maps its key to its package). A subject is
+// outside when no witness-eligible invocation selects it. An
+// eligible-covered subject with no outcome — no result, or a result
+// its package's process denied a grant — names its cause: each
+// eligible invocation selecting it with the package's disposition
+// under that invocation, from causeFor; an invocation with no
+// disposition reported it no result. A nil causeFor classes the
+// outside set alone — the selective form's pre-run count.
+func (d *policyDiscovery) classifyWitnesses(universe []Obligation, executed map[string]string, outcomes map[string]verify.TestOutcome, causeFor func(invocation, pkg string) (string, bool)) witnessClasses {
+	expected := map[string]string{} // key -> package
+	for _, o := range universe {
+		if o.Kind == ObligationTest || o.Kind == ObligationFuzz {
+			expected[o.Package+"."+o.Name] = o.Package
 		}
 	}
-	if universe, uerr := pc.ObligationUniverse(ctx); uerr == nil {
-		for _, o := range universe {
+	eligibleBy := map[string][]string{} // key -> the eligible invocations selecting it
+	for _, ic := range d.invocations {
+		for _, o := range ic.obligations {
 			if o.Kind != ObligationTest && o.Kind != ObligationFuzz {
 				continue
 			}
 			key := o.Package + "." + o.Name
-			if !eligibleCovered[key] {
-				outsideSubjects[key] = true
+			expected[key] = o.Package
+			if ic.n.WitnessEligible() {
+				eligibleBy[key] = append(eligibleBy[key], ic.n.Name)
 			}
 		}
 	}
-	tr.OutsideSubjects = outsideSubjects
-	tr.OutsidePolicy = len(outsideSubjects)
-	return report, tr, nil
+	for key, pkg := range executed {
+		if _, ok := expected[key]; !ok {
+			expected[key] = pkg
+		}
+	}
+	classes := witnessClasses{outside: map[string]bool{}, noOutcome: map[string]string{}}
+	for key, pkg := range expected {
+		invocations := eligibleBy[key]
+		if len(invocations) == 0 {
+			classes.outside[key] = true
+			continue
+		}
+		if causeFor == nil {
+			continue
+		}
+		if _, ok := outcomes[key]; ok {
+			continue
+		}
+		var causes []string
+		for _, inv := range invocations {
+			if cause, ok := causeFor(inv, pkg); ok {
+				causes = append(causes, cause)
+			} else {
+				causes = append(causes, fmt.Sprintf("invocation %s reported no result for package %s", inv, pkg))
+			}
+		}
+		sort.Strings(causes)
+		classes.noOutcome[key] = strings.Join(causes, "; ")
+	}
+	return classes
 }
 
 // executedTopKeys is the executed top-level witness-subject key set —
@@ -1358,9 +1424,19 @@ func ExecutePolicyWitnessed(ctx context.Context, pc *Capture, seeding verify.Wit
 // attribution map and the Ran count must never desynchronize.
 func executedTopKeys(report *stipulatorv1.ExecutionReport) map[string]bool {
 	keys := map[string]bool{}
+	for key := range executedTopPackages(report) {
+		keys[key] = true
+	}
+	return keys
+}
+
+// executedTopPackages is executedTopKeys with each key's package, as
+// the row states it.
+func executedTopPackages(report *stipulatorv1.ExecutionReport) map[string]string {
+	keys := map[string]string{}
 	for _, row := range report.GetTests() {
 		if key, ok := executedTopKey(row.GetPackage(), row.GetTest()); ok {
-			keys[key] = true
+			keys[key] = row.GetPackage()
 		}
 	}
 	return keys
@@ -1421,4 +1497,16 @@ func pgoBuildInputs(dir, moduleRoot, pgo string) ([]string, error) {
 		return nil, fmt.Errorf("pgo profile %s: %w", pgo, err)
 	}
 	return []string{fmt.Sprintf("pgo:%x", sha256.Sum256(data))}, nil
+}
+
+// dispositionCause spells one package's disposition under its
+// invocation as an execution-layer cause: "invocation race: package p
+// timeout", or, healthy, that the invocation's process granted the
+// subject nothing.
+func dispositionCause(invocation, pkg string, disposition stipulatorv1.HealthDisposition) string {
+	if disposition == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+		return fmt.Sprintf("invocation %s: package %s healthy, no result for it", invocation, pkg)
+	}
+	text := strings.ToLower(strings.TrimPrefix(disposition.String(), "HEALTH_DISPOSITION_"))
+	return fmt.Sprintf("invocation %s: package %s %s", invocation, pkg, strings.ReplaceAll(text, "_", " "))
 }

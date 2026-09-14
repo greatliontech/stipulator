@@ -508,6 +508,12 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 				if r.OutsideWitnessSelection {
 					e.outsideSelection++
 					e.reasons = append(e.reasons, fmt.Sprintf("bound test %s is outside the policy's witness-eligible selection - witness evidence derives only from race: true invocations or explicit plain_witness: true admissions; cover its package with one", r.Symbol))
+				} else if r.NoOutcomeCause != "" {
+					// The selection covers it; the run granted it nothing
+					// — the producing package's disposition is the cause,
+					// never admission advice (REQ-check-witness-selection).
+					e.otherRed = true
+					e.reasons = append(e.reasons, fmt.Sprintf("bound test %s has no witness outcome: %s", r.Symbol, r.NoOutcomeCause))
 				} else if r.ScopeSkipped {
 					// The caller's id scope left this stale subject
 					// unexecuted: a scope boundary, never a tree defect

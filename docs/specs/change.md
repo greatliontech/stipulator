@@ -453,7 +453,14 @@ subjects outside the witness-eligible selection; each affected tests- or
 proves-role binding's reason names the selection class with the repair
 (cover the package with a race invocation, or an explicit plain-tier
 admission), never the bare unwitnessed
-text; and when the pass serves nothing and grants no witness outcome
+text; outside is a selection fact — the accepted policy's invocations
+and what they select — never an execution fact: an expected subject the
+eligible selection covers but the run granted nothing (no result, or a
+result its package's process denied a grant — the process timed out,
+failed to build, or ended before or during it) is not outside and is
+not counted so; its binding's reason names that execution-layer cause —
+the producing invocation and the package's disposition — never the
+admission advice; and when the pass serves nothing and grants no witness outcome
 while expected witnesses sit outside the eligible selection, the result
 names that execution-layer cause once at result level — an
 all-unwitnessed verdict must be distinguishable from a broken tree by

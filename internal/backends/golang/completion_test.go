@@ -15,6 +15,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/stipulate"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 // The one completion rule: a group is complete at its last covering
@@ -334,5 +335,198 @@ func TestExecutedCountExcludesExamplesOnBothForms(t *testing.T) {
 	}
 	if serving.Ran != 1 || serving.Uncached != 0 {
 		t.Fatalf("selective form: ran %d, uncached %d (reasons %v); want the example counted in neither", serving.Ran, serving.Uncached, serving.UncacheableReasons)
+	}
+}
+
+// TestUngrantedEligibleWitnessIsNotOutsideTheSelection pins the
+// selection/execution distinction on the health-judged form: the
+// witnesses of a package an eligible race invocation selects, whose
+// process an early test holds past the invocation's envelope, are not
+// outside the selection — the one that ran and passed, the one that
+// hung, the one never reached, and a race-tag-gated one the universe
+// never lists (-race implies the race build tag, so the eligible leg's
+// discovery lists it and the default universe does not) all carry the
+// package's timeout under that invocation as their cause, and every
+// timed-out package keeps its retained diagnostic on the report; a
+// passing test beside a failing sibling and a subject behind an
+// exiting TestMain carry their packages' dispositions — while a
+// subject no eligible invocation selects stays outside
+// (REQ-check-witness-selection).
+//
+// Deliberately not //gofresh:pure: executes the fixture's tests.
+func TestUngrantedEligibleWitnessIsNotOutsideTheSelection(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-witness-selection")
+	if testing.Short() {
+		t.Skip("executes a race invocation over a temporary module until its envelope expires")
+	}
+	neutralAmbient(t)
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	tmp := writeModule(t, map[string]string{
+		"go.mod":      "module example.com/units\n\ngo 1.26\n",
+		"a/a_test.go": "package a\n\nimport (\n\t\"testing\"\n\t\"time\"\n)\n\nfunc TestEarly(t *testing.T) {}\n\nfunc TestBlocks(t *testing.T) { time.Sleep(30 * time.Second) }\n\nfunc TestLater(t *testing.T) {}\n",
+		"a/z_test.go": "//go:build race\n\npackage a\n\nimport \"testing\"\n\nfunc TestRaceOnly(t *testing.T) {}\n",
+		"c/c_test.go": "package c\n\nimport (\n\t\"testing\"\n\t\"time\"\n)\n\nfunc TestHolds(t *testing.T) { time.Sleep(30 * time.Second) }\n",
+		"d/d_test.go": "package d\n\nimport \"testing\"\n\nfunc TestFails(t *testing.T) { t.Fatal(\"red\") }\n\nfunc TestBeside(t *testing.T) {}\n",
+		"f/f_test.go": "package f\n\nimport (\n\t\"os\"\n\t\"testing\"\n)\n\nfunc TestMain(m *testing.M) { os.Exit(0) }\n\nfunc TestNever(t *testing.T) {}\n",
+		"b/b_test.go": "package b\n\nimport \"testing\"\n\nfunc TestPlain(t *testing.T) {}\n",
+	})
+	race := &stipulatorv1.GoInvocationConfig{}
+	race.SetPackages([]string{"./a", "./c"})
+	race.SetRace(true)
+	// The failing and the row-less packages run under their own eligible
+	// invocation with a generous envelope: their arms are about a
+	// package's disposition, never about racing the timeout above.
+	raceD := &stipulatorv1.GoInvocationConfig{}
+	raceD.SetPackages([]string{"./d", "./f"})
+	raceD.SetRace(true)
+	plain := &stipulatorv1.GoInvocationConfig{}
+	plain.SetPackages([]string{"./b"})
+	raceInv := goInvocation("race", race)
+	raceInv.SetTimeout(durationpb.New(8 * time.Second))
+	raceDInv := goInvocation("race-d", raceD)
+	raceDInv.SetTimeout(durationpb.New(3 * time.Minute))
+	pol := &stipulatorv1.TestPolicy{}
+	pol.SetInvocations([]*stipulatorv1.PolicyInvocation{raceInv, raceDInv, goInvocation("plain", plain)})
+	ctx := context.Background()
+	report, tr, err := ExecutePolicyWitnessed(ctx, mustCapture(t, ctx, tmp, pol), noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	timedOut := map[string]bool{}
+	for _, h := range report.GetInvocations() {
+		for _, p := range h.GetPackages() {
+			if h.GetInvocation() == "race" && p.GetDisposition() == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT {
+				timedOut[p.GetPackage()] = true
+			}
+		}
+	}
+	if !timedOut["example.com/units/a"] || !timedOut["example.com/units/c"] {
+		t.Fatalf("the fixture's race invocation did not time out both packages: %+v", report.GetInvocations())
+	}
+	// Every timed-out package keeps its retained diagnostic on the report.
+	diagnosed := map[string]bool{}
+	for _, d := range report.GetDiagnostics() {
+		diagnosed[d.GetPackage()] = true
+	}
+	if !diagnosed["example.com/units/a"] || !diagnosed["example.com/units/c"] {
+		t.Fatalf("timed-out packages without a retained diagnostic: %v", diagnosed)
+	}
+	for _, key := range []string{"example.com/units/a.TestEarly", "example.com/units/a.TestBlocks", "example.com/units/a.TestLater", "example.com/units/a.TestRaceOnly", "example.com/units/c.TestHolds"} {
+		if tr.OutsideSubjects[key] {
+			t.Fatalf("an eligible-covered subject classed outside: %s", key)
+		}
+	}
+	if !tr.OutsideSubjects["example.com/units/b.TestPlain"] || tr.OutsidePolicy != 1 {
+		t.Fatalf("outside = %v (%d); want b.TestPlain alone", tr.OutsideSubjects, tr.OutsidePolicy)
+	}
+	for key, pkg := range map[string]string{"example.com/units/a.TestEarly": "a", "example.com/units/a.TestBlocks": "a", "example.com/units/a.TestLater": "a", "example.com/units/a.TestRaceOnly": "a", "example.com/units/c.TestHolds": "c"} {
+		want := "invocation race: package example.com/units/" + pkg + " timeout"
+		if got := tr.NoOutcome[key]; got != want {
+			t.Fatalf("%s: no-outcome cause = %q, want %q", key, got, want)
+		}
+		if _, ok := tr.Outcomes[key]; ok {
+			t.Fatalf("%s was granted an outcome under a timed-out process", key)
+		}
+	}
+	if _, ok := tr.NoOutcome["example.com/units/b.TestPlain"]; ok {
+		t.Fatal("an outside subject also carried a no-outcome cause")
+	}
+	// A passing test beside a failing sibling ran — its row is on the
+	// report — and was granted nothing: the failing package is its
+	// cause; the failure itself is a fact with its own outcome. The
+	// package's disposition is the arm's premise, asserted first.
+	health := reportPackageHealth(report)
+	if got := health["race-d\x00example.com/units/d"]; got != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED {
+		t.Fatalf("package d disposed %v under race-d, want test failed", got)
+	}
+	if out, ok := tr.Outcomes["example.com/units/d.TestFails"]; !ok || out != verify.TestFailed {
+		t.Fatalf("d.TestFails outcome = %v (%v), want the failure recorded", out, ok)
+	}
+	if _, ok := tr.Outcomes["example.com/units/d.TestBeside"]; ok {
+		t.Fatal("a pass beside a failing sibling was granted an outcome")
+	}
+	if got := tr.NoOutcome["example.com/units/d.TestBeside"]; got != "invocation race-d: package example.com/units/d test failed" {
+		t.Fatalf("d.TestBeside no-outcome cause = %q", got)
+	}
+	if !executedTopKeys(report)["example.com/units/d.TestBeside"] {
+		t.Fatal("d.TestBeside left no row on the report; the arm discriminates nothing")
+	}
+	// A TestMain that exits before m.Run: the process disposes healthy
+	// and rows nothing, so the discovered subject's cause names the
+	// healthy package that reported no result for it.
+	if got := health["race-d\x00example.com/units/f"]; got != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+		t.Fatalf("package f disposed %v under race-d, want healthy", got)
+	}
+	if got := tr.NoOutcome["example.com/units/f.TestNever"]; got != "invocation race-d: package example.com/units/f healthy, no result for it" {
+		t.Fatalf("f.TestNever no-outcome cause = %q", got)
+	}
+}
+
+// TestUngrantedEligibleWitnessCarriesItsCauseOnTheSelectiveForm pins
+// the same distinction on the serving form: a package's process times
+// out and the run names the timeout under its invocation as the cause
+// of every subject it granted nothing — the one that ran, the one that
+// hung, the one never reached — outside only what no eligible
+// invocation selects (REQ-check-witness-selection).
+//
+// Deliberately not //gofresh:pure: executes the fixture's tests.
+func TestUngrantedEligibleWitnessCarriesItsCauseOnTheSelectiveForm(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-witness-selection")
+	if testing.Short() {
+		t.Skip("executes a race invocation over a temporary module until its envelope expires")
+	}
+	neutralAmbient(t)
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	tmp := writeModule(t, map[string]string{
+		"go.mod":      "module example.com/units\n\ngo 1.26\n",
+		"a/a_test.go": "package a\n\nimport (\n\t\"testing\"\n\t\"time\"\n)\n\nfunc TestEarly(t *testing.T) {}\n\nfunc TestBlocks(t *testing.T) { time.Sleep(30 * time.Second) }\n\nfunc TestLater(t *testing.T) {}\n",
+		"e/e_test.go": "package e\n\nimport (\n\t\"testing\"\n\t\"time\"\n)\n\nfunc TestQueued(t *testing.T) { time.Sleep(30 * time.Second) }\n",
+		"b/b_test.go": "package b\n\nimport \"testing\"\n\nfunc TestPlain(t *testing.T) {}\n",
+	})
+	race := &stipulatorv1.GoInvocationConfig{}
+	race.SetPackages([]string{"./a", "./e"})
+	race.SetRace(true)
+	plain := &stipulatorv1.GoInvocationConfig{}
+	plain.SetPackages([]string{"./b"})
+	raceInv := goInvocation("race", race)
+	raceInv.SetTimeout(durationpb.New(8 * time.Second))
+	pol := &stipulatorv1.TestPolicy{}
+	pol.SetInvocations([]*stipulatorv1.PolicyInvocation{raceInv, goInvocation("plain", plain)})
+	ctx := context.Background()
+	pc := mustCapture(t, ctx, tmp, pol)
+	// One package spawns at a time: the second waits behind the first's
+	// sleep until the envelope expires and never spawns — a process the
+	// envelope denied, disposed timeout with no producer.
+	for _, n := range pc.normalized {
+		n.SpawnBound = 1
+	}
+	tr, err := RunWitnessesPolicy(ctx, pc, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.OutsideSubjects["example.com/units/a.TestLater"] || !tr.OutsideSubjects["example.com/units/b.TestPlain"] || tr.OutsidePolicy != 1 {
+		t.Fatalf("outside = %v (%d); want b.TestPlain alone", tr.OutsideSubjects, tr.OutsidePolicy)
+	}
+	for key, pkg := range map[string]string{"example.com/units/a.TestEarly": "a", "example.com/units/a.TestBlocks": "a", "example.com/units/a.TestLater": "a", "example.com/units/e.TestQueued": "e"} {
+		want := "invocation race: package example.com/units/" + pkg + " timeout"
+		if got := tr.NoOutcome[key]; got != want {
+			t.Fatalf("%s: no-outcome cause = %q, want %q (outcomes %v)", key, got, want, tr.Outcomes)
+		}
+	}
+	// A caller's scope leaves the out-of-scope subjects unexecuted by
+	// the caller, not by the execution: no cause for them, the cause
+	// for the in-scope one the blocker held.
+	scoped, err := RunWitnessesScoped(ctx, mustCapture(t, ctx, tmp, pol), map[gofresh.Subject]bool{
+		{Package: "example.com/units/a", Symbol: "TestBlocks"}: true,
+		{Package: "example.com/units/a", Symbol: "TestLater"}:  true,
+	}, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := scoped.NoOutcome["example.com/units/a.TestLater"]; got != "invocation race: package example.com/units/a timeout" {
+		t.Fatalf("scoped in-scope cause = %q (no-outcome %v)", got, scoped.NoOutcome)
+	}
+	if _, ok := scoped.NoOutcome["example.com/units/a.TestEarly"]; ok || !scoped.ScopeSkipped["example.com/units/a.TestEarly"] {
+		t.Fatalf("a scope-skipped subject carried a cause or lost its skip: %v / %v", scoped.NoOutcome, scoped.ScopeSkipped)
 	}
 }

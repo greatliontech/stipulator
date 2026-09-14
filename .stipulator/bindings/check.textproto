@@ -263,8 +263,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-witness-selection"
-  content_hash: "222398c6f983cd8fd6088f01b8cd02bb6f574f434fd92494cfcfdcff9ec3cfc8"
-  source_hash: "cfd2eb94f6910ce12e563841f7c688126e16749e16beffded5940a4914876827"
+  content_hash: "007cab87ca1813a005b7598fd3de3d6d271fc48de893b42cbdeeccaf598b5ce0"
+  source_hash: "7d48df0f11599e722b362df332427355e9658d8898b77d0bd8cca6fa365c38d4"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckNamesAnEmptyWitnessSelection"
   role: BINDING_ROLE_TESTS
@@ -273,8 +273,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-witness-selection"
-  content_hash: "222398c6f983cd8fd6088f01b8cd02bb6f574f434fd92494cfcfdcff9ec3cfc8"
-  source_hash: "cfd2eb94f6910ce12e563841f7c688126e16749e16beffded5940a4914876827"
+  content_hash: "007cab87ca1813a005b7598fd3de3d6d271fc48de893b42cbdeeccaf598b5ce0"
+  source_hash: "7d48df0f11599e722b362df332427355e9658d8898b77d0bd8cca6fa365c38d4"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckWitnessSelectionProblemAbsentUnderRacePolicy"
   role: BINDING_ROLE_TESTS
@@ -283,8 +283,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-witness-selection"
-  content_hash: "222398c6f983cd8fd6088f01b8cd02bb6f574f434fd92494cfcfdcff9ec3cfc8"
-  source_hash: "cfd2eb94f6910ce12e563841f7c688126e16749e16beffded5940a4914876827"
+  content_hash: "007cab87ca1813a005b7598fd3de3d6d271fc48de893b42cbdeeccaf598b5ce0"
+  source_hash: "7d48df0f11599e722b362df332427355e9658d8898b77d0bd8cca6fa365c38d4"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckFullFormNamesRaceUncoveredSubjects"
   role: BINDING_ROLE_TESTS
@@ -293,8 +293,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-witness-selection"
-  content_hash: "222398c6f983cd8fd6088f01b8cd02bb6f574f434fd92494cfcfdcff9ec3cfc8"
-  source_hash: "cfd2eb94f6910ce12e563841f7c688126e16749e16beffded5940a4914876827"
+  content_hash: "007cab87ca1813a005b7598fd3de3d6d271fc48de893b42cbdeeccaf598b5ce0"
+  source_hash: "7d48df0f11599e722b362df332427355e9658d8898b77d0bd8cca6fa365c38d4"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckMultiplyNonRaceSelectedSubjectsAreOutside"
   role: BINDING_ROLE_TESTS
@@ -303,8 +303,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-witness-selection"
-  content_hash: "222398c6f983cd8fd6088f01b8cd02bb6f574f434fd92494cfcfdcff9ec3cfc8"
-  source_hash: "cfd2eb94f6910ce12e563841f7c688126e16749e16beffded5940a4914876827"
+  content_hash: "007cab87ca1813a005b7598fd3de3d6d271fc48de893b42cbdeeccaf598b5ce0"
+  source_hash: "7d48df0f11599e722b362df332427355e9658d8898b77d0bd8cca6fa365c38d4"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.TestCheckSummaryFoldsPolicyBlockedRows"
   role: BINDING_ROLE_TESTS
@@ -313,8 +313,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-witness-selection"
-  content_hash: "222398c6f983cd8fd6088f01b8cd02bb6f574f434fd92494cfcfdcff9ec3cfc8"
-  source_hash: "cfd2eb94f6910ce12e563841f7c688126e16749e16beffded5940a4914876827"
+  content_hash: "007cab87ca1813a005b7598fd3de3d6d271fc48de893b42cbdeeccaf598b5ce0"
+  source_hash: "7d48df0f11599e722b362df332427355e9658d8898b77d0bd8cca6fa365c38d4"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestWitnessSelectionBlockedRequiresBoundaryOnlyRedness"
   role: BINDING_ROLE_TESTS
@@ -323,8 +323,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-witness-selection"
-  content_hash: "222398c6f983cd8fd6088f01b8cd02bb6f574f434fd92494cfcfdcff9ec3cfc8"
-  source_hash: "cfd2eb94f6910ce12e563841f7c688126e16749e16beffded5940a4914876827"
+  content_hash: "007cab87ca1813a005b7598fd3de3d6d271fc48de893b42cbdeeccaf598b5ce0"
+  source_hash: "7d48df0f11599e722b362df332427355e9658d8898b77d0bd8cca6fa365c38d4"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckPlainWitnessAdmissionGrantsPlainTierWitnesses"
   role: BINDING_ROLE_TESTS
@@ -333,8 +333,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-witness-selection"
-  content_hash: "222398c6f983cd8fd6088f01b8cd02bb6f574f434fd92494cfcfdcff9ec3cfc8"
-  source_hash: "cfd2eb94f6910ce12e563841f7c688126e16749e16beffded5940a4914876827"
+  content_hash: "007cab87ca1813a005b7598fd3de3d6d271fc48de893b42cbdeeccaf598b5ce0"
+  source_hash: "7d48df0f11599e722b362df332427355e9658d8898b77d0bd8cca6fa365c38d4"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckRaceLegPrecedenceOverPlainAdmission"
   role: BINDING_ROLE_TESTS
@@ -343,8 +343,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-witness-selection"
-  content_hash: "222398c6f983cd8fd6088f01b8cd02bb6f574f434fd92494cfcfdcff9ec3cfc8"
-  source_hash: "cfd2eb94f6910ce12e563841f7c688126e16749e16beffded5940a4914876827"
+  content_hash: "007cab87ca1813a005b7598fd3de3d6d271fc48de893b42cbdeeccaf598b5ce0"
+  source_hash: "7d48df0f11599e722b362df332427355e9658d8898b77d0bd8cca6fa365c38d4"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckTierFlipNeverServesCrossTier"
   role: BINDING_ROLE_TESTS
@@ -773,8 +773,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-witness-selection"
-  content_hash: "222398c6f983cd8fd6088f01b8cd02bb6f574f434fd92494cfcfdcff9ec3cfc8"
-  source_hash: "cfd2eb94f6910ce12e563841f7c688126e16749e16beffded5940a4914876827"
+  content_hash: "007cab87ca1813a005b7598fd3de3d6d271fc48de893b42cbdeeccaf598b5ce0"
+  source_hash: "7d48df0f11599e722b362df332427355e9658d8898b77d0bd8cca6fa365c38d4"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckIneligibleLegOutcomesDoNotMaskTheSelectionCause"
   role: BINDING_ROLE_TESTS
@@ -829,4 +829,44 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/verifyrun.TestRunCapturesThePolicyOnce"
   role: BINDING_ROLE_TESTS
   shape_hash: "637aef8dfdd419bb4aacfbce489ed7cdf915f7bd34b3dcca0167d65d4fa9e440"
+}
+
+bindings {
+  requirement_id: "REQ-check-witness-selection"
+  content_hash: "007cab87ca1813a005b7598fd3de3d6d271fc48de893b42cbdeeccaf598b5ce0"
+  source_hash: "7d48df0f11599e722b362df332427355e9658d8898b77d0bd8cca6fa365c38d4"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestUngrantedEligibleWitnessIsNotOutsideTheSelection"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "1213d22fe22adda02087c7db3594844fb0498ffbad6ee7145b38719ddd4a3aa5"
+}
+
+bindings {
+  requirement_id: "REQ-check-witness-selection"
+  content_hash: "007cab87ca1813a005b7598fd3de3d6d271fc48de893b42cbdeeccaf598b5ce0"
+  source_hash: "7d48df0f11599e722b362df332427355e9658d8898b77d0bd8cca6fa365c38d4"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestUngrantedEligibleWitnessCarriesItsCauseOnTheSelectiveForm"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b0a6c0d480fad4f6b02f9e135f27e06984689440b415c39e4ce558bbd7c7509f"
+}
+
+bindings {
+  requirement_id: "REQ-check-witness-selection"
+  content_hash: "007cab87ca1813a005b7598fd3de3d6d271fc48de893b42cbdeeccaf598b5ce0"
+  source_hash: "7d48df0f11599e722b362df332427355e9658d8898b77d0bd8cca6fa365c38d4"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.TestUngrantedWitnessNamesItsCauseNeverTheSelection"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5eccb09d4849e80ae8c47d4f3d23e3094e147c7760a63e85347953736c8ff185"
+}
+
+bindings {
+  requirement_id: "REQ-check-witness-selection"
+  content_hash: "007cab87ca1813a005b7598fd3de3d6d271fc48de893b42cbdeeccaf598b5ce0"
+  source_hash: "7d48df0f11599e722b362df332427355e9658d8898b77d0bd8cca6fa365c38d4"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verify.TestRunProjectsTheNoOutcomeCauseOntoTheRow"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "4f67a31fb7a51fe339420ed79e115fd93947174a4ad5cc98b4b069cba43afce2"
 }
