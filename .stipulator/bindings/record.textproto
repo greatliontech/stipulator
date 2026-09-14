@@ -3,8 +3,8 @@
 
 bindings {
   requirement_id: "REQ-record-cas"
-  content_hash: "ce32d16bf821ab6abb13c06b90d0f7b8e5bd399a8c76492aa17ea7e321ba7ae3"
-  source_hash: "a90025bbda2bb888ef63812bda9afc82fc3895be549d439c5eb2a9dc502f6f3d"
+  content_hash: "a2b2bfd62870ad8d902c253a2ec24ffb7d6b3b38661920dc0e558dfe9033fb3d"
+  source_hash: "d1b26af7004d081a76bf6f9230a2eec0499668f774a965a87be944172ed5694a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.StampPriors"
   role: BINDING_ROLE_IMPLEMENTS
@@ -13,18 +13,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-record-cas"
-  content_hash: "ce32d16bf821ab6abb13c06b90d0f7b8e5bd399a8c76492aa17ea7e321ba7ae3"
-  source_hash: "a90025bbda2bb888ef63812bda9afc82fc3895be549d439c5eb2a9dc502f6f3d"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.Server.apply"
-  role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "eb25eaae2c3d377680d735dc911f38f0d683f32783019251c4fe1d4a386c0a5d"
-}
-
-bindings {
-  requirement_id: "REQ-record-cas"
-  content_hash: "ce32d16bf821ab6abb13c06b90d0f7b8e5bd399a8c76492aa17ea7e321ba7ae3"
-  source_hash: "a90025bbda2bb888ef63812bda9afc82fc3895be549d439c5eb2a9dc502f6f3d"
+  content_hash: "a2b2bfd62870ad8d902c253a2ec24ffb7d6b3b38661920dc0e558dfe9033fb3d"
+  source_hash: "d1b26af7004d081a76bf6f9230a2eec0499668f774a965a87be944172ed5694a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/records.TestLoadSkipsHiddenFiles"
   role: BINDING_ROLE_TESTS
@@ -33,8 +23,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-record-cas"
-  content_hash: "ce32d16bf821ab6abb13c06b90d0f7b8e5bd399a8c76492aa17ea7e321ba7ae3"
-  source_hash: "a90025bbda2bb888ef63812bda9afc82fc3895be549d439c5eb2a9dc502f6f3d"
+  content_hash: "a2b2bfd62870ad8d902c253a2ec24ffb7d6b3b38661920dc0e558dfe9033fb3d"
+  source_hash: "d1b26af7004d081a76bf6f9230a2eec0499668f774a965a87be944172ed5694a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestPropApplyRefusesIffAnyTargetMoved"
   role: BINDING_ROLE_TESTS
@@ -43,8 +33,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-record-cas"
-  content_hash: "ce32d16bf821ab6abb13c06b90d0f7b8e5bd399a8c76492aa17ea7e321ba7ae3"
-  source_hash: "a90025bbda2bb888ef63812bda9afc82fc3895be549d439c5eb2a9dc502f6f3d"
+  content_hash: "a2b2bfd62870ad8d902c253a2ec24ffb7d6b3b38661920dc0e558dfe9033fb3d"
+  source_hash: "d1b26af7004d081a76bf6f9230a2eec0499668f774a965a87be944172ed5694a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestApplyUpdatesCompareAndSwap"
   role: BINDING_ROLE_TESTS
@@ -53,8 +43,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-record-cas"
-  content_hash: "ce32d16bf821ab6abb13c06b90d0f7b8e5bd399a8c76492aa17ea7e321ba7ae3"
-  source_hash: "a90025bbda2bb888ef63812bda9afc82fc3895be549d439c5eb2a9dc502f6f3d"
+  content_hash: "a2b2bfd62870ad8d902c253a2ec24ffb7d6b3b38661920dc0e558dfe9033fb3d"
+  source_hash: "d1b26af7004d081a76bf6f9230a2eec0499668f774a965a87be944172ed5694a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestVerbsStampPriors"
   role: BINDING_ROLE_TESTS
@@ -63,10 +53,40 @@ bindings {
 
 bindings {
   requirement_id: "REQ-record-cas"
-  content_hash: "ce32d16bf821ab6abb13c06b90d0f7b8e5bd399a8c76492aa17ea7e321ba7ae3"
-  source_hash: "a90025bbda2bb888ef63812bda9afc82fc3895be549d439c5eb2a9dc502f6f3d"
+  content_hash: "a2b2bfd62870ad8d902c253a2ec24ffb7d6b3b38661920dc0e558dfe9033fb3d"
+  source_hash: "d1b26af7004d081a76bf6f9230a2eec0499668f774a965a87be944172ed5694a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestServerApplyCompareAndSwap"
   role: BINDING_ROLE_TESTS
   shape_hash: "23452a2cc3e44e27844eec288d144a66aa5d143e0e598e5286f1f5bd70d56eed"
+}
+
+bindings {
+  requirement_id: "REQ-record-cas"
+  content_hash: "a2b2bfd62870ad8d902c253a2ec24ffb7d6b3b38661920dc0e558dfe9033fb3d"
+  source_hash: "d1b26af7004d081a76bf6f9230a2eec0499668f774a965a87be944172ed5694a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/recordapply.TestApplyStagesEveryFileBeforeTheFirstRename"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "cd44394d600bb3d1b4439da7e0be12e80619a71c1759e49af56c67fe9677eb5e"
+}
+
+bindings {
+  requirement_id: "REQ-record-cas"
+  content_hash: "a2b2bfd62870ad8d902c253a2ec24ffb7d6b3b38661920dc0e558dfe9033fb3d"
+  source_hash: "d1b26af7004d081a76bf6f9230a2eec0499668f774a965a87be944172ed5694a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/recordapply.Applier.Apply"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "5afbd910e5ff74702cb689b0b01bceed53320759301b6f94730e8b03d574f0ca"
+}
+
+bindings {
+  requirement_id: "REQ-record-cas"
+  content_hash: "a2b2bfd62870ad8d902c253a2ec24ffb7d6b3b38661920dc0e558dfe9033fb3d"
+  source_hash: "d1b26af7004d081a76bf6f9230a2eec0499668f774a965a87be944172ed5694a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestApplierIsOnePerRoot"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a4a8d4c1b26431a00f61a74075f012843ef5eae680305d1a453c36fc280df574"
 }

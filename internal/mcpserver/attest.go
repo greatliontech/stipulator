@@ -22,7 +22,7 @@ func (s *Server) toolAttestRequirement(ctx context.Context, req *mcp.CallToolReq
 		}
 		out, err := s.apply([]author.Update{*up})
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, faulted(out, err)
 		}
 		out.Notes = []string{"retracted judgment: " + prior.GetReason()}
 		return projected(out.result(), out.proto())
@@ -33,7 +33,7 @@ func (s *Server) toolAttestRequirement(ctx context.Context, req *mcp.CallToolReq
 	}
 	out, err := s.apply([]author.Update{*up})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, faulted(out, err)
 	}
 	if prior != nil {
 		out.Notes = []string{"replaced judgment: " + prior.GetReason()}

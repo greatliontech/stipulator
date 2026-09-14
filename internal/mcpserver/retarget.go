@@ -56,7 +56,7 @@ func (s *Server) toolRetarget(ctx context.Context, req *mcp.CallToolRequest, in 
 	}
 	out, err := s.apply(ups)
 	if err != nil {
-		return nil, nil, terminalToolError(prog, ctx, err)
+		return nil, nil, terminalToolError(prog, ctx, faulted(out, err))
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	out.Notes = notes

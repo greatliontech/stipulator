@@ -2,13 +2,16 @@ package mcpserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	pathpkg "path"
 	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/dossier"
 	"github.com/greatliontech/stipulator/internal/facts"
@@ -117,7 +120,17 @@ func (s *Server) exportTo(exportPath string, doc []byte, what string) (*mcp.Call
 	if err := validExportPath(exportPath); err != nil {
 		return nil, nil, err
 	}
-	if err := s.write(exportPath, doc, false); err != nil {
+	// The export overwrites its own prior: stamped from the read the
+	// applier's precondition then checks (REQ-record-cas).
+	up := author.Update{Path: exportPath, Content: doc}
+	if prior, err := fs.ReadFile(s.fsys(), exportPath); err == nil {
+		up.Prior = prior
+	} else if errors.Is(err, fs.ErrNotExist) {
+		up.PriorAbsent = true
+	} else {
+		return nil, nil, err
+	}
+	if _, err := s.applier.Apply([]author.Update{up}); err != nil {
 		return nil, nil, err
 	}
 	m := &stipulatorv1.ExportResult{}

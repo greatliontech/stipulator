@@ -43,8 +43,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-writes-confined"
-  content_hash: "5090084f3732cf5d73ba7f5a191aca28e57ac186db6c4c3c689cdb5b2eeec86c"
-  source_hash: "8b0952f17d6036a2e97cf21fdebf7ef7b763b8c7d948422618c0d1e37a180d67"
+  content_hash: "9713a3038418c222fd228ada00d337f0c8ea39102b833e92a146445db08dd0b8"
+  source_hash: "3664526ba2c24037f15155ab4c60b9780642a208e09882c7fcdbf187e53a81d4"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestBindToolWritesConfined"
   role: BINDING_ROLE_TESTS
@@ -175,16 +175,6 @@ bindings {
   requirement_id: "REQ-mcp-server"
   content_hash: "46d6e4b84b059eb55528cec277da1662b93dab5b2eee7013fc607668dbdb50bf"
   source_hash: "33ea066dc7479d4409f5cef02e27020980891135e3fd25fc0fad3762bedef6ee"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.New"
-  role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "da47a47aae6ac31e7bf1e2bed666436cd7a85759042c9132835cc590596596c6"
-}
-
-bindings {
-  requirement_id: "REQ-mcp-writes-confined"
-  content_hash: "5090084f3732cf5d73ba7f5a191aca28e57ac186db6c4c3c689cdb5b2eeec86c"
-  source_hash: "8b0952f17d6036a2e97cf21fdebf7ef7b763b8c7d948422618c0d1e37a180d67"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.New"
   role: BINDING_ROLE_IMPLEMENTS
@@ -873,8 +863,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-writes-confined"
-  content_hash: "5090084f3732cf5d73ba7f5a191aca28e57ac186db6c4c3c689cdb5b2eeec86c"
-  source_hash: "8b0952f17d6036a2e97cf21fdebf7ef7b763b8c7d948422618c0d1e37a180d67"
+  content_hash: "9713a3038418c222fd228ada00d337f0c8ea39102b833e92a146445db08dd0b8"
+  source_hash: "3664526ba2c24037f15155ab4c60b9780642a208e09882c7fcdbf187e53a81d4"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestWriteSeamConfinesToStipulatorDir"
   role: BINDING_ROLE_TESTS
@@ -1199,4 +1189,24 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/wire.TestGapListCarriesEveryWriteField"
   role: BINDING_ROLE_TESTS
   shape_hash: "2cc9abca3792dab66944f05a406890599d0c245233243a457487952adeac6681"
+}
+
+bindings {
+  requirement_id: "REQ-mcp-writes-confined"
+  content_hash: "9713a3038418c222fd228ada00d337f0c8ea39102b833e92a146445db08dd0b8"
+  source_hash: "3664526ba2c24037f15155ab4c60b9780642a208e09882c7fcdbf187e53a81d4"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/recordapply.TestApplyStagesEveryFileBeforeTheFirstRename"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "cd44394d600bb3d1b4439da7e0be12e80619a71c1759e49af56c67fe9677eb5e"
+}
+
+bindings {
+  requirement_id: "REQ-mcp-writes-confined"
+  content_hash: "9713a3038418c222fd228ada00d337f0c8ea39102b833e92a146445db08dd0b8"
+  source_hash: "3664526ba2c24037f15155ab4c60b9780642a208e09882c7fcdbf187e53a81d4"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/recordapply.admitWrite"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "c04eb4d6aec788fc7fe4487512c55e4ad89b83dddd0820f70f1066b977afeea1"
 }

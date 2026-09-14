@@ -3,7 +3,6 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -12,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
 
@@ -22,6 +22,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/progress"
+	"github.com/greatliontech/stipulator/internal/recordapply"
 	"github.com/greatliontech/stipulator/internal/remedy"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/views"
@@ -244,106 +245,51 @@ var makeBackends = func(ctx context.Context, dir string) (map[string]verify.Back
 	return map[string]verify.Backend{"go": gb}, gb.Close, nil
 }
 
-// applyUpdates applies a batch under compare-and-swap: every
-// precondition is checked before the first write — a target that moved
-// since the operation read it refuses the WHOLE batch, so a concurrent
-// agent's records are never silently dropped — then every write stages
-// to a temp file before the first rename, shrinking a mid-batch fault
-// to at most a git-visible partial state (REQ-record-cas).
-func applyUpdates(dir string, ups []author.Update) error {
-	seen := map[string]bool{}
-	for _, up := range ups {
-		// A duplicate path would pass every pre-batch precondition and
-		// then last-write-wins silently; no verb produces one today, so
-		// reaching this is a programming error, refused loudly.
-		if seen[up.Path] {
-			return fmt.Errorf("batch names %s twice; refusing the ambiguous apply", up.Path)
-		}
-		seen[up.Path] = true
-		if err := checkPrior(dir, up); err != nil {
-			return err
-		}
-	}
-	type staged struct {
-		tmp, full, path string
-	}
-	var writes []staged
-	var deletions []author.Update
-	// Any temp not renamed by the time we return is removed: a leaked
-	// dot-temp is invisible to the record loader, but tidiness is free.
-	defer func() {
-		for _, w := range writes {
-			os.Remove(w.tmp)
-		}
-	}()
-	for _, up := range ups {
-		full := filepath.Join(dir, filepath.FromSlash(up.Path))
-		if up.Content == nil {
-			deletions = append(deletions, up)
-			continue
-		}
-		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
-			return err
-		}
-		tmp, err := os.CreateTemp(filepath.Dir(full), ".stipulator-apply-*")
-		if err != nil {
-			return err
-		}
-		// Registered before the write so the deferred cleanup owns it on
-		// every failure path.
-		writes = append(writes, staged{tmp: tmp.Name(), full: full, path: up.Path})
-		if _, err := tmp.Write(up.Content); err != nil {
-			tmp.Close()
-			return err
-		}
-		if err := tmp.Close(); err != nil {
-			return err
-		}
-	}
-	renamed := 0
-	for i := range writes {
-		if err := os.Rename(writes[i].tmp, writes[i].full); err != nil {
-			return err
-		}
-		renamed++
-		fmt.Println("wrote", writes[i].path)
-	}
-	writes = writes[renamed:]
-	for _, up := range deletions {
-		if err := os.Remove(filepath.Join(dir, filepath.FromSlash(up.Path))); err != nil {
-			return err
-		}
-		fmt.Println("deleted", up.Path)
-	}
-	return nil
+// appliers holds one record applier per root: the applier's
+// one-apply-at-a-time rule is a property of the applier, so verbs
+// writing the same root share it. Keyed by the root's absolute clean
+// path, so two spellings of one root share one applier; a process
+// writes a handful of roots, so the map never shrinks.
+var appliers struct {
+	mu     sync.Mutex
+	byRoot map[string]*recordapply.Applier
 }
 
-// checkPrior is one update's compare-and-swap precondition against the
-// tree.
-func checkPrior(dir string, up author.Update) error {
-	// An update carrying neither a prior nor read-absence was never
-	// stamped: a stamped update always sets one (fs.ReadFile returns
-	// non-nil even for an empty file). Refusing makes a missing stamp
-	// loud at apply time instead of a silent CAS hole.
-	if up.Prior == nil && !up.PriorAbsent {
-		return fmt.Errorf("%s carries no precondition; the computing operation failed to stamp what it read", up.Path)
+// applierAt is the root's one record applier.
+func applierAt(dir string) (*recordapply.Applier, error) {
+	root, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, err
 	}
-	full := filepath.Join(dir, filepath.FromSlash(up.Path))
-	current, err := os.ReadFile(full)
-	switch {
-	case os.IsNotExist(err):
-		if !up.PriorAbsent && up.Prior != nil {
-			return fmt.Errorf("%s vanished since the operation read it; re-run against the current tree", up.Path)
-		}
-		return nil
-	case err != nil:
+	appliers.mu.Lock()
+	defer appliers.mu.Unlock()
+	if a, ok := appliers.byRoot[root]; ok {
+		return a, nil
+	}
+	if appliers.byRoot == nil {
+		appliers.byRoot = map[string]*recordapply.Applier{}
+	}
+	a := recordapply.New(root, nil)
+	appliers.byRoot[root] = a
+	return a, nil
+}
+
+// applyUpdates lands a batch through the root's one record applier
+// (REQ-record-cas) and prints what landed — on a mid-batch fault, the
+// files that landed before it.
+func applyUpdates(dir string, ups []author.Update) error {
+	a, err := applierAt(dir)
+	if err != nil {
 		return err
-	case up.PriorAbsent:
-		return fmt.Errorf("%s appeared since the operation ran; re-run against the current tree", up.Path)
-	case !bytes.Equal(current, up.Prior):
-		return fmt.Errorf("%s changed since the operation read it (a concurrent write?); re-run against the current tree", up.Path)
 	}
-	return nil
+	out, err := a.Apply(ups)
+	for _, path := range out.Wrote {
+		fmt.Println("wrote", path)
+	}
+	for _, path := range out.Deleted {
+		fmt.Println("deleted", path)
+	}
+	return err
 }
 
 // validateScoped judges the caller's vocabulary — the scope words and

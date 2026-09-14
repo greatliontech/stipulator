@@ -105,19 +105,7 @@ func harnessWith(t *testing.T, files map[string]string, mut func(*Server)) (*mcp
 				Outcomes:         map[string]verify.TestOutcome{"example.com/p.TestA": verify.TestPassed},
 			}, nil
 		},
-		write: func(path string, content []byte, _ bool) error {
-			// Captured AND fed back: the real server reads the tree it
-			// writes, and read-after-write flows (pin to quiescence,
-			// re-declare over an update) depend on it.
-			writes[path] = content
-			fsys[path] = &fstest.MapFile{Data: content}
-			return nil
-		},
-		remove: func(path string) error {
-			writes[path] = nil
-			delete(fsys, path)
-			return nil
-		},
+		applier: memoryApplier(fsys, writes),
 	}
 	if mut != nil {
 		mut(s)
@@ -1411,7 +1399,7 @@ func TestPinToolIdsFormIsAllOrNothingOrHonest(t *testing.T) {
 	if err != nil || !res.IsError {
 		t.Fatalf("a dangling clause claim did not refuse the batch: %v %v", err, res)
 	}
-	if text := toolText(t, res); !strings.Contains(text, "names clause `gone`, which REQ-m-c no longer declares") || strings.Contains(text, "already re-pinned") {
+	if text := toolText(t, res); !strings.Contains(text, "names clause `gone`, which REQ-m-c no longer declares") || strings.Contains(text, "landed before the fault") {
 		t.Fatalf("refusal text: %s", text)
 	}
 	if len(writes) != 0 {
@@ -1425,27 +1413,60 @@ func TestPinToolIdsFormIsAllOrNothingOrHonest(t *testing.T) {
 		".stipulator/bindings/a.textproto": stale("REQ-m-a", ""),
 		".stipulator/bindings/b.textproto": stale("REQ-m-b", ""),
 	}, func(s *Server) {
-		inner := s.write
-		s.write = func(path string, content []byte, document bool) error {
-			if err := inner(path, content, document); err != nil {
-				return err
+		inner := s.applier.Stage
+		s.applier.Stage = func(path string, content []byte, create bool) (func() error, func(), error) {
+			commit, discard, err := inner(path, content, create)
+			if err != nil {
+				return nil, nil, err
 			}
-			if path == ".stipulator/bindings/a.textproto" {
-				moved = s.fsys().(fstest.MapFS)
-				moved[".stipulator/bindings/b.textproto"] = &fstest.MapFile{Data: []byte(stale("REQ-m-b", "") + "\n# moved by another writer\n")}
-			}
-			return nil
+			return func() error {
+				if err := commit(); err != nil {
+					return err
+				}
+				if path == ".stipulator/bindings/a.textproto" {
+					moved = s.fsys().(fstest.MapFS)
+					moved[".stipulator/bindings/b.textproto"] = &fstest.MapFile{Data: []byte(stale("REQ-m-b", "") + "\n# moved by another writer\n")}
+				}
+				return nil
+			}, discard, nil
 		}
 	})
 	res, err = sess2.CallTool(context.Background(), &mcp.CallToolParams{Name: "pin", Arguments: map[string]any{"ids": "REQ-m-a,REQ-m-b"}})
 	if err != nil || !res.IsError {
 		t.Fatalf("a mid-batch conflict did not error: %v %v", err, res)
 	}
-	if text := toolText(t, res); !strings.Contains(text, "already re-pinned before the refusal: .stipulator/bindings/a.textproto") {
+	if text := toolText(t, res); !strings.Contains(text, "(landed before the fault: wrote .stipulator/bindings/a.textproto)") {
 		t.Fatalf("mid-batch conflict conceals what was written: %s", text)
 	}
 	if _, ok := writes2[".stipulator/bindings/a.textproto"]; !ok {
 		t.Fatal("the first id's re-pin was not written before the conflict")
+	}
+
+	// A fault inside one id's own batch — its second file's commit —
+	// names that batch's landed file too: the partial is the whole
+	// operation's, not the earlier ids' alone.
+	sess3, writes3 := harnessWith(t, map[string]string{
+		".stipulator/bindings/a.textproto":  stale("REQ-m-a", ""),
+		".stipulator/bindings/a2.textproto": stale("REQ-m-a", ""),
+	}, func(s *Server) {
+		inner := s.applier.Stage
+		s.applier.Stage = func(path string, content []byte, create bool) (func() error, func(), error) {
+			commit, discard, err := inner(path, content, create)
+			if path == ".stipulator/bindings/a2.textproto" {
+				commit = func() error { return errors.New("disk full") }
+			}
+			return commit, discard, err
+		}
+	})
+	res, err = sess3.CallTool(context.Background(), &mcp.CallToolParams{Name: "pin", Arguments: map[string]any{"ids": "REQ-m-a"}})
+	if err != nil || !res.IsError {
+		t.Fatalf("a mid-batch commit fault did not error: %v %v", err, res)
+	}
+	if text := toolText(t, res); !strings.Contains(text, "disk full (landed before the fault: wrote .stipulator/bindings/a.textproto)") {
+		t.Fatalf("mid-batch commit fault conceals what its own batch landed: %s", text)
+	}
+	if _, ok := writes3[".stipulator/bindings/a.textproto"]; !ok || writes3[".stipulator/bindings/a2.textproto"] != nil {
+		t.Fatalf("the faulted batch wrote %v; want the first file alone", writes3)
 	}
 }
 

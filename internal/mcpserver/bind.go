@@ -1,22 +1,14 @@
 package mcpserver
 
 import (
-	"github.com/greatliontech/stipulator/internal/corpus"
-	"slices"
-
-	"bytes"
 	"context"
-	"errors"
 	"fmt"
-	"io/fs"
-	pathpkg "path"
-	"path/filepath"
-	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
+	"github.com/greatliontech/stipulator/internal/recordapply"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
@@ -52,101 +44,23 @@ type writeOut struct {
 	Check bool
 }
 
-// apply lands a batch of record updates under compare-and-swap
-// (REQ-record-cas): every precondition checks against the live tree
-// before the first write, so a target that moved since the operation
-// read it refuses the whole batch and a concurrent agent's records are
-// never silently dropped.
+// apply lands a batch of record updates through the one record applier
+// (REQ-record-cas); on a fault the result names what landed before it,
+// for the caller's faulted to carry.
 func (s *Server) apply(ups []author.Update) (writeOut, error) {
-	// One apply at a time: the SDK runs tool calls concurrently, and an
-	// unserialized check-then-write would let two batches both pass
-	// their preconditions then clobber each other — the precise loss
-	// REQ-record-cas exists to refuse. A process-local mutex is
-	// transient in-memory state, exactly what the clause sanctions.
-	s.applyMu.Lock()
-	defer s.applyMu.Unlock()
-	seen := map[string]bool{}
-	for _, up := range ups {
-		if seen[up.Path] {
-			return writeOut{}, fmt.Errorf("batch names %s twice; refusing the ambiguous apply", up.Path)
-		}
-		seen[up.Path] = true
-		if up.Prior == nil && !up.PriorAbsent {
-			return writeOut{}, fmt.Errorf("%s carries no precondition; the computing operation failed to stamp what it read", up.Path)
-		}
-		current, err := fs.ReadFile(s.fsys(), up.Path)
-		switch {
-		case errors.Is(err, fs.ErrNotExist):
-			if !up.PriorAbsent && up.Prior != nil {
-				return writeOut{}, fmt.Errorf("%s vanished since the operation read it; re-run against the current tree", up.Path)
-			}
-		case err != nil:
-			return writeOut{}, err
-		case up.PriorAbsent:
-			return writeOut{}, fmt.Errorf("%s appeared since the operation ran; re-run against the current tree", up.Path)
-		case !bytes.Equal(current, up.Prior):
-			return writeOut{}, fmt.Errorf("%s changed since the operation read it (a concurrent write?); re-run against the current tree", up.Path)
-		}
-	}
-	// Admissibility is judged for the whole batch before any write: a
-	// document the seam would refuse refuses the batch with nothing
-	// written, never after the store half has landed
-	// (REQ-change-retarget's all-or-nothing).
-	for _, up := range ups {
-		if err := admitWrite(s.fsys(), up.Path, up.Content != nil && up.Document); err != nil {
-			return writeOut{}, err
-		}
-	}
-	out := writeOut{}
-	for _, up := range ups {
-		if up.Content == nil {
-			if err := s.remove(up.Path); err != nil {
-				return writeOut{}, err
-			}
-			out.Deleted = append(out.Deleted, up.Path)
-			continue
-		}
-		if err := s.write(up.Path, up.Content, up.Document); err != nil {
-			return writeOut{}, err
-		}
-		out.Wrote = append(out.Wrote, up.Path)
-	}
-	return out, nil
+	landed, err := s.applier.Apply(ups)
+	return writeOut{Wrote: landed.Wrote, Deleted: landed.Deleted}, err
 }
 
-// admitWrite is the confinement judgment (REQ-mcp-writes-confined): a
-// clean local path under .stipulator/, or — for an update marked as a
-// document rewrite — a document the corpus's manifest names, so a
-// retarget's pointer rewrite lands in the spec document that names the
-// pointer and nowhere else.
-func admitWrite(fsys fs.FS, path string, document bool) error {
-	if !filepath.IsLocal(filepath.FromSlash(path)) {
-		return fmt.Errorf("path %q escapes the corpus root", path)
+// faulted is the tool error over what a faulted operation landed
+// before its fault: a tool error carries no typed result, so the files
+// that moved ride the text — "nothing written" over a file that moved
+// is the misreport REQ-record-cas refuses.
+func faulted(out writeOut, err error) error {
+	if partial := (recordapply.Result{Wrote: out.Wrote, Deleted: out.Deleted}).Landed(); partial != "" {
+		return fmt.Errorf("%w (%s)", err, partial)
 	}
-	// The prefix is judged on the clean spelling only: an embedded ".."
-	// would satisfy a lexical prefix check while writing outside the
-	// home.
-	if path != pathpkg.Clean(path) {
-		return fmt.Errorf("path %q is not a clean path", path)
-	}
-	if strings.HasPrefix(path, ".stipulator/") {
-		return nil
-	}
-	if !document {
-		return fmt.Errorf("path %q is outside .stipulator/ (the server writes nowhere else)", path)
-	}
-	m, err := corpus.LoadManifest(fsys)
-	if err != nil {
-		return fmt.Errorf("document rewrite of %q: %w", path, err)
-	}
-	docs, err := corpus.Enumerate(fsys, m)
-	if err != nil {
-		return fmt.Errorf("document rewrite of %q: %w", path, err)
-	}
-	if !slices.Contains(docs, path) {
-		return fmt.Errorf("path %q is not a corpus document (the server rewrites enforcement pointers in corpus documents and nothing else)", path)
-	}
-	return nil
+	return err
 }
 
 // proto is the write result's wire message: zero counts and an unset
@@ -226,7 +140,7 @@ func (s *Server) toolBind(ctx context.Context, req *mcp.CallToolRequest, in bind
 	}
 	out, err := s.apply(ups)
 	if err != nil {
-		return nil, nil, terminalToolError(prog, ctx, err)
+		return nil, nil, terminalToolError(prog, ctx, faulted(out, err))
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	return projected(stampedResult(out.result(), prog), out.proto())
@@ -250,18 +164,8 @@ func (s *Server) toolUnbind(ctx context.Context, req *mcp.CallToolRequest, in un
 	}
 	out, err := s.apply(ups)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, faulted(out, err)
 	}
 	out.Removed = removed
 	return projected(out.result(), out.proto())
-}
-
-// partialPinError names what an interrupted ids-form pin already wrote:
-// a later id's refusal must never read as "nothing written" over files
-// the earlier ids moved.
-func partialPinError(out writeOut, err error) error {
-	if len(out.Wrote) == 0 {
-		return err
-	}
-	return fmt.Errorf("%w (already re-pinned before the refusal: %s)", err, strings.Join(out.Wrote, ", "))
 }

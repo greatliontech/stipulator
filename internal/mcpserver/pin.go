@@ -53,13 +53,14 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 				continue
 			}
 			if err != nil {
-				return nil, nil, partialPinError(out, err)
+				return nil, nil, faulted(out, err)
 			}
 			applied, err := s.apply(ups)
-			if err != nil {
-				return nil, nil, partialPinError(out, err)
-			}
 			out.Wrote = append(out.Wrote, applied.Wrote...)
+			out.Deleted = append(out.Deleted, applied.Deleted...)
+			if err != nil {
+				return nil, nil, faulted(out, err)
+			}
 			repinned[id] = len(ups)
 			for _, line := range consented {
 				out.Notes = append(out.Notes, id+": "+line)
@@ -138,7 +139,7 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 	author.StampPriors(store, ups)
 	out, err := s.apply(ups)
 	if err != nil {
-		return nil, nil, terminalToolError(prog, ctx, err)
+		return nil, nil, terminalToolError(prog, ctx, faulted(out, err))
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	// A no-op must say so: a silent {} reads as "did something, reported

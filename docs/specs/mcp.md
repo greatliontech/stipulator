@@ -248,7 +248,8 @@ pointers a retarget's symbol rename moved, written to the corpus
 document that names them and to no other path
 (REQ-change-enforcement-pointers), and judged admissible for the whole
 batch before any write — so wiring it into any harness is low-risk by
-construction.
+construction. The confinement is the record applier's judgment, so the
+CLI's record writes hold it too (REQ-record-cas).
 
 **REQ-report-messages** (wire, refines REQ-core-proto-io): Verification and
 coverage reports MUST be expressible as the protobuf report messages,

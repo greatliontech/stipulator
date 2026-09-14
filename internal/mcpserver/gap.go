@@ -81,7 +81,7 @@ func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn
 		}
 		out, err := s.apply(ups)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, faulted(out, err)
 		}
 		return projected(out.result(), gapOut{writeOut: out}.proto())
 	case in.Fired && in.Manual == "":
@@ -94,7 +94,7 @@ func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn
 		}
 		out, err := s.apply(ups)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, faulted(out, err)
 		}
 		return projected(out.result(), gapOut{writeOut: out}.proto())
 	}
@@ -118,7 +118,7 @@ func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn
 	}
 	out, err := s.apply(ups)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, faulted(out, err)
 	}
 	// A retarget is never silent: the wire result names old and new.
 	out.Notes = notes

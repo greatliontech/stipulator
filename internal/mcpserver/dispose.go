@@ -47,7 +47,7 @@ func (s *Server) toolDispose(ctx context.Context, req *mcp.CallToolRequest, in d
 	}
 	out, err := s.apply(ups)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, faulted(out, err)
 	}
 	out.Notes = append(out.Notes, notes...)
 	return projected(out.result(), out.proto())

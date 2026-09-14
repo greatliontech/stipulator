@@ -70,7 +70,7 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 		}
 		out, err := s.apply(prunes)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, faulted(out, err)
 		}
 		if len(prunes) == 0 {
 			out.Notes = append(out.Notes, "no dangling gap records")
@@ -105,7 +105,7 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 	}
 	out, err := s.apply(res.Prunes)
 	if err != nil {
-		return nil, nil, terminalToolError(prog, ctx, err)
+		return nil, nil, terminalToolError(prog, ctx, faulted(out, err))
 	}
 	out.Notes = append(out.Notes, evaluated)
 	if len(res.Prunes) == 0 {

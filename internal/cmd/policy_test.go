@@ -61,6 +61,11 @@ func TestPolicyInitIsIdempotentAndRefusesDivergence(t *testing.T) {
 	if !strings.Contains(out, "configuration break") || !strings.Contains(out, "reviewed test policy") {
 		t.Errorf("output does not state the configuration break:\n%s", out)
 	}
+	// The record lands through the one record applier (REQ-record-cas):
+	// the applier's line names it.
+	if !strings.Contains(out, "wrote "+policy.Path+"\n") {
+		t.Errorf("the record did not land through the applier:\n%s", out)
+	}
 	written, err := os.ReadFile(full)
 	if err != nil {
 		t.Fatalf("record not written: %v", err)

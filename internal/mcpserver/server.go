@@ -21,9 +21,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/greatliontech/gofresh"
@@ -38,6 +36,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/internal/progress"
+	"github.com/greatliontech/stipulator/internal/recordapply"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verify"
@@ -71,11 +70,7 @@ func guidanceOrientation() string { return guidanceDoc().Orientation() }
 type Server struct {
 	// root is the launch directory the corpus search started from,
 	// kept for guided failure messages.
-	root string
-	// applyMu serializes record applies: the SDK dispatches tool calls
-	// concurrently, and CAS is only sound when check-then-write is one
-	// critical section per process.
-	applyMu  sync.Mutex
+	root     string
 	srv      *mcp.Server
 	indexed  map[string]bool
 	fsys     func() fs.FS
@@ -90,13 +85,14 @@ type Server struct {
 	runTests func(context.Context, *golang.Capture, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error)
 	runCheck func(context.Context, bool, []string) (*stipulatorv1.CheckResult, error)
 	explain  func(ctx context.Context, pkgPath, symbol string) (gofresh.Chain, string, error)
-	write    func(path string, content []byte, document bool) error
-	remove   func(path string) error
+	// applier is the one record applier every server write lands
+	// through (REQ-record-cas, REQ-mcp-writes-confined).
+	applier *recordapply.Applier
 }
 
 // New returns a server rooted at dir.
 func New(dir string) *Server {
-	return &Server{
+	s := &Server{
 		root: dir,
 		fsys: func() fs.FS { return os.DirFS(dir) },
 		backends: func(ctx context.Context, symbols []string) (map[string]verify.Backend, error) {
@@ -120,44 +116,12 @@ func New(dir string) *Server {
 		explain: func(ctx context.Context, pkgPath, symbol string) (gofresh.Chain, string, error) {
 			return golang.Explain(ctx, dir, pkgPath, symbol)
 		},
-		write: func(path string, content []byte, document bool) error {
-			// The server is corpus-bound and its writes stay under
-			// .stipulator/ (REQ-mcp-writes-confined) — with the one
-			// exception, a corpus document's pointer rewrite — asserted
-			// at the one seam every write passes, not per call site.
-			if err := admitWrite(os.DirFS(dir), path, document); err != nil {
-				return err
-			}
-			full := filepath.Join(dir, filepath.FromSlash(path))
-			if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
-				return err
-			}
-			// Staged like the CLI applier (REQ-record-cas): the dot-temp
-			// is invisible to the record loader, and the rename is atomic,
-			// so a crash mid-write never leaves a torn record.
-			tmp, err := os.CreateTemp(filepath.Dir(full), ".stipulator-apply-*")
-			if err != nil {
-				return err
-			}
-			if _, err := tmp.Write(content); err != nil {
-				tmp.Close()
-				os.Remove(tmp.Name())
-				return err
-			}
-			if err := tmp.Close(); err != nil {
-				os.Remove(tmp.Name())
-				return err
-			}
-			if err := os.Rename(tmp.Name(), full); err != nil {
-				os.Remove(tmp.Name())
-				return err
-			}
-			return nil
-		},
-		remove: func(path string) error {
-			return os.Remove(filepath.Join(dir, filepath.FromSlash(path)))
-		},
 	}
+	// The applier reads the tree the server reads: one seam, so the
+	// prior an operation stamps and the precondition that checks it
+	// never consult two trees.
+	s.applier = recordapply.New(dir, func() fs.FS { return s.fsys() })
+	return s
 }
 
 // makeBackends prepares a tool's verification backend: served over the

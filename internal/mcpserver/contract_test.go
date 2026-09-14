@@ -3,6 +3,7 @@ package mcpserver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"google.golang.org/protobuf/encoding/protojson"
 	"io/fs"
@@ -155,6 +156,15 @@ func TestContextAndPartitionsExportPath(t *testing.T) {
 	if text := toolText(t, res); !strings.Contains(text, "took ") {
 		t.Fatalf("context export result missing the phase stamps: %s", text)
 	}
+	// An export overwrites its own prior: the write is stamped from the
+	// read the applier's precondition then checks, so a second export to
+	// the same path lands (REQ-record-cas).
+	again, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "context", Arguments: map[string]any{
+		"ids": "REQ-m-a", "no_test": true, "export_path": ".stipulator/exports/dossiers.json",
+	}})
+	if err != nil || again.IsError {
+		t.Fatalf("a second export to the same path refused: %v %+v", err, again)
+	}
 
 	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "partitions", Arguments: map[string]any{
 		"ids": "REQ-m-a", "no_test": true, "export_path": ".stipulator/exports/partitions.json",
@@ -179,9 +189,8 @@ func TestServerApplyCompareAndSwap(t *testing.T) {
 	}
 	writes := map[string][]byte{}
 	s := &Server{
-		fsys:   func() fs.FS { return mem },
-		write:  func(p string, c []byte, _ bool) error { writes[p] = c; return nil },
-		remove: func(p string) error { writes[p] = nil; return nil },
+		fsys:    func() fs.FS { return mem },
+		applier: memoryApplier(mem, writes),
 	}
 	if _, err := s.apply([]author.Update{
 		{Path: ".stipulator/gaps/new.textproto", Content: []byte("x"), PriorAbsent: true},
@@ -230,8 +239,7 @@ func TestTokenlessCallEmitsPhaseLogMessages(t *testing.T) {
 				Outcomes:         map[string]verify.TestOutcome{"example.com/p.TestA": verify.TestPassed},
 			}, nil
 		},
-		write:  func(string, []byte, bool) error { return nil },
-		remove: func(string) error { return nil },
+		applier: memoryApplier(fstest.MapFS{}, map[string][]byte{}),
 	}
 	ct, st := mcp.NewInMemoryTransports()
 	go func() {
@@ -273,31 +281,38 @@ func TestTokenlessCallEmitsPhaseLogMessages(t *testing.T) {
 	}
 }
 
-// The write seam itself asserts the .stipulator/ confinement
-// (REQ-mcp-writes-confined) - defense in depth at the one point every
-// record write passes, not a per-call-site convention.
+// The applier's admission asserts the .stipulator/ confinement
+// (REQ-mcp-writes-confined) — at the one point every record write
+// passes, not a per-call-site convention.
 //
 //gofresh:pure
 func TestWriteSeamConfinesToStipulatorDir(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-writes-confined")
 	dir := t.TempDir()
 	s := New(dir)
-	if err := s.write("outside.txt", []byte("x"), false); err == nil || !strings.Contains(err.Error(), "outside .stipulator/") {
+	write := func(path string, content []byte, document bool) error {
+		_, err := s.applier.Apply([]author.Update{{Path: path, Content: content, PriorAbsent: true, Document: document}})
+		return err
+	}
+	if err := write("outside.txt", []byte("x"), false); err == nil || !strings.Contains(err.Error(), "outside .stipulator/") {
 		t.Fatalf("out-of-home write admitted: %v", err)
 	}
-	if err := s.write("../escape.txt", []byte("x"), false); err == nil {
-		t.Fatal("root-escaping write admitted")
+	// The escape arms answer in the confinement's own words — judged
+	// before the precondition's read, which refuses an invalid name on
+	// its own terms and would hide them.
+	if err := write("../escape.txt", []byte("x"), false); err == nil || !strings.Contains(err.Error(), "escapes the corpus root") {
+		t.Fatalf("root-escaping write: %v; want the confinement's refusal", err)
 	}
-	if err := s.write(".stipulator/../escape.txt", []byte("x"), false); err == nil {
-		t.Fatal("embedded-dotdot write admitted: the prefix held lexically while the write landed outside the home")
+	if err := write(".stipulator/../escape.txt", []byte("x"), false); err == nil || !strings.Contains(err.Error(), "not a clean path") {
+		t.Fatalf("embedded-dotdot write: %v; want the confinement's refusal (the prefix holds lexically while the write lands outside the home)", err)
 	}
-	if err := s.write(".stipulator/gaps/ok.textproto", []byte("x"), false); err != nil {
+	if err := write(".stipulator/gaps/ok.textproto", []byte("x"), false); err != nil {
 		t.Fatalf("in-home write refused: %v", err)
 	}
 	// The one exception: a document rewrite is admitted for a document
 	// the corpus names and nothing else — not a source file, not a
 	// document outside the manifest, not without a manifest.
-	if err := s.write("specs/a.md", []byte("x"), true); err == nil {
+	if err := write("specs/a.md", []byte("x"), true); err == nil {
 		t.Fatal("a document rewrite was admitted with no corpus manifest")
 	}
 	if err := os.WriteFile(filepath.Join(dir, ".stipulator", "manifest.textproto"), []byte("include: \"specs/**/*.md\"\n"), 0o644); err != nil {
@@ -309,18 +324,18 @@ func TestWriteSeamConfinesToStipulatorDir(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "specs", "a.md"), []byte("# T\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.write("specs/a.md", []byte("# T\n\nrewritten\n"), true); err != nil {
+	if _, err := s.applier.Apply([]author.Update{{Path: "specs/a.md", Content: []byte("# T\n\nrewritten\n"), Prior: []byte("# T\n"), Document: true}}); err != nil {
 		t.Fatalf("a corpus document's rewrite refused: %v", err)
 	}
-	if err := s.write("main.go", []byte("package x\n"), true); err == nil {
+	if err := write("main.go", []byte("package x\n"), true); err == nil {
 		t.Fatal("a source file was admitted as a document rewrite")
 	}
-	if err := s.write("notes/b.md", []byte("x"), true); err == nil {
+	if err := write("notes/b.md", []byte("x"), true); err == nil {
 		t.Fatal("a document outside the manifest was admitted")
 	}
 	// The mark is what admits a corpus document: the same path unmarked
 	// is an out-of-home write, refused as one.
-	if err := s.write("specs/a.md", []byte("x"), false); err == nil || !strings.Contains(err.Error(), "outside .stipulator/") {
+	if _, err := s.applier.Apply([]author.Update{{Path: "specs/a.md", Content: []byte("x"), Prior: []byte("# T\n\nrewritten\n")}}); err == nil || !strings.Contains(err.Error(), "outside .stipulator/") {
 		t.Fatalf("an unmarked corpus-document write was not refused as out-of-home: %v", err)
 	}
 	// Admissibility is judged for the whole batch before any write: a
@@ -334,9 +349,8 @@ func TestWriteSeamConfinesToStipulatorDir(t *testing.T) {
 	}
 	writes := map[string][]byte{}
 	batch := &Server{
-		fsys:   func() fs.FS { return mem },
-		write:  func(p string, c []byte, _ bool) error { writes[p] = c; return nil },
-		remove: func(p string) error { writes[p] = nil; return nil },
+		fsys:    func() fs.FS { return mem },
+		applier: memoryApplier(mem, writes),
 	}
 	if _, err := batch.apply([]author.Update{
 		{Path: ".stipulator/bindings/m.textproto", Content: []byte("rewritten\n"), Prior: mem[".stipulator/bindings/m.textproto"].Data},
@@ -347,12 +361,39 @@ func TestWriteSeamConfinesToStipulatorDir(t *testing.T) {
 	if len(writes) != 0 {
 		t.Fatalf("a refused batch wrote %v; want nothing", writes)
 	}
+	// A refusal before any write is the error itself: nothing landed,
+	// so the tool error carries no partial.
+	if _, err := batch.apply([]author.Update{{Path: "notes/b.md", Content: []byte("y\n"), Prior: mem["notes/b.md"].Data, Document: true}}); err == nil || faulted(writeOut{}, err) != err {
+		t.Fatalf("a pre-write refusal gained a partial: %v", faulted(writeOut{}, err))
+	}
 	if _, err := batch.apply([]author.Update{
 		{Path: ".stipulator/bindings/m.textproto", Content: []byte("rewritten\n"), Prior: mem[".stipulator/bindings/m.textproto"].Data},
 		{Path: "specs/a.md", Content: []byte("# T\n\nrewritten\n"), Prior: mem["specs/a.md"].Data, Document: true},
 	}); err != nil || len(writes) != 2 {
 		t.Fatalf("an admissible batch: %v, wrote %v", err, writes)
 	}
+	// A commit failing mid-batch names what landed before it in the
+	// tool error — a tool error carries no typed result, and "nothing
+	// written" over a file that moved is the misreport REQ-record-cas
+	// refuses.
+	inner := batch.applier.Stage
+	batch.applier.Stage = func(path string, content []byte, create bool) (func() error, func(), error) {
+		commit, discard, err := inner(path, content, create)
+		if path == "specs/a.md" {
+			commit = func() error { return errors.New("disk full") }
+		}
+		return commit, discard, err
+	}
+	if out, err := batch.apply([]author.Update{
+		{Path: ".stipulator/bindings/m.textproto", Content: []byte("again\n"), Prior: mem[".stipulator/bindings/m.textproto"].Data},
+		{Path: "specs/a.md", Content: []byte("# T\n\nagain\n"), Prior: mem["specs/a.md"].Data, Document: true},
+	}); err == nil || faulted(out, err).Error() != "disk full (landed before the fault: wrote .stipulator/bindings/m.textproto)" {
+		t.Fatalf("a mid-batch commit fault: %v; want the tool error to name the file that landed", faulted(out, err))
+	}
+	if string(writes[".stipulator/bindings/m.textproto"]) != "again\n" || string(mem["specs/a.md"].Data) != "# T\n\nrewritten\n" {
+		t.Fatalf("the faulted batch: m = %q, a = %q; want the first file alone landed", writes[".stipulator/bindings/m.textproto"], mem["specs/a.md"].Data)
+	}
+	batch.applier.Stage = inner
 	// The deletion road is under the same confinement: a delete outside
 	// the home is refused before anything is written or removed.
 	writes = map[string][]byte{}

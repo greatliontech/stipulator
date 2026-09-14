@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/internal/remedy"
@@ -70,10 +71,12 @@ func policyInitCmd() *cobra.Command {
 			case !errors.Is(err, fs.ErrNotExist):
 				return err
 			}
-			// O_EXCL closes the read-then-write window: a record appearing
-			// between the absent check and this write — a concurrent init or
-			// a user edit — fails the create instead of being clobbered.
-			if err := writeFileExclusiveAt(chdir, policy.Path, rendered); err != nil {
+			// The record lands through the one applier as a file read
+			// absent: its exclusive create closes the read-then-write
+			// window — a record appearing between the absent check and the
+			// commit, a concurrent init or a user edit, fails the create
+			// instead of being clobbered (REQ-record-cas).
+			if err := applyUpdates(chdir, []author.Update{{Path: policy.Path, Content: rendered, PriorAbsent: true}}); err != nil {
 				return err
 			}
 			fmt.Println("configuration break: this record is the explicit, reviewed test policy that unified execution will honor for suite health and witness evidence; review and commit it — witness execution stops assuming a universal race invocation once it consumes the record")
@@ -110,21 +113,4 @@ func treeHasGoModule(dir string) bool {
 		}
 	}
 	return false
-}
-
-// writeFileExclusiveAt writes a new file, failing if it already exists.
-func writeFileExclusiveAt(dir, rel string, data []byte) error {
-	full := filepath.Join(dir, filepath.FromSlash(rel))
-	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
-		return err
-	}
-	f, err := os.OpenFile(full, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
-	if err != nil {
-		return err
-	}
-	if _, err := f.Write(data); err != nil {
-		f.Close()
-		return err
-	}
-	return f.Close()
 }

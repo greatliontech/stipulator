@@ -165,10 +165,16 @@ moved in between, naming the moved file: last-writer-wins would
 silently drop a concurrent agent's records, and identity or approval
 metadata in the records is not the answer — identity stays with the
 transport, never in the store. A batch checks every precondition
-before its first write and stages every file before its first rename,
-so a concurrent write refuses cleanly within a process — one apply at
-a time — and a mid-batch fault leaves at most a partial state the
-working tree makes visible, never a silent mix. Across processes the
+before its first write, stages every file before its first rename, and
+creates a file the operation read as absent exclusively — one appearing
+between the precondition and the commit fails the create instead of
+being clobbered — so a concurrent write refuses cleanly within a
+process — one apply at a time — and a mid-batch fault leaves at most a
+partial state the working tree makes visible and the fault names,
+never a silent mix. One applier lands every record write on every face,
+and it judges each path's admissibility — the confinement
+REQ-mcp-writes-confined states, read for both faces — for the whole
+batch before anything else. Across processes the
 precondition is best-effort: with lock files banned, the moments
 between check and rename stay open, and git remains the serialization
 point of record. The precondition is transient, in memory, dying with
