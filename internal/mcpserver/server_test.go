@@ -107,6 +107,7 @@ func harnessWith(t *testing.T, files map[string]string, mut func(*Server)) (*mcp
 		},
 		applier: memoryApplier(fsys, writes),
 	}
+	s.wholeTree = wholeTreeOf(s)
 	if mut != nil {
 		mut(s)
 	}
@@ -145,6 +146,7 @@ func TestCanceledToolCallStopsWitnessRun(t *testing.T) {
 			return nil, ctx.Err()
 		},
 	}
+	s.wholeTree = wholeTreeOf(s)
 	ct, st := mcp.NewInMemoryTransports()
 	serverCtx, stopServer := context.WithCancel(context.Background())
 	t.Cleanup(stopServer)
@@ -481,6 +483,7 @@ func TestPruneRefusesNonServingEvidence(t *testing.T) {
 			return &verify.TestRun{RaceEnabled: true}, nil
 		},
 	}
+	s.wholeTree = wholeTreeOf(s)
 	ct, st := mcp.NewInMemoryTransports()
 	go func() { _ = s.MCP().Run(context.Background(), st) }()
 	client := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "v0"}, nil)
@@ -1144,6 +1147,7 @@ func TestVerifyToolNamesPolicyRecordProblem(t *testing.T) {
 			return golang.RunWitnesses(ctx, dir, gb)
 		},
 	}
+	s.wholeTree = wholeTreeOf(s)
 	ct, st := mcp.NewInMemoryTransports()
 	go func() { _ = s.MCP().Run(context.Background(), st) }()
 	log := &notificationLog{}
@@ -1500,4 +1504,13 @@ func TestCompileToolCapsDiagnosticsAndCountsTheRemainder(t *testing.T) {
 	if text := toolText(t, res); !strings.Contains(text, fmt.Sprintf("%d diagnostics", compileDiagnosticCap+2)) {
 		t.Fatalf("text line does not count every diagnostic: %s", text)
 	}
+}
+
+// wholeTreeOf is the harness's whole-tree seam over its fake backends:
+// the fakes answer declarations without a form, so the
+// declaration-reading tools read the set the verifying tools do — the
+// server's backends as they stand at the call, so a test substituting
+// them after the harness built the server is read too.
+func wholeTreeOf(s *Server) func(context.Context) (map[string]verify.Backend, error) {
+	return func(ctx context.Context) (map[string]verify.Backend, error) { return s.backends(ctx, nil) }
 }

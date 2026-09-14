@@ -25,7 +25,7 @@ func (s *Server) toolRetarget(ctx context.Context, req *mcp.CallToolRequest, in 
 	}
 	ctx, prog := s.startProgress(ctx, req)
 	prog.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
-	backends, err := s.backends(ctx, nil)
+	backends, err := s.wholeTree(ctx)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}

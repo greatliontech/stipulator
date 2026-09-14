@@ -102,6 +102,7 @@ func bareHarness(t *testing.T) *mcp.ClientSession {
 		root: "/nowhere/in/particular",
 		fsys: func() fs.FS { return fstest.MapFS{} },
 	}
+	s.wholeTree = wholeTreeOf(s)
 	ct, st := mcp.NewInMemoryTransports()
 	go func() { _ = s.MCP().Run(context.Background(), st) }()
 	client := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "v0"}, nil)
@@ -192,6 +193,7 @@ func TestServerApplyCompareAndSwap(t *testing.T) {
 		fsys:    func() fs.FS { return mem },
 		applier: memoryApplier(mem, writes),
 	}
+	s.wholeTree = wholeTreeOf(s)
 	if _, err := s.apply([]author.Update{
 		{Path: ".stipulator/gaps/new.textproto", Content: []byte("x"), PriorAbsent: true},
 		{Path: ".stipulator/gaps/a.textproto", Content: []byte("y"), Prior: []byte("what it read")},
@@ -241,6 +243,7 @@ func TestTokenlessCallEmitsPhaseLogMessages(t *testing.T) {
 		},
 		applier: memoryApplier(fstest.MapFS{}, map[string][]byte{}),
 	}
+	s.wholeTree = wholeTreeOf(s)
 	ct, st := mcp.NewInMemoryTransports()
 	go func() {
 		_ = s.MCP().Run(context.Background(), st)
@@ -491,9 +494,10 @@ func TestPartitionsExportCarriesUncappedOverlaps(t *testing.T) {
 		".stipulator/bindings/m.textproto": pinnedBinding(t),
 		".stipulator/bindings/n.textproto": pinnedBindingFor(t, "REQ-m-b", "example.com/p.F", "f"),
 	}, func(srv *Server) {
-		// Overlaps derive from slicer-provided packages; the plain fake
-		// is no slicer, so both components would carry none.
-		srv.backends = func(context.Context, []string) (map[string]verify.Backend, error) {
+		// Overlaps derive from slicer-provided packages, read through
+		// the declaration-reading form; the plain fake is no slicer,
+		// so both components would carry none.
+		srv.wholeTree = func(context.Context) (map[string]verify.Backend, error) {
 			return map[string]verify.Backend{"go": slicingFake{fakeBackend{
 				"example.com/p.TestA": strings.Repeat("s", 64),
 				"example.com/p.F":     strings.Repeat("f", 64),

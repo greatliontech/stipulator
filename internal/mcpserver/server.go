@@ -75,6 +75,10 @@ type Server struct {
 	indexed  map[string]bool
 	fsys     func() fs.FS
 	backends func(context.Context, []string) (map[string]verify.Backend, error)
+	// wholeTree is the backend set a declaration-reading tool runs over
+	// — the whole-tree form, reading no policy and publishing nothing —
+	// where backends is the serving form a verification runs over.
+	wholeTree func(context.Context) (map[string]verify.Backend, error)
 	// capture is the one derivation of the accepted policy a witnessed
 	// tool makes (REQ-check-derivation); a test substitutes it as it
 	// substitutes the run.
@@ -95,8 +99,19 @@ func New(dir string) *Server {
 	s := &Server{
 		root: dir,
 		fsys: func() fs.FS { return os.DirFS(dir) },
+		// backends is the serving form a verification runs over
+		// (resolutions proven fresh serve, the owned child opens only
+		// for the stale remainder — REQ-evidence-resolution-freshness);
+		// wholeTree the whole-tree form a declaration read takes.
 		backends: func(ctx context.Context, symbols []string) (map[string]verify.Backend, error) {
-			return makeBackends(ctx, dir, symbols)
+			return golang.Backends(ctx, dir, symbols)
+		},
+		wholeTree: func(ctx context.Context) (map[string]verify.Backend, error) {
+			whole, err := golang.NewWholeTree(ctx, dir)
+			if err != nil {
+				return nil, err
+			}
+			return golang.BackendSet(whole), nil
 		},
 		capture: func(ctx context.Context) (*golang.Capture, error) { return golang.LoadCapture(ctx, dir) },
 		runTests: func(ctx context.Context, pc *golang.Capture, seeding verify.WitnessSeeding, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {
@@ -122,15 +137,6 @@ func New(dir string) *Server {
 	// never consult two trees.
 	s.applier = recordapply.New(dir, func() fs.FS { return s.fsys() })
 	return s
-}
-
-// makeBackends prepares a tool's verification backend: served over the
-// operation's symbol set (resolutions proven fresh serve, the owned
-// child opens only for the stale remainder —
-// REQ-evidence-resolution-freshness); a declaration-reading tool passes
-// no symbols and reaches the whole-tree child through the same backend.
-func makeBackends(ctx context.Context, dir string, symbols []string) (map[string]verify.Backend, error) {
-	return golang.Backends(ctx, dir, symbols)
 }
 
 // Run serves MCP over stdio until the context ends.

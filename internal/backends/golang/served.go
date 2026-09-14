@@ -186,15 +186,22 @@ func Backends(ctx context.Context, dir string, symbols []string) (map[string]ver
 	if err != nil {
 		return nil, err
 	}
-	return map[string]verify.Backend{"go": served}, nil
+	return BackendSet(served), nil
+}
+
+// BackendSet is the backend set over one Go backend of either form,
+// under the backend's name — the one spelling of the set every face
+// and core reads.
+func BackendSet(s *Served) map[string]verify.Backend {
+	return map[string]verify.Backend{"go": s}
 }
 
 // NewWholeTree prepares the whole-tree form: the typed path over the
 // whole tree with nothing served or published and no selection read,
 // so a policy the tree cannot parse refuses only where the typed path
 // refuses it — at the first answer, through the child. The
-// declaration-reading roles (binding, pinning, retargeting, impact)
-// take this form.
+// declaration-reading roles (binding, pinning, retargeting, impact,
+// the declaration frontier and the partitions) take this form.
 func NewWholeTree(ctx context.Context, dir string) (*Served, error) {
 	s, err := newServed(ctx, dir)
 	if err != nil {

@@ -65,7 +65,7 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 		// The declaration frontier is the expensive leg: it loads and
 		// walks the bound packages' sources.
 		prog.Phase(stipulatorv1.Phase_PHASE_CONTEXT_SLICE)
-		backends, err := s.backends(ctx, nil)
+		backends, err := s.wholeTree(ctx)
 		if err != nil {
 			return nil, nil, terminalToolError(prog, ctx, err)
 		}

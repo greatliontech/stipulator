@@ -33,11 +33,6 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	spec, store := prepared.Spec, prepared.Store
-	backends, err := s.backends(ctx, nil)
-	if err != nil {
-		return nil, nil, terminalToolError(prog, ctx, err)
-	}
-	defer verify.CloseBackends(backends)
 	var ids []string
 	if strings.TrimSpace(in.Ids) != "" {
 		ids, err = splitIDs(in.Ids)
@@ -57,6 +52,11 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 			}
 		}
 	}
+	backends, err := s.wholeTree(ctx)
+	if err != nil {
+		return nil, nil, terminalToolError(prog, ctx, err)
+	}
+	defer verify.CloseBackends(backends)
 	pr, err := facts.Partitions(spec, store, backends, ids)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)

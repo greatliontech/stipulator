@@ -702,9 +702,12 @@ package and a vanished package answer not found as they do under the
 whole tree — and a serving backend built for a symbol set answers that set alone:
 a symbol outside it is refused, never forwarded to the scoped load,
 which would answer not found for what the tree declares, while a
-backend built for the declaration-reading roles names no set, its
-typed load is the whole tree, and it serves and publishes nothing; a
-record is written only from a typed
+backend built for the declaration-reading roles — binding, pinning,
+retargeting, impact, the declaration frontier, the partitions, on
+either face — names no set, reads no build selection at construction,
+so a policy the tree cannot parse refuses a declaration read only
+where the typed path refuses it, its typed load is the whole tree, and
+it serves and publishes nothing; a record is written only from a typed
 resolution, never from a served one, and only when the symbol's
 fingerprint captured before the typed load opened equals the one
 captured after the resolution — a symbol that moved between them is

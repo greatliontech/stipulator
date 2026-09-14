@@ -78,7 +78,7 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 		if err != nil {
 			return nil, nil, terminalToolError(prog, ctx, err)
 		}
-		backends, err := s.backends(ctx, nil)
+		backends, err := s.wholeTree(ctx)
 		if err != nil {
 			return nil, nil, terminalToolError(prog, ctx, err)
 		}
@@ -118,7 +118,7 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 	}
 	ctx, prog := s.startProgress(ctx, req)
 	prog.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
-	backends, err := s.backends(ctx, nil)
+	backends, err := s.wholeTree(ctx)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}

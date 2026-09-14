@@ -59,6 +59,7 @@ func checkHarness(t *testing.T, runCheck func(context.Context, bool, []string) (
 		},
 		runCheck: runCheck,
 	}
+	s.wholeTree = wholeTreeOf(s)
 	ct, st := mcp.NewInMemoryTransports()
 	go func() { _ = s.MCP().Run(context.Background(), st) }()
 	log := &notificationLog{}
@@ -537,6 +538,7 @@ func progressPipelineHarness(t *testing.T) (*mcp.ClientSession, *notificationLog
 			return &verify.TestRun{RaceEnabled: true, SelectiveServing: true, Outcomes: map[string]verify.TestOutcome{}}, nil
 		},
 	}
+	s.wholeTree = wholeTreeOf(s)
 	ct, st := mcp.NewInMemoryTransports()
 	go func() { _ = s.MCP().Run(context.Background(), st) }()
 	log := &notificationLog{}
@@ -721,6 +723,7 @@ func TestVerifyToolDeadlineNamesExpiredPhaseAndCause(t *testing.T) {
 			return nil, ctx.Err()
 		},
 	}
+	s.wholeTree = wholeTreeOf(s)
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 	req := &mcp.CallToolRequest{Params: &mcp.CallToolParamsRaw{Name: "verify"}}
