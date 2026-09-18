@@ -491,15 +491,16 @@ func TestCheckWitnessResolvedGapIsResidueUntilPruned(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer gb.Close()
-	up, err := author.Bind(os.DirFS(dir), map[string]verify.Backend{"go": gb}, author.BindRequest{
+	ups, err := author.Binds(os.DirFS(dir), map[string]verify.Backend{"go": gb}, []author.BindRequest{{
 		Requirement: "REQ-fix-must",
 		Symbol:      "example.com/checkfix/ok.TestDouble",
 		Backend:     "go",
 		Role:        stipulatorv1.BindingRole_BINDING_ROLE_TESTS,
-	})
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}
+	up := &ups[0]
 	full := filepath.Join(dir, filepath.FromSlash(up.Path))
 	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 		t.Fatal(err)
@@ -578,15 +579,16 @@ func TestCheckUnfiredManualGapOutlivesGreenWitnesses(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer gb.Close()
-	up, err := author.Bind(os.DirFS(dir), map[string]verify.Backend{"go": gb}, author.BindRequest{
+	ups, err := author.Binds(os.DirFS(dir), map[string]verify.Backend{"go": gb}, []author.BindRequest{{
 		Requirement: "REQ-fix-must",
 		Symbol:      "example.com/checkfix/ok.TestDouble",
 		Backend:     "go",
 		Role:        stipulatorv1.BindingRole_BINDING_ROLE_TESTS,
-	})
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}
+	up := &ups[0]
 	full := filepath.Join(dir, filepath.FromSlash(up.Path))
 	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 		t.Fatal(err)

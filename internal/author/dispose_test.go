@@ -23,7 +23,7 @@ func disposeFS(t *testing.T, oldDoc, newDoc string, extra map[string]string) fst
 	fsys := testFS(nil)
 	fsys["specs/a.md"] = &fstest.MapFile{Data: []byte(oldDoc)}
 	// Author a pinned binding against the old text through the real verb.
-	up, err := Bind(fsys, backends, bindReq("REQ-au-a", "example.com/p.F"))
+	up, err := bind(fsys, backends, bindReq("REQ-au-a", "example.com/p.F"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +220,7 @@ func TestEditorialNamesTheClauseEachClaimNowDenotes(t *testing.T) {
 	for _, clause := range []string{"alpha", "2"} {
 		r := bindReq("REQ-au-a", "example.com/p.F")
 		r.Role, r.Clause = stipulatorv1.BindingRole_BINDING_ROLE_TESTS, clause
-		up, err := Bind(fsys, backends, r)
+		up, err := bind(fsys, backends, r)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -269,7 +269,7 @@ func TestAuthoringStampsTheSourcePinAndEditorialNamesRehashes(t *testing.T) {
 			source = r.GetSourceHash()
 		}
 	}
-	up, err := Bind(fsys, backends, bindReq("REQ-au-a", "example.com/p.F"))
+	up, err := bind(fsys, backends, bindReq("REQ-au-a", "example.com/p.F"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -385,7 +385,7 @@ func TestEditorialNoOpNamesItsReason(t *testing.T) {
 	if !errors.Is(err, ErrNothingStale) || NoOpNote(err) != "no records name it; nothing to re-consent" {
 		t.Fatalf("no records: err=%v note=%q", err, NoOpNote(err))
 	}
-	up, err := Bind(fsys, backends, bindReq("REQ-au-b", "example.com/p.F"))
+	up, err := bind(fsys, backends, bindReq("REQ-au-b", "example.com/p.F"))
 	if err != nil {
 		t.Fatal(err)
 	}

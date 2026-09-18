@@ -67,20 +67,17 @@ type Backend struct {
 	// healthy resolution never pays the parse.
 	pinsOnce sync.Once
 	pinTable *pinTable
-	// members are the workspace members newContext loaded (the module
-	// alone, or every go.work member); with lazyCfg, one load
-	// configuration per member under the default selection, they let
-	// the seeding walk load an in-module callee's package the scoped
-	// load did not hold, so the walk answers the same whatever the
-	// load's scope (REQ-evidence-witness-freshness).
-	members []string
 	// modules maps each member to its module path, read once.
 	modules map[string]string
 	// lazyCfg holds one load configuration per member and build
 	// selection, captured for every member at construction — a member
 	// owning no scoped pattern included — and consulted under the
 	// walking witness's own selection, so a tag-split helper is read in
-	// the view the witness runs in. Its context is the resolver's own.
+	// the view the witness runs in, and the seeding walk can load an
+	// in-module callee's package the scoped load did not hold, so the
+	// walk answers the same whatever the load's scope
+	// (REQ-evidence-witness-freshness). Its context is the resolver's
+	// own.
 	lazyCfg map[string]map[string]*packages.Config
 	// walkMu guards the seeding walk's memos, all keyed by build
 	// selection and the declaration's stable name (declKey): declIndex
@@ -288,7 +285,7 @@ func newContext(ctx context.Context, dir string, patterns []string) (*Backend, e
 		}
 		byPath[pkg.PkgPath] = append(byPath[pkg.PkgPath], pkg)
 	}
-	return &Backend{pkgs: pkgs, load: loadIndex, loadSelection: loadSelection, viewErrors: viewErrors, dir: abs, members: members, modules: modules, lazyCfg: lazyCfg, typesPkg: typesPkg, byPath: byPath}, nil
+	return &Backend{pkgs: pkgs, load: loadIndex, loadSelection: loadSelection, viewErrors: viewErrors, dir: abs, modules: modules, lazyCfg: lazyCfg, typesPkg: typesPkg, byPath: byPath}, nil
 }
 
 // matchedRoots drops the roots a scoped load's patterns matched nothing

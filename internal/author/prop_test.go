@@ -70,7 +70,7 @@ func TestPropVerbsWriteOnlyRecords(t *testing.T) {
 				role = stipulatorv1.BindingRole_BINDING_ROLE_TESTS
 			}
 			run = func(fsys fstest.MapFS) ([]Update, error) {
-				up, err := Bind(fsys, nil, BindRequest{
+				up, err := bind(fsys, nil, BindRequest{
 					Requirement: target, Symbol: "example.com/p.F", Backend: "go", Role: role, Clause: clause,
 				})
 				if err != nil {

@@ -29,7 +29,7 @@ func TestRecordsRoundTripOnePerIdentity(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
 	rec := Record{Selection: "race", Symbol: "example.com/p.F", Fingerprint: fingerprint("a"), Resolution: "resolved", Shape: strings.Repeat("d", 64), Package: "example.com/p", WitnessClass: "example", NeverServe: ""}
-	if err := Install(dir, rec); err != nil {
+	if err := InstallAll(dir, []Record{rec}); err != nil {
 		t.Fatal(err)
 	}
 	got := Load(dir)
@@ -43,7 +43,7 @@ func TestRecordsRoundTripOnePerIdentity(t *testing.T) {
 	later := rec
 	later.Fingerprint = fingerprint("e")
 	later.Shape = strings.Repeat("f", 64)
-	if err := Install(dir, later); err != nil {
+	if err := InstallAll(dir, []Record{later}); err != nil {
 		t.Fatal(err)
 	}
 	if got := Load(dir); len(got) != 1 || got[0].Shape != later.Shape {
@@ -52,7 +52,7 @@ func TestRecordsRoundTripOnePerIdentity(t *testing.T) {
 	// Another selection is another identity.
 	other := rec
 	other.Selection = "default"
-	if err := Install(dir, other); err != nil {
+	if err := InstallAll(dir, []Record{other}); err != nil {
 		t.Fatal(err)
 	}
 	if got := Load(dir); len(got) != 2 {
@@ -84,11 +84,11 @@ func TestRecordsRefuseWhatTheStoreDoesNotServe(t *testing.T) {
 	noCompartment := good
 	noCompartment.Fingerprint.TestVariantClosure = ""
 	for name, rec := range map[string]Record{"observation tier": observed, "purity tier": pure, "unresolved": unresolved, "no selection": {Symbol: "x", Fingerprint: fingerprint("a"), Resolution: "resolved"}, "benchmark result kind": benchmark, "no compartment digest": noCompartment} {
-		if err := Install(dir, rec); err == nil {
+		if err := InstallAll(dir, []Record{rec}); err == nil {
 			t.Fatalf("%s: installed", name)
 		}
 	}
-	if err := Install(dir, good); err != nil {
+	if err := InstallAll(dir, []Record{good}); err != nil {
 		t.Fatal(err)
 	}
 	store, _ := StoreDir(dir)
@@ -138,7 +138,7 @@ func TestMisnamedRecordsAndTemporariesAreNotRecords(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
 	rec := Record{Selection: "race", Symbol: "example.com/p.F", Fingerprint: fingerprint("a"), Resolution: "resolved", Shape: "func", Package: "example.com/p"}
-	if err := Install(dir, rec); err != nil {
+	if err := InstallAll(dir, []Record{rec}); err != nil {
 		t.Fatal(err)
 	}
 	store, _ := StoreDir(dir)
@@ -154,7 +154,7 @@ func TestMisnamedRecordsAndTemporariesAreNotRecords(t *testing.T) {
 	if removed, kept, err := GC(dir, func(string, string) bool { return true }); err != nil || removed != 1 || kept != 0 {
 		t.Fatalf("gc of the fingerprint-misnamed record = %d removed, %d kept, %v", removed, kept, err)
 	}
-	if err := Install(dir, rec); err != nil {
+	if err := InstallAll(dir, []Record{rec}); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Rename(filepath.Join(store, fileName(rec)), filepath.Join(store, fileName(sameIdentity))); err != nil {

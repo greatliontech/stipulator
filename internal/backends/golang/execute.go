@@ -111,13 +111,11 @@ func cutAtRune(s string, limit int) string {
 func (bb *boundedBuffer) empty() bool { return bb.b.Len() == 0 && !bb.truncated }
 
 // testEvent is the subset of test2json (and go build -json) output the
-// executor reads. Build events carry ImportPath and no Package; test
-// events carry Package. FailedBuild on a terminal fail event names the
-// package whose compilation failed.
+// executor reads: the action, the test it names, its output, and on a
+// terminal fail event the package whose compilation failed. The
+// package fields both event kinds carry are not read.
 type testEvent struct {
 	Action      string
-	Package     string
-	ImportPath  string
 	Test        string
 	Output      string
 	FailedBuild string

@@ -154,13 +154,14 @@ func TestVerbsStampPriors(t *testing.T) {
 		"  role: BINDING_ROLE_IMPLEMENTS\n" +
 		"}\n"
 	write(".stipulator/bindings/cas.textproto", existingBinding)
-	up, err := author.Bind(fsys, nil, author.BindRequest{
+	ups, err = author.Binds(fsys, nil, []author.BindRequest{{
 		Requirement: "REQ-cas-b", Symbol: "example.com/x.G", Backend: "go",
 		Role: stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS, File: ".stipulator/bindings/cas.textproto",
-	})
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}
+	up := &ups[0]
 	if up.PriorAbsent || string(up.Prior) != existingBinding {
 		t.Fatalf("bind over an existing file stamped prior=%q absent=%v", up.Prior, up.PriorAbsent)
 	}

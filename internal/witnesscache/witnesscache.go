@@ -376,25 +376,6 @@ type Record struct {
 	ObservationExclusions []string `json:"observationExclusions,omitempty"`
 }
 
-func (r *Record) UnmarshalJSON(data []byte) error {
-	type plain Record
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(data, &fields); err != nil {
-		return err
-	}
-	if value, ok := fields["registrations"]; ok && isJSONNull(value) {
-		return errors.New("witnesscache: registrations are null")
-	}
-	var decoded plain
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&decoded); err != nil {
-		return err
-	}
-	*r = Record(decoded)
-	return nil
-}
-
 func isJSONNull(value json.RawMessage) bool {
 	return bytes.Equal(bytes.TrimSpace(value), []byte("null"))
 }
@@ -442,9 +423,6 @@ func loadSince(dir string, started time.Time) []Record {
 	if err != nil {
 		return nil
 	}
-	// The legacy in-repo cache is never read again; remove it best-effort
-	// once per load so migrated corpora stop carrying it.
-	os.RemoveAll(filepath.Join(dir, ".stipulator", "cache"))
 	names, err := store.Names()
 	if err != nil {
 		return nil

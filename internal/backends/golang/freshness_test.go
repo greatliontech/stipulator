@@ -295,20 +295,9 @@ func TestGoRunWitnessesServingRoundTrip(t *testing.T) {
 	if entries, err := os.ReadDir(store); err != nil || len(entries) == 0 {
 		t.Fatalf("witness store not written: %v (%d entries)", err, len(entries))
 	}
-	// The clean break: nothing writes inside the repository anymore, and
-	// a legacy in-repo cache left by an older binary is removed.
-	legacy := filepath.Join(tmp, ".stipulator", "cache")
-	if err := os.MkdirAll(legacy, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(legacy, "witnesses.json"), []byte("{}"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	// The store round-trips what the run wrote.
 	if witnesscache.Load(tmp) == nil {
 		t.Fatal("store round trip lost its records")
-	}
-	if _, err := os.Stat(legacy); !os.IsNotExist(err) {
-		t.Fatalf("legacy in-repo cache survived: %v", err)
 	}
 
 	// The abort-shadowed sibling is unshadowed by its solo isolation

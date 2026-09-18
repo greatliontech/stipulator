@@ -57,7 +57,7 @@ func TestBind(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-record-verbs")
 
 	t.Run("authors a fully pinned binding into the derived file", func(t *testing.T) {
-		up, err := Bind(testFS(nil), backends, bindReq("REQ-au-a", "example.com/p.F"))
+		up, err := bind(testFS(nil), backends, bindReq("REQ-au-a", "example.com/p.F"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -75,21 +75,21 @@ func TestBind(t *testing.T) {
 	})
 
 	t.Run("unknown requirement refused", func(t *testing.T) {
-		_, err := Bind(testFS(nil), backends, bindReq("REQ-au-ghost", "example.com/p.F"))
+		_, err := bind(testFS(nil), backends, bindReq("REQ-au-ghost", "example.com/p.F"))
 		if err == nil || !strings.Contains(err.Error(), "not in the corpus") {
 			t.Fatalf("err = %v", err)
 		}
 	})
 
 	t.Run("unresolved symbol refused", func(t *testing.T) {
-		_, err := Bind(testFS(nil), backends, bindReq("REQ-au-a", "example.com/p.Gone"))
+		_, err := bind(testFS(nil), backends, bindReq("REQ-au-a", "example.com/p.Gone"))
 		if err == nil || !strings.Contains(err.Error(), "not found") {
 			t.Fatalf("err = %v", err)
 		}
 	})
 
 	t.Run("generated symbol refused", func(t *testing.T) {
-		_, err := Bind(testFS(nil), backends, bindReq("REQ-au-a", "example.com/p.Gen"))
+		_, err := bind(testFS(nil), backends, bindReq("REQ-au-a", "example.com/p.Gen"))
 		if err == nil || !strings.Contains(err.Error(), "generated file") {
 			t.Fatalf("err = %v", err)
 		}
@@ -98,7 +98,7 @@ func TestBind(t *testing.T) {
 	t.Run("backend without verifier allowed, shape unpinned", func(t *testing.T) {
 		req := bindReq("REQ-au-a", "some.v1.Message")
 		req.Backend = "proto"
-		up, err := Bind(testFS(nil), backends, req)
+		up, err := bind(testFS(nil), backends, req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -114,23 +114,23 @@ func TestBind(t *testing.T) {
 
 	t.Run("identical binding refused", func(t *testing.T) {
 		fsys := testFS(nil)
-		up, err := Bind(fsys, backends, bindReq("REQ-au-a", "example.com/p.F"))
+		up, err := bind(fsys, backends, bindReq("REQ-au-a", "example.com/p.F"))
 		if err != nil {
 			t.Fatal(err)
 		}
 		fsys[up.Path] = &fstest.MapFile{Data: up.Content}
-		if _, err := Bind(fsys, backends, bindReq("REQ-au-a", "example.com/p.F")); err == nil {
+		if _, err := bind(fsys, backends, bindReq("REQ-au-a", "example.com/p.F")); err == nil {
 			t.Fatal("duplicate accepted")
 		}
 	})
 
 	t.Run("appending preserves existing header", func(t *testing.T) {
 		fsys := testFS(nil)
-		up, _ := Bind(fsys, backends, bindReq("REQ-au-a", "example.com/p.F"))
+		up, _ := bind(fsys, backends, bindReq("REQ-au-a", "example.com/p.F"))
 		fsys[up.Path] = &fstest.MapFile{Data: up.Content}
 		req := bindReq("REQ-au-b", "example.com/p.F")
 		req.File = up.Path
-		up2, err := Bind(fsys, backends, req)
+		up2, err := bind(fsys, backends, req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -149,7 +149,7 @@ func TestBind(t *testing.T) {
 		})
 		req := bindReq("REQ-au-a", "example.com/p.F")
 		req.File = ".stipulator/bindings/au.textproto"
-		if _, err := Bind(fsys, backends, req); err == nil || !strings.Contains(err.Error(), "comment outside") {
+		if _, err := bind(fsys, backends, req); err == nil || !strings.Contains(err.Error(), "comment outside") {
 			t.Fatalf("err = %v", err)
 		}
 	})
@@ -161,13 +161,13 @@ func TestBindFileConfinement(t *testing.T) {
 	for _, escape := range []string{"specs/a.md", "../evil.textproto", ".stipulator/bindings/../../x.textproto", ".stipulator/bindings/x.md"} {
 		req := bindReq("REQ-au-a", "example.com/p.F")
 		req.File = escape
-		if _, err := Bind(testFS(nil), backends, req); err == nil {
+		if _, err := bind(testFS(nil), backends, req); err == nil {
 			t.Fatalf("file escape accepted: %s", escape)
 		}
 	}
 	req := bindReq("REQ-au-a", "example.com/p.F")
 	req.Backend = "gp"
-	if _, err := Bind(testFS(nil), backends, req); err == nil || !strings.Contains(err.Error(), "unknown backend") {
+	if _, err := bind(testFS(nil), backends, req); err == nil || !strings.Contains(err.Error(), "unknown backend") {
 		t.Fatal("typo'd backend accepted")
 	}
 }
@@ -176,7 +176,7 @@ func TestBindFileConfinement(t *testing.T) {
 func TestUnbind(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-record-verbs")
 	fsys := testFS(nil)
-	up, _ := Bind(fsys, backends, bindReq("REQ-au-a", "example.com/p.F"))
+	up, _ := bind(fsys, backends, bindReq("REQ-au-a", "example.com/p.F"))
 	fsys[up.Path] = &fstest.MapFile{Data: up.Content}
 
 	t.Run("no match is an error", func(t *testing.T) {
@@ -351,7 +351,7 @@ func TestAppendPreservesIndentedHeaderComment(t *testing.T) {
 	fsys := testFS(map[string]string{".stipulator/bindings/au.textproto": raw})
 	req := bindReq("REQ-au-a", "example.com/p.F")
 	req.File = ".stipulator/bindings/au.textproto"
-	up, err := Bind(fsys, backends, req)
+	up, err := bind(fsys, backends, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -523,7 +523,7 @@ func TestBindDoesNotInferTestOutcomeFromSyntax(t *testing.T) {
 	req := bindReq("REQ-au-a", "example.com/p.F")
 	req.Role = stipulatorv1.BindingRole_BINDING_ROLE_TESTS
 	be := fakeSyntaxVerdict{fakeBackend{"example.com/p.F": strings.Repeat("s", 64)}}
-	if _, err := Bind(fsys, map[string]verify.Backend{"go": be}, req); err != nil {
+	if _, err := bind(fsys, map[string]verify.Backend{"go": be}, req); err != nil {
 		t.Fatalf("resolved test refused by syntax verdict: %v", err)
 	}
 }
@@ -540,23 +540,23 @@ func TestProvesDischarge(t *testing.T) {
 
 	fb := fakeBackend{"example.com/p.F": strings.Repeat("s", 64)}
 	example := map[string]verify.Backend{"go": fakeClassifier{fb, verify.ExampleWitness}}
-	if _, err := Bind(fsys, example, req); err == nil || !strings.Contains(err.Error(), "cannot discharge") {
+	if _, err := bind(fsys, example, req); err == nil || !strings.Contains(err.Error(), "cannot discharge") {
 		t.Fatalf("undischargeable proof accepted: %v", err)
 	}
 
 	proof := map[string]verify.Backend{"go": fakeClassifier{fb, verify.AnalyzerProof}}
-	if _, err := Bind(fsys, proof, req); err != nil {
+	if _, err := bind(fsys, proof, req); err != nil {
 		t.Fatalf("analyzer test refused: %v", err)
 	}
 
 	// A backend with no classifier at all cannot discharge either.
-	if _, err := Bind(fsys, backends, req); err == nil || !strings.Contains(err.Error(), "cannot discharge") {
+	if _, err := bind(fsys, backends, req); err == nil || !strings.Contains(err.Error(), "cannot discharge") {
 		t.Fatalf("classifierless backend accepted a proof: %v", err)
 	}
 
 	// No loaded verifier: the claim cannot be checked at write time, so it
 	// is refused rather than recorded.
-	if _, err := Bind(fsys, map[string]verify.Backend{}, req); err == nil || !strings.Contains(err.Error(), "cannot be checked") {
+	if _, err := bind(fsys, map[string]verify.Backend{}, req); err == nil || !strings.Contains(err.Error(), "cannot be checked") {
 		t.Fatalf("unloaded backend accepted a proof: %v", err)
 	}
 }
@@ -582,7 +582,7 @@ func TestBindClauseClaims(t *testing.T) {
 		{"2", "clause_ordinal: 2"},
 		{"", ""},
 	} {
-		up, err := Bind(fsys, backends, claim(c.clause))
+		up, err := bind(fsys, backends, claim(c.clause))
 		if err != nil {
 			t.Fatalf("clause %q: %v", c.clause, err)
 		}
@@ -603,7 +603,7 @@ func TestBindClauseClaims(t *testing.T) {
 		{"0", "clauses count from 1"},
 		{"Not-A-Label", "neither an ordinal nor a label"},
 	} {
-		_, err := Bind(fsys, backends, claim(c.clause))
+		_, err := bind(fsys, backends, claim(c.clause))
 		if err == nil || !strings.Contains(err.Error(), c.want) {
 			t.Fatalf("clause %q: err = %v, want %q", c.clause, err, c.want)
 		}
@@ -611,7 +611,7 @@ func TestBindClauseClaims(t *testing.T) {
 	// A list-less requirement takes only whole-requirement claims.
 	r := bindReq("REQ-au-a", "example.com/p.F")
 	r.Clause = "1"
-	if _, err := Bind(fsys, backends, r); err == nil || !strings.Contains(err.Error(), "has no payload list") {
+	if _, err := bind(fsys, backends, r); err == nil || !strings.Contains(err.Error(), "has no payload list") {
 		t.Fatalf("clause on a list-less requirement: %v", err)
 	}
 	// The clause is part of a claim's identity: the same symbol on
@@ -620,18 +620,18 @@ func TestBindClauseClaims(t *testing.T) {
 		"specs/a.md":                        clauseDoc,
 		".stipulator/bindings/au.textproto": "bindings {\n  requirement_id: \"REQ-au-c\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n  clause_label: \"alpha\"\n}\n",
 	}
-	if _, err := Bind(testFS(existing), backends, claim("alpha")); err == nil || !strings.Contains(err.Error(), "identical binding") {
+	if _, err := bind(testFS(existing), backends, claim("alpha")); err == nil || !strings.Contains(err.Error(), "identical binding") {
 		t.Fatalf("same clause claim twice: %v", err)
 	}
 	// The identity is the resolved clause: the ordinal spelling of the
 	// labelled clause is the same claim.
-	if _, err := Bind(testFS(existing), backends, claim("1")); err == nil || !strings.Contains(err.Error(), "identical binding") {
+	if _, err := bind(testFS(existing), backends, claim("1")); err == nil || !strings.Contains(err.Error(), "identical binding") {
 		t.Fatalf("the same clause by ordinal accepted as a second claim: %v", err)
 	}
-	if _, err := Bind(testFS(existing), backends, claim("2")); err != nil {
+	if _, err := bind(testFS(existing), backends, claim("2")); err != nil {
 		t.Fatalf("a claim differing only in its clause refused: %v", err)
 	}
-	if _, err := Bind(testFS(existing), backends, claim("")); err != nil {
+	if _, err := bind(testFS(existing), backends, claim("")); err != nil {
 		t.Fatalf("a whole-requirement claim beside a clause claim refused: %v", err)
 	}
 	// Unbind narrows by the claim's own spelling, so one of two claims

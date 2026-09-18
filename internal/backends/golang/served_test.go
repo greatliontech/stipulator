@@ -329,7 +329,7 @@ func TestGCResolutionsKeepsBoundAndWitnessSymbols(t *testing.T) {
 	dir := servedModule(t)
 	ctx := context.Background()
 	for _, sym := range []string{"example.com/served/p.F", "example.com/served/p.TestF", "example.com/served/p.Orphan"} {
-		if err := resolutioncache.Install(dir, resolutioncache.Record{Selection: "default", Symbol: sym, Fingerprint: fingerprintFor("a"), Resolution: "resolved", Package: "example.com/served/p"}); err != nil {
+		if err := resolutioncache.InstallAll(dir, []resolutioncache.Record{{Selection: "default", Symbol: sym, Fingerprint: fingerprintFor("a"), Resolution: "resolved", Package: "example.com/served/p"}}); err != nil {
 			t.Fatal(err)
 		}
 	}

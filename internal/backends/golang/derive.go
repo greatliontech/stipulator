@@ -3,7 +3,6 @@ package golang
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -22,6 +21,7 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/internal/progress"
+	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
@@ -635,17 +635,9 @@ func sortedCopy(values []string) []string {
 func LiveGroupDigests(pc *Capture) map[string]bool {
 	out := map[string]bool{}
 	for _, n := range pc.normalized {
-		out[groupDigest(groupIdentity(n))] = true
+		out[recordstore.Digest(groupIdentity(n))] = true
 	}
 	return out
-}
-
-// groupDigest folds a canonical identity key into its stable
-// record-identity coordinate (REQ-model-hash-func's digest,
-// name-economy truncated exactly as the store's file names are).
-func groupDigest(key string) string {
-	sum := sha256.Sum256([]byte(key))
-	return hex.EncodeToString(sum[:8])
 }
 
 // canonicalExclusions sorts and deduplicates a reviewed exclusion set so
@@ -735,7 +727,7 @@ func discoverPolicy(ctx context.Context, normalized []*NormalizedInvocation) (*p
 		g := byKey[key]
 		if g == nil {
 			g = &captureGroup{
-				id:            groupDigest(groupIdentity(n)),
+				id:            recordstore.Digest(groupIdentity(n)),
 				tags:          n.Tags,
 				env:           n.Env,
 				witnessEnv:    witnessEnvOf(n),

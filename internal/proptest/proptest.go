@@ -52,7 +52,6 @@ type Option func(*config)
 
 type config struct {
 	keywords []string
-	kinds    []string
 }
 
 // MustOnly restricts requirement keywords to MUST/MUST NOT, so every
@@ -62,16 +61,11 @@ func MustOnly() Option {
 	return func(c *config) { c.keywords = []string{"MUST", "MUST NOT"} }
 }
 
-// Kinds restricts the generated clause kinds.
-func Kinds(kinds ...string) Option {
-	return func(c *config) { c.kinds = kinds }
-}
-
 // Gen draws a corpus: 1..8 requirements with optional payloads, notes,
 // edges to earlier requirements, and term usage; 0..2 terms; optional
 // annotations referencing declared requirements.
 func Gen(t *rapid.T, opts ...Option) Corpus {
-	cfg := config{keywords: keywords, kinds: kinds}
+	cfg := config{keywords: keywords}
 	for _, o := range opts {
 		o(&cfg)
 	}
@@ -88,7 +82,7 @@ func Gen(t *rapid.T, opts ...Option) Corpus {
 	for i := range nReqs {
 		id := fmt.Sprintf("REQ-p-r%d", i)
 		kw := rapid.SampledFrom(cfg.keywords).Draw(t, "keyword")
-		kind := rapid.SampledFrom(cfg.kinds).Draw(t, "kind")
+		kind := rapid.SampledFrom(kinds).Draw(t, "kind")
 
 		meta := kind
 		if i > 0 && rapid.Bool().Draw(t, "edge") {
@@ -216,11 +210,6 @@ func FS(files map[string]string, extra map[string]string) fstest.MapFS {
 // BindingText renders one binding record naming the requirement.
 func BindingText(id, contentHash string) string {
 	return BindingTextClause(id, contentHash, "", "")
-}
-
-// BindingTextPinned renders one binding record with both pins.
-func BindingTextPinned(id, contentHash, shapeHash string) string {
-	return BindingTextClause(id, contentHash, shapeHash, "")
 }
 
 // BindingTextClause renders one binding record, scoped to the clause

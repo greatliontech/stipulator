@@ -1,8 +1,6 @@
 package golang
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -133,8 +131,7 @@ const telemetryOffMode = "off\n"
 // and atomically — a reader never sees a partial mode file, which the
 // toolchain would read as a mode other than off.
 func telemetryOffHome(source string) (string, error) {
-	sum := sha256.Sum256([]byte(source))
-	key := hex.EncodeToString(sum[:8])
+	key := recordstore.Digest(source)
 	var roots []string
 	if root, err := recordstore.Root("telemetry-off"); err == nil {
 		roots = append(roots, root)

@@ -206,24 +206,3 @@ func compileClean(fsys fs.FS, label string, live bool) (*stipulatorv1.Spec, erro
 	}
 	return spec, nil
 }
-
-// SpecTouched flattens the semantic identity delta — added, removed,
-// text-changed, kind-changed requirements — into one sorted id list for
-// callers that need "which requirements moved" without the axes.
-func (r *Report) SpecTouched() []string {
-	seen := map[string]bool{}
-	for _, list := range [][]string{
-		r.Spec.AddedRequirements, r.Spec.RemovedRequirements,
-		r.Spec.TextChangedRequirements, r.Spec.KindChangedRequirements,
-	} {
-		for _, id := range list {
-			seen[id] = true
-		}
-	}
-	out := make([]string, 0, len(seen))
-	for id := range seen {
-		out = append(out, id)
-	}
-	sort.Strings(out)
-	return out
-}

@@ -17,7 +17,7 @@ Reachability (chunk 223's triage, 2026-09-10): NOT reachable at HEAD. Every
 spawn through commandContext sits on the parent's paths — the policy
 discovery's listings (listPackages, listClosureDirs), the normalizer's
 environment query (effectiveGoEnv), the witness runs (runPackage), the
-toolchain identity (ToolchainContext) — and the resolver child's request
+toolchain identity (goVersionCmd) — and the resolver child's request
 handlers (ResolveIn, WitnessClassVerdict, NeverServe, Slice, SliceFloor)
 reach none of them; the child's package listings run through the
 x/tools driver in the child's own process group, which the client's

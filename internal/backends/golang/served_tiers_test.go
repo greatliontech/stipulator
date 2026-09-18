@@ -79,7 +79,7 @@ func TestServedIgnoresRecordsOfWithdrawnSelections(t *testing.T) {
 	}
 	// The same fingerprint under a selection the policy never declared.
 	withdrawn := resolutioncache.Record{Selection: "withdrawn\x00go1.0", Symbol: "example.com/served/p.H", Fingerprint: fp, Resolution: "resolved", Shape: "bogus", Package: "example.com/served/p"}
-	if err := resolutioncache.Install(dir, withdrawn); err != nil {
+	if err := resolutioncache.InstallAll(dir, []resolutioncache.Record{withdrawn}); err != nil {
 		t.Fatal(err)
 	}
 	c := countSpawns(t)

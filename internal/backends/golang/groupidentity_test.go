@@ -3,6 +3,7 @@ package golang
 import (
 	"testing"
 
+	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -97,5 +98,34 @@ func TestGoGroupSubjectsExcludeAmbiguousPackages(t *testing.T) {
 	subjects := groupSubjects(g)
 	if len(subjects) != 1 || subjects[0].Package != "example.com/m/clean" {
 		t.Fatalf("subjects = %v, want only the singly-selected package (ambiguous excluded)", subjects)
+	}
+}
+
+// A group's record-identity digest is the store's one digest over its
+// identity — the coordinate records carry and the GC addresses. The
+// golden is a tripwire on the identity's ENCODING: a change moves
+// every store's coordinates, which is done deliberately with the
+// invalidation acknowledged (module_root joined the identity that way)
+// and never by a drifting digest
+// (REQ-evidence-witness-cache-format, REQ-evidence-record-store-layout).
+//
+//gofresh:pure
+func TestLiveGroupDigestsAreTheStoresDigestOfTheIdentity(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-cache-format", "REQ-evidence-record-store-layout")
+	base := func() *NormalizedInvocation {
+		return &NormalizedInvocation{
+			Tags: []string{"a"},
+			Race: true,
+			Env:  []string{"HOME=/one", "PATH=/usr/bin", "TERM=xterm"},
+		}
+	}
+	n := base()
+	live := LiveGroupDigests(&Capture{normalized: []*NormalizedInvocation{n}})
+	want := recordstore.Digest(groupIdentity(n))
+	if len(live) != 1 || !live[want] {
+		t.Fatalf("live digests = %v, want the store's digest of the identity %q", live, want)
+	}
+	if want != "b8e869906ddecdab" {
+		t.Fatalf("the base identity's digest = %q, want the recorded golden", want)
 	}
 }

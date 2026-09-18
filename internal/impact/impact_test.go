@@ -255,9 +255,6 @@ func TestPreviewNamesSpecDeltaWithoutVerdict(t *testing.T) {
 	if got := r.Spec.AddedRequirements; len(got) != 1 || got[0] != "REQ-imp-new" {
 		t.Fatalf("Added = %v (a worktree-introduced requirement must read as added, not removed)", got)
 	}
-	if touched := r.SpecTouched(); len(touched) != 2 {
-		t.Fatalf("SpecTouched = %v", touched)
-	}
 	if len(r.Bound) != 0 || len(r.Witnesses) != 0 {
 		t.Fatalf("spec-only edit previews code candidates: bound=%v witnesses=%v", r.Bound, r.Witnesses)
 	}

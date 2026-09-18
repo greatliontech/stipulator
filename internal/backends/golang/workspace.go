@@ -1,7 +1,6 @@
 package golang
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -125,32 +124,4 @@ func goworkEnv(dir string) ([]string, error) {
 	// The toolchain's telemetry is owned at this root as at the policy
 	// normalizer's (telemetry.go).
 	return telemetryOffEnv(env)
-}
-
-// Toolchain reports the identity of the go command the engine invokes in
-// dir — "GOVERSION GOOS/GOARCH" — under the same GOWORK pinning as every
-// other invocation. It is the exec'd toolchain, deliberately not this
-// binary's runtime.Version(): the witnesses run under the former.
-func Toolchain(dir string) (string, error) {
-	return ToolchainContext(context.Background(), dir)
-}
-
-// ToolchainContext reports the invoked Go toolchain while honoring ctx.
-func ToolchainContext(ctx context.Context, dir string) (string, error) {
-	env, err := goworkEnv(dir)
-	if err != nil {
-		return "", err
-	}
-	cmd := commandContext(ctx, "go", "env", "GOVERSION", "GOOS", "GOARCH")
-	cmd.Dir = dir
-	cmd.Env = env
-	out, err := cmd.Output()
-	if err != nil {
-		return "", fmt.Errorf("resolving toolchain identity: %w", err)
-	}
-	f := strings.Fields(string(out))
-	if len(f) != 3 {
-		return "", fmt.Errorf("unexpected go env output %q", out)
-	}
-	return f[0] + " " + f[1] + "/" + f[2], nil
 }

@@ -207,12 +207,12 @@ func stampPrior(store *records.Store, up *Update) {
 	*up = tmp[0]
 }
 
-// Bind validates and authors a binding: the requirement must exist in the
+// bind validates and authors one binding claim — Binds' per-claim step: the requirement must exist in the
 // compiled corpus; when the backend has a verifier, the symbol must resolve
 // (a generated-file symbol is rejected) and the shape pin is captured; the
 // content pin is always captured. A binding identical to an existing one is
 // refused.
-func Bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Update, error) {
+func bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Update, error) {
 	spec, err := compileClean(fsys)
 	if err != nil {
 		return nil, err
@@ -328,7 +328,7 @@ func Binds(fsys fs.FS, backends map[string]verify.Backend, reqs []BindRequest) (
 	over := batchFS{base: fsys, mem: fstest.MapFS{}}
 	latest := map[string]Update{}
 	for i, r := range reqs {
-		up, err := Bind(over, backends, r)
+		up, err := bind(over, backends, r)
 		if err != nil {
 			return nil, fmt.Errorf("claim %d (%s %s): %w", i+1, r.Requirement, r.Symbol, err)
 		}

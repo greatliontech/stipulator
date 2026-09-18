@@ -145,11 +145,6 @@ func validFingerprint(f witnesscache.Fingerprint) bool {
 		f.PurityAssertion == "" && f.DynamicStateVouches == "" && f.RuntimeInputs == "" && f.RuntimeDigest == ""
 }
 
-// Install atomically writes one record; a record for the same selection
-// and symbol under another fingerprint is replaced, so the store holds
-// one record per identity.
-func Install(dir string, rec Record) error { return InstallAll(dir, []Record{rec}) }
-
 // InstallAll installs a batch of records under the store's one-record
 // retention: the cold publish over a corpus writes hundreds, and the
 // store's one scan supersedes every prior fingerprint of a written
