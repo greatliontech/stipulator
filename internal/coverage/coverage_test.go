@@ -1208,3 +1208,146 @@ func TestUngrantedWitnessNamesItsCauseNeverTheSelection(t *testing.T) {
 		t.Fatalf("reasons = %q; want the execution-layer cause alone", req.Reasons)
 	}
 }
+
+// A row red on the scope boundary beside a stale consent is
+// scope-blocked exactly when a current gap excuses the stale class:
+// an uncovered-only gap, a gap whose own consent drifted, no gap at
+// all, or any other non-boundary red beside it — a failed witness, a
+// missing symbol — leaves the row unblocked (REQ-check-verdict,
+// REQ-gap-consent).
+//
+//gofresh:pure
+func TestScopeBlockedSurvivesAnExcusedStaleConsent(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-verdict", "REQ-gap-consent")
+	doc := "# S\n\n**REQ-s-excused** (behavior): It MUST a.\n\n**REQ-s-uncovered** (behavior): It MUST b.\n\n**REQ-s-drifted** (behavior): It MUST c.\n\n**REQ-s-bare** (behavior): It MUST d.\n\n**REQ-s-failed** (behavior): It MUST e.\n\n**REQ-s-missing** (behavior): It MUST f.\n\n**REQ-s-current** (behavior): It MUST g.\n\n**REQ-s-both** (behavior): It MUST h.\n\n**REQ-s-policy** (behavior): It MUST i.\n\n**REQ-s-twogaps** (behavior): It MUST j.\n\n**REQ-s-currentgap** (behavior): It MUST k.\n\n**REQ-s-bothexcused** (behavior): It MUST l.\n"
+	spec0, _ := fixture(t, doc, nil)
+	hashOf := map[string]string{}
+	for _, r := range spec0.GetRequirements() {
+		hashOf[r.GetId()] = r.GetContentHash()
+	}
+	gap := func(id, hash string, excuses ...string) string {
+		s := "requirement_id: \"" + id + "\"\nreason: \"r\"\ncontent_hash: \"" + hash + "\"\nlands { manual { condition: \"external\" } }\n"
+		for _, e := range excuses {
+			s += "excuses: " + e + "\n"
+		}
+		return s
+	}
+	spec, store := fixture(t, doc, map[string]string{
+		".stipulator/gaps/excused.textproto":   gap("REQ-s-excused", hashOf["REQ-s-excused"], "GAP_EXCUSE_STALE", "GAP_EXCUSE_UNCOVERED"),
+		".stipulator/gaps/uncovered.textproto": gap("REQ-s-uncovered", hashOf["REQ-s-uncovered"], "GAP_EXCUSE_UNCOVERED"),
+		".stipulator/gaps/drifted.textproto":   gap("REQ-s-drifted", strings.Repeat("0", 64), "GAP_EXCUSE_STALE"),
+		".stipulator/gaps/failed.textproto":    gap("REQ-s-failed", hashOf["REQ-s-failed"], "GAP_EXCUSE_STALE"),
+		".stipulator/gaps/missing.textproto":   gap("REQ-s-missing", hashOf["REQ-s-missing"], "GAP_EXCUSE_STALE"),
+		// A witness on each boundary at once: neither boundary is the
+		// row's only red.
+		".stipulator/gaps/both.textproto": gap("REQ-s-both", hashOf["REQ-s-both"], "GAP_EXCUSE_STALE"),
+		// The policy boundary beside an excused stale class: the same
+		// rule, the same derivation.
+		".stipulator/gaps/policy.textproto": gap("REQ-s-policy", hashOf["REQ-s-policy"], "GAP_EXCUSE_STALE"),
+		// Two current records excuse the union of their classes in
+		// either file order.
+		".stipulator/gaps/twogaps-a.textproto": gap("REQ-s-twogaps", hashOf["REQ-s-twogaps"], "GAP_EXCUSE_STALE"),
+		".stipulator/gaps/twogaps-b.textproto": gap("REQ-s-twogaps", hashOf["REQ-s-twogaps"], "GAP_EXCUSE_UNCOVERED"),
+		// A gap excusing stale and broken alike: the row is no violation,
+		// and no reason claims a boundary remains.
+		".stipulator/gaps/bothexcused.textproto": gap("REQ-s-bothexcused", hashOf["REQ-s-bothexcused"], "GAP_EXCUSE_STALE", "GAP_EXCUSE_BROKEN"),
+		// A current consent under a gap excusing stale: blocked by the
+		// boundary alone, the excused-stale reason never printed.
+		".stipulator/gaps/currentgap.textproto": gap("REQ-s-currentgap", hashOf["REQ-s-currentgap"], "GAP_EXCUSE_STALE"),
+	})
+	skipped := func(id string, pinned bool) verify.BindingResult {
+		r := result(id, stipulatorv1.BindingRole_BINDING_ROLE_TESTS, pinned, verify.Resolved, verify.ShapeMatch, verify.TestNotRun)
+		r.ScopeSkipped = true
+		return r
+	}
+	vr := &verify.Report{Results: []verify.BindingResult{
+		skipped("REQ-s-excused", false),
+		skipped("REQ-s-uncovered", false),
+		skipped("REQ-s-drifted", false),
+		skipped("REQ-s-bare", false),
+		skipped("REQ-s-failed", false),
+		result("REQ-s-failed", stipulatorv1.BindingRole_BINDING_ROLE_TESTS, true, verify.Resolved, verify.ShapeMatch, verify.TestFailed),
+		skipped("REQ-s-missing", false),
+		result("REQ-s-missing", stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS, true, verify.NotFound, verify.ShapeUnknown, verify.TestNotRun),
+		skipped("REQ-s-current", true),
+		skipped("REQ-s-both", false),
+		func() verify.BindingResult {
+			r := result("REQ-s-both", stipulatorv1.BindingRole_BINDING_ROLE_TESTS, false, verify.Resolved, verify.ShapeMatch, verify.TestNotRun)
+			r.OutsideWitnessSelection = true
+			return r
+		}(),
+		func() verify.BindingResult {
+			r := result("REQ-s-policy", stipulatorv1.BindingRole_BINDING_ROLE_TESTS, false, verify.Resolved, verify.ShapeMatch, verify.TestNotRun)
+			r.OutsideWitnessSelection = true
+			return r
+		}(),
+		skipped("REQ-s-twogaps", false),
+		skipped("REQ-s-currentgap", true),
+		skipped("REQ-s-bothexcused", false),
+	}}
+	rep := Evaluate(spec, vr, store, true, nil)
+	blocked := map[string]bool{}
+	reasons := map[string][]string{}
+	for _, r := range rep.Requirements {
+		blocked[r.Id] = r.ScopeBlocked
+		reasons[r.Id] = r.Reasons
+	}
+	if !blocked["REQ-s-excused"] {
+		t.Fatalf("an excused stale consent beside the boundary not scope-blocked: %v", reasons["REQ-s-excused"])
+	}
+	if !blocked["REQ-s-current"] {
+		t.Fatal("the pure scope-skip control not scope-blocked")
+	}
+	for _, id := range []string{"REQ-s-uncovered", "REQ-s-drifted", "REQ-s-bare", "REQ-s-failed", "REQ-s-missing", "REQ-s-both", "REQ-s-policy"} {
+		if blocked[id] {
+			t.Fatalf("%s scope-blocked despite an unexcused or second red: %v", id, reasons[id])
+		}
+	}
+	if !blocked["REQ-s-twogaps"] {
+		t.Fatalf("two current gap records did not excuse the union of their classes: %v", reasons["REQ-s-twogaps"])
+	}
+	has := func(id, text string) bool {
+		return slices.ContainsFunc(reasons[id], func(s string) bool { return strings.Contains(s, text) })
+	}
+	// The policy boundary reads the same derivation: an out-of-selection
+	// witness beside an excused stale class is policy-blocked, and a
+	// witness on both boundaries is blocked on neither.
+	policyBlocked := map[string]bool{}
+	for _, r := range rep.Requirements {
+		policyBlocked[r.Id] = r.WitnessSelectionBlocked
+	}
+	if !policyBlocked["REQ-s-policy"] || policyBlocked["REQ-s-both"] || policyBlocked["REQ-s-excused"] {
+		t.Fatalf("policy boundary classes: %v", policyBlocked)
+	}
+	// Each boundary names itself in its reason — the scope's in
+	// execution terms, the policy's in selection terms — and a row
+	// blocked on neither, its remaining red a failed witness or the
+	// other boundary, claims no boundary at all.
+	if !has("REQ-s-policy", "the policy's witness selection, which left its witness ungranted") || has("REQ-s-policy", "id scope") {
+		t.Fatalf("the policy-blocked row's reason: %v", reasons["REQ-s-policy"])
+	}
+	for _, id := range []string{"REQ-s-failed", "REQ-s-both", "REQ-s-missing"} {
+		if has(id, "excuses its stale class") {
+			t.Fatalf("%s claims a boundary beside an unexcused red: %v", id, reasons[id])
+		}
+	}
+	// A current consent under a gap excusing stale is blocked by the
+	// boundary alone and never says its stale class was excused.
+	if !blocked["REQ-s-currentgap"] || slices.ContainsFunc(reasons["REQ-s-currentgap"], func(s string) bool { return strings.Contains(s, "excuses its stale class") }) {
+		t.Fatalf("current consent under a stale-excusing gap: blocked=%t %v", blocked["REQ-s-currentgap"], reasons["REQ-s-currentgap"])
+	}
+	// The ordinary report keeps the row a violation — the scoped
+	// verdict, not the gate, is what excludes a boundary row — and the
+	// row says the gap excused its stale consent.
+	if !slices.Contains(rep.Violations, "REQ-s-excused") {
+		t.Fatalf("the ordinary report dropped the boundary row: %v", rep.Violations)
+	}
+	// The row carries both facts: its stale class is excused, and the
+	// gap does not excuse the broken bucket it still stands in.
+	if !has("REQ-s-excused", "the check's id scope, which left its witness unexecuted") || !has("REQ-s-excused", "not broken") {
+		t.Fatalf("the excused row's reasons: %v", reasons["REQ-s-excused"])
+	}
+	if slices.Contains(rep.Violations, "REQ-s-bothexcused") || has("REQ-s-bothexcused", "excuses its stale class") {
+		t.Fatalf("a row whose every class is excused: violations=%v reasons=%v", rep.Violations, reasons["REQ-s-bothexcused"])
+	}
+}

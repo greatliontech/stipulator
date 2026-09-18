@@ -750,3 +750,23 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "5402f1d3f92714c52b683866c629035013717f50884ae321244cecd49e32e934"
 }
+
+bindings {
+  requirement_id: "REQ-gap-consent"
+  content_hash: "3005402e5d29c403cfc5364da5df7bd2636f4fcb69029cb9c2585ff1f4d3c552"
+  source_hash: "9422123d29b3cc6eeeb560b929703090468acbae149566bdf81724d6f35d42bb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.TestScopeBlockedSurvivesAnExcusedStaleConsent"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "8427991e36c577b118ff1d5add923542a8833c5cae08012d96d601380fe292d2"
+}
+
+bindings {
+  requirement_id: "REQ-gap-consent"
+  content_hash: "3005402e5d29c403cfc5364da5df7bd2636f4fcb69029cb9c2585ff1f4d3c552"
+  source_hash: "9422123d29b3cc6eeeb560b929703090468acbae149566bdf81724d6f35d42bb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckScopedVerdictExcludesAnExcusedStaleConsentOnTheBoundary"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "31fa3a6594000275ed200d335dc4c838a69c71b15789a66156d25c0800cca32f"
+}

@@ -329,3 +329,121 @@ func TestCheckScopedIdsExecutesOnlyInScopeStale(t *testing.T) {
 		t.Error("full+ids accepted")
 	}
 }
+
+// The field report's four controls: a scoped check passes as partial
+// with the out-of-scope stale witness scope-blocked; an edit to the
+// out-of-scope requirement's text fails it (a stale consent no gap
+// declares); a current gap excusing stale and uncovered restores the
+// partial pass without executing that witness; the default unscoped
+// check executes it and passes outright (REQ-check-verdict,
+// REQ-gap-consent).
+func TestCheckScopedVerdictExcludesAnExcusedStaleConsentOnTheBoundary(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-verdict", "REQ-gap-consent")
+	if testing.Short() {
+		t.Skip("executes a policy over a fixture tree")
+	}
+	neutralAmbient(t)
+	outsideDoc := func(text string) string {
+		return "# Scoped gap\n\n**REQ-fix-a** (behavior): The fixture MUST double.\n\n**REQ-fix-out** (behavior): " + text + "\n"
+	}
+	files := baseTree(map[string]string{
+		".stipulator/policy.textproto": "invocations {\n  name: \"plain\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./...\"\n    plain_witness: true\n  }\n}\n",
+		"specs/check.md":               outsideDoc("The outside operation MUST triple."),
+		"tri/tri.go":                   "package tri\n\nfunc Triple(n int) int { return 3 * n }\n",
+		"tri/tri_test.go":              "package tri\n\nimport \"testing\"\n\nfunc TestTriple(t *testing.T) {\n\tif Triple(2) != 6 {\n\t\tt.Fatal(\"broken\")\n\t}\n}\n",
+	})
+	dir := writeTree(t, files)
+	hashes := func() map[string]string {
+		t.Helper()
+		spec, diags, err := compile.Compile(os.DirFS(dir))
+		if err != nil || len(diags) > 0 {
+			t.Fatalf("compile: %v %v", err, diags)
+		}
+		out := map[string]string{}
+		for _, r := range spec.GetRequirements() {
+			out[r.GetId()] = r.GetContentHash()
+		}
+		return out
+	}
+	hashOf := hashes()
+	gb, err := golang.NewWholeTree(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, shapeA, err := gb.Resolve("example.com/checkfix/ok.TestDouble")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, shapeOut, err := gb.Resolve("example.com/checkfix/tri.TestTriple")
+	gb.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	binding := func(req, sym, shape string) string {
+		return "bindings {\n  requirement_id: \"" + req + "\"\n  content_hash: \"" + hashOf[req] + "\"\n  backend: \"go\"\n  symbol: \"" + sym + "\"\n  role: BINDING_ROLE_TESTS\n  shape_hash: \"" + shape + "\"\n}\n"
+	}
+	if err := os.MkdirAll(filepath.Join(dir, ".stipulator", "bindings"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeFileUnder(dir, ".stipulator/bindings/a.textproto", binding("REQ-fix-a", "example.com/checkfix/ok.TestDouble", shapeA)); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeFileUnder(dir, ".stipulator/bindings/out.textproto", binding("REQ-fix-out", "example.com/checkfix/tri.TestTriple", shapeOut)); err != nil {
+		t.Fatal(err)
+	}
+	outside := func(res *stipulatorv1.CheckResult) *stipulatorv1.RequirementCoverage {
+		for _, r := range res.GetCoverage().GetRequirements() {
+			if r.GetId() == "REQ-fix-out" {
+				return r
+			}
+		}
+		t.Fatal("outside row missing")
+		return nil
+	}
+	// Control one: the pure scope skip passes as partial.
+	res, err := Run(context.Background(), dir, false, []string{"REQ-fix-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.GetPassed() || !res.GetScopePartial() || !outside(res).GetScopeBlocked() || res.GetTestsExecuted() != 1 {
+		t.Fatalf("pure scope skip: passed=%t partial=%t blocked=%t executed=%d", res.GetPassed(), res.GetScopePartial(), outside(res).GetScopeBlocked(), res.GetTestsExecuted())
+	}
+	// Control two: the outside requirement's text moves; its consent is
+	// stale and no gap declares it — the scoped verdict fails.
+	if err := writeFileUnder(dir, "specs/check.md", outsideDoc("The outside operation MUST triple and preserve the result.")); err != nil {
+		t.Fatal(err)
+	}
+	res, err = Run(context.Background(), dir, false, []string{"REQ-fix-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.GetPassed() || outside(res).GetScopeBlocked() {
+		t.Fatalf("unexcused stale consent on the boundary passed: blocked=%t reasons=%v", outside(res).GetScopeBlocked(), outside(res).GetReasons())
+	}
+	// The failing case: a current gap excuses stale and uncovered, not
+	// broken; the outside witness stays unexecuted and the scoped
+	// verdict passes as partial with the row scope-blocked.
+	hashOf = hashes()
+	if err := os.MkdirAll(filepath.Join(dir, ".stipulator", "gaps"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeFileUnder(dir, ".stipulator/gaps/out.textproto", "requirement_id: \"REQ-fix-out\"\nreason: \"not yet reconciled\"\ncontent_hash: \""+hashOf["REQ-fix-out"]+"\"\nlands { manual { condition: \"reconciled\" } }\nexcuses: GAP_EXCUSE_STALE\nexcuses: GAP_EXCUSE_UNCOVERED\n"); err != nil {
+		t.Fatal(err)
+	}
+	res, err = Run(context.Background(), dir, false, []string{"REQ-fix-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.GetPassed() || !res.GetScopePartial() || !outside(res).GetScopeBlocked() || res.GetTestsExecuted() != 0 {
+		t.Fatalf("excused stale consent on the boundary: passed=%t partial=%t blocked=%t executed=%d reasons=%v", res.GetPassed(), res.GetScopePartial(), outside(res).GetScopeBlocked(), res.GetTestsExecuted(), outside(res).GetReasons())
+	}
+	// Control four: the default unscoped check executes the outside
+	// witness and passes outright, the stale row excused by the gap.
+	res, err = Run(context.Background(), dir, false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.GetPassed() || res.GetScopePartial() || res.GetTestsExecuted() != 1 || outside(res).GetBucket() != stipulatorv1.Bucket_BUCKET_STALE {
+		t.Fatalf("default check: passed=%t partial=%t executed=%d bucket=%v", res.GetPassed(), res.GetScopePartial(), res.GetTestsExecuted(), outside(res).GetBucket())
+	}
+}

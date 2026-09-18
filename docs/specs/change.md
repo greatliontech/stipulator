@@ -436,7 +436,11 @@ partial verdict, while a red the scoped pass did observe fails it
 exactly as on the default class (the degraded fallback
 is the scope's own full execution, never the tree's), a requirement red
 solely on that scope boundary is classed scope-blocked and excluded
-from the verdict's undeclared-red term, prune residue is not derived —
+from the verdict's undeclared-red term — a red of the stale class
+beside that boundary (a drifted content pin, an unpinned shape, a stale
+attestation) which a current gap excuses (REQ-gap-consent) is a
+declared red, and the row remains classed scope-blocked — prune residue
+is not derived —
 resolved-gap evidence takes the serving class over the whole tree — and
 the result flags the verdict partial and echoes the scope; unknown
 identifiers refuse, and scoping composes with the default class only.

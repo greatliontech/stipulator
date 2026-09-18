@@ -108,8 +108,10 @@ type Requirement struct {
 	// one result-level diagnostic (REQ-check-witness-selection).
 	WitnessSelectionBlocked bool
 	// ScopeBlocked marks a row red solely because the caller's id scope
-	// left its stale bound witnesses unexecuted - excluded from a scoped
-	// check's verdict, never from the gate's.
+	// left its stale bound witnesses unexecuted — a red of the stale
+	// class beside the boundary that a current gap excuses is declared
+	// and keeps the row blocked (REQ-check-verdict, REQ-gap-consent) —
+	// excluded from a scoped check's verdict, never from the gate's.
 	ScopeBlocked bool
 }
 
@@ -548,6 +550,9 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 	}
 	rep := &Report{PolicyOverrides: pol.Active(), DanglingPointers: dangling}
 	buckets := map[string]Bucket{}
+	// facts keeps, per requirement, the red facts behind its bucket that
+	// the two boundary classes read once the gaps are judged.
+	facts := map[string]rowFacts{}
 	for _, r := range spec.GetRequirements() {
 		e := get(r.GetId())
 		bound := len(e.reasons) > 0 || e.witness() || e.static || e.stale || e.broken || e.attested || boundIDs[r.GetId()]
@@ -625,11 +630,10 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		}
 		buckets[r.GetId()] = b
 		sort.Strings(e.reasons)
+		facts[r.GetId()] = rowFacts{scopeSkipped: e.scopeSkipped > 0, outsideSelection: e.outsideSelection > 0, otherRed: e.otherRed, stale: e.stale}
 		rep.Requirements = append(rep.Requirements, Requirement{
 			Id: r.GetId(), Kind: r.GetKind(), Keyword: r.GetKeyword(),
 			Bucket: b, Reasons: e.reasons,
-			WitnessSelectionBlocked: b == Broken && e.outsideSelection > 0 && e.scopeSkipped == 0 && !e.otherRed && !e.stale,
-			ScopeBlocked:            b == Broken && e.scopeSkipped > 0 && e.outsideSelection == 0 && !e.otherRed && !e.stale,
 		})
 	}
 
@@ -653,7 +657,14 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		if drifted {
 			staleConsent[id] = true
 		} else {
-			excused[id] = excuseSet(gf.Gap.GetExcuses())
+			// Two current records on one requirement excuse the union
+			// of their classes, whatever their file order.
+			if excused[id] == nil {
+				excused[id] = map[Bucket]bool{}
+			}
+			for class := range excuseSet(gf.Gap.GetExcuses()) {
+				excused[id][class] = true
+			}
 		}
 		state := Open
 		switch {
@@ -695,6 +706,33 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		if class == Partial {
 			class = Uncovered
 		}
+		// The two boundary classes are one derivation, decided here
+		// with the gaps known: a row is blocked on a boundary — the
+		// caller's id scope, the policy's witness selection — when that
+		// boundary is its only undeclared red; a red of the stale class
+		// beside it that a current gap excuses is declared, never
+		// undeclared (REQ-check-verdict, REQ-check-witness-selection,
+		// REQ-gap-consent).
+		f := facts[r.Id]
+		// The excuse set alone says whether the stale class is declared:
+		// only a current gap record populates it, and a drifted record's
+		// suspension already emptied it for the requirement.
+		declaredStale := f.stale && excused[r.Id][Stale]
+		r.ScopeBlocked = r.Bucket == Broken && f.blockedOn(f.scopeSkipped, f.outsideSelection, declaredStale)
+		r.WitnessSelectionBlocked = r.Bucket == Broken && f.blockedOn(f.outsideSelection, f.scopeSkipped, declaredStale)
+		// The blocked row that is still a violation says which boundary
+		// its remaining red is: the caller's id scope left the witness
+		// unexecuted; the policy's witness selection left it ungranted —
+		// a selection fact, never an execution one
+		// (REQ-check-witness-selection).
+		if declaredStale && !excused[r.Id][class] {
+			switch {
+			case r.ScopeBlocked:
+				r.Reasons = append(r.Reasons, "the gap record naming this requirement excuses its stale class; the remaining red is the check's id scope, which left its witness unexecuted")
+			case r.WitnessSelectionBlocked:
+				r.Reasons = append(r.Reasons, "the gap record naming this requirement excuses its stale class; the remaining red is the policy's witness selection, which left its witness ungranted")
+			}
+		}
 		// A gap excuses only the violation classes it declares
 		// (REQ-gate-no-undeclared): a standing gap never absorbs a
 		// later red of a different class, and the mismatch is surfaced
@@ -718,6 +756,22 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 	}
 	sort.Strings(rep.Violations)
 	return rep
+}
+
+// rowFacts are the red facts behind a requirement's bucket that the
+// boundary classes read: whether a bound witness was left unexecuted by
+// the caller's id scope or by the policy's witness selection, whether
+// any other red stands, and whether a stale-class red stands (a drifted
+// content pin, an unpinned shape, a stale attestation).
+type rowFacts struct {
+	scopeSkipped, outsideSelection, otherRed, stale bool
+}
+
+// blockedOn reports whether the row is red solely on the named boundary:
+// that boundary present, the other absent, no other red, and its stale
+// class either absent or declared by a current gap.
+func (f rowFacts) blockedOn(boundary, other, declaredStale bool) bool {
+	return boundary && !other && !f.otherRed && (!f.stale || declaredStale)
 }
 
 // excuseSet expands a record's declared excuse classes; an empty
