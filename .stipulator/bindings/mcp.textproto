@@ -1230,3 +1230,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "d68ccdebdf3606359b05bb0c6917bc3a16e11fffae2c90ae3bf53728ae56d97c"
 }
+
+bindings {
+  requirement_id: "REQ-mcp-writes-confined"
+  content_hash: "3185a2c55794ffc47cfa6b0c557fe51cbdecfa5a377c04d1c9e57e9d042296d3"
+  source_hash: "4b8d26ad651ed555a195619494a868b1037a7d3ec4d774e26154c65e587b38fb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestContextAndPartitionsExportPath"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "384602742663030d9790100f7345b5e1a62c1cca9fb664e4b48b78418a2eca39"
+}

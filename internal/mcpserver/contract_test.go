@@ -134,9 +134,19 @@ func TestServerDeclaresInstructions(t *testing.T) {
 //
 //gofresh:pure
 func TestContextAndPartitionsExportPath(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-response-contract")
-	sess, writes := harness(t, map[string]string{
+	stipulate.Covers(t, "REQ-mcp-response-contract", "REQ-mcp-writes-confined")
+	// The backends are built by every pass, the no-test form included:
+	// their construction count says whether a refused export path cost
+	// a pass.
+	passes := 0
+	sess, writes := harnessWith(t, map[string]string{
 		".stipulator/bindings/m.textproto": pinnedBinding(t),
+	}, func(srv *Server) {
+		prior := srv.backends
+		srv.backends = func(ctx context.Context, syms []string) (map[string]verify.Backend, error) {
+			passes++
+			return prior(ctx, syms)
+		}
 	})
 	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "context", Arguments: map[string]any{
 		"ids": "REQ-m-a", "no_test": true, "export_path": ".stipulator/exports/dossiers.json",
@@ -167,6 +177,30 @@ func TestContextAndPartitionsExportPath(t *testing.T) {
 		t.Fatalf("a second export to the same path refused: %v %+v", err, again)
 	}
 
+	// An export path outside the export home, or unclean, is refused
+	// before any pass runs and nothing is written — on both exporting
+	// verbs (REQ-mcp-writes-confined).
+	for _, verb := range []string{"context", "partitions"} {
+		// Each shape isolates one conjunct of the guard: a path outside
+		// the home, an unclean spelling, an absolute path, and a ".."
+		// that survives cleaning inside a name under the home. The
+		// refusal precedes the pass: no backend is built for it.
+		for _, path := range []string{"notexports/x.json", ".stipulator/exports/../x.json", "./.stipulator/exports/x.json", "/tmp/x.json", ".stipulator/exports/a..b.json"} {
+			before, passesBefore := len(writes), passes
+			refused, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: verb, Arguments: map[string]any{
+				"ids": "REQ-m-a", "no_test": true, "export_path": path,
+			}})
+			if err != nil || !refused.IsError || !strings.Contains(toolText(t, refused), "export_path must be a clean path under .stipulator/exports/") {
+				t.Fatalf("%s export_path %q = %v %+v; want the refusal", verb, path, err, refused)
+			}
+			if _, wrote := writes[path]; wrote || len(writes) != before {
+				t.Fatalf("%s export_path %q wrote: %v", verb, path, writes)
+			}
+			if passes != passesBefore {
+				t.Fatalf("%s export_path %q cost a pass before its refusal", verb, path)
+			}
+		}
+	}
 	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "partitions", Arguments: map[string]any{
 		"ids": "REQ-m-a", "no_test": true, "export_path": ".stipulator/exports/partitions.json",
 	}})
