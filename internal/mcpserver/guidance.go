@@ -5,7 +5,23 @@ import (
 	"fmt"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	guidancepkg "github.com/greatliontech/gofresh/guidance"
+	stipulator "github.com/greatliontech/stipulator"
 )
+
+// guidanceDoc is the embedded guidance document; a malformed document
+// is a build defect the parse-pinning test surfaces, so consumers
+// fail loudly rather than serving nothing.
+func guidanceDoc() *guidancepkg.Document {
+	doc, err := stipulator.GuidanceDocument()
+	if err != nil {
+		panic("mcpserver: embedded guidance document malformed: " + err.Error())
+	}
+	return doc
+}
+
+func guidanceOrientation() string { return guidanceDoc().Orientation() }
 
 // guidanceIn asks for one verb's section or, empty, the decision map.
 type guidanceIn struct {

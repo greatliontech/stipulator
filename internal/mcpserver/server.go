@@ -10,43 +10,30 @@
 package mcpserver
 
 import (
-	guidancepkg "github.com/greatliontech/gofresh/guidance"
-	stipulator "github.com/greatliontech/stipulator"
-	"github.com/greatliontech/stipulator/internal/corpus"
-	"github.com/greatliontech/stipulator/internal/remedy"
-
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"strings"
-	"time"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
-
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/compile"
+	"github.com/greatliontech/stipulator/internal/corpus"
 	"github.com/greatliontech/stipulator/internal/coverage"
-	"github.com/greatliontech/stipulator/internal/policy"
-	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/recordapply"
 	"github.com/greatliontech/stipulator/internal/records"
+	"github.com/greatliontech/stipulator/internal/remedy"
 	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/verifyrun"
-	"github.com/greatliontech/stipulator/internal/views"
-	"github.com/greatliontech/stipulator/internal/wire"
 )
 
-// Server serves one repository. The function fields exist so tests can
-// inject trees, backends, and test runs; New wires production behavior.
 // serverInstructions teach an agent which tool answers which question,
 // so tool selection needs no trial calls (REQ-mcp-server). They are
 // the embedded guidance document's decision map, verbatim — the
@@ -54,19 +41,8 @@ import (
 // call away.
 var serverInstructions = guidanceOrientation()
 
-// guidanceDoc is the embedded guidance document; a malformed document
-// is a build defect the parse-pinning test surfaces, so consumers
-// fail loudly rather than serving nothing.
-func guidanceDoc() *guidancepkg.Document {
-	doc, err := stipulator.GuidanceDocument()
-	if err != nil {
-		panic("mcpserver: embedded guidance document malformed: " + err.Error())
-	}
-	return doc
-}
-
-func guidanceOrientation() string { return guidanceDoc().Orientation() }
-
+// Server serves one repository. The function fields exist so tests can
+// inject trees, backends, and test runs; New wires production behavior.
 type Server struct {
 	// root is the launch directory the corpus search started from,
 	// kept for guided failure messages.
@@ -252,6 +228,14 @@ func (s *Server) syncIndex(spec *stipulatorv1.Spec) {
 	}
 }
 
+func truncate(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return string(r[:n]) + "…"
+}
+
 // policy loads the manifest's coverage-policy overrides; verification
 // errors surface at compile time, so a load failure here is unreachable
 // on a tree that compiled.
@@ -326,306 +310,4 @@ func (s *Server) verifyPass(ctx context.Context, noTest bool, scopeIDs string) (
 		return nil, nil, nil, err
 	}
 	return verifyrun.Run(ctx, s.deps(), noTest, ids)
-}
-
-// withStamps appends the operation's phase-timing line to the text
-// content — the notification-blind client's after-the-fact record that
-// slow work was work, not a hang (REQ-mcp-progress's completed-call
-// fallback). One bounded line; empty reporters append nothing.
-func withStamps(text string, prog *progress.Reporter) string {
-	if stamps := prog.Stamps(); stamps != "" {
-		return text + "\n" + stamps
-	}
-	return text
-}
-
-// stampedResult is withStamps for write-shaped results: the timing line
-// rides the TEXT content only — never writeOut's structured Notes, which
-// enumerate operation consequences (REQ-mcp-progress's text-digest-only
-// carve-out).
-func stampedResult(res *mcp.CallToolResult, prog *progress.Reporter) *mcp.CallToolResult {
-	if stamps := prog.Stamps(); stamps != "" && len(res.Content) > 0 {
-		if tc, ok := res.Content[0].(*mcp.TextContent); ok {
-			tc.Text += "\n" + stamps
-		}
-	}
-	return res
-}
-
-// projected pairs a tool's text result with its structured content: the
-// one ProtoJSON projection of the result message (REQ-mcp-tools).
-func projected(res *mcp.CallToolResult, m proto.Message) (*mcp.CallToolResult, map[string]any, error) {
-	out, err := wire.StructuredContent(m)
-	if err != nil {
-		return nil, nil, err
-	}
-	return res, out, nil
-}
-
-// summarized emits one wire encoding of the payload: the structured
-// result beside a one-line text summary. Leaving Content nil would make
-// the SDK serialize the whole payload a second time as text
-// (REQ-mcp-response-contract).
-func summarized(line string, m proto.Message) (*mcp.CallToolResult, map[string]any, error) {
-	return projected(textOnly(line), m)
-}
-
-// startProgress arms one tool call's progress seam: the returned context
-// carries a Reporter whose phase tracking backs terminal-cause
-// attribution, and — only when the client asked, by sending a progress
-// token — whose bounded events ride MCP progress notifications
-// (REQ-mcp-progress). Progress never enters result payloads: the sink is
-// the notification channel and nothing else. The sink is non-blocking —
-// the transport write happens on NonBlocking's sender goroutine — so a
-// stalled progress-consuming client costs dropped advisory events, never
-// the operation's cancellability. Notifications are sent on a
-// cancellation-free context because the terminal event must still reach
-// the client after the request context ends.
-func (s *Server) startProgress(ctx context.Context, req *mcp.CallToolRequest) (context.Context, *progress.Reporter) {
-	var sink func(*stipulatorv1.ProgressEvent)
-	if token := req.Params.GetProgressToken(); token != nil {
-		session := req.Session
-		notifyCtx := context.WithoutCancel(ctx)
-		// NonBlocking's one sender goroutine calls send serially, so the
-		// counter needs no lock; MCP requires the progress value to
-		// increase with every notification.
-		var seq float64
-		sink = progress.NonBlocking(func(e *stipulatorv1.ProgressEvent) {
-			b, err := protojson.Marshal(e)
-			if err != nil {
-				return
-			}
-			seq++
-			_ = session.NotifyProgress(notifyCtx, &mcp.ProgressNotificationParams{
-				ProgressToken: token,
-				Message:       string(b),
-				Progress:      seq,
-			})
-		})
-	} else if req != nil && req.Session != nil {
-		// No token: progress notifications are unaddressable, so the one
-		// remaining token-free channel carries a bounded liveness trace -
-		// phase transitions only, as info-level log messages. The SDK
-		// sends nothing unless the client has set a log level, so this is
-		// free for clients that cannot consume it; a client that set a
-		// level distinguishes slow work from a hang without a token
-		// (REQ-mcp-progress's liveness bound). The session guard covers
-		// direct in-process calls that carry no wire request.
-		session := req.Session
-		notifyCtx := context.WithoutCancel(ctx)
-		var phases progress.PhaseTracker
-		sink = progress.NonBlocking(func(e *stipulatorv1.ProgressEvent) {
-			// Notes are bounded by the policy (one per executing
-			// invocation, one per persisting unit), so they ride the
-			// liveness channel beside the phase transitions.
-			if note := e.GetNote(); note != "" {
-				_ = session.Log(notifyCtx, &mcp.LoggingMessageParams{
-					Level:  "info",
-					Logger: "stipulator",
-					Data:   fmt.Sprintf("%s (%s elapsed)", note, e.GetElapsed().AsDuration().Round(time.Second)),
-				})
-			}
-			if !phases.Changed(e) {
-				return
-			}
-			_ = session.Log(notifyCtx, &mcp.LoggingMessageParams{
-				Level:  "info",
-				Logger: "stipulator",
-				Data:   fmt.Sprintf("phase %s (%s elapsed)", progress.Word(e.GetPhase()), e.GetElapsed().AsDuration().Round(time.Second)),
-			})
-		})
-	}
-	prog := progress.New(sink)
-	return progress.NewContext(ctx, prog), prog
-}
-
-// terminalToolError seals a failed call's progress and names its terminal
-// cause. A call that ends at a deadline or a client cancellation
-// identifies the phase it died in and which of the two ended it — so a
-// client can distinguish long-running work, deadline expiry,
-// cancellation, and server failure without guessing (REQ-mcp-progress,
-// REQ-mcp-cancellation); any other operational fault is a server
-// failure and speaks for itself.
-func terminalToolError(prog *progress.Reporter, ctx context.Context, err error) error {
-	switch ctx.Err() {
-	case context.DeadlineExceeded:
-		return fmt.Errorf("%s: %w", prog.Seal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_DEADLINE), err)
-	case context.Canceled:
-		// The client's cancellation: the line names the cause, the
-		// phase, and what the operation kept.
-		return fmt.Errorf("%s: %w", prog.SealBy(stipulatorv1.TerminalCause_TERMINAL_CAUSE_CANCELLED, "the client"), err)
-	}
-	if errors.Is(err, policy.ErrRecord) {
-		// A missing or invalid accepted test policy is a fact about the
-		// tree, not a server fault: the unified check fails its verdict on
-		// exactly this condition (REQ-check-verdict), so the tool call
-		// carries the test-failure cause and names the record's path
-		// beside the loader's guidance — an agent must distinguish
-		// no-policy from server failure without guessing.
-		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_TEST_FAILURE)
-		return fmt.Errorf("%s: %w", policy.Path, err)
-	}
-	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_SERVER_FAILURE)
-	return err
-}
-
-// scopeFrom builds a scope from tool params, tolerating the same id
-// encodings splitIDs does.
-func scopeFrom(ids, bucket, filter, pathPrefix string) (views.Scope, error) {
-	sc := views.Scope{Bucket: bucket, Filter: filter, Path: pathPrefix}
-	if strings.TrimSpace(ids) != "" {
-		parsed, err := splitIDs(ids)
-		if err != nil {
-			return views.Scope{}, err
-		}
-		sc.Ids = parsed
-	}
-	return sc, nil
-}
-
-// verificationProblems folds a report's problems into one teaching
-// refusal, every problem listed — the one rendering all three
-// problem-refusing tools share.
-func verificationProblems(rep *verify.Report) error {
-	if len(rep.Problems) == 0 {
-		return nil
-	}
-	msgs := make([]string, 0, len(rep.Problems))
-	for _, p := range rep.Problems {
-		msgs = append(msgs, p.String())
-	}
-	return fmt.Errorf("verification problems:\n%s", strings.Join(msgs, "\n"))
-}
-
-// splitIDsLoose splits a comma list; empty input is an empty selection,
-// not an error.
-func splitIDsLoose(commaIDs string) ([]string, error) {
-	if strings.TrimSpace(commaIDs) == "" {
-		return nil, nil
-	}
-	return splitIDs(commaIDs)
-}
-
-func splitIDs(commaIDs string) ([]string, error) {
-	trimmed := strings.TrimSpace(commaIDs)
-	// Tolerate a JSON-array-encoded list: clients that serialize the ids
-	// field as an array deliver it as one string, and treating it as a
-	// single identifier produces a mangled unknown-id error.
-	if strings.HasPrefix(trimmed, "[") {
-		var arr []string
-		if err := json.Unmarshal([]byte(trimmed), &arr); err != nil {
-			return nil, fmt.Errorf("ids looks like a JSON array but does not parse: %w", err)
-		}
-		var ids []string
-		for _, id := range arr {
-			if id = strings.TrimSpace(id); id != "" {
-				ids = append(ids, id)
-			}
-		}
-		if len(ids) == 0 {
-			return nil, fmt.Errorf("no requirement identifiers given")
-		}
-		return ids, nil
-	}
-	var ids []string
-	for _, id := range strings.Split(commaIDs, ",") {
-		if id = strings.TrimSpace(id); id != "" {
-			ids = append(ids, id)
-		}
-	}
-	if len(ids) == 0 {
-		return nil, fmt.Errorf("no requirement identifiers given")
-	}
-	return ids, nil
-}
-
-// textOnly is the one-line Content beside a structured result — set so
-// the SDK never serializes the whole payload a second time as text
-// (REQ-mcp-response-contract).
-func textOnly(line string) *mcp.CallToolResult {
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: line}}}
-}
-
-// digestRowCap bounds the action rows a text digest carries beside the
-// structured payload (REQ-mcp-response-contract's bounded text digest).
-const digestRowCap = 10
-
-// digest composes the verdict line with capped action rows: a lossy
-// projection for clients that expose text content only, never a second
-// encoding of the payload. Truncation is counted, not silent.
-func digest(line string, rows []string) string {
-	omitted := 0
-	if len(rows) > digestRowCap {
-		omitted = len(rows) - digestRowCap
-		rows = rows[:digestRowCap]
-	}
-	var b strings.Builder
-	b.WriteString(line)
-	for _, row := range rows {
-		b.WriteString("\n")
-		b.WriteString(row)
-	}
-	if omitted > 0 {
-		b.WriteString(fmt.Sprintf("\n… and %d more", omitted))
-	}
-	return b.String()
-}
-
-// enumWord renders a proto enum constant under its type prefix as
-// lower-case words: enumWord("RESOLUTION_NOT_FOUND", "RESOLUTION_") ->
-// "not found". Taking the last segment instead would invert multi-word
-// values ("not found" -> "found") - a red row reading healthy.
-func enumWord(name, prefix string) string {
-	return strings.ToLower(strings.ReplaceAll(strings.TrimPrefix(name, prefix), "_", " "))
-}
-
-// viewLine names one view result for the text content: the verdict line
-// plus capped action rows, so a text-only client can identify what to
-// repair without the structured payload (REQ-mcp-response-contract).
-func viewLine(op string, m proto.Message) string {
-	switch v := m.(type) {
-	case *stipulatorv1.VerifySummary:
-		return digest(fmt.Sprintf("verify: %d problems, %d stale, %d broken", v.GetProblems(), v.GetStale(), v.GetBroken()),
-			v.GetWitnessFailureHeadings())
-	case *stipulatorv1.VerifyReport:
-		var rows []string
-		for _, p := range v.GetProblems() {
-			rows = append(rows, p.GetPath()+": "+p.GetMessage())
-		}
-		if len(rows) == 0 {
-			for _, r := range v.GetResults() {
-				rows = append(rows, fmt.Sprintf("%s ← %s [%s, %s]", r.GetRequirementId(), r.GetSymbol(), enumWord(r.GetResolution().String(), "RESOLUTION_"), enumWord(r.GetTestOutcome().String(), "TEST_OUTCOME_")))
-			}
-		}
-		return digest(fmt.Sprintf("verify: %d problems, %d bindings", len(v.GetProblems()), len(v.GetResults())), rows)
-	case *stipulatorv1.CoverageSummary:
-		word := "pass"
-		if !v.GetGatePasses() {
-			word = "fail"
-		}
-		return digest(fmt.Sprintf("gate: %s, %d violations", word, len(v.GetViolations())), v.GetViolations())
-	case *stipulatorv1.CoverageReport:
-		word := "pass"
-		if !v.GetGatePasses() {
-			word = "fail"
-		}
-		var rows []string
-		for _, r := range v.GetRequirements() {
-			row := fmt.Sprintf("%s [%s]", r.GetId(), enumWord(r.GetBucket().String(), "BUCKET_"))
-			if reasons := r.GetReasons(); len(reasons) > 0 {
-				row += ": " + reasons[0]
-			}
-			rows = append(rows, row)
-		}
-		return digest(fmt.Sprintf("gate: %s, %d requirements, %d violations", word, len(v.GetRequirements()), len(v.GetViolations())), rows)
-	}
-	return op + " (structured content carries the payload)"
-}
-
-func truncate(s string, n int) string {
-	r := []rune(s)
-	if len(r) <= n {
-		return s
-	}
-	return string(r[:n]) + "…"
 }
