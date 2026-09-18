@@ -870,3 +870,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "4f67a31fb7a51fe339420ed79e115fd93947174a4ad5cc98b4b069cba43afce2"
 }
+
+bindings {
+  requirement_id: "REQ-check-witness-selection"
+  content_hash: "007cab87ca1813a005b7598fd3de3d6d271fc48de893b42cbdeeccaf598b5ce0"
+  source_hash: "7d48df0f11599e722b362df332427355e9658d8898b77d0bd8cca6fa365c38d4"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRetryDispositionsOverlayByTheWorse"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "0b8e3092eba6e200bd911769e5e34809783fc3184cbe1d4273d1db32532be751"
+}

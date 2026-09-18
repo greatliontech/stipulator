@@ -2,8 +2,10 @@
 // REQ-record-cas, the one applier both faces write through: one apply
 // at a time; every path judged admissible before anything else — a
 // clean local path under .stipulator/, or a corpus document for an
-// update marked as a document rewrite (REQ-mcp-writes-confined's
-// confinement, held on every face); every precondition — the content
+// update marked as a document rewrite, and on the tree as it stands a
+// home resolving under the root, a symlinked directory pointing
+// outside refused (REQ-mcp-writes-confined's confinement, held on
+// every face); every precondition — the content
 // the computing operation read, absence included — checked against
 // the live tree before the first write, a moved target refusing the
 // whole batch by name; every file staged to a dot-temp before the
@@ -13,9 +15,9 @@
 // commit fails the reservation instead of being clobbered; a rename
 // failing over the reservation removes it, or names it standing, so
 // only the process dying between the two leaves an empty file at the
-// name unannounced — a batch verb's re-run renames over it, init and
-// policy init refuse it as an existing record for the operator to
-// remove; deletions last —
+// name — every record load refuses an empty record file as that
+// residue, naming it for the operator to remove (no record kind is
+// ever written empty: an emptied set is deleted); deletions last —
 // a fault between a write and its batch's deletion leaves a duplicate
 // the tree shows and prune repairs, where a deletion landing first
 // would leave a record lost. A mid-batch fault leaves at most a
@@ -45,7 +47,9 @@ import (
 // and the read it checks never consult two trees; an owner handing
 // none reads the root. The staging its writes go through is a seam: a
 // face's harness lands writes in an in-memory tree through it; the
-// defaults stage a dot-temp beside each target.
+// defaults stage a dot-temp beside each target, and only then is the
+// path's home judged on the OS at the root (the tree the default
+// stager writes), an injected stager owning its placement.
 type Applier struct {
 	root string
 	tree func() fs.FS
@@ -209,6 +213,9 @@ func (a *Applier) Apply(ups []author.Update) (Result, error) {
 		if err := admitWrite(fsys, up.Path, up.Content != nil && up.Document); err != nil {
 			return Result{}, err
 		}
+		if err := a.confinedOnDisk(up.Path, up.Content != nil && up.Document); err != nil {
+			return Result{}, err
+		}
 	}
 	for _, up := range ups {
 		if err := checkPrior(fsys, up); err != nil {
@@ -319,4 +326,57 @@ func admitWrite(fsys fs.FS, path string, document bool) error {
 		return fmt.Errorf("path %q is not a corpus document (enforcement pointers are rewritten in corpus documents and nothing else)", path)
 	}
 	return nil
+}
+
+// confinedOnDisk judges the path's home on the tree as it stands, where
+// admitWrite judges its spelling: the path's deepest existing ancestor,
+// symlinks resolved, must lie under the corpus root's own `.stipulator/`
+// — or under the root itself for a document rewrite — so a symlink
+// pointing outside, which the rename would follow, is refused; a record
+// home not yet created lands under the root. It consults the OS at the
+// root — the one place the default stager writes — never the handed
+// tree, so it runs only when that stager does.
+func (a *Applier) confinedOnDisk(path string, document bool) error {
+	if a.Stage != nil {
+		return nil // an injected stager owns its placement
+	}
+	root := a.root
+	rootReal, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return fmt.Errorf("corpus root %s: %w", root, err)
+	}
+	home := filepath.Join(rootReal, ".stipulator")
+	if document {
+		home = rootReal
+	}
+	full := filepath.Join(root, filepath.FromSlash(path))
+	existing := full
+	for {
+		if _, err := os.Lstat(existing); err == nil {
+			break
+		}
+		parent := filepath.Dir(existing)
+		if parent == existing {
+			return fmt.Errorf("path %q has no existing ancestor under %s (confinement)", path, root)
+		}
+		existing = parent
+	}
+	if !document && !within(existing, filepath.Join(root, ".stipulator")) {
+		// The record home itself is not there yet: the write creates it
+		// under the root, which is confined exactly when the root is.
+		home = rootReal
+	}
+	resolved, err := filepath.EvalSymlinks(existing)
+	if err != nil {
+		return fmt.Errorf("path %q cannot be resolved for the confinement judgment: %w", path, err)
+	}
+	if !within(resolved, home) {
+		return fmt.Errorf("path %q resolves to %s, outside %s (a symlink the write would follow); refusing the write", path, resolved, home)
+	}
+	return nil
+}
+
+// within reports whether p is base or lies under it.
+func within(p, base string) bool {
+	return p == base || strings.HasPrefix(p, base+string(filepath.Separator))
 }

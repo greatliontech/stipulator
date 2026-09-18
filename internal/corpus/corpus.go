@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/recordfile"
 	"google.golang.org/protobuf/encoding/prototext"
 )
 
@@ -35,9 +36,9 @@ const readmeBasename = "README.md"
 // at the repository root. The returned manifest is normalized: when the file
 // declares no include globs, DefaultInclude is applied.
 func LoadManifest(fsys fs.FS) (*stipulatorv1.Manifest, error) {
-	b, err := fs.ReadFile(fsys, ManifestPath)
+	b, err := recordfile.Read(fsys, ManifestPath)
 	if err != nil {
-		return nil, fmt.Errorf("reading manifest %s: %w", ManifestPath, err)
+		return nil, err
 	}
 	m := &stipulatorv1.Manifest{}
 	if err := prototext.Unmarshal(b, m); err != nil {

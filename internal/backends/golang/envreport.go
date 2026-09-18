@@ -206,7 +206,7 @@ func enrichFlipDiagnostics(m *execMerge, normalized map[string]*NormalizedInvoca
 		if n == nil {
 			continue
 		}
-		repKey := d.GetInvocation() + "\x00" + d.GetPackage()
+		repKey := invPkgKey(d.GetInvocation(), d.GetPackage())
 		rep, ok := reports[repKey]
 		if !ok {
 			rep = envDivergenceReport(n, n.PkgDirs[d.GetPackage()])

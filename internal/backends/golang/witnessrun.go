@@ -564,16 +564,10 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	// cause of what it denied, and a healthy retry over the drifted
 	// subjects alone never erases a red first pass that denied the rest
 	// — the run's own worst-outcome discipline, applied to causes.
-	for key, disposition := range retryMerge.pkgDisp {
-		if first, ok := m.pkgDisp[key]; ok {
-			disposition = worseDisposition(first, disposition)
-		}
-		m.pkgDisp[key] = disposition
-	}
+	m.absorb(retryMerge)
 	enrichFlipDiagnostics(ineligibleMerge, normalized, passedBefore, flipEnriched)
 	ranTop := map[string]bool{}
 	consumeMerge(tr, m, ranTop, plainInv, raceGranted, plainGranted)
-	consumeMerge(tr, retryMerge, ranTop, plainInv, raceGranted, plainGranted)
 	if ineligibleMerge != nil {
 		consumeMergeFailuresOnly(tr, ineligibleMerge, ranTop)
 	}
@@ -1009,12 +1003,45 @@ type execMerge struct {
 
 // packageCause answers the recorded disposition of a package's process
 // under an invocation as its cause.
+
 func (m *execMerge) packageCause(invocation, pkg string) (string, bool) {
-	disposition, ok := m.pkgDisp[invocation+"\x00"+pkg]
+	disposition, ok := m.pkgDisp[invPkgKey(invocation, pkg)]
 	if !ok {
 		return "", false
 	}
 	return dispositionCause(invocation, pkg, disposition), true
+}
+
+// absorb folds a later pass's merge into this one — its rows and diagnostics
+// appended, its producers' dispositions and observations joined (a retry's
+// producers are its own: a producer key carries the process id and ordinal,
+// so a later pass's processes never collide with an earlier pass's) — and its
+// package dispositions overlaid per package, the worse of the two standing: a
+// retry timeout is the cause of what it denied, and a healthy retry over the
+// drifted subjects alone never erases a red first pass that denied the rest —
+// the run's own worst-outcome discipline, applied to causes. One merge is
+// then consumed, so the overlay cannot be skipped on the way to the report.
+func (m *execMerge) absorb(later *execMerge) {
+	m.rows = append(m.rows, later.rows...)
+	m.diags = append(m.diags, later.diags...)
+	for key, disposition := range later.disp {
+		m.disp[key] = disposition
+	}
+	for key, observation := range later.obs {
+		m.obs[key] = observation
+	}
+	for key, disposition := range later.pkgDisp {
+		if first, ok := m.pkgDisp[key]; ok {
+			disposition = worseDisposition(first, disposition)
+		}
+		m.pkgDisp[key] = disposition
+	}
+}
+
+// invPkgKey is the one spelling of the per-invocation package key
+// every package-scoped index shares.
+func invPkgKey(invocation, pkg string) string {
+	return invocation + "\x00" + pkg
 }
 
 func newExecMerge() *execMerge {
@@ -1035,7 +1062,7 @@ func (m *execMerge) add(invocation string, res *SelectionResult) {
 		// A package's process carries its disposition whether or not it
 		// spawned — an envelope denied before the spawn disposes it too.
 		if p.Package != "" && p.Test == "" {
-			m.pkgDisp[invocation+"\x00"+p.Package] = p.Disposition
+			m.pkgDisp[invPkgKey(invocation, p.Package)] = p.Disposition
 		}
 	}
 	for _, o := range res.Observations {

@@ -90,3 +90,33 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "a4a8d4c1b26431a00f61a74075f012843ef5eae680305d1a453c36fc280df574"
 }
+
+bindings {
+  requirement_id: "REQ-record-cas"
+  content_hash: "a2b2bfd62870ad8d902c253a2ec24ffb7d6b3b38661920dc0e558dfe9033fb3d"
+  source_hash: "d1b26af7004d081a76bf6f9230a2eec0499668f774a965a87be944172ed5694a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/records.TestLoadRefusesAnEmptyRecordFile"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c58aa04e301e5b08388ca564d941192361fc92c4fc208462f4459e117caedebb"
+}
+
+bindings {
+  requirement_id: "REQ-record-cas"
+  content_hash: "a2b2bfd62870ad8d902c253a2ec24ffb7d6b3b38661920dc0e558dfe9033fb3d"
+  source_hash: "d1b26af7004d081a76bf6f9230a2eec0499668f774a965a87be944172ed5694a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/recordapply.TestApplyRefusesAPathResolvingOutsideTheRoot"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "173db568d659b3a51303e96377918cbc0d11c9011f2b6f40704ce463b6ad756d"
+}
+
+bindings {
+  requirement_id: "REQ-record-cas"
+  content_hash: "a2b2bfd62870ad8d902c253a2ec24ffb7d6b3b38661920dc0e558dfe9033fb3d"
+  source_hash: "d1b26af7004d081a76bf6f9230a2eec0499668f774a965a87be944172ed5694a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/corpus.TestLoadManifestRefusesAnEmptyFile"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "8a5c67626ce2eda091e2a7d4bf6f6ffd642f55b4214ddb12b84ae8b173cbc46c"
+}

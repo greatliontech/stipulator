@@ -43,8 +43,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-writes-confined"
-  content_hash: "9713a3038418c222fd228ada00d337f0c8ea39102b833e92a146445db08dd0b8"
-  source_hash: "3664526ba2c24037f15155ab4c60b9780642a208e09882c7fcdbf187e53a81d4"
+  content_hash: "3185a2c55794ffc47cfa6b0c557fe51cbdecfa5a377c04d1c9e57e9d042296d3"
+  source_hash: "4b8d26ad651ed555a195619494a868b1037a7d3ec4d774e26154c65e587b38fb"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestBindToolWritesConfined"
   role: BINDING_ROLE_TESTS
@@ -863,8 +863,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-writes-confined"
-  content_hash: "9713a3038418c222fd228ada00d337f0c8ea39102b833e92a146445db08dd0b8"
-  source_hash: "3664526ba2c24037f15155ab4c60b9780642a208e09882c7fcdbf187e53a81d4"
+  content_hash: "3185a2c55794ffc47cfa6b0c557fe51cbdecfa5a377c04d1c9e57e9d042296d3"
+  source_hash: "4b8d26ad651ed555a195619494a868b1037a7d3ec4d774e26154c65e587b38fb"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestWriteSeamConfinesToStipulatorDir"
   role: BINDING_ROLE_TESTS
@@ -1193,8 +1193,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-writes-confined"
-  content_hash: "9713a3038418c222fd228ada00d337f0c8ea39102b833e92a146445db08dd0b8"
-  source_hash: "3664526ba2c24037f15155ab4c60b9780642a208e09882c7fcdbf187e53a81d4"
+  content_hash: "3185a2c55794ffc47cfa6b0c557fe51cbdecfa5a377c04d1c9e57e9d042296d3"
+  source_hash: "4b8d26ad651ed555a195619494a868b1037a7d3ec4d774e26154c65e587b38fb"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/recordapply.TestApplyStagesEveryFileBeforeTheFirstRename"
   role: BINDING_ROLE_TESTS
@@ -1203,10 +1203,30 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-writes-confined"
-  content_hash: "9713a3038418c222fd228ada00d337f0c8ea39102b833e92a146445db08dd0b8"
-  source_hash: "3664526ba2c24037f15155ab4c60b9780642a208e09882c7fcdbf187e53a81d4"
+  content_hash: "3185a2c55794ffc47cfa6b0c557fe51cbdecfa5a377c04d1c9e57e9d042296d3"
+  source_hash: "4b8d26ad651ed555a195619494a868b1037a7d3ec4d774e26154c65e587b38fb"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/recordapply.admitWrite"
   role: BINDING_ROLE_IMPLEMENTS
   shape_hash: "c04eb4d6aec788fc7fe4487512c55e4ad89b83dddd0820f70f1066b977afeea1"
+}
+
+bindings {
+  requirement_id: "REQ-mcp-writes-confined"
+  content_hash: "3185a2c55794ffc47cfa6b0c557fe51cbdecfa5a377c04d1c9e57e9d042296d3"
+  source_hash: "4b8d26ad651ed555a195619494a868b1037a7d3ec4d774e26154c65e587b38fb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/recordapply.TestApplyRefusesAPathResolvingOutsideTheRoot"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "173db568d659b3a51303e96377918cbc0d11c9011f2b6f40704ce463b6ad756d"
+}
+
+bindings {
+  requirement_id: "REQ-mcp-writes-confined"
+  content_hash: "3185a2c55794ffc47cfa6b0c557fe51cbdecfa5a377c04d1c9e57e9d042296d3"
+  source_hash: "4b8d26ad651ed555a195619494a868b1037a7d3ec4d774e26154c65e587b38fb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/recordapply.TestInjectedStagerOwnsItsPlacement"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "d68ccdebdf3606359b05bb0c6917bc3a16e11fffae2c90ae3bf53728ae56d97c"
 }

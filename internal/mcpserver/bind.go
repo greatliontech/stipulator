@@ -32,8 +32,7 @@ type bindClaim struct {
 }
 
 type writeOut struct {
-	Wrote   []string
-	Deleted []string
+	recordapply.Result
 	Removed int
 	// Notes surface non-silent consequences, e.g. a gap's landing
 	// condition retarget.
@@ -49,7 +48,7 @@ type writeOut struct {
 // for the caller's faulted to carry.
 func (s *Server) apply(ups []author.Update) (writeOut, error) {
 	landed, err := s.applier.Apply(ups)
-	return writeOut{Wrote: landed.Wrote, Deleted: landed.Deleted}, err
+	return writeOut{Result: landed}, err
 }
 
 // faulted is the tool error over what a faulted operation landed
@@ -57,7 +56,7 @@ func (s *Server) apply(ups []author.Update) (writeOut, error) {
 // that moved ride the text — "nothing written" over a file that moved
 // is the misreport REQ-record-cas refuses.
 func faulted(out writeOut, err error) error {
-	if partial := (recordapply.Result{Wrote: out.Wrote, Deleted: out.Deleted}).Landed(); partial != "" {
+	if partial := out.Landed(); partial != "" {
 		return fmt.Errorf("%w (%s)", err, partial)
 	}
 	return err

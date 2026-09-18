@@ -53,7 +53,7 @@ func TestLoadManifest(t *testing.T) {
 
 	t.Run("empty include defaults", func(t *testing.T) {
 		fsys := fstest.MapFS{
-			ManifestPath: {Data: []byte("")},
+			ManifestPath: {Data: []byte("# no includes declared\n")},
 		}
 		m, err := LoadManifest(fsys)
 		if err != nil {
@@ -276,5 +276,16 @@ func TestFindRoot(t *testing.T) {
 
 	if _, err := FindRoot(t.TempDir()); err == nil || !strings.Contains(err.Error(), "stipulator init") {
 		t.Fatalf("teaching error missing: %v", err)
+	}
+}
+
+// An empty manifest is never a manifest: the file is written whole at
+// init, so an empty one is a torn write's reservation and refuses by
+// name instead of silently standing in for the default include set
+// (REQ-record-cas).
+func TestLoadManifestRefusesAnEmptyFile(t *testing.T) {
+	stipulate.Covers(t, "REQ-record-cas")
+	if _, err := LoadManifest(fstest.MapFS{ManifestPath: {Data: nil}}); err == nil || !strings.Contains(err.Error(), ManifestPath+" is empty") {
+		t.Fatalf("empty manifest loaded: %v; want the reservation residue named", err)
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/recordfile"
 	"google.golang.org/protobuf/encoding/prototext"
 )
 
@@ -115,12 +116,12 @@ func Load(fsys fs.FS) (*Store, error) {
 // nothing has been retired, but any other read failure propagates — an
 // unreadable registry must never let a retired identity redeclare.
 func LoadTombstones(fsys fs.FS) ([]string, error) {
-	b, err := fs.ReadFile(fsys, TombstonesPath)
+	b, err := recordfile.Read(fsys, TombstonesPath)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("reading %s: %w", TombstonesPath, err)
+		return nil, err
 	}
 	t := &stipulatorv1.Tombstones{}
 	if err := prototext.Unmarshal(b, t); err != nil {
@@ -156,9 +157,9 @@ func eachTextproto(fsys fs.FS, dir string, fn func(string, []byte) error) error 
 			return fmt.Errorf("%s: unexpected file %q in a record directory (records are .textproto)", dir, e.Name())
 		}
 		p := path.Join(dir, e.Name())
-		raw, err := fs.ReadFile(fsys, p)
+		raw, err := recordfile.Read(fsys, p)
 		if err != nil {
-			return fmt.Errorf("reading %s: %w", p, err)
+			return err
 		}
 		if err := fn(p, raw); err != nil {
 			return err

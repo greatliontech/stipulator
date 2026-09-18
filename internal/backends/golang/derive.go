@@ -78,7 +78,7 @@ func indexInvocations(report *stipulatorv1.ExecutionReport) invocationFacts {
 		f.plain[h.GetInvocation()] = h.GetGo().GetPlainWitness()
 		for _, p := range h.GetPackages() {
 			if p.GetDisposition() == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
-				f.healthyPkg[h.GetInvocation()+"\x00"+p.GetPackage()] = true
+				f.healthyPkg[invPkgKey(h.GetInvocation(), p.GetPackage())] = true
 			}
 		}
 	}
@@ -120,7 +120,7 @@ func DeriveTestRun(report *stipulatorv1.ExecutionReport) *verify.TestRun {
 		case stipulatorv1.TestOutcome_TEST_OUTCOME_SKIPPED:
 			outcome = verify.TestSkipped
 		case stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED:
-			if facts.healthyPkg[inv+"\x00"+pkg] && (facts.race[inv] || facts.plain[inv]) {
+			if facts.healthyPkg[invPkgKey(inv, pkg)] && (facts.race[inv] || facts.plain[inv]) {
 				outcome = verify.TestPassed
 				if facts.race[inv] {
 					grantedRace[key] = true
@@ -1159,7 +1159,7 @@ func (r *WitnessRecorder) publishRemaining(ctx context.Context, report *stipulat
 	facts := indexInvocations(report)
 	rowsByInvPkg := map[string][]*stipulatorv1.TestResult{}
 	for _, row := range report.GetTests() {
-		k := row.GetProducer().GetInvocation() + "\x00" + row.GetPackage()
+		k := invPkgKey(row.GetProducer().GetInvocation(), row.GetPackage())
 		rowsByInvPkg[k] = append(rowsByInvPkg[k], row)
 	}
 	obsByProducer := map[producerKey]*ProcessObservation{}
@@ -1212,8 +1212,8 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 		// producer, and a package with no row still carries its
 		// disposition.
 		inv := g.pkgInv[pkg]
-		rows := rowsByInvPkg[inv+"\x00"+pkg]
-		candidate := producerCandidate{healthy: facts.healthyPkg[inv+"\x00"+pkg], rows: rows}
+		rows := rowsByInvPkg[invPkgKey(inv, pkg)]
+		candidate := producerCandidate{healthy: facts.healthyPkg[invPkgKey(inv, pkg)], rows: rows}
 		if len(rows) > 0 {
 			candidate.obs = obsByProducer[keyOfProducer(rows[0].GetProducer())]
 		}
@@ -1322,7 +1322,7 @@ func ExecutePolicyWitnessed(ctx context.Context, pc *Capture, seeding verify.Wit
 	universe, _ := pc.ObligationUniverse(ctx)
 	health := reportPackageHealth(report)
 	classes := d.classifyWitnesses(universe, executedTopPackages(report), tr.Outcomes, func(invocation, pkg string) (string, bool) {
-		disposition, ok := health[invocation+"\x00"+pkg]
+		disposition, ok := health[invPkgKey(invocation, pkg)]
 		if !ok {
 			return "", false
 		}
@@ -1340,7 +1340,7 @@ func reportPackageHealth(report *stipulatorv1.ExecutionReport) map[string]stipul
 	health := map[string]stipulatorv1.HealthDisposition{}
 	for _, h := range report.GetInvocations() {
 		for _, p := range h.GetPackages() {
-			health[h.GetInvocation()+"\x00"+p.GetPackage()] = p.GetDisposition()
+			health[invPkgKey(h.GetInvocation(), p.GetPackage())] = p.GetDisposition()
 		}
 	}
 	return health

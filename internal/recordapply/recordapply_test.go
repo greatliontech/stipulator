@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -244,5 +245,73 @@ func TestApplyStagesEveryFileBeforeTheFirstRename(t *testing.T) {
 	// A missing stamp is refused loudly.
 	if _, err := a.Apply([]author.Update{{Path: ".stipulator/gaps/q.textproto", Content: []byte("q")}}); err == nil || !strings.Contains(err.Error(), "carries no precondition") {
 		t.Fatalf("unstamped update: %v", err)
+	}
+}
+
+// The confinement is judged on the tree as it stands, not on the
+// path's spelling alone: a symlinked directory under the record home
+// pointing outside the corpus root is refused before anything is
+// staged, where the lexical admission would have let the rename follow
+// it out; a link resolving inside the home is admitted, and a record
+// home not yet created lands under the root
+// (REQ-mcp-writes-confined, REQ-record-cas).
+func TestApplyRefusesAPathResolvingOutsideTheRoot(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-writes-confined")
+	stipulate.Covers(t, "REQ-record-cas")
+	root := t.TempDir()
+	outside := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".stipulator", "gaps"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, ".stipulator", "exports")); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	if err := os.Symlink(filepath.Join(root, ".stipulator", "gaps"), filepath.Join(root, ".stipulator", "inside")); err != nil {
+		t.Fatal(err)
+	}
+	a := New(root, func() fs.FS { return os.DirFS(root) })
+	_, err := a.Apply([]author.Update{{Path: ".stipulator/exports/x.json", Content: []byte("x"), PriorAbsent: true}})
+	if err == nil || !strings.Contains(err.Error(), "resolves to") || !strings.Contains(err.Error(), "outside") {
+		t.Fatalf("symlinked home admitted: %v", err)
+	}
+	if entries, _ := os.ReadDir(outside); len(entries) != 0 {
+		t.Fatalf("the write followed the link out of the root: %v", entries)
+	}
+	// A sibling of the home sharing its name as a prefix is outside it.
+	sibling := filepath.Join(root, ".stipulator-side")
+	if err := os.MkdirAll(sibling, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(sibling, filepath.Join(root, ".stipulator", "side")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.Apply([]author.Update{{Path: ".stipulator/side/s.textproto", Content: []byte("s"), PriorAbsent: true}}); err == nil || !strings.Contains(err.Error(), "outside") {
+		t.Fatalf("prefix-sharing sibling admitted: %v", err)
+	}
+	if _, err := a.Apply([]author.Update{{Path: ".stipulator/inside/y.textproto", Content: []byte("y"), PriorAbsent: true}}); err != nil || read(t, root, ".stipulator/gaps/y.textproto") != "y" {
+		t.Fatalf("link resolving inside the home refused or not landed: %v", err)
+	}
+	fresh := t.TempDir()
+	b := New(fresh, func() fs.FS { return os.DirFS(fresh) })
+	if _, err := b.Apply([]author.Update{{Path: ".stipulator/gaps/z.textproto", Content: []byte("z"), PriorAbsent: true}}); err != nil || read(t, fresh, ".stipulator/gaps/z.textproto") != "z" {
+		t.Fatalf("a record home not yet created refused: %v", err)
+	}
+}
+
+// The on-disk confinement judges the OS at the root only when the
+// default stager writes there: an injected stager owns its placement,
+// so a harness landing writes in a handed tree under a root that does
+// not exist on disk is admitted — the seam, not the OS, is the tree
+// (REQ-mcp-writes-confined).
+func TestInjectedStagerOwnsItsPlacement(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-writes-confined")
+	tree := fstest.MapFS{}
+	a := New(filepath.Join(t.TempDir(), "nonexistent"), func() fs.FS { return tree })
+	staged := map[string]string{}
+	a.Stage = func(path string, content []byte, create bool) (func() error, func(), error) {
+		return func() error { staged[path] = string(content); return nil }, func() {}, nil
+	}
+	if _, err := a.Apply([]author.Update{{Path: ".stipulator/gaps/g.textproto", Content: []byte("g"), PriorAbsent: true}}); err != nil || staged[".stipulator/gaps/g.textproto"] != "g" {
+		t.Fatalf("injected stager under a root absent on disk: %v, staged %v; want the write landed through the seam", err, staged)
 	}
 }
