@@ -511,7 +511,15 @@ func TestPruneRefusesNonServingEvidence(t *testing.T) {
 //gofresh:pure
 func TestRetargetToolCheckWritesNothing(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-retarget")
-	sess, writes := harness(t, map[string]string{".stipulator/bindings/m.textproto": pinnedBinding(t)})
+	// Two distinct-clause claims on one untouched symbol ride in the
+	// store: two claims, never a collision (REQ-evidence-clause-claim).
+	sess, writes := harness(t, map[string]string{
+		".stipulator/bindings/m.textproto": pinnedBinding(t),
+		"specs/c.md":                       "# C\n\n**REQ-m-c** (behavior): It MUST support both operations:\n\n- **prepared**: Prepare operations.\n- **granted**: Bound the grant.\n",
+		".stipulator/bindings/c.textproto": "" +
+			"bindings { requirement_id: \"REQ-m-c\" backend: \"go\" symbol: \"example.com/keep.F\" role: BINDING_ROLE_IMPLEMENTS clause_label: \"prepared\" }\n" +
+			"bindings { requirement_id: \"REQ-m-c\" backend: \"go\" symbol: \"example.com/keep.F\" role: BINDING_ROLE_IMPLEMENTS clause_label: \"granted\" }\n",
+	})
 	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "retarget", Arguments: map[string]any{
 		"from": "example.com/p", "to": "example.com/q", "check": true,
 	}})
@@ -535,6 +543,24 @@ func TestRetargetToolCheckWritesNothing(t *testing.T) {
 	got, ok := writes[".stipulator/bindings/m.textproto"]
 	if !ok || !strings.Contains(string(got), "example.com/q.TestA") {
 		t.Fatalf("applying form did not rewrite the store: %q", got)
+	}
+	// A refused preview writes nothing either: a store whose rewrite
+	// collapses two claims onto one clause.
+	sess, writes = harness(t, map[string]string{
+		".stipulator/bindings/m.textproto": pinnedBinding(t),
+		"specs/c.md":                       "# C\n\n**REQ-m-c** (behavior): It MUST support both operations:\n\n- **prepared**: Prepare operations.\n- **granted**: Bound the grant.\n",
+		".stipulator/bindings/c.textproto": "" +
+			"bindings { requirement_id: \"REQ-m-c\" backend: \"go\" symbol: \"example.com/p.F\" role: BINDING_ROLE_IMPLEMENTS clause_label: \"prepared\" }\n" +
+			"bindings { requirement_id: \"REQ-m-c\" backend: \"go\" symbol: \"example.com/q.F\" role: BINDING_ROLE_IMPLEMENTS clause_ordinal: 1 }\n",
+	})
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "retarget", Arguments: map[string]any{
+		"from": "example.com/p", "to": "example.com/q", "check": true,
+	}})
+	if err != nil || !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "collides") {
+		t.Fatalf("colliding preview = %+v, %v", res, err)
+	}
+	if len(writes) != 0 {
+		t.Fatalf("a refused preview wrote: %v", writes)
 	}
 }
 

@@ -2240,3 +2240,33 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "8f34a9ac043dd358f9cc78fc631f90acd36e34a98e14d165397e0432b27ccbad"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-clause-claim"
+  content_hash: "4fddcfc83c3c08b0e4869c06387c2ce2d6c0acb083655a1b4b2fcaacf7d71ef3"
+  source_hash: "3bb2b0c37ca4f9e83eba69b37d6ca2d5b7ba6f2374abbfd565e4369e324c4e75"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestRetargetJudgesCollisionsByClaimIdentity"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "22249b83390995dcb287be36859abaad297b958e509d8d74b676ab9c054c5703"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-clause-claim"
+  content_hash: "4fddcfc83c3c08b0e4869c06387c2ce2d6c0acb083655a1b4b2fcaacf7d71ef3"
+  source_hash: "3bb2b0c37ca4f9e83eba69b37d6ca2d5b7ba6f2374abbfd565e4369e324c4e75"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestRetargetCLIPreviewAdmitsDistinctClauseClaims"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "d59fe04102323211ecdda554cd8bebc6ae7c046a1ad5ef7931c85ca9c7a6facb"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-clause-claim"
+  content_hash: "4fddcfc83c3c08b0e4869c06387c2ce2d6c0acb083655a1b4b2fcaacf7d71ef3"
+  source_hash: "3bb2b0c37ca4f9e83eba69b37d6ca2d5b7ba6f2374abbfd565e4369e324c4e75"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/records.TestClauseKeyKeepsAPresentLabelApartFromTheUnscopedClaim"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "143acc2679d98b0eb41940725f85d08ec4c7a9275f7207b07c1cac8c941a532f"
+}

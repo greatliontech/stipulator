@@ -511,8 +511,8 @@ func (j *hygiene) binding(path string, b *stipulatorv1.Binding) (problems []Prob
 	}
 	id := b.GetRequirementId()
 	// Two claims naming one clause — by ordinal and by label — are one
-	// claim: the key carries the resolved clause, not its spelling.
-	key := id + "|" + b.GetBackend() + "|" + b.GetSymbol() + "|" + b.GetRole().String() + "|" + records.ClaimClauseKey(j.reqs[id], b)
+	// claim: the identity carries the resolved clause, not its spelling.
+	key := records.ClaimIdentity(j.reqs[id], b)
 	if j.seen[key] {
 		// The message names the clause as the corpus resolves it, so a
 		// pair spelled by ordinal and by label reads as one clause.

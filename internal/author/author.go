@@ -49,10 +49,6 @@ func ParseRole(s string) (stipulatorv1.BindingRole, error) {
 	return r, nil
 }
 
-// NewLandingCondition builds a landing condition from mutually exclusive
-// flag values; more than one set is an error. Fired marks a manual
-// condition already discharged at declaration time — it is meaningless
-// on the machine-evaluable conditions.
 // NewExcuses parses declared excuse classes — uncovered, stale, broken
 // — validating each name (REQ-gap-verb). Empty input declares nothing:
 // the record's default, uncovered alone, applies (REQ-gap-record).
@@ -99,6 +95,10 @@ func ExcusesString(xs []stipulatorv1.GapExcuse) string {
 	return strings.Join(names, ", ")
 }
 
+// NewLandingCondition builds a landing condition from mutually exclusive
+// flag values; more than one set is an error. Fired marks a manual
+// condition already discharged at declaration time — it is meaningless
+// on the machine-evaluable conditions.
 func NewLandingCondition(covered, exists, manual string, fired, contradicted bool) (*stipulatorv1.LandingCondition, error) {
 	set := 0
 	for _, v := range []string{covered, exists, manual} {
@@ -278,23 +278,24 @@ func Bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Upd
 	if err != nil {
 		return nil, err
 	}
+	// The claim's identity — requirement, backend, symbol, role, and
+	// the clause it already carries — is whole before the store is
+	// searched for a twin (REQ-evidence-clause-claim).
+	b := claim
+	b.SetRequirementId(req.Requirement)
+	b.SetBackend(req.Backend)
+	b.SetSymbol(req.Symbol)
+	b.SetRole(req.Role)
 	for _, bf := range store.Bindings {
-		for _, b := range bf.Set.GetBindings() {
-			if b.GetRequirementId() == req.Requirement && b.GetSymbol() == req.Symbol &&
-				b.GetBackend() == req.Backend && b.GetRole() == req.Role &&
-				records.ClaimClauseKey(target, b) == records.ClaimClauseKey(target, claim) {
+		for _, prior := range bf.Set.GetBindings() {
+			if records.ClaimIdentity(target, prior) == records.ClaimIdentity(target, b) {
 				return nil, fmt.Errorf("identical binding already exists in %s", bf.Path)
 			}
 		}
 	}
 
-	b := claim
-	b.SetRequirementId(req.Requirement)
 	b.SetContentHash(contentHash)
 	b.SetSourceHash(sourceHash)
-	b.SetBackend(req.Backend)
-	b.SetSymbol(req.Symbol)
-	b.SetRole(req.Role)
 	if shapeHash != "" {
 		b.SetShapeHash(shapeHash)
 	}
@@ -488,18 +489,20 @@ type RetargetResult struct {
 	Consented []string
 }
 
-// RetargetSymbols rewrites stored binding symbols for one backend under
-// an exact old-prefix-to-new-prefix mapping — the module-rename repair
+// Retarget rewrites stored binding symbols for one backend under an
+// exact old-prefix-to-new-prefix mapping — the module-rename repair
 // (REQ-change-retarget). A symbol matches only at a path or member
 // boundary, so a prefix never captures a sibling that merely shares
 // characters. All-or-nothing: every replacement must resolve through
 // the backend (shape pins re-derive from those resolutions; content
 // pins ride unchanged — the requirement text did not move), and a
-// rewrite colliding with any post-rewrite binding of the same
-// requirement, backend, symbol, and role refuses the whole batch. The
-// returned rows report every old-to-new identity; callers preview by
-// discarding the updates.
-// Retarget is RetargetSymbols with the enforcement pointers the rewrite
+// post-rewrite store carrying two claims of one identity — requirement,
+// backend, symbol, role, and resolved clause, whether or not the
+// rewrite touches either — refuses the whole batch, exactly as
+// verification's hygiene names a duplicate. The returned rows report
+// every old-to-new identity; callers preview by discarding the updates.
+//
+// The operation also rewrites the enforcement pointers the rewrite
 // moves: for every rewritten binding whose member name changes, each
 // pointer in that binding's requirement naming the old member is
 // rewritten to the new one in the document — the one edit the tool
@@ -509,7 +512,7 @@ type RetargetResult struct {
 // unique in its document refuses the whole retarget, since the rewrite
 // could not be placed (REQ-change-enforcement-pointers).
 func Retarget(fsys fs.FS, backends map[string]verify.Backend, backend, oldPrefix, newPrefix string) (*RetargetResult, error) {
-	ups, rows, err := retargetBindings(fsys, backends, backend, oldPrefix, newPrefix)
+	ups, rows, spec, err := retargetBindings(fsys, backends, backend, oldPrefix, newPrefix)
 	if err != nil {
 		return nil, err
 	}
@@ -526,9 +529,12 @@ func Retarget(fsys fs.FS, backends map[string]verify.Backend, backend, oldPrefix
 	if !moved {
 		return res, nil
 	}
-	spec, err := compileClean(fsys)
-	if err != nil {
-		return nil, err
+	// One corpus per operation: the collision check may have compiled
+	// it already for an alias pair.
+	if spec == nil {
+		if spec, err = compileClean(fsys); err != nil {
+			return nil, err
+		}
 	}
 	byID := records.ByID(spec)
 	// The pointer rewrites, grouped per document so one document is one
@@ -705,24 +711,41 @@ func repinAttestations(fsys fs.FS, requirement string) ([]Update, []string, erro
 	return out, notes, nil
 }
 
-// retargetBindings is the binding-symbol half of a retarget.
-func retargetBindings(fsys fs.FS, backends map[string]verify.Backend, backend, oldPrefix, newPrefix string) ([]Update, []RetargetRow, error) {
+// claimClauseSuffix names a scoped claim's clause for a collision
+// message — as the corpus resolves it when the corpus was read, as the
+// claim spells it otherwise; empty for a whole-requirement claim.
+func claimClauseSuffix(req *stipulatorv1.Requirement, b *stipulatorv1.Binding) string {
+	if req != nil {
+		if c, ok := records.ResolveClause(req, b); ok && c != nil {
+			return " " + records.ClauseHeading(c)
+		}
+	}
+	if name := records.ClauseName(b); name != "" {
+		return " " + name
+	}
+	return ""
+}
+
+// retargetBindings is the binding-symbol half of a retarget; the spec
+// it returns is the corpus it compiled for the collision check, nil
+// when the check needed none.
+func retargetBindings(fsys fs.FS, backends map[string]verify.Backend, backend, oldPrefix, newPrefix string) ([]Update, []RetargetRow, *stipulatorv1.Spec, error) {
 	if backend == "" || oldPrefix == "" || newPrefix == "" {
-		return nil, nil, fmt.Errorf("a backend, an old prefix, and a new prefix are required")
+		return nil, nil, nil, fmt.Errorf("a backend, an old prefix, and a new prefix are required")
 	}
 	if !KnownBackends[backend] {
-		return nil, nil, fmt.Errorf("unknown backend %q (go, proto)", backend)
+		return nil, nil, nil, fmt.Errorf("unknown backend %q (go, proto)", backend)
 	}
 	if oldPrefix == newPrefix {
-		return nil, nil, fmt.Errorf("old and new prefixes are identical; nothing to retarget")
+		return nil, nil, nil, fmt.Errorf("old and new prefixes are identical; nothing to retarget")
 	}
 	be, loaded := backends[backend]
 	if !loaded {
-		return nil, nil, fmt.Errorf("no %s backend is loaded to resolve replacements; a retarget that cannot validate its rewrites is refused, not recorded", backend)
+		return nil, nil, nil, fmt.Errorf("no %s backend is loaded to resolve replacements; a retarget that cannot validate its rewrites is refused, not recorded", backend)
 	}
 	store, err := records.Load(fsys)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// A prefix matches at a boundary only: the next rune after it is a
@@ -739,18 +762,47 @@ func retargetBindings(fsys fs.FS, backends map[string]verify.Backend, backend, o
 		return symbol[len(oldPrefix)] == '/' || symbol[len(oldPrefix)] == '.'
 	}
 
-	type identity struct {
+	// coordinates are a claim's identity short of its clause: the
+	// post-rewrite group a collision is judged within.
+	type coordinates struct {
 		requirement, backend, symbol string
 		role                         stipulatorv1.BindingRole
 	}
 	var rows []RetargetRow
 	var out []Update
-	seen := map[identity]bool{}
+	members := map[coordinates][]*stipulatorv1.Binding{}
+	var spec *stipulatorv1.Spec
+	var byID map[string]*stipulatorv1.Requirement
+	// requirementFor is the corpus rule: the compiled requirement is
+	// read only where a pair's identity needs it — a clause named by
+	// label beside one named by ordinal — so a store without such a
+	// pair keeps retarget corpus-free, a repair verb, and a corpus that
+	// does not compile refuses the operation where a pair needs it.
+	requirementFor := func(id string, a, b *stipulatorv1.Binding) (*stipulatorv1.Requirement, error) {
+		if !(a.HasClauseLabel() && b.HasClauseOrdinal()) && !(a.HasClauseOrdinal() && b.HasClauseLabel()) {
+			return nil, nil
+		}
+		if byID == nil {
+			compiled, err := compileClean(fsys)
+			if err != nil {
+				return nil, fmt.Errorf("resolving the clause claims of %s for the collision check: %w", id, err)
+			}
+			spec = compiled
+			byID = records.ByID(spec)
+		}
+		return byID[id], nil
+	}
 	type rewrite struct {
 		b   *stipulatorv1.Binding
 		new string
 	}
 	var rewrites []rewrite
+	// A collision is two claims of one identity in the post-rewrite
+	// store — requirement, backend, symbol, role, and the resolved
+	// clause (REQ-evidence-clause-claim): two claims on distinct clauses
+	// of one symbol are two claims, and the whole store is judged, the
+	// untouched claims included, exactly as verification's hygiene
+	// judges it.
 	for _, bf := range store.Bindings {
 		for _, b := range bf.Set.GetBindings() {
 			target := b.GetBackend() == backend && matches(b.GetSymbol())
@@ -759,15 +811,21 @@ func retargetBindings(fsys fs.FS, backends map[string]verify.Backend, backend, o
 				sym = newPrefix + b.GetSymbol()[len(oldPrefix):]
 				rewrites = append(rewrites, rewrite{b: b, new: sym})
 			}
-			id := identity{requirement: b.GetRequirementId(), backend: b.GetBackend(), symbol: sym, role: b.GetRole()}
-			if seen[id] {
-				return nil, nil, fmt.Errorf("retarget collides: the post-rewrite store would carry %s %s %s %s twice", id.requirement, id.backend, sym, id.role)
+			at := coordinates{requirement: b.GetRequirementId(), backend: b.GetBackend(), symbol: sym, role: b.GetRole()}
+			for _, prior := range members[at] {
+				req, err := requirementFor(at.requirement, prior, b)
+				if err != nil {
+					return nil, nil, nil, err
+				}
+				if records.ClaimIdentityAt(req, prior, sym) == records.ClaimIdentityAt(req, b, sym) {
+					return nil, nil, nil, fmt.Errorf("retarget collides: the post-rewrite store would carry %s %s %s %s%s twice", at.requirement, at.backend, sym, at.role, claimClauseSuffix(req, b))
+				}
 			}
-			seen[id] = true
+			members[at] = append(members[at], b)
 		}
 	}
 	if len(rewrites) == 0 {
-		return nil, nil, fmt.Errorf("no %s binding symbol matches prefix %q", backend, oldPrefix)
+		return nil, nil, nil, fmt.Errorf("no %s binding symbol matches prefix %q", backend, oldPrefix)
 	}
 	shapes := make(map[string]string, len(rewrites))
 	for _, rw := range rewrites {
@@ -776,13 +834,13 @@ func retargetBindings(fsys fs.FS, backends map[string]verify.Backend, backend, o
 		}
 		res, shape, err := be.Resolve(rw.new)
 		if err != nil {
-			return nil, nil, fmt.Errorf("resolving replacement %s: %w", rw.new, err)
+			return nil, nil, nil, fmt.Errorf("resolving replacement %s: %w", rw.new, err)
 		}
 		switch res {
 		case verify.NotFound:
-			return nil, nil, fmt.Errorf("replacement symbol %s not found; the whole retarget is refused", rw.new)
+			return nil, nil, nil, fmt.Errorf("replacement symbol %s not found; the whole retarget is refused", rw.new)
 		case verify.GeneratedFile:
-			return nil, nil, fmt.Errorf("replacement symbol %s is declared in a generated file; the whole retarget is refused", rw.new)
+			return nil, nil, nil, fmt.Errorf("replacement symbol %s is declared in a generated file; the whole retarget is refused", rw.new)
 		}
 		shapes[rw.new] = shape
 	}
@@ -812,7 +870,7 @@ func retargetBindings(fsys fs.FS, backends map[string]verify.Backend, backend, o
 		}
 		content, err := records.Render(bf)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		out = append(out, Update{Path: bf.Path, Content: content})
 	}
@@ -824,7 +882,7 @@ func retargetBindings(fsys fs.FS, backends map[string]verify.Backend, backend, o
 	})
 	sortUpdates(out)
 	StampPriors(store, out)
-	return out, rows, nil
+	return out, rows, spec, nil
 }
 
 // Gap validates and authors one gap record: the requirement must exist

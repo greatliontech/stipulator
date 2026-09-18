@@ -102,9 +102,15 @@ old-prefix-to-new-prefix mapping, matching only at a path or member
 boundary — a full-symbol match is the degenerate member boundary, so the
 single-symbol rename repair is the same verb — all-or-nothing: every
 replacement symbol resolves through the backend in the current tree, a
-rewrite colliding with any post-rewrite binding of the same requirement,
-backend, symbol, and role is refused, and partial application never
-happens. Shape pins re-derive from the resolved replacements; content
+post-rewrite store carrying two bindings of one claim identity —
+requirement, backend, symbol, role, and resolved clause
+(REQ-evidence-clause-claim), whether or not the rewrite touches either
+— refuses the operation exactly as verification's hygiene names a
+duplicate (the corpus is read only where a clause named by label meets
+one named by ordinal, and a corpus that does not compile then refuses
+the operation naming the requirement whose clauses it could not
+resolve), and partial application never happens. Shape pins re-derive
+from the resolved replacements; content
 pins ride unchanged — the requirement text did not move — except where
 the rewrite moved an enforcement pointer in it
 (REQ-change-enforcement-pointers), whose requirement the operation

@@ -33,15 +33,17 @@ func SetClause(b *stipulatorv1.Binding, text string) error {
 	return nil
 }
 
-// ClauseKey is the clause part of a binding's identity: the empty string
-// for an unscoped claim, "#<ordinal>" or the label otherwise. Two
-// bindings differing only here are two claims.
+// ClauseKey is the clause part of a binding's identity as the claim
+// spells it: the empty string for an unscoped claim, "#<ordinal>" for
+// an ordinal, the label in backticks for a label — a present label,
+// empty included, never reads as the unscoped claim. Two bindings
+// differing only here are two claims.
 func ClauseKey(b *stipulatorv1.Binding) string {
 	switch {
 	case b.HasClauseOrdinal():
 		return "#" + strconv.FormatUint(uint64(b.GetClauseOrdinal()), 10)
 	case b.HasClauseLabel():
-		return b.GetClauseLabel()
+		return "`" + b.GetClauseLabel() + "`"
 	}
 	return ""
 }
@@ -86,6 +88,21 @@ func ClaimClauseKey(req *stipulatorv1.Requirement, b *stipulatorv1.Binding) stri
 	return ClauseKey(b)
 }
 
+// ClaimIdentity is a claim's whole identity — requirement, backend,
+// symbol, role, and the resolved clause (REQ-evidence-clause-claim) —
+// the one spelling every duplicate judgment reads: verification's
+// hygiene and the retarget's collision check. req may be nil where no
+// corpus is loaded: the clause part is then the claim's own spelling.
+func ClaimIdentity(req *stipulatorv1.Requirement, b *stipulatorv1.Binding) string {
+	return ClaimIdentityAt(req, b, b.GetSymbol())
+}
+
+// ClaimIdentityAt is ClaimIdentity with the symbol replaced — the
+// identity a rewrite would give the claim.
+func ClaimIdentityAt(req *stipulatorv1.Requirement, b *stipulatorv1.Binding, symbol string) string {
+	return b.GetRequirementId() + "|" + b.GetBackend() + "|" + symbol + "|" + b.GetRole().String() + "|" + ClaimClauseKey(req, b)
+}
+
 // ResolveClause finds the clause a binding names among a requirement's
 // clauses. ok is false when the binding names one the requirement does
 // not declare; an unscoped binding resolves to nil, true.
@@ -99,6 +116,11 @@ func ResolveClause(req *stipulatorv1.Requirement, b *stipulatorv1.Binding) (*sti
 		}
 		return nil, false
 	case b.HasClauseLabel():
+		// An empty label names no clause: a requirement's unlabeled
+		// clauses are reached by ordinal alone.
+		if b.GetClauseLabel() == "" {
+			return nil, false
+		}
 		for _, c := range req.GetClauses() {
 			if c.GetLabel() == b.GetClauseLabel() {
 				return c, true

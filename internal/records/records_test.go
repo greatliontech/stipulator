@@ -5,6 +5,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -50,5 +51,35 @@ func TestLoadRefusesAnEmptyRecordFile(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), p+" is empty") {
 			t.Fatalf("empty %s loaded: %v; want the reservation residue named", p, err)
 		}
+	}
+}
+
+// A claim's clause spelling: an unscoped claim is the empty key, a
+// present label — empty included — its own, an ordinal "#n"; and an
+// empty label resolves to no clause, so hygiene names it dangling
+// rather than reading it as the unscoped claim (REQ-evidence-clause-claim).
+//
+//gofresh:pure
+func TestClauseKeyKeepsAPresentLabelApartFromTheUnscopedClaim(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-clause-claim")
+	unscoped := &stipulatorv1.Binding{}
+	empty := &stipulatorv1.Binding{}
+	empty.SetClauseLabel("")
+	labelled := &stipulatorv1.Binding{}
+	labelled.SetClauseLabel("prepared")
+	ordinal := &stipulatorv1.Binding{}
+	ordinal.SetClauseOrdinal(2)
+	if ClauseKey(unscoped) != "" || ClauseKey(empty) == "" || ClauseKey(empty) == ClauseKey(labelled) || ClauseKey(ordinal) != "#2" {
+		t.Fatalf("keys: unscoped %q empty %q labelled %q ordinal %q", ClauseKey(unscoped), ClauseKey(empty), ClauseKey(labelled), ClauseKey(ordinal))
+	}
+	req := &stipulatorv1.Requirement{}
+	c := &stipulatorv1.Clause{}
+	c.SetOrdinal(1)
+	req.SetClauses([]*stipulatorv1.Clause{c})
+	if _, ok := ResolveClause(req, empty); ok {
+		t.Fatal("an empty label resolved to an unlabeled clause")
+	}
+	if got, ok := ResolveClause(req, unscoped); !ok || got != nil {
+		t.Fatalf("the unscoped claim resolves to the whole requirement: %v %t", got, ok)
 	}
 }
