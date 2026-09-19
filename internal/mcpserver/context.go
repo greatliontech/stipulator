@@ -8,7 +8,6 @@ import (
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/coverage"
-	"github.com/greatliontech/stipulator/internal/dossier"
 	"github.com/greatliontech/stipulator/internal/facts"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/wire"
@@ -40,7 +39,7 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 	// form and the record-only form a hygiene fault selects judge no
 	// witness-backed requirement against absent evidence.
 	cr := coverage.Evaluate(spec, vr, store, tr != nil, pol)
-	dossiers, err := dossier.Build(spec, vr, cr, store, ids)
+	dossiers, err := facts.Dossiers(spec, vr, cr, store, ids)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}

@@ -1,9 +1,16 @@
 // Package facts derives code-context facts for work dissemination: seed
-// symbols from the spec neighborhood's bindings, and candidate work
-// partitions from closure connectivity and slice overlap.
+// symbols from the spec neighborhood's bindings, candidate work
+// partitions from closure connectivity and slice overlap, and the
+// per-requirement orientation dossier — the one call answering "tell
+// me everything about this requirement": clause, coverage, gap,
+// attestation, bindings, and seeds, so no consumer needs to know the
+// record stores' file layout (REQ-context-dossier).
 //
-// Everything here is a derived report — computed on demand, never stored —
-// and facts only: selection, ordering, and budgets belong to consumers.
+// Everything here is a derived report — computed on demand, never stored
+// — and facts only: selection, ordering, and budgets belong to
+// consumers. Assembly only, for the dossier: every fact comes from the
+// compiled corpus, the verification report, the coverage evaluation, or
+// the record stores, computed by their owners.
 package facts
 
 import (
@@ -246,7 +253,7 @@ func (r *Report) ProtoUncapped() *stipulatorv1.PartitionReport {
 	return out
 }
 
-// Proto renders the context facts as their wire message.
+// ContextProto renders the context facts as their wire message.
 func ContextProto(seeds []Seed, decls []verify.Decl, floor []verify.FloorPackage) *stipulatorv1.ContextReport {
 	out := &stipulatorv1.ContextReport{}
 	var ss []*stipulatorv1.Seed

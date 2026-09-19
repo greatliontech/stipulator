@@ -1,24 +1,20 @@
-// Package dossier assembles per-requirement orientation views: the one
-// call answering "tell me everything about REQ-X" — clause, coverage,
-// gap, attestation, and bindings — so no consumer needs to know
-// the record stores' file layout (REQ-context-dossier). Assembly only:
-// every fact comes from the compiled corpus, the verification report, the
-// coverage evaluation, or the record stores, computed by their owners.
-package dossier
+package facts
 
 import (
 	"fmt"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/coverage"
-	"github.com/greatliontech/stipulator/internal/facts"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
-// Build assembles one dossier per requested id, in request order. An id
-// not in the corpus is an error naming it exactly.
-func Build(spec *stipulatorv1.Spec, vr *verify.Report, cr *coverage.Report, store *records.Store, ids []string) ([]*stipulatorv1.Dossier, error) {
+// Dossiers assembles one dossier per requested id, in request order —
+// the orientation view REQ-context-dossier states, every fact computed
+// by its owner. An id not in the corpus is an error naming it exactly;
+// the served verb refuses unknown ids before the verification pass, so
+// the arm stands for a caller that did not.
+func Dossiers(spec *stipulatorv1.Spec, vr *verify.Report, cr *coverage.Report, store *records.Store, ids []string) ([]*stipulatorv1.Dossier, error) {
 	gapStates := map[string]coverage.GapState{}
 	for _, g := range cr.Gaps {
 		gapStates[g.RequirementId] = g.State
@@ -78,7 +74,7 @@ func Build(spec *stipulatorv1.Spec, vr *verify.Report, cr *coverage.Report, stor
 		}
 		d.SetBindings(wire)
 
-		seeds, err := facts.Seeds(spec, store, []string{id})
+		seeds, err := Seeds(spec, store, []string{id})
 		if err != nil {
 			return nil, err
 		}

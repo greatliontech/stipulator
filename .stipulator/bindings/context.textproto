@@ -43,8 +43,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-context-dossier"
-  content_hash: "0fe0236ac239eb006dbee86bcbba45f4a2bee8b4138b343753879ed76db83ede"
-  source_hash: "eb0586480d0df9601f058dd003ba367eef7c059ab21e6579046f67b20aa3f7ad"
+  content_hash: "61c513bd4bba73831041eda74705e5f584311adb86f26780afb56c9b5b8144f8"
+  source_hash: "ee7f04b52b926b9f913a5ec439c12c1cd20662922292a7a3863789bbba359a3c"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestContextDossier"
   role: BINDING_ROLE_TESTS
@@ -53,10 +53,20 @@ bindings {
 
 bindings {
   requirement_id: "REQ-context-dossier"
-  content_hash: "0fe0236ac239eb006dbee86bcbba45f4a2bee8b4138b343753879ed76db83ede"
-  source_hash: "eb0586480d0df9601f058dd003ba367eef7c059ab21e6579046f67b20aa3f7ad"
+  content_hash: "61c513bd4bba73831041eda74705e5f584311adb86f26780afb56c9b5b8144f8"
+  source_hash: "ee7f04b52b926b9f913a5ec439c12c1cd20662922292a7a3863789bbba359a3c"
   backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/dossier.Build"
+  symbol: "github.com/greatliontech/stipulator/internal/facts.Dossiers"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "cff274a0cf87b34c1e328a7cf9656359687af0be037e44fd78bdd34aba21820d"
+  shape_hash: "e00d8d4e01831d7927ae7b54924a3af5320d80602450370a02e23fbceb79ff68"
+}
+
+bindings {
+  requirement_id: "REQ-context-dossier"
+  content_hash: "61c513bd4bba73831041eda74705e5f584311adb86f26780afb56c9b5b8144f8"
+  source_hash: "ee7f04b52b926b9f913a5ec439c12c1cd20662922292a7a3863789bbba359a3c"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/facts.TestRetiredDossierWireContract"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b74f2c6533a755b125f1d2f4151ab858f0416010ee427a9d41123932bb66125f"
 }

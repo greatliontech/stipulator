@@ -1064,10 +1064,37 @@ func TestContextDossier(t *testing.T) {
 		`"design settles"`,              // and its landing condition
 		`"witnessClass":"WITNESS_CLASS_EXAMPLE"`,
 		`"gapState":"GAP_STATE_OPEN"`, // the record's evaluated state
+		`"seeds":[{`,                  // the closure's seed symbols
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("dossier missing %s:\n%s", want, text)
 		}
+	}
+	// The seeds are the closure's bindings — here the requirement's own
+	// — read from the dossier's own seeds, never from its bindings rows
+	// that carry the same symbol (REQ-context-dossier, REQ-context-seeds).
+	var decoded struct {
+		Dossiers []struct {
+			Seeds []struct {
+				RequirementId string `json:"requirementId"`
+				Symbol        string `json:"symbol"`
+			} `json:"seeds"`
+		} `json:"dossiers"`
+	}
+	if err := json.Unmarshal([]byte(text), &decoded); err != nil || len(decoded.Dossiers) == 0 {
+		t.Fatalf("dossier payload: %v\n%s", err, text)
+	}
+	if seeds := decoded.Dossiers[0].Seeds; len(seeds) != 1 || seeds[0].RequirementId != "REQ-m-a" || seeds[0].Symbol != "example.com/p.TestA" {
+		t.Fatalf("dossier seeds = %+v; want REQ-m-a's own binding", seeds)
+	}
+	// Each dossier's seeds are its own closure's: REQ-m-b's closure
+	// binds nothing, so its dossier carries no seed of the request's
+	// other requirement.
+	if len(decoded.Dossiers) < 2 {
+		t.Fatalf("dossiers = %d, want one per requested id", len(decoded.Dossiers))
+	}
+	if seeds := decoded.Dossiers[1].Seeds; len(seeds) != 0 {
+		t.Fatalf("REQ-m-b's dossier carried seeds from another requirement's closure: %+v", seeds)
 	}
 	for _, retired := range []string{`"hardening"`, `"mutants"`, `"killed"`, `"survivors"`} {
 		if strings.Contains(text, retired) {

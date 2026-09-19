@@ -1,4 +1,4 @@
-package dossier
+package facts
 
 import (
 	"testing"
