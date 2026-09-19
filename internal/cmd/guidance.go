@@ -76,19 +76,17 @@ func renderKnobUsage(root *cobra.Command) {
 	doc := guidanceDoc()
 	var walk func(prefix string, c *cobra.Command)
 	walk = func(prefix string, c *cobra.Command) {
+		// The walk runs over a fresh root, before cobra adds its help and
+		// completion commands and each command's --help flag at
+		// execution, so every child is a verb or a grouping parent and
+		// every local flag a knob.
 		for _, child := range c.Commands() {
-			if child.Hidden || child.Name() == "help" || child.Name() == "completion" {
-				continue
-			}
 			name := strings.TrimSpace(prefix + " " + child.Name())
 			if child.HasSubCommands() {
 				walk(name, child)
 				continue
 			}
 			child.LocalFlags().VisitAll(func(f *pflag.Flag) {
-				if f.Name == "help" {
-					return
-				}
 				k, err := doc.Knob("cli", name, f.Name)
 				if err != nil {
 					panic("cmd: " + err.Error())

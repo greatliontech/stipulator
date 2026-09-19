@@ -388,7 +388,7 @@ func terminalLine(cause stipulatorv1.TerminalCause, phase stipulatorv1.Phase, ke
 	case stipulatorv1.TerminalCause_TERMINAL_CAUSE_DEADLINE:
 		fmt.Fprintf(&b, "deadline expired in the %s phase", Word(phase))
 	default:
-		fmt.Fprintf(&b, "ended: %s", CauseWord(cause))
+		fmt.Fprintf(&b, "ended: %s", causeWord(cause))
 	}
 	if len(kept) > 0 {
 		fmt.Fprintf(&b, "; kept: %s", strings.Join(kept, ", "))
@@ -398,8 +398,8 @@ func terminalLine(cause stipulatorv1.TerminalCause, phase stipulatorv1.Phase, ke
 	return b.String()
 }
 
-// CauseWord is the terminal cause's human word.
-func CauseWord(c stipulatorv1.TerminalCause) string {
+// causeWord is the terminal cause's human word.
+func causeWord(c stipulatorv1.TerminalCause) string {
 	switch c {
 	case stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED:
 		return "completed"

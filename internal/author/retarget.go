@@ -281,7 +281,7 @@ func retargetBindings(fsys fs.FS, backends map[string]verify.Backend, backend, o
 	if backend == "" || oldPrefix == "" || newPrefix == "" {
 		return nil, nil, nil, fmt.Errorf("a backend, an old prefix, and a new prefix are required")
 	}
-	if !KnownBackends[backend] {
+	if !knownBackends[backend] {
 		return nil, nil, nil, fmt.Errorf("unknown backend %q (go, proto)", backend)
 	}
 	if oldPrefix == newPrefix {

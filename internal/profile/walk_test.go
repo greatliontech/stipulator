@@ -112,7 +112,7 @@ func TestOneWalkAnswersAttachmentAndExtent(t *testing.T) {
 			doc.WriteString(b.markdown())
 			doc.WriteString("\n")
 		}
-		root, diags := Parse([]byte(doc.String()))
+		root, diags := parse([]byte(doc.String()))
 		if len(diags) != 0 {
 			rt.Fatalf("diagnostics over %q: %v", doc.String(), diags)
 		}
@@ -170,7 +170,7 @@ func TestOneWalkAnswersAttachmentAndExtent(t *testing.T) {
 func TestNoteAttachmentWindowEdges(t *testing.T) {
 	stipulate.Covers(t, "REQ-profile-note", "REQ-profile-context-extent")
 	src := "# Doc\n\n**REQ-a** (behavior): A MUST hold.\n\n- item\n\n| c |\n| --- |\n| v |\n\n> after payload\n\n**widget** (term): A widget.\n\n- not payload\n\n> after a term's list\n\n## Section\n\n> after a heading\n"
-	root, diags := Parse([]byte(src))
+	root, diags := parse([]byte(src))
 	if len(diags) != 0 {
 		t.Fatal(diags)
 	}

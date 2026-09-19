@@ -12,12 +12,13 @@ import (
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
-// ResolverSubcommand is argv[1] of an owned resolver child: the hidden
-// CLI subcommand a parent stipulator process self-execs to put
-// go/packages symbol loading behind an owned, cancellable process
-// boundary (REQ-go-owned-processes). Parent and child agree on this one
-// name; it is process plumbing, never public CLI surface.
-const ResolverSubcommand = "internal-resolve"
+// resolverSubcommand is argv[1] of an owned resolver child: the argv
+// token a parent stipulator process self-execs its own binary with to
+// put go/packages symbol loading behind an owned, cancellable process
+// boundary (REQ-go-owned-processes), routed by ResolverChildMain before
+// any command parsing. Parent and child agree on this one name; it is
+// process plumbing, never CLI surface.
+const resolverSubcommand = "internal-resolve"
 
 // resolverRequest is one parent→child protocol line. Symbol carries the
 // resolve and witnessclass subject; Symbols carries the slice subjects.
@@ -126,7 +127,7 @@ func classFromWire(s string) (verify.WitnessClass, bool) {
 	return verify.ExampleWitness, false
 }
 
-// ServeResolver is the resolver child's half of the owned symbol-loading
+// serveResolver is the resolver child's half of the owned symbol-loading
 // boundary: it loads the tree rooted at dir in-process (newContext) and
 // serves the Backend surface — resolve, witnessclass, slice — over the
 // JSON-lines protocol on r and w. The first response line is the
@@ -134,7 +135,7 @@ func classFromWire(s string) (verify.WitnessClass, bool) {
 // parent reports it exactly as an in-process load would have. Every
 // request line is answered with exactly one response line; the loop ends
 // cleanly when r reaches EOF — the parent closed the pipe or exited.
-func ServeResolver(ctx context.Context, dir string, patterns []string, r io.Reader, w io.Writer) error {
+func serveResolver(ctx context.Context, dir string, patterns []string, r io.Reader, w io.Writer) error {
 	enc := json.NewEncoder(w)
 	b, err := newContext(ctx, dir, patterns)
 	if err != nil {
@@ -224,15 +225,16 @@ func ServeResolver(ctx context.Context, dir string, patterns []string, r io.Read
 // ResolverChildMain routes a resolver-child invocation of the current
 // process: when argv names the resolver subcommand it serves the
 // protocol on stdio and exits, and otherwise it returns immediately.
-// The owned client self-execs os.Executable(), which in-process tests
-// make the test binary itself — any test binary whose tests reach an
-// owned backend must call this from TestMain before running tests, or
-// the child invocation would run the test suite instead of a resolver.
+// It is the one route: the owned client self-execs os.Executable(),
+// which is the stipulator binary in production — its main calls this
+// before any command parsing — and, in in-process tests, the test
+// binary itself, whose TestMain calls it before running tests, or the
+// child invocation would run the test suite instead of a resolver.
 func ResolverChildMain() {
-	if len(os.Args) < 3 || os.Args[1] != ResolverSubcommand {
+	if len(os.Args) < 3 || os.Args[1] != resolverSubcommand {
 		return
 	}
-	if err := ServeResolver(context.Background(), os.Args[2], os.Args[3:], os.Stdin, os.Stdout); err != nil {
+	if err := serveResolver(context.Background(), os.Args[2], os.Args[3:], os.Stdin, os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

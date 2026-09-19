@@ -166,9 +166,9 @@ type DanglingPointer struct {
 	Requirement, Name string
 }
 
-// PointerRemedy spells the two ways a dangling pointer resolves: a
+// pointerRemedy spells the two ways a dangling pointer resolves: a
 // binding of the named symbol, or the retarget of a renamed one.
-func PointerRemedy(requirement, name string) string {
+func pointerRemedy(requirement, name string) string {
 	return fmt.Sprintf("enforcement pointer `%s` names no tests/proves binding of %s: %s, or %s the renamed symbol", name, requirement, remedy.Bind(requirement, "tests", "<package>."+name), remedy.Retarget())
 }
 
@@ -429,7 +429,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 			e := get(r.GetId())
 			e.broken = true
 			e.otherRed = true
-			e.reasons = append(e.reasons, PointerRemedy(r.GetId(), p))
+			e.reasons = append(e.reasons, pointerRemedy(r.GetId(), p))
 			dangling = append(dangling, DanglingPointer{Requirement: r.GetId(), Name: p})
 			danglingIDs[r.GetId()] = true
 		}
@@ -825,11 +825,6 @@ func excuseNames(set map[Bucket]bool) string {
 	return strings.Join(names, ", ")
 }
 
-// admitsAttestation reports whether the effective policy accepts an
-// attestation as the cell's minimum: a manifest ATTESTATION cell, or the
-// default table's SHOULD/SHOULD NOT row ("a static binding or an
-// attestation", REQ-coverage-policy-default). Admission renders the
-// distinct attested bucket, never covered.
 // AdmitsAttestation reports whether the (kind, keyword) cell can ever
 // render the attested bucket under pol — the born-valid check the
 // attest verb applies at write time: an attestation that can never
@@ -844,6 +839,11 @@ func RequiredEvidence(pol *Policy, kind stipulatorv1.ClauseKind, kw stipulatorv1
 	return requiredEvidence(pol, kind, kw)
 }
 
+// admitsAttestation reports whether the effective policy accepts an
+// attestation as the cell's minimum: a manifest ATTESTATION cell, or the
+// default table's SHOULD/SHOULD NOT row ("a static binding or an
+// attestation", REQ-coverage-policy-default). Admission renders the
+// distinct attested bucket, never covered.
 func admitsAttestation(overridden bool, min stipulatorv1.MinimumEvidence, kw stipulatorv1.Keyword) bool {
 	if overridden {
 		return min == stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_ATTESTATION

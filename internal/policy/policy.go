@@ -29,17 +29,17 @@ func Parse(raw []byte) (*stipulatorv1.TestPolicy, error) {
 	if err := prototext.Unmarshal(raw, p); err != nil {
 		return nil, fmt.Errorf("parsing %s: %w", Path, err)
 	}
-	if err := Validate(p); err != nil {
+	if err := validate(p); err != nil {
 		return nil, err
 	}
 	return p, nil
 }
 
-// Validate checks canonical form over the backend-neutral envelope: at
+// validate checks canonical form over the backend-neutral envelope: at
 // least one invocation declared; invocation names non-empty, unique, and
 // strictly ascending in byte order; every invocation carrying a positive
 // explicit timeout and exactly one typed backend payload.
-func Validate(p *stipulatorv1.TestPolicy) error {
+func validate(p *stipulatorv1.TestPolicy) error {
 	// A record accepting no test work names no suite whose health a run
 	// could judge: admitting it would create a tree that fails every check
 	// without a stated cause.

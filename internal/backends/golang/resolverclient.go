@@ -16,7 +16,7 @@ import (
 
 // resolverClient is the backend's typed path: a verify.Backend whose
 // go/packages symbol loading runs in an owned resolver child — this
-// binary self-exec'd as the hidden resolver subcommand, spawned through
+// binary self-exec'd on the resolver child's argv route, spawned through
 // the same owned-cancellation machinery as every other child of Go
 // policy work, so the package launcher and its
 // entire descendant tree — every go list, compile, and VCS subprocess —
@@ -94,7 +94,7 @@ func newResolverClientScoped(ctx context.Context, dir string, patterns []string)
 	if err != nil {
 		return nil, fmt.Errorf("resolving tree root %s: %w", dir, err)
 	}
-	c := newResolverClientCommand(ctx, exe, append([]string{ResolverSubcommand, abs}, patterns...)...)
+	c := newResolverClientCommand(ctx, exe, append([]string{resolverSubcommand, abs}, patterns...)...)
 	// The child is this process's own binary: the identity to meet is
 	// the image this process started as, not whatever the path names
 	// when the lazy spawn happens.
@@ -105,7 +105,7 @@ func newResolverClientScoped(ctx context.Context, dir string, patterns []string)
 // newResolverClientCommand is newResolverClient with an explicit child
 // command line — the testable seam; the command must lead the spawned
 // process into
-// ServeResolver. Child lifetime is bound to ctx.
+// serveResolver. Child lifetime is bound to ctx.
 func newResolverClientCommand(ctx context.Context, exe string, args ...string) *resolverClient {
 	identity, err := fileIdentity(exe)
 	return &resolverClient{ctx: ctx, exe: exe, args: args, identity: identity, identityErr: err}

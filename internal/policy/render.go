@@ -16,7 +16,7 @@ const recordHeader = "# proto-file: proto/stipulator/v1/policy.proto\n" +
 	"# proto-message: stipulator.v1.TestPolicy\n\n"
 
 // Render's output is canonical — and therefore accepted back by Parse — only
-// for policies that pass Validate; every writer validates (directly or through
+// for policies that pass validate; every writer validates (directly or through
 // Dispatch) before rendering. Render renders a policy record deterministically: the standard header,
 // then every populated field in field-number order with fixed indentation
 // and Go-quoted strings. prototext.Marshal deliberately destabilizes its

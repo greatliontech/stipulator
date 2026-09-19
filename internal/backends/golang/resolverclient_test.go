@@ -107,7 +107,7 @@ func TestResolverClientProtocolRoundTrips(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	owned := newResolverClientCommand(ctx, bin, ResolverSubcommand, dir)
+	owned := newResolverClientCommand(ctx, bin, resolverSubcommand, dir)
 	defer owned.Close()
 
 	for _, symbol := range []string{
@@ -228,7 +228,7 @@ func TestResolverClientLoadErrorPropagates(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	owned := newResolverClientCommand(ctx, bin, ResolverSubcommand, dir)
+	owned := newResolverClientCommand(ctx, bin, resolverSubcommand, dir)
 	defer owned.Close()
 	_, _, err := owned.Resolve("example.com/x.Y")
 	if err == nil {

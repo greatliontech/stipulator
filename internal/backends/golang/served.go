@@ -826,11 +826,11 @@ func mergeRefusals(into map[string]string, asked []string, refusals map[string]s
 	return into
 }
 
-// WitnessSymbols names every witness subject of the captured policy —
+// witnessSymbols names every witness subject of the captured policy —
 // "package.Test" for each capture group's subjects — the symbols the
 // witness run classifies, so an operation's served backend is prepared
 // over them beside the bound symbols.
-func WitnessSymbols(ctx context.Context, pc *Capture) ([]string, error) {
+func witnessSymbols(ctx context.Context, pc *Capture) ([]string, error) {
 	d, err := pc.discover(ctx)
 	if err != nil {
 		return nil, err
@@ -856,7 +856,7 @@ func OperationSymbols(ctx context.Context, store *records.Store, pc *Capture) ([
 	var witnesses []string
 	if pc != nil {
 		var err error
-		if witnesses, err = WitnessSymbols(ctx, pc); err != nil {
+		if witnesses, err = witnessSymbols(ctx, pc); err != nil {
 			return nil, err
 		}
 	}

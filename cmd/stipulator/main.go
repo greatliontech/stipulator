@@ -10,10 +10,14 @@ import (
 	"sync/atomic"
 	"syscall"
 
+	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/cmd"
 )
 
 func main() {
+	// The resolver child's one route, before any command parsing
+	// (golang.ResolverChildMain's doc states the rule).
+	golang.ResolverChildMain()
 	ctx, stop := context.WithCancel(context.Background())
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)

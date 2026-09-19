@@ -94,7 +94,7 @@ func gapOver(spec *stipulatorv1.Spec, store *records.Store, g *stipulatorv1.Gap)
 			return nil, nil, nil, fmt.Errorf("excuse classes are uncovered, stale, or broken")
 		}
 		if seenExcuse[x] {
-			return nil, nil, nil, fmt.Errorf("excuse class %s repeats", ExcuseString(x))
+			return nil, nil, nil, fmt.Errorf("excuse class %s repeats", excuseString(x))
 		}
 		seenExcuse[x] = true
 	}
@@ -196,13 +196,13 @@ func Gaps(fsys fs.FS, reqs []string, reason string, lands *stipulatorv1.LandingC
 		switch {
 		case prior != nil && !proto.Equal(prior.GetLands(), g.GetLands()):
 			notes = append(notes, id+": landing retargeted "+
-				LandingConditionString(prior.GetLands())+" -> "+LandingConditionString(g.GetLands()))
+				landingConditionString(prior.GetLands())+" -> "+landingConditionString(g.GetLands()))
 		// A changed excuse set is surfaced exactly as a changed landing
 		// condition is (REQ-gap-verb): rescoping which reds a standing
 		// record absorbs is never silent.
 		case prior != nil && !slices.Equal(prior.GetExcuses(), g.GetExcuses()):
 			notes = append(notes, id+": excuses rescoped "+
-				ExcusesString(prior.GetExcuses())+" -> "+ExcusesString(g.GetExcuses()))
+				excusesString(prior.GetExcuses())+" -> "+excusesString(g.GetExcuses()))
 		// Preservation overriding an explicitly unfired declaration is
 		// surfaced like any other non-silent consequence (REQ-gap-verb):
 		// with the condition otherwise unchanged the old and new compare
@@ -295,7 +295,7 @@ func FireGaps(fsys fs.FS, reqs []string) ([]Update, error) {
 			found = true
 			if !gf.Gap.GetLands().HasManual() {
 				return nil, fmt.Errorf("%s's landing condition is %s, not manual; only a manual condition fires",
-					id, LandingConditionString(gf.Gap.GetLands()))
+					id, landingConditionString(gf.Gap.GetLands()))
 			}
 			g := proto.CloneOf(gf.Gap)
 			g.GetLands().GetManual().SetFired(true)

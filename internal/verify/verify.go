@@ -249,13 +249,13 @@ func witnessRole(role stipulatorv1.BindingRole) bool {
 // witness evidence and passes — the caller declared no-test semantics.
 func ServingClassRequired(tr *TestRun) error {
 	if tr != nil && !tr.SelectiveServing {
-		return ErrNotServingClass
+		return errNotServingClass
 	}
 	return nil
 }
 
-// ErrNotServingClass names the refused execution class.
-var ErrNotServingClass = errors.New("this operation takes serving-class witness evidence (proven-fresh records with selective execution of the stale remainder), never a whole policy execution")
+// errNotServingClass names the refused execution class.
+var errNotServingClass = errors.New("this operation takes serving-class witness evidence (proven-fresh records with selective execution of the stale remainder), never a whole policy execution")
 
 // Report is the outcome of a verification run.
 type Report struct {

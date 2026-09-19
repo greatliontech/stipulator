@@ -60,7 +60,7 @@ func TestGoResolverCancellationTerminatesDescendants(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	owned := newResolverClientCommand(ctx, bin, ResolverSubcommand, mod)
+	owned := newResolverClientCommand(ctx, bin, resolverSubcommand, mod)
 	defer owned.Close()
 	done := make(chan error, 1)
 	go func() {

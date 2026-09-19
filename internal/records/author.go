@@ -22,7 +22,7 @@ func AddBinding(store *Store, filePath string, b *stipulatorv1.Binding) ([]byte,
 		if bf.Path != filePath {
 			continue
 		}
-		if line := CommentOutsideHeader(bf.Raw); line > 0 {
+		if line := commentOutsideHeader(bf.Raw); line > 0 {
 			return nil, fmt.Errorf("%s:%d: comment outside the leading header block; move commentary to the commit message first", bf.Path, line)
 		}
 		bf.Set.SetBindings(append(bf.Set.GetBindings(), b))
@@ -55,7 +55,7 @@ func RemoveBindings(store *Store, fn func(*stipulatorv1.Binding) bool) (updates 
 		if matched == 0 {
 			continue
 		}
-		if line := CommentOutsideHeader(bf.Raw); line > 0 {
+		if line := commentOutsideHeader(bf.Raw); line > 0 {
 			return nil, nil, 0, fmt.Errorf("%s:%d: comment outside the leading header block; move commentary to the commit message first", bf.Path, line)
 		}
 		removed += matched
@@ -123,7 +123,7 @@ func renderGap(g *stipulatorv1.Gap) []byte {
 // Render re-renders one binding file through the machine-owned writer,
 // refusing files carrying comments outside the leading header.
 func Render(bf BindingFile) ([]byte, error) {
-	if line := CommentOutsideHeader(bf.Raw); line > 0 {
+	if line := commentOutsideHeader(bf.Raw); line > 0 {
 		return nil, fmt.Errorf("%s:%d: comment outside the leading header block; move commentary to the commit message first", bf.Path, line)
 	}
 	return renderBindingSet(bf), nil
@@ -159,7 +159,7 @@ func RenderGapFile(gf GapFile) ([]byte, error) {
 // the one header policy every machine-owned record file shares
 // (REQ-evidence-binding-machine-owned).
 func RenderAttestationFile(af AttestationFile) ([]byte, error) {
-	return renderPreservingHeader(af.Path, af.Raw, RenderAttestations(af.Set))
+	return renderPreservingHeader(af.Path, af.Raw, renderAttestations(af.Set))
 }
 
 // renderPreservingHeader replaces a record file's body while keeping
@@ -167,7 +167,7 @@ func RenderAttestationFile(af AttestationFile) ([]byte, error) {
 // outside that header refuses, since the rewrite would destroy it. An
 // absent file (nil raw) takes the body's default header.
 func renderPreservingHeader(path string, raw, body []byte) ([]byte, error) {
-	if line := CommentOutsideHeader(raw); line > 0 {
+	if line := commentOutsideHeader(raw); line > 0 {
 		return nil, fmt.Errorf("%s:%d: comment outside the leading header block; move commentary to the commit message first", path, line)
 	}
 	var b strings.Builder
@@ -240,9 +240,9 @@ func AttestationPath(requirementID string) string {
 	return path.Join(AttestationsDir, strings.TrimPrefix(strings.ToLower(requirementID), "req-")+".textproto")
 }
 
-// RenderAttestations renders an attestation set deterministically with
+// renderAttestations renders an attestation set deterministically with
 // the standard header.
-func RenderAttestations(set *stipulatorv1.AttestationSet) []byte {
+func renderAttestations(set *stipulatorv1.AttestationSet) []byte {
 	var b strings.Builder
 	b.WriteString(defaultHeader)
 	b.WriteString("# proto-message: stipulator.v1.AttestationSet\n")

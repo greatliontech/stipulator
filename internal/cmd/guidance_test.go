@@ -15,9 +15,9 @@ import (
 // The CLI surface and the guidance document cannot drift: every
 // visible leaf command's spelling and every local flag is documented,
 // in both directions, judged over the real cobra tree
-// (REQ-mcp-guidance). Grouping parents, cobra's own help/completion
-// plumbing, the root-persistent chdir flag, and the hidden internal
-// resolver are surface plumbing, not verbs.
+// (REQ-mcp-guidance). Grouping parents and the root-persistent chdir
+// flag are surface plumbing, not verbs; cobra's help and completion
+// commands join the tree only at execution, after the walk.
 //
 //gofresh:pure
 func TestGuidanceCoversTheCLISurface(t *testing.T) {
@@ -30,9 +30,6 @@ func TestGuidanceCoversTheCLISurface(t *testing.T) {
 	var walk func(prefix string, c *cobra.Command)
 	walk = func(prefix string, c *cobra.Command) {
 		for _, child := range c.Commands() {
-			if child.Hidden || child.Name() == "help" || child.Name() == "completion" {
-				continue
-			}
 			name := strings.TrimSpace(prefix + " " + child.Name())
 			if child.HasSubCommands() {
 				walk(name, child)
@@ -40,9 +37,6 @@ func TestGuidanceCoversTheCLISurface(t *testing.T) {
 			}
 			var flags []string
 			child.LocalFlags().VisitAll(func(f *pflag.Flag) {
-				if f.Name == "help" {
-					return
-				}
 				flags = append(flags, f.Name)
 				// The usage string is the document's knob text, its
 				// terse first clause — identity, never a name match.

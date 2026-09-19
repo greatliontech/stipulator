@@ -275,8 +275,8 @@ func TestGapContradictedClassRidesTheManualCondition(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !lc.GetManual().GetContradicted() || LandingConditionString(lc) != "manual(the derivation lands) [contradicted]" {
-		t.Fatalf("condition = %s / %+v, want the class carried and rendered", LandingConditionString(lc), lc)
+	if !lc.GetManual().GetContradicted() || landingConditionString(lc) != "manual(the derivation lands) [contradicted]" {
+		t.Fatalf("condition = %s / %+v, want the class carried and rendered", landingConditionString(lc), lc)
 	}
 	fsys := testFS(nil)
 	ups, notes, err := Gaps(fsys, []string{"REQ-au-a"}, "the shipped schema contradicts the letter", lc, nil)

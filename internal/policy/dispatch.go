@@ -43,13 +43,13 @@ type Invocation struct {
 // backend refuses, rejects the policy whole: an unsupported invocation can
 // never silently drop out of the reviewed suite.
 func Dispatch(p *stipulatorv1.TestPolicy, backends map[string]Backend) ([]Invocation, error) {
-	if err := Validate(p); err != nil {
+	if err := validate(p); err != nil {
 		return nil, err
 	}
 	invs := make([]Invocation, 0, len(p.GetInvocations()))
 	for _, inv := range p.GetInvocations() {
 		r := inv.ProtoReflect()
-		// Validate guaranteed a set payload case, and the case name IS
+		// validate guaranteed a set payload case, and the case name IS
 		// the backend name — one source, so the two cannot disagree.
 		fd := r.WhichOneof(r.Descriptor().Oneofs().ByName("config"))
 		backend := string(fd.Name())

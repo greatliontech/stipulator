@@ -46,7 +46,7 @@ func TestPolicyCanonicalFormAccepted(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if err := Validate(c.policy); err != nil {
+			if err := validate(c.policy); err != nil {
 				t.Fatalf("canonical policy refused: %v", err)
 			}
 		})
@@ -100,7 +100,7 @@ func TestPolicyNonCanonicalFormRefusedWhole(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			err := Validate(c.policy)
+			err := validate(c.policy)
 			if err == nil {
 				t.Fatal("non-canonical policy accepted")
 			}

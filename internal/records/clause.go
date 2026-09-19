@@ -33,12 +33,12 @@ func SetClause(b *stipulatorv1.Binding, text string) error {
 	return nil
 }
 
-// ClauseKey is the clause part of a binding's identity as the claim
+// clauseKey is the clause part of a binding's identity as the claim
 // spells it: the empty string for an unscoped claim, "#<ordinal>" for
 // an ordinal, the label in backticks for a label — a present label,
 // empty included, never reads as the unscoped claim. Two bindings
 // differing only here are two claims.
-func ClauseKey(b *stipulatorv1.Binding) string {
+func clauseKey(b *stipulatorv1.Binding) string {
 	switch {
 	case b.HasClauseOrdinal():
 		return "#" + strconv.FormatUint(uint64(b.GetClauseOrdinal()), 10)
@@ -85,7 +85,7 @@ func ClaimClauseKey(req *stipulatorv1.Requirement, b *stipulatorv1.Binding) stri
 		}
 		return "#" + strconv.FormatUint(uint64(c.GetOrdinal()), 10)
 	}
-	return ClauseKey(b)
+	return clauseKey(b)
 }
 
 // ClauseSuffix renders a binding's clause for a message, with a

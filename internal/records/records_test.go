@@ -69,8 +69,8 @@ func TestClauseKeyKeepsAPresentLabelApartFromTheUnscopedClaim(t *testing.T) {
 	labelled.SetClauseLabel("prepared")
 	ordinal := &stipulatorv1.Binding{}
 	ordinal.SetClauseOrdinal(2)
-	if ClauseKey(unscoped) != "" || ClauseKey(empty) == "" || ClauseKey(empty) == ClauseKey(labelled) || ClauseKey(ordinal) != "#2" {
-		t.Fatalf("keys: unscoped %q empty %q labelled %q ordinal %q", ClauseKey(unscoped), ClauseKey(empty), ClauseKey(labelled), ClauseKey(ordinal))
+	if clauseKey(unscoped) != "" || clauseKey(empty) == "" || clauseKey(empty) == clauseKey(labelled) || clauseKey(ordinal) != "#2" {
+		t.Fatalf("keys: unscoped %q empty %q labelled %q ordinal %q", clauseKey(unscoped), clauseKey(empty), clauseKey(labelled), clauseKey(ordinal))
 	}
 	req := &stipulatorv1.Requirement{}
 	c := &stipulatorv1.Clause{}

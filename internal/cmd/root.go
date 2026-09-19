@@ -138,10 +138,6 @@ func newRootCmd() *cobra.Command {
 			// Embedded content: guidance answers before a corpus
 			// exists, exactly like the document it serves.
 			return nil
-		case golang.ResolverSubcommand:
-			// The resolver child's argument is a tree root its parent
-			// already resolved; corpus-root discovery does not apply.
-			return nil
 		case "mcp":
 			// A globally-registered server must start even outside a
 			// corpus: tools return the teaching error per request.
@@ -157,7 +153,7 @@ func newRootCmd() *cobra.Command {
 		chdir = root
 		return nil
 	}
-	c.AddCommand(compileCmd(), checkCmd(), verifyCmd(), gateCmd(), explainCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), impactCmd(), pruneCmd(), pinCmd(), disposeCmd(), retargetCmd(), attestCmd(), initCmd(), policyCmd(), mcpCmd(), guidanceCmd(), internalResolveCmd())
+	c.AddCommand(compileCmd(), checkCmd(), verifyCmd(), gateCmd(), explainCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), impactCmd(), pruneCmd(), pinCmd(), disposeCmd(), retargetCmd(), attestCmd(), initCmd(), policyCmd(), mcpCmd(), guidanceCmd())
 	renderKnobUsage(c)
 	return c
 }

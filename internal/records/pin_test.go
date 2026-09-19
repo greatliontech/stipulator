@@ -225,7 +225,7 @@ func TestPinRehashesByteIdenticalText(t *testing.T) {
 	att.SetReason("judged")
 	aset := &stipulatorv1.AttestationSet{}
 	aset.SetAttestations([]*stipulatorv1.RequirementAttestation{att})
-	store.Attestations = append(store.Attestations, AttestationFile{Path: ".stipulator/attestations/rehash.textproto", Raw: append([]byte("# reviewed by hand, keep this note\n"), RenderAttestations(aset)...), Set: aset})
+	store.Attestations = append(store.Attestations, AttestationFile{Path: ".stipulator/attestations/rehash.textproto", Raw: append([]byte("# reviewed by hand, keep this note\n"), renderAttestations(aset)...), Set: aset})
 	hashes := Hashes{
 		Content: map[string]string{"REQ-r-rehash": current, "REQ-r-moved": current, "REQ-r-prefield": current, "REQ-r-current": current, "REQ-r-rewrapped": current},
 		Source:  map[string]string{"REQ-r-rehash": src, "REQ-r-moved": src, "REQ-r-prefield": src, "REQ-r-current": src, "REQ-r-rewrapped": src},

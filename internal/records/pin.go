@@ -104,7 +104,7 @@ func Pin(store *Store, hashes Hashes, shapes map[string]string) (updates map[str
 		// Binding files are machine-owned: rewriting would destroy any
 		// commentary outside the leading header, so refuse instead of
 		// silently dropping it.
-		if line := CommentOutsideHeader(bf.Raw); line > 0 {
+		if line := commentOutsideHeader(bf.Raw); line > 0 {
 			return nil, nil, nil, nil, fmt.Errorf("%s:%d: comment outside the leading header block; move commentary to the commit message before pinning", bf.Path, line)
 		}
 		out[bf.Path] = renderBindingSet(bf)
@@ -195,11 +195,11 @@ func ShapeMismatched(store *Store, ids []string, shapes map[string]string) map[s
 	return res
 }
 
-// CommentOutsideHeader returns the 1-based line of the first comment after
+// commentOutsideHeader returns the 1-based line of the first comment after
 // the leading header block, or 0 — the machine-owned-record test every
 // tool rewrite of a binding or gap file runs before destroying commentary
 // (REQ-evidence-binding-machine-owned).
-func CommentOutsideHeader(raw []byte) int {
+func commentOutsideHeader(raw []byte) int {
 	inHeader := true
 	for i, line := range strings.Split(string(raw), "\n") {
 		t := strings.TrimSpace(line)
@@ -219,7 +219,7 @@ func CommentOutsideHeader(raw []byte) int {
 func renderBindingSet(bf BindingFile) []byte {
 	var b strings.Builder
 	for _, line := range strings.Split(string(bf.Raw), "\n") {
-		// Match CommentOutsideHeader's notion of a header line exactly, or
+		// Match commentOutsideHeader's notion of a header line exactly, or
 		// an indented header comment would silently vanish on re-render.
 		if !strings.HasPrefix(strings.TrimSpace(line), "#") {
 			break

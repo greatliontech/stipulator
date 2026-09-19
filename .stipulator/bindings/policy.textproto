@@ -16,9 +16,9 @@ bindings {
   content_hash: "fd89ea10474c289b534d010e7d9d34ca8aab6a438aaae717282ffb9e45a76b9b"
   source_hash: "5eaa69dbca0d6902f9c3591ebd603c5c6f7b2940e8a8ccfe578e7694507668dd"
   backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/policy.Validate"
+  symbol: "github.com/greatliontech/stipulator/internal/policy.validate"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "04d3c6b55d15a09016e7a1525f00d889593674152083ef14c8e13c4764851b33"
+  shape_hash: "36f11c608948c989b9258409de4bba51d9f088803bce1880f564dc896df12772"
 }
 
 bindings {

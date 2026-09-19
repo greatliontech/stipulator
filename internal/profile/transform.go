@@ -81,13 +81,13 @@ var (
 	termLeadRe = regexp.MustCompile(`^(.+?) \(term\): ?`)
 )
 
-// ClauseKinds are the valid clause kind names.
-var ClauseKinds = map[string]bool{
+// clauseKinds are the valid clause kind names.
+var clauseKinds = map[string]bool{
 	"behavior": true, "invariant": true, "structural": true, "wire": true,
 }
 
-// EdgeClauses are the valid edge clause names.
-var EdgeClauses = map[string]bool{
+// edgeClauses are the valid edge clause names.
+var edgeClauses = map[string]bool{
 	"refines": true, "depends": true, "supersedes": true,
 }
 
@@ -106,10 +106,10 @@ var md = goldmark.New(
 	),
 )
 
-// Parse parses one corpus document through goldmark with the profile
+// parse parses one corpus document through goldmark with the profile
 // transformer installed, returning the normalized tree and any transform-
 // time diagnostics.
-func Parse(src []byte) (gast.Node, []Diagnostic) {
+func parse(src []byte) (gast.Node, []Diagnostic) {
 	root, _, diags := ParseDocument(src)
 	return root, diags
 }
@@ -257,7 +257,7 @@ func (t *transformer) paragraph(doc *gast.Document, p *gast.Paragraph, src []byt
 func parseMetadata(meta string, req *Requirement, report func(string, ...any)) bool {
 	clauses := strings.Split(meta, ",")
 	kind := strings.TrimSpace(clauses[0])
-	if !ClauseKinds[kind] {
+	if !clauseKinds[kind] {
 		report("requirement %s: unknown clause kind %q", req.ID, kind)
 		return false
 	}
@@ -268,7 +268,7 @@ func parseMetadata(meta string, req *Requirement, report func(string, ...any)) b
 			report("requirement %s: malformed metadata clause %q", req.ID, strings.TrimSpace(clause))
 			return false
 		}
-		if !EdgeClauses[fields[0]] {
+		if !edgeClauses[fields[0]] {
 			report("requirement %s: unknown edge clause %q", req.ID, fields[0])
 			return false
 		}

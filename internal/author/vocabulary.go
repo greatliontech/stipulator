@@ -11,12 +11,12 @@ import (
 // The vocabulary the authoring verbs parse and render: backends, roles,
 // excuse classes, landing conditions.
 
-// KnownBackends closes the backend-name set: a typo must never author an
+// knownBackends closes the backend-name set: a typo must never author an
 // unvalidated binding, on any surface.
-var KnownBackends = map[string]bool{"go": true, "proto": true}
+var knownBackends = map[string]bool{"go": true, "proto": true}
 
-// Roles maps CLI role names to the enum.
-var Roles = map[string]stipulatorv1.BindingRole{
+// roles maps CLI role names to the enum.
+var roles = map[string]stipulatorv1.BindingRole{
 	"implements": stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS,
 	"tests":      stipulatorv1.BindingRole_BINDING_ROLE_TESTS,
 	"proves":     stipulatorv1.BindingRole_BINDING_ROLE_PROVES,
@@ -29,7 +29,7 @@ func ParseRole(s string) (stipulatorv1.BindingRole, error) {
 	if s == "" {
 		return stipulatorv1.BindingRole_BINDING_ROLE_UNSPECIFIED, nil
 	}
-	r, ok := Roles[s]
+	r, ok := roles[s]
 	if !ok {
 		return 0, fmt.Errorf("unknown role %q (implements, tests, or proves)", s)
 	}
@@ -56,8 +56,8 @@ func NewExcuses(names []string) ([]stipulatorv1.GapExcuse, error) {
 	return out, nil
 }
 
-// ExcuseString renders one excuse class for messages.
-func ExcuseString(x stipulatorv1.GapExcuse) string {
+// excuseString renders one excuse class for messages.
+func excuseString(x stipulatorv1.GapExcuse) string {
 	switch x {
 	case stipulatorv1.GapExcuse_GAP_EXCUSE_UNCOVERED:
 		return "uncovered"
@@ -69,15 +69,15 @@ func ExcuseString(x stipulatorv1.GapExcuse) string {
 	return x.String()
 }
 
-// ExcusesString renders a declared excuse set, naming the default when
+// excusesString renders a declared excuse set, naming the default when
 // nothing is declared.
-func ExcusesString(xs []stipulatorv1.GapExcuse) string {
+func excusesString(xs []stipulatorv1.GapExcuse) string {
 	if len(xs) == 0 {
 		return "uncovered (default)"
 	}
 	names := make([]string, 0, len(xs))
 	for _, x := range xs {
-		names = append(names, ExcuseString(x))
+		names = append(names, excuseString(x))
 	}
 	return strings.Join(names, ", ")
 }
@@ -129,9 +129,9 @@ func NewLandingCondition(covered, exists, manual string, fired, contradicted boo
 	return lc, nil
 }
 
-// LandingConditionString renders a landing condition human-readably, for
+// landingConditionString renders a landing condition human-readably, for
 // surfacing retargets.
-func LandingConditionString(lc *stipulatorv1.LandingCondition) string {
+func landingConditionString(lc *stipulatorv1.LandingCondition) string {
 	switch {
 	case lc == nil:
 		return "none"

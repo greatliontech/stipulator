@@ -116,7 +116,7 @@ func bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Upd
 	if req.Symbol == "" || req.Backend == "" {
 		return nil, fmt.Errorf("a backend and symbol are required")
 	}
-	if !KnownBackends[req.Backend] {
+	if !knownBackends[req.Backend] {
 		return nil, fmt.Errorf("unknown backend %q (go, proto)", req.Backend)
 	}
 	if req.File != "" {

@@ -101,7 +101,7 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		// The scope is a set: the result names each id once, in one
 		// order, however the caller spelled the list.
 		scopeIds = slices.Compact(slices.Sorted(slices.Values(scopeIds)))
-		if scope, err = ScopeSubjects(spec, store, scopeIds); err != nil {
+		if scope, err = scopeSubjects(spec, store, scopeIds); err != nil {
 			return nil, err
 		}
 	}
@@ -305,14 +305,14 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	return res, nil
 }
 
-// ScopeSubjects resolves the named requirement identifiers to the
+// scopeSubjects resolves the named requirement identifiers to the
 // witness subjects their tests- and proves-role bindings name - the one
 // derivation every id-scoped witness evaluation shares (the scoped
 // check, prune's gap-scoped resolution detection). Unknown identifiers
 // refuse - a typo must not silently produce an empty scope that
 // executes nothing and passes; callers whose id sets legitimately carry
 // out-of-corpus entries filter them first.
-func ScopeSubjects(spec *stipulatorv1.Spec, store *records.Store, ids []string) (map[gofresh.Subject]bool, error) {
+func scopeSubjects(spec *stipulatorv1.Spec, store *records.Store, ids []string) (map[gofresh.Subject]bool, error) {
 	known := records.HashesOf(spec)
 	scope := map[gofresh.Subject]bool{}
 	want := map[string]bool{}
@@ -365,7 +365,7 @@ func GapScope(spec *stipulatorv1.Spec, store *records.Store) (map[gofresh.Subjec
 		}
 	}
 	sort.Strings(ids)
-	scope, err := ScopeSubjects(spec, store, ids)
+	scope, err := scopeSubjects(spec, store, ids)
 	if err != nil {
 		return nil, nil, err
 	}
