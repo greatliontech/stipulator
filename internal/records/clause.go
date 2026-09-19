@@ -88,6 +88,20 @@ func ClaimClauseKey(req *stipulatorv1.Requirement, b *stipulatorv1.Binding) stri
 	return ClauseKey(b)
 }
 
+// ClauseSuffix renders a binding's clause for a message, with a
+// leading space — as the corpus resolves it when it does, as the claim
+// spells it otherwise (req may be nil where no corpus is loaded);
+// empty for a whole-requirement claim.
+func ClauseSuffix(req *stipulatorv1.Requirement, b *stipulatorv1.Binding) string {
+	if c, ok := ResolveClause(req, b); ok && c != nil {
+		return " " + ClauseHeading(c)
+	}
+	if name := ClauseName(b); name != "" {
+		return " " + name
+	}
+	return ""
+}
+
 // ClaimIdentity is a claim's whole identity — requirement, backend,
 // symbol, role, and the resolved clause (REQ-evidence-clause-claim) —
 // the one spelling every duplicate judgment reads: verification's

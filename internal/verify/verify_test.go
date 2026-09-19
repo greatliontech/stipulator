@@ -194,7 +194,18 @@ func TestRecordHygiene(t *testing.T) {
 		rep, _ := run(t, map[string]string{
 			".stipulator/bindings/x.textproto": binding("REQ-v-a", "") + binding("REQ-v-a", ""),
 		})
-		wantProblem(t, rep, "duplicate binding")
+		// A whole-requirement duplicate names no clause: the message
+		// ends at the role, exactly (REQ-evidence-clause-claim).
+		want := "duplicate binding: REQ-v-a example.com/p.F BINDING_ROLE_IMPLEMENTS"
+		found := false
+		for _, p := range rep.Problems {
+			if p.Message == want {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("no problem reading exactly %q in %v", want, rep.Problems)
+		}
 	})
 	t.Run("duplicate gap flagged", func(t *testing.T) {
 		rep, _ := run(t, map[string]string{
