@@ -25,4 +25,12 @@ func TestEngineDiagnosticsDeliverDetailEvents(t *testing.T) {
 	if got, want := buf.String(), "gofresh: analysis-unavailable example.com/x — unsupported analysis shape: chan T\n"; got != want {
 		t.Fatalf("diagnostic line = %q, want %q", got, want)
 	}
+	// A multi-line detail folds onto the one line, and a package-less
+	// event carries no empty column — gofresh's rendering, not a
+	// second one here.
+	buf.Reset()
+	emitEngineDiagnostic(gofresh.Progress{Phase: "toolchain", Detail: "first\nsecond\n"})
+	if got, want := buf.String(), "gofresh: toolchain — first; second\n"; got != want {
+		t.Fatalf("folded diagnostic line = %q, want %q", got, want)
+	}
 }

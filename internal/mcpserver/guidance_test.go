@@ -289,9 +289,9 @@ func firstClause(text string) string {
 			}
 		case ';':
 			if depth == 0 {
-				return strings.TrimSuffix(strings.TrimSpace(text[:i]), ".")
+				return strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(text[:i]), "."))
 			}
 		}
 	}
-	return strings.TrimSuffix(strings.TrimSpace(text), ".")
+	return strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(text), "."))
 }

@@ -986,7 +986,8 @@ func degradedRun(invocation, pkg, reason string, truncated bool) packageRun {
 	}
 }
 
-// writerFunc adapts a function to io.Writer for the bounded stderr sink.
+// writerFunc adapts a function to io.Writer (the bounded stderr sink, the
+// engine diagnostics sink).
 type writerFunc func(p []byte) (int, error)
 
 func (f writerFunc) Write(p []byte) (int, error) { return f(p) }
