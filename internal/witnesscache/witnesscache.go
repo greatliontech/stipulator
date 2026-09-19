@@ -427,12 +427,11 @@ func loadSince(dir string, started time.Time) []Record {
 	if err != nil {
 		return nil
 	}
-	manifests := map[string]bool{}
 	var records []Record
 	referenced := map[string]bool{}
 	for _, name := range names {
 		data, _ := store.Read(name)
-		rec, digest, ok := loadEntry(name, data, dir, manifests)
+		rec, digest, ok := loadEntry(name, data, dir)
 		if digest != "" {
 			referenced[digest] = true
 		}
@@ -458,7 +457,7 @@ func loadSince(dir string, started time.Time) []Record {
 			continue
 		}
 		data, _ := store.Read(name)
-		if _, digest, _ := loadEntry(name, data, dir, manifests); digest != "" {
+		if _, digest, _ := loadEntry(name, data, dir); digest != "" {
 			referenced[digest] = true
 		}
 	}
@@ -468,17 +467,19 @@ func loadSince(dir string, started time.Time) []Record {
 
 // loadEntry reads one variant file: the record when it is valid, and
 // the compartment digest its fingerprint names whenever the file parses
-// at all — a refused record's ledger is kept referenced, so a refusal
-// this tree state decides (a manifest not current here) costs the
+// at all — a refused record's ledger is kept referenced: every refusal
+// here is the record's own bytes' (a field that fails the format, a
+// manifest that does not decode as canonical Gofresh v1), and keeping
+// a refused record's ledger costs nothing, so a refusal costs the
 // record's execution and nothing more.
-func loadEntry(name string, data []byte, dir string, manifests map[string]bool) (Record, string, bool) {
+func loadEntry(name string, data []byte, dir string) (Record, string, bool) {
 	rec, digest, ok := decodeRecord(name, data)
 	if !ok {
 		return Record{}, digest, false
 	}
 	proof := rec.Fingerprint.ObservationProof
 	if (proof != nil && (proof.Package != rec.Package || proof.Symbol != rec.Test)) ||
-		!validOutcomes(rec) || !rec.Fingerprint.valid(dir, manifests) {
+		!validOutcomes(rec) || !rec.Fingerprint.valid(dir) {
 		return Record{}, digest, false
 	}
 	return rec, digest, true
@@ -489,8 +490,9 @@ func loadEntry(name string, data []byte, dir string, manifests map[string]bool) 
 // parses whole, is of this version, carries its identity, and is named
 // by its content; the compartment digest is returned whenever the file
 // parses at all, so a refused record's ledger stays referenced. What
-// a file passes here and still fails is the tree's judgment (validity
-// against the current state), never the store's.
+// a file passes here and still fails is the record's own shape
+// judgment (Fingerprint.valid), never the store's; whether it then
+// serves is the engine's currency comparison against the tree.
 func decodeRecord(name string, data []byte) (Record, string, bool) {
 	var fields map[string]json.RawMessage
 	if json.Unmarshal(data, &fields) != nil {
@@ -662,16 +664,23 @@ func validOutcomes(rec Record) bool {
 	return true
 }
 
-func (f Fingerprint) valid(dir string, manifests map[string]bool) bool {
-	validManifest, ok := manifests[f.RuntimeInputs]
-	if !ok {
-		_, err := runtimeinput.Current(f.RuntimeInputs, dir)
-		validManifest = err == nil
-		manifests[f.RuntimeInputs] = validManifest
-	}
+// valid is the record's shape judgment — every field the format
+// requires, well-formed, the runtime-input manifest decoding as
+// canonical Gofresh v1 under the tree root (Describe, whose refusal
+// set is the decoder's plus the root's absolute form, which every
+// caller's absolute root meets). Whether the manifest's inputs are
+// current is gofresh's fingerprint tier's comparison, never a judgment
+// here: recomputing the manifest faults on nothing beyond this
+// judgment but a cancellation or the environment's normalization — a
+// path that cannot be hashed is an unverifiable mark, not an error —
+// and this judgment reads no environment, so a duplicate key in the
+// ambient environment no longer refuses every record of the store as
+// the recomputation once did.
+func (f Fingerprint) valid(dir string) bool {
+	_, manifestErr := runtimeinput.Describe(f.RuntimeInputs, dir)
 	return ValidDigest(f.MaximalClosure) && ValidDigest(f.TestVariantClosure) && f.Toolchain != "" && ValidDigest(f.BuildConfig) &&
 		f.Machine == "" && f.RuntimeConfig == "" &&
-		validObservation(f) && validPurity(f.PurityAssertion) && validManifest && ValidDigest(f.RuntimeDigest) &&
+		validObservation(f) && validPurity(f.PurityAssertion) && manifestErr == nil && ValidDigest(f.RuntimeDigest) &&
 		f.ResultKind == gofresh.CodeResult
 }
 

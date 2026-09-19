@@ -2,6 +2,7 @@ package golang
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -179,7 +180,7 @@ func FuzzGoExecuteTestlogIngestion(f *testing.F) {
 		// One bracket per iteration, captured over the package root before
 		// any mutation, shared by both ingestions so determinism is judged
 		// against one capture — exactly the executor's pre-spawn shape.
-		bracket, err := runtimeinput.CaptureBracket(dir, []string{"p"})
+		bracket, err := runtimeinput.CaptureBracket(context.Background(), dir, []string{"p"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -192,7 +193,7 @@ func FuzzGoExecuteTestlogIngestion(f *testing.F) {
 		}
 		env := []string{"HOME=/nonexistent", "PATH=/usr/bin"}
 		ingest := func() (runtimeinput.Observation, error) {
-			return runtimeinput.FromTestLogEnv(log, dir, pkgDir, env,
+			return runtimeinput.FromTestLog(log, dir, pkgDir, env,
 				runtimeinput.WithCompletedProcess("fuzz#1:example.com/p"),
 				runtimeinput.WithBracket(bracket),
 				runtimeinput.WithExcludedPaths(".", ".git"))

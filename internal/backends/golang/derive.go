@@ -943,17 +943,21 @@ func newEngine(ctx context.Context, dir string, env, flags []string, extra ...go
 // only while no engine is live, and only engine-free tests do.
 var engineDiagnostics io.Writer = os.Stderr
 
+// engineDiagnosticSink is the one sink every engine's diagnostics
+// reach — gofresh's own rendering (Progress.Diagnostic: a multi-line
+// detail folded onto one line), serialized per sink, built once
+// beside the writer and never per engine; it writes through the
+// swappable engineDiagnostics at call time, so a test's swap is
+// honoured.
+var engineDiagnosticSink = gofresh.DiagnosticsTo(writerFunc(func(p []byte) (int, error) { return engineDiagnostics.Write(p) }))
+
 // emitEngineDiagnostic writes a payload-bearing gofresh event
 // (per-subject analysis-unavailable provenance, the unlisted-toolchain
 // notice) to the operator's log unthrottled; detail-free keep-alives
 // stay silent — the keep-alive seam carries no message, and discarding
 // diagnostics by signature once spent the engine's one toolchain
 // announcement into a void.
-func emitEngineDiagnostic(p gofresh.Progress) {
-	if p.Detail != "" {
-		fmt.Fprintf(engineDiagnostics, "gofresh: %s %s — %s\n", p.Phase, p.Package, p.Detail)
-	}
-}
+func emitEngineDiagnostic(p gofresh.Progress) { engineDiagnosticSink(p) }
 
 // NewWitnessRecorder prepares freshness publication for one execution of
 // the accepted policy: it must be called before the policy executes, so

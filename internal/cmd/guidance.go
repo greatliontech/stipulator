@@ -13,13 +13,7 @@ import (
 // guidanceDoc is the embedded guidance document; a malformed document
 // is a build defect the parse-pinning test surfaces, so command
 // construction fails loudly rather than serving nothing.
-func guidanceDoc() *guidancepkg.Document {
-	doc, err := stipulator.GuidanceDocument()
-	if err != nil {
-		panic("cmd: embedded guidance document malformed: " + err.Error())
-	}
-	return doc
-}
+func guidanceDoc() *guidancepkg.Document { return stipulator.Guidance() }
 
 // guidanceShort and guidanceHelp are a command's served prose under
 // its cli spelling, read from the guidance document at construction —
@@ -91,7 +85,7 @@ func renderKnobUsage(root *cobra.Command) {
 				if err != nil {
 					panic("cmd: " + err.Error())
 				}
-				f.Usage = stipulator.KnobClause(k.Text)
+				f.Usage = k.Clause()
 			})
 		}
 	}

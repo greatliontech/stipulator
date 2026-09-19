@@ -5,14 +5,13 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	guidancepkg "github.com/greatliontech/gofresh/guidance"
-	stipulator "github.com/greatliontech/stipulator"
 )
 
 // The served schema machinery every registered tool shares.
 
 // knobbedTool is a served tool whose input schema's property
 // descriptions are the guidance document's knob text — each knob's
-// terse first clause (stipulator.KnobClause) — rendered at
+// terse first clause (guidance.Knob.Clause) — rendered at
 // registration, never a second literal beside the document, at every
 // depth of the schema: a nested object's properties (the batch
 // authoring form's claims) take the same verb's knobs by name. A
@@ -38,7 +37,7 @@ func knobSchema(doc *guidancepkg.Document, verb string, schema *jsonschema.Schem
 		if err != nil {
 			panic("mcpserver: " + err.Error())
 		}
-		prop.Description = stipulator.KnobClause(k.Text)
+		prop.Description = k.Clause()
 		knobSchema(doc, verb, prop)
 	}
 	knobSchema(doc, verb, schema.Items)

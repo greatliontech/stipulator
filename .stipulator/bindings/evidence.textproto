@@ -158,7 +158,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/witnesscache.Fingerprint.valid"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "955dc713d99de48143ccdede4223e414ab1f290b2b1b68cfc8866e7b13feff26"
+  shape_hash: "5f903f56ecc90a89866e2b09208f608544a4a6a0df4eeb9b166265049755b996"
 }
 
 bindings {

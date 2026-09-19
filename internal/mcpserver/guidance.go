@@ -13,13 +13,7 @@ import (
 // guidanceDoc is the embedded guidance document; a malformed document
 // is a build defect the parse-pinning test surfaces, so consumers
 // fail loudly rather than serving nothing.
-func guidanceDoc() *guidancepkg.Document {
-	doc, err := stipulator.GuidanceDocument()
-	if err != nil {
-		panic("mcpserver: embedded guidance document malformed: " + err.Error())
-	}
-	return doc
-}
+func guidanceDoc() *guidancepkg.Document { return stipulator.Guidance() }
 
 func guidanceOrientation() string { return guidanceDoc().Orientation() }
 
