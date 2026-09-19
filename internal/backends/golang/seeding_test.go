@@ -168,7 +168,7 @@ func TestServingCandidatesExcludeRandomSeeded(t *testing.T) {
 func TestClassifySeededAttributesEveryRefusal(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness")
 	s := gofresh.Subject{Package: "example.com/m", Symbol: "TestX"}
-	g := &captureGroup{tests: map[string][]string{"example.com/m": {"TestX"}}}
+	g := &captureGroup{packages: map[string]*groupPackage{"example.com/m": {names: []string{"TestX"}}}}
 	pc := &policyDiscovery{groups: []*captureGroup{g}}
 	if err := classifySeeded(pc, emptyReasonSeeding{}); err != nil {
 		t.Fatal(err)

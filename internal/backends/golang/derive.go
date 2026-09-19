@@ -170,6 +170,99 @@ func DeriveTestRun(report *stipulatorv1.ExecutionReport) *verify.TestRun {
 	return tr
 }
 
+// groupPackage is one selected package's facts within a capture
+// group: the invocation selecting it, its expected witness set (named
+// Test functions and fuzz targets), whether a second invocation of the
+// group also selected it — such a package never publishes, its record
+// would have no single producing invocation — and whether its
+// whole-package process runs solo.
+type groupPackage struct {
+	inv       string
+	names     []string
+	ambiguous bool
+	solo      bool
+}
+
+// soloProcess is the one prediction of a solo process — a process that
+// runs exactly one top-level runnable, a test or fuzz target and
+// nothing else — made before execution wherever a proof candidate is
+// chosen: the whole-package process at discovery, the selective
+// process over one stale name, the retry's process over one retried
+// subject. The caller supplies the count of everything its process
+// runs: the whole-package process counts its executable examples, a
+// selective process only the names it selects, which a -run pattern
+// never widens to an example. Only such a process can carry an
+// observation-completeness proof, because a sibling test could
+// contribute unrecorded process state to the subject's outcome; the
+// judgment then observes the fact from the process's own rows before
+// the proof attaches.
+func soloProcess(runnables int) bool { return runnables == 1 }
+
+// proofCandidate is the one admission of a subject to a group's proof
+// candidates: captured, its process predicted solo, and no author's
+// purity assertion — an asserted subject never carries a proof.
+func proofCandidate(fp gofresh.Fingerprint, captured, solo bool) bool {
+	return captured && solo && fp.PurityAssertion == ""
+}
+
+// selectingInvocation names the one invocation of the group selecting
+// the package, or nothing where the group holds no such package. A
+// caller walking every group for a selection's package reads the empty
+// answer as "not this group"; a caller asking for one of the group's
+// own subjects has an entry by construction and reads the name
+// directly.
+func (g *captureGroup) selectingInvocation(pkg string) string {
+	if p := g.packages[pkg]; p != nil {
+		return p.inv
+	}
+	return ""
+}
+
+// proofCandidates selects, from the subjects selected for one
+// execution, those admitted by proofCandidate with the solo prediction
+// counted per package over the subjects given — the execution spawns
+// one process per package. A caller-named scope may leave some of the
+// selected subjects unexecuted, which only withholds candidacy from a
+// package the scope narrows. The order is the subjects'.
+func proofCandidates(subjects []gofresh.Subject, fps map[gofresh.Subject]gofresh.Fingerprint) []gofresh.Subject {
+	perPkg := map[string]int{}
+	for _, s := range subjects {
+		perPkg[s.Package]++
+	}
+	var candidates []gofresh.Subject
+	for _, s := range subjects {
+		fp, ok := fps[s]
+		if proofCandidate(fp, ok, soloProcess(perPkg[s.Package])) {
+			candidates = append(candidates, s)
+		}
+	}
+	return candidates
+}
+
+// subjectsOf lists a selection's subjects ordered by package, then
+// symbol.
+func subjectsOf(sel map[string][]string) []gofresh.Subject {
+	var subjects []gofresh.Subject
+	for pkg, names := range sel {
+		for _, name := range names {
+			subjects = append(subjects, gofresh.Subject{Package: pkg, Symbol: name})
+		}
+	}
+	sortSubjects(subjects)
+	return subjects
+}
+
+// sortSubjects orders subjects by package, then symbol.
+func sortSubjects(subjects []gofresh.Subject) {
+	sort.Slice(subjects, func(i, j int) bool {
+		a, b := subjects[i], subjects[j]
+		if a.Package != b.Package {
+			return a.Package < b.Package
+		}
+		return a.Symbol < b.Symbol
+	})
+}
+
 // captureGroup is one freshness-capture configuration class: every
 // witness-eligible invocation whose closure-shaping configuration (build tags
 // and normalized environment) is identical shares one analysis view, so
@@ -227,25 +320,15 @@ type captureGroup struct {
 	// withdrawn (the withdrawal re-runs; additions serve existing
 	// evidence unchanged).
 	excludedPaths []string
-	// pkgInv names the one invocation of this group selecting each
-	// package; a package two invocations select never publishes, because
-	// its record would have no single producing invocation.
-	pkgInv map[string]string
 	// invs names the group's member invocations in policy order; the
 	// explain surface reports them as the answering view's identity.
 	invs []string
-	// ambiguous marks packages selected by more than one invocation
-	// within the group.
-	ambiguous map[string]bool
-	// tests holds each package's expected witness set: its named Test
-	// functions and fuzz targets.
-	tests map[string][]string
-	// solo marks packages whose whole-package process runs exactly one
-	// top-level runnable (one test or fuzz target and nothing else,
-	// executable examples included in the count): only such a process can
-	// carry an observation-completeness proof, because a sibling test
-	// could contribute unrecorded process state to the subject's outcome.
-	solo map[string]bool
+	// packages holds each selected package's facts in one entry — the
+	// one invocation of this group selecting it, its expected witness
+	// set, whether a second invocation also selected it, and whether its
+	// whole-package process runs solo — so the facts cannot disagree
+	// about which packages the group holds.
+	packages map[string]*groupPackage
 	// view and fps are the pre-execution captures: fingerprints must pin
 	// the tree that compiles the binaries, so capturing after execution
 	// would let a mid-run edit publish pre-edit outcomes under a
@@ -738,10 +821,7 @@ func discoverPolicy(ctx context.Context, normalized []*NormalizedInvocation) (*p
 				assumePure:    n.AssumePure,
 				vouches:       n.Vouches,
 				excludedPaths: canonicalExclusions(n.ExcludedPaths),
-				pkgInv:        map[string]string{},
-				ambiguous:     map[string]bool{},
-				tests:         map[string][]string{},
-				solo:          map[string]bool{},
+				packages:      map[string]*groupPackage{},
 			}
 			byKey[key] = g
 			keys = append(keys, key)
@@ -751,13 +831,13 @@ func discoverPolicy(ctx context.Context, normalized []*NormalizedInvocation) (*p
 		}
 		pc.invGroup[n.Name] = g
 		for pkg, names := range tests {
-			if prev, taken := g.pkgInv[pkg]; taken && prev != n.Name {
-				g.ambiguous[pkg] = true
+			if prev, taken := g.packages[pkg]; taken {
+				if prev.inv != n.Name {
+					prev.ambiguous = true
+				}
 				continue
 			}
-			g.pkgInv[pkg] = n.Name
-			g.tests[pkg] = names
-			g.solo[pkg] = runnables[pkg] == 1 && len(names) == 1
+			g.packages[pkg] = &groupPackage{inv: n.Name, names: names, solo: soloProcess(runnables[pkg])}
 		}
 	}
 	sort.Strings(keys)
@@ -776,21 +856,15 @@ func discoverPolicy(ctx context.Context, normalized []*NormalizedInvocation) (*p
 // producing leg.
 func groupSubjects(g *captureGroup) []gofresh.Subject {
 	var subjects []gofresh.Subject
-	for pkg, names := range g.tests {
-		if g.ambiguous[pkg] {
+	for pkg, p := range g.packages {
+		if p.ambiguous {
 			continue
 		}
-		for _, name := range names {
+		for _, name := range p.names {
 			subjects = append(subjects, gofresh.Subject{Package: pkg, Symbol: name})
 		}
 	}
-	sort.Slice(subjects, func(i, j int) bool {
-		a, b := subjects[i], subjects[j]
-		if a.Package != b.Package {
-			return a.Package < b.Package
-		}
-		return a.Symbol < b.Symbol
-	})
+	sortSubjects(subjects)
 	return subjects
 }
 
@@ -934,11 +1008,11 @@ func NewWitnessRecorder(ctx context.Context, pc *Capture, seeding verify.Witness
 	// holds every dimension that moves a package's listed tests, so two
 	// invocations of one group list one package identically.
 	for _, g := range d.groups {
-		for pkg, names := range g.tests {
-			if !g.ambiguous[pkg] {
+		for pkg, p := range g.packages {
+			if !p.ambiguous {
 				continue
 			}
-			for _, name := range names {
+			for _, name := range p.names {
 				r.reasons[gofresh.Subject{Package: pkg, Symbol: name}] = reasonNoProducingLeg
 			}
 		}
@@ -968,7 +1042,7 @@ func NewWitnessRecorder(ctx context.Context, pc *Capture, seeding verify.Witness
 		}
 		for _, s := range subjects {
 			fp, captured := g.fps[s]
-			if captured && g.solo[s.Package] && fp.PurityAssertion == "" {
+			if proofCandidate(fp, captured, g.packages[s.Package].solo) {
 				g.candidates = append(g.candidates, s)
 			}
 		}
@@ -1192,18 +1266,19 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 
 	eligible := map[gofresh.Subject]*pubSubject{}
 	var order []gofresh.Subject
-	for pkg, names := range g.tests {
-		if g.ambiguous[pkg] {
+	for pkg, p := range g.packages {
+		if p.ambiguous {
 			// Refused at discovery; the reason already stands.
 			continue
 		}
+		names := p.names
 		// The package's one producing process under its covering
 		// invocation is every subject's single candidate, rows or none:
 		// the executor launches exactly one process per selected package
 		// per invocation, so every row under the key shares one
 		// producer, and a package with no row still carries its
 		// disposition.
-		inv := g.pkgInv[pkg]
+		inv := p.inv
 		rows := rowsByInvPkg[invPkgKey(inv, pkg)]
 		candidate := producerCandidate{healthy: facts.healthyPkg[invPkgKey(inv, pkg)], rows: rows}
 		if len(rows) > 0 {
@@ -1223,13 +1298,7 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 			order = append(order, subject)
 		}
 	}
-	sort.Slice(order, func(i, j int) bool {
-		a, b := order[i], order[j]
-		if a.Package != b.Package {
-			return a.Package < b.Package
-		}
-		return a.Symbol < b.Symbol
-	})
+	sortSubjects(order)
 
 	// The shared publication ladder (publishEligible) takes over from
 	// eligibility: proof leg, final fingerprints, post-run check, the

@@ -24,14 +24,11 @@ type groupTracker struct {
 func newGroupTracker(groups []*captureGroup, executing func(g *captureGroup, pkg string) bool) *groupTracker {
 	t := emptyTracker()
 	for _, g := range groups {
-		for pkg := range g.tests {
-			if g.ambiguous[pkg] || !executing(g, pkg) {
+		for pkg, p := range g.packages {
+			if p.ambiguous || !executing(g, pkg) {
 				continue
 			}
-			inv, ok := g.pkgInv[pkg]
-			if !ok {
-				continue
-			}
+			inv := p.inv
 			if t.pending[g] == nil {
 				t.pending[g] = map[string]bool{}
 			}
@@ -78,7 +75,7 @@ func everyPackage(*captureGroup, string) bool { return true }
 // it executes nothing and covers nothing.
 func selectedStalePackages(staleSel map[string]TestSelection) func(g *captureGroup, pkg string) bool {
 	return func(g *captureGroup, pkg string) bool {
-		return len(staleSel[g.pkgInv[pkg]][pkg]) > 0
+		return len(staleSel[g.selectingInvocation(pkg)][pkg]) > 0
 	}
 }
 

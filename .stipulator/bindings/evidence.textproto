@@ -2290,3 +2290,33 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "31fe262e47af29c7f7d2395342d6d9cc3c6668aec0d585a82cae91485574649a"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "0e986a3a39d0b31ee5700f4bcd370d797bdaabe7632bcc0c07c7d80b95593fb0"
+  source_hash: "d458085a2a94211d0b791435bb3104067082a7b1af28dc3f3643f4765cd0070f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestProofCandidatesTakeSoloProcessesWithoutAssertions"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "78065c4fd71a36e7498aa5540ae4ccd34d21aeede6022c5e8bb9ef0855161967"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "0e986a3a39d0b31ee5700f4bcd370d797bdaabe7632bcc0c07c7d80b95593fb0"
+  source_hash: "d458085a2a94211d0b791435bb3104067082a7b1af28dc3f3643f4765cd0070f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestSelectingInvocationAnswersNothingForAnAbsentPackage"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "0f23e603bf0ae7e0fec36ae497446d462f93811427ba284bba378d88999b0e40"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "0e986a3a39d0b31ee5700f4bcd370d797bdaabe7632bcc0c07c7d80b95593fb0"
+  source_hash: "d458085a2a94211d0b791435bb3104067082a7b1af28dc3f3643f4765cd0070f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestSubjectsOfOrdersByPackageThenSymbol"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e69c8a61fbef8f1d75fa2766dbd58f398ac744557467c1912a42b13c9b791e5d"
+}

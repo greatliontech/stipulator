@@ -26,9 +26,9 @@ import (
 //gofresh:pure
 func TestGroupTrackerCompletesAtTheLastCoveringInvocation(t *testing.T) {
 	stipulate.Covers(t, "REQ-policy-cancellation")
-	a := &captureGroup{tests: map[string][]string{"p": {"TestP"}, "q": {"TestQ"}, "amb": {"TestA"}}, pkgInv: map[string]string{"p": "one", "q": "two", "amb": "three"}, ambiguous: map[string]bool{"amb": true}}
-	b := &captureGroup{tests: map[string][]string{"r": {"TestR"}}, pkgInv: map[string]string{"r": "one"}, ambiguous: map[string]bool{}}
-	served := &captureGroup{tests: map[string][]string{"s": {"TestS"}}, pkgInv: map[string]string{"s": "two"}, ambiguous: map[string]bool{}}
+	a := &captureGroup{packages: map[string]*groupPackage{"p": {inv: "one", names: []string{"TestP"}}, "q": {inv: "two", names: []string{"TestQ"}}, "amb": {inv: "three", names: []string{"TestA"}, ambiguous: true}}}
+	b := &captureGroup{packages: map[string]*groupPackage{"r": {inv: "one", names: []string{"TestR"}}}}
+	served := &captureGroup{packages: map[string]*groupPackage{"s": {inv: "two", names: []string{"TestS"}}}}
 	tracker := newGroupTracker([]*captureGroup{a, b, served}, func(g *captureGroup, pkg string) bool { return g != served })
 	if len(tracker.pending[served]) != 0 || len(tracker.pending[a]) == 0 || len(tracker.pending[b]) == 0 {
 		t.Fatal("initial coverage: a group with nothing executing waits on no invocation, the others wait")
@@ -125,10 +125,8 @@ func TestServingFormPersistsAtTheExecutingInvocation(t *testing.T) {
 //gofresh:pure
 func TestSelectedStalePackagesKeyByTheCoveringInvocation(t *testing.T) {
 	stipulate.Covers(t, "REQ-policy-cancellation")
-	g1 := &captureGroup{tests: map[string][]string{"p": {"TestP"}, "q": {"TestQ"}},
-		pkgInv: map[string]string{"p": "x1", "q": "x2"}, ambiguous: map[string]bool{}}
-	g2 := &captureGroup{tests: map[string][]string{"p": {"TestP"}},
-		pkgInv: map[string]string{"p": "y1"}, ambiguous: map[string]bool{}}
+	g1 := &captureGroup{packages: map[string]*groupPackage{"p": {inv: "x1", names: []string{"TestP"}}, "q": {inv: "x2", names: []string{"TestQ"}}}}
+	g2 := &captureGroup{packages: map[string]*groupPackage{"p": {inv: "y1", names: []string{"TestP"}}}}
 	sel := map[string]TestSelection{"x2": {"q": {"TestQ"}}, "y1": {"p": {"TestP"}}}
 	tracker := newGroupTracker([]*captureGroup{g1, g2}, selectedStalePackages(sel))
 	want := map[*captureGroup]map[string]bool{g1: {"x2": true}, g2: {"y1": true}}

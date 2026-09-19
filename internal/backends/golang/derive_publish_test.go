@@ -304,6 +304,41 @@ func TestTwo(t *testing.T) {
 	t.Run("sub", func(t *testing.T) {})
 }
 `,
+		"pair/pair_test.go": `package pair
+
+import "testing"
+
+func TestFirst(t *testing.T) {}
+
+func TestSecond(t *testing.T) {}
+`,
+		"shown/shown.go": "package shown\n\n// Shown is the example's subject.\nfunc Shown() string { return \"shown\" }\n",
+		"shown/shown_test.go": `package shown
+
+import "testing"
+
+func TestBeside(t *testing.T) { _ = Shown() }
+
+// ExampleShown runs (an Output comment, empty) without an ambient
+// effect that would refuse the compartment's other witness.
+func ExampleShown() {
+	_ = Shown()
+	// Output:
+}
+`,
+		"asserted/data.txt": "v1\n",
+		"asserted/asserted_test.go": `package asserted
+
+import (
+	"os"
+	"testing"
+)
+
+//gofresh:pure
+func TestAssertedReads(t *testing.T) {
+	_, _ = os.ReadFile("data.txt")
+}
+`,
 		"shared/data.txt": "v1\n",
 		"shared/shared_test.go": `package shared
 
@@ -354,12 +389,12 @@ func TestSharedReads(t *testing.T) {
 	}
 	// The double-selected package executes under both legs and
 	// publishes one record per capture group.
-	if tr.Ran != 4 || tr.Uncached != 0 {
-		t.Errorf("ran=%d uncached=%d, want 4/0", tr.Ran, tr.Uncached)
+	if tr.Ran != 8 || tr.Uncached != 0 {
+		t.Errorf("ran=%d uncached=%d, want 8/0", tr.Ran, tr.Uncached)
 	}
 	cache := witnesscache.Load(tmp)
-	if len(cache) != 5 {
-		t.Fatalf("published %d records, want 5 (shared publishes per group): %+v", len(cache), cache)
+	if len(cache) != 9 {
+		t.Fatalf("published %d records, want 9 (shared publishes per group): %+v", len(cache), cache)
 	}
 	sharedGroups := map[string]bool{}
 	for _, rec := range cache {
@@ -391,6 +426,36 @@ func TestSharedReads(t *testing.T) {
 		}
 		if rec.Fingerprint.RuntimeInputs == "" || rec.Fingerprint.RuntimeDigest == "" {
 			t.Errorf("%s record carries no runtime-input manifest: %+v", name, rec.Fingerprint)
+		}
+	}
+	// The pair package shares one process between two unasserted
+	// tests: neither is a proof candidate, and the solo package's proof
+	// above stands beside them — a candidate whose process runs a
+	// sibling would drop the group's proof whole.
+	for _, name := range []string{"TestFirst", "TestSecond"} {
+		rec := cacheRecord(t, cache, "example.com/pub/pair", name)
+		if rec == nil {
+			t.Fatalf("no record for pair-process test %s", name)
+		}
+		if rec.Fingerprint.ObservationProof != nil || rec.Fingerprint.ObservationAssertion != "" {
+			t.Errorf("%s gained an observation proof from a process it shared with a sibling: %+v", name, rec.Fingerprint)
+		}
+	}
+	// A test beside an executable example shares its whole-package
+	// process with the example, and a purity-asserted test never carries
+	// a proof: neither is a candidate, and the solo package's proof above
+	// stands beside them — an over-admitted candidate would drop the
+	// group's proof whole.
+	for _, sub := range []gofresh.Subject{
+		{Package: "example.com/pub/shown", Symbol: "TestBeside"},
+		{Package: "example.com/pub/asserted", Symbol: "TestAssertedReads"},
+	} {
+		rec := cacheRecord(t, cache, sub.Package, sub.Symbol)
+		if rec == nil {
+			t.Fatalf("no record for %s.%s", sub.Package, sub.Symbol)
+		}
+		if rec.Fingerprint.ObservationProof != nil {
+			t.Errorf("%s.%s carries an observation proof it cannot hold: %+v", sub.Package, sub.Symbol, rec.Fingerprint)
 		}
 	}
 	two := cacheRecord(t, cache, "example.com/pub/multi", "TestTwo")

@@ -178,7 +178,11 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 			if o.Kind != ObligationTest && o.Kind != ObligationFuzz {
 				continue
 			}
-			if !g.ambiguous[o.Package] {
+			// Every test or fuzz obligation of a grouped invocation has
+			// its package entry: a group is recorded for witness-eligible
+			// invocations alone, and discovery builds their entries from
+			// this same obligation list.
+			if !g.packages[o.Package].ambiguous {
 				continue
 			}
 			s := gofresh.Subject{Package: o.Package, Symbol: o.Name}
@@ -292,7 +296,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 		// The subject's covering invocation within THIS group: a
 		// subject other groups also cover routes each leg to its own
 		// group's invocation.
-		n := normalized[g.pkgInv[s.Package]]
+		n := normalized[g.selectingInvocation(s.Package)]
 		sel := staleSel[n.Name]
 		if sel == nil {
 			sel = TestSelection{}
@@ -384,7 +388,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 		for pkg, names := range sel {
 			subjects += len(names)
 			for _, wg := range groups {
-				if n := normalized[wg.g.pkgInv[pkg]]; n == nil || n.Name != inv {
+				if n := normalized[wg.g.selectingInvocation(pkg)]; n == nil || n.Name != inv {
 					continue
 				}
 				for _, name := range names {
@@ -500,7 +504,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 					// invocation's build inputs, so that invocation's
 					// tier — within the record's own group — is the
 					// served witness's tier.
-					if n := normalized[wg.g.pkgInv[s.Package]]; n != nil && n.PlainWitness {
+					if n := normalized[wg.g.selectingInvocation(s.Package)]; n != nil && n.PlainWitness {
 						plainServedKey[s.Package+"."+s.Symbol] = true
 					}
 				}
@@ -890,22 +894,7 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 				wg.fps[s] = fp
 			}
 		}
-		for pkg, names := range wg.stale {
-			if len(names) != 1 {
-				continue
-			}
-			s := gofresh.Subject{Package: pkg, Symbol: names[0]}
-			if fp, ok := wg.fps[s]; ok && fp.PurityAssertion == "" {
-				wg.candidates = append(wg.candidates, s)
-			}
-		}
-		sort.Slice(wg.candidates, func(i, j int) bool {
-			a, b := wg.candidates[i], wg.candidates[j]
-			if a.Package != b.Package {
-				return a.Package < b.Package
-			}
-			return a.Symbol < b.Symbol
-		})
+		wg.candidates = proofCandidates(subjectsOf(wg.stale), wg.fps)
 		wg.observed, wg.observedFPs = observedView(ctx, wg.view, wg.candidates)
 		out = append(out, wg)
 	}
@@ -1188,19 +1177,7 @@ func finishGroup(ctx context.Context, wg *witnessGroup, m *execMerge) ([]gofresh
 // return names, per unpublished subject, the leg that refused
 // (REQ-evidence-witness-freshness's diagnosable-set requirement).
 func publishExecuted(ctx context.Context, wg *witnessGroup, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]string, bool, error) {
-	var order []gofresh.Subject
-	for pkg, names := range wg.stale {
-		for _, name := range names {
-			order = append(order, gofresh.Subject{Package: pkg, Symbol: name})
-		}
-	}
-	sort.Slice(order, func(i, j int) bool {
-		a, b := order[i], order[j]
-		if a.Package != b.Package {
-			return a.Package < b.Package
-		}
-		return a.Symbol < b.Symbol
-	})
+	order := subjectsOf(wg.stale)
 	eligible := map[gofresh.Subject]*pubSubject{}
 	reasons := map[gofresh.Subject]string{}
 	for _, s := range order {
@@ -1246,15 +1223,9 @@ func retryDrifted(ctx context.Context, pc *Capture, driftedByGroup map[*witnessG
 		if len(subjects) == 0 {
 			continue
 		}
-		sort.Slice(subjects, func(i, j int) bool {
-			a, b := subjects[i], subjects[j]
-			if a.Package != b.Package {
-				return a.Package < b.Package
-			}
-			return a.Symbol < b.Symbol
-		})
+		sortSubjects(subjects)
 		for _, s := range subjects {
-			n := normalized[wg.g.pkgInv[s.Package]]
+			n := normalized[wg.g.selectingInvocation(s.Package)]
 			sel := retrySel[n.Name]
 			if sel == nil {
 				sel = TestSelection{}
@@ -1279,15 +1250,7 @@ func retryDrifted(ctx context.Context, pc *Capture, driftedByGroup map[*witnessG
 		// The retry's proof candidates follow the same per-process solo
 		// rule as the main pass, over the retry's own stale set: a retried
 		// subject alone in its package runs in a process of its own.
-		perPkg := map[string]int{}
-		for _, s := range subjects {
-			perPkg[s.Package]++
-		}
-		for _, s := range subjects {
-			if fp, ok := st.fps[s]; ok && perPkg[s.Package] == 1 && fp.PurityAssertion == "" {
-				st.candidates = append(st.candidates, s)
-			}
-		}
+		st.candidates = proofCandidates(subjects, st.fps)
 		st.observed, st.observedFPs = observedView(ctx, st.view, st.candidates)
 		states = append(states, st)
 	}
@@ -1325,15 +1288,6 @@ func retryDrifted(ctx context.Context, pc *Capture, driftedByGroup map[*witnessG
 	return published, reasons, nil
 }
 
-// consumeMerge folds one merged selective execution into the run's
-// witness-evidence view: failed and skipped results are recorded
-// regardless — red is a fact whatever produced it — while a pass grants
-// an outcome only from a process whose own disposition is healthy, so a
-// completed pass inside a red process reads unwitnessed unless its
-// isolation re-run granted it solo (REQ-evidence-witness-freshness's
-// isolation sentence). When one test name carries several results the
-// worst outcome wins, so a single red occurrence is never papered over
-// by a green sibling.
 // consumeMergeFailuresOnly folds one merge's failed outcomes, its
 // diagnostics, and every row's registrations into the run — pass and
 // skip outcomes are stripped, never the rows: the source executions lack
@@ -1359,6 +1313,15 @@ func consumeMergeFailuresOnly(tr *verify.TestRun, m *execMerge, ranTop map[strin
 	consumeMerge(tr, filtered, ranTop, nil, map[string]bool{}, map[string]bool{})
 }
 
+// consumeMerge folds one merged selective execution into the run's
+// witness-evidence view: failed and skipped results are recorded
+// regardless — red is a fact whatever produced it — while a pass grants
+// an outcome only from a process whose own disposition is healthy, so a
+// completed pass inside a red process reads unwitnessed unless its
+// isolation re-run granted it solo (REQ-evidence-witness-freshness's
+// isolation sentence). When one test name carries several results the
+// worst outcome wins, so a single red occurrence is never papered over
+// by a green sibling.
 func consumeMerge(tr *verify.TestRun, m *execMerge, ranTop map[string]bool, plainInv, raceGranted, plainGranted map[string]bool) {
 	tr.Diagnostics = append(tr.Diagnostics, m.diags...)
 	for _, row := range m.rows {

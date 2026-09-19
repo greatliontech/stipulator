@@ -88,13 +88,10 @@ func TestGoGroupIdentityIgnoresAmbientEnvironment(t *testing.T) {
 // enter the group's publishable set (REQ-evidence-witness-freshness).
 func TestGoGroupSubjectsExcludeAmbiguousPackages(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness")
-	g := &captureGroup{
-		tests: map[string][]string{
-			"example.com/m/clean":  {"TestClean"},
-			"example.com/m/shared": {"TestShared"},
-		},
-		ambiguous: map[string]bool{"example.com/m/shared": true},
-	}
+	g := &captureGroup{packages: map[string]*groupPackage{
+		"example.com/m/clean":  {names: []string{"TestClean"}},
+		"example.com/m/shared": {names: []string{"TestShared"}, ambiguous: true},
+	}}
 	subjects := groupSubjects(g)
 	if len(subjects) != 1 || subjects[0].Package != "example.com/m/clean" {
 		t.Fatalf("subjects = %v, want only the singly-selected package (ambiguous excluded)", subjects)

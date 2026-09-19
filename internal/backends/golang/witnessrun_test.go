@@ -1012,8 +1012,14 @@ func TestWritesOnce(t *testing.T) {
 	if drift.Uncached != 0 {
 		t.Errorf("drift: uncached=%d, want 0", drift.Uncached)
 	}
-	if cacheRecord(t, witnesscache.Load(tmp), "example.com/driftserve/reader", "TestReads") == nil {
-		t.Error("retried reader did not republish against the settled tree")
+	retried := cacheRecord(t, witnesscache.Load(tmp), "example.com/driftserve/reader", "TestReads")
+	if retried == nil {
+		t.Fatal("retried reader did not republish against the settled tree")
+	}
+	// The retry ran the reader alone in its process, so the republished
+	// record carries the observation proof.
+	if retried.Fingerprint.ObservationProof == nil || retried.Fingerprint.ObservationAssertion == "" {
+		t.Errorf("retried solo reader carries no observation proof: %+v", retried.Fingerprint)
 	}
 
 	// The settled tree serves the retried record beside the writer's.
@@ -1231,6 +1237,15 @@ func TestFlakyReads(t *testing.T) {
 //gofresh:pure
 func TestStable(t *testing.T) {}
 `,
+		"two/two.go": "package two\n\nconst edition = 1\n",
+		"two/two_test.go": `package two
+
+import "testing"
+
+func TestFirst(t *testing.T) { _ = edition }
+
+func TestSecond(t *testing.T) { _ = edition }
+`,
 	})
 	cfg := &stipulatorv1.GoInvocationConfig{}
 	cfg.SetPackages([]string{"./..."})
@@ -1260,9 +1275,16 @@ func TestStable(t *testing.T) {}
 		t.Fatal("denied sibling did not publish from its solo isolation process")
 	}
 
-	// Settle the flaky test's observed input: only the recordless test
-	// re-executes, in a selective process of its own.
+	if cacheRecord(t, cache, "example.com/proofy/two", "TestFirst") == nil {
+		t.Fatal("red run published no record for the two-test package")
+	}
+	// Settle the flaky test's observed input and move the pair's source:
+	// the recordless flaky test re-executes in a selective process of its
+	// own, the pair — stale by source — in one shared selective process.
 	if err := os.WriteFile(filepath.Join(tmp, "pkg", "flag.txt"), []byte("pass\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmp, "two", "two.go"), []byte("package two\n\nconst edition = 2\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	solo, err := RunWitnesses(context.Background(), tmp, noSeeding{})
@@ -1272,8 +1294,8 @@ func TestStable(t *testing.T) {}
 	if solo.Degraded != "" {
 		t.Fatalf("solo: freshness path degraded: %s", solo.Degraded)
 	}
-	if solo.Fresh != 1 || solo.Ran != 1 {
-		t.Fatalf("solo: fresh=%d ran=%d, want the stable sibling served and the recordless test re-executed", solo.Fresh, solo.Ran)
+	if solo.Fresh != 1 || solo.Ran != 3 {
+		t.Fatalf("solo: fresh=%d ran=%d, want the stable sibling served and the three recordless tests re-executed", solo.Fresh, solo.Ran)
 	}
 	if got := solo.Outcomes["example.com/proofy/pkg.TestFlakyReads"]; got != verify.TestPassed {
 		t.Errorf("solo: flaky outcome = %v, want PASSED", got)
@@ -1288,6 +1310,19 @@ func TestStable(t *testing.T) {}
 		rec.Fingerprint.ObservationProof.Symbol != rec.Test ||
 		!rec.Fingerprint.ObservationProof.Observable {
 		t.Errorf("observation proof does not attest the record's own subject: %+v", rec.Fingerprint.ObservationProof)
+	}
+	// The pair shared one selective process: neither is a proof
+	// candidate, and the solo proof above stands beside them — a
+	// candidate whose process runs a sibling would drop the group's
+	// proof whole.
+	for _, name := range []string{"TestFirst", "TestSecond"} {
+		rec := cacheRecord(t, witnesscache.Load(tmp), "example.com/proofy/two", name)
+		if rec == nil {
+			t.Fatalf("shared selective process published no record for %s", name)
+		}
+		if rec.Fingerprint.ObservationProof != nil || rec.Fingerprint.ObservationAssertion != "" {
+			t.Errorf("%s gained an observation proof from a process it shared with a sibling: %+v", name, rec.Fingerprint)
+		}
 	}
 }
 
