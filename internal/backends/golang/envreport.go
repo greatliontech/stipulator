@@ -2,8 +2,7 @@ package golang
 
 import (
 	"fmt"
-	"os"
-	"sort"
+	"slices"
 	"strings"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -88,43 +87,62 @@ func truncateValidUTF8(s string, limit int) string {
 // diagnostic's cap.
 func envDivergenceReport(n *NormalizedInvocation, pkgDir string) string {
 	var out strings.Builder
-	cur := envIndex(witnessEnvOf(n))
-	amb := envIndex(ambientOf(n))
+	// One environment view: the witness environment is gofresh's
+	// normalized list (key-ordered), walked in order; the ambient leg is
+	// the sample the normalization consumed, read under the platform's
+	// key rule (lookupEnv; a duplicated raw key answers its first
+	// entry, as getenv does). A key is extracted by its first '=' — an
+	// entry with an empty key (a windows per-drive entry) is skipped by
+	// name — until gotool carries the entry splitter
+	// (REQ-evidence-flip-environment).
+	cur := witnessEnvOf(n)
+	amb := ambientOf(n)
 	out.WriteString("verdict flips prior passing witness evidence; runner execution environment (candidate variables for a runner-correlated failure):\n")
 	binDir := pkgDir
 	if binDir == "" {
 		binDir = "its package directory"
 	}
 	fmt.Fprintf(&out, "  go test spawned in %s; the test binary runs in %s with PWD pinned to it\n", n.Dir, binDir)
-	width := cur["GOMAXPROCS"]
+	width, _ := lookupEnv(cur, "GOMAXPROCS")
 	if width == "" {
 		width = "unpinned"
 	}
 	fmt.Fprintf(&out, "  delivered parallelism width: GOMAXPROCS=%s (package processes fan out %d wide)\n", width, spawnBoundOf(n))
 	declared := declaredOverrideKeys(n)
-	for _, k := range sortedKeys(cur) {
-		av, inAmbient := amb[k]
+	for _, entry := range cur {
+		k, cv, ok := strings.Cut(entry, "=")
+		if !ok || k == "" {
+			continue
+		}
+		av, inAmbient := lookupEnv(amb, k)
 		switch {
 		case !inAmbient:
-			fmt.Fprintf(&out, "  %s=%s (runner-set, absent in the ambient environment)\n", k, envValue(cur[k]))
-		case av == cur[k]:
+			fmt.Fprintf(&out, "  %s=%s (runner-set, absent in the ambient environment)\n", k, envValue(cv))
+		case av == cv:
 		case declared[k]:
 			// A changed key the invocation declared: the runner-side
 			// value is committed policy text, but the ambient value it
 			// shadows may be exactly what the override keeps out of
 			// view.
-			fmt.Fprintf(&out, "  %s=%s (declared override; ambient value withheld)\n", k, envValue(cur[k]))
+			fmt.Fprintf(&out, "  %s=%s (declared override; ambient value withheld)\n", k, envValue(cv))
 		default:
 			// A changed key the invocation did not declare is the
 			// runner's own pin — a toolchain or width fact, safe from
 			// both sides.
-			fmt.Fprintf(&out, "  %s=%s (runner; ambient %s=%s)\n", k, envValue(cur[k]), k, envValue(av))
+			fmt.Fprintf(&out, "  %s=%s (runner; ambient %s=%s)\n", k, envValue(cv), k, envValue(av))
 		}
 	}
-	for _, k := range sortedKeys(amb) {
-		if _, ok := cur[k]; !ok {
-			fmt.Fprintf(&out, "  %s dropped by the runner\n", k)
+	var dropped []string
+	for _, entry := range amb {
+		if k, _, ok := strings.Cut(entry, "="); ok && k != "" {
+			if _, held := lookupEnv(cur, k); !held {
+				dropped = append(dropped, k)
+			}
 		}
+	}
+	slices.Sort(dropped)
+	for _, k := range slices.Compact(dropped) {
+		fmt.Fprintf(&out, "  %s dropped by the runner\n", k)
 	}
 	if lim := processLimits(); lim != "" {
 		out.WriteString("  process limits: " + lim + "\n")
@@ -147,26 +165,7 @@ func ambientOf(n *NormalizedInvocation) []string {
 	if n.Ambient != nil {
 		return n.Ambient
 	}
-	return os.Environ()
-}
-
-func envIndex(env []string) map[string]string {
-	m := make(map[string]string, len(env))
-	for _, kv := range env {
-		if k, v, ok := strings.Cut(kv, "="); ok {
-			m[k] = v
-		}
-	}
-	return m
-}
-
-func sortedKeys(m map[string]string) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
+	return ambientEnviron()
 }
 
 // enrichFlipDiagnostics appends the runner's execution-environment

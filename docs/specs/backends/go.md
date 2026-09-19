@@ -144,8 +144,10 @@ finding elsewhere.
 Go policy execution or package discovery MUST run inside an owned,
 cancellable process boundary whose entire descendant tree terminates
 with the operation's cancellation — package loading owns its launcher's
-descendants exactly as test invocations own theirs, and an ambient
-external package driver never shapes verification. The toolchain's
+descendants exactly as test invocations own theirs, and an external
+package driver never shapes verification — an ambient one is refused,
+and the curated environment's package-driver variable is pinned off as
+its last word, past every declared override or denial. The toolchain's
 telemetry, on by default, forks a detached upload sidecar outside that
 boundary on its daily check, and no variable names its directory: on
 unix the environment every Go child runs under — the witnesses', the

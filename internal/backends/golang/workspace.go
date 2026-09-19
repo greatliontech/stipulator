@@ -6,10 +6,11 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"golang.org/x/mod/modfile"
+
+	"github.com/greatliontech/gofresh/gotool"
 )
 
 // workspaceMembers returns the tree's Go module directories, relative to
@@ -105,13 +106,14 @@ func goworkEnv(dir string) ([]string, error) {
 		}
 		pin = "GOWORK=" + work
 	}
-	// Sorted, as setEnv's contract wants (normalize.go's helpers); the
-	// pins below replace any ambient GOWORK or GOPACKAGESDRIVER, never
-	// append beside one — exec semantics tolerate a duplicate key, a
-	// strict environment normalizer refuses it, and this env also feeds
-	// the freshness engine's analysis.
-	env := append([]string(nil), os.Environ()...)
-	sort.Strings(env)
+	// Normalized under gofresh's policy first (a malformed or duplicated
+	// ambient entry refuses here, where the freshness engine this env
+	// feeds would refuse it later); the pins below replace any ambient
+	// GOWORK or GOPACKAGESDRIVER, never append beside one.
+	env, err := gotool.NormalizeEnv(ambientEnviron())
+	if err != nil {
+		return nil, fmt.Errorf("inherited environment: %w", err)
+	}
 	// An ambient external package driver never shapes verification
 	// (REQ-go-owned-processes), so the driver is pinned off: symbol
 	// loading and toolchain queries always go through the real toolchain.

@@ -12,9 +12,6 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[go-backend-load-path-pairs](go-backend-load-path-pairs.md)** — workspace double-parse under
   two error policies, the view-error/attribution wording split, the classifier's double-resolve.
   *Lands: with the next change set touching the Go backend's package load path.*
-- **[env-walk-vocabularies](env-walk-vocabularies.md)** — the environment report's indexed walk
-  beside the normalizer's positional edits (and a second `sortedKeys` in cmd). *Lands: with the
-  next change set touching the runner environment.*
 - **[process-output-utf8-marshal](process-output-utf8-marshal.md)** — raw process output (bytes,
   not text) flows into edition-2023 proto string fields; one invalid byte makes the check result
   unmarshallable. Cut-point half fixed; ingest-wide sanitization needs a design choice.
@@ -47,6 +44,7 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[resolver-child-kill-orphans-owned-groups](resolver-child-kill-orphans-owned-groups.md)** — the served resolver child, killed outright by its client, would leave a group-isolated spawn alive — none reachable at HEAD (REQ-go-owned-processes). *Lands: a resolver-child request path first spawning through commandContext*
 - **[deadline-roster-head-unbounded](deadline-roster-head-unbounded.md)** — the budget diagnostic's roster head has no bound of its own below the cap; a roster that large starves the residue. *Lands: a field report of a deadline diagnostic whose roster displaced its residue*
 - **[undecodable-manifest-records-dropped-silently](undecodable-manifest-records-dropped-silently.md)** — a record whose manifest fails the load's shape judgment is absent with no re-execution reason, where the serving rounds would let gofresh attribute it. *Lands: cross-tool train chunk 249*
+- **[effective-go-env-sample-outside-gotool](effective-go-env-sample-outside-gotool.md)** — the normalization's `go env` sample runs through the owned boundary beside gotool's snapshot, which has no boundary hook. *Lands: stipulator's next gofresh bump past the release carrying gotool.Runner.TakeEnvSnapshot*
 - **[check-pass-shares-the-verification-ladder](check-pass-shares-the-verification-ladder.md)** — the check pass runs the capture → symbols → served-backend ladder in its own words beside the verification core every other judging verb reads. *Lands: user decision*
 - **[core-proto-io-resolver-protocol](core-proto-io-resolver-protocol.md)** — is the resolver child's JSON-lines exchange within REQ-core-proto-io as it stands, or should it be a proto message on the wire. *Lands: user decision*
 - **[blanket-purity-assertion-widening](blanket-purity-assertion-widening.md)** — the policy's blanket purity assertion stated at 222 widens what the spec sanctions as servable; for the user's audit. *Lands: user decision*

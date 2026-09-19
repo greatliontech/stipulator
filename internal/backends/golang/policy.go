@@ -15,6 +15,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 
+	"github.com/greatliontech/gofresh/gotool"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 )
 
@@ -185,13 +186,16 @@ func validatePackagePattern(p string) error {
 // each is pinned from exactly one typed source (a config field or the
 // workspace declaration), so carrying it through the generic environment
 // fields would store one fact in two places.
-var pinnedEnvKeys = map[string]bool{
-	"GOWORK": true, "GOPACKAGESDRIVER": true, "GOOS": true, "GOARCH": true,
-	"CGO_ENABLED": true, "GOFLAGS": true, "GOTOOLCHAIN": true,
-}
+var pinnedEnvKeys = declaredEnvKeys{"GOWORK", "GOPACKAGESDRIVER", "GOOS", "GOARCH", "CGO_ENABLED", "GOFLAGS", "GOTOOLCHAIN"}
+
+// pinnedEnvKey judges a declared name against the pinned set under the
+// platform's key rule — the rule the environment edits fold by, so a
+// case-variant spelling cannot reach a pinned variable on a
+// case-folding platform.
+func pinnedEnvKey(name string) bool { return pinnedEnvKeys.holds(name) }
 
 func validateEnvOverrides(entries []string) error {
-	seen := map[string]bool{}
+	var seen declaredEnvKeys
 	for _, e := range entries {
 		if strings.ContainsRune(e, 0) {
 			return fmt.Errorf("environment entry %q contains NUL", e)
@@ -201,30 +205,45 @@ func validateEnvOverrides(entries []string) error {
 			return fmt.Errorf("environment entry %q is not KEY=VALUE with a non-empty key", e)
 		}
 		key := e[:eq]
-		if pinnedEnvKeys[key] {
+		if pinnedEnvKey(key) {
 			return fmt.Errorf("environment entry %q sets backend-pinned key %s; use its typed field", e, key)
 		}
-		if seen[key] {
+		if seen.holds(key) {
 			return fmt.Errorf("environment sets duplicate key %q", key)
 		}
-		seen[key] = true
+		seen = append(seen, key)
 	}
 	return nil
 }
 
+// declaredEnvKeys is the keys a declaration has named so far, judged
+// under the platform's key rule — the rule the environment edits fold
+// by, so two spellings one platform folds together are one declaration
+// and refused as a duplicate where the setter would deliver one alone.
+type declaredEnvKeys []string
+
+func (k declaredEnvKeys) holds(name string) bool {
+	for _, seen := range k {
+		if gotool.EqualEnvKey(seen, name) {
+			return true
+		}
+	}
+	return false
+}
+
 func validateEnvDeny(names []string) error {
-	seen := map[string]bool{}
+	var seen declaredEnvKeys
 	for _, n := range names {
 		if n == "" || strings.ContainsAny(n, "=\x00") {
 			return fmt.Errorf("env_deny entry %q is not a bare variable name", n)
 		}
-		if pinnedEnvKeys[n] {
+		if pinnedEnvKey(n) {
 			return fmt.Errorf("env_deny entry %q names a backend-pinned key; use its typed field", n)
 		}
-		if seen[n] {
+		if seen.holds(n) {
 			return fmt.Errorf("env_deny names duplicate key %q", n)
 		}
-		seen[n] = true
+		seen = append(seen, n)
 	}
 	return nil
 }
@@ -322,12 +341,6 @@ func validatePGO(v string) error {
 	return nil
 }
 
-// validateModuleRoot enforces the payload's hermeticity: a module root is
-// slash-separated, tree-relative, already in clean form (empty means the
-// repository root), and inside the tree. An escaping root would make the
-// same committed record verify different trees per machine — refused
-// exactly as an escaping go.work member is (REQ-go-workspace). Canonical
-// form is refused, never repaired: the record is reviewed contract.
 // hostPortableTreePath refuses runes that change path semantics between
 // hosts: a backslash or drive colon validates as an ordinary rune under slash
 // semantics here yet resolves as a separator or volume on Windows, escaping
@@ -336,6 +349,12 @@ func hostPortableTreePath(p string) bool {
 	return !strings.ContainsAny(p, "\\:")
 }
 
+// validateModuleRoot enforces the payload's hermeticity: a module root is
+// slash-separated, tree-relative, already in clean form (empty means the
+// repository root), and inside the tree. An escaping root would make the
+// same committed record verify different trees per machine — refused
+// exactly as an escaping go.work member is (REQ-go-workspace). Canonical
+// form is refused, never repaired: the record is reviewed contract.
 func validateModuleRoot(root string) error {
 	if root == "" {
 		return nil

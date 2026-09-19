@@ -36,7 +36,7 @@ func TestGoEnvDivergenceReportContent(t *testing.T) {
 		WitnessEnv: []string{"KEEP=same", "GOMAXPROCS=2", "SECRET_URL=test-value", "GOCACHE=/pins/gocache"},
 		// Ambient is the normalize-time sample the delta diffs against;
 		// the sentinel AMBIENT_ONLY exists only here.
-		Ambient: []string{"KEEP=same", "GOMAXPROCS=32", "SECRET_URL=postgres://real", "AMBIENT_ONLY=x"},
+		Ambient: []string{"KEEP=same", "GOMAXPROCS=32", "SECRET_URL=postgres://real", "ZZ_ONLY=y", "AMBIENT_ONLY=x", "ZZ_ONLY=again"},
 	}
 	rep := envDivergenceReport(n, "/tree/mod/pkg")
 	for _, want := range []string{
@@ -57,6 +57,15 @@ func TestGoEnvDivergenceReportContent(t *testing.T) {
 	}
 	if strings.Contains(rep, "AMBIENT_ONLY=x") {
 		t.Error("dropped entry's value printed; dropped entries are named alone")
+	}
+	// Dropped entries render in key order whatever order the ambient
+	// sample held them in, each name once: the report is one
+	// deterministic rendering.
+	if a, z := strings.Index(rep, "AMBIENT_ONLY dropped"), strings.Index(rep, "ZZ_ONLY dropped"); a < 0 || z < 0 || z < a {
+		t.Errorf("dropped entries out of key order (AMBIENT_ONLY at %d, ZZ_ONLY at %d):\n%s", a, z, rep)
+	}
+	if n := strings.Count(rep, "ZZ_ONLY dropped"); n != 1 {
+		t.Errorf("a duplicated raw ambient key named %d times, want once:\n%s", n, rep)
 	}
 	if strings.Contains(rep, "KEEP") {
 		t.Error("an unchanged entry rendered; the report is the delta")
@@ -331,5 +340,19 @@ func TestGoTruncateValidUTF8(t *testing.T) {
 		if !utf8.ValidString(got) {
 			t.Errorf("truncateValidUTF8(dirty, %d) is not valid UTF-8", limit)
 		}
+	}
+}
+
+// TestReportFallbackReadsTheOneAmbientSample pins the report's ambient
+// leg for an invocation carrying no sample to the same inherited read
+// the normalizer makes (ambientEnviron), so a pin's installed
+// environment reaches the report exactly as it reached the load
+// (REQ-evidence-flip-environment).
+func TestReportFallbackReadsTheOneAmbientSample(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-flip-environment")
+	swapAmbientEnviron(t, func() []string { return []string{"SEAM_ONLY=1"} })
+	n := &NormalizedInvocation{Dir: "/tree/mod", Env: []string{"KEEP=same"}, WitnessEnv: []string{"KEEP=same"}}
+	if rep := envDivergenceReport(n, "/tree/mod/pkg"); !strings.Contains(rep, "SEAM_ONLY dropped by the runner") {
+		t.Fatalf("report read a sample other than the one inherited read:\n%s", rep)
 	}
 }

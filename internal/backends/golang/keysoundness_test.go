@@ -92,7 +92,7 @@ func tupleEqual(a, b keyFieldTuple) bool {
 
 func groupKeyFields(n *NormalizedInvocation) keyFieldTuple {
 	return keyFieldTuple{
-		strs:  [][]string{n.Tags, witnessEnvOf(n), identityArgs(n.Args), canonicalExclusions(n.ExcludedPaths), n.Vouches},
+		strs:  [][]string{n.Tags, sortedCopy(witnessEnvOf(n)), identityArgs(n.Args), canonicalExclusions(n.ExcludedPaths), n.Vouches},
 		flags: []bool{n.AssumePure, n.Race},
 		one:   []string{n.ModuleMode.String(), n.ModuleRoot, n.PGO},
 	}

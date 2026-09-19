@@ -5,12 +5,17 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
+	"google.golang.org/protobuf/types/known/durationpb"
+	"pgregory.net/rapid"
+
+	"github.com/greatliontech/gofresh/gotool"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/stipulate"
-	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 // discoverFixture is the workspace fixture the normalization and discovery
@@ -443,4 +448,159 @@ func TestBuildFlagsCarryModeAndProfile(t *testing.T) {
 			t.Fatalf("witness command %q lacks %q", args, flag)
 		}
 	}
+}
+
+// TestEnvHelpersFollowGofreshsPolicy pins the invocation's environment
+// helpers to gofresh's one policy: setEnv keeps gofresh's key order (a
+// whole-entry sort would put "A-=1" before "A=1"), replaces under the
+// platform's key rule, and lookupEnv reads under it — one key-equality
+// decision for the normalizer, the report, and the engine
+// (REQ-evidence-flip-environment).
+//
+//gofresh:pure
+func TestEnvHelpersFollowGofreshsPolicy(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-flip-environment")
+	got := setEnv([]string{"A-=1", "B=2"}, "A", "1")
+	if want := []string{"A=1", "A-=1", "B=2"}; !slices.Equal(got, want) {
+		t.Fatalf("setEnv order = %q, want gofresh's key order %q", got, want)
+	}
+	got = setEnv(got, "A", "3")
+	if want := []string{"A=3", "A-=1", "B=2"}; !slices.Equal(got, want) {
+		t.Fatalf("setEnv replace = %q, want %q", got, want)
+	}
+	if v, ok := lookupEnv(got, "A-"); !ok || v != "1" {
+		t.Fatalf("lookupEnv(A-) = %q,%v", v, ok)
+	}
+	if runtime.GOOS != "windows" {
+		// Case-distinct keys are distinct variables here; on windows
+		// gofresh folds them to one identity, and these helpers ride
+		// its rule rather than restating one.
+		got = setEnv(got, "a", "x")
+		if _, ok := lookupEnv(got, "A"); !ok || len(got) != 4 {
+			t.Fatalf("setEnv(a) on a case-sensitive platform = %q, want A kept beside a", got)
+		}
+		if got = dropEnv(got, "a"); len(got) != 3 {
+			t.Fatalf("dropEnv(a) = %q, want A kept", got)
+		}
+	}
+}
+
+// TestSetEnvKeepsGofreshsOrder pins the setter's order to gofresh's
+// own: over random normalized environments and entries, inserting by
+// setEnv yields exactly what gotool.NormalizeEnv yields over the same
+// entries — the one order every consumer of a normalized environment
+// reads, restated in envEntryLess until gotool carries the setter; the
+// drawn keys are deduplicated under the platform's rule, so the
+// property holds on a case-folding platform too
+// (REQ-evidence-flip-environment).
+//
+//gofresh:pure
+func TestSetEnvKeepsGofreshsOrder(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-flip-environment")
+	key := rapid.SampledFrom([]string{"A", "A-", "AB", "a", "B", "Z", "GO_X", "GOX"})
+	value := rapid.SampledFrom([]string{"", "1", "x=y", "a b"})
+	rapid.Check(t, func(rt *rapid.T) {
+		var entries []string
+		var seen declaredEnvKeys
+		for _, k := range rapid.SliceOfN(key, 0, 6).Draw(rt, "keys") {
+			if !seen.holds(k) {
+				seen = append(seen, k)
+				entries = append(entries, k+"="+value.Draw(rt, "v"))
+			}
+		}
+		env, err := gotool.NormalizeEnv(entries)
+		if err != nil {
+			rt.Fatal(err)
+		}
+		k, v := key.Draw(rt, "key"), value.Draw(rt, "value")
+		want, err := gotool.NormalizeEnv(append(dropEnv(env, k), k+"="+v))
+		if err != nil {
+			rt.Fatal(err)
+		}
+		if got := setEnv(env, k, v); !slices.Equal(got, want) {
+			rt.Fatalf("setEnv(%q, %q, %q) = %q, want gofresh's order %q", env, k, v, got, want)
+		}
+	})
+}
+
+// TestDriverPinIsTheCuratedEnvironmentsLastWord pins REQ-go-owned-processes'
+// pin: a declared environment or denial cannot reopen the package
+// driver — the curated environment carries GOPACKAGESDRIVER=off after
+// every declaration. A pinned key spelled under another case is judged
+// by the platform's rule: refused at policy acceptance where the
+// platform folds case, and a distinct variable elsewhere, beside which
+// the pin still stands last.
+func TestDriverPinIsTheCuratedEnvironmentsLastWord(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-owned-processes")
+	variant := validateEnvOverrides([]string{"gopackagesdriver=/x"})
+	denial := validateEnvDeny([]string{"Gopackagesdriver"})
+	if runtime.GOOS == "windows" {
+		if variant == nil || denial == nil {
+			t.Fatalf("a case-variant spelling of the pinned driver key was accepted on a case-folding platform: %v / %v", variant, denial)
+		}
+		return
+	}
+	if variant != nil || denial != nil {
+		t.Fatalf("a distinct case-variant key was refused on a case-sensitive platform: %v / %v", variant, denial)
+	}
+	neutralAmbient(t)
+	dir := writeModule(t, map[string]string{"go.mod": "module example.com/pin\n\ngo 1.26\n", "p.go": "package pin\n"})
+	c := &stipulatorv1.GoInvocationConfig{}
+	c.SetPackages([]string{"./..."})
+	c.SetEnvironment([]string{"gopackagesdriver=/x"})
+	n, err := NormalizeInvocation(context.Background(), dir, goInvocation("x", c))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, ok := lookupEnv(n.Env, "GOPACKAGESDRIVER"); !ok || v != "off" {
+		t.Fatalf("curated GOPACKAGESDRIVER = %q,%v; want off as the last word", v, ok)
+	}
+	if v, ok := lookupEnv(n.Env, "gopackagesdriver"); !ok || v != "/x" {
+		t.Fatalf("the distinct lowercase variable = %q,%v; want the declaration kept beside the pin", v, ok)
+	}
+}
+
+// TestDriverAttributionNamesOnlyARealDriver pins the refusal's
+// attribution: an inherited environment refused for a malformed entry
+// while GOPACKAGESDRIVER=off is set names the entry, never the driver
+// (REQ-go-owned-processes).
+func TestDriverAttributionNamesOnlyARealDriver(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-owned-processes")
+	neutralAmbient(t)
+	t.Setenv("GOPACKAGESDRIVER", "off")
+	dir := writeModule(t, map[string]string{"go.mod": "module example.com/pin\n\ngo 1.26\n", "p.go": "package pin\n"})
+	c := &stipulatorv1.GoInvocationConfig{}
+	c.SetPackages([]string{"./..."})
+	// An ambient entry with no '=' — the shape execve carries into a
+	// process and no Setenv can produce — refused by gofresh's
+	// normalization, unrelated to the driver.
+	swapAmbientEnviron(t, func() []string { return append(os.Environ(), "NOEQUALS") })
+	_, err := NormalizeInvocation(context.Background(), dir, goInvocation("x", c))
+	if err == nil || strings.Contains(err.Error(), "package driver") || !strings.Contains(err.Error(), "inherited environment") {
+		t.Fatalf("a malformed inherited entry beside GOPACKAGESDRIVER=off = %v; want the entry named, not the driver", err)
+	}
+}
+
+// TestWorkspaceQueryRefusesAMalformedAmbientEnvironment pins the
+// workspace query's environment to gofresh's policy at its source: an
+// inherited entry gofresh's normalization refuses is refused here,
+// naming the entry, before the go.work query spawns under it
+// (REQ-go-owned-processes).
+func TestWorkspaceQueryRefusesAMalformedAmbientEnvironment(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-owned-processes")
+	neutralAmbient(t)
+	swapAmbientEnviron(t, func() []string { return append(os.Environ(), "NOEQUALS") })
+	_, err := goworkEnv(t.TempDir())
+	if err == nil || !strings.Contains(err.Error(), "inherited environment") {
+		t.Fatalf("goworkEnv over a malformed ambient entry = %v; want the entry refused", err)
+	}
+}
+
+// swapAmbientEnviron installs an inherited-environment read for the
+// test's lifetime.
+func swapAmbientEnviron(t *testing.T, read func() []string) {
+	t.Helper()
+	prior := ambientEnviron
+	ambientEnviron = read
+	t.Cleanup(func() { ambientEnviron = prior })
 }

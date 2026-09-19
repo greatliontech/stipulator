@@ -563,13 +563,6 @@ func identityArgs(args []string) []string {
 	return out
 }
 
-// groupKey is one invocation's capture-group identity: the
-// closure-shaping configuration (build tags, normalized environment,
-// the invocation-wide purity assertion) plus the race bit — race is a
-// build input and a witness-class boundary, so a race and a
-// plain-witness invocation sharing tags and env must not share a
-// capture group, or one group's fingerprints would describe two
-// different binaries and two witness tiers.
 // keyValue is a collision-free encoded segment value. The constructors
 // below are its only intended sources — none can emit a raw NUL, so a
 // segment built from them can never alias the join separator or a
@@ -618,7 +611,7 @@ func encodeSegments(segments []keySegment) string {
 func groupKeySegments(n *NormalizedInvocation) []keySegment {
 	return []keySegment{
 		{"tags", quotedList(n.Tags)},
-		{"env", quotedList(witnessEnvOf(n))},
+		{"env", quotedList(sortedCopy(witnessEnvOf(n)))},
 		{"modulemode", quotedValue(n.ModuleMode.String())},
 		{"module_root", quotedValue(n.ModuleRoot)},
 		{"pgo", quotedValue(n.PGO)},
@@ -636,6 +629,13 @@ func groupKeySegments(n *NormalizedInvocation) []keySegment {
 	}
 }
 
+// groupKey is one invocation's capture-group identity: the
+// closure-shaping configuration (build tags, normalized environment,
+// the invocation-wide purity assertion) plus the race bit — race is a
+// build input and a witness-class boundary, so a race and a
+// plain-witness invocation sharing tags and env must not share a
+// capture group, or one group's fingerprints would describe two
+// different binaries and two witness tiers.
 func groupKey(n *NormalizedInvocation) string {
 	return encodeSegments(groupKeySegments(n))
 }

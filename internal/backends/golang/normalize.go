@@ -6,12 +6,14 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
 	"unicode"
 
 	"github.com/greatliontech/gofresh/closure"
+	"github.com/greatliontech/gofresh/gotool"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 )
@@ -165,16 +167,21 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	if err := validateConfig(cfg); err != nil {
 		return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
 	}
-	ambient := os.Environ()
-	env, err := normalizeEnv(ambient)
+	ambient := ambientEnviron()
+	// gofresh's environment policy from the first entry: the inherited
+	// environment normalized under the platform's key rule, and an
+	// ambient external package driver refused, then pinned off, so
+	// nothing downstream can re-inherit one (gotool.EnvForPackages —
+	// the refusal gofresh's own package loading makes).
+	env, err := gotool.EnvForPackages(ambient)
 	if err != nil {
+		if driver, ok := gotool.LookupEnv(ambient, "GOPACKAGESDRIVER"); ok && driver != "" && driver != "off" {
+			// gotool's refusal names the driver; this backend's rule is
+			// that an ambient package driver must never shape
+			// verification (REQ-go-owned-processes).
+			return nil, fmt.Errorf("invocation %q: an ambient package driver must never shape verification: %w", inv.GetName(), err)
+		}
 		return nil, fmt.Errorf("invocation %q: inherited environment: %w", inv.GetName(), err)
-	}
-	// An ambient external package driver never shapes verification: refuse
-	// a real driver, then pin the variable off so nothing downstream can
-	// re-inherit one (aligned with gofresh's package-loading refusal).
-	if driver, ok := lookupEnv(env, "GOPACKAGESDRIVER"); ok && driver != "" && driver != "off" {
-		return nil, fmt.Errorf("invocation %q: GOPACKAGESDRIVER=%q is unsupported; an ambient package driver must never shape verification", inv.GetName(), driver)
 	}
 	for _, name := range cfg.GetEnvDeny() {
 		env = dropEnv(env, name)
@@ -182,6 +189,10 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	for _, e := range cfg.GetEnvironment() {
 		env = setEnv(env, e[:strings.IndexByte(e, '=')], e[strings.IndexByte(e, '=')+1:])
 	}
+	// The driver pin is the curated environment's last word: a declared
+	// override or denial spelled under another case reaches the same
+	// variable on a case-folding platform, and no declaration may
+	// reopen the driver (REQ-go-owned-processes).
 	env = setEnv(env, "GOPACKAGESDRIVER", "off")
 
 	n := &NormalizedInvocation{
@@ -473,7 +484,11 @@ func validateBracketPath(p string) error {
 }
 
 // effectiveGoEnv queries the exec'd toolchain for the pin-at-load values in
-// one owned, cancellable subprocess.
+// one owned, cancellable subprocess: the normalization's sample runs
+// through the owned command boundary (REQ-go-owned-processes), which
+// gofresh's environment snapshot (gotool.TakeEnvSnapshot) offers no
+// hook for — the query joins it when the snapshot takes the boundary
+// hook (gofresh docs/issues/gotool-snapshot-lacks-the-boundary-hook).
 func effectiveGoEnv(ctx context.Context, dir string, env []string) (version, goos, goarch, cgo, goflags, goexperiment, goroot, gomodcache, gocache string, err error) {
 	// The query is a Go child like every other: it runs only under an
 	// environment whose telemetry is owned (telemetry.go).
@@ -496,50 +511,49 @@ func effectiveGoEnv(ctx context.Context, dir string, env []string) (version, goo
 	return lines[0], lines[1], lines[2], lines[3], lines[4], lines[5], lines[6], lines[7], lines[8], nil
 }
 
-// normalizeEnv returns a deterministic owned copy of a complete process
-// environment, refusing malformed entries and duplicate keys instead of
-// resolving them by platform-dependent first- or last-entry behavior —
-// the same contract gofresh's environment normalization enforces, so an
-// environment built here survives the freshness engine unchanged.
-func normalizeEnv(env []string) ([]string, error) {
-	out := make([]string, len(env))
-	seen := make(map[string]bool, len(env))
-	for i, entry := range env {
-		if strings.ContainsRune(entry, 0) {
-			return nil, fmt.Errorf("environment entry %d contains NUL", i)
-		}
-		eq := strings.IndexByte(entry, '=')
-		if eq <= 0 {
-			return nil, fmt.Errorf("environment entry %d is malformed: expected non-empty key=value", i)
-		}
-		key := entry[:eq]
-		if seen[key] {
-			return nil, fmt.Errorf("environment contains duplicate key %q", key)
-		}
-		seen[key] = true
-		out[i] = entry
-	}
-	sort.Strings(out)
-	return out, nil
-}
-
-// setEnv replaces or inserts key in a normalized environment, preserving
-// sortedness and the single-entry-per-key invariant.
+// setEnv replaces or inserts key in a normalized environment under the
+// platform's key rule (gotool.EqualEnvKey), keeping gofresh's key order
+// and the single-entry-per-key invariant: the entry naming the key
+// goes and the new entry takes its ordered place — gofresh's order
+// (by key under the platform's identity, ties by the whole entry),
+// restated here as envEntryLess and pinned equal to
+// gotool.NormalizeEnv's over non-empty keys on a case-sensitive
+// platform, until gotool carries the setter itself.
 func setEnv(env []string, key, value string) []string {
 	out := dropEnv(env, key)
 	entry := key + "=" + value
-	i := sort.SearchStrings(out, entry)
+	i := sort.Search(len(out), func(i int) bool { return envEntryLess(entry, out[i]) })
 	out = append(out, "")
 	copy(out[i+1:], out[i:])
 	out[i] = entry
 	return out
 }
 
-// dropEnv removes key from a normalized environment.
+// envEntryLess is gofresh's environment order: by key under the
+// platform's identity (case-folded on windows), ties by the whole
+// entry. The key is the text before the first '=', so a windows
+// per-drive entry ("=C:=…", which gofresh's normalization accepts and
+// orders by its own key "=C:") orders here by the empty key — the
+// relayed entry splitter in gotool dissolves the divergence.
+func envEntryLess(a, b string) bool {
+	ka, _, _ := strings.Cut(a, "=")
+	kb, _, _ := strings.Cut(b, "=")
+	if runtime.GOOS == "windows" {
+		ka, kb = strings.ToUpper(ka), strings.ToUpper(kb)
+	}
+	if ka == kb {
+		return a < b
+	}
+	return ka < kb
+}
+
+// dropEnv removes the entry naming key, under the platform's key rule,
+// from a normalized environment (every such entry, where the list was
+// never normalized).
 func dropEnv(env []string, key string) []string {
 	out := make([]string, 0, len(env))
 	for _, entry := range env {
-		if eq := strings.IndexByte(entry, '='); eq > 0 && entry[:eq] == key {
+		if name, _, ok := strings.Cut(entry, "="); ok && gotool.EqualEnvKey(name, key) {
 			continue
 		}
 		out = append(out, entry)
@@ -547,15 +561,9 @@ func dropEnv(env []string, key string) []string {
 	return out
 }
 
-// lookupEnv returns key's value from a normalized environment.
-func lookupEnv(env []string, key string) (string, bool) {
-	for _, entry := range env {
-		if eq := strings.IndexByte(entry, '='); eq > 0 && entry[:eq] == key {
-			return entry[eq+1:], true
-		}
-	}
-	return "", false
-}
+// lookupEnv returns key's value from a normalized environment under the
+// platform's key rule (gotool.LookupEnv).
+func lookupEnv(env []string, key string) (string, bool) { return gotool.LookupEnv(env, key) }
 
 // resolveOrSelf resolves symlinks when the path resolves at all, and
 // returns the path unchanged when it does not — an unresolvable root is
@@ -634,3 +642,10 @@ func SelectionNotices(pc *Capture) []string {
 	}
 	return out
 }
+
+// ambientEnviron is the one read of the inherited environment — the
+// invocation normalizer's, the workspace query's, and the flip report's
+// fallback sample; a var so a pin
+// can hand it an entry the process cannot set in itself (an entry with
+// no '=' survives execve into os.Environ but no Setenv produces one).
+var ambientEnviron = os.Environ

@@ -226,6 +226,15 @@ func TestGroupKeySpansBuildDimensions(t *testing.T) {
 	if groupKey(base()) != groupKey(counted) {
 		t.Error("count partitioned the capture group; repetition is not a build dimension")
 	}
+	// The witness environment's order is presentation: two spellings of
+	// one environment are one capture group.
+	ordered := base()
+	ordered.WitnessEnv = []string{"A=1", "B=2"}
+	reordered := base()
+	reordered.WitnessEnv = []string{"B=2", "A=1"}
+	if groupKey(ordered) != groupKey(reordered) {
+		t.Error("a pure reorder of the witness environment partitioned the capture group")
+	}
 	// A joiner-byte argument value must not alias two argument entries
 	// into one capture group.
 	split := base()
