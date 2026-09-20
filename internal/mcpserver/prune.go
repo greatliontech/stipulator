@@ -11,7 +11,7 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/prune"
 	"github.com/greatliontech/stipulator/internal/records"
-	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/internal/verifyrun"
 )
 
 type pruneIn struct {
@@ -80,9 +80,9 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 	ctx, prog := s.startProgress(ctx, req)
 	res, err := prune.Evaluate(ctx, deps, false)
 	if err != nil {
-		var pe *prune.ProblemsError
+		var pe *verifyrun.ProblemsError
 		if errors.As(err, &pe) {
-			err = verificationProblems(&verify.Report{Problems: pe.Problems})
+			err = refuseProblems(pe.Problems)
 		}
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}

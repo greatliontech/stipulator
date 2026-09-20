@@ -61,14 +61,17 @@ is the default assumption — except where the record's consent-source pin
 still matches, which proves the text byte-identical and the change a
 rehash (REQ-evidence-consent-current).
 
-**REQ-change-editorial** (behavior): An editorial disposition MUST re-pin the
-identity's bindings and gap record to the new content hash without
-invalidation — naming, for each re-pinned clause claim
+**REQ-change-editorial** (behavior): An editorial disposition MUST
+re-pin the identity's bindings and gap record to the new content hash
+without invalidation — naming, for each re-pinned clause claim
 (REQ-evidence-clause-claim), the clause it denotes under the new text,
 since an ordinal claim follows its item's position and the consent must
 see what the edit made it point at; a clause claim the new text no
 longer resolves refuses the disposition with nothing written, because
-consent to a dangling claim is no consent.
+consent to a dangling claim is no consent. The ids form of pin is a
+batch: every named identity is judged before the first write, so a
+refusal mid-list — an identity outside the corpus, a dangling clause
+claim — writes nothing, on either face.
 
 **REQ-change-split-merge** (behavior): Split and merge dispositions MUST
 tombstone the source identities, verify the declared `supersedes` edges
@@ -381,10 +384,21 @@ policy, and the caller's view, scope, and identifier vocabulary — MUST
 fire before the operation spawns its first child process or pays a
 toolchain query the refusal makes moot: a policy record's static faults
 at acceptance, a duplicated coverage cell at manifest read, an unknown
-view, bucket, filter, or requirement identifier at parse, and the
-record-hygiene half of verification before any witness executes. A
-refusal that surfaces after such a cost is wasted work the caller could
-not avoid.
+view, bucket, filter, or requirement identifier at parse — an
+identifier list given but reducing to nothing included, on either
+face; the ids form of pin judges every named identity before its first
+write and before any resolver is spawned — and the record-hygiene half
+of verification before any witness executes, on which the verbs that
+witness or delete — verify, gate, partitions, prune — refuse on both
+faces, one refusal each face renders in its own words (the verify
+verb's record-only summary never stands in for a pass); a problem the
+witness run itself finds refuses gate, partitions, and prune the same
+way — a coverage judgment or a deletion over a problem-bearing record
+is unsound — while verify's report carries it as a counted problem;
+the orientation and listing surfaces answer over the record-only pass
+with the problems stated as a caveat (REQ-gap-list), and check answers
+a failing verdict. A refusal that surfaces after such a cost is wasted
+work the caller could not avoid.
 
 **REQ-check-derivation** (invariant): Every operation that consumes the
 accepted policy — the check on either evidence form, the witness run,

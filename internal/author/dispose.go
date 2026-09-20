@@ -69,6 +69,13 @@ func Editorial(fsys fs.FS, requirement string) (ups []Update, consented []string
 	if err != nil {
 		return nil, nil, err
 	}
+	return EditorialOver(spec, fsys, requirement)
+}
+
+// EditorialOver is Editorial over an already compiled corpus — the
+// batch form's per-id step, so a batch compiles its corpus once
+// (JudgeEditorial) and re-reads only the store per id.
+func EditorialOver(spec *stipulatorv1.Spec, fsys fs.FS, requirement string) (ups []Update, consented []string, err error) {
 	target, ok := records.ByID(spec)[requirement]
 	if !ok {
 		return nil, nil, fmt.Errorf("requirement %s is not in the corpus", requirement)
@@ -481,4 +488,25 @@ func nothingStaleNote(store *records.Store, requirement, hash, source string) st
 		return "no records name it; nothing to re-consent"
 	}
 	return "text unchanged; nothing to re-consent"
+}
+
+// JudgeEditorial judges every id of an editorial batch before any of
+// them writes: an id outside the corpus, a clause claim the text no
+// longer resolves, or a hand-commented record refuses the whole batch
+// with nothing written, instead of surfacing after earlier ids were
+// applied. A no-op (ErrNothingStale) is not a refusal. The caller then
+// applies Editorial per id in order, each computed over the store the
+// previous id left — two ids sharing a binding file must not race one
+// compare-and-swap precondition (REQ-change-editorial).
+func JudgeEditorial(fsys fs.FS, ids []string) (*stipulatorv1.Spec, error) {
+	spec, err := compileClean(fsys)
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range ids {
+		if _, _, err := EditorialOver(spec, fsys, id); err != nil && !errors.Is(err, ErrNothingStale) {
+			return nil, err
+		}
+	}
+	return spec, nil
 }

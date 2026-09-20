@@ -13,6 +13,7 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/records"
+	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
@@ -22,7 +23,7 @@ type pinIn struct {
 
 func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn) (*mcp.CallToolResult, map[string]any, error) {
 	if in.Ids != "" {
-		ids, err := splitIDs(in.Ids)
+		ids, err := verbcore.SplitIDs(in.Ids)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -41,13 +42,12 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 		// over the store the previous id left — two ids sharing a
 		// binding file must not race one compare-and-swap precondition.
 		noOp := map[string]string{}
-		for _, id := range ids {
-			if _, _, err := author.Editorial(s.fsys(), id); err != nil && !errors.Is(err, author.ErrNothingStale) {
-				return nil, nil, err
-			}
+		spec, err := author.JudgeEditorial(s.fsys(), ids)
+		if err != nil {
+			return nil, nil, err
 		}
 		for _, id := range ids {
-			ups, consented, err := author.Editorial(s.fsys(), id)
+			ups, consented, err := author.EditorialOver(spec, s.fsys(), id)
 			if errors.Is(err, author.ErrNothingStale) {
 				noOp[id] = author.NoOpNote(err)
 				continue

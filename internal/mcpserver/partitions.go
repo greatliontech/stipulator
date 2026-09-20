@@ -10,6 +10,7 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/facts"
+	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/wire"
 )
@@ -29,13 +30,18 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
-	if err := verificationProblems(rep); err != nil {
+	// Every problem refuses — the record-hygiene half and a problem
+	// the witness run itself found alike: a coverage judgment over a
+	// problem-bearing record is unsound, on this face as on the CLI
+	// (REQ-check-preparation). The record-only report re-derives the
+	// hygiene problems, so this one call covers both halves.
+	if err := refuseProblems(rep.Problems); err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	spec, store := prepared.Spec, prepared.Store
 	var ids []string
 	if strings.TrimSpace(in.Ids) != "" {
-		ids, err = splitIDs(in.Ids)
+		ids, err = verbcore.SplitIDs(in.Ids)
 		if err != nil {
 			return nil, nil, terminalToolError(prog, ctx, err)
 		}

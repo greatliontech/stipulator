@@ -35,6 +35,12 @@ func (s *Server) toolVerify(ctx context.Context, req *mcp.CallToolRequest, in ve
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
+	// The record-hygiene half refuses here as it does on every other
+	// verb and on the CLI: a record-only summary must never read as a
+	// pass (REQ-check-preparation).
+	if err := refuseProblems(prepared.Hygiene); err != nil {
+		return nil, nil, terminalToolError(prog, ctx, err)
+	}
 	spec := prepared.Spec
 	m, err := views.VerifyView(rep, views.FactsFrom(spec, rep), in.View, scope)
 	if err != nil {

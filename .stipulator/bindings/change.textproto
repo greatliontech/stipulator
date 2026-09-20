@@ -3,8 +3,8 @@
 
 bindings {
   requirement_id: "REQ-change-editorial"
-  content_hash: "68b439db23da378c5e24f356d7b414e4c0ee53e2843065be95c3dbd802026d34"
-  source_hash: "44627010c0388042cc5e9443bf7ec90fe80f1598a8b71d116d7614790852a8d7"
+  content_hash: "b13cbfd5b772d7236ea7b6eac30df44da09163b664759140bbd213fbe0066c33"
+  source_hash: "a812e34f5cd56c4d6ee0a1109566f6959b81131d5afa224de0f35c259f434fc5"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.Editorial"
   role: BINDING_ROLE_IMPLEMENTS
@@ -13,8 +13,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-editorial"
-  content_hash: "68b439db23da378c5e24f356d7b414e4c0ee53e2843065be95c3dbd802026d34"
-  source_hash: "44627010c0388042cc5e9443bf7ec90fe80f1598a8b71d116d7614790852a8d7"
+  content_hash: "b13cbfd5b772d7236ea7b6eac30df44da09163b664759140bbd213fbe0066c33"
+  source_hash: "a812e34f5cd56c4d6ee0a1109566f6959b81131d5afa224de0f35c259f434fc5"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.TestEditorial"
   role: BINDING_ROLE_TESTS
@@ -133,8 +133,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-editorial"
-  content_hash: "68b439db23da378c5e24f356d7b414e4c0ee53e2843065be95c3dbd802026d34"
-  source_hash: "44627010c0388042cc5e9443bf7ec90fe80f1598a8b71d116d7614790852a8d7"
+  content_hash: "b13cbfd5b772d7236ea7b6eac30df44da09163b664759140bbd213fbe0066c33"
+  source_hash: "a812e34f5cd56c4d6ee0a1109566f6959b81131d5afa224de0f35c259f434fc5"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPinTool"
   role: BINDING_ROLE_TESTS
@@ -393,8 +393,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-editorial"
-  content_hash: "68b439db23da378c5e24f356d7b414e4c0ee53e2843065be95c3dbd802026d34"
-  source_hash: "44627010c0388042cc5e9443bf7ec90fe80f1598a8b71d116d7614790852a8d7"
+  content_hash: "b13cbfd5b772d7236ea7b6eac30df44da09163b664759140bbd213fbe0066c33"
+  source_hash: "a812e34f5cd56c4d6ee0a1109566f6959b81131d5afa224de0f35c259f434fc5"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.TestEditorialRestampsGapPin"
   role: BINDING_ROLE_TESTS
@@ -403,8 +403,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-editorial"
-  content_hash: "68b439db23da378c5e24f356d7b414e4c0ee53e2843065be95c3dbd802026d34"
-  source_hash: "44627010c0388042cc5e9443bf7ec90fe80f1598a8b71d116d7614790852a8d7"
+  content_hash: "b13cbfd5b772d7236ea7b6eac30df44da09163b664759140bbd213fbe0066c33"
+  source_hash: "a812e34f5cd56c4d6ee0a1109566f6959b81131d5afa224de0f35c259f434fc5"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestPinToolIdsFormIsAllOrNothingOrHonest"
   role: BINDING_ROLE_TESTS
@@ -579,4 +579,14 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestRetargetCLIPreviewAdmitsDistinctClauseClaims"
   role: BINDING_ROLE_TESTS
   shape_hash: "d59fe04102323211ecdda554cd8bebc6ae7c046a1ad5ef7931c85ca9c7a6facb"
+}
+
+bindings {
+  requirement_id: "REQ-change-editorial"
+  content_hash: "b13cbfd5b772d7236ea7b6eac30df44da09163b664759140bbd213fbe0066c33"
+  source_hash: "a812e34f5cd56c4d6ee0a1109566f6959b81131d5afa224de0f35c259f434fc5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestPinCLIIdsFormIsAllOrNothing"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "6bee0fb2650ff995578362aaa4f046e0e9a33cc86764143959b29b1fc0dc7172"
 }

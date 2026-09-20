@@ -12,6 +12,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/remedy"
+	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/wire"
 )
@@ -34,7 +35,11 @@ func checkCmd() *cobra.Command {
 					fmt.Fprintln(os.Stderr, dim("checking: serving fresh witnesses, executing the stale remainder"))
 				}
 			}
-			res, err := check.Run(cmd.Context(), chdir, full, splitLists(ids))
+			scopeIDs, err := verbcore.SplitIDLists(ids)
+			if err != nil {
+				return err
+			}
+			res, err := check.Run(cmd.Context(), chdir, full, scopeIDs)
 			if err != nil {
 				return err
 			}

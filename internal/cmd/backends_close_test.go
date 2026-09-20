@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -40,6 +42,15 @@ func TestVerbsCloseTheirBackends(t *testing.T) {
 	// command gets an explicit, possibly empty, slice.
 	scaffold.SetArgs([]string{})
 	if err := scaffold.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	// The corpus declares REQ-x: the ids-form pin judges every id
+	// before it spawns a backend, so an unknown id would refuse with
+	// no backend built — and this pin is about the backend's close.
+	if err := os.MkdirAll(filepath.Join(chdir, "docs", "specs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(chdir, "docs", "specs", "x.md"), []byte("# X\n\n**REQ-x** (behavior): It MUST x.\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	for _, verb := range []struct {

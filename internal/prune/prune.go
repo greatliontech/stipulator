@@ -56,18 +56,6 @@ func (m Mode) Validate() error {
 	return nil
 }
 
-// ProblemsError is the refusal a verification problem raises: a
-// resolved gap is derived from coverage, which is only sound when
-// verification is clean, so the core refuses rather than deletes on a
-// shaky reading. Each face renders the problems its own way.
-type ProblemsError struct {
-	Problems []verify.Problem
-}
-
-func (e *ProblemsError) Error() string {
-	return fmt.Sprintf("verification problems (%d); fix them first", len(e.Problems))
-}
-
 // StoreResult is the store mode's outcome: the witness-store counts and,
 // under a captured policy, the resolution records' counts.
 type StoreResult struct {
@@ -190,7 +178,7 @@ func Evaluate(ctx context.Context, d Deps, noTest bool) (Resolved, error) {
 	// verification is clean: the record-only half refuses before any
 	// child process (REQ-check-preparation).
 	if len(prepared.Hygiene) > 0 {
-		return Resolved{}, &ProblemsError{Problems: prepared.Hygiene}
+		return Resolved{}, verifyrun.RefuseProblems(prepared.Hygiene)
 	}
 	var scope map[gofresh.Subject]bool
 	var why string
@@ -221,7 +209,7 @@ func Evaluate(ctx context.Context, d Deps, noTest bool) (Resolved, error) {
 		return Resolved{}, err
 	}
 	if len(rep.Problems) > 0 {
-		return Resolved{}, &ProblemsError{Problems: rep.Problems}
+		return Resolved{}, verifyrun.RefuseProblems(rep.Problems)
 	}
 	prog.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
 	cov := coverage.Evaluate(spec, rep, store, tr != nil, pol)

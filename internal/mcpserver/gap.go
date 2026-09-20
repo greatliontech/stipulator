@@ -11,6 +11,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/records"
+	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verifyrun"
 )
 
@@ -66,7 +67,7 @@ func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn
 		}
 		return s.gapList(ctx, req)
 	}
-	reqs, err := splitIDs(in.Requirement)
+	reqs, err := verbcore.SplitIDs(in.Requirement)
 	if err != nil {
 		return nil, nil, err
 	}

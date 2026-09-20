@@ -104,26 +104,6 @@ func TestOneFlagRefusesRepetition(t *testing.T) {
 	}
 }
 
-// TestSplitListsJoinsEveryOccurrence pins the batch arm for flags that
-// already express multiplicity: every occurrence's comma-separated
-// identifiers join — an occurrence silently dropped would be the
-// accept-and-drop REQ-evidence-claim-batch forbids.
-//
-//gofresh:pure
-func TestSplitListsJoinsEveryOccurrence(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-claim-batch")
-	got := splitLists([]string{"REQ-a, REQ-b", "REQ-c", ""})
-	want := []string{"REQ-a", "REQ-b", "REQ-c"}
-	if len(got) != len(want) {
-		t.Fatalf("splitLists = %v, want %v", got, want)
-	}
-	for i := range want {
-		if got[i] != want[i] {
-			t.Fatalf("splitLists = %v, want %v", got, want)
-		}
-	}
-}
-
 // TestBindCLIBatchAllOrNothing pins the CLI batch end to end: repeated
 // flag groups author every expressed claim through the all-or-nothing
 // batch — the exact invocation shape that previously exited 0 while

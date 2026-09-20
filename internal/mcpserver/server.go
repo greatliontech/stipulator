@@ -305,7 +305,7 @@ func (s *Server) deps() verbcore.Deps {
 // verifyPass runs the shared verification pass over the caller's
 // comma-separated exact-id scope.
 func (s *Server) verifyPass(ctx context.Context, noTest bool, scopeIDs string) (*check.Prepared, *verify.Report, *verify.TestRun, error) {
-	ids, err := splitIDsLoose(scopeIDs)
+	ids, err := verbcore.SplitIDsLoose(scopeIDs)
 	if err != nil {
 		return nil, nil, nil, err
 	}

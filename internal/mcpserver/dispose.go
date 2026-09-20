@@ -7,6 +7,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/greatliontech/stipulator/internal/author"
+	"github.com/greatliontech/stipulator/internal/verbcore"
 )
 
 type disposeIn struct {
@@ -32,10 +33,10 @@ func (s *Server) toolDispose(ctx context.Context, req *mcp.CallToolRequest, in d
 		ups, err = author.Retire(s.fsys(), in.Requirement, in.Force)
 	case "supersede":
 		var from, into []string
-		if from, err = splitIDs(in.From); err != nil {
+		if from, err = verbcore.SplitIDs(in.From); err != nil {
 			return nil, nil, fmt.Errorf("from: %w", err)
 		}
-		if into, err = splitIDs(in.Into); err != nil {
+		if into, err = verbcore.SplitIDs(in.Into); err != nil {
 			return nil, nil, fmt.Errorf("into: %w", err)
 		}
 		ups, err = author.Supersede(s.fsys(), from, into, in.Force)

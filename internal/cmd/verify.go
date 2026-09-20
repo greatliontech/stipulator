@@ -10,6 +10,7 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/remedy"
+	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/verifyrun"
 	"github.com/greatliontech/stipulator/internal/views"
@@ -24,7 +25,11 @@ func verifyCmd() *cobra.Command {
 		Use:   remedy.VerbVerify,
 		Short: guidanceShort("verify"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			scope := views.Scope{Ids: reqs, Filter: filter, Path: pathPrefix}
+			ids, err := verbcore.SplitIDLists(reqs)
+			if err != nil {
+				return err
+			}
+			scope := views.Scope{Ids: ids, Filter: filter, Path: pathPrefix}
 			if err := validateScoped(scope, views.ValidateVerifyView, view); err != nil {
 				return err
 			}
@@ -32,13 +37,11 @@ func verifyCmd() *cobra.Command {
 			if err != nil {
 				return withRecordPath(err)
 			}
-			if err := refuseHygiene(prepared.Hygiene); err != nil {
+			if err := refuseProblems(prepared.Hygiene); err != nil {
 				return err
 			}
 			spec, store := prepared.Spec, prepared.Store
-			for _, p := range rep.Problems {
-				fmt.Fprintln(os.Stderr, red(p.String()))
-			}
+			renderProblems(rep.Problems)
 			// The views are the projections the MCP surface serves —
 			// one projection, two renderings — so "what claims this
 			// symbol" is the same query at a shell as in an agent's

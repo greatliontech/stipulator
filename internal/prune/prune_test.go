@@ -16,6 +16,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/internal/verifyrun"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -141,7 +142,7 @@ func TestEvaluateRefusesHygieneBeforeAnyChild(t *testing.T) {
 	store := &records.Store{Gaps: []records.GapFile{{Path: ".stipulator/gaps/x.textproto", Gap: stipulatorv1.Gap_builder{RequirementId: &id}.Build()}}}
 	prepared := &check.Prepared{Spec: &stipulatorv1.Spec{}, Store: store, Hygiene: []verify.Problem{{Path: "a", Message: "stale"}}}
 	_, err := Evaluate(context.Background(), untouchable(t, prepared), false)
-	var pe *ProblemsError
+	var pe *verifyrun.ProblemsError
 	if !errors.As(err, &pe) || len(pe.Problems) != 1 || pe.Problems[0].Message != "stale" {
 		t.Fatalf("hygiene refusal = %v, want the one typed problem", err)
 	}

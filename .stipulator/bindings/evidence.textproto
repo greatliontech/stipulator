@@ -1332,16 +1332,6 @@ bindings {
 }
 
 bindings {
-  requirement_id: "REQ-evidence-claim-batch"
-  content_hash: "9de962ad5e0723638e6497194b2ad0d383dd32b0ec640b4729c2ecad34f07808"
-  source_hash: "632cce84c8b43c0bbb8749cd5a8d38c9d9c2e2ded6242798a92374eec543b8e0"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestSplitListsJoinsEveryOccurrence"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "2d0075c18a03c6e72b50fc6e5e13ac6f24a46a3a1a048a04a0df9addb7eb5750"
-}
-
-bindings {
   requirement_id: "REQ-evidence-binding-machine-owned"
   content_hash: "c654b30cc6c9dd7d30cc02c6f4a9ca2e56697db75cd15bb608af8fab1fc6f6d5"
   source_hash: "1e8d8f90decc5b6b60650211797b2244ddc9f6da1fef3fd381c3278062a97589"
@@ -2389,4 +2379,14 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestAbsoluteExclusionInsideALinkedTreeIsRefused"
   role: BINDING_ROLE_TESTS
   shape_hash: "4a961c9c983fccd477c732ae5d6b16c63f728704debd686261ab751eca66b4ca"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-claim-batch"
+  content_hash: "9de962ad5e0723638e6497194b2ad0d383dd32b0ec640b4729c2ecad34f07808"
+  source_hash: "632cce84c8b43c0bbb8749cd5a8d38c9d9c2e2ded6242798a92374eec543b8e0"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verbcore.TestSplitIDsIsTheOneGrammar"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "984f8d5e581bc99a108795c23b1e1b9d3f1bdd5576d78253b3a5bf4a900d13f0"
 }

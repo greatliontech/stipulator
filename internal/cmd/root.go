@@ -25,6 +25,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/recordapply"
 	"github.com/greatliontech/stipulator/internal/remedy"
 	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/internal/verifyrun"
 	"github.com/greatliontech/stipulator/internal/views"
 )
 
@@ -176,17 +177,24 @@ func mustPrepare(dir string) (*check.Prepared, error) {
 	return prepared, nil
 }
 
-// refuseHygiene renders the record-only half of verification's
-// problems and fails the command; the verification pass itself already
-// took its record-only form, so no witness executed
-// (REQ-check-preparation).
-func refuseHygiene(problems []verify.Problem) error {
-	if len(problems) == 0 {
-		return nil
-	}
+// renderProblems prints verification problems on stderr in red — the
+// one rendering of a problem list on this face, whether it refuses the
+// verb or rides a report.
+func renderProblems(problems []verify.Problem) {
 	for _, p := range problems {
 		fmt.Fprintln(os.Stderr, red(p.String()))
 	}
+}
+
+// refuseProblems is this face's rendering of the one hygiene refusal
+// (verifyrun.RefuseProblems): every problem rendered, then the command
+// fails naming the count; nil for a clean record
+// (REQ-check-preparation).
+func refuseProblems(problems []verify.Problem) error {
+	if verifyrun.RefuseProblems(problems) == nil {
+		return nil
+	}
+	renderProblems(problems)
 	return fmt.Errorf("fix verification problems first (%d)", len(problems))
 }
 

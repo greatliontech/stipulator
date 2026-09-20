@@ -11,6 +11,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/prune"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/remedy"
+	"github.com/greatliontech/stipulator/internal/verifyrun"
 )
 
 func pruneCmd() *cobra.Command {
@@ -64,9 +65,9 @@ func pruneCmd() *cobra.Command {
 			}
 			res, err := prune.Evaluate(cmd.Context(), deps, noTest)
 			if err != nil {
-				var pe *prune.ProblemsError
+				var pe *verifyrun.ProblemsError
 				if errors.As(err, &pe) {
-					return refuseHygiene(pe.Problems)
+					return refuseProblems(pe.Problems)
 				}
 				return withRecordPath(err)
 			}

@@ -147,3 +147,26 @@ func Gaps(ctx context.Context, d verbcore.Deps) (*check.Prepared, *verify.Report
 	rep.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
 	return prepared, report, coverage.Evaluate(spec, report, store, tr != nil, pol), nil
 }
+
+// ProblemsError is the refusal the record-hygiene half of verification
+// raises on a verb that would witness or judge coverage: bindings,
+// gaps, and attestations that fail hygiene make every derived reading
+// unsound, so the verb refuses before any child instead of answering
+// over a shaky record. One type, both faces — each renders the
+// problems in its own words (REQ-check-preparation).
+type ProblemsError struct {
+	Problems []verify.Problem
+}
+
+func (e *ProblemsError) Error() string {
+	return fmt.Sprintf("verification problems (%d); fix them first", len(e.Problems))
+}
+
+// RefuseProblems is the one predicate: the refusal for a non-empty
+// problem list, nil for a clean record.
+func RefuseProblems(problems []verify.Problem) error {
+	if len(problems) == 0 {
+		return nil
+	}
+	return &ProblemsError{Problems: problems}
+}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/remedy"
+	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verifyrun"
 	"github.com/greatliontech/stipulator/internal/views"
 	"github.com/greatliontech/stipulator/internal/wire"
@@ -40,7 +41,11 @@ func gateCmd() *cobra.Command {
 			// the exact ids, the hygiene, and the coverage policy refuse
 			// inside the verification pass, before any child process
 			// (REQ-check-preparation).
-			scope := views.Scope{Ids: reqs, Bucket: bucket, Filter: filter, Path: pathPrefix}
+			ids, err := verbcore.SplitIDLists(reqs)
+			if err != nil {
+				return err
+			}
+			scope := views.Scope{Ids: ids, Bucket: bucket, Filter: filter, Path: pathPrefix}
 			if err := validateScoped(scope, views.ValidateCoverageView, view); err != nil {
 				return err
 			}
@@ -48,16 +53,16 @@ func gateCmd() *cobra.Command {
 			if err != nil {
 				return withRecordPath(err)
 			}
-			if err := refuseHygiene(prepared.Hygiene); err != nil {
+			// Every problem refuses — the record-hygiene half and a
+			// problem the witness run itself found alike: a coverage
+			// judgment over a problem-bearing record is unsound, on
+			// this face as on the MCP (REQ-check-preparation). The
+			// record-only report re-derives the hygiene problems, so
+			// this one call covers both halves.
+			if err := refuseProblems(rep.Problems); err != nil {
 				return err
 			}
 			spec, store, pol := prepared.Spec, prepared.Store, prepared.Coverage
-			for _, p := range rep.Problems {
-				fmt.Fprintln(os.Stderr, red(p.String()))
-			}
-			if len(rep.Problems) > 0 {
-				return exitStatus(1)
-			}
 			cov := coverage.Evaluate(spec, rep, store, true, pol)
 			facts := views.FactsFrom(spec, rep)
 			switch {

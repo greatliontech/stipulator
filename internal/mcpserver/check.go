@@ -10,6 +10,7 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/coverage"
+	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/views"
 )
 
@@ -26,7 +27,7 @@ type checkIn struct {
 func (s *Server) toolCheck(ctx context.Context, req *mcp.CallToolRequest, in checkIn) (*mcp.CallToolResult, map[string]any, error) {
 	// View and scope words are validated before the expensive pass: a
 	// typo must not cost a witness run only to be refused at render time.
-	ids, err := splitIDsLoose(in.Ids)
+	ids, err := verbcore.SplitIDsLoose(in.Ids)
 	if err != nil {
 		return nil, nil, err
 	}

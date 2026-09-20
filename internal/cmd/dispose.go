@@ -3,12 +3,12 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/remedy"
+	"github.com/greatliontech/stipulator/internal/verbcore"
 )
 
 func disposeCmd() *cobra.Command {
@@ -72,7 +72,15 @@ func disposeCmd() *cobra.Command {
 			// These flags already express multiplicity, so a repetition
 			// forms the batch: every occurrence's identifiers join
 			// (REQ-evidence-claim-batch's batch arm) — none dropped.
-			ups, err := author.Supersede(os.DirFS(chdir), splitLists(from), splitLists(into), forceSupersede)
+			fromIDs, err := verbcore.SplitIDLists(from)
+			if err != nil {
+				return err
+			}
+			intoIDs, err := verbcore.SplitIDLists(into)
+			if err != nil {
+				return err
+			}
+			ups, err := author.Supersede(os.DirFS(chdir), fromIDs, intoIDs, forceSupersede)
 			if err != nil {
 				return err
 			}
@@ -86,25 +94,4 @@ func disposeCmd() *cobra.Command {
 
 	c.AddCommand(editorial, retire, supersede)
 	return c
-}
-
-// splitLists joins every occurrence's comma-separated identifiers: the
-// repetition arm of the batch contract for flags that already express
-// multiplicity.
-func splitLists(vals []string) []string {
-	var out []string
-	for _, v := range vals {
-		out = append(out, splitList(v)...)
-	}
-	return out
-}
-
-func splitList(s string) []string {
-	var out []string
-	for _, v := range strings.Split(s, ",") {
-		if v = strings.TrimSpace(v); v != "" {
-			out = append(out, v)
-		}
-	}
-	return out
 }

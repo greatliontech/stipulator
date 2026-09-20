@@ -9,6 +9,7 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/facts"
+	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/wire"
 )
@@ -25,7 +26,7 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 		return nil, nil, err
 	}
 	ctx, prog := s.startProgress(ctx, req)
-	ids, err := splitIDs(in.Ids)
+	ids, err := verbcore.SplitIDs(in.Ids)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}

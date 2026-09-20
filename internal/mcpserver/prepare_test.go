@@ -41,7 +41,8 @@ func TestWitnessedToolsRefuseBeforeAnyChildOnRecordHygiene(t *testing.T) {
 	stipulate.Covers(t, "REQ-check-preparation")
 	opened, ran := 0, 0
 	sess, _ := harnessWith(t, map[string]string{
-		".stipulator/bindings/ghost.textproto": "bindings {\n  requirement_id: \"REQ-ghost\"\n  backend: \"go\"\n  symbol: \"example.com/p.TestA\"\n  role: BINDING_ROLE_TESTS\n}\n",
+		".stipulator/bindings/ghost.textproto":  "bindings {\n  requirement_id: \"REQ-ghost\"\n  backend: \"go\"\n  symbol: \"example.com/p.TestA\"\n  role: BINDING_ROLE_TESTS\n}\n",
+		".stipulator/bindings/ghost2.textproto": "bindings {\n  requirement_id: \"REQ-ghost-two\"\n  backend: \"go\"\n  symbol: \"example.com/p.TestB\"\n  role: BINDING_ROLE_TESTS\n}\n",
 	}, func(s *Server) {
 		inner := s.backends
 		s.backends = func(ctx context.Context, symbols []string) (map[string]verify.Backend, error) {
@@ -57,11 +58,21 @@ func TestWitnessedToolsRefuseBeforeAnyChildOnRecordHygiene(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.IsError && !strings.Contains(textOf(res), "1 problems") {
-		t.Fatalf("verify answered %s, want the dangling binding reported as a problem", textOf(res))
+	// The record-only pass is a refusal on this face too — never a
+	// summary reading as a clean pass (the one hygiene rule, both
+	// faces).
+	// Every problem rides the one refusal, never the first alone.
+	if !res.IsError || !strings.Contains(textOf(res), "verification problems") || !strings.Contains(textOf(res), "REQ-ghost") || !strings.Contains(textOf(res), "REQ-ghost-two") {
+		t.Fatalf("verify answered %s, want both dangling bindings refused as verification problems", textOf(res))
 	}
-	if _, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "gate", Arguments: map[string]any{}}); err != nil {
-		t.Fatal(err)
+	for _, tool := range []string{"gate", "partitions"} {
+		res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: tool, Arguments: map[string]any{}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !res.IsError || !strings.Contains(textOf(res), "verification problems") || !strings.Contains(textOf(res), "REQ-ghost-two") {
+			t.Fatalf("%s answered %s, want the record-hygiene refusal naming every problem", tool, textOf(res))
+		}
 	}
 	if opened != 0 || ran != 0 {
 		t.Fatalf("opened %d resolvers and ran %d witness runs under records that fail hygiene; the refusal fires before any child", opened, ran)

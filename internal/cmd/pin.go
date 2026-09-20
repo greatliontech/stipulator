@@ -22,6 +22,14 @@ func pinCmd() *cobra.Command {
 		Long:  guidanceHelp("pin"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(reqs) > 0 {
+				// Every id is judged before the first write and before
+				// the resolver child is spawned: a refusal mid-list writes
+				// nothing and pays no toolchain cost — the batch contract
+				// the ids form keeps on both faces (REQ-check-preparation).
+				spec, err := author.JudgeEditorial(os.DirFS(chdir), reqs)
+				if err != nil {
+					return err
+				}
 				// The ids form re-consents clause text only; a shape
 				// mismatch on the named requirement's bindings would
 				// survive it untouched, so report it rather than let
@@ -44,7 +52,7 @@ func pinCmd() *cobra.Command {
 					fmt.Fprintf(os.Stderr, "pin: skipping %s: %v\n", symbol, err)
 				}))
 				for _, id := range reqs {
-					ups, consented, err := author.Editorial(os.DirFS(chdir), id)
+					ups, consented, err := author.EditorialOver(spec, os.DirFS(chdir), id)
 					if errors.Is(err, author.ErrNothingStale) {
 						if syms := mismatched[id]; len(syms) > 0 {
 							fmt.Printf("%s: %s — shape of %s moved, and the ids form re-consents clause text only: blanket %s re-pins shapes\n", id, author.NoOpNote(err), strings.Join(syms, ", "), remedy.Pin())

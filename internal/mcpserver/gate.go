@@ -37,7 +37,12 @@ func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in gate
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
-	if err := verificationProblems(rep); err != nil {
+	// Every problem refuses — the record-hygiene half and a problem
+	// the witness run itself found alike: a coverage judgment over a
+	// problem-bearing record is unsound, on this face as on the CLI
+	// (REQ-check-preparation). The record-only report re-derives the
+	// hygiene problems, so this one call covers both halves.
+	if err := refuseProblems(rep.Problems); err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	spec, store, pol := prepared.Spec, prepared.Store, prepared.Coverage
