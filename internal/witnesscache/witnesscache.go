@@ -374,6 +374,21 @@ type Record struct {
 	// asserts each one. Absent means the capture ran with no reviewed
 	// exclusions (the built-in pair is tool semantics, never recorded).
 	ObservationExclusions []string `json:"observationExclusions,omitempty"`
+	// ObservationNamespaces is the canonical reviewed scratch namespace
+	// set the record's observation was captured under: a read inside one
+	// entered no identity, so the evidence proves nothing about such a
+	// surface once the policy no longer declares the namespace, and the
+	// record serves only while each is still declared. Absent means the
+	// capture ran with none.
+	ObservationNamespaces []ScratchNamespace `json:"observationNamespaces,omitempty"`
+}
+
+// ScratchNamespace is one reviewed in-module run-scratch namespace as
+// the record carries it: a module-relative directory and a
+// single-component name pattern.
+type ScratchNamespace struct {
+	Dir     string `json:"dir"`
+	Pattern string `json:"pattern"`
 }
 
 func isJSONNull(value json.RawMessage) bool {
@@ -393,6 +408,10 @@ type entry struct {
 	// written before reviewed exclusions existed, which is exactly the
 	// empty capture-time set.
 	ObservationExclusions []string `json:"observationExclusions,omitempty"`
+	// ObservationNamespaces mirrors Record's field; absent in stores
+	// written before scratch namespaces existed — the empty capture-time
+	// set.
+	ObservationNamespaces []ScratchNamespace `json:"observationNamespaces,omitempty"`
 }
 
 // Load reads every variant record of the corpus rooted at dir. A missing
@@ -512,7 +531,7 @@ func decodeRecord(name string, data []byte) (Record, string, bool) {
 	if dec.Decode(&e) != nil || dec.Decode(&struct{}{}) != io.EOF || e.Version != version {
 		return Record{}, digest, false
 	}
-	rec := Record{Group: e.Group, Package: e.Package, Test: e.Test, Fingerprint: e.Fingerprint, Outcomes: e.Outcomes, Regs: e.Regs, ObservationExclusions: e.ObservationExclusions}
+	rec := Record{Group: e.Group, Package: e.Package, Test: e.Test, Fingerprint: e.Fingerprint, Outcomes: e.Outcomes, Regs: e.Regs, ObservationExclusions: e.ObservationExclusions, ObservationNamespaces: e.ObservationNamespaces}
 	if rec.Group == "" || rec.Package == "" || rec.Test == "" || name != fileName(rec) {
 		return Record{}, digest, false
 	}
@@ -727,7 +746,7 @@ func Install(dir string, rec Record) error {
 	if err := installLedger(store.Path(), rec); err != nil {
 		return err
 	}
-	e := entry{Version: version, Group: rec.Group, Package: rec.Package, Test: rec.Test, Fingerprint: rec.Fingerprint, Outcomes: rec.Outcomes, Regs: rec.Regs, ObservationExclusions: rec.ObservationExclusions}
+	e := entry{Version: version, Group: rec.Group, Package: rec.Package, Test: rec.Test, Fingerprint: rec.Fingerprint, Outcomes: rec.Outcomes, Regs: rec.Regs, ObservationExclusions: rec.ObservationExclusions, ObservationNamespaces: rec.ObservationNamespaces}
 	data, err := json.MarshalIndent(e, "", "  ")
 	if err != nil {
 		return err

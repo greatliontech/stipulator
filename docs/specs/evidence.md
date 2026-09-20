@@ -270,14 +270,40 @@ observation excludes the repository root listing and the VCS bookkeeping
 tree (`.` and `.git`), whose digests move under unrelated tooling and are
 asserted to be no witness's input, together with the invocation's
 reviewed exclusions — committed policy entries, each a tree-relative
-slash path or clean absolute host path, naming surfaces the repository
-asserts the same way (a session tool's bookkeeping directory is the
-canonical case). A record's observation proves nothing about the
+slash path or clean absolute host path (an absolute entry inside the
+tree, under the frame's resolved base or the lexical one, is refused:
+in-tree reads classify relative, so it would exclude nothing), naming
+surfaces the repository asserts the same way (a session tool's
+bookkeeping directory is the canonical case). A record's observation proves nothing about the
 surfaces its capture-time reviewed exclusions elided, so every record
 carries that set and serves only while the current policy still asserts
 each entry: a withdrawn or narrowed exclusion re-executes the witnesses
 it licensed, while an added exclusion serves existing evidence unchanged
-— its identities are in the manifest and simply revalidate. Every
+— its identities are in the manifest and simply revalidate. The
+invocation's reviewed scratch namespaces — committed policy rows, each
+a directory in clean slash form relative to the verification tree's
+root (the base every observation bracket is rooted at) and a
+single-component name pattern with `os.MkdirTemp` semantics, the pair
+form — reach the engine's ingest as declarations under gofresh's
+scratch-namespace contract, which admits a read inside one only when
+the matching child is proven freshly minted at both ends of the run,
+so a namespace silences nothing unconditionally: a namespace no
+selected package's observation bracket covers is refused at discovery,
+judged over a listed import closure (a run whose closure could not be
+listed degrades every observation and admits nothing anywhere). The
+judgment is the invocation's: a namespace one selected package's
+bracket covers is accepted, inert for the packages whose brackets do
+not reach it. A namespace partitions capture groups
+as an exclusion does and
+re-addresses no record; every record carries the namespace set its
+capture ran under and serves only while the current policy still
+declares each — a withdrawn or narrowed namespace re-executes the
+witnesses it licensed, while an added one serves existing evidence
+unchanged; and the reviewed exclusions and namespaces hold one
+declaration per surface, refused at policy acceptance otherwise — an
+exclusion covering a namespace's directory would leave it admitting
+nothing, and an exclusion on or beneath a child the namespace's pattern
+names is the interim the namespace retires. Every
 exclusion carries the caller-side
 soundness responsibility gofresh's exclusion contract assigns it — its
 failure direction is a spurious reuse, accepted exactly there and — each

@@ -608,14 +608,14 @@ func TestRoundCandidatesAdvancesPastGateRefusal(t *testing.T) {
 		{},
 	}}
 	refused := 0
-	fps, advanced := roundCandidates([]gofresh.Subject{s}, cached, map[gofresh.Subject]bool{}, 0, nil, func(gofresh.Subject) { refused++ })
+	fps, advanced := roundCandidates([]gofresh.Subject{s}, cached, map[gofresh.Subject]bool{}, 0, nil, nil, func(gofresh.Subject, string) { refused++ })
 	if !advanced || len(fps) != 0 || refused != 1 {
 		t.Fatalf("round 0: advanced=%v fps=%d refused=%d, want advancement past the gate-refused variant", advanced, len(fps), refused)
 	}
-	if fps, advanced = roundCandidates([]gofresh.Subject{s}, cached, map[gofresh.Subject]bool{}, 1, nil, func(gofresh.Subject) { refused++ }); !advanced || len(fps) != 1 {
+	if fps, advanced = roundCandidates([]gofresh.Subject{s}, cached, map[gofresh.Subject]bool{}, 1, nil, nil, func(gofresh.Subject, string) { refused++ }); !advanced || len(fps) != 1 {
 		t.Fatalf("round 1: advanced=%v fps=%d, want the later variant checked", advanced, len(fps))
 	}
-	if _, advanced = roundCandidates([]gofresh.Subject{s}, cached, map[gofresh.Subject]bool{}, 2, nil, func(gofresh.Subject) { refused++ }); advanced {
+	if _, advanced = roundCandidates([]gofresh.Subject{s}, cached, map[gofresh.Subject]bool{}, 2, nil, nil, func(gofresh.Subject, string) { refused++ }); advanced {
 		t.Fatal("round past the last variant still advances")
 	}
 }

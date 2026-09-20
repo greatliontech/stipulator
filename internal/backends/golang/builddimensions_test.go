@@ -2,6 +2,7 @@ package golang
 
 import (
 	"context"
+	"github.com/greatliontech/gofresh/runtimeinput"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -214,6 +215,9 @@ func TestGroupKeySpansBuildDimensions(t *testing.T) {
 		"module mode": func(n *NormalizedInvocation) { n.ModuleMode = stipulatorv1.GoModuleMode_GO_MODULE_MODE_VENDOR },
 		"pgo":         func(n *NormalizedInvocation) { n.PGO = "default.pgo" },
 		"args":        func(n *NormalizedInvocation) { n.Args = []string{"-myflag"} },
+		"scratch": func(n *NormalizedInvocation) {
+			n.ScratchNamespaces = []runtimeinput.ScratchNamespace{{Dir: "scratch", Pattern: "run-*"}}
+		},
 	} {
 		changed := base()
 		mutate(changed)

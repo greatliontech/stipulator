@@ -1,6 +1,7 @@
 package golang
 
 import (
+	"github.com/greatliontech/gofresh/runtimeinput"
 	"slices"
 	"testing"
 
@@ -76,10 +77,11 @@ type keyFieldTuple struct {
 	strs  [][]string
 	flags []bool
 	one   []string
+	pairs [][2]string
 }
 
 func tupleEqual(a, b keyFieldTuple) bool {
-	if !slices.Equal(a.flags, b.flags) || !slices.Equal(a.one, b.one) || len(a.strs) != len(b.strs) {
+	if !slices.Equal(a.flags, b.flags) || !slices.Equal(a.one, b.one) || len(a.strs) != len(b.strs) || !slices.Equal(a.pairs, b.pairs) {
 		return false
 	}
 	for i := range a.strs {
@@ -95,6 +97,7 @@ func groupKeyFields(n *NormalizedInvocation) keyFieldTuple {
 		strs:  [][]string{n.Tags, sortedCopy(witnessEnvOf(n)), identityArgs(n.Args), canonicalExclusions(n.ExcludedPaths), n.Vouches},
 		flags: []bool{n.AssumePure, n.Race},
 		one:   []string{n.ModuleMode.String(), n.ModuleRoot, n.PGO},
+		pairs: namespacePairs(n.ScratchNamespaces),
 	}
 }
 
@@ -145,6 +148,7 @@ func TestKeyEncodingIsCollisionFree(t *testing.T) {
 			Args:              adversarialList.Draw(t, "args"),
 			ExcludedPaths:     adversarialList.Draw(t, "excl"),
 			Vouches:           adversarialList.Draw(t, "vouches"),
+			ScratchNamespaces: adversarialNamespaces.Draw(t, "scratch"),
 			EnvOverrides:      adversarialList.Draw(t, "envset"),
 			EnvDeny:           adversarialList.Draw(t, "envdeny"),
 			AssumePure:        rapid.Bool().Draw(t, "pure"),
@@ -197,6 +201,13 @@ var adversarialVal = rapid.SampledFrom([]string{
 
 var adversarialList = rapid.SliceOfN(adversarialVal, 0, 3)
 
+// adversarialNamespaces draws scratch namespace rows over the same
+// adversarial pool for both halves, so the pair joiner and the row
+// quoting are exercised against separator bytes and label fragments.
+var adversarialNamespaces = rapid.SliceOfN(rapid.Custom(func(t *rapid.T) runtimeinput.ScratchNamespace {
+	return runtimeinput.ScratchNamespace{Dir: adversarialVal.Draw(t, "dir"), Pattern: adversarialVal.Draw(t, "pattern")}
+}), 0, 3)
+
 // perturbations maps every keyed segment label to a draw replacing its
 // underlying invocation field; TestPerturbationDomainCoversEveryKeyedField
 // holds this map and the keys' segment tables in exact correspondence,
@@ -209,11 +220,14 @@ var perturbations = map[string]func(t *rapid.T, n *NormalizedInvocation){
 	"args":       func(t *rapid.T, n *NormalizedInvocation) { n.Args = adversarialList.Draw(t, "args2") },
 	"exclusions": func(t *rapid.T, n *NormalizedInvocation) { n.ExcludedPaths = adversarialList.Draw(t, "excl2") },
 	"vouches":    func(t *rapid.T, n *NormalizedInvocation) { n.Vouches = adversarialList.Draw(t, "vouches2") },
-	"envset":     func(t *rapid.T, n *NormalizedInvocation) { n.EnvOverrides = adversarialList.Draw(t, "envset2") },
-	"envdeny":    func(t *rapid.T, n *NormalizedInvocation) { n.EnvDeny = adversarialList.Draw(t, "envdeny2") },
-	"pure":       func(t *rapid.T, n *NormalizedInvocation) { n.AssumePure = !n.AssumePure },
-	"race":       func(t *rapid.T, n *NormalizedInvocation) { n.Race = !n.Race },
-	"workspace":  func(t *rapid.T, n *NormalizedInvocation) { n.WorkspaceOn = !n.WorkspaceOn },
+	"namespaces": func(t *rapid.T, n *NormalizedInvocation) {
+		n.ScratchNamespaces = adversarialNamespaces.Draw(t, "scratch2")
+	},
+	"envset":    func(t *rapid.T, n *NormalizedInvocation) { n.EnvOverrides = adversarialList.Draw(t, "envset2") },
+	"envdeny":   func(t *rapid.T, n *NormalizedInvocation) { n.EnvDeny = adversarialList.Draw(t, "envdeny2") },
+	"pure":      func(t *rapid.T, n *NormalizedInvocation) { n.AssumePure = !n.AssumePure },
+	"race":      func(t *rapid.T, n *NormalizedInvocation) { n.Race = !n.Race },
+	"workspace": func(t *rapid.T, n *NormalizedInvocation) { n.WorkspaceOn = !n.WorkspaceOn },
 	"modulemode": func(t *rapid.T, n *NormalizedInvocation) {
 		n.ModuleMode = rapid.SampledFrom([]stipulatorv1.GoModuleMode{stipulatorv1.GoModuleMode_GO_MODULE_MODE_UNSPECIFIED, stipulatorv1.GoModuleMode_GO_MODULE_MODE_VENDOR}).Draw(t, "mode2")
 	},
@@ -311,4 +325,14 @@ func TestPerturbationDomainCoversEveryKeyedField(t *testing.T) {
 			}
 		})
 	}
+}
+
+// namespacePairs is the canonical namespace set as structural pairs —
+// the tuple judges the rows' renderer rather than consulting it.
+func namespacePairs(in []runtimeinput.ScratchNamespace) [][2]string {
+	out := make([][2]string, 0, len(in))
+	for _, ns := range canonicalNamespaces(in) {
+		out = append(out, [2]string{ns.Dir, ns.Pattern})
+	}
+	return out
 }

@@ -14,6 +14,7 @@ import (
 
 	"github.com/greatliontech/gofresh/closure"
 	"github.com/greatliontech/gofresh/gotool"
+	"github.com/greatliontech/gofresh/runtimeinput"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 )
@@ -70,6 +71,11 @@ type NormalizedInvocation struct {
 	ExcludedPaths []string
 	// AssumePure carries the invocation-wide reviewed purity assertion.
 	AssumePure bool
+	// ScratchNamespaces are the invocation's reviewed in-module run-scratch
+	// namespaces (gofresh's grammar, accepted by validateConfig), the
+	// declaration the engine's ingest admits a proven scratch mint under;
+	// they partition the group key as exclusions do.
+	ScratchNamespaces []runtimeinput.ScratchNamespace
 	// Vouches are the invocation's reviewed dynamic-state vouches:
 	// canonical "<import path>.<Variable>" identities of version-pinned
 	// dependency variables accepted as stable after initialization
@@ -362,6 +368,10 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		}
 	}
 	sort.Strings(n.Vouches)
+	for _, ns := range cfg.GetScratchNamespaces() {
+		n.ScratchNamespaces = append(n.ScratchNamespaces, runtimeinput.ScratchNamespace{Dir: ns.GetDir(), Pattern: ns.GetPattern()})
+	}
+	n.ScratchNamespaces = canonicalNamespaces(n.ScratchNamespaces)
 	// The one witness-env derivation for this invocation's lifetime
 	// (see the WitnessEnv field doc).
 	n.SpawnBound = witnessSpawnBound()
@@ -402,13 +412,23 @@ func vouchIdentity(v *stipulatorv1.DynamicStateVouch) (string, error) {
 // resolved tree: an absolute path inside the verification tree would
 // validate yet exclude nothing (in-tree reads classify relative), so it
 // is refused loudly as the misconfiguration it is. The path's form was
-// accepted at policy acceptance (validateExcludedPathForm).
+// accepted at policy acceptance (validateExcludedPathForm). A refusal
+// is generous: the path lands inside the tree under the frame's
+// resolved base (treeRelativeDir) or under the lexical one — an
+// excluded surface may not exist yet, and a path that does not resolve
+// keeps its spelling, so only the lexical base can place it.
 func validateExcludedPathInTree(p, root string) error {
 	if !filepath.IsAbs(p) {
 		return nil
 	}
-	if rel, err := filepath.Rel(root, p); err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return fmt.Errorf("excluded path %q is inside the verification tree and would exclude nothing; use the tree-relative form %q", p, filepath.ToSlash(rel))
+	rel, ok := treeRelativeDir(root, p)
+	if !ok {
+		if lex, err := filepath.Rel(root, p); err == nil && lex != ".." && !strings.HasPrefix(lex, ".."+string(filepath.Separator)) {
+			rel, ok = filepath.ToSlash(lex), true
+		}
+	}
+	if ok {
+		return fmt.Errorf("excluded path %q is inside the verification tree and would exclude nothing; use the tree-relative form %q", p, rel)
 	}
 	return nil
 }

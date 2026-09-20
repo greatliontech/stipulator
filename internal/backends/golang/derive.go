@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	gofresh "github.com/greatliontech/gofresh"
+	"github.com/greatliontech/gofresh/runtimeinput"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/policy"
@@ -320,6 +321,11 @@ type captureGroup struct {
 	// withdrawn (the withdrawal re-runs; additions serve existing
 	// evidence unchanged).
 	excludedPaths []string
+	// scratchNamespaces is the group's canonical reviewed scratch
+	// namespace set, the declaration every package's ingest runs under;
+	// it partitions the group key as exclusions do and re-addresses no
+	// record (the admission rides the engine's proof at both ends).
+	scratchNamespaces []runtimeinput.ScratchNamespace
 	// invs names the group's member invocations in policy order; the
 	// explain surface reports them as the answering view's identity.
 	invs []string
@@ -626,6 +632,7 @@ func groupKeySegments(n *NormalizedInvocation) []keySegment {
 		// unchanged, and a withdrawn vouch's records refuse in the
 		// current derivation.
 		{"vouches", quotedList(n.Vouches)},
+		{"namespaces", quotedList(namespaceRows(n.ScratchNamespaces))},
 	}
 }
 
@@ -657,7 +664,7 @@ func groupKey(n *NormalizedInvocation) string {
 // whole store on a new shell, a toolchain upgrade, or a host-width
 // change (and a drifted shell's prune would delete records the normal
 // shell serves), while fingerprints refuse with a named reason and
-// variants coexist. Exclusions, vouches, and the purity assertion
+// variants coexist. Exclusions, scratch namespaces, vouches, and the purity assertion
 // partition capture groups (two observation semantics are two views)
 // but each carries its own serving rule riding the record or the
 // fingerprint (a widened exclusion set or an added vouch serves
@@ -730,6 +737,42 @@ func canonicalExclusions(paths []string) []string {
 	out := append([]string(nil), paths...)
 	sort.Strings(out)
 	return slices.Compact(out)
+}
+
+// canonicalNamespaces is the scratch namespace set's one order (by
+// directory, then pattern), deduplicated.
+func canonicalNamespaces(in []runtimeinput.ScratchNamespace) []runtimeinput.ScratchNamespace {
+	out := append([]runtimeinput.ScratchNamespace(nil), in...)
+	slices.SortFunc(out, func(a, b runtimeinput.ScratchNamespace) int {
+		if c := strings.Compare(a.Dir, b.Dir); c != 0 {
+			return c
+		}
+		return strings.Compare(a.Pattern, b.Pattern)
+	})
+	return slices.Compact(out)
+}
+
+// namespaceRows renders the canonical namespace set as one element per
+// row for the key encoding: each row is the pair's own quoted list, so
+// no directory or pattern byte can alias one pair into another
+// whatever validation admits — the encoding's uniform rule, never a
+// dependence on validation staying in sync.
+func namespaceRows(in []runtimeinput.ScratchNamespace) []string {
+	rows := make([]string, 0, len(in))
+	for _, ns := range canonicalNamespaces(in) {
+		rows = append(rows, string(quotedList([]string{ns.Dir, ns.Pattern})))
+	}
+	return rows
+}
+
+// recordNamespaces is the group's canonical namespace set in the
+// record's own form.
+func recordNamespaces(in []runtimeinput.ScratchNamespace) []witnesscache.ScratchNamespace {
+	out := make([]witnesscache.ScratchNamespace, 0, len(in))
+	for _, ns := range canonicalNamespaces(in) {
+		out = append(out, witnesscache.ScratchNamespace{Dir: ns.Dir, Pattern: ns.Pattern})
+	}
+	return out
 }
 
 // discover is the capture's discovered leg, derived on the first call
@@ -810,18 +853,19 @@ func discoverPolicy(ctx context.Context, normalized []*NormalizedInvocation) (*p
 		g := byKey[key]
 		if g == nil {
 			g = &captureGroup{
-				id:            recordstore.Digest(groupIdentity(n)),
-				tags:          n.Tags,
-				env:           n.Env,
-				witnessEnv:    witnessEnvOf(n),
-				race:          n.Race,
-				moduleRoot:    n.ModuleRoot,
-				moduleMode:    n.ModuleMode,
-				pgo:           n.PGO,
-				assumePure:    n.AssumePure,
-				vouches:       n.Vouches,
-				excludedPaths: canonicalExclusions(n.ExcludedPaths),
-				packages:      map[string]*groupPackage{},
+				id:                recordstore.Digest(groupIdentity(n)),
+				tags:              n.Tags,
+				env:               n.Env,
+				witnessEnv:        witnessEnvOf(n),
+				race:              n.Race,
+				moduleRoot:        n.ModuleRoot,
+				moduleMode:        n.ModuleMode,
+				pgo:               n.PGO,
+				assumePure:        n.AssumePure,
+				vouches:           n.Vouches,
+				excludedPaths:     canonicalExclusions(n.ExcludedPaths),
+				scratchNamespaces: canonicalNamespaces(n.ScratchNamespaces),
+				packages:          map[string]*groupPackage{},
 			}
 			byKey[key] = g
 			keys = append(keys, key)
@@ -1312,7 +1356,7 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 	// filling per-subject reasons — this group's evidence executed
 	// under one view a tree edit disproved wholesale; groups that
 	// closed before it keep what their own views validated.
-	records, _, checkFault, closeFault, fatal := publishEligible(ctx, g.id, g.view, g.observed, g.observedFPs, g.candidates, order, eligible, g.fps, g.excludedPaths, nil, nil, reasons)
+	records, _, checkFault, closeFault, fatal := publishEligible(ctx, g.id, g.view, g.observed, g.observedFPs, g.candidates, order, eligible, g.fps, g.excludedPaths, recordNamespaces(g.scratchNamespaces), nil, nil, reasons)
 	if fatal != nil {
 		return nil, nil, "", fatal
 	}

@@ -146,7 +146,8 @@ func observeProcess(ctx context.Context, n *NormalizedInvocation, pkg string, pr
 		// cache, temp — are the facade's to resolve from this very
 		// environment; a declaration could only restate or contradict
 		// them.
-		ExcludedPaths: n.ExcludedPaths,
+		ExcludedPaths:     n.ExcludedPaths,
+		ScratchNamespaces: n.ScratchNamespaces,
 	})
 	if err != nil {
 		return incompleteObservation(pkg, producer, fmt.Sprintf("observation construction failed: %v", err))

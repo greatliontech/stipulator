@@ -49,6 +49,7 @@ func publishEligible(
 	eligible map[gofresh.Subject]*pubSubject,
 	fps map[gofresh.Subject]gofresh.Fingerprint,
 	excludedPaths []string,
+	namespaces []witnesscache.ScratchNamespace,
 	served []gofresh.Subject,
 	executedWhy map[gofresh.Subject]string,
 	reasons map[gofresh.Subject]string,
@@ -196,7 +197,7 @@ func publishEligible(
 			continue
 		}
 		ps := eligible[s]
-		rec, ok := assembleWitnessRecord(group, view, s, fp, ps.outcomes, ps.regs, excludedPaths)
+		rec, ok := assembleWitnessRecord(group, view, s, fp, ps.outcomes, ps.regs, excludedPaths, namespaces)
 		if !ok {
 			continue
 		}

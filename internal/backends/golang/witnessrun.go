@@ -713,8 +713,12 @@ func plural(n int, noun string) string {
 // current policy still asserts every one of them: a withdrawn
 // exclusion re-runs the witnesses it licensed, while an added
 // exclusion serves existing evidence unchanged (its identities are in
-// the manifest and simply revalidate).
-func roundCandidates(subjects []gofresh.Subject, cached map[string][]witnesscache.Record, valid map[gofresh.Subject]bool, round int, current []string, refused func(gofresh.Subject)) (map[gofresh.Subject]gofresh.Fingerprint, bool) {
+// the manifest and simply revalidate). A record's reviewed scratch
+// namespaces serve the same way: a read inside one entered no identity,
+// so the record serves only while the current policy still declares
+// each — a withdrawn or narrowed namespace re-executes the witnesses it
+// licensed, an added one serves existing evidence unchanged.
+func roundCandidates(subjects []gofresh.Subject, cached map[string][]witnesscache.Record, valid map[gofresh.Subject]bool, round int, current []string, currentNamespaces []witnesscache.ScratchNamespace, refused func(gofresh.Subject, string)) (map[gofresh.Subject]gofresh.Fingerprint, bool) {
 	fps := map[gofresh.Subject]gofresh.Fingerprint{}
 	advanced := false
 	for _, s := range subjects {
@@ -724,12 +728,48 @@ func roundCandidates(subjects []gofresh.Subject, cached map[string][]witnesscach
 		}
 		advanced = true
 		if !exclusionsStillAsserted(vars[round].ObservationExclusions, current) {
-			refused(s)
+			refused(s, refusedWithdrawnExclusion)
+			continue
+		}
+		if !namespacesStillDeclared(vars[round].ObservationNamespaces, currentNamespaces) {
+			refused(s, refusedWithdrawnNamespace)
 			continue
 		}
 		fps[s] = vars[round].Fingerprint.ToGofresh()
 	}
 	return fps, advanced
+}
+
+// The serving rounds' gate refusals, each the re-execution reason
+// attributed to the subject whose variant it refused.
+const (
+	refusedWithdrawnExclusion = "recorded under a withdrawn observation exclusion"
+	refusedWithdrawnNamespace = "recorded under a withdrawn scratch namespace"
+)
+
+// namespacesStillDeclared reports whether every capture-time scratch
+// namespace is still in the group's current canonical set — the serving
+// condition for evidence whose manifest elided reads inside them. Both
+// sides are canonical (by directory then pattern, deduplicated), so
+// the check is a linear merge.
+func namespacesStillDeclared(recorded, current []witnesscache.ScratchNamespace) bool {
+	i := 0
+	for _, want := range recorded {
+		for i < len(current) && namespaceLess(current[i], want) {
+			i++
+		}
+		if i >= len(current) || current[i] != want {
+			return false
+		}
+	}
+	return true
+}
+
+func namespaceLess(a, b witnesscache.ScratchNamespace) bool {
+	if a.Dir != b.Dir {
+		return a.Dir < b.Dir
+	}
+	return a.Pattern < b.Pattern
 }
 
 // exclusionsStillAsserted reports whether every capture-time exclusion
@@ -794,9 +834,10 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 		// soundly. Rounds cost only fingerprint checks, never analysis or
 		// execution.
 		valid := map[gofresh.Subject]bool{}
+		declared := recordNamespaces(g.scratchNamespaces)
 		for round := 0; ; round++ {
-			fps, advanced := roundCandidates(serving, groupCached, valid, round, g.excludedPaths, func(s gofresh.Subject) {
-				wg.executedWhy[s] = "recorded under a withdrawn observation exclusion"
+			fps, advanced := roundCandidates(serving, groupCached, valid, round, g.excludedPaths, declared, func(s gofresh.Subject, why string) {
+				wg.executedWhy[s] = why
 			})
 			if !advanced {
 				break
@@ -1190,7 +1231,7 @@ func publishExecuted(ctx context.Context, wg *witnessGroup, m *execMerge) ([]wit
 		}
 		eligible[s] = ps
 	}
-	records, discarded, _, _, fatal := publishEligible(ctx, wg.g.id, wg.view, wg.observed, wg.observedFPs, wg.candidates, order, eligible, wg.fps, wg.g.excludedPaths, wg.served, wg.executedWhy, reasons)
+	records, discarded, _, _, fatal := publishEligible(ctx, wg.g.id, wg.view, wg.observed, wg.observedFPs, wg.candidates, order, eligible, wg.fps, wg.g.excludedPaths, recordNamespaces(wg.g.scratchNamespaces), wg.served, wg.executedWhy, reasons)
 	if fatal != nil {
 		return nil, nil, false, fatal
 	}

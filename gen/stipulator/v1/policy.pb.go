@@ -477,6 +477,7 @@ type GoInvocationConfig struct {
 	xxx_hidden_PlainWitness        bool                   `protobuf:"varint,23,opt,name=plain_witness,json=plainWitness"`
 	xxx_hidden_ExcludedPaths       []string               `protobuf:"bytes,24,rep,name=excluded_paths,json=excludedPaths"`
 	xxx_hidden_DynamicStateVouches *[]*DynamicStateVouch  `protobuf:"bytes,25,rep,name=dynamic_state_vouches,json=dynamicStateVouches"`
+	xxx_hidden_ScratchNamespaces   *[]*ScratchNamespace   `protobuf:"bytes,26,rep,name=scratch_namespaces,json=scratchNamespaces"`
 	XXX_raceDetectHookData         protoimpl.RaceDetectHookData
 	XXX_presence                   [1]uint32
 	unknownFields                  protoimpl.UnknownFields
@@ -688,9 +689,18 @@ func (x *GoInvocationConfig) GetDynamicStateVouches() []*DynamicStateVouch {
 	return nil
 }
 
+func (x *GoInvocationConfig) GetScratchNamespaces() []*ScratchNamespace {
+	if x != nil {
+		if x.xxx_hidden_ScratchNamespaces != nil {
+			return *x.xxx_hidden_ScratchNamespaces
+		}
+	}
+	return nil
+}
+
 func (x *GoInvocationConfig) SetModuleRoot(v string) {
 	x.xxx_hidden_ModuleRoot = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 22)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 23)
 }
 
 func (x *GoInvocationConfig) SetPackages(v []string) {
@@ -699,12 +709,12 @@ func (x *GoInvocationConfig) SetPackages(v []string) {
 
 func (x *GoInvocationConfig) SetRace(v bool) {
 	x.xxx_hidden_Race = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 22)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 23)
 }
 
 func (x *GoInvocationConfig) SetToolchain(v string) {
 	x.xxx_hidden_Toolchain = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 22)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 23)
 }
 
 func (x *GoInvocationConfig) SetEnvironment(v []string) {
@@ -717,17 +727,17 @@ func (x *GoInvocationConfig) SetEnvDeny(v []string) {
 
 func (x *GoInvocationConfig) SetGoos(v string) {
 	x.xxx_hidden_Goos = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 22)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 23)
 }
 
 func (x *GoInvocationConfig) SetGoarch(v string) {
 	x.xxx_hidden_Goarch = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 22)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 23)
 }
 
 func (x *GoInvocationConfig) SetCgoEnabled(v bool) {
 	x.xxx_hidden_CgoEnabled = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 22)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 23)
 }
 
 func (x *GoInvocationConfig) SetTags(v []string) {
@@ -736,32 +746,32 @@ func (x *GoInvocationConfig) SetTags(v []string) {
 
 func (x *GoInvocationConfig) SetGoflags(v string) {
 	x.xxx_hidden_Goflags = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 22)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 23)
 }
 
 func (x *GoInvocationConfig) SetWorkspaceMode(v GoWorkspaceMode) {
 	x.xxx_hidden_WorkspaceMode = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 22)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 23)
 }
 
 func (x *GoInvocationConfig) SetModuleMode(v GoModuleMode) {
 	x.xxx_hidden_ModuleMode = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 22)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 23)
 }
 
 func (x *GoInvocationConfig) SetPgo(v string) {
 	x.xxx_hidden_Pgo = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 13, 22)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 13, 23)
 }
 
 func (x *GoInvocationConfig) SetCount(v int32) {
 	x.xxx_hidden_Count = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 14, 22)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 14, 23)
 }
 
 func (x *GoInvocationConfig) SetCacheMode(v GoCacheMode) {
 	x.xxx_hidden_CacheMode = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 15, 22)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 15, 23)
 }
 
 func (x *GoInvocationConfig) SetArgs(v []string) {
@@ -774,12 +784,12 @@ func (x *GoInvocationConfig) SetBracketPaths(v []string) {
 
 func (x *GoInvocationConfig) SetAssumePure(v bool) {
 	x.xxx_hidden_AssumePure = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 18, 22)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 18, 23)
 }
 
 func (x *GoInvocationConfig) SetPlainWitness(v bool) {
 	x.xxx_hidden_PlainWitness = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 19, 22)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 19, 23)
 }
 
 func (x *GoInvocationConfig) SetExcludedPaths(v []string) {
@@ -788,6 +798,10 @@ func (x *GoInvocationConfig) SetExcludedPaths(v []string) {
 
 func (x *GoInvocationConfig) SetDynamicStateVouches(v []*DynamicStateVouch) {
 	x.xxx_hidden_DynamicStateVouches = &v
+}
+
+func (x *GoInvocationConfig) SetScratchNamespaces(v []*ScratchNamespace) {
+	x.xxx_hidden_ScratchNamespaces = &v
 }
 
 func (x *GoInvocationConfig) HasModuleRoot() bool {
@@ -1079,6 +1093,24 @@ type GoInvocationConfig_builder struct {
 	// element may itself contain a dot, so a flat identity string
 	// cannot be validated.
 	DynamicStateVouches []*DynamicStateVouch
+	// Reviewed in-tree run-scratch namespaces: each names a directory in
+	// clean slash form relative to the verification tree's root (the
+	// base every observation bracket is rooted at, a workspace member's
+	// included) and a single-component name pattern with os.MkdirTemp
+	// semantics (the minted string replaces the last `*`, or extends a
+	// pattern carrying none) — a test's own scratch, created, read, and
+	// removed within the run. The engine admits a read inside a
+	// namespace only when it proves the matching child freshly minted at
+	// both ends of the run (gofresh's scratch-namespace contract), so a
+	// declaration never silences a surface the way an exclusion does;
+	// the two hold one declaration per surface: an exclusion covering
+	// the namespace's directory would leave it admitting nothing, and an
+	// exclusion on or beneath a child the pattern names is the interim
+	// the namespace retires — both refused. A namespace no selected
+	// package's observation bracket covers is refused at discovery. The
+	// pair form exists so a directory carrying a colon can never parse
+	// as a pattern. Committed and reviewed, never per-machine.
+	ScratchNamespaces []*ScratchNamespace
 }
 
 func (b0 GoInvocationConfig_builder) Build() *GoInvocationConfig {
@@ -1086,69 +1118,186 @@ func (b0 GoInvocationConfig_builder) Build() *GoInvocationConfig {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.ModuleRoot != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 22)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 23)
 		x.xxx_hidden_ModuleRoot = b.ModuleRoot
 	}
 	x.xxx_hidden_Packages = b.Packages
 	if b.Race != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 22)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 23)
 		x.xxx_hidden_Race = *b.Race
 	}
 	if b.Toolchain != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 22)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 23)
 		x.xxx_hidden_Toolchain = b.Toolchain
 	}
 	x.xxx_hidden_Environment = b.Environment
 	x.xxx_hidden_EnvDeny = b.EnvDeny
 	if b.Goos != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 22)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 23)
 		x.xxx_hidden_Goos = b.Goos
 	}
 	if b.Goarch != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 22)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 23)
 		x.xxx_hidden_Goarch = b.Goarch
 	}
 	if b.CgoEnabled != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 22)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 23)
 		x.xxx_hidden_CgoEnabled = *b.CgoEnabled
 	}
 	x.xxx_hidden_Tags = b.Tags
 	if b.Goflags != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 22)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 23)
 		x.xxx_hidden_Goflags = b.Goflags
 	}
 	if b.WorkspaceMode != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 22)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 23)
 		x.xxx_hidden_WorkspaceMode = *b.WorkspaceMode
 	}
 	if b.ModuleMode != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 22)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 23)
 		x.xxx_hidden_ModuleMode = *b.ModuleMode
 	}
 	if b.Pgo != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 13, 22)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 13, 23)
 		x.xxx_hidden_Pgo = b.Pgo
 	}
 	if b.Count != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 14, 22)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 14, 23)
 		x.xxx_hidden_Count = *b.Count
 	}
 	if b.CacheMode != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 15, 22)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 15, 23)
 		x.xxx_hidden_CacheMode = *b.CacheMode
 	}
 	x.xxx_hidden_Args = b.Args
 	x.xxx_hidden_BracketPaths = b.BracketPaths
 	if b.AssumePure != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 18, 22)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 18, 23)
 		x.xxx_hidden_AssumePure = *b.AssumePure
 	}
 	if b.PlainWitness != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 19, 22)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 19, 23)
 		x.xxx_hidden_PlainWitness = *b.PlainWitness
 	}
 	x.xxx_hidden_ExcludedPaths = b.ExcludedPaths
 	x.xxx_hidden_DynamicStateVouches = &b.DynamicStateVouches
+	x.xxx_hidden_ScratchNamespaces = &b.ScratchNamespaces
+	return m0
+}
+
+// ScratchNamespace names one in-tree run-scratch namespace: a
+// tree-relative directory and a single-component MkdirTemp pattern.
+type ScratchNamespace struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Dir         *string                `protobuf:"bytes,1,opt,name=dir"`
+	xxx_hidden_Pattern     *string                `protobuf:"bytes,2,opt,name=pattern"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *ScratchNamespace) Reset() {
+	*x = ScratchNamespace{}
+	mi := &file_stipulator_v1_policy_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ScratchNamespace) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ScratchNamespace) ProtoMessage() {}
+
+func (x *ScratchNamespace) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_policy_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *ScratchNamespace) GetDir() string {
+	if x != nil {
+		if x.xxx_hidden_Dir != nil {
+			return *x.xxx_hidden_Dir
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *ScratchNamespace) GetPattern() string {
+	if x != nil {
+		if x.xxx_hidden_Pattern != nil {
+			return *x.xxx_hidden_Pattern
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *ScratchNamespace) SetDir(v string) {
+	x.xxx_hidden_Dir = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+}
+
+func (x *ScratchNamespace) SetPattern(v string) {
+	x.xxx_hidden_Pattern = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+}
+
+func (x *ScratchNamespace) HasDir() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *ScratchNamespace) HasPattern() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *ScratchNamespace) ClearDir() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Dir = nil
+}
+
+func (x *ScratchNamespace) ClearPattern() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Pattern = nil
+}
+
+type ScratchNamespace_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Clean slash path, relative to the verification tree's root, of the
+	// directory the scratch is minted in.
+	Dir *string
+	// Single-component name pattern with os.MkdirTemp semantics.
+	Pattern *string
+}
+
+func (b0 ScratchNamespace_builder) Build() *ScratchNamespace {
+	m0 := &ScratchNamespace{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Dir != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		x.xxx_hidden_Dir = b.Dir
+	}
+	if b.Pattern != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		x.xxx_hidden_Pattern = b.Pattern
+	}
 	return m0
 }
 
@@ -1166,7 +1315,7 @@ type DynamicStateVouch struct {
 
 func (x *DynamicStateVouch) Reset() {
 	*x = DynamicStateVouch{}
-	mi := &file_stipulator_v1_policy_proto_msgTypes[3]
+	mi := &file_stipulator_v1_policy_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1178,7 +1327,7 @@ func (x *DynamicStateVouch) String() string {
 func (*DynamicStateVouch) ProtoMessage() {}
 
 func (x *DynamicStateVouch) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_policy_proto_msgTypes[3]
+	mi := &file_stipulator_v1_policy_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1280,7 +1429,7 @@ const file_stipulator_v1_policy_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x123\n" +
 	"\atimeout\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\atimeout\x123\n" +
 	"\x02go\x18\x03 \x01(\v2!.stipulator.v1.GoInvocationConfigH\x00R\x02goB\b\n" +
-	"\x06configJ\x04\b\x04\x10\bR\x06labelsR\x05group\"\xb1\x06\n" +
+	"\x06configJ\x04\b\x04\x10\bR\x06labelsR\x05group\"\x81\a\n" +
 	"\x12GoInvocationConfig\x12\x1f\n" +
 	"\vmodule_root\x18\x01 \x01(\tR\n" +
 	"moduleRoot\x12\x1a\n" +
@@ -1309,7 +1458,11 @@ const file_stipulator_v1_policy_proto_rawDesc = "" +
 	"assumePure\x12#\n" +
 	"\rplain_witness\x18\x17 \x01(\bR\fplainWitness\x12%\n" +
 	"\x0eexcluded_paths\x18\x18 \x03(\tR\rexcludedPaths\x12T\n" +
-	"\x15dynamic_state_vouches\x18\x19 \x03(\v2 .stipulator.v1.DynamicStateVouchR\x13dynamicStateVouchesJ\x04\b\x12\x10\x13J\x04\b\x13\x10\x14J\x04\b\x16\x10\x17\"I\n" +
+	"\x15dynamic_state_vouches\x18\x19 \x03(\v2 .stipulator.v1.DynamicStateVouchR\x13dynamicStateVouches\x12N\n" +
+	"\x12scratch_namespaces\x18\x1a \x03(\v2\x1f.stipulator.v1.ScratchNamespaceR\x11scratchNamespacesJ\x04\b\x12\x10\x13J\x04\b\x13\x10\x14J\x04\b\x16\x10\x17\">\n" +
+	"\x10ScratchNamespace\x12\x10\n" +
+	"\x03dir\x18\x01 \x01(\tR\x03dir\x12\x18\n" +
+	"\apattern\x18\x02 \x01(\tR\apattern\"I\n" +
 	"\x11DynamicStateVouch\x12\x18\n" +
 	"\apackage\x18\x01 \x01(\tR\apackage\x12\x1a\n" +
 	"\bvariable\x18\x02 \x01(\tR\bvariable*p\n" +
@@ -1328,7 +1481,7 @@ const file_stipulator_v1_policy_proto_rawDesc = "" +
 	"\x14GO_CACHE_MODE_BYPASS\x10\x02BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
 var file_stipulator_v1_policy_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_stipulator_v1_policy_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_stipulator_v1_policy_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_stipulator_v1_policy_proto_goTypes = []any{
 	(GoWorkspaceMode)(0),        // 0: stipulator.v1.GoWorkspaceMode
 	(GoModuleMode)(0),           // 1: stipulator.v1.GoModuleMode
@@ -1336,22 +1489,24 @@ var file_stipulator_v1_policy_proto_goTypes = []any{
 	(*TestPolicy)(nil),          // 3: stipulator.v1.TestPolicy
 	(*PolicyInvocation)(nil),    // 4: stipulator.v1.PolicyInvocation
 	(*GoInvocationConfig)(nil),  // 5: stipulator.v1.GoInvocationConfig
-	(*DynamicStateVouch)(nil),   // 6: stipulator.v1.DynamicStateVouch
-	(*durationpb.Duration)(nil), // 7: google.protobuf.Duration
+	(*ScratchNamespace)(nil),    // 6: stipulator.v1.ScratchNamespace
+	(*DynamicStateVouch)(nil),   // 7: stipulator.v1.DynamicStateVouch
+	(*durationpb.Duration)(nil), // 8: google.protobuf.Duration
 }
 var file_stipulator_v1_policy_proto_depIdxs = []int32{
 	4, // 0: stipulator.v1.TestPolicy.invocations:type_name -> stipulator.v1.PolicyInvocation
-	7, // 1: stipulator.v1.PolicyInvocation.timeout:type_name -> google.protobuf.Duration
+	8, // 1: stipulator.v1.PolicyInvocation.timeout:type_name -> google.protobuf.Duration
 	5, // 2: stipulator.v1.PolicyInvocation.go:type_name -> stipulator.v1.GoInvocationConfig
 	0, // 3: stipulator.v1.GoInvocationConfig.workspace_mode:type_name -> stipulator.v1.GoWorkspaceMode
 	1, // 4: stipulator.v1.GoInvocationConfig.module_mode:type_name -> stipulator.v1.GoModuleMode
 	2, // 5: stipulator.v1.GoInvocationConfig.cache_mode:type_name -> stipulator.v1.GoCacheMode
-	6, // 6: stipulator.v1.GoInvocationConfig.dynamic_state_vouches:type_name -> stipulator.v1.DynamicStateVouch
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	7, // 6: stipulator.v1.GoInvocationConfig.dynamic_state_vouches:type_name -> stipulator.v1.DynamicStateVouch
+	6, // 7: stipulator.v1.GoInvocationConfig.scratch_namespaces:type_name -> stipulator.v1.ScratchNamespace
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_policy_proto_init() }
@@ -1368,7 +1523,7 @@ func file_stipulator_v1_policy_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_policy_proto_rawDesc), len(file_stipulator_v1_policy_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

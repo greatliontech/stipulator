@@ -604,3 +604,36 @@ func swapAmbientEnviron(t *testing.T, read func() []string) {
 	ambientEnviron = read
 	t.Cleanup(func() { ambientEnviron = prior })
 }
+
+// TestAbsoluteExclusionInsideALinkedTreeIsRefused pins the
+// exclusion-position check under the frame's rule: an absolute excluded
+// path inside a tree reached through a link — its physical spelling —
+// is refused as inside the tree, where a lexical comparison escaped and
+// accepted a row that would exclude nothing (REQ-evidence-witness-freshness).
+func TestAbsoluteExclusionInsideALinkedTreeIsRefused(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	neutralAmbient(t)
+	tree := writeModule(t, map[string]string{"go.mod": "module example.com/linkedx\n\ngo 1.26\n", "p.go": "package linkedx\n"})
+	link := filepath.Join(t.TempDir(), "via")
+	if err := os.Symlink(tree, link); err != nil {
+		t.Skip("symlinks unavailable:", err)
+	}
+	// Four spellings, one refusal: the physical and the link spelling,
+	// each for a surface that exists and one that does not yet — a path
+	// that does not resolve keeps its spelling, so the lexical base
+	// places it where the resolved one cannot.
+	if err := os.MkdirAll(filepath.Join(tree, "present"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{
+		filepath.Join(resolveOrSelf(tree), "present"), filepath.Join(resolveOrSelf(tree), "absent"),
+		filepath.Join(link, "present"), filepath.Join(link, "absent"),
+	} {
+		c := &stipulatorv1.GoInvocationConfig{}
+		c.SetPackages([]string{"./..."})
+		c.SetExcludedPaths([]string{p})
+		if _, err := NormalizeInvocation(context.Background(), link, goInvocation("x", c)); err == nil || !strings.Contains(err.Error(), "inside the verification tree") {
+			t.Fatalf("an absolute exclusion %q inside the tree named through a link was accepted: %v", p, err)
+		}
+	}
+}

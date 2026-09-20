@@ -226,6 +226,34 @@ message GoInvocationConfig {
   // element may itself contain a dot, so a flat identity string
   // cannot be validated.
   repeated DynamicStateVouch dynamic_state_vouches = 25;
+  // Reviewed in-tree run-scratch namespaces: each names a directory in
+  // clean slash form relative to the verification tree's root (the
+  // base every observation bracket is rooted at, a workspace member's
+  // included) and a single-component name pattern with os.MkdirTemp
+  // semantics (the minted string replaces the last `*`, or extends a
+  // pattern carrying none) — a test's own scratch, created, read, and
+  // removed within the run. The engine admits a read inside a
+  // namespace only when it proves the matching child freshly minted at
+  // both ends of the run (gofresh's scratch-namespace contract), so a
+  // declaration never silences a surface the way an exclusion does;
+  // the two hold one declaration per surface: an exclusion covering
+  // the namespace's directory would leave it admitting nothing, and an
+  // exclusion on or beneath a child the pattern names is the interim
+  // the namespace retires — both refused. A namespace no selected
+  // package's observation bracket covers is refused at discovery. The
+  // pair form exists so a directory carrying a colon can never parse
+  // as a pattern. Committed and reviewed, never per-machine.
+  repeated ScratchNamespace scratch_namespaces = 26;
+}
+
+// ScratchNamespace names one in-tree run-scratch namespace: a
+// tree-relative directory and a single-component MkdirTemp pattern.
+message ScratchNamespace {
+  // Clean slash path, relative to the verification tree's root, of the
+  // directory the scratch is minted in.
+  string dir = 1;
+  // Single-component name pattern with os.MkdirTemp semantics.
+  string pattern = 2;
 }
 
 // DynamicStateVouch names one package-level dependency variable

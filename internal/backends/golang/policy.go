@@ -3,6 +3,8 @@ package golang
 import (
 	"errors"
 	"fmt"
+
+	"github.com/greatliontech/gofresh/runtimeinput"
 	"io/fs"
 	"os"
 	"path"
@@ -66,6 +68,9 @@ func validateConfig(cfg *stipulatorv1.GoInvocationConfig) error {
 		if _, err := vouchIdentity(v); err != nil {
 			return err
 		}
+	}
+	if err := validateScratchNamespaces(cfg); err != nil {
+		return err
 	}
 	for _, p := range cfg.GetPackages() {
 		if err := validatePackagePattern(p); err != nil {
@@ -479,4 +484,74 @@ func policyMembers(dir string) ([]string, error) {
 		return nil, fmt.Errorf("go.work declares no members")
 	}
 	return members, nil
+}
+
+// validateScratchNamespaces is the record-only half of the scratch
+// namespace declarations: each row meets gofresh's grammar
+// (REQ-inputs-scratch-namespace) in clean tree-relative slash form
+// (canonical form is refused, never repaired: the record is reviewed
+// contract, and one surface spelled two ways would be two rows and two
+// capture groups the engine cannot tell apart), no row repeats, no
+// namespace sits in the VCS tree the ingest excludes (it would admit
+// nothing), and the reviewed exclusions and namespaces hold one
+// declaration per surface: an exclusion covering a namespace's
+// directory leaves the namespace admitting nothing, and an exclusion
+// on or beneath a child the pattern names is the interim the namespace
+// retires — both refused. A sibling under the directory the pattern
+// does not name is neither. An absolute exclusion never covers a
+// namespace: one inside the tree is refused at normalization.
+func validateScratchNamespaces(cfg *stipulatorv1.GoInvocationConfig) error {
+	seen := map[string]bool{}
+	for _, ns := range cfg.GetScratchNamespaces() {
+		dir, pattern := ns.GetDir(), ns.GetPattern()
+		if err := runtimeinput.ValidateScratchNamespace(dir, pattern); err != nil {
+			return fmt.Errorf("scratch namespace: %w", err)
+		}
+		if dir != path.Clean(dir) || strings.Contains(dir, `\`) {
+			return fmt.Errorf("scratch namespace dir %q is not in clean slash form", dir)
+		}
+		if dir == ".git" || strings.HasPrefix(dir, ".git/") {
+			return fmt.Errorf("scratch namespace dir %q is inside the VCS tree the ingest excludes; it would admit nothing", dir)
+		}
+		key := dir + "\x00" + pattern
+		if seen[key] {
+			return fmt.Errorf("scratch namespace %q %q is declared twice", dir, pattern)
+		}
+		seen[key] = true
+		for _, p := range cfg.GetExcludedPaths() {
+			if p == dir || strings.HasPrefix(dir, p+"/") {
+				return fmt.Errorf("excluded path %q covers scratch namespace %q %q, which would admit nothing under it", p, dir, pattern)
+			}
+			if namespaceCoversPath(dir, pattern, p) {
+				return fmt.Errorf("excluded path %q lies under a child scratch namespace %q %q names: the namespace retires the exclusion", p, dir, pattern)
+			}
+		}
+	}
+	return nil
+}
+
+// namespaceCoversPath reports whether a tree-relative slash path lies
+// on or beneath a child the namespace names — gofresh's own matching
+// rule (the pattern's text before its last '*' is the child's prefix,
+// the text after it the suffix; a pattern with no '*' is a prefix) —
+// restated here for the policy's own refusals until gofresh's
+// runtimeinput exports the matcher.
+func namespaceCoversPath(dir, pattern, p string) bool {
+	rel := ""
+	if dir == "." {
+		rel = p
+	} else if strings.HasPrefix(p, dir+"/") {
+		rel = p[len(dir)+1:]
+	} else {
+		return false
+	}
+	first, _, _ := strings.Cut(rel, "/")
+	prefix, suffix := pattern, ""
+	if i := strings.LastIndex(pattern, "*"); i >= 0 {
+		prefix, suffix = pattern[:i], pattern[i+1:]
+	}
+	if len(first) < len(prefix)+len(suffix) {
+		return false
+	}
+	return strings.HasPrefix(first, prefix) && strings.HasSuffix(first[len(prefix):], suffix)
 }

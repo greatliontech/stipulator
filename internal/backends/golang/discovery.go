@@ -13,6 +13,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"unicode"
@@ -72,7 +73,10 @@ func (o Obligation) ID() string {
 // boundary (REQ-go-owned-processes); enumeration parses the listed test
 // sources in-process, spawning nothing. A package that fails to list still
 // yields its package obligation: its build failure is part of the suite,
-// and execution — not discovery — is where it surfaces. Discovery also
+// and execution — not discovery — is where it surfaces. Discovery's one
+// refusal of its own is a reviewed scratch namespace no selected
+// package's observation bracket covers (scratchNamespacesCovered).
+// Discovery also
 // records each listed package's directory on the invocation (PkgDirs):
 // the executor's observation bracket must be captured before the package's
 // process spawns, so the directory has to be resolved ahead of execution —
@@ -89,6 +93,9 @@ func DiscoverInvocation(ctx context.Context, n *NormalizedInvocation) ([]Obligat
 		}
 	}
 	listClosureDirs(ctx, n, pkgs)
+	if err := scratchNamespacesCovered(n); err != nil {
+		return nil, err
+	}
 	seen := map[string]bool{}
 	var out []Obligation
 	add := func(o Obligation) {
@@ -398,15 +405,19 @@ func listClosureDirs(ctx context.Context, n *NormalizedInvocation, selected []li
 					continue
 				}
 				seen[dir] = true
-				rel, err := filepath.Rel(root, dir)
-				if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				rel, ok := treeRelativeDir(root, dir)
+				if !ok {
 					continue
 				}
-				rels = append(rels, filepath.ToSlash(rel))
+				rels = append(rels, rel)
 			}
 		}
 		sort.Strings(rels)
-		n.PkgClosureDirs[sel.ImportPath] = rels
+		// Two spellings resolving to one directory are one root — a
+		// dependency reached through a link included, and a link
+		// aliasing the package's own directory, which the raw
+		// `dir == sel.Dir` guard above lets through to the fold.
+		n.PkgClosureDirs[sel.ImportPath] = slices.Compact(rels)
 	}
 }
 
@@ -493,4 +504,69 @@ func moduleModeFlag(m stipulatorv1.GoModuleMode) string {
 		return "-mod=mod"
 	}
 	return ""
+}
+
+// scratchNamespacesCovered refuses a declared scratch namespace no
+// observation-bracket root of this invocation covers — no selected
+// package's directory, none of their import-closure directories, no
+// tree-relative bracket path — since the engine admits nothing under
+// such a namespace (gofresh's scratch-namespace contract) and a
+// declaration admitting nothing would sit in the reviewed record
+// inert. The judgment is the invocation's: a namespace one selected
+// package's bracket covers is accepted, and stays inert for the
+// packages whose brackets do not reach it — their witnesses never read
+// it. An absolute bracket path covers no namespace: the engine grants
+// scratch admission under its relative roots alone. A run whose import
+// closure could not be listed already degrades every observation and
+// admits nothing anywhere, so the question is answered only over a
+// listed closure.
+func scratchNamespacesCovered(n *NormalizedInvocation) error {
+	if len(n.ScratchNamespaces) == 0 || n.ClosureDirsErr != "" {
+		return nil
+	}
+	root := treeRoot(n)
+	var covers []string
+	for _, dir := range n.PkgDirs {
+		if rel, ok := treeRelativeDir(root, dir); ok {
+			covers = append(covers, rel)
+		}
+	}
+	for _, rels := range n.PkgClosureDirs {
+		covers = append(covers, rels...)
+	}
+	for _, p := range n.BracketPaths {
+		if !filepath.IsAbs(p) {
+			covers = append(covers, p)
+		}
+	}
+	for _, ns := range n.ScratchNamespaces {
+		covered := false
+		for _, c := range covers {
+			if c == "." || c == ns.Dir || strings.HasPrefix(ns.Dir, c+"/") {
+				covered = true
+				break
+			}
+		}
+		if !covered {
+			return fmt.Errorf("invocation %q: scratch namespace %q %q is covered by no package directory, import-closure directory, or bracket path of this invocation; the engine would admit nothing under it", n.Name, ns.Dir, ns.Pattern)
+		}
+	}
+	return nil
+}
+
+// treeRelativeDir is a directory's tree-relative slash form under the
+// frame's own rule: both the tree root and the directory resolved
+// (symlinks followed) before relativizing, as the observation frame
+// resolves both sides — a listing's physical directories under a tree
+// named through a link still relativize, where a lexical Rel would
+// escape. A directory outside the tree answers false. The two discovery
+// sites hand it listed directories, which exist and resolve; the
+// exclusion-position check hands it a declared path that may not exist
+// yet, and adds the lexical base itself.
+func treeRelativeDir(root, dir string) (string, bool) {
+	rel, err := filepath.Rel(resolveOrSelf(root), resolveOrSelf(dir))
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", false
+	}
+	return filepath.ToSlash(rel), true
 }
