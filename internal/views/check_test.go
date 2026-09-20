@@ -130,6 +130,11 @@ func TestCheckViewSummaryMatchesCanonicalJudgments(t *testing.T) {
 	mismatch.SetShape(stipulatorv1.ShapeState_SHAPE_STATE_MISMATCH)
 	vr := &stipulatorv1.VerifyReport{}
 	vr.SetResults([]*stipulatorv1.BindingResult{unresolvedUnpinned, mismatch})
+	// The report's tally rides the wire beside its rows (Report.Proto);
+	// the summary reads it as verify tallied it.
+	vr.SetStale(1)
+	vr.SetBroken(1)
+	vr.SetShapeMismatch(1)
 	res.SetVerify(vr)
 
 	m, err := CheckView(res, "summary", nil)
@@ -140,8 +145,10 @@ func TestCheckViewSummaryMatchesCanonicalJudgments(t *testing.T) {
 	if sum.GetSuiteHealthy() {
 		t.Fatal("empty invocation list read healthy — the summary cannot explain its own failed verdict")
 	}
-	// Verification's axes: the unresolved row is broken AND stale (pin
-	// unset), the mismatched row its own axis — never folded.
+	// The summary carries verification's tally as the wire report
+	// projected it (verify.Report.Tally is the one derivation, pinned in
+	// verify); here the pass-through: the counters the rows were tallied
+	// to arrive unchanged.
 	if sum.GetBindingsBroken() != 1 || sum.GetBindingsStale() != 1 || sum.GetBindingsShapeMismatch() != 1 {
 		t.Fatalf("bindings broken=%d stale=%d mismatch=%d, want 1/1/1",
 			sum.GetBindingsBroken(), sum.GetBindingsStale(), sum.GetBindingsShapeMismatch())

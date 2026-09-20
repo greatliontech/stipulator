@@ -3,9 +3,9 @@ package views
 import (
 	"fmt"
 	"sort"
-	"strings"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"google.golang.org/protobuf/proto"
 )
@@ -117,17 +117,9 @@ func checkSummary(res *stipulatorv1.CheckResult) *stipulatorv1.CheckSummary {
 	out.SetPassed(res.GetPassed())
 	out.SetSuiteHealthJudged(res.GetSuiteHealthJudged())
 	if ex := res.GetExecution(); ex != nil {
-		// Mirrors golang.SuiteHealthy's arms exactly — including
-		// unhealthy on an empty invocation list, which is how the verdict
-		// itself judges it; a diverging healthy=true here would leave the
-		// summary unable to explain its own failed verdict.
-		healthy := len(ex.GetInvocations()) > 0
-		for _, inv := range ex.GetInvocations() {
-			if inv.GetDisposition() != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
-				healthy = false
-			}
-		}
-		out.SetSuiteHealthy(healthy)
+		// The verdict's own judgment, so the summary can always explain
+		// its failed verdict — never a second reading of the dispositions.
+		out.SetSuiteHealthy(golang.SuiteHealthy(ex))
 	}
 	out.SetPolicyNotices(res.GetPolicyNotices())
 	out.SetTestsServed(res.GetTestsServed())
@@ -149,24 +141,11 @@ func checkSummary(res *stipulatorv1.CheckResult) *stipulatorv1.CheckSummary {
 	}
 	if v := res.GetVerify(); v != nil {
 		out.SetVerifyProblems(int32(len(v.GetProblems())))
-		// Verification's own axes, never a third classification: stale
-		// counts every unpinned row, broken counts unresolved symbols,
-		// shape mismatch its own axis — matching VerifySummary.
-		var stale, broken, mismatch int32
-		for _, r := range v.GetResults() {
-			if !r.GetContentPinned() {
-				stale++
-			}
-			if r.GetResolution() == stipulatorv1.Resolution_RESOLUTION_NOT_FOUND {
-				broken++
-			}
-			if r.GetShape() == stipulatorv1.ShapeState_SHAPE_STATE_MISMATCH {
-				mismatch++
-			}
-		}
-		out.SetBindingsStale(stale)
-		out.SetBindingsBroken(broken)
-		out.SetBindingsShapeMismatch(mismatch)
+		// Verification's own tally, projected onto the wire report once
+		// (verify.Report.Tally): read, never recounted from the rows.
+		out.SetBindingsStale(v.GetStale())
+		out.SetBindingsBroken(v.GetBroken())
+		out.SetBindingsShapeMismatch(v.GetShapeMismatch())
 	}
 	if cov := res.GetCoverage(); cov != nil {
 		out.SetGatePasses(cov.GetGatePasses())
@@ -174,38 +153,31 @@ func checkSummary(res *stipulatorv1.CheckResult) *stipulatorv1.CheckSummary {
 		omitted := int32(0)
 		blocked := int32(0)
 		scopeBlocked := int32(0)
-		for _, r := range cov.GetRequirements() {
-			if coverage.RedBucket(r.GetBucket()) {
-				// Rows red solely because of the witness-selection
-				// boundary restate the one result-level diagnostic; when
-				// that diagnostic fired, they fold into a count so the
-				// summary carries the cause once and the real reds stay
-				// visible (REQ-check-witness-selection). The rows ride
-				// the full view.
-				if res.GetWitnessSelectionProblem() != "" && r.GetWitnessSelectionBlocked() {
-					blocked++
-					continue
-				}
-				// Scope-boundary rows restate the result's partial flag
-				// the same way: folded to a count on scoped passes, the
-				// cause stated once by scope_partial, the rows on the
-				// full view.
-				if res.GetScopePartial() && r.GetScopeBlocked() {
-					scopeBlocked++
-					continue
-				}
-				if len(reds) == redRowCap {
-					omitted++
-					continue
-				}
-				row := &stipulatorv1.CheckRedRow{}
-				row.SetId(r.GetId())
-				row.SetBucket(strings.ToLower(strings.TrimPrefix(r.GetBucket().String(), "BUCKET_")))
-				if rs := r.GetReasons(); len(rs) > 0 {
-					row.SetReason(rs[0])
-				}
-				reds = append(reds, row)
+		// The one ladder classifies every red row; the bounded summary
+		// folds the rows restating a result-level cause into counts —
+		// the cause stated once, the real reds visible, the folded rows
+		// on the full view (REQ-check-witness-selection) — and caps the
+		// rest.
+		for _, r := range coverage.RedRows(res) {
+			switch r.Fold {
+			case coverage.RedPolicyBlocked:
+				blocked++
+				continue
+			case coverage.RedScopeBlocked:
+				scopeBlocked++
+				continue
 			}
+			if len(reds) == redRowCap {
+				omitted++
+				continue
+			}
+			row := &stipulatorv1.CheckRedRow{}
+			row.SetId(r.Id)
+			row.SetBucket(r.Bucket)
+			if len(r.Reasons) > 0 {
+				row.SetReason(r.Reasons[0])
+			}
+			reds = append(reds, row)
 		}
 		out.SetReds(reds)
 		out.SetRedsOmitted(omitted)
@@ -227,11 +199,11 @@ func checkSummary(res *stipulatorv1.CheckResult) *stipulatorv1.CheckSummary {
 	out.SetPruneResidue(res.GetPruneResidue())
 	var headings []string
 	for _, d := range res.GetWitnessDiagnostics() {
-		headings = append(headings, diagnosticHeadingWord(d))
+		headings = append(headings, DiagnosticHeading(d))
 	}
 	if ex := res.GetExecution(); ex != nil {
 		for _, d := range ex.GetDiagnostics() {
-			headings = append(headings, diagnosticHeadingWord(d))
+			headings = append(headings, DiagnosticHeading(d))
 		}
 	}
 	if len(headings) > HeadingCap {
@@ -301,10 +273,13 @@ func blockerRows(reasons map[string]string) ([]*stipulatorv1.CheckBlockerRow, in
 	return rows, omitted
 }
 
-// diagnosticHeadingWord names one diagnostic's unit and disposition
-// without its retained output — the summary's heading form; the bodies
-// ride only the full view.
-func diagnosticHeadingWord(d *stipulatorv1.FailureDiagnostic) string {
+// DiagnosticHeading names one failure diagnostic's unit and disposition
+// without its retained output — the one heading every face renders: the
+// summaries carry it alone, the human rendering puts the retained output
+// under it. A degraded execution is named distinctly from an assertion
+// failure: conflating them would leave an environment-induced failure
+// and a real regression indistinguishable (REQ-check-diagnostics).
+func DiagnosticHeading(d *stipulatorv1.FailureDiagnostic) string {
 	subject := d.GetInvocation()
 	if p := d.GetPackage(); p != "" {
 		subject = p

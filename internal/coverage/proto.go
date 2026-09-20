@@ -1,6 +1,8 @@
 package coverage
 
 import (
+	"sort"
+
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 )
 
@@ -73,12 +75,93 @@ func GapStateProto(s GapState) stipulatorv1.GapState { return gapProto[s] }
 
 // RedBucket is Bucket.Red over the wire enum: the same membership for
 // composers and renderers that read the report rather than the
-// evaluation.
+// evaluation. An enum value outside the table reads as the zero bucket
+// and is therefore red — fail-closed: a bucket the ladder does not know
+// surfaces as a violation, never as a pass.
 func RedBucket(b stipulatorv1.Bucket) bool {
+	return reportBucket(b).Red()
+}
+
+// BucketWord is the one human spelling of a wire bucket — Bucket.String
+// over the enum; every renderer of a wire bucket reads it (the check
+// summary, the digests, the human rows, the context dossier), so the
+// word is one on every face.
+func BucketWord(b stipulatorv1.Bucket) string {
+	return reportBucket(b).String()
+}
+
+// Buckets lists the closed bucket set in declaration order — the one
+// enumeration a vocabulary derived from the buckets pins itself against.
+func Buckets() []Bucket {
+	out := make([]Bucket, 0, len(bucketProto))
+	for b := range bucketProto {
+		out = append(out, b)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	return out
+}
+
+// reportBucket maps the wire enum back to the report's bucket; an enum value
+// outside the table reads as Uncovered, the zero bucket, exactly as
+// Bucket.String reads an unknown bucket.
+func reportBucket(b stipulatorv1.Bucket) Bucket {
 	for k, v := range bucketProto {
 		if v == b {
-			return k.Red()
+			return k
 		}
 	}
-	return false
+	return Uncovered
+}
+
+// RedFold classifies why a red row is or is not rendered as an ordinary
+// red: the row restates a result-level cause, or it stands on its own.
+type RedFold int
+
+const (
+	// RedVisible: red for a reason of its own — every projection shows it.
+	RedVisible RedFold = iota
+	// RedPolicyBlocked: red solely on the witness-selection boundary while
+	// the result-level diagnostic fired — bounded projections fold it into
+	// a count behind that diagnostic (REQ-check-witness-selection).
+	RedPolicyBlocked
+	// RedScopeBlocked: red solely because the caller's id scope left its
+	// witnesses unexecuted on a scoped pass — folded the same way behind
+	// the result's partial flag.
+	RedScopeBlocked
+)
+
+// RedRow is one red requirement of a check result as the one ladder
+// classified it: its bucket word, its reasons, and its fold class.
+type RedRow struct {
+	Id      string
+	Bucket  string
+	Reasons []string
+	Fold    RedFold
+}
+
+// RedRows is the one red-row ladder over a check result, read by every
+// projection — the summary, the served digest, and the human rendering
+// — so a row is red everywhere or nowhere and its fold class is one
+// (REQ-gate-no-undeclared). Membership is RedBucket; the fold gates on
+// the result-level flags exactly as the folds are specified: a row red
+// solely on the witness-selection boundary folds only while the
+// result-level diagnostic fired, a scope-boundary row only on a scoped
+// pass, the boundary tested first. Each projection applies its own
+// bound and rendering to the rows; none re-derives membership.
+func RedRows(res *stipulatorv1.CheckResult) []RedRow {
+	var rows []RedRow
+	for _, r := range res.GetCoverage().GetRequirements() {
+		if !RedBucket(r.GetBucket()) {
+			continue
+		}
+		row := RedRow{Id: r.GetId(), Bucket: BucketWord(r.GetBucket()), Reasons: r.GetReasons()}
+		switch {
+		case res.GetWitnessSelectionProblem() != "" && r.GetWitnessSelectionBlocked():
+			row.Fold = RedPolicyBlocked
+		case res.GetScopePartial() && r.GetScopeBlocked():
+			row.Fold = RedScopeBlocked
+		}
+		rows = append(rows, row)
+	}
+	return rows
 }

@@ -1537,6 +1537,9 @@ type VerifyReport struct {
 	xxx_hidden_Signatures         *[]*ChangeSignature    `protobuf:"bytes,4,rep,name=signatures"`
 	xxx_hidden_OutsidePolicy      int32                  `protobuf:"varint,5,opt,name=outside_policy,json=outsidePolicy"`
 	xxx_hidden_WitnessDiagnostics *[]*FailureDiagnostic  `protobuf:"bytes,7,rep,name=witness_diagnostics,json=witnessDiagnostics"`
+	xxx_hidden_Stale              int32                  `protobuf:"varint,8,opt,name=stale"`
+	xxx_hidden_Broken             int32                  `protobuf:"varint,9,opt,name=broken"`
+	xxx_hidden_ShapeMismatch      int32                  `protobuf:"varint,10,opt,name=shape_mismatch,json=shapeMismatch"`
 	XXX_raceDetectHookData        protoimpl.RaceDetectHookData
 	XXX_presence                  [1]uint32
 	unknownFields                 protoimpl.UnknownFields
@@ -1620,6 +1623,27 @@ func (x *VerifyReport) GetWitnessDiagnostics() []*FailureDiagnostic {
 	return nil
 }
 
+func (x *VerifyReport) GetStale() int32 {
+	if x != nil {
+		return x.xxx_hidden_Stale
+	}
+	return 0
+}
+
+func (x *VerifyReport) GetBroken() int32 {
+	if x != nil {
+		return x.xxx_hidden_Broken
+	}
+	return 0
+}
+
+func (x *VerifyReport) GetShapeMismatch() int32 {
+	if x != nil {
+		return x.xxx_hidden_ShapeMismatch
+	}
+	return 0
+}
+
 func (x *VerifyReport) SetProblems(v []*Problem) {
 	x.xxx_hidden_Problems = &v
 }
@@ -1638,11 +1662,26 @@ func (x *VerifyReport) SetSignatures(v []*ChangeSignature) {
 
 func (x *VerifyReport) SetOutsidePolicy(v int32) {
 	x.xxx_hidden_OutsidePolicy = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 9)
 }
 
 func (x *VerifyReport) SetWitnessDiagnostics(v []*FailureDiagnostic) {
 	x.xxx_hidden_WitnessDiagnostics = &v
+}
+
+func (x *VerifyReport) SetStale(v int32) {
+	x.xxx_hidden_Stale = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 9)
+}
+
+func (x *VerifyReport) SetBroken(v int32) {
+	x.xxx_hidden_Broken = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 9)
+}
+
+func (x *VerifyReport) SetShapeMismatch(v int32) {
+	x.xxx_hidden_ShapeMismatch = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 9)
 }
 
 func (x *VerifyReport) HasOutsidePolicy() bool {
@@ -1652,9 +1691,45 @@ func (x *VerifyReport) HasOutsidePolicy() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
 }
 
+func (x *VerifyReport) HasStale() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
+func (x *VerifyReport) HasBroken() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 7)
+}
+
+func (x *VerifyReport) HasShapeMismatch() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 8)
+}
+
 func (x *VerifyReport) ClearOutsidePolicy() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
 	x.xxx_hidden_OutsidePolicy = 0
+}
+
+func (x *VerifyReport) ClearStale() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	x.xxx_hidden_Stale = 0
+}
+
+func (x *VerifyReport) ClearBroken() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 7)
+	x.xxx_hidden_Broken = 0
+}
+
+func (x *VerifyReport) ClearShapeMismatch() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 8)
+	x.xxx_hidden_ShapeMismatch = 0
 }
 
 type VerifyReport_builder struct {
@@ -1678,6 +1753,14 @@ type VerifyReport_builder struct {
 	// payload. Check payloads carry the same typed rows at the check
 	// level and leave this empty (one fact, one home per payload).
 	WitnessDiagnostics []*FailureDiagnostic
+	// The report's own tally, projected once from the rows above
+	// (verify.Report.Tally) and never narrowed by a view scope — a scoped
+	// view re-tallies its own slice: stale counts every unpinned row,
+	// broken the unresolved symbols, shape_mismatch its own axis. A
+	// summary reads these; none recounts the rows.
+	Stale         *int32
+	Broken        *int32
+	ShapeMismatch *int32
 }
 
 func (b0 VerifyReport_builder) Build() *VerifyReport {
@@ -1689,10 +1772,22 @@ func (b0 VerifyReport_builder) Build() *VerifyReport {
 	x.xxx_hidden_Registrations = &b.Registrations
 	x.xxx_hidden_Signatures = &b.Signatures
 	if b.OutsidePolicy != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 9)
 		x.xxx_hidden_OutsidePolicy = *b.OutsidePolicy
 	}
 	x.xxx_hidden_WitnessDiagnostics = &b.WitnessDiagnostics
+	if b.Stale != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 9)
+		x.xxx_hidden_Stale = *b.Stale
+	}
+	if b.Broken != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 9)
+		x.xxx_hidden_Broken = *b.Broken
+	}
+	if b.ShapeMismatch != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 9)
+		x.xxx_hidden_ShapeMismatch = *b.ShapeMismatch
+	}
 	return m0
 }
 
@@ -2682,6 +2777,7 @@ type CoverageSummary struct {
 	xxx_hidden_Partial              int32                  `protobuf:"varint,12,opt,name=partial"`
 	xxx_hidden_GapsContradicted     int32                  `protobuf:"varint,13,opt,name=gaps_contradicted,json=gapsContradicted"`
 	xxx_hidden_PointersDangling     int32                  `protobuf:"varint,14,opt,name=pointers_dangling,json=pointersDangling"`
+	xxx_hidden_GapsDue              int32                  `protobuf:"varint,15,opt,name=gaps_due,json=gapsDue"`
 	XXX_raceDetectHookData          protoimpl.RaceDetectHookData
 	XXX_presence                    [1]uint32
 	unknownFields                   protoimpl.UnknownFields
@@ -2811,39 +2907,46 @@ func (x *CoverageSummary) GetPointersDangling() int32 {
 	return 0
 }
 
+func (x *CoverageSummary) GetGapsDue() int32 {
+	if x != nil {
+		return x.xxx_hidden_GapsDue
+	}
+	return 0
+}
+
 func (x *CoverageSummary) SetGatePasses(v bool) {
 	x.xxx_hidden_GatePasses = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 15)
 }
 
 func (x *CoverageSummary) SetCovered(v int32) {
 	x.xxx_hidden_Covered = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 15)
 }
 
 func (x *CoverageSummary) SetAttested(v int32) {
 	x.xxx_hidden_Attested = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 15)
 }
 
 func (x *CoverageSummary) SetUncovered(v int32) {
 	x.xxx_hidden_Uncovered = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 15)
 }
 
 func (x *CoverageSummary) SetStale(v int32) {
 	x.xxx_hidden_Stale = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 15)
 }
 
 func (x *CoverageSummary) SetBroken(v int32) {
 	x.xxx_hidden_Broken = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 15)
 }
 
 func (x *CoverageSummary) SetExempt(v int32) {
 	x.xxx_hidden_Exempt = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 15)
 }
 
 func (x *CoverageSummary) SetViolations(v []string) {
@@ -2852,7 +2955,7 @@ func (x *CoverageSummary) SetViolations(v []string) {
 
 func (x *CoverageSummary) SetGapsOpen(v int32) {
 	x.xxx_hidden_GapsOpen = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 15)
 }
 
 func (x *CoverageSummary) SetPolicyOverrides(v []string) {
@@ -2861,22 +2964,27 @@ func (x *CoverageSummary) SetPolicyOverrides(v []string) {
 
 func (x *CoverageSummary) SetResolvedGapsPrunable(v int32) {
 	x.xxx_hidden_ResolvedGapsPrunable = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 15)
 }
 
 func (x *CoverageSummary) SetPartial(v int32) {
 	x.xxx_hidden_Partial = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 15)
 }
 
 func (x *CoverageSummary) SetGapsContradicted(v int32) {
 	x.xxx_hidden_GapsContradicted = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 12, 15)
 }
 
 func (x *CoverageSummary) SetPointersDangling(v int32) {
 	x.xxx_hidden_PointersDangling = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 13, 14)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 13, 15)
+}
+
+func (x *CoverageSummary) SetGapsDue(v int32) {
+	x.xxx_hidden_GapsDue = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 14, 15)
 }
 
 func (x *CoverageSummary) HasGatePasses() bool {
@@ -2963,6 +3071,13 @@ func (x *CoverageSummary) HasPointersDangling() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 13)
 }
 
+func (x *CoverageSummary) HasGapsDue() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 14)
+}
+
 func (x *CoverageSummary) ClearGatePasses() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_GatePasses = false
@@ -3023,6 +3138,11 @@ func (x *CoverageSummary) ClearPointersDangling() {
 	x.xxx_hidden_PointersDangling = 0
 }
 
+func (x *CoverageSummary) ClearGapsDue() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 14)
+	x.xxx_hidden_GapsDue = 0
+}
+
 type CoverageSummary_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -3034,7 +3154,9 @@ type CoverageSummary_builder struct {
 	Broken     *int32
 	Exempt     *int32
 	Violations []string
-	// GapsOpen counts unresolved gaps among the scoped requirements.
+	// GapsOpen counts `open` gaps among the scoped requirements — the
+	// landing condition not yet holding; `due` rows count in gaps_due, so
+	// the field means what CheckSummary's gaps_open means.
 	GapsOpen *int32
 	// PolicyOverrides lists the manifest's active coverage-policy
 	// overrides: an override shapes the verdict and every count, so no
@@ -3049,14 +3171,18 @@ type CoverageSummary_builder struct {
 	// and at least one not (BUCKET_PARTIAL): red, listed in violations
 	// unless a gap excuses uncovered.
 	Partial *int32
-	// GapsContradicted is the subset of gaps_open declared contradicted —
-	// a known debt with a trigger, named apart from the coverage holes.
+	// GapsContradicted is the subset of gaps_open and gaps_due declared
+	// contradicted — a known debt with a trigger, named apart from the
+	// coverage holes.
 	GapsContradicted *int32
 	// PointersDangling counts enforcement pointers among the scoped
 	// requirements that resolve to no tests- or proves-role binding of
 	// their requirement — red rows of their own class
 	// (REQ-change-enforcement-pointers).
 	PointersDangling *int32
+	// GapsDue counts `due` gaps among the scoped requirements — the
+	// landing condition holds, the deferred work is ready.
+	GapsDue *int32
 }
 
 func (b0 CoverageSummary_builder) Build() *CoverageSummary {
@@ -3064,54 +3190,58 @@ func (b0 CoverageSummary_builder) Build() *CoverageSummary {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.GatePasses != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 15)
 		x.xxx_hidden_GatePasses = *b.GatePasses
 	}
 	if b.Covered != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 15)
 		x.xxx_hidden_Covered = *b.Covered
 	}
 	if b.Attested != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 15)
 		x.xxx_hidden_Attested = *b.Attested
 	}
 	if b.Uncovered != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 15)
 		x.xxx_hidden_Uncovered = *b.Uncovered
 	}
 	if b.Stale != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 15)
 		x.xxx_hidden_Stale = *b.Stale
 	}
 	if b.Broken != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 15)
 		x.xxx_hidden_Broken = *b.Broken
 	}
 	if b.Exempt != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 15)
 		x.xxx_hidden_Exempt = *b.Exempt
 	}
 	x.xxx_hidden_Violations = b.Violations
 	if b.GapsOpen != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 15)
 		x.xxx_hidden_GapsOpen = *b.GapsOpen
 	}
 	x.xxx_hidden_PolicyOverrides = b.PolicyOverrides
 	if b.ResolvedGapsPrunable != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 15)
 		x.xxx_hidden_ResolvedGapsPrunable = *b.ResolvedGapsPrunable
 	}
 	if b.Partial != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 15)
 		x.xxx_hidden_Partial = *b.Partial
 	}
 	if b.GapsContradicted != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 12, 15)
 		x.xxx_hidden_GapsContradicted = *b.GapsContradicted
 	}
 	if b.PointersDangling != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 13, 14)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 13, 15)
 		x.xxx_hidden_PointersDangling = *b.PointersDangling
+	}
+	if b.GapsDue != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 14, 15)
+		x.xxx_hidden_GapsDue = *b.GapsDue
 	}
 	return m0
 }
@@ -6016,7 +6146,7 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\apackage\x18\x01 \x01(\tR\apackage\x12\x12\n" +
 	"\x04test\x18\x02 \x01(\tR\x04test\x12%\n" +
 	"\x0erequirement_id\x18\x03 \x01(\tR\rrequirementId\x124\n" +
-	"\aoutcome\x18\x04 \x01(\x0e2\x1a.stipulator.v1.TestOutcomeR\aoutcome\"\x83\x03\n" +
+	"\aoutcome\x18\x04 \x01(\x0e2\x1a.stipulator.v1.TestOutcomeR\aoutcome\"\xd8\x03\n" +
 	"\fVerifyReport\x122\n" +
 	"\bproblems\x18\x01 \x03(\v2\x16.stipulator.v1.ProblemR\bproblems\x126\n" +
 	"\aresults\x18\x02 \x03(\v2\x1c.stipulator.v1.BindingResultR\aresults\x12G\n" +
@@ -6025,7 +6155,11 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"signatures\x18\x04 \x03(\v2\x1e.stipulator.v1.ChangeSignatureR\n" +
 	"signatures\x12%\n" +
 	"\x0eoutside_policy\x18\x05 \x01(\x05R\routsidePolicy\x12Q\n" +
-	"\x13witness_diagnostics\x18\a \x03(\v2 .stipulator.v1.FailureDiagnosticR\x12witnessDiagnosticsJ\x04\b\x06\x10\a\"\x89\x01\n" +
+	"\x13witness_diagnostics\x18\a \x03(\v2 .stipulator.v1.FailureDiagnosticR\x12witnessDiagnostics\x12\x14\n" +
+	"\x05stale\x18\b \x01(\x05R\x05stale\x12\x16\n" +
+	"\x06broken\x18\t \x01(\x05R\x06broken\x12%\n" +
+	"\x0eshape_mismatch\x18\n" +
+	" \x01(\x05R\rshapeMismatchJ\x04\b\x06\x10\a\"\x89\x01\n" +
 	"\x0fChangeSignature\x12%\n" +
 	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x123\n" +
 	"\x05label\x18\x02 \x01(\x0e2\x1d.stipulator.v1.SignatureLabelR\x05label\x12\x1a\n" +
@@ -6059,7 +6193,7 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x11dangling_pointers\x18\x06 \x03(\v2\x1e.stipulator.v1.DanglingPointerR\x10danglingPointers\"L\n" +
 	"\x0fDanglingPointer\x12%\n" +
 	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"\xde\x03\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"\xf9\x03\n" +
 	"\x0fCoverageSummary\x12\x1f\n" +
 	"\vgate_passes\x18\x01 \x01(\bR\n" +
 	"gatePasses\x12\x18\n" +
@@ -6078,7 +6212,8 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x16resolved_gaps_prunable\x18\v \x01(\x05R\x14resolvedGapsPrunable\x12\x18\n" +
 	"\apartial\x18\f \x01(\x05R\apartial\x12+\n" +
 	"\x11gaps_contradicted\x18\r \x01(\x05R\x10gapsContradicted\x12+\n" +
-	"\x11pointers_dangling\x18\x0e \x01(\x05R\x10pointersDangling\"\xf4\x04\n" +
+	"\x11pointers_dangling\x18\x0e \x01(\x05R\x10pointersDangling\x12\x19\n" +
+	"\bgaps_due\x18\x0f \x01(\x05R\agapsDue\"\xf4\x04\n" +
 	"\rVerifySummary\x12\x1a\n" +
 	"\bproblems\x18\x01 \x01(\x05R\bproblems\x12\x16\n" +
 	"\x06pinned\x18\x02 \x01(\x05R\x06pinned\x12\x14\n" +

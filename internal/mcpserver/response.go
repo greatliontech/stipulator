@@ -8,6 +8,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/wire"
 )
@@ -128,7 +129,7 @@ func viewLine(op string, m proto.Message) string {
 		}
 		var rows []string
 		for _, r := range v.GetRequirements() {
-			row := fmt.Sprintf("%s [%s]", r.GetId(), enumWord(r.GetBucket().String(), "BUCKET_"))
+			row := fmt.Sprintf("%s [%s]", r.GetId(), coverage.BucketWord(r.GetBucket()))
 			if reasons := r.GetReasons(); len(reasons) > 0 {
 				row += ": " + reasons[0]
 			}

@@ -40,3 +40,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "1b0969e8f3680b817fe22617db93dd837a273842fafaba27215886b59283e7cb"
 }
+
+bindings {
+  requirement_id: "REQ-gate-no-undeclared"
+  content_hash: "d8fac5aec0780854cb91e13134ad1229f98fef3ba7f8983954779375ee2854df"
+  source_hash: "fd1e54584cd8e7e35acea840dceb2ec7a2beb2a0161469c7155bd958ce749647"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.TestRedRowsIsTheOneLadder"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a71fecc778901903b2be0d4d6d2498da17d0d172654c8f74d0eabc9b6e10064e"
+}

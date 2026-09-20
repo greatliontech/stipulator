@@ -185,3 +185,23 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "babd1725ad0a5340b89ffecd8f6d8ef9d072a28c54adda580226c622c3446ef2"
 }
+
+bindings {
+  requirement_id: "REQ-report-check-result"
+  content_hash: "a853d263988e750118f37bf6b0ad798622761c49ccdde4e9291a206a2021a31a"
+  source_hash: "cb7c5b2b9625ea709087af9136b3bd27a3259290465d6587e9a58aa259a6696f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/verify.TestReportProtoCarriesTheTally"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "837fc008c9a1805ef9ca3c63cf6be1c3504172fac4da1f102ea7a07d6668be0d"
+}
+
+bindings {
+  requirement_id: "REQ-report-check-result"
+  content_hash: "a853d263988e750118f37bf6b0ad798622761c49ccdde4e9291a206a2021a31a"
+  source_hash: "cb7c5b2b9625ea709087af9136b3bd27a3259290465d6587e9a58aa259a6696f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/views.TestCheckSummaryReadsTheWireVerifyTally"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e2dc62cac91df0b7f0c2b54775acb3cdeaa9a1163ebaea0dc59b6a7f2c8fa86a"
+}

@@ -770,3 +770,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "31fa3a6594000275ed200d335dc4c838a69c71b15789a66156d25c0800cca32f"
 }
+
+bindings {
+  requirement_id: "REQ-gap-lifecycle"
+  content_hash: "81a0dbdc3484cd8dd441e388256252ebf308ad31fdedc80720c785c72583e8d4"
+  source_hash: "c1c25c7da53d664ad7c07b46cc36f3bf580d4ee68a28ca6583afa365d1ee6838"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestGateRowsAreTheRedSetAndAttested"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e7dfa57ddc8eb57464455efffbd07fcaec2ce1a97d7d29c37e2bc7c83dc563c7"
+}

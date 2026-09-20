@@ -1240,3 +1240,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "384602742663030d9790100f7345b5e1a62c1cca9fb664e4b48b78418a2eca39"
 }
+
+bindings {
+  requirement_id: "REQ-mcp-views"
+  content_hash: "46e282f6063af71d86c54c40b84af062bc431e9c4843f3a532d47914e31eee39"
+  source_hash: "6e2b8b86afc4794908c83763bae2d1621739b776bcec6be3121623bcd68c0557"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/views.TestScopeVocabularyIsEveryBucket"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "d2d11852ab8b3aaca1b170aa467d95886c20dd8204e6c1b3fe4c96dff96f4411"
+}

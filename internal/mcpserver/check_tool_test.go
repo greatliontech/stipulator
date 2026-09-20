@@ -172,11 +172,27 @@ func TestCheckLineScopedPartialClassAndFold(t *testing.T) {
 	if !strings.Contains(line, "1 violations") || !strings.Contains(line, "(1 scope-blocked rows not executed)") {
 		t.Errorf("scope-blocked violation not folded to a stated count: %q", line)
 	}
+	// The one ladder's precedence: a row carrying both boundary flags
+	// under a fired witness-selection diagnostic is policy-blocked, a
+	// violation the verdict counts — never the scoped exclusion.
+	both := &stipulatorv1.RequirementCoverage{}
+	both.SetId("REQ-both")
+	both.SetBucket(stipulatorv1.Bucket_BUCKET_BROKEN)
+	both.SetScopeBlocked(true)
+	both.SetWitnessSelectionBlocked(true)
+	cov.SetRequirements([]*stipulatorv1.RequirementCoverage{blocked, both})
+	cov.SetViolations([]string{"REQ-blocked", "REQ-red", "REQ-both"})
+	res.SetWitnessSelectionProblem("no expected witness")
+	line = checkLine(res)
+	if !strings.Contains(line, "2 violations") || !strings.Contains(line, "(1 scope-blocked rows not executed)") {
+		t.Errorf("policy-blocked violation folded as the scoped exclusion: %q", line)
+	}
+	res.SetWitnessSelectionProblem("")
 
 	res.SetScopePartial(false)
 	res.SetScopeIds(nil)
 	line = checkLine(res)
-	if !strings.Contains(line, "witness-evidence") || !strings.Contains(line, "2 violations") || strings.Contains(line, "scope-blocked") {
+	if !strings.Contains(line, "witness-evidence") || !strings.Contains(line, "3 violations") || strings.Contains(line, "scope-blocked") {
 		t.Errorf("global line altered by a stale scope marker: %q", line)
 	}
 	if strings.Contains(line, "red executions") {

@@ -217,8 +217,14 @@ type GapTally struct {
 	Open, Due, Resolved, Contradicted int
 }
 
-// Standing is the unresolved count, open and due together.
-func (t GapTally) Standing() int { return t.Open + t.Due }
+// Text is the one human grammar of the tally: the three states named,
+// then the contradicted subset of the unresolved rows in a parenthesis
+// — a subset, never a fourth peer count — so a known debt with a
+// trigger reads apart from a coverage hole on every line that counts
+// gaps (REQ-gap-lifecycle).
+func (t GapTally) Text() string {
+	return fmt.Sprintf("%d open, %d due, %d resolved (%d contradicted)", t.Open, t.Due, t.Resolved, t.Contradicted)
+}
 
 // Add tallies one row from its three facts.
 func (t *GapTally) Add(resolved, due, contradicted bool) {
@@ -979,17 +985,6 @@ func ConditionText(lc *stipulatorv1.LandingCondition) string {
 		return "manual: " + lc.GetManual().GetCondition()
 	}
 	return ""
-}
-
-// GapCountsString renders the standing gaps for the human summaries:
-// the unresolved count, and the contradicted subset named beside it
-// whenever it is non-zero — a known debt with a trigger reads apart
-// from a coverage hole.
-func GapCountsString(open, contradicted int) string {
-	if contradicted == 0 {
-		return fmt.Sprint(open)
-	}
-	return fmt.Sprintf("%d (%d contradicted)", open, contradicted)
 }
 
 // conditionHolds evaluates a machine landing condition; manual

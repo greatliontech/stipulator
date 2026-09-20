@@ -153,6 +153,14 @@ message VerifyReport {
   // payload. Check payloads carry the same typed rows at the check
   // level and leave this empty (one fact, one home per payload).
   repeated FailureDiagnostic witness_diagnostics = 7;
+  // The report's own tally, projected once from the rows above
+  // (verify.Report.Tally) and never narrowed by a view scope — a scoped
+  // view re-tallies its own slice: stale counts every unpinned row,
+  // broken the unresolved symbols, shape_mismatch its own axis. A
+  // summary reads these; none recounts the rows.
+  int32 stale = 8;
+  int32 broken = 9;
+  int32 shape_mismatch = 10;
 }
 
 // ChangeSignature labels one requirement's change shape.
@@ -282,7 +290,9 @@ message CoverageSummary {
   int32 broken = 6;
   int32 exempt = 7;
   repeated string violations = 8;
-  // GapsOpen counts unresolved gaps among the scoped requirements.
+  // GapsOpen counts `open` gaps among the scoped requirements — the
+  // landing condition not yet holding; `due` rows count in gaps_due, so
+  // the field means what CheckSummary's gaps_open means.
   int32 gaps_open = 9;
   // PolicyOverrides lists the manifest's active coverage-policy
   // overrides: an override shapes the verdict and every count, so no
@@ -297,14 +307,18 @@ message CoverageSummary {
   // and at least one not (BUCKET_PARTIAL): red, listed in violations
   // unless a gap excuses uncovered.
   int32 partial = 12;
-  // GapsContradicted is the subset of gaps_open declared contradicted —
-  // a known debt with a trigger, named apart from the coverage holes.
+  // GapsContradicted is the subset of gaps_open and gaps_due declared
+  // contradicted — a known debt with a trigger, named apart from the
+  // coverage holes.
   int32 gaps_contradicted = 13;
   // PointersDangling counts enforcement pointers among the scoped
   // requirements that resolve to no tests- or proves-role binding of
   // their requirement — red rows of their own class
   // (REQ-change-enforcement-pointers).
   int32 pointers_dangling = 14;
+  // GapsDue counts `due` gaps among the scoped requirements — the
+  // landing condition holds, the deferred work is ready.
+  int32 gaps_due = 15;
 }
 
 // VerifySummary is the verification roll-up: record hygiene and witness

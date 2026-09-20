@@ -2390,3 +2390,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "984f8d5e581bc99a108795c23b1e1b9d3f1bdd5576d78253b3a5bf4a900d13f0"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-attestation"
+  content_hash: "0e68aac4251661b577f23f0ad5cc35b120665231f2556faf4ee092815108ba12"
+  source_hash: "774672e7b33175b398190b4a0ade607df0be61325cab777184208b0e16587814"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestGateRowsAreTheRedSetAndAttested"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e7dfa57ddc8eb57464455efffbd07fcaec2ce1a97d7d29c37e2bc7c83dc563c7"
+}

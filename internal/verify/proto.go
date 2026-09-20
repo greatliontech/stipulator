@@ -44,6 +44,13 @@ func (r *Report) Proto() *stipulatorv1.VerifyReport {
 	out.SetRegistrations(regs)
 	out.SetOutsidePolicy(int32(r.OutsidePolicy))
 	out.SetWitnessDiagnostics(r.Diagnostics)
+	// The report's tally rides the wire once, so a summary built over
+	// the wire message reads the counts the report derived rather than
+	// re-deriving them from the rows (Report.Tally is the one
+	// derivation).
+	out.SetStale(int32(r.Stale))
+	out.SetBroken(int32(r.Broken))
+	out.SetShapeMismatch(int32(r.ShapeMismatch))
 	return out
 }
 

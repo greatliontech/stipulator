@@ -184,9 +184,10 @@ func TestCoverageSummaryPinsCountsAndGapState(t *testing.T) {
 			{Id: "REQ-e", Bucket: coverage.Broken},
 			{Id: "REQ-f", Bucket: coverage.Exempt},
 		},
-		// Asymmetric on purpose — two open, one resolved — so a
-		// resolved/open misclassification changes at least one tally.
-		// A due row is unresolved too: it counts among gaps_open and,
+		// Asymmetric on purpose — two open, one due, one resolved — so
+		// a misclassification between any two states changes at least
+		// one tally. A due row counts in gaps_due, never in gaps_open —
+		// the one meaning the check summary's gaps_open has — and,
 		// contradicted, among gaps_contradicted.
 		Gaps: []coverage.Gap{
 			{RequirementId: "REQ-c", State: coverage.Open},
@@ -208,8 +209,8 @@ func TestCoverageSummaryPinsCountsAndGapState(t *testing.T) {
 	if sum.GetResolvedGapsPrunable() != 1 {
 		t.Fatalf("resolved_gaps_prunable = %d, want 1 (only REQ-a's gap is resolved)", sum.GetResolvedGapsPrunable())
 	}
-	if sum.GetGapsOpen() != 3 {
-		t.Fatalf("gaps_open = %d, want 3 (open and due; the resolved gap is excluded)", sum.GetGapsOpen())
+	if sum.GetGapsOpen() != 2 || sum.GetGapsDue() != 1 {
+		t.Fatalf("gaps_open = %d, gaps_due = %d, want 2 and 1 (the due row counts apart; the resolved gap in neither)", sum.GetGapsOpen(), sum.GetGapsDue())
 	}
 	if sum.GetGapsContradicted() != 2 {
 		t.Fatalf("gaps_contradicted = %d, want 2 (the open and the due contradicted gaps; the resolved one left the class)", sum.GetGapsContradicted())
@@ -480,5 +481,24 @@ func TestVerifySummaryHonoursScope(t *testing.T) {
 	}
 	if s := m.(*stipulatorv1.VerifySummary); s.GetRehash() != 1 {
 		t.Fatalf("ids scope elsewhere kept a foreign attestation: %v", s)
+	}
+}
+
+// The scope vocabulary is the closed bucket set, whole: a bucket added
+// to the ladder is nameable in a scope and listed in the refusal.
+func TestScopeVocabularyIsEveryBucket(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-views")
+	have := map[coverage.Bucket]bool{}
+	for _, b := range scopeBuckets {
+		have[b] = true
+	}
+	all := coverage.Buckets()
+	if len(have) != len(scopeBuckets) || len(have) != len(all) {
+		t.Fatalf("scope vocabulary %v vs the bucket set %v", scopeBuckets, all)
+	}
+	for _, b := range all {
+		if !have[b] {
+			t.Errorf("bucket %v missing from the scope vocabulary", b)
+		}
 	}
 }

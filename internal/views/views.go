@@ -33,22 +33,36 @@ func (s Scope) Empty() bool {
 	return len(s.Ids) == 0 && s.Bucket == "" && s.Filter == "" && s.Path == ""
 }
 
-var bucketNames = map[string]coverage.Bucket{
-	"uncovered": coverage.Uncovered,
-	"stale":     coverage.Stale,
-	"broken":    coverage.Broken,
-	"covered":   coverage.Covered,
-	"exempt":    coverage.Exempt,
-	"attested":  coverage.Attested,
-	"partial":   coverage.Partial,
+// scopeBuckets is the closed bucket set a scope may name, in the order
+// the refusal lists them; the words are Bucket.String's, never a second
+// table.
+var scopeBuckets = []coverage.Bucket{coverage.Uncovered, coverage.Partial, coverage.Stale, coverage.Broken, coverage.Covered, coverage.Exempt, coverage.Attested}
+
+// bucketNamed resolves a scope's bucket word, case-insensitively.
+func bucketNamed(word string) (coverage.Bucket, bool) {
+	for _, b := range scopeBuckets {
+		if b.String() == strings.ToLower(word) {
+			return b, true
+		}
+	}
+	return 0, false
+}
+
+// bucketWords lists the scope vocabulary for a refusal.
+func bucketWords() string {
+	words := make([]string, 0, len(scopeBuckets))
+	for _, b := range scopeBuckets {
+		words = append(words, b.String())
+	}
+	return strings.Join(words, ", ")
 }
 
 // Validate refuses unknown scope vocabulary before any filtering happens
 // — a typo must never read as an empty result.
 func (s Scope) Validate() error {
 	if s.Bucket != "" {
-		if _, ok := bucketNames[strings.ToLower(s.Bucket)]; !ok {
-			return fmt.Errorf("unknown bucket %q (uncovered, partial, stale, broken, covered, exempt, attested)", s.Bucket)
+		if _, ok := bucketNamed(s.Bucket); !ok {
+			return fmt.Errorf("unknown bucket %q (%s)", s.Bucket, bucketWords())
 		}
 	}
 	if s.Filter != "" {
@@ -73,7 +87,7 @@ func (s Scope) keeps(row coverage.Requirement, doc string, symbols []string) boo
 			return false
 		}
 	}
-	if s.Bucket != "" && bucketNames[strings.ToLower(s.Bucket)] != row.Bucket {
+	if b, ok := bucketNamed(s.Bucket); ok && b != row.Bucket {
 		return false
 	}
 	if s.Filter != "" {
@@ -207,7 +221,8 @@ func CoverageView(cov *coverage.Report, facts Facts, view string, scope Scope) (
 		}
 		out.SetViolations(viol)
 		tally := coverage.GapCounts(cov.Gaps, keptIDs)
-		out.SetGapsOpen(int32(tally.Standing()))
+		out.SetGapsOpen(int32(tally.Open))
+		out.SetGapsDue(int32(tally.Due))
 		out.SetGapsContradicted(int32(tally.Contradicted))
 		out.SetResolvedGapsPrunable(int32(tally.Resolved))
 		out.SetPointersDangling(coverage.DanglingPointerCount(cov.DanglingPointers, keptIDs))
@@ -358,7 +373,7 @@ func VerifyView(vr *verify.Report, facts Facts, view string, scope Scope) (proto
 		// ride the full result for drill-down.
 		var headings []string
 		for _, d := range vr.Diagnostics {
-			headings = append(headings, diagnosticHeadingWord(d))
+			headings = append(headings, DiagnosticHeading(d))
 		}
 		if len(headings) > HeadingCap {
 			out.SetWitnessFailureHeadingsOmitted(int32(len(headings) - HeadingCap))

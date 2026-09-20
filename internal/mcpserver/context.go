@@ -93,7 +93,7 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 	for _, d := range out.GetDossiers() {
 		row := d.GetRequirement().GetId()
 		if cov := d.GetCoverage(); cov != nil {
-			row += " [" + enumWord(cov.GetBucket().String(), "BUCKET_") + "]"
+			row += " [" + coverage.BucketWord(cov.GetBucket()) + "]"
 			if reasons := cov.GetReasons(); len(reasons) > 0 {
 				row += ": " + reasons[0]
 			}

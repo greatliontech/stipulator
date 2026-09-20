@@ -53,31 +53,7 @@ func (s *Server) toolCheck(ctx context.Context, req *mcp.CallToolRequest, in che
 	if err != nil {
 		return nil, nil, err
 	}
-	var redRows []string
-	blocked := 0
-	for _, r := range res.GetCoverage().GetRequirements() {
-		if coverage.RedBucket(r.GetBucket()) {
-			// Policy-blocked rows restate the result-level diagnostic;
-			// fold them behind it so the text digest carries the cause
-			// once and the real reds stay visible
-			// (REQ-check-witness-selection).
-			if res.GetWitnessSelectionProblem() != "" && r.GetWitnessSelectionBlocked() {
-				blocked++
-				continue
-			}
-			// Scope-boundary rows restate the result's partial flag, and
-			// checkLine already carries their folded count — the digest
-			// keeps only the reds a scoped pass actually judged.
-			if res.GetScopePartial() && r.GetScopeBlocked() {
-				continue
-			}
-			row := fmt.Sprintf("%s [%s]", r.GetId(), enumWord(r.GetBucket().String(), "BUCKET_"))
-			if reasons := r.GetReasons(); len(reasons) > 0 {
-				row += ": " + reasons[0]
-			}
-			redRows = append(redRows, row)
-		}
-	}
+	redRows, blocked := checkDigestRows(res)
 	line := checkLine(res)
 	for _, n := range res.GetPolicyNotices() {
 		line += "\n" + n
@@ -97,6 +73,30 @@ func (s *Server) toolCheck(ctx context.Context, req *mcp.CallToolRequest, in che
 		}
 	}
 	return summarized(withStamps(digest(line, redRows), prog), view)
+}
+
+// checkDigestRows renders the digest's red rows from the one ladder and
+// counts the policy-blocked rows it folds: those restate the
+// result-level diagnostic, so the digest carries the cause once and the
+// real reds stay visible (REQ-check-witness-selection); scope-boundary
+// rows restate the result's partial flag, whose folded count checkLine
+// already carries — the digest keeps only the reds a scoped pass judged.
+func checkDigestRows(res *stipulatorv1.CheckResult) (rows []string, blocked int) {
+	for _, r := range coverage.RedRows(res) {
+		switch r.Fold {
+		case coverage.RedPolicyBlocked:
+			blocked++
+			continue
+		case coverage.RedScopeBlocked:
+			continue
+		}
+		row := fmt.Sprintf("%s [%s]", r.Id, r.Bucket)
+		if len(r.Reasons) > 0 {
+			row += ": " + r.Reasons[0]
+		}
+		rows = append(rows, row)
+	}
+	return rows, blocked
 }
 
 // checkLine is the one-line text beside the structured result: the
@@ -121,15 +121,13 @@ func checkLine(res *stipulatorv1.CheckResult) string {
 		class = "scoped-partial: " + strings.Join(res.GetScopeIds(), ",")
 	}
 	violations := 0
-	scopeBlocked := map[string]bool{}
-	for _, r := range res.GetCoverage().GetRequirements() {
-		if r.GetScopeBlocked() {
-			scopeBlocked[r.GetId()] = true
-		}
+	folds := map[string]coverage.RedFold{}
+	for _, r := range coverage.RedRows(res) {
+		folds[r.Id] = r.Fold
 	}
 	folded := 0
 	for _, v := range res.GetCoverage().GetViolations() {
-		if res.GetScopePartial() && scopeBlocked[v] {
+		if folds[v] == coverage.RedScopeBlocked {
 			folded++
 			continue
 		}

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -93,7 +94,7 @@ func gateCmd() *cobra.Command {
 					}
 				}
 				sliced := views.ScopeReport(cov, rows, keep)
-				printCoverage(&sliced)
+				printCoverage(os.Stdout, &sliced)
 			}
 			if !cov.GatePasses() {
 				if !quiet && !jsonOut {
@@ -123,20 +124,25 @@ func gateCmd() *cobra.Command {
 
 // printCoverage renders the human coverage view: red requirements with
 // their reasons and gap state merged inline, then one summary line.
-func printCoverage(cov *coverage.Report) {
+func printCoverage(w io.Writer, cov *coverage.Report) {
 	gapByReq := map[string]coverage.Gap{}
 	for _, g := range cov.Gaps {
 		gapByReq[g.RequirementId] = g
 	}
 	for _, o := range cov.PolicyOverrides {
-		fmt.Println(dim(o))
+		fmt.Fprintln(w, dim(o))
 	}
 	counts := map[coverage.Bucket]int{}
 	width := 0
 	var reds []coverage.Requirement
 	for _, r := range cov.Requirements {
 		counts[r.Bucket]++
-		if r.Bucket == coverage.Covered || r.Bucket == coverage.Exempt {
+		// The rows are the red membership every surface consults plus the
+		// attested rows, which appear distinctly in every coverage output
+		// as the weakest evidence (REQ-evidence-attestation) — stated as
+		// the set it is, so a bucket added to the ladder lists by its own
+		// predicate, never by not being covered.
+		if !r.Bucket.Red() && r.Bucket != coverage.Attested {
 			continue
 		}
 		reds = append(reds, r)
@@ -162,7 +168,7 @@ func printCoverage(cov *coverage.Report) {
 				reason += dim(fmt.Sprintf(" (+%d more)", len(r.Reasons)-1))
 			}
 		}
-		fmt.Printf("  %-9s %-*s  %s  %s\n", bucket, width, r.Id, gapNote, reason)
+		fmt.Fprintf(w, "  %-9s %-*s  %s  %s\n", bucket, width, r.Id, gapNote, reason)
 	}
 	tally := coverage.GapCounts(cov.Gaps, nil)
 	prunable := tally.Resolved
@@ -170,16 +176,16 @@ func printCoverage(cov *coverage.Report) {
 	if n := coverage.DanglingPointerCount(cov.DanglingPointers, nil); n > 0 {
 		pointers = fmt.Sprintf("; pointers: %s dangling", red(fmt.Sprint(n)))
 	}
-	fmt.Printf("coverage: %s covered, %s attested, %s uncovered, %s partial, %s stale, %s broken, %d exempt; gaps: %s open, %d resolved%s\n",
+	fmt.Fprintf(w, "coverage: %s covered, %s attested, %s uncovered, %s partial, %s stale, %s broken, %d exempt; gaps: %s%s\n",
 		green(fmt.Sprint(counts[coverage.Covered])), num(counts[coverage.Attested], yellow),
 		num(counts[coverage.Uncovered], yellow), num(counts[coverage.Partial], yellow),
 		num(counts[coverage.Stale], yellow), num(counts[coverage.Broken], red),
-		counts[coverage.Exempt], coverage.GapCountsString(tally.Standing(), tally.Contradicted), prunable, pointers)
+		counts[coverage.Exempt], tally.Text(), pointers)
 	if prunable > 0 {
 		noun := "gap"
 		if prunable > 1 {
 			noun = "gaps"
 		}
-		fmt.Printf("prunable: %d resolved %s — run %s\n", prunable, noun, bold(remedy.Prune(false)))
+		fmt.Fprintf(w, "prunable: %d resolved %s — run %s\n", prunable, noun, bold(remedy.Prune(false)))
 	}
 }

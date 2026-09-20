@@ -940,3 +940,33 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "aa3f2c6e9d081904264dfb8b3c01eb5d287eba4bf7956294de1cb7864bcbf8a0"
 }
+
+bindings {
+  requirement_id: "REQ-check-witness-selection"
+  content_hash: "007cab87ca1813a005b7598fd3de3d6d271fc48de893b42cbdeeccaf598b5ce0"
+  source_hash: "7d48df0f11599e722b362df332427355e9658d8898b77d0bd8cca6fa365c38d4"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckDigestRowsFoldThroughTheLadder"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "0d924af4185c140bde30f275eca35bc948181f53d346fea82c509bbae6a5364b"
+}
+
+bindings {
+  requirement_id: "REQ-check-witness-selection"
+  content_hash: "007cab87ca1813a005b7598fd3de3d6d271fc48de893b42cbdeeccaf598b5ce0"
+  source_hash: "7d48df0f11599e722b362df332427355e9658d8898b77d0bd8cca6fa365c38d4"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestCheckRenderMarksFoldedRedRows"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "82c2c0ac44e49c72611fe2c1271051abe5c736fd3338ecdd65313c14eb5c425c"
+}
+
+bindings {
+  requirement_id: "REQ-check-diagnostics"
+  content_hash: "b373e6343bd4553e52e640af2e3943d9d3c002932bb77da1ebb35ce4876d1beb"
+  source_hash: "14e23107b1b4298e6dceecf692f88701ee7b4614c42f0bc3c6e901705797b056"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/views.TestDiagnosticHeadingNamesEveryDisposition"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "25cb28cc85f4696e283f1a809d56a7f17550ec0bc4f0e900cfc56123fe16aa58"
+}

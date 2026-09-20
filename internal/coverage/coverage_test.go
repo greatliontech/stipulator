@@ -440,7 +440,7 @@ func TestGapStates(t *testing.T) {
 			t.Errorf("gap %s contradicted = %v, want %v", g.RequirementId, g.Contradicted, wantClass)
 		}
 	}
-	if tally := GapCounts(rep.Gaps, nil); tally.Contradicted != 1 || tally.Standing() != 7 || tally.Due != 2 || tally.Resolved != 5 {
+	if tally := GapCounts(rep.Gaps, nil); tally.Contradicted != 1 || tally.Open+tally.Due != 7 || tally.Due != 2 || tally.Resolved != 5 {
 		t.Errorf("tally = %+v, want 5 open + 2 due standing, 5 resolved, 1 contradicted (the fired contradicted gap resolved and left the class count)", tally)
 	}
 	if !rep.GatePasses() {
@@ -762,7 +762,7 @@ func TestContradictedGapResolvesOnlyByFire(t *testing.T) {
 			t.Errorf("gap %s resolved unfired", g.RequirementId)
 		}
 	}
-	if tally := GapCounts(rep.Gaps, nil); tally.Standing() != 4 || tally.Resolved != 2 || tally.Contradicted != 4 {
+	if tally := GapCounts(rep.Gaps, nil); tally.Open+tally.Due != 4 || tally.Resolved != 2 || tally.Contradicted != 4 {
 		t.Errorf("tally = %+v, want 4 standing, 2 resolved, 4 contradicted", tally)
 	}
 	// The wire tally is the same predicate over the wire rows, a
@@ -775,11 +775,8 @@ func TestContradictedGapResolvesOnlyByFire(t *testing.T) {
 	if tally := GapCountsWire(append(wire, dangling)); tally != GapCounts(rep.Gaps, nil) {
 		t.Errorf("wire tally = %+v, want the report tally %+v", tally, GapCounts(rep.Gaps, nil))
 	}
-	if got := GapCountsString(6, 4); got != "6 (4 contradicted)" {
-		t.Errorf("summary tally = %q", got)
-	}
-	if got := GapCountsString(6, 0); got != "6" {
-		t.Errorf("summary tally without the class = %q", got)
+	if got := (GapTally{Open: 6, Due: 3, Resolved: 1, Contradicted: 4}).Text(); got != "6 open, 3 due, 1 resolved (4 contradicted)" {
+		t.Errorf("tally text = %q", got)
 	}
 }
 
@@ -798,12 +795,12 @@ func TestGapCounts(t *testing.T) {
 		{RequirementId: "out", State: Resolved}, // out of a scoped keep
 	}
 	// Unscoped (keep == nil): every gap counts.
-	if tally := GapCounts(gaps, nil); tally.Standing() != 2 || tally.Resolved != 2 || tally.Contradicted != 0 {
+	if tally := GapCounts(gaps, nil); tally.Open+tally.Due != 2 || tally.Resolved != 2 || tally.Contradicted != 0 {
 		t.Fatalf("unscoped tally = %+v, want 2 standing, 2 resolved", tally)
 	}
 	// Scoped: "out" is excluded, so one resolved drops.
 	keep := map[string]bool{"a": true, "b": true, "c": true}
-	if tally := GapCounts(gaps, keep); tally.Standing() != 2 || tally.Resolved != 1 || tally.Contradicted != 0 {
+	if tally := GapCounts(gaps, keep); tally.Open+tally.Due != 2 || tally.Resolved != 1 || tally.Contradicted != 0 {
 		t.Fatalf("scoped tally = %+v, want 2 standing, 1 resolved", tally)
 	}
 }

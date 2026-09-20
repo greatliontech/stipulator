@@ -14,6 +14,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/remedy"
 	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/internal/views"
 	"github.com/greatliontech/stipulator/internal/wire"
 )
 
@@ -94,7 +95,7 @@ func renderCheck(stdout, stderr io.Writer, res *stipulatorv1.CheckResult) {
 			fmt.Fprintln(stderr, dim("freshness publication degraded: "+d))
 		}
 		for _, d := range ex.GetDiagnostics() {
-			fmt.Fprintf(stderr, "%s\n%s", red(diagnosticHeading(d)), d.GetOutput())
+			fmt.Fprintf(stderr, "%s\n%s", red(views.DiagnosticHeading(d)), d.GetOutput())
 			if d.GetTruncated() {
 				fmt.Fprintln(stderr, dim("(output truncated)"))
 			}
@@ -105,50 +106,53 @@ func renderCheck(stdout, stderr io.Writer, res *stipulatorv1.CheckResult) {
 		if outside := res.GetTestsOutsidePolicy(); outside > 0 {
 			fmt.Fprintln(stderr, dim(fmt.Sprintf("outside the witness-eligible selection: %d", outside)))
 		}
-		if p := res.GetWitnessSelectionProblem(); p != "" {
-			// Rendered red though it does not itself fail the verdict: with
-			// zero behavior bindings the tree can pass while the selection
-			// cannot witness anything - the line warns, the bindings fail.
-			fmt.Fprintln(stderr, red(p))
-		}
 		renderReasonHistogram(stderr, "re-executed", res.GetExecutedReasons())
 		renderUncacheableHistogram(stderr, res.GetUncacheableReasons())
 		if d := res.GetWitnessPublicationDegraded(); d != "" {
 			fmt.Fprintln(stderr, dim("freshness degraded: "+d))
 		}
 		for _, d := range res.GetWitnessDiagnostics() {
-			fmt.Fprintf(stderr, "%s\n%s", red(diagnosticHeading(d)), d.GetOutput())
+			fmt.Fprintf(stderr, "%s\n%s", red(views.DiagnosticHeading(d)), d.GetOutput())
 			if d.GetTruncated() {
 				fmt.Fprintln(stderr, dim("(output truncated)"))
 			}
 		}
 	}
+	if p := res.GetWitnessSelectionProblem(); p != "" {
+		// On every evidence form, red though it does not itself fail the
+		// verdict — with zero behavior bindings the tree can pass while
+		// the selection cannot witness anything: the cause stated once,
+		// the rows red solely on that boundary carrying the class below
+		// (REQ-check-witness-selection).
+		fmt.Fprintln(stderr, red(p))
+	}
 	for _, p := range res.GetVerify().GetProblems() {
 		fmt.Fprintln(stderr, red(p.GetPath()+": "+p.GetMessage()))
 	}
 	cov := res.GetCoverage()
-	for _, r := range cov.GetRequirements() {
-		if coverage.RedBucket(r.GetBucket()) {
-			reason := ""
-			if rs := r.GetReasons(); len(rs) > 0 {
-				reason = "  " + dim(rs[0])
-				if len(rs) > 1 {
-					reason += dim(fmt.Sprintf(" (+%d more)", len(rs)-1))
-				}
+	rows := coverage.RedRows(res)
+	// The human account is unbounded: every red row the one ladder
+	// classified prints, and a row restating a result-level cause (the
+	// witness-selection diagnostic, the scoped pass) carries that class
+	// on the row — the bounded projections fold such rows to a count
+	// behind the cause; here the cause line stands once above and the
+	// row names its class (REQ-check-witness-selection).
+	for _, r := range rows {
+		reason := ""
+		if len(r.Reasons) > 0 {
+			reason = "  " + dim(r.Reasons[0])
+			if len(r.Reasons) > 1 {
+				reason += dim(fmt.Sprintf(" (+%d more)", len(r.Reasons)-1))
 			}
-			fmt.Fprintf(stdout, "  %-9s %s%s\n", yellow(bucketWord(r.GetBucket())), r.GetId(), reason)
 		}
+		fmt.Fprintf(stdout, "  %-9s %s%s%s\n", yellow(r.Bucket), r.Id, redFoldMark(r.Fold), reason)
 	}
-	scopeBlocked := map[string]bool{}
-	if res.GetScopePartial() {
-		for _, r := range cov.GetRequirements() {
-			if r.GetScopeBlocked() {
-				scopeBlocked[r.GetId()] = true
-			}
-		}
+	folds := map[string]coverage.RedFold{}
+	for _, r := range rows {
+		folds[r.Id] = r.Fold
 	}
 	for _, v := range cov.GetViolations() {
-		if scopeBlocked[v] {
+		if folds[v] == coverage.RedScopeBlocked {
 			// Red solely on the scope boundary: deliberately not
 			// executed, excluded from the scoped verdict.
 			fmt.Fprintf(stderr, "%s\n", dim("scope-blocked: "+v+" was not executed on this scoped pass"))
@@ -168,30 +172,6 @@ func renderCheck(stdout, stderr io.Writer, res *stipulatorv1.CheckResult) {
 		fmt.Fprintln(stdout, green("check: pass"))
 	default:
 		fmt.Fprintln(stdout, red("check: fail"))
-	}
-}
-
-// diagnosticHeading names one failure diagnostic's unit and disposition.
-// A degraded execution is named distinctly from an assertion failure:
-// conflating them would leave an environment-induced failure and a real
-// regression indistinguishable.
-func diagnosticHeading(d *stipulatorv1.FailureDiagnostic) string {
-	subject := d.GetInvocation()
-	if p := d.GetPackage(); p != "" {
-		subject = p
-	}
-	if t := d.GetTest(); t != "" {
-		subject = d.GetPackage() + "." + t
-	}
-	switch d.GetDisposition() {
-	case stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_DEGRADED:
-		return "degraded: " + subject
-	case stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_BUILD_FAILED:
-		return "build failed: " + subject
-	case stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT:
-		return "timeout: " + subject
-	default:
-		return "failed: " + subject
 	}
 }
 
@@ -224,14 +204,14 @@ func renderReasonHistogram(stderr io.Writer, class string, reasons map[string]st
 	}
 }
 
-func bucketWord(b stipulatorv1.Bucket) string {
-	switch b {
-	case stipulatorv1.Bucket_BUCKET_STALE:
-		return "stale"
-	case stipulatorv1.Bucket_BUCKET_BROKEN:
-		return "broken"
-	case stipulatorv1.Bucket_BUCKET_PARTIAL:
-		return "partial"
+// redFoldMark names the class the one ladder assigned to a red row that
+// restates a result-level cause; empty for a red of its own.
+func redFoldMark(f coverage.RedFold) string {
+	switch f {
+	case coverage.RedPolicyBlocked:
+		return dim(" (policy-blocked)")
+	case coverage.RedScopeBlocked:
+		return dim(" (scope-blocked)")
 	}
-	return "uncovered"
+	return ""
 }
