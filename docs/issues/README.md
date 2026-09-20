@@ -6,9 +6,11 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[witness-verdict-one-body-classifier](witness-verdict-one-body-classifier.md)** — the classifier inspects a body three ways (the rich resolved-view pass, the other-view direct test, the helper walk) and folds the union beside the class switch; one per-view classifyBody with a fold over views. *Lands: cross-tool train chunk 226*
 - **[seeding-walk-unreached-routes](seeding-walk-unreached-routes.md)** — the transitive seeding walk stops at dependency helpers, function values, and interface dispatch, each a served-flake shape the spec states; gofresh's reachable closure would answer all three. *Lands: a field report of a served flake through one of these routes, or the next change to the seeding walk's callee resolution*
 - **[train-114-campaign-idle-window](train-114-campaign-idle-window.md)** — the runner-inspectability
-  folds' `--changed` campaign priced itself day-class (63 targets, 4,913 candidates); gate rode the
-  nineteen killed ephemeral probes; measured prefix committed, sweep resumes on a quiet host.
-  *Lands: the third re-audit band's close (chunk 264)*
+  folds' `--changed` campaign priced itself day-class; launched at the third re-audit band's close
+  and stopped 7h26m later with 148 of 11,867 candidates executed and nothing committed (~537h
+  projected) — the suite-class oracle cannot finish in an idle window; the nineteen killed
+  ephemeral probes stand as the gate's evidence.
+  *Lands: user decision — retire the sweep as a gate, or decompose the suite-class oracle first*
 - **[go-backend-load-path-pairs](go-backend-load-path-pairs.md)** — workspace double-parse under
   two error policies, the view-error/attribution wording split, the classifier's double-resolve.
   *Lands: cross-tool train chunk 226*

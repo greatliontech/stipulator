@@ -34,6 +34,15 @@ edited measures neither state. The sweep re-bases to the band's base
 ref when it runs; its committed prefix still serves for every symbol
 the band leaves untouched.
 
-Lands: the third re-audit band's close (cross-tool train chunk 264) — the parked campaign is
-launched detached on this host at that close (the idle-window condition fired 2026-09-06
-unhonoured; slotted at audit 263).
+Launched detached at the third re-audit band's close (2026-09-20T08:09) and
+stopped at stipulator chunk 271's open (2026-09-20, 7h26m later): 640
+targets selected, 423 skipped before exit, 148 of 11,867 candidates
+executed, 0 targets committed, the pace estimate ~537 hours remaining —
+the derived oracle of this delta is the whole suite class, so the sweep
+cannot finish in any idle window this host offers; the nineteen ephemeral
+probes stand as the gate's evidence. The same suite-class oracle question
+is parked in gomutant (own-face-gate-suite-decomposition).
+
+Lands: user decision — retire the sweep as a gate (the probes are the
+evidence, the record above the measurement), or decompose the suite-class
+oracle first (gomutant's parked question) and re-run it then.
