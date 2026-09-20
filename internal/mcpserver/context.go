@@ -11,6 +11,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/facts"
 	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/internal/verifyrun"
 	"github.com/greatliontech/stipulator/internal/wire"
 )
 
@@ -102,7 +103,7 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 	}
 	line := fmt.Sprintf("context: %d dossiers", len(out.GetDossiers()))
 	if n := len(out.GetProblems()); n > 0 {
-		line += fmt.Sprintf("; %d verification problems - dossier states may misreport, run verify", n)
+		line += "; " + verifyrun.MisreportCaveat(n, verifyrun.CaveatDossierStates)
 	}
 	return summarized(withStamps(digest(line, dossierRows), prog), out)
 }

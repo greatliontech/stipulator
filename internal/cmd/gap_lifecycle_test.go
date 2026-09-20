@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/stipulate"
 )
@@ -119,8 +120,15 @@ func TestGapLifecycleCLI(t *testing.T) {
 	// evaluation is witness-free - and names the dangling record beside
 	// the in-corpus rows. It combines with no write flag.
 	out = run(0, "gap", "--list")
-	if !strings.Contains(out, "dangling") || !strings.Contains(out, "REQ-gl-b") || !strings.Contains(out, " contradicted") {
-		t.Fatalf("list did not name the dangling record with its class:\n%s", out)
+	var row string
+	for _, l := range strings.Split(out, "\n") {
+		if strings.Contains(l, "REQ-gl-b") {
+			row = l
+			break
+		}
+	}
+	if !strings.HasPrefix(row, "dangling  REQ-gl-b") || !strings.Contains(row, " contradicted") {
+		t.Fatalf("list row does not name the dangling record with its class: %q\n%s", row, out)
 	}
 	// The dangling record is a verification problem — a stated caveat on
 	// the listing, never a refusal.
@@ -206,11 +214,30 @@ func TestGateRowNamesTheContradictedClass(t *testing.T) {
 func TestGapListLineSpellsTheDeclaredBits(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-list")
 	t.Setenv("NO_COLOR", "1")
-	line := gapListLine("open", coverage.Gap{RequirementId: "REQ-x", Condition: "manual: the work lands", Fired: true, Contradicted: true, StaleConsent: true, Reason: "why"})
-	if !strings.Contains(line, "REQ-x  manual: the work lands contradicted fired consent-stale") {
+	row := &stipulatorv1.GapReport{}
+	row.SetRequirementId("REQ-x")
+	row.SetState(stipulatorv1.GapState_GAP_STATE_OPEN)
+	row.SetCondition("manual: the work lands")
+	row.SetFired(true)
+	row.SetContradicted(true)
+	row.SetStaleConsent(true)
+	row.SetReason("why")
+	line := gapListLine(row)
+	if !strings.HasPrefix(line, "open      REQ-x  manual: the work lands contradicted fired consent-stale") {
 		t.Fatalf("row = %q", line)
 	}
-	if line := gapListLine("due", coverage.Gap{RequirementId: "REQ-y", Condition: "covered(REQ-x)", Reason: "why"}); strings.Contains(line, "contradicted") || strings.Contains(line, "fired") {
-		t.Fatalf("plain row carries bits: %q", line)
+	plain := &stipulatorv1.GapReport{}
+	plain.SetRequirementId("REQ-y")
+	plain.SetState(stipulatorv1.GapState_GAP_STATE_DUE)
+	plain.SetCondition("covered(REQ-x)")
+	plain.SetReason("why")
+	if line := gapListLine(plain); !strings.HasPrefix(line, "due       REQ-y") || strings.Contains(line, "contradicted") || strings.Contains(line, "fired") {
+		t.Fatalf("plain row carries bits or the wrong word: %q", line)
+	}
+	ghost := &stipulatorv1.GapReport{}
+	ghost.SetRequirementId("REQ-ghost")
+	ghost.SetState(stipulatorv1.GapState_GAP_STATE_DANGLING)
+	if line := gapListLine(ghost); !strings.HasPrefix(line, "dangling  REQ-ghost") {
+		t.Fatalf("dangling row word: %q", line)
 	}
 }

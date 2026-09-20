@@ -590,3 +590,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "6bee0fb2650ff995578362aaa4f046e0e9a33cc86764143959b29b1fc0dc7172"
 }
+
+bindings {
+  requirement_id: "REQ-change-remediation"
+  content_hash: "509c4f3f484e017c425eee358840c28d4fdbed740cd4dea26c07f04baf12620a"
+  source_hash: "1f3f241b13aca082e70c6ba987c907f2e0aa91b462a48d321fca4f277baf78eb"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/author.TestPinNotesNameTheirRemedies"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ab848b4de9bf3b512335f4d19f04852859c2f1af7d7361a421082ccff4f58f46"
+}

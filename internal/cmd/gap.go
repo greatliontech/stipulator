@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/records"
@@ -134,47 +135,31 @@ func gapListRun(ctx context.Context) error {
 		return nil
 	}
 	if len(rep.Problems) > 0 {
-		fmt.Fprintln(os.Stderr, yellow(fmt.Sprintf("%d verification problems - evaluated states may misreport; run %s", len(rep.Problems), remedy.Verify())))
+		fmt.Fprintln(os.Stderr, yellow(verifyrun.MisreportCaveat(len(rep.Problems), verifyrun.CaveatEvaluatedStates)))
 	}
-	known := records.HashesOf(spec)
-	for _, g := range cov.Gaps {
-		// The evaluation's row for an out-of-corpus record is a
-		// meaningless Open; the dangling classification below owns it.
-		if !known.Known(g.RequirementId) {
-			continue
-		}
-		fmt.Println(gapListLine(g.State.String(), g))
+	// The one row set both faces list — dangling rows first — and the
+	// one account of it (REQ-gap-list).
+	rows, dangling := verifyrun.GapRows(spec, store, cov)
+	for _, g := range rows {
+		fmt.Println(gapListLine(g))
 	}
-	// Dangling records are a triage fact, not a refusal: the list is
-	// where they are found (their repairs are retraction and the
-	// dangling prune).
-	for _, gf := range store.Gaps {
-		if known.Known(gf.Gap.GetRequirementId()) {
-			continue
-		}
-		manual := gf.Gap.GetLands().GetManual()
-		fmt.Println(gapListLine("dangling", coverage.Gap{
-			RequirementId: gf.Gap.GetRequirementId(), Reason: gf.Gap.GetReason(),
-			Condition: coverage.ConditionText(gf.Gap.GetLands()),
-			Fired:     manual.GetFired(), Contradicted: manual.GetContradicted(),
-		}))
-	}
+	fmt.Println(coverage.GapListLine(rows, dangling))
 	return nil
 }
 
-// gapListLine renders one list row: the state word, the requirement,
+// gapListLine renders one wire row: the state word, the requirement,
 // its condition with the declared bits in the one shared order, the
 // consent state, and the reason. A suspended excuse is a triage fact
 // on the record row itself: the requirement-side reason appears only
 // once the requirement is red (REQ-gap-consent).
-func gapListLine(state string, g coverage.Gap) string {
+func gapListLine(g *stipulatorv1.GapReport) string {
 	flags := ""
-	for _, flag := range records.ManualFlags(g.Contradicted, g.Fired) {
+	for _, flag := range records.ManualFlags(g.GetContradicted(), g.GetFired()) {
 		flags += " " + flag
 	}
 	consent := ""
-	if g.StaleConsent {
+	if g.GetStaleConsent() {
 		consent = " consent-stale"
 	}
-	return fmt.Sprintf("%-9s %s  %s%s%s  %s", state, g.RequirementId, g.Condition, flags, consent, dim(g.Reason))
+	return fmt.Sprintf("%-9s %s  %s%s%s  %s", coverage.GapStateWord(g.GetState()), g.GetRequirementId(), g.GetCondition(), flags, consent, dim(g.GetReason()))
 }

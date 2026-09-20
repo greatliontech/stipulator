@@ -315,7 +315,11 @@ accompany the listing as a stated caveat rather than a refusal: a
 misreported read is triage input, a deletion on one is not (contrast
 REQ-gap-resolved-pruned). The
 operation writes nothing — editing a gap record happens only through
-re-declaration (REQ-gap-verb).
+re-declaration (REQ-gap-verb). The listing's account, on both faces,
+names its row count, the lifecycle tally — open, due, and resolved,
+with the contradicted subset of the unresolved named beside them — and
+the dangling count apart; the dangling rows lead the listing, so a bounded list drops
+evaluated rows before the rows demanding repair.
 
 **REQ-gap-resolved-pruned** (behavior): The `prune` operation MUST delete
 resolved gap records — a resolved gap is satisfied, dead record weight.

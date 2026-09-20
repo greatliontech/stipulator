@@ -67,7 +67,7 @@ func TestPinCLINamesPreservedDifferingPins(t *testing.T) {
 	}
 
 	out := run("pin")
-	if !strings.Contains(out, "awaiting re-consent (pin --req): REQ-pc-a") {
+	if !strings.Contains(out, "awaiting re-consent — run stipulator pin --req REQ-pc-a") {
 		t.Fatalf("blanket pin conceals the preserved differing pin:\n%s", out)
 	}
 	after := read(".stipulator/bindings/b.textproto")
@@ -85,7 +85,7 @@ func TestPinCLINamesPreservedDifferingPins(t *testing.T) {
 	if strings.Contains(out, "all pins current") {
 		t.Fatalf("no-op beside a preserved differing pin claims quiescence:\n%s", out)
 	}
-	if !strings.Contains(out, "no pins backfilled") || !strings.Contains(out, "awaiting re-consent (pin --req): REQ-pc-a") {
+	if !strings.Contains(out, "no pins backfilled") || !strings.Contains(out, "awaiting re-consent — run stipulator pin --req REQ-pc-a") {
 		t.Fatalf("no-op beside a preserved differing pin misreported:\n%s", out)
 	}
 

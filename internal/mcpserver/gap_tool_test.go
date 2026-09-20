@@ -284,7 +284,7 @@ func TestGapToolListRowsStatesAndScope(t *testing.T) {
 	// Four contradicted on the line (two open, two due): the resolved
 	// row left the count and the dangling row counts in dangling alone;
 	// every count distinct, so no swap of two reproduces the string.
-	if text := toolText(t, res); !strings.Contains(text, "11 gap records: 5 open, 3 due, 1 resolved, 2 dangling, 4 contradicted") {
+	if text := toolText(t, res); !strings.Contains(text, "11 gap records: 5 open, 3 due, 1 resolved (4 of the unresolved contradicted), 2 dangling") {
 		t.Fatalf("list line does not carry the counts, the class apart: %q", text)
 	}
 	if len(writes) != 0 {

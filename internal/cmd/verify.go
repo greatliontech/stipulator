@@ -196,9 +196,5 @@ func clauseColumn(r verify.BindingResult) string {
 	if r.Clause == nil {
 		return ""
 	}
-	out := fmt.Sprintf(" clause %d", r.Clause.GetOrdinal())
-	if r.Clause.GetLabel() != "" {
-		out += " `" + r.Clause.GetLabel() + "`"
-	}
-	return out
+	return " " + records.ClauseHead(r.Clause)
 }

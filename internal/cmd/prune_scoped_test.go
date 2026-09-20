@@ -132,6 +132,9 @@ func TestPruneScopedWitnessEvaluationAndDeletionOnlyFastPath(t *testing.T) {
 	if !strings.Contains(out, "resolved  REQ-pr-a  covered(REQ-pr-b)") {
 		t.Fatalf("list row missing the evaluated state and condition:\n%s", out)
 	}
+	if !strings.Contains(out, "1 gap records: 0 open, 0 due, 1 resolved (0 of the unresolved contradicted), 0 dangling") {
+		t.Fatalf("list lacks the one account line:\n%s", out)
+	}
 
 	out = run(0, "prune")
 	if !strings.Contains(out, "scoped to 2 gapped requirements") {

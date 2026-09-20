@@ -10,7 +10,6 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/coverage"
-	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verifyrun"
 )
@@ -142,42 +141,9 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 		return projected(stampedResult(textOnly("no gap records"), prog), gapOut{writeOut: writeOut{Notes: []string{"no gap records"}}}.proto())
 	}
-	known := records.HashesOf(spec)
-	dangling := 0
-	var reports []*stipulatorv1.GapReport
-	addRow := func(m *stipulatorv1.GapReport) {
-		if m.GetState() == stipulatorv1.GapState_GAP_STATE_DANGLING {
-			dangling++
-		}
-		reports = append(reports, m)
-	}
-	// Dangling records are a triage fact, not a refusal: the list is
-	// where they are found (their repairs are retraction and the
-	// dangling prune). They lead the rows — the response cap keeps the
-	// head, and a capped list must drop ordinary evaluated rows before
-	// it drops the rows demanding repair.
-	for _, gf := range store.Gaps {
-		if known.Known(gf.Gap.GetRequirementId()) {
-			continue
-		}
-		m := &stipulatorv1.GapReport{}
-		m.SetPath(gf.Path)
-		m.SetRequirementId(gf.Gap.GetRequirementId())
-		m.SetState(stipulatorv1.GapState_GAP_STATE_DANGLING)
-		m.SetReason(gf.Gap.GetReason())
-		m.SetCondition(coverage.ConditionText(gf.Gap.GetLands()))
-		m.SetFired(gf.Gap.GetLands().GetManual().GetFired())
-		m.SetContradicted(gf.Gap.GetLands().GetManual().GetContradicted())
-		addRow(m)
-	}
-	for _, g := range cov.Proto().GetGaps() {
-		// The evaluation's row for an out-of-corpus record is a
-		// meaningless Open; the dangling classification above owns it.
-		if !known.Known(g.GetRequirementId()) {
-			continue
-		}
-		addRow(g)
-	}
+	// The one row set both faces list — dangling rows first, so the
+	// response cap keeps the rows demanding repair (REQ-gap-list).
+	reports, dangling := verifyrun.GapRows(spec, store, cov)
 	out := gapOut{Gaps: reports}
 	const gapRowCap = 50
 	if len(out.Gaps) > gapRowCap {
@@ -185,15 +151,11 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 		out.Gaps = out.Gaps[:gapRowCap]
 	}
 	if n := len(rep.Problems); n > 0 {
-		out.Notes = []string{fmt.Sprintf("%d verification problems - evaluated states may misreport; run verify", n)}
+		out.Notes = []string{verifyrun.MisreportCaveat(n, verifyrun.CaveatEvaluatedStates)}
 	}
-	// Every count on the line comes from the one shared tally, rows
-	// capped or not, the class named apart over the unresolved
-	// in-corpus rows; a dangling row is outside the lifecycle and counts
-	// in dangling alone (REQ-gap-list).
-	tally := coverage.GapCountsWire(reports)
-	line := fmt.Sprintf("%d gap records: %d open, %d due, %d resolved, %d dangling, %d contradicted",
-		len(reports), tally.Open, tally.Due, tally.Resolved, dangling, tally.Contradicted)
+	// The one account of the listing, rows capped or not
+	// (REQ-gap-list).
+	line := coverage.GapListLine(reports, dangling)
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	return projected(stampedResult(textOnly(line), prog), out.proto())
 }

@@ -1,6 +1,7 @@
 package coverage
 
 import (
+	"fmt"
 	"sort"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -32,6 +33,16 @@ func (r *Report) Proto() *stipulatorv1.CoverageReport {
 	}
 	out.SetDanglingPointers(dangling)
 
+	out.SetGaps(r.GapsProto())
+	out.SetViolations(r.Violations)
+	out.SetGatePasses(r.GatePasses())
+	return out
+}
+
+// GapsProto renders the report's evaluated gap rows as their wire
+// messages — the rows a listing reads without materializing the whole
+// report.
+func (r *Report) GapsProto() []*stipulatorv1.GapReport {
 	var gaps []*stipulatorv1.GapReport
 	for _, g := range r.Gaps {
 		m := &stipulatorv1.GapReport{}
@@ -45,10 +56,7 @@ func (r *Report) Proto() *stipulatorv1.CoverageReport {
 		m.SetStaleConsent(g.StaleConsent)
 		gaps = append(gaps, m)
 	}
-	out.SetGaps(gaps)
-	out.SetViolations(r.Violations)
-	out.SetGatePasses(r.GatePasses())
-	return out
+	return gaps
 }
 
 var bucketProto = map[Bucket]stipulatorv1.Bucket{
@@ -72,6 +80,29 @@ func BucketProto(b Bucket) stipulatorv1.Bucket { return bucketProto[b] }
 
 // GapStateProto maps a gap state to its wire enum, for report composers.
 func GapStateProto(s GapState) stipulatorv1.GapState { return gapProto[s] }
+
+// GapStateWord is the one human spelling of a wire gap state: the
+// lifecycle states through GapState.String, the dangling class its own
+// word — human renderings print the lowercase words (REQ-gap-list).
+func GapStateWord(s stipulatorv1.GapState) string {
+	if s == stipulatorv1.GapState_GAP_STATE_DANGLING {
+		return "dangling"
+	}
+	for k, v := range gapProto {
+		if v == s {
+			return k.String()
+		}
+	}
+	return Open.String()
+}
+
+// GapListLine is the one account of a gap listing on both faces: the
+// row count, the lifecycle tally over the evaluated rows, and the
+// dangling rows counted apart — outside the lifecycle, never among the
+// contradicted (REQ-gap-list).
+func GapListLine(rows []*stipulatorv1.GapReport, dangling int) string {
+	return fmt.Sprintf("%d gap records: %s, %d dangling", len(rows), GapCountsWire(rows).Text(), dangling)
+}
 
 // RedBucket is Bucket.Red over the wire enum: the same membership for
 // composers and renderers that read the report rather than the

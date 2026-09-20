@@ -775,7 +775,7 @@ func TestContradictedGapResolvesOnlyByFire(t *testing.T) {
 	if tally := GapCountsWire(append(wire, dangling)); tally != GapCounts(rep.Gaps, nil) {
 		t.Errorf("wire tally = %+v, want the report tally %+v", tally, GapCounts(rep.Gaps, nil))
 	}
-	if got := (GapTally{Open: 6, Due: 3, Resolved: 1, Contradicted: 4}).Text(); got != "6 open, 3 due, 1 resolved (4 contradicted)" {
+	if got := (GapTally{Open: 6, Due: 3, Resolved: 1, Contradicted: 4}).Text(); got != "6 open, 3 due, 1 resolved (4 of the unresolved contradicted)" {
 		t.Errorf("tally text = %q", got)
 	}
 }

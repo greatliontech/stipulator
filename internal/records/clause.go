@@ -145,14 +145,22 @@ func ResolveClause(req *stipulatorv1.Requirement, b *stipulatorv1.Binding) (*sti
 	return nil, true
 }
 
-// ClauseHeading renders a clause for reports: "clause 3 `label`" or
-// "clause 3", followed by a bounded prefix of its text.
-func ClauseHeading(c *stipulatorv1.Clause) string {
+// ClauseHead is the one spelling of a RESOLVED clause's name: "clause 3
+// `label`" or "clause 3" — every report row and heading that names a
+// clause the corpus resolved reads it (a binding's own unresolved
+// spelling is ClauseName's).
+func ClauseHead(c *stipulatorv1.Clause) string {
 	head := fmt.Sprintf("clause %d", c.GetOrdinal())
 	if c.GetLabel() != "" {
 		head += " `" + c.GetLabel() + "`"
 	}
-	return head + " (" + textPrefix(c.GetText(), 60) + ")"
+	return head
+}
+
+// ClauseHeading renders a clause for reports: its head followed by a
+// bounded prefix of its text.
+func ClauseHeading(c *stipulatorv1.Clause) string {
+	return ClauseHead(c) + " (" + textPrefix(c.GetText(), 60) + ")"
 }
 
 // ClausesOffered renders what a requirement offers a clause claim: its

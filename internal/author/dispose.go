@@ -510,3 +510,18 @@ func JudgeEditorial(fsys fs.FS, ids []string) (*stipulatorv1.Spec, error) {
 	}
 	return spec, nil
 }
+
+// ShapeMovedNote is the one account, on both faces, of a requirement
+// whose bound symbol's shape moved under the ids form of pin: that form
+// re-consents clause text only, and the blanket pin — named in the one
+// executable spelling — re-pins shapes (REQ-change-remediation).
+func ShapeMovedNote(symbols []string) string {
+	return "shape of " + strings.Join(symbols, ", ") + " moved — the ids form re-consents clause text only: blanket " + remedy.Pin() + " re-pins shapes"
+}
+
+// AwaitingReconsent names the requirements a blanket pin left awaiting
+// editorial re-consent, with the operation that gives it, on both faces
+// (REQ-change-remediation).
+func AwaitingReconsent(ids []string) string {
+	return "awaiting re-consent — run " + remedy.Pin(ids...)
+}

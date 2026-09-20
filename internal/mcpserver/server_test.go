@@ -909,7 +909,7 @@ func TestPinToolReportsMovedShapes(t *testing.T) {
 		t.Fatalf("pin ids: %v %v", err, res)
 	}
 	text := toolPayload(t, res)
-	if !strings.Contains(text, "shape of example.com/p.F moved") || !strings.Contains(text, "blanket pin (no ids) re-pins shapes") {
+	if !strings.Contains(text, "shape of example.com/p.F moved") || !strings.Contains(text, "blanket stipulator pin re-pins shapes") {
 		t.Fatalf("ids form conceals the shape mismatch it will not fix: %s", text)
 	}
 	if content := writes[".stipulator/bindings/shape.textproto"]; !strings.Contains(string(content), strings.Repeat("a", 64)) {

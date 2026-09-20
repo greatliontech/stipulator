@@ -133,7 +133,7 @@ func TestGateRowsAreTheRedSetAndAttested(t *testing.T) {
 			t.Errorf("%s listed:\n%s", id, out)
 		}
 	}
-	if !strings.Contains(out, "gaps: 3 open, 2 due, 1 resolved (4 contradicted)") {
+	if !strings.Contains(out, "gaps: 3 open, 2 due, 1 resolved (4 of the unresolved contradicted)") {
 		t.Errorf("gate line lacks the one tally grammar:\n%s", out)
 	}
 }

@@ -97,10 +97,10 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 			syms := mismatched[id]
 			switch {
 			case repinned[id] > 0 && len(syms) > 0:
-				out.Notes = append(out.Notes, id+": shape of "+strings.Join(syms, ", ")+" moved — ids re-consent clause text only, a blanket pin (no ids) re-pins shapes")
+				out.Notes = append(out.Notes, id+": "+author.ShapeMovedNote(syms))
 			case repinned[id] > 0:
 			case len(syms) > 0:
-				out.Notes = append(out.Notes, id+": "+noOp[id]+" — shape of "+strings.Join(syms, ", ")+" moved, and ids re-consent clause text only: a blanket pin (no ids) re-pins shapes")
+				out.Notes = append(out.Notes, id+": "+noOp[id]+" — "+author.ShapeMovedNote(syms))
 			default:
 				out.Notes = append(out.Notes, id+": "+noOp[id])
 			}
@@ -159,7 +159,7 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 		out.Notes = append(out.Notes, "rehashed ("+records.RehashNote+"): "+strings.Join(rehashed, ", "))
 	}
 	if len(preserved) > 0 {
-		out.Notes = append(out.Notes, "awaiting re-consent (pass ids): "+strings.Join(preserved, ", "))
+		out.Notes = append(out.Notes, author.AwaitingReconsent(preserved))
 	}
 	slices.Sort(out.Wrote)
 	return projected(out.result(), out.proto())

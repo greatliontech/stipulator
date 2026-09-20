@@ -2400,3 +2400,23 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "e7dfa57ddc8eb57464455efffbd07fcaec2ce1a97d7d29c37e2bc7c83dc563c7"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-clause-claim"
+  content_hash: "4fddcfc83c3c08b0e4869c06387c2ce2d6c0acb083655a1b4b2fcaacf7d71ef3"
+  source_hash: "3bb2b0c37ca4f9e83eba69b37d6ca2d5b7ba6f2374abbfd565e4369e324c4e75"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/records.TestClauseHeadIsTheHeadingsHead"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a2d92d73050e82e6713426a15ceb8c6842144e7b7af507caf1b03d11deb6e9df"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-clause-claim"
+  content_hash: "4fddcfc83c3c08b0e4869c06387c2ce2d6c0acb083655a1b4b2fcaacf7d71ef3"
+  source_hash: "3bb2b0c37ca4f9e83eba69b37d6ca2d5b7ba6f2374abbfd565e4369e324c4e75"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestVerifyRowClauseColumnIsTheClauseHead"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a82a4320c5f2a5e0d80a9eea58099411e5b9608176f26078e9b479cb32ef9087"
+}

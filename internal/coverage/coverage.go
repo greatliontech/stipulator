@@ -217,13 +217,14 @@ type GapTally struct {
 	Open, Due, Resolved, Contradicted int
 }
 
-// Text is the one human grammar of the tally: the three states named,
-// then the contradicted subset of the unresolved rows in a parenthesis
-// — a subset, never a fourth peer count — so a known debt with a
-// trigger reads apart from a coverage hole on every line that counts
-// gaps (REQ-gap-lifecycle).
+// Text is the one human grammar of the tally: the three states, then
+// the contradicted subset naming its own scope — "of the unresolved",
+// open and due together — so it can bind to neither neighbouring count
+// alone and never reads as a fourth peer; a known debt with a trigger
+// reads apart from a coverage hole on every line that counts gaps
+// (REQ-gap-lifecycle, REQ-gap-list).
 func (t GapTally) Text() string {
-	return fmt.Sprintf("%d open, %d due, %d resolved (%d contradicted)", t.Open, t.Due, t.Resolved, t.Contradicted)
+	return fmt.Sprintf("%d open, %d due, %d resolved (%d of the unresolved contradicted)", t.Open, t.Due, t.Resolved, t.Contradicted)
 }
 
 // Add tallies one row from its three facts.

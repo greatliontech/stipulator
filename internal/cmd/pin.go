@@ -55,7 +55,7 @@ func pinCmd() *cobra.Command {
 					ups, consented, err := author.EditorialOver(spec, os.DirFS(chdir), id)
 					if errors.Is(err, author.ErrNothingStale) {
 						if syms := mismatched[id]; len(syms) > 0 {
-							fmt.Printf("%s: %s — shape of %s moved, and the ids form re-consents clause text only: blanket %s re-pins shapes\n", id, author.NoOpNote(err), strings.Join(syms, ", "), remedy.Pin())
+							fmt.Printf("%s: %s — %s\n", id, author.NoOpNote(err), author.ShapeMovedNote(syms))
 						} else {
 							fmt.Printf("%s: %s\n", id, author.NoOpNote(err))
 						}
@@ -68,7 +68,7 @@ func pinCmd() *cobra.Command {
 						return err
 					}
 					if syms := mismatched[id]; len(syms) > 0 {
-						fmt.Printf("%s: %d file(s) re-pinned; shape of %s moved — blanket %s re-pins shapes\n", id, len(ups), strings.Join(syms, ", "), remedy.Pin())
+						fmt.Printf("%s: %d file(s) re-pinned; %s\n", id, len(ups), author.ShapeMovedNote(syms))
 					} else {
 						fmt.Printf("%s: %d file(s) re-pinned\n", id, len(ups))
 					}
@@ -128,7 +128,7 @@ func pinCmd() *cobra.Command {
 				fmt.Printf("rehashed (%s): %s\n", records.RehashNote, strings.Join(rehashed, ", "))
 			}
 			if len(preserved) > 0 {
-				fmt.Printf("awaiting re-consent (pin --req): %s\n", strings.Join(preserved, ", "))
+				fmt.Println(author.AwaitingReconsent(preserved))
 			}
 			return nil
 		},

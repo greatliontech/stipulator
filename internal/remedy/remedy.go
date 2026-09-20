@@ -136,7 +136,7 @@ func PolicyInit() string { return compose(Tool, VerbPolicy, VerbInit) }
 // missing here (every exported function of this package is a
 // composer; helpers stay unexported).
 var composers = map[string][]func() string{
-	"Pin":               {func() string { return Pin("REQ-x") }, func() string { return Pin() }},
+	"Pin":               {func() string { return Pin("REQ-x") }, func() string { return Pin("REQ-x", "REQ-y") }, func() string { return Pin() }},
 	"Unbind":            {func() string { return Unbind("REQ-x", "example.com/p.S", "alpha") }, func() string { return Unbind("REQ-x", "", "") }},
 	"Bind":              {func() string { return Bind("REQ-x", "tests", "example.com/p.T") }},
 	"Retire":            {func() string { return Retire("REQ-x") }},

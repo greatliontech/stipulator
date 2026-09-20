@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -83,8 +84,39 @@ func TestCommandsRefuseHygieneBeforeAnyWitness(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, ".stipulator/bindings/ghost.textproto"), []byte(files[".stipulator/bindings/ghost.textproto"]), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := gapListRun(context.Background()); err != nil {
-		t.Fatalf("gap --list: %v", err)
+	// A dangling contradicted record beside the in-corpus one: the
+	// listing leads with it, names its class, and counts it apart.
+	if err := os.WriteFile(filepath.Join(dir, ".stipulator/gaps/ghost.textproto"), []byte("requirement_id: \"REQ-fix-ghost\"\nreason: \"gone\"\nlands { manual { condition: \"never\" contradicted: true } }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	read, write, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	priorStdout := os.Stdout
+	os.Stdout = write
+	t.Cleanup(func() { os.Stdout = priorStdout })
+	drained := make(chan []byte, 1)
+	go func() {
+		b, _ := io.ReadAll(read)
+		drained <- b
+	}()
+	listErr := gapListRun(context.Background())
+	if err := write.Close(); err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = priorStdout
+	listed := string(<-drained)
+	if listErr != nil {
+		t.Fatalf("gap --list: %v", listErr)
+	}
+	// The listing is the one row set — the dangling row first, with its
+	// class — and the one account line, in process (REQ-gap-list).
+	lines := strings.Split(listed, "\n")
+	if len(lines) < 3 || !strings.HasPrefix(lines[0], "dangling  REQ-fix-ghost  manual: never contradicted") ||
+		!strings.HasPrefix(lines[1], "open      REQ-fix-may  manual: later") ||
+		lines[2] != "2 gap records: 1 open, 0 due, 0 resolved (0 of the unresolved contradicted), 1 dangling" {
+		t.Fatalf("gap --list output is not the one listing:\n%s", listed)
 	}
 }
 
