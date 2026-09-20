@@ -23,5 +23,5 @@ once at the diagnostic-construction boundary (`SetOutput` call sites),
 or move the fields to `bytes`. The mcpserver `truncate` helper's string
 cut is the same class on the response-digest side.
 
-Lands: first field-observed marshal failure on a diagnostic or check
-result, or with the next executor-diagnostics change set.
+Lands: cross-tool train chunk 249 (its executor-diagnostics trigger fired at 223.B3's
+runResidue; slotted at audit 263).

@@ -13,4 +13,4 @@ that consumes the release carrying the salvage-capable form (gofresh
 docs/issues/gotool-run-discards-the-answer-a-wait-delay-leaves.md);
 the memo stays stipulator's, wrapping `Runner.SampleGoVersion`.
 
-Lands: stipulator's next gofresh bump past the release carrying gotool.Run's answer beside exec.ErrWaitDelay
+Lands: cross-tool train chunk 272 (the bump behind gofresh 265, which carries the sampler).

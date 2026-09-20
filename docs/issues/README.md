@@ -8,14 +8,14 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[train-114-campaign-idle-window](train-114-campaign-idle-window.md)** — the runner-inspectability
   folds' `--changed` campaign priced itself day-class (63 targets, 4,913 candidates); gate rode the
   nineteen killed ephemeral probes; measured prefix committed, sweep resumes on a quiet host.
-  *Lands: first idle window with no concurrent campaign after cross-tool train chunk 145 closes.*
+  *Lands: the third re-audit band's close (chunk 264)*
 - **[go-backend-load-path-pairs](go-backend-load-path-pairs.md)** — workspace double-parse under
   two error policies, the view-error/attribution wording split, the classifier's double-resolve.
-  *Lands: with the next change set touching the Go backend's package load path.*
+  *Lands: cross-tool train chunk 226*
 - **[process-output-utf8-marshal](process-output-utf8-marshal.md)** — raw process output (bytes,
   not text) flows into edition-2023 proto string fields; one invalid byte makes the check result
   unmarshallable. Cut-point half fixed; ingest-wide sanitization needs a design choice.
-  *Lands: first field-observed marshal failure, or with the next executor-diagnostics change set.*
+  *Lands: cross-tool train chunk 249*
 - **[proto-backend](proto-backend.md)** — descriptor-level verification via protocompile;
   spec exists, five requirements gapped. *Lands: capability charter (gofresh docs/plans/capability-charters.md) — activates when a corpus needs wire evidence shape pins and Go witnesses cannot cover.*
 - **[out-of-process-backends](out-of-process-backends.md)** — trusted backend surfaces can move
@@ -44,10 +44,10 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 - **[resolver-child-kill-orphans-owned-groups](resolver-child-kill-orphans-owned-groups.md)** — the served resolver child, killed outright by its client, would leave a group-isolated spawn alive — none reachable at HEAD (REQ-go-owned-processes). *Lands: a resolver-child request path first spawning through commandContext*
 - **[deadline-roster-head-unbounded](deadline-roster-head-unbounded.md)** — the budget diagnostic's roster head has no bound of its own below the cap; a roster that large starves the residue. *Lands: a field report of a deadline diagnostic whose roster displaced its residue*
 - **[undecodable-manifest-records-dropped-silently](undecodable-manifest-records-dropped-silently.md)** — a record whose manifest fails the load's shape judgment is absent with no re-execution reason, where the serving rounds would let gofresh attribute it. *Lands: cross-tool train chunk 249*
-- **[reviewed-row-sets-one-pattern](reviewed-row-sets-one-pattern.md)** — exclusions, vouches, and scratch namespaces each spell validate → canonicalize → key → record → gate in their own words; one row-set shape would make the next set structurally complete. *Lands: cross-tool train chunk 249*
-- **[go-version-sampler-outside-gotool](go-version-sampler-outside-gotool.md)** — the GOVERSION sampler's wait-delay salvage has no home in gotool.Runner, so the sampler stays its own spawn until gotool.Run keeps the answer beside exec.ErrWaitDelay. *Lands: stipulator's next gofresh bump past the release carrying gotool.Run's answer beside exec.ErrWaitDelay*
-- **[effective-go-env-sample-outside-gotool](effective-go-env-sample-outside-gotool.md)** — the normalization's `go env` sample runs through the owned boundary beside gotool's snapshot, which has no boundary hook. *Lands: stipulator's next gofresh bump past the release carrying gotool.Runner.TakeEnvSnapshot*
-- **[check-pass-shares-the-verification-ladder](check-pass-shares-the-verification-ladder.md)** — the check pass runs the capture → symbols → served-backend ladder in its own words beside the verification core every other judging verb reads. *Lands: user decision*
+- **[reviewed-row-sets-one-pattern](reviewed-row-sets-one-pattern.md)** — exclusions, vouches, and scratch namespaces each spell validate → canonicalize → key → record → gate in their own words; one row-set shape would make the next set structurally complete. *Lands: cross-tool train chunk 226*
+- **[go-version-sampler-outside-gotool](go-version-sampler-outside-gotool.md)** — the GOVERSION sampler's wait-delay salvage has no home in gotool.Runner, so the sampler stays its own spawn until gotool.Run keeps the answer beside exec.ErrWaitDelay. *Lands: cross-tool train chunk 272*
+- **[effective-go-env-sample-outside-gotool](effective-go-env-sample-outside-gotool.md)** — the normalization's `go env` sample runs through the owned boundary beside gotool's snapshot, which has no boundary hook. *Lands: cross-tool train chunk 272*
+- **[check-pass-shares-the-verification-ladder](check-pass-shares-the-verification-ladder.md)** — the check pass runs the capture → symbols → served-backend ladder in its own words beside the verification core every other judging verb reads. *Lands: cross-tool train chunk 249*
 - **[core-proto-io-resolver-protocol](core-proto-io-resolver-protocol.md)** — is the resolver child's JSON-lines exchange within REQ-core-proto-io as it stands, or should it be a proto message on the wire. *Lands: user decision*
 - **[blanket-purity-assertion-widening](blanket-purity-assertion-widening.md)** — the policy's blanket purity assertion stated at 222 widens what the spec sanctions as servable; for the user's audit. *Lands: user decision*
 - **[gap-excuse-judges-the-winning-bucket-only](gap-excuse-judges-the-winning-bucket-only.md)** — the excuse walk judges a row's winning bucket alone, so a gap excusing broken drops a row whose stale-class red stands undeclared; per-row class sets or the winning class is a semantic call. *Lands: user decision*

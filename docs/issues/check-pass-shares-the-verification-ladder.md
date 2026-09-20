@@ -13,5 +13,5 @@ identically for every judging verb. Invariants preserved: check's
 scoped evidence class and its result message; the served backend
 opened once per pass.
 
-Lands: user decision — check's pass carries its own scoped-evidence
-semantics, so the fold is a design the user schedules.
+Lands: cross-tool train chunk 249 (slotted at audit 263 — a derivable design named its own
+invariants; verifyrun.Run returns the triple check consumes).

@@ -34,7 +34,6 @@ edited measures neither state. The sweep re-bases to the band's base
 ref when it runs; its committed prefix still serves for every symbol
 the band leaves untouched.
 
-Lands: first idle window on this host with no concurrent campaign
-(machine quiet, load nominal) after cross-tool train chunk 145 closes,
-run as `gomutant run --changed <the ref chunk 141 opened on>` with the
-standing vouches.
+Lands: the third re-audit band's close (cross-tool train chunk 264) — the parked campaign is
+launched detached on this host at that close (the idle-window condition fired 2026-09-06
+unhonoured; slotted at audit 263).

@@ -13,4 +13,5 @@ that consumes that release: `effectiveGoEnv` then reads
 `Runner{Prepare: configureCommandCancellation}.TakeEnvSnapshot` and the
 nine-line parse goes.
 
-Lands: stipulator's next gofresh bump past the release carrying gotool.Runner.TakeEnvSnapshot
+Lands: cross-tool train chunk 272 (the bump behind gofresh 265, which carries the multi-key
+read and the self-taking snapshot).

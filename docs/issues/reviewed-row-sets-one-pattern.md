@@ -22,4 +22,5 @@ every row reviewed at acceptance; canonical order and deduplication;
 the key partition without re-addressing; serving only while each row
 is still declared.
 
-Lands: cross-tool train chunk 249
+Lands: cross-tool train chunk 226 (policy row-set validation is 226's subsystem; moved from
+249 at audit 263).

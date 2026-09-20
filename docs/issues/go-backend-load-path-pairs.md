@@ -18,6 +18,5 @@ once per package and consumed by every reader would collapse the
 three; REQ-go-load-attribution's stated states are the invariant to
 preserve.
 
-Lands: with the next change set touching the Go backend's package
-load path (`workspace.go`, `depattribution.go`, or the view-error
-attribution).
+Lands: cross-tool train chunk 226 (the go.work readers it names fold there; slotted at audit
+263).
