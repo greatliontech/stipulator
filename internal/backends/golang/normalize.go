@@ -6,7 +6,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -193,13 +192,13 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		env = dropEnv(env, name)
 	}
 	for _, e := range cfg.GetEnvironment() {
-		env = setEnv(env, e[:strings.IndexByte(e, '=')], e[strings.IndexByte(e, '=')+1:])
+		env = gotool.SetEnv(env, e[:strings.IndexByte(e, '=')], e[strings.IndexByte(e, '=')+1:])
 	}
 	// The driver pin is the curated environment's last word: a declared
 	// override or denial spelled under another case reaches the same
 	// variable on a case-folding platform, and no declaration may
 	// reopen the driver (REQ-go-owned-processes).
-	env = setEnv(env, "GOPACKAGESDRIVER", "off")
+	env = gotool.SetEnv(env, "GOPACKAGESDRIVER", "off")
 
 	n := &NormalizedInvocation{
 		Name:              inv.GetName(),
@@ -263,32 +262,32 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		if workAbs, err := filepath.Abs(work); err == nil {
 			work = workAbs
 		}
-		env = setEnv(env, "GOWORK", work)
+		env = gotool.SetEnv(env, "GOWORK", work)
 	} else {
-		env = setEnv(env, "GOWORK", "off")
+		env = gotool.SetEnv(env, "GOWORK", "off")
 	}
 
 	// Explicit platform and build pins land in the child environment
 	// before the effective query, so the query answers for the pinned
 	// configuration.
 	if cfg.HasToolchain() {
-		env = setEnv(env, "GOTOOLCHAIN", cfg.GetToolchain())
+		env = gotool.SetEnv(env, "GOTOOLCHAIN", cfg.GetToolchain())
 	}
 	if cfg.HasGoos() {
-		env = setEnv(env, "GOOS", cfg.GetGoos())
+		env = gotool.SetEnv(env, "GOOS", cfg.GetGoos())
 	}
 	if cfg.HasGoarch() {
-		env = setEnv(env, "GOARCH", cfg.GetGoarch())
+		env = gotool.SetEnv(env, "GOARCH", cfg.GetGoarch())
 	}
 	if cfg.HasCgoEnabled() {
 		v := "0"
 		if cfg.GetCgoEnabled() {
 			v = "1"
 		}
-		env = setEnv(env, "CGO_ENABLED", v)
+		env = gotool.SetEnv(env, "CGO_ENABLED", v)
 	}
 	if cfg.HasGoflags() {
-		env = setEnv(env, "GOFLAGS", cfg.GetGoflags())
+		env = gotool.SetEnv(env, "GOFLAGS", cfg.GetGoflags())
 	}
 
 	// Every child of this invocation — the load-time query included —
@@ -316,25 +315,25 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	// Pin every effective value into the child environment: later spawns
 	// run under the values resolved at load even if the host environment
 	// or go env config moves in between.
-	env = setEnv(env, "GOOS", goos)
-	env = setEnv(env, "GOARCH", goarch)
-	env = setEnv(env, "CGO_ENABLED", cgo)
-	env = setEnv(env, "GOFLAGS", goflags)
+	env = gotool.SetEnv(env, "GOOS", goos)
+	env = gotool.SetEnv(env, "GOARCH", goarch)
+	env = gotool.SetEnv(env, "CGO_ENABLED", cgo)
+	env = gotool.SetEnv(env, "GOFLAGS", goflags)
 	// The persistent go env config file is a second ambient source the
 	// frozen environment cannot freeze: a go env -w between load and spawn
 	// would move the toolchain or experiments under a pinned record. GOENV
 	// off makes the pinned environment the only source; the resolved
 	// toolchain and experiment set are pinned explicitly. A development
 	// toolchain version is not a valid GOTOOLCHAIN value, so it pins local.
-	env = setEnv(env, "GOENV", "off")
+	env = gotool.SetEnv(env, "GOENV", "off")
 	if inv.GetGo().GetToolchain() == "" {
 		toolchainPin := version
 		if !strings.HasPrefix(version, "go") {
 			toolchainPin = "local"
 		}
-		env = setEnv(env, "GOTOOLCHAIN", toolchainPin)
+		env = gotool.SetEnv(env, "GOTOOLCHAIN", toolchainPin)
 	}
-	env = setEnv(env, "GOEXPERIMENT", goexperiment)
+	env = gotool.SetEnv(env, "GOEXPERIMENT", goexperiment)
 	// The module-cache and build-cache roots are pinned into the frozen
 	// environment like every other config-file-sourced value: the query
 	// ran with GOENV active, the spawn runs with GOENV=off, and an
@@ -343,10 +342,10 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	// pin already fixes the executing toolchain, and forcing GOROOT
 	// interacts with toolchain re-exec.
 	if gomodcache != "" {
-		env = setEnv(env, "GOMODCACHE", gomodcache)
+		env = gotool.SetEnv(env, "GOMODCACHE", gomodcache)
 	}
 	if gocache != "" {
-		env = setEnv(env, "GOCACHE", gocache)
+		env = gotool.SetEnv(env, "GOCACHE", gocache)
 	}
 	n.Env = env
 	// The record's forms were accepted by validateConfig at the top; the
@@ -503,73 +502,36 @@ func validateBracketPath(p string) error {
 	return nil
 }
 
-// effectiveGoEnv queries the exec'd toolchain for the pin-at-load values in
-// one owned, cancellable subprocess: the normalization's sample runs
-// through the owned command boundary (REQ-go-owned-processes), which
-// gofresh's environment snapshot (gotool.TakeEnvSnapshot) offers no
-// hook for — the query joins it when the snapshot takes the boundary
-// hook (gofresh docs/issues/gotool-snapshot-lacks-the-boundary-hook).
+// effectiveGoEnv reads the pin-at-load values from the toolchain's one
+// environment snapshot (gotool.TakeEnvSnapshot under the owned runner:
+// the normalization's sample runs through the owned command boundary,
+// REQ-go-owned-processes), an unset value the empty string as the go
+// command answers it.
 func effectiveGoEnv(ctx context.Context, dir string, env []string) (version, goos, goarch, cgo, goflags, goexperiment, goroot, gomodcache, gocache string, err error) {
 	// The query is a Go child like every other: it runs only under an
 	// environment whose telemetry is owned (telemetry.go).
 	if !telemetryOwned(env) {
 		return "", "", "", "", "", "", "", "", "", fmt.Errorf("resolving effective go env: the query environment's toolchain telemetry is not owned")
 	}
-	cmd := commandContext(ctx, "go", "env", "GOVERSION", "GOOS", "GOARCH", "CGO_ENABLED", "GOFLAGS", "GOEXPERIMENT", "GOROOT", "GOMODCACHE", "GOCACHE")
-	cmd.Dir = dir
-	cmd.Env = env
-	out, err := cmd.Output()
+	snapshot, err := ownedRunner.TakeEnvSnapshot(ctx, dir, env)
 	if err != nil {
 		return "", "", "", "", "", "", "", "", "", fmt.Errorf("resolving effective go env: %w", err)
 	}
-	// Strip exactly the final newline: an empty value (an unset GOFLAGS)
-	// is a legitimate empty line that TrimRight would swallow.
-	lines := strings.Split(strings.TrimSuffix(string(out), "\n"), "\n")
-	if len(lines) != 9 {
-		return "", "", "", "", "", "", "", "", "", fmt.Errorf("unexpected go env output %q", out)
+	v := snapshot.Value
+	// The toolchain never answers these three empty: a document without
+	// them is no toolchain's answer (a wrapper filtering keys), refused
+	// rather than pinned as empty values.
+	for _, key := range []string{"GOVERSION", "GOOS", "GOARCH"} {
+		if v(key) == "" {
+			return "", "", "", "", "", "", "", "", "", fmt.Errorf("resolving effective go env: the toolchain answered no %s", key)
+		}
 	}
-	return lines[0], lines[1], lines[2], lines[3], lines[4], lines[5], lines[6], lines[7], lines[8], nil
+	return v("GOVERSION"), v("GOOS"), v("GOARCH"), v("CGO_ENABLED"), v("GOFLAGS"), v("GOEXPERIMENT"), v("GOROOT"), v("GOMODCACHE"), v("GOCACHE"), nil
 }
 
-// setEnv replaces or inserts key in a normalized environment under the
-// platform's key rule (gotool.EqualEnvKey), keeping gofresh's key order
-// and the single-entry-per-key invariant: the entry naming the key
-// goes and the new entry takes its ordered place — gofresh's order
-// (by key under the platform's identity, ties by the whole entry),
-// restated here as envEntryLess and pinned equal to
-// gotool.NormalizeEnv's over non-empty keys on a case-sensitive
-// platform, until gotool carries the setter itself.
-func setEnv(env []string, key, value string) []string {
-	out := dropEnv(env, key)
-	entry := key + "=" + value
-	i := sort.Search(len(out), func(i int) bool { return envEntryLess(entry, out[i]) })
-	out = append(out, "")
-	copy(out[i+1:], out[i:])
-	out[i] = entry
-	return out
-}
-
-// envEntryLess is gofresh's environment order: by key under the
-// platform's identity (case-folded on windows), ties by the whole
-// entry. The key is the text before the first '=', so a windows
-// per-drive entry ("=C:=…", which gofresh's normalization accepts and
-// orders by its own key "=C:") orders here by the empty key — the
-// relayed entry splitter in gotool dissolves the divergence.
-func envEntryLess(a, b string) bool {
-	ka, _, _ := strings.Cut(a, "=")
-	kb, _, _ := strings.Cut(b, "=")
-	if runtime.GOOS == "windows" {
-		ka, kb = strings.ToUpper(ka), strings.ToUpper(kb)
-	}
-	if ka == kb {
-		return a < b
-	}
-	return ka < kb
-}
-
-// dropEnv removes the entry naming key, under the platform's key rule,
-// from a normalized environment (every such entry, where the list was
-// never normalized).
+// dropEnv returns env without every entry naming key under the
+// platform's rule (gotool.EqualEnvKey) — a denial, the one composition
+// gofresh's setter has no form for.
 func dropEnv(env []string, key string) []string {
 	out := make([]string, 0, len(env))
 	for _, entry := range env {
@@ -584,16 +546,6 @@ func dropEnv(env []string, key string) []string {
 // lookupEnv returns key's value from a normalized environment under the
 // platform's key rule (gotool.LookupEnv).
 func lookupEnv(env []string, key string) (string, bool) { return gotool.LookupEnv(env, key) }
-
-// resolveOrSelf resolves symlinks when the path resolves at all, and
-// returns the path unchanged when it does not — an unresolvable root is
-// still a declarable identity.
-func resolveOrSelf(p string) string {
-	if r, err := filepath.EvalSymlinks(p); err == nil {
-		return r
-	}
-	return p
-}
 
 // WitnessEligible reports whether the invocation can grant Go witness
 // evidence: race-enabled, or a non-race invocation whose policy

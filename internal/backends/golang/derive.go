@@ -968,6 +968,10 @@ func newEngine(ctx context.Context, dir string, env, flags []string, extra ...go
 		gofresh.WithDir(dir),
 		gofresh.WithBuildFlags(flags...),
 		gofresh.WithEnv(env...),
+		// The engine's own go commands ride the owned boundary
+		// (REQ-go-owned-processes); the loader's go list children spawn
+		// through x/tools outside any runner.
+		gofresh.WithGoRunner(engineRunner),
 		// The policy is the one home of the reviewed vouch set: the
 		// repository's own vouch file is declined on every engine, so
 		// a file entry never licenses a verdict the policy did not

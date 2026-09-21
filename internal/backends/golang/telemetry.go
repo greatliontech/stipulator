@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strconv"
 
+	"github.com/greatliontech/gofresh/gotool"
 	"github.com/greatliontech/stipulator/internal/recordstore"
 )
 
@@ -96,9 +97,9 @@ func telemetryOffEnvSourceFor(goos string, env []string) ([]string, string, erro
 		return nil, "", fmt.Errorf("owning the toolchain's telemetry: %w", err)
 	}
 	if _, ok := lookupEnv(env, "GOENV"); !ok {
-		env = setEnv(env, "GOENV", filepath.Join(source, "go", "env"))
+		env = gotool.SetEnv(env, "GOENV", filepath.Join(source, "go", "env"))
 	}
-	return setEnv(env, "XDG_CONFIG_HOME", home), source, nil
+	return gotool.SetEnv(env, "XDG_CONFIG_HOME", home), source, nil
 }
 
 // configHomeSelectable reports the platforms whose config home a
@@ -242,7 +243,7 @@ func sourceConfigHome(env []string) (string, error) {
 	if !filepath.IsAbs(source) {
 		return "", fmt.Errorf("config home %q is not absolute", source)
 	}
-	return resolveOrSelf(filepath.Clean(source)), nil
+	return gotool.Coordinate(filepath.Clean(source)), nil
 }
 
 // hasEnv reports a key set to a non-empty value.

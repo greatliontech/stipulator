@@ -17,6 +17,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/greatliontech/gofresh/gotool"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
 )
@@ -438,9 +439,17 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, select
 		return degradedRun(n.Name, pkg, fmt.Sprintf("spawning go test: %v", err), false)
 	}
 	frame := captureObservationFrame(ctx, n, pkg)
-	cmd := commandContext(ctx, "go", testCommandArgs(n, pkg, selection, logPath)...)
-	cmd.Dir = n.Dir
-	cmd.Env = witnessProcessEnv(n, frame)
+	witnessEnv := witnessProcessEnv(n, frame)
+	cmd, err := ownedRunner.Command(ctx, n.Dir, witnessEnv, testCommandArgs(n, pkg, selection, logPath)...)
+	if err != nil {
+		return degradedRun(n.Name, pkg, fmt.Sprintf("spawning go test: %v", err), false)
+	}
+	// Spawn and ingest use one environment (witnessProcessEnv): the
+	// policy's preparation derives PWD from the command's directory,
+	// the tree root, where the witness environment pins the package
+	// directory the test binary starts in — the spawn takes the witness
+	// environment whole, so the two never diverge.
+	cmd.Env = witnessEnv
 	var stderr boundedBuffer
 	cmd.Stderr = writerFunc(func(p []byte) (int, error) {
 		stderr.write(string(p))
@@ -469,6 +478,17 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, select
 
 	st := parseTestStream(n.Name, pkg, stdout, producer)
 	waitErr := cmd.Wait()
+	if gotool.Salvaged(ctx, waitErr) {
+		// The stream above was read to its end through the invocation's
+		// own pipe before this wait, so a descendant the process left
+		// holding stdout delays the stream's end and never reaches the
+		// wait; the one pipe the wait bounds is stderr's copier, so the
+		// wait-delay form here is a descendant holding stderr alone past
+		// the boundary's wait delay after the process exited on its own —
+		// it truncates the diagnostic residue, never the verdict, which is
+		// the whole stream's and the exit's (REQ-go-owned-processes).
+		waitErr = nil
+	}
 	bound := declaredBinaryBound(n)
 	if ctx.Err() != nil {
 		// Keep the parsed residue: on envelope expiry the caller's

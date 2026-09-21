@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/greatliontech/gofresh/gotool"
 	"github.com/greatliontech/gofresh/runtimeinput"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -67,18 +68,6 @@ type observationFrame struct {
 	spawnReason string
 }
 
-// captureObservationFrame captures the pre-spawn frame one package's
-// completed observation seals on: the package directory declared
-// module-relative under the verification tree root, beside the
-// invocation's reviewed bracket paths — fingerprinted pre-spawn, present
-// or absent, so consumed process images and fixed external files bind
-// instead of sealing out-of-bracket. Resolution, containment, and the
-// capture refusals are the facade's (an external workspace member — no
-// module-relative root can name it — is permanently uncacheable here). A
-// capture that succeeds while gofresh's hashing semantics refuse a root
-// still returns its bracket: gofresh seals that observation attributably
-// unverifiable, which is the honest disposition — the process ran and
-// its evidence exists, it just cannot bind.
 // bracketRootsFor resolves the extra observation-bracket roots one
 // package's producing process declares beside its own directory: the
 // package's in-tree import-closure directories — everything the
@@ -104,6 +93,18 @@ func bracketRootsFor(n *NormalizedInvocation, pkg string) ([]string, string) {
 	return append(append([]string(nil), closure...), n.BracketPaths...), ""
 }
 
+// captureObservationFrame captures the pre-spawn frame one package's
+// completed observation seals on: the package directory declared
+// module-relative under the verification tree root, beside the
+// invocation's reviewed bracket paths — fingerprinted pre-spawn, present
+// or absent, so consumed process images and fixed external files bind
+// instead of sealing out-of-bracket. Resolution, containment, and the
+// capture refusals are the facade's (an external workspace member — no
+// module-relative root can name it — is permanently uncacheable here). A
+// capture that succeeds while gofresh's hashing semantics refuse a root
+// still returns its bracket: gofresh seals that observation attributably
+// unverifiable, which is the honest disposition — the process ran and
+// its evidence exists, it just cannot bind.
 func captureObservationFrame(ctx context.Context, n *NormalizedInvocation, pkg string) observationFrame {
 	pkgDir, ok := n.PkgDirs[pkg]
 	if !ok {
@@ -220,7 +221,7 @@ func witnessProcessEnv(n *NormalizedInvocation, frame observationFrame) []string
 	if frame.frame.PkgDir == "" {
 		return env
 	}
-	return setEnv(env, "PWD", frame.frame.PkgDir)
+	return gotool.SetEnv(env, "PWD", frame.frame.PkgDir)
 }
 
 // witnessEnvOf is every consumer's road to the invocation's witness
@@ -255,7 +256,7 @@ func witnessWidthEnv(n *NormalizedInvocation) []string {
 			return n.Env
 		}
 	}
-	return setEnv(n.Env, "GOMAXPROCS", strconv.Itoa(width))
+	return gotool.SetEnv(n.Env, "GOMAXPROCS", strconv.Itoa(width))
 }
 
 // incompleteObservation is the fail-closed record: a launched process

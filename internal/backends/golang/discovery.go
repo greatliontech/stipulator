@@ -12,6 +12,7 @@ import (
 	"go/token"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -19,6 +20,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/greatliontech/gofresh/gotool"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 )
 
@@ -242,15 +244,25 @@ func listPackages(ctx context.Context, n *NormalizedInvocation) ([]listedPackage
 	// Patterns are statically validated to never be flag-shaped, so they
 	// append directly.
 	args = append(args, n.Packages...)
-	cmd := commandContext(ctx, "go", args...)
-	cmd.Dir = n.Dir
-	cmd.Env = n.Env
+	cmd, err := ownedRunner.Command(ctx, n.Dir, n.Env, args...)
+	if err != nil {
+		return nil, fmt.Errorf("invocation %q: %w", n.Name, err)
+	}
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	runErr := cmd.Run()
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
+	}
+	if errors.Is(runErr, exec.ErrWaitDelay) {
+		// The listing exited on its own while a descendant held its pipe
+		// past the boundary's wait delay, which closes the read end with
+		// whatever the copier had not drained: a listing has no wholeness
+		// test — a truncation at an object boundary reads as a shorter
+		// set — so the answer is refused naming the hold
+		// (REQ-go-owned-processes).
+		return nil, fmt.Errorf("go list for invocation %q: a descendant held the listing's pipe past the wait delay; a listing has no wholeness test: %w", n.Name, runErr)
 	}
 	var pkgs []listedPackage
 	dec := json.NewDecoder(&stdout)
@@ -342,9 +354,11 @@ func listClosureDirs(ctx context.Context, n *NormalizedInvocation, selected []li
 		args = append(args, flag)
 	}
 	args = append(args, n.Packages...)
-	cmd := commandContext(ctx, "go", args...)
-	cmd.Dir = n.Dir
-	cmd.Env = n.Env
+	cmd, err := ownedRunner.Command(ctx, n.Dir, n.Env, args...)
+	if err != nil {
+		n.ClosureDirsErr = fmt.Sprintf("invocation %q: %v", n.Name, err)
+		return
+	}
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -562,9 +576,10 @@ func scratchNamespacesCovered(n *NormalizedInvocation) error {
 // escape. A directory outside the tree answers false. The two discovery
 // sites hand it listed directories, which exist and resolve; the
 // exclusion-position check hands it a declared path that may not exist
-// yet, and adds the lexical base itself.
+// yet — its coordinate degrades to the absolute spelling — and adds the
+// lexical base itself.
 func treeRelativeDir(root, dir string) (string, bool) {
-	rel, err := filepath.Rel(resolveOrSelf(root), resolveOrSelf(dir))
+	rel, err := filepath.Rel(gotool.Coordinate(root), gotool.Coordinate(dir))
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return "", false
 	}

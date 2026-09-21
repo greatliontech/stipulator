@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/greatliontech/gofresh/gotool"
 	"github.com/greatliontech/gofresh/runtimeinput"
 	"google.golang.org/protobuf/types/known/durationpb"
 
@@ -820,15 +821,19 @@ func TestGoObserveProcessForwardsClassificationRoots(t *testing.T) {
 		read    func(root string) string
 	}{
 		"module cache root": {
-			declare: func(n *NormalizedInvocation, root string) { n.WitnessEnv = setEnv(n.WitnessEnv, "GOMODCACHE", root) },
-			read:    func(root string) string { return filepath.Join(root, "example.com", "dep@v1.0.0", "dep.go") },
+			declare: func(n *NormalizedInvocation, root string) {
+				n.WitnessEnv = gotool.SetEnv(n.WitnessEnv, "GOMODCACHE", root)
+			},
+			read: func(root string) string { return filepath.Join(root, "example.com", "dep@v1.0.0", "dep.go") },
 		},
 		"build cache root": {
-			declare: func(n *NormalizedInvocation, root string) { n.WitnessEnv = setEnv(n.WitnessEnv, "GOCACHE", root) },
-			read:    func(root string) string { return filepath.Join(root, "aa", "object") },
+			declare: func(n *NormalizedInvocation, root string) {
+				n.WitnessEnv = gotool.SetEnv(n.WitnessEnv, "GOCACHE", root)
+			},
+			read: func(root string) string { return filepath.Join(root, "aa", "object") },
 		},
 		"ephemeral temp root": {
-			declare: func(n *NormalizedInvocation, root string) { n.WitnessEnv = setEnv(n.WitnessEnv, "TMPDIR", root) },
+			declare: func(n *NormalizedInvocation, root string) { n.WitnessEnv = gotool.SetEnv(n.WitnessEnv, "TMPDIR", root) },
 			read:    func(root string) string { return root },
 		},
 	} {
@@ -873,7 +878,7 @@ func TestGoObserveProcessForwardsClassificationRoots(t *testing.T) {
 			// read lies under none of them.
 			elsewhere := hermeticGoHome(t)
 			base := func() *NormalizedInvocation {
-				env := setEnv(setEnv(setEnv(nil, "GOENV", "off"), "HOME", elsewhere), "TMPDIR", filepath.Join(elsewhere, "tmp"))
+				env := gotool.SetEnv(gotool.SetEnv(gotool.SetEnv(nil, "GOENV", "off"), "HOME", elsewhere), "TMPDIR", filepath.Join(elsewhere, "tmp"))
 				return &NormalizedInvocation{
 					Name:           "roots",
 					Dir:            dir,
@@ -931,7 +936,7 @@ func TestGoObserveProcessKeepsATreeInteriorTempRootObserved(t *testing.T) {
 		if err := os.MkdirAll(tmp, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		env := setEnv(setEnv(setEnv(nil, "GOENV", "off"), "HOME", hermeticGoHome(t)), "TMPDIR", tmp)
+		env := gotool.SetEnv(gotool.SetEnv(gotool.SetEnv(nil, "GOENV", "off"), "HOME", hermeticGoHome(t)), "TMPDIR", tmp)
 		n := &NormalizedInvocation{
 			Name: "interior", Dir: moduleDir, ModuleRoot: "sub", Env: env, WitnessEnv: env,
 			PkgDirs:        map[string]string{"example.com/m/pkg": pkgDir},

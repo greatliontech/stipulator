@@ -11,12 +11,6 @@ import (
 	"time"
 )
 
-// quitGrace bounds the window between the envelope-expiry SIGQUIT and the
-// process group's SIGKILL: long enough for the Go runtime to write a full
-// goroutine dump, short enough that a group ignoring SIGQUIT cannot stall
-// the run.
-const quitGrace = 10 * time.Second
-
 func configureCommandCancellation(ctx context.Context, cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Cancel = func() error {

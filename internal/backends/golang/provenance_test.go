@@ -4,12 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/greatliontech/gofresh"
+	"github.com/greatliontech/gofresh/closure"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/greatliontech/gofresh/gotool"
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/stipulate"
 )
@@ -40,9 +44,9 @@ func TestGroupEngineRefusesToolchainSkew(t *testing.T) {
 	} else if !strings.Contains(err.Error(), "cross-major") {
 		t.Fatalf("skew refusal = %v, want the cross-major class named", err)
 	} else {
-		var pe *toolchainProvenanceError
+		var pe *gofresh.ToolchainProvenanceError
 		if !errors.As(err, &pe) {
-			t.Fatalf("refusal %v is not a *toolchainProvenanceError", err)
+			t.Fatalf("refusal %v is not a *gofresh.ToolchainProvenanceError", err)
 		}
 	}
 	if sampledDir != dir {
@@ -71,73 +75,16 @@ func TestGroupEngineRefusesUnidentifiableToolchain(t *testing.T) {
 	}
 	if _, err := groupEngine(t.Context(), t.TempDir(), &captureGroup{}); err == nil {
 		t.Fatal("groupEngine accepted an unidentifiable ambient toolchain")
-	} else if !strings.Contains(err.Error(), "unidentifiable") {
-		t.Fatalf("refusal = %v, want the unidentifiable class named", err)
+	} else if !strings.Contains(err.Error(), "unidentifiable") || !strings.Contains(err.Error(), "binary built with") || !strings.Contains(err.Error(), closure.AnalyzingFrontend()) {
+		t.Fatalf("refusal = %v, want the composite's unidentifiable refusal naming the frontend", err)
 	}
 
 	goVersionSampler = func(_ context.Context, dir string, env []string) (string, error) {
 		return "", fmt.Errorf("boom")
 	}
-	var pe *toolchainProvenanceError
+	var pe *gofresh.ToolchainProvenanceError
 	if _, err := groupEngine(t.Context(), t.TempDir(), &captureGroup{}); !errors.As(err, &pe) {
-		t.Fatalf("sample-failure refusal %v is not a *toolchainProvenanceError", err)
-	}
-}
-
-// goVersionCmd wires the tree root and the group env into the sample;
-// a nil env inherits the process environment.
-func TestGoVersionCmdWiresDirAndEnv(t *testing.T) {
-	env := []string{"A=1", "B=2"}
-	cmd := goVersionCmd(context.Background(), "/tree/root", env)
-	if cmd.Dir != "/tree/root" {
-		t.Fatalf("cmd.Dir = %q", cmd.Dir)
-	}
-	if len(cmd.Env) != 2 || cmd.Env[0] != "A=1" {
-		t.Fatalf("cmd.Env = %v", cmd.Env)
-	}
-	if empty := goVersionCmd(context.Background(), "/tree/root", nil); empty.Env != nil {
-		t.Fatalf("nil env must inherit the process environment, got %v", empty.Env)
-	}
-}
-
-// The default sampler memoizes per (dir, env): one `go env` exec per
-// distinct key per process, so the prerequisite's cost stays constant
-// in group count.
-func TestMemoizedSamplerSamplesOncePerKey(t *testing.T) {
-	calls := map[string]int{}
-	sampler := memoizedSampler(func(_ context.Context, dir string, env []string) (string, error) {
-		calls[dir]++
-		if dir == "/bad" {
-			return "", fmt.Errorf("boom")
-		}
-		return "go1.27.0", nil
-	})
-	for range 3 {
-		if v, err := sampler(context.Background(), "/a", []string{"K=1"}); err != nil || v != "go1.27.0" {
-			t.Fatalf("sampler(/a) = %q, %v", v, err)
-		}
-		if _, err := sampler(context.Background(), "/bad", []string{"K=1"}); err == nil {
-			t.Fatal("memoized failure did not stay a failure")
-		}
-	}
-	if _, err := sampler(context.Background(), "/a", []string{"K=2"}); err != nil {
-		t.Fatal(err)
-	}
-	if calls["/a"] != 2 || calls["/bad"] != 1 {
-		t.Fatalf("underlying sample calls = %v, want /a:2 (two env keys), /bad:1", calls)
-	}
-}
-
-// The real sampler resolves an actual GOVERSION in this repo — the
-// smoke check that the exec path (command, dir, trimming) works
-// outside the swapped-sampler tests.
-func TestSampleGoVersionSmoke(t *testing.T) {
-	v, err := sampleGoVersion(context.Background(), ".", nil)
-	if err != nil {
-		t.Fatalf("sampleGoVersion: %v", err)
-	}
-	if !strings.HasPrefix(v, "go") || strings.ContainsAny(v, " \n\t") {
-		t.Fatalf("sampled GOVERSION = %q, want a trimmed go version string", v)
+		t.Fatalf("sample-failure refusal %v is not a *gofresh.ToolchainProvenanceError", err)
 	}
 }
 
@@ -145,13 +92,13 @@ func TestSampleGoVersionSmoke(t *testing.T) {
 // abort; every other fault stays a degradation reason.
 func TestClassifyFaultRoutesProvenanceToAbort(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-toolchain-provenance")
-	if abort, _ := classifyFault(&toolchainProvenanceError{err: fmt.Errorf("skew")}); !abort {
+	if abort, _ := classifyFault(&gofresh.ToolchainProvenanceError{Err: fmt.Errorf("skew")}); !abort {
 		t.Fatal("provenance refusal did not classify as an abort")
 	}
 	if abort, reason := classifyFault(fmt.Errorf("view fault")); abort || reason != "view fault" {
 		t.Fatalf("ordinary fault classified abort=%v reason=%q", abort, reason)
 	}
-	if abort, _ := classifyFault(fmt.Errorf("wrapped: %w", &toolchainProvenanceError{err: fmt.Errorf("skew")})); !abort {
+	if abort, _ := classifyFault(fmt.Errorf("wrapped: %w", &gofresh.ToolchainProvenanceError{Err: fmt.Errorf("skew")})); !abort {
 		t.Fatal("wrapped provenance refusal did not classify as an abort")
 	}
 }
@@ -268,57 +215,6 @@ func TestNewContextRefusesToolchainSkew(t *testing.T) {
 	}
 }
 
-// The probe is bound to the operation's context — a cancelled context
-// returns the cancellation, and a cancelled sample is never memoized —
-// and stays in its caller's process group: a descendant-free query
-// isolated in its own group would escape the sweep an owner performs
-// when it kills the caller outright.
-func TestProvenanceProbeRunsInTheOwnedBoundary(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes", "REQ-policy-cancellation")
-	if cmd := goVersionCmd(context.Background(), ".", nil); cmd.SysProcAttr != nil || cmd.Cancel == nil {
-		t.Fatalf("probe = attr %+v, cancel %v; want a context-bound command in the caller's group", cmd.SysProcAttr, cmd.Cancel != nil)
-	}
-	cancelled, cancel := context.WithCancel(context.Background())
-	cancel()
-	// A cancelled operation is answered from the memo's head without
-	// sampling; a sample the operation cancels mid-flight is never
-	// memoized, so the next live operation samples again.
-	calls := 0
-	var cancelMidFlight context.CancelFunc
-	sampler := memoizedSampler(func(ctx context.Context, dir string, env []string) (string, error) {
-		calls++
-		cancelMidFlight()
-		return "", ctx.Err()
-	})
-	if _, err := sampler(cancelled, ".", nil); err == nil || calls != 0 {
-		t.Fatalf("a cancelled operation sampled: calls %d, err %v", calls, err)
-	}
-	live, cancelLive := context.WithCancel(context.Background())
-	cancelMidFlight = cancelLive
-	if _, err := sampler(live, ".", nil); err == nil {
-		t.Fatal("a sample cancelled mid-flight reported a version")
-	}
-	next, cancelNext := context.WithCancel(context.Background())
-	cancelMidFlight = cancelNext
-	if _, err := sampler(next, ".", nil); err == nil || calls != 2 {
-		t.Fatalf("a cancelled sample was memoized: calls %d, err %v", calls, err)
-	}
-	if _, err := sampleGoVersion(cancelled, ".", nil); err == nil {
-		t.Fatal("the probe ran under a cancelled context")
-	}
-	// The member walk answers a cancelled context whatever the memo
-	// holds: prime the memo, then ask under cancellation.
-	orig := goVersionSampler
-	t.Cleanup(func() { goVersionSampler = orig })
-	goVersionSampler = memoizedSampler(func(context.Context, string, []string) (string, error) { return runtime.Version(), nil })
-	if err := checkSelectionMembers(context.Background(), ".", nil, []string{"."}); err != nil {
-		t.Fatal(err)
-	}
-	if err := checkSelectionMembers(cancelled, ".", nil, []string{"."}); err == nil {
-		t.Fatal("a cancelled member walk answered from the memo")
-	}
-}
-
 // The sample resolves where the loads and witnesses do: every selection
 // view samples in each member's own directory, and a group's engine in
 // the group's module root — under GOTOOLCHAIN=auto the selected
@@ -419,5 +315,68 @@ func TestToolchainSampledInTheTargetModule(t *testing.T) {
 	goVersionSampler = func(context.Context, string, []string) (string, error) { return "go99.1.0", nil }
 	if _, err := selectionEngine(context.Background(), tmp, buildSelection{}); err == nil || !strings.Contains(err.Error(), "toolchain provenance") {
 		t.Fatalf("skewed served selection engine = %v, want the skew refusal", err)
+	}
+}
+
+// The provenance probe runs in the caller's own process group
+// (REQ-go-owned-processes: a descendant-free query, swept with its
+// caller by the owner that kills the caller outright) with the reap
+// bounded (REQ-policy-cancellation), through gofresh's memoized sampler:
+// two asks of one (directory, environment) spawn one `go env GOVERSION`
+// (the test seam counts the prepared commands), the sample is the
+// trimmed version, a cancelled operation samples nothing and the member
+// walk answers a cancelled context whatever the memo holds.
+func TestProvenanceProbeRunsInTheCallersGroup(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-owned-processes", "REQ-policy-cancellation")
+	env, err := gotool.NormalizeEnv(os.Environ())
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd, err := probeRunner.Command(context.Background(), ".", env, "env", "GOVERSION")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cmd.SysProcAttr != nil || cmd.WaitDelay != probeWaitDelay {
+		t.Fatalf("probe = attr %+v, wait delay %s; want the caller's group under the bounded reap", cmd.SysProcAttr, cmd.WaitDelay)
+	}
+	// The memo: two asks, one spawn — counted by a runner sharing the
+	// probe's preparation (a sample is no derivation spawn, so the
+	// derivation seam never sees one; the seam's reuse pins count
+	// exactly the derivation's).
+	spawns := 0
+	counting := probeRunner
+	counting.Prepare = func(cmd *exec.Cmd) {
+		boundProbe(cmd)
+		spawns++
+	}
+	commandHook = func(name string, args []string) {
+		if len(args) > 1 && args[0] == "env" && args[1] == "GOVERSION" {
+			t.Fatalf("the probe reached the derivation seam: %s %v", name, args)
+		}
+	}
+	t.Cleanup(func() { commandHook = nil })
+	sampler := (&gotool.Sampler{Runner: counting}).Sample
+	for range 2 {
+		v, err := sampler(context.Background(), ".", env)
+		if err != nil || !strings.HasPrefix(v, "go") || strings.ContainsAny(v, " \n\t") {
+			t.Fatalf("sample = %q, %v; want a trimmed go version", v, err)
+		}
+	}
+	if spawns != 1 {
+		t.Fatalf("two asks spawned %d samples, want one — the memo answers the second", spawns)
+	}
+	cancelled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := sampler(cancelled, ".", env); err == nil || spawns != 1 {
+		t.Fatalf("a cancelled operation sampled: spawns %d, err %v", spawns, err)
+	}
+	orig := goVersionSampler
+	t.Cleanup(func() { goVersionSampler = orig })
+	goVersionSampler = func(context.Context, string, []string) (string, error) { return runtime.Version(), nil }
+	if err := checkSelectionMembers(context.Background(), ".", nil, []string{"."}); err != nil {
+		t.Fatal(err)
+	}
+	if err := checkSelectionMembers(cancelled, ".", nil, []string{"."}); err == nil {
+		t.Fatal("a cancelled member walk answered from the memo")
 	}
 }

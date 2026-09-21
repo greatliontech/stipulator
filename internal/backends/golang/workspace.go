@@ -121,8 +121,8 @@ func goworkEnv(dir string) ([]string, error) {
 	// accepted, reviewed invocation record exists for the ambient control
 	// to contradict; this environment backs no reviewed record, so the
 	// pin — not a refusal — is the right shape here.
-	env = setEnv(env, "GOPACKAGESDRIVER", "off")
-	env = setEnv(env, "GOWORK", strings.TrimPrefix(pin, "GOWORK="))
+	env = gotool.SetEnv(env, "GOPACKAGESDRIVER", "off")
+	env = gotool.SetEnv(env, "GOWORK", strings.TrimPrefix(pin, "GOWORK="))
 	// The toolchain's telemetry is owned at this root as at the policy
 	// normalizer's (telemetry.go).
 	return telemetryOffEnv(env)

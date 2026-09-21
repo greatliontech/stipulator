@@ -26,6 +26,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/greatliontech/gofresh/gotool"
 	"golang.org/x/tools/go/packages"
 
 	"github.com/greatliontech/stipulator/internal/policy"
@@ -358,7 +359,7 @@ func selectionViewEnv(env []string, sel buildSelection) []string {
 	if sel.toolchain == "" {
 		return env
 	}
-	return append(dropEnv(append([]string(nil), env...), "GOTOOLCHAIN"), "GOTOOLCHAIN="+sel.toolchain)
+	return gotool.SetEnv(env, "GOTOOLCHAIN", sel.toolchain)
 }
 
 // selectionViewFlags is the build selection's package-load flags: its
@@ -381,15 +382,6 @@ func SelectionKey(tags []string, toolchain string) string {
 	return strings.Join(tags, ",") + "\x00" + toolchain
 }
 
-// policyBuildSelections derives the resolution views from the accepted
-// policy record: the default no-tag view first, then one view per
-// distinct invocation tag-set in the policy's canonical invocation
-// order (REQ-go-build-selections). The policy is the authority on
-// which build selections exist - execution discovery already runs
-// them - so resolution reads the same record rather than growing a
-// configuration surface. A tree without a record resolves the default
-// view alone; a malformed record is a verification error, never a
-// silent narrowing.
 // buildSelection is one resolution view's identity: the invocation's
 // effective tag-set (declared tags plus the implicit `race` tag of a
 // -race invocation) and its toolchain - a view is the pair, never the
@@ -399,6 +391,15 @@ type buildSelection struct {
 	toolchain string
 }
 
+// policyBuildSelections derives the resolution views from the accepted
+// policy record: the default no-tag view first, then one view per
+// distinct invocation tag-set in the policy's canonical invocation
+// order (REQ-go-build-selections). The policy is the authority on
+// which build selections exist - execution discovery already runs
+// them - so resolution reads the same record rather than growing a
+// configuration surface. A tree without a record resolves the default
+// view alone; a malformed record is a verification error, never a
+// silent narrowing.
 func policyBuildSelections(dir string) ([]buildSelection, []string, error) {
 	raw, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(policy.Path)))
 	if os.IsNotExist(err) {

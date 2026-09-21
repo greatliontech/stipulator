@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"google.golang.org/protobuf/types/known/durationpb"
-	"pgregory.net/rapid"
 
 	"github.com/greatliontech/gofresh/gotool"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -460,11 +459,11 @@ func TestBuildFlagsCarryModeAndProfile(t *testing.T) {
 //gofresh:pure
 func TestEnvHelpersFollowGofreshsPolicy(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-flip-environment")
-	got := setEnv([]string{"A-=1", "B=2"}, "A", "1")
+	got := gotool.SetEnv([]string{"A-=1", "B=2"}, "A", "1")
 	if want := []string{"A=1", "A-=1", "B=2"}; !slices.Equal(got, want) {
 		t.Fatalf("setEnv order = %q, want gofresh's key order %q", got, want)
 	}
-	got = setEnv(got, "A", "3")
+	got = gotool.SetEnv(got, "A", "3")
 	if want := []string{"A=3", "A-=1", "B=2"}; !slices.Equal(got, want) {
 		t.Fatalf("setEnv replace = %q, want %q", got, want)
 	}
@@ -475,52 +474,14 @@ func TestEnvHelpersFollowGofreshsPolicy(t *testing.T) {
 		// Case-distinct keys are distinct variables here; on windows
 		// gofresh folds them to one identity, and these helpers ride
 		// its rule rather than restating one.
-		got = setEnv(got, "a", "x")
+		got = gotool.SetEnv(got, "a", "x")
 		if _, ok := lookupEnv(got, "A"); !ok || len(got) != 4 {
-			t.Fatalf("setEnv(a) on a case-sensitive platform = %q, want A kept beside a", got)
+			t.Fatalf("gotool.SetEnv(a) on a case-sensitive platform = %q, want A kept beside a", got)
 		}
 		if got = dropEnv(got, "a"); len(got) != 3 {
 			t.Fatalf("dropEnv(a) = %q, want A kept", got)
 		}
 	}
-}
-
-// TestSetEnvKeepsGofreshsOrder pins the setter's order to gofresh's
-// own: over random normalized environments and entries, inserting by
-// setEnv yields exactly what gotool.NormalizeEnv yields over the same
-// entries — the one order every consumer of a normalized environment
-// reads, restated in envEntryLess until gotool carries the setter; the
-// drawn keys are deduplicated under the platform's rule, so the
-// property holds on a case-folding platform too
-// (REQ-evidence-flip-environment).
-//
-//gofresh:pure
-func TestSetEnvKeepsGofreshsOrder(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-flip-environment")
-	key := rapid.SampledFrom([]string{"A", "A-", "AB", "a", "B", "Z", "GO_X", "GOX"})
-	value := rapid.SampledFrom([]string{"", "1", "x=y", "a b"})
-	rapid.Check(t, func(rt *rapid.T) {
-		var entries []string
-		var seen declaredEnvKeys
-		for _, k := range rapid.SliceOfN(key, 0, 6).Draw(rt, "keys") {
-			if !seen.holds(k) {
-				seen = append(seen, k)
-				entries = append(entries, k+"="+value.Draw(rt, "v"))
-			}
-		}
-		env, err := gotool.NormalizeEnv(entries)
-		if err != nil {
-			rt.Fatal(err)
-		}
-		k, v := key.Draw(rt, "key"), value.Draw(rt, "value")
-		want, err := gotool.NormalizeEnv(append(dropEnv(env, k), k+"="+v))
-		if err != nil {
-			rt.Fatal(err)
-		}
-		if got := setEnv(env, k, v); !slices.Equal(got, want) {
-			rt.Fatalf("setEnv(%q, %q, %q) = %q, want gofresh's order %q", env, k, v, got, want)
-		}
-	})
 }
 
 // TestDriverPinIsTheCuratedEnvironmentsLastWord pins REQ-go-owned-processes'
@@ -626,7 +587,7 @@ func TestAbsoluteExclusionInsideALinkedTreeIsRefused(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, p := range []string{
-		filepath.Join(resolveOrSelf(tree), "present"), filepath.Join(resolveOrSelf(tree), "absent"),
+		filepath.Join(gotool.Coordinate(tree), "present"), filepath.Join(gotool.Coordinate(tree), "absent"),
 		filepath.Join(link, "present"), filepath.Join(link, "absent"),
 	} {
 		c := &stipulatorv1.GoInvocationConfig{}

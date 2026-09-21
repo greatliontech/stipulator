@@ -664,8 +664,10 @@ root; each member's own directory for a selection view, the child's
 and the served form's alike — under GOTOOLCHAIN=auto the selected
 toolchain is per module, so the tree root is not a member's sample)
 under the consumer's complete effective environment, a declared
-toolchain pin (invocation or selection) included — and judged by the
-Gofresh skew contract: directional within a major (an older compiled-in
+toolchain pin (invocation or selection) included — sampled through
+Gofresh's memoized toolchain sampler and judged, on the engine arm,
+through its provenance composite, by the Gofresh skew contract:
+directional within a major (an older compiled-in
 frontend refuses newer sources; a newer frontend reads older language under
 the Go 1 compatibility promise), total across majors, an unidentifiable
 version on either side refuses, and a failed sample refuses identically on

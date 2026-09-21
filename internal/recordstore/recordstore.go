@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/greatliontech/gofresh/gotool"
 )
 
 // Root is the cache directory every stipulator kind lives under:
@@ -44,18 +46,14 @@ type Store struct {
 // inside the repository, so a committed cache cannot ping-pong across
 // machines and a fresh worktree's cache does not die with it.
 func Open(kind, dir string) (Store, error) {
-	abs, err := filepath.Abs(dir)
-	if err != nil {
-		return Store{}, err
-	}
-	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
-		abs = resolved
-	}
 	root, err := Root(kind)
 	if err != nil {
 		return Store{}, err
 	}
-	return Store{kind: kind, path: filepath.Join(root, Digest(abs))}, nil
+	// The store is keyed on the tree's one coordinate (gotool.Coordinate:
+	// canonical, else absolute, else the spelling), so two spellings of
+	// one tree open one store.
+	return Store{kind: kind, path: filepath.Join(root, Digest(gotool.Coordinate(dir)))}, nil
 }
 
 // Path is the store's directory.
