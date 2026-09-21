@@ -156,9 +156,9 @@ bindings {
   content_hash: "e72da07f6513aed724bc5a0c9c0b92752ffc044050f56923e7324552fdff2c90"
   source_hash: "74ee7115c737c5075dc56fdfd9fdc1afab08ab607676438d761d9629c671c63b"
   backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/witnesscache.Fingerprint.valid"
+  symbol: "github.com/greatliontech/stipulator/internal/witnesscache.validFingerprint"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "5f903f56ecc90a89866e2b09208f608544a4a6a0df4eeb9b166265049755b996"
+  shape_hash: "fa644c0c6537fee863b94f1aa4945454b4ab0b278d31edcc2d13c01452f43c1f"
 }
 
 bindings {
