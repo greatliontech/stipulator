@@ -4,10 +4,14 @@
 invocations {
   name: "race"
   # Budgets cover a cold FULL re-execution of the whole witness set
-  # under the gofresh v0.85.1 engine. Measured 2026-08-26: 30m43s
-  # whole-check wall for 446 executed / 0 served (the race binary's
-  # own share crossed the previous 30m test budget twice, aborting
-  # mid-suite at 1805s+). 100m/7200s is ~3x the measured cold wall.
+  # under the gofresh v0.105.1 engine. Measured 2026-09-21 from an
+  # empty store, on a check one red pin (since fixed) failed, so the
+  # wall alone stands: 46m51s whole-check wall (execution 44m53s) for
+  # 770 executed, 464 uncacheable, 0 served; the race binary of
+  # internal/backends/golang, 2685s, the long pole (1805s+ on
+  # 2026-08-26, when it aborted the previous 30m binary budget twice).
+  # 100m per test binary is ~2.2x that long pole; 7200s per invocation
+  # is ~2.7x the race invocation's own wall (~2.6x the whole check's).
   timeout {
     seconds: 7200
   }

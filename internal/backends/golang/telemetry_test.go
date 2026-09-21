@@ -13,7 +13,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/greatliontech/gofresh/gotool"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/stipulate"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
@@ -598,6 +600,14 @@ func TestEveryGoChildRunsUnderTheOwnedHome(t *testing.T) {
 	neutralAmbient(t)
 	cache := t.TempDir()
 	t.Setenv("XDG_CACHE_HOME", cache)
+	// The ambient is pinned whole — a HOME of the test's own and the
+	// default config home under it: under the self-host check the
+	// harness's own owned home is the ambient XDG_CONFIG_HOME and the
+	// recorded source would be it (the second leg pins that shape); an
+	// empty variable reads as unset, exactly as the toolchain reads it.
+	ambientHome := t.TempDir()
+	t.Setenv("HOME", ambientHome)
+	t.Setenv("XDG_CONFIG_HOME", "")
 	dir := executeFixture(t)
 	inv := &stipulatorv1.PolicyInvocation{}
 	inv.SetName("owned")
@@ -609,8 +619,11 @@ func TestEveryGoChildRunsUnderTheOwnedHome(t *testing.T) {
 		t.Fatal(err)
 	}
 	home := ownedHome(t, n.Env, cache)
-	if n.TelemetrySource == "" || !strings.HasSuffix(n.TelemetrySource, ".config") {
-		t.Fatalf("the recorded source = %q; want the ambient HOME's .config", n.TelemetrySource)
+	if want := gotool.Coordinate(filepath.Join(ambientHome, ".config")); n.TelemetrySource != want {
+		t.Fatalf("the recorded source = %q; want the ambient HOME's .config %q", n.TelemetrySource, want)
+	}
+	if filepath.Base(home) != recordstore.Digest(n.TelemetrySource) {
+		t.Fatalf("owned home %q is not keyed on the source %q", home, n.TelemetrySource)
 	}
 	if got := ownedHome(t, n.WitnessEnv, cache); got != home {
 		t.Fatalf("witness env home %q, invocation env home %q", got, home)
@@ -624,5 +637,20 @@ func TestEveryGoChildRunsUnderTheOwnedHome(t *testing.T) {
 	}
 	if got := ownedHome(t, loads, cache); got != home {
 		t.Fatalf("symbol-load env home %q, invocation env home %q", got, home)
+	}
+	// The nested shape: an ambient config home that is already an owned
+	// one (a harness running this backend under its own owned home) is
+	// the recorded source, and the child runs under a second owned home
+	// keyed on it.
+	t.Setenv("XDG_CONFIG_HOME", home)
+	nested, err := NormalizeInvocation(context.Background(), dir, inv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nested.TelemetrySource != home {
+		t.Fatalf("under an owned ambient home the recorded source = %q; want that home %q", nested.TelemetrySource, home)
+	}
+	if got := ownedHome(t, nested.Env, cache); filepath.Base(got) != recordstore.Digest(home) {
+		t.Fatalf("under an owned ambient home the child runs under %q; want one keyed on that home %q", got, home)
 	}
 }
