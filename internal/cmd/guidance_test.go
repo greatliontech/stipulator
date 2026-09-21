@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -42,14 +43,15 @@ func TestGuidanceCoversTheCLISurface(t *testing.T) {
 				// CLI lint judges: a flag cobra prints a default for must
 				// not spell one in its knob prose.
 				flags[f.Name] = !zeroDefault(f)
-				// The usage string is the document's knob text, its
-				// terse first clause — identity, never a name match.
+				// The usage string is gofresh's usage projection of the
+				// document's knob — the clause in pflag's grammar, derived
+				// here independently — identity, never a name match.
 				k, err := doc.Knob("cli", name, f.Name)
 				if err != nil {
 					t.Errorf("%s --%s: %v", name, f.Name, err)
 					return
 				}
-				if want := firstClause(k.Text); f.Usage != want || f.Usage == "" {
+				if want := cliUsage(firstClause(k.Text)); f.Usage != want || f.Usage == "" {
 					t.Errorf("%s --%s usage %q diverged from the document's %q", name, f.Name, f.Usage, want)
 				}
 				if name == "verify" && f.Name == "req" && f.Usage != "requirement identifiers to scope the report to (comma-separated on mcp; repeatable on the cli)" {
@@ -57,6 +59,16 @@ func TestGuidanceCoversTheCLISurface(t *testing.T) {
 				}
 				if name == "verify" && f.Name == "no-test" && f.Usage != "the records-only judgment: no witness run, no policy capture" {
 					t.Errorf("verify --no-test usage = %q; want the document's first clause", f.Usage)
+				}
+				// pflag's grammar: a code span unquoted (a quoted span
+				// would name the flag's value), a knob on a zero-default
+				// flag spelling its absence in prose, never in the
+				// parenthetical cobra prints for a non-zero one.
+				if name == "bind" && f.Name == "clause" && strings.Contains(f.Usage, "`") {
+					t.Errorf("bind --clause usage = %q; want the code span unquoted", f.Usage)
+				}
+				if name == "retarget" && f.Name == "backend" && f.Usage != "backend whose symbols retarget (go where absent; taken once, repetition refused)" {
+					t.Errorf("retarget --backend usage = %q; want the clause with its absence prose", f.Usage)
 				}
 			})
 			registered[name] = flags
@@ -83,16 +95,26 @@ func TestGuidanceCoversTheCLISurface(t *testing.T) {
 		if c.Short != short {
 			t.Errorf("%q Short diverged:\ncli %q\ndoc %q", name, c.Short, short)
 		}
-		if c.Long != "" {
-			// The cobra Long is the knobless help rendering — cobra's
-			// own Flags: block carries the knob list on this surface.
-			help, err := doc.Help("cli", name)
-			if err != nil || c.Long != help {
-				t.Errorf("%q Long diverged from Help (err=%v):\ncli %q\ndoc %q", name, err, c.Long, help)
+		// The cobra Long is the knobless help rendering — cobra's own
+		// Flags: block carries the knob list on this surface — and, for
+		// a knobbed verb, the pointer to the knobs' whole prose after it
+		// (the served path: `stipulator guidance <verb>`, a two-word
+		// verb quoted); a knobless verb keeps the help alone or none.
+		help, err := doc.Help("cli", name)
+		if err != nil {
+			t.Errorf("%q: %v", name, err)
+			continue
+		}
+		if c.HasLocalFlags() {
+			want := help + "\n\nThe knobs' whole prose: stipulator guidance " + shellSpelling(name) + "."
+			if c.Long != want {
+				t.Errorf("%q Long diverged from Help + pointer:\ncli %q\nwant %q", name, c.Long, want)
 			}
-			if strings.Contains(c.Long, "\nknobs:") {
-				t.Errorf("%q Long carries the knobs block beside cobra's Flags", name)
-			}
+		} else if c.Long != "" && c.Long != help {
+			t.Errorf("%q Long diverged from Help:\ncli %q\ndoc %q", name, c.Long, help)
+		}
+		if strings.Contains(c.Long, "\nknobs:") {
+			t.Errorf("%q Long carries the knobs block beside cobra's Flags", name)
 		}
 	}
 	// The policy record path in the served guidance is the code's own
@@ -171,9 +193,35 @@ func firstClause(text string) string {
 	return strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(text), "."))
 }
 
+// TestGuidanceRefusalsCarryThePackagesWording pins the refusal a face's
+// construction meets for a knob or a verb the document does not carry:
+// the package's wording, one on both faces (REQ-mcp-guidance).
+//
+//gofresh:pure
+func TestGuidanceRefusalsCarryThePackagesWording(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-guidance")
+	refusal := func(f func()) (msg string) {
+		defer func() { msg = fmt.Sprint(recover()) }()
+		f()
+		return ""
+	}
+	for name, f := range map[string]func(){
+		"cli knob":  func() { stipulator.GuidanceKnob("cli", "verify", "nosuch") },
+		"cli verb":  func() { stipulator.GuidanceRegistration("cli", "nosuch") },
+		"wire knob": func() { stipulator.GuidanceKnob("mcp", "verify", "nosuch") },
+		"wire verb": func() { stipulator.GuidanceRegistration("mcp", "nosuch") },
+	} {
+		if msg := refusal(f); !strings.HasPrefix(msg, "stipulator: guidance: ") {
+			t.Fatalf("%s refusal = %q, want the package's wording", name, msg)
+		}
+	}
+}
+
 // zeroDefault is pflag's own per-type zero: the defaults cobra prints
 // beside a usage are exactly the non-zero ones, per flag type (a string
 // "0" prints; a bool false does not).
+//
+//gofresh:pure
 func zeroDefault(f *pflag.Flag) bool {
 	switch f.Value.Type() {
 	case "string":
@@ -188,4 +236,29 @@ func zeroDefault(f *pflag.Flag) bool {
 		return f.DefValue == "[]"
 	}
 	return f.DefValue == ""
+}
+
+// cliUsage is the test's own reading of pflag's usage grammar over a
+// clause: code spans unquoted and a trailing default parenthetical —
+// the one cobra prints itself — dropped; the served string is judged
+// against this derivation, never against the package's projection.
+//
+//gofresh:pure
+func cliUsage(clause string) string {
+	clause = strings.ReplaceAll(clause, "`", "")
+	if i := strings.LastIndex(clause, " (default "); i >= 0 && strings.HasSuffix(clause, ")") {
+		clause = clause[:i]
+	}
+	return clause
+}
+
+// shellSpelling is the test's own reading of the pointer's verb
+// spelling: a verb with a space is quoted for the shell.
+//
+//gofresh:pure
+func shellSpelling(verb string) string {
+	if strings.ContainsAny(verb, " \t") {
+		return "\"" + verb + "\""
+	}
+	return verb
 }

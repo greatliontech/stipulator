@@ -16,25 +16,20 @@ import (
 func guidanceDoc() *guidancepkg.Document { return stipulator.Guidance() }
 
 // guidanceShort and guidanceHelp are a command's served prose under
-// its cli spelling, read from the guidance document at construction —
-// never a second literal (REQ-mcp-guidance).
+// its cli spelling, the registration's purpose and knobless help read
+// at construction — never a second literal, a verb the document does
+// not carry refusing with the package's wording (REQ-mcp-guidance).
+// A knobbed verb's long help is rendered whole by renderKnobUsage; a
+// knobless verb's constructor sets it here.
 func guidanceShort(verb string) string {
-	d, err := guidanceDoc().Description("cli", verb)
-	if err != nil {
-		panic("cmd: " + err.Error())
-	}
-	return d
+	return stipulator.GuidanceRegistration("cli", verb).Description
 }
 
 // guidanceHelp is the knobless long rendering — cobra renders its
 // own Flags: block, so the full knobs: block would print every knob
 // twice in two wordings.
 func guidanceHelp(verb string) string {
-	l, err := guidanceDoc().Help("cli", verb)
-	if err != nil {
-		panic("cmd: " + err.Error())
-	}
-	return l
+	return stipulator.GuidanceRegistration("cli", verb).Help
 }
 
 // guidanceCmd serves the guidance document itself: a verb's full
@@ -62,12 +57,15 @@ func guidanceCmd() *cobra.Command {
 }
 
 // renderKnobUsage sets every visible leaf command's local flag usage to
-// the guidance document's knob text for that flag — the knob's terse
-// first clause — so the usage strings are the document's rendering and
-// never a second literal; a flag the document does not knob is a build
-// defect the coverage judgment also refuses (REQ-mcp-guidance).
+// gofresh's usage projection of the guidance document's knob for that
+// flag — the terse clause in pflag's grammar — and renders a knobbed
+// verb's long help as the registration's knobless help followed by its
+// prose pointer (cobra's own Flags: block carries the knob list, the
+// pointer names the knobs' whole prose), so the served strings are the
+// document's rendering and never a second literal; a flag the document
+// does not knob refuses construction with the package's wording, and
+// the coverage judgment refuses it too (REQ-mcp-guidance).
 func renderKnobUsage(root *cobra.Command) {
-	doc := guidanceDoc()
 	var walk func(prefix string, c *cobra.Command)
 	walk = func(prefix string, c *cobra.Command) {
 		// The walk runs over a fresh root, before cobra adds its help and
@@ -80,13 +78,15 @@ func renderKnobUsage(root *cobra.Command) {
 				walk(name, child)
 				continue
 			}
+			knobbed := false
 			child.LocalFlags().VisitAll(func(f *pflag.Flag) {
-				k, err := doc.Knob("cli", name, f.Name)
-				if err != nil {
-					panic("cmd: " + err.Error())
-				}
-				f.Usage = k.Clause()
+				knobbed = true
+				f.Usage = stipulator.GuidanceKnob("cli", name, f.Name).Usage()
 			})
+			if knobbed {
+				registration := stipulator.GuidanceRegistration("cli", name)
+				child.Long = registration.Help + "\n\n" + registration.ProsePointer
+			}
 		}
 	}
 	walk("", root)

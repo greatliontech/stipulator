@@ -25,7 +25,6 @@ func attestRequirementCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   remedy.VerbAttestRequirement,
 		Short: guidanceShort("attest requirement"),
-		Long:  guidanceHelp("attest requirement"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			req, err := oneFlag("req", reqVals)
 			if err != nil {

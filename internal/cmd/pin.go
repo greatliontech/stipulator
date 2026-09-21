@@ -19,7 +19,6 @@ func pinCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   remedy.VerbPin,
 		Short: guidanceShort("pin"),
-		Long:  guidanceHelp("pin"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(reqs) > 0 {
 				// Every id is judged before the first write and before

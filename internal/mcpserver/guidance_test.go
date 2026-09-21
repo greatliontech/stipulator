@@ -95,6 +95,9 @@ func TestGuidanceCoversTheWireSurface(t *testing.T) {
 				if err := json.Unmarshal(raw, &prop); err != nil {
 					t.Fatalf("%s.%s%s: %v", tool.Name, prefix, name, err)
 				}
+				// Every served name at every depth registers, so the
+				// coverage judgment holds both directions at every depth.
+				params[name] = false
 				if k, err := doc.Knob("mcp", tool.Name, name); err != nil {
 					t.Errorf("%s.%s%s: %v", tool.Name, prefix, name, err)
 				} else if want := firstClause(k.Text); prop.Description != want || prop.Description == "" {

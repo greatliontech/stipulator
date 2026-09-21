@@ -28,7 +28,6 @@ func gapCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   remedy.VerbGap,
 		Short: guidanceShort("gap"),
-		Long:  guidanceHelp("gap"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// A condition flag conditions by PRESENCE: `--reason ""` is a
 			// condition the operator spelled, refused where conditions

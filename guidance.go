@@ -28,6 +28,33 @@ func GuidanceDocument() (*guidance.Document, error) { return embeddedGuidance.Do
 // Guidance is the embedded guidance document every face reads: a
 // malformed document is a build defect the parse-pinning test
 // surfaces, so a face's construction fails loudly rather than serving
-// nothing (REQ-mcp-guidance). Each knob's served text is its terse
-// clause, the document's own projection (guidance.Knob.Clause).
+// nothing (REQ-mcp-guidance). Each served string is one of gofresh's
+// projections of the document — the registration, the knob usage, the
+// schema rendering — read through the accessors below.
 func Guidance() *guidance.Document { return embeddedGuidance.Must() }
+
+// GuidanceKnob is a verb's knob under a face's spelling, refusing a
+// knob the document does not carry with the package's wording
+// ("stipulator: guidance: …") — the CLI reads Usage (pflag's grammar),
+// the wire the schema rendering (REQ-mcp-guidance).
+func GuidanceKnob(face, verb, name string) guidance.Knob {
+	return embeddedGuidance.MustKnob(face, verb, name)
+}
+
+// GuidanceRegistration is a verb's registration under a face's
+// spelling — its purpose, help, long rendering, knobs, and the prose
+// pointer — read at the face's construction with the same refusal
+// (REQ-mcp-guidance).
+func GuidanceRegistration(face, verb string) guidance.Registration {
+	return embeddedGuidance.MustRegistration(face, verb)
+}
+
+// DescribeGuidanceSchema describes a served input schema's every
+// property the walk reaches — a nested object's properties and an
+// array's items — with the verb's knob of the property's own name
+// under the mcp spelling, refusing a property the document does not
+// knob; the wire face's coverage judgment enumerates the served
+// schema the same way (REQ-mcp-guidance).
+func DescribeGuidanceSchema(verb string, root guidance.SchemaNode) {
+	embeddedGuidance.MustDescribeSchema("mcp", verb, root)
+}

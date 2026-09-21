@@ -19,7 +19,6 @@ func pruneCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   remedy.VerbPrune,
 		Short: guidanceShort("prune"),
-		Long:  guidanceHelp("prune"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mode := prune.Mode{Check: check, NoTest: noTest, Dangling: dangling, Store: storeGC}
 			if err := mode.Validate(); err != nil {

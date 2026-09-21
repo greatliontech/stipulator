@@ -62,16 +62,26 @@ the `guidance` tool (and CLI command, its verb positional) serves a
 verb's full section or, verbless, the decision map — refusing an
 unknown verb with the decision map named as the way to enumerate.
 Both surfaces bind the per-surface coverage judgment: every listed
-tool and schema property, and every visible leaf command and local
-flag, documented exactly, both directions. The document's knob
-prose is the authoritative superset; per-parameter schema and flag
-usage strings are the document's rendering — each knob's terse first
-clause, up to its first semicolon outside parentheses with its
-trailing period trimmed, set at registration and never a second
-literal beside the document — so a schema or usage string
-cannot contradict the document, and the coverage judgment compares
-the rendered text, never the names alone — grouping parents and the
-root-persistent chdir flag are surface plumbing outside the judgment.
+tool and schema property at every depth the schema walk reaches — a
+nested object's properties and an array's items, each a knob of its
+own name — and every visible leaf command and local flag, documented
+exactly, both directions. The document's knob prose is the
+authoritative superset; per-parameter schema descriptions and flag
+usage strings are gofresh's projections of the document — the schema
+rendering on the wire (each knob's terse clause verbatim, at every
+depth) and the usage rendering on the CLI (the clause in pflag's
+grammar: code spans unquoted, the default parenthetical cobra prints
+itself dropped) — served at construction from the registration (a
+verb's purpose, knobless help, and prose pointer), the knob projection
+(each flag's usage), and the schema rendering (each property's
+description), never a second literal or a grammar of this tool's own,
+so a served string cannot contradict the document and the coverage
+judgment compares the rendered text, never the names alone; a knob the
+document does not carry refuses the face's construction with the
+package's wording; the long help of a CLI verb with knobs carries the
+registration's pointer to the guidance command as the served path to
+their whole prose — grouping parents and the root-persistent chdir
+flag are surface plumbing outside the judgment.
 The guidance surfaces work outside a corpus: the document is embedded,
 so orientation precedes scaffolding.
 

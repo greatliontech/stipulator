@@ -4,52 +4,56 @@ import (
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	guidancepkg "github.com/greatliontech/gofresh/guidance"
+	"github.com/greatliontech/gofresh/guidance"
+	stipulator "github.com/greatliontech/stipulator"
 )
 
 // The served schema machinery every registered tool shares.
 
-// knobbedTool is a served tool whose input schema's property
-// descriptions are the guidance document's knob text — each knob's
-// terse first clause (guidance.Knob.Clause) — rendered at
-// registration, never a second literal beside the document, at every
-// depth of the schema: a nested object's properties (the batch
-// authoring form's claims) take the same verb's knobs by name. A
-// property the document does not knob is a build defect
-// (REQ-mcp-guidance).
+// knobbedTool is a served tool whose input schema's every property
+// description, at every depth — a nested object's properties and an
+// array item's properties alike (the batch authoring form's claims) —
+// is gofresh's schema rendering of the guidance document's knob under
+// the tool's mcp spelling, never a second literal, and whose
+// description is the registration's purpose; a property the document
+// does not knob refuses at construction, so the served set cannot
+// outgrow the document silently (REQ-mcp-guidance).
 func knobbedTool[In any](verb string) *mcp.Tool {
 	schema, err := jsonschema.For[In](nil)
 	if err != nil {
 		panic("mcpserver: input schema for " + verb + ": " + err.Error())
 	}
-	knobSchema(guidanceDoc(), verb, schema)
-	return &mcp.Tool{Name: verb, Description: guidanceDescription(verb), InputSchema: schema}
+	stipulator.DescribeGuidanceSchema(verb, schemaNode{schema})
+	return &mcp.Tool{Name: verb, Description: stipulator.GuidanceRegistration("mcp", verb).Description, InputSchema: schema}
 }
 
-// knobSchema renders every property description under schema, into
-// arrays and nested objects.
-func knobSchema(doc *guidancepkg.Document, verb string, schema *jsonschema.Schema) {
-	if schema == nil {
-		return
+// schemaNode adapts a JSON schema to the walk gofresh's guidance
+// package owns: an object's property names and nodes, an array's item
+// schema, the description setter — the two-value answers keep a nil
+// schema pointer out of the interface.
+type schemaNode struct{ s *jsonschema.Schema }
+
+func (n schemaNode) Properties() []string {
+	names := make([]string, 0, len(n.s.Properties))
+	for name := range n.s.Properties {
+		names = append(names, name)
 	}
-	for name, prop := range schema.Properties {
-		k, err := doc.Knob("mcp", verb, name)
-		if err != nil {
-			panic("mcpserver: " + err.Error())
-		}
-		prop.Description = k.Clause()
-		knobSchema(doc, verb, prop)
-	}
-	knobSchema(doc, verb, schema.Items)
+	return names
 }
 
-// guidanceDescription is a tool's one-line purpose, served from the
-// guidance document under the tool's mcp spelling
-// (REQ-mcp-guidance).
-func guidanceDescription(verb string) string {
-	d, err := guidanceDoc().Description("mcp", verb)
-	if err != nil {
-		panic("mcpserver: " + err.Error())
+func (n schemaNode) Property(name string) (guidance.SchemaNode, bool) {
+	p, ok := n.s.Properties[name]
+	if !ok || p == nil {
+		return nil, false
 	}
-	return d
+	return schemaNode{p}, true
 }
+
+func (n schemaNode) Items() (guidance.SchemaNode, bool) {
+	if n.s.Items == nil {
+		return nil, false
+	}
+	return schemaNode{n.s.Items}, true
+}
+
+func (n schemaNode) Describe(text string) { n.s.Description = text }
