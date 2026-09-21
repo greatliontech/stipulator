@@ -12,7 +12,11 @@ walk and serve as example witnesses:
   passed to `t.Run(name, helper)` and called by the harness;
 - an interface method dispatch whose implementation drives the runner.
 
-Each is a served-flake shape the spec states as outside the walk.
+Each is a served-flake shape the spec states as outside the walk. (The
+interface route had in fact been refusing rather than serving — the
+collector appended the abstract method and the declaration lookup
+refused it; corrected so the route serves as stated, with a type
+parameter's method refused as the clause's default.)
 Closing them needs a reachability judgment beyond declarations —
 gofresh's closure over the subject's reachable functions answers all
 three, at the cost of a proof-level dependency in the classifier.

@@ -997,16 +997,28 @@ func staticCallees(body ast.Node, pkg *packages.Package) walkedBody {
 			return true
 		}
 		var id *ast.Ident
+		var sel *ast.SelectorExpr
 		switch f := callTarget(call).(type) {
 		case *ast.Ident:
 			id = f
 		case *ast.SelectorExpr:
-			id = f.Sel
+			id, sel = f.Sel, f
 		default:
 			return true
 		}
 		switch obj := pkg.TypesInfo.Uses[id].(type) {
 		case *types.Func:
+			// An abstract method — the object of an interface dispatch —
+			// is outside the walk; the same object on a type parameter's
+			// or an untyped receiver, or under no selector at all, is a
+			// call resolving to no declaration: refused, never a serve
+			// and never a fault.
+			if sig, ok := obj.Type().(*types.Signature); ok && sig.Recv() != nil && types.IsInterface(sig.Recv().Type()) {
+				if sel == nil || !dispatchReceiver(pkg, sel.X) {
+					out.unresolved = append(out.unresolved, id.Name)
+				}
+				return true
+			}
 			out.callees = append(out.callees, obj.Origin())
 		case nil:
 			if pkg.TypesInfo.Defs[id] == nil {
@@ -1016,6 +1028,22 @@ func staticCallees(body ast.Node, pkg *packages.Package) walkedBody {
 		return true
 	})
 	return out
+}
+
+// dispatchReceiver reports whether a selector's receiver expression
+// is a typed interface value — a dispatch outside the walk. A type
+// parameter's receiver names the constraint's method, resolved to no
+// declaration until instantiation (a pointer to a type parameter has
+// no methods, so no unwrap), and a receiver the type information left
+// untyped resolves nothing either: both refuse as the clause's default
+// says, never a silent serve.
+func dispatchReceiver(pkg *packages.Package, x ast.Expr) bool {
+	tv, ok := pkg.TypesInfo.Types[x]
+	if !ok || tv.Type == nil {
+		return false
+	}
+	_, typeParam := tv.Type.(*types.TypeParam)
+	return !typeParam
 }
 
 // bodyDrivesRunner reports whether a declared function's own body

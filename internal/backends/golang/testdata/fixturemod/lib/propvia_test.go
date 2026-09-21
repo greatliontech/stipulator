@@ -80,6 +80,65 @@ func TestPropViaMethod(t *testing.T) {
 	})
 }
 
+// propDriver is the interface a dispatch reaches the driver through.
+type propDriver interface {
+	Run(t *testing.T, body func(*rapid.T))
+}
+
+// sink and counter: an interface dispatch whose ARGUMENT reaches the
+// driver — the walk descends into the call's operands.
+type sink interface {
+	Take(int)
+}
+
+type counter struct{}
+
+func (counter) Take(int) {}
+
+// driveAndCount drives the runner and answers a value.
+func driveAndCount(t *testing.T, body func(*rapid.T)) int {
+	rapid.Check(t, body)
+	return 1
+}
+
+// drive reaches the driver through a type parameter's method: the
+// constraint's method resolves to no declaration, so the walk refuses.
+func drive[T interface {
+	Run(*testing.T, func(*rapid.T))
+}](t *testing.T, x T) {
+	x.Run(t, func(rt *rapid.T) {
+		if Add(4, 4) != 8 {
+			rt.Fatal("broken")
+		}
+	})
+}
+
+// TestPropViaInterfaceArgument reaches the driver inside an interface
+// dispatch's argument: the hop is seeded through driveAndCount.
+func TestPropViaInterfaceArgument(t *testing.T) {
+	sink(counter{}).Take(driveAndCount(t, func(rt *rapid.T) {
+		if Add(5, 5) != 10 {
+			rt.Fatal("broken")
+		}
+	}))
+}
+
+// TestPropViaTypeParam reaches the driver through a type parameter's
+// method: refused as a call resolving to no declaration.
+func TestPropViaTypeParam(t *testing.T) {
+	drive(t, propRunner{})
+}
+
+// TestPropViaInterface reaches the driver through an interface method
+// dispatch: outside the walk, an example witness that serves.
+func TestPropViaInterface(t *testing.T) {
+	propDriver(propRunner{}).Run(t, func(rt *rapid.T) {
+		if Add(3, 3) != 6 {
+			rt.Fatal("broken")
+		}
+	})
+}
+
 func TestPropViaCycle(t *testing.T) {
 	spin(t, 2, func(rt *rapid.T) {
 		if Add(4, 4) != 8 {

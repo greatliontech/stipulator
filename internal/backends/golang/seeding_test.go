@@ -395,7 +395,10 @@ func TestExecutePolicyWitnessedRandomSeededNeverPublishes(t *testing.T) {
 // evidence class and is refused serving under a reason naming the first
 // helper — one hop, two hops, a method helper, and a helper that recurses
 // before driving alike — while a helper that reaches no driver serves,
-// a driverless cycle among helpers terminating the walk,
+// a driverless cycle among helpers terminating the walk, and a driver
+// reached only through an interface method dispatch is outside the
+// walk and serves (the clause's stated route) while a hop inside the
+// dispatch's argument seeds and a type parameter's method refuses,
 // (REQ-evidence-witness-freshness's transitive seeding class beside
 // REQ-go-witness-class's direct-call classification).
 func TestHelperIndirectedDriverRefusesServing(t *testing.T) {
@@ -414,12 +417,15 @@ func TestHelperIndirectedDriverRefusesServing(t *testing.T) {
 		"example.com/fixture/lib.TestPropViaOtherPackage",
 		"example.com/fixture/lib.TestPropViaGenericMethod",
 		"example.com/fixture/lib.TestPropViaDependencyHelper",
+		"example.com/fixture/lib.TestPropViaInterface",
+		"example.com/fixture/lib.TestPropViaInterfaceArgument",
+		"example.com/fixture/lib.TestPropViaTypeParam",
 		"example.com/fixture/lib.TestPropRapidCheck",
 		"example.com/fixture/lib.TestProofThenDrive",
 		"example.com/fixture/lib.TestDriveThenProof",
 		"example.com/fixture/lib.TestProofViaHelper",
 	}
-	for _, sym := range symbols[:9] {
+	for _, sym := range symbols[:12] {
 		if got := fb.WitnessClass(sym); got != verify.ExampleWitness {
 			t.Errorf("%s classified %v, want example — the evidence class stays direct-call", sym, got)
 		}
@@ -434,11 +440,16 @@ func TestHelperIndirectedDriverRefusesServing(t *testing.T) {
 		"example.com/fixture/lib.TestPropViaMethod":  seededThroughReason("(example.com/fixture/lib.propRunner).Run"),
 		"example.com/fixture/lib.TestPropViaCycle":   seededThroughReason("example.com/fixture/lib.spin"),
 		// The other package's helper, the instantiated generic method
-		// (resolved to its origin); the dependency's own helper is
-		// outside the walk and serves.
+		// (resolved to its origin); the dependency's own helper and the
+		// interface dispatch are outside the walk and serve.
 		"example.com/fixture/lib.TestPropViaOtherPackage":  seededThroughReason("example.com/fixture/helpers.Run"),
 		"example.com/fixture/lib.TestPropViaGenericMethod": seededThroughReason("(example.com/fixture/lib.runner[T]).Run"),
-		"example.com/fixture/lib.TestPropRapidCheck":       seededReason,
+		// The walk descends into a dispatch's operands: a hop in the
+		// argument seeds; a type parameter's method is the constraint's,
+		// a call resolving to no declaration — refused, never served.
+		"example.com/fixture/lib.TestPropViaInterfaceArgument": seededThroughReason("example.com/fixture/lib.driveAndCount"),
+		"example.com/fixture/lib.TestPropViaTypeParam":         seededRefusal(errors.New("call of Run in example.com/fixture/lib.drive resolves to no declaration")),
+		"example.com/fixture/lib.TestPropRapidCheck":           seededReason,
 		// Proof outranks property on the ladder and carries its seeding:
 		// a direct driver in either order, or a hop through a helper.
 		"example.com/fixture/lib.TestProofThenDrive": seededReason,
