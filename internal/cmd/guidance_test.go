@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/greatliontech/gofresh/guidance"
 	stipulator "github.com/greatliontech/stipulator"
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -26,7 +27,7 @@ func TestGuidanceCoversTheCLISurface(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	registered := map[string][]string{}
+	registered := map[string]guidance.Registered{}
 	var walk func(prefix string, c *cobra.Command)
 	walk = func(prefix string, c *cobra.Command) {
 		for _, child := range c.Commands() {
@@ -35,9 +36,12 @@ func TestGuidanceCoversTheCLISurface(t *testing.T) {
 				walk(name, child)
 				continue
 			}
-			var flags []string
+			flags := guidance.Registered{}
 			child.LocalFlags().VisitAll(func(f *pflag.Flag) {
-				flags = append(flags, f.Name)
+				// The registration carries the non-zero-default fact the
+				// CLI lint judges: a flag cobra prints a default for must
+				// not spell one in its knob prose.
+				flags[f.Name] = !zeroDefault(f)
 				// The usage string is the document's knob text, its
 				// terse first clause — identity, never a name match.
 				k, err := doc.Knob("cli", name, f.Name)
@@ -165,4 +169,23 @@ func firstClause(text string) string {
 		}
 	}
 	return strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(text), "."))
+}
+
+// zeroDefault is pflag's own per-type zero: the defaults cobra prints
+// beside a usage are exactly the non-zero ones, per flag type (a string
+// "0" prints; a bool false does not).
+func zeroDefault(f *pflag.Flag) bool {
+	switch f.Value.Type() {
+	case "string":
+		return f.DefValue == ""
+	case "bool":
+		return f.DefValue == "false"
+	case "int", "int64":
+		return f.DefValue == "0"
+	case "duration":
+		return f.DefValue == "0" || f.DefValue == "0s"
+	case "stringArray", "stringSlice":
+		return f.DefValue == "[]"
+	}
+	return f.DefValue == ""
 }

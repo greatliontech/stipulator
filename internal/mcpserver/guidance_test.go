@@ -8,6 +8,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/greatliontech/gofresh/guidance"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	stipulator "github.com/greatliontech/stipulator"
@@ -66,7 +67,7 @@ func TestGuidanceCoversTheWireSurface(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	registered := map[string][]string{}
+	registered := map[string]guidance.Registered{}
 	for _, tool := range list.Tools {
 		raw, err := json.Marshal(tool.InputSchema)
 		if err != nil {
@@ -78,7 +79,7 @@ func TestGuidanceCoversTheWireSurface(t *testing.T) {
 		if err := json.Unmarshal(raw, &schema); err != nil {
 			t.Fatalf("%s: %v", tool.Name, err)
 		}
-		var params []string
+		params := guidance.Registered{}
 		// Nested objects (an array's item properties) are judged too: the
 		// batch authoring form's claims carry their own descriptions.
 		var nested func(prefix string, props map[string]json.RawMessage)
@@ -136,7 +137,7 @@ func TestGuidanceCoversTheWireSurface(t *testing.T) {
 			if tool.Name == "verify" && name == "no_test" && prop.Description != "the records-only judgment: no witness run, no policy capture" {
 				t.Errorf("verify.no_test description = %q; want the document's first clause", prop.Description)
 			}
-			params = append(params, name)
+			params[name] = false
 		}
 		registered[tool.Name] = params
 		// The served description IS the document's one-liner —
