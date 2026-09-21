@@ -16,6 +16,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -71,18 +72,25 @@ func Digest(parts ...string) string {
 // Name is a record file's name: the identity's digest joined with the
 // digest of the fingerprint's canonical JSON encoding. A kind reads a
 // file only when its name agrees with the record inside, so the
-// truncated digests' collision risk is absorbed per file.
-func Name(identity []string, fingerprint any) string {
-	return Digest(identity...) + "-" + fingerprintDigest(fingerprint) + ".json"
+// truncated digests' collision risk is absorbed per file. A fingerprint
+// its encoder refuses (Gofresh's published form refuses an incomplete
+// or malformed value) names no file: the refusal is returned, never an
+// empty digest a caller could install or match.
+func Name(identity []string, fingerprint any) (string, error) {
+	digest, err := fingerprintDigest(fingerprint)
+	if err != nil {
+		return "", err
+	}
+	return Digest(identity...) + "-" + digest + ".json", nil
 }
 
-func fingerprintDigest(fingerprint any) string {
+func fingerprintDigest(fingerprint any) (string, error) {
 	data, err := json.Marshal(fingerprint)
 	if err != nil {
-		return ""
+		return "", fmt.Errorf("recordstore: fingerprint: %w", err)
 	}
 	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:8])
+	return hex.EncodeToString(sum[:8]), nil
 }
 
 // identityOf is the identity segment a file name carries; a name

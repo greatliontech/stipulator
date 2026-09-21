@@ -596,7 +596,7 @@ func TestPruneToolStoreGC(t *testing.T) {
 		t.Helper()
 		// A record carries its producing group: one without is refused
 		// by the loader and so collected as cost, never kept.
-		if err := witnesscache.Install(root, witnesscache.Record{Group: "6772702d64696765", Package: pkg, Test: test, Outcomes: map[string]string{pkg + "." + test: "passed"}, Fingerprint: witnesscache.Fingerprint{MaximalClosure: "aa", TestVariantClosure: "bb"}}); err != nil {
+		if err := witnesscache.Install(root, witnesscache.Record{Group: "6772702d64696765", Package: pkg, Test: test, Outcomes: map[string]string{pkg + "." + test: "passed"}, Fingerprint: witnesscache.Fingerprint{MaximalClosure: "aa", TestVariantClosure: "bb", ResultKind: gofresh.CodeResult}}); err != nil {
 			t.Fatal(err)
 		}
 	}

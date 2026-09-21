@@ -509,7 +509,9 @@ fingerprint's canonical JSON encoding, and the store's per-corpus
 directory the same truncation over the root's path: a filename-length
 economy over the one hash the model defines, never a second hash
 function, with the per-file name-content agreement check absorbing the
-truncation's collision risk. Files install atomically through a
+truncation's collision risk. A fingerprint its encoder refuses names no
+file: the refusal is the caller's, never an empty segment a record could
+install under or match. Files install atomically through a
 dot-prefixed temporary and a rename, and a dot-prefixed name is never a
 record, so a reader never sees a torn file and garbage collection never
 claims an installing record's temporary. Records are read most recently
@@ -522,19 +524,24 @@ variants beyond it evicted on install, a batch's later entry outranking
 its earlier one), its record version, and its fields. Enforced by
 `TestInstallKeepsTheNewestVariantsPerIdentity`, `TestNamesOrderAndTemporaries`,
 `TestInstallNeverEvictsAnUntouchedIdentity`, `TestSweepCountsAndSparesTemporaries`,
-`TestLayout`, `TestServedTakesTheNewestOfADuplicatedIdentity`.
+`TestLayout`, `TestServedTakesTheNewestOfADuplicatedIdentity`,
+`TestNameRefusesAnUnencodableFingerprint`.
 
 **REQ-evidence-witness-cache-format** (behavior): The local witness cache MUST be
 a record store (REQ-evidence-record-store-layout) of one file per record
 variant, its identity parts the producing capture group's build
 coordinate, the package, and the test name (the coordinate itself the
 same truncated digest over the group's canonical
-declared-build-coordinate key). The fingerprint's own 16-byte
-digests are Gofresh-owned integrity values, outside REQ-model-hash-func
-entirely. Distinct tree states of one test coexist as variants, at most
-four per identity, and alternating between branches evicts
-nothing. Records install the moment their witness group completes — its last
-covering invocation executed and its closing validation passed — never as an
+declared-build-coordinate key). The record's fingerprint member is
+Gofresh's published record form, decoded by Gofresh's decoder — a
+record it refuses fails closed to re-execution like a field-blind one,
+and a fingerprint its encoder refuses installs no record. The
+fingerprint's own 16-byte digests are Gofresh-owned integrity values,
+outside REQ-model-hash-func entirely. Distinct tree states of one test
+coexist as variants, at most four per identity, and alternating between
+branches evicts nothing. Records install the moment their witness group
+completes — its last covering invocation executed and its closing
+validation passed — never as an
 end-of-run batch: a run dying mid-execution keeps every record already
 produced, and a degraded run installs nothing further — records its
 groups installed before the fault stay, each validated by its own
@@ -751,9 +758,11 @@ one — each carrying one record object with integer `version`, the
 selection key, the symbol, the fingerprint (source-closure tiers only:
 maximal closure, test-variant compartment, toolchain, build
 configuration, result kind), and the served fields
-REQ-evidence-resolution-freshness names. A record whose fingerprint
-carries any observation, purity, or runtime tier is ignored, because
-resolution observes nothing at run time. A classifier change
+REQ-evidence-resolution-freshness names; the fingerprint member is
+Gofresh's published record form, decoded and refused exactly as the
+witness record's (REQ-evidence-witness-cache-format). A record whose
+fingerprint carries any observation, purity, or runtime tier is
+ignored, because resolution observes nothing at run time. A classifier change
 that alters what a record proves bumps the version, so a record of a
 prior classifier never serves.
 

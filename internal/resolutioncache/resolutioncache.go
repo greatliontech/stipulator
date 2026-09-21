@@ -82,7 +82,7 @@ func open(dir string) (recordstore.Store, error) { return recordstore.Open("reso
 // fileName is a record's file: the identity digest over the selection
 // key and the symbol, joined with the fingerprint's
 // (REQ-evidence-resolution-cache-format).
-func fileName(r Record) string {
+func fileName(r Record) (string, error) {
 	return recordstore.Name([]string{r.Selection, r.Symbol}, r.Fingerprint)
 }
 
@@ -125,7 +125,11 @@ func decodeRecord(name string, data []byte) (Record, bool) {
 		Resolution: e.Resolution, Shape: e.Shape, Package: e.Package,
 		WitnessClass: e.WitnessClass, WitnessClassReason: e.WitnessClassReason, NeverServe: e.NeverServe,
 	}
-	if name != fileName(rec) {
+	// A decoded fingerprint passed Gofresh's decoder, whose ladder is the
+	// encoder's, so it always names a file; a file without the member
+	// decodes to the zero fingerprint, whose empty name matches no file.
+	want, _ := fileName(rec)
+	if name != want {
 		return Record{}, false
 	}
 	return rec, true
@@ -139,9 +143,9 @@ func validResolution(r string) bool { return r == "resolved" || r == "generated_
 // observation, purity, or runtime tier marks a record this store did
 // not write.
 func validFingerprint(f witnesscache.Fingerprint) bool {
-	return witnesscache.ValidDigest(f.MaximalClosure) && witnesscache.ValidDigest(f.TestVariantClosure) && f.Toolchain != "" && witnesscache.ValidDigest(f.BuildConfig) &&
+	return witnesscache.ValidDigest(f.MaximalClosure) && witnesscache.ValidDigest(f.TestVariantClosure) && f.Guards.Toolchain != "" && witnesscache.ValidDigest(f.Guards.BuildConfig) &&
 		f.ResultKind == gofresh.CodeResult &&
-		f.Machine == "" && f.RuntimeConfig == "" && f.ObservationAssertion == "" && f.ObservationProof == nil &&
+		f.Guards.Machine == "" && f.Guards.RuntimeConfig == "" && f.ObservationAssertion == "" && f.ObservationProof == (gofresh.ObservationProof{}) &&
 		f.PurityAssertion == "" && f.DynamicStateVouches == "" && f.RuntimeInputs == "" && f.RuntimeDigest == ""
 }
 
@@ -163,12 +167,15 @@ func InstallAll(dir string, recs []Record) error {
 		if !validResolution(rec.Resolution) || !validFingerprint(rec.Fingerprint) || rec.Selection == "" || rec.Symbol == "" {
 			return errors.New("resolutioncache: record carries a field this store does not serve")
 		}
+		// validFingerprint admitted a code result with no measurement
+		// guard — the encoder's own ladder — so the name always exists.
+		name, _ := fileName(rec)
 		e := entry{Version: version, Selection: rec.Selection, Symbol: rec.Symbol, Fingerprint: rec.Fingerprint, Resolution: rec.Resolution, Shape: rec.Shape, Package: rec.Package, WitnessClass: rec.WitnessClass, WitnessClassReason: rec.WitnessClassReason, NeverServe: rec.NeverServe}
 		data, err := json.MarshalIndent(e, "", "  ")
 		if err != nil {
 			return err
 		}
-		entries = append(entries, recordstore.Entry{Name: fileName(rec), Data: data})
+		entries = append(entries, recordstore.Entry{Name: name, Data: data})
 	}
 	return store.Install(1, entries...)
 }

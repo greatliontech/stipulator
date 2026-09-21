@@ -17,6 +17,7 @@ import (
 	"time"
 
 	gofresh "github.com/greatliontech/gofresh"
+	"github.com/greatliontech/gofresh/guard"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/records"
@@ -307,18 +308,10 @@ func TestDeriveCachedOutcomeGrantsNoHealthOrEvidence(t *testing.T) {
 	// a freshness-serving path — so ignoring it here is the derivation's
 	// choice, not a loader rejection.
 	if err := witnesscache.Install(tmp, witnesscache.Record{
-		Group:   "00112233aabbccdd",
-		Package: "example.com/m/redmain",
-		Test:    "TestGreen",
-		Fingerprint: witnesscache.Fingerprint{
-			MaximalClosure:     "00112233445566778899aabbccddeeff",
-			TestVariantClosure: "00112233445566778899aabbccddeeff",
-			Toolchain:          "go1.26",
-			BuildConfig:        "00112233445566778899aabbccddeeff",
-			RuntimeInputs:      "eyJ2IjoxfQ",
-			RuntimeDigest:      "00112233445566778899aabbccddeeff",
-			ResultKind:         gofresh.CodeResult,
-		},
+		Group:       "00112233aabbccdd",
+		Package:     "example.com/m/redmain",
+		Test:        "TestGreen",
+		Fingerprint: witnesscache.Fingerprint{MaximalClosure: "00112233445566778899aabbccddeeff", TestVariantClosure: "00112233445566778899aabbccddeeff", Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: "eyJ2IjoxfQ", RuntimeDigest: "00112233445566778899aabbccddeeff", ResultKind: gofresh.CodeResult},
 		CompartmentLedger: &witnesscache.CompartmentLedger{Declarations: []witnesscache.CompartmentDeclaration{
 			{File: "seed_test.go", Kind: "func", Name: "TestGreen", Hash: "00112233445566778899aabbccddeeff"},
 		}},

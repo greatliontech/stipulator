@@ -12,7 +12,6 @@ import (
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/resolutioncache"
 	"github.com/greatliontech/stipulator/internal/verify"
-	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
 
 // selectionEngine is the freshness engine for one resolution build
@@ -423,15 +422,15 @@ func (s *Served) serveSelection(key string, recs []resolutioncache.Record) {
 // serving refusal are functions of its own body, which lives exactly
 // there — then the toolchain and the build configuration. An empty
 // compartment digest on either side fails closed.
-func closureMoved(recorded witnesscache.Fingerprint, current gofresh.Fingerprint) string {
+func closureMoved(recorded, current gofresh.Fingerprint) string {
 	switch {
 	case recorded.MaximalClosure != current.MaximalClosure:
 		return "closure"
 	case recorded.TestVariantClosure == "" || recorded.TestVariantClosure != current.TestVariantClosure:
 		return "test variants"
-	case recorded.Toolchain != current.Guards.Toolchain:
+	case recorded.Guards.Toolchain != current.Guards.Toolchain:
 		return "toolchain"
-	case recorded.BuildConfig != current.Guards.BuildConfig:
+	case recorded.Guards.BuildConfig != current.Guards.BuildConfig:
 		return "build configuration"
 	}
 	return ""
@@ -798,12 +797,12 @@ func (s *Served) publishSelection(key string, symbols []string) {
 		// capture equals the opening one; a subject that moved between
 		// them resolves typed again next run.
 		before, opened := opening[subject]
-		if !opened || closureMoved(witnesscache.FromGofresh(before), fp) != "" {
+		if !opened || closureMoved(before, fp) != "" {
 			moved++
 			continue
 		}
 		recs = append(recs, resolutioncache.Record{
-			Selection: key, Symbol: symbol, Fingerprint: witnesscache.FromGofresh(before),
+			Selection: key, Symbol: symbol, Fingerprint: before,
 			Resolution: resolutionWire(a.res), Shape: a.shape, Package: a.pkg,
 			WitnessClass: classWire(a.class), WitnessClassReason: a.reason,
 			NeverServe: s.refusals[symbol],

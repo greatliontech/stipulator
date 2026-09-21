@@ -439,7 +439,7 @@ func TestGoRunWitnessesSelectsRaceSources(t *testing.T) {
 		if rec.Fingerprint.PurityAssertion != "" {
 			t.Fatalf("race-selected record carries purity attribution %q — the default-only assertion rode across the build constraint", rec.Fingerprint.PurityAssertion)
 		}
-		if rec.Fingerprint.ObservationProof == nil || !rec.Fingerprint.ObservationProof.Observable {
+		if rec.Fingerprint.ObservationProof == (gofresh.ObservationProof{}) || !rec.Fingerprint.ObservationProof.Observable {
 			t.Fatalf("race-selected record serves without an observable proof: %+v", rec.Fingerprint.ObservationProof)
 		}
 	}

@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/greatliontech/gofresh"
+	"github.com/greatliontech/gofresh/guard"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/internal/records"
@@ -18,7 +20,6 @@ import (
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/stipulate"
-	"strings"
 )
 
 // servedModule is the served backend's fixture: a callable that
@@ -350,10 +351,7 @@ func TestGCResolutionsKeepsBoundAndWitnessSymbols(t *testing.T) {
 }
 
 func fingerprintFor(closure string) witnesscache.Fingerprint {
-	return witnesscache.Fingerprint{
-		MaximalClosure: strings.Repeat(closure, 32), TestVariantClosure: strings.Repeat("b", 32),
-		Toolchain: "go1.27.0", BuildConfig: strings.Repeat("c", 32), ResultKind: gofresh.CodeResult,
-	}
+	return witnesscache.Fingerprint{MaximalClosure: strings.Repeat(closure, 32), TestVariantClosure: strings.Repeat("b", 32), Guards: guard.Guards{Toolchain: "go1.27.0", BuildConfig: strings.Repeat("c", 32)}, ResultKind: gofresh.CodeResult}
 }
 
 func bindingSet(symbols ...string) *stipulatorv1.BindingSet {
@@ -422,7 +420,11 @@ func TestServedTakesTheNewestOfADuplicatedIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	older := filepath.Join(store, recordstore.Name([]string{twin.Selection, twin.Symbol}, twin.Fingerprint))
+	olderName, err := recordstore.Name([]string{twin.Selection, twin.Symbol}, twin.Fingerprint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	older := filepath.Join(store, olderName)
 	if err := os.WriteFile(older, data, 0o644); err != nil {
 		t.Fatal(err)
 	}

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/greatliontech/gofresh"
+	"github.com/greatliontech/gofresh/guard"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/resolutioncache"
 	"github.com/greatliontech/stipulator/internal/verify"
@@ -23,9 +24,9 @@ import (
 func TestClosureMovedNamesEveryTier(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
 	base := func() (witnesscache.Fingerprint, gofresh.Fingerprint) {
-		rec := witnesscache.Fingerprint{MaximalClosure: strings.Repeat("a", 32), TestVariantClosure: strings.Repeat("b", 32), Toolchain: "go1.27.0", BuildConfig: strings.Repeat("c", 32)}
+		rec := witnesscache.Fingerprint{MaximalClosure: strings.Repeat("a", 32), TestVariantClosure: strings.Repeat("b", 32), Guards: guard.Guards{Toolchain: "go1.27.0", BuildConfig: strings.Repeat("c", 32)}}
 		cur := gofresh.Fingerprint{MaximalClosure: rec.MaximalClosure, TestVariantClosure: rec.TestVariantClosure}
-		cur.Guards.Toolchain, cur.Guards.BuildConfig = rec.Toolchain, rec.BuildConfig
+		cur.Guards.Toolchain, cur.Guards.BuildConfig = rec.Guards.Toolchain, rec.Guards.BuildConfig
 		return rec, cur
 	}
 	if rec, cur := base(); closureMoved(rec, cur) != "" {
@@ -38,8 +39,8 @@ func TestClosureMovedNamesEveryTier(t *testing.T) {
 		{"closure", func(f *witnesscache.Fingerprint) { f.MaximalClosure = strings.Repeat("d", 32) }},
 		{"test variants", func(f *witnesscache.Fingerprint) { f.TestVariantClosure = strings.Repeat("d", 32) }},
 		{"test variants", func(f *witnesscache.Fingerprint) { f.TestVariantClosure = "" }},
-		{"toolchain", func(f *witnesscache.Fingerprint) { f.Toolchain = "go1.26.0" }},
-		{"build configuration", func(f *witnesscache.Fingerprint) { f.BuildConfig = strings.Repeat("d", 32) }},
+		{"toolchain", func(f *witnesscache.Fingerprint) { f.Guards.Toolchain = "go1.26.0" }},
+		{"build configuration", func(f *witnesscache.Fingerprint) { f.Guards.BuildConfig = strings.Repeat("d", 32) }},
 	} {
 		rec, cur := base()
 		tc.move(&rec)

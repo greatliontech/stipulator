@@ -8,16 +8,14 @@ import (
 	"testing"
 
 	"github.com/greatliontech/gofresh"
+	"github.com/greatliontech/gofresh/guard"
 	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
 func fingerprint(closure string) witnesscache.Fingerprint {
-	return witnesscache.Fingerprint{
-		MaximalClosure: strings.Repeat(closure, 32), TestVariantClosure: strings.Repeat("b", 32),
-		Toolchain: "go1.27.0", BuildConfig: strings.Repeat("c", 32), ResultKind: gofresh.CodeResult,
-	}
+	return witnesscache.Fingerprint{MaximalClosure: strings.Repeat(closure, 32), TestVariantClosure: strings.Repeat("b", 32), Guards: guard.Guards{Toolchain: "go1.27.0", BuildConfig: strings.Repeat("c", 32)}, ResultKind: gofresh.CodeResult}
 }
 
 // TestRecordsRoundTripOnePerIdentity pins the store's layout: a record
@@ -75,6 +73,10 @@ func TestRecordsRefuseWhatTheStoreDoesNotServe(t *testing.T) {
 	good := Record{Selection: "default", Symbol: "example.com/p.F", Fingerprint: fingerprint("a"), Resolution: "resolved"}
 	observed := good
 	observed.Fingerprint.RuntimeInputs = strings.Repeat("9", 32)
+	asserted := good
+	asserted.Fingerprint.ObservationAssertion = "caller assertion"
+	proved := good
+	proved.Fingerprint.ObservationProof = gofresh.ObservationProof{Strategy: gofresh.ObservationRTA, Subject: gofresh.Subject{Package: "example.com/p", Symbol: "F"}, Observable: true, Evidence: strings.Repeat("e", 32)}
 	pure := good
 	pure.Fingerprint.PurityAssertion = "source directive"
 	unresolved := good
@@ -83,7 +85,7 @@ func TestRecordsRefuseWhatTheStoreDoesNotServe(t *testing.T) {
 	benchmark.Fingerprint.ResultKind = gofresh.Measurement
 	noCompartment := good
 	noCompartment.Fingerprint.TestVariantClosure = ""
-	for name, rec := range map[string]Record{"observation tier": observed, "purity tier": pure, "unresolved": unresolved, "no selection": {Symbol: "x", Fingerprint: fingerprint("a"), Resolution: "resolved"}, "benchmark result kind": benchmark, "no compartment digest": noCompartment} {
+	for name, rec := range map[string]Record{"runtime tier": observed, "observation assertion": asserted, "observation proof": proved, "purity tier": pure, "unresolved": unresolved, "no selection": {Symbol: "x", Fingerprint: fingerprint("a"), Resolution: "resolved"}, "benchmark result kind": benchmark, "no compartment digest": noCompartment} {
 		if err := InstallAll(dir, []Record{rec}); err == nil {
 			t.Fatalf("%s: installed", name)
 		}
@@ -95,33 +97,40 @@ func TestRecordsRefuseWhatTheStoreDoesNotServe(t *testing.T) {
 	// Each planted file is named by the record it carries — its
 	// identity and its own (distinct) fingerprint — so the file passes
 	// the name-content check and the refusal is the ladder's.
-	write := func(closure string, mutate func(map[string]any)) {
+	raw := func(v any) json.RawMessage {
+		data, _ := json.Marshal(v)
+		return data
+	}
+	// The fingerprint member stays typed: Gofresh's decoder refuses any
+	// encoding of it but the form's own, so a map round trip (sorted
+	// keys) would be refused for the form, never for the ladder's reason.
+	write := func(closure string, mutate func(map[string]json.RawMessage, *witnesscache.Fingerprint)) {
 		t.Helper()
-		e := map[string]any{}
-		data, _ := os.ReadFile(filepath.Join(store, fileName(good)))
+		e := map[string]json.RawMessage{}
+		data, _ := os.ReadFile(filepath.Join(store, mustName(t, good)))
 		if err := json.Unmarshal(data, &e); err != nil {
 			t.Fatal(err)
 		}
-		e["fingerprint"].(map[string]any)["maximalClosure"] = strings.Repeat(closure, 32)
-		mutate(e)
-		fp, _ := json.Marshal(e["fingerprint"])
 		var planted witnesscache.Fingerprint
-		if err := json.Unmarshal(fp, &planted); err != nil {
+		if err := json.Unmarshal(e["fingerprint"], &planted); err != nil {
 			t.Fatal(err)
 		}
-		name := fileName(Record{Selection: good.Selection, Symbol: good.Symbol, Fingerprint: planted})
+		planted.MaximalClosure = strings.Repeat(closure, 32)
+		mutate(e, &planted)
+		e["fingerprint"] = raw(planted)
+		name := mustName(t, Record{Selection: good.Selection, Symbol: good.Symbol, Fingerprint: planted})
 		out, _ := json.Marshal(e)
 		if err := os.WriteFile(filepath.Join(store, name), out, 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
-	write("1", func(e map[string]any) { e["version"] = version - 1 })
-	write("2", func(e map[string]any) { e["resolvedBy"] = "someone" })
-	write("3", func(e map[string]any) { e["resolution"] = "not_found" })
-	write("4", func(e map[string]any) {
-		e["fingerprint"].(map[string]any)["runtimeInputs"] = strings.Repeat("9", 32)
+	write("1", func(e map[string]json.RawMessage, _ *witnesscache.Fingerprint) { e["version"] = raw(version - 1) })
+	write("2", func(e map[string]json.RawMessage, _ *witnesscache.Fingerprint) { e["resolvedBy"] = raw("someone") })
+	write("3", func(e map[string]json.RawMessage, _ *witnesscache.Fingerprint) { e["resolution"] = raw("not_found") })
+	write("4", func(_ map[string]json.RawMessage, fp *witnesscache.Fingerprint) {
+		fp.RuntimeInputs = strings.Repeat("9", 32)
 	})
-	write("5", func(e map[string]any) { e["selection"] = "" })
+	write("5", func(e map[string]json.RawMessage, _ *witnesscache.Fingerprint) { e["selection"] = raw("") })
 	if got := Load(dir); len(got) != 1 || got[0] != good {
 		t.Fatalf("loaded %+v, want the one good record", got)
 	}
@@ -144,7 +153,7 @@ func TestMisnamedRecordsAndTemporariesAreNotRecords(t *testing.T) {
 	store, _ := StoreDir(dir)
 	sameIdentity := rec
 	sameIdentity.Fingerprint = fingerprint("e")
-	if err := os.Rename(filepath.Join(store, fileName(rec)), filepath.Join(store, fileName(sameIdentity))); err != nil {
+	if err := os.Rename(filepath.Join(store, mustName(t, rec)), filepath.Join(store, mustName(t, sameIdentity))); err != nil {
 		t.Fatal(err)
 	}
 	if got := Load(dir); len(got) != 0 {
@@ -157,11 +166,11 @@ func TestMisnamedRecordsAndTemporariesAreNotRecords(t *testing.T) {
 	if err := InstallAll(dir, []Record{rec}); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Rename(filepath.Join(store, fileName(rec)), filepath.Join(store, fileName(sameIdentity))); err != nil {
+	if err := os.Rename(filepath.Join(store, mustName(t, rec)), filepath.Join(store, mustName(t, sameIdentity))); err != nil {
 		t.Fatal(err)
 	}
 	other := Record{Selection: "plain", Symbol: "example.com/p.G", Fingerprint: fingerprint("a")}
-	if err := os.Rename(filepath.Join(store, fileName(sameIdentity)), filepath.Join(store, fileName(other))); err != nil {
+	if err := os.Rename(filepath.Join(store, mustName(t, sameIdentity)), filepath.Join(store, mustName(t, other))); err != nil {
 		t.Fatal(err)
 	}
 	if got := Load(dir); len(got) != 0 {
@@ -180,4 +189,15 @@ func TestMisnamedRecordsAndTemporariesAreNotRecords(t *testing.T) {
 	if _, err := os.Stat(temp); err != nil {
 		t.Fatalf("the temporary was swept: %v", err)
 	}
+}
+
+// mustName is the record's file name, or the test's failure — every
+// record the tests name encodes.
+func mustName(t *testing.T, rec Record) string {
+	t.Helper()
+	name, err := fileName(rec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return name
 }

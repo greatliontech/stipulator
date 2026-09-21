@@ -736,7 +736,7 @@ func TestCompartmentGrownServeGates(t *testing.T) {
 	}
 	rec := witnesscache.Record{
 		Package: s.Package, Test: s.Symbol,
-		Fingerprint:       witnesscache.FromGofresh(fp),
+		Fingerprint:       fp,
 		CompartmentLedger: witnesscache.LedgerFromGofresh(ledger),
 		Outcomes:          map[string]string{s.Package + "." + s.Symbol: "passed"},
 	}
@@ -757,6 +757,19 @@ func TestCompartmentGrownServeGates(t *testing.T) {
 	if stored, _, ok := compartmentGrownRefresh(context.Background(), tmp, view, ledgerless, variants, s); !ok || stored.CompartmentLedger == nil {
 		t.Fatal("the stored ledger did not serve a ledgerless loaded record")
 	}
+	// The served record carries the refreshed compartment pin: a record
+	// whose digest the compartment outgrew comes back pinned to the
+	// current one, on the record and on the fingerprint the batched
+	// re-check judges alike.
+	grown := rec
+	grown.Fingerprint.TestVariantClosure = strings.Repeat("0", 32)
+	served, refreshed, ok := compartmentGrownRefresh(context.Background(), tmp, view, grown, variants, s)
+	if !ok {
+		t.Fatal("an inert-diffing record under an outgrown digest refused")
+	}
+	if served.Fingerprint.TestVariantClosure != fp.TestVariantClosure || refreshed.TestVariantClosure != fp.TestVariantClosure {
+		t.Fatalf("served record pinned to %q, refreshed fingerprint to %q, want the current compartment %q", served.Fingerprint.TestVariantClosure, refreshed.TestVariantClosure, fp.TestVariantClosure)
+	}
 	tampered := rec
 	tampered.CompartmentLedger = witnesscache.LedgerFromGofresh(ledger)
 	if len(tampered.CompartmentLedger.Declarations) == 0 {
@@ -772,7 +785,7 @@ func TestCompartmentGrownServeGates(t *testing.T) {
 	// re-check of the refreshed fingerprint is what catches the mover,
 	// exactly as the production rounds compose it.
 	guardMoved := rec
-	guardMoved.Fingerprint.Toolchain = "go0.0-never"
+	guardMoved.Fingerprint.Guards.Toolchain = "go0.0-never"
 	_, movedFP, ok := compartmentGrownRefresh(context.Background(), tmp, view, guardMoved, variants, s)
 	if !ok {
 		t.Fatal("the refresh half refused a gate-passing record; the re-check owns guard movement")
@@ -1018,7 +1031,7 @@ func TestWritesOnce(t *testing.T) {
 	}
 	// The retry ran the reader alone in its process, so the republished
 	// record carries the observation proof.
-	if retried.Fingerprint.ObservationProof == nil || retried.Fingerprint.ObservationAssertion == "" {
+	if retried.Fingerprint.ObservationProof == (gofresh.ObservationProof{}) || retried.Fingerprint.ObservationAssertion == "" {
 		t.Errorf("retried solo reader carries no observation proof: %+v", retried.Fingerprint)
 	}
 
@@ -1304,10 +1317,10 @@ func TestSecond(t *testing.T) { _ = edition }
 	if rec == nil {
 		t.Fatal("solo selective process published no record")
 	}
-	if rec.Fingerprint.ObservationProof == nil || rec.Fingerprint.ObservationAssertion == "" {
+	if rec.Fingerprint.ObservationProof == (gofresh.ObservationProof{}) || rec.Fingerprint.ObservationAssertion == "" {
 		t.Errorf("solo selective process record carries no observation proof: %+v", rec.Fingerprint)
-	} else if rec.Fingerprint.ObservationProof.Package != rec.Package ||
-		rec.Fingerprint.ObservationProof.Symbol != rec.Test ||
+	} else if rec.Fingerprint.ObservationProof.Subject.Package != rec.Package ||
+		rec.Fingerprint.ObservationProof.Subject.Symbol != rec.Test ||
 		!rec.Fingerprint.ObservationProof.Observable {
 		t.Errorf("observation proof does not attest the record's own subject: %+v", rec.Fingerprint.ObservationProof)
 	}
@@ -1320,7 +1333,7 @@ func TestSecond(t *testing.T) { _ = edition }
 		if rec == nil {
 			t.Fatalf("shared selective process published no record for %s", name)
 		}
-		if rec.Fingerprint.ObservationProof != nil || rec.Fingerprint.ObservationAssertion != "" {
+		if rec.Fingerprint.ObservationProof != (gofresh.ObservationProof{}) || rec.Fingerprint.ObservationAssertion != "" {
 			t.Errorf("%s gained an observation proof from a process it shared with a sibling: %+v", name, rec.Fingerprint)
 		}
 	}

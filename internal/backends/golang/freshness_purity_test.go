@@ -68,7 +68,7 @@ func TestObservationProofPublishesAndServes(t *testing.T) {
 	records := witnesscache.Load(tmp)
 	if len(records) != 1 || records[0].Fingerprint.PurityAssertion != "" ||
 		records[0].Fingerprint.ObservationAssertion != "caller assertion" ||
-		records[0].Fingerprint.ObservationProof == nil ||
+		records[0].Fingerprint.ObservationProof == (gofresh.ObservationProof{}) ||
 		records[0].Fingerprint.ObservationProof.Strategy != gofresh.ObservationRTA ||
 		!records[0].Fingerprint.ObservationProof.Observable {
 		t.Fatalf("published fingerprint lacks attributable positive observation proof: %+v", records)
@@ -201,7 +201,7 @@ func TestIncompatibleObservationEvidenceCannotServe(t *testing.T) {
 		t.Fatalf("first run: ran=%d uncached=%d; record did not publish", first.Ran, first.Uncached)
 	}
 	records := witnesscache.Load(tmp)
-	if len(records) != 1 || records[0].Fingerprint.ObservationProof == nil {
+	if len(records) != 1 || records[0].Fingerprint.ObservationProof == (gofresh.ObservationProof{}) {
 		t.Fatalf("published proof missing: %+v", records)
 	}
 	evidence := records[0].Fingerprint.ObservationProof.Evidence

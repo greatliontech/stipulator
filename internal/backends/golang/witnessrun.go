@@ -735,7 +735,7 @@ func roundCandidates(subjects []gofresh.Subject, cached map[string][]witnesscach
 			refused(s, refusedWithdrawnNamespace)
 			continue
 		}
-		fps[s] = vars[round].Fingerprint.ToGofresh()
+		fps[s] = vars[round].Fingerprint
 	}
 	return fps, advanced
 }
@@ -1008,9 +1008,9 @@ func compartmentGrownRefresh(ctx context.Context, dir string, view *gofresh.View
 	if err != nil || fp.TestVariantClosure == "" {
 		return witnesscache.Record{}, gofresh.Fingerprint{}, false
 	}
-	refreshed := rec.Fingerprint.ToGofresh()
+	refreshed := rec.Fingerprint
 	refreshed.TestVariantClosure = fp.TestVariantClosure
-	rec.Fingerprint = witnesscache.FromGofresh(refreshed)
+	rec.Fingerprint = refreshed
 	rec.CompartmentLedger = witnesscache.LedgerFromGofresh(current)
 	return rec, refreshed, true
 }
@@ -1146,7 +1146,7 @@ func finishGroup(ctx context.Context, wg *witnessGroup, m *execMerge) ([]gofresh
 	// therefore moves after publishExecuted returns.
 	servedFPs := map[gofresh.Subject]gofresh.Fingerprint{}
 	for _, s := range wg.served {
-		servedFPs[s] = wg.recorded[s].Fingerprint.ToGofresh()
+		servedFPs[s] = wg.recorded[s].Fingerprint
 	}
 	verdicts, err := checkFingerprints(ctx, wg.view, servedFPs)
 	if err != nil {

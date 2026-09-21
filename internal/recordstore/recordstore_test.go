@@ -34,7 +34,7 @@ func TestInstallKeepsTheNewestVariantsPerIdentity(t *testing.T) {
 			var batch []Entry
 			for i := 0; i < n; i++ {
 				identity := rapid.SampledFrom([]string{"a", "b", "c"}).Draw(rt, "identity")
-				name := Name([]string{identity}, rapid.IntRange(0, 99).Draw(rt, "fp"))
+				name := mustName(rt, []string{identity}, rapid.IntRange(0, 99).Draw(rt, "fp"))
 				batch = append(batch, Entry{Name: name, Data: []byte(name)})
 			}
 			if err := store.Install(bound, batch...); err != nil {
@@ -133,12 +133,12 @@ func TestInstallNeverEvictsAnUntouchedIdentity(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-record-store-layout")
 	store := Store{kind: "k", path: t.TempDir()}
 	for i := 0; i < 6; i++ {
-		name := Name([]string{"crowded"}, i)
+		name := mustName(t, []string{"crowded"}, i)
 		if err := os.WriteFile(filepath.Join(store.path, name), []byte("x"), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := store.Install(2, Entry{Name: Name([]string{"other"}, 1), Data: []byte("y")}); err != nil {
+	if err := store.Install(2, Entry{Name: mustName(t, []string{"other"}, 1), Data: []byte("y")}); err != nil {
 		t.Fatal(err)
 	}
 	names, _ := store.Names()
@@ -205,11 +205,11 @@ func TestSweepCountsAndSparesTemporaries(t *testing.T) {
 //gofresh:pure
 func TestLayout(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-record-store-layout")
-	name := Name([]string{"g", "p", "T"}, map[string]string{"k": "v"})
+	name := mustName(t, []string{"g", "p", "T"}, map[string]string{"k": "v"})
 	if !strings.HasSuffix(name, ".json") || len(name) != 16+1+16+5 || name[:16] != Digest("g", "p", "T") {
 		t.Fatalf("name = %q", name)
 	}
-	if Name([]string{"g"}, 1) == Name([]string{"g"}, 2) || Name([]string{"g"}, 1) != Name([]string{"g"}, 1) {
+	if mustName(t, []string{"g"}, 1) == mustName(t, []string{"g"}, 2) || mustName(t, []string{"g"}, 1) != mustName(t, []string{"g"}, 1) {
 		t.Fatal("the fingerprint segment does not follow the fingerprint")
 	}
 	if Digest("a", "bc") == Digest("ab", "c") {
@@ -237,5 +237,33 @@ func TestLayout(t *testing.T) {
 	}
 	if !strings.HasPrefix(a.pattern(), ".") || !strings.HasSuffix(a.pattern(), ".json") || !strings.Contains(a.pattern(), "kind") {
 		t.Fatalf("install temporary pattern %q is not dot-prefixed", a.pattern())
+	}
+}
+
+// mustName is the record name, or the test's failure — every value the
+// tests name encodes.
+func mustName(t interface {
+	Helper()
+	Fatal(...any)
+}, identity []string, fingerprint any) string {
+	t.Helper()
+	name, err := Name(identity, fingerprint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return name
+}
+
+// TestNameRefusesAnUnencodableFingerprint pins the naming's fail-closed
+// arm (REQ-evidence-record-store-layout): a fingerprint its encoder
+// refuses names no file — the refusal is returned, never an empty digest
+// a caller could install under or match.
+//
+//gofresh:pure
+func TestNameRefusesAnUnencodableFingerprint(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-record-store-layout")
+	name, err := Name([]string{"g"}, make(chan int))
+	if err == nil || name != "" || !strings.Contains(err.Error(), "fingerprint") {
+		t.Fatalf("an unencodable fingerprint named %q, err %v", name, err)
 	}
 }

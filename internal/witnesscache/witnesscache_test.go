@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -126,7 +127,7 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 		Group:       "6772702d64696765",
 		Package:     generated.ObservationProof.Subject.Package,
 		Test:        generated.ObservationProof.Subject.Symbol,
-		Fingerprint: FromGofresh(generated),
+		Fingerprint: generated,
 		CompartmentLedger: &CompartmentLedger{
 			Declarations: []CompartmentDeclaration{{File: "observed_test.go", Kind: "func", Name: "TestObserved", Hash: "00112233445566778899aabbccddeeff"}},
 			FileHeaders:  []CompartmentFileHeader{{File: "observed_test.go", Hash: "ffeeddccbbaa99887766554433221100"}},
@@ -148,7 +149,13 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 	tamper(path, fmt.Sprintf(`"version": %d`, version), fmt.Sprintf(`"version": %d`, version+1))
 	requireAbsent("version-mismatched file")
 
-	seedOne(Record{Group: rec.Group, Package: rec.Package, Test: rec.Test, Outcomes: map[string]string{rec.Key(): "passed"}})
+	// A fingerprint Gofresh's form encodes but this store's completeness
+	// refuses — a closure digest that is no digest — installs under its
+	// own name and never serves (a kind-less one never installs:
+	// TestInstallRefusesWhatTheEncoderRefuses).
+	incomplete := rec
+	incomplete.Fingerprint.MaximalClosure = "zz"
+	seedOne(incomplete)
 	requireAbsent("incomplete fingerprint")
 
 	groupless := rec
@@ -156,12 +163,13 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 	seedOne(groupless)
 	requireAbsent("record without a producing group")
 
-	broken := rec
-	broken.Fingerprint.ResultKind = 0
-	seedOne(broken)
+	// A kind-less fingerprint never installs (the encoder refuses it), so
+	// the stored shape is a tampered one, which the decoder refuses.
+	path = seedOne(rec)
+	tamper(path, `"resultKind": 1`, `"resultKind": 0`)
 	requireAbsent("missing result kind")
 
-	broken = rec
+	broken := rec
 	broken.Fingerprint.RuntimeInputs = "not-base64"
 	seedOne(broken)
 	requireAbsent("malformed runtime manifest")
@@ -180,38 +188,38 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 	tamper(path, `"resultKind": 1`, `"machine": "", "resultKind": 1`)
 	requireAbsent("explicit measurement field")
 
-	otherProof := *rec.Fingerprint.ObservationProof
-	otherProof.Symbol = "Other"
+	otherProof := rec.Fingerprint.ObservationProof
+	otherProof.Subject.Symbol = "Other"
 	broken = rec
-	broken.Fingerprint.ObservationProof = &otherProof
+	broken.Fingerprint.ObservationProof = otherProof
 	seedOne(broken)
 	requireAbsent("proof for another subject")
 
-	badEvidence := *rec.Fingerprint.ObservationProof
+	badEvidence := rec.Fingerprint.ObservationProof
 	badEvidence.Evidence = "proof"
 	broken = rec
-	broken.Fingerprint.ObservationProof = &badEvidence
+	broken.Fingerprint.ObservationProof = badEvidence
 	seedOne(broken)
 	requireAbsent("malformed proof evidence")
 
-	posWithReason := *rec.Fingerprint.ObservationProof
+	posWithReason := rec.Fingerprint.ObservationProof
 	posWithReason.Reason = "blocked"
 	broken = rec
-	broken.Fingerprint.ObservationProof = &posWithReason
+	broken.Fingerprint.ObservationProof = posWithReason
 	seedOne(broken)
 	requireAbsent("positive proof with a reason")
 
-	negNoReason := *rec.Fingerprint.ObservationProof
+	negNoReason := rec.Fingerprint.ObservationProof
 	negNoReason.Observable = false
 	negNoReason.Reason = ""
 	broken = rec
-	broken.Fingerprint.ObservationProof = &negNoReason
+	broken.Fingerprint.ObservationProof = negNoReason
 	seedOne(broken)
 	requireAbsent("negative proof without a reason")
 
 	withoutObservation := rec
 	withoutObservation.Fingerprint.ObservationAssertion = ""
-	withoutObservation.Fingerprint.ObservationProof = nil
+	withoutObservation.Fingerprint.ObservationProof = gofresh.ObservationProof{}
 	path = seedOne(withoutObservation)
 	tamper(path, `"runtimeInputs":`, `"observationAssertion": null, "runtimeInputs":`)
 	requireAbsent("null observation assertion")
@@ -225,10 +233,10 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 	requireAbsent("positive proof with explicit empty reason")
 
 	negative := rec
-	negativeProof := *rec.Fingerprint.ObservationProof
+	negativeProof := rec.Fingerprint.ObservationProof
 	negativeProof.Observable = false
 	negativeProof.Reason = "blocked"
-	negative.Fingerprint.ObservationProof = &negativeProof
+	negative.Fingerprint.ObservationProof = negativeProof
 	path = seedOne(negative)
 	tamper(path, `"observable": false,`, `"observable": null, "observable": false,`)
 	requireAbsent("proof with duplicate observable")
@@ -303,7 +311,7 @@ func TestLedgerStoreRefusesPerFile(t *testing.T) {
 		},
 		FileHeaders: []CompartmentFileHeader{{File: "p_test.go", Hash: "ffeeddccbbaa99887766554433221100"}, {File: "fixture.txt", Hash: "ffeeddccbbaa99887766554433221100", Embedded: true}},
 	}
-	rec := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestA", Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: digest}, CompartmentLedger: ledger, Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
+	rec := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestA", Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: digest, ResultKind: gofresh.CodeResult}, CompartmentLedger: ledger, Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
 	if got := LoadLedger(dir, digest, "TestA"); got != nil {
 		t.Fatalf("absent ledger loaded %+v", got)
 	}
@@ -400,7 +408,7 @@ func TestLoadReclaimsUnreferencedLedgers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	base := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestA", Fingerprint: Fingerprint{MaximalClosure: "0123456789abcdef0123456789abcdef", Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff", RuntimeInputs: "eyJ2IjoxfQ", RuntimeDigest: "3a79bf37b571938d1f2907afb6a643f4", ResultKind: gofresh.CodeResult}, Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
+	base := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestA", Fingerprint: Fingerprint{MaximalClosure: "0123456789abcdef0123456789abcdef", Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: "eyJ2IjoxfQ", RuntimeDigest: "3a79bf37b571938d1f2907afb6a643f4", ResultKind: gofresh.CodeResult}, Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
 	ledgerOf := func(digest string) *CompartmentLedger {
 		return &CompartmentLedger{Declarations: []CompartmentDeclaration{{File: "p_test.go", Kind: "func", Name: "TestA", Hash: digest}}}
 	}
@@ -417,7 +425,7 @@ func TestLoadReclaimsUnreferencedLedgers(t *testing.T) {
 			t.Fatal(err)
 		}
 		stamp := time.Unix(int64(1_700_000_000+i*10), 0)
-		if err := os.Chtimes(filepath.Join(store, fileName(rec)), stamp, stamp); err != nil {
+		if err := os.Chtimes(filepath.Join(store, mustName(t, rec)), stamp, stamp); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -433,7 +441,7 @@ func TestLoadReclaimsUnreferencedLedgers(t *testing.T) {
 	if err := Install(dir, refused); err != nil {
 		t.Fatal(err)
 	}
-	refusedPath := filepath.Join(store, fileName(refused))
+	refusedPath := filepath.Join(store, mustName(t, refused))
 	data, err := os.ReadFile(refusedPath)
 	if err != nil {
 		t.Fatal(err)
@@ -493,7 +501,7 @@ func TestLoadOrdersVariantsNewestFirst(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	base := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestA", Fingerprint: Fingerprint{TestVariantClosure: "0123456789abcdef0123456789abcdef", Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff", RuntimeInputs: "eyJ2IjoxfQ", RuntimeDigest: "3a79bf37b571938d1f2907afb6a643f4", ResultKind: gofresh.CodeResult}, Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
+	base := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestA", Fingerprint: Fingerprint{TestVariantClosure: "0123456789abcdef0123456789abcdef", Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: "eyJ2IjoxfQ", RuntimeDigest: "3a79bf37b571938d1f2907afb6a643f4", ResultKind: gofresh.CodeResult}, Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
 	// Install order and name order both disagree with the stamps: the
 	// stamps alone decide.
 	closures := []string{"cccccccccccccccccccccccccccccccc", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
@@ -505,7 +513,7 @@ func TestLoadOrdersVariantsNewestFirst(t *testing.T) {
 			t.Fatal(err)
 		}
 		stamp := time.Unix(stamps[i], 0)
-		if err := os.Chtimes(filepath.Join(store, fileName(rec)), stamp, stamp); err != nil {
+		if err := os.Chtimes(filepath.Join(store, mustName(t, rec)), stamp, stamp); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -545,7 +553,7 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 		Group:       "6772702d64696765",
 		Package:     generated.ObservationProof.Subject.Package,
 		Test:        generated.ObservationProof.Subject.Symbol,
-		Fingerprint: FromGofresh(generated),
+		Fingerprint: generated,
 		// One compartment, shared by both tests of the package.
 		CompartmentLedger: &CompartmentLedger{
 			Declarations: []CompartmentDeclaration{
@@ -558,9 +566,9 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 	}
 	sibling := rec
 	sibling.Test = "TestSibling"
-	siblingProof := *rec.Fingerprint.ObservationProof
-	siblingProof.Symbol = "TestSibling"
-	sibling.Fingerprint.ObservationProof = &siblingProof
+	siblingProof := rec.Fingerprint.ObservationProof
+	siblingProof.Subject.Symbol = "TestSibling"
+	sibling.Fingerprint.ObservationProof = siblingProof
 	sibling.Outcomes = map[string]string{sibling.Key(): "passed"}
 	if err := Install(dir, rec); err != nil {
 		t.Fatal(err)
@@ -618,7 +626,7 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 		if err := Install(dir, next); err != nil {
 			t.Fatal(err)
 		}
-		name := fileName(next)
+		name := mustName(t, next)
 		full := filepath.Join(store, name)
 		stamp := time.Unix(int64(1_700_000_000+i*10), 0)
 		if err := os.Chtimes(full, stamp, stamp); err != nil && !os.IsNotExist(err) {
@@ -645,68 +653,6 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 	}
 }
 
-//gofresh:pure
-func TestFingerprintRoundTrip(t *testing.T) {
-	if testing.Short() {
-		t.Skip("measured heavy under the fast tier (in-process)")
-	}
-	stipulate.Covers(t, "REQ-evidence-witness-cache-format")
-	positive := generatedObservationFingerprint(t)
-	if positive.DynamicStateStrategy == "" {
-		// The engine's contract: every capture records the strategy its
-		// evidence was computed under. An empty value here would retire
-		// this test's coverage of the validity field silently.
-		t.Fatal("engine capture carries no dynamic-state strategy")
-	}
-	seed := func(fp gofresh.Fingerprint) gofresh.Fingerprint {
-		fp.Guards = guard.Guards{Toolchain: "toolchain", BuildConfig: "build", Machine: "machine", RuntimeConfig: "runtime"}
-		fp.PurityAssertion = "source directive"
-		fp.DynamicStateVouches = "a.example/dep.Var,b.example/dep.W"
-		// Attestation-borne discharges: not armed by any engine this repo
-		// constructs (the field walk below fails when one arrives
-		// unseeded), but the round trip must stay faithful so an
-		// adoption cannot silently drop them.
-		fp.SingleSubjectDischarges = "s.example/dep.One"
-		fp.PackageProcessDischarges = "p.example/dep.Two"
-		fp.RuntimeInputs = "manifest"
-		fp.RuntimeDigest = "digest"
-		return fp
-	}
-	// Two seeds because a legal record cannot populate every proof field
-	// at once (a positive proof carries no reason): the engine's positive
-	// observation proof, and a negative proof whose Reason is set.
-	negative := positive
-	negative.ObservationProof = gofresh.ObservationProof{
-		Strategy:   positive.ObservationProof.Strategy,
-		Subject:    positive.ObservationProof.Subject,
-		Observable: false,
-		Reason:     "operation outside the observed set",
-	}
-	cases := []gofresh.Fingerprint{seed(positive), seed(negative)}
-	for i, want := range cases {
-		if got := FromGofresh(want).ToGofresh(); !reflect.DeepEqual(got, want) {
-			t.Fatalf("case %d: fingerprint round trip = %+v, want %+v", i, got, want)
-		}
-	}
-
-	// The wire form is a hand-maintained mirror of gofresh.Fingerprint:
-	// walk its fields recursively (nested STRUCT VALUES included —
-	// pointer/slice/interface fields would read as leaves, where a
-	// nil/empty value still fires) and require every leaf non-zero in
-	// at least one seed, so a field gofresh grows arrives here as a
-	// failure forcing the record-or-exempt decision instead of riding
-	// unrecorded through the next bump.
-	seeded := map[string]bool{}
-	for _, c := range cases {
-		collectSeededLeaves("", reflect.ValueOf(c), seeded)
-	}
-	for path, nonZero := range seeded {
-		if !nonZero {
-			t.Errorf("fingerprint field %s is zero in every round-trip seed: wire it (Fingerprint struct + both converters) and seed it, or exempt it here with the reason", path)
-		}
-	}
-}
-
 // collectSeededLeaves ORs each struct leaf's non-zeroness into acc:
 // order-independent across seeds, and a leaf never visited reads false
 // and errors (fail-closed).
@@ -725,9 +671,11 @@ func collectSeededLeaves(prefix string, v reflect.Value, acc map[string]bool) {
 // TestFingerprintWireKeySet binds REQ-evidence-witness-cache-format's
 // fingerprint key enumeration to the marshalled wire: the persisted key
 // set of a fingerprint populated to that enumeration is exactly the
-// spec's list, so a
-// new field or an accidental key rename (which would silently orphan
-// every stored record) fails here instead of drifting past review.
+// spec's list, and every leaf of Gofresh's fingerprint is seeded but the
+// three a code-result record never carries — so a field Gofresh grows
+// arrives here as an unseeded leaf, and an accidental key rename (which
+// would silently orphan every stored record) fails here too, instead of
+// drifting past review.
 func TestFingerprintWireKeySet(t *testing.T) {
 	if testing.Short() {
 		t.Skip("measured heavy under the fast tier (in-process)")
@@ -735,13 +683,13 @@ func TestFingerprintWireKeySet(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-cache-format")
 	want := generatedObservationFingerprint(t)
 	// Populated to the spec's persisted key set, NOT every struct field:
-	// machine and runtimeConfig are measurement guards the code-record
-	// format forbids (UnmarshalJSON refuses them), deliberately unseeded
-	// here so they never marshal — the converters themselves stay
-	// format-agnostic (the round trip seeds them), and the record
-	// boundary is where the format's exclusion is enforced. The expected
-	// list is the enumeration in docs/specs/evidence.md's
-	// REQ-evidence-witness-cache-format, byte-for-byte.
+	// machine and runtimeConfig are measurement guards a code-result
+	// record never carries (Gofresh's encoder refuses them on a code
+	// result and omits them when empty; this store's completeness refuses
+	// them too), deliberately unseeded here so they never marshal. The
+	// expected list is the enumeration in docs/specs/evidence.md's
+	// REQ-evidence-witness-cache-format, byte-for-byte — Gofresh's
+	// published form spelling this store's keys.
 	want.Guards = guard.Guards{Toolchain: "toolchain", BuildConfig: "build"}
 	want.PurityAssertion = "source directive"
 	want.DynamicStateVouches = "a.example/dep.Var"
@@ -749,7 +697,24 @@ func TestFingerprintWireKeySet(t *testing.T) {
 	want.PackageProcessDischarges = "p.example/dep.Two"
 	want.RuntimeInputs = "manifest"
 	want.RuntimeDigest = "digest"
-	data, err := json.Marshal(FromGofresh(want))
+	// Every other leaf is seeded — a leaf Gofresh grows reads unseeded
+	// here until the enumeration names its key. The three exclusions are
+	// the code-result record's: the two measurement guards, and the
+	// proof's reason, which a positive proof never carries.
+	seeded := map[string]bool{}
+	collectSeededLeaves("", reflect.ValueOf(want), seeded)
+	unseedable := map[string]bool{"Guards.Machine": true, "Guards.RuntimeConfig": true, "ObservationProof.Reason": true}
+	for leaf, set := range seeded {
+		if !set && !unseedable[leaf] {
+			t.Errorf("fingerprint leaf %s unseeded: a field Gofresh grew that this pin and the spec's enumeration do not name", leaf)
+		}
+	}
+	for leaf := range unseedable {
+		if _, known := seeded[leaf]; !known {
+			t.Errorf("excluded leaf %s is no field of the fingerprint: the exclusion is stale", leaf)
+		}
+	}
+	data, err := json.Marshal(want)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -792,7 +757,7 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 	digests := map[string]string{"TestLive": strings.Repeat("a", 32), "TestDeparted": strings.Repeat("b", 32)}
 	install := func(pkg, test string) {
 		t.Helper()
-		if err := Install(dir, Record{Group: "6772702d64696765", Package: pkg, Test: test, Outcomes: map[string]string{pkg + "." + test: "passed"}, Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: digests[test]}, CompartmentLedger: ledgerOf(test)}); err != nil {
+		if err := Install(dir, Record{Group: "6772702d64696765", Package: pkg, Test: test, Outcomes: map[string]string{pkg + "." + test: "passed"}, Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: digests[test], ResultKind: gofresh.CodeResult}, CompartmentLedger: ledgerOf(test)}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -802,7 +767,7 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 	// coordinate retirement removes it — its compartment's ledger, which
 	// no kept record names, with it.
 	retired := strings.Repeat("c", 32)
-	if err := Install(dir, Record{Group: "feedfeedfeedfeed", Package: "example.com/p", Test: "TestLive", Outcomes: map[string]string{"example.com/p.TestLive": "passed"}, Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: retired}, CompartmentLedger: ledgerOf("TestLive")}); err != nil {
+	if err := Install(dir, Record{Group: "feedfeedfeedfeed", Package: "example.com/p", Test: "TestLive", Outcomes: map[string]string{"example.com/p.TestLive": "passed"}, Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: retired, ResultKind: gofresh.CodeResult}, CompartmentLedger: ledgerOf("TestLive")}); err != nil {
 		t.Fatal(err)
 	}
 	store, err := StoreDir(dir)
@@ -817,12 +782,12 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 	}
 	// A live record under a name that disagrees with its content: Load
 	// never serves it, so the verb removes it.
-	liveName := recordstore.Name([]string{"6772702d64696765", "example.com/p", "TestLive"}, Fingerprint{MaximalClosure: "aa", TestVariantClosure: digests["TestLive"]})
+	liveName := mustName(t, Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestLive", Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: digests["TestLive"], ResultKind: gofresh.CodeResult}})
 	liveData, err := os.ReadFile(filepath.Join(store, liveName))
 	if err != nil {
 		t.Fatal(err)
 	}
-	misnamed := recordstore.Name([]string{"6772702d64696765", "example.com/p", "TestLive"}, Fingerprint{MaximalClosure: "zz", TestVariantClosure: digests["TestLive"]})
+	misnamed := mustName(t, Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestLive", Fingerprint: Fingerprint{MaximalClosure: "zz", TestVariantClosure: digests["TestLive"], ResultKind: gofresh.CodeResult}})
 	if err := os.WriteFile(filepath.Join(store, misnamed), liveData, 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -847,7 +812,7 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 		}
 		names = append(names, e.Name())
 	}
-	if len(names) != 2 || names[0] != recordstore.Name([]string{"6772702d64696765", "example.com/p", "TestLive"}, Fingerprint{MaximalClosure: "aa", TestVariantClosure: digests["TestLive"]}) || names[1] != "ledgers/" {
+	if len(names) != 2 || names[0] != mustName(t, Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestLive", Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: digests["TestLive"], ResultKind: gofresh.CodeResult}}) || names[1] != "ledgers/" {
 		t.Fatalf("post-gc store entries = %v, want only the live identity's variant beside the ledger store", names)
 	}
 	ledgers, err := os.ReadDir(filepath.Join(store, "ledgers"))
@@ -907,10 +872,10 @@ func TestLateRecordsKeepTheirLedgers(t *testing.T) {
 		t.Fatal(err)
 	}
 	digest := strings.Repeat("e", 32)
-	rec := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestLate", Outcomes: map[string]string{"example.com/p.TestLate": "passed"}, Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: digest}, CompartmentLedger: &CompartmentLedger{Declarations: []CompartmentDeclaration{{File: "p_test.go", Kind: "func", Name: "TestLate", Hash: "00112233445566778899aabbccddeeff"}}}}
+	rec := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestLate", Outcomes: map[string]string{"example.com/p.TestLate": "passed"}, Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: digest, ResultKind: gofresh.CodeResult}, CompartmentLedger: &CompartmentLedger{Declarations: []CompartmentDeclaration{{File: "p_test.go", Kind: "func", Name: "TestLate", Hash: "00112233445566778899aabbccddeeff"}}}}
 	// Another record first, so the store exists and the snapshot is
 	// non-empty.
-	if err := Install(dir, Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestFirst", Outcomes: map[string]string{"example.com/p.TestFirst": "passed"}, Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: strings.Repeat("f", 32)}}); err != nil {
+	if err := Install(dir, Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestFirst", Outcomes: map[string]string{"example.com/p.TestFirst": "passed"}, Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: strings.Repeat("f", 32), ResultKind: gofresh.CodeResult}}); err != nil {
 		t.Fatal(err)
 	}
 	started := time.Now()
@@ -929,5 +894,76 @@ func TestLateRecordsKeepTheirLedgers(t *testing.T) {
 	loadSince(dir, started)
 	if _, err := os.Stat(ledgerPath(store, digest)); err != nil {
 		t.Fatalf("the late record's ledger was swept: %v", err)
+	}
+}
+
+// mustName is the record's file name, or the test's failure — every
+// record the tests name encodes.
+func mustName(t *testing.T, rec Record) string {
+	t.Helper()
+	name, err := fileName(rec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return name
+}
+
+// TestInstallRefusesWhatTheEncoderRefuses pins the fail-closed write and
+// read of the fingerprint member (REQ-evidence-witness-cache-format): a
+// fingerprint Gofresh's encoder refuses — here one recorded without its
+// result kind — names no file and installs nothing, the refusal
+// Gofresh's own; and a stored record whose fingerprint member is any
+// encoding but the form's own (its keys reordered, the bytes otherwise
+// the record's) is refused on load, so the store serves nothing it did
+// not write.
+func TestInstallRefusesWhatTheEncoderRefuses(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-cache-format")
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	dir := t.TempDir()
+	kindless := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestA", Outcomes: map[string]string{"example.com/p.TestA": "passed"}, Fingerprint: Fingerprint{MaximalClosure: strings.Repeat("a", 32), TestVariantClosure: strings.Repeat("b", 32)}, CompartmentLedger: &CompartmentLedger{Declarations: []CompartmentDeclaration{{File: "p_test.go", Kind: "func", Name: "TestA", Hash: "00112233445566778899aabbccddeeff"}}}}
+	err := Install(dir, kindless)
+	if err == nil || !strings.Contains(err.Error(), "result kind") {
+		t.Fatalf("a kind-less fingerprint installed: %v", err)
+	}
+	// Nothing landed — not the record, not its compartment's ledger.
+	if store, _ := StoreDir(dir); store != "" {
+		if entries, _ := os.ReadDir(store); len(entries) != 0 {
+			t.Fatalf("the refused install left %d entries", len(entries))
+		}
+	}
+	rec := kindless
+	rec.CompartmentLedger = nil
+	rec.Fingerprint.ResultKind = gofresh.CodeResult
+	rec.Fingerprint.Guards.Toolchain = "go1.27.0"
+	rec.Fingerprint.Guards.BuildConfig = strings.Repeat("c", 32)
+	rec.Fingerprint.RuntimeInputs = "eyJ2IjoxfQ"
+	rec.Fingerprint.RuntimeDigest = strings.Repeat("d", 32)
+	rec.Fingerprint.DynamicStateStrategy = gofresh.DynamicStateStrategy
+	rec.Fingerprint.ClosureStrategy = gofresh.ClosureStrategy
+	if err := Install(dir, rec); err != nil {
+		t.Fatal(err)
+	}
+	if got := Load(dir); len(got) != 1 {
+		t.Fatalf("loaded %d records, want the one", len(got))
+	}
+	store, _ := StoreDir(dir)
+	path := filepath.Join(store, mustName(t, rec))
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The store indents its document, one key per line: the member's
+	// first two keys swap lines, every byte otherwise the record's.
+	lines := strings.Split(string(data), "\n")
+	first := slices.IndexFunc(lines, func(l string) bool { return strings.Contains(l, `"maximalClosure":`) })
+	if first < 0 || !strings.Contains(lines[first+1], `"testVariantClosure":`) {
+		t.Fatalf("the record's fingerprint member does not open with the two closure keys: %s", data)
+	}
+	lines[first], lines[first+1] = lines[first+1], lines[first]
+	if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := Load(dir); len(got) != 0 {
+		t.Fatalf("a reordered fingerprint member served: %+v", got)
 	}
 }

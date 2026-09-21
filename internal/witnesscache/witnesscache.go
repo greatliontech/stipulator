@@ -11,7 +11,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -19,7 +18,6 @@ import (
 	"time"
 
 	gofresh "github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/guard"
 	"github.com/greatliontech/gofresh/runtimeinput"
 
 	"github.com/greatliontech/stipulator/internal/recordstore"
@@ -58,213 +56,21 @@ func open(dir string) (recordstore.Store, error) { return recordstore.Open("witn
 
 // fileName is a record variant's file: the identity digest over the
 // group's coordinate, the package, and the test, joined with the
-// fingerprint's (REQ-evidence-witness-cache-format).
-func fileName(r Record) string {
+// fingerprint's (REQ-evidence-witness-cache-format); a fingerprint
+// Gofresh's encoder refuses names no file.
+func fileName(r Record) (string, error) {
 	return recordstore.Name([]string{r.Group, r.Package, r.Test}, r.Fingerprint)
 }
 
-type observationProof struct {
-	Strategy   string `json:"strategy"`
-	Package    string `json:"package"`
-	Symbol     string `json:"symbol"`
-	Observable bool   `json:"observable"`
-	Reason     string `json:"reason,omitempty"`
-	Evidence   string `json:"evidence"`
-}
-
-func (p *observationProof) UnmarshalJSON(data []byte) error {
-	type plain observationProof
-	fields, err := uniqueObjectFields(data)
-	if err != nil {
-		return err
-	}
-	reason, hasReason := fields["reason"]
-	if hasReason && isJSONNull(reason) {
-		return errors.New("witnesscache: observation proof reason is null")
-	}
-	observable, ok := fields["observable"]
-	if !ok {
-		return errors.New("witnesscache: observation proof observable is absent")
-	}
-	if isJSONNull(observable) {
-		return errors.New("witnesscache: observation proof observable is null")
-	}
-	var decoded plain
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&decoded); err != nil {
-		return err
-	}
-	if decoded.Observable && hasReason {
-		return errors.New("witnesscache: positive observation proof carries reason")
-	}
-	*p = observationProof(decoded)
-	return nil
-}
-
-func uniqueObjectFields(data []byte) (map[string]json.RawMessage, error) {
-	dec := json.NewDecoder(bytes.NewReader(data))
-	start, err := dec.Token()
-	if err != nil || start != json.Delim('{') {
-		return nil, errors.New("witnesscache: expected JSON object")
-	}
-	fields := make(map[string]json.RawMessage)
-	for dec.More() {
-		token, err := dec.Token()
-		if err != nil {
-			return nil, err
-		}
-		name, ok := token.(string)
-		if !ok {
-			return nil, errors.New("witnesscache: expected JSON object field")
-		}
-		if _, exists := fields[name]; exists {
-			return nil, errors.New("witnesscache: duplicate JSON object field")
-		}
-		var value json.RawMessage
-		if err := dec.Decode(&value); err != nil {
-			return nil, err
-		}
-		fields[name] = value
-	}
-	if _, err := dec.Token(); err != nil {
-		return nil, err
-	}
-	return fields, nil
-}
-
-// Fingerprint is the serialized gofresh fingerprint — the caller owns the
-// wire form (gofresh REQ-fresh-fingerprint-data).
-type Fingerprint struct {
-	MaximalClosure       string            `json:"maximalClosure"`
-	TestVariantClosure   string            `json:"testVariantClosure"`
-	Toolchain            string            `json:"toolchain"`
-	BuildConfig          string            `json:"buildConfig"`
-	Machine              string            `json:"machine,omitempty"`
-	RuntimeConfig        string            `json:"runtimeConfig,omitempty"`
-	ObservationAssertion string            `json:"observationAssertion,omitempty"`
-	ObservationProof     *observationProof `json:"observationProof,omitempty"`
-	PurityAssertion      string            `json:"purityAssertion,omitempty"`
-	DynamicStateVouches  string            `json:"dynamicStateVouches,omitempty"`
-	// SingleSubjectDischarges/PackageProcessDischarges are gofresh's
-	// attestation-borne discharge audit; DynamicStateStrategy is the
-	// shared-dynamic-state derivation the evidence was computed under —
-	// a validity field: the engine refuses to serve a record computed
-	// under another strategy, and a record persisted before the field
-	// reads as the empty strategy and fails closed to re-execution
-	// (the clean-break shape, no back-fill).
-	SingleSubjectDischarges  string `json:"singleSubjectDischarges,omitempty"`
-	PackageProcessDischarges string `json:"packageProcessDischarges,omitempty"`
-	DynamicStateStrategy     string `json:"dynamicStateStrategy,omitempty"`
-	// ClosureStrategy is the closure identity's derivation the two
-	// closure hashes were folded under (gofresh
-	// REQ-closure-identity-strategy) — a validity field exactly as
-	// DynamicStateStrategy: the engine compares it, so a record persisted
-	// before the field reads as the empty strategy and fails closed to
-	// re-execution once (the clean-break shape, no back-fill).
-	ClosureStrategy string       `json:"closureStrategy,omitempty"`
-	RuntimeInputs   string       `json:"runtimeInputs,omitempty"`
-	RuntimeDigest   string       `json:"runtimeDigest,omitempty"`
-	ResultKind      gofresh.Kind `json:"resultKind"`
-}
-
-func (f *Fingerprint) UnmarshalJSON(data []byte) error {
-	type plain Fingerprint
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(data, &fields); err != nil {
-		return err
-	}
-	if _, ok := fields["machine"]; ok {
-		return errors.New("witnesscache: code fingerprint carries machine guard field")
-	}
-	if _, ok := fields["runtimeConfig"]; ok {
-		return errors.New("witnesscache: code fingerprint carries runtime guard field")
-	}
-	if value, ok := fields["observationProof"]; ok && isJSONNull(value) {
-		return errors.New("witnesscache: observation proof is null")
-	}
-	if value, ok := fields["observationAssertion"]; ok && isJSONNull(value) {
-		return errors.New("witnesscache: observation assertion is null")
-	}
-	if value, ok := fields["purityAssertion"]; ok && isJSONNull(value) {
-		return errors.New("witnesscache: purity assertion is null")
-	}
-	var decoded plain
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&decoded); err != nil {
-		return err
-	}
-	*f = Fingerprint(decoded)
-	return nil
-}
-
-// ToGofresh converts to the engine's form.
-func (f Fingerprint) ToGofresh() gofresh.Fingerprint {
-	fp := gofresh.Fingerprint{
-		MaximalClosure:     f.MaximalClosure,
-		TestVariantClosure: f.TestVariantClosure,
-		Guards: guard.Guards{
-			Toolchain:     f.Toolchain,
-			BuildConfig:   f.BuildConfig,
-			Machine:       f.Machine,
-			RuntimeConfig: f.RuntimeConfig,
-		},
-		ObservationAssertion:     f.ObservationAssertion,
-		PurityAssertion:          f.PurityAssertion,
-		DynamicStateVouches:      f.DynamicStateVouches,
-		SingleSubjectDischarges:  f.SingleSubjectDischarges,
-		PackageProcessDischarges: f.PackageProcessDischarges,
-		DynamicStateStrategy:     f.DynamicStateStrategy,
-		ClosureStrategy:          f.ClosureStrategy,
-		RuntimeInputs:            f.RuntimeInputs,
-		RuntimeDigest:            f.RuntimeDigest,
-		ResultKind:               f.ResultKind,
-	}
-	if f.ObservationProof != nil {
-		fp.ObservationProof = gofresh.ObservationProof{
-			Strategy:   f.ObservationProof.Strategy,
-			Subject:    gofresh.Subject{Package: f.ObservationProof.Package, Symbol: f.ObservationProof.Symbol},
-			Observable: f.ObservationProof.Observable,
-			Reason:     f.ObservationProof.Reason,
-			Evidence:   f.ObservationProof.Evidence,
-		}
-	}
-	return fp
-}
-
-// FromGofresh converts from the engine's form.
-func FromGofresh(fp gofresh.Fingerprint) Fingerprint {
-	f := Fingerprint{
-		MaximalClosure:           fp.MaximalClosure,
-		TestVariantClosure:       fp.TestVariantClosure,
-		Toolchain:                fp.Guards.Toolchain,
-		BuildConfig:              fp.Guards.BuildConfig,
-		Machine:                  fp.Guards.Machine,
-		RuntimeConfig:            fp.Guards.RuntimeConfig,
-		ObservationAssertion:     fp.ObservationAssertion,
-		PurityAssertion:          fp.PurityAssertion,
-		DynamicStateVouches:      fp.DynamicStateVouches,
-		SingleSubjectDischarges:  fp.SingleSubjectDischarges,
-		PackageProcessDischarges: fp.PackageProcessDischarges,
-		DynamicStateStrategy:     fp.DynamicStateStrategy,
-		ClosureStrategy:          fp.ClosureStrategy,
-		RuntimeInputs:            fp.RuntimeInputs,
-		RuntimeDigest:            fp.RuntimeDigest,
-		ResultKind:               fp.ResultKind,
-	}
-	if fp.ObservationProof != (gofresh.ObservationProof{}) {
-		f.ObservationProof = &observationProof{
-			Strategy:   fp.ObservationProof.Strategy,
-			Package:    fp.ObservationProof.Subject.Package,
-			Symbol:     fp.ObservationProof.Subject.Symbol,
-			Observable: fp.ObservationProof.Observable,
-			Reason:     fp.ObservationProof.Reason,
-			Evidence:   fp.ObservationProof.Evidence,
-		}
-	}
-	return f
-}
+// Fingerprint is Gofresh's fingerprint in its published record form:
+// the record's `fingerprint` member is Gofresh's own encoding (its
+// fingerprint-record clause — stipulator's seventeen keys in their
+// order, the guards flattened, the proof nested), decoded by Gofresh's
+// decoder, which refuses an unknown, duplicated, or null key, a proof
+// without its observable, and a record that is not the form's own
+// encoding; a record it refuses fails closed to re-execution like any
+// field-blind one (REQ-evidence-witness-cache-format).
+type Fingerprint = gofresh.Fingerprint
 
 // CompartmentDeclaration is one persisted test-variant declaration entry.
 type CompartmentDeclaration struct {
@@ -497,8 +303,8 @@ func loadEntry(name string, data []byte, dir string) (Record, string, bool) {
 		return Record{}, digest, false
 	}
 	proof := rec.Fingerprint.ObservationProof
-	if (proof != nil && (proof.Package != rec.Package || proof.Symbol != rec.Test)) ||
-		!validOutcomes(rec) || !rec.Fingerprint.valid(dir) {
+	if (proof != (gofresh.ObservationProof{}) && (proof.Subject.Package != rec.Package || proof.Subject.Symbol != rec.Test)) ||
+		!validOutcomes(rec) || !validFingerprint(rec.Fingerprint, dir) {
 		return Record{}, digest, false
 	}
 	return rec, digest, true
@@ -510,7 +316,7 @@ func loadEntry(name string, data []byte, dir string) (Record, string, bool) {
 // by its content; the compartment digest is returned whenever the file
 // parses at all, so a refused record's ledger stays referenced. What
 // a file passes here and still fails is the record's own shape
-// judgment (Fingerprint.valid), never the store's; whether it then
+// judgment (validFingerprint), never the store's; whether it then
 // serves is the engine's currency comparison against the tree.
 func decodeRecord(name string, data []byte) (Record, string, bool) {
 	var fields map[string]json.RawMessage
@@ -532,7 +338,14 @@ func decodeRecord(name string, data []byte) (Record, string, bool) {
 		return Record{}, digest, false
 	}
 	rec := Record{Group: e.Group, Package: e.Package, Test: e.Test, Fingerprint: e.Fingerprint, Outcomes: e.Outcomes, Regs: e.Regs, ObservationExclusions: e.ObservationExclusions, ObservationNamespaces: e.ObservationNamespaces}
-	if rec.Group == "" || rec.Package == "" || rec.Test == "" || name != fileName(rec) {
+	if rec.Group == "" || rec.Package == "" || rec.Test == "" {
+		return Record{}, digest, false
+	}
+	// A decoded fingerprint passed Gofresh's decoder, whose ladder is the
+	// encoder's, so it always names a file; a file without the member
+	// decodes to the zero fingerprint, whose empty name matches no file.
+	want, _ := fileName(rec)
+	if name != want {
 		return Record{}, digest, false
 	}
 	return rec, digest, true
@@ -695,24 +508,29 @@ func validOutcomes(rec Record) bool {
 // and this judgment reads no environment, so a duplicate key in the
 // ambient environment no longer refuses every record of the store as
 // the recomputation once did.
-func (f Fingerprint) valid(dir string) bool {
+// validFingerprint is this store's own completeness over a decoded
+// record: every serving tier present and well-formed, and a code result
+// — Gofresh's decoder having judged the form, and its ladder having
+// refused a measurement guard on a code result, so the predicate does
+// not restate that.
+func validFingerprint(f Fingerprint, dir string) bool {
 	_, manifestErr := runtimeinput.Describe(f.RuntimeInputs, dir)
-	return ValidDigest(f.MaximalClosure) && ValidDigest(f.TestVariantClosure) && f.Toolchain != "" && ValidDigest(f.BuildConfig) &&
-		f.Machine == "" && f.RuntimeConfig == "" &&
+	return ValidDigest(f.MaximalClosure) && ValidDigest(f.TestVariantClosure) && f.Guards.Toolchain != "" && ValidDigest(f.Guards.BuildConfig) &&
 		validObservation(f) && validPurity(f.PurityAssertion) && manifestErr == nil && ValidDigest(f.RuntimeDigest) &&
 		f.ResultKind == gofresh.CodeResult
 }
 
 func validObservation(f Fingerprint) bool {
-	if f.ObservationAssertion == "" && f.ObservationProof == nil {
+	absent := f.ObservationProof == (gofresh.ObservationProof{})
+	if f.ObservationAssertion == "" && absent {
 		return true
 	}
-	if f.ObservationProof == nil {
+	if absent {
 		return false
 	}
 	return f.ObservationAssertion == "caller assertion" &&
 		f.ObservationProof.Strategy == gofresh.ObservationRTA &&
-		f.ObservationProof.Package != "" && f.ObservationProof.Symbol != "" &&
+		f.ObservationProof.Subject.Package != "" && f.ObservationProof.Subject.Symbol != "" &&
 		f.ObservationProof.Observable == (f.ObservationProof.Reason == "") &&
 		ValidDigest(f.ObservationProof.Evidence)
 }
@@ -741,6 +559,12 @@ func Install(dir string, rec Record) error {
 	if err != nil {
 		return err
 	}
+	// The name first: a fingerprint Gofresh's encoder refuses installs
+	// nothing — not even its compartment's ledger.
+	name, err := fileName(rec)
+	if err != nil {
+		return err
+	}
 	// The ledger lands before the record: a record present in the store
 	// finds its compartment's ledger present too.
 	if err := installLedger(store.Path(), rec); err != nil {
@@ -754,7 +578,7 @@ func Install(dir string, rec Record) error {
 	// A torn variant costs only its own record through the per-file
 	// refusal leg, and the store's atomic install makes even that
 	// window vanish.
-	return store.Install(variantBound, recordstore.Entry{Name: fileName(rec), Data: data})
+	return store.Install(variantBound, recordstore.Entry{Name: name, Data: data})
 }
 
 // Key is the record's identity.

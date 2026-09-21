@@ -11,6 +11,7 @@ import (
 	"time"
 
 	gofresh "github.com/greatliontech/gofresh"
+	"github.com/greatliontech/gofresh/guard"
 	"github.com/greatliontech/gofresh/runtimeinput"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -73,15 +74,7 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 	// its sibling's kill will shadow — that test produces no row, and a
 	// record this execution never touched is retained, never silently
 	// dropped.
-	seedFP := witnesscache.Fingerprint{
-		MaximalClosure:     "00112233445566778899aabbccddeeff",
-		TestVariantClosure: "00112233445566778899aabbccddeeff",
-		Toolchain:          "go1.26",
-		BuildConfig:        "00112233445566778899aabbccddeeff",
-		RuntimeInputs:      "eyJ2IjoxfQ",
-		RuntimeDigest:      "00112233445566778899aabbccddeeff",
-		ResultKind:         gofresh.CodeResult,
-	}
+	seedFP := witnesscache.Fingerprint{MaximalClosure: "00112233445566778899aabbccddeeff", TestVariantClosure: "00112233445566778899aabbccddeeff", Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: "eyJ2IjoxfQ", RuntimeDigest: "00112233445566778899aabbccddeeff", ResultKind: gofresh.CodeResult}
 	seedLedger := func(test string) *witnesscache.CompartmentLedger {
 		return &witnesscache.CompartmentLedger{Declarations: []witnesscache.CompartmentDeclaration{
 			{File: "seed_test.go", Kind: "func", Name: test, Hash: "00112233445566778899aabbccddeeff"},
@@ -409,10 +402,10 @@ func TestSharedReads(t *testing.T) {
 	if solo == nil {
 		t.Fatal("no record for the solo-process test")
 	}
-	if solo.Fingerprint.ObservationProof == nil || solo.Fingerprint.ObservationAssertion == "" {
+	if solo.Fingerprint.ObservationProof == (gofresh.ObservationProof{}) || solo.Fingerprint.ObservationAssertion == "" {
 		t.Errorf("solo-process record carries no observation proof: %+v", solo.Fingerprint)
-	} else if solo.Fingerprint.ObservationProof.Package != solo.Package ||
-		solo.Fingerprint.ObservationProof.Symbol != solo.Test ||
+	} else if solo.Fingerprint.ObservationProof.Subject.Package != solo.Package ||
+		solo.Fingerprint.ObservationProof.Subject.Symbol != solo.Test ||
 		!solo.Fingerprint.ObservationProof.Observable {
 		t.Errorf("observation proof does not attest the record's own subject: %+v", solo.Fingerprint.ObservationProof)
 	}
@@ -421,7 +414,7 @@ func TestSharedReads(t *testing.T) {
 		if rec == nil {
 			t.Fatalf("no record for multi-process test %s", name)
 		}
-		if rec.Fingerprint.ObservationProof != nil || rec.Fingerprint.ObservationAssertion != "" {
+		if rec.Fingerprint.ObservationProof != (gofresh.ObservationProof{}) || rec.Fingerprint.ObservationAssertion != "" {
 			t.Errorf("%s gained an observation proof from a process it shared with a sibling: %+v", name, rec.Fingerprint)
 		}
 		if rec.Fingerprint.RuntimeInputs == "" || rec.Fingerprint.RuntimeDigest == "" {
@@ -437,7 +430,7 @@ func TestSharedReads(t *testing.T) {
 		if rec == nil {
 			t.Fatalf("no record for pair-process test %s", name)
 		}
-		if rec.Fingerprint.ObservationProof != nil || rec.Fingerprint.ObservationAssertion != "" {
+		if rec.Fingerprint.ObservationProof != (gofresh.ObservationProof{}) || rec.Fingerprint.ObservationAssertion != "" {
 			t.Errorf("%s gained an observation proof from a process it shared with a sibling: %+v", name, rec.Fingerprint)
 		}
 	}
@@ -454,7 +447,7 @@ func TestSharedReads(t *testing.T) {
 		if rec == nil {
 			t.Fatalf("no record for %s.%s", sub.Package, sub.Symbol)
 		}
-		if rec.Fingerprint.ObservationProof != nil {
+		if rec.Fingerprint.ObservationProof != (gofresh.ObservationProof{}) {
 			t.Errorf("%s.%s carries an observation proof it cannot hold: %+v", sub.Package, sub.Symbol, rec.Fingerprint)
 		}
 	}
