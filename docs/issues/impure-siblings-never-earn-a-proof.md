@@ -17,4 +17,6 @@ but only for tests a red or aborted process denied. Spending one extra
 process per impure subject per run to earn proofs is a cost-and-scope
 call.
 
-Lands: user decision
+Lands: cross-tool train chunk 249 as a rider (derived 2026-09-29: one
+solo process per impure subject once against two re-executions on every
+later run; the isolation pass already owns the mechanism).

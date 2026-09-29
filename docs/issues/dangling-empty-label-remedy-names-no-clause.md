@@ -13,4 +13,8 @@ form that names an empty label, so the repair is a remedy-vocabulary
 question — a selector for "the empty label", or a refusal to compose a
 remedy for it — not a hygiene fix.
 
-Lands: user decision.
+Lands: cross-tool train chunk 176 (derived 2026-09-29: no tool writes an
+empty label, so a record carrying one is malformed external input —
+hygiene classifies it as malformed, naming the record path as the
+remedy, never a selector wider than the claim; `unbind` gains no
+empty-label form).

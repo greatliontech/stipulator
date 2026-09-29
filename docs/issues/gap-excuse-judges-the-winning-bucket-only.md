@@ -12,4 +12,7 @@ a row carries — a per-row set of classes judged against the gap's
 declared set — or the winning class alone, as REQ-gate-no-undeclared
 reads today, is a semantic call over what a gap may absorb.
 
-Lands: user decision.
+Lands: cross-tool train chunk 293 (gofresh docs/plans/cross-tool-train.md;
+derived 2026-09-29: a gap excuses exactly the classes it declares — a
+red it does not name stands; the per-row class set is judged against the
+declared set).
