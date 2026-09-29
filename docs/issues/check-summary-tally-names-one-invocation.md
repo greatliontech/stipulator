@@ -31,8 +31,8 @@ one line per invocation stating its eligibility and its
 served/executed/uncacheable split. The per-witness detail can stay
 behind the views.
 
-Lands: a rider on cross-tool train chunk 249 (gofresh docs/plans/cross-tool-
-train.md — check.Run's ladder; triaged at gofresh chunk 289's record,
+Lands: a rider on cross-tool train chunk 249 (gofresh
+docs/plans/cross-tool-train.md — check.Run's ladder; triaged at gofresh chunk 289's record,
 2026-09-29): the witnessed tally per invocation, one line per invocation
 stating its eligibility and its served/executed/uncacheable split — the
 never-silent rule.
