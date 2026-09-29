@@ -29,4 +29,6 @@ ceiling derived from the host's memory as the oracle runs already are, so a
 pass that would exceed it refuses stated rather than dying under the host's
 guard with no verdict written.
 
-Lands: the cross-tool train's next triage gate.
+Lands: cross-tool train chunk 249 (the monoliths — check.Run's ladder
+and the served resolver form; the child's whole-corpus resident set is
+slotted as a rider at the 2026-09-29 replan).

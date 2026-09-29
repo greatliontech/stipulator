@@ -23,7 +23,5 @@ charter names "the consumers' next bumps" (the containment copies
 delete there) without numbering them, and stipulator's queued chunks
 (270, 226, 238, 249, 185, 225+248, 228, 184) carry no bump rider.
 
-Lands: cross-tool train — awaiting triage (the stipulator bump behind
-gofresh 279 and the remote's v0.107.0, and behind 281 once it releases;
-the next chunk-open gate slots it as a numbered chunk or a rider on
-one, per the train's cross-session-filing rule).
+Lands: cross-tool train chunk 290 (the stipulator bump behind gofresh
+279 and 281; slotted at the 2026-09-29 replan).
