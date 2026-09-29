@@ -12,4 +12,5 @@ derivation per group where the load derives once. The choice is between
 a silent drop with one derivation and an attributed refusal with
 gofresh's vocabulary; the serving ladder's re-shaping is where it lands.
 
-Lands: cross-tool train chunk 249
+Lands: cross-tool train chunk 185 (audit 287, 2026-09-29: a decode-ladder
+behaviour change, re-slotted beside the per-kind decode ladder there).

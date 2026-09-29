@@ -21,5 +21,6 @@ Closing them needs a reachability judgment beyond declarations —
 gofresh's closure over the subject's reachable functions answers all
 three, at the cost of a proof-level dependency in the classifier.
 
-Lands: a field report of a served flake through one of these routes,
-or the next change to the seeding walk's callee resolution.
+Lands: cross-tool train chunk 298 (audit 287, 2026-09-29: the trigger — the next
+change to the seeding walk's callee resolution — fired at 272.F's staticCallees;
+the routes fold into the lookup fix).
