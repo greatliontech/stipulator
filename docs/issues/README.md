@@ -2,6 +2,8 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
+- **[property-completion-adapter-guidance](property-completion-adapter-guidance.md)** — a shared Rapid completion wrapper loses the property evidence tier despite transitive seeding; document direct calls with guarded test contexts or define a reviewed adapter contract. *Lands: user decision*
+
 - **[ledger-store-as-a-record-kind](ledger-store-as-a-record-kind.md)** — the witness cache's compartment ledger sub-store implements the record-store mechanics by hand beside the core; folding it needs a one-segment naming form. *Lands: cross-tool train chunk 185*
 - **[witness-verdict-one-body-classifier](witness-verdict-one-body-classifier.md)** — the classifier inspects a body three ways (the rich resolved-view pass, the other-view direct test, the helper walk) and folds the union beside the class switch; one per-view classifyBody with a fold over views. *Lands: cross-tool train chunk 226*
 - **[seeding-walk-unreached-routes](seeding-walk-unreached-routes.md)** — the transitive seeding walk stops at dependency helpers, function values, and interface dispatch, each a served-flake shape the spec states; gofresh's reachable closure would answer all three. *Lands: cross-tool train chunk 298 (the trigger fired at 272.F's staticCallees; audit 287)*
