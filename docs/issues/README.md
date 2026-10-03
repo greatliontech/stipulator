@@ -2,6 +2,8 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
+- **[testing-quick-property-driver](testing-quick-property-driver.md)** — direct standard-library property checks are classified as examples; derive recognition and seeding/freshness together, or report the unsupported driver explicitly. *Lands: when the Go property-driver classifier or its seeding analysis is next changed.*
+
 - **[property-completion-adapter-guidance](property-completion-adapter-guidance.md)** — a shared Rapid completion wrapper loses the property evidence tier despite transitive seeding; document direct calls with guarded test contexts or define a reviewed adapter contract. *Lands: user decision*
 
 - **[ledger-store-as-a-record-kind](ledger-store-as-a-record-kind.md)** — the witness cache's compartment ledger sub-store implements the record-store mechanics by hand beside the core; folding it needs a one-segment naming form. *Lands: cross-tool train chunk 185*
