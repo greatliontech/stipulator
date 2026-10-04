@@ -44,4 +44,5 @@ processes), and a `//gofresh:single-subject` directive met under an
 execution model that does not back it is named on the uncacheable
 face as unbacked, never silently ignored.
 
-Lands: awaiting triage.
+Lands: cross-tool train chunk 309 (chartered at 307.1, 2026-10-04;
+directly after 307 in stipulator's order).
