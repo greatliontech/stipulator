@@ -102,7 +102,7 @@ func TestServingFormPersistsAtTheExecutingInvocation(t *testing.T) {
 	}, progress.WithInterval(time.Hour))
 	cctx = progress.NewContext(cctx, rep)
 	_, err := RunWitnessesPolicy(cctx, mustCapture(t, context.Background(), tmp, pol), noSeeding{})
-	if len(notes) != 1 || !strings.HasPrefix(notes[0], "persisted: second (") {
+	if len(notes) != 1 || !strings.HasPrefix(notes[0], "persisted: second example.com/units/b (") {
 		t.Fatalf("persisted notes = %v (err %v); want the group installed at the executing invocation's completion", notes, err)
 	}
 	stale := false
@@ -176,7 +176,7 @@ func TestScopedRunPersistsAtTheExecutingInvocation(t *testing.T) {
 	}, progress.WithInterval(time.Hour))
 	cctx = progress.NewContext(cctx, rep)
 	_, err := RunWitnessesScoped(cctx, mustCapture(t, context.Background(), tmp, pol), scope, noSeeding{})
-	if len(notes) != 1 || !strings.HasPrefix(notes[0], "persisted: second (") {
+	if len(notes) != 1 || !strings.HasPrefix(notes[0], "persisted: second example.com/units/b (") {
 		t.Fatalf("persisted notes = %v (err %v); want the group installed at the executing invocation's completion", notes, err)
 	}
 	found := false
@@ -526,5 +526,53 @@ func TestUngrantedEligibleWitnessCarriesItsCauseOnTheSelectiveForm(t *testing.T)
 	}
 	if _, ok := scoped.NoOutcome["example.com/units/a.TestEarly"]; ok || !scoped.ScopeSkipped["example.com/units/a.TestEarly"] {
 		t.Fatalf("a scope-skipped subject carried a cause or lost its skip: %v / %v", scoped.NoOutcome, scoped.ScopeSkipped)
+	}
+}
+
+// TestPackagePersistsBeforeItsSiblingCompletes pins the selective form's
+// unit of persistence (REQ-policy-cancellation, REQ-check-witness-selection):
+// a package whose process fails isolates its denied passing test inside
+// its own unit, and its records install the moment that unit completes —
+// while a sibling package is still executing — so a run cancelled right
+// after keeps the finished package's record and nothing of the sibling's.
+//
+// Deliberately not //gofresh:pure: executes the fixture's tests.
+func TestPackagePersistsBeforeItsSiblingCompletes(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-cancellation", "REQ-check-witness-selection")
+	if testing.Short() {
+		t.Skip("executes a race invocation over a temporary module")
+	}
+	neutralAmbient(t)
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	tmp := writeModule(t, map[string]string{
+		"go.mod":      "module example.com/units\n\ngo 1.26\n",
+		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestFail(t *testing.T) { t.Fatal(\"red\") }\n\nfunc TestPass(t *testing.T) {}\n",
+		"b/b_test.go": "package b\n\nimport (\n\t\"testing\"\n\t\"time\"\n)\n\nfunc TestB(t *testing.T) { time.Sleep(4 * time.Second) }\n",
+	})
+	all := &stipulatorv1.GoInvocationConfig{}
+	all.SetPackages([]string{"./a", "./b"})
+	all.SetRace(true)
+	pol := &stipulatorv1.TestPolicy{}
+	pol.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", all)})
+	cctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var notes []string
+	rep := progress.New(func(e *stipulatorv1.ProgressEvent) {
+		if strings.HasPrefix(e.GetNote(), "persisted: ") {
+			notes = append(notes, e.GetNote())
+			cancel()
+		}
+	}, progress.WithInterval(time.Hour))
+	cctx = progress.NewContext(cctx, rep)
+	_, err := RunWitnessesPolicy(cctx, mustCapture(t, context.Background(), tmp, pol), noSeeding{})
+	if len(notes) != 1 || !strings.HasPrefix(notes[0], "persisted: all example.com/units/a (") {
+		t.Fatalf("persisted notes = %v (err %v); want package a installed at its own completion, its sibling still running", notes, err)
+	}
+	var stored []string
+	for _, rec := range witnesscache.Load(tmp) {
+		stored = append(stored, rec.Package+"."+rec.Test)
+	}
+	if len(stored) != 1 || stored[0] != "example.com/units/a.TestPass" {
+		t.Fatalf("store holds %v; want a.TestPass alone — the isolated pass inside a's unit, nothing of b's", stored)
 	}
 }

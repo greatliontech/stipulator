@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"sync"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 )
@@ -75,6 +76,25 @@ type SelectionResult struct {
 // no isolation re-run. Explicit per-test names give the full bound —
 // every selected name either reaches a terminal event or is denied.
 func ExecuteSelection(ctx context.Context, n *NormalizedInvocation, sel TestSelection) (*SelectionResult, error) {
+	return ExecuteSelectionObserved(ctx, n, sel, nil)
+}
+
+// packageUnit is one package's completed execution: its process's run
+// and the solo re-runs its denied tests earned, in the order they ran —
+// the unit of persistence (REQ-policy-cancellation).
+type packageUnit struct {
+	pkg   string
+	run   packageRun
+	solos []packageRun
+}
+
+// ExecuteSelectionObserved is ExecuteSelection with a per-package
+// completion hook: onPackage fires, serialized, the moment a package's
+// process and its own isolation re-runs have completed and been
+// classified — while other packages still execute — so a caller can
+// persist that package's evidence before the invocation ends. A hook
+// error ends the invocation with it. A nil hook is ExecuteSelection.
+func ExecuteSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel TestSelection, onPackage func(unit packageUnit) error) (*SelectionResult, error) {
 	pkgs := make([]string, 0, len(sel))
 	for pkg := range sel {
 		pkgs = append(pkgs, pkg)
@@ -89,54 +109,100 @@ func ExecuteSelection(ctx context.Context, n *NormalizedInvocation, sel TestSele
 	invCtx, cancel := context.WithTimeoutCause(ctx, n.Timeout, errEnvelopeExpired)
 	defer cancel()
 	spawn := spawnOrdinals()
-	runs := runSelectedPackages(ctx, invCtx, n, pkgs, sel, spawn)
+	units := make([]packageUnit, len(pkgs))
+	var (
+		mu       sync.Mutex
+		firstErr error
+	)
+	fail := func(err error) {
+		if firstErr == nil {
+			firstErr = err
+		}
+	}
+	// Inside the package's own slot: its classification, then the
+	// isolation re-runs of the tests its process denied an outcome —
+	// each solo, once, inside the same envelope, so an expired envelope
+	// denies a re-run before it spawns (reported as a TIMEOUT process
+	// outcome) and retries never outlive the invocation's reviewed bound
+	// — then the caller's hook. The unit of persistence is the package
+	// with its re-runs, complete before the next package needs it
+	// (REQ-policy-cancellation).
+	inSlot := func(i int, run packageRun) {
+		unit := packageUnit{pkg: pkgs[i], run: run}
+		timedOut := invCtx.Err() != nil
+		if err := finalizeRun(n, &unit.run, timedOut, ""); err != nil {
+			mu.Lock()
+			fail(err)
+			units[i] = unit
+			mu.Unlock()
+			return
+		}
+		for _, name := range deniedTests(&unit.run, sel[unit.pkg]) {
+			solo := packageRun{pkg: unit.pkg, soloTest: name}
+			if invCtx.Err() == nil {
+				solo = runPackage(invCtx, n, unit.pkg, []string{name}, spawn())
+				solo.soloTest = name
+			}
+			if ctx.Err() != nil {
+				return
+			}
+			if err := finalizeRun(n, &solo, invCtx.Err() != nil, name); err != nil {
+				mu.Lock()
+				fail(err)
+				units[i] = unit
+				mu.Unlock()
+				return
+			}
+			unit.solos = append(unit.solos, solo)
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		units[i] = unit
+		if onPackage != nil && firstErr == nil {
+			if err := onPackage(unit); err != nil {
+				fail(err)
+			}
+		}
+	}
+	runSelectedPackages(ctx, invCtx, n, pkgs, sel, spawn, inSlot)
 	if err := ctx.Err(); err != nil {
 		// Caller cancellation: the partial run is discarded whole.
 		return nil, err
 	}
-	res := &SelectionResult{}
-	for i := range runs {
-		r := &runs[i]
-		if err := finalizeRun(n, r, invCtx.Err() != nil, ""); err != nil {
-			return nil, err
-		}
-		res.Tests = append(res.Tests, r.tests...)
-		res.Diagnostics = append(res.Diagnostics, r.diags...)
-		if r.obs != nil {
-			res.Observations = append(res.Observations, r.obs)
-		}
-		res.Processes = append(res.Processes, ProcessOutcome{
-			Package: r.pkg, Disposition: r.disposition, Producer: r.producer,
-		})
+	if firstErr != nil {
+		return nil, firstErr
 	}
-	// The isolation pass runs sequentially under the same envelope
-	// context: the envelope bounds retries, so an expired envelope denies
-	// a re-run before it spawns — reported as a TIMEOUT process outcome —
-	// and each denied test is re-run exactly once, never recursively.
-	for i := range runs {
-		r := &runs[i]
-		for _, name := range deniedTests(r, sel[r.pkg]) {
-			solo := packageRun{pkg: r.pkg}
-			if invCtx.Err() == nil {
-				solo = runPackage(invCtx, n, r.pkg, []string{name}, spawn())
-			}
-			if err := ctx.Err(); err != nil {
-				return nil, err
-			}
-			if err := finalizeRun(n, &solo, invCtx.Err() != nil, name); err != nil {
-				return nil, err
-			}
-			res.Tests = append(res.Tests, solo.tests...)
-			res.Diagnostics = append(res.Diagnostics, solo.diags...)
-			if solo.obs != nil {
-				res.Observations = append(res.Observations, solo.obs)
-			}
-			res.Processes = append(res.Processes, ProcessOutcome{
-				Package: r.pkg, Test: name, Disposition: solo.disposition, Producer: solo.producer,
-			})
-		}
+	res := &SelectionResult{}
+	for _, u := range units {
+		res.absorb(u)
 	}
 	return res, nil
+}
+
+// absorb folds one package's unit into the result: the process's
+// outcomes, then each solo re-run's, attributed to its own producing
+// process.
+func (res *SelectionResult) absorb(u packageUnit) {
+	r := &u.run
+	res.Tests = append(res.Tests, r.tests...)
+	res.Diagnostics = append(res.Diagnostics, r.diags...)
+	if r.obs != nil {
+		res.Observations = append(res.Observations, r.obs)
+	}
+	res.Processes = append(res.Processes, ProcessOutcome{
+		Package: r.pkg, Disposition: r.disposition, Producer: r.producer,
+	})
+	for i := range u.solos {
+		solo := &u.solos[i]
+		res.Tests = append(res.Tests, solo.tests...)
+		res.Diagnostics = append(res.Diagnostics, solo.diags...)
+		if solo.obs != nil {
+			res.Observations = append(res.Observations, solo.obs)
+		}
+		res.Processes = append(res.Processes, ProcessOutcome{
+			Package: r.pkg, Test: solo.soloTest, Disposition: solo.disposition, Producer: solo.producer,
+		})
+	}
 }
 
 // deniedTests derives the top-level runnables one selective process

@@ -724,7 +724,7 @@ func TestWitnessRunNotesAreBoundedByThePolicy(t *testing.T) {
 	if note := executing["plain"]; !strings.Contains(note, "12 subjects in 1 package") || !strings.Contains(note, "ineligible") {
 		t.Fatalf("first run's plain note = %q; want the ineligible leg named", note)
 	}
-	if len(executing) != 2 || len(persisted) != 1 || persisted["race"] == "" || len(rep.Kept()) != 1 {
+	if len(executing) != 2 || len(persisted) != 1 || persisted["race example.com/notes/many"] == "" || len(rep.Kept()) != 1 {
 		t.Fatalf("executing %v persisted %v kept %v", executing, persisted, rep.Kept())
 	}
 	// Run two, after a witness body moved, under a policy with a second
@@ -754,7 +754,7 @@ func TestWitnessRunNotesAreBoundedByThePolicy(t *testing.T) {
 	if note := executing["tagged"]; !strings.Contains(note, "12 subjects in 1 package") || strings.Contains(note, "re-executed") {
 		t.Fatalf("second run's tagged note = %q; want twelve subjects and no reason borrowed from the race leg", note)
 	}
-	if len(executing) != 3 || len(persisted) != 2 || persisted["race"] == "" || persisted["tagged"] == "" {
+	if len(executing) != 3 || len(persisted) != 2 || persisted["race example.com/notes/many"] == "" || persisted["tagged example.com/notes/many"] == "" {
 		t.Fatalf("executing %v persisted %v", executing, persisted)
 	}
 }

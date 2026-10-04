@@ -26,7 +26,7 @@ type pubSubject struct {
 // publishEligible is the one publication ladder for every path that
 // produces witness records - full execution, selective serving, and the
 // drift retry: the proof leg (attach + observed-view close), final
-// fingerprint assembly, the post-run producer check, the group's ONE
+// fingerprint assembly, the post-run producer check, the view's ONE
 // closing validation (gating served outcomes and publication alike),
 // and record assembly. Eligibility stays with the caller - it is the
 // only stage whose unit of judgment differs per path
@@ -55,7 +55,7 @@ func publishEligible(
 	reasons map[gofresh.Subject]string,
 ) (records []witnesscache.Record, discarded bool, checkFault, closeFault, fatal error) {
 	// Observation-completeness proofs attach only when every candidate of
-	// the group can attach: the observed view revalidates as one unit, so
+	// the view can attach: the observed view revalidates as one unit, so
 	// a single candidate whose process left no completed observation (or
 	// did not run its subject alone) drops the proof leg whole and every
 	// candidate falls back to the plain per-process manifest.
@@ -152,7 +152,7 @@ func publishEligible(
 		if ctx.Err() != nil {
 			return nil, false, nil, nil, ctx.Err()
 		}
-		// A faulting post-run check publishes nothing for the group; the
+		// A faulting post-run check publishes nothing for the view; the
 		// executed evidence stands and every subject counts uncacheable.
 		// Served outcomes still need their seal, so the close below runs
 		// when they are at stake.
@@ -174,7 +174,7 @@ func publishEligible(
 			}
 		}
 	}
-	// The one deferred close per group: the view's validation is the
+	// The one deferred close per view: the view's validation is the
 	// closing observation for the served re-check AND the post-run
 	// publish checks alike - no served outcome stands and no record
 	// publishes unless the tree still agrees, and a refusal discards
@@ -215,7 +215,7 @@ func publishEligible(
 	return records, false, nil, nil, nil
 }
 
-// closeGroup runs the group's one closing validation when anything is at
+// closeGroup runs the view's one closing validation when anything is at
 // stake, filling refusal reasons on every unsatisfied stale subject and
 // discarding served outcomes with the named cause. It reports the
 // served discard and the close error separately so run-degradation

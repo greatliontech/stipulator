@@ -132,7 +132,10 @@ type testEvent struct {
 // when a process was launched; obs is that process's owned observation,
 // absent until the caller classifies a cut-off run.
 type packageRun struct {
-	pkg         string
+	pkg string
+	// soloTest names the one test an isolation re-run executed; empty
+	// for a package's own process.
+	soloTest    string
 	disposition stipulatorv1.HealthDisposition
 	aborted     []string
 	residue     *boundedBuffer
@@ -173,7 +176,7 @@ func ExecuteInvocation(ctx context.Context, n *NormalizedInvocation, selection [
 	// abort.
 	invCtx, cancel := context.WithTimeoutCause(ctx, n.Timeout, errEnvelopeExpired)
 	defer cancel()
-	runs := runSelectedPackages(ctx, invCtx, n, pkgs, nil, spawnOrdinals())
+	runs := runSelectedPackages(ctx, invCtx, n, pkgs, nil, spawnOrdinals(), nil)
 	if err := ctx.Err(); err != nil {
 		// Caller cancellation: the partial run is discarded whole. The
 		// envelope context is derived from ctx, so every child is already
@@ -199,11 +202,16 @@ func spawnOrdinals() func() int32 {
 }
 
 // runSelectedPackages fans the packages out under the derived
-// concurrency bound, one owned process per package narrowed to
-// its tests selection, with invCtx — the invocation envelope — governing
+// concurrency bound, one owned process per package narrowed to its
+// tests selection, with invCtx — the invocation envelope — governing
 // every spawn. Runs the envelope denied before their spawn come back
-// with no terminal disposition for the caller to classify.
-func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, pkgs []string, tests TestSelection, spawnOrdinal func() int32) []packageRun {
+// with no terminal disposition for the caller to classify. inSlot,
+// when non-nil, runs for each package inside its own slot after its
+// process — still holding the slot, so whatever it spawns (the
+// selective form's isolation re-runs) counts against the bound as the
+// package's own process tree, never beside it — and is skipped under
+// the caller's cancellation.
+func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, pkgs []string, tests TestSelection, spawnOrdinal func() int32, inSlot func(i int, run packageRun)) []packageRun {
 	bound := spawnBoundOf(n)
 	sem := make(chan struct{}, bound)
 	runs := make([]packageRun, len(pkgs))
@@ -224,9 +232,15 @@ func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, p
 				// Never spawned: the caller classifies the missing terminal
 				// disposition as timeout or discards on cancellation.
 				runs[i] = packageRun{pkg: pkg}
+				if inSlot != nil && ctx.Err() == nil {
+					inSlot(i, runs[i])
+				}
 				return
 			}
 			runs[i] = runPackage(invCtx, n, pkg, tests[pkg], spawnOrdinal())
+			if inSlot != nil && ctx.Err() == nil {
+				inSlot(i, runs[i])
+			}
 		}(i, pkg)
 	}
 	wg.Wait()

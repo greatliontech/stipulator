@@ -474,7 +474,9 @@ disposition is red — a red process yields no green evidence, so the pass
 grants nothing from that process. The isolated outcome is a real run's
 outcome — evidence follows execution, the aborting or failing sibling's own
 failure stands, and a test gaining its outcome this way is the selective
-form being more precise, not less. A served record's fingerprint is
+form being more precise, not less; the re-runs belong to the package's unit,
+complete before its records install, inside the package's own slot of the
+derived concurrency bound. A served record's fingerprint is
 revalidated after the run's executions complete: a served outcome whose
 record no longer checks valid is discarded and its subject executed once
 within the same run, and a still-drifting subject ends unwitnessed with
@@ -539,13 +541,15 @@ and a fingerprint its encoder refuses installs no record. The
 fingerprint's own 16-byte digests are Gofresh-owned integrity values,
 outside REQ-model-hash-func entirely. Distinct tree states of one test
 coexist as variants, at most four per identity, and alternating between
-branches evicts nothing. Records install the moment their witness group
-completes — its last covering invocation executed and its closing
-validation passed — never as an
+branches evicts nothing. Records install the moment their unit
+completes — on the selective form the package, its process and its
+isolation re-runs executed and its closing validation passed; on the
+health-judged form the witness group at its last covering invocation —
+never as an
 end-of-run batch: a run dying mid-execution keeps every record already
 produced, and a degraded run installs nothing further — records its
-groups installed before the fault stay, each validated by its own
-group's closing check, and the run's uncacheable account excludes
+units installed before the fault stay, each validated by its own
+closing check, and the run's uncacheable account excludes
 them. Each file carries one record object with integer `version` equal to `8` —
 bumped from `7` when the compartment ledger left the record for the
 ledger store below (a prior record's inline ledger is an unknown field),
@@ -870,13 +874,22 @@ evidentiary record.
 discard its partial results — no outcome, observation, or health
 disposition from a cancelled run is persisted, served, or reported as
 terminal — with cancellation propagated to every child process of the
-execution, package discovery included. On every execution form the
-unit of persistence is the witness group at its last covering
-invocation's completion: what completed before the cancellation stays
-installed,
-and the cancelled run's ending names those units — the invocation, the
-revalidation pass, the drift retry, with their record counts — or
-states that it kept nothing, so a rerun's serving is foreseeable. A
+execution, package discovery included. On the selective form the unit
+of persistence is the package under its covering invocation, at its
+completion — its process and the isolation re-runs that process's denied
+tests earned having run, its executed records published — while its
+sibling packages still execute, so a run dying mid-invocation keeps
+every package already finished; a package nothing executes publishes in
+the verification pass; a package's served records are revalidated there
+too, after every execution of the run (REQ-check-witness-selection),
+never at the package's own completion. On the health-judged form the
+unit is the witness group at its last covering invocation's
+completion. What completed before the cancellation stays
+installed, and the cancelled run's ending names those units — each
+package persisted under its invocation, the invocation whose groups
+completed, the revalidation pass, the drift retry, with their record
+counts — or states that it kept nothing, so a rerun's serving is
+foreseeable. A
 group's covering invocations are those of the packages the run
 executes for it: every package on the full form, the stale packages
 the selection names on the selective one; a package two invocations

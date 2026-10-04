@@ -10,6 +10,7 @@ import (
 
 	"github.com/greatliontech/gofresh"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -120,18 +121,18 @@ func TestMutatesSourceOnce(t *testing.T) {
 	}
 }
 
-// TestGoRunWitnessesMidRunRuntimeInputDriftDropsRecord pins the post-run
-// fingerprint check over executed subjects' runtime inputs: a recorded
-// input that another process of the same run mutated after the subject's
-// observation fails the post-run check, so the record is dropped and
-// counted uncacheable while the executed evidence stands. The mutation
-// rides the isolation pass — a solo re-run that begins only after every
-// package process has completed and observed — so the interleaving is
-// structural, not scheduled.
-//
-//gofresh:pure
-func TestGoRunWitnessesMidRunRuntimeInputDriftDropsRecord(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+// TestGoRunWitnessesInputDriftAfterTheUnitReexecutesNextRun pins the
+// package unit against a sibling's write (REQ-evidence-witness-freshness,
+// REQ-policy-cancellation): the reader's record publishes the moment its
+// package completes, carrying the input it read; a sibling package whose
+// isolation re-run then rewrites that input cannot touch the published
+// record — the writer's own record is refused for writing outside its
+// bracket — and the next run finds the reader's recorded input moved and
+// re-executes it rather than serving the record. The writer's rewrite is
+// gated on the reader's persisted note, so the order is the test's, not
+// the scheduler's.
+func TestGoRunWitnessesInputDriftAfterTheUnitReexecutesNextRun(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-policy-cancellation")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -154,14 +155,16 @@ func TestReads(t *testing.T) {
 }
 `,
 		// The writer package's red sibling denies the pass, so the write
-		// happens in the isolation pass's solo process: only the second
-		// invocation — the solo re-run, after every package process has
-		// observed — finds its sentinel and mutates the reader's input.
+		// happens in the writer's isolation re-run — the second process,
+		// which finds its sentinel — and only once the test has seen the
+		// reader's unit persist (go.ahead), so the rewrite lands after the
+		// reader's record, never inside its process.
 		"writer/writer_test.go": `package writer
 
 import (
 	"os"
 	"testing"
+	"time"
 )
 
 func TestRedFlag(t *testing.T) {
@@ -175,6 +178,16 @@ func TestWritesOnce(t *testing.T) {
 		}
 		return
 	}
+	deadline := time.Now().Add(60 * time.Second)
+	for {
+		if _, err := os.Stat("go.ahead"); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the reader's unit never persisted")
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 	if err := os.WriteFile("../reader/data.txt", []byte("after"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -182,8 +195,16 @@ func TestWritesOnce(t *testing.T) {
 `,
 	})
 	writeRacePolicy(t, tmp)
+	rep := progress.New(func(e *stipulatorv1.ProgressEvent) {
+		if strings.HasPrefix(e.GetNote(), "persisted: ") && strings.Contains(e.GetNote(), "example.com/runtime-drift/reader (") {
+			if err := os.WriteFile(filepath.Join(tmp, "writer", "go.ahead"), nil, 0o644); err != nil {
+				t.Error(err)
+			}
+		}
+	}, progress.WithInterval(time.Hour))
+	ctx := progress.NewContext(context.Background(), rep)
 
-	run, err := RunWitnesses(context.Background(), tmp, noSeeding{})
+	run, err := RunWitnesses(ctx, tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,11 +220,29 @@ func TestWritesOnce(t *testing.T) {
 	if got := run.Outcomes["example.com/runtime-drift/writer.TestRedFlag"]; got != verify.TestFailed {
 		t.Fatalf("denying red must stand: %v", got)
 	}
-	if cacheRecord(t, witnesscache.Load(tmp), "example.com/runtime-drift/reader", "TestReads") != nil {
-		t.Error("reader record published although its recorded input drifted mid-run")
+	first := cacheRecord(t, witnesscache.Load(tmp), "example.com/runtime-drift/reader", "TestReads")
+	if first == nil {
+		t.Fatal("the reader's record did not publish at its unit's completion")
+	}
+	if b, _ := os.ReadFile(filepath.Join(tmp, "reader", "data.txt")); string(b) != "after" {
+		t.Fatalf("the writer's re-run never rewrote the input: %q", b)
 	}
 	if run.Uncached == 0 {
-		t.Error("dropped record not counted uncacheable")
+		t.Error("the writer's out-of-bracket write not counted uncacheable")
+	}
+
+	// The next run: the reader's recorded input moved, so it re-executes
+	// instead of serving, and its record re-derives against the new input.
+	second, err := RunWitnesses(context.Background(), tmp, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Fresh != 0 {
+		t.Fatalf("the next run served %d witnesses; the reader's recorded input moved, nothing may serve", second.Fresh)
+	}
+	rederived := cacheRecord(t, witnesscache.Load(tmp), "example.com/runtime-drift/reader", "TestReads")
+	if rederived == nil || rederived.Fingerprint.RuntimeDigest == first.Fingerprint.RuntimeDigest {
+		t.Fatalf("the reader's record was not re-derived against the moved input: first %v, second %+v", first.Fingerprint.RuntimeDigest, rederived)
 	}
 }
 
@@ -779,5 +818,272 @@ func TestGoRunWitnessesCompletedGroupSurvivesLaterInvocationFailure(t *testing.T
 	}
 	if hasSlow() {
 		t.Fatal("cancelled slow group published a record")
+	}
+}
+
+// TestServedRecordRevalidatesAfterTheRunsExecutions pins the served half
+// of the package unit (REQ-check-witness-selection, REQ-policy-cancellation):
+// a package's served records are revalidated after every execution of the
+// run, never at the package's own completion, so a sibling package that
+// rewrites a served reader's input after the reader's package has finished
+// still disproves the serve — the reader re-executes in the run's drift
+// retry and its record re-derives; nothing the run reports is served from
+// a record the tree it finished on disproves. The writer's rewrite is
+// gated on the reader's persisted note, so the interleaving is the test's.
+func TestServedRecordRevalidatesAfterTheRunsExecutions(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-witness-selection", "REQ-policy-cancellation")
+	if testing.Short() {
+		t.Skip("executes race-instrumented selective runs over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":           "module example.com/sibserve\n\ngo 1.26\n",
+		"reader/data.txt":  "v1\n",
+		"reader/touch.txt": "fail\n",
+		// TestReads serves on the second run; TestTouch is red on the
+		// first run and green on the second, so the reader package still
+		// executes something and publishes at its own completion.
+		"reader/reader_test.go": `package reader
+
+import (
+	"os"
+	"testing"
+)
+
+//gofresh:pure
+func TestReads(t *testing.T) {
+	if _, err := os.ReadFile("data.txt"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+//gofresh:pure
+func TestTouch(t *testing.T) {
+	b, err := os.ReadFile("touch.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) == "fail\n" {
+		t.Fatal("red")
+	}
+}
+`,
+		"writer/trigger.txt": "no\n",
+		"writer/writer_test.go": `package writer
+
+import (
+	"os"
+	"strings"
+	"testing"
+	"time"
+)
+
+//gofresh:pure
+func TestWritesOnce(t *testing.T) {
+	raw, err := os.ReadFile("trigger.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.TrimSpace(string(raw)) != "yes" {
+		return
+	}
+	deadline := time.Now().Add(60 * time.Second)
+	for {
+		if _, err := os.Stat("go.ahead"); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the reader's package never persisted")
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if err := os.WriteFile("../reader/data.txt", []byte("v2\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+`,
+	})
+	writeRacePolicy(t, tmp)
+	if _, err := RunWitnesses(context.Background(), tmp, noSeeding{}); err != nil {
+		t.Fatal(err)
+	}
+	cold := cacheRecord(t, witnesscache.Load(tmp), "example.com/sibserve/reader", "TestReads")
+	if cold == nil {
+		t.Fatal("no cold record for the reader")
+	}
+	if err := os.WriteFile(filepath.Join(tmp, "writer", "trigger.txt"), []byte("yes\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmp, "reader", "touch.txt"), []byte("ok\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rep := progress.New(func(e *stipulatorv1.ProgressEvent) {
+		if strings.HasPrefix(e.GetNote(), "persisted: ") && strings.Contains(e.GetNote(), "example.com/sibserve/reader (") {
+			if err := os.WriteFile(filepath.Join(tmp, "writer", "go.ahead"), nil, 0o644); err != nil {
+				t.Error(err)
+			}
+		}
+	}, progress.WithInterval(time.Hour))
+	run, err := RunWitnesses(progress.NewContext(context.Background(), rep), tmp, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(tmp, "reader", "data.txt")); string(b) != "v2\n" {
+		t.Fatalf("the writer never rewrote the served reader's input: %q", b)
+	}
+	if run.Fresh != 0 {
+		t.Fatalf("the run served %d witness(es) the tree it finished on disproves", run.Fresh)
+	}
+	if got := run.Outcomes["example.com/sibserve/reader.TestReads"]; got != verify.TestPassed {
+		t.Fatalf("the reader's drift retry lost its outcome: %v", got)
+	}
+	rederived := cacheRecord(t, witnesscache.Load(tmp), "example.com/sibserve/reader", "TestReads")
+	if rederived == nil || rederived.Fingerprint.RuntimeDigest == cold.Fingerprint.RuntimeDigest {
+		t.Fatalf("the reader's record was not re-derived against the rewritten input: cold %v, now %+v", cold.Fingerprint.RuntimeDigest, rederived)
+	}
+}
+
+// TestExecutedRecordDropsWhenItsInputMovesBeforeItsPublish pins the
+// executed half's drift window on the selective form
+// (REQ-evidence-witness-freshness): an input a package's test read that
+// moves between the package's process and its publish is a mid-run drift
+// of the record's inputs — the record is dropped, counted uncacheable,
+// and the next run re-derives it; the executed outcome stands.
+func TestExecutedRecordDropsWhenItsInputMovesBeforeItsPublish(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented selective run over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":          "module example.com/prepublish\n\ngo 1.26\n",
+		"reader/data.txt": "before",
+		"reader/reader_test.go": `package reader
+
+import (
+	"os"
+	"testing"
+)
+
+func TestReads(t *testing.T) {
+	if _, err := os.ReadFile("data.txt"); err != nil {
+		t.Fatal(err)
+	}
+}
+`,
+	})
+	writeRacePolicy(t, tmp)
+	saved := beforePackagePublishForTest
+	t.Cleanup(func() { beforePackagePublishForTest = saved })
+	var moved int
+	beforePackagePublishForTest = func(pkg string) {
+		if pkg == "example.com/prepublish/reader" {
+			moved++
+			if err := os.WriteFile(filepath.Join(tmp, "reader", "data.txt"), []byte("after"), 0o644); err != nil {
+				t.Error(err)
+			}
+		}
+	}
+	run, err := RunWitnesses(context.Background(), tmp, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if moved != 1 {
+		t.Fatalf("the seam ran %d times, want once before the reader's publish", moved)
+	}
+	if got := run.Outcomes["example.com/prepublish/reader.TestReads"]; got != verify.TestPassed {
+		t.Fatalf("the executed outcome did not stand: %v", got)
+	}
+	if rec := cacheRecord(t, witnesscache.Load(tmp), "example.com/prepublish/reader", "TestReads"); rec != nil {
+		t.Fatalf("a record published although its input moved before its publish: %+v", *rec)
+	}
+	if run.Uncached == 0 {
+		t.Fatal("the dropped record was not counted uncacheable")
+	}
+}
+
+// TestServedDiscardsWhenTheTreeMovesInsideTheCloseInterval pins the
+// deferred-close contract on the served half (REQ-check-witness-selection,
+// REQ-evidence-witness-freshness): a served record's re-check verdict is
+// provisional until its package's sibling validates, so a source move
+// landing between the re-check and that closing validation refuses the
+// close — every serve of the package is discarded and re-executes in the
+// drift retry — never passes as a serve the tree disproves. (A runtime
+// input moving there is not the case: the reader asserts purity, and a
+// purity-asserted record's inputs are the author's word, by design.)
+func TestServedDiscardsWhenTheTreeMovesInsideTheCloseInterval(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-witness-selection", "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes race-instrumented selective runs over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":           "module example.com/closewin\n\ngo 1.26\n",
+		"reader/data.txt":  "v1\n",
+		"reader/touch.txt": "fail\n",
+		"reader/reader_test.go": `package reader
+
+import (
+	"os"
+	"testing"
+)
+
+//gofresh:pure
+func TestReads(t *testing.T) {
+	if _, err := os.ReadFile("data.txt"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+//gofresh:pure
+func TestTouch(t *testing.T) {
+	b, err := os.ReadFile("touch.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) == "fail\n" {
+		t.Fatal("red")
+	}
+}
+`,
+	})
+	writeRacePolicy(t, tmp)
+	if _, err := RunWitnesses(context.Background(), tmp, noSeeding{}); err != nil {
+		t.Fatal(err)
+	}
+	cold := cacheRecord(t, witnesscache.Load(tmp), "example.com/closewin/reader", "TestReads")
+	if cold == nil {
+		t.Fatal("no cold record for the reader")
+	}
+	// TestTouch goes green, so the package executes and TestReads serves.
+	if err := os.WriteFile(filepath.Join(tmp, "reader", "touch.txt"), []byte("ok\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	saved := afterServedCheckForTest
+	t.Cleanup(func() { afterServedCheckForTest = saved })
+	var moved int
+	afterServedCheckForTest = func(pkg string) {
+		if pkg == "example.com/closewin/reader" {
+			moved++
+			// A source move inside the interval: TestTouch's body changes,
+			// so the reader package's closure no longer matches the view.
+			src := "package reader\n\nimport (\n\t\"os\"\n\t\"testing\"\n)\n\n//gofresh:pure\nfunc TestReads(t *testing.T) {\n\tif _, err := os.ReadFile(\"data.txt\"); err != nil {\n\t\tt.Fatal(err)\n\t}\n}\n\n//gofresh:pure\nfunc TestTouch(t *testing.T) {\n\tif _, err := os.ReadFile(\"touch.txt\"); err != nil {\n\t\tt.Fatal(err)\n\t}\n}\n"
+			if err := os.WriteFile(filepath.Join(tmp, "reader", "reader_test.go"), []byte(src), 0o644); err != nil {
+				t.Error(err)
+			}
+		}
+	}
+	run, err := RunWitnesses(context.Background(), tmp, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if moved != 1 {
+		t.Fatalf("the seam ran %d times, want once inside the reader's close interval", moved)
+	}
+	if run.Fresh != 0 {
+		t.Fatalf("the run served %d witness(es) through a close its tree refused", run.Fresh)
+	}
+	if got := run.Outcomes["example.com/closewin/reader.TestReads"]; got != verify.TestPassed {
+		t.Fatalf("the discarded serve's retry lost its outcome: %v", got)
 	}
 }

@@ -970,3 +970,33 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "25cb28cc85f4696e283f1a809d56a7f17550ec0bc4f0e900cfc56123fe16aa58"
 }
+
+bindings {
+  requirement_id: "REQ-check-witness-selection"
+  content_hash: "007cab87ca1813a005b7598fd3de3d6d271fc48de893b42cbdeeccaf598b5ce0"
+  source_hash: "7d48df0f11599e722b362df332427355e9658d8898b77d0bd8cca6fa365c38d4"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestPackagePersistsBeforeItsSiblingCompletes"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5fa7fd521307117e59a1fd3108f821e4b8c3dba08567d262acaf7a09334607c0"
+}
+
+bindings {
+  requirement_id: "REQ-check-witness-selection"
+  content_hash: "007cab87ca1813a005b7598fd3de3d6d271fc48de893b42cbdeeccaf598b5ce0"
+  source_hash: "7d48df0f11599e722b362df332427355e9658d8898b77d0bd8cca6fa365c38d4"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestServedRecordRevalidatesAfterTheRunsExecutions"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "882083b13deb428e823a1aaacd277494f45121f636dcdbd9f26cae0f0514e409"
+}
+
+bindings {
+  requirement_id: "REQ-check-witness-selection"
+  content_hash: "007cab87ca1813a005b7598fd3de3d6d271fc48de893b42cbdeeccaf598b5ce0"
+  source_hash: "7d48df0f11599e722b362df332427355e9658d8898b77d0bd8cca6fa365c38d4"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestServedDiscardsWhenTheTreeMovesInsideTheCloseInterval"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "8afd1f02c1893b266bdaf6b49270f2c783a2d4486a6b3d937d60cbd378df9380"
+}
