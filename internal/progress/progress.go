@@ -24,6 +24,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -31,6 +32,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/resident"
 )
 
 // defaultInterval is the minimum spacing of non-milestone events.
@@ -83,11 +85,56 @@ type Reporter struct {
 	// whatever a later caller asks, so two renderings never disagree.
 	cause stipulatorv1.TerminalCause
 	done  bool
+	// sample reads the process's resident set; nil reads nothing and no
+	// event or digest carries the datum. It is read at every phase
+	// transition and at the ending, never per step, so the datum stays
+	// as bounded as the transitions (REQ-mcp-progress).
+	sample func() (resident.Set, bool)
+	// pending is the reading the next emitted event carries; cleared
+	// once emitted, like note. The digest's own reading never pends: a
+	// keepalive between the digest and the sealing carries nothing.
+	pending *stipulatorv1.ResidentSet
+	// resident is the digest's material: the readings' running peak
+	// against the baseline read at construction, the moment that peak
+	// was first reached, the largest descendants reading, and the
+	// reading at the end.
+	resident residentRecord
 }
 
 type phaseStamp struct {
 	phase   stipulatorv1.Phase
 	entered time.Time
+}
+
+// moment names when a reading was taken: the exit of a phase, the
+// operation's end, or — the zero value — its start.
+type moment struct {
+	exitOf stipulatorv1.Phase
+	atEnd  bool
+}
+
+// residentRecord attributes the readings. The kernel answers a peak as
+// the larger of its stored high-water mark and the current set, so two
+// readings need not be monotonic: peak is the readings' running
+// maximum, and peakMoment the moment it last rose — the moment the
+// final peak was first reached. A long-lived process (the server) has
+// a peak from before this operation: baseline is its peak at
+// construction, and a running peak that never exceeds it is reported
+// as reached before the operation, attributed to no moment.
+type residentRecord struct {
+	taken       bool
+	baseline    uint64
+	peak        uint64
+	peakRaised  bool
+	peakMoment  moment
+	descendants resident.Set
+	descMoment  moment
+	descPeak    uint64
+	end         *resident.Set
+	// largest is the largest resident set among the operation's own
+	// readings — stated beside a peak that predates the operation, so a
+	// server call whose process peaked earlier still states its own.
+	largest uint64
 }
 
 // Option configures a Reporter.
@@ -98,6 +145,13 @@ func WithInterval(d time.Duration) Option {
 	return func(r *Reporter) { r.interval = d }
 }
 
+// WithResident installs the resident-set reading the reporter takes at
+// every phase transition and at the ending — resident.Sample on a host
+// that answers it. Without it no event or digest carries the datum.
+func WithResident(sample func() (resident.Set, bool)) Option {
+	return func(r *Reporter) { r.sample = sample }
+}
+
 // New returns a Reporter emitting through sink. A nil sink still tracks
 // the phase — terminal-cause attribution needs it even when the caller
 // asked for no notifications — and emits nothing.
@@ -105,6 +159,14 @@ func New(sink func(*stipulatorv1.ProgressEvent), opts ...Option) *Reporter {
 	r := &Reporter{sink: sink, interval: defaultInterval, start: time.Now()}
 	for _, o := range opts {
 		o(r)
+	}
+	if r.sample != nil {
+		// The baseline: the process's peak before this operation did
+		// anything, so a peak the operation never exceeds is not
+		// attributed to one of its phases.
+		if set, ok := r.sample(); ok {
+			r.resident.baseline, r.resident.peak = set.ProcessPeakBytes, set.ProcessPeakBytes
+		}
 	}
 	return r
 }
@@ -142,6 +204,7 @@ func (r *Reporter) Phase(p stipulatorv1.Phase) {
 	if r.done || r.phase == p {
 		return
 	}
+	r.readResidentLocked(moment{exitOf: r.phase}, true)
 	r.phase = p
 	r.inv, r.completed, r.total = "", 0, 0
 	r.maxDone = nil
@@ -257,6 +320,7 @@ func (r *Reporter) Terminal(cause stipulatorv1.TerminalCause) {
 		return
 	}
 	r.done, r.cause = true, cause
+	r.readResidentLocked(moment{atEnd: true}, true)
 	r.emitLocked(cause)
 }
 
@@ -278,12 +342,69 @@ func (r *Reporter) SealBy(cause stipulatorv1.TerminalCause, actor string) string
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.done {
-		return terminalLine(r.cause, r.phase, r.kept, actor)
+		return terminalLine(r.cause, r.phase, r.kept, actor) + r.endingTailLocked()
 	}
 	r.done, r.cause = true, cause
-	line := terminalLine(cause, r.phase, r.kept, actor)
+	r.readResidentLocked(moment{atEnd: true}, true)
+	line := terminalLine(cause, r.phase, r.kept, actor) + r.endingTailLocked()
 	r.emitLocked(cause)
 	return line
+}
+
+// endingTailLocked renders the reading at the end as the sealed line's
+// tail — the ending in words on every face that prints the line.
+func (r *Reporter) endingTailLocked() string {
+	if r.resident.end == nil {
+		return ""
+	}
+	return " — " + residentWords(*r.resident.end, moment{atEnd: true})
+}
+
+// readResidentLocked takes the resident reading at m — the exit of the
+// phase being left at a transition, the end at the ending or at the
+// digest rendered before it, the start at the first transition. With
+// carry the next emitted event carries it; the digest's reading never
+// carries. Every reading advances the attribution.
+func (r *Reporter) readResidentLocked(m moment, carry bool) {
+	if r.sample == nil {
+		return
+	}
+	set, ok := r.sample()
+	if !ok {
+		return
+	}
+	if carry {
+		r.pending = residentWire(set, m)
+	}
+	rec := &r.resident
+	// peak starts at the baseline, so the first rise above it is the
+	// first reading the operation raised.
+	if set.ProcessPeakBytes > rec.peak {
+		rec.peak, rec.peakMoment, rec.peakRaised = set.ProcessPeakBytes, m, true
+	}
+	if !rec.taken || set.DescendantsBytes > rec.descendants.DescendantsBytes {
+		rec.descendants, rec.descMoment = set, m
+	}
+	rec.descPeak = max(rec.descPeak, set.DescendantPeakBytes)
+	rec.largest = max(rec.largest, set.ProcessBytes)
+	if m.atEnd {
+		end := set
+		rec.end = &end
+	}
+	rec.taken = true
+}
+
+// residentWire is a reading on the wire with its moment.
+func residentWire(set resident.Set, m moment) *stipulatorv1.ResidentSet {
+	e := &stipulatorv1.ResidentSet{}
+	e.SetProcessBytes(set.ProcessBytes)
+	e.SetProcessPeakBytes(set.ProcessPeakBytes)
+	e.SetDescendantsBytes(set.DescendantsBytes)
+	e.SetDescendants(int32(set.Descendants))
+	e.SetDescendantPeakBytes(set.DescendantPeakBytes)
+	e.SetExitOf(m.exitOf)
+	e.SetAtEnd(m.atEnd)
+	return e
 }
 
 // CurrentPhase returns the phase the operation is in — the attribution a
@@ -311,6 +432,10 @@ func (r *Reporter) emitLocked(cause stipulatorv1.TerminalCause) {
 	e.SetTerminalCause(cause)
 	e.SetNote(r.note)
 	r.note = ""
+	if r.pending != nil {
+		e.SetResident(r.pending)
+		r.pending = nil
+	}
 	if cause != stipulatorv1.TerminalCause_TERMINAL_CAUSE_UNSPECIFIED {
 		e.SetKept(append([]string(nil), r.kept...))
 	}
@@ -349,7 +474,7 @@ func Stderr(w io.Writer) func(*stipulatorv1.ProgressEvent) {
 	return func(e *stipulatorv1.ProgressEvent) {
 		elapsed := roundDuration(e.GetElapsed().AsDuration())
 		if phases.Changed(e) {
-			fmt.Fprintf(w, "phase %s (%s)\n", Word(e.GetPhase()), elapsed)
+			fmt.Fprintf(w, "phase %s (%s)%s\n", Word(e.GetPhase()), elapsed, ResidentSuffix(e))
 		}
 		if note := e.GetNote(); note != "" {
 			fmt.Fprintf(w, "%s (%s)\n", note, elapsed)
@@ -357,7 +482,7 @@ func Stderr(w io.Writer) func(*stipulatorv1.ProgressEvent) {
 			fmt.Fprintf(w, "%s: %d/%d packages (%s)\n", e.GetInvocation(), e.GetCompleted(), e.GetTotal(), elapsed)
 		}
 		if cause := e.GetTerminalCause(); interrupted(cause) {
-			fmt.Fprintf(w, "%s\n", TerminalLine(cause, e.GetPhase(), e.GetKept()))
+			fmt.Fprintf(w, "%s%s\n", TerminalLine(cause, e.GetPhase(), e.GetKept()), ResidentSuffix(e))
 		}
 	}
 }
@@ -484,6 +609,12 @@ func (r *Reporter) Stamps() string {
 	if len(r.stamps) == 0 {
 		return ""
 	}
+	if !r.done && r.resident.end == nil {
+		// The digest is the ending's record on the face that renders it
+		// before sealing: the reading at the end is taken here, for the
+		// attribution alone — no event carries it.
+		r.readResidentLocked(moment{atEnd: true}, false)
+	}
 	now := time.Now()
 	var b strings.Builder
 	fmt.Fprintf(&b, "took %s: ", roundDuration(now.Sub(r.start)))
@@ -497,7 +628,99 @@ func (r *Reporter) Stamps() string {
 		}
 		fmt.Fprintf(&b, "%s %s", Word(st.phase), roundDuration(end.Sub(st.entered)))
 	}
+	if rec := r.resident; rec.taken {
+		if rec.end != nil {
+			fmt.Fprintf(&b, "; resident at the end %s", ByteWord(rec.end.ProcessBytes))
+		}
+		if rec.peakRaised {
+			fmt.Fprintf(&b, "; peak %s %s", ByteWord(rec.peak), momentWords(rec.peakMoment))
+		} else {
+			fmt.Fprintf(&b, "; peak %s reached before this operation, this operation's largest reading %s", ByteWord(rec.peak), ByteWord(rec.largest))
+		}
+		if rec.descendants.Descendants > 0 {
+			fmt.Fprintf(&b, "; descendants %s (%d) %s, largest peak %s", ByteWord(rec.descendants.DescendantsBytes), rec.descendants.Descendants, momentWords(rec.descMoment), ByteWord(rec.descPeak))
+		}
+	}
 	return b.String()
+}
+
+// EndingLine renders an ending for a face that prints every ending: the
+// cause and the phase, with the kept units only when the operation was
+// interrupted — a completed operation's units already arrived one per
+// persisted group as notes, and the list is unbounded by anything but
+// the policy, so repeating it would make the one line grow with the
+// policy (REQ-mcp-progress's bound).
+func EndingLine(cause stipulatorv1.TerminalCause, phase stipulatorv1.Phase, kept []string) string {
+	if !interrupted(cause) {
+		kept = nil
+	}
+	return TerminalLine(cause, phase, kept)
+}
+
+// ResidentWords renders an event's resident reading for a person — its
+// moment, the process's resident set with its peak, and its live
+// descendants' set with their count and the largest one's peak — in the
+// words both faces print; empty when the event carries none.
+func ResidentWords(e *stipulatorv1.ProgressEvent) string {
+	set := e.GetResident()
+	if set == nil {
+		return ""
+	}
+	return residentWords(resident.Set{
+		ProcessBytes:        set.GetProcessBytes(),
+		ProcessPeakBytes:    set.GetProcessPeakBytes(),
+		Descendants:         int(set.GetDescendants()),
+		DescendantsBytes:    set.GetDescendantsBytes(),
+		DescendantPeakBytes: set.GetDescendantPeakBytes(),
+	}, moment{exitOf: set.GetExitOf(), atEnd: set.GetAtEnd()})
+}
+
+func residentWords(set resident.Set, m moment) string {
+	words := fmt.Sprintf("%s: resident %s (peak %s)", momentWords(m), ByteWord(set.ProcessBytes), ByteWord(set.ProcessPeakBytes))
+	if set.Descendants > 0 {
+		words += fmt.Sprintf(", descendants %s (%d), largest peak %s", ByteWord(set.DescendantsBytes), set.Descendants, ByteWord(set.DescendantPeakBytes))
+	}
+	return words
+}
+
+// momentWords names a reading's moment: "at compile's exit", "at the
+// start", "at the end".
+func momentWords(m moment) string {
+	switch {
+	case m.atEnd:
+		return "at the end"
+	case m.exitOf != stipulatorv1.Phase_PHASE_UNSPECIFIED:
+		return "at " + Word(m.exitOf) + "'s exit"
+	}
+	return "at the start"
+}
+
+// ResidentSuffix is ResidentWords as a line's tail — the one spelling
+// both faces append to a phase line and to the ending's line.
+func ResidentSuffix(e *stipulatorv1.ProgressEvent) string {
+	words := ResidentWords(e)
+	if words == "" {
+		return ""
+	}
+	return " — " + words
+}
+
+// ByteWord renders a byte count in binary units, rounded, with one
+// decimal above a gibibyte: "75 MiB", "1.0 GiB" — the convention the
+// tree's other byte figures use.
+func ByteWord(b uint64) string {
+	const kib, mib, gib = 1 << 10, 1 << 20, 1 << 30
+	// A value that rounds up to the next unit renders in that unit:
+	// 1023.6 MiB is "1.0 GiB", never "1024 MiB".
+	switch {
+	case b >= gib || math.Round(float64(b)/mib) >= 1024:
+		return fmt.Sprintf("%.1f GiB", float64(b)/gib)
+	case b >= mib || math.Round(float64(b)/kib) >= 1024:
+		return fmt.Sprintf("%.0f MiB", float64(b)/mib)
+	case b >= kib:
+		return fmt.Sprintf("%.0f KiB", float64(b)/kib)
+	}
+	return fmt.Sprintf("%d B", b)
 }
 
 // roundDuration renders a duration at tenth-of-a-second precision - the

@@ -12,6 +12,7 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/internal/progress"
+	"github.com/greatliontech/stipulator/internal/resident"
 )
 
 // The progress reporting and terminal-error composition the served
@@ -72,17 +73,27 @@ func (s *Server) startProgress(ctx context.Context, req *mcp.CallToolRequest) (c
 					Data:   fmt.Sprintf("%s (%s elapsed)", note, e.GetElapsed().AsDuration().Round(time.Second)),
 				})
 			}
+			// The ending is one more bounded line: its cause, phase, kept
+			// units, and the reading at the end.
+			if cause := e.GetTerminalCause(); cause != stipulatorv1.TerminalCause_TERMINAL_CAUSE_UNSPECIFIED {
+				_ = session.Log(notifyCtx, &mcp.LoggingMessageParams{
+					Level:  "info",
+					Logger: "stipulator",
+					Data:   progress.EndingLine(cause, e.GetPhase(), e.GetKept()) + progress.ResidentSuffix(e),
+				})
+				return
+			}
 			if !phases.Changed(e) {
 				return
 			}
 			_ = session.Log(notifyCtx, &mcp.LoggingMessageParams{
 				Level:  "info",
 				Logger: "stipulator",
-				Data:   fmt.Sprintf("phase %s (%s elapsed)", progress.Word(e.GetPhase()), e.GetElapsed().AsDuration().Round(time.Second)),
+				Data:   fmt.Sprintf("phase %s (%s elapsed)", progress.Word(e.GetPhase()), e.GetElapsed().AsDuration().Round(time.Second)) + progress.ResidentSuffix(e),
 			})
 		})
 	}
-	prog := progress.New(sink)
+	prog := progress.New(sink, progress.WithResident(resident.Sample))
 	return progress.NewContext(ctx, prog), prog
 }
 

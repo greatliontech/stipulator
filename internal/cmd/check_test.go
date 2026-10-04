@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -237,6 +238,10 @@ func TestCheckExitCodes(t *testing.T) {
 	// both-surface leg).
 	if _, _, stderr := run(pass, "check", "--quiet"); !strings.Contains(stderr, "phase compile (") || !strings.Contains(stderr, "took ") {
 		t.Fatalf("check stderr carries no phase or pace line:\n%s", stderr)
+	} else if runtime.GOOS == "linux" && (!strings.Contains(stderr, ": resident ") || !strings.Contains(stderr, "; peak ")) {
+		// The resident reading rides the phase lines and the pace line
+		// where the host answers it (REQ-mcp-progress).
+		t.Fatalf("check stderr carries no resident reading:\n%s", stderr)
 	}
 	if code, _, stderr := run(writeTree(failTree), "check", "--quiet"); code != 1 || !strings.Contains(stderr, "took ") {
 		t.Fatalf("failing check exited %d without its pace line:\n%s", code, stderr)

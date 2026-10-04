@@ -238,4 +238,26 @@ message ProgressEvent {
   // The units whose records persisted so far - set on the final event,
   // so a cancelled operation names what it kept.
   repeated string kept = 8;
+  // The process's resident set at this moment - set on phase
+  // transitions and the final event where the host reports it, absent
+  // elsewhere (a step or keepalive carries none; a host without the
+  // reading carries none, never a zero).
+  ResidentSet resident = 9;
+}
+
+// ResidentSet is one reading of the process's memory: its resident and
+// peak resident bytes as the kernel answers them, and its live
+// descendants - the resolver child, the go drivers and the package test
+// binaries beneath them - as their count, their summed resident bytes,
+// and the largest single descendant's own peak. The reading names its
+// moment: the exit of a phase (exit_of), the operation's start (no
+// exit_of, at_end false), or the operation's end (at_end).
+message ResidentSet {
+  uint64 process_bytes = 1;
+  uint64 process_peak_bytes = 2;
+  uint64 descendants_bytes = 3;
+  int32 descendants = 4;
+  uint64 descendant_peak_bytes = 5;
+  Phase exit_of = 6;
+  bool at_end = 7;
 }

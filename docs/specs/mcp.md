@@ -216,7 +216,25 @@ phase timings as one bounded line of its text digest — the
 notification-blind fallback: a client that saw no notifications (none
 requested, or dropped in transit) still distinguishes slow work from a
 hang after the fact, and the one line is a timing record, not a progress
-stream, so the never-inside-result-payloads rule keeps its point. An operation that exceeds its client's deadline while
+stream, so the never-inside-result-payloads rule keeps its point. Each
+phase transition and the ending additionally carry the process's
+resident set where the host reports it, named by its moment — the start,
+a phase's exit, the end: the process's resident and peak resident bytes
+as the kernel answers them, and its live descendants (the resolver
+child, the go drivers and the package test binaries beneath them;
+zombies are not live) as their count, their summed resident bytes, and
+the largest single descendant's own peak — read at that moment and at no
+other (a step or keepalive carries none, so the datum is as bounded as
+the transitions; a host without the reading, or a process table that
+cannot be listed, carries none, never a zero or a partial count); the
+ending's reading is rendered in words on every face that renders the
+ending; and the timing line states the reading at the end, the readings'
+running peak with the moment it was first reached — or that the process
+reached it before this operation, as a long-lived server's peak may
+predate the call — and the largest descendants reading with its moment
+and the largest descendant's peak, so the memory a pass costs its host
+is stated by the pass itself, in the same words on both surfaces,
+rather than read off the host by hand. An operation that exceeds its client's deadline while
 reporting nothing is unusable through the agent surface even when the
 identical CLI operation is healthy. A server-observed deadline expiry
 carries the deadline cause; a client-side deadline surfaces as the

@@ -24,6 +24,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/recordapply"
 	"github.com/greatliontech/stipulator/internal/remedy"
+	"github.com/greatliontech/stipulator/internal/resident"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/verifyrun"
 	"github.com/greatliontech/stipulator/internal/views"
@@ -76,7 +77,7 @@ func Execute(ctx context.Context) error {
 // drive. An interrupted run returns Interrupted whatever its verb
 // returned — no partial verdict passes for a pass or a fail.
 func execute(ctx context.Context, args []string, sink func(*stipulatorv1.ProgressEvent), status io.Writer) error {
-	prog := progress.New(sink)
+	prog := progress.New(sink, progress.WithResident(resident.Sample))
 	root := newRootCmd()
 	root.SetArgs(args)
 	err := root.ExecuteContext(progress.NewContext(ctx, prog))

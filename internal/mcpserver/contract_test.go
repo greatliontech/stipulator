@@ -19,6 +19,7 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/facts"
+	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/wire"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
@@ -268,7 +269,10 @@ func TestTokenlessCallEmitsPhaseLogMessages(t *testing.T) {
 			}}, nil
 		},
 		capture: func(context.Context) (*golang.Capture, error) { return nil, nil },
-		runTests: func(context.Context, *golang.Capture, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		runTests: func(ctx context.Context, _ *golang.Capture, _ verify.WitnessSeeding, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
+			// A persisted unit, as the executor reports one: the completed
+			// ending must not repeat it.
+			progress.FromContext(ctx).Persisted("race:example.com/p", 1)
 			return &verify.TestRun{
 				RaceEnabled:      true,
 				SelectiveServing: true,
@@ -306,10 +310,29 @@ func TestTokenlessCallEmitsPhaseLogMessages(t *testing.T) {
 		t.Fatalf("gate: %v %+v", err, res)
 	}
 	deadline := time.After(3 * time.Second)
+	sawPhase := false
 	for {
 		select {
 		case line := <-logs:
 			if strings.Contains(line, "phase ") {
+				// The phase line carries the resident reading where the
+				// host answers it, in the words the CLI prints
+				// (REQ-mcp-progress).
+				if runtime.GOOS == "linux" && !strings.Contains(line, ": resident ") {
+					t.Fatalf("tokenless phase log message carries no resident reading: %q", line)
+				}
+				sawPhase = true
+			}
+			// The ending is logged once, with the reading at the end.
+			if strings.Contains(line, " — at the end: resident ") || (runtime.GOOS != "linux" && strings.Contains(line, "completed")) {
+				if !sawPhase {
+					t.Fatalf("the ending reached the log before any phase line: %q", line)
+				}
+				// A completed ending names no kept units: the list is
+				// unbounded by anything but the policy and arrived as notes.
+				if strings.Contains(line, "kept") || strings.Contains(line, "race:example.com/p") {
+					t.Fatalf("the completed ending line carries the kept list: %q", line)
+				}
 				return
 			}
 		case <-deadline:

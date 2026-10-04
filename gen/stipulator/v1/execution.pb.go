@@ -1880,6 +1880,7 @@ type ProgressEvent struct {
 	xxx_hidden_TerminalCause TerminalCause          `protobuf:"varint,6,opt,name=terminal_cause,json=terminalCause,enum=stipulator.v1.TerminalCause"`
 	xxx_hidden_Note          *string                `protobuf:"bytes,7,opt,name=note"`
 	xxx_hidden_Kept          []string               `protobuf:"bytes,8,rep,name=kept"`
+	xxx_hidden_Resident      *ResidentSet           `protobuf:"bytes,9,opt,name=resident"`
 	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
 	XXX_presence             [1]uint32
 	unknownFields            protoimpl.UnknownFields
@@ -1977,14 +1978,21 @@ func (x *ProgressEvent) GetKept() []string {
 	return nil
 }
 
+func (x *ProgressEvent) GetResident() *ResidentSet {
+	if x != nil {
+		return x.xxx_hidden_Resident
+	}
+	return nil
+}
+
 func (x *ProgressEvent) SetPhase(v Phase) {
 	x.xxx_hidden_Phase = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 9)
 }
 
 func (x *ProgressEvent) SetInvocation(v string) {
 	x.xxx_hidden_Invocation = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 9)
 }
 
 func (x *ProgressEvent) SetElapsed(v *durationpb.Duration) {
@@ -1993,26 +2001,30 @@ func (x *ProgressEvent) SetElapsed(v *durationpb.Duration) {
 
 func (x *ProgressEvent) SetCompleted(v int32) {
 	x.xxx_hidden_Completed = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 9)
 }
 
 func (x *ProgressEvent) SetTotal(v int32) {
 	x.xxx_hidden_Total = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 9)
 }
 
 func (x *ProgressEvent) SetTerminalCause(v TerminalCause) {
 	x.xxx_hidden_TerminalCause = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 9)
 }
 
 func (x *ProgressEvent) SetNote(v string) {
 	x.xxx_hidden_Note = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 9)
 }
 
 func (x *ProgressEvent) SetKept(v []string) {
 	x.xxx_hidden_Kept = v
+}
+
+func (x *ProgressEvent) SetResident(v *ResidentSet) {
+	x.xxx_hidden_Resident = v
 }
 
 func (x *ProgressEvent) HasPhase() bool {
@@ -2064,6 +2076,13 @@ func (x *ProgressEvent) HasNote() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
 }
 
+func (x *ProgressEvent) HasResident() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Resident != nil
+}
+
 func (x *ProgressEvent) ClearPhase() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Phase = Phase_PHASE_UNSPECIFIED
@@ -2098,6 +2117,10 @@ func (x *ProgressEvent) ClearNote() {
 	x.xxx_hidden_Note = nil
 }
 
+func (x *ProgressEvent) ClearResident() {
+	x.xxx_hidden_Resident = nil
+}
+
 type ProgressEvent_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -2121,6 +2144,11 @@ type ProgressEvent_builder struct {
 	// The units whose records persisted so far - set on the final event,
 	// so a cancelled operation names what it kept.
 	Kept []string
+	// The process's resident set at this moment - set on phase
+	// transitions and the final event where the host reports it, absent
+	// elsewhere (a step or keepalive carries none; a host without the
+	// reading carries none, never a zero).
+	Resident *ResidentSet
 }
 
 func (b0 ProgressEvent_builder) Build() *ProgressEvent {
@@ -2128,31 +2156,296 @@ func (b0 ProgressEvent_builder) Build() *ProgressEvent {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Phase != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 9)
 		x.xxx_hidden_Phase = *b.Phase
 	}
 	if b.Invocation != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 9)
 		x.xxx_hidden_Invocation = b.Invocation
 	}
 	x.xxx_hidden_Elapsed = b.Elapsed
 	if b.Completed != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 9)
 		x.xxx_hidden_Completed = *b.Completed
 	}
 	if b.Total != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 9)
 		x.xxx_hidden_Total = *b.Total
 	}
 	if b.TerminalCause != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 9)
 		x.xxx_hidden_TerminalCause = *b.TerminalCause
 	}
 	if b.Note != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 9)
 		x.xxx_hidden_Note = b.Note
 	}
 	x.xxx_hidden_Kept = b.Kept
+	x.xxx_hidden_Resident = b.Resident
+	return m0
+}
+
+// ResidentSet is one reading of the process's memory: its resident and
+// peak resident bytes as the kernel answers them, and its live
+// descendants - the resolver child, the go drivers and the package test
+// binaries beneath them - as their count, their summed resident bytes,
+// and the largest single descendant's own peak. The reading names its
+// moment: the exit of a phase (exit_of), the operation's start (no
+// exit_of, at_end false), or the operation's end (at_end).
+type ResidentSet struct {
+	state                          protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_ProcessBytes        uint64                 `protobuf:"varint,1,opt,name=process_bytes,json=processBytes"`
+	xxx_hidden_ProcessPeakBytes    uint64                 `protobuf:"varint,2,opt,name=process_peak_bytes,json=processPeakBytes"`
+	xxx_hidden_DescendantsBytes    uint64                 `protobuf:"varint,3,opt,name=descendants_bytes,json=descendantsBytes"`
+	xxx_hidden_Descendants         int32                  `protobuf:"varint,4,opt,name=descendants"`
+	xxx_hidden_DescendantPeakBytes uint64                 `protobuf:"varint,5,opt,name=descendant_peak_bytes,json=descendantPeakBytes"`
+	xxx_hidden_ExitOf              Phase                  `protobuf:"varint,6,opt,name=exit_of,json=exitOf,enum=stipulator.v1.Phase"`
+	xxx_hidden_AtEnd               bool                   `protobuf:"varint,7,opt,name=at_end,json=atEnd"`
+	XXX_raceDetectHookData         protoimpl.RaceDetectHookData
+	XXX_presence                   [1]uint32
+	unknownFields                  protoimpl.UnknownFields
+	sizeCache                      protoimpl.SizeCache
+}
+
+func (x *ResidentSet) Reset() {
+	*x = ResidentSet{}
+	mi := &file_stipulator_v1_execution_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResidentSet) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResidentSet) ProtoMessage() {}
+
+func (x *ResidentSet) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_execution_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *ResidentSet) GetProcessBytes() uint64 {
+	if x != nil {
+		return x.xxx_hidden_ProcessBytes
+	}
+	return 0
+}
+
+func (x *ResidentSet) GetProcessPeakBytes() uint64 {
+	if x != nil {
+		return x.xxx_hidden_ProcessPeakBytes
+	}
+	return 0
+}
+
+func (x *ResidentSet) GetDescendantsBytes() uint64 {
+	if x != nil {
+		return x.xxx_hidden_DescendantsBytes
+	}
+	return 0
+}
+
+func (x *ResidentSet) GetDescendants() int32 {
+	if x != nil {
+		return x.xxx_hidden_Descendants
+	}
+	return 0
+}
+
+func (x *ResidentSet) GetDescendantPeakBytes() uint64 {
+	if x != nil {
+		return x.xxx_hidden_DescendantPeakBytes
+	}
+	return 0
+}
+
+func (x *ResidentSet) GetExitOf() Phase {
+	if x != nil {
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 5) {
+			return x.xxx_hidden_ExitOf
+		}
+	}
+	return Phase_PHASE_UNSPECIFIED
+}
+
+func (x *ResidentSet) GetAtEnd() bool {
+	if x != nil {
+		return x.xxx_hidden_AtEnd
+	}
+	return false
+}
+
+func (x *ResidentSet) SetProcessBytes(v uint64) {
+	x.xxx_hidden_ProcessBytes = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 7)
+}
+
+func (x *ResidentSet) SetProcessPeakBytes(v uint64) {
+	x.xxx_hidden_ProcessPeakBytes = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 7)
+}
+
+func (x *ResidentSet) SetDescendantsBytes(v uint64) {
+	x.xxx_hidden_DescendantsBytes = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 7)
+}
+
+func (x *ResidentSet) SetDescendants(v int32) {
+	x.xxx_hidden_Descendants = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 7)
+}
+
+func (x *ResidentSet) SetDescendantPeakBytes(v uint64) {
+	x.xxx_hidden_DescendantPeakBytes = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 7)
+}
+
+func (x *ResidentSet) SetExitOf(v Phase) {
+	x.xxx_hidden_ExitOf = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 7)
+}
+
+func (x *ResidentSet) SetAtEnd(v bool) {
+	x.xxx_hidden_AtEnd = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 7)
+}
+
+func (x *ResidentSet) HasProcessBytes() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *ResidentSet) HasProcessPeakBytes() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *ResidentSet) HasDescendantsBytes() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *ResidentSet) HasDescendants() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *ResidentSet) HasDescendantPeakBytes() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *ResidentSet) HasExitOf() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *ResidentSet) HasAtEnd() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
+func (x *ResidentSet) ClearProcessBytes() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_ProcessBytes = 0
+}
+
+func (x *ResidentSet) ClearProcessPeakBytes() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_ProcessPeakBytes = 0
+}
+
+func (x *ResidentSet) ClearDescendantsBytes() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_DescendantsBytes = 0
+}
+
+func (x *ResidentSet) ClearDescendants() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_Descendants = 0
+}
+
+func (x *ResidentSet) ClearDescendantPeakBytes() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_DescendantPeakBytes = 0
+}
+
+func (x *ResidentSet) ClearExitOf() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_ExitOf = Phase_PHASE_UNSPECIFIED
+}
+
+func (x *ResidentSet) ClearAtEnd() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	x.xxx_hidden_AtEnd = false
+}
+
+type ResidentSet_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	ProcessBytes        *uint64
+	ProcessPeakBytes    *uint64
+	DescendantsBytes    *uint64
+	Descendants         *int32
+	DescendantPeakBytes *uint64
+	ExitOf              *Phase
+	AtEnd               *bool
+}
+
+func (b0 ResidentSet_builder) Build() *ResidentSet {
+	m0 := &ResidentSet{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.ProcessBytes != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 7)
+		x.xxx_hidden_ProcessBytes = *b.ProcessBytes
+	}
+	if b.ProcessPeakBytes != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 7)
+		x.xxx_hidden_ProcessPeakBytes = *b.ProcessPeakBytes
+	}
+	if b.DescendantsBytes != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 7)
+		x.xxx_hidden_DescendantsBytes = *b.DescendantsBytes
+	}
+	if b.Descendants != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 7)
+		x.xxx_hidden_Descendants = *b.Descendants
+	}
+	if b.DescendantPeakBytes != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 7)
+		x.xxx_hidden_DescendantPeakBytes = *b.DescendantPeakBytes
+	}
+	if b.ExitOf != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 7)
+		x.xxx_hidden_ExitOf = *b.ExitOf
+	}
+	if b.AtEnd != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 7)
+		x.xxx_hidden_AtEnd = *b.AtEnd
+	}
 	return m0
 }
 
@@ -2220,7 +2513,7 @@ const file_stipulator_v1_execution_proto_rawDesc = "" +
 	"\x05tests\x18\x02 \x03(\v2\x19.stipulator.v1.TestResultR\x05tests\x12A\n" +
 	"\vobligations\x18\x03 \x03(\v2\x1f.stipulator.v1.ObligationReportR\vobligations\x12B\n" +
 	"\vdiagnostics\x18\x04 \x03(\v2 .stipulator.v1.FailureDiagnosticR\vdiagnostics\x12>\n" +
-	"\fobservations\x18\x05 \x03(\v2\x1a.stipulator.v1.ObservationR\fobservations\"\xb1\x02\n" +
+	"\fobservations\x18\x05 \x03(\v2\x1a.stipulator.v1.ObservationR\fobservations\"\xe9\x02\n" +
 	"\rProgressEvent\x12*\n" +
 	"\x05phase\x18\x01 \x01(\x0e2\x14.stipulator.v1.PhaseR\x05phase\x12\x1e\n" +
 	"\n" +
@@ -2231,7 +2524,16 @@ const file_stipulator_v1_execution_proto_rawDesc = "" +
 	"\x05total\x18\x05 \x01(\x05R\x05total\x12C\n" +
 	"\x0eterminal_cause\x18\x06 \x01(\x0e2\x1c.stipulator.v1.TerminalCauseR\rterminalCause\x12\x12\n" +
 	"\x04note\x18\a \x01(\tR\x04note\x12\x12\n" +
-	"\x04kept\x18\b \x03(\tR\x04kept*\x91\x01\n" +
+	"\x04kept\x18\b \x03(\tR\x04kept\x126\n" +
+	"\bresident\x18\t \x01(\v2\x1a.stipulator.v1.ResidentSetR\bresident\"\xa9\x02\n" +
+	"\vResidentSet\x12#\n" +
+	"\rprocess_bytes\x18\x01 \x01(\x04R\fprocessBytes\x12,\n" +
+	"\x12process_peak_bytes\x18\x02 \x01(\x04R\x10processPeakBytes\x12+\n" +
+	"\x11descendants_bytes\x18\x03 \x01(\x04R\x10descendantsBytes\x12 \n" +
+	"\vdescendants\x18\x04 \x01(\x05R\vdescendants\x122\n" +
+	"\x15descendant_peak_bytes\x18\x05 \x01(\x04R\x13descendantPeakBytes\x12-\n" +
+	"\aexit_of\x18\x06 \x01(\x0e2\x14.stipulator.v1.PhaseR\x06exitOf\x12\x15\n" +
+	"\x06at_end\x18\a \x01(\bR\x05atEnd*\x91\x01\n" +
 	"\x15ObligationDisposition\x12&\n" +
 	"\"OBLIGATION_DISPOSITION_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eOBLIGATION_DISPOSITION_OMITTED\x10\x01\x12,\n" +
@@ -2253,7 +2555,7 @@ const file_stipulator_v1_execution_proto_rawDesc = "" +
 	"\x1dTERMINAL_CAUSE_SERVER_FAILURE\x10\x05BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
 var file_stipulator_v1_execution_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_stipulator_v1_execution_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_stipulator_v1_execution_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_stipulator_v1_execution_proto_goTypes = []any{
 	(ObligationDisposition)(0),   // 0: stipulator.v1.ObligationDisposition
 	(Phase)(0),                   // 1: stipulator.v1.Phase
@@ -2268,17 +2570,18 @@ var file_stipulator_v1_execution_proto_goTypes = []any{
 	(*Observation)(nil),          // 10: stipulator.v1.Observation
 	(*ExecutionReport)(nil),      // 11: stipulator.v1.ExecutionReport
 	(*ProgressEvent)(nil),        // 12: stipulator.v1.ProgressEvent
-	(HealthDisposition)(0),       // 13: stipulator.v1.HealthDisposition
-	(TestOutcome)(0),             // 14: stipulator.v1.TestOutcome
-	(*FailureDiagnostic)(nil),    // 15: stipulator.v1.FailureDiagnostic
-	(*durationpb.Duration)(nil),  // 16: google.protobuf.Duration
+	(*ResidentSet)(nil),          // 13: stipulator.v1.ResidentSet
+	(HealthDisposition)(0),       // 14: stipulator.v1.HealthDisposition
+	(TestOutcome)(0),             // 15: stipulator.v1.TestOutcome
+	(*FailureDiagnostic)(nil),    // 16: stipulator.v1.FailureDiagnostic
+	(*durationpb.Duration)(nil),  // 17: google.protobuf.Duration
 }
 var file_stipulator_v1_execution_proto_depIdxs = []int32{
-	13, // 0: stipulator.v1.PackageHealth.disposition:type_name -> stipulator.v1.HealthDisposition
-	13, // 1: stipulator.v1.InvocationHealth.disposition:type_name -> stipulator.v1.HealthDisposition
+	14, // 0: stipulator.v1.PackageHealth.disposition:type_name -> stipulator.v1.HealthDisposition
+	14, // 1: stipulator.v1.InvocationHealth.disposition:type_name -> stipulator.v1.HealthDisposition
 	4,  // 2: stipulator.v1.InvocationHealth.packages:type_name -> stipulator.v1.PackageHealth
 	6,  // 3: stipulator.v1.InvocationHealth.go:type_name -> stipulator.v1.GoResolvedConfig
-	14, // 4: stipulator.v1.TestResult.outcome:type_name -> stipulator.v1.TestOutcome
+	15, // 4: stipulator.v1.TestResult.outcome:type_name -> stipulator.v1.TestOutcome
 	3,  // 5: stipulator.v1.TestResult.producer:type_name -> stipulator.v1.ProducerIdentity
 	0,  // 6: stipulator.v1.ObligationReport.disposition:type_name -> stipulator.v1.ObligationDisposition
 	3,  // 7: stipulator.v1.Observation.producer:type_name -> stipulator.v1.ProducerIdentity
@@ -2286,16 +2589,18 @@ var file_stipulator_v1_execution_proto_depIdxs = []int32{
 	5,  // 9: stipulator.v1.ExecutionReport.invocations:type_name -> stipulator.v1.InvocationHealth
 	7,  // 10: stipulator.v1.ExecutionReport.tests:type_name -> stipulator.v1.TestResult
 	8,  // 11: stipulator.v1.ExecutionReport.obligations:type_name -> stipulator.v1.ObligationReport
-	15, // 12: stipulator.v1.ExecutionReport.diagnostics:type_name -> stipulator.v1.FailureDiagnostic
+	16, // 12: stipulator.v1.ExecutionReport.diagnostics:type_name -> stipulator.v1.FailureDiagnostic
 	10, // 13: stipulator.v1.ExecutionReport.observations:type_name -> stipulator.v1.Observation
 	1,  // 14: stipulator.v1.ProgressEvent.phase:type_name -> stipulator.v1.Phase
-	16, // 15: stipulator.v1.ProgressEvent.elapsed:type_name -> google.protobuf.Duration
+	17, // 15: stipulator.v1.ProgressEvent.elapsed:type_name -> google.protobuf.Duration
 	2,  // 16: stipulator.v1.ProgressEvent.terminal_cause:type_name -> stipulator.v1.TerminalCause
-	17, // [17:17] is the sub-list for method output_type
-	17, // [17:17] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	13, // 17: stipulator.v1.ProgressEvent.resident:type_name -> stipulator.v1.ResidentSet
+	1,  // 18: stipulator.v1.ResidentSet.exit_of:type_name -> stipulator.v1.Phase
+	19, // [19:19] is the sub-list for method output_type
+	19, // [19:19] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_execution_proto_init() }
@@ -2317,7 +2622,7 @@ func file_stipulator_v1_execution_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_execution_proto_rawDesc), len(file_stipulator_v1_execution_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
