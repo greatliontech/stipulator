@@ -1,6 +1,7 @@
 # Standard-library testing/quick is not recognized as a property driver
 
-Lands: when the Go property-driver classifier or its seeding analysis is next changed.
+Lands: cross-tool train chunk 298 (a rider, slotted 2026-10-04: the
+seeding walk's declaration lookup — the witness classifier's chunk).
 
 ## Consumer evidence
 

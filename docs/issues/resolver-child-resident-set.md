@@ -47,6 +47,6 @@ Resident baselines on the host at the time: three opencode sessions
 `stipulator check` of another session on a different module, with its own
 resolver child.
 
-Lands: cross-tool train chunk 249 (the monoliths — check.Run's ladder
-and the served resolver form; the child's whole-corpus resident set is
-slotted as a rider at the 2026-09-29 replan).
+Lands: cross-tool train chunk 307 (the pass's resident set bounded and
+stated — chartered 2026-10-04 from the two reports above; heads
+stipulator's order).
