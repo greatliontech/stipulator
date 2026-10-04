@@ -57,7 +57,11 @@ func checkToolchainProvenance(ctx context.Context, dir string, env []string) err
 	// A composite per check: the memo lives in goVersionSampler (one per
 	// process, the seam tests swap), so the composite carries no state
 	// worth holding.
-	_, err := (&gofresh.ToolchainProvenance{Sampler: gofresh.SampleFunc(goVersionSampler)}).Check(ctx, dir, env)
+	check, err := gofresh.NewToolchainProvenance(gofresh.SampleFunc(goVersionSampler))
+	if err != nil {
+		return err
+	}
+	_, err = check.Check(ctx, dir, env)
 	return err
 }
 

@@ -877,8 +877,15 @@ func TestGoObserveProcessForwardsClassificationRoots(t *testing.T) {
 			// its own, a temp root of its own — so the undeclared run's
 			// read lies under none of them.
 			elsewhere := hermeticGoHome(t)
+			// The temp root exists: the roots probe is one whole `go env
+			// -json` under the witness environment, and the toolchain
+			// creates its work directory there before answering.
+			tmp := filepath.Join(elsewhere, "tmp")
+			if err := os.MkdirAll(tmp, 0o755); err != nil {
+				t.Fatal(err)
+			}
 			base := func() *NormalizedInvocation {
-				env := gotool.SetEnv(gotool.SetEnv(gotool.SetEnv(nil, "GOENV", "off"), "HOME", elsewhere), "TMPDIR", filepath.Join(elsewhere, "tmp"))
+				env := gotool.SetEnv(gotool.SetEnv(gotool.SetEnv(nil, "GOENV", "off"), "HOME", elsewhere), "TMPDIR", tmp)
 				return &NormalizedInvocation{
 					Name:           "roots",
 					Dir:            dir,
