@@ -92,6 +92,18 @@ type Served struct {
 	// account of a typed resolution.
 	reasons  map[string]string
 	degraded []string
+	// published is the publish's account per selection key: the records
+	// installed, the symbols skipped because their closure moved between
+	// the opening and the closing capture, the symbols without an
+	// opening or a closing capture under the key, and the records the
+	// store refused on their source tiers — never silent, the notices
+	// state it, so a run that publishes nothing says why.
+	published map[string]publishAccount
+}
+
+type publishAccount struct {
+	installed, moved, unopened, uncaptured int
+	refused                                []string
 }
 
 var (
@@ -458,6 +470,7 @@ func (s *Served) Notices() []string {
 	for _, d := range s.degraded {
 		out = append(out, "resolution degraded to typed: "+d)
 	}
+	out = append(out, s.publishNotices()...)
 	keys := make([]string, 0, len(s.reasons))
 	for k := range s.reasons {
 		keys = append(keys, k)
@@ -768,11 +781,14 @@ func (s *Served) publishSelection(key string, symbols []string) {
 		}
 	}
 	if len(unrefused) > 0 {
-		if refusals, err := s.child.NeverServe(unrefused); err == nil {
-			s.refusals = mergeRefusals(s.refusals, unrefused, refusals)
-		} else {
+		refusals, err := s.child.NeverServe(unrefused)
+		if err != nil {
+			// A child fault here publishes nothing under the key — said
+			// so, like every other publish fault.
+			s.degraded = append(s.degraded, fmt.Sprintf("publish %q: never-serve classification: %v", key, err))
 			return
 		}
+		s.refusals = mergeRefusals(s.refusals, unrefused, refusals)
 	}
 	closing, ok := s.captureUnder(key, symbols, "publish")
 	if !ok {
@@ -780,7 +796,7 @@ func (s *Served) publishSelection(key string, symbols []string) {
 	}
 	opening := s.opening[key]
 	var recs []resolutioncache.Record
-	moved := 0
+	var account publishAccount
 	for _, symbol := range symbols {
 		a := s.answers[symbol]
 		pkg, ok := packageOf(symbol)
@@ -790,6 +806,7 @@ func (s *Served) publishSelection(key string, symbols []string) {
 		subject := gofresh.Subject{Package: pkg, Symbol: symbol[len(pkg)+1:]}
 		fp, captured := closing[subject]
 		if !captured {
+			account.uncaptured++
 			continue
 		}
 		// The straddle check: the tree the child answered from is the
@@ -797,12 +814,26 @@ func (s *Served) publishSelection(key string, symbols []string) {
 		// capture equals the opening one; a subject that moved between
 		// them resolves typed again next run.
 		before, opened := opening[subject]
-		if !opened || closureMoved(before, fp) != "" {
-			moved++
+		if !opened {
+			account.unopened++
+			continue
+		}
+		if closureMoved(before, fp) != "" {
+			account.moved++
+			continue
+		}
+		// The record carries the capture's source tiers alone — the
+		// store's contract; a subject's purity assertion or observation
+		// proof says nothing about where its declaration lives — and a
+		// record the store would refuse is refused here, alone and
+		// named, never the batch.
+		source := resolutioncache.SourceTiers(before)
+		if !resolutioncache.Admits(source) {
+			account.refused = append(account.refused, symbol)
 			continue
 		}
 		recs = append(recs, resolutioncache.Record{
-			Selection: key, Symbol: symbol, Fingerprint: before,
+			Selection: key, Symbol: symbol, Fingerprint: source,
 			Resolution: resolutionWire(a.res), Shape: a.shape, Package: a.pkg,
 			WitnessClass: classWire(a.class), WitnessClassReason: a.reason,
 			NeverServe: s.refusals[symbol],
@@ -810,7 +841,78 @@ func (s *Served) publishSelection(key string, symbols []string) {
 	}
 	if err := resolutioncache.InstallAll(s.dir, recs); err != nil {
 		s.degraded = append(s.degraded, fmt.Sprintf("publish %q: %v", key, err))
+	} else {
+		account.installed = len(recs)
 	}
+	if s.published == nil {
+		s.published = map[string]publishAccount{}
+	}
+	s.published[key] = account
+}
+
+// publishedRefusalsBound caps the refused symbols one account line names.
+const publishedRefusalsBound = 8
+
+// publishNotices renders the publish's account, one line per selection
+// key the publish ran under.
+func (s *Served) publishNotices() []string {
+	keys := make([]string, 0, len(s.published))
+	for key := range s.published {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	var out []string
+	for _, key := range keys {
+		a := s.published[key]
+		line := fmt.Sprintf("resolution published under %q: %s", selectionWord(key), countWord(a.installed, "record"))
+		var skipped []string
+		if a.moved > 0 {
+			skipped = append(skipped, fmt.Sprintf("%d moved between the opening and closing capture", a.moved))
+		}
+		if a.unopened > 0 {
+			skipped = append(skipped, fmt.Sprintf("%d without an opening capture", a.unopened))
+		}
+		if a.uncaptured > 0 {
+			skipped = append(skipped, fmt.Sprintf("%d without a closing capture", a.uncaptured))
+		}
+		if len(skipped) > 0 {
+			line += "; skipped " + strings.Join(skipped, ", ")
+		}
+		if n := len(a.refused); n > 0 {
+			sort.Strings(a.refused)
+			shown := a.refused
+			if len(shown) > publishedRefusalsBound {
+				shown = shown[:publishedRefusalsBound]
+			}
+			line += fmt.Sprintf("; %d refused on their source tiers: %s", n, strings.Join(shown, ", "))
+			if n > len(shown) {
+				line += fmt.Sprintf(" (+%d more)", n-len(shown))
+			}
+		}
+		out = append(out, line)
+	}
+	return out
+}
+
+// countWord renders a count with its noun, pluralized.
+func countWord(n int, noun string) string {
+	if n == 1 {
+		return "1 " + noun
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
+}
+
+// selectionWord spells a selection key for a person: the default
+// selection by name, a tagged one by its tags and toolchain.
+func selectionWord(key string) string {
+	if key == "default" {
+		return key
+	}
+	tags, toolchain, _ := strings.Cut(key, "\x00")
+	if toolchain == "" {
+		return tags
+	}
+	return tags + " " + toolchain
 }
 
 // mergeRefusals records, for every asked symbol, the child's refusal or

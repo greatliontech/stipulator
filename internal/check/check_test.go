@@ -17,6 +17,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/progress"
+	"github.com/greatliontech/stipulator/internal/resolutioncache"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
 )
@@ -1254,5 +1255,82 @@ func TestCheckUnresolvableSelectionIsTheRecordsProblem(t *testing.T) {
 		if res.GetScopePartial() {
 			t.Fatalf("%s: a record problem produced no evidence, yet the result claims scoped evidence", form.name)
 		}
+	}
+}
+
+// TestCheckPublishesAndServesResolutionRecords pins the serving path end
+// to end over a real check (REQ-evidence-resolution-freshness): the first
+// check over a tree resolves its bound symbol typed and publishes its
+// resolution record; the second check serves it from the record, and the
+// notices account for what published and what served — never a silent
+// skip.
+func TestCheckPublishesAndServesResolutionRecords(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented policy over a fixture tree")
+	}
+	neutralAmbient(t)
+	// The witness asserts purity in source: its capture carries a tier
+	// the resolution store does not serve, which the publisher projects
+	// away — a store refusing the batch on it published nothing.
+	dir := writeTree(t, baseTree(map[string]string{
+		"ok/ok_test.go":                "package ok\n\nimport \"testing\"\n\n//gofresh:pure\nfunc TestDouble(t *testing.T) { Double(2) }\n",
+		"specs/check.md":               "# Check\n\n**REQ-fix-must** (behavior): The fixture MUST pass.\n",
+		".stipulator/policy.textproto": racePolicy,
+	}))
+	ctx := context.Background()
+	gb, err := golang.NewWholeTree(ctx, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ups, err := author.Binds(os.DirFS(dir), map[string]verify.Backend{"go": gb}, []author.BindRequest{{
+		Requirement: "REQ-fix-must",
+		Symbol:      "example.com/checkfix/ok.TestDouble",
+		Backend:     "go",
+		Role:        stipulatorv1.BindingRole_BINDING_ROLE_TESTS,
+	}})
+	gb.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, up := range ups {
+		full := filepath.Join(dir, filepath.FromSlash(up.Path))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, up.Content, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	first, err := Run(ctx, dir, false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !first.GetPassed() {
+		t.Fatalf("first check failed:\n%s", strings.Join(first.GetResolutionNotices(), "\n"))
+	}
+	var recorded []string
+	for _, rec := range resolutioncache.Load(dir) {
+		if rec.Symbol == "example.com/checkfix/ok.TestDouble" {
+			recorded = append(recorded, rec.Selection)
+		}
+	}
+	if len(recorded) == 0 {
+		t.Fatalf("the first check published no resolution record for the bound witness; notices:\n%s", strings.Join(first.GetResolutionNotices(), "\n"))
+	}
+	// The account is read after the close publishes: the result names
+	// what published.
+	// The account names the one record in the singular, and nothing
+	// skipped.
+	if first := strings.Join(first.GetResolutionNotices(), "\n"); !strings.Contains(first, "resolution published under \"default\": 1 record\n") && !strings.HasSuffix(first, "resolution published under \"default\": 1 record") {
+		t.Fatalf("the result carries no publish account naming its one record:\n%s", first)
+	}
+	second, err := Run(ctx, dir, false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	notices := strings.Join(second.GetResolutionNotices(), "\n")
+	if !second.GetPassed() || strings.Contains(notices, "resolution: 0 served") {
+		t.Fatalf("the second check served nothing from records; notices:\n%s", notices)
 	}
 }

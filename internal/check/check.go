@@ -165,13 +165,17 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		if err != nil {
 			return nil, err
 		}
-		defer gb.Close()
 		backends = map[string]verify.Backend{"go": gb}
 		// The serving path's account rides the result: what served,
-		// what resolved typed and why, and any selection the path
-		// degraded (REQ-evidence-freshness-degrade) — advisory, never a
-		// verdict input.
-		defer func() { res.SetResolutionNotices(gb.Notices()) }()
+		// what resolved typed and why, what the close published or
+		// refused, and any selection the path degraded
+		// (REQ-evidence-freshness-degrade) — advisory, never a verdict
+		// input. The close publishes, so the account is read after it:
+		// a publish fault read before the close is a fault nobody sees.
+		defer func() {
+			_ = gb.Close()
+			res.SetResolutionNotices(gb.Notices())
+		}()
 
 		// The evidence-class fork (REQ-check-verdict): health judgment
 		// demands whole-policy execution, so the full form executes

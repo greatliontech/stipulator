@@ -26,7 +26,7 @@ func TestRecordsRoundTripOnePerIdentity(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-cache-format")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
-	rec := Record{Selection: "race", Symbol: "example.com/p.F", Fingerprint: fingerprint("a"), Resolution: "resolved", Shape: strings.Repeat("d", 64), Package: "example.com/p", WitnessClass: "example", NeverServe: ""}
+	rec := Record{Selection: "race", Symbol: "example.com/p.F", Fingerprint: fingerprint("a"), Resolution: "resolved", Shape: strings.Repeat("d", 32), Package: "example.com/p", WitnessClass: "example", NeverServe: ""}
 	if err := InstallAll(dir, []Record{rec}); err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestRecordsRoundTripOnePerIdentity(t *testing.T) {
 	}
 	later := rec
 	later.Fingerprint = fingerprint("e")
-	later.Shape = strings.Repeat("f", 64)
+	later.Shape = strings.Repeat("f", 32)
 	if err := InstallAll(dir, []Record{later}); err != nil {
 		t.Fatal(err)
 	}
@@ -200,4 +200,63 @@ func mustName(t *testing.T, rec Record) string {
 		t.Fatal(err)
 	}
 	return name
+}
+
+// TestSourceTiersProjectTheCaptureTheStoreServes pins the projection
+// and the admission (REQ-evidence-resolution-cache-format): a complete
+// capture carrying a purity assertion, an observation proof, vouches,
+// runtime inputs, and machine and runtime-config guards is refused as
+// it stands and admitted once projected — the source tiers kept
+// byte-identical, every other tier cleared — while a capture missing a
+// source tier is refused projected or not.
+func TestSourceTiersProjectTheCaptureTheStoreServes(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-resolution-cache-format")
+	digest := strings.Repeat("a", 32)
+	full := witnesscache.Fingerprint{
+		MaximalClosure: digest, TestVariantClosure: strings.Repeat("b", 32), ResultKind: gofresh.CodeResult,
+		Guards:               guard.Guards{Toolchain: "go1.27.1", BuildConfig: strings.Repeat("c", 32), Machine: strings.Repeat("d", 32), RuntimeConfig: strings.Repeat("e", 32)},
+		ObservationAssertion: "pure", ObservationProof: gofresh.ObservationProof{Observable: true},
+		PurityAssertion: "pure", DynamicStateVouches: "x:y", RuntimeInputs: strings.Repeat("f", 32), RuntimeDigest: strings.Repeat("9", 32),
+		SingleSubjectDischarges: "a", PackageProcessDischarges: "b", DynamicStateStrategy: "dyn@3", ClosureStrategy: "closure@2",
+	}
+	if Admits(full) {
+		t.Fatal("a capture carrying non-source tiers was admitted unprojected")
+	}
+	source := SourceTiers(full)
+	if !Admits(source) {
+		t.Fatalf("the projected capture was refused: %+v", source)
+	}
+	want := witnesscache.Fingerprint{MaximalClosure: full.MaximalClosure, TestVariantClosure: full.TestVariantClosure, ClosureStrategy: full.ClosureStrategy, ResultKind: full.ResultKind, Guards: guard.Guards{Toolchain: full.Guards.Toolchain, BuildConfig: full.Guards.BuildConfig}}
+	if source != want {
+		t.Fatalf("projection = %+v, want %+v", source, want)
+	}
+	partial := source
+	partial.TestVariantClosure = ""
+	if Admits(partial) || Admits(SourceTiers(partial)) {
+		t.Fatal("a capture missing a source tier was admitted")
+	}
+	// Each tier the projection clears is, alone, a refusal — the record
+	// a different writer produced.
+	for name, set := range map[string]func(*witnesscache.Fingerprint){
+		"machine guard":              func(f *witnesscache.Fingerprint) { f.Guards.Machine = digest },
+		"runtime-config guard":       func(f *witnesscache.Fingerprint) { f.Guards.RuntimeConfig = digest },
+		"observation assertion":      func(f *witnesscache.Fingerprint) { f.ObservationAssertion = "pure" },
+		"observation proof":          func(f *witnesscache.Fingerprint) { f.ObservationProof = gofresh.ObservationProof{Observable: true} },
+		"purity assertion":           func(f *witnesscache.Fingerprint) { f.PurityAssertion = "pure" },
+		"vouches":                    func(f *witnesscache.Fingerprint) { f.DynamicStateVouches = "x:y" },
+		"runtime inputs":             func(f *witnesscache.Fingerprint) { f.RuntimeInputs = digest },
+		"runtime digest":             func(f *witnesscache.Fingerprint) { f.RuntimeDigest = digest },
+		"single-subject discharges":  func(f *witnesscache.Fingerprint) { f.SingleSubjectDischarges = "a" },
+		"package-process discharges": func(f *witnesscache.Fingerprint) { f.PackageProcessDischarges = "b" },
+		"dynamic-state strategy":     func(f *witnesscache.Fingerprint) { f.DynamicStateStrategy = "dyn@3" },
+	} {
+		one := source
+		set(&one)
+		if Admits(one) {
+			t.Errorf("a projected capture carrying only a %s was admitted", name)
+		}
+	}
+	if err := InstallAll(t.TempDir(), []Record{{Selection: "default", Symbol: "example.com/p.F", Fingerprint: full, Resolution: "resolved", Package: "example.com/p"}}); err == nil {
+		t.Fatal("the store installed an unprojected capture")
+	}
 }

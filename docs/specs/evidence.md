@@ -756,8 +756,13 @@ key and the symbol, holding one record per identity — a record
 installed under another fingerprint supersedes the identity's prior
 one — each carrying one record object with integer `version`, the
 selection key, the symbol, the fingerprint (source-closure tiers only:
-maximal closure, test-variant compartment, toolchain, build
-configuration, result kind), and the served fields
+maximal closure, test-variant compartment, the closure strategy that
+derived them, toolchain, build configuration, result kind — the
+publisher projects the capture onto exactly those parts, since a
+subject's purity assertion, observation proof, vouches, discharges,
+runtime inputs, or machine guard say nothing about where its
+declaration lives, and a record whose source tiers the store cannot
+serve is refused alone and named, never the batch it arrived in), and the served fields
 REQ-evidence-resolution-freshness names; the fingerprint member is
 Gofresh's published record form, decoded and refused exactly as the
 witness record's (REQ-evidence-witness-cache-format). A record whose

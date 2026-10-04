@@ -581,3 +581,65 @@ func TestEmptySetServingFormAdmitsItsWholeTree(t *testing.T) {
 		t.Fatalf("the empty-set serving form served %d and published %d", s.ServedCount(), len(resolutioncache.Load(dir)))
 	}
 }
+
+// TestServedPublishesSubjectsWithNonSourceTiers pins the publish over a
+// corpus whose captures carry tiers the resolution store does not serve
+// (REQ-evidence-resolution-cache-format, REQ-evidence-resolution-freshness):
+// a test asserting purity in source captures a purity assertion, the
+// publisher projects the capture onto the source tiers and records it
+// beside the plain callable, the notices account for the publish, and
+// the second run serves both without the child — where a store refusing
+// the batch on that one record published nothing for the whole corpus
+// and said nothing.
+func TestServedPublishesSubjectsWithNonSourceTiers(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-resolution-cache-format", "REQ-evidence-resolution-freshness")
+	if testing.Short() {
+		t.Skip("loads a fixture module's types and views")
+	}
+	neutralAmbient(t)
+	dir := writeModule(t, map[string]string{
+		"go.mod":                       "module example.com/pure\n\ngo 1.26\n",
+		"p/p.go":                       "package p\n\nfunc F(n int) int { return n + 1 }\n",
+		"p/p_test.go":                  "package p\n\nimport \"testing\"\n\n//gofresh:pure\nfunc TestF(t *testing.T) {\n\tif F(1) != 2 {\n\t\tt.Fatal(\"F\")\n\t}\n}\n",
+		".stipulator/policy.textproto": "invocations {\n  name: \"all\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./...\"\n    race: true\n  }\n}\n",
+	})
+	symbols := []string{"example.com/pure/p.F", "example.com/pure/p.TestF"}
+	ctx := context.Background()
+	first, err := NewServed(ctx, dir, symbols)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, symbol := range symbols {
+		ask(t, first, symbol)
+	}
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+	var published string
+	for _, n := range first.Notices() {
+		if strings.HasPrefix(n, "resolution published under") {
+			published += n + "\n"
+		}
+	}
+	if !strings.Contains(published, ": 2 records") || strings.Contains(published, "refused") {
+		t.Fatalf("publish account = %q, want two records and no refusal; degraded %v", published, first.Degraded())
+	}
+	recorded := map[string]witnesscache.Fingerprint{}
+	for _, rec := range resolutioncache.Load(dir) {
+		recorded[rec.Symbol] = rec.Fingerprint
+	}
+	if len(recorded) != 2 || recorded["example.com/pure/p.TestF"].PurityAssertion != "" || !resolutioncache.Admits(recorded["example.com/pure/p.TestF"]) {
+		t.Fatalf("records = %+v, want both symbols on source tiers alone", recorded)
+	}
+	c := countSpawns(t)
+	second, err := NewServed(ctx, dir, symbols)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := second.ServedCount(); got != 2 || c.snapshot().child != 0 {
+		t.Fatalf("served %d with %d children, want both from records; reasons %v", got, c.snapshot().child, second.Reasons())
+	}
+	if err := second.Close(); err != nil {
+		t.Fatal(err)
+	}
+}

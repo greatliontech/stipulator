@@ -15,6 +15,7 @@ import (
 	"errors"
 
 	"github.com/greatliontech/gofresh"
+	"github.com/greatliontech/gofresh/guard"
 	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
@@ -117,7 +118,7 @@ func decodeRecord(name string, data []byte) (Record, bool) {
 	var e entry
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
-	if dec.Decode(&e) != nil || e.Version != version || e.Selection == "" || e.Symbol == "" || !validResolution(e.Resolution) || !validFingerprint(e.Fingerprint) {
+	if dec.Decode(&e) != nil || e.Version != version || e.Selection == "" || e.Symbol == "" || !validResolution(e.Resolution) || !Admits(e.Fingerprint) {
 		return Record{}, false
 	}
 	rec := Record{
@@ -137,16 +138,38 @@ func decodeRecord(name string, data []byte) (Record, bool) {
 
 func validResolution(r string) bool { return r == "resolved" || r == "generated_file" }
 
-// validFingerprint admits source-closure tiers only — the maximal
-// closure, the test-variant compartment, the toolchain, the build
-// configuration, all present: a resolution observes nothing, so any
-// observation, purity, or runtime tier marks a record this store did
-// not write.
-func validFingerprint(f witnesscache.Fingerprint) bool {
+// SourceTiers projects a capture onto the parts this store serves — the
+// maximal closure, the test-variant compartment, the closure strategy
+// that derived them, the toolchain, the build configuration, the result
+// kind — by copying exactly those into a zero fingerprint, so a field
+// gofresh adds later cannot pass through unseen: a resolution is a
+// function of the source closure alone, and a subject's purity
+// assertion, observation proof, vouches, discharges, runtime inputs, or
+// machine guard say nothing about where its declaration lives. The
+// publisher projects every capture through it; a record is then
+// admitted or refused on those parts alone (Admits).
+func SourceTiers(f witnesscache.Fingerprint) witnesscache.Fingerprint {
+	return witnesscache.Fingerprint{
+		MaximalClosure:     f.MaximalClosure,
+		TestVariantClosure: f.TestVariantClosure,
+		ClosureStrategy:    f.ClosureStrategy,
+		Guards:             guard.Guards{Toolchain: f.Guards.Toolchain, BuildConfig: f.Guards.BuildConfig},
+		ResultKind:         f.ResultKind,
+	}
+}
+
+// Admits reports whether a fingerprint is one this store serves —
+// source-closure tiers only: the maximal closure, the test-variant
+// compartment, the toolchain, the build configuration, all present, and
+// no observation, purity, vouch, discharge, runtime, or machine tier
+// set, which would mark a record this store did not write. The shape
+// SourceTiers yields from a complete capture.
+func Admits(f witnesscache.Fingerprint) bool {
 	return witnesscache.ValidDigest(f.MaximalClosure) && witnesscache.ValidDigest(f.TestVariantClosure) && f.Guards.Toolchain != "" && witnesscache.ValidDigest(f.Guards.BuildConfig) &&
 		f.ResultKind == gofresh.CodeResult &&
 		f.Guards.Machine == "" && f.Guards.RuntimeConfig == "" && f.ObservationAssertion == "" && f.ObservationProof == (gofresh.ObservationProof{}) &&
-		f.PurityAssertion == "" && f.DynamicStateVouches == "" && f.RuntimeInputs == "" && f.RuntimeDigest == ""
+		f.PurityAssertion == "" && f.DynamicStateVouches == "" && f.RuntimeInputs == "" && f.RuntimeDigest == "" &&
+		f.SingleSubjectDischarges == "" && f.PackageProcessDischarges == "" && f.DynamicStateStrategy == ""
 }
 
 // InstallAll installs a batch of records under the store's one-record
@@ -164,10 +187,10 @@ func InstallAll(dir string, recs []Record) error {
 	}
 	entries := make([]recordstore.Entry, 0, len(recs))
 	for _, rec := range recs {
-		if !validResolution(rec.Resolution) || !validFingerprint(rec.Fingerprint) || rec.Selection == "" || rec.Symbol == "" {
+		if !validResolution(rec.Resolution) || !Admits(rec.Fingerprint) || rec.Selection == "" || rec.Symbol == "" {
 			return errors.New("resolutioncache: record carries a field this store does not serve")
 		}
-		// validFingerprint admitted a code result with no measurement
+		// Admits admitted a code result with no measurement
 		// guard — the encoder's own ladder — so the name always exists.
 		name, _ := fileName(rec)
 		e := entry{Version: version, Selection: rec.Selection, Symbol: rec.Symbol, Fingerprint: rec.Fingerprint, Resolution: rec.Resolution, Shape: rec.Shape, Package: rec.Package, WitnessClass: rec.WitnessClass, WitnessClassReason: rec.WitnessClassReason, NeverServe: rec.NeverServe}
