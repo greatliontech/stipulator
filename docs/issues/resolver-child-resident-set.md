@@ -29,6 +29,24 @@ ceiling derived from the host's memory as the oracle runs already are, so a
 pass that would exceed it refuses stated rather than dying under the host's
 guard with no verdict written.
 
+Second field report (greatliontech/cerebro, stipulator binary of 2026-09-22,
+2026-10-04): `stipulator check` over the same corpus grown to 7,093 subjects
+in 111 packages, run alone after a green `go test -p 2 ./...` sweep on the
+same 30 GiB host. The resolver child was observed at 4,267,820 kB RSS (first
+run, 3m33s in) and 4,714,064 kB (second run, 27 s in, before any test
+executed) — snapshots, not peaks. The parent `check` process itself was
+observed at 6,935,604 kB RSS 4m50s into the first run, during the execution
+phase, with 111 packages' `go test -json` children running beneath it; the
+host reached zero available memory and the run was interrupted by hand
+before the host's guard chose a process. The parent's growth is a second
+resident set the paragraph above does not describe: the child's closure
+lives through execution (the first run's child was alive 3m33s in, past
+discovery), and the parent's set grows with the executing packages' output.
+Resident baselines on the host at the time: three opencode sessions
+(3.9 GB together), a terminal (1.4 GB), gopls (1.3 GB), and a second
+`stipulator check` of another session on a different module, with its own
+resolver child.
+
 Lands: cross-tool train chunk 249 (the monoliths — check.Run's ladder
 and the served resolver form; the child's whole-corpus resident set is
 slotted as a rider at the 2026-09-29 replan).
