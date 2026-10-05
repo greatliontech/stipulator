@@ -2,7 +2,6 @@ package golang
 
 import (
 	"context"
-	"maps"
 
 	"github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/runtimeinput"
@@ -132,22 +131,18 @@ func publishEligible(
 	}
 
 	// Runtime producer validation: each record publishes only when its
-	// post-run check returns valid against the current tree. A stale
-	// verdict is a mid-run drift of the record's source or runtime
-	// inputs - the executed outcome stands, the record is dropped so the
-	// next run re-derives it; an unverifiable verdict can never check
-	// valid and is dropped the same way. Both are visible as the
-	// uncacheable count, never silence.
-	verdicts := map[gofresh.Subject]gofresh.Verdict{}
-	unvalidated := map[gofresh.Subject]gofresh.Fingerprint{}
-	for s, fp := range final {
-		if attachedValid[s] {
-			verdicts[s] = gofresh.Verdict{Status: gofresh.Valid}
-		} else {
-			unvalidated[s] = fp
-		}
-	}
-	checked, err := checkFingerprints(ctx, view, unvalidated)
+	// post-run check returns valid against the current tree — the
+	// proof-attached form included: its sealed observation is the
+	// attach leg's own gate, while the check judges the fingerprint's
+	// tiers, which the observation never sees (an undischarged
+	// shared-dynamic-state culprit refuses here, and the record it would
+	// have published could never serve). A stale verdict is a mid-run
+	// drift of the record's source or runtime inputs - the executed
+	// outcome stands, the record is dropped so the next run re-derives
+	// it; an unverifiable verdict can never check valid and is dropped
+	// the same way. Both are visible as the uncacheable count, never
+	// silence.
+	checked, err := checkFingerprints(ctx, view, final)
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, false, nil, nil, ctx.Err()
@@ -164,7 +159,7 @@ func publishEligible(
 		d, cErr, fErr := closeGroup(ctx, view, len(served) != 0, order, served, executedWhy, reasons)
 		return nil, d, err, cErr, fErr
 	}
-	maps.Copy(verdicts, checked)
+	verdicts := checked
 	for s, v := range checked {
 		if v.Status != gofresh.Valid {
 			if _, ok := reasons[s]; !ok {

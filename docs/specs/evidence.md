@@ -502,7 +502,17 @@ outcome — evidence follows execution, the aborting or failing sibling's own
 failure stands, and a test gaining its outcome this way is the selective
 form being more precise, not less; the re-runs belong to the package's unit,
 complete before its records install, inside the package's own slot of the
-derived concurrency bound. A served record's fingerprint is
+derived concurrency bound. Every process that runs a witness — the
+package's run and its isolation re-runs — is the witness package's own
+test binary, and the engine every witness is judged on attests that
+package-process execution model, so the binary-scoped reachability
+discharge applies to each witness and the discharges it rests on ride
+the record; a package's selected tests share one process, so the
+single-subject model — which binds every process — is never attested
+and a `//gofresh:single-subject` directive is backed by nothing here,
+and a culprit the model leaves undischarged refuses the witness whole on
+the uncacheable face, publishing no record — the proof-attached form
+passes the same post-run check as the plain one. A served record's fingerprint is
 revalidated after the run's executions complete: a served outcome whose
 record no longer checks valid is discarded and its subject executed once
 within the same run, and a still-drifting subject ends unwitnessed with

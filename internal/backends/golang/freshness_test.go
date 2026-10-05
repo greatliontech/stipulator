@@ -1097,3 +1097,178 @@ func TestTouch(t *testing.T) {
 		t.Fatalf("the discarded serve's retry lost its outcome: %v", got)
 	}
 }
+
+// TestWitnessEngineAttestsThePackageProcessModel pins the execution-model
+// attestation on the one engine constructor (REQ-evidence-witness-freshness):
+// every process running a witness is the witness package's own test
+// binary, so the engine attests the package-process model and gofresh's
+// binary-scoped reachability discharge judges a dynamic-capable culprit
+// no harness root of that binary reaches. The fixture's dependency holds
+// a registry map written only by an unreached Register and read by the
+// witness through Has: without the attestation the witness is
+// unverifiable (shared mutated dynamic state) — refused on the
+// uncacheable face, no record published, every run re-executing it;
+// under the attestation the record serves on the second run and names
+// the discharge it rests on.
+func TestWitnessEngineAttestsThePackageProcessModel(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes race-instrumented selective runs over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod": "module example.com/ppfix\n\ngo 1.26\n",
+		"dep/dep.go": `package dep
+
+var registry = map[string]func() int{}
+
+// Register writes dynamic-capable package state; no harness root of
+// p's binary reaches it.
+func Register(name string, f func() int) { registry[name] = f }
+
+// Has reads the state p's test depends on without dispatching through it.
+func Has(name string) bool {
+	_, ok := registry[name]
+	return ok
+}
+`,
+		"p/p_test.go": `package p
+
+import (
+	"testing"
+
+	"example.com/ppfix/dep"
+)
+
+func TestReadsDep(t *testing.T) {
+	if dep.Has("k") {
+		t.Fatal("state")
+	}
+}
+`,
+	})
+	writeRacePolicy(t, tmp)
+	first, err := RunWitnesses(context.Background(), tmp, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Degraded != "" || first.Ran != 1 || first.Fresh != 0 {
+		t.Fatalf("first run: degraded=%q ran=%d fresh=%d", first.Degraded, first.Ran, first.Fresh)
+	}
+	if len(first.UncacheableReasons) != 0 {
+		t.Fatalf("the attested witness was refused: %v", first.UncacheableReasons)
+	}
+	rec := cacheRecord(t, witnesscache.Load(tmp), "example.com/ppfix/p", "TestReadsDep")
+	if rec == nil {
+		t.Fatal("no record published for the witness")
+	}
+	if got, want := rec.Fingerprint.PackageProcessDischarges, "example.com/ppfix/dep.registry"; got != want {
+		t.Fatalf("the record's package-process discharges = %q, want %q", got, want)
+	}
+	if got := rec.Fingerprint.SingleSubjectDischarges; got != "" {
+		t.Fatalf("a single-subject discharge rode a package-process witness: %q", got)
+	}
+	// The solo witness publishes the proof-attached form; a later proof
+	// refusal would fall through to the plain form unseen without this.
+	if !rec.Fingerprint.ObservationProof.Observable {
+		t.Fatalf("the solo witness published no observation proof: %+v", rec.Fingerprint)
+	}
+	second, err := RunWitnesses(context.Background(), tmp, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Fresh != 1 || second.Ran != 0 {
+		t.Fatalf("second run: fresh=%d ran=%d uncacheable=%v executed=%v", second.Fresh, second.Ran, second.UncacheableReasons, second.ExecutedReasons)
+	}
+}
+
+// TestWitnessRefusalStandsOnTheUncacheableFace pins the attested model's
+// other half (REQ-evidence-witness-freshness): a culprit the
+// package-process model leaves undischarged — a registry a harness root
+// of the witness's own binary mutates — refuses the witness on the
+// uncacheable face with gofresh's reason whole, and no record publishes,
+// on the proof-attached (solo) form (package p, one test) as on the
+// plain one (package q, two tests sharing the binary): the attached
+// leg's sealed observation never saw the closure's shared state, so the
+// post-run check judges it.
+func TestWitnessRefusalStandsOnTheUncacheableFace(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("executes race-instrumented selective runs over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod": "module example.com/ppmut\n\ngo 1.26\n",
+		"dep/dep.go": `package dep
+
+var registry = map[string]func() int{}
+
+// Register writes dynamic-capable package state; p's test reaches it.
+func Register(name string, f func() int) { registry[name] = f }
+
+// Has reads the state.
+func Has(name string) bool {
+	_, ok := registry[name]
+	return ok
+}
+`,
+		"p/p_test.go": `package p
+
+import (
+	"testing"
+
+	"example.com/ppmut/dep"
+)
+
+func TestMutatesDep(t *testing.T) {
+	dep.Register("k", func() int { return 1 })
+	if !dep.Has("k") {
+		t.Fatal("state")
+	}
+}
+`,
+		"q/q_test.go": `package q
+
+import (
+	"testing"
+
+	"example.com/ppmut/dep"
+)
+
+func TestMutates(t *testing.T) {
+	dep.Register("q", func() int { return 2 })
+}
+
+func TestReads(t *testing.T) {
+	if dep.Has("never") {
+		t.Fatal("state")
+	}
+}
+`,
+	})
+	writeRacePolicy(t, tmp)
+	subjects := map[string]string{
+		"example.com/ppmut/p.TestMutatesDep": "TestMutatesDep",
+		"example.com/ppmut/q.TestMutates":    "TestMutates",
+		"example.com/ppmut/q.TestReads":      "TestReads",
+	}
+	for i := 1; i <= 2; i++ {
+		run, err := RunWitnesses(context.Background(), tmp, noSeeding{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if run.Degraded != "" || run.Ran != len(subjects) || run.Fresh != 0 {
+			t.Fatalf("run %d: degraded=%q ran=%d fresh=%d", i, run.Degraded, run.Ran, run.Fresh)
+		}
+		for subject, test := range subjects {
+			reason := run.UncacheableReasons[subject]
+			if !strings.Contains(reason, "package graph shares mutated dynamic state") || !strings.Contains(reason, "example.com/ppmut/dep.registry is mutated") {
+				t.Fatalf("run %d: %s's refusal did not stand on the uncacheable face: %q (executed=%v)", i, subject, reason, run.ExecutedReasons)
+			}
+			pkg := subject[:strings.LastIndexByte(subject, '.')]
+			if rec := cacheRecord(t, witnesscache.Load(tmp), pkg, test); rec != nil {
+				t.Fatalf("run %d published a record the serve can never admit for %s: %+v", i, subject, rec.Fingerprint)
+			}
+		}
+	}
+}

@@ -959,6 +959,20 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Eng
 	// validation instead of paying a full re-observation per call
 	// (gofresh's deferred-close contract).
 	opts = append(opts, gofresh.WithDeferredCheckClose())
+	// Every process the executor spawns for a witness is the witness
+	// package's own test binary — the package's run and its isolation
+	// re-runs alike — so the package-process execution model is a true
+	// statement about every subject this engine judges, and attesting it
+	// lets the binary-scoped reachability discharge judge a culprit no
+	// harness root of that binary reaches; the load-bearing discharges
+	// ride each record. A package's selected tests share one process (an
+	// isolation re-run alone is one subject's), so the single-subject
+	// model, which binds every process, is never attested. The resolution engine
+	// (served.go) stays unattested: it judges no measured subject and
+	// its store keeps the source tiers alone, so the attestation would
+	// only pay the reachability pass for a discharge the store strips
+	// (REQ-evidence-witness-freshness).
+	opts = append(opts, gofresh.WithPackageProcessExecution())
 	return newEngine(ctx, dir, g.env, buildFlags(g.race, g.tags, g.moduleMode, g.pgo), opts...)
 }
 
