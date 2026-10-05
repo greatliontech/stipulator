@@ -2,6 +2,7 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
+- **[resident-package-folds-onto-gofresh](resident-package-folds-onto-gofresh.md)** — internal/resident moved to gofresh/resident at gofresh 310 (the fleet's one resident sampler); the copy here folds at the next gofresh bump. *Lands: cross-tool train chunk 290.*
 - **[bindings-per-requirement-file-derivation](bindings-per-requirement-file-derivation.md)** — `bind` and `dispose supersede` place records by the id's second segment while the gaps store derives one file per requirement; a per-requirement bindings layout is held only by a project test and a hand move after each supersede. Lands: cross-tool train chunk 176.
 - **[testing-quick-property-driver](testing-quick-property-driver.md)** — direct standard-library property checks are classified as examples; derive recognition and seeding/freshness together, or report the unsupported driver explicitly. *Lands: cross-tool train chunk 298 (a rider, slotted 2026-10-04).*
 
