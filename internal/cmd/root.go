@@ -77,6 +77,9 @@ func Execute(ctx context.Context) error {
 // drive. An interrupted run returns Interrupted whatever its verb
 // returned — no partial verdict passes for a pass or a fail.
 func execute(ctx context.Context, args []string, sink func(*stipulatorv1.ProgressEvent), status io.Writer) error {
+	// The operation runs under the host-derived soft ceiling, derived at
+	// its start and stated with the resident datum (resident.Ceiling).
+	resident.InstallCeiling()
 	prog := progress.New(sink, progress.WithResident(resident.Sample))
 	root := newRootCmd()
 	root.SetArgs(args)

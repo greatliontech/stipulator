@@ -32,12 +32,23 @@ type Set struct {
 	Descendants         int
 	DescendantsBytes    uint64
 	DescendantPeakBytes uint64
+	// CeilingBytes is the soft memory ceiling the process runs under
+	// (InstallCeiling), 0 when none is installed.
+	CeilingBytes uint64
 }
 
 // Sample reads the running process's set. ok is false where the host
 // does not answer — not Linux, or /proc unreadable — and the Set is then
-// the zero value, which no reader renders.
-func Sample() (Set, bool) { return sample() }
+// the zero value, which no reader renders. A reading carries the
+// process's installed ceiling beside what the kernel answers.
+func Sample() (Set, bool) {
+	set, ok := sample()
+	if !ok {
+		return Set{}, false
+	}
+	set.CeilingBytes = installedCeiling()
+	return set, true
+}
 
 // parseStatus reads the resident and peak resident bytes from a
 // /proc/<pid>/status text, whose VmRSS and VmHWM lines carry kibibytes.

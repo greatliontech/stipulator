@@ -1114,14 +1114,14 @@ type execMerge struct {
 }
 
 // packageCause answers the recorded disposition of a package's process
-// under an invocation as its cause.
-
+// under an invocation as its cause, with the package-scoped diagnostic's
+// reason when the merge holds one.
 func (m *execMerge) packageCause(invocation, pkg string) (string, bool) {
 	disposition, ok := m.pkgDisp[invPkgKey(invocation, pkg)]
 	if !ok {
 		return "", false
 	}
-	return dispositionCause(invocation, pkg, disposition), true
+	return dispositionCause(invocation, pkg, disposition, packageReason(m.diags, invocation, pkg, disposition)), true
 }
 
 // absorb folds a later pass's merge into this one — its rows and diagnostics

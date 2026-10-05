@@ -686,7 +686,7 @@ func TestGoExecuteSpawnRefusedByExpiredContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	n := &NormalizedInvocation{Name: "expired", Dir: t.TempDir(), Timeout: time.Minute}
-	run := runPackage(ctx, n, "example.com/x", nil, 1)
+	run := runPackage(ctx, n, "example.com/x", nil, 1, nil)
 	if run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_UNSPECIFIED {
 		t.Fatalf("disposition = %v, want none: the caller owns the timeout-or-discard classification", run.disposition)
 	}

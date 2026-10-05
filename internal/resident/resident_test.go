@@ -1,6 +1,7 @@
 package resident
 
 import (
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -114,15 +115,21 @@ func TestSampleWalksTheLiveDescendants(t *testing.T) {
 		303: {300, 'S', -1, 0},     // exited between the listing and the read
 		400: {101, 'S', 999, 9999}, // the sibling's child: not ours
 	})
-	set, ok := sampleAt(root, 100)
+	set, trees, ok := sampleAt(root, 100)
 	want := Set{ProcessBytes: 75 * 1024, ProcessPeakBytes: 1004 * 1024, Descendants: 3, DescendantsBytes: (400 + 10 + 900) * 1024, DescendantPeakBytes: 950 * 1024}
 	if !ok || set != want {
 		t.Fatalf("sampleAt = %+v %v, want %+v true", set, ok, want)
 	}
-	if set, ok := sampleAt(root, 999); ok || set != (Set{}) {
+	// Each direct child's tree is attributed whole: the resolver child
+	// alone, the go driver with the test binary beneath it.
+	wantTrees := map[int]uint64{200: 400 * 1024, 201: (10 + 900) * 1024}
+	if !maps.Equal(trees, wantTrees) {
+		t.Fatalf("sampleAt trees = %v, want %v", trees, wantTrees)
+	}
+	if set, _, ok := sampleAt(root, 999); ok || set != (Set{}) {
 		t.Fatalf("a process without a status answered %+v %v", set, ok)
 	}
-	if set, ok := sampleAt(filepath.Join(root, "missing"), 100); ok || set != (Set{}) {
+	if set, _, ok := sampleAt(filepath.Join(root, "missing"), 100); ok || set != (Set{}) {
 		t.Fatalf("an unlistable table answered %+v %v", set, ok)
 	}
 	// A descendant whose status exists but cannot be read voids the
@@ -132,7 +139,7 @@ func TestSampleWalksTheLiveDescendants(t *testing.T) {
 		if err := os.Chmod(filepath.Join(guarded, "201", "status"), 0o000); err != nil {
 			t.Fatal(err)
 		}
-		if set, ok := sampleAt(guarded, 100); ok {
+		if set, _, ok := sampleAt(guarded, 100); ok {
 			t.Fatalf("an unreadable descendant status answered a partial %+v", set)
 		}
 	}
@@ -153,7 +160,7 @@ func TestSampleWalksTheLiveDescendants(t *testing.T) {
 		if _, err := os.ReadFile(filepath.Join(lone, "100", "status")); err != nil {
 			t.Fatalf("the fixture's own status must stay readable through the unlistable table: %v", err)
 		}
-		if set, ok := sampleAt(lone, 100); ok {
+		if set, _, ok := sampleAt(lone, 100); ok {
 			t.Fatalf("an unlistable table beside a readable status answered %+v", set)
 		}
 	}

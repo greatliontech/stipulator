@@ -262,4 +262,7 @@ message ResidentSet {
   uint64 descendant_peak_bytes = 5;
   Phase exit_of = 6;
   bool at_end = 7;
+  // The soft memory ceiling the process runs under, derived from the
+  // host at its start; 0 when none is installed.
+  uint64 ceiling_bytes = 8;
 }

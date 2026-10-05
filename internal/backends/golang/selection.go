@@ -142,10 +142,19 @@ func ExecuteSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 			mu.Unlock()
 			return
 		}
-		for _, name := range deniedTests(&unit.run, sel[unit.pkg]) {
+		// A package whose process never ran — refused at admission,
+		// degraded at the spawn, never spawned — has no outcome to
+		// isolate: its re-runs would be the spawns the refusal exists to
+		// withhold, and would grant outcomes a refused package never
+		// earned.
+		var denied []string
+		if unit.run.producer != nil {
+			denied = deniedTests(&unit.run, sel[unit.pkg])
+		}
+		for _, name := range denied {
 			solo := packageRun{pkg: unit.pkg, soloTest: name}
 			if invCtx.Err() == nil {
-				solo = runPackage(invCtx, n, unit.pkg, []string{name}, spawn())
+				solo = runPackage(invCtx, n, unit.pkg, []string{name}, spawn(), nil)
 				solo.soloTest = name
 			}
 			if ctx.Err() != nil {
@@ -227,7 +236,9 @@ func (res *SelectionResult) absorb(u packageUnit) {
 // solo re-run gets a fresh binary bound of its own — one victim's
 // starvation never voids its siblings' evidence — while under a
 // spent envelope the loop denies each solo before it spawns, reported
-// as a TIMEOUT process outcome exactly as the surface documents.
+// as a TIMEOUT process outcome exactly as the surface documents. A
+// package whose process never ran is never asked: it has no outcome to
+// isolate, and its witnesses' cause is the package's disposition.
 func deniedTests(r *packageRun, selected []string) []string {
 	switch r.disposition {
 	case stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED,

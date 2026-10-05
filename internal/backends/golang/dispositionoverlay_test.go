@@ -46,7 +46,7 @@ func TestRetryDispositionsOverlayByTheWorse(t *testing.T) {
 			t.Errorf("%q after the overlay = %v, want %v", key, got, disposition)
 		}
 	}
-	if cause, ok := first.packageCause("race", "p"); !ok || cause != dispositionCause("race", "p", timeout) {
+	if cause, ok := first.packageCause("race", "p"); !ok || cause != dispositionCause("race", "p", timeout, "") {
 		t.Fatalf("p's cause after a healthy retry = %q, %v; want the first pass's timeout", cause, ok)
 	}
 }

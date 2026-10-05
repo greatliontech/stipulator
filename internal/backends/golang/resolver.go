@@ -9,6 +9,7 @@ import (
 	"os"
 	"sort"
 
+	"github.com/greatliontech/stipulator/internal/resident"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
@@ -234,6 +235,10 @@ func ResolverChildMain() {
 	if len(os.Args) < 3 || os.Args[1] != resolverSubcommand {
 		return
 	}
+	// The child runs under the host-derived soft ceiling as the parent
+	// does (resident.InstallCeiling): half of what the host has
+	// available at its start.
+	resident.InstallCeiling()
 	if err := serveResolver(context.Background(), os.Args[2], os.Args[3:], os.Stdin, os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

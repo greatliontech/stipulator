@@ -3,15 +3,18 @@ package cmd
 import (
 	"context"
 	"errors"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"testing"
 	"time"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
+	"github.com/greatliontech/stipulator/internal/resident"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -117,6 +120,11 @@ func TestExecuteStatesTheResidentSetOnBothLines(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// Any limit in force (an oracle's GOMEMLIMIT) is lifted so the
+	// ceiling the lines state is the one THIS operation derived and
+	// installed, never one the environment carried in.
+	priorLimit := debug.SetMemoryLimit(math.MaxInt64)
+	t.Cleanup(func() { debug.SetMemoryLimit(priorLimit) })
 	var status strings.Builder
 	var transitions, carrying int
 	var phases progress.PhaseTracker
@@ -148,6 +156,20 @@ func TestExecuteStatesTheResidentSetOnBothLines(t *testing.T) {
 	}
 	if !strings.Contains(out, " — at the start: resident ") || !strings.Contains(out, "'s exit: resident ") || !strings.Contains(out, "; resident at the end ") || !strings.Contains(out, "; peak ") {
 		t.Fatalf("the phase lines or the pace line lack the reading:\n%s", out)
+	}
+	// The operation runs under the host-derived ceiling, stated with the
+	// reading: the limit in force after the operation is the one it
+	// installed (the lifted limit above would read as none), and the
+	// lines carry exactly it — never a second reading of the host, whose
+	// available memory moves between two asks.
+	if _, ok := resident.HostMemory(); ok {
+		installed := debug.SetMemoryLimit(-1)
+		if installed <= 0 || installed == math.MaxInt64 {
+			t.Fatalf("the operation installed no ceiling (limit %d)", installed)
+		}
+		if want := ", ceiling " + progress.ByteWord(uint64(installed)); !strings.Contains(out, want) {
+			t.Fatalf("the phase lines lack the ceiling the operation installed (%s):\n%s", want, out)
+		}
 	}
 	// An interrupted run's ending line carries the reading at the end.
 	status.Reset()

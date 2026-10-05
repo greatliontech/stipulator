@@ -24,21 +24,32 @@ var procRoot = "/proc"
 // the reading — a count missing a live descendant would be partial, and
 // the datum is absent before it is partial; a stat line that does not
 // parse names no process.
-func sample() (Set, bool) { return sampleAt(procRoot, os.Getpid()) }
+func sample() (Set, bool) {
+	set, _, ok := sampleAt(procRoot, os.Getpid())
+	return set, ok
+}
 
-func sampleAt(root string, self int) (Set, bool) {
+// sampleTrees reads the running process's set with its direct children's
+// trees attributed.
+func sampleTrees() (Set, map[int]uint64, bool) { return sampleAt(procRoot, os.Getpid()) }
+
+// sampleAt reads the table under root for the process self: its Set and
+// the resident bytes of each of its direct children's subtrees, keyed by
+// the child's pid.
+func sampleAt(root string, self int) (Set, map[int]uint64, bool) {
 	status, err := os.ReadFile(filepath.Join(root, strconv.Itoa(self), "status"))
 	if err != nil {
-		return Set{}, false
+		return Set{}, nil, false
 	}
 	rss, peak, ok := parseStatus(string(status))
 	if !ok {
-		return Set{}, false
+		return Set{}, nil, false
 	}
 	set := Set{ProcessBytes: rss, ProcessPeakBytes: peak}
+	trees := map[int]uint64{}
 	entries, err := os.ReadDir(root)
 	if err != nil {
-		return Set{}, false
+		return Set{}, nil, false
 	}
 	// The live children of every parent, from one pass over the table.
 	children := map[int][]int{}
@@ -59,7 +70,11 @@ func sampleAt(root string, self int) (Set, bool) {
 	}
 	// The descendants, breadth first; a process table has no cycles, and
 	// the seen set guards the walk against a pid reused mid-listing.
+	// Each descendant is attributed to the direct child whose subtree
+	// holds it: a direct child is its own tree's root, a deeper process
+	// inherits its parent's root.
 	seen := map[int]bool{self: true}
+	treeOf := map[int]int{}
 	queue := []int{self}
 	for len(queue) > 0 {
 		parent := queue[0]
@@ -70,12 +85,17 @@ func sampleAt(root string, self int) (Set, bool) {
 			}
 			seen[pid] = true
 			queue = append(queue, pid)
+			tree := pid
+			if parent != self {
+				tree = treeOf[parent]
+			}
+			treeOf[pid] = tree
 			text, err := os.ReadFile(filepath.Join(root, strconv.Itoa(pid), "status"))
 			if exited(err) {
 				continue
 			}
 			if err != nil {
-				return Set{}, false
+				return Set{}, nil, false
 			}
 			rss, peak, ok := parseStatus(string(text))
 			if !ok {
@@ -84,9 +104,10 @@ func sampleAt(root string, self int) (Set, bool) {
 			set.Descendants++
 			set.DescendantsBytes += rss
 			set.DescendantPeakBytes = max(set.DescendantPeakBytes, peak)
+			trees[tree] += rss
 		}
 	}
-	return set, true
+	return set, trees, true
 }
 
 // exited reports whether a /proc read failed because its process is

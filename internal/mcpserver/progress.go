@@ -93,6 +93,10 @@ func (s *Server) startProgress(ctx context.Context, req *mcp.CallToolRequest) (c
 			})
 		})
 	}
+	// The operation runs under the host-derived soft ceiling, derived at
+	// its start — a long-lived server re-derives per call — and stated
+	// with the resident datum (resident.Ceiling).
+	resident.InstallCeiling()
 	prog := progress.New(sink, progress.WithResident(resident.Sample))
 	return progress.NewContext(ctx, prog), prog
 }

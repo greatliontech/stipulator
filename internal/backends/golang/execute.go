@@ -20,6 +20,7 @@ import (
 	"github.com/greatliontech/gofresh/gotool"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
+	"github.com/greatliontech/stipulator/internal/resident"
 )
 
 // The policy executor runs each normalized Go invocation exactly once and
@@ -143,6 +144,13 @@ type packageRun struct {
 	obs         *ProcessObservation
 	tests       []*stipulatorv1.TestResult
 	diags       []*stipulatorv1.FailureDiagnostic
+	// peakBytes is the largest resident set any process of the
+	// package's tree reached, from its wait status (0 where the host
+	// answers none) — the admission's completed-package evidence.
+	peakBytes uint64
+	// heldBy carries the memory term's words when the package never
+	// spawned because the term held it until the invocation's end.
+	heldBy string
 }
 
 // ExecuteInvocation executes one normalized invocation's selected packages
@@ -259,8 +267,7 @@ func spawnOrdinals() func() int32 {
 // (REQ-policy-explicit). Both are skipped under the caller's
 // cancellation.
 func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, pkgs []string, tests TestSelection, spawnOrdinal func() int32, inSlot, afterSlot func(i int, run *packageRun)) []packageRun {
-	bound := spawnBoundOf(n)
-	sem := make(chan struct{}, bound)
+	gate := newAdmission(invCtx, spawnBoundOf(n))
 	runs := make([]packageRun, len(pkgs))
 	rep := progress.FromContext(ctx)
 	var pkgsDone atomic.Int32
@@ -272,17 +279,29 @@ func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, p
 			// Every package reports its completion exactly once, whichever
 			// way it ends; the reporter bounds emission.
 			defer func() { rep.Step(n.Name, pkgsDone.Add(1), int32(len(pkgs))) }()
-			select {
-			case sem <- struct{}{}:
-				runs[i] = runPackage(invCtx, n, pkg, tests[pkg], spawnOrdinal())
+			admitted, refusal, held := gate.admit()
+			switch {
+			case admitted:
+				runs[i] = runPackage(invCtx, n, pkg, tests[pkg], spawnOrdinal(), gate)
 				if inSlot != nil && ctx.Err() == nil {
 					inSlot(i, &runs[i])
 				}
-				<-sem
-			case <-invCtx.Done():
+				gate.release(pkg, processPidOf(&runs[i]), runs[i].peakBytes)
+			case refusal != "":
+				// The host cannot hold one package process beside the
+				// pass and nothing of this invocation is running to free
+				// memory: refused stated, never spawned into the host's
+				// guard (the witness concurrency clause's memory term).
+				runs[i] = degradedRun(n.Name, pkg, "memory: "+refusal, false)
+				if inSlot != nil && ctx.Err() == nil {
+					inSlot(i, &runs[i])
+				}
+			default:
 				// Never spawned: the caller classifies the missing terminal
-				// disposition as timeout or discards on cancellation.
-				runs[i] = packageRun{pkg: pkg}
+				// disposition as timeout or discards on cancellation; a
+				// package the memory term was holding names the term in
+				// its timeout diagnostic.
+				runs[i] = packageRun{pkg: pkg, heldBy: held}
 				if inSlot != nil && ctx.Err() == nil {
 					inSlot(i, &runs[i])
 				}
@@ -324,6 +343,10 @@ func finalizeRun(n *NormalizedInvocation, r *packageRun, timedOut bool, soloTest
 	d.SetDisposition(r.disposition)
 	var out boundedBuffer
 	out.write(fmt.Sprintf("invocation timeout %v expired before the package completed", n.Timeout))
+	if r.heldBy != "" {
+		out.write("\n" + heldByPrefix)
+		out.write(r.heldBy)
+	}
 	if len(r.aborted) > 0 {
 		out.write("\nstarted but unfinished: ")
 		out.write(strings.Join(r.aborted, ", "))
@@ -417,6 +440,192 @@ func selectedPackages(selection []Obligation) []string {
 	return pkgs
 }
 
+// packageEstimateFloor is the least memory the admission assumes one
+// package process needs before any process of the invocation has shown
+// its peak — a test binary's build and link step legitimately reach it
+// (gomutant's oracle ceiling takes the same floor).
+const packageEstimateFloor = uint64(1) << 30
+
+// readingsHook is the admission's reading of the host and of the pass —
+// resident.Readings in production; a test injects a host that cannot
+// hold a process. releasedPeakHook observes each admitted package's
+// release with the process the gate had registered for it and the
+// completed peak the gate received — a test seam pinning the wiring of
+// the completed-package evidence and of the tree attribution.
+var (
+	readingsHook     = resident.Readings
+	releasedPeakHook func(pkg string, pid int, registered bool, peakBytes uint64)
+)
+
+// admission gates the spawn of package processes under the derived
+// concurrency bound and, where the host reports its memory, the memory
+// term: a package process is admitted while fewer than the bound run and
+// the host's available memory, less what the running packages are
+// estimated still to take, covers one more package at the invocation's
+// estimate with the pass's own room to grow back to its peak left over.
+// The estimate is the largest a package's process tree has been seen to
+// need — a completed package's largest process from its wait status, a
+// live descendant's largest peak, and the live trees' share of the
+// descendants' resident set — floored at packageEstimateFloor, so it
+// grows as the processes do and never shrinks within the invocation;
+// each running package is reserved its estimate less what ITS tree
+// already shows in the process table (the tree attributed to the
+// process the executor spawned for it; a tree not yet in the table
+// reserves the whole estimate), so a burst of asks between the kernel's
+// readings is bounded by the term and not only by the processor bound,
+// and one tree's overshoot never pays for a sibling's reservation. A
+// package's process stays registered through its isolation re-runs
+// after it was reaped (the slot is released after them): its tree then
+// shows nothing and reserves the whole estimate — conservative — and a
+// pid the kernel reused inside that window would attribute a stranger's
+// direct child to it, which needs the pid space to wrap within one
+// package's re-runs; recorded, not guarded.
+// A waiting package re-asks at every completion (the readings move) and
+// gives up with the invocation's context, carrying the words of the
+// term that held it; a package asked while nothing of the invocation
+// runs and the host cannot hold one process is refused — the refusal's
+// words name the readings — rather than waiting on a completion that
+// cannot come or spawning into the host's guard. The term only narrows:
+// the processor bound and the inner width the witness environment
+// delivers are never widened by it.
+type admission struct {
+	ctx     context.Context
+	mu      sync.Mutex
+	cond    *sync.Cond
+	bound   int
+	running int
+	// pids are the processes spawned for the running packages — the
+	// roots of the trees the reservation attributes.
+	pids map[int]bool
+	// peak is the largest completed-package peak seen so far.
+	peak uint64
+}
+
+func newAdmission(ctx context.Context, bound int) *admission {
+	a := &admission{ctx: ctx, bound: bound, pids: map[int]bool{}}
+	a.cond = sync.NewCond(&a.mu)
+	// The context's end wakes every waiter, which then returns unadmitted.
+	context.AfterFunc(ctx, func() {
+		a.mu.Lock()
+		a.cond.Broadcast()
+		a.mu.Unlock()
+	})
+	return a
+}
+
+// estimate is the memory one more package process tree is assumed to
+// need, given the pass's current reading of its live descendants.
+func (a *admission) estimate(set resident.Set) uint64 {
+	need := max(packageEstimateFloor, a.peak, set.DescendantPeakBytes)
+	if a.running > 0 {
+		need = max(need, set.DescendantsBytes/uint64(a.running))
+	}
+	return need
+}
+
+// room judges the memory term under a.mu: whether the host can hold one
+// more package process beside the pass and the packages already
+// running, and the readings' words when it cannot. A host or a pass
+// without a reading has no memory term.
+func (a *admission) room() (ok bool, words string) {
+	reading, ok := readingsHook()
+	if !ok {
+		return true, ""
+	}
+	set, host := reading.Set, reading.Host
+	need := a.estimate(set)
+	// Each running package's tree is reserved the estimate less what it
+	// already shows in the process table (the kernel has taken that out
+	// of the available memory); a package admitted but not yet
+	// registered, or registered but not yet in the table, reserves the
+	// whole estimate. Per tree, never netted across trees: a grown
+	// sibling's bytes pay for nothing but itself.
+	registered := 0
+	reserved := uint64(0)
+	for pid := range a.pids {
+		registered++
+		if shown := reading.Trees[pid]; shown < need {
+			reserved += need - shown
+		}
+	}
+	if a.running > registered {
+		reserved += uint64(a.running-registered) * need
+	}
+	// The pass's own room to grow back to its peak.
+	growth := uint64(0)
+	if set.ProcessPeakBytes > set.ProcessBytes {
+		growth = set.ProcessPeakBytes - set.ProcessBytes
+	}
+	if host.AvailableBytes >= reserved+need && host.AvailableBytes-reserved-need >= growth {
+		return true, ""
+	}
+	return false, fmt.Sprintf("the host cannot hold one more package process beside the pass: available %s, %d package(s) running reserving %s, the pass's resident %s (peak %s), one package estimated at %s",
+		progress.ByteWord(host.AvailableBytes), a.running, progress.ByteWord(reserved), progress.ByteWord(set.ProcessBytes), progress.ByteWord(set.ProcessPeakBytes), progress.ByteWord(need))
+}
+
+// admit blocks until the package may spawn. admitted is false when the
+// invocation's context ended — held then carries the words of the memory
+// term that was holding the package, empty when it waited on the
+// processor bound alone — or when nothing of the invocation runs and the
+// host cannot hold one process (refusal names the readings).
+func (a *admission) admit() (admitted bool, refusal, held string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for {
+		if a.ctx.Err() != nil {
+			return false, "", held
+		}
+		held = ""
+		if a.running < a.bound {
+			ok, words := a.room()
+			if ok {
+				a.running++
+				return true, "", ""
+			}
+			if a.running == 0 {
+				return false, words, ""
+			}
+			held = words
+		}
+		a.cond.Wait()
+	}
+}
+
+// spawned registers the process an admitted package's executor spawned
+// — the root of the tree the reservation attributes to it.
+func (a *admission) spawned(pid int) {
+	if a == nil {
+		return
+	}
+	a.mu.Lock()
+	a.pids[pid] = true
+	a.mu.Unlock()
+}
+
+// release returns an admitted package's slot — its process, if one was
+// spawned, unregistered — with its completed peak, and wakes the waiters
+// to re-ask; the seam sees what the gate received.
+func (a *admission) release(pkg string, pid int, peakBytes uint64) {
+	a.mu.Lock()
+	registered := a.pids[pid]
+	delete(a.pids, pid)
+	a.running--
+	a.peak = max(a.peak, peakBytes)
+	a.cond.Broadcast()
+	a.mu.Unlock()
+	if releasedPeakHook != nil {
+		releasedPeakHook(pkg, pid, registered, peakBytes)
+	}
+}
+
+// processPidOf is the pid of a run's spawned process, 0 when none spawned.
+func processPidOf(run *packageRun) int {
+	if run.producer == nil {
+		return 0
+	}
+	return int(run.producer.GetProcessId())
+}
+
 // witnessSpawnBound derives the package fan-out bound: max(1,
 // GOMAXPROCS/2) — each unit is itself a parallel process tree, so a
 // full processor-count fan-out multiplies into host-freezing load that
@@ -467,7 +676,7 @@ func witnessChildWidth(n *NormalizedInvocation) int {
 // deadline-expired context leaves the disposition unspecified: the caller
 // — not the stream parser — decides between timeout reporting and
 // cancellation discard.
-func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, selection []string, ordinal int32) packageRun {
+func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, selection []string, ordinal int32, gate *admission) packageRun {
 	// Directing the test binary's testlog to a per-process capture file
 	// makes the run uncacheable to the toolchain (extra binary arguments
 	// fall outside its cacheable set): observation capture deliberately
@@ -534,6 +743,7 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, select
 		}
 		return degradedRun(n.Name, pkg, fmt.Sprintf("spawning go test: %v", err), false)
 	}
+	gate.spawned(cmd.Process.Pid)
 	producer := &stipulatorv1.ProducerIdentity{}
 	producer.SetInvocation(n.Name)
 	producer.SetProcessId(int64(cmd.Process.Pid))
@@ -561,9 +771,10 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, select
 		// stderr — and the launched process gains its incomplete
 		// observation. The process exit is withheld: the envelope kill's
 		// own signal is the runner's act, not a fact of the run.
-		return packageRun{pkg: pkg, aborted: startedTests(st), residue: runResidue(st, &stderr, nil, ""), producer: producer}
+		return packageRun{pkg: pkg, aborted: startedTests(st), residue: runResidue(st, &stderr, nil, ""), producer: producer, peakBytes: processPeakBytes(cmd.ProcessState)}
 	}
 	run := classifyRun(n.Name, pkg, st, waitErr, &stderr, bound)
+	run.peakBytes = processPeakBytes(cmd.ProcessState)
 	// A terminal run retains its started-but-unfinished tests: a package
 	// abort's shadowed tests are structural facts the selective isolation
 	// pass consumes, not only diagnostic prose.
@@ -1051,6 +1262,47 @@ func classifyRun(invocation, pkg string, st *streamState, waitErr error, stderr 
 	d.SetTruncated(out.truncated)
 	run.diags = append(run.diags, d)
 	return run
+}
+
+// heldByPrefix opens the timeout diagnostic's line naming the memory
+// term that held a package until the envelope expired.
+const heldByPrefix = "held by the memory term: "
+
+// packageReasonBound bounds the reason's line in a no-outcome cause.
+const packageReasonBound = 200
+
+// packageReason is the host's part of a package's no-outcome cause,
+// read from the package-scoped diagnostic that carries the package's
+// own disposition under the invocation — the degradation's own, which
+// the classifier appends after any stream diagnostics: for a degraded
+// package (a memory refusal, a toolchain or telemetry degradation, a
+// stream the classifier refused) that diagnostic's first line; for a
+// timed-out package the memory term's line when the term held it,
+// nothing otherwise (a timeout or a test failure is the package's own
+// outcome, its cause the disposition alone). The line is bounded;
+// empty when the package carries no such diagnostic.
+func packageReason(diags []*stipulatorv1.FailureDiagnostic, invocation, pkg string, disposition stipulatorv1.HealthDisposition) string {
+	var own *stipulatorv1.FailureDiagnostic
+	for _, d := range diags {
+		if d.GetInvocation() == invocation && d.GetPackage() == pkg && d.GetTest() == "" && d.GetDisposition() == disposition {
+			own = d
+		}
+	}
+	if own == nil {
+		return ""
+	}
+	switch disposition {
+	case stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_DEGRADED:
+		line, _, _ := strings.Cut(own.GetOutput(), "\n")
+		return cutAtRune(line, packageReasonBound)
+	case stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT:
+		for _, line := range strings.Split(own.GetOutput(), "\n") {
+			if strings.HasPrefix(line, heldByPrefix) {
+				return cutAtRune(line, packageReasonBound)
+			}
+		}
+	}
+	return ""
 }
 
 // degradedRun is a spawn-stage degradation: the package never produced a

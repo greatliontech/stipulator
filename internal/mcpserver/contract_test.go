@@ -7,9 +7,11 @@ import (
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"google.golang.org/protobuf/encoding/protojson"
 	"io/fs"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -20,6 +22,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/facts"
 	"github.com/greatliontech/stipulator/internal/progress"
+	"github.com/greatliontech/stipulator/internal/resident"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/wire"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
@@ -305,9 +308,24 @@ func TestTokenlessCallEmitsPhaseLogMessages(t *testing.T) {
 	if err := sess.SetLoggingLevel(context.Background(), &mcp.SetLoggingLevelParams{Level: "info"}); err != nil {
 		t.Fatal(err)
 	}
+	// Any limit in force (an oracle's GOMEMLIMIT) is lifted so the
+	// ceiling the lines state is the one this call derived and installed.
+	priorLimit := debug.SetMemoryLimit(math.MaxInt64)
+	t.Cleanup(func() { debug.SetMemoryLimit(priorLimit) })
 	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "gate", Arguments: map[string]any{}})
 	if err != nil || res.IsError {
 		t.Fatalf("gate: %v %+v", err, res)
+	}
+	// The call installed the ceiling its lines state: the limit in force
+	// after it (the lifted limit above would read as none) — never a
+	// second reading of the host, whose available memory moves.
+	wantCeiling := ""
+	if _, ok := resident.HostMemory(); ok {
+		installed := debug.SetMemoryLimit(-1)
+		if installed <= 0 || installed == math.MaxInt64 {
+			t.Fatalf("the call installed no ceiling (limit %d)", installed)
+		}
+		wantCeiling = ", ceiling " + progress.ByteWord(uint64(installed))
 	}
 	deadline := time.After(3 * time.Second)
 	sawPhase := false
@@ -318,8 +336,8 @@ func TestTokenlessCallEmitsPhaseLogMessages(t *testing.T) {
 				// The phase line carries the resident reading where the
 				// host answers it, in the words the CLI prints
 				// (REQ-mcp-progress).
-				if runtime.GOOS == "linux" && !strings.Contains(line, ": resident ") {
-					t.Fatalf("tokenless phase log message carries no resident reading: %q", line)
+				if runtime.GOOS == "linux" && (!strings.Contains(line, ": resident ") || !strings.Contains(line, wantCeiling)) {
+					t.Fatalf("tokenless phase log message carries no resident reading with the ceiling this call derived (%s): %q", wantCeiling, line)
 				}
 				sawPhase = true
 			}

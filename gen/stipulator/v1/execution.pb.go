@@ -2203,6 +2203,7 @@ type ResidentSet struct {
 	xxx_hidden_DescendantPeakBytes uint64                 `protobuf:"varint,5,opt,name=descendant_peak_bytes,json=descendantPeakBytes"`
 	xxx_hidden_ExitOf              Phase                  `protobuf:"varint,6,opt,name=exit_of,json=exitOf,enum=stipulator.v1.Phase"`
 	xxx_hidden_AtEnd               bool                   `protobuf:"varint,7,opt,name=at_end,json=atEnd"`
+	xxx_hidden_CeilingBytes        uint64                 `protobuf:"varint,8,opt,name=ceiling_bytes,json=ceilingBytes"`
 	XXX_raceDetectHookData         protoimpl.RaceDetectHookData
 	XXX_presence                   [1]uint32
 	unknownFields                  protoimpl.UnknownFields
@@ -2285,39 +2286,51 @@ func (x *ResidentSet) GetAtEnd() bool {
 	return false
 }
 
+func (x *ResidentSet) GetCeilingBytes() uint64 {
+	if x != nil {
+		return x.xxx_hidden_CeilingBytes
+	}
+	return 0
+}
+
 func (x *ResidentSet) SetProcessBytes(v uint64) {
 	x.xxx_hidden_ProcessBytes = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 8)
 }
 
 func (x *ResidentSet) SetProcessPeakBytes(v uint64) {
 	x.xxx_hidden_ProcessPeakBytes = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 8)
 }
 
 func (x *ResidentSet) SetDescendantsBytes(v uint64) {
 	x.xxx_hidden_DescendantsBytes = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 8)
 }
 
 func (x *ResidentSet) SetDescendants(v int32) {
 	x.xxx_hidden_Descendants = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 8)
 }
 
 func (x *ResidentSet) SetDescendantPeakBytes(v uint64) {
 	x.xxx_hidden_DescendantPeakBytes = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 8)
 }
 
 func (x *ResidentSet) SetExitOf(v Phase) {
 	x.xxx_hidden_ExitOf = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 8)
 }
 
 func (x *ResidentSet) SetAtEnd(v bool) {
 	x.xxx_hidden_AtEnd = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 8)
+}
+
+func (x *ResidentSet) SetCeilingBytes(v uint64) {
+	x.xxx_hidden_CeilingBytes = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 8)
 }
 
 func (x *ResidentSet) HasProcessBytes() bool {
@@ -2369,6 +2382,13 @@ func (x *ResidentSet) HasAtEnd() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
 }
 
+func (x *ResidentSet) HasCeilingBytes() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 7)
+}
+
 func (x *ResidentSet) ClearProcessBytes() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_ProcessBytes = 0
@@ -2404,6 +2424,11 @@ func (x *ResidentSet) ClearAtEnd() {
 	x.xxx_hidden_AtEnd = false
 }
 
+func (x *ResidentSet) ClearCeilingBytes() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 7)
+	x.xxx_hidden_CeilingBytes = 0
+}
+
 type ResidentSet_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -2414,6 +2439,9 @@ type ResidentSet_builder struct {
 	DescendantPeakBytes *uint64
 	ExitOf              *Phase
 	AtEnd               *bool
+	// The soft memory ceiling the process runs under, derived from the
+	// host at its start; 0 when none is installed.
+	CeilingBytes *uint64
 }
 
 func (b0 ResidentSet_builder) Build() *ResidentSet {
@@ -2421,32 +2449,36 @@ func (b0 ResidentSet_builder) Build() *ResidentSet {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.ProcessBytes != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 8)
 		x.xxx_hidden_ProcessBytes = *b.ProcessBytes
 	}
 	if b.ProcessPeakBytes != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 8)
 		x.xxx_hidden_ProcessPeakBytes = *b.ProcessPeakBytes
 	}
 	if b.DescendantsBytes != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 8)
 		x.xxx_hidden_DescendantsBytes = *b.DescendantsBytes
 	}
 	if b.Descendants != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 8)
 		x.xxx_hidden_Descendants = *b.Descendants
 	}
 	if b.DescendantPeakBytes != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 8)
 		x.xxx_hidden_DescendantPeakBytes = *b.DescendantPeakBytes
 	}
 	if b.ExitOf != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 8)
 		x.xxx_hidden_ExitOf = *b.ExitOf
 	}
 	if b.AtEnd != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 8)
 		x.xxx_hidden_AtEnd = *b.AtEnd
+	}
+	if b.CeilingBytes != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 8)
+		x.xxx_hidden_CeilingBytes = *b.CeilingBytes
 	}
 	return m0
 }
@@ -2527,7 +2559,7 @@ const file_stipulator_v1_execution_proto_rawDesc = "" +
 	"\x0eterminal_cause\x18\x06 \x01(\x0e2\x1c.stipulator.v1.TerminalCauseR\rterminalCause\x12\x12\n" +
 	"\x04note\x18\a \x01(\tR\x04note\x12\x12\n" +
 	"\x04kept\x18\b \x03(\tR\x04kept\x126\n" +
-	"\bresident\x18\t \x01(\v2\x1a.stipulator.v1.ResidentSetR\bresident\"\xa9\x02\n" +
+	"\bresident\x18\t \x01(\v2\x1a.stipulator.v1.ResidentSetR\bresident\"\xce\x02\n" +
 	"\vResidentSet\x12#\n" +
 	"\rprocess_bytes\x18\x01 \x01(\x04R\fprocessBytes\x12,\n" +
 	"\x12process_peak_bytes\x18\x02 \x01(\x04R\x10processPeakBytes\x12+\n" +
@@ -2535,7 +2567,8 @@ const file_stipulator_v1_execution_proto_rawDesc = "" +
 	"\vdescendants\x18\x04 \x01(\x05R\vdescendants\x122\n" +
 	"\x15descendant_peak_bytes\x18\x05 \x01(\x04R\x13descendantPeakBytes\x12-\n" +
 	"\aexit_of\x18\x06 \x01(\x0e2\x14.stipulator.v1.PhaseR\x06exitOf\x12\x15\n" +
-	"\x06at_end\x18\a \x01(\bR\x05atEnd*\x91\x01\n" +
+	"\x06at_end\x18\a \x01(\bR\x05atEnd\x12#\n" +
+	"\rceiling_bytes\x18\b \x01(\x04R\fceilingBytes*\x91\x01\n" +
 	"\x15ObligationDisposition\x12&\n" +
 	"\"OBLIGATION_DISPOSITION_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eOBLIGATION_DISPOSITION_OMITTED\x10\x01\x12,\n" +

@@ -402,6 +402,7 @@ func residentWire(set resident.Set, m moment) *stipulatorv1.ResidentSet {
 	e.SetDescendantsBytes(set.DescendantsBytes)
 	e.SetDescendants(int32(set.Descendants))
 	e.SetDescendantPeakBytes(set.DescendantPeakBytes)
+	e.SetCeilingBytes(set.CeilingBytes)
 	e.SetExitOf(m.exitOf)
 	e.SetAtEnd(m.atEnd)
 	return e
@@ -672,13 +673,20 @@ func ResidentWords(e *stipulatorv1.ProgressEvent) string {
 		Descendants:         int(set.GetDescendants()),
 		DescendantsBytes:    set.GetDescendantsBytes(),
 		DescendantPeakBytes: set.GetDescendantPeakBytes(),
+		CeilingBytes:        set.GetCeilingBytes(),
 	}, moment{exitOf: set.GetExitOf(), atEnd: set.GetAtEnd()})
 }
 
+// residentWords is the one spelling of a reading: its moment, the
+// process's set and peak, its live descendants when any, and the soft
+// ceiling the process runs under when one is installed.
 func residentWords(set resident.Set, m moment) string {
 	words := fmt.Sprintf("%s: resident %s (peak %s)", momentWords(m), ByteWord(set.ProcessBytes), ByteWord(set.ProcessPeakBytes))
 	if set.Descendants > 0 {
 		words += fmt.Sprintf(", descendants %s (%d), largest peak %s", ByteWord(set.DescendantsBytes), set.Descendants, ByteWord(set.DescendantPeakBytes))
+	}
+	if set.CeilingBytes > 0 {
+		words += ", ceiling " + ByteWord(set.CeilingBytes)
 	}
 	return words
 }

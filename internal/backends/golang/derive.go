@@ -1471,7 +1471,7 @@ func ExecutePolicyWitnessed(ctx context.Context, pc *Capture, seeding verify.Wit
 		if !ok {
 			return "", false
 		}
-		return dispositionCause(invocation, pkg, disposition), true
+		return dispositionCause(invocation, pkg, disposition, packageReason(report.GetDiagnostics(), invocation, pkg, disposition)), true
 	})
 	tr.OutsideSubjects = classes.outside
 	tr.OutsidePolicy = len(classes.outside)
@@ -1648,10 +1648,14 @@ func pgoBuildInputs(dir, moduleRoot, pgo string) ([]string, error) {
 // invocation as an execution-layer cause: "invocation race: package p
 // timeout", or, healthy, that the invocation's process granted the
 // subject nothing.
-func dispositionCause(invocation, pkg string, disposition stipulatorv1.HealthDisposition) string {
+func dispositionCause(invocation, pkg string, disposition stipulatorv1.HealthDisposition, reason string) string {
 	if disposition == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
 		return fmt.Sprintf("invocation %s: package %s healthy, no result for it", invocation, pkg)
 	}
 	text := strings.ToLower(strings.TrimPrefix(disposition.String(), "HEALTH_DISPOSITION_"))
-	return fmt.Sprintf("invocation %s: package %s %s", invocation, pkg, strings.ReplaceAll(text, "_", " "))
+	cause := fmt.Sprintf("invocation %s: package %s %s", invocation, pkg, strings.ReplaceAll(text, "_", " "))
+	if reason != "" {
+		cause += ": " + reason
+	}
+	return cause
 }

@@ -669,3 +669,27 @@ func TestResidentWordsAreOneSpellingOnBothFaces(t *testing.T) {
 		t.Fatalf("ResidentSuffix = %q", got)
 	}
 }
+
+// TestResidentWordsStateTheCeiling pins the datum's ceiling
+// (REQ-mcp-progress): a reading taken under an installed soft ceiling
+// states it after the kernel's figures, on the wire and in the words
+// both faces print; a reading without one states no ceiling.
+//
+//gofresh:pure
+func TestResidentWordsStateTheCeiling(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-progress")
+	under := resident.Set{ProcessBytes: 10, ProcessPeakBytes: 20, CeilingBytes: 3 << 30}
+	wire := residentWire(under, moment{})
+	if wire.GetCeilingBytes() != 3<<30 {
+		t.Fatalf("wire ceiling = %d, want %d", wire.GetCeilingBytes(), 3<<30)
+	}
+	e := &stipulatorv1.ProgressEvent{}
+	e.SetResident(wire)
+	words := ResidentWords(e)
+	if !strings.HasSuffix(words, ", ceiling "+ByteWord(3<<30)) || !strings.HasPrefix(words, "at the start: resident ") {
+		t.Fatalf("words under a ceiling = %q, want the ceiling stated last", words)
+	}
+	if got := residentWords(resident.Set{ProcessBytes: 10, ProcessPeakBytes: 20}, moment{}); strings.Contains(got, "ceiling") {
+		t.Fatalf("words without a ceiling state one: %q", got)
+	}
+}

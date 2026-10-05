@@ -223,7 +223,8 @@ a phase's exit, the end: the process's resident and peak resident bytes
 as the kernel answers them, and its live descendants (the resolver
 child, the go drivers and the package test binaries beneath them;
 zombies are not live) as their count, their summed resident bytes, and
-the largest single descendant's own peak — read at that moment and at no
+the largest single descendant's own peak, and the soft memory ceiling
+the process runs under where one is installed — read at that moment and at no
 other (a step or keepalive carries none, so the datum is as bounded as
 the transitions; a host without the reading, or a process table that
 cannot be listed, carries none, never a zero or a partial count); the
