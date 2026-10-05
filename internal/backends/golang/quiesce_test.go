@@ -2,6 +2,7 @@ package golang
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"strings"
 	"sync"
@@ -90,8 +91,9 @@ func TestQuiescedBackendAnswersFromMemory(t *testing.T) {
 
 // The publish account under one key is the sum of its publishes — a
 // quiesce's and a later close's after an unheard question respawned
-// the child: every count added, the refused lists joined in publish
-// order (REQ-evidence-resolution-cache-format's never-silent account).
+// the child: the installed counts added, every named list joined in
+// publish order (REQ-evidence-resolution-cache-format's never-silent
+// account).
 //
 //gofresh:pure
 func TestPublishAccountSumsAcrossPublishes(t *testing.T) {
@@ -100,19 +102,44 @@ func TestPublishAccountSumsAcrossPublishes(t *testing.T) {
 	// aliased it would write the later refusals into the slot past its
 	// length, which the assertion below reads.
 	priorRefused := make([]string, 1, 4)
-	priorRefused[0] = "a: tier"
-	prior := publishAccount{installed: 2, moved: 1, unopened: 3, uncaptured: 4, refused: priorRefused}
-	later := publishAccount{installed: 1, moved: 5, unopened: 6, uncaptured: 7, refused: []string{"b: tier", "c: tier"}}
+	priorRefused[0] = "example.com/p.A"
+	prior := publishAccount{installed: 2, moved: []string{"example.com/p.M1"}, unopened: []string{"example.com/p.O1"}, uncaptured: []string{"example.com/p.U1", "example.com/p.U2"}, refused: priorRefused}
+	later := publishAccount{installed: 1, moved: []string{"example.com/p.M2"}, unopened: nil, uncaptured: []string{"example.com/p.U3"}, refused: []string{"example.com/p.B", "example.com/p.C"}}
 	got := later.summed(prior)
-	want := publishAccount{installed: 3, moved: 6, unopened: 9, uncaptured: 11, refused: []string{"a: tier", "b: tier", "c: tier"}}
-	if got.installed != want.installed || got.moved != want.moved || got.unopened != want.unopened || got.uncaptured != want.uncaptured || !slices.Equal(got.refused, want.refused) {
+	want := publishAccount{installed: 3, moved: []string{"example.com/p.M1", "example.com/p.M2"}, unopened: []string{"example.com/p.O1"}, uncaptured: []string{"example.com/p.U1", "example.com/p.U2", "example.com/p.U3"}, refused: []string{"example.com/p.A", "example.com/p.B", "example.com/p.C"}}
+	if got.installed != want.installed || !slices.Equal(got.moved, want.moved) || !slices.Equal(got.unopened, want.unopened) || !slices.Equal(got.uncaptured, want.uncaptured) || !slices.Equal(got.refused, want.refused) {
 		t.Fatalf("summed = %+v; want %+v", got, want)
 	}
-	if first := later.summed(publishAccount{}); first.installed != 1 || first.moved != 5 || first.unopened != 6 || first.uncaptured != 7 || !slices.Equal(first.refused, later.refused) {
+	if first := later.summed(publishAccount{}); first.installed != 1 || !slices.Equal(first.moved, later.moved) || !slices.Equal(first.uncaptured, later.uncaptured) || !slices.Equal(first.refused, later.refused) {
 		t.Fatalf("a first publish summed with nothing = %+v; want itself", first)
 	}
 	if spare := priorRefused[:cap(priorRefused)][1]; spare != "" {
 		t.Fatalf("summing aliased the prior's refused list: its spare slot holds %q", spare)
+	}
+}
+
+// TestPublishAccountNamesEverySkippedSymbol pins the account line's
+// classes (REQ-evidence-resolution-cache-format's never-silent account):
+// each class of symbol the publish kept out — moved, without an opening
+// capture, without a closing capture, refused on its source tiers — is
+// counted AND named, sorted, the first eight named and the remainder
+// counted, so an operator reads which bindings pay the typed resolution
+// every run and why; a class with no symbol renders nothing.
+//
+//gofresh:pure
+func TestPublishAccountNamesEverySkippedSymbol(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-resolution-cache-format")
+	var many []string
+	for i := 9; i >= 0; i-- {
+		many = append(many, fmt.Sprintf("example.com/p.U%02d", i))
+	}
+	s := &Served{published: map[string]publishAccount{
+		"k": {installed: 2, moved: []string{"example.com/p.M"}, uncaptured: many, refused: []string{"example.com/p.R"}},
+	}}
+	got := strings.Join(s.publishNotices(), "\n")
+	want := `resolution published under "k": 2 records; skipped 1 moved between the opening and closing capture: example.com/p.M; 10 without a closing capture: example.com/p.U00, example.com/p.U01, example.com/p.U02, example.com/p.U03, example.com/p.U04, example.com/p.U05, example.com/p.U06, example.com/p.U07 (+2 more); 1 refused on their source tiers: example.com/p.R`
+	if got != want {
+		t.Fatalf("account line =\n%s\nwant\n%s", got, want)
 	}
 }
 

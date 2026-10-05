@@ -312,8 +312,12 @@ func TestPackageHeldUntilTheInvocationsEndCarriesTheTerm(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness")
 	neutralAmbient(t)
 	const gib = uint64(1) << 30
+	// The first admitted package is a slow one or a quick one by the
+	// goroutines' race; the second asks within microseconds of the
+	// first's spawn, and the cancellation is synchronous inside that
+	// ask, so the first never completes before the second is held.
 	cfg := &stipulatorv1.GoInvocationConfig{}
-	cfg.SetPackages([]string{"./ok", "./notest"})
+	cfg.SetPackages([]string{"./sleepy", "./ok"})
 	inv := &stipulatorv1.PolicyInvocation{}
 	inv.SetName("held")
 	inv.SetTimeout(durationpb.New(time.Minute))
@@ -323,6 +327,12 @@ func TestPackageHeldUntilTheInvocationsEndCarriesTheTerm(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The pin witnesses the MEMORY term: with one processor slot (the
+	// self-host check's children run two processors wide, so the
+	// derived bound is one) the second package would wait on the
+	// processor bound, never ask, and be refused after the first
+	// completes — so the bound is two here.
+	n.SpawnBound = 2
 	invCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	var asks atomic.Int32
@@ -331,11 +341,15 @@ func TestPackageHeldUntilTheInvocationsEndCarriesTheTerm(t *testing.T) {
 			return resident.Memory{TotalBytes: 64 * gib, AvailableBytes: 64 * gib}, true
 		}
 		// Every later ask finds the host short while the first runs,
-		// and the invocation ends on the second's wait.
-		go cancel()
+		// and the invocation ends on the second's wait: cancelled here,
+		// before the ask returns, so the waiter sees the end on its
+		// first wake and never re-asks with nothing running (the
+		// context's broadcast takes the gate's lock after this ask
+		// releases it).
+		cancel()
 		return resident.Memory{TotalBytes: 2 * gib, AvailableBytes: gib / 2}, true
 	}, passWith(gib/4))
-	runs := runSelectedPackages(ctx, invCtx, n, []string{"example.com/exec/ok", "example.com/exec/notest"}, nil, spawnOrdinals(), nil, nil)
+	runs := runSelectedPackages(ctx, invCtx, n, []string{"example.com/exec/sleepy", "example.com/exec/ok"}, nil, spawnOrdinals(), nil, nil)
 	held := 0
 	for _, r := range runs {
 		if r.heldBy != "" {

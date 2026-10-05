@@ -95,8 +95,10 @@ func digest(line string, rows []string) string {
 // typed symbol, unbounded by anything but the binding count, the
 // per-row shape REQ-mcp-response-contract keeps out of a default
 // payload; those lines are the CLI's, the full verify report's and
-// check's full result's. One rule for every served channel that
-// carries the account: the text digests, the notes, a refusal's text.
+// check's full result's. The account line itself stays bounded: each
+// class it names is capped per class and the rest counted. One rule
+// for every served channel that carries the account: the text digests,
+// the notes, a refusal's text.
 func accountLines(notices []string) []string {
 	var out []string
 	for _, n := range notices {

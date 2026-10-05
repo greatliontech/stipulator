@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -137,6 +138,15 @@ func TestGoRunWitnessesInputDriftAfterTheUnitReexecutesNextRun(t *testing.T) {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
 	neutralAmbient(t)
+	// The fixture's handshake needs the reader's and the writer's slots
+	// concurrent: the writer's isolation re-run waits, inside the
+	// writer's slot, for the reader's persisted note. Under one slot
+	// (two processors — the self-host check's children) the reader
+	// cannot be admitted until the writer's slot ends, so the re-run
+	// waits for a note that cannot come. The bound derives from the
+	// processor count at normalize: four processors give two slots.
+	priorProcs := runtime.GOMAXPROCS(4)
+	t.Cleanup(func() { runtime.GOMAXPROCS(priorProcs) })
 	tmp := writeModule(t, map[string]string{
 		"go.mod":          "module example.com/runtime-drift\n\ngo 1.26\n",
 		"reader/data.txt": "before",

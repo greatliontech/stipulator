@@ -643,3 +643,61 @@ func TestServedPublishesSubjectsWithNonSourceTiers(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// TestPublishNamesTheSymbolWithoutAClosingCapture pins the account's
+// naming end to end (REQ-evidence-resolution-cache-format): a resolved
+// symbol whose subject the closing capture did not carry publishes no
+// record, and the account names it under its class — never a bare
+// count — while its sibling's record installs; a subject the OPENING
+// capture did not carry is named under its own class the same way.
+func TestPublishNamesTheSymbolWithoutAClosingCapture(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-resolution-cache-format")
+	if testing.Short() {
+		t.Skip("loads a fixture module's types and views")
+	}
+	neutralAmbient(t)
+	dir := writeModule(t, map[string]string{
+		"go.mod":                       "module example.com/uncaptured\n\ngo 1.26\n",
+		"p/p.go":                       "package p\n\nfunc F(n int) int { return n + 1 }\n\nfunc G(n int) int { return n + 2 }\n",
+		"p/p_test.go":                  "package p\n\nimport \"testing\"\n\nfunc TestF(t *testing.T) {\n\tif F(1) != 2 {\n\t\tt.Fatal(\"F\")\n\t}\n}\n",
+		".stipulator/policy.textproto": "invocations {\n  name: \"all\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./...\"\n    race: true\n  }\n}\n",
+	})
+	symbols := []string{"example.com/uncaptured/p.F", "example.com/uncaptured/p.G"}
+	ctx := context.Background()
+	s, err := NewServed(ctx, dir, symbols)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The opening capture is taken at the first typed answer: the seam is
+	// installed before the asks and strips F from the opening alone, G
+	// from the closing alone.
+	prior := captureForTest
+	captureForTest = func(phase string, capture map[gofresh.Subject]gofresh.Fingerprint) map[gofresh.Subject]gofresh.Fingerprint {
+		switch phase {
+		case "opening":
+			delete(capture, gofresh.Subject{Package: "example.com/uncaptured/p", Symbol: "F"})
+		case "publish":
+			delete(capture, gofresh.Subject{Package: "example.com/uncaptured/p", Symbol: "G"})
+		}
+		return capture
+	}
+	t.Cleanup(func() { captureForTest = prior })
+	for _, symbol := range symbols {
+		ask(t, s, symbol)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	var published string
+	for _, n := range s.Notices() {
+		if strings.HasPrefix(n, "resolution published under") {
+			published += n
+		}
+	}
+	if !strings.Contains(published, ": 0 records;") || !strings.Contains(published, "1 without an opening capture: example.com/uncaptured/p.F") || !strings.Contains(published, "1 without a closing capture: example.com/uncaptured/p.G") {
+		t.Fatalf("publish account = %q, want no record and each symbol named under its class", published)
+	}
+	if recs := resolutioncache.Load(dir); len(recs) != 0 {
+		t.Fatalf("published records = %+v, want none", recs)
+	}
+}

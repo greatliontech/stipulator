@@ -101,9 +101,14 @@ type Served struct {
 	published map[string]publishAccount
 }
 
+// publishAccount is one publish's account under a selection key: the
+// records installed and, per class a symbol was kept out by, the symbols
+// themselves — a skipped symbol is named, never only counted, because an
+// operator reads the account to learn which bindings pay the typed
+// resolution every run and why.
 type publishAccount struct {
-	installed, moved, unopened, uncaptured int
-	refused                                []string
+	installed                            int
+	moved, unopened, uncaptured, refused []string
 }
 
 var (
@@ -231,9 +236,23 @@ func newServed(ctx context.Context, dir string) (*Served, error) {
 	return &Served{ctx: ctx, dir: abs, sels: map[string]buildSelection{}, served: map[string]resolutioncache.Record{}, answers: map[string]childAnswer{}, pending: map[string][]string{}, reasons: map[string]string{}}, nil
 }
 
-// packageOf derives a symbol's import path — everything before the
-// first dot after the last slash — the pattern its typed load needs;
-// false for a symbol string that carries no package.
+// subjectOf derives a symbol's gofresh subject from its lexical package
+// (packageOf); false for a symbol string that carries no package.
+func subjectOf(symbol string) (gofresh.Subject, bool) {
+	pkg, ok := packageOf(symbol)
+	if !ok {
+		return gofresh.Subject{}, false
+	}
+	return gofresh.Subject{Package: pkg, Symbol: symbol[len(pkg)+1:]}, true
+}
+
+// packageOf derives a symbol's import path lexically — everything
+// before the first dot after the last slash — the pattern a typed load
+// needs before any load; false for a symbol string that carries no
+// package. The symbol grammar `import/path.Symbol` cannot spell a
+// package whose last path element carries a dot (`gopkg.in/x.v3`): such
+// a symbol loads, resolves and captures under the wrong package
+// (docs/issues/dotted-package-element-unresolvable.md).
 func packageOf(symbol string) (string, bool) {
 	i := strings.LastIndex(symbol, "/")
 	j := strings.Index(symbol[i+1:], ".")
@@ -297,11 +316,11 @@ func (s *Served) captureUnder(key string, symbols []string, phase string) (map[g
 	}
 	var subjects []gofresh.Subject
 	for _, sym := range symbols {
-		pkg, ok := packageOf(sym)
+		subject, ok := subjectOf(sym)
 		if !ok {
 			continue
 		}
-		subjects = append(subjects, gofresh.Subject{Package: pkg, Symbol: sym[len(pkg)+1:]})
+		subjects = append(subjects, subject)
 	}
 	var view *gofresh.View
 	for len(subjects) > 0 {
@@ -338,6 +357,9 @@ func (s *Served) captureUnder(key string, symbols []string, phase string) (map[g
 	if err != nil {
 		s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
 		return nil, false
+	}
+	if captureForTest != nil {
+		fps = captureForTest(phase, fps)
 	}
 	return fps, true
 }
@@ -830,14 +852,13 @@ func (s *Served) publishSelection(key string, symbols []string) {
 	var account publishAccount
 	for _, symbol := range symbols {
 		a := s.answers[symbol]
-		pkg, ok := packageOf(symbol)
+		subject, ok := subjectOf(symbol)
 		if !ok {
 			continue
 		}
-		subject := gofresh.Subject{Package: pkg, Symbol: symbol[len(pkg)+1:]}
 		fp, captured := closing[subject]
 		if !captured {
-			account.uncaptured++
+			account.uncaptured = append(account.uncaptured, symbol)
 			continue
 		}
 		// The straddle check: the tree the child answered from is the
@@ -846,11 +867,11 @@ func (s *Served) publishSelection(key string, symbols []string) {
 		// them resolves typed again next run.
 		before, opened := opening[subject]
 		if !opened {
-			account.unopened++
+			account.unopened = append(account.unopened, symbol)
 			continue
 		}
 		if closureMoved(before, fp) != "" {
-			account.moved++
+			account.moved = append(account.moved, symbol)
 			continue
 		}
 		// The record carries the capture's source tiers alone — the
@@ -884,23 +905,49 @@ func (s *Served) publishSelection(key string, symbols []string) {
 }
 
 // summed is this publish's account added to a prior publish's under the
-// same key: every count added, the refused lists joined in publish
-// order — the one summing rule the account's rendering reads.
+// same key: the installed counts added, every named list joined in
+// publish order — the one summing rule the account's rendering reads.
 func (a publishAccount) summed(prior publishAccount) publishAccount {
+	join := func(x, y []string) []string { return append(append([]string(nil), x...), y...) }
 	return publishAccount{
 		installed:  prior.installed + a.installed,
-		moved:      prior.moved + a.moved,
-		unopened:   prior.unopened + a.unopened,
-		uncaptured: prior.uncaptured + a.uncaptured,
-		refused:    append(append([]string(nil), prior.refused...), a.refused...),
+		moved:      join(prior.moved, a.moved),
+		unopened:   join(prior.unopened, a.unopened),
+		uncaptured: join(prior.uncaptured, a.uncaptured),
+		refused:    join(prior.refused, a.refused),
 	}
 }
 
-// publishedRefusalsBound caps the refused symbols one account line names.
-const publishedRefusalsBound = 8
+// captureForTest, when set, rewrites a capture under its phase
+// ("opening" or "publish") before any reader sees it — a seam so a test
+// plants a subject either capture omitted and reads it named in the
+// account.
+var captureForTest func(phase string, capture map[gofresh.Subject]gofresh.Fingerprint) map[gofresh.Subject]gofresh.Fingerprint
+
+// publishedNamesBound caps the symbols one class of the account line
+// names; the remainder is counted.
+const publishedNamesBound = 8
+
+// namedClass renders one class of the account: its count, its cause,
+// and its symbols sorted, the first publishedNamesBound named and the
+// rest counted.
+func namedClass(symbols []string, cause string) string {
+	sorted := append([]string(nil), symbols...)
+	sort.Strings(sorted)
+	shown := sorted
+	if len(shown) > publishedNamesBound {
+		shown = shown[:publishedNamesBound]
+	}
+	line := fmt.Sprintf("%d %s: %s", len(sorted), cause, strings.Join(shown, ", "))
+	if len(sorted) > len(shown) {
+		line += fmt.Sprintf(" (+%d more)", len(sorted)-len(shown))
+	}
+	return line
+}
 
 // publishNotices renders the publish's account, one line per selection
-// key the publish ran under.
+// key the publish ran under: the records installed, then each class of
+// symbol kept out with its symbols named (bounded).
 func (s *Served) publishNotices() []string {
 	keys := make([]string, 0, len(s.published))
 	for key := range s.published {
@@ -912,28 +959,20 @@ func (s *Served) publishNotices() []string {
 		a := s.published[key]
 		line := fmt.Sprintf("resolution published under %q: %s", selectionWord(key), countWord(a.installed, "record"))
 		var skipped []string
-		if a.moved > 0 {
-			skipped = append(skipped, fmt.Sprintf("%d moved between the opening and closing capture", a.moved))
+		if len(a.moved) > 0 {
+			skipped = append(skipped, namedClass(a.moved, "moved between the opening and closing capture"))
 		}
-		if a.unopened > 0 {
-			skipped = append(skipped, fmt.Sprintf("%d without an opening capture", a.unopened))
+		if len(a.unopened) > 0 {
+			skipped = append(skipped, namedClass(a.unopened, "without an opening capture"))
 		}
-		if a.uncaptured > 0 {
-			skipped = append(skipped, fmt.Sprintf("%d without a closing capture", a.uncaptured))
+		if len(a.uncaptured) > 0 {
+			skipped = append(skipped, namedClass(a.uncaptured, "without a closing capture"))
 		}
 		if len(skipped) > 0 {
-			line += "; skipped " + strings.Join(skipped, ", ")
+			line += "; skipped " + strings.Join(skipped, "; ")
 		}
-		if n := len(a.refused); n > 0 {
-			sort.Strings(a.refused)
-			shown := a.refused
-			if len(shown) > publishedRefusalsBound {
-				shown = shown[:publishedRefusalsBound]
-			}
-			line += fmt.Sprintf("; %d refused on their source tiers: %s", n, strings.Join(shown, ", "))
-			if n > len(shown) {
-				line += fmt.Sprintf(" (+%d more)", n-len(shown))
-			}
+		if len(a.refused) > 0 {
+			line += "; " + namedClass(a.refused, "refused on their source tiers")
 		}
 		out = append(out, line)
 	}

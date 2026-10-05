@@ -47,6 +47,23 @@ Resident baselines on the host at the time: three opencode sessions
 `stipulator check` of another session on a different module, with its own
 resolver child.
 
-Lands: cross-tool train chunk 307 (the pass's resident set bounded and
-stated — chartered 2026-10-04 from the two reports above; heads
-stipulator's order).
+What chunk 307 settled (2026-10-05): the resolver child's half is
+resolved — the pass asks every question of the child at discovery,
+publishes its records and releases the child before the first process
+spawns (a check over gofresh opened execution with no descendant where
+the child had held 475 MiB through two hours); the parent runs under a
+soft ceiling derived from the host, the package spawn bound gained a
+memory term reading the host's available memory and the pass's own
+trees, and a pass the host cannot hold one process of refuses stated.
+The parent's growth during execution did NOT reproduce here: a full
+self-host pass over 31 packages (one race invocation, twelve children
+at the open) held the parent at 126–181 MiB through fifty-one minutes
+of execution; its peak, 987 MiB, is discovery's engines and views,
+released at discovery's exit. The 6.9 GB parent beside 111 children
+remains the field's observation alone, and every face now states the
+resident datum at each phase transition and in the pass's timing line.
+
+Lands: the next cerebro report carrying the pass's own resident lines
+(the parent's reading at execution's exit and at the end, and the
+timing line's running peak with its moment) — the datum that attributes
+the growth to a phase before any mechanism is built for it.

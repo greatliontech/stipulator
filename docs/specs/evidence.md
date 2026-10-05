@@ -791,10 +791,13 @@ verb whose verification pass builds the serving form — check, verify,
 gate, prune's evaluation and the gap list on both faces, context and
 partitions on the served face — carries the form's account: what
 served and what resolved typed, each selection the path degraded, what
-the close published or refused, and why each typed symbol's record did
-not serve — read after the close that publishes, never before it, and
-carried by a refusal the pass raises after that close as by its
-result; advisory, never a verdict input.
+the close published and — by class, each symbol named up to a bound
+per class and the rest counted — what it kept out (moved between the
+captures, without an opening or a closing capture, refused on its
+source tiers), and why each typed symbol's record did not serve — read
+after the close that publishes, never before it, and carried by a
+refusal the pass raises after that close as by its result; advisory,
+never a verdict input.
 
 **REQ-evidence-resolution-cache-format** (behavior): The local resolution
 cache MUST be a record store (REQ-evidence-record-store-layout) beside
