@@ -64,15 +64,22 @@ func Run(ctx context.Context, d verbcore.Deps, noTest bool, ids []string) (*chec
 	}
 	closer := verify.Closer(backends)
 	defer closer()
+	// Every question the pass puts to its backends is asked before any
+	// execution — discovery-phase work: the bindings resolve here, the
+	// witness run's seeding classification is the last, and the backends
+	// release their cost before the first spawn; the run announces its
+	// own phases, and the outcomes correlate after it
+	// (REQ-evidence-resolution-freshness).
+	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
+	report := verify.Resolve(spec, store, backends, !noTest)
 	var tr *verify.TestRun
 	if !noTest {
-		rep.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
 		if tr, err = d.RunTests(ctx, pc, verify.SeedingOf(backends), nil, ""); err != nil {
 			return nil, nil, nil, err
 		}
 	}
 	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
-	report := verify.Run(spec, store, backends, tr)
+	report = verify.Correlate(report, store, tr)
 	// The account is read after the close that publishes, and rides the
 	// report so every face renders it (REQ-evidence-resolution-freshness).
 	report.ResolutionNotices = closer()
@@ -111,15 +118,16 @@ func Scoped(ctx context.Context, d verbcore.Deps, prepared *check.Prepared, scop
 	}
 	closer := verify.Closer(backends)
 	defer closer()
+	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
+	report := verify.Resolve(spec, store, backends, capture)
 	var tr *verify.TestRun
 	if capture {
-		rep.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
 		if tr, err = d.RunTests(ctx, pc, verify.SeedingOf(backends), scope, why); err != nil {
 			return nil, nil, err
 		}
 	}
 	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
-	report := verify.Run(spec, store, backends, tr)
+	report = verify.Correlate(report, store, tr)
 	report.ResolutionNotices = closer()
 	return report, tr, nil
 }

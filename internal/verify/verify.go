@@ -333,8 +333,20 @@ type AttestationResult struct {
 // Run checks the store against the compiled spec, resolving symbols
 // through the supplied backends (keyed by backend name; nil skips all
 // symbol resolution) and correlating test outcomes from testRun (nil
-// skips witnessing: role-tests bindings read TestNotRun).
+// skips witnessing: role-tests bindings read TestNotRun). It is
+// Correlate over Resolve; a pass that executes between the two calls
+// them apart.
 func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Backend, testRun *TestRun) *Report {
+	return Correlate(Resolve(spec, store, backends, testRun != nil), store, testRun)
+}
+
+// Resolve is the half of the pass that asks the backends: hygiene over
+// the records, every binding's resolution, shape and package, and — when
+// the pass will witness — its witness class, so every question a pass
+// puts to a backend is asked before any execution and the backend can be
+// released there (REQ-evidence-resolution-freshness); nil backends skip
+// resolution. The report is unwitnessed until Correlate.
+func Resolve(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Backend, witnessing bool) *Report {
 	judge := newHygiene(spec, store)
 	rep := &Report{}
 	problem := func(path, format string, args ...any) {
@@ -374,16 +386,11 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 				}
 			}
 
-			if testRun != nil && witnessRole(b.GetRole()) {
-				result.TestOutcome = testRun.Outcomes[b.GetSymbol()]
-				result.OutsideWitnessSelection = testRun.OutsideSubjects[b.GetSymbol()]
-				result.NoOutcomeCause = testRun.NoOutcome[b.GetSymbol()]
-				result.ScopeSkipped = testRun.ScopeSkipped[b.GetSymbol()]
-				// RaceEnabled qualifies a witness; a row without a passing
-				// outcome carries no witness to qualify, so it never claims
-				// the run's rigor for an outcome another invocation (or no
-				// execution at all) produced.
-				result.RaceEnabled = testRun.RaceEnabled && result.TestOutcome == TestPassed && !testRun.PlainWitness[b.GetSymbol()]
+			if witnessing && witnessRole(b.GetRole()) {
+				// The class is a backend's answer: asked here, with every
+				// other question the pass puts to its backends, so the
+				// backends can be released before any execution and the
+				// witness run's outcomes correlated after it.
 				if wc, ok := backends[b.GetBackend()].(WitnessClassVerdicts); ok {
 					result.WitnessClass, result.WitnessClassReason = wc.WitnessClassVerdict(b.GetSymbol())
 				} else if wc, ok := backends[b.GetBackend()].(WitnessClassifier); ok {
@@ -424,35 +431,6 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 		}
 	}
 
-	if testRun != nil {
-		rep.OutsidePolicy = testRun.OutsidePolicy
-		rep.Diagnostics = testRun.Diagnostics
-		// Cross-check runtime registrations: every registration must be
-		// backed by a witness-role binding (tests or proves) for the same
-		// requirement on the registration's top-level test — the binding
-		// store remains the only claim source.
-		type reqTest struct{ req, symbol string }
-		backed := map[reqTest]bool{}
-		for _, bf := range store.Bindings {
-			for _, b := range bf.Set.GetBindings() {
-				if witnessRole(b.GetRole()) {
-					backed[reqTest{b.GetRequirementId(), b.GetSymbol()}] = true
-				}
-			}
-		}
-		for _, reg := range testRun.Registrations {
-			symbol := reg.Package + "." + reg.TopLevel()
-			if !backed[reqTest{reg.Requirement, symbol}] {
-				problem("test run", "registration %s.%s covers %s, but no tests- or proves-role binding backs it", reg.Package, reg.Test, reg.Requirement)
-				continue
-			}
-			rep.Registrations = append(rep.Registrations, RegistrationResult{
-				Registration: reg,
-				Outcome:      testRun.Outcomes[reg.Package+"."+reg.Test],
-			})
-		}
-	}
-
 	for _, af := range store.Attestations {
 		for _, a := range af.Set.GetAttestations() {
 			problems, stands := judge.attestation(af.Path, a)
@@ -476,10 +454,67 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 	}
 
 	sortProblems(rep.Problems)
+	rep.Tally()
+	return rep
+}
+
+// Correlate completes a resolved report with a witness run: each
+// witness-role row's outcome, selection facts and rigor, the run's
+// registrations cross-checked against the store the report was resolved
+// over, its diagnostics and outside-policy count, the change signatures,
+// and the tally. A nil run leaves the report unwitnessed (role-tests
+// rows read TestNotRun).
+func Correlate(rep *Report, store *records.Store, testRun *TestRun) *Report {
 	rep.Witnessed = testRun != nil
-	if rep.Witnessed {
-		rep.Signatures = signatures(rep.Results)
+	if testRun == nil {
+		return rep
 	}
+	problem := func(path, format string, args ...any) {
+		rep.Problems = append(rep.Problems, Problem{Path: path, Message: fmt.Sprintf(format, args...)})
+	}
+	for i := range rep.Results {
+		result := &rep.Results[i]
+		if !witnessRole(result.Role) {
+			continue
+		}
+		result.TestOutcome = testRun.Outcomes[result.Symbol]
+		result.OutsideWitnessSelection = testRun.OutsideSubjects[result.Symbol]
+		result.NoOutcomeCause = testRun.NoOutcome[result.Symbol]
+		result.ScopeSkipped = testRun.ScopeSkipped[result.Symbol]
+		// RaceEnabled qualifies a witness; a row without a passing
+		// outcome carries no witness to qualify, so it never claims the
+		// run's rigor for an outcome another invocation (or no execution
+		// at all) produced.
+		result.RaceEnabled = testRun.RaceEnabled && result.TestOutcome == TestPassed && !testRun.PlainWitness[result.Symbol]
+	}
+	rep.OutsidePolicy = testRun.OutsidePolicy
+	rep.Diagnostics = testRun.Diagnostics
+	// Cross-check runtime registrations: every registration must be
+	// backed by a witness-role binding (tests or proves) for the same
+	// requirement on the registration's top-level test — the binding
+	// store remains the only claim source.
+	type reqTest struct{ req, symbol string }
+	backed := map[reqTest]bool{}
+	for _, bf := range store.Bindings {
+		for _, b := range bf.Set.GetBindings() {
+			if witnessRole(b.GetRole()) {
+				backed[reqTest{b.GetRequirementId(), b.GetSymbol()}] = true
+			}
+		}
+	}
+	for _, reg := range testRun.Registrations {
+		symbol := reg.Package + "." + reg.TopLevel()
+		if !backed[reqTest{reg.Requirement, symbol}] {
+			problem("test run", "registration %s.%s covers %s, but no tests- or proves-role binding backs it", reg.Package, reg.Test, reg.Requirement)
+			continue
+		}
+		rep.Registrations = append(rep.Registrations, RegistrationResult{
+			Registration: reg,
+			Outcome:      testRun.Outcomes[reg.Package+"."+reg.Test],
+		})
+	}
+	sortProblems(rep.Problems)
+	rep.Signatures = signatures(rep.Results)
 	rep.Tally()
 	return rep
 }

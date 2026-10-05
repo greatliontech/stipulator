@@ -75,12 +75,14 @@ type Phase int32
 const (
 	Phase_PHASE_UNSPECIFIED Phase = 0
 	Phase_PHASE_COMPILE     Phase = 1
-	// Package and obligation discovery, policy normalization included.
+	// Package and obligation discovery, policy normalization and the
+	// bindings' resolution included: every question a pass puts to its
+	// backends is asked here, before any execution.
 	Phase_PHASE_DISCOVERY Phase = 2
 	// Policy execution.
 	Phase_PHASE_EXECUTION Phase = 3
 	// Evidence verification: witness derivation — producer validation and
-	// record publication — and binding verification.
+	// record publication — and the bindings' correlation with the run.
 	Phase_PHASE_VERIFICATION Phase = 4
 	// Coverage evaluation.
 	Phase_PHASE_COVERAGE Phase = 5

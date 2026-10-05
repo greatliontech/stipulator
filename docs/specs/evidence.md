@@ -753,7 +753,14 @@ resolution, never from a served one, and only when the symbol's
 fingerprint captured before the typed load opened equals the one
 captured after the resolution — a symbol that moved between them is
 not recorded. A fault anywhere on the serving path degrades to the typed
-load for the affected symbols (REQ-evidence-freshness-degrade). Every
+load for the affected symbols (REQ-evidence-freshness-degrade). A
+verification pass asks its serving backend every question before any
+execution — the bindings' resolutions, shapes, packages and classes, and
+the witness run's seeding classification last — and the backend releases
+what answering cost it, its child process and the child's loaded program,
+before the run's first process spawns, publishing its records then and
+answering every later question of the pass from what it kept, so the
+resolution's cost is never resident beside the suite's executions. Every
 verb whose verification pass builds the serving form — check, verify,
 gate, prune's evaluation and the gap list on both faces, context and
 partitions on the served face — carries the form's account: what

@@ -133,6 +133,7 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	var testRun *verify.TestRun
 	var report *stipulatorv1.ExecutionReport
 	var backends map[string]verify.Backend
+	var resolved *verify.Report
 	if len(prepared.Hygiene) == 0 {
 		// The load is the operation's one capture of the accepted
 		// policy: every invocation normalized once here, and every
@@ -174,6 +175,13 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		// publishes, on every exit of this pass.
 		closer := verify.Closer(backends)
 		defer func() { res.SetResolutionNotices(closer()) }()
+		// The bindings resolve before the witness run — discovery-phase
+		// work — every question to the backend asked ahead of any
+		// execution; the run's seeding classification is the last, and
+		// the backend releases its child before the first spawn
+		// (REQ-evidence-resolution-freshness).
+		rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
+		resolved = verify.Resolve(spec, store, backends, true)
 
 		// The evidence-class fork (REQ-check-verdict): health judgment
 		// demands whole-policy execution, so the full form executes
@@ -240,7 +248,10 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		res.SetPolicyProblem(p)
 	}
 	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
-	vr := verify.Run(spec, store, backends, testRun)
+	if resolved == nil {
+		resolved = verify.Resolve(spec, store, nil, false)
+	}
+	vr := verify.Correlate(resolved, store, testRun)
 	vp := vr.Proto()
 	// The typed failure rows already ride the check payload — at the
 	// check level on the witness-evidence form, on the execution report

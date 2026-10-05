@@ -166,6 +166,11 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	if seedingErr != nil && ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
+	// The classification was the run's last question to its backend: a
+	// backend that can release what answering cost it does so now —
+	// before the universe's listings, the engines' loads and the first
+	// process spawn (REQ-evidence-resolution-freshness).
+	quiesceSeeding(seeding)
 	// A universe fault is a freshness-path fault, not a selection fault:
 	// selection needs only the policy's own discovery, and the universe
 	// feeds the outside-policy accounting the degraded reason then names.
@@ -728,6 +733,16 @@ func executedReason(why string) string {
 		return "prior evidence stale"
 	}
 	return why
+}
+
+// quiesceSeeding releases a seeding backend's resident cost once its
+// classification — the witness run's last question before execution —
+// is answered; a seeding without the extension holds nothing to
+// release.
+func quiesceSeeding(seeding verify.WitnessSeeding) {
+	if q, ok := seeding.(verify.Quiescer); ok {
+		q.Quiesce()
+	}
 }
 
 // plural renders a count with its noun.

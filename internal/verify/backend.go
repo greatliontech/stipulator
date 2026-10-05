@@ -69,6 +69,20 @@ type Slicer interface {
 	Slice(symbols []string) ([]Decl, error)
 }
 
+// Quiescer is an optional Backend extension: the backend releases what
+// answering has cost it — an owned child process, its loaded program —
+// once a pass has asked every question it puts before executing, and
+// answers later questions from what it kept (a question it never heard
+// may cost the child again). The witness run calls it right after its
+// seeding classification, the last question, so nothing of the
+// resolution's cost is resident through the run's loads and executions
+// (REQ-evidence-resolution-freshness). The records the backend owes
+// publish here, as at its close; the close publishes what was asked
+// since.
+type Quiescer interface {
+	Quiesce()
+}
+
 // Backend verifies symbol references for one language. Implementations
 // live outside this package: the core never depends on a backend.
 type Backend interface {

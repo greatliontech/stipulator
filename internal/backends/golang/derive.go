@@ -909,9 +909,17 @@ func groupSubjects(g *captureGroup) []gofresh.Subject {
 	return subjects
 }
 
+// beforeGroupEngineForTest, when set, runs before a group's engine is
+// constructed — the seam an ordering test uses to place the engines'
+// loads against the seeding backend's release.
+var beforeGroupEngineForTest func()
+
 // groupEngine constructs the gofresh engine for one capture group's
 // closure-shaping configuration.
 func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Engine, error) {
+	if beforeGroupEngineForTest != nil {
+		beforeGroupEngineForTest()
+	}
 	// Toolchain provenance is a prerequisite to constructing any
 	// engine: the sample resolves as this group's own witnesses do —
 	// the group's module root (under GOTOOLCHAIN=auto the selected
@@ -1007,19 +1015,22 @@ func emitEngineDiagnostic(p gofresh.Progress) { engineDiagnosticSink(p) }
 // NewWitnessRecorder prepares freshness publication for one execution of
 // the accepted policy: it must be called before the policy executes, so
 // the captured fingerprints pin the tree the execution compiles, and
-// the caller must report every invocation of the capture's discovery
-// through the completion hook — a group whose covering invocation is
-// never reported publishes nothing, with no fallback. Only
+// the caller must report every package's completion under its covering
+// invocation through the completion hook — a package whose completion
+// is never reported publishes nothing, with no fallback. Only
 // race-enabled Go invocations are captured — a non-race invocation grants
 // no witness evidence, so nothing it produces may enter the cache a
-// freshness-serving run would grant evidence from. A fault while
-// preparing disables publication and is reported through the derived
-// run's degraded reason, never as an error — publication is
-// optimization, not correctness — with one exception: a
-// toolchain-provenance refusal returns as the error, a run-level
-// abort (REQ-evidence-toolchain-provenance; classifyFault), because
-// the refused frontend also discovered and selected the suite the
-// degraded run would execute.
+// freshness-serving run would grant evidence from. The seeding
+// classification is the recorder's one question to its backend, and the
+// backend is released right after it (verify.Quiescer) — before the
+// engines' loads below, so the backend's child is never resident beside
+// them or the execution. A fault while preparing disables publication
+// and is reported through the derived run's degraded reason, never as
+// an error — publication is optimization, not correctness — with one
+// exception: a toolchain-provenance refusal returns as the error, a
+// run-level abort (REQ-evidence-toolchain-provenance; classifyFault),
+// because the refused frontend also discovered and selected the suite
+// the degraded run would execute.
 func NewWitnessRecorder(ctx context.Context, pc *Capture, seeding verify.WitnessSeeding) (*WitnessRecorder, error) {
 	dir := pc.dir
 	r := &WitnessRecorder{dir: dir, reasons: map[gofresh.Subject]string{}}
@@ -1039,11 +1050,16 @@ func NewWitnessRecorder(ctx context.Context, pc *Capture, seeding verify.Witness
 	// A seeding-classification fault degrades the run exactly as an
 	// engine fault does: nothing publishes, so nothing can later serve
 	// a witness the fault left unclassified (fail closed).
-	if err := classifySeeded(d, seeding); err != nil {
+	seedingErr := classifySeeded(d, seeding)
+	// The classification was this form's last question to its backend:
+	// released before the engines' loads and the first spawn
+	// (REQ-evidence-resolution-freshness).
+	quiesceSeeding(seeding)
+	if seedingErr != nil {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		r.degraded = err.Error()
+		r.degraded = seedingErr.Error()
 		return r, nil
 	}
 	// A package two invocations of one group select has no producing

@@ -550,7 +550,10 @@ func progressPipelineHarness(t *testing.T) (*mcp.ClientSession, *notificationLog
 			return map[string]verify.Backend{"go": fakeBackend{"example.com/p.TestA": strings.Repeat("s", 64)}}, nil
 		},
 		capture: func(context.Context) (*golang.Capture, error) { return nil, nil },
-		runTests: func(context.Context, *golang.Capture, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+		runTests: func(ctx context.Context, _ *golang.Capture, _ verify.WitnessSeeding, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
+			// The run announces its own execution phase, as the witness
+			// run does.
+			progress.FromContext(ctx).Phase(stipulatorv1.Phase_PHASE_EXECUTION)
 			return &verify.TestRun{RaceEnabled: true, SelectiveServing: true, Outcomes: map[string]verify.TestOutcome{}}, nil
 		},
 	}
@@ -603,10 +606,15 @@ func TestGateAndContextToolsReportPhasedProgress(t *testing.T) {
 	if err != nil || res.IsError {
 		t.Fatalf("gate: %v %v", err, res)
 	}
-	notes := waitNotifications(t, log, 5)
+	// Five phases and the terminal: six notifications.
+	notes := waitNotifications(t, log, 6)
 	phases, cause := phasesOf(t, notes)
+	// The pass owns compile, the discovery its bindings resolve under,
+	// verification and coverage; the witness run announces its own
+	// execution phase between them.
 	want := []stipulatorv1.Phase{
 		stipulatorv1.Phase_PHASE_COMPILE,
+		stipulatorv1.Phase_PHASE_DISCOVERY,
 		stipulatorv1.Phase_PHASE_EXECUTION,
 		stipulatorv1.Phase_PHASE_VERIFICATION,
 		stipulatorv1.Phase_PHASE_COVERAGE,
@@ -657,6 +665,7 @@ func TestVerifyPrunePartitionsToolsReportPhasedProgress(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-progress")
 	pipeline := []stipulatorv1.Phase{
 		stipulatorv1.Phase_PHASE_COMPILE,
+		stipulatorv1.Phase_PHASE_DISCOVERY,
 		stipulatorv1.Phase_PHASE_EXECUTION,
 		stipulatorv1.Phase_PHASE_VERIFICATION,
 	}
@@ -665,9 +674,10 @@ func TestVerifyPrunePartitionsToolsReportPhasedProgress(t *testing.T) {
 		args map[string]any
 		min  int
 	}{
-		{"verify", map[string]any{}, 4},
-		{"prune", map[string]any{"check": true}, 5},
-		{"partitions", map[string]any{}, 5},
+		// Each count is the tool's phases plus its terminal event.
+		{"verify", map[string]any{}, 5},
+		{"prune", map[string]any{"check": true}, 6},
+		{"partitions", map[string]any{}, 6},
 	}
 	for _, tc := range cases {
 		t.Run(tc.tool, func(t *testing.T) {
@@ -734,7 +744,9 @@ func TestVerifyToolDeadlineNamesExpiredPhaseAndCause(t *testing.T) {
 		},
 		capture: func(context.Context) (*golang.Capture, error) { return nil, nil },
 		runTests: func(ctx context.Context, _ *golang.Capture, _ verify.WitnessSeeding, _ map[gofresh.Subject]bool) (*verify.TestRun, error) {
-			// The policy execution outlasts any deadline.
+			// The run announces its own execution phase, as the witness
+			// run does; the policy execution then outlasts any deadline.
+			progress.FromContext(ctx).Phase(stipulatorv1.Phase_PHASE_EXECUTION)
 			<-ctx.Done()
 			return nil, ctx.Err()
 		},

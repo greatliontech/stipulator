@@ -3,11 +3,17 @@ package verifyrun
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/greatliontech/gofresh"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/check"
+	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -35,6 +41,38 @@ func (b *accountBackend) Notices() []string {
 		out = append(out, "resolution published under \"default\": 1 record")
 	}
 	return out
+}
+
+// The pass emits the phases it owns — compile, then discovery for the
+// bindings' resolution, then verification for the correlation — and no
+// execution mark of its own: the witness run announces its phases, so
+// the first execution-phase reading is the run's, with the pass's
+// backends already released (REQ-evidence-resolution-freshness).
+func TestPassEmitsThePhasesItOwns(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	prepared := &check.Prepared{Spec: &stipulatorv1.Spec{}, Store: &records.Store{}}
+	var phases []stipulatorv1.Phase
+	rep := progress.New(func(e *stipulatorv1.ProgressEvent) {
+		if p := e.GetPhase(); len(phases) == 0 || phases[len(phases)-1] != p {
+			phases = append(phases, p)
+		}
+	}, progress.WithInterval(time.Hour))
+	ctx := progress.NewContext(context.Background(), rep)
+	deps := untouchable(t, prepared)
+	deps.Backends = func(context.Context, []string) (map[string]verify.Backend, error) {
+		return map[string]verify.Backend{"go": &accountBackend{}}, nil
+	}
+	deps.Capture = func(context.Context) (*golang.Capture, error) { return nil, nil }
+	deps.RunTests = func(context.Context, *golang.Capture, verify.WitnessSeeding, map[gofresh.Subject]bool, string) (*verify.TestRun, error) {
+		return &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}}, nil
+	}
+	if _, _, _, err := Run(ctx, deps, false, nil); err != nil {
+		t.Fatal(err)
+	}
+	want := []stipulatorv1.Phase{stipulatorv1.Phase_PHASE_COMPILE, stipulatorv1.Phase_PHASE_DISCOVERY, stipulatorv1.Phase_PHASE_VERIFICATION}
+	if !slices.Equal(phases, want) {
+		t.Fatalf("the pass emitted %v; want %v — its own phases, no execution mark", phases, want)
+	}
 }
 
 // The report carries the serving path's account, read after the one

@@ -709,6 +709,21 @@ func (s *Served) NeverServe(symbols []string) (map[string]string, error) {
 		}
 		ask = append(ask, symbol)
 	}
+	// A symbol the child has answered before answers from the memo —
+	// its refusal or the recorded absence of one — so a quiesced backend
+	// serves the classification without a child; only the never-asked
+	// remainder reaches the child.
+	var unasked []string
+	for _, symbol := range ask {
+		if why, asked := s.refusals[symbol]; asked {
+			if why != "" {
+				out[symbol] = why
+			}
+			continue
+		}
+		unasked = append(unasked, symbol)
+	}
+	ask = unasked
 	if len(ask) == 0 {
 		return out, nil
 	}
@@ -735,18 +750,34 @@ func (s *Served) NeverServe(symbols []string) (map[string]string, error) {
 	return out, nil
 }
 
-// Close publishes a record for every symbol the child resolved this run
-// whose subject gofresh can fingerprint — the typed answer, its class,
-// its serving refusal — and closes the child. Records are the next run's
-// served set; a publication fault leaves the run's answers untouched.
+// Close publishes a record for every symbol the child resolved since the
+// last quiesce — the typed answer, its class, its serving refusal — and
+// closes the child. Records are the next run's served set; a publication
+// fault leaves the run's answers untouched. A backend quiesced and asked
+// nothing new since owes nothing here.
 func (s *Served) Close() error {
+	s.Quiesce()
+	return nil
+}
+
+// Quiesce implements verify.Quiescer: the records the child's answers
+// owe publish now and the child closes, while every answer this run
+// gathered — resolutions, packages, classes, serving refusals — stays
+// to be served from memory; a symbol never asked before costs a child
+// again (ensureChild), which the spawn account witnesses, and the
+// publish account accumulates across the publishes. The witness run
+// calls it right after its seeding classification, so the child's
+// loaded program is never resident through the run's loads and
+// executions (REQ-evidence-resolution-freshness).
+func (s *Served) Quiesce() {
 	defer func() {
 		if s.child != nil {
 			s.child.Close()
+			s.child = nil
 		}
 	}()
 	if s.child == nil || len(s.pending) == 0 {
-		return nil
+		return
 	}
 	keys := make([]string, 0, len(s.pending))
 	for key := range s.pending {
@@ -756,7 +787,7 @@ func (s *Served) Close() error {
 	for _, key := range keys {
 		s.publishSelection(key, s.pending[key])
 	}
-	return nil
+	s.pending = map[string][]string{}
 }
 
 func (s *Served) publishSelection(key string, symbols []string) {
@@ -847,7 +878,22 @@ func (s *Served) publishSelection(key string, symbols []string) {
 	if s.published == nil {
 		s.published = map[string]publishAccount{}
 	}
-	s.published[key] = account
+	// A key publishes once per quiesce or close: the account is the
+	// sum, never the last publish's.
+	s.published[key] = account.summed(s.published[key])
+}
+
+// summed is this publish's account added to a prior publish's under the
+// same key: every count added, the refused lists joined in publish
+// order — the one summing rule the account's rendering reads.
+func (a publishAccount) summed(prior publishAccount) publishAccount {
+	return publishAccount{
+		installed:  prior.installed + a.installed,
+		moved:      prior.moved + a.moved,
+		unopened:   prior.unopened + a.unopened,
+		uncaptured: prior.uncaptured + a.uncaptured,
+		refused:    append(append([]string(nil), prior.refused...), a.refused...),
+	}
 }
 
 // publishedRefusalsBound caps the refused symbols one account line names.

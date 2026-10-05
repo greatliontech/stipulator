@@ -17,6 +17,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/progress"
+	"github.com/greatliontech/stipulator/internal/resident"
 	"github.com/greatliontech/stipulator/internal/resolutioncache"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -1332,5 +1333,46 @@ func TestCheckPublishesAndServesResolutionRecords(t *testing.T) {
 	notices := strings.Join(second.GetResolutionNotices(), "\n")
 	if !second.GetPassed() || strings.Contains(notices, "resolution: 0 served") {
 		t.Fatalf("the second check served nothing from records; notices:\n%s", notices)
+	}
+}
+
+// TestCheckReleasesTheResolverChildBeforeExecution pins the resolver
+// child's lifetime on the check (REQ-evidence-resolution-freshness): the
+// bindings resolve and publish before the witness run's first process
+// spawns, and the child is gone — the execution phase opens with no
+// descendant of the pass — while the account still names the publish.
+func TestCheckReleasesTheResolverChildBeforeExecution(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	if testing.Short() {
+		t.Skip("executes a race-instrumented policy over a fixture tree")
+	}
+	neutralAmbient(t)
+	dir := writeTree(t, baseTree(map[string]string{
+		"ok/ok_test.go":                    "package ok\n\nimport \"testing\"\n\n//gofresh:pure\nfunc TestDouble(t *testing.T) { Double(2) }\n",
+		"specs/check.md":                   "# Check\n\n**REQ-fix-must** (behavior): The fixture MUST pass.\n",
+		".stipulator/policy.textproto":     racePolicy,
+		".stipulator/bindings/a.textproto": "bindings {\n  requirement_id: \"REQ-fix-must\"\n  backend: \"go\"\n  symbol: \"example.com/checkfix/ok.TestDouble\"\n  role: BINDING_ROLE_TESTS\n}\n",
+	}))
+	var events []*stipulatorv1.ProgressEvent
+	rep := progress.New(func(e *stipulatorv1.ProgressEvent) { events = append(events, e) }, progress.WithResident(resident.Sample))
+	res, err := Run(progress.NewContext(context.Background(), rep), dir, false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(strings.Join(res.GetResolutionNotices(), "\n"), "resolution published under") {
+		t.Fatalf("the account names no publish:\n%s", strings.Join(res.GetResolutionNotices(), "\n"))
+	}
+	var execution *stipulatorv1.ProgressEvent
+	for _, e := range events {
+		if e.GetPhase() == stipulatorv1.Phase_PHASE_EXECUTION && e.GetResident() != nil {
+			execution = e
+			break
+		}
+	}
+	if execution == nil {
+		t.Fatal("no execution-phase event with a resident reading")
+	}
+	if n := execution.GetResident().GetDescendants(); n != 0 {
+		t.Fatalf("the execution phase opened with %d descendant process(es); want the resolver child released before it", n)
 	}
 }
