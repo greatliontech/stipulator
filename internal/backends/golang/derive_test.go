@@ -329,7 +329,7 @@ func TestDeriveCachedOutcomeGrantsNoHealthOrEvidence(t *testing.T) {
 		[]*stipulatorv1.TestResult{synthRow("race", "example.com/m/redmain", "TestGreen", passed)},
 	)
 	recorder := &WitnessRecorder{dir: tmp}
-	tr, err := recorder.Derive(context.Background(), report, nil)
+	tr, err := recorder.Derive(context.Background(), report)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -484,7 +484,7 @@ func TestDeriveNamesUncacheableWithoutGroups(t *testing.T) {
 		[]*stipulatorv1.TestResult{synthRow("plain", "example.com/m/deep/pkg", "TestOk", passed)},
 	)
 	recorder := &WitnessRecorder{dir: t.TempDir()}
-	tr, err := recorder.Derive(context.Background(), report, nil)
+	tr, err := recorder.Derive(context.Background(), report)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -497,7 +497,7 @@ func TestDeriveNamesUncacheableWithoutGroups(t *testing.T) {
 	}
 
 	degradedRecorder := &WitnessRecorder{dir: t.TempDir(), degraded: "engine fault"}
-	tr, err = degradedRecorder.Derive(context.Background(), report, nil)
+	tr, err = degradedRecorder.Derive(context.Background(), report)
 	if err != nil {
 		t.Fatal(err)
 	}

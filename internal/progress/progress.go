@@ -244,9 +244,9 @@ func (r *Reporter) Step(invocation string, completed, total int32) {
 }
 
 // Note emits a decision line — what an invocation executes and why its
-// subjects serve no record, or what a completed group persisted. A note
+// subjects serve no record, or what a completed unit persisted. A note
 // is a milestone, never rate-limited: the callers emit at most one per
-// executing invocation and one per persisted group, so the stream stays
+// executing invocation and one per persisted unit, so the stream stays
 // bounded by the policy, never by the test count (REQ-mcp-progress).
 func (r *Reporter) Note(text string) {
 	if r == nil {
@@ -647,7 +647,7 @@ func (r *Reporter) Stamps() string {
 // EndingLine renders an ending for a face that prints every ending: the
 // cause and the phase, with the kept units only when the operation was
 // interrupted — a completed operation's units already arrived one per
-// persisted group as notes, and the list is unbounded by anything but
+// persisted unit as notes, and the list is unbounded by anything but
 // the policy, so repeating it would make the one line grow with the
 // policy (REQ-mcp-progress's bound).
 func EndingLine(cause stipulatorv1.TerminalCause, phase stipulatorv1.Phase, kept []string) string {

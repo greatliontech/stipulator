@@ -92,8 +92,12 @@ type packageUnit struct {
 // completion hook: onPackage fires, serialized, the moment a package's
 // process and its own isolation re-runs have completed and been
 // classified — while other packages still execute — so a caller can
-// persist that package's evidence before the invocation ends. A hook
-// error ends the invocation with it. A nil hook is ExecuteSelection.
+// persist that package's evidence before the invocation ends. The hook
+// runs after the package's spawn slot is released: the re-runs spawn
+// and so hold the slot, the caller's publication spawns nothing and
+// holds none, so a sibling still queued is never delayed by it and the
+// envelope bounds processes alone (REQ-policy-explicit). A hook error
+// ends the invocation with it. A nil hook is ExecuteSelection.
 func ExecuteSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel TestSelection, onPackage func(unit packageUnit) error) (*SelectionResult, error) {
 	pkgs := make([]string, 0, len(sel))
 	for pkg := range sel {
@@ -123,12 +127,13 @@ func ExecuteSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 	// isolation re-runs of the tests its process denied an outcome —
 	// each solo, once, inside the same envelope, so an expired envelope
 	// denies a re-run before it spawns (reported as a TIMEOUT process
-	// outcome) and retries never outlive the invocation's reviewed bound
-	// — then the caller's hook. The unit of persistence is the package
-	// with its re-runs, complete before the next package needs it
-	// (REQ-policy-cancellation).
-	inSlot := func(i int, run packageRun) {
-		unit := packageUnit{pkg: pkgs[i], run: run}
+	// outcome) and retries never outlive the invocation's reviewed
+	// bound. The unit of persistence is the package with its re-runs,
+	// complete before the next package needs it
+	// (REQ-policy-cancellation); the caller's hook follows once the
+	// slot is released.
+	inSlot := func(i int, run *packageRun) {
+		unit := packageUnit{pkg: pkgs[i], run: *run}
 		timedOut := invCtx.Err() != nil
 		if err := finalizeRun(n, &unit.run, timedOut, ""); err != nil {
 			mu.Lock()
@@ -158,13 +163,17 @@ func ExecuteSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 		mu.Lock()
 		defer mu.Unlock()
 		units[i] = unit
+	}
+	afterSlot := func(i int, _ *packageRun) {
+		mu.Lock()
+		defer mu.Unlock()
 		if onPackage != nil && firstErr == nil {
-			if err := onPackage(unit); err != nil {
+			if err := onPackage(units[i]); err != nil {
 				fail(err)
 			}
 		}
 	}
-	runSelectedPackages(ctx, invCtx, n, pkgs, sel, spawn, inSlot)
+	runSelectedPackages(ctx, invCtx, n, pkgs, sel, spawn, inSlot, afterSlot)
 	if err := ctx.Err(); err != nil {
 		// Caller cancellation: the partial run is discarded whole.
 		return nil, err

@@ -165,6 +165,22 @@ type packageRun struct {
 // cancellation — it is a terminal fact, reported as TIMEOUT dispositions
 // with each cut-off launched process owning an incomplete observation.
 func ExecuteInvocation(ctx context.Context, n *NormalizedInvocation, selection []Obligation) (*stipulatorv1.InvocationHealth, []*stipulatorv1.TestResult, []*stipulatorv1.FailureDiagnostic, []*ProcessObservation, error) {
+	return ExecuteInvocationObserved(ctx, n, selection, nil)
+}
+
+// ExecuteInvocationObserved is ExecuteInvocation with a per-package
+// completion hook: onPackage fires, serialized, the moment a package's
+// process has completed and been classified — while other packages
+// still execute — so a caller can persist that package's evidence
+// before the invocation ends (REQ-policy-cancellation's unit of
+// persistence). The hook runs after the package's spawn slot is
+// released: a caller's publication holds no slot and spends none of the
+// envelope a sibling still queued is waiting on — the record's envelope
+// bounds processes alone (REQ-policy-explicit). The classification the
+// hook sees is the one the invocation's report carries: the run is
+// disposed once and the assembly reads the disposition. A hook error
+// ends the invocation with it. A nil hook is ExecuteInvocation.
+func ExecuteInvocationObserved(ctx context.Context, n *NormalizedInvocation, selection []Obligation, onPackage func(unit packageUnit) error) (*stipulatorv1.InvocationHealth, []*stipulatorv1.TestResult, []*stipulatorv1.FailureDiagnostic, []*ProcessObservation, error) {
 	pkgs := selectedPackages(selection)
 	if len(pkgs) == 0 {
 		return nil, nil, nil, nil, fmt.Errorf("invocation %q: selection carries no package obligations", n.Name)
@@ -176,12 +192,38 @@ func ExecuteInvocation(ctx context.Context, n *NormalizedInvocation, selection [
 	// abort.
 	invCtx, cancel := context.WithTimeoutCause(ctx, n.Timeout, errEnvelopeExpired)
 	defer cancel()
-	runs := runSelectedPackages(ctx, invCtx, n, pkgs, nil, spawnOrdinals(), nil)
+	var afterSlot func(i int, run *packageRun)
+	var (
+		mu       sync.Mutex
+		firstErr error
+	)
+	if onPackage != nil {
+		afterSlot = func(i int, run *packageRun) {
+			mu.Lock()
+			defer mu.Unlock()
+			if err := finalizeRun(n, run, invCtx.Err() != nil, ""); err != nil {
+				if firstErr == nil {
+					firstErr = err
+				}
+				return
+			}
+			if firstErr != nil {
+				return
+			}
+			if err := onPackage(packageUnit{pkg: pkgs[i], run: *run}); err != nil {
+				firstErr = err
+			}
+		}
+	}
+	runs := runSelectedPackages(ctx, invCtx, n, pkgs, nil, spawnOrdinals(), nil, afterSlot)
 	if err := ctx.Err(); err != nil {
 		// Caller cancellation: the partial run is discarded whole. The
 		// envelope context is derived from ctx, so every child is already
 		// terminated through its owned process boundary.
 		return nil, nil, nil, nil, err
+	}
+	if firstErr != nil {
+		return nil, nil, nil, nil, firstErr
 	}
 	return assembleInvocation(n, runs, invCtx.Err() != nil)
 }
@@ -209,9 +251,14 @@ func spawnOrdinals() func() int32 {
 // when non-nil, runs for each package inside its own slot after its
 // process — still holding the slot, so whatever it spawns (the
 // selective form's isolation re-runs) counts against the bound as the
-// package's own process tree, never beside it — and is skipped under
-// the caller's cancellation.
-func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, pkgs []string, tests TestSelection, spawnOrdinal func() int32, inSlot func(i int, run packageRun)) []packageRun {
+// package's own process tree, never beside it. afterSlot, when
+// non-nil, runs for each package once its slot is released — the
+// caller's completion work, which spawns nothing and so holds no slot:
+// a sibling still queued on the bound is never delayed by it, and the
+// envelope it is waiting on is spent on processes alone
+// (REQ-policy-explicit). Both are skipped under the caller's
+// cancellation.
+func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, pkgs []string, tests TestSelection, spawnOrdinal func() int32, inSlot, afterSlot func(i int, run *packageRun)) []packageRun {
 	bound := spawnBoundOf(n)
 	sem := make(chan struct{}, bound)
 	runs := make([]packageRun, len(pkgs))
@@ -227,19 +274,21 @@ func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, p
 			defer func() { rep.Step(n.Name, pkgsDone.Add(1), int32(len(pkgs))) }()
 			select {
 			case sem <- struct{}{}:
-				defer func() { <-sem }()
+				runs[i] = runPackage(invCtx, n, pkg, tests[pkg], spawnOrdinal())
+				if inSlot != nil && ctx.Err() == nil {
+					inSlot(i, &runs[i])
+				}
+				<-sem
 			case <-invCtx.Done():
 				// Never spawned: the caller classifies the missing terminal
 				// disposition as timeout or discards on cancellation.
 				runs[i] = packageRun{pkg: pkg}
 				if inSlot != nil && ctx.Err() == nil {
-					inSlot(i, runs[i])
+					inSlot(i, &runs[i])
 				}
-				return
 			}
-			runs[i] = runPackage(invCtx, n, pkg, tests[pkg], spawnOrdinal())
-			if inSlot != nil && ctx.Err() == nil {
-				inSlot(i, runs[i])
+			if afterSlot != nil && ctx.Err() == nil {
+				afterSlot(i, &runs[i])
 			}
 		}(i, pkg)
 	}
@@ -1047,13 +1096,13 @@ func ExecutePolicy(ctx context.Context, pc *Capture) (*stipulatorv1.ExecutionRep
 	return executePolicy(ctx, pc, nil)
 }
 
-// executePolicy is ExecutePolicy with a completion hook: after each
-// invocation's execution, onCompleted sees the report so far — every
-// invocation completed to that point, its tests, diagnostics, and
-// observations — the seam that lets a witness group install the moment
-// its last covering invocation completes on this form too
-// (REQ-evidence-witness-cache-format's completed-group durability).
-func executePolicy(ctx context.Context, pc *Capture, onCompleted func(invocation string, sofar *stipulatorv1.ExecutionReport, observations []*ProcessObservation) error) (*stipulatorv1.ExecutionReport, []*ProcessObservation, error) {
+// executePolicy is ExecutePolicy with a per-package completion hook:
+// onPackage fires, serialized within its invocation, the moment a
+// package's process has completed and been classified under the named
+// invocation — the seam that lets the package's records install while
+// its siblings still execute on this form too
+// (REQ-evidence-witness-cache-format's install-on-completion rule).
+func executePolicy(ctx context.Context, pc *Capture, onPackage func(invocation string, unit packageUnit) error) (*stipulatorv1.ExecutionReport, []*ProcessObservation, error) {
 	rep := progress.FromContext(ctx)
 	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	universe, err := pc.ObligationUniverse(ctx)
@@ -1072,7 +1121,12 @@ func executePolicy(ctx context.Context, pc *Capture, onCompleted func(invocation
 		observations []*ProcessObservation
 	)
 	for _, ic := range d.invocations {
-		health, invTests, invDiags, invObs, err := ExecuteInvocation(ctx, ic.n, ic.obligations)
+		var hook func(unit packageUnit) error
+		if onPackage != nil {
+			name := ic.n.Name
+			hook = func(unit packageUnit) error { return onPackage(name, unit) }
+		}
+		health, invTests, invDiags, invObs, err := ExecuteInvocationObserved(ctx, ic.n, ic.obligations, hook)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1080,15 +1134,6 @@ func executePolicy(ctx context.Context, pc *Capture, onCompleted func(invocation
 		tests = append(tests, invTests...)
 		diags = append(diags, invDiags...)
 		observations = append(observations, invObs...)
-		if onCompleted != nil {
-			sofar := &stipulatorv1.ExecutionReport{}
-			sofar.SetInvocations(invocations)
-			sofar.SetTests(tests)
-			sofar.SetDiagnostics(diags)
-			if err := onCompleted(ic.n.Name, sofar, observations); err != nil {
-				return nil, nil, err
-			}
-		}
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, nil, err

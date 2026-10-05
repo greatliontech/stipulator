@@ -529,124 +529,126 @@ its earlier one), its record version, and its fields. Enforced by
 `TestLayout`, `TestServedTakesTheNewestOfADuplicatedIdentity`,
 `TestNameRefusesAnUnencodableFingerprint`.
 
-**REQ-evidence-witness-cache-format** (behavior): The local witness cache MUST be
-a record store (REQ-evidence-record-store-layout) of one file per record
-variant, its identity parts the producing capture group's build
-coordinate, the package, and the test name (the coordinate itself the
-same truncated digest over the group's canonical
+**REQ-evidence-witness-cache-format** (behavior): The local witness
+cache MUST be a record store (REQ-evidence-record-store-layout) of one
+file per record variant, its identity parts the producing capture
+group's build coordinate, the package, and the test name (the coordinate
+itself the same truncated digest over the group's canonical
 declared-build-coordinate key). The record's fingerprint member is
-Gofresh's published record form, decoded by Gofresh's decoder — a
-record it refuses fails closed to re-execution like a field-blind one,
-and a fingerprint its encoder refuses installs no record. The
-fingerprint's own 16-byte digests are Gofresh-owned integrity values,
-outside REQ-model-hash-func entirely. Distinct tree states of one test
-coexist as variants, at most four per identity, and alternating between
-branches evicts nothing. Records install the moment their unit
-completes — on the selective form the package, its process and its
-isolation re-runs executed and its closing validation passed; on the
-health-judged form the witness group at its last covering invocation —
-never as an
-end-of-run batch: a run dying mid-execution keeps every record already
-produced, and a degraded run installs nothing further — records its
-units installed before the fault stay, each validated by its own
-closing check, and the run's uncacheable account excludes
-them. Each file carries one record object with integer `version` equal to `8` —
-bumped from `7` when the compartment ledger left the record for the
-ledger store below (a prior record's inline ledger is an unknown field),
-from `6` when the record identity gained the producing capture
-group's coordinate, so a record is addressable only within the producer
-environment that made it, and from `5` when the persisted compartment
-ledger gained each declaration's package clause and referenced names,
-both consumed by the test-variants serve carve-out's diff — either way
-field-blind prior records fail closed to re-execution. A persisted-field
-addition earns a bump only when the version is the fail-closed mechanism,
-and the two bump-free arms differ: a field whose absence the engine's own
-recorded-evidence verdict already refuses (the dynamic-state strategy,
-judged stale by Gofresh when empty) fails closed by verdict instead of by
-version, while an audit-only field with no validity comparison (the vouch
-and discharge sets) cannot make serving wrong by its absence, so prior
-records serve unchanged with the audit set reading empty for the
-pre-field capture — the residual is auditability, not validity: an
-acceptance that was load-bearing at capture is invisible in that record's
-evidence until its next re-execution. The record carries
-string `group`, `package` and `test`, object `fingerprint`,
-object `outcomes`, optional
-array `registrations`, and optional array `observationExclusions` — the
-canonical reviewed exclusion set the record's observation was captured
-under, absent meaning the capture ran with none, which is exactly what
-every pre-field record's capture did. Its fingerprint keys are `maximalClosure`,
-`testVariantClosure`, `toolchain`,
-`buildConfig`, an optional `observationAssertion` plus `observationProof` pair, and
-optional `purityAssertion`, `dynamicStateVouches`, `singleSubjectDischarges`,
+Gofresh's published record form, decoded by Gofresh's decoder — a record
+it refuses fails closed to re-execution like a field-blind one, and a
+fingerprint its encoder refuses installs no record. The fingerprint's
+own 16-byte digests are Gofresh-owned integrity values, outside
+REQ-model-hash-func entirely. Distinct tree states of one test coexist
+as variants, at most four per identity, and alternating between branches
+evicts nothing. Records install the moment their unit completes — the
+package under its covering invocation: its process executed, on the
+selective form its isolation re-runs too, and its closing validation
+passed — never as an end-of-run batch: a run dying mid-execution keeps
+every record already produced, and a degraded run installs nothing
+further — records its units installed before the fault stay, each
+validated by its own closing check, and the run's uncacheable account
+excludes them. Each file carries one record object with integer
+`version` equal to `8` — bumped from `7` when the compartment ledger
+left the record for the ledger store below (a prior record's inline
+ledger is an unknown field), from `6` when the record identity gained
+the producing capture group's coordinate, so a record is addressable
+only within the producer environment that made it, and from `5` when the
+persisted compartment ledger gained each declaration's package clause
+and referenced names, both consumed by the test-variants serve
+carve-out's diff — either way field-blind prior records fail closed to
+re-execution. A persisted-field addition earns a bump only when the
+version is the fail-closed mechanism, and the two bump-free arms differ:
+a field whose absence the engine's own recorded-evidence verdict already
+refuses (the dynamic-state strategy, judged stale by Gofresh when empty)
+fails closed by verdict instead of by version, while an audit-only field
+with no validity comparison (the vouch and discharge sets) cannot make
+serving wrong by its absence, so prior records serve unchanged with the
+audit set reading empty for the pre-field capture — the residual is
+auditability, not validity: an acceptance that was load-bearing at
+capture is invisible in that record's evidence until its next
+re-execution. The record carries string `group`, `package` and `test`,
+object `fingerprint`, object `outcomes`, optional array `registrations`,
+and optional array `observationExclusions` — the canonical reviewed
+exclusion set the record's observation was captured under, absent
+meaning the capture ran with none, which is exactly what every pre-field
+record's capture did. Its fingerprint keys are `maximalClosure`,
+`testVariantClosure`, `toolchain`, `buildConfig`, an optional
+`observationAssertion` plus `observationProof` pair, and optional
+`purityAssertion`, `dynamicStateVouches`, `singleSubjectDischarges`,
 `packageProcessDischarges`, `dynamicStateStrategy`, `closureStrategy`,
-`runtimeInputs`, `runtimeDigest`, and numeric `resultKind`; closure (maximal and
-test-variant), build, and runtime
-digests are 16-byte lowercase hexadecimal values, the observation assertion and proof
-are structurally encoded attributable Gofresh evidence for the record's subject, the runtime
-manifest is canonical Gofresh v1, purity is empty or a recognized Gofresh attribution,
-the vouch and discharge sets are Gofresh's canonical sorted comma-joined
-`<import path>.<Variable>` identities (vouches: the reviewed acceptances that
-discharged culprits for this fingerprint; the two discharge sets:
-attestation-borne acceptances, audit exactly as vouches), the dynamic-state
-strategy is the Gofresh strategy identifier the fingerprint was computed under
+`runtimeInputs`, `runtimeDigest`, and numeric `resultKind`; closure
+(maximal and test-variant), build, and runtime digests are 16-byte
+lowercase hexadecimal values, the observation assertion and proof are
+structurally encoded attributable Gofresh evidence for the record's
+subject, the runtime manifest is canonical Gofresh v1, purity is empty
+or a recognized Gofresh attribution, the vouch and discharge sets are
+Gofresh's canonical sorted comma-joined `<import path>.<Variable>`
+identities (vouches: the reviewed acceptances that discharged culprits
+for this fingerprint; the two discharge sets: attestation-borne
+acceptances, audit exactly as vouches), the dynamic-state strategy is
+the Gofresh strategy identifier the fingerprint was computed under
 (validity: the engine refuses to serve a record computed under another
-strategy, and a record persisted before the field reads as the empty strategy
-and fails closed to re-execution),
-measurement fields are absent, and result kind is Gofresh code-result. The
-producing compartment's declaration ledger — the witness-freshness
-carve-out's diff base — is stored once per compartment, not per record:
-every test of a package shares its compartment, so the store's `ledgers`
+strategy, and a record persisted before the field reads as the empty
+strategy and fails closed to re-execution), measurement fields are
+absent, and result kind is Gofresh code-result. The producing
+compartment's declaration ledger — the witness-freshness carve-out's
+diff base — is stored once per compartment, not per record: every test
+of a package shares its compartment, so the store's `ledgers`
 subdirectory holds one JSON file per compartment named by the
 fingerprint's `testVariantClosure` digest, installed atomically before
 its first record and rewritten only when the file present does not read
-back as a ledger (the digest addresses the content, so a readable file is
-this ledger; a torn or prior-version file never outlives the next install
-of its compartment), carrying integer `version` equal to `1`, string `testVariantClosure`
-equal to the file's name, an optional
-`declarations` array (string `file`, `kind`, `name`, optional `receiver`,
-optional `package`, optional `references` array,
-and 16-byte lowercase hexadecimal `hash`) and an optional `fileHeaders`
-array (string `file`, 16-byte lowercase hexadecimal `hash`, optional
-boolean `embedded`), each omitted when empty. A ledger is read for one
-record at a time, on the carve-out's demand, and must name that record's
-own test as a receiverless `func` — a witness subject's own
-declaration lives in its compartment, and a ledger that omits it would let
-that declaration ride an inert diff as an addition, the observation proof's
-identity agreement check applied to the ledger; a ledger failing that,
-malformed, of another version, disagreeing with its name, or absent is no
-ledger for the record, which costs the carve-out alone — the record still
+back as a ledger (the digest addresses the content, so a readable file
+is this ledger; a torn or prior-version file never outlives the next
+install of its compartment), carrying integer `version` equal to `1`,
+string `testVariantClosure` equal to the file's name, an optional
+`declarations` array (string `file`, `kind`, `name`, optional
+`receiver`, optional `package`, optional `references` array, and 16-byte
+lowercase hexadecimal `hash`) and an optional `fileHeaders` array
+(string `file`, 16-byte lowercase hexadecimal `hash`, optional boolean
+`embedded`), each omitted when empty. A ledger is read for one record at
+a time, on the carve-out's demand, and must name that record's own test
+as a receiverless `func` — a witness subject's own declaration lives in
+its compartment, and a ledger that omits it would let that declaration
+ride an inert diff as an addition, the observation proof's identity
+agreement check applied to the ledger; a ledger failing that, malformed,
+of another version, disagreeing with its name, or absent is no ledger
+for the record, which costs the carve-out alone — the record still
 serves on plain validity. Loading the store reads records only, never
 ledgers, and reclaims every ledger no record file names — a refused
 record's ledger stays, its refusal is the file's own, and a ledger
 younger than the load is a concurrent install's and stays until it has
-aged unreferenced — so the ledger
-store is bounded by the record store whose variant bound evicts records
-without reading them. An
-`observationProof` object has string keys `strategy`, `package`, `symbol`, optional
-`reason`, and `evidence`, plus required non-null boolean `observable`; its package and symbol equal the
-record identity, `reason` is absent exactly when `observable` is true, and `evidence`
-is a 16-byte lowercase hexadecimal Gofresh integrity digest. Every outcomes
-object contains its record's top-level `package.test` key and
-only that key or its `/subtest` descendants, with `passed`, `failed`, or `skipped`
-values. Cache deserialization validates canonical structural encoding and proof
-disposition consistency only. Source-bound proof integrity and compatibility require
-the current Gofresh view and are enforced by `CheckObserved`, so a structurally valid
-but incompatible historical proof remains readable but cannot grant reuse. Optional
-fields are omitted rather than encoded as `null`. Unknown fields, another version,
-a record disagreeing with the file's own name, or any structural malformation
-makes that file alone an absent record — sibling records stay trusted, because
-refusal is per record and costs only that record's execution, while a record is
-never migrated or partially trusted. Per identity the store keeps a bounded set
-of the most recently installed variants; eviction is by recency and costs only
-execution, and serving tries an identity's variants most recently installed
-first — the variant the last state change produced proves equivalent
-whenever the tree has not alternated since, so the first fingerprint check
-is usually the last. A record carries every derivation-strategy field the engine
-stamps on its fingerprint (the `…Strategy` keys the enumeration above lists): a strategy is a validity field the engine compares,
-so a record persisted before a strategy field reads as the empty strategy
-and fails closed to re-execution once, never serving a verdict computed
-under semantics the engine no longer implements; the machine and runtime
-guard fields are never persisted.
+aged unreferenced — so the ledger store is bounded by the record store
+whose variant bound evicts records without reading them. An
+`observationProof` object has string keys `strategy`, `package`,
+`symbol`, optional `reason`, and `evidence`, plus required non-null
+boolean `observable`; its package and symbol equal the record identity,
+`reason` is absent exactly when `observable` is true, and `evidence` is
+a 16-byte lowercase hexadecimal Gofresh integrity digest. Every outcomes
+object contains its record's top-level `package.test` key and only that
+key or its `/subtest` descendants, with `passed`, `failed`, or `skipped`
+values. Cache deserialization validates canonical structural encoding
+and proof disposition consistency only. Source-bound proof integrity and
+compatibility require the current Gofresh view and are enforced by
+`CheckObserved`, so a structurally valid but incompatible historical
+proof remains readable but cannot grant reuse. Optional fields are
+omitted rather than encoded as `null`. Unknown fields, another version,
+a record disagreeing with the file's own name, or any structural
+malformation makes that file alone an absent record — sibling records
+stay trusted, because refusal is per record and costs only that record's
+execution, while a record is never migrated or partially trusted. Per
+identity the store keeps a bounded set of the most recently installed
+variants; eviction is by recency and costs only execution, and serving
+tries an identity's variants most recently installed first — the variant
+the last state change produced proves equivalent whenever the tree has
+not alternated since, so the first fingerprint check is usually the
+last. A record carries every derivation-strategy field the engine stamps
+on its fingerprint (the `…Strategy` keys the enumeration above lists): a
+strategy is a validity field the engine compares, so a record persisted
+before a strategy field reads as the empty strategy and fails closed to
+re-execution once, never serving a verdict computed under semantics the
+engine no longer implements; the machine and runtime guard fields are
+never persisted.
 
 **REQ-evidence-freshness-no-health** (behavior): A freshness-served test
 outcome MUST NOT contribute to package, command, or suite health; serving
@@ -870,30 +872,30 @@ evidentiary record, so what actually ran is reviewable after the fact.
 Outcomes or observations from distinct processes are never merged into one
 evidentiary record.
 
-**REQ-policy-cancellation** (behavior): A cancelled policy execution MUST
-discard its partial results — no outcome, observation, or health
+**REQ-policy-cancellation** (behavior): A cancelled policy execution
+MUST discard its partial results — no outcome, observation, or health
 disposition from a cancelled run is persisted, served, or reported as
 terminal — with cancellation propagated to every child process of the
-execution, package discovery included. On the selective form the unit
-of persistence is the package under its covering invocation, at its
-completion — its process and the isolation re-runs that process's denied
-tests earned having run, its executed records published — while its
-sibling packages still execute, so a run dying mid-invocation keeps
-every package already finished; a package nothing executes publishes in
-the verification pass; a package's served records are revalidated there
-too, after every execution of the run (REQ-check-witness-selection),
-never at the package's own completion. On the health-judged form the
-unit is the witness group at its last covering invocation's
-completion. What completed before the cancellation stays
+execution, package discovery included. On every form the unit of
+persistence is the package under its covering invocation, at its
+completion — its process and, on the selective form, the isolation
+re-runs that process's denied tests earned having run, its executed
+records published — while its sibling packages still execute, so a run
+dying mid-invocation keeps every package already finished; on the
+selective form a package nothing executes publishes in the verification
+pass, and a package's served records are revalidated there too, after
+every execution of the run (REQ-check-witness-selection), never at the
+package's own completion. A package's publication holds no process slot
+and runs under the operation's context, never the invocation's envelope:
+a sibling still queued on the spawn bound is never delayed by a finished
+package's publish, and the envelope is spent on processes alone
+(REQ-policy-explicit). What completed before the cancellation stays
 installed, and the cancelled run's ending names those units — each
-package persisted under its invocation, the invocation whose groups
-completed, the revalidation pass, the drift retry, with their record
-counts — or states that it kept nothing, so a rerun's serving is
-foreseeable. A
-group's covering invocations are those of the packages the run
-executes for it: every package on the full form, the stale packages
-the selection names on the selective one; a package two invocations
-select covers nothing.
+package persisted under its invocation, the revalidation pass, the drift
+retry, with their record counts — or states that it kept nothing, so a
+rerun's serving is foreseeable. A package's covering invocation is the
+one invocation of its group selecting it; a package two invocations of
+one group select covers nothing — its subjects never publish.
 
 ## Coverage
 

@@ -59,6 +59,48 @@ func executeInvocationObserved(t *testing.T, timeout time.Duration, cfg *stipula
 	return health, tests, diags, observations
 }
 
+// TestExecuteInvocationObservedEndsWithTheHooksError pins the executor's
+// per-package hook: it fires once per package with the run already
+// disposed — the classification the report would carry — and its error
+// ends the invocation with it, discarding the report.
+func TestExecuteInvocationObservedEndsWithTheHooksError(t *testing.T) {
+	if testing.Short() {
+		t.Skip("executes a race-instrumented package over the execute fixture")
+	}
+	neutralAmbient(t)
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./ok", "./reads"})
+	cfg.SetRace(true)
+	inv := &stipulatorv1.PolicyInvocation{}
+	inv.SetName("hooked")
+	inv.SetTimeout(durationpb.New(2 * time.Minute))
+	inv.SetGo(cfg)
+	ctx := context.Background()
+	n, err := NormalizeInvocation(ctx, executeFixture(t), inv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	obs, err := DiscoverInvocation(ctx, n)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var seen []string
+	refused := errors.New("hook refused")
+	health, _, _, _, err := ExecuteInvocationObserved(ctx, n, obs, func(unit packageUnit) error {
+		if unit.run.disposition == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_UNSPECIFIED {
+			t.Errorf("hook saw package %s undisposed", unit.pkg)
+		}
+		seen = append(seen, unit.pkg)
+		return refused
+	})
+	if !errors.Is(err, refused) || health != nil {
+		t.Fatalf("hooked invocation returned (%v, %v); want the hook's error and no report", health, err)
+	}
+	if len(seen) != 1 {
+		t.Fatalf("hook fired for %v; want exactly the first completed package — a refusing hook fires no further", seen)
+	}
+}
+
 func packageDisposition(t *testing.T, h *stipulatorv1.InvocationHealth, pkg string) stipulatorv1.HealthDisposition {
 	t.Helper()
 	for _, p := range h.GetPackages() {

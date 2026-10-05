@@ -339,15 +339,17 @@ type captureGroup struct {
 	// the tree that compiles the binaries, so capturing after execution
 	// would let a mid-run edit publish pre-edit outcomes under a
 	// post-edit hash — a spurious reuse. Captured before, the same
-	// interleaving reads stale: the safe direction.
+	// interleaving reads stale: the safe direction. view is the group's
+	// one analysis view — the expensive observation, paid once —
+	// released once every package's leg has published.
 	view *gofresh.View
 	fps  map[gofresh.Subject]gofresh.Fingerprint
-	// observed carries the observation-completeness proof view for the
-	// group's solo candidates, captured before execution and revalidated
-	// after.
-	observed    *gofresh.View
-	observedFPs map[gofresh.Subject]gofresh.Fingerprint
-	candidates  []gofresh.Subject
+	// legs is the health-judged form's publication state per package:
+	// the package is the unit of persistence (REQ-policy-cancellation),
+	// so each publishes on its own sibling of view, its proof leg over
+	// its whole-package process's solo candidates captured before
+	// execution and validated at its publish.
+	legs map[string]*packageLeg
 }
 
 // WitnessRecorder is the producer side of witness freshness under the
@@ -362,13 +364,8 @@ type WitnessRecorder struct {
 	dir      string
 	degraded string
 	groups   []*captureGroup
-	// tracker is the one completion rule: a group publishes the moment
-	// every invocation covering one of its packages has completed —
-	// installed at once, named on the progress stream — and Derive
-	// publishes only the remainder it marks unfinished.
-	tracker *groupTracker
-	records []witnesscache.Record
-	reasons map[gofresh.Subject]string
+	records  []witnesscache.Record
+	reasons  map[gofresh.Subject]string
 }
 
 // invocationCapture pairs one Go invocation's normalized form with its
@@ -1025,10 +1022,7 @@ func emitEngineDiagnostic(p gofresh.Progress) { engineDiagnosticSink(p) }
 // degraded run would execute.
 func NewWitnessRecorder(ctx context.Context, pc *Capture, seeding verify.WitnessSeeding) (*WitnessRecorder, error) {
 	dir := pc.dir
-	// The tracker exists on every exit — a recorder degraded before its
-	// groups are built tracks nothing — and is rebuilt over the groups
-	// once they are.
-	r := &WitnessRecorder{dir: dir, reasons: map[gofresh.Subject]string{}, tracker: emptyTracker()}
+	r := &WitnessRecorder{dir: dir, reasons: map[gofresh.Subject]string{}}
 	degrade := func(err error) (*WitnessRecorder, error) {
 		abort, reason := classifyFault(err)
 		if abort {
@@ -1092,18 +1086,32 @@ func NewWitnessRecorder(ctx context.Context, pc *Capture, seeding verify.Witness
 				g.fps[s] = fp
 			}
 		}
+		// The package is the unit of persistence, so it is the unit of
+		// validation too: each package publishes on its own sibling of
+		// the group's view, its proof candidates the subjects whose
+		// whole-package process is predicted solo.
+		byPkg := map[string][]gofresh.Subject{}
 		for _, s := range subjects {
-			fp, captured := g.fps[s]
-			if proofCandidate(fp, captured, g.packages[s.Package].solo) {
-				g.candidates = append(g.candidates, s)
-			}
+			byPkg[s.Package] = append(byPkg[s.Package], s)
 		}
-		g.observed, g.observedFPs = observedView(ctx, g.view, g.candidates)
+		g.legs = map[string]*packageLeg{}
+		for pkg, pkgSubjects := range byPkg {
+			leg, err := newPackageLeg(g.view, pkgSubjects)
+			if err != nil {
+				return degrade(err)
+			}
+			var candidates []gofresh.Subject
+			for _, s := range pkgSubjects {
+				fp, captured := g.fps[s]
+				if proofCandidate(fp, captured, g.packages[pkg].solo) {
+					candidates = append(candidates, s)
+				}
+			}
+			leg.prove(ctx, candidates)
+			g.legs[pkg] = leg
+		}
 		r.groups = append(r.groups, g)
 	}
-	// Every package executes on this form: the tracker covers each
-	// group by all of its non-ambiguous packages' invocations.
-	r.tracker = newGroupTracker(r.groups, everyPackage)
 	// Release transient package-loading memory before the caller spawns
 	// race-instrumented builds; the views stay alive for post-execution
 	// producer validation.
@@ -1135,7 +1143,7 @@ func keyOfProducer(p *stipulatorv1.ProducerIdentity) producerKey {
 // execution, or whose observation is unverifiable, is dropped and counted
 // uncacheable rather than published. The error return is reserved for
 // caller cancellation.
-func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.ExecutionReport, observations []*ProcessObservation) (*verify.TestRun, error) {
+func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.ExecutionReport) (*verify.TestRun, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -1187,10 +1195,11 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 			}
 		}
 	default:
-		// Published is a record count (one per group); Uncached is a
-		// subject count in Ran's unit, so distinct published subjects
-		// are the subtrahend — two group records for one shared package
-		// must not mask another subject's drop.
+		// Published is a record count (one per group holding the
+		// subject); Uncached is a subject count in Ran's unit, so
+		// distinct published subjects are the subtrahend — two group
+		// records for one shared package must not mask another
+		// subject's drop.
 		publishedSubjects := map[string]bool{}
 		for _, rec := range published {
 			publishedSubjects[rec.Package+"."+rec.Test] = true
@@ -1220,9 +1229,9 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 				}
 			}
 		}
-		// Publication installed at production: each group's records
-		// landed as their own variant files the moment its last covering
-		// invocation completed. Records this
+		// Publication installed at production: each package's records
+		// landed as their own variant files the moment the package
+		// completed under its covering invocation. Records this
 		// run never touched — a shadowed sibling's, a package this policy
 		// never selected's — need no rewrite: the store is per-record, so
 		// retention is the default and nothing shrinks. A departed test's
@@ -1233,134 +1242,117 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 	return tr, nil
 }
 
-// invocationCompleted is the completion hook of the health-judged
-// form: every group whose covering invocations have all completed
-// publishes now, from the report so far, and installs at once — the
-// unit of persistence is the witness group at its last covering
-// invocation's completion on this form as on the selective one
-// (REQ-policy-cancellation), named on the progress stream by the
-// completing invocation. A publication fault degrades the run whole,
-// as at the end; the error return is reserved for caller cancellation.
-func (r *WitnessRecorder) invocationCompleted(ctx context.Context, invocation string, sofar *stipulatorv1.ExecutionReport, observations []*ProcessObservation) error {
-	ready := r.tracker.invocationDone(invocation)
+// packageCompleted is the completion hook of the health-judged form:
+// the moment a package's process has completed under its covering
+// invocation, every group holding the package under that invocation
+// publishes the package's records — from the process's own rows,
+// disposition and observation — and installs them at once, named on
+// the progress stream by invocation and package: the unit of
+// persistence is the package under its covering invocation on this
+// form as on the selective one (REQ-policy-cancellation). A
+// publication fault degrades the run's further publication, as a
+// group's did; the error return is reserved for caller cancellation.
+func (r *WitnessRecorder) packageCompleted(ctx context.Context, invocation string, unit packageUnit) error {
 	if r.degraded != "" {
 		return nil
 	}
-	installed, degraded, err := r.publishRemaining(ctx, sofar, observations, ready)
-	// What landed is named before any error returns: a cancellation
-	// between two groups' installs must not leave records on disk the
-	// ending never mentions.
-	if installed > 0 {
-		progress.FromContext(ctx).Persisted(invocation, installed)
+	// The package's one producing process under its covering invocation
+	// is every subject's single candidate, rows or none: the executor
+	// launches exactly one process per selected package per invocation,
+	// and a package with no row still carries its disposition.
+	candidate := producerCandidate{
+		healthy: unit.run.disposition == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY,
+		rows:    unit.run.tests,
+		obs:     unit.run.obs,
 	}
-	if err != nil {
-		return err
-	}
-	if degraded != "" {
-		r.degraded = degraded
-	}
-	return nil
-}
-
-// publishRemaining assembles, validates, and installs the freshness
-// records the report supports for the groups the tracker just
-// completed — each offered to the store once, and only the records
-// that landed enter the account, so the recorder's account and the
-// store never disagree. It returns the count installed, and the
-// degraded reason when a fault disabled further publication — records
-// installed before the fault stay, each validated by its own group's
-// closing check; the error return is reserved for caller cancellation.
-func (r *WitnessRecorder) publishRemaining(ctx context.Context, report *stipulatorv1.ExecutionReport, observations []*ProcessObservation, ready []*captureGroup) (int, string, error) {
-	if r.degraded != "" {
-		return 0, r.degraded, nil
-	}
-	facts := indexInvocations(report)
-	rowsByInvPkg := map[string][]*stipulatorv1.TestResult{}
-	for _, row := range report.GetTests() {
-		k := invPkgKey(row.GetProducer().GetInvocation(), row.GetPackage())
-		rowsByInvPkg[k] = append(rowsByInvPkg[k], row)
-	}
-	obsByProducer := map[producerKey]*ProcessObservation{}
-	for _, o := range observations {
-		obsByProducer[keyOfProducer(o.Wire.GetProducer())] = o
-	}
-	installed := 0
-	for _, g := range ready {
-		records, reasons, degraded, err := r.publishGroup(ctx, g, facts, rowsByInvPkg, obsByProducer)
-		if err != nil || degraded != "" {
-			return installed, degraded, err
+	for _, g := range r.groups {
+		// One package can sit in several groups — two invocations under
+		// different build coordinates both selecting it — each group
+		// running it under its own invocation; the completing invocation
+		// publishes the package in its own group alone. A package two
+		// invocations of one group select was refused at discovery.
+		p, ok := g.packages[unit.pkg]
+		if !ok || p.ambiguous || p.inv != invocation {
+			continue
+		}
+		if beforePackagePublishForTest != nil {
+			beforePackagePublishForTest(unit.pkg)
+		}
+		// Every non-ambiguous package of a populated group has a leg —
+		// its entry carries at least one expected test, and the legs
+		// were built over the group's subjects — and completes once
+		// under its invocation, so the leg is not yet published.
+		records, reasons, degraded, err := r.publishPackage(ctx, g, unit.pkg, g.legs[unit.pkg], candidate)
+		if err != nil {
+			return err
+		}
+		if degraded != "" {
+			r.degrade(degraded)
+			return nil
 		}
 		maps.Copy(r.reasons, reasons)
 		landed := installRecords(r.dir, records, r.reasons)
 		r.records = append(r.records, landed...)
-		installed += len(landed)
+		// What landed is named before anything else: a cancellation
+		// between two packages' installs must not leave records on disk
+		// the ending never mentions.
+		if len(landed) > 0 {
+			progress.FromContext(ctx).Persisted(invocation+" "+unit.pkg, len(landed))
+		}
 	}
-	return installed, "", nil
+	return nil
 }
 
 // publish is the run's publication account: every record the
 // completion hook installed and every refusal reason, with the degraded
-// reason when a later group's fault ended publication. Nothing is left
-// to publish here: the recorder's groups are the populated groups of
-// the discovery the executor walks, each holding a package exactly one
-// of its invocations selects, and the executor reports every
-// invocation's completion or returns its fault before derivation — so
-// every group is covered by the time the last invocation completes.
+// reason when a later package's fault ended publication. Nothing is
+// left to publish here: the recorder's groups are the populated groups
+// of the discovery the executor walks, each holding a package exactly
+// one of its invocations selects, and the executor fires every
+// package's completion under its invocation or returns its fault
+// before derivation — so every package is published by the time the
+// last invocation completes.
 func (r *WitnessRecorder) publish() ([]witnesscache.Record, map[gofresh.Subject]string, string) {
 	return append([]witnesscache.Record(nil), r.records...), maps.Clone(r.reasons), r.degraded
 }
 
-func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, facts invocationFacts, rowsByInvPkg map[string][]*stipulatorv1.TestResult, obsByProducer map[producerKey]*ProcessObservation) ([]witnesscache.Record, map[gofresh.Subject]string, string, error) {
+// publishPackage assembles and validates the records one package's
+// subjects support in one group, from the package's producing process,
+// on the package's own leg: the proof leg, the final fingerprints, the
+// post-run check, and the leg's one closing validation gate the
+// records. The leg is released after — nothing serves on this form, so
+// nothing reads it again — and the group's view with it once every
+// leg has published. A check fault or closing refusal degrades the
+// run's further publication with the named cause rather than filling
+// per-subject reasons: this package's evidence executed under one view
+// a tree edit disproved wholesale; packages that closed before it keep
+// what their own legs validated. The error return is reserved for
+// caller cancellation.
+func (r *WitnessRecorder) publishPackage(ctx context.Context, g *captureGroup, pkg string, leg *packageLeg, candidate producerCandidate) ([]witnesscache.Record, map[gofresh.Subject]string, string, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, "", err
 	}
+	defer g.release(pkg)
 	reasons := map[gofresh.Subject]string{}
-
 	eligible := map[gofresh.Subject]*pubSubject{}
 	var order []gofresh.Subject
-	for pkg, p := range g.packages {
-		if p.ambiguous {
-			// Refused at discovery; the reason already stands.
+	candidates := []producerCandidate{candidate}
+	for _, name := range g.packages[pkg].names {
+		subject := gofresh.Subject{Package: pkg, Symbol: name}
+		why, refused := g.neverServes[subject]
+		_, captured := g.fps[subject]
+		ps, reason := judgeSubject(subject, why, refused, captured, candidates)
+		if ps == nil {
+			reasons[subject] = reason
 			continue
 		}
-		names := p.names
-		// The package's one producing process under its covering
-		// invocation is every subject's single candidate, rows or none:
-		// the executor launches exactly one process per selected package
-		// per invocation, so every row under the key shares one
-		// producer, and a package with no row still carries its
-		// disposition.
-		inv := p.inv
-		rows := rowsByInvPkg[invPkgKey(inv, pkg)]
-		candidate := producerCandidate{healthy: facts.healthyPkg[invPkgKey(inv, pkg)], rows: rows}
-		if len(rows) > 0 {
-			candidate.obs = obsByProducer[keyOfProducer(rows[0].GetProducer())]
-		}
-		candidates := []producerCandidate{candidate}
-		for _, name := range names {
-			subject := gofresh.Subject{Package: pkg, Symbol: name}
-			why, refused := g.neverServes[subject]
-			_, captured := g.fps[subject]
-			ps, reason := judgeSubject(subject, why, refused, captured, candidates)
-			if ps == nil {
-				reasons[subject] = reason
-				continue
-			}
-			eligible[subject] = ps
-			order = append(order, subject)
-		}
+		eligible[subject] = ps
+		order = append(order, subject)
 	}
 	sortSubjects(order)
-
 	// The shared publication ladder (publishEligible) takes over from
-	// eligibility: proof leg, final fingerprints, post-run check, the
-	// one closing validation, record assembly. This full-execution path
-	// has no served outcomes; a check fault or closing refusal degrades
-	// the run's further publication with the named cause rather than
-	// filling per-subject reasons — this group's evidence executed
-	// under one view a tree edit disproved wholesale; groups that
-	// closed before it keep what their own views validated.
-	records, _, checkFault, closeFault, fatal := publishEligible(ctx, g.id, g.view, g.observed, g.observedFPs, g.candidates, order, eligible, g.fps, g.excludedPaths, recordNamespaces(g.scratchNamespaces), nil, nil, reasons)
+	// eligibility; this full-execution path has no served outcomes.
+	records, _, checkFault, closeFault, fatal := publishEligible(ctx, g.id, leg.view, leg.observed, leg.observedFPs, leg.candidates, order, eligible, g.fps, g.excludedPaths, recordNamespaces(g.scratchNamespaces), nil, nil, reasons)
 	if fatal != nil {
 		return nil, nil, "", fatal
 	}
@@ -1371,6 +1363,30 @@ func (r *WitnessRecorder) publishGroup(ctx context.Context, g *captureGroup, fac
 		return nil, nil, fmt.Sprintf("source producer validation failed: %v", closeFault), nil
 	}
 	return records, reasons, "", nil
+}
+
+// degrade ends the run's further publication with the named cause and
+// releases every leg still held: nothing publishes after a degrade, so
+// no analysis view is read again and none is carried to the run's end.
+func (r *WitnessRecorder) degrade(reason string) {
+	r.degraded = reason
+	for _, g := range r.groups {
+		for pkg := range g.legs {
+			g.release(pkg)
+		}
+	}
+}
+
+// release drops one package's leg and, once every leg of the group has
+// released, the group's view: the memory a published package's analysis
+// held returns while its siblings still execute.
+func (g *captureGroup) release(pkg string) {
+	if leg := g.legs[pkg]; leg != nil {
+		leg.release()
+	}
+	if legsReleased(g.legs) {
+		g.view = nil
+	}
 }
 
 func compactRegs(regs []verify.Registration) []verify.Registration {
@@ -1405,8 +1421,8 @@ func ExecutePolicyWitnessed(ctx context.Context, pc *Capture, seeding verify.Wit
 		// (REQ-evidence-toolchain-provenance).
 		return nil, nil, err
 	}
-	report, observations, err := executePolicy(ctx, pc, func(invocation string, sofar *stipulatorv1.ExecutionReport, observations []*ProcessObservation) error {
-		return recorder.invocationCompleted(ctx, invocation, sofar, observations)
+	report, _, err := executePolicy(ctx, pc, func(invocation string, unit packageUnit) error {
+		return recorder.packageCompleted(ctx, invocation, unit)
 	})
 	if err != nil {
 		return nil, nil, err
@@ -1414,7 +1430,7 @@ func ExecutePolicyWitnessed(ctx context.Context, pc *Capture, seeding verify.Wit
 	// Producer validation and publication judge the evidence the run
 	// produced: verification-phase work.
 	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
-	tr, err := recorder.Derive(ctx, report, observations)
+	tr, err := recorder.Derive(ctx, report)
 	if err != nil {
 		return nil, nil, err
 	}

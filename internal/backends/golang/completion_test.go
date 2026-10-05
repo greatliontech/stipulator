@@ -2,10 +2,12 @@ package golang
 
 import (
 	"context"
-	"maps"
+	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,40 +19,6 @@ import (
 	"github.com/greatliontech/stipulator/stipulate"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
-
-// The one completion rule: a group is complete at its last covering
-// invocation's completion, over its executing packages alone, an
-// ambiguous package covering nothing; each group is returned once;
-// a group with nothing executing is complete from the start.
-//
-//gofresh:pure
-func TestGroupTrackerCompletesAtTheLastCoveringInvocation(t *testing.T) {
-	stipulate.Covers(t, "REQ-policy-cancellation")
-	a := &captureGroup{packages: map[string]*groupPackage{"p": {inv: "one", names: []string{"TestP"}}, "q": {inv: "two", names: []string{"TestQ"}}, "amb": {inv: "three", names: []string{"TestA"}, ambiguous: true}}}
-	b := &captureGroup{packages: map[string]*groupPackage{"r": {inv: "one", names: []string{"TestR"}}}}
-	served := &captureGroup{packages: map[string]*groupPackage{"s": {inv: "two", names: []string{"TestS"}}}}
-	tracker := newGroupTracker([]*captureGroup{a, b, served}, func(g *captureGroup, pkg string) bool { return g != served })
-	if len(tracker.pending[served]) != 0 || len(tracker.pending[a]) == 0 || len(tracker.pending[b]) == 0 {
-		t.Fatal("initial coverage: a group with nothing executing waits on no invocation, the others wait")
-	}
-	if ready := tracker.invocationDone("one"); len(ready) != 1 || ready[0] != b {
-		t.Fatalf("after one: ready %v, want b alone (a still waits on two)", ready)
-	}
-	// The ambiguous package's invocation never completed: a is ready
-	// on its non-ambiguous packages alone.
-	if ready := tracker.invocationDone("two"); len(ready) != 1 || ready[0] != a {
-		t.Fatalf("after two: ready %v, want a", ready)
-	}
-	if ready := tracker.invocationDone("three"); len(ready) != 0 {
-		t.Fatalf("an ambiguous package's invocation completed a group: %v", ready)
-	}
-	if ready := tracker.invocationDone("one"); len(ready) != 0 {
-		t.Fatalf("a completed invocation completed a group twice: %v", ready)
-	}
-	if !tracker.finish(served) || tracker.finish(served) || tracker.finish(a) {
-		t.Fatal("finish marks a group once and never a group the invocations finished")
-	}
-}
 
 // On the serving form a group's executing packages alone cover it: a
 // group holding one served and one stale package persists at the
@@ -113,27 +81,6 @@ func TestServingFormPersistsAtTheExecutingInvocation(t *testing.T) {
 	}
 	if !stale || len(witnesscache.Load(tmp)) < before {
 		t.Fatalf("the stale package's new record is not in the store after the cancellation (%d records, was %d)", len(witnesscache.Load(tmp)), before)
-	}
-}
-
-// The selective predicate keys the selection by the package's OWN
-// covering invocation: a package another group's invocation names —
-// served here, stale there — executes nothing for this group, so its
-// invocation never enters the covering set (REQ-policy-cancellation:
-// the group persists at its last covering invocation, never later).
-//
-//gofresh:pure
-func TestSelectedStalePackagesKeyByTheCoveringInvocation(t *testing.T) {
-	stipulate.Covers(t, "REQ-policy-cancellation")
-	g1 := &captureGroup{packages: map[string]*groupPackage{"p": {inv: "x1", names: []string{"TestP"}}, "q": {inv: "x2", names: []string{"TestQ"}}}}
-	g2 := &captureGroup{packages: map[string]*groupPackage{"p": {inv: "y1", names: []string{"TestP"}}}}
-	sel := map[string]TestSelection{"x2": {"q": {"TestQ"}}, "y1": {"p": {"TestP"}}}
-	tracker := newGroupTracker([]*captureGroup{g1, g2}, selectedStalePackages(sel))
-	want := map[*captureGroup]map[string]bool{g1: {"x2": true}, g2: {"y1": true}}
-	for g, pending := range want {
-		if got := tracker.pending[g]; !maps.Equal(got, pending) {
-			t.Fatalf("pending = %v; want %v — p is named under y1, another group's invocation, so g1 waits on x2 alone", got, pending)
-		}
 	}
 }
 
@@ -230,12 +177,12 @@ func TestDoublySelectedPackageIsRefusedAtDiscovery(t *testing.T) {
 }
 
 // A mixed group on the full form: one package exactly one invocation
-// selects, one two select. The group is populated by the first, so
-// publishGroup runs on it and must skip the second — under the first
+// selects, one two select. The doubly selected package completes under
+// both invocations and must publish under neither — under the first
 // selecting invocation's rows alone it would install a record for a
-// subject with no producing leg — and the tracker covers the group by
-// the first alone (REQ-evidence-witness-freshness,
-// REQ-policy-cancellation).
+// subject with no producing leg — while the singly selected package
+// publishes at its own completion under the first
+// (REQ-evidence-witness-freshness, REQ-policy-cancellation).
 //
 // Deliberately not //gofresh:pure: executes the fixture's tests.
 func TestMixedGroupPublishesOnlyItsSinglySelectedPackage(t *testing.T) {
@@ -279,8 +226,375 @@ func TestMixedGroupPublishesOnlyItsSinglySelectedPackage(t *testing.T) {
 	if len(stored) != 1 || stored[0] != "example.com/units/b.TestB" {
 		t.Fatalf("store holds %v; want b.TestB alone — the doubly selected package publishes nothing", stored)
 	}
-	if len(notes) != 1 || !strings.HasPrefix(notes[0], "persisted: first (") {
-		t.Fatalf("persisted notes = %v; want the group installed at the first invocation — its one executing package's", notes)
+	if len(notes) != 1 || notes[0] != "persisted: first example.com/units/b (1 records)" {
+		t.Fatalf("persisted notes = %v; want the singly selected package installed at its completion under the first invocation", notes)
+	}
+}
+
+// TestHealthJudgedPackagePersistsBeforeItsSiblingCompletes pins the
+// health-judged form's unit of persistence inside one invocation
+// (REQ-policy-cancellation, REQ-evidence-witness-cache-format): a
+// package's records install the moment its process completes, while a
+// sibling package of the same invocation still runs — a cancellation at
+// that note keeps the finished package's record and nothing of the
+// sibling's, and the note names the package under its invocation.
+//
+// Deliberately not //gofresh:pure: executes the fixture's tests.
+func TestHealthJudgedPackagePersistsBeforeItsSiblingCompletes(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-cancellation", "REQ-evidence-witness-cache-format")
+	if testing.Short() {
+		t.Skip("executes a race invocation over a temporary module")
+	}
+	neutralAmbient(t)
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	tmp := writeModule(t, map[string]string{
+		"go.mod":      "module example.com/units\n\ngo 1.26\n",
+		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
+		"b/b_test.go": waitingSibling,
+	})
+	all := &stipulatorv1.GoInvocationConfig{}
+	all.SetPackages([]string{"./a", "./b"})
+	all.SetRace(true)
+	pol := &stipulatorv1.TestPolicy{}
+	pol.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", all)})
+	cctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var notes []string
+	rep := progress.New(func(e *stipulatorv1.ProgressEvent) {
+		if strings.HasPrefix(e.GetNote(), "persisted: ") {
+			notes = append(notes, e.GetNote())
+			releaseSibling(t, tmp)
+			cancel()
+		}
+	}, progress.WithInterval(time.Hour))
+	cctx = progress.NewContext(cctx, rep)
+	_, _, err := ExecutePolicyWitnessed(cctx, mustCapture(t, context.Background(), tmp, pol), noSeeding{})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled run returned %v; want the cancellation", err)
+	}
+	if len(notes) != 1 || notes[0] != "persisted: all example.com/units/a (1 records)" {
+		t.Fatalf("persisted notes = %v; want package a installed at its own completion, its sibling still running", notes)
+	}
+	var stored []string
+	for _, rec := range witnesscache.Load(tmp) {
+		stored = append(stored, rec.Package+"."+rec.Test)
+	}
+	if len(stored) != 1 || stored[0] != "example.com/units/a.TestA" {
+		t.Fatalf("store holds %v; want a.TestA alone — nothing of b's", stored)
+	}
+}
+
+// TestHealthJudgedPackagePublishesInItsOwnGroupAlone pins the covering
+// invocation on the health-judged form (REQ-policy-cancellation): one
+// package two invocations under different build coordinates both
+// select sits in two groups, each running it under its own invocation,
+// and each invocation's completion publishes the package in its own
+// group alone — one record per group, each named under the invocation
+// whose process produced it, never the other group's record under this
+// invocation's process.
+//
+// Deliberately not //gofresh:pure: executes the fixture's tests.
+func TestHealthJudgedPackagePublishesInItsOwnGroupAlone(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-cancellation")
+	if testing.Short() {
+		t.Skip("executes two race invocations over a temporary module")
+	}
+	neutralAmbient(t)
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	tmp := writeModule(t, map[string]string{
+		"go.mod":      "module example.com/units\n\ngo 1.26\n",
+		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
+	})
+	first := &stipulatorv1.GoInvocationConfig{}
+	first.SetPackages([]string{"./a"})
+	first.SetRace(true)
+	second := &stipulatorv1.GoInvocationConfig{}
+	second.SetPackages([]string{"./a"})
+	second.SetRace(true)
+	second.SetEnvironment([]string{"STIPULATOR_TEST_GROUP=second"})
+	pol := &stipulatorv1.TestPolicy{}
+	pol.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("first", first), goInvocation("second", second)})
+	var notes []string
+	rep := progress.New(func(e *stipulatorv1.ProgressEvent) {
+		if strings.HasPrefix(e.GetNote(), "persisted: ") {
+			notes = append(notes, e.GetNote())
+		}
+	}, progress.WithInterval(time.Hour))
+	ctx := progress.NewContext(context.Background(), rep)
+	_, tr, err := ExecutePolicyWitnessed(ctx, mustCapture(t, ctx, tmp, pol), noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.Degraded != "" || tr.Uncached != 0 {
+		t.Fatalf("degraded %q uncached %d; want both groups' records published", tr.Degraded, tr.Uncached)
+	}
+	want := []string{"persisted: first example.com/units/a (1 records)", "persisted: second example.com/units/a (1 records)"}
+	if !slices.Equal(notes, want) {
+		t.Fatalf("persisted notes = %v; want %v — the package once per group, under its own invocation", notes, want)
+	}
+	groups := map[string]bool{}
+	for _, rec := range witnesscache.Load(tmp) {
+		if rec.Package+"."+rec.Test != "example.com/units/a.TestA" {
+			t.Fatalf("store holds a record for %s.%s; want a.TestA alone", rec.Package, rec.Test)
+		}
+		groups[rec.Group] = true
+	}
+	if len(groups) != 2 {
+		t.Fatalf("store holds a.TestA under %d group(s); want one record per group", len(groups))
+	}
+}
+
+// waitingSibling is a test package whose one test completes only once
+// its directory holds the `ahead` sentinel (or after a minute): the
+// sibling-ordering pins release it from the sink that saw the other
+// package persist, so the order is a fact, never a sleep's margin.
+const waitingSibling = "package b\n\nimport (\n\t\"os\"\n\t\"testing\"\n\t\"time\"\n)\n\nfunc TestB(t *testing.T) {\n\tfor i := 0; i < 600; i++ {\n\t\tif _, err := os.Stat(\"ahead\"); err == nil {\n\t\t\treturn\n\t\t}\n\t\ttime.Sleep(100 * time.Millisecond)\n\t}\n}\n"
+
+// releaseSibling writes the waiting sibling's sentinel.
+func releaseSibling(t *testing.T, tmp string) {
+	if err := os.WriteFile(filepath.Join(tmp, "b", "ahead"), nil, 0o644); err != nil {
+		t.Error(err)
+	}
+}
+
+// TestHealthJudgedPublicationHoldsNoSpawnSlot pins the envelope's
+// scope on the health-judged form (REQ-policy-cancellation,
+// REQ-policy-explicit): a package's publication runs after its spawn
+// slot is released, so under a bound of one a sibling still queued
+// spawns the moment the first package's process ends — never behind
+// its publish — and the record's envelope is spent on processes alone.
+// The publish of whichever package finishes first is held longer than
+// the whole envelope; both packages still dispose healthy and publish.
+//
+// Deliberately not //gofresh:pure: executes the fixture's tests.
+func TestHealthJudgedPublicationHoldsNoSpawnSlot(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-cancellation", "REQ-policy-explicit")
+	if testing.Short() {
+		t.Skip("executes a race invocation over a temporary module")
+	}
+	neutralAmbient(t)
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	tmp := writeModule(t, map[string]string{
+		"go.mod":      "module example.com/units\n\ngo 1.26\n",
+		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
+		"b/b_test.go": "package b\n\nimport \"testing\"\n\nfunc TestB(t *testing.T) {}\n",
+	})
+	all := &stipulatorv1.GoInvocationConfig{}
+	all.SetPackages([]string{"./a", "./b"})
+	all.SetRace(true)
+	inv := goInvocation("all", all)
+	const envelope = 20 * time.Second
+	inv.SetTimeout(durationpb.New(envelope))
+	pol := &stipulatorv1.TestPolicy{}
+	pol.SetInvocations([]*stipulatorv1.PolicyInvocation{inv})
+	ctx := context.Background()
+	pc := mustCapture(t, ctx, tmp, pol)
+	for _, n := range pc.normalized {
+		n.SpawnBound = 1
+	}
+	var held sync.Once
+	beforePackagePublishForTest = func(string) {
+		// The first publish outlasts the envelope: a publish charged to
+		// the envelope would deny the queued sibling its spawn.
+		held.Do(func() { time.Sleep(envelope + 5*time.Second) })
+	}
+	t.Cleanup(func() { beforePackagePublishForTest = nil })
+	report, tr, err := ExecutePolicyWitnessed(ctx, pc, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range report.GetInvocations()[0].GetPackages() {
+		if p.GetDisposition() != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+			t.Fatalf("package %s disposed %v; want HEALTHY — a sibling's publish spent the envelope", p.GetPackage(), p.GetDisposition())
+		}
+	}
+	if tr.Degraded != "" || tr.Uncached != 0 || tr.Ran != 2 {
+		t.Fatalf("degraded %q uncached %d ran %d; want both packages executed and published", tr.Degraded, tr.Uncached, tr.Ran)
+	}
+}
+
+// TestSelectivePublicationHoldsNoSpawnSlot is the selective form's twin
+// of the pin above (REQ-policy-cancellation, REQ-policy-explicit): the
+// hook publishes after the package's slot is released, so the first
+// package's publish, held past the whole envelope, denies the queued
+// sibling nothing — both execute and publish.
+//
+// Deliberately not //gofresh:pure: executes the fixture's tests.
+func TestSelectivePublicationHoldsNoSpawnSlot(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-cancellation", "REQ-policy-explicit")
+	if testing.Short() {
+		t.Skip("executes a race invocation over a temporary module")
+	}
+	neutralAmbient(t)
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	tmp := writeModule(t, map[string]string{
+		"go.mod":      "module example.com/units\n\ngo 1.26\n",
+		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
+		"b/b_test.go": "package b\n\nimport \"testing\"\n\nfunc TestB(t *testing.T) {}\n",
+	})
+	all := &stipulatorv1.GoInvocationConfig{}
+	all.SetPackages([]string{"./a", "./b"})
+	all.SetRace(true)
+	inv := goInvocation("all", all)
+	const envelope = 20 * time.Second
+	inv.SetTimeout(durationpb.New(envelope))
+	pol := &stipulatorv1.TestPolicy{}
+	pol.SetInvocations([]*stipulatorv1.PolicyInvocation{inv})
+	ctx := context.Background()
+	pc := mustCapture(t, ctx, tmp, pol)
+	for _, n := range pc.normalized {
+		n.SpawnBound = 1
+	}
+	var held sync.Once
+	beforePackagePublishForTest = func(string) {
+		held.Do(func() { time.Sleep(envelope + 5*time.Second) })
+	}
+	t.Cleanup(func() { beforePackagePublishForTest = nil })
+	tr, err := RunWitnessesPolicy(ctx, pc, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.Outcomes["example.com/units/a.TestA"] != verify.TestPassed || tr.Outcomes["example.com/units/b.TestB"] != verify.TestPassed || tr.Uncached != 0 || tr.Ran != 2 {
+		t.Fatalf("outcomes %v uncached %d ran %d; want both packages executed and published — a sibling's publish spent the envelope", tr.Outcomes, tr.Uncached, tr.Ran)
+	}
+}
+
+// TestHealthJudgedDegradeReleasesEveryLeg pins the memory return under a
+// degrade: once a package's closing refusal ends the run's publication,
+// every leg still held — the degraded package's, and every package
+// after it that now publishes nothing — releases with its group's view,
+// so the recorder carries no analysis view to the run's end.
+//
+// Deliberately not //gofresh:pure: executes the fixture's tests.
+func TestHealthJudgedDegradeReleasesEveryLeg(t *testing.T) {
+	if testing.Short() {
+		t.Skip("executes three race invocations over a temporary module")
+	}
+	neutralAmbient(t)
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	tmp := writeModule(t, map[string]string{
+		"go.mod":      "module example.com/units\n\ngo 1.26\n",
+		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
+		"b/b.go":      "package b\n\nfunc V() int { return 1 }\n",
+		"b/b_test.go": "package b\n\nimport \"testing\"\n\nfunc TestB(t *testing.T) { _ = V() }\n",
+		"d/d_test.go": "package d\n\nimport \"testing\"\n\nfunc TestD(t *testing.T) {}\n",
+	})
+	first := &stipulatorv1.GoInvocationConfig{}
+	first.SetPackages([]string{"./a"})
+	first.SetRace(true)
+	second := &stipulatorv1.GoInvocationConfig{}
+	second.SetPackages([]string{"./b"})
+	second.SetRace(true)
+	second.SetEnvironment([]string{"STIPULATOR_TEST_GROUP=second"})
+	third := &stipulatorv1.GoInvocationConfig{}
+	third.SetPackages([]string{"./d"})
+	third.SetRace(true)
+	third.SetEnvironment([]string{"STIPULATOR_TEST_GROUP=third"})
+	pol := &stipulatorv1.TestPolicy{}
+	pol.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("first", first), goInvocation("second", second), goInvocation("third", third)})
+	ctx := context.Background()
+	pc := mustCapture(t, ctx, tmp, pol)
+	recorder, err := NewWitnessRecorder(ctx, pc, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Once the first package has published, the second group's closure
+	// moves under it: its closing validation refuses and the run
+	// degrades; the third never publishes.
+	beforePackagePublishForTest = func(pkg string) {
+		if pkg != "example.com/units/a" {
+			return
+		}
+		if err := os.WriteFile(filepath.Join(tmp, "b", "b.go"), []byte("package b\n\nfunc V() int { return 2 }\n"), 0o644); err != nil {
+			t.Error(err)
+		}
+	}
+	t.Cleanup(func() { beforePackagePublishForTest = nil })
+	if _, _, err := executePolicy(ctx, pc, func(invocation string, unit packageUnit) error {
+		return recorder.packageCompleted(ctx, invocation, unit)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if recorder.degraded == "" || len(recorder.records) != 1 {
+		t.Fatalf("degraded %q, %d records; want the run degraded after the first package's record", recorder.degraded, len(recorder.records))
+	}
+	for _, g := range recorder.groups {
+		if g.view != nil || !legsReleased(g.legs) {
+			t.Fatal("the degraded run ended with a group's analysis view or a leg still held")
+		}
+	}
+}
+
+// TestHealthJudgedRunReleasesEveryGroupView pins the health-judged
+// form's memory return: a package's leg releases at its publish and
+// the group's view with the last leg, so by the time the last
+// invocation completes the recorder holds no analysis view at all —
+// the memory a finished package held is not carried to the run's end.
+//
+// Deliberately not //gofresh:pure: executes the fixture's tests.
+func TestHealthJudgedRunReleasesEveryGroupView(t *testing.T) {
+	if testing.Short() {
+		t.Skip("executes a race invocation over a temporary module")
+	}
+	neutralAmbient(t)
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	tmp := writeModule(t, map[string]string{
+		"go.mod":      "module example.com/units\n\ngo 1.26\n",
+		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
+		"b/b_test.go": "package b\n\nimport \"testing\"\n\nfunc TestB(t *testing.T) {}\n",
+	})
+	all := &stipulatorv1.GoInvocationConfig{}
+	all.SetPackages([]string{"./a", "./b"})
+	all.SetRace(true)
+	pol := &stipulatorv1.TestPolicy{}
+	pol.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", all)})
+	ctx := context.Background()
+	pc := mustCapture(t, ctx, tmp, pol)
+	recorder, err := NewWitnessRecorder(ctx, pc, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(recorder.groups) != 1 || recorder.groups[0].view == nil || len(recorder.groups[0].legs) != 2 {
+		t.Fatalf("recorder holds %d group(s); want one with its view and two legs before execution", len(recorder.groups))
+	}
+	if _, _, err := executePolicy(ctx, pc, func(invocation string, unit packageUnit) error {
+		return recorder.packageCompleted(ctx, invocation, unit)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if recorder.degraded != "" || len(recorder.records) != 2 {
+		t.Fatalf("degraded %q, %d records; want both packages published", recorder.degraded, len(recorder.records))
+	}
+	for _, g := range recorder.groups {
+		if g.view != nil || !legsReleased(g.legs) {
+			t.Fatal("the run ended with a group's analysis view or a leg still held")
+		}
+	}
+}
+
+// A finished package returns the memory its analysis held while its
+// siblings still execute: releasing a leg drops its views, and the last
+// release drops the group's view too — on both forms' group shapes.
+//
+//gofresh:pure
+func TestReleaseDropsTheGroupViewAfterTheLastLeg(t *testing.T) {
+	g := &captureGroup{view: &gofresh.View{}, legs: map[string]*packageLeg{"p": {view: &gofresh.View{}, observed: &gofresh.View{}}, "q": {view: &gofresh.View{}}}}
+	g.release("p")
+	if g.legs["p"].view != nil || g.legs["p"].observed != nil || g.view == nil || g.legs["q"].view == nil {
+		t.Fatal("releasing one leg dropped more or less than that leg's views")
+	}
+	g.release("q")
+	if g.view != nil {
+		t.Fatal("the last leg's release kept the group's view")
+	}
+	wg := &witnessGroup{view: &gofresh.View{}, legs: map[string]*packageLeg{"p": {view: &gofresh.View{}}, "q": {view: &gofresh.View{}}}}
+	wg.release("p")
+	if wg.legs["p"].view != nil || wg.view == nil {
+		t.Fatal("the selective form's release dropped more or less than the leg's views")
+	}
+	wg.release("q")
+	if wg.view != nil {
+		t.Fatal("the selective form's last release kept the group's view")
 	}
 }
 
@@ -547,7 +861,7 @@ func TestPackagePersistsBeforeItsSiblingCompletes(t *testing.T) {
 	tmp := writeModule(t, map[string]string{
 		"go.mod":      "module example.com/units\n\ngo 1.26\n",
 		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestFail(t *testing.T) { t.Fatal(\"red\") }\n\nfunc TestPass(t *testing.T) {}\n",
-		"b/b_test.go": "package b\n\nimport (\n\t\"testing\"\n\t\"time\"\n)\n\nfunc TestB(t *testing.T) { time.Sleep(4 * time.Second) }\n",
+		"b/b_test.go": waitingSibling,
 	})
 	all := &stipulatorv1.GoInvocationConfig{}
 	all.SetPackages([]string{"./a", "./b"})
@@ -560,6 +874,7 @@ func TestPackagePersistsBeforeItsSiblingCompletes(t *testing.T) {
 	rep := progress.New(func(e *stipulatorv1.ProgressEvent) {
 		if strings.HasPrefix(e.GetNote(), "persisted: ") {
 			notes = append(notes, e.GetNote())
+			releaseSibling(t, tmp)
 			cancel()
 		}
 	}, progress.WithInterval(time.Hour))

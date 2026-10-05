@@ -3,6 +3,7 @@ package golang
 import (
 	"context"
 	"errors"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -107,10 +108,12 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 		goInvocation("z-plain", plainCfg),
 	})
 
-	// The health-judged form persists per witness group at its last
-	// covering invocation's completion, named on the progress stream by
-	// that invocation, so an ending after the install reports what it
-	// kept (REQ-policy-cancellation).
+	// The health-judged form persists per package at its completion
+	// under its covering invocation, named on the progress stream by
+	// invocation and package, so an ending after the install reports
+	// what it kept (REQ-policy-cancellation): the two packages whose
+	// subjects publish — ok's two records and reads' one — each named
+	// once, in whichever order their processes completed.
 	var events []*stipulatorv1.ProgressEvent
 	rep := progress.New(func(e *stipulatorv1.ProgressEvent) { events = append(events, e) }, progress.WithInterval(time.Hour))
 	ctx := progress.NewContext(context.Background(), rep)
@@ -121,17 +124,25 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 	if tr.Degraded != "" {
 		t.Fatalf("publication degraded: %s", tr.Degraded)
 	}
-	var persisted []string
+	persisted := map[string]bool{}
 	for _, e := range events {
 		if strings.HasPrefix(e.GetNote(), "persisted: ") {
-			persisted = append(persisted, e.GetNote())
+			persisted[e.GetNote()] = true
 		}
 	}
-	if len(persisted) != 1 || !strings.HasPrefix(persisted[0], "persisted: a-race (") || strings.HasPrefix(persisted[0], "persisted: a-race (0 ") {
-		t.Fatalf("persisted notes = %v; want one naming the race invocation with its records", persisted)
+	wantPersisted := map[string]bool{
+		"persisted: a-race example.com/exec/ok (2 records)":    true,
+		"persisted: a-race example.com/exec/reads (1 records)": true,
 	}
-	if kept := rep.Kept(); len(kept) != 1 || !strings.HasPrefix(kept[0], "a-race (") {
-		t.Fatalf("kept = %v; want the race invocation", kept)
+	if !maps.Equal(persisted, wantPersisted) {
+		t.Fatalf("persisted notes = %v; want each publishing package named once under the race invocation", persisted)
+	}
+	kept := map[string]bool{}
+	for _, unit := range rep.Kept() {
+		kept[unit] = true
+	}
+	if wantKept := map[string]bool{"a-race example.com/exec/ok (2 records)": true, "a-race example.com/exec/reads (1 records)": true}; !maps.Equal(kept, wantKept) {
+		t.Fatalf("kept = %v; want the two publishing packages", rep.Kept())
 	}
 	if SuiteHealthy(report) {
 		t.Error("suite with red packages read healthy")
@@ -531,12 +542,13 @@ func TestMutatesSourceOnce(t *testing.T) {
 // TestGoDeriveRuntimeDriftAndUnverifiableSkipRecords pins runtime
 // producer validation per record: a package whose observed runtime input
 // moved after its process ingested it (the purity-asserted reader, whose
-// fixture a later invocation rewrites), and packages whose observations
-// are unverifiable (a process-local environment read; a parent-traversal
-// write), all execute and witness normally but publish nothing — their
-// records are dropped and counted uncacheable so the next run re-derives
-// them — while an unaffected package in the same execution still
-// publishes.
+// fixture moves between its process's completion and its package's
+// publish — the pre-publish seam, the package being the unit of
+// persistence), and packages whose observations are unverifiable (a
+// process-local environment read; a parent-traversal write), all execute
+// and witness normally but publish nothing — their records are dropped
+// and counted uncacheable so the next run re-derives them — while an
+// unaffected package in the same execution still publishes.
 func TestGoDeriveRuntimeDriftAndUnverifiableSkipRecords(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness")
 	if testing.Short() {
@@ -608,6 +620,17 @@ func TestClean(t *testing.T) {}
 func TestCleanNoop(t *testing.T) {}
 `,
 	})
+	// The reader's fixture moves between its process's completion and
+	// its package's publish — the pre-publish seam.
+	beforePackagePublishForTest = func(pkg string) {
+		if pkg != "example.com/drift/reader" {
+			return
+		}
+		if err := os.WriteFile(filepath.Join(tmp, "reader", "data.txt"), []byte("after"), 0o644); err != nil {
+			t.Error(err)
+		}
+	}
+	t.Cleanup(func() { beforePackagePublishForTest = nil })
 	first := &stipulatorv1.GoInvocationConfig{}
 	first.SetPackages([]string{"./clean", "./impure", "./reader"})
 	first.SetRace(true)
@@ -615,10 +638,9 @@ func TestCleanNoop(t *testing.T) {}
 	second.SetPackages([]string{"./writer"})
 	second.SetRace(true)
 	p := &stipulatorv1.TestPolicy{}
-	// Invocations execute sequentially in record order: the reader's
-	// process completes and ingests its observation before the writer
-	// mutates the observed file, so the drift deterministically lands
-	// between ingestion and publication.
+	// The reader's drift lands deterministically between its process's
+	// ingestion and its package's publish through the pre-publish seam;
+	// the writer's own out-of-bracket write is the unverifiable arm.
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{
 		goInvocation("a-first", first),
 		goInvocation("b-second", second),
@@ -753,15 +775,15 @@ func TestGoDeriveCheckFaultDegradesRun(t *testing.T) {
 	}
 }
 
-// TestHealthJudgedFormPersistsPerInvocation pins the health-judged
-// form's unit of persistence (REQ-policy-cancellation,
-// REQ-evidence-witness-cache-format): a group installs the moment its
-// last covering invocation completes, so a run cancelled after its
-// first invocation keeps that invocation's records — and its ending
-// names exactly them — while the second invocation's never land.
+// TestHealthJudgedFormPersistsPerPackage pins the health-judged form's
+// unit of persistence (REQ-policy-cancellation,
+// REQ-evidence-witness-cache-format): a package installs the moment it
+// completes under its covering invocation, so a run cancelled at the
+// first invocation's one package keeps that package's record — and its
+// ending names exactly it — while the second invocation's never lands.
 //
 // Deliberately not //gofresh:pure: executes the fixture's tests.
-func TestHealthJudgedFormPersistsPerInvocation(t *testing.T) {
+func TestHealthJudgedFormPersistsPerPackage(t *testing.T) {
 	stipulate.Covers(t, "REQ-policy-cancellation", "REQ-evidence-witness-cache-format")
 	if testing.Short() {
 		t.Skip("executes two race invocations over a temporary module")
@@ -788,10 +810,10 @@ func TestHealthJudgedFormPersistsPerInvocation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	// The sink cancels the run at the first persisted note: everything
-	// the first invocation's completion installed is on disk, nothing
+	// the first package's completion installed is on disk, nothing
 	// later is.
 	rep := progress.New(func(e *stipulatorv1.ProgressEvent) {
-		if strings.HasPrefix(e.GetNote(), "persisted: first (") {
+		if strings.HasPrefix(e.GetNote(), "persisted: first example.com/units/a (") {
 			cancel()
 		}
 	}, progress.WithInterval(time.Hour))
@@ -800,8 +822,8 @@ func TestHealthJudgedFormPersistsPerInvocation(t *testing.T) {
 	if err == nil || !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled run returned %v; want the cancellation", err)
 	}
-	if kept := rep.Kept(); len(kept) != 1 || !strings.HasPrefix(kept[0], "first (") {
-		t.Fatalf("kept = %v; want the first invocation alone", kept)
+	if kept := rep.Kept(); len(kept) != 1 || kept[0] != "first example.com/units/a (1 records)" {
+		t.Fatalf("kept = %v; want the first invocation's package alone", kept)
 	}
 	tests := map[string]bool{}
 	for _, rec := range witnesscache.Load(tmp) {
@@ -821,18 +843,19 @@ func TestHealthJudgedFormPersistsPerInvocation(t *testing.T) {
 	if _, _, err := ExecutePolicyWitnessed(ctx2, mustCapture(t, ctx2, tmp, pol), noSeeding{}); err != nil {
 		t.Fatal(err)
 	}
-	if len(notes) != 2 || !strings.HasPrefix(notes[0], "persisted: first (") || !strings.HasPrefix(notes[1], "persisted: second (") {
-		t.Fatalf("persisted notes = %v; want first then second", notes)
+	if len(notes) != 2 || notes[0] != "persisted: first example.com/units/a (1 records)" || notes[1] != "persisted: second example.com/units/b (1 records)" {
+		t.Fatalf("persisted notes = %v; want first's package then second's", notes)
 	}
 }
 
 // TestHealthJudgedFormKeepsWhatClosedBeforeADegrade pins the degraded
-// account after per-invocation installs (REQ-policy-cancellation,
-// REQ-evidence-witness-cache-format): a later group's closing refusal
-// degrades further publication only — the first invocation's records
-// stay installed, its unit stays kept, and the run's uncacheable set
-// excludes the subjects it installed, so the run, the store, and the
-// ending tell one story.
+// account after per-package installs (REQ-policy-cancellation,
+// REQ-evidence-witness-cache-format): a later package's closing refusal
+// degrades further publication only — the first invocation's package
+// stays installed, its unit stays kept, every package after the fault
+// publishes nothing and reads the degrade, and the run's uncacheable
+// set excludes the subjects it installed, so the run, the store, and
+// the ending tell one story.
 //
 // Deliberately not //gofresh:pure: executes the fixture's tests.
 func TestHealthJudgedFormKeepsWhatClosedBeforeADegrade(t *testing.T) {
@@ -851,6 +874,7 @@ func TestHealthJudgedFormKeepsWhatClosedBeforeADegrade(t *testing.T) {
 		"c/c_test.go": "package c\n\nimport \"testing\"\n\nfunc TestC(t *testing.T) { t.Fatal(\"red\") }\n",
 		"b/b.go":      "package b\n\nfunc V() int { return 1 }\n",
 		"b/b_test.go": "package b\n\nimport \"testing\"\n\nfunc TestB(t *testing.T) { _ = V() }\n",
+		"d/d_test.go": "package d\n\nimport \"testing\"\n\nfunc TestD(t *testing.T) {}\n",
 	})
 	first := &stipulatorv1.GoInvocationConfig{}
 	first.SetPackages([]string{"./a", "./c"})
@@ -859,13 +883,19 @@ func TestHealthJudgedFormKeepsWhatClosedBeforeADegrade(t *testing.T) {
 	second.SetPackages([]string{"./b"})
 	second.SetRace(true)
 	second.SetEnvironment([]string{"STIPULATOR_TEST_GROUP=second"})
+	// A third invocation after the fault: its package executes but
+	// publishes nothing — the degrade ends publication for the run.
+	third := &stipulatorv1.GoInvocationConfig{}
+	third.SetPackages([]string{"./d"})
+	third.SetRace(true)
+	third.SetEnvironment([]string{"STIPULATOR_TEST_GROUP=third"})
 	pol := &stipulatorv1.TestPolicy{}
-	pol.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("first", first), goInvocation("second", second)})
-	// Once the first invocation has installed, the second group's
-	// closure moves under it: its closing validation refuses, and the
-	// run degrades from there.
+	pol.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("first", first), goInvocation("second", second), goInvocation("third", third)})
+	// Once the first invocation's package has installed, the second
+	// group's closure moves under it: its closing validation refuses,
+	// and the run degrades from there.
 	rep := progress.New(func(e *stipulatorv1.ProgressEvent) {
-		if strings.HasPrefix(e.GetNote(), "persisted: first (") {
+		if strings.HasPrefix(e.GetNote(), "persisted: first example.com/units/a (") {
 			if err := os.WriteFile(filepath.Join(tmp, "b", "b.go"), []byte("package b\n\nfunc V() int { return 2 }\n"), 0o644); err != nil {
 				t.Error(err)
 			}
@@ -879,20 +909,24 @@ func TestHealthJudgedFormKeepsWhatClosedBeforeADegrade(t *testing.T) {
 	if tr.Degraded == "" {
 		t.Fatal("a closure moved under the second group and the run did not degrade")
 	}
-	if kept := rep.Kept(); len(kept) != 1 || !strings.HasPrefix(kept[0], "first (") {
-		t.Fatalf("kept = %v; want the first invocation alone", kept)
+	if kept := rep.Kept(); len(kept) != 1 || kept[0] != "first example.com/units/a (1 records)" {
+		t.Fatalf("kept = %v; want the first invocation's package alone", kept)
 	}
 	tests := map[string]bool{}
 	for _, rec := range witnesscache.Load(tmp) {
 		tests[rec.Package+"."+rec.Test] = true
 	}
-	if !tests["example.com/units/a.TestA"] || tests["example.com/units/b.TestB"] {
-		t.Fatalf("store holds %v; want the first invocation's record and not the second's", tests)
+	if !tests["example.com/units/a.TestA"] || tests["example.com/units/b.TestB"] || tests["example.com/units/d.TestD"] {
+		t.Fatalf("store holds %v; want the first invocation's record and nothing after the fault", tests)
 	}
-	if tr.Uncached != 2 || tr.UncacheableReasons["example.com/units/a.TestA"] != "" ||
+	if tr.Uncached != 3 || tr.UncacheableReasons["example.com/units/a.TestA"] != "" ||
 		!strings.HasPrefix(tr.UncacheableReasons["example.com/units/b.TestB"], "freshness path degraded: ") ||
+		!strings.HasPrefix(tr.UncacheableReasons["example.com/units/d.TestD"], "freshness path degraded: ") ||
 		tr.UncacheableReasons["example.com/units/c.TestC"] != reasonProducerUnhealthy {
-		t.Fatalf("uncacheable = %d %v; want the red subject on the ladder's reason and the second group's on the degrade", tr.Uncached, tr.UncacheableReasons)
+		t.Fatalf("uncacheable = %d %v; want the red subject on the ladder's reason and every package after the fault on the degrade", tr.Uncached, tr.UncacheableReasons)
+	}
+	if tr.Outcomes["example.com/units/d.TestD"] != verify.TestPassed {
+		t.Fatalf("d.TestD = %v; want its executed outcome standing under the degrade", tr.Outcomes["example.com/units/d.TestD"])
 	}
 }
 
