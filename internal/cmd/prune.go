@@ -66,6 +66,9 @@ func pruneCmd() *cobra.Command {
 			if err != nil {
 				var pe *verifyrun.ProblemsError
 				if errors.As(err, &pe) {
+					// A refusal reached after the publishing close
+					// carries the account.
+					renderNotices(os.Stderr, pe.Notices)
 					return refuseProblems(pe.Problems)
 				}
 				return withRecordPath(err)
@@ -79,6 +82,7 @@ func pruneCmd() *cobra.Command {
 				return nil
 			}
 			fmt.Fprintln(os.Stderr, dim(res.Line()))
+			renderNotices(os.Stderr, res.Notices)
 			if check {
 				for _, up := range res.Prunes {
 					fmt.Printf("%s resolved gap lingers: %s\n", yellow("prunable:"), up.Path)

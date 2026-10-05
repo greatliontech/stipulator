@@ -1360,3 +1360,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "26dacff42146fd48f1da8b7a9edf006ea490a8ec6ae76347ac8e7f67b7582b9b"
 }
+
+bindings {
+  requirement_id: "REQ-mcp-response-contract"
+  content_hash: "4d13245b88101898d9c5b7ef7712de9e161eb4e903ed518b5236ffc7dd9942f3"
+  source_hash: "637045af11e83657de36de93b33d2a87995b1c4d568ba15956ba470cba14bcc8"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestServedVerbsCarryTheServingAccount"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "65c5412f10bf3802ea56bef6dbb4faddee20897984af341344f57f7e9240e567"
+}

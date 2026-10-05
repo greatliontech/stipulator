@@ -1540,6 +1540,7 @@ type VerifyReport struct {
 	xxx_hidden_Stale              int32                  `protobuf:"varint,8,opt,name=stale"`
 	xxx_hidden_Broken             int32                  `protobuf:"varint,9,opt,name=broken"`
 	xxx_hidden_ShapeMismatch      int32                  `protobuf:"varint,10,opt,name=shape_mismatch,json=shapeMismatch"`
+	xxx_hidden_ResolutionNotices  []string               `protobuf:"bytes,11,rep,name=resolution_notices,json=resolutionNotices"`
 	XXX_raceDetectHookData        protoimpl.RaceDetectHookData
 	XXX_presence                  [1]uint32
 	unknownFields                 protoimpl.UnknownFields
@@ -1644,6 +1645,13 @@ func (x *VerifyReport) GetShapeMismatch() int32 {
 	return 0
 }
 
+func (x *VerifyReport) GetResolutionNotices() []string {
+	if x != nil {
+		return x.xxx_hidden_ResolutionNotices
+	}
+	return nil
+}
+
 func (x *VerifyReport) SetProblems(v []*Problem) {
 	x.xxx_hidden_Problems = &v
 }
@@ -1662,7 +1670,7 @@ func (x *VerifyReport) SetSignatures(v []*ChangeSignature) {
 
 func (x *VerifyReport) SetOutsidePolicy(v int32) {
 	x.xxx_hidden_OutsidePolicy = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 10)
 }
 
 func (x *VerifyReport) SetWitnessDiagnostics(v []*FailureDiagnostic) {
@@ -1671,17 +1679,21 @@ func (x *VerifyReport) SetWitnessDiagnostics(v []*FailureDiagnostic) {
 
 func (x *VerifyReport) SetStale(v int32) {
 	x.xxx_hidden_Stale = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 10)
 }
 
 func (x *VerifyReport) SetBroken(v int32) {
 	x.xxx_hidden_Broken = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 10)
 }
 
 func (x *VerifyReport) SetShapeMismatch(v int32) {
 	x.xxx_hidden_ShapeMismatch = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 10)
+}
+
+func (x *VerifyReport) SetResolutionNotices(v []string) {
+	x.xxx_hidden_ResolutionNotices = v
 }
 
 func (x *VerifyReport) HasOutsidePolicy() bool {
@@ -1761,6 +1773,14 @@ type VerifyReport_builder struct {
 	Stale         *int32
 	Broken        *int32
 	ShapeMismatch *int32
+	// The serving path's account, read after the close that publishes:
+	// what served and what resolved typed, each selection the path
+	// degraded to typed resolution (REQ-evidence-freshness-degrade), what
+	// the close published or refused, and why each typed symbol's record
+	// did not serve. Advisory - never a verdict input. Global like
+	// outside_policy: a scoped slice says nothing about the serving path.
+	// Empty on a report whose pass built no serving backend.
+	ResolutionNotices []string
 }
 
 func (b0 VerifyReport_builder) Build() *VerifyReport {
@@ -1772,22 +1792,23 @@ func (b0 VerifyReport_builder) Build() *VerifyReport {
 	x.xxx_hidden_Registrations = &b.Registrations
 	x.xxx_hidden_Signatures = &b.Signatures
 	if b.OutsidePolicy != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 10)
 		x.xxx_hidden_OutsidePolicy = *b.OutsidePolicy
 	}
 	x.xxx_hidden_WitnessDiagnostics = &b.WitnessDiagnostics
 	if b.Stale != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 10)
 		x.xxx_hidden_Stale = *b.Stale
 	}
 	if b.Broken != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 10)
 		x.xxx_hidden_Broken = *b.Broken
 	}
 	if b.ShapeMismatch != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 10)
 		x.xxx_hidden_ShapeMismatch = *b.ShapeMismatch
 	}
+	x.xxx_hidden_ResolutionNotices = b.ResolutionNotices
 	return m0
 }
 
@@ -6146,7 +6167,7 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\apackage\x18\x01 \x01(\tR\apackage\x12\x12\n" +
 	"\x04test\x18\x02 \x01(\tR\x04test\x12%\n" +
 	"\x0erequirement_id\x18\x03 \x01(\tR\rrequirementId\x124\n" +
-	"\aoutcome\x18\x04 \x01(\x0e2\x1a.stipulator.v1.TestOutcomeR\aoutcome\"\xd8\x03\n" +
+	"\aoutcome\x18\x04 \x01(\x0e2\x1a.stipulator.v1.TestOutcomeR\aoutcome\"\x87\x04\n" +
 	"\fVerifyReport\x122\n" +
 	"\bproblems\x18\x01 \x03(\v2\x16.stipulator.v1.ProblemR\bproblems\x126\n" +
 	"\aresults\x18\x02 \x03(\v2\x1c.stipulator.v1.BindingResultR\aresults\x12G\n" +
@@ -6159,7 +6180,8 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x05stale\x18\b \x01(\x05R\x05stale\x12\x16\n" +
 	"\x06broken\x18\t \x01(\x05R\x06broken\x12%\n" +
 	"\x0eshape_mismatch\x18\n" +
-	" \x01(\x05R\rshapeMismatchJ\x04\b\x06\x10\a\"\x89\x01\n" +
+	" \x01(\x05R\rshapeMismatch\x12-\n" +
+	"\x12resolution_notices\x18\v \x03(\tR\x11resolutionNoticesJ\x04\b\x06\x10\a\"\x89\x01\n" +
 	"\x0fChangeSignature\x12%\n" +
 	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x123\n" +
 	"\x05label\x18\x02 \x01(\x0e2\x1d.stipulator.v1.SignatureLabelR\x05label\x12\x1a\n" +

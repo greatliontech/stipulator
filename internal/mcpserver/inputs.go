@@ -31,6 +31,14 @@ func scopeFrom(ids, bucket, filter, pathPrefix string) (views.Scope, error) {
 // refusal, the rendering every problem-refusing tool shares
 // (REQ-check-preparation).
 func refuseProblems(problems []verify.Problem) error {
+	return refuseProblemsAccounted(problems, nil)
+}
+
+// refuseProblemsAccounted is refuseProblems carrying the serving path's
+// account the refused pass read after its publishing close — the
+// digest's rule, the per-symbol typed lines left out — so a refusal
+// never hides what the close published (REQ-evidence-resolution-freshness).
+func refuseProblemsAccounted(problems []verify.Problem, notices []string) error {
 	if verifyrun.RefuseProblems(problems) == nil {
 		return nil
 	}
@@ -38,5 +46,11 @@ func refuseProblems(problems []verify.Problem) error {
 	for _, p := range problems {
 		msgs = append(msgs, p.String())
 	}
-	return fmt.Errorf("verification problems:\n%s", strings.Join(msgs, "\n"))
+	return fmt.Errorf("%s", resolutionDigest("verification problems:\n"+strings.Join(msgs, "\n"), notices))
+}
+
+// refuseReport is refuseProblems over a verification report, the
+// report's account carried.
+func refuseReport(rep *verify.Report) error {
+	return refuseProblemsAccounted(rep.Problems, rep.ResolutionNotices)
 }

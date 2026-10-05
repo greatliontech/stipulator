@@ -153,9 +153,12 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 	if n := len(rep.Problems); n > 0 {
 		out.Notes = []string{verifyrun.MisreportCaveat(n, verifyrun.CaveatEvaluatedStates)}
 	}
+	// The evaluation's serving account, by the served rule in the notes
+	// and the text alike (REQ-evidence-resolution-freshness).
+	out.Notes = append(out.Notes, accountLines(rep.ResolutionNotices)...)
 	// The one account of the listing, rows capped or not
 	// (REQ-gap-list).
-	line := coverage.GapListLine(reports, dangling)
+	line := resolutionDigest(coverage.GapListLine(reports, dangling), rep.ResolutionNotices)
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	return projected(stampedResult(textOnly(line), prog), out.proto())
 }

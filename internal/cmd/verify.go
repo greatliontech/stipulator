@@ -42,6 +42,7 @@ func verifyCmd() *cobra.Command {
 			}
 			spec, store := prepared.Spec, prepared.Store
 			renderProblems(rep.Problems)
+			renderNotices(os.Stderr, rep.ResolutionNotices)
 			// The views are the projections the MCP surface serves —
 			// one projection, two renderings — so "what claims this
 			// symbol" is the same query at a shell as in an agent's

@@ -58,14 +58,7 @@ func (s *Server) toolCheck(ctx context.Context, req *mcp.CallToolRequest, in che
 	for _, n := range res.GetPolicyNotices() {
 		line += "\n" + n
 	}
-	for _, n := range res.GetResolutionNotices() {
-		if strings.HasPrefix(n, "resolution typed: ") {
-			// The per-symbol lines are the CLI's; the digest keeps the
-			// account and the degradations.
-			continue
-		}
-		line += "\n" + n
-	}
+	line = resolutionDigest(line, res.GetResolutionNotices())
 	if p := res.GetWitnessSelectionProblem(); p != "" {
 		line += "\n" + p
 		if blocked > 0 {

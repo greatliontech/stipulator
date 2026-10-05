@@ -82,7 +82,7 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 	if err != nil {
 		var pe *verifyrun.ProblemsError
 		if errors.As(err, &pe) {
-			err = refuseProblems(pe.Problems)
+			err = refuseProblemsAccounted(pe.Problems, pe.Notices)
 		}
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
@@ -93,7 +93,10 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 	}
 	evaluated := res.Line()
 	if in.Check {
-		out := writeOut{Notes: []string{evaluated}, Check: true}
+		// The evaluation's line, then the serving path's account the
+		// evaluation read, by the served rule
+		// (REQ-evidence-resolution-freshness).
+		out := writeOut{Notes: append([]string{evaluated}, accountLines(res.Notices)...), Check: true}
 		for _, up := range res.Prunes {
 			out.Notes = append(out.Notes, "resolved gap lingers: "+up.Path)
 		}
@@ -107,7 +110,7 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, faulted(out, err))
 	}
-	out.Notes = append(out.Notes, evaluated)
+	out.Notes = append(append(out.Notes, evaluated), accountLines(res.Notices)...)
 	if len(res.Prunes) == 0 {
 		out.Notes = append(out.Notes, "no resolved gap records linger")
 	}

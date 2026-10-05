@@ -1,5 +1,7 @@
 package verify
 
+import "sort"
+
 // The backend contracts a language backend implements for verification,
 // and the machinery that opens, closes, and selects among backends.
 
@@ -76,13 +78,47 @@ type Backend interface {
 	Resolve(symbol string) (Resolution, string, error)
 }
 
-// CloseBackends releases an operation's backends: a backend that owns a
-// child or a store closes it.
-func CloseBackends(backends map[string]Backend) {
-	for _, b := range backends {
+// CloseBackends releases an operation's backends — a backend that owns a
+// child or a store closes it — and returns the serving path's account:
+// every backend's Notices, read after its close, because the close is
+// what publishes the resolution records and a publish refused or
+// degraded is otherwise a fault nobody sees. The one closer every face
+// uses, so the account is read at the only sound moment on each
+// (REQ-evidence-resolution-freshness). Nil when no backend keeps one.
+func CloseBackends(backends map[string]Backend) []string {
+	// Backend order: the account's line order is a fact of the set,
+	// never of a map walk.
+	names := make([]string, 0, len(backends))
+	for name := range backends {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	var notices []string
+	for _, name := range names {
+		b := backends[name]
 		if c, ok := b.(interface{ Close() error }); ok {
 			_ = c.Close()
 		}
+		if a, ok := b.(interface{ Notices() []string }); ok {
+			notices = append(notices, a.Notices()...)
+		}
+	}
+	return notices
+}
+
+// Closer closes an operation's backends exactly once — on the success
+// path for their account, or deferred on an error path — so a result's
+// account is read after the one close that publishes, and a second call
+// answers the same account. The one closer every pass uses.
+func Closer(backends map[string]Backend) func() []string {
+	closed := false
+	var notices []string
+	return func() []string {
+		if !closed {
+			closed = true
+			notices = CloseBackends(backends)
+		}
+		return notices
 	}
 }
 

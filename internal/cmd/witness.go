@@ -105,7 +105,7 @@ func cliDeps() verbcore.Deps {
 		Prepare: func() (*check.Prepared, error) { return mustPrepare(chdir) },
 		Capture: func(ctx context.Context) (*golang.Capture, error) { return golang.LoadCapture(ctx, chdir) },
 		Backends: func(ctx context.Context, symbols []string) (map[string]verify.Backend, error) {
-			return golang.Backends(ctx, chdir, symbols)
+			return servingBackends(ctx, chdir, symbols)
 		},
 		RunTests: witnessRun,
 	}

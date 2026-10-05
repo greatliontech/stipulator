@@ -47,5 +47,5 @@ func (s *Server) toolVerify(ctx context.Context, req *mcp.CallToolRequest, in ve
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-	return summarized(withStamps(viewLine("verify", m), prog), m)
+	return summarized(withStamps(resolutionDigest(viewLine("verify", m), rep.ResolutionNotices), prog), m)
 }

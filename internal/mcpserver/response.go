@@ -89,6 +89,34 @@ func digest(line string, rows []string) string {
 	return b.String()
 }
 
+// accountLines is the serving path's account bounded for a served
+// response: the served-versus-typed line, the degradations and the
+// publish account, never the per-symbol typed lines — one line per
+// typed symbol, unbounded by anything but the binding count, the
+// per-row shape REQ-mcp-response-contract keeps out of a default
+// payload; those lines are the CLI's, the full verify report's and
+// check's full result's. One rule for every served channel that
+// carries the account: the text digests, the notes, a refusal's text.
+func accountLines(notices []string) []string {
+	var out []string
+	for _, n := range notices {
+		if strings.HasPrefix(n, "resolution typed: ") {
+			continue
+		}
+		out = append(out, n)
+	}
+	return out
+}
+
+// resolutionDigest appends the serving path's account, by accountLines'
+// rule, to a text digest.
+func resolutionDigest(line string, notices []string) string {
+	for _, n := range accountLines(notices) {
+		line += "\n" + n
+	}
+	return line
+}
+
 // enumWord renders a proto enum constant under its type prefix as
 // lower-case words: enumWord("RESOLUTION_NOT_FOUND", "RESOLUTION_") ->
 // "not found". Taking the last segment instead would invert multi-word

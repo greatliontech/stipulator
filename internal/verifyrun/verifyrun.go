@@ -62,7 +62,8 @@ func Run(ctx context.Context, d verbcore.Deps, noTest bool, ids []string) (*chec
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	defer verify.CloseBackends(backends)
+	closer := verify.Closer(backends)
+	defer closer()
 	var tr *verify.TestRun
 	if !noTest {
 		rep.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
@@ -71,7 +72,11 @@ func Run(ctx context.Context, d verbcore.Deps, noTest bool, ids []string) (*chec
 		}
 	}
 	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
-	return prepared, verify.Run(spec, store, backends, tr), tr, nil
+	report := verify.Run(spec, store, backends, tr)
+	// The account is read after the close that publishes, and rides the
+	// report so every face renders it (REQ-evidence-resolution-freshness).
+	report.ResolutionNotices = closer()
+	return prepared, report, tr, nil
 }
 
 // Scoped is the verification pass narrowed to a subject scope over an
@@ -104,7 +109,8 @@ func Scoped(ctx context.Context, d verbcore.Deps, prepared *check.Prepared, scop
 	if err != nil {
 		return nil, nil, err
 	}
-	defer verify.CloseBackends(backends)
+	closer := verify.Closer(backends)
+	defer closer()
 	var tr *verify.TestRun
 	if capture {
 		rep.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
@@ -113,7 +119,9 @@ func Scoped(ctx context.Context, d verbcore.Deps, prepared *check.Prepared, scop
 		}
 	}
 	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
-	return verify.Run(spec, store, backends, tr), tr, nil
+	report := verify.Run(spec, store, backends, tr)
+	report.ResolutionNotices = closer()
+	return report, tr, nil
 }
 
 // Gaps is the gap list's pass (REQ-gap-list): the prepared corpus and,
@@ -156,6 +164,12 @@ func Gaps(ctx context.Context, d verbcore.Deps) (*check.Prepared, *verify.Report
 // problems in its own words (REQ-check-preparation).
 type ProblemsError struct {
 	Problems []verify.Problem
+	// Notices is the serving path's account the refused pass read after
+	// its publishing close — a refusal reached after the close carries
+	// it, so the publish is never a fault nobody sees
+	// (REQ-evidence-resolution-freshness). Nil for a refusal raised
+	// before any serving backend was built.
+	Notices []string
 }
 
 func (e *ProblemsError) Error() string {
@@ -169,4 +183,14 @@ func RefuseProblems(problems []verify.Problem) error {
 		return nil
 	}
 	return &ProblemsError{Problems: problems}
+}
+
+// RefuseReport is RefuseProblems over a verification report: the
+// refusal carries the report's serving account, read after the close
+// that published.
+func RefuseReport(rep *verify.Report) error {
+	if len(rep.Problems) == 0 {
+		return nil
+	}
+	return &ProblemsError{Problems: rep.Problems, Notices: rep.ResolutionNotices}
 }

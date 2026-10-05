@@ -753,7 +753,15 @@ resolution, never from a served one, and only when the symbol's
 fingerprint captured before the typed load opened equals the one
 captured after the resolution — a symbol that moved between them is
 not recorded. A fault anywhere on the serving path degrades to the typed
-load for the affected symbols (REQ-evidence-freshness-degrade).
+load for the affected symbols (REQ-evidence-freshness-degrade). Every
+verb whose verification pass builds the serving form — check, verify,
+gate, prune's evaluation and the gap list on both faces, context and
+partitions on the served face — carries the form's account: what
+served and what resolved typed, each selection the path degraded, what
+the close published or refused, and why each typed symbol's record did
+not serve — read after the close that publishes, never before it, and
+carried by a refusal the pass raises after that close as by its
+result; advisory, never a verdict input.
 
 **REQ-evidence-resolution-cache-format** (behavior): The local resolution
 cache MUST be a record store (REQ-evidence-record-store-layout) beside

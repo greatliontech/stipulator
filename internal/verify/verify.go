@@ -293,6 +293,15 @@ type Report struct {
 	// carried from the test run so every report surface renders the gap
 	// as a visible number, never silence. Zero in unwitnessed runs.
 	OutsidePolicy int
+	// ResolutionNotices is the serving path's account, read after the
+	// close that publishes: what served and what resolved typed, each
+	// selection the path degraded to typed resolution, what the close
+	// published or refused, and why each typed symbol's record did not
+	// serve (REQ-evidence-resolution-freshness). Advisory, never a
+	// verdict input; global like OutsidePolicy — a scoped slice says
+	// nothing about the serving path. Nil on a pass that built no
+	// serving backend.
+	ResolutionNotices []string
 	// Diagnostics carries the witnessed run's failure diagnostics as
 	// typed rows — test- and package-scoped alike, disposition and
 	// truncation intact — the one home for retained failure output in a

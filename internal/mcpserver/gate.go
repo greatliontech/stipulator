@@ -42,7 +42,7 @@ func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in gate
 	// problem-bearing record is unsound, on this face as on the CLI
 	// (REQ-check-preparation). The record-only report re-derives the
 	// hygiene problems, so this one call covers both halves.
-	if err := refuseProblems(rep.Problems); err != nil {
+	if err := refuseReport(rep); err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	spec, store, pol := prepared.Spec, prepared.Store, prepared.Coverage
@@ -53,5 +53,5 @@ func (s *Server) toolGate(ctx context.Context, req *mcp.CallToolRequest, in gate
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
-	return summarized(withStamps(viewLine("gate", m), prog), m)
+	return summarized(withStamps(resolutionDigest(viewLine("gate", m), rep.ResolutionNotices), prog), m)
 }

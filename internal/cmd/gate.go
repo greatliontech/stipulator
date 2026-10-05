@@ -60,6 +60,12 @@ func gateCmd() *cobra.Command {
 			// this face as on the MCP (REQ-check-preparation). The
 			// record-only report re-derives the hygiene problems, so
 			// this one call covers both halves.
+			// The serving account first: the close that published has
+			// run, and a refusal below must not hide it
+			// (REQ-evidence-resolution-freshness).
+			if !quiet {
+				renderNotices(os.Stderr, rep.ResolutionNotices)
+			}
 			if err := refuseProblems(rep.Problems); err != nil {
 				return err
 			}

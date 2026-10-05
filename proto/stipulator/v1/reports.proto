@@ -161,6 +161,14 @@ message VerifyReport {
   int32 stale = 8;
   int32 broken = 9;
   int32 shape_mismatch = 10;
+  // The serving path's account, read after the close that publishes:
+  // what served and what resolved typed, each selection the path
+  // degraded to typed resolution (REQ-evidence-freshness-degrade), what
+  // the close published or refused, and why each typed symbol's record
+  // did not serve. Advisory - never a verdict input. Global like
+  // outside_policy: a scoped slice says nothing about the serving path.
+  // Empty on a report whose pass built no serving backend.
+  repeated string resolution_notices = 11;
 }
 
 // ChangeSignature labels one requirement's change shape.

@@ -105,5 +105,5 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 	if n := len(out.GetProblems()); n > 0 {
 		line += "; " + verifyrun.MisreportCaveat(n, verifyrun.CaveatDossierStates)
 	}
-	return summarized(withStamps(digest(line, dossierRows), prog), out)
+	return summarized(withStamps(resolutionDigest(digest(line, dossierRows), vr.ResolutionNotices), prog), out)
 }

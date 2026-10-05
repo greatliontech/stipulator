@@ -35,7 +35,7 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 	// problem-bearing record is unsound, on this face as on the CLI
 	// (REQ-check-preparation). The record-only report re-derives the
 	// hygiene problems, so this one call covers both halves.
-	if err := refuseProblems(rep.Problems); err != nil {
+	if err := refuseReport(rep); err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	spec, store := prepared.Spec, prepared.Store
@@ -98,5 +98,5 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 	if len(m.GetComponents()) == 0 && strings.TrimSpace(in.Ids) == "" {
 		line += " - no red requirements, nothing to partition"
 	}
-	return summarized(withStamps(digest(line, componentRows), prog), m)
+	return summarized(withStamps(resolutionDigest(digest(line, componentRows), rep.ResolutionNotices), prog), m)
 }

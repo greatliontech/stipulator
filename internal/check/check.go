@@ -170,12 +170,10 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		// what resolved typed and why, what the close published or
 		// refused, and any selection the path degraded
 		// (REQ-evidence-freshness-degrade) — advisory, never a verdict
-		// input. The close publishes, so the account is read after it:
-		// a publish fault read before the close is a fault nobody sees.
-		defer func() {
-			_ = gb.Close()
-			res.SetResolutionNotices(gb.Notices())
-		}()
+		// input. The one closer reads it after the close that
+		// publishes, on every exit of this pass.
+		closer := verify.Closer(backends)
+		defer func() { res.SetResolutionNotices(closer()) }()
 
 		// The evidence-class fork (REQ-check-verdict): health judgment
 		// demands whole-policy execution, so the full form executes

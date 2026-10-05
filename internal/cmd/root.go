@@ -187,6 +187,16 @@ func renderProblems(problems []verify.Problem) {
 	}
 }
 
+// renderNotices prints advisory notices dim on the given stream — the
+// one rendering of a notice list on this face: the policy-tier notices
+// (REQ-check-policy-notices) and the serving path's account on every
+// verb that builds the serving form (REQ-evidence-resolution-freshness).
+func renderNotices(w io.Writer, notices []string) {
+	for _, n := range notices {
+		fmt.Fprintln(w, dim(n))
+	}
+}
+
 // refuseProblems is this face's rendering of the one hygiene refusal
 // (verifyrun.RefuseProblems): every problem rendered, then the command
 // fails naming the count; nil for a clean record
@@ -234,6 +244,12 @@ func mustClean(spec *stipulatorv1.Spec, diags []compile.Diagnostic) (*stipulator
 	}
 	return spec, nil
 }
+
+// The face's two backend seams, one per form: servingBackends builds
+// the serving form a verification pass runs over (golang.Backends),
+// makeBackends the declaration-reading form below; a test substitutes
+// either with a backend whose answers it controls.
+var servingBackends = golang.Backends
 
 // makeBackends builds the declaration-reading backends — the
 // whole-tree form, the one a declaration read takes on either face

@@ -148,6 +148,10 @@ type Resolved struct {
 	// Served and Executed are the witness run's counts; zero without a
 	// run.
 	Served, Executed int
+	// Notices is the serving path's account the evaluation read, after
+	// the close that publishes (REQ-evidence-resolution-freshness);
+	// advisory, rendered beside Line on every face.
+	Notices []string
 	// Prunes are the resolved gap records' deletions.
 	Prunes []author.Update
 }
@@ -208,8 +212,8 @@ func Evaluate(ctx context.Context, d Deps, noTest bool) (Resolved, error) {
 	if err := verify.ServingClassRequired(tr); err != nil {
 		return Resolved{}, err
 	}
-	if len(rep.Problems) > 0 {
-		return Resolved{}, verifyrun.RefuseProblems(rep.Problems)
+	if err := verifyrun.RefuseReport(rep); err != nil {
+		return Resolved{}, err
 	}
 	prog.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
 	cov := coverage.Evaluate(spec, rep, store, tr != nil, pol)
@@ -219,7 +223,7 @@ func Evaluate(ctx context.Context, d Deps, noTest bool) (Resolved, error) {
 			resolved[g.RequirementId] = true
 		}
 	}
-	out := Resolved{Gaps: len(store.Gaps), Evaluated: true, Prunes: author.PruneResolvedGaps(store, resolved)}
+	out := Resolved{Gaps: len(store.Gaps), Evaluated: true, Notices: rep.ResolutionNotices, Prunes: author.PruneResolvedGaps(store, resolved)}
 	if tr != nil {
 		out.Served, out.Executed = tr.Fresh, tr.Ran
 	}
