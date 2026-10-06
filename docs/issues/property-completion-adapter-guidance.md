@@ -1,8 +1,6 @@
 # Shared property-completion guards need direct-driver guidance
 
-Lands: user decision — retain direct-call classification and document a
-guarded-test-context pattern, or design an explicitly reviewed
-callback-forwarding adapter form that can establish driver quantification.
+Lands: cross-tool train chunk 298 (derived at audit 318 — the direct-driver rule is soundness; the remedy a diagnostic naming the reached-through helper and the direct-call form; beside the testing/quick rider).
 
 Field report: bldc, 2026-10-02, while adding full-depth evidence for Rapid
 v1.3.0. That version may report success after fewer than the requested
