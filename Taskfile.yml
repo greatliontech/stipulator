@@ -71,7 +71,7 @@ tasks:
       - cd stipulate/structural && go mod tidy -diff
 
   check:
-    desc: The pre-review gate — hygiene plus the one unified verdict (CI runs the hygiene tasks and the go suite; the check verdict has no CI seat by design — it lives at each chunk's close-out and in the weekly fleet sweep)
+    desc: The pre-review gate — hygiene plus the one unified verdict (CI runs the hygiene tasks and the go suite as the fleet's gate; the check verdict has no CI seat by design and is no release precondition — it runs at a band's close, where a chunk's charter names its own verdict, and in the weekly fleet sweep, never before a release and never at a chunk's close-out)
     deps: [vet]
     cmds:
       - task: fmt-check

@@ -56,18 +56,30 @@ func TestInterruptedRunEndsBySignalAfterItsEnding(t *testing.T) {
 		}
 	}
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	// The store is isolated under the temporary cache home; Go's build
+	// cache is content-addressed and stays the parent's, or the child
+	// rebuilds the race-instrumented standard library on every run (the
+	// temporary home would be its GOCACHE under GOENV=off).
+	gocache, err := exec.Command("go", "env", "GOCACHE").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
 	// Each signal that ends a run is the one the process dies by: an
 	// interactive interrupt and a supervisor's termination read apart.
 	for _, sig := range []syscall.Signal{syscall.SIGINT, syscall.SIGTERM} {
 		cmd := exec.Command(bin, "-C", dir, "check", "--quiet")
-		cmd.Env = append(os.Environ(), "GOENV=off", "GOFLAGS=", "GOPACKAGESDRIVER=", "GOTOOLCHAIN=local", "NO_COLOR=1")
+		cmd.Env = append(os.Environ(), "GOENV=off", "GOFLAGS=", "GOPACKAGESDRIVER=", "GOTOOLCHAIN=local", "NO_COLOR=1", "GOCACHE="+strings.TrimSpace(string(gocache)))
 		var stderr syncBuffer
 		cmd.Stderr = &stderr
 		if err := cmd.Start(); err != nil {
 			t.Fatal(err)
 		}
-		// Interrupt once the run is executing.
-		deadline := time.Now().Add(60 * time.Second)
+		// Interrupt once the run is executing. Execution opens only
+		// after the fixture's race binary builds; a host that has never
+		// built the race-instrumented standard library (a fresh runner)
+		// pays minutes for it first, so the wait allows that build — ten
+		// minutes, a bound on the build and not on the run.
+		deadline := time.Now().Add(10 * time.Minute)
 		for !strings.Contains(stderr.String(), "phase execution") {
 			if time.Now().After(deadline) {
 				_ = cmd.Process.Kill()

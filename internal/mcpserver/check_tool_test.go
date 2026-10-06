@@ -426,6 +426,28 @@ func waitNotifications(t *testing.T, log *notificationLog, n int) []*mcp.Progres
 	return nil
 }
 
+// waitTerminal returns the notifications once one of them carries the
+// terminal cause: the terminal event and the tool's result travel as
+// separate messages the SDK delivers on separate goroutines, so a call
+// may return before its last notification lands — a count-bounded wait
+// reads the cause as unspecified on a loaded host.
+func waitTerminal(t *testing.T, log *notificationLog) []*mcp.ProgressNotificationParams {
+	t.Helper()
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) {
+		got := log.snapshot()
+		for _, n := range got {
+			e := &stipulatorv1.ProgressEvent{}
+			if err := protojson.Unmarshal([]byte(n.Message), e); err == nil && e.GetTerminalCause() != stipulatorv1.TerminalCause_TERMINAL_CAUSE_UNSPECIFIED {
+				return got
+			}
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatalf("timed out waiting for the terminal progress notification; have %d", len(log.snapshot()))
+	return nil
+}
+
 // TestCheckToolProgressRidesNotificationsNotPayload pins the progress
 // channel: a call carrying a progress token receives bounded phase and
 // per-invocation events — elapsed time and counts included — as MCP
@@ -606,8 +628,8 @@ func TestGateAndContextToolsReportPhasedProgress(t *testing.T) {
 	if err != nil || res.IsError {
 		t.Fatalf("gate: %v %v", err, res)
 	}
-	// Five phases and the terminal: six notifications.
-	notes := waitNotifications(t, log, 6)
+	// Five phases, then the terminal event.
+	notes := waitTerminal(t, log)
 	phases, cause := phasesOf(t, notes)
 	// The pass owns compile, the discovery its bindings resolve under,
 	// verification and coverage; the witness run announces its own
@@ -639,7 +661,7 @@ func TestGateAndContextToolsReportPhasedProgress(t *testing.T) {
 	if err != nil || res.IsError {
 		t.Fatalf("context: %v %v", err, res)
 	}
-	notes = waitNotifications(t, log2, 6)
+	notes = waitTerminal(t, log2)
 	phases, cause = phasesOf(t, notes)
 	sliced := false
 	for _, p := range phases {

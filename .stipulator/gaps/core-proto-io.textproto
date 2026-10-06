@@ -2,7 +2,7 @@
 # proto-message: stipulator.v1.Gap
 
 requirement_id: "REQ-core-proto-io"
-reason: "wire clause; descriptor proofs await the proto backend"
+reason: "wire clause; descriptor proofs await the proto backend, which no outside consumer has needed yet"
 content_hash: "fdf39bd8dde031ef09be16b828b1a811e4df2d37670ba2f5355bdd56d2cb0b11"
 source_hash: "72929eb427c5ffa4143a1700079524616fe36bb1032e87008315771fd712f29f"
-lands { covered: "REQ-proto-provers" }
+lands { manual { condition: "a party outside this repository consumes stipulator's protos — a module importing gen/stipulator/v1, or a non-Go consumer of proto/stipulator/v1 — so that wire evidence shape pins and Go witnesses cannot cover is owed to it (docs/issues/proto-backend.md's adoption trigger)" } }

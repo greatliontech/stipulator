@@ -1,8 +1,9 @@
-# Protobuf backend — deferred indefinitely
+# Protobuf backend — deferred
 
-Lands: when a corpus needs wire evidence that shape pins and Go witnesses
-cannot cover — descriptor-level verification of protos consumed by parties
-outside the repository.
+Lands: when a party outside this repository consumes stipulator's
+protos — a module importing gen/stipulator/v1, or a non-Go consumer
+of proto/stipulator/v1 — so that wire evidence shape pins and Go
+witnesses cannot cover is owed to it.
 
 `docs/specs/backends/proto.md` states the contract (in-process
 protocompile, symbol scheme, canonical descriptor shape hash, provers, no
@@ -50,5 +51,16 @@ user's: retire docs/specs/backends/proto.md through `dispose` and drop
 the twelve bindings, or retarget the two root gaps to conditions that
 can fire.
 
-Lands: user decision — retire or retarget; the "when a corpus needs wire
-evidence" condition above stays the adoption trigger.
+Chunk 321 (2026-10-06, the CI gate): the twelve `backend: "proto"`
+bindings were dropped — records no registered backend can verify are
+not evidence, and the fleet's records tier requires every row current
+and resolved — and the two root gaps (REQ-core-proto-io,
+REQ-model-graph) retargeted from `covered: REQ-proto-provers` (a
+condition that could not fire) to the adoption trigger above as a
+manual condition, the five REQ-proto-* gaps on the same (they had read
+"proto backend work is scheduled", an aspiration). The spec stays,
+gapped on that event: an outside consumer lands the backend and
+re-binds the messages. Its retirement has no trigger of its own —
+nothing observable says a consumer will never come — so it is not
+scheduled; a decision to retire it goes through `dispose` as a scope
+change.
