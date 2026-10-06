@@ -39,5 +39,4 @@ The grammar is the fleet's: gomutant and gofresh spell symbols the same
 way; whether their parsers split at the same dot is checked at 249's
 open, and a sibling filing follows wherever one does.
 
-Lands: cross-tool train chunk 249 (the witness pipeline's monoliths —
-the resolver's load scope and the one symbol-to-package derivation).
+Lands: cross-tool train chunk 226 (golang.go's resolution split: one symbol-to-package derivation — Backend.splitSymbol's longest-loaded-package rule is the answer already; packageOf, check.scopeSubjects and records.SymbolMember fold onto it, and served.go's childPatterns stops widening the load to the whole tree on an unparsable symbol; audit 318).

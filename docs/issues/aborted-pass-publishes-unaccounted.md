@@ -14,5 +14,4 @@ saw whole, so they are sound — but the ending says "kept nothing" of
 witness records while resolution records landed), and where the
 account rides when there is no result.
 
-Lands: cross-tool train chunk 249 (check.Run's second ladder and the
-pass's exits, one shape).
+Lands: cross-tool train chunk 249 (re-derived at its open: the doc predates 5b03427 — resolution records publish at Quiesce, before execution, not 'at the deferred close'; the clause half — REQ-policy-cancellation's ending naming the resolution records — is 270's; audit 318).
