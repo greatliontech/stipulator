@@ -32,8 +32,13 @@ func processLimits() string {
 	return strings.Join(parts, " ")
 }
 
-func rlimitValue(v uint64) string {
-	if v == ^uint64(0) {
+// rlimitValue renders one limit in the field's own type — uint64 on
+// most platforms, int64 on freebsd and dragonfly — as the number or
+// "unlimited", the infinity judged by the platform's own spelling
+// (rlimitUnlimited: -1 on linux, -3 on solaris, the int64 maximum on
+// darwin, the BSDs and aix).
+func rlimitValue[T ~int64 | ~uint64](v T) string {
+	if rlimitUnlimited(v) {
 		return "unlimited"
 	}
 	return fmt.Sprintf("%d", v)

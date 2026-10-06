@@ -1,6 +1,6 @@
 # Discovery peaks can prevent package admission after discovery releases memory
 
-Lands: user decision
+Lands: cross-tool train chunk 290.2b — the resident fold's admission: the pass's growth term scoped to the execution phase and the package estimate to the registered package trees (derived at 290.2b.1: a lifetime peak and a departing resolver child priced a package that nothing running would take; the 4 GiB-budget refusal below is the same shape — 466 MiB resident, a 7.3 GiB lifetime peak, one package estimated at 7.3 GiB)
 
 Field report from bldc on 2026-10-06, installed stipulator
 `v0.71.1-0.20261006111733-c6124bd111f6` (Go build metadata), Linux amd64.

@@ -115,6 +115,12 @@ func unitCosts(t failer, c *spawnCounter, ctx context.Context, dir string, p *st
 		n, d := invocationCosts(t, c, ctx, dir, inv)
 		normalize, discover = normalize.plus(n), discover.plus(d)
 	}
+	// Warm as the normalization is: a witness-eligible member of the
+	// universe normalizes under its own selection scope, whose listing
+	// the on-disk memo serves from the second time on.
+	if _, err := discoverUniverse(ctx, dir); err != nil {
+		t.Fatal(err)
+	}
 	c.reset()
 	if _, err := discoverUniverse(ctx, dir); err != nil {
 		t.Fatal(err)
@@ -126,9 +132,19 @@ func unitCosts(t failer, c *spawnCounter, ctx context.Context, dir string, p *st
 	return normalize, discover, universe
 }
 
-// invocationCosts measures one invocation's normalization and discovery.
+// invocationCosts measures one invocation's normalization and
+// discovery. The normalization is measured warm: gofresh memoizes the
+// standard-library listing its toolchain-source audit takes per
+// selection scope on disk under the cache home (one per test here), so
+// the first normalization of a scope pays a listing no later one does,
+// and the derivation claim — the capture pays what one normalization
+// pays, once per invocation, its readers nothing — is measured against
+// a normalization in the memo state the capture's own will be in.
 func invocationCosts(t failer, c *spawnCounter, ctx context.Context, dir string, inv *stipulatorv1.PolicyInvocation) (normalize, discover spawns) {
 	t.Helper()
+	if _, err := NormalizeInvocation(ctx, dir, inv); err != nil {
+		t.Fatal(err)
+	}
 	c.reset()
 	n, err := NormalizeInvocation(ctx, dir, inv)
 	if err != nil {
@@ -241,6 +257,12 @@ func TestGoCaptureDerivationProperty(t *testing.T) {
 		if normalizeCost[sh].env == 0 || discoverCost[sh].list == 0 {
 			t.Fatalf("shape %+v: a derivation leg spawned nothing through the seam; its pin would be vacuous", sh)
 		}
+	}
+	// Warm as the normalization is: a witness-eligible member of the
+	// universe normalizes under its own selection scope, whose listing
+	// the on-disk memo serves from the second time on.
+	if _, err := discoverUniverse(ctx, dir); err != nil {
+		t.Fatal(err)
 	}
 	c.reset()
 	if _, err := discoverUniverse(ctx, dir); err != nil {

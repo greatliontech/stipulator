@@ -80,6 +80,13 @@ type NormalizedInvocation struct {
 	// dependency variables accepted as stable after initialization
 	// (gofresh's vouch contract), sorted and deduplicated.
 	Vouches []string
+	// SelectionNotice is gofresh's toolchain-source audit notice for a
+	// witness-eligible invocation's effective build selection — empty
+	// when the selection is admitted, and for every non-witness
+	// invocation, which builds no engine — derived once here under the
+	// invocation's own environment (REQ-check-derivation: a reader of
+	// the normalized form pays no toolchain query of its own).
+	SelectionNotice string
 	// WitnessEnv is the environment the invocation's witness processes
 	// run, ingest, and revalidate under: Env with the inner-parallelism
 	// cap applied, derived exactly once at normalization so every
@@ -298,7 +305,7 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	}
 	env = owned
 	n.TelemetrySource = source
-	version, goos, goarch, cgo, goflags, goexperiment, _, gomodcache, gocache, err := effectiveGoEnv(ctx, n.Dir, env)
+	snapshot, version, goos, goarch, cgo, goflags, goexperiment, _, gomodcache, gocache, err := effectiveGoEnv(ctx, n.Dir, env)
 	if err != nil {
 		return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
 	}
@@ -308,6 +315,25 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	// ambient control.
 	if err := validateGoflags(goflags); err != nil {
 		return nil, fmt.Errorf("invocation %q: ambient control: %w", inv.GetName(), err)
+	}
+	// A witness-eligible invocation's toolchain-source verdict (gofresh's
+	// content-keyed audit of the selection's standard-library surface),
+	// resolved once here under the invocation's own environment through
+	// the snapshot just taken — no second environment query. The listing
+	// it takes is memoized on disk under the cache home by its scope
+	// (version, explicit flags, the snapshot's identity), which the
+	// engine's own construction does not share (GOENV off, the toolchain
+	// pinned, the tree root, its mode and pgo flags), so each scope pays
+	// a cold listing once per cache home; a non-witness invocation builds
+	// no engine and is never audited. The one fault left to the
+	// resolution past a taken snapshot is the run's own end, which
+	// refuses normalization as any spawn would.
+	if n.WitnessEligible() {
+		notice, err := closure.ToolchainSelectionNoticeResolved(ctx, gotool.PrimedEnvReader(ownedRunner, n.Dir, env, snapshot), selectionBuildFlags(cfg.GetRace(), cfg.GetTags()))
+		if err != nil {
+			return nil, fmt.Errorf("invocation %q: toolchain-source audit: %w", inv.GetName(), err)
+		}
+		n.SelectionNotice = notice
 	}
 	n.Toolchain, n.GOOS, n.GOARCH, n.GOFLAGS = version, goos, goarch, goflags
 	n.GOEXPERIMENT = goexperiment
@@ -507,15 +533,15 @@ func validateBracketPath(p string) error {
 // the normalization's sample runs through the owned command boundary,
 // REQ-go-owned-processes), an unset value the empty string as the go
 // command answers it.
-func effectiveGoEnv(ctx context.Context, dir string, env []string) (version, goos, goarch, cgo, goflags, goexperiment, goroot, gomodcache, gocache string, err error) {
+func effectiveGoEnv(ctx context.Context, dir string, env []string) (snapshot *gotool.EnvSnapshot, version, goos, goarch, cgo, goflags, goexperiment, goroot, gomodcache, gocache string, err error) {
 	// The query is a Go child like every other: it runs only under an
 	// environment whose telemetry is owned (telemetry.go).
 	if !telemetryOwned(env) {
-		return "", "", "", "", "", "", "", "", "", fmt.Errorf("resolving effective go env: the query environment's toolchain telemetry is not owned")
+		return nil, "", "", "", "", "", "", "", "", "", fmt.Errorf("resolving effective go env: the query environment's toolchain telemetry is not owned")
 	}
-	snapshot, err := ownedRunner.TakeEnvSnapshot(ctx, dir, env)
+	snapshot, err = ownedRunner.TakeEnvSnapshot(ctx, dir, env)
 	if err != nil {
-		return "", "", "", "", "", "", "", "", "", fmt.Errorf("resolving effective go env: %w", err)
+		return nil, "", "", "", "", "", "", "", "", "", fmt.Errorf("resolving effective go env: %w", err)
 	}
 	v := snapshot.Value
 	// The toolchain never answers these three empty: a document without
@@ -523,10 +549,10 @@ func effectiveGoEnv(ctx context.Context, dir string, env []string) (version, goo
 	// rather than pinned as empty values.
 	for _, key := range []string{"GOVERSION", "GOOS", "GOARCH"} {
 		if v(key) == "" {
-			return "", "", "", "", "", "", "", "", "", fmt.Errorf("resolving effective go env: the toolchain answered no %s", key)
+			return nil, "", "", "", "", "", "", "", "", "", fmt.Errorf("resolving effective go env: the toolchain answered no %s", key)
 		}
 	}
-	return v("GOVERSION"), v("GOOS"), v("GOARCH"), v("CGO_ENABLED"), v("GOFLAGS"), v("GOEXPERIMENT"), v("GOROOT"), v("GOMODCACHE"), v("GOCACHE"), nil
+	return snapshot, v("GOVERSION"), v("GOOS"), v("GOARCH"), v("CGO_ENABLED"), v("GOFLAGS"), v("GOEXPERIMENT"), v("GOROOT"), v("GOMODCACHE"), v("GOCACHE"), nil
 }
 
 // dropEnv returns env without every entry naming key under the
@@ -593,23 +619,22 @@ func buildFlags(race bool, tags []string, mode stipulatorv1.GoModuleMode, pgoVal
 }
 
 // SelectionNotices reports, per witness-eligible invocation, gofresh's
-// toolchain-selection audit notice for the invocation's effective build
+// toolchain-source audit notice for the invocation's effective build
 // selection, attributed to the invocation by name — the policy tier's
 // account of a degradation that otherwise surfaces only mid-derivation
 // on the engine's diagnostic face, far from where the operator authored
-// the tags. Only witness-eligible invocations are judged: a non-witness
-// invocation builds no freshness engine, so no admission can degrade.
-// Read from the operation's capture: the normalized forms it already
-// holds, no toolchain query of its own. Advisory, never a verdict input.
+// the tags. Only witness-eligible invocations carry a verdict (the
+// normalizer audits no other: a non-witness invocation builds no
+// freshness engine, so no admission can degrade). Read from the
+// operation's capture: the verdict each normalized form carries
+// (SelectionNotice, resolved at normalization under the invocation's
+// own environment), no toolchain query of its own. Advisory, never a
+// verdict input.
 func SelectionNotices(pc *Capture) []string {
 	var out []string
 	for _, n := range pc.normalized {
-		if !n.WitnessEligible() {
-			continue
-		}
-		notice := closure.ToolchainSelectionNotice(selectionBuildFlags(n.Race, n.Tags), n.GOFLAGS, n.GOEXPERIMENT)
-		if notice != "" {
-			out = append(out, fmt.Sprintf("invocation %q: %s", n.Name, notice))
+		if n.SelectionNotice != "" {
+			out = append(out, fmt.Sprintf("invocation %q: %s", n.Name, n.SelectionNotice))
 		}
 	}
 	return out
