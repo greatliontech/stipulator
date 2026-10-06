@@ -51,16 +51,22 @@ concurrency:
 # lands on the job ceiling, not this flag. An overrun is a real
 # finding — re-measure before raising the number.
 #
-# race: on — the policy's three invocations (.stipulator/policy.textproto)
-# run under the detector, so the gate's race tier runs the same
-# selection; race-p 2 keeps two race binaries' heaps inside the
-# runner's memory; race-timeout mirrors the policy's 100m per-binary
-# cap for the root module (the stipulate members' 30m cap reads
-# looser here, never stricter); the estimate from the policy's own
-# dev-host ratio (race 2685s against ~1800s plain for backends/golang,
-# 1.49x) puts the package at ~73m on the runner, 1.37x under the cap,
-# with check and cmd serialized in the second slot — the first run of
-# the race job IS the budget's measurement.
+# race: OFF for now — the first run of the race tier (run 37470828996,
+# 2026-10-06) measured the budget and failed on ONE report that lies
+# entirely inside go/types: Named.unpack (under the Named's lock) racing
+# Checker.isComplete (an unlocked read of fromRHS) between x/tools'
+# concurrent checkers sharing an instantiated type — go1.27.0 and
+# go1.27.1 carry the same two sites, nothing in this tree removes it,
+# and the detector cannot exclude a package (gofresh
+# docs/issues/go-types-named-unpack-races-iscomplete.md). A red the
+# commit cannot fix judges nothing about the commit, so the tier waits
+# for a listed toolchain carrying the fix; the policy's own race
+# invocations (.stipulator/policy.textproto) stay the tree's race
+# evidence at the band-close self-check. The measurement stands for
+# that day: under the detector on the 4-vCPU runner backends/golang
+# 2766s (1.54x its plain figure), check 837s, cmd 283s, the job 47m22s
+# — the 100m per-binary cap and the 150-minute ceiling fit it; pass
+# race-p 2, race-timeout 100m, race-job-minutes 150 when turning it on.
 #
 # records: on, with stipulator built from THIS tree (the fleet's
 # records tier otherwise installs a pinned release, which here could
@@ -78,9 +84,6 @@ jobs:
       short-timeout: 5m
       full-timeout: 75m
       test-job-minutes: 120
-      race: true
-      race-p: 2
-      race-timeout: 100m
-      race-job-minutes: 150
+      race: false
       records: true
       stipulator-from-tree: true
