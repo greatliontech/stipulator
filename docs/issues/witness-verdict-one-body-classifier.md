@@ -19,3 +19,5 @@ another.
 
 Lands: cross-tool train chunk 226
 to the serving refusal set.
+
+Audit 334 (2026-10-07): `bodyDrivesRunner` was deleted at 298 — `bodyFactsOf` is the one body memo (drives, the driver's site, the callees at their sites) and the classifier's passes are two: classifyWitness's own inspection and the walk's memo. The premise is re-derived at 226's open.

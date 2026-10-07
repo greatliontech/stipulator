@@ -32,4 +32,4 @@ outright group kill after a bounded grace — with the group sweep owed
 after the child's own exit too (the exec package cancels only a live
 process).
 
-Lands: the first Runner.Program spawn on a resolver-child request path (290.2b replaces commandContext, the trigger's former name; audit 318).
+Lands: the first Runner.Program spawn on a resolver-child request path — 290r's restored rider (audit 334: 290.2b did NOT replace commandContext; the resolver child still spawns through it with its own configureCommandCancellation).
