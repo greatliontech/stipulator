@@ -396,40 +396,50 @@ orientation.
 stipulator verifies code against a compiled requirement corpus.
 The loop: check answers "does this tree pass" — summary view by
 default; it serves fresh witness evidence and executes only what
-moved, so warm calls are cheap; full=true additionally judges suite
-health. gate and verify give coverage and binding detail (summary
-default; views and scopes opt-in). read_spec and context orient
-before writing code; partitions splits red work into disjoint
-components. explain answers a witness's dynamic-state uncacheable
-reason with its derivation chain — pass the reason, or an explicit
-package and symbol. Authoring: bind (claims batch, all-or-nothing),
-gap (declare/fire/retract, batch), attest_requirement, pin (blanket
-backfills unset pins only and names differing pins awaiting
-re-consent; naming ids is the editorial re-consent that rewrites
-them), dispose (editorial/retire/supersede), retarget (bulk
-symbol-prefix rewrite after a module rename; check previews),
-prune (resolved records; dangling=true repairs orphans). Long calls
+moved, so warm calls are cheap; full=true additionally judges
+suite health. gate and verify give coverage and binding detail
+(summary default; views and scopes opt-in). read_spec and context
+orient before writing code; partitions splits red work into
+disjoint components. explain answers every class of uncacheable
+reason: a dynamic-state refusal with its derivation chain (pass
+the reason, or an explicit package and symbol), a seeding-family
+refusal with the witness's own seeding chain (pass the witness), a
+freshness-library reason naming no culprit, and a reason that is
+its own attribution — a load gap, a judgment refusal, a degraded
+path, an unpublished record — each stated as such. Authoring: bind
+(claims batch, all-or-nothing), gap (declare/fire/retract, batch),
+attest_requirement, pin (blanket backfills unset pins only and
+names differing pins awaiting re-consent; naming ids is the
+editorial re-consent that rewrites them), dispose
+(editorial/retire/supersede), retarget (bulk symbol-prefix rewrite
+after a module rename; check previews), prune (resolved records;
+dangling=true repairs orphans). Long calls
 (check/gate/verify/prune/context/partitions/gap list=true) report
 progress when the request carries a progress token — the phase,
-per-invocation counts, and decision lines naming what each invocation
-executes and why, and what persisted — send one and be patient rather
-than assuming a hang; without a token the same lines reach the log
-channel at info level; a deadline or cancellation names the phase it
-ended in and what the run kept. At the CLI a failing verdict exits 1,
-an interrupted run renders the same ending and then dies by the
-signal that ended it (128 plus the signal's number where it cannot
-be re-raised; a second signal ends the process at once), and an
-operational fault exits 2. All writes stay under .stipulator/; spec
-documents and source are never edited, with one exception: retarget
-rewrites the enforcement pointers a symbol rename moved. A policy invocation
-declaring build tags runs under a toolchain selection gofresh
-fail-closes until that selection's standard-library delta is walked
-and listed: standard-library observation admissions are disabled
-for the tagged leg (a loud toolchain-unaudited notice names it), so
-prefer untagged or race-only invocations unless the tag selection
-has been walked. CLI-only: diff, impact,
-policy init, init, and mcp itself; MCP-only: context, partitions,
-read_spec, and the dispose kind= form the cli spells as
-three subcommands. The guidance verb serves any verb's full section
-— knobs, when-to-use, example — from the tool's own embedded
-document.
+per-invocation counts, and decision lines naming what each
+invocation executes and why, and what persisted — send one and be
+patient rather than assuming a hang; without a token the same
+lines reach the log channel at info level; a deadline or
+cancellation names the phase it ended in and what the run kept. At
+the CLI a failing verdict exits 1, an interrupted run renders the
+same ending and then dies by the signal that ended it (128 plus
+the signal's number where it cannot be re-raised; a second signal
+ends the process at once), and an operational fault exits 2. All
+writes stay under .stipulator/; spec documents and source are
+never edited, with one exception: retarget rewrites the
+enforcement pointers a symbol rename moved. A policy invocation's
+effective build selection — the standard-library files its race
+bit and declared tags select under its own environment (platform,
+cgo, experiment and declared-variable selectors included) — is
+admitted when those files carry digests a listed toolchain chain
+lists (a tag selecting no other standard-library file is admitted
+by content); otherwise the check carries the engine's
+toolchain-selection audit notice for the invocation, naming the
+moved keys (off the closest chain, where one is listed) or the
+surface it could not read, and that leg's standard-library
+observation admissions are disabled and its serving degrades to
+execution. CLI-only: diff, impact, policy init, init, and mcp
+itself; MCP-only: context, partitions, read_spec, and the dispose
+kind= form the cli spells as three subcommands. The guidance verb
+serves any verb's full section — knobs, when-to-use, example —
+from the tool's own embedded document.

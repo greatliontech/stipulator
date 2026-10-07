@@ -248,7 +248,7 @@ func TestGuidanceToolServesOutsideACorpus(t *testing.T) {
 // (REQ-check-policy-notices).
 func TestCheckToolDigestCarriesPolicyNotices(t *testing.T) {
 	stipulate.Covers(t, "REQ-check-policy-notices")
-	notice := `invocation "tagged": toolchain-selection audit: selection "dup" is unwalked`
+	notice := `invocation "tagged": toolchain-selection audit: the audited surface of go1.X moved in 1 keys off go1.Y: net — standard-library observation admissions are disabled`
 	sess, _ := harnessWith(t, nil, func(s *Server) {
 		s.runCheck = func(context.Context, bool, []string) (*stipulatorv1.CheckResult, error) {
 			res := &stipulatorv1.CheckResult{}

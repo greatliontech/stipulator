@@ -8,14 +8,16 @@ surface outranks the CLI in design priority: it serves an LLM agent in a
 harness, where every byte of output spends the consumer's context —
 minimal output, maximal usefulness governs every response shape.
 
-**REQ-mcp-server** (behavior): Stipulator MUST provide an MCP server over
-stdio exposing the compiled corpus as resources and the operations as
-tools, serving fresh state per request — the corpus is recompiled and
+**REQ-mcp-server** (behavior): Stipulator MUST provide an MCP server
+over stdio exposing the compiled corpus as resources and the operations
+as tools, serving fresh state per request — the corpus is recompiled and
 records reloaded on every read, never cached across tree changes — and
 declaring server instructions that teach an agent which tool answers
-which question, so tool selection needs no trial calls. A tool invoked
-outside any corpus fails with the same guided root-discovery message
-the CLI gives: the upward search that ran, and the init pointer.
+which question, so tool selection needs no trial calls — and whose
+contract sentences tell the governing clauses' current contract (a
+sentence contradicting its clause is a conformance fault). A tool
+invoked outside any corpus fails with the same guided root-discovery
+message the CLI gives: the upward search that ran, and the init pointer.
 
 **REQ-mcp-resources** (wire): The server MUST expose resource URIs
 `stipulator://req/{id}` (a requirement's compiled view: canonical text,

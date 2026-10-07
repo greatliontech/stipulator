@@ -1030,3 +1030,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "619dd9739887b3744e7c12543bf8e3affebbfc0b432af51a1c705d9b4720ee6a"
 }
+
+bindings {
+  requirement_id: "REQ-check-policy-notices"
+  content_hash: "924d8ddb9d5eacacf6531407b1d050fa4f5d51108159f775b4ea5a277c340018"
+  source_hash: "2f5c0bc35e7c02a82d4b399bb12d648539b87d921fdc8893b133b04c750d2038"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestServerDeclaresInstructions"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "15e34f72a1ecc48274e4c6f828c39b4acf5cf2a65a04a67c10583853e51772d2"
+}

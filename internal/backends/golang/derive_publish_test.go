@@ -363,9 +363,11 @@ func TestSharedReads(t *testing.T) {
 	// DECLARED environment delta, which enters both the capture-group
 	// key and the record-identity coordinate directly, host-independent,
 	// and stays inside the toolchain-selection audit. The rejected
-	// discriminators, for the record: an arbitrary build tag is an
-	// unwalked toolchain selection gofresh fail-closes, stripping the
-	// very observation proof this test pins; a witness width reaches
+	// discriminators, for the record: an arbitrary build tag enters the
+	// key and the content-keyed toolchain audit admits one selecting no
+	// other standard-library file, but a tag moves the selection axis
+	// the audit judges, which this test has no business exercising; a
+	// witness width reaches
 	// the key only through a GOMAXPROCS-derived env value that
 	// collides with the default at common host widths; and exclusions
 	// or vouches partition capture groups while deliberately sharing
@@ -799,8 +801,8 @@ func TestHealthJudgedFormPersistsPerPackage(t *testing.T) {
 	first.SetPackages([]string{"./a"})
 	first.SetRace(true)
 	// The second leg is its own capture group by environment rather
-	// than tags: a tag selection would run under gofresh's unwalked
-	// toolchain audit, which this test has no business exercising.
+	// than tags: a tag selection would move the selection axis gofresh's
+	// toolchain audit judges, which this test has no business exercising.
 	second := &stipulatorv1.GoInvocationConfig{}
 	second.SetPackages([]string{"./b"})
 	second.SetRace(true)

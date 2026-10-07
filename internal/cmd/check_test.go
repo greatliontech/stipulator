@@ -362,10 +362,10 @@ func TestCheckRenderCarriesPolicyNotices(t *testing.T) {
 	stipulate.Covers(t, "REQ-check-policy-notices")
 	res := &stipulatorv1.CheckResult{}
 	res.SetPassed(true)
-	res.SetPolicyNotices([]string{`invocation "tagged": toolchain-selection audit: selection "dup" under go1.X is unwalked`})
+	res.SetPolicyNotices([]string{`invocation "tagged": toolchain-selection audit: the audited surface of go1.X moved in 1 keys off go1.Y: net — standard-library observation admissions are disabled`})
 	var stdout, stderr bytes.Buffer
 	renderCheck(&stdout, &stderr, res)
-	if !strings.Contains(stderr.String(), `invocation "tagged"`) || !strings.Contains(stderr.String(), `selection "dup"`) {
+	if !strings.Contains(stderr.String(), `invocation "tagged"`) || !strings.Contains(stderr.String(), `moved in 1 keys off go1.Y`) {
 		t.Errorf("policy notice not rendered:\n%s", stderr.String())
 	}
 }

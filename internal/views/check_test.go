@@ -478,7 +478,7 @@ func TestCheckSummaryFoldsPolicyBlockedRows(t *testing.T) {
 func TestCheckSummaryCarriesPolicyNotices(t *testing.T) {
 	stipulate.Covers(t, "REQ-check-policy-notices")
 	res := &stipulatorv1.CheckResult{}
-	res.SetPolicyNotices([]string{`invocation "tagged": toolchain-selection audit: selection "dup" is unwalked`})
+	res.SetPolicyNotices([]string{`invocation "tagged": toolchain-selection audit: the audited surface of go1.X moved in 1 keys off go1.Y: net — standard-library observation admissions are disabled`})
 	out := checkSummary(res)
 	if got := out.GetPolicyNotices(); len(got) != 1 || got[0] != res.GetPolicyNotices()[0] {
 		t.Fatalf("summary notices = %v", got)

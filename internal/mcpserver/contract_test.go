@@ -119,15 +119,48 @@ func bareHarness(t *testing.T) *mcp.ClientSession {
 }
 
 // The server declares instructions teaching tool selection
-// (REQ-mcp-server).
+// (REQ-mcp-server), and the instructions tell the current contract: the
+// build-selection sentence is REQ-check-policy-notices' (the effective
+// selection admitted by content; otherwise the engine's notice, that
+// leg's admissions disabled) and the explain sentence REQ-mcp-explain's
+// (every class of uncacheable reason), each pinned whole so a replaced
+// contract cannot leave its old telling in the text an agent reads
+// first (the clause's bindings carry the sentences' pins — amending
+// the clause stales them, which is how a moved clause reaches the
+// telling); no served word is broken at its hyphen (a rewrap's).
 //
 //gofresh:pure
 func TestServerDeclaresInstructions(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-server")
+	stipulate.Covers(t, "REQ-mcp-server", "REQ-check-policy-notices", "REQ-mcp-explain")
 	for _, want := range []string{"check", "progress token", ".stipulator/"} {
 		if !strings.Contains(serverInstructions, want) {
 			t.Fatalf("instructions lack %q", want)
 		}
+	}
+	folded := strings.Join(strings.Fields(serverInstructions), " ")
+	for _, sentence := range []string{
+		"A policy invocation's effective build selection — the standard-library files its race bit and declared tags select under its own environment (platform, cgo, experiment and declared-variable selectors included) — is admitted when those files carry digests a listed toolchain chain lists (a tag selecting no other standard-library file is admitted by content); otherwise the check carries the engine's toolchain-selection audit notice for the invocation, naming the moved keys (off the closest chain, where one is listed) or the surface it could not read, and that leg's standard-library observation admissions are disabled and its serving degrades to execution.",
+		"explain answers every class of uncacheable reason: a dynamic-state refusal with its derivation chain (pass the reason, or an explicit package and symbol), a seeding-family refusal with the witness's own seeding chain (pass the witness), a freshness-library reason naming no culprit, and a reason that is its own attribution — a load gap, a judgment refusal, a degraded path, an unpublished record — each stated as such.",
+	} {
+		if !strings.Contains(folded, sentence) {
+			t.Fatalf("instructions do not tell the contract %q:\n%s", sentence[:40], folded)
+		}
+	}
+	for _, stale := range []string{"unwalked", "fail-closes", "dynamic-state uncacheable reason"} {
+		if strings.Contains(folded, stale) {
+			t.Fatalf("instructions still tell a replaced contract (%q)", stale)
+		}
+	}
+	// A rewrap that broke a word at its hyphen serves "re- consent",
+	// at a line's end or rejoined mid-line: the folded text carries no
+	// hyphen followed by a space except a suspended hyphen's ("tests-
+	// or proves-role"); the map's dashes are spaced em dashes.
+	for i := strings.Index(folded, "- "); i >= 0; i = strings.Index(folded, "- ") {
+		rest := folded[i+2:]
+		if !strings.HasPrefix(rest, "or ") && !strings.HasPrefix(rest, "and ") {
+			t.Fatalf("a served word is broken at its hyphen: %q", folded[max(0, i-20):min(len(folded), i+20)])
+		}
+		folded = rest
 	}
 }
 

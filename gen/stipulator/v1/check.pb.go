@@ -579,12 +579,12 @@ type CheckResult_builder struct {
 	ScopeIds []string
 	// Non-fatal policy-tier notices raised at load, each attributed to the
 	// invocation that authored the condition: today, per witness-eligible
-	// invocation, the toolchain-selection audit's fail-closed consequence
-	// when the invocation's effective build selection is unwalked (the
-	// freshness engine disables standard-library observation admissions
-	// and serving degrades to execution). Advisory - never a verdict
-	// input; the cost surfaces where the selection was declared instead
-	// of only mid-derivation on the engine's diagnostic face.
+	// invocation, the freshness engine's own toolchain-source audit notice
+	// for an effective build selection the audit refuses
+	// (REQ-check-policy-notices states the audit and the degradation the
+	// notice names). Advisory - never a verdict input; the cost surfaces
+	// where the selection was declared instead of only mid-derivation on
+	// the engine's diagnostic face.
 	PolicyNotices []string
 	// Resolution notices name, per build selection, a serving-path
 	// fault the check degraded to typed resolution
