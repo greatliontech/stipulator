@@ -1,6 +1,14 @@
 # Cold package admission consumes the invocation deadline
 
-Lands: user decision
+Lands: cross-tool train chunk 331 (gofresh docs/plans/cross-tool-train.md —
+triaged at 298's close under the derive rule: the admission's estimate reads
+this invocation's execution phase alone, so discovery's peak cannot enter it
+and the 7.3 GiB was one package's real process tree retained as every later
+package's need; the executor's child is `go test`, whose reaped rusage folds
+the compiler and linker in. The chunk: the deadline account and the
+held-package diagnostic name the estimate's origin — the package, its pid,
+the term — and a build's peak never prices a run; the discovery-peak half
+is gofresh 314's).
 
 Field report from bldc on 2026-10-07. Its full uncached Go suite, root guards
 and 217 web tests passed. `mlock run env GOMEMLIMIT=4GiB task check` then
