@@ -1025,13 +1025,22 @@ against `partial` (some clauses met, at least one not, each unmet clause
 named with the evidence it needs) and `uncovered` (no clause met), an
 admitted attestation standing between covered and partial; claim hygiene
 is part of coverage, so red claims downgrade a requirement even when
-other evidence satisfies the policy:
+other evidence satisfies the policy; the bucket is the row's winning
+class, and the red classes the row carries — the set a gap must
+declare to excuse it (REQ-gate-no-undeclared) — are exactly: `broken`
+and, where a stale-class red stands behind it, `stale`, for a `broken`
+bucket; `stale` for a `stale` bucket; `uncovered` for the policy's
+buckets (`partial` as `uncovered`) — the policy's class is a verdict
+over the bindings' grants, judged only on a hygiene-green row: the
+precedence reports hygiene first, and whether the policy would be met
+once each red binding were repaired is a counterfactual the row does
+not record:
 
 | Bucket | Meaning |
 |---|---|
 | `covered` | policy met by current evidence on every clause |
 | `broken` | a binding fails to resolve, its shape hash mismatches, or its bound test fails or produces no outcome in a witnessed run |
-| `stale` | a binding whose content-hash pin is unset or differs from the current one |
+| `stale` | a binding whose content-hash pin is unset or differs from the current one, a binding with no shape pin, or an attestation whose content pin is stale |
 | `partial` | a clause-structured requirement with some clauses meeting policy and at least one not — bound, clauses unclaimed |
 | `uncovered` | no evidence meets policy on any clause |
 

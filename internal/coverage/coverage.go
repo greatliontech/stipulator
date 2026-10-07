@@ -11,6 +11,7 @@ package coverage
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -707,12 +708,25 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		if !r.Bucket.Red() {
 			continue
 		}
-		// Partial is the uncovered class in part: the excuse walk judges
-		// it as uncovered (REQ-gate-no-undeclared).
-		class := r.Bucket
-		if class == Partial {
-			class = Uncovered
+		f := facts[r.Id]
+		// The row's judged classes: the hygiene classes it carries —
+		// broken, and a stale-class red standing behind a broken
+		// bucket — where hygiene is red, else the policy's class
+		// (partial is the uncovered class in part). A gap excuses the
+		// row only when it declares every one (REQ-gate-no-undeclared,
+		// REQ-coverage-buckets); the winning class is the bucket's.
+		// The one walk answers every reader below: the undeclared
+		// classes, and whether the stale class is declared (a broken
+		// row's only other class — so with stale declared, any
+		// undeclared class is the winning one).
+		classes := redClasses(r.Bucket, f)
+		var undeclared []Bucket
+		for _, c := range classes {
+			if !excused[r.Id][c] {
+				undeclared = append(undeclared, c)
+			}
 		}
+		declaredStale := slices.Contains(classes, Stale) && !slices.Contains(undeclared, Stale)
 		// The two boundary classes are one derivation, decided here
 		// with the gaps known: a row is blocked on a boundary — the
 		// caller's id scope, the policy's witness selection — when that
@@ -720,11 +734,9 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		// beside it that a current gap excuses is declared, never
 		// undeclared (REQ-check-verdict, REQ-check-witness-selection,
 		// REQ-gap-consent).
-		f := facts[r.Id]
-		// The excuse set alone says whether the stale class is declared:
-		// only a current gap record populates it, and a drifted record's
-		// suspension already emptied it for the requirement.
-		declaredStale := f.stale && excused[r.Id][Stale]
+		// The excuse set alone populates declaredStale: only a current
+		// gap record fills it, and a drifted record's suspension already
+		// emptied it for the requirement.
 		r.ScopeBlocked = r.Bucket == Broken && f.blockedOn(f.scopeSkipped, f.outsideSelection, declaredStale)
 		r.WitnessSelectionBlocked = r.Bucket == Broken && f.blockedOn(f.outsideSelection, f.scopeSkipped, declaredStale)
 		// The blocked row that is still a violation says which boundary
@@ -732,7 +744,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		// unexecuted; the policy's witness selection left it ungranted —
 		// a selection fact, never an execution one
 		// (REQ-check-witness-selection).
-		if declaredStale && !excused[r.Id][class] {
+		if declaredStale && len(undeclared) > 0 {
 			switch {
 			case r.ScopeBlocked:
 				r.Reasons = append(r.Reasons, "the gap record naming this requirement excuses its stale class; the remaining red is the check's id scope, which left its witness unexecuted")
@@ -748,8 +760,8 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		switch {
 		case gapped[r.Id] && staleConsent[r.Id]:
 			r.Reasons = append(r.Reasons, fmt.Sprintf("the gap record naming this requirement was declared against different text and excuses nothing until re-consented — re-consent: %s", remedy.Pin(r.Id)))
-		case gapped[r.Id] && !excused[r.Id][class]:
-			r.Reasons = append(r.Reasons, fmt.Sprintf("the gap record naming this requirement excuses %s, not %s — declare the class deliberately or repair the red", excuseNames(excused[r.Id]), bucketName(class)))
+		case gapped[r.Id] && len(undeclared) > 0:
+			r.Reasons = append(r.Reasons, fmt.Sprintf("the gap record naming this requirement excuses %s, not %s — declare each class deliberately or repair the red", excuseNames(excused[r.Id]), bucketNames(undeclared)))
 		}
 		// A dangling enforcement pointer is a corpus-to-store
 		// inconsistency, not a coverage hole: no gap excuses it
@@ -757,7 +769,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		if danglingIDs[r.Id] && gapped[r.Id] {
 			r.Reasons = append(r.Reasons, "the gap record naming this requirement excuses nothing about its dangling enforcement pointer")
 		}
-		if danglingIDs[r.Id] || !gapped[r.Id] || !excused[r.Id][class] {
+		if danglingIDs[r.Id] || !gapped[r.Id] || len(undeclared) > 0 {
 			rep.Violations = append(rep.Violations, r.Id)
 		}
 	}
@@ -802,6 +814,42 @@ func excuseSet(declared []stipulatorv1.GapExcuse) map[Bucket]bool {
 	return set
 }
 
+// redClasses is the set a gap must declare to excuse a red row, the
+// winning class first: a broken bucket carries broken and, where a
+// stale-class red stands behind it, stale — the bucket's precedence
+// reports one class, but each hygiene red is a fact of a binding the
+// reader must know; a stale bucket carries stale; the policy's buckets
+// carry uncovered (partial being the uncovered class in part). The
+// policy's class is a verdict over the bindings' grants, judged only
+// on a hygiene-green row as the bucket's own precedence has it: the
+// precedence reports hygiene first, and whether the policy would be
+// met once each red binding were repaired is a counterfactual the row
+// does not record (an unpinned-shape binding and a failed test still
+// grant; a drifted or unresolved one grants nothing) — carried, it
+// would make a gap filed for exactly a failing sole witness also owe
+// `uncovered` (REQ-coverage-buckets, REQ-gate-no-undeclared).
+func redClasses(b Bucket, f rowFacts) []Bucket {
+	switch b {
+	case Broken:
+		if f.stale {
+			return []Bucket{Broken, Stale}
+		}
+		return []Bucket{Broken}
+	case Stale:
+		return []Bucket{Stale}
+	}
+	return []Bucket{Uncovered}
+}
+
+// bucketNames joins the classes a mismatch names, in the row's order.
+func bucketNames(classes []Bucket) string {
+	names := make([]string, len(classes))
+	for i, c := range classes {
+		names[i] = bucketName(c)
+	}
+	return strings.Join(names, " and ")
+}
+
 func bucketName(b Bucket) string {
 	switch b {
 	case Uncovered:
@@ -816,6 +864,8 @@ func bucketName(b Bucket) string {
 	return "red"
 }
 
+// excuseNames renders a record's declared classes in bucketNames'
+// grammar, so a mismatch reads "excuses X and Y, not Z".
 func excuseNames(set map[Bucket]bool) string {
 	var names []string
 	for _, b := range []Bucket{Uncovered, Stale, Broken} {
@@ -829,7 +879,7 @@ func excuseNames(set map[Bucket]bool) string {
 	if len(names) == 0 {
 		return "no recognized class"
 	}
-	return strings.Join(names, ", ")
+	return strings.Join(names, " and ")
 }
 
 // AdmitsAttestation reports whether the (kind, keyword) cell can ever

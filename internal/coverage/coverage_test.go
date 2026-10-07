@@ -1348,3 +1348,85 @@ func TestScopeBlockedSurvivesAnExcusedStaleConsent(t *testing.T) {
 		t.Fatalf("a row whose every class is excused: violations=%v reasons=%v", rep.Violations, reasons["REQ-s-bothexcused"])
 	}
 }
+
+// TestGateExcusesEveryRedClassARowCarries pins the excuse walk over the
+// row's whole class set: a stale-class red standing behind a broken
+// bucket — a binding with a stale content pin beside a failed test, or
+// one binding failed and stale-pinned — is not absorbed by a gap
+// excusing broken alone (the mismatch names the undeclared class), is
+// excused by a gap declaring both, and a stale-only row keeps its
+// one-class judgment (REQ-gate-no-undeclared, REQ-coverage-buckets).
+//
+//gofresh:pure
+func TestGateExcusesEveryRedClassARowCarries(t *testing.T) {
+	stipulate.Covers(t, "REQ-gate-no-undeclared", "REQ-coverage-buckets")
+	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n"
+	gap := func(excuses string) map[string]string {
+		return map[string]string{
+			".stipulator/gaps/a.textproto": "requirement_id: \"REQ-c-a\"\nreason: \"in flight\"\nlands { manual { condition: \"later\" } }\n" + excuses,
+		}
+	}
+	reasonsOf := func(rep *Report) string {
+		for _, r := range rep.Requirements {
+			if r.Id == "REQ-c-a" {
+				return strings.Join(r.Reasons, "\n")
+			}
+		}
+		return ""
+	}
+	behind := []verify.BindingResult{
+		result("REQ-c-a", tests, true, verify.Resolved, verify.ShapeMatch, verify.TestFailed),
+		result("REQ-c-a", tests, false, verify.Resolved, verify.ShapeMatch, verify.TestPassed),
+	}
+	onOne := []verify.BindingResult{
+		result("REQ-c-a", tests, false, verify.Resolved, verify.ShapeMatch, verify.TestFailed),
+	}
+	for name, results := range map[string][]verify.BindingResult{"a stale binding beside the failed one": behind, "one binding failed and stale-pinned": onOne} {
+		t.Run(name, func(t *testing.T) {
+			spec, store := fixture(t, doc, gap("excuses: GAP_EXCUSE_BROKEN\n"))
+			rep := Evaluate(spec, &verify.Report{Results: results}, store, true, nil)
+			if rep.GatePasses() || len(rep.Violations) != 1 || rep.Violations[0] != "REQ-c-a" {
+				t.Fatalf("violations = %v, want the stale red behind the broken bucket raised", rep.Violations)
+			}
+			if b := bucketOf(t, rep, "REQ-c-a").Bucket; b != Broken {
+				t.Fatalf("bucket = %v, want the winning class broken", b)
+			}
+			if reasons := reasonsOf(rep); !strings.Contains(reasons, "excuses broken, not stale") {
+				t.Fatalf("reasons = %q, want the undeclared stale class named", reasons)
+			}
+			spec, store = fixture(t, doc, gap("excuses: GAP_EXCUSE_BROKEN\nexcuses: GAP_EXCUSE_STALE\n"))
+			if rep := Evaluate(spec, &verify.Report{Results: results}, store, true, nil); !rep.GatePasses() {
+				t.Fatalf("both classes declared, still a violation: %v / %q", rep.Violations, reasonsOf(rep))
+			}
+			spec, store = fixture(t, doc, gap("excuses: GAP_EXCUSE_STALE\n"))
+			rep = Evaluate(spec, &verify.Report{Results: results}, store, true, nil)
+			if rep.GatePasses() || !strings.Contains(reasonsOf(rep), "excuses stale, not broken") {
+				t.Fatalf("stale alone declared: %v / %q, want the broken class named", rep.Violations, reasonsOf(rep))
+			}
+			// A default gap (uncovered alone) names both undeclared
+			// classes, the winning one first; a gap declaring two
+			// classes renders them in the same grammar.
+			spec, store = fixture(t, doc, gap(""))
+			rep = Evaluate(spec, &verify.Report{Results: results}, store, true, nil)
+			if rep.GatePasses() || !strings.Contains(reasonsOf(rep), "excuses uncovered, not broken and stale — declare each class deliberately") {
+				t.Fatalf("a default gap over two classes: %v / %q, want both named", rep.Violations, reasonsOf(rep))
+			}
+			spec, store = fixture(t, doc, gap("excuses: GAP_EXCUSE_UNCOVERED\nexcuses: GAP_EXCUSE_BROKEN\n"))
+			rep = Evaluate(spec, &verify.Report{Results: results}, store, true, nil)
+			if rep.GatePasses() || !strings.Contains(reasonsOf(rep), "excuses uncovered and broken, not stale") {
+				t.Fatalf("two declared, one undeclared: %v / %q", rep.Violations, reasonsOf(rep))
+			}
+		})
+	}
+	t.Run("a stale-only row keeps its one class", func(t *testing.T) {
+		stale := []verify.BindingResult{result("REQ-c-a", tests, false, verify.Resolved, verify.ShapeMatch, verify.TestPassed)}
+		spec, store := fixture(t, doc, gap("excuses: GAP_EXCUSE_STALE\n"))
+		if rep := Evaluate(spec, &verify.Report{Results: stale}, store, true, nil); !rep.GatePasses() {
+			t.Fatalf("a stale row under a stale excuse: %v / %q", rep.Violations, reasonsOf(rep))
+		}
+		spec, store = fixture(t, doc, gap("excuses: GAP_EXCUSE_BROKEN\n"))
+		if rep := Evaluate(spec, &verify.Report{Results: stale}, store, true, nil); rep.GatePasses() || !strings.Contains(reasonsOf(rep), "excuses broken, not stale") {
+			t.Fatalf("a stale row under a broken excuse: %v / %q", rep.Violations, reasonsOf(rep))
+		}
+	})
+}

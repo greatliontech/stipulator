@@ -23,8 +23,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gate-no-undeclared"
-  content_hash: "d8fac5aec0780854cb91e13134ad1229f98fef3ba7f8983954779375ee2854df"
-  source_hash: "fd1e54584cd8e7e35acea840dceb2ec7a2beb2a0161469c7155bd958ce749647"
+  content_hash: "9bc9e3ae8d7660156bf593fa89f0f33941d534c3ed519fc9ab119e1e814c6e5c"
+  source_hash: "eff24b9361fc1ccc9927d31783e7f714b9546d839882676e13939c41294a092e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestGateGapExcusesBindTheViolationClass"
   role: BINDING_ROLE_TESTS
@@ -33,8 +33,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gate-no-undeclared"
-  content_hash: "d8fac5aec0780854cb91e13134ad1229f98fef3ba7f8983954779375ee2854df"
-  source_hash: "fd1e54584cd8e7e35acea840dceb2ec7a2beb2a0161469c7155bd958ce749647"
+  content_hash: "9bc9e3ae8d7660156bf593fa89f0f33941d534c3ed519fc9ab119e1e814c6e5c"
+  source_hash: "eff24b9361fc1ccc9927d31783e7f714b9546d839882676e13939c41294a092e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestPartialIsTheUncoveredClassInPart"
   role: BINDING_ROLE_TESTS
@@ -43,10 +43,20 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gate-no-undeclared"
-  content_hash: "d8fac5aec0780854cb91e13134ad1229f98fef3ba7f8983954779375ee2854df"
-  source_hash: "fd1e54584cd8e7e35acea840dceb2ec7a2beb2a0161469c7155bd958ce749647"
+  content_hash: "9bc9e3ae8d7660156bf593fa89f0f33941d534c3ed519fc9ab119e1e814c6e5c"
+  source_hash: "eff24b9361fc1ccc9927d31783e7f714b9546d839882676e13939c41294a092e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestRedRowsIsTheOneLadder"
   role: BINDING_ROLE_TESTS
   shape_hash: "a71fecc778901903b2be0d4d6d2498da17d0d172654c8f74d0eabc9b6e10064e"
+}
+
+bindings {
+  requirement_id: "REQ-gate-no-undeclared"
+  content_hash: "9bc9e3ae8d7660156bf593fa89f0f33941d534c3ed519fc9ab119e1e814c6e5c"
+  source_hash: "eff24b9361fc1ccc9927d31783e7f714b9546d839882676e13939c41294a092e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.TestGateExcusesEveryRedClassARowCarries"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "69eab74c5c2171acdcda035542d2df155e7e861d2b1356a58344aa43c9b21c44"
 }

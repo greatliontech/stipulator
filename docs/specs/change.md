@@ -358,12 +358,16 @@ exactly like new ones, which is what makes the migration window auditable.
 
 **REQ-gate-no-undeclared** (behavior): The gate MUST fail exactly when some
 requirement is `uncovered`, `partial`, `stale`, or `broken` and no gap
-record names it excusing that class — `partial` being the `uncovered`
+record names it excusing every red class it carries — its bucket's
+class and, behind a `broken` bucket, a standing stale-class red
+(REQ-coverage-buckets names the set) — `partial` being the `uncovered`
 class in part, excused by an `uncovered` excuse. A gap excuses only the
 violation classes it declares, so a standing gap never absorbs a later
-red of a different class — the reader trusting the gap's reason is
-never misattributing the red — and the class mismatch is surfaced on
-the requirement, not silently equated with an undeclared red.
+red of a different class, nor a stale-class red behind the broken one
+it names — the reader trusting the gap's reason is never
+misattributing a red — and the class mismatch is surfaced on the
+requirement, naming every undeclared class, not silently equated with
+an undeclared red.
 
 ## The unified check
 

@@ -33,8 +33,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-coverage-buckets"
-  content_hash: "5373f7ebcb8f936222f84b8840466ff96fea237a128ddf151042e10acbca8fbd"
-  source_hash: "d88a4e67132001723671f3fc6b080b9ae2f627ecb8315e7dce0bbe66407b4468"
+  content_hash: "4d1614d55f630cca85027764517e5863efe9fe914f378d3d63e99b2076595f18"
+  source_hash: "57c21fbd5804bc145572018857995ee602ec3f5188cd277b43cbc4732b4dd085"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.Evaluate"
   role: BINDING_ROLE_IMPLEMENTS
@@ -43,8 +43,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-coverage-buckets"
-  content_hash: "5373f7ebcb8f936222f84b8840466ff96fea237a128ddf151042e10acbca8fbd"
-  source_hash: "d88a4e67132001723671f3fc6b080b9ae2f627ecb8315e7dce0bbe66407b4468"
+  content_hash: "4d1614d55f630cca85027764517e5863efe9fe914f378d3d63e99b2076595f18"
+  source_hash: "57c21fbd5804bc145572018857995ee602ec3f5188cd277b43cbc4732b4dd085"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestBuckets"
   role: BINDING_ROLE_TESTS
@@ -73,8 +73,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gate-no-undeclared"
-  content_hash: "d8fac5aec0780854cb91e13134ad1229f98fef3ba7f8983954779375ee2854df"
-  source_hash: "fd1e54584cd8e7e35acea840dceb2ec7a2beb2a0161469c7155bd958ce749647"
+  content_hash: "9bc9e3ae8d7660156bf593fa89f0f33941d534c3ed519fc9ab119e1e814c6e5c"
+  source_hash: "eff24b9361fc1ccc9927d31783e7f714b9546d839882676e13939c41294a092e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.Evaluate"
   role: BINDING_ROLE_IMPLEMENTS
@@ -83,8 +83,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-gate-no-undeclared"
-  content_hash: "d8fac5aec0780854cb91e13134ad1229f98fef3ba7f8983954779375ee2854df"
-  source_hash: "fd1e54584cd8e7e35acea840dceb2ec7a2beb2a0161469c7155bd958ce749647"
+  content_hash: "9bc9e3ae8d7660156bf593fa89f0f33941d534c3ed519fc9ab119e1e814c6e5c"
+  source_hash: "eff24b9361fc1ccc9927d31783e7f714b9546d839882676e13939c41294a092e"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestGate"
   role: BINDING_ROLE_TESTS
@@ -263,10 +263,20 @@ bindings {
 
 bindings {
   requirement_id: "REQ-coverage-buckets"
-  content_hash: "5373f7ebcb8f936222f84b8840466ff96fea237a128ddf151042e10acbca8fbd"
-  source_hash: "d88a4e67132001723671f3fc6b080b9ae2f627ecb8315e7dce0bbe66407b4468"
+  content_hash: "4d1614d55f630cca85027764517e5863efe9fe914f378d3d63e99b2076595f18"
+  source_hash: "57c21fbd5804bc145572018857995ee602ec3f5188cd277b43cbc4732b4dd085"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestClauseClaimsGrantToTheirClauseAlone"
   role: BINDING_ROLE_TESTS
   shape_hash: "ff7f3277b5330537c008c624fcbcc809bfc4978a6b4b8a3a8c3166447f568f5f"
+}
+
+bindings {
+  requirement_id: "REQ-coverage-buckets"
+  content_hash: "4d1614d55f630cca85027764517e5863efe9fe914f378d3d63e99b2076595f18"
+  source_hash: "57c21fbd5804bc145572018857995ee602ec3f5188cd277b43cbc4732b4dd085"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/coverage.TestGateExcusesEveryRedClassARowCarries"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "69eab74c5c2171acdcda035542d2df155e7e861d2b1356a58344aa43c9b21c44"
 }
