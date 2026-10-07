@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -778,5 +779,30 @@ func TestWitnessRunNotesAreBoundedByThePolicy(t *testing.T) {
 	}
 	if len(executing) != 3 || len(persisted) != 2 || persisted["race example.com/notes/many"] == "" || persisted["tagged example.com/notes/many"] == "" {
 		t.Fatalf("executing %v persisted %v", executing, persisted)
+	}
+}
+
+// TestGoCaptureRefusesAnUnsatisfiedToolchainPin pins the refusal's
+// class at the operation: a policy whose invocation pins a toolchain
+// the environment does not resolve fails the capture outright, naming
+// the invocation and the pin — a load refusal, never a degrade to full
+// execution (REQ-policy-toolchain-pin).
+func TestGoCaptureRefusesAnUnsatisfiedToolchainPin(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-toolchain-pin")
+	if runtime.GOOS == "windows" {
+		t.Skip("the overriding wrapper is a shell script")
+	}
+	neutralAmbient(t)
+	installLocalForcingWrapper(t)
+	dir := discoverFixture(t)
+	pinned := &stipulatorv1.GoInvocationConfig{}
+	pinned.SetPackages([]string{"./..."})
+	pinned.SetRace(true)
+	pinned.SetToolchain("go1.0.0")
+	pol := &stipulatorv1.TestPolicy{}
+	pol.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("pinned", pinned)})
+	pc, err := CapturePolicy(context.Background(), dir, pol)
+	if err == nil || pc != nil || !strings.Contains(err.Error(), `"pinned"`) || !strings.Contains(err.Error(), `toolchain pin "go1.0.0" is not satisfied`) {
+		t.Fatalf("capture = %v, err = %v: an unsatisfied pin must refuse the operation naming the invocation and the pin", pc, err)
 	}
 }

@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/greatliontech/gofresh/gotool"
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/stipulate"
 )
@@ -410,10 +411,10 @@ func TestProvenanceProbeRunsInTheCallersGroup(t *testing.T) {
 	orig := toolchainSampleForTest
 	t.Cleanup(func() { toolchainSampleForTest = orig })
 	toolchainSampleForTest = func(context.Context, string, []string) (string, error) { return runtime.Version(), nil }
-	if err := checkSelectionMembers(context.Background(), ".", nil, []string{"."}, newToolchainSample()); err != nil {
+	if err := checkSelectionMembers(context.Background(), ".", nil, []string{"."}, "", newToolchainSample()); err != nil {
 		t.Fatal(err)
 	}
-	if err := checkSelectionMembers(cancelled, ".", nil, []string{"."}, newToolchainSample()); err == nil {
+	if err := checkSelectionMembers(cancelled, ".", nil, []string{"."}, "", newToolchainSample()); err == nil {
 		t.Fatal("a cancelled member walk answered from the memo")
 	}
 }
@@ -465,6 +466,248 @@ func TestToolchainSamplerIsMintedPerOperation(t *testing.T) {
 		mu.Unlock()
 		if sampled == 0 {
 			t.Fatalf("served backend %d sampled the toolchain %d times, want its own sample: a memo outlived its operation", round, sampled)
+		}
+	}
+}
+
+// TestToolchainPinRuleIsTheGotoolchainGrammar pins the one rule both
+// arms read, as cmd/go reads the grammar: local/path/auto and the
+// local+ forms require nothing; a bare name is equality; +auto/+path
+// select the name or the module file's newer requirement, the resolved
+// side equal to it in Go's version grammar (a vendor suffix its
+// release); a `toolchain default` file reads as no requirement; a
+// raised selection names its file; an unreadable side refuses naming
+// the side, with the remedy a pin can follow; every refusal names the
+// pin, the resolved toolchain and the remedy
+// (REQ-policy-toolchain-pin).
+func TestToolchainPinRuleIsTheGotoolchainGrammar(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-toolchain-pin")
+	req := func(toolchain string) moduleRequirement {
+		if toolchain == "" {
+			return moduleRequirement{}
+		}
+		return moduleRequirement{toolchain: toolchain, file: "go.mod"}
+	}
+	for _, pin := range []string{"", "local", "path", "auto", "local+auto", "local+path"} {
+		if err := toolchainPinSatisfied(pin, "go1.27.0-dst.14", req("go1.28.0")); err != nil {
+			t.Fatalf("pin %q over a vendor build: %v", pin, err)
+		}
+	}
+	if err := toolchainPinSatisfied("go1.26.5-dst.6", "go1.26.5-dst.6", req("")); err != nil {
+		t.Fatalf("an equal vendor pin: %v", err)
+	}
+	remedy := "install the pinned toolchain, or declare the resolved one in the accepted policy"
+	err := toolchainPinSatisfied("go1.26.5-dst.6", "go1.27.0-dst.14", req(""))
+	if err == nil || !strings.Contains(err.Error(), `pin "go1.26.5-dst.6"`) || !strings.Contains(err.Error(), `resolves "go1.27.0-dst.14"`) || !strings.Contains(err.Error(), remedy) {
+		t.Fatalf("the field report's shape = %v", err)
+	}
+	// A selection: the name where the module requires nothing newer,
+	// else the requirement; the resolved side equal to it, the grammar
+	// reading a vendor suffix as its release; a `toolchain default`
+	// file (no requirement) leaves the name alone whatever its go line.
+	for _, c := range []struct{ pin, resolved, required string }{
+		{"go1.26.5+auto", "go1.26.5", ""},
+		{"go1.26.5+auto", "go1.26.5-dst.6", ""},
+		{"go1.26.5+auto", "go1.27.1", "go1.27.1"},
+		{"go1.26.5+path", "go1.27.0", "go1.27.0"},
+		{"go1.27.1+auto", "go1.27.1", "go1.26.0"},
+		{"go1.27.0-dst.15+auto", "go1.27.0-dst.14", ""},
+		{"go1.23.0+auto", "go1.23.0", ""},
+	} {
+		if err := toolchainPinSatisfied(c.pin, c.resolved, req(c.required)); err != nil {
+			t.Fatalf("selection %+v: %v", c, err)
+		}
+	}
+	// The field report's mechanism under a +auto pin: the wrapper
+	// resolves the local toolchain where the selection is the name — a
+	// requirement below the name raises nothing and names no file.
+	err = toolchainPinSatisfied("go1.26.5-dst.6+auto", "go1.27.0-dst.14", req("go1.24.0"))
+	if err == nil || !strings.Contains(err.Error(), `the pin select "go1.26.5-dst.6"`) || !strings.Contains(err.Error(), `resolves "go1.27.0-dst.14"`) || !strings.Contains(err.Error(), remedy) {
+		t.Fatalf("a wrapper under a +auto pin = %v", err)
+	}
+	for _, c := range []struct{ pin, resolved, required string }{
+		{"go1.27.1+auto", "go1.27.0", ""},
+		{"go1.27.1+path", "go1.27.0", ""},
+		{"go1.26.5+auto", "go1.27.1", "go1.27.0"},
+	} {
+		if err := toolchainPinSatisfied(c.pin, c.resolved, req(c.required)); err == nil || !strings.Contains(err.Error(), "is not satisfied") {
+			t.Fatalf("a resolved side off the selection %+v = %v", c, err)
+		}
+	}
+	// A requirement that raised the selection names its file.
+	if err := toolchainPinSatisfied("go1.26.5+auto", "go1.26.5", moduleRequirement{toolchain: "go1.27.0", file: "/w/go.work"}); err == nil || !strings.Contains(err.Error(), `the pin and /w/go.work's requirement select "go1.27.0"`) {
+		t.Fatalf("a raised selection = %v, want the file named", err)
+	}
+	// An unreadable side names the side and a remedy a pin can follow.
+	if err := toolchainPinSatisfied("go1.26.5+auto", "devel go1.28-abc", req("")); err == nil || !strings.Contains(err.Error(), `resolves "devel go1.28-abc"`) || !strings.Contains(err.Error(), "pin `local`") {
+		t.Fatalf("an unreadable resolved side = %v", err)
+	}
+	if err := toolchainPinSatisfied("devel go1.28-abc+auto", "go1.27.1", req("")); err == nil || !strings.Contains(err.Error(), "names a minimum") || !strings.Contains(err.Error(), "pin a release the grammar reads") {
+		t.Fatalf("an unreadable pin name = %v", err)
+	}
+	if err := toolchainPinSatisfied("go1.26.5+auto", "go1.27.0 X:nodwarf5", req("")); err == nil || !strings.Contains(err.Error(), "cannot read") {
+		t.Fatalf("an experiment-stamped resolved side = %v", err)
+	}
+}
+
+// TestToolchainRequirementReadsTheModuleFileAsCmdGoDoes pins the
+// requirement a +auto/+path selection may upgrade to, read as the go
+// command reads it: a workspace's go.work over the member's go.mod, the
+// lines found by a line scan (a directive this build does not know and
+// a trailing comment change nothing; an indented or a differently
+// spelled line is not the directive), the toolchain line over the go
+// line, `toolchain default` no requirement at all, a bare language
+// version from go1.21 on its ".0" release, the file named, and nothing
+// where no file is read (REQ-policy-toolchain-pin).
+func TestToolchainRequirementReadsTheModuleFileAsCmdGoDoes(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-toolchain-pin")
+	write := func(dir, name, body string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for body, want := range map[string]string{
+		"module m\n\ngo 1.24\n":                                        "go1.24.0",
+		"module m\n\ngo 1.24.3\n":                                      "go1.24.3",
+		"module m\n\ngo 1.20\n":                                        "go1.20",
+		"module m\n\ngo 1.24\n\ntoolchain go1.25.1\n":                  "go1.25.1",
+		"module m\n\ngo 1.26.0\n\ntoolchain go1.25.1\n":                "go1.26.0",
+		"module m\n\ngo 1.24\n\ntoolchain go1.25.1-dst.3\n":            "go1.25.1-dst.3",
+		"module m\n\ngo 1.24\n\ntoolchain default\n":                   "",
+		"module m\n\ngo 1.24 // the language\n\nfuturedirective x y\n": "go1.24.0",
+		"module m\n\n\tgo 1.25\n\ngo 1.24\n":                           "go1.25.0",
+		"module m\n\ngolang 1.25\n\ngo\t1.24\n":                        "go1.24.0",
+	} {
+		dir := t.TempDir()
+		write(dir, "go.mod", body)
+		got := toolchainRequirement("", dir)
+		if got.toolchain != want || (want != "" && got.file != filepath.Join(dir, "go.mod")) || (want == "" && got.file != "") {
+			t.Errorf("go.mod %q: requirement = %+v, want %q from the file", body, got, want)
+		}
+	}
+	if got := toolchainRequirement("", t.TempDir()); got != (moduleRequirement{}) {
+		t.Errorf("no go.mod: requirement = %+v", got)
+	}
+	dir := t.TempDir()
+	write(dir, "go.mod", "module m\n\ngo 1.26.0\n")
+	write(dir, "go.work", "go 1.24\n\ntoolchain go1.25.0\n\nuse .\n")
+	if got := toolchainRequirement(filepath.Join(dir, "go.work"), dir); got.toolchain != "go1.25.0" || got.file != filepath.Join(dir, "go.work") {
+		t.Errorf("go.work over go.mod: requirement = %+v, want the workspace's from go.work", got)
+	}
+}
+
+// TestSelectionViewsRefuseAnUnsatisfiedToolchainPin pins the selection
+// arms: an identified member toolchain the selection's pin does not
+// admit refuses the walk naming the member, a satisfied pin walks on,
+// and a member whose sample fails stays the view's own degradation
+// (REQ-policy-toolchain-pin).
+func TestSelectionViewsRefuseAnUnsatisfiedToolchainPin(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-toolchain-pin")
+	sample := func(_ context.Context, dir string, env []string) (string, error) {
+		if strings.HasSuffix(dir, "broken") {
+			return "", fmt.Errorf("boom")
+		}
+		return "go1.27.1", nil
+	}
+	ctx := t.Context()
+	if err := checkSelectionMembers(ctx, t.TempDir(), nil, []string{".", "broken"}, "go1.27.1", sample); err != nil {
+		t.Fatalf("a satisfied pin beside a failed sample: %v", err)
+	}
+	if err := checkSelectionMembers(ctx, t.TempDir(), nil, []string{".", "broken"}, "", sample); err != nil {
+		t.Fatalf("no pin: %v", err)
+	}
+	err := checkSelectionMembers(ctx, t.TempDir(), nil, []string{"m"}, "go1.26.5", sample)
+	if err == nil || !strings.Contains(err.Error(), `member "m"`) || !strings.Contains(err.Error(), `pin "go1.26.5" is not satisfied`) {
+		t.Fatalf("an unsatisfied selection pin = %v", err)
+	}
+}
+
+// TestTypedViewsRefuseAnUnsatisfiedSelectionPin pins the resolver
+// child's typed-view arm end to end: a policy whose tagged invocation
+// declares a toolchain, sampled by the seam as another release, refuses
+// the load naming the member and the pin; the same policy under a
+// sample equal to the pin loads (the view's own degradation then owns
+// whatever the pinned toolchain cannot build) (REQ-policy-toolchain-pin).
+func TestTypedViewsRefuseAnUnsatisfiedSelectionPin(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
+	stipulate.Covers(t, "REQ-policy-toolchain-pin")
+	dir := buildSelectionModule(t)
+	// The satisfied leg pins the host's own toolchain, so the view loads
+	// under the local binary and no release is fetched; the unsatisfied
+	// leg refuses before any load.
+	local := hostGoVersion(t)
+	write := func(pin string) {
+		t.Helper()
+		dstCfg := &stipulatorv1.GoInvocationConfig{}
+		dstCfg.SetPackages([]string{"./..."})
+		dstCfg.SetTags([]string{"dst"})
+		dstCfg.SetToolchain(pin)
+		p := &stipulatorv1.TestPolicy{}
+		p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("dst", dstCfg)})
+		writePolicyRecord(t, dir, p)
+	}
+	orig := toolchainSampleForTest
+	t.Cleanup(func() { toolchainSampleForTest = orig })
+	write("go1.26.5")
+	toolchainSampleForTest = func(_ context.Context, dir string, env []string) (string, error) {
+		return local, nil
+	}
+	if _, err := newContext(context.Background(), dir, nil); err == nil || !strings.Contains(err.Error(), `member "."`) || !strings.Contains(err.Error(), `pin "go1.26.5" is not satisfied`) {
+		t.Fatalf("typed views under an unsatisfied selection pin = %v, want the member's pin refusal", err)
+	}
+	write(local)
+	if _, err := newContext(context.Background(), dir, nil); err != nil {
+		t.Fatalf("typed views under a satisfied selection pin: %v", err)
+	}
+}
+
+// hostGoVersion is the toolchain the real go on PATH reports — the one
+// pin a test can declare without fetching a release.
+func hostGoVersion(t *testing.T) string {
+	t.Helper()
+	out, err := exec.Command("go", "env", "GOVERSION").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// TestServedSelectionEngineRefusesAnUnsatisfiedPin pins the served
+// form's arm: its selection engine samples every member through the
+// operation's sampler and refuses an identified toolchain the
+// selection's pin does not admit, naming the member; a satisfied pin
+// builds the engine (REQ-policy-toolchain-pin).
+func TestServedSelectionEngineRefusesAnUnsatisfiedPin(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
+	stipulate.Covers(t, "REQ-policy-toolchain-pin")
+	dir := buildSelectionModule(t)
+	local := hostGoVersion(t)
+	sample := func(_ context.Context, dir string, env []string) (string, error) { return local, nil }
+	if _, err := selectionEngine(context.Background(), dir, buildSelection{tags: []string{"dst"}, toolchain: "go1.26.5"}, sample); err == nil || !strings.Contains(err.Error(), `member "."`) || !strings.Contains(err.Error(), `pin "go1.26.5" is not satisfied`) {
+		t.Fatalf("the served selection engine under an unsatisfied pin = %v, want the member's pin refusal", err)
+	}
+	// The satisfied leg pins the host's own toolchain: the engine builds
+	// under the local binary, no release fetched.
+	if _, err := selectionEngine(context.Background(), dir, buildSelection{tags: []string{"dst"}, toolchain: local}, sample); err != nil {
+		t.Fatalf("the served selection engine under a satisfied pin: %v", err)
+	}
+}
+
+// TestPinnableToolchainIsTheVersionGrammar pins the one predicate for a
+// GOVERSION the GOTOOLCHAIN grammar can carry: a release and a vendor
+// build read; a development build and an experiment-stamped version
+// (which begins with "go" all the same) do not, and pin local
+// (REQ-policy-toolchain-pin).
+func TestPinnableToolchainIsTheVersionGrammar(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-toolchain-pin")
+	for v, want := range map[string]bool{"go1.27.1": true, "go1.27.0-dst.14": true, "go1.27rc1": true, "devel go1.28-abc": false, "go1.27.0 X:nodwarf5": false, "": false} {
+		if got := pinnableToolchain(v); got != want {
+			t.Errorf("pinnableToolchain(%q) = %v, want %v", v, got, want)
 		}
 	}
 }

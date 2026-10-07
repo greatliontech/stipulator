@@ -2,7 +2,9 @@ package golang
 
 import (
 	"context"
+	"go/version"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -604,4 +606,104 @@ func TestAbsoluteExclusionInsideALinkedTreeIsRefused(t *testing.T) {
 			t.Fatalf("an absolute exclusion %q inside the tree named through a link was accepted: %v", p, err)
 		}
 	}
+}
+
+// TestGoNormalizeRefusesAnUnsatisfiedToolchainPin pins the declared
+// pin's judgment at the one read, under the field report's mechanism:
+// a `go` wrapper on PATH forcing GOTOOLCHAIN=local, so the export
+// selects nothing and the environment resolves the local toolchain
+// whatever the pin says. A bare pin the environment does not resolve
+// refuses naming the pin, the resolved toolchain and the remedy; the
+// pin equal to the resolved toolchain passes; `local` and `path` pass;
+// a lower bound every release satisfies passes
+// (REQ-policy-toolchain-pin).
+func TestGoNormalizeRefusesAnUnsatisfiedToolchainPin(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-toolchain-pin")
+	if runtime.GOOS == "windows" {
+		t.Skip("the overriding wrapper is a shell script")
+	}
+	neutralAmbient(t)
+	installLocalForcingWrapper(t)
+	dir := discoverFixture(t)
+	normalize := func(pin string) (*NormalizedInvocation, error) {
+		cfg := &stipulatorv1.GoInvocationConfig{}
+		cfg.SetPackages([]string{"./..."})
+		if pin != "" {
+			cfg.SetToolchain(pin)
+		}
+		return NormalizeInvocation(context.Background(), dir, goInvocation("pinned", cfg))
+	}
+	resolved, err := normalize("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := normalize("go1.0.0"); err == nil {
+		t.Fatal("a pin the environment does not resolve normalized under the overriding wrapper")
+	} else if !strings.Contains(err.Error(), `toolchain pin "go1.0.0" is not satisfied`) || !strings.Contains(err.Error(), resolved.Toolchain) || !strings.Contains(err.Error(), "declare the resolved one in the accepted policy") {
+		t.Fatalf("refusal = %v, want the pin, the resolved toolchain and the remedy", err)
+	}
+	for _, pin := range []string{resolved.Toolchain, "local", "path"} {
+		if n, err := normalize(pin); err != nil || n.Toolchain != resolved.Toolchain {
+			t.Fatalf("pin %q: %v", pin, err)
+		}
+	}
+	// Under +auto the selection is the pin's name or the module's newer
+	// requirement (the fixture is a workspace: its go.work's go line,
+	// named in the refusal): the wrapper resolves the
+	// local toolchain instead, so the field report's mechanism is caught
+	// under a +auto pin too — while a pin naming the local toolchain, or
+	// local+auto, is satisfied.
+	if _, err := normalize("go1.0+auto"); err == nil || !strings.Contains(err.Error(), `go.work's requirement select "go1.24.0"`) || !strings.Contains(err.Error(), resolved.Toolchain) {
+		t.Fatalf("a +auto pin under the wrapper = %v, want the selection, its file and the resolved toolchain named", err)
+	}
+	if _, err := normalize("local+auto"); err != nil {
+		t.Fatalf("local+auto refused: %v", err)
+	}
+	if !version.IsValid(resolved.Toolchain) {
+		t.Skipf("the host's toolchain %q is outside Go's version grammar; the selection arm is the rule's own pin", resolved.Toolchain)
+	}
+	if _, err := normalize(resolved.Toolchain + "+auto"); err != nil {
+		t.Fatalf("the local toolchain as a +auto pin refused: %v", err)
+	}
+}
+
+// TestGoNormalizeJudgesThePinBeforeAnyOtherDerivation pins the order:
+// the pin is judged on the one read before anything else is derived
+// from it — an ambient GOFLAGS the normalizer refuses, and the
+// toolchain-source audit a witness-eligible invocation pays, both come
+// after it, so under the wrapper the refusal is the pin's
+// (REQ-policy-toolchain-pin).
+func TestGoNormalizeJudgesThePinBeforeAnyOtherDerivation(t *testing.T) {
+	stipulate.Covers(t, "REQ-policy-toolchain-pin")
+	if runtime.GOOS == "windows" {
+		t.Skip("the overriding wrapper is a shell script")
+	}
+	neutralAmbient(t)
+	installLocalForcingWrapper(t)
+	t.Setenv("GOFLAGS", "-exec=/bin/true")
+	dir := discoverFixture(t)
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./..."})
+	cfg.SetRace(true)
+	cfg.SetToolchain("go1.0.0")
+	_, err := NormalizeInvocation(context.Background(), dir, goInvocation("pinned", cfg))
+	if err == nil || !strings.Contains(err.Error(), `toolchain pin "go1.0.0" is not satisfied`) || strings.Contains(err.Error(), "unsupported") {
+		t.Fatalf("refusal = %v, want the pin's, ahead of the ambient-control and audit refusals", err)
+	}
+}
+
+// installLocalForcingWrapper puts the field report's `go` on PATH: a
+// wrapper forcing GOTOOLCHAIN=local, so an exported pin selects nothing
+// and the environment resolves the local toolchain whatever the pin.
+func installLocalForcingWrapper(t *testing.T) {
+	t.Helper()
+	real, err := exec.LookPath("go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	shim := t.TempDir()
+	if err := os.WriteFile(filepath.Join(shim, "go"), []byte("#!/bin/sh\nGOTOOLCHAIN=local exec "+real+" \"$@\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", shim+string(os.PathListSeparator)+os.Getenv("PATH"))
 }

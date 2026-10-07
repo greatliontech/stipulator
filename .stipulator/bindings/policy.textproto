@@ -1130,3 +1130,93 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "6c11b2781040a115f68eb3bd0ffba6d63671d44205b5ddbe42657ce38ceee2c0"
 }
+
+bindings {
+  requirement_id: "REQ-policy-toolchain-pin"
+  content_hash: "328273f7b7ee3bc68c4929ae75c329427f959a5f4093c6296d9d31f557ac7add"
+  source_hash: "38c4989c7dba70b56e37ef2672365067f59a8feca11853069817552e020f3722"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoNormalizeRefusesAnUnsatisfiedToolchainPin"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c00b6bac0edc8833cda710dbb064eb1c7f3a30d937f10b430d768eba830acfdf"
+}
+
+bindings {
+  requirement_id: "REQ-policy-toolchain-pin"
+  content_hash: "328273f7b7ee3bc68c4929ae75c329427f959a5f4093c6296d9d31f557ac7add"
+  source_hash: "38c4989c7dba70b56e37ef2672365067f59a8feca11853069817552e020f3722"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestToolchainPinRuleIsTheGotoolchainGrammar"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "6c018b27cde21640efe6f022d4c069e689d8ec6286136e15c887b263e5ad7dcc"
+}
+
+bindings {
+  requirement_id: "REQ-policy-toolchain-pin"
+  content_hash: "328273f7b7ee3bc68c4929ae75c329427f959a5f4093c6296d9d31f557ac7add"
+  source_hash: "38c4989c7dba70b56e37ef2672365067f59a8feca11853069817552e020f3722"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestSelectionViewsRefuseAnUnsatisfiedToolchainPin"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "4b95aa03f518d7659a4c60fd5e3a2332576ece6cfc9b4447bff1c54deacf926e"
+}
+
+bindings {
+  requirement_id: "REQ-policy-toolchain-pin"
+  content_hash: "328273f7b7ee3bc68c4929ae75c329427f959a5f4093c6296d9d31f557ac7add"
+  source_hash: "38c4989c7dba70b56e37ef2672365067f59a8feca11853069817552e020f3722"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestTypedViewsRefuseAnUnsatisfiedSelectionPin"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "868237c56cdaada237c54a43c3f64cce0bdfa8f1f5d889f8e412a205cd094d16"
+}
+
+bindings {
+  requirement_id: "REQ-policy-toolchain-pin"
+  content_hash: "328273f7b7ee3bc68c4929ae75c329427f959a5f4093c6296d9d31f557ac7add"
+  source_hash: "38c4989c7dba70b56e37ef2672365067f59a8feca11853069817552e020f3722"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestServedSelectionEngineRefusesAnUnsatisfiedPin"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7e57e788bed121a4d2d1b84662ade19eaee6dca2e10f6bfd05183dd181201fb4"
+}
+
+bindings {
+  requirement_id: "REQ-policy-toolchain-pin"
+  content_hash: "328273f7b7ee3bc68c4929ae75c329427f959a5f4093c6296d9d31f557ac7add"
+  source_hash: "38c4989c7dba70b56e37ef2672365067f59a8feca11853069817552e020f3722"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestToolchainRequirementReadsTheModuleFileAsCmdGoDoes"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "15424a25d32ca5dd8eb8c599dcd82c426a4120f1cb2a532d40c51ef93d0ddf04"
+}
+
+bindings {
+  requirement_id: "REQ-policy-toolchain-pin"
+  content_hash: "328273f7b7ee3bc68c4929ae75c329427f959a5f4093c6296d9d31f557ac7add"
+  source_hash: "38c4989c7dba70b56e37ef2672365067f59a8feca11853069817552e020f3722"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoNormalizeJudgesThePinBeforeAnyOtherDerivation"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "074001e68e759b95a5daeefe352a199053c401c50bc76ecd3ff180581fcac112"
+}
+
+bindings {
+  requirement_id: "REQ-policy-toolchain-pin"
+  content_hash: "328273f7b7ee3bc68c4929ae75c329427f959a5f4093c6296d9d31f557ac7add"
+  source_hash: "38c4989c7dba70b56e37ef2672365067f59a8feca11853069817552e020f3722"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoCaptureRefusesAnUnsatisfiedToolchainPin"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c0bc1d848a8df64ce92707aa3cc528cfb9bbbb9c7060ee8428ec0269f61b1b53"
+}
+
+bindings {
+  requirement_id: "REQ-policy-toolchain-pin"
+  content_hash: "328273f7b7ee3bc68c4929ae75c329427f959a5f4093c6296d9d31f557ac7add"
+  source_hash: "38c4989c7dba70b56e37ef2672365067f59a8feca11853069817552e020f3722"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestPinnableToolchainIsTheVersionGrammar"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a13bd258414f80457d526872d79d5d2424984e0971287a339396b11b852c7bea"
+}

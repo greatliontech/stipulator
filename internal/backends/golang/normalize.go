@@ -309,6 +309,21 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	if err != nil {
 		return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
 	}
+	// A declared toolchain is exported above and read back here as the
+	// toolchain the environment actually resolves — a wrapper on PATH
+	// may override the export outright — so the one read judges the
+	// pin before anything else is derived from it: an unsatisfied pin
+	// refuses the load naming both and the remedy, never a silent run
+	// under an undeclared toolchain (REQ-policy-toolchain-pin).
+	if cfg.HasToolchain() {
+		workFile := ""
+		if n.WorkspaceOn {
+			workFile = work
+		}
+		if err := toolchainPinSatisfied(cfg.GetToolchain(), version, toolchainRequirement(workFile, n.Dir)); err != nil {
+			return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
+		}
+	}
 	// The effective GOFLAGS covers the ambient variable and the go env
 	// config file alike; validate whichever source won. The explicit field
 	// was already statically validated, so a failure here always names an
@@ -349,12 +364,13 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	// frozen environment cannot freeze: a go env -w between load and spawn
 	// would move the toolchain or experiments under a pinned record. GOENV
 	// off makes the pinned environment the only source; the resolved
-	// toolchain and experiment set are pinned explicitly. A development
-	// toolchain version is not a valid GOTOOLCHAIN value, so it pins local.
+	// toolchain and experiment set are pinned explicitly. A version the
+	// GOTOOLCHAIN grammar cannot carry (a development build, an
+	// experiment-stamped version) pins local (pinnableToolchain).
 	env = gotool.SetEnv(env, "GOENV", "off")
 	if inv.GetGo().GetToolchain() == "" {
 		toolchainPin := version
-		if !strings.HasPrefix(version, "go") {
+		if !pinnableToolchain(version) {
 			toolchainPin = "local"
 		}
 		env = gotool.SetEnv(env, "GOTOOLCHAIN", toolchainPin)

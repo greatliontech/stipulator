@@ -987,9 +987,17 @@ type GoInvocationConfig_builder struct {
 	// contributes suite health alone unless it explicitly accepts the
 	// plain witness tier below.
 	Race *bool
-	// Pin-at-load. Present: the required toolchain selection, exported as
-	// GOTOOLCHAIN to the invocation. Absent: the effective toolchain the
-	// environment selects at load is pinned (`go env GOVERSION`).
+	// Pin-at-load. Present: the required toolchain selection in the
+	// GOTOOLCHAIN grammar, exported as GOTOOLCHAIN to the invocation and
+	// judged at load against the toolchain the environment then resolves
+	// (`go env GOVERSION`): a bare name by equality; a `<name>+auto` or
+	// `<name>+path` form by the go command's own selection — the name,
+	// or the module file's toolchain or go line where newer — in Go's
+	// version grammar; `local`, `path`, `auto`, `local+auto` and
+	// `local+path` requiring nothing — an unsatisfied pin refuses the
+	// load, naming the pin, the resolved toolchain and the remedy.
+	// Absent: the effective toolchain the environment selects at load is
+	// pinned.
 	Toolchain *string
 	// Explicit-only. KEY=VALUE overrides applied to the inherited
 	// environment after denial. Keys the backend itself pins — GOWORK,

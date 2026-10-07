@@ -882,6 +882,39 @@ honor an invocation's selection — a package pattern the tree resolves to
 no package — and the check fails as it fails for a missing or invalid
 record, naming the invocation and the pattern.
 
+**REQ-policy-toolchain-pin** (behavior): The toolchain an invocation's
+one environment read resolves at normalization (`go env GOVERSION` under
+the invocation's complete effective environment, the declared pin
+exported) MUST satisfy the invocation's declared toolchain pin, and a
+selection view's declared toolchain binds each member's sample where its
+view loads by the same rule, on the resolver child's typed views and the
+served form alike: in the GOTOOLCHAIN grammar, `local`, `path`, `auto`,
+`local+auto` and `local+path` name no toolchain and require nothing; a
+bare `<name>` is satisfied by equality alone; `<name>+auto` and
+`<name>+path` select as the go command selects — the name, or the module
+file's requirement where newer: the go.work file under a workspace, else
+the go.mod, its lines read as the go command reads them (by line, never
+parsed): the larger of its toolchain line and its go line's release (a
+bare language version from go1.21 on taking the `.0` release), a
+`toolchain default` line selecting the name alone with the go line
+ignored — the resolved toolchain equal to that selection in Go's own
+version grammar, which reads a vendor suffix as its release, so a
+selection never distinguishes vendor builds of one release where an
+exact pin does; a side that grammar cannot read — a development build,
+an experiment-stamped version — refuses, naming the side (a selection no
+grammar can judge is no selection, and a resolved value no pin can spell
+is remedied by `local`). An unsatisfied pin refuses the load before
+anything is derived from the read — never a run under a toolchain the
+accepted record did not declare (a `go` wrapper on PATH may override the
+export outright, so the export alone enforces nothing) — naming the pin,
+the resolved toolchain, the file whose requirement raised a selection,
+and the remedy: the pinned toolchain installed, or the resolved one
+declared in the accepted policy, a consent-bearing edit. The refusal is
+a load refusal, not a freshness-path fault, and the comparison is this
+tool's — the pin's consumer; the skew judgment
+(REQ-evidence-toolchain-provenance) is Gofresh's and judges the binary
+against the sample, never the pin.
+
 **REQ-policy-budget-attribution** (behavior): A package run ended by an
 execution bound MUST attribute the red to the exhausted budget: the
 diagnostic names the bound from the reviewed record — the invocation

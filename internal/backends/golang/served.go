@@ -39,7 +39,7 @@ func selectionEngine(ctx context.Context, dir string, sel buildSelection, sample
 	if err != nil {
 		return nil, err
 	}
-	if err := checkSelectionMembers(ctx, dir, env, members, sample); err != nil {
+	if err := checkSelectionMembers(ctx, dir, env, members, sel.toolchain, sample); err != nil {
 		return nil, err
 	}
 	return newEngine(ctx, dir, env, selectionViewFlags(sel))

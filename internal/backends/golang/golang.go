@@ -205,7 +205,7 @@ func newContext(ctx context.Context, dir string, patterns []string) (*Backend, e
 		// whose toolchain cannot be sampled loads no view and falls
 		// through to the per-view unloadable degradation below
 		// (REQ-go-build-selections).
-		if err := checkSelectionMembers(ctx, dir, viewEnv, members, sample); err != nil {
+		if err := checkSelectionMembers(ctx, dir, viewEnv, members, sel.toolchain, sample); err != nil {
 			return nil, err
 		}
 		var viewPkgs []*packages.Package

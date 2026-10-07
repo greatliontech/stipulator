@@ -1,9 +1,14 @@
 package golang
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"go/version"
+	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/greatliontech/gofresh"
@@ -123,7 +128,7 @@ const probeWaitDelay = 2 * time.Second
 // form's engine proceeds and resolves the member's symbols as its own
 // loads allow. A cancelled operation returns its cancellation whatever
 // the memo already holds.
-func checkSelectionMembers(ctx context.Context, dir string, env, members []string, sample toolchainSample) error {
+func checkSelectionMembers(ctx context.Context, dir string, env, members []string, pin string, sample toolchainSample) error {
 	for _, m := range members {
 		// The walk answers a cancelled operation whatever a sample seam
 		// holds (REQ-policy-cancellation); the production sampler
@@ -141,6 +146,160 @@ func checkSelectionMembers(ctx context.Context, dir string, env, members []strin
 		if err := gofresh.ToolchainSkew(ambient); err != nil {
 			return &gofresh.ToolchainProvenanceError{Err: err}
 		}
+		// An identified member toolchain the selection's declared pin
+		// does not admit refuses the load as the skew does: the view
+		// would load the selection's sources under a toolchain its
+		// record never declared (REQ-policy-toolchain-pin).
+		workFile := ""
+		if _, statErr := os.Stat(filepath.Join(dir, "go.work")); statErr == nil {
+			workFile = filepath.Join(dir, "go.work")
+		}
+		if err := toolchainPinSatisfied(pin, ambient, toolchainRequirement(workFile, filepath.Join(dir, m))); err != nil {
+			return fmt.Errorf("member %q: %w", m, err)
+		}
 	}
 	return nil
+}
+
+// toolchainPinSatisfied is the one rule a declared toolchain pin binds
+// the toolchain the environment resolves by, on every arm that reads a
+// pin — the invocation's one read at normalization and a selection
+// view's member samples (REQ-policy-toolchain-pin). The pin is the
+// GOTOOLCHAIN grammar's, read as cmd/go reads it: "local", "path",
+// "auto" and a "local+auto"/"local+path" form name no toolchain and
+// require nothing; a bare "<name>" requires the resolved GOVERSION to
+// equal it; "<name>+auto" and "<name>+path" select the name, or the
+// module file's requirement where newer (cmd/go's selection, handed in
+// as the requirement with the file it was read from) — and the
+// resolved toolchain must equal that selection in Go's own version
+// grammar, which reads a vendor suffix as its release
+// ("go1.27.0-dst.14" is go1.27.0 to it; an exact pin distinguishes
+// vendor builds, a selection never does); a side the grammar cannot
+// read (a development build, an experiment-stamped version) refuses,
+// naming the side, since a selection no grammar can judge is no
+// selection. A refusal names the pin, the resolved toolchain, the file
+// whose requirement raised the selection, and the remedy: the pinned
+// toolchain installed, or the resolved one declared in the accepted
+// policy (a consent-bearing edit) — for an unreadable resolved side,
+// which no pin can spell, `local`.
+func toolchainPinSatisfied(pin, resolved string, req moduleRequirement) error {
+	switch pin {
+	case "", "local", "path", "auto":
+		return nil
+	}
+	name, bound := pin, false
+	for _, suffix := range []string{"+auto", "+path"} {
+		if strings.HasSuffix(pin, suffix) {
+			name, bound = strings.TrimSuffix(pin, suffix), true
+		}
+	}
+	if bound && name == "local" {
+		return nil
+	}
+	remedy := "install the pinned toolchain, or declare the resolved one in the accepted policy"
+	if !bound {
+		if resolved == name {
+			return nil
+		}
+		return fmt.Errorf("toolchain pin %q is not satisfied: the environment resolves %q — %s", pin, resolved, remedy)
+	}
+	if !version.IsValid(name) {
+		return fmt.Errorf("toolchain pin %q names a minimum Go's version grammar cannot read — pin a release the grammar reads, or %s", pin, remedy)
+	}
+	if !pinnableToolchain(resolved) {
+		return fmt.Errorf("toolchain pin %q cannot be judged: the environment resolves %q, which Go's version grammar cannot read and no pin can spell — pin `local`, or install a release the grammar reads", pin, resolved)
+	}
+	selected, by := name, "the pin"
+	if req.toolchain != "" && version.IsValid(req.toolchain) && version.Compare(req.toolchain, name) > 0 {
+		selected, by = req.toolchain, "the pin and "+req.file+"'s requirement"
+	}
+	if version.Compare(resolved, selected) != 0 {
+		return fmt.Errorf("toolchain pin %q is not satisfied: %s select %q but the environment resolves %q — %s", pin, by, selected, resolved, remedy)
+	}
+	return nil
+}
+
+// moduleRequirement is what a module file requires of the toolchain a
+// +auto/+path pin may upgrade to: the toolchain, and the file it was
+// read from (named in a refusal); the zero value where no file is
+// read or the lines select nothing above the pin.
+type moduleRequirement struct {
+	toolchain string
+	file      string
+}
+
+// toolchainRequirement reads the module file as cmd/go's selection
+// does (toolchain/select.go, modGoToolchain over gover.GoModLookup):
+// the go.work file under a workspace (workFile non-empty), else the
+// module's go.mod at modDir, its `go` and `toolchain` lines found by a
+// line scan — never a parse, so a file carrying a directive this
+// build's x/mod does not know still selects as the go command selects.
+// A `toolchain default` line selects the pin's name alone, the go line
+// ignored (cmd/go's own rule); otherwise the requirement is the larger
+// of the toolchain line and the go line as a toolchain name (a bare
+// language version from go1.21 on taking the ".0" release), each
+// counted only where the grammar reads it.
+func toolchainRequirement(workFile, modDir string) moduleRequirement {
+	file := workFile
+	if file == "" {
+		file = filepath.Join(modDir, "go.mod")
+	}
+	data, err := os.ReadFile(file)
+	if err != nil {
+		return moduleRequirement{}
+	}
+	goLine, toolchainLine := goModLookup(data, "go"), goModLookup(data, "toolchain")
+	if toolchainLine == "default" {
+		return moduleRequirement{}
+	}
+	// cmd/go raises its minimum by the toolchain line, then again by the
+	// go line where that is greater still: the requirement is the larger
+	// of the two the grammar reads.
+	required := ""
+	if toolchainLine != "" && version.IsValid(toolchainLine) {
+		required = toolchainLine
+	}
+	if goLine != "" {
+		g := "go" + goLine
+		if version.IsValid(g) && version.Lang(g) == g && version.Compare(g, "go1.21") >= 0 {
+			g += ".0"
+		}
+		if version.IsValid(g) && (required == "" || version.Compare(g, required) > 0) {
+			required = g
+		}
+	}
+	if required == "" {
+		return moduleRequirement{}
+	}
+	return moduleRequirement{toolchain: required, file: file}
+}
+
+// goModLookup is cmd/go's gover.GoModLookup: the value of the first
+// line beginning with key followed by a space or tab, its trailing
+// comment stripped — the scan the go command selects a toolchain by.
+func goModLookup(gomod []byte, key string) string {
+	for len(gomod) > 0 {
+		var line []byte
+		line, gomod, _ = bytes.Cut(gomod, []byte("\n"))
+		line = bytes.TrimSpace(line)
+		if !strings.HasPrefix(string(line), key) {
+			continue
+		}
+		rest := strings.TrimPrefix(string(line), key)
+		if len(rest) == 0 || (rest[0] != ' ' && rest[0] != '\t') {
+			continue
+		}
+		rest, _, _ = strings.Cut(rest, "//")
+		return strings.TrimSpace(rest)
+	}
+	return ""
+}
+
+// pinnableToolchain reports whether a resolved GOVERSION is a value the
+// GOTOOLCHAIN grammar can carry — Go's version grammar reads it; a
+// development build or an experiment-stamped version is not, and pins
+// `local` instead; the rule's resolved side is judged by the same
+// predicate.
+func pinnableToolchain(resolved string) bool {
+	return version.IsValid(resolved)
 }
