@@ -32,3 +32,18 @@ func TestPropRapidGeneratorOnly(t *testing.T) {
 		t.Fatal("broken")
 	}
 }
+
+// TestPropTwoDrivers drives the runner twice: the first call is the
+// driving site.
+func TestPropTwoDrivers(t *testing.T) {
+	rapid.Check(t, func(rt *rapid.T) {
+		if Add(1, 1) != 2 {
+			rt.Fatal("broken")
+		}
+	})
+	rapid.Check(t, func(rt *rapid.T) {
+		if Add(2, 1) != 3 {
+			rt.Fatal("broken")
+		}
+	})
+}

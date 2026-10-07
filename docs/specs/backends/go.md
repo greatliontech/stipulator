@@ -115,8 +115,12 @@ lacks — a recognized library referenced without its classifying call is
 named exactly (`rapid.Check not invoked in the bound body`; `no
 structural assertion invoked in the bound body`), a recognized library
 reached only through a dot import is named as such, a body touching
-neither reads that no property driver or analyzer call appears, and a
-non-runnable symbol is named as such — and an uncovered requirement's
+neither reads that no property driver or analyzer call appears, a
+non-runnable symbol is named as such, and a driver reached only
+through in-module helpers names the first hop with the remedy (the
+tier is direct-call by contract: drive the runner in the bound body, a
+completion guard riding as the test context it is handed) — and an
+uncovered requirement's
 report surfaces the classification verdict per bound witness beside the
 required-evidence reason, a property-classified witness on a
 proof-requiring cell named symmetrically.

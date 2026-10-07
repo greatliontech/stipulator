@@ -249,7 +249,9 @@ resolved view's class, a proof witness or a fuzz target included; an
 in-module package the walk cannot load, a declaration the
 selection's view does not carry, or a call the type information resolves
 to no declaration refuses serving under a reason naming it (absence of
-proof never serves), a hop found outranking such a refusal; a driver
+proof never serves) — the first such refusal in the walk's
+breadth-first order standing as the reason — a hop found outranking
+such a refusal; a driver
 reached only through a dependency's helper, a function value, or an
 interface dispatch is outside the walk and serves as an example
 witness. A subject the backend cannot

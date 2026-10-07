@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/greatliontech/gofresh"
+
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
@@ -283,6 +285,23 @@ func (c *resolverClient) NeverServe(symbols []string) (map[string]string, error)
 		return map[string]string{}, nil
 	}
 	return resp.NeverServes, nil
+}
+
+// ExplainWitness derives a witness's seeding chain through the
+// resolver child; a transport or child fault is the caller's error.
+func (c *resolverClient) ExplainWitness(symbol string) (gofresh.Chain, string, error) {
+	resp, err := c.roundTrip(resolverRequest{Op: "explainwitness", Symbol: symbol})
+	if err != nil {
+		return gofresh.Chain{}, "", err
+	}
+	if resp.Error != "" {
+		return gofresh.Chain{}, "", errors.New(resp.Error)
+	}
+	if resp.Chain == nil {
+		return gofresh.Chain{}, "", fmt.Errorf("owned resolver child: no chain for %s", symbol)
+	}
+	chain, view := chainFromWire(resp.Chain)
+	return chain, view, nil
 }
 
 // SliceFloor implements verify.FloorSlicer through the resolver child.

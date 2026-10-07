@@ -208,8 +208,10 @@ func TestExplainArgumentContract(t *testing.T) {
 		{[]string{"--symbol", "V"}, "travel together"},
 		// An explicit empty list: nil would hand cobra the process's own
 		// arguments.
-		{[]string{}, "pass --reason to parse, or --package and --symbol"},
-		{[]string{"--reason", "nothing parseable here"}, "no culprit parsed"},
+		{[]string{}, "pass --reason to parse, --witness for a witness's seeding, or --package and --symbol"},
+		{[]string{"--reason", "nothing parseable here"}, "no culprit parsed from the reason; pass --package and --symbol, or --witness for a seeding reason"},
+		{[]string{"--witness", "example.com/p.TestProp", "--reason", "x"}, "--witness travels alone"},
+		{[]string{"--reason", "random-seeded property witness: executes every run, never served"}, "pass --witness naming the witness"},
 	} {
 		cmd := explainCmd()
 		cmd.SetArgs(tc.args)
@@ -265,6 +267,50 @@ func TestExplainRendersTheChain(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Fatalf("rendering lacks %q:\n%s", want, out)
 		}
+	}
+	// The witness form renders the seeding chain the same way, the
+	// subject the witness.
+	seeding := gofresh.Chain{
+		Arm: golang.ArmSeedingThrough,
+		Links: []gofresh.ChainLink{
+			{Kind: golang.LinkWitness, Package: "example.com/p", Symbol: "TestProp", Pos: "p_test.go:9"},
+			{Kind: golang.LinkCall, Package: "example.com/p", Symbol: "TestProp", Callee: "example.com/p.run", Pos: "p_test.go:10"},
+			{Kind: golang.LinkDriver, Package: "example.com/p", Symbol: "run", Clause: "run-time-seeded property driver", Pos: "p.go:4"},
+		},
+	}
+	priorWitness := explainWitnessChain
+	var gotWitness string
+	explainWitnessChain = func(_ context.Context, _, symbol string) (gofresh.Chain, string, error) {
+		gotWitness = symbol
+		return seeding, "-tags=dst", nil
+	}
+	t.Cleanup(func() { explainWitnessChain = priorWitness })
+	out, err = captureStdout(t, func() error {
+		cmd := explainCmd()
+		cmd.SetArgs([]string{"--witness", "example.com/p.TestProp"})
+		return cmd.ExecuteContext(context.Background())
+	})
+	if err != nil || gotWitness != "example.com/p.TestProp" {
+		t.Fatalf("witness form: %v, asked %q", err, gotWitness)
+	}
+	for _, want := range []string{
+		"explain: example.com/p.TestProp — seeding: through helpers (view: -tags=dst)",
+		"   1  witness  example.com/p.TestProp  p_test.go:9",
+		"   2  call     example.com/p.TestProp  → example.com/p.run  p_test.go:10",
+		"   3  driver   example.com/p.run  [run-time-seeded property driver]  p.go:4",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("witness rendering lacks %q:\n%s", want, out)
+		}
+	}
+	// A reason that is its own attribution answers without a policy.
+	out, err = captureStdout(t, func() error {
+		cmd := explainCmd()
+		cmd.SetArgs([]string{"--reason", "record not published"})
+		return cmd.ExecuteContext(context.Background())
+	})
+	if err != nil || !strings.Contains(out, "explain: no chain — the reason is its own attribution: record not published") {
+		t.Fatalf("attribution answer: %v\n%s", err, out)
 	}
 	out, err = captureStdout(t, func() error {
 		cmd := explainCmd()

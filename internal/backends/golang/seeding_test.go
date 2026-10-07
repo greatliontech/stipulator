@@ -420,12 +420,16 @@ func TestHelperIndirectedDriverRefusesServing(t *testing.T) {
 		"example.com/fixture/lib.TestPropViaInterface",
 		"example.com/fixture/lib.TestPropViaInterfaceArgument",
 		"example.com/fixture/lib.TestPropViaTypeParam",
+		"example.com/fixture/lib.TestPropViaBadThenGood",
+		"example.com/fixture/lib.TestPropViaTwoBad",
+		"example.com/fixture/lib.TestPropViaOtherThroughHop",
 		"example.com/fixture/lib.TestPropRapidCheck",
+		"example.com/fixture/lib.TestPropTwoDrivers",
 		"example.com/fixture/lib.TestProofThenDrive",
 		"example.com/fixture/lib.TestDriveThenProof",
 		"example.com/fixture/lib.TestProofViaHelper",
 	}
-	for _, sym := range symbols[:12] {
+	for _, sym := range symbols[:15] {
 		if got := fb.WitnessClass(sym); got != verify.ExampleWitness {
 			t.Errorf("%s classified %v, want example — the evidence class stays direct-call", sym, got)
 		}
@@ -449,7 +453,13 @@ func TestHelperIndirectedDriverRefusesServing(t *testing.T) {
 		// a call resolving to no declaration — refused, never served.
 		"example.com/fixture/lib.TestPropViaInterfaceArgument": seededThroughReason("example.com/fixture/lib.driveAndCount"),
 		"example.com/fixture/lib.TestPropViaTypeParam":         seededRefusal(errors.New("call of Run in example.com/fixture/lib.drive resolves to no declaration")),
-		"example.com/fixture/lib.TestPropRapidCheck":           seededReason,
+		// A refusal met before the driving hop: the hop outranks it;
+		// two refusals: the first in breadth-first order stands.
+		"example.com/fixture/lib.TestPropViaBadThenGood":     seededThroughReason("example.com/fixture/lib.runProp"),
+		"example.com/fixture/lib.TestPropViaTwoBad":          seededRefusal(errors.New("call of mystery in example.com/fixture/badhelper.Run resolves to no declaration")),
+		"example.com/fixture/lib.TestPropViaOtherThroughHop": seededThroughReason("example.com/fixture/lib.viaHelpers"),
+		"example.com/fixture/lib.TestPropRapidCheck":         seededReason,
+		"example.com/fixture/lib.TestPropTwoDrivers":         seededReason,
 		// Proof outranks property on the ladder and carries its seeding:
 		// a direct driver in either order, or a hop through a helper.
 		"example.com/fixture/lib.TestProofThenDrive": seededReason,
@@ -465,8 +475,18 @@ func TestHelperIndirectedDriverRefusesServing(t *testing.T) {
 		}
 	}
 	_, reason := fb.WitnessClassVerdict("example.com/fixture/lib.TestPropViaHelper")
-	if !strings.Contains(reason, "reached through example.com/fixture/lib.runProp") {
-		t.Fatalf("example reason = %q, want the hop named", reason)
+	if !strings.Contains(reason, "reached through example.com/fixture/lib.runProp"+directCallRemedy+")") {
+		t.Fatalf("example reason = %q, want the hop named with the direct-call remedy", reason)
+	}
+	// The walk's hop return clears a refusal met before it: a path
+	// never carries both.
+	fd, pkg, err := fb.funcDecl("example.com/fixture/lib.TestPropViaBadThenGood")
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, _ := pkg.TypesInfo.Defs[fd.Name].(*types.Func)
+	if path := fb.seededThrough(fb.selectionOf(pkg), root, fd, pkg); path.via == "" || path.refusal != "" || path.refusalIn != nil || path.refusalHops != nil || path.refusalSite != "" {
+		t.Fatalf("a found hop beside a refusal: %+v", path)
 	}
 }
 
@@ -581,23 +601,7 @@ func TestSeedingWalkIsPerSelection(t *testing.T) {
 	}
 	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-go-build-selections")
 	neutralAmbient(t)
-	dir := writeModule(t, map[string]string{
-		"go.mod":            "module example.com/split\n\ngo 1.26\n\nrequire pgregory.net/rapid v1.3.0\n",
-		"go.sum":            "pgregory.net/rapid v1.3.0 h1:vBvO0VSqti75J1jjYqpgPNBLKMd1+gxa9fYo7vk/Exc=\npgregory.net/rapid v1.3.0/go.mod h1:dPlE4OBBxgXPqkP79flB6sJL1dx5azpI7HQ9MY9Z7uk=\n",
-		"lib/lib.go":        "package lib\n\nfunc Add(a, b int) int { return a + b }\n",
-		"lib/plain.go":      "//go:build !dst\n\npackage lib\n\nimport (\n\t\"testing\"\n\n\t\"pgregory.net/rapid\"\n)\n\nfunc splitDrive(t *testing.T, body func(*rapid.T)) {\n\tif Add(1, 1) != 2 {\n\t\tt.Fatal(\"broken\")\n\t}\n}\n",
-		"lib/dst.go":        "//go:build dst\n\npackage lib\n\nimport (\n\t\"testing\"\n\n\t\"pgregory.net/rapid\"\n)\n\nfunc splitDrive(t *testing.T, body func(*rapid.T)) {\n\trapid.Check(t, body)\n}\n",
-		"lib/split_test.go": "package lib\n\nimport (\n\t\"testing\"\n\n\t\"pgregory.net/rapid\"\n)\n\nfunc TestSplit(t *testing.T) {\n\tsplitDrive(t, func(rt *rapid.T) {\n\t\tif Add(2, 2) != 4 {\n\t\t\trt.Fatal(\"broken\")\n\t\t}\n\t})\n}\n",
-		// The same symbol declared twice by tag: a plain body in the
-		// default view, a DIRECT driver call in the dst view.
-		"lib/direct_default_test.go": "//go:build !dst\n\npackage lib\n\nimport \"testing\"\n\nfunc TestSplitDirect(t *testing.T) {\n\tif Add(3, 3) != 6 {\n\t\tt.Fatal(\"broken\")\n\t}\n}\n",
-		"lib/direct_dst_test.go":     "//go:build dst\n\npackage lib\n\nimport (\n\t\"testing\"\n\n\t\"pgregory.net/rapid\"\n)\n\nfunc TestSplitDirect(t *testing.T) {\n\trapid.Check(t, func(rt *rapid.T) {\n\t\tif Add(3, 3) != 6 {\n\t\t\trt.Fatal(\"broken\")\n\t\t}\n\t})\n}\n",
-		// A fuzz target declared twice by tag: a plain harness body in
-		// the default view, a rapid driver inside the dst callback —
-		// the fuzz classification must not bypass the union.
-		"lib/fuzz_default_test.go": "//go:build !dst\n\npackage lib\n\nimport \"testing\"\n\nfunc FuzzThing(f *testing.F) {\n\tf.Fuzz(func(t *testing.T, x int) {\n\t\tif Add(x, 0) != x {\n\t\t\tt.Fatal(\"broken\")\n\t\t}\n\t})\n}\n",
-		"lib/fuzz_dst_test.go":     "//go:build dst\n\npackage lib\n\nimport (\n\t\"testing\"\n\n\t\"pgregory.net/rapid\"\n)\n\nfunc FuzzThing(f *testing.F) {\n\tf.Fuzz(func(t *testing.T, x int) {\n\t\trapid.Check(t, func(rt *rapid.T) {\n\t\t\tif Add(x, 0) != x {\n\t\t\t\trt.Fatal(\"broken\")\n\t\t\t}\n\t\t})\n\t})\n}\n",
-	})
+	dir := splitModule(t)
 	const symbol = "example.com/split/lib.TestSplit"
 	const direct = "example.com/split/lib.TestSplitDirect"
 	const fuzz = "example.com/split/lib.FuzzThing"
@@ -637,4 +641,38 @@ func TestSeedingWalkIsPerSelection(t *testing.T) {
 	if got := both.WitnessClass(fuzz); got != verify.PropertyWitness {
 		t.Fatalf("fuzz target class %v, want property by harness in every view", got)
 	}
+}
+
+// splitModuleFiles is the tag-split fixture module: a helper driving
+// the runner in the dst view alone, a test declared twice by tag with
+// a direct driver in the dst view, and a fuzz target the same.
+func splitModuleFiles() map[string]string {
+	return map[string]string{
+		"go.mod":            "module example.com/split\n\ngo 1.26\n\nrequire pgregory.net/rapid v1.3.0\n",
+		"go.sum":            "pgregory.net/rapid v1.3.0 h1:vBvO0VSqti75J1jjYqpgPNBLKMd1+gxa9fYo7vk/Exc=\npgregory.net/rapid v1.3.0/go.mod h1:dPlE4OBBxgXPqkP79flB6sJL1dx5azpI7HQ9MY9Z7uk=\n",
+		"lib/lib.go":        "package lib\n\nfunc Add(a, b int) int { return a + b }\n",
+		"lib/plain.go":      "//go:build !dst\n\npackage lib\n\nimport (\n\t\"testing\"\n\n\t\"pgregory.net/rapid\"\n)\n\nfunc splitDrive(t *testing.T, body func(*rapid.T)) {\n\tif Add(1, 1) != 2 {\n\t\tt.Fatal(\"broken\")\n\t}\n}\n",
+		"lib/dst.go":        "//go:build dst\n\npackage lib\n\nimport (\n\t\"testing\"\n\n\t\"pgregory.net/rapid\"\n)\n\nfunc splitDrive(t *testing.T, body func(*rapid.T)) {\n\trapid.Check(t, body)\n}\n",
+		"lib/split_test.go": "package lib\n\nimport (\n\t\"testing\"\n\n\t\"pgregory.net/rapid\"\n)\n\nfunc TestSplit(t *testing.T) {\n\tsplitDrive(t, func(rt *rapid.T) {\n\t\tif Add(2, 2) != 4 {\n\t\t\trt.Fatal(\"broken\")\n\t\t}\n\t})\n}\n",
+		// The same symbol declared twice by tag: a plain body in the
+		// default view, a DIRECT driver call in the dst view.
+		"lib/direct_default_test.go": "//go:build !dst\n\npackage lib\n\nimport \"testing\"\n\nfunc TestSplitDirect(t *testing.T) {\n\tif Add(3, 3) != 6 {\n\t\tt.Fatal(\"broken\")\n\t}\n}\n",
+		"lib/direct_dst_test.go":     "//go:build dst\n\npackage lib\n\nimport (\n\t\"testing\"\n\n\t\"pgregory.net/rapid\"\n)\n\nfunc TestSplitDirect(t *testing.T) {\n\trapid.Check(t, func(rt *rapid.T) {\n\t\tif Add(3, 3) != 6 {\n\t\t\trt.Fatal(\"broken\")\n\t\t}\n\t})\n}\n",
+		// A test declared twice by tag that nothing seeds in either
+		// view, its declarations at different lines: the resolved view
+		// answers for it.
+		"lib/plain_default_test.go": "//go:build !dst\n\npackage lib\n\nimport \"testing\"\n\nfunc TestSplitPlain(t *testing.T) {\n\tif Add(4, 4) != 8 {\n\t\tt.Fatal(\"broken\")\n\t}\n}\n",
+		"lib/plain_dst_test.go":     "//go:build dst\n\npackage lib\n\nimport \"testing\"\n\n// The dst declaration sits two lines lower.\n\nfunc TestSplitPlain(t *testing.T) {\n\tif Add(4, 4) != 8 {\n\t\tt.Fatal(\"broken\")\n\t}\n}\n",
+		// A fuzz target declared twice by tag: a plain harness body in
+		// the default view, a rapid driver inside the dst callback —
+		// the fuzz classification must not bypass the union.
+		"lib/fuzz_default_test.go": "//go:build !dst\n\npackage lib\n\nimport \"testing\"\n\nfunc FuzzThing(f *testing.F) {\n\tf.Fuzz(func(t *testing.T, x int) {\n\t\tif Add(x, 0) != x {\n\t\t\tt.Fatal(\"broken\")\n\t\t}\n\t})\n}\n",
+		"lib/fuzz_dst_test.go":     "//go:build dst\n\npackage lib\n\nimport (\n\t\"testing\"\n\n\t\"pgregory.net/rapid\"\n)\n\nfunc FuzzThing(f *testing.F) {\n\tf.Fuzz(func(t *testing.T, x int) {\n\t\trapid.Check(t, func(rt *rapid.T) {\n\t\t\tif Add(x, 0) != x {\n\t\t\t\trt.Fatal(\"broken\")\n\t\t\t}\n\t\t})\n\t})\n}\n",
+	}
+}
+
+// splitModule writes the tag-split fixture module.
+func splitModule(t *testing.T) string {
+	t.Helper()
+	return writeModule(t, splitModuleFiles())
 }

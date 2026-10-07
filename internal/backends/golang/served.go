@@ -718,6 +718,20 @@ func (s *Served) WitnessClass(symbol string) verify.WitnessClass {
 	return class
 }
 
+// ExplainWitness derives a witness's seeding chain through the child:
+// the derivation is the walk serving decided over, so a served record
+// explains through the same typed load its refusal came from.
+func (s *Served) ExplainWitness(symbol string) (gofresh.Chain, string, error) {
+	if !s.admits(symbol) {
+		return gofresh.Chain{}, "", outsideSet(symbol)
+	}
+	child, err := s.ensureChild()
+	if err != nil {
+		return gofresh.Chain{}, "", err
+	}
+	return child.ExplainWitness(symbol)
+}
+
 // NeverServe implements verify.WitnessSeeding: served records answer
 // their recorded refusal; the rest ask the child in one batch.
 func (s *Served) NeverServe(symbols []string) (map[string]string, error) {

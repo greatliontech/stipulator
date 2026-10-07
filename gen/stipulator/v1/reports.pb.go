@@ -5535,7 +5535,9 @@ func (b0 GapListResult_builder) Build() *GapListResult {
 	return m0
 }
 
-// ExplainLink is one link of a derivation chain.
+// ExplainLink is one link of a derivation chain: a dynamic-state
+// chain's culprit, store, edge, or refusal; a seeding chain's witness,
+// call, driver, or refusal.
 type ExplainLink struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Kind        *string                `protobuf:"bytes,1,opt,name=kind"`

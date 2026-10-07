@@ -509,7 +509,9 @@ message GapListResult {
   int32 gaps_omitted = 7;
 }
 
-// ExplainLink is one link of a derivation chain.
+// ExplainLink is one link of a derivation chain: a dynamic-state
+// chain's culprit, store, edge, or refusal; a seeding chain's witness,
+// call, driver, or refusal.
 message ExplainLink {
   string kind = 1;
   string package = 2;

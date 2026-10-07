@@ -85,9 +85,9 @@ func publishEligible(
 				// refusal names an analyzer class. Prefer the input.
 				switch {
 				case state.Unverifiable:
-					reasons[s] = "observation sealed: " + state.Reason
+					reasons[s] = reasonObservationSeal.with(state.Reason)
 				case !fp.ObservationProof.Observable:
-					reasons[s] = "observation proof refused: " + fp.ObservationProof.Reason
+					reasons[s] = reasonProofRefused.with(fp.ObservationProof.Reason)
 				}
 			}
 		}
@@ -122,7 +122,7 @@ func publishEligible(
 		if fp.ObservationAssertion == "" {
 			state, err := runtimeinput.CompletedState(ps.obs.Runtime)
 			if err != nil {
-				reasons[s] = "observation state unavailable: " + err.Error()
+				reasons[s] = reasonStateUnavailable.with(err.Error())
 				continue
 			}
 			fp.RuntimeInputs, fp.RuntimeDigest = state.Manifest, state.Digest
@@ -153,7 +153,7 @@ func publishEligible(
 		// when they are at stake.
 		for _, s := range order {
 			if _, ok := reasons[s]; !ok {
-				reasons[s] = "post-run producer validation faulted: " + err.Error()
+				reasons[s] = reasonProducerFault.with(err.Error())
 			}
 		}
 		d, cErr, fErr := closeGroup(ctx, view, len(served) != 0, order, served, executedWhy, reasons)
@@ -165,7 +165,7 @@ func publishEligible(
 			if _, ok := reasons[s]; !ok {
 				// The verdict's own reason carries gofresh's attribution -
 				// moved inputs named per identity.
-				reasons[s] = "post-run validation: " + v.Reason
+				reasons[s] = reasonPostRun.with(v.Reason)
 			}
 		}
 	}
@@ -204,7 +204,7 @@ func publishEligible(
 			continue
 		}
 		if _, ok := reasons[s]; !ok {
-			reasons[s] = "record not published"
+			reasons[s] = reasonNotPublished.with("")
 		}
 	}
 	return records, false, nil, nil, nil
@@ -225,14 +225,14 @@ func closeGroup(ctx context.Context, view *gofresh.View, stake bool, order, serv
 		}
 		for _, s := range order {
 			if _, ok := reasons[s]; !ok {
-				reasons[s] = "source producer validation failed: " + err.Error()
+				reasons[s] = reasonSourceFailed.with(err.Error())
 			}
 		}
 		// Every discarded serve re-executes holding prior evidence, so
 		// each names why serving refused it (the spec's attribution for
 		// re-executed record holders).
 		for _, s := range served {
-			executedWhy[s] = "source producer validation failed: " + err.Error()
+			executedWhy[s] = reasonSourceFailed.with(err.Error())
 		}
 		return len(served) != 0, err, nil
 	}

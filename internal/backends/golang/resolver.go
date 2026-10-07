@@ -9,6 +9,7 @@ import (
 	"os"
 	"sort"
 
+	"github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/resident"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
@@ -53,8 +54,11 @@ type resolverResponse struct {
 	// serving refuses, each with its reason (encoding/json sorts the
 	// keys, so the wire form is deterministic).
 	NeverServes map[string]string `json:"neverServes,omitempty"`
-	Decls       []resolverDecl    `json:"decls,omitempty"`
-	Floor       []resolverFloor   `json:"floor,omitempty"`
+	// Chain carries an explainwitness result: the witness's seeding
+	// chain and the view that answered it.
+	Chain *resolverChain  `json:"chain,omitempty"`
+	Decls []resolverDecl  `json:"decls,omitempty"`
+	Floor []resolverFloor `json:"floor,omitempty"`
 	// File and Found carry a symbolfile result; Found travels explicitly
 	// because an empty path is a legitimate not-found, never a default.
 	File  string `json:"file,omitempty"`
@@ -63,6 +67,43 @@ type resolverResponse struct {
 	// sorted so the wire form is deterministic.
 	Package  string   `json:"package,omitempty"`
 	Packages []string `json:"packages,omitempty"`
+}
+
+// resolverChain is a seeding chain on the wire: the arm, the answering
+// view, the links in order, and the count the bound dropped.
+type resolverChain struct {
+	Arm     string              `json:"arm"`
+	View    string              `json:"view,omitempty"`
+	Links   []resolverChainLink `json:"links,omitempty"`
+	Omitted int                 `json:"omitted,omitempty"`
+}
+
+// resolverChainLink is one chain link on the wire, the freshness
+// library's link fields verbatim.
+type resolverChainLink struct {
+	Kind    string `json:"kind"`
+	Package string `json:"package,omitempty"`
+	Symbol  string `json:"symbol,omitempty"`
+	Callee  string `json:"callee,omitempty"`
+	Clause  string `json:"clause,omitempty"`
+	Pos     string `json:"pos,omitempty"`
+}
+
+// chainWire and chainFromWire carry a chain across the child's line.
+func chainWire(c gofresh.Chain, view string) *resolverChain {
+	w := &resolverChain{Arm: c.Arm, View: view, Omitted: c.Omitted}
+	for _, l := range c.Links {
+		w.Links = append(w.Links, resolverChainLink{Kind: l.Kind, Package: l.Package, Symbol: l.Symbol, Callee: l.Callee, Clause: l.Clause, Pos: l.Pos})
+	}
+	return w
+}
+
+func chainFromWire(w *resolverChain) (gofresh.Chain, string) {
+	c := gofresh.Chain{Arm: w.Arm, Omitted: w.Omitted}
+	for _, l := range w.Links {
+		c.Links = append(c.Links, gofresh.ChainLink{Kind: l.Kind, Package: l.Package, Symbol: l.Symbol, Callee: l.Callee, Clause: l.Clause, Pos: l.Pos})
+	}
+	return c, w.View
 }
 
 // resolverDecl is verify.Decl on the wire: four strings, value-shaped.
@@ -177,6 +218,13 @@ func serveResolver(ctx context.Context, dir string, patterns []string, r io.Read
 				resp.Error = err.Error()
 			} else {
 				resp.NeverServes = refusals
+			}
+		case "explainwitness":
+			chain, view, err := b.explainWitness(req.Symbol)
+			if err != nil {
+				resp.Error = err.Error()
+			} else {
+				resp.Chain = chainWire(chain, view)
 			}
 		case "slice":
 			decls, err := b.Slice(req.Symbols)

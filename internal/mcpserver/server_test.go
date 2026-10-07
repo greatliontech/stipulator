@@ -1296,8 +1296,37 @@ func TestExplainToolParsesAndRefuses(t *testing.T) {
 	if err != nil || !res.IsError {
 		t.Fatalf("empty input accepted: %v %+v", err, res)
 	}
-	if text := toolText(t, res); !strings.Contains(text, "pass reason to parse, or package and symbol") {
+	if text := toolText(t, res); !strings.Contains(text, "pass reason to parse, witness for a witness's seeding, or package and symbol") {
 		t.Fatalf("empty-input refusal lacks guidance: %s", text)
+	}
+	// A seeding-family reason names the witness form; the witness
+	// travels alone; a reason that is its own attribution answers as
+	// such with an empty chain, no policy read.
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "explain", Arguments: map[string]any{
+		"reason": "random-seeded property witness through example.com/p.run: executes every run, never served",
+	}})
+	if err != nil || !res.IsError || !strings.Contains(toolText(t, res), "pass witness naming the witness the reason stood beside") {
+		t.Fatalf("seeding reason: %v %+v", err, res)
+	}
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "explain", Arguments: map[string]any{
+		"witness": "example.com/p.TestProp", "package": "example.com/p", "symbol": "V",
+	}})
+	if err != nil || !res.IsError || !strings.Contains(toolText(t, res), "witness travels alone") {
+		t.Fatalf("witness beside a culprit: %v %+v", err, res)
+	}
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "explain", Arguments: map[string]any{
+		"reason": "post-run validation: reaches crypto/rand.Read (entropy)",
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("attribution reason refused: %v %+v", err, res)
+	}
+	if text := toolText(t, res); !strings.Contains(text, "explain: no chain - the reason is its own attribution: post-run validation: reaches crypto/rand.Read (entropy)") {
+		t.Fatalf("attribution digest: %s", text)
+	}
+	b, _ := json.Marshal(res.StructuredContent)
+	empty := &stipulatorv1.ExplainResult{}
+	if err := protojson.Unmarshal(b, empty); err != nil || empty.GetArm() != "" || len(empty.GetLinks()) != 0 {
+		t.Fatalf("attribution projection: %v %s", err, b)
 	}
 }
 
@@ -1320,6 +1349,16 @@ func TestExplainToolProjectsChain(t *testing.T) {
 		},
 		Omitted: 3,
 	}
+	seeding := gofresh.Chain{
+		Arm: golang.ArmSeedingRefused,
+		Links: []gofresh.ChainLink{
+			{Kind: golang.LinkWitness, Package: "example.com/p", Symbol: "TestProp", Pos: "p_test.go:9"},
+			{Kind: golang.LinkCall, Package: "example.com/p", Symbol: "TestProp", Callee: "example.com/q.Run", Pos: "p_test.go:10"},
+			{Kind: golang.LinkRefusal, Package: "example.com/q", Symbol: "Run", Clause: "unclassifiable seeding: call of x resolves to no declaration", Pos: "q.go:4"},
+		},
+		Omitted: 1,
+	}
+	var gotWitness string
 	sess, _ := harnessWith(t, nil, func(s *Server) {
 		s.explain = func(_ context.Context, pkgPath, symbol string) (gofresh.Chain, string, error) {
 			gotPkg, gotSym = pkgPath, symbol
@@ -1328,7 +1367,31 @@ func TestExplainToolProjectsChain(t *testing.T) {
 			}
 			return chain, "race", nil
 		}
+		s.explainWitness = func(_ context.Context, symbol string) (gofresh.Chain, string, error) {
+			gotWitness = symbol
+			return seeding, "-tags=dst", nil
+		}
 	})
+	wres, werr := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "explain", Arguments: map[string]any{
+		"witness": "example.com/p.TestProp",
+	}})
+	if werr != nil || wres.IsError || gotWitness != "example.com/p.TestProp" {
+		t.Fatalf("witness form: %v %+v asked %q", werr, wres, gotWitness)
+	}
+	if text := toolText(t, wres); !strings.Contains(text, "explain: seeding: refused, 3 links in the structured result; view: -tags=dst; 1 omitted") {
+		t.Fatalf("witness digest: %s", text)
+	}
+	wb, _ := json.Marshal(wres.StructuredContent)
+	wout := &stipulatorv1.ExplainResult{}
+	if err := protojson.Unmarshal(wb, wout); err != nil {
+		t.Fatalf("witness projection is not a strict ExplainResult: %v\n%s", err, wb)
+	}
+	if wout.GetArm() != golang.ArmSeedingRefused || wout.GetView() != "-tags=dst" || wout.GetOmitted() != 1 || len(wout.GetLinks()) != 3 {
+		t.Fatalf("witness projection: %s", wb)
+	}
+	if l := wout.GetLinks()[2]; l.GetKind() != golang.LinkRefusal || l.GetPackage() != "example.com/q" || l.GetSymbol() != "Run" || l.GetClause() != "unclassifiable seeding: call of x resolves to no declaration" || l.GetPos() != "q.go:4" || wout.GetLinks()[1].GetCallee() != "example.com/q.Run" {
+		t.Fatalf("witness links: %s", wb)
+	}
 	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "explain", Arguments: map[string]any{
 		"package": "example.com/reg", "symbol": "Registry",
 	}})

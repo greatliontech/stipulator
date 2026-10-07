@@ -86,22 +86,40 @@ The guidance surfaces work outside a corpus: the document is embedded,
 so orientation precedes scaffolding.
 
 **REQ-mcp-explain** (behavior): The explain verb, on both surfaces,
-MUST answer a dynamic-state refusal with its derivation chain,
-derived against the same policy-scoped views the verdicts derive over
-(the freshness library's explain contract): given a witness's
-uncacheable reason - the culprit parsed from its package-and-variable
-tail - or an explicit package and symbol (a lone one refused: the
-caller typed it for a reason), the MCP's structured result carries
-the chain's links (kind, package, symbol, callee, clause, position)
-with counted omissions, beside a one-line text digest naming the arm
-and link count, and the CLI prints the same links one per line with
-the omitted count. A reason naming no parseable culprit refuses with
-guidance; a culprit no policy view knows answers with an empty chain,
-stated as such in the digest. Views are tried in a deterministic
-policy order and the first yielding a chain answers, the result
-naming the answering view's invocations - a caller holding a reason
-produced under a different view sees the mismatch instead of
-mistaking the chain for that view's derivation.
+MUST answer every class of uncacheable reason the tool mints — each
+class carries its explain kind: a dynamic-state refusal with its
+derivation chain, derived against the same policy-scoped views the
+verdicts derive over (the freshness library's explain contract),
+given a witness's uncacheable reason - the culprit parsed from its
+package-and-variable tail - or an explicit package and symbol (a lone
+one refused: the caller typed it for a reason); a seeding-family
+refusal (random-seeded, random-seeded through a helper, unclassifiable
+seeding) with the witness's own seeding chain — the bound body at its
+declaration, each hop of serving's walk as a call link naming the
+callee at the call's site, and the deciding link: the driving call
+(clause the driver) or the refusing call (clause the refusal) —
+given the witness's symbol (`witness`, travelling alone; the reason
+passed instead is refused naming the witness form, since it names no
+witness), the arm reading direct, through helpers, refused, or not
+seeded with the class, the view being the one whose walk produced
+the deciding link (a declaration another view cannot read answers
+under the resolved view); a
+freshness-library reason carrying no culprit, and every reason that
+is its own attribution (a load gap, a judgment refusal, a degraded
+path, an unpublished record), with an empty chain stating the reason
+as its own attribution. The MCP's structured result carries the
+chain's links (kind, package, symbol, callee, clause, position) with
+counted omissions, beside a one-line text digest naming the arm and
+link count, and the CLI prints the same links one per line with the
+omitted count; a seeding chain is bounded as the library bounds its
+own, the deciding link never the one dropped. A reason of no class
+and no parseable culprit refuses with guidance; a culprit no policy
+view knows answers with an empty chain, stated as such in the digest.
+Views are tried in a deterministic policy order and the first
+yielding a chain answers, the result naming the answering view's
+invocations - a caller holding a reason produced under a different
+view sees the mismatch instead of mistaking the chain for that view's
+derivation.
 
 **REQ-mcp-views** (behavior): The gate and verify tools MUST
 answer at the summary view by default — the roll-up most calls want —

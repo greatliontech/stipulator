@@ -86,17 +86,16 @@ type Backend struct {
 	// loads land; lazyLoaded records each on-demand package load per
 	// selection with its error (a cancellation is never recorded);
 	// notInModule memoizes the dependency verdict per package path;
-	// bodyDrives and bodyCallees memoize, per declared function,
-	// whether its own body directly drives a runner and the static
-	// callees it resolves. The lock is held across an on-demand go
-	// list: the walk is serialized, and a load must not race the
-	// index it extends.
+	// bodies memoizes, per declared function, whether its own body
+	// directly drives a runner (and where) and the static callees it
+	// resolves at their call sites. The lock is held across an
+	// on-demand go list: the walk is serialized, and a load must not
+	// race the index it extends.
 	walkMu      sync.Mutex
 	declIndex   map[string]declaredFunc
 	lazyLoaded  map[string]error
 	notInModule map[string]bool
-	bodyDrives  map[string]bool
-	bodyCallees map[string]walkedBody
+	bodies      map[string]bodyFacts
 	// typesPkg maps each loaded package's type universe to the package,
 	// so an object's own view is recoverable; byPath maps each package
 	// path to the loaded packages holding it across views and variants.
@@ -118,10 +117,30 @@ type declaredFunc struct {
 }
 
 // walkedBody is one declared body's memoized resolution: the static
-// callees the type information resolves and the calls it could not.
+// callees the type information resolves, each at its call site, and
+// the calls it could not, each at its own.
 type walkedBody struct {
-	callees    []*types.Func
-	unresolved []string
+	callees    []calleeRef
+	unresolved []calleeRef
+}
+
+// calleeRef is one call of a body: the declared origin the type
+// information resolved — nil for an unresolved call, which is named
+// instead — at the call's tree-relative site.
+type calleeRef struct {
+	fn   *types.Func
+	name string
+	site string
+}
+
+// bodyFacts is one declared body's memo under one selection: whether
+// it directly drives a run-time-seeded runner, the driving call's
+// site, and its walked callees — the one scan serving's walk and the
+// explain derivation read.
+type bodyFacts struct {
+	drives     bool
+	driverSite string
+	callees    walkedBody
 }
 
 // declKey names a function object stably across loads: a package
@@ -733,7 +752,7 @@ func (b *Backend) WitnessClassVerdict(symbol string) (verify.WitnessClass, strin
 // seededReason is the serving refusal a random-seeded witness carries
 // wherever a served or published record is refused: the uncacheable set
 // and the re-execution reasons alike (REQ-evidence-witness-freshness).
-const seededReason = "random-seeded property witness: executes every run, never served"
+var seededReason = reasonSeeded.with(": executes every run, never served")
 
 // seededThroughReason is the serving refusal of a witness whose bound
 // body reaches a run-time-seeded driver only through in-module helpers:
@@ -742,7 +761,7 @@ const seededReason = "random-seeded property witness: executes every run, never 
 // run-time seed exactly as a direct driver's does, so serving refuses
 // it under a reason naming the first hop (REQ-evidence-witness-freshness).
 func seededThroughReason(helper string) string {
-	return "random-seeded property witness through " + helper + ": executes every run, never served"
+	return reasonSeeded.with(" through " + helper + ": executes every run, never served")
 }
 
 // NeverServe implements verify.WitnessSeeding: the symbols whose
@@ -769,7 +788,7 @@ func (b *Backend) NeverServe(symbols []string) (map[string]string, error) {
 			// deterministic — absence of proof never serves.
 			out[s] = v.seedingRefusal
 		case !v.inspected:
-			out[s] = "unclassifiable witness: executes every run, never served (absence of proof never serves): " + v.reason
+			out[s] = reasonUnclassifiable.with(v.reason)
 		}
 	}
 	return out, nil
@@ -847,8 +866,7 @@ func (b *Backend) initWalk() {
 	if b.notInModule == nil {
 		b.notInModule = map[string]bool{}
 	}
-	b.bodyDrives = map[string]bool{}
-	b.bodyCallees = map[string]walkedBody{}
+	b.bodies = map[string]bodyFacts{}
 	for _, pkg := range b.pkgs {
 		b.indexDecls(b.selectionOf(pkg), []*packages.Package{pkg})
 	}
@@ -924,7 +942,7 @@ func (b *Backend) funcDeclOf(sel string, fn *types.Func) (*ast.FuncDecl, *packag
 		return nil, nil, nil
 	}
 	missing := func() error {
-		return fmt.Errorf("declaration of %s is not in the %q view of in-module package %s", fn.FullName(), sel, pkgPath)
+		return fmt.Errorf("declaration of %s is not among the parsed files of in-module package %s in the %q view%s", fn.FullName(), pkgPath, viewLabel(sel), b.placedAt(fn))
 	}
 	loadKey := sel + "\x00" + pkgPath
 	if err, done := b.lazyLoaded[loadKey]; done {
@@ -937,9 +955,12 @@ func (b *Backend) funcDeclOf(sel string, fn *types.Func) (*ast.FuncDecl, *packag
 		return nil, nil, missing()
 	}
 	if b.packageLoaded(sel, pkgPath) {
-		// The package is in this view already and holds no such
-		// declaration: a tag-excluded file, or generated code the view
-		// does not carry — no declaration to read, so no proof.
+		// The package is held by this view's loads and its parsed
+		// files declare no such function. The object and the index
+		// read one parse under one selection, so no loaded view
+		// produces this today (an abstract method, once the one
+		// producer, is outside the walk); the arm stays fail-closed —
+		// a nil here would read as a dependency's function and serve.
 		return nil, nil, missing()
 	}
 	cfg := b.lazyCfg[member][sel]
@@ -975,6 +996,46 @@ func (b *Backend) funcDeclOf(sel string, fn *types.Func) (*ast.FuncDecl, *packag
 	return nil, nil, missing()
 }
 
+// placedAt names where the type information declares a function —
+// " (the type information places it at file:line)" — when the
+// function's type universe is one of the construction's loads; a
+// function of a universe the construction does not hold (an export-data
+// import, an on-demand load) is placed nowhere and the suffix is empty.
+func (b *Backend) placedAt(fn *types.Func) string {
+	owner := b.typesPkg[fn.Pkg()]
+	if owner == nil || !fn.Pos().IsValid() {
+		return ""
+	}
+	return " (the type information places it at " + b.site(owner, fn.Pos()) + ")"
+}
+
+// site renders a position of a loaded package's file set as a
+// tree-relative file:line — the spelling every chain link and every
+// refusal carries; a position outside the tree keeps its own path.
+func (b *Backend) site(pkg *packages.Package, pos token.Pos) string {
+	p := pkg.Fset.Position(pos)
+	name := p.Filename
+	if rel, err := filepath.Rel(b.dir, name); err == nil && rel != ".." && !strings.HasPrefix(rel, "../") {
+		name = filepath.ToSlash(rel)
+	}
+	return fmt.Sprintf("%s:%d", name, p.Line)
+}
+
+// viewLabel spells a build selection's key for a reader: the default
+// view by its name, a tagged view by its tags, a toolchain by its
+// version.
+func viewLabel(sel string) string {
+	if sel == SelectionKey(nil, "") {
+		return sel
+	}
+	tags, toolchain, _ := strings.Cut(sel, "\x00")
+	label := "-tags=" + tags
+	if toolchain != "" {
+		label += " toolchain " + toolchain
+	}
+	return label
+}
+
 // packageLoaded reports whether the selection's view already holds the
 // package among the construction's loads.
 func (b *Backend) packageLoaded(sel, pkgPath string) bool {
@@ -989,12 +1050,12 @@ func (b *Backend) packageLoaded(sel, pkgPath string) bool {
 // staticCallees are the function objects a body's calls resolve
 // through the type information — a plain or qualified identifier, a
 // method selector, a generic instantiation unwrapped — each to its
-// declared origin, with the calls the type information could not
-// resolve named beside them: an unresolved callee is a body whose
-// reach is unknown. A function value called, a value passed to be
-// called elsewhere, and an interface method dispatch resolve to no
-// declaration here.
-func staticCallees(body ast.Node, pkg *packages.Package) walkedBody {
+// declared origin at its call site, with the calls the type
+// information could not resolve named beside them: an unresolved
+// callee is a body whose reach is unknown. A function value called, a
+// value passed to be called elsewhere, and an interface method
+// dispatch resolve to no declaration here.
+func (b *Backend) staticCallees(body ast.Node, pkg *packages.Package) walkedBody {
 	var out walkedBody
 	ast.Inspect(body, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
@@ -1011,6 +1072,7 @@ func staticCallees(body ast.Node, pkg *packages.Package) walkedBody {
 		default:
 			return true
 		}
+		site := b.site(pkg, call.Lparen)
 		switch obj := pkg.TypesInfo.Uses[id].(type) {
 		case *types.Func:
 			// An abstract method — the object of an interface dispatch —
@@ -1020,14 +1082,14 @@ func staticCallees(body ast.Node, pkg *packages.Package) walkedBody {
 			// and never a fault.
 			if sig, ok := obj.Type().(*types.Signature); ok && sig.Recv() != nil && types.IsInterface(sig.Recv().Type()) {
 				if sel == nil || !dispatchReceiver(pkg, sel.X) {
-					out.unresolved = append(out.unresolved, id.Name)
+					out.unresolved = append(out.unresolved, calleeRef{name: id.Name, site: site})
 				}
 				return true
 			}
-			out.callees = append(out.callees, obj.Origin())
+			out.callees = append(out.callees, calleeRef{fn: obj.Origin(), site: site})
 		case nil:
 			if pkg.TypesInfo.Defs[id] == nil {
-				out.unresolved = append(out.unresolved, id.Name)
+				out.unresolved = append(out.unresolved, calleeRef{name: id.Name, site: site})
 			}
 		}
 		return true
@@ -1051,104 +1113,167 @@ func dispatchReceiver(pkg *packages.Package, x ast.Expr) bool {
 	return !typeParam
 }
 
-// bodyDrivesRunner reports whether a declared function's own body
-// directly drives a run-time-seeded runner, memoized per selection and
-// function with the body's static callees; the caller holds walkMu.
-func (b *Backend) bodyDrivesRunner(sel string, fn *types.Func, fd *ast.FuncDecl, pkg *packages.Package) bool {
+// bodyFactsOf answers a declared function's body facts — whether it
+// directly drives a run-time-seeded runner, where, and its static
+// callees — memoized per selection and function; the caller holds
+// walkMu.
+func (b *Backend) bodyFactsOf(sel string, fn *types.Func, fd *ast.FuncDecl, pkg *packages.Package) bodyFacts {
 	key := walkKey(sel, fn)
-	if drives, ok := b.bodyDrives[key]; ok {
-		return drives
+	if facts, ok := b.bodies[key]; ok {
+		return facts
 	}
-	drives := false
+	facts := bodyFacts{driverSite: b.driverSite(fd, pkg)}
+	facts.drives = facts.driverSite != ""
+	facts.callees = b.staticCallees(fd.Body, pkg)
+	b.bodies[key] = facts
+	return facts
+}
+
+// driverSite is the site of the first call in a body that directly
+// drives a run-time-seeded runner, empty when none does — the one
+// body scan the walk and the explain derivation read for the fact.
+func (b *Backend) driverSite(fd *ast.FuncDecl, pkg *packages.Package) string {
+	site := ""
 	ast.Inspect(fd.Body, func(n ast.Node) bool {
-		if drives {
+		if site != "" {
 			return false
 		}
 		if call, ok := n.(*ast.CallExpr); ok && driverCall(pkg, call) {
-			drives = true
+			site = b.site(pkg, call.Lparen)
 			return false
 		}
 		return true
 	})
-	b.bodyDrives[key] = drives
-	b.bodyCallees[key] = staticCallees(fd.Body, pkg)
-	return drives
+	return site
 }
 
 // seededRefusal is the fail-closed serving refusal the walk raises where
 // it has no declaration to read.
 func seededRefusal(err error) string {
-	return "unclassifiable seeding: executes every run, never served (absence of proof never serves): " + err.Error()
+	return reasonSeedingRefused.with(err.Error())
+}
+
+// seedingHop is one edge of the walk's path: a body's call of an
+// in-module callee at the call's site (the caller nil for the bound
+// body itself).
+type seedingHop struct {
+	caller *types.Func
+	callee *types.Func
+	site   string
+}
+
+// seedingPath is one walk's answer for a body under one selection:
+// the first hop's name when a helper drives a runner (via, the reason's
+// spelling), the hops from the body to that helper and the driving
+// call's site in its body; else the refusal — the first unresolved
+// call or unreadable declaration met in breadth-first order — with the
+// body holding the refusing call (nil for a body with no object), the
+// call's site, and the hops into that body. A hop found outranks a
+// refusal met before it: the walk's hop return clears the refusal, so
+// a path never carries both.
+type seedingPath struct {
+	via         string
+	hops        []seedingHop
+	driverSite  string
+	refusal     string
+	refusalIn   *types.Func
+	refusalHops []seedingHop
+	refusalSite string
 }
 
 // seededThrough walks the static in-module callees of a bound body
-// under the body's own build selection — breadth first, the first hop's
-// name carried down its branch, a seen set ending cycles — to the first
-// helper whose own body directly drives a run-time-seeded runner,
-// returning that hop's name. A dependency callee ends its branch. An
-// in-module callee whose declaration the walk cannot read, or a call
-// the type information cannot resolve, is a refusal serving fails
-// closed on; the walk still finishes, and a hop found outranks the
-// refusal as the reason. The walk answers serving's question (does the
-// executed quantification draw from a run-time seed?), never the
-// evidence class.
-func (b *Backend) seededThrough(sel string, rootFn *types.Func, fd *ast.FuncDecl, pkg *packages.Package) (via, refusal string) {
+// under the body's own build selection — breadth first, each frame
+// remembering the frame that reached it, a seen set ending cycles — to
+// the first helper whose own body directly drives a run-time-seeded
+// runner, returning the path to it. A dependency callee ends its
+// branch. An in-module callee whose declaration the walk cannot read,
+// or a call the type information cannot resolve, is a refusal serving
+// fails closed on; the walk still finishes, and a hop found outranks
+// the refusal as the reason. The walk answers serving's question (does
+// the executed quantification draw from a run-time seed?), never the
+// evidence class; the explain derivation renders the same path.
+func (b *Backend) seededThrough(sel string, rootFn *types.Func, fd *ast.FuncDecl, pkg *packages.Package) seedingPath {
 	b.walkMu.Lock()
 	defer b.walkMu.Unlock()
 	b.initWalk()
 	type frame struct {
-		fn  *types.Func
-		via string
+		fn     *types.Func
+		caller *types.Func
+		site   string
+		parent int
+	}
+	var frames []frame
+	hopsTo := func(i int) []seedingHop {
+		var hops []seedingHop
+		for ; i >= 0; i = frames[i].parent {
+			f := frames[i]
+			hops = append(hops, seedingHop{caller: f.caller, callee: f.fn, site: f.site})
+		}
+		slices.Reverse(hops)
+		return hops
+	}
+	var path seedingPath
+	refuse := func(err error, in *types.Func, hops []seedingHop, site string) {
+		if path.refusal == "" {
+			path.refusal, path.refusalIn, path.refusalHops, path.refusalSite = seededRefusal(err), in, hops, site
+		}
 	}
 	seen := map[string]bool{}
-	var queue []frame
+	var queue []int
 	// The root's own callees come from the per-function memo where
 	// the root is a declared function (every witness is); a body with
 	// no object is resolved once here.
 	var root walkedBody
 	if rootFn != nil {
-		b.bodyDrivesRunner(sel, rootFn, fd, pkg)
-		root = b.bodyCallees[walkKey(sel, rootFn)]
+		root = b.bodyFactsOf(sel, rootFn, fd, pkg).callees
 	} else {
-		root = staticCallees(fd.Body, pkg)
+		root = b.staticCallees(fd.Body, pkg)
 	}
 	if len(root.unresolved) > 0 {
-		refusal = seededRefusal(fmt.Errorf("call of %s in the bound body resolves to no declaration", root.unresolved[0]))
+		refuse(fmt.Errorf("call of %s in the bound body resolves to no declaration", root.unresolved[0].name), rootFn, nil, root.unresolved[0].site)
 	}
-	for _, fn := range root.callees {
-		if k := declKey(fn); !seen[k] {
+	for _, c := range root.callees {
+		if k := declKey(c.fn); !seen[k] {
 			seen[k] = true
-			queue = append(queue, frame{fn: fn, via: fn.FullName()})
+			frames = append(frames, frame{fn: c.fn, caller: rootFn, site: c.site, parent: -1})
+			queue = append(queue, len(frames)-1)
 		}
 	}
 	for len(queue) > 0 {
-		f := queue[0]
+		i := queue[0]
 		queue = queue[1:]
+		f := frames[i]
 		fd, fpkg, err := b.funcDeclOf(sel, f.fn)
 		if err != nil {
-			if refusal == "" {
-				refusal = seededRefusal(err)
-			}
+			// The refusing call is the caller's call of this callee:
+			// the hops run into the caller, the site is that call's.
+			refuse(err, f.caller, hopsTo(f.parent), f.site)
 			continue
 		}
 		if fd == nil || fd.Body == nil {
 			continue
 		}
-		if b.bodyDrivesRunner(sel, f.fn, fd, fpkg) {
-			return f.via, ""
+		facts := b.bodyFactsOf(sel, f.fn, fd, fpkg)
+		if facts.drives {
+			path.hops = hopsTo(i)
+			path.via = path.hops[0].callee.FullName()
+			path.driverSite = facts.driverSite
+			path.refusal, path.refusalIn, path.refusalHops, path.refusalSite = "", nil, nil, ""
+			return path
 		}
-		walked := b.bodyCallees[walkKey(sel, f.fn)]
-		if len(walked.unresolved) > 0 && refusal == "" {
-			refusal = seededRefusal(fmt.Errorf("call of %s in %s resolves to no declaration", walked.unresolved[0], f.fn.FullName()))
+		if len(facts.callees.unresolved) > 0 {
+			u := facts.callees.unresolved[0]
+			refuse(fmt.Errorf("call of %s in %s resolves to no declaration", u.name, f.fn.FullName()), f.fn, hopsTo(i), u.site)
 		}
-		for _, callee := range walked.callees {
-			if k := declKey(callee); !seen[k] {
+		for _, c := range facts.callees.callees {
+			if k := declKey(c.fn); !seen[k] {
 				seen[k] = true
-				queue = append(queue, frame{fn: callee, via: f.via})
+				frames = append(frames, frame{fn: c.fn, caller: f.fn, site: c.site, parent: i})
+				queue = append(queue, len(frames)-1)
 			}
 		}
 	}
-	return "", refusal
+	return path
 }
 
 func (b *Backend) classifyWitness(symbol string) witnessVerdict {
@@ -1218,7 +1343,8 @@ func (b *Backend) classifyWitness(symbol string) witnessVerdict {
 		var direct bool
 		var via, refusal string
 		if !property || proof {
-			direct, via, refusal = b.seededInAnyView(symbol, b.selectionOf(pkg), fd, pkg)
+			s := b.seededInAnyView(symbol, b.selectionOf(pkg), fd, pkg)
+			direct, via, refusal = s.direct, s.path.via, s.path.refusal
 		}
 		switch {
 		case proof:
@@ -1244,7 +1370,7 @@ func (b *Backend) classifyWitness(symbol string) witnessVerdict {
 		// near-miss reason naming the hop the walk found.
 		example := func(reason string) witnessVerdict {
 			if via != "" {
-				reason += " (reached through " + via + ")"
+				reason += " (reached through " + via + directCallRemedy + ")"
 			}
 			// A direct driver call in another view's body makes the
 			// symbol random-seeded outright; the class stays this
@@ -1278,6 +1404,27 @@ func (b *Backend) classifyWitness(symbol string) witnessVerdict {
 	return witnessVerdict{class: verify.ExampleWitness, reason: "not a runnable test witness"}
 }
 
+// directCallRemedy closes a near-miss reason that names a hop: the
+// evidence tier is direct-call by contract, so the remedy keeps the
+// driver call in the bound body — a completion guard rides as the test
+// context the driver is handed, never as the caller of the driver
+// (REQ-go-witness-class).
+const directCallRemedy = "; the tier is direct-call by contract — drive the runner in the bound body, a guard riding as its test context"
+
+// seeding is serving's answer for a symbol across its loaded views: a
+// direct driver call in another view's body (at its site, under that
+// view), else the walk's path in the first view that seeds, else the
+// first refusal met, the path empty when nothing seeds — with the
+// selection that answered and, where another view answered, the
+// witness's declaration site in that view.
+type seeding struct {
+	direct      bool
+	directSite  string
+	sel         string
+	witnessSite string
+	path        seedingPath
+}
+
 // seededInAnyView answers serving's one question for the symbol across
 // every loaded view: the resolved view's body is walked (its direct
 // driver call was classified already); every other view declaring the
@@ -1285,36 +1432,39 @@ func (b *Backend) classifyWitness(symbol string) witnessVerdict {
 // direct there, the symbol is random-seeded outright — then walked.
 // A hop in any view seeds; a refusal in any view, a declaration of
 // another view that cannot be read included, refuses.
-func (b *Backend) seededInAnyView(symbol string, sel string, fd *ast.FuncDecl, pkg *packages.Package) (direct bool, via, refusal string) {
+func (b *Backend) seededInAnyView(symbol string, sel string, fd *ast.FuncDecl, pkg *packages.Package) seeding {
 	root, _ := pkg.TypesInfo.Defs[fd.Name].(*types.Func)
-	via, refusal = b.seededThrough(sel, root, fd, pkg)
-	if via != "" {
-		return false, via, ""
+	answer := seeding{sel: sel, path: b.seededThrough(sel, root, fd, pkg)}
+	if answer.path.via != "" {
+		return answer
 	}
 	if b.singleView(symbol) {
 		// One view holds the symbol: the resolved walk is the union.
-		return false, "", refusal
+		return answer
 	}
 	others, otherRefusal := b.declsInOtherViews(symbol, sel)
-	if refusal == "" {
-		refusal = otherRefusal
+	if answer.path.refusal == "" {
+		answer.path.refusal = otherRefusal
 	}
 	for _, other := range others {
 		b.walkMu.Lock()
-		drives := b.bodyDrivesRunner(other.sel, other.fn, other.fd, other.pkg)
+		facts := b.bodyFactsOf(other.sel, other.fn, other.fd, other.pkg)
 		b.walkMu.Unlock()
-		if drives {
-			return true, "", ""
+		at := b.site(other.pkg, other.fd.Name.Pos())
+		if facts.drives {
+			return seeding{direct: true, directSite: facts.driverSite, sel: other.sel, witnessSite: at}
 		}
-		v, r := b.seededThrough(other.sel, other.fn, other.fd, other.pkg)
-		if v != "" {
-			return false, v, ""
+		p := b.seededThrough(other.sel, other.fn, other.fd, other.pkg)
+		if p.via != "" {
+			return seeding{sel: other.sel, path: p, witnessSite: at}
 		}
-		if refusal == "" {
-			refusal = r
+		if answer.path.refusal == "" && p.refusal != "" {
+			// The refusing view answers: its refusal, its selection,
+			// its declaration of the witness.
+			answer.path, answer.sel, answer.witnessSite = p, other.sel, at
 		}
 	}
-	return false, "", refusal
+	return answer
 }
 
 // singleView reports whether every loaded package holding the symbol's

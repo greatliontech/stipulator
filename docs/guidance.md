@@ -311,18 +311,20 @@ coverage matter too.
 surface.
 
 ### explain
-**does:** Derivation chain for a dynamic-state refusal, from culprit to the innermost refusing expression.
+**does:** Derivation chain for an uncacheable reason: a dynamic-state refusal from culprit to the innermost refusing expression, or a witness's seeding walk from its body to the driving or refusing call.
 **knobs:**
-- `reason` (mcp, cli) — a witness's uncacheable reason to parse the culprit from.
+- `reason` (mcp, cli) — a witness's uncacheable reason: a dynamic-state culprit is parsed from it; a reason that is its own attribution is answered as such.
 - `package` (mcp, cli) — culprit package path (with symbol, overrides reason).
 - `symbol` (mcp, cli) — culprit variable name.
-**when:** use explain when a witness reports a dynamic-state
-uncacheable reason — pass the reason verbatim, or name the package
-and symbol; the chain derives against the policy-scoped views
-verdicts use. The mcp returns the structured links; the cli prints
-them one per line.
+- `witness` (mcp, cli) — a bound test's symbol whose seeding chain is derived (alone; the one form for a random-seeded or unclassifiable-seeding reason).
+**when:** use explain when a witness reports an uncacheable reason —
+pass the reason verbatim, name the culprit's package and symbol, or
+name the witness for a seeding reason; the chain derives against the
+policy-scoped views verdicts use. The mcp returns the structured
+links; the cli prints them one per line.
 **example:** explain with the uncacheable reason string a check
-result carried.
+result carried; explain with witness=example.com/p.TestProp for a
+random-seeded refusal.
 
 ### diff
 **surfaces:** cli

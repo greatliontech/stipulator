@@ -64,27 +64,58 @@ func CulpritFromReason(reason string) (pkgPath, symbol string, ok bool) {
 	return "", "", false
 }
 
-// ResolveCulprit settles what a surface's explain request names: the
-// package and symbol when both are given, else the culprit parsed from
-// the reason. A lone package or symbol is refused — the caller typed it
-// for a reason — and so is a reason no culprit parses from. spelling
-// renders the argument names in the refusals ("--package" on the CLI,
-// "package" on the MCP), so both surfaces share one contract.
-func ResolveCulprit(reason, pkgPath, symbol string, spelling func(string) string) (string, string, error) {
+// ExplainRequest is what a surface's explain request settled to: a
+// dynamic-state culprit (Package and Symbol), a witness whose seeding
+// derivation is asked (Witness), or a reason that is its own
+// derivation (Attribution) — exactly one set.
+type ExplainRequest struct {
+	Package, Symbol string
+	Witness         string
+	Attribution     string
+}
+
+// ResolveExplain settles what a surface's explain request names. A
+// witness travels alone. The package and symbol travel together — a
+// lone one is refused, the caller typed it for a reason — and name the
+// culprit outright. Else the reason is classified: a seeding-family
+// reason derives from the witness's body, so it is refused naming the
+// witness form; a freshness-library reason yields the culprit parsed
+// from its tail, or — carrying none — is its own attribution; a
+// reason that is its own attribution answers as such; a spelling no
+// class owns is tried as the library's tail passed bare, then refused.
+// spelling renders the argument names in the refusals ("--package" on
+// the CLI, "package" on the MCP), so both surfaces share one contract
+// (REQ-mcp-explain).
+func ResolveExplain(reason, pkgPath, symbol, witness string, spelling func(string) string) (ExplainRequest, error) {
+	if witness != "" {
+		if reason != "" || pkgPath != "" || symbol != "" {
+			return ExplainRequest{}, fmt.Errorf("explain: %s travels alone — it names the witness whose seeding is derived", spelling("witness"))
+		}
+		return ExplainRequest{Witness: witness}, nil
+	}
 	if (pkgPath == "") != (symbol == "") {
-		return "", "", fmt.Errorf("explain: %s and %s travel together", spelling("package"), spelling("symbol"))
+		return ExplainRequest{}, fmt.Errorf("explain: %s and %s travel together", spelling("package"), spelling("symbol"))
 	}
 	if pkgPath != "" {
-		return pkgPath, symbol, nil
+		return ExplainRequest{Package: pkgPath, Symbol: symbol}, nil
 	}
 	if reason == "" {
-		return "", "", fmt.Errorf("explain: pass %s to parse, or %s and %s", spelling("reason"), spelling("package"), spelling("symbol"))
+		return ExplainRequest{}, fmt.Errorf("explain: pass %s to parse, %s for a witness's seeding, or %s and %s", spelling("reason"), spelling("witness"), spelling("package"), spelling("symbol"))
 	}
-	pkgPath, symbol, ok := CulpritFromReason(reason)
-	if !ok {
-		return "", "", fmt.Errorf("explain: no culprit parsed from the reason; pass %s and %s", spelling("package"), spelling("symbol"))
+	class, known := classifyReason(reason)
+	if known && class.kind == explainWitness {
+		return ExplainRequest{}, fmt.Errorf("explain: a seeding reason derives from the witness's own body; pass %s naming the witness the reason stood beside", spelling("witness"))
 	}
-	return pkgPath, symbol, nil
+	if known && class.kind == explainSelf {
+		return ExplainRequest{Attribution: reason}, nil
+	}
+	if pkgPath, symbol, ok := CulpritFromReason(reason); ok {
+		return ExplainRequest{Package: pkgPath, Symbol: symbol}, nil
+	}
+	if known {
+		return ExplainRequest{Attribution: reason}, nil
+	}
+	return ExplainRequest{}, fmt.Errorf("explain: no culprit parsed from the reason; pass %s and %s, or %s for a seeding reason", spelling("package"), spelling("symbol"), spelling("witness"))
 }
 
 // Explain loads the accepted policy at dir and derives the chain for

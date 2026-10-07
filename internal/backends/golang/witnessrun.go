@@ -688,9 +688,9 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 			}
 			if _, ok := tr.UncacheableReasons[key]; !ok {
 				if degraded != "" {
-					tr.UncacheableReasons[key] = "freshness path degraded: " + degraded
+					tr.UncacheableReasons[key] = reasonDegraded.with(degraded)
 				} else {
-					tr.UncacheableReasons[key] = "record not published"
+					tr.UncacheableReasons[key] = reasonNotPublished.with("")
 				}
 			}
 		}

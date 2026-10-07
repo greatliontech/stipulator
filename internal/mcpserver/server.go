@@ -65,6 +65,9 @@ type Server struct {
 	runTests func(context.Context, *golang.Capture, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error)
 	runCheck func(context.Context, bool, []string) (*stipulatorv1.CheckResult, error)
 	explain  func(ctx context.Context, pkgPath, symbol string) (gofresh.Chain, string, error)
+	// explainWitness is the explain verb's witness derivation: the
+	// seeding chain serving decided over, through the whole-tree form.
+	explainWitness func(ctx context.Context, symbol string) (gofresh.Chain, string, error)
 	// applier is the one record applier every server write lands
 	// through (REQ-record-cas, REQ-mcp-writes-confined).
 	applier *recordapply.Applier
@@ -106,6 +109,9 @@ func New(dir string) *Server {
 		},
 		explain: func(ctx context.Context, pkgPath, symbol string) (gofresh.Chain, string, error) {
 			return golang.Explain(ctx, dir, pkgPath, symbol)
+		},
+		explainWitness: func(ctx context.Context, symbol string) (gofresh.Chain, string, error) {
+			return golang.ExplainWitness(ctx, dir, symbol)
 		},
 	}
 	// The applier reads the tree the server reads: one seam, so the

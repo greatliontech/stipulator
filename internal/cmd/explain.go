@@ -6,29 +6,43 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/greatliontech/gofresh"
+
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 )
 
 func explainCmd() *cobra.Command {
-	var reason, pkgPath, symbol string
+	var reason, pkgPath, symbol, witness string
 	c := &cobra.Command{
 		Use:   "explain",
 		Short: guidanceShort("explain"),
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			pkgPath, symbol, err := golang.ResolveCulprit(reason, pkgPath, symbol, func(name string) string { return "--" + name })
+			req, err := golang.ResolveExplain(reason, pkgPath, symbol, witness, func(name string) string { return "--" + name })
 			if err != nil {
 				return err
 			}
-			chain, view, err := explainChain(cmd.Context(), chdir, pkgPath, symbol)
+			if req.Attribution != "" {
+				fmt.Println("explain: no chain — the reason is its own attribution: " + req.Attribution)
+				return nil
+			}
+			var chain gofresh.Chain
+			var view, subject string
+			if req.Witness != "" {
+				subject = req.Witness
+				chain, view, err = explainWitnessChain(cmd.Context(), chdir, req.Witness)
+			} else {
+				subject = req.Package + "." + req.Symbol
+				chain, view, err = explainChain(cmd.Context(), chdir, req.Package, req.Symbol)
+			}
 			if err != nil {
 				return withRecordPath(err)
 			}
 			if chain.Arm == "" {
-				fmt.Println("explain: no chain — " + pkgPath + "." + symbol + " is not a culprit in the policy views")
+				fmt.Println("explain: no chain — " + subject + " is not a culprit in the policy views")
 				return nil
 			}
-			fmt.Printf("%s %s.%s — %s (view: %s)\n", bold("explain:"), pkgPath, symbol, chain.Arm, view)
+			fmt.Printf("%s %s — %s (view: %s)\n", bold("explain:"), subject, chain.Arm, view)
 			for i, l := range chain.Links {
 				line := fmt.Sprintf("  %2d  %-8s %s.%s", i+1, l.Kind, l.Package, l.Symbol)
 				if l.Callee != "" {
@@ -51,9 +65,14 @@ func explainCmd() *cobra.Command {
 	c.Flags().StringVar(&reason, "reason", "", "")
 	c.Flags().StringVar(&pkgPath, "package", "", "")
 	c.Flags().StringVar(&symbol, "symbol", "", "")
+	c.Flags().StringVar(&witness, "witness", "", "")
 	return c
 }
 
-// explainChain is the one derivation the CLI explain calls, held in a
-// variable so a rendering test can hand it a chain without a policy.
-var explainChain = golang.Explain
+// explainChain and explainWitnessChain are the two derivations the CLI
+// explain calls, held in variables so a rendering test can hand them a
+// chain without a policy.
+var (
+	explainChain        = golang.Explain
+	explainWitnessChain = golang.ExplainWitness
+)

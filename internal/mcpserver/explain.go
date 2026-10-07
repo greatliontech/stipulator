@@ -6,6 +6,8 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/greatliontech/gofresh"
+
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 )
@@ -14,6 +16,7 @@ type explainIn struct {
 	Reason  string `json:"reason,omitempty"`
 	Package string `json:"package,omitempty"`
 	Symbol  string `json:"symbol,omitempty"`
+	Witness string `json:"witness,omitempty"`
 }
 
 type explainLink struct {
@@ -62,13 +65,24 @@ func (e explainOut) proto() *stipulatorv1.ExplainResult {
 }
 
 func (s *Server) toolExplain(ctx context.Context, req *mcp.CallToolRequest, in explainIn) (*mcp.CallToolResult, map[string]any, error) {
-	pkgPath, symbol, err := golang.ResolveCulprit(in.Reason, in.Package, in.Symbol, func(name string) string { return name })
+	request, err := golang.ResolveExplain(in.Reason, in.Package, in.Symbol, in.Witness, func(name string) string { return name })
 	if err != nil {
 		return nil, nil, err
 	}
+	if request.Attribution != "" {
+		// The reason is its own derivation: an empty chain, stated as
+		// such, with no policy load.
+		return projected(textOnly("explain: no chain - the reason is its own attribution: "+request.Attribution), explainOut{}.proto())
+	}
 	ctx, prog := s.startProgress(ctx, req)
 	prog.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
-	chain, view, err := s.explain(ctx, pkgPath, symbol)
+	var chain gofresh.Chain
+	var view string
+	if request.Witness != "" {
+		chain, view, err = s.explainWitness(ctx, request.Witness)
+	} else {
+		chain, view, err = s.explain(ctx, request.Package, request.Symbol)
+	}
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}

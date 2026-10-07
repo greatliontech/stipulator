@@ -526,7 +526,7 @@ func classifySeeded(pc *policyDiscovery, seeding verify.WitnessSeeding) error {
 				// spec admits: an implementor answering with an empty
 				// reason still refuses, under a reason that says so.
 				if why == "" {
-					why = "witness refused serving by the classifier without a stated reason: executes every run, never served"
+					why = reasonUnclassifiable.with("refused serving by the classifier without a stated reason")
 				}
 				g.neverServes[s] = why
 			}
@@ -1213,7 +1213,7 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 			}
 			tr.Uncached++
 			if _, ok := tr.UncacheableReasons[key]; !ok {
-				tr.UncacheableReasons[key] = "freshness path degraded: " + degraded
+				tr.UncacheableReasons[key] = reasonDegraded.with(degraded)
 			}
 		}
 	case len(r.groups) == 0:
@@ -1229,7 +1229,7 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 		}
 		for key := range executedTop {
 			if _, ok := tr.UncacheableReasons[key]; !ok {
-				tr.UncacheableReasons[key] = "no capture group: no witness-eligible invocation covers the package"
+				tr.UncacheableReasons[key] = reasonNoCapture.with("no witness-eligible invocation covers the package")
 			}
 		}
 	default:
@@ -1263,7 +1263,7 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 					continue
 				}
 				if _, ok := tr.UncacheableReasons[key]; !ok {
-					tr.UncacheableReasons[key] = "record not published"
+					tr.UncacheableReasons[key] = reasonNotPublished.with("")
 				}
 			}
 		}
@@ -1398,7 +1398,7 @@ func (r *WitnessRecorder) publishPackage(ctx context.Context, g *captureGroup, p
 		return nil, nil, fmt.Sprintf("runtime producer validation failed: %v", checkFault), nil
 	}
 	if closeFault != nil {
-		return nil, nil, fmt.Sprintf("source producer validation failed: %v", closeFault), nil
+		return nil, nil, reasonSourceFailed.with(closeFault.Error()), nil
 	}
 	return records, reasons, "", nil
 }

@@ -190,3 +190,43 @@ func TestPropViaDependencyHelper(t *testing.T) {
 		}
 	})
 }
+
+// TestPropViaBadThenGood meets the refusing helper before the driving
+// one: the hop found outranks the refusal.
+func TestPropViaBadThenGood(t *testing.T) {
+	badhelper.Run(t, func(rt *rapid.T) {
+		if Add(9, 9) != 18 {
+			rt.Fatal("broken")
+		}
+	})
+	runProp(t, func(rt *rapid.T) {
+		if Add(9, 9) != 18 {
+			rt.Fatal("broken")
+		}
+	})
+}
+
+// TestPropViaTwoBad meets two refusals: the first in breadth-first
+// order stands as the reason.
+func TestPropViaTwoBad(t *testing.T) {
+	badhelper.Run(t, func(rt *rapid.T) {
+		if Add(10, 10) != 20 {
+			rt.Fatal("broken")
+		}
+	})
+	drive(t, propRunner{})
+}
+
+// viaHelpers reaches the other package's helper through a hop: under
+// a load that cannot read helpers, the refusing call is this body's.
+func viaHelpers(t *testing.T, body func(*rapid.T)) {
+	helpers.Run(t, body)
+}
+
+func TestPropViaOtherThroughHop(t *testing.T) {
+	viaHelpers(t, func(rt *rapid.T) {
+		if Add(11, 11) != 22 {
+			rt.Fatal("broken")
+		}
+	})
+}
