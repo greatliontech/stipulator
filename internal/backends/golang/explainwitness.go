@@ -56,14 +56,8 @@ func (b *Backend) explainWitness(symbol string) (gofresh.Chain, string, error) {
 	if fd.Body == nil || !runnableWitness(fd, pkg) {
 		return boundChain(ArmNotSeeded+" (not a runnable test witness)", []gofresh.ChainLink{witness}), viewLabel(sel), nil
 	}
-	fn, _ := pkg.TypesInfo.Defs[fd.Name].(*types.Func)
-	b.walkMu.Lock()
-	facts := b.bodyFactsOf(sel, fn, fd, pkg)
-	b.walkMu.Unlock()
-	if facts.drives {
-		driver := gofresh.ChainLink{Kind: LinkDriver, Package: pkg.PkgPath, Symbol: declName(fd, pkg), Clause: driverClause, Pos: facts.driverSite}
-		return boundChain(ArmSeedingDirect, []gofresh.ChainLink{witness, driver}), viewLabel(sel), nil
-	}
+	// Serving's one answer: the resolved body's own driver first, then
+	// the walk and the other views.
 	s := b.seededInAnyView(symbol, sel, fd, pkg)
 	if s.witnessSite != "" {
 		// Another view answered: the witness at its declaration there.

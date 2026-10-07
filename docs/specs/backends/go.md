@@ -102,11 +102,17 @@ own body directly drives `pgregory.net/rapid` (a qualified or aliased
 drives `github.com/leanovate/gopter` (a `Properties.TestingRun` selector
 call — property registration and generator construction alone do not
 classify, and a dot-imported call never does, for every recognized
-library), and `example` otherwise;
+library), or its own body directly drives the standard library's
+`testing/quick` (a `quick.Check` / `quick.CheckEqual` selector call —
+`quick.Value` alone generates and does not classify), and `example`
+otherwise;
 the classification is resolved from the code, never declared. A
 `property` classification additionally states its seeding: a
 driver-quantified body is random-seeded — the driver draws the inputs
-it quantifies over from a run-time seed — while a fuzz target's
+it quantifies over from a run-time seed (`testing/quick` from its
+`Config.Rand`, the wall clock's when nil; a configuration carrying its
+own source classifies the same, the classification being static) —
+while a fuzz target's
 ordinary run replays its committed seeds deterministically and is not;
 the seeded form is what freshness serving consults
 (REQ-evidence-witness-freshness). An

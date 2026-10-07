@@ -107,7 +107,10 @@ func TestRandomSeeded(t *testing.T) {
 		"example.com/fixture/lib.TestPropRapidCheck":     true,
 		"example.com/fixture/lib.TestPropRapidMakeCheck": true,
 		"example.com/fixture/lib.TestGopterProp":         true,
-		"example.com/fixture/lib.NoSuchTest":             false,
+		// A dot-imported driver call classifies nothing (the qualified
+		// call is the contract) and seeds serving all the same.
+		"example.com/fixture/lib.TestPropDotImported": true,
+		"example.com/fixture/lib.NoSuchTest":          false,
 	}
 	if !maps.Equal(seededOnly, want) {
 		t.Fatalf("NeverServe = %v, want seeded %v", refused, want)
@@ -423,13 +426,25 @@ func TestHelperIndirectedDriverRefusesServing(t *testing.T) {
 		"example.com/fixture/lib.TestPropViaBadThenGood",
 		"example.com/fixture/lib.TestPropViaTwoBad",
 		"example.com/fixture/lib.TestPropViaOtherThroughHop",
+		"example.com/fixture/lib.TestPropViaFuncValue",
+		"example.com/fixture/lib.TestPropViaStoredValue",
+		"example.com/fixture/lib.TestPropViaMethodValue",
+		"example.com/fixture/lib.TestPropViaDriverValue",
+		"example.com/fixture/lib.TestPropViaValueFromElsewhere",
+		"example.com/fixture/lib.TestPropViaInterfaceMethodValue",
+		"example.com/fixture/lib.TestTypeSwitchBody",
+		"example.com/fixture/lib.TestQuickValueOnly",
+		"example.com/fixture/lib.TestPropQuickDotImported",
+		"example.com/fixture/lib.TestPropViaTypeParamValue",
 		"example.com/fixture/lib.TestPropRapidCheck",
 		"example.com/fixture/lib.TestPropTwoDrivers",
+		"example.com/fixture/lib.TestPropQuickCheck",
+		"example.com/fixture/lib.TestPropQuickCheckEqual",
 		"example.com/fixture/lib.TestProofThenDrive",
 		"example.com/fixture/lib.TestDriveThenProof",
 		"example.com/fixture/lib.TestProofViaHelper",
 	}
-	for _, sym := range symbols[:15] {
+	for _, sym := range symbols[:25] {
 		if got := fb.WitnessClass(sym); got != verify.ExampleWitness {
 			t.Errorf("%s classified %v, want example — the evidence class stays direct-call", sym, got)
 		}
@@ -458,8 +473,22 @@ func TestHelperIndirectedDriverRefusesServing(t *testing.T) {
 		"example.com/fixture/lib.TestPropViaBadThenGood":     seededThroughReason("example.com/fixture/lib.runProp"),
 		"example.com/fixture/lib.TestPropViaTwoBad":          seededRefusal(errors.New("call of mystery in example.com/fixture/badhelper.Run resolves to no declaration")),
 		"example.com/fixture/lib.TestPropViaOtherThroughHop": seededThroughReason("example.com/fixture/lib.viaHelpers"),
-		"example.com/fixture/lib.TestPropRapidCheck":         seededReason,
-		"example.com/fixture/lib.TestPropTwoDrivers":         seededReason,
+		// A function the body names as a value is walked; the driver
+		// itself named as a value seeds directly; a value from
+		// elsewhere is outside the walk and serves.
+		"example.com/fixture/lib.TestPropViaFuncValue":   seededThroughReason("example.com/fixture/lib.runPropSub"),
+		"example.com/fixture/lib.TestPropViaStoredValue": seededThroughReason("example.com/fixture/lib.runProp"),
+		"example.com/fixture/lib.TestPropViaMethodValue": seededThroughReason("(example.com/fixture/lib.propRunner).Run"),
+		"example.com/fixture/lib.TestPropViaDriverValue": seededReason,
+		// A driver named through a dot import seeds directly; a method
+		// value off a type parameter is the constraint's, refused.
+		"example.com/fixture/lib.TestPropQuickDotImported":  seededReason,
+		"example.com/fixture/lib.TestPropViaTypeParamValue": seededRefusal(errors.New("call of Run in example.com/fixture/lib.driveValue resolves to no declaration")),
+		// testing/quick's drivers are random-seeded like rapid's.
+		"example.com/fixture/lib.TestPropQuickCheck":      seededReason,
+		"example.com/fixture/lib.TestPropQuickCheckEqual": seededReason,
+		"example.com/fixture/lib.TestPropRapidCheck":      seededReason,
+		"example.com/fixture/lib.TestPropTwoDrivers":      seededReason,
 		// Proof outranks property on the ladder and carries its seeding:
 		// a direct driver in either order, or a hop through a helper.
 		"example.com/fixture/lib.TestProofThenDrive": seededReason,
@@ -473,6 +502,17 @@ func TestHelperIndirectedDriverRefusesServing(t *testing.T) {
 		if got := fb.WitnessClass(sym); got != verify.AnalyzerProof {
 			t.Errorf("%s classified %v, want proof — the ladder's top, seeded all the same", sym, got)
 		}
+	}
+	for _, sym := range []string{"example.com/fixture/lib.TestPropQuickCheck", "example.com/fixture/lib.TestPropQuickCheckEqual"} {
+		if got := fb.WitnessClass(sym); got != verify.PropertyWitness {
+			t.Errorf("%s classified %v, want property — testing/quick drives", sym, got)
+		}
+	}
+	if _, reason := fb.WitnessClassVerdict("example.com/fixture/lib.TestQuickValueOnly"); reason != "testing/quick.Check not invoked in the bound body" {
+		t.Fatalf("quick.Value alone: %q", reason)
+	}
+	if _, reason := fb.WitnessClassVerdict("example.com/fixture/lib.TestPropViaDriverValue"); reason != "rapid.Check not invoked in the bound body" {
+		t.Fatalf("the driver named as a value: %q", reason)
 	}
 	_, reason := fb.WitnessClassVerdict("example.com/fixture/lib.TestPropViaHelper")
 	if !strings.Contains(reason, "reached through example.com/fixture/lib.runProp"+directCallRemedy+")") {

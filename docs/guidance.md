@@ -69,11 +69,12 @@ gap naming it, an enforcement pointer names no tests- or proves-role
 binding of its requirement (pointers dangling), or a resolved gap
 record lingers unpruned; full additionally fails on unhealthy suite
 health. Random-seeded property witnesses (bodies directly driving
-rapid or gopter) never serve: they execute on every check and read as
-uncacheable with that reason; a witness the backend cannot classify at
-all (its package fails to load under the invocation's selection) is
-refused serving the same way under a reason naming the load gap. A
-tree failing the check is a successful call carrying passed=false.
+rapid, gopter or testing/quick) never serve: they execute on every
+check and read as uncacheable with that reason; a witness the backend
+cannot classify at all (its package fails to load under the
+invocation's selection) is refused serving the same way under a reason
+naming the load gap. A tree failing the check is a successful call
+carrying passed=false.
 **example:** check before entering review; check with
 ids=REQ-go-static-binding while iterating on one requirement's fix.
 

@@ -234,8 +234,14 @@ over them and serves as any witness. Serving consults a TRANSITIVE
 seeding class beside that classification: a bound body that reaches a
 recognized run-time-seeded driver only through in-module helpers — the
 static callees the type information resolves (a plain or qualified
-call, a method call, an instantiated generic resolved to its origin),
-each declaration read from the loaded packages or loaded on demand from
+call, a method call, an instantiated generic resolved to its origin,
+and a function the body names as a value — passed, stored, or bound
+as a method value — walked as a callee since the body may call it; a
+driver the body itself names, as a value or as a bare identifier
+through a dot import, seeds it as a direct call does while its
+evidence class stays `example` — only the qualified call classifies),
+each declaration read from the loaded packages or loaded on demand
+from
 the member module owning its package under the walking witness's own
 build selection, so the walk answers the same whatever the load's
 scope, answers per selection where a helper is split by build tag, and
@@ -252,9 +258,10 @@ to no declaration refuses serving under a reason naming it (absence of
 proof never serves) — the first such refusal in the walk's
 breadth-first order standing as the reason — a hop found outranking
 such a refusal; a driver
-reached only through a dependency's helper, a function value, or an
-interface dispatch is outside the walk and serves as an example
-witness. A subject the backend cannot
+reached only through a dependency's helper, a function value that
+reaches the body from elsewhere (a parameter, a field, a dependency's
+value), or an interface dispatch is outside the walk and serves as an
+example witness. A subject the backend cannot
 classify at all is refused serving the same way under a reason naming
 the load gap — absence of proof never serves, and the refusal never
 reads as a property classification the code does not carry — and a

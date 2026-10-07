@@ -102,6 +102,35 @@ func TestExplainWitnessRendersServingsWalk(t *testing.T) {
 			{Kind: LinkWitness, Package: lib, Symbol: "TestPropTwoDrivers", Pos: siteAfter(t, "lib/prop_test.go", "", "func TestPropTwoDrivers(")},
 			{Kind: LinkDriver, Package: lib, Symbol: "TestPropTwoDrivers", Clause: driverClause, Pos: siteAfter(t, "lib/prop_test.go", "func TestPropTwoDrivers(", "rapid.Check(t, func(")},
 		}}},
+		// A function named as a value: the call link sits at the name.
+		{lib + ".TestPropViaFuncValue", gofresh.Chain{Arm: ArmSeedingThrough, Links: []gofresh.ChainLink{
+			{Kind: LinkWitness, Package: lib, Symbol: "TestPropViaFuncValue", Pos: siteAfter(t, "lib/propvia_test.go", "", "func TestPropViaFuncValue(")},
+			{Kind: LinkCall, Package: lib, Symbol: "TestPropViaFuncValue", Callee: lib + ".runPropSub", Pos: siteAfter(t, "lib/propvia_test.go", "func TestPropViaFuncValue(", "t.Run(\"sub\", runPropSub)")},
+			{Kind: LinkDriver, Package: lib, Symbol: "runPropSub", Clause: driverClause, Pos: siteAfter(t, "lib/propvia_test.go", "func runPropSub(", "rapid.Check(t, func(")},
+		}}},
+		// The driver itself named as a value: direct, at the name.
+		{lib + ".TestPropViaDriverValue", gofresh.Chain{Arm: ArmSeedingDirect, Links: []gofresh.ChainLink{
+			{Kind: LinkWitness, Package: lib, Symbol: "TestPropViaDriverValue", Pos: siteAfter(t, "lib/propvia_test.go", "", "func TestPropViaDriverValue(")},
+			{Kind: LinkDriver, Package: lib, Symbol: "TestPropViaDriverValue", Clause: driverClause, Pos: siteAfter(t, "lib/propvia_test.go", "func TestPropViaDriverValue(", "check := rapid.Check")},
+		}}},
+		// A method value off an interface-typed value is a dispatch:
+		// outside the walk, as the called form.
+		{lib + ".TestPropViaInterfaceMethodValue", gofresh.Chain{Arm: ArmNotSeeded + " (example)", Links: []gofresh.ChainLink{
+			{Kind: LinkWitness, Package: lib, Symbol: "TestPropViaInterfaceMethodValue", Pos: siteAfter(t, "lib/propvia_test.go", "", "func TestPropViaInterfaceMethodValue(")},
+		}}},
+		// A driver called through a dot import: direct, at the bare name.
+		{lib + ".TestPropDotImported", gofresh.Chain{Arm: ArmSeedingDirect, Links: []gofresh.ChainLink{
+			{Kind: LinkWitness, Package: lib, Symbol: "TestPropDotImported", Pos: siteAfter(t, "lib/dotprop_test.go", "", "func TestPropDotImported(")},
+			{Kind: LinkDriver, Package: lib, Symbol: "TestPropDotImported", Clause: driverClause, Pos: siteAfter(t, "lib/dotprop_test.go", "func TestPropDotImported(", "Check(t, func(")},
+		}}},
+		// A value from elsewhere: outside the walk.
+		{lib + ".TestPropViaValueFromElsewhere", gofresh.Chain{Arm: ArmNotSeeded + " (example)", Links: []gofresh.ChainLink{
+			{Kind: LinkWitness, Package: lib, Symbol: "TestPropViaValueFromElsewhere", Pos: siteAfter(t, "lib/propvia_test.go", "", "func TestPropViaValueFromElsewhere(")},
+		}}},
+		{lib + ".TestPropQuickCheck", gofresh.Chain{Arm: ArmSeedingDirect, Links: []gofresh.ChainLink{
+			{Kind: LinkWitness, Package: lib, Symbol: "TestPropQuickCheck", Pos: siteAfter(t, "lib/prop_test.go", "", "func TestPropQuickCheck(")},
+			{Kind: LinkDriver, Package: lib, Symbol: "TestPropQuickCheck", Clause: driverClause, Pos: siteAfter(t, "lib/prop_test.go", "func TestPropQuickCheck(", "quick.Check(")},
+		}}},
 		{lib + ".TestPlainViaHelper", gofresh.Chain{Arm: ArmNotSeeded + " (example)", Links: []gofresh.ChainLink{
 			{Kind: LinkWitness, Package: lib, Symbol: "TestPlainViaHelper", Pos: siteAfter(t, "lib/propvia_test.go", "", "func TestPlainViaHelper(")},
 		}}},

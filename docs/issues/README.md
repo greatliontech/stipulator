@@ -6,12 +6,11 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
 
 
 - **[bindings-per-requirement-file-derivation](bindings-per-requirement-file-derivation.md)** — `bind` and `dispose supersede` place records by the id's second segment while the gaps store derives one file per requirement; a per-requirement bindings layout is held only by a project test and a hand move after each supersede. Lands: cross-tool train chunk 176.
-- **[testing-quick-property-driver](testing-quick-property-driver.md)** — direct standard-library property checks are classified as examples; derive recognition and seeding/freshness together, or report the unsupported driver explicitly. *Lands: cross-tool train chunk 298 (a rider, slotted 2026-10-04).*
 
 
 - **[ledger-store-as-a-record-kind](ledger-store-as-a-record-kind.md)** — the witness cache's compartment ledger sub-store implements the record-store mechanics by hand beside the core; folding it needs a one-segment naming form. *Lands: cross-tool train chunk 185*
 - **[witness-verdict-one-body-classifier](witness-verdict-one-body-classifier.md)** — the classifier inspects a body three ways (the rich resolved-view pass, the other-view direct test, the helper walk) and folds the union beside the class switch; one per-view classifyBody with a fold over views. *Lands: cross-tool train chunk 226*
-- **[seeding-walk-unreached-routes](seeding-walk-unreached-routes.md)** — the transitive seeding walk stops at dependency helpers, function values, and interface dispatch, each a served-flake shape the spec states; gofresh's reachable closure would answer all three. *Lands: cross-tool train chunk 298 (the trigger fired at 272.F's staticCallees; audit 287)*
+- **[seeding-walk-unreached-routes](seeding-walk-unreached-routes.md)** — the transitive seeding walk stops at dependency helpers and interface dispatch, each a served-flake shape the spec states; gofresh's reachable closure would answer both. *Lands: gofresh exports a query answering whether a subject's observed closure reaches a named function (the dynamic-state tier's home, decided at gofresh 202)*
 - **[structural-data-with-methods](structural-data-with-methods.md)** — a structural assertion for a data type with an exact method set (gofresh's Fingerprint carries its record form's encoders beside its exported fields, which `structural.ExportedData` refuses). *Lands: cross-tool train chunk 228*
 - **[go-backend-load-path-pairs](go-backend-load-path-pairs.md)** — workspace double-parse under
   two error policies, the view-error/attribution wording split, the classifier's double-resolve.

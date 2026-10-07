@@ -1,7 +1,10 @@
 package lib
 
 import (
+	"math/rand"
+	"reflect"
 	"testing"
+	"testing/quick"
 
 	"pgregory.net/rapid"
 )
@@ -46,4 +49,29 @@ func TestPropTwoDrivers(t *testing.T) {
 			rt.Fatal("broken")
 		}
 	})
+}
+
+// TestPropQuickCheck drives the standard library's property runner: a
+// property witness, random-seeded from the wall clock.
+func TestPropQuickCheck(t *testing.T) {
+	if err := quick.Check(func(x int) bool { return Add(x, 0) == x }, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestPropQuickCheckEqual drives the runner's equality form over a
+// configuration carrying its own source: classified the same.
+func TestPropQuickCheckEqual(t *testing.T) {
+	cfg := &quick.Config{Rand: rand.New(rand.NewSource(1))}
+	if err := quick.CheckEqual(func(x int) int { return Add(x, 1) }, func(x int) int { return x + 1 }, cfg); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestQuickValueOnly generates with quick.Value and drives nothing:
+// the near-miss names the driver it lacks.
+func TestQuickValueOnly(t *testing.T) {
+	if _, ok := quick.Value(reflect.TypeOf(0), rand.New(rand.NewSource(1))); !ok {
+		t.Fatal("no value")
+	}
 }

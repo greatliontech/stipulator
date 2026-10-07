@@ -230,3 +230,105 @@ func TestPropViaOtherThroughHop(t *testing.T) {
 		}
 	})
 }
+
+// runPropSub drives the runner as a subtest body: a function value a
+// test passes to t.Run.
+func runPropSub(t *testing.T) {
+	rapid.Check(t, func(rt *rapid.T) {
+		if Add(12, 12) != 24 {
+			rt.Fatal("broken")
+		}
+	})
+}
+
+// TestPropViaFuncValue names the driving helper as a value: walked as
+// a callee, the body may call it.
+func TestPropViaFuncValue(t *testing.T) {
+	t.Run("sub", runPropSub)
+}
+
+// TestPropViaStoredValue stores the driving helper and calls the
+// variable: the stored reference is the walked callee.
+func TestPropViaStoredValue(t *testing.T) {
+	f := runProp
+	f(t, func(rt *rapid.T) {
+		if Add(13, 13) != 26 {
+			rt.Fatal("broken")
+		}
+	})
+}
+
+// TestPropViaMethodValue takes the driving method as a value.
+func TestPropViaMethodValue(t *testing.T) {
+	run := propRunner{}.Run
+	run(t, func(rt *rapid.T) {
+		if Add(14, 14) != 28 {
+			rt.Fatal("broken")
+		}
+	})
+}
+
+// TestPropViaDriverValue names the driver itself as a value: seeded
+// directly for serving, example on the evidence ladder (the
+// classification is direct-call by contract).
+func TestPropViaDriverValue(t *testing.T) {
+	check := rapid.Check
+	check(t, func(rt *rapid.T) {
+		if Add(15, 15) != 30 {
+			rt.Fatal("broken")
+		}
+	})
+}
+
+// registry holds a driving helper the test below reaches through a
+// package variable: a value from elsewhere, outside the walk.
+var registry = struct{ run func(*testing.T) }{run: runPropSub}
+
+// TestPropViaValueFromElsewhere calls a value its body never names as
+// a function: outside the walk, it serves as an example witness.
+func TestPropViaValueFromElsewhere(t *testing.T) {
+	registry.run(t)
+}
+
+// TestPropViaInterfaceMethodValue takes a method value off an
+// interface-typed value: a dispatch, outside the walk — it serves as
+// an example witness exactly as the called form does.
+func TestPropViaInterfaceMethodValue(t *testing.T) {
+	var d propDriver = propRunner{}
+	run := d.Run
+	run(t, func(rt *rapid.T) {
+		if Add(16, 16) != 32 {
+			rt.Fatal("broken")
+		}
+	})
+}
+
+// TestTypeSwitchBody binds a type switch's symbolic variable — an
+// identifier the type information binds to no object: not a call, so
+// never a refusal.
+func TestTypeSwitchBody(t *testing.T) {
+	var x any = Add(17, 17)
+	switch v := x.(type) {
+	case int:
+		if v != 34 {
+			t.Fatal("broken")
+		}
+	default:
+		t.Fatal("not an int")
+	}
+}
+
+// driveValue takes the driving method as a value off a type parameter:
+// the constraint's method, resolved to no declaration — refused.
+func driveValue[T propDriver](t *testing.T, x T) {
+	run := x.Run
+	run(t, func(rt *rapid.T) {
+		if Add(18, 18) != 36 {
+			rt.Fatal("broken")
+		}
+	})
+}
+
+func TestPropViaTypeParamValue(t *testing.T) {
+	driveValue(t, propRunner{})
+}

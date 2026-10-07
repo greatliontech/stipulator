@@ -235,6 +235,7 @@ func TestWitnessClassVerdicts(t *testing.T) {
 		{"example.com/fixture/lib.TestGopterRegistrationOnly", verify.ExampleWitness, "gopter.Properties.TestingRun not invoked in the bound body"},
 		{"example.com/fixture/lib.TestAdd", verify.ExampleWitness, "no property driver or analyzer call in the bound body"},
 		{"example.com/fixture/lib.TestPropDotImported", verify.ExampleWitness, "recognized library reached through a dot import - only a qualified call classifies"},
+		{"example.com/fixture/lib.TestPropQuickDotImported", verify.ExampleWitness, "recognized library reached through a dot import - only a qualified call classifies"},
 		{"example.com/fixture/lib.Add", verify.ExampleWitness, "not a runnable test witness"},
 	} {
 		class, reason := fb.WitnessClassVerdict(tc.symbol)
