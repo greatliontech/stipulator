@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/greatliontech/gofresh/resident"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
-	"github.com/greatliontech/stipulator/internal/resident"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -167,7 +167,7 @@ func TestExecuteStatesTheResidentSetOnBothLines(t *testing.T) {
 		if installed <= 0 || installed == math.MaxInt64 {
 			t.Fatalf("the operation installed no ceiling (limit %d)", installed)
 		}
-		if want := ", ceiling " + progress.ByteWord(uint64(installed)); !strings.Contains(out, want) {
+		if want := ", ceiling " + resident.ByteWord(uint64(installed)); !strings.Contains(out, want) {
 			t.Fatalf("the phase lines lack the ceiling the operation installed (%s):\n%s", want, out)
 		}
 	}

@@ -382,30 +382,32 @@ execute concurrently under a derived concurrency bound —
 half the processor count, since each package process is itself
 a parallel process tree — and, where the host reports its memory, under
 a memory term: a package process is spawned only while the host's
-available memory, less what each running package's tree is estimated
-still to take beyond what the process table already shows of that tree
-(the tree attributed to the process spawned for the package; a tree not
-yet in the table reserves the whole estimate; one tree's overshoot pays
-for no sibling's reservation), covers one more package at the
-invocation's estimate — the largest a
-package's process tree has been seen to need: a completed package's
-largest process, a live descendant's largest peak, the live trees' share
-of the descendants' resident set, floored at one gibibyte — with the
-pass's own room to grow back to its peak left over, so a burst of spawns
-on one reading is bounded by the term and not only by the processor
-bound; a package queued on the term waits for a completion under the
+available memory (the family's soft ceilings are collection targets,
+never a need set aside), less what each running package's tree is
+estimated still to take beyond what the process table already shows of
+that tree (the tree attributed to the process spawned for the package;
+a tree not yet in the table reserves the whole estimate; one tree's
+overshoot pays for no sibling's reservation), covers one more package
+at the invocation's estimate — the largest a package's process tree has
+been seen to need: a completed package's largest process and the
+largest a registered package's tree has shown in the readings, floored
+at one gibibyte; a descendant outside every registered tree prices no
+package — with the pass's own room to grow back to the largest set this
+invocation's admission has read left over (never the kernel's lifetime
+mark), so a burst of spawns on one reading is bounded by the term and
+not only by the processor bound; a package queued on the term waits for a completion under the
 envelope as one queued on the processor bound does, and one the term
 held until the envelope expired names the term in its timeout
 diagnostic and in its witnesses' cause; an invocation the host cannot hold one process of refuses
 every package stated — a degraded disposition naming the readings, no
 process and no isolation re-run spawned, the refused witnesses' cause
 naming the reason — rather than spawning into the host's guard; the
-tool's own parent and resolver processes run under a soft ceiling of
-half the host's available memory at their start, floored at one gibibyte
-and never above the operator's limit (the one in force before the first
-derivation), the parent's re-derived at each operation's start — rising
-or falling with the host, never pinned by an earlier derivation of its
-own — and stated with its resident datum; neither the
+tool's own parent and resolver processes run under the fleet's soft
+ceiling (gofresh's resident-readings clause: half the room the host has for
+the process family at their start, floored, never above the operator's
+word), the parent's re-derived at each operation's start — rising or
+falling with the host, never pinned by an earlier derivation of its own
+— and stated with its resident datum; neither the
 bound nor the term is declared — and each unit's inner parallelism is capped at
 the parent's processor budget over the unit bound, floored at one and
 delivered through the spawn environment (never widening an environment

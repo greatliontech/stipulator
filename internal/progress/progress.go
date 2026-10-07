@@ -24,15 +24,14 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math"
 	"strings"
 	"sync"
 	"time"
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
+	"github.com/greatliontech/gofresh/resident"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
-	"github.com/greatliontech/stipulator/internal/resident"
 )
 
 // defaultInterval is the minimum spacing of non-milestone events.
@@ -631,15 +630,15 @@ func (r *Reporter) Stamps() string {
 	}
 	if rec := r.resident; rec.taken {
 		if rec.end != nil {
-			fmt.Fprintf(&b, "; resident at the end %s", ByteWord(rec.end.ProcessBytes))
+			fmt.Fprintf(&b, "; resident at the end %s", resident.ByteWord(rec.end.ProcessBytes))
 		}
 		if rec.peakRaised {
-			fmt.Fprintf(&b, "; peak %s %s", ByteWord(rec.peak), momentWords(rec.peakMoment))
+			fmt.Fprintf(&b, "; peak %s %s", resident.ByteWord(rec.peak), momentWords(rec.peakMoment))
 		} else {
-			fmt.Fprintf(&b, "; peak %s reached before this operation, this operation's largest reading %s", ByteWord(rec.peak), ByteWord(rec.largest))
+			fmt.Fprintf(&b, "; peak %s reached before this operation, this operation's largest reading %s", resident.ByteWord(rec.peak), resident.ByteWord(rec.largest))
 		}
 		if rec.descendants.Descendants > 0 {
-			fmt.Fprintf(&b, "; descendants %s (%d) %s, largest peak %s", ByteWord(rec.descendants.DescendantsBytes), rec.descendants.Descendants, momentWords(rec.descMoment), ByteWord(rec.descPeak))
+			fmt.Fprintf(&b, "; descendants %s (%d) %s, largest peak %s", resident.ByteWord(rec.descendants.DescendantsBytes), rec.descendants.Descendants, momentWords(rec.descMoment), resident.ByteWord(rec.descPeak))
 		}
 	}
 	return b.String()
@@ -677,18 +676,10 @@ func ResidentWords(e *stipulatorv1.ProgressEvent) string {
 	}, moment{exitOf: set.GetExitOf(), atEnd: set.GetAtEnd()})
 }
 
-// residentWords is the one spelling of a reading: its moment, the
-// process's set and peak, its live descendants when any, and the soft
-// ceiling the process runs under when one is installed.
+// residentWords is the fleet's one spelling of a reading
+// (resident.Words) at this reporter's moment.
 func residentWords(set resident.Set, m moment) string {
-	words := fmt.Sprintf("%s: resident %s (peak %s)", momentWords(m), ByteWord(set.ProcessBytes), ByteWord(set.ProcessPeakBytes))
-	if set.Descendants > 0 {
-		words += fmt.Sprintf(", descendants %s (%d), largest peak %s", ByteWord(set.DescendantsBytes), set.Descendants, ByteWord(set.DescendantPeakBytes))
-	}
-	if set.CeilingBytes > 0 {
-		words += ", ceiling " + ByteWord(set.CeilingBytes)
-	}
-	return words
+	return resident.Words(set, momentWords(m))
 }
 
 // momentWords names a reading's moment: "at compile's exit", "at the
@@ -711,24 +702,6 @@ func ResidentSuffix(e *stipulatorv1.ProgressEvent) string {
 		return ""
 	}
 	return " — " + words
-}
-
-// ByteWord renders a byte count in binary units, rounded, with one
-// decimal above a gibibyte: "75 MiB", "1.0 GiB" — the convention the
-// tree's other byte figures use.
-func ByteWord(b uint64) string {
-	const kib, mib, gib = 1 << 10, 1 << 20, 1 << 30
-	// A value that rounds up to the next unit renders in that unit:
-	// 1023.6 MiB is "1.0 GiB", never "1024 MiB".
-	switch {
-	case b >= gib || math.Round(float64(b)/mib) >= 1024:
-		return fmt.Sprintf("%.1f GiB", float64(b)/gib)
-	case b >= mib || math.Round(float64(b)/kib) >= 1024:
-		return fmt.Sprintf("%.0f MiB", float64(b)/mib)
-	case b >= kib:
-		return fmt.Sprintf("%.0f KiB", float64(b)/kib)
-	}
-	return fmt.Sprintf("%d B", b)
 }
 
 // roundDuration renders a duration at tenth-of-a-second precision - the

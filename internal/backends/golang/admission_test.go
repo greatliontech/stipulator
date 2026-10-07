@@ -10,8 +10,8 @@ import (
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
+	"github.com/greatliontech/gofresh/resident"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
-	"github.com/greatliontech/stipulator/internal/resident"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -138,10 +138,10 @@ func TestAdmissionGateDerivesTheMemoryTerm(t *testing.T) {
 	}
 
 	// The start burst: the running packages' trees, not yet in the
-	// process table, are reserved their estimate — with 3 GiB available
-	// and the 1 GiB floor, two are admitted on the same reading and the
-	// third waits, whatever the processor bound.
-	injectReadings(t, hostWith(3*gib), passWith(gib/4))
+	// process table, are reserved their estimate — with 2.5 GiB
+	// available and the 1 GiB floor, two are admitted on the same
+	// reading and the third waits, whatever the processor bound.
+	injectReadings(t, hostWith(5*gib/2), passWith(gib/4))
 	burst := newAdmission(context.Background(), 16)
 	for i := 0; i < 2; i++ {
 		if admitted, refusal, _ := burst.admit(); !admitted {
@@ -156,9 +156,9 @@ func TestAdmissionGateDerivesTheMemoryTerm(t *testing.T) {
 	// The reservation is per tree, never netted across trees: four
 	// running packages, one tree grown to 8 GiB of small processes and
 	// three just-admitted siblings showing nothing, 3 GiB available —
-	// the estimate is the trees' share (2 GiB), the three bare siblings
-	// reserve 6 GiB, and a fifth package waits; netting the grown
-	// tree's bytes against its siblings would have admitted it.
+	// the estimate is the grown tree's observed 8 GiB, the three bare
+	// siblings reserve it each, and a fifth package waits; netting the
+	// grown tree's bytes against its siblings would have admitted it.
 	// The four are admitted while the host is roomy and their trees
 	// bare; then the reading moves to the skewed shape.
 	current := resident.Reading{
@@ -190,15 +190,15 @@ func TestAdmissionGateDerivesTheMemoryTerm(t *testing.T) {
 	fifth := admitAsync(trees)
 	mustWait(t, fifth)
 	// The three bare siblings gone, the grown tree alone running: its
-	// own 8 GiB is now the trees' share, so the estimate is 8 GiB and
-	// 3 GiB still holds nothing more — the fifth keeps waiting.
+	// observed 8 GiB (its share too) is the estimate, and 3 GiB still
+	// holds nothing more — the fifth keeps waiting.
 	trees.release("", 12, 0)
 	trees.release("", 13, 0)
 	trees.release("", 14, 0)
 	mustWait(t, fifth)
-	// The grown tree completes: nothing runs, the share term is inert,
-	// the estimate falls to the floor and the live peak, and 3 GiB
-	// holds one — admitted.
+	// The grown tree completes: nothing runs, the share and the
+	// observed tree maxima are gone with the registrations, the
+	// estimate falls to the floor, and 3 GiB holds one — admitted.
 	currentMu.Lock()
 	current.Set.Descendants, current.Set.DescendantsBytes, current.Trees = 0, 0, nil
 	currentMu.Unlock()
@@ -229,46 +229,58 @@ func TestAdmissionGateDerivesTheMemoryTerm(t *testing.T) {
 	mustWait(t, second)
 	c.release("", 0, 3*gib)
 	got := wait(t, second, "refused")
-	for _, phrase := range []string{"the host cannot hold one more package process", "available 1.5 GiB", "0 package(s) running", "peak 1.0 GiB", "estimated at 3.0 GiB"} {
+	for _, phrase := range []string{"the host cannot hold one more package process", "available 1.5 GiB", "0 package(s) running", "this phase's peak 512 MiB", "estimated at 3.0 GiB"} {
 		if !strings.Contains(got[1], phrase) {
 			t.Fatalf("refusal %q lacks %q (the completed package's 3 GiB peak is the estimate)", got[1], phrase)
 		}
 	}
 
-	// The live trees' share of the descendants' resident set raises the
-	// estimate while packages run: with 2 GiB available, one package
-	// admitted, and its tree showing 2.5 GiB, the next package waits —
-	// the floor alone would have admitted it.
-	share := resident.Set{ProcessBytes: gib / 8, ProcessPeakBytes: gib / 8}
+	// A registered tree's observed set raises the estimate while
+	// packages run: with 2 GiB available, one package admitted and its
+	// tree showing 2.5 GiB, the next package waits — the floor alone
+	// would have admitted it.
+	share := resident.Reading{
+		Set:  resident.Set{ProcessBytes: gib / 8, ProcessPeakBytes: gib / 8},
+		Host: resident.Memory{TotalBytes: 4 * gib, AvailableBytes: 2 * gib},
+	}
 	var shareMu sync.Mutex
-	injectReadings(t, hostWith(2*gib), func() (resident.Set, bool) {
+	injectReading(t, func() resident.Reading {
 		shareMu.Lock()
 		defer shareMu.Unlock()
-		return share, true
+		return share
 	})
 	g := newAdmission(context.Background(), 4)
 	if admitted, refusal, _ := g.admit(); !admitted {
 		t.Fatalf("the first package was not admitted: %q", refusal)
 	}
+	g.spawned(31)
 	shareMu.Lock()
-	share.Descendants, share.DescendantsBytes, share.DescendantPeakBytes = 3, 2*gib+gib/2, gib/2
+	share.Set.Descendants, share.Set.DescendantsBytes, share.Set.DescendantPeakBytes = 3, 2*gib+gib/2, gib/2
+	share.Trees = map[int]uint64{31: 2*gib + gib/2}
 	shareMu.Unlock()
 	sharedWaiter := admitAsync(g)
 	mustWait(t, sharedWaiter)
-	// After the release nothing runs: the share term is inert, the
-	// estimate falls back to the floor, and 2 GiB holds one package.
-	g.release("", 0, 0)
+	// After the release nothing runs: the observation left with the
+	// registration, the estimate falls back to the floor, and 2 GiB
+	// holds one package.
+	g.release("", 31, 0)
 	wait(t, sharedWaiter, "admitted")
 
-	// A refusal with nothing running comes without waiting, and a live
-	// descendant's peak — the pass's own reading — raises the estimate
-	// the refusal states above the floor.
+	// A refusal with nothing running comes without waiting, and a
+	// completed package's peak raises the estimate the refusal states
+	// above the floor — a live descendant outside every registered tree
+	// (here one with a 5 GiB peak) raises nothing: the first ask is
+	// admitted beside it, and only the completed 5 GiB refuses the next.
 	injectReadings(t, hostWith(4*gib), func() (resident.Set, bool) {
 		return resident.Set{ProcessBytes: gib / 2, ProcessPeakBytes: gib, Descendants: 1, DescendantsBytes: 2 * gib, DescendantPeakBytes: 5 * gib}, true
 	})
 	d := newAdmission(context.Background(), 4)
+	if admitted, refusal, _ := d.admit(); !admitted {
+		t.Fatalf("a package beside a 5 GiB descendant outside every registered tree was refused: %q", refusal)
+	}
+	d.release("", 0, 5*gib)
 	if admitted, refusal, _ := d.admit(); admitted || !strings.Contains(refusal, "estimated at 5.0 GiB") {
-		t.Fatalf("a host that cannot hold one process answered admitted=%v refusal=%q, want a refusal estimating the live descendant's 5 GiB peak", admitted, refusal)
+		t.Fatalf("a host that cannot hold one process answered admitted=%v refusal=%q, want a refusal estimating the completed package's 5 GiB peak", admitted, refusal)
 	}
 
 	// The invocation's end releases a waiter unadmitted and unrefused;
@@ -602,4 +614,186 @@ func TestPackageCauseNamesTheRefusalsReason(t *testing.T) {
 	if cause, _ := m.packageCause("inv", "example.com/held"); cause != "invocation inv: package example.com/held timeout: held by the memory term: the host cannot hold one more package process beside the pass: available 1.5 GiB" {
 		t.Fatalf("a held timeout's cause = %q, want the term named", cause)
 	}
+}
+
+// TestAdmissionScopesItsTermsToThePhaseAndTheRegisteredTrees pins the
+// memory term's two observations (REQ-evidence-witness-freshness's
+// witness concurrency clause): the pass's growth is measured to the
+// largest set the admission itself has read — a lifetime peak the
+// kernel reports (discovery's, over before execution) reserves nothing
+// — and a package is priced from the registered package trees alone —
+// a descendant outside them (a resolver child leaving the table) with a
+// large peak prices nothing, while a registered tree's observed maximum
+// stands after the tree shrinks.
+//
+//gofresh:pure
+func TestAdmissionScopesItsTermsToThePhaseAndTheRegisteredTrees(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	const gib, mib = uint64(1) << 30, uint64(1) << 20
+	wait := func(t *testing.T, c <-chan [2]string, want string) [2]string {
+		t.Helper()
+		select {
+		case got := <-c:
+			if got[0] != want {
+				t.Fatalf("admission = %v, want %s", got, want)
+			}
+			return got
+		case <-time.After(5 * time.Second):
+			t.Fatalf("admission did not answer %s", want)
+		}
+		return [2]string{}
+	}
+	mustWait := func(t *testing.T, c <-chan [2]string) {
+		t.Helper()
+		select {
+		case got := <-c:
+			t.Fatalf("admission answered %v, want it to wait", got)
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+
+	// The field shape: discovery over, the pass at 321 MiB with a
+	// 7.7 GiB lifetime peak, the resolver child (7.7 GiB, its own peak
+	// the same) still leaving the table, 13.2 GiB available, nothing
+	// running — admitted: neither the lifetime peak nor the departing
+	// descendant is a term.
+	var fieldMu sync.Mutex
+	field := resident.Reading{
+		Set:   resident.Set{ProcessBytes: 321 * mib, ProcessPeakBytes: 7700 * mib, Descendants: 1, DescendantsBytes: 7700 * mib, DescendantPeakBytes: 7700 * mib},
+		Host:  resident.Memory{TotalBytes: 64 * gib, AvailableBytes: 13*gib + 200*mib},
+		Trees: map[int]uint64{99: 7700 * mib},
+	}
+	injectReading(t, func() resident.Reading {
+		fieldMu.Lock()
+		defer fieldMu.Unlock()
+		return field
+	})
+	a := newAdmission(context.Background(), 4)
+	if admitted, refusal, _ := a.admit(); !admitted {
+		t.Fatalf("the field shape was refused: %q", refusal)
+	}
+
+	// The phase's own peak: a pass that showed 1.5 GiB to this
+	// admission and fell to 512 MiB reserves the 1 GiB back — with
+	// 1.5 GiB available nothing more fits beside the floor, and with
+	// nothing running the ask refuses naming this phase's peak; the
+	// kernel's 100 GiB lifetime mark is never the reference.
+	var phaseMu sync.Mutex
+	phase := resident.Reading{
+		Set:  resident.Set{ProcessBytes: gib + gib/2, ProcessPeakBytes: 100 * gib},
+		Host: resident.Memory{TotalBytes: 8 * gib, AvailableBytes: gib + gib/2},
+	}
+	injectReading(t, func() resident.Reading {
+		phaseMu.Lock()
+		defer phaseMu.Unlock()
+		return phase
+	})
+	b := newAdmission(context.Background(), 4)
+	if admitted, refusal, _ := b.admit(); !admitted {
+		t.Fatalf("the first package under the phase's own set was refused: %q", refusal)
+	}
+	b.release("", 0, 0)
+	phaseMu.Lock()
+	phase.Set.ProcessBytes = gib / 2
+	phaseMu.Unlock()
+	if admitted, refusal, _ := b.admit(); admitted || !strings.Contains(refusal, "this phase's peak 1.5 GiB") {
+		t.Fatalf("the pass's room to grow back to this phase's peak was not reserved: admitted=%v refusal=%q", admitted, refusal)
+	}
+
+	// A registered tree's observed maximum stands after the tree
+	// shrinks: with 1.6 GiB available the first package is admitted and
+	// registered, a second is admitted while the tree shows 1.5 GiB
+	// (the available memory holds it), and after the second completes with the
+	// tree down to 512 MiB a third waits — the tree is priced at the
+	// 1.5 GiB it showed, reserving the 1 GiB it may grow back, which the
+	// current bytes alone would have admitted; the tree's completion
+	// releases the observation and admits the third.
+	var treeMu sync.Mutex
+	tree := resident.Reading{
+		Set:  resident.Set{ProcessBytes: gib / 8, ProcessPeakBytes: gib / 8},
+		Host: resident.Memory{TotalBytes: 8 * gib, AvailableBytes: 8 * gib / 5},
+	}
+	injectReading(t, func() resident.Reading {
+		treeMu.Lock()
+		defer treeMu.Unlock()
+		return tree
+	})
+	c := newAdmission(context.Background(), 4)
+	if admitted, refusal, _ := c.admit(); !admitted {
+		t.Fatalf("the first package was refused: %q", refusal)
+	}
+	c.spawned(21)
+	treeMu.Lock()
+	tree.Trees = map[int]uint64{21: gib + gib/2}
+	treeMu.Unlock()
+	if admitted, refusal, _ := c.admit(); !admitted {
+		t.Fatalf("the second package beside a 1.5 GiB tree was refused: %q", refusal)
+	}
+	treeMu.Lock()
+	tree.Trees = map[int]uint64{21: gib / 2}
+	treeMu.Unlock()
+	c.release("", 0, 0)
+	third := admitAsync(c)
+	mustWait(t, third)
+	c.release("", 21, 0)
+	wait(t, third, "admitted")
+	// A reused pid starts its observation afresh: with 2 GiB available
+	// a package's tree is shown at 1.5 GiB (a second is admitted beside
+	// it), the package completes and the pid is registered for the
+	// second's process, shown at 256 MiB — the released tree's maximum
+	// left with its registration, so a third is admitted beside the
+	// floor; the stale 1.5 GiB would have held it.
+	var reuseMu sync.Mutex
+	reuse := resident.Reading{
+		Set:  resident.Set{ProcessBytes: gib / 8, ProcessPeakBytes: gib / 8},
+		Host: resident.Memory{TotalBytes: 8 * gib, AvailableBytes: 2 * gib},
+	}
+	injectReading(t, func() resident.Reading {
+		reuseMu.Lock()
+		defer reuseMu.Unlock()
+		return reuse
+	})
+	r := newAdmission(context.Background(), 4)
+	if admitted, refusal, _ := r.admit(); !admitted {
+		t.Fatalf("the first package was refused: %q", refusal)
+	}
+	r.spawned(21)
+	reuseMu.Lock()
+	reuse.Trees = map[int]uint64{21: gib + gib/2}
+	reuseMu.Unlock()
+	if admitted, refusal, _ := r.admit(); !admitted {
+		t.Fatalf("the second package beside a 1.5 GiB tree was refused: %q", refusal)
+	}
+	r.release("", 21, 0)
+	r.spawned(21)
+	reuseMu.Lock()
+	reuse.Trees = map[int]uint64{21: gib / 4}
+	reuseMu.Unlock()
+	wait(t, admitAsync(r), "admitted")
+
+	// A stranger's bytes in the descendants' sum price nothing: one
+	// package running with its registered tree at 512 MiB while the
+	// descendants' sum reads 8 GiB (the pass's own drivers, a child
+	// leaving the table) — the next package is admitted with 2 GiB
+	// available; the descendants' share would have held it.
+	var strangerMu sync.Mutex
+	stranger := resident.Reading{
+		Set:  resident.Set{ProcessBytes: gib / 8, ProcessPeakBytes: gib / 8},
+		Host: resident.Memory{TotalBytes: 8 * gib, AvailableBytes: 2 * gib},
+	}
+	injectReading(t, func() resident.Reading {
+		strangerMu.Lock()
+		defer strangerMu.Unlock()
+		return stranger
+	})
+	d := newAdmission(context.Background(), 4)
+	if admitted, refusal, _ := d.admit(); !admitted {
+		t.Fatalf("the first package was refused: %q", refusal)
+	}
+	d.spawned(41)
+	strangerMu.Lock()
+	stranger.Set.Descendants, stranger.Set.DescendantsBytes = 9, 8*gib
+	stranger.Trees = map[int]uint64{41: gib / 2}
+	strangerMu.Unlock()
+	wait(t, admitAsync(d), "admitted")
 }

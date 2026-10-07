@@ -18,9 +18,9 @@ import (
 	"unicode/utf8"
 
 	"github.com/greatliontech/gofresh/gotool"
+	"github.com/greatliontech/gofresh/resident"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
-	"github.com/greatliontech/stipulator/internal/resident"
 )
 
 // The policy executor runs each normalized Go invocation exactly once and
@@ -462,24 +462,36 @@ var (
 // term: a package process is admitted while fewer than the bound run and
 // the host's available memory, less what the running packages are
 // estimated still to take, covers one more package at the invocation's
-// estimate with the pass's own room to grow back to its peak left over.
-// The estimate is the largest a package's process tree has been seen to
-// need — a completed package's largest process from its wait status, a
-// live descendant's largest peak, and the live trees' share of the
-// descendants' resident set — floored at packageEstimateFloor, so it
-// grows as the processes do and never shrinks within the invocation;
-// each running package is reserved its estimate less what ITS tree
-// already shows in the process table (the tree attributed to the
-// process the executor spawned for it; a tree not yet in the table
-// reserves the whole estimate), so a burst of asks between the kernel's
-// readings is bounded by the term and not only by the processor bound,
-// and one tree's overshoot never pays for a sibling's reservation. A
-// package's process stays registered through its isolation re-runs
-// after it was reaped (the slot is released after them): its tree then
-// shows nothing and reserves the whole estimate — conservative — and a
-// pid the kernel reused inside that window would attribute a stranger's
-// direct child to it, which needs the pid space to wrap within one
-// package's re-runs; recorded, not guarded.
+// estimate with the pass's own room to grow back to its peak left
+// over. The measure is the host's (gofresh's readings carry it); the
+// family's soft ceilings are collection targets, not needs — the pass's
+// need beyond what it holds is its growth, below — so no half of the
+// room is set aside for a pass that holds a fraction of it. Both terms
+// read this admission's own observations, never the kernel's lifetime
+// marks: the pass's peak is the largest set this invocation's
+// admission has read at its asks (discovery's peak, over before the
+// admission existed, would reserve memory nothing running takes), and
+// the estimate is the largest a package's process tree has been seen
+// to need — a completed package's largest process from its wait
+// status and the largest a registered package's tree has shown in the
+// readings — floored at packageEstimateFloor, so it grows as the
+// packages' processes do and never shrinks within the invocation, and
+// a descendant outside every registered tree (a resolver child leaving
+// the table, a driver of the pass's own) prices no package; each
+// running package is reserved its estimate less what ITS tree already
+// shows in the process table (its held pages are out of the room
+// already, its file-backed pages the page cache's, reclaimable and
+// counted available; a tree attributed to the process the executor
+// spawned for it; a tree not yet in the table reserves the whole
+// estimate), so a burst of asks between the kernel's readings is
+// bounded by the term and not only by the processor bound, and one
+// tree's overshoot never pays for a sibling's reservation. A package's
+// process stays registered through its isolation re-runs after it was
+// reaped (the slot is released after them): its tree then shows nothing
+// and reserves the whole estimate — conservative — and a pid the kernel
+// reused inside that window would attribute a stranger's direct child
+// to it, which needs the pid space to wrap within one package's re-runs;
+// recorded, not guarded.
 // A waiting package re-asks at every completion (the readings move) and
 // gives up with the invocation's context, carrying the words of the
 // term that held it; a package asked while nothing of the invocation
@@ -499,10 +511,18 @@ type admission struct {
 	pids map[int]bool
 	// peak is the largest completed-package peak seen so far.
 	peak uint64
+	// passPeak is the largest resident set the pass has shown in this
+	// admission's readings — execution's own peak, the growth term's
+	// reference.
+	passPeak uint64
+	// treePeak is, per registered process, the largest its tree has
+	// shown in this admission's readings — a live package tree's
+	// observed peak, released with the process.
+	treePeak map[int]uint64
 }
 
 func newAdmission(ctx context.Context, bound int) *admission {
-	a := &admission{ctx: ctx, bound: bound, pids: map[int]bool{}}
+	a := &admission{ctx: ctx, bound: bound, pids: map[int]bool{}, treePeak: map[int]uint64{}}
 	a.cond = sync.NewCond(&a.mu)
 	// The context's end wakes every waiter, which then returns unadmitted.
 	context.AfterFunc(ctx, func() {
@@ -514,11 +534,15 @@ func newAdmission(ctx context.Context, bound int) *admission {
 }
 
 // estimate is the memory one more package process tree is assumed to
-// need, given the pass's current reading of its live descendants.
-func (a *admission) estimate(set resident.Set) uint64 {
-	need := max(packageEstimateFloor, a.peak, set.DescendantPeakBytes)
-	if a.running > 0 {
-		need = max(need, set.DescendantsBytes/uint64(a.running))
+// need, given the reading's trees of the registered package processes:
+// the observed maxima advance under a.mu with the reading.
+func (a *admission) estimate(reading resident.Reading) uint64 {
+	need := max(packageEstimateFloor, a.peak)
+	for pid := range a.pids {
+		if shown := reading.Trees[pid]; shown > a.treePeak[pid] {
+			a.treePeak[pid] = shown
+		}
+		need = max(need, a.treePeak[pid])
 	}
 	return need
 }
@@ -532,14 +556,17 @@ func (a *admission) room() (ok bool, words string) {
 	if !ok {
 		return true, ""
 	}
-	set, host := reading.Set, reading.Host
-	need := a.estimate(set)
+	set := reading.Set
+	if set.ProcessBytes > a.passPeak {
+		a.passPeak = set.ProcessBytes
+	}
+	need := a.estimate(reading)
 	// Each running package's tree is reserved the estimate less what it
-	// already shows in the process table (the kernel has taken that out
-	// of the available memory); a package admitted but not yet
-	// registered, or registered but not yet in the table, reserves the
-	// whole estimate. Per tree, never netted across trees: a grown
-	// sibling's bytes pay for nothing but itself.
+	// already shows in the process table (its held pages are out of the
+	// room already, its file-backed pages reclaimable); a package
+	// admitted but not yet registered, or registered but not yet in the
+	// table, reserves the whole estimate. Per tree, never netted across
+	// trees: a grown sibling's bytes pay for nothing but itself.
 	registered := 0
 	reserved := uint64(0)
 	for pid := range a.pids {
@@ -551,16 +578,18 @@ func (a *admission) room() (ok bool, words string) {
 	if a.running > registered {
 		reserved += uint64(a.running-registered) * need
 	}
-	// The pass's own room to grow back to its peak.
-	growth := uint64(0)
-	if set.ProcessPeakBytes > set.ProcessBytes {
-		growth = set.ProcessPeakBytes - set.ProcessBytes
-	}
-	if host.AvailableBytes >= reserved+need && host.AvailableBytes-reserved-need >= growth {
+	// The pass's own room to grow back to the largest set this
+	// admission has read.
+	growth := a.passPeak - set.ProcessBytes
+	// The room is what the host has available: the pass's and the
+	// children's held pages are out of it already, and the family's
+	// soft ceilings are targets, not needs.
+	available := reading.Host.AvailableBytes
+	if available >= reserved+need && available-reserved-need >= growth {
 		return true, ""
 	}
-	return false, fmt.Sprintf("the host cannot hold one more package process beside the pass: available %s, %d package(s) running reserving %s, the pass's resident %s (peak %s), one package estimated at %s",
-		progress.ByteWord(host.AvailableBytes), a.running, progress.ByteWord(reserved), progress.ByteWord(set.ProcessBytes), progress.ByteWord(set.ProcessPeakBytes), progress.ByteWord(need))
+	return false, fmt.Sprintf("the host cannot hold one more package process beside the pass: available %s, %d package(s) running reserving %s, the pass's resident %s (this phase's peak %s), one package estimated at %s",
+		resident.ByteWord(available), a.running, resident.ByteWord(reserved), resident.ByteWord(set.ProcessBytes), resident.ByteWord(a.passPeak), resident.ByteWord(need))
 }
 
 // admit blocks until the package may spawn. admitted is false when the
@@ -609,6 +638,7 @@ func (a *admission) release(pkg string, pid int, peakBytes uint64) {
 	a.mu.Lock()
 	registered := a.pids[pid]
 	delete(a.pids, pid)
+	delete(a.treePeak, pid)
 	a.running--
 	a.peak = max(a.peak, peakBytes)
 	a.cond.Broadcast()

@@ -18,11 +18,11 @@ import (
 	"time"
 
 	"github.com/greatliontech/gofresh"
+	"github.com/greatliontech/gofresh/resident"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/facts"
 	"github.com/greatliontech/stipulator/internal/progress"
-	"github.com/greatliontech/stipulator/internal/resident"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/wire"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
@@ -325,7 +325,7 @@ func TestTokenlessCallEmitsPhaseLogMessages(t *testing.T) {
 		if installed <= 0 || installed == math.MaxInt64 {
 			t.Fatalf("the call installed no ceiling (limit %d)", installed)
 		}
-		wantCeiling = ", ceiling " + progress.ByteWord(uint64(installed))
+		wantCeiling = ", ceiling " + resident.ByteWord(uint64(installed))
 	}
 	deadline := time.After(3 * time.Second)
 	sawPhase := false

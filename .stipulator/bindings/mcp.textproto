@@ -1286,26 +1286,6 @@ bindings {
   content_hash: "542c74e0f20e74672ae39860d367742fdc81a43f84bbb31701b67df5d0e9c609"
   source_hash: "542cad32e95eb53ebbf425b73b7171ef6e8348641495ea20608632a1d05c56b3"
   backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/resident.TestStatusParsesTheTwoResidentLines"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "d4a4a6a0bcf8a34164ec9a8f8c8467fc702ce6ffc7cb105110a8f0b0c901e5c8"
-}
-
-bindings {
-  requirement_id: "REQ-mcp-progress"
-  content_hash: "542c74e0f20e74672ae39860d367742fdc81a43f84bbb31701b67df5d0e9c609"
-  source_hash: "542cad32e95eb53ebbf425b73b7171ef6e8348641495ea20608632a1d05c56b3"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/resident.TestStatParsesPastTheCommandName"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "ebd66c0d9ba08f404c26819df3ca0123f7eb3f16eddea1fe0510d852dc5faa82"
-}
-
-bindings {
-  requirement_id: "REQ-mcp-progress"
-  content_hash: "542c74e0f20e74672ae39860d367742fdc81a43f84bbb31701b67df5d0e9c609"
-  source_hash: "542cad32e95eb53ebbf425b73b7171ef6e8348641495ea20608632a1d05c56b3"
-  backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestExecuteStatesTheResidentSetOnBothLines"
   role: BINDING_ROLE_TESTS
   shape_hash: "78f7abd01726550ab2814828720054a45a4673d0cabf55283fab0630ca7d4775"
@@ -1336,26 +1316,6 @@ bindings {
   content_hash: "542c74e0f20e74672ae39860d367742fdc81a43f84bbb31701b67df5d0e9c609"
   source_hash: "542cad32e95eb53ebbf425b73b7171ef6e8348641495ea20608632a1d05c56b3"
   backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/resident.TestSampleWalksTheLiveDescendants"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "41d8bc9c47cad4668c35b72b0b85448bd7d05fe662551796e8f12eca7cee9f42"
-}
-
-bindings {
-  requirement_id: "REQ-mcp-progress"
-  content_hash: "542c74e0f20e74672ae39860d367742fdc81a43f84bbb31701b67df5d0e9c609"
-  source_hash: "542cad32e95eb53ebbf425b73b7171ef6e8348641495ea20608632a1d05c56b3"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/resident.TestSampleCountsALiveDescendantChain"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "4d94f44d42587808a65a8b221755cde415fa4431b74bc044d75bfa441ab6351d"
-}
-
-bindings {
-  requirement_id: "REQ-mcp-progress"
-  content_hash: "542c74e0f20e74672ae39860d367742fdc81a43f84bbb31701b67df5d0e9c609"
-  source_hash: "542cad32e95eb53ebbf425b73b7171ef6e8348641495ea20608632a1d05c56b3"
-  backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/progress.TestEndingLineCarriesKeptOnlyWhenInterrupted"
   role: BINDING_ROLE_TESTS
   shape_hash: "26dacff42146fd48f1da8b7a9edf006ea490a8ec6ae76347ac8e7f67b7582b9b"
@@ -1369,26 +1329,6 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestServedVerbsCarryTheServingAccount"
   role: BINDING_ROLE_TESTS
   shape_hash: "65c5412f10bf3802ea56bef6dbb4faddee20897984af341344f57f7e9240e567"
-}
-
-bindings {
-  requirement_id: "REQ-mcp-progress"
-  content_hash: "542c74e0f20e74672ae39860d367742fdc81a43f84bbb31701b67df5d0e9c609"
-  source_hash: "542cad32e95eb53ebbf425b73b7171ef6e8348641495ea20608632a1d05c56b3"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/resident.TestMeminfoParsesTheTwoHostLines"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "5e635c369804539270755e97cdaacaa9a9d49e0af7735433123c052c7f08a3e7"
-}
-
-bindings {
-  requirement_id: "REQ-mcp-progress"
-  content_hash: "542c74e0f20e74672ae39860d367742fdc81a43f84bbb31701b67df5d0e9c609"
-  source_hash: "542cad32e95eb53ebbf425b73b7171ef6e8348641495ea20608632a1d05c56b3"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/resident.TestCeilingIsHalfTheHostsAvailableMemory"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "8bf790818eeaf3e24cd8973b375802e79dc7c31b1d9b6f7e0c0e179919281dcc"
 }
 
 bindings {

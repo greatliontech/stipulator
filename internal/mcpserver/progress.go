@@ -9,10 +9,10 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/protobuf/encoding/protojson"
 
+	"github.com/greatliontech/gofresh/resident"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/internal/progress"
-	"github.com/greatliontech/stipulator/internal/resident"
 )
 
 // The progress reporting and terminal-error composition the served
@@ -93,9 +93,11 @@ func (s *Server) startProgress(ctx context.Context, req *mcp.CallToolRequest) (c
 			})
 		})
 	}
-	// The operation runs under the host-derived soft ceiling, derived at
-	// its start — a long-lived server re-derives per call — and stated
-	// with the resident datum (resident.Ceiling).
+	// The operation runs under the fleet's soft ceiling — half the room
+	// the host has for the process family, derived at the call's start
+	// (gofresh's resident.InstallCeiling: a long-lived server re-derives
+	// per call, rising or falling with the host, the family's own held
+	// set counted as room) — and states it with the resident datum.
 	resident.InstallCeiling()
 	prog := progress.New(sink, progress.WithResident(resident.Sample))
 	return progress.NewContext(ctx, prog), prog

@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/greatliontech/gofresh/resident"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
-	"github.com/greatliontech/stipulator/internal/resident"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -627,7 +627,7 @@ func TestDigestReadingNeverPends(t *testing.T) {
 func TestResidentWordsAreOneSpellingOnBothFaces(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-progress")
 	for b, want := range map[uint64]string{0: "0 B", 1023: "1023 B", 1024: "1 KiB", 1536: "2 KiB", 1048400: "1 MiB", 75 << 20: "75 MiB", 1004 << 20: "1004 MiB", 1073700000: "1.0 GiB", 1 << 30: "1.0 GiB", 4714064 * 1024: "4.5 GiB"} {
-		if got := ByteWord(b); got != want {
+		if got := resident.ByteWord(b); got != want {
 			t.Errorf("ByteWord(%d) = %q, want %q", b, got, want)
 		}
 	}
@@ -686,7 +686,7 @@ func TestResidentWordsStateTheCeiling(t *testing.T) {
 	e := &stipulatorv1.ProgressEvent{}
 	e.SetResident(wire)
 	words := ResidentWords(e)
-	if !strings.HasSuffix(words, ", ceiling "+ByteWord(3<<30)) || !strings.HasPrefix(words, "at the start: resident ") {
+	if !strings.HasSuffix(words, ", ceiling "+resident.ByteWord(3<<30)) || !strings.HasPrefix(words, "at the start: resident ") {
 		t.Fatalf("words under a ceiling = %q, want the ceiling stated last", words)
 	}
 	if got := residentWords(resident.Set{ProcessBytes: 10, ProcessPeakBytes: 20}, moment{}); strings.Contains(got, "ceiling") {

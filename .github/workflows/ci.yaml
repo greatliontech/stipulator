@@ -79,16 +79,13 @@ jobs:
     with:
       go-version: "1.27.1"
       pattern: github.com/greatliontech/stipulator/...
-      # The second line builds the module under the platforms a consumer
+      # The second line vets the module under the platforms a consumer
       # may run the tool on besides the runner's linux, so a
       # platform-bound spelling (an rlimit field's type, a stat's change
-      # time) reds the plain tier on the push that introduces it; a
-      # build, not a vet, while the resident package's tests read
-      # linux-only symbols (they leave with that package's fold onto
-      # gofresh's).
+      # time) reds the plain tier on the push that introduces it.
       pre: |
         go run github.com/go-task/task/v3/cmd/task@v3.53.1 fmt-check tidy-check
-        for os in darwin freebsd openbsd windows; do GOOS=$os go build ./...; done
+        for os in darwin freebsd openbsd windows; do GOOS=$os go vet ./...; done
       short: true
       short-timeout: 5m
       full-timeout: 75m

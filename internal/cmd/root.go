@@ -15,6 +15,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/greatliontech/gofresh/resident"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
@@ -24,7 +25,6 @@ import (
 	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/recordapply"
 	"github.com/greatliontech/stipulator/internal/remedy"
-	"github.com/greatliontech/stipulator/internal/resident"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/verifyrun"
 	"github.com/greatliontech/stipulator/internal/views"
@@ -77,8 +77,10 @@ func Execute(ctx context.Context) error {
 // drive. An interrupted run returns Interrupted whatever its verb
 // returned — no partial verdict passes for a pass or a fail.
 func execute(ctx context.Context, args []string, sink func(*stipulatorv1.ProgressEvent), status io.Writer) error {
-	// The operation runs under the host-derived soft ceiling, derived at
-	// its start and stated with the resident datum (resident.Ceiling).
+	// The operation runs under the fleet's soft ceiling — half the room
+	// the host has for the process family, derived at the operation's
+	// start (gofresh's resident.InstallCeiling) — and states it with the
+	// resident datum.
 	resident.InstallCeiling()
 	prog := progress.New(sink, progress.WithResident(resident.Sample))
 	root := newRootCmd()

@@ -12,12 +12,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/greatliontech/gofresh/resident"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/progress"
-	"github.com/greatliontech/stipulator/internal/resident"
 	"github.com/greatliontech/stipulator/internal/resolutioncache"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"

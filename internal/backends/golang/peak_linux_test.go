@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/greatliontech/gofresh/resident"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
-	"github.com/greatliontech/stipulator/internal/resident"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -36,7 +36,7 @@ func TestCompletedPackagePeakFeedsTheEstimate(t *testing.T) {
 		t.Fatal("the one slot was not admitted")
 	}
 	a.release("", 0, peak)
-	if got := a.estimate(resident.Set{}); got != max(packageEstimateFloor, peak) {
+	if got := a.estimate(resident.Reading{}); got != max(packageEstimateFloor, peak) {
 		t.Fatalf("estimate after a completed peak of %d = %d, want max(floor, peak) = %d", peak, got, max(packageEstimateFloor, peak))
 	}
 }
