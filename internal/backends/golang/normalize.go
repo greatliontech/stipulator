@@ -9,8 +9,8 @@ import (
 	"sort"
 	"strings"
 	"time"
-	"unicode"
 
+	"github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/closure"
 	"github.com/greatliontech/gofresh/gotool"
 	"github.com/greatliontech/gofresh/runtimeinput"
@@ -196,7 +196,7 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		return nil, fmt.Errorf("invocation %q: inherited environment: %w", inv.GetName(), err)
 	}
 	for _, name := range cfg.GetEnvDeny() {
-		env = dropEnv(env, name)
+		env = gotool.UnsetEnv(env, name)
 	}
 	for _, e := range cfg.GetEnvironment() {
 		env = gotool.SetEnv(env, e[:strings.IndexByte(e, '=')], e[strings.IndexByte(e, '=')+1:])
@@ -404,33 +404,31 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	return n, nil
 }
 
-// vouchIdentity composes gofresh's canonical "<import path>.<Variable>"
-// key from the pair form. The pair exists so a bare package can never
-// parse as a vouch; the components still refuse control and space
-// characters (they join into the capture-group key, where an embedded
-// joiner byte would collide two reviewed sets into one group) and the
-// variable must be one Go identifier - anything else is unmatchable in
-// gofresh and would silently confer nothing.
+// vouchIdentity maps a policy vouch — the import path and the variable
+// as two fields — to the canonical dotted identity the engine judges
+// under, through gofresh's one grammar for a reviewed spelling
+// (gofresh.ParseVouchEntry over IMPORT-PATH:VARIABLE): the path carries
+// no space or control character, the variable is one Go identifier; a
+// refusal names the record's field.
 func vouchIdentity(v *stipulatorv1.DynamicStateVouch) (string, error) {
 	pkg, name := v.GetPackage(), v.GetVariable()
 	if pkg == "" {
 		return "", fmt.Errorf("dynamic_state_vouches entry needs a package import path")
 	}
-	for _, r := range pkg {
-		if r <= ' ' || r == 0x7f || unicode.IsControl(r) {
-			return "", fmt.Errorf("dynamic_state_vouches package %q carries a control or space character", pkg)
-		}
-	}
 	if name == "" {
 		return "", fmt.Errorf("dynamic_state_vouches entry for %q needs a variable name", pkg)
 	}
-	for i, r := range name {
-		letter := unicode.IsLetter(r) || r == '_'
-		if (i == 0 && !letter) || (i > 0 && !letter && !unicode.IsDigit(r)) {
-			return "", fmt.Errorf("dynamic_state_vouches variable %q is not one Go identifier", name)
-		}
+	// gofresh's spelling joins the two fields with a colon: a colon in
+	// the path would be read as the join, so it is refused here, named
+	// for the field it is in.
+	if strings.Contains(pkg, ":") {
+		return "", fmt.Errorf("dynamic_state_vouches package %q carries a colon", pkg)
 	}
-	return pkg + "." + name, nil
+	identity, err := gofresh.ParseVouchEntry(pkg + ":" + name)
+	if err != nil {
+		return "", fmt.Errorf("dynamic_state_vouches entry for %q: %w", pkg, err)
+	}
+	return identity, nil
 }
 
 // validateExcludedPathInTree is the one exclusion check that needs the
@@ -553,20 +551,6 @@ func effectiveGoEnv(ctx context.Context, dir string, env []string) (snapshot *go
 		}
 	}
 	return snapshot, v("GOVERSION"), v("GOOS"), v("GOARCH"), v("CGO_ENABLED"), v("GOFLAGS"), v("GOEXPERIMENT"), v("GOROOT"), v("GOMODCACHE"), v("GOCACHE"), nil
-}
-
-// dropEnv returns env without every entry naming key under the
-// platform's rule (gotool.EqualEnvKey) — a denial, the one composition
-// gofresh's setter has no form for.
-func dropEnv(env []string, key string) []string {
-	out := make([]string, 0, len(env))
-	for _, entry := range env {
-		if name, _, ok := strings.Cut(entry, "="); ok && gotool.EqualEnvKey(name, key) {
-			continue
-		}
-		out = append(out, entry)
-	}
-	return out
 }
 
 // lookupEnv returns key's value from a normalized environment under the

@@ -22,7 +22,7 @@ import (
 // resolution (REQ-evidence-resolution-freshness). Resolution observes
 // no runtime input, so every check closes its own window: no deferred
 // close, no producer environment.
-func selectionEngine(ctx context.Context, dir string, sel buildSelection) (*gofresh.Engine, error) {
+func selectionEngine(ctx context.Context, dir string, sel buildSelection, sample toolchainSample) (*gofresh.Engine, error) {
 	base, err := goworkEnv(dir)
 	if err != nil {
 		return nil, err
@@ -39,7 +39,7 @@ func selectionEngine(ctx context.Context, dir string, sel buildSelection) (*gofr
 	if err != nil {
 		return nil, err
 	}
-	if err := checkSelectionMembers(ctx, dir, env, members); err != nil {
+	if err := checkSelectionMembers(ctx, dir, env, members, sample); err != nil {
 		return nil, err
 	}
 	return newEngine(ctx, dir, env, selectionViewFlags(sel))
@@ -60,6 +60,10 @@ func selectionEngine(ctx context.Context, dir string, sel buildSelection) (*gofr
 type Served struct {
 	ctx context.Context
 	dir string
+	// sample is this backend's toolchain sampler — one judged
+	// operation's memo, minted with the backend; its selection engines
+	// sample through it.
+	sample toolchainSample
 	// whole marks the whole-tree form: nothing is served or published,
 	// the child loads the whole tree, and no selection is read — the
 	// form the declaration-reading roles take (NewWholeTree).
@@ -233,7 +237,7 @@ func newServed(ctx context.Context, dir string) (*Served, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Served{ctx: ctx, dir: abs, sels: map[string]buildSelection{}, served: map[string]resolutioncache.Record{}, answers: map[string]childAnswer{}, pending: map[string][]string{}, reasons: map[string]string{}}, nil
+	return &Served{sample: newToolchainSample(), ctx: ctx, dir: abs, sels: map[string]buildSelection{}, served: map[string]resolutioncache.Record{}, answers: map[string]childAnswer{}, pending: map[string][]string{}, reasons: map[string]string{}}, nil
 }
 
 // subjectOf derives a symbol's gofresh subject from its lexical package
@@ -309,7 +313,7 @@ func (s *Served) openingCapture() {
 // selection, narrowing the subjects the selected source does not
 // declare, and captures their fingerprints.
 func (s *Served) captureUnder(key string, symbols []string, phase string) (map[gofresh.Subject]gofresh.Fingerprint, bool) {
-	engine, err := selectionEngine(s.ctx, s.dir, s.sels[key])
+	engine, err := selectionEngine(s.ctx, s.dir, s.sels[key], s.sample)
 	if err != nil {
 		s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
 		return nil, false
@@ -368,7 +372,7 @@ func (s *Served) captureUnder(key string, symbols []string, phase string) (map[g
 // viewed together, the ones the selected source no longer declares
 // narrowed away by gofresh's own refusal, the rest batch-checked.
 func (s *Served) serveSelection(key string, recs []resolutioncache.Record) {
-	engine, err := selectionEngine(s.ctx, s.dir, s.sels[key])
+	engine, err := selectionEngine(s.ctx, s.dir, s.sels[key], s.sample)
 	if err != nil {
 		s.degraded = append(s.degraded, fmt.Sprintf("selection %q: %v", key, err))
 		return

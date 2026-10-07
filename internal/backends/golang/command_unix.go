@@ -8,39 +8,23 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
-	"time"
 )
 
+// configureCommandCancellation places the one non-go spawn — the
+// resolver child, this binary re-executed — in its own process group
+// and kills the group outright when its context ends. The child's
+// context is the operation's, never a package envelope's, so the
+// envelope-expiry quit (a goroutine dump before the kill) the go
+// children's containment carries (ownedBoundary) has no arm here: an
+// ended operation discards the child's answers whole, and a dump would
+// have no consumer.
 func configureCommandCancellation(ctx context.Context, cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Cancel = func() error {
 		if cmd.Process == nil {
 			return os.ErrProcessDone
 		}
-		pgid := -cmd.Process.Pid
-		if errors.Is(context.Cause(ctx), errEnvelopeExpired) {
-			// Envelope expiry is a reported terminal fact, so the kill must
-			// leave evidence: SIGQUIT makes a Go child print its goroutine
-			// dump before exiting — the only dump path for a binary wedged
-			// before m.Run arms the reviewed -test.timeout timer, now that
-			// the go command's implicit backstop is disabled — then SIGKILL
-			// sweeps the group after a bounded grace. Every other ending —
-			// client cancellation and a caller's own deadline alike — skips
-			// the dump and kills outright: those runs are discarded whole,
-			// so a dump would have no consumer and the grace would only
-			// delay the abort.
-			if err := syscall.Kill(pgid, syscall.SIGQUIT); errors.Is(err, syscall.ESRCH) {
-				return os.ErrProcessDone
-			}
-			deadline := time.Now().Add(quitGrace)
-			for time.Now().Before(deadline) {
-				if errors.Is(syscall.Kill(pgid, 0), syscall.ESRCH) {
-					break
-				}
-				time.Sleep(50 * time.Millisecond)
-			}
-		}
-		err := syscall.Kill(pgid, syscall.SIGKILL)
+		err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 		if errors.Is(err, syscall.ESRCH) {
 			return os.ErrProcessDone
 		}

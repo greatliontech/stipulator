@@ -281,6 +281,11 @@ type captureGroup struct {
 	id   string
 	tags []string
 	env  []string
+	// toolchain is the effective GOVERSION the invocation's one
+	// environment read answered in its module root — the toolchain the
+	// group's environment pins (GOTOOLCHAIN) and its engine's provenance
+	// is judged by, so the engine arm samples nothing a second time.
+	toolchain string
 	// neverServes maps each of the group's subjects serving refuses to
 	// its reason — random-seeded witnesses and unclassifiable subjects
 	// (REQ-evidence-witness-freshness); resolved once per policy
@@ -850,6 +855,7 @@ func discoverPolicy(ctx context.Context, normalized []*NormalizedInvocation) (*p
 		g := byKey[key]
 		if g == nil {
 			g = &captureGroup{
+				toolchain:         n.Toolchain,
 				id:                recordstore.Digest(groupIdentity(n)),
 				tags:              n.Tags,
 				env:               n.Env,
@@ -921,14 +927,16 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Eng
 		beforeGroupEngineForTest()
 	}
 	// Toolchain provenance is a prerequisite to constructing any
-	// engine: the sample resolves as this group's own witnesses do —
-	// the group's module root (under GOTOOLCHAIN=auto the selected
-	// toolchain is per module) under the group's normalized
-	// environment, its GOTOOLCHAIN pin included — so a frontend that
-	// cannot read what this group's toolchain builds refuses before any
-	// verdict (REQ-fresh-toolchain-skew) — the go1.27 stale-binary
-	// episode's structural fix, shared with pew and gomutant.
-	if err := checkToolchainProvenance(ctx, filepath.Join(dir, filepath.FromSlash(g.moduleRoot)), g.env); err != nil {
+	// engine: the sample is the one the invocation's normalization
+	// took — `go env` in this group's module root (under
+	// GOTOOLCHAIN=auto the selected toolchain is per module), whose
+	// GOVERSION the group's environment then pins, so a second spawn
+	// could only re-read it — judged through gofresh's provenance
+	// composite, so a frontend that cannot read what this group's
+	// toolchain builds refuses before any verdict
+	// (REQ-fresh-toolchain-skew) — the go1.27 stale-binary episode's
+	// structural fix, shared with pew and gomutant.
+	if err := checkToolchainProvenance(ctx, filepath.Join(dir, filepath.FromSlash(g.moduleRoot)), g.env, groupSample(g)); err != nil {
 		return nil, err
 	}
 	// The profile's content is build evidence no flag carries: it

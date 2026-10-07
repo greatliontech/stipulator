@@ -22,8 +22,9 @@ var errEnvelopeExpired = errors.New("policy invocation envelope expired")
 var commandHook func(name string, args []string)
 
 // commandContext spawns the resolver child — this binary's own re-exec,
-// no go command, so outside gotool's runner — under the same owned
-// boundary (configureCommandCancellation).
+// no go command, so outside gotool's runner — in its own process group,
+// killed outright with its operation (configureCommandCancellation):
+// the go children's envelope-expiry quit is not its boundary.
 func commandContext(ctx context.Context, name string, args ...string) *exec.Cmd {
 	if commandHook != nil {
 		commandHook(name, args)

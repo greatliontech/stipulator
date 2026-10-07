@@ -190,6 +190,11 @@ func newContext(ctx context.Context, dir string, patterns []string) (*Backend, e
 	modules := memberModules(dir, members)
 	owned := memberPatterns(modules, patterns)
 	lazyCfg := map[string]map[string]*packages.Config{}
+	// One toolchain sampler for this load — the child's one judged
+	// operation (a child process makes one load, so this is also the
+	// child's process-wide memo); every selection's members sample
+	// through it.
+	sample := newToolchainSample()
 	for _, sel := range selections {
 		viewEnv := selectionViewEnv(env, sel)
 		// The selection view is a frontend parse of the selection's own
@@ -200,7 +205,7 @@ func newContext(ctx context.Context, dir string, patterns []string) (*Backend, e
 		// whose toolchain cannot be sampled loads no view and falls
 		// through to the per-view unloadable degradation below
 		// (REQ-go-build-selections).
-		if err := checkSelectionMembers(ctx, dir, viewEnv, members); err != nil {
+		if err := checkSelectionMembers(ctx, dir, viewEnv, members, sample); err != nil {
 			return nil, err
 		}
 		var viewPkgs []*packages.Package

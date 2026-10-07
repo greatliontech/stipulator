@@ -372,6 +372,7 @@ func TestGoNormalizeVouchesCanonicalizeAndRefuse(t *testing.T) {
 		vouchEntry("a.example/dep\n", "Var"),
 		vouchEntry("a.example/dep ", "Var"),
 		vouchEntry("a.example/dep\x01b.example/dep", "Var"),
+		vouchEntry("a.example/x:Y", "Z"),
 		vouchEntry("a.example/dep", "not-an-identifier"),
 		vouchEntry("a.example/dep", "9lives"),
 		vouchEntry("a.example/dep", "Var.Sub"),
@@ -387,6 +388,12 @@ func TestGoNormalizeVouchesCanonicalizeAndRefuse(t *testing.T) {
 		commandHook = nil
 		if err == nil || !strings.Contains(err.Error(), "dynamic_state_vouches") {
 			t.Fatalf("malformed vouch %+v accepted: %v", bad, err)
+		}
+		// A colon in the package is this record's refusal, named for
+		// the field it is in — never gofresh's join reading it as the
+		// variable's.
+		if strings.Contains(bad.GetPackage(), ":") && !strings.Contains(err.Error(), `package "a.example/x:Y" carries a colon`) {
+			t.Fatalf("a colon in the package refused as %v, want the package field named", err)
 		}
 		// The record decides the refusal: no toolchain spawn precedes it
 		// (evidence.md: "refuses at policy acceptance").
@@ -478,8 +485,8 @@ func TestEnvHelpersFollowGofreshsPolicy(t *testing.T) {
 		if _, ok := lookupEnv(got, "A"); !ok || len(got) != 4 {
 			t.Fatalf("gotool.SetEnv(a) on a case-sensitive platform = %q, want A kept beside a", got)
 		}
-		if got = dropEnv(got, "a"); len(got) != 3 {
-			t.Fatalf("dropEnv(a) = %q, want A kept", got)
+		if got = gotool.UnsetEnv(got, "a"); len(got) != 3 {
+			t.Fatalf("gotool.UnsetEnv(a) = %q, want A kept", got)
 		}
 	}
 }

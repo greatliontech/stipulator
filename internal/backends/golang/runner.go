@@ -30,8 +30,9 @@ var ownedBoundary = &gotool.Containment{
 // normalization's environment snapshot run through it, and the test
 // seam (commandHook) sees each of those spawns — the derivation's own,
 // which the reuse pins count. The resolver child — this binary's own
-// re-exec, no go command — keeps the same boundary through
-// commandContext, the one non-go spawn.
+// re-exec, no go command — is the one non-go spawn, in its own process
+// group killed outright with its operation (commandContext): the
+// envelope-expiry quit below is the go children's alone.
 var ownedRunner = gotool.Runner{Containment: ownedBoundary, Prepare: observeCommand}
 
 // engineRunner carries the owned boundary to the analysis engines'
@@ -55,8 +56,19 @@ var engineCommandHook func(*exec.Cmd)
 // seam does not see it.
 var probeRunner = gotool.Runner{Prepare: boundProbe}
 
-// boundProbe is probeRunner's preparation: the bounded reap alone.
-func boundProbe(cmd *exec.Cmd) { cmd.WaitDelay = probeWaitDelay }
+// boundProbe is probeRunner's preparation: the bounded reap alone — and
+// the probe seam, when a pin set one.
+func boundProbe(cmd *exec.Cmd) {
+	cmd.WaitDelay = probeWaitDelay
+	if probeObserverForTest != nil {
+		probeObserverForTest(cmd)
+	}
+}
+
+// probeObserverForTest, when set, sees every toolchain probe the
+// sampler spawns — the seam a pin counts samples through; nil in
+// production.
+var probeObserverForTest func(*exec.Cmd)
 
 // observeCommand hands a prepared derivation spawn to the test seam
 // (commandHook), the go tool's name and arguments as the seam reads

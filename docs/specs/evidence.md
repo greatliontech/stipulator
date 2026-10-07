@@ -313,7 +313,8 @@ dynamic-state vouches ride the same review discipline: each names a
 version-pinned dependency package and exactly one of its package-level
 variables accepted as stable after initialization (gofresh's vouch
 contract; the pair form makes a bare package unrepresentable, and a
-malformed component — control or space characters, a variable that is
+malformed component — gofresh's grammar for a reviewed spelling: a path
+carrying a space, a control character or a colon, a variable that is
 not one Go identifier — refuses at policy acceptance), the vouch set
 partitions capture groups (execution never mixes two reviewed sets),
 serving is licensed by the current policy's engine alone, the vouches
@@ -715,9 +716,15 @@ root; each member's own directory for a selection view, the child's
 and the served form's alike — under GOTOOLCHAIN=auto the selected
 toolchain is per module, so the tree root is not a member's sample)
 under the consumer's complete effective environment, a declared
-toolchain pin (invocation or selection) included — sampled through
-Gofresh's memoized toolchain sampler and judged, on the engine arm,
-through its provenance composite, by the Gofresh skew contract:
+toolchain pin (invocation or selection) included — on the engine arm
+the invocation's one environment read at normalization, whose
+GOVERSION the group's environment then pins, judged through Gofresh's
+provenance composite; on the selection arms sampled through Gofresh's
+memoized toolchain sampler, one sampler per judged operation (a verb's
+process, a server's per-call operation, a resolver child's load) and
+never per process, so a toolchain replaced under a living memo is
+never judged by its predecessor's sample — by the Gofresh skew
+contract:
 directional within a major (an older compiled-in
 frontend refuses newer sources; a newer frontend reads older language under
 the Go 1 compatibility promise), total across majors, an unidentifiable
@@ -863,9 +870,14 @@ invocation with its backend, package scope, typed configuration, and an
 explicit timeout, so a deliberately long-running invocation is admitted by
 review rather than aborted by an inherited ceiling — never an assumed
 universal invocation. No toolchain-implicit time bound survives the
-accepted record: the record's envelope and its reviewed arguments are the
-only sources of execution bounds, so an inherited default can never abort
-work the record admitted. A record is invalid against a tree that cannot
+accepted record: the record's envelope and its reviewed arguments are
+the only sources of a package run's time bounds, so an inherited
+default can never abort work the record admitted — the executor's two
+derived terms, the concurrency bound and the memory term
+(REQ-evidence-witness-freshness), decide when a package's process
+spawns under the envelope and never how long it runs once spawned, and
+a package a term held until the envelope expired names the term in its
+diagnostic. A record is invalid against a tree that cannot
 honor an invocation's selection — a package pattern the tree resolves to
 no package — and the check fails as it fails for a missing or invalid
 record, naming the invocation and the pattern.

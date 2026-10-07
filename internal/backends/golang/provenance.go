@@ -32,14 +32,54 @@ func classifyFault(err error) (abort bool, reason string) {
 	return false, err.Error()
 }
 
-// goVersionSampler samples the ambient toolchain's GOVERSION as one
-// capture group resolves it — the engine's build-toolchain provenance
-// half — through gofresh's memoized sampler under probeRunner: one
-// sample per (directory coordinate, environment) per process, a failed
-// sample memoized like an answered one, a cancelled sample never, the
-// first line a cleanly exited process wrote taken when a wrapper's
-// descendant holds the pipe past the wait delay. Swapped only by tests.
-var goVersionSampler = (&gotool.Sampler{Runner: probeRunner}).Sample
+// toolchainSample samples a toolchain's GOVERSION where a directory's
+// go command resolves it under an environment — gofresh's sampler
+// shape.
+type toolchainSample func(ctx context.Context, dir string, env []string) (string, error)
+
+// newToolchainSample mints one judged operation's GOVERSION sampler —
+// gofresh's memoized sampler under probeRunner: one sample per
+// (directory coordinate, environment) for the operation's life, a
+// failed sample memoized like an answered one, a cancelled sample
+// never, the first line a cleanly exited process wrote taken when a
+// wrapper's descendant holds the pipe past the wait delay. The memo's
+// life is the operation's, never the process's (gofresh's
+// toolchain-skew clause bounds a sampler to one judged run): a
+// toolchain replaced under a living memo — the go on PATH swapped, a
+// go.mod toolchain line moved — would otherwise be judged by its
+// predecessor's sample for the process's whole life, which for the MCP
+// server is every call. A resolver child's load and a served backend
+// each mint their own (the engine arm samples nothing: a capture
+// group's provenance is judged on the GOVERSION its invocation's
+// normalization read, captureGroup.toolchain); a minted sampler asks
+// the test seam first at every sample.
+func newToolchainSample() toolchainSample {
+	memo := &gotool.Sampler{Runner: probeRunner}
+	return func(ctx context.Context, dir string, env []string) (string, error) {
+		if stub := toolchainSampleForTest; stub != nil {
+			return stub(ctx, dir, env)
+		}
+		return memo.Sample(ctx, dir, env)
+	}
+}
+
+// toolchainSampleForTest, when set, is the sampler every minted sampler
+// and every group's read defer to — the seam the provenance pins
+// drive; nil in production.
+var toolchainSampleForTest toolchainSample
+
+// groupSample is a capture group's toolchain read for the provenance
+// composite: the GOVERSION its invocation's normalization read in the
+// group's module root (captureGroup.toolchain) — no spawn — or the test
+// seam's answer while a pin holds one.
+func groupSample(g *captureGroup) toolchainSample {
+	return func(ctx context.Context, dir string, env []string) (string, error) {
+		if stub := toolchainSampleForTest; stub != nil {
+			return stub(ctx, dir, env)
+		}
+		return g.toolchain, nil
+	}
+}
 
 // checkToolchainProvenance refuses the states where this binary's
 // compiled-in analysis frontend cannot faithfully read what the
@@ -47,17 +87,17 @@ var goVersionSampler = (&gotool.Sampler{Runner: probeRunner}).Sample
 // a major, total across majors, unidentifiable refuses) — the guard
 // every engine construction inherits through groupEngine, so no
 // witness verdict is computed over a tree the binary misparses. The
-// record-judging arms read it — a group's engine samples in the
-// group's module root — and an unidentifiable ambient toolchain
+// record-judging arms read it — a group's engine judges the GOVERSION
+// its invocation's normalization read in the group's module root, the
+// sampler handed in answering it — and an unidentifiable toolchain
 // refuses there (gofresh's toolchain-skew clause); the selection-view
 // arms read checkSelectionMembers, which samples each member where
 // its view loads and keeps the view's own per-view degradation for a
 // sample that fails.
-func checkToolchainProvenance(ctx context.Context, dir string, env []string) error {
-	// A composite per check: the memo lives in goVersionSampler (one per
-	// process, the seam tests swap), so the composite carries no state
-	// worth holding.
-	check, err := gofresh.NewToolchainProvenance(gofresh.SampleFunc(goVersionSampler))
+func checkToolchainProvenance(ctx context.Context, dir string, env []string, sample toolchainSample) error {
+	// A composite per check: the memo lives in the operation's sampler,
+	// so the composite carries no state worth holding.
+	check, err := gofresh.NewToolchainProvenance(gofresh.SampleFunc(sample))
 	if err != nil {
 		return err
 	}
@@ -83,7 +123,7 @@ const probeWaitDelay = 2 * time.Second
 // form's engine proceeds and resolves the member's symbols as its own
 // loads allow. A cancelled operation returns its cancellation whatever
 // the memo already holds.
-func checkSelectionMembers(ctx context.Context, dir string, env, members []string) error {
+func checkSelectionMembers(ctx context.Context, dir string, env, members []string, sample toolchainSample) error {
 	for _, m := range members {
 		// The walk answers a cancelled operation whatever a sample seam
 		// holds (REQ-policy-cancellation); the production sampler
@@ -91,7 +131,7 @@ func checkSelectionMembers(ctx context.Context, dir string, env, members []strin
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		ambient, err := goVersionSampler(ctx, filepath.Join(dir, m), env)
+		ambient, err := sample(ctx, filepath.Join(dir, m), env)
 		if err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()

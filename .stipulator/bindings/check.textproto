@@ -404,7 +404,7 @@ bindings {
 bindings {
   requirement_id: "REQ-check-policy-notices"
   content_hash: "924d8ddb9d5eacacf6531407b1d050fa4f5d51108159f775b4ea5a277c340018"
-  source_hash: "3ef5917a77dfd25e44859a9e7873a69e91ab9d15d43ee597c068ebf162e9013a"
+  source_hash: "2f5c0bc35e7c02a82d4b399bb12d648539b87d921fdc8893b133b04c750d2038"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.SelectionNotices"
   role: BINDING_ROLE_IMPLEMENTS
@@ -414,7 +414,7 @@ bindings {
 bindings {
   requirement_id: "REQ-check-policy-notices"
   content_hash: "924d8ddb9d5eacacf6531407b1d050fa4f5d51108159f775b4ea5a277c340018"
-  source_hash: "3ef5917a77dfd25e44859a9e7873a69e91ab9d15d43ee597c068ebf162e9013a"
+  source_hash: "2f5c0bc35e7c02a82d4b399bb12d648539b87d921fdc8893b133b04c750d2038"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestSelectionNoticesAttributeUnwalkedSelections"
   role: BINDING_ROLE_TESTS
@@ -424,7 +424,7 @@ bindings {
 bindings {
   requirement_id: "REQ-check-policy-notices"
   content_hash: "924d8ddb9d5eacacf6531407b1d050fa4f5d51108159f775b4ea5a277c340018"
-  source_hash: "3ef5917a77dfd25e44859a9e7873a69e91ab9d15d43ee597c068ebf162e9013a"
+  source_hash: "2f5c0bc35e7c02a82d4b399bb12d648539b87d921fdc8893b133b04c750d2038"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.TestCheckSummaryCarriesPolicyNotices"
   role: BINDING_ROLE_TESTS
@@ -434,7 +434,7 @@ bindings {
 bindings {
   requirement_id: "REQ-check-policy-notices"
   content_hash: "924d8ddb9d5eacacf6531407b1d050fa4f5d51108159f775b4ea5a277c340018"
-  source_hash: "3ef5917a77dfd25e44859a9e7873a69e91ab9d15d43ee597c068ebf162e9013a"
+  source_hash: "2f5c0bc35e7c02a82d4b399bb12d648539b87d921fdc8893b133b04c750d2038"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestCheckRenderCarriesPolicyNotices"
   role: BINDING_ROLE_TESTS
@@ -444,7 +444,7 @@ bindings {
 bindings {
   requirement_id: "REQ-check-policy-notices"
   content_hash: "924d8ddb9d5eacacf6531407b1d050fa4f5d51108159f775b4ea5a277c340018"
-  source_hash: "3ef5917a77dfd25e44859a9e7873a69e91ab9d15d43ee597c068ebf162e9013a"
+  source_hash: "2f5c0bc35e7c02a82d4b399bb12d648539b87d921fdc8893b133b04c750d2038"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolDigestCarriesPolicyNotices"
   role: BINDING_ROLE_TESTS
@@ -1004,7 +1004,7 @@ bindings {
 bindings {
   requirement_id: "REQ-check-policy-notices"
   content_hash: "924d8ddb9d5eacacf6531407b1d050fa4f5d51108159f775b4ea5a277c340018"
-  source_hash: "3ef5917a77dfd25e44859a9e7873a69e91ab9d15d43ee597c068ebf162e9013a"
+  source_hash: "2f5c0bc35e7c02a82d4b399bb12d648539b87d921fdc8893b133b04c750d2038"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestNormalizationRefusesWhenTheRunEndsMidAudit"
   role: BINDING_ROLE_TESTS

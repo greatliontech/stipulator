@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/greatliontech/gofresh/gotool"
@@ -27,20 +28,23 @@ import (
 // included.
 func TestGroupEngineRefusesToolchainSkew(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-toolchain-provenance")
-	orig := goVersionSampler
-	t.Cleanup(func() { goVersionSampler = orig })
-
+	orig := toolchainSampleForTest
+	t.Cleanup(func() { toolchainSampleForTest = orig })
 	var sampledDir string
 	var sampledEnv []string
-	goVersionSampler = func(_ context.Context, dir string, env []string) (string, error) {
+	toolchainSampleForTest = func(_ context.Context, dir string, env []string) (string, error) {
 		sampledDir = dir
 		sampledEnv = env
 		return "go99.1.0", nil
 	}
+	probes := 0
+	priorProbe := probeObserverForTest
+	probeObserverForTest = func(*exec.Cmd) { probes++ }
+	t.Cleanup(func() { probeObserverForTest = priorProbe })
 	dir := t.TempDir()
 	g := &captureGroup{env: append(os.Environ(), "STIPULATOR_PROVENANCE_PROBE=1")}
 	if _, err := groupEngine(t.Context(), dir, g); err == nil {
-		t.Fatal("groupEngine accepted an ambient toolchain a whole major ahead of the binary")
+		t.Fatal("groupEngine accepted a toolchain a whole major ahead of the binary")
 	} else if !strings.Contains(err.Error(), "cross-major") {
 		t.Fatalf("skew refusal = %v, want the cross-major class named", err)
 	} else {
@@ -50,7 +54,7 @@ func TestGroupEngineRefusesToolchainSkew(t *testing.T) {
 		}
 	}
 	if sampledDir != dir {
-		t.Fatalf("sampled dir = %q, want the tree root %q", sampledDir, dir)
+		t.Fatalf("read for dir = %q, want the tree root %q", sampledDir, dir)
 	}
 	probed := false
 	for _, kv := range sampledEnv {
@@ -59,32 +63,52 @@ func TestGroupEngineRefusesToolchainSkew(t *testing.T) {
 		}
 	}
 	if !probed {
-		t.Fatal("the sample did not run under the group's environment")
+		t.Fatal("the read did not carry the group's environment")
+	}
+	// The engine arm judges the normalization's one read: no sampler
+	// spawns a second time.
+	if probes != 0 {
+		t.Fatalf("the engine arm spawned %d probes, want the normalization's read alone", probes)
+	}
+	// With no seam the group's own read decides: a group carrying a
+	// cross-major normalization read refuses, and nothing is spawned to
+	// second-guess it — a sampler minted here would ask the host and
+	// find the binary's own toolchain.
+	toolchainSampleForTest = nil
+	probes = 0
+	if _, err := groupEngine(t.Context(), dir, &captureGroup{env: os.Environ(), toolchain: "go99.1.0"}); err == nil || !strings.Contains(err.Error(), "cross-major") {
+		t.Fatalf("a group carrying a cross-major read: %v, want the cross-major refusal", err)
+	}
+	if probes != 0 {
+		t.Fatalf("the engine arm spawned %d probes over the group's own read", probes)
 	}
 }
 
-// An unidentifiable ambient toolchain refuses fail-closed, and a
-// failed sample classifies identically — unidentifiable is not
-// agreement.
+// An unidentifiable toolchain refuses fail-closed, a failed read
+// classifies identically — unidentifiable is not agreement — and so
+// does a group whose normalization read nothing.
 func TestGroupEngineRefusesUnidentifiableToolchain(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-toolchain-provenance")
-	orig := goVersionSampler
-	t.Cleanup(func() { goVersionSampler = orig })
-	goVersionSampler = func(_ context.Context, dir string, env []string) (string, error) {
+	orig := toolchainSampleForTest
+	t.Cleanup(func() { toolchainSampleForTest = orig })
+	toolchainSampleForTest = func(_ context.Context, dir string, env []string) (string, error) {
 		return "devel +abc123", nil
 	}
 	if _, err := groupEngine(t.Context(), t.TempDir(), &captureGroup{}); err == nil {
-		t.Fatal("groupEngine accepted an unidentifiable ambient toolchain")
+		t.Fatal("groupEngine accepted an unidentifiable toolchain")
 	} else if !strings.Contains(err.Error(), "unidentifiable") || !strings.Contains(err.Error(), "binary built with") || !strings.Contains(err.Error(), closure.AnalyzingFrontend()) {
 		t.Fatalf("refusal = %v, want the composite's unidentifiable refusal naming the frontend", err)
 	}
-
-	goVersionSampler = func(_ context.Context, dir string, env []string) (string, error) {
+	toolchainSampleForTest = func(_ context.Context, dir string, env []string) (string, error) {
 		return "", fmt.Errorf("boom")
 	}
 	var pe *gofresh.ToolchainProvenanceError
 	if _, err := groupEngine(t.Context(), t.TempDir(), &captureGroup{}); !errors.As(err, &pe) {
-		t.Fatalf("sample-failure refusal %v is not a *gofresh.ToolchainProvenanceError", err)
+		t.Fatalf("read-failure refusal %v is not a *gofresh.ToolchainProvenanceError", err)
+	}
+	toolchainSampleForTest = nil
+	if _, err := groupEngine(t.Context(), t.TempDir(), &captureGroup{toolchain: ""}); !errors.As(err, &pe) {
+		t.Fatalf("an empty normalization read %v is not a *gofresh.ToolchainProvenanceError", err)
 	}
 }
 
@@ -110,20 +134,20 @@ func TestClassifyFaultRoutesProvenanceToAbort(t *testing.T) {
 // sources).
 func TestCheckToolchainProvenanceDirectional(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-toolchain-provenance")
-	orig := goVersionSampler
-	t.Cleanup(func() { goVersionSampler = orig })
+	orig := toolchainSampleForTest
+	t.Cleanup(func() { toolchainSampleForTest = orig })
 
-	goVersionSampler = func(_ context.Context, dir string, env []string) (string, error) {
+	toolchainSampleForTest = func(_ context.Context, dir string, env []string) (string, error) {
 		return "go1.1.0", nil
 	}
-	if err := checkToolchainProvenance(context.Background(), t.TempDir(), nil); err != nil {
+	if err := checkToolchainProvenance(context.Background(), t.TempDir(), nil, newToolchainSample()); err != nil {
 		t.Fatalf("older-within-major ambient refused: %v", err)
 	}
 
-	goVersionSampler = func(_ context.Context, dir string, env []string) (string, error) {
+	toolchainSampleForTest = func(_ context.Context, dir string, env []string) (string, error) {
 		return "go1.99999.0", nil
 	}
-	err := checkToolchainProvenance(context.Background(), t.TempDir(), nil)
+	err := checkToolchainProvenance(context.Background(), t.TempDir(), nil, newToolchainSample())
 	if err == nil {
 		t.Fatal("newer-within-major ambient accepted — the frontend predates its sources")
 	}
@@ -142,9 +166,9 @@ func TestRunWitnessesAbortsOnToolchainSkew(t *testing.T) {
 	if testing.Short() {
 		t.Skip("runs policy discovery")
 	}
-	orig := goVersionSampler
-	t.Cleanup(func() { goVersionSampler = orig })
-	goVersionSampler = func(_ context.Context, dir string, env []string) (string, error) {
+	orig := toolchainSampleForTest
+	t.Cleanup(func() { toolchainSampleForTest = orig })
+	toolchainSampleForTest = func(_ context.Context, dir string, env []string) (string, error) {
 		return "go99.1.0", nil
 	}
 	tmp := t.TempDir()
@@ -169,9 +193,9 @@ func TestNewWitnessRecorderAbortsOnToolchainSkew(t *testing.T) {
 	if testing.Short() {
 		t.Skip("runs policy discovery")
 	}
-	orig := goVersionSampler
-	t.Cleanup(func() { goVersionSampler = orig })
-	goVersionSampler = func(_ context.Context, dir string, env []string) (string, error) {
+	orig := toolchainSampleForTest
+	t.Cleanup(func() { toolchainSampleForTest = orig })
+	toolchainSampleForTest = func(_ context.Context, dir string, env []string) (string, error) {
 		return "go99.1.0", nil
 	}
 	tmp := t.TempDir()
@@ -202,9 +226,9 @@ func TestNewContextRefusesToolchainSkew(t *testing.T) {
 	if testing.Short() {
 		t.Skip("runs go list")
 	}
-	orig := goVersionSampler
-	t.Cleanup(func() { goVersionSampler = orig })
-	goVersionSampler = func(_ context.Context, dir string, env []string) (string, error) {
+	orig := toolchainSampleForTest
+	t.Cleanup(func() { toolchainSampleForTest = orig })
+	toolchainSampleForTest = func(_ context.Context, dir string, env []string) (string, error) {
 		return "go99.1.0", nil
 	}
 	dir := buildSelectionModule(t)
@@ -230,10 +254,10 @@ func TestToolchainSampledInTheTargetModule(t *testing.T) {
 	}
 	stipulate.Covers(t, "REQ-evidence-toolchain-provenance")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	orig := goVersionSampler
-	t.Cleanup(func() { goVersionSampler = orig })
+	orig := toolchainSampleForTest
+	t.Cleanup(func() { toolchainSampleForTest = orig })
 	var dirs []string
-	goVersionSampler = func(_ context.Context, dir string, env []string) (string, error) {
+	toolchainSampleForTest = func(_ context.Context, dir string, env []string) (string, error) {
 		dirs = append(dirs, dir)
 		return runtime.Version(), nil
 	}
@@ -273,17 +297,30 @@ func TestToolchainSampledInTheTargetModule(t *testing.T) {
 	if nested == nil {
 		t.Fatalf("no group rooted at the nested member; roots %v", pc.groups)
 	}
+	// The group's engine judges the GOVERSION its invocation's
+	// normalization read in the nested module root (the group carries
+	// it; the seam answers for it here) and spawns no probe itself.
+	if nested.toolchain != runtime.Version() {
+		t.Fatalf("the nested group carries toolchain %q, want the normalization's read %q", nested.toolchain, runtime.Version())
+	}
 	dirs = nil
-	goVersionSampler = func(_ context.Context, dir string, env []string) (string, error) {
+	toolchainSampleForTest = func(_ context.Context, dir string, env []string) (string, error) {
 		dirs = append(dirs, dir)
 		return "", errors.New("go: no toolchain")
 	}
+	probes := 0
+	priorProbe := probeObserverForTest
+	probeObserverForTest = func(*exec.Cmd) { probes++ }
+	t.Cleanup(func() { probeObserverForTest = priorProbe })
 	_, err = groupEngine(context.Background(), tmp, nested)
 	if err == nil || !strings.Contains(err.Error(), "unidentifiable") {
 		t.Fatalf("unsampleable group engine = %v, want the unidentifiable refusal", err)
 	}
 	if len(dirs) != 1 || dirs[0] != filepath.Join(tmp, "sub") {
-		t.Fatalf("group engine sampled %v, want the group's module root", dirs)
+		t.Fatalf("group engine read for %v, want the group's module root", dirs)
+	}
+	if probes != 0 {
+		t.Fatalf("group engine spawned %d probes, want the normalization's read alone", probes)
 	}
 	// The selection arms keep the per-view rule: a member whose
 	// toolchain cannot be sampled is left to its view (the default
@@ -292,15 +329,15 @@ func TestToolchainSampledInTheTargetModule(t *testing.T) {
 	if _, err := newContext(context.Background(), tmp, nil); err != nil {
 		t.Fatalf("unsampleable member failed the binding context: %v (want the per-view degradation)", err)
 	}
-	if _, err := selectionEngine(context.Background(), tmp, buildSelection{}); err != nil {
+	if _, err := selectionEngine(context.Background(), tmp, buildSelection{}, newToolchainSample()); err != nil {
 		t.Fatalf("unsampleable member failed the served selection engine: %v", err)
 	}
 	dirs = nil
-	goVersionSampler = func(_ context.Context, dir string, env []string) (string, error) {
+	toolchainSampleForTest = func(_ context.Context, dir string, env []string) (string, error) {
 		dirs = append(dirs, dir)
 		return runtime.Version(), nil
 	}
-	if _, err := selectionEngine(context.Background(), tmp, buildSelection{}); err != nil {
+	if _, err := selectionEngine(context.Background(), tmp, buildSelection{}, newToolchainSample()); err != nil {
 		t.Fatal(err)
 	}
 	seen = map[string]bool{}
@@ -312,8 +349,8 @@ func TestToolchainSampledInTheTargetModule(t *testing.T) {
 			t.Fatalf("served selection engine never sampled %s; sampled %v", want, dirs)
 		}
 	}
-	goVersionSampler = func(context.Context, string, []string) (string, error) { return "go99.1.0", nil }
-	if _, err := selectionEngine(context.Background(), tmp, buildSelection{}); err == nil || !strings.Contains(err.Error(), "toolchain provenance") {
+	toolchainSampleForTest = func(context.Context, string, []string) (string, error) { return "go99.1.0", nil }
+	if _, err := selectionEngine(context.Background(), tmp, buildSelection{}, newToolchainSample()); err == nil || !strings.Contains(err.Error(), "toolchain provenance") {
 		t.Fatalf("skewed served selection engine = %v, want the skew refusal", err)
 	}
 }
@@ -370,13 +407,64 @@ func TestProvenanceProbeRunsInTheCallersGroup(t *testing.T) {
 	if _, err := sampler(cancelled, ".", env); err == nil || spawns != 1 {
 		t.Fatalf("a cancelled operation sampled: spawns %d, err %v", spawns, err)
 	}
-	orig := goVersionSampler
-	t.Cleanup(func() { goVersionSampler = orig })
-	goVersionSampler = func(context.Context, string, []string) (string, error) { return runtime.Version(), nil }
-	if err := checkSelectionMembers(context.Background(), ".", nil, []string{"."}); err != nil {
+	orig := toolchainSampleForTest
+	t.Cleanup(func() { toolchainSampleForTest = orig })
+	toolchainSampleForTest = func(context.Context, string, []string) (string, error) { return runtime.Version(), nil }
+	if err := checkSelectionMembers(context.Background(), ".", nil, []string{"."}, newToolchainSample()); err != nil {
 		t.Fatal(err)
 	}
-	if err := checkSelectionMembers(cancelled, ".", nil, []string{"."}); err == nil {
+	if err := checkSelectionMembers(cancelled, ".", nil, []string{"."}, newToolchainSample()); err == nil {
 		t.Fatal("a cancelled member walk answered from the memo")
+	}
+}
+
+// The toolchain sampler is one judged operation's: two served backends
+// over one tree each mint their own memo, so the second's first
+// selection engine samples the toolchain again where a process-wide
+// memo would have served the first's answer for the process's life —
+// the MCP server builds a served backend per call (gofresh's
+// toolchain-skew clause bounds a sampler to one judged run). A capture
+// group's engine, by contrast, judges the normalization's one read and
+// samples nothing.
+//
+// Deliberately not //gofresh:pure: the sample shells the go toolchain.
+func TestToolchainSamplerIsMintedPerOperation(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-toolchain-provenance")
+	if testing.Short() {
+		t.Skip("loads a fixture module's types and views")
+	}
+	neutralAmbient(t)
+	dir := servedModule(t)
+	var mu sync.Mutex
+	probes := 0
+	prior := probeObserverForTest
+	probeObserverForTest = func(*exec.Cmd) {
+		mu.Lock()
+		probes++
+		mu.Unlock()
+	}
+	t.Cleanup(func() { probeObserverForTest = prior })
+	for round := 1; round <= 2; round++ {
+		s, err := NewServed(context.Background(), dir, servedSymbols)
+		if err != nil {
+			t.Fatal(err)
+		}
+		mu.Lock()
+		before := probes
+		mu.Unlock()
+		// The type has no record on any round, so the ask types it
+		// through the child and the backend publishes at its close,
+		// where its selection engine is built; the window spans the
+		// backend's whole life.
+		ask(t, s, "example.com/served/p.T")
+		if err := s.Close(); err != nil {
+			t.Fatal(err)
+		}
+		mu.Lock()
+		sampled := probes - before
+		mu.Unlock()
+		if sampled == 0 {
+			t.Fatalf("served backend %d sampled the toolchain %d times, want its own sample: a memo outlived its operation", round, sampled)
+		}
 	}
 }
