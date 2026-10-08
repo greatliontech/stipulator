@@ -2,6 +2,8 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
+- **[resolution-missing-go-export-cache](resolution-missing-go-export-cache.md)** — scoped records verification encounters vanished standard-library export-cache paths; investigate refresh and diagnostic behavior without assuming the cache-removal cause. *Lands: user decision*
+
 - **[outcome-adapter-campaign-remeasurement](outcome-adapter-campaign-remeasurement.md)** — remeasure the adapter's explicit mutation inventory with the execution-outcome-aware runner; keep kill evidence, judged equivalences and unverifiable freshness distinct. *Lands: pew performance-evidence plan chunk 6, after gomutant's producer and dependency migration.*
 
 
