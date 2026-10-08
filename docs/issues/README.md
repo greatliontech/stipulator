@@ -2,7 +2,7 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
-- **[completed-package-peak-admission](completed-package-peak-admission.md)** — a named completed energy-package process contributes a 7.8 GiB estimate that stops the cold remainder; investigate the peak boundary and estimate policy without weakening host protection. *Lands: user decision*
+- **[completed-package-peak-admission](completed-package-peak-admission.md)** — a named completed energy-package process contributes a 7.8 GiB estimate that stops the cold remainder; investigate the peak boundary and estimate policy without weakening host protection. *Lands: a reproduction carrying the named package's test binary's own peak beside the go test child's wait-status peak*
 
 - **[resolution-missing-go-export-cache](resolution-missing-go-export-cache.md)** — scoped records verification encounters vanished standard-library export-cache paths; investigate refresh and diagnostic behavior without assuming the cache-removal cause. *Lands: cross-tool train chunk 249*
 

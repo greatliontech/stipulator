@@ -1,6 +1,22 @@
 # Completed-package peak stops cold witness admission
 
-Lands: user decision
+Lands: a reproduction carrying the named package's test binary's own
+peak beside the go test child's wait-status peak (270.1's triage,
+2026-10-09, under the derive rule: the estimate reads cmd.Wait's
+Rusage.Maxrss of the `go test` child, which on Linux is the largest
+resident set among the child and the descendants it waited for — the
+compiler, the linker and the test binary alike — so a package whose
+LINK or whose test binary peaks at 7.8 GiB prices every later
+admission at that figure; 331 measured stipulator's own builds under
+the floor and refuted the build half there, but bldc's energy package
+is not that measurement. Reproduce with `go test -c` of the package
+under `/usr/bin/time -v` (the binary's own peak) beside the invocation's
+origin line: a binary peak far below 7.8 GiB re-opens the build half
+and the estimate takes the binary's own term; a binary peak near it is
+the protection the clause states, and a per-package estimate from that
+package's own prior peak is the derivable refinement — within one run
+every package runs once, so the figure can only be the largest
+completed, as the clause has it.)
 
 Field report from bldc on 2026-10-09. The production authoring-writer change set
 is recoverable at bldc commit `14e743d` (parent `e095733`). This invocation
