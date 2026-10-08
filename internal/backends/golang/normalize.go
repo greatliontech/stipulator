@@ -59,6 +59,11 @@ type NormalizedInvocation struct {
 	// downgrade is recorded on every witness it grants (the run-attribute
 	// race flag reads false).
 	PlainWitness bool
+	// roots is the capture's classification-root memo the spawn path
+	// hands the observation facade (Capture.roots); nil for an
+	// invocation normalized outside a capture, which the facade resolves
+	// unmemoized.
+	roots *runtimeinput.Roots
 	// BracketPaths are the invocation's reviewed extra observation-bracket
 	// roots - process images and fixed external files its tests consume -
 	// validated to clean absolute or tree-relative slash form.

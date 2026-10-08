@@ -401,6 +401,13 @@ type Capture struct {
 	normalized []*NormalizedInvocation
 	discovered held[*policyDiscovery]
 	universe   held[[]Obligation]
+	// roots is the operation's classification-root memo
+	// (runtimeinput.Roots): one `go env -json` probe per package
+	// directory and environment across every observation this capture's
+	// executions ingest, held for the capture's life — the judged
+	// operation's, as its toolchain sampler is (the discovery's, held
+	// with it) — never the process's.
+	roots *runtimeinput.Roots
 }
 
 // held is a derivation performed on first demand and kept for the
@@ -455,7 +462,7 @@ type policyDiscovery struct {
 // fault is the operation's fault: nothing downstream can derive without
 // the invocation's effective environment.
 func CapturePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (*Capture, error) {
-	pc := &Capture{dir: dir}
+	pc := &Capture{dir: dir, roots: &runtimeinput.Roots{}}
 	for _, inv := range p.GetInvocations() {
 		if inv.GetGo() == nil {
 			continue
@@ -464,6 +471,7 @@ func CapturePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) 
 		if err != nil {
 			return nil, err
 		}
+		n.roots = pc.roots
 		pc.normalized = append(pc.normalized, n)
 	}
 	return pc, nil

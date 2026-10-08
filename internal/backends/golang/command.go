@@ -15,8 +15,9 @@ var errEnvelopeExpired = errors.New("policy invocation envelope expired")
 // commandHook observes the derivation's spawns — the normalization's
 // snapshot, discovery's listings, and execution's test runs through
 // ownedRunner (runner.go), and the resolver child through
-// commandContext; the provenance probe and the analysis engines' own
-// commands are no derivation spawn and never reach it. Tests install it
+// commandContext; the provenance probe, the observation facade's roots
+// probe and the analysis engines' own commands are no derivation spawn
+// and never reach it. Tests install it
 // to pin that a refusal fired before any of these spawns and that the
 // readers reuse the derivation.
 var commandHook func(name string, args []string)

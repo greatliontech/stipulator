@@ -64,6 +64,9 @@ type ProcessObservation struct {
 // incompleteness verdict.
 type observationFrame struct {
 	frame runtimeinput.ProducerFrame
+	// roots is the capture's classification-root memo the ingest reads
+	// its roots probe through.
+	roots *runtimeinput.Roots
 	// spawnReason is non-empty exactly when no capture was attempted.
 	spawnReason string
 }
@@ -120,7 +123,7 @@ func captureObservationFrame(ctx context.Context, n *NormalizedInvocation, pkg s
 	// the same unrelated tooling seals the observation the exclusion
 	// exists to keep cacheable. The caller-side soundness assertion the
 	// exclusion carries covers both uses.
-	return observationFrame{frame: runtimeinput.CaptureProducerFrame(ctx, treeRoot(n), pkgDir,
+	return observationFrame{roots: n.roots, frame: runtimeinput.CaptureProducerFrame(ctx, treeRoot(n), pkgDir,
 		runtimeinput.FrameOptions{BracketPaths: bracketPaths, ExcludedPaths: n.ExcludedPaths})}
 }
 
@@ -146,7 +149,15 @@ func observeProcess(ctx context.Context, n *NormalizedInvocation, pkg string, pr
 		// The classification roots — toolchain, module cache, build
 		// cache, temp — are the facade's to resolve from this very
 		// environment; a declaration could only restate or contradict
-		// them.
+		// them. The probe that resolves them (a bare `go env -json` in
+		// the package directory, which forks the configured C compiler)
+		// is a go child of this operation: it runs under the owned
+		// boundary with a probe's bounded reap (rootsRunner;
+		// REQ-go-owned-processes), and its answer is memoized on the
+		// capture's roots memo, one probe per package directory and
+		// environment for the operation's life.
+		Runner:            rootsRunner,
+		Roots:             frame.roots,
 		ExcludedPaths:     n.ExcludedPaths,
 		ScratchNamespaces: n.ScratchNamespaces,
 	})

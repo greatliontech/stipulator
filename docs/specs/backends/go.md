@@ -184,12 +184,18 @@ configuration and its git's global configuration do not move with the
 telemetry. An owned home that cannot be prepared is a refusal naming the
 reason. On platforms whose config home no variable selects, the
 toolchain's detached telemetry is the one sanctioned escape from the
-boundary. Every go child but the loader's runs through Gofresh's
-go-command runner carrying this boundary as its containment — the
-group, the envelope expiry's quit and grace, the policy's wait delay —
-the analysis engines' own commands through the same runner installed on
-every engine, and the provenance probe through a plain runner in its
-caller's group with the bounded reap; a witness process's stream is
+boundary. Every go child but the loader's and the provenance probe's
+runs through Gofresh's go-command runner carrying this boundary as its
+containment — the group, the envelope expiry's quit and grace, the
+policy's wait delay — the analysis engines' own commands through the
+same runner installed on every engine, and the observation facade's
+classification-root probe (a bare `go env -json` in the package
+directory, which forks the C compiler the toolchain configures — a
+descendant the boundary sweeps — memoized per package directory and
+environment for the judged operation's life) through it with a probe's
+bounded reap; the provenance probe (`go env GOVERSION`, naming its
+key, so forking nothing) runs through a plain runner in its caller's
+group with the bounded reap; a witness process's stream is
 read to its end by the invocation itself, so a descendant it left
 holding its standard output delays the stream's end until the
 envelope's expiry sweeps the group, and a descendant holding its
