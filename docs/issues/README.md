@@ -2,7 +2,6 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
-- **[cold-package-estimate-invocation-timeout](cold-package-estimate-invocation-timeout.md)** — bldc cold execution reserved 7.3 GiB per package and exhausted its invocation deadline; unchanged warm retry passed. Distinguish registered package need from estimate attribution after the resident-fold fix. *Lands: cross-tool train chunk 331 (triaged at 298's close under the derive rule: the estimate reads the execution phase alone — one package's real process tree retained as every later need; the account must name its origin and a build's peak must not price a run).*
 
 
 - **[bindings-per-requirement-file-derivation](bindings-per-requirement-file-derivation.md)** — `bind` and `dispose supersede` place records by the id's second segment while the gaps store derives one file per requirement; a per-requirement bindings layout is held only by a project test and a hand move after each supersede. Lands: cross-tool train chunk 176.
