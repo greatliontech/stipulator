@@ -191,24 +191,25 @@ func TestExplainEntryShapesItsRefusals(t *testing.T) {
 		{reason: "ignored", pkg: "example.com/p", sym: "V", spelling: cli, want: ExplainRequest{Package: "example.com/p", Symbol: "V"}},
 		// The witness form travels alone.
 		{witness: "example.com/p.TestProp", spelling: cli, want: ExplainRequest{Witness: "example.com/p.TestProp"}},
-		{witness: "example.com/p.TestProp", reason: seededReason, spelling: cli, refusal: "explain: --witness travels alone — it names the witness whose seeding is derived"},
+		{witness: "example.com/p.TestProp", reason: seededReason.String(), spelling: cli, refusal: "explain: --witness travels alone — it names the witness whose seeding is derived"},
 		{witness: "example.com/p.TestProp", pkg: "example.com/p", sym: "V", spelling: mcp, refusal: "explain: witness travels alone — it names the witness whose seeding is derived"},
 		// Every seeding-family spelling names the witness form.
-		{reason: seededReason, spelling: cli, refusal: "explain: a seeding reason derives from the witness's own body; pass --witness naming the witness the reason stood beside"},
-		{reason: seededThroughReason("example.com/p.run"), spelling: mcp, refusal: "explain: a seeding reason derives from the witness's own body; pass witness naming the witness the reason stood beside"},
-		{reason: seededRefusal(errors.New("call of x in the bound body resolves to no declaration")), spelling: cli, refusal: "explain: a seeding reason derives from the witness's own body; pass --witness naming the witness the reason stood beside"},
+		{reason: seededReason.String(), spelling: cli, refusal: "explain: a seeding reason derives from the witness's own body; pass --witness naming the witness the reason stood beside"},
+		{reason: seededThroughReason("example.com/p.run").String(), spelling: mcp, refusal: "explain: a seeding reason derives from the witness's own body; pass witness naming the witness the reason stood beside"},
+		{reason: seededRefusal(errors.New("call of x in the bound body resolves to no declaration")).String(), spelling: cli, refusal: "explain: a seeding reason derives from the witness's own body; pass --witness naming the witness the reason stood beside"},
 		// A freshness-library reason: the culprit from its tail, else
 		// its own attribution.
-		{reason: reasonPostRun.with("package graph shares mutated dynamic state: github.com/x/b: github.com/x/b.thresholds registers function values outside the environment-free audit"), spelling: cli, want: ExplainRequest{Package: "github.com/x/b", Symbol: "thresholds"}},
-		{reason: reasonPostRun.with("reaches crypto/rand.Read (entropy)"), spelling: cli, want: ExplainRequest{Attribution: reasonPostRun.with("reaches crypto/rand.Read (entropy)")}},
-		{reason: reasonObservationSeal.with("github.com/x/b: github.com/x/b.state escapes writable"), spelling: cli, want: ExplainRequest{Package: "github.com/x/b", Symbol: "state"}},
+		{reason: reasonPostRun.with("package graph shares mutated dynamic state: github.com/x/b: github.com/x/b.thresholds registers function values outside the environment-free audit").String(), spelling: cli, want: ExplainRequest{Package: "github.com/x/b", Symbol: "thresholds"}},
+		{reason: reasonPostRun.with("reaches crypto/rand.Read (entropy)").String(), spelling: cli, want: ExplainRequest{Attribution: reasonPostRun.with("reaches crypto/rand.Read (entropy)").String()}},
+		{reason: reasonObservationSeal.with("github.com/x/b: github.com/x/b.state escapes writable").String(), spelling: cli, want: ExplainRequest{Package: "github.com/x/b", Symbol: "state"}},
 		// A reason that is its own attribution answers as such.
-		{reason: reasonUnclassifiable.with("package example.com/p: load errors"), spelling: cli, want: ExplainRequest{Attribution: reasonUnclassifiable.with("package example.com/p: load errors")}},
-		{reason: reasonNoFingerprint, spelling: cli, want: ExplainRequest{Attribution: reasonNoFingerprint}},
-		{reason: reasonDegraded.with("x"), spelling: cli, want: ExplainRequest{Attribution: reasonDegraded.with("x")}},
+		{reason: reasonUnclassifiable.with("package example.com/p: load errors").String(), spelling: cli, want: ExplainRequest{Attribution: reasonUnclassifiable.with("package example.com/p: load errors").String()}},
+		{reason: reasonNoFingerprint.String(), spelling: cli, want: ExplainRequest{Attribution: reasonNoFingerprint.String()}},
+		{reason: reasonDegraded.with("x").String(), spelling: cli, want: ExplainRequest{Attribution: reasonDegraded.with("x").String()}},
+		{reason: reasonStoreRefused.with("mkdir: permission denied").String(), spelling: mcp, want: ExplainRequest{Attribution: reasonStoreRefused.with("mkdir: permission denied").String()}},
 		// The class decides, not the tail: a self reason carrying a
 		// culprit-shaped detail is still its own attribution.
-		{reason: reasonDegraded.with("github.com/x/b: github.com/x/b.state escapes writable"), spelling: cli, want: ExplainRequest{Attribution: reasonDegraded.with("github.com/x/b: github.com/x/b.state escapes writable")}},
+		{reason: reasonDegraded.with("github.com/x/b: github.com/x/b.state escapes writable").String(), spelling: cli, want: ExplainRequest{Attribution: reasonDegraded.with("github.com/x/b: github.com/x/b.state escapes writable").String()}},
 	} {
 		got, err := ResolveExplain(tc.reason, tc.pkg, tc.sym, tc.witness, tc.spelling)
 		if tc.refusal != "" {

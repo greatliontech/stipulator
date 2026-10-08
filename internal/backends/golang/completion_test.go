@@ -167,7 +167,7 @@ func TestDoublySelectedPackageIsRefusedAtDiscovery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const want = reasonNoProducingLeg
+	want := reasonNoProducingLeg.String()
 	if got := tr.UncacheableReasons["example.com/units/a.TestA"]; got != want {
 		t.Fatalf("a.TestA reason = %q; want %q — the discovery-time refusal, not the structural fallback", got, want)
 	}
@@ -216,7 +216,7 @@ func TestMixedGroupPublishesOnlyItsSinglySelectedPackage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := tr.UncacheableReasons["example.com/units/a.TestA"]; got != reasonNoProducingLeg {
+	if got := tr.UncacheableReasons["example.com/units/a.TestA"]; got != reasonNoProducingLeg.String() {
 		t.Fatalf("a.TestA reason = %q; want %q", got, reasonNoProducingLeg)
 	}
 	var stored []string

@@ -76,11 +76,11 @@ func legsReleased(legs map[string]*packageLeg) bool {
 // subject's reason names the store's fault — a filesystem remedy,
 // never the evidence's. One install path for both forms, so the
 // account and the store never disagree.
-func installRecords(dir string, records []witnesscache.Record, reasons map[gofresh.Subject]string) []witnesscache.Record {
+func installRecords(dir string, records []witnesscache.Record, reasons map[gofresh.Subject]uncacheable) []witnesscache.Record {
 	var installed []witnesscache.Record
 	for _, rec := range records {
 		if err := witnesscache.Install(dir, rec); err != nil {
-			reasons[gofresh.Subject{Package: rec.Package, Symbol: rec.Test}] = "the store refused the record: " + err.Error()
+			reasons[gofresh.Subject{Package: rec.Package, Symbol: rec.Test}] = reasonStoreRefused.with(err.Error())
 			continue
 		}
 		installed = append(installed, rec)

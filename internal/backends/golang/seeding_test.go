@@ -36,7 +36,7 @@ func (s stubSeeding) NeverServe(symbols []string) (map[string]string, error) {
 	out := map[string]string{}
 	for _, sym := range symbols {
 		if s[sym] {
-			out[sym] = seededReason
+			out[sym] = seededReason.String()
 		}
 	}
 	return out, nil
@@ -101,7 +101,7 @@ func TestRandomSeeded(t *testing.T) {
 	}
 	seededOnly := map[string]bool{}
 	for sym, why := range refused {
-		seededOnly[sym] = why == seededReason
+		seededOnly[sym] = why == seededReason.String()
 	}
 	want := map[string]bool{
 		"example.com/fixture/lib.TestPropRapidCheck":     true,
@@ -147,15 +147,15 @@ func TestServingCandidatesExcludeRandomSeeded(t *testing.T) {
 	}
 	executedWhy := map[gofresh.Subject]string{}
 	serving, groupCached := servingCandidates("g", []gofresh.Subject{example, recorded, unrecorded},
-		map[gofresh.Subject]string{recorded: seededReason, unrecorded: seededReason}, cached, executedWhy)
+		map[gofresh.Subject]uncacheable{recorded: seededReason, unrecorded: seededReason}, cached, executedWhy)
 	if len(serving) != 1 || serving[0] != example {
 		t.Fatalf("serving candidates = %v, want the deterministic witness alone", serving)
 	}
 	if len(groupCached["example.com/m.TestExample"]) != 1 || len(groupCached) != 1 {
 		t.Fatalf("group records = %v, want the deterministic witness's record alone", groupCached)
 	}
-	if executedWhy[recorded] != seededReason {
-		t.Fatalf("re-execution reason for the recorded seeded witness = %q, want %q", executedWhy[recorded], seededReason)
+	if executedWhy[recorded] != seededReason.String() {
+		t.Fatalf("re-execution reason for the recorded seeded witness = %q, want %q", executedWhy[recorded], seededReason.String())
 	}
 	if why, ok := executedWhy[unrecorded]; ok {
 		t.Fatalf("a seeded witness with no record carries a re-execution reason: %q", why)
@@ -163,31 +163,55 @@ func TestServingCandidatesExcludeRandomSeeded(t *testing.T) {
 }
 
 // TestClassifySeededAttributesEveryRefusal pins that a refusal always
-// carries a reason: a classifier answering with an empty string still
-// refuses, and the attribution names that rather than reading empty
+// carries a reason, admitted under its class: a classifier answering
+// with an empty string still refuses, and the attribution names that
+// rather than reading empty; a classifier's own spelling (the resolver
+// wire's) is held as the class it names, its text unchanged — never
+// wrapped a second time; a spelling no class owns is held fail-closed
+// as an unclassifiable witness naming the spelling
 // (REQ-evidence-witness-freshness's diagnosable-set requirement).
 //
 //gofresh:pure
 func TestClassifySeededAttributesEveryRefusal(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness")
 	s := gofresh.Subject{Package: "example.com/m", Symbol: "TestX"}
-	g := &captureGroup{packages: map[string]*groupPackage{"example.com/m": {names: []string{"TestX"}}}}
-	pc := &policyDiscovery{groups: []*captureGroup{g}}
-	if err := classifySeeded(pc, emptyReasonSeeding{}); err != nil {
-		t.Fatal(err)
-	}
-	if why := g.neverServes[s]; why == "" || !strings.Contains(why, "without a stated reason") {
-		t.Fatalf("empty classifier reason attributed as %q", why)
+	for _, c := range []struct {
+		name     string
+		answer   string
+		want     uncacheable
+		contains string
+	}{
+		{"empty", "", reasonUnclassifiable.with("refused serving by the classifier without a stated reason"), ""},
+		{"the seeded spelling", seededReason.String(), seededReason, ""},
+		{"a helper hop", seededThroughReason("example.com/m.run").String(), seededThroughReason("example.com/m.run"), ""},
+		{"a foreign spelling", "reaches testing.Run", reasonUnclassifiable.with("a serving refusal of no listed class: reaches testing.Run"), ""},
+	} {
+		g := &captureGroup{packages: map[string]*groupPackage{"example.com/m": {names: []string{"TestX"}}}}
+		pc := &policyDiscovery{groups: []*captureGroup{g}}
+		if err := classifySeeded(pc, spellingSeeding(c.answer)); err != nil {
+			t.Fatal(err)
+		}
+		got := g.neverServes[s]
+		if c.contains != "" {
+			if why := got.String(); why == "" || !strings.Contains(why, c.contains) {
+				t.Fatalf("%s: classifier reason attributed as %q", c.name, why)
+			}
+			continue
+		}
+		if got != c.want {
+			t.Fatalf("%s: held as %+v (%q), want %+v", c.name, got, got.String(), c.want)
+		}
 	}
 }
 
-// emptyReasonSeeding refuses every symbol with no reason at all.
-type emptyReasonSeeding struct{}
+// spellingSeeding refuses every symbol with one spelling — empty, a
+// class's own, or a foreign one.
+type spellingSeeding string
 
-func (emptyReasonSeeding) NeverServe(symbols []string) (map[string]string, error) {
+func (sp spellingSeeding) NeverServe(symbols []string) (map[string]string, error) {
 	out := map[string]string{}
 	for _, s := range symbols {
-		out[s] = ""
+		out[s] = string(sp)
 	}
 	return out, nil
 }
@@ -224,8 +248,8 @@ func TestGoRunWitnessesRandomSeededNeverServes(t *testing.T) {
 	if first.Outcomes[property] != verify.TestPassed || first.Outcomes[example] != verify.TestPassed {
 		t.Fatalf("first run outcomes = %v", first.Outcomes)
 	}
-	if got := first.UncacheableReasons[property]; got != seededReason {
-		t.Fatalf("seeded witness uncacheable reason = %q, want %q", got, seededReason)
+	if got := first.UncacheableReasons[property]; got != seededReason.String() {
+		t.Fatalf("seeded witness uncacheable reason = %q, want %q", got, seededReason.String())
 	}
 	if _, refused := first.UncacheableReasons[example]; refused {
 		t.Fatalf("deterministic sibling refused publication: %q", first.UncacheableReasons[example])
@@ -249,7 +273,7 @@ func TestGoRunWitnessesRandomSeededNeverServes(t *testing.T) {
 	if second.Outcomes[property] != verify.TestPassed {
 		t.Fatalf("seeded witness outcome on re-execution = %v", second.Outcomes[property])
 	}
-	if got := second.UncacheableReasons[property]; got != seededReason {
+	if got := second.UncacheableReasons[property]; got != seededReason.String() {
 		t.Fatalf("seeded witness uncacheable reason on re-execution = %q", got)
 	}
 	if second.Uncached != 1 {
@@ -269,11 +293,11 @@ func TestGoRunWitnessesRandomSeededNeverServes(t *testing.T) {
 	if refused.Degraded != "" || refused.Fresh != 0 || refused.Ran != 2 {
 		t.Fatalf("refusing run degraded=%q fresh=%d ran=%d, want the held record refused and both executed", refused.Degraded, refused.Fresh, refused.Ran)
 	}
-	if got := refused.ExecutedReasons[example]; got != seededReason {
-		t.Fatalf("re-execution reason over the refused record = %q, want %q", got, seededReason)
+	if got := refused.ExecutedReasons[example]; got != seededReason.String() {
+		t.Fatalf("re-execution reason over the refused record = %q, want %q", got, seededReason.String())
 	}
-	if got := refused.UncacheableReasons[example]; got != seededReason {
-		t.Fatalf("refused witness uncacheable reason = %q, want %q", got, seededReason)
+	if got := refused.UncacheableReasons[example]; got != seededReason.String() {
+		t.Fatalf("refused witness uncacheable reason = %q, want %q", got, seededReason.String())
 	}
 	if after := len(witnesscache.Load(tmp)); after != before {
 		t.Fatalf("store grew from %d to %d records under a refusing classifier", before, after)
@@ -385,8 +409,8 @@ func TestExecutePolicyWitnessedRandomSeededNeverPublishes(t *testing.T) {
 	if !SuiteHealthy(report) {
 		t.Fatalf("fixture suite unhealthy: %v", report.GetDiagnostics())
 	}
-	if got := tr.UncacheableReasons["example.com/seeded/prop.TestProperty"]; got != seededReason {
-		t.Fatalf("seeded witness uncacheable reason = %q, want %q", got, seededReason)
+	if got := tr.UncacheableReasons["example.com/seeded/prop.TestProperty"]; got != seededReason.String() {
+		t.Fatalf("seeded witness uncacheable reason = %q, want %q", got, seededReason.String())
 	}
 	records := witnesscache.Load(tmp)
 	if len(records) != 1 || records[0].Test != "TestExample" {
@@ -454,46 +478,46 @@ func TestHelperIndirectedDriverRefusesServing(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]string{
-		"example.com/fixture/lib.TestPropViaHelper":  seededThroughReason("example.com/fixture/lib.runProp"),
-		"example.com/fixture/lib.TestPropViaTwoHops": seededThroughReason("example.com/fixture/lib.runPropTwice"),
-		"example.com/fixture/lib.TestPropViaMethod":  seededThroughReason("(example.com/fixture/lib.propRunner).Run"),
-		"example.com/fixture/lib.TestPropViaCycle":   seededThroughReason("example.com/fixture/lib.spin"),
+		"example.com/fixture/lib.TestPropViaHelper":  seededThroughReason("example.com/fixture/lib.runProp").String(),
+		"example.com/fixture/lib.TestPropViaTwoHops": seededThroughReason("example.com/fixture/lib.runPropTwice").String(),
+		"example.com/fixture/lib.TestPropViaMethod":  seededThroughReason("(example.com/fixture/lib.propRunner).Run").String(),
+		"example.com/fixture/lib.TestPropViaCycle":   seededThroughReason("example.com/fixture/lib.spin").String(),
 		// The other package's helper, the instantiated generic method
 		// (resolved to its origin); the dependency's own helper and the
 		// interface dispatch are outside the walk and serve.
-		"example.com/fixture/lib.TestPropViaOtherPackage":  seededThroughReason("example.com/fixture/helpers.Run"),
-		"example.com/fixture/lib.TestPropViaGenericMethod": seededThroughReason("(example.com/fixture/lib.runner[T]).Run"),
+		"example.com/fixture/lib.TestPropViaOtherPackage":  seededThroughReason("example.com/fixture/helpers.Run").String(),
+		"example.com/fixture/lib.TestPropViaGenericMethod": seededThroughReason("(example.com/fixture/lib.runner[T]).Run").String(),
 		// The walk descends into a dispatch's operands: a hop in the
 		// argument seeds; a type parameter's method is the constraint's,
 		// a call resolving to no declaration — refused, never served.
-		"example.com/fixture/lib.TestPropViaInterfaceArgument": seededThroughReason("example.com/fixture/lib.driveAndCount"),
-		"example.com/fixture/lib.TestPropViaTypeParam":         seededRefusal(errors.New("call of Run in example.com/fixture/lib.drive resolves to no declaration")),
+		"example.com/fixture/lib.TestPropViaInterfaceArgument": seededThroughReason("example.com/fixture/lib.driveAndCount").String(),
+		"example.com/fixture/lib.TestPropViaTypeParam":         seededRefusal(errors.New("call of Run in example.com/fixture/lib.drive resolves to no declaration")).String(),
 		// A refusal met before the driving hop: the hop outranks it;
 		// two refusals: the first in breadth-first order stands.
-		"example.com/fixture/lib.TestPropViaBadThenGood":     seededThroughReason("example.com/fixture/lib.runProp"),
-		"example.com/fixture/lib.TestPropViaTwoBad":          seededRefusal(errors.New("call of mystery in example.com/fixture/badhelper.Run resolves to no declaration")),
-		"example.com/fixture/lib.TestPropViaOtherThroughHop": seededThroughReason("example.com/fixture/lib.viaHelpers"),
+		"example.com/fixture/lib.TestPropViaBadThenGood":     seededThroughReason("example.com/fixture/lib.runProp").String(),
+		"example.com/fixture/lib.TestPropViaTwoBad":          seededRefusal(errors.New("call of mystery in example.com/fixture/badhelper.Run resolves to no declaration")).String(),
+		"example.com/fixture/lib.TestPropViaOtherThroughHop": seededThroughReason("example.com/fixture/lib.viaHelpers").String(),
 		// A function the body names as a value is walked; the driver
 		// itself named as a value seeds directly; a value from
 		// elsewhere is outside the walk and serves.
-		"example.com/fixture/lib.TestPropViaFuncValue":   seededThroughReason("example.com/fixture/lib.runPropSub"),
-		"example.com/fixture/lib.TestPropViaStoredValue": seededThroughReason("example.com/fixture/lib.runProp"),
-		"example.com/fixture/lib.TestPropViaMethodValue": seededThroughReason("(example.com/fixture/lib.propRunner).Run"),
-		"example.com/fixture/lib.TestPropViaDriverValue": seededReason,
+		"example.com/fixture/lib.TestPropViaFuncValue":   seededThroughReason("example.com/fixture/lib.runPropSub").String(),
+		"example.com/fixture/lib.TestPropViaStoredValue": seededThroughReason("example.com/fixture/lib.runProp").String(),
+		"example.com/fixture/lib.TestPropViaMethodValue": seededThroughReason("(example.com/fixture/lib.propRunner).Run").String(),
+		"example.com/fixture/lib.TestPropViaDriverValue": seededReason.String(),
 		// A driver named through a dot import seeds directly; a method
 		// value off a type parameter is the constraint's, refused.
-		"example.com/fixture/lib.TestPropQuickDotImported":  seededReason,
-		"example.com/fixture/lib.TestPropViaTypeParamValue": seededRefusal(errors.New("call of Run in example.com/fixture/lib.driveValue resolves to no declaration")),
+		"example.com/fixture/lib.TestPropQuickDotImported":  seededReason.String(),
+		"example.com/fixture/lib.TestPropViaTypeParamValue": seededRefusal(errors.New("call of Run in example.com/fixture/lib.driveValue resolves to no declaration")).String(),
 		// testing/quick's drivers are random-seeded like rapid's.
-		"example.com/fixture/lib.TestPropQuickCheck":      seededReason,
-		"example.com/fixture/lib.TestPropQuickCheckEqual": seededReason,
-		"example.com/fixture/lib.TestPropRapidCheck":      seededReason,
-		"example.com/fixture/lib.TestPropTwoDrivers":      seededReason,
+		"example.com/fixture/lib.TestPropQuickCheck":      seededReason.String(),
+		"example.com/fixture/lib.TestPropQuickCheckEqual": seededReason.String(),
+		"example.com/fixture/lib.TestPropRapidCheck":      seededReason.String(),
+		"example.com/fixture/lib.TestPropTwoDrivers":      seededReason.String(),
 		// Proof outranks property on the ladder and carries its seeding:
 		// a direct driver in either order, or a hop through a helper.
-		"example.com/fixture/lib.TestProofThenDrive": seededReason,
-		"example.com/fixture/lib.TestDriveThenProof": seededReason,
-		"example.com/fixture/lib.TestProofViaHelper": seededThroughReason("example.com/fixture/lib.runProp"),
+		"example.com/fixture/lib.TestProofThenDrive": seededReason.String(),
+		"example.com/fixture/lib.TestDriveThenProof": seededReason.String(),
+		"example.com/fixture/lib.TestProofViaHelper": seededThroughReason("example.com/fixture/lib.runProp").String(),
 	}
 	if !maps.Equal(refused, want) {
 		t.Fatalf("NeverServe = %v, want %v", refused, want)
@@ -556,7 +580,7 @@ func TestScopedLoadReachesInModuleHelpers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]string{"example.com/fixture/lib.TestPropViaOtherPackage": seededThroughReason("example.com/fixture/helpers.Run")}
+	want := map[string]string{"example.com/fixture/lib.TestPropViaOtherPackage": seededThroughReason("example.com/fixture/helpers.Run").String()}
 	if !maps.Equal(refused, want) {
 		t.Fatalf("scoped NeverServe = %v, want %v", refused, want)
 	}
@@ -666,9 +690,9 @@ func TestSeedingWalkIsPerSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]string{
-		symbol: seededThroughReason("example.com/split/lib.splitDrive"),
-		direct: seededReason,
-		fuzz:   seededReason,
+		symbol: seededThroughReason("example.com/split/lib.splitDrive").String(),
+		direct: seededReason.String(),
+		fuzz:   seededReason.String(),
 	}
 	if !maps.Equal(refused, want) {
 		t.Fatalf("under the dst view: NeverServe = %v, want %v", refused, want)

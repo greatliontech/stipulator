@@ -398,7 +398,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	// served) finish in the verification pass; the degraded path
 	// executes with no groups and publishes nothing.
 	var published []witnesscache.Record
-	uncacheableWhy := map[gofresh.Subject]string{}
+	uncacheableWhy := map[gofresh.Subject]uncacheable{}
 	driftedByGroup := map[*witnessGroup][]gofresh.Subject{}
 	// Each install names its unit on the progress stream — the
 	// completing invocation, the verification pass's revalidation, the
@@ -675,11 +675,11 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	if tr.Uncached > 0 || len(uncacheableWhy) > 0 {
 		tr.UncacheableReasons = map[string]string{}
 		for s, why := range uncacheableWhy {
-			tr.UncacheableReasons[s.Package+"."+s.Symbol] = why
+			tr.UncacheableReasons[s.Package+"."+s.Symbol] = why.String()
 		}
 		for s := range ambiguousSubjects {
 			if _, ok := tr.UncacheableReasons[s.Package+"."+s.Symbol]; !ok {
-				tr.UncacheableReasons[s.Package+"."+s.Symbol] = reasonNoProducingLeg
+				tr.UncacheableReasons[s.Package+"."+s.Symbol] = reasonNoProducingLeg.String()
 			}
 		}
 		for key := range ranTop {
@@ -688,9 +688,9 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 			}
 			if _, ok := tr.UncacheableReasons[key]; !ok {
 				if degraded != "" {
-					tr.UncacheableReasons[key] = reasonDegraded.with(degraded)
+					tr.UncacheableReasons[key] = reasonDegraded.with(degraded).String()
 				} else {
-					tr.UncacheableReasons[key] = reasonNotPublished.with("")
+					tr.UncacheableReasons[key] = reasonNotPublished.with("").String()
 				}
 			}
 		}
@@ -1033,14 +1033,14 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 // contract refuses to serve, so it executes, and when a record existed
 // the refusal is attributed as its re-execution reason
 // (REQ-evidence-witness-freshness).
-func servingCandidates(groupID string, subjects []gofresh.Subject, neverServes map[gofresh.Subject]string, cached map[string][]witnesscache.Record, executedWhy map[gofresh.Subject]string) ([]gofresh.Subject, map[string][]witnesscache.Record) {
+func servingCandidates(groupID string, subjects []gofresh.Subject, neverServes map[gofresh.Subject]uncacheable, cached map[string][]witnesscache.Record, executedWhy map[gofresh.Subject]string) ([]gofresh.Subject, map[string][]witnesscache.Record) {
 	groupCached := map[string][]witnesscache.Record{}
 	var serving []gofresh.Subject
 	for _, s := range subjects {
 		key := s.Package + "." + s.Symbol
 		if why, refused := neverServes[s]; refused {
 			if len(cached[groupID+"\x00"+key]) > 0 {
-				executedWhy[s] = why
+				executedWhy[s] = why.String()
 			}
 			continue
 		}
@@ -1229,10 +1229,10 @@ func executeSelections(ctx context.Context, invocations []*NormalizedInvocation,
 // subjects' reasons), and every package with served records revalidates
 // them (REQ-check-witness-selection's post-run revalidation), its drifted
 // subjects returned for the run's one retry.
-func finishGroup(ctx context.Context, wg *witnessGroup, m *execMerge) ([]gofresh.Subject, []witnesscache.Record, map[gofresh.Subject]string, error) {
+func finishGroup(ctx context.Context, wg *witnessGroup, m *execMerge) ([]gofresh.Subject, []witnesscache.Record, map[gofresh.Subject]uncacheable, error) {
 	var drifted []gofresh.Subject
 	var records []witnesscache.Record
-	reasons := map[gofresh.Subject]string{}
+	reasons := map[gofresh.Subject]uncacheable{}
 	for _, pkg := range wg.packages() {
 		leg := wg.legs[pkg]
 		if !leg.published {
@@ -1273,7 +1273,7 @@ var afterServedCheckForTest func(pkg string)
 // disproves a serve the run would otherwise report. The error return is
 // reserved for caller cancellation. A package serving nothing releases
 // its sibling here.
-func publishPackage(ctx context.Context, wg *witnessGroup, pkg string, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]string, error) {
+func publishPackage(ctx context.Context, wg *witnessGroup, pkg string, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]uncacheable, error) {
 	wg.legs[pkg].published = true
 	if beforePackagePublishForTest != nil {
 		beforePackagePublishForTest(pkg)
@@ -1309,11 +1309,11 @@ func (wg *witnessGroup) release(pkg string) {
 // discards every serve of the package the same way; a carve-out-served
 // record that survived installs refreshed. The package's sibling is
 // released after. A cancellation surfaces through ctx.
-func revalidateServed(ctx context.Context, wg *witnessGroup, pkg string) ([]gofresh.Subject, []witnesscache.Record, map[gofresh.Subject]string) {
+func revalidateServed(ctx context.Context, wg *witnessGroup, pkg string) ([]gofresh.Subject, []witnesscache.Record, map[gofresh.Subject]uncacheable) {
 	leg := wg.legs[pkg]
 	defer wg.release(pkg)
 	served := wg.servedIn(pkg)
-	reasons := map[gofresh.Subject]string{}
+	reasons := map[gofresh.Subject]uncacheable{}
 	if len(served) == 0 {
 		return nil, nil, reasons
 	}
@@ -1377,13 +1377,13 @@ func revalidateServed(ctx context.Context, wg *witnessGroup, pkg string) ([]gofr
 // The error return is reserved for caller cancellation. The second
 // return names, per unpublished subject, the leg that refused
 // (REQ-evidence-witness-freshness's diagnosable-set requirement).
-func publishExecuted(ctx context.Context, wg *witnessGroup, pkg string, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]string, bool, error) {
+func publishExecuted(ctx context.Context, wg *witnessGroup, pkg string, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]uncacheable, bool, error) {
 	order := make([]gofresh.Subject, 0, len(wg.stale[pkg]))
 	for _, name := range wg.stale[pkg] {
 		order = append(order, gofresh.Subject{Package: pkg, Symbol: name})
 	}
 	eligible := map[gofresh.Subject]*pubSubject{}
-	reasons := map[gofresh.Subject]string{}
+	reasons := map[gofresh.Subject]uncacheable{}
 	for _, s := range order {
 		why, refused := wg.g.neverServes[s]
 		_, captured := wg.fps[s]
@@ -1412,7 +1412,7 @@ func publishExecuted(ctx context.Context, wg *witnessGroup, pkg string, m *execM
 // the current tree before the retry executes; a retry whose record still
 // fails validation afterwards — still drifting — is dropped and counted
 // uncacheable, never retried again.
-func retryDrifted(ctx context.Context, pc *Capture, driftedByGroup map[*witnessGroup][]gofresh.Subject, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]string, error) {
+func retryDrifted(ctx context.Context, pc *Capture, driftedByGroup map[*witnessGroup][]gofresh.Subject, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]uncacheable, error) {
 	dir := pc.dir
 	normalized := pc.byName()
 	// Fresh pre-retry capture per group: the old view described a tree the
@@ -1482,7 +1482,7 @@ func retryDrifted(ctx context.Context, pc *Capture, driftedByGroup map[*witnessG
 		return nil, nil, err
 	}
 	var published []witnesscache.Record
-	reasons := map[gofresh.Subject]string{}
+	reasons := map[gofresh.Subject]uncacheable{}
 	for _, st := range states {
 		if st.view == nil {
 			continue

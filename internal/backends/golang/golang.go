@@ -769,7 +769,7 @@ var seededReason = reasonSeeded.with(": executes every run, never served")
 // direct-call by contract), but the executed quantification draws from a
 // run-time seed exactly as a direct driver's does, so serving refuses
 // it under a reason naming the first hop (REQ-evidence-witness-freshness).
-func seededThroughReason(helper string) string {
+func seededThroughReason(helper string) uncacheable {
 	return reasonSeeded.with(" through " + helper + ": executes every run, never served")
 }
 
@@ -788,16 +788,16 @@ func (b *Backend) NeverServe(symbols []string) (map[string]string, error) {
 	for _, s := range symbols {
 		switch v := b.classifyWitness(s); {
 		case v.seeded:
-			out[s] = seededReason
+			out[s] = seededReason.String()
 		case v.seededVia != "":
-			out[s] = seededThroughReason(v.seededVia)
+			out[s] = seededThroughReason(v.seededVia).String()
 		case v.seedingRefusal != "":
 			// An in-module callee whose package would not load: no
 			// declaration to walk, so no proof the quantification is
 			// deterministic — absence of proof never serves.
 			out[s] = v.seedingRefusal
 		case !v.inspected:
-			out[s] = reasonUnclassifiable.with(v.reason)
+			out[s] = reasonUnclassifiable.with(v.reason).String()
 		}
 	}
 	return out, nil
@@ -1216,7 +1216,7 @@ func (b *Backend) driverSite(fd *ast.FuncDecl, pkg *packages.Package) string {
 
 // seededRefusal is the fail-closed serving refusal the walk raises where
 // it has no declaration to read.
-func seededRefusal(err error) string {
+func seededRefusal(err error) uncacheable {
 	return reasonSeedingRefused.with(err.Error())
 }
 
@@ -1282,7 +1282,7 @@ func (b *Backend) seededThrough(sel string, rootFn *types.Func, fd *ast.FuncDecl
 	var path seedingPath
 	refuse := func(err error, in *types.Func, hops []seedingHop, site string) {
 		if path.refusal == "" {
-			path.refusal, path.refusalIn, path.refusalHops, path.refusalSite = seededRefusal(err), in, hops, site
+			path.refusal, path.refusalIn, path.refusalHops, path.refusalSite = seededRefusal(err).String(), in, hops, site
 		}
 	}
 	seen := map[string]bool{}
@@ -1596,7 +1596,7 @@ func (b *Backend) declsInOtherViews(symbol string, resolvedSel string) ([]declar
 			switch {
 			case err != nil:
 				if refusal == "" {
-					refusal = seededRefusal(fmt.Errorf("%s in the %q view: %w", symbol, sel, err))
+					refusal = seededRefusal(fmt.Errorf("%s in the %q view: %w", symbol, sel, err)).String()
 				}
 			case fd != nil && fd.Body != nil:
 				out = append(out, declaredFunc{fd: fd, pkg: fpkg, sel: sel, fn: fn})

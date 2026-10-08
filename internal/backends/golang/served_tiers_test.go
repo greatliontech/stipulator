@@ -125,7 +125,7 @@ func TestServedReresolvesWhenATestBodyChangesClass(t *testing.T) {
 	// refused serving through the helper (the transitive seeding class);
 	// the inlined form below re-resolves to the direct refusal, so the
 	// record still moves with the compartment.
-	if got := ask(t, first, symbol); got.class != verify.ExampleWitness || got.refusal != seededThroughReason("example.com/seeded/lib.drive") {
+	if got := ask(t, first, symbol); got.class != verify.ExampleWitness || got.refusal != seededThroughReason("example.com/seeded/lib.drive").String() {
 		t.Fatalf("a helper-driven test classed %+v; want example, refused through the helper", got)
 	}
 	if err := first.Close(); err != nil {
@@ -142,14 +142,14 @@ func TestServedReresolvesWhenATestBodyChangesClass(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := ask(t, second, symbol)
-	if got.class != verify.PropertyWitness || got.refusal != seededReason || c.snapshot().child != 1 {
+	if got.class != verify.PropertyWitness || got.refusal != seededReason.String() || c.snapshot().child != 1 {
 		t.Fatalf("after the body gained the driver call: %+v with %d children (reasons %v); want property, the seeded refusal, one typed resolution", got, c.snapshot().child, second.Reasons())
 	}
 	if err := second.Close(); err != nil {
 		t.Fatal(err)
 	}
 	for _, rec := range resolutioncache.Load(dir) {
-		if rec.Symbol == symbol && (rec.WitnessClass != "property" || rec.NeverServe != seededReason) {
+		if rec.Symbol == symbol && (rec.WitnessClass != "property" || rec.NeverServe != seededReason.String()) {
 			t.Fatalf("republished record %+v carries no seeded refusal", rec)
 		}
 	}

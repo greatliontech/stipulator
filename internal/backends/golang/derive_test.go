@@ -526,14 +526,15 @@ func TestJudgeSubjectNamesRefusalsInOneVocabulary(t *testing.T) {
 	}
 	passed, failed := stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED, stipulatorv1.TestOutcome_TEST_OUTCOME_FAILED
 	proven := &ProcessObservation{Wire: completedWire()}
+	seeded := reasonSeeded.with(": executes every run, never served")
 	for _, c := range []struct {
 		name       string
 		refused    bool
 		captured   bool
 		candidates []producerCandidate
-		want       string
+		want       uncacheable
 	}{
-		{"classifier refusal first", true, false, nil, "seeded"},
+		{"classifier refusal first", true, false, nil, seeded},
 		{"no fingerprint", false, false, nil, reasonNoFingerprint},
 		{"no terminal event", false, true, nil, reasonNoTerminalEvent},
 		{"a healthy process that died before its first terminal event", false, true, []producerCandidate{{healthy: true, obs: proven}}, reasonNoTerminalEvent},
@@ -546,7 +547,7 @@ func TestJudgeSubjectNamesRefusalsInOneVocabulary(t *testing.T) {
 		{"unproven outranks unhealthy", false, true, []producerCandidate{{healthy: false, obs: proven, rows: []*stipulatorv1.TestResult{row("TestX", passed)}}, {healthy: true, obs: nil, rows: []*stipulatorv1.TestResult{row("TestX", passed)}}}, reasonFlushUnproven},
 		{"a contradiction beside an unhealthy process", false, true, []producerCandidate{{healthy: false, obs: proven, rows: []*stipulatorv1.TestResult{row("TestX", passed)}}, {healthy: true, obs: proven, rows: []*stipulatorv1.TestResult{row("TestX", failed)}}}, reasonNoHealthyOutcome},
 	} {
-		ps, why := judgeSubject(subject, "seeded", c.refused, c.captured, c.candidates)
+		ps, why := judgeSubject(subject, seeded, c.refused, c.captured, c.candidates)
 		if ps != nil || why != c.want {
 			t.Fatalf("%s: judgment %+v, reason %q, want %q", c.name, ps, why, c.want)
 		}
@@ -554,19 +555,19 @@ func TestJudgeSubjectNamesRefusalsInOneVocabulary(t *testing.T) {
 	// The isolation pass's solo process grants after the whole-package
 	// process was disposed red; solo is the granting process's own
 	// fact, derived from its rows.
-	ps, why := judgeSubject(subject, "", false, true, []producerCandidate{
+	ps, why := judgeSubject(subject, uncacheable{}, false, true, []producerCandidate{
 		{healthy: false, obs: proven, rows: []*stipulatorv1.TestResult{row("TestX", passed), row("TestY", passed)}},
 		{healthy: true, obs: proven, rows: []*stipulatorv1.TestResult{row("TestX", passed), row("TestX/sub", stipulatorv1.TestOutcome_TEST_OUTCOME_SKIPPED)}},
 	})
-	if ps == nil || why != "" || !ps.solo || ps.outcomes["p.TestX"] != "passed" || ps.outcomes["p.TestX/sub"] != "skipped" {
+	if ps == nil || why != (uncacheable{}) || !ps.solo || ps.outcomes["p.TestX"] != "passed" || ps.outcomes["p.TestX/sub"] != "skipped" {
 		t.Fatalf("the solo process did not grant: %+v, %q", ps, why)
 	}
 	// A healthy whole-package process that ran a sibling grants without
 	// the solo fact.
-	ps, why = judgeSubject(subject, "", false, true, []producerCandidate{
+	ps, why = judgeSubject(subject, uncacheable{}, false, true, []producerCandidate{
 		{healthy: true, obs: proven, rows: []*stipulatorv1.TestResult{row("TestX", passed), row("TestY", passed)}},
 	})
-	if ps == nil || why != "" || ps.solo {
+	if ps == nil || why != (uncacheable{}) || ps.solo {
 		t.Fatalf("the shared process granted solo: %+v, %q", ps, why)
 	}
 }

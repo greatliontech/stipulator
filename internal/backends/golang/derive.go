@@ -290,7 +290,7 @@ type captureGroup struct {
 	// its reason — random-seeded witnesses and unclassifiable subjects
 	// (REQ-evidence-witness-freshness); resolved once per policy
 	// capture, read by both witness forms' serving and publish paths.
-	neverServes map[gofresh.Subject]string
+	neverServes map[gofresh.Subject]uncacheable
 	// witnessEnv is the group's witness environment
 	// (NormalizedInvocation.WitnessEnv): revalidation recomputes env
 	// digests from it as the engine's producer env; loads and analysis
@@ -370,7 +370,7 @@ type WitnessRecorder struct {
 	degraded string
 	groups   []*captureGroup
 	records  []witnesscache.Record
-	reasons  map[gofresh.Subject]string
+	reasons  map[gofresh.Subject]uncacheable
 }
 
 // invocationCapture pairs one Go invocation's normalized form with its
@@ -519,16 +519,19 @@ func classifySeeded(pc *policyDiscovery, seeding verify.WitnessSeeding) error {
 		}
 	}
 	for _, g := range pc.groups {
-		g.neverServes = map[gofresh.Subject]string{}
+		g.neverServes = map[gofresh.Subject]uncacheable{}
 		for _, s := range groupSubjects(g) {
 			if why, ok := refusals[s.Package+"."+s.Symbol]; ok {
 				// A refusal is attributed or it is not a refusal the
 				// spec admits: an implementor answering with an empty
-				// reason still refuses, under a reason that says so.
+				// reason still refuses, under a reason that says so;
+				// the classifier's text (the resolver wire's) is
+				// admitted under the class its prefix names.
 				if why == "" {
-					why = reasonUnclassifiable.with("refused serving by the classifier without a stated reason")
+					g.neverServes[s] = reasonUnclassifiable.with("refused serving by the classifier without a stated reason")
+					continue
 				}
-				g.neverServes[s] = why
+				g.neverServes[s] = parseReason(why)
 			}
 		}
 	}
@@ -1055,7 +1058,7 @@ func emitEngineDiagnostic(p gofresh.Progress) { engineDiagnosticSink(p) }
 // the degraded run would execute.
 func NewWitnessRecorder(ctx context.Context, pc *Capture, seeding verify.WitnessSeeding) (*WitnessRecorder, error) {
 	dir := pc.dir
-	r := &WitnessRecorder{dir: dir, reasons: map[gofresh.Subject]string{}}
+	r := &WitnessRecorder{dir: dir, reasons: map[gofresh.Subject]uncacheable{}}
 	degrade := func(err error) (*WitnessRecorder, error) {
 		abort, reason := classifyFault(err)
 		if abort {
@@ -1204,7 +1207,7 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 		tr.Uncached = 0
 		tr.UncacheableReasons = map[string]string{}
 		for s, why := range uncacheableWhy {
-			tr.UncacheableReasons[s.Package+"."+s.Symbol] = why
+			tr.UncacheableReasons[s.Package+"."+s.Symbol] = why.String()
 		}
 		for key := range executedTop {
 			if installed[key] {
@@ -1213,7 +1216,7 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 			}
 			tr.Uncached++
 			if _, ok := tr.UncacheableReasons[key]; !ok {
-				tr.UncacheableReasons[key] = reasonDegraded.with(degraded)
+				tr.UncacheableReasons[key] = reasonDegraded.with(degraded).String()
 			}
 		}
 	case len(r.groups) == 0:
@@ -1225,11 +1228,11 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 		tr.Uncached = tr.Ran
 		tr.UncacheableReasons = map[string]string{}
 		for s, why := range uncacheableWhy {
-			tr.UncacheableReasons[s.Package+"."+s.Symbol] = why
+			tr.UncacheableReasons[s.Package+"."+s.Symbol] = why.String()
 		}
 		for key := range executedTop {
 			if _, ok := tr.UncacheableReasons[key]; !ok {
-				tr.UncacheableReasons[key] = reasonNoCapture.with("no witness-eligible invocation covers the package")
+				tr.UncacheableReasons[key] = reasonNoCapture.with("no witness-eligible invocation covers the package").String()
 			}
 		}
 	default:
@@ -1251,7 +1254,7 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 		if tr.Uncached > 0 || len(uncacheableWhy) > 0 {
 			tr.UncacheableReasons = map[string]string{}
 			for s, why := range uncacheableWhy {
-				tr.UncacheableReasons[s.Package+"."+s.Symbol] = why
+				tr.UncacheableReasons[s.Package+"."+s.Symbol] = why.String()
 			}
 			publishedKey := map[string]bool{}
 			for _, rec := range published {
@@ -1263,7 +1266,7 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 					continue
 				}
 				if _, ok := tr.UncacheableReasons[key]; !ok {
-					tr.UncacheableReasons[key] = reasonNotPublished.with("")
+					tr.UncacheableReasons[key] = reasonNotPublished.with("").String()
 				}
 			}
 		}
@@ -1350,7 +1353,7 @@ func (r *WitnessRecorder) packageCompleted(ctx context.Context, invocation strin
 // package's completion under its invocation or returns its fault
 // before derivation — so every package is published by the time the
 // last invocation completes.
-func (r *WitnessRecorder) publish() ([]witnesscache.Record, map[gofresh.Subject]string, string) {
+func (r *WitnessRecorder) publish() ([]witnesscache.Record, map[gofresh.Subject]uncacheable, string) {
 	return append([]witnesscache.Record(nil), r.records...), maps.Clone(r.reasons), r.degraded
 }
 
@@ -1366,12 +1369,12 @@ func (r *WitnessRecorder) publish() ([]witnesscache.Record, map[gofresh.Subject]
 // a tree edit disproved wholesale; packages that closed before it keep
 // what their own legs validated. The error return is reserved for
 // caller cancellation.
-func (r *WitnessRecorder) publishPackage(ctx context.Context, g *captureGroup, pkg string, leg *packageLeg, candidate producerCandidate) ([]witnesscache.Record, map[gofresh.Subject]string, string, error) {
+func (r *WitnessRecorder) publishPackage(ctx context.Context, g *captureGroup, pkg string, leg *packageLeg, candidate producerCandidate) ([]witnesscache.Record, map[gofresh.Subject]uncacheable, string, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, "", err
 	}
 	defer g.release(pkg)
-	reasons := map[gofresh.Subject]string{}
+	reasons := map[gofresh.Subject]uncacheable{}
 	eligible := map[gofresh.Subject]*pubSubject{}
 	var order []gofresh.Subject
 	candidates := []producerCandidate{candidate}
@@ -1398,7 +1401,7 @@ func (r *WitnessRecorder) publishPackage(ctx context.Context, g *captureGroup, p
 		return nil, nil, fmt.Sprintf("runtime producer validation failed: %v", checkFault), nil
 	}
 	if closeFault != nil {
-		return nil, nil, reasonSourceFailed.with(closeFault.Error()), nil
+		return nil, nil, reasonSourceFailed.with(closeFault.Error()).String(), nil
 	}
 	return records, reasons, "", nil
 }

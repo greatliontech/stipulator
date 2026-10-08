@@ -2780,3 +2780,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "650aef25fa3809bf53a73251d9cd89cbff505645d9c7a2e89a52c68a0a4b618b"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "c46d5d27c99494bd2e90facc557d72ff5aee04a917dffb59381c1c1947a83828"
+  source_hash: "2941b3c241018dcbdeb4e34840b8efb66830f9244889131ed2debf4f6db17faa"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestParseReasonAdmitsEveryClassAndWrapsTheForeign"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "79a4552e0cd1b295396ce4f7653bc61a5635fcf5b3b1ebd1748d64024d6da950"
+}

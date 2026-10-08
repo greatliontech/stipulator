@@ -28,13 +28,13 @@ type producerCandidate struct {
 // The one reason vocabulary of the per-subject publish judgment, on
 // both forms (REQ-evidence-witness-freshness's diagnosable set: every
 // unpublished subject names the leg that refused it).
-const (
-	reasonNoProducingLeg    = "two invocations of one capture group select the package; no single producing leg"
-	reasonNoFingerprint     = "pre-execution fingerprint capture failed"
-	reasonNoTerminalEvent   = "no terminal event from the producing process"
-	reasonFlushUnproven     = "producing process's testlog flush unproven"
-	reasonProducerUnhealthy = "producing package disposed unhealthy"
-	reasonNoHealthyOutcome  = "no healthy outcome for the subject"
+var (
+	reasonNoProducingLeg    = reasonJudged.with("two invocations of one capture group select the package; no single producing leg")
+	reasonNoFingerprint     = reasonJudged.with("pre-execution fingerprint capture failed")
+	reasonNoTerminalEvent   = reasonJudged.with("no terminal event from the producing process")
+	reasonFlushUnproven     = reasonJudged.with("producing process's testlog flush unproven")
+	reasonProducerUnhealthy = reasonJudged.with("producing package disposed unhealthy")
+	reasonNoHealthyOutcome  = reasonJudged.with("no healthy outcome for the subject")
 )
 
 // judgeSubject is the per-subject publish judgment both forms apply, in
@@ -52,7 +52,7 @@ const (
 // its first terminal event, or no candidate at all, is a missing
 // terminal event. The solo flag is the process's own fact — its rows
 // hold the subject's top-level test and no other — on both forms.
-func judgeSubject(s gofresh.Subject, neverServe string, refused, captured bool, candidates []producerCandidate) (*pubSubject, string) {
+func judgeSubject(s gofresh.Subject, neverServe uncacheable, refused, captured bool, candidates []producerCandidate) (*pubSubject, uncacheable) {
 	if refused {
 		return nil, neverServe
 	}
@@ -100,7 +100,7 @@ func judgeSubject(s gofresh.Subject, neverServe string, refused, captured bool, 
 			continue
 		}
 		ps.solo = len(tops) == 1 && tops[s.Symbol]
-		return ps, ""
+		return ps, uncacheable{}
 	}
 	switch {
 	case sawUnproven:

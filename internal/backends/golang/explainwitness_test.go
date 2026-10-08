@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go/ast"
-	"go/parser"
 	"go/token"
 	"go/types"
 	"os"
@@ -83,7 +81,7 @@ func TestExplainWitnessRendersServingsWalk(t *testing.T) {
 		{lib + ".TestPropViaBadHelper", gofresh.Chain{Arm: ArmSeedingRefused, Links: []gofresh.ChainLink{
 			{Kind: LinkWitness, Package: lib, Symbol: "TestPropViaBadHelper", Pos: siteAfter(t, "lib/propvia_test.go", "", "func TestPropViaBadHelper(")},
 			{Kind: LinkCall, Package: lib, Symbol: "TestPropViaBadHelper", Callee: bad + ".Run", Pos: siteAfter(t, "lib/propvia_test.go", "func TestPropViaBadHelper(", "badhelper.Run(t, func(")},
-			{Kind: LinkRefusal, Package: bad, Symbol: "Run", Clause: seededRefusal(errors.New("call of mystery in " + bad + ".Run resolves to no declaration")), Pos: siteAfter(t, badFile, "func Run(", "mystery(t)")},
+			{Kind: LinkRefusal, Package: bad, Symbol: "Run", Clause: seededRefusal(errors.New("call of mystery in " + bad + ".Run resolves to no declaration")).String(), Pos: siteAfter(t, badFile, "func Run(", "mystery(t)")},
 		}}},
 		// A refusal met before the driving hop: the chain is the hop's.
 		{lib + ".TestPropViaBadThenGood", gofresh.Chain{Arm: ArmSeedingThrough, Links: []gofresh.ChainLink{
@@ -95,7 +93,7 @@ func TestExplainWitnessRendersServingsWalk(t *testing.T) {
 		{lib + ".TestPropViaTwoBad", gofresh.Chain{Arm: ArmSeedingRefused, Links: []gofresh.ChainLink{
 			{Kind: LinkWitness, Package: lib, Symbol: "TestPropViaTwoBad", Pos: siteAfter(t, "lib/propvia_test.go", "", "func TestPropViaTwoBad(")},
 			{Kind: LinkCall, Package: lib, Symbol: "TestPropViaTwoBad", Callee: bad + ".Run", Pos: siteAfter(t, "lib/propvia_test.go", "func TestPropViaTwoBad(", "badhelper.Run(t, func(")},
-			{Kind: LinkRefusal, Package: bad, Symbol: "Run", Clause: seededRefusal(errors.New("call of mystery in " + bad + ".Run resolves to no declaration")), Pos: siteAfter(t, badFile, "func Run(", "mystery(t)")},
+			{Kind: LinkRefusal, Package: bad, Symbol: "Run", Clause: seededRefusal(errors.New("call of mystery in " + bad + ".Run resolves to no declaration")).String(), Pos: siteAfter(t, badFile, "func Run(", "mystery(t)")},
 		}}},
 		// Two direct drivers: the first call is the driving site.
 		{lib + ".TestPropTwoDrivers", gofresh.Chain{Arm: ArmSeedingDirect, Links: []gofresh.ChainLink{
@@ -174,7 +172,7 @@ func TestExplainWitnessRendersServingsWalk(t *testing.T) {
 		t.Fatalf("unreadable declaration: %v view %q\n%+v", err, view, chain)
 	}
 	at := chain.Links[1]
-	if at.Kind != LinkRefusal || at.Package != lib || at.Symbol != "TestPropViaOtherPackage" || at.Pos != siteAfter(t, "lib/propvia_test.go", "func TestPropViaOtherPackage(", "helpers.Run(") || !strings.HasPrefix(at.Clause, reasonSeedingRefused.prefix) || !strings.Contains(at.Clause, "example.com/fixture/helpers") {
+	if at.Kind != LinkRefusal || at.Package != lib || at.Symbol != "TestPropViaOtherPackage" || at.Pos != siteAfter(t, "lib/propvia_test.go", "func TestPropViaOtherPackage(", "helpers.Run(") || !strings.HasPrefix(at.Clause, reasonSeedingRefused.prefix()) || !strings.Contains(at.Clause, "example.com/fixture/helpers") {
 		t.Fatalf("unreadable declaration's refusal link: %+v", at)
 	}
 	// Reached through a hop: the refusing body is the helper whose
@@ -261,7 +259,7 @@ func TestExplainWitnessAnswersAcrossViews(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	refusal := seededRefusal(errors.New("call of mystery in " + lib + ".splitDrive resolves to no declaration"))
+	refusal := seededRefusal(errors.New("call of mystery in " + lib + ".splitDrive resolves to no declaration")).String()
 	served, err := refusing.NeverServe([]string{lib + ".TestSplit"})
 	if err != nil || served[lib+".TestSplit"] != refusal {
 		t.Fatalf("the dst view's refusal: %v %v", served, err)
@@ -312,46 +310,53 @@ func TestSeedingChainIsBoundedKeepingTheDecidingLink(t *testing.T) {
 func TestReasonClassesCarryTheirExplainKind(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-explain", "REQ-evidence-witness-freshness")
 	minted := map[string]explainKind{
-		seededReason:                              explainWitness,
-		seededThroughReason("example.com/p.run"):  explainWitness,
-		seededRefusal(errors.New("call of x")):    explainWitness,
-		reasonUnclassifiable.with("load errors"):  explainSelf,
-		reasonPostRun.with("reaches net"):         explainCulprit,
-		reasonObservationSeal.with("moved"):       explainCulprit,
-		reasonProofRefused.with("refused"):        explainCulprit,
-		reasonProducerFault.with("faulted"):       explainSelf,
-		reasonStateUnavailable.with("unreadable"): explainSelf,
-		reasonSourceFailed.with("failed"):         explainSelf,
-		reasonDegraded.with("degraded"):           explainSelf,
-		reasonNotPublished.with(""):               explainSelf,
-		reasonNoCapture.with("no invocation"):     explainSelf,
+		seededReason.String():                              explainWitness,
+		seededThroughReason("example.com/p.run").String():  explainWitness,
+		seededRefusal(errors.New("call of x")).String():    explainWitness,
+		reasonStoreRefused.with("disk full").String():      explainSelf,
+		reasonUnclassifiable.with("load errors").String():  explainSelf,
+		reasonPostRun.with("reaches net").String():         explainCulprit,
+		reasonObservationSeal.with("moved").String():       explainCulprit,
+		reasonProofRefused.with("refused").String():        explainCulprit,
+		reasonProducerFault.with("faulted").String():       explainSelf,
+		reasonStateUnavailable.with("unreadable").String(): explainSelf,
+		reasonSourceFailed.with("failed").String():         explainSelf,
+		reasonDegraded.with("degraded").String():           explainSelf,
+		reasonNotPublished.with("").String():               explainSelf,
+		reasonNoCapture.with("no invocation").String():     explainSelf,
 	}
 	for _, r := range judgedReasons {
-		minted[r] = explainSelf
+		minted[r.String()] = explainSelf
 	}
 	for reason, kind := range minted {
 		c, ok := classifyReason(reason)
-		if !ok || c.kind != kind {
+		if !ok || c.kind() != kind {
 			t.Errorf("%q: class %+v ok=%v, want kind %d", reason, c, ok, kind)
 		}
 	}
-	for _, foreign := range []string{"reaches testing.Run (test runtime execution)", reasonNoFingerprint + ": detail", "", "post-run"} {
+	for _, foreign := range []string{"reaches testing.Run (test runtime execution)", reasonNoFingerprint.String() + ": detail", "", "post-run"} {
 		if c, ok := classifyReason(foreign); ok {
 			t.Errorf("%q classified as %+v, want foreign", foreign, c)
 		}
 	}
+	if (uncacheable{}).String() != "" || reasonNone.kind() != 0 || reasonNone.prefix() != "" {
+		t.Errorf("the zero reason renders %q with kind %d; want no reason — no prefix, no kind", (uncacheable{}).String(), reasonNone.kind())
+	}
+	if c, ok := classifyReason(""); ok || c != reasonNone {
+		t.Errorf("an empty text classifies as %v ok=%v; want the none class, unknown", c, ok)
+	}
 	for _, c := range reasonClasses {
-		if c.prefix == "" || c.kind == 0 {
+		if c.prefix() == "" || c.kind() == 0 {
 			t.Errorf("class %+v: a prefix and a kind are required", c)
 		}
 		for _, d := range reasonClasses {
-			if c != d && strings.HasPrefix(d.prefix, c.prefix) {
-				t.Errorf("prefix %q begins %q: the table is not prefix-free", c.prefix, d.prefix)
+			if c != d && strings.HasPrefix(d.prefix(), c.prefix()) {
+				t.Errorf("prefix %q begins %q: the table is not prefix-free", c.prefix(), d.prefix())
 			}
 		}
 		for _, r := range judgedReasons {
-			if strings.HasPrefix(r, c.prefix) {
-				t.Errorf("prefix %q begins the judgment reason %q", c.prefix, r)
+			if strings.HasPrefix(r.String(), c.prefix()) {
+				t.Errorf("prefix %q begins the judgment reason %q", c.prefix(), r)
 			}
 		}
 	}
@@ -360,82 +365,41 @@ func TestReasonClassesCarryTheirExplainKind(t *testing.T) {
 	}
 }
 
-// reasonLiteralsOutside walks Go sources for a string literal spelling
-// a reason class — a composer outside the table — returning each as
-// file:line: value. The table's own file is the one place a prefix is
-// spelled; the judgment vocabulary is spelled in its own home, which
-// the table reads by name.
-func reasonLiteralsOutside(fset *token.FileSet, files map[string]*ast.File) []string {
-	var found []string
-	for name, f := range files {
-		if filepath.Base(name) == "reasons.go" {
-			continue
+// TestParseReasonAdmitsEveryClassAndWrapsTheForeign pins the text
+// boundary: a reason of every class, composed over a detail (the
+// judged vocabulary whole), crosses the text form and comes back as
+// the same class and detail; a spelling no class owns is admitted
+// fail-closed under the unclassifiable class with the spelling as its
+// detail, so it never serves and explain answers it as its own
+// attribution (REQ-mcp-explain, REQ-evidence-witness-freshness).
+//
+//gofresh:pure
+func TestParseReasonAdmitsEveryClassAndWrapsTheForeign(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-explain", "REQ-evidence-witness-freshness")
+	for _, c := range reasonClasses {
+		for _, detail := range []string{"", "x", "post-run validation: nested", "a: b: c"} {
+			minted := c.with(detail)
+			if got := parseReason(minted.String()); got != minted {
+				t.Errorf("%q: parsed as %+v, want %+v", minted.String(), got, minted)
+			}
 		}
-		ast.Inspect(f, func(n ast.Node) bool {
-			lit, ok := n.(*ast.BasicLit)
-			if !ok || lit.Kind != token.STRING {
-				return true
-			}
-			v, err := strconv.Unquote(lit.Value)
-			if err != nil {
-				return true
-			}
-			for _, c := range reasonClasses {
-				if strings.HasPrefix(v, c.prefix) {
-					found = append(found, fmt.Sprintf("%s: %q", fset.Position(lit.Pos()), v))
-					return true
-				}
-			}
-			for _, r := range judgedReasons {
-				if v == r && filepath.Base(name) != "judgment.go" {
-					found = append(found, fmt.Sprintf("%s: %q", fset.Position(lit.Pos()), v))
-					return true
-				}
-			}
-			return true
-		})
 	}
-	return found
-}
-
-// TestReasonPrefixesAreSpelledOnce pins the one source: the walk's
-// logic over synthetic sources (a composer spelling a prefix is found,
-// the table's own file is not, an unrelated literal is not), then the
-// backend's production files, where no composer spells a class outside
-// the table (REQ-mcp-explain).
-func TestReasonPrefixesAreSpelledOnce(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-explain")
-	fset := token.NewFileSet()
-	parse := func(name, src string) *ast.File {
-		f, err := parser.ParseFile(fset, name, src, 0)
-		if err != nil {
-			t.Fatal(err)
+	for _, r := range judgedReasons {
+		if got := parseReason(r.String()); got != r {
+			t.Errorf("%q: parsed as %+v, want the judged reason whole", r.String(), got)
 		}
-		return f
 	}
-	synthetic := map[string]*ast.File{
-		"a/composer.go": parse("a/composer.go", "package a\n\nvar x = \"post-run validation: \" + y\nvar z = \"two invocations of one capture group select the package; no single producing leg\"\n"),
-		"a/reasons.go":  parse("a/reasons.go", "package a\n\nvar p = \"post-run validation: \"\n"),
-		"a/other.go":    parse("a/other.go", "package a\n\nvar q = \"post-run\"\n"),
-	}
-	got := reasonLiteralsOutside(fset, synthetic)
-	if len(got) != 2 || !strings.Contains(got[0]+got[1], "a/composer.go:3") || !strings.Contains(got[0]+got[1], "a/composer.go:4") {
-		t.Fatalf("synthetic walk = %v, want the composer's two literals alone", got)
-	}
-	real := map[string]*ast.File{}
-	entries, err := os.ReadDir(".")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, e := range entries {
-		name := e.Name()
-		if e.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
-			continue
+	for _, foreign := range []string{"reaches testing.Run (test runtime execution)", "", "post-run", reasonNoFingerprint.String() + ": d"} {
+		got := parseReason(foreign)
+		if got.class != reasonUnclassifiable || got.detail != foreignSpellingDetail+foreign {
+			t.Errorf("%q: admitted as %+v, want the unclassifiable class over the spelling", foreign, got)
 		}
-		real[name] = parse(name, readFile(t, name))
-	}
-	if got := reasonLiteralsOutside(fset, real); len(got) != 0 {
-		t.Fatalf("reason classes spelled outside the table:\n%s", strings.Join(got, "\n"))
+		if c, ok := classifyReason(got.String()); !ok || c.kind() != explainSelf {
+			t.Errorf("%q: the wrapped spelling classifies as %+v ok=%v, want its own attribution", foreign, c, ok)
+		}
+		if again := parseReason(got.String()); again != got {
+			t.Errorf("%q: the wrapped spelling parsed again as %+v, want itself", foreign, again)
+		}
 	}
 }
 

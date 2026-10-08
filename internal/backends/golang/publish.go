@@ -51,7 +51,7 @@ func publishEligible(
 	namespaces []witnesscache.ScratchNamespace,
 	served []gofresh.Subject,
 	executedWhy map[gofresh.Subject]string,
-	reasons map[gofresh.Subject]string,
+	reasons map[gofresh.Subject]uncacheable,
 ) (records []witnesscache.Record, discarded bool, checkFault, closeFault, fatal error) {
 	// Observation-completeness proofs attach only when every candidate of
 	// the view can attach: the observed view revalidates as one unit, so
@@ -215,7 +215,7 @@ func publishEligible(
 // discarding served outcomes with the named cause. It reports the
 // served discard and the close error separately so run-degradation
 // surfaces can name the cause.
-func closeGroup(ctx context.Context, view *gofresh.View, stake bool, order, served []gofresh.Subject, executedWhy map[gofresh.Subject]string, reasons map[gofresh.Subject]string) (discarded bool, closeErr, fatal error) {
+func closeGroup(ctx context.Context, view *gofresh.View, stake bool, order, served []gofresh.Subject, executedWhy map[gofresh.Subject]string, reasons map[gofresh.Subject]uncacheable) (discarded bool, closeErr, fatal error) {
 	if !stake {
 		return false, nil, nil
 	}
@@ -232,7 +232,7 @@ func closeGroup(ctx context.Context, view *gofresh.View, stake bool, order, serv
 		// each names why serving refused it (the spec's attribution for
 		// re-executed record holders).
 		for _, s := range served {
-			executedWhy[s] = reasonSourceFailed.with(err.Error())
+			executedWhy[s] = reasonSourceFailed.with(err.Error()).String()
 		}
 		return len(served) != 0, err, nil
 	}

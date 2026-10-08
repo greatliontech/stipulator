@@ -924,7 +924,7 @@ func TestHealthJudgedFormKeepsWhatClosedBeforeADegrade(t *testing.T) {
 	if tr.Uncached != 3 || tr.UncacheableReasons["example.com/units/a.TestA"] != "" ||
 		!strings.HasPrefix(tr.UncacheableReasons["example.com/units/b.TestB"], "freshness path degraded: ") ||
 		!strings.HasPrefix(tr.UncacheableReasons["example.com/units/d.TestD"], "freshness path degraded: ") ||
-		tr.UncacheableReasons["example.com/units/c.TestC"] != reasonProducerUnhealthy {
+		tr.UncacheableReasons["example.com/units/c.TestC"] != reasonProducerUnhealthy.String() {
 		t.Fatalf("uncacheable = %d %v; want the red subject on the ladder's reason and every package after the fault on the degrade", tr.Uncached, tr.UncacheableReasons)
 	}
 	if tr.Outcomes["example.com/units/d.TestD"] != verify.TestPassed {
@@ -977,6 +977,9 @@ func TestStoreRefusalIsNamedPerSubject(t *testing.T) {
 	if judged.Uncached != 1 || !strings.HasPrefix(judged.UncacheableReasons[key], "the store refused the record: ") {
 		t.Fatalf("health-judged form: uncacheable %d %v; want the subject named on the store's refusal", judged.Uncached, judged.UncacheableReasons)
 	}
+	if c, ok := classifyReason(judged.UncacheableReasons[key]); !ok || c.kind() != explainSelf {
+		t.Fatalf("the store's refusal classifies as %+v ok=%v; want its own attribution (explain answers it)", c, ok)
+	}
 	// A capture serves one operation: the selective leg takes its own.
 	selective, err := RunWitnessesPolicy(ctx, mustCapture(t, ctx, tmp, pol), noSeeding{})
 	if err != nil {
@@ -984,5 +987,8 @@ func TestStoreRefusalIsNamedPerSubject(t *testing.T) {
 	}
 	if selective.Uncached != 1 || !strings.HasPrefix(selective.UncacheableReasons[key], "the store refused the record: ") {
 		t.Fatalf("selective form: uncacheable %d %v; want the subject named on the store's refusal", selective.Uncached, selective.UncacheableReasons)
+	}
+	if c, ok := classifyReason(selective.UncacheableReasons[key]); !ok || c.kind() != explainSelf {
+		t.Fatalf("the selective form's store refusal classifies as %+v ok=%v; want its own attribution", c, ok)
 	}
 }
