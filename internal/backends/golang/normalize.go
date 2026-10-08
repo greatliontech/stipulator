@@ -310,10 +310,15 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	}
 	env = owned
 	n.TelemetrySource = source
-	snapshot, version, goos, goarch, cgo, goflags, goexperiment, _, gomodcache, gocache, err := effectiveGoEnv(ctx, n.Dir, env)
+	snapshot, err := effectiveGoEnv(ctx, n.Dir, env)
 	if err != nil {
 		return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
 	}
+	// Every effective value below is the one snapshot's answer.
+	v := snapshot.Value
+	version, goos, goarch, cgo := v("GOVERSION"), v("GOOS"), v("GOARCH"), v("CGO_ENABLED")
+	goflags, goexperiment := v("GOFLAGS"), v("GOEXPERIMENT")
+	gomodcache, gocache := v("GOMODCACHE"), v("GOCACHE")
 	// A declared toolchain is exported above and read back here as the
 	// toolchain the environment actually resolves — a wrapper on PATH
 	// may override the export outright — so the one read judges the
@@ -547,31 +552,31 @@ func validateBracketPath(p string) error {
 	return nil
 }
 
-// effectiveGoEnv reads the pin-at-load values from the toolchain's one
-// environment snapshot (gotool.TakeEnvSnapshot under the owned runner:
-// the normalization's sample runs through the owned command boundary,
-// REQ-go-owned-processes), an unset value the empty string as the go
-// command answers it.
-func effectiveGoEnv(ctx context.Context, dir string, env []string) (snapshot *gotool.EnvSnapshot, version, goos, goarch, cgo, goflags, goexperiment, goroot, gomodcache, gocache string, err error) {
+// effectiveGoEnv takes the toolchain's one environment snapshot
+// (gotool.TakeEnvSnapshot under the owned runner: the normalization's
+// sample runs through the owned command boundary,
+// REQ-go-owned-processes) — every pin-at-load value is read from it
+// through Value, an unset value the empty string as the go command
+// answers it — refusing a document no toolchain wrote.
+func effectiveGoEnv(ctx context.Context, dir string, env []string) (*gotool.EnvSnapshot, error) {
 	// The query is a Go child like every other: it runs only under an
 	// environment whose telemetry is owned (telemetry.go).
 	if !telemetryOwned(env) {
-		return nil, "", "", "", "", "", "", "", "", "", fmt.Errorf("resolving effective go env: the query environment's toolchain telemetry is not owned")
+		return nil, fmt.Errorf("resolving effective go env: the query environment's toolchain telemetry is not owned")
 	}
-	snapshot, err = ownedRunner.TakeEnvSnapshot(ctx, dir, env)
+	snapshot, err := ownedRunner.TakeEnvSnapshot(ctx, dir, env)
 	if err != nil {
-		return nil, "", "", "", "", "", "", "", "", "", fmt.Errorf("resolving effective go env: %w", err)
+		return nil, fmt.Errorf("resolving effective go env: %w", err)
 	}
-	v := snapshot.Value
 	// The toolchain never answers these three empty: a document without
 	// them is no toolchain's answer (a wrapper filtering keys), refused
 	// rather than pinned as empty values.
 	for _, key := range []string{"GOVERSION", "GOOS", "GOARCH"} {
-		if v(key) == "" {
-			return nil, "", "", "", "", "", "", "", "", "", fmt.Errorf("resolving effective go env: the toolchain answered no %s", key)
+		if snapshot.Value(key) == "" {
+			return nil, fmt.Errorf("resolving effective go env: the toolchain answered no %s", key)
 		}
 	}
-	return snapshot, v("GOVERSION"), v("GOOS"), v("GOARCH"), v("CGO_ENABLED"), v("GOFLAGS"), v("GOEXPERIMENT"), v("GOROOT"), v("GOMODCACHE"), v("GOCACHE"), nil
+	return snapshot, nil
 }
 
 // lookupEnv returns key's value from a normalized environment under the

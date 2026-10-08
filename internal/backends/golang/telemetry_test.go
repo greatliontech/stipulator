@@ -565,7 +565,7 @@ func TestLoadTimeQueryRefusesAnUnownedEnvironment(t *testing.T) {
 	}
 	cache := t.TempDir()
 	t.Setenv("XDG_CACHE_HOME", cache)
-	if _, _, _, _, _, _, _, _, _, _, err := effectiveGoEnv(context.Background(), t.TempDir(), []string{"HOME=/h", "PATH=/usr/bin"}); err == nil || !strings.Contains(err.Error(), "not owned") {
+	if _, err := effectiveGoEnv(context.Background(), t.TempDir(), []string{"HOME=/h", "PATH=/usr/bin"}); err == nil || !strings.Contains(err.Error(), "not owned") {
 		t.Fatalf("an unowned query environment: %v; want a refusal", err)
 	}
 	if !telemetryOwned([]string{"PATH=/usr/bin"}) {

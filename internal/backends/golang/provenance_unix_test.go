@@ -188,25 +188,38 @@ func witnessAndListingBehindAHold(t *testing.T, redirect string) {
 
 // The normalization's snapshot is judged whole: a toolchain answering
 // no GOVERSION, GOOS, or GOARCH (a wrapper filtering the document) is
-// refused, never pinned as empty values (REQ-policy-explicit).
+// refused naming the missing key, never pinned as empty values — one
+// row per key, the document carrying the other two
+// (REQ-policy-explicit).
 func TestNormalizationRefusesAPartialEnvironmentDocument(t *testing.T) {
 	stipulate.Covers(t, "REQ-policy-explicit")
 	goBinary, err := exec.LookPath("go")
 	if err != nil {
 		t.Fatal(err)
 	}
-	bin := t.TempDir()
-	script := "#!/bin/sh\nif [ \"$1\" = env ] && [ \"$2\" = -json ]; then echo '{\"GOOS\":\"linux\"}'; exit 0; fi\nexec \"" + goBinary + "\" \"$@\"\n"
-	if err := os.WriteFile(filepath.Join(bin, "go"), []byte(script), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-	neutralAmbient(t)
-	dir := discoverFixture(t)
-	cfg := &stipulatorv1.GoInvocationConfig{}
-	cfg.SetPackages([]string{"./..."})
-	if _, err := NormalizeInvocation(context.Background(), dir, goInvocation("partial", cfg)); err == nil || !strings.Contains(err.Error(), "answered no GOVERSION") {
-		t.Fatalf("a partial environment document = %v, want the missing key named", err)
+	for _, missing := range []string{"GOVERSION", "GOOS", "GOARCH"} {
+		t.Run(missing, func(t *testing.T) {
+			document := "{"
+			for _, key := range []string{"GOVERSION", "GOOS", "GOARCH"} {
+				if key != missing {
+					document += "\"" + key + "\":\"x\","
+				}
+			}
+			document = strings.TrimSuffix(document, ",") + "}"
+			bin := t.TempDir()
+			script := "#!/bin/sh\nif [ \"$1\" = env ] && [ \"$2\" = -json ]; then echo '" + document + "'; exit 0; fi\nexec \"" + goBinary + "\" \"$@\"\n"
+			if err := os.WriteFile(filepath.Join(bin, "go"), []byte(script), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+			neutralAmbient(t)
+			dir := discoverFixture(t)
+			cfg := &stipulatorv1.GoInvocationConfig{}
+			cfg.SetPackages([]string{"./..."})
+			if _, err := NormalizeInvocation(context.Background(), dir, goInvocation("partial", cfg)); err == nil || !strings.Contains(err.Error(), "answered no "+missing) {
+				t.Fatalf("a document without %s = %v, want the missing key named", missing, err)
+			}
+		})
 	}
 }
 
