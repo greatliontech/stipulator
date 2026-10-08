@@ -3,8 +3,8 @@ package golang
 import (
 	"bytes"
 	"context"
-	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -25,6 +25,12 @@ import (
 // stream from a clean exit, and every refusal is loud — a degraded
 // package always names its reason in a diagnostic.
 func FuzzGoExecuteEventStream(f *testing.F) {
+	cmd := exec.Command(os.Args[0], "-test.run=^TestCompletionExitHelper$")
+	cmd.Env = append(os.Environ(), "STIPULATOR_COMPLETION_EXIT=1")
+	failedExit := cmd.Run()
+	if cmd.ProcessState == nil || cmd.ProcessState.ExitCode() != 1 {
+		f.Fatalf("exit fixture did not produce status 1: %v", failedExit)
+	}
 	f.Add([]byte(`{"Action":"start","Package":"p"}`+"\n"+
 		`{"Action":"run","Package":"p","Test":"TestA"}`+"\n"+
 		`{"Action":"output","Package":"p","Test":"TestA","Output":"stipulator:covers REQ-a-b\n"}`+"\n"+
@@ -67,6 +73,11 @@ func FuzzGoExecuteEventStream(f *testing.F) {
 		`{"Action":"pass","Package":"q"}`+"\n"+
 		`{"Action":"pass","Package":"p"}`+"\n"), false)
 	f.Add([]byte(""), true)
+	// Ordinary assertion failure: every runnable finished and the package
+	// failed normally, which establishes completion but never passing health.
+	f.Add([]byte(`{"Action":"run","Test":"TestA"}`+"\n"+
+		`{"Action":"fail","Test":"TestA"}`+"\n"+
+		`{"Action":"fail"}`+"\n"), true)
 
 	f.Fuzz(func(t *testing.T, data []byte, exitFail bool) {
 		stipulate.Covers(t, "REQ-policy-attribution", "REQ-go-policy-complete")
@@ -76,7 +87,7 @@ func FuzzGoExecuteEventStream(f *testing.F) {
 		producer.SetProcessOrdinal(1)
 		var waitErr error
 		if exitFail {
-			waitErr = errors.New("exit status 1")
+			waitErr = failedExit
 		}
 		parse := func() (*streamState, packageRun) {
 			st := parseTestStream("fuzz", "example.com/p", bytes.NewReader(data), producer)
@@ -135,11 +146,26 @@ func FuzzGoExecuteEventStream(f *testing.F) {
 		// A completed-eligible classification never coexists with abort
 		// residue: eligibility implies nothing started stayed unfinished.
 		if incompleteObservationReason(st1, waitErr, run1.disposition) == "" {
-			if len(startedTests(st1)) != 0 || st1.sawAbort || st1.terminal != "pass" {
+			if len(startedTests(st1)) != 0 || st1.sawAbort || (st1.terminal != "pass" && st1.terminal != "fail") {
 				t.Fatal("observation eligibility granted over an unproven testlog flush")
+			}
+			if st1.terminal == "fail" {
+				failed := false
+				for _, test := range st1.tests {
+					failed = failed || test.GetOutcome() == stipulatorv1.TestOutcome_TEST_OUTCOME_FAILED
+				}
+				if !exitFail || !failed {
+					t.Fatal("completion granted to an unexplained failure")
+				}
 			}
 		}
 	})
+}
+
+func TestCompletionExitHelper(t *testing.T) {
+	if os.Getenv("STIPULATOR_COMPLETION_EXIT") == "1" {
+		os.Exit(1)
+	}
 }
 
 // FuzzGoExecuteTestlogIngestion drives gofresh testlog ingestion over

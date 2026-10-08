@@ -94,7 +94,8 @@
       {
         "completed": {
           "digest": "00112233445566778899aabbccddeeff",
-          "manifest": "{\"v\":1,\"env\":[\"HOME\"],\"paths\":[{\"k\":\"rel\",\"p\":\"testdata/fixture.txt\"}]}"
+          "manifest": "{\"v\":2,\"env\":[\"HOME\"],\"paths\":[{\"k\":\"rel\",\"p\":\"testdata/fixture.txt\"}]}",
+          "outcomeReason": "operation-outcome support unavailable"
         },
         "package": "example.com/m/ok",
         "producer": {

@@ -512,7 +512,7 @@ func TestHealthJudgedDegradeReleasesEveryLeg(t *testing.T) {
 	t.Cleanup(func() { beforePackagePublishForTest = nil })
 	if _, _, err := executePolicy(ctx, pc, func(invocation string, unit packageUnit) error {
 		return recorder.packageCompleted(ctx, invocation, unit)
-	}); err != nil {
+	}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if recorder.degraded == "" || len(recorder.records) != 1 {
@@ -559,7 +559,7 @@ func TestHealthJudgedRunReleasesEveryGroupView(t *testing.T) {
 	}
 	if _, _, err := executePolicy(ctx, pc, func(invocation string, unit packageUnit) error {
 		return recorder.packageCompleted(ctx, invocation, unit)
-	}); err != nil {
+	}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if recorder.degraded != "" || len(recorder.records) != 2 {

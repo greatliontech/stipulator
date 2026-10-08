@@ -441,6 +441,7 @@ import (
 	"testing"
 )
 
+//gofresh:pure
 func TestReadsFixture(t *testing.T) {
 	b, err := os.ReadFile("fixture.txt")
 	if err != nil {
@@ -533,10 +534,10 @@ func TestGoRunWitnessesSourceMoverDiscardsServedGroup(t *testing.T) {
 		"served/lib.go": "package served\n\nfunc V() int { return 1 }\n",
 		"served/served_test.go": `package served
 
-import "testing"
+import ("os"; "testing")
 
-//gofresh:pure
 func TestServed(t *testing.T) {
+	_ = os.Getenv("HOME")
 	if V() != 1 {
 		t.Fail()
 	}
@@ -592,7 +593,7 @@ func TestWriter(t *testing.T) {
 		t.Fatalf("first run: ran=%d fresh=%d, want both executed", first.Ran, first.Fresh)
 	}
 
-	// Second run: the pure test serves at prepare time; the writer (its
+	// Second run: the supported test serves at prepare time; the writer (its
 	// own runtime inputs moved, so it never serves) re-executes and
 	// moves the served package's source mid-run. The deferred re-check
 	// cannot see a source mover; the closing validation refuses, the
@@ -615,6 +616,14 @@ func TestWriter(t *testing.T) {
 	if got := second.Outcomes["example.com/srcmover/served.TestServed"]; got != verify.TestPassed {
 		t.Fatalf("retried subject outcome = %v, want PASSED from the retry's execution", got)
 	}
+	retried := cacheRecord(t, witnesscache.Load(tmp), "example.com/srcmover/served", "TestServed")
+	if retried == nil || retried.Fingerprint.PurityAssertion != "" || !retried.Fingerprint.ObservationProof.Observable {
+		t.Fatalf("retry did not retain its own supported proof: %+v", retried)
+	}
+	method, subjects := outcomeFields(t, retried.Fingerprint.RuntimeInputs)
+	if method == "" || len(subjects) != 1 {
+		t.Fatal("retry published no process-bound outcome support")
+	}
 }
 
 // TestGoRunWitnessesBindReadsUnderDirectoryBracketRoot pins the
@@ -625,11 +634,8 @@ func TestWriter(t *testing.T) {
 // instead of sealing out-of-bracket, and an edit of the bound file stales
 // the witness, proving the read is pinned rather than excused. The
 // reader is a solo runnable whose read results are deliberately unused:
-// the observed proof is what lifts file-I/O closure conservatism
-// (REQ-inputs-observation-disposition confines that lift to the proof),
-// today's proof admits value-unused reads only — content-asserting
-// readers stay uncacheable until the observed proof admits value-used
-// reads — and proofs attach to solo processes.
+// explicit purity licenses unsupported file outcomes; the directory bracket
+// still binds file identity and detects movement under that override.
 func TestGoRunWitnessesBindReadsUnderDirectoryBracketRoot(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	stipulate.Covers(t, "REQ-evidence-witness-freshness")
@@ -649,6 +655,7 @@ import (
 	"testing"
 )
 
+//gofresh:pure
 func TestReadsCorpus(t *testing.T) {
 	data, _ := os.ReadFile("../docs/law/source.md")
 	_ = data
@@ -678,6 +685,21 @@ func TestReadsCorpus(t *testing.T) {
 		}
 	}
 	requireRun("cold", 0, 1, 0)
+	assertBracketDisposition := func(unverifiable bool) {
+		t.Helper()
+		rec := cacheRecord(t, witnesscache.Load(tmp), "example.com/corpus/pkg", "TestReadsCorpus")
+		if rec == nil {
+			t.Fatal("no directory-reader record to inspect")
+		}
+		state, err := runtimeinput.Current(context.Background(), rec.Fingerprint.RuntimeInputs, tmp, os.Environ())
+		if err != nil || state.Unverifiable != unverifiable {
+			t.Fatalf("directory bracket disposition = %+v %v, want unverifiable=%v", state, err, unverifiable)
+		}
+		if unverifiable && !strings.Contains(state.Reason, "source.md") {
+			t.Fatalf("undeclared directory lost its input refusal: %q", state.Reason)
+		}
+	}
+	assertBracketDisposition(false)
 	requireRun("warm", 1, 0, 0)
 
 	// The bound file's content is a recorded runtime input: an edit stales
@@ -697,6 +719,13 @@ func TestReadsCorpus(t *testing.T) {
 		t.Fatalf("edited-corpus re-execution does not name the moved input: %q", why)
 	}
 	requireRun("re-warm", 1, 0, 0)
+	// A fresh capture without the directory declaration retains its refusal
+	// even though the explicit purity override can license the final verdict.
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	cfg.SetBracketPaths(nil)
+	writePolicyRecord(t, tmp, p)
+	requireRun("undeclared directory under purity", 0, 1, 0)
+	assertBracketDisposition(true)
 }
 
 // TestCompartmentGrownServeGates pins the carve-out's gate directly
@@ -945,6 +974,7 @@ import (
 	"testing"
 )
 
+//gofresh:pure
 func TestReads(t *testing.T) {
 	_, _ = os.ReadFile("data.txt")
 }
@@ -1029,10 +1059,10 @@ func TestWritesOnce(t *testing.T) {
 	if retried == nil {
 		t.Fatal("retried reader did not republish against the settled tree")
 	}
-	// The retry ran the reader alone in its process, so the republished
-	// record carries the observation proof.
-	if retried.Fingerprint.ObservationProof == (gofresh.ObservationProof{}) || retried.Fingerprint.ObservationAssertion == "" {
-		t.Errorf("retried solo reader carries no observation proof: %+v", retried.Fingerprint)
+	// The retry retains the explicit override and identity guards, not a
+	// fabricated proof of file-operation outcomes.
+	if retried.Fingerprint.PurityAssertion == "" || retried.Fingerprint.ObservationProof != (gofresh.ObservationProof{}) {
+		t.Errorf("retried reader lost its evidence class: %+v", retried.Fingerprint)
 	}
 
 	// The settled tree serves the retried record beside the writer's.
@@ -1241,8 +1271,7 @@ import (
 )
 
 func TestFlakyReads(t *testing.T) {
-	raw, _ := os.ReadFile("flag.txt")
-	if string(raw) == "fail\n" {
+	if os.Getenv("STIPULATOR_FLAKY_INPUT") == "fail" {
 		t.Fail()
 	}
 }
@@ -1267,6 +1296,7 @@ func TestSecond(t *testing.T) { _ = edition }
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", cfg)})
 	writePolicyRecord(t, tmp, p)
 
+	t.Setenv("STIPULATOR_FLAKY_INPUT", "fail")
 	red, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
@@ -1294,9 +1324,7 @@ func TestSecond(t *testing.T) { _ = edition }
 	// Settle the flaky test's observed input and move the pair's source:
 	// the recordless flaky test re-executes in a selective process of its
 	// own, the pair — stale by source — in one shared selective process.
-	if err := os.WriteFile(filepath.Join(tmp, "pkg", "flag.txt"), []byte("pass\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	t.Setenv("STIPULATOR_FLAKY_INPUT", "pass")
 	if err := os.WriteFile(filepath.Join(tmp, "two", "two.go"), []byte("package two\n\nconst edition = 2\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -2193,14 +2221,9 @@ func TestGoRunWitnessesNamesReExecutionReason(t *testing.T) {
 	}
 }
 
-// A reviewed bracket path lets an unasserted witness consume a fixed
-// external file cacheably: the pre-spawn bracket fingerprints it,
-// observation binds the constant-path read, the proof stays closed, and
-// the record serves until the file changes - while the identical
-// witness without the declaration seals out-of-bracket. Process images
-// follow the same mechanics but their spawning subjects additionally
-// need a purity assertion, since child behavior is outside the testlog
-// (REQ-evidence-witness-freshness).
+// Under explicit purity a reviewed bracket path binds an external file's
+// identity and detects its movement. A bracket alone cannot establish file
+// outcomes, and without either declaration the read seals out-of-bracket.
 func TestGoRunWitnessesBracketPathBindsExternalFile(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness")
 	if testing.Short() {
@@ -2225,13 +2248,14 @@ func TestReadsPinnedExternal(*testing.T) {
 }
 `,
 	}
-	run := func(declare bool) *verify.TestRun {
+	run := func(declare, assume bool) *verify.TestRun {
 		t.Helper()
 		t.Setenv("XDG_CACHE_HOME", t.TempDir())
 		tmp := writeModule(t, files)
 		cfg := &stipulatorv1.GoInvocationConfig{}
 		cfg.SetPackages([]string{"./pkg"})
 		cfg.SetRace(true)
+		cfg.SetAssumePure(assume)
 		if declare {
 			cfg.SetBracketPaths([]string{external})
 		}
@@ -2245,7 +2269,20 @@ func TestReadsPinnedExternal(*testing.T) {
 		if first.Degraded != "" {
 			t.Fatalf("degraded: %s", first.Degraded)
 		}
-		if declare {
+		if assume {
+			rec := cacheRecord(t, witnesscache.Load(tmp), "example.com/extread/pkg", "TestReadsPinnedExternal")
+			if rec == nil {
+				t.Fatal("no external-reader record to inspect")
+			}
+			state, err := runtimeinput.Current(context.Background(), rec.Fingerprint.RuntimeInputs, tmp, os.Environ())
+			if err != nil || state.Unverifiable == declare {
+				t.Fatalf("external bracket disposition = %+v %v, declared=%v", state, err, declare)
+			}
+			if !declare && !strings.Contains(state.Reason, "pinned.conf") {
+				t.Fatalf("undeclared external file lost its refusal: %q", state.Reason)
+			}
+		}
+		if declare && assume {
 			if first.Ran != 1 || first.Uncached != 0 {
 				t.Fatalf("declared first run ran=%d uncached=%d, want 1/0 (reasons=%v)", first.Ran, first.Uncached, first.UncacheableReasons)
 			}
@@ -2274,8 +2311,12 @@ func TestReadsPinnedExternal(*testing.T) {
 		return first
 	}
 
-	run(true)
-	bare := run(false)
+	run(true, true)
+	run(false, true)
+	if unsupported := run(true, false); unsupported.Uncached != 1 {
+		t.Fatalf("bracket without outcome support published: %+v", unsupported)
+	}
+	bare := run(false, false)
 	if bare.Uncached != 1 {
 		t.Fatalf("undeclared first run uncached=%d, want 1 (reasons=%v)", bare.Uncached, bare.UncacheableReasons)
 	}
@@ -2680,6 +2721,7 @@ import (
 	"testing"
 )
 
+//gofresh:pure
 func TestReads(t *testing.T) {
 	if os.Getenv("READER_INVOCATION") == "" {
 		t.Fatal("executed outside the reader's own invocation")

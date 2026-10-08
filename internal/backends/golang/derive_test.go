@@ -311,7 +311,7 @@ func TestDeriveCachedOutcomeGrantsNoHealthOrEvidence(t *testing.T) {
 		Group:       "00112233aabbccdd",
 		Package:     "example.com/m/redmain",
 		Test:        "TestGreen",
-		Fingerprint: witnesscache.Fingerprint{MaximalClosure: "00112233445566778899aabbccddeeff", TestVariantClosure: "00112233445566778899aabbccddeeff", Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: "eyJ2IjoxfQ", RuntimeDigest: "00112233445566778899aabbccddeeff", ResultKind: gofresh.CodeResult},
+		Fingerprint: witnesscache.Fingerprint{MaximalClosure: "00112233445566778899aabbccddeeff", TestVariantClosure: "00112233445566778899aabbccddeeff", Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: "eyJ2IjoyfQ", RuntimeDigest: "00112233445566778899aabbccddeeff", ResultKind: gofresh.CodeResult},
 		CompartmentLedger: &witnesscache.CompartmentLedger{Declarations: []witnesscache.CompartmentDeclaration{
 			{File: "seed_test.go", Kind: "func", Name: "TestGreen", Hash: "00112233445566778899aabbccddeeff"},
 		}},

@@ -1470,9 +1470,13 @@ func ExecutePolicyWitnessed(ctx context.Context, pc *Capture, seeding verify.Wit
 		// (REQ-evidence-toolchain-provenance).
 		return nil, nil, err
 	}
+	proofs := processProofs{}
+	for _, g := range recorder.groups {
+		proofs.add(g, g.legs)
+	}
 	report, _, err := executePolicy(ctx, pc, func(invocation string, unit packageUnit) error {
 		return recorder.packageCompleted(ctx, invocation, unit)
-	})
+	}, proofs)
 	if err != nil {
 		return nil, nil, err
 	}

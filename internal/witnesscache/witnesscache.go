@@ -294,7 +294,7 @@ func loadSince(dir string, started time.Time) []Record {
 // the compartment digest its fingerprint names whenever the file parses
 // at all — a refused record's ledger is kept referenced: every refusal
 // here is the record's own bytes' (a field that fails the format, a
-// manifest that does not decode as canonical Gofresh v1), and keeping
+// manifest that does not decode as canonical Gofresh v2), and keeping
 // a refused record's ledger costs nothing, so a refusal costs the
 // record's execution and nothing more.
 func loadEntry(name string, data []byte, dir string) (Record, string, bool) {

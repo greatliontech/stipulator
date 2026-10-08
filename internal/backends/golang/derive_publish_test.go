@@ -75,7 +75,7 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 	// its sibling's kill will shadow — that test produces no row, and a
 	// record this execution never touched is retained, never silently
 	// dropped.
-	seedFP := witnesscache.Fingerprint{MaximalClosure: "00112233445566778899aabbccddeeff", TestVariantClosure: "00112233445566778899aabbccddeeff", Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: "eyJ2IjoxfQ", RuntimeDigest: "00112233445566778899aabbccddeeff", ResultKind: gofresh.CodeResult}
+	seedFP := witnesscache.Fingerprint{MaximalClosure: "00112233445566778899aabbccddeeff", TestVariantClosure: "00112233445566778899aabbccddeeff", Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: "eyJ2IjoyfQ", RuntimeDigest: "00112233445566778899aabbccddeeff", ResultKind: gofresh.CodeResult}
 	seedLedger := func(test string) *witnesscache.CompartmentLedger {
 		return &witnesscache.CompartmentLedger{Declarations: []witnesscache.CompartmentDeclaration{
 			{File: "seed_test.go", Kind: "func", Name: test, Hash: "00112233445566778899aabbccddeeff"},
@@ -291,7 +291,7 @@ import (
 )
 
 func TestReadsObserved(t *testing.T) {
-	_, _ = os.ReadFile("data.txt")
+	_ = os.Getenv("PUB_GROUP_SPLIT")
 }
 `,
 		"multi/multi_test.go": `package multi
@@ -352,7 +352,7 @@ import (
 )
 
 func TestSharedReads(t *testing.T) {
-	_, _ = os.ReadFile("data.txt")
+	_ = os.Getenv("PUB_GROUP_SPLIT")
 }
 `,
 	})

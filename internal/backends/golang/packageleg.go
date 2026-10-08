@@ -2,8 +2,10 @@ package golang
 
 import (
 	"context"
+	"sync"
 
 	gofresh "github.com/greatliontech/gofresh"
+	"github.com/greatliontech/gofresh/runtimeinput"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
 
@@ -17,6 +19,9 @@ import (
 // validation re-observes the package's subjects alone, never the
 // group's.
 type packageLeg struct {
+	// preparation serializes spawn-side proof use with a run-wide degradation
+	// releasing legs while sibling packages are still preparing their process.
+	preparation sync.Mutex
 	// view is the package's sibling of the group's view; nil once the
 	// leg has released.
 	view *gofresh.View
@@ -54,9 +59,52 @@ func (l *packageLeg) prove(ctx context.Context, candidates []gofresh.Subject) {
 	l.observed, l.observedFPs = observedView(ctx, l.view, candidates)
 }
 
+// processProofs routes preparation to the same invocation-owned package leg
+// that will attach and validate the resulting observation. The map is assembled
+// before execution; each package exclusively owns its leg until publication.
+type processProofs map[string]map[string]*packageLeg
+
+func (p processProofs) add(g *captureGroup, legs map[string]*packageLeg) {
+	for pkg, leg := range legs {
+		inv := g.selectingInvocation(pkg)
+		if inv == "" || g.packages[pkg].ambiguous {
+			continue
+		}
+		if p[inv] == nil {
+			p[inv] = map[string]*packageLeg{}
+		}
+		p[inv][pkg] = leg
+	}
+}
+
+// prepareOutcome binds the already selected proof to this actual process span.
+// Whole-package execution uses the discovery-time solo prediction; an explicit
+// selection must name exactly that runnable. Isolation never borrows another
+// runnable's support, and preparation failure leaves identity-only guards.
+func (l *packageLeg) prepareOutcome(ctx context.Context, selection []string, frame runtimeinput.ProducerFrame, process string) runtimeinput.OutcomeSupport {
+	if l == nil {
+		return runtimeinput.OutcomeSupport{}
+	}
+	l.preparation.Lock()
+	defer l.preparation.Unlock()
+	if l.observed == nil || len(l.candidates) != 1 {
+		return runtimeinput.OutcomeSupport{}
+	}
+	if selection != nil && (len(selection) != 1 || selection[0] != l.candidates[0].Symbol) {
+		return runtimeinput.OutcomeSupport{}
+	}
+	support, err := l.observed.PrepareOutcomeSupport(ctx, frame, process)
+	if err != nil {
+		return runtimeinput.OutcomeSupport{}
+	}
+	return support
+}
+
 // release drops the leg's views once nothing more reads them; the
 // published and revalidated marks stand.
 func (l *packageLeg) release() {
+	l.preparation.Lock()
+	defer l.preparation.Unlock()
 	l.view, l.observed, l.observedFPs = nil, nil, nil
 }
 

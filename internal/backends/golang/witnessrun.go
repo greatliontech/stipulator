@@ -496,7 +496,11 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 		}
 		return nil
 	}
-	if err := executeSelections(ctx, pc.normalized, staleSel, m, onPackageDone); err != nil {
+	proofs := processProofs{}
+	for _, wg := range groups {
+		proofs.add(wg.g, wg.legs)
+	}
+	if err := executeSelections(ctx, pc.normalized, staleSel, m, onPackageDone, proofs); err != nil {
 		return nil, err
 	}
 	var ineligibleMerge *execMerge
@@ -506,7 +510,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 		// they execute here in the execution phase and fold after the
 		// main merges — failures and registrations only, never a grant.
 		ineligibleMerge = newExecMerge()
-		if err := executeSelections(ctx, pc.normalized, multiIneligible, ineligibleMerge, nil); err != nil {
+		if err := executeSelections(ctx, pc.normalized, multiIneligible, ineligibleMerge, nil, nil); err != nil {
 			return nil, err
 		}
 	}
@@ -1197,7 +1201,7 @@ func (m *execMerge) add(invocation string, res *SelectionResult) {
 // install while its siblings still execute, so a run dying
 // mid-execution keeps every record already produced
 // (REQ-evidence-witness-cache-format's install-on-completion rule).
-func executeSelections(ctx context.Context, invocations []*NormalizedInvocation, staleSel map[string]TestSelection, m *execMerge, onPackage func(invocation string, unit packageUnit) error) error {
+func executeSelections(ctx context.Context, invocations []*NormalizedInvocation, staleSel map[string]TestSelection, m *execMerge, onPackage func(invocation string, unit packageUnit) error, proofs processProofs) error {
 	for _, n := range invocations {
 		sel := staleSel[n.Name]
 		if len(sel) == 0 {
@@ -1212,7 +1216,7 @@ func executeSelections(ctx context.Context, invocations []*NormalizedInvocation,
 				return onPackage(n.Name, unit)
 			}
 		}
-		res, err := ExecuteSelectionObserved(ctx, n, sel, hook)
+		res, err := executeSelectionObserved(ctx, n, sel, hook, proofs[n.Name])
 		if err != nil {
 			return err
 		}
@@ -1478,7 +1482,11 @@ func retryDrifted(ctx context.Context, pc *Capture, driftedByGroup map[*witnessG
 		}
 		states = append(states, st)
 	}
-	if err := executeSelections(ctx, pc.normalized, retrySel, m, nil); err != nil {
+	proofs := processProofs{}
+	for _, st := range states {
+		proofs.add(st.wg.g, st.legs)
+	}
+	if err := executeSelections(ctx, pc.normalized, retrySel, m, nil, proofs); err != nil {
 		return nil, nil, err
 	}
 	var published []witnesscache.Record

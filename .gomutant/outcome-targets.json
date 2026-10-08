@@ -1,0 +1,9 @@
+{
+  "targets": [
+    {
+      "symbol": "github.com/greatliontech/stipulator/internal/backends/golang.packageLeg.prepareOutcome",
+      "oracle": ["github.com/greatliontech/stipulator/internal/backends/golang.TestOutcomePreparationMatchesTheActualProcess"],
+      "oracleExplicit": true
+    }
+  ]
+}

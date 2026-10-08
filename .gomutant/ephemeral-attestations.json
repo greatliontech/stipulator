@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "attestations": [
+    {
+      "editDigest": "8c1b6eed0442480b49cc58e8174a318e3336fa55bc2ecc7bc9845f284c9daa44",
+      "rawEditDigest": "8c1b6eed0442480b49cc58e8174a318e3336fa55bc2ecc7bc9845f284c9daa44",
+      "files": [
+        "internal/backends/golang/packageleg.go"
+      ],
+      "testPkg": "github.com/greatliontech/stipulator/internal/backends/golang",
+      "run": "^TestOutcomePreparationMatchesTheActualProcess$",
+      "reason": "Equivalent under the private package-leg construction invariant: all production prove callers first restrict to one package and admit candidates only when exactly one top-level runnable is selected. A nonnil observed sibling therefore always has exactly one candidate; zero candidates return no observed view. Keeping the observed-nil refusal while deleting the redundant cardinality refusal changes no reachable producer state.",
+      "commit": "66a118f9529a22889b32ef6570cd6ba29d09d5df",
+      "dirty": true
+    },
+    {
+      "editDigest": "a9f84d89f1a059be59546702cd406a9664924b130c6fadcae51975921e1a6481",
+      "rawEditDigest": "5f40252d38e496615117afac045cd08d2d4e9d26ecb3fcc457355744d333a750",
+      "files": [
+        "internal/backends/golang/packageleg.go"
+      ],
+      "testPkg": "github.com/greatliontech/stipulator/internal/backends/golang",
+      "run": "^TestOutcomePreparationMatchesTheActualProcess$",
+      "reason": "Equivalent for the pinned gofresh implementation: View.PrepareOutcomeSupport returns zero OutcomeSupport on every error, including the exercised cancelled-context path. Returning that support after an error is identical to the explicit zero return. This also dispositions deletion of the sole return statement in this error block, which yields the same mutant body.",
+      "commit": "66a118f9529a22889b32ef6570cd6ba29d09d5df",
+      "dirty": true
+    }
+  ]
+}

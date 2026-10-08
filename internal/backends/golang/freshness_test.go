@@ -439,7 +439,7 @@ func TestGoRunWitnessesServingRoundTrip(t *testing.T) {
 // the observation proof and no purity attribution — and an edit to a
 // race-only helper must stale the test that reaches it. Each package has
 // one selected test, so process isolation permits proof selection; the
-// race I/O test's fixture read and harness failure channel are covered
+// race test's environment read and harness failure channel are covered
 // by its positive observation proof, so it serves like its sibling.
 //
 //gofresh:pure
@@ -532,12 +532,9 @@ func TestGoRunWitnessesSelectsRaceSources(t *testing.T) {
 }
 
 // TestGoRunWitnessesConfigExcludedPathHonored pins the reviewed
-// invocation-config exclusion end to end: a witness reading a session
-// tool's bookkeeping file outside its package bracket is uncacheable —
-// the read seals out-of-bracket — until the policy declares the
-// directory excluded, after which the identity records nothing and the
-// witness serves across content drift the exclusion asserts is no
-// input.
+// invocation-config exclusion end to end: with an explicit purity override
+// for unsupported file outcomes, observed file movement still re-executes unless
+// the policy excludes that surface. An exclusion alone grants no outcome support.
 func TestGoRunWitnessesConfigExcludedPathHonored(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness")
 	if testing.Short() {
@@ -563,12 +560,15 @@ func TestReadsSession(t *testing.T) {
 `,
 	}
 	for _, tc := range []struct {
-		name       string
-		excluded   bool
-		wantServed int
+		name         string
+		excluded     bool
+		assumed      bool
+		wantServed   int
+		wantUncached int
 	}{
-		{name: "declared exclusion serves across drift", excluded: true, wantServed: 1},
-		{name: "undeclared stays uncacheable", excluded: false, wantServed: 0},
+		{name: "declared exclusion with explicit purity serves across drift", excluded: true, assumed: true, wantServed: 1},
+		{name: "exclusion alone cannot support file outcomes", excluded: true, wantUncached: 1},
+		{name: "undeclared identity still detects drift under purity", assumed: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv("XDG_CACHE_HOME", t.TempDir())
@@ -577,6 +577,8 @@ func TestReadsSession(t *testing.T) {
 			cfg := &stipulatorv1.GoInvocationConfig{}
 			cfg.SetPackages([]string{"./..."})
 			cfg.SetRace(true)
+			cfg.SetAssumePure(tc.assumed)
+			cfg.SetBracketPaths([]string{".claude"})
 			if tc.excluded {
 				cfg.SetExcludedPaths([]string{".claude"})
 			}
@@ -600,9 +602,9 @@ func TestReadsSession(t *testing.T) {
 			if second.Fresh != tc.wantServed || second.Ran != 1-tc.wantServed {
 				t.Fatalf("second run: ran=%d fresh=%d, want fresh=%d", second.Ran, second.Fresh, tc.wantServed)
 			}
-			if !tc.excluded {
-				if second.Uncached != 1 {
-					t.Fatalf("second run: uncached=%d, want the out-of-bracket read permanently uncacheable", second.Uncached)
+			if tc.wantServed == 0 {
+				if second.Uncached != tc.wantUncached {
+					t.Fatalf("second run: uncached=%d, want %d", second.Uncached, tc.wantUncached)
 				}
 				return
 			}
@@ -611,6 +613,8 @@ func TestReadsSession(t *testing.T) {
 			widened := &stipulatorv1.GoInvocationConfig{}
 			widened.SetPackages([]string{"./..."})
 			widened.SetRace(true)
+			widened.SetAssumePure(true)
+			widened.SetBracketPaths([]string{".claude"})
 			widened.SetExcludedPaths([]string{".claude", "unrelated"})
 			pw := &stipulatorv1.TestPolicy{}
 			pw.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", widened)})
@@ -628,6 +632,8 @@ func TestReadsSession(t *testing.T) {
 			bare := &stipulatorv1.GoInvocationConfig{}
 			bare.SetPackages([]string{"./..."})
 			bare.SetRace(true)
+			bare.SetAssumePure(true)
+			bare.SetBracketPaths([]string{".claude"})
 			pb := &stipulatorv1.TestPolicy{}
 			pb.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("all", bare)})
 			writePolicyRecord(t, tmp, pb)
@@ -703,6 +709,9 @@ func TestReadsCache(t *testing.T) {
 		cfg := &stipulatorv1.GoInvocationConfig{}
 		cfg.SetPackages([]string{"./..."})
 		cfg.SetRace(true)
+		// The fixture tests exclusion withdrawal, independently of the
+		// unsupported file-outcome class. Purity is explicit in every leg.
+		cfg.SetAssumePure(true)
 		if len(excluded) > 0 {
 			cfg.SetExcludedPaths(excluded)
 		}

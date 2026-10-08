@@ -9,9 +9,9 @@ u
 goexample.com/m/orphan7
 goexample.com/m/ok"member-health"workspace-race"[
 workspace-raceexample.com/m/broken	TestFlaky *$test binary exited without a report
-0*–
+0*¾
 
-workspace-race’!example.com/m/okk
-G{"v":1,"env":["HOME"],"paths":[{"k":"rel","p":"testdata/fixture.txt"}]} 00112233445566778899aabbccddeeff*x
+workspace-race’!example.com/m/ok’
+G{"v":2,"env":["HOME"],"paths":[{"k":"rel","p":"testdata/fixture.txt"}]} 00112233445566778899aabbccddeeff%operation-outcome support unavailable*x
 
 workspace-race“!example.com/m/broken"Itests started but unfinished; the process died before its testlog flushed

@@ -1381,19 +1381,22 @@ func (b0 ObligationReport_builder) Build() *ObligationReport {
 }
 
 // CompletedObservation is the runtime-input evidence of one completed
-// process: the canonical gofresh v1 manifest built from the process's own
+// process: the canonical gofresh v2 manifest built from the process's own
 // testlog, and its integrity digest — the encoding downstream witness
 // derivation hands to gofresh. The digest is empty when the manifest
 // itself records unverifiable observations; such a manifest still names
-// what was observed but can never check valid.
+// what was observed but cannot authorize observation-based reuse. Process
+// completion does not imply operation-outcome support: the manifest carries
+// that support only when separately established before this execution.
 type CompletedObservation struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Manifest    *string                `protobuf:"bytes,1,opt,name=manifest"`
-	xxx_hidden_Digest      *string                `protobuf:"bytes,2,opt,name=digest"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	state                    protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Manifest      *string                `protobuf:"bytes,1,opt,name=manifest"`
+	xxx_hidden_Digest        *string                `protobuf:"bytes,2,opt,name=digest"`
+	xxx_hidden_OutcomeReason *string                `protobuf:"bytes,3,opt,name=outcome_reason,json=outcomeReason"`
+	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
+	XXX_presence             [1]uint32
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *CompletedObservation) Reset() {
@@ -1441,14 +1444,29 @@ func (x *CompletedObservation) GetDigest() string {
 	return ""
 }
 
+func (x *CompletedObservation) GetOutcomeReason() string {
+	if x != nil {
+		if x.xxx_hidden_OutcomeReason != nil {
+			return *x.xxx_hidden_OutcomeReason
+		}
+		return ""
+	}
+	return ""
+}
+
 func (x *CompletedObservation) SetManifest(v string) {
 	x.xxx_hidden_Manifest = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
 }
 
 func (x *CompletedObservation) SetDigest(v string) {
 	x.xxx_hidden_Digest = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *CompletedObservation) SetOutcomeReason(v string) {
+	x.xxx_hidden_OutcomeReason = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
 }
 
 func (x *CompletedObservation) HasManifest() bool {
@@ -1465,6 +1483,13 @@ func (x *CompletedObservation) HasDigest() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
 }
 
+func (x *CompletedObservation) HasOutcomeReason() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
 func (x *CompletedObservation) ClearManifest() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Manifest = nil
@@ -1475,11 +1500,19 @@ func (x *CompletedObservation) ClearDigest() {
 	x.xxx_hidden_Digest = nil
 }
 
+func (x *CompletedObservation) ClearOutcomeReason() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_OutcomeReason = nil
+}
+
 type CompletedObservation_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	Manifest *string
 	Digest   *string
+	// Nonempty for identity-only evidence, naming why operation outcomes are
+	// unsupported. The manifest, not an empty reason, authorizes reuse.
+	OutcomeReason *string
 }
 
 func (b0 CompletedObservation_builder) Build() *CompletedObservation {
@@ -1487,12 +1520,16 @@ func (b0 CompletedObservation_builder) Build() *CompletedObservation {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Manifest != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
 		x.xxx_hidden_Manifest = b.Manifest
 	}
 	if b.Digest != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
 		x.xxx_hidden_Digest = b.Digest
+	}
+	if b.OutcomeReason != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_OutcomeReason = b.OutcomeReason
 	}
 	return m0
 }
@@ -1687,7 +1724,7 @@ type Observation_builder struct {
 	// Fields of oneof xxx_hidden_Evidence:
 	Completed *CompletedObservation
 	// Why no completed observation exists: the process died before its
-	// testlog flushed, its package did not dispose healthy, no test
+	// testlog flushed, no test
 	// process ran, or ingestion failed.
 	IncompleteReason *string
 	// -- end of xxx_hidden_Evidence
@@ -1731,7 +1768,7 @@ type observation_Completed struct {
 
 type observation_IncompleteReason struct {
 	// Why no completed observation exists: the process died before its
-	// testlog flushed, its package did not dispose healthy, no test
+	// testlog flushed, no test
 	// process ran, or ingestion failed.
 	IncompleteReason string `protobuf:"bytes,4,opt,name=incomplete_reason,json=incompleteReason,oneof"`
 }
@@ -2531,10 +2568,11 @@ const file_stipulator_v1_execution_proto_rawDesc = "" +
 	"obligation\x18\x02 \x01(\tR\n" +
 	"obligation\x12F\n" +
 	"\vdisposition\x18\x03 \x01(\x0e2$.stipulator.v1.ObligationDispositionR\vdisposition\x12 \n" +
-	"\vinvocations\x18\x04 \x03(\tR\vinvocations\"J\n" +
+	"\vinvocations\x18\x04 \x03(\tR\vinvocations\"q\n" +
 	"\x14CompletedObservation\x12\x1a\n" +
 	"\bmanifest\x18\x01 \x01(\tR\bmanifest\x12\x16\n" +
-	"\x06digest\x18\x02 \x01(\tR\x06digest\"\xe4\x01\n" +
+	"\x06digest\x18\x02 \x01(\tR\x06digest\x12%\n" +
+	"\x0eoutcome_reason\x18\x03 \x01(\tR\routcomeReason\"\xe4\x01\n" +
 	"\vObservation\x12;\n" +
 	"\bproducer\x18\x01 \x01(\v2\x1f.stipulator.v1.ProducerIdentityR\bproducer\x12\x18\n" +
 	"\apackage\x18\x02 \x01(\tR\apackage\x12C\n" +

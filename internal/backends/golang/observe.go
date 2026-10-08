@@ -2,7 +2,9 @@ package golang
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os/exec"
 	"strconv"
 
 	"github.com/greatliontech/gofresh/gotool"
@@ -14,10 +16,12 @@ import (
 // Per-process runtime-input observation for the policy executor. Every
 // launched test process owns exactly one observation, bound to its
 // ProducerIdentity: the process's `-test.testlogfile` capture is ingested
-// through gofresh's producer facade into a completed observation only
-// when the process provably completed and flushed it — a healthy package
-// disposition whose stream shows a terminal pass, no abort output, and no
-// started-but-unfinished test. Anything short of that proof yields an
+// through gofresh's producer facade into finalized input guards only
+// when the process provably completed and flushed it — a terminal pass or
+// ordinarily completed failing test, no abort output, and no
+// started-but-unfinished test. Outcome support is independently prepared
+// before execution and bound to the process, frame and environment. Without
+// it, finalized guards remain identity-only. An unproven completion yields an
 // incomplete observation carrying only its reason, never manifest bytes.
 // Observations from distinct processes are never merged here; a union is
 // a downstream consumer's judgment under its own contract.
@@ -63,7 +67,8 @@ type ProcessObservation struct {
 // rides beside the zero frame and reaches the facade as the caller's
 // incompleteness verdict.
 type observationFrame struct {
-	frame runtimeinput.ProducerFrame
+	frame   runtimeinput.ProducerFrame
+	outcome runtimeinput.OutcomeSupport
 	// roots is the capture's classification-root memo the ingest reads
 	// its roots probe through.
 	roots *runtimeinput.Roots
@@ -142,10 +147,16 @@ func observeProcess(ctx context.Context, n *NormalizedInvocation, pkg string, pr
 	if callerReason == "" {
 		callerReason = frame.spawnReason
 	}
-	observation, reason, err := frame.frame.Observe(ctx, logPath, runtimeinput.ProducerIngest{
-		Identity:         processIdentity(n, producer, pkg),
-		Env:              witnessProcessEnv(n, frame),
-		IncompleteReason: callerReason,
+	identity, env := processIdentity(n, producer, pkg), witnessProcessEnv(n, frame)
+	receipt, err := frame.frame.Completion(identity, env, callerReason)
+	if err != nil {
+		return incompleteObservation(pkg, producer, fmt.Sprintf("observation construction failed: %v", err))
+	}
+	ingest := runtimeinput.ProducerIngest{
+		Identity:   identity,
+		Env:        env,
+		Completion: receipt,
+		Outcome:    frame.outcome,
 		// The classification roots — toolchain, module cache, build
 		// cache, temp — are the facade's to resolve from this very
 		// environment; a declaration could only restate or contradict
@@ -160,7 +171,19 @@ func observeProcess(ctx context.Context, n *NormalizedInvocation, pkg string, pr
 		Roots:             frame.roots,
 		ExcludedPaths:     n.ExcludedPaths,
 		ScratchNamespaces: n.ScratchNamespaces,
-	})
+	}
+	var observation runtimeinput.Observation
+	var reason string
+	binding, err := frame.frame.OutcomeBinding(identity, env)
+	if err != nil {
+		return incompleteObservation(pkg, producer, fmt.Sprintf("observation construction failed: %v", err))
+	}
+	outcomeReason := frame.outcome.Reason(binding)
+	if outcomeReason == "" {
+		observation, reason, err = frame.frame.Observe(ctx, logPath, ingest)
+	} else {
+		observation, reason, err = frame.frame.ObserveInputs(ctx, logPath, ingest)
+	}
 	if err != nil {
 		return incompleteObservation(pkg, producer, fmt.Sprintf("observation construction failed: %v", err))
 	}
@@ -173,6 +196,7 @@ func observeProcess(ctx context.Context, n *NormalizedInvocation, pkg string, pr
 	}
 	completed := &stipulatorv1.CompletedObservation{}
 	completed.SetManifest(state.Manifest)
+	completed.SetOutcomeReason(outcomeReason)
 	if !state.Unverifiable {
 		completed.SetDigest(state.Digest)
 	}
@@ -190,10 +214,11 @@ func observeProcess(ctx context.Context, n *NormalizedInvocation, pkg string, pr
 // the same reason. Capture-file health (attached, present, readable,
 // headed) is the facade's judgment, not this one.
 func incompleteObservationReason(st *streamState, waitErr error, disposition stipulatorv1.HealthDisposition) string {
-	if disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+	failed := disposition == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED && st.terminal == "fail"
+	if disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY && !failed {
 		return fmt.Sprintf("package disposed %s, not HEALTHY; the testlog flush is unproven", disposition)
 	}
-	if st.terminal != "pass" {
+	if st.terminal != "pass" && !failed {
 		// The healthy non-pass terminal is "skip": no test binary ran (no
 		// test files), so no process observed anything.
 		return "no test process ran (terminal " + st.terminal + ")"
@@ -203,6 +228,18 @@ func incompleteObservationReason(st *streamState, waitErr error, disposition sti
 	}
 	if names := startedTests(st); len(names) > 0 {
 		return "tests started but unfinished; the process died before its testlog flushed"
+	}
+	if failed {
+		var exit *exec.ExitError
+		if !errors.As(waitErr, &exit) || exit.ExitCode() != 1 {
+			return "failing test process has no ordinary exit status 1"
+		}
+		for _, test := range st.tests {
+			if test.GetOutcome() == stipulatorv1.TestOutcome_TEST_OUTCOME_FAILED {
+				return ""
+			}
+		}
+		return "failing process has no completed failing test; the testlog flush is unproven"
 	}
 	// Defense in depth: classifyRun grants HEALTHY only under a nil
 	// waitErr, so no production path reaches this branch — it guards the

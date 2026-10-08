@@ -190,6 +190,10 @@ func ExecuteInvocation(ctx context.Context, n *NormalizedInvocation, selection [
 // disposed once and the assembly reads the disposition. A hook error
 // ends the invocation with it. A nil hook is ExecuteInvocation.
 func ExecuteInvocationObserved(ctx context.Context, n *NormalizedInvocation, selection []Obligation, onPackage func(unit packageUnit) error) (*stipulatorv1.InvocationHealth, []*stipulatorv1.TestResult, []*stipulatorv1.FailureDiagnostic, []*ProcessObservation, error) {
+	return executeInvocationPrepared(ctx, n, selection, onPackage, nil)
+}
+
+func executeInvocationPrepared(ctx context.Context, n *NormalizedInvocation, selection []Obligation, onPackage func(unit packageUnit) error, proofs map[string]*packageLeg) (*stipulatorv1.InvocationHealth, []*stipulatorv1.TestResult, []*stipulatorv1.FailureDiagnostic, []*ProcessObservation, error) {
 	pkgs := selectedPackages(selection)
 	if len(pkgs) == 0 {
 		return nil, nil, nil, nil, fmt.Errorf("invocation %q: selection carries no package obligations", n.Name)
@@ -224,7 +228,7 @@ func ExecuteInvocationObserved(ctx context.Context, n *NormalizedInvocation, sel
 			}
 		}
 	}
-	runs := runSelectedPackages(ctx, invCtx, n, pkgs, nil, spawnOrdinals(), nil, afterSlot)
+	runs := runSelectedPackages(ctx, invCtx, n, pkgs, nil, spawnOrdinals(), nil, afterSlot, proofs)
 	if err := ctx.Err(); err != nil {
 		// Caller cancellation: the partial run is discarded whole. The
 		// envelope context is derived from ctx, so every child is already
@@ -267,7 +271,7 @@ func spawnOrdinals() func() int32 {
 // envelope it is waiting on is spent on processes alone
 // (REQ-policy-explicit). Both are skipped under the caller's
 // cancellation.
-func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, pkgs []string, tests TestSelection, spawnOrdinal func() int32, inSlot func(i int, run *packageRun, gate *admission), afterSlot func(i int, run *packageRun)) []packageRun {
+func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, pkgs []string, tests TestSelection, spawnOrdinal func() int32, inSlot func(i int, run *packageRun, gate *admission), afterSlot func(i int, run *packageRun), proofs map[string]*packageLeg) []packageRun {
 	gate := newAdmission(invCtx, spawnBoundOf(n))
 	defer gate.leave()
 	runs := make([]packageRun, len(pkgs))
@@ -284,7 +288,7 @@ func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, p
 			admitted, refusal, held := gate.admit()
 			switch {
 			case admitted:
-				runs[i] = runPackage(invCtx, n, pkg, tests[pkg], spawnOrdinal(), gate)
+				runs[i] = runPackage(invCtx, n, pkg, tests[pkg], spawnOrdinal(), gate, proofs[pkg])
 				if inSlot != nil && ctx.Err() == nil {
 					inSlot(i, &runs[i], gate)
 				}
@@ -918,7 +922,7 @@ func witnessChildWidth(n *NormalizedInvocation) int {
 // deadline-expired context leaves the disposition unspecified: the caller
 // — not the stream parser — decides between timeout reporting and
 // cancellation discard.
-func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, selection []string, ordinal int32, gate *admission) packageRun {
+func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, selection []string, ordinal int32, gate *admission, proof *packageLeg) packageRun {
 	// Directing the test binary's testlog to a per-process capture file
 	// makes the run uncacheable to the toolchain (extra binary arguments
 	// fall outside its cacheable set): observation capture deliberately
@@ -953,6 +957,10 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, select
 		return degradedRun(n.Name, pkg, fmt.Sprintf("spawning go test: %v", err), false)
 	}
 	frame := captureObservationFrame(ctx, n, pkg)
+	producer := &stipulatorv1.ProducerIdentity{}
+	producer.SetInvocation(n.Name)
+	producer.SetProcessOrdinal(ordinal)
+	frame.outcome = proof.prepareOutcome(ctx, selection, frame.frame, processIdentity(n, producer, pkg))
 	witnessEnv := witnessProcessEnv(n, frame)
 	cmd, err := ownedRunner.Command(ctx, n.Dir, witnessEnv, testCommandArgs(n, pkg, selection, logPath)...)
 	if err != nil {
@@ -986,10 +994,7 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, select
 		return degradedRun(n.Name, pkg, fmt.Sprintf("spawning go test: %v", err), false)
 	}
 	gate.spawned(pkg, cmd.Process.Pid)
-	producer := &stipulatorv1.ProducerIdentity{}
-	producer.SetInvocation(n.Name)
 	producer.SetProcessId(int64(cmd.Process.Pid))
-	producer.SetProcessOrdinal(ordinal)
 
 	st := parseTestStream(n.Name, pkg, stdout, producer)
 	waitErr := cmd.Wait()
@@ -1610,7 +1615,7 @@ func (f writerFunc) Write(p []byte) (int, error) { return f(p) }
 // span and the policy's wall time is the sum of what its invocations
 // spend, bounded overall only by the caller's context.
 func ExecutePolicy(ctx context.Context, pc *Capture) (*stipulatorv1.ExecutionReport, []*ProcessObservation, error) {
-	return executePolicy(ctx, pc, nil)
+	return executePolicy(ctx, pc, nil, nil)
 }
 
 // executePolicy is ExecutePolicy with a per-package completion hook:
@@ -1619,7 +1624,7 @@ func ExecutePolicy(ctx context.Context, pc *Capture) (*stipulatorv1.ExecutionRep
 // invocation — the seam that lets the package's records install while
 // its siblings still execute on this form too
 // (REQ-evidence-witness-cache-format's install-on-completion rule).
-func executePolicy(ctx context.Context, pc *Capture, onPackage func(invocation string, unit packageUnit) error) (*stipulatorv1.ExecutionReport, []*ProcessObservation, error) {
+func executePolicy(ctx context.Context, pc *Capture, onPackage func(invocation string, unit packageUnit) error, proofs processProofs) (*stipulatorv1.ExecutionReport, []*ProcessObservation, error) {
 	rep := progress.FromContext(ctx)
 	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	universe, err := pc.ObligationUniverse(ctx)
@@ -1643,7 +1648,7 @@ func executePolicy(ctx context.Context, pc *Capture, onPackage func(invocation s
 			name := ic.n.Name
 			hook = func(unit packageUnit) error { return onPackage(name, unit) }
 		}
-		health, invTests, invDiags, invObs, err := ExecuteInvocationObserved(ctx, ic.n, ic.obligations, hook)
+		health, invTests, invDiags, invObs, err := executeInvocationPrepared(ctx, ic.n, ic.obligations, hook, proofs[ic.n.Name])
 		if err != nil {
 			return nil, nil, err
 		}

@@ -68,6 +68,16 @@ func publishEligible(
 				complete = false
 				break
 			}
+			if reason := ps.obs.Wire.GetCompleted().GetOutcomeReason(); reason != "" {
+				if ps.obs.Runtime.Unverifiable {
+					// Preserve the concrete input refusal ahead of the broader
+					// unsupported operation class, as on the supported path.
+					reason = ps.obs.Runtime.Reason
+				}
+				reasons[s] = reasonObservationSeal.with(reason)
+				complete = false
+				break
+			}
 			fp, err := observed.AttachObservation(s, observedFPs[s], ps.obs.Runtime)
 			if err != nil {
 				complete = false

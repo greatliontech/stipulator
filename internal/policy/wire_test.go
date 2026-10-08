@@ -112,7 +112,8 @@ func fixtureExecutionReport() proto.Message {
 	completedObs.SetProducer(producer)
 	completedObs.SetPackage("example.com/m/ok")
 	completed := &stipulatorv1.CompletedObservation{}
-	completed.SetManifest(`{"v":1,"env":["HOME"],"paths":[{"k":"rel","p":"testdata/fixture.txt"}]}`)
+	completed.SetManifest(`{"v":2,"env":["HOME"],"paths":[{"k":"rel","p":"testdata/fixture.txt"}]}`)
+	completed.SetOutcomeReason("operation-outcome support unavailable")
 	completed.SetDigest("00112233445566778899aabbccddeeff")
 	completedObs.SetCompleted(completed)
 	incompleteProducer := &stipulatorv1.ProducerIdentity{}

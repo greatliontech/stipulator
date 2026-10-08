@@ -121,7 +121,7 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 	}
 
 	generated := generatedObservationFingerprint(t)
-	generated.RuntimeInputs = "eyJ2IjoxfQ"
+	generated.RuntimeInputs = "eyJ2IjoyfQ"
 	generated.RuntimeDigest = "3a79bf37b571938d1f2907afb6a643f4"
 	rec := Record{
 		Group:       "6772702d64696765",
@@ -139,6 +139,11 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 	if len(got) != 1 || got[0].Key() != rec.Key() {
 		t.Fatalf("round trip lost the record: %+v", got)
 	}
+	historical := rec
+	historical.Fingerprint.RuntimeInputs = "eyJ2IjoxfQ"
+	seedOne(historical)
+	requireAbsent("historical v1 runtime manifest")
+	path = seedOne(rec)
 
 	if err := os.WriteFile(path, []byte("{ not json"), 0o644); err != nil {
 		t.Fatal(err)
@@ -408,7 +413,7 @@ func TestLoadReclaimsUnreferencedLedgers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	base := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestA", Fingerprint: Fingerprint{MaximalClosure: "0123456789abcdef0123456789abcdef", Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: "eyJ2IjoxfQ", RuntimeDigest: "3a79bf37b571938d1f2907afb6a643f4", ResultKind: gofresh.CodeResult}, Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
+	base := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestA", Fingerprint: Fingerprint{MaximalClosure: "0123456789abcdef0123456789abcdef", Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: "eyJ2IjoyfQ", RuntimeDigest: "3a79bf37b571938d1f2907afb6a643f4", ResultKind: gofresh.CodeResult}, Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
 	ledgerOf := func(digest string) *CompartmentLedger {
 		return &CompartmentLedger{Declarations: []CompartmentDeclaration{{File: "p_test.go", Kind: "func", Name: "TestA", Hash: digest}}}
 	}
@@ -501,7 +506,7 @@ func TestLoadOrdersVariantsNewestFirst(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	base := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestA", Fingerprint: Fingerprint{TestVariantClosure: "0123456789abcdef0123456789abcdef", Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: "eyJ2IjoxfQ", RuntimeDigest: "3a79bf37b571938d1f2907afb6a643f4", ResultKind: gofresh.CodeResult}, Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
+	base := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestA", Fingerprint: Fingerprint{TestVariantClosure: "0123456789abcdef0123456789abcdef", Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: "eyJ2IjoyfQ", RuntimeDigest: "3a79bf37b571938d1f2907afb6a643f4", ResultKind: gofresh.CodeResult}, Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
 	// Install order and name order both disagree with the stamps: the
 	// stamps alone decide.
 	closures := []string{"cccccccccccccccccccccccccccccccc", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
@@ -547,7 +552,7 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 	}
 
 	generated := generatedObservationFingerprint(t)
-	generated.RuntimeInputs = "eyJ2IjoxfQ"
+	generated.RuntimeInputs = "eyJ2IjoyfQ"
 	generated.RuntimeDigest = "3a79bf37b571938d1f2907afb6a643f4"
 	rec := Record{
 		Group:       "6772702d64696765",
@@ -936,7 +941,7 @@ func TestInstallRefusesWhatTheEncoderRefuses(t *testing.T) {
 	rec.Fingerprint.ResultKind = gofresh.CodeResult
 	rec.Fingerprint.Guards.Toolchain = "go1.27.0"
 	rec.Fingerprint.Guards.BuildConfig = strings.Repeat("c", 32)
-	rec.Fingerprint.RuntimeInputs = "eyJ2IjoxfQ"
+	rec.Fingerprint.RuntimeInputs = "eyJ2IjoyfQ"
 	rec.Fingerprint.RuntimeDigest = strings.Repeat("d", 32)
 	rec.Fingerprint.DynamicStateStrategy = gofresh.DynamicStateStrategy
 	rec.Fingerprint.ClosureStrategy = gofresh.ClosureStrategy

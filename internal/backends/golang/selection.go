@@ -99,6 +99,10 @@ type packageUnit struct {
 // envelope bounds processes alone (REQ-policy-explicit). A hook error
 // ends the invocation with it. A nil hook is ExecuteSelection.
 func ExecuteSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel TestSelection, onPackage func(unit packageUnit) error) (*SelectionResult, error) {
+	return executeSelectionObserved(ctx, n, sel, onPackage, nil)
+}
+
+func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel TestSelection, onPackage func(unit packageUnit) error, proofs map[string]*packageLeg) (*SelectionResult, error) {
 	pkgs := make([]string, 0, len(sel))
 	for pkg := range sel {
 		pkgs = append(pkgs, pkg)
@@ -157,7 +161,7 @@ func ExecuteSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 				// The re-run spawns inside the package's slot and under
 				// its gate: registered at its spawn, reaped with its
 				// peak (REQ-evidence-admission-origin).
-				solo = runPackage(invCtx, n, unit.pkg, []string{name}, spawn(), gate)
+				solo = runPackage(invCtx, n, unit.pkg, []string{name}, spawn(), gate, proofs[unit.pkg])
 				solo.soloTest = name
 			}
 			if ctx.Err() != nil {
@@ -185,7 +189,7 @@ func ExecuteSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 			}
 		}
 	}
-	runSelectedPackages(ctx, invCtx, n, pkgs, sel, spawn, inSlot, afterSlot)
+	runSelectedPackages(ctx, invCtx, n, pkgs, sel, spawn, inSlot, afterSlot, proofs)
 	if err := ctx.Err(); err != nil {
 		// Caller cancellation: the partial run is discarded whole.
 		return nil, err

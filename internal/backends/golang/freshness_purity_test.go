@@ -13,8 +13,7 @@ import (
 )
 
 // observedReaderModule writes a self-contained module whose one test reads a
-// data file. The witness runner must prove that its completed runtime
-// observation is complete instead of relying on a purity assertion.
+// data file. A flushed identity log alone cannot support its file outcomes.
 func observedReaderModule(t *testing.T) string {
 	t.Helper()
 	tmp := t.TempDir()
@@ -42,8 +41,24 @@ func TestReadsObservedFixture(t *testing.T) {
 	return tmp
 }
 
+func observedEnvironmentModule(t *testing.T) string {
+	t.Helper()
+	t.Setenv("STIPULATOR_OBSERVED", "first")
+	tmp := writeModule(t, map[string]string{
+		"go.mod": "module example.com/purefix\n\ngo 1.26\n",
+		"purefix_test.go": `package purefix
+import ("os"; "testing")
+func TestReadsObservedFixture(t *testing.T) {
+ if os.Getenv("STIPULATOR_OBSERVED") == "" { t.Fatal("missing observed environment") }
+}
+`,
+	})
+	writeRacePolicy(t, tmp)
+	return tmp
+}
+
 // TestObservationProofPublishesAndServes pins the caller-selected proof end
-// to end: a file-reading test without a purity directive publishes only after
+// to end: an environment-reading test without a purity directive publishes only after
 // its completed observation is attached and validated, then serves through
 // an explicitly observed check.
 //
@@ -53,7 +68,7 @@ func TestObservationProofPublishesAndServes(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a real race-instrumented witness suite")
 	}
-	tmp := observedReaderModule(t)
+	tmp := observedEnvironmentModule(t)
 
 	first, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
@@ -90,8 +105,8 @@ func TestObservationProofPublishesAndServes(t *testing.T) {
 }
 
 // TestObservationProofNeverWaivesInputDigest pins that the proof suppresses
-// only closure-level observation conservatism: a change to the observed data
-// file still stales the record and re-runs the test.
+// only closure-level observation conservatism: a change to the observed
+// environment still stales the record and re-runs the test.
 //
 //gofresh:pure
 func TestObservationProofNeverWaivesInputDigest(t *testing.T) {
@@ -99,7 +114,7 @@ func TestObservationProofNeverWaivesInputDigest(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a real race-instrumented witness suite")
 	}
-	tmp := observedReaderModule(t)
+	tmp := observedEnvironmentModule(t)
 
 	first, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
@@ -110,9 +125,7 @@ func TestObservationProofNeverWaivesInputDigest(t *testing.T) {
 	if first.Ran != 1 || first.Uncached != 0 {
 		t.Fatalf("first run: ran=%d uncached=%d; the record must publish before the digest can stale it", first.Ran, first.Uncached)
 	}
-	if err := os.WriteFile(filepath.Join(tmp, "data.txt"), []byte("v2\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	t.Setenv("STIPULATOR_OBSERVED", "second")
 	second, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)
@@ -192,7 +205,7 @@ func TestIncompatibleObservationEvidenceCannotServe(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a real race-instrumented witness suite")
 	}
-	tmp := observedReaderModule(t)
+	tmp := observedEnvironmentModule(t)
 	first, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
 		t.Fatal(err)

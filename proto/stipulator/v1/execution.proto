@@ -135,14 +135,19 @@ message ObligationReport {
 }
 
 // CompletedObservation is the runtime-input evidence of one completed
-// process: the canonical gofresh v1 manifest built from the process's own
+// process: the canonical gofresh v2 manifest built from the process's own
 // testlog, and its integrity digest — the encoding downstream witness
 // derivation hands to gofresh. The digest is empty when the manifest
 // itself records unverifiable observations; such a manifest still names
-// what was observed but can never check valid.
+// what was observed but cannot authorize observation-based reuse. Process
+// completion does not imply operation-outcome support: the manifest carries
+// that support only when separately established before this execution.
 message CompletedObservation {
   string manifest = 1;
   string digest = 2;
+  // Nonempty for identity-only evidence, naming why operation outcomes are
+  // unsupported. The manifest, not an empty reason, authorizes reuse.
+  string outcome_reason = 3;
 }
 
 // Observation is one launched process's runtime-input observation, bound
@@ -161,7 +166,7 @@ message Observation {
   oneof evidence {
     CompletedObservation completed = 3;
     // Why no completed observation exists: the process died before its
-    // testlog flushed, its package did not dispose healthy, no test
+    // testlog flushed, no test
     // process ran, or ingestion failed.
     string incomplete_reason = 4;
   }

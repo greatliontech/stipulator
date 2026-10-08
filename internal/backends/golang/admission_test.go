@@ -380,7 +380,7 @@ func TestPackageHeldUntilTheInvocationsEndCarriesTheTerm(t *testing.T) {
 		cancel()
 		return resident.Memory{TotalBytes: 2 * gib, AvailableBytes: gib / 2}, true
 	}, passWith(gib/4))
-	runs := runSelectedPackages(ctx, invCtx, n, []string{"example.com/exec/sleepy", "example.com/exec/ok"}, nil, spawnOrdinals(), nil, nil)
+	runs := runSelectedPackages(ctx, invCtx, n, []string{"example.com/exec/sleepy", "example.com/exec/ok"}, nil, spawnOrdinals(), nil, nil, nil)
 	held := 0
 	for _, r := range runs {
 		if r.heldBy != "" {

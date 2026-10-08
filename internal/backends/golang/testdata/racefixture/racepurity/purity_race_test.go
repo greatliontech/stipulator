@@ -8,7 +8,7 @@ import (
 )
 
 func TestRacePurity(t *testing.T) {
-	if _, err := os.ReadFile("fixture.txt"); err != nil {
-		t.Fatal(err)
+	if _, ok := os.LookupEnv("HOME"); !ok {
+		t.Fatal("missing observed environment")
 	}
 }

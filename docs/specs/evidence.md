@@ -540,13 +540,30 @@ asserts purity in source, the deliberate opt-in, or the accepted policy
 asserts it for the invocation whole — the record's reviewed blanket
 assertion, one per invocation, carrying the same caller-side soundness
 responsibility as the in-source form. A clean witness invocation
-instead may publish without that assertion when its completed testlog is
+instead may publish without that assertion when its supported runtime evidence is
 attached to a compatible caller-selected Gofresh observation-completeness proof
 captured before execution and both are revalidated after execution. Stipulator
 selects that proof only when the producing test process runs exactly one
 selected top-level runnable — executable examples counted among them — so no
 sibling runnable in the process can contribute unrecorded process state to
 the subject's outcome; an ordinary freshness check never infers proof selection.
+
+**REQ-evidence-outcome-premises** (invariant): Observation-based witness reuse
+MUST require separately established process completion and operation-outcome
+support under Gofresh's admitted method, bound to the same producing process,
+pre-execution frame and complete normalized witness environment. Preparation
+covers the actual contributing runnable set, including executable examples and
+the package's test-main effects; a sole-runnable prediction cannot authorize a
+different explicit selection. The package's producer view retains the selected
+proof-validation obligation through publication. A normally completed failing
+test can establish process completion but grants no passing witness evidence.
+Missing outcome support retains identity-only input guards and names its reason
+on the process observation; neither those guards, health, an empty testlog nor
+explicit purity confers verified outcome support. A supported capture whose
+operations contradict its method is incomplete, never silently retried as a
+supported observation. Historical manifests without the new support cannot gain
+it by decoding or attachment, and pre-v2 runtime manifests are refused. Purity
+remains a separate caller-responsible override of the final freshness verdict.
 
 **REQ-evidence-admission-origin** (behavior): The memory term's estimate
 MUST name its origin wherever the term's words appear — the refusal, the
@@ -655,7 +672,7 @@ record's capture did. Its fingerprint keys are `maximalClosure`,
 (maximal and test-variant), build, and runtime digests are 16-byte
 lowercase hexadecimal values, the observation assertion and proof are
 structurally encoded attributable Gofresh evidence for the record's
-subject, the runtime manifest is canonical Gofresh v1, purity is empty
+subject, the runtime manifest is canonical Gofresh v2, purity is empty
 or a recognized Gofresh attribution, the vouch and discharge sets are
 Gofresh's canonical sorted comma-joined `<import path>.<Variable>`
 identities (vouches: the reviewed acceptances that discharged culprits

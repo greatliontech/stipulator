@@ -2,6 +2,8 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
+- **[outcome-adapter-campaign-remeasurement](outcome-adapter-campaign-remeasurement.md)** — remeasure the adapter's explicit mutation inventory with the execution-outcome-aware runner; keep kill evidence, judged equivalences and unverifiable freshness distinct. *Lands: pew performance-evidence plan chunk 6, after gomutant's producer and dependency migration.*
+
 
 
 - **[bindings-per-requirement-file-derivation](bindings-per-requirement-file-derivation.md)** — `bind` and `dispose supersede` place records by the id's second segment while the gaps store derives one file per requirement; a per-requirement bindings layout is held only by a project test and a hand move after each supersede. Lands: cross-tool train chunk 176.
