@@ -132,7 +132,7 @@ func ExecuteSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 	// complete before the next package needs it
 	// (REQ-policy-cancellation); the caller's hook follows once the
 	// slot is released.
-	inSlot := func(i int, run *packageRun) {
+	inSlot := func(i int, run *packageRun, gate *admission) {
 		unit := packageUnit{pkg: pkgs[i], run: *run}
 		timedOut := invCtx.Err() != nil
 		if err := finalizeRun(n, &unit.run, timedOut, ""); err != nil {
@@ -154,7 +154,10 @@ func ExecuteSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 		for _, name := range denied {
 			solo := packageRun{pkg: unit.pkg, soloTest: name}
 			if invCtx.Err() == nil {
-				solo = runPackage(invCtx, n, unit.pkg, []string{name}, spawn(), nil)
+				// The re-run spawns inside the package's slot and under
+				// its gate: registered at its spawn, reaped with its
+				// peak (REQ-evidence-admission-origin).
+				solo = runPackage(invCtx, n, unit.pkg, []string{name}, spawn(), gate)
 				solo.soloTest = name
 			}
 			if ctx.Err() != nil {

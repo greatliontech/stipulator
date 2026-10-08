@@ -35,36 +35,37 @@ func TestCompletedPackagePeakFeedsTheEstimate(t *testing.T) {
 	if admitted, _, _ := a.admit(); !admitted {
 		t.Fatal("the one slot was not admitted")
 	}
-	a.release("", 0, peak)
-	if got := a.estimate(resident.Reading{}); got != max(packageEstimateFloor, peak) {
+	a.reaped("", 0, peak)
+	a.release()
+	if got, _ := a.estimate(resident.Reading{}); got != max(packageEstimateFloor, peak) {
 		t.Fatalf("estimate after a completed peak of %d = %d, want max(floor, peak) = %d", peak, got, max(packageEstimateFloor, peak))
 	}
 }
 
 // TestInvocationReleasesEachPackageWithItsPeak pins the wiring of the
 // completed-package evidence and of the tree attribution
-// (REQ-evidence-witness-freshness): every package an invocation runs is
-// released to the gate with the peak its reaped process reported — a
-// positive byte count, never zero — and with the process the executor
-// registered for it at the spawn, the root of the tree the reservation
-// attributed.
+// (REQ-evidence-witness-freshness, REQ-evidence-admission-origin):
+// every package an invocation runs is reaped to the gate with the peak
+// its process reported — a positive byte count, never zero — and with
+// the process the executor registered for it at the spawn, the root of
+// the tree the reservation attributed.
 func TestInvocationReleasesEachPackageWithItsPeak(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads the tree")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-evidence-admission-origin")
 	neutralAmbient(t)
 	var mu sync.Mutex
 	released := map[string]uint64{}
 	registered := map[string]bool{}
-	prior := releasedPeakHook
-	releasedPeakHook = func(pkg string, pid int, wasRegistered bool, peakBytes uint64) {
+	prior := reapedPeakHook
+	reapedPeakHook = func(pkg string, pid int, wasRegistered bool, peakBytes uint64) {
 		mu.Lock()
 		defer mu.Unlock()
 		released[pkg] = peakBytes
 		registered[pkg] = wasRegistered && pid > 0
 	}
-	t.Cleanup(func() { releasedPeakHook = prior })
+	t.Cleanup(func() { reapedPeakHook = prior })
 	cfg := &stipulatorv1.GoInvocationConfig{}
 	cfg.SetPackages([]string{"./ok", "./notest"})
 	health, _, diags := executeInvocation(t, time.Minute, cfg, "peaks")

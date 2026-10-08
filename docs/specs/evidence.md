@@ -399,7 +399,8 @@ that tree (the tree attributed to the process spawned for the package;
 a tree not yet in the table reserves the whole estimate; one tree's
 overshoot pays for no sibling's reservation), covers one more package
 at the invocation's estimate — the largest a package's process tree has
-been seen to need: a completed package's largest process and the
+been seen to need: a reaped process's peak
+(REQ-evidence-admission-origin) and the
 largest a registered package's tree has shown in the readings, floored
 at one gibibyte; a descendant outside every registered tree prices no
 package — with the pass's own room to grow back to the largest set this
@@ -546,6 +547,22 @@ selects that proof only when the producing test process runs exactly one
 selected top-level runnable — executable examples counted among them — so no
 sibling runnable in the process can contribute unrecorded process state to
 the subject's outcome; an ordinary freshness check never infers proof selection.
+
+**REQ-evidence-admission-origin** (behavior): The memory term's estimate
+MUST name its origin wherever the term's words appear — the refusal, the
+held package's timeout diagnostic, the witnesses' bounded cause (the
+estimate and its origin lead the words and are kept whole, the readings
+that follow bounded): the
+floor, the package whose completed process's peak it is (the
+process named), or the package whose live tree showed it in this
+invocation's readings (the process named) — so a genuine need and a
+transient read apart; and every process a package's slot spawns — its
+whole-package process and each isolation re-run — is registered with the
+admission at its spawn and reaped with its peak the moment its wait
+returns, so a running package's reservation reads whichever of its
+processes is live and a reaped process's peak prices the next spawn at
+once (between a reap and the slot's next spawn the package reserves the
+whole estimate).
 
 **REQ-evidence-record-store-layout** (behavior): Every machine-local
 record store MUST live outside the repository, under the user cache

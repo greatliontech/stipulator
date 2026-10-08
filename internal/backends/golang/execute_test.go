@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 	"unicode/utf8"
@@ -1498,5 +1499,56 @@ func TestGoBoundedBufferCapCutsAtRuneBoundary(t *testing.T) {
 	}
 	if !bb.truncated {
 		t.Error("a capped write did not mark truncation")
+	}
+}
+
+// TestIsolationReRunsAreRegisteredWithTheAdmission pins
+// REQ-evidence-admission-origin's second half end to end: a package
+// whose process denied a test an outcome re-runs it solo inside its
+// slot, and the solo process is registered with the gate at its spawn
+// and reaped with its own peak — two reaps for the package, each a
+// distinct process the result names, each registered, each with a
+// positive peak.
+func TestIsolationReRunsAreRegisteredWithTheAdmission(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads the tree")
+	}
+	stipulate.Covers(t, "REQ-evidence-admission-origin")
+	neutralAmbient(t)
+	type reap struct {
+		pid        int
+		registered bool
+		peak       uint64
+	}
+	var mu sync.Mutex
+	reaps := map[string][]reap{}
+	prior := reapedPeakHook
+	reapedPeakHook = func(pkg string, pid int, registered bool, peakBytes uint64) {
+		mu.Lock()
+		defer mu.Unlock()
+		reaps[pkg] = append(reaps[pkg], reap{pid, registered, peakBytes})
+	}
+	t.Cleanup(func() { reapedPeakHook = prior })
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./mixed"})
+	res := executeSelection(t, time.Minute, cfg, "isolate-registered", TestSelection{
+		"example.com/exec/mixed": {"TestGreen", "TestRed"},
+	})
+	main := findProcess(res.Processes, "example.com/exec/mixed", "")
+	solo := findProcess(res.Processes, "example.com/exec/mixed", "TestGreen")
+	if main == nil || solo == nil {
+		t.Fatalf("processes = %+v, want the package's process and TestGreen's solo", res.Processes)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	got := reaps["example.com/exec/mixed"]
+	if len(got) != 2 {
+		t.Fatalf("reaps for the package = %+v, want two: the whole-package process and the solo re-run", got)
+	}
+	want := map[int]bool{int(main.Producer.GetProcessId()): true, int(solo.Producer.GetProcessId()): true}
+	for _, r := range got {
+		if !want[r.pid] || !r.registered || r.peak < 1<<20 {
+			t.Fatalf("reap %+v: want a process the result names (%v), registered, with a positive peak", r, want)
+		}
 	}
 }

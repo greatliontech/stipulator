@@ -118,7 +118,7 @@ func TestAdmissionGateDerivesTheMemoryTerm(t *testing.T) {
 	}
 	fourth := admitAsync(a)
 	mustWait(t, fourth)
-	a.release("", 0, 0)
+	a.release()
 	wait(t, fourth, "admitted")
 
 	// No host reading, or no pass reading: no memory term, the bound alone.
@@ -150,7 +150,7 @@ func TestAdmissionGateDerivesTheMemoryTerm(t *testing.T) {
 	}
 	third := admitAsync(burst)
 	mustWait(t, third)
-	burst.release("", 0, 0)
+	burst.release()
 	wait(t, third, "admitted")
 
 	// The reservation is per tree, never netted across trees: four
@@ -178,7 +178,7 @@ func TestAdmissionGateDerivesTheMemoryTerm(t *testing.T) {
 		}
 	}
 	for _, pid := range []int{11, 12, 13, 14} {
-		trees.spawned(pid)
+		trees.spawned("", pid)
 	}
 	currentMu.Lock()
 	current = resident.Reading{
@@ -192,9 +192,12 @@ func TestAdmissionGateDerivesTheMemoryTerm(t *testing.T) {
 	// The three bare siblings gone, the grown tree alone running: its
 	// observed 8 GiB (its share too) is the estimate, and 3 GiB still
 	// holds nothing more — the fifth keeps waiting.
-	trees.release("", 12, 0)
-	trees.release("", 13, 0)
-	trees.release("", 14, 0)
+	trees.reaped("", 12, 0)
+	trees.release()
+	trees.reaped("", 13, 0)
+	trees.release()
+	trees.reaped("", 14, 0)
+	trees.release()
 	mustWait(t, fifth)
 	// The grown tree completes: nothing runs, the share and the
 	// observed tree maxima are gone with the registrations, the
@@ -202,7 +205,8 @@ func TestAdmissionGateDerivesTheMemoryTerm(t *testing.T) {
 	currentMu.Lock()
 	current.Set.Descendants, current.Set.DescendantsBytes, current.Trees = 0, 0, nil
 	currentMu.Unlock()
-	trees.release("", 11, 0)
+	trees.reaped("", 11, 0)
+	trees.release()
 	wait(t, fifth, "admitted")
 
 	// Memory for exactly one package beside the pass: the first admits;
@@ -227,7 +231,8 @@ func TestAdmissionGateDerivesTheMemoryTerm(t *testing.T) {
 	availMu.Unlock()
 	second := admitAsync(c)
 	mustWait(t, second)
-	c.release("", 0, 3*gib)
+	c.reaped("", 0, 3*gib)
+	c.release()
 	got := wait(t, second, "refused")
 	for _, phrase := range []string{"the host cannot hold one more package process", "available 1.5 GiB", "0 package(s) running", "this phase's peak 512 MiB", "estimated at 3.0 GiB"} {
 		if !strings.Contains(got[1], phrase) {
@@ -253,7 +258,7 @@ func TestAdmissionGateDerivesTheMemoryTerm(t *testing.T) {
 	if admitted, refusal, _ := g.admit(); !admitted {
 		t.Fatalf("the first package was not admitted: %q", refusal)
 	}
-	g.spawned(31)
+	g.spawned("", 31)
 	shareMu.Lock()
 	share.Set.Descendants, share.Set.DescendantsBytes, share.Set.DescendantPeakBytes = 3, 2*gib+gib/2, gib/2
 	share.Trees = map[int]uint64{31: 2*gib + gib/2}
@@ -263,7 +268,8 @@ func TestAdmissionGateDerivesTheMemoryTerm(t *testing.T) {
 	// After the release nothing runs: the observation left with the
 	// registration, the estimate falls back to the floor, and 2 GiB
 	// holds one package.
-	g.release("", 31, 0)
+	g.reaped("", 31, 0)
+	g.release()
 	wait(t, sharedWaiter, "admitted")
 
 	// A refusal with nothing running comes without waiting, and a
@@ -278,7 +284,8 @@ func TestAdmissionGateDerivesTheMemoryTerm(t *testing.T) {
 	if admitted, refusal, _ := d.admit(); !admitted {
 		t.Fatalf("a package beside a 5 GiB descendant outside every registered tree was refused: %q", refusal)
 	}
-	d.release("", 0, 5*gib)
+	d.reaped("", 0, 5*gib)
+	d.release()
 	if admitted, refusal, _ := d.admit(); admitted || !strings.Contains(refusal, "estimated at 5.0 GiB") {
 		t.Fatalf("a host that cannot hold one process answered admitted=%v refusal=%q, want a refusal estimating the completed package's 5 GiB peak", admitted, refusal)
 	}
@@ -385,7 +392,7 @@ func TestPackageHeldUntilTheInvocationsEndCarriesTheTerm(t *testing.T) {
 func TestTimedOutPackageHeldByTheMemoryTermNamesIt(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness")
 	n := &NormalizedInvocation{Name: "held", Timeout: time.Minute}
-	r := packageRun{pkg: "example.com/p", heldBy: "the host cannot hold one more package process beside the pass: available 1.5 GiB"}
+	r := packageRun{pkg: "example.com/p", heldBy: "one package estimated at 1.0 GiB — the floor; the host cannot hold one more package process beside the pass: available 1.5 GiB"}
 	if err := finalizeRun(n, &r, true, ""); err != nil {
 		t.Fatal(err)
 	}
@@ -393,7 +400,7 @@ func TestTimedOutPackageHeldByTheMemoryTermNamesIt(t *testing.T) {
 		t.Fatalf("held package finalized as %v with %d diagnostics, want TIMEOUT with one", r.disposition, len(r.diags))
 	}
 	out := r.diags[0].GetOutput()
-	if !strings.Contains(out, "invocation timeout 1m0s expired") || !strings.Contains(out, "held by the memory term: the host cannot hold one more package process beside the pass: available 1.5 GiB") {
+	if !strings.Contains(out, "invocation timeout 1m0s expired") || !strings.Contains(out, "held by the memory term: one package estimated at 1.0 GiB — the floor; the host cannot hold one more package process beside the pass: available 1.5 GiB") {
 		t.Fatalf("held package's diagnostic = %q, want the timeout and the term's words", out)
 	}
 	plain := packageRun{pkg: "example.com/q"}
@@ -460,11 +467,11 @@ func TestRefusedPackageIsolatesNothingOnTheSelectiveForm(t *testing.T) {
 		}
 	}
 	degraded := stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_DEGRADED
-	if reason := packageReason(res.Diagnostics, "unholdable-selection", "example.com/exec/ok", degraded); !strings.HasPrefix(reason, "memory: the host cannot hold one more package process") {
+	if reason := packageReason(res.Diagnostics, "unholdable-selection", "example.com/exec/ok", degraded); !strings.HasPrefix(reason, "memory: one package estimated at") {
 		t.Fatalf("refused package's reason = %q, want the memory term's", reason)
 	}
 	cause := dispositionCause("unholdable-selection", "example.com/exec/ok", degraded, packageReason(res.Diagnostics, "unholdable-selection", "example.com/exec/ok", degraded))
-	if !strings.Contains(cause, "degraded: memory: the host cannot hold") {
+	if !strings.Contains(cause, "degraded: memory: one package estimated at") {
 		t.Fatalf("no-outcome cause = %q, want the disposition with the host's reason", cause)
 	}
 	mu.Lock()
@@ -528,7 +535,7 @@ func TestInvocationTheHostCannotHoldRefusesEveryPackageStated(t *testing.T) {
 		}
 		var named bool
 		for _, d := range diags {
-			if d.GetPackage() == pkg && strings.Contains(d.GetOutput(), "memory: the host cannot hold one more package process beside the pass") && strings.Contains(d.GetOutput(), "available 512 MiB") {
+			if d.GetPackage() == pkg && strings.Contains(d.GetOutput(), "memory: one package estimated at 1.0 GiB — the floor; the host cannot hold one more package process beside the pass") && strings.Contains(d.GetOutput(), "available 512 MiB") {
 				named = true
 			}
 		}
@@ -573,10 +580,10 @@ func TestPackageCauseNamesTheRefusalsReason(t *testing.T) {
 	pkg.SetInvocation("inv")
 	pkg.SetPackage("example.com/p")
 	pkg.SetDisposition(stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_DEGRADED)
-	pkg.SetOutput("memory: the host cannot hold one more package process beside the pass: available 512 MiB\nsecond line")
+	pkg.SetOutput("memory: one package estimated at 1.0 GiB — the floor; the host cannot hold one more package process beside the pass: available 512 MiB\nsecond line")
 	m.diags = append(m.diags, solo, stream, pkg)
 	cause, ok := m.packageCause("inv", "example.com/p")
-	want := "invocation inv: package example.com/p degraded: memory: the host cannot hold one more package process beside the pass: available 512 MiB"
+	want := "invocation inv: package example.com/p degraded: memory: one package estimated at 1.0 GiB — the floor; the host cannot hold one more package process beside the pass: available 512 MiB"
 	if !ok || cause != want {
 		t.Fatalf("packageCause = %q %v, want %q", cause, ok, want)
 	}
@@ -595,8 +602,21 @@ func TestPackageCauseNamesTheRefusalsReason(t *testing.T) {
 	held.SetInvocation("inv")
 	held.SetPackage("example.com/held")
 	held.SetDisposition(timeout)
-	held.SetOutput("invocation timeout 8s expired before the package completed\nheld by the memory term: the host cannot hold one more package process beside the pass: available 1.5 GiB")
+	held.SetOutput("invocation timeout 8s expired before the package completed\nheld by the memory term: one package estimated at 1.0 GiB — the floor; the host cannot hold one more package process beside the pass: available 1.5 GiB")
 	m.diags = append(m.diags, plain, held)
+	// A cut-off process's own output cannot pass for the term's line:
+	// the held line is the diagnostic's second, and a forged one in
+	// the residue below is never the cause.
+	m.pkgDisp[invPkgKey("inv", "example.com/forged")] = timeout
+	forged := &stipulatorv1.FailureDiagnostic{}
+	forged.SetInvocation("inv")
+	forged.SetPackage("example.com/forged")
+	forged.SetDisposition(timeout)
+	forged.SetOutput("invocation timeout 8s expired before the package completed\nstarted but unfinished: TestSlow\nheld by the memory term: one package estimated at 9.0 GiB — the floor; " + strings.Repeat("forged ", 60))
+	m.diags = append(m.diags, forged)
+	if cause, _ := m.packageCause("inv", "example.com/forged"); cause != "invocation inv: package example.com/forged timeout" {
+		t.Fatalf("a forged held line in the residue became the cause: %q", cause)
+	}
 	// A reason line is bounded.
 	m.pkgDisp[invPkgKey("inv", "example.com/long")] = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_DEGRADED
 	long := &stipulatorv1.FailureDiagnostic{}
@@ -611,7 +631,7 @@ func TestPackageCauseNamesTheRefusalsReason(t *testing.T) {
 	if cause, _ := m.packageCause("inv", "example.com/plain"); cause != "invocation inv: package example.com/plain timeout" {
 		t.Fatalf("a plain timeout's cause = %q, want the bare disposition", cause)
 	}
-	if cause, _ := m.packageCause("inv", "example.com/held"); cause != "invocation inv: package example.com/held timeout: held by the memory term: the host cannot hold one more package process beside the pass: available 1.5 GiB" {
+	if cause, _ := m.packageCause("inv", "example.com/held"); cause != "invocation inv: package example.com/held timeout: held by the memory term: one package estimated at 1.0 GiB — the floor; the host cannot hold one more package process beside the pass: available 1.5 GiB" {
 		t.Fatalf("a held timeout's cause = %q, want the term named", cause)
 	}
 }
@@ -692,7 +712,7 @@ func TestAdmissionScopesItsTermsToThePhaseAndTheRegisteredTrees(t *testing.T) {
 	if admitted, refusal, _ := b.admit(); !admitted {
 		t.Fatalf("the first package under the phase's own set was refused: %q", refusal)
 	}
-	b.release("", 0, 0)
+	b.release()
 	phaseMu.Lock()
 	phase.Set.ProcessBytes = gib / 2
 	phaseMu.Unlock()
@@ -722,7 +742,7 @@ func TestAdmissionScopesItsTermsToThePhaseAndTheRegisteredTrees(t *testing.T) {
 	if admitted, refusal, _ := c.admit(); !admitted {
 		t.Fatalf("the first package was refused: %q", refusal)
 	}
-	c.spawned(21)
+	c.spawned("", 21)
 	treeMu.Lock()
 	tree.Trees = map[int]uint64{21: gib + gib/2}
 	treeMu.Unlock()
@@ -732,10 +752,11 @@ func TestAdmissionScopesItsTermsToThePhaseAndTheRegisteredTrees(t *testing.T) {
 	treeMu.Lock()
 	tree.Trees = map[int]uint64{21: gib / 2}
 	treeMu.Unlock()
-	c.release("", 0, 0)
+	c.release()
 	third := admitAsync(c)
 	mustWait(t, third)
-	c.release("", 21, 0)
+	c.reaped("", 21, 0)
+	c.release()
 	wait(t, third, "admitted")
 	// A reused pid starts its observation afresh: with 2 GiB available
 	// a package's tree is shown at 1.5 GiB (a second is admitted beside
@@ -757,15 +778,16 @@ func TestAdmissionScopesItsTermsToThePhaseAndTheRegisteredTrees(t *testing.T) {
 	if admitted, refusal, _ := r.admit(); !admitted {
 		t.Fatalf("the first package was refused: %q", refusal)
 	}
-	r.spawned(21)
+	r.spawned("", 21)
 	reuseMu.Lock()
 	reuse.Trees = map[int]uint64{21: gib + gib/2}
 	reuseMu.Unlock()
 	if admitted, refusal, _ := r.admit(); !admitted {
 		t.Fatalf("the second package beside a 1.5 GiB tree was refused: %q", refusal)
 	}
-	r.release("", 21, 0)
-	r.spawned(21)
+	r.reaped("", 21, 0)
+	r.release()
+	r.spawned("", 21)
 	reuseMu.Lock()
 	reuse.Trees = map[int]uint64{21: gib / 4}
 	reuseMu.Unlock()
@@ -790,10 +812,297 @@ func TestAdmissionScopesItsTermsToThePhaseAndTheRegisteredTrees(t *testing.T) {
 	if admitted, refusal, _ := d.admit(); !admitted {
 		t.Fatalf("the first package was refused: %q", refusal)
 	}
-	d.spawned(41)
+	d.spawned("", 41)
 	strangerMu.Lock()
 	stranger.Set.Descendants, stranger.Set.DescendantsBytes = 9, 8*gib
 	stranger.Trees = map[int]uint64{41: gib / 2}
 	strangerMu.Unlock()
 	wait(t, admitAsync(d), "admitted")
+}
+
+// TestEstimateNamesItsOrigin pins REQ-evidence-admission-origin's first
+// half over synthetic readings: the words the term speaks name the
+// estimate's origin — the floor before any process showed a peak; the
+// package and process whose completed peak the estimate is; the
+// package whose live tree the readings show larger than any peak —
+// and every face carries the words as the term spoke them.
+//
+//gofresh:pure
+func TestEstimateNamesItsOrigin(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-admission-origin")
+	const gib = uint64(1) << 30
+	// A host holding less than the floor beside a small pass, nothing
+	// running: refused naming the floor.
+	injectReadings(t, hostWith(gib/2), passWith(gib/8))
+	a := newAdmission(context.Background(), 4)
+	if admitted, refusal, _ := a.admit(); admitted || !strings.Contains(refusal, "one package estimated at 1.0 GiB — the floor") {
+		t.Fatalf("under the floor: admitted=%v refusal=%q; want the floor named", admitted, refusal)
+	}
+	// A completed process's peak raises the estimate and names the
+	// package and the process.
+	a.reaped("example.com/big", 4242, 3*gib)
+	if admitted, refusal, _ := a.admit(); admitted || !strings.Contains(refusal, "one package estimated at 3.0 GiB — package example.com/big's completed process 4242's peak") {
+		t.Fatalf("after a completed peak: admitted=%v refusal=%q; want the package and process named", admitted, refusal)
+	}
+	// A registered live tree larger than every peak names its package
+	// and process: admitted under a roomy host, registered, then the
+	// reading shows the tree at 5 GiB with the room gone.
+	var mu sync.Mutex
+	reading := resident.Reading{
+		Set:  resident.Set{ProcessBytes: gib / 8, ProcessPeakBytes: gib / 8},
+		Host: resident.Memory{TotalBytes: 64 * gib, AvailableBytes: 64 * gib},
+	}
+	injectReading(t, func() resident.Reading {
+		mu.Lock()
+		defer mu.Unlock()
+		return reading
+	})
+	b := newAdmission(context.Background(), 4)
+	if admitted, refusal, _ := b.admit(); !admitted {
+		t.Fatalf("the roomy host refused: %q", refusal)
+	}
+	b.spawned("example.com/live", 77)
+	mu.Lock()
+	reading = resident.Reading{
+		Set:   resident.Set{ProcessBytes: gib / 8, ProcessPeakBytes: gib / 8},
+		Host:  resident.Memory{TotalBytes: 64 * gib, AvailableBytes: 2 * gib},
+		Trees: map[int]uint64{77: 5 * gib},
+	}
+	mu.Unlock()
+	second := admitAsync(b)
+	select {
+	case got := <-second:
+		t.Fatalf("beside a 5 GiB live tree with 2 GiB available the second package was answered %v, want it held", got)
+	case <-time.After(100 * time.Millisecond):
+	}
+	// The held words are the term's: end the invocation and read them.
+	b.reaped("example.com/live", 77, 0)
+	b.release()
+	select {
+	case got := <-second:
+		if got[0] != "admitted" {
+			t.Fatalf("after the live tree's package ended the second package was %v, want admitted", got)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the second package was not admitted after the release")
+	}
+	// The live tree's words, read at the ask under a held context: a
+	// third admission whose only registered tree is large.
+	ctx, cancel := context.WithCancel(context.Background())
+	c := newAdmission(ctx, 4)
+	mu.Lock()
+	reading.Host.AvailableBytes = 64 * gib
+	mu.Unlock()
+	if admitted, refusal, _ := c.admit(); !admitted {
+		t.Fatalf("the roomy host refused: %q", refusal)
+	}
+	c.spawned("example.com/live", 78)
+	// The reading signals each time the 5 GiB tree is served, so the
+	// cancellation follows an ask that read it — deterministic.
+	served := make(chan struct{}, 16)
+	injectReading(t, func() resident.Reading {
+		mu.Lock()
+		defer mu.Unlock()
+		select {
+		case served <- struct{}{}:
+		default:
+		}
+		return reading
+	})
+	mu.Lock()
+	reading = resident.Reading{
+		Set:   resident.Set{ProcessBytes: gib / 8, ProcessPeakBytes: gib / 8},
+		Host:  resident.Memory{TotalBytes: 64 * gib, AvailableBytes: 2 * gib},
+		Trees: map[int]uint64{78: 5 * gib},
+	}
+	mu.Unlock()
+	third := admitAsync(c)
+	select {
+	case <-served:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the held package never asked")
+	}
+	// A reap re-asks the held package (the readings moved): the live
+	// tree's process ends with a 6 GiB peak, and the words the package
+	// holds name the completed process now, the reaped peak pricing
+	// the next spawn at once.
+	c.reaped("example.com/live", 78, 6*gib)
+	select {
+	case <-served:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the held package did not re-ask after the reap")
+	}
+	cancel()
+	select {
+	case got := <-third:
+		if got[0] != "ended" || !strings.Contains(got[1], "one package estimated at 6.0 GiB — package example.com/live's completed process 78's peak") {
+			t.Fatalf("the held package's words = %v, want the reaped process's peak named after the re-ask", got)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the held package did not end with the invocation")
+	}
+	// Two registered trees showing one largest reading: the words name
+	// the lowest process, whichever order the table lists them in.
+	ctx5, cancel5 := context.WithCancel(context.Background())
+	tie := newAdmission(ctx5, 4)
+	mu.Lock()
+	reading.Host.AvailableBytes = 64 * gib
+	mu.Unlock()
+	for i := 0; i < 2; i++ {
+		if admitted, refusal, _ := tie.admit(); !admitted {
+			t.Fatalf("the roomy host refused: %q", refusal)
+		}
+	}
+	tie.spawned("example.com/nine", 9)
+	tie.spawned("example.com/five", 5)
+	mu.Lock()
+	reading = resident.Reading{
+		Set:   resident.Set{ProcessBytes: gib / 8, ProcessPeakBytes: gib / 8},
+		Host:  resident.Memory{TotalBytes: 64 * gib, AvailableBytes: 2 * gib},
+		Trees: map[int]uint64{9: 5 * gib, 5: 5 * gib},
+	}
+	mu.Unlock()
+	for len(served) > 0 {
+		<-served
+	}
+	tied := admitAsync(tie)
+	select {
+	case <-served:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the tied admission's held package never asked")
+	}
+	cancel5()
+	select {
+	case got := <-tied:
+		if got[0] != "ended" || !strings.Contains(got[1], "one package estimated at 5.0 GiB — package example.com/five's live tree (process 5) in this invocation's readings") {
+			t.Fatalf("the tied trees' words = %v, want the lowest process's live tree named whole", got)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the tied admission's held package did not end with the invocation")
+	}
+	// The words reach the witnesses' bounded cause whole in their
+	// deciding part: the held package's timeout diagnostic carries the
+	// term's line, and packageReason's bounded cut keeps the estimate
+	// and its origin under a long package path.
+	long := strings.Repeat("github.com/example/organisation/", 2) + "internal/compile/joints"
+	ctxE, cancelE := context.WithCancel(context.Background())
+	e := newAdmission(ctxE, 4)
+	e.reaped(long, 31337, 7*gib+gib/3)
+	mu.Lock()
+	reading = resident.Reading{
+		Set:  resident.Set{ProcessBytes: 675 * (gib / 1024), ProcessPeakBytes: 679 * (gib / 1024)},
+		Host: resident.Memory{TotalBytes: 64 * gib, AvailableBytes: 12*gib + 300*(gib/1024)},
+	}
+	mu.Unlock()
+	// The field shape: one package running reserving the 7.3 GiB
+	// estimate, 12.3 GiB available — the next package is held.
+	if admitted, refusal, _ := e.admit(); !admitted {
+		t.Fatalf("the field shape's first package was refused: %q", refusal)
+	}
+	for len(served) > 0 {
+		<-served
+	}
+	fifth := admitAsync(e)
+	select {
+	case <-served:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the field shape's held package never asked")
+	}
+	cancelE()
+	var words string
+	select {
+	case got := <-fifth:
+		if got[0] != "ended" {
+			t.Fatalf("the field shape's second package was %v, want held to the end", got)
+		}
+		words = got[1]
+	case <-time.After(5 * time.Second):
+		t.Fatal("the field shape's held package did not end with the invocation")
+	}
+	n := &NormalizedInvocation{Name: "held", Timeout: time.Minute}
+	r := packageRun{pkg: long, heldBy: words}
+	if err := finalizeRun(n, &r, true, ""); err != nil {
+		t.Fatal(err)
+	}
+	cause := packageReason(r.diags, n.Name, long, stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT)
+	if !strings.Contains(cause, "one package estimated at 7.3 GiB — package "+long+"'s completed process 31337's peak") {
+		t.Fatalf("the witnesses' bounded cause lost the origin: %q", cause)
+	}
+	if len([]rune(cause)) > len([]rune(heldByPrefix))+len([]rune("one package estimated at 7.3 GiB — package "+long+"'s completed process 31337's peak; "))+packageReasonBound {
+		t.Fatalf("the readings after the origin are unbounded: %d runes", len([]rune(cause)))
+	}
+	// A live-tree origin under a longer path — its tail the longest the
+	// words have — survives the bound whole too.
+	longer := strings.Repeat("github.com/example/organisation/", 3) + "internal/compile/joints"
+	ctxL, cancelL := context.WithCancel(context.Background())
+	l := newAdmission(ctxL, 4)
+	mu.Lock()
+	reading.Host.AvailableBytes = 64 * gib
+	mu.Unlock()
+	if admitted, refusal, _ := l.admit(); !admitted {
+		t.Fatalf("the roomy host refused: %q", refusal)
+	}
+	l.spawned(longer, 4321)
+	mu.Lock()
+	reading = resident.Reading{
+		Set:   resident.Set{ProcessBytes: gib / 8, ProcessPeakBytes: gib / 8},
+		Host:  resident.Memory{TotalBytes: 64 * gib, AvailableBytes: 2 * gib},
+		Trees: map[int]uint64{4321: 5 * gib},
+	}
+	mu.Unlock()
+	for len(served) > 0 {
+		<-served
+	}
+	sixth := admitAsync(l)
+	select {
+	case <-served:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the long-path admission's held package never asked")
+	}
+	cancelL()
+	var liveWords string
+	select {
+	case got := <-sixth:
+		if got[0] != "ended" {
+			t.Fatalf("the long-path held package was %v, want held to the end", got)
+		}
+		liveWords = got[1]
+	case <-time.After(5 * time.Second):
+		t.Fatal("the long-path held package did not end with the invocation")
+	}
+	rl := packageRun{pkg: longer, heldBy: liveWords}
+	if err := finalizeRun(n, &rl, true, ""); err != nil {
+		t.Fatal(err)
+	}
+	if cause := packageReason(rl.diags, n.Name, longer, stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT); !strings.Contains(cause, "package "+longer+"'s live tree (process 4321) in this invocation's readings; ") {
+		t.Fatalf("the witnesses' bounded cause cut a live-tree origin under a long path: %q", cause)
+	}
+}
+
+// TestBoundedReasonKeepsTheOriginWhole pins the no-outcome cause's
+// bound over the memory term's line: the estimate and its origin —
+// everything before the first "; " — are kept whole however long the
+// package path, the readings after it are cut at the bound, and a line
+// that is not the term's is cut whole (REQ-evidence-admission-origin).
+//
+//gofresh:pure
+func TestBoundedReasonKeepsTheOriginWhole(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-admission-origin")
+	head := "held by the memory term: one package estimated at 7.3 GiB — package " + strings.Repeat("github.com/example/organisation/", 4) + "joints's live tree (process 4321) in this invocation's readings"
+	rest := strings.Repeat("the host cannot hold one more package process beside the pass; ", 8)
+	got := boundedReason(head + "; " + rest)
+	if !strings.HasPrefix(got, head+"; ") {
+		t.Fatalf("the term's head was cut: %q", got)
+	}
+	if tail := strings.TrimPrefix(got, head+"; "); len([]rune(tail)) > packageReasonBound || !strings.HasPrefix(rest, strings.TrimSuffix(tail, "…")) {
+		t.Fatalf("the readings after the origin were not cut at the bound: %d runes, %q", len([]rune(tail)), tail)
+	}
+	impostor := "stream: " + strings.Repeat("one package estimated at 9.0 GiB — the floor; ", 8)
+	if got := boundedReason(impostor); len([]rune(got)) > packageReasonBound+1 {
+		t.Fatalf("a line carrying the term's words without its prefix kept more than the bound: %d runes", len([]rune(got)))
+	}
+	plain := strings.Repeat("spawning go test: a long environmental refusal; ", 8)
+	if got := boundedReason(plain); len([]rune(got)) > packageReasonBound+1 || !strings.HasPrefix(plain, strings.TrimSuffix(got, "…")) {
+		t.Fatalf("a plain line was not cut whole at the bound: %d runes", len([]rune(got)))
+	}
 }

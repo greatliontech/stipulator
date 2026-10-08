@@ -1111,26 +1111,37 @@ func TestRootsProbeRunsThroughTheProbeRunnerOncePerPackage(t *testing.T) {
 	}
 	t.Cleanup(func() { probeObserverForTest = prior })
 	ctx := context.Background()
-	pc := mustCapture(t, ctx, tmp, pol)
-	if _, _, err := ExecutePolicyWitnessed(ctx, pc, noSeeding{}); err != nil {
-		t.Fatal(err)
+	// Every run must observe both packages: a package that timed out
+	// or degraded under load has no observation and no probe, and the
+	// counts below would read it as the memo's — so each run's
+	// dispositions are asserted first, naming any that is not healthy.
+	run := func(pc *Capture) []string {
+		t.Helper()
+		probed = nil
+		report, _, err := ExecutePolicyWitnessed(ctx, pc, noSeeding{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, inv := range report.GetInvocations() {
+			for _, p := range inv.GetPackages() {
+				if p.GetDisposition() != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+					t.Fatalf("package %s disposed %v (diagnostics %v); the probe counts need every package observed", p.GetPackage(), p.GetDisposition(), report.GetDiagnostics())
+				}
+			}
+		}
+		got := slices.Clone(probed)
+		slices.Sort(got)
+		return got
 	}
+	pc := mustCapture(t, ctx, tmp, pol)
 	want := []string{filepath.Join(tmp, "a"), filepath.Join(tmp, "b")}
-	got := slices.Clone(probed)
-	slices.Sort(got)
-	if !slices.Equal(got, want) {
+	if got := run(pc); !slices.Equal(got, want) {
 		t.Fatalf("roots probes through the probe runner in %v, want one per package directory %v", got, want)
 	}
-	if _, _, err := ExecutePolicyWitnessed(ctx, pc, noSeeding{}); err != nil {
-		t.Fatal(err)
+	if got := run(pc); len(got) != 0 {
+		t.Fatalf("a second execution over the same capture probed again: %v", got)
 	}
-	if len(probed) != 2 {
-		t.Fatalf("a second execution over the same capture probed again: %v", probed)
-	}
-	if _, _, err := ExecutePolicyWitnessed(ctx, mustCapture(t, ctx, tmp, pol), noSeeding{}); err != nil {
-		t.Fatal(err)
-	}
-	if len(probed) != 4 {
-		t.Fatalf("a fresh capture did not probe anew: %v", probed)
+	if got := run(mustCapture(t, ctx, tmp, pol)); !slices.Equal(got, want) {
+		t.Fatalf("a fresh capture did not probe anew: %v, want %v", got, want)
 	}
 }

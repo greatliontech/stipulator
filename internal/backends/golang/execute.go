@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -266,7 +267,7 @@ func spawnOrdinals() func() int32 {
 // envelope it is waiting on is spent on processes alone
 // (REQ-policy-explicit). Both are skipped under the caller's
 // cancellation.
-func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, pkgs []string, tests TestSelection, spawnOrdinal func() int32, inSlot, afterSlot func(i int, run *packageRun)) []packageRun {
+func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, pkgs []string, tests TestSelection, spawnOrdinal func() int32, inSlot func(i int, run *packageRun, gate *admission), afterSlot func(i int, run *packageRun)) []packageRun {
 	gate := newAdmission(invCtx, spawnBoundOf(n))
 	runs := make([]packageRun, len(pkgs))
 	rep := progress.FromContext(ctx)
@@ -284,9 +285,9 @@ func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, p
 			case admitted:
 				runs[i] = runPackage(invCtx, n, pkg, tests[pkg], spawnOrdinal(), gate)
 				if inSlot != nil && ctx.Err() == nil {
-					inSlot(i, &runs[i])
+					inSlot(i, &runs[i], gate)
 				}
-				gate.release(pkg, processPidOf(&runs[i]), runs[i].peakBytes)
+				gate.release()
 			case refusal != "":
 				// The host cannot hold one package process beside the
 				// pass and nothing of this invocation is running to free
@@ -294,7 +295,7 @@ func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, p
 				// guard (the witness concurrency clause's memory term).
 				runs[i] = degradedRun(n.Name, pkg, "memory: "+refusal, false)
 				if inSlot != nil && ctx.Err() == nil {
-					inSlot(i, &runs[i])
+					inSlot(i, &runs[i], nil)
 				}
 			default:
 				// Never spawned: the caller classifies the missing terminal
@@ -303,7 +304,7 @@ func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, p
 				// its timeout diagnostic.
 				runs[i] = packageRun{pkg: pkg, heldBy: held}
 				if inSlot != nil && ctx.Err() == nil {
-					inSlot(i, &runs[i])
+					inSlot(i, &runs[i], nil)
 				}
 			}
 			if afterSlot != nil && ctx.Err() == nil {
@@ -448,13 +449,14 @@ const packageEstimateFloor = uint64(1) << 30
 
 // readingsHook is the admission's reading of the host and of the pass —
 // resident.Readings in production; a test injects a host that cannot
-// hold a process. releasedPeakHook observes each admitted package's
-// release with the process the gate had registered for it and the
-// completed peak the gate received — a test seam pinning the wiring of
-// the completed-package evidence and of the tree attribution.
+// hold a process. reapedPeakHook observes each reap the gate receives —
+// every process a package's slot spawned, the isolation re-runs
+// included — with whether the gate had the process registered and the
+// completed peak it folded: a test seam pinning the wiring of the
+// completed-package evidence and of the tree attribution.
 var (
-	readingsHook     = resident.Readings
-	releasedPeakHook func(pkg string, pid int, registered bool, peakBytes uint64)
+	readingsHook   = resident.Readings
+	reapedPeakHook func(pkg string, pid int, registered bool, peakBytes uint64)
 )
 
 // admission gates the spawn of package processes under the derived
@@ -485,13 +487,19 @@ var (
 // spawned for it; a tree not yet in the table reserves the whole
 // estimate), so a burst of asks between the kernel's readings is
 // bounded by the term and not only by the processor bound, and one
-// tree's overshoot never pays for a sibling's reservation. A package's
-// process stays registered through its isolation re-runs after it was
-// reaped (the slot is released after them): its tree then shows nothing
-// and reserves the whole estimate — conservative — and a pid the kernel
-// reused inside that window would attribute a stranger's direct child
-// to it, which needs the pid space to wrap within one package's re-runs;
-// recorded, not guarded.
+// tree's overshoot never pays for a sibling's reservation. Every
+// process a package's slot spawns — its whole-package process and each
+// isolation re-run — is registered at its spawn and reaped with its
+// peak the moment its wait returns, so a running package's reservation
+// reads whichever of its processes is live and a reaped process's peak
+// prices the next spawn at once; between a reap and the slot's next
+// spawn the package holds no registered tree and reserves the whole
+// estimate — brief, stated. The estimate names its origin wherever the
+// term's words appear — the floor, the package whose completed
+// process's peak it is, or the package whose live tree showed it — so
+// a genuine need and a transient read apart in the refusal, the held
+// package's timeout diagnostic and the witnesses' bounded cause
+// (REQ-evidence-admission-origin).
 // A waiting package re-asks at every completion (the readings move) and
 // gives up with the invocation's context, carrying the words of the
 // term that held it; a package asked while nothing of the invocation
@@ -509,8 +517,12 @@ type admission struct {
 	// pids are the processes spawned for the running packages — the
 	// roots of the trees the reservation attributes.
 	pids map[int]bool
-	// peak is the largest completed-package peak seen so far.
-	peak uint64
+	// peak is the largest completed-package peak seen so far;
+	// peakOrigin names the package and process that showed it.
+	peak       uint64
+	peakOrigin estimateOrigin
+	// pkgOf names the package each registered process was spawned for.
+	pkgOf map[int]string
 	// passPeak is the largest resident set the pass has shown in this
 	// admission's readings — execution's own peak, the growth term's
 	// reference.
@@ -521,8 +533,35 @@ type admission struct {
 	treePeak map[int]uint64
 }
 
+// estimateOrigin names where the estimate's bytes come from: the
+// floor, a package's completed process (its reaped peak), or a
+// package's live tree (its largest reading under this admission).
+type estimateOrigin struct {
+	term string
+	pkg  string
+	pid  int
+}
+
+const (
+	originFloor     = "the floor"
+	originCompleted = "completed process"
+	originLiveTree  = "live tree"
+)
+
+// words renders the origin for the term's words.
+func (o estimateOrigin) words() string {
+	switch o.term {
+	case originCompleted:
+		return fmt.Sprintf("package %s's completed process %d's peak", o.pkg, o.pid)
+	case originLiveTree:
+		return fmt.Sprintf("package %s's live tree (process %d) in this invocation's readings", o.pkg, o.pid)
+	default:
+		return originFloor
+	}
+}
+
 func newAdmission(ctx context.Context, bound int) *admission {
-	a := &admission{ctx: ctx, bound: bound, pids: map[int]bool{}, treePeak: map[int]uint64{}}
+	a := &admission{ctx: ctx, bound: bound, pids: map[int]bool{}, treePeak: map[int]uint64{}, pkgOf: map[int]string{}}
 	a.cond = sync.NewCond(&a.mu)
 	// The context's end wakes every waiter, which then returns unadmitted.
 	context.AfterFunc(ctx, func() {
@@ -534,17 +573,23 @@ func newAdmission(ctx context.Context, bound int) *admission {
 }
 
 // estimate is the memory one more package process tree is assumed to
-// need, given the reading's trees of the registered package processes:
-// the observed maxima advance under a.mu with the reading.
-func (a *admission) estimate(reading resident.Reading) uint64 {
-	need := max(packageEstimateFloor, a.peak)
-	for pid := range a.pids {
+// need, given the reading's trees of the registered package processes
+// — the observed maxima advance under a.mu with the reading — and the
+// origin of that figure.
+func (a *admission) estimate(reading resident.Reading) (uint64, estimateOrigin) {
+	need, origin := packageEstimateFloor, estimateOrigin{term: originFloor}
+	if a.peak > need {
+		need, origin = a.peak, a.peakOrigin
+	}
+	for _, pid := range slices.Sorted(maps.Keys(a.pids)) {
 		if shown := reading.Trees[pid]; shown > a.treePeak[pid] {
 			a.treePeak[pid] = shown
 		}
-		need = max(need, a.treePeak[pid])
+		if a.treePeak[pid] > need {
+			need, origin = a.treePeak[pid], estimateOrigin{term: originLiveTree, pkg: a.pkgOf[pid], pid: pid}
+		}
 	}
-	return need
+	return need, origin
 }
 
 // room judges the memory term under a.mu: whether the host can hold one
@@ -560,7 +605,7 @@ func (a *admission) room() (ok bool, words string) {
 	if set.ProcessBytes > a.passPeak {
 		a.passPeak = set.ProcessBytes
 	}
-	need := a.estimate(reading)
+	need, origin := a.estimate(reading)
 	// Each running package's tree is reserved the estimate less what it
 	// already shows in the process table (its held pages are out of the
 	// room already, its file-backed pages reclaimable); a package
@@ -588,8 +633,11 @@ func (a *admission) room() (ok bool, words string) {
 	if available >= reserved+need && available-reserved-need >= growth {
 		return true, ""
 	}
-	return false, fmt.Sprintf("the host cannot hold one more package process beside the pass: available %s, %d package(s) running reserving %s, the pass's resident %s (this phase's peak %s), one package estimated at %s",
-		resident.ByteWord(available), a.running, resident.ByteWord(reserved), resident.ByteWord(set.ProcessBytes), resident.ByteWord(a.passPeak), resident.ByteWord(need))
+	// The estimate and its origin lead the words: the witnesses' cause
+	// carries the line bounded (packageReasonBound), and the deciding
+	// part must survive the cut — the readings follow.
+	return false, fmt.Sprintf(termLead+"%s — %s; the host cannot hold one more package process beside the pass: available %s, %d package(s) running reserving %s, the pass's resident %s (this phase's peak %s)",
+		resident.ByteWord(need), origin.words(), resident.ByteWord(available), a.running, resident.ByteWord(reserved), resident.ByteWord(set.ProcessBytes), resident.ByteWord(a.passPeak))
 }
 
 // admit blocks until the package may spawn. admitted is false when the
@@ -620,40 +668,49 @@ func (a *admission) admit() (admitted bool, refusal, held string) {
 	}
 }
 
-// spawned registers the process an admitted package's executor spawned
-// — the root of the tree the reservation attributes to it.
-func (a *admission) spawned(pid int) {
+// spawned registers a process an admitted package's executor spawned
+// for pkg — the whole-package process or an isolation re-run — the
+// root of the tree the reservation attributes to the package.
+func (a *admission) spawned(pkg string, pid int) {
 	if a == nil {
 		return
 	}
 	a.mu.Lock()
 	a.pids[pid] = true
+	a.pkgOf[pid] = pkg
 	a.mu.Unlock()
 }
 
-// release returns an admitted package's slot — its process, if one was
-// spawned, unregistered — with its completed peak, and wakes the waiters
-// to re-ask; the seam sees what the gate received.
-func (a *admission) release(pkg string, pid int, peakBytes uint64) {
+// reaped unregisters a package's process the moment its wait returned
+// and folds its completed peak into the estimate, naming the origin,
+// then wakes the waiters to re-ask (the readings move); the seam sees
+// what the gate received. The package's slot stays held until release.
+func (a *admission) reaped(pkg string, pid int, peakBytes uint64) {
+	if a == nil {
+		return
+	}
 	a.mu.Lock()
 	registered := a.pids[pid]
 	delete(a.pids, pid)
 	delete(a.treePeak, pid)
-	a.running--
-	a.peak = max(a.peak, peakBytes)
+	delete(a.pkgOf, pid)
+	if peakBytes > a.peak {
+		a.peak, a.peakOrigin = peakBytes, estimateOrigin{term: originCompleted, pkg: pkg, pid: pid}
+	}
 	a.cond.Broadcast()
 	a.mu.Unlock()
-	if releasedPeakHook != nil {
-		releasedPeakHook(pkg, pid, registered, peakBytes)
+	if reapedPeakHook != nil {
+		reapedPeakHook(pkg, pid, registered, peakBytes)
 	}
 }
 
-// processPidOf is the pid of a run's spawned process, 0 when none spawned.
-func processPidOf(run *packageRun) int {
-	if run.producer == nil {
-		return 0
-	}
-	return int(run.producer.GetProcessId())
+// release returns an admitted package's slot — its processes already
+// reaped — and wakes the waiters to re-ask.
+func (a *admission) release() {
+	a.mu.Lock()
+	a.running--
+	a.cond.Broadcast()
+	a.mu.Unlock()
 }
 
 // witnessSpawnBound derives the package fan-out bound: max(1,
@@ -773,7 +830,7 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, select
 		}
 		return degradedRun(n.Name, pkg, fmt.Sprintf("spawning go test: %v", err), false)
 	}
-	gate.spawned(cmd.Process.Pid)
+	gate.spawned(pkg, cmd.Process.Pid)
 	producer := &stipulatorv1.ProducerIdentity{}
 	producer.SetInvocation(n.Name)
 	producer.SetProcessId(int64(cmd.Process.Pid))
@@ -781,6 +838,7 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, select
 
 	st := parseTestStream(n.Name, pkg, stdout, producer)
 	waitErr := cmd.Wait()
+	gate.reaped(pkg, cmd.Process.Pid, processPeakBytes(cmd.ProcessState))
 	if gotool.Salvaged(ctx, waitErr) {
 		// The stream above was read to its end through the invocation's
 		// own pipe before this wait, so a descendant the process left
@@ -1324,16 +1382,38 @@ func packageReason(diags []*stipulatorv1.FailureDiagnostic, invocation, pkg stri
 	switch disposition {
 	case stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_DEGRADED:
 		line, _, _ := strings.Cut(own.GetOutput(), "\n")
-		return cutAtRune(line, packageReasonBound)
+		return boundedReason(line)
 	case stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT:
-		for _, line := range strings.Split(own.GetOutput(), "\n") {
-			if strings.HasPrefix(line, heldByPrefix) {
-				return cutAtRune(line, packageReasonBound)
+		// The term's line is the diagnostic's second line, where
+		// finalizeRun writes it — never read from the cut-off process's
+		// residue below, whose text is the test's own.
+		if _, rest, ok := strings.Cut(own.GetOutput(), "\n"); ok {
+			if line, _, _ := strings.Cut(rest, "\n"); strings.HasPrefix(line, heldByPrefix) {
+				return boundedReason(line)
 			}
 		}
 	}
 	return ""
 }
+
+// boundedReason bounds a no-outcome cause's line. The memory term's
+// line — opening with the refusal's or the held line's prefix and the
+// term's first words — keeps its deciding part whole — the estimate
+// and its origin, everything before the first "; " — and bounds the
+// readings that follow (REQ-evidence-admission-origin); any other
+// line is bounded whole.
+func boundedReason(line string) string {
+	if strings.HasPrefix(line, "memory: "+termLead) || strings.HasPrefix(line, heldByPrefix+termLead) {
+		if head, rest, ok := strings.Cut(line, "; "); ok {
+			return head + "; " + cutAtRune(rest, packageReasonBound)
+		}
+	}
+	return cutAtRune(line, packageReasonBound)
+}
+
+// termLead opens the memory term's words: the estimate and its origin
+// lead, the readings follow.
+const termLead = "one package estimated at "
 
 // degradedRun is a spawn-stage degradation: the package never produced a
 // stream at all.
