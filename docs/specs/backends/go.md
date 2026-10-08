@@ -203,8 +203,9 @@ standard error alone past the wait delay after the process exited on
 its own truncates the diagnostic residue, never the verdict, which is
 the whole stream's and the exit's; a listing — collected by the
 boundary, with no wholeness test of its own (a truncation at an object
-boundary reads as a shorter set) — is refused naming the hold when a
-descendant holds its pipe past the wait delay. The Go
+boundary reads as a shorter set) — is refused naming the hold whenever
+the wait delay expires before the listing is drained (Gofresh's listing
+form), and a listing exiting nonzero answers nothing. The Go
 children are `go env` (the workspace's and normalization's samples — the
 normalization's the toolchain's one environment snapshot — through the
 owned boundary; the provenance probe's toolchain sample, a

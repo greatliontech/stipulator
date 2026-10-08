@@ -12,7 +12,6 @@ import (
 	"go/token"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -226,15 +225,13 @@ const (
 	vendorLookupDisabledSuffix = ": import lookup disabled by -mod=vendor"
 )
 
-// listPackages lists the invocation's selected packages under its build
-// selection through an owned, cancellable process boundary.
-func listPackages(ctx context.Context, n *NormalizedInvocation) ([]listedPackage, error) {
-	// A spawn reusing the derived environment: the owned telemetry home
-	// is re-established first (telemetry.go).
-	if err := ensureTelemetryOwned(n.Env, n.TelemetrySource); err != nil {
-		return nil, fmt.Errorf("invocation %q: %w", n.Name, err)
-	}
-	args := []string{"list", "-e", "-json=ImportPath,Dir,TestGoFiles,XTestGoFiles,Error"}
+// listArgs composes a listing's arguments under the invocation's build
+// selection: the listing's own head flags, the selection's tags, the
+// module mode, then the patterns. Both of discovery's listings read it,
+// so the closure bracket describes the build the selected set was
+// listed under.
+func listArgs(n *NormalizedInvocation, head ...string) []string {
+	args := append([]string(nil), head...)
 	if tags := selectionTags(n); len(tags) > 0 {
 		args = append(args, "-tags="+strings.Join(tags, ","))
 	}
@@ -243,29 +240,34 @@ func listPackages(ctx context.Context, n *NormalizedInvocation) ([]listedPackage
 	}
 	// Patterns are statically validated to never be flag-shaped, so they
 	// append directly.
-	args = append(args, n.Packages...)
-	cmd, err := ownedRunner.Command(ctx, n.Dir, n.Env, args...)
-	if err != nil {
+	return append(args, n.Packages...)
+}
+
+// listPackages lists the invocation's selected packages under its build
+// selection through an owned, cancellable process boundary.
+func listPackages(ctx context.Context, n *NormalizedInvocation) ([]listedPackage, error) {
+	// A spawn reusing the derived environment: the owned telemetry home
+	// is re-established first (telemetry.go).
+	if err := ensureTelemetryOwned(n.Env, n.TelemetrySource); err != nil {
 		return nil, fmt.Errorf("invocation %q: %w", n.Name, err)
 	}
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	runErr := cmd.Run()
+	args := listArgs(n, "-e", "-json=ImportPath,Dir,TestGoFiles,XTestGoFiles,Error")
+	// Gofresh's listing form: a nonzero exit answers nothing but the
+	// bounded stderr, and an answer the wait delay expired on before
+	// the listing was drained is refused (ErrListingRefused — a listing
+	// has no wholeness test, a truncation at an object boundary reads
+	// as a shorter set), so one error arm covers both; a cancellation
+	// is the caller's own before any reading of the answer
+	// (REQ-go-owned-processes). The error names `go list <args>` itself.
+	out, runErr := ownedRunner.List(ctx, n.Dir, n.Env, args...)
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	if errors.Is(runErr, exec.ErrWaitDelay) {
-		// The listing exited on its own while a descendant held its pipe
-		// past the boundary's wait delay, which closes the read end with
-		// whatever the copier had not drained: a listing has no wholeness
-		// test — a truncation at an object boundary reads as a shorter
-		// set — so the answer is refused naming the hold
-		// (REQ-go-owned-processes).
-		return nil, fmt.Errorf("go list for invocation %q: a descendant held the listing's pipe past the wait delay; a listing has no wholeness test: %w", n.Name, runErr)
+	if runErr != nil {
+		return nil, fmt.Errorf("invocation %q: %w", n.Name, runErr)
 	}
 	var pkgs []listedPackage
-	dec := json.NewDecoder(&stdout)
+	dec := json.NewDecoder(bytes.NewReader(out))
 	for dec.More() {
 		var p listedPackage
 		if err := dec.Decode(&p); err != nil {
@@ -292,9 +294,6 @@ func listPackages(ctx context.Context, n *NormalizedInvocation) ([]listedPackage
 		pkgs = append(pkgs, p)
 	}
 	if len(pkgs) == 0 {
-		if runErr != nil {
-			return nil, fmt.Errorf("go list for invocation %q: %v: %s", n.Name, runErr, stderr.String())
-		}
 		// The listing ran clean and matched nothing — a directory that
 		// survives with no Go files, a tag selection excluding every
 		// file: the tree demonstrably lacks what the patterns name, the
@@ -346,37 +345,25 @@ func listClosureDirs(ctx context.Context, n *NormalizedInvocation, selected []li
 		n.ClosureDirsErr = fmt.Sprintf("invocation %q: %v", n.Name, err)
 		return
 	}
-	args := []string{"list", "-e", "-deps", "-test", "-json=ImportPath,Dir,ForTest,Deps"}
-	if tags := selectionTags(n); len(tags) > 0 {
-		args = append(args, "-tags="+strings.Join(tags, ","))
-	}
-	if flag := moduleModeFlag(n.ModuleMode); flag != "" {
-		args = append(args, flag)
-	}
-	args = append(args, n.Packages...)
-	cmd, err := ownedRunner.Command(ctx, n.Dir, n.Env, args...)
-	if err != nil {
-		n.ClosureDirsErr = fmt.Sprintf("invocation %q: %v", n.Name, err)
-		return
-	}
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	runErr := cmd.Run()
+	args := listArgs(n, "-e", "-deps", "-test", "-json=ImportPath,Dir,ForTest,Deps")
+	// Gofresh's listing form (REQ-go-owned-processes): a nonzero exit
+	// answers nothing — with -e, in-band package breakage still exits
+	// zero, so a nonzero exit is an infrastructure failure, and a
+	// truncated closure would seal a silently weaker bracket — and an
+	// answer the wait delay expired on before the listing was drained
+	// is refused (ErrListingRefused). Fail closed on either; the error
+	// names `go list <args>` itself.
+	out, runErr := ownedRunner.List(ctx, n.Dir, n.Env, args...)
 	if ctx.Err() != nil {
 		n.ClosureDirsErr = ctx.Err().Error()
 		return
 	}
-	// With -e, in-band package breakage still exits zero, so a nonzero
-	// exit is an infrastructure failure — even with partial JSON parsed,
-	// a truncated closure would seal a silently weaker bracket. Fail
-	// closed unconditionally.
 	if runErr != nil {
-		n.ClosureDirsErr = fmt.Sprintf("go list -deps for invocation %q: %v: %s", n.Name, runErr, stderr.String())
+		n.ClosureDirsErr = fmt.Sprintf("invocation %q: %v", n.Name, runErr)
 		return
 	}
 	var nodes []depListedPackage
-	dec := json.NewDecoder(&stdout)
+	dec := json.NewDecoder(bytes.NewReader(out))
 	for dec.More() {
 		var p depListedPackage
 		if err := dec.Decode(&p); err != nil {

@@ -170,8 +170,8 @@ func witnessAndListingBehindAHold(t *testing.T, redirect string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := listPackages(context.Background(), n); err == nil || !errors.Is(err, exec.ErrWaitDelay) {
-		t.Fatalf("a listing behind a pipe hold = %v, want the hold named", err)
+	if _, err := listPackages(context.Background(), n); err == nil || !errors.Is(err, gotool.ErrListingRefused) || !strings.Contains(err.Error(), "invocation \"hold\": go list -e ") {
+		t.Fatalf("a listing behind a pipe hold = %v, want gofresh's listing refusal naming the invocation", err)
 	}
 	selection := []Obligation{{Kind: ObligationPackage, Package: "example.com/disc/alpha"}}
 	health, tests, _, _, err := ExecuteInvocation(context.Background(), n, selection)
@@ -207,5 +207,73 @@ func TestNormalizationRefusesAPartialEnvironmentDocument(t *testing.T) {
 	cfg.SetPackages([]string{"./..."})
 	if _, err := NormalizeInvocation(context.Background(), dir, goInvocation("partial", cfg)); err == nil || !strings.Contains(err.Error(), "answered no GOVERSION") {
 		t.Fatalf("a partial environment document = %v, want the missing key named", err)
+	}
+}
+
+// The closure listing refuses an answer a descendant held the pipe past
+// the wait delay for — gofresh's listing form, never a truncated
+// closure sealing a weaker bracket — while the package listing, which
+// no descendant holds, answers: the discovery succeeds and the closure
+// error names the held listing (REQ-go-owned-processes).
+func TestClosureListingRefusesTheHeldAnswer(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-owned-processes")
+	goBinary, err := exec.LookPath("go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bin := t.TempDir()
+	script := "#!/bin/sh\nif [ \"$1\" = list ] && [ \"$3\" = -deps ]; then \"" + goBinary + "\" \"$@\"; s=$?; ( sleep 3 ) & exit $s; fi\nexec \"" + goBinary + "\" \"$@\"\n"
+	if err := os.WriteFile(filepath.Join(bin, "go"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	neutralAmbient(t)
+	dir := discoverFixture(t)
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./..."})
+	n, err := NormalizeInvocation(context.Background(), dir, goInvocation("hold", cfg))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := DiscoverInvocation(context.Background(), n); err != nil {
+		t.Fatalf("the discovery under a held closure listing = %v; want the package listing answered", err)
+	}
+	if !strings.Contains(n.ClosureDirsErr, "invocation \"hold\": go list -e -deps ") || !strings.Contains(n.ClosureDirsErr, gotool.ErrListingRefused.Error()) {
+		t.Fatalf("the closure listing's error = %q; want the held listing refused by gofresh's form", n.ClosureDirsErr)
+	}
+}
+
+// A listing that exits nonzero after printing its entries — under
+// `-e` every package fault is in-band and exits zero, so such an exit
+// is the process's own failure past its output (a signal mid-print, a
+// marshal failure) — answers nothing: the entries it printed are not
+// served as a shorter set.
+func TestListingExitingNonzeroAfterItsEntriesIsRefused(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-owned-processes")
+	goBinary, err := exec.LookPath("go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bin := t.TempDir()
+	script := "#!/bin/sh\nif [ \"$1\" = list ]; then \"" + goBinary + "\" \"$@\"; echo 'listing failed past its output' >&2; exit 1; fi\nexec \"" + goBinary + "\" \"$@\"\n"
+	if err := os.WriteFile(filepath.Join(bin, "go"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	neutralAmbient(t)
+	dir := discoverFixture(t)
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./..."})
+	n, err := NormalizeInvocation(context.Background(), dir, goInvocation("late", cfg))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pkgs, err := listPackages(context.Background(), n)
+	if err == nil || !strings.Contains(err.Error(), "invocation \"late\": go list -e ") || !strings.Contains(err.Error(), "listing failed past its output") {
+		t.Fatalf("a listing exiting nonzero after its entries = %v, %v; want refused naming the invocation and the exit's diagnostic", pkgs, err)
+	}
+	listClosureDirs(context.Background(), n, nil)
+	if !strings.Contains(n.ClosureDirsErr, "invocation \"late\": go list -e -deps ") || !strings.Contains(n.ClosureDirsErr, "listing failed past its output") {
+		t.Fatalf("the closure listing's error = %q; want the late exit refused", n.ClosureDirsErr)
 	}
 }
