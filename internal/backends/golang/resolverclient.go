@@ -18,9 +18,9 @@ import (
 
 // resolverClient is the backend's typed path: a verify.Backend whose
 // go/packages symbol loading runs in an owned resolver child — this
-// binary self-exec'd on the resolver child's argv route, spawned through
-// the same owned-cancellation machinery as every other child of Go
-// policy work, so the package launcher and its
+// binary self-exec'd on the resolver child's argv route, spawned as the
+// consumer-command form of the one go-command policy (childRunner,
+// runner.go), so the package launcher and its
 // entire descendant tree — every go list, compile, and VCS subprocess —
 // terminates with the operation's cancellation (REQ-go-owned-processes).
 // The in-process implementation stays: the child runs newContext; the
@@ -128,7 +128,21 @@ func (c *resolverClient) ensure() error {
 		return c.fault(fmt.Errorf("cannot verify the child's build: reading this process's own image: %w", c.identityErr))
 	}
 	cctx, stop := context.WithCancel(c.ctx)
-	cmd := commandContext(cctx, c.exe, c.args...)
+	// The child inherits this process's working directory (no directory
+	// named) and its environment under the policy's normalization — a
+	// malformed ambient entry refuses the spawn, never passes through.
+	// The refusal names the cause alone: the form's own text leads with
+	// the whole command line, and a scoped client's is every package
+	// of the stale remainder.
+	cmd, err := childRunner.Program(cctx, "", ambientEnviron(), c.exe, c.args...)
+	if err != nil {
+		stop()
+		cause := errors.Unwrap(err)
+		if cause == nil {
+			cause = err
+		}
+		return c.fault(fmt.Errorf("preparing the resolver child: the parent's environment: %w", cause))
+	}
 	// Child diagnostics pass straight through: protocol errors travel on
 	// stdout, and a shared capture buffer would race the reaper's Wait.
 	cmd.Stderr = os.Stderr
@@ -149,9 +163,10 @@ func (c *resolverClient) ensure() error {
 	c.cmd, c.stop, c.stdin = cmd, stop, stdin
 	c.enc, c.dec = json.NewEncoder(stdin), json.NewDecoder(stdout)
 	// The reaper solely owns Wait: the kill path is the owned-group
-	// cancellation configured by commandContext, and Wait afterwards
-	// keeps a long-lived parent (the MCP server) from accumulating
-	// zombies. cctx ends via the caller's ctx, a fault, or Close.
+	// cancellation the child runner's containment configured, and Wait
+	// afterwards (bounded by the policy's wait delay) keeps a long-lived
+	// parent (the MCP server) from accumulating zombies. cctx ends via
+	// the caller's ctx, a fault, or Close.
 	go func() {
 		<-cctx.Done()
 		_ = cmd.Wait()

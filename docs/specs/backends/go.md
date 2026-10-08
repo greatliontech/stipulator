@@ -220,8 +220,14 @@ operation that owns it),
 engines' own `go version` and `go env` samples (descendant-free
 queries, under the boundary through the engines' runner); every one
 runs under the owned environment. This binary's
-own children (the self-executed resolver child and, on Windows, the
-tree-kill helper) are the boundary's mechanism, not Go children. The
+own child, the self-executed resolver child, is no Go child: it is
+spawned by the consumer-command form of Gofresh's go-command runner,
+under a containment of its own — its own process group swept outright
+with its operation (no quit arm: the child's operation is never an
+envelope), the reap bounded by the policy's wait delay — and under the
+parent's own environment normalized under the policy (a malformed
+entry refuses the spawn); on Windows the tree-kill helper is the
+boundary's mechanism. The
 resolver child's handshake line — ready or the tree's load error alike —
 carries the child's executable identity (the size and modification time
 of the file it runs as and, where the platform exposes one, its inode,

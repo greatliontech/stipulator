@@ -646,8 +646,9 @@ func SelectionNotices(pc *Capture) []string {
 }
 
 // ambientEnviron is the one read of the inherited environment — the
-// invocation normalizer's, the workspace query's, and the flip report's
-// fallback sample; a var so a pin
+// invocation normalizer's, the workspace query's, the flip report's
+// fallback sample, and the resolver child's environment under the
+// policy's normalization (childRunner); a var so a pin
 // can hand it an entry the process cannot set in itself (an entry with
 // no '=' survives execve into os.Environ but no Setenv produces one).
 var ambientEnviron = os.Environ

@@ -3,6 +3,6 @@
 
 requirement_id: "REQ-go-owned-processes"
 reason: "the analysis engines the parent process hosts load packages through an in-process loader whose go list spawns in the parent's process group: a cancelled load ends its go list, but the loader's descendants are not swept by the operation's boundary"
-content_hash: "d198a7cdc7ff436e24d84917e082955af37cc8f78d1f0ebc203fb6c3aace772b"
-source_hash: "39a39d0e8bf23e415e70d5e26c9f27cbf0c92f5bdfad5f82bb2f216d9992e5f6"
+content_hash: "8b9eaceb43ea2fcfe2ccc29eadf2cb65c0a39fe71da27bb15bdcf131b3fd2af2"
+source_hash: "b1945086223ed0f242a904a4b5fd94cff3f5fc701d8133422fb34effe64c5de6"
 lands { manual { condition: "the parent-hosted engine loads run inside an owned, cancellable process boundary (cross-tool train chunk 238)" contradicted: true } }

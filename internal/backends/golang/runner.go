@@ -8,6 +8,21 @@ import (
 	"github.com/greatliontech/gofresh/gotool"
 )
 
+// errEnvelopeExpired marks a context whose deadline is a policy
+// invocation's reviewed envelope: the one expiry whose kill must leave
+// dump evidence, as opposed to a caller's own deadline, which discards
+// the run whole.
+var errEnvelopeExpired = errors.New("policy invocation envelope expired")
+
+// commandHook observes the derivation's spawns — the normalization's
+// snapshot, discovery's listings, and execution's test runs through
+// ownedRunner, and the resolver child through childRunner; the
+// provenance probe, the observation facade's roots probe and the
+// analysis engines' own commands are no derivation spawn and never
+// reach it. Tests install it to pin that a refusal fired before any of
+// these spawns and that the readers reuse the derivation.
+var commandHook func(name string, args []string)
+
 // quitGrace bounds the window between the envelope-expiry SIGQUIT and the
 // process group's SIGKILL: long enough for the Go runtime to write a full
 // goroutine dump, short enough that a group ignoring SIGQUIT cannot stall
@@ -30,10 +45,30 @@ var ownedBoundary = &gotool.Containment{
 // normalization's environment snapshot run through it, and the test
 // seam (commandHook) sees each of those spawns — the derivation's own,
 // which the reuse pins count. The resolver child — this binary's own
-// re-exec, no go command — is the one non-go spawn, in its own process
-// group killed outright with its operation (commandContext): the
-// envelope-expiry quit below is the go children's alone.
+// re-exec, no go command — is the one non-go spawn, through
+// childRunner: the envelope-expiry quit above is the go children's
+// alone.
 var ownedRunner = gotool.Runner{Containment: ownedBoundary, Prepare: observeCommand}
+
+// childRunner spawns the resolver child — this binary re-executed on
+// its resolver route — as the consumer-command form of the one
+// go-command policy (gotool.Runner.Program, REQ-go-owned-processes):
+// its own process group, killed outright when its operation ends (the
+// child's context is the operation's, never a package envelope's, so
+// the envelope-expiry quit has no arm here — an ended operation
+// discards the child's answers whole, and a dump would have no
+// consumer), the reap bounded by the policy's wait delay, the parent's
+// own environment normalized under the policy. The derivation seam sees
+// the spawn as the child's program name with its arguments.
+var childRunner = gotool.Runner{Containment: &gotool.Containment{}, Prepare: observeChild}
+
+// observeChild hands the prepared resolver-child spawn to the test seam
+// (commandHook): the program as named, then its arguments.
+func observeChild(cmd *exec.Cmd) {
+	if commandHook != nil {
+		commandHook(cmd.Args[0], cmd.Args[1:])
+	}
+}
 
 // containedRunner is a go-command runner under the owned boundary for
 // spawns outside the derivation seam — the analysis engines' and the
