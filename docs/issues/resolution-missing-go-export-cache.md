@@ -1,6 +1,13 @@
 # Records verification encounters vanished Go export-cache files
 
-Lands: user decision
+Lands: cross-tool train chunk 249 (triaged at 290r's open under the
+derive rule: the typed load already refuses a package with load errors,
+naming the first — this report's open half is the refusal's class
+naming the vanished export file with the rerun remedy, and one bounded
+retry of the typed load on that class, the resolver's reason-face work
+that lands with executed-and-resolution-reason-faces-unclassed; the
+cause — who removed the build-cache entry — is not isolated here, and a
+report isolating it re-triages)
 
 Field report from bldc on 2026-10-08, at base commit `0863f9d`, before its
 parent-relation refactor. This records a transient resolution failure; it does
