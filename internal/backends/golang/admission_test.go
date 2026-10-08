@@ -19,6 +19,7 @@ import (
 // admission for the test's life.
 func injectReadings(t *testing.T, host func() (resident.Memory, bool), sample func() (resident.Set, bool)) {
 	t.Helper()
+	freshGate(t)
 	prior := readingsHook
 	readingsHook = func() (resident.Reading, bool) {
 		set, ok := sample()
@@ -37,9 +38,20 @@ func injectReadings(t *testing.T, host func() (resident.Memory, bool), sample fu
 // injectReading installs one synthetic reading, trees included.
 func injectReading(t *testing.T, read func() resident.Reading) {
 	t.Helper()
+	freshGate(t)
 	prior := readingsHook
 	readingsHook = func() (resident.Reading, bool) { return read(), true }
 	t.Cleanup(func() { readingsHook = prior })
+}
+
+// freshGate gives the test its own host gate: a unit pin's admissions
+// run no invocation, so nothing leaves the gate for them; an admission
+// captures the gate at its construction, so the swap is race-free.
+func freshGate(t *testing.T) {
+	t.Helper()
+	prior := theHostGate
+	theHostGate = newHostGate()
+	t.Cleanup(func() { theHostGate = prior })
 }
 
 func hostWith(available uint64) func() (resident.Memory, bool) {
@@ -857,6 +869,7 @@ func TestEstimateNamesItsOrigin(t *testing.T) {
 		defer mu.Unlock()
 		return reading
 	})
+	a.leave()
 	b := newAdmission(context.Background(), 4)
 	if admitted, refusal, _ := b.admit(); !admitted {
 		t.Fatalf("the roomy host refused: %q", refusal)
@@ -889,6 +902,7 @@ func TestEstimateNamesItsOrigin(t *testing.T) {
 	// The live tree's words, read at the ask under a held context: a
 	// third admission whose only registered tree is large.
 	ctx, cancel := context.WithCancel(context.Background())
+	b.leave()
 	c := newAdmission(ctx, 4)
 	mu.Lock()
 	reading.Host.AvailableBytes = 64 * gib
@@ -944,6 +958,7 @@ func TestEstimateNamesItsOrigin(t *testing.T) {
 	// Two registered trees showing one largest reading: the words name
 	// the lowest process, whichever order the table lists them in.
 	ctx5, cancel5 := context.WithCancel(context.Background())
+	c.leave()
 	tie := newAdmission(ctx5, 4)
 	mu.Lock()
 	reading.Host.AvailableBytes = 64 * gib
@@ -986,6 +1001,7 @@ func TestEstimateNamesItsOrigin(t *testing.T) {
 	// and its origin under a long package path.
 	long := strings.Repeat("github.com/example/organisation/", 2) + "internal/compile/joints"
 	ctxE, cancelE := context.WithCancel(context.Background())
+	tie.leave()
 	e := newAdmission(ctxE, 4)
 	e.reaped(long, 31337, 7*gib+gib/3)
 	mu.Lock()
@@ -1035,6 +1051,7 @@ func TestEstimateNamesItsOrigin(t *testing.T) {
 	// words have — survives the bound whole too.
 	longer := strings.Repeat("github.com/example/organisation/", 3) + "internal/compile/joints"
 	ctxL, cancelL := context.WithCancel(context.Background())
+	e.leave()
 	l := newAdmission(ctxL, 4)
 	mu.Lock()
 	reading.Host.AvailableBytes = 64 * gib
@@ -1077,6 +1094,7 @@ func TestEstimateNamesItsOrigin(t *testing.T) {
 	if cause := packageReason(rl.diags, n.Name, longer, stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT); !strings.Contains(cause, "package "+longer+"'s live tree (process 4321) in this invocation's readings; ") {
 		t.Fatalf("the witnesses' bounded cause cut a live-tree origin under a long path: %q", cause)
 	}
+	l.leave()
 }
 
 // TestBoundedReasonKeepsTheOriginWhole pins the no-outcome cause's
@@ -1105,4 +1123,312 @@ func TestBoundedReasonKeepsTheOriginWhole(t *testing.T) {
 	if got := boundedReason(plain); len([]rune(got)) > packageReasonBound+1 || !strings.HasPrefix(plain, strings.TrimSuffix(got, "…")) {
 		t.Fatalf("a plain line was not cut whole at the bound: %d runes", len([]rune(got)))
 	}
+}
+
+// TestAdmissionsOfOneProcessShareTheHostGate pins
+// REQ-evidence-admission-origin's gate sentence: two admissions alive
+// in one process — two concurrent operations — are judged together
+// over one reading; the second's room is the host's less the first's
+// running packages' reservation, so a package the first could hold
+// alone is held beside it — never refused, the first's release can
+// come — its words naming the other operations' packages, admitted
+// when the first's release frees a slot (the release wakes it) — and
+// a third held beside two operations' packages admitted by the
+// first's end.
+//
+//gofresh:pure
+func TestAdmissionsOfOneProcessShareTheHostGate(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-admission-origin")
+	const gib = uint64(1) << 30
+	// 2.5 GiB available, a small pass, the 1 GiB floor: one operation
+	// holds two packages (its second reserves the whole estimate).
+	injectReadings(t, hostWith(5*gib/2), passWith(gib/8))
+	first := newAdmission(context.Background(), 8)
+	t.Cleanup(func() { first.leave() })
+	for i := 0; i < 2; i++ {
+		if admitted, refusal, _ := first.admit(); !admitted {
+			t.Fatalf("the first operation's package %d was refused: %q", i, refusal)
+		}
+	}
+	// A second operation over the same host: alone it would hold two
+	// packages too; beside the first's 2 GiB reservation it holds none
+	// — HELD (the first's release can come), its words naming the
+	// others' reservation, never refused as a package nothing can free.
+	ctx2, cancel2 := context.WithCancel(context.Background())
+	second := newAdmission(ctx2, 8)
+	t.Cleanup(func() { second.leave() })
+	heldAsk := admitAsync(second)
+	select {
+	case got := <-heldAsk:
+		t.Fatalf("beside the first operation the second was answered %v, want it held", got)
+	case <-time.After(100 * time.Millisecond):
+	}
+	// The first operation releases one package: the release alone
+	// wakes the second's waiter, and the second admits into the room it
+	// freed.
+	first.release()
+	select {
+	case got := <-heldAsk:
+		if got[0] != "admitted" {
+			t.Fatalf("after the first released one package the second was %v, want admitted", got)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the first operation's release did not wake the second")
+	}
+	// A third operation's ask beside the first's one package and the
+	// second's one is held; the first operation's end — its leave —
+	// wakes it and it admits.
+	third := newAdmission(ctx2, 8)
+	t.Cleanup(func() { third.leave() })
+	thirdAsk := admitAsync(third)
+	select {
+	case got := <-thirdAsk:
+		t.Fatalf("beside two operations' packages the third was answered %v, want it held", got)
+	case <-time.After(100 * time.Millisecond):
+	}
+	first.leave()
+	select {
+	case got := <-thirdAsk:
+		if got[0] != "admitted" {
+			t.Fatalf("after the first operation left the gate the third was %v, want admitted", got)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the first operation's end did not wake the third")
+	}
+	// The held words name the others' reservation: a fourth operation's
+	// ask beside the second's and the third's packages, cancelled while
+	// held.
+	fourth := newAdmission(ctx2, 8)
+	t.Cleanup(func() { fourth.leave() })
+	fourthAsk := admitAsync(fourth)
+	time.Sleep(50 * time.Millisecond)
+	cancel2()
+	select {
+	case got := <-fourthAsk:
+		if got[0] != "ended" || !strings.Contains(got[1], "this process's other operations running 2 package(s) reserving 2.0 GiB beyond the 0 B their trees show") {
+			t.Fatalf("the held package's words = %v, want the others' two packages and 2 GiB named", got)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the held fourth ask did not end with its invocation")
+	}
+
+	// Judged over one reading, never a published figure: the first
+	// operation's tree, registered at 3 GiB with 1 GiB available, shrinks
+	// to 0.5 GiB with 3.5 GiB available — by the first's own rule its
+	// package still reserves 2.5 GiB, so a second operation admits one
+	// floor package and holds the next (a snapshot taken at the first's
+	// last judgment would have read 0 and admitted three).
+	freshGate(t)
+	var mu sync.Mutex
+	reading := resident.Reading{
+		Set:  resident.Set{ProcessBytes: gib / 8, ProcessPeakBytes: gib / 8},
+		Host: resident.Memory{TotalBytes: 64 * gib, AvailableBytes: 4 * gib},
+	}
+	injectReading(t, func() resident.Reading {
+		mu.Lock()
+		defer mu.Unlock()
+		return reading
+	})
+	ctxA, cancelA := context.WithCancel(context.Background())
+	defer cancelA()
+	alpha := newAdmission(ctxA, 2)
+	if admitted, refusal, _ := alpha.admit(); !admitted {
+		t.Fatalf("alpha's first package was refused: %q", refusal)
+	}
+	alpha.spawned("example.com/alpha", 101)
+	mu.Lock()
+	reading = resident.Reading{
+		Set:   resident.Set{ProcessBytes: gib / 8, ProcessPeakBytes: gib / 8},
+		Host:  resident.Memory{TotalBytes: 64 * gib, AvailableBytes: gib},
+		Trees: map[int]uint64{101: 3 * gib},
+	}
+	mu.Unlock()
+	alphaSecond := admitAsync(alpha)
+	select {
+	case got := <-alphaSecond:
+		t.Fatalf("alpha's second package beside its 3 GiB tree was answered %v, want held", got)
+	case <-time.After(100 * time.Millisecond):
+	}
+	mu.Lock()
+	reading = resident.Reading{
+		Set:   resident.Set{ProcessBytes: gib / 8, ProcessPeakBytes: gib / 8},
+		Host:  resident.Memory{TotalBytes: 64 * gib, AvailableBytes: 3*gib + gib/2},
+		Trees: map[int]uint64{101: gib / 2},
+	}
+	mu.Unlock()
+	beta := newAdmission(ctxA, 8)
+	if admitted, refusal, _ := beta.admit(); !admitted {
+		t.Fatalf("beta's first package beside alpha's shrunk tree was refused: %q", refusal)
+	}
+	betaSecond := admitAsync(beta)
+	select {
+	case got := <-betaSecond:
+		t.Fatalf("beta's second package was answered %v, want held: alpha's tree still reserves 2.5 GiB by alpha's own rule", got)
+	case <-time.After(100 * time.Millisecond):
+	}
+	// Refused only when nothing of the process runs: gamma, with
+	// nothing running, asks beside alpha's running package whose tree
+	// shows its whole estimate (a reservation of nothing) — held, since
+	// alpha's completion frees the tree's held pages; its words name
+	// alpha's running package.
+	mu.Lock()
+	reading = resident.Reading{
+		Set:   resident.Set{ProcessBytes: gib / 8, ProcessPeakBytes: gib / 8},
+		Host:  resident.Memory{TotalBytes: 64 * gib, AvailableBytes: gib / 2},
+		Trees: map[int]uint64{101: 3 * gib},
+	}
+	mu.Unlock()
+	ctxG, cancelG := context.WithCancel(context.Background())
+	gamma := newAdmission(ctxG, 8)
+	gammaAsk := admitAsync(gamma)
+	select {
+	case got := <-gammaAsk:
+		t.Fatalf("gamma beside alpha's running package was answered %v, want held", got)
+	case <-time.After(100 * time.Millisecond):
+	}
+	cancelG()
+	select {
+	case got := <-gammaAsk:
+		if got[0] != "ended" || !strings.Contains(got[1], "this process's other operations running") {
+			t.Fatalf("gamma's held words = %v, want the others' running packages named", got)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("gamma's held ask did not end with its invocation")
+	}
+	cancelA()
+	// The growth term is the process's: a later operation's admission
+	// reserves the room back to the largest set ANY admission of the
+	// process has read — delta saw the pass at 1.5 GiB, epsilon, minted
+	// after it fell to 512 MiB, must leave the 1 GiB of growth over, so
+	// with 1.5 GiB available and the floor it is refused (nothing of the
+	// process runs) naming the process's peak.
+	freshGate(t)
+	mu.Lock()
+	reading = resident.Reading{
+		Set:  resident.Set{ProcessBytes: gib + gib/2, ProcessPeakBytes: 100 * gib},
+		Host: resident.Memory{TotalBytes: 8 * gib, AvailableBytes: 8 * gib},
+	}
+	mu.Unlock()
+	injectReading(t, func() resident.Reading {
+		mu.Lock()
+		defer mu.Unlock()
+		return reading
+	})
+	delta := newAdmission(context.Background(), 4)
+	if admitted, refusal, _ := delta.admit(); !admitted {
+		t.Fatalf("delta under a roomy host was refused: %q", refusal)
+	}
+	delta.release()
+	mu.Lock()
+	reading = resident.Reading{
+		Set:  resident.Set{ProcessBytes: gib / 2, ProcessPeakBytes: 100 * gib},
+		Host: resident.Memory{TotalBytes: 8 * gib, AvailableBytes: gib + gib/2},
+	}
+	mu.Unlock()
+	epsilon := newAdmission(context.Background(), 4)
+	if admitted, refusal, _ := epsilon.admit(); admitted || !strings.Contains(refusal, "this phase's peak 1.5 GiB") {
+		t.Fatalf("epsilon beside delta's 1.5 GiB pass peak: admitted=%v refusal=%q; want refused naming the process's peak", admitted, refusal)
+	}
+	epsilon.leave()
+	delta.leave()
+	// A context ending — a timeout, a cancellation — does not end the
+	// membership: zeta's context is cancelled while its package still
+	// runs (its tree in the table), and eta, with nothing running, is
+	// HELD beside it — the dying tree is reaped and released in time —
+	// its words naming zeta's running package; zeta's reap, release
+	// and leave admit eta.
+	freshGate(t)
+	mu.Lock()
+	reading = resident.Reading{
+		Set:  resident.Set{ProcessBytes: gib / 8, ProcessPeakBytes: gib / 8},
+		Host: resident.Memory{TotalBytes: 64 * gib, AvailableBytes: 64 * gib},
+	}
+	mu.Unlock()
+	injectReading(t, func() resident.Reading {
+		mu.Lock()
+		defer mu.Unlock()
+		return reading
+	})
+	ctxZ, cancelZ := context.WithCancel(context.Background())
+	zeta := newAdmission(ctxZ, 2)
+	if admitted, refusal, _ := zeta.admit(); !admitted {
+		t.Fatalf("zeta's package was refused: %q", refusal)
+	}
+	zeta.spawned("example.com/zeta", 202)
+	mu.Lock()
+	reading = resident.Reading{
+		Set:   resident.Set{ProcessBytes: gib / 8, ProcessPeakBytes: gib / 8},
+		Host:  resident.Memory{TotalBytes: 64 * gib, AvailableBytes: gib / 2},
+		Trees: map[int]uint64{202: 3 * gib},
+	}
+	mu.Unlock()
+	cancelZ()
+	ctxE, cancelE := context.WithCancel(context.Background())
+	defer cancelE()
+	eta := newAdmission(ctxE, 8)
+	etaAsk := admitAsync(eta)
+	select {
+	case got := <-etaAsk:
+		t.Fatalf("eta beside a cancelled operation's running package was answered %v, want held", got)
+	case <-time.After(150 * time.Millisecond):
+	}
+	mu.Lock()
+	reading = resident.Reading{
+		Set:  resident.Set{ProcessBytes: gib / 8, ProcessPeakBytes: gib / 8},
+		Host: resident.Memory{TotalBytes: 64 * gib, AvailableBytes: 4 * gib},
+	}
+	mu.Unlock()
+	zeta.reaped("example.com/zeta", 202, 3*gib)
+	zeta.release()
+	zeta.leave()
+	select {
+	case got := <-etaAsk:
+		if got[0] != "admitted" {
+			t.Fatalf("after the cancelled operation's package was reaped eta was %v, want admitted", got)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the cancelled operation's reap and leave did not admit eta")
+	}
+	eta.leave()
+	// One reading per wake: two waiters woken by one release judge
+	// over one reading, taken once — the hook is asked once for the
+	// burst, not once per waiter.
+	freshGate(t)
+	var reads atomic.Int32
+	injectReading(t, func() resident.Reading {
+		reads.Add(1)
+		mu.Lock()
+		defer mu.Unlock()
+		return reading
+	})
+	mu.Lock()
+	reading = resident.Reading{
+		Set:  resident.Set{ProcessBytes: gib / 8, ProcessPeakBytes: gib / 8},
+		Host: resident.Memory{TotalBytes: 64 * gib, AvailableBytes: 2 * gib},
+	}
+	mu.Unlock()
+	theta := newAdmission(context.Background(), 8)
+	for i := 0; i < 2; i++ {
+		if admitted, refusal, _ := theta.admit(); !admitted {
+			t.Fatalf("theta's package %d was refused: %q", i, refusal)
+		}
+	}
+	iota, kappa := newAdmission(context.Background(), 8), newAdmission(context.Background(), 8)
+	iotaAsk, kappaAsk := admitAsync(iota), admitAsync(kappa)
+	time.Sleep(100 * time.Millisecond)
+	before := reads.Load()
+	theta.release()
+	select {
+	case <-iotaAsk:
+	case <-kappaAsk:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the release woke neither waiter")
+	}
+	time.Sleep(100 * time.Millisecond)
+	if got := reads.Load() - before; got != 1 {
+		t.Fatalf("one release woke two waiters and the host was read %d times, want once for the burst", got)
+	}
+	theta.leave()
+	iota.leave()
+	kappa.leave()
 }

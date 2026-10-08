@@ -562,7 +562,16 @@ admission at its spawn and reaped with its peak the moment its wait
 returns, so a running package's reservation reads whichever of its
 processes is live and a reaped process's peak prices the next spawn at
 once (between a reap and the slot's next spawn the package reserves the
-whole estimate).
+whole estimate); and the admissions of one process judge the room
+together, each over one reading against every other operation's
+running packages — their trees' reservations at their own invocations'
+estimates — so the concurrent operations of a long-lived server never
+admit into one available memory twice; a package the others' running
+packages alone hold waits for their release as one held on its own
+invocation's completion does (every reap, release and end of any
+operation wakes every waiter of the process), its words naming the
+others' running packages and their reservation, and is refused only
+when nothing of the process runs.
 
 **REQ-evidence-record-store-layout** (behavior): Every machine-local
 record store MUST live outside the repository, under the user cache

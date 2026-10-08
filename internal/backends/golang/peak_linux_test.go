@@ -31,6 +31,7 @@ func TestCompletedPackagePeakFeedsTheEstimate(t *testing.T) {
 	if got := processPeakBytes(nil); got != 0 {
 		t.Fatalf("processPeakBytes(nil) = %d, want 0", got)
 	}
+	freshGate(t)
 	a := newAdmission(t.Context(), 1)
 	if admitted, _, _ := a.admit(); !admitted {
 		t.Fatal("the one slot was not admitted")
@@ -66,6 +67,15 @@ func TestInvocationReleasesEachPackageWithItsPeak(t *testing.T) {
 		registered[pkg] = wasRegistered && pid > 0
 	}
 	t.Cleanup(func() { reapedPeakHook = prior })
+	// The invocation's gate is followed through the seam to its drop.
+	var gates []*admission
+	priorObserver := admissionObserverForTest
+	admissionObserverForTest = func(a *admission) {
+		mu.Lock()
+		defer mu.Unlock()
+		gates = append(gates, a)
+	}
+	t.Cleanup(func() { admissionObserverForTest = priorObserver })
 	cfg := &stipulatorv1.GoInvocationConfig{}
 	cfg.SetPackages([]string{"./ok", "./notest"})
 	health, _, diags := executeInvocation(t, time.Minute, cfg, "peaks")
@@ -74,6 +84,16 @@ func TestInvocationReleasesEachPackageWithItsPeak(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
+	// The invocation's admission left the host gate with it: no
+	// package of this operation is judged against after the run.
+	if len(gates) == 0 {
+		t.Fatal("the invocation minted no admission")
+	}
+	for _, g := range gates {
+		if theHostGate.member(g) {
+			t.Fatal("the invocation's admission still sits on the host gate after the run returned")
+		}
+	}
 	for _, pkg := range []string{"example.com/exec/ok", "example.com/exec/notest"} {
 		if peak, ok := released[pkg]; !ok || peak < 1<<20 {
 			t.Fatalf("package %s released with peak %d (present %v), want its reaped process's peak of at least a mebibyte; released: %v", pkg, peak, ok, released)

@@ -269,6 +269,7 @@ func spawnOrdinals() func() int32 {
 // cancellation.
 func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, pkgs []string, tests TestSelection, spawnOrdinal func() int32, inSlot func(i int, run *packageRun, gate *admission), afterSlot func(i int, run *packageRun)) []packageRun {
 	gate := newAdmission(invCtx, spawnBoundOf(n))
+	defer gate.leave()
 	runs := make([]packageRun, len(pkgs))
 	rep := progress.FromContext(ctx)
 	var pkgsDone atomic.Int32
@@ -500,18 +501,23 @@ var (
 // a genuine need and a transient read apart in the refusal, the held
 // package's timeout diagnostic and the witnesses' bounded cause
 // (REQ-evidence-admission-origin).
-// A waiting package re-asks at every completion (the readings move) and
-// gives up with the invocation's context, carrying the words of the
-// term that held it; a package asked while nothing of the invocation
-// runs and the host cannot hold one process is refused — the refusal's
-// words name the readings — rather than waiting on a completion that
-// cannot come or spawning into the host's guard. The term only narrows:
+// A waiting package re-asks at every completion of the process (the
+// readings move) and gives up with the invocation's context, carrying
+// the words of the term that held it; a package asked while nothing of
+// the process runs and the host cannot hold one process is refused —
+// the refusal's words name the readings — rather than waiting on a
+// completion that cannot come or spawning into the host's guard; the
+// concurrent operations of one process are judged together on the one
+// host gate (hostGate), each running package at its own invocation's
+// estimate. The term only narrows:
 // the processor bound and the inner width the witness environment
 // delivers are never widened by it.
 type admission struct {
-	ctx     context.Context
-	mu      sync.Mutex
-	cond    *sync.Cond
+	ctx context.Context
+	// gate is the process's one host gate: the mutex and condition
+	// every admission of the process shares, and the membership the
+	// room is judged over.
+	gate    *hostGate
 	bound   int
 	running int
 	// pids are the processes spawned for the running packages — the
@@ -560,21 +566,110 @@ func (o estimateOrigin) words() string {
 	}
 }
 
+// hostGate is the process's one host gate: the one mutex and condition
+// every admission of the process shares, and the set of admissions
+// alive — concurrent operations' (a long-lived server's calls, each
+// with its own capture, envelope and bound). Every judgment runs
+// under the gate's lock over one reading and every member's running
+// packages, so the room is never read from a published snapshot (a
+// figure that could go stale between an operation's judgments), a
+// waiter waits under the lock that guards what it judged (no wakeup
+// is lost), every reap, release and end of any member wakes every
+// waiter, and an admission captures the gate at its construction
+// (REQ-evidence-admission-origin).
+type hostGate struct {
+	mu      sync.Mutex
+	cond    *sync.Cond
+	members map[*admission]bool
+	// gen counts the wakes (every broadcast); reading is the one
+	// reading the waiters woken by the latest wake judge over, taken
+	// by the first of them — a fresh ask takes its own.
+	gen        uint64
+	readingGen uint64
+	reading    resident.Reading
+	readingOK  bool
+}
+
+func newHostGate() *hostGate {
+	g := &hostGate{members: map[*admission]bool{}}
+	g.cond = sync.NewCond(&g.mu)
+	return g
+}
+
+// wake broadcasts the gate's condition, opening a new wake generation:
+// the woken waiters judge over one reading, taken once.
+func (g *hostGate) wake() {
+	g.gen++
+	g.cond.Broadcast()
+}
+
+// readingFor answers the reading a judgment runs over, under g.mu: a
+// fresh ask takes its own (the host moves without events); a waiter
+// woken by the latest wake takes the generation's, read once for the
+// whole burst, so a burst of W waiters costs one walk, not W.
+func (g *hostGate) readingFor(fresh bool) (resident.Reading, bool) {
+	if fresh || g.readingGen != g.gen {
+		g.reading, g.readingOK = readingsHook()
+		g.readingGen = g.gen
+	}
+	return g.reading, g.readingOK
+}
+
+// theHostGate is the process's gate; a unit pin swaps in a fresh one
+// before its admissions are minted.
+var theHostGate = newHostGate()
+
+// join adds a under g.mu.
+func (g *hostGate) join(a *admission) {
+	g.mu.Lock()
+	g.members[a] = true
+	g.mu.Unlock()
+}
+
+// leave removes a — its invocation returned, nothing of it running —
+// and wakes every waiter: the room its packages held is free.
+func (g *hostGate) leave(a *admission) {
+	g.mu.Lock()
+	delete(g.members, a)
+	g.wake()
+	g.mu.Unlock()
+}
+
+// member reports whether a is alive on the gate.
+func (g *hostGate) member(a *admission) bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.members[a]
+}
+
+// admissionObserverForTest, when set, sees every admission minted —
+// the seam a pin follows an invocation's gate through to its drop;
+// nil in production.
+var admissionObserverForTest func(*admission)
+
 func newAdmission(ctx context.Context, bound int) *admission {
-	a := &admission{ctx: ctx, bound: bound, pids: map[int]bool{}, treePeak: map[int]uint64{}, pkgOf: map[int]string{}}
-	a.cond = sync.NewCond(&a.mu)
-	// The context's end wakes every waiter, which then returns unadmitted.
+	a := &admission{ctx: ctx, gate: theHostGate, bound: bound, pids: map[int]bool{}, treePeak: map[int]uint64{}, pkgOf: map[int]string{}}
+	if admissionObserverForTest != nil {
+		admissionObserverForTest(a)
+	}
+	a.gate.join(a)
+	// The context's end wakes every waiter, which then returns
+	// unadmitted. Membership ends at the invocation's return alone: a
+	// context ending on a timeout or a cancellation leaves the
+	// invocation's packages running through their kill grace, and
+	// their trees must be judged until they are reaped and released.
 	context.AfterFunc(ctx, func() {
-		a.mu.Lock()
-		a.cond.Broadcast()
-		a.mu.Unlock()
+		a.gate.mu.Lock()
+		a.gate.wake()
+		a.gate.mu.Unlock()
 	})
 	return a
 }
 
 // estimate is the memory one more package process tree is assumed to
 // need, given the reading's trees of the registered package processes
-// — the observed maxima advance under a.mu with the reading — and the
+// — the observed maxima advance under the gate's lock with the reading
+// — and the
 // origin of that figure.
 func (a *admission) estimate(reading resident.Reading) (uint64, estimateOrigin) {
 	need, origin := packageEstimateFloor, estimateOrigin{term: originFloor}
@@ -592,14 +687,15 @@ func (a *admission) estimate(reading resident.Reading) (uint64, estimateOrigin) 
 	return need, origin
 }
 
-// room judges the memory term under a.mu: whether the host can hold one
+// room judges the memory term under the gate's lock: whether the host
+// can hold one
 // more package process beside the pass and the packages already
 // running, and the readings' words when it cannot. A host or a pass
 // without a reading has no memory term.
-func (a *admission) room() (ok bool, words string) {
-	reading, ok := readingsHook()
+func (a *admission) room(fresh bool) (ok bool, words string, othersRunning bool) {
+	reading, ok := a.gate.readingFor(fresh)
 	if !ok {
-		return true, ""
+		return true, "", false
 	}
 	set := reading.Set
 	if set.ProcessBytes > a.passPeak {
@@ -612,6 +708,54 @@ func (a *admission) room() (ok bool, words string) {
 	// admitted but not yet registered, or registered but not yet in the
 	// table, reserves the whole estimate. Per tree, never netted across
 	// trees: a grown sibling's bytes pay for nothing but itself.
+	reserved := a.reservation(reading, need)
+	// The other admissions of this process — concurrent operations'
+	// — hold their running packages against the same available memory,
+	// each at its own estimate over this same reading.
+	var others, othersShown uint64
+	for b := range a.gate.members {
+		if b == a {
+			continue
+		}
+		if b.running > 0 {
+			othersRunning = true
+		}
+		needB, _ := b.estimate(reading)
+		others += b.reservation(reading, needB)
+		for pid := range b.pids {
+			othersShown += reading.Trees[pid]
+		}
+	}
+	// The pass's own room to grow back to the largest set any
+	// admission of the process has read: the process grows once, and a
+	// later operation's admission must not admit into the headroom an
+	// earlier one's pass needs.
+	passPeak := a.passPeak
+	for b := range a.gate.members {
+		passPeak = max(passPeak, b.passPeak)
+	}
+	growth := passPeak - set.ProcessBytes
+	// The room is what the host has available: the pass's and the
+	// children's held pages are out of it already, and the family's
+	// soft ceilings are targets, not needs.
+	available := reading.Host.AvailableBytes
+	if available >= others+reserved+need && available-others-reserved-need >= growth {
+		return true, "", othersRunning
+	}
+	// The estimate and its origin lead the words: the witnesses' cause
+	// carries the line bounded (packageReasonBound), and the deciding
+	// part must survive the cut — the readings follow.
+	words = fmt.Sprintf(termLead+"%s — %s; the host cannot hold one more package process beside the pass: available %s, %d package(s) running reserving %s, the pass's resident %s (this phase's peak %s)",
+		resident.ByteWord(need), origin.words(), resident.ByteWord(available), a.running, resident.ByteWord(reserved), resident.ByteWord(set.ProcessBytes), resident.ByteWord(passPeak))
+	if othersRunning {
+		words += fmt.Sprintf(", this process's other operations running %d package(s) reserving %s beyond the %s their trees show", a.gate.runningOthers(a), resident.ByteWord(others), resident.ByteWord(othersShown))
+	}
+	return false, words, othersRunning
+}
+
+// reservation is what the admission's running packages still reserve
+// beyond what the reading's table shows of their trees, at need.
+func (a *admission) reservation(reading resident.Reading, need uint64) uint64 {
 	registered := 0
 	reserved := uint64(0)
 	for pid := range a.pids {
@@ -623,48 +767,53 @@ func (a *admission) room() (ok bool, words string) {
 	if a.running > registered {
 		reserved += uint64(a.running-registered) * need
 	}
-	// The pass's own room to grow back to the largest set this
-	// admission has read.
-	growth := a.passPeak - set.ProcessBytes
-	// The room is what the host has available: the pass's and the
-	// children's held pages are out of it already, and the family's
-	// soft ceilings are targets, not needs.
-	available := reading.Host.AvailableBytes
-	if available >= reserved+need && available-reserved-need >= growth {
-		return true, ""
+	return reserved
+}
+
+// runningOthers counts the other members' running packages, under g.mu.
+func (g *hostGate) runningOthers(a *admission) int {
+	n := 0
+	for b := range g.members {
+		if b != a {
+			n += b.running
+		}
 	}
-	// The estimate and its origin lead the words: the witnesses' cause
-	// carries the line bounded (packageReasonBound), and the deciding
-	// part must survive the cut — the readings follow.
-	return false, fmt.Sprintf(termLead+"%s — %s; the host cannot hold one more package process beside the pass: available %s, %d package(s) running reserving %s, the pass's resident %s (this phase's peak %s)",
-		resident.ByteWord(need), origin.words(), resident.ByteWord(available), a.running, resident.ByteWord(reserved), resident.ByteWord(set.ProcessBytes), resident.ByteWord(a.passPeak))
+	return n
 }
 
 // admit blocks until the package may spawn. admitted is false when the
 // invocation's context ended — held then carries the words of the memory
 // term that was holding the package, empty when it waited on the
-// processor bound alone — or when nothing of the invocation runs and the
+// processor bound alone — or when nothing of the process runs and the
 // host cannot hold one process (refusal names the readings).
 func (a *admission) admit() (admitted bool, refusal, held string) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	g := a.gate
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	fresh := true
 	for {
 		if a.ctx.Err() != nil {
 			return false, "", held
 		}
 		held = ""
 		if a.running < a.bound {
-			ok, words := a.room()
+			ok, words, othersRunning := a.room(fresh)
 			if ok {
 				a.running++
 				return true, "", ""
 			}
-			if a.running == 0 {
+			// Nothing of this invocation running and no other operation
+			// of the process running a package: no completion can come,
+			// so the package is refused rather than held; another
+			// operation's package completes in time, and its reap,
+			// release or end wakes this waiter.
+			if a.running == 0 && !othersRunning {
 				return false, words, ""
 			}
 			held = words
 		}
-		a.cond.Wait()
+		g.cond.Wait()
+		fresh = false
 	}
 }
 
@@ -675,21 +824,22 @@ func (a *admission) spawned(pkg string, pid int) {
 	if a == nil {
 		return
 	}
-	a.mu.Lock()
+	a.gate.mu.Lock()
 	a.pids[pid] = true
 	a.pkgOf[pid] = pkg
-	a.mu.Unlock()
+	a.gate.mu.Unlock()
 }
 
 // reaped unregisters a package's process the moment its wait returned
 // and folds its completed peak into the estimate, naming the origin,
-// then wakes the waiters to re-ask (the readings move); the seam sees
-// what the gate received. The package's slot stays held until release.
+// then wakes every waiter of the process to re-ask (the readings
+// move); the seam sees what the gate received. The package's slot
+// stays held until release.
 func (a *admission) reaped(pkg string, pid int, peakBytes uint64) {
 	if a == nil {
 		return
 	}
-	a.mu.Lock()
+	a.gate.mu.Lock()
 	registered := a.pids[pid]
 	delete(a.pids, pid)
 	delete(a.treePeak, pid)
@@ -697,21 +847,26 @@ func (a *admission) reaped(pkg string, pid int, peakBytes uint64) {
 	if peakBytes > a.peak {
 		a.peak, a.peakOrigin = peakBytes, estimateOrigin{term: originCompleted, pkg: pkg, pid: pid}
 	}
-	a.cond.Broadcast()
-	a.mu.Unlock()
+	a.gate.wake()
+	a.gate.mu.Unlock()
 	if reapedPeakHook != nil {
 		reapedPeakHook(pkg, pid, registered, peakBytes)
 	}
 }
 
 // release returns an admitted package's slot — its processes already
-// reaped — and wakes the waiters to re-ask.
+// reaped — and wakes every waiter of the process to re-ask: a slot
+// freed is room any operation may take.
 func (a *admission) release() {
-	a.mu.Lock()
+	a.gate.mu.Lock()
 	a.running--
-	a.cond.Broadcast()
-	a.mu.Unlock()
+	a.gate.wake()
+	a.gate.mu.Unlock()
 }
+
+// leave ends the admission's membership of the gate: its invocation
+// returned.
+func (a *admission) leave() { a.gate.leave(a) }
 
 // witnessSpawnBound derives the package fan-out bound: max(1,
 // GOMAXPROCS/2) — each unit is itself a parallel process tree, so a

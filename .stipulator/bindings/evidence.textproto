@@ -2793,8 +2793,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-admission-origin"
-  content_hash: "c8c6e10628b0abe578507fe6bf62e3c909b4a54e593025699bde291acde97da3"
-  source_hash: "66b411585977d6a17e91acfa61abe508d794b3e2338ab1a5db9e6802afc2b84f"
+  content_hash: "5389f961e95267a301aadc7962c1f3f1fc12b49df3b85fc739acbf6c2012b5dd"
+  source_hash: "cc631b9485ed590571bd387d7a59e8cb074a81c7994311e51ffeddea6b566eaa"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestEstimateNamesItsOrigin"
   role: BINDING_ROLE_TESTS
@@ -2803,8 +2803,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-admission-origin"
-  content_hash: "c8c6e10628b0abe578507fe6bf62e3c909b4a54e593025699bde291acde97da3"
-  source_hash: "66b411585977d6a17e91acfa61abe508d794b3e2338ab1a5db9e6802afc2b84f"
+  content_hash: "5389f961e95267a301aadc7962c1f3f1fc12b49df3b85fc739acbf6c2012b5dd"
+  source_hash: "cc631b9485ed590571bd387d7a59e8cb074a81c7994311e51ffeddea6b566eaa"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestIsolationReRunsAreRegisteredWithTheAdmission"
   role: BINDING_ROLE_TESTS
@@ -2813,8 +2813,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-admission-origin"
-  content_hash: "c8c6e10628b0abe578507fe6bf62e3c909b4a54e593025699bde291acde97da3"
-  source_hash: "66b411585977d6a17e91acfa61abe508d794b3e2338ab1a5db9e6802afc2b84f"
+  content_hash: "5389f961e95267a301aadc7962c1f3f1fc12b49df3b85fc739acbf6c2012b5dd"
+  source_hash: "cc631b9485ed590571bd387d7a59e8cb074a81c7994311e51ffeddea6b566eaa"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestInvocationReleasesEachPackageWithItsPeak"
   role: BINDING_ROLE_TESTS
@@ -2823,10 +2823,20 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-admission-origin"
-  content_hash: "c8c6e10628b0abe578507fe6bf62e3c909b4a54e593025699bde291acde97da3"
-  source_hash: "66b411585977d6a17e91acfa61abe508d794b3e2338ab1a5db9e6802afc2b84f"
+  content_hash: "5389f961e95267a301aadc7962c1f3f1fc12b49df3b85fc739acbf6c2012b5dd"
+  source_hash: "cc631b9485ed590571bd387d7a59e8cb074a81c7994311e51ffeddea6b566eaa"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestBoundedReasonKeepsTheOriginWhole"
   role: BINDING_ROLE_TESTS
   shape_hash: "cc03c779f8bdb893ea1930f346b3e79da6542a5d44717c3b5c6b8350c8a99f28"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-admission-origin"
+  content_hash: "5389f961e95267a301aadc7962c1f3f1fc12b49df3b85fc739acbf6c2012b5dd"
+  source_hash: "cc631b9485ed590571bd387d7a59e8cb074a81c7994311e51ffeddea6b566eaa"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestAdmissionsOfOneProcessShareTheHostGate"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "26ee7891ed646c17b246406ff180403db8f8c67f1980f94ffc7e2927bcddcb96"
 }
