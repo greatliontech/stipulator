@@ -12,6 +12,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/remedy"
+	"github.com/greatliontech/stipulator/internal/verbcore"
 )
 
 func pinCmd() *cobra.Command {
@@ -20,12 +21,19 @@ func pinCmd() *cobra.Command {
 		Use:   remedy.VerbPin,
 		Short: guidanceShort("pin"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(reqs) > 0 {
+			// The one id-list grammar both faces read: a repeated flag's
+			// values joined and split on commas, a list reducing to
+			// nothing refused (REQ-check-preparation).
+			ids, err := verbcore.SplitIDLists(reqs)
+			if err != nil {
+				return err
+			}
+			if len(ids) > 0 {
 				// Every id is judged before the first write and before
 				// the resolver child is spawned: a refusal mid-list writes
 				// nothing and pays no toolchain cost — the batch contract
 				// the ids form keeps on both faces (REQ-check-preparation).
-				spec, err := author.JudgeEditorial(os.DirFS(chdir), reqs)
+				spec, err := author.JudgeEditorial(os.DirFS(chdir), ids)
 				if err != nil {
 					return err
 				}
@@ -44,13 +52,13 @@ func pinCmd() *cobra.Command {
 				}
 				defer closeBackends()
 				wanted := map[string]bool{}
-				for _, id := range reqs {
+				for _, id := range ids {
 					wanted[id] = true
 				}
-				mismatched := records.ShapeMismatched(store, reqs, author.ResolveShapes(store, backends, wanted, func(symbol string, err error) {
+				mismatched := records.ShapeMismatched(store, ids, author.ResolveShapes(store, backends, wanted, func(symbol string, err error) {
 					fmt.Fprintf(os.Stderr, "pin: skipping %s: %v\n", symbol, err)
 				}))
-				for _, id := range reqs {
+				for _, id := range ids {
 					ups, consented, err := author.EditorialOver(spec, os.DirFS(chdir), id)
 					if errors.Is(err, author.ErrNothingStale) {
 						if syms := mismatched[id]; len(syms) > 0 {

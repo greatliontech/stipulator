@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io/fs"
+	"regexp"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -15,6 +16,10 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/stipulate"
 )
+
+// faceWord matches a served string naming a face — the clause rule's
+// universal, refused on both faces.
+var faceWord = regexp.MustCompile(`\b(?:mcp|cli)\b`)
 
 // guidanceText is a result's single text content.
 func guidanceText(t *testing.T, res *mcp.CallToolResult) string {
@@ -80,6 +85,23 @@ func TestGuidanceCoversTheWireSurface(t *testing.T) {
 			t.Fatalf("%s: %v", tool.Name, err)
 		}
 		params := guidance.Registered{}
+		// The served descriptions are judged as served bytes against the
+		// document's projection (Document.Served, below) — a knob
+		// reached at two depths serves one string; never through a
+		// grammar of this test's own.
+		served := map[string]string{}
+		serve := func(where, name, description string) {
+			if prior, ok := served[name]; ok && prior != description {
+				t.Errorf("%s serves %q at one depth and %q at another", where, prior, description)
+			}
+			// A terse clause names no face: the per-face form follows
+			// the first semicolon, where the whole prose keeps it
+			// (REQ-mcp-guidance).
+			if faceWord.MatchString(description) {
+				t.Errorf("%s description %q names a face", where, description)
+			}
+			served[name] = description
+		}
 		// Nested objects (an array's item properties) are judged too: the
 		// batch authoring form's claims carry their own descriptions.
 		var nested func(prefix string, props map[string]json.RawMessage)
@@ -98,11 +120,7 @@ func TestGuidanceCoversTheWireSurface(t *testing.T) {
 				// Every served name at every depth registers, so the
 				// coverage judgment holds both directions at every depth.
 				params[name] = false
-				if k, err := doc.Knob("mcp", tool.Name, name); err != nil {
-					t.Errorf("%s.%s%s: %v", tool.Name, prefix, name, err)
-				} else if want := firstClause(k.Text); prop.Description != want || prop.Description == "" {
-					t.Errorf("%s.%s%s description %q diverged from the document's %q", tool.Name, prefix, name, prop.Description, want)
-				}
+				serve(tool.Name+"."+prefix+name, name, prop.Description)
 				nested(prefix+name+".", prop.Properties)
 				if prop.Items != nil {
 					nested(prefix+name+"[].", prop.Items.Properties)
@@ -129,18 +147,23 @@ func TestGuidanceCoversTheWireSurface(t *testing.T) {
 			if tool.Name == "bind" && name == "claims" && (prop.Items == nil || len(prop.Items.Properties) < 6) {
 				t.Errorf("bind.claims items carry %v; want the six claim properties documented", prop.Items)
 			}
-			if k, err := doc.Knob("mcp", tool.Name, name); err != nil {
-				t.Errorf("%s.%s: %v", tool.Name, name, err)
-			} else if want := firstClause(k.Text); prop.Description != want || prop.Description == "" {
-				t.Errorf("%s.%s description %q diverged from the document's %q", tool.Name, name, prop.Description, want)
+			serve(tool.Name+"."+name, name, prop.Description)
+			if prop.Description == "" {
+				t.Errorf("%s.%s serves an empty description", tool.Name, name)
 			}
-			if tool.Name == "verify" && name == "ids" && prop.Description != "requirement identifiers to scope the report to (comma-separated on mcp; repeatable on the cli)" {
-				t.Errorf("verify.ids description = %q; want the parenthesis kept whole", prop.Description)
+			if tool.Name == "verify" && name == "ids" && prop.Description != "comma-separated requirement identifiers to scope the report to" {
+				t.Errorf("verify.ids description = %q; want the face-neutral clause stating the list form", prop.Description)
+			}
+			if tool.Name == "retarget" && name == "backend" && prop.Description != "backend whose symbols retarget (go where absent; taken once, repetition refused)" {
+				t.Errorf("retarget.backend description = %q; want the parenthesis kept whole", prop.Description)
 			}
 			if tool.Name == "verify" && name == "no_test" && prop.Description != "the records-only judgment: no witness run, no policy capture" {
 				t.Errorf("verify.no_test description = %q; want the document's first clause", prop.Description)
 			}
 			params[name] = false
+		}
+		if defects, err := doc.Served("mcp", tool.Name, served); err != nil || len(defects) != 0 {
+			t.Errorf("%s: served descriptions: err=%v defects:\n%s", tool.Name, err, strings.Join(defects, "\n"))
 		}
 		registered[tool.Name] = params
 		// The served description IS the document's one-liner —
@@ -274,28 +297,4 @@ func TestCheckToolDigestCarriesPolicyNotices(t *testing.T) {
 	if !strings.Contains(string(b), "toolchain-selection audit") {
 		t.Fatalf("summary lost the policy notice: %s", b)
 	}
-}
-
-// firstClause is the test's own reading of the clause rule: the text up
-// to the first semicolon outside parentheses — independent of the
-// rendering it judges — its trailing period trimmed as the rendering trims it.
-//
-//gofresh:pure
-func firstClause(text string) string {
-	depth := 0
-	for i := 0; i < len(text); i++ {
-		switch text[i] {
-		case '(':
-			depth++
-		case ')':
-			if depth > 0 {
-				depth--
-			}
-		case ';':
-			if depth == 0 {
-				return strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(text[:i]), "."))
-			}
-		}
-	}
-	return strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(text), "."))
 }

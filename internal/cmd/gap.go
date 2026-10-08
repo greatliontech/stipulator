@@ -12,6 +12,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/remedy"
+	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verifyrun"
 )
 
@@ -45,6 +46,18 @@ func gapCmd() *cobra.Command {
 				}
 				return gapListRun(cmd.Context())
 			}
+			// The one id-list grammar both faces read: a repeated flag's
+			// values joined and split on commas, a list reducing to
+			// nothing refused (REQ-check-preparation); the excuse classes
+			// the same.
+			ids, err := verbcore.SplitIDLists(reqs)
+			if err != nil {
+				return err
+			}
+			classes, err := verbcore.SplitLists(verbcore.ExcuseNoun, excuseNames)
+			if err != nil {
+				return err
+			}
 			// The bulk form shares ONE reason and landing condition
 			// across every --req (REQ-gap-bulk), so a repetition of the
 			// shared flags expresses a batch this verb cannot form and
@@ -71,7 +84,7 @@ func gapCmd() *cobra.Command {
 				if conditioned || fired {
 					return fmt.Errorf("--retract takes only --req: retraction deletes the record, conditions do not apply")
 				}
-				ups, err := author.RetractGaps(os.DirFS(chdir), reqs)
+				ups, err := author.RetractGaps(os.DirFS(chdir), ids)
 				if err != nil {
 					return err
 				}
@@ -80,7 +93,7 @@ func gapCmd() *cobra.Command {
 				if conditioned {
 					return fmt.Errorf("--fired alone fires existing gaps; declaring a new fired gap takes --manual with --fired")
 				}
-				ups, err := author.FireGaps(os.DirFS(chdir), reqs)
+				ups, err := author.FireGaps(os.DirFS(chdir), ids)
 				if err != nil {
 					return err
 				}
@@ -90,11 +103,11 @@ func gapCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			excuses, err := author.NewExcuses(excuseNames)
+			excuses, err := author.NewExcuses(classes)
 			if err != nil {
 				return err
 			}
-			ups, notes, err := author.Gaps(os.DirFS(chdir), reqs, reason, lc, excuses)
+			ups, notes, err := author.Gaps(os.DirFS(chdir), ids, reason, lc, excuses)
 			if err != nil {
 				return err
 			}

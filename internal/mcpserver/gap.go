@@ -3,7 +3,6 @@ package mcpserver
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -102,11 +101,12 @@ func (s *Server) toolGap(ctx context.Context, req *mcp.CallToolRequest, in gapIn
 	if lcErr != nil {
 		return nil, nil, lcErr
 	}
-	var excuseNames []string
-	for _, n := range strings.Split(in.Excuses, ",") {
-		if n = strings.TrimSpace(n); n != "" {
-			excuseNames = append(excuseNames, n)
-		}
+	// The excuse classes read the one list grammar (as the CLI's
+	// --excuses does): an absent field is the default, a list given
+	// but naming nothing refuses.
+	excuseNames, err := verbcore.SplitListLoose(verbcore.ExcuseNoun, in.Excuses)
+	if err != nil {
+		return nil, nil, err
 	}
 	excuses, err := author.NewExcuses(excuseNames)
 	if err != nil {

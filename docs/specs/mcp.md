@@ -77,13 +77,20 @@ itself dropped) — served at construction from the registration (a
 verb's purpose, knobless help, and prose pointer), the knob projection
 (each flag's usage), and the schema rendering (each property's
 description), never a second literal or a grammar of this tool's own,
-so a served string cannot contradict the document and the coverage
-judgment compares the rendered text, never the names alone; a knob the
+so a served string cannot contradict the document; the served strings
+are judged as served bytes against the document's projections
+(gofresh's served-bytes judgment, never a grammar of this tool's own),
+the coverage judgment the names and the registered facts; a knob the
 document does not carry refuses the face's construction with the
-package's wording; the long help of a CLI verb with knobs carries the
-registration's pointer to the guidance command as the served path to
-their whole prose — grouping parents and the root-persistent chdir
-flag are surface plumbing outside the judgment.
+package's wording; the long help of a CLI verb with knobs is the
+registration's long help — the knobless help, a blank line, the
+pointer to the guidance command as the served path to their whole
+prose — and a knob's terse clause names no face (both faces' drift
+bindings refuse a served string naming one) and states a list-valued
+knob's list form, which both faces read alike: the per-face form
+follows the first semicolon, where the whole prose keeps it —
+grouping parents and the root-persistent chdir flag are surface
+plumbing outside the judgment.
 The guidance surfaces work outside a corpus: the document is embedded,
 so orientation precedes scaffolding.
 

@@ -500,3 +500,37 @@ func TestPruneToolNoGapsSkipsWitnessEvaluation(t *testing.T) {
 		t.Fatalf("gapless check preview unmarked: %s", b)
 	}
 }
+
+// The gap tool's excuse classes read the one list grammar as the CLI's
+// --excuses does: a comma list names every class, a JSON-encoded list
+// is tolerated, an absent field is the default, and a list given but
+// naming nothing refuses naming the classes (REQ-gap-verb).
+func TestGapToolExcusesReadTheOneListGrammar(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-verb")
+	sess, writes := harness(t, nil)
+	call := func(excuses string) (*mcp.CallToolResult, error) {
+		return sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "gap", Arguments: map[string]any{
+			"requirement": "REQ-m-a", "reason": "deferred", "manual": "externally judged", "excuses": excuses,
+		}})
+	}
+	res, err := call(",")
+	if err != nil || !res.IsError {
+		t.Fatalf("an excuse list reducing to nothing = %v %+v; want refused", err, res)
+	}
+	if text := guidanceText(t, res); !strings.Contains(text, "no excuse classes given") {
+		t.Fatalf("the refusal = %q; want the classes named", text)
+	}
+	if res, err = call("uncovered,stale"); err != nil || res.IsError {
+		t.Fatalf("a comma list of classes = %v %+v; want declared", err, res)
+	}
+	// The record spells a class as its enum name.
+	if c := writes[".stipulator/gaps/m-a.textproto"]; !strings.Contains(strings.ToLower(string(c)), "stale") {
+		t.Fatalf("the declared gap lost its second class:\n%s", c)
+	}
+	if res, err = call(`["broken"]`); err != nil || res.IsError {
+		t.Fatalf("a JSON-encoded list of classes = %v %+v; want declared", err, res)
+	}
+	if c := writes[".stipulator/gaps/m-a.textproto"]; !strings.Contains(strings.ToLower(string(c)), "broken") {
+		t.Fatalf("the re-declared gap lost its class:\n%s", c)
+	}
+}

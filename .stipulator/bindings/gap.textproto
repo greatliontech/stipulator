@@ -800,3 +800,23 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "b48c281d3bbd417c0a63e8a10a5940b41fc56514b6e715d9845330b317f49b40"
 }
+
+bindings {
+  requirement_id: "REQ-gap-verb"
+  content_hash: "4cd6f0ec97c7e2ad2aae583ca14c2d143b515a2a51a14c94f13e61f2eb3f73e3"
+  source_hash: "00986783115cff14b22eb84cf690c8519de2a26133e3f98ee36e1e5b85e4e6fa"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestGapCLIExcusesReadTheOneListGrammar"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a68bedd7a7e7a6d24e19663ac6c45c39c5777e91b54f0fa0c925dff69e18fe35"
+}
+
+bindings {
+  requirement_id: "REQ-gap-verb"
+  content_hash: "4cd6f0ec97c7e2ad2aae583ca14c2d143b515a2a51a14c94f13e61f2eb3f73e3"
+  source_hash: "00986783115cff14b22eb84cf690c8519de2a26133e3f98ee36e1e5b85e4e6fa"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGapToolExcusesReadTheOneListGrammar"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5617c4decac2668ba7f1b991a2fef024e089c7642cf8b300a0ac1132ab7a4876"
+}

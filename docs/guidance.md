@@ -17,7 +17,7 @@ before binding against the new text.
 **knobs:**
 - `no_test` (mcp, cli as `no-test`) — the records-only judgment: no witness run, no policy capture; bindings resolve and hygiene is judged for authoring flows that need only the binding rows, while the witnessed form serves fresh witnesses and is cheap once the store is warm.
 - `view` (mcp, cli) — summary (default: hygiene and witness counts with change signatures) or bindings (one row per claim: requirement, role, clause, symbol, consent, resolution, outcome); the cli's summary is the operator's counts and broken rows, its bindings view the same rows as text. A scope narrows both: the summary's counts, signatures, and diagnostics are re-tallied over what the scope keeps, while the problems and the outside-policy count stay tree-wide.
-- `ids` (mcp, cli as `req`) — requirement identifiers to scope the report to (comma-separated on mcp; repeatable on the cli); unknown identifiers refuse before any witness runs.
+- `ids` (mcp, cli as `req`) — comma-separated requirement identifiers to scope the report to; a repeated cli flag joins the list; unknown identifiers refuse before any witness runs.
 - `filter` (mcp, cli) — requirement-id glob to scope the report to.
 - `path` (mcp, cli) — prefix over declaring document or bound symbol to scope the report to: "what claims this symbol" — the query to run before deleting or moving an exported symbol, so the answer is a view, never a grep over the record files.
 - `json` (cli) — machine output for CI and scripts: the selected view as JSON.
@@ -34,7 +34,7 @@ bindings --path example.com/kernel.Round` before removing `Round`.
 **does:** Coverage gate: buckets and the gate verdict.
 **knobs:**
 - `view` (mcp, cli) — summary (default: pass/fail + counts + violations), reds (red requirements with reasons), or full (every requirement).
-- `ids` (mcp, cli as `req`) — requirement identifiers to scope to (comma-separated on mcp; repeatable on the cli); unknown identifiers refuse before any witness runs.
+- `ids` (mcp, cli as `req`) — comma-separated requirement identifiers to scope to; a repeated cli flag joins the list; unknown identifiers refuse before any witness runs.
 - `bucket` (mcp, cli) — scope to one bucket: uncovered, partial, stale, broken, covered, exempt, attested.
 - `filter` (mcp, cli) — requirement-id glob, e.g. REQ-arch-*.
 - `path` (mcp, cli) — prefix over declaring spec document or bound symbols.
@@ -117,15 +117,15 @@ binding the renamed test.
 ### gap
 **does:** Declare, fire, retract, or list coverage gaps.
 **knobs:**
-- `requirement` (mcp, cli as `req`) — requirement identifiers (comma-separated on mcp; repeatable on the cli; all share the reason and landing condition).
-- `reason` (mcp, cli) — why the gap exists (required unless retracting or firing; one shared value — a repeated cli flag is refused, never last-wins).
+- `requirement` (mcp, cli as `req`) — comma-separated requirement identifiers, all sharing the reason and landing condition; a repeated cli flag joins the list.
+- `reason` (mcp, cli) — why the gap exists, one shared value (required unless retracting or firing); a repeated cli flag is refused, never last-wins.
 - `covered` (mcp, cli) — lands when this requirement is covered (self = each requirement's own coverage; one shared value, repetition refused).
 - `exists` (mcp, cli) — lands when this requirement exists (one shared value, repetition refused).
 - `manual` (mcp, cli) — lands on this externally judged condition, fired explicitly (one shared value, repetition refused).
 - `fired` (mcp, cli) — mark the manual condition fired (without manual: fire the existing gaps).
 - `contradicted` (mcp, cli) — with manual: the tree contradicts the requirement's letter by design until the condition fires; reported apart from unwitnessed gaps (its own count and row class), resolving only on the explicit fire — a passing witness while unfired is the vacuous test the record exists to catch; refused with a machine condition.
 - `retract` (mcp, cli) — delete the gap records instead of declaring (dangling records included; retraction never touches the tombstone registry).
-- `excuses` (mcp, cli) — violation classes the gap excuses, from uncovered|stale|broken (comma-separated on mcp; repeatable on the cli; default uncovered alone).
+- `excuses` (mcp, cli) — comma-separated violation classes the gap excuses, from uncovered|stale|broken, uncovered alone when not given; a repeated cli flag joins the list.
 - `list` (mcp, cli) — list every gap record with its declaration fields, evaluated state (open|due|resolved|dangling), and class (contradicted) — the read surface, witness evidence gathering only for the gap-relevant requirements; editing a gap is re-declaring it.
 **when:** use gap to record a known coverage hole with the condition
 that lands it — never to silence a red without a reason; batches
@@ -150,7 +150,7 @@ operations review 2026-08".
 ### pin
 **does:** Backfill unset content pins and refresh shape pins; named requirements editorially re-pin.
 **knobs:**
-- `ids` (mcp, cli as `req`) — requirement identifiers to editorially re-pin (comma-separated on mcp; repeatable on the cli); empty backfills unset pins.
+- `ids` (mcp, cli as `req`) — comma-separated requirement identifiers to editorially re-pin; a repeated cli flag joins the list; empty backfills unset pins.
 **when:** run the blanket form after any spec edit — a differing
 content pin is never rewritten by it, so staleness cannot be
 laundered; the response names requirements awaiting re-consent, and

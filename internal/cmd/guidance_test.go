@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -38,24 +39,35 @@ func TestGuidanceCoversTheCLISurface(t *testing.T) {
 				continue
 			}
 			flags := guidance.Registered{}
+			served := map[string]string{}
 			child.LocalFlags().VisitAll(func(f *pflag.Flag) {
 				// The registration carries the non-zero-default fact the
-				// CLI lint judges: a flag cobra prints a default for must
-				// not spell one in its knob prose.
-				flags[f.Name] = !zeroDefault(f)
-				// The usage string is gofresh's usage projection of the
-				// document's knob — the clause in pflag's grammar, derived
-				// here independently — identity, never a name match.
-				k, err := doc.Knob("cli", name, f.Name)
-				if err != nil {
-					t.Errorf("%s --%s: %v", name, f.Name, err)
-					return
+				// CLI lint judges — the fleet's rule — and the fact is
+				// pflag's own: cobra prints a default beside the usage
+				// exactly when the rule says so.
+				flags[f.Name] = guidance.PrintsDefault(f.Value.Type(), f.DefValue)
+				alone := pflag.NewFlagSet(f.Name, pflag.ContinueOnError)
+				copied := *f
+				alone.AddFlag(&copied)
+				if printed := strings.Contains(alone.FlagUsages(), "(default "); printed != flags[f.Name] {
+					t.Errorf("%s --%s: pflag prints a default = %v, the fleet's rule says %v", name, f.Name, printed, flags[f.Name])
 				}
-				if want := cliUsage(firstClause(k.Text)); f.Usage != want || f.Usage == "" {
-					t.Errorf("%s --%s usage %q diverged from the document's %q", name, f.Name, f.Usage, want)
+				// The usage string is judged as served bytes against the
+				// document's projection (Document.Served, below) — never
+				// through a grammar of this test's own; the literal
+				// anchors are the independence belt.
+				served[f.Name] = f.Usage
+				if f.Usage == "" {
+					t.Errorf("%s --%s serves an empty usage", name, f.Name)
 				}
-				if name == "verify" && f.Name == "req" && f.Usage != "requirement identifiers to scope the report to (comma-separated on mcp; repeatable on the cli)" {
-					t.Errorf("verify --req usage = %q; want the parenthesis kept whole", f.Usage)
+				// A terse clause names no face: the per-face form follows
+				// the first semicolon, where the whole prose keeps it
+				// (REQ-mcp-guidance).
+				if faceWord.MatchString(f.Usage) {
+					t.Errorf("%s --%s usage %q names a face", name, f.Name, f.Usage)
+				}
+				if name == "verify" && f.Name == "req" && f.Usage != "comma-separated requirement identifiers to scope the report to" {
+					t.Errorf("verify --req usage = %q; want the face-neutral clause stating the list form", f.Usage)
 				}
 				if name == "verify" && f.Name == "no-test" && f.Usage != "the records-only judgment: no witness run, no policy capture" {
 					t.Errorf("verify --no-test usage = %q; want the document's first clause", f.Usage)
@@ -68,9 +80,12 @@ func TestGuidanceCoversTheCLISurface(t *testing.T) {
 					t.Errorf("bind --clause usage = %q; want the code span unquoted", f.Usage)
 				}
 				if name == "retarget" && f.Name == "backend" && f.Usage != "backend whose symbols retarget (go where absent; taken once, repetition refused)" {
-					t.Errorf("retarget --backend usage = %q; want the clause with its absence prose", f.Usage)
+					t.Errorf("retarget --backend usage = %q; want the clause with its absence prose, the parenthesis kept whole", f.Usage)
 				}
 			})
+			if defects, err := doc.Served("cli", name, served); err != nil || len(defects) != 0 {
+				t.Errorf("%s: served usages: err=%v defects:\n%s", name, err, strings.Join(defects, "\n"))
+			}
 			registered[name] = flags
 		}
 	}
@@ -169,30 +184,6 @@ func TestGuidanceCommandServesTheDocument(t *testing.T) {
 	}
 }
 
-// firstClause is the test's own reading of the clause rule: the text up
-// to the first semicolon outside parentheses — independent of the
-// rendering it judges — its trailing period trimmed as the rendering trims it.
-//
-//gofresh:pure
-func firstClause(text string) string {
-	depth := 0
-	for i := 0; i < len(text); i++ {
-		switch text[i] {
-		case '(':
-			depth++
-		case ')':
-			if depth > 0 {
-				depth--
-			}
-		case ';':
-			if depth == 0 {
-				return strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(text[:i]), "."))
-			}
-		}
-	}
-	return strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(text), "."))
-}
-
 // TestGuidanceRefusalsCarryThePackagesWording pins the refusal a face's
 // construction meets for a knob or a verb the document does not carry:
 // the package's wording, one on both faces (REQ-mcp-guidance).
@@ -217,40 +208,9 @@ func TestGuidanceRefusalsCarryThePackagesWording(t *testing.T) {
 	}
 }
 
-// zeroDefault is pflag's own per-type zero: the defaults cobra prints
-// beside a usage are exactly the non-zero ones, per flag type (a string
-// "0" prints; a bool false does not).
-//
-//gofresh:pure
-func zeroDefault(f *pflag.Flag) bool {
-	switch f.Value.Type() {
-	case "string":
-		return f.DefValue == ""
-	case "bool":
-		return f.DefValue == "false"
-	case "int", "int64":
-		return f.DefValue == "0"
-	case "duration":
-		return f.DefValue == "0" || f.DefValue == "0s"
-	case "stringArray", "stringSlice":
-		return f.DefValue == "[]"
-	}
-	return f.DefValue == ""
-}
-
-// cliUsage is the test's own reading of pflag's usage grammar over a
-// clause: code spans unquoted and a trailing default parenthetical —
-// the one cobra prints itself — dropped; the served string is judged
-// against this derivation, never against the package's projection.
-//
-//gofresh:pure
-func cliUsage(clause string) string {
-	clause = strings.ReplaceAll(clause, "`", "")
-	if i := strings.LastIndex(clause, " (default "); i >= 0 && strings.HasSuffix(clause, ")") {
-		clause = clause[:i]
-	}
-	return clause
-}
+// faceWord matches a served string naming a face — the clause rule's
+// universal, refused on both faces.
+var faceWord = regexp.MustCompile(`\b(?:mcp|cli)\b`)
 
 // shellSpelling is the test's own reading of the pointer's verb
 // spelling: a verb with a space is quoted for the shell.

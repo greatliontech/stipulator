@@ -76,10 +76,17 @@ func TestPinCLIIdsFormIsAllOrNothing(t *testing.T) {
 	if string(after) != bindings {
 		t.Fatalf("a refused ids form wrote the earlier ids' pins:\n%s", after)
 	}
+	// The one id-list grammar: a comma list on one flag is the same
+	// batch — refused whole with the stranger, consented whole without.
 	cmd = pinCmd()
-	cmd.SetArgs([]string{"--req", "REQ-pa-a", "--req", "REQ-pa-b"})
+	cmd.SetArgs([]string{"--req", "REQ-pa-a,REQ-pa-absent"})
+	if err := cmd.ExecuteContext(context.Background()); err == nil || !strings.Contains(err.Error(), "REQ-pa-absent") {
+		t.Fatalf("pin with a comma list naming a stranger = %v; want the refusal naming it", err)
+	}
+	cmd = pinCmd()
+	cmd.SetArgs([]string{"--req", "REQ-pa-a,REQ-pa-b"})
 	if err := cmd.ExecuteContext(context.Background()); err != nil {
-		t.Fatalf("the same ids without the stranger = %v", err)
+		t.Fatalf("the same ids as one comma list = %v", err)
 	}
 	if after, _ = os.ReadFile(filepath.Join(chdir, ".stipulator", "bindings", "b.textproto")); strings.Contains(string(after), stale) {
 		t.Fatalf("the accepted ids form left a stale pin:\n%s", after)
@@ -99,12 +106,35 @@ func TestCheckIdsListReducingToNothingRefuses(t *testing.T) {
 		name   string
 		newCmd func() *cobra.Command
 		flag   string
-	}{{"check", checkCmd, "--ids"}, {"verify", verifyCmd, "--req"}, {"gate", gateCmd, "--req"}} {
+	}{{"check", checkCmd, "--ids"}, {"verify", verifyCmd, "--req"}, {"gate", gateCmd, "--req"}, {"pin", pinCmd, "--req"}, {"gap", gapCmd, "--req"}} {
 		cmd := verb.newCmd()
 		cmd.SetArgs([]string{verb.flag, ","})
 		err := cmd.ExecuteContext(context.Background())
 		if err == nil || !strings.Contains(err.Error(), "no requirement identifiers given") {
 			t.Fatalf("%s %s \",\" = %v; want the empty-reduction refusal, never the global pass", verb.name, verb.flag, err)
 		}
+	}
+}
+
+// The gap verb's excuse classes read the one list grammar on the CLI
+// as on the MCP: a comma list on one flag names every class, and a
+// list reducing to nothing refuses (REQ-gap-verb).
+func TestGapCLIExcusesReadTheOneListGrammar(t *testing.T) {
+	stipulate.Covers(t, "REQ-gap-verb")
+	if testing.Short() {
+		t.Skip("compiles a corpus")
+	}
+	write := scaffoldCorpus(t)
+	write("docs/specs/s.md", "# S\n\n**REQ-ga-a** (behavior): It MUST a.\n")
+	run := func(args ...string) error {
+		cmd := gapCmd()
+		cmd.SetArgs(args)
+		return cmd.ExecuteContext(context.Background())
+	}
+	if err := run("--req", "REQ-ga-a", "--reason", "a lands later", "--manual", "when a lands", "--excuses", "uncovered,stale"); err != nil {
+		t.Fatalf("a comma list of excuse classes = %v; want both classes read", err)
+	}
+	if err := run("--req", "REQ-ga-a", "--reason", "a lands later", "--manual", "when a lands", "--excuses", ","); err == nil || !strings.Contains(err.Error(), "no excuse classes given") {
+		t.Fatalf("an excuse list reducing to nothing = %v; want the empty-reduction refusal naming the classes", err)
 	}
 }

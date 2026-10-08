@@ -59,12 +59,13 @@ func guidanceCmd() *cobra.Command {
 // renderKnobUsage sets every visible leaf command's local flag usage to
 // gofresh's usage projection of the guidance document's knob for that
 // flag — the terse clause in pflag's grammar — and renders a knobbed
-// verb's long help as the registration's knobless help followed by its
-// prose pointer (cobra's own Flags: block carries the knob list, the
-// pointer names the knobs' whole prose), so the served strings are the
-// document's rendering and never a second literal; a flag the document
-// does not knob refuses construction with the package's wording, and
-// the coverage judgment refuses it too (REQ-mcp-guidance).
+// verb's long help as the registration's long help — the knobless
+// help, a blank line, its prose pointer (cobra's own Flags: block
+// carries the knob list, the pointer names the knobs' whole prose) —
+// so the served strings are the document's rendering and never a
+// second literal; a flag the document does not knob refuses
+// construction with the package's wording, and the coverage judgment
+// refuses it too (REQ-mcp-guidance).
 func renderKnobUsage(root *cobra.Command) {
 	var walk func(prefix string, c *cobra.Command)
 	walk = func(prefix string, c *cobra.Command) {
@@ -85,7 +86,7 @@ func renderKnobUsage(root *cobra.Command) {
 			})
 			if knobbed {
 				registration := stipulator.GuidanceRegistration("cli", name)
-				child.Long = registration.Help + "\n\n" + registration.ProsePointer
+				child.Long = registration.LongHelp
 			}
 		}
 	}
