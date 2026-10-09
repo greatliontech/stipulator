@@ -237,7 +237,7 @@ func TestResourceIndexAndReads(t *testing.T) {
 
 //gofresh:pure
 func TestGateTool(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-tools", "REQ-report-messages")
+	stipulate.Covers(t, "REQ-mcp-tools", "REQ-mcp-views", "REQ-report-messages")
 	// REQ-m-a witnessed; REQ-m-b red but gapped → gate passes.
 	sess, _ := harness(t, map[string]string{
 		".stipulator/bindings/m.textproto": pinnedBinding(t),
@@ -1430,7 +1430,7 @@ func TestExplainToolProjectsChain(t *testing.T) {
 		t.Fatalf("projection = %v, want %v", out, want)
 	}
 	// Presence on the wire: a link's unset fields are absent, never
-	// present-and-empty (REQ-mcp-tools) — the second link has no callee.
+	// present-and-empty (REQ-mcp-tools-messages) — the second link has no callee.
 	if strings.Contains(string(b), `"callee":""`) || strings.Count(string(b), `"callee"`) != 1 {
 		t.Fatalf("empty link fields present on the wire: %s", b)
 	}
@@ -1593,9 +1593,9 @@ func TestPinToolIdsFormIsAllOrNothingOrHonest(t *testing.T) {
 // The compile result's diagnostic list is capped and the remainder
 // counted — never a silent truncation — and the count rides the
 // projection under its wire spelling (REQ-mcp-response-contract,
-// REQ-mcp-tools).
+// REQ-mcp-tools-messages).
 func TestCompileToolCapsDiagnosticsAndCountsTheRemainder(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-response-contract", "REQ-mcp-tools")
+	stipulate.Covers(t, "REQ-mcp-response-contract", "REQ-mcp-tools-messages")
 	var bad strings.Builder
 	bad.WriteString("# Bad\n\n")
 	for i := 0; i < compileDiagnosticCap+2; i++ {

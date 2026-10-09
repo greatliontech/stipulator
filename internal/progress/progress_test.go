@@ -249,10 +249,11 @@ func TestNilReporterAndSinkAreInert(t *testing.T) {
 
 // The completed-call timing line: entered phases render in order under
 // one total — the notification-blind client's after-the-fact record
-// (REQ-mcp-progress). ADJACENT re-entry adds no stamp (the operations'
+// (REQ-mcp-progress-stamps). ADJACENT re-entry adds no stamp (the operations'
 // phase graphs are linear, which is what bounds the line); a reporter
 // that never entered a phase stamps nothing.
 func TestStampsRenderAdjacentDedupedPhases(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-progress-stamps")
 	r := New(nil)
 	r.Phase(stipulatorv1.Phase_PHASE_COMPILE)
 	r.Phase(stipulatorv1.Phase_PHASE_COMPILE)
@@ -287,7 +288,7 @@ func TestStampsRenderAdjacentDedupedPhases(t *testing.T) {
 // once and exactly once, a persisted unit emits its note and joins the
 // kept list, and the terminal event — alone — carries every kept unit.
 func TestNotesAndKeptRideTheStream(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-progress", "REQ-policy-cancellation")
+	stipulate.Covers(t, "REQ-mcp-progress", "REQ-policy-cancellation", "REQ-mcp-progress-surfaces")
 	var events []*stipulatorv1.ProgressEvent
 	r := New(collect(&events), WithInterval(time.Hour))
 	r.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
@@ -322,13 +323,13 @@ func TestNotesAndKeptRideTheStream(t *testing.T) {
 	}
 }
 
-// TestStderrSinkRendersEachEventOnce pins the CLI leg of REQ-mcp-progress:
+// TestStderrSinkRendersEachEventOnce pins the CLI leg of REQ-mcp-progress-surfaces:
 // the stderr sink renders a phase transition once, an invocation's
 // progress as completed of total, a note verbatim, and the terminal
 // event as its cause with the phase and the kept units — or "kept
 // nothing" when a cancelled run persisted none.
 func TestStderrSinkRendersEachEventOnce(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-progress")
+	stipulate.Covers(t, "REQ-mcp-progress-surfaces")
 	var out strings.Builder
 	r := New(Stderr(&out), WithInterval(time.Hour))
 	r.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
@@ -418,7 +419,7 @@ func TestNotesAreOneBoundedLine(t *testing.T) {
 // the terminal event once, returns the same account the event carries,
 // and renders again without emitting.
 func TestSealRendersAndEmitsAtomically(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-progress", "REQ-policy-cancellation")
+	stipulate.Covers(t, "REQ-mcp-progress-surfaces", "REQ-policy-cancellation")
 	var events []*stipulatorv1.ProgressEvent
 	r := New(collect(&events), WithInterval(time.Hour))
 	r.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
@@ -461,7 +462,7 @@ func rs(rss, peak uint64) resident.Set {
 }
 
 // TestResidentReadingRidesTransitionsAndTheEnding pins the datum's
-// bound (REQ-mcp-progress): the resident set is read at every phase
+// bound (REQ-mcp-progress-resident): the resident set is read at every phase
 // transition and at the ending and carried by exactly those events,
 // each naming its moment — the start on the first transition, the
 // exited phase on the later ones, the end on the ending; a step, a
@@ -469,7 +470,7 @@ func rs(rss, peak uint64) resident.Set {
 // as the transitions; a reporter without the reading, or one whose host
 // does not answer, carries it nowhere and states no resident words.
 func TestResidentReadingRidesTransitionsAndTheEnding(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-progress")
+	stipulate.Covers(t, "REQ-mcp-progress-resident")
 	var events []*stipulatorv1.ProgressEvent
 	r := New(collect(&events), WithInterval(0), WithResident(residentSequence(
 		rs(8, 8), // the baseline
@@ -516,7 +517,7 @@ func TestResidentReadingRidesTransitionsAndTheEnding(t *testing.T) {
 }
 
 // TestStampsAttributeThePeakToTheMomentItWasFirstReached pins the
-// digest's attribution (REQ-mcp-progress): the readings' running peak —
+// digest's attribution (REQ-mcp-progress-resident): the readings' running peak —
 // the kernel answers a peak as the larger of its stored high-water mark
 // and the current set, so a later reading may answer less, and the
 // digest never lowers — with the moment it last rose, which is the
@@ -525,7 +526,7 @@ func TestResidentReadingRidesTransitionsAndTheEnding(t *testing.T) {
 // reading at the end, taken by the digest itself when it renders before
 // the sealing, and by the sealing otherwise.
 func TestStampsAttributeThePeakToTheMomentItWasFirstReached(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-progress")
+	stipulate.Covers(t, "REQ-mcp-progress-resident")
 	r := New(nil, WithResident(residentSequence(
 		rs(32<<20, 32<<20),   // the baseline
 		rs(32<<20, 32<<20),   // the start
@@ -563,12 +564,12 @@ func TestStampsAttributeThePeakToTheMomentItWasFirstReached(t *testing.T) {
 }
 
 // TestEndingLineCarriesKeptOnlyWhenInterrupted pins the ending line a
-// face printing every ending renders (REQ-mcp-progress's bound): the
+// face printing every ending renders (REQ-mcp-progress-surfaces): the
 // kept units ride it only for an interrupted cause — a completed
 // operation's units already arrived as notes, and the list is unbounded
 // by anything but the policy.
 func TestEndingLineCarriesKeptOnlyWhenInterrupted(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-progress")
+	stipulate.Covers(t, "REQ-mcp-progress-surfaces")
 	kept := []string{"race:a", "race:b"}
 	for _, cause := range []stipulatorv1.TerminalCause{
 		stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED,
@@ -590,12 +591,12 @@ func TestEndingLineCarriesKeptOnlyWhenInterrupted(t *testing.T) {
 }
 
 // TestDigestReadingNeverPends pins the structural half of the bound
-// (REQ-mcp-progress): the digest rendered before the sealing takes the
+// (REQ-mcp-progress-resident): the digest rendered before the sealing takes the
 // reading at the end for the attribution alone — a keepalive between
 // the digest and the sealing carries nothing, and the sealing's own
 // reading is the one the terminal event carries.
 func TestDigestReadingNeverPends(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-progress")
+	stipulate.Covers(t, "REQ-mcp-progress-resident")
 	var events []*stipulatorv1.ProgressEvent
 	r := New(collect(&events), WithInterval(0), WithResident(residentSequence(rs(1, 1), rs(2, 2), rs(3, 3), rs(4, 4))))
 	r.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
@@ -619,13 +620,13 @@ func TestDigestReadingNeverPends(t *testing.T) {
 }
 
 // TestResidentWordsAreOneSpellingOnBothFaces pins the rendering both
-// faces print (REQ-mcp-progress's both-surface leg): the stderr phase
+// faces print (REQ-mcp-progress-resident's both-surface leg): the stderr phase
 // line and the interrupted ending's line carry the reading as their
 // tail in ResidentSuffix's spelling, a line without a reading carries
 // no tail, and the byte words are binary units, rounded, with one
 // decimal above a gibibyte.
 func TestResidentWordsAreOneSpellingOnBothFaces(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-progress")
+	stipulate.Covers(t, "REQ-mcp-progress-resident")
 	for b, want := range map[uint64]string{0: "0 B", 1023: "1023 B", 1024: "1 KiB", 1536: "2 KiB", 1048400: "1 MiB", 75 << 20: "75 MiB", 1004 << 20: "1004 MiB", 1073700000: "1.0 GiB", 1 << 30: "1.0 GiB", 4714064 * 1024: "4.5 GiB"} {
 		if got := resident.ByteWord(b); got != want {
 			t.Errorf("ByteWord(%d) = %q, want %q", b, got, want)
@@ -671,13 +672,13 @@ func TestResidentWordsAreOneSpellingOnBothFaces(t *testing.T) {
 }
 
 // TestResidentWordsStateTheCeiling pins the datum's ceiling
-// (REQ-mcp-progress): a reading taken under an installed soft ceiling
+// (REQ-mcp-progress-resident): a reading taken under an installed soft ceiling
 // states it after the kernel's figures, on the wire and in the words
 // both faces print; a reading without one states no ceiling.
 //
 //gofresh:pure
 func TestResidentWordsStateTheCeiling(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-progress")
+	stipulate.Covers(t, "REQ-mcp-progress-resident")
 	under := resident.Set{ProcessBytes: 10, ProcessPeakBytes: 20, CeilingBytes: 3 << 30}
 	wire := residentWire(under, moment{})
 	if wire.GetCeilingBytes() != 3<<30 {

@@ -21,7 +21,7 @@ const redRowCap = 25
 // projects — a scoped check RUN carries its own flagged-partial verdict
 // (REQ-check-verdict), the gate's stays global under any view scope —
 // a scoped slice with no in-scope violation says nothing about whether
-// the tree passes (REQ-mcp-views). An unknown view word is refused, so
+// the tree passes (REQ-mcp-views-global-verdict). An unknown view word is refused, so
 // a typo never reads as an empty result.
 func CheckView(res *stipulatorv1.CheckResult, view string, ids []string) (proto.Message, error) {
 	scoped := res
@@ -82,7 +82,7 @@ func scopeCheck(res *stipulatorv1.CheckResult, ids []string) *stipulatorv1.Check
 	}
 	cov.SetDanglingPointers(dangling)
 	// Residue paths join to requirements through the unfiltered gap rows
-	// — the scope narrows the WHOLE report (REQ-mcp-views), so an
+	// — the scope narrows the WHOLE report (REQ-mcp-views-scope), so an
 	// out-of-scope requirement's record path must not pollute scoped
 	// triage.
 	pathKeep := map[string]bool{}

@@ -70,7 +70,7 @@ type Reporter struct {
 	// so a non-increasing count is stale evidence, suppressed.
 	maxDone map[string]int32
 	// stamps records each phase transition's entry time, in order - the
-	// material of the completed-call timing line (REQ-mcp-progress's
+	// material of the completed-call timing line (REQ-mcp-progress-stamps's
 	// notification-blind fallback).
 	stamps []phaseStamp
 	// kept names, in order, the units whose records persisted: the
@@ -87,7 +87,7 @@ type Reporter struct {
 	// sample reads the process's resident set; nil reads nothing and no
 	// event or digest carries the datum. It is read at every phase
 	// transition and at the ending, never per step, so the datum stays
-	// as bounded as the transitions (REQ-mcp-progress).
+	// as bounded as the transitions (REQ-mcp-progress-resident).
 	sample func() (resident.Set, bool)
 	// pending is the reading the next emitted event carries; cleared
 	// once emitted, like note. The digest's own reading never pends: a
@@ -246,7 +246,7 @@ func (r *Reporter) Step(invocation string, completed, total int32) {
 // subjects serve no record, or what a completed unit persisted. A note
 // is a milestone, never rate-limited: the callers emit at most one per
 // executing invocation and one per persisted unit, so the stream stays
-// bounded by the policy, never by the test count (REQ-mcp-progress).
+// bounded by the policy, never by the test count (REQ-mcp-progress-bound).
 func (r *Reporter) Note(text string) {
 	if r == nil {
 		return
@@ -465,7 +465,7 @@ func (p *PhaseTracker) Changed(e *stipulatorv1.ProgressEvent) bool {
 // progress as completed of total packages, a note verbatim, and an
 // interrupted operation's ending as its cause, the phase, and what was
 // kept — the same events the MCP surface carries as notifications,
-// rendered for a person (REQ-mcp-progress's both-surface leg). A
+// rendered for a person (REQ-mcp-progress-surfaces's both-surface leg). A
 // completed operation ends silently here: its pace line is the
 // caller's, from the stamps. Phase transitions and notes print once
 // each; progress lines are already rate-limited by the reporter.
@@ -596,7 +596,7 @@ func NonBlocking(send func(*stipulatorv1.ProgressEvent)) func(*stipulatorv1.Prog
 // Stamps renders the operation's phase timings as one bounded line
 // ("took 9.8s: compile 300ms, execution 7.4s, verification 2.1s") - the
 // notification-blind client's after-the-fact record that slow work was
-// work, not a hang (REQ-mcp-progress). Empty when no phase was entered.
+// work, not a hang (REQ-mcp-progress-stamps). Empty when no phase was entered.
 // Boundedness rests on the operations' linear phase graphs: only
 // adjacent re-entry dedups, so a phase genuinely revisited would render
 // twice - honestly, and every current operation's phases are linear.
@@ -649,7 +649,7 @@ func (r *Reporter) Stamps() string {
 // interrupted — a completed operation's units already arrived one per
 // persisted unit as notes, and the list is unbounded by anything but
 // the policy, so repeating it would make the one line grow with the
-// policy (REQ-mcp-progress's bound).
+// policy (REQ-mcp-progress-bound).
 func EndingLine(cause stipulatorv1.TerminalCause, phase stipulatorv1.Phase, kept []string) string {
 	if !interrupted(cause) {
 		kept = nil

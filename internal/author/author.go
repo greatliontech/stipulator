@@ -194,7 +194,7 @@ func bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Upd
 // Binds authors many binding claims in one call, validating
 // all-or-nothing: each claim validates against the tree with every
 // earlier claim's pending write applied — same-file claims merge — and
-// a failure anywhere authors nothing (REQ-mcp-tools).
+// a failure anywhere authors nothing (REQ-mcp-tools-bind-batch).
 func Binds(fsys fs.FS, backends map[string]verify.Backend, reqs []BindRequest) ([]Update, error) {
 	if len(reqs) == 0 {
 		return nil, fmt.Errorf("at least one claim is required")

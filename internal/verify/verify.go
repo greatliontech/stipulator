@@ -521,7 +521,7 @@ func Correlate(rep *Report, store *records.Store, testRun *TestRun) *Report {
 
 // Tally derives the report's counters from its rows — the one
 // derivation, so a report sliced to a scope re-tallies the same way
-// the whole tree was tallied (REQ-mcp-views: a scope narrows the whole
+// the whole tree was tallied (REQ-mcp-views-scope: a scope narrows the whole
 // report). Witness outcomes count only on a witnessed report: an
 // unwitnessed row's zero outcome is not a test that never ran.
 func (r *Report) Tally() {

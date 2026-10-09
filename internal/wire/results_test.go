@@ -88,7 +88,7 @@ func TestEveryResultRendersThroughTheOneProjection(t *testing.T) {
 // The gap list's write fields are the write result's, field for field:
 // a write field the list lacks would silently never reach a listing.
 func TestGapListCarriesEveryWriteField(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-tools")
+	stipulate.Covers(t, "REQ-mcp-tools-messages")
 	write := (&stipulatorv1.WriteResult{}).ProtoReflect().Descriptor().Fields()
 	list := (&stipulatorv1.GapListResult{}).ProtoReflect().Descriptor().Fields()
 	for i := 0; i < write.Len(); i++ {

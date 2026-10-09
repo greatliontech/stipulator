@@ -411,7 +411,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	}
 	// One decision line per executing invocation: what executes and the
 	// reason most of it serves no record — bounded by the policy, never
-	// the test count (REQ-mcp-progress); the per-test attribution rides
+	// the test count (REQ-mcp-progress-bound); the per-test attribution rides
 	// the result. A subject's reason is its covering group's under THIS
 	// invocation: a subject several groups cover carries one reason per
 	// leg, each leg's line its own.

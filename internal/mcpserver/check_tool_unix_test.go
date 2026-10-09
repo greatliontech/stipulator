@@ -62,7 +62,7 @@ func neutralAmbient(t *testing.T) {
 // execution phase and the deadline as the terminal cause, with the
 // context error preserved for programmatic dispatch.
 func TestCheckToolDeadlineNamesExpiredPhaseAndCause(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-progress")
+	stipulate.Covers(t, "REQ-mcp-progress-deadline")
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}

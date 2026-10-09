@@ -32,11 +32,11 @@ import (
 
 // The bind tool authors many claims in one call, all-or-nothing: two
 // claims landing in one file merge, and a failure anywhere authors
-// nothing (REQ-mcp-tools).
+// nothing (REQ-mcp-tools-bind-batch).
 //
 //gofresh:pure
 func TestBindToolBatchClaims(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-tools")
+	stipulate.Covers(t, "REQ-mcp-tools-bind-batch")
 	sess, writes := harness(t, nil)
 	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "bind", Arguments: map[string]any{
 		"claims": []map[string]any{
@@ -200,7 +200,7 @@ func TestContextAndPartitionsExportPath(t *testing.T) {
 	}
 	// The export form is a completed suite-running call like any other:
 	// its result text carries the phase-timing stamps line
-	// (REQ-mcp-progress's notification-blind fallback).
+	// (REQ-mcp-progress-stamps's notification-blind fallback).
 	if text := toolText(t, res); !strings.Contains(text, "took ") {
 		t.Fatalf("context export result missing the phase stamps: %s", text)
 	}
@@ -285,11 +285,11 @@ func TestServerApplyCompareAndSwap(t *testing.T) {
 // A tokenless client that set a log level still gets liveness: bounded
 // phase-transition log messages ride the token-free logging channel, so
 // slow work is distinguishable from a hang without a progress token
-// (REQ-mcp-progress's liveness bound).
+// (REQ-mcp-progress-liveness).
 //
 //gofresh:pure
 func TestTokenlessCallEmitsPhaseLogMessages(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-progress")
+	stipulate.Covers(t, "REQ-mcp-progress-liveness", "REQ-mcp-progress-resident")
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto":   {Data: []byte("include: \"specs/**/*.md\"\n")},
 		"specs/a.md":                       {Data: []byte(doc)},
@@ -368,7 +368,7 @@ func TestTokenlessCallEmitsPhaseLogMessages(t *testing.T) {
 			if strings.Contains(line, "phase ") {
 				// The phase line carries the resident reading where the
 				// host answers it, in the words the CLI prints
-				// (REQ-mcp-progress).
+				// (REQ-mcp-progress-resident).
 				if runtime.GOOS == "linux" && (!strings.Contains(line, ": resident ") || !strings.Contains(line, wantCeiling)) {
 					t.Fatalf("tokenless phase log message carries no resident reading with the ceiling this call derived (%s): %q", wantCeiling, line)
 				}
@@ -757,7 +757,7 @@ func TestBindToolClauseClaims(t *testing.T) {
 		t.Fatalf("unbind --clause: %v %s", err, toolText(t, res))
 	}
 	// The removed-claim count rides the structured result, not the
-	// text line alone (REQ-mcp-tools).
+	// text line alone (REQ-mcp-tools-messages).
 	if b, _ := json.Marshal(res.StructuredContent); !strings.Contains(string(b), `"removed":1`) {
 		t.Fatalf("structured result lacks the removed count: %s", b)
 	}

@@ -11,11 +11,11 @@ import (
 // Both summaries count the dangling pointers, and an id scope narrows
 // the count to the scoped requirements on both — the coverage summary
 // through the in-memory tally, the check summary through the wire rows
-// the scope filter kept (REQ-change-enforcement-pointers, REQ-mcp-views).
+// the scope filter kept (REQ-change-enforcement-pointers, REQ-mcp-views-scope).
 //
 //gofresh:pure
 func TestSummariesCountDanglingPointersScoped(t *testing.T) {
-	stipulate.Covers(t, "REQ-change-enforcement-pointers", "REQ-mcp-views")
+	stipulate.Covers(t, "REQ-change-enforcement-pointers", "REQ-mcp-views-scope")
 	cov := &coverage.Report{
 		Requirements:     []coverage.Requirement{{Id: "REQ-a", Bucket: coverage.Broken}, {Id: "REQ-b", Bucket: coverage.Broken}},
 		DanglingPointers: []coverage.DanglingPointer{{Requirement: "REQ-a", Name: "TestA"}, {Requirement: "REQ-b", Name: "TestB"}, {Requirement: "REQ-b", Name: "TestC"}},

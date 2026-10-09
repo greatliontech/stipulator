@@ -61,7 +61,7 @@ func (e Interrupted) Unwrap() error { return e.Cause }
 
 // Execute runs the CLI under ctx. One progress reporter serves the
 // whole invocation, rendering the same events the MCP surface carries
-// as notifications as dim stderr lines (REQ-mcp-progress's both-surface
+// as notifications as dim stderr lines (REQ-mcp-progress-surfaces's both-surface
 // leg); at the end a run that reached a verdict prints its phase
 // timings — the pace line — and an interrupted one names the phase it
 // died in and what it kept. The terminal cause follows the MCP

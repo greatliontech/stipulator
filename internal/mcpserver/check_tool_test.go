@@ -97,7 +97,7 @@ func fixtureResult(t *testing.T) *stipulatorv1.CheckResult {
 // strict-round-trips the whole wire fixture into an equal CheckResult —
 // every key a field of its message, every field surviving.
 func TestCheckToolStructuredResultMirrorsCheckResult(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-tools", "REQ-report-check-result", "REQ-mcp-views", "REQ-mcp-response-contract")
+	stipulate.Covers(t, "REQ-mcp-tools", "REQ-report-check-result", "REQ-mcp-views-check-summary", "REQ-mcp-response-contract")
 	want := fixtureResult(t)
 	sess, _ := checkHarness(t, func(context.Context, bool, []string) (*stipulatorv1.CheckResult, error) {
 		return want, nil
@@ -253,7 +253,7 @@ func TestCheckLineNamesObservedRed(t *testing.T) {
 // count rides checkLine, matching the summary, CLI, and one-line
 // surfaces.
 func TestCheckToolScopedCallShape(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-views", "REQ-check-verdict", "REQ-mcp-response-contract")
+	stipulate.Covers(t, "REQ-mcp-views-check-scope", "REQ-check-verdict", "REQ-mcp-response-contract")
 	inScope := &stipulatorv1.RequirementCoverage{}
 	inScope.SetId("REQ-a")
 	inScope.SetBucket(stipulatorv1.Bucket_BUCKET_COVERED)
@@ -360,10 +360,10 @@ func TestCheckToolFailingTreeIsSuccessfulCall(t *testing.T) {
 // TestCheckToolViewsAndScopes pins the check tool's input surface: the
 // summary and full views answer, an unknown view word or scope-style
 // argument outside the surface is refused — a typo never reads as an
-// empty result — and an ids scope filters coverage rows while the
-// verdict stays global.
+// empty result — and an ids scope filters coverage rows and
+// violations (REQ-mcp-views-check-scope).
 func TestCheckToolViewsAndScopes(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-views")
+	stipulate.Covers(t, "REQ-mcp-views-check-summary", "REQ-mcp-views-check-scope")
 	req := &stipulatorv1.RequirementCoverage{}
 	req.SetId("REQ-m-a")
 	req.SetBucket(stipulatorv1.Bucket_BUCKET_UNCOVERED)
@@ -731,7 +731,7 @@ func TestVerifyPrunePartitionsToolsReportPhasedProgress(t *testing.T) {
 // assertStampedText pins the completed-call timing line on one tool's
 // TEXT content — and its absence from any structured notes, where a
 // timing record would pollute consequence enumeration
-// (REQ-mcp-progress's text-digest-only fallback).
+// (REQ-mcp-progress-stamps's text-digest-only fallback).
 func assertStampedText(t *testing.T, res *mcp.CallToolResult, tool string) {
 	t.Helper()
 	tc, ok := res.Content[0].(*mcp.TextContent)
@@ -753,7 +753,7 @@ func assertStampedText(t *testing.T, res *mcp.CallToolResult, tool string) {
 // and the deadline cause, with the context error preserved for
 // programmatic dispatch.
 func TestVerifyToolDeadlineNamesExpiredPhaseAndCause(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-progress")
+	stipulate.Covers(t, "REQ-mcp-progress-deadline")
 	s := &Server{
 		fsys: func() fs.FS {
 			return fstest.MapFS{
@@ -794,7 +794,7 @@ func TestVerifyToolDeadlineNamesExpiredPhaseAndCause(t *testing.T) {
 // operation's context, and the terminal progress event still reaches the
 // session naming the cancellation and the phase it landed in.
 func TestCheckToolClientCancellationSealsProgress(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-cancellation", "REQ-mcp-progress")
+	stipulate.Covers(t, "REQ-mcp-cancellation", "REQ-mcp-progress-deadline")
 	started := make(chan struct{})
 	stopped := make(chan struct{})
 	sess, log := checkHarness(t, func(ctx context.Context, _ bool, _ []string) (*stipulatorv1.CheckResult, error) {
@@ -848,9 +848,9 @@ func TestCheckToolClientCancellationSealsProgress(t *testing.T) {
 
 // The ids parameter reaches the pass itself: the tool forwards it to
 // runCheck, selecting the scoped witness-evidence class - never a
-// display-only filter (REQ-mcp-views' check exception).
+// display-only filter (REQ-mcp-views-check-scope's check exception).
 func TestCheckToolForwardsIdsToThePass(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-tools", "REQ-mcp-views")
+	stipulate.Covers(t, "REQ-mcp-tools", "REQ-mcp-views-check-scope")
 	var got []string
 	srv := New(t.TempDir())
 	srv.runCheck = func(_ context.Context, _ bool, ids []string) (*stipulatorv1.CheckResult, error) {

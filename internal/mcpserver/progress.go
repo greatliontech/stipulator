@@ -57,7 +57,7 @@ func (s *Server) startProgress(ctx context.Context, req *mcp.CallToolRequest) (c
 		// sends nothing unless the client has set a log level, so this is
 		// free for clients that cannot consume it; a client that set a
 		// level distinguishes slow work from a hang without a token
-		// (REQ-mcp-progress's liveness bound). The session guard covers
+		// (REQ-mcp-progress-liveness). The session guard covers
 		// direct in-process calls that carry no wire request.
 		session := req.Session
 		notifyCtx := context.WithoutCancel(ctx)
@@ -107,7 +107,7 @@ func (s *Server) startProgress(ctx context.Context, req *mcp.CallToolRequest) (c
 // cause. A call that ends at a deadline or a client cancellation
 // identifies the phase it died in and which of the two ended it — so a
 // client can distinguish long-running work, deadline expiry,
-// cancellation, and server failure without guessing (REQ-mcp-progress,
+// cancellation, and server failure without guessing (REQ-mcp-progress-deadline,
 // REQ-mcp-cancellation); any other operational fault is a server
 // failure and speaks for itself.
 func terminalToolError(prog *progress.Reporter, ctx context.Context, err error) error {

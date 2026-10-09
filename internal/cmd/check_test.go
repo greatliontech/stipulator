@@ -234,13 +234,13 @@ func TestCheckExitCodes(t *testing.T) {
 
 	pass := writeTree(passTree)
 	// The CLI renders the progress stream: phase lines as the run
-	// advances and the pace line at the end (REQ-mcp-progress's
+	// advances and the pace line at the end (REQ-mcp-progress-surfaces's
 	// both-surface leg).
 	if _, _, stderr := run(pass, "check", "--quiet"); !strings.Contains(stderr, "phase compile (") || !strings.Contains(stderr, "took ") {
 		t.Fatalf("check stderr carries no phase or pace line:\n%s", stderr)
 	} else if runtime.GOOS == "linux" && (!strings.Contains(stderr, ": resident ") || !strings.Contains(stderr, "; peak ")) {
 		// The resident reading rides the phase lines and the pace line
-		// where the host answers it (REQ-mcp-progress).
+		// where the host answers it (REQ-mcp-progress-resident).
 		t.Fatalf("check stderr carries no resident reading:\n%s", stderr)
 	}
 	if code, _, stderr := run(writeTree(failTree), "check", "--quiet"); code != 1 || !strings.Contains(stderr, "took ") {

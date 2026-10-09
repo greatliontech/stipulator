@@ -683,7 +683,7 @@ func TestGoCaptureOperationalDiscoveryFaultIsNoRecordProblem(t *testing.T) {
 }
 
 // TestWitnessRunNotesAreBoundedByThePolicy pins the decision lines'
-// bound and attribution (REQ-mcp-progress): a selective run over many
+// bound and attribution (REQ-mcp-progress-bound): a selective run over many
 // tests emits one executing note per executing invocation, named — the
 // eligible legs with the count and reason of what re-executes under
 // THEIR OWN group, the ineligible leg as failures-only — and one
@@ -691,7 +691,7 @@ func TestGoCaptureOperationalDiscoveryFaultIsNoRecordProblem(t *testing.T) {
 //
 // Deliberately not //gofresh:pure: executes the fixture's tests.
 func TestWitnessRunNotesAreBoundedByThePolicy(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-progress")
+	stipulate.Covers(t, "REQ-mcp-progress-bound")
 	if testing.Short() {
 		t.Skip("executes race and plain selective runs over a temporary module")
 	}

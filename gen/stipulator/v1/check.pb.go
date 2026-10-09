@@ -1572,7 +1572,7 @@ type CheckSummary_builder struct {
 	ScopeIds         []string
 	RedsScopeBlocked *int32
 	// The actionable reduction of the full result's per-test reason maps
-	// (REQ-mcp-views): the top blocker reasons by witness count, one
+	// (REQ-mcp-views-check-summary): the top blocker reasons by witness count, one
 	// exemplar test each, remainders counted - never the whole histogram.
 	UncacheableBlockers       []*CheckBlockerRow
 	UncacheableReasonsOmitted *int32

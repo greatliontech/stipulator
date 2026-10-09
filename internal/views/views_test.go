@@ -80,7 +80,7 @@ func TestVerifyViews(t *testing.T) {
 //
 //gofresh:pure
 func TestCoverageViewScopesGapsAndViolations(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-views")
+	stipulate.Covers(t, "REQ-mcp-views-scope", "REQ-mcp-views-global-verdict", "REQ-mcp-views")
 	cov := &coverage.Report{
 		Requirements: []coverage.Requirement{
 			{Id: "REQ-corpus-a", Bucket: coverage.Uncovered}, // gapped
@@ -275,11 +275,11 @@ func TestScopeValidate(t *testing.T) {
 // backend-resolved row it keeps — never a re-parse of the symbol
 // string, which is ambiguous for dotted path elements (example.com/p
 // vs example.com/p.v2) and method receivers (example.com/p.Server.Handle
-// lives in example.com/p) (REQ-mcp-views).
+// lives in example.com/p) (REQ-mcp-views-scope).
 //
 //gofresh:pure
 func TestVerifyBindingsScopeDiagnosticsResolvedPackage(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-views")
+	stipulate.Covers(t, "REQ-mcp-views-scope")
 	vr := &verify.Report{
 		Results: []verify.BindingResult{
 			{RequirementId: "REQ-dp", Symbol: "example.com/p.v2.TestX", Package: "example.com/p.v2", Role: stipulatorv1.BindingRole_BINDING_ROLE_TESTS},
@@ -404,11 +404,11 @@ func TestElementPrefixBoundaries(t *testing.T) {
 // A scope narrows the whole report on the summary view too: the counts,
 // signatures, attestations, and diagnostics are re-tallied over the kept
 // rows; problems and the outside-policy count stay tree-wide like the
-// gate verdict (REQ-mcp-views).
+// gate verdict (REQ-mcp-views-scope).
 //
 //gofresh:pure
 func TestVerifySummaryHonoursScope(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-views")
+	stipulate.Covers(t, "REQ-mcp-views-scope")
 	vr := &verify.Report{
 		Witnessed: true,
 		Results: []verify.BindingResult{

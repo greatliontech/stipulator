@@ -40,7 +40,9 @@ operation semantics exactly, with every result carrying a structured
 payload — the ProtoJSON projection of its wire message and nothing
 else; `guidance` serves prose alone — one projection feeding the CLI's JSON
 and the structured tool result, so the two surfaces cannot drift and no
-result carries a second encoding. The messages beside the reports:
+result carries a second encoding.
+
+**REQ-mcp-tools-messages** (wire): The messages beside the reports:
 `CompileResult` (the diagnostics, capped with the remainder counted;
 the requirement, term, and edge counts when the corpus compiled),
 `WriteResult` for every record-writing tool (the paths written and
@@ -50,9 +52,11 @@ beside the `GapReport` rows, the rows absent on a declare, fire, or
 retract, capped with the remainder counted on a list), `ExplainResult` (the chain's
 arm, the answering view, the links capped with the remainder counted),
 `ReadSpecResult` (the bundle markdown), and `ExportResult` (the export's
-path and size). An empty list is absent, never present-and-empty; a
-zero count and an unset flag likewise. The
-`bind` tool accepts many claims
+path and size). An empty list MUST be absent, never present-and-empty; a
+zero count and an unset flag likewise.
+
+**REQ-mcp-tools-bind-batch** (wire): The
+`bind` tool MUST accept many claims
 in one call, validating all-or-nothing like the gap surface.
 
 **REQ-mcp-guidance** (behavior): Tool-level served prose MUST be the
@@ -141,16 +145,22 @@ matches on element boundaries (equal, or the next character a `/` or
 the one rule, every view
 rendered by one renderer per report so no two surfaces can drift, and an
 unknown view or scope word refused — a typo never reads as an empty
-result. A scope narrows the WHOLE report, not only its rows: the gap and
+result.
+
+**REQ-mcp-views-scope** (behavior): A scope MUST narrow the WHOLE report, not only its rows: the gap and
 violation lists a view carries are filtered to the same requirements, so
 filtered triage is never polluted by out-of-scope entries; a kept row
 keeps its explaining diagnostic even when the row's own package failed to
 resolve (a build-broken package's bound symbols link it on the same
 element-boundary rule), so scoping onto breakage never hides the one
-diagnostic that explains it. The gate
-verdict a view reports stays the GLOBAL one — a scoped slice with no
-in-scope violation says nothing about whether the tree passes. The check
-tool answers at the summary view by default — the verdict, its evidence
+diagnostic that explains it.
+
+**REQ-mcp-views-global-verdict** (behavior): The gate
+verdict a view reports MUST stay the GLOBAL one — a scoped slice with no
+in-scope violation says nothing about whether the tree passes.
+
+**REQ-mcp-views-check-summary** (behavior): The check
+tool MUST answer at the summary view by default — the verdict, its evidence
 class, the counts, the violations and prune residue, and the per-test
 reason maps reduced to their actionable form: the top blocker reasons
 by witness count, one exemplar test each, the dropped distinct-reason
@@ -159,7 +169,9 @@ only the full view) — with
 the full check result
 message and identifier scoping opt-in per call under the same
 refused-typo rule; the summary is a projection of the one result
-message, never a second derivation. Check's identifier scope narrows the
+message, never a second derivation.
+
+**REQ-mcp-views-check-scope** (behavior): Check's identifier scope MUST narrow the
 pass itself, not only the view: it selects the scoped witness-evidence
 class (REQ-check-verdict), so the verdict a scoped check call reports is
 the flagged-partial scoped one — check's own exception to the
@@ -238,13 +250,17 @@ persisted naming it — never inside result payloads, with
 a call that ends at a deadline identifying the phase in which the deadline
 expired and the terminal cause, so a client can distinguish long-running
 work, deadline expiry, cancellation, test failure, and server failure
-without guessing. A completed suite-running call additionally stamps its
+without guessing.
+
+**REQ-mcp-progress-stamps** (behavior): A completed suite-running call MUST additionally stamp its
 phase timings as one bounded line of its text digest — the
 notification-blind fallback: a client that saw no notifications (none
 requested, or dropped in transit) still distinguishes slow work from a
 hang after the fact, and the one line is a timing record, not a progress
-stream, so the never-inside-result-payloads rule keeps its point. Each
-phase transition and the ending additionally carry the process's
+stream, so the never-inside-result-payloads rule keeps its point.
+
+**REQ-mcp-progress-resident** (behavior): Each
+phase transition and the ending MUST additionally carry the process's
 resident set where the host reports it, named by its moment — the start,
 a phase's exit, the end: the process's resident and peak resident bytes
 as the kernel answers them, and its live descendants (the resolver
@@ -262,31 +278,40 @@ reached it before this operation, as a long-lived server's peak may
 predate the call — and the largest descendants reading with its moment
 and the largest descendant's peak, so the memory a pass costs its host
 is stated by the pass itself, in the same words on both surfaces,
-rather than read off the host by hand. An operation that exceeds its client's deadline while
+rather than read off the host by hand.
+
+**REQ-mcp-progress-deadline** (behavior): An operation that exceeds its client's deadline while
 reporting nothing is unusable through the agent surface even when the
 identical CLI operation is healthy. A server-observed deadline expiry
-carries the deadline cause; a client-side deadline surfaces as the
+MUST carry the deadline cause; a client-side deadline surfaces as the
 client's cancellation, carrying the cancellation cause and the expiring
 phase, which the client composes with its own locally known reason — the
-distinguishing never requires guessing. Both surfaces report from
+distinguishing never requires guessing.
+
+**REQ-mcp-progress-surfaces** (behavior): Both surfaces MUST report from
 one progress stream: the CLI renders the same events as status lines on
 its error stream — each phase transition once, an invocation's
 progress as completed of total packages, each decision line once — and
 ends a completed run with the phase timings as its pace line and an
 interrupted run with the phase it died in and what it kept, so a person
-at the CLI and an agent at the server read the same account. An
-interrupted CLI run then ends as what ended it: the signal, re-raised
+at the CLI and an agent at the server read the same account.
+
+**REQ-mcp-progress-cli-exit** (behavior): An
+interrupted CLI run MUST then end as what ended it: the signal, re-raised
 after the ending renders, so its caller observes a signal death — or,
 where a signal cannot be re-raised, the conventional status of that
 signal, 128 plus its number — never a verdict's status, which a
 failing verdict alone exits 1 with; a second signal during the ending
-ends the process outright. The
-stream is bounded by the policy — phases, invocations, persisting
+ends the process outright.
+
+**REQ-mcp-progress-bound** (behavior): The
+stream MUST be bounded by the policy — phases, invocations, persisting
 units — never by the test count.
-The liveness channels are bounded by the protocol: progress
+
+**REQ-mcp-progress-liveness** (behavior): The liveness channels are bounded by the protocol: progress
 notifications require a client progress token, and log-channel messages
 require a client-set log level. For tokenless clients that set a level, the
-server emits bounded phase-transition log messages (info, one per phase
+server MUST emit bounded phase-transition log messages (info, one per phase
 change) so they still distinguish slow work from a hang; a
 client sending neither a token nor a level has exactly the completed
 call's stamps line and its own timeout policy — no server behavior can

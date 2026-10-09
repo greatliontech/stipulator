@@ -376,7 +376,7 @@ func stripHeader(b []byte) []byte {
 //
 //gofresh:pure
 func TestBindsBatchOverlay(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-tools")
+	stipulate.Covers(t, "REQ-mcp-tools-bind-batch")
 	claims := []BindRequest{
 		{Requirement: "REQ-au-a", Symbol: "example.com/p.F", Backend: "go", Role: stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS},
 		{Requirement: "REQ-au-b", Symbol: "example.com/p.TestB", Backend: "go", Role: stipulatorv1.BindingRole_BINDING_ROLE_TESTS},

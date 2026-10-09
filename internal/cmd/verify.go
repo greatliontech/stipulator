@@ -65,7 +65,7 @@ func verifyCmd() *cobra.Command {
 				return nil
 			}
 			// A scope narrows the whole report on every view
-			// (REQ-mcp-views): the summary's counts and broken lines
+			// (REQ-mcp-views-scope): the summary's counts and broken lines
 			// are the scope's, re-tallied over the kept rows.
 			sliced, verr := views.VerifyBindings(rep, views.FactsFrom(spec, rep), scope)
 			if verr != nil {

@@ -176,7 +176,7 @@ func TestPruneToolDanglingMode(t *testing.T) {
 // rather than refused, verification problems a stated caveat, and the
 // write forms refused in combination (REQ-gap-list).
 func TestGapToolListRowsStatesAndScope(t *testing.T) {
-	stipulate.Covers(t, "REQ-gap-list", "REQ-gap-lifecycle", "REQ-mcp-tools")
+	stipulate.Covers(t, "REQ-gap-list", "REQ-gap-lifecycle", "REQ-mcp-tools-messages")
 	var got map[gofresh.Subject]bool
 	// The class rides every row shape: a resolved row keeps it and
 	// leaves the count, an open row carries it and counts, a machine row

@@ -17,7 +17,7 @@ import (
 
 // withStamps appends the operation's phase-timing line to the text
 // content — the notification-blind client's after-the-fact record that
-// slow work was work, not a hang (REQ-mcp-progress's completed-call
+// slow work was work, not a hang (REQ-mcp-progress-stamps's completed-call
 // fallback). One bounded line; empty reporters append nothing.
 func withStamps(text string, prog *progress.Reporter) string {
 	if stamps := prog.Stamps(); stamps != "" {
@@ -28,7 +28,7 @@ func withStamps(text string, prog *progress.Reporter) string {
 
 // stampedResult is withStamps for write-shaped results: the timing line
 // rides the TEXT content only — never writeOut's structured Notes, which
-// enumerate operation consequences (REQ-mcp-progress's text-digest-only
+// enumerate operation consequences (REQ-mcp-progress-stamps's text-digest-only
 // carve-out).
 func stampedResult(res *mcp.CallToolResult, prog *progress.Reporter) *mcp.CallToolResult {
 	if stamps := prog.Stamps(); stamps != "" && len(res.Content) > 0 {

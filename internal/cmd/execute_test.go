@@ -19,7 +19,7 @@ import (
 )
 
 // TestExecuteSealsEachEndingWithItsCause pins the CLI's terminal cause
-// (REQ-mcp-progress's both-surface leg): the one reporter every
+// (REQ-mcp-progress-surfaces's both-surface leg): the one reporter every
 // invocation runs under is sealed with the MCP vocabulary — a
 // completed run, a failing verdict as a test failure, an operational
 // fault as a failure, an interruption as its own cause — and a verdict
@@ -27,7 +27,7 @@ import (
 //
 //gofresh:pure
 func TestExecuteSealsEachEndingWithItsCause(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-progress")
+	stipulate.Covers(t, "REQ-mcp-progress-surfaces")
 	t.Setenv("NO_COLOR", "1")
 	saved := chdir
 	t.Cleanup(func() { chdir = saved })
@@ -85,14 +85,14 @@ func TestExecuteSealsEachEndingWithItsCause(t *testing.T) {
 }
 
 // TestExecuteStatesTheResidentSetOnBothLines pins the CLI face's half of
-// the resident datum (REQ-mcp-progress's both-surface leg) in process,
+// the resident datum (REQ-mcp-progress-resident's both-surface leg) in process,
 // where the overlay can reach it: the CLI's reporter takes the reading,
 // so each phase transition's event carries it, the rendered phase line
 // carries it as its tail, and the pace line names the peak's phase —
 // where the host answers the reading; elsewhere none of the three
 // carries it.
 func TestExecuteStatesTheResidentSetOnBothLines(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-progress")
+	stipulate.Covers(t, "REQ-mcp-progress-resident")
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}

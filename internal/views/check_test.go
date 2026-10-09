@@ -24,11 +24,11 @@ func redRow(id string) *stipulatorv1.RequirementCoverage {
 // axes (uncacheable and re-executed) with count ties broken by reason,
 // caps red rows with a stated remainder, and reduces diagnostics to
 // headings — bounded by construction while the full view carries
-// everything (REQ-mcp-response-contract, REQ-mcp-views).
+// everything (REQ-mcp-response-contract, REQ-mcp-views-check-summary).
 //
 //gofresh:pure
 func TestCheckViewSummaryBounds(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-response-contract", "REQ-mcp-views")
+	stipulate.Covers(t, "REQ-mcp-response-contract", "REQ-mcp-views-check-summary")
 	res := &stipulatorv1.CheckResult{}
 	res.SetPassed(false)
 	reasons := map[string]string{}
@@ -115,7 +115,7 @@ func TestCheckViewSummaryBounds(t *testing.T) {
 //
 //gofresh:pure
 func TestCheckViewSummaryMatchesCanonicalJudgments(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-views", "REQ-mcp-response-contract")
+	stipulate.Covers(t, "REQ-mcp-views-check-summary", "REQ-mcp-response-contract")
 	res := &stipulatorv1.CheckResult{}
 	res.SetPassed(false)
 	res.SetSuiteHealthJudged(true)
@@ -162,7 +162,7 @@ func TestCheckViewSummaryMatchesCanonicalJudgments(t *testing.T) {
 //
 //gofresh:pure
 func TestCheckViewBlockerRowsCapAndDeterminism(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-response-contract", "REQ-mcp-views")
+	stipulate.Covers(t, "REQ-mcp-response-contract", "REQ-mcp-views-check-summary")
 	res := &stipulatorv1.CheckResult{}
 	reasons := map[string]string{}
 	// blockerRowCap+3 distinct reasons with descending weights, plus a
@@ -204,11 +204,12 @@ func TestCheckViewBlockerRowsCapAndDeterminism(t *testing.T) {
 }
 
 // Scoping filters coverage rows, gaps, and violations together and
-// never mutates the unscoped result; the verdict stays global.
+// never mutates the unscoped result, and never alters the verdict it
+// projects.
 //
 //gofresh:pure
 func TestCheckViewScopeFiltersWholeReport(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-views")
+	stipulate.Covers(t, "REQ-mcp-views-scope")
 	res := &stipulatorv1.CheckResult{}
 	res.SetPassed(false)
 	cov := &stipulatorv1.CoverageReport{}
@@ -243,7 +244,7 @@ func TestCheckViewScopeFiltersWholeReport(t *testing.T) {
 		t.Fatalf("violations = %v", v)
 	}
 	if scoped.GetPassed() {
-		t.Fatal("scope flipped the global verdict")
+		t.Fatal("scope altered the projected verdict")
 	}
 	if residue := scoped.GetPruneResidue(); len(residue) != 0 {
 		t.Fatalf("out-of-scope requirement's record path kept: %v", residue)

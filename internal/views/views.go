@@ -339,7 +339,7 @@ func VerifyView(vr *verify.Report, facts Facts, view string, scope Scope) (proto
 	}
 	switch view {
 	case "", "summary":
-		// A scope narrows the whole report (REQ-mcp-views): the summary
+		// A scope narrows the whole report (REQ-mcp-views-scope): the summary
 		// counts, the change signatures, and the diagnostics are
 		// re-tallied over the kept rows exactly as the bindings view
 		// keeps them, so the roll-up an operator reads beside a --path
@@ -406,7 +406,7 @@ func VerifyView(vr *verify.Report, facts Facts, view string, scope Scope) (proto
 // scopeVerifyReport narrows a verification report to a scope: the rows
 // the scope keeps, the signatures and attestations of the kept
 // requirements, the diagnostics the kept rows or the path claim, and
-// the counters re-tallied over what is kept (REQ-mcp-views).
+// the counters re-tallied over what is kept (REQ-mcp-views-scope).
 func scopeVerifyReport(vr *verify.Report, facts Facts, scope Scope) (*verify.Report, error) {
 	sliced := *vr
 	{
@@ -421,7 +421,7 @@ func scopeVerifyReport(vr *verify.Report, facts Facts, scope Scope) (*verify.Rep
 			}
 		}
 		sliced.Results = rows
-		// A scope narrows the WHOLE report (REQ-mcp-views): the
+		// A scope narrows the WHOLE report (REQ-mcp-views-scope): the
 		// typed diagnostics follow the kept rows, so filtered triage
 		// is never polluted by out-of-scope packages' failures.
 		// OutsidePolicy stays GLOBAL exactly like the gate verdict — a
@@ -436,7 +436,7 @@ func scopeVerifyReport(vr *verify.Report, facts Facts, scope Scope) (*verify.Rep
 		// package is known, never re-parsed from the symbol - but a
 		// dotted package path can prefix-link a symbol to its
 		// parent package too, so only the LONGEST linking package
-		// claims the row (REQ-mcp-views).
+		// claims the row (REQ-mcp-views-scope).
 		claimed := map[string]bool{}
 		for _, br := range rows {
 			if br.Package != "" {

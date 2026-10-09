@@ -197,7 +197,7 @@ message CheckSummary {
   repeated string scope_ids = 31;
   int32 reds_scope_blocked = 32;
   // The actionable reduction of the full result's per-test reason maps
-  // (REQ-mcp-views): the top blocker reasons by witness count, one
+  // (REQ-mcp-views-check-summary): the top blocker reasons by witness count, one
   // exemplar test each, remainders counted - never the whole histogram.
   repeated CheckBlockerRow uncacheable_blockers = 33;
   int32 uncacheable_reasons_omitted = 34;
