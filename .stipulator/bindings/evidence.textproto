@@ -2930,3 +2930,23 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "78065c4fd71a36e7498aa5540ae4ccd34d21aeede6022c5e8bb9ef0855161967"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness-diagnosable"
+  content_hash: "beb9e2a7783935ba92132da7cbd9e0c58c96300b1b8526558a3b4224158d74d4"
+  source_hash: "fdacf7cddf5becd47671490381b2f04e193db4347dbb7705ec97ae4d8fe320c1"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestClassifySeededAttributesEveryRefusal"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "57c932488e3680dad046b772df99adc572e9a9e928a2b4df1b4726cdc4013cf7"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "1e6d46b24903463d03040dfbfbc2112c10924323644f226b692c21e798cb6d72"
+  source_hash: "18001f1af7e4c49baa6cffa9c4e705e4b0c2d537aa4b8ac9d326cc06ce45f5b5"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/witnesscache.TestLoadUnreadableIsEmpty"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c00ab750770edbac93bef95ae2f142e5fcd763c26f9a1dce82620ac6b81aa9dd"
+}
