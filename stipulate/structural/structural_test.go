@@ -66,7 +66,7 @@ func importFixtureRules() map[string]ImportRule {
 	return map[string]ImportRule{
 		structuralMod + "/internal/importallowfixture/a": {
 			Internal:                []string{structuralMod + "/internal/importallowfixture/b"},
-			ThirdParty:              []string{"golang.org/x/tools/go/packages"},
+			ThirdParty:              []string{"github.com/greatliontech/go-x-tools/go/packages"},
 			StandardLibrary:         []string{"fmt"},
 			RestrictStandardLibrary: true,
 		},

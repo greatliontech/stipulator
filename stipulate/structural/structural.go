@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"golang.org/x/tools/go/packages"
+	"github.com/greatliontech/go-x-tools/go/packages"
 )
 
 // ImportRule declares the direct production imports one package may use.
