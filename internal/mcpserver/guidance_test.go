@@ -15,7 +15,6 @@ import (
 	stipulator "github.com/greatliontech/stipulator"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/stipulate"
-	"github.com/greatliontech/stipulator/stipulate"
 )
 
 // faceWord matches a served string naming a face — the clause rule's
