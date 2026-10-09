@@ -1226,9 +1226,9 @@ func TestCheckTierFlipNeverServesCrossTier(t *testing.T) {
 // class of a policy whose invocation selects a package this tree does
 // not have: the check fails as it fails for an invalid record — a
 // policy problem naming the invocation and the pattern — never an
-// operational error that leaves no verdict (REQ-policy-explicit).
+// operational error that leaves no verdict (REQ-policy-explicit-unresolvable).
 func TestCheckUnresolvableSelectionIsTheRecordsProblem(t *testing.T) {
-	stipulate.Covers(t, "REQ-policy-explicit", "REQ-check-verdict")
+	stipulate.Covers(t, "REQ-policy-explicit-unresolvable", "REQ-check-verdict")
 	files := baseTree(nil)
 	files[".stipulator/policy.textproto"] = "invocations {\n  name: \"all\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./ok\"\n    packages: \"./vanished\"\n  }\n}\n"
 	dir := writeTree(t, files)
@@ -1337,13 +1337,13 @@ func TestCheckPublishesAndServesResolutionRecords(t *testing.T) {
 	}
 }
 
-// TestCheckReleasesTheResolverChildBeforeExecution pins the resolver
-// child's lifetime on the check (REQ-evidence-resolution-freshness): the
-// bindings resolve and publish before the witness run's first process
-// spawns, and the child is gone — the execution phase opens with no
-// descendant of the pass — while the account still names the publish.
+// TestCheckReleasesTheResolverChildBeforeExecution pins the resolver child's
+// lifetime on the check (REQ-evidence-resolution-freshness-quiesce): the
+// bindings resolve and publish before the witness run's first process spawns,
+// and the child is gone — the execution phase opens with no descendant of the
+// pass — while the account still names the publish.
 func TestCheckReleasesTheResolverChildBeforeExecution(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-quiesce")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented policy over a fixture tree")
 	}

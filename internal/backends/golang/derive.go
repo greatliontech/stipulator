@@ -277,7 +277,7 @@ type captureGroup struct {
 	// shadows itself; groups differing only in exclusions, vouches, or
 	// purity share it deliberately — their records coexist as variants
 	// and each gate rides the record or fingerprint
-	// (REQ-evidence-witness-cache-format).
+	// (REQ-evidence-witness-cache-format-variants).
 	id   string
 	tags []string
 	env  []string
@@ -350,7 +350,7 @@ type captureGroup struct {
 	view *gofresh.View
 	fps  map[gofresh.Subject]gofresh.Fingerprint
 	// legs is the health-judged form's publication state per package:
-	// the package is the unit of persistence (REQ-policy-cancellation),
+	// the package is the unit of persistence (REQ-policy-cancellation-unit),
 	// so each publishes on its own sibling of view, its proof leg over
 	// its whole-package process's solo candidates captured before
 	// execution and validated at its publish.
@@ -826,7 +826,7 @@ func discoverPolicy(ctx context.Context, normalized []*NormalizedInvocation) (*p
 			// reason, as the run's error — far from the record line
 			// that named the selection. A selection the tree cannot
 			// honor is the record's problem, the check's verdict
-			// (REQ-policy-explicit); this walk is the record's, so the
+			// (REQ-policy-explicit-unresolvable); this walk is the record's, so the
 			// class is decided here and only here.
 			err = fmt.Errorf("discovering invocation %q: %w", n.Name, err)
 			if errors.As(err, new(unresolvedSelection)) {
@@ -1086,7 +1086,7 @@ func NewWitnessRecorder(ctx context.Context, pc *Capture, seeding verify.Witness
 	seedingErr := classifySeeded(d, seeding)
 	// The classification was this form's last question to its backend:
 	// released before the engines' loads and the first spawn
-	// (REQ-evidence-resolution-freshness).
+	// (REQ-evidence-resolution-freshness-quiesce).
 	quiesceSeeding(seeding)
 	if seedingErr != nil {
 		if ctx.Err() != nil {
@@ -1298,7 +1298,7 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 // disposition and observation — and installs them at once, named on
 // the progress stream by invocation and package: the unit of
 // persistence is the package under its covering invocation on this
-// form as on the selective one (REQ-policy-cancellation). A
+// form as on the selective one (REQ-policy-cancellation-unit). A
 // publication fault degrades the run's further publication, as a
 // group's did; the error return is reserved for caller cancellation.
 func (r *WitnessRecorder) packageCompleted(ctx context.Context, invocation string, unit packageUnit) error {

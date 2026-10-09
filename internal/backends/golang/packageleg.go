@@ -11,7 +11,7 @@ import (
 
 // packageLeg is one package's publication state within a witness group,
 // on either form. The package is the unit of persistence
-// (REQ-policy-cancellation), so it is the unit of validation too: its
+// (REQ-policy-cancellation-unit), so it is the unit of validation too: its
 // serving checks, captures, proof leg, publish and revalidation run on
 // its own sibling of the group's one analysis view — the expensive
 // observation, paid once per group — so under the deferred-close engine

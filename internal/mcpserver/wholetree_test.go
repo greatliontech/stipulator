@@ -19,11 +19,11 @@ import (
 // whole-tree form, never the serving form a verification runs over:
 // the serving form reads the policy at construction and publishes
 // what it resolves, neither of which a declaration read may do
-// (REQ-evidence-resolution-freshness).
+// (REQ-evidence-resolution-freshness-typed-load).
 //
 //gofresh:pure
 func TestDeclarationReadingToolsTakeTheWholeTreeForm(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-typed-load")
 	var serving, whole int
 	sess, _ := harnessWith(t, map[string]string{
 		".stipulator/bindings/m.textproto": pinnedBinding(t),
@@ -82,11 +82,11 @@ func TestDeclarationReadingToolsTakeTheWholeTreeForm(t *testing.T) {
 // The server's whole-tree seam is the whole-tree form: its
 // construction reads no policy, where the serving form's refuses a
 // policy the tree cannot parse at construction
-// (REQ-evidence-resolution-freshness).
+// (REQ-evidence-resolution-freshness-typed-load).
 //
 //gofresh:pure
 func TestServerWholeTreeSeamReadsNoPolicy(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-typed-load")
 	dir := t.TempDir()
 	policyPath := filepath.Join(dir, filepath.FromSlash(policy.Path))
 	if err := os.MkdirAll(filepath.Dir(policyPath), 0o755); err != nil {

@@ -69,7 +69,7 @@ func Run(ctx context.Context, d verbcore.Deps, noTest bool, ids []string) (*chec
 	// witness run's seeding classification is the last, and the backends
 	// release their cost before the first spawn; the run announces its
 	// own phases, and the outcomes correlate after it
-	// (REQ-evidence-resolution-freshness).
+	// (REQ-evidence-resolution-freshness-quiesce).
 	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	report := verify.Resolve(spec, store, backends, !noTest)
 	var tr *verify.TestRun
@@ -81,7 +81,7 @@ func Run(ctx context.Context, d verbcore.Deps, noTest bool, ids []string) (*chec
 	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
 	report = verify.Correlate(report, store, tr)
 	// The account is read after the close that publishes, and rides the
-	// report so every face renders it (REQ-evidence-resolution-freshness).
+	// report so every face renders it (REQ-evidence-resolution-freshness-account).
 	report.ResolutionNotices = closer()
 	return prepared, report, tr, nil
 }
@@ -175,7 +175,7 @@ type ProblemsError struct {
 	// Notices is the serving path's account the refused pass read after
 	// its publishing close — a refusal reached after the close carries
 	// it, so the publish is never a fault nobody sees
-	// (REQ-evidence-resolution-freshness). Nil for a refusal raised
+	// (REQ-evidence-resolution-freshness-account). Nil for a refusal raised
 	// before any serving backend was built.
 	Notices []string
 }

@@ -76,7 +76,7 @@ type Slicer interface {
 // may cost the child again). The witness run calls it right after its
 // seeding classification, the last question, so nothing of the
 // resolution's cost is resident through the run's loads and executions
-// (REQ-evidence-resolution-freshness). The records the backend owes
+// (REQ-evidence-resolution-freshness-quiesce). The records the backend owes
 // publish here, as at its close; the close publishes what was asked
 // since.
 type Quiescer interface {
@@ -98,7 +98,7 @@ type Backend interface {
 // what publishes the resolution records and a publish refused or
 // degraded is otherwise a fault nobody sees. The one closer every face
 // uses, so the account is read at the only sound moment on each
-// (REQ-evidence-resolution-freshness). Nil when no backend keeps one.
+// (REQ-evidence-resolution-freshness-account). Nil when no backend keeps one.
 func CloseBackends(backends map[string]Backend) []string {
 	// Backend order: the account's line order is a fact of the set,
 	// never of a map walk.

@@ -118,7 +118,7 @@ func judgeSubject(s gofresh.Subject, neverServe uncacheable, refused, captured b
 // own invocations the merge holds rows of the subject for — the
 // whole-package process, then the isolation pass's solo one — as the
 // one judgment's candidates, each with every row it produced for the
-// package (REQ-policy-attribution). A process of another group's
+// package (REQ-policy-attribution-no-merge). A process of another group's
 // invocation sharing the package is no candidate: a group publishes
 // under its own witness class, so only its own legs can grant.
 func producersOf(s gofresh.Subject, g *captureGroup, m *execMerge) []producerCandidate {

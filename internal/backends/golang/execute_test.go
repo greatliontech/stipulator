@@ -299,7 +299,7 @@ func TestGoExecuteEnvelopeTimeout(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads the tree")
 	}
-	stipulate.Covers(t, "REQ-policy-explicit", "REQ-go-policy-complete", "REQ-policy-budget-attribution")
+	stipulate.Covers(t, "REQ-policy-explicit-time-bounds", "REQ-go-policy-complete", "REQ-policy-budget-attribution")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
 	cfg.SetPackages([]string{"./sleepy"})
@@ -1221,8 +1221,8 @@ func TestGoExecuteBinaryTimeoutGreenStreamNotReclassified(t *testing.T) {
 // args there is no budget to exhaust, so the panic shape in a test's
 // output — necessarily the test's own print — never reclassifies the
 // red, never suppresses a completed failure, and no diagnostic invents
-// a budget (REQ-policy-explicit: the record's envelope and reviewed
-// arguments are the only sources of execution bounds).
+// a budget (REQ-policy-explicit-time-bounds: the record's envelope and
+// reviewed arguments are the only sources of execution bounds).
 func TestGoExecuteBinaryTimeoutUndeclaredBoundKeepsFailureClass(t *testing.T) {
 	stipulate.Covers(t, "REQ-policy-budget-attribution")
 	stream := `{"Action":"run","Package":"example.com/x","Test":"TestPrints"}` + "\n" +

@@ -107,14 +107,14 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	}
 
 	// The policy is explicit, never assumed: witness execution consumes the
-	// committed record, so a missing or invalid record is a failing check
-	// with the loader's guidance, not a silent fallback to some universal
-	// invocation. A record problem is the check's verdict, whether the
-	// loader found it or a later reader did — an invocation whose
-	// selection this tree cannot resolve is the record's fault against
-	// the tree (REQ-policy-explicit); an operational fault — a permission
-	// error, not a record problem — stays an error: it says nothing about
-	// the tree.
+	// committed record, so a missing or invalid record is a failing check with
+	// the loader's guidance, not a silent fallback to some universal
+	// invocation. A record problem is the check's verdict, whether the loader
+	// found it or a later reader did — an invocation whose selection this tree
+	// cannot resolve is the record's fault against the tree
+	// (REQ-policy-explicit-unresolvable); an operational fault — a permission
+	// error, not a record problem — stays an error: it says nothing about the
+	// tree.
 	recordProblem := func(err error) (*stipulatorv1.CheckResult, error) {
 		if !errors.Is(err, policy.ErrRecord) {
 			return nil, err
@@ -179,7 +179,7 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		// work — every question to the backend asked ahead of any
 		// execution; the run's seeding classification is the last, and
 		// the backend releases its child before the first spawn
-		// (REQ-evidence-resolution-freshness).
+		// (REQ-evidence-resolution-freshness-quiesce).
 		rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 		resolved = verify.Resolve(spec, store, backends, true)
 

@@ -57,7 +57,8 @@ func open(dir string) (recordstore.Store, error) { return recordstore.Open("witn
 // fileName is a record variant's file: the identity digest over the
 // group's coordinate, the package, and the test, joined with the
 // fingerprint's (REQ-evidence-witness-cache-format); a fingerprint
-// Gofresh's encoder refuses names no file.
+// Gofresh's encoder refuses names no file
+// (REQ-evidence-witness-cache-format-fingerprint).
 func fileName(r Record) (string, error) {
 	return recordstore.Name([]string{r.Group, r.Package, r.Test}, r.Fingerprint)
 }
@@ -69,7 +70,7 @@ func fileName(r Record) (string, error) {
 // decoder, which refuses an unknown, duplicated, or null key, a proof
 // without its observable, and a record that is not the form's own
 // encoding; a record it refuses fails closed to re-execution like any
-// field-blind one (REQ-evidence-witness-cache-format).
+// field-blind one (REQ-evidence-witness-cache-format-fingerprint).
 type Fingerprint = gofresh.Fingerprint
 
 // CompartmentDeclaration is one persisted test-variant declaration entry.
@@ -220,18 +221,18 @@ type entry struct {
 	ObservationNamespaces []ScratchNamespace `json:"observationNamespaces,omitempty"`
 }
 
-// Load reads every variant record of the corpus rooted at dir. A missing
-// store is an empty cache, and a malformed, wrong-version, or
-// misnamed file is that record alone absent — sibling records stay
-// trusted; refusal is per record and costs only that record's execution
-// (REQ-evidence-witness-cache-format). One identity may return several
-// variants: distinct tree states coexist, and serving picks whichever
-// fingerprint proves equivalence. Variants come most recently installed
-// first (names break ties), so serving's first round tries the variant
-// the last state change produced — the one that proves equivalent
-// whenever the tree has not alternated since. Ledgers no record file
-// names are reclaimed here: the ledger store is bounded by the record
-// store, whose variant bound evicts records without reading them.
+// Load reads every variant record of the corpus rooted at dir. A missing store
+// is an empty cache, and a malformed, wrong-version, or misnamed file is that
+// record alone absent — sibling records stay trusted; refusal is per record
+// and costs only that record's execution
+// (REQ-evidence-witness-cache-format-validation). One identity may return
+// several variants: distinct tree states coexist, and serving picks whichever
+// fingerprint proves equivalence. Variants come most recently installed first
+// (names break ties), so serving's first round tries the variant the last
+// state change produced — the one that proves equivalent whenever the tree has
+// not alternated since. Ledgers no record file names are reclaimed here: the
+// ledger store is bounded by the record store, whose variant bound evicts
+// records without reading them.
 func Load(dir string) []Record {
 	return loadSince(dir, time.Now())
 }

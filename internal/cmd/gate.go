@@ -62,7 +62,7 @@ func gateCmd() *cobra.Command {
 			// this one call covers both halves.
 			// The serving account first: the close that published has
 			// run, and a refusal below must not hide it
-			// (REQ-evidence-resolution-freshness).
+			// (REQ-evidence-resolution-freshness-account).
 			if !quiet {
 				renderNotices(os.Stderr, rep.ResolutionNotices)
 			}

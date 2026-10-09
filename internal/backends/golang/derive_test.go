@@ -575,12 +575,12 @@ func TestJudgeSubjectNamesRefusalsInOneVocabulary(t *testing.T) {
 // producersOf offers a group's own legs' processes alone, in the
 // order the merge saw them — the whole-package process before the
 // isolation pass's — each with every row it produced for the package
-// (REQ-policy-attribution: a group publishes under its own witness
+// (REQ-policy-attribution-no-merge: a group publishes under its own witness
 // class, so another group's process sharing the package cannot grant).
 //
 //gofresh:pure
 func TestProducersOfOffersTheGroupsOwnLegsInMergeOrder(t *testing.T) {
-	stipulate.Covers(t, "REQ-policy-attribution")
+	stipulate.Covers(t, "REQ-policy-attribution-no-merge")
 	subject := gofresh.Subject{Package: "example.com/m/pkg", Symbol: "TestX"}
 	g := &captureGroup{invs: []string{"race"}}
 	m := newExecMerge()

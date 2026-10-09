@@ -149,7 +149,8 @@ func gapListRun(ctx context.Context) error {
 	if len(rep.Problems) > 0 {
 		fmt.Fprintln(os.Stderr, yellow(verifyrun.MisreportCaveat(len(rep.Problems), verifyrun.CaveatEvaluatedStates)))
 	}
-	// The evaluation's serving account (REQ-evidence-resolution-freshness).
+	// The evaluation's serving account
+	// (REQ-evidence-resolution-freshness-account).
 	renderNotices(os.Stderr, rep.ResolutionNotices)
 	// The one row set both faces list — dangling rows first — and the
 	// one account of it (REQ-gap-list).

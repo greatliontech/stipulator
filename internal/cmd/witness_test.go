@@ -14,7 +14,7 @@ import (
 // discovery: the record's path leads, the class survives, and any other
 // fault passes unchanged.
 func TestWitnessRecordProblemsCarryTheRecordPath(t *testing.T) {
-	stipulate.Covers(t, "REQ-policy-explicit")
+	stipulate.Covers(t, "REQ-policy-explicit-unresolvable")
 	record := policy.RecordError(errors.New("invocation \"all\": \"./vanished\" matched no packages"))
 	got := withRecordPath(record)
 	if !errors.Is(got, policy.ErrRecord) || !strings.HasPrefix(got.Error(), policy.Path+": ") || !strings.Contains(got.Error(), "./vanished") {

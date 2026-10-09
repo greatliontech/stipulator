@@ -37,7 +37,7 @@ func TestGoExecuteObservationOwnership(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads the tree")
 	}
-	stipulate.Covers(t, "REQ-policy-attribution")
+	stipulate.Covers(t, "REQ-policy-attribution-no-merge")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
 	cfg.SetPackages([]string{"./reads", "./ok"})

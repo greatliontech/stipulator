@@ -25,12 +25,12 @@ import (
 // stale package's invocation's completion — a cancellation at that
 // note leaves the new record installed — where waiting on the served
 // package's never-run invocation would defer the install to
-// verification and lose it (REQ-policy-cancellation's unit of
+// verification and lose it (REQ-policy-cancellation-unit's unit of
 // persistence, on the selective form).
 //
 // Deliberately not //gofresh:pure: executes the fixture's tests.
 func TestServingFormPersistsAtTheExecutingInvocation(t *testing.T) {
-	stipulate.Covers(t, "REQ-policy-cancellation")
+	stipulate.Covers(t, "REQ-policy-cancellation-unit")
 	if testing.Short() {
 		t.Skip("executes race invocations over a temporary module")
 	}
@@ -87,11 +87,11 @@ func TestServingFormPersistsAtTheExecutingInvocation(t *testing.T) {
 // A scoped run: a stale package the scope leaves out executes nothing
 // and covers nothing, so the group still installs at its executing
 // invocation's completion — a cancellation there keeps the in-scope
-// record (REQ-policy-cancellation on the id-scoped pass).
+// record (REQ-policy-cancellation-unit on the id-scoped pass).
 //
 // Deliberately not //gofresh:pure: executes the fixture's tests.
 func TestScopedRunPersistsAtTheExecutingInvocation(t *testing.T) {
-	stipulate.Covers(t, "REQ-policy-cancellation")
+	stipulate.Covers(t, "REQ-policy-cancellation-unit")
 	if testing.Short() {
 		t.Skip("executes race invocations over a temporary module")
 	}
@@ -182,11 +182,11 @@ func TestDoublySelectedPackageIsRefusedAtDiscovery(t *testing.T) {
 // selecting invocation's rows alone it would install a record for a
 // subject with no producing leg — while the singly selected package
 // publishes at its own completion under the first
-// (REQ-evidence-witness-freshness, REQ-policy-cancellation).
+// (REQ-evidence-witness-freshness, REQ-policy-cancellation-covering).
 //
 // Deliberately not //gofresh:pure: executes the fixture's tests.
 func TestMixedGroupPublishesOnlyItsSinglySelectedPackage(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-policy-cancellation")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-policy-cancellation-covering")
 	if testing.Short() {
 		t.Skip("executes two race invocations over a temporary module")
 	}
@@ -233,7 +233,7 @@ func TestMixedGroupPublishesOnlyItsSinglySelectedPackage(t *testing.T) {
 
 // TestHealthJudgedPackagePersistsBeforeItsSiblingCompletes pins the
 // health-judged form's unit of persistence inside one invocation
-// (REQ-policy-cancellation, REQ-evidence-witness-cache-format): a
+// (REQ-policy-cancellation-unit, REQ-evidence-witness-cache-format-install): a
 // package's records install the moment its process completes, while a
 // sibling package of the same invocation still runs — a cancellation at
 // that note keeps the finished package's record and nothing of the
@@ -241,7 +241,7 @@ func TestMixedGroupPublishesOnlyItsSinglySelectedPackage(t *testing.T) {
 //
 // Deliberately not //gofresh:pure: executes the fixture's tests.
 func TestHealthJudgedPackagePersistsBeforeItsSiblingCompletes(t *testing.T) {
-	stipulate.Covers(t, "REQ-policy-cancellation", "REQ-evidence-witness-cache-format")
+	stipulate.Covers(t, "REQ-policy-cancellation-unit", "REQ-evidence-witness-cache-format-install")
 	if testing.Short() {
 		t.Skip("executes a race invocation over a temporary module")
 	}
@@ -285,7 +285,7 @@ func TestHealthJudgedPackagePersistsBeforeItsSiblingCompletes(t *testing.T) {
 }
 
 // TestHealthJudgedPackagePublishesInItsOwnGroupAlone pins the covering
-// invocation on the health-judged form (REQ-policy-cancellation): one
+// invocation on the health-judged form (REQ-policy-cancellation-covering): one
 // package two invocations under different build coordinates both
 // select sits in two groups, each running it under its own invocation,
 // and each invocation's completion publishes the package in its own
@@ -295,7 +295,7 @@ func TestHealthJudgedPackagePersistsBeforeItsSiblingCompletes(t *testing.T) {
 //
 // Deliberately not //gofresh:pure: executes the fixture's tests.
 func TestHealthJudgedPackagePublishesInItsOwnGroupAlone(t *testing.T) {
-	stipulate.Covers(t, "REQ-policy-cancellation")
+	stipulate.Covers(t, "REQ-policy-cancellation-covering")
 	if testing.Short() {
 		t.Skip("executes two race invocations over a temporary module")
 	}
@@ -357,18 +357,18 @@ func releaseSibling(t *testing.T, tmp string) {
 	}
 }
 
-// TestHealthJudgedPublicationHoldsNoSpawnSlot pins the envelope's
-// scope on the health-judged form (REQ-policy-cancellation,
-// REQ-policy-explicit): a package's publication runs after its spawn
-// slot is released, so under a bound of one a sibling still queued
-// spawns the moment the first package's process ends — never behind
-// its publish — and the record's envelope is spent on processes alone.
-// The publish of whichever package finishes first is held longer than
-// the whole envelope; both packages still dispose healthy and publish.
+// TestHealthJudgedPublicationHoldsNoSpawnSlot pins the envelope's scope on the
+// health-judged form (REQ-policy-cancellation-publication-slot,
+// REQ-policy-explicit-time-bounds): a package's publication runs after its
+// spawn slot is released, so under a bound of one a sibling still queued
+// spawns the moment the first package's process ends — never behind its
+// publish — and the record's envelope is spent on processes alone. The publish
+// of whichever package finishes first is held longer than the whole envelope;
+// both packages still dispose healthy and publish.
 //
 // Deliberately not //gofresh:pure: executes the fixture's tests.
 func TestHealthJudgedPublicationHoldsNoSpawnSlot(t *testing.T) {
-	stipulate.Covers(t, "REQ-policy-cancellation", "REQ-policy-explicit")
+	stipulate.Covers(t, "REQ-policy-cancellation-publication-slot", "REQ-policy-explicit-time-bounds")
 	if testing.Short() {
 		t.Skip("executes a race invocation over a temporary module")
 	}
@@ -413,15 +413,15 @@ func TestHealthJudgedPublicationHoldsNoSpawnSlot(t *testing.T) {
 	}
 }
 
-// TestSelectivePublicationHoldsNoSpawnSlot is the selective form's twin
-// of the pin above (REQ-policy-cancellation, REQ-policy-explicit): the
-// hook publishes after the package's slot is released, so the first
-// package's publish, held past the whole envelope, denies the queued
-// sibling nothing — both execute and publish.
+// TestSelectivePublicationHoldsNoSpawnSlot is the selective form's twin of the
+// pin above (REQ-policy-cancellation-publication-slot,
+// REQ-policy-explicit-time-bounds): the hook publishes after the package's
+// slot is released, so the first package's publish, held past the whole
+// envelope, denies the queued sibling nothing — both execute and publish.
 //
 // Deliberately not //gofresh:pure: executes the fixture's tests.
 func TestSelectivePublicationHoldsNoSpawnSlot(t *testing.T) {
-	stipulate.Covers(t, "REQ-policy-cancellation", "REQ-policy-explicit")
+	stipulate.Covers(t, "REQ-policy-cancellation-publication-slot", "REQ-policy-explicit-time-bounds")
 	if testing.Short() {
 		t.Skip("executes a race invocation over a temporary module")
 	}
@@ -843,16 +843,16 @@ func TestUngrantedEligibleWitnessCarriesItsCauseOnTheSelectiveForm(t *testing.T)
 	}
 }
 
-// TestPackagePersistsBeforeItsSiblingCompletes pins the selective form's
-// unit of persistence (REQ-policy-cancellation, REQ-check-witness-selection):
-// a package whose process fails isolates its denied passing test inside
-// its own unit, and its records install the moment that unit completes —
-// while a sibling package is still executing — so a run cancelled right
-// after keeps the finished package's record and nothing of the sibling's.
+// TestPackagePersistsBeforeItsSiblingCompletes pins the selective form's unit
+// of persistence (REQ-policy-cancellation-unit, REQ-check-witness-selection):
+// a package whose process fails isolates its denied passing test inside its
+// own unit, and its records install the moment that unit completes — while a
+// sibling package is still executing — so a run cancelled right after keeps
+// the finished package's record and nothing of the sibling's.
 //
 // Deliberately not //gofresh:pure: executes the fixture's tests.
 func TestPackagePersistsBeforeItsSiblingCompletes(t *testing.T) {
-	stipulate.Covers(t, "REQ-policy-cancellation", "REQ-check-witness-selection")
+	stipulate.Covers(t, "REQ-policy-cancellation-unit", "REQ-check-witness-selection")
 	if testing.Short() {
 		t.Skip("executes a race invocation over a temporary module")
 	}

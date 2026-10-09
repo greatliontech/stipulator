@@ -59,13 +59,13 @@ func accountServer(t *testing.T, files map[string]string) *mcp.ClientSession {
 }
 
 // Every served verb that builds the serving form carries its account
-// (REQ-evidence-resolution-freshness, REQ-mcp-response-contract): the
+// (REQ-evidence-resolution-freshness-account, REQ-mcp-response-contract): the
 // text digest of verify and gate carries the account read after the
 // close — the publish line included, the per-symbol typed lines left to
 // the structured payload — the full verify report carries every line,
 // and prune's notes carry the account beside the evaluation line.
 func TestServedVerbsCarryTheServingAccount(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness", "REQ-mcp-response-contract")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-account", "REQ-mcp-response-contract")
 	binding := pinnedBindingFor(t, "REQ-m-a", "example.com/p.TestA", "s")
 	gap := "requirement_id: \"REQ-m-b\"\nreason: \"pending\"\nlands {\n  manual {\n    condition: \"judged done\"\n  }\n}\n"
 	sess := accountServer(t, map[string]string{
@@ -152,9 +152,9 @@ func (b *refusingAccountBackend) Resolve(symbol string) (verify.Resolution, stri
 
 // A refusal a served verb raises after the close that published carries
 // the account — gate's and partitions' problem refusals, prune's
-// evaluation refusal (REQ-evidence-resolution-freshness).
+// evaluation refusal (REQ-evidence-resolution-freshness-account).
 func TestServedRefusalsAfterTheCloseCarryTheAccount(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-account")
 	gap := "requirement_id: \"REQ-m-b\"\nreason: \"pending\"\nlands {\n  manual {\n    condition: \"judged done\"\n  }\n}\n"
 	sess, _ := harnessWith(t, map[string]string{
 		".stipulator/bindings/a.textproto": pinnedBindingFor(t, "REQ-m-a", "example.com/p.TestA", "s"),

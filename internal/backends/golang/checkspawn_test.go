@@ -20,9 +20,9 @@ import (
 // the child is released before the first process spawns, and nothing
 // the pass does after the run — correlation, coverage, the account —
 // asks a question that would cost a second child
-// (REQ-evidence-resolution-freshness).
+// (REQ-evidence-resolution-freshness-quiesce).
 func TestCheckSpawnsTheResolverChildOnce(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-quiesce")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented policy over a fixture tree")
 	}

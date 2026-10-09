@@ -81,23 +81,23 @@ func ExecuteSelection(ctx context.Context, n *NormalizedInvocation, sel TestSele
 
 // packageUnit is one package's completed execution: its process's run
 // and the solo re-runs its denied tests earned, in the order they ran —
-// the unit of persistence (REQ-policy-cancellation).
+// the unit of persistence (REQ-policy-cancellation-unit).
 type packageUnit struct {
 	pkg   string
 	run   packageRun
 	solos []packageRun
 }
 
-// ExecuteSelectionObserved is ExecuteSelection with a per-package
-// completion hook: onPackage fires, serialized, the moment a package's
-// process and its own isolation re-runs have completed and been
-// classified — while other packages still execute — so a caller can
-// persist that package's evidence before the invocation ends. The hook
-// runs after the package's spawn slot is released: the re-runs spawn
-// and so hold the slot, the caller's publication spawns nothing and
-// holds none, so a sibling still queued is never delayed by it and the
-// envelope bounds processes alone (REQ-policy-explicit). A hook error
-// ends the invocation with it. A nil hook is ExecuteSelection.
+// ExecuteSelectionObserved is ExecuteSelection with a per-package completion
+// hook: onPackage fires, serialized, the moment a package's process and its
+// own isolation re-runs have completed and been classified — while other
+// packages still execute — so a caller can persist that package's evidence
+// before the invocation ends. The hook runs after the package's spawn slot is
+// released: the re-runs spawn and so hold the slot, the caller's publication
+// spawns nothing and holds none, so a sibling still queued is never delayed by
+// it and the envelope bounds processes alone
+// (REQ-policy-explicit-time-bounds). A hook error ends the invocation with it.
+// A nil hook is ExecuteSelection.
 func ExecuteSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel TestSelection, onPackage func(unit packageUnit) error) (*SelectionResult, error) {
 	return executeSelectionObserved(ctx, n, sel, onPackage, nil)
 }
@@ -134,7 +134,7 @@ func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 	// outcome) and retries never outlive the invocation's reviewed
 	// bound. The unit of persistence is the package with its re-runs,
 	// complete before the next package needs it
-	// (REQ-policy-cancellation); the caller's hook follows once the
+	// (REQ-policy-cancellation-unit); the caller's hook follows once the
 	// slot is released.
 	inSlot := func(i int, run *packageRun, gate *admission) {
 		unit := packageUnit{pkg: pkgs[i], run: *run}

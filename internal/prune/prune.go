@@ -149,7 +149,7 @@ type Resolved struct {
 	// run.
 	Served, Executed int
 	// Notices is the serving path's account the evaluation read, after
-	// the close that publishes (REQ-evidence-resolution-freshness);
+	// the close that publishes (REQ-evidence-resolution-freshness-account);
 	// advisory, rendered beside Line on every face.
 	Notices []string
 	// Prunes are the resolved gap records' deletions.

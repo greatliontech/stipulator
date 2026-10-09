@@ -87,7 +87,7 @@ type witnessGroup struct {
 	// released once every leg has.
 	view *gofresh.View
 	// legs is the publication state per PACKAGE — the unit of
-	// persistence (REQ-policy-cancellation): the package's serving
+	// persistence (REQ-policy-cancellation-unit): the package's serving
 	// checks, captures, proof leg, publish and revalidation run on its
 	// own sibling of view, released once the package has published and,
 	// where it serves, revalidated.
@@ -169,7 +169,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	// The classification was the run's last question to its backend: a
 	// backend that can release what answering cost it does so now —
 	// before the universe's listings, the engines' loads and the first
-	// process spawn (REQ-evidence-resolution-freshness).
+	// process spawn (REQ-evidence-resolution-freshness-quiesce).
 	quiesceSeeding(seeding)
 	// A universe fault is a freshness-path fault, not a selection fault:
 	// selection needs only the policy's own discovery, and the universe
@@ -464,7 +464,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	// executes it under this invocation publishes and installs its
 	// executed records — while its sibling packages still run, so a run
 	// dying mid-invocation keeps every package already finished
-	// (REQ-policy-cancellation); its served records wait for the
+	// (REQ-policy-cancellation-unit); its served records wait for the
 	// verification pass, after every execution. A stale package the
 	// caller's scope left out executes nothing: its subjects publish
 	// their reasons in the verification pass.
@@ -1200,7 +1200,7 @@ func (m *execMerge) add(invocation string, res *SelectionResult) {
 // already in the merge — the hook that lets the package publish and
 // install while its siblings still execute, so a run dying
 // mid-execution keeps every record already produced
-// (REQ-evidence-witness-cache-format's install-on-completion rule).
+// (REQ-evidence-witness-cache-format-install's install-on-completion rule).
 func executeSelections(ctx context.Context, invocations []*NormalizedInvocation, staleSel map[string]TestSelection, m *execMerge, onPackage func(invocation string, unit packageUnit) error, proofs processProofs) error {
 	for _, n := range invocations {
 		sel := staleSel[n.Name]
@@ -1270,7 +1270,7 @@ var afterServedCheckForTest func(pkg string)
 
 // publishPackage publishes one package's executed subjects' new records
 // the moment the package completes — the unit of persistence
-// (REQ-policy-cancellation) — on the package's own sibling view, whose
+// (REQ-policy-cancellation-unit) — on the package's own sibling view, whose
 // closing validation gates the records. Its served records are not
 // judged here: the clause revalidates them after the run's executions
 // complete (revalidateServed), so a sibling package's later write still

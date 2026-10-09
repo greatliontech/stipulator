@@ -111,9 +111,10 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 	// The health-judged form persists per package at its completion
 	// under its covering invocation, named on the progress stream by
 	// invocation and package, so an ending after the install reports
-	// what it kept (REQ-policy-cancellation): the two packages whose
-	// subjects publish — ok's two records and reads' one — each named
-	// once, in whichever order their processes completed.
+	// what it kept (REQ-policy-cancellation-unit,
+	// REQ-policy-cancellation-kept): the two packages whose subjects
+	// publish — ok's two records and reads' one — each named once, in
+	// whichever order their processes completed.
 	var events []*stipulatorv1.ProgressEvent
 	rep := progress.New(func(e *stipulatorv1.ProgressEvent) { events = append(events, e) }, progress.WithInterval(time.Hour))
 	ctx := progress.NewContext(context.Background(), rep)
@@ -778,15 +779,15 @@ func TestGoDeriveCheckFaultDegradesRun(t *testing.T) {
 }
 
 // TestHealthJudgedFormPersistsPerPackage pins the health-judged form's
-// unit of persistence (REQ-policy-cancellation,
-// REQ-evidence-witness-cache-format): a package installs the moment it
+// unit of persistence (REQ-policy-cancellation-unit,
+// REQ-evidence-witness-cache-format-install): a package installs the moment it
 // completes under its covering invocation, so a run cancelled at the
 // first invocation's one package keeps that package's record — and its
 // ending names exactly it — while the second invocation's never lands.
 //
 // Deliberately not //gofresh:pure: executes the fixture's tests.
 func TestHealthJudgedFormPersistsPerPackage(t *testing.T) {
-	stipulate.Covers(t, "REQ-policy-cancellation", "REQ-evidence-witness-cache-format")
+	stipulate.Covers(t, "REQ-policy-cancellation-unit", "REQ-evidence-witness-cache-format-install")
 	if testing.Short() {
 		t.Skip("executes two race invocations over a temporary module")
 	}
@@ -850,18 +851,18 @@ func TestHealthJudgedFormPersistsPerPackage(t *testing.T) {
 	}
 }
 
-// TestHealthJudgedFormKeepsWhatClosedBeforeADegrade pins the degraded
-// account after per-package installs (REQ-policy-cancellation,
-// REQ-evidence-witness-cache-format): a later package's closing refusal
-// degrades further publication only — the first invocation's package
-// stays installed, its unit stays kept, every package after the fault
-// publishes nothing and reads the degrade, and the run's uncacheable
-// set excludes the subjects it installed, so the run, the store, and
-// the ending tell one story.
+// TestHealthJudgedFormKeepsWhatClosedBeforeADegrade pins the degraded account
+// after per-package installs (REQ-policy-cancellation-unit,
+// REQ-policy-cancellation-kept, REQ-evidence-witness-cache-format-install): a
+// later package's closing refusal degrades further publication only — the
+// first invocation's package stays installed, its unit stays kept, every
+// package after the fault publishes nothing and reads the degrade, and the
+// run's uncacheable set excludes the subjects it installed, so the run, the
+// store, and the ending tell one story.
 //
 // Deliberately not //gofresh:pure: executes the fixture's tests.
 func TestHealthJudgedFormKeepsWhatClosedBeforeADegrade(t *testing.T) {
-	stipulate.Covers(t, "REQ-policy-cancellation", "REQ-evidence-witness-cache-format")
+	stipulate.Covers(t, "REQ-policy-cancellation-unit", "REQ-evidence-witness-cache-format-install", "REQ-policy-cancellation-kept")
 	if testing.Short() {
 		t.Skip("executes two race invocations over a temporary module")
 	}

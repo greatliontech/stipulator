@@ -75,7 +75,7 @@ type Reporter struct {
 	stamps []phaseStamp
 	// kept names, in order, the units whose records persisted: the
 	// material of the terminal event's kept list, so a cancelled
-	// operation names what it kept (REQ-policy-cancellation).
+	// operation names what it kept (REQ-policy-cancellation-kept).
 	kept []string
 	// note is the decision line the next emitted event carries; cleared
 	// once emitted so no later event repeats it.

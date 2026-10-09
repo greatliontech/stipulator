@@ -25,9 +25,9 @@ func (b *countingBackend) WitnessClassVerdict(string) (WitnessClass, string) {
 // everything before any execution — the class included exactly when the
 // pass will witness — and the half that reads the run touches no
 // backend, so a pass can release its backends between the two
-// (REQ-evidence-resolution-freshness).
+// (REQ-evidence-resolution-freshness-quiesce).
 func TestRunIsCorrelateOverResolve(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-quiesce")
 	id := "REQ-x"
 	req := &stipulatorv1.Requirement{}
 	req.SetId(id)

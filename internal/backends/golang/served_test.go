@@ -204,7 +204,7 @@ func TestServedReresolvesWhenTheClosureMoves(t *testing.T) {
 // callable deleted from the source refuses the view by name, is dropped
 // from the served set, and resolves typed as not found.
 func TestServedNarrowsVanishedSubjects(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-typed-load")
 	if testing.Short() {
 		t.Skip("loads a fixture module's types and views")
 	}
@@ -457,11 +457,11 @@ func TestServedTakesTheNewestOfADuplicatedIdentity(t *testing.T) {
 // parse refuses it only where it refused the typed path before — at
 // the first answer, through the child — while the serving form, which
 // keys its records by the policy's selections, refuses at construction
-// (REQ-evidence-resolution-freshness).
+// (REQ-evidence-resolution-freshness-typed-load).
 //
 //gofresh:pure
 func TestWholeTreeFormReadsNoPolicy(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-typed-load")
 	if testing.Short() {
 		t.Skip("loads a fixture module's types")
 	}
@@ -492,14 +492,14 @@ func TestWholeTreeFormReadsNoPolicy(t *testing.T) {
 	}
 }
 
-// The whole-tree form publishes nothing: symbols resolved and
-// classified through it leave no record at close, so a
-// declaration-reading role never writes evidence a serving run would
-// key by a selection it never read (REQ-evidence-resolution-freshness).
+// The whole-tree form publishes nothing: symbols resolved and classified
+// through it leave no record at close, so a declaration-reading role never
+// writes evidence a serving run would key by a selection it never read
+// (REQ-evidence-resolution-freshness-typed-load).
 //
 //gofresh:pure
 func TestWholeTreeFormPublishesNothing(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-typed-load")
 	if testing.Short() {
 		t.Skip("loads a fixture module's types")
 	}
@@ -553,11 +553,11 @@ func TestWholeTreeFormPublishesNothing(t *testing.T) {
 // A serving operation whose symbol set came up empty admits every
 // symbol over a whole-tree child, exactly as the whole-tree form does,
 // and publishes nothing at close: the policy is read, nothing is served
-// (REQ-evidence-resolution-freshness).
+// (REQ-evidence-resolution-freshness-typed-load).
 //
 //gofresh:pure
 func TestEmptySetServingFormAdmitsItsWholeTree(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-typed-load")
 	if testing.Short() {
 		t.Skip("loads a fixture module's types")
 	}
@@ -582,17 +582,17 @@ func TestEmptySetServingFormAdmitsItsWholeTree(t *testing.T) {
 	}
 }
 
-// TestServedPublishesSubjectsWithNonSourceTiers pins the publish over a
-// corpus whose captures carry tiers the resolution store does not serve
-// (REQ-evidence-resolution-cache-format, REQ-evidence-resolution-freshness):
-// a test asserting purity in source captures a purity assertion, the
-// publisher projects the capture onto the source tiers and records it
-// beside the plain callable, the notices account for the publish, and
-// the second run serves both without the child — where a store refusing
-// the batch on that one record published nothing for the whole corpus
-// and said nothing.
+// TestServedPublishesSubjectsWithNonSourceTiers pins the publish over a corpus
+// whose captures carry tiers the resolution store does not serve
+// (REQ-evidence-resolution-cache-format,
+// REQ-evidence-resolution-freshness-typed-load): a test asserting purity in
+// source captures a purity assertion, the publisher projects the capture onto
+// the source tiers and records it beside the plain callable, the notices
+// account for the publish, and the second run serves both without the child —
+// where a store refusing the batch on that one record published nothing for
+// the whole corpus and said nothing.
 func TestServedPublishesSubjectsWithNonSourceTiers(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-cache-format", "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-resolution-cache-format", "REQ-evidence-resolution-freshness-typed-load")
 	if testing.Short() {
 		t.Skip("loads a fixture module's types and views")
 	}

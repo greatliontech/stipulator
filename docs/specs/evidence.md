@@ -625,21 +625,29 @@ cache MUST be a record store (REQ-evidence-record-store-layout) of one
 file per record variant, its identity parts the producing capture
 group's build coordinate, the package, and the test name (the coordinate
 itself the same truncated digest over the group's canonical
-declared-build-coordinate key). The record's fingerprint member is
+declared-build-coordinate key).
+
+**REQ-evidence-witness-cache-format-fingerprint** (behavior): The record's fingerprint member is
 Gofresh's published record form, decoded by Gofresh's decoder — a record
 it refuses fails closed to re-execution like a field-blind one, and a
-fingerprint its encoder refuses installs no record. The fingerprint's
+fingerprint its encoder refuses MUST install no record. The fingerprint's
 own 16-byte digests are Gofresh-owned integrity values, outside
-REQ-model-hash-func entirely. Distinct tree states of one test coexist
+REQ-model-hash-func entirely.
+
+**REQ-evidence-witness-cache-format-variants** (behavior): Distinct tree states of one test MUST coexist
 as variants, at most four per identity, and alternating between branches
-evicts nothing. Records install the moment their unit completes — the
+evicts nothing.
+
+**REQ-evidence-witness-cache-format-install** (behavior): Records MUST install the moment their unit completes — the
 package under its covering invocation: its process executed, on the
 selective form its isolation re-runs too, and its closing validation
 passed — never as an end-of-run batch: a run dying mid-execution keeps
 every record already produced, and a degraded run installs nothing
 further — records its units installed before the fault stay, each
 validated by its own closing check, and the run's uncacheable account
-excludes them. Each file carries one record object with integer
+excludes them.
+
+**REQ-evidence-witness-cache-format-version** (behavior): Each file MUST carry one record object with integer
 `version` equal to `8` — bumped from `7` when the compartment ledger
 left the record for the ledger store below (a prior record's inline
 ledger is an unknown field), from `6` when the record identity gained
@@ -658,7 +666,9 @@ serving wrong by its absence, so prior records serve unchanged with the
 audit set reading empty for the pre-field capture — the residual is
 auditability, not validity: an acceptance that was load-bearing at
 capture is invisible in that record's evidence until its next
-re-execution. The record carries string `group`, `package` and `test`,
+re-execution.
+
+**REQ-evidence-witness-cache-format-record-keys** (behavior): The record MUST carry string `group`, `package` and `test`,
 object `fingerprint`, object `outcomes`, optional array `registrations`,
 and optional array `observationExclusions` — the canonical reviewed
 exclusion set the record's observation was captured under, absent
@@ -682,7 +692,9 @@ the Gofresh strategy identifier the fingerprint was computed under
 (validity: the engine refuses to serve a record computed under another
 strategy, and a record persisted before the field reads as the empty
 strategy and fails closed to re-execution), measurement fields are
-absent, and result kind is Gofresh code-result. The producing
+absent, and result kind is Gofresh code-result.
+
+**REQ-evidence-witness-cache-format-ledger** (behavior): The producing
 compartment's declaration ledger — the witness-freshness carve-out's
 diff base — is stored once per compartment, not per record: every test
 of a package shares its compartment, so the store's `ledgers`
@@ -698,7 +710,7 @@ string `testVariantClosure` equal to the file's name, an optional
 lowercase hexadecimal `hash`) and an optional `fileHeaders` array
 (string `file`, 16-byte lowercase hexadecimal `hash`, optional boolean
 `embedded`), each omitted when empty. A ledger is read for one record at
-a time, on the carve-out's demand, and must name that record's own test
+a time, on the carve-out's demand, and MUST name that record's own test
 as a receiverless `func` — a witness subject's own declaration lives in
 its compartment, and a ledger that omits it would let that declaration
 ride an inert diff as an addition, the observation proof's identity
@@ -710,30 +722,38 @@ ledgers, and reclaims every ledger no record file names — a refused
 record's ledger stays, its refusal is the file's own, and a ledger
 younger than the load is a concurrent install's and stays until it has
 aged unreferenced — so the ledger store is bounded by the record store
-whose variant bound evicts records without reading them. An
-`observationProof` object has string keys `strategy`, `package`,
+whose variant bound evicts records without reading them.
+
+**REQ-evidence-witness-cache-format-proof-and-outcomes** (behavior): An
+`observationProof` object MUST have string keys `strategy`, `package`,
 `symbol`, optional `reason`, and `evidence`, plus required non-null
 boolean `observable`; its package and symbol equal the record identity,
 `reason` is absent exactly when `observable` is true, and `evidence` is
 a 16-byte lowercase hexadecimal Gofresh integrity digest. Every outcomes
 object contains its record's top-level `package.test` key and only that
 key or its `/subtest` descendants, with `passed`, `failed`, or `skipped`
-values. Cache deserialization validates canonical structural encoding
+values.
+
+**REQ-evidence-witness-cache-format-validation** (behavior): Cache deserialization validates canonical structural encoding
 and proof disposition consistency only. Source-bound proof integrity and
 compatibility require the current Gofresh view and are enforced by
 `CheckObserved`, so a structurally valid but incompatible historical
 proof remains readable but cannot grant reuse. Optional fields are
 omitted rather than encoded as `null`. Unknown fields, another version,
 a record disagreeing with the file's own name, or any structural
-malformation makes that file alone an absent record — sibling records
+malformation MUST make that file alone an absent record — sibling records
 stay trusted, because refusal is per record and costs only that record's
-execution, while a record is never migrated or partially trusted. Per
-identity the store keeps a bounded set of the most recently installed
+execution, while a record is never migrated or partially trusted.
+
+**REQ-evidence-witness-cache-format-eviction** (behavior): Per
+identity the store MUST keep a bounded set of the most recently installed
 variants; eviction is by recency and costs only execution, and serving
 tries an identity's variants most recently installed first — the variant
 the last state change produced proves equivalent whenever the tree has
 not alternated since, so the first fingerprint check is usually the
-last. A record carries every derivation-strategy field the engine stamps
+last.
+
+**REQ-evidence-witness-cache-format-strategy** (behavior): A record MUST carry every derivation-strategy field the engine stamps
 on its fingerprint (the `…Strategy` keys the enumeration above lists): a
 strategy is a validity field the engine compares, so a record persisted
 before a strategy field reads as the empty strategy and fails closed to
@@ -829,9 +849,11 @@ closure excludes (the result-serving tiers — dynamic state, purity,
 runtime inputs — judge a stored result, which a resolution is not): every recorded field is a function of that closure, so the served
 resolution is the current run's verification by proven equivalence, not
 a trust extension, and REQ-evidence-promotion holds exactly as it holds
-for a served witness (REQ-evidence-witness-freshness). A symbol without a
+for a served witness (REQ-evidence-witness-freshness).
+
+**REQ-evidence-resolution-freshness-typed-load** (behavior): A symbol without a
 valid record, a symbol the selected source no longer declares, and a
-symbol that is not a callable — a type, a constant, a variable — resolve
+symbol that is not a callable — a type, a constant, a variable — MUST resolve
 through the typed load, whose scope is the packages of exactly those
 symbols — each pattern loaded once, from the workspace member whose
 module owns it, a pattern no member owns loaded by nobody, and a
@@ -849,18 +871,24 @@ it serves and publishes nothing; a record is written only from a typed
 resolution, never from a served one, and only when the symbol's
 fingerprint captured before the typed load opened equals the one
 captured after the resolution — a symbol that moved between them is
-not recorded. A fault anywhere on the serving path degrades to the typed
-load for the affected symbols (REQ-evidence-freshness-degrade). A
-verification pass asks its serving backend every question before any
+not recorded.
+
+**REQ-evidence-resolution-freshness-degrade** (behavior): A fault anywhere on the serving path MUST degrade to the typed
+load for the affected symbols (REQ-evidence-freshness-degrade).
+
+**REQ-evidence-resolution-freshness-quiesce** (behavior): A
+verification pass MUST ask its serving backend every question before any
 execution — the bindings' resolutions, shapes, packages and classes, and
 the witness run's seeding classification last — and the backend releases
 what answering cost it, its child process and the child's loaded program,
 before the run's first process spawns, publishing its records then and
 answering every later question of the pass from what it kept, so the
-resolution's cost is never resident beside the suite's executions. Every
+resolution's cost is never resident beside the suite's executions.
+
+**REQ-evidence-resolution-freshness-account** (behavior): Every
 verb whose verification pass builds the serving form — check, verify,
 gate, prune's evaluation and the gap list on both faces, context and
-partitions on the served face — carries the form's account: what
+partitions on the served face — MUST carry the form's account: what
 served and what resolved typed, each selection the path degraded, what
 the close published and — by class, each symbol named up to a bound
 per class and the rest counted — what it kept out (moved between the
@@ -886,7 +914,7 @@ declaration lives, and a record whose source tiers the store cannot
 serve is refused alone and named, never the batch it arrived in), and the served fields
 REQ-evidence-resolution-freshness names; the fingerprint member is
 Gofresh's published record form, decoded and refused exactly as the
-witness record's (REQ-evidence-witness-cache-format). A record whose
+witness record's (REQ-evidence-witness-cache-format-fingerprint). A record whose
 fingerprint carries any observation, purity, or runtime tier is
 ignored, because resolution observes nothing at run time. A classifier change
 that alters what a record proves bumps the version, so a record of a
@@ -921,17 +949,21 @@ corpus's accepted test policy — a committed record declaring every policy
 invocation with its backend, package scope, typed configuration, and an
 explicit timeout, so a deliberately long-running invocation is admitted by
 review rather than aborted by an inherited ceiling — never an assumed
-universal invocation. No toolchain-implicit time bound survives the
-accepted record: the record's envelope and its reviewed arguments are
+universal invocation.
+
+**REQ-policy-explicit-time-bounds** (behavior): No toolchain-implicit time bound survives the
+accepted record: the record's envelope and its reviewed arguments MUST be
 the only sources of a package run's time bounds, so an inherited
 default can never abort work the record admitted — the executor's two
 derived terms, the concurrency bound and the memory term
 (REQ-evidence-witness-freshness), decide when a package's process
 spawns under the envelope and never how long it runs once spawned, and
 a package a term held until the envelope expired names the term in its
-diagnostic. A record is invalid against a tree that cannot
+diagnostic.
+
+**REQ-policy-explicit-unresolvable** (behavior): A record is invalid against a tree that cannot
 honor an invocation's selection — a package pattern the tree resolves to
-no package — and the check fails as it fails for a missing or invalid
+no package — and the check MUST fail as it fails for a missing or invalid
 record, naming the invocation and the pattern.
 
 **REQ-policy-toolchain-pin** (behavior): The toolchain an invocation's
@@ -1022,15 +1054,18 @@ operating-system process that produced it — including the invocation's
 resolved configuration: a field the committed record leaves absent pins its
 effective value at load, and that resolved value is part of the invocation's
 evidentiary record, so what actually ran is reviewable after the fact.
-Outcomes or observations from distinct processes are never merged into one
+
+**REQ-policy-attribution-no-merge** (invariant): Outcomes or observations from distinct processes MUST never be merged into one
 evidentiary record.
 
 **REQ-policy-cancellation** (behavior): A cancelled policy execution
 MUST discard its partial results — no outcome, observation, or health
 disposition from a cancelled run is persisted, served, or reported as
 terminal — with cancellation propagated to every child process of the
-execution, package discovery included. On every form the unit of
-persistence is the package under its covering invocation, at its
+execution, package discovery included.
+
+**REQ-policy-cancellation-unit** (behavior): On every form the unit of
+persistence MUST be the package under its covering invocation, at its
 completion — its process and, on the selective form, the isolation
 re-runs that process's denied tests earned having run, its executed
 records published — while its sibling packages still execute, so a run
@@ -1038,15 +1073,21 @@ dying mid-invocation keeps every package already finished; on the
 selective form a package nothing executes publishes in the verification
 pass, and a package's served records are revalidated there too, after
 every execution of the run (REQ-check-witness-selection), never at the
-package's own completion. A package's publication holds no process slot
-and runs under the operation's context, never the invocation's envelope:
+package's own completion.
+
+**REQ-policy-cancellation-publication-slot** (behavior): A package's publication MUST hold no process slot
+and run under the operation's context, never the invocation's envelope:
 a sibling still queued on the spawn bound is never delayed by a finished
 package's publish, and the envelope is spent on processes alone
-(REQ-policy-explicit). What completed before the cancellation stays
+(REQ-policy-explicit-time-bounds).
+
+**REQ-policy-cancellation-kept** (behavior): What completed before the cancellation MUST stay
 installed, and the cancelled run's ending names those units — each
 package persisted under its invocation, the revalidation pass, the drift
 retry, with their record counts — or states that it kept nothing, so a
-rerun's serving is foreseeable. A package's covering invocation is the
+rerun's serving is foreseeable.
+
+**REQ-policy-cancellation-covering** (behavior): A package's covering invocation MUST be the
 one invocation of its group selecting it; a package two invocations of
 one group select covers nothing — its subjects never publish.
 

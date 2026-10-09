@@ -113,8 +113,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-explicit"
-  content_hash: "0bfdf1b88dcd01ce293279499bc7c26e87e1b13854d18effcd178ecf6de44b2b"
-  source_hash: "ac2c3fc9da9fbd0c678753827c1d871e9349e1b531044cacc965759d83c833da"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  source_hash: "9b5f8fe3a100f9764d1f2007d07ef4a234c95007aaec8c0cb2b346c385a9c062"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/policy.TestPolicyLoadReadsCommittedRecord"
   role: BINDING_ROLE_TESTS
@@ -123,8 +123,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-explicit"
-  content_hash: "0bfdf1b88dcd01ce293279499bc7c26e87e1b13854d18effcd178ecf6de44b2b"
-  source_hash: "ac2c3fc9da9fbd0c678753827c1d871e9349e1b531044cacc965759d83c833da"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  source_hash: "9b5f8fe3a100f9764d1f2007d07ef4a234c95007aaec8c0cb2b346c385a9c062"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoPolicyDeriveGoldenByteIdentical"
   role: BINDING_ROLE_TESTS
@@ -133,8 +133,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-explicit"
-  content_hash: "0bfdf1b88dcd01ce293279499bc7c26e87e1b13854d18effcd178ecf6de44b2b"
-  source_hash: "ac2c3fc9da9fbd0c678753827c1d871e9349e1b531044cacc965759d83c833da"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  source_hash: "9b5f8fe3a100f9764d1f2007d07ef4a234c95007aaec8c0cb2b346c385a9c062"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoPolicyDeriveMirrorsLegacySuite"
   role: BINDING_ROLE_TESTS
@@ -143,8 +143,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-explicit"
-  content_hash: "0bfdf1b88dcd01ce293279499bc7c26e87e1b13854d18effcd178ecf6de44b2b"
-  source_hash: "ac2c3fc9da9fbd0c678753827c1d871e9349e1b531044cacc965759d83c833da"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  source_hash: "9b5f8fe3a100f9764d1f2007d07ef4a234c95007aaec8c0cb2b346c385a9c062"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestPolicyInitIsIdempotentAndRefusesDivergence"
   role: BINDING_ROLE_TESTS
@@ -153,8 +153,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-explicit"
-  content_hash: "0bfdf1b88dcd01ce293279499bc7c26e87e1b13854d18effcd178ecf6de44b2b"
-  source_hash: "ac2c3fc9da9fbd0c678753827c1d871e9349e1b531044cacc965759d83c833da"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  source_hash: "9b5f8fe3a100f9764d1f2007d07ef4a234c95007aaec8c0cb2b346c385a9c062"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/policy.Load"
   role: BINDING_ROLE_IMPLEMENTS
@@ -223,8 +223,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-explicit"
-  content_hash: "0bfdf1b88dcd01ce293279499bc7c26e87e1b13854d18effcd178ecf6de44b2b"
-  source_hash: "ac2c3fc9da9fbd0c678753827c1d871e9349e1b531044cacc965759d83c833da"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  source_hash: "9b5f8fe3a100f9764d1f2007d07ef4a234c95007aaec8c0cb2b346c385a9c062"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoNormalizeAbsentFieldsPinEffectiveEnvironment"
   role: BINDING_ROLE_TESTS
@@ -233,8 +233,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-explicit"
-  content_hash: "0bfdf1b88dcd01ce293279499bc7c26e87e1b13854d18effcd178ecf6de44b2b"
-  source_hash: "ac2c3fc9da9fbd0c678753827c1d871e9349e1b531044cacc965759d83c833da"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  source_hash: "9b5f8fe3a100f9764d1f2007d07ef4a234c95007aaec8c0cb2b346c385a9c062"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoNormalizeExplicitFieldsOverrideEnvironment"
   role: BINDING_ROLE_TESTS
@@ -243,8 +243,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-explicit"
-  content_hash: "0bfdf1b88dcd01ce293279499bc7c26e87e1b13854d18effcd178ecf6de44b2b"
-  source_hash: "ac2c3fc9da9fbd0c678753827c1d871e9349e1b531044cacc965759d83c833da"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  source_hash: "9b5f8fe3a100f9764d1f2007d07ef4a234c95007aaec8c0cb2b346c385a9c062"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoNormalizeEnvironmentDenialAndOverride"
   role: BINDING_ROLE_TESTS
@@ -253,8 +253,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-explicit"
-  content_hash: "0bfdf1b88dcd01ce293279499bc7c26e87e1b13854d18effcd178ecf6de44b2b"
-  source_hash: "ac2c3fc9da9fbd0c678753827c1d871e9349e1b531044cacc965759d83c833da"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  source_hash: "9b5f8fe3a100f9764d1f2007d07ef4a234c95007aaec8c0cb2b346c385a9c062"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoPolicyConfigStaticValidation"
   role: BINDING_ROLE_TESTS
@@ -263,8 +263,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
+  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  source_hash: "792fe92e6757ca2211711ae14af125c0207ae2aa3905819841e8d8710d503e29"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoDiscoveryCancellationTerminatesDescendants"
   role: BINDING_ROLE_TESTS
@@ -313,8 +313,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteHealthyPackagesAndAttribution"
   role: BINDING_ROLE_TESTS
@@ -323,8 +323,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecutePolicyWorkspaceReport"
   role: BINDING_ROLE_TESTS
@@ -363,8 +363,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
+  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  source_hash: "792fe92e6757ca2211711ae14af125c0207ae2aa3905819841e8d8710d503e29"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteCancellationDiscardsPartialReport"
   role: BINDING_ROLE_TESTS
@@ -373,8 +373,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
+  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  source_hash: "792fe92e6757ca2211711ae14af125c0207ae2aa3905819841e8d8710d503e29"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.ExecuteInvocation"
   role: BINDING_ROLE_IMPLEMENTS
@@ -383,18 +383,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-explicit"
-  content_hash: "0bfdf1b88dcd01ce293279499bc7c26e87e1b13854d18effcd178ecf6de44b2b"
-  source_hash: "ac2c3fc9da9fbd0c678753827c1d871e9349e1b531044cacc965759d83c833da"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteEnvelopeTimeout"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "8aba0f2d5bca74e7fdea662d5a4f7fa54babe18c183a26b657c342d70817b6cd"
-}
-
-bindings {
-  requirement_id: "REQ-policy-explicit"
-  content_hash: "0bfdf1b88dcd01ce293279499bc7c26e87e1b13854d18effcd178ecf6de44b2b"
-  source_hash: "ac2c3fc9da9fbd0c678753827c1d871e9349e1b531044cacc965759d83c833da"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  source_hash: "9b5f8fe3a100f9764d1f2007d07ef4a234c95007aaec8c0cb2b346c385a9c062"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteCommandArgsRendering"
   role: BINDING_ROLE_TESTS
@@ -403,18 +393,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteObservationOwnership"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "ef43c4bc8851afdda8d5b0bad62849e5b7b6becb09ed7b9e9750632a901043d9"
-}
-
-bindings {
-  requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteKilledMidRunObservationIncomplete"
   role: BINDING_ROLE_TESTS
@@ -423,8 +403,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSubtestAttribution"
   role: BINDING_ROLE_TESTS
@@ -433,8 +413,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteResolvedConfigurationBound"
   role: BINDING_ROLE_TESTS
@@ -443,8 +423,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteObservationCompletenessClassifier"
   role: BINDING_ROLE_TESTS
@@ -453,8 +433,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.FuzzGoExecuteEventStream"
   role: BINDING_ROLE_TESTS
@@ -463,8 +443,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.FuzzGoExecuteTestlogIngestion"
   role: BINDING_ROLE_TESTS
@@ -473,8 +453,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
+  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  source_hash: "792fe92e6757ca2211711ae14af125c0207ae2aa3905819841e8d8710d503e29"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckCancelledRunYieldsNoVerdict"
   role: BINDING_ROLE_TESTS
@@ -483,8 +463,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
+  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  source_hash: "792fe92e6757ca2211711ae14af125c0207ae2aa3905819841e8d8710d503e29"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolClientCancellationKillsEveryChildProcess"
   role: BINDING_ROLE_TESTS
@@ -513,8 +493,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteUnopenedCaptureObservationIncomplete"
   role: BINDING_ROLE_TESTS
@@ -523,8 +503,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteAbortOutputBlocksObservation"
   role: BINDING_ROLE_TESTS
@@ -533,8 +513,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
+  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  source_hash: "792fe92e6757ca2211711ae14af125c0207ae2aa3905819841e8d8710d503e29"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteCallerDeadlineSkipsDumpGrace"
   role: BINDING_ROLE_TESTS
@@ -543,8 +523,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSelectionRunsOnlySelected"
   role: BINDING_ROLE_TESTS
@@ -553,8 +533,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSelectionIsolatesAbortShadowedTests"
   role: BINDING_ROLE_TESTS
@@ -563,8 +543,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSelectionIsolatesGreenInRedProcess"
   role: BINDING_ROLE_TESTS
@@ -573,8 +553,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-explicit"
-  content_hash: "0bfdf1b88dcd01ce293279499bc7c26e87e1b13854d18effcd178ecf6de44b2b"
-  source_hash: "ac2c3fc9da9fbd0c678753827c1d871e9349e1b531044cacc965759d83c833da"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  source_hash: "9b5f8fe3a100f9764d1f2007d07ef4a234c95007aaec8c0cb2b346c385a9c062"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesRequiresPolicyRecord"
   role: BINDING_ROLE_TESTS
@@ -583,8 +563,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesIsolatesDeniedOutcomes"
   role: BINDING_ROLE_TESTS
@@ -593,8 +573,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesDeniesEnvelopeCutoffPasses"
   role: BINDING_ROLE_TESTS
@@ -603,8 +583,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-explicit"
-  content_hash: "0bfdf1b88dcd01ce293279499bc7c26e87e1b13854d18effcd178ecf6de44b2b"
-  source_hash: "ac2c3fc9da9fbd0c678753827c1d871e9349e1b531044cacc965759d83c833da"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  source_hash: "9b5f8fe3a100f9764d1f2007d07ef4a234c95007aaec8c0cb2b346c385a9c062"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestGateFailsWithoutPolicyRecord"
   role: BINDING_ROLE_TESTS
@@ -613,8 +593,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
+  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  source_hash: "792fe92e6757ca2211711ae14af125c0207ae2aa3905819841e8d8710d503e29"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesCancellationDiscardsRun"
   role: BINDING_ROLE_TESTS
@@ -623,8 +603,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSelfMutatedInputSealsUnverifiable"
   role: BINDING_ROLE_TESTS
@@ -633,8 +613,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteOutOfRootReadSealsUnverifiable"
   role: BINDING_ROLE_TESTS
@@ -643,8 +623,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteUnknownPackageDirObservationIncomplete"
   role: BINDING_ROLE_TESTS
@@ -653,8 +633,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteExternalWorkspaceMemberObservationIncomplete"
   role: BINDING_ROLE_TESTS
@@ -663,8 +643,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
+  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  source_hash: "792fe92e6757ca2211711ae14af125c0207ae2aa3905819841e8d8710d503e29"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoResolverCancellationTerminatesDescendants"
   role: BINDING_ROLE_TESTS
@@ -673,8 +653,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteModuleRootPackageBracket"
   role: BINDING_ROLE_TESTS
@@ -683,8 +663,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteSymlinkedTreeObservationBinds"
   role: BINDING_ROLE_TESTS
@@ -693,8 +673,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
+  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  source_hash: "792fe92e6757ca2211711ae14af125c0207ae2aa3905819841e8d8710d503e29"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolServingPathCancellationKillsChildren"
   role: BINDING_ROLE_TESTS
@@ -703,8 +683,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoObserveProcessForwardsClassificationRoots"
   role: BINDING_ROLE_TESTS
@@ -713,8 +693,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
+  content_hash: "9ee778930f48e219d4e0f79c92de8038095e128b7c289c6380d0b88daf028664"
+  source_hash: "2aa42b07cc14f276dffee1e5ce9e184dab56540fed5002c4e6b398c383f573fc"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoObservationFrameExcludesReviewedPathsFromBracket"
   role: BINDING_ROLE_TESTS
@@ -723,8 +703,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
+  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  source_hash: "792fe92e6757ca2211711ae14af125c0207ae2aa3905819841e8d8710d503e29"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoObserveProcessConstructionErrorFailsClosed"
   role: BINDING_ROLE_TESTS
@@ -842,133 +822,13 @@ bindings {
 }
 
 bindings {
-  requirement_id: "REQ-policy-explicit"
-  content_hash: "0bfdf1b88dcd01ce293279499bc7c26e87e1b13854d18effcd178ecf6de44b2b"
-  source_hash: "ac2c3fc9da9fbd0c678753827c1d871e9349e1b531044cacc965759d83c833da"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckUnresolvableSelectionIsTheRecordsProblem"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "1724257dd9cc7aa246b231cd2ea06f8c8daabfd83e8cdfa466e35643f4e905b1"
-}
-
-bindings {
-  requirement_id: "REQ-policy-explicit"
-  content_hash: "0bfdf1b88dcd01ce293279499bc7c26e87e1b13854d18effcd178ecf6de44b2b"
-  source_hash: "ac2c3fc9da9fbd0c678753827c1d871e9349e1b531044cacc965759d83c833da"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoCaptureOperationalDiscoveryFaultIsNoRecordProblem"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "d935a99d4b6c9fd2221d10903bdb73704e549aeef3e8c2a1ddb72a186ac37c82"
-}
-
-bindings {
-  requirement_id: "REQ-policy-explicit"
-  content_hash: "0bfdf1b88dcd01ce293279499bc7c26e87e1b13854d18effcd178ecf6de44b2b"
-  source_hash: "ac2c3fc9da9fbd0c678753827c1d871e9349e1b531044cacc965759d83c833da"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestWitnessRecordProblemsCarryTheRecordPath"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "e26a41a43c2d2c0b94dea526bcb880c983c6135216a22c453010d6692853804e"
-}
-
-bindings {
-  requirement_id: "REQ-policy-explicit"
-  content_hash: "0bfdf1b88dcd01ce293279499bc7c26e87e1b13854d18effcd178ecf6de44b2b"
-  source_hash: "ac2c3fc9da9fbd0c678753827c1d871e9349e1b531044cacc965759d83c833da"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoResolutionFaultClassifiesByEvidence"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "b9d2a991eb59e2269730953c74880443e90d239beecf860e191ceca2e87b0940"
-}
-
-bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestHealthJudgedFormKeepsWhatClosedBeforeADegrade"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "f1818045ef148ebb1f69753f56c5ffa5ab7e315d99dd7a1c0e6b1c41abf54fc7"
-}
-
-bindings {
-  requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestInterruptedRunEndsBySignalAfterItsEnding"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "b3f285748a34c94190df58b0fbc3de9f776e13e3f121bc4a8046d13aba30143a"
-}
-
-bindings {
-  requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/progress.TestNotesAndKeptRideTheStream"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "7acb0e187f74b0d72e7849d222135471ffa55c218061aff8d551093468da9053"
-}
-
-bindings {
-  requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/progress.TestSealRendersAndEmitsAtomically"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "e53af13c54bc96958064b573f421eb9c325127019ca13795b6df714c3d92aec4"
-}
-
-bindings {
-  requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
+  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  source_hash: "792fe92e6757ca2211711ae14af125c0207ae2aa3905819841e8d8710d503e29"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestCancelledProbeReturnsWithinItsWaitBound"
   role: BINDING_ROLE_TESTS
   shape_hash: "dc3f604f00446748aa736645cd523d88c986614d79d339777ea63977b05463c6"
-}
-
-bindings {
-  requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestServingFormPersistsAtTheExecutingInvocation"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "9505e25906248768721f49b8bb63e202f9ba01a625726fc37de71ee24a8e3c30"
-}
-
-bindings {
-  requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestScopedRunPersistsAtTheExecutingInvocation"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "ec5508f34f58eb438bcd07407a680427ae62128dace67945dca7391eb5b95196"
-}
-
-bindings {
-  requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestMixedGroupPublishesOnlyItsSinglySelectedPackage"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "64e47ec5e46fef741e96fc09694180d94f856a58588faad1c9770aa05b3ae296"
-}
-
-bindings {
-  requirement_id: "REQ-policy-attribution"
-  content_hash: "9e7d91b73eaf3de3dcfbd2e06de6bfe18d15d1ab4c864223a23cc98d2f04a0be"
-  source_hash: "1e575f5bdc27c4ecc61e740868dbed1f2876974b5d06e7416b1461474aa49a6c"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestProducersOfOffersTheGroupsOwnLegsInMergeOrder"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "7552ee7dac9803efd35097489031a1ef94ac1c7834ace4452032c121d81d7201"
 }
 
 bindings {
@@ -993,8 +853,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-explicit"
-  content_hash: "0bfdf1b88dcd01ce293279499bc7c26e87e1b13854d18effcd178ecf6de44b2b"
-  source_hash: "ac2c3fc9da9fbd0c678753827c1d871e9349e1b531044cacc965759d83c833da"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  source_hash: "9b5f8fe3a100f9764d1f2007d07ef4a234c95007aaec8c0cb2b346c385a9c062"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestVerbsAttributeTheRecordPathOnce"
   role: BINDING_ROLE_TESTS
@@ -1003,8 +863,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
+  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  source_hash: "792fe92e6757ca2211711ae14af125c0207ae2aa3905819841e8d8710d503e29"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestOwnedRunnerCarriesTheBoundary"
   role: BINDING_ROLE_TESTS
@@ -1013,8 +873,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
+  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  source_hash: "792fe92e6757ca2211711ae14af125c0207ae2aa3905819841e8d8710d503e29"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestProvenanceProbeRunsInTheCallersGroup"
   role: BINDING_ROLE_TESTS
@@ -1023,112 +883,12 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-explicit"
-  content_hash: "0bfdf1b88dcd01ce293279499bc7c26e87e1b13854d18effcd178ecf6de44b2b"
-  source_hash: "ac2c3fc9da9fbd0c678753827c1d871e9349e1b531044cacc965759d83c833da"
+  content_hash: "db4031795c1a970fca6de44300cd815f64557de9f86317a264cafa02a4814640"
+  source_hash: "9b5f8fe3a100f9764d1f2007d07ef4a234c95007aaec8c0cb2b346c385a9c062"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestNormalizationRefusesAPartialEnvironmentDocument"
   role: BINDING_ROLE_TESTS
   shape_hash: "c04c77c0a8496177f82b79afa0170683581b3205b719464f68157a98d5378c55"
-}
-
-bindings {
-  requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestPackagePersistsBeforeItsSiblingCompletes"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "5fa7fd521307117e59a1fd3108f821e4b8c3dba08567d262acaf7a09334607c0"
-}
-
-bindings {
-  requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesInputDriftAfterTheUnitReexecutesNextRun"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "b20669bab9b7363bc94b762453d4d323f51842af5ab9f9cab474ac4877070d92"
-}
-
-bindings {
-  requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestServedRecordRevalidatesAfterTheRunsExecutions"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "882083b13deb428e823a1aaacd277494f45121f636dcdbd9f26cae0f0514e409"
-}
-
-bindings {
-  requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestHealthJudgedFormPersistsPerPackage"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "7c38911916c78dd7e60842cf625385c904bdd0f20cf88f12d1aba945ceda1879"
-}
-
-bindings {
-  requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestHealthJudgedPackagePersistsBeforeItsSiblingCompletes"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "1355c062b6c25e64b2b1ca36ab85a58949c538ff28bcadbd35a59945d6e86eda"
-}
-
-bindings {
-  requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestHealthJudgedPackagePublishesInItsOwnGroupAlone"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "18ae3943773ddf88713600f69bf68e5e9fdb7a1e8f0cebf63411c68b4f42a3bf"
-}
-
-bindings {
-  requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestHealthJudgedPublicationHoldsNoSpawnSlot"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "24e40f6f20aae4085313bbd1a516c80467963d3b581c089d1ce03e960a94b205"
-}
-
-bindings {
-  requirement_id: "REQ-policy-explicit"
-  content_hash: "0bfdf1b88dcd01ce293279499bc7c26e87e1b13854d18effcd178ecf6de44b2b"
-  source_hash: "ac2c3fc9da9fbd0c678753827c1d871e9349e1b531044cacc965759d83c833da"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestHealthJudgedPublicationHoldsNoSpawnSlot"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "24e40f6f20aae4085313bbd1a516c80467963d3b581c089d1ce03e960a94b205"
-}
-
-bindings {
-  requirement_id: "REQ-policy-cancellation"
-  content_hash: "cc9ced07fba9ab14893dfea6cd6ff0b8befdc4c51f1594d2639b11972648f72e"
-  source_hash: "5dd537f58c42f5c832b7690d08c4364afc93c625f141e6ff6cfa9937247cff54"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestSelectivePublicationHoldsNoSpawnSlot"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "6c11b2781040a115f68eb3bd0ffba6d63671d44205b5ddbe42657ce38ceee2c0"
-}
-
-bindings {
-  requirement_id: "REQ-policy-explicit"
-  content_hash: "0bfdf1b88dcd01ce293279499bc7c26e87e1b13854d18effcd178ecf6de44b2b"
-  source_hash: "ac2c3fc9da9fbd0c678753827c1d871e9349e1b531044cacc965759d83c833da"
-  backend: "go"
-  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestSelectivePublicationHoldsNoSpawnSlot"
-  role: BINDING_ROLE_TESTS
-  shape_hash: "6c11b2781040a115f68eb3bd0ffba6d63671d44205b5ddbe42657ce38ceee2c0"
 }
 
 bindings {
@@ -1219,4 +979,254 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestPinnableToolchainIsTheVersionGrammar"
   role: BINDING_ROLE_TESTS
   shape_hash: "a13bd258414f80457d526872d79d5d2424984e0971287a339396b11b852c7bea"
+}
+
+bindings {
+  requirement_id: "REQ-policy-attribution-no-merge"
+  content_hash: "d3c2d38fc42caaf67759296b753443fc7dea9b124d04b40827812d1c70aa27a3"
+  source_hash: "a2ec916f425c59e059249e6e4ad87a521a0414861b15e79931a67439082a27cd"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteObservationOwnership"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ef43c4bc8851afdda8d5b0bad62849e5b7b6becb09ed7b9e9750632a901043d9"
+}
+
+bindings {
+  requirement_id: "REQ-policy-attribution-no-merge"
+  content_hash: "d3c2d38fc42caaf67759296b753443fc7dea9b124d04b40827812d1c70aa27a3"
+  source_hash: "a2ec916f425c59e059249e6e4ad87a521a0414861b15e79931a67439082a27cd"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestProducersOfOffersTheGroupsOwnLegsInMergeOrder"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7552ee7dac9803efd35097489031a1ef94ac1c7834ace4452032c121d81d7201"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation-unit"
+  content_hash: "a4af6cd960a6138fc9e229a66d71c401b406c713de3db1608b32cb4bb4209fa3"
+  source_hash: "8e37b4018982c40e4272ccf172560b18fcf31f3c384f9beeb08f45ce79665e0c"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestServingFormPersistsAtTheExecutingInvocation"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "9505e25906248768721f49b8bb63e202f9ba01a625726fc37de71ee24a8e3c30"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation-unit"
+  content_hash: "a4af6cd960a6138fc9e229a66d71c401b406c713de3db1608b32cb4bb4209fa3"
+  source_hash: "8e37b4018982c40e4272ccf172560b18fcf31f3c384f9beeb08f45ce79665e0c"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestScopedRunPersistsAtTheExecutingInvocation"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ec5508f34f58eb438bcd07407a680427ae62128dace67945dca7391eb5b95196"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation-unit"
+  content_hash: "a4af6cd960a6138fc9e229a66d71c401b406c713de3db1608b32cb4bb4209fa3"
+  source_hash: "8e37b4018982c40e4272ccf172560b18fcf31f3c384f9beeb08f45ce79665e0c"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestPackagePersistsBeforeItsSiblingCompletes"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5fa7fd521307117e59a1fd3108f821e4b8c3dba08567d262acaf7a09334607c0"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation-unit"
+  content_hash: "a4af6cd960a6138fc9e229a66d71c401b406c713de3db1608b32cb4bb4209fa3"
+  source_hash: "8e37b4018982c40e4272ccf172560b18fcf31f3c384f9beeb08f45ce79665e0c"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesInputDriftAfterTheUnitReexecutesNextRun"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b20669bab9b7363bc94b762453d4d323f51842af5ab9f9cab474ac4877070d92"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation-unit"
+  content_hash: "a4af6cd960a6138fc9e229a66d71c401b406c713de3db1608b32cb4bb4209fa3"
+  source_hash: "8e37b4018982c40e4272ccf172560b18fcf31f3c384f9beeb08f45ce79665e0c"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestServedRecordRevalidatesAfterTheRunsExecutions"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "882083b13deb428e823a1aaacd277494f45121f636dcdbd9f26cae0f0514e409"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation-kept"
+  content_hash: "67aea066e9a921a56e39a605c403e23c1b3cd50e56de2155ed60783523160eee"
+  source_hash: "b11ee5c70a62d412c09b4975bd09890e9f451da1e6063ad1b1e70ad8c341a2ca"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestHealthJudgedFormKeepsWhatClosedBeforeADegrade"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "f1818045ef148ebb1f69753f56c5ffa5ab7e315d99dd7a1c0e6b1c41abf54fc7"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation-kept"
+  content_hash: "67aea066e9a921a56e39a605c403e23c1b3cd50e56de2155ed60783523160eee"
+  source_hash: "b11ee5c70a62d412c09b4975bd09890e9f451da1e6063ad1b1e70ad8c341a2ca"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestInterruptedRunEndsBySignalAfterItsEnding"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b3f285748a34c94190df58b0fbc3de9f776e13e3f121bc4a8046d13aba30143a"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation-kept"
+  content_hash: "67aea066e9a921a56e39a605c403e23c1b3cd50e56de2155ed60783523160eee"
+  source_hash: "b11ee5c70a62d412c09b4975bd09890e9f451da1e6063ad1b1e70ad8c341a2ca"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/progress.TestNotesAndKeptRideTheStream"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7acb0e187f74b0d72e7849d222135471ffa55c218061aff8d551093468da9053"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation-kept"
+  content_hash: "67aea066e9a921a56e39a605c403e23c1b3cd50e56de2155ed60783523160eee"
+  source_hash: "b11ee5c70a62d412c09b4975bd09890e9f451da1e6063ad1b1e70ad8c341a2ca"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/progress.TestSealRendersAndEmitsAtomically"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e53af13c54bc96958064b573f421eb9c325127019ca13795b6df714c3d92aec4"
+}
+
+bindings {
+  requirement_id: "REQ-policy-explicit-time-bounds"
+  content_hash: "b6ace745eb1313a7df57a7812bfce0e8e7c5c2170aaa4004b02b9f2ca4d13a2c"
+  source_hash: "f40dcc0e6f5282af3761b41359e58d22a583f950fb0e07f8de85038756e0df22"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestHealthJudgedPublicationHoldsNoSpawnSlot"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "24e40f6f20aae4085313bbd1a516c80467963d3b581c089d1ce03e960a94b205"
+}
+
+bindings {
+  requirement_id: "REQ-policy-explicit-time-bounds"
+  content_hash: "b6ace745eb1313a7df57a7812bfce0e8e7c5c2170aaa4004b02b9f2ca4d13a2c"
+  source_hash: "f40dcc0e6f5282af3761b41359e58d22a583f950fb0e07f8de85038756e0df22"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestSelectivePublicationHoldsNoSpawnSlot"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "6c11b2781040a115f68eb3bd0ffba6d63671d44205b5ddbe42657ce38ceee2c0"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation-covering"
+  content_hash: "87b9c4c272d25dbfba4d6282fed75990ee18c9799bd697ded443b46237f160cb"
+  source_hash: "74767dddc1d818eadc566d4aa85567a49e8e1d54c260bd477a4b34328c7c9ee3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestMixedGroupPublishesOnlyItsSinglySelectedPackage"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "64e47ec5e46fef741e96fc09694180d94f856a58588faad1c9770aa05b3ae296"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation-covering"
+  content_hash: "87b9c4c272d25dbfba4d6282fed75990ee18c9799bd697ded443b46237f160cb"
+  source_hash: "74767dddc1d818eadc566d4aa85567a49e8e1d54c260bd477a4b34328c7c9ee3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestHealthJudgedPackagePublishesInItsOwnGroupAlone"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "18ae3943773ddf88713600f69bf68e5e9fdb7a1e8f0cebf63411c68b4f42a3bf"
+}
+
+bindings {
+  requirement_id: "REQ-policy-explicit-time-bounds"
+  content_hash: "b6ace745eb1313a7df57a7812bfce0e8e7c5c2170aaa4004b02b9f2ca4d13a2c"
+  source_hash: "f40dcc0e6f5282af3761b41359e58d22a583f950fb0e07f8de85038756e0df22"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteEnvelopeTimeout"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "8aba0f2d5bca74e7fdea662d5a4f7fa54babe18c183a26b657c342d70817b6cd"
+}
+
+bindings {
+  requirement_id: "REQ-policy-explicit-unresolvable"
+  content_hash: "8fd9865d319a5021926d0e4340f134fc993612ad6ca2b95080263507616eb1e2"
+  source_hash: "b7aad8ae9bc9803ea3167910a2444b79c8a9d7cbe73e90b2b8e2ed466ce9fed7"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckUnresolvableSelectionIsTheRecordsProblem"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "1724257dd9cc7aa246b231cd2ea06f8c8daabfd83e8cdfa466e35643f4e905b1"
+}
+
+bindings {
+  requirement_id: "REQ-policy-explicit-unresolvable"
+  content_hash: "8fd9865d319a5021926d0e4340f134fc993612ad6ca2b95080263507616eb1e2"
+  source_hash: "b7aad8ae9bc9803ea3167910a2444b79c8a9d7cbe73e90b2b8e2ed466ce9fed7"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoCaptureOperationalDiscoveryFaultIsNoRecordProblem"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "d935a99d4b6c9fd2221d10903bdb73704e549aeef3e8c2a1ddb72a186ac37c82"
+}
+
+bindings {
+  requirement_id: "REQ-policy-explicit-unresolvable"
+  content_hash: "8fd9865d319a5021926d0e4340f134fc993612ad6ca2b95080263507616eb1e2"
+  source_hash: "b7aad8ae9bc9803ea3167910a2444b79c8a9d7cbe73e90b2b8e2ed466ce9fed7"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoResolutionFaultClassifiesByEvidence"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "b9d2a991eb59e2269730953c74880443e90d239beecf860e191ceca2e87b0940"
+}
+
+bindings {
+  requirement_id: "REQ-policy-explicit-unresolvable"
+  content_hash: "8fd9865d319a5021926d0e4340f134fc993612ad6ca2b95080263507616eb1e2"
+  source_hash: "b7aad8ae9bc9803ea3167910a2444b79c8a9d7cbe73e90b2b8e2ed466ce9fed7"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/cmd.TestWitnessRecordProblemsCarryTheRecordPath"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "e26a41a43c2d2c0b94dea526bcb880c983c6135216a22c453010d6692853804e"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation-unit"
+  content_hash: "a4af6cd960a6138fc9e229a66d71c401b406c713de3db1608b32cb4bb4209fa3"
+  source_hash: "8e37b4018982c40e4272ccf172560b18fcf31f3c384f9beeb08f45ce79665e0c"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestHealthJudgedFormKeepsWhatClosedBeforeADegrade"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "f1818045ef148ebb1f69753f56c5ffa5ab7e315d99dd7a1c0e6b1c41abf54fc7"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation-unit"
+  content_hash: "a4af6cd960a6138fc9e229a66d71c401b406c713de3db1608b32cb4bb4209fa3"
+  source_hash: "8e37b4018982c40e4272ccf172560b18fcf31f3c384f9beeb08f45ce79665e0c"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestHealthJudgedFormPersistsPerPackage"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7c38911916c78dd7e60842cf625385c904bdd0f20cf88f12d1aba945ceda1879"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation-unit"
+  content_hash: "a4af6cd960a6138fc9e229a66d71c401b406c713de3db1608b32cb4bb4209fa3"
+  source_hash: "8e37b4018982c40e4272ccf172560b18fcf31f3c384f9beeb08f45ce79665e0c"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestHealthJudgedPackagePersistsBeforeItsSiblingCompletes"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "1355c062b6c25e64b2b1ca36ab85a58949c538ff28bcadbd35a59945d6e86eda"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation-publication-slot"
+  content_hash: "963e4b1b2079489fce290a28da9493883a24c45d83cd4ecfc4f5f87ddbe73336"
+  source_hash: "e3f487b2f2d35c84f1bb8b5900574a9bd8f411b11407b4ed386bca7fc233ab68"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestHealthJudgedPublicationHoldsNoSpawnSlot"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "24e40f6f20aae4085313bbd1a516c80467963d3b581c089d1ce03e960a94b205"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation-publication-slot"
+  content_hash: "963e4b1b2079489fce290a28da9493883a24c45d83cd4ecfc4f5f87ddbe73336"
+  source_hash: "e3f487b2f2d35c84f1bb8b5900574a9bd8f411b11407b4ed386bca7fc233ab68"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestSelectivePublicationHoldsNoSpawnSlot"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "6c11b2781040a115f68eb3bd0ffba6d63671d44205b5ddbe42657ce38ceee2c0"
 }

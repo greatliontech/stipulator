@@ -95,7 +95,7 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 	if in.Check {
 		// The evaluation's line, then the serving path's account the
 		// evaluation read, by the served rule
-		// (REQ-evidence-resolution-freshness).
+		// (REQ-evidence-resolution-freshness-account).
 		out := writeOut{Notes: append([]string{evaluated}, accountLines(res.Notices)...), Check: true}
 		for _, up := range res.Prunes {
 			out.Notes = append(out.Notes, "resolved gap lingers: "+up.Path)

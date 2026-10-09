@@ -596,7 +596,7 @@ func TestGoDiscoverRefusesAnUnmatchedPattern(t *testing.T) {
 // lacks what the pattern names, and every other cause — including an
 // entry with no cause at all — stays operational.
 func TestGoResolutionFaultClassifiesByEvidence(t *testing.T) {
-	stipulate.Covers(t, "REQ-policy-explicit")
+	stipulate.Covers(t, "REQ-policy-explicit-unresolvable")
 	n := &NormalizedInvocation{Dir: discoverFixture(t)}
 	entry := func(pattern, cause string) listedPackage {
 		p := listedPackage{ImportPath: pattern}
@@ -644,7 +644,7 @@ func TestGoResolutionFaultClassifiesByEvidence(t *testing.T) {
 //
 // Deliberately not //gofresh:pure: discovery shells the go toolchain.
 func TestGoCaptureOperationalDiscoveryFaultIsNoRecordProblem(t *testing.T) {
-	stipulate.Covers(t, "REQ-policy-explicit")
+	stipulate.Covers(t, "REQ-policy-explicit-unresolvable")
 	if os.Geteuid() == 0 {
 		t.Skip("permission bits do not bind for root")
 	}

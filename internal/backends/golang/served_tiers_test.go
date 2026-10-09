@@ -180,7 +180,7 @@ func TestServedReresolvesWhenATestBodyChangesClass(t *testing.T) {
 // selection to the typed resolution, names the fault, and the run still
 // answers.
 func TestServedDegradesASelectionToTyped(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-freshness-degrade", "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-freshness-degrade", "REQ-evidence-resolution-freshness-degrade")
 	if testing.Short() {
 		t.Skip("loads a fixture module's views")
 	}
@@ -227,7 +227,7 @@ func TestServedDegradesASelectionToTyped(t *testing.T) {
 // of a method promoted from a type declared in a generated file of a
 // dependency package, which the scoped load carries as a dependency.
 func TestScopedChildAnswersLikeTheWholeTree(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness", "REQ-evidence-generated-code")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-typed-load", "REQ-evidence-generated-code")
 	if testing.Short() {
 		t.Skip("loads a fixture module's types twice")
 	}
@@ -290,12 +290,12 @@ func TestScopedChildAnswersLikeTheWholeTree(t *testing.T) {
 }
 
 // TestServedRefusesSymbolsOutsideTheOperation pins the served backend's
-// boundary (REQ-evidence-resolution-freshness): a symbol the operation
-// never named is refused on every role — resolution, package, class,
-// serving refusal — rather than forwarded to the scoped child, whose
-// narrowed frontier would answer not found for what the tree declares.
+// boundary (REQ-evidence-resolution-freshness-typed-load): a symbol the
+// operation never named is refused on every role — resolution, package, class,
+// serving refusal — rather than forwarded to the scoped child, whose narrowed
+// frontier would answer not found for what the tree declares.
 func TestServedRefusesSymbolsOutsideTheOperation(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-typed-load")
 	if testing.Short() {
 		t.Skip("loads a fixture module's types")
 	}
@@ -335,14 +335,14 @@ func TestServedRefusesSymbolsOutsideTheOperation(t *testing.T) {
 	}
 }
 
-// TestServedWithoutASymbolSetAnswersTheWholeTree pins the other side
-// of the boundary (REQ-evidence-resolution-freshness): a backend built
-// for the declaration-reading roles names no symbol set, its child is
-// the whole tree, and every role answers any symbol as the tree
-// declares it — the binding, pinning, and retargeting tools construct
-// this way and resolve through it.
+// TestServedWithoutASymbolSetAnswersTheWholeTree pins the other side of the
+// boundary (REQ-evidence-resolution-freshness-typed-load): a backend built for
+// the declaration-reading roles names no symbol set, its child is the whole
+// tree, and every role answers any symbol as the tree declares it — the
+// binding, pinning, and retargeting tools construct this way and resolve
+// through it.
 func TestServedWithoutASymbolSetAnswersTheWholeTree(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-typed-load")
 	if testing.Short() {
 		t.Skip("loads a fixture module's types")
 	}
@@ -424,12 +424,12 @@ func TestGeneratedVerdictReadsADependencyDeclaringFile(t *testing.T) {
 	}
 }
 
-// TestScopedLoadOwnsPatternsPerWorkspaceMember pins the scoped load over
-// a workspace (REQ-evidence-resolution-freshness): each pattern loads
-// from the member whose module owns it, once, so the load holds no
-// duplicate of a package per member.
+// TestScopedLoadOwnsPatternsPerWorkspaceMember pins the scoped load over a
+// workspace (REQ-evidence-resolution-freshness-typed-load): each pattern loads
+// from the member whose module owns it, once, so the load holds no duplicate
+// of a package per member.
 func TestScopedLoadOwnsPatternsPerWorkspaceMember(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-typed-load")
 	if testing.Short() {
 		t.Skip("loads a fixture workspace's types")
 	}
@@ -468,7 +468,7 @@ func TestScopedLoadOwnsPatternsPerWorkspaceMember(t *testing.T) {
 // recorded, so the next run resolves it typed again instead of serving
 // a stale shape under a moved fingerprint.
 func TestServedRecordsNothingThatMovedDuringTheRun(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-typed-load")
 	if testing.Short() {
 		t.Skip("loads a fixture module's views")
 	}

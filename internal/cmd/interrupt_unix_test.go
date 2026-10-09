@@ -18,12 +18,13 @@ import (
 )
 
 // TestInterruptedRunEndsBySignalAfterItsEnding pins the CLI's interrupted
-// disposition (REQ-mcp-progress-cli-exit's CLI leg, REQ-policy-cancellation): a
-// check interrupted mid-execution renders its ending — the phase it died
-// in and what it kept — and then dies by the signal that ended it, so
-// its caller observes a signal death, never a verdict's exit status.
+// disposition (REQ-mcp-progress-cli-exit's CLI leg,
+// REQ-policy-cancellation-kept): a check interrupted mid-execution renders its
+// ending — the phase it died in and what it kept — and then dies by the signal
+// that ended it, so its caller observes a signal death, never a verdict's exit
+// status.
 func TestInterruptedRunEndsBySignalAfterItsEnding(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-progress-cli-exit", "REQ-policy-cancellation")
+	stipulate.Covers(t, "REQ-mcp-progress-cli-exit", "REQ-policy-cancellation-kept")
 	if testing.Short() {
 		t.Skip("builds the binary and executes a slow fixture")
 	}

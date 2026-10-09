@@ -38,11 +38,11 @@ func stderrOf(t *testing.T, fn func()) string {
 
 // Every CLI verb that builds the serving form renders its account on
 // stderr, read after the close that publishes
-// (REQ-evidence-resolution-freshness): the first verb publishes the
+// (REQ-evidence-resolution-freshness-account): the first verb publishes the
 // bound symbols' resolution records and says so; the next serves them
 // and says that.
 func TestServingVerbsRenderTheResolutionAccount(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-account")
 	if testing.Short() {
 		t.Skip("resolves a fixture module's symbols through the served backend")
 	}
@@ -157,9 +157,9 @@ func (b *faultingAccountBackend) Notices() []string {
 // A refusal the CLI gate and prune raise after the close that published
 // renders the account before the problems — and gate --quiet renders
 // neither the account nor anything else of the human form
-// (REQ-evidence-resolution-freshness).
+// (REQ-evidence-resolution-freshness-account).
 func TestServingRefusalsRenderTheResolutionAccount(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-account")
 	if testing.Short() {
 		t.Skip("executes a race invocation over a fixture module")
 	}

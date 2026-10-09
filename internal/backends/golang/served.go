@@ -808,7 +808,7 @@ func (s *Served) Close() error {
 // publish account accumulates across the publishes. The witness run
 // calls it right after its seeding classification, so the child's
 // loaded program is never resident through the run's loads and
-// executions (REQ-evidence-resolution-freshness).
+// executions (REQ-evidence-resolution-freshness-quiesce).
 func (s *Served) Quiesce() {
 	defer func() {
 		if s.child != nil {

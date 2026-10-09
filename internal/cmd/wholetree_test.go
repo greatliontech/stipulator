@@ -15,11 +15,11 @@ import (
 // The CLI's declaration-reading backends are the whole-tree form: their
 // construction reads no policy, where the serving form's refuses a
 // policy the tree cannot parse at construction
-// (REQ-evidence-resolution-freshness).
+// (REQ-evidence-resolution-freshness-typed-load).
 //
 //gofresh:pure
 func TestDeclarationReadingBackendsReadNoPolicy(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-typed-load")
 	dir := t.TempDir()
 	policyPath := filepath.Join(dir, filepath.FromSlash(policy.Path))
 	if err := os.MkdirAll(filepath.Dir(policyPath), 0o755); err != nil {

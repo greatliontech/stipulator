@@ -1,0 +1,8 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.Gap
+
+requirement_id: "REQ-evidence-witness-cache-format-version"
+reason: "the version's literal and the bump chain's rule (a prior version fails closed; the v8 bump's inline-ledger ground) have no tests-role witness of their own — the structural decoder refuses version+1 and an inline-ledger record, no test pins the literal or the chain"
+content_hash: "472c6d3766a4d35d9b65cf2287a598abd7d71d908fdedf622656e54d7f0416b6"
+source_hash: "c588e2fd190cb301460a4f80c181ccfa961f5729d481e86ad28bdf955f2c368c"
+lands { manual { condition: "a tests-role binding on the clause (cross-tool train chunk 228, the test surface)" } }

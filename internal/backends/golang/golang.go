@@ -174,7 +174,7 @@ func (b *Backend) pins() *pinTable {
 // newContext loads the tree's resolution views: every workspace member
 // under every build selection, over "./..." — or, when patterns are
 // given, over exactly those packages, the scope a served resolution's
-// stale remainder needs (REQ-evidence-resolution-freshness). Their
+// stale remainder needs (REQ-evidence-resolution-freshness-typed-load). Their
 // dependencies stay export data; the one verdict that reads a
 // dependency's source — a promoted method's declaring file, for the
 // generated-file marker — reads that file's header itself

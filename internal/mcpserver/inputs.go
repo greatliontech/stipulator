@@ -35,9 +35,9 @@ func refuseProblems(problems []verify.Problem) error {
 }
 
 // refuseProblemsAccounted is refuseProblems carrying the serving path's
-// account the refused pass read after its publishing close — the
-// digest's rule, the per-symbol typed lines left out — so a refusal
-// never hides what the close published (REQ-evidence-resolution-freshness).
+// account the refused pass read after its publishing close — the digest's
+// rule, the per-symbol typed lines left out — so a refusal never hides what
+// the close published (REQ-evidence-resolution-freshness-account).
 func refuseProblemsAccounted(problems []verify.Problem, notices []string) error {
 	if verifyrun.RefuseProblems(problems) == nil {
 		return nil

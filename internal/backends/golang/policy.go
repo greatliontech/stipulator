@@ -388,7 +388,7 @@ func validateModuleRoot(root string) error {
 // to tighten it from is the check's own pace line (`took …: execution
 // …`) over a cold run, with headroom for a loaded host. The timeout
 // stays reviewed and explicit: a derived bound could abort admitted work
-// (REQ-policy-explicit).
+// (REQ-policy-explicit-time-bounds).
 const derivedTimeout = 2 * time.Hour
 
 // derivedBinaryTimeout is the per-binary bound the derived record carries,

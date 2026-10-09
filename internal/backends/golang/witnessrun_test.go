@@ -1737,12 +1737,12 @@ func TestGreenReg(t *testing.T) {
 	}
 }
 
-// TestGoRunWitnessesServesAcrossTreeAlternation pins the variant store's
-// point (REQ-evidence-witness-cache-format): two tree states of one test
-// coexist as variants, so returning to an earlier state serves its
-// witness instead of re-executing — branch ping-pong evicts nothing.
+// TestGoRunWitnessesServesAcrossTreeAlternation pins the variant store's point
+// (REQ-evidence-witness-cache-format-variants): two tree states of one test
+// coexist as variants, so returning to an earlier state serves its witness
+// instead of re-executing — branch ping-pong evicts nothing.
 func TestGoRunWitnessesServesAcrossTreeAlternation(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-cache-format", "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-cache-format-variants", "REQ-evidence-witness-freshness")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}

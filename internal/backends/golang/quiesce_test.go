@@ -19,9 +19,9 @@ import (
 // then answers every question it has already heard — resolution, package,
 // class, serving refusal — from memory, spawning no second child; a
 // symbol it never heard costs a child again
-// (REQ-evidence-resolution-freshness).
+// (REQ-evidence-resolution-freshness-quiesce).
 func TestQuiescedBackendAnswersFromMemory(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-quiesce")
 	if testing.Short() {
 		t.Skip("loads a fixture module's types and views")
 	}
@@ -160,9 +160,9 @@ func (o orderedSeeding) Quiesce() { o.record("quiesce") }
 // classification — before the run's listings, its engines' loads and
 // its first process spawn, and so before the execution phase — so the
 // backend's cost is never resident through the run
-// (REQ-evidence-resolution-freshness).
+// (REQ-evidence-resolution-freshness-quiesce).
 func TestWitnessRunsQuiesceTheSeedingBeforeExecuting(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-quiesce")
 	if testing.Short() {
 		t.Skip("executes a race invocation over a temporary module")
 	}

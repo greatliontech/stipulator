@@ -51,6 +51,24 @@ in its change set's commit message):
   surfaces as an error, never a silent absence) — either an editorial
   clause for the resolver protocol's fault-surfacing rule, or the
   wire-mapping test retargeted to the clause it pins.
+- From the evidence-five split: REQ-policy-attribution-no-merge reads
+  "MUST never be merged" (one keyword to the lint; the idiomatic form is
+  "MUST NOT be merged"); REQ-evidence-resolution-freshness-degrade is a
+  one-sentence paragraph whose only cite is the near-homonym
+  REQ-evidence-freshness-degrade (the witness path's rule) — a reader
+  confuses the two ids; REQ-evidence-resolution-freshness-typed-load
+  bundles three rules under one elevation (the typed load's scope; the
+  serving and whole-tree backend forms; the record-writing guard — the
+  fingerprint captured before and after must match), and its whole-tree
+  and records-that-moved witnesses pin the second; REQ-evidence-
+  witness-cache-format-ledger's elevated obligation ("MUST name that
+  record's own test") is not the paragraph's main contract (stored
+  once per compartment, installed atomically, reclaimed when
+  unreferenced — what its three witnesses pin); -version states its
+  obligation in its first clause and spends the paragraph on the bump
+  policy, which wants its own; -record-keys holds the fingerprint key
+  enumeration that -fingerprint and -strategy refer to ("the
+  enumeration above") — move the fingerprint keys beside -fingerprint.
 
 Lands: cross-tool train chunk 248 (stipulator's spec-corrections chunk,
 which edits these documents; its plan entry carries the rider).

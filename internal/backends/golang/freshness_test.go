@@ -124,7 +124,7 @@ func TestMutatesSourceOnce(t *testing.T) {
 
 // TestGoRunWitnessesInputDriftAfterTheUnitReexecutesNextRun pins the
 // package unit against a sibling's write (REQ-evidence-witness-freshness,
-// REQ-policy-cancellation): the reader's record publishes the moment its
+// REQ-policy-cancellation-unit): the reader's record publishes the moment its
 // package completes, carrying the input it read; a sibling package whose
 // isolation re-run then rewrites that input cannot touch the published
 // record — the writer's own record is refused for writing outside its
@@ -133,7 +133,7 @@ func TestMutatesSourceOnce(t *testing.T) {
 // gated on the reader's persisted note, so the order is the test's, not
 // the scheduler's.
 func TestGoRunWitnessesInputDriftAfterTheUnitReexecutesNextRun(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-policy-cancellation")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-policy-cancellation-unit")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -748,11 +748,11 @@ func TestReadsCache(t *testing.T) {
 // completed-group durability: records install the moment their last
 // covering invocation completes, so a later invocation's failure — the
 // run erroring out mid-execution — keeps every record already produced
-// (REQ-evidence-witness-cache-format).
+// (REQ-evidence-witness-cache-format-install).
 //
 //gofresh:pure
 func TestGoRunWitnessesCompletedGroupSurvivesLaterInvocationFailure(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-cache-format")
+	stipulate.Covers(t, "REQ-evidence-witness-cache-format-install")
 	if testing.Short() {
 		t.Skip("executes selective runs over a temporary module")
 	}
@@ -840,17 +840,17 @@ func TestGoRunWitnessesCompletedGroupSurvivesLaterInvocationFailure(t *testing.T
 	}
 }
 
-// TestServedRecordRevalidatesAfterTheRunsExecutions pins the served half
-// of the package unit (REQ-check-witness-selection, REQ-policy-cancellation):
-// a package's served records are revalidated after every execution of the
-// run, never at the package's own completion, so a sibling package that
-// rewrites a served reader's input after the reader's package has finished
-// still disproves the serve — the reader re-executes in the run's drift
-// retry and its record re-derives; nothing the run reports is served from
-// a record the tree it finished on disproves. The writer's rewrite is
-// gated on the reader's persisted note, so the interleaving is the test's.
+// TestServedRecordRevalidatesAfterTheRunsExecutions pins the served half of
+// the package unit (REQ-check-witness-selection,
+// REQ-policy-cancellation-unit): a package's served records are revalidated
+// after every execution of the run, never at the package's own completion, so
+// a sibling package that rewrites a served reader's input after the reader's
+// package has finished still disproves the serve — the reader re-executes in
+// the run's drift retry and its record re-derives; nothing the run reports is
+// served from a record the tree it finished on disproves. The writer's rewrite
+// is gated on the reader's persisted note, so the interleaving is the test's.
 func TestServedRecordRevalidatesAfterTheRunsExecutions(t *testing.T) {
-	stipulate.Covers(t, "REQ-check-witness-selection", "REQ-policy-cancellation")
+	stipulate.Covers(t, "REQ-check-witness-selection", "REQ-policy-cancellation-unit")
 	if testing.Short() {
 		t.Skip("executes race-instrumented selective runs over a temporary module")
 	}

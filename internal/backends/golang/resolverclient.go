@@ -17,14 +17,14 @@ import (
 )
 
 // resolverClient is the backend's typed path: a verify.Backend whose
-// go/packages symbol loading runs in an owned resolver child — this
-// binary self-exec'd on the resolver child's argv route, spawned as the
-// consumer-command form of the one go-command policy (childRunner,
-// runner.go), so the package launcher and its
-// entire descendant tree — every go list, compile, and VCS subprocess —
-// terminates with the operation's cancellation (REQ-go-owned-processes-resolver-child).
-// The in-process implementation stays: the child runs newContext; the
-// parent speaks the JSON-lines resolver protocol over the child's stdio.
+// go/packages symbol loading runs in an owned resolver child — this binary
+// self-exec'd on the resolver child's argv route, spawned as the
+// consumer-command form of the one go-command policy (childRunner, runner.go),
+// so the package launcher and its entire descendant tree — every go list,
+// compile, and VCS subprocess — terminates with the operation's cancellation
+// (REQ-go-owned-processes-resolver-child). The in-process implementation
+// stays: the child runs newContext; the parent speaks the JSON-lines resolver
+// protocol over the child's stdio.
 //
 // The child is spawned lazily on first use and dies with ctx, with an
 // explicit Close, or with the parent process (its stdin pipe closes and
@@ -84,7 +84,7 @@ func newResolverClient(ctx context.Context, dir string) (*resolverClient, error)
 // exactly the named packages and their dependencies instead of the
 // whole tree — the
 // served resolution's stale remainder (REQ-evidence-resolution-
-// freshness); nil patterns load the whole tree.
+// freshness-typed-load); nil patterns load the whole tree.
 func newResolverClientScoped(ctx context.Context, dir string, patterns []string) (*resolverClient, error) {
 	exe, err := os.Executable()
 	if err != nil {

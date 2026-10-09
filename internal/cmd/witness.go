@@ -30,7 +30,7 @@ func withRecordPath(err error) error {
 // announces the run on stderr. The caller owns the verification backend
 // and the policy capture: the run consults the backend's classifier and
 // the same backend then resolves bindings — one served backend, at most
-// one child, per command (REQ-evidence-resolution-freshness). Errors
+// one child, per command (REQ-evidence-resolution-freshness-quiesce). Errors
 // pass through unattributed: the verb's own return is the one point
 // that names the record path.
 func witnessRun(ctx context.Context, pc *golang.Capture, seeding verify.WitnessSeeding, scope map[gofresh.Subject]bool, why string) (*verify.TestRun, error) {

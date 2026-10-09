@@ -297,7 +297,7 @@ type Report struct {
 	// close that publishes: what served and what resolved typed, each
 	// selection the path degraded to typed resolution, what the close
 	// published or refused, and why each typed symbol's record did not
-	// serve (REQ-evidence-resolution-freshness). Advisory, never a
+	// serve (REQ-evidence-resolution-freshness-account). Advisory, never a
 	// verdict input; global like OutsidePolicy — a scoped slice says
 	// nothing about the serving path. Nil on a pass that built no
 	// serving backend.
@@ -344,7 +344,7 @@ func Run(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Back
 // the records, every binding's resolution, shape and package, and — when
 // the pass will witness — its witness class, so every question a pass
 // puts to a backend is asked before any execution and the backend can be
-// released there (REQ-evidence-resolution-freshness); nil backends skip
+// released there (REQ-evidence-resolution-freshness-quiesce); nil backends skip
 // resolution. The report is unwitnessed until Correlate.
 func Resolve(spec *stipulatorv1.Spec, store *records.Store, backends map[string]Backend, witnessing bool) *Report {
 	judge := newHygiene(spec, store)

@@ -48,15 +48,15 @@ func isAbortOutput(s string) bool {
 	return strings.Contains(s, "panic: ") || strings.Contains(s, "fatal error: ")
 }
 
-// binaryTimeoutRe recognizes the test binary's own deadline panic — the
-// one shape the testing runtime prints when -test.timeout expires. It is
-// detection only: the bound the diagnostic names comes from the reviewed
-// record (REQ-policy-explicit — the record's envelope and its reviewed
-// arguments are the only sources of execution bounds), and a run whose
-// record declares no binary bound is never reclassified, so a test
-// printing this line can at worst relabel a package that is already red
-// under a declared bound. A green stream is never reclassified — the
-// recognition feeds classification of a terminal fail alone.
+// binaryTimeoutRe recognizes the test binary's own deadline panic — the one
+// shape the testing runtime prints when -test.timeout expires. It is detection
+// only: the bound the diagnostic names comes from the reviewed record
+// (REQ-policy-explicit-time-bounds — the record's envelope and its reviewed
+// arguments are the only sources of execution bounds), and a run whose record
+// declares no binary bound is never reclassified, so a test printing this line
+// can at worst relabel a package that is already red under a declared bound. A
+// green stream is never reclassified — the recognition feeds classification of
+// a terminal fail alone.
 var binaryTimeoutRe = regexp.MustCompile(`^panic: test timed out after (\S+)`)
 
 // timeoutRosterRe matches one entry of the deadline panic's own
@@ -177,18 +177,17 @@ func ExecuteInvocation(ctx context.Context, n *NormalizedInvocation, selection [
 	return ExecuteInvocationObserved(ctx, n, selection, nil)
 }
 
-// ExecuteInvocationObserved is ExecuteInvocation with a per-package
-// completion hook: onPackage fires, serialized, the moment a package's
-// process has completed and been classified — while other packages
-// still execute — so a caller can persist that package's evidence
-// before the invocation ends (REQ-policy-cancellation's unit of
-// persistence). The hook runs after the package's spawn slot is
-// released: a caller's publication holds no slot and spends none of the
-// envelope a sibling still queued is waiting on — the record's envelope
-// bounds processes alone (REQ-policy-explicit). The classification the
-// hook sees is the one the invocation's report carries: the run is
-// disposed once and the assembly reads the disposition. A hook error
-// ends the invocation with it. A nil hook is ExecuteInvocation.
+// ExecuteInvocationObserved is ExecuteInvocation with a per-package completion
+// hook: onPackage fires, serialized, the moment a package's process has
+// completed and been classified — while other packages still execute — so a
+// caller can persist that package's evidence before the invocation ends
+// (REQ-policy-cancellation-unit's unit of persistence). The hook runs after
+// the package's spawn slot is released: a caller's publication holds no slot
+// and spends none of the envelope a sibling still queued is waiting on — the
+// record's envelope bounds processes alone (REQ-policy-explicit-time-bounds).
+// The classification the hook sees is the one the invocation's report carries:
+// the run is disposed once and the assembly reads the disposition. A hook
+// error ends the invocation with it. A nil hook is ExecuteInvocation.
 func ExecuteInvocationObserved(ctx context.Context, n *NormalizedInvocation, selection []Obligation, onPackage func(unit packageUnit) error) (*stipulatorv1.InvocationHealth, []*stipulatorv1.TestResult, []*stipulatorv1.FailureDiagnostic, []*ProcessObservation, error) {
 	return executeInvocationPrepared(ctx, n, selection, onPackage, nil)
 }
@@ -269,7 +268,7 @@ func spawnOrdinals() func() int32 {
 // caller's completion work, which spawns nothing and so holds no slot:
 // a sibling still queued on the bound is never delayed by it, and the
 // envelope it is waiting on is spent on processes alone
-// (REQ-policy-explicit). Both are skipped under the caller's
+// (REQ-policy-explicit-time-bounds). Both are skipped under the caller's
 // cancellation.
 func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, pkgs []string, tests TestSelection, spawnOrdinal func() int32, inSlot func(i int, run *packageRun, gate *admission), afterSlot func(i int, run *packageRun), proofs map[string]*packageLeg) []packageRun {
 	gate := newAdmission(invCtx, spawnBoundOf(n))
@@ -1091,11 +1090,11 @@ func testCommandArgs(n *NormalizedInvocation, pkg string, selection []string, lo
 }
 
 // declaredBinaryBound extracts the binary deadline the reviewed record
-// declares — the value of the last -test.timeout token in the reviewed
-// args, matching the test binary's own last-one-wins parse — and "" when
-// the record declares none. The reviewed record is the only source of
-// the bound the classifier may name (REQ-policy-explicit); the panic
-// shape in the child's output is detection, never the value.
+// declares — the value of the last -test.timeout token in the reviewed args,
+// matching the test binary's own last-one-wins parse — and "" when the record
+// declares none. The reviewed record is the only source of the bound the
+// classifier may name (REQ-policy-explicit-time-bounds); the panic shape in
+// the child's output is detection, never the value.
 func declaredBinaryBound(n *NormalizedInvocation) string {
 	bound := ""
 	for i := 0; i < len(n.Args); i++ {
@@ -1623,7 +1622,7 @@ func ExecutePolicy(ctx context.Context, pc *Capture) (*stipulatorv1.ExecutionRep
 // package's process has completed and been classified under the named
 // invocation — the seam that lets the package's records install while
 // its siblings still execute on this form too
-// (REQ-evidence-witness-cache-format's install-on-completion rule).
+// (REQ-evidence-witness-cache-format-install's install-on-completion rule).
 func executePolicy(ctx context.Context, pc *Capture, onPackage func(invocation string, unit packageUnit) error, proofs processProofs) (*stipulatorv1.ExecutionReport, []*ProcessObservation, error) {
 	rep := progress.FromContext(ctx)
 	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)

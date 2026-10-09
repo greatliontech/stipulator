@@ -154,7 +154,7 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 		out.Notes = []string{verifyrun.MisreportCaveat(n, verifyrun.CaveatEvaluatedStates)}
 	}
 	// The evaluation's serving account, by the served rule in the notes
-	// and the text alike (REQ-evidence-resolution-freshness).
+	// and the text alike (REQ-evidence-resolution-freshness-account).
 	out.Notes = append(out.Notes, accountLines(rep.ResolutionNotices)...)
 	// The one account of the listing, rows capped or not
 	// (REQ-gap-list).

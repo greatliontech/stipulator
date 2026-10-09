@@ -59,14 +59,14 @@ func (e Interrupted) Error() string {
 
 func (e Interrupted) Unwrap() error { return e.Cause }
 
-// Execute runs the CLI under ctx. One progress reporter serves the
-// whole invocation, rendering the same events the MCP surface carries
-// as notifications as dim stderr lines (REQ-mcp-progress-surfaces's both-surface
-// leg); at the end a run that reached a verdict prints its phase
-// timings — the pace line — and an interrupted one names the phase it
-// died in and what it kept. The terminal cause follows the MCP
-// surface's vocabulary: a verdict that fails is a test failure, an
-// operational fault a failure, an interruption its own cause.
+// Execute runs the CLI under ctx. One progress reporter serves the whole
+// invocation, rendering the same events the MCP surface carries as
+// notifications as dim stderr lines (REQ-mcp-progress-surfaces's both-surface
+// leg); at the end a run that reached a verdict prints its phase timings — the
+// pace line — and an interrupted one names the phase it died in and what it
+// kept. The terminal cause follows the MCP surface's vocabulary: a verdict
+// that fails is a test failure, an operational fault a failure, an
+// interruption its own cause.
 func Execute(ctx context.Context) error {
 	status := dimWriter{os.Stderr}
 	return execute(ctx, os.Args[1:], progress.Stderr(status), status)
@@ -192,10 +192,10 @@ func renderProblems(problems []verify.Problem) {
 	}
 }
 
-// renderNotices prints advisory notices dim on the given stream — the
-// one rendering of a notice list on this face: the policy-tier notices
-// (REQ-check-policy-notices) and the serving path's account on every
-// verb that builds the serving form (REQ-evidence-resolution-freshness).
+// renderNotices prints advisory notices dim on the given stream — the one
+// rendering of a notice list on this face: the policy-tier notices
+// (REQ-check-policy-notices) and the serving path's account on every verb that
+// builds the serving form (REQ-evidence-resolution-freshness-account).
 func renderNotices(w io.Writer, notices []string) {
 	for _, n := range notices {
 		fmt.Fprintln(w, dim(n))

@@ -61,7 +61,7 @@ func generatedObservationFingerprint(t *testing.T) gofresh.Fingerprint {
 
 // TestLoadUnreadableIsEmpty pins the unreadable-record leg of
 // REQ-evidence-witness-freshness and the per-record refusal of
-// REQ-evidence-witness-cache-format: a corrupt, version-mismatched,
+// REQ-evidence-witness-cache-format-validation: a corrupt, version-mismatched,
 // misnamed, or structurally invalid variant file is that record alone
 // absent, so its test runs — a broken record costs work, never
 // correctness.
@@ -71,7 +71,7 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 	if testing.Short() {
 		t.Skip("measured heavy under the fast tier (in-process)")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-evidence-witness-cache-format")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-evidence-witness-cache-format-validation", "REQ-evidence-witness-cache-format-proof-and-outcomes")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
 	store, err := StoreDir(dir)
@@ -292,7 +292,7 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 }
 
 // TestLedgerStoreRefusesPerFile pins the ledger store
-// (REQ-evidence-witness-cache-format, REQ-evidence-witness-freshness's
+// (REQ-evidence-witness-cache-format-ledger, REQ-evidence-witness-freshness's
 // carve-out base): one file per compartment digest, written once, read
 // back for the record's own test only — a malformed file, another
 // version, a name-content disagreement, a ledger omitting the record's
@@ -301,7 +301,7 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 //
 //gofresh:pure
 func TestLedgerStoreRefusesPerFile(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-cache-format", "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-cache-format-ledger", "REQ-evidence-witness-freshness")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
 	store, err := StoreDir(dir)
@@ -399,14 +399,14 @@ func TestLedgerStoreRefusesPerFile(t *testing.T) {
 }
 
 // TestLoadReclaimsUnreferencedLedgers pins the ledger store's bound
-// (REQ-evidence-witness-cache-format): a ledger no record file names
+// (REQ-evidence-witness-cache-format-ledger): a ledger no record file names
 // — its records evicted past the variant bound — is reclaimed as the
 // store loads, while a ledger a refused record still names stays, so
 // the ledger store never outgrows the record store.
 //
 //gofresh:pure
 func TestLoadReclaimsUnreferencedLedgers(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-cache-format")
+	stipulate.Covers(t, "REQ-evidence-witness-cache-format-ledger")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
 	store, err := StoreDir(dir)
@@ -493,13 +493,13 @@ func TestLoadReclaimsUnreferencedLedgers(t *testing.T) {
 }
 
 // TestLoadOrdersVariantsNewestFirst pins serving's first try
-// (REQ-evidence-witness-cache-format): one identity's variants load most
-// recently installed first, by install time rather than name, so the
+// (REQ-evidence-witness-cache-format-eviction): one identity's variants load
+// most recently installed first, by install time rather than name, so the
 // variant the last state change produced is the first checked.
 //
 //gofresh:pure
 func TestLoadOrdersVariantsNewestFirst(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-cache-format")
+	stipulate.Covers(t, "REQ-evidence-witness-cache-format-eviction")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
 	store, err := StoreDir(dir)
@@ -533,8 +533,8 @@ func TestLoadOrdersVariantsNewestFirst(t *testing.T) {
 }
 
 // TestStoreVariantsAndSiblings pins the per-record store's structure
-// (REQ-evidence-witness-cache-format): a broken variant never discards a
-// sibling record, one identity's distinct tree states coexist as
+// (REQ-evidence-witness-cache-format-variants): a broken variant never
+// discards a sibling record, one identity's distinct tree states coexist as
 // variants, and the identity's variant set stays bounded with the oldest
 // evicted first.
 //
@@ -543,7 +543,7 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 	if testing.Short() {
 		t.Skip("measured heavy under the fast tier (in-process)")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-cache-format")
+	stipulate.Covers(t, "REQ-evidence-witness-cache-format-variants")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
 	store, err := StoreDir(dir)
@@ -673,19 +673,19 @@ func collectSeededLeaves(prefix string, v reflect.Value, acc map[string]bool) {
 	}
 }
 
-// TestFingerprintWireKeySet binds REQ-evidence-witness-cache-format's
-// fingerprint key enumeration to the marshalled wire: the persisted key
-// set of a fingerprint populated to that enumeration is exactly the
-// spec's list, and every leaf of Gofresh's fingerprint is seeded but the
-// three a code-result record never carries — so a field Gofresh grows
-// arrives here as an unseeded leaf, and an accidental key rename (which
-// would silently orphan every stored record) fails here too, instead of
-// drifting past review.
+// TestFingerprintWireKeySet binds
+// REQ-evidence-witness-cache-format-record-keys's fingerprint key enumeration
+// to the marshalled wire: the persisted key set of a fingerprint populated to
+// that enumeration is exactly the spec's list, and every leaf of Gofresh's
+// fingerprint is seeded but the three a code-result record never carries — so
+// a field Gofresh grows arrives here as an unseeded leaf, and an accidental
+// key rename (which would silently orphan every stored record) fails here too,
+// instead of drifting past review.
 func TestFingerprintWireKeySet(t *testing.T) {
 	if testing.Short() {
 		t.Skip("measured heavy under the fast tier (in-process)")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-cache-format")
+	stipulate.Covers(t, "REQ-evidence-witness-cache-format-record-keys", "REQ-evidence-witness-cache-format-strategy")
 	want := generatedObservationFingerprint(t)
 	// Populated to the spec's persisted key set, NOT every struct field:
 	// machine and runtimeConfig are measurement guards a code-result
@@ -693,7 +693,7 @@ func TestFingerprintWireKeySet(t *testing.T) {
 	// result and omits them when empty; this store's completeness refuses
 	// them too), deliberately unseeded here so they never marshal. The
 	// expected list is the enumeration in docs/specs/evidence.md's
-	// REQ-evidence-witness-cache-format, byte-for-byte — Gofresh's
+	// REQ-evidence-witness-cache-format-record-keys, byte-for-byte — Gofresh's
 	// published form spelling this store's keys.
 	want.Guards = guard.Guards{Toolchain: "toolchain", BuildConfig: "build"}
 	want.PurityAssertion = "source directive"
@@ -740,7 +740,7 @@ func TestFingerprintWireKeySet(t *testing.T) {
 	}
 	for k := range keys {
 		if !specSet[k] {
-			t.Errorf("marshalled key %q is not in REQ-evidence-witness-cache-format's enumeration", k)
+			t.Errorf("marshalled key %q is not in REQ-evidence-witness-cache-format-record-keys's enumeration", k)
 		}
 	}
 	for _, k := range spec {
@@ -865,11 +865,11 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 // keeps its ledger: the late scan reads the records the snapshot never
 // saw for their compartment digests, so a concurrent install's
 // ledger-then-record ordering holds for the sweep as it does for a
-// reader (REQ-evidence-witness-cache-format).
+// reader (REQ-evidence-witness-cache-format-ledger).
 //
 //gofresh:pure
 func TestLateRecordsKeepTheirLedgers(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-cache-format")
+	stipulate.Covers(t, "REQ-evidence-witness-cache-format-ledger")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
 	store, err := StoreDir(dir)
@@ -913,16 +913,15 @@ func mustName(t *testing.T, rec Record) string {
 	return name
 }
 
-// TestInstallRefusesWhatTheEncoderRefuses pins the fail-closed write and
-// read of the fingerprint member (REQ-evidence-witness-cache-format): a
-// fingerprint Gofresh's encoder refuses — here one recorded without its
-// result kind — names no file and installs nothing, the refusal
-// Gofresh's own; and a stored record whose fingerprint member is any
-// encoding but the form's own (its keys reordered, the bytes otherwise
-// the record's) is refused on load, so the store serves nothing it did
-// not write.
+// TestInstallRefusesWhatTheEncoderRefuses pins the fail-closed write and read
+// of the fingerprint member (REQ-evidence-witness-cache-format-fingerprint): a
+// fingerprint Gofresh's encoder refuses — here one recorded without its result
+// kind — names no file and installs nothing, the refusal Gofresh's own; and a
+// stored record whose fingerprint member is any encoding but the form's own
+// (its keys reordered, the bytes otherwise the record's) is refused on load,
+// so the store serves nothing it did not write.
 func TestInstallRefusesWhatTheEncoderRefuses(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-cache-format")
+	stipulate.Covers(t, "REQ-evidence-witness-cache-format-fingerprint")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
 	kindless := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestA", Outcomes: map[string]string{"example.com/p.TestA": "passed"}, Fingerprint: Fingerprint{MaximalClosure: strings.Repeat("a", 32), TestVariantClosure: strings.Repeat("b", 32)}, CompartmentLedger: &CompartmentLedger{Declarations: []CompartmentDeclaration{{File: "p_test.go", Kind: "func", Name: "TestA", Hash: "00112233445566778899aabbccddeeff"}}}}

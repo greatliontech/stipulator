@@ -284,11 +284,11 @@ func TestStampsRenderAdjacentDedupedPhases(t *testing.T) {
 }
 
 // TestNotesAndKeptRideTheStream pins the decision lines and the kept
-// report (REQ-mcp-progress, REQ-policy-cancellation): a note emits at
+// report (REQ-mcp-progress, REQ-policy-cancellation-kept): a note emits at
 // once and exactly once, a persisted unit emits its note and joins the
 // kept list, and the terminal event — alone — carries every kept unit.
 func TestNotesAndKeptRideTheStream(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-progress", "REQ-policy-cancellation", "REQ-mcp-progress-surfaces")
+	stipulate.Covers(t, "REQ-mcp-progress", "REQ-policy-cancellation-kept", "REQ-mcp-progress-surfaces")
 	var events []*stipulatorv1.ProgressEvent
 	r := New(collect(&events), WithInterval(time.Hour))
 	r.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
@@ -419,7 +419,7 @@ func TestNotesAreOneBoundedLine(t *testing.T) {
 // the terminal event once, returns the same account the event carries,
 // and renders again without emitting.
 func TestSealRendersAndEmitsAtomically(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-progress-surfaces", "REQ-policy-cancellation")
+	stipulate.Covers(t, "REQ-mcp-progress-surfaces", "REQ-policy-cancellation-kept")
 	var events []*stipulatorv1.ProgressEvent
 	r := New(collect(&events), WithInterval(time.Hour))
 	r.Phase(stipulatorv1.Phase_PHASE_EXECUTION)
