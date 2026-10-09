@@ -164,7 +164,7 @@ func observeProcess(ctx context.Context, n *NormalizedInvocation, pkg string, pr
 		// the package directory, which forks the configured C compiler)
 		// is a go child of this operation: it runs under the owned
 		// boundary with a probe's bounded reap (rootsRunner;
-		// REQ-go-owned-processes), and its answer is memoized on the
+		// REQ-go-owned-processes-runner), and its answer is memoized on the
 		// capture's roots memo, one probe per package directory and
 		// environment for the operation's life.
 		Runner:            rootsRunner,

@@ -77,12 +77,12 @@ func normalizedOSEnv(t *testing.T) []string {
 }
 
 // The owned runner carries the boundary every go child but the
-// loader's runs under (REQ-go-owned-processes, REQ-policy-cancellation):
+// loader's runs under (REQ-go-owned-processes-runner, REQ-policy-cancellation):
 // the child leads its own process group, the cancellation hook is
 // installed with the policy's wait delay, and the quit grace applies to
 // the envelope's expiry alone — every other cancellation kills outright.
 func TestOwnedRunnerCarriesTheBoundary(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes", "REQ-policy-cancellation")
+	stipulate.Covers(t, "REQ-go-owned-processes-runner", "REQ-policy-cancellation")
 	env, err := gotool.NormalizeEnv(os.Environ())
 	if err != nil {
 		t.Fatal(err)
@@ -101,10 +101,10 @@ func TestOwnedRunnerCarriesTheBoundary(t *testing.T) {
 }
 
 // The analysis engines' own go commands ride the owned boundary
-// (REQ-go-owned-processes): an engine the backend constructs spawns
+// (REQ-go-owned-processes-runner): an engine the backend constructs spawns
 // through engineRunner — its commands lead their own process group.
 func TestAnalysisEnginesRideTheOwnedBoundary(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-runner")
 	if testing.Short() {
 		t.Skip("constructs an engine over the fixture")
 	}
@@ -132,7 +132,7 @@ func TestAnalysisEnginesRideTheOwnedBoundary(t *testing.T) {
 	}
 }
 
-// A wrapper's pipe hold (REQ-go-owned-processes): a go wrapper that
+// A wrapper's pipe hold (REQ-go-owned-processes-runner): a go wrapper that
 // runs the real toolchain and leaves a descendant holding its pipes
 // exits on its own. The witness invocation reads its stream to the end
 // through its own pipe, so a hold on stdout only delays the stream's
@@ -142,6 +142,7 @@ func TestAnalysisEnginesRideTheOwnedBoundary(t *testing.T) {
 // collected by the boundary and has no wholeness test: the hold refuses
 // it naming the hold.
 func TestWitnessStreamServesAndListingRefusesBehindAPipeHold(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-owned-processes-runner")
 	if testing.Short() {
 		t.Skip("runs the toolchain under a wrapper")
 	}
@@ -227,9 +228,9 @@ func TestNormalizationRefusesAPartialEnvironmentDocument(t *testing.T) {
 // the wait delay for — gofresh's listing form, never a truncated
 // closure sealing a weaker bracket — while the package listing, which
 // no descendant holds, answers: the discovery succeeds and the closure
-// error names the held listing (REQ-go-owned-processes).
+// error names the held listing (REQ-go-owned-processes-runner).
 func TestClosureListingRefusesTheHeldAnswer(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-runner")
 	goBinary, err := exec.LookPath("go")
 	if err != nil {
 		t.Fatal(err)
@@ -262,7 +263,7 @@ func TestClosureListingRefusesTheHeldAnswer(t *testing.T) {
 // marshal failure) — answers nothing: the entries it printed are not
 // served as a shorter set.
 func TestListingExitingNonzeroAfterItsEntriesIsRefused(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-runner")
 	goBinary, err := exec.LookPath("go")
 	if err != nil {
 		t.Fatal(err)

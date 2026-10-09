@@ -23,7 +23,7 @@ import (
 // policy normalizer's before the load-time query, goworkEnv's for the
 // symbol loads, the served views, and the toolchain queries — so the
 // descendant tree is exactly what the runner owns
-// (REQ-go-owned-processes).
+// (REQ-go-owned-processes-telemetry-home).
 //
 // The owned home lives under the user cache root — or, when that root
 // cannot host it (an unwritable cache root, under which only the

@@ -357,7 +357,7 @@ func TestToolchainSampledInTheTargetModule(t *testing.T) {
 }
 
 // The provenance probe runs in the caller's own process group
-// (REQ-go-owned-processes: a descendant-free query, swept with its
+// (REQ-go-owned-processes-runner: a descendant-free query, swept with its
 // caller by the owner that kills the caller outright) with the reap
 // bounded (REQ-policy-cancellation), through gofresh's memoized sampler:
 // two asks of one (directory, environment) spawn one `go env GOVERSION`
@@ -365,7 +365,7 @@ func TestToolchainSampledInTheTargetModule(t *testing.T) {
 // trimmed version, a cancelled operation samples nothing and the member
 // walk answers a cancelled context whatever the memo holds.
 func TestProvenanceProbeRunsInTheCallersGroup(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes", "REQ-policy-cancellation")
+	stipulate.Covers(t, "REQ-go-owned-processes-runner", "REQ-policy-cancellation")
 	env, err := gotool.NormalizeEnv(os.Environ())
 	if err != nil {
 		t.Fatal(err)

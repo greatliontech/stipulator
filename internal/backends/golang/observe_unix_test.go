@@ -20,7 +20,7 @@ import (
 // containment: a bare `go env -json` forks the configured C compiler,
 // and a compiler that hangs — a wrapper on an unreachable host — is a
 // descendant the operation's cancellation must sweep, which a plain
-// runner in the caller's group would orphan (REQ-go-owned-processes).
+// runner in the caller's group would orphan (REQ-go-owned-processes-runner).
 // The invocation declares CC as a shim that, once the test raises a
 // flag after the capture (the normalization's own snapshot consults
 // the compiler too, and must not hang), records its pid and sleeps;
@@ -30,7 +30,7 @@ import (
 //
 // Deliberately not //gofresh:pure: executes the fixture's tests.
 func TestRootsProbeIsSweptWithTheOperation(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-runner")
 	if testing.Short() {
 		t.Skip("executes a plain-witness invocation over a temporary module")
 	}

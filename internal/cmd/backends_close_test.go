@@ -25,11 +25,12 @@ func (b *recordingBackend) Close() error { b.closed = true; return nil }
 // Every verb that builds the declaration-reading backends closes them
 // before it returns, on the error path included, so the resolver child
 // dies with the verb and never outlives it into the process's end
-// (REQ-go-owned-processes).
+// (REQ-go-owned-processes; every verb closes its backends, so the
+// child dies with the verb — REQ-go-owned-processes-resolver-child).
 //
 //gofresh:pure
 func TestVerbsCloseTheirBackends(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes", "REQ-go-owned-processes-resolver-child")
 	priorDir, priorMake := chdir, makeBackends
 	chdir = t.TempDir()
 	t.Cleanup(func() { chdir, makeBackends = priorDir, priorMake })

@@ -36,9 +36,9 @@ func ownedHome(t *testing.T, env []string, cache string) string {
 // mode and a git config including the source's — with GOENV pinned to
 // the source home's env file: the default config home's when the
 // environment names neither, its own config home's when it names one,
-// and its own GOENV untouched (REQ-go-owned-processes).
+// and its own GOENV untouched (REQ-go-owned-processes-telemetry-home).
 func TestTelemetryOffEnvOwnsTheToolchainTelemetry(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-telemetry-home")
 	if runtime.GOOS != "linux" {
 		t.Skip("the config-home seam is unix's")
 	}
@@ -132,9 +132,9 @@ func TestTelemetryOffEnvOwnsTheToolchainTelemetry(t *testing.T) {
 
 // The owned home is repaired when its files hold anything but the owned
 // content — an empty or local mode a toolchain would honour — and left
-// untouched when they already do (REQ-go-owned-processes).
+// untouched when they already do (REQ-go-owned-processes-telemetry-home).
 func TestTelemetryOffHomeIsRepairedNotRewritten(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-telemetry-home")
 	if runtime.GOOS != "linux" {
 		t.Skip("the config-home seam is unix's")
 	}
@@ -175,9 +175,9 @@ func TestTelemetryOffHomeIsRepairedNotRewritten(t *testing.T) {
 
 // A toolchain run under the owned home writes nothing there — the
 // telemetry's local directory and counters, live under any other
-// mode, never appear (REQ-go-owned-processes).
+// mode, never appear (REQ-go-owned-processes-telemetry-home).
 func TestToolchainWritesNothingUnderTheOwnedHome(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-telemetry-home")
 	if runtime.GOOS != "linux" {
 		t.Skip("the config-home seam is unix's")
 	}
@@ -209,9 +209,9 @@ func TestToolchainWritesNothingUnderTheOwnedHome(t *testing.T) {
 
 // Off unix no variable selects the config home: the environment passes
 // through unchanged, the toolchain's detached telemetry the sanctioned
-// escape (REQ-go-owned-processes).
+// escape (REQ-go-owned-processes-telemetry-home).
 func TestTelemetryOffEnvLeavesOtherPlatformsAlone(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-telemetry-home")
 	cache := t.TempDir()
 	t.Setenv("XDG_CACHE_HOME", cache)
 	in := []string{"HOME=/h", "PATH=/usr/bin"}
@@ -230,9 +230,9 @@ func TestTelemetryOffEnvLeavesOtherPlatformsAlone(t *testing.T) {
 // system temp root — the witness store alone refuses under an
 // unwritable cache, per subject — and both failing is a refusal naming
 // each root, never a child whose descendants the runner does not own
-// (REQ-go-owned-processes).
+// (REQ-go-owned-processes-telemetry-home).
 func TestTelemetryOffEnvRefusesWithoutAnOwnedHome(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-telemetry-home")
 	if runtime.GOOS != "linux" {
 		t.Skip("the config-home seam is unix's")
 	}
@@ -277,9 +277,9 @@ func swapTempRoot(t *testing.T, root string) {
 // A root under a world-writable parent is the user's own or refused: a
 // symlink standing where the root belongs is a claim, refused by name;
 // a directory of the user's own with loose bits is tightened to 0700
-// and used (REQ-go-owned-processes).
+// and used (REQ-go-owned-processes-telemetry-home).
 func TestSecureRootRefusesAClaimedFallback(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-telemetry-home")
 	if runtime.GOOS != "linux" {
 		t.Skip("the config-home seam is unix's")
 	}
@@ -320,9 +320,9 @@ func TestSecureRootRefusesAClaimedFallback(t *testing.T) {
 
 // A home swept from under a running check is re-established from the
 // recorded source before the next spawn that reuses the derived
-// environment; a home that cannot be is a refusal (REQ-go-owned-processes).
+// environment; a home that cannot be is a refusal (REQ-go-owned-processes-telemetry-home).
 func TestOwnedHomeIsReestablishedBeforeSpawn(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-telemetry-home")
 	if runtime.GOOS != "linux" {
 		t.Skip("the config-home seam is unix's")
 	}
@@ -419,9 +419,9 @@ func TestOwnedHomeIsReestablishedBeforeSpawn(t *testing.T) {
 
 // A home swept after normalization is re-established by the witness
 // spawn itself: the fixture's package runs healthy and the mode file is
-// back before its process started (REQ-go-owned-processes).
+// back before its process started (REQ-go-owned-processes-telemetry-home).
 func TestWitnessSpawnReestablishesTheOwnedHome(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-telemetry-home")
 	if runtime.GOOS != "linux" {
 		t.Skip("the config-home seam is unix's")
 	}
@@ -512,9 +512,9 @@ func TestWitnessSpawnReestablishesTheOwnedHome(t *testing.T) {
 // A root is secured only under a parent nobody else can rename it out
 // of: a sticky parent (as /tmp is) and the user's own parent both
 // qualify; the fact is checked, never assumed of the fallback
-// (REQ-go-owned-processes).
+// (REQ-go-owned-processes-telemetry-home).
 func TestSecureRootChecksItsParent(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-telemetry-home")
 	if runtime.GOOS != "linux" {
 		t.Skip("the config-home seam is unix's")
 	}
@@ -557,9 +557,9 @@ func TestSecureRootChecksItsParent(t *testing.T) {
 // The load-time query runs only under an owned environment: the pin's
 // place before the query is a fact the query itself keeps, so no
 // refactor re-opens the escape for that child with every later child
-// still owned (REQ-go-owned-processes).
+// still owned (REQ-go-owned-processes-telemetry-home).
 func TestLoadTimeQueryRefusesAnUnownedEnvironment(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-telemetry-home")
 	if runtime.GOOS != "linux" {
 		t.Skip("the config-home seam is unix's")
 	}
@@ -591,9 +591,9 @@ func TestLoadTimeQueryRefusesAnUnownedEnvironment(t *testing.T) {
 
 // Every Go child of an invocation runs under the owned home: the
 // normalized environment, the witness environment derived from it, and
-// the symbol-load environment all carry it (REQ-go-owned-processes).
+// the symbol-load environment all carry it (REQ-go-owned-processes-telemetry-home).
 func TestEveryGoChildRunsUnderTheOwnedHome(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-telemetry-home")
 	if runtime.GOOS != "linux" {
 		t.Skip("the config-home seam is unix's")
 	}

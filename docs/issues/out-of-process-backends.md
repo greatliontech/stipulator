@@ -6,7 +6,7 @@ The backend abstraction (REQ-backend-surfaces; core neutrality proven by
 `internal/arch`) already crosses a process boundary for its one
 backend — the Go resolver runs in a self-exec'd child behind a JSON
 line protocol (internal/backends/golang/resolver.go, the resolver
-client) under REQ-go-owned-processes — so the remaining ask is a
+client) under REQ-go-owned-processes-resolver-child — so the remaining ask is a
 backend interface a non-Go implementation can stand behind, not the
 boundary itself. When a second language becomes
 real, the same surfaces — symbol resolution, shape hashing, witness

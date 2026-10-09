@@ -26,9 +26,9 @@ func (i statInfo) Sys() any           { return &syscall.Stat_t{Uid: i.uid} }
 
 // The owner predicates read the uid off the file's stat: the caller's
 // uid is the caller's own, root's is root's, any other is neither, and
-// a file info with no stat is owned by nobody (REQ-go-owned-processes).
+// a file info with no stat is owned by nobody (REQ-go-owned-processes-telemetry-home).
 func TestOwnerPredicatesReadTheUid(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-telemetry-home")
 	me := uint32(os.Getuid())
 	if !ownedByCaller(statInfo{uid: me, dir: true}) {
 		t.Fatal("the caller's own uid was not the caller's own")

@@ -23,6 +23,10 @@ Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pu
   not text) flows into edition-2023 proto string fields; one invalid byte makes the check result
   unmarshallable. Cut-point half fixed; ingest-wide sanitization needs a design choice.
   *Lands: cross-tool train chunk 249*
+- **[decomposition-editorial-pass](decomposition-editorial-pass.md)** — the sub-contract splits
+  of chunk 270 left editorial residue the byte-preserving mechanics could not touch: dangling
+  antecedents, paragraphs holding several obligations under one keyword, bindings pinning rules
+  no sentence states. *Lands: cross-tool train chunk 248*
 - **[proto-backend](proto-backend.md)** — descriptor-level verification via protocompile;
   spec exists, five requirements gapped. *Lands: capability charter (gofresh docs/plans/capability-charters.md) — activates when a party outside this repository consumes stipulator's protos (a module importing gen/stipulator/v1, or a non-Go consumer of proto/stipulator/v1).*
 - **[out-of-process-backends](out-of-process-backends.md)** — trusted backend surfaces can move

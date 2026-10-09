@@ -17,7 +17,7 @@ import (
 // resolverSubcommand is argv[1] of an owned resolver child: the argv
 // token a parent stipulator process self-execs its own binary with to
 // put go/packages symbol loading behind an owned, cancellable process
-// boundary (REQ-go-owned-processes), routed by ResolverChildMain before
+// boundary (REQ-go-owned-processes-resolver-child), routed by ResolverChildMain before
 // any command parsing. Parent and child agree on this one name; it is
 // process plumbing, never CLI surface.
 const resolverSubcommand = "internal-resolve"

@@ -1083,11 +1083,11 @@ func TestGoObserveProcessConstructionErrorFailsClosed(t *testing.T) {
 // reap, the probe seam) and runs once per package directory and
 // environment for a capture's life — a second execution over the same
 // capture probes nothing, a fresh capture probes again
-// (REQ-go-owned-processes).
+// (REQ-go-owned-processes-runner).
 //
 // Deliberately not //gofresh:pure: executes the fixture's tests.
 func TestRootsProbeRunsThroughTheProbeRunnerOncePerPackage(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-runner")
 	if testing.Short() {
 		t.Skip("executes a race invocation over a temporary module")
 	}

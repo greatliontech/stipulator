@@ -19,7 +19,7 @@ func TestGoDiscoveryEnumeratesCompleteObligationSet(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads the tree")
 	}
-	stipulate.Covers(t, "REQ-policy-conservation")
+	stipulate.Covers(t, "REQ-policy-conservation", "REQ-go-policy-complete-obligation-identity")
 	neutralAmbient(t)
 	dir := discoverFixture(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
@@ -59,7 +59,7 @@ func TestGoDiscoveryBuildSelectionChangesObligations(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads the tree")
 	}
-	stipulate.Covers(t, "REQ-policy-conservation")
+	stipulate.Covers(t, "REQ-policy-conservation", "REQ-go-policy-complete-obligation-identity")
 	neutralAmbient(t)
 	dir := discoverFixture(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}

@@ -1007,7 +1007,7 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, select
 		// wait-delay form here is a descendant holding stderr alone past
 		// the boundary's wait delay after the process exited on its own —
 		// it truncates the diagnostic residue, never the verdict, which is
-		// the whole stream's and the exit's (REQ-go-owned-processes).
+		// the whole stream's and the exit's (REQ-go-owned-processes-runner).
 		waitErr = nil
 	}
 	bound := declaredBinaryBound(n)

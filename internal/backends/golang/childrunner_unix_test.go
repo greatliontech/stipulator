@@ -18,9 +18,9 @@ import (
 // The resolver child's runner is the consumer-command form of the one
 // go-command policy: the child starts in its own process group, and
 // the operation's cancellation sweeps the group whole — a descendant
-// the child left running dies with it (REQ-go-owned-processes).
+// the child left running dies with it (REQ-go-owned-processes-resolver-child).
 func TestChildRunnerSweepsTheChildsProcessGroup(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-resolver-child")
 	ctx, cancel := context.WithCancel(context.Background())
 	pidFile := t.TempDir() + "/child.pid"
 	var seen []string
@@ -83,9 +83,9 @@ func TestChildRunnerSweepsTheChildsProcessGroup(t *testing.T) {
 // can produce, so planted through the seam — refuses the spawn as the
 // client's sticky fault naming the entry and never the command line
 // (a scoped client's names every package of the stale remainder);
-// nothing starts (REQ-go-owned-processes).
+// nothing starts (REQ-go-owned-processes-resolver-child).
 func TestResolverChildRefusesAMalformedParentEnvironment(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-resolver-child")
 	prior := ambientEnviron
 	ambientEnviron = func() []string { return []string{"PATH=" + os.Getenv("PATH"), "no-equals-sign"} }
 	t.Cleanup(func() { ambientEnviron = prior })

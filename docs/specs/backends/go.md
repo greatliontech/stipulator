@@ -142,7 +142,9 @@ failures, `init` failures, `TestMain` failures, executable examples,
 committed fuzz-seed replay (REQ-go-fuzz-exploration), packages without
 named tests, and every workspace member (REQ-go-workspace) keep their
 failure and selection behavior under the policy exactly as under a direct
-`go test` of the same scope. A Go obligation crosses the wire as a
+`go test` of the same scope.
+
+**REQ-go-policy-complete-obligation-identity** (behavior): A Go obligation MUST cross the wire as a
 kind-prefixed identity — `package:`, `test:`, `example:`, `fuzz:`, or
 `seed:` followed by the package path and, where applicable, the symbol or
 seed file — and the conservation universe is the workspace's default build
@@ -157,11 +159,13 @@ with the operation's cancellation — package loading owns its launcher's
 descendants exactly as test invocations own theirs, and an external
 package driver never shapes verification — an ambient one is refused,
 and the curated environment's package-driver variable is pinned off as
-its last word, past every declared override or denial. The toolchain's
+its last word, past every declared override or denial.
+
+**REQ-go-owned-processes-telemetry-home** (behavior): The toolchain's
 telemetry, on by default, forks a detached upload sidecar outside that
 boundary on its daily check, and no variable names its directory: on
 unix the environment every Go child runs under — the witnesses', the
-loads', the toolchain queries' — therefore points the toolchain's config
+loads', the toolchain queries' — therefore MUST point the toolchain's config
 home (`XDG_CONFIG_HOME`) at an owned home — a directory of the user's
 own, private, never a symlink, under a parent nobody else can rename it
 out of, under the user cache, or under `/tmp` when the cache cannot host
@@ -184,8 +188,10 @@ configuration and its git's global configuration do not move with the
 telemetry. An owned home that cannot be prepared is a refusal naming the
 reason. On platforms whose config home no variable selects, the
 toolchain's detached telemetry is the one sanctioned escape from the
-boundary. Every go child but the loader's and the provenance probe's
-runs through Gofresh's go-command runner carrying this boundary as its
+boundary.
+
+**REQ-go-owned-processes-runner** (behavior): Every go child but the loader's and the provenance probe's
+MUST run through Gofresh's go-command runner carrying this boundary as its
 containment — the group, the envelope expiry's quit and grace, the
 policy's wait delay — the analysis engines' own commands through the
 same runner installed on every engine, and the observation facade's
@@ -219,19 +225,23 @@ operation that owns it),
 `go test` (execution through the owned boundary), and the analysis
 engines' own `go version` and `go env` samples (descendant-free
 queries, under the boundary through the engines' runner); every one
-runs under the owned environment. This binary's
-own child, the self-executed resolver child, is no Go child: it is
+runs under the owned environment.
+
+**REQ-go-owned-processes-resolver-child** (behavior): This binary's
+own child, the self-executed resolver child, is no Go child: it MUST be
 spawned by the consumer-command form of Gofresh's go-command runner,
 under a containment of its own — its own process group swept outright
 with its operation (no quit arm: the child's operation is never an
 envelope), the reap bounded by the policy's wait delay — and under the
 parent's own environment normalized under the policy (a malformed
 entry refuses the spawn); on Windows the tree-kill helper is the
-boundary's mechanism. The
+boundary's mechanism.
+
+**REQ-go-owned-processes-child-identity** (behavior): The
 resolver child's handshake line — ready or the tree's load error alike —
 carries the child's executable identity (the size and modification time
 of the file it runs as and, where the platform exposes one, its inode,
-sampled when its process starts), and the parent refuses, before reading
+sampled when its process starts), and the parent MUST refuse, before reading
 anything else the child says, a child whose identity is not the file the
 parent chose to spawn: its own image as sampled at its own start on the
 self-executed path, so a binary replaced under a running server is a

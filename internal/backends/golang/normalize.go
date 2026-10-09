@@ -175,7 +175,7 @@ type NormalizedInvocation struct {
 // override it, and unsupported ambient controls (the overlay class, an
 // external package driver) are refused. The one toolchain query it makes
 // runs inside the same owned, cancellable process boundary as every other
-// child of policy work (REQ-go-owned-processes).
+// child of policy work (REQ-go-owned-processes-runner).
 func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.PolicyInvocation) (*NormalizedInvocation, error) {
 	cfg := inv.GetGo()
 	if cfg == nil {
@@ -555,7 +555,7 @@ func validateBracketPath(p string) error {
 // effectiveGoEnv takes the toolchain's one environment snapshot
 // (gotool.TakeEnvSnapshot under the owned runner: the normalization's
 // sample runs through the owned command boundary,
-// REQ-go-owned-processes) — every pin-at-load value is read from it
+// REQ-go-owned-processes-runner) — every pin-at-load value is read from it
 // through Value, an unset value the empty string as the go command
 // answers it — refusing a document no toolchain wrote.
 func effectiveGoEnv(ctx context.Context, dir string, env []string) (*gotool.EnvSnapshot, error) {

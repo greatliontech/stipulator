@@ -12,9 +12,9 @@ import (
 
 // Two reads of one file agree; a rename-replace (a new inode) and an
 // in-place rewrite (the same inode, a new size or modification time)
-// each yield a different identity (REQ-go-owned-processes).
+// each yield a different identity (REQ-go-owned-processes-child-identity).
 func TestFileIdentityMovesWithTheFile(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-child-identity")
 	dir := t.TempDir()
 	path := filepath.Join(dir, "bin")
 	if err := os.WriteFile(path, []byte("build one"), 0o755); err != nil {
@@ -69,9 +69,9 @@ func TestFileIdentityMovesWithTheFile(t *testing.T) {
 // The self-executed path meets the image this process started as: a
 // parent whose image moved refuses its own re-executed binary — the
 // live child answers the file it runs as, the parent expects what it
-// sampled at start (REQ-go-owned-processes).
+// sampled at start (REQ-go-owned-processes-child-identity).
 func TestSelfExecutedChildIsRefusedWhenTheParentsImageMoved(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-child-identity")
 	dir, err := filepath.Abs(filepath.Join("testdata", "fixturemod"))
 	if err != nil {
 		t.Fatal(err)
@@ -108,9 +108,9 @@ func TestSelfExecutedChildIsRefusedWhenTheParentsImageMoved(t *testing.T) {
 // A self-executed child of the same build whose tree fails to load
 // reports that load error as this tree's — the identities agree, so
 // the error line is trusted — never a skew refusal
-// (REQ-go-owned-processes).
+// (REQ-go-owned-processes-child-identity).
 func TestSelfExecutedChildsLoadErrorIsItsOwn(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-child-identity")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	missing := filepath.Join(t.TempDir(), "missing")

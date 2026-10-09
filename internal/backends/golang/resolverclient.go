@@ -22,7 +22,7 @@ import (
 // consumer-command form of the one go-command policy (childRunner,
 // runner.go), so the package launcher and its
 // entire descendant tree — every go list, compile, and VCS subprocess —
-// terminates with the operation's cancellation (REQ-go-owned-processes).
+// terminates with the operation's cancellation (REQ-go-owned-processes-resolver-child).
 // The in-process implementation stays: the child runs newContext; the
 // parent speaks the JSON-lines resolver protocol over the child's stdio.
 //

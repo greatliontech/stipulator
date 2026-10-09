@@ -30,7 +30,7 @@ var commandHook func(name string, args []string)
 const quitGrace = 10 * time.Second
 
 // ownedBoundary is the owned process boundary as gofresh's containment
-// (REQ-go-owned-processes): the child in its own process group, swept
+// (REQ-go-owned-processes-runner): the child in its own process group, swept
 // whole by the operation's cancellation, asked to quit first with the
 // quit grace when the cancellation is the policy envelope's expiry (a
 // test binary writes its goroutine dump on SIGQUIT), the reap bounded
@@ -52,7 +52,7 @@ var ownedRunner = gotool.Runner{Containment: ownedBoundary, Prepare: observeComm
 
 // childRunner spawns the resolver child — this binary re-executed on
 // its resolver route — as the consumer-command form of the one
-// go-command policy (gotool.Runner.Program, REQ-go-owned-processes):
+// go-command policy (gotool.Runner.Program, REQ-go-owned-processes-resolver-child):
 // its own process group, killed outright when its operation ends (the
 // child's context is the operation's, never a package envelope's, so
 // the envelope-expiry quit has no arm here — an ended operation

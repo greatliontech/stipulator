@@ -555,9 +555,9 @@ func TestDriverAttributionNamesOnlyARealDriver(t *testing.T) {
 // workspace query's environment to gofresh's policy at its source: an
 // inherited entry gofresh's normalization refuses is refused here,
 // naming the entry, before the go.work query spawns under it
-// (REQ-go-owned-processes).
+// (REQ-go-owned-processes-runner).
 func TestWorkspaceQueryRefusesAMalformedAmbientEnvironment(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-runner")
 	neutralAmbient(t)
 	swapAmbientEnviron(t, func() []string { return append(os.Environ(), "NOEQUALS") })
 	_, err := goworkEnv(t.TempDir())

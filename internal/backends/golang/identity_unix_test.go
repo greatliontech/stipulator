@@ -23,9 +23,9 @@ func shIdentity(t *testing.T) string {
 // A child that is not the file the client chose to spawn — a binary
 // replaced on disk under a running parent — is refused at the
 // handshake, the fault naming both identities; nothing is decoded from
-// a build this one never wrote (REQ-go-owned-processes).
+// a build this one never wrote (REQ-go-owned-processes-child-identity).
 func TestResolverClientRefusesAChildOfAnotherBuild(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-owned-processes")
+	stipulate.Covers(t, "REQ-go-owned-processes-child-identity")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	// The seam's identity is the spawned file's (sh); the child answers

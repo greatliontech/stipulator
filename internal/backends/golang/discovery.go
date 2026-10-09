@@ -24,7 +24,7 @@ import (
 )
 
 // ObligationKind classifies one suite obligation the Go backend defines
-// for a complete suite (REQ-go-policy-complete): the package itself (its
+// for a complete suite (REQ-go-policy-complete-obligation-identity): the package itself (its
 // build, init, TestMain, and exit behavior), a named test, an executable
 // example, a fuzz target's seed replay, and each committed seed file.
 type ObligationKind string
@@ -71,7 +71,7 @@ func (o Obligation) ID() string {
 // selection, with the named tests, executable examples, fuzz targets, and
 // committed seeds of each — external test packages folded to their subject
 // package. The package listing runs inside an owned, cancellable process
-// boundary (REQ-go-owned-processes); enumeration parses the listed test
+// boundary (REQ-go-owned-processes-runner); enumeration parses the listed test
 // sources in-process, spawning nothing. A package that fails to list still
 // yields its package obligation: its build failure is part of the suite,
 // and execution — not discovery — is where it surfaces. Discovery's one
@@ -258,7 +258,7 @@ func listPackages(ctx context.Context, n *NormalizedInvocation) ([]listedPackage
 	// has no wholeness test, a truncation at an object boundary reads
 	// as a shorter set), so one error arm covers both; a cancellation
 	// is the caller's own before any reading of the answer
-	// (REQ-go-owned-processes). The error names `go list <args>` itself.
+	// (REQ-go-owned-processes-runner). The error names `go list <args>` itself.
 	out, runErr := ownedRunner.List(ctx, n.Dir, n.Env, args...)
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
@@ -346,7 +346,7 @@ func listClosureDirs(ctx context.Context, n *NormalizedInvocation, selected []li
 		return
 	}
 	args := listArgs(n, "-e", "-deps", "-test", "-json=ImportPath,Dir,ForTest,Deps")
-	// Gofresh's listing form (REQ-go-owned-processes): a nonzero exit
+	// Gofresh's listing form (REQ-go-owned-processes-runner): a nonzero exit
 	// answers nothing — with -e, in-band package breakage still exits
 	// zero, so a nonzero exit is an infrastructure failure, and a
 	// truncated closure would seal a silently weaker bracket — and an

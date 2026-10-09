@@ -174,7 +174,6 @@ func TestResolverClientChildCrashErrors(t *testing.T) {
 // and the inline scripts are source.
 //
 //gofresh:pure
-//gofresh:pure
 func TestResolverClientProtocolErrorSurfaces(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-owned-processes")
 	ctx, cancel := context.WithCancel(context.Background())
