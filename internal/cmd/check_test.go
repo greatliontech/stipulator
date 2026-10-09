@@ -92,7 +92,7 @@ func TestCheckRenderNamesDegradedDistinctly(t *testing.T) {
 // dimmed scope-blocked notes, never as violations. Without the partial
 // flag the row marker changes nothing.
 func TestCheckRenderScopedPartialVerdictAndScopeBlockedRows(t *testing.T) {
-	stipulate.Covers(t, "REQ-check-verdict")
+	stipulate.Covers(t, "REQ-check-verdict-scoped", "REQ-check-verdict-class-named")
 	blocked := &stipulatorv1.RequirementCoverage{}
 	blocked.SetId("REQ-blocked")
 	blocked.SetBucket(stipulatorv1.Bucket_BUCKET_BROKEN)

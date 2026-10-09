@@ -358,7 +358,7 @@ func TestCheckSummaryCountsContradictedGapsApart(t *testing.T) {
 //
 //gofresh:pure
 func TestCheckSummaryMirrorsScopeAndFoldsScopeBlockedRows(t *testing.T) {
-	stipulate.Covers(t, "REQ-check-verdict", "REQ-report-check-result")
+	stipulate.Covers(t, "REQ-check-verdict-scoped", "REQ-report-check-result")
 	blocked := &stipulatorv1.RequirementCoverage{}
 	blocked.SetId("REQ-blocked")
 	blocked.SetBucket(stipulatorv1.Bucket_BUCKET_BROKEN)

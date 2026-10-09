@@ -20,9 +20,10 @@ func writeFileUnder(dir, path, content string) error {
 
 // A default check on a warm tree serves proven-fresh witnesses instead of
 // executing, claims no suite health, and still renders a full verdict —
-// the witness-evidence class of REQ-check-verdict.
+// the witness-evidence class of REQ-check-verdict, named as such in the
+// result (REQ-check-verdict-class-named).
 func TestCheckServesFreshWitnessesByDefault(t *testing.T) {
-	stipulate.Covers(t, "REQ-check-verdict")
+	stipulate.Covers(t, "REQ-check-verdict", "REQ-check-verdict-class-named")
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
@@ -160,9 +161,9 @@ func TestCheckDefaultRedWitnessFailsWithDiagnostics(t *testing.T) {
 // verdict is flagged partial and never fails on the scope boundary
 // alone, prune residue a global pass would derive is not derived, and
 // misuse refuses - unknown identifiers and composition with full
-// (REQ-check-verdict's scoped class).
+// (REQ-check-verdict-scoped).
 func TestCheckScopedIdsExecutesOnlyInScopeStale(t *testing.T) {
-	stipulate.Covers(t, "REQ-check-verdict")
+	stipulate.Covers(t, "REQ-check-verdict-scoped")
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
@@ -335,10 +336,10 @@ func TestCheckScopedIdsExecutesOnlyInScopeStale(t *testing.T) {
 // out-of-scope requirement's text fails it (a stale consent no gap
 // declares); a current gap excusing stale and uncovered restores the
 // partial pass without executing that witness; the default unscoped
-// check executes it and passes outright (REQ-check-verdict,
+// check executes it and passes outright (REQ-check-verdict-scoped,
 // REQ-gap-consent).
 func TestCheckScopedVerdictExcludesAnExcusedStaleConsentOnTheBoundary(t *testing.T) {
-	stipulate.Covers(t, "REQ-check-verdict", "REQ-gap-consent")
+	stipulate.Covers(t, "REQ-check-verdict-scoped", "REQ-gap-consent")
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}

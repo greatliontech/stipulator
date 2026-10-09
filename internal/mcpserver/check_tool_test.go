@@ -151,7 +151,7 @@ func TestCheckToolStructuredResultMirrorsCheckResult(t *testing.T) {
 // instead of inflating the violation figure. Without the partial flag
 // the row marker changes nothing.
 func TestCheckLineScopedPartialClassAndFold(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-response-contract", "REQ-check-verdict")
+	stipulate.Covers(t, "REQ-mcp-response-contract", "REQ-check-verdict-scoped", "REQ-check-verdict-class-named")
 	blocked := &stipulatorv1.RequirementCoverage{}
 	blocked.SetId("REQ-blocked")
 	blocked.SetBucket(stipulatorv1.Bucket_BUCKET_BROKEN)
@@ -253,7 +253,7 @@ func TestCheckLineNamesObservedRed(t *testing.T) {
 // count rides checkLine, matching the summary, CLI, and one-line
 // surfaces.
 func TestCheckToolScopedCallShape(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-views-check-scope", "REQ-check-verdict", "REQ-mcp-response-contract")
+	stipulate.Covers(t, "REQ-mcp-views-check-scope", "REQ-check-verdict-scoped", "REQ-mcp-response-contract")
 	inScope := &stipulatorv1.RequirementCoverage{}
 	inScope.SetId("REQ-a")
 	inScope.SetBucket(stipulatorv1.Bucket_BUCKET_COVERED)

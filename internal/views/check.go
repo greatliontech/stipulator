@@ -19,7 +19,7 @@ const redRowCap = 25
 // summary (default) or the full result message, either scoped to
 // requirement identifiers. The view itself never alters the verdict it
 // projects — a scoped check RUN carries its own flagged-partial verdict
-// (REQ-check-verdict), the gate's stays global under any view scope —
+// (REQ-check-verdict-scoped), the gate's stays global under any view scope —
 // a scoped slice with no in-scope violation says nothing about whether
 // the tree passes (REQ-mcp-views-global-verdict). An unknown view word is refused, so
 // a typo never reads as an empty result.

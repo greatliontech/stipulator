@@ -173,7 +173,7 @@ message, never a second derivation.
 
 **REQ-mcp-views-check-scope** (behavior): Check's identifier scope MUST narrow the
 pass itself, not only the view: it selects the scoped witness-evidence
-class (REQ-check-verdict), so the verdict a scoped check call reports is
+class (REQ-check-verdict-scoped), so the verdict a scoped check call reports is
 the flagged-partial scoped one — check's own exception to the
 global-verdict rule, which continues to govern the gate's views.
 

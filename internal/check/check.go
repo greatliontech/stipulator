@@ -48,8 +48,8 @@ import (
 // red requirement has no gap naming it, or prune residue remains. With
 // full set the accepted policy executes whole, health derives from that
 // same execution, and the verdict additionally fails when suite health
-// is unhealthy (REQ-check-verdict). A tree failing the check is a fact
-// in the result, never an error.
+// is unhealthy (REQ-check-verdict, REQ-check-verdict-full). A tree
+// failing the check is a fact in the result, never an error.
 //
 // A non-empty scopeIds selects the scoped witness-evidence class:
 // fresh records still serve for the whole tree, only stale subjects
@@ -237,7 +237,7 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	} else if _, _, err := policy.Load(dir, map[string]policy.Backend{"go": golang.Policy{}}); err != nil {
 		// The policy term still stands on the witness-free pass: the
 		// record's static faults decide without a toolchain query
-		// (REQ-check-verdict). What the pass forgoes is the capture —
+		// (REQ-check-verdict-moot). What the pass forgoes is the capture —
 		// the notices and the tree-resolved faults it would cost.
 		if !errors.Is(err, policy.ErrRecord) {
 			return nil, err

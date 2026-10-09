@@ -178,7 +178,7 @@ func TestCheckCompileFailureIsTheVerdict(t *testing.T) {
 }
 
 func TestCheckSuiteFailureFailsTheCheckWithDiagnostics(t *testing.T) {
-	stipulate.Covers(t, "REQ-check-verdict", "REQ-check-diagnostics")
+	stipulate.Covers(t, "REQ-check-verdict-full", "REQ-check-diagnostics")
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
@@ -265,9 +265,10 @@ func executed(marker string) bool {
 // a dangling binding fails the check as a verification problem, and
 // because the records alone decide it, no witness executes — the pass
 // takes its witness-free form before any child process
-// (REQ-check-preparation).
+// (REQ-check-preparation), and the policy record's static fault is
+// still judged on that form (REQ-check-verdict-moot).
 func TestCheckVerifyProblemFailsTheCheck(t *testing.T) {
-	stipulate.Covers(t, "REQ-check-verdict", "REQ-check-preparation")
+	stipulate.Covers(t, "REQ-check-verdict", "REQ-check-preparation", "REQ-check-verdict-moot")
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
@@ -730,7 +731,7 @@ func TestCheckReportsPhaseTransitions(t *testing.T) {
 }
 
 func TestCheckCancelledRunYieldsNoVerdict(t *testing.T) {
-	stipulate.Covers(t, "REQ-check-verdict", "REQ-policy-cancellation")
+	stipulate.Covers(t, "REQ-check-verdict-cancelled", "REQ-policy-cancellation")
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}

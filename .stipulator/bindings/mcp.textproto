@@ -1223,8 +1223,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-views-check-scope"
-  content_hash: "c37807efd15a7b698e5ab7939e1971dce325b454ea1da3616fc12a5e739db0fd"
-  source_hash: "aa6aa7a192677d5f879e002f7dcfe3fb5ce979a64bea84309a2d5da5515973b7"
+  content_hash: "84c8e3be7c9367efa2b4086524863e9feb2a68cde8fcc1117ebb430b10d8a036"
+  source_hash: "1a3587300b827c92a447629d031b64d495ca527bc9c24f6c583dc66813c0757c"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolForwardsIdsToThePass"
   role: BINDING_ROLE_TESTS
@@ -1233,8 +1233,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-views-check-scope"
-  content_hash: "c37807efd15a7b698e5ab7939e1971dce325b454ea1da3616fc12a5e739db0fd"
-  source_hash: "aa6aa7a192677d5f879e002f7dcfe3fb5ce979a64bea84309a2d5da5515973b7"
+  content_hash: "84c8e3be7c9367efa2b4086524863e9feb2a68cde8fcc1117ebb430b10d8a036"
+  source_hash: "1a3587300b827c92a447629d031b64d495ca527bc9c24f6c583dc66813c0757c"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolScopedCallShape"
   role: BINDING_ROLE_TESTS
@@ -1453,8 +1453,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-views-check-scope"
-  content_hash: "c37807efd15a7b698e5ab7939e1971dce325b454ea1da3616fc12a5e739db0fd"
-  source_hash: "aa6aa7a192677d5f879e002f7dcfe3fb5ce979a64bea84309a2d5da5515973b7"
+  content_hash: "84c8e3be7c9367efa2b4086524863e9feb2a68cde8fcc1117ebb430b10d8a036"
+  source_hash: "1a3587300b827c92a447629d031b64d495ca527bc9c24f6c583dc66813c0757c"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolViewsAndScopes"
   role: BINDING_ROLE_TESTS

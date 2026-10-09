@@ -1210,12 +1210,12 @@ func TestUngrantedWitnessNamesItsCauseNeverTheSelection(t *testing.T) {
 // scope-blocked exactly when a current gap excuses the stale class:
 // an uncovered-only gap, a gap whose own consent drifted, no gap at
 // all, or any other non-boundary red beside it — a failed witness, a
-// missing symbol — leaves the row unblocked (REQ-check-verdict,
+// missing symbol — leaves the row unblocked (REQ-check-verdict-scoped,
 // REQ-gap-consent).
 //
 //gofresh:pure
 func TestScopeBlockedSurvivesAnExcusedStaleConsent(t *testing.T) {
-	stipulate.Covers(t, "REQ-check-verdict", "REQ-gap-consent")
+	stipulate.Covers(t, "REQ-check-verdict-scoped", "REQ-gap-consent")
 	doc := "# S\n\n**REQ-s-excused** (behavior): It MUST a.\n\n**REQ-s-uncovered** (behavior): It MUST b.\n\n**REQ-s-drifted** (behavior): It MUST c.\n\n**REQ-s-bare** (behavior): It MUST d.\n\n**REQ-s-failed** (behavior): It MUST e.\n\n**REQ-s-missing** (behavior): It MUST f.\n\n**REQ-s-current** (behavior): It MUST g.\n\n**REQ-s-both** (behavior): It MUST h.\n\n**REQ-s-policy** (behavior): It MUST i.\n\n**REQ-s-twogaps** (behavior): It MUST j.\n\n**REQ-s-currentgap** (behavior): It MUST k.\n\n**REQ-s-bothexcused** (behavior): It MUST l.\n"
 	spec0, _ := fixture(t, doc, nil)
 	hashOf := map[string]string{}

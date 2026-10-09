@@ -15,6 +15,7 @@ import (
 	stipulator "github.com/greatliontech/stipulator"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/stipulate"
+	"github.com/greatliontech/stipulator/stipulate"
 )
 
 // faceWord matches a served string naming a face — the clause rule's
@@ -44,6 +45,7 @@ func guidanceText(t *testing.T, res *mcp.CallToolResult) string {
 //
 //gofresh:pure
 func TestGuidanceDocumentParses(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-guidance")
 	if _, err := stipulator.GuidanceDocument(); err != nil {
 		t.Fatal(err)
 	}

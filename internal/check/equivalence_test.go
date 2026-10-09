@@ -86,7 +86,7 @@ func reportTest(res *stipulatorv1.CheckResult, pkg, test string) *stipulatorv1.T
 // otherwise-passing tree and requires the unified verdict to fail with the
 // class attributed in the retained diagnostics.
 func TestCheckCatchesEverySuiteFailureClass(t *testing.T) {
-	stipulate.Covers(t, "REQ-check-verdict", "REQ-policy-conservation")
+	stipulate.Covers(t, "REQ-check-verdict-full", "REQ-policy-conservation")
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree per class")
 	}

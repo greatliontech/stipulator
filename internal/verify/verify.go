@@ -110,7 +110,7 @@ type TestRun struct {
 	OutsideSubjects map[string]bool
 	// ScopeSkipped marks, by "<import-path>.<TestName>", each stale
 	// subject a caller-named id scope left unexecuted: its bindings read
-	// scope-skipped, never broken (REQ-check-verdict's scoped class).
+	// scope-skipped, never broken (REQ-check-verdict-scoped).
 	ScopeSkipped map[string]bool
 	// NoOutcome names, by "<import-path>.<TestName>", the execution-layer
 	// cause for each expected subject the witness-eligible selection

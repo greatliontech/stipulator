@@ -237,7 +237,7 @@ func TestResourceIndexAndReads(t *testing.T) {
 
 //gofresh:pure
 func TestGateTool(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-tools", "REQ-mcp-views", "REQ-report-messages")
+	stipulate.Covers(t, "REQ-mcp-tools", "REQ-mcp-views", "REQ-mcp-response-contract", "REQ-report-messages")
 	// REQ-m-a witnessed; REQ-m-b red but gapped → gate passes.
 	sess, _ := harness(t, map[string]string{
 		".stipulator/bindings/m.textproto": pinnedBinding(t),
@@ -709,7 +709,7 @@ func TestDisposeToolRetire(t *testing.T) {
 //
 //gofresh:pure
 func TestPruneTool(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-tools", "REQ-gap-resolved-pruned")
+	stipulate.Covers(t, "REQ-mcp-tools", "REQ-mcp-response-contract", "REQ-gap-resolved-pruned")
 	gapPath := ".stipulator/gaps/m-a.textproto"
 	openGapPath := ".stipulator/gaps/m-b.textproto"
 	sess, writes := harness(t, map[string]string{

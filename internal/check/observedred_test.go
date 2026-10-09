@@ -178,9 +178,9 @@ func TestCheckDefaultReExecutesRandomSeededWitnesses(t *testing.T) {
 // it narrows the stale selection: an unbound test red in a package the
 // scope excludes is never executed, so the partial verdict cannot fail
 // on it, while the unscoped check over the same tree observes the red
-// and fails (REQ-check-verdict's scoped class and observed-red term).
+// and fails (REQ-check-verdict-scoped).
 func TestCheckScopedIdsLeaveOutOfScopeIneligibleLegsUnexecuted(t *testing.T) {
-	stipulate.Covers(t, "REQ-check-verdict")
+	stipulate.Covers(t, "REQ-check-verdict-scoped")
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}

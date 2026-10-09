@@ -71,7 +71,7 @@ func RunWitnessesPolicy(ctx context.Context, pc *Capture, seeding verify.Witness
 // for the whole tree, and only stale subjects inside the scope execute
 // - the remainder is recorded scope-skipped, never broken. The degraded
 // path expands to the scope's own full execution, never the tree's
-// (REQ-check-verdict's scoped class).
+// (REQ-check-verdict-scoped).
 func RunWitnessesScoped(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bool, seeding verify.WitnessSeeding) (*verify.TestRun, error) {
 	return runWitnesses(ctx, pc, scope, seeding)
 }
@@ -240,7 +240,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	// evidence. A caller-named scope narrows them exactly as it narrows
 	// every other every-run selection: an out-of-scope leg is left
 	// unexecuted, so a red it would have observed never reaches the
-	// scoped verdict (REQ-check-verdict's scoped class).
+	// scoped verdict (REQ-check-verdict-scoped).
 	multiIneligible := map[string]TestSelection{}
 	for _, ic := range d.invocations {
 		if ic.n.WitnessEligible() {

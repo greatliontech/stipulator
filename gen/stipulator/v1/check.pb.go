@@ -570,7 +570,7 @@ type CheckResult_builder struct {
 	// the execution-layer cause of an all-unwitnessed verdict, named once
 	// at result level instead of only per binding.
 	WitnessSelectionProblem *string
-	// The scoped witness-evidence class (REQ-check-verdict): true when the
+	// The scoped witness-evidence class (REQ-check-verdict-scoped): true when the
 	// caller named requirement identifiers, so only stale subjects bound to
 	// them executed and the verdict excludes scope-blocked rows - a partial
 	// answer, never mistaken for a global one.
@@ -1512,7 +1512,7 @@ type CheckSummary_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	Passed *bool
-	// The evidence class (REQ-check-verdict): true means the health-judged
+	// The evidence class (REQ-check-verdict-class-named): true means the health-judged
 	// whole-policy execution; false the witness-evidence serving form.
 	SuiteHealthJudged *bool
 	// Suite health under the health-judged form; meaningless when

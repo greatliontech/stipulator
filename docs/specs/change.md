@@ -439,16 +439,22 @@ REQ-check-diagnostics retains, whatever the failing test is bound to
 executed a policy selection and watched it fail cannot report the tree
 passing, and a witness the isolation pass re-granted solo does not
 launder the sibling red that forced the re-run) —
-REQ-gate-no-undeclared fails, or prune residue remains. A refusal an
-earlier term decides from held inputs cuts the pass short: the terms
+REQ-gate-no-undeclared fails, or prune residue remains.
+
+**REQ-check-verdict-moot** (behavior): A refusal an
+earlier term decides from held inputs MUST cut the pass short: the terms
 it makes moot — those needing the policy capture or a witness — are
 not evaluated; the terms it does not make moot — the record's static
 faults, decidable without a capture — still stand, and the verdict
-fails on whichever of the evaluated terms fail. A caller
+fails on whichever of the evaluated terms fail.
+
+**REQ-check-verdict-full** (behavior): A caller
 demanding suite judgment selects full execution: the policy executes
 whole, health derives from that same execution, and the verdict
-additionally fails when suite health is unhealthy. A caller naming
-requirement identifiers selects the scoped witness-evidence class
+MUST additionally fail when suite health is unhealthy.
+
+**REQ-check-verdict-scoped** (behavior): A caller naming
+requirement identifiers MUST select the scoped witness-evidence class
 instead: fresh records still serve for the whole tree, only stale
 subjects bound to the named requirements execute — the every-run
 selections (ambiguously covered subjects, the ineligible legs of
@@ -466,10 +472,13 @@ is not derived —
 resolved-gap evidence takes the serving class over the whole tree — and
 the result flags the verdict partial and echoes the scope; unknown
 identifiers refuse, and scoping composes with the default class only.
-The result names
+
+**REQ-check-verdict-class-named** (behavior): The result MUST name
 which evidence class produced it, so a witness-evidence verdict is never
 mistaken for a health-judged one, nor a scoped verdict for a global
-one. A cancelled check yields no verdict at
+one.
+
+**REQ-check-verdict-cancelled** (behavior): A cancelled check MUST yield no verdict at
 all — cancellation is an operational abort, never a pass or a fail.
 
 **REQ-check-witness-selection** (behavior): Witness evidence derives from

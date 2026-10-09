@@ -111,7 +111,7 @@ type Requirement struct {
 	// ScopeBlocked marks a row red solely because the caller's id scope
 	// left its stale bound witnesses unexecuted — a red of the stale
 	// class beside the boundary that a current gap excuses is declared
-	// and keeps the row blocked (REQ-check-verdict, REQ-gap-consent) —
+	// and keeps the row blocked (REQ-check-verdict-scoped, REQ-gap-consent) —
 	// excluded from a scoped check's verdict, never from the gate's.
 	ScopeBlocked bool
 }
@@ -527,7 +527,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 				} else if r.ScopeSkipped {
 					// The caller's id scope left this stale subject
 					// unexecuted: a scope boundary, never a tree defect
-					// (REQ-check-verdict's scoped class).
+					// (REQ-check-verdict-scoped).
 					e.scopeSkipped++
 					e.reasons = append(e.reasons, fmt.Sprintf("bound test %s not executed - outside the check's id scope", r.Symbol))
 				} else {
@@ -732,7 +732,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		// caller's id scope, the policy's witness selection — when that
 		// boundary is its only undeclared red; a red of the stale class
 		// beside it that a current gap excuses is declared, never
-		// undeclared (REQ-check-verdict, REQ-check-witness-selection,
+		// undeclared (REQ-check-verdict-scoped, REQ-check-witness-selection,
 		// REQ-gap-consent).
 		// The excuse set alone populates declaredStale: only a current
 		// gap record fills it, and a drifted record's suspension already
