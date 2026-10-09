@@ -104,9 +104,9 @@ type witnessGroup struct {
 	served []gofresh.Subject
 	stale  map[string][]string
 	// refreshed marks served subjects that rode the inert-growth carve-out
-	// (REQ-evidence-witness-freshness): their record in `recorded` carries
-	// the fingerprint refreshed to the current compartment plus the current
-	// ledger, and installs after post-run revalidation keeps them.
+	// (REQ-evidence-witness-freshness-carve-out): their record in `recorded`
+	// carries the fingerprint refreshed to the current compartment plus the
+	// current ledger, and installs after post-run revalidation keeps them.
 	refreshed map[gofresh.Subject]bool
 	// fps are the pre-execution captures for stale subjects: fingerprints
 	// must pin the tree that compiles the binaries, so capturing after
@@ -157,7 +157,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 		return nil, err
 	}
 	// Random-seeded witnesses are resolved before any serving decision:
-	// they execute every run (REQ-evidence-witness-freshness). A
+	// they execute every run (REQ-evidence-witness-freshness-seeded). A
 	// classification fault degrades serving whole — every in-policy
 	// subject executes and nothing publishes — the fail-closed
 	// direction, exactly as an engine fault degrades
@@ -675,7 +675,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	// Per-test attribution for the uncacheable set: the ladder's own
 	// refusal reasons, the degraded path,
 	// and a structural fallback for anything a drop path missed
-	// (REQ-evidence-witness-freshness's diagnosable-set requirement).
+	// (REQ-evidence-witness-freshness-diagnosable's attributable reason).
 	if tr.Uncached > 0 || len(uncacheableWhy) > 0 {
 		tr.UncacheableReasons = map[string]string{}
 		for s, why := range uncacheableWhy {
@@ -944,15 +944,15 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 					if rec, fp, ok := compartmentGrownRefresh(ctx, dir, view, groupCached[s.Package+"."+s.Symbol][round], verdicts[s], s); ok {
 						// Exactly stale "test variants" with an inert
 						// recorded-to-current ledger delta: the movement is
-						// additions no unchanged declaration can observe, so the
-						// record still proves equivalence
-						// (REQ-evidence-witness-freshness's inert-growth
-						// carve-out). The refreshed fingerprints re-check as ONE
-						// batch below — per-record checking multiplied full
-						// check windows by the carve-out count — and an accepted
-						// record rides refreshed to the current compartment, so
-						// the post-run revalidation and every later run read it
-						// plainly valid.
+						// additions no unchanged declaration can observe, so
+						// the record still proves equivalence
+						// (REQ-evidence-witness-freshness-carve-out's
+						// inert-growth carve-out). The refreshed fingerprints
+						// re-check as ONE batch below — per-record checking
+						// multiplied full check windows by the carve-out count
+						// — and an accepted record rides refreshed to the
+						// current compartment, so the post-run revalidation and
+						// every later run read it plainly valid.
 						grown[s] = rec
 						refreshed[s] = fp
 						continue
@@ -1036,7 +1036,7 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 // rounds: its prior record, if one exists, is exactly the evidence the
 // contract refuses to serve, so it executes, and when a record existed
 // the refusal is attributed as its re-execution reason
-// (REQ-evidence-witness-freshness).
+// (REQ-evidence-witness-freshness-seeded).
 func servingCandidates(groupID string, subjects []gofresh.Subject, neverServes map[gofresh.Subject]uncacheable, cached map[string][]witnesscache.Record, executedWhy map[gofresh.Subject]string) ([]gofresh.Subject, map[string][]witnesscache.Record) {
 	groupCached := map[string][]witnesscache.Record{}
 	var serving []gofresh.Subject
@@ -1054,7 +1054,7 @@ func servingCandidates(groupID string, subjects []gofresh.Subject, neverServes m
 	return serving, groupCached
 }
 
-// compartmentGrownRefresh applies REQ-evidence-witness-freshness's
+// compartmentGrownRefresh applies REQ-evidence-witness-freshness-carve-out's
 // inert-growth carve-out to one refused variant, up to the re-check. The
 // recorded ledger is read from the ledger store under the record's
 // compartment digest when the record does not already carry it. A
@@ -1380,7 +1380,7 @@ func revalidateServed(ctx context.Context, wg *witnessGroup, pkg string) ([]gofr
 // drift of the record's inputs, dropped so the next run re-derives it.
 // The error return is reserved for caller cancellation. The second
 // return names, per unpublished subject, the leg that refused
-// (REQ-evidence-witness-freshness's diagnosable-set requirement).
+// (REQ-evidence-witness-freshness-diagnosable's diagnosable-set requirement).
 func publishExecuted(ctx context.Context, wg *witnessGroup, pkg string, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]uncacheable, bool, error) {
 	order := make([]gofresh.Subject, 0, len(wg.stale[pkg]))
 	for _, name := range wg.stale[pkg] {
@@ -1552,7 +1552,7 @@ func consumeMergeFailuresOnly(tr *verify.TestRun, m *execMerge, ranTop map[strin
 // regardless — red is a fact whatever produced it — while a pass grants
 // an outcome only from a process whose own disposition is healthy, so a
 // completed pass inside a red process reads unwitnessed unless its
-// isolation re-run granted it solo (REQ-evidence-witness-freshness's
+// isolation re-run granted it solo (REQ-evidence-witness-freshness-isolation's
 // isolation sentence). When one test name carries several results the
 // worst outcome wins, so a single red occurrence is never papered over
 // by a green sibling.

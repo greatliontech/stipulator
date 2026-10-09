@@ -194,7 +194,7 @@ func FuzzGoExecuteTestlogIngestion(f *testing.F) {
 	f.Add([]byte(""), true)
 
 	f.Fuzz(func(t *testing.T, log []byte, mutate bool) {
-		stipulate.Covers(t, "REQ-policy-attribution", "REQ-evidence-witness-freshness")
+		stipulate.Covers(t, "REQ-policy-attribution", "REQ-evidence-witness-freshness-bracket")
 		dir := t.TempDir()
 		pkgDir := filepath.Join(dir, "p")
 		if err := os.MkdirAll(pkgDir, 0o755); err != nil {

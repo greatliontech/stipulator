@@ -100,7 +100,7 @@ type CompartmentFileHeader struct {
 // declaration ledger: recorded at publish from the same view snapshot the
 // fingerprint's compartment hash pinned, and diffed at serve time against
 // the current view's ledger so the inert-growth carve-out can classify how
-// the compartment moved (REQ-evidence-witness-freshness).
+// the compartment moved (REQ-evidence-witness-freshness-carve-out).
 type CompartmentLedger struct {
 	Declarations []CompartmentDeclaration `json:"declarations,omitempty"`
 	FileHeaders  []CompartmentFileHeader  `json:"fileHeaders,omitempty"`

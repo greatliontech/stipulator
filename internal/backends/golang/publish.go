@@ -22,15 +22,15 @@ type pubSubject struct {
 	solo     bool
 }
 
-// publishEligible is the one publication ladder for every path that
-// produces witness records - full execution, selective serving, and the
-// drift retry: the proof leg (attach + observed-view close), final
-// fingerprint assembly, the post-run producer check, the view's ONE
-// closing validation (gating served outcomes and publication alike),
-// and record assembly. Eligibility stays with the caller - it is the
-// only stage whose unit of judgment differs per path
-// (REQ-evidence-witness-freshness names one publication concept and one
-// post-run revalidation; the ladder is that concept's one mechanism).
+// publishEligible is the one publication ladder for every path that produces
+// witness records - full execution, selective serving, and the drift retry:
+// the proof leg (attach + observed-view close), final fingerprint assembly,
+// the post-run producer check, the view's ONE closing validation (gating
+// served outcomes and publication alike), and record assembly. Eligibility
+// stays with the caller - it is the only stage whose unit of judgment differs
+// per path (REQ-evidence-witness-freshness-revalidation names one publication
+// concept and one post-run revalidation; the ladder is that concept's one
+// mechanism).
 //
 // On a post-run check fault or a closing refusal the ladder fills
 // per-subject reasons (the spec's diagnosable set) and additionally

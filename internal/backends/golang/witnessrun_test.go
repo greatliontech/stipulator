@@ -317,7 +317,7 @@ func TestGoRunWitnessesServeExecuteOutsideDisjoint(t *testing.T) {
 }
 
 // TestGoRunWitnessesServeUnderInertSiblingAddition pins
-// REQ-evidence-witness-freshness's inert-growth carve-out end to end:
+// REQ-evidence-witness-freshness-carve-out's inert-growth carve-out end to end:
 // adding a sibling test beside a cached witness moves only the package's
 // test-variant compartment, so the cached witness serves — the movement is
 // an addition no unchanged declaration can observe — while the added test
@@ -327,7 +327,7 @@ func TestGoRunWitnessesServeExecuteOutsideDisjoint(t *testing.T) {
 // carve-out and re-executes the package.
 func TestGoRunWitnessesServeUnderInertSiblingAddition(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-carve-out")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -422,11 +422,11 @@ func TestMore(t *testing.T) {
 // comparison before the runtime tier, so a moved runtime input hides
 // behind the stale "test variants" reason, and the carve-out's batched
 // re-check of the refreshed fingerprint is what catches the mover
-// (REQ-evidence-witness-freshness — the carve-out completes the proof
+// (REQ-evidence-witness-freshness-carve-out — the carve-out completes the proof
 // itself, never widens it).
 func TestGoRunWitnessesRerunsWhenMoverHidesBehindInertCompartmentGrowth(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-carve-out")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -516,15 +516,15 @@ func TestMore(t *testing.T) {}
 	}
 }
 
-// A source mover landing during execution is invisible to the deferred
-// checks — they compare same-generation facts and their closing base
-// observation rides validation — so the group's closing validation is
-// the one gate that catches it: every served outcome of the group is
-// discarded with the validation's reason and re-derived by the run's
-// single retry (REQ-evidence-witness-freshness's post-run revalidation).
+// A source mover landing during execution is invisible to the deferred checks
+// — they compare same-generation facts and their closing base observation
+// rides validation — so the group's closing validation is the one gate that
+// catches it: every served outcome of the group is discarded with the
+// validation's reason and re-derived by the run's single retry
+// (REQ-evidence-witness-freshness-revalidation's post-run revalidation).
 func TestGoRunWitnessesSourceMoverDiscardsServedGroup(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-revalidation")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -638,7 +638,7 @@ func TestWriter(t *testing.T) {
 // still binds file identity and detects movement under that override.
 func TestGoRunWitnessesBindReadsUnderDirectoryBracketRoot(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-bracket")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -729,14 +729,14 @@ func TestReadsCorpus(t *testing.T) {
 }
 
 // TestCompartmentGrownServeGates pins the carve-out's gate directly
-// (REQ-evidence-witness-freshness): only the exact stale "test variants"
-// verdict with a persisted, inert-diffing compartment ledger serves — any
-// other stale reason, a missing ledger, or a non-inert delta refuses — and
-// a serve refreshes only the compartment pin, never the closure the
+// (REQ-evidence-witness-freshness-carve-out): only the exact stale "test
+// variants" verdict with a persisted, inert-diffing compartment ledger serves
+// — any other stale reason, a missing ledger, or a non-inert delta refuses —
+// and a serve refreshes only the compartment pin, never the closure the
 // verdict certified.
 func TestCompartmentGrownServeGates(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-carve-out")
 	if testing.Short() {
 		t.Skip("builds a gofresh view over a temporary module")
 	}
@@ -851,7 +851,7 @@ func TestCompartmentGrownServeGates(t *testing.T) {
 // denying failures stand, and only subjects a healthy process granted
 // publish records.
 func TestGoRunWitnessesIsolatesDeniedOutcomes(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-policy-attribution")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-isolation", "REQ-policy-attribution")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -959,7 +959,7 @@ func TestStateRed(t *testing.T) { t.Fail() }
 // same run, so the run's evidence never reports a serve the current tree
 // disproves.
 func TestGoRunWitnessesServedDriftRetriesOnce(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-revalidation")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -1089,7 +1089,7 @@ func TestWritesOnce(t *testing.T) {
 // nothing is ever served for the subject: it re-executes every run until
 // the test stops moving its own inputs or its author asserts purity.
 func TestGoRunWitnessesSelfMutatingInputStaysUncacheable(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-bracket")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -1255,7 +1255,7 @@ func TestFine(t *testing.T) {}
 // process in the same many-test package publishes with an attached
 // observation-completeness proof while the sibling serves.
 func TestGoRunWitnessesSoloSelectiveProcessPublishesProof(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-purity")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -1373,7 +1373,7 @@ func TestSecond(t *testing.T) { _ = edition }
 // process yields no green evidence and expiry denies the solo re-run
 // before it spawns — so the pass neither witnesses nor publishes.
 func TestGoRunWitnessesDeniesEnvelopeCutoffPasses(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-policy-attribution")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-isolation", "REQ-policy-attribution")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -1799,7 +1799,7 @@ func TestGoRunWitnessesServesAcrossTreeAlternation(t *testing.T) {
 // publishes a cacheable record — the read is pinned by the toolchain
 // guard, not sealed unverifiable — and serves on the next run.
 func TestGoRunWitnessesToolchainReadStaysCacheable(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-exemptions")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -1884,7 +1884,7 @@ func TestReadsToolchain(t *testing.T) {
 // root itself is admitted as ephemeral identity — neither seals the
 // record nor enters the manifest, and the witness serves next run.
 func TestGoRunWitnessesBuildCacheAndTempReadsStayCacheable(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-exemptions")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -1986,7 +1986,7 @@ func TestReadsBuildCacheAndTempRoot(t *testing.T) {
 // (A purity-asserted subject would publish under the author's opt-in,
 // REQ-purity-override — these fixtures are deliberately unasserted.)
 func TestGoRunWitnessesExemptionBoundariesStayObserved(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-exemptions")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -2090,7 +2090,7 @@ func TestReadsBeneathTempRoot(t *testing.T) {
 // seal for a read outside the package's bracket root — keyed per test,
 // so an unwarmable cache explains itself.
 func TestGoRunWitnessesNamesUncacheableReasons(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-diagnosable")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -2143,7 +2143,7 @@ func TestReadsOutsideBracket(t *testing.T) {
 // attributed even when every executed test published — the uncacheable
 // count and the attribution map answer different questions.
 func TestGoRunWitnessesAttributesDeniedAtZeroUncached(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-diagnosable")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -2181,7 +2181,7 @@ func TestGoRunWitnessesAttributesDeniedAtZeroUncached(t *testing.T) {
 // carries why serving refused it — for runtime-input drift, gofresh's
 // mover attribution names the file.
 func TestGoRunWitnessesNamesReExecutionReason(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-diagnosable")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -2225,7 +2225,7 @@ func TestGoRunWitnessesNamesReExecutionReason(t *testing.T) {
 // identity and detects its movement. A bracket alone cannot establish file
 // outcomes, and without either declaration the read seals out-of-bracket.
 func TestGoRunWitnessesBracketPathBindsExternalFile(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-bracket")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -2328,7 +2328,7 @@ func TestReadsPinnedExternal(*testing.T) {
 // under the caller-assertion attribution and serves
 // (REQ-purity-responsibility via the policy's assume_pure).
 func TestGoRunWitnessesAssumePureRecoversOpenWorldSubjects(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-purity")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -2458,13 +2458,14 @@ func TestOther(t *testing.T) {}
 	}
 }
 
-// A package two producer environments select holds one record per
-// capture group: each group publishes and serves its own leg under its
-// own record identity, warm runs serve both legs, and a source edit
-// re-executes both — the record identity carries the group coordinate
-// (REQ-evidence-witness-freshness, REQ-evidence-witness-cache-format).
+// A package two producer environments select holds one record per capture
+// group: each group publishes and serves its own leg under its own record
+// identity, warm runs serve both legs, and a source edit re-executes both —
+// the record identity carries the group coordinate
+// (REQ-evidence-witness-freshness-capture-groups,
+// REQ-evidence-witness-cache-format).
 func TestGoRunWitnessesPerGroupRecordsServeSharedPackage(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-evidence-witness-cache-format")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-capture-groups", "REQ-evidence-witness-cache-format")
 	if testing.Short() {
 		t.Skip("executes race-instrumented selective runs over a temporary module")
 	}
@@ -2557,14 +2558,14 @@ func TestShared(t *testing.T) {
 	}
 }
 
-// A served pass never overrides another leg's executed failure: the
-// worst outcome wins across a subject's group legs exactly as it wins
-// across executed results (REQ-evidence-witness-freshness's evidence
-// merge; REQ-check-verdict's alignment). The host leg fails every run
-// (a failing outcome never caches), the tagged leg passes and serves
-// warm — the merged outcome must stay FAILED.
+// A served pass never overrides another leg's executed failure: the worst
+// outcome wins across a subject's group legs exactly as it wins across
+// executed results (REQ-evidence-witness-freshness-capture-groups's evidence
+// merge; REQ-check-verdict's alignment). The host leg fails every run (a
+// failing outcome never caches), the tagged leg passes and serves warm — the
+// merged outcome must stay FAILED.
 func TestGoRunWitnessesServedPassNeverOverridesExecutedFailure(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-capture-groups")
 	if testing.Short() {
 		t.Skip("executes race-instrumented selective runs over a temporary module")
 	}
@@ -2706,7 +2707,7 @@ func TestAlwaysRed(t *testing.T) {
 // policy lists first. The reader's invocation carries a marker its test
 // demands, and the writer's invocation, listed first, does not.
 func TestGoRunWitnessesServedDriftRetriesUnderItsOwnInvocation(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-revalidation")
 	if testing.Short() {
 		t.Skip("executes race-instrumented selective runs over a temporary module")
 	}

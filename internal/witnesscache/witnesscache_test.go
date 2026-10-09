@@ -60,18 +60,21 @@ func generatedObservationFingerprint(t *testing.T) gofresh.Fingerprint {
 }
 
 // TestLoadUnreadableIsEmpty pins the unreadable-record leg of
-// REQ-evidence-witness-freshness and the per-record refusal of
-// REQ-evidence-witness-cache-format-validation: a corrupt, version-mismatched,
-// misnamed, or structurally invalid variant file is that record alone
-// absent, so its test runs — a broken record costs work, never
-// correctness.
+// REQ-evidence-witness-freshness-carve-out — the fail-closed converse of
+// REQ-evidence-witness-freshness's "exactly when", registered on both
+// while the sentence sits in the carve-out — the per-record refusal of
+// REQ-evidence-witness-cache-format-validation and the proof and
+// outcomes shapes of REQ-evidence-witness-cache-format-proof-and-outcomes:
+// a corrupt, version-mismatched, misnamed, or structurally invalid
+// variant file is that record alone absent, so its test runs — a broken
+// record costs work, never correctness.
 //
 //gofresh:pure
 func TestLoadUnreadableIsEmpty(t *testing.T) {
 	if testing.Short() {
 		t.Skip("measured heavy under the fast tier (in-process)")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-evidence-witness-cache-format-validation", "REQ-evidence-witness-cache-format-proof-and-outcomes")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-carve-out", "REQ-evidence-witness-cache-format-validation", "REQ-evidence-witness-cache-format-proof-and-outcomes", "REQ-evidence-witness-freshness")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
 	store, err := StoreDir(dir)
@@ -292,16 +295,16 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 }
 
 // TestLedgerStoreRefusesPerFile pins the ledger store
-// (REQ-evidence-witness-cache-format-ledger, REQ-evidence-witness-freshness's
-// carve-out base): one file per compartment digest, written once, read
-// back for the record's own test only — a malformed file, another
-// version, a name-content disagreement, a ledger omitting the record's
-// declaration, or an absent file is no ledger, which costs the carve-out
-// alone.
+// (REQ-evidence-witness-cache-format-ledger,
+// REQ-evidence-witness-freshness-carve-out's carve-out base): one file per
+// compartment digest, written once, read back for the record's own test only —
+// a malformed file, another version, a name-content disagreement, a ledger
+// omitting the record's declaration, or an absent file is no ledger, which
+// costs the carve-out alone.
 //
 //gofresh:pure
 func TestLedgerStoreRefusesPerFile(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-cache-format-ledger", "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-cache-format-ledger", "REQ-evidence-witness-freshness-carve-out")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
 	store, err := StoreDir(dir)

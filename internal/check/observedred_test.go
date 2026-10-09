@@ -116,9 +116,9 @@ func TestCheckDefaultObservedUnboundFailureFailsTheCheck(t *testing.T) {
 // check serves the deterministic witness and re-executes the
 // rapid-driven one, attributing the refusal as uncacheable, and the
 // verdict stands on the re-execution's outcome
-// (REQ-evidence-witness-freshness, REQ-check-verdict).
+// (REQ-evidence-witness-freshness-seeded, REQ-check-verdict).
 func TestCheckDefaultReExecutesRandomSeededWitnesses(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-check-verdict")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-seeded", "REQ-check-verdict")
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}

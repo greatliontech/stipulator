@@ -616,7 +616,7 @@ func selectionBuildFlags(race bool, tags []string) []string {
 // absolute for a witness running in its module root) — one
 // construction the engine and the witness command share, so the
 // analysis describes the binary the tests actually run as
-// (REQ-evidence-witness-freshness).
+// (REQ-evidence-witness-freshness-inputs).
 func buildFlags(race bool, tags []string, mode stipulatorv1.GoModuleMode, pgoValue string) []string {
 	flags := selectionBuildFlags(race, tags)
 	if flag := moduleModeFlag(mode); flag != "" {

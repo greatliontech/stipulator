@@ -335,7 +335,7 @@ func TestCheckRenderServingFormNamesDiagnosticsDistinctly(t *testing.T) {
 // frequency view, most common first — the diagnosis instrument for a
 // cache that will not warm, never a per-test flood.
 func TestCheckRenderUncacheableHistogram(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-diagnosable")
 	res := &stipulatorv1.CheckResult{}
 	res.SetTestsServed(1)
 	res.SetTestsExecuted(3)

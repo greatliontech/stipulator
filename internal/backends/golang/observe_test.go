@@ -391,7 +391,7 @@ func TestGoExecuteSelfMutatedInputSealsUnverifiable(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads the tree")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-policy-attribution")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-bracket", "REQ-policy-attribution")
 	neutralAmbient(t)
 	tmp := selfMutatingModule(t)
 	inv := &stipulatorv1.PolicyInvocation{}
@@ -455,7 +455,7 @@ func TestGoExecuteModuleRootPackageBracket(t *testing.T) {
 	if testing.Short() {
 		t.Skip("runs go test over a fixture module")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-policy-attribution")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-bracket", "REQ-policy-attribution")
 	neutralAmbient(t)
 	execRoot := func(t *testing.T, files map[string]string) (*ProcessObservation, runtimeinput.State) {
 		t.Helper()
@@ -557,7 +557,7 @@ func TestGoExecuteOutOfRootReadSealsUnverifiable(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads the tree")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-policy-attribution")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-bracket", "REQ-policy-attribution")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
 	cfg.SetPackages([]string{"./extread"})
@@ -594,7 +594,7 @@ func TestGoExecuteUnknownPackageDirObservationIncomplete(t *testing.T) {
 	if testing.Short() {
 		t.Skip("measured heavy under the fast tier (in-process)")
 	}
-	stipulate.Covers(t, "REQ-policy-attribution")
+	stipulate.Covers(t, "REQ-policy-attribution", "REQ-evidence-witness-freshness-unresolved-bracket")
 	neutralAmbient(t)
 	inv := &stipulatorv1.PolicyInvocation{}
 	inv.SetName("nodirs")
@@ -638,7 +638,7 @@ func TestGoExecuteExternalWorkspaceMemberObservationIncomplete(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads the tree")
 	}
-	stipulate.Covers(t, "REQ-policy-attribution")
+	stipulate.Covers(t, "REQ-policy-attribution", "REQ-evidence-witness-freshness-unresolved-bracket")
 	neutralAmbient(t)
 	parent := t.TempDir()
 	tree := filepath.Join(parent, "tree")
@@ -707,7 +707,7 @@ func TestGoExecuteSymlinkedTreeObservationBinds(t *testing.T) {
 	if testing.Short() {
 		t.Skip("measured heavy under the fast tier (in-process)")
 	}
-	stipulate.Covers(t, "REQ-policy-attribution", "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-policy-attribution", "REQ-evidence-witness-freshness-bracket")
 	neutralAmbient(t)
 	parent := t.TempDir()
 	for path, content := range map[string]string{
@@ -921,9 +921,9 @@ func TestGoObserveProcessForwardsClassificationRoots(t *testing.T) {
 // captured over the TREE, of which the module directory is a strict
 // descendant, so the facade's interiority rule sees the tree and a read
 // under such a TMPDIR stays observed — while the same read under a
-// TMPDIR outside the tree admits (REQ-evidence-witness-freshness).
+// TMPDIR outside the tree admits (REQ-evidence-witness-freshness-exemptions).
 func TestGoObserveProcessKeepsATreeInteriorTempRootObserved(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-exemptions")
 	tree := t.TempDir()
 	moduleDir := filepath.Join(tree, "sub")
 	pkgDir := filepath.Join(moduleDir, "pkg")

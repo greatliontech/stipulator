@@ -77,7 +77,7 @@ type Backend struct {
 	// the view the witness runs in, and the seeding walk can load an
 	// in-module callee's package the scoped load did not hold, so the
 	// walk answers the same whatever the load's scope
-	// (REQ-evidence-witness-freshness). Its context is the resolver's
+	// (REQ-evidence-witness-freshness-seeded). Its context is the resolver's
 	// own.
 	lazyCfg map[string]map[string]*packages.Config
 	// walkMu guards the seeding walk's memos, all keyed by build
@@ -760,15 +760,15 @@ func (b *Backend) WitnessClassVerdict(symbol string) (verify.WitnessClass, strin
 
 // seededReason is the serving refusal a random-seeded witness carries
 // wherever a served or published record is refused: the uncacheable set
-// and the re-execution reasons alike (REQ-evidence-witness-freshness).
+// and the re-execution reasons alike (REQ-evidence-witness-freshness-seeded).
 var seededReason = reasonSeeded.with(": executes every run, never served")
 
-// seededThroughReason is the serving refusal of a witness whose bound
-// body reaches a run-time-seeded driver only through in-module helpers:
-// the evidence classification stays example (REQ-go-witness-class is
-// direct-call by contract), but the executed quantification draws from a
-// run-time seed exactly as a direct driver's does, so serving refuses
-// it under a reason naming the first hop (REQ-evidence-witness-freshness).
+// seededThroughReason is the serving refusal of a witness whose bound body
+// reaches a run-time-seeded driver only through in-module helpers: the
+// evidence classification stays example (REQ-go-witness-class is direct-call
+// by contract), but the executed quantification draws from a run-time seed
+// exactly as a direct driver's does, so serving refuses it under a reason
+// naming the first hop (REQ-evidence-witness-freshness-seeded).
 func seededThroughReason(helper string) uncacheable {
 	return reasonSeeded.with(" through " + helper + ": executes every run, never served")
 }
@@ -781,7 +781,7 @@ func seededThroughReason(helper string) uncacheable {
 // the loaded views cannot classify joins the set under its own reason
 // naming the load gap: with no body to inspect there is no proof of a
 // deterministic quantification, and absence of proof never serves
-// (REQ-evidence-witness-freshness) — but the refusal must never read
+// (REQ-evidence-witness-freshness-seeded) — but the refusal must never read
 // as a property classification the code does not carry.
 func (b *Backend) NeverServe(symbols []string) (map[string]string, error) {
 	out := map[string]string{}
@@ -815,7 +815,7 @@ type witnessVerdict struct {
 	// seededVia names the first in-module helper through which the
 	// bound body reaches a run-time-seeded driver when no direct call
 	// classifies it: the transitive seeding class serving consults,
-	// distinct from the evidence class (REQ-evidence-witness-freshness).
+	// distinct from the evidence class (REQ-evidence-witness-freshness-seeded).
 	seededVia string
 	// seedingRefusal is the serving refusal the walk raises when an
 	// in-module callee's package cannot be loaded: the walk has no

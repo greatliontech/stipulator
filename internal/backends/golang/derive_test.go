@@ -475,7 +475,7 @@ func requireCacheAbsent(t *testing.T, dir string) {
 // test carries the branch's reason, keyed correctly through
 // multi-segment import paths — never a bare count.
 func TestDeriveNamesUncacheableWithoutGroups(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-diagnosable")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	report := synthReport(
 		[]*stipulatorv1.InvocationHealth{synthInvocation("plain", false, map[string]stipulatorv1.HealthDisposition{
@@ -507,15 +507,14 @@ func TestDeriveNamesUncacheableWithoutGroups(t *testing.T) {
 	}
 }
 
-// TestJudgeSubjectNamesRefusalsInOneVocabulary pins the one judgment's
-// ladder and vocabulary: every refusal leg names itself, in the
-// recorded precedence, and a grant carries the granting process's own
-// material and solo fact (REQ-evidence-witness-freshness's diagnosable
-// set).
+// TestJudgeSubjectNamesRefusalsInOneVocabulary pins the one judgment's ladder
+// and vocabulary: every refusal leg names itself, in the recorded precedence,
+// and a grant carries the granting process's own material and solo fact
+// (REQ-evidence-witness-freshness-diagnosable's diagnosable set).
 //
 //gofresh:pure
 func TestJudgeSubjectNamesRefusalsInOneVocabulary(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-diagnosable")
 	subject := gofresh.Subject{Package: "p", Symbol: "TestX"}
 	row := func(test string, outcome stipulatorv1.TestOutcome) *stipulatorv1.TestResult {
 		r := &stipulatorv1.TestResult{}
@@ -633,10 +632,10 @@ func TestGroupKeySeparatesRaceTiers(t *testing.T) {
 // moves a delivered width: a declared narrower GOMAXPROCS is kept, its
 // sibling takes the derived width, and the capture-group key's
 // environment coordinate — the width-capped witness environment —
-// keeps their evidence apart (REQ-evidence-witness-freshness's
+// keeps their evidence apart (REQ-evidence-witness-freshness-concurrency's
 // concurrency clause).
 func TestGroupKeySeparatesDeclaredWidths(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency")
 	// The guard is the mechanism's own: a declaration of one is
 	// narrower exactly when the derived width exceeds one — which it
 	// does inside the tool's own witness children, where this test
@@ -671,9 +670,9 @@ func TestGroupKeySeparatesDeclaredWidths(t *testing.T) {
 
 // Two vouch sets are two capture groups: vouches change verdicts, so
 // evidence produced under one set never serves another
-// (REQ-evidence-witness-freshness's vouch discipline).
+// (REQ-evidence-witness-freshness-vouches's vouch discipline).
 func TestGroupKeySeparatesVouchSets(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-vouches")
 	vouched := &NormalizedInvocation{Race: true, Vouches: []string{"a.example/dep.Var"}}
 	other := &NormalizedInvocation{Race: true, Vouches: []string{"a.example/dep.Other"}}
 	bare := &NormalizedInvocation{Race: true}
@@ -690,7 +689,7 @@ func TestGroupKeySeparatesVouchSets(t *testing.T) {
 // build, so one package selected from two roots is two identities and
 // two capture groups; equal roots share both.
 func TestGroupCoordinatesSeparateModuleRoots(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-record-identity")
 	root := &NormalizedInvocation{Race: true}
 	nested := &NormalizedInvocation{Race: true, ModuleRoot: "sub"}
 	same := &NormalizedInvocation{Race: true, ModuleRoot: "sub"}
@@ -710,7 +709,7 @@ func TestGroupCoordinatesSeparateModuleRoots(t *testing.T) {
 // root (vendor and VCS trees excluded), off and absent contribute
 // nothing, and an unreadable committed profile refuses.
 func TestPGOBuildInputsDigestTheProfileContent(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-inputs")
 	dir := writeModule(t, map[string]string{
 		"go.mod":             "module example.com/p\n\ngo 1.26\n",
 		"prof.pgo":           "one",
@@ -784,7 +783,7 @@ func TestProfileContentMovesTheFingerprint(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds gofresh views")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-inputs")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := writeModule(t, map[string]string{
 		"go.mod":    "module example.com/p\n\ngo 1.26\n",

@@ -304,11 +304,11 @@ func TestSeedingChainIsBoundedKeepingTheDecidingLink(t *testing.T) {
 // the backend mints classifies to the class that minted it, with its
 // explain kind; a judgment reason classifies whole and not with a
 // detail; a spelling no class owns is foreign (REQ-mcp-explain,
-// REQ-evidence-witness-freshness).
+// REQ-evidence-witness-freshness-diagnosable).
 //
 //gofresh:pure
 func TestReasonClassesCarryTheirExplainKind(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-explain", "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-mcp-explain", "REQ-evidence-witness-freshness-diagnosable")
 	minted := map[string]explainKind{
 		seededReason.String():                              explainWitness,
 		seededThroughReason("example.com/p.run").String():  explainWitness,
@@ -371,11 +371,11 @@ func TestReasonClassesCarryTheirExplainKind(t *testing.T) {
 // the same class and detail; a spelling no class owns is admitted
 // fail-closed under the unclassifiable class with the spelling as its
 // detail, so it never serves and explain answers it as its own
-// attribution (REQ-mcp-explain, REQ-evidence-witness-freshness).
+// attribution (REQ-mcp-explain, REQ-evidence-witness-freshness-diagnosable).
 //
 //gofresh:pure
 func TestParseReasonAdmitsEveryClassAndWrapsTheForeign(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-explain", "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-mcp-explain", "REQ-evidence-witness-freshness-diagnosable")
 	for _, c := range reasonClasses {
 		for _, detail := range []string{"", "x", "post-run validation: nested", "a: b: c"} {
 			minted := c.with(detail)
@@ -417,12 +417,12 @@ func readFile(t *testing.T, name string) string {
 // refusal names the function, the package, the view, and — when the type
 // information places the function — its site; a function of a universe
 // the construction does not hold is placed nowhere
-// (REQ-evidence-witness-freshness).
+// (REQ-evidence-witness-freshness-seeded).
 func TestMissingDeclarationRefusalNamesThePlacement(t *testing.T) {
 	if testing.Short() {
 		t.Skip("reads the fixture backend the full tier loads")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-seeded")
 	fb := fixtureBackend(t)
 	const lib = "example.com/fixture/lib"
 	ghost := types.NewFunc(token.NoPos, types.NewPackage(lib, "lib"), "Ghost", types.NewSignatureType(nil, nil, nil, nil, nil, false))

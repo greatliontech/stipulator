@@ -107,11 +107,12 @@ func outcomeFromString(s string) verify.TestOutcome {
 	return verify.TestNotRun
 }
 
-// assembleWitnessRecord builds one publishable witness record: the
-// compartment ledger reads from the same view snapshot the fingerprint's
-// compartment hash pinned (the inert-growth carve-out's diff base,
-// REQ-evidence-witness-freshness), and the registrations sort canonically.
-// A subject the view cannot ledger returns false — it stays unpublishable.
+// assembleWitnessRecord builds one publishable witness record: the compartment
+// ledger reads from the same view snapshot the fingerprint's compartment hash
+// pinned (the inert-growth carve-out's diff base,
+// REQ-evidence-witness-freshness-carve-out), and the registrations sort
+// canonically. A subject the view cannot ledger returns false — it stays
+// unpublishable.
 func assembleWitnessRecord(group string, view *gofresh.View, s gofresh.Subject, fp gofresh.Fingerprint, outcomes map[string]string, regs []verify.Registration, exclusions []string, namespaces []witnesscache.ScratchNamespace) (witnesscache.Record, bool) {
 	ledger, err := view.TestVariantLedger(s)
 	if err != nil {

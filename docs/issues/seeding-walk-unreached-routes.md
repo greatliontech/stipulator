@@ -1,7 +1,7 @@
 # The transitive seeding walk does not reach dependency and interface routes to a driver
 
 Serving consults a transitive seeding class (REQ-evidence-witness-
-freshness): the static in-module callees a bound body resolves through
+freshness-seeded): the static in-module callees a bound body resolves through
 the type information — called, or named as a value the body may call —
 walked to the first helper whose own body drives a run-time-seeded
 runner. Two routes to a driver stay outside the walk and serve as

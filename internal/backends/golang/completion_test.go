@@ -139,12 +139,12 @@ func TestScopedRunPersistsAtTheExecutingInvocation(t *testing.T) {
 // recorder group at all — nothing in it can publish — so its subjects'
 // refusal is recorded at discovery, where the double selection is
 // decided, and the account names it rather than the structural
-// fallback (REQ-evidence-witness-freshness: the refused set is
+// fallback (REQ-evidence-witness-freshness-capture-groups: the refused set is
 // diagnosable).
 //
 // Deliberately not //gofresh:pure: executes the fixture's tests.
 func TestDoublySelectedPackageIsRefusedAtDiscovery(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-capture-groups")
 	if testing.Short() {
 		t.Skip("executes two race invocations over a temporary module")
 	}
@@ -176,17 +176,17 @@ func TestDoublySelectedPackageIsRefusedAtDiscovery(t *testing.T) {
 	}
 }
 
-// A mixed group on the full form: one package exactly one invocation
-// selects, one two select. The doubly selected package completes under
-// both invocations and must publish under neither — under the first
-// selecting invocation's rows alone it would install a record for a
-// subject with no producing leg — while the singly selected package
-// publishes at its own completion under the first
-// (REQ-evidence-witness-freshness, REQ-policy-cancellation-covering).
+// A mixed group on the full form: one package exactly one invocation selects,
+// one two select. The doubly selected package completes under both invocations
+// and must publish under neither — under the first selecting invocation's rows
+// alone it would install a record for a subject with no producing leg — while
+// the singly selected package publishes at its own completion under the first
+// (REQ-evidence-witness-freshness-capture-groups,
+// REQ-policy-cancellation-covering).
 //
 // Deliberately not //gofresh:pure: executes the fixture's tests.
 func TestMixedGroupPublishesOnlyItsSinglySelectedPackage(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-policy-cancellation-covering")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-capture-groups", "REQ-policy-cancellation-covering")
 	if testing.Short() {
 		t.Skip("executes two race invocations over a temporary module")
 	}
@@ -598,15 +598,15 @@ func TestReleaseDropsTheGroupViewAfterTheLastLeg(t *testing.T) {
 	}
 }
 
-// Examples execute but never enter the freshness cache: the executed
-// count excludes them on both forms, so the uncacheable number a run
-// reports is a number a warm cache can drive to zero
-// (REQ-evidence-witness-freshness's diagnosable set is over executed
-// subjects).
+// Examples execute but never enter the freshness cache: the executed count
+// excludes them on both forms, so the uncacheable number a run reports is a
+// number a warm cache can drive to zero
+// (REQ-evidence-witness-freshness-diagnosable's diagnosable set is over
+// executed subjects).
 //
 // Deliberately not //gofresh:pure: executes the fixture's tests.
 func TestExecutedCountExcludesExamplesOnBothForms(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-diagnosable")
 	if testing.Short() {
 		t.Skip("executes race invocations over a temporary module")
 	}

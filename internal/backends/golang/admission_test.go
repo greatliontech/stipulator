@@ -86,7 +86,7 @@ func admitAsync(a *admission) <-chan [2]string {
 }
 
 // TestAdmissionGateDerivesTheMemoryTerm pins the admission over
-// synthetic readings (REQ-evidence-witness-freshness's witness
+// synthetic readings (REQ-evidence-witness-freshness-concurrency's witness
 // concurrency clause): abundant memory admits exactly the processor
 // bound and a further package waits for a release; a host without a
 // reading has no memory term; memory that holds one package admits one
@@ -96,7 +96,7 @@ func admitAsync(a *admission) <-chan [2]string {
 //
 //gofresh:pure
 func TestAdmissionGateDerivesTheMemoryTerm(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency")
 	const gib = uint64(1) << 30
 	wait := func(t *testing.T, c <-chan [2]string, want string) [2]string {
 		t.Helper()
@@ -331,16 +331,16 @@ func TestAdmissionGateDerivesTheMemoryTerm(t *testing.T) {
 	}
 }
 
-// TestPackageHeldUntilTheInvocationsEndCarriesTheTerm pins the wiring
-// of the held words (REQ-evidence-witness-freshness): of two packages
-// under readings that hold every ask after the first, the one still
-// waiting when the invocation's context ends is the never-spawned run
-// carrying the term's words, exactly one.
+// TestPackageHeldUntilTheInvocationsEndCarriesTheTerm pins the wiring of the
+// held words (REQ-evidence-witness-freshness-concurrency): of two packages
+// under readings that hold every ask after the first, the one still waiting
+// when the invocation's context ends is the never-spawned run carrying the
+// term's words, exactly one.
 func TestPackageHeldUntilTheInvocationsEndCarriesTheTerm(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads the tree")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency")
 	neutralAmbient(t)
 	const gib = uint64(1) << 30
 	// The first admitted package is a slow one or a quick one by the
@@ -395,14 +395,14 @@ func TestPackageHeldUntilTheInvocationsEndCarriesTheTerm(t *testing.T) {
 	}
 }
 
-// TestTimedOutPackageHeldByTheMemoryTermNamesIt pins the attribution of
-// a package the memory term held until the envelope expired
-// (REQ-evidence-witness-freshness): its timeout diagnostic names the
-// term and its readings, never a bare timeout.
+// TestTimedOutPackageHeldByTheMemoryTermNamesIt pins the attribution of a
+// package the memory term held until the envelope expired
+// (REQ-evidence-witness-freshness-concurrency): its timeout diagnostic names
+// the term and its readings, never a bare timeout.
 //
 //gofresh:pure
 func TestTimedOutPackageHeldByTheMemoryTermNamesIt(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency")
 	n := &NormalizedInvocation{Name: "held", Timeout: time.Minute}
 	r := packageRun{pkg: "example.com/p", heldBy: "one package estimated at 1.0 GiB — the floor; the host cannot hold one more package process beside the pass: available 1.5 GiB"}
 	if err := finalizeRun(n, &r, true, ""); err != nil {
@@ -425,16 +425,16 @@ func TestTimedOutPackageHeldByTheMemoryTermNamesIt(t *testing.T) {
 }
 
 // TestRefusedPackageIsolatesNothingOnTheSelectiveForm pins the selective
-// form's refusal (REQ-evidence-witness-freshness): a package the host
-// cannot hold disposes DEGRADED naming the readings, spawns no process
-// and no isolation re-run, and grants no outcome — the re-runs the
-// refusal exists to withhold never run, and its witnesses' no-outcome
-// cause names the host.
+// form's refusal (REQ-evidence-witness-freshness-concurrency): a package the
+// host cannot hold disposes DEGRADED naming the readings, spawns no process
+// and no isolation re-run, and grants no outcome — the re-runs the refusal
+// exists to withhold never run, and its witnesses' no-outcome cause names the
+// host.
 func TestRefusedPackageIsolatesNothingOnTheSelectiveForm(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads the tree")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency")
 	neutralAmbient(t)
 	const gib = uint64(1) << 30
 	injectReadings(t, hostWith(gib/2), passWith(gib))
@@ -493,16 +493,16 @@ func TestRefusedPackageIsolatesNothingOnTheSelectiveForm(t *testing.T) {
 	}
 }
 
-// TestInvocationTheHostCannotHoldRefusesEveryPackageStated pins the
-// refusal end to end (REQ-evidence-witness-freshness): under a host that
+// TestInvocationTheHostCannotHoldRefusesEveryPackageStated pins the refusal
+// end to end (REQ-evidence-witness-freshness-concurrency): under a host that
 // cannot hold one package process beside the pass, every package of the
-// invocation disposes DEGRADED with a diagnostic naming the readings,
-// and no go process is spawned.
+// invocation disposes DEGRADED with a diagnostic naming the readings, and no
+// go process is spawned.
 func TestInvocationTheHostCannotHoldRefusesEveryPackageStated(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads the tree")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency")
 	neutralAmbient(t)
 	const gib = uint64(1) << 30
 	injectReadings(t, hostWith(gib/2), passWith(gib))
@@ -563,7 +563,7 @@ func TestInvocationTheHostCannotHoldRefusesEveryPackageStated(t *testing.T) {
 }
 
 // TestPackageCauseNamesTheRefusalsReason pins the no-outcome cause's
-// reason on the selective form (REQ-evidence-witness-freshness): a
+// reason on the selective form (REQ-evidence-witness-freshness-concurrency): a
 // refused package's witnesses are attributed the disposition with the
 // package-scoped diagnostic's first line — the host's readings — never a
 // test-scoped diagnostic's and never the bare disposition; a timed-out
@@ -572,7 +572,7 @@ func TestInvocationTheHostCannotHoldRefusesEveryPackageStated(t *testing.T) {
 //
 //gofresh:pure
 func TestPackageCauseNamesTheRefusalsReason(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency")
 	m := newExecMerge()
 	m.pkgDisp[invPkgKey("inv", "example.com/p")] = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_DEGRADED
 	solo := &stipulatorv1.FailureDiagnostic{}
@@ -649,7 +649,7 @@ func TestPackageCauseNamesTheRefusalsReason(t *testing.T) {
 }
 
 // TestAdmissionScopesItsTermsToThePhaseAndTheRegisteredTrees pins the
-// memory term's two observations (REQ-evidence-witness-freshness's
+// memory term's two observations (REQ-evidence-witness-freshness-concurrency's
 // witness concurrency clause): the pass's growth is measured to the
 // largest set the admission itself has read — a lifetime peak the
 // kernel reports (discovery's, over before execution) reserves nothing
@@ -660,7 +660,7 @@ func TestPackageCauseNamesTheRefusalsReason(t *testing.T) {
 //
 //gofresh:pure
 func TestAdmissionScopesItsTermsToThePhaseAndTheRegisteredTrees(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency")
 	const gib, mib = uint64(1) << 30, uint64(1) << 20
 	wait := func(t *testing.T, c <-chan [2]string, want string) [2]string {
 		t.Helper()

@@ -11,16 +11,15 @@ import (
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
-// A reviewed runtime-only execution bound edits without re-addressing
-// the store: the capture group and the record-identity coordinate both
-// key on the identity-bearing argument partition alone, so a budget
-// knob is tunable without discarding every stored record. The
-// classification fails closed — an argument the table cannot prove
-// runtime-only stays identity-bearing, unrecognized spellings included
-// (REQ-evidence-witness-cache-format, REQ-evidence-witness-freshness).
+// A reviewed runtime-only execution bound edits without re-addressing the
+// store: the capture group and the record-identity coordinate both key on the
+// identity-bearing argument partition alone, so a budget knob is tunable
+// without discarding every stored record. The classification fails closed — an
+// argument the table cannot prove runtime-only stays identity-bearing,
+// unrecognized spellings included (REQ-evidence-witness-cache-format,
+// REQ-evidence-witness-freshness-runtime-bounds).
 func TestRuntimeOnlyArgsDoNotReaddressRecords(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-cache-format")
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-cache-format", "REQ-evidence-witness-freshness-runtime-bounds")
 	base := func() *NormalizedInvocation {
 		return &NormalizedInvocation{
 			Tags: []string{"a"},
@@ -111,15 +110,15 @@ func groupIdentityFields(n *NormalizedInvocation) keyFieldTuple {
 }
 
 // TestKeyEncodingIsCollisionFree: key equality holds exactly when the
-// canonical field tuple is equal, for adversarial values including
-// separator bytes, quotes, and label-shaped fragments
-// (REQ-evidence-witness-cache-format, REQ-evidence-witness-freshness).
-// The anchored pairs pin the two known aliasing channels; the property
-// then perturbs ONE field of a clone per case — collision detection
-// needs near-identical pairs, which independent draws never produce.
+// canonical field tuple is equal, for adversarial values including separator
+// bytes, quotes, and label-shaped fragments
+// (REQ-evidence-witness-cache-format,
+// REQ-evidence-witness-freshness-record-identity). The anchored pairs pin the
+// two known aliasing channels; the property then perturbs ONE field of a clone
+// per case — collision detection needs near-identical pairs, which independent
+// draws never produce.
 func TestKeyEncodingIsCollisionFree(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-cache-format")
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-cache-format", "REQ-evidence-witness-freshness-record-identity")
 	// Anchored alias, env values: a policy-declared environment VALUE
 	// may legally carry \x01 (validation refuses only NUL), so the
 	// unquoted \x01 join aliased two declared environments into one

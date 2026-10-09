@@ -25,8 +25,8 @@ type producerCandidate struct {
 	rows    []*stipulatorv1.TestResult
 }
 
-// The one reason vocabulary of the per-subject publish judgment, on
-// both forms (REQ-evidence-witness-freshness's diagnosable set: every
+// The one reason vocabulary of the per-subject publish judgment, on both forms
+// (REQ-evidence-witness-freshness-diagnosable's diagnosable set: every
 // unpublished subject names the leg that refused it).
 var (
 	reasonNoProducingLeg    = reasonJudged.with("two invocations of one capture group select the package; no single producing leg")

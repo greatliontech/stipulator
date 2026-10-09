@@ -256,7 +256,7 @@ func TestGoNormalizeWorkspaceModeRequiresDeclaration(t *testing.T) {
 // pinned into the frozen environment, or the declared root and the
 // child's actual cache silently diverge.
 func TestGoNormalizeCarriesObservationGuardRoots(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-exemptions")
 	neutralAmbient(t)
 	gocache := t.TempDir()
 	tmproot := t.TempDir()
@@ -286,7 +286,7 @@ func TestGoNormalizeCarriesObservationGuardRoots(t *testing.T) {
 // accepts — clean absolute or clean tree-relative slash paths, never a
 // parent traversal — and ride the normalized invocation.
 func TestGoNormalizeBracketPaths(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-bracket")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
 	cfg.SetPackages([]string{"./..."})
@@ -325,7 +325,7 @@ func TestGoNormalizeBracketPaths(t *testing.T) {
 }
 
 func TestGoNormalizeExcludedPaths(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-inputs")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
 	cfg.SetPackages([]string{"./..."})
@@ -350,9 +350,9 @@ func TestGoNormalizeExcludedPaths(t *testing.T) {
 
 // Vouch entries canonicalize (sorted, deduplicated) and malformed
 // identities refuse at policy acceptance: a bare package would silently
-// confer nothing (REQ-evidence-witness-freshness's vouch discipline).
+// confer nothing (REQ-evidence-witness-freshness-vouches's vouch discipline).
 func TestGoNormalizeVouchesCanonicalizeAndRefuse(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-vouches")
 	neutralAmbient(t)
 	dir := discoverFixture(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
@@ -440,7 +440,7 @@ func vouchEntry(pkg, variable string) *stipulatorv1.DynamicStateVouch {
 // loads and the witness command (the latter resolving a committed
 // profile against the tree root, since the child runs in its module).
 func TestBuildFlagsCarryModeAndProfile(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-inputs")
 	got := buildFlags(true, []string{"a", "b"}, stipulatorv1.GoModuleMode_GO_MODULE_MODE_VENDOR, "prof.pgo")
 	want := []string{"-race", "-tags=a,b", "-mod=vendor", "-pgo=prof.pgo"}
 	if !reflect.DeepEqual(got, want) {
@@ -575,13 +575,13 @@ func swapAmbientEnviron(t *testing.T, read func() []string) {
 	t.Cleanup(func() { ambientEnviron = prior })
 }
 
-// TestAbsoluteExclusionInsideALinkedTreeIsRefused pins the
-// exclusion-position check under the frame's rule: an absolute excluded
-// path inside a tree reached through a link — its physical spelling —
-// is refused as inside the tree, where a lexical comparison escaped and
-// accepted a row that would exclude nothing (REQ-evidence-witness-freshness).
+// TestAbsoluteExclusionInsideALinkedTreeIsRefused pins the exclusion-position
+// check under the frame's rule: an absolute excluded path inside a tree
+// reached through a link — its physical spelling — is refused as inside the
+// tree, where a lexical comparison escaped and accepted a row that would
+// exclude nothing (REQ-evidence-witness-freshness-inputs).
 func TestAbsoluteExclusionInsideALinkedTreeIsRefused(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-inputs")
 	neutralAmbient(t)
 	tree := writeModule(t, map[string]string{"go.mod": "module example.com/linkedx\n\ngo 1.26\n", "p.go": "package linkedx\n"})
 	link := filepath.Join(t.TempDir(), "via")

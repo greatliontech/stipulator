@@ -9,7 +9,7 @@ process is never a proof candidate (the proof needs the process to run
 its subject alone), and an unproven observing record's post-run
 validation can never return valid, so the record is dropped and
 counted uncacheable: neither test ever publishes and both re-execute
-every run — the outcome REQ-evidence-witness-freshness states for an
+every run — the outcome REQ-evidence-witness-freshness-purity states for an
 unasserted impure test. What the spec does not state is whether the
 selective form should ever narrow to one test to earn a proof: the
 isolation pass already spawns solo processes with owned observations,

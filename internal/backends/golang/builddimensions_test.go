@@ -205,9 +205,9 @@ func Tagged(x int) int { return x }
 // capture groups: two invocations differing only there build or run
 // two different things and must not share one analysis view, while
 // Count is repetition of the same build and deliberately stays out
-// (REQ-evidence-witness-freshness's capture-group partition).
+// (REQ-evidence-witness-freshness-record-identity's capture-group partition).
 func TestGroupKeySpansBuildDimensions(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-record-identity")
 	base := func() *NormalizedInvocation {
 		return &NormalizedInvocation{Tags: []string{"a"}, Race: true}
 	}

@@ -13,13 +13,13 @@ import (
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
-// TestScratchNamespacesAreAcceptedAsDeclared pins the policy record's
-// scratch namespace rows: gofresh's grammar refuses a malformed row, a
-// repeated row is refused, an exclusion naming a surface a namespace
-// covers is refused — the namespace retires it — and an accepted set
-// reaches the normalized invocation canonical (REQ-evidence-witness-freshness).
+// TestScratchNamespacesAreAcceptedAsDeclared pins the policy record's scratch
+// namespace rows: gofresh's grammar refuses a malformed row, a repeated row is
+// refused, an exclusion naming a surface a namespace covers is refused — the
+// namespace retires it — and an accepted set reaches the normalized invocation
+// canonical (REQ-evidence-witness-freshness-scratch-namespaces).
 func TestScratchNamespacesAreAcceptedAsDeclared(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-scratch-namespaces")
 	ns := func(dir, pattern string) *stipulatorv1.ScratchNamespace {
 		n := &stipulatorv1.ScratchNamespace{}
 		n.SetDir(dir)
@@ -106,16 +106,16 @@ func TestScratchNamespacesAreAcceptedAsDeclared(t *testing.T) {
 	}
 }
 
-// TestGoRunWitnessesServeUnderADeclaredScratchNamespace pins the
-// declaration end to end. A witness minting, reading, and removing its
-// own scratch records, without a declaration, the scratch path as an
-// absent input — an absence probe, so a file appearing there later
-// stales the record and re-executes the witness; under the declared
-// namespace the read enters no path identity at all and the record
-// serves past its own scratch (REQ-evidence-witness-freshness;
-// gofresh's scratch-namespace contract).
+// TestGoRunWitnessesServeUnderADeclaredScratchNamespace pins the declaration
+// end to end. A witness minting, reading, and removing its own scratch
+// records, without a declaration, the scratch path as an absent input — an
+// absence probe, so a file appearing there later stales the record and
+// re-executes the witness; under the declared namespace the read enters no
+// path identity at all and the record serves past its own scratch
+// (REQ-evidence-witness-freshness-scratch-namespaces; gofresh's
+// scratch-namespace contract).
 func TestGoRunWitnessesServeUnderADeclaredScratchNamespace(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-scratch-namespaces")
 	if testing.Short() {
 		t.Skip("runs a race-instrumented witness pass over a temporary module, twice per arm")
 	}
@@ -248,9 +248,9 @@ func TestUsesScratch(t *testing.T) {
 // refusal of a declaration no observation-bracket root of the
 // invocation covers: the engine would admit nothing under it, and an
 // inert declaration never sits in the reviewed record silently
-// (REQ-evidence-witness-freshness).
+// (REQ-evidence-witness-freshness-scratch-namespaces).
 func TestScratchNamespaceCoveredByNoBracketRootIsRefused(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-scratch-namespaces")
 	if testing.Short() {
 		t.Skip("lists a temporary module's packages")
 	}

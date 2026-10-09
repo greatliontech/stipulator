@@ -15,7 +15,7 @@ import (
 // among the execution's subjects, captured, and carries no author's
 // purity assertion — in the subjects' order.
 func TestProofCandidatesTakeSoloProcessesWithoutAssertions(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-purity")
 	sub := func(pkg, sym string) gofresh.Subject { return gofresh.Subject{Package: pkg, Symbol: sym} }
 	subjects := []gofresh.Subject{
 		sub("z", "TestSolo"),

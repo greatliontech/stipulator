@@ -10,18 +10,17 @@ import (
 )
 
 // The selective executor is the witness-only execution surface: it runs a
-// caller-chosen subset of one normalized invocation's packages, each
-// narrowed to named top-level runnables, and grants witness evidence,
-// never suite health (REQ-core-one-execution's witness-only selective
-// execution). What it adds over plain package execution is the isolation
-// pass: a selective process can deny its sibling tests an outcome — a
-// package abort shadows tests that never reached a terminal event, and a
-// red process yields no green evidence for the passes that completed
-// inside it — so each denied test is re-run solo, one top-level runnable
-// per process, once, inside the same invocation envelope. The isolated
-// outcome is a real run's outcome from its own producing process
-// (REQ-evidence-witness-freshness, REQ-policy-attribution); the denying
-// process's own failures stand untouched.
+// caller-chosen subset of one normalized invocation's packages, each narrowed
+// to named top-level runnables, and grants witness evidence, never suite
+// health (REQ-core-one-execution's witness-only selective execution). What it
+// adds over plain package execution is the isolation pass: a selective process
+// can deny its sibling tests an outcome — a package abort shadows tests that
+// never reached a terminal event, and a red process yields no green evidence
+// for the passes that completed inside it — so each denied test is re-run
+// solo, one top-level runnable per process, once, inside the same invocation
+// envelope. The isolated outcome is a real run's outcome from its own
+// producing process (REQ-evidence-witness-freshness-isolation,
+// REQ-policy-attribution); the denying process's own failures stand untouched.
 
 // TestSelection narrows an execution to named top-level runnables per
 // package: each key is a package import path, its value the top-level

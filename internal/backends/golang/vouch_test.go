@@ -20,14 +20,14 @@ import (
 // downgrades an importing subject, and vouching the named variable
 // records the discharge on the fingerprint produced through the same
 // policy-scoped engine the verdicts use
-// (REQ-evidence-witness-freshness's vouch discipline).
+// (REQ-evidence-witness-freshness-vouches's vouch discipline).
 //
 //gofresh:pure
 func TestPolicyVouchReachesTheCaptureEngine(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds gofresh views over the protobuf graph")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-vouches")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	out, err := exec.Command("go", "list", "-m", "-f", "{{.Version}}", "google.golang.org/protobuf").Output()
 	if err != nil {

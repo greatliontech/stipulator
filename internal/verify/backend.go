@@ -39,7 +39,7 @@ type WitnessClassVerdicts interface {
 // quantifies over from a run-time seed no fingerprint pins
 // (REQ-go-witness-class's seeded form), and subjects the backend cannot
 // classify at all, since absence of proof never serves an outcome
-// (REQ-evidence-witness-freshness); the two are named distinctly so a
+// (REQ-evidence-witness-freshness-seeded); the two are named distinctly so a
 // load gap never reads as a property witness. One call answers the
 // whole set; an error is a classification fault the caller fails
 // closed on.

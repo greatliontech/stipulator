@@ -13,13 +13,13 @@ import (
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
-// TestCompletedPackagePeakFeedsTheEstimate pins the completed-package
-// evidence of the admission's memory term
-// (REQ-evidence-witness-freshness): a reaped process's wait status yields
-// its tree's largest resident set in bytes, and the admission's estimate
-// after its release is at least that peak, never below the floor.
+// TestCompletedPackagePeakFeedsTheEstimate pins the completed-package evidence
+// of the admission's memory term (REQ-evidence-witness-freshness-concurrency):
+// a reaped process's wait status yields its tree's largest resident set in
+// bytes, and the admission's estimate after its release is at least that peak,
+// never below the floor.
 func TestCompletedPackagePeakFeedsTheEstimate(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency")
 	cmd := exec.Command("sh", "-c", "exit 0")
 	if err := cmd.Run(); err != nil {
 		t.Fatal(err)
@@ -45,7 +45,7 @@ func TestCompletedPackagePeakFeedsTheEstimate(t *testing.T) {
 
 // TestInvocationReleasesEachPackageWithItsPeak pins the wiring of the
 // completed-package evidence and of the tree attribution
-// (REQ-evidence-witness-freshness, REQ-evidence-admission-origin):
+// (REQ-evidence-witness-freshness-concurrency, REQ-evidence-admission-origin):
 // every package an invocation runs is reaped to the gate with the peak
 // its process reported — a positive byte count, never zero — and with
 // the process the executor registered for it at the spawn, the root of
@@ -54,7 +54,7 @@ func TestInvocationReleasesEachPackageWithItsPeak(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads the tree")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-evidence-admission-origin")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency", "REQ-evidence-admission-origin")
 	neutralAmbient(t)
 	var mu sync.Mutex
 	released := map[string]uint64{}

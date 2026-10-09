@@ -1164,12 +1164,12 @@ func TestCheckRaceLegPrecedenceOverPlainAdmission(t *testing.T) {
 
 // Records produced at one witness tier never serve the other: the race
 // flag is a caller-supplied build input of every fingerprint
-// (REQ-evidence-witness-freshness), so flipping an invocation between
+// (REQ-evidence-witness-freshness-inputs), so flipping an invocation between
 // plain_witness and race re-executes instead of laundering the tier —
 // in either direction (REQ-check-witness-selection's auditable-downgrade
 // sentence).
 func TestCheckTierFlipNeverServesCrossTier(t *testing.T) {
-	stipulate.Covers(t, "REQ-check-witness-selection", "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-check-witness-selection", "REQ-evidence-witness-freshness-inputs")
 	if testing.Short() {
 		t.Skip("runs the witness pass over a temporary corpus")
 	}

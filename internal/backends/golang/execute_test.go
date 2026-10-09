@@ -878,7 +878,7 @@ func TestGoExecuteSelectionIsolatesAbortShadowedTests(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads the tree")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-core-one-execution", "REQ-policy-attribution")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-isolation", "REQ-core-one-execution", "REQ-policy-attribution")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
 	cfg.SetPackages([]string{"./killmid"})
@@ -924,7 +924,7 @@ func TestGoExecuteSelectionIsolatesGreenInRedProcess(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads the tree")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-policy-attribution")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-isolation", "REQ-policy-attribution")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
 	cfg.SetPackages([]string{"./mixed"})
@@ -982,7 +982,7 @@ func TestGoExecuteSelectionFuzzReplaysCommittedSeeds(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads the tree")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-go-policy-complete")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-seeded", "REQ-go-policy-complete")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
 	cfg.SetPackages([]string{"./fuzzseed"})
@@ -1020,7 +1020,7 @@ func TestGoExecuteSelectionIsolatesBinaryDeadlineVictims(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads the tree")
 	}
-	stipulate.Covers(t, "REQ-policy-budget-attribution", "REQ-evidence-witness-freshness", "REQ-core-one-execution")
+	stipulate.Covers(t, "REQ-policy-budget-attribution", "REQ-evidence-witness-freshness-isolation", "REQ-core-one-execution")
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
 	cfg.SetPackages([]string{"./deadline"})
@@ -1333,9 +1333,9 @@ func TestGoExecuteDiagnosticOutputBounded(t *testing.T) {
 // The witness fan-out bound is derived, never declared: half the
 // processor count, floored at one - each unit is itself a parallel
 // process tree, so a full fan-out multiplies into host-freezing load
-// (the evidence spec's concurrency clause).
+// (REQ-evidence-witness-freshness-concurrency).
 func TestWitnessSpawnBound(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency")
 	want := runtime.GOMAXPROCS(0) / 2
 	if want < 1 {
 		want = 1
@@ -1347,9 +1347,9 @@ func TestWitnessSpawnBound(t *testing.T) {
 
 // Each unit's inner width is the parent's processor budget over the
 // unit bound, floored at one, so units x per-unit width stays at most
-// the processor count (the evidence spec's concurrency clause).
+// the processor count (REQ-evidence-witness-freshness-concurrency).
 func TestWitnessChildWidth(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency")
 	procs := runtime.GOMAXPROCS(0)
 	for _, test := range []struct {
 		bound int
@@ -1395,7 +1395,7 @@ func TestWitnessChildWidth(t *testing.T) {
 // carries the PWD pin beside it (the evidence spec's concurrency
 // clause).
 func TestWitnessWidthEnv(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency")
 	procs := runtime.GOMAXPROCS(0)
 	full := &NormalizedInvocation{SpawnBound: procs} // width 1
 	if v, ok := lookupEnv(witnessWidthEnv(&NormalizedInvocation{SpawnBound: procs, Env: []string{"A=1"}}), "GOMAXPROCS"); !ok || v != "1" {
@@ -1454,9 +1454,9 @@ func TestWitnessEnvDerivedOnceAtNormalize(t *testing.T) {
 // width, and the negative arm - armed at a width the derivation never
 // delivers - proves the armed probe runs rather than skips, so the
 // positive arm's pass really discriminated the delivered environment
-// (the evidence spec's concurrency clause).
+// (REQ-evidence-witness-freshness-concurrency).
 func TestGoExecuteDeliversInnerParallelismCap(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency")
 	if testing.Short() {
 		t.Skip("loads the tree")
 	}

@@ -115,7 +115,7 @@ own source classifies the same, the classification being static) —
 while a fuzz target's
 ordinary run replays its committed seeds deterministically and is not;
 the seeded form is what freshness serving consults
-(REQ-evidence-witness-freshness). An
+(REQ-evidence-witness-freshness-seeded). An
 `example` classification carries a verdict naming what the bound body
 lacks — a recognized library referenced without its classifying call is
 named exactly (`rapid.Check not invoked in the bound body`; `no

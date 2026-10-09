@@ -147,14 +147,14 @@ type TestRun struct {
 	// prior witness evidence, why serving refused it - the stale
 	// variant's verdict reason with gofresh's movers named. Cold
 	// subjects (no prior record) are absent: their cause is the absence
-	// itself (REQ-evidence-witness-freshness).
+	// itself (REQ-evidence-witness-freshness-diagnosable).
 	ExecutedReasons map[string]string
 	// UncacheableReasons names, per executed top-level test that could
 	// not publish, the leg that refused — the sealed observation's own
 	// reason, the refused proof's, the missing granting process, the
 	// post-run drift with its moved inputs — so the uncacheable count is
 	// a diagnosable set, never a bare number
-	// (REQ-evidence-witness-freshness).
+	// (REQ-evidence-witness-freshness-diagnosable).
 	UncacheableReasons map[string]string
 }
 

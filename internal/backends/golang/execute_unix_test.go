@@ -202,7 +202,7 @@ func TestGoExecuteSelectionEnvelopeBoundsIsolation(t *testing.T) {
 	if testing.Short() {
 		t.Skip("measured heavy under the fast tier (in-process)")
 	}
-	stipulate.Covers(t, "REQ-core-one-execution", "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-core-one-execution", "REQ-evidence-witness-freshness-isolation")
 	bin := t.TempDir()
 	stub := filepath.Join(bin, "go")
 	script := "#!/bin/sh\n" +

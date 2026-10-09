@@ -13,9 +13,9 @@ import (
 // paths after; an unresolved closure — the listing failed, or the
 // package has no entry — refuses with a stated reason instead of
 // sealing only the package directory silently
-// (REQ-evidence-witness-freshness's consuming-compile seal).
+// (REQ-evidence-witness-freshness-bracket's consuming-compile seal).
 func TestGoBracketRootsDeclareImportClosure(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-bracket")
 	n := &NormalizedInvocation{
 		BracketPaths: []string{"docs/corpus"},
 		PkgClosureDirs: map[string][]string{

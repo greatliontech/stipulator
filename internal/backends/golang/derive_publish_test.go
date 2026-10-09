@@ -276,7 +276,7 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 // invocations select can never publish, and its guaranteed ineligibility
 // must not strip the proof from the group's publishable candidates.
 func TestGoDerivePublishesObservationProofForSoloProcess(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-purity")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented policy over a temporary module")
 	}
@@ -695,7 +695,7 @@ func TestCleanNoop(t *testing.T) {}
 // package bracket carries the seal's own reason, the input named —
 // the same diagnosable set the selective path pins.
 func TestGoDeriveNamesSealedObservationReason(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-diagnosable")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented policy over a temporary module")
 	}
@@ -933,16 +933,16 @@ func TestHealthJudgedFormKeepsWhatClosedBeforeADegrade(t *testing.T) {
 	}
 }
 
-// TestStoreRefusalIsNamedPerSubject pins the store-side leg of the
-// diagnosable set (REQ-evidence-witness-freshness): a record the store
-// cannot write — here a cache root that is not writable — counts its
-// subject uncacheable under a reason naming the store's fault, on the
-// health-judged form and the selective form alike, never the evidence
-// vocabulary's structural fallback.
+// TestStoreRefusalIsNamedPerSubject pins the store-side leg of the diagnosable
+// set (REQ-evidence-witness-freshness-diagnosable): a record the store cannot
+// write — here a cache root that is not writable — counts its subject
+// uncacheable under a reason naming the store's fault, on the health-judged
+// form and the selective form alike, never the evidence vocabulary's
+// structural fallback.
 //
 // Deliberately not //gofresh:pure: executes the fixture's tests.
 func TestStoreRefusalIsNamedPerSubject(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-diagnosable")
 	if testing.Short() {
 		t.Skip("executes a race invocation over a temporary module")
 	}

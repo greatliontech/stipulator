@@ -197,14 +197,16 @@ beside it checks valid against the current tree, because a valid fingerprint
 proves the test's source closure and produced environment are those that
 produced the outcome: the served outcome is the current run's verification
 by proven equivalence, not a trust extension, so REQ-evidence-promotion
-holds. One precisely scoped carve-out extends the proof past the
+holds.
+
+**REQ-evidence-witness-freshness-carve-out** (behavior): One precisely scoped carve-out extends the proof past the
 compartment pin: a verdict of exactly stale `test variants` certifies the
 subject's own source closure unchanged and nothing more — Gofresh orders
 the compartment comparison after the core and before the environment
 tiers, so a moved guard or runtime input can hide behind that reason
 (witness fingerprints never carry a refinement) — so the carve-out
 completes the proof itself: the compartment ledger persisted under the
-record's recorded compartment digest must
+record's recorded compartment digest MUST
 diff inert against the current view's ledger per Gofresh's classifier (the
 only movement is added declarations no unchanged declaration can observe),
 and the recorded fingerprint refreshed to the current compartment hash
@@ -222,10 +224,12 @@ claim always has. Anything else short of valid — any other stale reason,
 an unverifiable verdict, a non-inert delta, a record whose compartment
 ledger the store does not hold, an
 absent or unreadable record — runs the test; absence of proof never serves
-an outcome. A random-seeded witness — a subject the backend classifies
+an outcome.
+
+**REQ-evidence-witness-freshness-seeded** (behavior): A random-seeded witness — a subject the backend classifies
 `property` by a run-time-seeded driver (REQ-go-witness-class's seeded
 form), whose quantification draws its inputs from a seed no pin
-captures — never serves and never publishes: a valid fingerprint
+captures — MUST never serve and never publish: a valid fingerprint
 carries a deterministic outcome by equivalence, never one draw of a
 random one, so such a subject executes every run, its refusal
 attributed as uncacheable with that reason on both evidence forms,
@@ -266,7 +270,9 @@ classify at all is refused serving the same way under a reason naming
 the load gap — absence of proof never serves, and the refusal never
 reads as a property classification the code does not carry — and a
 classification fault degrades serving whole
-(REQ-evidence-freshness-degrade). The fingerprint pins the closure and environment guards with the
+(REQ-evidence-freshness-degrade).
+
+**REQ-evidence-witness-freshness-inputs** (behavior): The fingerprint pins the closure and environment guards with the
 witness build's own inputs supplied by the caller — the race flag, the
 module mode, and the PGO profile, the profile's content riding the
 build-configuration guard as an opaque input so an edit at a stable
@@ -285,15 +291,17 @@ in-tree reads classify relative, so it would exclude nothing), naming
 surfaces the repository asserts the same way (a session tool's
 bookkeeping directory is the canonical case). A record's observation proves nothing about the
 surfaces its capture-time reviewed exclusions elided, so every record
-carries that set and serves only while the current policy still asserts
+MUST carry that set and serve only while the current policy still asserts
 each entry: a withdrawn or narrowed exclusion re-executes the witnesses
 it licensed, while an added exclusion serves existing evidence unchanged
-— its identities are in the manifest and simply revalidate. The
+— its identities are in the manifest and simply revalidate.
+
+**REQ-evidence-witness-freshness-scratch-namespaces** (behavior): The
 invocation's reviewed scratch namespaces — committed policy rows, each
 a directory in clean slash form relative to the verification tree's
 root (the base every observation bracket is rooted at) and a
 single-component name pattern with `os.MkdirTemp` semantics, the pair
-form — reach the engine's ingest as declarations under gofresh's
+form — MUST reach the engine's ingest as declarations under gofresh's
 scratch-namespace contract, which admits a read inside one only when
 the matching child is proven freshly minted at both ends of the run,
 so a namespace silences nothing unconditionally: a namespace no
@@ -317,8 +325,10 @@ exclusion carries the caller-side
 soundness responsibility gofresh's exclusion contract assigns it — its
 failure direction is a spurious reuse, accepted exactly there and — each
 scoped to the stated assumption whose violation would convert it — in
-the exemption classes below, nowhere else. The invocation's reviewed
-dynamic-state vouches ride the same review discipline: each names a
+the exemption classes below, nowhere else.
+
+**REQ-evidence-witness-freshness-vouches** (behavior): The invocation's reviewed
+dynamic-state vouches MUST ride the same review discipline: each names a
 version-pinned dependency package and exactly one of its package-level
 variables accepted as stable after initialization (gofresh's vouch
 contract; the pair form makes a bare package unrepresentable, and a
@@ -330,7 +340,9 @@ serving is licensed by the current policy's engine alone, the vouches
 that licensed a verdict ride the recorded evidence, and a withdrawn
 vouch resurfaces its culprit in the current derivation — the records
 it licensed refuse on their own — while an added vouch serves
-existing evidence unchanged. Each producing process's completed observation is sealed against an
+existing evidence unchanged.
+
+**REQ-evidence-witness-freshness-bracket** (behavior): Each producing process's completed observation MUST be sealed against an
 observation bracket captured before the process spawns, declaring the
 package's own directory and its test build's in-tree import-closure
 directories — module-relative under the verification tree, with the VCS
@@ -352,7 +364,9 @@ bracket — a restore is tolerated only when it reproduces content and
 metadata alike — and the observation seals unverifiable, while a read
 resolving outside the declared root seals per-identity unverifiable —
 permanently uncacheable under this root policy — both toward
-re-execution, never reuse. Three classes are exempt: a read resolving
+re-execution, never reuse.
+
+**REQ-evidence-witness-freshness-exemptions** (behavior): Three classes are exempt: a read resolving
 under the effective toolchain root; under the module cache outside its
 download-cache subtree; or under the effective build cache outside its
 fuzz-corpus subtree — each classifies guard-covered. The toolchain
@@ -362,7 +376,7 @@ toolchain-mediated observational equivalence — the toolchain rederives
 or revalidates cache content from inputs the fingerprint already pins —
 under gofresh's runtime-inputs contract, whose stated assumption
 excludes a subject consuming cache objects as opaque data. Observing an
-exempt read neither enters the manifest nor seals anything, and a
+exempt read MUST neither enter the manifest nor seal anything, and a
 toolchain- or cache-reading witness stays cacheable. The download-cache
 subtree's mutable metadata and the fuzz-corpus subtree's independently
 grown evidence are pinned by nothing and stay observed. The producing
@@ -373,11 +387,15 @@ observed. The kernel's stable machine-fact identities enter the
 manifest as the machine guard's stable projection rather than volatile
 content, so a machine-fact-reading witness stales on a hardware or
 kernel change, with the in-window residual gofresh's runtime-inputs
-contract states. A package whose directory is unresolved before
-spawn, or whose directory lies outside the verification tree, yields an
+contract states.
+
+**REQ-evidence-witness-freshness-unresolved-bracket** (behavior): A package whose directory is unresolved before
+spawn, or whose directory lies outside the verification tree, MUST yield an
 incomplete observation rather than a completed record sealed without a
-bracket. Executed tests whose records cannot be published for reuse — and
-expected witness subjects a run denied execution outright — are
+bracket.
+
+**REQ-evidence-witness-freshness-diagnosable** (behavior): Executed tests whose records cannot be published for reuse — and
+expected witness subjects a run denied execution outright — MUST be
 reported beside the run/served summary with a per-test attributable
 reason — the sealed observation's own reason, the refused proof's, the
 missing granting process, the post-run drift with its moved inputs
@@ -387,8 +405,10 @@ test that held prior witness evidence names why serving refused it —
 the stale variant's verdict with its moved inputs — while a test with
 no prior record needs no reason beyond the absence. Human renderings
 aggregate the reasons; the per-test attribution rides the machine
-result. Witness packages
-execute concurrently under a derived concurrency bound —
+result.
+
+**REQ-evidence-witness-freshness-concurrency** (behavior): Witness packages
+MUST execute concurrently under a derived concurrency bound —
 half the processor count, since each package process is itself
 a parallel process tree — and, where the host reports its memory, under
 a memory term: a package process is spawned only while the host's
@@ -440,7 +460,9 @@ execution, and evidence must never serve across a width the process
 never saw; invocations delivering different widths occupy distinct
 capture groups through the environment coordinate their witness
 environment carries, because one analysis engine declares one producer
-environment. A record's identity carries its producing capture
+environment.
+
+**REQ-evidence-witness-freshness-record-identity** (behavior): A record's identity MUST carry its producing capture
 group's build coordinate — the policy-declared build selection and
 per-invocation semantics: tags, the race build input, the declared
 platform, cgo, GOFLAGS, and toolchain pins (each marked undeclared
@@ -456,7 +478,9 @@ width are the fingerprints' authority. An identity digesting an ambient-resolved
 fact would silently orphan the store on a new shell, a toolchain
 upgrade, or a host-width change — and a drifted shell's store
 retirement would delete records the normal shell serves — where
-fingerprints refuse with a named reason and variants coexist. A
+fingerprints refuse with a named reason and variants coexist.
+
+**REQ-evidence-witness-freshness-runtime-bounds** (behavior): A
 reviewed runtime-only execution bound — the invocation
 envelope's timeout, the test binary's single-token timeout argument —
 is likewise not identity-bearing, because witness evidence asserts a
@@ -472,13 +496,15 @@ health is the run's fact, evidence is the tree's. The envelope bound
 has no in-test readback at all; the binary bound's one readback is the
 deadline, and a subject reaching it is unverifiable — it publishes no
 record — so no served evidence can depend on a budget read. Editing
-a bound therefore re-addresses no record — an execution budget is
+a bound therefore MUST re-address no record — an execution budget is
 tunable without discarding the store — while the classification fails
 closed, any argument not provably runtime-only staying
 identity-bearing. The store's garbage collection may
 retire coordinates no current invocation produces — their records are
-cost no lookup can serve. A test several eligible invocations
-select holds one record per coordinate, each serving only under a view
+cost no lookup can serve.
+
+**REQ-evidence-witness-freshness-capture-groups** (behavior): A test several eligible invocations
+select MUST hold one record per coordinate, each serving only under a view
 whose fingerprints prove it, and the run's witness evidence merges the
 legs by worst outcome, a served pass never overriding another leg's
 failure. Served and executed counts share the subject unit: a subject
@@ -489,10 +515,12 @@ serving rule riding the record or the fingerprint, so a widened
 exclusion set or an added vouch still serves existing evidence
 unchanged. Only a within-group double selection (two same-environment
 invocations naming one package) has no single producing leg and stays
-unpublishable. The concurrent execution assumes what standard
+unpublishable.
+
+**REQ-evidence-witness-freshness-interference** (behavior): The concurrent execution assumes what standard
 Go tooling already assumes of them (`go test` runs packages in
 parallel by default): witnesses do not mutate inputs other packages
-observe. A suite violating that is caught whenever the interference
+observe. A suite violating that MUST be caught whenever the interference
 persists across the interfered process's run-to-ingest span: a
 persisting change under the record's declared bracket root moves its
 bracket, a write outside every declared root can interfere only
@@ -506,7 +534,9 @@ with that way forfeit the spurious-reuse guarantee, exactly as an
 ambient mid-run edit-and-restore does. No serial-order control survives the accepted
 record; diagnostics narrow instead of serialize: re-running the
 suspect subjects alone is a witness-only selective execution, and each
-solo subject runs in a process of its own. A selective run may
+solo subject runs in a process of its own.
+
+**REQ-evidence-witness-freshness-isolation** (behavior): A selective run MAY
 isolate a test its process siblings would otherwise deny an outcome: a test
 shadowed by a package abort, or a completed pass inside a process whose own
 disposition is red — a red process yields no green evidence, so the pass
@@ -515,8 +545,10 @@ outcome — evidence follows execution, the aborting or failing sibling's own
 failure stands, and a test gaining its outcome this way is the selective
 form being more precise, not less; the re-runs belong to the package's unit,
 complete before its records install, inside the package's own slot of the
-derived concurrency bound. Every process that runs a witness — the
-package's run and its isolation re-runs — is the witness package's own
+derived concurrency bound.
+
+**REQ-evidence-witness-freshness-package-process** (behavior): Every process that runs a witness — the
+package's run and its isolation re-runs — MUST be the witness package's own
 test binary, and the engine every witness is judged on attests that
 package-process execution model, so the binary-scoped reachability
 discharge applies to each witness and the discharges it rests on ride
@@ -525,7 +557,9 @@ single-subject model — which binds every process — is never attested
 and a `//gofresh:single-subject` directive is backed by nothing here,
 and a culprit the model leaves undischarged refuses the witness whole on
 the uncacheable face, publishing no record — the proof-attached form
-passes the same post-run check as the plain one. A served record's fingerprint is
+passes the same post-run check as the plain one.
+
+**REQ-evidence-witness-freshness-revalidation** (behavior): A served record's fingerprint MUST be
 revalidated after the run's executions complete: a served outcome whose
 record no longer checks valid is discarded and its subject executed once
 within the same run, and a still-drifting subject ends unwitnessed with
@@ -534,13 +568,15 @@ reports a serve the tree it finished on disproves. The cache is memoization,
 never authoritative and never committed: for a deterministic test,
 discarding it changes no verdict, only the work — a flaky test's served
 outcome is that flake pinned until its inputs move or the cache is
-discarded, which is a finding about the test, not the cache. A test whose
+discarded, which is a finding about the test, not the cache.
+
+**REQ-evidence-witness-freshness-purity** (behavior): A test whose
 fixture reads leave it unverifiable re-runs every time until its author
 asserts purity in source, the deliberate opt-in, or the accepted policy
 asserts it for the invocation whole — the record's reviewed blanket
 assertion, one per invocation, carrying the same caller-side soundness
 responsibility as the in-source form. A clean witness invocation
-instead may publish without that assertion when its supported runtime evidence is
+instead MAY publish without that assertion when its supported runtime evidence is
 attached to a compatible caller-selected Gofresh observation-completeness proof
 captured before execution and both are revalidated after execution. Stipulator
 selects that proof only when the producing test process runs exactly one
@@ -956,7 +992,7 @@ accepted record: the record's envelope and its reviewed arguments MUST be
 the only sources of a package run's time bounds, so an inherited
 default can never abort work the record admitted — the executor's two
 derived terms, the concurrency bound and the memory term
-(REQ-evidence-witness-freshness), decide when a package's process
+(REQ-evidence-witness-freshness-concurrency), decide when a package's process
 spawns under the envelope and never how long it runs once spawned, and
 a package a term held until the envelope expired names the term in its
 diagnostic.

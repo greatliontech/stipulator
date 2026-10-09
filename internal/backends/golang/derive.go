@@ -288,7 +288,7 @@ type captureGroup struct {
 	toolchain string
 	// neverServes maps each of the group's subjects serving refuses to
 	// its reason — random-seeded witnesses and unclassifiable subjects
-	// (REQ-evidence-witness-freshness); resolved once per policy
+	// (REQ-evidence-witness-freshness-seeded); resolved once per policy
 	// capture, read by both witness forms' serving and publish paths.
 	neverServes map[gofresh.Subject]uncacheable
 	// witnessEnv is the group's witness environment
@@ -301,13 +301,13 @@ type captureGroup struct {
 	// and the flag rides the build-config guard into every fingerprint,
 	// so records produced at one tier can never serve the other - a
 	// policy flip between race and plain_witness re-executes instead of
-	// laundering the tier (REQ-evidence-witness-freshness's race flag as
+	// laundering the tier (REQ-evidence-witness-freshness-inputs's race flag as
 	// a caller-supplied build input).
 	race bool
 	// moduleRoot, moduleMode, and pgo are the group's build inputs
 	// beyond the selection: each partitions the group key, so one group
 	// has one of each, and the engine's flags and build inputs describe
-	// the binary the witnesses run as (REQ-evidence-witness-freshness's
+	// the binary the witnesses run as (REQ-evidence-witness-freshness-inputs's
 	// caller-supplied build inputs).
 	moduleRoot string
 	moduleMode stipulatorv1.GoModuleMode
@@ -504,7 +504,7 @@ func (pc *Capture) ObligationUniverse(ctx context.Context) ([]Obligation, error)
 // (REQ-go-witness-class's seeded form) and unclassifiable subjects —
 // and records each group's refusals on the group, the one owner both
 // witness forms read: they neither serve nor publish
-// (REQ-evidence-witness-freshness). One classifier call answers the
+// (REQ-evidence-witness-freshness-seeded). One classifier call answers the
 // whole policy; a classification fault is returned for the caller to
 // fail closed on.
 func classifySeeded(pc *policyDiscovery, seeding verify.WitnessSeeding) error {
@@ -990,7 +990,7 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Eng
 	// (served.go) stays unattested: it judges no measured subject and
 	// its store keeps the source tiers alone, so the attestation would
 	// only pay the reachability pass for a discharge the store strips
-	// (REQ-evidence-witness-freshness).
+	// (REQ-evidence-witness-freshness-package-process).
 	opts = append(opts, gofresh.WithPackageProcessExecution())
 	return newEngine(ctx, dir, g.env, buildFlags(g.race, g.tags, g.moduleMode, g.pgo), opts...)
 }
@@ -1258,7 +1258,8 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 		}
 		// Per-test attribution mirrors the selective runner's: the
 		// ladder's own refusal reasons plus a structural fallback
-		// (REQ-evidence-witness-freshness's diagnosable-set requirement).
+		// (REQ-evidence-witness-freshness-diagnosable's attributable
+		// reason).
 		if tr.Uncached > 0 || len(uncacheableWhy) > 0 {
 			tr.UncacheableReasons = map[string]string{}
 			for s, why := range uncacheableWhy {

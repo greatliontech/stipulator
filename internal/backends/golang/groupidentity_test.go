@@ -83,11 +83,11 @@ func TestGoGroupIdentityIgnoresAmbientEnvironment(t *testing.T) {
 	}
 }
 
-// A within-group double selection (two same-environment invocations
-// naming one package) has no single producing leg: its subjects never
-// enter the group's publishable set (REQ-evidence-witness-freshness).
+// A within-group double selection (two same-environment invocations naming one
+// package) has no single producing leg: its subjects never enter the group's
+// publishable set (REQ-evidence-witness-freshness-capture-groups).
 func TestGoGroupSubjectsExcludeAmbiguousPackages(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-capture-groups")
 	g := &captureGroup{packages: map[string]*groupPackage{
 		"example.com/m/clean":  {names: []string{"TestClean"}},
 		"example.com/m/shared": {names: []string{"TestShared"}, ambiguous: true},

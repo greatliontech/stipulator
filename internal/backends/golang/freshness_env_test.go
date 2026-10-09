@@ -156,9 +156,9 @@ func TestAlwaysRed(t *testing.T) {
 // (the analysis engine's producer env) rather than the uncapped
 // analysis env - which would refuse the record on every run and turn
 // the cap into a permanent cache miss for exactly the witnesses that
-// notice it (REQ-evidence-witness-freshness, the concurrency clause).
+// notice it (REQ-evidence-witness-freshness-concurrency).
 func TestGoRunWitnessesServeWidthReadingWitness(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency")
 	if testing.Short() {
 		t.Skip("runs a race-instrumented witness pass over a temporary module, twice")
 	}

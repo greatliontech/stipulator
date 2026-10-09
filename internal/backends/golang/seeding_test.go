@@ -79,12 +79,12 @@ func rapidModule(t *testing.T) string {
 // cannot inspect is refused under its own reason naming the gap —
 // absence of proof never serves, but a load gap never reads as a
 // property witness (REQ-go-witness-class,
-// REQ-evidence-witness-freshness).
+// REQ-evidence-witness-freshness-seeded).
 func TestRandomSeeded(t *testing.T) {
 	if testing.Short() {
 		t.Skip("reads the repository-tree backend the full tier loads before the testlog")
 	}
-	stipulate.Covers(t, "REQ-go-witness-class", "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-go-witness-class", "REQ-evidence-witness-freshness-seeded")
 	fb := fixtureBackend(t)
 	refused, err := fb.NeverServe([]string{
 		"example.com/fixture/lib.TestPropRapidCheck",
@@ -133,11 +133,11 @@ func TestRandomSeeded(t *testing.T) {
 // whether or not the store holds a record for it — a held record is
 // the refused evidence, attributed as the subject's re-execution
 // reason — while every other subject enters with its group's records
-// (REQ-evidence-witness-freshness).
+// (REQ-evidence-witness-freshness-seeded).
 //
 //gofresh:pure
 func TestServingCandidatesExcludeRandomSeeded(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-seeded")
 	example := gofresh.Subject{Package: "example.com/m", Symbol: "TestExample"}
 	recorded := gofresh.Subject{Package: "example.com/m", Symbol: "TestPropertyRecorded"}
 	unrecorded := gofresh.Subject{Package: "example.com/m", Symbol: "TestPropertyFresh"}
@@ -169,11 +169,12 @@ func TestServingCandidatesExcludeRandomSeeded(t *testing.T) {
 // wire's) is held as the class it names, its text unchanged — never
 // wrapped a second time; a spelling no class owns is held fail-closed
 // as an unclassifiable witness naming the spelling
-// (REQ-evidence-witness-freshness's diagnosable-set requirement).
+// (REQ-evidence-witness-freshness-diagnosable's attributable reason,
+// REQ-evidence-witness-freshness-seeded's refusal naming the class).
 //
 //gofresh:pure
 func TestClassifySeededAttributesEveryRefusal(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-seeded", "REQ-evidence-witness-freshness-diagnosable")
 	s := gofresh.Subject{Package: "example.com/m", Symbol: "TestX"}
 	for _, c := range []struct {
 		name     string
@@ -220,9 +221,9 @@ func (sp spellingSeeding) NeverServe(symbols []string) (map[string]string, error
 // end to end: a random-seeded witness executes on every run — a warm
 // store serves its deterministic sibling and re-executes it — it
 // publishes no record, and its refusal is attributed as uncacheable
-// with the seeded reason (REQ-evidence-witness-freshness).
+// with the seeded reason (REQ-evidence-witness-freshness-seeded).
 func TestGoRunWitnessesRandomSeededNeverServes(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-seeded")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -308,9 +309,9 @@ func TestGoRunWitnessesRandomSeededNeverServes(t *testing.T) {
 // classifier that cannot answer degrades serving whole — a warm store
 // serves nothing, everything executes, nothing publishes — and the
 // degraded reason names the classification
-// (REQ-evidence-witness-freshness, REQ-evidence-freshness-degrade).
+// (REQ-evidence-witness-freshness-seeded, REQ-evidence-freshness-degrade).
 func TestGoRunWitnessesSeedingFaultFailsClosed(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-evidence-freshness-degrade")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-seeded", "REQ-evidence-freshness-degrade")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -350,9 +351,9 @@ func TestGoRunWitnessesSeedingFaultFailsClosed(t *testing.T) {
 // TestExecutePolicyWitnessedSeedingFaultFailsClosed pins the same fault
 // direction on the health-judged form: the recorder degrades, the
 // suite still executes and its evidence stands, and nothing publishes
-// (REQ-evidence-witness-freshness, REQ-evidence-freshness-degrade).
+// (REQ-evidence-witness-freshness-seeded, REQ-evidence-freshness-degrade).
 func TestExecutePolicyWitnessedSeedingFaultFailsClosed(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-evidence-freshness-degrade")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-seeded", "REQ-evidence-freshness-degrade")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented policy over a temporary module")
 	}
@@ -385,9 +386,9 @@ func TestExecutePolicyWitnessedSeedingFaultFailsClosed(t *testing.T) {
 // contract on the health-judged form: the whole execution publishes
 // records for its deterministic witnesses and none for the random-seeded
 // one, whose refusal carries the seeded reason
-// (REQ-evidence-witness-freshness).
+// (REQ-evidence-witness-freshness-seeded).
 func TestExecutePolicyWitnessedRandomSeededNeverPublishes(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-seeded")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented policy over a temporary module")
 	}
@@ -426,13 +427,13 @@ func TestExecutePolicyWitnessedRandomSeededNeverPublishes(t *testing.T) {
 // reached only through an interface method dispatch is outside the
 // walk and serves (the clause's stated route) while a hop inside the
 // dispatch's argument seeds and a type parameter's method refuses,
-// (REQ-evidence-witness-freshness's transitive seeding class beside
+// (REQ-evidence-witness-freshness-seeded's transitive seeding class beside
 // REQ-go-witness-class's direct-call classification).
 func TestHelperIndirectedDriverRefusesServing(t *testing.T) {
 	if testing.Short() {
 		t.Skip("reads the fixture backend the full tier loads")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-go-witness-class")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-seeded", "REQ-go-witness-class")
 	fb := fixtureBackend(t)
 	symbols := []string{
 		"example.com/fixture/lib.TestPropViaHelper",
@@ -557,12 +558,12 @@ func TestHelperIndirectedDriverRefusesServing(t *testing.T) {
 // The walk answers the same under a scoped load: a helper in an
 // in-module package the scope did not hold is loaded on demand, so the
 // served backend's per-symbol scope never serves what the whole-tree
-// load refuses (REQ-evidence-witness-freshness).
+// load refuses (REQ-evidence-witness-freshness-seeded).
 func TestScopedLoadReachesInModuleHelpers(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads the fixture module scoped to one package")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-seeded")
 	scoped, err := newContext(context.Background(), "testdata/fixturemod", []string{"example.com/fixture/lib"})
 	if err != nil {
 		t.Fatal(err)
@@ -589,12 +590,12 @@ func TestScopedLoadReachesInModuleHelpers(t *testing.T) {
 // The walk fails closed where it has no declaration to read: a call the
 // type information cannot resolve (a helper package no view selects),
 // and an in-module package that will not load — never a silent serve
-// (REQ-evidence-witness-freshness's absence-of-proof rule).
+// (REQ-evidence-witness-freshness-seeded's absence-of-proof rule).
 func TestSeedingWalkFailsClosedWithoutADeclaration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("reads the fixture backend the full tier loads")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-seeded")
 	fb := fixtureBackend(t)
 	refused, err := fb.NeverServe([]string{
 		"example.com/fixture/unresolved.TestViaTagged",
@@ -658,12 +659,12 @@ func TestSeedingWalkFailsClosedWithoutADeclaration(t *testing.T) {
 // build tag drives the runner in one view and not the other, and
 // serving — one answer for the symbol — refuses because the tagged
 // view seeds it, while the default view alone would have served it
-// (REQ-evidence-witness-freshness across REQ-go-build-selections).
+// (REQ-evidence-witness-freshness-seeded across REQ-go-build-selections).
 func TestSeedingWalkIsPerSelection(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads a fixture module under two views")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-go-build-selections")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-seeded", "REQ-go-build-selections")
 	neutralAmbient(t)
 	dir := splitModule(t)
 	const symbol = "example.com/split/lib.TestSplit"

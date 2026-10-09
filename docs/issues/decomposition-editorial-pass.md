@@ -69,6 +69,55 @@ in its change set's commit message):
   policy, which wants its own; -record-keys holds the fingerprint key
   enumeration that -fingerprint and -strategy refer to ("the
   enumeration above") — move the fingerprint keys beside -fingerprint.
+- From the witness-freshness split: dangling antecedents in
+  -carve-out ("the proof", "the compartment pin"), -vouches ("the same
+  review discipline"), -exemptions ("Three classes are exempt" — from
+  what), -runtime-bounds ("likewise not identity-bearing", leaning on
+  -record-identity), -scratch-namespaces ("as an exclusion does");
+  sentences byte preservation stranded in the wrong paragraph —
+  -scratch-namespaces' closing exclusions rule belongs in -inputs,
+  -capture-groups' "Exclusions, vouches, and the purity assertion
+  partition capture groups but never the record identity" beside
+  -record-identity's subject, -carve-out's fail-closed converse
+  ("Anything else short of valid … absence of proof never serves an
+  outcome") is the base's "exactly when" converse (its witness
+  TestLoadUnreadableIsEmpty registers both meanwhile), -concurrency's
+  parent and resolver soft-ceiling sentence is not about witness
+  concurrency; several obligations under one keyword, each with
+  distinct witnesses — -seeded (the direct never-serve rule; the
+  transitive walk; unclassifiable subjects refused; a classification
+  fault degrades), -concurrency (the spawn bound; the memory term; the
+  parent's soft ceiling; inner width; one environment; width capture
+  groups), -inputs (its MUST governs the reviewed-exclusions rule while
+  the lead sentence's build-input capture is witnessed by five of its
+  ten bindings), -exemptions (the three classes; the temp root; machine
+  facts), -runtime-bounds (identity; health; store garbage
+  collection), -revalidation (post-run revalidation; the memoization
+  statement); a permission keyword governing mandatory constraints —
+  -isolation's MAY over "the re-runs belong to the package's unit,
+  complete before its records install, inside the package's own slot"
+  and -purity's MAY over "Stipulator selects that proof only when …
+  exactly one selected top-level runnable", each pinned by its
+  witnesses and each wanting a MUST sentence of its own; idioms —
+  -seeded's "MUST never serve and never publish" and -runtime-bounds'
+  "MUST re-address no record" (a consequence elevated; the premise is
+  "is not identity-bearing") read as "MUST NOT"; a prose mention
+  without its id — -cache-format-ledger's "the witness-freshness
+  carve-out's diff base" (cite -carve-out); bindings on the base pinning
+  a rule no sentence of the family states —
+  TestSelectingInvocationAnswersNothingForAnAbsentPackage and
+  TestSubjectsOfOrdersByPackageThenSymbol (a helper's absent-package
+  lookup; the subject ordering),
+  TestExecutedRecordDropsWhenItsInputMovesBeforeItsPublish and
+  TestGoDeriveRuntimeDriftAndUnverifiableSkipRecords (an executed record
+  whose input moved before its publish is dropped and counted
+  uncacheable — the nearest sentence -cache-format-install's "its
+  closing validation passed").
+- The coverage clause: state that a split under a MAY base raises its
+  sub-ids' evidence bar — REQ-evidence-witness-freshness and
+  REQ-evidence-resolution-freshness were MAY bases any static evidence
+  satisfied, and their MUST sub-ids each need an executed witness now;
+  the clause says nothing of a split's effect on the bar.
 
 Lands: cross-tool train chunk 248 (stipulator's spec-corrections chunk,
 which edits these documents; its plan entry carries the rider).

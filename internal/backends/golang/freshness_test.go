@@ -122,18 +122,17 @@ func TestMutatesSourceOnce(t *testing.T) {
 	}
 }
 
-// TestGoRunWitnessesInputDriftAfterTheUnitReexecutesNextRun pins the
-// package unit against a sibling's write (REQ-evidence-witness-freshness,
+// TestGoRunWitnessesInputDriftAfterTheUnitReexecutesNextRun pins the package
+// unit against a sibling's write (REQ-evidence-witness-freshness-interference,
 // REQ-policy-cancellation-unit): the reader's record publishes the moment its
 // package completes, carrying the input it read; a sibling package whose
-// isolation re-run then rewrites that input cannot touch the published
-// record — the writer's own record is refused for writing outside its
-// bracket — and the next run finds the reader's recorded input moved and
-// re-executes it rather than serving the record. The writer's rewrite is
-// gated on the reader's persisted note, so the order is the test's, not
-// the scheduler's.
+// isolation re-run then rewrites that input cannot touch the published record
+// — the writer's own record is refused for writing outside its bracket — and
+// the next run finds the reader's recorded input moved and re-executes it
+// rather than serving the record. The writer's rewrite is gated on the
+// reader's persisted note, so the order is the test's, not the scheduler's.
 func TestGoRunWitnessesInputDriftAfterTheUnitReexecutesNextRun(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-policy-cancellation-unit")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-interference", "REQ-policy-cancellation-unit")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -449,7 +448,7 @@ func TestGoRunWitnessesSelectsRaceSources(t *testing.T) {
 	// pollutes the host cache (t.Setenv forbids t.Parallel, which these
 	// tests drop for hermeticity).
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-go-race")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-inputs", "REQ-go-race")
 	if testing.Short() {
 		t.Skip("runs go test per package")
 	}
@@ -536,7 +535,7 @@ func TestGoRunWitnessesSelectsRaceSources(t *testing.T) {
 // for unsupported file outcomes, observed file movement still re-executes unless
 // the policy excludes that surface. An exclusion alone grants no outcome support.
 func TestGoRunWitnessesConfigExcludedPathHonored(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-inputs")
 	if testing.Short() {
 		t.Skip("runs go test per package")
 	}
@@ -656,7 +655,7 @@ func TestReadsSession(t *testing.T) {
 // progress, never the walk's end, so a poisoned early variant can
 // never permanently mask a serveable later one.
 func TestRoundCandidatesAdvancesPastGateRefusal(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-inputs")
 	s := gofresh.Subject{Package: "p", Symbol: "T"}
 	cached := map[string][]witnesscache.Record{"p.T": {
 		{ObservationExclusions: []string{"withdrawn"}},
@@ -680,7 +679,7 @@ func TestRoundCandidatesAdvancesPastGateRefusal(t *testing.T) {
 // two variants coexist — the gate-refused one must not end the walk
 // before the recorded one proves equivalent, whatever the load order.
 func TestGoRunWitnessesWithdrawnVariantNeverMasksServeable(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-inputs")
 	if testing.Short() {
 		t.Skip("runs go test per package")
 	}
@@ -1023,15 +1022,15 @@ func TestReads(t *testing.T) {
 
 // TestServedDiscardsWhenTheTreeMovesInsideTheCloseInterval pins the
 // deferred-close contract on the served half (REQ-check-witness-selection,
-// REQ-evidence-witness-freshness): a served record's re-check verdict is
-// provisional until its package's sibling validates, so a source move
-// landing between the re-check and that closing validation refuses the
-// close — every serve of the package is discarded and re-executes in the
-// drift retry — never passes as a serve the tree disproves. (A runtime
-// input moving there is not the case: the reader asserts purity, and a
-// purity-asserted record's inputs are the author's word, by design.)
+// REQ-evidence-witness-freshness-revalidation): a served record's re-check
+// verdict is provisional until its package's sibling validates, so a source
+// move landing between the re-check and that closing validation refuses the
+// close — every serve of the package is discarded and re-executes in the drift
+// retry — never passes as a serve the tree disproves. (A runtime input moving
+// there is not the case: the reader asserts purity, and a purity-asserted
+// record's inputs are the author's word, by design.)
 func TestServedDiscardsWhenTheTreeMovesInsideTheCloseInterval(t *testing.T) {
-	stipulate.Covers(t, "REQ-check-witness-selection", "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-check-witness-selection", "REQ-evidence-witness-freshness-revalidation")
 	if testing.Short() {
 		t.Skip("executes race-instrumented selective runs over a temporary module")
 	}
@@ -1108,19 +1107,19 @@ func TestTouch(t *testing.T) {
 }
 
 // TestWitnessEngineAttestsThePackageProcessModel pins the execution-model
-// attestation on the one engine constructor (REQ-evidence-witness-freshness):
-// every process running a witness is the witness package's own test
-// binary, so the engine attests the package-process model and gofresh's
-// binary-scoped reachability discharge judges a dynamic-capable culprit
-// no harness root of that binary reaches. The fixture's dependency holds
-// a registry map written only by an unreached Register and read by the
-// witness through Has: without the attestation the witness is
-// unverifiable (shared mutated dynamic state) — refused on the
-// uncacheable face, no record published, every run re-executing it;
-// under the attestation the record serves on the second run and names
-// the discharge it rests on.
+// attestation on the one engine constructor
+// (REQ-evidence-witness-freshness-package-process): every process running a
+// witness is the witness package's own test binary, so the engine attests the
+// package-process model and gofresh's binary-scoped reachability discharge
+// judges a dynamic-capable culprit no harness root of that binary reaches. The
+// fixture's dependency holds a registry map written only by an unreached
+// Register and read by the witness through Has: without the attestation the
+// witness is unverifiable (shared mutated dynamic state) — refused on the
+// uncacheable face, no record published, every run re-executing it; under the
+// attestation the record serves on the second run and names the discharge it
+// rests on.
 func TestWitnessEngineAttestsThePackageProcessModel(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-package-process")
 	if testing.Short() {
 		t.Skip("executes race-instrumented selective runs over a temporary module")
 	}
@@ -1192,7 +1191,7 @@ func TestReadsDep(t *testing.T) {
 }
 
 // TestWitnessRefusalStandsOnTheUncacheableFace pins the attested model's
-// other half (REQ-evidence-witness-freshness): a culprit the
+// other half (REQ-evidence-witness-freshness-package-process): a culprit the
 // package-process model leaves undischarged — a registry a harness root
 // of the witness's own binary mutates — refuses the witness on the
 // uncacheable face with gofresh's reason whole, and no record publishes,
@@ -1201,7 +1200,7 @@ func TestReadsDep(t *testing.T) {
 // leg's sealed observation never saw the closure's shared state, so the
 // post-run check judges it.
 func TestWitnessRefusalStandsOnTheUncacheableFace(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-package-process")
 	if testing.Short() {
 		t.Skip("executes race-instrumented selective runs over a temporary module")
 	}

@@ -124,12 +124,12 @@ func TestGoDiscoveryWorkspaceMemberScope(t *testing.T) {
 // directories: the observation bracket's closure roots cover production
 // imports, test-only imports, and their transitive dependencies, while
 // the package's own directory and out-of-tree dependencies stay out
-// (REQ-evidence-witness-freshness's consuming-compile seal).
+// (REQ-evidence-witness-freshness-bracket's consuming-compile seal).
 func TestGoDiscoveryRecordsClosureDirs(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads the tree")
 	}
-	stipulate.Covers(t, "REQ-evidence-witness-freshness")
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-bracket")
 	neutralAmbient(t)
 	dir := writeModule(t, map[string]string{
 		"go.mod":       "module example.com/clo\n\ngo 1.26\n",

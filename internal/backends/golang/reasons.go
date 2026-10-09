@@ -29,7 +29,7 @@ const (
 // and explains by a listed kind — a class the table does not list has
 // no prefix to render and no kind to explain by (an index past the
 // table faults at its first render), and a prefix spelled anywhere
-// else can enter no reason (REQ-evidence-witness-freshness's
+// else can enter no reason (REQ-evidence-witness-freshness-diagnosable's
 // diagnosable set; REQ-mcp-explain).
 type reasonClass uint8
 
