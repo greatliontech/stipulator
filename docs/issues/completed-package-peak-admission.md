@@ -10,7 +10,8 @@ LINK or whose test binary peaks at 7.8 GiB prices every later
 admission at that figure; 331 measured stipulator's own builds under
 the floor and refuted the build half there, but bldc's energy package
 is not that measurement. Reproduce with `go test -c` of the package
-under `/usr/bin/time -v` (the binary's own peak) beside the invocation's
+under `/usr/bin/time -v` (the compilation/link peak), then run the produced
+test binary separately to measure its execution peak, beside the invocation's
 origin line: a binary peak far below 7.8 GiB re-opens the build half
 and the estimate takes the binary's own term; a binary peak near it is
 the protection the clause states, and a per-package estimate from that
@@ -60,3 +61,43 @@ packages is required protection or an unnecessarily conservative estimate.
 The matching numerical discovery peak alone does not establish causality.
 Preserve fail-closed admission and an explicit incomplete verdict while the
 tool owner sequences this investigation.
+
+## Weaver observation and admission arithmetic
+
+Weaver reproduced the refusal with the same installed v0.73.6 revision. The cold
+pass reported 729 executed witnesses, then degraded remaining packages with:
+
+> memory: one package estimated at 6.0 GiB — package
+> github.com/thegrumpylion/weaver/gen/go/weaver/v1's completed process 40325's
+> peak; the host cannot hold one more package process beside the pass:
+> available 9.1 GiB, 0 package(s) running reserving 0 B, the pass's resident
+> 205 MiB (this phase's peak 3.4 GiB)
+
+Discovery had reported a 6.0 GiB peak. The execution admission arithmetic explains
+the refusal: the 6.0 GiB package estimate plus the roughly 3.2 GiB parent-growth
+allowance exceeds the displayed 9.1 GiB availability. The parent-growth allowance
+uses execution's observed peak minus current RSS, not the lifetime discovery peak.
+An earlier Weaver pass attributed an estimate of 5.3 GiB to the completed public
+invocation-package process, again matching discovery's peak; an unchanged-tree
+standard retry completed 1045 tests. These are observations, not controlled peak
+comparisons or proof that either package actually required that much memory.
+
+Pinned-source tracing at `c01a2987170cb5610521e7b737e25cc2ffa2c5ce` identifies an
+additional measurement-boundary hypothesis. `runPackage` passes
+`processPeakBytes(cmd.ProcessState)` to `gate.reaped`; Linux `processPeakBytes`
+reads wait-status `Rusage.Maxrss` without a post-exec boundary correction. The
+completed maximum then prices subsequent admissions. gofresh v0.112.1 uses Go's
+owned runner with a process group; this Go 1.27.1 Linux exec path uses
+`CLONE_VFORK | CLONE_VM`.
+
+In upstream Linux v6.12 source, `copy_mm` shares the parent's address space on that
+path, and `exec_mmap` carries the old address space's high-water RSS into the child's
+signal maximum. This supplies a plausible route for pre-exec parent high-water
+state to reach the wait-status estimate after discovery memory has been released.
+The report host was Linux 7.2.9-arch1-1; its exact kernel source was not verified.
+The source path and matching numbers do not independently establish the contribution
+to the two named processes. A reproduction should record parent RSS/high-water,
+child wait-status peak, and post-exec driver/compiler/linker/test peaks separately.
+
+Preserve fail-closed admission and incomplete verdicts. A warm retry or a lower
+soft Go heap target can change the circumstances but does not settle attribution.
