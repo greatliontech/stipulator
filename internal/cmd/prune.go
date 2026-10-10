@@ -14,6 +14,10 @@ import (
 	"github.com/greatliontech/stipulator/internal/verifyrun"
 )
 
+// collectStore is the shared core call, replaceable by in-process face tests
+// that supply a capture without performing policy discovery.
+var collectStore = prune.StoreGC
+
 func pruneCmd() *cobra.Command {
 	var check, noTest, dangling, storeGC bool
 	c := &cobra.Command{
@@ -31,13 +35,12 @@ func pruneCmd() *cobra.Command {
 				Load:    func() (*records.Store, error) { return records.Load(os.DirFS(chdir)) },
 			}
 			if mode.Store {
-				res, err := prune.StoreGC(cmd.Context(), deps)
+				res, err := collectStore(cmd.Context(), deps)
+				for _, line := range res.Lines(err != nil) {
+					fmt.Fprintln(cmd.OutOrStdout(), line)
+				}
 				if err != nil {
 					return withRecordPath(err)
-				}
-				fmt.Printf("store gc: %d record variant(s) removed, %d kept\n", res.Removed, res.Kept)
-				if res.Resolutions != nil {
-					fmt.Printf("store gc: %d resolution record(s) removed, %d kept\n", res.Resolutions.Removed, res.Resolutions.Kept)
 				}
 				return nil
 			}

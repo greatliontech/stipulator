@@ -162,14 +162,14 @@ func TestInstallNeverEvictsAnUntouchedIdentity(t *testing.T) {
 func TestSweepCountsAndSparesTemporaries(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-record-store-layout")
 	store := Store{kind: "k", path: filepath.Join(t.TempDir(), "s")}
-	if removed, kept, err := store.Sweep(func(string, []byte) bool { return false }); removed != 0 || kept != 0 || err != nil {
+	if removed, kept, err := store.Sweep(t.Context(), func(string, []byte) bool { return false }); removed != 0 || kept != 0 || err != nil {
 		t.Fatalf("missing store: %d %d %v", removed, kept, err)
 	}
 	if err := store.Install(4, Entry{"a-1.json", []byte("a")}, Entry{"a-2.json", []byte("b")}, Entry{"b-1.json", []byte("c")}); err != nil {
 		t.Fatal(err)
 	}
 	os.WriteFile(filepath.Join(store.path, ".k-live.json"), []byte("x"), 0o644)
-	removed, kept, err := store.Sweep(func(name string, data []byte) bool { return strings.HasPrefix(name, "a-") && data != nil })
+	removed, kept, err := store.Sweep(t.Context(), func(name string, data []byte) bool { return strings.HasPrefix(name, "a-") && data != nil })
 	if removed != 1 || kept != 2 || err != nil {
 		t.Fatalf("sweep = %d removed, %d kept, %v", removed, kept, err)
 	}
@@ -179,21 +179,21 @@ func TestSweepCountsAndSparesTemporaries(t *testing.T) {
 	if os.Getuid() != 0 {
 		os.Chmod(filepath.Join(store.path, "a-1.json"), 0)
 		var sawNil bool
-		removed, kept, err = store.Sweep(func(name string, data []byte) bool { sawNil = sawNil || data == nil; return data != nil })
+		removed, kept, err = store.Sweep(t.Context(), func(name string, data []byte) bool { sawNil = sawNil || data == nil; return data != nil })
 		os.Chmod(filepath.Join(store.path, "a-1.json"), 0o644)
 		if !sawNil || removed != 1 || kept != 1 || err != nil {
 			t.Fatalf("unreadable sweep = %d %d %v (nil seen %v)", removed, kept, err, sawNil)
 		}
 		os.Chmod(store.path, 0o555)
 		defer os.Chmod(store.path, 0o755)
-		removed, kept, err = store.Sweep(func(string, []byte) bool { return false })
+		removed, kept, err = store.Sweep(t.Context(), func(string, []byte) bool { return false })
 		if removed != 0 || kept != 0 || !errors.Is(err, os.ErrPermission) {
 			t.Fatalf("read-only sweep = %d %d %v", removed, kept, err)
 		}
 	}
 	file := Store{kind: "k", path: filepath.Join(t.TempDir(), "file")}
 	os.WriteFile(file.path, []byte("x"), 0o644)
-	if _, _, err := file.Sweep(func(string, []byte) bool { return true }); err == nil {
+	if _, _, err := file.Sweep(t.Context(), func(string, []byte) bool { return true }); err == nil {
 		t.Fatal("a store that is a file swept without error")
 	}
 }

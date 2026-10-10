@@ -11,6 +11,7 @@ package resolutioncache
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 
@@ -207,12 +208,12 @@ func InstallAll(dir string, recs []Record) error {
 // current records names, and every record Load would refuse; the count
 // of removed and kept records is returned. A missing store removes
 // nothing.
-func GC(dir string, live func(selection, symbol string) bool) (removed, kept int, err error) {
+func GC(ctx context.Context, dir string, live func(selection, symbol string) bool) (removed, kept int, err error) {
 	store, err := open(dir)
 	if err != nil {
 		return 0, 0, err
 	}
-	return store.Sweep(func(name string, data []byte) bool {
+	return store.Sweep(ctx, func(name string, data []byte) bool {
 		// What Load never serves — malformed, field-blind, of a prior
 		// version, misnamed — is cost with no servable evidence behind
 		// it, whatever its identity.

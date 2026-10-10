@@ -1230,3 +1230,23 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "6c11b2781040a115f68eb3bd0ffba6d63671d44205b5ddbe42657ce38ceee2c0"
 }
+
+bindings {
+  requirement_id: "REQ-policy-cancellation"
+  content_hash: "476744932b45258c7b55a0356b4806b510f2b9138064ab0e92cb8ab1cbcbcbe6"
+  source_hash: "792fe92e6757ca2211711ae14af125c0207ae2aa3905819841e8d8710d503e29"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestPublicationPassesCancellationToStoreAcquisition"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "d2e588abc791a11fbe4c3ab655041c2c8e2ea2e9f97aef662c227e8ef8d072d2"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation-kept"
+  content_hash: "67aea066e9a921a56e39a605c403e23c1b3cd50e56de2155ed60783523160eee"
+  source_hash: "b11ee5c70a62d412c09b4975bd09890e9f451da1e6063ad1b1e70ad8c341a2ca"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestPublicationCancellationRetainsTheInstalledPrefix"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "8b12f975330446748e8293b1401bdbc7bb0901659caedea7f38a247f6134e5c7"
+}

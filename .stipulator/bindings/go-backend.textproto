@@ -98,7 +98,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "ed726f14758cf66f2fda28e794e7149e1d5454ee2c94e4dd801d943469363ac0"
+  shape_hash: "92450012b853b010ddb9ce3ab68576c84aa127bd47e4dfe563e01f8a767814d7"
 }
 
 bindings {

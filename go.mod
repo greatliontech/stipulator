@@ -5,16 +5,17 @@ go 1.27.0
 require (
 	github.com/go-git/go-git/v5 v5.19.1
 	github.com/google/jsonschema-go v0.4.3
-	github.com/greatliontech/gofresh v0.112.1
+	github.com/greatliontech/go-x-tools v0.50.1-0.20261009182129-f5608c7b7b28
+	github.com/greatliontech/gofresh v0.115.1
 	github.com/greatliontech/stipulator/stipulate v0.1.0
-	github.com/greatliontech/stipulator/stipulate/structural v0.2.0
+	github.com/greatliontech/stipulator/stipulate/structural v0.3.1
 	github.com/modelcontextprotocol/go-sdk v1.6.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.9
 	github.com/yuin/goldmark v1.8.2
-	golang.org/x/mod v0.37.0
-	golang.org/x/text v0.38.0
-	golang.org/x/tools v0.47.0
+	golang.org/x/mod v0.41.0
+	golang.org/x/sys v0.48.0
+	golang.org/x/text v0.42.0
 	google.golang.org/protobuf v1.36.11
 	pgregory.net/rapid v1.3.0
 )
@@ -40,10 +41,9 @@ require (
 	github.com/skeema/knownhosts v1.3.1 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
-	golang.org/x/crypto v0.53.0 // indirect
-	golang.org/x/net v0.56.0 // indirect
+	golang.org/x/crypto v0.57.0 // indirect
+	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/oauth2 v0.35.0 // indirect
-	golang.org/x/sync v0.21.0 // indirect
-	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )

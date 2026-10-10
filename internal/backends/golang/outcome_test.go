@@ -53,7 +53,7 @@ func TestUnsupportedFileOutcomesRetainIdentityWithoutPublishing(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !SuiteHealthy(report) || tr.Ran != 1 || tr.Uncached != 1 || len(witnesscache.Load(dir)) != 0 {
+		if !SuiteHealthy(report) || tr.Ran != 1 || tr.Uncached != 1 || len(witnesscache.Load(t.Context(), dir)) != 0 {
 			t.Fatalf("unsupported file read published or lost its outcome: report=%v run=%+v", report, tr)
 		}
 		obs := report.GetObservations()
@@ -77,7 +77,7 @@ func TestUnsupportedFileOutcomesRetainIdentityWithoutPublishing(t *testing.T) {
 	if err != nil || tr.Uncached != 0 {
 		t.Fatalf("explicit purity failed: %+v %v", tr, err)
 	}
-	records := witnesscache.Load(dir)
+	records := witnesscache.Load(t.Context(), dir)
 	if len(records) != 1 || records[0].Fingerprint.PurityAssertion == "" {
 		t.Fatalf("missing attributable purity record: %+v", records)
 	}

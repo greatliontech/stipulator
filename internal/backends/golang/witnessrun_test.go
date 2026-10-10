@@ -275,7 +275,7 @@ func TestGoRunWitnessesServeExecuteOutsideDisjoint(t *testing.T) {
 	if cold.Uncached != 1 {
 		t.Errorf("cold: uncached=%d, want 1: the multiply-selected subject executes but cannot publish", cold.Uncached)
 	}
-	cache := witnesscache.Load(tmp)
+	cache := witnesscache.Load(t.Context(), tmp)
 	if len(cache) != 2 {
 		t.Fatalf("cold run published %d records, want 2: %+v", len(cache), cache)
 	}
@@ -391,16 +391,16 @@ func TestMore(t *testing.T) {
 		t.Fatalf("served witness outcome = %v, want PASSED", got)
 	}
 	// The served record republished under the current compartment: a
-	// TestBase variant now carries the same test-variant closure the added
+	// TestBase variant now carries the same effective compartment the added
 	// test's fresh record pinned, and the next run serves both without
 	// re-proving the delta.
-	moreRec := cacheRecord(t, witnesscache.Load(tmp), "example.com/grow/pkg", "TestMore")
+	moreRec := cacheRecord(t, witnesscache.Load(t.Context(), tmp), "example.com/grow/pkg", "TestMore")
 	if moreRec == nil {
 		t.Fatal("added test published no record")
 	}
 	refreshed := false
-	for _, rec := range witnesscache.Load(tmp) {
-		if rec.Test == "TestBase" && rec.Fingerprint.TestVariantClosure == moreRec.Fingerprint.TestVariantClosure {
+	for _, rec := range witnesscache.Load(t.Context(), tmp) {
+		if rec.Test == "TestBase" && rec.Fingerprint.EffectiveTestVariantClosure() == moreRec.Fingerprint.TestVariantClosure {
 			refreshed = true
 		}
 	}
@@ -420,8 +420,8 @@ func TestMore(t *testing.T) {
 // A pin moving BEHIND the compartment verdict must re-execute even when
 // the compartment delta itself is inert: gofresh orders the compartment
 // comparison before the runtime tier, so a moved runtime input hides
-// behind the stale "test variants" reason, and the carve-out's batched
-// re-check of the refreshed fingerprint is what catches the mover
+// behind the stale "test variants" reason, and the carve-out's
+// explicit applicability check is what catches the mover
 // (REQ-evidence-witness-freshness-carve-out — the carve-out completes the proof
 // itself, never widens it).
 func TestGoRunWitnessesRerunsWhenMoverHidesBehindInertCompartmentGrowth(t *testing.T) {
@@ -616,7 +616,7 @@ func TestWriter(t *testing.T) {
 	if got := second.Outcomes["example.com/srcmover/served.TestServed"]; got != verify.TestPassed {
 		t.Fatalf("retried subject outcome = %v, want PASSED from the retry's execution", got)
 	}
-	retried := cacheRecord(t, witnesscache.Load(tmp), "example.com/srcmover/served", "TestServed")
+	retried := cacheRecord(t, witnesscache.Load(t.Context(), tmp), "example.com/srcmover/served", "TestServed")
 	if retried == nil || retried.Fingerprint.PurityAssertion != "" || !retried.Fingerprint.ObservationProof.Observable {
 		t.Fatalf("retry did not retain its own supported proof: %+v", retried)
 	}
@@ -687,7 +687,7 @@ func TestReadsCorpus(t *testing.T) {
 	requireRun("cold", 0, 1, 0)
 	assertBracketDisposition := func(unverifiable bool) {
 		t.Helper()
-		rec := cacheRecord(t, witnesscache.Load(tmp), "example.com/corpus/pkg", "TestReadsCorpus")
+		rec := cacheRecord(t, witnesscache.Load(t.Context(), tmp), "example.com/corpus/pkg", "TestReadsCorpus")
 		if rec == nil {
 			t.Fatal("no directory-reader record to inspect")
 		}
@@ -732,8 +732,8 @@ func TestReadsCorpus(t *testing.T) {
 // (REQ-evidence-witness-freshness-carve-out): only the exact stale "test
 // variants" verdict with a persisted, inert-diffing compartment ledger serves
 // — any other stale reason, a missing ledger, or a non-inert delta refuses —
-// and a serve refreshes only the compartment pin, never the closure the
-// verdict certified.
+// and a serve advances only the effective endpoint, never the producing
+// fingerprint the evidence certifies.
 func TestCompartmentGrownServeGates(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-carve-out")
@@ -764,40 +764,38 @@ func TestCompartmentGrownServeGates(t *testing.T) {
 		t.Fatal(err)
 	}
 	rec := witnesscache.Record{
-		Package: s.Package, Test: s.Symbol,
+		Group: "group", Package: s.Package, Test: s.Symbol,
 		Fingerprint:       fp,
 		CompartmentLedger: witnesscache.LedgerFromGofresh(ledger),
 		Outcomes:          map[string]string{s.Package + "." + s.Symbol: "passed"},
 	}
 	variants := gofresh.Verdict{Status: gofresh.Stale, Reason: "test variants"}
-	if _, _, ok := compartmentGrownRefresh(context.Background(), tmp, view, rec, gofresh.Verdict{Status: gofresh.Stale, Reason: "maximal closure"}, s); ok {
+	if _, verdict, _ := compartmentGrownRefresh(context.Background(), tmp, view, rec, gofresh.Verdict{Status: gofresh.Stale, Reason: "maximal closure"}, s); verdict.Status == gofresh.Valid {
 		t.Fatal("a non-compartment stale reason rode the carve-out")
 	}
 	ledgerless := rec
 	ledgerless.CompartmentLedger = nil
-	if _, _, ok := compartmentGrownRefresh(context.Background(), tmp, view, ledgerless, variants, s); ok {
+	if _, verdict, _ := compartmentGrownRefresh(context.Background(), tmp, view, ledgerless, variants, s); verdict.Status == gofresh.Valid {
 		t.Fatal("a record whose ledger the store does not hold rode the carve-out")
 	}
 	// A loaded record carries no ledger; the store's, under the record's
-	// compartment digest, is what the carve-out diffs.
-	if err := witnesscache.Install(tmp, rec); err != nil {
+	// complete effective coordinate, is what the carve-out diffs.
+	if err := witnesscache.Install(t.Context(), tmp, rec); err != nil {
 		t.Fatal(err)
 	}
-	if stored, _, ok := compartmentGrownRefresh(context.Background(), tmp, view, ledgerless, variants, s); !ok || stored.CompartmentLedger == nil {
+	if stored, verdict, err := compartmentGrownRefresh(context.Background(), tmp, view, ledgerless, variants, s); err != nil || verdict.Status != gofresh.Valid || stored.CompartmentLedger == nil {
 		t.Fatal("the stored ledger did not serve a ledgerless loaded record")
 	}
-	// The served record carries the refreshed compartment pin: a record
-	// whose digest the compartment outgrew comes back pinned to the
-	// current one, on the record and on the fingerprint the batched
-	// re-check judges alike.
+	// The served record advances only the effective compartment. Its
+	// producing identity remains the one historical support names.
 	grown := rec
 	grown.Fingerprint.TestVariantClosure = strings.Repeat("0", 32)
-	served, refreshed, ok := compartmentGrownRefresh(context.Background(), tmp, view, grown, variants, s)
-	if !ok {
+	served, verdict, err := compartmentGrownRefresh(context.Background(), tmp, view, grown, variants, s)
+	if err != nil || verdict.Status != gofresh.Valid {
 		t.Fatal("an inert-diffing record under an outgrown digest refused")
 	}
-	if served.Fingerprint.TestVariantClosure != fp.TestVariantClosure || refreshed.TestVariantClosure != fp.TestVariantClosure {
-		t.Fatalf("served record pinned to %q, refreshed fingerprint to %q, want the current compartment %q", served.Fingerprint.TestVariantClosure, refreshed.TestVariantClosure, fp.TestVariantClosure)
+	if served.Fingerprint.TestVariantClosure != grown.Fingerprint.TestVariantClosure || served.Fingerprint.EffectiveTestVariantClosure() != fp.TestVariantClosure {
+		t.Fatalf("producing or effective compartment changed incorrectly: %+v", served.Fingerprint)
 	}
 	tampered := rec
 	tampered.CompartmentLedger = witnesscache.LedgerFromGofresh(ledger)
@@ -805,32 +803,22 @@ func TestCompartmentGrownServeGates(t *testing.T) {
 		t.Fatal("fixture ledger carries no declarations")
 	}
 	tampered.CompartmentLedger.Declarations[0].Hash = "ffffffffffffffffffffffffffffffff"
-	if _, _, ok := compartmentGrownRefresh(context.Background(), tmp, view, tampered, variants, s); ok {
+	if _, verdict, _ := compartmentGrownRefresh(context.Background(), tmp, view, tampered, variants, s); verdict.Status == gofresh.Valid {
 		t.Fatal("a changed declaration rode the carve-out")
 	}
 	// The compartment comparison precedes the environment tiers in
 	// gofresh's ladder, so a moved guard can hide behind the "test
-	// variants" reason: the refresh alone must NOT serve — the batched
-	// re-check of the refreshed fingerprint is what catches the mover,
-	// exactly as the production rounds compose it.
+	// variants" reason: the explicit extension must catch the mover.
 	guardMoved := rec
 	guardMoved.Fingerprint.Guards.Toolchain = "go0.0-never"
-	_, movedFP, ok := compartmentGrownRefresh(context.Background(), tmp, view, guardMoved, variants, s)
-	if !ok {
-		t.Fatal("the refresh half refused a gate-passing record; the re-check owns guard movement")
+	if _, verdict, err := compartmentGrownRefresh(context.Background(), tmp, view, guardMoved, variants, s); err != nil || verdict.Status == gofresh.Valid || verdict.Reason != "toolchain" {
+		t.Fatalf("moved toolchain hid behind the compartment verdict: %+v %v", verdict, err)
 	}
-	movedVerdicts, err := checkFingerprints(context.Background(), view, map[gofresh.Subject]gofresh.Fingerprint{s: movedFP})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if movedVerdicts[s].Status == gofresh.Valid {
-		t.Fatal("a moved toolchain hid behind the compartment verdict and re-checked valid")
-	}
-	served, servedFP, ok := compartmentGrownRefresh(context.Background(), tmp, view, rec, variants, s)
-	if !ok {
+	served, verdict, err = compartmentGrownRefresh(context.Background(), tmp, view, rec, variants, s)
+	if err != nil || verdict.Status != gofresh.Valid {
 		t.Fatal("an inert delta under the exact verdict refused")
 	}
-	servedVerdicts, err := checkFingerprints(context.Background(), view, map[gofresh.Subject]gofresh.Fingerprint{s: servedFP})
+	servedVerdicts, err := checkFingerprints(context.Background(), view, map[gofresh.Subject]gofresh.Fingerprint{s: served.Fingerprint})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -937,7 +925,7 @@ func TestStateRed(t *testing.T) { t.Fail() }
 	if tr.Fresh != 0 || tr.Ran != 7 || tr.Uncached != 5 {
 		t.Errorf("fresh=%d ran=%d uncached=%d, want 0/7/5", tr.Fresh, tr.Ran, tr.Uncached)
 	}
-	cache := witnesscache.Load(tmp)
+	cache := witnesscache.Load(t.Context(), tmp)
 	if cacheRecord(t, cache, "example.com/iso/red", "TestGreen") == nil {
 		t.Error("isolated green-in-red pass did not publish from its solo process")
 	}
@@ -1020,7 +1008,7 @@ func TestWritesOnce(t *testing.T) {
 	if cold.Fresh != 0 || cold.Ran != 2 {
 		t.Fatalf("cold: fresh=%d ran=%d, want 0/2", cold.Fresh, cold.Ran)
 	}
-	if cacheRecord(t, witnesscache.Load(tmp), "example.com/driftserve/reader", "TestReads") == nil {
+	if cacheRecord(t, witnesscache.Load(t.Context(), tmp), "example.com/driftserve/reader", "TestReads") == nil {
 		t.Fatal("cold run published no record for the reader; the drift would prove nothing")
 	}
 
@@ -1055,7 +1043,7 @@ func TestWritesOnce(t *testing.T) {
 	if drift.Uncached != 0 {
 		t.Errorf("drift: uncached=%d, want 0", drift.Uncached)
 	}
-	retried := cacheRecord(t, witnesscache.Load(tmp), "example.com/driftserve/reader", "TestReads")
+	retried := cacheRecord(t, witnesscache.Load(t.Context(), tmp), "example.com/driftserve/reader", "TestReads")
 	if retried == nil {
 		t.Fatal("retried reader did not republish against the settled tree")
 	}
@@ -1142,7 +1130,7 @@ func TestRewritesOwnInput(t *testing.T) {
 			t.Errorf("%s: fresh=%d ran=%d uncached=%d, want 0/1/1: a self-mutating input must neither serve nor publish",
 				phase, tr.Fresh, tr.Ran, tr.Uncached)
 		}
-		if cacheRecord(t, witnesscache.Load(tmp), "example.com/selfmut/mut", "TestRewritesOwnInput") != nil {
+		if cacheRecord(t, witnesscache.Load(t.Context(), tmp), "example.com/selfmut/mut", "TestRewritesOwnInput") != nil {
 			t.Errorf("%s: a moved-bracket observation published a record", phase)
 		}
 	}
@@ -1184,7 +1172,7 @@ func TestOK(t *testing.T) {}
 	if cold.Degraded != "" || cold.Ran != 1 {
 		t.Fatalf("cold: degraded=%q ran=%d, want a clean single-subject run", cold.Degraded, cold.Ran)
 	}
-	if cacheRecord(t, witnesscache.Load(tmp), "example.com/degrade/fine", "TestOK") == nil {
+	if cacheRecord(t, witnesscache.Load(t.Context(), tmp), "example.com/degrade/fine", "TestOK") == nil {
 		t.Fatal("cold run published no record; the degrade would prove nothing about serving")
 	}
 
@@ -1240,7 +1228,7 @@ func TestFine(t *testing.T) {}
 		t.Errorf("uncached=%d ran=%d, want every executed subject counted uncacheable", degraded.Uncached, degraded.Ran)
 	}
 	// The degraded path leaves the cache alone: the prior record survives.
-	if cacheRecord(t, witnesscache.Load(tmp), "example.com/degrade/fine", "TestOK") == nil {
+	if cacheRecord(t, witnesscache.Load(t.Context(), tmp), "example.com/degrade/fine", "TestOK") == nil {
 		t.Error("degraded run dropped the existing cache")
 	}
 }
@@ -1310,7 +1298,7 @@ func TestSecond(t *testing.T) { _ = edition }
 	if got := red.Outcomes["example.com/proofy/pkg.TestStable"]; got != verify.TestPassed {
 		t.Fatalf("red: denied sibling = %v, want PASSED from its solo process", got)
 	}
-	cache := witnesscache.Load(tmp)
+	cache := witnesscache.Load(t.Context(), tmp)
 	if cacheRecord(t, cache, "example.com/proofy/pkg", "TestFlakyReads") != nil {
 		t.Fatal("red run published a record for the failing test")
 	}
@@ -1341,7 +1329,7 @@ func TestSecond(t *testing.T) { _ = edition }
 	if got := solo.Outcomes["example.com/proofy/pkg.TestFlakyReads"]; got != verify.TestPassed {
 		t.Errorf("solo: flaky outcome = %v, want PASSED", got)
 	}
-	rec := cacheRecord(t, witnesscache.Load(tmp), "example.com/proofy/pkg", "TestFlakyReads")
+	rec := cacheRecord(t, witnesscache.Load(t.Context(), tmp), "example.com/proofy/pkg", "TestFlakyReads")
 	if rec == nil {
 		t.Fatal("solo selective process published no record")
 	}
@@ -1357,7 +1345,7 @@ func TestSecond(t *testing.T) { _ = edition }
 	// candidate whose process runs a sibling would drop the group's
 	// proof whole.
 	for _, name := range []string{"TestFirst", "TestSecond"} {
-		rec := cacheRecord(t, witnesscache.Load(tmp), "example.com/proofy/two", name)
+		rec := cacheRecord(t, witnesscache.Load(t.Context(), tmp), "example.com/proofy/two", name)
 		if rec == nil {
 			t.Fatalf("shared selective process published no record for %s", name)
 		}
@@ -1430,8 +1418,8 @@ func TestSleeps(t *testing.T) {
 	if packageDiagOutput(tr, "example.com/cutoff/cut") == "" {
 		t.Errorf("cut-off package carries no package-level diagnostic row: %+v", tr.Diagnostics)
 	}
-	if len(witnesscache.Load(tmp)) != 0 {
-		t.Errorf("a cut-off process published records: %+v", witnesscache.Load(tmp))
+	if len(witnesscache.Load(t.Context(), tmp)) != 0 {
+		t.Errorf("a cut-off process published records: %+v", witnesscache.Load(t.Context(), tmp))
 	}
 }
 
@@ -1473,7 +1461,7 @@ func TestOK(t *testing.T) {}
 	if cold.Degraded != "" || cold.Ran != 1 {
 		t.Fatalf("cold: degraded=%q ran=%d, want a clean single-subject run", cold.Degraded, cold.Ran)
 	}
-	if cacheRecord(t, witnesscache.Load(tmp), "example.com/uni/covered", "TestOK") == nil {
+	if cacheRecord(t, witnesscache.Load(t.Context(), tmp), "example.com/uni/covered", "TestOK") == nil {
 		t.Fatal("cold run published no record; the degrade would prove nothing about serving")
 	}
 
@@ -1505,7 +1493,7 @@ func TestOK(t *testing.T) {}
 	if degraded.Uncached != degraded.Ran {
 		t.Errorf("uncached=%d ran=%d, want every executed subject counted uncacheable", degraded.Uncached, degraded.Ran)
 	}
-	if cacheRecord(t, witnesscache.Load(tmp), "example.com/uni/covered", "TestOK") == nil {
+	if cacheRecord(t, witnesscache.Load(t.Context(), tmp), "example.com/uni/covered", "TestOK") == nil {
 		t.Error("degraded run dropped the existing cache")
 	}
 }
@@ -1865,7 +1853,7 @@ func TestReadsToolchain(t *testing.T) {
 	// The wiring's own claim: the toolchain read never entered the
 	// manifest — guard-covered reads skip it entirely, they are not
 	// merely tolerated as sealed unverifiable evidence.
-	records := witnesscache.Load(tmp)
+	records := witnesscache.Load(t.Context(), tmp)
 	if len(records) != 1 {
 		t.Fatalf("store holds %d records, want 1", len(records))
 	}
@@ -1964,7 +1952,7 @@ func TestReadsBuildCacheAndTempRoot(t *testing.T) {
 	if second.Fresh != 1 || second.Ran != 0 {
 		t.Fatalf("second run fresh=%d ran=%d, want 1/0: the exempted witness must serve", second.Fresh, second.Ran)
 	}
-	records := witnesscache.Load(tmp)
+	records := witnesscache.Load(t.Context(), tmp)
 	if len(records) != 1 {
 		t.Fatalf("store holds %d records, want 1", len(records))
 	}
@@ -2069,7 +2057,7 @@ func TestReadsBeneathTempRoot(t *testing.T) {
 			t.Errorf("reason %q for %s does not name the sealing read", why, test)
 		}
 	}
-	if records := witnesscache.Load(tmp); len(records) != 0 {
+	if records := witnesscache.Load(t.Context(), tmp); len(records) != 0 {
 		t.Fatalf("store holds %d sealed records, want none", len(records))
 	}
 	// Nothing published, so the second run re-executes — an
@@ -2270,7 +2258,7 @@ func TestReadsPinnedExternal(*testing.T) {
 			t.Fatalf("degraded: %s", first.Degraded)
 		}
 		if assume {
-			rec := cacheRecord(t, witnesscache.Load(tmp), "example.com/extread/pkg", "TestReadsPinnedExternal")
+			rec := cacheRecord(t, witnesscache.Load(t.Context(), tmp), "example.com/extread/pkg", "TestReadsPinnedExternal")
 			if rec == nil {
 				t.Fatal("no external-reader record to inspect")
 			}
@@ -2513,7 +2501,7 @@ func TestShared(t *testing.T) {
 	if cold.Fresh != 0 || cold.OutsidePolicy != 0 {
 		t.Fatalf("cold: fresh=%d outside=%d, want 0/0", cold.Fresh, cold.OutsidePolicy)
 	}
-	cache := witnesscache.Load(tmp)
+	cache := witnesscache.Load(t.Context(), tmp)
 	if len(cache) != 2 {
 		t.Fatalf("cold run published %d records, want one per capture group: %+v", len(cache), cache)
 	}
@@ -2775,7 +2763,7 @@ func TestWritesOnce(t *testing.T) {
 	if cold.Fresh != 0 || cold.Ran != 2 {
 		t.Fatalf("cold: fresh=%d ran=%d, want 0/2", cold.Fresh, cold.Ran)
 	}
-	if cacheRecord(t, witnesscache.Load(tmp), "example.com/driftown/reader", "TestReads") == nil {
+	if cacheRecord(t, witnesscache.Load(t.Context(), tmp), "example.com/driftown/reader", "TestReads") == nil {
 		t.Fatal("cold run published no record for the reader; the drift would prove nothing")
 	}
 

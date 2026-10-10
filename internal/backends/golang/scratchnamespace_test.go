@@ -180,7 +180,7 @@ func TestUsesScratch(t *testing.T) {
 			}
 			// The record's manifest: the scratch read's path identity is
 			// there without the declaration and absent under it.
-			records := witnesscache.Load(tmp)
+			records := witnesscache.Load(t.Context(), tmp)
 			if len(records) != 1 {
 				t.Fatalf("records after the first run = %d, want 1", len(records))
 			}

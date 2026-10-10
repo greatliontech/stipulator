@@ -307,19 +307,23 @@ func TestDeriveCachedOutcomeGrantsNoHealthOrEvidence(t *testing.T) {
 	// The seeded record is structurally valid — it would load and serve on
 	// a freshness-serving path — so ignoring it here is the derivation's
 	// choice, not a loader rejection.
-	if err := witnesscache.Install(tmp, witnesscache.Record{
+	if err := witnesscache.Install(t.Context(), tmp, witnesscache.Record{
 		Group:       "00112233aabbccdd",
 		Package:     "example.com/m/redmain",
 		Test:        "TestGreen",
-		Fingerprint: witnesscache.Fingerprint{MaximalClosure: "00112233445566778899aabbccddeeff", TestVariantClosure: "00112233445566778899aabbccddeeff", Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: "eyJ2IjoyfQ", RuntimeDigest: "00112233445566778899aabbccddeeff", ResultKind: gofresh.CodeResult},
-		CompartmentLedger: &witnesscache.CompartmentLedger{Declarations: []witnesscache.CompartmentDeclaration{
-			{File: "seed_test.go", Kind: "func", Name: "TestGreen", Hash: "00112233445566778899aabbccddeeff"},
-		}},
+		Fingerprint: witnesscache.Fingerprint{MaximalClosure: "00112233445566778899aabbccddeeff", TestVariantClosure: "00112233445566778899aabbccddeeff", ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy, Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: "eyJ2IjoyfQ", RuntimeDigest: "00112233445566778899aabbccddeeff", ResultKind: gofresh.CodeResult},
+		CompartmentLedger: &witnesscache.CompartmentLedger{
+			BindingStrategy: "gofresh/test-variant-bindings@1",
+			Declarations: []witnesscache.CompartmentDeclaration{
+				{File: "seed_test.go", Package: "redmain", Kind: "func", Name: "TestGreen", Hash: "00112233445566778899aabbccddeeff"},
+			},
+			FileHeaders: []witnesscache.CompartmentFileHeader{{File: "seed_test.go", Hash: "00112233445566778899aabbccddeeff", Bindings: &witnesscache.CompartmentFileBindings{Package: "redmain"}}},
+		},
 		Outcomes: map[string]string{"example.com/m/redmain.TestGreen": "passed"},
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if len(witnesscache.Load(tmp)) != 1 {
+	if len(witnesscache.Load(t.Context(), tmp)) != 1 {
 		t.Fatal("seeded cache record is not loadable; the seed would prove nothing")
 	}
 	report := synthReport(

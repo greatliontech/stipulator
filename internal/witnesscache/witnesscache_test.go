@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/greatliontech/gofresh"
+	"github.com/greatliontech/gofresh/closure/testvariant"
 	"github.com/greatliontech/gofresh/guard"
 	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -82,7 +83,7 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if got := Load(dir); got != nil {
+	if got := Load(t.Context(), dir); got != nil {
 		t.Fatalf("absent store loaded %d records", len(got))
 	}
 
@@ -93,7 +94,7 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 		if err := os.RemoveAll(store); err != nil {
 			t.Fatal(err)
 		}
-		if err := Install(dir, r); err != nil {
+		if err := Install(t.Context(), dir, r); err != nil {
 			t.Fatal(err)
 		}
 		matches, err := filepath.Glob(filepath.Join(store, "*.json"))
@@ -118,7 +119,7 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 	}
 	requireAbsent := func(what string) {
 		t.Helper()
-		if got := Load(dir); got != nil {
+		if got := Load(t.Context(), dir); got != nil {
 			t.Fatalf("%s loaded %d records", what, len(got))
 		}
 	}
@@ -127,18 +128,15 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 	generated.RuntimeInputs = "eyJ2IjoyfQ"
 	generated.RuntimeDigest = "3a79bf37b571938d1f2907afb6a643f4"
 	rec := Record{
-		Group:       "6772702d64696765",
-		Package:     generated.ObservationProof.Subject.Package,
-		Test:        generated.ObservationProof.Subject.Symbol,
-		Fingerprint: generated,
-		CompartmentLedger: &CompartmentLedger{
-			Declarations: []CompartmentDeclaration{{File: "observed_test.go", Kind: "func", Name: "TestObserved", Hash: "00112233445566778899aabbccddeeff"}},
-			FileHeaders:  []CompartmentFileHeader{{File: "observed_test.go", Hash: "ffeeddccbbaa99887766554433221100"}},
-		},
-		Outcomes: map[string]string{"example.com/cacheproof.TestObserved": "passed"},
+		Group:             "6772702d64696765",
+		Package:           generated.ObservationProof.Subject.Package,
+		Test:              generated.ObservationProof.Subject.Symbol,
+		Fingerprint:       generated,
+		CompartmentLedger: simpleLedger("TestObserved"),
+		Outcomes:          map[string]string{"example.com/cacheproof.TestObserved": "passed"},
 	}
 	path := seedOne(rec)
-	got := Load(dir)
+	got := Load(t.Context(), dir)
 	if len(got) != 1 || got[0].Key() != rec.Key() {
 		t.Fatalf("round trip lost the record: %+v", got)
 	}
@@ -162,11 +160,13 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 	// own name and never serves (a kind-less one never installs:
 	// TestInstallRefusesWhatTheEncoderRefuses).
 	incomplete := rec
+	incomplete.CompartmentLedger = nil // the record decoder, not the ledger writer
 	incomplete.Fingerprint.MaximalClosure = "zz"
 	seedOne(incomplete)
 	requireAbsent("incomplete fingerprint")
 
 	groupless := rec
+	groupless.CompartmentLedger = nil
 	groupless.Group = ""
 	seedOne(groupless)
 	requireAbsent("record without a producing group")
@@ -272,7 +272,7 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 	broken = rec
 	broken.CompartmentLedger = nil
 	seedOne(broken)
-	if got := Load(dir); len(got) != 1 {
+	if got := Load(t.Context(), dir); len(got) != 1 {
 		t.Fatalf("ledgerless record loaded %d records, want 1", len(got))
 	}
 	// A prior version's record carried the ledger inline; the field is
@@ -282,6 +282,7 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 	requireAbsent("record carrying an inline ledger")
 
 	withVariantPin := rec
+	withVariantPin.CompartmentLedger = nil
 	withVariantPin.Fingerprint.TestVariantClosure = "zz112233445566778899aabbccddeeff"
 	seedOne(withVariantPin)
 	requireAbsent("malformed test-variant closure digest")
@@ -297,7 +298,7 @@ func TestLoadUnreadableIsEmpty(t *testing.T) {
 // TestLedgerStoreRefusesPerFile pins the ledger store
 // (REQ-evidence-witness-cache-format-ledger,
 // REQ-evidence-witness-freshness-carve-out's carve-out base): one file per
-// compartment digest, written once, read back for the record's own test only —
+// complete coordinate, written once, read back for the record's own test only —
 // a malformed file, another version, a name-content disagreement, a ledger
 // omitting the record's declaration, or an absent file is no ledger, which
 // costs the carve-out alone.
@@ -313,42 +314,46 @@ func TestLedgerStoreRefusesPerFile(t *testing.T) {
 	}
 	digest := "0123456789abcdef0123456789abcdef"
 	ledger := &CompartmentLedger{
+		BindingStrategy: testvariant.BindingStrategy,
 		Declarations: []CompartmentDeclaration{
 			{File: "p_test.go", Kind: "func", Name: "TestA", Hash: "00112233445566778899aabbccddeeff", Package: "p", References: []string{"testing"}},
-			{File: "p_test.go", Kind: "method", Name: "M", Receiver: "T", Hash: "00112233445566778899aabbccddeeff"},
+			{File: "p_test.go", Kind: "method", Name: "M", Receiver: "T", Hash: "00112233445566778899aabbccddeeff", Package: "p"},
 		},
-		FileHeaders: []CompartmentFileHeader{{File: "p_test.go", Hash: "ffeeddccbbaa99887766554433221100"}, {File: "fixture.txt", Hash: "ffeeddccbbaa99887766554433221100", Embedded: true}},
+		FileHeaders: []CompartmentFileHeader{{File: "p_test.go", Hash: "ffeeddccbbaa99887766554433221100", Bindings: &CompartmentFileBindings{Package: "p"}}, {File: "fixture.txt", Hash: "ffeeddccbbaa99887766554433221100", Embedded: true}},
 	}
-	rec := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestA", Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: digest, ResultKind: gofresh.CodeResult}, CompartmentLedger: ledger, Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
-	if got := LoadLedger(dir, digest, "TestA"); got != nil {
+	rec := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestA", Fingerprint: ledgerFingerprint(digest), CompartmentLedger: ledger, Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
+	if got := LoadLedger(dir, rec); got != nil {
 		t.Fatalf("absent ledger loaded %+v", got)
 	}
-	if err := Install(dir, rec); err != nil {
+	if err := Install(t.Context(), dir, rec); err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join(store, "ledgers", digest+".json")
+	path := ledgerPath(store, coordinateOf(rec).key())
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("install left no ledger file: %v", err)
 	}
-	if got := LoadLedger(dir, digest, "TestA"); !reflect.DeepEqual(got, ledger) {
+	if got := LoadLedger(dir, rec); !reflect.DeepEqual(got, ledger) {
 		t.Fatalf("ledger round trip = %+v, want %+v", got, ledger)
 	}
-	if got := LoadLedger(dir, digest, "TestOther"); got != nil {
+	absent := rec
+	absent.Test = "TestOther"
+	if got := LoadLedger(dir, absent); got != nil {
 		t.Fatalf("a ledger not declaring the record's test loaded for it: %+v", got)
 	}
-	if got := LoadLedger(dir, "M", "M"); got != nil {
+	absent.Test = "M"
+	if got := LoadLedger(dir, absent); got != nil {
 		t.Fatalf("a method entry counted as the test's own declaration: %+v", got)
 	}
-	// Write-once: the digest addresses the content, so a later install
-	// under the same digest never rewrites the file.
+	// Write-once: a later install under the same complete coordinate
+	// never rewrites a readable file.
 	other := rec
 	other.Test = "TestB"
 	other.Outcomes = map[string]string{"example.com/p.TestB": "passed"}
-	other.CompartmentLedger = &CompartmentLedger{Declarations: []CompartmentDeclaration{{File: "p_test.go", Kind: "func", Name: "TestB", Hash: "00112233445566778899aabbccddeeff"}}}
-	if err := Install(dir, other); err != nil {
+	other.CompartmentLedger = simpleLedger("TestB")
+	if err := Install(t.Context(), dir, other); err != nil {
 		t.Fatal(err)
 	}
-	if got := LoadLedger(dir, digest, "TestA"); !reflect.DeepEqual(got, ledger) {
+	if got := LoadLedger(dir, rec); !reflect.DeepEqual(got, ledger) {
 		t.Fatalf("a second install rewrote the ledger: %+v", got)
 	}
 	if residue, _ := filepath.Glob(filepath.Join(store, "ledgers", ".ledger-*")); len(residue) != 0 {
@@ -367,36 +372,37 @@ func TestLedgerStoreRefusesPerFile(t *testing.T) {
 		if err := os.WriteFile(path, []byte(replaced), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if got := LoadLedger(dir, digest, "TestA"); got != nil {
+		if got := LoadLedger(dir, rec); got != nil {
 			t.Fatalf("%s loaded %+v", what, got)
 		}
 	}
-	tamper("another version", `"version": 1`, `"version": 2`)
+	tamper("another version", `"version": 2`, `"version": 1`)
 	tamper("name disagreeing with content", digest, "ffffffffffffffffffffffffffffffff")
 	tamper("malformed declaration digest", `"hash": "00112233445566778899aabbccddeeff",
       "package"`, `"hash": "not-a-digest",
       "package"`)
 	tamper("header without a file", `"file": "fixture.txt"`, `"file": ""`)
-	tamper("unknown field", `"version": 1`, `"version": 1, "extra": true`)
+	tamper("unknown field", `"version": 2`, `"version": 2, "extra": true`)
 	if err := os.WriteFile(path, []byte("{ torn"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if got := LoadLedger(dir, digest, "TestA"); got != nil {
+	if got := LoadLedger(dir, rec); got != nil {
 		t.Fatalf("torn ledger loaded %+v", got)
 	}
-	if got := LoadLedger(dir, "not-a-digest", "TestA"); got != nil {
+	absent.Fingerprint.TestVariantClosure = "not-a-digest"
+	if got := LoadLedger(dir, absent); got != nil {
 		t.Fatalf("malformed digest loaded %+v", got)
 	}
 	// A present file that does not read back as a ledger — a prior
 	// version's, a torn one — is rewritten by the next install of its
 	// compartment; a refused file never outlives that install.
-	if err := os.WriteFile(path, []byte(strings.Replace(string(original), `"version": 1`, `"version": 0`, 1)), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte(strings.Replace(string(original), `"version": 2`, `"version": 0`, 1)), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := Install(dir, rec); err != nil {
+	if err := Install(t.Context(), dir, rec); err != nil {
 		t.Fatal(err)
 	}
-	if got := LoadLedger(dir, digest, "TestA"); !reflect.DeepEqual(got, ledger) {
+	if got := LoadLedger(dir, rec); !reflect.DeepEqual(got, ledger) {
 		t.Fatalf("a refused ledger file survived its compartment's next install: %+v", got)
 	}
 }
@@ -417,8 +423,12 @@ func TestLoadReclaimsUnreferencedLedgers(t *testing.T) {
 		t.Fatal(err)
 	}
 	base := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestA", Fingerprint: Fingerprint{MaximalClosure: "0123456789abcdef0123456789abcdef", Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: "eyJ2IjoyfQ", RuntimeDigest: "3a79bf37b571938d1f2907afb6a643f4", ResultKind: gofresh.CodeResult}, Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
+	base.Fingerprint.ClosureStrategy = gofresh.ClosureStrategy
+	base.Fingerprint.DynamicStateStrategy = gofresh.DynamicStateStrategy
 	ledgerOf := func(digest string) *CompartmentLedger {
-		return &CompartmentLedger{Declarations: []CompartmentDeclaration{{File: "p_test.go", Kind: "func", Name: "TestA", Hash: digest}}}
+		ledger := simpleLedger("TestA")
+		ledger.Declarations[0].Hash = digest
+		return ledger
 	}
 	// One identity under more compartments than the variant bound holds:
 	// the oldest records evict, their ledgers become unreferenced.
@@ -429,7 +439,7 @@ func TestLoadReclaimsUnreferencedLedgers(t *testing.T) {
 		rec := base
 		rec.Fingerprint.TestVariantClosure = digest
 		rec.CompartmentLedger = ledgerOf(digest)
-		if err := Install(dir, rec); err != nil {
+		if err := Install(t.Context(), dir, rec); err != nil {
 			t.Fatal(err)
 		}
 		stamp := time.Unix(int64(1_700_000_000+i*10), 0)
@@ -446,7 +456,7 @@ func TestLoadReclaimsUnreferencedLedgers(t *testing.T) {
 	refused := base
 	refused.Fingerprint.TestVariantClosure = strings.Repeat("f", 32)
 	refused.CompartmentLedger = ledgerOf(refused.Fingerprint.TestVariantClosure)
-	if err := Install(dir, refused); err != nil {
+	if err := Install(t.Context(), dir, refused); err != nil {
 		t.Fatal(err)
 	}
 	refusedPath := filepath.Join(store, mustName(t, refused))
@@ -459,17 +469,21 @@ func TestLoadReclaimsUnreferencedLedgers(t *testing.T) {
 	}
 	// The refused install took the newest slot: the bound keeps it and
 	// the three newest stamped variants, and evicts the three oldest.
-	got := Load(dir)
+	got := Load(t.Context(), dir)
 	if len(got) != variantBound-1 {
 		t.Fatalf("loaded %d records, want the %d valid ones the bound keeps", len(got), variantBound-1)
 	}
 	for _, digest := range digests[:3] {
-		if _, err := os.Stat(filepath.Join(store, "ledgers", digest+".json")); !os.IsNotExist(err) {
+		rec := base
+		rec.Fingerprint.TestVariantClosure = digest
+		if _, err := os.Stat(ledgerPath(store, coordinateOf(rec).key())); !os.IsNotExist(err) {
 			t.Fatalf("evicted variant's ledger %s survived the load: %v", digest, err)
 		}
 	}
 	for _, digest := range append(digests[3:], refused.Fingerprint.TestVariantClosure) {
-		if _, err := os.Stat(filepath.Join(store, "ledgers", digest+".json")); err != nil {
+		rec := base
+		rec.Fingerprint.TestVariantClosure = digest
+		if _, err := os.Stat(ledgerPath(store, coordinateOf(rec).key())); err != nil {
 			t.Fatalf("referenced ledger %s reclaimed: %v", digest, err)
 		}
 	}
@@ -481,7 +495,7 @@ func TestLoadReclaimsUnreferencedLedgers(t *testing.T) {
 	if err := os.WriteFile(young, []byte("{}"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	loadSince(dir, time.Now().Add(-time.Hour))
+	loadSince(t.Context(), dir, time.Now().Add(-time.Hour))
 	if _, err := os.Stat(young); err != nil {
 		t.Fatalf("a ledger younger than the load was reclaimed: %v", err)
 	}
@@ -489,7 +503,7 @@ func TestLoadReclaimsUnreferencedLedgers(t *testing.T) {
 	if err := os.Chtimes(young, old, old); err != nil {
 		t.Fatal(err)
 	}
-	Load(dir)
+	Load(t.Context(), dir)
 	if _, err := os.Stat(young); !os.IsNotExist(err) {
 		t.Fatalf("an aged unreferenced ledger survived the load: %v", err)
 	}
@@ -509,7 +523,7 @@ func TestLoadOrdersVariantsNewestFirst(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	base := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestA", Fingerprint: Fingerprint{TestVariantClosure: "0123456789abcdef0123456789abcdef", Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: "eyJ2IjoyfQ", RuntimeDigest: "3a79bf37b571938d1f2907afb6a643f4", ResultKind: gofresh.CodeResult}, Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
+	base := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestA", Fingerprint: ledgerFingerprint("0123456789abcdef0123456789abcdef"), Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
 	// Install order and name order both disagree with the stamps: the
 	// stamps alone decide.
 	closures := []string{"cccccccccccccccccccccccccccccccc", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
@@ -517,7 +531,7 @@ func TestLoadOrdersVariantsNewestFirst(t *testing.T) {
 	for i, closure := range closures {
 		rec := base
 		rec.Fingerprint.MaximalClosure = closure
-		if err := Install(dir, rec); err != nil {
+		if err := Install(t.Context(), dir, rec); err != nil {
 			t.Fatal(err)
 		}
 		stamp := time.Unix(stamps[i], 0)
@@ -526,7 +540,7 @@ func TestLoadOrdersVariantsNewestFirst(t *testing.T) {
 		}
 	}
 	var got []string
-	for _, rec := range Load(dir) {
+	for _, rec := range Load(t.Context(), dir) {
 		got = append(got, rec.Fingerprint.MaximalClosure)
 	}
 	want := []string{closures[0], closures[2], closures[1]}
@@ -564,11 +578,12 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 		Fingerprint: generated,
 		// One compartment, shared by both tests of the package.
 		CompartmentLedger: &CompartmentLedger{
+			BindingStrategy: testvariant.BindingStrategy,
 			Declarations: []CompartmentDeclaration{
-				{File: "observed_test.go", Kind: "func", Name: "TestObserved", Hash: "00112233445566778899aabbccddeeff"},
-				{File: "observed_test.go", Kind: "func", Name: "TestSibling", Hash: "00112233445566778899aabbccddeeff"},
+				{File: "observed_test.go", Kind: "func", Name: "TestObserved", Hash: "00112233445566778899aabbccddeeff", Package: "cacheproof"},
+				{File: "observed_test.go", Kind: "func", Name: "TestSibling", Hash: "00112233445566778899aabbccddeeff", Package: "cacheproof"},
 			},
-			FileHeaders: []CompartmentFileHeader{{File: "observed_test.go", Hash: "ffeeddccbbaa99887766554433221100"}},
+			FileHeaders: []CompartmentFileHeader{{File: "observed_test.go", Hash: "ffeeddccbbaa99887766554433221100", Bindings: &CompartmentFileBindings{Package: "cacheproof"}}},
 		},
 		Outcomes: map[string]string{"example.com/cacheproof.TestObserved": "passed"},
 	}
@@ -578,10 +593,10 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 	siblingProof.Subject.Symbol = "TestSibling"
 	sibling.Fingerprint.ObservationProof = siblingProof
 	sibling.Outcomes = map[string]string{sibling.Key(): "passed"}
-	if err := Install(dir, rec); err != nil {
+	if err := Install(t.Context(), dir, rec); err != nil {
 		t.Fatal(err)
 	}
-	if err := Install(dir, sibling); err != nil {
+	if err := Install(t.Context(), dir, sibling); err != nil {
 		t.Fatal(err)
 	}
 	// The shared compartment's ledger is stored once, readable for each
@@ -590,7 +605,9 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 		t.Fatalf("ledger files = %v, want one per compartment", ledgers)
 	}
 	for _, test := range []string{rec.Test, sibling.Test} {
-		if LoadLedger(dir, rec.Fingerprint.TestVariantClosure, test) == nil {
+		named := rec
+		named.Test = test
+		if LoadLedger(dir, named) == nil {
 			t.Fatalf("the shared ledger does not load for %s", test)
 		}
 	}
@@ -603,7 +620,7 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 	if err := os.WriteFile(matches[0], []byte("{ torn"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	got := Load(dir)
+	got := Load(t.Context(), dir)
 	if len(got) != 1 || got[0].Key() != rec.Key() {
 		t.Fatalf("sibling corruption discarded the intact record: %+v", got)
 	}
@@ -611,11 +628,11 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 	// Distinct tree states of one identity coexist as variants.
 	variant := rec
 	variant.Fingerprint.MaximalClosure = "ffeeddccbbaa99887766554433221100"
-	if err := Install(dir, variant); err != nil {
+	if err := Install(t.Context(), dir, variant); err != nil {
 		t.Fatal(err)
 	}
 	count := 0
-	for _, r := range Load(dir) {
+	for _, r := range Load(t.Context(), dir) {
 		if r.Key() == rec.Key() {
 			count++
 		}
@@ -631,7 +648,7 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 	for i := 0; i < variantBound+2; i++ {
 		next := rec
 		next.Fingerprint.MaximalClosure = fmt.Sprintf("%032x", i+1)
-		if err := Install(dir, next); err != nil {
+		if err := Install(t.Context(), dir, next); err != nil {
 			t.Fatal(err)
 		}
 		name := mustName(t, next)
@@ -705,6 +722,7 @@ func TestFingerprintWireKeySet(t *testing.T) {
 	want.PackageProcessDischarges = "p.example/dep.Two"
 	want.RuntimeInputs = "manifest"
 	want.RuntimeDigest = "digest"
+	want.InertTestVariantApplicability = gofresh.InertTestVariantApplicability{Strategy: gofresh.InertTestVariantExtension, TestVariantClosure: strings.Repeat("e", 32)}
 	// Every other leaf is seeded — a leaf Gofresh grows reads unseeded
 	// here until the enumeration names its key. The three exclusions are
 	// the code-result record's: the two measurement guards, and the
@@ -735,7 +753,7 @@ func TestFingerprintWireKeySet(t *testing.T) {
 		"observationAssertion", "observationProof", "purityAssertion",
 		"dynamicStateVouches", "singleSubjectDischarges",
 		"packageProcessDischarges", "dynamicStateStrategy", "closureStrategy",
-		"runtimeInputs", "runtimeDigest", "resultKind",
+		"runtimeInputs", "runtimeDigest", "inertTestVariantApplicability", "resultKind",
 	}
 	specSet := map[string]bool{}
 	for _, k := range spec {
@@ -760,12 +778,15 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
 	ledgerOf := func(test string) *CompartmentLedger {
-		return &CompartmentLedger{Declarations: []CompartmentDeclaration{{File: "p_test.go", Kind: "func", Name: test, Hash: "00112233445566778899aabbccddeeff"}}}
+		return simpleLedger(test)
 	}
-	digests := map[string]string{"TestLive": strings.Repeat("a", 32), "TestDeparted": strings.Repeat("b", 32)}
+	digests := map[string]string{"TestLive": strings.Repeat("a", 32), "TestDeparted": strings.Repeat("b", 32), "TestStuck": strings.Repeat("d", 32)}
+	record := func(pkg, test, compartment string) Record {
+		return Record{Group: "6772702d64696765", Package: pkg, Test: test, Outcomes: map[string]string{pkg + "." + test: "passed"}, Fingerprint: ledgerFingerprint(compartment), CompartmentLedger: ledgerOf(test)}
+	}
 	install := func(pkg, test string) {
 		t.Helper()
-		if err := Install(dir, Record{Group: "6772702d64696765", Package: pkg, Test: test, Outcomes: map[string]string{pkg + "." + test: "passed"}, Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: digests[test], ResultKind: gofresh.CodeResult}, CompartmentLedger: ledgerOf(test)}); err != nil {
+		if err := Install(t.Context(), dir, record(pkg, test, digests[test])); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -775,7 +796,9 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 	// coordinate retirement removes it — its compartment's ledger, which
 	// no kept record names, with it.
 	retired := strings.Repeat("c", 32)
-	if err := Install(dir, Record{Group: "feedfeedfeedfeed", Package: "example.com/p", Test: "TestLive", Outcomes: map[string]string{"example.com/p.TestLive": "passed"}, Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: retired, ResultKind: gofresh.CodeResult}, CompartmentLedger: ledgerOf("TestLive")}); err != nil {
+	retiredRecord := record("example.com/p", "TestLive", retired)
+	retiredRecord.Group = "feedfeedfeedfeed"
+	if err := Install(t.Context(), dir, retiredRecord); err != nil {
 		t.Fatal(err)
 	}
 	store, err := StoreDir(dir)
@@ -790,7 +813,8 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 	}
 	// A live record under a name that disagrees with its content: Load
 	// never serves it, so the verb removes it.
-	liveName := mustName(t, Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestLive", Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: digests["TestLive"], ResultKind: gofresh.CodeResult}})
+	liveRecord := record("example.com/p", "TestLive", digests["TestLive"])
+	liveName := mustName(t, liveRecord)
 	liveData, err := os.ReadFile(filepath.Join(store, liveName))
 	if err != nil {
 		t.Fatal(err)
@@ -799,7 +823,7 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(store, misnamed), liveData, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	removed, kept, err := GC(dir, func(pkg, test string) bool {
+	removed, kept, err := GC(t.Context(), dir, func(pkg, test string) bool {
 		return pkg == "example.com/p" && test == "TestLive"
 	}, func(group string) bool { return group == "6772702d64696765" })
 	if err != nil {
@@ -820,14 +844,14 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 		}
 		names = append(names, e.Name())
 	}
-	if len(names) != 2 || names[0] != mustName(t, Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestLive", Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: digests["TestLive"], ResultKind: gofresh.CodeResult}}) || names[1] != "ledgers/" {
+	if len(names) != 2 || names[0] != liveName || names[1] != "ledgers/" {
 		t.Fatalf("post-gc store entries = %v, want only the live identity's variant beside the ledger store", names)
 	}
 	ledgers, err := os.ReadDir(filepath.Join(store, "ledgers"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(ledgers) != 1 || ledgers[0].Name() != digests["TestLive"]+".json" {
+	if len(ledgers) != 1 || ledgers[0].Name() != coordinateOf(liveRecord).key()+".json" {
 		t.Fatalf("post-gc ledgers = %v, want only the kept record's compartment", ledgers)
 	}
 	// A ledger younger than the collection is a concurrent install's,
@@ -836,13 +860,13 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 	if err := os.WriteFile(young, []byte("{}"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := gcSince(dir, func(pkg, test string) bool { return test == "TestLive" }, nil, time.Now().Add(-time.Hour)); err != nil {
+	if _, _, err := gcSince(t.Context(), dir, func(pkg, test string) bool { return test == "TestLive" }, nil, time.Now().Add(-time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(young); err != nil {
 		t.Fatalf("a ledger younger than the collection was reclaimed: %v", err)
 	}
-	if _, _, err := GC(dir, func(pkg, test string) bool { return test == "TestLive" }, nil); err != nil {
+	if _, _, err := GC(t.Context(), dir, func(pkg, test string) bool { return test == "TestLive" }, nil); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(young); !os.IsNotExist(err) {
@@ -857,7 +881,7 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer os.Chmod(store, 0o755)
-		removed, kept, err := GC(dir, func(string, string) bool { return false }, nil)
+		removed, kept, err := GC(t.Context(), dir, func(string, string) bool { return false }, nil)
 		if err == nil {
 			t.Fatalf("undeletable entries reported clean: %d removed, %d kept", removed, kept)
 		}
@@ -866,7 +890,7 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 
 // A record that lands between the load's snapshot and its ledger sweep
 // keeps its ledger: the late scan reads the records the snapshot never
-// saw for their compartment digests, so a concurrent install's
+// saw for their complete ledger coordinates, so a concurrent install's
 // ledger-then-record ordering holds for the sweep as it does for a
 // reader (REQ-evidence-witness-cache-format-ledger).
 //
@@ -880,27 +904,27 @@ func TestLateRecordsKeepTheirLedgers(t *testing.T) {
 		t.Fatal(err)
 	}
 	digest := strings.Repeat("e", 32)
-	rec := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestLate", Outcomes: map[string]string{"example.com/p.TestLate": "passed"}, Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: digest, ResultKind: gofresh.CodeResult}, CompartmentLedger: &CompartmentLedger{Declarations: []CompartmentDeclaration{{File: "p_test.go", Kind: "func", Name: "TestLate", Hash: "00112233445566778899aabbccddeeff"}}}}
+	rec := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestLate", Outcomes: map[string]string{"example.com/p.TestLate": "passed"}, Fingerprint: ledgerFingerprint(digest), CompartmentLedger: simpleLedger("TestLate")}
 	// Another record first, so the store exists and the snapshot is
 	// non-empty.
-	if err := Install(dir, Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestFirst", Outcomes: map[string]string{"example.com/p.TestFirst": "passed"}, Fingerprint: Fingerprint{MaximalClosure: "aa", TestVariantClosure: strings.Repeat("f", 32), ResultKind: gofresh.CodeResult}}); err != nil {
+	if err := Install(t.Context(), dir, Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestFirst", Outcomes: map[string]string{"example.com/p.TestFirst": "passed"}, Fingerprint: ledgerFingerprint(strings.Repeat("f", 32))}); err != nil {
 		t.Fatal(err)
 	}
 	started := time.Now()
 	betweenScans = func() {
-		if err := Install(dir, rec); err != nil {
+		if err := Install(t.Context(), dir, rec); err != nil {
 			t.Fatal(err)
 		}
 		// The ledger is older than the load: only the late scan's
 		// reference spares it from the sweep.
 		past := started.Add(-time.Hour)
-		if err := os.Chtimes(ledgerPath(store, digest), past, past); err != nil {
+		if err := os.Chtimes(ledgerPath(store, coordinateOf(rec).key()), past, past); err != nil {
 			t.Fatal(err)
 		}
 	}
 	t.Cleanup(func() { betweenScans = nil })
-	loadSince(dir, started)
-	if _, err := os.Stat(ledgerPath(store, digest)); err != nil {
+	loadSince(t.Context(), dir, started)
+	if _, err := os.Stat(ledgerPath(store, coordinateOf(rec).key())); err != nil {
 		t.Fatalf("the late record's ledger was swept: %v", err)
 	}
 }
@@ -927,8 +951,9 @@ func TestInstallRefusesWhatTheEncoderRefuses(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-cache-format-fingerprint")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
-	kindless := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestA", Outcomes: map[string]string{"example.com/p.TestA": "passed"}, Fingerprint: Fingerprint{MaximalClosure: strings.Repeat("a", 32), TestVariantClosure: strings.Repeat("b", 32)}, CompartmentLedger: &CompartmentLedger{Declarations: []CompartmentDeclaration{{File: "p_test.go", Kind: "func", Name: "TestA", Hash: "00112233445566778899aabbccddeeff"}}}}
-	err := Install(dir, kindless)
+	kindless := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestA", Outcomes: map[string]string{"example.com/p.TestA": "passed"}, Fingerprint: ledgerFingerprint(strings.Repeat("b", 32)), CompartmentLedger: simpleLedger("TestA")}
+	kindless.Fingerprint.ResultKind = 0
+	err := Install(t.Context(), dir, kindless)
 	if err == nil || !strings.Contains(err.Error(), "result kind") {
 		t.Fatalf("a kind-less fingerprint installed: %v", err)
 	}
@@ -947,10 +972,10 @@ func TestInstallRefusesWhatTheEncoderRefuses(t *testing.T) {
 	rec.Fingerprint.RuntimeDigest = strings.Repeat("d", 32)
 	rec.Fingerprint.DynamicStateStrategy = gofresh.DynamicStateStrategy
 	rec.Fingerprint.ClosureStrategy = gofresh.ClosureStrategy
-	if err := Install(dir, rec); err != nil {
+	if err := Install(t.Context(), dir, rec); err != nil {
 		t.Fatal(err)
 	}
-	if got := Load(dir); len(got) != 1 {
+	if got := Load(t.Context(), dir); len(got) != 1 {
 		t.Fatalf("loaded %d records, want the one", len(got))
 	}
 	store, _ := StoreDir(dir)
@@ -970,7 +995,7 @@ func TestInstallRefusesWhatTheEncoderRefuses(t *testing.T) {
 	if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if got := Load(dir); len(got) != 0 {
+	if got := Load(t.Context(), dir); len(got) != 0 {
 		t.Fatalf("a reordered fingerprint member served: %+v", got)
 	}
 }

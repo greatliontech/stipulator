@@ -114,7 +114,7 @@ func TestMutatesSourceOnce(t *testing.T) {
 	if run.Outcomes["example.com/mutate.TestMutatesSourceOnce"] != verify.TestPassed {
 		t.Fatalf("executed evidence lost: %v", run.Outcomes)
 	}
-	if got := witnesscache.Load(tmp); len(got) != 0 {
+	if got := witnesscache.Load(t.Context(), tmp); len(got) != 0 {
 		t.Fatalf("mid-run source edit published records: %+v", got)
 	}
 	if run.Ran != 1 || run.Uncached != 1 {
@@ -229,7 +229,7 @@ func TestWritesOnce(t *testing.T) {
 	if got := run.Outcomes["example.com/runtime-drift/writer.TestRedFlag"]; got != verify.TestFailed {
 		t.Fatalf("denying red must stand: %v", got)
 	}
-	first := cacheRecord(t, witnesscache.Load(tmp), "example.com/runtime-drift/reader", "TestReads")
+	first := cacheRecord(t, witnesscache.Load(t.Context(), tmp), "example.com/runtime-drift/reader", "TestReads")
 	if first == nil {
 		t.Fatal("the reader's record did not publish at its unit's completion")
 	}
@@ -249,7 +249,7 @@ func TestWritesOnce(t *testing.T) {
 	if second.Fresh != 0 {
 		t.Fatalf("the next run served %d witnesses; the reader's recorded input moved, nothing may serve", second.Fresh)
 	}
-	rederived := cacheRecord(t, witnesscache.Load(tmp), "example.com/runtime-drift/reader", "TestReads")
+	rederived := cacheRecord(t, witnesscache.Load(t.Context(), tmp), "example.com/runtime-drift/reader", "TestReads")
 	if rederived == nil || rederived.Fingerprint.RuntimeDigest == first.Fingerprint.RuntimeDigest {
 		t.Fatalf("the reader's record was not re-derived against the moved input: first %v, second %+v", first.Fingerprint.RuntimeDigest, rederived)
 	}
@@ -344,7 +344,7 @@ func TestGoRunWitnessesServingRoundTrip(t *testing.T) {
 		t.Fatalf("witness store not written: %v (%d entries)", err, len(entries))
 	}
 	// The store round-trips what the run wrote.
-	if witnesscache.Load(tmp) == nil {
+	if witnesscache.Load(t.Context(), tmp) == nil {
 		t.Fatal("store round trip lost its records")
 	}
 
@@ -479,7 +479,7 @@ func TestGoRunWitnessesSelectsRaceSources(t *testing.T) {
 	// assertion would appear as purity attribution on the published
 	// fingerprint.
 	purityRecorded := false
-	for _, rec := range witnesscache.Load(tmp) {
+	for _, rec := range witnesscache.Load(t.Context(), tmp) {
 		if rec.Package != "example.com/racefixture/racepurity" || rec.Test != "TestRacePurity" {
 			continue
 		}
@@ -777,7 +777,7 @@ func TestGoRunWitnessesCompletedGroupSurvivesLaterInvocationFailure(t *testing.T
 	writePolicyRecord(t, tmp, p)
 
 	hasGood := func() bool {
-		for _, rec := range witnesscache.Load(tmp) {
+		for _, rec := range witnesscache.Load(t.Context(), tmp) {
 			if rec.Package == "example.com/durable/good" && rec.Test == "TestFine" {
 				return true
 			}
@@ -800,11 +800,11 @@ func TestGoRunWitnessesCompletedGroupSurvivesLaterInvocationFailure(t *testing.T
 	for !hasGood() {
 		select {
 		case err := <-done:
-			t.Fatalf("run ended before the completed group installed: %v (store: %+v)", err, witnesscache.Load(tmp))
+			t.Fatalf("run ended before the completed group installed: %v (store: %+v)", err, witnesscache.Load(t.Context(), tmp))
 		default:
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("completed group never installed mid-run (store: %+v)", witnesscache.Load(tmp))
+			t.Fatalf("completed group never installed mid-run (store: %+v)", witnesscache.Load(t.Context(), tmp))
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
@@ -813,7 +813,7 @@ func TestGoRunWitnessesCompletedGroupSurvivesLaterInvocationFailure(t *testing.T
 	// end-of-run batch installs both together, incremental publication
 	// installs each at its own group's completion.
 	hasSlow := func() bool {
-		for _, rec := range witnesscache.Load(tmp) {
+		for _, rec := range witnesscache.Load(t.Context(), tmp) {
 			if rec.Package == "example.com/durable/slow" {
 				return true
 			}
@@ -925,7 +925,7 @@ func TestWritesOnce(t *testing.T) {
 	if _, err := RunWitnesses(context.Background(), tmp, noSeeding{}); err != nil {
 		t.Fatal(err)
 	}
-	cold := cacheRecord(t, witnesscache.Load(tmp), "example.com/sibserve/reader", "TestReads")
+	cold := cacheRecord(t, witnesscache.Load(t.Context(), tmp), "example.com/sibserve/reader", "TestReads")
 	if cold == nil {
 		t.Fatal("no cold record for the reader")
 	}
@@ -955,7 +955,7 @@ func TestWritesOnce(t *testing.T) {
 	if got := run.Outcomes["example.com/sibserve/reader.TestReads"]; got != verify.TestPassed {
 		t.Fatalf("the reader's drift retry lost its outcome: %v", got)
 	}
-	rederived := cacheRecord(t, witnesscache.Load(tmp), "example.com/sibserve/reader", "TestReads")
+	rederived := cacheRecord(t, witnesscache.Load(t.Context(), tmp), "example.com/sibserve/reader", "TestReads")
 	if rederived == nil || rederived.Fingerprint.RuntimeDigest == cold.Fingerprint.RuntimeDigest {
 		t.Fatalf("the reader's record was not re-derived against the rewritten input: cold %v, now %+v", cold.Fingerprint.RuntimeDigest, rederived)
 	}
@@ -1012,7 +1012,7 @@ func TestReads(t *testing.T) {
 	if got := run.Outcomes["example.com/prepublish/reader.TestReads"]; got != verify.TestPassed {
 		t.Fatalf("the executed outcome did not stand: %v", got)
 	}
-	if rec := cacheRecord(t, witnesscache.Load(tmp), "example.com/prepublish/reader", "TestReads"); rec != nil {
+	if rec := cacheRecord(t, witnesscache.Load(t.Context(), tmp), "example.com/prepublish/reader", "TestReads"); rec != nil {
 		t.Fatalf("a record published although its input moved before its publish: %+v", *rec)
 	}
 	if run.Uncached == 0 {
@@ -1069,7 +1069,7 @@ func TestTouch(t *testing.T) {
 	if _, err := RunWitnesses(context.Background(), tmp, noSeeding{}); err != nil {
 		t.Fatal(err)
 	}
-	cold := cacheRecord(t, witnesscache.Load(tmp), "example.com/closewin/reader", "TestReads")
+	cold := cacheRecord(t, witnesscache.Load(t.Context(), tmp), "example.com/closewin/reader", "TestReads")
 	if cold == nil {
 		t.Fatal("no cold record for the reader")
 	}
@@ -1166,7 +1166,7 @@ func TestReadsDep(t *testing.T) {
 	if len(first.UncacheableReasons) != 0 {
 		t.Fatalf("the attested witness was refused: %v", first.UncacheableReasons)
 	}
-	rec := cacheRecord(t, witnesscache.Load(tmp), "example.com/ppfix/p", "TestReadsDep")
+	rec := cacheRecord(t, witnesscache.Load(t.Context(), tmp), "example.com/ppfix/p", "TestReadsDep")
 	if rec == nil {
 		t.Fatal("no record published for the witness")
 	}
@@ -1274,7 +1274,7 @@ func TestReads(t *testing.T) {
 				t.Fatalf("run %d: %s's refusal did not stand on the uncacheable face: %q (executed=%v)", i, subject, reason, run.ExecutedReasons)
 			}
 			pkg := subject[:strings.LastIndexByte(subject, '.')]
-			if rec := cacheRecord(t, witnesscache.Load(tmp), pkg, test); rec != nil {
+			if rec := cacheRecord(t, witnesscache.Load(t.Context(), tmp), pkg, test); rec != nil {
 				t.Fatalf("run %d published a record the serve can never admit for %s: %+v", i, subject, rec.Fingerprint)
 			}
 		}

@@ -56,7 +56,7 @@ func TestRecordsRoundTripOnePerIdentity(t *testing.T) {
 	if got := Load(dir); len(got) != 2 {
 		t.Fatalf("two selections loaded as %d records", len(got))
 	}
-	removed, kept, err := GC(dir, func(selection, symbol string) bool { return selection == "race" })
+	removed, kept, err := GC(t.Context(), dir, func(selection, symbol string) bool { return selection == "race" })
 	if err != nil || removed != 1 || kept != 1 {
 		t.Fatalf("gc removed %d kept %d err %v, want 1/1", removed, kept, err)
 	}
@@ -160,7 +160,7 @@ func TestMisnamedRecordsAndTemporariesAreNotRecords(t *testing.T) {
 		t.Fatalf("a record under another fingerprint's name served: %+v", got)
 	}
 	// Live by identity and still collected: nothing serves it.
-	if removed, kept, err := GC(dir, func(string, string) bool { return true }); err != nil || removed != 1 || kept != 0 {
+	if removed, kept, err := GC(t.Context(), dir, func(string, string) bool { return true }); err != nil || removed != 1 || kept != 0 {
 		t.Fatalf("gc of the fingerprint-misnamed record = %d removed, %d kept, %v", removed, kept, err)
 	}
 	if err := InstallAll(dir, []Record{rec}); err != nil {
@@ -182,7 +182,7 @@ func TestMisnamedRecordsAndTemporariesAreNotRecords(t *testing.T) {
 	}
 	// The misnamed record is live by identity and still goes: nothing
 	// serves it.
-	removed, kept, err := GC(dir, func(string, string) bool { return true })
+	removed, kept, err := GC(t.Context(), dir, func(string, string) bool { return true })
 	if err != nil || removed != 1 || kept != 0 {
 		t.Fatalf("gc = %d removed, %d kept, %v; want the misnamed record alone removed", removed, kept, err)
 	}

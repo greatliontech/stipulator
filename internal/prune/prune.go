@@ -56,19 +56,33 @@ func (m Mode) Validate() error {
 	return nil
 }
 
-// StoreResult is the store mode's outcome: the witness-store counts and,
-// under a captured policy, the resolution records' counts.
+// StoreResult is the store mode's completed work, retained beside any error:
+// the witness-store counts and, under a captured policy, the resolution counts.
 type StoreResult struct {
 	Removed, Kept int
-	// Resolutions is nil when no policy could be captured: the
-	// resolution records are judged only under one, since the witness
-	// subjects come from it.
+	// Resolutions is nil until that phase is attempted: the witness
+	// collection must finish and a policy must have been captured, since
+	// the resolution records' live witness subjects come from it.
 	Resolutions *ResolutionCounts
 }
 
 // ResolutionCounts are the resolution records removed and kept.
 type ResolutionCounts struct {
 	Removed, Kept int
+}
+
+// Lines renders the store account on either face. On failure these are the
+// completed prefix's counts, not a judgment of the unexamined remainder.
+func (r StoreResult) Lines(partial bool) []string {
+	var lines []string
+	if partial {
+		lines = append(lines, "store gc: completed prefix; unexamined records are not counted as kept")
+	}
+	lines = append(lines, fmt.Sprintf("store gc: %d record variant(s) removed, %d kept", r.Removed, r.Kept))
+	if r.Resolutions != nil {
+		lines = append(lines, fmt.Sprintf("store gc: %d resolution record(s) removed, %d kept", r.Resolutions.Removed, r.Resolutions.Kept))
+	}
+	return lines
 }
 
 // StoreGC garbage-collects this corpus's witness store: the current
@@ -100,22 +114,22 @@ func StoreGC(ctx context.Context, d Deps) (StoreResult, error) {
 		digests := golang.LiveGroupDigests(pc)
 		liveGroup = func(group string) bool { return digests[group] }
 	}
-	removed, kept, err := witnesscache.GC(d.Root, func(pkg, test string) bool {
+	removed, kept, err := witnesscache.GC(ctx, d.Root, func(pkg, test string) bool {
 		return live[pkg+"."+test]
 	}, liveGroup)
-	if err != nil {
-		return StoreResult{}, err
-	}
 	out := StoreResult{Removed: removed, Kept: kept}
+	if err != nil {
+		return out, err
+	}
 	// The resolution records beside them: a symbol no binding names
 	// and no witness subject carries serves no operation — judged only
 	// under a captured policy, since the witness subjects come from it.
 	if cerr == nil && pc != nil {
 		resolutionsRemoved, resolutionsKept, err := golang.GCResolutions(ctx, d.Root, store, pc)
-		if err != nil {
-			return StoreResult{}, err
-		}
 		out.Resolutions = &ResolutionCounts{Removed: resolutionsRemoved, Kept: resolutionsKept}
+		if err != nil {
+			return out, err
+		}
 	}
 	return out, nil
 }

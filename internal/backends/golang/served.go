@@ -1090,5 +1090,5 @@ func GCResolutions(ctx context.Context, dir string, store *records.Store, pc *Ca
 	for _, sym := range symbols {
 		live[sym] = true
 	}
-	return resolutioncache.GC(dir, func(_, symbol string) bool { return live[symbol] })
+	return resolutioncache.GC(ctx, dir, func(_, symbol string) bool { return live[symbol] })
 }

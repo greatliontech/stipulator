@@ -80,7 +80,7 @@ func TestObservationProofPublishesAndServes(t *testing.T) {
 	if first.Ran != 1 || first.Uncached != 0 {
 		t.Fatalf("first run: ran=%d uncached=%d; the observation-proven record must publish", first.Ran, first.Uncached)
 	}
-	records := witnesscache.Load(tmp)
+	records := witnesscache.Load(t.Context(), tmp)
 	if len(records) != 1 || records[0].Fingerprint.PurityAssertion != "" ||
 		records[0].Fingerprint.ObservationAssertion != "caller assertion" ||
 		records[0].Fingerprint.ObservationProof == (gofresh.ObservationProof{}) ||
@@ -176,7 +176,7 @@ func TestStatsFixture(t *testing.T) {
 	if result.Ran != 1 || result.Uncached != 1 {
 		t.Fatalf("run: ran=%d uncached=%d; unverifiable runtime state must not publish", result.Ran, result.Uncached)
 	}
-	if records := witnesscache.Load(tmp); len(records) != 0 {
+	if records := witnesscache.Load(t.Context(), tmp); len(records) != 0 {
 		t.Fatalf("unverifiable runtime state published: %+v", records)
 	}
 }
@@ -213,7 +213,7 @@ func TestIncompatibleObservationEvidenceCannotServe(t *testing.T) {
 	if first.Ran != 1 || first.Uncached != 0 {
 		t.Fatalf("first run: ran=%d uncached=%d; record did not publish", first.Ran, first.Uncached)
 	}
-	records := witnesscache.Load(tmp)
+	records := witnesscache.Load(t.Context(), tmp)
 	if len(records) != 1 || records[0].Fingerprint.ObservationProof == (gofresh.ObservationProof{}) {
 		t.Fatalf("published proof missing: %+v", records)
 	}
@@ -235,10 +235,10 @@ func TestIncompatibleObservationEvidenceCannotServe(t *testing.T) {
 	}
 	rec := records[0]
 	rec.Fingerprint.ObservationProof.Evidence = incompatible
-	if err := witnesscache.Install(tmp, rec); err != nil {
+	if err := witnesscache.Install(t.Context(), tmp, rec); err != nil {
 		t.Fatal(err)
 	}
-	if got := witnesscache.Load(tmp); len(got) != 1 {
+	if got := witnesscache.Load(t.Context(), tmp); len(got) != 1 {
 		t.Fatalf("canonical incompatible proof was not structurally readable: %+v", got)
 	}
 

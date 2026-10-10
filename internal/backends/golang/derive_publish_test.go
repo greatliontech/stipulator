@@ -12,6 +12,7 @@ import (
 	"time"
 
 	gofresh "github.com/greatliontech/gofresh"
+	"github.com/greatliontech/gofresh/closure/testvariant"
 	"github.com/greatliontech/gofresh/guard"
 	"github.com/greatliontech/gofresh/runtimeinput"
 
@@ -75,25 +76,32 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 	// its sibling's kill will shadow — that test produces no row, and a
 	// record this execution never touched is retained, never silently
 	// dropped.
-	seedFP := witnesscache.Fingerprint{MaximalClosure: "00112233445566778899aabbccddeeff", TestVariantClosure: "00112233445566778899aabbccddeeff", Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: "eyJ2IjoyfQ", RuntimeDigest: "00112233445566778899aabbccddeeff", ResultKind: gofresh.CodeResult}
-	seedLedger := func(test string) *witnesscache.CompartmentLedger {
-		return &witnesscache.CompartmentLedger{Declarations: []witnesscache.CompartmentDeclaration{
-			{File: "seed_test.go", Kind: "func", Name: test, Hash: "00112233445566778899aabbccddeeff"},
-		}}
-	}
-	for _, rec := range []witnesscache.Record{
-		{Group: "00112233aabbccdd", Package: "example.com/exec/redmain", Test: "TestGreen", Fingerprint: seedFP, CompartmentLedger: seedLedger("TestGreen"),
-			Outcomes: map[string]string{"example.com/exec/redmain.TestGreen": "passed"}},
-		{Group: "00112233aabbccdd", Package: "example.com/exec/ok", Test: "TestDouble", Fingerprint: seedFP, CompartmentLedger: seedLedger("TestDouble"),
-			Outcomes: map[string]string{"example.com/exec/ok.TestDouble": "failed"}},
-		{Group: "00112233aabbccdd", Package: "example.com/exec/killmid", Test: "TestShadowedByKill", Fingerprint: seedFP, CompartmentLedger: seedLedger("TestShadowedByKill"),
-			Outcomes: map[string]string{"example.com/exec/killmid.TestShadowedByKill": "passed"}},
-	} {
-		if err := witnesscache.Install(tmp, rec); err != nil {
-			t.Fatal(err)
+	seedFP := witnesscache.Fingerprint{MaximalClosure: "00112233445566778899aabbccddeeff", TestVariantClosure: "00112233445566778899aabbccddeeff", ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy, Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: "eyJ2IjoyfQ", RuntimeDigest: "00112233445566778899aabbccddeeff", ResultKind: gofresh.CodeResult}
+	seedLedger := func(pkg, test string) *witnesscache.CompartmentLedger {
+		return &witnesscache.CompartmentLedger{
+			BindingStrategy: testvariant.BindingStrategy,
+			Declarations: []witnesscache.CompartmentDeclaration{
+				{File: "seed_test.go", Package: pkg, Kind: "func", Name: test, Hash: "00112233445566778899aabbccddeeff"},
+			},
+			FileHeaders: []witnesscache.CompartmentFileHeader{{File: "seed_test.go", Hash: "00112233445566778899aabbccddeeff", Bindings: &witnesscache.CompartmentFileBindings{Package: pkg}}},
 		}
 	}
-	if len(witnesscache.Load(tmp)) != 3 {
+	for _, rec := range []witnesscache.Record{
+		{Group: "00112233aabbccdd", Package: "example.com/exec/redmain", Test: "TestGreen", Fingerprint: seedFP, CompartmentLedger: seedLedger("redmain", "TestGreen"),
+			Outcomes: map[string]string{"example.com/exec/redmain.TestGreen": "passed"}},
+		{Group: "00112233aabbccdd", Package: "example.com/exec/ok", Test: "TestDouble", Fingerprint: seedFP, CompartmentLedger: seedLedger("ok", "TestDouble"),
+			Outcomes: map[string]string{"example.com/exec/ok.TestDouble": "failed"}},
+		{Group: "00112233aabbccdd", Package: "example.com/exec/killmid", Test: "TestShadowedByKill", Fingerprint: seedFP, CompartmentLedger: seedLedger("killmid", "TestShadowedByKill"),
+			Outcomes: map[string]string{"example.com/exec/killmid.TestShadowedByKill": "passed"}},
+	} {
+		if err := witnesscache.Install(t.Context(), tmp, rec); err != nil {
+			t.Fatal(err)
+		}
+		if witnesscache.LoadLedger(tmp, rec) == nil {
+			t.Fatalf("seeded ledger for %s is not loadable", rec.Key())
+		}
+	}
+	if len(witnesscache.Load(t.Context(), tmp)) != 3 {
 		t.Fatal("seeded cache records are not loadable; the seeds would prove nothing")
 	}
 
@@ -201,7 +209,7 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 		t.Errorf("denied subject reason = %q, want attribution beyond the executed set", why)
 	}
 
-	cache := witnesscache.Load(tmp)
+	cache := witnesscache.Load(t.Context(), tmp)
 	if len(cache) != 6 {
 		t.Fatalf("cache carries %d records, want 6 (3 published + 3 seeded variants retained): %+v", len(cache), cache)
 	}
@@ -399,7 +407,7 @@ func TestSharedReads(t *testing.T) {
 	if tr.Ran != 8 || tr.Uncached != 0 {
 		t.Errorf("ran=%d uncached=%d, want 8/0", tr.Ran, tr.Uncached)
 	}
-	cache := witnesscache.Load(tmp)
+	cache := witnesscache.Load(t.Context(), tmp)
 	if len(cache) != 9 {
 		t.Fatalf("published %d records, want 9 (shared publishes per group): %+v", len(cache), cache)
 	}
@@ -668,7 +676,7 @@ func TestCleanNoop(t *testing.T) {}
 			t.Errorf("%s = %v, want PASSED: dropping a record never touches evidence", key, got)
 		}
 	}
-	cache := witnesscache.Load(tmp)
+	cache := witnesscache.Load(t.Context(), tmp)
 	for _, dropped := range []struct{ pkg, test string }{
 		{"example.com/drift/reader", "TestReads"},
 		{"example.com/drift/reader", "TestReaderNoop"},
@@ -770,7 +778,7 @@ func TestGoDeriveCheckFaultDegradesRun(t *testing.T) {
 	if tr.Degraded == "" || !strings.Contains(tr.Degraded, "runtime producer validation failed") || !strings.Contains(tr.Degraded, "injected check fault") {
 		t.Fatalf("degraded = %q, want the named check fault", tr.Degraded)
 	}
-	if len(witnesscache.Load(tmp)) != 0 {
+	if len(witnesscache.Load(t.Context(), tmp)) != 0 {
 		t.Fatal("a faulting check still published records")
 	}
 	if tr.Outcomes["example.com/faulty.TestOne"] != verify.TestPassed {
@@ -829,7 +837,7 @@ func TestHealthJudgedFormPersistsPerPackage(t *testing.T) {
 		t.Fatalf("kept = %v; want the first invocation's package alone", kept)
 	}
 	tests := map[string]bool{}
-	for _, rec := range witnesscache.Load(tmp) {
+	for _, rec := range witnesscache.Load(t.Context(), tmp) {
 		tests[rec.Package+"."+rec.Test] = true
 	}
 	if !tests["example.com/units/a.TestA"] || tests["example.com/units/b.TestB"] {
@@ -916,7 +924,7 @@ func TestHealthJudgedFormKeepsWhatClosedBeforeADegrade(t *testing.T) {
 		t.Fatalf("kept = %v; want the first invocation's package alone", kept)
 	}
 	tests := map[string]bool{}
-	for _, rec := range witnesscache.Load(tmp) {
+	for _, rec := range witnesscache.Load(t.Context(), tmp) {
 		tests[rec.Package+"."+rec.Test] = true
 	}
 	if !tests["example.com/units/a.TestA"] || tests["example.com/units/b.TestB"] || tests["example.com/units/d.TestD"] {

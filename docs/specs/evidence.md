@@ -203,18 +203,23 @@ holds.
 compartment pin: a verdict of exactly stale `test variants` certifies the
 subject's own source closure unchanged and nothing more — Gofresh orders
 the compartment comparison after the core and before the environment
-tiers, so a moved guard or runtime input can hide behind that reason
-(witness fingerprints never carry a refinement) — so the carve-out
-completes the proof itself: the compartment ledger persisted under the
-record's recorded compartment digest MUST
-diff inert against the current view's ledger per Gofresh's classifier (the
-only movement is added declarations no unchanged declaration can observe),
-and the recorded fingerprint refreshed to the current compartment hash
-must check plainly valid against the current tree, enforcing every
-remaining pin exactly as an ordinary serve. A record passing both serves
-and republishes under the current compartment hash and ledger: the proven
-extension is recorded, so the next run reads plain validity instead of
-re-proving the same delta.
+tiers, so a moved guard or runtime input can hide behind that reason —
+so the carve-out MUST use Gofresh's explicit inert-test-variant extension
+check under the record's ordinary or observed policy, with the complete
+historical ledger paired to its effective compartment, core, producing
+group, package, toolchain, build guards, closure strategy and binding
+strategy. The check establishes an inert delta against the current view's
+ledger and enforces every remaining applicable guard. Only its valid
+return supplies the replacement fingerprint and companion ledger; the
+producing constituents, including the producing test-variant closure and
+the manifest's historical outcome support, remain unchanged. The effective
+applicability endpoint and its companion ledger advance together, including
+across repeated extensions and process restarts. No absent or unrecognized
+binding evidence or outcome support is backfilled. A deferred-close return
+is provisional: the same view successfully validates before the outcome
+serves or the pair installs. A passing record republishes the returned pair
+unchanged, so the next run reads ordinary validity rather than re-proving
+the same delta.
 This is what Gofresh's test-variant partition exists for: sibling test
 declarations live outside the subject's core closure precisely so their
 provably unobservable additions stop re-executing every cached witness in
@@ -684,15 +689,10 @@ validated by its own closing check, and the run's uncacheable account
 excludes them.
 
 **REQ-evidence-witness-cache-format-version** (behavior): Each file MUST carry one record object with integer
-`version` equal to `8` — bumped from `7` when the compartment ledger
-left the record for the ledger store below (a prior record's inline
-ledger is an unknown field), from `6` when the record identity gained
-the producing capture group's coordinate, so a record is addressable
-only within the producer environment that made it, and from `5` when the
-persisted compartment ledger gained each declaration's package clause
-and referenced names, both consumed by the test-variants serve
-carve-out's diff — either way field-blind prior records fail closed to
-re-execution. A persisted-field addition earns a bump only when the
+`version` equal to `9`. Earlier records fail closed to re-execution,
+without migration or backfilling their binding evidence: the ledger's
+complete provenance coordinate and binding evidence are required for the
+explicit applicability transform. A persisted-field addition earns a bump only when the
 version is the fail-closed mechanism, and the two bump-free arms differ:
 a field whose absence the engine's own recorded-evidence verdict already
 refuses (the dynamic-state strategy, judged stale by Gofresh when empty)
@@ -714,7 +714,10 @@ record's capture did. Its fingerprint keys are `maximalClosure`,
 `observationAssertion` plus `observationProof` pair, and optional
 `purityAssertion`, `dynamicStateVouches`, `singleSubjectDischarges`,
 `packageProcessDischarges`, `dynamicStateStrategy`, `closureStrategy`,
-`runtimeInputs`, `runtimeDigest`, and numeric `resultKind`; closure
+`runtimeInputs`, `runtimeDigest`, optional `inertTestVariantApplicability`,
+and numeric `resultKind`; the applicability object is Gofresh's native
+record form (`strategy` and `testVariantClosure`) and never replaces the
+producing `testVariantClosure`; closure
 (maximal and test-variant), build, and runtime digests are 16-byte
 lowercase hexadecimal values, the observation assertion and proof are
 structurally encoded attributable Gofresh evidence for the record's
@@ -730,28 +733,42 @@ strategy, and a record persisted before the field reads as the empty
 strategy and fails closed to re-execution), measurement fields are
 absent, and result kind is Gofresh code-result.
 
-**REQ-evidence-witness-cache-format-ledger** (behavior): The producing
-compartment's declaration ledger — the witness-freshness carve-out's
-diff base — is stored once per compartment, not per record: every test
-of a package shares its compartment, so the store's `ledgers`
-subdirectory holds one JSON file per compartment named by the
-fingerprint's `testVariantClosure` digest, installed atomically before
-its first record and rewritten only when the file present does not read
-back as a ledger (the digest addresses the content, so a readable file
-is this ledger; a torn or prior-version file never outlives the next
-install of its compartment), carrying integer `version` equal to `1`,
-string `testVariantClosure` equal to the file's name, an optional
-`declarations` array (string `file`, `kind`, `name`, optional
-`receiver`, optional `package`, optional `references` array, and 16-byte
-lowercase hexadecimal `hash`) and an optional `fileHeaders` array
-(string `file`, 16-byte lowercase hexadecimal `hash`, optional boolean
-`embedded`), each omitted when empty. A ledger is read for one record at
-a time, on the carve-out's demand, and MUST name that record's own test
+**REQ-evidence-witness-cache-format-ledger** (behavior): The effective
+compartment's declaration ledger — the witness-freshness
+carve-out's diff base — is stored once per complete coordinate, not per
+record. The `ledgers` subdirectory holds JSON files named by the record
+store's digest of the compact JSON coordinate object, whose string keys in
+order are `group`, `package`, `core`, `compartment`, `toolchain`,
+`buildConfig`, `closureStrategy`, `bindingStrategy`. The compartment is the
+fingerprint's effective endpoint, or its producing compartment when no
+transform is recorded. The binding strategy is the recognized Gofresh
+binding strategy, independently required on the ledger itself. Thus two
+cores or configurations sharing a compartment cannot share historical
+binding evidence. Each file carries integer `version` equal to `2`,
+the complete `coordinate` object, string `bindingStrategy`, optional
+`baseFiles`, `declarations` and `fileHeaders` arrays. Declaration entries
+carry string `file`, `kind`, `name`, optional `receiver`, optional
+`package`, optional `references` array, and 16-byte lowercase hexadecimal
+`hash`. File entries carry `file`, `hash`, optional boolean `embedded`,
+and optional `bindings` (`package`, optional `references`, optional
+`imports`, whose entries carry `name` and `path`). Base-file entries have
+empty hash and no embedded bit. Every compiled file carries bindings;
+embedded-only members carry no bindings. A Go member that is both compiled
+and embedded carries both its bindings and the embedded bit. Nil arrays
+are omitted, present empty arrays stay empty arrays; conversions own every
+nested slice and binding
+object. Unknown, duplicated, null or noncanonical fields refuse (formatting
+whitespace alone is insignificant). Installation is atomic, before the
+first referring record; an existing readable ledger under that exact
+coordinate stays, a torn or prior-version one is replaced only by freshly
+supplied complete evidence. A ledger is read for one record at a time,
+on the carve-out's demand, and MUST name that record's own test
 as a receiverless `func` — a witness subject's own declaration lives in
 its compartment, and a ledger that omits it would let that declaration
 ride an inert diff as an addition, the observation proof's identity
 agreement check applied to the ledger; a ledger failing that, malformed,
-of another version, disagreeing with its name, or absent is no ledger
+of another version, with missing or unknown binding strategy, disagreeing
+with its full coordinate or file name, or absent is no ledger
 for the record, which costs the carve-out alone — the record still
 serves on plain validity. Loading the store reads records only, never
 ledgers, and reclaims every ledger no record file names — a refused
@@ -759,6 +776,21 @@ record's ledger stays, its refusal is the file's own, and a ledger
 younger than the load is a concurrent install's and stays until it has
 aged unreferenced — so the ledger store is bounded by the record store
 whose variant bound evicts records without reading them.
+Ledger reuse or installation and publication of the referring record are
+serialized with reclamation across processes. A collector determines the
+live references under that same exclusion through deletion, so an old
+ledger reused by a concurrent publisher cannot be reclaimed between its
+reuse check and the referring record's installation. The exclusion file
+is the corpus store directory's path with `.lock` appended, beside that
+directory, and is not deleted on unlock. A platform or filesystem unable
+to provide the exclusion refuses writes and explicit collection; failure
+of opportunistic collection leaves the read's records available.
+Explicit acquisition waits only while the operation's context remains
+live; cancellation returns without waiting for a different process to
+release the store. Opportunistic load cleanup attempts exclusion once
+and skips cleanup immediately on contention. Collection checks the
+operation's context before each record or ledger deletion; cancellation
+starts no further deletion.
 
 **REQ-evidence-witness-cache-format-proof-and-outcomes** (behavior): An
 `observationProof` object MUST have string keys `strategy`, `package`,
@@ -860,12 +892,20 @@ corpus's record variants whose witness identity is absent from the
 current obligation universe — the bound tests-role symbols, matched by
 exact record-key equality, never by symbol parsing — plus unreadable
 entries (cost with no servable evidence behind them), and with them
-every ledger no kept record's compartment digest names. The verb is the
+every ledger no kept record's complete effective ledger coordinate names.
+The young-file concurrency protection remains in force. The verb is the
 ONLY eviction across identities: an identity absent from this tree
 state may be live on another branch, so opportunistic eviction would
 undo the variant store's branch-alternation serving; per-identity
 variant bounds on install are unaffected. The result states removed
-and kept counts. Enforced by `TestWitnessStoreGCDropsDepartedIdentities`,
+and kept counts. Failure or interruption preserves the counts for completed
+work in both stores, including the witness account when resolution collection
+ends early. Both surfaces state that these are completed-prefix counts and
+that unexamined records are not counted as kept; the CLI prints the account
+before returning the error, and the MCP error text carries it even when no
+typed result can be delivered. The failure or cancellation remains an error,
+never a successful partial operation. Enforced by
+`TestWitnessStoreGCDropsDepartedIdentities`,
 `TestPruneToolStoreGC`, and the CLI arm of
 `TestPruneScopedWitnessEvaluationAndDeletionOnlyFastPath`.
 

@@ -11,13 +11,13 @@ import (
 
 // packageLeg is one package's publication state within a witness group,
 // on either form. The package is the unit of persistence
-// (REQ-policy-cancellation-unit), so it is the unit of validation too: its
-// serving checks, captures, proof leg, publish and revalidation run on
-// its own sibling of the group's one analysis view — the expensive
-// observation, paid once per group — so under the deferred-close engine
-// its verdicts are provisional until ITS validation, and that
-// validation re-observes the package's subjects alone, never the
-// group's.
+// (REQ-policy-cancellation-unit), so each closing validation re-observes
+// the package's subjects alone. Its view is a sibling of the group's one
+// analysis view, sharing the expensive observation. Serving obligations
+// remain on it until all executions finish. Publication of an executing
+// sibling uses a separate sibling over those same facts, so its earlier
+// close cannot seal the serving transaction. The proof-attachment leg
+// likewise has its own view and closing validation.
 type packageLeg struct {
 	// preparation serializes spawn-side proof use with a run-wide degradation
 	// releasing legs while sibling packages are still preparing their process.
@@ -123,15 +123,22 @@ func legsReleased(legs map[string]*packageLeg) bool {
 // that landed; a record the store refused is not cached, and its
 // subject's reason names the store's fault — a filesystem remedy,
 // never the evidence's. One install path for both forms, so the
-// account and the store never disagree.
-func installRecords(dir string, records []witnesscache.Record, reasons map[gofresh.Subject]uncacheable) []witnesscache.Record {
+// account and the store never disagree. Cancellation returns the landed prefix
+// and the context error, so the caller accounts for that prefix before ending.
+func installRecords(ctx context.Context, dir string, records []witnesscache.Record, reasons map[gofresh.Subject]uncacheable) ([]witnesscache.Record, error) {
 	var installed []witnesscache.Record
 	for _, rec := range records {
-		if err := witnesscache.Install(dir, rec); err != nil {
+		if err := ctx.Err(); err != nil {
+			return installed, err
+		}
+		if err := witnesscache.Install(ctx, dir, rec); err != nil {
+			if ctx.Err() != nil {
+				return installed, ctx.Err()
+			}
 			reasons[gofresh.Subject{Package: rec.Package, Symbol: rec.Test}] = reasonStoreRefused.with(err.Error())
 			continue
 		}
 		installed = append(installed, rec)
 	}
-	return installed
+	return installed, ctx.Err()
 }

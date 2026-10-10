@@ -9,15 +9,19 @@ package witnesscache
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
 	gofresh "github.com/greatliontech/gofresh"
+	"github.com/greatliontech/gofresh/closure/testvariant"
 	"github.com/greatliontech/gofresh/runtimeinput"
 
 	"github.com/greatliontech/stipulator/internal/recordstore"
@@ -29,14 +33,12 @@ import (
 // fingerprints pin the toolchain and platform, so a committed cache would
 // ping-pong across machines, and a repo-local one dies with every fresh
 // worktree (REQ-evidence-witness-cache-format).
-// Bumped from 7 when the compartment ledger left the record for the
-// content-addressed ledger store: a prior record's embedded ledger is an
-// unknown field, so field-blind prior records fail closed to
-// re-execution.
-const version = 8
+// Version 9 requires complete binding evidence under a composite ledger
+// coordinate. Prior records re-execute; their evidence is never backfilled.
+const version = 9
 
 // ledgerVersion is the ledger store's file version.
-const ledgerVersion = 1
+const ledgerVersion = 2
 
 // variantBound caps how many tree-state variants one test identity
 // retains; eviction is by install recency and costs only execution.
@@ -86,14 +88,28 @@ type CompartmentDeclaration struct {
 	// is why their introduction bumped the record version - prior
 	// versions fail closed to re-execution.
 	Package    string   `json:"package,omitempty"`
-	References []string `json:"references,omitempty"`
+	References []string `json:"references,omitzero"`
 }
 
 // CompartmentFileHeader is one compartment file's persisted header identity.
 type CompartmentFileHeader struct {
-	File     string `json:"file"`
-	Hash     string `json:"hash"`
-	Embedded bool   `json:"embedded,omitempty"`
+	File     string                   `json:"file"`
+	Hash     string                   `json:"hash"`
+	Embedded bool                     `json:"embedded,omitempty"`
+	Bindings *CompartmentFileBindings `json:"bindings,omitempty"`
+}
+
+// CompartmentFileBindings preserves syntax-derived file scope evidence.
+type CompartmentFileBindings struct {
+	Package    string              `json:"package"`
+	References []string            `json:"references,omitzero"`
+	Imports    []CompartmentImport `json:"imports,omitzero"`
+}
+
+// CompartmentImport is an effective local import name and its import path.
+type CompartmentImport struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
 }
 
 // CompartmentLedger is the record package's persisted test-variant
@@ -102,15 +118,21 @@ type CompartmentFileHeader struct {
 // the current view's ledger so the inert-growth carve-out can classify how
 // the compartment moved (REQ-evidence-witness-freshness-carve-out).
 type CompartmentLedger struct {
-	Declarations []CompartmentDeclaration `json:"declarations,omitempty"`
-	FileHeaders  []CompartmentFileHeader  `json:"fileHeaders,omitempty"`
+	BindingStrategy string                   `json:"bindingStrategy"`
+	BaseFiles       []CompartmentFileHeader  `json:"baseFiles,omitzero"`
+	Declarations    []CompartmentDeclaration `json:"declarations,omitzero"`
+	FileHeaders     []CompartmentFileHeader  `json:"fileHeaders,omitzero"`
 }
 
 // LedgerFromGofresh converts gofresh's ledger to the wire encoding.
 func LedgerFromGofresh(ledger gofresh.TestVariantLedger) *CompartmentLedger {
 	out := &CompartmentLedger{
-		Declarations: make([]CompartmentDeclaration, 0, len(ledger.Declarations)),
-		FileHeaders:  make([]CompartmentFileHeader, 0, len(ledger.FileHeaders)),
+		BindingStrategy: ledger.BindingStrategy,
+		BaseFiles:       headersFromGofresh(ledger.BaseFiles),
+		FileHeaders:     headersFromGofresh(ledger.FileHeaders),
+	}
+	if ledger.Declarations != nil {
+		out.Declarations = make([]CompartmentDeclaration, 0, len(ledger.Declarations))
 	}
 	for _, declaration := range ledger.Declarations {
 		out.Declarations = append(out.Declarations, CompartmentDeclaration{
@@ -120,11 +142,50 @@ func LedgerFromGofresh(ledger gofresh.TestVariantLedger) *CompartmentLedger {
 			Receiver:   declaration.Receiver,
 			Hash:       declaration.Hash,
 			Package:    declaration.Package,
-			References: declaration.References,
+			References: slices.Clone(declaration.References),
 		})
 	}
-	for _, header := range ledger.FileHeaders {
-		out.FileHeaders = append(out.FileHeaders, CompartmentFileHeader(header))
+	return out
+}
+
+func headersFromGofresh(headers []gofresh.TestVariantFileHeader) []CompartmentFileHeader {
+	if headers == nil {
+		return nil
+	}
+	out := make([]CompartmentFileHeader, len(headers))
+	for i, h := range headers {
+		out[i] = CompartmentFileHeader{File: h.File, Hash: h.Hash, Embedded: h.Embedded}
+		if b := h.Bindings; b != nil {
+			wire := &CompartmentFileBindings{Package: b.Package, References: slices.Clone(b.References)}
+			if b.Imports != nil {
+				wire.Imports = make([]CompartmentImport, len(b.Imports))
+			}
+			for j, imp := range b.Imports {
+				wire.Imports[j] = CompartmentImport{Name: imp.Name, Path: imp.Path}
+			}
+			out[i].Bindings = wire
+		}
+	}
+	return out
+}
+
+func headersToGofresh(headers []CompartmentFileHeader) []gofresh.TestVariantFileHeader {
+	if headers == nil {
+		return nil
+	}
+	out := make([]gofresh.TestVariantFileHeader, len(headers))
+	for i, h := range headers {
+		out[i] = gofresh.TestVariantFileHeader{File: h.File, Hash: h.Hash, Embedded: h.Embedded}
+		if b := h.Bindings; b != nil {
+			native := &testvariant.TestVariantFileBindings{Package: b.Package, References: slices.Clone(b.References)}
+			if b.Imports != nil {
+				native.Imports = make([]testvariant.TestVariantImport, len(b.Imports))
+			}
+			for j, imp := range b.Imports {
+				native.Imports[j] = testvariant.TestVariantImport{Name: imp.Name, Path: imp.Path}
+			}
+			out[i].Bindings = native
+		}
 	}
 	return out
 }
@@ -132,8 +193,12 @@ func LedgerFromGofresh(ledger gofresh.TestVariantLedger) *CompartmentLedger {
 // ToGofresh converts the wire encoding back to gofresh's ledger type.
 func (l *CompartmentLedger) ToGofresh() gofresh.TestVariantLedger {
 	out := gofresh.TestVariantLedger{
-		Declarations: make([]gofresh.TestVariantDeclaration, 0, len(l.Declarations)),
-		FileHeaders:  make([]gofresh.TestVariantFileHeader, 0, len(l.FileHeaders)),
+		BindingStrategy: l.BindingStrategy,
+		BaseFiles:       headersToGofresh(l.BaseFiles),
+		FileHeaders:     headersToGofresh(l.FileHeaders),
+	}
+	if l.Declarations != nil {
+		out.Declarations = make([]gofresh.TestVariantDeclaration, 0, len(l.Declarations))
 	}
 	for _, declaration := range l.Declarations {
 		out.Declarations = append(out.Declarations, gofresh.TestVariantDeclaration{
@@ -143,24 +208,18 @@ func (l *CompartmentLedger) ToGofresh() gofresh.TestVariantLedger {
 			Receiver:   declaration.Receiver,
 			Hash:       declaration.Hash,
 			Package:    declaration.Package,
-			References: declaration.References,
+			References: slices.Clone(declaration.References),
 		})
-	}
-	for _, header := range l.FileHeaders {
-		out.FileHeaders = append(out.FileHeaders, gofresh.TestVariantFileHeader(header))
 	}
 	return out
 }
 
 // Record is one top-level test's cached witness: the fingerprint that
 // produced it, every outcome key it owns ("pkg.Test" and "pkg.Test/sub"),
-// and its runtime registrations. CompartmentLedger is the producing
-// compartment's declaration ledger, persisted once per compartment in
-// the ledger store under the fingerprint's test-variant digest rather
-// than in the record: every test of a package shares its compartment,
-// so a per-record copy multiplied one ledger by the package's test
-// count, and reading them all made loading the store cost more than
-// the run it serves. Install writes it when set; Load leaves it nil, and
+// and its runtime registrations. CompartmentLedger is the
+// effective compartment's declaration ledger, persisted under the complete
+// ledger coordinate rather than in the record. Install writes it when set;
+// Load leaves it nil, and
 // LoadLedger reads it back on demand.
 type Record struct {
 	// Group is the producing capture group's stable digest: the record's
@@ -233,8 +292,8 @@ type entry struct {
 // not alternated since. Ledgers no record file names are reclaimed here: the
 // ledger store is bounded by the record store, whose variant bound evicts
 // records without reading them.
-func Load(dir string) []Record {
-	return loadSince(dir, time.Now())
+func Load(ctx context.Context, dir string) []Record {
+	return loadSince(ctx, dir, time.Now())
 }
 
 // betweenScans, when set, runs after the load's snapshot and before its
@@ -244,7 +303,10 @@ var betweenScans func()
 
 // loadSince is Load with the moment the load is taken to begin: a
 // ledger no younger than it is a concurrent install's and is spared.
-func loadSince(dir string, started time.Time) []Record {
+func loadSince(ctx context.Context, dir string, started time.Time) []Record {
+	if ctx.Err() != nil {
+		return nil
+	}
 	store, err := open(dir)
 	if err != nil {
 		return nil
@@ -256,6 +318,9 @@ func loadSince(dir string, started time.Time) []Record {
 	var records []Record
 	referenced := map[string]bool{}
 	for _, name := range names {
+		if ctx.Err() != nil {
+			return nil
+		}
 		data, _ := store.Read(name)
 		rec, digest, ok := loadEntry(name, data, dir)
 		if digest != "" {
@@ -265,35 +330,46 @@ func loadSince(dir string, started time.Time) []Record {
 			records = append(records, rec)
 		}
 	}
-	// Records that landed while this load validated its snapshot name
-	// ledgers the snapshot never saw: they are read for their digests
-	// before the sweep, and a ledger younger than the load is left
-	// alone, so a concurrent install's ledger-then-record ordering holds
-	// for the sweep as it does for a reader.
-	seen := map[string]bool{}
-	for _, name := range names {
-		seen[name] = true
-	}
 	if betweenScans != nil {
 		betweenScans()
 	}
-	late, _ := store.Names()
-	for _, name := range late {
-		if seen[name] {
-			continue
-		}
-		data, _ := store.Read(name)
-		if _, digest, _ := loadEntry(name, data, dir); digest != "" {
-			referenced[digest] = true
+	// The reference snapshot and reclamation share the install lock. This
+	// includes old ledgers reused without a rewrite: age alone cannot protect
+	// them while a new referring record is between its reuse check and rename.
+	if ctx.Err() != nil {
+		return nil
+	}
+	if lock, err := store.TryLock(); err == nil {
+		defer lock.Close()
+		if late, err := store.Names(); err == nil {
+			for _, name := range late {
+				if ctx.Err() != nil {
+					return nil
+				}
+				data, _ := store.Read(name)
+				if _, digest, _ := loadEntry(name, data, dir); digest != "" {
+					referenced[digest] = true
+				}
+			}
+			if beforeLedgerSweep != nil {
+				beforeLedgerSweep()
+			}
+			sweepLedgers(ctx, store.Path(), referenced, started)
 		}
 	}
-	sweepLedgers(store.Path(), referenced, started)
+	if ctx.Err() != nil {
+		return nil
+	}
 	return records
 }
 
+// beforeLedgerSweep observes the protected interval after the last reference
+// snapshot and before deletion. Tests start a competing process at this point.
+var beforeLedgerSweep func()
+
 // loadEntry reads one variant file: the record when it is valid, and
-// the compartment digest its fingerprint names whenever the file parses
-// at all — a refused record's ledger is kept referenced: every refusal
+// the ledger key whenever its complete coordinate parses — a refused
+// record's ledger is kept referenced: every refusal
 // here is the record's own bytes' (a field that fails the format, a
 // manifest that does not decode as canonical Gofresh v2), and keeping
 // a refused record's ledger costs nothing, so a refusal costs the
@@ -314,8 +390,8 @@ func loadEntry(name string, data []byte, dir string) (Record, string, bool) {
 // decodeRecord is the one admission every reader of a variant file
 // shares — the loader and the garbage collector alike: the file
 // parses whole, is of this version, carries its identity, and is named
-// by its content; the compartment digest is returned whenever the file
-// parses at all, so a refused record's ledger stays referenced. What
+// by its content; the ledger key is returned whenever its complete
+// coordinate parses, so a refused record's ledger stays referenced. What
 // a file passes here and still fails is the record's own shape
 // judgment (validFingerprint), never the store's; whether it then
 // serves is the engine's currency comparison against the tree.
@@ -324,11 +400,7 @@ func decodeRecord(name string, data []byte) (Record, string, bool) {
 	if json.Unmarshal(data, &fields) != nil {
 		return Record{}, "", false
 	}
-	var named struct {
-		TestVariantClosure string `json:"testVariantClosure"`
-	}
-	_ = json.Unmarshal(fields["fingerprint"], &named)
-	digest := named.TestVariantClosure
+	digest := ledgerReference(fields)
 	if value, ok := fields["registrations"]; ok && isJSONNull(value) {
 		return Record{}, digest, false
 	}
@@ -356,7 +428,10 @@ func decodeRecord(name string, data []byte) (Record, string, bool) {
 // names, sparing files younger than since — a concurrent install's
 // ledger, whose record is about to land; a removal failure costs
 // nothing but the file's bytes.
-func sweepLedgers(store string, referenced map[string]bool, since time.Time) error {
+func sweepLedgers(ctx context.Context, store string, referenced map[string]bool, since time.Time) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	ledgers, err := os.ReadDir(filepath.Join(store, "ledgers"))
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -365,6 +440,9 @@ func sweepLedgers(store string, referenced map[string]bool, since time.Time) err
 		return err
 	}
 	for _, e := range ledgers {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") || strings.HasPrefix(e.Name(), ".") {
 			continue
 		}
@@ -374,6 +452,9 @@ func sweepLedgers(store string, referenced map[string]bool, since time.Time) err
 		if info, statErr := e.Info(); statErr == nil && !info.ModTime().Before(since) {
 			continue
 		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if rmErr := os.Remove(filepath.Join(store, "ledgers", e.Name())); rmErr != nil && err == nil {
 			err = rmErr
 		}
@@ -381,50 +462,104 @@ func sweepLedgers(store string, referenced map[string]bool, since time.Time) err
 	return err
 }
 
-// ledgerEntry is one ledger store file: the compartment ledger persisted
-// under its test-variant digest, the digest repeated inside so a file
-// disagreeing with its own name is refusable on read.
+// ledgerCoordinate is the complete historical provenance trusted by the
+// applicability check. Its ordered JSON encoding is hashed for the file name.
+// The binding strategy here selects the recognized format; the ledger must
+// independently carry that strategy, never acquire it during a conversion.
+type ledgerCoordinate struct {
+	Group           string `json:"group"`
+	Package         string `json:"package"`
+	Core            string `json:"core"`
+	Compartment     string `json:"compartment"`
+	Toolchain       string `json:"toolchain"`
+	BuildConfig     string `json:"buildConfig"`
+	ClosureStrategy string `json:"closureStrategy"`
+	BindingStrategy string `json:"bindingStrategy"`
+}
+
+func coordinateOf(rec Record) ledgerCoordinate {
+	f := rec.Fingerprint
+	return ledgerCoordinate{rec.Group, rec.Package, f.MaximalClosure,
+		f.EffectiveTestVariantClosure(), f.Guards.Toolchain, f.Guards.BuildConfig,
+		f.ClosureStrategy, testvariant.BindingStrategy}
+}
+
+func (c ledgerCoordinate) key() string {
+	if c.Group == "" || c.Package == "" || !ValidDigest(c.Core) || !ValidDigest(c.Compartment) || c.Toolchain == "" || !ValidDigest(c.BuildConfig) || c.ClosureStrategy == "" || c.BindingStrategy != testvariant.BindingStrategy {
+		return ""
+	}
+	data, _ := json.Marshal(c) // strings only
+	return recordstore.Digest(string(data))
+}
+
+// ledgerReference reads only the coordinate, even when other record fields
+// refuse. Load keeps such a file's ledger without granting its outcome.
+func ledgerReference(fields map[string]json.RawMessage) string {
+	var rec Record
+	var f struct {
+		MaximalClosure     string                                 `json:"maximalClosure"`
+		TestVariantClosure string                                 `json:"testVariantClosure"`
+		Toolchain          string                                 `json:"toolchain"`
+		BuildConfig        string                                 `json:"buildConfig"`
+		ClosureStrategy    string                                 `json:"closureStrategy"`
+		Applicability      *gofresh.InertTestVariantApplicability `json:"inertTestVariantApplicability"`
+	}
+	if json.Unmarshal(fields["group"], &rec.Group) != nil || json.Unmarshal(fields["package"], &rec.Package) != nil || json.Unmarshal(fields["fingerprint"], &f) != nil {
+		return ""
+	}
+	rec.Fingerprint.MaximalClosure = f.MaximalClosure
+	rec.Fingerprint.TestVariantClosure = f.TestVariantClosure
+	if f.Applicability != nil {
+		rec.Fingerprint.InertTestVariantApplicability = *f.Applicability
+	}
+	rec.Fingerprint.Guards.Toolchain = f.Toolchain
+	rec.Fingerprint.Guards.BuildConfig = f.BuildConfig
+	rec.Fingerprint.ClosureStrategy = f.ClosureStrategy
+	return coordinateOf(rec).key()
+}
+
+// ledgerEntry repeats the complete coordinate so a misplaced file refuses.
 type ledgerEntry struct {
-	Version            int                      `json:"version"`
-	TestVariantClosure string                   `json:"testVariantClosure"`
-	Declarations       []CompartmentDeclaration `json:"declarations,omitempty"`
-	FileHeaders        []CompartmentFileHeader  `json:"fileHeaders,omitempty"`
+	Version    int              `json:"version"`
+	Coordinate ledgerCoordinate `json:"coordinate"`
+	CompartmentLedger
 }
 
 func ledgerPath(store, digest string) string {
 	return filepath.Join(store, "ledgers", digest+".json")
 }
 
-// LoadLedger reads the compartment ledger persisted under digest for the
-// record of test: nil when no ledger is stored, when the file is
+// LoadLedger reads the ledger at the record's complete effective coordinate:
+// nil when no ledger is stored, when the file is
 // malformed, of another version, or disagrees with its name, or when the
 // ledger does not declare test as a receiverless func — a witness's own
 // declaration lives in its compartment, so a ledger omitting it would let
 // that declaration ride an inert diff as an addition. Refusal costs only
 // the carve-out: the record still serves on plain validity.
-func LoadLedger(dir, digest, test string) *CompartmentLedger {
+func LoadLedger(dir string, rec Record) *CompartmentLedger {
 	store, err := StoreDir(dir)
 	if err != nil {
 		return nil
 	}
-	ledger := readLedger(store, digest)
+	ledger := readLedger(store, coordinateOf(rec))
 	if ledger == nil {
 		return nil
 	}
 	for _, declaration := range ledger.Declarations {
-		if declaration.Kind == "func" && declaration.Receiver == "" && declaration.Name == test {
+		if declaration.Kind == "func" && declaration.Receiver == "" && declaration.Name == rec.Test {
 			return ledger
 		}
 	}
 	return nil
 }
 
-// readLedger reads the ledger file under digest as far as its own
+// readLedger reads the ledger file under its complete coordinate as far as its own
 // structure goes: nil when absent, malformed, of another version,
 // disagreeing with its name, or carrying an entry without a file or a
 // well-formed digest.
-func readLedger(store, digest string) *CompartmentLedger {
-	if !ValidDigest(digest) {
+func readLedger(store string, coordinate ledgerCoordinate) *CompartmentLedger {
+	digest := coordinate.key()
+	if digest == "" {
 		return nil
 	}
 	data, err := os.ReadFile(ledgerPath(store, digest))
@@ -434,41 +569,95 @@ func readLedger(store, digest string) *CompartmentLedger {
 	var e ledgerEntry
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
-	if dec.Decode(&e) != nil || dec.Decode(&struct{}{}) != io.EOF || e.Version != ledgerVersion || e.TestVariantClosure != digest {
+	if dec.Decode(&e) != nil || dec.Decode(&struct{}{}) != io.EOF || e.Version != ledgerVersion || e.Coordinate != coordinate || !validLedger(&e.CompartmentLedger) {
 		return nil
 	}
-	for _, declaration := range e.Declarations {
-		if declaration.File == "" || declaration.Kind == "" || !ValidDigest(declaration.Hash) {
-			return nil
-		}
+	// Reject duplicated or null fields without conflating a missing slice
+	// with a present empty slice. Whitespace is envelope formatting only.
+	canonical, err := json.Marshal(e)
+	var compact bytes.Buffer
+	if err != nil || json.Compact(&compact, data) != nil || !bytes.Equal(canonical, compact.Bytes()) {
+		return nil
 	}
-	for _, header := range e.FileHeaders {
-		if header.File == "" || !ValidDigest(header.Hash) {
-			return nil
-		}
-	}
-	return &CompartmentLedger{Declarations: e.Declarations, FileHeaders: e.FileHeaders}
+	return &e.CompartmentLedger
 }
 
-// installLedger persists rec's compartment ledger under its test-variant
-// digest. The digest addresses the compartment's content, so a file
-// present that reads back as a ledger is this ledger and stays; one that
-// does not — torn, of a prior version — is rewritten, so a refused file
-// never outlives the next install of its compartment.
-func installLedger(store string, rec Record) error {
-	digest := rec.Fingerprint.TestVariantClosure
-	if rec.CompartmentLedger == nil || !ValidDigest(digest) {
+func validLedger(ledger *CompartmentLedger) bool {
+	if ledger.BindingStrategy != testvariant.BindingStrategy {
+		return false
+	}
+	for _, declaration := range ledger.Declarations {
+		if declaration.File == "" || declaration.Kind == "" || !ValidDigest(declaration.Hash) {
+			return false
+		}
+	}
+	files := make(map[string]*CompartmentFileBindings)
+	for _, headers := range [][]CompartmentFileHeader{ledger.BaseFiles, ledger.FileHeaders} {
+		for _, h := range headers {
+			if h.File == "" {
+				return false
+			}
+			if _, duplicate := files[h.File]; duplicate {
+				return false
+			}
+			files[h.File] = h.Bindings
+			if (!h.Embedded && h.Bindings == nil) || (h.Bindings != nil && h.Bindings.Package == "") {
+				return false
+			}
+			if h.Bindings != nil {
+				for _, imp := range h.Bindings.Imports {
+					if imp.Name == "" || imp.Path == "" {
+						return false
+					}
+				}
+			}
+		}
+	}
+	for _, h := range ledger.BaseFiles {
+		if h.Hash != "" || h.Embedded {
+			return false
+		}
+	}
+	for _, h := range ledger.FileHeaders {
+		if !ValidDigest(h.Hash) {
+			return false
+		}
+	}
+	for _, d := range ledger.Declarations {
+		if b := files[d.File]; b == nil || b.Package != d.Package {
+			return false
+		}
+	}
+	return true
+}
+
+// installLedger persists rec's ledger under its complete coordinate. A
+// readable file at that coordinate stays; a torn or prior-version file is
+// replaced by the supplied complete ledger before its record can land.
+func installLedger(ctx context.Context, store string, rec Record) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if rec.CompartmentLedger == nil {
 		return nil
 	}
+	coordinate := coordinateOf(rec)
+	digest := coordinate.key()
+	if digest == "" || !validLedger(rec.CompartmentLedger) {
+		return fmt.Errorf("witnesscache: incomplete ledger coordinate or binding evidence for %s", rec.Key())
+	}
 	full := ledgerPath(store, digest)
-	if readLedger(store, digest) != nil {
+	if readLedger(store, coordinate) != nil {
 		return nil
 	}
 	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 		return err
 	}
-	data, err := json.MarshalIndent(ledgerEntry{Version: ledgerVersion, TestVariantClosure: digest, Declarations: rec.CompartmentLedger.Declarations, FileHeaders: rec.CompartmentLedger.FileHeaders}, "", "  ")
+	data, err := json.MarshalIndent(ledgerEntry{Version: ledgerVersion, Coordinate: coordinate, CompartmentLedger: *rec.CompartmentLedger}, "", "  ")
 	if err != nil {
+		return err
+	}
+	if err := ctx.Err(); err != nil {
 		return err
 	}
 	return recordstore.WriteAtomic(filepath.Dir(full), ".ledger-*.json", full, data)
@@ -516,7 +705,7 @@ func validOutcomes(rec Record) bool {
 // not restate that.
 func validFingerprint(f Fingerprint, dir string) bool {
 	_, manifestErr := runtimeinput.Describe(f.RuntimeInputs, dir)
-	return ValidDigest(f.MaximalClosure) && ValidDigest(f.TestVariantClosure) && f.Guards.Toolchain != "" && ValidDigest(f.Guards.BuildConfig) &&
+	return ValidDigest(f.MaximalClosure) && ValidDigest(f.TestVariantClosure) && ValidDigest(f.EffectiveTestVariantClosure()) && f.Guards.Toolchain != "" && ValidDigest(f.Guards.BuildConfig) &&
 		validObservation(f) && validPurity(f.PurityAssertion) && manifestErr == nil && ValidDigest(f.RuntimeDigest) &&
 		f.ResultKind == gofresh.CodeResult
 }
@@ -555,7 +744,10 @@ func validPurity(value string) bool {
 // Install atomically writes one record's variant file and bounds the
 // identity's variant set: beyond variantBound, the least recently
 // installed variants are evicted — eviction costs only execution.
-func Install(dir string, rec Record) error {
+func Install(ctx context.Context, dir string, rec Record) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	store, err := open(dir)
 	if err != nil {
 		return err
@@ -566,9 +758,14 @@ func Install(dir string, rec Record) error {
 	if err != nil {
 		return err
 	}
+	lock, err := store.Lock(ctx)
+	if err != nil {
+		return err
+	}
+	defer lock.Close()
 	// The ledger lands before the record: a record present in the store
 	// finds its compartment's ledger present too.
-	if err := installLedger(store.Path(), rec); err != nil {
+	if err := installLedger(ctx, store.Path(), rec); err != nil {
 		return err
 	}
 	e := entry{Version: version, Group: rec.Group, Package: rec.Package, Test: rec.Test, Fingerprint: rec.Fingerprint, Outcomes: rec.Outcomes, Regs: rec.Regs, ObservationExclusions: rec.ObservationExclusions, ObservationNamespaces: rec.ObservationNamespaces}
@@ -579,6 +776,9 @@ func Install(dir string, rec Record) error {
 	// A torn variant costs only its own record through the per-file
 	// refusal leg, and the store's atomic install makes even that
 	// window vanish.
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	return store.Install(variantBound, recordstore.Entry{Name: name, Data: data})
 }
 
@@ -599,21 +799,26 @@ func (r Record) IdentityKey() string { return r.Group + "\x00" + r.Package + "."
 // liveGroup judges record-identity coordinates: nil keeps every
 // coordinate (cost cleanup never guesses), non-nil retires coordinates
 // no current invocation produces — their records are cost no lookup
-// will ever serve. Ledgers no kept record's compartment digest names go
+// will ever serve. Ledgers no kept record's complete coordinate names go
 // with their records; the counts are of record variants alone.
-func GC(dir string, live func(pkg, test string) bool, liveGroup func(group string) bool) (removed, kept int, err error) {
-	return gcSince(dir, live, liveGroup, time.Now())
+func GC(ctx context.Context, dir string, live func(pkg, test string) bool, liveGroup func(group string) bool) (removed, kept int, err error) {
+	return gcSince(ctx, dir, live, liveGroup, time.Now())
 }
 
 // gcSince is GC with the moment it is taken to begin: as under a load,
 // a ledger no younger than it is a concurrent install's and is spared.
-func gcSince(dir string, live func(pkg, test string) bool, liveGroup func(group string) bool, started time.Time) (removed, kept int, err error) {
+func gcSince(ctx context.Context, dir string, live func(pkg, test string) bool, liveGroup func(group string) bool, started time.Time) (removed, kept int, err error) {
 	store, err := open(dir)
 	if err != nil {
 		return 0, 0, err
 	}
+	lock, err := store.Lock(ctx)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer lock.Close()
 	referenced := map[string]bool{}
-	removed, kept, err = store.Sweep(func(name string, data []byte) bool {
+	removed, kept, err = store.Sweep(ctx, func(name string, data []byte) bool {
 		rec, _, ok := decodeRecord(name, data)
 		if !ok || (liveGroup != nil && !liveGroup(rec.Group)) {
 			// What the loader permanently refuses — unreadable,
@@ -625,11 +830,20 @@ func gcSince(dir string, live func(pkg, test string) bool, liveGroup func(group 
 		if !live(rec.Package, rec.Test) {
 			return false
 		}
-		referenced[rec.Fingerprint.TestVariantClosure] = true
+		referenced[coordinateOf(rec).key()] = true
 		return true
 	})
-	if sweepErr := sweepLedgers(store.Path(), referenced, started); sweepErr != nil && err == nil {
+	if ctx.Err() != nil {
+		return removed, kept, ctx.Err()
+	}
+	if beforeLedgerSweep != nil {
+		beforeLedgerSweep()
+	}
+	if sweepErr := sweepLedgers(ctx, store.Path(), referenced, started); sweepErr != nil && err == nil {
 		err = sweepErr
+	}
+	if cancelErr := ctx.Err(); cancelErr != nil {
+		return removed, kept, cancelErr
 	}
 	return removed, kept, err
 }

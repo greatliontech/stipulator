@@ -33,7 +33,7 @@ var checkFingerprints = func(ctx context.Context, view *gofresh.View, recorded m
 	observed := make(map[gofresh.Subject]gofresh.Fingerprint, len(recorded))
 	plain := make(map[gofresh.Subject]gofresh.Fingerprint, len(recorded))
 	for subject, fingerprint := range recorded {
-		if fingerprint.ObservationAssertion != "" || fingerprint.ObservationProof != (gofresh.ObservationProof{}) {
+		if observedFingerprint(fingerprint) {
 			observed[subject] = fingerprint
 		} else {
 			plain[subject] = fingerprint
@@ -55,6 +55,10 @@ var checkFingerprints = func(ctx context.Context, view *gofresh.View, recorded m
 		maps.Copy(verdicts, batch)
 	}
 	return verdicts, nil
+}
+
+func observedFingerprint(fingerprint gofresh.Fingerprint) bool {
+	return fingerprint.ObservationAssertion != "" || fingerprint.ObservationProof != (gofresh.ObservationProof{})
 }
 
 func validatedObservation(fingerprint gofresh.Fingerprint, state runtimeinput.State) bool {

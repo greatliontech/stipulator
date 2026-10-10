@@ -58,7 +58,7 @@ func TestServingFormPersistsAtTheExecutingInvocation(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tmp, "b", "b_test.go"), []byte("package b\n\nimport \"testing\"\n\nfunc TestB(t *testing.T) { _ = 1 }\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	before := len(witnesscache.Load(tmp))
+	before := len(witnesscache.Load(t.Context(), tmp))
 	cctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	var notes []string
@@ -74,13 +74,13 @@ func TestServingFormPersistsAtTheExecutingInvocation(t *testing.T) {
 		t.Fatalf("persisted notes = %v (err %v); want the group installed at the executing invocation's completion", notes, err)
 	}
 	stale := false
-	for _, rec := range witnesscache.Load(tmp) {
+	for _, rec := range witnesscache.Load(t.Context(), tmp) {
 		if rec.Package == "example.com/units/b" && rec.Test == "TestB" {
 			stale = true
 		}
 	}
-	if !stale || len(witnesscache.Load(tmp)) < before {
-		t.Fatalf("the stale package's new record is not in the store after the cancellation (%d records, was %d)", len(witnesscache.Load(tmp)), before)
+	if !stale || len(witnesscache.Load(t.Context(), tmp)) < before {
+		t.Fatalf("the stale package's new record is not in the store after the cancellation (%d records, was %d)", len(witnesscache.Load(t.Context(), tmp)), before)
 	}
 }
 
@@ -127,7 +127,7 @@ func TestScopedRunPersistsAtTheExecutingInvocation(t *testing.T) {
 		t.Fatalf("persisted notes = %v (err %v); want the group installed at the executing invocation's completion", notes, err)
 	}
 	found := false
-	for _, rec := range witnesscache.Load(tmp) {
+	for _, rec := range witnesscache.Load(t.Context(), tmp) {
 		found = found || (rec.Package == "example.com/units/b" && rec.Test == "TestB")
 	}
 	if !found {
@@ -171,7 +171,7 @@ func TestDoublySelectedPackageIsRefusedAtDiscovery(t *testing.T) {
 	if got := tr.UncacheableReasons["example.com/units/a.TestA"]; got != want {
 		t.Fatalf("a.TestA reason = %q; want %q — the discovery-time refusal, not the structural fallback", got, want)
 	}
-	if len(witnesscache.Load(tmp)) != 0 {
+	if len(witnesscache.Load(t.Context(), tmp)) != 0 {
 		t.Fatal("an ambiguous package published a record")
 	}
 }
@@ -220,7 +220,7 @@ func TestMixedGroupPublishesOnlyItsSinglySelectedPackage(t *testing.T) {
 		t.Fatalf("a.TestA reason = %q; want %q", got, reasonNoProducingLeg)
 	}
 	var stored []string
-	for _, rec := range witnesscache.Load(tmp) {
+	for _, rec := range witnesscache.Load(t.Context(), tmp) {
 		stored = append(stored, rec.Package+"."+rec.Test)
 	}
 	if len(stored) != 1 || stored[0] != "example.com/units/b.TestB" {
@@ -276,7 +276,7 @@ func TestHealthJudgedPackagePersistsBeforeItsSiblingCompletes(t *testing.T) {
 		t.Fatalf("persisted notes = %v; want package a installed at its own completion, its sibling still running", notes)
 	}
 	var stored []string
-	for _, rec := range witnesscache.Load(tmp) {
+	for _, rec := range witnesscache.Load(t.Context(), tmp) {
 		stored = append(stored, rec.Package+"."+rec.Test)
 	}
 	if len(stored) != 1 || stored[0] != "example.com/units/a.TestA" {
@@ -333,7 +333,7 @@ func TestHealthJudgedPackagePublishesInItsOwnGroupAlone(t *testing.T) {
 		t.Fatalf("persisted notes = %v; want %v — the package once per group, under its own invocation", notes, want)
 	}
 	groups := map[string]bool{}
-	for _, rec := range witnesscache.Load(tmp) {
+	for _, rec := range witnesscache.Load(t.Context(), tmp) {
 		if rec.Package+"."+rec.Test != "example.com/units/a.TestA" {
 			t.Fatalf("store holds a record for %s.%s; want a.TestA alone", rec.Package, rec.Test)
 		}
@@ -884,7 +884,7 @@ func TestPackagePersistsBeforeItsSiblingCompletes(t *testing.T) {
 		t.Fatalf("persisted notes = %v (err %v); want package a installed at its own completion, its sibling still running", notes, err)
 	}
 	var stored []string
-	for _, rec := range witnesscache.Load(tmp) {
+	for _, rec := range witnesscache.Load(t.Context(), tmp) {
 		stored = append(stored, rec.Package+"."+rec.Test)
 	}
 	if len(stored) != 1 || stored[0] != "example.com/units/a.TestPass" {

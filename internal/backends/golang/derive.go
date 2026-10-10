@@ -1341,13 +1341,16 @@ func (r *WitnessRecorder) packageCompleted(ctx context.Context, invocation strin
 			return nil
 		}
 		maps.Copy(r.reasons, reasons)
-		landed := installRecords(r.dir, records, r.reasons)
+		landed, installErr := installRecords(ctx, r.dir, records, r.reasons)
 		r.records = append(r.records, landed...)
 		// What landed is named before anything else: a cancellation
 		// between two packages' installs must not leave records on disk
 		// the ending never mentions.
 		if len(landed) > 0 {
 			progress.FromContext(ctx).Persisted(invocation+" "+unit.pkg, len(landed))
+		}
+		if installErr != nil {
+			return installErr
 		}
 	}
 	return nil

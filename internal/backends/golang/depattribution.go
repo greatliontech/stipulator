@@ -8,10 +8,10 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/greatliontech/go-x-tools/go/packages"
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
-	"golang.org/x/tools/go/packages"
 )
 
 // Load-failure attribution: a package that fails to load because an

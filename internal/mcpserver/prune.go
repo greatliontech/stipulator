@@ -43,14 +43,13 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 	if mode.Store {
 		res, err := prune.StoreGC(ctx, deps)
 		if err != nil {
-			return nil, nil, err
+			// The SDK discards typed output on error. Keep the completed
+			// account in the error itself, with cancellation still unwrap-able.
+			return nil, nil, fmt.Errorf("%s\n%w", strings.Join(res.Lines(true), "\n"), err)
 		}
 		// The line rides Notes too: a structured-preferring client must
 		// not read an empty object where the text names the outcome.
-		out := writeOut{Notes: []string{fmt.Sprintf("store gc: %d record variant(s) removed, %d kept", res.Removed, res.Kept)}}
-		if res.Resolutions != nil {
-			out.Notes = append(out.Notes, fmt.Sprintf("store gc: %d resolution record(s) removed, %d kept", res.Resolutions.Removed, res.Resolutions.Kept))
-		}
+		out := writeOut{Notes: res.Lines(false)}
 		return projected(textOnly(strings.Join(out.Notes, "\n")), out.proto())
 	}
 	if mode.Dangling {

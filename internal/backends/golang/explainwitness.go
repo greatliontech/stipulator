@@ -7,8 +7,8 @@ import (
 	"go/types"
 	"strings"
 
+	"github.com/greatliontech/go-x-tools/go/packages"
 	"github.com/greatliontech/gofresh"
-	"golang.org/x/tools/go/packages"
 )
 
 // The arms a witness's seeding derivation answers with: the bound body

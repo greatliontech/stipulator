@@ -2,10 +2,10 @@ package golang
 
 import (
 	"context"
+	"github.com/greatliontech/go-x-tools/go/packages"
 	"go/ast"
 	"go/token"
 	"go/types"
-	"golang.org/x/tools/go/packages"
 
 	"errors"
 	"github.com/greatliontech/gofresh"
@@ -255,7 +255,7 @@ func TestGoRunWitnessesRandomSeededNeverServes(t *testing.T) {
 	if _, refused := first.UncacheableReasons[example]; refused {
 		t.Fatalf("deterministic sibling refused publication: %q", first.UncacheableReasons[example])
 	}
-	for _, rec := range witnesscache.Load(tmp) {
+	for _, rec := range witnesscache.Load(t.Context(), tmp) {
 		if rec.Test == "TestProperty" {
 			t.Fatalf("random-seeded witness published a record: %+v", rec)
 		}
@@ -286,7 +286,7 @@ func TestGoRunWitnessesRandomSeededNeverServes(t *testing.T) {
 	// unserved — the exact shape of a store published before the
 	// contract held — attributing both the re-execution and the refused
 	// publication, and publishing nothing new.
-	before := len(witnesscache.Load(tmp))
+	before := len(witnesscache.Load(t.Context(), tmp))
 	refused, err := RunWitnesses(context.Background(), tmp, stubSeeding{example: true, property: true})
 	if err != nil {
 		t.Fatal(err)
@@ -300,7 +300,7 @@ func TestGoRunWitnessesRandomSeededNeverServes(t *testing.T) {
 	if got := refused.UncacheableReasons[example]; got != seededReason.String() {
 		t.Fatalf("refused witness uncacheable reason = %q, want %q", got, seededReason.String())
 	}
-	if after := len(witnesscache.Load(tmp)); after != before {
+	if after := len(witnesscache.Load(t.Context(), tmp)); after != before {
 		t.Fatalf("store grew from %d to %d records under a refusing classifier", before, after)
 	}
 }
@@ -323,7 +323,7 @@ func TestGoRunWitnessesSeedingFaultFailsClosed(t *testing.T) {
 		t.Fatal(err)
 	}
 	published := map[string]bool{}
-	for _, rec := range witnesscache.Load(tmp) {
+	for _, rec := range witnesscache.Load(t.Context(), tmp) {
 		published[rec.Test] = true
 	}
 	if warm.Ran != 2 || !published["TestExample"] {
@@ -343,7 +343,7 @@ func TestGoRunWitnessesSeedingFaultFailsClosed(t *testing.T) {
 	if faulted.Outcomes["example.com/seeded/prop.TestProperty"] != verify.TestPassed {
 		t.Fatalf("faulted run withheld executed evidence: %v", faulted.Outcomes)
 	}
-	if got := len(witnesscache.Load(tmp)); got != 1 {
+	if got := len(witnesscache.Load(t.Context(), tmp)); got != 1 {
 		t.Fatalf("store holds %d records after the faulted run, want the warm-up's one — a degraded run publishes nothing", got)
 	}
 }
@@ -377,7 +377,7 @@ func TestExecutePolicyWitnessedSeedingFaultFailsClosed(t *testing.T) {
 	if tr.Outcomes["example.com/seeded/lib.TestExample"] != verify.TestPassed {
 		t.Fatalf("degraded full run withheld executed evidence: %v", tr.Outcomes)
 	}
-	if got := len(witnesscache.Load(tmp)); got != 0 {
+	if got := len(witnesscache.Load(t.Context(), tmp)); got != 0 {
 		t.Fatalf("degraded full run published %d records, want none", got)
 	}
 }
@@ -413,7 +413,7 @@ func TestExecutePolicyWitnessedRandomSeededNeverPublishes(t *testing.T) {
 	if got := tr.UncacheableReasons["example.com/seeded/prop.TestProperty"]; got != seededReason.String() {
 		t.Fatalf("seeded witness uncacheable reason = %q, want %q", got, seededReason.String())
 	}
-	records := witnesscache.Load(tmp)
+	records := witnesscache.Load(t.Context(), tmp)
 	if len(records) != 1 || records[0].Test != "TestExample" {
 		t.Fatalf("records after a full execution = %+v, want the deterministic witness alone", records)
 	}

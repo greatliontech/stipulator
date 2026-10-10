@@ -5,7 +5,7 @@ import (
 	"go/ast"
 	"go/types"
 
-	"golang.org/x/tools/go/packages"
+	"github.com/greatliontech/go-x-tools/go/packages"
 
 	"github.com/greatliontech/stipulator/internal/verify"
 )

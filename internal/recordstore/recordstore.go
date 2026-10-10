@@ -12,6 +12,7 @@
 package recordstore
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -257,9 +258,16 @@ func WriteAtomic(dir, pattern, full string, data []byte) error {
 // the kind refuses it and it goes (cost with no servable evidence
 // behind it). Install temporaries are never swept — a concurrent
 // installer's rename is about to claim them. A missing store removes
-// nothing; a store that cannot be read is the error.
-func (s Store) Sweep(keep func(name string, data []byte) bool) (removed, kept int, err error) {
+// nothing; a store that cannot be read is the error. Cancellation stops before
+// the next deletion and returns the completed counts beside the context error.
+func (s Store) Sweep(ctx context.Context, keep func(name string, data []byte) bool) (removed, kept int, err error) {
+	if err := ctx.Err(); err != nil {
+		return 0, 0, err
+	}
 	names, err := s.Names()
+	if cancelErr := ctx.Err(); cancelErr != nil {
+		return 0, 0, cancelErr
+	}
 	if errors.Is(err, fs.ErrNotExist) {
 		return 0, 0, nil
 	}
@@ -267,6 +275,9 @@ func (s Store) Sweep(keep func(name string, data []byte) bool) (removed, kept in
 		return 0, 0, err
 	}
 	for _, name := range names {
+		if err := ctx.Err(); err != nil {
+			return removed, kept, err
+		}
 		data, readErr := s.Read(name)
 		if readErr != nil {
 			data = nil
@@ -275,11 +286,17 @@ func (s Store) Sweep(keep func(name string, data []byte) bool) (removed, kept in
 			kept++
 			continue
 		}
+		if err := ctx.Err(); err != nil {
+			return removed, kept, err
+		}
 		if rmErr := os.Remove(filepath.Join(s.path, name)); rmErr == nil {
 			removed++
 		} else if err == nil {
 			err = rmErr
 		}
+	}
+	if cancelErr := ctx.Err(); cancelErr != nil {
+		return removed, kept, cancelErr
 	}
 	return removed, kept, err
 }
