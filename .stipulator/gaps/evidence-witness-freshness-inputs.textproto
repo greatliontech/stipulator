@@ -1,0 +1,8 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.Gap
+
+requirement_id: "REQ-evidence-witness-freshness-inputs"
+reason: "Omitted PGO is treated as no profile input although the toolchain consumes default.pgo. Valid profile changes leave the captured native fingerprint unchanged and a later native check valid; explicit auto/path controls stale correctly. The admitted build description must own actual default-consuming inputs."
+content_hash: "ec27d2d87828c6da1cf55bca869d1c35782af28d6bd21b0ec74ec6281ecceaa8"
+source_hash: "7b55cc619b3ba1e732875dfaad4657b3e3336577aae67028516fc986af148540"
+lands { manual { condition: "Omitted and explicit auto-PGO guard every profile actually consumed under the selected module/workspace build, with off/path, missing/unreadable, producing validation and record-serving regressions." contradicted: true } }

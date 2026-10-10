@@ -1,0 +1,8 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.Gap
+
+requirement_id: "REQ-gap-resolved-pruned"
+reason: "Current reader paths can capture policy and execute stale witnesses. The explicit-evaluation migration must make readers non-measuring and preserve current, stale, missing, NoOutcome and partial accounts without unsafe pruning."
+content_hash: "574e7df311dae96477540c80b5e7301520f13a053cc3c41dedfec0ae990f6001"
+source_hash: "e69d52a499ced85d22e1853a3f102eaef8d7a3a44af38e381d38549b9fb74f80"
+lands { manual { condition: "Verify, gate, context, partitions, gap listing and resolved-gap pruning obtain no witness measurements; named evaluation supplies them, and missing/stale/partial/NoOutcome and deletion regressions cover both faces." contradicted: true } }

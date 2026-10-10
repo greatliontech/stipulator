@@ -302,9 +302,11 @@ reason, landing condition, manual fired bit, contradicted class —
 beside its evaluated lifecycle state and its consent state (whether
 the record's content
 pin differs from the requirement's current text, REQ-gap-consent),
-taking its witness evidence exactly as resolved-record pruning does (the gap-relevant scope; no witness evidence when no bound
-witness can move a gap-relevant bucket; the empty answer skips witness
-evidence, never corpus compilation and its diagnostics). The rows are
+taking available validated evidence exactly as resolved-record pruning does,
+without executing witnesses (REQ-evidence-inspection). Missing or stale
+witness support remains explicitly unknown or historical; it is not measured
+NoOutcome. The gap-relevant scope is unchanged, and an empty answer skips
+witness-evidence admission, never corpus compilation and its diagnostics. The rows are
 wire `GapReport` messages — states in the wire enum spelling; human
 renderings print the lowercase words. A record naming a requirement
 outside the corpus lists as `dangling` rather than refusing — the list
@@ -328,19 +330,20 @@ so `gate` surfaces the count of resolved gaps awaiting prune,
 discoverable from a run already made; the gate never deletes records
 itself. `prune --check` reports a resolved gap
 that lingers without deleting anything. The resolved-record evaluation
-takes its witness evidence from the serving class — proven-fresh records
-with selective execution of the stale remainder (REQ-core-one-execution),
-the serving path's degraded full-execution fallback included: the class
-is the path, not the served count — never a whole policy execution
-demanded for pruning alone. The stale remainder narrows further to the
-subjects bound to the requirements a resolution judgment reads: the
+takes available current validated evidence without executing witnesses
+(REQ-evidence-inspection). Missing, stale or unvalidated evidence cannot
+authorize a resolved-gap deletion; the account names the missing evaluation
+rather than using selective or degraded full execution to obtain it. The
+admission scope is the subjects bound to requirements the judgment reads: the
 gap-named requirements and, for a gap with a `covered(<id>)` landing
 condition, the condition's target — nothing else feeds a gap's
 resolved state, so a witness bound only to requirements outside that
-set never executes for pruning, and a tree with no gap records gathers
-no witness evidence at all (corpus compilation and its diagnostics
-remain). The operation names the evaluation it performed: the
-gap-record count and the served and executed witness counts.
+set is irrelevant to that judgment. A tree with no gap records gathers no
+witness evidence at all (corpus compilation and its diagnostics remain).
+The operation names the gap-record count and its admitted, missing, stale or
+unknown evidence account, and reports which records it could not judge
+resolved. A positive independent resolution, such as an applicable exempt
+policy with a satisfied landing condition, retains its own authority.
 
 **REQ-gap-prune-dangling** (behavior): An explicit dangling mode of
 `prune` — with a check form — MUST delete dangling gap records in bulk,
@@ -469,7 +472,7 @@ beside that boundary (a drifted content pin, an unpinned shape, a stale
 attestation) which a current gap excuses (REQ-gap-consent) is a
 declared red, and the row remains classed scope-blocked — prune residue
 is not derived —
-resolved-gap evidence takes the serving class over the whole tree — and
+resolved-gap inspection cannot broaden this execution scope — and
 the result flags the verdict partial and echoes the scope; unknown
 identifiers refuse, and scoping composes with the default class only.
 

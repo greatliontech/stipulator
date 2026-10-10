@@ -953,8 +953,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-scoped"
-  content_hash: "a620961e5689c93af048ec7a230857d2e85a70fae57deb909736f4d670344b2b"
-  source_hash: "a9bc0e6c613637eb2566d45cc7a8b003846f5fe2f57467f5d251041fc298f10d"
+  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
+  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckScopedIdsExecutesOnlyInScopeStale"
   role: BINDING_ROLE_TESTS
@@ -963,8 +963,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-scoped"
-  content_hash: "a620961e5689c93af048ec7a230857d2e85a70fae57deb909736f4d670344b2b"
-  source_hash: "a9bc0e6c613637eb2566d45cc7a8b003846f5fe2f57467f5d251041fc298f10d"
+  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
+  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestCheckRenderScopedPartialVerdictAndScopeBlockedRows"
   role: BINDING_ROLE_TESTS
@@ -983,8 +983,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-scoped"
-  content_hash: "a620961e5689c93af048ec7a230857d2e85a70fae57deb909736f4d670344b2b"
-  source_hash: "a9bc0e6c613637eb2566d45cc7a8b003846f5fe2f57467f5d251041fc298f10d"
+  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
+  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckLineScopedPartialClassAndFold"
   role: BINDING_ROLE_TESTS
@@ -1003,8 +1003,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-scoped"
-  content_hash: "a620961e5689c93af048ec7a230857d2e85a70fae57deb909736f4d670344b2b"
-  source_hash: "a9bc0e6c613637eb2566d45cc7a8b003846f5fe2f57467f5d251041fc298f10d"
+  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
+  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolScopedCallShape"
   role: BINDING_ROLE_TESTS
@@ -1013,8 +1013,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-scoped"
-  content_hash: "a620961e5689c93af048ec7a230857d2e85a70fae57deb909736f4d670344b2b"
-  source_hash: "a9bc0e6c613637eb2566d45cc7a8b003846f5fe2f57467f5d251041fc298f10d"
+  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
+  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.TestCheckSummaryMirrorsScopeAndFoldsScopeBlockedRows"
   role: BINDING_ROLE_TESTS
@@ -1023,8 +1023,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-scoped"
-  content_hash: "a620961e5689c93af048ec7a230857d2e85a70fae57deb909736f4d670344b2b"
-  source_hash: "a9bc0e6c613637eb2566d45cc7a8b003846f5fe2f57467f5d251041fc298f10d"
+  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
+  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckScopedIdsLeaveOutOfScopeIneligibleLegsUnexecuted"
   role: BINDING_ROLE_TESTS
@@ -1033,8 +1033,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-scoped"
-  content_hash: "a620961e5689c93af048ec7a230857d2e85a70fae57deb909736f4d670344b2b"
-  source_hash: "a9bc0e6c613637eb2566d45cc7a8b003846f5fe2f57467f5d251041fc298f10d"
+  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
+  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestScopeBlockedSurvivesAnExcusedStaleConsent"
   role: BINDING_ROLE_TESTS
@@ -1043,8 +1043,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-scoped"
-  content_hash: "a620961e5689c93af048ec7a230857d2e85a70fae57deb909736f4d670344b2b"
-  source_hash: "a9bc0e6c613637eb2566d45cc7a8b003846f5fe2f57467f5d251041fc298f10d"
+  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
+  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckScopedVerdictExcludesAnExcusedStaleConsentOnTheBoundary"
   role: BINDING_ROLE_TESTS

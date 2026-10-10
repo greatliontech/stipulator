@@ -13,6 +13,36 @@ record is the one record that carries judgment: it can render a
 requirement attested — never covered — and only where the policy admits
 it.
 
+## Evaluation and inspection
+
+**REQ-evidence-inspection** (behavior): Witness measurement MUST belong to an
+explicit evaluation operation under the accepted test policy, while inspection
+and authoring project available facts without silently executing witnesses.
+This distinction governs standalone verify, gate, context, partitions, gap
+listing and resolved-gap pruning as well as their shared internal projections.
+An evaluation may request those projections from its one run; a reader cannot
+start a second execution to fill a missing fact. Read-side compilation, source
+analysis and validation of recorded evidence do not themselves grant a measured
+outcome. A fact requiring witness execution remains unknown until evaluation.
+Historical run reports are inspectable by their run identity, never inputs
+authorizing a new current verdict. The permitted evidence account is:
+
+| Available fact | Permitted account |
+|---|---|
+| Current validated witness evidence | Current grant only within its admitted scope; no implied suite health. |
+| Stale evidence | Historical outcome and stale cause; no current witness grant. |
+| Missing or not evaluated | Unknown/not evaluated, never a passing witness and never evidence by itself authorizing deletion. |
+| Measured NoOutcome | Preserve the invocation's measured failure to produce an expected outcome; do not relabel it as merely unrequested evaluation. |
+| Partial or interrupted evaluation | Name the completed prefix and scope; do not infer whole-policy success or completeness. |
+
+The explicit evaluation entry is `check`, whose default selective witness
+work and full suite-health form retain their own contracts. Reader defaults,
+machine accounts and command exits distinguish the table's states; a
+`no-test`/`no_test` compatibility input cannot enable measurement or turn
+unknown into an outcome. Independent structural evidence and declared gap
+policy keep their own authority; lacking a witness does not fabricate a
+failed execution or erase a separately established fact.
+
 ## Bindings
 
 **REQ-evidence-binding-store** (behavior): Binding claims MUST be stored as
@@ -193,11 +223,12 @@ pass is not a flip and stays bare.
 **REQ-evidence-witness-freshness** (behavior): A witnessing run MAY serve a
 test's outcome — its subtest outcomes and runtime registrations riding with
 it — from a local cache exactly when the freshness fingerprint recorded
-beside it checks valid against the current tree, because a valid fingerprint
-proves the test's source closure and produced environment are those that
-produced the outcome: the served outcome is the current run's verification
-by proven equivalence, not a trust extension, so REQ-evidence-promotion
-holds.
+beside it checks valid against the current tree and its consumer serving
+conditions hold. Established producing evidence then licenses applicability
+under the declared witness model; current analysis neither reconstructs
+historical provenance nor promises identical future execution. The served
+outcome grants evidence only within that admitted scope, preserving
+REQ-evidence-promotion and the separate suite-health obligation.
 
 **REQ-evidence-witness-freshness-carve-out** (behavior): One precisely scoped carve-out extends the proof past the
 compartment pin: a verdict of exactly stale `test variants` certifies the
@@ -234,9 +265,10 @@ an outcome.
 **REQ-evidence-witness-freshness-seeded** (behavior): A random-seeded witness — a subject the backend classifies
 `property` by a run-time-seeded driver (REQ-go-witness-class's seeded
 form), whose quantification draws its inputs from a seed no pin
-captures — MUST never serve and never publish: a valid fingerprint
-carries a deterministic outcome by equivalence, never one draw of a
-random one, so such a subject executes every run, its refusal
+captures — MUST never serve and never publish: the witness-serving policy
+does not substitute a previous random draw for the requested quantification.
+This is a consumer policy, not a claim that a valid fingerprint makes every
+future outcome deterministic. Such a subject executes every run, its refusal
 attributed as uncacheable with that reason on both evidence forms,
 while a fuzz target replaying its committed seeds is deterministic
 over them and serves as any witness. Serving consults a TRANSITIVE
@@ -281,7 +313,8 @@ classification fault degrades serving whole
 witness build's own inputs supplied by the caller — the race flag, the
 module mode, and the PGO profile, the profile's content riding the
 build-configuration guard as an opaque input so an edit at a stable
-path re-executes — and the run's observed
+path re-executes, including a default profile the toolchain consumes when
+PGO is omitted; omission is not `off` — and the run's observed
 runtime-input manifest is captured per package under the same environment
 as the witness invocation and attached to every test fingerprinted from
 that run — an over-approximation whose failure direction is a spurious
@@ -913,19 +946,17 @@ never a successful partial operation. Enforced by
 binding's resolution — the resolution verdict, the shape hash, the owning
 package, the witness classification with its reason, and the serving
 refusal a random-seeded or unclassifiable witness carries — from a local
-record exactly when the source-closure tiers of the Gofresh fingerprint
-recorded beside it — the maximal closure, the subject package's
-test-variant compartment, the toolchain, the build configuration — equal
-the current capture's for the bound symbol as a
-Gofresh subject under the build selection that resolved it, because
-equal closure tiers prove the symbol's source closure is the one the
-record was derived from — a witness's class and its serving refusal are
-functions of its own body, which lives in the compartment the core
-closure excludes (the result-serving tiers — dynamic state, purity,
-runtime inputs — judge a stored result, which a resolution is not): every recorded field is a function of that closure, so the served
-resolution is the current run's verification by proven equivalence, not
-a trust extension, and REQ-evidence-promotion holds exactly as it holds
-for a served witness (REQ-evidence-witness-freshness).
+record exactly when the complete dependencies of that source-derived fact
+hold. The native maximal closure, test-variant compartment, toolchain and
+build configuration are necessary components, not an exhaustive certificate.
+Classification and serving refusal also cover every contributing selected
+view, declaration precedence and classifier identity; a single-view fingerprint
+cannot certify a cross-view result. These are source-derived certificates
+under Gofresh's [evidence contract](https://github.com/greatliontech/gofresh/blob/main/docs/specs/evidence.md),
+not stored execution outcomes: they acquire no runtime receipt or historical
+subject-outcome support. Current re-derivation supplies a new certificate,
+never missing evidence about an earlier subject execution. Serving such a
+certificate retains its scope and authority, so REQ-evidence-promotion holds.
 
 **REQ-evidence-resolution-freshness-typed-load** (behavior): A symbol without a
 valid record, a symbol the selected source no longer declares, and a

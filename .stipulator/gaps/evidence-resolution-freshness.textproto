@@ -1,0 +1,8 @@
+# proto-file: proto/stipulator/v1/records.proto
+# proto-message: stipulator.v1.Gap
+
+requirement_id: "REQ-evidence-resolution-freshness"
+reason: "Current resolution records key a cross-view classification on an incomplete single-view certificate. All contributing selections, precedence and classifier identity must join the native source dependencies without inventing execution evidence."
+content_hash: "693e155b87333db57cfe99086266f918475df9e9f4f7135326cbb308240a52e2"
+source_hash: "f21cc3b9ad31563eb1d7bfe41ea3d29b4d0453d685508263c311a150f4a45a5b"
+lands { manual { condition: "Resolution and classification certificates cover every contributing selected view, declaration precedence, classifier and native content/admission dependency with cold/warm and cross-view mutation regressions." contradicted: true } }
