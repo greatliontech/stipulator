@@ -163,8 +163,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-core-claims-untrusted"
-  content_hash: "fc13bd888d33996087f697b06137befa9a1bcf827c3f001b621098ab0cc63610"
-  source_hash: "d97a00052f68d45c6fa956179698a84bc03384fefb2825348df9f97e20674c67"
+  content_hash: "65bf9daad16834664912798ac1ff96bd66955833f32a142d220b14afee52132d"
+  source_hash: "482a2c9e89407c4988883898d16aa860a93decffa336fd69240c3d5045bec753"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.Evaluate"
   role: BINDING_ROLE_IMPLEMENTS
@@ -173,8 +173,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-core-claims-untrusted"
-  content_hash: "fc13bd888d33996087f697b06137befa9a1bcf827c3f001b621098ab0cc63610"
-  source_hash: "d97a00052f68d45c6fa956179698a84bc03384fefb2825348df9f97e20674c67"
+  content_hash: "65bf9daad16834664912798ac1ff96bd66955833f32a142d220b14afee52132d"
+  source_hash: "482a2c9e89407c4988883898d16aa860a93decffa336fd69240c3d5045bec753"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestClaimsGrantNothingUnverified"
   role: BINDING_ROLE_TESTS

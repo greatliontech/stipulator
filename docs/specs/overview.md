@@ -97,13 +97,23 @@ its closure, for dissemination to agents.
 
 ## Root invariants
 
-**REQ-core-determinism** (invariant): Given byte-identical inputs — corpus,
-bindings, gap records, tombstones, and the source code under verification —
-every stipulator operation MUST produce semantically identical output.
+**REQ-core-determinism** (invariant): Given the same complete inputs to a
+derivation — corpus, bindings, gap records, tombstones, source and resolved
+configuration, currently admitted evidence, and any measured outcomes or
+observed runtime facts it consumes — every derivation over those inputs,
+including compilation, bundle construction, diff, verification, coverage and
+reader projections, MUST derive semantically identical answers. Measurements
+and newly observed runtime facts can differ without source changes; this
+invariant does not promise identical future test executions, random draws or
+operational telemetry from identical source bytes alone.
 
 **REQ-core-claims-untrusted** (invariant): Every verification result MUST be
-derived from the inputs at verification time; a persisted verification result
-is never an input to verification.
+derived from the current corpus, code and other governing inputs, with stored
+witness or source-derived evidence admitted only by its current validity and
+scope rules. A persisted verification verdict is never authority for a new
+verdict. Inspecting historical reports does not make them current evidence;
+admitting a stored witness or certificate neither accepts an unverified claim
+nor reconstructs missing historical execution facts.
 
 **REQ-core-scope** (invariant): Stored records MUST NOT contain work
 ordering, prioritization, or implementation-status narrative; state derivable
