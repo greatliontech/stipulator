@@ -1,23 +1,19 @@
 # Completed-package peak stops cold witness admission
 
-Lands: a reproduction carrying the named package's test binary's own
-peak beside the go test child's wait-status peak (270.1's triage,
-2026-10-09, under the derive rule: the estimate reads cmd.Wait's
-Rusage.Maxrss of the `go test` child, which on Linux is the largest
-resident set among the child and the descendants it waited for — the
-compiler, the linker and the test binary alike — so a package whose
-LINK or whose test binary peaks at 7.8 GiB prices every later
-admission at that figure; 331 measured stipulator's own builds under
-the floor and refuted the build half there, but bldc's energy package
-is not that measurement. Reproduce with `go test -c` of the package
-under `/usr/bin/time -v` (the compilation/link peak), then run the produced
-test binary separately to measure its execution peak, beside the invocation's
-origin line: a binary peak far below 7.8 GiB re-opens the build half
-and the estimate takes the binary's own term; a binary peak near it is
-the protection the clause states, and a per-package estimate from that
-package's own prior peak is the derivable refinement — within one run
-every package runs once, so the figure can only be the largest
-completed, as the clause has it.)
+Lands: a reproduction of the named workload records parent RSS/high-water,
+the go test child's wait-status peak, and separate post-exec driver,
+compiler/linker and test-binary peaks beside the invocation's origin line.
+
+The estimate reads the go test child's wait-status `Rusage.Maxrss`; its
+attribution can include more than the test binary's execution. Measure
+`go test -c` under `/usr/bin/time -v` for compilation/linking, then execute
+the resulting test binary separately. A low test-binary peak alone does not
+identify the build as the cause: the pre-exec inheritance hypothesis below
+and the driver's own work are separate possibilities. Choose any estimate
+correction only after distinguishing those terms. Real compiler, linker or
+test memory still needs protection; a suspected inherited peak is not a
+reason to remove the admission bound. Stipulator's own builds measured below
+the floor do not establish the peaks of the reported bldc/Weaver workloads.
 
 Field report from bldc on 2026-10-09. The production authoring-writer change set
 is recoverable at bldc commit `14e743d` (parent `e095733`). This invocation
