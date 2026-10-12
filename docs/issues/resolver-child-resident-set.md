@@ -63,6 +63,19 @@ released at discovery's exit. The 6.9 GB parent beside 111 children
 remains the field's observation alone, and every face now states the
 resident datum at each phase transition and in the pass's timing line.
 
+Stash observation (2026-10-12, `c9ea6cd`): a `stipulator mcp` server running
+one `check` pass whose only live child was a single `go test -race -json`
+invocation of `internal/sh/interp` (35 to 60 minutes into that child, no
+resolver child present) read 2.43 GiB and 2.14 GiB VmRSS two minutes apart,
+VmHWM 3.09 GiB, 2.3 GiB of it anonymous Go heap; the process read 182 MiB
+once the pass ended. A second pass in the same server reported its own
+resident as 182 MiB with a 218 MiB phase peak in that window. The MCP
+summary face of either pass carried no resident or timing line, so the
+per-phase datum this issue lands on was not available from the MCP result;
+the readings above are from `/proc`. This is the parent-growth-during-
+execution shape with one child, not 111. Full report in the
+[completed-package peak](completed-package-peak-admission.md) issue.
+
 Lands: the next cerebro report carrying the pass's own resident lines
 (the parent's reading at execution's exit and at the end, and the
 timing line's running peak with its moment) — the datum that attributes

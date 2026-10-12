@@ -97,3 +97,41 @@ child wait-status peak, and post-exec driver/compiler/linker/test peaks separate
 
 Preserve fail-closed admission and incomplete verdicts. A warm retry or a lower
 soft Go heap target can change the circumstances but does not settle attribution.
+
+## Stash observation: the estimate equals the server process's own high-water
+
+Field report from stash on 2026-10-12, installed binary
+v0.73.12-0.20261010191426-c9ea6cd24f0e (`c9ea6cd`, Go 1.27.1), host 30 GiB
+with 4 GiB swap already full and three other agent sessions resident (about
+9 GiB together). Two `check` passes ran concurrently inside one long-lived
+`stipulator mcp` server process: the first (started 19:16) was still
+executing a single `go test -json -timeout=0 -race -run=^(Fuzz...)` child for
+`internal/sh/interp` when the second (started 19:58) entered execution.
+
+The second pass degraded all 18 packages with the same refusal:
+
+> memory: one package estimated at 2.9 GiB — package
+> github.com/thegrumpylion/stash/tools/bash-reference's completed process
+> 1898230's peak; the host cannot hold one more package process beside the
+> pass: available 476 MiB, 0 package(s) running reserving 0 B, the pass's
+> resident 182 MiB (this phase's peak 218 MiB)
+
+`tools/bash-reference` is a small tool package; its tests do not approach
+2.9 GiB. Readings of the server process over the same window, from
+`/proc/<pid>/status`: VmHWM 3.09 GiB; VmRSS 2.43 GiB and 2.14 GiB sampled two
+minutes apart while the first pass's interp child was running; 182 MiB after
+both passes ended; 2.3 GiB of the resident set anonymous Go heap. The 2.9 GiB
+estimate attributed to the completed child therefore matches the parent
+process's high-water, not the package's work, which is the pre-exec
+inheritance route this report hypothesizes: the wait-status `Maxrss` of a
+child forked from a parent whose high-water was set by a co-resident pass.
+The pass's own reading, 182 MiB resident and 218 MiB phase peak, did not see
+that heap, so the admission arithmetic subtracted a datum the self-report
+cannot observe.
+
+The first pass ended the interp invocation by timeout (1,246 tests executed,
+1,105 witnesses "no terminal event from the producing process"); the second
+executed 10 tests. Neither counts as verification. Not isolated: the host was
+saturated by other sessions throughout, and the concurrency of two passes in
+one server is this report's own doing.
+
