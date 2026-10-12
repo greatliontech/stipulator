@@ -2,6 +2,8 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
+- **[nested-module-freshness-root](nested-module-freshness-root.md)** — nested-module tests execute under their accepted module root, but freshness resolution loads their import path from the repository root and degrades unrelated evidence. *Lands: the next Go-backend resolution or freshness change exercising independently selected nested module roots*
+
 - **[cerebro-scoped-discovery-cost](cerebro-scoped-discovery-cost.md)** — a one-requirement check on the explicitly identified c9ea6cd build exhausts 600 seconds in discovery; attribute subphase/resource cost and establish a bounded affected-requirement workflow. *Lands: the next Go-backend discovery/performance slice reproducing the recorded Cerebro scoped check*
 - **[generic-constraint-seeding-reuse](generic-constraint-seeding-reuse.md)** — concrete generic constraint calls account for 3,856 displayed uncacheable witnesses in the older Cerebro run; the current source deliberately refuses the route. Improve precision only with deterministic, seeded and unresolved-target witnesses. *Lands: the next Go seeding-analysis slice exercising those paired constraint-method cases*
 
