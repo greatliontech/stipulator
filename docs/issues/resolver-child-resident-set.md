@@ -67,3 +67,11 @@ Lands: the next cerebro report carrying the pass's own resident lines
 (the parent's reading at execution's exit and at the end, and the
 timing line's running peak with its moment) — the datum that attributes
 the growth to a phase before any mechanism is built for it.
+
+The [Cerebro scoped-discovery report](cerebro-scoped-discovery-cost.md) supplies
+further phase-owned readings: an older-build completed run ended at 355 MiB with
+a 1.1 GiB peak, while cold baseline discovery reached a 7.4 GiB peak; an explicit
+c9ea6cd single-requirement check ended in discovery at 600 seconds, 5.0 GiB
+resident and 5.3 GiB peak. The builds, input states and cache conditions differ.
+This evidence does not reproduce the earlier execution-parent growth; investigate
+discovery attribution separately rather than treating every peak as the same fault.

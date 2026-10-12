@@ -25,3 +25,8 @@ at the cost of a proof-level dependency in the classifier.
 Lands: gofresh exports a query answering whether a subject's observed
 closure reaches a named function (the dynamic-state tier's home,
 decided at gofresh chunk 202).
+
+The [generic constraint-method field report](generic-constraint-seeding-reuse.md)
+tracks the converse problem: conservative unresolved-dispatch refusals preventing
+reuse. Any shared reachability work must retain both safety cases; an improvement
+to one does not establish the other's correctness.

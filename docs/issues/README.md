@@ -2,6 +2,9 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
+- **[cerebro-scoped-discovery-cost](cerebro-scoped-discovery-cost.md)** — a one-requirement check on the explicitly identified c9ea6cd build exhausts 600 seconds in discovery; attribute subphase/resource cost and establish a bounded affected-requirement workflow. *Lands: the next Go-backend discovery/performance slice reproducing the recorded Cerebro scoped check*
+- **[generic-constraint-seeding-reuse](generic-constraint-seeding-reuse.md)** — concrete generic constraint calls account for 3,856 displayed uncacheable witnesses in the older Cerebro run; the current source deliberately refuses the route. Improve precision only with deterministic, seeded and unresolved-target witnesses. *Lands: the next Go seeding-analysis slice exercising those paired constraint-method cases*
+
 - **[discovery-exit137-memory-target](discovery-exit137-memory-target.md)** — bldc discovery ended with exit 137; memory-targeted retries completed with hour-long discovery. Bounded observations, with cause and host/cache effects unestablished. *Lands: user decision*
 
 - **[completed-package-peak-admission](completed-package-peak-admission.md)** — a named completed energy-package process contributes a 7.8 GiB estimate that stops the cold remainder; investigate the peak boundary and estimate policy without weakening host protection. *Lands: a reproduction carrying the named package's test binary's own peak beside the go test child's wait-status peak*
