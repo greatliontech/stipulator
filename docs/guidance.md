@@ -2,6 +2,16 @@
 
 ## verbs
 
+### version
+**surfaces:** cli
+**does:** Identify this executable and its linked freshness library without loading a corpus.
+**knobs:** none
+**when:** use version (or --version) from a shell before a field report to identify the running
+binary: module version, revision, modified state, compiler and Gofresh dependency.
+Missing facts are unknown; development and local replacements remain explicit.
+It works outside a corpus and performs no policy, witness or record operation.
+**example:** stipulator version
+
 ### compile
 **does:** Compile the spec corpus; returns its diagnostics — none when clean — and counts.
 **knobs:**
@@ -438,7 +448,7 @@ toolchain-selection audit notice for the invocation, naming the
 moved keys (off the closest chain, where one is listed) or the
 surface it could not read, and that leg's standard-library
 observation admissions are disabled and its serving degrades to
-execution. CLI-only: diff, impact, policy init, init, and mcp
+execution. CLI-only: version (also --version), diff, impact, policy init, init, and mcp
 itself; MCP-only: context, partitions, read_spec, and the dispose
 kind= form the cli spells as three subcommands. The guidance verb
 serves any verb's full section — knobs, when-to-use, example —

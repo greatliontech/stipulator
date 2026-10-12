@@ -20,6 +20,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/greatliontech/gofresh"
+	"github.com/greatliontech/gofresh/toolversion"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/check"
@@ -156,7 +157,7 @@ func guarded[In, Out any](s *Server, h func(context.Context, *mcp.CallToolReques
 // MCP builds the protocol server: tools, resource templates, and the
 // requirement index.
 func (s *Server) MCP() *mcp.Server {
-	srv := mcp.NewServer(&mcp.Implementation{Name: "stipulator", Version: "v0"}, &mcp.ServerOptions{
+	srv := mcp.NewServer(&mcp.Implementation{Name: "stipulator", Version: toolversion.Identity()}, &mcp.ServerOptions{
 		Instructions: serverInstructions,
 	})
 

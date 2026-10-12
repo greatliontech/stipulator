@@ -77,14 +77,17 @@ func Execute(ctx context.Context) error {
 // drive. An interrupted run returns Interrupted whatever its verb
 // returned — no partial verdict passes for a pass or a fail.
 func execute(ctx context.Context, args []string, sink func(*stipulatorv1.ProgressEvent), status io.Writer) error {
+	root := newRootCmd()
+	root.SetArgs(args)
+	if versionQuery(root, args) {
+		return root.ExecuteContext(ctx)
+	}
 	// The operation runs under the fleet's soft ceiling — half the room
 	// the host has for the process family, derived at the operation's
 	// start (gofresh's resident.InstallCeiling) — and states it with the
 	// resident datum.
 	resident.InstallCeiling()
 	prog := progress.New(sink, progress.WithResident(resident.Sample))
-	root := newRootCmd()
-	root.SetArgs(args)
 	err := root.ExecuteContext(progress.NewContext(ctx, prog))
 	var verdict ExitStatus
 	switch {
@@ -124,10 +127,12 @@ func (d dimWriter) Write(p []byte) (int, error) {
 func newRootCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:           "stipulator",
+		Version:       versionString(),
 		Short:         "Specification compiler and conformance verifier",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+	c.SetVersionTemplate("{{.Version}}\n")
 	c.PersistentFlags().StringVarP(&chdir, "chdir", "C", ".", "start directory for corpus-root discovery")
 	c.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		// Root-level init scaffolds a new root exactly where it is invoked
@@ -145,6 +150,10 @@ func newRootCmd() *cobra.Command {
 			// Embedded content: guidance answers before a corpus
 			// exists, exactly like the document it serves.
 			return nil
+		case "version":
+			if cmd.Parent() == cmd.Root() {
+				return nil
+			}
 		case "mcp":
 			// A globally-registered server must start even outside a
 			// corpus: tools return the teaching error per request.
@@ -160,7 +169,7 @@ func newRootCmd() *cobra.Command {
 		chdir = root
 		return nil
 	}
-	c.AddCommand(compileCmd(), checkCmd(), verifyCmd(), gateCmd(), explainCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), impactCmd(), pruneCmd(), pinCmd(), disposeCmd(), retargetCmd(), attestCmd(), initCmd(), policyCmd(), mcpCmd(), guidanceCmd())
+	c.AddCommand(compileCmd(), checkCmd(), verifyCmd(), gateCmd(), explainCmd(), bindCmd(), unbindCmd(), gapCmd(), diffCmd(), impactCmd(), pruneCmd(), pinCmd(), disposeCmd(), retargetCmd(), attestCmd(), initCmd(), policyCmd(), mcpCmd(), guidanceCmd(), versionCmd())
 	renderKnobUsage(c)
 	return c
 }

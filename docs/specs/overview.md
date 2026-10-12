@@ -7,6 +7,21 @@ evidence, and reports behavior coverage deterministically. It is built to be
 consumed by LLM harnesses: agents receive self-contained spec bundles, return
 binding claims, and the tool — never the agent — decides what is proven.
 
+## Executable identity
+
+**REQ-cli-version** (behavior): The CLI MUST expose `version` and `--version`
+as project-independent queries of the running binary's embedded identity.
+Both print the same single line: tool name, module version or development
+identity, revision, modified state, compiler and linked Gofresh version or
+replacement. Missing facts remain unknown, never inferred from cwd, git, a
+selected Go command or the network. The shared toolversion metadata rule is
+the source of those facts. The query loads no corpus or policy, evaluates no
+witnesses, creates no execution progress account and writes no tool state.
+It works with malformed project files and without go or git on PATH. Help
+advertises both forms; the subcommand takes no positional operands. Existing
+MCP initialization reports the running server's same embedded identity rather
+than a constant or another installed binary's identity.
+
 ## Pipeline
 
 Non-normative orientation; each stage is specified in its own document.
