@@ -396,18 +396,15 @@ func loadEntry(name string, data []byte, dir string) (Record, string, bool) {
 // judgment (validFingerprint), never the store's; whether it then
 // serves is the engine's currency comparison against the tree.
 func decodeRecord(name string, data []byte) (Record, string, bool) {
-	var fields map[string]json.RawMessage
-	if json.Unmarshal(data, &fields) != nil {
-		return Record{}, "", false
-	}
+	fields, nonNull := envelopeFields(data)
 	digest := ledgerReference(fields)
-	if value, ok := fields["registrations"]; ok && isJSONNull(value) {
+	if !nonNull {
 		return Record{}, digest, false
 	}
 	var e entry
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
-	if dec.Decode(&e) != nil || dec.Decode(&struct{}{}) != io.EOF || e.Version != version {
+	if dec.Decode(&e) != nil || e.Version != version {
 		return Record{}, digest, false
 	}
 	rec := Record{Group: e.Group, Package: e.Package, Test: e.Test, Fingerprint: e.Fingerprint, Outcomes: e.Outcomes, Regs: e.Regs, ObservationExclusions: e.ObservationExclusions, ObservationNamespaces: e.ObservationNamespaces}

@@ -14,6 +14,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 
 	"github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/guard"
@@ -119,7 +120,7 @@ func decodeRecord(name string, data []byte) (Record, bool) {
 	var e entry
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
-	if dec.Decode(&e) != nil || e.Version != version || e.Selection == "" || e.Symbol == "" || !validResolution(e.Resolution) || !Admits(e.Fingerprint) {
+	if dec.Decode(&e) != nil || dec.Decode(&struct{}{}) != io.EOF || e.Version != version || e.Selection == "" || e.Symbol == "" || !validResolution(e.Resolution) || !Admits(e.Fingerprint) {
 		return Record{}, false
 	}
 	rec := Record{

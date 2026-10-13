@@ -1026,6 +1026,11 @@ fingerprint carries any observation, purity, or runtime tier is
 ignored, because resolution observes nothing at run time. A classifier change
 that alters what a record proves bumps the version, so a record of a
 prior classifier never serves.
+The envelope is exactly one complete JSON object, permitting only JSON
+whitespace after its closing delimiter. Additional values or trailing garbage
+make that file alone malformed. Loading and collection use the same whole-input
+admission; neither treats a valid prefix as a complete record. This outer
+framing does not replace the native fingerprint member's own codec rules.
 
 **REQ-evidence-attestation** (behavior): An attestation MUST carry its reason
 text and appear distinctly in every coverage output; it is the weakest

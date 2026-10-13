@@ -6,18 +6,19 @@ remote is the authority; the local clone may lag it). Version lag is
 the one drift channel the shape corpus leaves open — corpus content
 drift is unrepresentable — so a consumer behind the release judges
 purity, inputs and freshness with an older corpus than the one
-released. The remedy is the bump: `go get
-github.com/greatliontech/gofresh@v0.116.1`, whatever adoption riders
-the release carries, tests green, then the binary reinstalled (the
-provenance doc's own condition). The sweep's next corpus line reading
-`current` is the check that closes this doc.
+released. The remedy is the explicit adoption named below: select the release
+carrying the required package-producing form, complete its adoption riders,
+and verify the tests. Rebuild from clean committed source, replace both
+installed copies, and restart long-lived readers. The sweep's next corpus line
+reading `current` is the check that closes this doc.
 
 Scanned: the index and all 33 docs it lists. None schedules a gofresh
 bump: the 2026-09-28 pin-lag doc closed at the v0.111.x bump (train
 290r) and is gone; seeding-walk-unreached-routes waits on a gofresh
 query, not a version. Rows disjoint; no scheduled trigger duplicated.
 
-Lands: tooling-redesign 5.2 (cross-tool train chunk 342 — stipulator
-resolves under the complete declared selection "adopting 340/341
-first"; the bump to the release that carries them is that chunk's
-opening step). An earlier bump closes it sooner.
+Lands: tooling-redesign 5.2d, after 5.2c releases the package-producing form.
+Adopt complete compilation and runtime descriptions with that native unit;
+the earlier selection/certificate work does not make the legacy producer an
+adopted native producer. A dependency-only bump that leaves producing paths
+degraded is not completion of this obligation.
