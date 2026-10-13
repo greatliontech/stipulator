@@ -135,3 +135,63 @@ executed 10 tests. Neither counts as verification. Not isolated: the host was
 saturated by other sessions throughout, and the concurrency of two passes in
 one server is this report's own doing.
 
+## Controlled Go exec reproduction
+
+On Linux `7.2.9-arch1-1`, with Go `go1.27.1-X:nodwarf5 linux/amd64`, the following
+standalone program reproduces pre-exec parent memory being attributed to a trivial
+completed child. Build the program, then run it with `GOMEMLIMIT=512MiB`; it touches
+256 MiB in the parent and keeps those pages live across the second child launch.
+
+```go
+package main
+
+import (
+    "fmt"
+    "os/exec"
+    "runtime"
+    "syscall"
+)
+
+func measure(label string) {
+    cmd := exec.Command("/bin/true")
+    if err := cmd.Run(); err != nil { panic(err) }
+    child := cmd.ProcessState.SysUsage().(*syscall.Rusage)
+    var self syscall.Rusage
+    if err := syscall.Getrusage(syscall.RUSAGE_SELF, &self); err != nil { panic(err) }
+    fmt.Printf("%s: parent_peak_kib=%d child_true_peak_kib=%d\n", label, self.Maxrss, child.Maxrss)
+}
+
+func main() {
+    measure("before")
+    b := make([]byte, 256<<20)
+    for i := 0; i < len(b); i += 4096 { b[i] = 1 }
+    measure("parent holds 256 MiB")
+    runtime.KeepAlive(b)
+}
+```
+
+Observed output:
+
+```text
+before: parent_peak_kib=2388 child_true_peak_kib=2388
+parent holds 256 MiB: parent_peak_kib=265172 child_true_peak_kib=265172
+```
+
+This establishes that the `ProcessState.SysUsage().(*syscall.Rusage).Maxrss`
+measurement consumed by `processPeakBytes` can include parent memory through Go's
+actual exec path on the report host. It cannot be interpreted unconditionally as
+memory required by the launched package. It does not separately attribute the
+driver/build/test contributions of the earlier named Stipulator processes.
+
+A further Weaver pass attributed a 4.9 GiB estimate to the completed public
+`github.com/thegrumpylion/weaver/invocation` package and refused remaining packages
+at 4.8 GiB available. A standalone warm-cache run of that package with
+`GOFLAGS=-p=8 GOMEMLIMIT=1GiB go test -short -race -count=1 -timeout=2m ./invocation`
+reported test time 1.018s, command wall time 1.25s, and peak 129064 KiB through zsh's
+wait-status timing. That run is not a cold-build peak measurement or a controlled
+comparison of the full policies. The trivial-child reproduction, rather than the
+difference between these workload runs, establishes the measurement-boundary fault.
+
+Correct attribution must retain protection for real post-exec driver, build and
+test memory. Neither disabling memory admission nor subtracting the parent's whole
+peak from an arbitrary child peak follows from this reproduction.
