@@ -553,8 +553,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-explain"
-  content_hash: "3ec94619d29d0c2985fbd007eed5d3a3f7aa5ef7296d2781c0c80e5182544748"
-  source_hash: "7ff80372e948082ca568938338a37dd940906b70754049f47a6996d0572c73d8"
+  content_hash: "af14969f810539a8c213872d3c4cfd789c1df40fd3b49a3a1e6474f9b8ca7495"
+  source_hash: "32ebd3329213ac46864fd338cd6aae3dbff2911eb22acb09f97fb61d7aad2def"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestExplainDynamicStateChainsThroughPolicyViews"
   role: BINDING_ROLE_TESTS
@@ -563,8 +563,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-explain"
-  content_hash: "3ec94619d29d0c2985fbd007eed5d3a3f7aa5ef7296d2781c0c80e5182544748"
-  source_hash: "7ff80372e948082ca568938338a37dd940906b70754049f47a6996d0572c73d8"
+  content_hash: "af14969f810539a8c213872d3c4cfd789c1df40fd3b49a3a1e6474f9b8ca7495"
+  source_hash: "32ebd3329213ac46864fd338cd6aae3dbff2911eb22acb09f97fb61d7aad2def"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestExplainToolParsesAndRefuses"
   role: BINDING_ROLE_TESTS
@@ -573,8 +573,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-explain"
-  content_hash: "3ec94619d29d0c2985fbd007eed5d3a3f7aa5ef7296d2781c0c80e5182544748"
-  source_hash: "7ff80372e948082ca568938338a37dd940906b70754049f47a6996d0572c73d8"
+  content_hash: "af14969f810539a8c213872d3c4cfd789c1df40fd3b49a3a1e6474f9b8ca7495"
+  source_hash: "32ebd3329213ac46864fd338cd6aae3dbff2911eb22acb09f97fb61d7aad2def"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.Server.toolExplain"
   role: BINDING_ROLE_IMPLEMENTS
@@ -583,8 +583,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-explain"
-  content_hash: "3ec94619d29d0c2985fbd007eed5d3a3f7aa5ef7296d2781c0c80e5182544748"
-  source_hash: "7ff80372e948082ca568938338a37dd940906b70754049f47a6996d0572c73d8"
+  content_hash: "af14969f810539a8c213872d3c4cfd789c1df40fd3b49a3a1e6474f9b8ca7495"
+  source_hash: "32ebd3329213ac46864fd338cd6aae3dbff2911eb22acb09f97fb61d7aad2def"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.ExplainDynamicState"
   role: BINDING_ROLE_IMPLEMENTS
@@ -593,8 +593,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-explain"
-  content_hash: "3ec94619d29d0c2985fbd007eed5d3a3f7aa5ef7296d2781c0c80e5182544748"
-  source_hash: "7ff80372e948082ca568938338a37dd940906b70754049f47a6996d0572c73d8"
+  content_hash: "af14969f810539a8c213872d3c4cfd789c1df40fd3b49a3a1e6474f9b8ca7495"
+  source_hash: "32ebd3329213ac46864fd338cd6aae3dbff2911eb22acb09f97fb61d7aad2def"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestExplainToolProjectsChain"
   role: BINDING_ROLE_TESTS
@@ -843,8 +843,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-explain"
-  content_hash: "3ec94619d29d0c2985fbd007eed5d3a3f7aa5ef7296d2781c0c80e5182544748"
-  source_hash: "7ff80372e948082ca568938338a37dd940906b70754049f47a6996d0572c73d8"
+  content_hash: "af14969f810539a8c213872d3c4cfd789c1df40fd3b49a3a1e6474f9b8ca7495"
+  source_hash: "32ebd3329213ac46864fd338cd6aae3dbff2911eb22acb09f97fb61d7aad2def"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestExplainRendersTheChain"
   role: BINDING_ROLE_TESTS
@@ -853,8 +853,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-explain"
-  content_hash: "3ec94619d29d0c2985fbd007eed5d3a3f7aa5ef7296d2781c0c80e5182544748"
-  source_hash: "7ff80372e948082ca568938338a37dd940906b70754049f47a6996d0572c73d8"
+  content_hash: "af14969f810539a8c213872d3c4cfd789c1df40fd3b49a3a1e6474f9b8ca7495"
+  source_hash: "32ebd3329213ac46864fd338cd6aae3dbff2911eb22acb09f97fb61d7aad2def"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestExplainEntryShapesItsRefusals"
   role: BINDING_ROLE_TESTS
@@ -983,8 +983,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-explain"
-  content_hash: "3ec94619d29d0c2985fbd007eed5d3a3f7aa5ef7296d2781c0c80e5182544748"
-  source_hash: "7ff80372e948082ca568938338a37dd940906b70754049f47a6996d0572c73d8"
+  content_hash: "af14969f810539a8c213872d3c4cfd789c1df40fd3b49a3a1e6474f9b8ca7495"
+  source_hash: "32ebd3329213ac46864fd338cd6aae3dbff2911eb22acb09f97fb61d7aad2def"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestExplainWitnessRendersServingsWalk"
   role: BINDING_ROLE_TESTS
@@ -993,8 +993,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-explain"
-  content_hash: "3ec94619d29d0c2985fbd007eed5d3a3f7aa5ef7296d2781c0c80e5182544748"
-  source_hash: "7ff80372e948082ca568938338a37dd940906b70754049f47a6996d0572c73d8"
+  content_hash: "af14969f810539a8c213872d3c4cfd789c1df40fd3b49a3a1e6474f9b8ca7495"
+  source_hash: "32ebd3329213ac46864fd338cd6aae3dbff2911eb22acb09f97fb61d7aad2def"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestExplainWitnessAnswersAcrossViews"
   role: BINDING_ROLE_TESTS
@@ -1003,8 +1003,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-explain"
-  content_hash: "3ec94619d29d0c2985fbd007eed5d3a3f7aa5ef7296d2781c0c80e5182544748"
-  source_hash: "7ff80372e948082ca568938338a37dd940906b70754049f47a6996d0572c73d8"
+  content_hash: "af14969f810539a8c213872d3c4cfd789c1df40fd3b49a3a1e6474f9b8ca7495"
+  source_hash: "32ebd3329213ac46864fd338cd6aae3dbff2911eb22acb09f97fb61d7aad2def"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestSeedingChainIsBoundedKeepingTheDecidingLink"
   role: BINDING_ROLE_TESTS
@@ -1013,8 +1013,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-explain"
-  content_hash: "3ec94619d29d0c2985fbd007eed5d3a3f7aa5ef7296d2781c0c80e5182544748"
-  source_hash: "7ff80372e948082ca568938338a37dd940906b70754049f47a6996d0572c73d8"
+  content_hash: "af14969f810539a8c213872d3c4cfd789c1df40fd3b49a3a1e6474f9b8ca7495"
+  source_hash: "32ebd3329213ac46864fd338cd6aae3dbff2911eb22acb09f97fb61d7aad2def"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestReasonClassesCarryTheirExplainKind"
   role: BINDING_ROLE_TESTS
@@ -1023,8 +1023,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-explain"
-  content_hash: "3ec94619d29d0c2985fbd007eed5d3a3f7aa5ef7296d2781c0c80e5182544748"
-  source_hash: "7ff80372e948082ca568938338a37dd940906b70754049f47a6996d0572c73d8"
+  content_hash: "af14969f810539a8c213872d3c4cfd789c1df40fd3b49a3a1e6474f9b8ca7495"
+  source_hash: "32ebd3329213ac46864fd338cd6aae3dbff2911eb22acb09f97fb61d7aad2def"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestServerDeclaresInstructions"
   role: BINDING_ROLE_TESTS
@@ -1033,8 +1033,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-explain"
-  content_hash: "3ec94619d29d0c2985fbd007eed5d3a3f7aa5ef7296d2781c0c80e5182544748"
-  source_hash: "7ff80372e948082ca568938338a37dd940906b70754049f47a6996d0572c73d8"
+  content_hash: "af14969f810539a8c213872d3c4cfd789c1df40fd3b49a3a1e6474f9b8ca7495"
+  source_hash: "32ebd3329213ac46864fd338cd6aae3dbff2911eb22acb09f97fb61d7aad2def"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestParseReasonAdmitsEveryClassAndWrapsTheForeign"
   role: BINDING_ROLE_TESTS
@@ -1469,4 +1469,14 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestTokenlessCallEmitsPhaseLogMessages"
   role: BINDING_ROLE_TESTS
   shape_hash: "6351b939ea31fd7e011420d0714016dc14b36b93b9b026188e54ed5a48dfc271"
+}
+
+bindings {
+  requirement_id: "REQ-mcp-explain"
+  content_hash: "af14969f810539a8c213872d3c4cfd789c1df40fd3b49a3a1e6474f9b8ca7495"
+  source_hash: "32ebd3329213ac46864fd338cd6aae3dbff2911eb22acb09f97fb61d7aad2def"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestBodylessFuzzDeclarationKeepsHarnessClass"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "937a06eb8cbd8a667b99cd3f5ee22b315d5fe81025fb44e8e908ebe176458631"
 }

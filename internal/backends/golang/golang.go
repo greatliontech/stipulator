@@ -12,7 +12,6 @@ import (
 	"context"
 	"fmt"
 	"go/ast"
-	"go/parser"
 	"go/token"
 	"go/types"
 	"golang.org/x/mod/modfile"
@@ -23,8 +22,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/greatliontech/go-x-tools/go/packages"
 	"github.com/greatliontech/gofresh/gotool"
@@ -40,9 +37,11 @@ import (
 // workspace whose go.work members are all in scope.
 type Backend struct {
 	pkgs []*packages.Package
-	// generatedHeaders memoizes the generated-file verdict of declaring
-	// files outside the loads, by path.
-	generatedHeaders sync.Map
+	// sourceLoads holds on-demand declaring packages by their original
+	// load configuration. Export data's positions may name //line aliases,
+	// so only source can establish a promoted method's physical file.
+	sourceMu    sync.Mutex
+	sourceLoads map[sourceLoadKey]sourceLoad
 	// viewErrors names declared views whose load failed whole (a broken
 	// or absent selection toolchain): binding stays healthy for every
 	// symbol the loaded views resolve, while a reference the loaded
@@ -178,8 +177,8 @@ func (b *Backend) pins() *pinTable {
 // stale remainder needs (REQ-evidence-resolution-freshness-typed-load). Their
 // dependencies stay export data; the one verdict that reads a
 // dependency's source — a promoted method's declaring file, for the
-// generated-file marker — reads that file's header itself
-// (generatedIn), so a scoped load answers as the whole-tree load does.
+// generated-file marker — loads that declaring package on demand under
+// the same selection, so a scoped load answers as the whole-tree load does.
 func newContext(ctx context.Context, dir string, patterns []string) (*Backend, error) {
 	members, err := workspaceMembers(dir)
 	if err != nil {
@@ -535,7 +534,11 @@ func (b *Backend) ResolveIn(symbol string) (verify.Resolution, string, string, e
 		if obj == nil {
 			continue
 		}
-		if b.generatedIn(pkg, obj) {
+		source, err := b.declarationSource(pkg, obj)
+		if err != nil {
+			return verify.NotFound, "", "", err
+		}
+		if source.file != nil && ast.IsGenerated(source.file) {
 			return verify.GeneratedFile, "", b.loadSelection[b.load[pkg]], nil
 		}
 		return verify.Resolved, shapeHash(obj), b.loadSelection[b.load[pkg]], nil
@@ -567,7 +570,11 @@ func (b *Backend) SymbolFile(symbol string) (string, bool) {
 		if obj == nil || !obj.Pos().IsValid() {
 			continue
 		}
-		rel, err := filepath.Rel(b.dir, pkg.Fset.Position(obj.Pos()).Filename)
+		source, err := b.declarationSource(pkg, obj)
+		if err != nil || source.name == "" {
+			return "", false
+		}
+		rel, err := filepath.Rel(b.dir, source.name)
 		if err != nil || strings.HasPrefix(rel, "..") {
 			return "", false
 		}
@@ -810,8 +817,9 @@ func (b *Backend) NeverServe(symbols []string) (map[string]string, error) {
 
 // witnessVerdict is one bound symbol's resolved classification: the
 // class, the example-classification reason, whether a property
-// classification is random-seeded, and whether a runnable body was
-// inspected at all (REQ-go-witness-class).
+// classification is random-seeded, and whether its source supplies a
+// classification judgment (REQ-go-witness-class). A runnable fuzz entry
+// derives its property class from the harness even without a Go body.
 type witnessVerdict struct {
 	class     verify.WitnessClass
 	reason    string
@@ -1052,7 +1060,7 @@ func (b *Backend) placedAt(fn *types.Func) string {
 // tree-relative file:line — the spelling every chain link and every
 // refusal carries; a position outside the tree keeps its own path.
 func (b *Backend) site(pkg *packages.Package, pos token.Pos) string {
-	p := pkg.Fset.Position(pos)
+	p := pkg.Fset.PositionFor(pos, false)
 	name := p.Filename
 	if rel, err := filepath.Rel(b.dir, name); err == nil && rel != ".." && !strings.HasPrefix(rel, "../") {
 		name = filepath.ToSlash(rel)
@@ -1359,7 +1367,8 @@ func (b *Backend) classifyWitness(symbol string) witnessVerdict {
 	// the body's callees. Only a test the witness run executes can
 	// classify above example — a structural or rapid invocation in a
 	// plain function never runs.
-	if fd, pkg, err := b.funcDecl(symbol); err == nil && fd.Body != nil && runnableWitness(fd, pkg) {
+	fd, pkg, err := b.funcDecl(symbol)
+	if err == nil && fd.Body != nil && runnableWitness(fd, pkg) {
 		proof, property, rapidRef, structuralRef, gopterRef, quickRef, dotImported := false, false, false, false, false, false, false
 		// Every node is visited even after an assertion is seen: a
 		// proof body that also drives a runner records both facts, so
@@ -1437,7 +1446,7 @@ func (b *Backend) classifyWitness(symbol string) witnessVerdict {
 		// ordinary run replays the committed seeds: deterministic, never
 		// random-seeded — unless another view's body, or a helper it
 		// reaches, drives a runner.
-		if b.fuzzTargetClass(symbol) == verify.PropertyWitness {
+		if witnessHandle(fd, pkg) == "F" {
 			return witnessVerdict{class: verify.PropertyWitness, inspected: true, seeded: direct, seededVia: via, seedingRefusal: refusal}
 		}
 		// An example verdict carries the transitive seeding class too:
@@ -1468,8 +1477,14 @@ func (b *Backend) classifyWitness(symbol string) witnessVerdict {
 			return example("no property driver or analyzer call in the bound body")
 		}
 	}
-	if b.fuzzTargetClass(symbol) == verify.PropertyWitness {
-		return witnessVerdict{class: verify.PropertyWitness, inspected: true}
+	// A runnable fuzz declaration may be implemented outside its Go body
+	// (for example by a linked function). Its harness still quantifies it;
+	// the physical entry-point checks apply even on this bodiless path.
+	if err == nil && runnableWitness(fd, pkg) {
+		if witnessHandle(fd, pkg) == "F" {
+			return witnessVerdict{class: verify.PropertyWitness, inspected: true}
+		}
+		return witnessVerdict{class: verify.ExampleWitness, reason: "no Go body to inspect"}
 	}
 	// Classification is resolved from the code (REQ-go-witness-class);
 	// a body that cannot even load has no code to resolve from, so the
@@ -1617,77 +1632,51 @@ func (b *Backend) declsInOtherViews(symbol string, resolvedSel string) ([]declar
 	return out, refusal
 }
 
-func (b *Backend) fuzzTargetClass(symbol string) verify.WitnessClass {
-	pkgPath, rest := b.splitSymbol(symbol)
-	if pkgPath == "" {
-		return verify.ExampleWitness
-	}
-	parts := strings.Split(rest, ".")
-	for _, pkg := range b.pkgs {
-		if pkg.PkgPath != pkgPath && pkg.PkgPath != pkgPath+"_test" {
-			continue
-		}
-		obj := lookup(pkg.Types, parts)
-		fn, ok := obj.(*types.Func)
-		if !ok {
-			continue
-		}
-		sig := fn.Type().(*types.Signature)
-		if sig.Params().Len() == 1 {
-			if named, ok := sig.Params().At(0).Type().(*types.Pointer); ok {
-				if t, ok := named.Elem().(*types.Named); ok &&
-					t.Obj().Pkg() != nil && t.Obj().Pkg().Path() == "testing" && t.Obj().Name() == "F" {
-					return verify.PropertyWitness
-				}
-			}
-		}
-	}
-	return verify.ExampleWitness
-}
-
 // runnableWitness reports whether the declaration is a test the ordinary
 // witness run executes: a Test or Fuzz function in a _test.go file taking
 // the matching testing handle, per go test's naming rule (the name after
 // the prefix must not start lowercase). Anything else never runs, so it
 // can never produce evidence.
 func runnableWitness(fd *ast.FuncDecl, pkg *packages.Package) bool {
-	name := fd.Name.Name
-	var prefix, handle string
+	return witnessHandle(fd, pkg) != ""
+}
+
+// witnessHandle joins the harness's syntax with the resolved testing type.
+// A diagnostic //line name cannot turn production code into a test file.
+func witnessHandle(fd *ast.FuncDecl, pkg *packages.Package) string {
+	var handle string
 	switch {
-	case strings.HasPrefix(name, "Test"):
-		prefix, handle = "Test", "T"
-	case strings.HasPrefix(name, "Fuzz"):
-		prefix, handle = "Fuzz", "F"
+	case syntacticTestFunc(fd, "Test", "T"):
+		handle = "T"
+	case syntacticTestFunc(fd, "Fuzz", "F"):
+		handle = "F"
 	default:
-		return false
+		return ""
 	}
-	if rest := name[len(prefix):]; rest != "" {
-		r, _ := utf8.DecodeRuneInString(rest)
-		if unicode.IsLower(r) {
-			return false
-		}
-	}
-	if !strings.HasSuffix(pkg.Fset.Position(fd.Pos()).Filename, "_test.go") {
-		return false
+	if !strings.HasSuffix(pkg.Fset.PositionFor(fd.Pos(), false).Filename, "_test.go") {
+		return ""
 	}
 	fn, ok := pkg.TypesInfo.Defs[fd.Name].(*types.Func)
 	if !ok {
-		return false
+		return ""
 	}
 	sig := fn.Type().(*types.Signature)
 	if sig.Recv() != nil || sig.Params().Len() != 1 {
-		return false
+		return ""
 	}
 	ptr, ok := sig.Params().At(0).Type().(*types.Pointer)
 	if !ok {
-		return false
+		return ""
 	}
-	named, ok := ptr.Elem().(*types.Named)
+	named, ok := types.Unalias(ptr.Elem()).(*types.Named)
 	if !ok {
-		return false
+		return ""
 	}
 	obj := named.Obj()
-	return obj.Pkg() != nil && obj.Pkg().Path() == "testing" && obj.Name() == handle
+	if obj.Pkg() != nil && obj.Pkg().Path() == "testing" && obj.Name() == handle {
+		return handle
+	}
+	return ""
 }
 
 // shapeHash hashes the object's declared type rendered with fully
@@ -1696,61 +1685,4 @@ func shapeHash(obj types.Object) string {
 	return canon.Hash(types.ObjectString(obj, func(p *types.Package) string {
 		return p.Path()
 	}))
-}
-
-// generatedIn reports whether the object's declaration lies in a
-// generated file, per the standard "Code generated ... DO NOT EDIT."
-// marker. The object's declaring package is scanned — not the
-// resolution candidate — so a method promoted from an embedded
-// generated type is still detected, and a declaring package outside
-// the load set (a dependency held as export data) is judged from its
-// declaring file's own header.
-// The judgment stays within the resolving package's own load: a
-// promoted method's declaring file lives in the object's origin
-// package - possibly a sibling of the resolving package - so the
-// scan spans the load's packages sharing the origin path.
-// Position containment is only meaningful inside one load's FileSet:
-// with one package view per build selection, the same package path
-// recurs across views with incompatible FileSets, and a cross-load
-// scan would take the verdict from a foreign view's file
-// nondeterministically (REQ-go-build-selections).
-func (b *Backend) generatedIn(resolving *packages.Package, obj types.Object) bool {
-	pos := obj.Pos()
-	if !pos.IsValid() || obj.Pkg() == nil {
-		return false
-	}
-	load := b.load[resolving]
-	for _, pkg := range b.pkgs {
-		if b.load[pkg] != load || pkg.PkgPath != obj.Pkg().Path() {
-			continue
-		}
-		for _, f := range pkg.Syntax {
-			if f.FileStart <= pos && pos < f.FileEnd {
-				return ast.IsGenerated(f)
-			}
-		}
-	}
-	// The declaring package is outside this load — a scoped load's
-	// dependency, held as export data — so the marker is read from the
-	// declaring file's own header, the same judgment ast.IsGenerated
-	// makes over a loaded file.
-	if name := resolving.Fset.Position(pos).Filename; name != "" {
-		return b.generatedHeader(name)
-	}
-	return false
-}
-
-// generatedHeader reports whether the file at path carries the
-// standard "Code generated ... DO NOT EDIT." marker, parsing only its
-// package clause and the comments before it, once per file.
-func (b *Backend) generatedHeader(path string) bool {
-	if verdict, ok := b.generatedHeaders.Load(path); ok {
-		return verdict.(bool)
-	}
-	verdict := false
-	if f, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.PackageClauseOnly|parser.ParseComments); err == nil {
-		verdict = ast.IsGenerated(f)
-	}
-	b.generatedHeaders.Store(path, verdict)
-	return verdict
 }

@@ -1032,7 +1032,9 @@ the declared toolchain, and the module-mode flag (`-mod=mod`, `-mod=readonly`,
 `-mod=vendor`, or empty for the toolchain's default). An untagged declared
 toolchain or module mode is a distinct view. Version 1 records, derived
 without the complete selection set, are refused and re-derived rather than
-upgraded; version 2 carries the complete selection key. This key identifies
+upgraded. Version 2 records also lack physical-source ownership in their
+classification and are refused; version 3 carries the complete selection
+key and the physical-source classifier's answers. This key identifies
 one view, not the complete certificate required by
 REQ-evidence-resolution-freshness.
 The envelope is exactly one complete JSON object, permitting only JSON

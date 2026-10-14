@@ -77,6 +77,13 @@ refusal - binding stays healthy for every symbol the loaded views
 resolve, while a reference they cannot answer refuses with the
 degraded view named, never a silent absence that masks an unloadable
 view.
+Declaration filenames and source locations are physical positions in the
+declaring source, not diagnostic positions remapped by `//line` directives.
+Generated-code judgment and test-file membership use that same physical
+source. A promoted declaration held only as export data is located in its
+declaring package under the resolving view's selection; unavailable or
+inconsistent declaring source refuses resolution rather than borrowing a
+diagnostic filename. Loader diagnostics retain the positions the loader gives.
 
 **REQ-go-workspace** (behavior): A verification tree MAY be a Go
 workspace: symbol resolution and witnessing span every `go.work` member,
@@ -130,6 +137,14 @@ uncovered requirement's
 report surfaces the classification verdict per bound witness beside the
 required-evidence reason, a property-classified witness on a
 proof-requiring cell named symmetrically.
+Only a runnable test or fuzz declaration in a physical `_test.go` file can
+classify above example. Its entry-point syntax follows Go's discovery rule,
+and its resolved pointer parameter denotes the corresponding `testing.T` or
+`testing.F`, including aliases. A helper taking a testing handle, a method,
+or a production function does not acquire witness authority from that type
+or from a remapped diagnostic filename.
+A runnable fuzz declaration retains its harness-derived property class when
+implemented by a linked function rather than a Go body.
 
 **REQ-go-race** (behavior): A Go witness MUST derive only from a
 race-enabled policy invocation, so every witness is race-attributed; an

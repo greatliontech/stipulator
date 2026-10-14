@@ -53,8 +53,13 @@ func (b *Backend) explainWitness(symbol string) (gofresh.Chain, string, error) {
 	}
 	sel := b.selectionOf(pkg)
 	witness := gofresh.ChainLink{Kind: LinkWitness, Package: pkg.PkgPath, Symbol: declName(fd, pkg), Pos: b.site(pkg, fd.Name.Pos())}
-	if fd.Body == nil || !runnableWitness(fd, pkg) {
+	if !runnableWitness(fd, pkg) {
 		return boundChain(ArmNotSeeded+" (not a runnable test witness)", []gofresh.ChainLink{witness}), viewLabel(sel), nil
+	}
+	if fd.Body == nil {
+		witness.Clause = "no Go body to inspect; linked implementation not inspected"
+		class := b.classifyWitness(symbol).class
+		return boundChain(ArmNotSeeded+" ("+strings.ToLower(classWire(class))+")", []gofresh.ChainLink{witness}), viewLabel(sel), nil
 	}
 	// Serving's one answer: the resolved body's own driver first, then
 	// the walk and the other views.

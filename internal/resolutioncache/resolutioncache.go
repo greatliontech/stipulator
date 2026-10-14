@@ -26,9 +26,9 @@ import (
 // that the serving decision consumes, or when the classifier's contract
 // changes what a record proves — either way a prior record fails closed
 // to a typed resolution.
-// Version two requires classification over module-mode and untagged
-// toolchain views, which version one's selection set could omit.
-const version = 2
+// The classifier requires complete selections and physical declaration
+// ownership; older records cannot establish those premises.
+const version = 3
 
 // Record is one served resolution: the symbol under its resolving build
 // selection, the fingerprint the serve is proven by, and every field a

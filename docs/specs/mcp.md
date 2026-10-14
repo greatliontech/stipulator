@@ -133,6 +133,9 @@ deterministic policy order and the first yielding a chain answers, the
 result naming the answering view's invocations - a caller holding a
 reason produced under a different view sees the mismatch instead of
 mistaking the chain for that view's derivation.
+A runnable declaration with no Go body retains its class in the explanation
+and states that its linked implementation was not inspected; absence of a Go
+body is not a claim that the declaration cannot run.
 
 **REQ-mcp-views** (behavior): The gate and verify tools MUST
 answer at the summary view by default — the roll-up most calls want —
