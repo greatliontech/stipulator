@@ -3,6 +3,7 @@
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
 - **[nested-module-freshness-root](nested-module-freshness-root.md)** — nested-module tests execute under their accepted module root, but freshness resolution loads their import path from the repository root and degrades unrelated evidence. *Lands: the next Go-backend resolution or freshness change exercising independently selected nested module roots*
+- **[execution-timing-diagnostics](execution-timing-diagnostics.md)** — long execution gaps and cancellation counters lack retained package/test timing and queued-versus-running attribution. *Lands: the next Go execution-reporting change exercising a cancelled multi-package policy invocation*
 - **[implemented-capability-acceptance](implemented-capability-acceptance.md)** — git-go needs native, explicitly partial acceptance for a closed implemented requirement set while preserving the global uncovered design corpus; current report/execution filters retain the global red verdict. *Lands: tooling-redesign 7.5 derivation and 9.4 conditional disposition; no implementation authorized by the filing*
 
 - **[cerebro-scoped-discovery-cost](cerebro-scoped-discovery-cost.md)** — a one-requirement check on the explicitly identified c9ea6cd build exhausts 600 seconds in discovery; attribute subphase/resource cost and establish a bounded affected-requirement workflow. *Lands: the next Go-backend discovery/performance slice reproducing the recorded Cerebro scoped check*
