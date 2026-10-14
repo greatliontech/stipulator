@@ -1250,3 +1250,33 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "8b12f975330446748e8293b1401bdbc7bb0901659caedea7f38a247f6134e5c7"
 }
+
+bindings {
+  requirement_id: "REQ-policy-conservation"
+  content_hash: "9e1e49c0acd384835c8e653296abeca90dd61eb35da4ca979af1ab0ba99185bb"
+  source_hash: "d37c066b7cf289cddaf8d0f5b3087742e7ee27dad44688b7ae08b5ac1573e13e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestDiscoveryMatchesGoAliasedHandles"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "babf46f4671c34ad7409ff93e5790021297e57a10ad15b926f6e1ea645e4f4a9"
+}
+
+bindings {
+  requirement_id: "REQ-policy-conservation"
+  content_hash: "9e1e49c0acd384835c8e653296abeca90dd61eb35da4ca979af1ab0ba99185bb"
+  source_hash: "d37c066b7cf289cddaf8d0f5b3087742e7ee27dad44688b7ae08b5ac1573e13e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestDiscoveryKeepsTheBuildFailureBehindAnUnresolvedHandle"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5358f9a6923c20f65e3080bda29368b0834d5a20eff2bdd960824ff64ebf6827"
+}
+
+bindings {
+  requirement_id: "REQ-policy-toolchain-pin"
+  content_hash: "328273f7b7ee3bc68c4929ae75c329427f959a5f4093c6296d9d31f557ac7add"
+  source_hash: "780ed2d3e7a9386953a4415453909c5724cc3fc32badc28fbc0d509f144b6ede"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestUntaggedSelectionEnforcesItsToolchainPin"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "81d93a20d881085bd5a5f2c756f826dfcb3523d602d2d840ff439fbfbca60096"
+}

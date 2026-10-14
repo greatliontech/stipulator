@@ -2,7 +2,6 @@ package golang
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -412,15 +411,21 @@ func TestServedTakesTheNewestOfADuplicatedIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := json.Marshal(map[string]any{
-		"version": 1, "selection": twin.Selection, "symbol": twin.Symbol, "fingerprint": twin.Fingerprint,
-		"resolution": twin.Resolution, "shape": twin.Shape, "package": twin.Package,
-		"witnessClass": twin.WitnessClass, "witnessClassReason": twin.WitnessClassReason,
-	})
+	// Encode through the real writer in a separate store so installation
+	// does not supersede the current twin whose recency this test judges.
+	twinDir := t.TempDir()
+	if err := resolutioncache.InstallAll(twinDir, []resolutioncache.Record{twin}); err != nil {
+		t.Fatal(err)
+	}
+	twinStore, err := resolutioncache.StoreDir(twinDir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	olderName, err := recordstore.Name([]string{twin.Selection, twin.Symbol}, twin.Fingerprint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(twinStore, olderName))
 	if err != nil {
 		t.Fatal(err)
 	}

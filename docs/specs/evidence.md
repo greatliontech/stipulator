@@ -1026,6 +1026,15 @@ fingerprint carries any observation, purity, or runtime tier is
 ignored, because resolution observes nothing at run time. A classifier change
 that alters what a record proves bumps the version, so a record of a
 prior classifier never serves.
+The default selection key is `default`; every other key joins three
+components with NUL: the sorted, deduplicated effective tags joined by comma,
+the declared toolchain, and the module-mode flag (`-mod=mod`, `-mod=readonly`,
+`-mod=vendor`, or empty for the toolchain's default). An untagged declared
+toolchain or module mode is a distinct view. Version 1 records, derived
+without the complete selection set, are refused and re-derived rather than
+upgraded; version 2 carries the complete selection key. This key identifies
+one view, not the complete certificate required by
+REQ-evidence-resolution-freshness.
 The envelope is exactly one complete JSON object, permitting only JSON
 whitespace after its closing delimiter. Additional values or trailing garbage
 make that file alone malformed. Loading and collection use the same whole-input

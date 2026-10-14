@@ -127,9 +127,9 @@ func DiscoverInvocation(ctx context.Context, n *NormalizedInvocation) ([]Obligat
 					continue
 				}
 				switch {
-				case syntacticTestFunc(af, fd, "Test", "T"):
+				case syntacticTestFunc(fd, "Test", "T"):
 					add(Obligation{Kind: ObligationTest, Package: p.ImportPath, Name: fd.Name.Name})
-				case syntacticTestFunc(af, fd, "Fuzz", "F"):
+				case syntacticTestFunc(fd, "Fuzz", "F"):
 					add(Obligation{Kind: ObligationFuzz, Package: p.ImportPath, Name: fd.Name.Name})
 					for _, seed := range committedSeeds(p.Dir, fd.Name.Name) {
 						add(Obligation{Kind: ObligationSeed, Package: p.ImportPath, Name: fd.Name.Name + "/" + seed})
@@ -441,12 +441,12 @@ func committedSeeds(pkgDir, target string) []string {
 
 // syntacticTestFunc reports whether fd is a top-level test-shaped function
 // — prefix-named per go test's rule (the rune after the prefix must not be
-// lowercase) with exactly one parameter of type *<testing>.<handle>, where
-// <testing> is the file's name for the "testing" import (a dot import
-// yields the bare handle type). Discovery is syntax-only by design: it
-// enumerates what `go test` would select without loading types, so the
-// obligation set exists even for packages whose full type-check fails.
-func syntacticTestFunc(file *ast.File, fd *ast.FuncDecl, prefix, handle string) bool {
+// lowercase), no results or type parameters, and one pointer parameter whose
+// unqualified name is the handle. Like cmd/go, this does not resolve the
+// qualifier or require a testing import: aliases may be declared elsewhere.
+// Compilation decides type compatibility; discovery remains available for
+// packages whose type-check fails, with build failure a package obligation.
+func syntacticTestFunc(fd *ast.FuncDecl, prefix, handle string) bool {
 	name := fd.Name.Name
 	if !strings.HasPrefix(name, prefix) || fd.Recv != nil {
 		return false
@@ -458,6 +458,9 @@ func syntacticTestFunc(file *ast.File, fd *ast.FuncDecl, prefix, handle string) 
 		}
 	}
 	params := fd.Type.Params
+	if fd.Type.Results.NumFields() != 0 || fd.Type.TypeParams.NumFields() != 0 {
+		return false
+	}
 	if params == nil || len(params.List) != 1 || len(params.List[0].Names) > 1 {
 		return false
 	}
@@ -465,33 +468,13 @@ func syntacticTestFunc(file *ast.File, fd *ast.FuncDecl, prefix, handle string) 
 	if !ok {
 		return false
 	}
-	testingName, dot := testingImportName(file)
 	switch t := star.X.(type) {
 	case *ast.SelectorExpr:
-		id, ok := t.X.(*ast.Ident)
-		return ok && testingName != "" && id.Name == testingName && t.Sel.Name == handle
+		return t.Sel.Name == handle
 	case *ast.Ident:
-		return dot && t.Name == handle
+		return t.Name == handle
 	}
 	return false
-}
-
-// testingImportName resolves the file-local name of the "testing" import
-// and whether it is dot-imported.
-func testingImportName(file *ast.File) (string, bool) {
-	for _, imp := range file.Imports {
-		if imp.Path.Value != `"testing"` {
-			continue
-		}
-		if imp.Name == nil {
-			return "testing", false
-		}
-		if imp.Name.Name == "." {
-			return "", true
-		}
-		return imp.Name.Name, false
-	}
-	return "", false
 }
 
 // moduleModeFlag renders the typed module mode as its -mod flag.

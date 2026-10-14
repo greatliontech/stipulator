@@ -315,7 +315,7 @@ func Which(x string) string { return x }
 	}
 }
 
-// A view's identity is the invocation's tag-set AND toolchain: the
+// A toolchain remains part of a view's identity beside its tags: the
 // selection's view loads under its own toolchain (a valid one
 // resolves; a broken one proves the env reached the load), an
 // unloadable tagged view degrades to a named refusal instead of

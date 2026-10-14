@@ -427,7 +427,7 @@ func TestMissingDeclarationRefusalNamesThePlacement(t *testing.T) {
 	const lib = "example.com/fixture/lib"
 	ghost := types.NewFunc(token.NoPos, types.NewPackage(lib, "lib"), "Ghost", types.NewSignatureType(nil, nil, nil, nil, nil, false))
 	fb.walkMu.Lock()
-	fd, _, err := fb.funcDeclOf(SelectionKey(nil, ""), ghost)
+	fd, _, err := fb.funcDeclOf((buildSelection{}).key(), ghost)
 	fb.walkMu.Unlock()
 	want := "declaration of " + lib + ".Ghost is not among the parsed files of in-module package " + lib + " in the \"default\" view"
 	if err == nil || fd != nil || err.Error() != want {
@@ -442,7 +442,7 @@ func TestMissingDeclarationRefusalNamesThePlacement(t *testing.T) {
 	if got, want := fb.placedAt(fn), " (the type information places it at "+siteAfter(t, "lib/lib.go", "", "func Add(")+")"; got != want {
 		t.Fatalf("placedAt = %q, want %q", got, want)
 	}
-	for sel, label := range map[string]string{SelectionKey(nil, ""): "default", SelectionKey([]string{"dst", "race"}, ""): "-tags=dst,race", SelectionKey([]string{"dst"}, "go1.27.0"): "-tags=dst toolchain go1.27.0"} {
+	for sel, label := range map[string]string{(buildSelection{}).key(): "default", (buildSelection{tags: []string{"dst", "race"}}).key(): "-tags=dst,race", (buildSelection{tags: []string{"dst"}, toolchain: "go1.27.0"}).key(): "-tags=dst toolchain go1.27.0"} {
 		if got := viewLabel(sel); got != label {
 			t.Errorf("viewLabel(%q) = %q, want %q", sel, got, label)
 		}

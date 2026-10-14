@@ -638,7 +638,7 @@ func TestSeedingWalkFailsClosedWithoutADeclaration(t *testing.T) {
 	pkg := types.NewPackage("example.com/fixture/nosuch", "nosuch")
 	ghost := types.NewFunc(token.NoPos, pkg, "Run", types.NewSignatureType(nil, nil, nil, nil, nil, false))
 	fb.walkMu.Lock()
-	fd, _, err := fb.funcDeclOf(SelectionKey(nil, ""), ghost)
+	fd, _, err := fb.funcDeclOf((buildSelection{}).key(), ghost)
 	fb.walkMu.Unlock()
 	if err == nil || fd != nil || !strings.Contains(err.Error(), "example.com/fixture/nosuch") {
 		t.Fatalf("ghost package: fd=%v err=%v; want a load error naming the package", fd, err)
@@ -648,7 +648,7 @@ func TestSeedingWalkFailsClosedWithoutADeclaration(t *testing.T) {
 	fd, _, err = func() (*ast.FuncDecl, *packages.Package, error) {
 		fb.walkMu.Lock()
 		defer fb.walkMu.Unlock()
-		return fb.funcDeclOf(SelectionKey(nil, ""), types.NewFunc(token.NoPos, dep, "Check", types.NewSignatureType(nil, nil, nil, nil, nil, false)))
+		return fb.funcDeclOf((buildSelection{}).key(), types.NewFunc(token.NoPos, dep, "Check", types.NewSignatureType(nil, nil, nil, nil, nil, false)))
 	}()
 	if err != nil || fd != nil {
 		t.Fatalf("dependency function: fd=%v err=%v; want the branch to end quietly", fd, err)

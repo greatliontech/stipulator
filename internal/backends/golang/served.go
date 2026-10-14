@@ -16,7 +16,7 @@ import (
 
 // selectionEngine is the freshness engine for one resolution build
 // selection: it loads the selection's sources exactly as the resolver
-// child's typed view does — the same environment and tag flags
+// child's typed view does — the same environment, tags and module mode
 // (selectionViewEnv, selectionViewFlags) — so a resolution record's
 // fingerprint is captured and checked under the view that produced the
 // resolution (REQ-evidence-resolution-freshness). Resolution observes
@@ -160,7 +160,7 @@ func NewServed(ctx context.Context, dir string, symbols []string) (*Served, erro
 		return nil, err
 	}
 	for _, sel := range sels {
-		s.sels[SelectionKey(sel.tags, sel.toolchain)] = sel
+		s.sels[sel.key()] = sel
 	}
 	// An operation that named symbols is scoped to them; one that named
 	// none leaves the set nil, which admits every symbol — the one

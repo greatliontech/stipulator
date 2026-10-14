@@ -26,14 +26,16 @@ import (
 // that the serving decision consumes, or when the classifier's contract
 // changes what a record proves — either way a prior record fails closed
 // to a typed resolution.
-const version = 1
+// Version two requires classification over module-mode and untagged
+// toolchain views, which version one's selection set could omit.
+const version = 2
 
 // Record is one served resolution: the symbol under its resolving build
 // selection, the fingerprint the serve is proven by, and every field a
 // verification reads from a resolution.
 type Record struct {
 	// Selection is the resolving build selection's key — the effective
-	// tag set and toolchain the symbol resolved under — so a record
+	// tag set, toolchain and module mode the symbol resolved under — so a record
 	// serves only the view that produced it (REQ-go-build-selections).
 	Selection string
 	Symbol    string

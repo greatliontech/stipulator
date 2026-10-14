@@ -28,6 +28,7 @@ import (
 
 	"github.com/greatliontech/go-x-tools/go/packages"
 	"github.com/greatliontech/gofresh/gotool"
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 
 	"github.com/greatliontech/stipulator/internal/policy"
 
@@ -42,7 +43,7 @@ type Backend struct {
 	// generatedHeaders memoizes the generated-file verdict of declaring
 	// files outside the loads, by path.
 	generatedHeaders sync.Map
-	// viewErrors names tagged views whose load failed whole (a broken
+	// viewErrors names declared views whose load failed whole (a broken
 	// or absent selection toolchain): binding stays healthy for every
 	// symbol the loaded views resolve, while a reference the loaded
 	// views cannot answer refuses with the degraded views named -
@@ -251,7 +252,7 @@ func newContext(ctx context.Context, dir string, patterns []string) (*Backend, e
 			if lazyCfg[m] == nil {
 				lazyCfg[m] = map[string]*packages.Config{}
 			}
-			lazyCfg[m][SelectionKey(sel.tags, sel.toolchain)] = &lazy
+			lazyCfg[m][sel.key()] = &lazy
 			load := []string{"./..."}
 			if len(patterns) > 0 {
 				// A pattern loads from the one member whose module
@@ -267,21 +268,21 @@ func newContext(ctx context.Context, dir string, patterns []string) (*Backend, e
 				loaded = matchedRoots(loaded)
 			}
 			if err != nil {
-				if len(sel.tags) == 0 {
+				if sel.isDefault() {
 					return nil, fmt.Errorf("loading Go packages in %s: %w", m, err)
 				}
-				// A tagged view that cannot load degrades to a named
+				// A declared view that cannot load degrades to a named
 				// refusal instead of failing the whole binding context:
 				// the pre-existing views' binding health is the floor,
 				// and the view's own symbols refuse with this reason.
-				viewErrors = append(viewErrors, fmt.Sprintf("build selection -tags=%s (toolchain %q): loading Go packages in %s: %v", strings.Join(sel.tags, ","), sel.toolchain, m, err))
+				viewErrors = append(viewErrors, fmt.Sprintf("build selection %s: loading Go packages in %s: %v", viewLabel(sel.key()), m, err))
 				viewFailed = true
 				break
 			}
 			for _, pkg := range loaded {
 				viewLoads[pkg] = loads
 			}
-			loadSelection[loads] = SelectionKey(sel.tags, sel.toolchain)
+			loadSelection[loads] = sel.key()
 			loads++
 			viewPkgs = append(viewPkgs, loaded...)
 		}
@@ -292,7 +293,7 @@ func newContext(ctx context.Context, dir string, patterns []string) (*Backend, e
 			loadIndex[pkg] = load
 		}
 		// Deterministic candidate order within a view; views concatenate
-		// in selection order - default first, then the policy's tagged
+		// in selection order - default first, then the policy's declared
 		// views - so resolution's first-declaring-view rule falls out of
 		// plain iteration (REQ-go-build-selections).
 		sort.Slice(viewPkgs, func(i, j int) bool { return viewPkgs[i].ID < viewPkgs[j].ID })
@@ -387,37 +388,44 @@ func selectionViewEnv(env []string, sel buildSelection) []string {
 }
 
 // selectionViewFlags is the build selection's package-load flags: its
-// effective tag set, the race tag included as a tag (the views load
-// sources, they never instrument).
+// effective tag set and module mode. Race is a tag here: the views load
+// sources, they never instrument.
 func selectionViewFlags(sel buildSelection) []string {
-	if len(sel.tags) == 0 {
-		return nil
+	var flags []string
+	if len(sel.tags) > 0 {
+		flags = append(flags, "-tags="+strings.Join(sel.tags, ","))
 	}
-	return []string{"-tags=" + strings.Join(sel.tags, ",")}
+	if mode := moduleModeFlag(sel.moduleMode); mode != "" {
+		flags = append(flags, mode)
+	}
+	return flags
 }
 
-// SelectionKey is a build selection's stable key — its effective tag
-// set and toolchain — the coordinate a resolution record serves under.
-// The default selection (no tags, ambient toolchain) is "default".
-func SelectionKey(tags []string, toolchain string) string {
-	if len(tags) == 0 && toolchain == "" {
+// key is the record and lazy-load coordinate of the complete selection.
+// Policy tags are sorted and deduplicated before constructing a selection.
+func (s buildSelection) key() string {
+	if s.isDefault() {
 		return "default"
 	}
-	return strings.Join(tags, ",") + "\x00" + toolchain
+	return strings.Join(s.tags, ",") + "\x00" + s.toolchain + "\x00" + moduleModeFlag(s.moduleMode)
+}
+
+func (s buildSelection) isDefault() bool {
+	return len(s.tags) == 0 && s.toolchain == "" && s.moduleMode == stipulatorv1.GoModuleMode_GO_MODULE_MODE_UNSPECIFIED
 }
 
 // buildSelection is one resolution view's identity: the invocation's
 // effective tag-set (declared tags plus the implicit `race` tag of a
-// -race invocation) and its toolchain - a view is the pair, never the
-// tags alone (REQ-go-build-selections).
+// -race invocation), toolchain and module mode (REQ-go-build-selections).
 type buildSelection struct {
-	tags      []string
-	toolchain string
+	tags       []string
+	toolchain  string
+	moduleMode stipulatorv1.GoModuleMode
 }
 
 // policyBuildSelections derives the resolution views from the accepted
 // policy record: the default no-tag view first, then one view per
-// distinct invocation tag-set in the policy's canonical invocation
+// distinct invocation selection in the policy's canonical invocation
 // order (REQ-go-build-selections). The policy is the authority on
 // which build selections exist - execution discovery already runs
 // them - so resolution reads the same record rather than growing a
@@ -437,7 +445,7 @@ func policyBuildSelections(dir string) ([]buildSelection, []string, error) {
 		return nil, nil, fmt.Errorf("resolution build selections: %w", err)
 	}
 	selections := []buildSelection{{}}
-	seen := map[string]bool{}
+	seen := map[string]bool{selections[0].key(): true}
 	var crossPlatform []string
 	for _, inv := range p.GetInvocations() {
 		cfg := inv.GetGo()
@@ -469,16 +477,13 @@ func policyBuildSelections(dir string) ([]buildSelection, []string, error) {
 		// selection, never a duplicate view's load cost.
 		sort.Strings(tags)
 		tags = slices.Compact(tags)
-		if len(tags) == 0 {
-			continue
-		}
-		toolchain := cfg.GetToolchain()
-		key := strings.Join(tags, ",") + "\x00" + toolchain
+		sel := buildSelection{tags: tags, toolchain: cfg.GetToolchain(), moduleMode: cfg.GetModuleMode()}
+		key := sel.key()
 		if seen[key] {
 			continue
 		}
 		seen[key] = true
-		selections = append(selections, buildSelection{tags: tags, toolchain: toolchain})
+		selections = append(selections, sel)
 	}
 	return selections, crossPlatform, nil
 }
@@ -490,7 +495,7 @@ func (b *Backend) Resolve(symbol string) (verify.Resolution, string, error) {
 }
 
 // ResolveIn is Resolve naming the build selection whose view resolved
-// the symbol (SelectionKey), empty when it did not resolve: the
+// the symbol, empty when it did not resolve: the
 // coordinate a resolution record is served under.
 func (b *Backend) ResolveIn(symbol string) (verify.Resolution, string, string, error) {
 	// The degraded-view refusal precedes every silent-NotFound arm: a
@@ -1056,18 +1061,24 @@ func (b *Backend) site(pkg *packages.Package, pos token.Pos) string {
 }
 
 // viewLabel spells a build selection's key for a reader: the default
-// view by its name, a tagged view by its tags, a toolchain by its
-// version.
+// view by its name, otherwise the declared tags, toolchain and module mode.
 func viewLabel(sel string) string {
-	if sel == SelectionKey(nil, "") {
+	if sel == (buildSelection{}).key() {
 		return sel
 	}
-	tags, toolchain, _ := strings.Cut(sel, "\x00")
-	label := "-tags=" + tags
-	if toolchain != "" {
-		label += " toolchain " + toolchain
+	tags, rest, _ := strings.Cut(sel, "\x00")
+	toolchain, mode, _ := strings.Cut(rest, "\x00")
+	var parts []string
+	if tags != "" {
+		parts = append(parts, "-tags="+tags)
 	}
-	return label
+	if toolchain != "" {
+		parts = append(parts, "toolchain "+toolchain)
+	}
+	if mode != "" {
+		parts = append(parts, mode)
+	}
+	return strings.Join(parts, " ")
 }
 
 // packageLoaded reports whether the selection's view already holds the

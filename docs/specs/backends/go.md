@@ -66,13 +66,13 @@ host is the host view; a cross-platform selection cannot execute
 on-host, so it gets no resolution view and is a named refusal beside
 the unloadable-view class - a reference the loaded views cannot answer
 refuses with the unresolvable selection named, never a silent absence. The default view is consulted first and
-then each tagged view in the policy's canonical invocation order; the
+then each distinct declared selection in the policy's canonical invocation order; the
 first declaring view supplies the resolution and shape hash, and the
 declaring view's file is the symbol's file for impact and freshness
 keying, so a tag-gated edit invalidates the witnesses it declares. A
 tree without a policy record resolves the default view alone; a
 malformed record is a verification error, never a silent narrowing to
-the default view. A tagged view that cannot load degrades to a named
+the default view. A declared selection that cannot load degrades to a named
 refusal - binding stays healthy for every symbol the loaded views
 resolve, while a reference they cannot answer refuses with the
 degraded view named, never a silent absence that masks an unloadable
@@ -151,6 +151,14 @@ seed file — and the conservation universe is the workspace's default build
 selection as the executing host resolves it at load: obligations reachable only through an invocation's explicit tag
 widening are a reviewed coverage addition, selected without an omission
 finding elsewhere.
+Named test and fuzz discovery follows Go's entry-point syntax: a top-level
+name under Go's prefix rule, one pointer parameter whose type name is `T` or
+`F` (bare or qualified), no result and no type parameters. A local or re-exported alias may
+supply the handle; discovery does not require a particular import in that file.
+Compilation determines type compatibility. Build failure remains a package
+obligation even when a test-shaped declaration cannot type-check. `TestMain`
+with the `T` shape is an ordinary test; the `M` harness wrapper belongs to the
+package obligation. Discovery alone grants no witness or classifier tier.
 
 **REQ-go-owned-processes** (behavior): Every child process spawned for
 Go policy execution or package discovery MUST run inside an owned,
