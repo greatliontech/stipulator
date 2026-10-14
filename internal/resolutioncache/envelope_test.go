@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/greatliontech/stipulator/stipulate"
@@ -17,7 +18,7 @@ func TestResolutionRecordsRequireTheWholeEnvelope(t *testing.T) {
 		t.Run(fmt.Sprintf("%q", suffix), func(t *testing.T) {
 			t.Setenv("XDG_CACHE_HOME", t.TempDir())
 			dir := t.TempDir()
-			good := Record{Selection: "default", Symbol: "example.com/p.Good", Fingerprint: fingerprint("a"), Resolution: "resolved", Package: "example.com/p", WitnessClass: "example"}
+			good := Record{Selection: "default", Symbol: "example.com/p.Good", Fingerprint: fingerprint("a"), Certificate: certificate(), Resolution: "resolved", Shape: "shape", Package: "example.com/p", WitnessClass: "example"}
 			candidate := good
 			candidate.Symbol = "example.com/p.Candidate"
 			if err := InstallAll(dir, []Record{good, candidate}); err != nil {
@@ -84,8 +85,8 @@ func FuzzResolutionEnvelopeSuffix(f *testing.F) {
 	}
 	f.Fuzz(func(t *testing.T, suffix []byte) {
 		stipulate.Covers(t, "REQ-evidence-resolution-cache-format")
-		rec := Record{Selection: "default", Symbol: "example.com/p.F", Fingerprint: fingerprint("a"), Resolution: "resolved"}
-		data, err := json.Marshal(entry{Version: version, Selection: rec.Selection, Symbol: rec.Symbol, Fingerprint: rec.Fingerprint, Resolution: rec.Resolution})
+		rec := Record{Selection: "default", Symbol: "example.com/p.F", Fingerprint: fingerprint("a"), Certificate: certificate(), Resolution: "resolved", Shape: "shape", Package: "example.com/p", WitnessClass: "example"}
+		data, err := json.Marshal(entry{Version: version, Selection: rec.Selection, Symbol: rec.Symbol, Fingerprint: rec.Fingerprint, Certificate: rec.Certificate, Resolution: rec.Resolution, Shape: rec.Shape, Package: rec.Package, WitnessClass: rec.WitnessClass})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -95,4 +96,90 @@ func FuzzResolutionEnvelopeSuffix(f *testing.F) {
 			t.Fatalf("suffix %q: admitted=%t want=%t, record=%+v", suffix, ok, want, got)
 		}
 	})
+}
+
+func TestResolutionCertificateRejectsUnsupportedMembers(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-resolution-cache-format")
+	good, err := json.Marshal(certificate())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded Certificate
+	if err := json.Unmarshal(good, &decoded); err != nil || decoded != certificate() {
+		t.Fatalf("valid certificate: %+v %v", decoded, err)
+	}
+	for name, raw := range map[string]string{
+		"absent fields":  `{}`,
+		"null":           `null`,
+		"future rule":    strings.Replace(string(good), Derivation, "future", 1),
+		"invalid digest": strings.Replace(string(good), certificate().Inputs, strings.Repeat("z", 64), 1),
+		"short digest":   strings.Replace(string(good), certificate().Inputs, "a", 1),
+		"unknown":        strings.TrimSuffix(string(good), "}") + `,"extra":0}`,
+		"duplicate":      strings.TrimSuffix(string(good), "}") + `,"derivation":"` + Derivation + `"}`,
+		"case alias":     strings.Replace(string(good), `"inputs"`, `"Inputs"`, 1),
+		"null inputs":    strings.Replace(string(good), `"`+certificate().Inputs+`"`, `null`, 1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			var got Certificate
+			if err := json.Unmarshal([]byte(raw), &got); err == nil {
+				t.Fatalf("unsupported certificate admitted: %s", raw)
+			}
+		})
+	}
+}
+
+func TestResolutionEnvelopeRejectsAmbiguousAnswers(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-resolution-cache-format")
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	dir := t.TempDir()
+	rec := Record{Selection: "default", Symbol: "example.com/p.F", Fingerprint: fingerprint("a"), Certificate: certificate(), Resolution: "resolved", Shape: "shape", Package: "example.com/p", WitnessClass: "example"}
+	if err := InstallAll(dir, []Record{rec}); err != nil {
+		t.Fatal(err)
+	}
+	root, _ := StoreDir(dir)
+	name := mustName(t, rec)
+	data, err := os.ReadFile(filepath.Join(root, name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := decodeRecord(name, data); !ok || got != rec {
+		t.Fatalf("valid answer refused: %+v %t", got, ok)
+	}
+	for label, raw := range map[string]string{
+		"duplicate verdict": strings.TrimSuffix(string(data), "}") + `,"resolution":"resolved"}`,
+		"case alias":        strings.Replace(string(data), `"resolution"`, `"Resolution"`, 1),
+		"null reason":       strings.TrimSuffix(string(data), "}") + `,"neverServe":null}`,
+		"unknown field":     strings.TrimSuffix(string(data), "}") + `,"extra":0}`,
+		"empty shape":       strings.Replace(string(data), `"shape": "shape"`, `"shape": ""`, 1),
+		"wrong owner":       strings.Replace(string(data), `"package": "example.com/p"`, `"package": "example.com/other"`, 1),
+		"unknown class":     strings.Replace(string(data), `"witnessClass": "example"`, `"witnessClass": "future"`, 1),
+	} {
+		t.Run(label, func(t *testing.T) {
+			if raw == string(data) {
+				t.Fatal("tamper did not change input")
+			}
+			if _, ok := decodeRecord(name, []byte(raw)); ok {
+				t.Fatalf("ambiguous answer admitted: %s", raw)
+			}
+		})
+	}
+}
+
+func TestResolutionObjectMembers(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-resolution-cache-format")
+	for _, tc := range []struct {
+		data string
+		want bool
+	}{
+		{`{"reason":""}`, true},
+		{`{"reason":null}`, false},
+		{`{"reason":"","reason":""}`, false},
+		{`{"Reason":""}`, false},
+		{`{"other":""}`, false},
+		{`{"reason":""} null`, false},
+	} {
+		if _, ok := objectFields([]byte(tc.data), "reason"); ok != tc.want {
+			t.Errorf("object %s: admitted=%t want=%t", tc.data, ok, tc.want)
+		}
+	}
 }

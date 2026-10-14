@@ -957,7 +957,7 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Eng
 	if err != nil {
 		return nil, err
 	}
-	opts := []gofresh.Option{gofresh.WithProducerEnv(g.witnessEnv...), gofresh.WithBuildInputs(inputs...), gofresh.WithEvidenceRoot(dir)}
+	opts := []gofresh.Option{gofresh.WithBuildInputs(inputs...), gofresh.WithEvidenceRoot(dir)}
 	if g.assumePure {
 		// The reviewed purity assumption rides every subject of the
 		// group as a caller assertion; the recorded fingerprints carry
@@ -992,7 +992,11 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Eng
 	// only pay the reachability pass for a discharge the store strips
 	// (REQ-evidence-witness-freshness-package-process).
 	opts = append(opts, gofresh.WithPackageProcessExecution())
-	return newEngine(ctx, g.directory(dir), g.env, buildFlags(g.race, g.tags, g.moduleMode, buildPGO(dir, g.pgo)), opts...)
+	// The witness command compiles as well as executes. Analyze under its
+	// complete environment, including the width cap: a compiler wrapper can
+	// read that value too. A split environment requires a separately built
+	// artifact, which this producing path does not provide.
+	return newEngine(ctx, g.directory(dir), g.witnessEnv, buildFlags(g.race, g.tags, g.moduleMode, buildPGO(dir, g.pgo)), opts...)
 }
 
 func (g *captureGroup) directory(root string) string {
@@ -1033,7 +1037,7 @@ func newEngine(ctx context.Context, dir string, env, flags []string, extra ...go
 			progress.FromContext(ctx).Keepalive()
 		}),
 	}
-	return gofresh.New(append(opts, extra...)...)
+	return gofresh.NewContext(ctx, append(opts, extra...)...)
 }
 
 // engineDiagnostics receives payload-bearing gofresh diagnostics from

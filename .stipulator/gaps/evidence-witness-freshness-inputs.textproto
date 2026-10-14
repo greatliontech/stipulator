@@ -3,6 +3,6 @@
 
 requirement_id: "REQ-evidence-witness-freshness-inputs"
 reason: "Omitted PGO is treated as no profile input although the toolchain consumes default.pgo. Valid profile changes leave the captured native fingerprint unchanged and a later native check valid; explicit auto/path controls stale correctly. The admitted build description must own actual default-consuming inputs."
-content_hash: "25127405f79ee5c753d330c05e23a0806066cb41603115da6b944bd96969d815"
-source_hash: "68fe78fc10ea0f4ea69fd4b8f058d1faf0302be993d539cf064d0cd89e254ba0"
+content_hash: "256ec6d05c2325fc01cbd5c9359a58e90521de6a6d9ea3d7da7bb6b41c0b7e7c"
+source_hash: "4ee5f6a164fd8714237a519665a30bee349f0fb0181ae611ee29265d2aa688af"
 lands { manual { condition: "Omitted and explicit auto-PGO guard every profile actually consumed under the selected module/workspace build, with off/path, missing/unreadable, producing validation and record-serving regressions." contradicted: true } }

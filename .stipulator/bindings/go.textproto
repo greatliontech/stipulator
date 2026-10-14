@@ -1740,3 +1740,23 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "e2891403ae431d837116c98fe186a88ae7fbe1a5e489f2de53869961e6b2e5b9"
 }
+
+bindings {
+  requirement_id: "REQ-go-build-selections"
+  content_hash: "1184b7a3e61c0c1e97434e1235867f5fc66fce432a4e1539a230971772f2c6e4"
+  source_hash: "fca1bda61d0df83fcd4836d962aa287bbbb2b820e42f7f010e8a2f4230d8055b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestResolutionCertificateCoversEarlierDeclarationAbsence"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "39d86376942de27daffba6cba65f4166d4ec860f64da2bafd5f193ae042e4843"
+}
+
+bindings {
+  requirement_id: "REQ-go-build-selections"
+  content_hash: "1184b7a3e61c0c1e97434e1235867f5fc66fce432a4e1539a230971772f2c6e4"
+  source_hash: "fca1bda61d0df83fcd4836d962aa287bbbb2b820e42f7f010e8a2f4230d8055b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestResolutionCertificateCoversViewPrecedence"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a18f00f369ae6db3fd052f60fe71882e2a24aefe92895c4948d28b805ebf70ce"
+}

@@ -68,7 +68,7 @@ type Served struct {
 	// the child loads the whole tree, and no selection is read — the
 	// form the declaration-reading roles take (NewWholeTree).
 	whole  bool
-	sels   map[string]buildSelection
+	sels   []buildSelection
 	served map[string]resolutioncache.Record
 	// set is the operation's symbol set. When it names symbols the
 	// child is scoped to their stale remainder and a symbol outside the
@@ -87,10 +87,12 @@ type Served struct {
 	// capture equals its opening one, so a resolution answered from the
 	// child's snapshot is never recorded under a fingerprint of a tree
 	// that moved after it (the straddle check).
-	opening map[string]map[gofresh.Subject]gofresh.Fingerprint
-	child   *resolverClient
-	answers map[string]childAnswer
-	pending map[string][]string
+	opening              map[string]map[gofresh.Subject]gofresh.Fingerprint
+	openingCertificates  map[string]resolutioncache.Certificate
+	checkingCertificates map[string]resolutioncache.Certificate
+	child                *resolverClient
+	answers              map[string]childAnswer
+	pending              map[string][]string
 	// refusals holds, per symbol the child was asked about, its serving
 	// refusal or "" — the absence is an answer too.
 	refusals map[string]string
@@ -162,9 +164,7 @@ func NewServed(ctx context.Context, dir string, symbols []string) (*Served, erro
 	if err != nil {
 		return nil, err
 	}
-	for _, sel := range sels {
-		s.sels[sel.key()] = sel
-	}
+	s.sels = sels
 	// An operation that named symbols is scoped to them; one that named
 	// none leaves the set nil, which admits every symbol — the one
 	// encoding the whole-tree form shares.
@@ -184,7 +184,7 @@ func NewServed(ctx context.Context, dir string, symbols []string) (*Served, erro
 		if !s.set[rec.Symbol] {
 			continue
 		}
-		if _, known := s.sels[rec.Selection]; !known {
+		if _, known := s.selection(rec.Selection); !known {
 			continue
 		}
 		if pkg, ok := s.packageOf(rec.Symbol); !ok || pkg != rec.Package || !s.inventory[rec.Selection][pkg] {
@@ -197,8 +197,39 @@ func NewServed(ctx context.Context, dir string, symbols []string) (*Served, erro
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
+	if len(keys) > 0 {
+		certs, err := s.captureSourceCertificates(symbols)
+		if err != nil {
+			s.degraded = append(s.degraded, "source certificate: "+err.Error())
+		}
+		s.checkingCertificates = certs
+	}
 	for _, key := range keys {
 		s.serveSelection(key, bySelection[key])
+	}
+	if beforeCertificateCloseForTest != nil {
+		beforeCertificateCloseForTest()
+	}
+	if len(s.served) > 0 {
+		var names []string
+		for name := range s.served {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		closing, err := s.captureSourceCertificates(names)
+		for _, name := range names {
+			closed, ok := closing[name]
+			if !ok {
+				delete(s.served, name)
+				s.reasons[name] = "no closing source certificate"
+			} else if sourceCertificateMoved(s.checkingCertificates[name], closed) {
+				delete(s.served, name)
+				s.reasons[name] = "source dependencies moved during serving"
+			}
+		}
+		if err != nil {
+			s.degraded = append(s.degraded, "closing source certificate: "+err.Error())
+		}
 	}
 	for _, sym := range symbols {
 		if _, ok := s.served[sym]; !ok {
@@ -247,7 +278,16 @@ func newServed(ctx context.Context, dir string) (*Served, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Served{sample: newToolchainSample(), ctx: ctx, dir: abs, sels: map[string]buildSelection{}, served: map[string]resolutioncache.Record{}, answers: map[string]childAnswer{}, pending: map[string][]string{}, reasons: map[string]string{}}, nil
+	return &Served{sample: newToolchainSample(), ctx: ctx, dir: abs, served: map[string]resolutioncache.Record{}, answers: map[string]childAnswer{}, pending: map[string][]string{}, reasons: map[string]string{}}, nil
+}
+
+func (s *Served) selection(key string) (buildSelection, bool) {
+	for _, sel := range s.sels {
+		if sel.key() == key {
+			return sel, true
+		}
+	}
+	return buildSelection{}, false
 }
 
 // subjectOf derives a subject from its declared package boundary.
@@ -295,9 +335,10 @@ func (s *Served) childPatterns() []string {
 // leaves the selection uncaptured, so nothing publishes under it.
 func (s *Served) openingCapture() {
 	s.opening = map[string]map[gofresh.Subject]gofresh.Fingerprint{}
+	s.openingCertificates = nil
 	keys := make([]string, 0, len(s.sels))
-	for key := range s.sels {
-		keys = append(keys, key)
+	for _, sel := range s.sels {
+		keys = append(keys, sel.key())
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
@@ -306,6 +347,11 @@ func (s *Served) openingCapture() {
 			s.opening[key] = fps
 		}
 	}
+	certs, err := s.captureSourceCertificates(s.unserved)
+	if err != nil {
+		s.degraded = append(s.degraded, "opening source certificate: "+err.Error())
+	}
+	s.openingCertificates = certs
 }
 
 // captureUnder builds a view over the symbols' subjects under one
@@ -315,7 +361,11 @@ func (s *Served) captureUnder(key string, symbols []string, phase string) (map[g
 	if !s.inventoryComplete() {
 		return nil, false
 	}
-	engine, err := selectionEngine(s.ctx, s.dir, s.sels[key], s.sample)
+	sel, known := s.selection(key)
+	if !known {
+		return nil, false
+	}
+	engine, err := selectionEngine(s.ctx, s.dir, sel, s.sample)
 	if err != nil {
 		s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
 		return nil, false
@@ -333,7 +383,7 @@ func (s *Served) captureUnder(key string, symbols []string, phase string) (map[g
 	}
 	var view *gofresh.View
 	for len(subjects) > 0 {
-		view, err = engine.NewView(s.ctx, subjects, s.sels[key].directory(s.dir))
+		view, err = engine.NewView(s.ctx, subjects, sel.directory(s.dir))
 		var unknown *gofresh.UnknownSubjectsError
 		if errors.As(err, &unknown) {
 			gone := map[gofresh.Subject]bool{}
@@ -377,7 +427,11 @@ func (s *Served) captureUnder(key string, symbols []string, phase string) (map[g
 // viewed together, the ones the selected source no longer declares
 // narrowed away by gofresh's own refusal, the rest batch-checked.
 func (s *Served) serveSelection(key string, recs []resolutioncache.Record) {
-	engine, err := selectionEngine(s.ctx, s.dir, s.sels[key], s.sample)
+	sel, known := s.selection(key)
+	if !known {
+		return
+	}
+	engine, err := selectionEngine(s.ctx, s.dir, sel, s.sample)
 	if err != nil {
 		s.degraded = append(s.degraded, fmt.Sprintf("selection %q: %v", key, err))
 		return
@@ -399,7 +453,7 @@ func (s *Served) serveSelection(key string, recs []resolutioncache.Record) {
 	}
 	var view *gofresh.View
 	for len(subjects) > 0 {
-		view, err = engine.NewView(s.ctx, subjects, s.sels[key].directory(s.dir))
+		view, err = engine.NewView(s.ctx, subjects, sel.directory(s.dir))
 		var unknown *gofresh.UnknownSubjectsError
 		if errors.As(err, &unknown) {
 			// Vanished since they were recorded: stale, resolved
@@ -443,6 +497,15 @@ func (s *Served) serveSelection(key string, recs []resolutioncache.Record) {
 	}
 	for _, subject := range subjects {
 		rec := bySubject[subject]
+		certificate, ok := s.checkingCertificates[rec.Symbol]
+		if !ok {
+			s.reasons[rec.Symbol] = "no current source certificate"
+			continue
+		}
+		if sourceCertificateMoved(rec.Certificate, certificate) {
+			s.reasons[rec.Symbol] = "source dependencies"
+			continue
+		}
 		fp, captured := current[subject]
 		if !captured {
 			s.reasons[rec.Symbol] = "no current capture"
@@ -456,10 +519,11 @@ func (s *Served) serveSelection(key string, recs []resolutioncache.Record) {
 	}
 }
 
-// closureMoved names the source-closure tier that differs between a
-// record's fingerprint and the current capture, or "" when the
-// closures are equal — the resolution's whole proof. The tiers are
-// gofresh's source tiers in its order: the maximal (core) closure, the
+// closureMoved names the native source component that differs between a
+// record and the current capture, or "" when those components agree.
+// The complete certificate is judged separately. The native comparison
+// includes derivation, content and admission identities beside the
+// maximal (core) closure, the
 // subject package's test-variant compartment — the core excludes the
 // package's own test-only declarations, and a witness's class and
 // serving refusal are functions of its own body, which lives exactly
@@ -471,6 +535,12 @@ func closureMoved(recorded, current gofresh.Fingerprint) string {
 		return "closure"
 	case recorded.TestVariantClosure == "" || recorded.TestVariantClosure != current.TestVariantClosure:
 		return "test variants"
+	case recorded.ClosureStrategy == "" || recorded.ClosureStrategy != current.ClosureStrategy:
+		return "closure derivation"
+	case recorded.ToolchainContent == "" || recorded.ToolchainContent != current.ToolchainContent:
+		return "toolchain content"
+	case recorded.AdmissionPolicy == "" || recorded.AdmissionPolicy != current.AdmissionPolicy:
+		return "admission policy"
 	case recorded.Guards.Toolchain != current.Guards.Toolchain:
 		return "toolchain"
 	case recorded.Guards.BuildConfig != current.Guards.BuildConfig:
@@ -870,6 +940,10 @@ func (s *Served) publishSelection(key string, symbols []string) {
 	if !ok {
 		return
 	}
+	certificates, err := s.captureSourceCertificates(symbols)
+	if err != nil {
+		s.degraded = append(s.degraded, "publish source certificate: "+err.Error())
+	}
 	opening := s.opening[key]
 	var recs []resolutioncache.Record
 	var account publishAccount
@@ -897,6 +971,20 @@ func (s *Served) publishSelection(key string, symbols []string) {
 			account.moved = append(account.moved, symbol)
 			continue
 		}
+		certificate, opened := s.openingCertificates[symbol]
+		if !opened {
+			account.unopened = append(account.unopened, symbol)
+			continue
+		}
+		closedCertificate, captured := certificates[symbol]
+		if !captured {
+			account.uncaptured = append(account.uncaptured, symbol)
+			continue
+		}
+		if sourceCertificateMoved(certificate, closedCertificate) {
+			account.moved = append(account.moved, symbol)
+			continue
+		}
 		// The record carries the capture's source tiers alone — the
 		// store's contract; a subject's purity assertion or observation
 		// proof says nothing about where its declaration lives — and a
@@ -909,7 +997,8 @@ func (s *Served) publishSelection(key string, symbols []string) {
 		}
 		recs = append(recs, resolutioncache.Record{
 			Selection: key, Symbol: symbol, Fingerprint: source,
-			Resolution: resolutionWire(a.res), Shape: a.shape, Package: a.pkg,
+			Certificate: certificate,
+			Resolution:  resolutionWire(a.res), Shape: a.shape, Package: a.pkg,
 			WitnessClass: classWire(a.class), WitnessClassReason: a.reason,
 			NeverServe: s.refusals[symbol],
 		})

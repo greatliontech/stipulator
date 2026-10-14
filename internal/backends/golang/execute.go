@@ -960,17 +960,14 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, select
 	producer.SetInvocation(n.Name)
 	producer.SetProcessOrdinal(ordinal)
 	frame.outcome = proof.prepareOutcome(ctx, selection, frame.frame, processIdentity(n, producer, pkg))
-	witnessEnv := witnessProcessEnv(n, frame)
-	cmd, err := ownedRunner.Command(ctx, n.Dir, witnessEnv, testCommandArgs(n, pkg, selection, logPath)...)
+	cmd, err := ownedRunner.Command(ctx, n.Dir, witnessEnvOf(n), testCommandArgs(n, pkg, selection, logPath)...)
 	if err != nil {
 		return degradedRun(n.Name, pkg, fmt.Sprintf("spawning go test: %v", err), false)
 	}
-	// Spawn and ingest use one environment (witnessProcessEnv): the
-	// policy's preparation derives PWD from the command's directory,
-	// the tree root, where the witness environment pins the package
-	// directory the test binary starts in — the spawn takes the witness
-	// environment whole, so the two never diverge.
-	cmd.Env = witnessEnv
+	// This command compiles in the invocation directory. cmd/go derives
+	// the test binary's PWD from the package directory when it starts it;
+	// witnessProcessEnv describes that later process for observation ingest.
+	// Do not lend the binary's PWD to the compiler or a go-command wrapper.
 	var stderr boundedBuffer
 	cmd.Stderr = writerFunc(func(p []byte) (int, error) {
 		stderr.write(string(p))

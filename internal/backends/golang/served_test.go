@@ -14,7 +14,6 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/internal/records"
-	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/internal/resolutioncache"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
@@ -329,7 +328,7 @@ func TestGCResolutionsKeepsBoundAndWitnessSymbols(t *testing.T) {
 	dir := servedModule(t)
 	ctx := context.Background()
 	for _, sym := range []string{"example.com/served/p.F", "example.com/served/p.TestF", "example.com/served/p.Orphan"} {
-		if err := resolutioncache.InstallAll(dir, []resolutioncache.Record{{Selection: "default", Symbol: sym, Fingerprint: fingerprintFor("a"), Resolution: "resolved", Package: "example.com/served/p"}}); err != nil {
+		if err := resolutioncache.InstallAll(dir, []resolutioncache.Record{{Selection: "default", Symbol: sym, Fingerprint: fingerprintFor("a"), Certificate: resolutioncache.Certificate{Derivation: resolutioncache.Derivation, Inputs: strings.Repeat("e", 64)}, Resolution: "resolved", Shape: "shape", WitnessClass: "example", Package: "example.com/served/p"}}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -350,7 +349,7 @@ func TestGCResolutionsKeepsBoundAndWitnessSymbols(t *testing.T) {
 }
 
 func fingerprintFor(closure string) witnesscache.Fingerprint {
-	return witnesscache.Fingerprint{MaximalClosure: strings.Repeat(closure, 32), TestVariantClosure: strings.Repeat("b", 32), Guards: guard.Guards{Toolchain: "go1.27.0", BuildConfig: strings.Repeat("c", 32)}, ResultKind: gofresh.CodeResult}
+	return witnesscache.Fingerprint{MaximalClosure: strings.Repeat(closure, 32), TestVariantClosure: strings.Repeat("b", 32), ClosureStrategy: gofresh.ClosureStrategy, ToolchainContent: "native-content", AdmissionPolicy: "native-policy", Guards: guard.Guards{Toolchain: "go1.27.0", BuildConfig: strings.Repeat("c", 32)}, ResultKind: gofresh.CodeResult}
 }
 
 func bindingSet(symbols ...string) *stipulatorv1.BindingSet {
@@ -421,7 +420,7 @@ func TestServedTakesTheNewestOfADuplicatedIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	olderName, err := recordstore.Name([]string{twin.Selection, twin.Symbol}, twin.Fingerprint)
+	olderName, err := twin.FileName()
 	if err != nil {
 		t.Fatal(err)
 	}

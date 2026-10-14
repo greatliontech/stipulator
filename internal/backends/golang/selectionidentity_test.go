@@ -75,7 +75,7 @@ func TestPolicySelectionsRetainEveryDimension(t *testing.T) {
 		t.Fatalf("serving form holds %d views, want %d", len(served.sels), len(keys))
 	}
 	for i, key := range keys {
-		sel, found := served.sels[key]
+		sel, found := served.selection(key)
 		if !found || !reflect.DeepEqual(selectionViewFlags(sel), want[i].flags) || sel.toolchain != selections[i].toolchain {
 			t.Errorf("serving form lost selection %q: %+v", key, sel)
 		}

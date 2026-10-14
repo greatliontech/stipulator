@@ -160,12 +160,13 @@ func explicitPackageAbsence(why string) bool {
 func (s *Served) inventoryPackages(symbols []string) {
 	s.inventory = map[string]map[string]bool{}
 	keys := make([]string, 0, len(s.sels))
-	for key := range s.sels {
-		keys = append(keys, key)
+	for _, sel := range s.sels {
+		keys = append(keys, sel.key())
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		pkgs, err := declarationPackages(s.ctx, s.dir, s.sels[key], symbols)
+		sel, _ := s.selection(key)
+		pkgs, err := declarationPackages(s.ctx, s.dir, sel, symbols)
 		if err != nil {
 			s.degraded = append(s.degraded, fmt.Sprintf("selection %q: package inventory: %v", key, err))
 			continue

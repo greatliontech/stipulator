@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/guard"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/resolutioncache"
 	"github.com/greatliontech/stipulator/internal/verify"
@@ -16,16 +15,14 @@ import (
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
-// TestClosureMovedNamesEveryTier pins the equivalence's four tiers, one
-// anchor each, in gofresh's order: a move in any one of the maximal
-// closure, the test-variant compartment, the toolchain, or the build
-// configuration refuses the serve by name; equal tiers serve; an empty
-// recorded compartment fails closed.
+// TestClosureMovedNamesEveryTier pins the native source identities and
+// their refusal precedence. Equal identities pass; missing required
+// identities and changes refuse by their own names.
 func TestClosureMovedNamesEveryTier(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
 	base := func() (witnesscache.Fingerprint, gofresh.Fingerprint) {
-		rec := witnesscache.Fingerprint{MaximalClosure: strings.Repeat("a", 32), TestVariantClosure: strings.Repeat("b", 32), Guards: guard.Guards{Toolchain: "go1.27.0", BuildConfig: strings.Repeat("c", 32)}}
-		cur := gofresh.Fingerprint{MaximalClosure: rec.MaximalClosure, TestVariantClosure: rec.TestVariantClosure}
+		rec := fingerprintFor("a")
+		cur := gofresh.Fingerprint{MaximalClosure: rec.MaximalClosure, TestVariantClosure: rec.TestVariantClosure, ClosureStrategy: rec.ClosureStrategy, ToolchainContent: rec.ToolchainContent, AdmissionPolicy: rec.AdmissionPolicy}
 		cur.Guards.Toolchain, cur.Guards.BuildConfig = rec.Guards.Toolchain, rec.Guards.BuildConfig
 		return rec, cur
 	}
@@ -39,6 +36,11 @@ func TestClosureMovedNamesEveryTier(t *testing.T) {
 		{"closure", func(f *witnesscache.Fingerprint) { f.MaximalClosure = strings.Repeat("d", 32) }},
 		{"test variants", func(f *witnesscache.Fingerprint) { f.TestVariantClosure = strings.Repeat("d", 32) }},
 		{"test variants", func(f *witnesscache.Fingerprint) { f.TestVariantClosure = "" }},
+		{"closure derivation", func(f *witnesscache.Fingerprint) { f.ClosureStrategy = "other" }},
+		{"toolchain content", func(f *witnesscache.Fingerprint) { f.ToolchainContent = "other" }},
+		{"toolchain content", func(f *witnesscache.Fingerprint) { f.ToolchainContent = "" }},
+		{"admission policy", func(f *witnesscache.Fingerprint) { f.AdmissionPolicy = "other" }},
+		{"admission policy", func(f *witnesscache.Fingerprint) { f.AdmissionPolicy = "" }},
 		{"toolchain", func(f *witnesscache.Fingerprint) { f.Guards.Toolchain = "go1.26.0" }},
 		{"build configuration", func(f *witnesscache.Fingerprint) { f.Guards.BuildConfig = strings.Repeat("d", 32) }},
 	} {
@@ -79,7 +81,7 @@ func TestServedIgnoresRecordsOfWithdrawnSelections(t *testing.T) {
 		}
 	}
 	// The same fingerprint under a selection the policy never declared.
-	withdrawn := resolutioncache.Record{Selection: "withdrawn\x00go1.0", Symbol: "example.com/served/p.H", Fingerprint: fp, Resolution: "resolved", Shape: "bogus", Package: "example.com/served/p"}
+	withdrawn := resolutioncache.Record{Selection: "withdrawn\x00go1.0", Symbol: "example.com/served/p.H", Fingerprint: fp, Certificate: resolutioncache.Certificate{Derivation: resolutioncache.Derivation, Inputs: strings.Repeat("e", 64)}, Resolution: "resolved", Shape: "bogus", Package: "example.com/served/p", WitnessClass: "example"}
 	if err := resolutioncache.InstallAll(dir, []resolutioncache.Record{withdrawn}); err != nil {
 		t.Fatal(err)
 	}

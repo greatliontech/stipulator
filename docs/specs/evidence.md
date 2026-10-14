@@ -336,6 +336,11 @@ it licensed, while an added exclusion serves existing evidence unchanged
 — its identities are in the manifest and simply revalidate.
 Analysis construction, serving, retry capture and dynamic-state explanation
 use the owning invocation's module directory and workspace environment. The
+analysis of a compiling witness command uses that command's complete
+environment, including its derived parallelism cap: a compiler wrapper may
+consume any variable, not only the Go toolchain's named build settings. Its
+PWD names the invocation directory; cmd/go sets the test binary's PWD to
+its package directory, which is the environment observation ingest describes. The
 verification tree remains the evidence root for observations and reviewed
 paths; a tree-relative PGO profile is resolved from that root for both build
 and analysis. Independent module roots are not substituted with root-module
@@ -754,7 +759,8 @@ record's capture did. Its fingerprint keys are `maximalClosure`,
 `observationAssertion` plus `observationProof` pair, and optional
 `purityAssertion`, `dynamicStateVouches`, `singleSubjectDischarges`,
 `packageProcessDischarges`, `dynamicStateStrategy`, `closureStrategy`,
-`runtimeInputs`, `runtimeDigest`, optional `inertTestVariantApplicability`,
+`runtimeInputs`, `runtimeDigest`, `toolchainContent`, `admissionPolicy`,
+optional `inertTestVariantApplicability`,
 and numeric `resultKind`; the applicability object is Gofresh's native
 record form (`strategy` and `testVariantClosure`) and never replaces the
 producing `testVariantClosure`; closure
@@ -964,6 +970,20 @@ not stored execution outcomes: they acquire no runtime receipt or historical
 subject-outcome support. Current re-derivation supplies a new certificate,
 never missing evidence about an earlier subject execution. Serving such a
 certificate retains its scope and authority, so REQ-evidence-promotion holds.
+The certificate identifies the ordered selected views, declaration-package
+presence and absence, their module/workspace context, selected source and
+export inputs of the owner and its dependencies (including helper bodies in
+other views), resolved analysis configuration, native toolchain-content and
+admission-policy identities, and the identified classifier implementation.
+The classifier identity includes the analyzer executable's content, sampled
+at startup, so a changed linked loader or frontend cannot inherit a prior
+derivation merely by retaining its version label. The executable supplied at
+startup is held unchanged while that identity is sampled; an unavailable
+identity permits typed resolution but no certificate reuse or publication.
+Certificate revalidation precedes consuming a served answer and follows the
+native source checks. A package-specific derivation failure affects only
+certificates depending on that package; a shared configuration failure affects
+every certificate depending on that configuration.
 
 **REQ-evidence-resolution-freshness-typed-load** (behavior): A symbol without a
 valid record, a symbol the selected source no longer declares, and a
@@ -983,9 +1003,9 @@ so a policy the tree cannot parse refuses a declaration read only
 where the typed path refuses it, its typed load is the whole tree, and
 it serves and publishes nothing; a record is written only from a typed
 resolution, never from a served one, and only when the symbol's
-fingerprint captured before the typed load opened equals the one
-captured after the resolution — a symbol that moved between them is
-not recorded.
+fingerprint and complete source certificate captured before the typed load
+opened equal those captured after the resolution — a dependency that moved
+between them prevents recording the answer.
 Package boundaries are established from selected declaration inventories
 before the opening capture and typed load. If an inventory is unavailable,
 no source record serves or publishes from that operation; typed resolution
@@ -1023,11 +1043,12 @@ never a verdict input.
 cache MUST be a record store (REQ-evidence-record-store-layout) beside
 the witness cache, its identity parts the resolving build selection's
 key and the symbol, holding one record per identity — a record
-installed under another fingerprint supersedes the identity's prior
+installed under another fingerprint or certificate supersedes the identity's prior
 one — each carrying one record object with integer `version`, the
 selection key, the symbol, the fingerprint (source-closure tiers only:
 maximal closure, test-variant compartment, the closure strategy that
-derived them, toolchain, build configuration, result kind — the
+derived them, native toolchain content and admission policy, toolchain,
+build configuration, result kind — the
 publisher projects the capture onto exactly those parts, since a
 subject's purity assertion, observation proof, vouches, discharges,
 runtime inputs, or machine guard say nothing about where its
@@ -1038,8 +1059,15 @@ Gofresh's published record form, decoded and refused exactly as the
 witness record's (REQ-evidence-witness-cache-format-fingerprint). A record whose
 fingerprint carries any observation, purity, or runtime tier is
 ignored, because resolution observes nothing at run time. A classifier change
-that alters what a record proves bumps the version, so a record of a
-prior classifier never serves.
+that alters what a record proves changes its derivation identity, independently
+of the envelope version, so a record of an incompatible classifier never serves.
+Version 5 adds a required `certificate` object with exactly two string members:
+`derivation`, currently `stipulator/source-resolution@1`, and `inputs`, a
+64-character lowercase hexadecimal SHA-256 digest of the complete source
+dependency description. Missing, unknown or malformed certificate support
+requires typed re-derivation. The filename's content digest covers both the
+native fingerprint and the certificate. These are derivation inputs, not
+runtime evidence or a receipt for an executed subject.
 The default selection key is `default`; every other key joins five
 components with NUL: the sorted, deduplicated effective tags joined by comma,
 the declared toolchain, and the module-mode flag (`-mod=mod`, `-mod=readonly`,
@@ -1051,12 +1079,16 @@ without the complete selection set, are refused and re-derived rather than
 upgraded. Version 2 records also lack physical-source ownership in their
 classification and are refused. Version 3 records lack declared package
 boundary and module/workspace-context fidelity and are also refused; version
-4 carries the context-qualified key and current classifier's answers. This key identifies
+4 carries the context-qualified key but lacks the complete cross-view
+certificate and is also refused. Version 5 retains that key. This key identifies
 one view, not the complete certificate required by
 REQ-evidence-resolution-freshness.
 The envelope is exactly one complete JSON object, permitting only JSON
 whitespace after its closing delimiter. Additional values or trailing garbage
-make that file alone malformed. Loading and collection use the same whole-input
+make that file alone malformed. Unknown, duplicated, case-aliased or null
+members also refuse the containing record. A served answer requires a declared
+owning-package prefix, a nonempty shape for a resolved declaration, and a
+recognized witness class. Loading and collection use the same whole-input
 admission; neither treats a valid prefix as a complete record. This outer
 framing does not replace the native fingerprint member's own codec rules.
 

@@ -16,7 +16,7 @@ func TestIncompleteSelectionRecordsNeverServe(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-cache-format")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
-	current := Record{Selection: "default", Symbol: "example.com/p.F", Fingerprint: fingerprint("a"), Resolution: "resolved"}
+	current := Record{Selection: "default", Symbol: "example.com/p.F", Fingerprint: fingerprint("a"), Certificate: certificate(), Resolution: "resolved", Shape: "shape", Package: "example.com/p", WitnessClass: "example"}
 	if err := InstallAll(dir, []Record{current}); err != nil {
 		t.Fatal(err)
 	}
@@ -29,13 +29,13 @@ func TestIncompleteSelectionRecordsNeverServe(t *testing.T) {
 		t.Fatal(err)
 	}
 	var written struct{ Version int }
-	if err := json.Unmarshal(data, &written); err != nil || written.Version != 4 {
-		t.Fatalf("writer version = %d, %v; want package-context version 4", written.Version, err)
+	if err := json.Unmarshal(data, &written); err != nil || written.Version != 5 {
+		t.Fatalf("writer version = %d, %v; want source-certificate version 5", written.Version, err)
 	}
-	for _, v := range []int{1, 2, 3} {
+	for _, v := range []int{1, 2, 3, 4} {
 		legacy := current
 		legacy.Fingerprint = fingerprint(string(rune('0' + v)))
-		data, err = json.Marshal(entry{Version: v, Selection: legacy.Selection, Symbol: legacy.Symbol, Fingerprint: legacy.Fingerprint, Resolution: legacy.Resolution})
+		data, err = json.Marshal(entry{Version: v, Selection: legacy.Selection, Symbol: legacy.Symbol, Fingerprint: legacy.Fingerprint, Certificate: legacy.Certificate, Resolution: legacy.Resolution, Shape: legacy.Shape, Package: legacy.Package, WitnessClass: legacy.WitnessClass})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -46,7 +46,7 @@ func TestIncompleteSelectionRecordsNeverServe(t *testing.T) {
 	if got := Load(dir); len(got) != 1 || got[0] != current {
 		t.Fatalf("incomplete-selection record served beside current record: %+v", got)
 	}
-	if removed, kept, err := GC(t.Context(), dir, func(string, string) bool { return true }); err != nil || removed != 3 || kept != 1 {
+	if removed, kept, err := GC(t.Context(), dir, func(string, string) bool { return true }); err != nil || removed != 4 || kept != 1 {
 		t.Fatalf("collecting incomplete selection records: removed=%d kept=%d err=%v", removed, kept, err)
 	}
 }

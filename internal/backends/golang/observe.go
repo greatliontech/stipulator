@@ -250,20 +250,13 @@ func incompleteObservationReason(st *streamState, waitErr error, disposition sti
 	return ""
 }
 
-// witnessProcessEnv is the frozen environment one package's witness
-// process actually runs under: the invocation environment with PWD
-// pinned to the package directory the test binary starts in, so a PWD
-// read is truthful — fully determined by the frame identity — and
-// admits recordless instead of sealing process-local. Spawn and
-// ingestion MUST use the same environment; this helper is the single
-// source for both, and the facade's ingest refuses an environment whose
-// PWD does not name the frame's package directory. The go tool
-// independently appends the same PWD=<package dir> when it spawns the
-// test binary, so the spawn-side PWD pin is deliberately redundant: it
-// keeps the ingest mirror sound even if a future toolchain stopped
-// supplying it, which is why no test can distinguish dropping the
-// spawn-side PWD pin alone. The width cap, by contrast, reaches the
-// child only through this call and is pinned by the execute tests.
+// witnessProcessEnv mirrors cmd/go's test-process environment for
+// observation ingestion: the frozen witness environment with PWD set to
+// the package directory where cmd/go starts the binary. The facade
+// refuses a PWD that does not name the frame's package directory. The
+// compiling command instead keeps its invocation-directory PWD; it must
+// not borrow the later test process's coordinate. Both environments
+// share the width derivation through witnessEnvOf.
 func witnessProcessEnv(n *NormalizedInvocation, frame observationFrame) []string {
 	env := witnessEnvOf(n)
 	if frame.frame.PkgDir == "" {

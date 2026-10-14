@@ -15,7 +15,11 @@ import (
 )
 
 func fingerprint(closure string) witnesscache.Fingerprint {
-	return witnesscache.Fingerprint{MaximalClosure: strings.Repeat(closure, 32), TestVariantClosure: strings.Repeat("b", 32), Guards: guard.Guards{Toolchain: "go1.27.0", BuildConfig: strings.Repeat("c", 32)}, ResultKind: gofresh.CodeResult}
+	return witnesscache.Fingerprint{MaximalClosure: strings.Repeat(closure, 32), TestVariantClosure: strings.Repeat("b", 32), ClosureStrategy: gofresh.ClosureStrategy, ToolchainContent: "toolchain-content", AdmissionPolicy: "admission-policy", Guards: guard.Guards{Toolchain: "go1.27.0", BuildConfig: strings.Repeat("c", 32)}, ResultKind: gofresh.CodeResult}
+}
+
+func certificate() Certificate {
+	return Certificate{Derivation: Derivation, Inputs: strings.Repeat("e", 64)}
 }
 
 // TestRecordsRoundTripOnePerIdentity pins the store's layout: a record
@@ -26,7 +30,7 @@ func TestRecordsRoundTripOnePerIdentity(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-cache-format")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
-	rec := Record{Selection: "race", Symbol: "example.com/p.F", Fingerprint: fingerprint("a"), Resolution: "resolved", Shape: strings.Repeat("d", 32), Package: "example.com/p", WitnessClass: "example", NeverServe: ""}
+	rec := Record{Selection: "race", Symbol: "example.com/p.F", Fingerprint: fingerprint("a"), Certificate: certificate(), Resolution: "resolved", Shape: strings.Repeat("d", 32), Package: "example.com/p", WitnessClass: "example", NeverServe: ""}
 	if err := InstallAll(dir, []Record{rec}); err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +74,7 @@ func TestRecordsRefuseWhatTheStoreDoesNotServe(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-cache-format")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
-	good := Record{Selection: "default", Symbol: "example.com/p.F", Fingerprint: fingerprint("a"), Resolution: "resolved"}
+	good := Record{Selection: "default", Symbol: "example.com/p.F", Fingerprint: fingerprint("a"), Certificate: certificate(), Resolution: "resolved", Shape: "shape", Package: "example.com/p", WitnessClass: "example"}
 	observed := good
 	observed.Fingerprint.RuntimeInputs = strings.Repeat("9", 32)
 	asserted := good
@@ -118,7 +122,7 @@ func TestRecordsRefuseWhatTheStoreDoesNotServe(t *testing.T) {
 		planted.MaximalClosure = strings.Repeat(closure, 32)
 		mutate(e, &planted)
 		e["fingerprint"] = raw(planted)
-		name := mustName(t, Record{Selection: good.Selection, Symbol: good.Symbol, Fingerprint: planted})
+		name := mustName(t, Record{Selection: good.Selection, Symbol: good.Symbol, Fingerprint: planted, Certificate: good.Certificate})
 		out, _ := json.Marshal(e)
 		if err := os.WriteFile(filepath.Join(store, name), out, 0o644); err != nil {
 			t.Fatal(err)
@@ -146,7 +150,7 @@ func TestMisnamedRecordsAndTemporariesAreNotRecords(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-cache-format")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
-	rec := Record{Selection: "race", Symbol: "example.com/p.F", Fingerprint: fingerprint("a"), Resolution: "resolved", Shape: "func", Package: "example.com/p"}
+	rec := Record{Selection: "race", Symbol: "example.com/p.F", Fingerprint: fingerprint("a"), Certificate: certificate(), Resolution: "resolved", Shape: "func", Package: "example.com/p", WitnessClass: "example"}
 	if err := InstallAll(dir, []Record{rec}); err != nil {
 		t.Fatal(err)
 	}
@@ -195,7 +199,7 @@ func TestMisnamedRecordsAndTemporariesAreNotRecords(t *testing.T) {
 // record the tests name encodes.
 func mustName(t *testing.T, rec Record) string {
 	t.Helper()
-	name, err := fileName(rec)
+	name, err := rec.FileName()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,6 +218,7 @@ func TestSourceTiersProjectTheCaptureTheStoreServes(t *testing.T) {
 	digest := strings.Repeat("a", 32)
 	full := witnesscache.Fingerprint{
 		MaximalClosure: digest, TestVariantClosure: strings.Repeat("b", 32), ResultKind: gofresh.CodeResult,
+		ToolchainContent: "native-content", AdmissionPolicy: "native-policy",
 		Guards:               guard.Guards{Toolchain: "go1.27.1", BuildConfig: strings.Repeat("c", 32), Machine: strings.Repeat("d", 32), RuntimeConfig: strings.Repeat("e", 32)},
 		ObservationAssertion: "pure", ObservationProof: gofresh.ObservationProof{Observable: true},
 		PurityAssertion: "pure", DynamicStateVouches: "x:y", RuntimeInputs: strings.Repeat("f", 32), RuntimeDigest: strings.Repeat("9", 32),
@@ -226,7 +231,7 @@ func TestSourceTiersProjectTheCaptureTheStoreServes(t *testing.T) {
 	if !Admits(source) {
 		t.Fatalf("the projected capture was refused: %+v", source)
 	}
-	want := witnesscache.Fingerprint{MaximalClosure: full.MaximalClosure, TestVariantClosure: full.TestVariantClosure, ClosureStrategy: full.ClosureStrategy, ResultKind: full.ResultKind, Guards: guard.Guards{Toolchain: full.Guards.Toolchain, BuildConfig: full.Guards.BuildConfig}}
+	want := witnesscache.Fingerprint{MaximalClosure: full.MaximalClosure, TestVariantClosure: full.TestVariantClosure, ClosureStrategy: full.ClosureStrategy, ToolchainContent: full.ToolchainContent, AdmissionPolicy: full.AdmissionPolicy, ResultKind: full.ResultKind, Guards: guard.Guards{Toolchain: full.Guards.Toolchain, BuildConfig: full.Guards.BuildConfig}}
 	if source != want {
 		t.Fatalf("projection = %+v, want %+v", source, want)
 	}

@@ -750,6 +750,7 @@ func TestFingerprintWireKeySet(t *testing.T) {
 	}
 	spec := []string{
 		"maximalClosure", "testVariantClosure", "toolchain", "buildConfig",
+		"toolchainContent", "admissionPolicy",
 		"observationAssertion", "observationProof", "purityAssertion",
 		"dynamicStateVouches", "singleSubjectDischarges",
 		"packageProcessDischarges", "dynamicStateStrategy", "closureStrategy",
