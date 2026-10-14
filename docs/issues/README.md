@@ -2,6 +2,8 @@
 
 Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
 
+- **[mcp-go-export-compatibility-authoring](mcp-go-export-compatibility-authoring.md)** — Weaver's MCP bind rejects Go export version 5 and leaves `REQ-causal-membership`'s test claim unauthored; establish installed-server provenance before attributing a source defect. *Lands: the installed MCP Go resolver admits the current Go 1.27.2-X:nodwarf5 exports and successfully authors the blocked binding under the same verified server/build and toolchain provenance.*
+
 - **[execution-timing-diagnostics](execution-timing-diagnostics.md)** — long execution gaps and cancellation counters lack retained package/test timing and queued-versus-running attribution. *Lands: the next Go execution-reporting change exercising a cancelled multi-package policy invocation*
 - **[implemented-capability-acceptance](implemented-capability-acceptance.md)** — git-go needs native, explicitly partial acceptance for a closed implemented requirement set while preserving the global uncovered design corpus; current report/execution filters retain the global red verdict. *Lands: tooling-redesign 7.5 derivation and 9.4 conditional disposition; no implementation authorized by the filing*
 
