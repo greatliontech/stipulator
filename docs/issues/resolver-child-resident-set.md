@@ -1,5 +1,27 @@
 # The resolver child's resident set is the whole corpus closure at once
 
+## Weaver records-only verification under a whole-tree cap
+
+Weaver reproduced a resource refusal with installed v0.73.6 (`c01a298`) using
+`stipulator verify --no-test`, after the accepted root and nested-module race suites
+had passed outside Stipulator. No test execution was requested by the failing command.
+
+The first command ran in a user systemd scope with `MemoryMax=2677182464`,
+`MemorySwapMax=0`, `RuntimeMaxSec=7200`, and `GOFLAGS=-p=8`. It emitted only the
+compile-start diagnostic, then exited by signal 9 after 19.1 seconds. The systemd
+journal explicitly reported a kernel OOM kill and a 2.4 GiB scope peak.
+
+A separate attempt retained a hard 2 GiB scope, disabled swap, and set
+`GOMEMLIMIT=512MiB GOFLAGS=-p=2`. It reached discovery after 1m22.1s, reporting
+260 MiB resident and a 1.9 GiB peak; the scope was OOM-killed at 2m00s with a 2 GiB
+scope peak. The Go heap target is not a process-tree hard bound. These measurements
+do not attribute the peak to an individual resolver, compiler or parent process.
+
+Both runs are incomplete hygiene verification, not passing records checks.
+External suites and contract compilation are not substitutes for the missing binding
+and pin verdict. A bounded records-only workflow is needed without rerunning tests
+or weakening the consumer's process-tree memory protection.
+
 The served Go resolver child (`stipulator internal-resolve`, the self-exec'd
 process behind `verify`, `check` and `pin`) loads the typed packages of every
 binding's closure into one process for the whole pass. Its resident set is
