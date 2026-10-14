@@ -877,7 +877,7 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 			}
 			return nil, "", err
 		}
-		view, err := engine.NewView(ctx, subjects, dir)
+		view, err := engine.NewView(ctx, subjects, g.directory(dir))
 		if err != nil {
 			if abort, reason := classifyFault(err); !abort {
 				return nil, reason, nil
@@ -1433,7 +1433,7 @@ func retryDrifted(ctx context.Context, pc *Capture, driftedByGroup map[*witnessG
 		// A failed view or capture leaves the retry unpublishable — it
 		// still executes, its outcome still witnesses, its record is
 		// simply dropped and counted uncacheable.
-		if view, err := wg.engine.NewView(ctx, subjects, dir); err == nil {
+		if view, err := wg.engine.NewView(ctx, subjects, wg.g.directory(dir)); err == nil {
 			st.view = view
 			for _, s := range subjects {
 				if fp, err := view.Capture(ctx, s); err == nil {

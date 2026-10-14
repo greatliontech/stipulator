@@ -35,14 +35,14 @@ func selectionEngine(ctx context.Context, dir string, sel buildSelection, sample
 	// member whose toolchain cannot be sampled is left to this engine's
 	// own loads (REQ-evidence-toolchain-provenance) — so a served view
 	// refuses exactly when the child's would.
-	members, err := workspaceMembers(dir)
+	members, err := sel.members(dir)
 	if err != nil {
 		return nil, err
 	}
 	if err := checkSelectionMembers(ctx, dir, env, members, sel.toolchain, sample); err != nil {
 		return nil, err
 	}
-	return newEngine(ctx, dir, env, selectionViewFlags(sel))
+	return newEngine(ctx, sel.directory(dir), env, selectionViewFlags(sel), gofresh.WithEvidenceRoot(dir))
 }
 
 // Served is the verification backend that answers a binding's
@@ -76,6 +76,9 @@ type Served struct {
 	// declaration-reading roles names none, and its child is the whole
 	// tree, which answers every symbol as the tree declares it.
 	set map[string]bool
+	// inventory is metadata only: package boundaries are established
+	// before capture and typed scope, never guessed from a dot position.
+	inventory map[string]map[string]bool
 	// unserved is every requested symbol without a served record — the
 	// child's scope and the opening capture's subjects.
 	unserved []string
@@ -171,13 +174,20 @@ func NewServed(ctx context.Context, dir string, symbols []string) (*Served, erro
 			wanted[sym] = true
 		}
 		s.set = wanted
+		s.inventoryPackages(symbols)
 	}
 	bySelection := map[string][]resolutioncache.Record{}
 	for _, rec := range resolutioncache.Load(abs) {
+		if !s.inventoryComplete() {
+			continue
+		}
 		if !s.set[rec.Symbol] {
 			continue
 		}
 		if _, known := s.sels[rec.Selection]; !known {
+			continue
+		}
+		if pkg, ok := s.packageOf(rec.Symbol); !ok || pkg != rec.Package || !s.inventory[rec.Selection][pkg] {
 			continue
 		}
 		bySelection[rec.Selection] = append(bySelection[rec.Selection], rec)
@@ -240,49 +250,38 @@ func newServed(ctx context.Context, dir string) (*Served, error) {
 	return &Served{sample: newToolchainSample(), ctx: ctx, dir: abs, sels: map[string]buildSelection{}, served: map[string]resolutioncache.Record{}, answers: map[string]childAnswer{}, pending: map[string][]string{}, reasons: map[string]string{}}, nil
 }
 
-// subjectOf derives a symbol's gofresh subject from its lexical package
-// (packageOf); false for a symbol string that carries no package.
-func subjectOf(symbol string) (gofresh.Subject, bool) {
-	pkg, ok := packageOf(symbol)
+// subjectOf derives a subject from its declared package boundary.
+func (s *Served) subjectOf(symbol string) (gofresh.Subject, bool) {
+	pkg, ok := s.packageOf(symbol)
 	if !ok {
 		return gofresh.Subject{}, false
 	}
 	return gofresh.Subject{Package: pkg, Symbol: symbol[len(pkg)+1:]}, true
 }
 
-// packageOf derives a symbol's import path lexically — everything
-// before the first dot after the last slash — the pattern a typed load
-// needs before any load; false for a symbol string that carries no
-// package. The symbol grammar `import/path.Symbol` cannot spell a
-// package whose last path element carries a dot (`gopkg.in/x.v3`): such
-// a symbol loads, resolves and captures under the wrong package
-// (docs/issues/dotted-package-element-unresolvable.md).
-func packageOf(symbol string) (string, bool) {
-	i := strings.LastIndex(symbol, "/")
-	j := strings.Index(symbol[i+1:], ".")
-	if j < 0 {
-		return "", false
-	}
-	return symbol[:i+1+j], true
-}
-
 // childPatterns is the typed load's scope: the packages of every
-// unserved symbol. A symbol carrying no package widens the scope to
-// the whole tree, never narrows it away.
+// unserved symbol. An unavailable inventory permits only the bounded
+// syntactic candidates; an empty scope never widens to the whole tree.
 func (s *Served) childPatterns() []string {
 	if len(s.unserved) == 0 {
 		return nil
 	}
 	seen := map[string]bool{}
-	var out []string
+	out := []string{}
 	for _, sym := range s.unserved {
-		pkg, ok := packageOf(sym)
-		if !ok {
-			return nil
+		candidates := symbolPackageCandidates(sym)
+		if s.inventoryComplete() {
+			pkg, ok := s.packageOf(sym)
+			if !ok {
+				continue
+			}
+			candidates = []string{pkg}
 		}
-		if !seen[pkg] {
-			seen[pkg] = true
-			out = append(out, pkg)
+		for _, pkg := range candidates {
+			if !seen[pkg] {
+				seen[pkg] = true
+				out = append(out, pkg)
+			}
 		}
 	}
 	sort.Strings(out)
@@ -313,6 +312,9 @@ func (s *Served) openingCapture() {
 // selection, narrowing the subjects the selected source does not
 // declare, and captures their fingerprints.
 func (s *Served) captureUnder(key string, symbols []string, phase string) (map[gofresh.Subject]gofresh.Fingerprint, bool) {
+	if !s.inventoryComplete() {
+		return nil, false
+	}
 	engine, err := selectionEngine(s.ctx, s.dir, s.sels[key], s.sample)
 	if err != nil {
 		s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
@@ -320,15 +322,18 @@ func (s *Served) captureUnder(key string, symbols []string, phase string) (map[g
 	}
 	var subjects []gofresh.Subject
 	for _, sym := range symbols {
-		subject, ok := subjectOf(sym)
+		subject, ok := s.subjectOf(sym)
 		if !ok {
+			continue
+		}
+		if s.set != nil && !s.inventory[key][subject.Package] {
 			continue
 		}
 		subjects = append(subjects, subject)
 	}
 	var view *gofresh.View
 	for len(subjects) > 0 {
-		view, err = engine.NewView(s.ctx, subjects, s.dir)
+		view, err = engine.NewView(s.ctx, subjects, s.sels[key].directory(s.dir))
 		var unknown *gofresh.UnknownSubjectsError
 		if errors.As(err, &unknown) {
 			gone := map[gofresh.Subject]bool{}
@@ -394,7 +399,7 @@ func (s *Served) serveSelection(key string, recs []resolutioncache.Record) {
 	}
 	var view *gofresh.View
 	for len(subjects) > 0 {
-		view, err = engine.NewView(s.ctx, subjects, s.dir)
+		view, err = engine.NewView(s.ctx, subjects, s.sels[key].directory(s.dir))
 		var unknown *gofresh.UnknownSubjectsError
 		if errors.As(err, &unknown) {
 			// Vanished since they were recorded: stale, resolved
@@ -668,7 +673,7 @@ func (s *Served) SymbolPackage(symbol string) (string, error) {
 // roles (Slice, SliceFloor, SymbolFile) and ReachedPackages, which
 // takes files, read the tree as it is and consult no set.
 func (s *Served) admits(symbol string) bool {
-	if _, ok := packageOf(symbol); !ok {
+	if len(symbolPackageCandidates(symbol)) == 0 {
 		// No package to scope by: the child answers not found for it
 		// under any load, never a narrowed frontier's not found.
 		return true
@@ -870,7 +875,7 @@ func (s *Served) publishSelection(key string, symbols []string) {
 	var account publishAccount
 	for _, symbol := range symbols {
 		a := s.answers[symbol]
-		subject, ok := subjectOf(symbol)
+		subject, ok := s.subjectOf(symbol)
 		if !ok {
 			continue
 		}

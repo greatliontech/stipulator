@@ -30,7 +30,7 @@ func ExplainDynamicState(ctx context.Context, pc *Capture, pkgPath, varName stri
 		if err != nil {
 			return gofresh.Chain{}, "", err
 		}
-		view, err := engine.NewView(ctx, subjects, dir)
+		view, err := engine.NewView(ctx, subjects, g.directory(dir))
 		if err != nil {
 			return gofresh.Chain{}, "", err
 		}

@@ -957,7 +957,7 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Eng
 	if err != nil {
 		return nil, err
 	}
-	opts := []gofresh.Option{gofresh.WithProducerEnv(g.witnessEnv...), gofresh.WithBuildInputs(inputs...)}
+	opts := []gofresh.Option{gofresh.WithProducerEnv(g.witnessEnv...), gofresh.WithBuildInputs(inputs...), gofresh.WithEvidenceRoot(dir)}
 	if g.assumePure {
 		// The reviewed purity assumption rides every subject of the
 		// group as a caller assertion; the recorded fingerprints carry
@@ -992,10 +992,23 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Eng
 	// only pay the reachability pass for a discharge the store strips
 	// (REQ-evidence-witness-freshness-package-process).
 	opts = append(opts, gofresh.WithPackageProcessExecution())
-	return newEngine(ctx, dir, g.env, buildFlags(g.race, g.tags, g.moduleMode, g.pgo), opts...)
+	return newEngine(ctx, g.directory(dir), g.env, buildFlags(g.race, g.tags, g.moduleMode, buildPGO(dir, g.pgo)), opts...)
 }
 
-// newEngine is the one gofresh engine constructor: the tree root, the
+func (g *captureGroup) directory(root string) string {
+	return filepath.Join(root, filepath.FromSlash(g.moduleRoot))
+}
+
+// buildPGO resolves a declared profile from the corpus root for every
+// analysis or producing command, independently of its module directory.
+func buildPGO(root, value string) string {
+	if value == "" || value == "auto" || value == "off" {
+		return value
+	}
+	return filepath.Join(root, filepath.FromSlash(value))
+}
+
+// newEngine is the one gofresh engine constructor: the analysis directory, the
 // view's environment and build flags, and the operation's progress
 // seam — freshness capture and validation are the longest silent
 // stretches of a run, so gofresh's own analysis steps feed the seam as
@@ -1117,7 +1130,7 @@ func NewWitnessRecorder(ctx context.Context, pc *Capture, seeding verify.Witness
 		if err != nil {
 			return degrade(err)
 		}
-		view, err := engine.NewView(ctx, subjects, dir)
+		view, err := engine.NewView(ctx, subjects, g.directory(dir))
 		if err != nil {
 			return degrade(err)
 		}

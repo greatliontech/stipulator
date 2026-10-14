@@ -11,6 +11,13 @@ interface (REQ-backend-surfaces); nothing in the core knows Go exists.
 import path, the identifier, and the receiver type for methods; the object's
 kind and shape are resolved from the code, never declared in the reference,
 so they cannot diverge from reality.
+The package boundary is the longest declared import-path prefix followed by
+`.`; dotted path elements are not receiver separators. Package metadata is
+read under the selected views before capture and scoped typed loading. Each
+queried candidate needs a declaration or an explicit absence answer; a missing,
+malformed or failed answer never establishes absence. Receiver and function
+interpretations are bounded lookup candidates, not authority to widen a named
+operation to the whole tree.
 
 **REQ-go-shape-hash** (wire): The Go shape hash MUST be computed over the
 object's declaration as rendered by the Go type-checker's object printer
@@ -44,9 +51,13 @@ of the state rides the resolution error's verification problem.
 
 **REQ-go-build-selections** (behavior): Symbol resolution MUST span the
 accepted policy's build-selection dimensions - one package view per
-distinct invocation (effective tag-set, toolchain, module mode) triple
-beside the default view (no tags, the ambient toolchain, the
-toolchain's own module mode), where the effective tag-set is the
+distinct invocation (module root, workspace mode, effective tag-set, toolchain,
+module mode) configuration beside the default views (no tags, the ambient
+toolchain, the toolchain's own module mode). The tree's default view comes
+first; additional accepted module-root/workspace contexts get their default
+views in canonical invocation order before any non-default selection.
+Workspace-on views include the declared workspace members; workspace-off
+views include their selected module alone. The effective tag-set is the
 declared tags plus the implicit `race` tag of a race-detecting
 invocation and the module mode is the record's declared module mode,
 an undeclared mode being the toolchain's default for the tree
@@ -65,7 +76,7 @@ invocations that would compile it. A declared GOOS/GOARCH equal to the
 host is the host view; a cross-platform selection cannot execute
 on-host, so it gets no resolution view and is a named refusal beside
 the unloadable-view class - a reference the loaded views cannot answer
-refuses with the unresolvable selection named, never a silent absence. The default view is consulted first and
+refuses with the unresolvable selection named, never a silent absence. The default views are consulted first and
 then each distinct declared selection in the policy's canonical invocation order; the
 first declaring view supplies the resolution and shape hash, and the
 declaring view's file is the symbol's file for impact and freshness
@@ -89,6 +100,11 @@ diagnostic filename. Loader diagnostics retain the positions the loader gives.
 workspace: symbol resolution and witnessing span every `go.work` member,
 and a member escaping the tree is refused — hermeticity is never silently
 bent.
+An independent module root explicitly selected by the accepted policy is also
+a resolution member under its own workspace mode; it need not be added to a
+workspace or required by the root module. Module roots remain inside the
+verification tree after symlink resolution. Undeclared nested modules are not
+implicitly added to the conservation universe.
 
 ## Witnesses
 

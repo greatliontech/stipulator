@@ -611,9 +611,8 @@ func selectionBuildFlags(race bool, tags []string) []string {
 // buildFlags renders the go build flags a group's binary is built
 // under — the selection (selectionBuildFlags, the audit's axis) and
 // the build inputs beyond it: the module mode and the PGO profile
-// (pgoValue as the toolchain resolves it from the process's working
-// directory: tree-relative for the engine's loads at the tree root,
-// absolute for a witness running in its module root) — one
+// (pgoValue resolved from the corpus root before either the engine or
+// witness command runs in its owning module directory) — one
 // construction the engine and the witness command share, so the
 // analysis describes the binary the tests actually run as
 // (REQ-evidence-witness-freshness-inputs).

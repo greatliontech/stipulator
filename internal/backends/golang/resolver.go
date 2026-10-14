@@ -22,6 +22,10 @@ import (
 // process plumbing, never CLI surface.
 const resolverSubcommand = "internal-resolve"
 
+// resolverEmptyScope distinguishes an explicitly empty package scope from
+// an absent scope on the same-binary child command line.
+const resolverEmptyScope = "--empty-scope"
+
 // resolverRequest is one parent→child protocol line. Symbol carries the
 // resolve and witnessclass subject; Symbols carries the slice subjects.
 type resolverRequest struct {
@@ -287,7 +291,14 @@ func ResolverChildMain() {
 	// (gofresh's resident.InstallCeiling): half the room the host has
 	// for the process family at its start.
 	resident.InstallCeiling()
-	if err := serveResolver(context.Background(), os.Args[2], os.Args[3:], os.Stdin, os.Stdout); err != nil {
+	var patterns []string
+	if len(os.Args) > 3 {
+		patterns = os.Args[3:]
+		if len(patterns) == 1 && patterns[0] == resolverEmptyScope {
+			patterns = []string{}
+		}
+	}
+	if err := serveResolver(context.Background(), os.Args[2], patterns, os.Stdin, os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

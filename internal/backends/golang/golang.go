@@ -162,7 +162,7 @@ func (b *Backend) pins() *pinTable {
 }
 
 // newContext loads the tree rooted at dir, including test packages: the
-// module alone, or every go.work member when the tree is a workspace —
+// module, workspace members and accepted independent module roots —
 // package patterns are module-scoped, so nested published modules would
 // otherwise vanish from symbol resolution. A load failure is an error:
 // per the spec, an unloadable tree is a verification error, never an
@@ -171,24 +171,25 @@ func (b *Backend) pins() *pinTable {
 // package discovery is the owned resolver client (NewWholeTree — the
 // client alone), keeping
 // REQ-go-owned-processes structurally satisfied for every consumer.
-// newContext loads the tree's resolution views: every workspace member
+// newContext loads the tree's resolution views: every visible member
 // under every build selection, over "./..." — or, when patterns are
-// given, over exactly those packages, the scope a served resolution's
+// given, over exactly those packages (an explicitly empty slice loads none),
+// the scope a served resolution's
 // stale remainder needs (REQ-evidence-resolution-freshness-typed-load). Their
 // dependencies stay export data; the one verdict that reads a
 // dependency's source — a promoted method's declaring file, for the
 // generated-file marker — loads that declaring package on demand under
 // the same selection, so a scoped load answers as the whole-tree load does.
 func newContext(ctx context.Context, dir string, patterns []string) (*Backend, error) {
-	members, err := workspaceMembers(dir)
-	if err != nil {
-		return nil, err
-	}
 	env, err := goworkEnv(dir)
 	if err != nil {
 		return nil, err
 	}
 	selections, crossPlatform, err := policyBuildSelections(dir)
+	if err != nil {
+		return nil, err
+	}
+	members, err := resolutionMembers(dir, selections)
 	if err != nil {
 		return nil, err
 	}
@@ -204,10 +205,12 @@ func newContext(ctx context.Context, dir string, patterns []string) (*Backend, e
 	loadIndex := map[*packages.Package]int{}
 	loadSelection := map[int]string{}
 	loads := 0
-	// Pattern ownership is selection-independent: each member's go.mod
-	// is read once, not once per build selection.
-	modules := memberModules(dir, members)
-	owned := memberPatterns(modules, patterns)
+	// Each declared member's module path is read once; each view restricts
+	// ownership to the members its workspace context actually includes.
+	modules, err := memberModules(dir, members)
+	if err != nil {
+		return nil, fmt.Errorf("loading Go packages: %w", err)
+	}
 	lazyCfg := map[string]map[string]*packages.Config{}
 	// One toolchain sampler for this load — the child's one judged
 	// operation (a child process makes one load, so this is also the
@@ -216,6 +219,15 @@ func newContext(ctx context.Context, dir string, patterns []string) (*Backend, e
 	sample := newToolchainSample()
 	for _, sel := range selections {
 		viewEnv := selectionViewEnv(env, sel)
+		viewMembers, err := sel.members(dir)
+		if err != nil {
+			return nil, err
+		}
+		viewModules := map[string]string{}
+		for _, member := range viewMembers {
+			viewModules[member] = modules[member]
+		}
+		owned := memberPatterns(viewModules, patterns)
 		// The selection view is a frontend parse of the selection's own
 		// sources, so it inherits the toolchain-provenance prerequisite,
 		// sampled per member where each view loads: an identified
@@ -224,13 +236,13 @@ func newContext(ctx context.Context, dir string, patterns []string) (*Backend, e
 		// whose toolchain cannot be sampled loads no view and falls
 		// through to the per-view unloadable degradation below
 		// (REQ-go-build-selections).
-		if err := checkSelectionMembers(ctx, dir, viewEnv, members, sel.toolchain, sample); err != nil {
+		if err := checkSelectionMembers(ctx, dir, viewEnv, viewMembers, sel.toolchain, sample); err != nil {
 			return nil, err
 		}
 		var viewPkgs []*packages.Package
 		viewLoads := map[*packages.Package]int{}
 		viewFailed := false
-		for _, m := range members {
+		for _, m := range viewMembers {
 			cfg := &packages.Config{
 				Context: ctx,
 				Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax |
@@ -253,7 +265,7 @@ func newContext(ctx context.Context, dir string, patterns []string) (*Backend, e
 			}
 			lazyCfg[m][sel.key()] = &lazy
 			load := []string{"./..."}
-			if len(patterns) > 0 {
+			if patterns != nil {
 				// A pattern loads from the one member whose module
 				// owns it: loading every member over the same import
 				// paths would hold each package once per member.
@@ -263,7 +275,7 @@ func newContext(ctx context.Context, dir string, patterns []string) (*Backend, e
 				}
 			}
 			loaded, err := packages.Load(cfg, load...)
-			if err == nil && len(patterns) > 0 {
+			if err == nil && patterns != nil {
 				loaded = matchedRoots(loaded)
 			}
 			if err != nil {
@@ -317,12 +329,19 @@ func newContext(ctx context.Context, dir string, patterns []string) (*Backend, e
 // for: go list answers a vanished package's path with an error entry
 // carrying no Go files, which "./..." never enumerates, so the scoped
 // load must not hold it either — its symbols answer not found, as the
-// whole-tree load answers, never a load error.
+// whole-tree load answers, never a load error. A fileless read or tool
+// failure remains a root: it cannot establish an absent package boundary.
 func matchedRoots(loaded []*packages.Package) []*packages.Package {
 	kept := loaded[:0]
 	for _, pkg := range loaded {
 		if len(pkg.Errors) > 0 && len(pkg.GoFiles) == 0 {
-			continue
+			absent := true
+			for _, err := range pkg.Errors {
+				absent = absent && explicitPackageAbsence(err.Msg)
+			}
+			if absent {
+				continue
+			}
 		}
 		kept = append(kept, pkg)
 	}
@@ -332,18 +351,20 @@ func matchedRoots(loaded []*packages.Package) []*packages.Package {
 // memberModules reads each workspace member's module path once — the
 // ownership table memberPatterns and the seeding walk's in-module
 // judgment both consult.
-func memberModules(dir string, members []string) map[string]string {
+func memberModules(dir string, members []string) (map[string]string, error) {
 	modules := map[string]string{}
 	for _, m := range members {
 		data, err := os.ReadFile(filepath.Join(dir, m, "go.mod"))
 		if err != nil {
-			continue
+			return nil, fmt.Errorf("reading resolution module %q: %w", m, err)
 		}
 		if path := modfile.ModulePath(data); path != "" {
 			modules[m] = path
+		} else {
+			return nil, fmt.Errorf("resolution module %q: go.mod declares no module path", m)
 		}
 	}
-	return modules
+	return modules, nil
 }
 
 // memberPatterns assigns each import-path pattern to the workspace
@@ -372,7 +393,7 @@ func memberPatterns(modules map[string]string, patterns []string) map[string][]s
 }
 
 // selectionViewEnv is the environment a selection's view loads under:
-// the tree's workspace pin, and the selection's own toolchain when it
+// the selection's workspace pin and its own toolchain when it
 // declares one — exactly as its invocation executes, since a
 // toolchain'd tag view under the ambient toolchain would miss the
 // selection's own stdlib surface (REQ-go-build-selections). The one
@@ -380,6 +401,7 @@ func memberPatterns(modules map[string]string, patterns []string) map[string][]s
 // resolution's freshness views share, so a record's fingerprint is
 // checked under the environment that produced it.
 func selectionViewEnv(env []string, sel buildSelection) []string {
+	env = selectionWorkspace(env, sel.workspaceMode)
 	if sel.toolchain == "" {
 		return env
 	}
@@ -406,24 +428,27 @@ func (s buildSelection) key() string {
 	if s.isDefault() {
 		return "default"
 	}
-	return strings.Join(s.tags, ",") + "\x00" + s.toolchain + "\x00" + moduleModeFlag(s.moduleMode)
+	return strings.Join(s.tags, ",") + "\x00" + s.toolchain + "\x00" + moduleModeFlag(s.moduleMode) + "\x00" + s.moduleRoot + "\x00" + workspaceWord(s.workspaceMode)
 }
 
 func (s buildSelection) isDefault() bool {
-	return len(s.tags) == 0 && s.toolchain == "" && s.moduleMode == stipulatorv1.GoModuleMode_GO_MODULE_MODE_UNSPECIFIED
+	return len(s.tags) == 0 && s.toolchain == "" && s.moduleMode == stipulatorv1.GoModuleMode_GO_MODULE_MODE_UNSPECIFIED && s.moduleRoot == "" && s.workspaceMode == stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_UNSPECIFIED
 }
 
 // buildSelection is one resolution view's identity: the invocation's
 // effective tag-set (declared tags plus the implicit `race` tag of a
-// -race invocation), toolchain and module mode (REQ-go-build-selections).
+// -race invocation), toolchain, module mode and module/workspace context
+// (REQ-go-build-selections).
 type buildSelection struct {
-	tags       []string
-	toolchain  string
-	moduleMode stipulatorv1.GoModuleMode
+	tags          []string
+	toolchain     string
+	moduleMode    stipulatorv1.GoModuleMode
+	moduleRoot    string
+	workspaceMode stipulatorv1.GoWorkspaceMode
 }
 
 // policyBuildSelections derives the resolution views from the accepted
-// policy record: the default no-tag view first, then one view per
+// policy record: the default contexts first, then one view per
 // distinct invocation selection in the policy's canonical invocation
 // order (REQ-go-build-selections). The policy is the authority on
 // which build selections exist - execution discovery already runs
@@ -445,6 +470,7 @@ func policyBuildSelections(dir string) ([]buildSelection, []string, error) {
 	}
 	selections := []buildSelection{{}}
 	seen := map[string]bool{selections[0].key(): true}
+	var declared []buildSelection
 	var crossPlatform []string
 	for _, inv := range p.GetInvocations() {
 		cfg := inv.GetGo()
@@ -476,7 +502,41 @@ func policyBuildSelections(dir string) ([]buildSelection, []string, error) {
 		// selection, never a duplicate view's load cost.
 		sort.Strings(tags)
 		tags = slices.Compact(tags)
-		sel := buildSelection{tags: tags, toolchain: cfg.GetToolchain(), moduleMode: cfg.GetModuleMode()}
+		if err := validateModuleRoot(cfg.GetModuleRoot()); err != nil {
+			return nil, nil, err
+		}
+		if cfg.GetModuleRoot() != "" {
+			root, err := resolvedTreeRoot(dir)
+			if err != nil {
+				return nil, nil, err
+			}
+			if err := resolvedUnder(root, dir, filepath.FromSlash(cfg.GetModuleRoot())); err != nil {
+				return nil, nil, fmt.Errorf("resolution module_root: %w", err)
+			}
+			if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(cfg.GetModuleRoot()), "go.mod")); err != nil {
+				return nil, nil, fmt.Errorf("resolution module_root %q: %w", cfg.GetModuleRoot(), err)
+			}
+		}
+		switch cfg.GetWorkspaceMode() {
+		case stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_UNSPECIFIED, stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_OFF:
+		case stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_WORKSPACE:
+			if _, err := os.Stat(filepath.Join(dir, "go.work")); err != nil {
+				return nil, nil, fmt.Errorf("resolution workspace_mode WORKSPACE: %w", err)
+			}
+		default:
+			return nil, nil, fmt.Errorf("resolution workspace_mode %d is unsupported", cfg.GetWorkspaceMode())
+		}
+		sel := buildSelection{tags: tags, toolchain: cfg.GetToolchain(), moduleMode: cfg.GetModuleMode(), moduleRoot: cfg.GetModuleRoot(), workspaceMode: cfg.GetWorkspaceMode()}
+		if sel.moduleRoot != "" || sel.workspaceMode != stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_UNSPECIFIED {
+			base := buildSelection{moduleRoot: sel.moduleRoot, workspaceMode: sel.workspaceMode}
+			if !seen[base.key()] {
+				seen[base.key()] = true
+				selections = append(selections, base)
+			}
+		}
+		declared = append(declared, sel)
+	}
+	for _, sel := range declared {
 		key := sel.key()
 		if seen[key] {
 			continue
@@ -947,19 +1007,20 @@ func (b *Backend) indexDecls(sel string, pkgs []*packages.Package) {
 // inModule reports the workspace member whose module owns the package
 // path, or "" for a dependency's package; the dependency verdict is
 // memoized, since every standard and third-party callee asks it.
-func (b *Backend) inModule(pkgPath string) string {
+func (b *Backend) inModule(sel, pkgPath string) string {
 	if b.notInModule == nil {
 		b.notInModule = map[string]bool{}
 	}
-	if b.notInModule[pkgPath] {
+	key := sel + "\x00" + pkgPath
+	if b.notInModule[key] {
 		return ""
 	}
-	for m, patterns := range memberPatterns(b.modules, []string{pkgPath}) {
+	for m, patterns := range memberPatterns(b.selectionModules(sel), []string{pkgPath}) {
 		if len(patterns) > 0 {
 			return m
 		}
 	}
-	b.notInModule[pkgPath] = true
+	b.notInModule[key] = true
 	return ""
 }
 
@@ -984,7 +1045,7 @@ func (b *Backend) funcDeclOf(sel string, fn *types.Func) (*ast.FuncDecl, *packag
 		return nil, nil, nil
 	}
 	pkgPath := fn.Pkg().Path()
-	member := b.inModule(pkgPath)
+	member := b.inModule(sel, pkgPath)
 	if member == "" {
 		return nil, nil, nil
 	}
@@ -1075,7 +1136,9 @@ func viewLabel(sel string) string {
 		return sel
 	}
 	tags, rest, _ := strings.Cut(sel, "\x00")
-	toolchain, mode, _ := strings.Cut(rest, "\x00")
+	toolchain, rest, _ := strings.Cut(rest, "\x00")
+	mode, rest, _ := strings.Cut(rest, "\x00")
+	root, workspace, _ := strings.Cut(rest, "\x00")
 	var parts []string
 	if tags != "" {
 		parts = append(parts, "-tags="+tags)
@@ -1085,6 +1148,12 @@ func viewLabel(sel string) string {
 	}
 	if mode != "" {
 		parts = append(parts, mode)
+	}
+	if root != "" {
+		parts = append(parts, "module-root "+root)
+	}
+	if workspace != "" {
+		parts = append(parts, "workspace "+workspace)
 	}
 	return strings.Join(parts, " ")
 }

@@ -26,16 +26,16 @@ import (
 // that the serving decision consumes, or when the classifier's contract
 // changes what a record proves — either way a prior record fails closed
 // to a typed resolution.
-// The classifier requires complete selections and physical declaration
-// ownership; older records cannot establish those premises.
-const version = 3
+// The classifier requires declared package boundaries, module/workspace
+// context and physical ownership; older records lack those premises.
+const version = 4
 
 // Record is one served resolution: the symbol under its resolving build
 // selection, the fingerprint the serve is proven by, and every field a
 // verification reads from a resolution.
 type Record struct {
 	// Selection is the resolving build selection's key — the effective
-	// tag set, toolchain and module mode the symbol resolved under — so a record
+	// tag set, toolchain, module mode and root/workspace context — so a record
 	// serves only the view that produced it (REQ-go-build-selections).
 	Selection string
 	Symbol    string

@@ -41,7 +41,8 @@ var ownedBoundary = &gotool.Containment{
 }
 
 // ownedRunner is the derivation's go-command runner under the owned
-// boundary: discovery's listings, the witness invocations, and the
+// boundary: discovery's listings, resolution's package inventories, the
+// witness invocations, and the
 // normalization's environment snapshot run through it, and the test
 // seam (commandHook) sees each of those spawns — the derivation's own,
 // which the reuse pins count. The resolver child — this binary's own

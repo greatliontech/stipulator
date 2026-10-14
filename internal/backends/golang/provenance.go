@@ -150,9 +150,9 @@ func checkSelectionMembers(ctx context.Context, dir string, env, members []strin
 		// does not admit refuses the load as the skew does: the view
 		// would load the selection's sources under a toolchain its
 		// record never declared (REQ-policy-toolchain-pin).
-		workFile := ""
-		if _, statErr := os.Stat(filepath.Join(dir, "go.work")); statErr == nil {
-			workFile = filepath.Join(dir, "go.work")
+		workFile, _ := gotool.LookupEnv(env, "GOWORK")
+		if workFile == "off" {
+			workFile = ""
 		}
 		if err := toolchainPinSatisfied(pin, ambient, toolchainRequirement(workFile, filepath.Join(dir, m))); err != nil {
 			return fmt.Errorf("member %q: %w", m, err)

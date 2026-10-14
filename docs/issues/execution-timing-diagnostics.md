@@ -33,8 +33,9 @@ a timing history. These observations therefore cannot distinguish slow test bodi
 compilation/linking, packages waiting for memory admission, or process termination.
 
 The memory-attribution defect in `completed-package-peak-admission.md` and the
-freshness problem in `nested-module-freshness-root.md` are independently tracked.
-Correcting those does not by itself supply the missing execution timeline.
+module-root contract in `../specs/backends/go.md` are separate from timing
+diagnostics. Correct memory attribution and module-root resolution do not by
+themselves supply the missing execution timeline.
 
 ## Requested diagnostic capability
 

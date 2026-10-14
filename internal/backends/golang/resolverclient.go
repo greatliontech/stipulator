@@ -84,7 +84,8 @@ func newResolverClient(ctx context.Context, dir string) (*resolverClient, error)
 // exactly the named packages and their dependencies instead of the
 // whole tree — the
 // served resolution's stale remainder (REQ-evidence-resolution-
-// freshness-typed-load); nil patterns load the whole tree.
+// freshness-typed-load); nil patterns load the whole tree and an empty
+// non-nil slice loads no package.
 func newResolverClientScoped(ctx context.Context, dir string, patterns []string) (*resolverClient, error) {
 	exe, err := os.Executable()
 	if err != nil {
@@ -96,7 +97,13 @@ func newResolverClientScoped(ctx context.Context, dir string, patterns []string)
 	if err != nil {
 		return nil, fmt.Errorf("resolving tree root %s: %w", dir, err)
 	}
-	c := newResolverClientCommand(ctx, exe, append([]string{resolverSubcommand, abs}, patterns...)...)
+	args := []string{resolverSubcommand, abs}
+	if patterns != nil && len(patterns) == 0 {
+		args = append(args, resolverEmptyScope)
+	} else {
+		args = append(args, patterns...)
+	}
+	c := newResolverClientCommand(ctx, exe, args...)
 	// The child is this process's own binary: the identity to meet is
 	// the image this process started as, not whatever the path names
 	// when the lazy spawn happens.

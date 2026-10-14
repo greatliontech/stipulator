@@ -569,7 +569,7 @@ func TestScopedLoadReachesInModuleHelpers(t *testing.T) {
 		t.Fatal(err)
 	}
 	scoped.walkMu.Lock()
-	ownership := scoped.inModule("example.com/fixture/helpers") != "" && scoped.inModule("pgregory.net/rapid") == ""
+	ownership := scoped.inModule("default", "example.com/fixture/helpers") != "" && scoped.inModule("default", "pgregory.net/rapid") == ""
 	scoped.walkMu.Unlock()
 	if !ownership {
 		t.Fatal("module ownership wrong")

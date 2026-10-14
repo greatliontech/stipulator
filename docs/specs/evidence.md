@@ -284,7 +284,8 @@ evidence class stays `example` — only the qualified call classifies),
 each declaration read from the loaded packages or loaded on demand
 from
 the member module owning its package under the walking witness's own
-build selection, so the walk answers the same whatever the load's
+build selection and workspace context (a workspace-off view owns its selected
+module alone), so the walk answers the same whatever the load's
 scope, answers per selection where a helper is split by build tag, and
 stops where the module does — keeps its `example` evidence class (the
 classification is direct-call by contract) and is refused serving under
@@ -333,6 +334,12 @@ MUST carry that set and serve only while the current policy still asserts
 each entry: a withdrawn or narrowed exclusion re-executes the witnesses
 it licensed, while an added exclusion serves existing evidence unchanged
 — its identities are in the manifest and simply revalidate.
+Analysis construction, serving, retry capture and dynamic-state explanation
+use the owning invocation's module directory and workspace environment. The
+verification tree remains the evidence root for observations and reviewed
+paths; a tree-relative PGO profile is resolved from that root for both build
+and analysis. Independent module roots are not substituted with root-module
+dependencies or a synthetic workspace.
 
 **REQ-evidence-witness-freshness-scratch-namespaces** (behavior): The
 invocation's reviewed scratch namespaces — committed policy rows, each
@@ -979,6 +986,13 @@ resolution, never from a served one, and only when the symbol's
 fingerprint captured before the typed load opened equals the one
 captured after the resolution — a symbol that moved between them is
 not recorded.
+Package boundaries are established from selected declaration inventories
+before the opening capture and typed load. If an inventory is unavailable,
+no source record serves or publishes from that operation; typed resolution
+may query the at-most-two syntactic package candidates of a function or
+receiver-method spelling, retaining its named load failures. A scope naming
+no declared package remains explicitly empty, never a whole-tree fallback;
+the intentionally unscoped declaration form remains distinct.
 
 **REQ-evidence-resolution-freshness-degrade** (behavior): A fault anywhere on the serving path MUST degrade to the typed
 load for the affected symbols (REQ-evidence-freshness-degrade).
@@ -1026,15 +1040,18 @@ fingerprint carries any observation, purity, or runtime tier is
 ignored, because resolution observes nothing at run time. A classifier change
 that alters what a record proves bumps the version, so a record of a
 prior classifier never serves.
-The default selection key is `default`; every other key joins three
+The default selection key is `default`; every other key joins five
 components with NUL: the sorted, deduplicated effective tags joined by comma,
 the declared toolchain, and the module-mode flag (`-mod=mod`, `-mod=readonly`,
-`-mod=vendor`, or empty for the toolchain's default). An untagged declared
-toolchain or module mode is a distinct view. Version 1 records, derived
+`-mod=vendor`, or empty for the toolchain's default), followed by the
+tree-relative module root (empty for the tree root) and workspace mode
+(`off`, `workspace`, or empty for the tree's default). An untagged declared
+toolchain, module mode, module root or workspace mode is a distinct view. Version 1 records, derived
 without the complete selection set, are refused and re-derived rather than
 upgraded. Version 2 records also lack physical-source ownership in their
-classification and are refused; version 3 carries the complete selection
-key and the physical-source classifier's answers. This key identifies
+classification and are refused. Version 3 records lack declared package
+boundary and module/workspace-context fidelity and are also refused; version
+4 carries the context-qualified key and current classifier's answers. This key identifies
 one view, not the complete certificate required by
 REQ-evidence-resolution-freshness.
 The envelope is exactly one complete JSON object, permitting only JSON

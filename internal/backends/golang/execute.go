@@ -1058,12 +1058,7 @@ func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, select
 // disabled at the go level, never overridden per binary.
 func testCommandArgs(n *NormalizedInvocation, pkg string, selection []string, logPath string) []string {
 	args := []string{"test", "-json", "-timeout=0"}
-	pgo := n.PGO
-	if pgo != "" && pgo != "auto" && pgo != "off" {
-		// The committed value is tree-relative; the child runs in the
-		// module root, so resolve against the tree root.
-		pgo = filepath.Join(treeRoot(n), filepath.FromSlash(pgo))
-	}
+	pgo := buildPGO(treeRoot(n), n.PGO)
 	args = append(args, buildFlags(n.Race, n.Tags, n.ModuleMode, pgo)...)
 	switch {
 	case n.CacheBypass:

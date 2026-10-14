@@ -42,7 +42,7 @@ func (b *Backend) declarationSource(resolving *packages.Package, obj types.Objec
 		}
 	}
 	var cfg *packages.Config
-	for member := range memberPatterns(b.modules, []string{variantBase(resolving)}) {
+	for member := range memberPatterns(b.selectionModules(b.selectionOf(resolving)), []string{variantBase(resolving)}) {
 		cfg = b.lazyCfg[member][b.selectionOf(resolving)]
 	}
 	if cfg == nil {

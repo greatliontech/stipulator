@@ -70,7 +70,7 @@ func TestPolicySelectionsRetainEveryDimension(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer served.Close()
-	keys := []string{"default", "\x00local\x00", "\x00\x00-mod=mod", "\x00\x00-mod=readonly", "\x00\x00-mod=vendor", "a,race,z\x00local\x00-mod=mod"}
+	keys := []string{"default", "\x00local\x00\x00\x00", "\x00\x00-mod=mod\x00\x00", "\x00\x00-mod=readonly\x00\x00", "\x00\x00-mod=vendor\x00\x00", "a,race,z\x00local\x00-mod=mod\x00\x00"}
 	if len(served.sels) != len(keys) {
 		t.Fatalf("serving form holds %d views, want %d", len(served.sels), len(keys))
 	}
@@ -168,7 +168,7 @@ func TestModuleModeReachesEagerLazyAndFingerprintLoads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]string{"selected\x00\x00-mod=mod": "int", "selected\x00\x00-mod=vendor": "string"}
+	want := map[string]string{"selected\x00\x00-mod=mod\x00\x00": "int", "selected\x00\x00-mod=vendor\x00\x00": "string"}
 	seen := map[string]bool{}
 	for _, pkg := range b.pkgs {
 		key := b.selectionOf(pkg)
@@ -249,9 +249,10 @@ func TestSelectionKeyAndLabelDescribeTheCompleteView(t *testing.T) {
 		key, label string
 	}{
 		{buildSelection{}, "default", "default"},
-		{buildSelection{toolchain: "local"}, "\x00local\x00", "toolchain local"},
-		{buildSelection{moduleMode: stipulatorv1.GoModuleMode_GO_MODULE_MODE_READONLY}, "\x00\x00-mod=readonly", "-mod=readonly"},
-		{buildSelection{tags: []string{"a", "race"}, toolchain: "local", moduleMode: stipulatorv1.GoModuleMode_GO_MODULE_MODE_MOD}, "a,race\x00local\x00-mod=mod", "-tags=a,race toolchain local -mod=mod"},
+		{buildSelection{toolchain: "local"}, "\x00local\x00\x00\x00", "toolchain local"},
+		{buildSelection{moduleMode: stipulatorv1.GoModuleMode_GO_MODULE_MODE_READONLY}, "\x00\x00-mod=readonly\x00\x00", "-mod=readonly"},
+		{buildSelection{tags: []string{"a", "race"}, toolchain: "local", moduleMode: stipulatorv1.GoModuleMode_GO_MODULE_MODE_MOD}, "a,race\x00local\x00-mod=mod\x00\x00", "-tags=a,race toolchain local -mod=mod"},
+		{buildSelection{moduleRoot: "consumer", workspaceMode: stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_OFF}, "\x00\x00\x00consumer\x00off", "module-root consumer workspace off"},
 	} {
 		if got := row.sel.key(); got != row.key {
 			t.Errorf("key = %q, want %q", got, row.key)
