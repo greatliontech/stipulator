@@ -1,16 +1,20 @@
-# The proof tier assumes provers are sound; the first heuristic prover breaks that
+# Conditional trust separation for heuristic provers
 
-Lands: when a heuristic (non-sound) analyzer prover is proposed.
+Lands: tooling-redesign 9.4
 
-The evidence ladder's top rung (REQ-evidence-ladder: analyzer proof)
-outranks property witnesses because the current prover set —
-`stipulate/structural`'s import constraints and interface satisfaction —
-is near-sound: a passing assertion structurally entails the property.
-The proof witness class is gated on that specific library
-(REQ-go-witness-class), so today nothing weaker can claim the rung.
+Activation condition: a concrete heuristic analyzer is proposed as a prover.
+The census preserves that trigger rather than implementing speculative trust
+tiers now.
 
-A future heuristic analyzer (suspicious-concurrency, likely-missing-
-propagation classes) must not inherit it: a heuristic finding ranks below
-a property witness, arguably below an example witness. Before admitting
-one, the ladder needs a soundness tier on the prover — sound/near-sound
-vs heuristic — with only the former granting the proof evidence class.
+REQ-evidence-ladder's analyzer-proof rung and REQ-go-witness-class's
+recognized structural-library gate are implemented by `internal/coverage`
+and `internal/backends/golang/golang.go`. The current recognized structural
+assertions are intended to entail their stated properties; recognition of
+that library is not a license for a future heuristic to inherit its rank.
+
+Before admitting such a prover, state its claim, soundness boundary and
+evidence class, and enforce that distinction in classification and coverage.
+A likely-fault or suspicious-pattern result cannot silently become analyzer
+proof. Pin the proposed heuristic beside the existing structural assertions
+and preserve the latter's authority; do not assume an exact new rank without
+the concrete analyzer's contract.

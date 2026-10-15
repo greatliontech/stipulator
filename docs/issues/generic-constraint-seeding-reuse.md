@@ -6,10 +6,18 @@ exist. This is a conservative analysis limitation, not evidence of a missing Go
 symbol or a failing test; investigate a sound precision improvement and the cost
 of repeated closure walks without forcing unsafe serving.
 
-Lands: the next Go seeding-analysis slice that exercises a generic constraint
-method with both deterministic and runtime-seeded implementations; coordinate
-with `seeding-walk-unreached-routes`, preserving fail-closed classification for
-unresolved targets before admitting any new reuse.
+Lands: tooling-redesign 7.8
+
+The current `golang.go` seeding walk deliberately refuses constraint-method
+targets it cannot resolve; `seeding_test.go` distinguishes them from concrete
+instantiated methods and abstract interface dispatch. This is a separately
+justified precision refinement, not an existing-contract regression. The
+source-value walk and complete selected-view certificates already exist.
+Any new specialization must retain their identities and require the paired
+deterministic, seeded and unresolved-target cases below before admitting reuse.
+
+Secondary constituent: 7.7 measures the traversal cost and actual served
+fraction; the older histogram is not a current performance result.
 
 ## Field evidence and version boundary
 

@@ -1,12 +1,17 @@
-# The deadline diagnostic's roster head is bounded only by the cap
+# The deadline roster can consume the diagnostic's residue budget
 
-The terminal-fail diagnostic opens with the reviewed binary bound and
-the runtime's running-tests roster, joined whole; the roster grows one
-entry per matching dump line with no bound of its own, so a dump whose
-roster approaches the failure-output cap starves the residue that
-follows it — package output, aborted tests, stderr — of the room the
-cap leaves. The runtime lists each running test once, so a roster that
-large is a suite that large; no report has shown one.
+Lands: tooling-redesign 5.3
 
-Lands: a field report of a deadline diagnostic whose roster displaced
-its residue.
+`internal/backends/golang/execute.go` collects each matching running-test
+dump line in `streamState.roster`. The terminal timeout head joins that
+roster before `runResidue` appends package output, aborted-test output and
+stderr. The roster has no independent bound, so a head near the overall
+failure-output cap can displace the residue.
+
+No field report is needed to construct this state: synthesize a valid large
+runtime roster and distinct residue in the already-planned reporting work.
+Bound or share the head's allocation, state omitted entries, preserve the
+deciding timeout and test attribution, and retain useful residue within the
+overall cap. Raw-byte scrubbing and rune-safe cuts already exist in
+`runResidue` and `residue_test.go`; this remaining obligation concerns budget
+allocation, not UTF-8 serialization.

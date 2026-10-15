@@ -1,12 +1,12 @@
 # The decomposition's editorial residue
 
-Chunk 270 decomposed the mega-requirements into sub-contract ids
+The 2026-10-09 decomposition separated mega-requirements into sub-contract ids
 byte-preservingly: each base keeps its lead sentence's paragraph, every
 later sentence run becomes its own paragraph under a sub-id, and the
 one change per new paragraph is one elevation to a normative keyword.
 That mechanic cannot touch the residue it exposes, which an editorial
-pass over the split documents owns (each a reviewed finding, recorded
-in its change set's commit message):
+pass over `docs/specs/mcp.md`, `overview.md`, `backends/go.md` and `evidence.md`
+must reconcile against their current clauses and bindings:
 
 - Dangling antecedents across a split: REQ-mcp-tools-messages and
   several mcp sub-paragraphs refer back ("then", "additionally", "The
@@ -119,5 +119,16 @@ in its change set's commit message):
   satisfied, and their MUST sub-ids each need an executed witness now;
   the clause says nothing of a split's effect on the bar.
 
-Lands: cross-tool train chunk 248 (stipulator's spec-corrections chunk,
-which edits these documents; its plan entry carries the rider).
+Lands: tooling-redesign 8.3
+
+The list records the decomposition's concrete editorial findings, not a
+license to restore text superseded by later native/certificate changes.
+Reconcile each remaining antecedent, normative boundary and enforcement
+pointer against the current source; preserve the completed 5.2a/b selection
+and certificate contracts. In particular, decide whether a claimed rule is
+already stated elsewhere before adding a clause, and distinguish a faithful
+editorial repair from a semantic change requiring deliberate amendment.
+
+Secondary constituents: 9.2 settles final format/compatibility language;
+9.4 accounts for any genuinely remaining capability obligations. Neither
+allows a prose rewrite to imply new execution evidence.

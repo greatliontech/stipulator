@@ -1,78 +1,50 @@
 # Issues
 
-Deferred follow-ups. Each carries a `Lands:` trigger saying when it should be pulled in.
+Forty retained issues. Routing is governed by
+[`tooling-redesign.md`](../../../gofresh/docs/plans/tooling-redesign.md).
+Each issue has one primary open slot; secondary constituents and conditional
+activation requirements are stated separately in its body. A slot does not
+authorize a campaign, an external consumer action or an untriggered capability.
 
-- **[mcp-go-export-compatibility-authoring](mcp-go-export-compatibility-authoring.md)** — Weaver's MCP bind rejects Go export version 5 and leaves `REQ-causal-membership`'s test claim unauthored; establish installed-server provenance before attributing a source defect. *Lands: the installed MCP Go resolver admits the current Go 1.27.2-X:nodwarf5 exports and successfully authors the blocked binding under the same verified server/build and toolchain provenance.*
-- **[selection-certificate-preparation-repeated](selection-certificate-preparation-repeated.md)** — inventory, native capture and complete certificates reconstruct the selected-view context independently; measure and consolidate endpoint-local preparation without sharing opening/closing observations. *Lands: tooling-redesign 5.2e*
-
-- **[execution-timing-diagnostics](execution-timing-diagnostics.md)** — long execution gaps and cancellation counters lack retained package/test timing and queued-versus-running attribution. *Lands: the next Go execution-reporting change exercising a cancelled multi-package policy invocation*
-- **[implemented-capability-acceptance](implemented-capability-acceptance.md)** — git-go needs native, explicitly partial acceptance for a closed implemented requirement set while preserving the global uncovered design corpus; current report/execution filters retain the global red verdict. *Lands: tooling-redesign 7.5 derivation and 9.4 conditional disposition; no implementation authorized by the filing*
-
-- **[cerebro-scoped-discovery-cost](cerebro-scoped-discovery-cost.md)** — a one-requirement check on the explicitly identified c9ea6cd build exhausts 600 seconds in discovery; attribute subphase/resource cost and establish a bounded affected-requirement workflow. *Lands: the next Go-backend discovery/performance slice reproducing the recorded Cerebro scoped check*
-- **[generic-constraint-seeding-reuse](generic-constraint-seeding-reuse.md)** — concrete generic constraint calls account for 3,856 displayed uncacheable witnesses in the older Cerebro run; the current source deliberately refuses the route. Improve precision only with deterministic, seeded and unresolved-target witnesses. *Lands: the next Go seeding-analysis slice exercising those paired constraint-method cases*
-
-- **[discovery-exit137-memory-target](discovery-exit137-memory-target.md)** — bldc discovery ended with exit 137; memory-targeted retries completed with hour-long discovery. Bounded observations, with cause and host/cache effects unestablished. *Lands: user decision*
-
-- **[completed-package-peak-admission](completed-package-peak-admission.md)** — a named completed energy-package process contributes a 7.8 GiB estimate that stops the cold remainder; investigate the peak boundary and estimate policy without weakening host protection. *Lands: a reproduction carrying the named package's test binary's own peak beside the go test child's wait-status peak*
-
-- **[resolution-missing-go-export-cache](resolution-missing-go-export-cache.md)** — scoped records verification encounters vanished standard-library export-cache paths; investigate refresh and diagnostic behavior without assuming the cache-removal cause. *Lands: cross-tool train chunk 249*
-
-
-
-
-- **[bindings-per-requirement-file-derivation](bindings-per-requirement-file-derivation.md)** — `bind` and `dispose supersede` place records by the id's second segment while the gaps store derives one file per requirement; a per-requirement bindings layout is held only by a project test and a hand move after each supersede. Lands: cross-tool train chunk 176.
-
-
-- **[ledger-store-as-a-record-kind](ledger-store-as-a-record-kind.md)** — the witness cache's compartment ledger sub-store implements the record-store mechanics by hand beside the core; folding it needs a one-segment naming form. *Lands: cross-tool train chunk 185*
-- **[witness-verdict-one-body-classifier](witness-verdict-one-body-classifier.md)** — the classifier inspects a body three ways (the rich resolved-view pass, the other-view direct test, the helper walk) and folds the union beside the class switch; one per-view classifyBody with a fold over views. *Lands: cross-tool train chunk 226*
-- **[seeding-walk-unreached-routes](seeding-walk-unreached-routes.md)** — the transitive seeding walk stops at dependency helpers and interface dispatch, each a served-flake shape the spec states; gofresh's reachable closure would answer both. *Lands: gofresh exports a query answering whether a subject's observed closure reaches a named function (the dynamic-state tier's home, decided at gofresh 202)*
-- **[structural-data-with-methods](structural-data-with-methods.md)** — a structural assertion for a data type with an exact method set (gofresh's Fingerprint carries its record form's encoders beside its exported fields, which `structural.ExportedData` refuses). *Lands: cross-tool train chunk 228*
-- **[go-backend-load-path-pairs](go-backend-load-path-pairs.md)** — workspace double-parse under
-  two error policies, the view-error/attribution wording split, the classifier's double-resolve.
-  *Lands: cross-tool train chunk 226*
-- **[process-output-utf8-marshal](process-output-utf8-marshal.md)** — raw process output (bytes,
-  not text) flows into edition-2023 proto string fields; one invalid byte makes the check result
-  unmarshallable. Cut-point half fixed; ingest-wide sanitization needs a design choice.
-  *Lands: cross-tool train chunk 249*
-- **[decomposition-editorial-pass](decomposition-editorial-pass.md)** — the sub-contract splits
-  of chunk 270 left editorial residue the byte-preserving mechanics could not touch: dangling
-  antecedents, paragraphs holding several obligations under one keyword, bindings pinning rules
-  no sentence states. *Lands: cross-tool train chunk 248*
-- **[proto-backend](proto-backend.md)** — descriptor-level verification via protocompile;
-  spec exists, five requirements gapped. *Lands: capability charter (gofresh docs/plans/capability-charters.md) — activates when a party outside this repository consumes stipulator's protos (a module importing gen/stipulator/v1, or a non-Go consumer of proto/stipulator/v1).*
-- **[out-of-process-backends](out-of-process-backends.md)** — trusted backend surfaces can move
-  behind a wire protocol while Stipulator continues deriving evidence in the current run;
-  mutation findings remain gomutant-owned. *Lands: capability charter — activates when a second language backend is planned.*
-- **[prover-trust-tiers](prover-trust-tiers.md)** — the proof rung assumes near-sound provers;
-  a heuristic analyzer must not inherit it. *Lands: capability charter — activates when a heuristic analyzer prover is proposed.*
-
-- **[performance-evidence-axis](performance-evidence-axis.md)** — no clause kind or evidence
-  class measures performance; pew recordings (guard-derived validity) are the binding-pin
-  model applied to measurements and slot in without bending the trust model. *Lands: capability charter — activates when a corpus declares a performance requirement.*
-
-- **[structural-call-absence-verb](structural-call-absence-verb.md)** — "never constructs
-  X" structural clauses have no verb: NoImport is transitive (stdlib forbiddance fails
-  through any real dependency) and the shape verbs state presence, not capability absence;
-  a direct-call-absence verb (structural.NoCall) would carry them. *Lands: capability charter — activates when a structural requirement needs a call-absence proof the signature/import verbs cannot carry.*
-
-- **[clause-structured-whole-claims](clause-structured-whole-claims.md)** — a requirement
-  with clauses still admits whole-requirement `tests` claims, so the false-green channel closes
-  only where authors choose clause claims; whether to refuse whole claims on clause-structured
-  requirements (a discipline choice). *Lands: cross-tool train chunk 176 (refuse by default, manifest opt-out — user ruling 2026-09-07)*
-- **[per-stream-color](per-stream-color.md)** — color is one switch over stdout and stderr; a redirected stderr costs stdout its color. Per-stream styler. *Lands: cross-tool train chunk 225 (172 merged into it; retargeted at audit 287)*
-- **[cli-test-binary-builds](cli-test-binary-builds.md)** — seven CLI-driving tests each build the binary; one once-built helper. *Lands: cross-tool train chunk 228*
-- **[deadline-roster-head-unbounded](deadline-roster-head-unbounded.md)** — the budget diagnostic's roster head has no bound of its own below the cap; a roster that large starves the residue. *Lands: a field report of a deadline diagnostic whose roster displaced its residue*
-- **[undecodable-manifest-records-dropped-silently](undecodable-manifest-records-dropped-silently.md)** — a record whose manifest fails the load's shape judgment is absent with no re-execution reason, where the serving rounds would let gofresh attribute it. *Lands: cross-tool train chunk 185 (a decode-ladder behaviour, beside the per-kind ladder; audit 287)*
-- **[reviewed-row-sets-one-pattern](reviewed-row-sets-one-pattern.md)** — exclusions, vouches, and scratch namespaces each spell validate → canonicalize → key → record → gate in their own words; one row-set shape would make the next set structurally complete. *Lands: cross-tool train chunk 226*
-- **[check-pass-shares-the-verification-ladder](check-pass-shares-the-verification-ladder.md)** — the check pass runs the capture → symbols → served-backend ladder in its own words beside the verification core every other judging verb reads. *Lands: cross-tool train chunk 249*
-- **[dangling-empty-label-remedy-names-no-clause](dangling-empty-label-remedy-names-no-clause.md)** — hygiene's unbind remedy for a hand-written empty-label claim carries no `--clause`, and that selector removes every claim on the pair; `unbind` has no form naming an empty label. *Lands: cross-tool train chunk 176 — a malformed record, named by path (derived 2026-09-29)*
-- **[supersede-carry-drops-clause-scope](supersede-carry-drops-clause-scope.md)** — the supersede carry builds successor bindings without the source claim's clause scope, widening a clause-scoped grant to the whole successor; keep, drop, or refuse is a semantic call. *Lands: cross-tool train chunk 176 — keep the scope or refuse the carry (derived 2026-09-29)*
-- **[impure-siblings-never-earn-a-proof](impure-siblings-never-earn-a-proof.md)** — two unasserted file-observing tests in one package share every process and so never publish; whether the selective form should isolate them to earn proofs is a cost-and-scope call. *Lands: a rider on cross-tool train chunk 249 (derived 2026-09-29)*
-- **[resolver-child-resident-set](resolver-child-resident-set.md)** — the served resolver child loads the whole corpus closure into one process for the pass (3.16 GB RSS observed mid-pass on a 2,249-binding corpus; two verifies killed by the host's memory guard beside one package-scoped test run); no knob bounds it. *Lands: the next cerebro report carrying the pass's own resident lines (the child half resolved and the parent bounded at chunk 307)*
-- **[cross-platform-resolution-views](cross-platform-resolution-views.md)** — an on-host resolution-only view for a selection declaring an off-host GOOS/GOARCH (the un-chartered train chunk 97); the refusal by name is correct for every corpus the tool serves today. *Lands: a consumer's policy declaring an off-host GOOS/GOARCH selection (the doc's own trigger; the row's 'field report' wording aligned at audit 334)*
-- **[check-summary-tally-names-one-invocation](check-summary-tally-names-one-invocation.md)** — the summary's witnessed tally covers one invocation (`dst-race`'s 1,073) and never says what the `race` leg's 1,023 executed subjects became (tugboat field report 2026-09-29). *Lands: a rider on cross-tool train chunk 249 (the per-invocation tally)*
-- **[invocation-folds-two-shapes](invocation-folds-two-shapes.md)** — `assembleInvocation` and `SelectionResult.absorb` fold a package's runs into an invocation's rows, diagnostics and observations two ways, one per execution form (307.B2b review, 2026-10-05). *Lands: cross-tool train chunk 249*
-- **[aborted-pass-publishes-unaccounted](aborted-pass-publishes-unaccounted.md)** — an errored or cancelled verification pass still publishes resolution records at its deferred close and loses the account with the result; check's result survives its error path, the shared pass's does not (307.B2d review, 2026-10-05). *Lands: cross-tool train chunk 249 (re-derived at open)*
-- **[executed-and-resolution-reason-faces-unclassed](executed-and-resolution-reason-faces-unclassed.md)** — the executed-reason account and the resolution notices are bare-string vocabularies beside the typed uncacheable face; one table shape per face, explain's answer a clause question. *Lands: cross-tool train chunk 249*
-- **[gofresh-corpus-pin-lag](gofresh-corpus-pin-lag.md)** — the gofresh pin is v0.115.1 against the v0.116.1 release (fleet sweep 2026-10-12); version lag is the shape corpus's one open drift channel, the bump the remedy. *Lands: tooling-redesign 5.2d, adopting the shared package-producing form and complete build/runtime descriptions together after 5.2c*
-- **[findings-store-historical-fleet-sweep](findings-store-historical-fleet-sweep.md)** — the three machine-local findings records (internal/author.Gap's 24 open survivors among them) read `oracle execution policy missing; counts are historical` under the installed gomutant (fleet sweep 2026-10-12); re-measure under the complete oracle or retire. *Lands: tooling-redesign 9.1 (every earlier campaign scope reconciled under the repaired oracle) — re-measured at 9.3's authorized final scopes or retired; an earlier complete-oracle re-measure over internal/author closes it sooner*
+| Issue | Remaining obligation | Primary slot |
+|---|---|---|
+| [supersede-carry-drops-clause-scope](supersede-carry-drops-clause-scope.md) | Preserve clause scope and clause-aware deduplication in supersede; ordinary retarget is already repaired. | 5.3 |
+| [dangling-empty-label-remedy-names-no-clause](dangling-empty-label-remedy-names-no-clause.md) | Name the malformed record, never a wider unbind selector. | 5.3 |
+| [clause-structured-whole-claims](clause-structured-whole-claims.md) | Deliberately amend today's legal whole-claim contract for approved default refusal with opt-out. | 5.3 |
+| [aborted-pass-publishes-unaccounted](aborted-pass-publishes-unaccounted.md) | Retain publication accounts on operation errors after Quiesce. | 5.3 |
+| [check-summary-tally-names-one-invocation](check-summary-tally-names-one-invocation.md) | Add per-invocation accounts beside the unique-subject scalar. | 5.3 |
+| [gofresh-corpus-pin-lag](gofresh-corpus-pin-lag.md) | Complete native package-producing adoption and omitted auto-PGO coverage; the pin is already v0.116.3. | 5.2d |
+| [mcp-go-export-compatibility-authoring](mcp-go-export-compatibility-authoring.md) | Identify the live server and establish export admission plus the blocked successful bind on that same server. | 5.5a |
+| [completed-package-peak-admission](completed-package-peak-admission.md) | Correct the completed wait-status estimate from causal measurements, preserving real memory protection. | 7.7 |
+| [check-pass-shares-the-verification-ladder](check-pass-shares-the-verification-ladder.md) | One explicit evaluation entry; non-measuring inspections with honest missing/partial accounts. | 7.5 |
+| [impure-siblings-never-earn-a-proof](impure-siblings-never-earn-a-proof.md) | Shared package-producing evidence for actual contributors, preserving singleton and retry boundaries. | 5.2c |
+| [undecodable-manifest-records-dropped-silently](undecodable-manifest-records-dropped-silently.md) | Account for refused runtime records without admitting malformed evidence. | 5.2e |
+| [reviewed-row-sets-one-pattern](reviewed-row-sets-one-pattern.md) | Consolidate declaration lifecycles while preserving each row set's trust and revocation semantics. | 5.2d |
+| [selection-certificate-preparation-repeated](selection-certificate-preparation-repeated.md) | Measure and share endpoint-local preparation; preserve completed certificate dependencies. | 5.2e |
+| [cerebro-scoped-discovery-cost](cerebro-scoped-discovery-cost.md) | Attribute the reported c9ea6cd ten-minute discovery timeout and establish bounded scoped work. | 5.2e |
+| [generic-constraint-seeding-reuse](generic-constraint-seeding-reuse.md) | Justify precision beyond deliberate constraint-method refusal with paired safety cases. | 7.8 |
+| [seeding-walk-unreached-routes](seeding-walk-unreached-routes.md) | Justify dependency/interface precision beyond the declared boundary; source-value walking exists. | 7.8 |
+| [witness-verdict-one-body-classifier](witness-verdict-one-body-classifier.md) | Consolidate two body scans, retaining selected class versus cross-view seeding. | 7.8 |
+| [go-backend-load-path-pairs](go-backend-load-path-pairs.md) | Reconcile workspace/error attribution, host portability and the `..foo` path residue. | 7.8 |
+| [resolution-missing-go-export-cache](resolution-missing-go-export-cache.md) | Classify missing exports and bound refresh/retry without hiding load failure. | 5.2e |
+| [resolver-child-resident-set](resolver-child-resident-set.md) | Measure current discovery and Stash parent retention; child-through-execution lifetime is repaired. | 7.7 |
+| [discovery-exit137-memory-target](discovery-exit137-memory-target.md) | Causal discovery measurement; exit 137 alone is not OOM and a GC target is not a physical cap. | 7.7 |
+| [execution-timing-diagnostics](execution-timing-diagnostics.md) | Retain invocation/package/test timing and queued/running/terminal distinctions through cancellation. | 5.3 |
+| [invocation-folds-two-shapes](invocation-folds-two-shapes.md) | Share report assembly without merging process identity, tiers or retry durability. | 5.3 |
+| [executed-and-resolution-reason-faces-unclassed](executed-and-resolution-reason-faces-unclassed.md) | Class the remaining account vocabularies and deliberately decide explain coverage. | 5.3 |
+| [deadline-roster-head-unbounded](deadline-roster-head-unbounded.md) | Bound the roster's share and retain residue using a synthetic large-roster fixture. | 5.3 |
+| [ledger-store-as-a-record-kind](ledger-store-as-a-record-kind.md) | Share remaining store mechanics; full coordinates, exclusion and encoder refusals already exist. | 5.6 |
+| [bindings-per-requirement-file-derivation](bindings-per-requirement-file-derivation.md) | Derive consistent binding placement for bind and supersede. | 5.3 |
+| [decomposition-editorial-pass](decomposition-editorial-pass.md) | Reconcile remaining antecedents, normative boundaries and enforcement pointers against current clauses. | 8.3 |
+| [per-stream-color](per-stream-color.md) | Judge color independently for stdout and stderr. | 8.3 |
+| [cli-test-binary-builds](cli-test-binary-builds.md) | Share eight build sites and reconcile four ambient helpers without losing isolation. | 5.6 |
+| [structural-data-with-methods](structural-data-with-methods.md) | Exact data/method-set assertion, separate from encoding semantics. | 5.6 |
+| [findings-store-historical-fleet-sweep](findings-store-historical-fleet-sweep.md) | Disposition reported historical overlays through named authorized scope or retirement. | 9.3 |
+| [cross-platform-resolution-views](cross-platform-resolution-views.md) | Preserve the off-host consumer-policy trigger for resolution-only views. | 9.4 |
+| [implemented-capability-acceptance](implemented-capability-acceptance.md) | Derive explicit partial capability acceptance without treating the filing as implementation authorization. | 7.5 |
+| [out-of-process-backends](out-of-process-backends.md) | Preserve the specific-second-backend trigger for a language-neutral wire interface. | 9.4 |
+| [performance-evidence-axis](performance-evidence-axis.md) | Preserve the concrete performance-requirement trigger; freshness alone grants no acceptance threshold. | 9.4 |
+| [proto-backend](proto-backend.md) | Preserve the external-consumer trigger and its seven gap conditions. | 9.4 |
+| [prover-trust-tiers](prover-trust-tiers.md) | Preserve the proposed-heuristic-prover trigger and prevent unearned proof authority. | 9.4 |
+| [structural-call-absence-verb](structural-call-absence-verb.md) | Preserve the concrete call-absence need; direct absence is not universal indirect-construction absence. | 9.4 |
+| [historical-proof-admission-current-strategy](historical-proof-admission-current-strategy.md) | Reconcile readable historical proofs with Stipulator's current-strategy load predicate; fixture before correction. | 5.2e |

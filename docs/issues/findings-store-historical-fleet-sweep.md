@@ -9,7 +9,7 @@ ephemeral equivalence attestations beside them) as
     unsupported; re-measure with the complete oracle; counts are
     historical — 0 repo-committable, 3 machine-local
 
-The installed gomutant now stamps every record with the oracle
+The repaired Gomutant record policy stamps every new measurement with the oracle
 execution policy its measurement ran under and lends no authority to
 a record lacking one (the negative-coverage cutoff: historical banks
 and findings barred from granting exemptions or reuse without sound
@@ -22,15 +22,18 @@ a campaign over stipulator's own face is not run as a measurement
 (the train's standing rule), so the re-measure is a named authorized
 scope, not a chunk gate.
 
-Scanned: the index and all 33 docs it lists. None tracks the findings
-store. The same line fires this week on tugboat's, pando's and
-protodb's stores, each widened into the doc that already schedules
-its re-measure; the gomutant side is the landed repair, not a defect.
-Rows disjoint; no scheduled trigger duplicated.
+An empty committed `.gomutant/findings.json` does not erase the machine-local
+overlay that the reported inspection read. The record source is the merged
+committed/local store, not the committed document's row count alone. The
+same sweep also reported historical stores in tugboat, pando and protodb;
+their scope and dispositions are separate from this repository's records.
 
-Lands: tooling-redesign 9.1 (the reconciliation of every earlier
-campaign scope under the repaired oracle) — the three records
-re-measured at 9.3's authorized final scopes or retired as resolving
-artifacts; a re-measure under the complete oracle at any earlier named
-point (a `--changed` window covering `internal/author`) closes it
-sooner.
+Lands: tooling-redesign 9.3
+
+Inventory the merged layers under identified tool and store provenance,
+then remeasure the named authorized complete-oracle scope or explicitly
+retire its historical records. Neither this filing nor an empty committed
+document authorizes a campaign or claims that the reported overlay is gone.
+Secondary constituents: 9.1 reconciles earlier scopes; 9.2 preserves history
+without upgrading missing support. Closure needs the actual overlay's
+disposition and survivor account, not a version-only reinterpretation.

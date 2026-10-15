@@ -1,24 +1,22 @@
-# Out-of-process backends
+# Conditional wire interface for another language backend
 
-Lands: when a second language backend is planned.
+Lands: tooling-redesign 9.4
 
-The backend abstraction (REQ-backend-surfaces; core neutrality proven by
-`internal/arch`) already crosses a process boundary for its one
-backend — the Go resolver runs in a self-exec'd child behind a JSON
-line protocol (internal/backends/golang/resolver.go, the resolver
-client) under REQ-go-owned-processes-resolver-child — so the remaining ask is a
-backend interface a non-Go implementation can stand behind, not the
-boundary itself. When a second language becomes
-real, the same surfaces — symbol resolution, shape hashing, witness
-running, and provers — can move behind a wire
-protocol (gRPC service definitions are natural for this proto-first
-project) with the trust model intact: evidence stays derived in the
-current run because stipulator orchestrates the run; only the process
-boundary moves. What must NOT move to a file interchange is the witness
-run itself — a persisted result consumed as evidence violates
-REQ-core-claims-untrusted.
+Activation condition: a specific second language backend is planned. The
+final census preserves that condition; it does not make a new backend or
+wire protocol immediate work.
 
-Mutation testing remains outside this backend boundary: Stipulator exports
-binding surfaces, while gomutant owns mutation findings and their freshness.
-Freezing the still-moving trusted backend interface into a wire contract is
-deferred while exactly one backend exists.
+REQ-backend-surfaces and `internal/arch` define the trusted backend boundary.
+The Go resolver already crosses a process boundary through
+`internal/backends/golang/resolver.go` and `resolverclient.go`, using a
+self-exec child and JSON-line protocol under
+REQ-go-owned-processes-resolver-child. The remaining capability is a backend
+interface a non-Go implementation can implement, not creating the first
+out-of-process resolver.
+
+At activation, derive the resolution, shape, witness and prover protocol
+with explicit ownership, error/cancellation and trust semantics. Orchestrated
+current execution remains distinct from consuming arbitrary persisted result
+claims; REQ-core-claims-untrusted still applies. Gomutant owns mutation
+findings. Freeze only the surfaces the actual second backend needs, and
+preserve source-derived versus execution-derived authority across the wire.

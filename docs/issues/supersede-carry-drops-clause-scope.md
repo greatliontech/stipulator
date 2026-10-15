@@ -1,18 +1,17 @@
-# A supersede carries a clause-scoped claim as a whole-requirement claim
+# Supersede drops clause scope and deduplicates distinct claims
 
-`internal/author/dispose.go`'s supersede carry builds each successor
-binding from the source's requirement, backend, symbol, role, and shape
-pin — never its clause scope — so a claim granted to one clause of the
-superseded requirement lands on the successor granting every clause,
-wider than what was declared; `bindingExists` (the carry's duplicate
-guard) keys without the clause for the same reason. REQ-change-split-
-merge says nothing about the clause: whether a carried claim should keep
-its scope (a successor declaring the same label), drop it deliberately
-(the successor's clauses are its own), or refuse to carry a scoped claim
-at all is a semantic call over what evidence a supersede may widen.
+Lands: tooling-redesign 5.3
 
-Lands: cross-tool train chunk 176 (derived 2026-09-29: evidence never
-widens through a mechanical operation — the carry keeps a clause-scoped
-claim's scope when the successor declares the same label and refuses to
-carry it otherwise, naming the claim; dropping the scope would
-manufacture whole-requirement evidence).
+`internal/author/dispose.go` constructs successor bindings from the source
+requirement, backend, symbol, role and shape pin, without its clause scope.
+Its `bindingExists` duplicate guard also omits the clause. A scoped grant
+can consequently become a whole-successor grant, or two distinct scoped
+claims can collapse. Ordinary binding retargeting already preserves resolved
+clause identity; that repair does not cover supersede.
+
+The remaining obligation is to preserve scope when the successor can
+represent it and otherwise refuse the carry, naming the claim. Duplicate
+detection must include resolved clause identity. State the successor-mapping
+rule deliberately in REQ-change-split-merge and pin matching, missing and
+colliding successor clauses. The 2026-09-29 derivation remains: a mechanical
+operation cannot manufacture whole-requirement evidence by dropping scope.

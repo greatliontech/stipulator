@@ -1,6 +1,15 @@
 # Discovery exit 137 and long memory-targeted checks
 
-Lands: user decision
+Lands: tooling-redesign 7.7
+
+The remaining obligation is causal resource measurement, not a user-choice
+fork. `internal/backends/golang`'s discovery/capture path performs typed and
+freshness analysis; the executor's shared memory admission applies later.
+The fleet resident ceiling is a GC target, not a physical process-tree cap.
+Attribute parent, resolver and other child work under identified cold/warm
+conditions before changing ownership or admission. No new OOM diagnosis
+follows from exit 137. Secondary constituent: 5.2e's scoped discovery and
+certificate-cost acceptance provides a bounded workload for that measurement.
 
 Field report from bldc on 2026-10-09. The move feature and its reviewed
 corrections are recoverable at bldc `1c2e7bc` (parent `14e743d`). The initial

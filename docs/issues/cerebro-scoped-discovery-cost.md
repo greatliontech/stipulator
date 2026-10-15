@@ -1,14 +1,21 @@
 # Cerebro: one-requirement check exhausts ten minutes in discovery
 
-An IDs-scoped check on Cerebro with the current inspected Stipulator build exhausted
+An IDs-scoped check on Cerebro with the identified c9ea6cd Stipulator build exhausted
 a 600-second execution budget before running any witnesses, while specification
 compilation and records-only verification completed. Attribute the discovery cost
 and establish a bounded affected-requirement workflow without weakening evidence.
 
-Lands: the next Go-backend discovery/performance slice reproducing Cerebro's
-`REQ-arch-obligation-activity-perimeter` scoped check with the binary, selection,
-phase and resource evidence below; the tooling driver owns attribution and the
-bounded-workflow remedy before claiming scoped execution is practical for this corpus.
+Lands: tooling-redesign 5.2e
+
+The remaining obligation is attributed scoped-discovery and certificate
+cold/warm cost under the identified workload, followed by justified bounded
+work. `packageinventory.go`, `served.go` and `sourcecertificate.go` now carry
+complete selected-view and certificate dependencies. Do not reopen 5.2a/b's
+selection, module-mode, physical-position or dotted-identity repairs, and do
+not claim this report was reproduced on the current source.
+
+Secondary constituents: 7.7 owns representative resource measurements;
+7.8 owns broader demand-driven sharing if those measurements justify it.
 
 ## Reproduction identity
 

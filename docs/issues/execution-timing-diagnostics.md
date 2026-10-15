@@ -1,7 +1,12 @@
 # Package and test timing diagnostics across cancellation
 
-Lands: the next Go execution-reporting change exercising a cancelled multi-package
-policy invocation.
+Lands: tooling-redesign 5.3
+
+The source boundary is `internal/backends/golang/execute.go`'s event decoder,
+package admission/start/reap path and invocation assembly. Existing phase
+durations, shared-host admission and named memory origins do not retain a
+package/test timeline. Secondary constituent: 7.7 uses that account for
+causal cost measurement; timing remains diagnostic, not reusable authority.
 
 ## Observed diagnostic gap
 

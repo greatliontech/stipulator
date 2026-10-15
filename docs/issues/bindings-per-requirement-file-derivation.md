@@ -23,5 +23,11 @@ a manifest option the project declares — so `bind` and `supersede` place
 records where the layout says and the placement is unrepresentable
 otherwise.
 
-Lands: cross-tool train chunk 176 (the supersede carry's shape, where the
-carry's placement is decided with its scope).
+Lands: tooling-redesign 5.3
+
+Derive the placement policy once for bind and supersede, preserving an
+explicit file's identity and refusing collisions before partial writes.
+Coordinate the default or declared-layout contract with clause-scoped carry;
+ordinary claim retargeting's fixed clause key does not choose file placement.
+Pin both authoring paths against the declared layout so the consumer need
+does not require a hand move after every supersede.

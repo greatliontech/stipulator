@@ -1,15 +1,20 @@
 # The structural dialect cannot state call absence, so "never constructs X" clauses fall back to weaker evidence
 
-Lands: when a structural requirement next needs a call-absence proof and the
-signature/import verbs demonstrably cannot carry it.
+Lands: tooling-redesign 9.4
+
+Activation condition: a structural requirement needs a call-absence proof
+that the signature/import verbs demonstrably cannot carry. The census
+preserves this condition; the example API below is a design sketch, not
+an implementation commissioned by the mapping.
 
 ## Observed
 
 A consuming repository carries a structural requirement of the shape "the
 package registers its services on a server handed in by the embedder and never
-constructs or owns the listener." The natural proof — the package never calls
-`net.Listen`/`net.ListenConfig` (or never constructs `grpc.NewServer`) — is not
-expressible in the structural dialect:
+constructs or owns the listener." One proposed assertion — the package has
+no direct call to `net.Listen`, `net.ListenConfig.Listen` or `grpc.NewServer` —
+is not expressible in the structural dialect and would prove only that
+narrower property:
 
 - `structural.NoImport` is transitive over the import graph, so forbidding
   `net` fails immediately through the package's gRPC dependency
@@ -32,11 +37,13 @@ A call-absence verb, for example:
 structural.NoCall(t, "example.com/mod/pkg", "net.Listen", "net.ListenConfig.Listen", "google.golang.org/grpc.NewServer")
 ```
 
-Direct-call absence over the package's own bodies (type-checked callee
-resolution, no transitive chasing) is the useful floor and is cheap; whether
-indirect calls through function values need a disposition can be stated in the
-verb's contract (the reference consumer's clause is satisfied by direct-call
-absence plus the existing signature pin). A non-transitive mode for `NoImport`
-(direct imports only) would serve a subset of these clauses but does not
-distinguish "imports net for an address type" from "constructs listeners", so
-the call-level verb is the one that carries the clause.
+The source boundaries are `stipulate/structural`'s import, signature and
+shape assertions. A direct-call-only `NoCall` could prove only that narrow
+property: it cannot establish absence of all indirect construction through
+helpers, function values, interfaces or dependencies. The signature pin
+does not supply the missing reachability argument either. At activation,
+match the assertion's actual reach to the consumer's clause or explicitly
+narrow the claim; unresolved indirect paths must not grant a universal
+"never constructs" proof. A direct-import mode would still not distinguish
+address-type use from listener construction. Retain positive and indirect
+counterexamples before assigning analyzer-proof authority.

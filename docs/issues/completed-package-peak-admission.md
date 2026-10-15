@@ -1,8 +1,19 @@
 # Completed-package peak stops cold witness admission
 
-Lands: a reproduction of the named workload records parent RSS/high-water,
-the go test child's wait-status peak, and separate post-exec driver,
-compiler/linker and test-binary peaks beside the invocation's origin line.
+Lands: tooling-redesign 7.7
+
+The remaining measurement must record parent RSS/high-water, the go test
+child's wait-status peak, and separate post-exec driver, compiler/linker
+and test-binary peaks beside the invocation's origin line.
+
+Current source already has the process-wide host gate, registration and
+reaping of slot-owned processes including isolation re-runs, and named
+estimate origins (`internal/backends/golang`'s admission and executor).
+Those are not missing mechanisms. `processPeakBytes` still reads completed
+wait-status `Maxrss`; the controlled report below establishes parent-peak
+inheritance on that host, not a new OOM diagnosis or the exact contribution
+to each earlier workload. Secondary constituent: 5.3 retains the origin in
+the operation account while the estimate policy is corrected from measurement.
 
 The estimate reads the go test child's wait-status `Rusage.Maxrss`; its
 attribution can include more than the test binary's execution. Measure

@@ -13,5 +13,9 @@ terminal verdict (`out.dim(...)`, `errs.red(...)`) — and every tinting
 call site named by the stream it writes to; the global switch and the
 stream-blind helpers are deleted.
 
-Lands: cross-tool train chunk 225 (172 merged into it at the third band;
-retargeted at audit 287, 2026-09-29).
+Lands: tooling-redesign 8.3
+
+Preserve NO_COLOR and TERM=dumb, and judge each destination independently.
+Cover stdout-only terminal, stderr-only terminal and neither-terminal forms;
+structured output receives no escape sequences. This is reader-facing
+projection work, independent of witness measurement or evidence authority.

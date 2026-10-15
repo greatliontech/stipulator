@@ -1,4 +1,4 @@
-# The check summary's witnessed tally covers one invocation and does not say which
+# The check summary lacks a per-invocation witnessed account
 
 Field report from tugboat (filed uncommitted in this tree, the
 standing channel), 2026-09-29, stipulator e9254e7.
@@ -15,15 +15,14 @@ packages: `dst` (`-tags dst`), `dst-race` (`-tags dst -race`), and
     resolution: 1119 served from records, 75 resolved typed
     witnessed: 0 served fresh, 1073 executed, 1073 uncacheable
 
-1073 is exactly `dst-race`'s subject count. The `race` invocation's
-1023 subjects were executed (the progress lines show all 18 packages)
-but appear nowhere in the witnessed tally, and the face never says
-whether they were witness-ineligible like `dst`'s (which IS labeled
-so), judged and served, or judged and uncacheable under their own
-reasons. For a consumer whose one selection listed in gofresh's
-toolchain audit is `race` (`dst` and `dst,race` are unwalked under
-go1.27.0-dst.14), the `race` leg is the only one that can serve
-today — and the summary does not show whether it does.
+1073 equals `dst-race`'s reported subject count, but this does not prove
+that the scalar tally literally counts only that invocation. The current
+`internal/verify.TestRun` account deduplicates subject identities; the
+backend merges producing rows and the summary projects that aggregate.
+Overlapping invocation populations can therefore produce this number.
+The missing information is each invocation's eligibility and its own
+served/executed/uncacheable disposition. The unwalked-selection wording
+above belongs to the reported binary, not the current content-keyed audit.
 
 Expected on the summary face (MCP UX doctrine: the minimum that
 keeps the reader on point): the witnessed tally per invocation, or
@@ -31,8 +30,10 @@ one line per invocation stating its eligibility and its
 served/executed/uncacheable split. The per-witness detail can stay
 behind the views.
 
-Lands: a rider on cross-tool train chunk 249 (gofresh
-docs/plans/cross-tool-train.md — check.Run's ladder; triaged at gofresh chunk 289's record,
-2026-09-29): the witnessed tally per invocation, one line per invocation
-stating its eligibility and its served/executed/uncacheable split — the
-never-silent rule.
+Lands: tooling-redesign 5.3
+
+Retain the useful unique-subject aggregate but label its unit. Add a
+per-invocation account from producing identity, including NoOutcome and
+ineligible legs, without counting a freshness-served outcome as suite
+health. Test unequal, overlapping invocation populations so equality with
+one leg cannot conceal missing accounting.

@@ -1,4 +1,15 @@
-# The resolver child's resident set is the whole corpus closure at once
+# Discovery and execution resident sets need current attribution
+
+Lands: tooling-redesign 7.7
+
+`internal/backends/golang/served.go`'s Quiesce publishes resolution records
+and releases the child before execution; the current executor's shared host
+gate, per-process registration and estimate origins are implemented. The
+remaining work measures parent discovery, current resolver peaks and the
+Stash execution-parent observation below. It does not wait for another
+Cerebro incident or rebuild the fixed through-execution child retention.
+Secondary constituents: 5.2e attributes scoped certificate preparation;
+5.3 preserves resource accounts on cancellation and error.
 
 ## Weaver records-only verification under a whole-tree cap
 
@@ -22,11 +33,10 @@ External suites and contract compilation are not substitutes for the missing bin
 and pin verdict. A bounded records-only workflow is needed without rerunning tests
 or weakening the consumer's process-tree memory protection.
 
-The served Go resolver child (`stipulator internal-resolve`, the self-exec'd
-process behind `verify`, `check` and `pin`) loads the typed packages of every
-binding's closure into one process for the whole pass. Its resident set is
-the corpus's package set, held until the pass ends, and on a mid-size corpus
-it is the largest single allocation on the host.
+The older reports concerned the served Go resolver child
+(`stipulator internal-resolve`, the self-exec'd process behind typed
+resolution) and parent analysis. Their observations precede the current
+Quiesce/release boundary and do not establish current lifetime retention.
 
 Field report (greatliontech/cerebro, stipulator 8fec2b4 and 9209125,
 2026-09-22): `stipulator verify` over a corpus of 6 documents, 435
@@ -41,15 +51,11 @@ before reporting; the same command alone on the same tree completes in about
 servers (2.6 GB together) and an idle gomutant MCP server (2.3 GB), which is
 what leaves the 3 GB spike no room.
 
-What the field observed, not a diagnosis: the resident set is proportional
-to the closure, not to what moved (a warm verify that executes nothing still
-pays it), and there is no knob bounding it. Two shapes the tool could take,
-the choice being the tool's: slice the resolution per module or per package
-group with the programs released between slices (the shape gomutant's
-observed-union issue sketches for its own pass), or bound the child under a
-ceiling derived from the host's memory as the oracle runs already are, so a
-pass that would exceed it refuses stated rather than dying under the host's
-guard with no verdict written.
+These older readings motivated ownership and ceiling changes that now
+exist. A soft runtime target is not a hard process-tree bound. Measure
+current cold/warm discovery and retained parent/child sets before changing
+slicing, ownership or admission; a large high-water reading alone does not
+establish retained state.
 
 Second field report (greatliontech/cerebro, stipulator binary of 2026-09-22,
 2026-10-04): `stipulator check` over the same corpus grown to 7,093 subjects
@@ -69,7 +75,8 @@ Resident baselines on the host at the time: three opencode sessions
 `stipulator check` of another session on a different module, with its own
 resolver child.
 
-What chunk 307 settled (2026-10-05): the resolver child's half is
+The 2026-10-05 implementation and its recorded measurement settled the
+through-execution resolver-child lifetime: that half is
 resolved — the pass asks every question of the child at discovery,
 publishes its records and releases the child before the first process
 spawns (a check over gofresh opened execution with no descendant where
@@ -98,10 +105,10 @@ the readings above are from `/proc`. This is the parent-growth-during-
 execution shape with one child, not 111. Full report in the
 [completed-package peak](completed-package-peak-admission.md) issue.
 
-Lands: the next cerebro report carrying the pass's own resident lines
-(the parent's reading at execution's exit and at the end, and the
-timing line's running peak with its moment) — the datum that attributes
-the growth to a phase before any mechanism is built for it.
+Retain current parent/child readings at discovery, execution exit and the
+end, with cold/warm cache identity and concurrent-operation identity. The
+Stash report already supplies an execution-parent shape requiring causal
+measurement; it must not be deferred solely for a new Cerebro report.
 
 The [Cerebro scoped-discovery report](cerebro-scoped-discovery-cost.md) supplies
 further phase-owned readings: an older-build completed run ended at 355 MiB with

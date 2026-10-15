@@ -1,17 +1,25 @@
-# An aborted verification pass publishes resolution records nobody accounts for
+# A later operation error loses the resolution publication account
 
-Found at chunk 307.B2d's review (2026-10-05). The shared verification
-pass (verifyrun.Run and Scoped) closes its serving backends through
-one closer: on the success path the report carries the account the
-close returns; on an error path — the witness run failing, the caller
-cancelling — the deferred close still runs, the served backend still
-publishes a resolution record for every symbol it resolved typed this
-run, and the account is lost with the result. check.Run differs: its
-result survives the error path, so its account does. Two questions:
-whether a pass that did not complete should publish at all (the
-records are the next run's served set, derived from a tree the pass
-saw whole, so they are sound — but the ending says "kept nothing" of
-witness records while resolution records landed), and where the
-account rides when there is no result.
+Lands: tooling-redesign 5.3
 
-Lands: cross-tool train chunk 249 (re-derived at its open: the doc predates 5b03427 — resolution records publish at Quiesce, before execution, not 'at the deferred close'; the clause half — REQ-policy-cancellation-kept's ending naming the resolution records — is 270's; audit 318).
+Reported on 2026-10-05 during verification-account work. Resolution
+publication now happens at `Served.Quiesce`, before execution; child release
+and that timing are already implemented. The remaining fault is the error
+return's account, not a request to move publication to deferred close or
+suppress independently completed records.
+
+In `internal/verifyrun/verifyrun.go`, `Run` and `Scoped` defer a
+`verify.Closer`, but a `RunTests` error returns nil reports before assigning
+`ResolutionNotices`. The successful report and `RefuseReport` carry those
+notices; this earlier error return does not. `internal/check` also loses the
+result on operational errors and cancellation: its record-problem helper
+retains ordinary verdicts and policy-record problems, but returns nil for
+other errors. The deferred closer can update a discarded local result, and
+the MCP check handler discards an error-accompanying result as well.
+
+Carry the publication account through cancellation and later errors on both
+faces. Distinguish durable resolution records, witness records and incomplete
+work. Pin an error after Quiesce on both check and verifyrun, and a successful
+control against the same
+account source; an ending must not imply that all work was lost when an
+independent publication succeeded.

@@ -1,9 +1,11 @@
 # Installed MCP Go export compatibility blocks binding authoring
 
-Lands: when the installed Stipulator MCP Go resolver admits the current
-Go 1.27.2-X:nodwarf5 export data and successfully authors the blocked binding,
-with the resolver admission and successful bind recorded under the same verified
-server/build and toolchain provenance.
+Lands: tooling-redesign 5.5a
+
+Closure condition: the same identified live MCP server admits the reported
+Go export format and successfully authors the blocked claim under recorded
+server/build, selected project and toolchain provenance. The slot owns this
+authoring-boundary investigation; it does not authorize actions in Weaver.
 
 ## Observed failure and missing claim
 
@@ -53,6 +55,11 @@ launch provenance, and effective resolver toolchain have not been established.
 The structural-loader fix is likewise not proof that the installed MCP resolver
 contains it or that its root-tool path supports the same exports. Do not attribute
 this observation to a new defect in current source without that evidence.
+
+Current source evidence: the root `go.mod` now selects Gofresh v0.116.3 and
+the patched `go-x-tools` dependency. `internal/backends/golang/resolverclient.go`
+and the MCP bind path still require identification of the actual live process;
+these source dependencies do not establish its deployed export reader.
 
 ## Resolution requirements
 

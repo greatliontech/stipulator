@@ -1,8 +1,11 @@
 # Explicit partial acceptance for an implemented capability
 
-Lands: Gofresh docs/plans/tooling-redesign.md 7.5 for the capability's derivation,
-with its conditional disposition retained through 9.4. This filing does not
-authorize implementation of a new partial-acceptance mode.
+Lands: tooling-redesign 7.5
+
+Secondary constituent: 9.4 retains the conditional disposition of the
+capability request. The filing did not commission implementation of a new
+partial-acceptance mode; 7.5 owns its derivation alongside the explicit
+evaluation/non-measuring inspection contract.
 
 ## Consumer need
 
@@ -63,3 +66,10 @@ change, blanket migration-gap declaration or local verdict wrapper is
 requested by this filing. Re-evaluate against the current installed consumer
 after the tooling migration; the observation above identifies one build,
 not a claim about every newer implementation.
+
+Current source boundaries are `internal/check`'s scoped verdict,
+`internal/coverage`'s gate judgment and the CLI/MCP scope projections. A
+report filter, execution scope and acceptance scope are distinct there.
+Any derived design must preserve the current global red account and state
+which of those boundaries it changes; the reported eleven covered rows
+alone cannot substitute for that judgment.

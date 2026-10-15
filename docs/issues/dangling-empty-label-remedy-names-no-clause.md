@@ -1,20 +1,15 @@
-# The remedy for a dangling empty-label claim names no clause
+# An empty-label claim's remedy selects more than the malformed claim
 
-Hygiene names a claim whose clause the requirement does not declare
-"dangling" and prints an unbind remedy composed from the claim's clause
-spelling. A hand-written record carrying `clause_label: ""` names no
-clause (records.ResolveClause refuses an empty label), but its spelling
-is the empty string, so the printed remedy is `stipulator unbind --req
-X --symbol Y` with no `--clause` — and that selector removes every
-claim on the requirement and symbol, not the dangling one. No tool
-writes an empty label (`bind` clears the clause on empty text), so the
-shape is reachable through hand-written records alone; `unbind` has no
-form that names an empty label, so the repair is a remedy-vocabulary
-question — a selector for "the empty label", or a refusal to compose a
-remedy for it — not a hygiene fix.
+Lands: tooling-redesign 5.3
 
-Lands: cross-tool train chunk 176 (derived 2026-09-29: no tool writes an
-empty label, so a record carrying one is malformed external input —
-hygiene classifies it as malformed, naming the record path as the
-remedy, never a selector wider than the claim; `unbind` gains no
-empty-label form).
+`internal/records`' `ResolveClause` refuses a hand-written
+`clause_label: ""`, but its empty spelling gives the hygiene remedy no
+`--clause` selector. `stipulator unbind --req X --symbol Y` then selects
+every claim on that pair, not just the malformed one. No tool authors an
+empty label; bind's empty clause text means a whole claim.
+
+The remaining obligation is to classify this external record as malformed
+and name its record path as the remedy, never a selector wider than the
+offending claim. The 2026-09-29 derivation requires no empty-label authoring
+form. Pin the remedy with valid sibling claims on the same pair and preserve
+ordinary clause-specific unbinding.

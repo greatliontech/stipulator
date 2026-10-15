@@ -1,18 +1,21 @@
-# The compartment ledger store is a record kind implemented by hand
+# Common ledger-store mechanics remain beside the record core
 
-The witness cache's ledger sub-store (`internal/witnesscache`: the
-`ledgers/` directory, `installLedger`, `readLedger`, `sweepLedgers`)
-carries its own dot-prefixed temporary, its own name-content agreement
-check (the digest repeated inside the file), and its own sweep with a
-since-sparing rule, beside the record store core
-(`internal/recordstore`) every other kind composes. Its naming differs
-from the core's — a ledger is named by its compartment digest alone,
-with no fingerprint segment — so folding it is a design choice: either
-the core's `Name` grows a one-segment form and the ledger store becomes
-a nested `recordstore.Store`, or the ledger's naming stays its own and
-the fold is refused as a coarsening. What merges: the temporary, the
-scan, the atomic write, the sweep walk; what stays: the digest-only
-name and the concurrent-install sparing rule (a ledger younger than
-the load is never swept).
+Lands: tooling-redesign 5.6
 
-Lands: cross-tool train chunk 185
+`internal/witnesscache/witnesscache.go`'s `ledgerCoordinate`, `installLedger`,
+`readLedger` and `sweepLedgers` already use complete provenance coordinates,
+including binding strategy. Installation and collection share cross-process
+exclusion; refused records retain readable ledger references. The ledger is
+not named by compartment digest alone. `installLedger` already delegates
+atomic writing to `recordstore.WriteAtomic`; the shared `recordstore.Digest`
+and `Name`'s encoder-error propagation are also implemented.
+
+The remaining consolidation is common scan, name/content admission and
+collection mechanics around the nested ledger store. Reuse a record-kind
+mechanism only if it preserves the full coordinate, lazy ledger reads,
+binding-evidence validation, referenced-record protection, context checks
+and concurrent-install sparing under the same exclusion span. Do not restore
+a one-segment compartment-only identity or add redundant atomic writers.
+
+Secondary constituent: 9.2 settles native/envelope compatibility before any
+format change; mechanical sharing must not backfill historical evidence.

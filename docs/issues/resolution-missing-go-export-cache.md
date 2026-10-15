@@ -1,13 +1,17 @@
 # Records verification encounters vanished Go export-cache files
 
-Lands: cross-tool train chunk 249 (triaged at 290r's open under the
-derive rule: the typed load already refuses a package with load errors,
-naming the first — this report's open half is the refusal's class
-naming the vanished export file with the rerun remedy, and one bounded
-retry of the typed load on that class, the resolver's reason-face work
-that lands with executed-and-resolution-reason-faces-unclassed; the
-cause — who removed the build-cache entry — is not isolated here, and a
-report isolating it re-triages)
+Lands: tooling-redesign 5.2e
+
+The typed load in `internal/backends/golang` already refuses package load
+errors through its load/attribution paths. The remaining obligation is an
+actionable class naming a vanished disposable export and one bounded refresh
+or retry under the same selected view, followed by an explicit refusal if it
+still fails. Complete selection and cross-view certificate dependencies are
+already implemented; do not reuse a stale typed view to hide this failure.
+The cause of the missing cache entry is not established by the report.
+
+Secondary constituent: 5.3 carries this refusal through the executed and
+resolution accounts without introducing a consumer-local reason parser.
 
 Field report from bldc on 2026-10-08, at base commit `0863f9d`, before its
 parent-relation refactor. This records a transient resolution failure; it does

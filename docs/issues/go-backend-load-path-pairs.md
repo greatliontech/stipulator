@@ -1,22 +1,23 @@
-# Go backend load path: parallel mechanisms in workspace membership, error attribution, and classification
+# Remaining workspace load, attribution and path judgments
 
-Three pairs on the package-load path each state one judgment twice:
+Lands: tooling-redesign 7.8
 
-- `workspaceMembers` (`internal/backends/golang/workspace.go`) parses
-  the workspace twice under two error policies — once to enumerate,
-  once to attribute — so a malformed `go.work` reaches two different
-  refusal texts depending on which parse sees it first.
-- The load-failure vocabularies: the `viewErrors` wording and the
-  dependency-resolution attribution (`depattribution.go`) name the
-  same states with different words; `moduleOwns` collapsed the xtest
-  half of this but the wording split remains.
-- The classifier resolves a package twice (once for ownership, once
-  for the attribution state) where one resolution feeds both.
+`internal/backends/golang/workspace.go` parses workspace membership with
+refusing errors; attribution has a separate workspace reading/error policy
+in `depattribution.go`. `viewErrors` and dependency attribution still render
+load states separately. Classification also obtains ownership and attribution
+through parallel package-resolution paths. Preserve REQ-go-load-attribution's
+states while deriving shared facts once where their scope agrees.
 
-One load result — membership, ownership, attribution state — computed
-once per package and consumed by every reader would collapse the
-three; REQ-go-load-attribution's stated states are the invariant to
-preserve.
+Two path residues remain distinct from those folds: `workspaceMembers` uses
+host `filepath` syntax while policy validation also has a host-portable tree
+path rule; `golang.go`'s ownership check uses `strings.HasPrefix(rel, "..")`,
+which also excludes an in-tree `..foo` component. Cover malformed go.work,
+portable spellings, escaping symlinks and an ordinary `..foo` member before
+unifying the readers or changing their errors.
 
-Lands: cross-tool train chunk 226 (the go.work readers it names fold there; slotted at audit
-263).
+Complete selections, module mode, physical declaration positions, dotted
+package identities and cross-view certificate dependencies are already
+implemented. They are preservation constraints, not remaining limbs here.
+Secondary constituent: 5.2e measures endpoint-local preparation before wider
+load sharing; opening and closing observations remain independent.

@@ -1,18 +1,22 @@
-# Cross-platform resolution views
+# Conditional off-host resolution-only views
 
-A policy selection declaring a GOOS/GOARCH off the host refuses by name
-today: no on-host run can grant its witnesses, and the refusal is
-fail-closed and sound. The ask carried as cross-tool train chunk 97 was
-an on-host resolution-only view for such selections — typed resolution
-without witness evidence, so a binding on a cross-platform-only symbol
-still resolves and hygiene still judges it.
+Lands: tooling-redesign 9.4
 
-No corpus the tool serves declares an off-host selection (gofresh,
-gomutant, stipulator, pew: none), so the view has no consumer and the
-refusal by name is the correct answer for every reachable policy. The
-chunk was un-chartered at the 2026-09-29 ratification; the mechanism
-stays as sketched.
+Activation condition: a consumer policy declares an off-host GOOS/GOARCH
+selection and requires resolution-only hygiene for its symbols. Mapping the
+issue to the final census preserves that trigger; it does not commission a
+new view now.
 
-Lands: a consumer's policy declaring an off-host GOOS/GOARCH selection —
-the refusal by name in a field report is the trigger; the view is
-chartered then.
+The Go policy normalization and selected-view paths in
+`internal/backends/golang` refuse unsupported off-host execution by name.
+That remains sound: typed resolution on the host cannot confer witness
+evidence for an unexecuted foreign platform. Complete build selections,
+module mode and cross-view certificates are already implemented; this is a
+different conditional capability, not a reopening of those repairs.
+
+The earlier proposal was a resolution-only view, allowing foreign-platform
+bindings to resolve while granting no witness outcome. At activation, define
+that authority and its selection/certificate identity, keep the execution
+refusal, and pin a foreign-only declaration against a host control. The
+original census found no such consumer among the four tooling corpora;
+recheck that observation at 9.4 rather than assuming it permanently true.

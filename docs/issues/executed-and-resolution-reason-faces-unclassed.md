@@ -25,4 +25,11 @@ rendering and, where explain should answer it, a kind), the three faces one
 shape; whether explain answers the two faces is a clause question for the
 spec.
 
-Lands: cross-tool train chunk 249 (the witness pipeline's monoliths — runWitnesses holds both accounts).
+Lands: tooling-redesign 5.3
+
+Preserve the typed uncacheable face and Gofresh's ownership of passed-through
+reasons. Give the remaining accounts explicit classes at their composition
+sites, including error returns and retry paths, rather than another string
+parser in a migration adapter. Decide any expansion of explain's contract
+deliberately and pin the corresponding faces; current uncacheable-only
+explain coverage is not evidence that those other accounts are implemented.
