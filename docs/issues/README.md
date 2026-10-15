@@ -17,7 +17,7 @@ authorize a campaign, an external consumer action or an untriggered capability.
 | [mcp-go-export-compatibility-authoring](mcp-go-export-compatibility-authoring.md) | Identify the live server and establish export admission plus the blocked successful bind on that same server. | 5.5a |
 | [completed-package-peak-admission](completed-package-peak-admission.md) | Correct the completed wait-status estimate from causal measurements, preserving real memory protection. | 7.7 |
 | [check-pass-shares-the-verification-ladder](check-pass-shares-the-verification-ladder.md) | One explicit evaluation entry; non-measuring inspections with honest missing/partial accounts. | 7.5 |
-| [impure-siblings-never-earn-a-proof](impure-siblings-never-earn-a-proof.md) | Shared package-producing evidence for actual contributors, preserving singleton and retry boundaries. | 5.2c |
+| [impure-siblings-never-earn-a-proof](impure-siblings-never-earn-a-proof.md) | Adopt shared package-producing evidence and the complete executed-subject contract, preserving singleton and retry boundaries. | 5.2d |
 | [undecodable-manifest-records-dropped-silently](undecodable-manifest-records-dropped-silently.md) | Account for refused runtime records without admitting malformed evidence. | 5.2e |
 | [reviewed-row-sets-one-pattern](reviewed-row-sets-one-pattern.md) | Consolidate declaration lifecycles while preserving each row set's trust and revocation semantics. | 5.2d |
 | [selection-certificate-preparation-repeated](selection-certificate-preparation-repeated.md) | Measure and share endpoint-local preparation; preserve completed certificate dependencies. | 5.2e |
