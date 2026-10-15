@@ -1,6 +1,6 @@
 # Issues
 
-Forty retained issues. Routing is governed by
+Forty-one retained issues. Routing is governed by
 [`tooling-redesign.md`](../../../gofresh/docs/plans/tooling-redesign.md).
 Each issue has one primary open slot; secondary constituents and conditional
 activation requirements are stated separately in its body. A slot does not
@@ -8,6 +8,7 @@ authorize a campaign, an external consumer action or an untriggered capability.
 
 | Issue | Remaining obligation | Primary slot |
 |---|---|---|
+| [global-cache-disk-retention](global-cache-disk-retention.md) | 3.7 GiB across corpus stores; bound disk growth while reconciling explicit-only cross-identity GC. | 7.9c |
 | [supersede-carry-drops-clause-scope](supersede-carry-drops-clause-scope.md) | Preserve clause scope and clause-aware deduplication in supersede; ordinary retarget is already repaired. | 5.3 |
 | [dangling-empty-label-remedy-names-no-clause](dangling-empty-label-remedy-names-no-clause.md) | Name the malformed record, never a wider unbind selector. | 5.3 |
 | [clause-structured-whole-claims](clause-structured-whole-claims.md) | Deliberately amend today's legal whole-claim contract for approved default refusal with opt-out. | 5.3 |
