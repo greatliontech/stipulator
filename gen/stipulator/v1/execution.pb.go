@@ -683,20 +683,22 @@ func (*invocationHealth_Go) isInvocationHealth_Resolved() {}
 // it leaves absent appears at the value the tree and host environment
 // selected when the policy was loaded.
 type GoResolvedConfig struct {
-	state                   protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Toolchain    *string                `protobuf:"bytes,1,opt,name=toolchain"`
-	xxx_hidden_Goos         *string                `protobuf:"bytes,2,opt,name=goos"`
-	xxx_hidden_Goarch       *string                `protobuf:"bytes,3,opt,name=goarch"`
-	xxx_hidden_CgoEnabled   bool                   `protobuf:"varint,4,opt,name=cgo_enabled,json=cgoEnabled"`
-	xxx_hidden_Goflags      *string                `protobuf:"bytes,5,opt,name=goflags"`
-	xxx_hidden_Goexperiment *string                `protobuf:"bytes,6,opt,name=goexperiment"`
-	xxx_hidden_WorkspaceOn  bool                   `protobuf:"varint,7,opt,name=workspace_on,json=workspaceOn"`
-	xxx_hidden_Race         bool                   `protobuf:"varint,8,opt,name=race"`
-	xxx_hidden_PlainWitness bool                   `protobuf:"varint,9,opt,name=plain_witness,json=plainWitness"`
-	XXX_raceDetectHookData  protoimpl.RaceDetectHookData
-	XXX_presence            [1]uint32
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	state                        protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Toolchain         *string                `protobuf:"bytes,1,opt,name=toolchain"`
+	xxx_hidden_Goos              *string                `protobuf:"bytes,2,opt,name=goos"`
+	xxx_hidden_Goarch            *string                `protobuf:"bytes,3,opt,name=goarch"`
+	xxx_hidden_CgoEnabled        bool                   `protobuf:"varint,4,opt,name=cgo_enabled,json=cgoEnabled"`
+	xxx_hidden_Goflags           *string                `protobuf:"bytes,5,opt,name=goflags"`
+	xxx_hidden_Goexperiment      *string                `protobuf:"bytes,6,opt,name=goexperiment"`
+	xxx_hidden_WorkspaceOn       bool                   `protobuf:"varint,7,opt,name=workspace_on,json=workspaceOn"`
+	xxx_hidden_Race              bool                   `protobuf:"varint,8,opt,name=race"`
+	xxx_hidden_PlainWitness      bool                   `protobuf:"varint,9,opt,name=plain_witness,json=plainWitness"`
+	xxx_hidden_LinkerAssignments []string               `protobuf:"bytes,10,rep,name=linker_assignments,json=linkerAssignments"`
+	xxx_hidden_InputFiles        []string               `protobuf:"bytes,11,rep,name=input_files,json=inputFiles"`
+	XXX_raceDetectHookData       protoimpl.RaceDetectHookData
+	XXX_presence                 [1]uint32
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *GoResolvedConfig) Reset() {
@@ -802,49 +804,71 @@ func (x *GoResolvedConfig) GetPlainWitness() bool {
 	return false
 }
 
+func (x *GoResolvedConfig) GetLinkerAssignments() []string {
+	if x != nil {
+		return x.xxx_hidden_LinkerAssignments
+	}
+	return nil
+}
+
+func (x *GoResolvedConfig) GetInputFiles() []string {
+	if x != nil {
+		return x.xxx_hidden_InputFiles
+	}
+	return nil
+}
+
 func (x *GoResolvedConfig) SetToolchain(v string) {
 	x.xxx_hidden_Toolchain = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 11)
 }
 
 func (x *GoResolvedConfig) SetGoos(v string) {
 	x.xxx_hidden_Goos = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 11)
 }
 
 func (x *GoResolvedConfig) SetGoarch(v string) {
 	x.xxx_hidden_Goarch = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 11)
 }
 
 func (x *GoResolvedConfig) SetCgoEnabled(v bool) {
 	x.xxx_hidden_CgoEnabled = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 11)
 }
 
 func (x *GoResolvedConfig) SetGoflags(v string) {
 	x.xxx_hidden_Goflags = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 11)
 }
 
 func (x *GoResolvedConfig) SetGoexperiment(v string) {
 	x.xxx_hidden_Goexperiment = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 11)
 }
 
 func (x *GoResolvedConfig) SetWorkspaceOn(v bool) {
 	x.xxx_hidden_WorkspaceOn = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 11)
 }
 
 func (x *GoResolvedConfig) SetRace(v bool) {
 	x.xxx_hidden_Race = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 11)
 }
 
 func (x *GoResolvedConfig) SetPlainWitness(v bool) {
 	x.xxx_hidden_PlainWitness = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 9)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 11)
+}
+
+func (x *GoResolvedConfig) SetLinkerAssignments(v []string) {
+	x.xxx_hidden_LinkerAssignments = v
+}
+
+func (x *GoResolvedConfig) SetInputFiles(v []string) {
+	x.xxx_hidden_InputFiles = v
 }
 
 func (x *GoResolvedConfig) HasToolchain() bool {
@@ -981,6 +1005,10 @@ type GoResolvedConfig_builder struct {
 	// the witness-eligible selection at the plain tier - the recorded
 	// downgrade witness derivation reads (REQ-check-witness-selection).
 	PlainWitness *bool
+	// Resolved package.variable=value strings used by the Go linker.
+	LinkerAssignments []string
+	// Exact regular-file paths resolved from reviewed environment declarations.
+	InputFiles []string
 }
 
 func (b0 GoResolvedConfig_builder) Build() *GoResolvedConfig {
@@ -988,41 +1016,43 @@ func (b0 GoResolvedConfig_builder) Build() *GoResolvedConfig {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Toolchain != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 11)
 		x.xxx_hidden_Toolchain = b.Toolchain
 	}
 	if b.Goos != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 11)
 		x.xxx_hidden_Goos = b.Goos
 	}
 	if b.Goarch != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 11)
 		x.xxx_hidden_Goarch = b.Goarch
 	}
 	if b.CgoEnabled != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 11)
 		x.xxx_hidden_CgoEnabled = *b.CgoEnabled
 	}
 	if b.Goflags != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 11)
 		x.xxx_hidden_Goflags = b.Goflags
 	}
 	if b.Goexperiment != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 11)
 		x.xxx_hidden_Goexperiment = b.Goexperiment
 	}
 	if b.WorkspaceOn != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 11)
 		x.xxx_hidden_WorkspaceOn = *b.WorkspaceOn
 	}
 	if b.Race != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 11)
 		x.xxx_hidden_Race = *b.Race
 	}
 	if b.PlainWitness != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 9)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 11)
 		x.xxx_hidden_PlainWitness = *b.PlainWitness
 	}
+	x.xxx_hidden_LinkerAssignments = b.LinkerAssignments
+	x.xxx_hidden_InputFiles = b.InputFiles
 	return m0
 }
 
@@ -2543,7 +2573,7 @@ const file_stipulator_v1_execution_proto_rawDesc = "" +
 	"\bpackages\x18\x03 \x03(\v2\x1c.stipulator.v1.PackageHealthR\bpackages\x121\n" +
 	"\x02go\x18\x04 \x01(\v2\x1f.stipulator.v1.GoResolvedConfigH\x00R\x02goB\n" +
 	"\n" +
-	"\bresolved\"\x97\x02\n" +
+	"\bresolved\"\xe7\x02\n" +
 	"\x10GoResolvedConfig\x12\x1c\n" +
 	"\ttoolchain\x18\x01 \x01(\tR\ttoolchain\x12\x12\n" +
 	"\x04goos\x18\x02 \x01(\tR\x04goos\x12\x16\n" +
@@ -2554,7 +2584,11 @@ const file_stipulator_v1_execution_proto_rawDesc = "" +
 	"\fgoexperiment\x18\x06 \x01(\tR\fgoexperiment\x12!\n" +
 	"\fworkspace_on\x18\a \x01(\bR\vworkspaceOn\x12\x12\n" +
 	"\x04race\x18\b \x01(\bR\x04race\x12#\n" +
-	"\rplain_witness\x18\t \x01(\bR\fplainWitness\"\xe1\x01\n" +
+	"\rplain_witness\x18\t \x01(\bR\fplainWitness\x12-\n" +
+	"\x12linker_assignments\x18\n" +
+	" \x03(\tR\x11linkerAssignments\x12\x1f\n" +
+	"\vinput_files\x18\v \x03(\tR\n" +
+	"inputFiles\"\xe1\x01\n" +
 	"\n" +
 	"TestResult\x12\x18\n" +
 	"\apackage\x18\x01 \x01(\tR\apackage\x12\x12\n" +

@@ -108,6 +108,51 @@ implicitly added to the conservation universe.
 
 ## Witnesses
 
+**REQ-go-linker-selection** (behavior): An invocation declaring
+`linker_strings` MUST use Go string-variable linker assignments sorted by
+`(package, variable)` with no duplicate target. Each entry names an import
+path and Go identifier and exactly one source: literal `value` (including
+empty), or `value_environment`, a nonempty portable environment-variable
+name. Environment sources resolve once from the invocation's environment
+after its denials and overrides; unset or empty environment values refuse.
+Values contain only printable ASCII without whitespace, quotes or backslashes;
+unsupported values refuse rather than being quoted, expanded or truncated.
+The closed selection supplies only `-X package.variable=value`, never arbitrary
+linker flags, pattern overrides, shell commands or source substitutions. The
+linker's own applicability rules still apply: an assignment does not prove a
+target is linked, is an eligible string variable, or is consumed by a test.
+The exact resolved assignments reach every test compilation, including
+whole-policy execution, selective witnesses and isolation retries, and the
+freshness engine's explicit build flags. They partition capture groups and
+build guards; their declared targets and value sources partition record identity.
+An environment-resolved value is a producing build input, not a new declared
+record coordinate. Invocation reports retain the resolved assignments. Existing
+invocations without assignments retain their record coordinates. Ambient and
+explicit GOFLAGS still refuse `-ldflags` and unsupported substitution controls;
+binary `args` is not a second build-flag channel. CLI and MCP use the same policy
+normalization and execution. Producing the assigned value remains external work,
+not a policy hook or an assertion of build certification.
+
+**REQ-go-invocation-input-files** (behavior): An invocation declaring
+`input_files_from_environment` MUST use a sorted unique list of portable environment
+names. After environment denials and overrides, each name resolves once to
+an existing regular file at a clean absolute path with no symlink components.
+Absent or empty values, directories, nonregular files, duplicate resolved paths
+and paths covered by observation exclusions (including VCS bookkeeping) refuse
+normalization. Exactly the selected files enter the existing observation bracket;
+the native observation owner's effective producer classification also refuses any
+selected file whose read would be recordless, projected or unverifiable, including
+guard-covered cache files. This check uses the actual producing environment and
+directory, preserving native cache exceptions and overlapping-root decisions;
+neither ambient prefix tests nor a bracket override can confer eligibility.
+Their parent directories and siblings gain no admission. The resolved paths are
+retained in the invocation report, and the declaration participates in record
+identity. File bytes remain actual observed inputs: pre-spawn and closing
+brackets and current observation validation govern their use and freshness,
+never a path-only identity, an exclusion, or a content-equivalence assertion.
+The test must actually consume the file to claim its observed dependency.
+These declarations do not execute producers or make absent files optional.
+
 **REQ-go-witness** (behavior): Witnesses MUST be derived from `go test -json`
 output produced in the current verification run, correlating passed tests
 with bindings of role `tests` or `proves` — both name executable test

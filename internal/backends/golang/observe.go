@@ -118,6 +118,9 @@ func captureObservationFrame(ctx context.Context, n *NormalizedInvocation, pkg s
 	if !ok {
 		return observationFrame{spawnReason: "package directory unknown at spawn; no observation bracket was captured"}
 	}
+	if err := requireExactInputEligibility(ctx, n, pkgDir); err != nil {
+		return observationFrame{spawnReason: "selected input eligibility refused before capture: " + err.Error()}
+	}
 	bracketPaths, refused := bracketRootsFor(n, pkg)
 	if refused != "" {
 		return observationFrame{spawnReason: refused}
@@ -128,8 +131,14 @@ func captureObservationFrame(ctx context.Context, n *NormalizedInvocation, pkg s
 	// the same unrelated tooling seals the observation the exclusion
 	// exists to keep cacheable. The caller-side soundness assertion the
 	// exclusion carries covers both uses.
-	return observationFrame{roots: n.roots, frame: runtimeinput.CaptureProducerFrame(ctx, treeRoot(n), pkgDir,
-		runtimeinput.FrameOptions{BracketPaths: bracketPaths, ExcludedPaths: n.ExcludedPaths})}
+	frame := runtimeinput.CaptureProducerFrame(ctx, treeRoot(n), pkgDir,
+		runtimeinput.FrameOptions{BracketPaths: bracketPaths, ExcludedPaths: n.ExcludedPaths})
+	if frame.PkgDir != "" {
+		if err := requireExactInputEligibility(ctx, n, frame.PkgDir); err != nil {
+			return observationFrame{spawnReason: "selected input eligibility refused during capture: " + err.Error()}
+		}
+	}
+	return observationFrame{roots: n.roots, frame: frame}
 }
 
 // observeProcess builds the observation one launched process owns, from
@@ -332,5 +341,7 @@ func resolvedConfig(n *NormalizedInvocation) *stipulatorv1.GoResolvedConfig {
 	rc.SetWorkspaceOn(n.WorkspaceOn)
 	rc.SetRace(n.Race)
 	rc.SetPlainWitness(n.PlainWitness)
+	rc.SetLinkerAssignments(n.LinkerAssignments)
+	rc.SetInputFiles(n.InputFiles)
 	return rc
 }

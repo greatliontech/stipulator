@@ -93,7 +93,7 @@ func tupleEqual(a, b keyFieldTuple) bool {
 
 func groupKeyFields(n *NormalizedInvocation) keyFieldTuple {
 	return keyFieldTuple{
-		strs:  [][]string{n.Tags, sortedCopy(witnessEnvOf(n)), identityArgs(n.Args), canonicalExclusions(n.ExcludedPaths), n.Vouches},
+		strs:  [][]string{n.Tags, sortedCopy(witnessEnvOf(n)), identityArgs(n.Args), canonicalExclusions(n.ExcludedPaths), n.Vouches, n.LinkerAssignments, n.DeclaredLinkerStrings, n.InputFileEnvironment, n.InputFiles},
 		flags: []bool{n.AssumePure, n.Race},
 		one:   []string{n.ModuleMode.String(), n.ModuleRoot, n.PGO},
 		pairs: namespacePairs(n.ScratchNamespaces),
@@ -102,7 +102,7 @@ func groupKeyFields(n *NormalizedInvocation) keyFieldTuple {
 
 func groupIdentityFields(n *NormalizedInvocation) keyFieldTuple {
 	return keyFieldTuple{
-		strs:  [][]string{n.Tags, identityArgs(n.Args), sortedCopy(n.EnvOverrides), sortedCopy(n.EnvDeny)},
+		strs:  [][]string{n.Tags, identityArgs(n.Args), sortedCopy(n.EnvOverrides), sortedCopy(n.EnvDeny), n.DeclaredLinkerStrings, n.InputFileEnvironment},
 		flags: []bool{n.Race, n.WorkspaceOn},
 		one: []string{n.DeclaredGOOS, n.DeclaredGOARCH, n.DeclaredCgo, n.DeclaredGOFLAGS,
 			n.ModuleMode.String(), n.ModuleRoot, n.PGO, n.DeclaredToolchain},
@@ -142,25 +142,29 @@ func TestKeyEncodingIsCollisionFree(t *testing.T) {
 	}
 	gen := rapid.Custom(func(t *rapid.T) *NormalizedInvocation {
 		return &NormalizedInvocation{
-			Tags:              adversarialList.Draw(t, "tags"),
-			WitnessEnv:        append([]string{"K=V"}, adversarialList.Draw(t, "env")...),
-			Args:              adversarialList.Draw(t, "args"),
-			ExcludedPaths:     adversarialList.Draw(t, "excl"),
-			Vouches:           adversarialList.Draw(t, "vouches"),
-			ScratchNamespaces: adversarialNamespaces.Draw(t, "scratch"),
-			EnvOverrides:      adversarialList.Draw(t, "envset"),
-			EnvDeny:           adversarialList.Draw(t, "envdeny"),
-			AssumePure:        rapid.Bool().Draw(t, "pure"),
-			Race:              rapid.Bool().Draw(t, "race"),
-			WorkspaceOn:       rapid.Bool().Draw(t, "workspace"),
-			ModuleMode:        rapid.SampledFrom([]stipulatorv1.GoModuleMode{stipulatorv1.GoModuleMode_GO_MODULE_MODE_UNSPECIFIED, stipulatorv1.GoModuleMode_GO_MODULE_MODE_VENDOR}).Draw(t, "mode"),
-			ModuleRoot:        adversarialVal.Draw(t, "module_root"),
-			PGO:               adversarialVal.Draw(t, "pgo"),
-			DeclaredGOOS:      adversarialVal.Draw(t, "goos"),
-			DeclaredGOARCH:    adversarialVal.Draw(t, "goarch"),
-			DeclaredCgo:       adversarialVal.Draw(t, "cgo"),
-			DeclaredGOFLAGS:   adversarialVal.Draw(t, "goflags"),
-			DeclaredToolchain: adversarialVal.Draw(t, "toolchain"),
+			Tags:                  adversarialList.Draw(t, "tags"),
+			WitnessEnv:            append([]string{"K=V"}, adversarialList.Draw(t, "env")...),
+			Args:                  adversarialList.Draw(t, "args"),
+			ExcludedPaths:         adversarialList.Draw(t, "excl"),
+			Vouches:               adversarialList.Draw(t, "vouches"),
+			ScratchNamespaces:     adversarialNamespaces.Draw(t, "scratch"),
+			EnvOverrides:          adversarialList.Draw(t, "envset"),
+			EnvDeny:               adversarialList.Draw(t, "envdeny"),
+			AssumePure:            rapid.Bool().Draw(t, "pure"),
+			Race:                  rapid.Bool().Draw(t, "race"),
+			WorkspaceOn:           rapid.Bool().Draw(t, "workspace"),
+			ModuleMode:            rapid.SampledFrom([]stipulatorv1.GoModuleMode{stipulatorv1.GoModuleMode_GO_MODULE_MODE_UNSPECIFIED, stipulatorv1.GoModuleMode_GO_MODULE_MODE_VENDOR}).Draw(t, "mode"),
+			ModuleRoot:            adversarialVal.Draw(t, "module_root"),
+			PGO:                   adversarialVal.Draw(t, "pgo"),
+			DeclaredGOOS:          adversarialVal.Draw(t, "goos"),
+			DeclaredGOARCH:        adversarialVal.Draw(t, "goarch"),
+			DeclaredCgo:           adversarialVal.Draw(t, "cgo"),
+			DeclaredGOFLAGS:       adversarialVal.Draw(t, "goflags"),
+			DeclaredToolchain:     adversarialVal.Draw(t, "toolchain"),
+			LinkerAssignments:     adversarialList.Draw(t, "linker_values"),
+			DeclaredLinkerStrings: adversarialList.Draw(t, "linker_sources"),
+			InputFileEnvironment:  adversarialList.Draw(t, "input_file_environment"),
+			InputFiles:            adversarialList.Draw(t, "input_files"),
 		}
 	})
 	// The perturbation draws a segment LABEL and replaces that field
@@ -212,7 +216,17 @@ var adversarialNamespaces = rapid.SliceOfN(rapid.Custom(func(t *rapid.T) runtime
 // holds this map and the keys' segment tables in exact correspondence,
 // label sets AND label-to-field wiring.
 var perturbations = map[string]func(t *rapid.T, n *NormalizedInvocation){
-	"tags": func(t *rapid.T, n *NormalizedInvocation) { n.Tags = adversarialList.Draw(t, "tags2") },
+	"linker_values": func(t *rapid.T, n *NormalizedInvocation) {
+		n.LinkerAssignments = adversarialList.Draw(t, "linker_values2")
+	},
+	"linker_sources": func(t *rapid.T, n *NormalizedInvocation) {
+		n.DeclaredLinkerStrings = adversarialList.Draw(t, "linker_sources2")
+	},
+	"input_file_environment": func(t *rapid.T, n *NormalizedInvocation) {
+		n.InputFileEnvironment = adversarialList.Draw(t, "input_file_environment2")
+	},
+	"input_files": func(t *rapid.T, n *NormalizedInvocation) { n.InputFiles = adversarialList.Draw(t, "input_files2") },
+	"tags":        func(t *rapid.T, n *NormalizedInvocation) { n.Tags = adversarialList.Draw(t, "tags2") },
 	"env": func(t *rapid.T, n *NormalizedInvocation) {
 		n.WitnessEnv = append([]string{"K=V"}, adversarialList.Draw(t, "env2")...)
 	},
@@ -246,7 +260,7 @@ var perturbations = map[string]func(t *rapid.T, n *NormalizedInvocation){
 // falls through to the host-width derivation — labels are structural,
 // not value-dependent.
 func keyedLabels() []string {
-	n := &NormalizedInvocation{WitnessEnv: []string{}}
+	n := &NormalizedInvocation{WitnessEnv: []string{}, LinkerAssignments: []string{"value"}, DeclaredLinkerStrings: []string{"source"}, InputFileEnvironment: []string{"ENV"}, InputFiles: []string{"/file"}}
 	seen := map[string]bool{}
 	var labels []string
 	for _, s := range append(groupKeySegments(n), groupIdentitySegments(n)...) {
@@ -262,14 +276,23 @@ func keyedLabels() []string {
 // changedLabels lists the labels whose segment value differs between
 // two invocations, across both tables, deduplicated.
 func changedLabels(a, b *NormalizedInvocation) []string {
-	segsA := append(groupKeySegments(a), groupIdentitySegments(a)...)
-	segsB := append(groupKeySegments(b), groupIdentitySegments(b)...)
 	seen := map[string]bool{}
 	var out []string
-	for i := range segsA {
-		if segsA[i].value != segsB[i].value && !seen[segsA[i].label] {
-			seen[segsA[i].label] = true
-			out = append(out, segsA[i].label)
+	for _, table := range []func(*NormalizedInvocation) []keySegment{groupKeySegments, groupIdentitySegments} {
+		left, right := map[string]keyValue{}, map[string]keyValue{}
+		for _, s := range table(a) {
+			left[s.label] = s.value
+		}
+		for _, s := range table(b) {
+			right[s.label] = s.value
+		}
+		for _, rows := range []map[string]keyValue{left, right} {
+			for label := range rows {
+				if left[label] != right[label] && !seen[label] {
+					seen[label] = true
+					out = append(out, label)
+				}
+			}
 		}
 	}
 	return out

@@ -252,6 +252,30 @@ message GoInvocationConfig {
   // pair form exists so a directory carrying a colon can never parse
   // as a pattern. Committed and reviewed, never per-machine.
   repeated ScratchNamespace scratch_namespaces = 26;
+  // Explicit string-variable linker assignments (-X), sorted by package and
+  // variable, with no duplicate target. Values are literal or read once from
+  // the invocation's normalized environment. This is not an arbitrary linker
+  // flag, shell expansion, source substitution, or producer command surface.
+  repeated GoLinkerString linker_strings = 27;
+  // Names of normalized environment variables containing clean absolute paths
+  // to existing regular files consumed by tests. Each resolves once and adds
+  // exactly that file to the observation bracket, never its parent directory.
+  // Missing values/files, symlinks and exclusion conflicts refuse. Names are
+  // unique and sorted. The producer remains external to this invocation.
+  repeated string input_files_from_environment = 28;
+}
+
+// GoLinkerString selects one Go linker -X assignment. The target is a package
+// import path and a Go variable identifier. The Go linker retains its own
+// applicability rules (string variables initialized with constant expressions);
+// declaring an assignment does not prove the target is linked or consumed.
+message GoLinkerString {
+  string package = 1;
+  string variable = 2;
+  oneof source {
+    string value = 3;
+    string value_environment = 4;
+  }
 }
 
 // ScratchNamespace names one in-tree run-scratch namespace: a

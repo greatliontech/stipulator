@@ -48,6 +48,9 @@ func (Policy) ValidateInvocation(invocation string, payload proto.Message) error
 // and the excluded paths' form are record facts (only an excluded
 // path's position against the resolved tree waits for normalization).
 func validateConfig(cfg *stipulatorv1.GoInvocationConfig) error {
+	if err := validateLinkerSelection(cfg); err != nil {
+		return err
+	}
 	if cfg.GetRace() && cfg.GetPlainWitness() {
 		return fmt.Errorf("plain_witness is meaningful only on a race: false invocation - a race invocation already grants at the stronger tier")
 	}

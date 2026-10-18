@@ -132,6 +132,12 @@ type NormalizedInvocation struct {
 	Count       int32
 	CacheBypass bool
 	Args        []string
+	// LinkerAssignments are resolved once; the declared forms retain value-source
+	// provenance without re-addressing records on an environment-value change.
+	LinkerAssignments     []string
+	DeclaredLinkerStrings []string
+	InputFileEnvironment  []string
+	InputFiles            []string
 	// Env is the complete normalized child-process environment every
 	// subprocess of this invocation runs under: inherited minus denials,
 	// plus overrides, with every backend-pinned key set from its one
@@ -423,10 +429,16 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		n.ScratchNamespaces = append(n.ScratchNamespaces, runtimeinput.ScratchNamespace{Dir: ns.GetDir(), Pattern: ns.GetPattern()})
 	}
 	n.ScratchNamespaces = canonicalNamespaces(n.ScratchNamespaces)
+	if err := resolveLinkerSelection(n, cfg); err != nil {
+		return nil, fmt.Errorf("invocation %q: %w", n.Name, err)
+	}
 	// The one witness-env derivation for this invocation's lifetime
 	// (see the WitnessEnv field doc).
 	n.SpawnBound = witnessSpawnBound()
 	n.WitnessEnv = witnessWidthEnv(n)
+	if err := requireExactInputEligibility(ctx, n, n.Dir); err != nil {
+		return nil, fmt.Errorf("invocation %q: %w", n.Name, err)
+	}
 	return n, nil
 }
 

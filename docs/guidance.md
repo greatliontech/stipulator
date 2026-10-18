@@ -371,6 +371,38 @@ diverging one is an error, never a rewrite.
 **example:** policy init in a fresh corpus, then review and commit
 the record.
 
+Existing Go invocations can select string-variable linker assignments:
+
+```textproto
+linker_strings {
+  package: "example.com/library/internal/build"
+  variable: "version"
+  value_environment: "LIBRARY_IMPLEMENTATION_ID"
+}
+input_files_from_environment: "LIBRARY_IMPLEMENTATION_MANIFEST"
+```
+
+These fields belong inside the invocation's `go` payload. `value` is a literal
+alternative to `value_environment`; targets are unique and sorted by package
+and variable. Environment values resolve once after denials and overrides.
+Linker values admit printable ASCII without whitespace, quotes or backslashes;
+they are not shell expressions. Resolved assignments reach test compilation and
+freshness build guards and are reported with the invocation. GOFLAGS linker
+flags remain unsupported; binary `args` cannot supply build flags.
+
+Input-file environment names are unique and sorted. Each names an existing
+regular file at a clean absolute path without symlink components or observation
+exclusions. Exactly that file is bracketed, not its cache directory. Its bytes
+are observed when read by the test; the path declaration proves no producer
+correctness. Run the existing producer before verification and retain its
+output. Stipulator executes no producer or shell substitution. CLI and MCP
+consume the same policy.
+The native producer's effective classification must also admit raw file bytes:
+guard-covered cache/toolchain files, projected machine facts and unverifiable
+paths refuse with the input name and cause. Native cache exceptions and root
+overlaps are judged by Gofresh, not copied cache-prefix rules. A bracket cannot
+override a recordless classification.
+
 ### init
 **surfaces:** cli
 **does:** Scaffold the manifest for a new corpus.

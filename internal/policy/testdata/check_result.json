@@ -57,6 +57,12 @@
           "goexperiment": "jsonv2",
           "goflags": "-trimpath",
           "goos": "linux",
+          "inputFiles": [
+            "/retained/library-source.json"
+          ],
+          "linkerAssignments": [
+            "example.com/m/build.version=source/1:abc"
+          ],
           "race": true,
           "toolchain": "go1.26.4",
           "workspaceOn": true

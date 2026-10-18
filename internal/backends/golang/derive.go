@@ -309,9 +309,10 @@ type captureGroup struct {
 	// has one of each, and the engine's flags and build inputs describe
 	// the binary the witnesses run as (REQ-evidence-witness-freshness-inputs's
 	// caller-supplied build inputs).
-	moduleRoot string
-	moduleMode stipulatorv1.GoModuleMode
-	pgo        string
+	moduleRoot        string
+	moduleMode        stipulatorv1.GoModuleMode
+	pgo               string
+	linkerAssignments []string
 	// vouches carries the group's reviewed dynamic-state vouch set into
 	// the engine; part of the group key, so one group has one set.
 	vouches []string
@@ -628,7 +629,7 @@ func encodeSegments(segments []keySegment) string {
 // all - the one caller-arbitrary byte string here) can alias a
 // separator or a neighboring segment into a colliding key.
 func groupKeySegments(n *NormalizedInvocation) []keySegment {
-	return []keySegment{
+	segments := []keySegment{
 		{"tags", quotedList(n.Tags)},
 		{"env", quotedList(sortedCopy(witnessEnvOf(n)))},
 		{"modulemode", quotedValue(n.ModuleMode.String())},
@@ -647,6 +648,19 @@ func groupKeySegments(n *NormalizedInvocation) []keySegment {
 		{"vouches", quotedList(n.Vouches)},
 		{"namespaces", quotedList(namespaceRows(n.ScratchNamespaces))},
 	}
+	if len(n.LinkerAssignments) != 0 {
+		segments = append(segments, keySegment{"linker_values", quotedList(n.LinkerAssignments)})
+	}
+	if len(n.DeclaredLinkerStrings) != 0 {
+		segments = append(segments, keySegment{"linker_sources", quotedList(n.DeclaredLinkerStrings)})
+	}
+	if len(n.InputFileEnvironment) != 0 {
+		segments = append(segments, keySegment{"input_file_environment", quotedList(n.InputFileEnvironment)})
+	}
+	if len(n.InputFiles) != 0 {
+		segments = append(segments, keySegment{"input_files", quotedList(n.InputFiles)})
+	}
+	return segments
 }
 
 // groupKey is one invocation's capture-group identity: the
@@ -692,7 +706,7 @@ func groupKey(n *NormalizedInvocation) string {
 // identity-bearing partition alone: a reviewed runtime-only bound
 // (runtimeOnlyArg) edits without re-addressing the store.
 func groupIdentitySegments(n *NormalizedInvocation) []keySegment {
-	return []keySegment{
+	segments := []keySegment{
 		{"tags", quotedList(n.Tags)},
 		{"race", boolValue(n.Race)},
 		{"goos", quotedValue(n.DeclaredGOOS)},
@@ -708,6 +722,13 @@ func groupIdentitySegments(n *NormalizedInvocation) []keySegment {
 		{"envset", quotedList(sortedCopy(n.EnvOverrides))},
 		{"envdeny", quotedList(sortedCopy(n.EnvDeny))},
 	}
+	if len(n.DeclaredLinkerStrings) != 0 {
+		segments = append(segments, keySegment{"linker_sources", quotedList(n.DeclaredLinkerStrings)})
+	}
+	if len(n.InputFileEnvironment) != 0 {
+		segments = append(segments, keySegment{"input_file_environment", quotedList(n.InputFileEnvironment)})
+	}
+	return segments
 }
 
 func groupIdentity(n *NormalizedInvocation) string {
@@ -875,6 +896,7 @@ func discoverPolicy(ctx context.Context, normalized []*NormalizedInvocation) (*p
 				moduleRoot:        n.ModuleRoot,
 				moduleMode:        n.ModuleMode,
 				pgo:               n.PGO,
+				linkerAssignments: append([]string(nil), n.LinkerAssignments...),
 				assumePure:        n.AssumePure,
 				vouches:           n.Vouches,
 				excludedPaths:     canonicalExclusions(n.ExcludedPaths),
@@ -996,7 +1018,8 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Eng
 	// complete environment, including the width cap: a compiler wrapper can
 	// read that value too. A split environment requires a separately built
 	// artifact, which this producing path does not provide.
-	return newEngine(ctx, g.directory(dir), g.witnessEnv, buildFlags(g.race, g.tags, g.moduleMode, buildPGO(dir, g.pgo)), opts...)
+	flags := append(buildFlags(g.race, g.tags, g.moduleMode, buildPGO(dir, g.pgo)), linkerBuildFlags(g.linkerAssignments)...)
+	return newEngine(ctx, g.directory(dir), g.witnessEnv, flags, opts...)
 }
 
 func (g *captureGroup) directory(root string) string {

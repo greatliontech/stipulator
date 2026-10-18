@@ -1057,6 +1057,7 @@ func testCommandArgs(n *NormalizedInvocation, pkg string, selection []string, lo
 	args := []string{"test", "-json", "-timeout=0"}
 	pgo := buildPGO(treeRoot(n), n.PGO)
 	args = append(args, buildFlags(n.Race, n.Tags, n.ModuleMode, pgo)...)
+	args = append(args, linkerBuildFlags(n.LinkerAssignments)...)
 	switch {
 	case n.CacheBypass:
 		args = append(args, "-count=1")

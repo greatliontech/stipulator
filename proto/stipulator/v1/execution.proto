@@ -88,6 +88,10 @@ message GoResolvedConfig {
   // the witness-eligible selection at the plain tier - the recorded
   // downgrade witness derivation reads (REQ-check-witness-selection).
   bool plain_witness = 9;
+  // Resolved package.variable=value strings used by the Go linker.
+  repeated string linker_assignments = 10;
+  // Exact regular-file paths resolved from reviewed environment declarations.
+  repeated string input_files = 11;
 }
 
 // TestResult is one named test's outcome, attributed to its producer.

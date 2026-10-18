@@ -41,6 +41,7 @@ authorize a campaign, an external consumer action or an untriggered capability.
 | [per-stream-color](per-stream-color.md) | Judge color independently for stdout and stderr. | 8.3 |
 | [cli-test-binary-builds](cli-test-binary-builds.md) | Share eight build sites and reconcile four ambient helpers without losing isolation. | 5.6 |
 | [structural-data-with-methods](structural-data-with-methods.md) | Exact data/method-set assertion, separate from encoding semantics. | 5.6 |
+| [structural-registry-census-proofs](structural-registry-census-proofs.md) | Qualify closed source/record census proof admission for Cerebro's activated registry ownership contracts before their acceptance. | 5.6 |
 | [findings-store-historical-fleet-sweep](findings-store-historical-fleet-sweep.md) | Disposition reported historical overlays through named authorized scope or retirement. | 9.3 |
 | [cross-platform-resolution-views](cross-platform-resolution-views.md) | Preserve the off-host consumer-policy trigger for resolution-only views. | 9.4 |
 | [implemented-capability-acceptance](implemented-capability-acceptance.md) | Derive explicit partial capability acceptance without treating the filing as implementation authorization. | 7.5 |

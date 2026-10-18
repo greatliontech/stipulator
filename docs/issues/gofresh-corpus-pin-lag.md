@@ -21,3 +21,17 @@ publication. Cover omitted/explicit auto, off/path and missing/unreadable
 profiles. A dependency-only bump leaving the producer degraded is not closure.
 Install the clean consumer and restart long-lived readers after acceptance.
 Secondary constituent: 5.2e's restart and historical non-upgrade fixtures.
+
+A 2026-10-18 eligibility-API qualification against Gofresh main `3dbc84f`
+(which includes the breaking package-production/structured-judgment change
+`f0a4f10`) exposed three existing synthetic-record controls that no longer load
+their seeded records: `TestDeriveCachedOutcomeGrantsNoHealthOrEvidence`,
+`TestPublicationCancellationRetainsTheInstalledPrefix` and `TestPruneToolStoreGC`.
+With the same Stipulator candidate and identical additive file-eligibility API
+patch applied to v0.116.3 instead, all three controls and the complete affected
+short suites passed. This is dependency-selection attribution, not a completed
+producing migration or permission to weaken record validation. Reconcile these
+seeds and the actual producer/store compatibility together at 5.2d, before
+adopting the breaking main-line boundary; retain the source-derived disposition
+and malformed/historical-record controls. A narrowly scoped compatibility-line
+API addition does not discharge that migration.

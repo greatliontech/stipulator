@@ -17,6 +17,13 @@
         "goarch": "arm64",
         "goflags": "-trimpath",
         "goos": "linux",
+        "linkerStrings": [
+          {
+            "package": "example.com/m/build",
+            "value": "source/1:abc",
+            "variable": "version"
+          }
+        ],
         "moduleMode": "GO_MODULE_MODE_VENDOR",
         "moduleRoot": "bindingsurface",
         "packages": [
@@ -34,6 +41,16 @@
     },
     {
       "go": {
+        "inputFilesFromEnvironment": [
+          "LIBRARY_MANIFEST"
+        ],
+        "linkerStrings": [
+          {
+            "package": "example.com/m/build",
+            "valueEnvironment": "LIBRARY_ID",
+            "variable": "version"
+          }
+        ],
         "packages": [
           "./...",
           "./stipulate/..."
