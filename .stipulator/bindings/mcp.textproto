@@ -1480,3 +1480,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "937a06eb8cbd8a667b99cd3f5ee22b315d5fe81025fb44e8e908ebe176458631"
 }
+
+bindings {
+  requirement_id: "REQ-mcp-cancellation"
+  content_hash: "e6d4373361a4a4c5ce7ec78e505048d48ff414702f4ea8aab6f74ecad347f03b"
+  source_hash: "f7e5f377eaf8abd79f37403da87e583ee677956cfb0467b513c7b701dc77bd0a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestMCPNamedPinScopeAndPostwriteFailures"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c3f3543335ee0a3917f46cc86e80cae9f2389cb164f3fd74ce33e7db2bc3bbcb"
+}

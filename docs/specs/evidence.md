@@ -996,13 +996,18 @@ package and a vanished package answer not found as they do under the
 whole tree — and a serving backend built for a symbol set answers that set alone:
 a symbol outside it is refused, never forwarded to the scoped load,
 which would answer not found for what the tree declares, while a
-backend built for the declaration-reading roles — binding, pinning,
-retargeting, impact, the declaration frontier, the partitions, on
-either face — names no set, reads no build selection at construction,
+backend built for the declaration-reading roles reads no build selection at
+construction,
 so a policy the tree cannot parse refuses a declaration read only
-where the typed path refuses it, its typed load is the whole tree, and
-it serves and publishes nothing; a record is written only from a typed
-resolution, never from a served one, and only when the symbol's
+where the typed path refuses it, and it serves and publishes nothing.
+On either face, an explicit binding batch scopes typed loading to its complete
+requested symbol set; named pin scopes it to the bindings of all selected
+requirements. An empty explicit set never becomes whole-tree loading. These
+scopes retain every policy selection, owned module, required dependency, test
+variant and native declaration judgment. Blanket pin, retargeting, impact,
+the declaration frontier and partitions retain their unscoped whole-tree form.
+A record is written only from a typed resolution, never from a served one,
+and only when the symbol's
 fingerprint and complete source certificate captured before the typed load
 opened equal those captured after the resolution — a dependency that moved
 between them prevents recording the answer.

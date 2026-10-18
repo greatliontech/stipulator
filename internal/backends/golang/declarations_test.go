@@ -1,0 +1,113 @@
+package golang
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+	"testing"
+
+	"github.com/greatliontech/stipulator/internal/resolutioncache"
+	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/stipulate"
+)
+
+func TestDeclarationsUseCompleteSelectedRootsAndNativeShapes(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads selected declaration views")
+	}
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-typed-load", "REQ-go-build-selections")
+	neutralAmbient(t)
+	dir := writeModule(t, map[string]string{
+		"go.mod":           "module example.com/decls\n\ngo 1.27\n",
+		"p/p.go":           "package p\nimport \"example.com/decls/dep\"\nfunc F() dep.T { return dep.T{} }\n",
+		"dep/d.go":         "package dep\ntype T struct { N int }\n",
+		"q/q.go":           "package q\ntype T struct{}\nfunc (T) M() int { return 1 }\n",
+		"q/tag_test.go":    "//go:build dst\n\npackage q_test\nimport \"testing\"\nfunc TestTagged(t *testing.T) {}\n",
+		"unrelated/bad.go": "package unrelated\nfunc Bad() int { return \"bad\" }\n",
+	})
+	dstPolicy(t, dir)
+	symbols := []string{"example.com/decls/p.F", "example.com/decls/q.T.M", "example.com/decls/q.TestTagged"}
+	s, err := NewDeclarations(t.Context(), dir, symbols)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	whole, err := NewWholeTree(t.Context(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer whole.Close()
+	for _, symbol := range symbols {
+		r, shape, selection, err := s.ResolveIn(symbol)
+		wr, ws, wsel, werr := whole.ResolveIn(symbol)
+		if err != nil || werr != nil || r != verify.Resolved || r != wr || shape == "" || shape != ws || selection != wsel {
+			t.Fatalf("%s: scoped %v %q %q %v; whole %v %q %q %v", symbol, r, shape, selection, err, wr, ws, wsel, werr)
+		}
+	}
+	if got := s.childPatterns(); !slices.Equal(got, []string{"example.com/decls/p", "example.com/decls/q"}) {
+		t.Fatalf("roots: %v", got)
+	}
+	// Query the child directly: an admission check alone cannot prove the
+	// unrelated, broken root was excluded from the actual typed load.
+	if r, _, _, err := s.child.ResolveIn("example.com/decls/unrelated.Bad"); err != nil || r != verify.NotFound {
+		t.Fatalf("unrelated root loaded: %v %v", r, err)
+	}
+	if _, _, err := s.Resolve("example.com/decls/unrelated.Bad"); err == nil {
+		t.Fatal("out-of-set query admitted")
+	}
+	if s.ServedCount() != 0 || len(s.pending) != 0 || len(s.opening) != 0 {
+		t.Fatal("declaration reading acquired verification evidence")
+	}
+	s.Close()
+	if got := resolutioncache.Load(dir); len(got) != 0 {
+		t.Fatalf("declaration records published: %v", got)
+	}
+}
+
+func TestDeclarationsEmptyAndMalformedSetsStayEmpty(t *testing.T) {
+	if testing.Short() {
+		t.Skip("loads an explicitly empty child")
+	}
+	neutralAmbient(t)
+	dir := writeModule(t, map[string]string{"go.mod": "module example.com/emptydecl\n\ngo 1.27\n", "p.go": "package emptydecl\nfunc F() {}\n"})
+	for _, symbols := range [][]string{nil, {}, {"malformed"}, {"example.com/emptydecl/missing.F"}} {
+		s, err := NewDeclarations(t.Context(), dir, symbols)
+		if err != nil {
+			t.Fatal(err)
+		}
+		child, err := s.ensureChild()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if s.childPatterns() == nil {
+			t.Fatal("explicit scope became nil")
+		}
+		if r, _, _, err := child.ResolveIn("example.com/emptydecl.F"); err != nil || r != verify.NotFound {
+			t.Fatalf("%v widened: %v %v", symbols, r, err)
+		}
+		s.Close()
+	}
+}
+
+func TestDeclarationsReadPolicyOnlyOnFirstAnswer(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, ".stipulator"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".stipulator/policy.textproto"), []byte("invalid {"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s, err := NewDeclarations(context.Background(), dir, []string{"example.com/p.F"})
+	if err != nil {
+		t.Fatalf("construction read policy: %v", err)
+	}
+	defer s.Close()
+	if _, _, err := s.Resolve("example.com/p.F"); err == nil || !strings.Contains(err.Error(), "policy") {
+		t.Fatalf("first answer: %v", err)
+	}
+	if s.child != nil {
+		t.Fatal("malformed policy started child")
+	}
+}

@@ -114,6 +114,22 @@ func TestServedAnswersFromRecordsWithoutTheChild(t *testing.T) {
 	if got := c.snapshot(); got.child != 0 {
 		t.Fatalf("the served run opened %d children for the callables", got.child)
 	}
+	// Declaration queries on a fully served set still obtain typed source.
+	// Explicit-empty authoring must not turn this older unscoped read into
+	// an empty child simply because there is no stale remainder.
+	fullyServed, err := NewServed(ctx, dir, servedSymbols[:4])
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fullyServed.Close()
+	if fullyServed.ServedCount() != 4 || len(fullyServed.unserved) != 0 {
+		t.Fatalf("declaration control was not fully served: %v", fullyServed.Notices())
+	}
+	if file, ok, err := fullyServed.SymbolFile("example.com/served/p.F"); err != nil || !ok || file != "p/p.go" {
+		t.Fatalf("served declaration file = %q %t %v", file, ok, err)
+	}
+	fullyServed.Close()
+	c.reset()
 	if got := ask(t, second, "example.com/served/p.T"); got != cold["example.com/served/p.T"] {
 		t.Fatalf("type served %+v, typed %+v", got, cold["example.com/served/p.T"])
 	}

@@ -259,14 +259,23 @@ func mustClean(spec *stipulatorv1.Spec, diags []compile.Diagnostic) (*stipulator
 	return spec, nil
 }
 
-// The face's two backend seams, one per form: servingBackends builds
-// the serving form a verification pass runs over (golang.Backends),
-// makeBackends the declaration-reading form below; a test substitutes
-// either with a backend whose answers it controls.
+// servingBackends builds the serving form a verification pass runs over.
+// Authoring uses declarationBackends for explicit sets and makeBackends
+// for unscoped reads; tests can substitute each form independently.
 var servingBackends = golang.Backends
 
+// declarationBackends resolves the complete explicit authoring set through
+// typed declarations, without serving or publishing verification records.
+var declarationBackends = func(ctx context.Context, dir string, symbols []string) (map[string]verify.Backend, func() error, error) {
+	gb, err := golang.NewDeclarations(ctx, dir, symbols)
+	if err != nil {
+		return nil, nil, err
+	}
+	return golang.BackendSet(gb), gb.Close, nil
+}
+
 // makeBackends builds the declaration-reading backends — the
-// whole-tree form, the one a declaration read takes on either face
+// whole-tree form, the one an unscoped declaration read takes on either face
 // (impact builds its own over the same constructor) — and the closer
 // that ends their children: the backend's own Close, so a verb that
 // defers it ends the resolver child with the verb, not with the

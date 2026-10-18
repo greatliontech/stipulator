@@ -32,6 +32,8 @@ func (b *recordingBackend) Close() error { b.closed = true; return nil }
 func TestVerbsCloseTheirBackends(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-owned-processes", "REQ-go-owned-processes-resolver-child")
 	priorDir, priorMake := chdir, makeBackends
+	priorDeclarations := declarationBackends
+	t.Cleanup(func() { declarationBackends = priorDeclarations })
 	chdir = t.TempDir()
 	t.Cleanup(func() { chdir, makeBackends = priorDir, priorMake })
 	// A scaffolded corpus: the bare pin compiles it before it builds
@@ -69,6 +71,9 @@ func TestVerbsCloseTheirBackends(t *testing.T) {
 		makeBackends = func(context.Context, string) (map[string]verify.Backend, func() error, error) {
 			built = true
 			return map[string]verify.Backend{"go": backend}, backend.Close, nil
+		}
+		declarationBackends = func(ctx context.Context, dir string, _ []string) (map[string]verify.Backend, func() error, error) {
+			return makeBackends(ctx, dir)
 		}
 		cmd := verb.newCmd()
 		cmd.SetArgs(verb.args)

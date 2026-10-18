@@ -76,23 +76,26 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 		prog.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 		store, err := records.Load(s.fsys())
 		if err != nil {
-			return nil, nil, terminalToolError(prog, ctx, err)
+			return nil, nil, terminalToolError(prog, ctx, faulted(out, err))
 		}
-		backends, err := s.wholeTree(ctx)
-		if err != nil {
-			return nil, nil, terminalToolError(prog, ctx, err)
-		}
-		defer verify.CloseBackends(backends)
 		wanted := map[string]bool{}
 		for _, id := range ids {
 			wanted[id] = true
 		}
+		backends, err := s.declarations(ctx, author.PinSymbols(store, "go", wanted))
+		if err != nil {
+			return nil, nil, terminalToolError(prog, ctx, faulted(out, err))
+		}
+		defer verify.CloseBackends(backends)
 		// A resolution fault IS state that can empty the mismatch
 		// answer: it rides Notes instead of silently reverting the
 		// response to the quiescence claim (REQ-pin-backfill).
 		mismatched := records.ShapeMismatched(store, ids, author.ResolveShapes(store, backends, wanted, func(symbol string, err error) {
 			out.Notes = append(out.Notes, fmt.Sprintf("shape resolution skipped %s: %v - a shape mismatch there would go unreported this call", symbol, err))
 		}))
+		if err := ctx.Err(); err != nil {
+			return nil, nil, terminalToolError(prog, ctx, faulted(out, err))
+		}
 		for _, id := range ids {
 			syms := mismatched[id]
 			switch {

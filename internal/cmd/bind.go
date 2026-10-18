@@ -20,13 +20,16 @@ func bindCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			backends, closeBackends, err := makeBackends(cmd.Context(), chdir)
+			backends, closeBackends, err := declarationBackends(cmd.Context(), chdir, author.BindSymbols(claims, "go"))
 			if err != nil {
 				return err
 			}
 			defer closeBackends()
 			ups, err := author.Binds(os.DirFS(chdir), backends, claims)
 			if err != nil {
+				return err
+			}
+			if err := cmd.Context().Err(); err != nil {
 				return err
 			}
 			return applyUpdates(chdir, ups)

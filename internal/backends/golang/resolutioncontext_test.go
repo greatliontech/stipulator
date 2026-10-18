@@ -155,6 +155,15 @@ func TestIndependentDefaultsPrecedeDeclaredSelections(t *testing.T) {
 	if _, _, key, err := b.ResolveIn("example.net/shared.F"); err != nil || key != "\x00\x00\x00b\x00off" {
 		t.Fatalf("default selection = %q, %v", key, err)
 	}
+	decls, err := NewDeclarations(t.Context(), dir, []string{"example.net/shared.F"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer decls.Close()
+	_, want, _, _ := b.ResolveIn("example.net/shared.F")
+	if res, shape, key, err := decls.ResolveIn("example.net/shared.F"); err != nil || res != verify.Resolved || shape != want || key != "\x00\x00\x00b\x00off" {
+		t.Fatalf("named declaration = %v %q %q %v, want independent default shape %q", res, shape, key, err, want)
+	}
 }
 
 func TestCorpusRootWorkspaceOffHasItsDefaultView(t *testing.T) {
