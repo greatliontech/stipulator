@@ -1,6 +1,6 @@
 # Issues
 
-Forty-two retained issues. Routing is governed by
+Forty-three retained issues. Routing is governed by
 [`tooling-redesign.md`](../../../gofresh/docs/plans/tooling-redesign.md).
 Each issue has one primary open slot; secondary constituents and conditional
 activation requirements are stated separately in its body. A slot does not
@@ -24,6 +24,7 @@ authorize a campaign, an external consumer action or an untriggered capability.
 | [selection-certificate-preparation-repeated](selection-certificate-preparation-repeated.md) | Measure and share endpoint-local preparation; preserve completed certificate dependencies. | 5.2e |
 | [cerebro-scoped-discovery-cost](cerebro-scoped-discovery-cost.md) | Attribute the reported c9ea6cd ten-minute discovery timeout and establish bounded scoped work. | 5.2e |
 | [explicit-authoring-loads-whole-tree](explicit-authoring-loads-whole-tree.md) | Triage explicit bind/named-pin whole-workspace loading and qualify a bounded native authoring route. | 5.2e |
+| [blanket-pin-cancellation-can-write](blanket-pin-cancellation-can-write.md) | Reject cancellation truthfully before blanket-pin writes/completion and account for any landed writes. | 5.2e |
 | [generic-constraint-seeding-reuse](generic-constraint-seeding-reuse.md) | Justify precision beyond deliberate constraint-method refusal with paired safety cases. | 7.8 |
 | [seeding-walk-unreached-routes](seeding-walk-unreached-routes.md) | Justify dependency/interface precision beyond the declared boundary; source-value walking exists. | 7.8 |
 | [witness-verdict-one-body-classifier](witness-verdict-one-body-classifier.md) | Consolidate two body scans, retaining selected class versus cross-view seeding. | 7.8 |
