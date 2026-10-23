@@ -56,6 +56,8 @@ type Server struct {
 	// — the whole-tree form, reading no policy and publishing nothing —
 	// where backends is the serving form a verification runs over.
 	wholeTree func(context.Context) (map[string]verify.Backend, error)
+	// declarations is the typed, explicitly scoped authoring form.
+	declarations func(context.Context, []string) (map[string]verify.Backend, error)
 	// capture is the one derivation of the accepted policy a witnessed
 	// tool makes (REQ-check-derivation); a test substitutes it as it
 	// substitutes the run.
@@ -92,6 +94,13 @@ func New(dir string) *Server {
 				return nil, err
 			}
 			return golang.BackendSet(whole), nil
+		},
+		declarations: func(ctx context.Context, symbols []string) (map[string]verify.Backend, error) {
+			decls, err := golang.NewDeclarations(ctx, dir, symbols)
+			if err != nil {
+				return nil, err
+			}
+			return golang.BackendSet(decls), nil
 		},
 		capture: func(ctx context.Context) (*golang.Capture, error) { return golang.LoadCapture(ctx, dir) },
 		runTests: func(ctx context.Context, pc *golang.Capture, seeding verify.WitnessSeeding, scope map[gofresh.Subject]bool) (*verify.TestRun, error) {

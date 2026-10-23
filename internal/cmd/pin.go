@@ -46,18 +46,21 @@ func pinCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				backends, closeBackends, err := makeBackends(cmd.Context(), chdir)
-				if err != nil {
-					return err
-				}
-				defer closeBackends()
 				wanted := map[string]bool{}
 				for _, id := range ids {
 					wanted[id] = true
 				}
+				backends, closeBackends, err := declarationBackends(cmd.Context(), chdir, author.PinSymbols(store, "go", wanted))
+				if err != nil {
+					return err
+				}
+				defer closeBackends()
 				mismatched := records.ShapeMismatched(store, ids, author.ResolveShapes(store, backends, wanted, func(symbol string, err error) {
 					fmt.Fprintf(os.Stderr, "pin: skipping %s: %v\n", symbol, err)
 				}))
+				if err := cmd.Context().Err(); err != nil {
+					return err
+				}
 				for _, id := range ids {
 					ups, consented, err := author.EditorialOver(spec, os.DirFS(chdir), id)
 					if errors.Is(err, author.ErrNothingStale) {

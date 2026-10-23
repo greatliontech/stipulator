@@ -18,6 +18,8 @@ import (
 func scaffoldCorpus(t *testing.T) func(path, content string) {
 	t.Helper()
 	priorDir, priorMake := chdir, makeBackends
+	priorDeclarations := declarationBackends
+	t.Cleanup(func() { declarationBackends = priorDeclarations })
 	chdir = t.TempDir()
 	t.Cleanup(func() { chdir, makeBackends = priorDir, priorMake })
 	scaffold := initCmd()
@@ -53,7 +55,7 @@ func TestPinCLIIdsFormIsAllOrNothing(t *testing.T) {
 		"bindings {\n  requirement_id: \"REQ-pa-b\"\n  content_hash: \"" + stale + "\"\n  backend: \"go\"\n  symbol: \"example.com/p.B\"\n  role: BINDING_ROLE_IMPLEMENTS\n}\n"
 	write(".stipulator/bindings/b.textproto", bindings)
 	built := 0
-	makeBackends = func(context.Context, string) (map[string]verify.Backend, func() error, error) {
+	declarationBackends = func(context.Context, string, []string) (map[string]verify.Backend, func() error, error) {
 		built++
 		backend := &recordingBackend{}
 		return map[string]verify.Backend{"go": backend}, backend.Close, nil

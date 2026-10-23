@@ -14,9 +14,8 @@ import (
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
-// Every declaration-reading tool — bind, pin in both forms, retarget,
-// the context slice, partitions — reads its declarations through the
-// whole-tree form, never the serving form a verification runs over:
+// Every declaration-reading tool reads typed declarations, never the
+// serving form a verification runs over. Explicit authoring scopes them:
 // the serving form reads the policy at construction and publishes
 // what it resolves, neither of which a declaration read may do
 // (REQ-evidence-resolution-freshness-typed-load).
@@ -24,7 +23,7 @@ import (
 //gofresh:pure
 func TestDeclarationReadingToolsTakeTheWholeTreeForm(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-freshness-typed-load")
-	var serving, whole int
+	var serving, whole, scoped int
 	sess, _ := harnessWith(t, map[string]string{
 		".stipulator/bindings/m.textproto": pinnedBinding(t),
 	}, func(s *Server) {
@@ -38,6 +37,10 @@ func TestDeclarationReadingToolsTakeTheWholeTreeForm(t *testing.T) {
 		s.wholeTree = func(ctx context.Context) (map[string]verify.Backend, error) {
 			whole++
 			return backends(ctx, nil)
+		}
+		s.declarations = func(ctx context.Context, symbols []string) (map[string]verify.Backend, error) {
+			scoped++
+			return backends(ctx, symbols)
 		}
 	})
 	call := func(name string, args map[string]any) {
@@ -56,10 +59,11 @@ func TestDeclarationReadingToolsTakeTheWholeTreeForm(t *testing.T) {
 		{"pin", map[string]any{"ids": "REQ-m-a"}},
 		{"retarget", map[string]any{"from": "example.com/p", "to": "example.com/z", "check": true}},
 	} {
-		serving, whole = 0, 0
+		serving, whole, scoped = 0, 0, 0
 		call(tc.name, tc.args)
-		if whole != 1 || serving != 0 {
-			t.Fatalf("%s %v built the whole-tree form %d times and the serving form %d times; want 1 and 0", tc.name, tc.args, whole, serving)
+		wantScoped := tc.name == "bind" || tc.args["ids"] != nil
+		if serving != 0 || (wantScoped && (scoped != 1 || whole != 0)) || (!wantScoped && (whole != 1 || scoped != 0)) {
+			t.Fatalf("%s %v: whole=%d scoped=%d serving=%d; scoped wanted=%t", tc.name, tc.args, whole, scoped, serving, wantScoped)
 		}
 	}
 	// The verifying readers verify through the serving form and read

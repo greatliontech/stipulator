@@ -257,7 +257,7 @@ func TestScopedChildAnswersLikeTheWholeTree(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer whole.Close()
-	scoped, err := newResolverClientScoped(ctx, dir, []string{"example.com/scoped/q", "example.com/scoped/gone", "example.com/scoped/x", "example.com/scoped/bad"})
+	scoped, err := NewDeclarations(ctx, dir, symbols)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -286,7 +286,7 @@ func TestScopedChildAnswersLikeTheWholeTree(t *testing.T) {
 	// A package outside the scope is unknown to the scoped child, which
 	// answers not found for it — the served backend never asks it about
 	// one (TestServedRefusesSymbolsOutsideTheOperation).
-	if res, _, _, err := scoped.ResolveIn("example.com/scoped/s.Unrelated"); err != nil || res != verify.NotFound {
+	if res, _, _, err := scoped.child.ResolveIn("example.com/scoped/s.Unrelated"); err != nil || res != verify.NotFound {
 		t.Fatalf("out-of-scope symbol: %v, %v; want not found", res, err)
 	}
 }
@@ -458,9 +458,17 @@ func TestScopedLoadOwnsPatternsPerWorkspaceMember(t *testing.T) {
 			t.Fatalf("%s loaded %d times (%v); want once", path, seen[path], seen)
 		}
 	}
+	decls, err := NewDeclarations(t.Context(), root, []string{"example.com/a/p.A", "example.com/b/p.B"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer decls.Close()
 	for symbol, want := range map[string]verify.Resolution{"example.com/a/p.A": verify.Resolved, "example.com/b/p.B": verify.Resolved} {
 		if res, _, _, err := b.ResolveIn(symbol); err != nil || res != want {
 			t.Fatalf("%s resolved %v, %v", symbol, res, err)
+		}
+		if res, shape, err := decls.Resolve(symbol); err != nil || res != want || shape == "" {
+			t.Fatalf("declaration %s resolved %v %q, %v", symbol, res, shape, err)
 		}
 	}
 }

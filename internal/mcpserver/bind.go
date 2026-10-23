@@ -67,13 +67,16 @@ func (s *Server) toolBind(ctx context.Context, req *mcp.CallToolRequest, in bind
 	}
 	ctx, prog := s.startProgress(ctx, req)
 	prog.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
-	backends, err := s.wholeTree(ctx)
+	backends, err := s.declarations(ctx, author.BindSymbols(reqs, "go"))
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	defer verify.CloseBackends(backends)
 	ups, err := author.Binds(s.fsys(), backends, reqs)
 	if err != nil {
+		return nil, nil, terminalToolError(prog, ctx, err)
+	}
+	if err := ctx.Err(); err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	out, err := s.apply(ups)

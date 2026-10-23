@@ -108,6 +108,9 @@ func harnessWith(t *testing.T, files map[string]string, mut func(*Server)) (*mcp
 		applier: memoryApplier(fsys, writes),
 	}
 	s.wholeTree = wholeTreeOf(s)
+	s.declarations = func(ctx context.Context, symbols []string) (map[string]verify.Backend, error) {
+		return s.backends(ctx, symbols)
+	}
 	if mut != nil {
 		mut(s)
 	}

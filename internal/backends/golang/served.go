@@ -55,17 +55,16 @@ type Served struct {
 	// operation's memo, minted with the backend; its selection engines
 	// sample through it.
 	sample toolchainSample
-	// whole marks the whole-tree form: nothing is served or published,
-	// the child loads the whole tree, and no selection is read — the
-	// form the declaration-reading roles take (NewWholeTree).
+	// whole marks declaration reading: nothing is served or published.
+	// A nil set loads the whole tree; NewDeclarations supplies an explicit
+	// set. Neither form reads selections until the first declaration query.
 	whole  bool
 	sels   []buildSelection
 	served map[string]resolutioncache.Record
 	// set is the operation's symbol set. When it names symbols the
 	// child is scoped to their stale remainder and a symbol outside the
 	// set is refused, never forwarded (admits); a backend built for the
-	// declaration-reading roles names none, and its child is the whole
-	// tree, which answers every symbol as the tree declares it.
+	// unscoped declaration-reading form names none and loads the whole tree.
 	set map[string]bool
 	// inventory is metadata only: package boundaries are established
 	// before capture and typed scope, never guessed from a dot position.
@@ -254,8 +253,9 @@ func BackendSet(s *Served) map[string]verify.Backend {
 // whole tree with nothing served or published and no selection read,
 // so a policy the tree cannot parse refuses only where the typed path
 // refuses it — at the first answer, through the child. The
-// declaration-reading roles (binding, pinning, retargeting, impact,
-// the declaration frontier and the partitions) take this form.
+// Unscoped declaration-reading roles (blanket pinning, retargeting, impact,
+// the declaration frontier and the partitions) take this form; explicit
+// authoring uses NewDeclarations.
 func NewWholeTree(ctx context.Context, dir string) (*Served, error) {
 	s, err := newServed(ctx, dir)
 	if err != nil {
@@ -296,7 +296,7 @@ func (s *Served) subjectOf(symbol string) (gofresh.Subject, bool) {
 // unserved symbol. An unavailable inventory permits only the bounded
 // syntactic candidates; an empty scope never widens to the whole tree.
 func (s *Served) childPatterns() []string {
-	if len(s.unserved) == 0 {
+	if len(s.unserved) == 0 && (!s.whole || s.set == nil) {
 		return nil
 	}
 	seen := map[string]bool{}
@@ -611,10 +611,15 @@ func (s *Served) ServedCount() int { return len(s.served) }
 
 func (s *Served) ensureChild() (*resolverClient, error) {
 	if s.child == nil {
+		if err := s.prepareDeclarations(); err != nil {
+			return nil, err
+		}
 		// The opening capture precedes the child's snapshot: a record
 		// publishes under a fingerprint no later than the answer it
 		// carries.
-		s.openingCapture()
+		if !s.whole {
+			s.openingCapture()
+		}
 		patterns := s.childPatterns()
 		child, err := newResolverClientScoped(s.ctx, s.dir, patterns)
 		if err != nil {

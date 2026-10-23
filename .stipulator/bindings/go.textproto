@@ -2510,3 +2510,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "f542116080c79c211209d810611cd052dd0ff7518395f4a2e8b21da2e5be0bb0"
 }
+
+bindings {
+  requirement_id: "REQ-go-build-selections"
+  content_hash: "1184b7a3e61c0c1e97434e1235867f5fc66fce432a4e1539a230971772f2c6e4"
+  source_hash: "fca1bda61d0df83fcd4836d962aa287bbbb2b820e42f7f010e8a2f4230d8055b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestDeclarationsUseCompleteSelectedRootsAndNativeShapes"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7a64db8960ca38b9108ebcc49270e61a9a4944a172fd00e752f64a09d3bfb30d"
+}
