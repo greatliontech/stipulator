@@ -36,11 +36,12 @@ func withRecordPath(err error) error {
 // pass through unattributed: the verb's own return is the one point
 // that names the record path.
 func witnessRun(ctx context.Context, w io.Writer, pc *golang.Capture, seeding verify.WitnessSeeding, scope map[gofresh.Subject]bool, why string) (*verify.TestRun, error) {
+	st := styleFor(w)
 	line := "witnessing: selective execution of the accepted test policy"
 	if scope != nil {
 		line += ", " + why
 	}
-	fmt.Fprintln(w, dim(line))
+	fmt.Fprintln(w, st.dim(line))
 	var tr *verify.TestRun
 	var err error
 	if scope == nil {
@@ -62,24 +63,25 @@ func witnessRun(ctx context.Context, w io.Writer, pc *golang.Capture, seeding ve
 // subjects' visibility story. Keys render sorted so identical runs
 // render identically (REQ-core-determinism).
 func printWitnessSummary(w io.Writer, tr *verify.TestRun) {
+	st := styleFor(w)
 	renderWitnessCacheLoad(w, tr.WitnessCacheLoad)
 	if tr.Ran+tr.Fresh+tr.OutsidePolicy > 0 {
-		fmt.Fprintln(w, dim(fmt.Sprintf("witnessed: %d ran, %d served fresh, %d uncacheable, %d outside policy",
+		fmt.Fprintln(w, st.dim(fmt.Sprintf("witnessed: %d ran, %d served fresh, %d uncacheable, %d outside policy",
 			tr.Ran, tr.Fresh, tr.Uncached, tr.OutsidePolicy)))
 	}
 	if tr.Degraded != "" {
-		fmt.Fprintln(w, dim("freshness degraded: "+tr.Degraded))
+		fmt.Fprintln(w, st.dim("freshness degraded: "+tr.Degraded))
 	}
 	renderReasonHistogram(w, "re-executed", tr.ExecutedReasons)
 	renderUncacheableHistogram(w, tr.UncacheableReasons)
 	for _, key := range sortedKeys(tr.Failures) {
-		fmt.Fprintf(w, "%s\n%s", red("witness failed: "+key), tr.Failures[key])
+		fmt.Fprintf(w, "%s\n%s", st.red("witness failed: "+key), tr.Failures[key])
 	}
 	for _, d := range tr.Diagnostics {
 		if d.GetTest() != "" {
 			continue
 		}
-		fmt.Fprintf(w, "%s\n%s", red("witness denied: "+d.GetPackage()), d.GetOutput())
+		fmt.Fprintf(w, "%s\n%s", st.red("witness denied: "+d.GetPackage()), d.GetOutput())
 	}
 }
 

@@ -179,12 +179,7 @@ func TestCheckExitCodes(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds the CLI and executes policies over fixture trees")
 	}
-	bin := filepath.Join(t.TempDir(), "stipulator")
-	build := exec.Command("go", "build", "-o", bin, "github.com/greatliontech/stipulator/cmd/stipulator")
-	build.Dir = filepath.Join("..", "..")
-	if out, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("building the CLI: %v\n%s", err, out)
-	}
+	bin := cliBinary(t)
 
 	writeTree := func(files map[string]string) string {
 		dir := t.TempDir()

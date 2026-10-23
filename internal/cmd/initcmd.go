@@ -24,7 +24,7 @@ func initCmd() *cobra.Command {
 				return err
 			}
 			fmt.Printf("initialized: corpus is %s\n", corpus.DefaultInclude)
-			fmt.Println(dim("next: write a spec document, then `" + remedy.Compile() + "`"))
+			fmt.Println(outStyle().dim("next: write a spec document, then `" + remedy.Compile() + "`"))
 			return nil
 		},
 	}

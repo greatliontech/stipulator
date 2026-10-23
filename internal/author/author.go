@@ -100,6 +100,14 @@ func bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Upd
 		return nil, fmt.Errorf("requirement %s is not in the corpus", req.Requirement)
 	}
 	contentHash, sourceHash := target.GetContentHash(), target.GetSourceHash()
+	m, err := corpus.LoadManifest(fsys)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(req.Clause) == "" && records.RequiresClauseScope(target, req.Role, m.GetAllowWholeClauseClaims()) {
+		roleName := strings.ToLower(strings.TrimPrefix(req.Role.String(), "BINDING_ROLE_"))
+		return nil, fmt.Errorf("%s is clause-structured and requires a --clause (mcp: clause) scope for %s claims: %s", req.Requirement, roleName, records.ClausesOffered(target))
+	}
 	claim := &stipulatorv1.Binding{}
 	if err := records.SetClause(claim, req.Clause); err != nil {
 		return nil, fmt.Errorf("claim on %s: %w", req.Requirement, err)
@@ -119,12 +127,9 @@ func bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Upd
 	if !knownBackends[req.Backend] {
 		return nil, fmt.Errorf("unknown backend %q (go, proto)", req.Backend)
 	}
-	if req.File != "" {
-		clean := path.Clean(req.File)
-		if clean != req.File || !strings.HasPrefix(clean, records.BindingsDir+"/") ||
-			!strings.HasSuffix(clean, ".textproto") || strings.Contains(clean, "..") {
-			return nil, fmt.Errorf("binding file must be a clean .textproto path under %s", records.BindingsDir)
-		}
+	file, err := resolveBindingFile(fsys, req.Requirement, req.File)
+	if err != nil {
+		return nil, err
 	}
 
 	shapeHash := ""
@@ -178,10 +183,6 @@ func bind(fsys fs.FS, backends map[string]verify.Backend, req BindRequest) (*Upd
 		b.SetShapeHash(shapeHash)
 	}
 
-	file := req.File
-	if file == "" {
-		file = defaultBindingFile(req.Requirement)
-	}
 	content, err := records.AddBinding(store, file, b)
 	if err != nil {
 		return nil, err
@@ -328,6 +329,33 @@ func Unbind(fsys fs.FS, requirement, symbol string, role stipulatorv1.BindingRol
 	sortUpdates(out)
 	StampPriors(store, out)
 	return out, removed, nil
+}
+
+// resolveBindingFile derives the target binding file for requirement under the
+// manifest's declared layout, validating an explicit file when supplied.
+func resolveBindingFile(fsys fs.FS, requirement, explicitFile string) (string, error) {
+	if explicitFile != "" {
+		clean := path.Clean(explicitFile)
+		if clean != explicitFile || !strings.HasPrefix(clean, records.BindingsDir+"/") ||
+			!strings.HasSuffix(clean, ".textproto") || strings.Contains(clean, "..") {
+			return "", fmt.Errorf("binding file must be a clean .textproto path under %s", records.BindingsDir)
+		}
+	}
+	m, err := corpus.LoadManifest(fsys)
+	if err != nil {
+		return "", err
+	}
+	if m.GetBindingLayout() == stipulatorv1.BindingLayout_BINDING_LAYOUT_PER_REQUIREMENT {
+		derived := records.BindingPath(requirement)
+		if explicitFile != "" && explicitFile != derived {
+			return "", fmt.Errorf("manifest declares binding_layout: BINDING_LAYOUT_PER_REQUIREMENT; claim on %s must use %s, not %s", requirement, derived, explicitFile)
+		}
+		return derived, nil
+	}
+	if explicitFile != "" {
+		return explicitFile, nil
+	}
+	return defaultBindingFile(requirement), nil
 }
 
 // defaultBindingFile groups bindings by the identifier's second segment:

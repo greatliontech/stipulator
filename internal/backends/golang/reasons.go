@@ -173,3 +173,236 @@ func classifyReason(reason string) (reasonClass, bool) {
 	}
 	return reasonNone, false
 }
+
+// executedClass names one class of re-execution reason (`executed_reasons`)
+// the backend mints: an index into executedTable, where every class's
+// prefix and explain kind are spelled once.
+type executedClass uint8
+
+const (
+	executedNone executedClass = iota
+	executedPriorStale
+	executedMidRunDrift
+	executedRevalidationFault
+	executedRetryRevalidation
+	executedWithdrawnExclusion
+	executedWithdrawnNamespace
+	executedSeeded
+	executedSeedingRefused
+	executedUnclassifiable
+	executedSourceFailed
+	executedStoreRefused
+	executedVerdict
+)
+
+var executedTable = [...]struct {
+	prefix string
+	kind   explainKind
+}{
+	executedNone:               {"", 0},
+	executedPriorStale:         {"prior evidence stale", explainSelf},
+	executedMidRunDrift:        {"mid-run drift: ", explainCulprit},
+	executedRevalidationFault:  {"post-run served-record revalidation faulted: ", explainSelf},
+	executedRetryRevalidation:  {"post-retry served-record revalidation: ", explainCulprit},
+	executedWithdrawnExclusion: {"recorded under a withdrawn observation exclusion", explainSelf},
+	executedWithdrawnNamespace: {"recorded under a withdrawn scratch namespace", explainSelf},
+	executedSeeded:             {"random-seeded property witness", explainWitness},
+	executedSeedingRefused:     {"unclassifiable seeding: " + neverServedSuffix + ": ", explainWitness},
+	executedUnclassifiable:     {"unclassifiable witness: " + neverServedSuffix + ": ", explainSelf},
+	executedSourceFailed:       {"source producer validation failed: ", explainSelf},
+	executedStoreRefused:       {"the store refused the record: ", explainSelf},
+	executedVerdict:            {"", explainCulprit},
+}
+
+func (c executedClass) prefix() string   { return executedTable[c].prefix }
+func (c executedClass) kind() explainKind { return executedTable[c].kind }
+
+// executedReason is one typed re-execution reason: its class and detail.
+type executedReason struct {
+	class  executedClass
+	detail string
+}
+
+func (r executedReason) String() string { return r.class.prefix() + r.detail }
+
+func (c executedClass) with(detail string) executedReason { return executedReason{c, detail} }
+
+// verdictExecutedReason converts a freshness-library verdict reason to an
+// executedReason: an empty verdict reason reads as executedPriorStale.
+func verdictExecutedReason(verdictReason string) executedReason {
+	if verdictReason == "" {
+		return executedPriorStale.with("")
+	}
+	return executedVerdict.with(verdictReason)
+}
+
+// formatExecutedReason renders an executedReason for the report surface,
+// falling back to executedPriorStale when a zero value was recorded.
+func formatExecutedReason(r executedReason) string {
+	if r == (executedReason{}) {
+		return executedPriorStale.with("").String()
+	}
+	return r.String()
+}
+
+// executedFromUncacheable maps a never-serve or store-refusal uncacheable
+// reason onto its corresponding executedClass so the two tables stay paired.
+func executedFromUncacheable(u uncacheable) executedReason {
+	switch u.class {
+	case reasonSeeded:
+		return executedSeeded.with(u.detail)
+	case reasonSeedingRefused:
+		return executedSeedingRefused.with(u.detail)
+	case reasonUnclassifiable:
+		return executedUnclassifiable.with(u.detail)
+	case reasonSourceFailed:
+		return executedSourceFailed.with(u.detail)
+	case reasonStoreRefused:
+		return executedStoreRefused.with(u.detail)
+	default:
+		return executedUnclassifiable.with(foreignSpellingDetail + u.String())
+	}
+}
+
+var executedWholeClasses = []executedClass{
+	executedPriorStale,
+	executedWithdrawnExclusion,
+	executedWithdrawnNamespace,
+}
+
+var executedPrefixClasses = []executedClass{
+	executedMidRunDrift,
+	executedRevalidationFault,
+	executedRetryRevalidation,
+	executedSeeded,
+	executedSeedingRefused,
+	executedUnclassifiable,
+	executedSourceFailed,
+	executedStoreRefused,
+}
+
+// classifyExecutedReason answers the executedClass of a re-execution reason
+// spelled as text.
+func classifyExecutedReason(reason string) (executedClass, bool) {
+	for _, c := range executedWholeClasses {
+		if reason == c.prefix() {
+			return c, true
+		}
+	}
+	for _, c := range executedPrefixClasses {
+		if strings.HasPrefix(reason, c.prefix()) {
+			return c, true
+		}
+	}
+	return executedNone, false
+}
+
+// resolutionClass names one class of resolution-serving refusal
+// (`resolution_notices` / `Served.Reasons`) the backend mints: an index into
+// resolutionTable, where every class's spelling and explain kind are listed.
+type resolutionClass uint8
+
+const (
+	resolutionNone resolutionClass = iota
+	resolutionNoClosingCertificate
+	resolutionSourceMovedDuringServing
+	resolutionNoLongerDeclared
+	resolutionNoCurrentCertificate
+	resolutionSourceDependencies
+	resolutionNoCurrentCapture
+	resolutionClosureMoved
+)
+
+var resolutionTable = [...]struct {
+	prefix string
+	kind   explainKind
+}{
+	resolutionNone:                     {"", 0},
+	resolutionNoClosingCertificate:     {"no closing source certificate", explainSelf},
+	resolutionSourceMovedDuringServing: {"source dependencies moved during serving", explainSelf},
+	resolutionNoLongerDeclared:         {"no longer declared in the selected source", explainSelf},
+	resolutionNoCurrentCertificate:     {"no current source certificate", explainSelf},
+	resolutionSourceDependencies:       {"source dependencies", explainSelf},
+	resolutionNoCurrentCapture:         {"no current capture", explainSelf},
+	resolutionClosureMoved:             {"", explainSelf},
+}
+
+func (c resolutionClass) prefix() string   { return resolutionTable[c].prefix }
+func (c resolutionClass) kind() explainKind { return resolutionTable[c].kind }
+
+// resolutionReason is one typed resolution-serving refusal.
+type resolutionReason struct {
+	class  resolutionClass
+	detail string
+}
+
+func (r resolutionReason) String() string { return r.class.prefix() + r.detail }
+
+func (c resolutionClass) with(detail string) resolutionReason { return resolutionReason{c, detail} }
+
+var (
+	resolutionClosure           = resolutionClosureMoved.with("closure")
+	resolutionTestVariants      = resolutionClosureMoved.with("test variants")
+	resolutionClosureDerivation = resolutionClosureMoved.with("closure derivation")
+	resolutionToolchainContent  = resolutionClosureMoved.with("toolchain content")
+	resolutionAdmissionPolicy   = resolutionClosureMoved.with("admission policy")
+	resolutionToolchain         = resolutionClosureMoved.with("toolchain")
+	resolutionBuildConfig       = resolutionClosureMoved.with("build configuration")
+)
+
+var closureMovedReasons = []resolutionReason{
+	resolutionClosure,
+	resolutionTestVariants,
+	resolutionClosureDerivation,
+	resolutionToolchainContent,
+	resolutionAdmissionPolicy,
+	resolutionToolchain,
+	resolutionBuildConfig,
+}
+
+var resolutionWholeClasses = []resolutionClass{
+	resolutionNoClosingCertificate,
+	resolutionSourceMovedDuringServing,
+	resolutionNoLongerDeclared,
+	resolutionNoCurrentCertificate,
+	resolutionSourceDependencies,
+	resolutionNoCurrentCapture,
+}
+
+// classifyResolutionReason answers the resolutionClass of a resolution-serving
+// refusal spelled as text (either the bare reason or a "resolution typed: <sym>: <reason>"
+// notice line).
+func classifyResolutionReason(reason string) (resolutionClass, bool) {
+	candidate := reason
+	if rest, ok := strings.CutPrefix(reason, "resolution typed: "); ok {
+		if _, tail, found := strings.Cut(rest, ": "); found {
+			candidate = tail
+		}
+	}
+	for _, c := range resolutionWholeClasses {
+		if candidate == c.prefix() {
+			return c, true
+		}
+	}
+	for _, r := range closureMovedReasons {
+		if candidate == r.String() {
+			return resolutionClosureMoved, true
+		}
+	}
+	return resolutionNone, false
+}
+
+// classifyAnyReason classifies an uncacheable, executed, or resolution reason
+// across the backend's three reason tables and returns its explainKind.
+func classifyAnyReason(reason string) (explainKind, bool) {
+	if c, ok := classifyReason(reason); ok {
+		return c.kind(), true
+	}
+	if c, ok := classifyExecutedReason(reason); ok {
+		return c.kind(), true
+	}
+	if c, ok := classifyResolutionReason(reason); ok {
+		return c.kind(), true
+	}
+	return 0, false
+}

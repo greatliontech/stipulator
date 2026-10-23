@@ -4,6 +4,7 @@ package stipulator.v1;
 
 option go_package = "github.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1";
 
+import "google/protobuf/duration.proto";
 import "stipulator/v1/ir.proto";
 import "stipulator/v1/records.proto";
 
@@ -137,6 +138,54 @@ message FailureDiagnostic {
   bool truncated = 6;
 }
 
+// PackageExecutionState classifies a scheduled package unit's execution state
+// at the end of a run or upon cancellation/timeout.
+enum PackageExecutionState {
+  PACKAGE_EXECUTION_STATE_UNSPECIFIED = 0;
+  PACKAGE_EXECUTION_STATE_COMPLETED = 1;
+  PACKAGE_EXECUTION_STATE_FAILED = 2;
+  PACKAGE_EXECUTION_STATE_SKIPPED = 3;
+  PACKAGE_EXECUTION_STATE_CANCELLED = 4;
+  PACKAGE_EXECUTION_STATE_NEVER_STARTED = 5;
+}
+
+// StageTimingDiagnostic records wall-clock duration spent in one pass stage.
+message StageTimingDiagnostic {
+  string stage = 1;
+  google.protobuf.Duration elapsed = 2;
+}
+
+// TestTimingDiagnostic records one test's execution timing within a package run.
+message TestTimingDiagnostic {
+  string test = 1;
+  TestOutcome outcome = 2;
+  google.protobuf.Duration elapsed = 3;
+  bool running_at_abort = 4;
+}
+
+// PackageTimingDiagnostic records one scheduled package unit's execution timing,
+// queue wait, admission origin, build vs test binary split, and per-test timings.
+message PackageTimingDiagnostic {
+  string invocation = 1;
+  string package = 2;
+  string solo_test = 3;
+  PackageExecutionState state = 4;
+  google.protobuf.Duration queue_wait = 5;
+  string admission_origin = 6;
+  google.protobuf.Duration build_elapsed = 7;
+  google.protobuf.Duration binary_elapsed = 8;
+  google.protobuf.Duration total_elapsed = 9;
+  repeated TestTimingDiagnostic tests = 10;
+}
+
+// ExecutionTimingDiagnostics is the structured timing account of a run,
+// retained across both completed and cancelled/timed-out executions without
+// publishing incomplete runs as witnesses or altering the cancellation verdict.
+message ExecutionTimingDiagnostics {
+  repeated StageTimingDiagnostic stages = 1;
+  repeated PackageTimingDiagnostic packages = 2;
+}
+
 // Problem is a verification error; any problem fails a run.
 message Problem {
   string path = 1;
@@ -219,6 +268,8 @@ message VerifyReport {
   // Advisory store refusals observed by this witnessing run. Composed check
   // results carry this account at check level and leave this field absent.
   WitnessCacheLoadAccount witness_cache_load = 12;
+  // Structured stage, package, and per-test execution timing diagnostics.
+  ExecutionTimingDiagnostics timing = 13;
 }
 
 // ChangeSignature labels one requirement's change shape.

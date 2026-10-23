@@ -46,7 +46,13 @@ failed execution or erase a separately established fact.
 ## Bindings
 
 **REQ-evidence-binding-store** (behavior): Binding claims MUST be stored as
-textproto files under `.stipulator/bindings/`, each naming a requirement
+textproto files under `.stipulator/bindings/` — placed by default by the
+requirement identifier's second hyphen segment
+(`.stipulator/bindings/<second-segment>.textproto`, or an explicit
+`--file` under `.stipulator/bindings/`) or, when the manifest declares
+`binding_layout: BINDING_LAYOUT_PER_REQUIREMENT`, one file per
+requirement (`.stipulator/bindings/<id-lowercased-without-req->.textproto`)
+across both `bind` and `supersede` — each naming a requirement
 identifier, the content hash it was authored against (unset when not yet
 pinned), a backend, a symbol reference, a role, — when the backend
 defines one — the shape hash of the bound symbol, — when the claim is
@@ -78,13 +84,20 @@ operator learns there was nothing to consent to for it.
 **REQ-evidence-clause-claim** (behavior): A binding scoped to one
 clause of its requirement (REQ-profile-clauses), by the clause's ordinal
 or its label, MUST grant its evidence to that clause alone, while an
-unscoped claim grants to every clause and a requirement without clauses
-is judged once on the whole — coverage judges the policy per clause.
+unscoped `implements` claim grants to every clause, an unscoped `tests`
+or `proves` claim on a clause-structured requirement is refused at write
+time, rejected as malformed at verification, and grants nothing to
+clauses unless the manifest opts out (`allow_whole_clause_claims: true`,
+surfaced in coverage output like any policy override), and a requirement
+without clauses is judged once on the whole — coverage judges the policy
+per clause.
 The claim resolves against the compiled requirement when written — a
 clause the requirement does not declare is refused, naming the clauses
 it offers — and again at every verification, where a claim naming a
 clause the requirement no longer declares is malformed exactly as a
-claim naming an identifier outside the corpus is; the resolved clause is
+claim naming an identifier outside the corpus is (a hand-written empty
+`clause_label` names its record file as the remedy, never an unscoped
+unbind that would select sibling claims); the resolved clause is
 part of a claim's identity, so two claims on distinct clauses are two
 claims and one clause named by ordinal and by label is one claim. An
 ordinal claim
@@ -228,9 +241,14 @@ conditions hold. Established producing evidence then licenses applicability
 under the declared witness model; current analysis neither reconstructs
 historical provenance nor promises identical future execution. The served
 outcome grants evidence only within that admitted scope, preserving
-REQ-evidence-promotion and the separate suite-health obligation.
+REQ-evidence-promotion and the separate suite-health obligation. Anything
+short of valid — a stale or unverifiable verdict, a non-inert variant delta,
+or an absent or unreadable record or companion ledger — runs the test, and an
+executed record whose input moved before publication is dropped and counted
+uncacheable; absence of proof never serves an outcome.
 
-**REQ-evidence-witness-freshness-carve-out** (behavior): One precisely scoped carve-out extends the proof past the
+**REQ-evidence-witness-freshness-carve-out** (behavior): One precisely scoped carve-out extends the freshness proof
+(REQ-evidence-witness-freshness) past the test-variant
 compartment pin: a verdict of exactly stale `test variants` certifies the
 subject's own source closure unchanged and nothing more — Gofresh orders
 the compartment comparison after the core and before the environment
@@ -265,7 +283,7 @@ an outcome.
 **REQ-evidence-witness-freshness-seeded** (behavior): A random-seeded witness — a subject the backend classifies
 `property` by a run-time-seeded driver (REQ-go-witness-class's seeded
 form), whose quantification draws its inputs from a seed no pin
-captures — MUST never serve and never publish: the witness-serving policy
+captures — MUST NOT serve or publish: the witness-serving policy
 does not substitute a previous random draw for the requested quantification.
 This is a consumer policy, not a claim that a valid fingerprint makes every
 future outcome deterministic. Such a subject executes every run, its refusal
@@ -363,7 +381,7 @@ listed degrades every observation and admits nothing anywhere). The
 judgment is the invocation's: a namespace one selected package's
 bracket covers is accepted, inert for the packages whose brackets do
 not reach it. A namespace partitions capture groups
-as an exclusion does and
+as a reviewed exclusion does (REQ-evidence-witness-freshness-inputs) and
 re-addresses no record; every record carries the namespace set its
 capture ran under and serves only while the current policy still
 declares each — a withdrawn or narrowed namespace re-executes the
@@ -380,7 +398,9 @@ scoped to the stated assumption whose violation would convert it — in
 the exemption classes below, nowhere else.
 
 **REQ-evidence-witness-freshness-vouches** (behavior): The invocation's reviewed
-dynamic-state vouches MUST ride the same review discipline: each names a
+dynamic-state vouches MUST ride the same review discipline as reviewed
+exclusions and scratch namespaces (REQ-evidence-witness-freshness-inputs,
+REQ-evidence-witness-freshness-scratch-namespaces): each names a
 version-pinned dependency package and exactly one of its package-level
 variables accepted as stable after initialization (gofresh's vouch
 contract; the pair form makes a bare package unrepresentable, and a
@@ -418,7 +438,8 @@ resolving outside the declared root seals per-identity unverifiable —
 permanently uncacheable under this root policy — both toward
 re-execution, never reuse.
 
-**REQ-evidence-witness-freshness-exemptions** (behavior): Three classes are exempt: a read resolving
+**REQ-evidence-witness-freshness-exemptions** (behavior): Three read classes are exempt from runtime-input observation
+(REQ-evidence-witness-freshness-bracket): a read resolving
 under the effective toolchain root; under the module cache outside its
 download-cache subtree; or under the effective build cache outside its
 fuzz-corpus subtree — each classifies guard-covered. The toolchain
@@ -546,7 +567,7 @@ fingerprints refuse with a named reason and variants coexist.
 **REQ-evidence-witness-freshness-runtime-bounds** (behavior): A
 reviewed runtime-only execution bound — the invocation
 envelope's timeout, the test binary's single-token timeout argument —
-is likewise not identity-bearing, because witness evidence asserts a
+is, like ambient-resolved facts (REQ-evidence-witness-freshness-record-identity), not identity-bearing, because witness evidence asserts a
 COMPLETED passing observation whose validity never depended on the
 bound: an execution bound can only prevent a measurement from
 completing, and an uncompleted measurement publishes nothing (an
@@ -559,7 +580,7 @@ health is the run's fact, evidence is the tree's. The envelope bound
 has no in-test readback at all; the binary bound's one readback is the
 deadline, and a subject reaching it is unverifiable — it publishes no
 record — so no served evidence can depend on a budget read. Editing
-a bound therefore MUST re-address no record — an execution budget is
+a bound therefore MUST NOT re-address any record — an execution budget is
 tunable without discarding the store — while the classification fails
 closed, any argument not provably runtime-only staying
 identity-bearing. The store's garbage collection may
@@ -807,7 +828,7 @@ absent, and result kind is Gofresh code-result.
 
 **REQ-evidence-witness-cache-format-ledger** (behavior): The effective
 compartment's declaration ledger — the witness-freshness
-carve-out's diff base — is stored once per complete coordinate, not per
+carve-out's diff base (REQ-evidence-witness-freshness-carve-out) — is stored once per complete coordinate, not per
 record. The `ledgers` subdirectory holds JSON files named by the record
 store's digest of the compact JSON coordinate object, whose string keys in
 order are `group`, `package`, `core`, `compartment`, `toolchain`,
@@ -931,7 +952,7 @@ not alternated since, so the first fingerprint check is usually the
 last.
 
 **REQ-evidence-witness-cache-format-strategy** (behavior): A record MUST carry every derivation-strategy field the engine stamps
-on its fingerprint (the `…Strategy` keys the enumeration above lists): a
+on its fingerprint (the `…Strategy` keys listed in REQ-evidence-witness-cache-format-record-keys): a
 strategy is a validity field the engine compares, so a record persisted
 before a strategy field reads as the empty strategy and fails closed to
 re-execution once, never serving a verdict computed under semantics the
@@ -1093,8 +1114,9 @@ receiver-method spelling, retaining its named load failures. A scope naming
 no declared package remains explicitly empty, never a whole-tree fallback;
 the intentionally unscoped declaration form remains distinct.
 
-**REQ-evidence-resolution-freshness-degrade** (behavior): A fault anywhere on the serving path MUST degrade to the typed
-load for the affected symbols (REQ-evidence-freshness-degrade).
+**REQ-evidence-resolution-freshness-degrade** (behavior): A fault anywhere on the resolution-serving path
+(REQ-evidence-resolution-freshness) MUST degrade to the typed
+load (REQ-evidence-resolution-freshness-typed-load) for the affected symbols, analogous to the witness path's degradation rule (REQ-evidence-freshness-degrade).
 
 **REQ-evidence-resolution-freshness-quiesce** (behavior): A
 verification pass MUST ask its serving backend every question before any
@@ -1306,7 +1328,7 @@ resolved configuration: a field the committed record leaves absent pins its
 effective value at load, and that resolved value is part of the invocation's
 evidentiary record, so what actually ran is reviewable after the fact.
 
-**REQ-policy-attribution-no-merge** (invariant): Outcomes or observations from distinct processes MUST never be merged into one
+**REQ-policy-attribution-no-merge** (invariant): Outcomes or observations from distinct processes MUST NOT be merged into one
 evidentiary record.
 
 **REQ-policy-cancellation** (behavior): A cancelled policy execution
@@ -1352,7 +1374,9 @@ a minimum required evidence, with the manifest able to override the defaults.
 default policy MUST require, for `MUST`/`MUST NOT` requirements, the minimum
 evidence listed per clause kind below; for `SHOULD`/`SHOULD NOT`, a static
 binding or an attestation; and for `MAY`, a static binding when bound, with
-unbound `MAY` requirements exempt from coverage.
+unbound `MAY` requirements exempt from coverage (decomposing a `MAY`
+requirement into `MUST` or `MUST NOT` sub-requirements raises each
+sub-requirement's minimum evidence bar to its own keyword's cell).
 
 | Clause kind | Minimum evidence |
 |---|---|

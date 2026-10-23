@@ -705,14 +705,14 @@ func TestRoundCandidatesAdvancesPastGateRefusal(t *testing.T) {
 		{},
 	}}
 	refused := 0
-	fps, advanced := roundCandidates([]gofresh.Subject{s}, cached, map[gofresh.Subject]chosenWitness{}, 0, declarationsFor(&captureGroup{}), func(gofresh.Subject, string) { refused++ })
+	fps, advanced := roundCandidates([]gofresh.Subject{s}, cached, map[gofresh.Subject]chosenWitness{}, 0, declarationsFor(&captureGroup{}), func(gofresh.Subject, executedReason) { refused++ })
 	if !advanced || len(fps) != 0 || refused != 1 {
 		t.Fatalf("round 0: advanced=%v fps=%d refused=%d, want advancement past the gate-refused variant", advanced, len(fps), refused)
 	}
-	if fps, advanced = roundCandidates([]gofresh.Subject{s}, cached, map[gofresh.Subject]chosenWitness{}, 1, declarationsFor(&captureGroup{}), func(gofresh.Subject, string) { refused++ }); !advanced || len(fps) != 1 {
+	if fps, advanced = roundCandidates([]gofresh.Subject{s}, cached, map[gofresh.Subject]chosenWitness{}, 1, declarationsFor(&captureGroup{}), func(gofresh.Subject, executedReason) { refused++ }); !advanced || len(fps) != 1 {
 		t.Fatalf("round 1: advanced=%v fps=%d, want the later variant checked", advanced, len(fps))
 	}
-	if _, advanced = roundCandidates([]gofresh.Subject{s}, cached, map[gofresh.Subject]chosenWitness{}, 2, declarationsFor(&captureGroup{}), func(gofresh.Subject, string) { refused++ }); advanced {
+	if _, advanced = roundCandidates([]gofresh.Subject{s}, cached, map[gofresh.Subject]chosenWitness{}, 2, declarationsFor(&captureGroup{}), func(gofresh.Subject, executedReason) { refused++ }); advanced {
 		t.Fatal("round past the last variant still advances")
 	}
 }
@@ -725,11 +725,11 @@ func TestRoundCandidatesAdvancesPastNamespaceRefusal(t *testing.T) {
 	}}
 	declarations := declarationsFor(&captureGroup{})
 	var why string
-	fps, advanced := roundCandidates([]gofresh.Subject{s}, cached, nil, 0, declarations, func(_ gofresh.Subject, reason string) { why = reason })
+	fps, advanced := roundCandidates([]gofresh.Subject{s}, cached, nil, 0, declarations, func(_ gofresh.Subject, reason executedReason) { why = reason.String() })
 	if !advanced || len(fps) != 0 || why != refusedWithdrawnNamespace {
 		t.Fatalf("namespace refusal lost: advanced=%v fps=%d why=%q", advanced, len(fps), why)
 	}
-	fps, advanced = roundCandidates([]gofresh.Subject{s}, cached, nil, 1, declarations, func(gofresh.Subject, string) { t.Fatal("valid later variant refused") })
+	fps, advanced = roundCandidates([]gofresh.Subject{s}, cached, nil, 1, declarations, func(gofresh.Subject, executedReason) { t.Fatal("valid later variant refused") })
 	if !advanced || len(fps) != 1 {
 		t.Fatal("namespace-refused variant masked the later variant")
 	}

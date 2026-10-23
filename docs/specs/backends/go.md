@@ -305,16 +305,18 @@ package obligation. Discovery alone grants no witness or classifier tier.
 
 **REQ-go-owned-processes** (behavior): Every child process spawned for
 Go policy execution or package discovery MUST run inside an owned,
-cancellable process boundary whose entire descendant tree terminates
-with the operation's cancellation — package loading owns its launcher's
-descendants exactly as test invocations own theirs, and an external
-package driver never shapes verification — an ambient one is refused,
+cancellable process boundary whose descendant tree terminates
+with the operation's cancellation — except for the platform telemetry
+escape in REQ-go-owned-processes-telemetry-home — package loading owning
+its launcher's process and a dead or erroring resolver child surfacing
+as an error rather than a silent absence over its wire protocol, and an external
+package driver never shaping verification — an ambient one is refused,
 and the curated environment's package-driver variable is pinned off as
 its last word, past every declared override or denial.
 
 **REQ-go-owned-processes-telemetry-home** (behavior): The toolchain's
-telemetry, on by default, forks a detached upload sidecar outside that
-boundary on its daily check, and no variable names its directory: on
+telemetry, on by default, forks a detached upload sidecar outside the
+owned process boundary (REQ-go-owned-processes) on its daily check, and no variable names its directory: on
 unix the environment every Go child runs under — the witnesses', the
 loads', the toolchain queries' — therefore MUST point the toolchain's config
 home (`XDG_CONFIG_HOME`) at an owned home — a directory of the user's
@@ -339,10 +341,10 @@ configuration and its git's global configuration do not move with the
 telemetry. An owned home that cannot be prepared is a refusal naming the
 reason. On platforms whose config home no variable selects, the
 toolchain's detached telemetry is the one sanctioned escape from the
-boundary.
+owned process boundary (REQ-go-owned-processes).
 
 **REQ-go-owned-processes-runner** (behavior): Every go child but the loader's and the provenance probe's
-MUST run through Gofresh's go-command runner carrying this boundary as its
+MUST run through Gofresh's go-command runner carrying the owned process boundary (REQ-go-owned-processes) as its
 containment — the group, the envelope expiry's quit and grace, the
 policy's wait delay — the analysis engines' own commands through the
 same runner installed on every engine, and the observation facade's
@@ -370,7 +372,7 @@ descendant-free query in its caller's own process group), `go list`
 — spawned by an in-process loader
 rather than through the owned command boundary, run by the resolver
 child's typed views, by the analysis engines the parent process
-hosts, and by a witness's own structural proofs — each swept with the
+hosts, and by a witness's own structural proofs — each `go list` process swept with the
 operation that owns it),
 `go test -c` (retained compilation through the owned boundary),
 and the analysis engines' own `go version` and `go env` samples (descendant-free

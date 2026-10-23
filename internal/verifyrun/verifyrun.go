@@ -49,40 +49,22 @@ func Run(ctx context.Context, d verbcore.Deps, noTest bool, ids []string) (*chec
 		return prepared, verify.Run(spec, store, nil, nil), nil, nil
 	}
 	var pc *golang.Capture
+	var runTests func(context.Context, verify.WitnessSeeding) (*verify.TestRun, error)
 	if !noTest {
 		if pc, err = d.Capture(ctx); err != nil {
 			return nil, nil, nil, err
 		}
-	}
-	symbols, err := golang.OperationSymbols(ctx, store, pc)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	backends, err := d.Backends(ctx, symbols)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	closer := verify.Closer(backends)
-	defer closer()
-	// Every question the pass puts to its backends is asked before any
-	// execution — discovery-phase work: the bindings resolve here, the
-	// witness run's seeding classification is the last, and the backends
-	// release their cost before the first spawn; the run announces its
-	// own phases, and the outcomes correlate after it
-	// (REQ-evidence-resolution-freshness-quiesce).
-	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
-	report := verify.Resolve(spec, store, backends, !noTest)
-	var tr *verify.TestRun
-	if !noTest {
-		if tr, err = d.RunTests(ctx, pc, verify.SeedingOf(backends), nil, ""); err != nil {
-			return nil, nil, nil, err
+		runTests = func(ctx context.Context, seeding verify.WitnessSeeding) (*verify.TestRun, error) {
+			return d.RunTests(ctx, pc, seeding, nil, "")
 		}
 	}
-	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
-	report = verify.Correlate(report, store, tr)
-	// The account is read after the close that publishes, and rides the
-	// report so every face renders it (REQ-evidence-resolution-freshness-account).
-	report.ResolutionNotices = closer()
+	report, tr, err := check.Ladder(ctx, spec, store, pc, !noTest, check.LadderDeps{
+		Backends: d.Backends,
+		RunTests: runTests,
+	})
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	return prepared, report, tr, nil
 }
 
@@ -98,10 +80,10 @@ func Run(ctx context.Context, d verbcore.Deps, noTest bool, ids []string) (*chec
 // the whole policy. The returned run is nil whenever nothing ran, the
 // one spelling of "unwitnessed" a coverage caller reads.
 func Scoped(ctx context.Context, d verbcore.Deps, prepared *check.Prepared, scope map[gofresh.Subject]bool, why string) (*verify.Report, *verify.TestRun, error) {
-	rep := progress.FromContext(ctx)
 	spec, store := prepared.Spec, prepared.Store
 	capture := len(scope) > 0
 	var pc *golang.Capture
+	var runTests func(context.Context, verify.WitnessSeeding) (*verify.TestRun, error)
 	var err error
 	if capture {
 		if pc, err = d.Capture(ctx); err != nil {
@@ -112,29 +94,14 @@ func Scoped(ctx context.Context, d verbcore.Deps, prepared *check.Prepared, scop
 				return nil, nil, err
 			}
 		}
-	}
-	symbols, err := golang.OperationSymbols(ctx, store, pc)
-	if err != nil {
-		return nil, nil, err
-	}
-	backends, err := d.Backends(ctx, symbols)
-	if err != nil {
-		return nil, nil, err
-	}
-	closer := verify.Closer(backends)
-	defer closer()
-	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
-	report := verify.Resolve(spec, store, backends, capture)
-	var tr *verify.TestRun
-	if capture {
-		if tr, err = d.RunTests(ctx, pc, verify.SeedingOf(backends), scope, why); err != nil {
-			return nil, nil, err
+		runTests = func(ctx context.Context, seeding verify.WitnessSeeding) (*verify.TestRun, error) {
+			return d.RunTests(ctx, pc, seeding, scope, why)
 		}
 	}
-	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
-	report = verify.Correlate(report, store, tr)
-	report.ResolutionNotices = closer()
-	return report, tr, nil
+	return check.Ladder(ctx, spec, store, pc, capture, check.LadderDeps{
+		Backends: d.Backends,
+		RunTests: runTests,
+	})
 }
 
 // Gaps is the gap list's pass (REQ-gap-list): the prepared corpus and,
@@ -188,6 +155,8 @@ type ProblemsError struct {
 func (e *ProblemsError) Error() string {
 	return fmt.Sprintf("verification problems (%d); fix them first", len(e.Problems))
 }
+
+func (e *ProblemsError) ResolutionNotices() []string { return e.Notices }
 
 // RefuseProblems is the one predicate: the refusal for a non-empty
 // problem list, nil for a clean record.

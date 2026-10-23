@@ -79,8 +79,14 @@ tombstone the source identities, verify the declared `supersedes` edges
 written by the tool: every named successor declares at least one named
 source and every named source is declared by at least one named
 successor — and retarget each source's existing bindings along those
-edges, to exactly the successors declaring it, with their content pins
-cleared, which reads as stale by contract; a binding never lands on a
+edges, to exactly the successors declaring it, preserving each carried
+binding's clause scope when the successor declares that clause and
+refusing the carry when the successor cannot represent it or would
+receive an unscoped witness claim on a clause-structured requirement
+(REQ-evidence-clause-claim), deduplicating carried claims by resolved
+clause identity, placing target files under the manifest's declared
+binding layout (REQ-evidence-binding-store), and clearing content pins,
+which reads as stale by contract; a binding never lands on a
 successor that does not declare its source. The disposition's unit is
 therefore the connected component of sources and declaring successors
 — a merge, a split, or a chain of either — in one call. It consumes
@@ -445,7 +451,7 @@ launder the sibling red that forced the re-run) —
 REQ-gate-no-undeclared fails, or prune residue remains.
 
 **REQ-check-verdict-moot** (behavior): A refusal an
-earlier term decides from held inputs MUST cut the pass short: the terms
+earlier term of the check evaluation (REQ-check-verdict) decides from held inputs MUST cut the pass short: the terms
 it makes moot — those needing the policy capture or a witness — are
 not evaluated; the terms it does not make moot — the record's static
 faults, decidable without a capture — still stand, and the verdict
@@ -457,8 +463,8 @@ whole, health derives from that same execution, and the verdict
 MUST additionally fail when suite health is unhealthy.
 
 **REQ-check-verdict-scoped** (behavior): A caller naming
-requirement identifiers MUST select the scoped witness-evidence class
-instead: fresh records still serve for the whole tree, only stale
+requirement identifiers on `check` (REQ-check-verdict) MUST select the scoped witness-evidence class:
+fresh records still serve for the whole tree, only stale
 subjects bound to the named requirements execute — the every-run
 selections (ambiguously covered subjects, the ineligible legs of
 multiply-selected packages) narrow to the scope the same way, so a red
@@ -476,8 +482,9 @@ resolved-gap inspection cannot broaden this execution scope — and
 the result flags the verdict partial and echoes the scope; unknown
 identifiers refuse, and scoping composes with the default class only.
 
-**REQ-check-verdict-class-named** (behavior): The result MUST name
-which evidence class produced it, so a witness-evidence verdict is never
+**REQ-check-verdict-class-named** (behavior): The check result MUST name
+which evidence class produced it (REQ-check-verdict, REQ-check-verdict-full,
+REQ-check-verdict-scoped), so a witness-evidence verdict is never
 mistaken for a health-judged one, nor a scoped verdict for a global
 one.
 

@@ -64,6 +64,10 @@ type Store struct {
 	// compare-and-swap precondition for disposition writes; nil when the
 	// registry is absent.
 	TombstonesRaw []byte
+	// AllowWholeClauseClaims mirrors the manifest's opt-out for unscoped
+	// tests- and proves-role claims on clause-structured requirements
+	// (REQ-evidence-clause-claim).
+	AllowWholeClauseClaims bool
 }
 
 // Load reads all records from fsys, which must be rooted at the repository
@@ -108,6 +112,12 @@ func Load(fsys fs.FS) (*Store, error) {
 	s.Tombstones = tombs
 	if b, err := fs.ReadFile(fsys, TombstonesPath); err == nil {
 		s.TombstonesRaw = b
+	}
+	if b, err := recordfile.Read(fsys, ".stipulator/manifest.textproto"); err == nil {
+		m := &stipulatorv1.Manifest{}
+		if err := prototext.Unmarshal(b, m); err == nil {
+			s.AllowWholeClauseClaims = m.GetAllowWholeClauseClaims()
+		}
 	}
 	return s, nil
 }

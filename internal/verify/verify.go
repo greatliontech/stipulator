@@ -158,6 +158,12 @@ type TestRun struct {
 	// a diagnosable set, never a bare number
 	// (REQ-evidence-witness-freshness-diagnosable).
 	UncacheableReasons map[string]string
+	// InvocationWitnesses carries per-invocation witness-derivation accounts
+	// in policy invocation order.
+	InvocationWitnesses []*stipulatorv1.InvocationWitnessAccount
+	// Timing carries structured stage, package, and per-test execution
+	// timing diagnostics.
+	Timing *stipulatorv1.ExecutionTimingDiagnostics
 }
 
 // Registration is one runtime coverage claim. Package and the test path
@@ -320,6 +326,9 @@ type Report struct {
 	// (REQ-gate-change-signature). Derived only in witnessed runs, in
 	// requirement order.
 	Signatures []ChangeSignature
+	// Timing carries structured stage, package, and per-test execution
+	// timing diagnostics.
+	Timing *stipulatorv1.ExecutionTimingDiagnostics
 }
 
 // AttestationResult is one requirement attestation checked against the
@@ -494,6 +503,7 @@ func Correlate(rep *Report, store *records.Store, testRun *TestRun) *Report {
 	rep.OutsidePolicy = testRun.OutsidePolicy
 	rep.Diagnostics = testRun.Diagnostics
 	rep.WitnessCacheLoad = testRun.WitnessCacheLoad
+	rep.Timing = testRun.Timing
 	// Cross-check runtime registrations: every registration must be
 	// backed by a witness-role binding (tests or proves) for the same
 	// requirement on the registration's top-level test — the binding

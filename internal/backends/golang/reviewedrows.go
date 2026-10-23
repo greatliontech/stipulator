@@ -65,17 +65,17 @@ func toRecordedNamespaces(rows []runtimeinput.ScratchNamespace) []witnesscache.S
 // Vouches are absent: only native used acceptances license them.
 type recordedDeclaration interface {
 	recordInto(*witnesscache.Record)
-	refusal(witnesscache.Record) string
+	refusal(witnesscache.Record) executedReason
 }
 
 type recordedSet[T any] struct {
 	current         []T
 	compare         func(T, T) int
 	fieldAccessor   func(*witnesscache.Record) *[]T
-	withdrawnReason string
+	withdrawnReason executedReason
 }
 
-func newRecordedSet[T any](current []T, compare func(T, T) int, field func(*witnesscache.Record) *[]T, reason string) recordedSet[T] {
+func newRecordedSet[T any](current []T, compare func(T, T) int, field func(*witnesscache.Record) *[]T, reason executedReason) recordedSet[T] {
 	return recordedSet[T]{sortedCompact(current, compare), compare, field, reason}
 }
 
@@ -83,11 +83,11 @@ func (s recordedSet[T]) recordInto(rec *witnesscache.Record) {
 	*s.fieldAccessor(rec) = slices.Clone(s.current)
 }
 
-func (s recordedSet[T]) refusal(rec witnesscache.Record) string {
+func (s recordedSet[T]) refusal(rec witnesscache.Record) executedReason {
 	if !containsCanonical(s.current, *s.fieldAccessor(&rec), s.compare) {
 		return s.withdrawnReason
 	}
-	return ""
+	return executedReason{}
 }
 
 type recordedDeclarations []recordedDeclaration
@@ -98,19 +98,19 @@ func (d recordedDeclarations) recordInto(rec *witnesscache.Record) {
 	}
 }
 
-func (d recordedDeclarations) refusal(rec witnesscache.Record) string {
+func (d recordedDeclarations) refusal(rec witnesscache.Record) executedReason {
 	for _, declaration := range d {
-		if why := declaration.refusal(rec); why != "" {
+		if why := declaration.refusal(rec); why != (executedReason{}) {
 			return why
 		}
 	}
-	return ""
+	return executedReason{}
 }
 
 func declarationsFor(g *captureGroup) recordedDeclarations {
 	return recordedDeclarations{
-		newRecordedSet(g.excludedPaths, strings.Compare, func(r *witnesscache.Record) *[]string { return &r.ObservationExclusions }, refusedWithdrawnExclusion),
-		newRecordedSet(toRecordedNamespaces(g.scratchNamespaces), witnesscache.CompareScratchNamespaces, func(r *witnesscache.Record) *[]witnesscache.ScratchNamespace { return &r.ObservationNamespaces }, refusedWithdrawnNamespace),
+		newRecordedSet(g.excludedPaths, strings.Compare, func(r *witnesscache.Record) *[]string { return &r.ObservationExclusions }, executedWithdrawnExclusion.with("")),
+		newRecordedSet(toRecordedNamespaces(g.scratchNamespaces), witnesscache.CompareScratchNamespaces, func(r *witnesscache.Record) *[]witnesscache.ScratchNamespace { return &r.ObservationNamespaces }, executedWithdrawnNamespace.with("")),
 	}
 }
 

@@ -343,3 +343,76 @@ func TestFunctionSignature(t *testing.T) {
 		}
 	})
 }
+
+type PublicCodecData struct {
+	Name string `json:"name"`
+	Size int
+}
+
+func (PublicCodecData) Validate() error            { return nil }
+func (PublicCodecData) MarshalJSON() ([]byte, error) { return nil, nil }
+func (*PublicCodecData) UnmarshalJSON([]byte) error { return nil }
+
+//gofresh:pure
+func TestExportedDataWithMethods(t *testing.T) {
+	fields := []Field{
+		TaggedFieldOf[string]("Name", `json:"name"`),
+		FieldOf[int]("Size"),
+	}
+	methods := []Method{
+		ValueMethodOf[func() error]("Validate"),
+		ValueMethodOf[func() ([]byte, error)]("MarshalJSON"),
+		PointerMethodOf[func([]byte) error]("UnmarshalJSON"),
+	}
+	t.Run("exact fields tags and method sets pass", func(t *testing.T) {
+		r := &recorder{}
+		ExportedDataWithMethods[PublicCodecData](r, fields, methods...)
+		if len(r.errors)+len(r.fatals) != 0 {
+			t.Fatalf("exact shape failed: %v %v", r.errors, r.fatals)
+		}
+	})
+	t.Run("receiver kind mismatch fails", func(t *testing.T) {
+		r := &recorder{}
+		ExportedDataWithMethods[PublicCodecData](r, fields,
+			ValueMethodOf[func() error]("Validate"),
+			ValueMethodOf[func() ([]byte, error)]("MarshalJSON"),
+			ValueMethodOf[func([]byte) error]("UnmarshalJSON"),
+		)
+		if !containsMessage(r.errors, "has pointer receiver, want value receiver") {
+			t.Fatalf("pointer-vs-value mismatch accepted: %v", r.errors)
+		}
+		r = &recorder{}
+		ExportedDataWithMethods[PublicCodecData](r, fields,
+			PointerMethodOf[func() error]("Validate"),
+			ValueMethodOf[func() ([]byte, error)]("MarshalJSON"),
+			PointerMethodOf[func([]byte) error]("UnmarshalJSON"),
+		)
+		if !containsMessage(r.errors, "has value receiver, want pointer receiver") {
+			t.Fatalf("value-vs-pointer mismatch accepted: %v", r.errors)
+		}
+	})
+	t.Run("missing or extra method fails", func(t *testing.T) {
+		r := &recorder{}
+		ExportedDataWithMethods[PublicCodecData](r, fields, methods[:2]...)
+		if !containsMessage(r.errors, "pointer method count") {
+			t.Fatalf("extra method on type accepted: %v", r.errors)
+		}
+		r = &recorder{}
+		ExportedDataWithMethods[PublicCodecData](r, fields, append(methods, ValueMethodOf[func()]("Extra"))...)
+		if !containsMessage(r.errors, "missing method Extra") {
+			t.Fatalf("missing method on type accepted: %v", r.errors)
+		}
+	})
+	t.Run("hidden state or tag mismatch fails", func(t *testing.T) {
+		r := &recorder{}
+		ExportedDataWithMethods[PublicHiddenData](r, []Field{FieldOf[string]("Name"), FieldOf[int]("hidden")})
+		if !containsMessage(r.errors, "unexported") {
+			t.Fatalf("hidden field accepted: %v", r.errors)
+		}
+		r = &recorder{}
+		ExportedDataWithMethods[PublicCodecData](r, []Field{FieldOf[string]("Name"), FieldOf[int]("Size")}, methods...)
+		if !containsMessage(r.errors, "field 0") {
+			t.Fatalf("tag mismatch accepted: %v", r.errors)
+		}
+	})
+}

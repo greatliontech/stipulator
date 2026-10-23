@@ -639,3 +639,21 @@ func SelectionNotices(pc *Capture) []string {
 // can hand it an entry the process cannot set in itself (an entry with
 // no '=' survives execve into os.Environ but no Setenv produces one).
 var ambientEnviron = os.Environ
+
+// NeutralAmbient pins the ambient Go toolchain and cache controls policy
+// normalization and execution read to a hermetic state, so host configuration
+// (GOENV, GOWORK, GOFLAGS, GOPACKAGESDRIVER, GOTOOLCHAIN, XDG_CACHE_HOME)
+// cannot steer tests across packages.
+func NeutralAmbient(tb interface {
+	Helper()
+	Setenv(key, value string)
+	TempDir() string
+}) {
+	tb.Helper()
+	tb.Setenv("XDG_CACHE_HOME", tb.TempDir())
+	tb.Setenv("GOENV", "off")
+	tb.Setenv("GOWORK", "off")
+	tb.Setenv("GOFLAGS", "")
+	tb.Setenv("GOPACKAGESDRIVER", "")
+	tb.Setenv("GOTOOLCHAIN", "local")
+}

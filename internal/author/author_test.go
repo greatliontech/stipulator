@@ -647,4 +647,41 @@ func TestBindClauseClaims(t *testing.T) {
 	if _, _, err := Unbind(testFS(two), "REQ-au-c", "example.com/p.F", 0, "3"); err == nil || !strings.Contains(err.Error(), "clause 3; the recorded claims there are example.com/p.F implements clause 2; example.com/p.F implements clause gone") {
 		t.Fatalf("unbind on an absent clause spelling does not list the recorded spellings: %v", err)
 	}
+	// Whole-requirement tests/proves claims on a clause-structured
+	// requirement are refused by default, while implements remains whole
+	// and the manifest opt-out admits whole witness claims.
+	for _, role := range []stipulatorv1.BindingRole{
+		stipulatorv1.BindingRole_BINDING_ROLE_TESTS,
+		stipulatorv1.BindingRole_BINDING_ROLE_PROVES,
+	} {
+		wholeWitness := claim("")
+		wholeWitness.Role = role
+		if _, err := bind(fsys, backends, wholeWitness); err == nil || !strings.Contains(err.Error(), "REQ-au-c is clause-structured and requires a --clause (mcp: clause) scope") {
+			t.Fatalf("whole %v claim on clause-structured requirement: %v", role, err)
+		}
+	}
+	optOutFS := testFS(map[string]string{
+		".stipulator/manifest.textproto": "include: \"specs/**/*.md\"\nallow_whole_clause_claims: true\n",
+		"specs/a.md":                     clauseDoc,
+	})
+	wholeTests := claim("")
+	wholeTests.Role = stipulatorv1.BindingRole_BINDING_ROLE_TESTS
+	if up, err := bind(optOutFS, backends, wholeTests); err != nil || strings.Contains(string(up.Content), "clause_") {
+		t.Fatalf("manifest opt-out rejected whole tests claim: up=%v err=%v", up, err)
+	}
+	// Per-requirement layout places bindings at .stipulator/bindings/<id-without-req->.textproto
+	// and refuses conflicting explicit files.
+	perReqFS := testFS(map[string]string{
+		".stipulator/manifest.textproto": "include: \"specs/**/*.md\"\nbinding_layout: BINDING_LAYOUT_PER_REQUIREMENT\n",
+		"specs/a.md":                     clauseDoc,
+	})
+	up, err := bind(perReqFS, backends, claim("alpha"))
+	if err != nil || up.Path != ".stipulator/bindings/au-c.textproto" {
+		t.Fatalf("per-requirement layout: path=%q err=%v", up.Path, err)
+	}
+	badFile := claim("alpha")
+	badFile.File = ".stipulator/bindings/au.textproto"
+	if _, err := bind(perReqFS, backends, badFile); err == nil || !strings.Contains(err.Error(), "BINDING_LAYOUT_PER_REQUIREMENT") {
+		t.Fatalf("conflicting explicit file under per-requirement layout: %v", err)
+	}
 }

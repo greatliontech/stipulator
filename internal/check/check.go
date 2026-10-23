@@ -116,6 +116,9 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	// error, not a record problem — stays an error: it says nothing about the
 	// tree.
 	recordProblem := func(err error) (*stipulatorv1.CheckResult, error) {
+		if notices := verify.NoticesOf(err); len(notices) > 0 {
+			res.SetResolutionNotices(notices)
+		}
 		if !errors.Is(err, policy.ErrRecord) {
 			return nil, err
 		}
@@ -132,8 +135,7 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	// — rendered from the records alone (REQ-check-preparation).
 	var testRun *verify.TestRun
 	var report *stipulatorv1.ExecutionReport
-	var backends map[string]verify.Backend
-	var resolved *verify.Report
+	var vr *verify.Report
 	if len(prepared.Hygiene) == 0 {
 		// The load is the operation's one capture of the accepted
 		// policy: every invocation normalized once here, and every
@@ -155,73 +157,56 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		// engine's diagnostic face. Advisory: never a verdict input.
 		res.SetPolicyNotices(golang.SelectionNotices(pc))
 
-		// The verification backend is prepared before witnessing over
-		// the operation's whole symbol set: resolutions and witness
-		// classifications proven fresh serve from records, and the
-		// owned child opens only for the stale remainder
-		// (REQ-evidence-resolution-freshness); the witness run's
-		// classifier and the binding resolution share it.
-		symbols, err := golang.OperationSymbols(ctx, store, pc)
+		vr, testRun, err = Ladder(ctx, spec, store, pc, true, LadderDeps{
+			Backends: func(ctx context.Context, symbols []string) (map[string]verify.Backend, error) {
+				return golang.Backends(ctx, dir, symbols)
+			},
+			RunTests: func(ctx context.Context, seeding verify.WitnessSeeding) (*verify.TestRun, error) {
+				// The evidence-class fork (REQ-check-verdict): health judgment
+				// demands whole-policy execution, so the full form executes
+				// everything and the default form serves proven-fresh witnesses
+				// with witness-only selective execution of the stale remainder —
+				// claiming no health.
+				if full {
+					var rerr error
+					report, testRun, rerr = golang.ExecutePolicyWitnessed(ctx, pc, seeding)
+					return testRun, rerr
+				}
+				if scope != nil {
+					return golang.RunWitnessesScoped(ctx, pc, scope, seeding)
+				}
+				return golang.RunWitnessesPolicy(ctx, pc, seeding)
+			},
+		})
 		if err != nil {
 			return recordProblem(err)
 		}
-		gb, err := golang.NewServed(ctx, dir, symbols)
-		if err != nil {
-			return nil, err
-		}
-		backends = map[string]verify.Backend{"go": gb}
-		// The serving path's account rides the result: what served,
-		// what resolved typed and why, what the close published or
-		// refused, and any selection the path degraded
-		// (REQ-evidence-freshness-degrade) — advisory, never a verdict
-		// input. The one closer reads it after the close that
-		// publishes, on every exit of this pass.
-		closer := verify.Closer(backends)
-		defer func() { res.SetResolutionNotices(closer()) }()
-		// The bindings resolve before the witness run — discovery-phase
-		// work — every question to the backend asked ahead of any
-		// execution; the run's seeding classification is the last, and
-		// the backend releases its child before the first spawn
-		// (REQ-evidence-resolution-freshness-quiesce).
-		rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
-		resolved = verify.Resolve(spec, store, backends, true)
-
-		// The evidence-class fork (REQ-check-verdict): health judgment
-		// demands whole-policy execution, so the full form executes
-		// everything and the default form serves proven-fresh witnesses
-		// with witness-only selective execution of the stale remainder —
-		// claiming no health.
+		res.SetResolutionNotices(vr.ResolutionNotices)
 		if full {
-			report, testRun, err = golang.ExecutePolicyWitnessed(ctx, pc, gb)
-			if err != nil {
-				return recordProblem(err)
+			if report != nil && report.GetTiming() == nil && testRun != nil {
+				report.SetTiming(testRun.Timing)
 			}
 			res.SetExecution(report)
 			res.SetSuiteHealthJudged(true)
 		} else if scope != nil {
-			testRun, err = golang.RunWitnessesScoped(ctx, pc, scope, gb)
-			if err != nil {
-				return recordProblem(err)
-			}
 			res.SetScopePartial(true)
 			res.SetScopeIds(append([]string(nil), scopeIds...))
 			res.SetTestsServed(int32(testRun.Fresh))
 			res.SetWitnessDiagnostics(testRun.Diagnostics)
+			res.SetTiming(testRun.Timing)
 		} else {
-			testRun, err = golang.RunWitnessesPolicy(ctx, pc, gb)
-			if err != nil {
-				return recordProblem(err)
-			}
 			res.SetTestsServed(int32(testRun.Fresh))
 			// No execution report exists to carry retained failure output
 			// on this form, so the typed diagnostics ride the result
 			// directly — disposition and truncation intact
 			// (REQ-check-diagnostics).
 			res.SetWitnessDiagnostics(testRun.Diagnostics)
+			res.SetTiming(testRun.Timing)
 		}
 		res.SetTestsExecuted(int32(testRun.Ran))
 		res.SetWitnessCacheLoad(testRun.WitnessCacheLoad)
 		res.SetTestsOutsidePolicy(int32(testRun.OutsidePolicy))
+		res.SetInvocationWitnesses(testRun.InvocationWitnesses)
 		// The catastrophic shape - nothing served and no witness outcome
 		// granted while expected witnesses sit outside the eligible selection
 		// - names its execution-layer cause once at result level; without it
@@ -238,24 +223,23 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		res.SetUncacheableReasons(testRun.UncacheableReasons)
 		res.SetExecutedReasons(testRun.ExecutedReasons)
 		res.SetWitnessPublicationDegraded(testRun.Degraded)
-	} else if _, _, err := policy.Load(dir, map[string]policy.Backend{"go": golang.Policy{}}); err != nil {
-		// The policy term still stands on the witness-free pass: the
-		// record's static faults decide without a toolchain query
-		// (REQ-check-verdict-moot). What the pass forgoes is the capture —
-		// the notices and the tree-resolved faults it would cost.
-		if !errors.Is(err, policy.ErrRecord) {
-			return nil, err
+	} else {
+		if _, _, err := policy.Load(dir, map[string]policy.Backend{"go": golang.Policy{}}); err != nil {
+			// The policy term still stands on the witness-free pass: the
+			// record's static faults decide without a toolchain query
+			// (REQ-check-verdict-moot). What the pass forgoes is the capture —
+			// the notices and the tree-resolved faults it would cost.
+			if !errors.Is(err, policy.ErrRecord) {
+				return nil, err
+			}
+			p := &stipulatorv1.Problem{}
+			p.SetPath(policy.Path)
+			p.SetMessage(err.Error())
+			res.SetPolicyProblem(p)
 		}
-		p := &stipulatorv1.Problem{}
-		p.SetPath(policy.Path)
-		p.SetMessage(err.Error())
-		res.SetPolicyProblem(p)
+		rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
+		vr = verify.Run(spec, store, nil, nil)
 	}
-	rep.Phase(stipulatorv1.Phase_PHASE_VERIFICATION)
-	if resolved == nil {
-		resolved = verify.Resolve(spec, store, nil, false)
-	}
-	vr := verify.Correlate(resolved, store, testRun)
 	vp := vr.Proto()
 	// The typed failure rows already ride the check payload — at the
 	// check level on the witness-evidence form, on the execution report
@@ -264,6 +248,7 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	// (REQ-mcp-response-contract).
 	vp.SetWitnessDiagnostics(nil)
 	vp.SetWitnessCacheLoad(nil)
+	vp.SetTiming(nil)
 	res.SetVerify(vp)
 
 	rep.Phase(stipulatorv1.Phase_PHASE_COVERAGE)

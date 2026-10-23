@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -13,6 +14,7 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/internal/progress"
+	"github.com/greatliontech/stipulator/internal/verify"
 )
 
 // The progress reporting and terminal-error composition the served
@@ -111,13 +113,20 @@ func (s *Server) startProgress(ctx context.Context, req *mcp.CallToolRequest) (c
 // REQ-mcp-cancellation); any other operational fault is a server
 // failure and speaks for itself.
 func terminalToolError(prog *progress.Reporter, ctx context.Context, err error) error {
+	notices := accountLines(verify.NoticesOf(err))
+	withAccount := func(out error) error {
+		if len(notices) == 0 {
+			return out
+		}
+		return fmt.Errorf("%w\n%s", out, strings.Join(notices, "\n"))
+	}
 	switch ctx.Err() {
 	case context.DeadlineExceeded:
-		return fmt.Errorf("%s: %w", prog.Seal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_DEADLINE), err)
+		return withAccount(fmt.Errorf("%s: %w", prog.Seal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_DEADLINE), err))
 	case context.Canceled:
 		// The client's cancellation: the line names the cause, the
 		// phase, and what the operation kept.
-		return fmt.Errorf("%s: %w", prog.SealBy(stipulatorv1.TerminalCause_TERMINAL_CAUSE_CANCELLED, "the client"), err)
+		return withAccount(fmt.Errorf("%s: %w", prog.SealBy(stipulatorv1.TerminalCause_TERMINAL_CAUSE_CANCELLED, "the client"), err))
 	}
 	if errors.Is(err, policy.ErrRecord) {
 		// A missing or invalid accepted test policy is a fact about the
@@ -127,8 +136,8 @@ func terminalToolError(prog *progress.Reporter, ctx context.Context, err error) 
 		// beside the loader's guidance — an agent must distinguish
 		// no-policy from server failure without guessing.
 		prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_TEST_FAILURE)
-		return fmt.Errorf("%s: %w", policy.Path, err)
+		return withAccount(fmt.Errorf("%s: %w", policy.Path, err))
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_SERVER_FAILURE)
-	return err
+	return withAccount(err)
 }

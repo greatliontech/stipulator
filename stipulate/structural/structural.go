@@ -103,16 +103,40 @@ func sortedImportPaths(imports map[string]*packages.Package) []string {
 	return paths
 }
 
-// Field describes one exported field in an ExportedData assertion.
+// Field describes one exported field in an ExportedData or ExportedDataWithMethods assertion.
 type Field struct {
 	Name string
 	Type reflect.Type
+	Tag  reflect.StructTag
 }
 
 // FieldOf constructs an expected exported field without requiring callers to
 // manipulate reflect.Type values directly.
 func FieldOf[T any](name string) Field {
 	return Field{Name: name, Type: reflect.TypeFor[T]()}
+}
+
+// TaggedFieldOf constructs an expected exported field with an exact struct tag.
+func TaggedFieldOf[T any](name string, tag reflect.StructTag) Field {
+	return Field{Name: name, Type: reflect.TypeFor[T](), Tag: tag}
+}
+
+// Method describes one exported method in an ExportedDataWithMethods assertion.
+// Signature is the method's function signature without receiver.
+type Method struct {
+	Name      string
+	Signature reflect.Type
+	Pointer   bool
+}
+
+// ValueMethodOf constructs an expected value-receiver method (present on both T and *T).
+func ValueMethodOf[Sig any](name string) Method {
+	return Method{Name: name, Signature: reflect.TypeFor[Sig](), Pointer: false}
+}
+
+// PointerMethodOf constructs an expected pointer-receiver method (present only on *T).
+func PointerMethodOf[Sig any](name string) Method {
+	return Method{Name: name, Signature: reflect.TypeFor[Sig](), Pointer: true}
 }
 
 // ExportedData asserts that T resolves to an exported named struct whose complete
@@ -153,8 +177,8 @@ func ExportedData[T any](tb testing.TB, fields ...Field) {
 			tb.Errorf("structural.ExportedData: %s field %d %q has tag %q", typ, i, got.Name, got.Tag)
 			return
 		}
-		if want.Name == "" || want.Type == nil {
-			tb.Fatalf("structural.ExportedData: expected field %d is incomplete: %+v", i, want)
+		if want.Name == "" || want.Type == nil || want.Tag != "" {
+			tb.Fatalf("structural.ExportedData: expected field %d is incomplete or tagged: %+v", i, want)
 			return
 		}
 		if got.Name != want.Name || got.Type != want.Type {
@@ -162,6 +186,102 @@ func ExportedData[T any](tb testing.TB, fields ...Field) {
 			return
 		}
 	}
+}
+
+// ExportedDataWithMethods asserts that T resolves to an exported named struct whose
+// complete field list (names, types, and tags) matches fields in declaration order
+// with no unexported or embedded fields, and whose value and pointer method sets
+// match methods exactly.
+func ExportedDataWithMethods[T any](tb testing.TB, fields []Field, methods ...Method) {
+	tb.Helper()
+	typ := reflect.TypeFor[T]()
+	if typ.Kind() != reflect.Struct {
+		tb.Fatalf("structural.ExportedDataWithMethods: %s is %s, want struct", typ, typ.Kind())
+		return
+	}
+	if typ.Name() == "" || typ.PkgPath() == "" || !token.IsExported(typ.Name()) {
+		tb.Fatalf("structural.ExportedDataWithMethods: %s is not an exported named type", typ)
+		return
+	}
+	if typ.NumField() != len(fields) {
+		tb.Errorf("structural.ExportedDataWithMethods: %s has %d fields, want %d", typ, typ.NumField(), len(fields))
+		return
+	}
+	for i, want := range fields {
+		got := typ.Field(i)
+		if !got.IsExported() {
+			tb.Errorf("structural.ExportedDataWithMethods: %s field %d %q is unexported", typ, i, got.Name)
+			return
+		}
+		if got.Anonymous {
+			tb.Errorf("structural.ExportedDataWithMethods: %s field %d %q is embedded", typ, i, got.Name)
+			return
+		}
+		if want.Name == "" || want.Type == nil {
+			tb.Fatalf("structural.ExportedDataWithMethods: expected field %d is incomplete: %+v", i, want)
+			return
+		}
+		if got.Name != want.Name || got.Type != want.Type || got.Tag != want.Tag {
+			tb.Errorf("structural.ExportedDataWithMethods: %s field %d = %s %s %q, want %s %s %q", typ, i, got.Name, got.Type, got.Tag, want.Name, want.Type, want.Tag)
+			return
+		}
+	}
+	ptrTyp := reflect.PointerTo(typ)
+	seen := make(map[string]bool, len(methods))
+	wantValCount := 0
+	for i, want := range methods {
+		if want.Name == "" || !token.IsExported(want.Name) || want.Signature == nil || want.Signature.Kind() != reflect.Func {
+			tb.Fatalf("structural.ExportedDataWithMethods: expected method %d is invalid: %+v", i, want)
+			return
+		}
+		if seen[want.Name] {
+			tb.Fatalf("structural.ExportedDataWithMethods: duplicate expected method %q", want.Name)
+			return
+		}
+		seen[want.Name] = true
+		pm, ok := ptrTyp.MethodByName(want.Name)
+		if !ok {
+			tb.Errorf("structural.ExportedDataWithMethods: %s missing method %s", typ, want.Name)
+			return
+		}
+		_, valOK := typ.MethodByName(want.Name)
+		if want.Pointer && valOK {
+			tb.Errorf("structural.ExportedDataWithMethods: %s method %s has value receiver, want pointer receiver", typ, want.Name)
+			return
+		}
+		if !want.Pointer && !valOK {
+			tb.Errorf("structural.ExportedDataWithMethods: %s method %s has pointer receiver, want value receiver", typ, want.Name)
+			return
+		}
+		if !want.Pointer {
+			wantValCount++
+		}
+		gotSig := stripReceiver(pm.Type)
+		if gotSig != want.Signature {
+			tb.Errorf("structural.ExportedDataWithMethods: %s method %s signature = %s, want %s", typ, want.Name, gotSig, want.Signature)
+			return
+		}
+	}
+	if typ.NumMethod() != wantValCount {
+		tb.Errorf("structural.ExportedDataWithMethods: %s value method count = %d, want %d", typ, typ.NumMethod(), wantValCount)
+		return
+	}
+	if ptrTyp.NumMethod() != len(methods) {
+		tb.Errorf("structural.ExportedDataWithMethods: %s pointer method count = %d, want %d", typ, ptrTyp.NumMethod(), len(methods))
+		return
+	}
+}
+
+func stripReceiver(mt reflect.Type) reflect.Type {
+	in := make([]reflect.Type, mt.NumIn()-1)
+	for i := 1; i < mt.NumIn(); i++ {
+		in[i-1] = mt.In(i)
+	}
+	out := make([]reflect.Type, mt.NumOut())
+	for i := range mt.NumOut() {
+		out[i] = mt.Out(i)
+	}
+	return reflect.FuncOf(in, out, mt.IsVariadic())
 }
 
 // FunctionSignature asserts that fn is a function whose complete signature is

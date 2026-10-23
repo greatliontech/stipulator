@@ -248,7 +248,7 @@ func (r retainedRunResult) Classify(n *NormalizedInvocation, pkg string) package
 		return degradedRun(n.Name, pkg, fmt.Sprintf("starting retained execution: %v", errors.Join(r.BinaryErr, r.ConversionErr)), false)
 	}
 	if r.Interrupted {
-		return packageRun{pkg: pkg, producer: r.Producer, aborted: startedTests(r.Stream), residue: runResidue(r.Stream, &boundedBuffer{}, r.BinaryErr, ""), peakBytes: processPeakBytes(r.BinaryState)}
+		return packageRun{pkg: pkg, producer: r.Producer, aborted: startedTests(r.Stream), testTimings: r.Stream.collectTestTimings(time.Now()), residue: runResidue(r.Stream, &boundedBuffer{}, r.BinaryErr, ""), peakBytes: childProcessPeakBytes(processPeakBytes(r.BinaryState), parentPeakBytes(), 0)}
 	}
 	st := *r.Stream
 	if err := errors.Join(r.OwnershipErr, r.ConversionErr, r.ProfileErr); err != nil {
@@ -262,7 +262,7 @@ func (r retainedRunResult) Classify(n *NormalizedInvocation, pkg string) package
 		st.terminal = "fail"
 	}
 	run := classifyRun(n.Name, pkg, &st, r.BinaryErr, &boundedBuffer{}, declaredBinaryBound(n))
-	run.producer, run.aborted, run.peakBytes = r.Producer, startedTests(r.Stream), processPeakBytes(r.BinaryState)
+	run.producer, run.aborted, run.testTimings, run.peakBytes = r.Producer, startedTests(r.Stream), r.Stream.collectTestTimings(time.Now()), childProcessPeakBytes(processPeakBytes(r.BinaryState), parentPeakBytes(), 0)
 	return run
 }
 

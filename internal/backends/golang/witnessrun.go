@@ -96,7 +96,7 @@ type witnessGroup struct {
 	// executedWhy names, per stale subject that held prior evidence, why
 	// its variants failed to serve - the last-checked variant's verdict
 	// reason, movers named by gofresh's attribution.
-	executedWhy map[gofresh.Subject]string
+	executedWhy map[gofresh.Subject]executedReason
 	// served are the subjects whose recorded fingerprint checked valid
 	// before execution; stale maps each package to its executing top-level
 	// names, sorted.
@@ -145,6 +145,10 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 		return nil, err
 	}
 	rep := progress.FromContext(ctx)
+	if rep == nil {
+		rep = progress.New(nil)
+		ctx = progress.NewContext(ctx, rep)
+	}
 	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	dir := pc.dir
 	d, err := pc.discover(ctx)
@@ -431,7 +435,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 				}
 				for _, name := range names {
 					if why, ok := wg.executedWhy[gofresh.Subject{Package: pkg, Symbol: name}]; ok {
-						reasons[pkg+"."+name] = executedReason(why)
+						reasons[pkg+"."+name] = formatExecutedReason(why)
 					}
 				}
 			}
@@ -609,11 +613,10 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 			if scopeSkipped[s.Package+"."+s.Symbol] {
 				continue
 			}
-			why = executedReason(why)
 			if tr.ExecutedReasons == nil {
 				tr.ExecutedReasons = map[string]string{}
 			}
-			tr.ExecutedReasons[s.Package+"."+s.Symbol] = why
+			tr.ExecutedReasons[s.Package+"."+s.Symbol] = formatExecutedReason(why)
 		}
 	}
 	if degraded == "" {
@@ -631,9 +634,9 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 					if coordinate == nil || coordinate.GetGroup() != g.id || coordinate.GetPackage() != s.Package || coordinate.GetTest() != s.Symbol {
 						continue
 					}
-					why := reasonStoreRefused.with(fmt.Sprintf("load witness record (%s): %s", refusal.GetCause(), refusal.GetDetail()))
+					why := executedFromUncacheable(reasonStoreRefused.with(fmt.Sprintf("load witness record (%s): %s", refusal.GetCause(), refusal.GetDetail())))
 					if policyReason, refused := g.neverServes[s]; refused {
-						why = policyReason
+						why = executedFromUncacheable(policyReason)
 					}
 					if tr.ExecutedReasons == nil {
 						tr.ExecutedReasons = map[string]string{}
@@ -775,6 +778,32 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 		slices.Sort(reasons)
 		tr.NoOutcome[key] = strings.Join(slices.Compact(reasons), "; ")
 	}
+	servedByInv := map[string]map[string]bool{}
+	for _, wg := range groups {
+		for _, s := range wg.served {
+			inv := wg.g.selectingInvocation(s.Package)
+			if inv == "" {
+				continue
+			}
+			if servedByInv[inv] == nil {
+				servedByInv[inv] = map[string]bool{}
+			}
+			servedByInv[inv][s.Package+"."+s.Symbol] = true
+		}
+	}
+	allRows := append([]*stipulatorv1.TestResult(nil), m.rows...)
+	if ineligibleMerge != nil {
+		allRows = append(allRows, ineligibleMerge.rows...)
+	}
+	tr.InvocationWitnesses = buildInvocationWitnessAccounts(
+		d,
+		allRows,
+		servedByInv,
+		publishedByInvocation(d.groups, published),
+		tr.NoOutcome,
+		scopeSkipped,
+	)
+	tr.Timing = rep.TimingDiagnostics()
 	// Publication installed at production: each record landed as its own
 	// variant file, atomically, the moment its group finished — at its
 	// last covering invocation's completion for executing groups, in the
@@ -783,16 +812,6 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	// departed — need no rewrite, and on the degraded path nothing
 	// executed under groups, so nothing installed.
 	return tr, nil
-}
-
-// executedReason is a re-executed subject's reason as reported: a
-// refused variant's verdict names its moved inputs, and a bare stale
-// answer reads as prior evidence stale.
-func executedReason(why string) string {
-	if why == "" {
-		return "prior evidence stale"
-	}
-	return why
 }
 
 // quiesceSeeding releases a seeding backend's resident cost once its
@@ -828,7 +847,7 @@ func plural(n int, noun string) string {
 // so the record serves only while the current policy still declares
 // each — a withdrawn or narrowed namespace re-executes the witnesses it
 // licensed, an added one serves existing evidence unchanged.
-func roundCandidates(subjects []gofresh.Subject, cached map[string][]witnesscache.Record, chosen map[gofresh.Subject]chosenWitness, round int, declarations recordedDeclarations, refused func(gofresh.Subject, string)) (map[gofresh.Subject]gofresh.Fingerprint, bool) {
+func roundCandidates(subjects []gofresh.Subject, cached map[string][]witnesscache.Record, chosen map[gofresh.Subject]chosenWitness, round int, declarations recordedDeclarations, refused func(gofresh.Subject, executedReason)) (map[gofresh.Subject]gofresh.Fingerprint, bool) {
 	fps := map[gofresh.Subject]gofresh.Fingerprint{}
 	advanced := false
 	for _, s := range subjects {
@@ -837,7 +856,7 @@ func roundCandidates(subjects []gofresh.Subject, cached map[string][]witnesscach
 			continue
 		}
 		advanced = true
-		if why := declarations.refusal(vars[round]); why != "" {
+		if why := declarations.refusal(vars[round]); why != (executedReason{}) {
 			refused(s, why)
 			continue
 		}
@@ -882,7 +901,7 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 		}
 		wg := &witnessGroup{
 			g: g, view: view, legs: map[string]*packageLeg{},
-			executedWhy: map[gofresh.Subject]string{},
+			executedWhy: map[gofresh.Subject]executedReason{},
 			stale:       map[string][]string{},
 		}
 		// Every package binds its actual prospective runtime over the shared
@@ -931,7 +950,7 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 			// soundly. Rounds cost only fingerprint checks, never analysis or
 			// execution.
 			for round := 0; ; round++ {
-				fps, advanced := roundCandidates(serving, groupCached, leg.chosen, round, declarations, func(s gofresh.Subject, why string) {
+				fps, advanced := roundCandidates(serving, groupCached, leg.chosen, round, declarations, func(s gofresh.Subject, why executedReason) {
 					wg.executedWhy[s] = why
 				})
 				if !advanced {
@@ -974,9 +993,9 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 					}
 					// The last-checked variant's refusal explains the coming
 					// re-execution; a later round's success deletes it.
-					wg.executedWhy[s] = checked.Verdict.Reason
+					wg.executedWhy[s] = verdictExecutedReason(checked.Verdict.Reason)
 					if err == nil && extended.Verdict.Reason != "" {
-						wg.executedWhy[s] = extended.Verdict.Reason
+						wg.executedWhy[s] = verdictExecutedReason(extended.Verdict.Reason)
 					}
 					if err != nil && ctx.Err() != nil {
 						if abort, reason := classifyFault(err); !abort {
@@ -1017,14 +1036,14 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 // contract refuses to serve, so it executes, and when a record existed
 // the refusal is attributed as its re-execution reason
 // (REQ-evidence-witness-freshness-seeded).
-func servingCandidates(groupID string, subjects []gofresh.Subject, neverServes map[gofresh.Subject]uncacheable, cached map[string][]witnesscache.Record, executedWhy map[gofresh.Subject]string) ([]gofresh.Subject, map[string][]witnesscache.Record) {
+func servingCandidates(groupID string, subjects []gofresh.Subject, neverServes map[gofresh.Subject]uncacheable, cached map[string][]witnesscache.Record, executedWhy map[gofresh.Subject]executedReason) ([]gofresh.Subject, map[string][]witnesscache.Record) {
 	groupCached := map[string][]witnesscache.Record{}
 	var serving []gofresh.Subject
 	for _, s := range subjects {
 		key := s.Package + "." + s.Symbol
 		if why, refused := neverServes[s]; refused {
 			if len(cached[groupID+"\x00"+key]) > 0 {
-				executedWhy[s] = why.String()
+				executedWhy[s] = executedFromUncacheable(why)
 			}
 			continue
 		}
@@ -1295,7 +1314,7 @@ func revalidateServed(ctx context.Context, wg *witnessGroup, pkg string) ([]gofr
 		// names why serving refused it — the same attribution the
 		// validation-refusal arm carries.
 		for _, s := range served {
-			wg.executedWhy[s] = "post-run served-record revalidation faulted: " + err.Error()
+			wg.executedWhy[s] = executedRevalidationFault.with(err.Error())
 		}
 		return served, nil, reasons
 	}
@@ -1309,7 +1328,7 @@ func revalidateServed(ctx context.Context, wg *witnessGroup, pkg string) ([]gofr
 			// The served record held prior evidence and now re-executes:
 			// the drift verdict's reason - movers named - is its
 			// executed-reason attribution, never a cold read.
-			wg.executedWhy[s] = "mid-run drift: " + checked.Verdict.Reason
+			wg.executedWhy[s] = executedMidRunDrift.with(checked.Verdict.Reason)
 			continue
 		}
 		// A carve-out-served record that survived post-run revalidation
@@ -1465,7 +1484,7 @@ func retryDrifted(ctx context.Context, pc *Capture, groups []*witnessGroup, drif
 			// Later waves build new snapshots. Keep only runtime storage through
 			// final consumption, rather than retaining completed source graphs.
 			defer leg.release()
-			rwg := &witnessGroup{g: st.wg.g, view: st.view, legs: st.legs, stale: map[string][]string{unit.pkg: names}, executedWhy: map[gofresh.Subject]string{}}
+			rwg := &witnessGroup{g: st.wg.g, view: st.view, legs: st.legs, stale: map[string][]string{unit.pkg: names}, executedWhy: map[gofresh.Subject]executedReason{}}
 			records, retryReasons, _, err := publishExecuted(ctx, rwg, unit.pkg, m)
 			maps.Copy(reasons, retryReasons)
 			if err != nil {

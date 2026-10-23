@@ -8,3 +8,5 @@ import "os"
 // Linux kibibyte form only, and the admission derives no completed-package
 // evidence elsewhere.
 func processPeakBytes(*os.ProcessState) uint64 { return 0 }
+
+func parentPeakBytes() uint64 { return 0 }

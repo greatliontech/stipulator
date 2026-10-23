@@ -223,3 +223,63 @@ func TestExplainEntryShapesItsRefusals(t *testing.T) {
 		}
 	}
 }
+
+func TestExecutedAndResolutionReasonClassifiersRoundTrip(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-explain", "REQ-evidence-witness-freshness-diagnosable")
+	cli := func(name string) string { return "--" + name }
+	for _, c := range executedWholeClasses {
+		sample := c.with("").String()
+		got, ok := classifyExecutedReason(sample)
+		if !ok || got != c {
+			t.Fatalf("classifyExecutedReason(%q) = %v, %v; want %v", sample, got, ok, c)
+		}
+		req, err := ResolveExplain(sample, "", "", "", cli)
+		if err != nil || req.Attribution != sample {
+			t.Fatalf("executed whole %q: req = %+v, err = %v", sample, req, err)
+		}
+	}
+	for _, c := range executedPrefixClasses {
+		sample := c.with("github.com/x/b: github.com/x/b.state escapes writable").String()
+		got, ok := classifyExecutedReason(sample)
+		if !ok || got != c {
+			t.Fatalf("classifyExecutedReason(%q) = %v, %v; want %v", sample, got, ok, c)
+		}
+		req, err := ResolveExplain(sample, "", "", "", cli)
+		switch c.kind() {
+		case explainWitness:
+			if err == nil || !strings.Contains(err.Error(), "pass --witness") {
+				t.Fatalf("executed witness %q: err = %v", sample, err)
+			}
+		case explainSelf:
+			if err != nil || req.Attribution != sample {
+				t.Fatalf("executed self %q: req = %+v, err = %v", sample, req, err)
+			}
+		case explainCulprit:
+			if err != nil || req.Package != "github.com/x/b" || req.Symbol != "state" {
+				t.Fatalf("executed culprit %q: req = %+v, err = %v", sample, req, err)
+			}
+		}
+	}
+	for _, c := range resolutionWholeClasses {
+		sample := c.with("").String()
+		got, ok := classifyResolutionReason(sample)
+		if !ok || got != c {
+			t.Fatalf("classifyResolutionReason(%q) = %v, %v; want %v", sample, got, ok, c)
+		}
+		req, err := ResolveExplain("resolution typed: example.com/p.F: "+sample, "", "", "", cli)
+		if err != nil || req.Attribution != "resolution typed: example.com/p.F: "+sample {
+			t.Fatalf("resolution whole %q: req = %+v, err = %v", sample, req, err)
+		}
+	}
+	for _, r := range closureMovedReasons {
+		sample := r.String()
+		got, ok := classifyResolutionReason(sample)
+		if !ok || got != resolutionClosureMoved {
+			t.Fatalf("classifyResolutionReason(%q) = %v, %v; want %v", sample, got, ok, resolutionClosureMoved)
+		}
+		req, err := ResolveExplain(sample, "", "", "", cli)
+		if err != nil || req.Attribution != sample {
+			t.Fatalf("resolution closure %q: req = %+v, err = %v", sample, req, err)
+		}
+	}
+}

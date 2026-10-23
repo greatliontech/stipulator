@@ -28,12 +28,7 @@ func TestInterruptedRunEndsBySignalAfterItsEnding(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds the binary and executes a slow fixture")
 	}
-	bin := filepath.Join(t.TempDir(), "stipulator")
-	build := exec.Command("go", "build", "-o", bin, "github.com/greatliontech/stipulator/cmd/stipulator")
-	build.Dir = filepath.Join("..", "..")
-	if out, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build: %v\n%s", err, out)
-	}
+	bin := cliBinary(t)
 	if _, err := exec.LookPath("pgrep"); err != nil {
 		t.Skip("pgrep is how the lingering-child sweep looks; without it the sweep proves nothing")
 	}

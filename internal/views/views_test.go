@@ -502,3 +502,25 @@ func TestScopeVocabularyIsEveryBucket(t *testing.T) {
 		}
 	}
 }
+
+func TestCheckSummaryProjectsInvocationWitnesses(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-views-check-summary")
+	inv := &stipulatorv1.InvocationWitnessAccount{}
+	inv.SetInvocation("race")
+	inv.SetWitnessEligible(true)
+	inv.SetServed(4)
+	inv.SetExecuted(2)
+	inv.SetUncacheable(1)
+	inv.SetNoOutcome(0)
+	res := &stipulatorv1.CheckResult{}
+	res.SetPassed(true)
+	res.SetInvocationWitnesses([]*stipulatorv1.InvocationWitnessAccount{inv})
+	m, err := CheckView(res, "summary", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := m.(*stipulatorv1.CheckSummary)
+	if len(sum.GetInvocationWitnesses()) != 1 || sum.GetInvocationWitnesses()[0].GetInvocation() != "race" || sum.GetInvocationWitnesses()[0].GetServed() != 4 || sum.GetInvocationWitnesses()[0].GetExecuted() != 2 {
+		t.Fatalf("CheckSummary invocation_witnesses = %+v", sum.GetInvocationWitnesses())
+	}
+}

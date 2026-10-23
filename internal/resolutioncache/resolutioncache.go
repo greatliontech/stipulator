@@ -279,3 +279,9 @@ func GC(ctx context.Context, dir string, live func(selection, symbol string) boo
 		return ok && live(rec.Selection, rec.Symbol)
 	})
 }
+
+// PruneGlobal performs global usage/preview and bounded reclamation across all
+// resolution stores under the user cache directory.
+func PruneGlobal(ctx context.Context, opts recordstore.PruneOptions) (recordstore.PruneReport, error) {
+	return recordstore.PruneKind(ctx, "resolutions", opts, nil)
+}

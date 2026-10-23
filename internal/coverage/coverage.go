@@ -263,7 +263,8 @@ func GapCountsWire(rows []*stipulatorv1.GapReport) GapTally {
 // evidence: manifest overrides win over the default table
 // (REQ-coverage-policy). A nil Policy is the pure default table.
 type Policy struct {
-	overrides map[policyCell]stipulatorv1.MinimumEvidence
+	overrides              map[policyCell]stipulatorv1.MinimumEvidence
+	allowWholeClauseClaims bool
 }
 
 type policyCell struct {
@@ -276,7 +277,10 @@ type policyCell struct {
 // rather than silently exempting a cell; a duplicate cell is refused —
 // a self-contradictory policy must never resolve by entry order.
 func PolicyFromManifest(m *stipulatorv1.Manifest) (*Policy, error) {
-	p := &Policy{overrides: map[policyCell]stipulatorv1.MinimumEvidence{}}
+	p := &Policy{
+		overrides:              map[policyCell]stipulatorv1.MinimumEvidence{},
+		allowWholeClauseClaims: m.GetAllowWholeClauseClaims(),
+	}
 	for _, o := range m.GetPolicy() {
 		if o.GetMinimum() == stipulatorv1.MinimumEvidence_MINIMUM_EVIDENCE_UNSPECIFIED {
 			continue
@@ -301,6 +305,9 @@ func (p *Policy) Active() []string {
 		out = append(out, fmt.Sprintf("policy override: (%s, %s) -> %s",
 			kindName(cell.kind), keywordName(cell.kw),
 			strings.ToLower(strings.TrimPrefix(min.String(), "MINIMUM_EVIDENCE_"))))
+	}
+	if p.allowWholeClauseClaims {
+		out = append(out, "policy override: allow_whole_clause_claims -> true")
 	}
 	sort.Strings(out)
 	return out
@@ -445,14 +452,20 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 		}
 	}
 
+	reqsByID := records.ByID(spec)
+	allowWhole := pol != nil && pol.allowWholeClauseClaims
 	for _, r := range vr.Results {
 		e := get(r.RequirementId)
 		// grant receives what the claim proves: the whole requirement
 		// for an unscoped claim, the named clause alone otherwise. Red
-		// facts always land on the requirement.
+		// facts always land on the requirement. An unscoped tests/proves
+		// claim on a clause-structured requirement grants nothing unless
+		// the manifest opts out (REQ-evidence-clause-claim).
 		grant := e
 		if r.Clause != nil {
 			grant = getClause(r.RequirementId, r.Clause.GetOrdinal())
+		} else if records.RequiresClauseScope(reqsByID[r.RequirementId], r.Role, allowWhole) {
+			grant = &evidence{}
 		}
 		if !r.ContentPinned {
 			e.stale = true

@@ -1589,3 +1589,89 @@ func TestIsolationReRunsAreRegisteredWithTheAdmission(t *testing.T) {
 		}
 	}
 }
+
+func TestFormatBoundedRosterPreservesOutputHeadroom(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-diagnostics", "REQ-policy-budget-attribution")
+	var names []string
+	for i := range 500 {
+		names = append(names, "TestVeryLongUnfinishedOrAbortedSubjectName_"+strconv.Itoa(i))
+	}
+	roster, rosterTruncated := formatBoundedRoster("\nstarted but unfinished: ", names)
+	if !rosterTruncated || len(roster) > rosterShare+32 {
+		t.Fatalf("roster length=%d truncated=%v", len(roster), rosterTruncated)
+	}
+	if !strings.Contains(roster, "(+") || !strings.HasSuffix(roster, " more omitted)") {
+		t.Fatalf("truncated roster missing omitted suffix: %q", roster)
+	}
+	var res boundedBuffer
+	res.write(strings.Repeat("Z", failureOutputCap))
+	n := &NormalizedInvocation{Name: "inv", Timeout: time.Minute}
+	r := packageRun{pkg: "example.com/p", aborted: names, residue: &res}
+	if err := finalizeRun(n, &r, true, ""); err != nil {
+		t.Fatal(err)
+	}
+	if len(r.diags) != 1 || !r.diags[0].GetTruncated() {
+		t.Fatalf("diags = %v", r.diags)
+	}
+	retainedTail := strings.Count(r.diags[0].GetOutput(), "Z")
+	if retainedTail < failureOutputCap-rosterShare-256 {
+		t.Fatalf("retained tail %d < minimum headroom", retainedTail)
+	}
+}
+
+func TestAssembleInvocationDelegatesToSelectionResultAbsorb(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-policy-complete")
+	n := &NormalizedInvocation{Name: "inv", Timeout: time.Minute}
+	tr := &stipulatorv1.TestResult{}
+	tr.SetPackage("example.com/a")
+	tr.SetTest("TestOne")
+	tr.SetOutcome(stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED)
+	r1 := packageRun{
+		pkg:         "example.com/a",
+		disposition: stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY,
+		tests:       []*stipulatorv1.TestResult{tr},
+	}
+	r2 := packageRun{
+		pkg:         "example.com/b",
+		disposition: stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT,
+	}
+	health, tests, _, _, err := assembleInvocation(n, []packageRun{r1, r2}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if health.GetDisposition() != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT {
+		t.Fatalf("assembled disposition = %v, want TIMEOUT", health.GetDisposition())
+	}
+	if len(tests) != 1 || tests[0].GetTest() != "TestOne" {
+		t.Fatalf("assembled tests = %v", tests)
+	}
+}
+
+func TestExecutionTimingDiagnosticsStatesAndCancellation(t *testing.T) {
+	stipulate.Covers(t, "REQ-mcp-progress")
+	r := packageRun{
+		pkg:             "example.com/p",
+		disposition:     stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY,
+		producer:        &stipulatorv1.ProducerIdentity{},
+		queueWait:       5 * time.Millisecond,
+		buildElapsed:    20 * time.Millisecond,
+		binaryElapsed:   35 * time.Millisecond,
+		totalElapsed:    55 * time.Millisecond,
+		admissionOrigin: "the floor",
+	}
+	diag := r.buildTimingDiagnostic("inv", false)
+	if diag.GetState() != stipulatorv1.PackageExecutionState_PACKAGE_EXECUTION_STATE_COMPLETED {
+		t.Fatalf("state = %v, want COMPLETED", diag.GetState())
+	}
+	if diag.GetQueueWait().AsDuration() != 5*time.Millisecond || diag.GetTotalElapsed().AsDuration() != 55*time.Millisecond {
+		t.Fatalf("queue_wait=%v total_elapsed=%v", diag.GetQueueWait().AsDuration(), diag.GetTotalElapsed().AsDuration())
+	}
+	neverStarted := (&packageRun{pkg: "example.com/q", heldBy: "held"}).buildTimingDiagnostic("inv", true)
+	if neverStarted.GetState() != stipulatorv1.PackageExecutionState_PACKAGE_EXECUTION_STATE_NEVER_STARTED {
+		t.Fatalf("neverStarted state = %v, want NEVER_STARTED", neverStarted.GetState())
+	}
+	cancelled := (&packageRun{pkg: "example.com/c", producer: &stipulatorv1.ProducerIdentity{}}).buildTimingDiagnostic("inv", true)
+	if cancelled.GetState() != stipulatorv1.PackageExecutionState_PACKAGE_EXECUTION_STATE_CANCELLED {
+		t.Fatalf("cancelled state = %v, want CANCELLED", cancelled.GetState())
+	}
+}

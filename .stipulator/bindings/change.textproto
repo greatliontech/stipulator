@@ -43,8 +43,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-split-merge"
-  content_hash: "3e62fa83690082e37efe65cdae913db8b7fa953849499dc4029407a976870cf9"
-  source_hash: "b71682101896517e9066f116fc3929e01153531212a45fa01cbb2dcbade7fa56"
+  content_hash: "4a2b7555c0cacba16855df8772a6eb64c251a80d2f25a95c4502d84c420b9058"
+  source_hash: "bc1d53cffe1f2bde2d1c7ec5b89fd937ecc6ba987aa3dffa4eebb75073a94c03"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.Supersede"
   role: BINDING_ROLE_IMPLEMENTS
@@ -53,8 +53,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-split-merge"
-  content_hash: "3e62fa83690082e37efe65cdae913db8b7fa953849499dc4029407a976870cf9"
-  source_hash: "b71682101896517e9066f116fc3929e01153531212a45fa01cbb2dcbade7fa56"
+  content_hash: "4a2b7555c0cacba16855df8772a6eb64c251a80d2f25a95c4502d84c420b9058"
+  source_hash: "bc1d53cffe1f2bde2d1c7ec5b89fd937ecc6ba987aa3dffa4eebb75073a94c03"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.TestSupersede"
   role: BINDING_ROLE_TESTS
@@ -413,8 +413,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-split-merge"
-  content_hash: "3e62fa83690082e37efe65cdae913db8b7fa953849499dc4029407a976870cf9"
-  source_hash: "b71682101896517e9066f116fc3929e01153531212a45fa01cbb2dcbade7fa56"
+  content_hash: "4a2b7555c0cacba16855df8772a6eb64c251a80d2f25a95c4502d84c420b9058"
+  source_hash: "bc1d53cffe1f2bde2d1c7ec5b89fd937ecc6ba987aa3dffa4eebb75073a94c03"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.TestSupersedeConsumesTheMidDispositionCorpus"
   role: BINDING_ROLE_TESTS
@@ -423,8 +423,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-split-merge"
-  content_hash: "3e62fa83690082e37efe65cdae913db8b7fa953849499dc4029407a976870cf9"
-  source_hash: "b71682101896517e9066f116fc3929e01153531212a45fa01cbb2dcbade7fa56"
+  content_hash: "4a2b7555c0cacba16855df8772a6eb64c251a80d2f25a95c4502d84c420b9058"
+  source_hash: "bc1d53cffe1f2bde2d1c7ec5b89fd937ecc6ba987aa3dffa4eebb75073a94c03"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestDisposeSupersedeCLIIsOneStep"
   role: BINDING_ROLE_TESTS
@@ -433,8 +433,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-change-split-merge"
-  content_hash: "3e62fa83690082e37efe65cdae913db8b7fa953849499dc4029407a976870cf9"
-  source_hash: "b71682101896517e9066f116fc3929e01153531212a45fa01cbb2dcbade7fa56"
+  content_hash: "4a2b7555c0cacba16855df8772a6eb64c251a80d2f25a95c4502d84c420b9058"
+  source_hash: "bc1d53cffe1f2bde2d1c7ec5b89fd937ecc6ba987aa3dffa4eebb75073a94c03"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/author.TestSupersedeFollowsTheDeclaredEdges"
   role: BINDING_ROLE_TESTS

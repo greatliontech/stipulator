@@ -125,6 +125,25 @@ message CheckResult {
   // Bounded advisory account of refused stored witnesses; never a verdict
   // input, including when another variant of the same identity serves.
   WitnessCacheLoadAccount witness_cache_load = 23;
+  // Per-invocation witness-derivation accounts in policy invocation order,
+  // naming each invocation's eligibility and its served, executed,
+  // uncacheable, and no-outcome subject counts.
+  repeated InvocationWitnessAccount invocation_witnesses = 24;
+  // Structured stage, package, and per-test execution timing diagnostics.
+  ExecutionTimingDiagnostics timing = 25;
+}
+
+// InvocationWitnessAccount is one policy invocation's witness-derivation tally:
+// whether it was witness-eligible (and whether via plain_witness), and how many
+// witness subjects it served, executed, left uncacheable, or produced no outcome for.
+message InvocationWitnessAccount {
+  string invocation = 1;
+  bool witness_eligible = 2;
+  bool plain_witness = 3;
+  int32 served = 4;
+  int32 executed = 5;
+  int32 uncacheable = 6;
+  int32 no_outcome = 7;
 }
 
 // CheckSummary is the check operation's summary view: the verdict with
@@ -212,6 +231,8 @@ message CheckSummary {
   // The full result's advisory account projected to at most five refusal
   // rows, with dropped rows added to omitted and incompleteness preserved.
   WitnessCacheLoadAccount witness_cache_load = 40;
+  // Per-invocation witness-derivation accounts in policy invocation order.
+  repeated InvocationWitnessAccount invocation_witnesses = 41;
 }
 
 // CheckBlockerRow is one reason's actionable roll-up on the check

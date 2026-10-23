@@ -169,6 +169,7 @@ func DeriveTestRun(report *stipulatorv1.ExecutionReport) *verify.TestRun {
 		}
 	}
 	sortRegs(tr)
+	tr.Timing = report.GetTiming()
 	return tr
 }
 
@@ -1475,6 +1476,10 @@ func compactRegs(regs []verify.Registration) []verify.Registration {
 // anywhere discards the whole result.
 func ExecutePolicyWitnessed(ctx context.Context, pc *Capture, seeding verify.WitnessSeeding) (*stipulatorv1.ExecutionReport, *verify.TestRun, error) {
 	rep := progress.FromContext(ctx)
+	if rep == nil {
+		rep = progress.New(nil)
+		ctx = progress.NewContext(ctx, rep)
+	}
 	// The pre-execution recorder derives the capture's discovered leg:
 	// discovery-phase work.
 	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
@@ -1529,7 +1534,105 @@ func ExecutePolicyWitnessed(ctx context.Context, pc *Capture, seeding verify.Wit
 	tr.OutsideSubjects = classes.outside
 	tr.OutsidePolicy = len(classes.outside)
 	tr.NoOutcome = classes.noOutcome
+	published, _, _ := recorder.publish()
+	tr.InvocationWitnesses = buildInvocationWitnessAccounts(
+		d,
+		report.GetTests(),
+		nil,
+		publishedByInvocation(d.groups, published),
+		tr.NoOutcome,
+		nil,
+	)
+	tr.Timing = rep.TimingDiagnostics()
+	report.SetTiming(tr.Timing)
 	return report, tr, nil
+}
+
+func publishedByInvocation(groups []*captureGroup, published []witnesscache.Record) map[string]map[string]bool {
+	out := map[string]map[string]bool{}
+	for _, rec := range published {
+		key := rec.Package + "." + rec.Test
+		for _, g := range groups {
+			if g.id != rec.Group {
+				continue
+			}
+			if inv := g.selectingInvocation(rec.Package); inv != "" {
+				if out[inv] == nil {
+					out[inv] = map[string]bool{}
+				}
+				out[inv][key] = true
+			}
+		}
+	}
+	return out
+}
+
+func buildInvocationWitnessAccounts(
+	d *policyDiscovery,
+	rows []*stipulatorv1.TestResult,
+	servedByInv map[string]map[string]bool,
+	publishedByInv map[string]map[string]bool,
+	noOutcome map[string]string,
+	scopeSkipped map[string]bool,
+) []*stipulatorv1.InvocationWitnessAccount {
+	if d == nil {
+		return nil
+	}
+	executedByInv := map[string]map[string]bool{}
+	for _, row := range rows {
+		inv := row.GetProducer().GetInvocation()
+		if inv == "" {
+			continue
+		}
+		key, ok := executedTopKey(row.GetPackage(), row.GetTest())
+		if !ok {
+			continue
+		}
+		if executedByInv[inv] == nil {
+			executedByInv[inv] = map[string]bool{}
+		}
+		executedByInv[inv][key] = true
+	}
+	out := make([]*stipulatorv1.InvocationWitnessAccount, 0, len(d.invocations))
+	for _, ic := range d.invocations {
+		inv := ic.n.Name
+		served := servedByInv[inv]
+		execSet := executedByInv[inv]
+		pubSet := publishedByInv[inv]
+		uncacheable := 0
+		for key := range execSet {
+			if !pubSet[key] && !served[key] {
+				uncacheable++
+			}
+		}
+		noOutCount := 0
+		if ic.n.WitnessEligible() {
+			seen := map[string]bool{}
+			for _, o := range ic.obligations {
+				if o.Kind != ObligationTest && o.Kind != ObligationFuzz {
+					continue
+				}
+				key := o.Package + "." + o.Name
+				if seen[key] || scopeSkipped[key] {
+					continue
+				}
+				seen[key] = true
+				if _, missing := noOutcome[key]; missing {
+					noOutCount++
+				}
+			}
+		}
+		acc := &stipulatorv1.InvocationWitnessAccount{}
+		acc.SetInvocation(inv)
+		acc.SetWitnessEligible(ic.n.WitnessEligible())
+		acc.SetPlainWitness(ic.n.PlainWitness)
+		acc.SetServed(int32(len(served)))
+		acc.SetExecuted(int32(len(execSet)))
+		acc.SetUncacheable(int32(uncacheable))
+		acc.SetNoOutcome(int32(noOutCount))
+		out = append(out, acc)
+	}
+	return out
 }
 
 // reportPackageHealth indexes the report's package dispositions by

@@ -69,10 +69,7 @@ func TestVersionExecutableNeedsNoGoOrGit(t *testing.T) {
 		t.Skip("builds the CLI")
 	}
 	stipulate.Covers(t, "REQ-cli-version")
-	bin := filepath.Join(t.TempDir(), "stipulator")
-	if out, err := exec.CommandContext(t.Context(), "go", "build", "-o", bin, "github.com/greatliontech/stipulator/cmd/stipulator").CombinedOutput(); err != nil {
-		t.Fatalf("build: %v\n%s", err, out)
-	}
+	bin := cliBinary(t)
 	dir := t.TempDir()
 	for _, args := range [][]string{{"version"}, {"--version"}, {"--help"}} {
 		cmd := exec.CommandContext(t.Context(), bin, args...)

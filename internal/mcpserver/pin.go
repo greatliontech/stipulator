@@ -127,9 +127,13 @@ func (s *Server) toolPin(ctx context.Context, req *mcp.CallToolRequest, in pinIn
 	}
 	defer verify.CloseBackends(backends)
 	var resolutionNotes []string
-	updates, preserved, reshaped, rehashed, err := records.Pin(store, records.HashesOf(spec), author.ResolveShapes(store, backends, nil, func(symbol string, err error) {
+	shapes := author.ResolveShapes(store, backends, nil, func(symbol string, err error) {
 		resolutionNotes = append(resolutionNotes, fmt.Sprintf("shape resolution skipped %s: %v - its shape pin was not judged this call", symbol, err))
-	}))
+	})
+	if err := ctx.Err(); err != nil {
+		return nil, nil, terminalToolError(prog, ctx, err)
+	}
+	updates, preserved, reshaped, rehashed, err := records.Pin(store, records.HashesOf(spec), shapes)
 	if err != nil {
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}

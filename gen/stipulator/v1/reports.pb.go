@@ -9,6 +9,7 @@ package stipulatorv1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	reflect "reflect"
 	unsafe "unsafe"
 )
@@ -340,6 +341,61 @@ func (x HealthDisposition) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
+// PackageExecutionState classifies a scheduled package unit's execution state
+// at the end of a run or upon cancellation/timeout.
+type PackageExecutionState int32
+
+const (
+	PackageExecutionState_PACKAGE_EXECUTION_STATE_UNSPECIFIED   PackageExecutionState = 0
+	PackageExecutionState_PACKAGE_EXECUTION_STATE_COMPLETED     PackageExecutionState = 1
+	PackageExecutionState_PACKAGE_EXECUTION_STATE_FAILED        PackageExecutionState = 2
+	PackageExecutionState_PACKAGE_EXECUTION_STATE_SKIPPED       PackageExecutionState = 3
+	PackageExecutionState_PACKAGE_EXECUTION_STATE_CANCELLED     PackageExecutionState = 4
+	PackageExecutionState_PACKAGE_EXECUTION_STATE_NEVER_STARTED PackageExecutionState = 5
+)
+
+// Enum value maps for PackageExecutionState.
+var (
+	PackageExecutionState_name = map[int32]string{
+		0: "PACKAGE_EXECUTION_STATE_UNSPECIFIED",
+		1: "PACKAGE_EXECUTION_STATE_COMPLETED",
+		2: "PACKAGE_EXECUTION_STATE_FAILED",
+		3: "PACKAGE_EXECUTION_STATE_SKIPPED",
+		4: "PACKAGE_EXECUTION_STATE_CANCELLED",
+		5: "PACKAGE_EXECUTION_STATE_NEVER_STARTED",
+	}
+	PackageExecutionState_value = map[string]int32{
+		"PACKAGE_EXECUTION_STATE_UNSPECIFIED":   0,
+		"PACKAGE_EXECUTION_STATE_COMPLETED":     1,
+		"PACKAGE_EXECUTION_STATE_FAILED":        2,
+		"PACKAGE_EXECUTION_STATE_SKIPPED":       3,
+		"PACKAGE_EXECUTION_STATE_CANCELLED":     4,
+		"PACKAGE_EXECUTION_STATE_NEVER_STARTED": 5,
+	}
+)
+
+func (x PackageExecutionState) Enum() *PackageExecutionState {
+	p := new(PackageExecutionState)
+	*p = x
+	return p
+}
+
+func (x PackageExecutionState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PackageExecutionState) Descriptor() protoreflect.EnumDescriptor {
+	return file_stipulator_v1_reports_proto_enumTypes[6].Descriptor()
+}
+
+func (PackageExecutionState) Type() protoreflect.EnumType {
+	return &file_stipulator_v1_reports_proto_enumTypes[6]
+}
+
+func (x PackageExecutionState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
 // SignatureLabel is the change-signature vocabulary.
 type SignatureLabel int32
 
@@ -377,11 +433,11 @@ func (x SignatureLabel) String() string {
 }
 
 func (SignatureLabel) Descriptor() protoreflect.EnumDescriptor {
-	return file_stipulator_v1_reports_proto_enumTypes[6].Descriptor()
+	return file_stipulator_v1_reports_proto_enumTypes[7].Descriptor()
 }
 
 func (SignatureLabel) Type() protoreflect.EnumType {
-	return &file_stipulator_v1_reports_proto_enumTypes[6]
+	return &file_stipulator_v1_reports_proto_enumTypes[7]
 }
 
 func (x SignatureLabel) Number() protoreflect.EnumNumber {
@@ -443,11 +499,11 @@ func (x Bucket) String() string {
 }
 
 func (Bucket) Descriptor() protoreflect.EnumDescriptor {
-	return file_stipulator_v1_reports_proto_enumTypes[7].Descriptor()
+	return file_stipulator_v1_reports_proto_enumTypes[8].Descriptor()
 }
 
 func (Bucket) Type() protoreflect.EnumType {
-	return &file_stipulator_v1_reports_proto_enumTypes[7]
+	return &file_stipulator_v1_reports_proto_enumTypes[8]
 }
 
 func (x Bucket) Number() protoreflect.EnumNumber {
@@ -497,11 +553,11 @@ func (x GapState) String() string {
 }
 
 func (GapState) Descriptor() protoreflect.EnumDescriptor {
-	return file_stipulator_v1_reports_proto_enumTypes[8].Descriptor()
+	return file_stipulator_v1_reports_proto_enumTypes[9].Descriptor()
 }
 
 func (GapState) Type() protoreflect.EnumType {
-	return &file_stipulator_v1_reports_proto_enumTypes[8]
+	return &file_stipulator_v1_reports_proto_enumTypes[9]
 }
 
 func (x GapState) Number() protoreflect.EnumNumber {
@@ -1357,6 +1413,681 @@ func (b0 FailureDiagnostic_builder) Build() *FailureDiagnostic {
 	return m0
 }
 
+// StageTimingDiagnostic records wall-clock duration spent in one pass stage.
+type StageTimingDiagnostic struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Stage       *string                `protobuf:"bytes,1,opt,name=stage"`
+	xxx_hidden_Elapsed     *durationpb.Duration   `protobuf:"bytes,2,opt,name=elapsed"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *StageTimingDiagnostic) Reset() {
+	*x = StageTimingDiagnostic{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StageTimingDiagnostic) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StageTimingDiagnostic) ProtoMessage() {}
+
+func (x *StageTimingDiagnostic) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *StageTimingDiagnostic) GetStage() string {
+	if x != nil {
+		if x.xxx_hidden_Stage != nil {
+			return *x.xxx_hidden_Stage
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *StageTimingDiagnostic) GetElapsed() *durationpb.Duration {
+	if x != nil {
+		return x.xxx_hidden_Elapsed
+	}
+	return nil
+}
+
+func (x *StageTimingDiagnostic) SetStage(v string) {
+	x.xxx_hidden_Stage = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+}
+
+func (x *StageTimingDiagnostic) SetElapsed(v *durationpb.Duration) {
+	x.xxx_hidden_Elapsed = v
+}
+
+func (x *StageTimingDiagnostic) HasStage() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *StageTimingDiagnostic) HasElapsed() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Elapsed != nil
+}
+
+func (x *StageTimingDiagnostic) ClearStage() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Stage = nil
+}
+
+func (x *StageTimingDiagnostic) ClearElapsed() {
+	x.xxx_hidden_Elapsed = nil
+}
+
+type StageTimingDiagnostic_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Stage   *string
+	Elapsed *durationpb.Duration
+}
+
+func (b0 StageTimingDiagnostic_builder) Build() *StageTimingDiagnostic {
+	m0 := &StageTimingDiagnostic{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Stage != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		x.xxx_hidden_Stage = b.Stage
+	}
+	x.xxx_hidden_Elapsed = b.Elapsed
+	return m0
+}
+
+// TestTimingDiagnostic records one test's execution timing within a package run.
+type TestTimingDiagnostic struct {
+	state                     protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Test           *string                `protobuf:"bytes,1,opt,name=test"`
+	xxx_hidden_Outcome        TestOutcome            `protobuf:"varint,2,opt,name=outcome,enum=stipulator.v1.TestOutcome"`
+	xxx_hidden_Elapsed        *durationpb.Duration   `protobuf:"bytes,3,opt,name=elapsed"`
+	xxx_hidden_RunningAtAbort bool                   `protobuf:"varint,4,opt,name=running_at_abort,json=runningAtAbort"`
+	XXX_raceDetectHookData    protoimpl.RaceDetectHookData
+	XXX_presence              [1]uint32
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *TestTimingDiagnostic) Reset() {
+	*x = TestTimingDiagnostic{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TestTimingDiagnostic) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TestTimingDiagnostic) ProtoMessage() {}
+
+func (x *TestTimingDiagnostic) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *TestTimingDiagnostic) GetTest() string {
+	if x != nil {
+		if x.xxx_hidden_Test != nil {
+			return *x.xxx_hidden_Test
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *TestTimingDiagnostic) GetOutcome() TestOutcome {
+	if x != nil {
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 1) {
+			return x.xxx_hidden_Outcome
+		}
+	}
+	return TestOutcome_TEST_OUTCOME_UNSPECIFIED
+}
+
+func (x *TestTimingDiagnostic) GetElapsed() *durationpb.Duration {
+	if x != nil {
+		return x.xxx_hidden_Elapsed
+	}
+	return nil
+}
+
+func (x *TestTimingDiagnostic) GetRunningAtAbort() bool {
+	if x != nil {
+		return x.xxx_hidden_RunningAtAbort
+	}
+	return false
+}
+
+func (x *TestTimingDiagnostic) SetTest(v string) {
+	x.xxx_hidden_Test = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
+}
+
+func (x *TestTimingDiagnostic) SetOutcome(v TestOutcome) {
+	x.xxx_hidden_Outcome = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
+}
+
+func (x *TestTimingDiagnostic) SetElapsed(v *durationpb.Duration) {
+	x.xxx_hidden_Elapsed = v
+}
+
+func (x *TestTimingDiagnostic) SetRunningAtAbort(v bool) {
+	x.xxx_hidden_RunningAtAbort = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
+}
+
+func (x *TestTimingDiagnostic) HasTest() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *TestTimingDiagnostic) HasOutcome() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *TestTimingDiagnostic) HasElapsed() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Elapsed != nil
+}
+
+func (x *TestTimingDiagnostic) HasRunningAtAbort() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *TestTimingDiagnostic) ClearTest() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Test = nil
+}
+
+func (x *TestTimingDiagnostic) ClearOutcome() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Outcome = TestOutcome_TEST_OUTCOME_UNSPECIFIED
+}
+
+func (x *TestTimingDiagnostic) ClearElapsed() {
+	x.xxx_hidden_Elapsed = nil
+}
+
+func (x *TestTimingDiagnostic) ClearRunningAtAbort() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_RunningAtAbort = false
+}
+
+type TestTimingDiagnostic_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Test           *string
+	Outcome        *TestOutcome
+	Elapsed        *durationpb.Duration
+	RunningAtAbort *bool
+}
+
+func (b0 TestTimingDiagnostic_builder) Build() *TestTimingDiagnostic {
+	m0 := &TestTimingDiagnostic{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Test != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		x.xxx_hidden_Test = b.Test
+	}
+	if b.Outcome != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
+		x.xxx_hidden_Outcome = *b.Outcome
+	}
+	x.xxx_hidden_Elapsed = b.Elapsed
+	if b.RunningAtAbort != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		x.xxx_hidden_RunningAtAbort = *b.RunningAtAbort
+	}
+	return m0
+}
+
+// PackageTimingDiagnostic records one scheduled package unit's execution timing,
+// queue wait, admission origin, build vs test binary split, and per-test timings.
+type PackageTimingDiagnostic struct {
+	state                      protoimpl.MessageState   `protogen:"opaque.v1"`
+	xxx_hidden_Invocation      *string                  `protobuf:"bytes,1,opt,name=invocation"`
+	xxx_hidden_Package         *string                  `protobuf:"bytes,2,opt,name=package"`
+	xxx_hidden_SoloTest        *string                  `protobuf:"bytes,3,opt,name=solo_test,json=soloTest"`
+	xxx_hidden_State           PackageExecutionState    `protobuf:"varint,4,opt,name=state,enum=stipulator.v1.PackageExecutionState"`
+	xxx_hidden_QueueWait       *durationpb.Duration     `protobuf:"bytes,5,opt,name=queue_wait,json=queueWait"`
+	xxx_hidden_AdmissionOrigin *string                  `protobuf:"bytes,6,opt,name=admission_origin,json=admissionOrigin"`
+	xxx_hidden_BuildElapsed    *durationpb.Duration     `protobuf:"bytes,7,opt,name=build_elapsed,json=buildElapsed"`
+	xxx_hidden_BinaryElapsed   *durationpb.Duration     `protobuf:"bytes,8,opt,name=binary_elapsed,json=binaryElapsed"`
+	xxx_hidden_TotalElapsed    *durationpb.Duration     `protobuf:"bytes,9,opt,name=total_elapsed,json=totalElapsed"`
+	xxx_hidden_Tests           *[]*TestTimingDiagnostic `protobuf:"bytes,10,rep,name=tests"`
+	XXX_raceDetectHookData     protoimpl.RaceDetectHookData
+	XXX_presence               [1]uint32
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
+}
+
+func (x *PackageTimingDiagnostic) Reset() {
+	*x = PackageTimingDiagnostic{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PackageTimingDiagnostic) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PackageTimingDiagnostic) ProtoMessage() {}
+
+func (x *PackageTimingDiagnostic) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *PackageTimingDiagnostic) GetInvocation() string {
+	if x != nil {
+		if x.xxx_hidden_Invocation != nil {
+			return *x.xxx_hidden_Invocation
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *PackageTimingDiagnostic) GetPackage() string {
+	if x != nil {
+		if x.xxx_hidden_Package != nil {
+			return *x.xxx_hidden_Package
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *PackageTimingDiagnostic) GetSoloTest() string {
+	if x != nil {
+		if x.xxx_hidden_SoloTest != nil {
+			return *x.xxx_hidden_SoloTest
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *PackageTimingDiagnostic) GetState() PackageExecutionState {
+	if x != nil {
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 3) {
+			return x.xxx_hidden_State
+		}
+	}
+	return PackageExecutionState_PACKAGE_EXECUTION_STATE_UNSPECIFIED
+}
+
+func (x *PackageTimingDiagnostic) GetQueueWait() *durationpb.Duration {
+	if x != nil {
+		return x.xxx_hidden_QueueWait
+	}
+	return nil
+}
+
+func (x *PackageTimingDiagnostic) GetAdmissionOrigin() string {
+	if x != nil {
+		if x.xxx_hidden_AdmissionOrigin != nil {
+			return *x.xxx_hidden_AdmissionOrigin
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *PackageTimingDiagnostic) GetBuildElapsed() *durationpb.Duration {
+	if x != nil {
+		return x.xxx_hidden_BuildElapsed
+	}
+	return nil
+}
+
+func (x *PackageTimingDiagnostic) GetBinaryElapsed() *durationpb.Duration {
+	if x != nil {
+		return x.xxx_hidden_BinaryElapsed
+	}
+	return nil
+}
+
+func (x *PackageTimingDiagnostic) GetTotalElapsed() *durationpb.Duration {
+	if x != nil {
+		return x.xxx_hidden_TotalElapsed
+	}
+	return nil
+}
+
+func (x *PackageTimingDiagnostic) GetTests() []*TestTimingDiagnostic {
+	if x != nil {
+		if x.xxx_hidden_Tests != nil {
+			return *x.xxx_hidden_Tests
+		}
+	}
+	return nil
+}
+
+func (x *PackageTimingDiagnostic) SetInvocation(v string) {
+	x.xxx_hidden_Invocation = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 10)
+}
+
+func (x *PackageTimingDiagnostic) SetPackage(v string) {
+	x.xxx_hidden_Package = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 10)
+}
+
+func (x *PackageTimingDiagnostic) SetSoloTest(v string) {
+	x.xxx_hidden_SoloTest = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 10)
+}
+
+func (x *PackageTimingDiagnostic) SetState(v PackageExecutionState) {
+	x.xxx_hidden_State = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 10)
+}
+
+func (x *PackageTimingDiagnostic) SetQueueWait(v *durationpb.Duration) {
+	x.xxx_hidden_QueueWait = v
+}
+
+func (x *PackageTimingDiagnostic) SetAdmissionOrigin(v string) {
+	x.xxx_hidden_AdmissionOrigin = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 10)
+}
+
+func (x *PackageTimingDiagnostic) SetBuildElapsed(v *durationpb.Duration) {
+	x.xxx_hidden_BuildElapsed = v
+}
+
+func (x *PackageTimingDiagnostic) SetBinaryElapsed(v *durationpb.Duration) {
+	x.xxx_hidden_BinaryElapsed = v
+}
+
+func (x *PackageTimingDiagnostic) SetTotalElapsed(v *durationpb.Duration) {
+	x.xxx_hidden_TotalElapsed = v
+}
+
+func (x *PackageTimingDiagnostic) SetTests(v []*TestTimingDiagnostic) {
+	x.xxx_hidden_Tests = &v
+}
+
+func (x *PackageTimingDiagnostic) HasInvocation() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *PackageTimingDiagnostic) HasPackage() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *PackageTimingDiagnostic) HasSoloTest() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *PackageTimingDiagnostic) HasState() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *PackageTimingDiagnostic) HasQueueWait() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_QueueWait != nil
+}
+
+func (x *PackageTimingDiagnostic) HasAdmissionOrigin() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *PackageTimingDiagnostic) HasBuildElapsed() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_BuildElapsed != nil
+}
+
+func (x *PackageTimingDiagnostic) HasBinaryElapsed() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_BinaryElapsed != nil
+}
+
+func (x *PackageTimingDiagnostic) HasTotalElapsed() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_TotalElapsed != nil
+}
+
+func (x *PackageTimingDiagnostic) ClearInvocation() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Invocation = nil
+}
+
+func (x *PackageTimingDiagnostic) ClearPackage() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Package = nil
+}
+
+func (x *PackageTimingDiagnostic) ClearSoloTest() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_SoloTest = nil
+}
+
+func (x *PackageTimingDiagnostic) ClearState() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_State = PackageExecutionState_PACKAGE_EXECUTION_STATE_UNSPECIFIED
+}
+
+func (x *PackageTimingDiagnostic) ClearQueueWait() {
+	x.xxx_hidden_QueueWait = nil
+}
+
+func (x *PackageTimingDiagnostic) ClearAdmissionOrigin() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_AdmissionOrigin = nil
+}
+
+func (x *PackageTimingDiagnostic) ClearBuildElapsed() {
+	x.xxx_hidden_BuildElapsed = nil
+}
+
+func (x *PackageTimingDiagnostic) ClearBinaryElapsed() {
+	x.xxx_hidden_BinaryElapsed = nil
+}
+
+func (x *PackageTimingDiagnostic) ClearTotalElapsed() {
+	x.xxx_hidden_TotalElapsed = nil
+}
+
+type PackageTimingDiagnostic_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Invocation      *string
+	Package         *string
+	SoloTest        *string
+	State           *PackageExecutionState
+	QueueWait       *durationpb.Duration
+	AdmissionOrigin *string
+	BuildElapsed    *durationpb.Duration
+	BinaryElapsed   *durationpb.Duration
+	TotalElapsed    *durationpb.Duration
+	Tests           []*TestTimingDiagnostic
+}
+
+func (b0 PackageTimingDiagnostic_builder) Build() *PackageTimingDiagnostic {
+	m0 := &PackageTimingDiagnostic{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Invocation != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 10)
+		x.xxx_hidden_Invocation = b.Invocation
+	}
+	if b.Package != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 10)
+		x.xxx_hidden_Package = b.Package
+	}
+	if b.SoloTest != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 10)
+		x.xxx_hidden_SoloTest = b.SoloTest
+	}
+	if b.State != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 10)
+		x.xxx_hidden_State = *b.State
+	}
+	x.xxx_hidden_QueueWait = b.QueueWait
+	if b.AdmissionOrigin != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 10)
+		x.xxx_hidden_AdmissionOrigin = b.AdmissionOrigin
+	}
+	x.xxx_hidden_BuildElapsed = b.BuildElapsed
+	x.xxx_hidden_BinaryElapsed = b.BinaryElapsed
+	x.xxx_hidden_TotalElapsed = b.TotalElapsed
+	x.xxx_hidden_Tests = &b.Tests
+	return m0
+}
+
+// ExecutionTimingDiagnostics is the structured timing account of a run,
+// retained across both completed and cancelled/timed-out executions without
+// publishing incomplete runs as witnesses or altering the cancellation verdict.
+type ExecutionTimingDiagnostics struct {
+	state               protoimpl.MessageState      `protogen:"opaque.v1"`
+	xxx_hidden_Stages   *[]*StageTimingDiagnostic   `protobuf:"bytes,1,rep,name=stages"`
+	xxx_hidden_Packages *[]*PackageTimingDiagnostic `protobuf:"bytes,2,rep,name=packages"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *ExecutionTimingDiagnostics) Reset() {
+	*x = ExecutionTimingDiagnostics{}
+	mi := &file_stipulator_v1_reports_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExecutionTimingDiagnostics) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExecutionTimingDiagnostics) ProtoMessage() {}
+
+func (x *ExecutionTimingDiagnostics) ProtoReflect() protoreflect.Message {
+	mi := &file_stipulator_v1_reports_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *ExecutionTimingDiagnostics) GetStages() []*StageTimingDiagnostic {
+	if x != nil {
+		if x.xxx_hidden_Stages != nil {
+			return *x.xxx_hidden_Stages
+		}
+	}
+	return nil
+}
+
+func (x *ExecutionTimingDiagnostics) GetPackages() []*PackageTimingDiagnostic {
+	if x != nil {
+		if x.xxx_hidden_Packages != nil {
+			return *x.xxx_hidden_Packages
+		}
+	}
+	return nil
+}
+
+func (x *ExecutionTimingDiagnostics) SetStages(v []*StageTimingDiagnostic) {
+	x.xxx_hidden_Stages = &v
+}
+
+func (x *ExecutionTimingDiagnostics) SetPackages(v []*PackageTimingDiagnostic) {
+	x.xxx_hidden_Packages = &v
+}
+
+type ExecutionTimingDiagnostics_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Stages   []*StageTimingDiagnostic
+	Packages []*PackageTimingDiagnostic
+}
+
+func (b0 ExecutionTimingDiagnostics_builder) Build() *ExecutionTimingDiagnostics {
+	m0 := &ExecutionTimingDiagnostics{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Stages = &b.Stages
+	x.xxx_hidden_Packages = &b.Packages
+	return m0
+}
+
 // Problem is a verification error; any problem fails a run.
 type Problem struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
@@ -1370,7 +2101,7 @@ type Problem struct {
 
 func (x *Problem) Reset() {
 	*x = Problem{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[4]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1382,7 +2113,7 @@ func (x *Problem) String() string {
 func (*Problem) ProtoMessage() {}
 
 func (x *Problem) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[4]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1495,7 +2226,7 @@ type BindingResult struct {
 
 func (x *BindingResult) Reset() {
 	*x = BindingResult{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[5]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1507,7 +2238,7 @@ func (x *BindingResult) String() string {
 func (*BindingResult) ProtoMessage() {}
 
 func (x *BindingResult) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[5]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2017,7 +2748,7 @@ type RegistrationResult struct {
 
 func (x *RegistrationResult) Reset() {
 	*x = RegistrationResult{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[6]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2029,7 +2760,7 @@ func (x *RegistrationResult) String() string {
 func (*RegistrationResult) ProtoMessage() {}
 
 func (x *RegistrationResult) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[6]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2181,18 +2912,19 @@ func (b0 RegistrationResult_builder) Build() *RegistrationResult {
 
 // VerifyReport is the outcome of a verification run.
 type VerifyReport struct {
-	state                         protoimpl.MessageState   `protogen:"opaque.v1"`
-	xxx_hidden_Problems           *[]*Problem              `protobuf:"bytes,1,rep,name=problems"`
-	xxx_hidden_Results            *[]*BindingResult        `protobuf:"bytes,2,rep,name=results"`
-	xxx_hidden_Registrations      *[]*RegistrationResult   `protobuf:"bytes,3,rep,name=registrations"`
-	xxx_hidden_Signatures         *[]*ChangeSignature      `protobuf:"bytes,4,rep,name=signatures"`
-	xxx_hidden_OutsidePolicy      int32                    `protobuf:"varint,5,opt,name=outside_policy,json=outsidePolicy"`
-	xxx_hidden_WitnessDiagnostics *[]*FailureDiagnostic    `protobuf:"bytes,7,rep,name=witness_diagnostics,json=witnessDiagnostics"`
-	xxx_hidden_Stale              int32                    `protobuf:"varint,8,opt,name=stale"`
-	xxx_hidden_Broken             int32                    `protobuf:"varint,9,opt,name=broken"`
-	xxx_hidden_ShapeMismatch      int32                    `protobuf:"varint,10,opt,name=shape_mismatch,json=shapeMismatch"`
-	xxx_hidden_ResolutionNotices  []string                 `protobuf:"bytes,11,rep,name=resolution_notices,json=resolutionNotices"`
-	xxx_hidden_WitnessCacheLoad   *WitnessCacheLoadAccount `protobuf:"bytes,12,opt,name=witness_cache_load,json=witnessCacheLoad"`
+	state                         protoimpl.MessageState      `protogen:"opaque.v1"`
+	xxx_hidden_Problems           *[]*Problem                 `protobuf:"bytes,1,rep,name=problems"`
+	xxx_hidden_Results            *[]*BindingResult           `protobuf:"bytes,2,rep,name=results"`
+	xxx_hidden_Registrations      *[]*RegistrationResult      `protobuf:"bytes,3,rep,name=registrations"`
+	xxx_hidden_Signatures         *[]*ChangeSignature         `protobuf:"bytes,4,rep,name=signatures"`
+	xxx_hidden_OutsidePolicy      int32                       `protobuf:"varint,5,opt,name=outside_policy,json=outsidePolicy"`
+	xxx_hidden_WitnessDiagnostics *[]*FailureDiagnostic       `protobuf:"bytes,7,rep,name=witness_diagnostics,json=witnessDiagnostics"`
+	xxx_hidden_Stale              int32                       `protobuf:"varint,8,opt,name=stale"`
+	xxx_hidden_Broken             int32                       `protobuf:"varint,9,opt,name=broken"`
+	xxx_hidden_ShapeMismatch      int32                       `protobuf:"varint,10,opt,name=shape_mismatch,json=shapeMismatch"`
+	xxx_hidden_ResolutionNotices  []string                    `protobuf:"bytes,11,rep,name=resolution_notices,json=resolutionNotices"`
+	xxx_hidden_WitnessCacheLoad   *WitnessCacheLoadAccount    `protobuf:"bytes,12,opt,name=witness_cache_load,json=witnessCacheLoad"`
+	xxx_hidden_Timing             *ExecutionTimingDiagnostics `protobuf:"bytes,13,opt,name=timing"`
 	XXX_raceDetectHookData        protoimpl.RaceDetectHookData
 	XXX_presence                  [1]uint32
 	unknownFields                 protoimpl.UnknownFields
@@ -2201,7 +2933,7 @@ type VerifyReport struct {
 
 func (x *VerifyReport) Reset() {
 	*x = VerifyReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[7]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2213,7 +2945,7 @@ func (x *VerifyReport) String() string {
 func (*VerifyReport) ProtoMessage() {}
 
 func (x *VerifyReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[7]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2311,6 +3043,13 @@ func (x *VerifyReport) GetWitnessCacheLoad() *WitnessCacheLoadAccount {
 	return nil
 }
 
+func (x *VerifyReport) GetTiming() *ExecutionTimingDiagnostics {
+	if x != nil {
+		return x.xxx_hidden_Timing
+	}
+	return nil
+}
+
 func (x *VerifyReport) SetProblems(v []*Problem) {
 	x.xxx_hidden_Problems = &v
 }
@@ -2329,7 +3068,7 @@ func (x *VerifyReport) SetSignatures(v []*ChangeSignature) {
 
 func (x *VerifyReport) SetOutsidePolicy(v int32) {
 	x.xxx_hidden_OutsidePolicy = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 12)
 }
 
 func (x *VerifyReport) SetWitnessDiagnostics(v []*FailureDiagnostic) {
@@ -2338,17 +3077,17 @@ func (x *VerifyReport) SetWitnessDiagnostics(v []*FailureDiagnostic) {
 
 func (x *VerifyReport) SetStale(v int32) {
 	x.xxx_hidden_Stale = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 12)
 }
 
 func (x *VerifyReport) SetBroken(v int32) {
 	x.xxx_hidden_Broken = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 12)
 }
 
 func (x *VerifyReport) SetShapeMismatch(v int32) {
 	x.xxx_hidden_ShapeMismatch = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 12)
 }
 
 func (x *VerifyReport) SetResolutionNotices(v []string) {
@@ -2357,6 +3096,10 @@ func (x *VerifyReport) SetResolutionNotices(v []string) {
 
 func (x *VerifyReport) SetWitnessCacheLoad(v *WitnessCacheLoadAccount) {
 	x.xxx_hidden_WitnessCacheLoad = v
+}
+
+func (x *VerifyReport) SetTiming(v *ExecutionTimingDiagnostics) {
+	x.xxx_hidden_Timing = v
 }
 
 func (x *VerifyReport) HasOutsidePolicy() bool {
@@ -2394,6 +3137,13 @@ func (x *VerifyReport) HasWitnessCacheLoad() bool {
 	return x.xxx_hidden_WitnessCacheLoad != nil
 }
 
+func (x *VerifyReport) HasTiming() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Timing != nil
+}
+
 func (x *VerifyReport) ClearOutsidePolicy() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
 	x.xxx_hidden_OutsidePolicy = 0
@@ -2416,6 +3166,10 @@ func (x *VerifyReport) ClearShapeMismatch() {
 
 func (x *VerifyReport) ClearWitnessCacheLoad() {
 	x.xxx_hidden_WitnessCacheLoad = nil
+}
+
+func (x *VerifyReport) ClearTiming() {
+	x.xxx_hidden_Timing = nil
 }
 
 type VerifyReport_builder struct {
@@ -2458,6 +3212,8 @@ type VerifyReport_builder struct {
 	// Advisory store refusals observed by this witnessing run. Composed check
 	// results carry this account at check level and leave this field absent.
 	WitnessCacheLoad *WitnessCacheLoadAccount
+	// Structured stage, package, and per-test execution timing diagnostics.
+	Timing *ExecutionTimingDiagnostics
 }
 
 func (b0 VerifyReport_builder) Build() *VerifyReport {
@@ -2469,24 +3225,25 @@ func (b0 VerifyReport_builder) Build() *VerifyReport {
 	x.xxx_hidden_Registrations = &b.Registrations
 	x.xxx_hidden_Signatures = &b.Signatures
 	if b.OutsidePolicy != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 12)
 		x.xxx_hidden_OutsidePolicy = *b.OutsidePolicy
 	}
 	x.xxx_hidden_WitnessDiagnostics = &b.WitnessDiagnostics
 	if b.Stale != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 12)
 		x.xxx_hidden_Stale = *b.Stale
 	}
 	if b.Broken != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 12)
 		x.xxx_hidden_Broken = *b.Broken
 	}
 	if b.ShapeMismatch != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 12)
 		x.xxx_hidden_ShapeMismatch = *b.ShapeMismatch
 	}
 	x.xxx_hidden_ResolutionNotices = b.ResolutionNotices
 	x.xxx_hidden_WitnessCacheLoad = b.WitnessCacheLoad
+	x.xxx_hidden_Timing = b.Timing
 	return m0
 }
 
@@ -2504,7 +3261,7 @@ type ChangeSignature struct {
 
 func (x *ChangeSignature) Reset() {
 	*x = ChangeSignature{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[8]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2516,7 +3273,7 @@ func (x *ChangeSignature) String() string {
 func (*ChangeSignature) ProtoMessage() {}
 
 func (x *ChangeSignature) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[8]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2634,7 +3391,7 @@ type RequirementCoverage struct {
 
 func (x *RequirementCoverage) Reset() {
 	*x = RequirementCoverage{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2646,7 +3403,7 @@ func (x *RequirementCoverage) String() string {
 func (*RequirementCoverage) ProtoMessage() {}
 
 func (x *RequirementCoverage) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[9]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2894,7 +3651,7 @@ type GapReport struct {
 
 func (x *GapReport) Reset() {
 	*x = GapReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2906,7 +3663,7 @@ func (x *GapReport) String() string {
 func (*GapReport) ProtoMessage() {}
 
 func (x *GapReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[10]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3202,7 +3959,7 @@ type CoverageReport struct {
 
 func (x *CoverageReport) Reset() {
 	*x = CoverageReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3214,7 +3971,7 @@ func (x *CoverageReport) String() string {
 func (*CoverageReport) ProtoMessage() {}
 
 func (x *CoverageReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[11]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3384,7 +4141,7 @@ type DanglingPointer struct {
 
 func (x *DanglingPointer) Reset() {
 	*x = DanglingPointer{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3396,7 +4153,7 @@ func (x *DanglingPointer) String() string {
 func (*DanglingPointer) ProtoMessage() {}
 
 func (x *DanglingPointer) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[12]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3513,7 +4270,7 @@ type CoverageSummary struct {
 
 func (x *CoverageSummary) Reset() {
 	*x = CoverageSummary{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3525,7 +4282,7 @@ func (x *CoverageSummary) String() string {
 func (*CoverageSummary) ProtoMessage() {}
 
 func (x *CoverageSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[13]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4028,7 +4785,7 @@ type VerifySummary struct {
 
 func (x *VerifySummary) Reset() {
 	*x = VerifySummary{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4040,7 +4797,7 @@ func (x *VerifySummary) String() string {
 func (*VerifySummary) ProtoMessage() {}
 
 func (x *VerifySummary) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[14]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4551,7 +5308,7 @@ type Seed struct {
 
 func (x *Seed) Reset() {
 	*x = Seed{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4563,7 +5320,7 @@ func (x *Seed) String() string {
 func (*Seed) ProtoMessage() {}
 
 func (x *Seed) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[15]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4728,7 +5485,7 @@ type Decl struct {
 
 func (x *Decl) Reset() {
 	*x = Decl{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4740,7 +5497,7 @@ func (x *Decl) String() string {
 func (*Decl) ProtoMessage() {}
 
 func (x *Decl) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[16]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4909,7 +5666,7 @@ type ContextReport struct {
 
 func (x *ContextReport) Reset() {
 	*x = ContextReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4921,7 +5678,7 @@ func (x *ContextReport) String() string {
 func (*ContextReport) ProtoMessage() {}
 
 func (x *ContextReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[17]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5007,7 +5764,7 @@ type SliceFloorPackage struct {
 
 func (x *SliceFloorPackage) Reset() {
 	*x = SliceFloorPackage{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[18]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5019,7 +5776,7 @@ func (x *SliceFloorPackage) String() string {
 func (*SliceFloorPackage) ProtoMessage() {}
 
 func (x *SliceFloorPackage) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[18]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5127,7 +5884,7 @@ type Dossier struct {
 
 func (x *Dossier) Reset() {
 	*x = Dossier{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[19]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5139,7 +5896,7 @@ func (x *Dossier) String() string {
 func (*Dossier) ProtoMessage() {}
 
 func (x *Dossier) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[19]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5344,7 +6101,7 @@ type DossierReport struct {
 
 func (x *DossierReport) Reset() {
 	*x = DossierReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[20]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5356,7 +6113,7 @@ func (x *DossierReport) String() string {
 func (*DossierReport) ProtoMessage() {}
 
 func (x *DossierReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[20]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5485,7 +6242,7 @@ type PartitionComponent struct {
 
 func (x *PartitionComponent) Reset() {
 	*x = PartitionComponent{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[21]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5497,7 +6254,7 @@ func (x *PartitionComponent) String() string {
 func (*PartitionComponent) ProtoMessage() {}
 
 func (x *PartitionComponent) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[21]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5576,7 +6333,7 @@ type PartitionOverlap struct {
 
 func (x *PartitionOverlap) Reset() {
 	*x = PartitionOverlap{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[22]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5588,7 +6345,7 @@ func (x *PartitionOverlap) String() string {
 func (*PartitionOverlap) ProtoMessage() {}
 
 func (x *PartitionOverlap) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[22]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5698,7 +6455,7 @@ type PartitionReport struct {
 
 func (x *PartitionReport) Reset() {
 	*x = PartitionReport{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[23]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5710,7 +6467,7 @@ func (x *PartitionReport) String() string {
 func (*PartitionReport) ProtoMessage() {}
 
 func (x *PartitionReport) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[23]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5837,7 +6594,7 @@ type CompileResult struct {
 
 func (x *CompileResult) Reset() {
 	*x = CompileResult{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[24]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5849,7 +6606,7 @@ func (x *CompileResult) String() string {
 func (*CompileResult) ProtoMessage() {}
 
 func (x *CompileResult) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[24]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6020,7 +6777,7 @@ type WriteResult struct {
 
 func (x *WriteResult) Reset() {
 	*x = WriteResult{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[25]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6032,7 +6789,7 @@ func (x *WriteResult) String() string {
 func (*WriteResult) ProtoMessage() {}
 
 func (x *WriteResult) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[25]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6198,7 +6955,7 @@ type GapListResult struct {
 
 func (x *GapListResult) Reset() {
 	*x = GapListResult{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[26]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6210,7 +6967,7 @@ func (x *GapListResult) String() string {
 func (*GapListResult) ProtoMessage() {}
 
 func (x *GapListResult) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[26]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6418,7 +7175,7 @@ type ExplainLink struct {
 
 func (x *ExplainLink) Reset() {
 	*x = ExplainLink{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[27]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6430,7 +7187,7 @@ func (x *ExplainLink) String() string {
 func (*ExplainLink) ProtoMessage() {}
 
 func (x *ExplainLink) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[27]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6661,7 +7418,7 @@ type ExplainResult struct {
 
 func (x *ExplainResult) Reset() {
 	*x = ExplainResult{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[28]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6673,7 +7430,7 @@ func (x *ExplainResult) String() string {
 func (*ExplainResult) ProtoMessage() {}
 
 func (x *ExplainResult) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[28]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6817,7 +7574,7 @@ type ReadSpecResult struct {
 
 func (x *ReadSpecResult) Reset() {
 	*x = ReadSpecResult{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[29]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6829,7 +7586,7 @@ func (x *ReadSpecResult) String() string {
 func (*ReadSpecResult) ProtoMessage() {}
 
 func (x *ReadSpecResult) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[29]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6898,7 +7655,7 @@ type ExportResult struct {
 
 func (x *ExportResult) Reset() {
 	*x = ExportResult{}
-	mi := &file_stipulator_v1_reports_proto_msgTypes[30]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6910,7 +7667,7 @@ func (x *ExportResult) String() string {
 func (*ExportResult) ProtoMessage() {}
 
 func (x *ExportResult) ProtoReflect() protoreflect.Message {
-	mi := &file_stipulator_v1_reports_proto_msgTypes[30]
+	mi := &file_stipulator_v1_reports_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7024,7 +7781,7 @@ var File_stipulator_v1_reports_proto protoreflect.FileDescriptor
 
 const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\n" +
-	"\x1bstipulator/v1/reports.proto\x12\rstipulator.v1\x1a\x16stipulator/v1/ir.proto\x1a\x1bstipulator/v1/records.proto\"\\\n" +
+	"\x1bstipulator/v1/reports.proto\x12\rstipulator.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x16stipulator/v1/ir.proto\x1a\x1bstipulator/v1/records.proto\"\\\n" +
 	"\x16WitnessCacheCoordinate\x12\x14\n" +
 	"\x05group\x18\x01 \x01(\tR\x05group\x12\x18\n" +
 	"\apackage\x18\x02 \x01(\tR\apackage\x12\x12\n" +
@@ -7055,7 +7812,33 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x04test\x18\x03 \x01(\tR\x04test\x12B\n" +
 	"\vdisposition\x18\x04 \x01(\x0e2 .stipulator.v1.HealthDispositionR\vdisposition\x12\x16\n" +
 	"\x06output\x18\x05 \x01(\tR\x06output\x12\x1c\n" +
-	"\ttruncated\x18\x06 \x01(\bR\ttruncated\"7\n" +
+	"\ttruncated\x18\x06 \x01(\bR\ttruncated\"b\n" +
+	"\x15StageTimingDiagnostic\x12\x14\n" +
+	"\x05stage\x18\x01 \x01(\tR\x05stage\x123\n" +
+	"\aelapsed\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\aelapsed\"\xbf\x01\n" +
+	"\x14TestTimingDiagnostic\x12\x12\n" +
+	"\x04test\x18\x01 \x01(\tR\x04test\x124\n" +
+	"\aoutcome\x18\x02 \x01(\x0e2\x1a.stipulator.v1.TestOutcomeR\aoutcome\x123\n" +
+	"\aelapsed\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\aelapsed\x12(\n" +
+	"\x10running_at_abort\x18\x04 \x01(\bR\x0erunningAtAbort\"\x8e\x04\n" +
+	"\x17PackageTimingDiagnostic\x12\x1e\n" +
+	"\n" +
+	"invocation\x18\x01 \x01(\tR\n" +
+	"invocation\x12\x18\n" +
+	"\apackage\x18\x02 \x01(\tR\apackage\x12\x1b\n" +
+	"\tsolo_test\x18\x03 \x01(\tR\bsoloTest\x12:\n" +
+	"\x05state\x18\x04 \x01(\x0e2$.stipulator.v1.PackageExecutionStateR\x05state\x128\n" +
+	"\n" +
+	"queue_wait\x18\x05 \x01(\v2\x19.google.protobuf.DurationR\tqueueWait\x12)\n" +
+	"\x10admission_origin\x18\x06 \x01(\tR\x0fadmissionOrigin\x12>\n" +
+	"\rbuild_elapsed\x18\a \x01(\v2\x19.google.protobuf.DurationR\fbuildElapsed\x12@\n" +
+	"\x0ebinary_elapsed\x18\b \x01(\v2\x19.google.protobuf.DurationR\rbinaryElapsed\x12>\n" +
+	"\rtotal_elapsed\x18\t \x01(\v2\x19.google.protobuf.DurationR\ftotalElapsed\x129\n" +
+	"\x05tests\x18\n" +
+	" \x03(\v2#.stipulator.v1.TestTimingDiagnosticR\x05tests\"\x9e\x01\n" +
+	"\x1aExecutionTimingDiagnostics\x12<\n" +
+	"\x06stages\x18\x01 \x03(\v2$.stipulator.v1.StageTimingDiagnosticR\x06stages\x12B\n" +
+	"\bpackages\x18\x02 \x03(\v2&.stipulator.v1.PackageTimingDiagnosticR\bpackages\"7\n" +
 	"\aProblem\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\"\xdf\x04\n" +
@@ -7082,7 +7865,7 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\apackage\x18\x01 \x01(\tR\apackage\x12\x12\n" +
 	"\x04test\x18\x02 \x01(\tR\x04test\x12%\n" +
 	"\x0erequirement_id\x18\x03 \x01(\tR\rrequirementId\x124\n" +
-	"\aoutcome\x18\x04 \x01(\x0e2\x1a.stipulator.v1.TestOutcomeR\aoutcome\"\xdd\x04\n" +
+	"\aoutcome\x18\x04 \x01(\x0e2\x1a.stipulator.v1.TestOutcomeR\aoutcome\"\xa0\x05\n" +
 	"\fVerifyReport\x122\n" +
 	"\bproblems\x18\x01 \x03(\v2\x16.stipulator.v1.ProblemR\bproblems\x126\n" +
 	"\aresults\x18\x02 \x03(\v2\x1c.stipulator.v1.BindingResultR\aresults\x12G\n" +
@@ -7097,7 +7880,8 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x0eshape_mismatch\x18\n" +
 	" \x01(\x05R\rshapeMismatch\x12-\n" +
 	"\x12resolution_notices\x18\v \x03(\tR\x11resolutionNotices\x12T\n" +
-	"\x12witness_cache_load\x18\f \x01(\v2&.stipulator.v1.WitnessCacheLoadAccountR\x10witnessCacheLoadJ\x04\b\x06\x10\a\"\x89\x01\n" +
+	"\x12witness_cache_load\x18\f \x01(\v2&.stipulator.v1.WitnessCacheLoadAccountR\x10witnessCacheLoad\x12A\n" +
+	"\x06timing\x18\r \x01(\v2).stipulator.v1.ExecutionTimingDiagnosticsR\x06timingJ\x04\b\x06\x10\a\"\x89\x01\n" +
 	"\x0fChangeSignature\x12%\n" +
 	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x123\n" +
 	"\x05label\x18\x02 \x01(\x0e2\x1d.stipulator.v1.SignatureLabelR\x05label\x12\x1a\n" +
@@ -7301,7 +8085,14 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x1eHEALTH_DISPOSITION_TEST_FAILED\x10\x02\x12#\n" +
 	"\x1fHEALTH_DISPOSITION_BUILD_FAILED\x10\x03\x12\x1e\n" +
 	"\x1aHEALTH_DISPOSITION_TIMEOUT\x10\x04\x12\x1f\n" +
-	"\x1bHEALTH_DISPOSITION_DEGRADED\x10\x05*y\n" +
+	"\x1bHEALTH_DISPOSITION_DEGRADED\x10\x05*\x82\x02\n" +
+	"\x15PackageExecutionState\x12'\n" +
+	"#PACKAGE_EXECUTION_STATE_UNSPECIFIED\x10\x00\x12%\n" +
+	"!PACKAGE_EXECUTION_STATE_COMPLETED\x10\x01\x12\"\n" +
+	"\x1ePACKAGE_EXECUTION_STATE_FAILED\x10\x02\x12#\n" +
+	"\x1fPACKAGE_EXECUTION_STATE_SKIPPED\x10\x03\x12%\n" +
+	"!PACKAGE_EXECUTION_STATE_CANCELLED\x10\x04\x12)\n" +
+	"%PACKAGE_EXECUTION_STATE_NEVER_STARTED\x10\x05*y\n" +
 	"\x0eSignatureLabel\x12\x1f\n" +
 	"\x1bSIGNATURE_LABEL_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eSIGNATURE_LABEL_REARCHITECTURE\x10\x01\x12\"\n" +
@@ -7322,115 +8113,133 @@ const file_stipulator_v1_reports_proto_rawDesc = "" +
 	"\x12GAP_STATE_RESOLVED\x10\x03\x12\x16\n" +
 	"\x12GAP_STATE_DANGLING\x10\x04BDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
-var file_stipulator_v1_reports_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
-var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
+var file_stipulator_v1_reports_proto_enumTypes = make([]protoimpl.EnumInfo, 10)
+var file_stipulator_v1_reports_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
 var file_stipulator_v1_reports_proto_goTypes = []any{
-	(WitnessCacheRefusalCause)(0),   // 0: stipulator.v1.WitnessCacheRefusalCause
-	(Resolution)(0),                 // 1: stipulator.v1.Resolution
-	(ShapeState)(0),                 // 2: stipulator.v1.ShapeState
-	(TestOutcome)(0),                // 3: stipulator.v1.TestOutcome
-	(WitnessClass)(0),               // 4: stipulator.v1.WitnessClass
-	(HealthDisposition)(0),          // 5: stipulator.v1.HealthDisposition
-	(SignatureLabel)(0),             // 6: stipulator.v1.SignatureLabel
-	(Bucket)(0),                     // 7: stipulator.v1.Bucket
-	(GapState)(0),                   // 8: stipulator.v1.GapState
-	(*WitnessCacheCoordinate)(nil),  // 9: stipulator.v1.WitnessCacheCoordinate
-	(*WitnessCacheRefusal)(nil),     // 10: stipulator.v1.WitnessCacheRefusal
-	(*WitnessCacheLoadAccount)(nil), // 11: stipulator.v1.WitnessCacheLoadAccount
-	(*FailureDiagnostic)(nil),       // 12: stipulator.v1.FailureDiagnostic
-	(*Problem)(nil),                 // 13: stipulator.v1.Problem
-	(*BindingResult)(nil),           // 14: stipulator.v1.BindingResult
-	(*RegistrationResult)(nil),      // 15: stipulator.v1.RegistrationResult
-	(*VerifyReport)(nil),            // 16: stipulator.v1.VerifyReport
-	(*ChangeSignature)(nil),         // 17: stipulator.v1.ChangeSignature
-	(*RequirementCoverage)(nil),     // 18: stipulator.v1.RequirementCoverage
-	(*GapReport)(nil),               // 19: stipulator.v1.GapReport
-	(*CoverageReport)(nil),          // 20: stipulator.v1.CoverageReport
-	(*DanglingPointer)(nil),         // 21: stipulator.v1.DanglingPointer
-	(*CoverageSummary)(nil),         // 22: stipulator.v1.CoverageSummary
-	(*VerifySummary)(nil),           // 23: stipulator.v1.VerifySummary
-	(*Seed)(nil),                    // 24: stipulator.v1.Seed
-	(*Decl)(nil),                    // 25: stipulator.v1.Decl
-	(*ContextReport)(nil),           // 26: stipulator.v1.ContextReport
-	(*SliceFloorPackage)(nil),       // 27: stipulator.v1.SliceFloorPackage
-	(*Dossier)(nil),                 // 28: stipulator.v1.Dossier
-	(*DossierReport)(nil),           // 29: stipulator.v1.DossierReport
-	(*PartitionComponent)(nil),      // 30: stipulator.v1.PartitionComponent
-	(*PartitionOverlap)(nil),        // 31: stipulator.v1.PartitionOverlap
-	(*PartitionReport)(nil),         // 32: stipulator.v1.PartitionReport
-	(*CompileResult)(nil),           // 33: stipulator.v1.CompileResult
-	(*WriteResult)(nil),             // 34: stipulator.v1.WriteResult
-	(*GapListResult)(nil),           // 35: stipulator.v1.GapListResult
-	(*ExplainLink)(nil),             // 36: stipulator.v1.ExplainLink
-	(*ExplainResult)(nil),           // 37: stipulator.v1.ExplainResult
-	(*ReadSpecResult)(nil),          // 38: stipulator.v1.ReadSpecResult
-	(*ExportResult)(nil),            // 39: stipulator.v1.ExportResult
-	(BindingRole)(0),                // 40: stipulator.v1.BindingRole
-	(ClauseKind)(0),                 // 41: stipulator.v1.ClauseKind
-	(Keyword)(0),                    // 42: stipulator.v1.Keyword
-	(*Requirement)(nil),             // 43: stipulator.v1.Requirement
-	(*Gap)(nil),                     // 44: stipulator.v1.Gap
-	(*RequirementAttestation)(nil),  // 45: stipulator.v1.RequirementAttestation
+	(WitnessCacheRefusalCause)(0),      // 0: stipulator.v1.WitnessCacheRefusalCause
+	(Resolution)(0),                    // 1: stipulator.v1.Resolution
+	(ShapeState)(0),                    // 2: stipulator.v1.ShapeState
+	(TestOutcome)(0),                   // 3: stipulator.v1.TestOutcome
+	(WitnessClass)(0),                  // 4: stipulator.v1.WitnessClass
+	(HealthDisposition)(0),             // 5: stipulator.v1.HealthDisposition
+	(PackageExecutionState)(0),         // 6: stipulator.v1.PackageExecutionState
+	(SignatureLabel)(0),                // 7: stipulator.v1.SignatureLabel
+	(Bucket)(0),                        // 8: stipulator.v1.Bucket
+	(GapState)(0),                      // 9: stipulator.v1.GapState
+	(*WitnessCacheCoordinate)(nil),     // 10: stipulator.v1.WitnessCacheCoordinate
+	(*WitnessCacheRefusal)(nil),        // 11: stipulator.v1.WitnessCacheRefusal
+	(*WitnessCacheLoadAccount)(nil),    // 12: stipulator.v1.WitnessCacheLoadAccount
+	(*FailureDiagnostic)(nil),          // 13: stipulator.v1.FailureDiagnostic
+	(*StageTimingDiagnostic)(nil),      // 14: stipulator.v1.StageTimingDiagnostic
+	(*TestTimingDiagnostic)(nil),       // 15: stipulator.v1.TestTimingDiagnostic
+	(*PackageTimingDiagnostic)(nil),    // 16: stipulator.v1.PackageTimingDiagnostic
+	(*ExecutionTimingDiagnostics)(nil), // 17: stipulator.v1.ExecutionTimingDiagnostics
+	(*Problem)(nil),                    // 18: stipulator.v1.Problem
+	(*BindingResult)(nil),              // 19: stipulator.v1.BindingResult
+	(*RegistrationResult)(nil),         // 20: stipulator.v1.RegistrationResult
+	(*VerifyReport)(nil),               // 21: stipulator.v1.VerifyReport
+	(*ChangeSignature)(nil),            // 22: stipulator.v1.ChangeSignature
+	(*RequirementCoverage)(nil),        // 23: stipulator.v1.RequirementCoverage
+	(*GapReport)(nil),                  // 24: stipulator.v1.GapReport
+	(*CoverageReport)(nil),             // 25: stipulator.v1.CoverageReport
+	(*DanglingPointer)(nil),            // 26: stipulator.v1.DanglingPointer
+	(*CoverageSummary)(nil),            // 27: stipulator.v1.CoverageSummary
+	(*VerifySummary)(nil),              // 28: stipulator.v1.VerifySummary
+	(*Seed)(nil),                       // 29: stipulator.v1.Seed
+	(*Decl)(nil),                       // 30: stipulator.v1.Decl
+	(*ContextReport)(nil),              // 31: stipulator.v1.ContextReport
+	(*SliceFloorPackage)(nil),          // 32: stipulator.v1.SliceFloorPackage
+	(*Dossier)(nil),                    // 33: stipulator.v1.Dossier
+	(*DossierReport)(nil),              // 34: stipulator.v1.DossierReport
+	(*PartitionComponent)(nil),         // 35: stipulator.v1.PartitionComponent
+	(*PartitionOverlap)(nil),           // 36: stipulator.v1.PartitionOverlap
+	(*PartitionReport)(nil),            // 37: stipulator.v1.PartitionReport
+	(*CompileResult)(nil),              // 38: stipulator.v1.CompileResult
+	(*WriteResult)(nil),                // 39: stipulator.v1.WriteResult
+	(*GapListResult)(nil),              // 40: stipulator.v1.GapListResult
+	(*ExplainLink)(nil),                // 41: stipulator.v1.ExplainLink
+	(*ExplainResult)(nil),              // 42: stipulator.v1.ExplainResult
+	(*ReadSpecResult)(nil),             // 43: stipulator.v1.ReadSpecResult
+	(*ExportResult)(nil),               // 44: stipulator.v1.ExportResult
+	(*durationpb.Duration)(nil),        // 45: google.protobuf.Duration
+	(BindingRole)(0),                   // 46: stipulator.v1.BindingRole
+	(ClauseKind)(0),                    // 47: stipulator.v1.ClauseKind
+	(Keyword)(0),                       // 48: stipulator.v1.Keyword
+	(*Requirement)(nil),                // 49: stipulator.v1.Requirement
+	(*Gap)(nil),                        // 50: stipulator.v1.Gap
+	(*RequirementAttestation)(nil),     // 51: stipulator.v1.RequirementAttestation
 }
 var file_stipulator_v1_reports_proto_depIdxs = []int32{
 	0,  // 0: stipulator.v1.WitnessCacheRefusal.cause:type_name -> stipulator.v1.WitnessCacheRefusalCause
-	9,  // 1: stipulator.v1.WitnessCacheRefusal.coordinate:type_name -> stipulator.v1.WitnessCacheCoordinate
-	10, // 2: stipulator.v1.WitnessCacheLoadAccount.refusals:type_name -> stipulator.v1.WitnessCacheRefusal
+	10, // 1: stipulator.v1.WitnessCacheRefusal.coordinate:type_name -> stipulator.v1.WitnessCacheCoordinate
+	11, // 2: stipulator.v1.WitnessCacheLoadAccount.refusals:type_name -> stipulator.v1.WitnessCacheRefusal
 	5,  // 3: stipulator.v1.FailureDiagnostic.disposition:type_name -> stipulator.v1.HealthDisposition
-	40, // 4: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
-	1,  // 5: stipulator.v1.BindingResult.resolution:type_name -> stipulator.v1.Resolution
-	2,  // 6: stipulator.v1.BindingResult.shape:type_name -> stipulator.v1.ShapeState
-	3,  // 7: stipulator.v1.BindingResult.test_outcome:type_name -> stipulator.v1.TestOutcome
-	4,  // 8: stipulator.v1.BindingResult.witness_class:type_name -> stipulator.v1.WitnessClass
-	3,  // 9: stipulator.v1.RegistrationResult.outcome:type_name -> stipulator.v1.TestOutcome
-	13, // 10: stipulator.v1.VerifyReport.problems:type_name -> stipulator.v1.Problem
-	14, // 11: stipulator.v1.VerifyReport.results:type_name -> stipulator.v1.BindingResult
-	15, // 12: stipulator.v1.VerifyReport.registrations:type_name -> stipulator.v1.RegistrationResult
-	17, // 13: stipulator.v1.VerifyReport.signatures:type_name -> stipulator.v1.ChangeSignature
-	12, // 14: stipulator.v1.VerifyReport.witness_diagnostics:type_name -> stipulator.v1.FailureDiagnostic
-	11, // 15: stipulator.v1.VerifyReport.witness_cache_load:type_name -> stipulator.v1.WitnessCacheLoadAccount
-	6,  // 16: stipulator.v1.ChangeSignature.label:type_name -> stipulator.v1.SignatureLabel
-	41, // 17: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
-	42, // 18: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
-	7,  // 19: stipulator.v1.RequirementCoverage.bucket:type_name -> stipulator.v1.Bucket
-	8,  // 20: stipulator.v1.GapReport.state:type_name -> stipulator.v1.GapState
-	18, // 21: stipulator.v1.CoverageReport.requirements:type_name -> stipulator.v1.RequirementCoverage
-	19, // 22: stipulator.v1.CoverageReport.gaps:type_name -> stipulator.v1.GapReport
-	21, // 23: stipulator.v1.CoverageReport.dangling_pointers:type_name -> stipulator.v1.DanglingPointer
-	11, // 24: stipulator.v1.CoverageReport.witness_cache_load:type_name -> stipulator.v1.WitnessCacheLoadAccount
-	11, // 25: stipulator.v1.CoverageSummary.witness_cache_load:type_name -> stipulator.v1.WitnessCacheLoadAccount
-	17, // 26: stipulator.v1.VerifySummary.signatures:type_name -> stipulator.v1.ChangeSignature
-	11, // 27: stipulator.v1.VerifySummary.witness_cache_load:type_name -> stipulator.v1.WitnessCacheLoadAccount
-	40, // 28: stipulator.v1.Seed.role:type_name -> stipulator.v1.BindingRole
-	24, // 29: stipulator.v1.ContextReport.seeds:type_name -> stipulator.v1.Seed
-	25, // 30: stipulator.v1.ContextReport.declarations:type_name -> stipulator.v1.Decl
-	27, // 31: stipulator.v1.ContextReport.floor:type_name -> stipulator.v1.SliceFloorPackage
-	43, // 32: stipulator.v1.Dossier.requirement:type_name -> stipulator.v1.Requirement
-	18, // 33: stipulator.v1.Dossier.coverage:type_name -> stipulator.v1.RequirementCoverage
-	44, // 34: stipulator.v1.Dossier.gap:type_name -> stipulator.v1.Gap
-	45, // 35: stipulator.v1.Dossier.attestation:type_name -> stipulator.v1.RequirementAttestation
-	14, // 36: stipulator.v1.Dossier.bindings:type_name -> stipulator.v1.BindingResult
-	24, // 37: stipulator.v1.Dossier.seeds:type_name -> stipulator.v1.Seed
-	8,  // 38: stipulator.v1.Dossier.gap_state:type_name -> stipulator.v1.GapState
-	28, // 39: stipulator.v1.DossierReport.dossiers:type_name -> stipulator.v1.Dossier
-	13, // 40: stipulator.v1.DossierReport.problems:type_name -> stipulator.v1.Problem
-	25, // 41: stipulator.v1.DossierReport.declarations:type_name -> stipulator.v1.Decl
-	27, // 42: stipulator.v1.DossierReport.floor:type_name -> stipulator.v1.SliceFloorPackage
-	11, // 43: stipulator.v1.DossierReport.witness_cache_load:type_name -> stipulator.v1.WitnessCacheLoadAccount
-	24, // 44: stipulator.v1.PartitionComponent.seeds:type_name -> stipulator.v1.Seed
-	30, // 45: stipulator.v1.PartitionReport.components:type_name -> stipulator.v1.PartitionComponent
-	31, // 46: stipulator.v1.PartitionReport.overlaps:type_name -> stipulator.v1.PartitionOverlap
-	11, // 47: stipulator.v1.PartitionReport.witness_cache_load:type_name -> stipulator.v1.WitnessCacheLoadAccount
-	11, // 48: stipulator.v1.WriteResult.witness_cache_load:type_name -> stipulator.v1.WitnessCacheLoadAccount
-	19, // 49: stipulator.v1.GapListResult.gaps:type_name -> stipulator.v1.GapReport
-	11, // 50: stipulator.v1.GapListResult.witness_cache_load:type_name -> stipulator.v1.WitnessCacheLoadAccount
-	36, // 51: stipulator.v1.ExplainResult.links:type_name -> stipulator.v1.ExplainLink
-	11, // 52: stipulator.v1.ExportResult.witness_cache_load:type_name -> stipulator.v1.WitnessCacheLoadAccount
-	53, // [53:53] is the sub-list for method output_type
-	53, // [53:53] is the sub-list for method input_type
-	53, // [53:53] is the sub-list for extension type_name
-	53, // [53:53] is the sub-list for extension extendee
-	0,  // [0:53] is the sub-list for field type_name
+	45, // 4: stipulator.v1.StageTimingDiagnostic.elapsed:type_name -> google.protobuf.Duration
+	3,  // 5: stipulator.v1.TestTimingDiagnostic.outcome:type_name -> stipulator.v1.TestOutcome
+	45, // 6: stipulator.v1.TestTimingDiagnostic.elapsed:type_name -> google.protobuf.Duration
+	6,  // 7: stipulator.v1.PackageTimingDiagnostic.state:type_name -> stipulator.v1.PackageExecutionState
+	45, // 8: stipulator.v1.PackageTimingDiagnostic.queue_wait:type_name -> google.protobuf.Duration
+	45, // 9: stipulator.v1.PackageTimingDiagnostic.build_elapsed:type_name -> google.protobuf.Duration
+	45, // 10: stipulator.v1.PackageTimingDiagnostic.binary_elapsed:type_name -> google.protobuf.Duration
+	45, // 11: stipulator.v1.PackageTimingDiagnostic.total_elapsed:type_name -> google.protobuf.Duration
+	15, // 12: stipulator.v1.PackageTimingDiagnostic.tests:type_name -> stipulator.v1.TestTimingDiagnostic
+	14, // 13: stipulator.v1.ExecutionTimingDiagnostics.stages:type_name -> stipulator.v1.StageTimingDiagnostic
+	16, // 14: stipulator.v1.ExecutionTimingDiagnostics.packages:type_name -> stipulator.v1.PackageTimingDiagnostic
+	46, // 15: stipulator.v1.BindingResult.role:type_name -> stipulator.v1.BindingRole
+	1,  // 16: stipulator.v1.BindingResult.resolution:type_name -> stipulator.v1.Resolution
+	2,  // 17: stipulator.v1.BindingResult.shape:type_name -> stipulator.v1.ShapeState
+	3,  // 18: stipulator.v1.BindingResult.test_outcome:type_name -> stipulator.v1.TestOutcome
+	4,  // 19: stipulator.v1.BindingResult.witness_class:type_name -> stipulator.v1.WitnessClass
+	3,  // 20: stipulator.v1.RegistrationResult.outcome:type_name -> stipulator.v1.TestOutcome
+	18, // 21: stipulator.v1.VerifyReport.problems:type_name -> stipulator.v1.Problem
+	19, // 22: stipulator.v1.VerifyReport.results:type_name -> stipulator.v1.BindingResult
+	20, // 23: stipulator.v1.VerifyReport.registrations:type_name -> stipulator.v1.RegistrationResult
+	22, // 24: stipulator.v1.VerifyReport.signatures:type_name -> stipulator.v1.ChangeSignature
+	13, // 25: stipulator.v1.VerifyReport.witness_diagnostics:type_name -> stipulator.v1.FailureDiagnostic
+	12, // 26: stipulator.v1.VerifyReport.witness_cache_load:type_name -> stipulator.v1.WitnessCacheLoadAccount
+	17, // 27: stipulator.v1.VerifyReport.timing:type_name -> stipulator.v1.ExecutionTimingDiagnostics
+	7,  // 28: stipulator.v1.ChangeSignature.label:type_name -> stipulator.v1.SignatureLabel
+	47, // 29: stipulator.v1.RequirementCoverage.kind:type_name -> stipulator.v1.ClauseKind
+	48, // 30: stipulator.v1.RequirementCoverage.keyword:type_name -> stipulator.v1.Keyword
+	8,  // 31: stipulator.v1.RequirementCoverage.bucket:type_name -> stipulator.v1.Bucket
+	9,  // 32: stipulator.v1.GapReport.state:type_name -> stipulator.v1.GapState
+	23, // 33: stipulator.v1.CoverageReport.requirements:type_name -> stipulator.v1.RequirementCoverage
+	24, // 34: stipulator.v1.CoverageReport.gaps:type_name -> stipulator.v1.GapReport
+	26, // 35: stipulator.v1.CoverageReport.dangling_pointers:type_name -> stipulator.v1.DanglingPointer
+	12, // 36: stipulator.v1.CoverageReport.witness_cache_load:type_name -> stipulator.v1.WitnessCacheLoadAccount
+	12, // 37: stipulator.v1.CoverageSummary.witness_cache_load:type_name -> stipulator.v1.WitnessCacheLoadAccount
+	22, // 38: stipulator.v1.VerifySummary.signatures:type_name -> stipulator.v1.ChangeSignature
+	12, // 39: stipulator.v1.VerifySummary.witness_cache_load:type_name -> stipulator.v1.WitnessCacheLoadAccount
+	46, // 40: stipulator.v1.Seed.role:type_name -> stipulator.v1.BindingRole
+	29, // 41: stipulator.v1.ContextReport.seeds:type_name -> stipulator.v1.Seed
+	30, // 42: stipulator.v1.ContextReport.declarations:type_name -> stipulator.v1.Decl
+	32, // 43: stipulator.v1.ContextReport.floor:type_name -> stipulator.v1.SliceFloorPackage
+	49, // 44: stipulator.v1.Dossier.requirement:type_name -> stipulator.v1.Requirement
+	23, // 45: stipulator.v1.Dossier.coverage:type_name -> stipulator.v1.RequirementCoverage
+	50, // 46: stipulator.v1.Dossier.gap:type_name -> stipulator.v1.Gap
+	51, // 47: stipulator.v1.Dossier.attestation:type_name -> stipulator.v1.RequirementAttestation
+	19, // 48: stipulator.v1.Dossier.bindings:type_name -> stipulator.v1.BindingResult
+	29, // 49: stipulator.v1.Dossier.seeds:type_name -> stipulator.v1.Seed
+	9,  // 50: stipulator.v1.Dossier.gap_state:type_name -> stipulator.v1.GapState
+	33, // 51: stipulator.v1.DossierReport.dossiers:type_name -> stipulator.v1.Dossier
+	18, // 52: stipulator.v1.DossierReport.problems:type_name -> stipulator.v1.Problem
+	30, // 53: stipulator.v1.DossierReport.declarations:type_name -> stipulator.v1.Decl
+	32, // 54: stipulator.v1.DossierReport.floor:type_name -> stipulator.v1.SliceFloorPackage
+	12, // 55: stipulator.v1.DossierReport.witness_cache_load:type_name -> stipulator.v1.WitnessCacheLoadAccount
+	29, // 56: stipulator.v1.PartitionComponent.seeds:type_name -> stipulator.v1.Seed
+	35, // 57: stipulator.v1.PartitionReport.components:type_name -> stipulator.v1.PartitionComponent
+	36, // 58: stipulator.v1.PartitionReport.overlaps:type_name -> stipulator.v1.PartitionOverlap
+	12, // 59: stipulator.v1.PartitionReport.witness_cache_load:type_name -> stipulator.v1.WitnessCacheLoadAccount
+	12, // 60: stipulator.v1.WriteResult.witness_cache_load:type_name -> stipulator.v1.WitnessCacheLoadAccount
+	24, // 61: stipulator.v1.GapListResult.gaps:type_name -> stipulator.v1.GapReport
+	12, // 62: stipulator.v1.GapListResult.witness_cache_load:type_name -> stipulator.v1.WitnessCacheLoadAccount
+	41, // 63: stipulator.v1.ExplainResult.links:type_name -> stipulator.v1.ExplainLink
+	12, // 64: stipulator.v1.ExportResult.witness_cache_load:type_name -> stipulator.v1.WitnessCacheLoadAccount
+	65, // [65:65] is the sub-list for method output_type
+	65, // [65:65] is the sub-list for method input_type
+	65, // [65:65] is the sub-list for extension type_name
+	65, // [65:65] is the sub-list for extension extendee
+	0,  // [0:65] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_reports_proto_init() }
@@ -7445,8 +8254,8 @@ func file_stipulator_v1_reports_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_reports_proto_rawDesc), len(file_stipulator_v1_reports_proto_rawDesc)),
-			NumEnums:      9,
-			NumMessages:   31,
+			NumEnums:      10,
+			NumMessages:   35,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

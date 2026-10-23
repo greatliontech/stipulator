@@ -72,6 +72,12 @@ func RemoveBindings(store *Store, fn func(*stipulatorv1.Binding) bool) (updates 
 	return updates, deletions, removed, nil
 }
 
+// BindingPath is the canonical per-requirement file path for a requirement's
+// binding records under BINDING_LAYOUT_PER_REQUIREMENT.
+func BindingPath(requirementID string) string {
+	return path.Join(BindingsDir, strings.TrimPrefix(strings.ToLower(requirementID), "req-")+".textproto")
+}
+
 // GapPath is the canonical file path for a requirement's gap record.
 func GapPath(requirementID string) string {
 	return path.Join(GapsDir, strings.TrimPrefix(strings.ToLower(requirementID), "req-")+".textproto")

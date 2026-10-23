@@ -248,7 +248,7 @@ func recheckRetryWave(ctx context.Context, pc *Capture, groups []*witnessGroup, 
 					if err != nil {
 						why = err.Error()
 					}
-					wg.executedWhy[entry.subject] = "post-retry served-record revalidation: " + why
+					wg.executedWhy[entry.subject] = executedRetryRevalidation.with(why)
 				}
 				return
 			}

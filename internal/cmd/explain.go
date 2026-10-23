@@ -42,7 +42,8 @@ func explainCmd() *cobra.Command {
 				fmt.Println("explain: no chain — " + subject + " is not a culprit in the policy views")
 				return nil
 			}
-			fmt.Printf("%s %s — %s (view: %s)\n", bold("explain:"), subject, chain.Arm, view)
+			out := outStyle()
+			fmt.Printf("%s %s — %s (view: %s)\n", out.bold("explain:"), subject, chain.Arm, view)
 			for i, l := range chain.Links {
 				line := fmt.Sprintf("  %2d  %-8s %s.%s", i+1, l.Kind, l.Package, l.Symbol)
 				if l.Callee != "" {
@@ -52,7 +53,7 @@ func explainCmd() *cobra.Command {
 					line += "  [" + l.Clause + "]"
 				}
 				if l.Pos != "" {
-					line += "  " + dim(l.Pos)
+					line += "  " + out.dim(l.Pos)
 				}
 				fmt.Println(line)
 			}

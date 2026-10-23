@@ -1,17 +1,13 @@
 package golang
 
 import (
-	"errors"
 	"fmt"
-	"io/fs"
-	"os"
 	"path"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
-	"golang.org/x/mod/modfile"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 
@@ -433,47 +429,18 @@ func DerivePolicy(dir string) (*stipulatorv1.TestPolicy, error) {
 
 // policyMembers enumerates the tree's Go module roots for policy
 // derivation, tree-relative in slash form with "" for the repository
-// root. It parallels workspaceMembers but stays in slash-path semantics
-// throughout: the result is written into a committed record that must not
-// vary by host separator.
+// root, delegating go.work parsing and hermeticity validation to
+// workspaceMembers.
 func policyMembers(dir string) ([]string, error) {
-	b, err := os.ReadFile(filepath.Join(dir, "go.work"))
-	if errors.Is(err, fs.ErrNotExist) {
-		return []string{""}, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("reading go.work: %w", err)
-	}
-	wf, err := modfile.ParseWork("go.work", b, nil)
-	if err != nil {
-		return nil, fmt.Errorf("parsing go.work: %w", err)
-	}
-	root, err := resolvedTreeRoot(dir)
+	raw, err := workspaceMembers(dir)
 	if err != nil {
 		return nil, err
 	}
-	var members []string
-	for _, u := range wf.Use {
-		clean := path.Clean(u.Path)
-		if !hostPortableTreePath(u.Path) || strings.HasPrefix(clean, "/") || clean == ".." || strings.HasPrefix(clean, "../") {
-			// A member outside the tree would make the same committed
-			// policy verify differently per machine: hermeticity is
-			// refused away, never silently bent (REQ-go-workspace).
-			return nil, fmt.Errorf("go.work member %q escapes the verification tree; members must lie within it", u.Path)
+	members := make([]string, len(raw))
+	for i, m := range raw {
+		if m != "." {
+			members[i] = filepath.ToSlash(m)
 		}
-		if clean == "." {
-			clean = ""
-		}
-		// The lexical check above refuses what the committed text says;
-		// the resolved check refuses what the filesystem makes of it (an
-		// in-tree symlink pointing out).
-		if err := resolvedUnder(root, dir, filepath.FromSlash(clean)); err != nil {
-			return nil, fmt.Errorf("go.work member %q: %w", u.Path, err)
-		}
-		members = append(members, clean)
-	}
-	if len(members) == 0 {
-		return nil, fmt.Errorf("go.work declares no members")
 	}
 	return members, nil
 }

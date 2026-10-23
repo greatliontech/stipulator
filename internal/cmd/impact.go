@@ -35,6 +35,7 @@ func impactCmd() *cobra.Command {
 // (a gitignored spec document compiles but never reaches the VCS status),
 // and it must render, not vanish behind "no changes".
 func renderImpact(w io.Writer, r *impact.Report) {
+	st := styleFor(w)
 	if len(r.Changed) == 0 && r.Spec.SemanticallyEmpty() && len(r.Bound) == 0 && len(r.Witnesses) == 0 {
 		fmt.Fprintln(w, "no changes against HEAD")
 		return
@@ -45,7 +46,7 @@ func renderImpact(w io.Writer, r *impact.Report) {
 	}
 	fmt.Fprintf(w, "changed: %d %s against HEAD\n", len(r.Changed), noun)
 	if r.Spec.SemanticallyEmpty() {
-		fmt.Fprintln(w, dim("spec: no semantic delta"))
+		fmt.Fprintln(w, st.dim("spec: no semantic delta"))
 	} else {
 		for _, line := range r.Spec.Lines() {
 			fmt.Fprintln(w, "spec: "+line)
@@ -62,9 +63,9 @@ func renderImpact(w io.Writer, r *impact.Report) {
 		if r.Unconsulted == 1 {
 			noun = "binding"
 		}
-		fmt.Fprintln(w, dim(fmt.Sprintf("%d %s on backends the preview does not consult", r.Unconsulted, noun)))
+		fmt.Fprintln(w, st.dim(fmt.Sprintf("%d %s on backends the preview does not consult", r.Unconsulted, noun)))
 	}
-	fmt.Fprintln(w, dim("preview only — the witnessed surfaces decide; empty is advisory, not proof"))
+	fmt.Fprintln(w, st.dim("preview only — the witnessed surfaces decide; empty is advisory, not proof"))
 }
 
 func roleWord(role stipulatorv1.BindingRole) string {

@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/progress"
 )
 
 // The selective executor is the witness-only execution surface: it runs a
@@ -53,6 +54,7 @@ type SelectionResult struct {
 	Diagnostics  []*stipulatorv1.FailureDiagnostic
 	Observations []*ProcessObservation
 	Processes    []ProcessOutcome
+	Timing       []*stipulatorv1.PackageTimingDiagnostic
 }
 
 // ExecuteSelection executes a witness-only selection of one normalized
@@ -184,6 +186,8 @@ func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 				solo.soloTest = name
 			}
 			if ctx.Err() != nil {
+				pt := solo.buildTimingDiagnostic(n.Name, true)
+				progress.FromContext(ctx).RecordPackageTiming(pt)
 				unit.solos = append(unit.solos, solo)
 				return
 			}
@@ -195,6 +199,8 @@ func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 				mu.Unlock()
 				return
 			}
+			pt := solo.buildTimingDiagnostic(n.Name, false)
+			progress.FromContext(ctx).RecordPackageTiming(pt)
 			unit.solos = append(unit.solos, solo)
 		}
 		mu.Lock()
@@ -236,26 +242,24 @@ func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 // outcomes, then each solo re-run's, attributed to its own producing
 // process.
 func (res *SelectionResult) absorb(u packageUnit) {
-	r := &u.run
+	res.absorbRun(u.pkg, &u.run)
+	for i := range u.solos {
+		res.absorbRun(u.pkg, &u.solos[i])
+	}
+}
+
+func (res *SelectionResult) absorbRun(pkg string, r *packageRun) {
 	res.Tests = append(res.Tests, r.tests...)
 	res.Diagnostics = append(res.Diagnostics, r.diags...)
 	if r.obs != nil {
 		res.Observations = append(res.Observations, r.obs)
 	}
-	res.Processes = append(res.Processes, ProcessOutcome{
-		Package: r.pkg, Disposition: r.disposition, Producer: r.producer,
-	})
-	for i := range u.solos {
-		solo := &u.solos[i]
-		res.Tests = append(res.Tests, solo.tests...)
-		res.Diagnostics = append(res.Diagnostics, solo.diags...)
-		if solo.obs != nil {
-			res.Observations = append(res.Observations, solo.obs)
-		}
-		res.Processes = append(res.Processes, ProcessOutcome{
-			Package: r.pkg, Test: solo.soloTest, Disposition: solo.disposition, Producer: solo.producer,
-		})
+	if r.timing != nil {
+		res.Timing = append(res.Timing, r.timing)
 	}
+	res.Processes = append(res.Processes, ProcessOutcome{
+		Package: pkg, Test: r.soloTest, Disposition: r.disposition, Producer: r.producer,
+	})
 }
 
 // deniedTests derives the top-level runnables one selective process

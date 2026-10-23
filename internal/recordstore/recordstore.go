@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/greatliontech/gofresh/gotool"
 )
@@ -39,8 +40,9 @@ func Root(kind string) (string, error) {
 
 // Store is one kind's directory for one corpus.
 type Store struct {
-	kind string
-	path string
+	kind  string
+	path  string
+	coord string
 }
 
 // Open is the store of kind for the corpus rooted at dir: under Root,
@@ -55,11 +57,57 @@ func Open(kind, dir string) (Store, error) {
 	// The store is keyed on the tree's one coordinate (gotool.Coordinate:
 	// canonical, else absolute, else the spelling), so two spellings of
 	// one tree open one store.
-	return Store{kind: kind, path: filepath.Join(root, Digest(gotool.Coordinate(dir)))}, nil
+	coord := gotool.Coordinate(dir)
+	var recorded string
+	if filepath.IsAbs(coord) {
+		recorded = coord
+	}
+	return Store{kind: kind, path: filepath.Join(root, Digest(coord)), coord: recorded}, nil
 }
 
 // Path is the store's directory.
 func (s Store) Path() string { return s.path }
+
+// Coordinate returns the canonical corpus directory coordinate associated with
+// this store, read from the in-memory handle or the sibling .root file.
+func (s Store) Coordinate() string {
+	if s.coord != "" {
+		return s.coord
+	}
+	data, err := os.ReadFile(s.path + ".root")
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(data))
+}
+
+func (s Store) recordCoord() {
+	if s.coord == "" {
+		return
+	}
+	rootFile := s.path + ".root"
+	if data, err := os.ReadFile(rootFile); err == nil && strings.TrimSpace(string(data)) == s.coord {
+		return
+	}
+	_ = WriteAtomic(filepath.Dir(s.path), "."+s.kind+"-root-*", rootFile, []byte(s.coord))
+}
+
+// Substore opens a nested store of kind at filepath.Join(s.path, subdir),
+// sharing the store's scan, read, atomic write, and age-sparing sweep
+// mechanics.
+func (s Store) Substore(kind, subdir string) Store {
+	return Store{kind: kind, path: filepath.Join(s.path, subdir)}
+}
+
+// Write lands data at name inside the store atomically through the store's
+// dot-prefixed temporary pattern.
+func (s Store) Write(name string, data []byte) error {
+	if err := os.MkdirAll(s.path, 0o755); err != nil {
+		return err
+	}
+	s.recordCoord()
+	return WriteAtomic(s.path, s.pattern(), filepath.Join(s.path, name), data)
+}
 
 // Digest is the store's one digest: the first sixteen hexadecimal
 // characters of SHA-256 over the NUL-joined parts — a filename-length
@@ -188,6 +236,7 @@ func (s Store) Install(bound int, entries ...Entry) error {
 	if err := os.MkdirAll(s.path, 0o755); err != nil {
 		return err
 	}
+	s.recordCoord()
 	var rank []string
 	written := map[string]bool{}
 	touched := map[string]bool{}
@@ -299,4 +348,46 @@ func (s Store) Sweep(ctx context.Context, keep func(name string, data []byte) bo
 		return removed, kept, cancelErr
 	}
 	return removed, kept, err
+}
+
+// SweepBefore removes every record file in the store that keepName refuses
+// and whose modification time is strictly before since, without reading file
+// contents. Directories, dot-prefixed install temporaries, and files without
+// the .json suffix are ignored through scan.
+func (s Store) SweepBefore(ctx context.Context, since time.Time, keepName func(name string) bool) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	files, err := s.scan()
+	if cancelErr := ctx.Err(); cancelErr != nil {
+		return cancelErr
+	}
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	sinceNano := since.UnixNano()
+	for _, f := range files {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if keepName(f.name) {
+			continue
+		}
+		if !since.IsZero() && f.mod != 0 && f.mod >= sinceNano {
+			continue
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if rmErr := os.Remove(filepath.Join(s.path, f.name)); rmErr != nil && err == nil {
+			err = rmErr
+		}
+	}
+	if cancelErr := ctx.Err(); cancelErr != nil {
+		return cancelErr
+	}
+	return err
 }

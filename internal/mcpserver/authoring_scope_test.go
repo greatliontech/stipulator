@@ -128,3 +128,44 @@ func TestMCPNamedPinScopeAndPostwriteFailures(t *testing.T) {
 		})
 	}
 }
+
+func TestMCPBlanketPinCancellationWritesNothing(t *testing.T) {
+	for _, mode := range []string{"cancel", "resolution failure"} {
+		t.Run(mode, func(t *testing.T) {
+			before := "bindings {\n  requirement_id: \"REQ-m-a\"\n  backend: \"go\"\n  symbol: \"example.com/p.A\"\n  role: BINDING_ROLE_IMPLEMENTS\n}\n"
+			const path = ".stipulator/bindings/m.textproto"
+			var server *Server
+			_, writes := harnessWith(t, map[string]string{path: before}, func(s *Server) { server = s })
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			server.wholeTree = func(_ context.Context) (map[string]verify.Backend, error) {
+				return map[string]verify.Backend{"go": authoringBackend(func(string) (verify.Resolution, string, error) {
+					if mode == "cancel" {
+						cancel()
+						return verify.NotFound, "", ctx.Err()
+					}
+					return verify.NotFound, "", fmt.Errorf("resolution failed")
+				})}, nil
+			}
+			_, out, err := server.toolPin(ctx, &mcp.CallToolRequest{Params: &mcp.CallToolParamsRaw{Name: "pin"}}, pinIn{})
+			if mode == "cancel" {
+				if !errors.Is(err, context.Canceled) {
+					t.Fatalf("err = %v, want context.Canceled", err)
+				}
+				if len(writes) != 0 {
+					t.Fatalf("blanket pin wrote after cancellation: %v", writes)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("non-cancellation resolution fault failed blanket pin: %v", err)
+			}
+			if len(writes) != 1 || !strings.Contains(string(writes[path]), "content_hash:") {
+				t.Fatalf("unset content pin not backfilled under recoverable shape error: %v", writes)
+			}
+			if !strings.Contains(fmt.Sprint(out), "resolution failed") {
+				t.Fatalf("resolution fault hidden: %v", out)
+			}
+		})
+	}
+}

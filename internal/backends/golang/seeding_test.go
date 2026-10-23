@@ -146,7 +146,7 @@ func TestServingCandidatesExcludeRandomSeeded(t *testing.T) {
 		"g\x00example.com/m.TestExample":          {{Package: "example.com/m", Test: "TestExample"}},
 		"g\x00example.com/m.TestPropertyRecorded": {{Package: "example.com/m", Test: "TestPropertyRecorded"}},
 	}
-	executedWhy := map[gofresh.Subject]string{}
+	executedWhy := map[gofresh.Subject]executedReason{}
 	serving, groupCached := servingCandidates("g", []gofresh.Subject{example, recorded, unrecorded},
 		map[gofresh.Subject]uncacheable{recorded: seededReason, unrecorded: seededReason}, cached, executedWhy)
 	if len(serving) != 1 || serving[0] != example {
@@ -155,8 +155,8 @@ func TestServingCandidatesExcludeRandomSeeded(t *testing.T) {
 	if len(groupCached["example.com/m.TestExample"]) != 1 || len(groupCached) != 1 {
 		t.Fatalf("group records = %v, want the deterministic witness's record alone", groupCached)
 	}
-	if executedWhy[recorded] != seededReason.String() {
-		t.Fatalf("re-execution reason for the recorded seeded witness = %q, want %q", executedWhy[recorded], seededReason.String())
+	if executedWhy[recorded].String() != seededReason.String() {
+		t.Fatalf("re-execution reason for the recorded seeded witness = %q, want %q", executedWhy[recorded].String(), seededReason.String())
 	}
 	if why, ok := executedWhy[unrecorded]; ok {
 		t.Fatalf("a seeded witness with no record carries a re-execution reason: %q", why)
@@ -745,4 +745,46 @@ func splitModuleFiles() map[string]string {
 func splitModule(t *testing.T) string {
 	t.Helper()
 	return writeModule(t, splitModuleFiles())
+}
+
+// TestBodyFactsMemoizesSingleWalk pins that bodyFactsOf memoizes a single AST
+// walk across witness classification and seeding reachability.
+//
+//gofresh:pure
+func TestBodyFactsMemoizesSingleWalk(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-witness-class")
+	b := fixtureBackend(t)
+	pkgs := b.byPath["example.com/fixture/lib"]
+	if len(pkgs) == 0 {
+		t.Fatal("example.com/fixture/lib not loaded")
+	}
+	b.walkMu.Lock()
+	defer b.walkMu.Unlock()
+	b.initWalk()
+	var target *types.Func
+	for _, pkg := range pkgs {
+		sel := b.selectionOf(pkg)
+		for _, f := range pkg.Syntax {
+			for _, decl := range f.Decls {
+				fn, ok := decl.(*ast.FuncDecl)
+				if !ok || fn.Name.Name != "TestPropRapidCheck" {
+					continue
+				}
+				if obj, ok := pkg.TypesInfo.Defs[fn.Name].(*types.Func); ok {
+					target = obj
+					f1 := b.bodyFactsOf(sel, obj, fn, pkg)
+					if _, cached := b.bodies[walkKey(sel, obj)]; !cached {
+						t.Fatal("bodyFactsOf did not populate b.bodies memo")
+					}
+					f2 := b.bodyFactsOf(sel, obj, fn, pkg)
+					if !f1.property || f1.driverSite == "" || f1.driverSite != f2.driverSite {
+						t.Fatalf("unexpected bodyFacts: %+v vs %+v", f1, f2)
+					}
+				}
+			}
+		}
+	}
+	if target == nil {
+		t.Fatal("TestPropRapidCheck not found in testdata/fixturemod")
+	}
 }

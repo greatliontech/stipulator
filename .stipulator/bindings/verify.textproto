@@ -23,8 +23,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-evidence-binding-store"
-  content_hash: "b6aa8be60641cf655b18e86b61ea1009f64c1953bb9e4c7155ce966d83f3799f"
-  source_hash: "ca3ee5683c772a3d28f13225cb160fdfc52fb9422cea891d1a0cef5d362e898d"
+  content_hash: "3f5bc6ccaa50c2f9d1c92eaaad161952979b8bd6b55194c2aed91c116fcaeb16"
+  source_hash: "9c3a7e2772ae598b5b1d7614542e2558e571721a52d7f03a36f3b51b85fe27ce"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/records.Load"
   role: BINDING_ROLE_IMPLEMENTS

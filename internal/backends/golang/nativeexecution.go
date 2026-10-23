@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"time"
 
 	gofresh "github.com/greatliontech/gofresh"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -14,11 +15,12 @@ import (
 // packageExecution retains one artifact across independent isolation attempts.
 // Its owner keeps the artifact through native closing and publication.
 type packageExecution struct {
-	built     *retainedBuildResult
-	coverage  *retainedCoverageProfile
-	artifacts []*retainedArtifact
-	attempts  int
-	directory string
+	built        *retainedBuildResult
+	buildElapsed time.Duration
+	coverage     *retainedCoverageProfile
+	artifacts    []*retainedArtifact
+	attempts     int
+	directory    string
 }
 
 type nativeAttempt struct {
@@ -76,17 +78,24 @@ func finishNativeRun(ctx context.Context, run *packageRun) {
 }
 
 func runNativePackage(caller, ctx context.Context, n *NormalizedInvocation, pkg string, selection []string, ordinal int32, gate *admission, leg *packageLeg, execution *packageExecution) (run packageRun) {
-	defer func() { run.execution = execution }()
+	runStart := time.Now()
+	defer func() {
+		run.execution = execution
+		run.buildElapsed = execution.buildElapsed
+		run.totalElapsed = time.Since(runStart)
+	}()
 	hooks := retainedProcessHooks{
 		Spawned: func(_ string, pid int) { gate.spawned(pkg, pid) },
-		Reaped:  func(_ string, pid int, state *os.ProcessState) { gate.reaped(pkg, pid, processPeakBytes(state)) },
+		Reaped:  func(_ string, pid int, state *os.ProcessState) { gate.reapedState(pkg, pid, state) },
 	}
 	if execution.built == nil {
 		if beforePackageBuildForTest != nil {
 			beforePackageBuildForTest(pkg)
 		}
 		leg.prepareBuild(ctx)
+		buildStart := time.Now()
 		b := buildRetained(ctx, n, pkg, hooks)
+		execution.buildElapsed = time.Since(buildStart)
 		execution.built = &b
 	}
 	built, coverage, artifacts := execution.built, execution.coverage, execution.artifacts
@@ -103,7 +112,7 @@ func runNativePackage(caller, ctx context.Context, n *NormalizedInvocation, pkg 
 		if err := mergeRetainedBuildCoverage(ctx, n, built.Artifact, coverage, hooks); err != nil {
 			return degradedRun(n.Name, pkg, err.Error(), false)
 		}
-		return packageRun{pkg: pkg, disposition: stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY}
+		return packageRun{pkg: pkg, noTestFiles: true, disposition: stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY}
 	}
 	logPath := ""
 	attempt := &nativeAttempt{leg: leg}
@@ -154,8 +163,11 @@ func runNativePackage(caller, ctx context.Context, n *NormalizedInvocation, pkg 
 	producer.SetProcessOrdinal(ordinal)
 	unit, contribution, prepErr := prepareNativeAttempt(ctx, n, pkg, leg, built.Artifact, runtime, logPath, producer)
 	attempt.unit, attempt.err = unit, prepErr
+	binStart := time.Now()
 	actual := runRetained(caller, ctx, n, runtime, producer, hooks)
+	binElapsed := time.Since(binStart)
 	run = actual.Classify(n, pkg)
+	run.binaryElapsed = binElapsed
 	if actual.Producer == nil {
 		if prepErr == nil && unit != nil {
 			_ = unit.Submit(contribution, gofresh.Terminal{Kind: gofresh.NeverStarted, Reason: "retained test binary did not start"})

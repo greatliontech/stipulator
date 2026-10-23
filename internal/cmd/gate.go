@@ -10,6 +10,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/remedy"
 	"github.com/greatliontech/stipulator/internal/verbcore"
+	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/verifyrun"
 	"github.com/greatliontech/stipulator/internal/views"
 	"github.com/greatliontech/stipulator/internal/wire"
@@ -56,6 +57,7 @@ func gateCmd() *cobra.Command {
 			}
 			prepared, rep, _, err := verifyrun.Run(cmd.Context(), cliDeps(humanOutput), false, scope.Ids)
 			if err != nil {
+				renderNotices(humanOutput, verify.NoticesOf(err))
 				return withRecordPath(err)
 			}
 			// Every problem refuses — the record-hygiene half and a
@@ -108,15 +110,16 @@ func gateCmd() *cobra.Command {
 			}
 			if !cov.GatePasses() {
 				if !quiet && !jsonOut {
+					errs := errStyle()
 					for _, v := range cov.Violations {
-						fmt.Fprintf(os.Stderr, "%s %s is red and no gap excuses it\n", red("violation:"), bold(v))
+						fmt.Fprintf(os.Stderr, "%s %s is red and no gap excuses it\n", errs.red("violation:"), errs.bold(v))
 					}
-					fmt.Println(red("gate: fail"))
+					fmt.Println(outStyle().red("gate: fail"))
 				}
 				return exitStatus(1)
 			}
 			if !quiet && !jsonOut {
-				fmt.Println(green("gate: pass"))
+				fmt.Println(outStyle().green("gate: pass"))
 			}
 			return nil
 		},
@@ -135,12 +138,13 @@ func gateCmd() *cobra.Command {
 // printCoverage renders the human coverage view: red requirements with
 // their reasons and gap state merged inline, then one summary line.
 func printCoverage(w io.Writer, cov *coverage.Report) {
+	st := styleFor(w)
 	gapByReq := map[string]coverage.Gap{}
 	for _, g := range cov.Gaps {
 		gapByReq[g.RequirementId] = g
 	}
 	for _, o := range cov.PolicyOverrides {
-		fmt.Fprintln(w, dim(o))
+		fmt.Fprintln(w, st.dim(o))
 	}
 	counts := map[coverage.Bucket]int{}
 	width := 0
@@ -161,21 +165,21 @@ func printCoverage(w io.Writer, cov *coverage.Report) {
 		}
 	}
 	for _, r := range reds {
-		bucket := yellow(r.Bucket.String())
+		bucket := st.yellow(r.Bucket.String())
 		if r.Bucket == coverage.Broken {
-			bucket = red(r.Bucket.String())
+			bucket = st.red(r.Bucket.String())
 		}
-		gapNote := red("no gap")
+		gapNote := st.red("no gap")
 		if r.Bucket == coverage.Attested {
-			gapNote = dim("evidence")
+			gapNote = st.dim("evidence")
 		} else if g, ok := gapByReq[r.Id]; ok {
-			gapNote = dim(gateGapNote(g))
+			gapNote = st.dim(gateGapNote(g))
 		}
 		reason := ""
 		if len(r.Reasons) > 0 {
-			reason = dim(r.Reasons[0])
+			reason = st.dim(r.Reasons[0])
 			if len(r.Reasons) > 1 {
-				reason += dim(fmt.Sprintf(" (+%d more)", len(r.Reasons)-1))
+				reason += st.dim(fmt.Sprintf(" (+%d more)", len(r.Reasons)-1))
 			}
 		}
 		fmt.Fprintf(w, "  %-9s %-*s  %s  %s\n", bucket, width, r.Id, gapNote, reason)
@@ -184,18 +188,18 @@ func printCoverage(w io.Writer, cov *coverage.Report) {
 	prunable := tally.Resolved
 	pointers := ""
 	if n := coverage.DanglingPointerCount(cov.DanglingPointers, nil); n > 0 {
-		pointers = fmt.Sprintf("; pointers: %s dangling", red(fmt.Sprint(n)))
+		pointers = fmt.Sprintf("; pointers: %s dangling", st.red(fmt.Sprint(n)))
 	}
 	fmt.Fprintf(w, "coverage: %s covered, %s attested, %s uncovered, %s partial, %s stale, %s broken, %d exempt; gaps: %s%s\n",
-		green(fmt.Sprint(counts[coverage.Covered])), num(counts[coverage.Attested], yellow),
-		num(counts[coverage.Uncovered], yellow), num(counts[coverage.Partial], yellow),
-		num(counts[coverage.Stale], yellow), num(counts[coverage.Broken], red),
+		st.green(fmt.Sprint(counts[coverage.Covered])), st.num(counts[coverage.Attested], st.yellow),
+		st.num(counts[coverage.Uncovered], st.yellow), st.num(counts[coverage.Partial], st.yellow),
+		st.num(counts[coverage.Stale], st.yellow), st.num(counts[coverage.Broken], st.red),
 		counts[coverage.Exempt], tally.Text(), pointers)
 	if prunable > 0 {
 		noun := "gap"
 		if prunable > 1 {
 			noun = "gaps"
 		}
-		fmt.Fprintf(w, "prunable: %d resolved %s — run %s\n", prunable, noun, bold(remedy.Prune(false)))
+		fmt.Fprintf(w, "prunable: %d resolved %s — run %s\n", prunable, noun, st.bold(remedy.Prune(false)))
 	}
 }

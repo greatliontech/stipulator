@@ -29,6 +29,28 @@ message Manifest {
   // MAY cell replaces the default unbound-MAY-exempt rule too: unbound
   // MAY requirements on that cell then read uncovered, not exempt.
   repeated PolicyOverride policy = 2;
+
+  // BindingLayout selects how authoring operations (bind and supersede)
+  // derive target binding files under `.stipulator/bindings/`.
+  BindingLayout binding_layout = 4;
+
+  // AllowWholeClauseClaims opts a corpus out of the default refusal of
+  // unscoped tests- and proves-role claims on clause-structured
+  // requirements (REQ-evidence-clause-claim). Off by default: a test or
+  // proof on a clause-structured requirement names the clause it
+  // discharges, while implements-role claims remain whole.
+  bool allow_whole_clause_claims = 5;
+}
+
+// BindingLayout selects the file placement rule for binding records.
+enum BindingLayout {
+  BINDING_LAYOUT_UNSPECIFIED = 0;
+  // Group bindings by the requirement identifier's second hyphen segment:
+  // `.stipulator/bindings/<second-segment>.textproto` (the default).
+  BINDING_LAYOUT_SEGMENT = 1;
+  // One file per requirement, derived like gap and attestation records:
+  // `.stipulator/bindings/<id-lowercased-without-req->.textproto`.
+  BINDING_LAYOUT_PER_REQUIREMENT = 2;
 }
 
 // MinimumEvidence names a satisfaction set for one policy cell. The sets

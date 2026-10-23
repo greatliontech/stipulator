@@ -42,7 +42,8 @@ else; `guidance` serves prose alone — one projection feeding the CLI's JSON
 and the structured tool result, so the two surfaces cannot drift and no
 result carries a second encoding.
 
-**REQ-mcp-tools-messages** (wire): The messages beside the reports:
+**REQ-mcp-tools-messages** (wire): The non-report tool result messages
+(REQ-mcp-tools) are:
 `CompileResult` (the diagnostics, capped with the remainder counted;
 the requirement, term, and edge counts when the corpus compiled),
 `WriteResult` for every record-writing tool (the paths written and
@@ -99,7 +100,8 @@ The guidance surfaces work outside a corpus: the document is embedded,
 so orientation precedes scaffolding.
 
 **REQ-mcp-explain** (behavior): The explain verb, on both surfaces, MUST
-answer every class of uncacheable reason the tool mints — each class
+answer every class of uncacheable, re-execution (`executed_reasons`), and
+resolution-serving (`resolution_notices`) reason the tool mints — each class
 carries its explain kind: a dynamic-state refusal with its derivation
 chain, derived against the same policy-scoped views the verdicts derive
 over (the freshness library's explain contract), given a witness's
@@ -259,15 +261,15 @@ expired and the terminal cause, so a client can distinguish long-running
 work, deadline expiry, cancellation, test failure, and server failure
 without guessing.
 
-**REQ-mcp-progress-stamps** (behavior): A completed suite-running call MUST additionally stamp its
-phase timings as one bounded line of its text digest — the
+**REQ-mcp-progress-stamps** (behavior): A completed suite-running call MUST stamp its
+phase timings as one bounded line of its text digest (REQ-mcp-progress) — the
 notification-blind fallback: a client that saw no notifications (none
 requested, or dropped in transit) still distinguishes slow work from a
 hang after the fact, and the one line is a timing record, not a progress
 stream, so the never-inside-result-payloads rule keeps its point.
 
 **REQ-mcp-progress-resident** (behavior): Each
-phase transition and the ending MUST additionally carry the process's
+phase transition and the ending of the progress stream (REQ-mcp-progress) MUST carry the process's
 resident set where the host reports it, named by its moment — the start,
 a phase's exit, the end: the process's resident and peak resident bytes
 as the kernel answers them, and its live descendants (the resolver
@@ -304,7 +306,7 @@ interrupted run with the phase it died in and what it kept, so a person
 at the CLI and an agent at the server read the same account.
 
 **REQ-mcp-progress-cli-exit** (behavior): An
-interrupted CLI run MUST then end as what ended it: the signal, re-raised
+interrupted CLI run (REQ-mcp-progress-surfaces) MUST end as what ended it: the signal, re-raised
 after the ending renders, so its caller observes a signal death — or,
 where a signal cannot be re-raised, the conventional status of that
 signal, 128 plus its number — never a verdict's status, which a
@@ -312,7 +314,7 @@ failing verdict alone exits 1 with; a second signal during the ending
 ends the process outright.
 
 **REQ-mcp-progress-bound** (behavior): The
-stream MUST be bounded by the policy — phases, invocations, persisting
+progress stream (REQ-mcp-progress) MUST be bounded by the policy — phases, invocations, persisting
 units — never by the test count.
 
 **REQ-mcp-progress-liveness** (behavior): The liveness channels are bounded by the protocol: progress

@@ -11,6 +11,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/prune"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/remedy"
+	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/verifyrun"
 )
 
@@ -44,6 +45,7 @@ func pruneCmd() *cobra.Command {
 				}
 				return nil
 			}
+			out, errs := outStyle(), errStyle()
 			if mode.Dangling {
 				prunes, err := prune.Dangling(deps)
 				if err != nil {
@@ -51,12 +53,12 @@ func pruneCmd() *cobra.Command {
 				}
 				if check {
 					for _, up := range prunes {
-						fmt.Printf("%s dangling gap lingers: %s\n", yellow("prunable:"), up.Path)
+						fmt.Printf("%s dangling gap lingers: %s\n", out.yellow("prunable:"), up.Path)
 					}
 					if len(prunes) > 0 {
 						return fmt.Errorf("prune --dangling --check: %d dangling gaps linger", len(prunes))
 					}
-					fmt.Println(green("prune: no dangling gaps"))
+					fmt.Println(out.green("prune: no dangling gaps"))
 					return nil
 				}
 				if err := applyUpdates(chdir, prunes); err != nil {
@@ -67,33 +69,31 @@ func pruneCmd() *cobra.Command {
 			}
 			res, err := prune.Evaluate(cmd.Context(), deps, noTest)
 			if err != nil {
+				renderNotices(os.Stderr, verify.NoticesOf(err))
 				var pe *verifyrun.ProblemsError
 				if errors.As(err, &pe) {
-					// A refusal reached after the publishing close
-					// carries the account.
-					renderNotices(os.Stderr, pe.Notices)
 					return refuseProblems(pe.Problems)
 				}
 				return withRecordPath(err)
 			}
 			if !res.Evaluated {
 				if check {
-					fmt.Println(green("prune: clean"))
+					fmt.Println(out.green("prune: clean"))
 					return nil
 				}
 				fmt.Println("prune: no gap records - nothing to evaluate")
 				return nil
 			}
-			fmt.Fprintln(os.Stderr, dim(res.Line()))
+			fmt.Fprintln(os.Stderr, errs.dim(res.Line()))
 			renderNotices(os.Stderr, res.Notices)
 			if check {
 				for _, up := range res.Prunes {
-					fmt.Printf("%s resolved gap lingers: %s\n", yellow("prunable:"), up.Path)
+					fmt.Printf("%s resolved gap lingers: %s\n", out.yellow("prunable:"), up.Path)
 				}
 				if len(res.Prunes) > 0 {
 					return fmt.Errorf("prune --check: %d resolved gaps linger", len(res.Prunes))
 				}
-				fmt.Println(green("prune: clean"))
+				fmt.Println(out.green("prune: clean"))
 				return nil
 			}
 			if err := applyUpdates(chdir, res.Prunes); err != nil {

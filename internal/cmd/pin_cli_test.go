@@ -24,10 +24,7 @@ func TestPinCLINamesPreservedDifferingPins(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds the CLI")
 	}
-	bin := filepath.Join(t.TempDir(), "stipulator")
-	if out, err := exec.Command("go", "build", "-o", bin, "github.com/greatliontech/stipulator/cmd/stipulator").CombinedOutput(); err != nil {
-		t.Fatalf("building the CLI: %v\n%s", err, out)
-	}
+	bin := cliBinary(t)
 	dir := t.TempDir()
 	write := func(path, content string) {
 		t.Helper()
@@ -110,10 +107,7 @@ func TestPinCLIReportsMovedShapes(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds the CLI")
 	}
-	bin := filepath.Join(t.TempDir(), "stipulator")
-	if out, err := exec.Command("go", "build", "-o", bin, "github.com/greatliontech/stipulator/cmd/stipulator").CombinedOutput(); err != nil {
-		t.Fatalf("building the CLI: %v\n%s", err, out)
-	}
+	bin := cliBinary(t)
 	dir := t.TempDir()
 	write := func(path, content string) {
 		t.Helper()

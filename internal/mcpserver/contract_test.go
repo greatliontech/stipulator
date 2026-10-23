@@ -759,11 +759,17 @@ func TestBindToolClauseClaims(t *testing.T) {
 	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "bind", Arguments: map[string]any{
 		"requirement": "REQ-m-c", "symbol": "example.com/p.TestA", "role": "tests",
 	}})
+	if err != nil || !res.IsError || !strings.Contains(toolText(t, res), "requires a --clause (mcp: clause) scope for tests claims") {
+		t.Fatalf("unscoped tests claim on clause-structured requirement accepted: %v %s", err, toolText(t, res))
+	}
+	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "bind", Arguments: map[string]any{
+		"requirement": "REQ-m-c", "symbol": "example.com/p.TestA", "role": "tests", "clause": "2",
+	}})
 	if err != nil || res.IsError {
-		t.Fatalf("single-claim whole beside a clause claim: %v %s", err, toolText(t, res))
+		t.Fatalf("single-claim second clause beside a clause claim: %v %s", err, toolText(t, res))
 	}
 	// unbind narrows by the claim's spelling: the label claim goes, the
-	// whole claim on the same symbol and the other clause's claim stay.
+	// second clause claim on the same symbol and the implements claim stay.
 	res, err = sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "unbind", Arguments: map[string]any{
 		"requirement": "REQ-m-c", "symbol": "example.com/p.TestA", "clause": "alpha",
 	}})

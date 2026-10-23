@@ -3,6 +3,7 @@ package verify
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/records"
@@ -60,18 +61,36 @@ func sortProblems(problems []Problem) {
 // appearance, and the gapped requirements so an attestation
 // contradicting a gap is named.
 type hygiene struct {
-	hashes   records.Hashes
-	reqs     map[string]*stipulatorv1.Requirement
-	seen     map[string]bool
-	gapped   map[string]bool
-	attested map[string]string
-	seenGaps map[string]string
+	hashes                 records.Hashes
+	reqs                   map[string]*stipulatorv1.Requirement
+	seen                   map[string]bool
+	symbolClaims           map[string]int
+	gapped                 map[string]bool
+	attested               map[string]string
+	seenGaps               map[string]string
+	allowWholeClauseClaims bool
 }
 
 func newHygiene(spec *stipulatorv1.Spec, store *records.Store) *hygiene {
-	j := &hygiene{hashes: records.HashesOf(spec), reqs: records.ByID(spec), seen: map[string]bool{}, gapped: map[string]bool{}, attested: map[string]string{}, seenGaps: map[string]string{}}
-	for _, gf := range store.Gaps {
-		j.gapped[gf.Gap.GetRequirementId()] = true
+	j := &hygiene{
+		hashes:                 records.HashesOf(spec),
+		reqs:                   records.ByID(spec),
+		seen:                   map[string]bool{},
+		symbolClaims:           map[string]int{},
+		gapped:                 map[string]bool{},
+		attested:               map[string]string{},
+		seenGaps:               map[string]string{},
+		allowWholeClauseClaims: store != nil && store.AllowWholeClauseClaims,
+	}
+	if store != nil {
+		for _, bf := range store.Bindings {
+			for _, b := range bf.Set.GetBindings() {
+				j.symbolClaims[b.GetRequirementId()+"|"+b.GetSymbol()]++
+			}
+		}
+		for _, gf := range store.Gaps {
+			j.gapped[gf.Gap.GetRequirementId()] = true
+		}
 	}
 	return j
 }
@@ -120,7 +139,18 @@ func (j *hygiene) binding(path string, b *stipulatorv1.Binding) (problems []Prob
 		// (REQ-evidence-clause-claim).
 		var ok bool
 		if clause, ok = records.ResolveClause(j.reqs[id], b); !ok {
-			problem("binding %s on %s names %s, which %s no longer declares — rebind against its current clauses or unbind it: %s", b.GetSymbol(), id, records.ClauseName(b), id, remedy.Unbind(id, b.GetSymbol(), records.ClauseSpelling(b)))
+			if strings.TrimSpace(records.ClauseSpelling(b)) == "" {
+				problem("binding %s on %s has a malformed empty clause_label in %s — remove or repair the record in %s (an unbind without --clause would remove every claim on %s + %s)", b.GetSymbol(), id, path, path, id, b.GetSymbol())
+			} else {
+				problem("binding %s on %s names %s, which %s no longer declares — rebind against its current clauses or unbind it: %s", b.GetSymbol(), id, records.ClauseName(b), id, remedy.Unbind(id, b.GetSymbol(), records.ClauseSpelling(b)))
+			}
+			malformed = true
+		} else if clause == nil && records.RequiresClauseScope(j.reqs[id], b.GetRole(), j.allowWholeClauseClaims) {
+			if j.symbolClaims[id+"|"+b.GetSymbol()] > 1 {
+				problem("binding %s on %s has no clause scope in %s, and %s is clause-structured (%s) — scope or remove the record in %s", b.GetSymbol(), id, path, id, records.ClausesOffered(j.reqs[id]), path)
+			} else {
+				problem("binding %s on %s has no clause scope, and %s is clause-structured (%s) — rebind per clause or unbind it: %s", b.GetSymbol(), id, id, records.ClausesOffered(j.reqs[id]), remedy.Unbind(id, b.GetSymbol(), ""))
+			}
 			malformed = true
 		}
 	}

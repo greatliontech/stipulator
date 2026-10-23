@@ -1812,12 +1812,13 @@ func (*observation_IncompleteReason) isObservation_Evidence() {}
 // deliberately absent — progress events are notifications, never result
 // payload.
 type ExecutionReport struct {
-	state                   protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Invocations  *[]*InvocationHealth   `protobuf:"bytes,1,rep,name=invocations"`
-	xxx_hidden_Tests        *[]*TestResult         `protobuf:"bytes,2,rep,name=tests"`
-	xxx_hidden_Obligations  *[]*ObligationReport   `protobuf:"bytes,3,rep,name=obligations"`
-	xxx_hidden_Diagnostics  *[]*FailureDiagnostic  `protobuf:"bytes,4,rep,name=diagnostics"`
-	xxx_hidden_Observations *[]*Observation        `protobuf:"bytes,5,rep,name=observations"`
+	state                   protoimpl.MessageState      `protogen:"opaque.v1"`
+	xxx_hidden_Invocations  *[]*InvocationHealth        `protobuf:"bytes,1,rep,name=invocations"`
+	xxx_hidden_Tests        *[]*TestResult              `protobuf:"bytes,2,rep,name=tests"`
+	xxx_hidden_Obligations  *[]*ObligationReport        `protobuf:"bytes,3,rep,name=obligations"`
+	xxx_hidden_Diagnostics  *[]*FailureDiagnostic       `protobuf:"bytes,4,rep,name=diagnostics"`
+	xxx_hidden_Observations *[]*Observation             `protobuf:"bytes,5,rep,name=observations"`
+	xxx_hidden_Timing       *ExecutionTimingDiagnostics `protobuf:"bytes,6,opt,name=timing"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -1892,6 +1893,13 @@ func (x *ExecutionReport) GetObservations() []*Observation {
 	return nil
 }
 
+func (x *ExecutionReport) GetTiming() *ExecutionTimingDiagnostics {
+	if x != nil {
+		return x.xxx_hidden_Timing
+	}
+	return nil
+}
+
 func (x *ExecutionReport) SetInvocations(v []*InvocationHealth) {
 	x.xxx_hidden_Invocations = &v
 }
@@ -1912,6 +1920,21 @@ func (x *ExecutionReport) SetObservations(v []*Observation) {
 	x.xxx_hidden_Observations = &v
 }
 
+func (x *ExecutionReport) SetTiming(v *ExecutionTimingDiagnostics) {
+	x.xxx_hidden_Timing = v
+}
+
+func (x *ExecutionReport) HasTiming() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Timing != nil
+}
+
+func (x *ExecutionReport) ClearTiming() {
+	x.xxx_hidden_Timing = nil
+}
+
 type ExecutionReport_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -1922,6 +1945,8 @@ type ExecutionReport_builder struct {
 	// Per-process runtime observations, one per launched process, each
 	// bound to its producer.
 	Observations []*Observation
+	// Structured package and per-test execution timing diagnostics.
+	Timing *ExecutionTimingDiagnostics
 }
 
 func (b0 ExecutionReport_builder) Build() *ExecutionReport {
@@ -1933,6 +1958,7 @@ func (b0 ExecutionReport_builder) Build() *ExecutionReport {
 	x.xxx_hidden_Obligations = &b.Obligations
 	x.xxx_hidden_Diagnostics = &b.Diagnostics
 	x.xxx_hidden_Observations = &b.Observations
+	x.xxx_hidden_Timing = b.Timing
 	return m0
 }
 
@@ -2612,13 +2638,14 @@ const file_stipulator_v1_execution_proto_rawDesc = "" +
 	"\tcompleted\x18\x03 \x01(\v2#.stipulator.v1.CompletedObservationH\x00R\tcompleted\x12-\n" +
 	"\x11incomplete_reason\x18\x04 \x01(\tH\x00R\x10incompleteReasonB\n" +
 	"\n" +
-	"\bevidence\"\xcc\x02\n" +
+	"\bevidence\"\x8f\x03\n" +
 	"\x0fExecutionReport\x12A\n" +
 	"\vinvocations\x18\x01 \x03(\v2\x1f.stipulator.v1.InvocationHealthR\vinvocations\x12/\n" +
 	"\x05tests\x18\x02 \x03(\v2\x19.stipulator.v1.TestResultR\x05tests\x12A\n" +
 	"\vobligations\x18\x03 \x03(\v2\x1f.stipulator.v1.ObligationReportR\vobligations\x12B\n" +
 	"\vdiagnostics\x18\x04 \x03(\v2 .stipulator.v1.FailureDiagnosticR\vdiagnostics\x12>\n" +
-	"\fobservations\x18\x05 \x03(\v2\x1a.stipulator.v1.ObservationR\fobservations\"\xe9\x02\n" +
+	"\fobservations\x18\x05 \x03(\v2\x1a.stipulator.v1.ObservationR\fobservations\x12A\n" +
+	"\x06timing\x18\x06 \x01(\v2).stipulator.v1.ExecutionTimingDiagnosticsR\x06timing\"\xe9\x02\n" +
 	"\rProgressEvent\x12*\n" +
 	"\x05phase\x18\x01 \x01(\x0e2\x14.stipulator.v1.PhaseR\x05phase\x12\x1e\n" +
 	"\n" +
@@ -2663,24 +2690,25 @@ const file_stipulator_v1_execution_proto_rawDesc = "" +
 var file_stipulator_v1_execution_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_stipulator_v1_execution_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_stipulator_v1_execution_proto_goTypes = []any{
-	(ObligationDisposition)(0),   // 0: stipulator.v1.ObligationDisposition
-	(Phase)(0),                   // 1: stipulator.v1.Phase
-	(TerminalCause)(0),           // 2: stipulator.v1.TerminalCause
-	(*ProducerIdentity)(nil),     // 3: stipulator.v1.ProducerIdentity
-	(*PackageHealth)(nil),        // 4: stipulator.v1.PackageHealth
-	(*InvocationHealth)(nil),     // 5: stipulator.v1.InvocationHealth
-	(*GoResolvedConfig)(nil),     // 6: stipulator.v1.GoResolvedConfig
-	(*TestResult)(nil),           // 7: stipulator.v1.TestResult
-	(*ObligationReport)(nil),     // 8: stipulator.v1.ObligationReport
-	(*CompletedObservation)(nil), // 9: stipulator.v1.CompletedObservation
-	(*Observation)(nil),          // 10: stipulator.v1.Observation
-	(*ExecutionReport)(nil),      // 11: stipulator.v1.ExecutionReport
-	(*ProgressEvent)(nil),        // 12: stipulator.v1.ProgressEvent
-	(*ResidentSet)(nil),          // 13: stipulator.v1.ResidentSet
-	(HealthDisposition)(0),       // 14: stipulator.v1.HealthDisposition
-	(TestOutcome)(0),             // 15: stipulator.v1.TestOutcome
-	(*FailureDiagnostic)(nil),    // 16: stipulator.v1.FailureDiagnostic
-	(*durationpb.Duration)(nil),  // 17: google.protobuf.Duration
+	(ObligationDisposition)(0),         // 0: stipulator.v1.ObligationDisposition
+	(Phase)(0),                         // 1: stipulator.v1.Phase
+	(TerminalCause)(0),                 // 2: stipulator.v1.TerminalCause
+	(*ProducerIdentity)(nil),           // 3: stipulator.v1.ProducerIdentity
+	(*PackageHealth)(nil),              // 4: stipulator.v1.PackageHealth
+	(*InvocationHealth)(nil),           // 5: stipulator.v1.InvocationHealth
+	(*GoResolvedConfig)(nil),           // 6: stipulator.v1.GoResolvedConfig
+	(*TestResult)(nil),                 // 7: stipulator.v1.TestResult
+	(*ObligationReport)(nil),           // 8: stipulator.v1.ObligationReport
+	(*CompletedObservation)(nil),       // 9: stipulator.v1.CompletedObservation
+	(*Observation)(nil),                // 10: stipulator.v1.Observation
+	(*ExecutionReport)(nil),            // 11: stipulator.v1.ExecutionReport
+	(*ProgressEvent)(nil),              // 12: stipulator.v1.ProgressEvent
+	(*ResidentSet)(nil),                // 13: stipulator.v1.ResidentSet
+	(HealthDisposition)(0),             // 14: stipulator.v1.HealthDisposition
+	(TestOutcome)(0),                   // 15: stipulator.v1.TestOutcome
+	(*FailureDiagnostic)(nil),          // 16: stipulator.v1.FailureDiagnostic
+	(*ExecutionTimingDiagnostics)(nil), // 17: stipulator.v1.ExecutionTimingDiagnostics
+	(*durationpb.Duration)(nil),        // 18: google.protobuf.Duration
 }
 var file_stipulator_v1_execution_proto_depIdxs = []int32{
 	14, // 0: stipulator.v1.PackageHealth.disposition:type_name -> stipulator.v1.HealthDisposition
@@ -2697,16 +2725,17 @@ var file_stipulator_v1_execution_proto_depIdxs = []int32{
 	8,  // 11: stipulator.v1.ExecutionReport.obligations:type_name -> stipulator.v1.ObligationReport
 	16, // 12: stipulator.v1.ExecutionReport.diagnostics:type_name -> stipulator.v1.FailureDiagnostic
 	10, // 13: stipulator.v1.ExecutionReport.observations:type_name -> stipulator.v1.Observation
-	1,  // 14: stipulator.v1.ProgressEvent.phase:type_name -> stipulator.v1.Phase
-	17, // 15: stipulator.v1.ProgressEvent.elapsed:type_name -> google.protobuf.Duration
-	2,  // 16: stipulator.v1.ProgressEvent.terminal_cause:type_name -> stipulator.v1.TerminalCause
-	13, // 17: stipulator.v1.ProgressEvent.resident:type_name -> stipulator.v1.ResidentSet
-	1,  // 18: stipulator.v1.ResidentSet.exit_of:type_name -> stipulator.v1.Phase
-	19, // [19:19] is the sub-list for method output_type
-	19, // [19:19] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	17, // 14: stipulator.v1.ExecutionReport.timing:type_name -> stipulator.v1.ExecutionTimingDiagnostics
+	1,  // 15: stipulator.v1.ProgressEvent.phase:type_name -> stipulator.v1.Phase
+	18, // 16: stipulator.v1.ProgressEvent.elapsed:type_name -> google.protobuf.Duration
+	2,  // 17: stipulator.v1.ProgressEvent.terminal_cause:type_name -> stipulator.v1.TerminalCause
+	13, // 18: stipulator.v1.ProgressEvent.resident:type_name -> stipulator.v1.ResidentSet
+	1,  // 19: stipulator.v1.ResidentSet.exit_of:type_name -> stipulator.v1.Phase
+	20, // [20:20] is the sub-list for method output_type
+	20, // [20:20] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_execution_proto_init() }

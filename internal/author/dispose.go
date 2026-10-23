@@ -114,7 +114,13 @@ func EditorialOver(spec *stipulatorv1.Spec, fsys fs.FS, requirement string) (ups
 			}
 			clause, ok := records.ResolveClause(target, b)
 			if !ok {
+				if strings.TrimSpace(records.ClauseSpelling(b)) == "" {
+					return nil, nil, fmt.Errorf("binding %s on %s has a malformed empty clause_label in %s — remove or repair the record in %s before re-consenting", b.GetSymbol(), requirement, bf.Path, bf.Path)
+				}
 				return nil, nil, fmt.Errorf("binding %s names %s, which %s no longer declares — rebind against its current clauses or unbind it before re-consenting: %s", b.GetSymbol(), records.ClauseName(b), requirement, remedy.Unbind(requirement, b.GetSymbol(), records.ClauseSpelling(b)))
+			}
+			if clause == nil && records.RequiresClauseScope(target, b.GetRole(), store.AllowWholeClauseClaims) {
+				return nil, nil, fmt.Errorf("binding %s on %s has no clause scope, and %s declares clauses (%s) — rebind per clause or unbind it before re-consenting", b.GetSymbol(), requirement, requirement, records.ClausesOffered(target))
 			}
 			if clause != nil {
 				consented = append(consented, fmt.Sprintf("%s now claims %s", b.GetSymbol(), records.ClauseHeading(clause)))
@@ -317,9 +323,15 @@ func retire(fsys fs.FS, identities, successors []string, force bool) ([]Update, 
 	}
 
 	// Retarget along the declared edges: a source's bindings go to the
-	// successors that declare it, same symbol and role, content pin
-	// cleared. A retire (no successors) carries nothing.
+	// successors that declare it, same symbol, role, and clause scope,
+	// content pin cleared. A retire (no successors) carries nothing.
+	byID := records.ByID(spec)
 	for _, succ := range successors {
+		succReq := byID[succ]
+		file, err := resolveBindingFile(fsys, succ, "")
+		if err != nil {
+			return nil, err
+		}
 		for _, old := range carried {
 			if !declared[succ][old.GetRequirementId()] {
 				continue
@@ -332,7 +344,23 @@ func retire(fsys fs.FS, identities, successors []string, force bool) ([]Update, 
 			if old.GetShapeHash() != "" {
 				nb.SetShapeHash(old.GetShapeHash())
 			}
-			file := defaultBindingFile(succ)
+			switch {
+			case old.HasClauseOrdinal():
+				nb.SetClauseOrdinal(old.GetClauseOrdinal())
+			case old.HasClauseLabel():
+				nb.SetClauseLabel(old.GetClauseLabel())
+			}
+			clause, ok := records.ResolveClause(succReq, nb)
+			if !ok {
+				if strings.TrimSpace(records.ClauseSpelling(old)) == "" {
+					return nil, fmt.Errorf("cannot carry binding %s from %s to %s: malformed empty clause_label", old.GetSymbol(), old.GetRequirementId(), succ)
+				}
+				return nil, fmt.Errorf("cannot carry binding %s (%s) from %s to %s: %s declares no %s (%s)", old.GetSymbol(), records.ClauseName(old), old.GetRequirementId(), succ, succ, records.ClauseName(nb), records.ClausesOffered(succReq))
+			}
+			if clause == nil && records.RequiresClauseScope(succReq, nb.GetRole(), store.AllowWholeClauseClaims) {
+				roleName := strings.ToLower(strings.TrimPrefix(nb.GetRole().String(), "BINDING_ROLE_"))
+				return nil, fmt.Errorf("cannot carry unscoped %s binding %s from %s to clause-structured successor %s (%s)", roleName, old.GetSymbol(), old.GetRequirementId(), succ, records.ClausesOffered(succReq))
+			}
 			// Rebuild the store view incrementally so consecutive adds land
 			// in the same file.
 			if prior, ok := touched[file]; ok {
@@ -340,7 +368,7 @@ func retire(fsys fs.FS, identities, successors []string, force bool) ([]Update, 
 				if err != nil {
 					return nil, err
 				}
-				if bindingExists(sub, nb) {
+				if bindingExists(succReq, sub, nb) {
 					continue
 				}
 				content, err := records.AddBinding(storeOf(sub), file, nb)
@@ -350,7 +378,7 @@ func retire(fsys fs.FS, identities, successors []string, force bool) ([]Update, 
 				touched[file] = content
 				continue
 			}
-			if existing := fileOf(store, file); existing != nil && bindingExists(*existing, nb) {
+			if existing := fileOf(store, file); existing != nil && bindingExists(succReq, *existing, nb) {
 				continue
 			}
 			content, err := records.AddBinding(store, file, nb)
@@ -390,10 +418,10 @@ func compileClean(fsys fs.FS) (*stipulatorv1.Spec, error) {
 	return spec, nil
 }
 
-func bindingExists(bf records.BindingFile, nb *stipulatorv1.Binding) bool {
+func bindingExists(req *stipulatorv1.Requirement, bf records.BindingFile, nb *stipulatorv1.Binding) bool {
+	target := records.ClaimIdentity(req, nb)
 	for _, b := range bf.Set.GetBindings() {
-		if b.GetRequirementId() == nb.GetRequirementId() && b.GetSymbol() == nb.GetSymbol() &&
-			b.GetBackend() == nb.GetBackend() && b.GetRole() == nb.GetRole() {
+		if records.ClaimIdentity(req, b) == target {
 			return true
 		}
 	}

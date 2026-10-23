@@ -24,6 +24,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -98,6 +99,9 @@ type Reporter struct {
 	// was first reached, the largest descendants reading, and the
 	// reading at the end.
 	resident residentRecord
+	// packageTimings retains per-package execution timing diagnostics in
+	// completion/abort order, including across cancellation.
+	packageTimings []*stipulatorv1.PackageTimingDiagnostic
 }
 
 type phaseStamp struct {
@@ -286,6 +290,47 @@ func (r *Reporter) Kept() []string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return append([]string(nil), r.kept...)
+}
+
+// RecordPackageTiming appends one package execution timing diagnostic to the
+// reporter's retained timing account, safe across concurrent package runs and
+// preserved even when the operation is later cancelled or times out.
+func (r *Reporter) RecordPackageTiming(pt *stipulatorv1.PackageTimingDiagnostic) {
+	if r == nil || pt == nil {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.packageTimings = append(r.packageTimings, pt)
+}
+
+// TimingDiagnostics returns the structured stage and package timing account
+// accumulated so far, or nil when neither stages nor package runs were recorded.
+func (r *Reporter) TimingDiagnostics() *stipulatorv1.ExecutionTimingDiagnostics {
+	if r == nil {
+		return nil
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if len(r.stamps) == 0 && len(r.packageTimings) == 0 {
+		return nil
+	}
+	now := time.Now()
+	stages := make([]*stipulatorv1.StageTimingDiagnostic, 0, len(r.stamps))
+	for i, st := range r.stamps {
+		end := now
+		if i+1 < len(r.stamps) {
+			end = r.stamps[i+1].entered
+		}
+		sd := &stipulatorv1.StageTimingDiagnostic{}
+		sd.SetStage(Word(st.phase))
+		sd.SetElapsed(durationpb.New(end.Sub(st.entered)))
+		stages = append(stages, sd)
+	}
+	td := &stipulatorv1.ExecutionTimingDiagnostics{}
+	td.SetStages(stages)
+	td.SetPackages(slices.Clone(r.packageTimings))
+	return td
 }
 
 // Keepalive emits the current state, rate-limited, with no state change:

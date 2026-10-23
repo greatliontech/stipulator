@@ -102,11 +102,11 @@ func ResolveExplain(reason, pkgPath, symbol, witness string, spelling func(strin
 	if reason == "" {
 		return ExplainRequest{}, fmt.Errorf("explain: pass %s to parse, %s for a witness's seeding, or %s and %s", spelling("reason"), spelling("witness"), spelling("package"), spelling("symbol"))
 	}
-	class, known := classifyReason(reason)
-	if known && class.kind() == explainWitness {
+	kind, known := classifyAnyReason(reason)
+	if known && kind == explainWitness {
 		return ExplainRequest{}, fmt.Errorf("explain: a seeding reason derives from the witness's own body; pass %s naming the witness the reason stood beside", spelling("witness"))
 	}
-	if known && class.kind() == explainSelf {
+	if known && kind == explainSelf {
 		return ExplainRequest{Attribution: reason}, nil
 	}
 	if pkgPath, symbol, ok := CulpritFromReason(reason); ok {

@@ -1,6 +1,9 @@
 package verify
 
-import "sort"
+import (
+	"errors"
+	"sort"
+)
 
 // The backend contracts a language backend implements for verification,
 // and the machinery that opens, closes, and selects among backends.
@@ -134,6 +137,39 @@ func Closer(backends map[string]Backend) func() []string {
 		}
 		return notices
 	}
+}
+
+// AccountedError wraps an operational or cancellation error with the
+// serving path's account read after the close that published, so a pass
+// that faults or is cancelled after resolution publication never drops
+// the publish account on its way out
+// (REQ-evidence-resolution-freshness-account).
+type AccountedError struct {
+	Err     error
+	Notices []string
+}
+
+func (e *AccountedError) Error() string               { return e.Err.Error() }
+func (e *AccountedError) Unwrap() error               { return e.Err }
+func (e *AccountedError) ResolutionNotices() []string { return e.Notices }
+
+// WithNotices attaches the serving path's account to a non-nil error
+// when the account is non-empty.
+func WithNotices(err error, notices []string) error {
+	if err == nil || len(notices) == 0 {
+		return err
+	}
+	return &AccountedError{Err: err, Notices: notices}
+}
+
+// NoticesOf extracts the serving path's account from an error chain, or
+// nil when none is carried.
+func NoticesOf(err error) []string {
+	var carrier interface{ ResolutionNotices() []string }
+	if errors.As(err, &carrier) {
+		return carrier.ResolutionNotices()
+	}
+	return nil
 }
 
 // SeedingOf is the Go backend's seeding view, nil when the operation

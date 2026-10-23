@@ -135,3 +135,48 @@ func TestCLINamedPinScopeAndPrewriteFailures(t *testing.T) {
 		})
 	}
 }
+
+func TestCLIBlanketPinCancellationWritesNothing(t *testing.T) {
+	for _, mode := range []string{"cancel", "resolution failure"} {
+		t.Run(mode, func(t *testing.T) {
+			write := scaffoldCorpus(t)
+			write("docs/specs/a.md", "# A\n\n**REQ-aa-a** (behavior): It MUST a.\n")
+			before := "bindings {\n  requirement_id: \"REQ-aa-a\"\n  backend: \"go\"\n  symbol: \"example.com/p.A\"\n  role: BINDING_ROLE_IMPLEMENTS\n}\n"
+			const path = ".stipulator/bindings/a.textproto"
+			write(path, before)
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			makeBackends = func(_ context.Context, _ string) (map[string]verify.Backend, func() error, error) {
+				return map[string]verify.Backend{"go": authoringBackend(func(symbol string) (verify.Resolution, string, error) {
+					if mode == "cancel" {
+						cancel()
+						return verify.NotFound, "", ctx.Err()
+					}
+					return verify.NotFound, "", fmt.Errorf("resolution failed")
+				})}, func() error { return nil }, nil
+			}
+			cmd := pinCmd()
+			cmd.SetArgs(nil)
+			err := cmd.ExecuteContext(ctx)
+			data, readErr := os.ReadFile(filepath.Join(chdir, path))
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			if mode == "cancel" {
+				if !errors.Is(err, context.Canceled) {
+					t.Fatalf("err = %v, want context.Canceled", err)
+				}
+				if string(data) != before {
+					t.Fatalf("blanket pin wrote after cancellation:\n%s", data)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("non-cancellation resolution fault failed blanket pin: %v", err)
+			}
+			if !strings.Contains(string(data), "content_hash:") {
+				t.Fatalf("unset content pin not backfilled under recoverable shape error:\n%s", data)
+			}
+		})
+	}
+}

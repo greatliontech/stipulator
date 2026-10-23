@@ -1027,8 +1027,21 @@ func TestClauseClaimsGrantToTheirClauseAlone(t *testing.T) {
 		return bucketOf(t, Evaluate(spec, &verify.Report{Results: rs}, store, true, nil), "REQ-c-cl")
 	}
 
-	if r := eval(whole); r.Bucket != Covered {
-		t.Fatalf("unscoped witness = %v %v, want covered (grants to every clause)", r.Bucket, r.Reasons)
+	if r := eval(whole); r.Bucket != Uncovered {
+		t.Fatalf("unscoped witness without manifest opt-out = %v %v, want uncovered", r.Bucket, r.Reasons)
+	}
+	optOutManifest := &stipulatorv1.Manifest{}
+	optOutManifest.SetAllowWholeClauseClaims(true)
+	optOutPol, err := PolicyFromManifest(optOutManifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	optOutRep := Evaluate(spec, &verify.Report{Results: []verify.BindingResult{whole}}, store, true, optOutPol)
+	if r := bucketOf(t, optOutRep, "REQ-c-cl"); r.Bucket != Covered {
+		t.Fatalf("unscoped witness with manifest opt-out = %v %v, want covered", r.Bucket, r.Reasons)
+	}
+	if !slices.Contains(optOutRep.PolicyOverrides, "policy override: allow_whole_clause_claims -> true") {
+		t.Fatalf("manifest opt-out not surfaced in PolicyOverrides: %v", optOutRep.PolicyOverrides)
 	}
 	r := eval(alpha)
 	if r.Bucket != Partial {

@@ -136,14 +136,23 @@ type calleeRef struct {
 	site string
 }
 
-// bodyFacts is one declared body's memo under one selection: whether
-// it directly drives a run-time-seeded runner, the driving call's
-// site, and its walked callees — the one scan serving's walk and the
-// explain derivation read.
+// bodyFacts is one declared body's memo under one selection: its direct
+// evidence-tier signals (proof assertion, property driver call, and
+// near-miss library references), whether it drives or names a
+// run-time-seeded runner in any spelling, the driving call's or
+// reference's site, and its walked callees — the one scan classifyWitness,
+// serving's walk, and the explain derivation read.
 type bodyFacts struct {
-	drives     bool
-	driverSite string
-	callees    walkedBody
+	proof         bool
+	property      bool
+	rapidRef      bool
+	structuralRef bool
+	gopterRef     bool
+	quickRef      bool
+	dotImported   bool
+	drives        bool
+	driverSite    string
+	callees       walkedBody
 }
 
 // declKey names a function object stably across loads: a package
@@ -388,7 +397,7 @@ func memberPatterns(modules map[string]string, patterns []string) map[string][]s
 	for _, pattern := range patterns {
 		owner, longest := "", -1
 		for m, path := range modules {
-			if (pattern == path || strings.HasPrefix(pattern, path+"/")) && len(path) > longest {
+			if moduleOwns(path, pattern) && len(path) > longest {
 				owner, longest = m, len(path)
 			}
 		}
@@ -645,7 +654,7 @@ func (b *Backend) SymbolFile(symbol string) (string, bool) {
 			return "", false
 		}
 		rel, err := filepath.Rel(b.dir, source.name)
-		if err != nil || strings.HasPrefix(rel, "..") {
+		if err != nil || !inTreeRel(rel) {
 			return "", false
 		}
 		return filepath.ToSlash(rel), true
@@ -789,7 +798,7 @@ const structuralPkg = "github.com/greatliontech/stipulator/stipulate/structural"
 
 func structuralAssertion(name string) bool {
 	switch name {
-	case "ImportAllowlist", "NoImport", "Implements", "ExportedData", "FunctionSignature":
+	case "ImportAllowlist", "NoImport", "Implements", "ExportedData", "ExportedDataWithMethods", "FunctionSignature":
 		return true
 	default:
 		return false
@@ -1156,13 +1165,20 @@ func (b *Backend) placedAt(fn *types.Func) string {
 	return " (the type information places it at " + b.site(owner, fn.Pos()) + ")"
 }
 
+// inTreeRel reports whether a filepath.Rel result stays inside the base
+// directory without mistaking an in-tree "..foo" component for a parent
+// traversal.
+func inTreeRel(rel string) bool {
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !strings.HasPrefix(rel, "../")
+}
+
 // site renders a position of a loaded package's file set as a
 // tree-relative file:line — the spelling every chain link and every
 // refusal carries; a position outside the tree keeps its own path.
 func (b *Backend) site(pkg *packages.Package, pos token.Pos) string {
 	p := pkg.Fset.PositionFor(pos, false)
 	name := p.Filename
-	if rel, err := filepath.Rel(b.dir, name); err == nil && rel != ".." && !strings.HasPrefix(rel, "../") {
+	if rel, err := filepath.Rel(b.dir, name); err == nil && inTreeRel(rel) {
 		name = filepath.ToSlash(rel)
 	}
 	return fmt.Sprintf("%s:%d", name, p.Line)
@@ -1208,73 +1224,6 @@ func (b *Backend) packageLoaded(sel, pkgPath string) bool {
 	return false
 }
 
-// staticCallees are the function objects a body's calls and names
-// resolve through the type information — a plain or qualified
-// identifier, a method selector, a generic instantiation unwrapped,
-// each to its declared origin at its site — with the calls the type
-// information could not resolve named beside them: an unresolved
-// callee is a body whose reach is unknown. A function the body names
-// as a value — passed, stored, or bound as a method value — is walked
-// as a callee, since the body may call it; a value that reaches the
-// body from elsewhere (a parameter, a field, a dependency's value) and
-// an interface method dispatch resolve to no declaration here.
-func (b *Backend) staticCallees(body ast.Node, pkg *packages.Package) walkedBody {
-	var out walkedBody
-	handled := map[*ast.Ident]bool{}
-	// resolve judges one identifier naming a function object: as a
-	// call's target (call), or as a value the body names.
-	resolve := func(id *ast.Ident, sel *ast.SelectorExpr, site string, call bool) {
-		switch obj := pkg.TypesInfo.Uses[id].(type) {
-		case *types.Func:
-			// An abstract method — the object of an interface dispatch —
-			// is outside the walk; the same object on a type parameter's
-			// or an untyped receiver, or under no selector at all, is a
-			// call resolving to no declaration: refused, never a serve
-			// and never a fault.
-			if sig, ok := obj.Type().(*types.Signature); ok && sig.Recv() != nil && types.IsInterface(sig.Recv().Type()) {
-				if sel == nil || !dispatchReceiver(pkg, sel.X) {
-					out.unresolved = append(out.unresolved, calleeRef{name: id.Name, site: site})
-				}
-				return
-			}
-			out.callees = append(out.callees, calleeRef{fn: obj.Origin(), site: site})
-		case nil:
-			if call && pkg.TypesInfo.Defs[id] == nil {
-				out.unresolved = append(out.unresolved, calleeRef{name: id.Name, site: site})
-			}
-		}
-	}
-	ast.Inspect(body, func(n ast.Node) bool {
-		switch x := n.(type) {
-		case *ast.CallExpr:
-			var id *ast.Ident
-			var sel *ast.SelectorExpr
-			switch f := callTarget(x).(type) {
-			case *ast.Ident:
-				id = f
-			case *ast.SelectorExpr:
-				id, sel = f.Sel, f
-			default:
-				return true
-			}
-			handled[id] = true
-			resolve(id, sel, b.site(pkg, x.Lparen), true)
-		case *ast.SelectorExpr:
-			if !handled[x.Sel] {
-				handled[x.Sel] = true
-				resolve(x.Sel, x, b.site(pkg, x.Sel.Pos()), false)
-			}
-		case *ast.Ident:
-			if !handled[x] {
-				handled[x] = true
-				resolve(x, nil, b.site(pkg, x.Pos()), false)
-			}
-		}
-		return true
-	})
-	return out
-}
-
 // dispatchReceiver reports whether a selector's receiver expression
 // is a typed interface value — a dispatch outside the walk. A type
 // parameter's receiver names the constraint's method, resolved to no
@@ -1291,54 +1240,115 @@ func dispatchReceiver(pkg *packages.Package, x ast.Expr) bool {
 	return !typeParam
 }
 
-// bodyFactsOf answers a declared function's body facts — whether it
-// directly drives a run-time-seeded runner, where, and its static
-// callees — memoized per selection and function; the caller holds
-// walkMu.
+// bodyFactsOf answers a declared function's body facts — its direct
+// classification signals, whether it drives or names a run-time-seeded
+// runner, where, and its static callees — in one AST pass memoized per
+// selection and function; the caller holds walkMu.
 func (b *Backend) bodyFactsOf(sel string, fn *types.Func, fd *ast.FuncDecl, pkg *packages.Package) bodyFacts {
+	if fn == nil {
+		return b.scanBody(fd.Body, pkg)
+	}
 	key := walkKey(sel, fn)
 	if facts, ok := b.bodies[key]; ok {
 		return facts
 	}
-	facts := bodyFacts{driverSite: b.driverSite(fd, pkg)}
-	facts.drives = facts.driverSite != ""
-	facts.callees = b.staticCallees(fd.Body, pkg)
+	facts := b.scanBody(fd.Body, pkg)
 	b.bodies[key] = facts
 	return facts
 }
 
-// driverSite is the site of the first call in a body that directly
-// drives a run-time-seeded runner, or of the first driver the body
-// names otherwise — as a value, or as a bare identifier through a dot
-// import — empty when none: the one body scan the walk and the explain
-// derivation read for the fact. The classification reads the qualified
-// call alone (direct-call by contract); serving reads every spelling.
-func (b *Backend) driverSite(fd *ast.FuncDecl, pkg *packages.Package) string {
-	site := ""
-	ast.Inspect(fd.Body, func(n ast.Node) bool {
-		if site != "" {
-			return false
+// scanBody derives every classification and seeding fact of a function
+// body in one AST walk: direct proof and property calls, near-miss
+// library references, the first driver call or reference site in any
+// spelling, and the resolved static callees and unresolved calls.
+func (b *Backend) scanBody(body ast.Node, pkg *packages.Package) bodyFacts {
+	var facts bodyFacts
+	if body == nil {
+		return facts
+	}
+	handled := map[*ast.Ident]bool{}
+	resolve := func(id *ast.Ident, sel *ast.SelectorExpr, site string, call bool) {
+		switch obj := pkg.TypesInfo.Uses[id].(type) {
+		case *types.Func:
+			if sig, ok := obj.Type().(*types.Signature); ok && sig.Recv() != nil && types.IsInterface(sig.Recv().Type()) {
+				if sel == nil || !dispatchReceiver(pkg, sel.X) {
+					facts.callees.unresolved = append(facts.callees.unresolved, calleeRef{name: id.Name, site: site})
+				}
+				return
+			}
+			facts.callees.callees = append(facts.callees.callees, calleeRef{fn: obj.Origin(), site: site})
+		case nil:
+			if call && pkg.TypesInfo.Defs[id] == nil {
+				facts.callees.unresolved = append(facts.callees.unresolved, calleeRef{name: id.Name, site: site})
+			}
 		}
+	}
+	ast.Inspect(body, func(n ast.Node) bool {
 		switch x := n.(type) {
 		case *ast.CallExpr:
-			if driverCall(pkg, x) {
-				site = b.site(pkg, x.Lparen)
-				return false
+			if sel, ok := callTarget(x).(*ast.SelectorExpr); ok {
+				if obj := pkg.TypesInfo.Uses[sel.Sel]; obj != nil && obj.Pkg() != nil && obj.Pkg().Path() == structuralPkg && structuralAssertion(obj.Name()) {
+					facts.proof = true
+				}
 			}
+			if driverCall(pkg, x) {
+				facts.property = true
+				if facts.driverSite == "" {
+					facts.driverSite = b.site(pkg, x.Lparen)
+				}
+			}
+			var id *ast.Ident
+			var sel *ast.SelectorExpr
+			switch f := callTarget(x).(type) {
+			case *ast.Ident:
+				id = f
+			case *ast.SelectorExpr:
+				id, sel = f.Sel, f
+			default:
+				return true
+			}
+			handled[id] = true
+			resolve(id, sel, b.site(pkg, x.Lparen), true)
 		case *ast.SelectorExpr:
-			if driverSelector(pkg, x) {
-				site = b.site(pkg, x.Sel.Pos())
-				return false
+			switch recognizedLibrary(pkg.TypesInfo.Uses[x.Sel]) {
+			case rapidPkg:
+				facts.rapidRef = true
+			case structuralPkg:
+				facts.structuralRef = true
+			case gopterPkg:
+				facts.gopterRef = true
+			case quickPkg:
+				facts.quickRef = true
+			}
+			if facts.driverSite == "" && driverSelector(pkg, x) {
+				facts.driverSite = b.site(pkg, x.Sel.Pos())
+			}
+			if !handled[x.Sel] {
+				handled[x.Sel] = true
+				resolve(x.Sel, x, b.site(pkg, x.Sel.Pos()), false)
 			}
 		case *ast.Ident:
-			if driverObject(pkg.TypesInfo.Uses[x]) {
-				site = b.site(pkg, x.Pos())
-				return false
+			if recognizedLibrary(pkg.TypesInfo.Uses[x]) != "" {
+				facts.dotImported = true
+			}
+			if facts.driverSite == "" && driverObject(pkg.TypesInfo.Uses[x]) {
+				facts.driverSite = b.site(pkg, x.Pos())
+			}
+			if !handled[x] {
+				handled[x] = true
+				resolve(x, nil, b.site(pkg, x.Pos()), false)
 			}
 		}
 		return true
 	})
-	return site
+	facts.drives = facts.driverSite != ""
+	return facts
+}
+
+// staticCallees returns a body's resolved static callees and unresolved
+// calls from the shared one-pass body scan.
+func (b *Backend) staticCallees(body ast.Node, pkg *packages.Package) walkedBody {
+	return b.scanBody(body, pkg).callees
 }
 
 // seededRefusal is the fail-closed serving refusal the walk raises where
@@ -1477,50 +1487,14 @@ func (b *Backend) classifyWitness(symbol string) witnessVerdict {
 	// plain function never runs.
 	fd, pkg, err := b.funcDecl(symbol)
 	if err == nil && fd.Body != nil && runnableWitness(fd, pkg) {
-		proof, property, rapidRef, structuralRef, gopterRef, quickRef, dotImported := false, false, false, false, false, false, false
-		// Every node is visited even after an assertion is seen: a
-		// proof body that also drives a runner records both facts, so
-		// the proof classification carries its seeding.
-		ast.Inspect(fd.Body, func(n ast.Node) bool {
-			if ident, ok := n.(*ast.Ident); ok {
-				// A dot-imported use resolves the bare ident to the
-				// library: named as its own near-miss, since the
-				// classifying call must be a qualified selector.
-				if recognizedLibrary(pkg.TypesInfo.Uses[ident]) != "" {
-					dotImported = true
-				}
-			}
-			if sel, ok := n.(*ast.SelectorExpr); ok {
-				// A reference without the classifying call is the
-				// diagnosable near-miss: record which library the body
-				// touches.
-				switch recognizedLibrary(pkg.TypesInfo.Uses[sel.Sel]) {
-				case rapidPkg:
-					rapidRef = true
-				case structuralPkg:
-					structuralRef = true
-				case gopterPkg:
-					gopterRef = true
-				case quickPkg:
-					quickRef = true
-				}
-			}
-			call, ok := n.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			if sel, ok := callTarget(call).(*ast.SelectorExpr); ok {
-				if obj := pkg.TypesInfo.Uses[sel.Sel]; obj != nil && obj.Pkg() != nil && obj.Pkg().Path() == structuralPkg && structuralAssertion(obj.Name()) {
-					proof = true
-				}
-			}
-			// The one gopter check driver counts; Property and generator
-			// calls register without running.
-			if driverCall(pkg, call) {
-				property = true
-			}
-			return true
-		})
+		sel := b.selectionOf(pkg)
+		root, _ := pkg.TypesInfo.Defs[fd.Name].(*types.Func)
+		b.walkMu.Lock()
+		b.initWalk()
+		facts := b.bodyFactsOf(sel, root, fd, pkg)
+		b.walkMu.Unlock()
+		proof, property := facts.proof, facts.property
+		rapidRef, structuralRef, gopterRef, quickRef, dotImported := facts.rapidRef, facts.structuralRef, facts.gopterRef, facts.quickRef, facts.dotImported
 		// Serving is one answer for the symbol across every view that
 		// holds it — a record serves only the view that produced it,
 		// but the refusal is a property of the symbol — so the seeding

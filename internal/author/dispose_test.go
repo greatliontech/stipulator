@@ -247,6 +247,90 @@ func TestEditorialNamesTheClauseEachClaimNowDenotes(t *testing.T) {
 	if _, _, err := Editorial(fsys, "REQ-au-a"); err == nil || !strings.Contains(err.Error(), "names clause `alpha`, which REQ-au-a no longer declares") {
 		t.Fatalf("dangling clause claim re-consented: %v", err)
 	}
+	// A hand-written empty clause_label names the record file, never a
+	// wide unbind without --clause.
+	fsys["specs/a.md"] = &fstest.MapFile{Data: []byte(newDoc)}
+	fsys[".stipulator/bindings/au.textproto"] = &fstest.MapFile{Data: []byte(
+		"bindings {\n  requirement_id: \"REQ-au-a\"\n  content_hash: \"stale\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_TESTS\n  clause_label: \"\"\n}\n")}
+	if _, _, err := Editorial(fsys, "REQ-au-a"); err == nil || !strings.Contains(err.Error(), "malformed empty clause_label in .stipulator/bindings/au.textproto") || strings.Contains(err.Error(), "stipulator unbind") {
+		t.Fatalf("empty clause_label editorial error: %v", err)
+	}
+	// An unscoped tests claim on a clause-structured requirement refuses
+	// editorial re-consent unless the manifest opts out.
+	fsys[".stipulator/bindings/au.textproto"] = &fstest.MapFile{Data: []byte(
+		"bindings {\n  requirement_id: \"REQ-au-a\"\n  content_hash: \"stale\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_TESTS\n}\n")}
+	if _, _, err := Editorial(fsys, "REQ-au-a"); err == nil || !strings.Contains(err.Error(), "has no clause scope, and REQ-au-a declares clauses") {
+		t.Fatalf("unscoped tests claim re-consented on clause-structured requirement: %v", err)
+	}
+}
+
+// Supersede preserves clause scope when the successor declares the
+// clause, deduplicates by resolved clause identity, refuses when the
+// successor cannot represent the clause or would receive an unscoped
+// witness claim on a clause-structured requirement, and places carried
+// bindings according to the manifest's binding_layout
+// (REQ-change-split-merge, REQ-evidence-clause-claim).
+//
+//gofresh:pure
+func TestSupersedeCarriesClausesAndRespectsLayout(t *testing.T) {
+	stipulate.Covers(t, "REQ-change-split-merge", "REQ-evidence-clause-claim")
+	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST hold:\n\n- **alpha** first\n- second\n"
+	succDoc := "# T\n\n**REQ-au-a1** (behavior, supersedes REQ-au-a): It MUST hold:\n\n- **alpha** first\n- second\n"
+	fsys := testFS(map[string]string{
+		".stipulator/manifest.textproto": "include: \"specs/**/*.md\"\nbinding_layout: BINDING_LAYOUT_PER_REQUIREMENT\n",
+		"specs/a.md":                     succDoc,
+		".stipulator/bindings/au-a.textproto": "" +
+			"bindings { requirement_id: \"REQ-au-a\" content_hash: \"c1\" backend: \"go\" symbol: \"example.com/p.TestA\" role: BINDING_ROLE_TESTS clause_label: \"alpha\" }\n" +
+			"bindings { requirement_id: \"REQ-au-a\" content_hash: \"c1\" backend: \"go\" symbol: \"example.com/p.TestA\" role: BINDING_ROLE_TESTS clause_ordinal: 1 }\n" +
+			"bindings { requirement_id: \"REQ-au-a\" content_hash: \"c1\" backend: \"go\" symbol: \"example.com/p.TestA\" role: BINDING_ROLE_TESTS clause_ordinal: 2 }\n",
+	})
+	_ = oldDoc
+	ups, err := Supersede(fsys, []string{"REQ-au-a"}, []string{"REQ-au-a1"}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var carriedFile *Update
+	for i := range ups {
+		if ups[i].Path == ".stipulator/bindings/au-a1.textproto" {
+			carriedFile = &ups[i]
+		}
+	}
+	if carriedFile == nil {
+		t.Fatalf("expected carried bindings at .stipulator/bindings/au-a1.textproto, got %+v", ups)
+	}
+	set := &stipulatorv1.BindingSet{}
+	if err := prototext.Unmarshal(carriedFile.Content, set); err != nil {
+		t.Fatal(err)
+	}
+	// clause_label "alpha" and clause_ordinal 1 resolve to the same
+	// successor clause (ordinal 1), so they deduplicate to 1 binding,
+	// while clause_ordinal 2 stays distinct: 2 bindings total.
+	if len(set.GetBindings()) != 2 {
+		t.Fatalf("carried bindings = %d, want 2:\n%s", len(set.GetBindings()), carriedFile.Content)
+	}
+	if set.GetBindings()[0].GetClauseLabel() != "alpha" || set.GetBindings()[1].GetClauseOrdinal() != 2 {
+		t.Fatalf("carried clauses lost scope: %+v", set.GetBindings())
+	}
+
+	// Missing clause on successor refuses the carry.
+	missingSucc := "# T\n\n**REQ-au-a1** (behavior, supersedes REQ-au-a): It MUST hold:\n\n- only one\n"
+	missingFS := testFS(map[string]string{
+		"specs/a.md":                       missingSucc,
+		".stipulator/bindings/au.textproto": "bindings { requirement_id: \"REQ-au-a\" backend: \"go\" symbol: \"example.com/p.TestA\" role: BINDING_ROLE_TESTS clause_label: \"alpha\" }\n",
+	})
+	if _, err := Supersede(missingFS, []string{"REQ-au-a"}, []string{"REQ-au-a1"}, false); err == nil || !strings.Contains(err.Error(), "REQ-au-a1 declares no clause `alpha`") {
+		t.Fatalf("missing successor clause accepted: %v", err)
+	}
+
+	// Carrying an unscoped tests binding onto a clause-structured
+	// successor refuses by default.
+	unscopedFS := testFS(map[string]string{
+		"specs/a.md":                       succDoc,
+		".stipulator/bindings/au.textproto": "bindings { requirement_id: \"REQ-au-a\" backend: \"go\" symbol: \"example.com/p.TestA\" role: BINDING_ROLE_TESTS }\n",
+	})
+	if _, err := Supersede(unscopedFS, []string{"REQ-au-a"}, []string{"REQ-au-a1"}, false); err == nil || !strings.Contains(err.Error(), "cannot carry unscoped tests binding") {
+		t.Fatalf("unscoped tests binding carried to clause-structured successor: %v", err)
+	}
 }
 
 // Every authoring verb stamps the consent-source pin beside the content
@@ -567,6 +651,33 @@ func TestSupersedeFollowsTheDeclaredEdges(t *testing.T) {
 	// A named source no named successor declares refuses, naming it.
 	if _, err := Supersede(disposeFS(t, oldDoc, chain, nil), []string{"REQ-au-a", "REQ-au-b"}, []string{"REQ-au-d"}, true); err == nil || !strings.Contains(err.Error(), "no named successor declares `supersedes REQ-au-a`") {
 		t.Fatalf("undeclared source: %v", err)
+	}
+	// Under BINDING_LAYOUT_PER_REQUIREMENT, merging two requirements from
+	// distinct per-requirement files that share a bound symbol deduplicates
+	// the carried claim in the successor's per-requirement file.
+	perReqFS := disposeFS(t, oldDoc, "# T\n\n**REQ-au-m** (behavior, supersedes REQ-au-a REQ-au-b): It MUST merge.\n", map[string]string{
+		".stipulator/manifest.textproto":      "include: \"specs/**/*.md\"\nbinding_layout: BINDING_LAYOUT_PER_REQUIREMENT\n",
+		".stipulator/bindings/au-a.textproto": "bindings {\n  requirement_id: \"REQ-au-a\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n}\n",
+		".stipulator/bindings/au-b.textproto": "bindings {\n  requirement_id: \"REQ-au-b\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n}\n",
+	})
+	delete(perReqFS, ".stipulator/bindings/au.textproto")
+	perReqUps, err := Supersede(perReqFS, []string{"REQ-au-a", "REQ-au-b"}, []string{"REQ-au-m"}, false)
+	if err != nil {
+		t.Fatalf("per-requirement merge supersede: %v", err)
+	}
+	for _, up := range perReqUps {
+		if up.Content == nil {
+			delete(perReqFS, up.Path)
+			continue
+		}
+		perReqFS[up.Path] = &fstest.MapFile{Data: up.Content}
+	}
+	perReqStore, err := records.Load(perReqFS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(perReqStore.Bindings) != 1 || perReqStore.Bindings[0].Path != ".stipulator/bindings/au-m.textproto" || len(perReqStore.Bindings[0].Set.GetBindings()) != 1 {
+		t.Fatalf("expected 1 deduplicated binding in au-m.textproto, got %+v", perReqStore.Bindings)
 	}
 }
 

@@ -46,6 +46,7 @@ func (r *Report) Proto() *stipulatorv1.VerifyReport {
 	out.SetOutsidePolicy(int32(r.OutsidePolicy))
 	out.SetResolutionNotices(r.ResolutionNotices)
 	out.SetWitnessDiagnostics(r.Diagnostics)
+	out.SetTiming(r.Timing)
 	// The report's tally rides the wire once, so a summary built over
 	// the wire message reads the counts the report derived rather than
 	// re-deriving them from the rows (Report.Tally is the one

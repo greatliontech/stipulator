@@ -983,8 +983,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution-no-merge"
-  content_hash: "d3c2d38fc42caaf67759296b753443fc7dea9b124d04b40827812d1c70aa27a3"
-  source_hash: "a2ec916f425c59e059249e6e4ad87a521a0414861b15e79931a67439082a27cd"
+  content_hash: "cc2148fdf44da5211d08fcb6e8613c981ecc02c41fa84b851fc5686b585896e9"
+  source_hash: "dc4311a24cb671e6a85b582ad85c12c7fd088305455731bd9e638a51536ca136"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoExecuteObservationOwnership"
   role: BINDING_ROLE_TESTS
@@ -993,8 +993,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-policy-attribution-no-merge"
-  content_hash: "d3c2d38fc42caaf67759296b753443fc7dea9b124d04b40827812d1c70aa27a3"
-  source_hash: "a2ec916f425c59e059249e6e4ad87a521a0414861b15e79931a67439082a27cd"
+  content_hash: "cc2148fdf44da5211d08fcb6e8613c981ecc02c41fa84b851fc5686b585896e9"
+  source_hash: "dc4311a24cb671e6a85b582ad85c12c7fd088305455731bd9e638a51536ca136"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestProducersOfOffersTheGroupsOwnLegsInMergeOrder"
   role: BINDING_ROLE_TESTS

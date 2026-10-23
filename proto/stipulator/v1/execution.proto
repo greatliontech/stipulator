@@ -188,6 +188,8 @@ message ExecutionReport {
   // Per-process runtime observations, one per launched process, each
   // bound to its producer.
   repeated Observation observations = 5;
+  // Structured package and per-test execution timing diagnostics.
+  ExecutionTimingDiagnostics timing = 6;
 }
 
 // Phase names the stage a long-running operation is in.

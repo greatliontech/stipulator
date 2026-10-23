@@ -139,7 +139,7 @@ func execute(ctx context.Context, args []string, sink func(*stipulatorv1.Progres
 type dimWriter struct{ w io.Writer }
 
 func (d dimWriter) Write(p []byte) (int, error) {
-	if _, err := io.WriteString(d.w, dim(strings.TrimRight(string(p), "\n"))+"\n"); err != nil {
+	if _, err := io.WriteString(d.w, styleFor(d.w).dim(strings.TrimRight(string(p), "\n"))+"\n"); err != nil {
 		return 0, err
 	}
 	return len(p), nil
@@ -217,8 +217,9 @@ func mustPrepare(w io.Writer, dir string) (*check.Prepared, error) {
 // one rendering of a problem list on this face, whether it refuses the
 // verb or rides a report.
 func renderProblems(problems []verify.Problem) {
+	errs := errStyle()
 	for _, p := range problems {
-		fmt.Fprintln(os.Stderr, red(p.String()))
+		fmt.Fprintln(os.Stderr, errs.red(p.String()))
 	}
 }
 
@@ -227,8 +228,9 @@ func renderProblems(problems []verify.Problem) {
 // (REQ-check-policy-notices) and the serving path's account on every verb that
 // builds the serving form (REQ-evidence-resolution-freshness-account).
 func renderNotices(w io.Writer, notices []string) {
+	st := styleFor(w)
 	for _, n := range notices {
-		fmt.Fprintln(w, dim(n))
+		fmt.Fprintln(w, st.dim(n))
 	}
 }
 

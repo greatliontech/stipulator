@@ -13,6 +13,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/remedy"
 	"github.com/greatliontech/stipulator/internal/verbcore"
+	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/verifyrun"
 )
 
@@ -139,6 +140,7 @@ func gapCmd() *cobra.Command {
 func gapListRun(ctx context.Context) error {
 	prepared, rep, cov, err := verifyrun.Gaps(ctx, cliDeps(os.Stderr))
 	if err != nil {
+		renderNotices(os.Stderr, verify.NoticesOf(err))
 		return withRecordPath(err)
 	}
 	spec, store := prepared.Spec, prepared.Store
@@ -147,7 +149,7 @@ func gapListRun(ctx context.Context) error {
 		return nil
 	}
 	if len(rep.Problems) > 0 {
-		fmt.Fprintln(os.Stderr, yellow(verifyrun.MisreportCaveat(len(rep.Problems), verifyrun.CaveatEvaluatedStates)))
+		fmt.Fprintln(os.Stderr, errStyle().yellow(verifyrun.MisreportCaveat(len(rep.Problems), verifyrun.CaveatEvaluatedStates)))
 	}
 	// The evaluation's serving account
 	// (REQ-evidence-resolution-freshness-account).
@@ -176,5 +178,5 @@ func gapListLine(g *stipulatorv1.GapReport) string {
 	if g.GetStaleConsent() {
 		consent = " consent-stale"
 	}
-	return fmt.Sprintf("%-9s %s  %s%s%s  %s", coverage.GapStateWord(g.GetState()), g.GetRequirementId(), g.GetCondition(), flags, consent, dim(g.GetReason()))
+	return fmt.Sprintf("%-9s %s  %s%s%s  %s", coverage.GapStateWord(g.GetState()), g.GetRequirementId(), g.GetCondition(), flags, consent, outStyle().dim(g.GetReason()))
 }

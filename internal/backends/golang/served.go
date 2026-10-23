@@ -89,7 +89,7 @@ type Served struct {
 	// reasons names, per recorded symbol that did not serve, why: the
 	// freshness verdict's reason, or the vanishing — the operator's
 	// account of a typed resolution.
-	reasons  map[string]string
+	reasons  map[string]resolutionReason
 	degraded []string
 	// published is the publish's account per selection key: the records
 	// installed, the symbols skipped because their closure moved between
@@ -213,10 +213,10 @@ func NewServed(ctx context.Context, dir string, symbols []string) (*Served, erro
 			closed, ok := closing[name]
 			if !ok {
 				delete(s.served, name)
-				s.reasons[name] = "no closing source certificate"
+				s.reasons[name] = resolutionNoClosingCertificate.with("")
 			} else if sourceCertificateMoved(s.checkingCertificates[name], closed) {
 				delete(s.served, name)
-				s.reasons[name] = "source dependencies moved during serving"
+				s.reasons[name] = resolutionSourceMovedDuringServing.with("")
 			}
 		}
 		if err != nil {
@@ -271,7 +271,7 @@ func newServed(ctx context.Context, dir string) (*Served, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Served{sample: newToolchainSample(), ctx: ctx, dir: abs, served: map[string]resolutioncache.Record{}, answers: map[string]childAnswer{}, pending: map[string][]string{}, reasons: map[string]string{}}, nil
+	return &Served{sample: newToolchainSample(), ctx: ctx, dir: abs, served: map[string]resolutioncache.Record{}, answers: map[string]childAnswer{}, pending: map[string][]string{}, reasons: map[string]resolutionReason{}}, nil
 }
 
 func (s *Served) selection(key string) (buildSelection, bool) {
@@ -460,7 +460,7 @@ func (s *Served) serveSelection(endpoint *selectionEndpoint, key string, recs []
 			gone := map[gofresh.Subject]bool{}
 			for _, subject := range unknown.Subjects {
 				gone[subject] = true
-				s.reasons[bySubject[subject].Symbol] = "no longer declared in the selected source"
+				s.reasons[bySubject[subject].Symbol] = resolutionNoLongerDeclared.with("")
 			}
 			if len(gone) == 0 {
 				s.degraded = append(s.degraded, fmt.Sprintf("selection %q: %v", key, err))
@@ -498,19 +498,19 @@ func (s *Served) serveSelection(endpoint *selectionEndpoint, key string, recs []
 		rec := bySubject[subject]
 		certificate, ok := s.checkingCertificates[rec.Symbol]
 		if !ok {
-			s.reasons[rec.Symbol] = "no current source certificate"
+			s.reasons[rec.Symbol] = resolutionNoCurrentCertificate.with("")
 			continue
 		}
 		if sourceCertificateMoved(rec.Certificate, certificate) {
-			s.reasons[rec.Symbol] = "source dependencies"
+			s.reasons[rec.Symbol] = resolutionSourceDependencies.with("")
 			continue
 		}
 		fp, captured := current[subject]
 		if !captured {
-			s.reasons[rec.Symbol] = "no current capture"
+			s.reasons[rec.Symbol] = resolutionNoCurrentCapture.with("")
 			continue
 		}
-		if why := closureMoved(rec.Fingerprint, fp); why != "" {
+		if why := closureMovedReason(rec.Fingerprint, fp); why != (resolutionReason{}) {
 			s.reasons[rec.Symbol] = why
 			continue
 		}
@@ -518,34 +518,37 @@ func (s *Served) serveSelection(endpoint *selectionEndpoint, key string, recs []
 	}
 }
 
-// closureMoved names the native source component that differs between a
-// record and the current capture, or "" when those components agree.
-// The complete certificate is judged separately. The native comparison
-// includes derivation, content and admission identities beside the
-// maximal (core) closure, the
-// subject package's test-variant compartment — the core excludes the
-// package's own test-only declarations, and a witness's class and
-// serving refusal are functions of its own body, which lives exactly
+// closureMovedReason names the native source component that differs between a
+// record and the current capture, or the zero resolutionReason when those
+// components agree. The complete certificate is judged separately. The native
+// comparison includes derivation, content and admission identities beside the
+// maximal (core) closure, the subject package's test-variant compartment —
+// the core excludes the package's own test-only declarations, and a witness's
+// class and serving refusal are functions of its own body, which lives exactly
 // there — then the toolchain and the build configuration. An empty
 // compartment digest on either side fails closed.
-func closureMoved(recorded, current gofresh.Fingerprint) string {
+func closureMovedReason(recorded, current gofresh.Fingerprint) resolutionReason {
 	switch {
 	case recorded.MaximalClosure != current.MaximalClosure:
-		return "closure"
+		return resolutionClosure
 	case recorded.TestVariantClosure == "" || recorded.TestVariantClosure != current.TestVariantClosure:
-		return "test variants"
+		return resolutionTestVariants
 	case recorded.ClosureStrategy == "" || recorded.ClosureStrategy != current.ClosureStrategy:
-		return "closure derivation"
+		return resolutionClosureDerivation
 	case recorded.ToolchainContent == "" || recorded.ToolchainContent != current.ToolchainContent:
-		return "toolchain content"
+		return resolutionToolchainContent
 	case recorded.AdmissionPolicy == "" || recorded.AdmissionPolicy != current.AdmissionPolicy:
-		return "admission policy"
+		return resolutionAdmissionPolicy
 	case recorded.Guards.Toolchain != current.Guards.Toolchain:
-		return "toolchain"
+		return resolutionToolchain
 	case recorded.Guards.BuildConfig != current.Guards.BuildConfig:
-		return "build configuration"
+		return resolutionBuildConfig
 	}
-	return ""
+	return resolutionReason{}
+}
+
+func closureMoved(recorded, current gofresh.Fingerprint) string {
+	return closureMovedReason(recorded, current).String()
 }
 
 // Notices is the served path's account for a result: one line for the
@@ -577,7 +580,7 @@ func (s *Served) Notices() []string {
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		out = append(out, fmt.Sprintf("resolution typed: %s: %s", k, s.reasons[k]))
+		out = append(out, fmt.Sprintf("resolution typed: %s: %s", k, s.reasons[k].String()))
 	}
 	return out
 }
@@ -587,7 +590,7 @@ func (s *Served) Notices() []string {
 func (s *Served) Reasons() map[string]string {
 	out := make(map[string]string, len(s.reasons))
 	for k, v := range s.reasons {
-		out[k] = v
+		out[k] = v.String()
 	}
 	return out
 }
@@ -972,7 +975,7 @@ func (s *Served) publishSelection(key string, symbols []string) {
 			account.unopened = append(account.unopened, symbol)
 			continue
 		}
-		if closureMoved(before, fp) != "" {
+		if closureMovedReason(before, fp) != (resolutionReason{}) {
 			account.moved = append(account.moved, symbol)
 			continue
 		}

@@ -66,7 +66,7 @@ func TestPropVerbsWriteOnlyRecords(t *testing.T) {
 		switch rapid.SampledFrom([]string{"bind", "gap", "editorial", "retire", "unbind", "gapretract", "gapfire", "gapprunedangling"}).Draw(rt, "verb") {
 		case "bind":
 			role := stipulatorv1.BindingRole_BINDING_ROLE_IMPLEMENTS
-			if rapid.Bool().Draw(rt, "roleTests") {
+			if (len(c.Clauses[target]) == 0 || clause != "") && rapid.Bool().Draw(rt, "roleTests") {
 				role = stipulatorv1.BindingRole_BINDING_ROLE_TESTS
 			}
 			run = func(fsys fstest.MapFS) ([]Update, error) {

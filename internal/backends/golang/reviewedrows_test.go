@@ -98,10 +98,10 @@ func TestReviewedDeclarationsRecordAndWithdraw(t *testing.T) {
 	if !slices.Equal(rec.ObservationExclusions, []string{"a", "z"}) || !slices.Equal(rec.ObservationNamespaces, wantNS) {
 		t.Fatalf("recorded sets = %+v", rec)
 	}
-	if why := declarations.refusal(rec); why != "" {
+	if why := declarations.refusal(rec); why.String() != "" {
 		t.Fatalf("own record refused: %s", why)
 	}
-	if why := declarations.refusal(witnesscache.Record{}); why != "" {
+	if why := declarations.refusal(witnesscache.Record{}); why.String() != "" {
 		t.Fatalf("historical empty sets refused: %s", why)
 	}
 	var again witnesscache.Record
@@ -128,7 +128,7 @@ func TestReviewedDeclarationsRecordAndWithdraw(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			d := declarationsFor(tt.g)
-			if got := d.refusal(again); got != tt.why {
+			if got := d.refusal(again).String(); got != tt.why {
 				t.Fatalf("refusal = %q, want %q", got, tt.why)
 			}
 		})
@@ -141,7 +141,7 @@ func TestReviewedDeclarationsExactRowsNotCoverage(t *testing.T) {
 		{ObservationExclusions: []string{"parent/child"}},
 		{ObservationNamespaces: []witnesscache.ScratchNamespace{{Dir: ".", Pattern: "run-*"}}},
 	} {
-		if d.refusal(rec) == "" {
+		if d.refusal(rec) == (executedReason{}) {
 			t.Fatalf("coverage substituted for exact identity: %+v", rec)
 		}
 	}
@@ -153,14 +153,15 @@ func TestReviewedDeclarationThirdTypeUsesSameCollection(t *testing.T) {
 	field := func(r *witnesscache.Record) *[]verify.Registration { return &r.Regs }
 	compare := func(a, b verify.Registration) int { return strings.Compare(a.Requirement, b.Requirement) }
 	rows := []verify.Registration{{Requirement: "R-b"}, {Requirement: "R-a"}}
-	d := append(declarationsFor(&captureGroup{}), newRecordedSet(rows, compare, field, "third withdrawn"))
+	thirdReason := executedWithdrawnExclusion.with(" (third)")
+	d := append(declarationsFor(&captureGroup{}), newRecordedSet(rows, compare, field, thirdReason))
 	var rec witnesscache.Record
 	d.recordInto(&rec)
-	if len(rec.Regs) != 2 || rec.Regs[0].Requirement != "R-a" || d.refusal(rec) != "" {
+	if len(rec.Regs) != 2 || rec.Regs[0].Requirement != "R-a" || d.refusal(rec) != (executedReason{}) {
 		t.Fatal("third family did not record and gate")
 	}
-	withdrawn := append(declarationsFor(&captureGroup{}), newRecordedSet(rows[:1], compare, field, "third withdrawn"))
-	if why := withdrawn.refusal(rec); why != "third withdrawn" {
+	withdrawn := append(declarationsFor(&captureGroup{}), newRecordedSet(rows[:1], compare, field, thirdReason))
+	if why := withdrawn.refusal(rec); why != thirdReason {
 		t.Fatalf("third-family refusal = %q", why)
 	}
 }
@@ -238,12 +239,12 @@ func TestReviewedDeclarationsNeverUnionAcrossGroups(t *testing.T) {
 		}
 	}
 	for i, g := range d.groups {
-		if declarationsFor(g).refusal(records[1-i]) != refusedWithdrawnExclusion {
+		if declarationsFor(g).refusal(records[1-i]).String() != refusedWithdrawnExclusion {
 			t.Fatal("another group's declaration licensed this group")
 		}
 		other := records[1-i]
 		other.ObservationExclusions = nil
-		if declarationsFor(g).refusal(other) != refusedWithdrawnNamespace {
+		if declarationsFor(g).refusal(other).String() != refusedWithdrawnNamespace {
 			t.Fatal("another group's namespace licensed this group")
 		}
 	}

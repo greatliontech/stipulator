@@ -472,3 +472,22 @@ func TestGoWitnessClassVerdictNamesLoadFailure(t *testing.T) {
 		t.Error("verdict derived from the absent body")
 	}
 }
+
+// TestInTreeRelAndWorkspaceMembers pins the shared in-tree relative-path
+// predicate and workspace member discovery across SymbolFile and workspace
+// loading.
+//
+//gofresh:pure
+func TestInTreeRelAndWorkspaceMembers(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-symbol-syntax")
+	for _, rel := range []string{".", "pkg/file.go", "..foo/bar.go", "...triple/file.go"} {
+		if !inTreeRel(rel) {
+			t.Errorf("inTreeRel(%q) = false, want true", rel)
+		}
+	}
+	for _, rel := range []string{"..", "../outside.go"} {
+		if inTreeRel(rel) {
+			t.Errorf("inTreeRel(%q) = true, want false", rel)
+		}
+	}
+}

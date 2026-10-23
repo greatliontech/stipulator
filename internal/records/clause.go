@@ -132,7 +132,7 @@ func ResolveClause(req *stipulatorv1.Requirement, b *stipulatorv1.Binding) (*sti
 	case b.HasClauseLabel():
 		// An empty label names no clause: a requirement's unlabeled
 		// clauses are reached by ordinal alone.
-		if b.GetClauseLabel() == "" {
+		if strings.TrimSpace(b.GetClauseLabel()) == "" {
 			return nil, false
 		}
 		for _, c := range req.GetClauses() {
@@ -143,6 +143,17 @@ func ResolveClause(req *stipulatorv1.Requirement, b *stipulatorv1.Binding) (*sti
 		return nil, false
 	}
 	return nil, true
+}
+
+// RequiresClauseScope reports whether a binding of role on req must name a
+// payload clause under the corpus's whole-claim rule (REQ-evidence-clause-claim):
+// tests- and proves-role claims on clause-structured requirements must name a
+// clause unless the manifest opts out; implements-role claims remain whole.
+func RequiresClauseScope(req *stipulatorv1.Requirement, role stipulatorv1.BindingRole, allowWhole bool) bool {
+	if allowWhole || len(req.GetClauses()) == 0 {
+		return false
+	}
+	return role == stipulatorv1.BindingRole_BINDING_ROLE_TESTS || role == stipulatorv1.BindingRole_BINDING_ROLE_PROVES
 }
 
 // ClauseHead is the one spelling of a RESOLVED clause's name: "clause 3

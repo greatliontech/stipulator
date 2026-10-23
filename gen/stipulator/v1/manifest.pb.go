@@ -20,6 +20,55 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// BindingLayout selects the file placement rule for binding records.
+type BindingLayout int32
+
+const (
+	BindingLayout_BINDING_LAYOUT_UNSPECIFIED BindingLayout = 0
+	// Group bindings by the requirement identifier's second hyphen segment:
+	// `.stipulator/bindings/<second-segment>.textproto` (the default).
+	BindingLayout_BINDING_LAYOUT_SEGMENT BindingLayout = 1
+	// One file per requirement, derived like gap and attestation records:
+	// `.stipulator/bindings/<id-lowercased-without-req->.textproto`.
+	BindingLayout_BINDING_LAYOUT_PER_REQUIREMENT BindingLayout = 2
+)
+
+// Enum value maps for BindingLayout.
+var (
+	BindingLayout_name = map[int32]string{
+		0: "BINDING_LAYOUT_UNSPECIFIED",
+		1: "BINDING_LAYOUT_SEGMENT",
+		2: "BINDING_LAYOUT_PER_REQUIREMENT",
+	}
+	BindingLayout_value = map[string]int32{
+		"BINDING_LAYOUT_UNSPECIFIED":     0,
+		"BINDING_LAYOUT_SEGMENT":         1,
+		"BINDING_LAYOUT_PER_REQUIREMENT": 2,
+	}
+)
+
+func (x BindingLayout) Enum() *BindingLayout {
+	p := new(BindingLayout)
+	*p = x
+	return p
+}
+
+func (x BindingLayout) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (BindingLayout) Descriptor() protoreflect.EnumDescriptor {
+	return file_stipulator_v1_manifest_proto_enumTypes[0].Descriptor()
+}
+
+func (BindingLayout) Type() protoreflect.EnumType {
+	return &file_stipulator_v1_manifest_proto_enumTypes[0]
+}
+
+func (x BindingLayout) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
 // MinimumEvidence names a satisfaction set for one policy cell. The sets
 // are fixed, not a ladder: an analyzer proof does not demonstrate runtime
 // behavior, so WITNESS deliberately excludes it.
@@ -81,11 +130,11 @@ func (x MinimumEvidence) String() string {
 }
 
 func (MinimumEvidence) Descriptor() protoreflect.EnumDescriptor {
-	return file_stipulator_v1_manifest_proto_enumTypes[0].Descriptor()
+	return file_stipulator_v1_manifest_proto_enumTypes[1].Descriptor()
 }
 
 func (MinimumEvidence) Type() protoreflect.EnumType {
-	return &file_stipulator_v1_manifest_proto_enumTypes[0]
+	return &file_stipulator_v1_manifest_proto_enumTypes[1]
 }
 
 func (x MinimumEvidence) Number() protoreflect.EnumNumber {
@@ -96,12 +145,16 @@ func (x MinimumEvidence) Number() protoreflect.EnumNumber {
 // stored as textproto in the file `stipulator.textproto` at the repository
 // root; a repository without one is not a stipulator repository.
 type Manifest struct {
-	state               protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_TermLint *TermLint              `protobuf:"bytes,3,opt,name=term_lint,json=termLint"`
-	xxx_hidden_Include  []string               `protobuf:"bytes,1,rep,name=include"`
-	xxx_hidden_Policy   *[]*PolicyOverride     `protobuf:"bytes,2,rep,name=policy"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	state                             protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_TermLint               *TermLint              `protobuf:"bytes,3,opt,name=term_lint,json=termLint"`
+	xxx_hidden_Include                []string               `protobuf:"bytes,1,rep,name=include"`
+	xxx_hidden_Policy                 *[]*PolicyOverride     `protobuf:"bytes,2,rep,name=policy"`
+	xxx_hidden_BindingLayout          BindingLayout          `protobuf:"varint,4,opt,name=binding_layout,json=bindingLayout,enum=stipulator.v1.BindingLayout"`
+	xxx_hidden_AllowWholeClauseClaims bool                   `protobuf:"varint,5,opt,name=allow_whole_clause_claims,json=allowWholeClauseClaims"`
+	XXX_raceDetectHookData            protoimpl.RaceDetectHookData
+	XXX_presence                      [1]uint32
+	unknownFields                     protoimpl.UnknownFields
+	sizeCache                         protoimpl.SizeCache
 }
 
 func (x *Manifest) Reset() {
@@ -152,6 +205,22 @@ func (x *Manifest) GetPolicy() []*PolicyOverride {
 	return nil
 }
 
+func (x *Manifest) GetBindingLayout() BindingLayout {
+	if x != nil {
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 3) {
+			return x.xxx_hidden_BindingLayout
+		}
+	}
+	return BindingLayout_BINDING_LAYOUT_UNSPECIFIED
+}
+
+func (x *Manifest) GetAllowWholeClauseClaims() bool {
+	if x != nil {
+		return x.xxx_hidden_AllowWholeClauseClaims
+	}
+	return false
+}
+
 func (x *Manifest) SetTermLint(v *TermLint) {
 	x.xxx_hidden_TermLint = v
 }
@@ -164,6 +233,16 @@ func (x *Manifest) SetPolicy(v []*PolicyOverride) {
 	x.xxx_hidden_Policy = &v
 }
 
+func (x *Manifest) SetBindingLayout(v BindingLayout) {
+	x.xxx_hidden_BindingLayout = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 5)
+}
+
+func (x *Manifest) SetAllowWholeClauseClaims(v bool) {
+	x.xxx_hidden_AllowWholeClauseClaims = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 5)
+}
+
 func (x *Manifest) HasTermLint() bool {
 	if x == nil {
 		return false
@@ -171,8 +250,32 @@ func (x *Manifest) HasTermLint() bool {
 	return x.xxx_hidden_TermLint != nil
 }
 
+func (x *Manifest) HasBindingLayout() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *Manifest) HasAllowWholeClauseClaims() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
 func (x *Manifest) ClearTermLint() {
 	x.xxx_hidden_TermLint = nil
+}
+
+func (x *Manifest) ClearBindingLayout() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_BindingLayout = BindingLayout_BINDING_LAYOUT_UNSPECIFIED
+}
+
+func (x *Manifest) ClearAllowWholeClauseClaims() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_AllowWholeClauseClaims = false
 }
 
 type Manifest_builder struct {
@@ -196,6 +299,15 @@ type Manifest_builder struct {
 	// MAY cell replaces the default unbound-MAY-exempt rule too: unbound
 	// MAY requirements on that cell then read uncovered, not exempt.
 	Policy []*PolicyOverride
+	// BindingLayout selects how authoring operations (bind and supersede)
+	// derive target binding files under `.stipulator/bindings/`.
+	BindingLayout *BindingLayout
+	// AllowWholeClauseClaims opts a corpus out of the default refusal of
+	// unscoped tests- and proves-role claims on clause-structured
+	// requirements (REQ-evidence-clause-claim). Off by default: a test or
+	// proof on a clause-structured requirement names the clause it
+	// discharges, while implements-role claims remain whole.
+	AllowWholeClauseClaims *bool
 }
 
 func (b0 Manifest_builder) Build() *Manifest {
@@ -205,6 +317,14 @@ func (b0 Manifest_builder) Build() *Manifest {
 	x.xxx_hidden_TermLint = b.TermLint
 	x.xxx_hidden_Include = b.Include
 	x.xxx_hidden_Policy = &b.Policy
+	if b.BindingLayout != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 5)
+		x.xxx_hidden_BindingLayout = *b.BindingLayout
+	}
+	if b.AllowWholeClauseClaims != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 5)
+		x.xxx_hidden_AllowWholeClauseClaims = *b.AllowWholeClauseClaims
+	}
 	return m0
 }
 
@@ -451,18 +571,24 @@ var File_stipulator_v1_manifest_proto protoreflect.FileDescriptor
 
 const file_stipulator_v1_manifest_proto_rawDesc = "" +
 	"\n" +
-	"\x1cstipulator/v1/manifest.proto\x12\rstipulator.v1\x1a\x16stipulator/v1/ir.proto\"\x91\x01\n" +
+	"\x1cstipulator/v1/manifest.proto\x12\rstipulator.v1\x1a\x16stipulator/v1/ir.proto\"\x91\x02\n" +
 	"\bManifest\x124\n" +
 	"\tterm_lint\x18\x03 \x01(\v2\x17.stipulator.v1.TermLintR\btermLint\x12\x18\n" +
 	"\ainclude\x18\x01 \x03(\tR\ainclude\x125\n" +
-	"\x06policy\x18\x02 \x03(\v2\x1d.stipulator.v1.PolicyOverrideR\x06policy\"\xab\x01\n" +
+	"\x06policy\x18\x02 \x03(\v2\x1d.stipulator.v1.PolicyOverrideR\x06policy\x12C\n" +
+	"\x0ebinding_layout\x18\x04 \x01(\x0e2\x1c.stipulator.v1.BindingLayoutR\rbindingLayout\x129\n" +
+	"\x19allow_whole_clause_claims\x18\x05 \x01(\bR\x16allowWholeClauseClaims\"\xab\x01\n" +
 	"\x0ePolicyOverride\x12-\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x19.stipulator.v1.ClauseKindR\x04kind\x120\n" +
 	"\akeyword\x18\x02 \x01(\x0e2\x16.stipulator.v1.KeywordR\akeyword\x128\n" +
 	"\aminimum\x18\x03 \x01(\x0e2\x1e.stipulator.v1.MinimumEvidenceR\aminimum\"M\n" +
 	"\bTermLint\x12%\n" +
 	"\x0ewarn_shadowing\x18\x01 \x01(\bR\rwarnShadowing\x12\x1a\n" +
-	"\bdenylist\x18\x02 \x03(\tR\bdenylist*\x98\x02\n" +
+	"\bdenylist\x18\x02 \x03(\tR\bdenylist*o\n" +
+	"\rBindingLayout\x12\x1e\n" +
+	"\x1aBINDING_LAYOUT_UNSPECIFIED\x10\x00\x12\x1a\n" +
+	"\x16BINDING_LAYOUT_SEGMENT\x10\x01\x12\"\n" +
+	"\x1eBINDING_LAYOUT_PER_REQUIREMENT\x10\x02*\x98\x02\n" +
 	"\x0fMinimumEvidence\x12 \n" +
 	"\x1cMINIMUM_EVIDENCE_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fMINIMUM_EVIDENCE_ANALYZER_PROOF\x10\x01\x12\x1d\n" +
@@ -473,27 +599,29 @@ const file_stipulator_v1_manifest_proto_rawDesc = "" +
 	"\x17MINIMUM_EVIDENCE_EXEMPT\x10\x06\x12 \n" +
 	"\x1cMINIMUM_EVIDENCE_ATTESTATION\x10\aBDZBgithub.com/greatliontech/stipulator/gen/stipulator/v1;stipulatorv1b\beditionsp\xe8\a"
 
-var file_stipulator_v1_manifest_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_stipulator_v1_manifest_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_stipulator_v1_manifest_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_stipulator_v1_manifest_proto_goTypes = []any{
-	(MinimumEvidence)(0),   // 0: stipulator.v1.MinimumEvidence
-	(*Manifest)(nil),       // 1: stipulator.v1.Manifest
-	(*PolicyOverride)(nil), // 2: stipulator.v1.PolicyOverride
-	(*TermLint)(nil),       // 3: stipulator.v1.TermLint
-	(ClauseKind)(0),        // 4: stipulator.v1.ClauseKind
-	(Keyword)(0),           // 5: stipulator.v1.Keyword
+	(BindingLayout)(0),     // 0: stipulator.v1.BindingLayout
+	(MinimumEvidence)(0),   // 1: stipulator.v1.MinimumEvidence
+	(*Manifest)(nil),       // 2: stipulator.v1.Manifest
+	(*PolicyOverride)(nil), // 3: stipulator.v1.PolicyOverride
+	(*TermLint)(nil),       // 4: stipulator.v1.TermLint
+	(ClauseKind)(0),        // 5: stipulator.v1.ClauseKind
+	(Keyword)(0),           // 6: stipulator.v1.Keyword
 }
 var file_stipulator_v1_manifest_proto_depIdxs = []int32{
-	3, // 0: stipulator.v1.Manifest.term_lint:type_name -> stipulator.v1.TermLint
-	2, // 1: stipulator.v1.Manifest.policy:type_name -> stipulator.v1.PolicyOverride
-	4, // 2: stipulator.v1.PolicyOverride.kind:type_name -> stipulator.v1.ClauseKind
-	5, // 3: stipulator.v1.PolicyOverride.keyword:type_name -> stipulator.v1.Keyword
-	0, // 4: stipulator.v1.PolicyOverride.minimum:type_name -> stipulator.v1.MinimumEvidence
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	4, // 0: stipulator.v1.Manifest.term_lint:type_name -> stipulator.v1.TermLint
+	3, // 1: stipulator.v1.Manifest.policy:type_name -> stipulator.v1.PolicyOverride
+	0, // 2: stipulator.v1.Manifest.binding_layout:type_name -> stipulator.v1.BindingLayout
+	5, // 3: stipulator.v1.PolicyOverride.kind:type_name -> stipulator.v1.ClauseKind
+	6, // 4: stipulator.v1.PolicyOverride.keyword:type_name -> stipulator.v1.Keyword
+	1, // 5: stipulator.v1.PolicyOverride.minimum:type_name -> stipulator.v1.MinimumEvidence
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_stipulator_v1_manifest_proto_init() }
@@ -507,7 +635,7 @@ func file_stipulator_v1_manifest_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stipulator_v1_manifest_proto_rawDesc), len(file_stipulator_v1_manifest_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      2,
 			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,

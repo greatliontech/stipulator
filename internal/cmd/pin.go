@@ -104,9 +104,13 @@ func pinCmd() *cobra.Command {
 				return err
 			}
 			defer closeBackends()
-			updates, preserved, reshaped, rehashed, err := records.Pin(store, records.HashesOf(spec), author.ResolveShapes(store, backends, nil, func(symbol string, err error) {
+			shapes := author.ResolveShapes(store, backends, nil, func(symbol string, err error) {
 				fmt.Fprintf(os.Stderr, "pin: skipping %s: %v\n", symbol, err)
-			}))
+			})
+			if err := cmd.Context().Err(); err != nil {
+				return err
+			}
+			updates, preserved, reshaped, rehashed, err := records.Pin(store, records.HashesOf(spec), shapes)
 			if err != nil {
 				return err
 			}

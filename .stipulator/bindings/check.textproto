@@ -953,8 +953,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-scoped"
-  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
-  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
+  content_hash: "959cfa15c41a3f436e8ce1c29d3b4e2391d2269687454644329213894a5420f0"
+  source_hash: "a2c7d9db538b4306f8283133e07ddf457713020062cbd698ba7ea74e3d7e9589"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckScopedIdsExecutesOnlyInScopeStale"
   role: BINDING_ROLE_TESTS
@@ -963,8 +963,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-scoped"
-  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
-  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
+  content_hash: "959cfa15c41a3f436e8ce1c29d3b4e2391d2269687454644329213894a5420f0"
+  source_hash: "a2c7d9db538b4306f8283133e07ddf457713020062cbd698ba7ea74e3d7e9589"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestCheckRenderScopedPartialVerdictAndScopeBlockedRows"
   role: BINDING_ROLE_TESTS
@@ -973,8 +973,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-class-named"
-  content_hash: "b91fff65f4aa5a34786242e9b6a1b4a0f8c48355913923c91057726d9dc1151a"
-  source_hash: "5cde4b70d7616280ba662ea7d3c076a5b51a826e36283a3c56e0a5c24fb3c462"
+  content_hash: "ce8916a2faab586c1d46555fe501d8fedfebb90181003586382e6d2330a73dcf"
+  source_hash: "a632c243fcae498b7bb3398f0e065adbba5626c72f500771c39bb25a580bd335"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestCheckRenderScopedPartialVerdictAndScopeBlockedRows"
   role: BINDING_ROLE_TESTS
@@ -983,8 +983,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-scoped"
-  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
-  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
+  content_hash: "959cfa15c41a3f436e8ce1c29d3b4e2391d2269687454644329213894a5420f0"
+  source_hash: "a2c7d9db538b4306f8283133e07ddf457713020062cbd698ba7ea74e3d7e9589"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckLineScopedPartialClassAndFold"
   role: BINDING_ROLE_TESTS
@@ -993,8 +993,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-class-named"
-  content_hash: "b91fff65f4aa5a34786242e9b6a1b4a0f8c48355913923c91057726d9dc1151a"
-  source_hash: "5cde4b70d7616280ba662ea7d3c076a5b51a826e36283a3c56e0a5c24fb3c462"
+  content_hash: "ce8916a2faab586c1d46555fe501d8fedfebb90181003586382e6d2330a73dcf"
+  source_hash: "a632c243fcae498b7bb3398f0e065adbba5626c72f500771c39bb25a580bd335"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckLineScopedPartialClassAndFold"
   role: BINDING_ROLE_TESTS
@@ -1003,8 +1003,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-scoped"
-  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
-  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
+  content_hash: "959cfa15c41a3f436e8ce1c29d3b4e2391d2269687454644329213894a5420f0"
+  source_hash: "a2c7d9db538b4306f8283133e07ddf457713020062cbd698ba7ea74e3d7e9589"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestCheckToolScopedCallShape"
   role: BINDING_ROLE_TESTS
@@ -1013,8 +1013,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-scoped"
-  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
-  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
+  content_hash: "959cfa15c41a3f436e8ce1c29d3b4e2391d2269687454644329213894a5420f0"
+  source_hash: "a2c7d9db538b4306f8283133e07ddf457713020062cbd698ba7ea74e3d7e9589"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/views.TestCheckSummaryMirrorsScopeAndFoldsScopeBlockedRows"
   role: BINDING_ROLE_TESTS
@@ -1023,8 +1023,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-scoped"
-  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
-  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
+  content_hash: "959cfa15c41a3f436e8ce1c29d3b4e2391d2269687454644329213894a5420f0"
+  source_hash: "a2c7d9db538b4306f8283133e07ddf457713020062cbd698ba7ea74e3d7e9589"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckScopedIdsLeaveOutOfScopeIneligibleLegsUnexecuted"
   role: BINDING_ROLE_TESTS
@@ -1033,8 +1033,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-scoped"
-  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
-  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
+  content_hash: "959cfa15c41a3f436e8ce1c29d3b4e2391d2269687454644329213894a5420f0"
+  source_hash: "a2c7d9db538b4306f8283133e07ddf457713020062cbd698ba7ea74e3d7e9589"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/coverage.TestScopeBlockedSurvivesAnExcusedStaleConsent"
   role: BINDING_ROLE_TESTS
@@ -1043,8 +1043,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-scoped"
-  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
-  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
+  content_hash: "959cfa15c41a3f436e8ce1c29d3b4e2391d2269687454644329213894a5420f0"
+  source_hash: "a2c7d9db538b4306f8283133e07ddf457713020062cbd698ba7ea74e3d7e9589"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckScopedVerdictExcludesAnExcusedStaleConsentOnTheBoundary"
   role: BINDING_ROLE_TESTS
@@ -1063,8 +1063,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-moot"
-  content_hash: "7846822ba7ffaffb12496e948617ef89faf91d79622bc40baeec15e2f0d68404"
-  source_hash: "703b6f7bb871732c42e4d56ea7b0b1dd75d79a023c579e0194bade2c410570db"
+  content_hash: "49dde443c9df9cd92a0649dd769c14b3698a580514423401067c41ef44e55052"
+  source_hash: "c35e592c64f2975bd6e87990e5dc35329ff1eb46effde4d0cb9344720593a606"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckVerifyProblemFailsTheCheck"
   role: BINDING_ROLE_TESTS
@@ -1073,8 +1073,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-class-named"
-  content_hash: "b91fff65f4aa5a34786242e9b6a1b4a0f8c48355913923c91057726d9dc1151a"
-  source_hash: "5cde4b70d7616280ba662ea7d3c076a5b51a826e36283a3c56e0a5c24fb3c462"
+  content_hash: "ce8916a2faab586c1d46555fe501d8fedfebb90181003586382e6d2330a73dcf"
+  source_hash: "a632c243fcae498b7bb3398f0e065adbba5626c72f500771c39bb25a580bd335"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/check.TestCheckServesFreshWitnessesByDefault"
   role: BINDING_ROLE_TESTS
@@ -1103,8 +1103,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-scoped"
-  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
-  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
+  content_hash: "959cfa15c41a3f436e8ce1c29d3b4e2391d2269687454644329213894a5420f0"
+  source_hash: "a2c7d9db538b4306f8283133e07ddf457713020062cbd698ba7ea74e3d7e9589"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.executionScope.retrySubjects"
   role: BINDING_ROLE_IMPLEMENTS
@@ -1113,8 +1113,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-scoped"
-  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
-  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
+  content_hash: "959cfa15c41a3f436e8ce1c29d3b4e2391d2269687454644329213894a5420f0"
+  source_hash: "a2c7d9db538b4306f8283133e07ddf457713020062cbd698ba7ea74e3d7e9589"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestExecutionScopeOwnsSelection"
   role: BINDING_ROLE_TESTS
@@ -1123,8 +1123,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-scoped"
-  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
-  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
+  content_hash: "959cfa15c41a3f436e8ce1c29d3b4e2391d2269687454644329213894a5420f0"
+  source_hash: "a2c7d9db538b4306f8283133e07ddf457713020062cbd698ba7ea74e3d7e9589"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoScopedDriftRetriesStayWithinScope"
   role: BINDING_ROLE_TESTS
@@ -1143,8 +1143,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-check-verdict-scoped"
-  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
-  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
+  content_hash: "959cfa15c41a3f436e8ce1c29d3b4e2391d2269687454644329213894a5420f0"
+  source_hash: "a2c7d9db538b4306f8283133e07ddf457713020062cbd698ba7ea74e3d7e9589"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRetryWavesScopeLateDrift"
   role: BINDING_ROLE_TESTS

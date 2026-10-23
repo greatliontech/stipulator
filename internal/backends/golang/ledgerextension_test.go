@@ -154,7 +154,7 @@ func TestFile(t *testing.T) { _, _ = os.ReadFile("fixture") }
 		if err != nil || !reflect.DeepEqual(current, extended.Extension.Ledger) {
 			t.Fatal("replacement lost current ledger", err)
 		}
-		wg := &witnessGroup{legs: map[string]*packageLeg{subject.Package: {view: &witnessSnapshot{Snapshot: view.Snapshot()}, binding: view, checking: checking, chosen: map[gofresh.Subject]chosenWitness{subject: {index: extended.Index, record: rec}}}}, served: []gofresh.Subject{subject}, executedWhy: map[gofresh.Subject]string{}}
+		wg := &witnessGroup{legs: map[string]*packageLeg{subject.Package: {view: &witnessSnapshot{Snapshot: view.Snapshot()}, binding: view, checking: checking, chosen: map[gofresh.Subject]chosenWitness{subject: {index: extended.Index, record: rec}}}}, served: []gofresh.Subject{subject}, executedWhy: map[gofresh.Subject]executedReason{}}
 		if i == 2 {
 			afterServedCheckForTest = func(string) {
 				moved := strings.Replace(source, `"guarded"`, `"changed"`, 1)

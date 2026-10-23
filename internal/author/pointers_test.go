@@ -27,7 +27,7 @@ func TestRetargetRewritesEnforcementPointersAndRepins(t *testing.T) {
 	fsys := testFS(map[string]string{
 		"specs/a.md": spec,
 		".stipulator/bindings/m.textproto": "" +
-			"bindings { requirement_id: \"REQ-au-a\" content_hash: \"c1\" backend: \"go\" symbol: \"example.com/old.TestX\" role: BINDING_ROLE_TESTS }\n" +
+			"bindings { requirement_id: \"REQ-au-a\" content_hash: \"c1\" backend: \"go\" symbol: \"example.com/old.TestX\" role: BINDING_ROLE_TESTS clause_label: \"alpha\" }\n" +
 			"bindings { requirement_id: \"REQ-au-a\" content_hash: \"c1\" backend: \"go\" symbol: \"example.com/old.TestX\" role: BINDING_ROLE_IMPLEMENTS }\n" +
 			"bindings { requirement_id: \"REQ-au-a\" content_hash: \"c1\" backend: \"go\" symbol: \"example.com/old.TestKept\" role: BINDING_ROLE_TESTS clause_label: \"alpha\" }\n" +
 			"bindings { requirement_id: \"REQ-au-b\" backend: \"go\" symbol: \"example.com/other.TestX\" role: BINDING_ROLE_TESTS }\n",

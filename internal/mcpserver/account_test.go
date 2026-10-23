@@ -189,3 +189,30 @@ func TestServedRefusalsAfterTheCloseCarryTheAccount(t *testing.T) {
 		}
 	}
 }
+
+func TestServedErrorAfterTheCloseCarriesTheAccount(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-account")
+	sess, _ := harnessWith(t, map[string]string{
+		".stipulator/bindings/a.textproto": pinnedBindingFor(t, "REQ-m-a", "example.com/p.TestA", "s"),
+	}, func(s *Server) {
+		s.backends = func(context.Context, []string) (map[string]verify.Backend, error) {
+			return map[string]verify.Backend{"go": &accountBackend{shapes: fakeBackend{
+				"example.com/p.TestA": strings.Repeat("s", 64),
+			}}}, nil
+		}
+		s.runTests = func(context.Context, *golang.Capture, verify.WitnessSeeding, map[gofresh.Subject]bool) (*verify.TestRun, error) {
+			return nil, errors.New("witness runner exploded after resolve")
+		}
+	})
+	res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "verify", Arguments: map[string]any{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.IsError {
+		t.Fatal("verify over a failing witness run did not return tool error")
+	}
+	text := toolText(t, res)
+	if !strings.Contains(text, "witness runner exploded after resolve") || !strings.Contains(text, "resolution published under \"default\": 4 records") {
+		t.Fatalf("post-close error dropped the resolution publish account:\n%s", text)
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -37,20 +38,21 @@ func workspaceMembers(dir string) ([]string, error) {
 	}
 	var members []string
 	for _, u := range wf.Use {
-		clean := filepath.Clean(u.Path)
-		if filepath.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+		clean := path.Clean(u.Path)
+		if !hostPortableTreePath(u.Path) || strings.HasPrefix(clean, "/") || clean == ".." || strings.HasPrefix(clean, "../") {
 			// A member outside the tree would make the same commit verify
 			// differently per machine: hermeticity is refused away, never
 			// silently bent.
 			return nil, fmt.Errorf("go.work member %q escapes the verification tree; members must lie within it", u.Path)
 		}
+		hostClean := filepath.FromSlash(clean)
 		// The lexical check above refuses what the committed text says;
 		// the resolved check refuses what the filesystem makes of it (an
 		// in-tree symlink pointing out).
-		if err := resolvedUnder(root, dir, clean); err != nil {
+		if err := resolvedUnder(root, dir, hostClean); err != nil {
 			return nil, fmt.Errorf("go.work member %q: %w", u.Path, err)
 		}
-		members = append(members, clean)
+		members = append(members, hostClean)
 	}
 	if len(members) == 0 {
 		return nil, fmt.Errorf("go.work declares no members")

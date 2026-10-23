@@ -22,6 +22,7 @@ import (
 	"github.com/greatliontech/gofresh/resident"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 // The policy executor runs each normalized Go invocation exactly once and
@@ -71,6 +72,52 @@ var timeoutRosterRe = regexp.MustCompile(`^\t\t(\S+) \(`)
 // package output its room.
 const remainderShare = failureOutputCap / 4
 
+// rosterShare bounds the running/aborted test roster a timeout diagnostic
+// renders in its head so a large roster never starves the retained output
+// that follows it.
+const rosterShare = failureOutputCap / 4
+
+// formatBoundedRoster renders a comma-separated test roster within
+// rosterShare bytes, appending "(+N more omitted)" when entries are dropped.
+func formatBoundedRoster(lead string, names []string) (string, bool) {
+	if len(names) == 0 {
+		return "", false
+	}
+	var b strings.Builder
+	b.WriteString(lead)
+	budget := rosterShare - len(lead)
+	if budget < 0 {
+		budget = 0
+	}
+	used := 0
+	included := 0
+	truncated := false
+	for i, name := range names {
+		sep := ""
+		if i > 0 {
+			sep = ", "
+		}
+		if used+len(sep)+len(name) > budget {
+			if i == 0 {
+				cut := cutAtRune(name, budget)
+				b.WriteString(cut)
+				included = 1
+				truncated = true
+			}
+			break
+		}
+		b.WriteString(sep)
+		b.WriteString(name)
+		used += len(sep) + len(name)
+		included++
+	}
+	if omitted := len(names) - included; omitted > 0 {
+		fmt.Fprintf(&b, " (+%d more omitted)", omitted)
+		truncated = true
+	}
+	return b.String(), truncated
+}
+
 // boundedBuffer retains at most failureOutputCap bytes and records that it
 // dropped the rest.
 type boundedBuffer struct {
@@ -118,8 +165,10 @@ func (bb *boundedBuffer) empty() bool { return bb.b.Len() == 0 && !bb.truncated 
 // terminal fail event the package whose compilation failed. The
 // package fields both event kinds carry are not read.
 type testEvent struct {
+	Time        time.Time
 	Action      string
 	Test        string
+	Elapsed     float64
 	Output      string
 	FailedBuild string
 }
@@ -153,7 +202,53 @@ type packageRun struct {
 	peakBytes uint64
 	// heldBy carries the memory term's words when the package never
 	// spawned because the term held it until the invocation's end.
-	heldBy string
+	heldBy          string
+	admissionOrigin string
+	queueWait       time.Duration
+	buildElapsed    time.Duration
+	binaryElapsed   time.Duration
+	totalElapsed    time.Duration
+	noTestFiles     bool
+	testTimings     []*stipulatorv1.TestTimingDiagnostic
+	timing          *stipulatorv1.PackageTimingDiagnostic
+}
+
+func (r *packageRun) buildTimingDiagnostic(invocation string, cancelled bool) *stipulatorv1.PackageTimingDiagnostic {
+	if r.timing != nil {
+		return r.timing
+	}
+	pt := &stipulatorv1.PackageTimingDiagnostic{}
+	pt.SetInvocation(invocation)
+	pt.SetPackage(r.pkg)
+	if r.soloTest != "" {
+		pt.SetSoloTest(r.soloTest)
+	}
+	pt.SetQueueWait(durationpb.New(r.queueWait))
+	if r.admissionOrigin != "" {
+		pt.SetAdmissionOrigin(r.admissionOrigin)
+	} else if r.heldBy != "" {
+		pt.SetAdmissionOrigin(r.heldBy)
+	}
+	pt.SetBuildElapsed(durationpb.New(r.buildElapsed))
+	pt.SetBinaryElapsed(durationpb.New(r.binaryElapsed))
+	pt.SetTotalElapsed(durationpb.New(r.totalElapsed))
+	pt.SetTests(r.testTimings)
+	var state stipulatorv1.PackageExecutionState
+	switch {
+	case r.producer == nil && r.buildElapsed == 0 && (cancelled || r.disposition == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_UNSPECIFIED || r.disposition == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT || r.heldBy != ""):
+		state = stipulatorv1.PackageExecutionState_PACKAGE_EXECUTION_STATE_NEVER_STARTED
+	case cancelled || r.disposition == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_UNSPECIFIED || r.disposition == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT:
+		state = stipulatorv1.PackageExecutionState_PACKAGE_EXECUTION_STATE_CANCELLED
+	case r.disposition == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY && r.noTestFiles:
+		state = stipulatorv1.PackageExecutionState_PACKAGE_EXECUTION_STATE_SKIPPED
+	case r.disposition == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY:
+		state = stipulatorv1.PackageExecutionState_PACKAGE_EXECUTION_STATE_COMPLETED
+	default:
+		state = stipulatorv1.PackageExecutionState_PACKAGE_EXECUTION_STATE_FAILED
+	}
+	pt.SetState(state)
+	r.timing = pt
+	return pt
 }
 
 // ExecuteInvocation executes one normalized invocation's selected packages
@@ -363,7 +458,7 @@ func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, p
 		scope := buildRetainedScope(invCtx, &buildInvocation, pkgs, retainedProcessHooks{
 			Spawned: func(_ string, pid int) { gate.spawned("coverage compilation", pid) },
 			Reaped: func(_ string, pid int, state *os.ProcessState) {
-				gate.reaped("coverage compilation", pid, processPeakBytes(state))
+				gate.reapedState("coverage compilation", pid, state)
 			},
 		})
 		gate.release()
@@ -399,11 +494,16 @@ func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, p
 			// Every package reports its completion exactly once, whichever
 			// way it ends; the reporter bounds emission.
 			defer func() { rep.Step(n.Name, pkgsDone.Add(1), int32(len(pkgs))) }()
+			waitStart := time.Now()
 			admitted, refusal, held := gate.admit()
+			queueWait := time.Since(waitStart)
+			origin := gate.originWords()
 			switch {
 			case admitted:
 				execution := &packageExecution{built: builds[pkg], coverage: profile, artifacts: artifacts, directory: runtimeDirs[pkg]}
 				runs[i] = runNativePackage(ctx, invCtx, n, pkg, tests[pkg], spawnOrdinal(), gate, proofs[pkg], execution)
+				runs[i].queueWait = queueWait
+				runs[i].admissionOrigin = origin
 				if inSlot != nil && ctx.Err() == nil {
 					inSlot(i, &runs[i], gate)
 				}
@@ -414,6 +514,8 @@ func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, p
 				// memory: refused stated, never spawned into the host's
 				// guard (the witness concurrency clause's memory term).
 				runs[i] = degradedRun(n.Name, pkg, "memory: "+refusal, false)
+				runs[i].queueWait = queueWait
+				runs[i].admissionOrigin = "memory: " + refusal
 				if inSlot != nil && ctx.Err() == nil {
 					inSlot(i, &runs[i], nil)
 				}
@@ -422,7 +524,7 @@ func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, p
 				// disposition as timeout or discards on cancellation; a
 				// package the memory term was holding names the term in
 				// its timeout diagnostic.
-				runs[i] = packageRun{pkg: pkg, heldBy: held}
+				runs[i] = packageRun{pkg: pkg, heldBy: held, queueWait: queueWait, admissionOrigin: held}
 				if inSlot != nil && ctx.Err() == nil {
 					inSlot(i, &runs[i], nil)
 				}
@@ -433,6 +535,14 @@ func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, p
 		}(i, pkg)
 	}
 	wg.Wait()
+	cancelled := ctx.Err() != nil || invCtx.Err() != nil
+	for i := range runs {
+		if runs[i].pkg == "" {
+			runs[i].pkg = pkgs[i]
+		}
+		pt := runs[i].buildTimingDiagnostic(n.Name, cancelled)
+		rep.RecordPackageTiming(pt)
+	}
 	return runs
 }
 
@@ -447,6 +557,7 @@ func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, p
 // so a denied re-run's timeout diagnostic names the test it denied.
 func finalizeRun(n *NormalizedInvocation, r *packageRun, timedOut bool, soloTest string) error {
 	if r.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_UNSPECIFIED {
+		r.buildTimingDiagnostic(n.Name, false)
 		return nil
 	}
 	// No terminal disposition of its own: the envelope deadline is the
@@ -469,8 +580,9 @@ func finalizeRun(n *NormalizedInvocation, r *packageRun, timedOut bool, soloTest
 		out.write(r.heldBy)
 	}
 	if len(r.aborted) > 0 {
-		out.write("\nstarted but unfinished: ")
-		out.write(strings.Join(r.aborted, ", "))
+		line, rosterTruncated := formatBoundedRoster("\nstarted but unfinished: ", r.aborted)
+		out.write(line)
+		out.truncated = out.truncated || rosterTruncated
 	}
 	if r.residue != nil && !r.residue.empty() {
 		out.write("\n")
@@ -484,42 +596,42 @@ func finalizeRun(n *NormalizedInvocation, r *packageRun, timedOut bool, soloTest
 		r.obs = incompleteObservation(r.pkg, r.producer,
 			fmt.Sprintf("invocation timeout %v expired before the process completed", n.Timeout))
 	}
+	r.buildTimingDiagnostic(n.Name, true)
 	return nil
 }
 
 // assembleInvocation turns the terminal runs into the invocation report:
 // per-package health, attributed outcomes, diagnostics, and observations,
-// with the invocation disposed as its worst package.
+// with the invocation disposed as its worst package. It folds each
+// finalized packageRun through SelectionResult.absorb so the two shapes
+// share one folding path.
 func assembleInvocation(n *NormalizedInvocation, runs []packageRun, timedOut bool) (*stipulatorv1.InvocationHealth, []*stipulatorv1.TestResult, []*stipulatorv1.FailureDiagnostic, []*ProcessObservation, error) {
 	health := &stipulatorv1.InvocationHealth{}
 	health.SetInvocation(n.Name)
 	health.SetGo(resolvedConfig(n))
-	packages := make([]*stipulatorv1.PackageHealth, 0, len(runs))
-	var (
-		tests        []*stipulatorv1.TestResult
-		diags        []*stipulatorv1.FailureDiagnostic
-		observations []*ProcessObservation
-	)
-	invDisposition := stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY
+	folded := &SelectionResult{}
 	for i := range runs {
 		r := &runs[i]
 		if err := finalizeRun(n, r, timedOut, ""); err != nil {
 			return nil, nil, nil, nil, err
 		}
-		ph := &stipulatorv1.PackageHealth{}
-		ph.SetPackage(r.pkg)
-		ph.SetDisposition(r.disposition)
-		packages = append(packages, ph)
-		tests = append(tests, r.tests...)
-		diags = append(diags, r.diags...)
-		if r.obs != nil {
-			observations = append(observations, r.obs)
+		folded.absorb(packageUnit{pkg: r.pkg, run: *r})
+	}
+	packages := make([]*stipulatorv1.PackageHealth, 0, len(folded.Processes))
+	invDisposition := stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY
+	for _, p := range folded.Processes {
+		if p.Test != "" {
+			continue
 		}
-		invDisposition = worseDisposition(invDisposition, r.disposition)
+		ph := &stipulatorv1.PackageHealth{}
+		ph.SetPackage(p.Package)
+		ph.SetDisposition(p.Disposition)
+		packages = append(packages, ph)
+		invDisposition = worseDisposition(invDisposition, p.Disposition)
 	}
 	health.SetDisposition(invDisposition)
 	health.SetPackages(packages)
-	return health, tests, diags, observations, nil
+	return health, folded.Tests, folded.Diagnostics, folded.Observations, nil
 }
 
 // worseDisposition aggregates package dispositions into the invocation's:
@@ -949,6 +1061,40 @@ func (a *admission) spawned(pkg string, pid int) {
 	a.gate.mu.Unlock()
 }
 
+// childProcessPeakBytes derives a reaped child process's post-exec peak from
+// its wait-status maxrss, the parent process's high-water mark, and the live
+// process-tree peak observed while the child was registered. On Linux, Go's
+// process-group spawn clones with CLONE_VM | CLONE_VFORK and exec_mmap seeds
+// the child's signal->maxrss with get_mm_hiwater_rss(old_mm), clamping the
+// child's wait-status Maxrss from below by the parent's pre-exec high-water
+// mark (RUSAGE_SELF.Maxrss). When parentPeak exceeds packageEstimateFloor and
+// rawPeak does not exceed parentPeak, rawPeak reflects the inherited parent
+// high-water ceiling rather than a post-exec child peak above the floor, so
+// the child's post-exec evidence is bounded by its observed live-tree peak and
+// the sub-floor wait-status mark; any rawPeak strictly above parentPeak is
+// genuine post-exec child or descendant memory.
+func childProcessPeakBytes(rawPeak, parentPeak, liveTreePeak uint64) uint64 {
+	if parentPeak > packageEstimateFloor && rawPeak <= parentPeak {
+		return max(liveTreePeak, min(rawPeak, packageEstimateFloor))
+	}
+	return max(rawPeak, liveTreePeak)
+}
+
+// reapedState unregisters a package's reaped OS process and folds its
+// post-exec completed peak into the estimate after discounting any pre-exec
+// parent high-water mark inherited across CLONE_VM | CLONE_VFORK.
+func (a *admission) reapedState(pkg string, pid int, state *os.ProcessState) {
+	if a == nil {
+		return
+	}
+	rawPeak := processPeakBytes(state)
+	parentPeak := parentPeakBytes()
+	a.gate.mu.Lock()
+	liveTreePeak := a.treePeak[pid]
+	a.gate.mu.Unlock()
+	a.reaped(pkg, pid, childProcessPeakBytes(rawPeak, parentPeak, liveTreePeak))
+}
+
 // reaped unregisters a package's process the moment its wait returned
 // and folds its completed peak into the estimate, naming the origin,
 // then wakes every waiter of the process to re-ask (the readings
@@ -986,6 +1132,18 @@ func (a *admission) release() {
 // leave ends the admission's membership of the gate: its invocation
 // returned.
 func (a *admission) leave() { a.gate.leave(a) }
+
+func (a *admission) originWords() string {
+	if a == nil {
+		return ""
+	}
+	a.gate.mu.Lock()
+	defer a.gate.mu.Unlock()
+	if a.peak > packageEstimateFloor {
+		return a.peakOrigin.words()
+	}
+	return originFloor
+}
 
 // witnessSpawnBound shares the parent's processor budget over the permitted
 // package population. Each package is a parallel process tree; reserving slots
@@ -1114,9 +1272,34 @@ type streamState struct {
 	startOrder []string
 	// regs accumulates each named test's runtime registrations until its
 	// terminal event.
-	regs  map[string][]string
-	tests []*stipulatorv1.TestResult
-	diags []*stipulatorv1.FailureDiagnostic
+	regs        map[string][]string
+	startTimes  map[string]time.Time
+	testTimings []*stipulatorv1.TestTimingDiagnostic
+	tests       []*stipulatorv1.TestResult
+	diags       []*stipulatorv1.FailureDiagnostic
+}
+
+// collectTestTimings returns the completed per-test timings plus an entry
+// marked running_at_abort for each test that started without reaching a
+// terminal event.
+func (st *streamState) collectTestTimings(abortedAt time.Time) []*stipulatorv1.TestTimingDiagnostic {
+	if st == nil {
+		return nil
+	}
+	out := slices.Clone(st.testTimings)
+	for _, name := range startedTests(st) {
+		td := &stipulatorv1.TestTimingDiagnostic{}
+		td.SetTest(name)
+		td.SetOutcome(stipulatorv1.TestOutcome_TEST_OUTCOME_NOT_RUN)
+		td.SetRunningAtAbort(true)
+		if start := st.startTimes[name]; !start.IsZero() && abortedAt.After(start) {
+			td.SetElapsed(durationpb.New(abortedAt.Sub(start)))
+		} else {
+			td.SetElapsed(durationpb.New(0))
+		}
+		out = append(out, td)
+	}
+	return out
 }
 
 // parseTestStream consumes Go's test/build JSON stream, recording named
@@ -1127,9 +1310,10 @@ type streamState struct {
 // state the caller holds.
 func parseTestStream(invocation, pkg string, r io.Reader, producer *stipulatorv1.ProducerIdentity) *streamState {
 	st := &streamState{
-		perTest: map[string]*boundedBuffer{},
-		started: map[string]bool{},
-		regs:    map[string][]string{},
+		perTest:    map[string]*boundedBuffer{},
+		started:    map[string]bool{},
+		regs:       map[string][]string{},
+		startTimes: map[string]time.Time{},
 	}
 	dec := json.NewDecoder(r)
 	for {
@@ -1189,6 +1373,9 @@ func parseTestStream(invocation, pkg string, r io.Reader, producer *stipulatorv1
 				st.startOrder = append(st.startOrder, e.Test)
 			}
 			st.started[e.Test] = true
+			if !e.Time.IsZero() && st.startTimes[e.Test].IsZero() {
+				st.startTimes[e.Test] = e.Time
+			}
 		case "output":
 			bb := st.perTest[e.Test]
 			if bb == nil {
@@ -1217,6 +1404,18 @@ func parseTestStream(invocation, pkg string, r io.Reader, producer *stipulatorv1
 				delete(st.regs, e.Test)
 			}
 			st.tests = append(st.tests, tr)
+			td := &stipulatorv1.TestTimingDiagnostic{}
+			td.SetTest(e.Test)
+			td.SetOutcome(outcomeOf(e.Action))
+			dur := time.Duration(e.Elapsed * float64(time.Second))
+			if dur == 0 {
+				if start := st.startTimes[e.Test]; !start.IsZero() && !e.Time.IsZero() && e.Time.After(start) {
+					dur = e.Time.Sub(start)
+				}
+			}
+			td.SetElapsed(durationpb.New(dur))
+			st.testTimings = append(st.testTimings, td)
+			delete(st.startTimes, e.Test)
 			if e.Action == "fail" {
 				d := &stipulatorv1.FailureDiagnostic{}
 				d.SetInvocation(invocation)
@@ -1432,6 +1631,7 @@ func classifyRun(invocation, pkg string, st *streamState, waitErr error, stderr 
 		run.disposition = stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED
 	}
 	head := ""
+	rosterTruncated := false
 	if deadline {
 		head = fmt.Sprintf("test binary timeout %s exhausted before the package completed — the budget is the red fact, not the running tests", binaryBound)
 		// The runtime's own roster is the victim list; event ordering is
@@ -1442,10 +1642,13 @@ func classifyRun(invocation, pkg string, st *streamState, waitErr error, stderr 
 			names = startedTests(st)
 		}
 		if len(names) > 0 {
-			head += "\nrunning when the budget expired: " + strings.Join(names, ", ")
+			var line string
+			line, rosterTruncated = formatBoundedRoster("\nrunning when the budget expired: ", names)
+			head += line
 		}
 	}
 	out := runResidue(st, stderr, waitErr, head)
+	out.truncated = out.truncated || rosterTruncated
 	d := &stipulatorv1.FailureDiagnostic{}
 	d.SetInvocation(invocation)
 	d.SetPackage(pkg)
@@ -1573,6 +1776,10 @@ func executePolicy(ctx context.Context, pc *Capture, onPackage func(invocation s
 		return nil, nil, err
 	}
 	rep := progress.FromContext(ctx)
+	if rep == nil {
+		rep = progress.New(nil)
+		ctx = progress.NewContext(ctx, rep)
+	}
 	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	universe, err := pc.ObligationUniverse(ctx)
 	if err != nil {
@@ -1617,5 +1824,6 @@ func executePolicy(ctx context.Context, pc *Capture, onPackage func(invocation s
 		wire[i] = o.Wire
 	}
 	report.SetObservations(wire)
+	report.SetTiming(rep.TimingDiagnostics())
 	return report, observations, nil
 }

@@ -43,6 +43,33 @@ func TestCompletedPackagePeakFeedsTheEstimate(t *testing.T) {
 	}
 }
 
+// TestChildProcessPeakDiscountsInheritedParentHighWater pins the post-exec
+// boundary correction for Linux CLONE_VM | CLONE_VFORK wait-status Maxrss
+// inheritance (REQ-evidence-witness-freshness-concurrency):
+//   - a wait-status peak clamped to a parent high-water mark above the floor
+//     does not inflate the completed-package estimate above the observed
+//     live-tree peak or the floor;
+//   - a live-tree peak above the floor observed while the child was registered
+//     survives reaping even when wait-status Maxrss was clamped by the parent;
+//   - a post-exec child peak strictly exceeding the parent high-water mark
+//     advances the completed-package estimate in full.
+func TestChildProcessPeakDiscountsInheritedParentHighWater(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency")
+	const gib = uint64(1) << 30
+	if got := childProcessPeakBytes(6*gib, 6*gib, 200<<20); got != packageEstimateFloor {
+		t.Fatalf("clamped inherited peak with sub-floor live tree = %d, want floor %d", got, packageEstimateFloor)
+	}
+	if got := childProcessPeakBytes(6*gib, 6*gib, 3*gib); got != 3*gib {
+		t.Fatalf("clamped inherited peak with 3 GiB live tree = %d, want 3 GiB (%d)", got, 3*gib)
+	}
+	if got := childProcessPeakBytes(5*gib, 3*gib, 200<<20); got != 5*gib {
+		t.Fatalf("post-exec child peak above parent HWM = %d, want 5 GiB (%d)", got, 5*gib)
+	}
+	if parent := parentPeakBytes(); parent < 1<<20 || parent%1024 != 0 {
+		t.Fatalf("parentPeakBytes() = %d, want at least a mebibyte in bytes, a kibibyte multiple", parent)
+	}
+}
+
 // TestInvocationReleasesEachPackageWithItsPeak pins the wiring of the
 // completed-package evidence and of the tree attribution
 // (REQ-evidence-witness-freshness-concurrency, REQ-evidence-admission-origin):

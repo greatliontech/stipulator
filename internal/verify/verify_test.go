@@ -764,6 +764,56 @@ func TestClauseClaimHygiene(t *testing.T) {
 		})
 		wantProblem(t, rep, "duplicate binding: REQ-v-c example.com/p.F BINDING_ROLE_IMPLEMENTS clause 2 (second)")
 	})
+	t.Run("empty clause_label names the record path and preserves sibling claims", func(t *testing.T) {
+		rep, _ := run(t, map[string]string{
+			"specs/a.md":                       clauseDoc,
+			".stipulator/bindings/x.textproto": clauseBinding(`clause_label: "alpha"`) + clauseBinding(`clause_label: ""`),
+		})
+		wantProblem(t, rep, "has a malformed empty clause_label in .stipulator/bindings/x.textproto — remove or repair the record in .stipulator/bindings/x.textproto")
+		for _, p := range rep.Problems {
+			if strings.Contains(p.Message, "stipulator unbind") {
+				t.Fatalf("empty clause_label named a wide unbind selector: %v", p)
+			}
+		}
+	})
+	t.Run("unscoped tests and proves claims on clause-structured requirements refuse unless manifest opts out", func(t *testing.T) {
+		unscopedTests := "bindings {\n  requirement_id: \"REQ-v-c\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_TESTS\n}\n"
+		rep, _ := run(t, map[string]string{
+			"specs/a.md":                       clauseDoc,
+			".stipulator/bindings/x.textproto": unscopedTests,
+		})
+		wantProblem(t, rep, "binding example.com/p.F on REQ-v-c has no clause scope, and REQ-v-c is clause-structured")
+		for _, r := range rep.Results {
+			if r.RequirementId == "REQ-v-c" {
+				t.Fatalf("unscoped tests claim on clause-structured requirement reached results: %+v", r)
+			}
+		}
+		// With a valid sibling claim on the same symbol, the remedy names
+		// the record path rather than an unscoped unbind that would
+		// delete both.
+		scopedTests := "bindings {\n  requirement_id: \"REQ-v-c\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_TESTS\n  clause_label: \"alpha\"\n}\n"
+		repSibling, _ := run(t, map[string]string{
+			"specs/a.md":                       clauseDoc,
+			".stipulator/bindings/x.textproto": scopedTests + unscopedTests,
+		})
+		wantProblem(t, repSibling, "has no clause scope in .stipulator/bindings/x.textproto, and REQ-v-c is clause-structured")
+		for _, p := range repSibling.Problems {
+			if strings.Contains(p.Message, "stipulator unbind") {
+				t.Fatalf("unscoped claim with sibling named a wide unbind selector: %v", p)
+			}
+		}
+		// Manifest opt-out admits the unscoped tests claim.
+		repOptOut, _ := run(t, map[string]string{
+			".stipulator/manifest.textproto":   "include: \"specs/**/*.md\"\nallow_whole_clause_claims: true\n",
+			"specs/a.md":                       clauseDoc,
+			".stipulator/bindings/x.textproto": unscopedTests,
+		})
+		for _, p := range repOptOut.Problems {
+			if strings.Contains(p.Message, "REQ-v-c") {
+				t.Fatalf("manifest opt-out still reported problem: %v", p)
+			}
+		}
+	})
 }
 
 // A record whose content pin differs while its source pin matches the

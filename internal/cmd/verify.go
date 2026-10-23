@@ -35,6 +35,7 @@ func verifyCmd() *cobra.Command {
 			}
 			prepared, rep, testRun, err := verifyrun.Run(cmd.Context(), cliDeps(os.Stderr), noTest, scope.Ids)
 			if err != nil {
+				renderNotices(os.Stderr, verify.NoticesOf(err))
 				return withRecordPath(err)
 			}
 			if err := refuseProblems(prepared.Hygiene); err != nil {
@@ -93,20 +94,21 @@ func verifyCmd() *cobra.Command {
 					fmt.Fprintf(os.Stderr, "%s: broken: bound test %s produced no outcome — unwitnessed (binding for %s)\n", r.Path, r.Symbol, r.RequirementId)
 				}
 			}
+			out := outStyle()
 			fmt.Printf("claims:    %d bindings (%s stale), %d gaps, %d registrations\n",
-				rep.Pinned+rep.Stale, num(rep.Stale, yellow), len(store.Gaps), len(rep.Registrations))
+				rep.Pinned+rep.Stale, out.num(rep.Stale, out.yellow), len(store.Gaps), len(rep.Registrations))
 			if rep.Rehash > 0 {
 				// Bindings and attestations alike: the count is of
 				// consent records, its own line beside the faces.
 				fmt.Printf("rehash:    %d record(s) current by source pin alone — %s; blanket %s rewrites them\n", rep.Rehash, records.RehashNote, remedy.Pin())
 			}
 			fmt.Printf("shapes:    %d pinned, %s unpinned, %s moved\n",
-				rep.ShapePinned, num(rep.ShapeUnpinned, yellow), num(rep.ShapeMismatch, red))
+				rep.ShapePinned, out.num(rep.ShapeUnpinned, out.yellow), out.num(rep.ShapeMismatch, out.red))
 			fmt.Printf("witnesses: %d passed, %s failed, %s unwitnessed\n",
-				rep.TestsPassed, num(rep.TestsFailed, red), num(rep.TestsNotRun, red))
+				rep.TestsPassed, out.num(rep.TestsFailed, out.red), out.num(rep.TestsNotRun, out.red))
 			if rep.Broken > 0 || rep.Unverified > 0 {
 				fmt.Printf("symbols:   %s unresolved, %d unverified (no backend answer in this run)\n",
-					num(rep.Broken, red), rep.Unverified)
+					out.num(rep.Broken, out.red), rep.Unverified)
 			}
 			for _, sig := range rep.Signatures {
 				label := "rearchitecture"
@@ -148,27 +150,28 @@ func printBindingRows(rep *verify.Report) {
 		idWidth = max(idWidth, len(r.RequirementId))
 		symWidth = max(symWidth, len(r.Symbol+clauseColumn(r)))
 	}
+	out := outStyle()
 	for _, r := range rows {
 		role := strings.ToLower(strings.TrimPrefix(r.Role.String(), "BINDING_ROLE_"))
-		consent := green("current")
+		consent := out.green("current")
 		switch {
 		case !r.ContentPinned:
-			consent = yellow("stale")
+			consent = out.yellow("stale")
 		case r.Rehash:
-			consent = yellow("rehash-pending")
+			consent = out.yellow("rehash-pending")
 		}
 		state := "unverified"
 		switch r.Resolution {
 		case verify.NotFound:
-			state = red("not found")
+			state = out.red("not found")
 		case verify.GeneratedFile:
-			state = red("generated file")
+			state = out.red("generated file")
 		case verify.Resolved:
 			switch r.Shape {
 			case verify.ShapeMismatch:
-				state = red("shape moved")
+				state = out.red("shape moved")
 			case verify.ShapeUnpinned:
-				state = yellow("shape unpinned")
+				state = out.yellow("shape unpinned")
 			default:
 				state = "resolved"
 			}
@@ -177,16 +180,16 @@ func printBindingRows(rep *verify.Report) {
 		if rep.Witnessed && (r.Role == stipulatorv1.BindingRole_BINDING_ROLE_TESTS || r.Role == stipulatorv1.BindingRole_BINDING_ROLE_PROVES) {
 			switch r.TestOutcome {
 			case verify.TestPassed:
-				outcome = "  " + green("passed")
+				outcome = "  " + out.green("passed")
 			case verify.TestFailed:
-				outcome = "  " + red("failed")
+				outcome = "  " + out.red("failed")
 			case verify.TestSkipped:
 				outcome = "  skipped"
 			default:
-				outcome = "  " + red("unwitnessed")
+				outcome = "  " + out.red("unwitnessed")
 			}
 		}
-		fmt.Printf("%-*s  %-10s %-*s  %-14s  %s%s  %s\n", idWidth, r.RequirementId, role, symWidth, r.Symbol+clauseColumn(r), consent, state, outcome, dim(r.Path))
+		fmt.Printf("%-*s  %-10s %-*s  %-14s  %s%s  %s\n", idWidth, r.RequirementId, role, symWidth, r.Symbol+clauseColumn(r), consent, state, outcome, out.dim(r.Path))
 	}
 	fmt.Printf("%d binding row(s)\n", len(rows))
 }

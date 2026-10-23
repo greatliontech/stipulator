@@ -21,6 +21,8 @@ import (
 	"github.com/greatliontech/stipulator/internal/coverage"
 	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/records"
+	"github.com/greatliontech/stipulator/internal/recordstore"
+	"github.com/greatliontech/stipulator/internal/resolutioncache"
 	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/verifyrun"
@@ -129,6 +131,118 @@ func StoreGC(ctx context.Context, d Deps) (StoreResult, error) {
 		out.Resolutions = &ResolutionCounts{Removed: resolutionsRemoved, Kept: resolutionsKept}
 		if err != nil {
 			return out, err
+		}
+	}
+	return out, nil
+}
+
+// GlobalCacheOptions configures global usage/preview and bounded retention
+// across all machine-local witness, ledger, resolution, and gofresh memo
+// stores. Unlike ordinary prune (which deletes resolved .stipulator/gaps/
+// records in the repository) and prune --store (which collects departed
+// identities within the current corpus alone), PruneGlobalCache sweeps
+// abandoned worktree stores and bounds total retained cache bytes across all
+// corpora without touching repository .stipulator/ records, sibling .lock
+// inodes, active publication temporaries, or telemetry-off configuration.
+// Evicted cache entries recompute on the next cold verification or analysis
+// pass and never weaken a verification verdict.
+type GlobalCacheOptions struct {
+	// MaxBytes bounds total retained bytes across witness, ledger, and
+	// resolution stores when >= 0 (defaulting to recordstore.MaxBytes() when
+	// UseDefaultBound is true). A negative value reclaims only abandoned
+	// worktree stores and unreferenced ledgers.
+	MaxBytes        int64
+	UseDefaultBound bool
+	// MemoMaxBytes bounds gofresh's shared persistent memo store when
+	// IncludeMemos is true and DryRun is false.
+	MemoMaxBytes int64
+	IncludeMemos bool
+	DryRun       bool
+	ActiveRoots  map[string]bool
+}
+
+// GlobalCacheReport summarizes global cache usage, reclaimed bytes, and
+// busy/skipped stores across witness, resolution, and gofresh memo stores.
+type GlobalCacheReport struct {
+	Witnesses   recordstore.PruneReport
+	Resolutions recordstore.PruneReport
+	Memos       gofresh.MemoPruneReport
+}
+
+// UsedBytes returns total bytes observed across witness, ledger, resolution,
+// and memo stores before reclamation.
+func (r GlobalCacheReport) UsedBytes() int64 {
+	return r.Witnesses.UsedBytes + r.Resolutions.UsedBytes + r.Memos.UsedBytes
+}
+
+// ReclaimedBytes returns total bytes reclaimed across all stores.
+func (r GlobalCacheReport) ReclaimedBytes() int64 {
+	return r.Witnesses.ReclaimedBytes + r.Resolutions.ReclaimedBytes + r.Memos.ReclaimedBytes
+}
+
+// RemainingBytes returns total bytes remaining after reclamation.
+func (r GlobalCacheReport) RemainingBytes() int64 {
+	return r.Witnesses.RemainingBytes + r.Resolutions.RemainingBytes + r.Memos.RemainingBytes
+}
+
+// PruneGlobalCache performs global usage/preview and bounded reclamation across
+// witness, ledger, and resolution stores, integrating gofresh's shared
+// persistent memo cleanup without duplicating its mechanism.
+func PruneGlobalCache(ctx context.Context, opts GlobalCacheOptions) (GlobalCacheReport, error) {
+	bound := opts.MaxBytes
+	if opts.UseDefaultBound {
+		bound = recordstore.MaxBytes()
+	}
+	witMax, resMax := int64(-1), int64(-1)
+	if bound >= 0 {
+		previewOpts := recordstore.PruneOptions{
+			MaxBytes:    -1,
+			DryRun:      true,
+			ActiveRoots: opts.ActiveRoots,
+		}
+		wPrev, err := witnesscache.PruneGlobal(ctx, previewOpts)
+		if err != nil {
+			return GlobalCacheReport{Witnesses: wPrev}, err
+		}
+		rPrev, err := resolutioncache.PruneGlobal(ctx, previewOpts)
+		if err != nil {
+			return GlobalCacheReport{Witnesses: wPrev, Resolutions: rPrev}, err
+		}
+		totalRemaining := wPrev.RemainingBytes + rPrev.RemainingBytes
+		if totalRemaining > bound {
+			resMax = (bound * rPrev.RemainingBytes) / totalRemaining
+			witMax = bound - resMax
+		} else {
+			witMax = bound
+			resMax = bound
+		}
+	}
+	wRep, err := witnesscache.PruneGlobal(ctx, recordstore.PruneOptions{
+		MaxBytes:    witMax,
+		DryRun:      opts.DryRun,
+		ActiveRoots: opts.ActiveRoots,
+	})
+	if err != nil {
+		return GlobalCacheReport{Witnesses: wRep}, err
+	}
+	rRep, err := resolutioncache.PruneGlobal(ctx, recordstore.PruneOptions{
+		MaxBytes:    resMax,
+		DryRun:      opts.DryRun,
+		ActiveRoots: opts.ActiveRoots,
+	})
+	if err != nil {
+		return GlobalCacheReport{Witnesses: wRep, Resolutions: rRep}, err
+	}
+	out := GlobalCacheReport{Witnesses: wRep, Resolutions: rRep}
+	if opts.IncludeMemos && !opts.DryRun {
+		memoLimit := opts.MemoMaxBytes
+		if memoLimit == 0 {
+			memoLimit = gofresh.DefaultMemoMaxBytes
+		}
+		mRep, mErr := gofresh.PruneMemos(memoLimit)
+		out.Memos = mRep
+		if mErr != nil {
+			return out, mErr
 		}
 	}
 	return out, nil
