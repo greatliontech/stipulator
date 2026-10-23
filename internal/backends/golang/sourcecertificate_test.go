@@ -131,10 +131,18 @@ func TestResolutionCertificateIsolatesGraphFailures(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(dir, "bad"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "bad", "bad.go"), []byte("package bad\nfunc F() { missing() }\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "bad", "bad.go"), []byte("package bad\nfunc F() { missing() }\nfunc G() {}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	s, err := NewServed(t.Context(), dir, []string{good, "example.com/certificate/bad.F"})
+	oldHook := commandHook
+	t.Cleanup(func() { commandHook = oldHook })
+	badGraphs := 0
+	commandHook = func(name string, args []string) {
+		if name == "go" && strings.Contains(strings.Join(args, " "), "-deps") && args[len(args)-1] == "example.com/certificate/bad" {
+			badGraphs++
+		}
+	}
+	s, err := NewServed(t.Context(), dir, []string{good, "example.com/certificate/bad.F", "example.com/certificate/bad.G"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,8 +150,13 @@ func TestResolutionCertificateIsolatesGraphFailures(t *testing.T) {
 	if s.ServedCount() != 1 || s.served[good].Symbol != good {
 		t.Fatalf("independent graph failure discarded good certificate: %v", s.Notices())
 	}
-	if !strings.Contains(strings.Join(s.Notices(), "\n"), "bad.F") {
-		t.Fatalf("graph failure lost its affected symbol: %v", s.Notices())
+	for _, name := range []string{"bad.F", "bad.G"} {
+		if !strings.Contains(strings.Join(s.Notices(), "\n"), name) {
+			t.Fatalf("graph failure lost affected symbol %s: %v", name, s.Notices())
+		}
+	}
+	if badGraphs != 1 {
+		t.Fatalf("failed owner graph queried %d times, want one shared failure", badGraphs)
 	}
 }
 
@@ -259,7 +272,7 @@ func TestResolutionCertificateRequiresEveryView(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Close()
-	certs, err := s.captureSourceCertificates([]string{symbol})
+	certs, err := s.captureSourceCertificates(newSelectionEndpoint(s.ctx, s.dir, s.sels), []string{symbol})
 	if err == nil || !strings.Contains(err.Error(), "missing") || len(certs) != 0 {
 		t.Fatalf("a complete default view certified an incomplete union: %v %v", certs, err)
 	}
@@ -299,4 +312,89 @@ func TestResolutionCertificateClosesBeforeServing(t *testing.T) {
 	if err != nil || !strings.Contains(got[symbol], "helper.Run") {
 		t.Fatalf("did not rederive the closing dependency: %v %v", got, err)
 	}
+}
+
+// A GOENV-only edit changes the certificate environment without changing
+// source, exports, configuration-file paths, or the native closing capture.
+func TestResolutionCertificateClosesGOENV(t *testing.T) {
+	neutralAmbient(t)
+	dir := writeModule(t, map[string]string{
+		"go.mod": "module example.com/envclose\n\ngo 1.27\n",
+		"p.go":   "package envclose\nfunc F() {}\n",
+	})
+	goenv := filepath.Join(t.TempDir(), "env")
+	write := func(value string) {
+		t.Helper()
+		if err := os.WriteFile(goenv, []byte("GOPROXY="+value+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("https://proxy.golang.org,direct")
+	t.Setenv("GOENV", goenv)
+	t.Setenv("GOPROXY", "")
+	const symbol = "example.com/envclose.F"
+	publishResolution(t, dir, symbol)
+	old := beforeCertificateCloseForTest
+	t.Cleanup(func() { beforeCertificateCloseForTest = old })
+	beforeCertificateCloseForTest = func() { write("off") }
+	s, err := NewServed(t.Context(), dir, []string{symbol})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if s.ServedCount() != 0 || s.Reasons()[symbol] != "source dependencies moved during serving" {
+		t.Fatalf("GOENV change escaped the closing certificate: %v", s.Notices())
+	}
+}
+
+func TestResolutionCertificateReopensAfterQuiesce(t *testing.T) {
+	neutralAmbient(t)
+	dir := writeModule(t, map[string]string{
+		"go.mod":   "module example.com/reopen\n\ngo 1.27\n",
+		"plain.go": "//go:build !dst\n\npackage reopen\nfunc F() {}\nfunc G() {}\n",
+		"dst.go":   "//go:build dst\n\npackage reopen\nfunc F() {}\nfunc G() {}\n",
+	})
+	dstPolicy(t, dir)
+	const first, second = "example.com/reopen.F", "example.com/reopen.G"
+	s, err := NewServed(t.Context(), dir, []string{first, second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	ask(t, s, first)
+	initialSecond := s.openingCertificates[second]
+	if initialSecond.Inputs == "" {
+		t.Fatal("first opening did not observe the second subject")
+	}
+	s.Quiesce()
+	initial := resolutioncache.Load(dir)
+	if len(initial) != 1 || initial[0].Symbol != first {
+		t.Fatalf("first opening did not publish: %v; %v", initial, s.Notices())
+	}
+	if err := os.WriteFile(filepath.Join(dir, "dst.go"), []byte("//go:build dst\n\npackage reopen\nfunc F() {}\nfunc G(int) {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ask(t, s, second)
+	s.Quiesce()
+	recs := resolutioncache.Load(dir)
+	if len(recs) != 2 {
+		t.Fatalf("reopening did not publish its current answer: %v; %v", recs, s.Notices())
+	}
+	for _, rec := range recs {
+		if rec.Symbol == second && rec.Certificate == initialSecond {
+			t.Fatal("reopening published the earlier opening's certificate")
+		}
+	}
+	warm, err := NewServed(t.Context(), dir, []string{first, second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer warm.Close()
+	if warm.ServedCount() != 1 || warm.served[second].Symbol != second {
+		t.Fatalf("reopening did not bind the persistently changed view: %v", warm.Notices())
+	}
+	oldHook := commandHook
+	t.Cleanup(func() { commandHook = oldHook })
+	commandHook = func(name string, args []string) { t.Errorf("held answer spawned %s %v", name, args) }
+	ask(t, s, second)
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/verifyrun"
+	"github.com/greatliontech/stipulator/internal/views"
 	"github.com/greatliontech/stipulator/internal/wire"
 )
 
@@ -46,6 +47,7 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 		return nil, nil, terminalToolError(prog, ctx, err)
 	}
 	out := &stipulatorv1.DossierReport{}
+	out.SetWitnessCacheLoad(vr.WitnessCacheLoad)
 	out.SetDossiers(dossiers)
 	// Orientation over a store that fails verification must say so, or
 	// first-wins picks render without the problem that explains them.
@@ -79,7 +81,7 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 		if err != nil {
 			return nil, nil, terminalToolError(prog, ctx, err)
 		}
-		res, structured, err := s.exportTo(in.ExportPath, doc, "context")
+		res, structured, err := s.exportTo(in.ExportPath, doc, "context", vr.WitnessCacheLoad)
 		if err != nil {
 			return nil, nil, terminalToolError(prog, ctx, err)
 		}
@@ -90,6 +92,7 @@ func (s *Server) toolContext(ctx context.Context, req *mcp.CallToolRequest, in c
 		return stampedResult(res, prog), structured, nil
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
+	out.SetWitnessCacheLoad(views.WitnessCacheLoadSummary(vr.WitnessCacheLoad))
 	var dossierRows []string
 	for _, d := range out.GetDossiers() {
 		row := d.GetRequirement().GetId()

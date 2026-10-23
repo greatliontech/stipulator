@@ -11,7 +11,6 @@ import (
 
 	"github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/gotool"
-	"github.com/greatliontech/gofresh/runtimeinput"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/stipulate"
 )
@@ -26,20 +25,25 @@ func TestNativeLedgerExtensionPersistsAcrossRestart(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-carve-out")
 	ctx := context.Background()
 	subject := gofresh.Subject{Package: "example.com/ledgergrowth", Symbol: "TestEnv"}
-	newView := func(dir string, env []string) *gofresh.View {
+	newView := func(dir string, env []string) *gofresh.RuntimeBinding {
 		t.Helper()
-		engine, err := gofresh.New(gofresh.WithDir(dir), gofresh.WithEnv(env...), gofresh.WithDeferredCheckClose())
+		env = gotool.UnsetEnv(env, "STIPULATOR_LEDGER_RESTART")
+		engine, err := gofresh.NewSession(ctx, gofresh.BuildDescription{Directory: dir, Environment: env, Inputs: []string{}}, gofresh.SessionPolicy{EvidenceRoot: dir, Execution: gofresh.PackageExecution, Runner: engineRunner})
 		if err != nil {
 			t.Fatal(err)
 		}
-		view, err := engine.NewViewFor(ctx, []gofresh.Subject{subject}, dir, gofresh.CodeResult)
+		view, err := engine.Snapshot(ctx, []gofresh.Subject{subject}, gofresh.CodeResult)
 		if err != nil {
 			t.Fatal(err)
 		}
-		return view
+		binding, err := view.BindRuntime(ctx, gofresh.RuntimeDescription{Directory: dir, Environment: env})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return binding
 	}
 	if dir := os.Getenv("STIPULATOR_LEDGER_RESTART"); dir != "" {
-		records := witnesscache.Load(t.Context(), dir)
+		records := witnesscache.Load(t.Context(), dir).Records
 		if len(records) == 0 {
 			t.Fatal("restart lost recording")
 		}
@@ -48,12 +52,9 @@ func TestNativeLedgerExtensionPersistsAcrossRestart(t *testing.T) {
 			t.Fatal("restart lost effective ledger coordinate")
 		}
 		view := newView(dir, os.Environ())
-		verdict, err := view.CheckObserved(ctx, rec.Fingerprint, subject)
+		verdict, err := view.Check(ctx, subject, rec.Fingerprint)
 		if err != nil || verdict.Status != gofresh.Valid {
 			t.Fatalf("restart: %+v %v", verdict, err)
-		}
-		if err := view.Validate(ctx); err != nil {
-			t.Fatal(err)
 		}
 		return
 	}
@@ -71,16 +72,7 @@ func TestFile(t *testing.T) { _, _ = os.ReadFile("fixture") }
 	}
 	env = gotool.SetEnv(env, "LEDGER_VALUE", "guarded")
 	producer := newView(dir, env)
-	frame := runtimeinput.CaptureProducerFrame(ctx, dir, dir, runtimeinput.FrameOptions{})
-	support, err := producer.PrepareOutcomeSupport(ctx, frame, "witness")
-	if err != nil {
-		t.Fatal(err)
-	}
-	fp, err := producer.CaptureObserved(ctx, subject)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ledger, err := producer.TestVariantLedger(subject)
+	ledger, err := producer.Snapshot().TestVariantLedger(subject)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,37 +83,44 @@ func TestFile(t *testing.T) { _, _ = os.ReadFile("fixture") }
 		t.Fatalf("build: %s %v", out, err)
 	}
 	log := filepath.Join(t.TempDir(), "inputs.log")
+	built, err := producer.Snapshot().BindBuilt(subject.Package, bin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unit, err := producer.BeginPackage([]gofresh.Subject{subject})
+	if err != nil {
+		t.Fatal(err)
+	}
+	contribution, err := unit.Register(ctx, built, gofresh.ProcessDescription{Identity: "witness", Capture: log})
+	if err != nil {
+		t.Fatal(err)
+	}
 	run := exec.CommandContext(ctx, bin, "-test.run=^TestEnv$", "-test.testlogfile="+log)
 	run.Dir, run.Env = dir, env
 	if out, err := run.CombinedOutput(); err != nil {
 		t.Fatalf("run: %s %v", out, err)
 	}
-	receipt, err := frame.Completion("witness", env, "")
-	if err != nil {
+	if err := unit.Submit(contribution, gofresh.Terminal{Kind: gofresh.NormalCompletion}); err != nil {
 		t.Fatal(err)
 	}
-	obs, reason, err := frame.Observe(ctx, log, runtimeinput.ProducerIngest{Identity: "witness", Env: env, Completion: receipt, Outcome: support})
-	if err != nil || reason != "" {
-		t.Fatalf("producer: %s %v", reason, err)
+	final, err := unit.Close(ctx)
+	if err != nil || len(final.Subjects) != 1 {
+		t.Fatalf("producer close: %+v %v", final, err)
 	}
-	fp, err = producer.AttachObservation(subject, fp, obs)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := producer.Validate(ctx); err != nil {
-		t.Fatal(err)
-	}
+	fp := final.Subjects[0].Fingerprint
 	original := fp
 	rec := witnesscache.Record{Group: "group", Package: subject.Package, Test: subject.Symbol, Fingerprint: fp, CompartmentLedger: witnesscache.LedgerFromGofresh(ledger), Outcomes: map[string]string{subject.Package + "." + subject.Symbol: "passed"}}
 	if err := witnesscache.Install(t.Context(), dir, rec); err != nil {
 		t.Fatal(err)
 	}
 	// This shape needs observed support; ordinary checking is insufficient.
-	if v, err := newView(dir, env).Check(ctx, fp, subject); err != nil || v.Status != gofresh.Unverifiable {
+	withoutSupport := fp
+	withoutSupport.ObservationAssertion, withoutSupport.ObservationProof = "", gofresh.ObservationProof{}
+	if v, err := newView(dir, env).Check(ctx, subject, withoutSupport); err != nil || v.Status != gofresh.Unverifiable {
 		t.Fatalf("ordinary fixture: %+v %v", v, err)
 	}
 	for i, name := range []string{"TestMore", "TestAgain", "TestDiscarded"} {
-		loaded := witnesscache.Load(t.Context(), dir)
+		loaded := witnesscache.Load(t.Context(), dir).Records
 		if len(loaded) == 0 {
 			t.Fatal("record missing")
 		}
@@ -134,24 +133,28 @@ func TestFile(t *testing.T) { _, _ = os.ReadFile("fixture") }
 			t.Fatal(err)
 		}
 		view := newView(dir, env)
-		verdict, err := view.CheckObserved(ctx, rec.Fingerprint, subject)
-		if err != nil || verdict.Status != gofresh.Stale || verdict.Reason != gofresh.ReasonTestVariants {
-			t.Fatalf("before extension: %+v %v", verdict, err)
+		checking, err := view.BeginCheck([]gofresh.Subject{subject})
+		if err != nil {
+			t.Fatal(err)
 		}
-		extended, verdict, err := compartmentGrownRefresh(ctx, dir, view, rec, verdict, subject)
-		if err != nil || verdict.Status != gofresh.Valid {
-			t.Fatalf("extension: %+v %v", verdict, err)
+		checked, err := checking.CheckBatch(ctx, []gofresh.Candidate{{Subject: subject, Recorded: rec.Fingerprint}})
+		if err != nil || checked[0].Verdict.Status != gofresh.Stale || checked[0].Verdict.Reason != gofresh.ReasonTestVariants {
+			t.Fatalf("before extension: %+v %v", checked, err)
 		}
-		unchanged := extended.Fingerprint
+		extended, err := compartmentGrownRefresh(ctx, dir, checking, rec, checked[0])
+		if err != nil || extended.Verdict.Status != gofresh.Valid {
+			t.Fatalf("extension: %+v %v", extended, err)
+		}
+		unchanged := extended.Extension.Fingerprint
 		unchanged.InertTestVariantApplicability = gofresh.InertTestVariantApplicability{}
-		if unchanged != original || extended.Fingerprint.EffectiveTestVariantClosure() == rec.Fingerprint.EffectiveTestVariantClosure() {
+		if unchanged != original || extended.Extension.Fingerprint.EffectiveTestVariantClosure() == rec.Fingerprint.EffectiveTestVariantClosure() {
 			t.Fatal("producer rewritten or effective endpoint unmoved")
 		}
-		current, err := view.TestVariantLedger(subject)
-		if err != nil || !reflect.DeepEqual(current, extended.CompartmentLedger.ToGofresh()) {
+		current, err := view.Snapshot().TestVariantLedger(subject)
+		if err != nil || !reflect.DeepEqual(current, extended.Extension.Ledger) {
 			t.Fatal("replacement lost current ledger", err)
 		}
-		wg := &witnessGroup{legs: map[string]*packageLeg{subject.Package: {view: view}}, served: []gofresh.Subject{subject}, recorded: map[gofresh.Subject]witnesscache.Record{subject: extended}, refreshed: map[gofresh.Subject]bool{subject: true}, executedWhy: map[gofresh.Subject]string{}}
+		wg := &witnessGroup{legs: map[string]*packageLeg{subject.Package: {view: &witnessSnapshot{Snapshot: view.Snapshot()}, binding: view, checking: checking, chosen: map[gofresh.Subject]chosenWitness{subject: {index: extended.Index, record: rec}}}}, served: []gofresh.Subject{subject}, executedWhy: map[gofresh.Subject]string{}}
 		if i == 2 {
 			afterServedCheckForTest = func(string) {
 				moved := strings.Replace(source, `"guarded"`, `"changed"`, 1)
@@ -205,7 +208,7 @@ func TestObservedExtensionSurvivesExecutingSiblingPublication(t *testing.T) {
 		}
 	}
 	requireRun(0, 1)
-	original := witnesscache.Load(t.Context(), dir)
+	original := witnesscache.Load(t.Context(), dir).Records
 	if len(original) != 1 || original[0].Fingerprint.PurityAssertion != "" || !original[0].Fingerprint.ObservationProof.Observable {
 		t.Fatal("fixture has no native observed record", original)
 	}
@@ -216,7 +219,7 @@ func TestObservedExtensionSurvivesExecutingSiblingPublication(t *testing.T) {
 		}
 		requireRun(i+1, 1)
 		var extended *witnesscache.Record
-		for _, rec := range witnesscache.Load(t.Context(), dir) {
+		for _, rec := range witnesscache.Load(t.Context(), dir).Records {
 			if rec.Test == original[0].Test && rec.Fingerprint.InertTestVariantApplicability.Strategy == gofresh.InertTestVariantExtension {
 				copy := rec
 				extended = &copy

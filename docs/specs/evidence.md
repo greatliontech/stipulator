@@ -339,8 +339,10 @@ use the owning invocation's module directory and workspace environment. The
 analysis of a compiling witness command uses that command's complete
 environment, including its derived parallelism cap: a compiler wrapper may
 consume any variable, not only the Go toolchain's named build settings. Its
-PWD names the invocation directory; cmd/go sets the test binary's PWD to
-its package directory, which is the environment observation ingest describes. The
+PWD names the invocation directory. The retained test binary runs with PWD
+naming its package directory; observation ingestion and every runtime-input
+check use that same complete package-process environment, while compilation
+continues to use the invocation environment. The
 verification tree remains the evidence root for observations and reviewed
 paths; a tree-relative PGO profile is resolved from that root for both build
 and analysis. Independent module roots are not substituted with root-module
@@ -459,8 +461,18 @@ result.
 
 **REQ-evidence-witness-freshness-concurrency** (behavior): Witness packages
 MUST execute concurrently under a derived concurrency bound —
-half the processor count, since each package process is itself
-a parallel process tree — and, where the host reports its memory, under
+the lesser of half the parent's processor budget and the number of distinct
+packages the operation permits that invocation to execute, with both terms
+floored at one. The processor budget is sampled once for the invocation in
+that operation. The package population follows the execution class and any
+requirement scope before freshness decisions: fresh records cannot shrink
+this population, and isolation or retries cannot enlarge it. The bound and
+delivered width are finalized before environment-keyed capture grouping and
+retained throughout the operation, including retries; narrowing a retry does
+not widen its environment. Each package process is itself a parallel process
+tree, but a single permitted package receives the full processor budget
+unless its environment is already narrower. Where the host reports its memory,
+execution is also under
 a memory term: a package process is spawned only while the host's
 available memory (the family's soft ceilings are collection targets,
 never a need set aside), less what each running package's tree is
@@ -498,19 +510,20 @@ host-freezing fan-out; the explicit reviewed surfaces — reviewed
 GOFLAGS or binary arguments carrying their own parallelism flags — may
 widen past the derived bound, and a reviewed environment delta
 declaring a narrower GOMAXPROCS narrows the delivered width, each an
-operator-explicit choice. The spawn environment, the observation
-ingest environment, and freshness revalidation are one environment
-(the analysis engine's declared producer environment), so a witness
-that observably reads the delivered width records the value its
-process actually saw and serves fresh under it; the measurement
-guard digests the runtime-configuration keys from that same
-environment, so a unit-bound change that moves the delivered width
-stales the group's evidence — the runtime reads those keys before
-execution, and evidence must never serve across a width the process
-never saw; invocations delivering different widths occupy distinct
-capture groups through the environment coordinate their witness
-environment carries, because one analysis engine declares one producer
-environment.
+operator-explicit choice. The delivered width is derived once and retained in
+both the complete compilation description and the complete runtime description.
+Compilation analysis and compilation share the former; binary spawn, observation
+ingestion and runtime-input checking share the latter, including its package PWD
+and runtime PATH. These descriptions need not be identical. A witness reading
+the delivered width records the value its process actually saw. The explicit
+build guard covers the complete compilation environment, including that width,
+so a unit-bound change moving it invalidates prior evidence without adding
+measurement-only guards to code results. Runtime-input evidence and the admitted
+native method retain their separate applicability obligations; equal inherited
+width does not license an unaccounted in-process change. Invocations delivering
+different widths occupy distinct capture groups through their effective
+compilation-environment coordinate, without putting ambient-resolved width into
+the persistent record address.
 
 **REQ-evidence-witness-freshness-record-identity** (behavior): A record's identity MUST carry its producing capture
 group's build coordinate — the policy-declared build selection and
@@ -629,10 +642,15 @@ responsibility as the in-source form. A clean witness invocation
 instead MAY publish without that assertion when its supported runtime evidence is
 attached to a compatible caller-selected Gofresh observation-completeness proof
 captured before execution and both are revalidated after execution. Stipulator
-selects that proof only when the producing test process runs exactly one
-selected top-level runnable — executable examples counted among them — so no
-sibling runnable in the process can contribute unrecorded process state to
-the subject's outcome; an ordinary freshness check never infers proof selection.
+selects that proof through the admitted native package-process method over the
+complete actual top-level runnable set, including executable examples and
+subjects for which no reusable witness is requested. Every selected member's
+inventory and the package's test-main effects must satisfy that method before
+execution; isolation or a sole-runnable prediction alone grants no support.
+Each attempt owns its frame, support, capture and closing independently, and
+every subject retains the entire process observation rather than an invented
+per-subject attribution. Checking selects only established admissible native
+evidence and never repairs missing producing support.
 
 **REQ-evidence-outcome-premises** (invariant): Observation-based witness reuse
 MUST require separately established process completion and operation-outcome
@@ -648,7 +666,9 @@ on the process observation; neither those guards, health, an empty testlog nor
 explicit purity confers verified outcome support. A supported capture whose
 operations contradict its method is incomplete, never silently retried as a
 supported observation. Historical manifests without the new support cannot gain
-it by decoding or attachment, and pre-v2 runtime manifests are refused. Purity
+it by decoding or attachment, and pre-v3 runtime manifests are refused: they
+cannot establish which producing-directory values were observed through PWD.
+Purity
 remains a separate caller-responsible override of the final freshness verdict.
 
 **REQ-evidence-admission-origin** (behavior): The memory term's estimate
@@ -751,10 +771,16 @@ re-execution.
 
 **REQ-evidence-witness-cache-format-record-keys** (behavior): The record MUST carry string `group`, `package` and `test`,
 object `fingerprint`, object `outcomes`, optional array `registrations`,
-and optional array `observationExclusions` — the canonical reviewed
-exclusion set the record's observation was captured under, absent
-meaning the capture ran with none, which is exactly what every pre-field
-record's capture did. Its fingerprint keys are `maximalClosure`,
+and optional arrays `observationExclusions` and `observationNamespaces` —
+the canonical reviewed declaration sets the record's observation was captured
+under. Exclusion strings are strictly increasing in byte order. Namespace
+objects have exactly string members `dir` and `pattern`, in the verification
+tree's declaration coordinates, and rows are strictly increasing by directory
+then pattern in byte order. Neither set contains duplicate rows; decoding
+refuses noncanonical sets rather than sorting or repairing their history.
+Absent sets mean the capture ran with none, which is exactly what every
+pre-field record's capture did; present empty arrays remain valid empty sets.
+Its fingerprint keys are `maximalClosure`,
 `testVariantClosure`, `toolchain`, `buildConfig`, an optional
 `observationAssertion` plus `observationProof` pair, and optional
 `purityAssertion`, `dynamicStateVouches`, `singleSubjectDischarges`,
@@ -767,7 +793,7 @@ producing `testVariantClosure`; closure
 (maximal and test-variant), build, and runtime digests are 16-byte
 lowercase hexadecimal values, the observation assertion and proof are
 structurally encoded attributable Gofresh evidence for the record's
-subject, the runtime manifest is canonical Gofresh v2, purity is empty
+subject, the runtime manifest is canonical Gofresh v3, purity is empty
 or a recognized Gofresh attribution, the vouch and discharge sets are
 Gofresh's canonical sorted comma-joined `<import path>.<Variable>`
 identities (vouches: the reviewed acceptances that discharged culprits
@@ -850,14 +876,51 @@ values.
 
 **REQ-evidence-witness-cache-format-validation** (behavior): Cache deserialization validates canonical structural encoding
 and proof disposition consistency only. Source-bound proof integrity and
-compatibility require the current Gofresh view and are enforced by
-`CheckObserved`, so a structurally valid but incompatible historical
+compatibility require current Gofresh evidence checking, so a structurally valid but incompatible historical
 proof remains readable but cannot grant reuse. Optional fields are
 omitted rather than encoded as `null`. Unknown fields, another version,
 a record disagreeing with the file's own name, or any structural
 malformation MUST make that file alone an absent record — sibling records
 stay trusted, because refusal is per record and costs only that record's
 execution, while a record is never migrated or partially trusted.
+
+**REQ-evidence-witness-cache-refusals** (behavior): Loading witness records
+MUST retain a bounded advisory account of every record refusal actually
+observed while reading the initial record-name snapshot,
+including read failures, malformed envelopes, identity/name disagreements,
+invalid evidence structure and refused native runtime manifests. Refused
+records remain absent for evidence: their outcomes, registrations and
+fingerprints never enter serving, historical-pass or health indexes. A refusal
+names its file; a group/package/test coordinate is included only after complete
+structural validation and filename agreement, independently of native runtime
+manifest admission. Duplicate or non-canonical envelope member names cannot
+establish that attribution. Native error text is diagnostic detail, not a
+classification grammar; the refusing operation supplies the cause.
+
+The full account retains at most 25 refusal rows in the load's variant order,
+counts further observed refusals, and bounds each displayed filename and
+diagnostic to 1024 UTF-8 bytes with truncation stated. An attribution coordinate
+with a component exceeding 1024 UTF-8 bytes is omitted whole and that omission
+is stated; truncated identities never become lookup keys. Detail collection is
+bounded while scanning, not after accumulating all refused records. A partial
+account is marked incomplete; a missing store is an empty cache, not a refusal.
+A store-discovery or listing failure retains an account-level diagnostic under
+the same 1024-byte limit and truncation rule, marks enumeration incomplete,
+and adds no fictitious record refusal. Cancellation counts no unexamined files.
+The ledger-retention rescan contributes neither rows nor refusal counts, even
+for newly installed files, and preserves the
+existing protection of refused records' readable ledger references.
+
+The account accompanies CLI and MCP results even when an admitted sibling
+serves. Retained, fully attributed refusals provide a re-execution explanation
+only when that exact identity has no selected reusable variant; a valid sibling
+clears that fallback, and current native or policy refusal reasons take
+precedence. Omitted details do not authorize guessed subject attribution.
+Human summaries and the default MCP summary retain at most five rows, adding
+their dropped rows to the same omission count. Full JSON and full MCP views
+carry the bounded full account through the same wire projection. Reading or
+rendering the account neither executes witnesses nor upgrades historical
+evidence, and the account changes no verification verdict.
 
 **REQ-evidence-witness-cache-format-eviction** (behavior): Per
 identity the store MUST keep a bounded set of the most recently installed
@@ -891,6 +954,17 @@ covering invocation, and work the policy leaves outside witnessing stays
 outside, degraded or not. On an id-scoped pass the degraded full
 execution is the scope's own — every in-scope subject executes, and the
 scope boundary keeps holding — never the tree's.
+A demonstrated runtime-input guard change at producing close is a result-local
+refusal, not such a fault: no candidate may publish reusable evidence from that
+process, including a sibling that did not itself read the moved input. Each
+unpublished candidate retains its uncacheability reason; the non-authorizing
+process account and actual execution outcomes and health remain available.
+Independent attempts and packages may still publish, including packages closing
+later. Additional source-view, configuration and infrastructure faults retain
+their existing degradation behavior without erasing demonstrated guard movement,
+and cancellation retains its existing precedence. This
+distinction neither waives movement under purity nor changes retry revalidation's
+witness-grant rules (REQ-evidence-witness-freshness-revalidation).
 
 **REQ-evidence-toolchain-provenance** (behavior): Every frontend parse of
 the tree MUST refuse toolchain-provenance skew before its result feeds any

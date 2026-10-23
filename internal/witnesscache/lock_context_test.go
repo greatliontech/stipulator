@@ -50,7 +50,7 @@ func TestStoreOperationsCancelBehindAnotherProcess(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-cache-format-ledger", "REQ-evidence-store-gc")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
-	rec := reusedLedgerRecord()
+	rec := reusedLedgerRecord(t)
 	if err := Install(t.Context(), dir, rec); err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestStoreOperationsCancelBehindAnotherProcess(t *testing.T) {
 		t.Fatalf("holder: %q %v", line, err)
 	}
 	loaded := make(chan []Record, 1)
-	go func() { loaded <- Load(t.Context(), dir) }()
+	go func() { loaded <- Load(t.Context(), dir).Records }()
 	select {
 	case records := <-loaded:
 		if len(records) != 1 {
@@ -162,7 +162,7 @@ func TestStoreOperationsCancelBehindAnotherProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	released = true
-	if records := Load(t.Context(), dir); len(records) != 1 || records[0].Test != rec.Test {
+	if records := Load(t.Context(), dir).Records; len(records) != 1 || records[0].Test != rec.Test {
 		t.Fatal("cancelled work resumed after unlock", records)
 	}
 	if _, err := os.Stat(orphan); !os.IsNotExist(err) {
@@ -174,7 +174,7 @@ func TestLedgerCollectionChecksCancellationBeforeDeletion(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-cache-format-ledger", "REQ-evidence-store-gc")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
-	rec := reusedLedgerRecord()
+	rec := reusedLedgerRecord(t)
 	if err := Install(t.Context(), dir, rec); err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +212,7 @@ func TestRecordSweepChecksCancellationBeforeRemoval(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-store-gc")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
-	rec := reusedLedgerRecord()
+	rec := reusedLedgerRecord(t)
 	if err := Install(t.Context(), dir, rec); err != nil {
 		t.Fatal(err)
 	}
@@ -235,7 +235,7 @@ func TestLedgerCancellationRetainsCountsAfterRemovalFailure(t *testing.T) {
 	}
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
-	rec := reusedLedgerRecord()
+	rec := reusedLedgerRecord(t)
 	if err := Install(t.Context(), dir, rec); err != nil {
 		t.Fatal(err)
 	}

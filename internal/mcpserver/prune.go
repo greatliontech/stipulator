@@ -96,6 +96,7 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 		// evaluation read, by the served rule
 		// (REQ-evidence-resolution-freshness-account).
 		out := writeOut{Notes: append([]string{evaluated}, accountLines(res.Notices)...), Check: true}
+		out.WitnessCacheLoad = res.WitnessCacheLoad
 		for _, up := range res.Prunes {
 			out.Notes = append(out.Notes, "resolved gap lingers: "+up.Path)
 		}
@@ -110,6 +111,7 @@ func (s *Server) toolPrune(ctx context.Context, req *mcp.CallToolRequest, in pru
 		return nil, nil, terminalToolError(prog, ctx, faulted(out, err))
 	}
 	out.Notes = append(append(out.Notes, evaluated), accountLines(res.Notices)...)
+	out.WitnessCacheLoad = res.WitnessCacheLoad
 	if len(res.Prunes) == 0 {
 		out.Notes = append(out.Notes, "no resolved gap records linger")
 	}

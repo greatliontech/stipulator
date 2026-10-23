@@ -58,7 +58,8 @@ func TestExplainWitnessRendersServingsWalk(t *testing.T) {
 	fb := fixtureBackend(t)
 	const lib = "example.com/fixture/lib"
 	const bad = "example.com/fixture/badhelper"
-	badFile := "badhelper/bad.go"
+	badDiagnostic := selectedUndefinedDiagnostic(t, fb, bad, (buildSelection{}).key(), "Run")
+	badLoadRefusal := seededRefusal(fmt.Errorf("in-module package %s: %v", bad, badDiagnostic)).String()
 	for _, tc := range []struct {
 		symbol string
 		want   gofresh.Chain
@@ -80,8 +81,7 @@ func TestExplainWitnessRendersServingsWalk(t *testing.T) {
 		}}},
 		{lib + ".TestPropViaBadHelper", gofresh.Chain{Arm: ArmSeedingRefused, Links: []gofresh.ChainLink{
 			{Kind: LinkWitness, Package: lib, Symbol: "TestPropViaBadHelper", Pos: siteAfter(t, "lib/propvia_test.go", "", "func TestPropViaBadHelper(")},
-			{Kind: LinkCall, Package: lib, Symbol: "TestPropViaBadHelper", Callee: bad + ".Run", Pos: siteAfter(t, "lib/propvia_test.go", "func TestPropViaBadHelper(", "badhelper.Run(t, func(")},
-			{Kind: LinkRefusal, Package: bad, Symbol: "Run", Clause: seededRefusal(errors.New("call of mystery in " + bad + ".Run resolves to no declaration")).String(), Pos: siteAfter(t, badFile, "func Run(", "mystery(t)")},
+			{Kind: LinkRefusal, Package: lib, Symbol: "TestPropViaBadHelper", Clause: badLoadRefusal, Pos: siteAfter(t, "lib/propvia_test.go", "func TestPropViaBadHelper(", "badhelper.Run(t, func(")},
 		}}},
 		// A refusal met before the driving hop: the chain is the hop's.
 		{lib + ".TestPropViaBadThenGood", gofresh.Chain{Arm: ArmSeedingThrough, Links: []gofresh.ChainLink{
@@ -92,8 +92,7 @@ func TestExplainWitnessRendersServingsWalk(t *testing.T) {
 		// Two refusals: the first in breadth-first order is the chain's.
 		{lib + ".TestPropViaTwoBad", gofresh.Chain{Arm: ArmSeedingRefused, Links: []gofresh.ChainLink{
 			{Kind: LinkWitness, Package: lib, Symbol: "TestPropViaTwoBad", Pos: siteAfter(t, "lib/propvia_test.go", "", "func TestPropViaTwoBad(")},
-			{Kind: LinkCall, Package: lib, Symbol: "TestPropViaTwoBad", Callee: bad + ".Run", Pos: siteAfter(t, "lib/propvia_test.go", "func TestPropViaTwoBad(", "badhelper.Run(t, func(")},
-			{Kind: LinkRefusal, Package: bad, Symbol: "Run", Clause: seededRefusal(errors.New("call of mystery in " + bad + ".Run resolves to no declaration")).String(), Pos: siteAfter(t, badFile, "func Run(", "mystery(t)")},
+			{Kind: LinkRefusal, Package: lib, Symbol: "TestPropViaTwoBad", Clause: badLoadRefusal, Pos: siteAfter(t, "lib/propvia_test.go", "func TestPropViaTwoBad(", "badhelper.Run(t, func(")},
 		}}},
 		// Two direct drivers: the first call is the driving site.
 		{lib + ".TestPropTwoDrivers", gofresh.Chain{Arm: ArmSeedingDirect, Links: []gofresh.ChainLink{
@@ -248,9 +247,9 @@ func TestExplainWitnessAnswersAcrossViews(t *testing.T) {
 	if _, _, err := whole.ExplainWitness(lib + ".NoSuch"); err == nil || !strings.Contains(err.Error(), "witness "+lib+".NoSuch") {
 		t.Fatalf("the child's refusal: %v, want the load gap named", err)
 	}
-	// A refusal raised in another view answers under that view: the
-	// dst helper calls an undeclared function while the default body
-	// is clean.
+	// An unreadable declaration in another view answers under the resolved
+	// view. Its refusal names the failed selected view and preserves the
+	// loader diagnostic; there is no trusted hop into its partial body.
 	files := splitModuleFiles()
 	files["lib/dst.go"] = "//go:build dst\n\npackage lib\n\nimport (\n\t\"testing\"\n\n\t\"pgregory.net/rapid\"\n)\n\nfunc splitDrive(t *testing.T, body func(*rapid.T)) {\n\tmystery(t, body)\n}\n"
 	rdir := writeModule(t, files)
@@ -259,7 +258,9 @@ func TestExplainWitnessAnswersAcrossViews(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	refusal := seededRefusal(errors.New("call of mystery in " + lib + ".splitDrive resolves to no declaration")).String()
+	dst := (buildSelection{tags: []string{"dst"}}).key()
+	diagnostic := selectedUndefinedDiagnostic(t, refusing, lib, dst, "TestSplit")
+	refusal := seededRefusal(fmt.Errorf("%s.TestSplit in the %q view: in-module package %s: %v", lib, dst, lib, diagnostic)).String()
 	served, err := refusing.NeverServe([]string{lib + ".TestSplit"})
 	if err != nil || served[lib+".TestSplit"] != refusal {
 		t.Fatalf("the dst view's refusal: %v %v", served, err)
@@ -267,11 +268,58 @@ func TestExplainWitnessAnswersAcrossViews(t *testing.T) {
 	chain, view, err := refusing.explainWitness(lib + ".TestSplit")
 	wantRefused := gofresh.Chain{Arm: ArmSeedingRefused, Links: []gofresh.ChainLink{
 		{Kind: LinkWitness, Package: lib, Symbol: "TestSplit", Pos: "lib/split_test.go:9"},
-		{Kind: LinkCall, Package: lib, Symbol: "TestSplit", Callee: lib + ".splitDrive", Pos: "lib/split_test.go:10"},
-		{Kind: LinkRefusal, Package: lib, Symbol: "splitDrive", Clause: refusal, Pos: "lib/dst.go:12"},
+		{Kind: LinkRefusal, Package: lib, Symbol: "TestSplit", Clause: refusal},
 	}}
-	if err != nil || view != "-tags=dst" || !reflect.DeepEqual(chain, wantRefused) {
-		t.Fatalf("a refusal in the dst view: %v view %q\n got %+v\nwant %+v", err, view, chain, wantRefused)
+	if err != nil || view != "default" || !reflect.DeepEqual(chain, wantRefused) {
+		t.Fatalf("unreadable dst declaration: %v view %q\n got %+v\nwant %+v", err, view, chain, wantRefused)
+	}
+	// A healthy tagged view can still produce a refusal inside its walk.
+	// A type-parameter method has no statically readable implementation;
+	// unlike an undefined name, it leaves the package fully loadable.
+	files["lib/dst.go"] = `//go:build dst
+
+package lib
+
+import (
+	"testing"
+
+	"pgregory.net/rapid"
+)
+
+func splitDrive(t *testing.T, body func(*rapid.T)) {
+	dispatch(t, runner{}, body)
+}
+type runner struct{}
+func (runner) Run(*testing.T, func(*rapid.T)) {}
+func dispatch[T interface { Run(*testing.T, func(*rapid.T)) }](t *testing.T, x T, body func(*rapid.T)) {
+	x.Run(t, body)
+}
+`
+	healthyDir := writeModule(t, files)
+	dstPolicy(t, healthyDir)
+	healthy, err := newContext(t.Context(), healthyDir, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, pkg := range healthy.byPath[lib] {
+		if len(pkg.Errors) != 0 {
+			t.Fatalf("healthy cross-view control has load errors: %v", pkg.Errors)
+		}
+	}
+	walkRefusal := seededRefusal(errors.New("call of Run in " + lib + ".dispatch resolves to no declaration")).String()
+	served, err = healthy.NeverServe([]string{lib + ".TestSplit"})
+	if err != nil || served[lib+".TestSplit"] != walkRefusal {
+		t.Fatalf("healthy tagged walk refusal: %v %v", served, err)
+	}
+	chain, view, err = healthy.explainWitness(lib + ".TestSplit")
+	wantWalkRefused := gofresh.Chain{Arm: ArmSeedingRefused, Links: []gofresh.ChainLink{
+		{Kind: LinkWitness, Package: lib, Symbol: "TestSplit", Pos: "lib/split_test.go:9"},
+		{Kind: LinkCall, Package: lib, Symbol: "TestSplit", Callee: lib + ".splitDrive", Pos: "lib/split_test.go:10"},
+		{Kind: LinkCall, Package: lib, Symbol: "splitDrive", Callee: lib + ".dispatch", Pos: "lib/dst.go:12"},
+		{Kind: LinkRefusal, Package: lib, Symbol: "dispatch", Clause: walkRefusal, Pos: "lib/dst.go:17"},
+	}}
+	if err != nil || view != "-tags=dst" || !reflect.DeepEqual(chain, wantWalkRefused) {
+		t.Fatalf("healthy tagged refusal chain: %v view %q\n got %+v\nwant %+v", err, view, chain, wantWalkRefused)
 	}
 }
 

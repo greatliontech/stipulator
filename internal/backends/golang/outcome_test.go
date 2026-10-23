@@ -53,7 +53,7 @@ func TestUnsupportedFileOutcomesRetainIdentityWithoutPublishing(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !SuiteHealthy(report) || tr.Ran != 1 || tr.Uncached != 1 || len(witnesscache.Load(t.Context(), dir)) != 0 {
+		if !SuiteHealthy(report) || tr.Ran != 1 || tr.Uncached != 1 || len(witnesscache.Load(t.Context(), dir).Records) != 0 {
 			t.Fatalf("unsupported file read published or lost its outcome: report=%v run=%+v", report, tr)
 		}
 		obs := report.GetObservations()
@@ -77,7 +77,7 @@ func TestUnsupportedFileOutcomesRetainIdentityWithoutPublishing(t *testing.T) {
 	if err != nil || tr.Uncached != 0 {
 		t.Fatalf("explicit purity failed: %+v %v", tr, err)
 	}
-	records := witnesscache.Load(t.Context(), dir)
+	records := witnesscache.Load(t.Context(), dir).Records
 	if len(records) != 1 || records[0].Fingerprint.PurityAssertion == "" {
 		t.Fatalf("missing attributable purity record: %+v", records)
 	}
@@ -108,85 +108,144 @@ func TestOutcomePreparationMatchesTheActualProcess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	engine, err := gofresh.New(gofresh.WithDir(dir), gofresh.WithEnv(env...))
+	env, telemetrySource, err := telemetryOffEnvSource(env)
 	if err != nil {
 		t.Fatal(err)
 	}
-	view, err := engine.NewView(ctx, []gofresh.Subject{subject}, dir)
+	session, err := gofresh.NewSession(ctx, gofresh.BuildDescription{Directory: dir, Environment: env, Inputs: []string{}}, gofresh.SessionPolicy{EvidenceRoot: dir, Execution: gofresh.PackageExecution, Runner: engineRunner})
 	if err != nil {
 		t.Fatal(err)
 	}
-	leg, err := newPackageLeg(view, []gofresh.Subject{subject})
+	view, err := session.Snapshot(ctx, []gofresh.Subject{subject}, gofresh.CodeResult)
 	if err != nil {
 		t.Fatal(err)
 	}
-	leg.prove(ctx, []gofresh.Subject{subject})
+	binding, err := view.BindRuntime(ctx, gofresh.RuntimeDescription{Directory: dir, Environment: env})
+	if err != nil {
+		t.Fatal(err)
+	}
 	n := &NormalizedInvocation{Name: "bound", Dir: dir, Env: env, WitnessEnv: env,
-		PkgDirs: map[string]string{pkg: dir}, PkgClosureDirs: map[string][]string{pkg: {}}, roots: new(runtimeinput.Roots)}
-	frame := captureObservationFrame(ctx, n, pkg)
+		PkgDirs: map[string]string{pkg: dir}, PkgClosureDirs: map[string][]string{pkg: {}}, TelemetrySource: telemetrySource, runnables: map[string][]string{pkg: {subject.Symbol}}}
+	query := *n
+	query.Packages = []string{pkg}
+	roster, err := observeRunnableGeneration(ctx, query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	leg := &packageLeg{view: &witnessSnapshot{Snapshot: view, roster: roster}, binding: binding}
+	goenv, err := rootsRunner.TakeEnvSnapshot(ctx, dir, env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	n.GOROOT, n.GOCACHE = goenv.Value("GOROOT"), goenv.Value("GOCACHE")
+	built := buildRetained(ctx, n, pkg, retainedProcessHooks{})
+	if built.Err != nil {
+		t.Fatal(built.Err)
+	}
+	defer built.Artifact.Close()
 	producer := &stipulatorv1.ProducerIdentity{}
 	producer.SetInvocation(n.Name)
 	producer.SetProcessOrdinal(1)
-	identity := processIdentity(n, producer, pkg)
-	frame.outcome = leg.prepareOutcome(ctx, []string{subject.Symbol}, frame.frame, identity)
-	binding, err := frame.frame.OutcomeBinding(identity, env)
-	if err != nil || frame.outcome.Reason(binding) != "" {
-		t.Fatalf("supported fixture refused: %s %v", frame.outcome.Reason(binding), err)
+	log := filepath.Join(t.TempDir(), "capture.log")
+	environment, err := prepareRetainedEnvironment(n, dir, n.GOROOT)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if support := (*packageLeg)(nil).prepareOutcome(ctx, nil, frame.frame, identity); support.Reason(binding) == "" {
-		t.Fatal("a process without a proof leg gained outcome support")
+	defer environment.Close()
+	runtime, err := prepareRetainedRuntime(ctx, n, built.Artifact, retainedRuntimeOptions{Package: pkg, Environment: environment, GOCACHE: n.GOCACHE, Selection: []string{subject.Symbol}, LogPath: log}, retainedProcessHooks{})
+	if err != nil {
+		t.Fatal(err)
 	}
-	if support := leg.prepareOutcome(ctx, nil, frame.frame, identity); support.Reason(binding) != "" {
-		t.Fatalf("whole-package solo prediction lost its support: %s", support.Reason(binding))
+	prepare := func(ctx context.Context, leg *packageLeg, names []string) (*gofresh.PackageUnit, gofresh.Contribution, error) {
+		selectedRuntime := *runtime
+		selectedRuntime.Args = environment.flags.runtimeArgs(n, names, log)
+		return prepareNativeAttempt(ctx, n, pkg, leg, built.Artifact, &selectedRuntime, log, producer)
+	}
+	unit, contribution, err := prepare(ctx, leg, []string{subject.Symbol})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unit.Abort()
+	if _, _, err := prepare(ctx, nil, []string{subject.Symbol}); err == nil {
+		t.Fatal("absent snapshot granted preparation")
 	}
 	cancelled, cancel := context.WithCancel(ctx)
 	cancel()
-	if support := leg.prepareOutcome(cancelled, nil, frame.frame, identity); support.Reason(binding) == "" {
+	if _, _, err := prepare(cancelled, leg, []string{subject.Symbol}); err == nil {
 		t.Fatal("cancelled preparation issued support")
 	}
-	for _, names := range [][]string{{}, {"TestOther"}, {subject.Symbol, "TestOther"}} {
-		if support := leg.prepareOutcome(ctx, names, frame.frame, identity); support.Reason(binding) == "" {
+	for _, names := range [][]string{{}, {"TestOther"}} {
+		if _, _, err := prepare(ctx, leg, names); err == nil {
 			t.Fatalf("selection %v borrowed %s's support", names, subject.Symbol)
 		}
 	}
-	log := filepath.Join(t.TempDir(), "capture.log")
-	if err := os.WriteFile(log, []byte("# test log\ngetenv STIPULATOR_OBSERVED\n"), 0o600); err != nil {
+	mixed, selected, err := prepare(ctx, leg, []string{subject.Symbol, "TestOther"})
+	if err != nil {
 		t.Fatal(err)
 	}
-	st := &streamState{terminal: "pass", started: map[string]bool{}}
-	ingest := func(n *NormalizedInvocation, frame observationFrame) *ProcessObservation {
-		return observeProcess(ctx, n, pkg, producer, st, nil, healthy, log, frame)
+	if got := selected.Subjects(); len(got) != 1 || got[0] != subject {
+		t.Fatalf("unmatched spelling became an actual contributor: %v", got)
 	}
-	obs := ingest(n, frame)
+	mixed.Abort()
+	other, _, err := prepare(ctx, leg, []string{subject.Symbol})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer other.Abort()
+	if err := other.Submit(contribution, gofresh.Terminal{Kind: gofresh.NormalCompletion}); err == nil {
+		t.Fatal("another attempt borrowed the completion handle")
+	}
+	actual := runRetained(ctx, ctx, n, runtime, producer, retainedProcessHooks{})
+	if !actual.HarnessComplete() {
+		t.Fatalf("real harness did not complete: %+v", actual)
+	}
+	if err := unit.Submit(contribution, gofresh.Terminal{Kind: gofresh.NormalCompletion}); err != nil {
+		t.Fatal(err)
+	}
+	final, err := unit.Close(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	account, _ := unit.Account()
+	obs := nativeObservation(pkg, producer, final, account, nil)
 	method, subjects := outcomeFields(t, obs.Wire.GetCompleted().GetManifest())
 	if method == "" || len(subjects) != 1 || obs.Wire.GetCompleted().GetOutcomeReason() != "" {
-		t.Fatalf("actual binding lost its support: %v", obs.Wire)
+		t.Fatalf("actual binding lost support: %v", obs.Wire)
 	}
-	// An independently captured span cannot borrow a capability, even with the
-	// same paths. Its normally completed identity capture remains useful.
-	otherFrame := captureObservationFrame(ctx, n, pkg)
-	otherFrame.outcome = frame.outcome
-	changedEnv := *n
-	changedEnv.WitnessEnv = gotool.SetEnv(env, "STIPULATOR_OBSERVED", "different")
-	for _, other := range []*ProcessObservation{ingest(n, otherFrame), ingest(&changedEnv, frame)} {
-		guard := other.Wire.GetCompleted()
-		if guard == nil {
-			t.Fatalf("identity-only fallback lost: %v", other.Wire)
-		}
-		method, subjects := outcomeFields(t, guard.GetManifest())
-		if method != "" || len(subjects) != 0 || guard.GetOutcomeReason() == "" {
-			t.Fatalf("support crossed an execution binding: %v", other.Wire)
-		}
+	if _, err := other.Close(ctx); err == nil {
+		t.Fatal("unsubmitted sibling borrowed successful close")
 	}
-	if err := os.WriteFile(log, []byte("# test log\nopen .git/HEAD\n"), 0o600); err != nil {
+	contradicted, handle, err := prepare(ctx, leg, []string{subject.Symbol})
+	if err != nil {
 		t.Fatal(err)
 	}
-	if contradicted := ingest(n, frame); contradicted.Wire.GetCompleted() != nil || !strings.Contains(contradicted.Wire.GetIncompleteReason(), "captured operations") {
-		t.Fatalf("excluded file operation hid a contradictory capture: %v", contradicted.Wire)
+	defer contradicted.Abort()
+	actual = runRetained(ctx, ctx, n, runtime, producer, retainedProcessHooks{})
+	if !actual.HarnessComplete() {
+		t.Fatal("contradiction fixture did not actually complete")
+	}
+	f, err := os.OpenFile(log, os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = f.WriteString("open .git/HEAD\n")
+	if closeErr := f.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := contradicted.Submit(handle, gofresh.Terminal{Kind: gofresh.NormalCompletion}); err != nil {
+		t.Fatal(err)
+	}
+	_, _ = contradicted.Close(ctx)
+	contradiction, _ := contradicted.Account()
+	if contradiction.Observation != gofresh.IncompleteObservation || !strings.Contains(contradiction.ObservationReason, "captured operations") {
+		t.Fatalf("excluded operation hid a contradictory capture: %+v", contradiction)
 	}
 	leg.release()
-	if support := leg.prepareOutcome(ctx, nil, frame.frame, identity); support.Reason(binding) == "" {
-		t.Fatal("a released package still issued outcome support")
+	if _, _, err := prepare(ctx, leg, []string{subject.Symbol}); err == nil {
+		t.Fatal("released package issued support")
 	}
 }
 
@@ -198,7 +257,8 @@ func TestOrdinarilyFailedProcessHasIdentityGuardsButNoWitness(t *testing.T) {
 	neutralAmbient(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
 	cfg.SetPackages([]string{"./mixed", "./panics"})
-	health, _, diags, observations := executeInvocationObserved(t, time.Minute, cfg, "failures")
+	cfg.SetPlainWitness(true)
+	health, rows, diags, observations := executeInvocationObserved(t, time.Minute, cfg, "failures")
 	if health.GetDisposition() == healthy {
 		t.Fatalf("failing invocation granted health: %v", diags)
 	}
@@ -206,12 +266,12 @@ func TestOrdinarilyFailedProcessHasIdentityGuardsButNoWitness(t *testing.T) {
 		switch obs.Wire.GetPackage() {
 		case "example.com/exec/mixed":
 			guard := obs.Wire.GetCompleted()
-			if guard == nil || guard.GetOutcomeReason() == "" {
+			if guard == nil {
 				t.Fatalf("ordinary failure lost finalized guards: %v", obs.Wire)
 			}
 			method, subjects := outcomeFields(t, guard.GetManifest())
-			if method != "" || len(subjects) != 0 {
-				t.Fatal("failing process health supplied outcome support")
+			if method == "" || len(subjects) != 2 || guard.GetOutcomeReason() != "" || obs.account.Terminal.Kind != gofresh.NormalCompletion {
+				t.Fatalf("ordinary failure lost its independently prepared package support: %+v", obs.account)
 			}
 		case "example.com/exec/panics":
 			if obs.Wire.GetCompleted() != nil || obs.Wire.GetIncompleteReason() == "" {
@@ -221,5 +281,11 @@ func TestOrdinarilyFailedProcessHasIdentityGuardsButNoWitness(t *testing.T) {
 	}
 	if len(observations) != 2 {
 		t.Fatalf("missing processes: %v", observations)
+	}
+	report := &stipulatorv1.ExecutionReport{}
+	report.SetInvocations([]*stipulatorv1.InvocationHealth{health})
+	report.SetTests(rows)
+	if _, granted := DeriveTestRun(report).Outcomes["example.com/exec/mixed.TestGreen"]; granted {
+		t.Fatal("native outcome support promoted a passing prefix of a failed package into witness evidence")
 	}
 }

@@ -9,36 +9,22 @@ import (
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
-// TestProofCandidatesTakeSoloProcessesWithoutAssertions pins the one
-// candidate derivation the selective run and the drift retry share: a
-// subject is a proof candidate exactly when it is alone in its package
-// among the execution's subjects, captured, and carries no author's
-// purity assertion — in the subjects' order.
-func TestProofCandidatesTakeSoloProcessesWithoutAssertions(t *testing.T) {
+// Preparation covers every actual runnable, independently of which witnesses
+// can publish. Examples and never-serving tests can affect a sibling's proof.
+func TestNativePreparationIncludesTheWholeRunnableRoster(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-purity")
 	sub := func(pkg, sym string) gofresh.Subject { return gofresh.Subject{Package: pkg, Symbol: sym} }
-	subjects := []gofresh.Subject{
-		sub("z", "TestSolo"),
-		sub("pair", "TestFirst"),
-		sub("pair", "TestSecond"),
-		sub("asserted", "TestPure"),
-		sub("uncaptured", "TestLost"),
-		sub("a", "TestAlone"),
-	}
-	fps := map[gofresh.Subject]gofresh.Fingerprint{
-		sub("z", "TestSolo"):        {},
-		sub("pair", "TestFirst"):    {},
-		sub("pair", "TestSecond"):   {},
-		sub("asserted", "TestPure"): {PurityAssertion: "author"},
-		sub("a", "TestAlone"):       {},
-	}
-	got := proofCandidates(subjects, fps)
-	want := []gofresh.Subject{sub("z", "TestSolo"), sub("a", "TestAlone")}
+	g := &runnableGeneration{packages: map[string]runnablePackage{
+		"pair": {runnables: []Obligation{{Kind: ObligationTest, Name: "TestSecond"}, {Kind: ObligationExample, Name: "Example"}, {Kind: ObligationTest, Name: "TestFirst"}}},
+		"z":    {runnables: []Obligation{{Kind: ObligationTest, Name: "TestSolo"}}},
+	}}
+	got := g.subjects()
+	want := []gofresh.Subject{sub("pair", "Example"), sub("pair", "TestFirst"), sub("pair", "TestSecond"), sub("z", "TestSolo")}
 	if !slices.Equal(got, want) {
-		t.Fatalf("candidates = %v, want the solo unasserted captured subjects in the subjects' order %v", got, want)
+		t.Fatalf("actual runnable preparation = %v, want %v", got, want)
 	}
-	if got := proofCandidates(nil, fps); len(got) != 0 {
-		t.Fatalf("candidates over no subjects = %v, want none", got)
+	if got := (&runnableGeneration{}).subjects(); len(got) != 0 {
+		t.Fatalf("empty package roster invented subjects: %v", got)
 	}
 }
 

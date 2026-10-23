@@ -21,9 +21,8 @@ import "stipulator/v1/reports.proto";
 message ProducerIdentity {
   // Canonical invocation name from the policy record.
   string invocation = 1;
-  // Operating-system process id of the producing child: the owned command
-  // process whose -json stream carried the outcome — not the test binary
-  // grandchild it supervises, whose pid the stream does not expose.
+  // Operating-system process id of the producing retained test binary.
+  // Compilation children and in-process event conversion are not outcome producers.
   int64 process_id = 2;
   // Spawn ordinal of the process within its invocation's execution,
   // disambiguating pid reuse. Assignment order across a concurrent
@@ -88,6 +87,10 @@ message GoResolvedConfig {
   // the witness-eligible selection at the plain tier - the recorded
   // downgrade witness derivation reads (REQ-check-witness-selection).
   bool plain_witness = 9;
+  // Resolved package.variable=value strings used by the Go linker.
+  repeated string linker_assignments = 10;
+  // Exact file paths resolved from reviewed environment declarations.
+  repeated string input_files = 11;
 }
 
 // TestResult is one named test's outcome, attributed to its producer.
@@ -135,7 +138,7 @@ message ObligationReport {
 }
 
 // CompletedObservation is the runtime-input evidence of one completed
-// process: the canonical gofresh v2 manifest built from the process's own
+// process: the canonical gofresh v3 manifest built from the process's own
 // testlog, and its integrity digest — the encoding downstream witness
 // derivation hands to gofresh. The digest is empty when the manifest
 // itself records unverifiable observations; such a manifest still names

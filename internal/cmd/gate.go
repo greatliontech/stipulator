@@ -50,7 +50,11 @@ func gateCmd() *cobra.Command {
 			if err := validateScoped(scope, views.ValidateCoverageView, view); err != nil {
 				return err
 			}
-			prepared, rep, _, err := verifyrun.Run(cmd.Context(), cliDeps(), false, scope.Ids)
+			var humanOutput io.Writer = os.Stderr
+			if quiet {
+				humanOutput = io.Discard
+			}
+			prepared, rep, _, err := verifyrun.Run(cmd.Context(), cliDeps(humanOutput), false, scope.Ids)
 			if err != nil {
 				return withRecordPath(err)
 			}

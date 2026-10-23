@@ -29,7 +29,7 @@ func pruneCmd() *cobra.Command {
 				return err
 			}
 			deps := prune.Deps{
-				Deps:    cliDeps(),
+				Deps:    cliDeps(os.Stderr),
 				Root:    chdir,
 				Compile: func() (*stipulatorv1.Spec, error) { return mustCompile(chdir) },
 				Load:    func() (*records.Store, error) { return records.Load(os.DirFS(chdir)) },

@@ -4,9 +4,9 @@ Lands: tooling-redesign 5.2e
 
 The typed load in `internal/backends/golang` already refuses package load
 errors through its load/attribution paths. The remaining obligation is an
-actionable class naming a vanished disposable export and one bounded refresh
-or retry under the same selected view, followed by an explicit refusal if it
-still fails. Complete selection and cross-view certificate dependencies are
+actionable class naming a vanished disposable export, with bounded safe refresh
+under the same selected view or an actionable refusal. A failed refresh remains
+an explicit refusal. Complete selection and cross-view certificate dependencies are
 already implemented; do not reuse a stale typed view to hide this failure.
 The cause of the missing cache entry is not established by the report.
 

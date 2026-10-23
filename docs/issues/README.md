@@ -1,6 +1,6 @@
 # Issues
 
-Forty-one retained issues. Routing is governed by
+Forty retained issues. Routing is governed by
 [`tooling-redesign.md`](../../../gofresh/docs/plans/tooling-redesign.md).
 Each issue has one primary open slot; secondary constituents and conditional
 activation requirements are stated separately in its body. A slot does not
@@ -8,21 +8,21 @@ authorize a campaign, an external consumer action or an untriggered capability.
 
 | Issue | Remaining obligation | Primary slot |
 |---|---|---|
+| [retained-driver-platform-runtime-acceptance](retained-driver-platform-runtime-acceptance.md) | Run retained-driver ownership and completion cases on authorized native non-Linux targets; cross-builds are not runtime evidence. | 9.3 |
 | [global-cache-disk-retention](global-cache-disk-retention.md) | 3.7 GiB across corpus stores; bound disk growth while reconciling explicit-only cross-identity GC. | 7.9c |
 | [supersede-carry-drops-clause-scope](supersede-carry-drops-clause-scope.md) | Preserve clause scope and clause-aware deduplication in supersede; ordinary retarget is already repaired. | 5.3 |
 | [dangling-empty-label-remedy-names-no-clause](dangling-empty-label-remedy-names-no-clause.md) | Name the malformed record, never a wider unbind selector. | 5.3 |
 | [clause-structured-whole-claims](clause-structured-whole-claims.md) | Deliberately amend today's legal whole-claim contract for approved default refusal with opt-out. | 5.3 |
 | [aborted-pass-publishes-unaccounted](aborted-pass-publishes-unaccounted.md) | Retain publication accounts on operation errors after Quiesce. | 5.3 |
 | [check-summary-tally-names-one-invocation](check-summary-tally-names-one-invocation.md) | Add per-invocation accounts beside the unique-subject scalar. | 5.3 |
-| [gofresh-corpus-pin-lag](gofresh-corpus-pin-lag.md) | Complete native package-producing adoption and omitted auto-PGO coverage; the pin is already v0.116.3. | 5.2d |
+| [gofresh-corpus-pin-lag](gofresh-corpus-pin-lag.md) | Complete native package-producing adoption while preserving selected PGO dependencies and generation-bound prebuild/closing checks. | 5.2d |
 | [mcp-go-export-compatibility-authoring](mcp-go-export-compatibility-authoring.md) | Identify the live server and establish export admission plus the blocked successful bind on that same server. | 5.5a |
 | [completed-package-peak-admission](completed-package-peak-admission.md) | Correct the completed wait-status estimate from causal measurements, preserving real memory protection. | 7.7 |
 | [check-pass-shares-the-verification-ladder](check-pass-shares-the-verification-ladder.md) | One explicit evaluation entry; non-measuring inspections with honest missing/partial accounts. | 7.5 |
 | [impure-siblings-never-earn-a-proof](impure-siblings-never-earn-a-proof.md) | Adopt shared package-producing evidence and the complete executed-subject contract, preserving singleton and retry boundaries. | 5.2d |
 | [undecodable-manifest-records-dropped-silently](undecodable-manifest-records-dropped-silently.md) | Account for refused runtime records without admitting malformed evidence. | 5.2e |
 | [reviewed-row-sets-one-pattern](reviewed-row-sets-one-pattern.md) | Consolidate declaration lifecycles while preserving each row set's trust and revocation semantics. | 5.2d |
-| [selection-certificate-preparation-repeated](selection-certificate-preparation-repeated.md) | Measure and share endpoint-local preparation; preserve completed certificate dependencies. | 5.2e |
-| [cerebro-scoped-discovery-cost](cerebro-scoped-discovery-cost.md) | Attribute the reported c9ea6cd ten-minute discovery timeout and establish bounded scoped work. | 5.2e |
+| [cerebro-scoped-discovery-cost](cerebro-scoped-discovery-cost.md) | Recover workload/cache identity and attribute scoped preparation; retain selected-witness completion under authorized acceptance. | 7.7 |
 | [generic-constraint-seeding-reuse](generic-constraint-seeding-reuse.md) | Justify precision beyond deliberate constraint-method refusal with paired safety cases. | 7.8 |
 | [seeding-walk-unreached-routes](seeding-walk-unreached-routes.md) | Justify dependency/interface precision beyond the declared boundary; source-value walking exists. | 7.8 |
 | [witness-verdict-one-body-classifier](witness-verdict-one-body-classifier.md) | Consolidate two body scans, retaining selected class versus cross-view seeding. | 7.8 |
@@ -48,4 +48,3 @@ authorize a campaign, an external consumer action or an untriggered capability.
 | [proto-backend](proto-backend.md) | Preserve the external-consumer trigger and its seven gap conditions. | 9.4 |
 | [prover-trust-tiers](prover-trust-tiers.md) | Preserve the proposed-heuristic-prover trigger and prevent unearned proof authority. | 9.4 |
 | [structural-call-absence-verb](structural-call-absence-verb.md) | Preserve the concrete call-absence need; direct absence is not universal indirect-construction absence. | 9.4 |
-| [historical-proof-admission-current-strategy](historical-proof-admission-current-strategy.md) | Reconcile readable historical proofs with Stipulator's current-strategy load predicate; fixture before correction. | 5.2e |

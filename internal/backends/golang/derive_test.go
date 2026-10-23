@@ -9,12 +9,10 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"runtime/pprof"
 	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
-	"time"
 
 	gofresh "github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/guard"
@@ -304,14 +302,15 @@ func TestDeriveCachedOutcomeGrantsNoHealthOrEvidence(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	stipulate.Covers(t, "REQ-evidence-freshness-no-health")
 	tmp := t.TempDir()
-	// The seeded record is structurally valid — it would load and serve on
-	// a freshness-serving path — so ignoring it here is the derivation's
-	// choice, not a loader rejection.
+	// The seeded record is structurally loadable, so ignoring it here is the
+	// derivation's choice, not a loader rejection. This does not establish
+	// a current freshness verdict.
+	inputs := emptyWitnessInputs(t, tmp)
 	if err := witnesscache.Install(t.Context(), tmp, witnesscache.Record{
 		Group:       "00112233aabbccdd",
 		Package:     "example.com/m/redmain",
 		Test:        "TestGreen",
-		Fingerprint: witnesscache.Fingerprint{MaximalClosure: "00112233445566778899aabbccddeeff", TestVariantClosure: "00112233445566778899aabbccddeeff", ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy, Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: "eyJ2IjoyfQ", RuntimeDigest: "00112233445566778899aabbccddeeff", ResultKind: gofresh.CodeResult},
+		Fingerprint: witnesscache.Fingerprint{MaximalClosure: "00112233445566778899aabbccddeeff", TestVariantClosure: "00112233445566778899aabbccddeeff", ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy, Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult},
 		CompartmentLedger: &witnesscache.CompartmentLedger{
 			BindingStrategy: "gofresh/test-variant-bindings@1",
 			Declarations: []witnesscache.CompartmentDeclaration{
@@ -323,7 +322,7 @@ func TestDeriveCachedOutcomeGrantsNoHealthOrEvidence(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if len(witnesscache.Load(t.Context(), tmp)) != 1 {
+	if len(witnesscache.Load(t.Context(), tmp).Records) != 1 {
 		t.Fatal("seeded cache record is not loadable; the seed would prove nothing")
 	}
 	report := synthReport(
@@ -528,7 +527,7 @@ func TestJudgeSubjectNamesRefusalsInOneVocabulary(t *testing.T) {
 		return r
 	}
 	passed, failed := stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED, stipulatorv1.TestOutcome_TEST_OUTCOME_FAILED
-	proven := &ProcessObservation{Wire: completedWire()}
+	proven := &ProcessObservation{Wire: completedWire(), final: gofresh.FinalizedProcess{Subjects: []gofresh.FinalizedSubject{{Subject: subject, Verdict: gofresh.Verdict{Status: gofresh.Valid}}}}}
 	seeded := reasonSeeded.with(": executes every run, never served")
 	for _, c := range []struct {
 		name       string
@@ -562,7 +561,7 @@ func TestJudgeSubjectNamesRefusalsInOneVocabulary(t *testing.T) {
 		{healthy: false, obs: proven, rows: []*stipulatorv1.TestResult{row("TestX", passed), row("TestY", passed)}},
 		{healthy: true, obs: proven, rows: []*stipulatorv1.TestResult{row("TestX", passed), row("TestX/sub", stipulatorv1.TestOutcome_TEST_OUTCOME_SKIPPED)}},
 	})
-	if ps == nil || why != (uncacheable{}) || !ps.solo || ps.outcomes["p.TestX"] != "passed" || ps.outcomes["p.TestX/sub"] != "skipped" {
+	if ps == nil || why != (uncacheable{}) || ps.obs != proven || ps.outcomes["p.TestX"] != "passed" || ps.outcomes["p.TestX/sub"] != "skipped" {
 		t.Fatalf("the solo process did not grant: %+v, %q", ps, why)
 	}
 	// A healthy whole-package process that ran a sibling grants without
@@ -570,7 +569,7 @@ func TestJudgeSubjectNamesRefusalsInOneVocabulary(t *testing.T) {
 	ps, why = judgeSubject(subject, uncacheable{}, false, true, []producerCandidate{
 		{healthy: true, obs: proven, rows: []*stipulatorv1.TestResult{row("TestX", passed), row("TestY", passed)}},
 	})
-	if ps == nil || why != (uncacheable{}) || ps.solo {
+	if ps == nil || why != (uncacheable{}) || len(ps.outcomes) != 1 || ps.outcomes["p.TestX"] != "passed" {
 		t.Fatalf("the shared process granted solo: %+v, %q", ps, why)
 	}
 }
@@ -662,6 +661,8 @@ func TestGroupKeySeparatesDeclaredWidths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	freezeWitnessAllocation(wide, 1)
+	freezeWitnessAllocation(narrowed, 1)
 	wideWidth, _ := lookupEnv(wide.WitnessEnv, "GOMAXPROCS")
 	narrowWidth, _ := lookupEnv(narrowed.WitnessEnv, "GOMAXPROCS")
 	if narrowWidth != "1" || wideWidth == "1" {
@@ -708,10 +709,8 @@ func TestGroupCoordinatesSeparateModuleRoots(t *testing.T) {
 	}
 }
 
-// The profile's content is the build input: a committed path digests
-// its bytes, auto digests every default.pgo under the group's module
-// root (vendor and VCS trees excluded), off and absent contribute
-// nothing, and an unreadable committed profile refuses.
+// The profile's content is the build input. Default profiles belong to
+// selected original main packages; omission and auto select the same inputs.
 func TestPGOBuildInputsDigestTheProfileContent(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-inputs")
 	dir := writeModule(t, map[string]string{
@@ -725,55 +724,42 @@ func TestPGOBuildInputsDigestTheProfileContent(t *testing.T) {
 		"a-b/default.pgo":    "five",
 		"a/default.pgo":      "six",
 	})
-	for _, pgo := range []string{"", "off"} {
-		if inputs, err := pgoBuildInputs(dir, "", pgo); err != nil || len(inputs) != 0 {
-			t.Fatalf("pgo %q: inputs %v, err %v", pgo, inputs, err)
-		}
+	selected := []listedPackage{
+		{ImportPath: "example.com/p/sub", Name: "main", Dir: filepath.Join(dir, "sub")},
+		{ImportPath: "example.com/p/a", Name: "main", Dir: filepath.Join(dir, "a")},
+		{ImportPath: "example.com/p/a-b", Name: "main", Dir: filepath.Join(dir, "a-b")},
+		{ImportPath: "example.com/p/sub/x", Name: "library", Dir: filepath.Join(dir, "sub/x")},
 	}
-	one, err := pgoBuildInputs(dir, "", "prof.pgo")
-	if err != nil || len(one) != 1 || one[0] != fmt.Sprintf("pgo:%x", sha256.Sum256([]byte("one"))) {
+	if inputs, err := pgoBuildInputs(t.Context(), dir, "off", selected); err != nil || len(inputs) != 0 {
+		t.Fatalf("pgo off: inputs %v, err %v", inputs, err)
+	}
+	one, err := pgoBuildInputs(t.Context(), dir, "prof.pgo", selected)
+	if err != nil || len(one) != 1 || one[0] != fmt.Sprintf("pgo:%q=%x", "prof.pgo", sha256.Sum256([]byte("one"))) {
 		t.Fatalf("committed profile: %v, %v", one, err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "prof.pgo"), []byte("edited"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if edited, err := pgoBuildInputs(dir, "", "prof.pgo"); err != nil || edited[0] == one[0] {
+	if edited, err := pgoBuildInputs(t.Context(), dir, "prof.pgo", selected); err != nil || edited[0] == one[0] {
 		t.Fatalf("an edited profile at a stable path kept its input: %v, %v", edited, err)
 	}
-	auto, err := pgoBuildInputs(dir, "", "auto")
+	auto, err := pgoBuildInputs(t.Context(), dir, "auto", selected)
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Sorted, not walked: `a-b` sorts before `a/` yet walks after it.
 	want := []string{
-		fmt.Sprintf("pgo:a-b/default.pgo=%x", sha256.Sum256([]byte("five"))),
-		fmt.Sprintf("pgo:a/default.pgo=%x", sha256.Sum256([]byte("six"))),
-		fmt.Sprintf("pgo:other/default.pgo=%x", sha256.Sum256([]byte("four"))),
-		fmt.Sprintf("pgo:sub/default.pgo=%x", sha256.Sum256([]byte("two"))),
-		fmt.Sprintf("pgo:sub/x/default.pgo=%x", sha256.Sum256([]byte("three"))),
+		fmt.Sprintf("pgo:%q=%x", "a-b/default.pgo", sha256.Sum256([]byte("five"))),
+		fmt.Sprintf("pgo:%q=%x", "a/default.pgo", sha256.Sum256([]byte("six"))),
+		fmt.Sprintf("pgo:%q=%x", "sub/default.pgo", sha256.Sum256([]byte("two"))),
 	}
 	if !reflect.DeepEqual(auto, want) {
-		t.Fatalf("auto over the tree = %v, want %v", auto, want)
+		t.Fatalf("auto over selected mains = %v, want %v", auto, want)
 	}
-	nested, err := pgoBuildInputs(dir, "sub", "auto")
-	if err != nil || !reflect.DeepEqual(nested, want[3:]) {
-		t.Fatalf("auto under the module root = %v, %v, want %v", nested, err, want[3:])
+	omitted, err := pgoBuildInputs(t.Context(), dir, "", selected)
+	if err != nil || !reflect.DeepEqual(omitted, auto) {
+		t.Fatalf("omission = %v, %v, want auto %v", omitted, err, auto)
 	}
-	// A directory the walk cannot list refuses: traverse permission
-	// alone lets the build open a profile inside it by name, so a
-	// skip would leave that profile unguarded.
-	for _, mode := range []os.FileMode{0, 0o111} {
-		if err := os.Chmod(filepath.Join(dir, "other"), mode); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := pgoBuildInputs(dir, "", "auto"); err == nil || !strings.Contains(err.Error(), "other") {
-			t.Fatalf("auto over an unlistable directory (mode %o) = %v, want a refusal naming it", mode, err)
-		}
-	}
-	if err := os.Chmod(filepath.Join(dir, "other"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pgoBuildInputs(dir, "", "missing.pgo"); err == nil {
+	if _, err := pgoBuildInputs(t.Context(), dir, "missing.pgo", selected); err == nil {
 		t.Fatal("an unreadable committed profile did not refuse")
 	}
 }
@@ -794,21 +780,8 @@ func TestProfileContentMovesTheFingerprint(t *testing.T) {
 		"p.go":      "package p\n\nfunc F() int { return 1 }\n",
 		"p_test.go": "package p\n\nimport \"testing\"\n\nfunc TestF(t *testing.T) {\n\tif F() != 1 {\n\t\tt.Fatal()\n\t}\n}\n",
 	})
-	// Two real profiles (the toolchain parses a committed profile at
-	// every build, discovery's included), distinct in their bytes.
-	profile := func() []byte {
-		t.Helper()
-		var buf bytes.Buffer
-		if err := pprof.StartCPUProfile(&buf); err != nil {
-			t.Fatal(err)
-		}
-		deadline := time.Now().Add(20 * time.Millisecond)
-		for time.Now().Before(deadline) {
-		}
-		pprof.StopCPUProfile()
-		return buf.Bytes()
-	}
-	first, second := profile(), profile()
+	// Real, distinct profiles accepted by the consuming toolchain.
+	first, second := pgoTestProfile(t), pgoTestProfile(t)
 	if bytes.Equal(first, second) {
 		t.Fatal("two profiles with one content")
 	}
@@ -822,7 +795,7 @@ func TestProfileContentMovesTheFingerprint(t *testing.T) {
 		if err := prototext.Unmarshal([]byte(`invocations {
   name: "plain"
   timeout { seconds: 600 }
-  go { packages: "./..." race: true `+goConfig+` }
+  go { packages: "./..." plain_witness: true `+goConfig+` }
 }
 `), pol); err != nil {
 			t.Fatal(err)
@@ -836,15 +809,15 @@ func TestProfileContentMovesTheFingerprint(t *testing.T) {
 		}
 		g := pc.groups[0]
 		subjects := groupSubjects(g)
-		engine, err := groupEngine(ctx, dir, g)
+		snapshot, _, err := groupSnapshot(ctx, dir, g)
 		if err != nil {
 			t.Fatal(err)
 		}
-		view, err := engine.NewView(ctx, subjects, dir)
+		view, err := snapshot.BindRuntime(ctx, gofresh.RuntimeDescription{Directory: dir, Environment: g.witnessEnv})
 		if err != nil {
 			t.Fatal(err)
 		}
-		fp, err := view.Capture(ctx, subjects[0])
+		fp, err := view.CurrentFacts(ctx, subjects[0])
 		if err != nil {
 			t.Fatal(err)
 		}

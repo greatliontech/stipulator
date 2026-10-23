@@ -70,8 +70,18 @@ func TestScratchNamespacesAreAcceptedAsDeclared(t *testing.T) {
 	if err := validateConfig(sibling); err != nil {
 		t.Fatalf("siblings the pattern does not name refused: %v", err)
 	}
-	if !namespaceCoversPath("scratch", "run-*.tmp", "scratch/run-9.tmp/x") || namespaceCoversPath("scratch", "run-*.tmp", "scratch/run-9.log") || !namespaceCoversPath(".", "keep", "keep/x") {
-		t.Fatal("the pattern's prefix and suffix halves are not gofresh's rule")
+	for _, tc := range []struct {
+		dir, pattern, path string
+		want               bool
+	}{
+		{"scratch", "run-*.tmp", "scratch/run-9.tmp/x", true},
+		{"scratch", "run-*.tmp", "scratch/run-9.log", false},
+		{".", "keep", "keep/x", true},
+	} {
+		matched, err := (runtimeinput.ScratchNamespace{Dir: tc.dir, Pattern: tc.pattern}).MatchesPath(tc.path)
+		if err != nil || matched != tc.want {
+			t.Fatalf("namespace match for %+v: %v %v", tc, matched, err)
+		}
 	}
 	rows := cfg(ns("z", "b-*"), ns("a", "run-*"), ns("z", "a-*"), ns("a", "run-*"))
 	if err := validateConfig(rows); err == nil {
@@ -96,12 +106,12 @@ func TestScratchNamespacesAreAcceptedAsDeclared(t *testing.T) {
 			t.Fatalf("normalized namespaces = %+v, want the canonical order %+v", n.ScratchNamespaces, want)
 		}
 	}
-	if got := namespaceRows(n.ScratchNamespaces); len(got) != 3 || got[0] != string(quotedList([]string{"a", "run-*"})) {
+	if got := reviewedNamespaceRows(n.ScratchNamespaces); len(got) != 3 || got[0] != string(quotedList([]string{"a", "run-*"})) {
 		t.Fatalf("key rows = %q", got)
 	}
 	// The pair is quoted structurally: no directory or pattern byte
 	// aliases one pair into another.
-	if a, b := namespaceRows([]runtimeinput.ScratchNamespace{{Dir: "a\x00b", Pattern: "c"}}), namespaceRows([]runtimeinput.ScratchNamespace{{Dir: "a", Pattern: "b\x00c"}}); a[0] == b[0] {
+	if a, b := reviewedNamespaceRows([]runtimeinput.ScratchNamespace{{Dir: "a\x00b", Pattern: "c"}}), reviewedNamespaceRows([]runtimeinput.ScratchNamespace{{Dir: "a", Pattern: "b\x00c"}}); a[0] == b[0] {
 		t.Fatalf("two pairs rendered as one row %q", a[0])
 	}
 }
@@ -180,7 +190,7 @@ func TestUsesScratch(t *testing.T) {
 			}
 			// The record's manifest: the scratch read's path identity is
 			// there without the declaration and absent under it.
-			records := witnesscache.Load(t.Context(), tmp)
+			records := witnesscache.Load(t.Context(), tmp).Records
 			if len(records) != 1 {
 				t.Fatalf("records after the first run = %d, want 1", len(records))
 			}

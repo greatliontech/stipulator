@@ -244,6 +244,18 @@ func TestCheckScopedIdsExecutesOnlyInScopeStale(t *testing.T) {
 		return rowA, rowB
 	}
 
+	// Seed B under the single-package scoped allocation used below. The full
+	// run may have delivered a different width, which is a compilation input
+	// and cannot establish the fresh out-of-scope control for a wider process.
+	warmB, err := Run(context.Background(), dir, false, []string{"REQ-fix-b"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, seededB := rows(warmB)
+	if seededB.GetBucket() != stipulatorv1.Bucket_BUCKET_COVERED || seededB.GetScopeBlocked() {
+		t.Fatalf("scoped-width B seed did not grant its witness: %v", seededB)
+	}
+
 	// Leg one: only the in-scope witness is stale. The scoped pass
 	// executes it and nothing else, while the out-of-scope requirement
 	// stays covered by its served fresh evidence - serving is whole-tree.
@@ -347,8 +359,11 @@ func TestCheckScopedVerdictExcludesAnExcusedStaleConsentOnTheBoundary(t *testing
 	outsideDoc := func(text string) string {
 		return "# Scoped gap\n\n**REQ-fix-a** (behavior): The fixture MUST double.\n\n**REQ-fix-out** (behavior): " + text + "\n"
 	}
+	// Keep this fixture's compilation width stable when the final unscoped
+	// control admits a second package, so its exact execution counts isolate
+	// consent and scope rather than a compilation-environment transition.
 	files := baseTree(map[string]string{
-		".stipulator/policy.textproto": "invocations {\n  name: \"plain\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./...\"\n    plain_witness: true\n  }\n}\n",
+		".stipulator/policy.textproto": "invocations {\n  name: \"plain\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./...\"\n    plain_witness: true\n    environment: \"GOMAXPROCS=1\"\n  }\n}\n",
 		"specs/check.md":               outsideDoc("The outside operation MUST triple."),
 		"tri/tri.go":                   "package tri\n\nfunc Triple(n int) int { return 3 * n }\n",
 		"tri/tri_test.go":              "package tri\n\nimport \"testing\"\n\nfunc TestTriple(t *testing.T) {\n\tif Triple(2) != 6 {\n\t\tt.Fatal(\"broken\")\n\t}\n}\n",

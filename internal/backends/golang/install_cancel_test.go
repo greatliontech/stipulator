@@ -12,6 +12,7 @@ import (
 
 	"github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/guard"
+	"github.com/greatliontech/gofresh/runtimeinput"
 	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -41,7 +42,7 @@ func TestPublicationPassesCancellationToStoreAcquisition(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer lock.Close()
-	rec := publicationRecord("TestA")
+	rec := publicationRecord(t, dir, "TestA")
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	wait := &publicationWaitContext{Context: ctx, waiting: make(chan struct{})}
@@ -70,15 +71,28 @@ func TestPublicationPassesCancellationToStoreAcquisition(t *testing.T) {
 		t.Fatal("publication stayed blocked after cancellation")
 	}
 	lock.Close()
-	if got := witnesscache.Load(t.Context(), dir); len(got) != 0 {
+	if got := witnesscache.Load(t.Context(), dir).Records; len(got) != 0 {
 		t.Fatal("cancelled publication landed a record", got)
 	}
 }
 
-func publicationRecord(test string) witnesscache.Record {
+// emptyWitnessInputs supplies a current structural manifest for store fixtures;
+// it establishes neither a completed process nor operation-outcome support.
+func emptyWitnessInputs(t *testing.T, dir string) runtimeinput.State {
+	t.Helper()
+	observation, err := runtimeinput.Merge(dir, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return observation.State
+}
+
+func publicationRecord(t *testing.T, dir, test string) witnesscache.Record {
+	t.Helper()
+	inputs := emptyWitnessInputs(t, dir)
 	return witnesscache.Record{Group: "group", Package: "example.com/p", Test: test, Outcomes: map[string]string{"example.com/p." + test: "passed"}, Fingerprint: gofresh.Fingerprint{
 		MaximalClosure: strings.Repeat("a", 32), TestVariantClosure: strings.Repeat("b", 32), ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy,
-		Guards: guard.Guards{Toolchain: "go1.27.2", BuildConfig: strings.Repeat("c", 32)}, RuntimeInputs: "eyJ2IjoyfQ", RuntimeDigest: "3a79bf37b571938d1f2907afb6a643f4", ResultKind: gofresh.CodeResult,
+		Guards: guard.Guards{Toolchain: "go1.27.2", BuildConfig: strings.Repeat("c", 32)}, RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult,
 	}}
 }
 
@@ -99,7 +113,7 @@ func TestPublicationCancellationRetainsTheInstalledPrefix(t *testing.T) {
 	stipulate.Covers(t, "REQ-policy-cancellation-kept")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
-	first, second := publicationRecord("TestFirst"), publicationRecord("TestSecond")
+	first, second := publicationRecord(t, dir, "TestFirst"), publicationRecord(t, dir, "TestSecond")
 	store, err := recordstore.Open("witnesses", dir)
 	if err != nil {
 		t.Fatal(err)
@@ -116,7 +130,7 @@ func TestPublicationCancellationRetainsTheInstalledPrefix(t *testing.T) {
 	if !errors.Is(err, context.Canceled) || len(installed) != 1 || installed[0].Test != "TestFirst" || len(reasons) != 0 {
 		t.Fatalf("installed prefix lost: records=%v reasons=%v err=%v", installed, reasons, err)
 	}
-	if got := witnesscache.Load(t.Context(), dir); len(got) != 1 || got[0].Test != "TestFirst" {
+	if got := witnesscache.Load(t.Context(), dir).Records; len(got) != 1 || got[0].Test != "TestFirst" {
 		t.Fatal("returned prefix disagrees with the store", got)
 	}
 }

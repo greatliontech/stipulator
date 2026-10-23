@@ -122,6 +122,9 @@ message CheckResult {
   // (REQ-evidence-freshness-degrade), and the run's served-versus-typed
   // account. Advisory - never a verdict input.
   repeated string resolution_notices = 22;
+  // Bounded advisory account of refused stored witnesses; never a verdict
+  // input, including when another variant of the same identity serves.
+  WitnessCacheLoadAccount witness_cache_load = 23;
 }
 
 // CheckSummary is the check operation's summary view: the verdict with
@@ -206,6 +209,9 @@ message CheckSummary {
   // The result's policy-tier notices, verbatim - few and load-bearing,
   // so the summary view carries them whole.
   repeated string policy_notices = 37;
+  // The full result's advisory account projected to at most five refusal
+  // rows, with dropped rows added to omitted and incompleteness preserved.
+  WitnessCacheLoadAccount witness_cache_load = 40;
 }
 
 // CheckBlockerRow is one reason's actionable roll-up on the check

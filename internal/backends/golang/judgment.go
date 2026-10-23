@@ -37,6 +37,13 @@ var (
 	reasonNoHealthyOutcome  = reasonJudged.with("no healthy outcome for the subject")
 )
 
+func nativeCloseRefusal(err error) uncacheable {
+	if runtimeInputMovement(err) {
+		return reasonPostRun.with(err.Error())
+	}
+	return reasonSourceFailed.with(err.Error())
+}
+
 // judgeSubject is the per-subject publish judgment both forms apply, in
 // one order: the subject's own refusals first — a subject serving
 // refuses by contract keeps its classifier's reason, a subject whose
@@ -50,8 +57,8 @@ var (
 // unproven flush over an unhealthy process (unless a healthy one
 // contradicted) over a missing outcome; a process that died before
 // its first terminal event, or no candidate at all, is a missing
-// terminal event. The solo flag is the process's own fact — its rows
-// hold the subject's top-level test and no other — on both forms.
+// terminal event. Native evidence and rows must come from the same attempt;
+// a later eligible isolation process cannot repair the earlier process's facts.
 func judgeSubject(s gofresh.Subject, neverServe uncacheable, refused, captured bool, candidates []producerCandidate) (*pubSubject, uncacheable) {
 	if refused {
 		return nil, neverServe
@@ -60,6 +67,7 @@ func judgeSubject(s gofresh.Subject, neverServe uncacheable, refused, captured b
 		return nil, reasonNoFingerprint
 	}
 	sawUnhealthy, sawUnproven, sawContradiction := false, false, false
+	var nativeRefusal uncacheable
 	for _, c := range candidates {
 		if !c.healthy {
 			sawUnhealthy = true
@@ -68,16 +76,27 @@ func judgeSubject(s gofresh.Subject, neverServe uncacheable, refused, captured b
 		if len(c.rows) == 0 {
 			continue
 		}
+		if c.obs != nil && c.obs.closeErr != nil {
+			nativeRefusal = nativeCloseRefusal(c.obs.closeErr)
+			continue
+		}
 		if c.obs == nil || c.obs.Wire.GetCompleted() == nil {
 			sawUnproven = true
 			continue
 		}
-		ps := &pubSubject{obs: c.obs, outcomes: map[string]string{}}
-		tops := map[string]bool{}
+		final, ok := c.obs.subject(s)
+		if !ok {
+			nativeRefusal = reasonNoFingerprint
+			continue
+		}
+		if final.Verdict.Status != gofresh.Valid {
+			nativeRefusal = reasonPostRun.with(final.Verdict.Reason)
+			continue
+		}
+		ps := &pubSubject{obs: c.obs, fingerprint: final.Fingerprint, outcomes: map[string]string{}}
 		contradicted := false
 		for _, row := range c.rows {
 			test := row.GetTest()
-			tops[topLevel(test)] = true
 			if test != s.Symbol && !strings.HasPrefix(test, s.Symbol+"/") {
 				continue
 			}
@@ -99,10 +118,11 @@ func judgeSubject(s gofresh.Subject, neverServe uncacheable, refused, captured b
 			sawContradiction = true
 			continue
 		}
-		ps.solo = len(tops) == 1 && tops[s.Symbol]
 		return ps, uncacheable{}
 	}
 	switch {
+	case nativeRefusal != (uncacheable{}):
+		return nil, nativeRefusal
 	case sawUnproven:
 		return nil, reasonFlushUnproven
 	case sawUnhealthy && !sawContradiction:

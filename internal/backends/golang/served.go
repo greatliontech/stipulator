@@ -22,12 +22,7 @@ import (
 // resolution (REQ-evidence-resolution-freshness). Resolution observes
 // no runtime input, so every check closes its own window: no deferred
 // close, no producer environment.
-func selectionEngine(ctx context.Context, dir string, sel buildSelection, sample toolchainSample) (*gofresh.Engine, error) {
-	base, err := goworkEnv(dir)
-	if err != nil {
-		return nil, err
-	}
-	env := selectionViewEnv(base, sel)
+func selectionEngine(ctx context.Context, view *selectedContext, sample toolchainSample) (*gofresh.Engine, error) {
 	// The same provenance prerequisite the child's typed view enforces,
 	// in the same form — every member sampled where its view loads
 	// (checkSelectionMembers): an identified selection toolchain this
@@ -35,14 +30,10 @@ func selectionEngine(ctx context.Context, dir string, sel buildSelection, sample
 	// member whose toolchain cannot be sampled is left to this engine's
 	// own loads (REQ-evidence-toolchain-provenance) — so a served view
 	// refuses exactly when the child's would.
-	members, err := sel.members(dir)
-	if err != nil {
+	if err := checkSelectionMembers(ctx, view.root, view.env, view.members, view.selection.toolchain, sample); err != nil {
 		return nil, err
 	}
-	if err := checkSelectionMembers(ctx, dir, env, members, sel.toolchain, sample); err != nil {
-		return nil, err
-	}
-	return newEngine(ctx, sel.directory(dir), env, selectionViewFlags(sel), gofresh.WithEvidenceRoot(dir))
+	return newEngine(ctx, view.directory, view.env, view.flags, gofresh.WithEvidenceRoot(view.root))
 }
 
 // Served is the verification backend that answers a binding's
@@ -165,6 +156,7 @@ func NewServed(ctx context.Context, dir string, symbols []string) (*Served, erro
 		return nil, err
 	}
 	s.sels = sels
+	endpoint := newSelectionEndpoint(ctx, abs, sels)
 	// An operation that named symbols is scoped to them; one that named
 	// none leaves the set nil, which admits every symbol — the one
 	// encoding the whole-tree form shares.
@@ -174,7 +166,7 @@ func NewServed(ctx context.Context, dir string, symbols []string) (*Served, erro
 			wanted[sym] = true
 		}
 		s.set = wanted
-		s.inventoryPackages(symbols)
+		s.inventoryPackages(endpoint, symbols)
 	}
 	bySelection := map[string][]resolutioncache.Record{}
 	for _, rec := range resolutioncache.Load(abs) {
@@ -198,14 +190,14 @@ func NewServed(ctx context.Context, dir string, symbols []string) (*Served, erro
 	}
 	sort.Strings(keys)
 	if len(keys) > 0 {
-		certs, err := s.captureSourceCertificates(symbols)
+		certs, err := s.captureSourceCertificates(endpoint, symbols)
 		if err != nil {
 			s.degraded = append(s.degraded, "source certificate: "+err.Error())
 		}
 		s.checkingCertificates = certs
 	}
 	for _, key := range keys {
-		s.serveSelection(key, bySelection[key])
+		s.serveSelection(endpoint, key, bySelection[key])
 	}
 	if beforeCertificateCloseForTest != nil {
 		beforeCertificateCloseForTest()
@@ -216,7 +208,8 @@ func NewServed(ctx context.Context, dir string, symbols []string) (*Served, erro
 			names = append(names, name)
 		}
 		sort.Strings(names)
-		closing, err := s.captureSourceCertificates(names)
+		closingEndpoint := newSelectionEndpoint(ctx, abs, sels)
+		closing, err := s.captureSourceCertificates(closingEndpoint, names)
 		for _, name := range names {
 			closed, ok := closing[name]
 			if !ok {
@@ -336,18 +329,22 @@ func (s *Served) childPatterns() []string {
 func (s *Served) openingCapture() {
 	s.opening = map[string]map[gofresh.Subject]gofresh.Fingerprint{}
 	s.openingCertificates = nil
+	if len(s.unserved) == 0 {
+		return
+	}
+	endpoint := newSelectionEndpoint(s.ctx, s.dir, s.sels)
 	keys := make([]string, 0, len(s.sels))
 	for _, sel := range s.sels {
 		keys = append(keys, sel.key())
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		fps, ok := s.captureUnder(key, s.unserved, "opening")
+		fps, ok := s.captureUnder(endpoint, key, s.unserved, "opening")
 		if ok {
 			s.opening[key] = fps
 		}
 	}
-	certs, err := s.captureSourceCertificates(s.unserved)
+	certs, err := s.captureSourceCertificates(endpoint, s.unserved)
 	if err != nil {
 		s.degraded = append(s.degraded, "opening source certificate: "+err.Error())
 	}
@@ -357,15 +354,16 @@ func (s *Served) openingCapture() {
 // captureUnder builds a view over the symbols' subjects under one
 // selection, narrowing the subjects the selected source does not
 // declare, and captures their fingerprints.
-func (s *Served) captureUnder(key string, symbols []string, phase string) (map[gofresh.Subject]gofresh.Fingerprint, bool) {
+func (s *Served) captureUnder(endpoint *selectionEndpoint, key string, symbols []string, phase string) (map[gofresh.Subject]gofresh.Fingerprint, bool) {
 	if !s.inventoryComplete() {
 		return nil, false
 	}
-	sel, known := s.selection(key)
-	if !known {
+	selected, err := endpoint.selected(key)
+	if err != nil {
+		s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
 		return nil, false
 	}
-	engine, err := selectionEngine(s.ctx, s.dir, sel, s.sample)
+	engine, err := selectionEngine(s.ctx, selected, s.sample)
 	if err != nil {
 		s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
 		return nil, false
@@ -383,7 +381,7 @@ func (s *Served) captureUnder(key string, symbols []string, phase string) (map[g
 	}
 	var view *gofresh.View
 	for len(subjects) > 0 {
-		view, err = engine.NewView(s.ctx, subjects, sel.directory(s.dir))
+		view, err = engine.NewView(s.ctx, subjects, selected.directory)
 		var unknown *gofresh.UnknownSubjectsError
 		if errors.As(err, &unknown) {
 			gone := map[gofresh.Subject]bool{}
@@ -426,12 +424,13 @@ func (s *Served) captureUnder(key string, symbols []string, phase string) (map[g
 // serveSelection checks one selection's records: the recorded subjects
 // viewed together, the ones the selected source no longer declares
 // narrowed away by gofresh's own refusal, the rest batch-checked.
-func (s *Served) serveSelection(key string, recs []resolutioncache.Record) {
-	sel, known := s.selection(key)
-	if !known {
+func (s *Served) serveSelection(endpoint *selectionEndpoint, key string, recs []resolutioncache.Record) {
+	selected, err := endpoint.selected(key)
+	if err != nil {
+		s.degraded = append(s.degraded, fmt.Sprintf("selection %q: %v", key, err))
 		return
 	}
-	engine, err := selectionEngine(s.ctx, s.dir, sel, s.sample)
+	engine, err := selectionEngine(s.ctx, selected, s.sample)
 	if err != nil {
 		s.degraded = append(s.degraded, fmt.Sprintf("selection %q: %v", key, err))
 		return
@@ -453,7 +452,7 @@ func (s *Served) serveSelection(key string, recs []resolutioncache.Record) {
 	}
 	var view *gofresh.View
 	for len(subjects) > 0 {
-		view, err = engine.NewView(s.ctx, subjects, sel.directory(s.dir))
+		view, err = engine.NewView(s.ctx, subjects, selected.directory)
 		var unknown *gofresh.UnknownSubjectsError
 		if errors.As(err, &unknown) {
 			// Vanished since they were recorded: stale, resolved
@@ -936,11 +935,12 @@ func (s *Served) publishSelection(key string, symbols []string) {
 		}
 		s.refusals = mergeRefusals(s.refusals, unrefused, refusals)
 	}
-	closing, ok := s.captureUnder(key, symbols, "publish")
+	endpoint := newSelectionEndpoint(s.ctx, s.dir, s.sels)
+	closing, ok := s.captureUnder(endpoint, key, symbols, "publish")
 	if !ok {
 		return
 	}
-	certificates, err := s.captureSourceCertificates(symbols)
+	certificates, err := s.captureSourceCertificates(endpoint, symbols)
 	if err != nil {
 		s.degraded = append(s.degraded, "publish source certificate: "+err.Error())
 	}

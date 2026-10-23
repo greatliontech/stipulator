@@ -15,7 +15,6 @@ import (
 	"sort"
 
 	"github.com/greatliontech/gofresh/closure"
-	"github.com/greatliontech/gofresh/gotool"
 	"github.com/greatliontech/stipulator/internal/resolutioncache"
 )
 
@@ -208,9 +207,10 @@ func sourceGraph(ctx context.Context, dir string, env []string, flags []string, 
 }
 
 // captureSourceCertificates re-derives each symbol's complete selected
-// dependency set. A new capture owns new file and graph memos: closing never
-// borrows the opening endpoint's reads.
-func (s *Served) captureSourceCertificates(symbols []string) (map[string]resolutioncache.Certificate, error) {
+// dependency set using the endpoint's certificate observations. Inventory
+// queries remain fresh and compare against the original package boundaries;
+// endpoint configuration is neither an inventory nor a source observation.
+func (s *Served) captureSourceCertificates(endpoint *selectionEndpoint, symbols []string) (map[string]resolutioncache.Certificate, error) {
 	out := map[string]resolutioncache.Certificate{}
 	if len(symbols) == 0 {
 		return out, nil
@@ -233,27 +233,26 @@ func (s *Served) captureSourceCertificates(symbols []string) (map[string]resolut
 			return nil, errors.New("resolution policy changed during derivation")
 		}
 	}
-	base, err := goworkEnv(s.dir)
-	if err != nil {
-		return nil, err
-	}
-	files := &sourceFiles{ctx: s.ctx, digests: map[string]string{}}
+	files := endpoint.files
 	bySymbol := map[string][]certificateView{}
 	failed := map[string]bool{}
 	var faults []error
 	for _, sel := range current {
 		key := sel.key()
-		inventory, err := declarationPackages(s.ctx, s.dir, sel, symbols)
+		view, err := endpoint.selected(key)
 		if err != nil {
 			return nil, err
 		}
-		env := selectionViewEnv(base, sel)
-		reader := gotool.NewEnvReader(engineRunner, sel.directory(s.dir), env)
+		inventory, err := declarationPackages(s.ctx, view, symbols)
+		if err != nil {
+			return nil, err
+		}
+		reader := endpoint.certificateReader(view)
 		snapshot, err := reader.Snapshot(s.ctx)
 		if err != nil {
 			return nil, err
 		}
-		hasher, err := closure.NewAt(s.ctx, reader, selectionViewFlags(sel)...)
+		hasher, err := closure.NewAt(s.ctx, reader, view.flags...)
 		if err != nil {
 			return nil, err
 		}
@@ -262,11 +261,7 @@ func (s *Served) captureSourceCertificates(symbols []string) (map[string]resolut
 			return nil, errors.New("resolution toolchain dependency identity unavailable")
 		}
 		contextFiles := map[string]string{}
-		members, err := sel.members(s.dir)
-		if err != nil {
-			return nil, err
-		}
-		for _, member := range members {
+		for _, member := range view.members {
 			path := filepath.Join(s.dir, member, "go.mod")
 			digest, err := files.digest(path)
 			if err != nil {
@@ -281,8 +276,6 @@ func (s *Served) captureSourceCertificates(symbols []string) (map[string]resolut
 			}
 			contextFiles[work] = digest
 		}
-		graphs := map[string]string{}
-		graphErrors := map[string]error{}
 		for _, symbol := range symbols {
 			owner, known := s.packageOf(symbol)
 			if !known {
@@ -297,16 +290,8 @@ func (s *Served) captureSourceCertificates(symbols []string) (map[string]resolut
 			}
 			graph := ""
 			if inventory[owner] {
-				graph = graphs[owner]
-				if graph == "" && graphErrors[owner] == nil {
-					graph, err = sourceGraph(s.ctx, sel.directory(s.dir), env, selectionViewFlags(sel), owner, files)
-					if err != nil {
-						graphErrors[owner] = err
-					} else {
-						graphs[owner] = graph
-					}
-				}
-				if err := graphErrors[owner]; err != nil {
+				graph, err = endpoint.graph(view, owner)
+				if err != nil {
 					failed[symbol] = true
 					faults = append(faults, fmt.Errorf("%s under selection %q: %w", symbol, key, err))
 					continue

@@ -41,6 +41,7 @@ type gapOut struct {
 func (g gapOut) proto() *stipulatorv1.GapListResult {
 	w := g.writeOut.proto()
 	m := &stipulatorv1.GapListResult{}
+	m.SetWitnessCacheLoad(w.GetWitnessCacheLoad())
 	m.SetWrote(w.GetWrote())
 	m.SetDeleted(w.GetDeleted())
 	if w.HasRemoved() {
@@ -145,6 +146,7 @@ func (s *Server) gapList(ctx context.Context, req *mcp.CallToolRequest) (*mcp.Ca
 	// response cap keeps the rows demanding repair (REQ-gap-list).
 	reports, dangling := verifyrun.GapRows(spec, store, cov)
 	out := gapOut{Gaps: reports}
+	out.WitnessCacheLoad = rep.WitnessCacheLoad
 	const gapRowCap = 50
 	if len(out.Gaps) > gapRowCap {
 		out.GapsOmitted = len(out.Gaps) - gapRowCap

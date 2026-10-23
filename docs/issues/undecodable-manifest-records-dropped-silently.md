@@ -18,5 +18,7 @@ an error string. Pin a rejected variant beside a valid sibling through restart
 and re-execution on both faces.
 
 Secondary constituent: 9.2 settles structural-history compatibility, separate
-from the load-account obligation. The strategy-only discrepancy is tracked in
-[historical-proof-admission-current-strategy](historical-proof-admission-current-strategy.md).
+from the load-account obligation. Structural readability and current proof
+admission remain distinct under
+[REQ-evidence-witness-cache-format-validation](../specs/evidence.md): a readable
+historical proof supplies no current reuse authority.

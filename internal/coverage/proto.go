@@ -9,7 +9,9 @@ import (
 
 // Proto renders the report as its wire message.
 func (r *Report) Proto() *stipulatorv1.CoverageReport {
+	// The account is global even when the requirement rows are scoped.
 	out := &stipulatorv1.CoverageReport{}
+	out.SetWitnessCacheLoad(r.WitnessCacheLoad)
 	var reqs []*stipulatorv1.RequirementCoverage
 	for _, rc := range r.Requirements {
 		m := &stipulatorv1.RequirementCoverage{}

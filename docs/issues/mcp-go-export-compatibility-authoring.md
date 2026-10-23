@@ -56,7 +56,7 @@ The structural-loader fix is likewise not proof that the installed MCP resolver
 contains it or that its root-tool path supports the same exports. Do not attribute
 this observation to a new defect in current source without that evidence.
 
-Current source evidence: the root `go.mod` now selects Gofresh v0.116.3 and
+Current source evidence: the root `go.mod` now selects Gofresh v0.117.5 and
 the patched `go-x-tools` dependency. `internal/backends/golang/resolverclient.go`
 and the MCP bind path still require identification of the actual live process;
 these source dependencies do not establish its deployed export reader.

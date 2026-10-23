@@ -118,7 +118,7 @@ func (b *Backend) sourcePackage(cfg *packages.Config, path string) (*packages.Pa
 	if load, ok := b.sourceLoads[key]; ok {
 		return load.pkg, load.err
 	}
-	loaded, err := packages.Load(cfg, path)
+	loaded, failures, err := loadTypedPackages(cfg, path)
 	var found *packages.Package
 	if err == nil {
 		for _, pkg := range loaded {
@@ -126,7 +126,11 @@ func (b *Backend) sourcePackage(cfg *packages.Config, path string) (*packages.Pa
 				continue
 			}
 			if len(pkg.Errors) > 0 {
-				err = fmt.Errorf("package %s: %v", path, pkg.Errors[0])
+				if failure := failures[pkg]; failure != nil {
+					err = fmt.Errorf("package %s has load errors: %w", path, failure)
+				} else {
+					err = fmt.Errorf("package %s: %v", path, pkg.Errors[0])
+				}
 			} else {
 				found = pkg
 			}

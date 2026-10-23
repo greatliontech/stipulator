@@ -196,10 +196,11 @@ message GoInvocationConfig {
   // gofresh:pure remains for narrower claims; gofresh:external is never
   // suppressed and still wins.
   bool assume_pure = 21;
-  // The witness fan-out bound is derived, never declared: max(1,
-  // GOMAXPROCS/2) package test processes at once, each unit itself a
-  // parallel process tree, so units times per-unit width stays within
-  // the processor count. Reviewed GOFLAGS or binary arguments carrying
+  // The witness fan-out bound is derived, never declared: the lesser of
+  // half the parent's once-sampled processor budget and the operation's
+  // permitted package count, both floored at one. Its environment is frozen
+  // before capture grouping, so units times per-unit width stays within
+  // the processor budget. Reviewed GOFLAGS or binary arguments carrying
   // their own parallelism flags remain the operator's explicit surface.
   reserved 22;
   // Accept witness evidence from this non-race invocation at the plain
@@ -252,6 +253,25 @@ message GoInvocationConfig {
   // pair form exists so a directory carrying a colon can never parse
   // as a pattern. Committed and reviewed, never per-machine.
   repeated ScratchNamespace scratch_namespaces = 26;
+  // Explicit string-variable linker assignments (-X), sorted by package and
+  // variable, with no duplicate target. Values resolve once from the admitted
+  // invocation environment or an explicit literal; no arbitrary linker flags.
+  repeated GoLinkerString linker_strings = 27;
+  // Sorted unique portable environment names selecting exact clean absolute
+  // file paths. Each selected file must be raw-byte eligible under the actual
+  // runtime environment and augments the bracket without admitting its parent.
+  repeated string input_files_from_environment = 28;
+}
+
+// GoLinkerString selects one Go linker -X assignment. The linker retains its
+// applicability rules; selection does not prove a target is linked or consumed.
+message GoLinkerString {
+  string package = 1;
+  string variable = 2;
+  oneof source {
+    string value = 3;
+    string value_environment = 4;
+  }
 }
 
 // ScratchNamespace names one in-tree run-scratch namespace: a

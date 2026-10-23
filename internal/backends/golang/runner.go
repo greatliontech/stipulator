@@ -15,10 +15,9 @@ import (
 var errEnvelopeExpired = errors.New("policy invocation envelope expired")
 
 // commandHook observes the derivation's spawns — the normalization's
-// snapshot, discovery's listings, and execution's test runs through
-// ownedRunner, and the resolver child through childRunner; the
-// provenance probe, the observation facade's roots probe and the
-// analysis engines' own commands are no derivation spawn and never
+// snapshot, discovery listings, retained compilation and consumer
+// binaries, including the resolver child. The provenance probe and native
+// sessions' analysis and classification-root commands are no derivation spawn and never
 // reach it. Tests install it to pin that a refusal fired before any of
 // these spawns and that the readers reuse the derivation.
 var commandHook func(name string, args []string)
@@ -45,10 +44,10 @@ var ownedBoundary = &gotool.Containment{
 // witness invocations, and the
 // normalization's environment snapshot run through it, and the test
 // seam (commandHook) sees each of those spawns — the derivation's own,
-// which the reuse pins count. The resolver child — this binary's own
-// re-exec, no go command — is the one non-go spawn, through
-// childRunner: the envelope-expiry quit above is the go children's
-// alone.
+// which the reuse pins count. Non-go spawns include both retained test binaries
+// and this binary's resolver re-exec. The resolver uses childRunner, whose
+// operation lifetime has no package-envelope quit arm; retained tests keep
+// their own invocation boundary.
 var ownedRunner = gotool.Runner{Containment: ownedBoundary, Prepare: observeCommand}
 
 // childRunner spawns the resolver child — this binary re-executed on
@@ -63,7 +62,7 @@ var ownedRunner = gotool.Runner{Containment: ownedBoundary, Prepare: observeComm
 // the spawn as the child's program name with its arguments.
 var childRunner = gotool.Runner{Containment: &gotool.Containment{}, Prepare: observeChild}
 
-// observeChild hands the prepared resolver-child spawn to the test seam
+// observeChild hands a prepared consumer-program spawn to the test seam
 // (commandHook): the program as named, then its arguments.
 func observeChild(cmd *exec.Cmd) {
 	if commandHook != nil {
@@ -91,16 +90,6 @@ var engineRunner = containedRunner(func(cmd *exec.Cmd) {
 
 var engineCommandHook func(*exec.Cmd)
 
-// rootsRunner is the observation facade's classification-root probe's
-// runner (runtimeinput.ProducerIngest.Runner): a bare `go env -json`
-// in the package directory, which forks the C compiler the toolchain
-// configures to read its flags — a descendant the owned boundary
-// sweeps with the operation's cancellation, where a plain runner would
-// orphan a hanging compiler wrapper — prepared as a probe (the bounded
-// reap, the probe seam); no derivation spawn, so the derivation seam
-// does not see it.
-var rootsRunner = containedRunner(boundProbe)
-
 // probeRunner is the toolchain sample's runner: the caller's own
 // process group — `go env GOVERSION` names its key, so the query forks
 // nothing and is swept with its caller by the owner that kills the
@@ -119,9 +108,8 @@ func boundProbe(cmd *exec.Cmd) {
 	}
 }
 
-// probeObserverForTest, when set, sees every probe prepared by
-// boundProbe — the sampler's toolchain probe and the facade's roots
-// probe — the seam a pin counts them through; nil in production.
+// probeObserverForTest sees the provenance sampler's bounded probes. Native
+// classification-root probes belong to the session's installed engine runner.
 var probeObserverForTest func(*exec.Cmd)
 
 // observeCommand hands a prepared derivation spawn to the test seam

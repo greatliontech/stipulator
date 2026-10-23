@@ -11,15 +11,16 @@ import (
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
+	"github.com/greatliontech/stipulator/internal/views"
 )
 
 // The export machinery the document-producing verbs share.
 
 // exportTo validates a caller-named export path and writes the document
 // under .stipulator/exports/ — the record-store home bounds every
-// server write (REQ-mcp-writes-confined) — returning the location-only
-// wire result.
-func (s *Server) exportTo(exportPath string, doc []byte, what string) (*mcp.CallToolResult, map[string]any, error) {
+// server write (REQ-mcp-writes-confined) — returning the location and
+// bounded advisory load account without repeating the document.
+func (s *Server) exportTo(exportPath string, doc []byte, what string, account *stipulatorv1.WitnessCacheLoadAccount) (*mcp.CallToolResult, map[string]any, error) {
 	if err := validExportPath(exportPath); err != nil {
 		return nil, nil, err
 	}
@@ -37,6 +38,7 @@ func (s *Server) exportTo(exportPath string, doc []byte, what string) (*mcp.Call
 		return nil, nil, err
 	}
 	m := &stipulatorv1.ExportResult{}
+	m.SetWitnessCacheLoad(views.WitnessCacheLoadSummary(account))
 	m.SetExported(exportPath)
 	m.SetBytes(int32(len(doc)))
 	return projected(textOnly(fmt.Sprintf("%s: exported %d bytes to %s", what, len(doc), exportPath)), m)

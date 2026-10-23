@@ -7,9 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
-	"go/doc"
-	"go/parser"
-	"go/token"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -87,6 +84,7 @@ func DiscoverInvocation(ctx context.Context, n *NormalizedInvocation) ([]Obligat
 	if err != nil {
 		return nil, err
 	}
+	n.selectedPackages = pkgs
 	n.PkgDirs = make(map[string]string, len(pkgs))
 	for _, p := range pkgs {
 		if p.Dir != "" {
@@ -107,56 +105,35 @@ func DiscoverInvocation(ctx context.Context, n *NormalizedInvocation) ([]Obligat
 	}
 	for _, p := range pkgs {
 		add(Obligation{Kind: ObligationPackage, Package: p.ImportPath})
-		files := make([]string, 0, len(p.TestGoFiles)+len(p.XTestGoFiles))
-		files = append(files, p.TestGoFiles...)
-		files = append(files, p.XTestGoFiles...)
-		fset := token.NewFileSet()
-		var parsed []*ast.File
-		for _, f := range files {
-			// A test file that fails to parse is a build failure of the
-			// package obligation already recorded; enumeration keeps what
-			// it can.
-			af, err := parser.ParseFile(fset, filepath.Join(p.Dir, f), nil, parser.ParseComments)
-			if err != nil {
-				continue
-			}
-			parsed = append(parsed, af)
-			for _, d := range af.Decls {
-				fd, ok := d.(*ast.FuncDecl)
-				if !ok {
-					continue
-				}
-				switch {
-				case syntacticTestFunc(fd, "Test", "T"):
-					add(Obligation{Kind: ObligationTest, Package: p.ImportPath, Name: fd.Name.Name})
-				case syntacticTestFunc(fd, "Fuzz", "F"):
-					add(Obligation{Kind: ObligationFuzz, Package: p.ImportPath, Name: fd.Name.Name})
-					for _, seed := range committedSeeds(p.Dir, fd.Name.Name) {
-						add(Obligation{Kind: ObligationSeed, Package: p.ImportPath, Name: fd.Name.Name + "/" + seed})
-					}
+		// A parse fault remains a package build obligation; retain the same
+		// partial runnable discovery rather than inventing a successful build.
+		inventory, _ := readPackageRunnables(ctx, p)
+		for _, runnable := range inventory.runnables {
+			add(runnable)
+			if runnable.Kind == ObligationFuzz {
+				for _, seed := range committedSeeds(p.Dir, runnable.Name) {
+					add(Obligation{Kind: ObligationSeed, Package: p.ImportPath, Name: runnable.Name + "/" + seed})
 				}
 			}
-		}
-		// Executable examples only: an example without an output comment
-		// is compiled, never run, so it carries no run obligation.
-		for _, ex := range doc.Examples(parsed...) {
-			if ex.Output == "" && !ex.EmptyOutput {
-				continue
-			}
-			name := "Example"
-			if ex.Name != "" {
-				name += ex.Name
-			}
-			add(Obligation{Kind: ObligationExample, Package: p.ImportPath, Name: name})
 		}
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID() < out[j].ID() })
+	n.runnables = map[string][]string{}
+	for _, o := range out {
+		if o.Kind == ObligationTest || o.Kind == ObligationFuzz || o.Kind == ObligationExample {
+			n.runnables[o.Package] = append(n.runnables[o.Package], o.Name)
+		}
+	}
 	return out, nil
 }
 
 // listedPackage is the subset of `go list -json` output discovery reads.
 type listedPackage struct {
 	ImportPath   string
+	Name         string
 	Dir          string
 	TestGoFiles  []string
 	XTestGoFiles []string
@@ -246,12 +223,24 @@ func listArgs(n *NormalizedInvocation, head ...string) []string {
 // listPackages lists the invocation's selected packages under its build
 // selection through an owned, cancellable process boundary.
 func listPackages(ctx context.Context, n *NormalizedInvocation) ([]listedPackage, error) {
+	return readPackageListing(ctx, n, ownedRunner, "ImportPath,Name,Dir,TestGoFiles,XTestGoFiles,Error")
+}
+
+// listPackageMetadata re-observes accepted package coordinates for build-input
+// validation. It selects no obligations and uses the analysis boundary rather
+// than paying another policy derivation through the discovery boundary.
+// These fresh queries remain visible through the analysis command hook.
+func listPackageMetadata(ctx context.Context, n *NormalizedInvocation) ([]listedPackage, error) {
+	return readPackageListing(ctx, n, engineRunner, "ImportPath,Name,Dir,Error")
+}
+
+func readPackageListing(ctx context.Context, n *NormalizedInvocation, runner gotool.Runner, fields string) ([]listedPackage, error) {
 	// A spawn reusing the derived environment: the owned telemetry home
 	// is re-established first (telemetry.go).
 	if err := ensureTelemetryOwned(n.Env, n.TelemetrySource); err != nil {
 		return nil, fmt.Errorf("invocation %q: %w", n.Name, err)
 	}
-	args := listArgs(n, "-e", "-json=ImportPath,Dir,TestGoFiles,XTestGoFiles,Error")
+	args := listArgs(n, "-e", "-json="+fields)
 	// Gofresh's listing form: a nonzero exit answers nothing but the
 	// bounded stderr, and an answer the wait delay expired on before
 	// the listing was drained is refused (ErrListingRefused — a listing
@@ -259,7 +248,7 @@ func listPackages(ctx context.Context, n *NormalizedInvocation) ([]listedPackage
 	// as a shorter set), so one error arm covers both; a cancellation
 	// is the caller's own before any reading of the answer
 	// (REQ-go-owned-processes-runner). The error names `go list <args>` itself.
-	out, runErr := ownedRunner.List(ctx, n.Dir, n.Env, args...)
+	out, runErr := runner.List(ctx, n.Dir, n.Env, args...)
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}

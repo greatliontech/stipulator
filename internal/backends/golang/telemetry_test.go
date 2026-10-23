@@ -625,6 +625,7 @@ func TestEveryGoChildRunsUnderTheOwnedHome(t *testing.T) {
 	if filepath.Base(home) != recordstore.Digest(n.TelemetrySource) {
 		t.Fatalf("owned home %q is not keyed on the source %q", home, n.TelemetrySource)
 	}
+	freezeWitnessAllocation(n, 1)
 	if got := ownedHome(t, n.WitnessEnv, cache); got != home {
 		t.Fatalf("witness env home %q, invocation env home %q", got, home)
 	}

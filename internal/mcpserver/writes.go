@@ -8,11 +8,13 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/recordapply"
+	"github.com/greatliontech/stipulator/internal/views"
 )
 
 // The write machinery every authoring verb shares.
 
 type writeOut struct {
+	WitnessCacheLoad *stipulatorv1.WitnessCacheLoadAccount
 	recordapply.Result
 	Removed int
 	// Notes surface non-silent consequences, e.g. a gap's landing
@@ -47,6 +49,7 @@ func faulted(out writeOut, err error) error {
 // preview stay absent, as the projection's omitted fields.
 func (w writeOut) proto() *stipulatorv1.WriteResult {
 	m := &stipulatorv1.WriteResult{}
+	m.SetWitnessCacheLoad(views.WitnessCacheLoadSummary(w.WitnessCacheLoad))
 	m.SetWrote(w.Wrote)
 	m.SetDeleted(w.Deleted)
 	if w.Removed > 0 {

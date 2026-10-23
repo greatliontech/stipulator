@@ -13,6 +13,7 @@ import (
 
 	"github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/guard"
+	"github.com/greatliontech/gofresh/runtimeinput"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/internal/resolutioncache"
@@ -34,12 +35,17 @@ func New(t *testing.T, resolution bool) Store {
 	t.Helper()
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	f := Store{Root: t.TempDir(), resolution: resolution}
+	// Observation-free data exercises storage, not producing-process support.
+	inputs, err := runtimeinput.Merge(f.Root, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	fp := gofresh.Fingerprint{
 		MaximalClosure: strings.Repeat("a", 32), TestVariantClosure: strings.Repeat("b", 32),
 		ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy,
 		ToolchainContent: "content", AdmissionPolicy: "admission",
 		Guards:        guard.Guards{Toolchain: "go1.27.2", BuildConfig: strings.Repeat("c", 32)},
-		RuntimeInputs: "eyJ2IjoyfQ", RuntimeDigest: "3a79bf37b571938d1f2907afb6a643f4", ResultKind: gofresh.CodeResult,
+		RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult,
 	}
 	const pkg = "example.com/prunegc"
 	var bindings string

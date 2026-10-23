@@ -26,11 +26,11 @@ func ExplainDynamicState(ctx context.Context, pc *Capture, pkgPath, varName stri
 		return gofresh.Chain{}, "", err
 	}
 	for g, subjects := range d.populatedGroups() {
-		engine, err := groupEngine(ctx, dir, g)
+		session, err := groupEngine(ctx, dir, g)
 		if err != nil {
 			return gofresh.Chain{}, "", err
 		}
-		view, err := engine.NewView(ctx, subjects, g.directory(dir))
+		view, err := session.Snapshot(ctx, subjects, gofresh.CodeResult)
 		if err != nil {
 			return gofresh.Chain{}, "", err
 		}

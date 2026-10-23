@@ -98,7 +98,7 @@ bindings {
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "afb29380adda614e15ea98fdcf241132cdf0d799236d23162c852fa2549d6399"
+  shape_hash: "22f4219babd109ed259f4b4a05ca55b0ad1eaf7ca9c8c4bbc14ca518ef357cf4"
 }
 
 bindings {
@@ -129,4 +129,378 @@ bindings {
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestFixtureModule"
   role: BINDING_ROLE_TESTS
   shape_hash: "cb1251a11f13f79dec8038e335aac36102deb07bfbed98df9a447be1a5aeebd8"
+}
+
+bindings {
+  requirement_id: "REQ-go-linker-selection"
+  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
+  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.validateLinkerSelection"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "cebdd759a89782e2b75df597f4e8a718b45b6f30522927ed29d5e156fc679adf"
+  clause_label: "admission"
+}
+
+bindings {
+  requirement_id: "REQ-go-linker-selection"
+  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
+  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.resolveLinkerSelection"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "43b30fcf744c4da21a92ca21b8f26db318417a0cdce882ef82d468b1d0ec2286"
+  clause_label: "admission"
+}
+
+bindings {
+  requirement_id: "REQ-go-linker-selection"
+  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
+  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerSelectionClosedPolicy"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "8a6b6e803da660568cdffd15de6ff18e51893be97eb725df2d4731f92006626a"
+  clause_label: "admission"
+}
+
+bindings {
+  requirement_id: "REQ-go-linker-selection"
+  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
+  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerNormalizedOverrideAndDenial"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "031fb8b1111a466bb7063a0eebc17b6ed352ab593801fdf96fdabcd8c7800068"
+  clause_label: "admission"
+}
+
+bindings {
+  requirement_id: "REQ-go-linker-selection"
+  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
+  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerResolutionFreezesValuesAndExactFiles"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "148e1ad3ccf4f9e60c7b9cc7a7e96d04e248fe64c91cd4f6ce1cda92718a1e8b"
+  clause_label: "admission"
+}
+
+bindings {
+  requirement_id: "REQ-go-linker-selection"
+  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
+  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.retainedBuildArgs"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "fb91a1a86354b79c3fda7dba87a6053b7848659399a99806c7a527103a197aba"
+  clause_label: "propagation"
+}
+
+bindings {
+  requirement_id: "REQ-go-linker-selection"
+  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
+  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.captureNativeGeneration"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "9b6f8cbe3d62a4e0d03e7342b4856f348d133ea9187f6d36e3a289e491fefde3"
+  clause_label: "propagation"
+}
+
+bindings {
+  requirement_id: "REQ-go-linker-selection"
+  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
+  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.groupKeySegments"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "84da6baeeb86cefe111d6d46f5a7f104cdb887ff65d4629036b75a6812feef2b"
+  clause_label: "propagation"
+}
+
+bindings {
+  requirement_id: "REQ-go-linker-selection"
+  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
+  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.groupIdentitySegments"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "b07bebd1c56c9c78b28c7eff8ef8357ad9ca4cedf21451b20517c2468bbe5b9f"
+  clause_label: "propagation"
+}
+
+bindings {
+  requirement_id: "REQ-go-linker-selection"
+  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
+  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.resolvedConfig"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "753e192d99fe96fc5fcf85c4b09932cb95d107d8527d410ba299d3c95e3d5808"
+  clause_label: "propagation"
+}
+
+bindings {
+  requirement_id: "REQ-go-linker-selection"
+  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
+  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerResolutionFreezesValuesAndExactFiles"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "148e1ad3ccf4f9e60c7b9cc7a7e96d04e248fe64c91cd4f6ce1cda92718a1e8b"
+  clause_label: "propagation"
+}
+
+bindings {
+  requirement_id: "REQ-go-linker-selection"
+  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
+  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerAbsentSelectionKeepsExistingCoordinate"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "73e344be88c2e6abfd4fe4c46e4906565da7edf24155afa1355b3595bd42df22"
+  clause_label: "propagation"
+}
+
+bindings {
+  requirement_id: "REQ-go-linker-selection"
+  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
+  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerExecutionAndFreshnessUseActualAssignments"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "3743b7d9ba1a616be92f9ead6e9d3440c765e7a4c4e40f81b4aab535df3a62f7"
+  clause_label: "propagation"
+}
+
+bindings {
+  requirement_id: "REQ-go-linker-selection"
+  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
+  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.validateConfig"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "aba5dc705650dd6b029fcf93cdec7fae733662b44a30ca0ace701cca257aa597"
+  clause_label: "authority"
+}
+
+bindings {
+  requirement_id: "REQ-go-linker-selection"
+  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
+  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.retainedBuildArgs"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "fb91a1a86354b79c3fda7dba87a6053b7848659399a99806c7a527103a197aba"
+  clause_label: "authority"
+}
+
+bindings {
+  requirement_id: "REQ-go-linker-selection"
+  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
+  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerSelectionClosedPolicy"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "8a6b6e803da660568cdffd15de6ff18e51893be97eb725df2d4731f92006626a"
+  clause_label: "authority"
+}
+
+bindings {
+  requirement_id: "REQ-go-linker-selection"
+  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
+  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerAbsentSelectionKeepsExistingCoordinate"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "73e344be88c2e6abfd4fe4c46e4906565da7edf24155afa1355b3595bd42df22"
+  clause_label: "authority"
+}
+
+bindings {
+  requirement_id: "REQ-go-linker-selection"
+  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
+  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerExecutionAndFreshnessUseActualAssignments"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "3743b7d9ba1a616be92f9ead6e9d3440c765e7a4c4e40f81b4aab535df3a62f7"
+  clause_label: "authority"
+}
+
+bindings {
+  requirement_id: "REQ-go-invocation-input-files"
+  content_hash: "07c576801d2183d81c6bf13d386eb168b5e43140a4db1b0170f336ca5f391649"
+  source_hash: "5d560a5f60829ba8315be4951149252d54f7897d5b112ad3a268470245d1df18"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.resolveLinkerSelection"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "43b30fcf744c4da21a92ca21b8f26db318417a0cdce882ef82d468b1d0ec2286"
+  clause_label: "admission"
+}
+
+bindings {
+  requirement_id: "REQ-go-invocation-input-files"
+  content_hash: "07c576801d2183d81c6bf13d386eb168b5e43140a4db1b0170f336ca5f391649"
+  source_hash: "5d560a5f60829ba8315be4951149252d54f7897d5b112ad3a268470245d1df18"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.requireExactInputEligibility"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "ec3a5f02640d94e95622852341c21aee65343880044d799ce357112977b19ef6"
+  clause_label: "admission"
+}
+
+bindings {
+  requirement_id: "REQ-go-invocation-input-files"
+  content_hash: "07c576801d2183d81c6bf13d386eb168b5e43140a4db1b0170f336ca5f391649"
+  source_hash: "5d560a5f60829ba8315be4951149252d54f7897d5b112ad3a268470245d1df18"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerSelectionClosedPolicy"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "8a6b6e803da660568cdffd15de6ff18e51893be97eb725df2d4731f92006626a"
+  clause_label: "admission"
+}
+
+bindings {
+  requirement_id: "REQ-go-invocation-input-files"
+  content_hash: "07c576801d2183d81c6bf13d386eb168b5e43140a4db1b0170f336ca5f391649"
+  source_hash: "5d560a5f60829ba8315be4951149252d54f7897d5b112ad3a268470245d1df18"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerResolutionFreezesValuesAndExactFiles"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "148e1ad3ccf4f9e60c7b9cc7a7e96d04e248fe64c91cd4f6ce1cda92718a1e8b"
+  clause_label: "admission"
+}
+
+bindings {
+  requirement_id: "REQ-go-invocation-input-files"
+  content_hash: "07c576801d2183d81c6bf13d386eb168b5e43140a4db1b0170f336ca5f391649"
+  source_hash: "5d560a5f60829ba8315be4951149252d54f7897d5b112ad3a268470245d1df18"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerInputFilesUseNativeEffectiveEligibility"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "5a1349080cc127af630dbb0551a4885df4fb4037af5bf3a696629963ffaa58a3"
+  clause_label: "admission"
+}
+
+bindings {
+  requirement_id: "REQ-go-invocation-input-files"
+  content_hash: "07c576801d2183d81c6bf13d386eb168b5e43140a4db1b0170f336ca5f391649"
+  source_hash: "5d560a5f60829ba8315be4951149252d54f7897d5b112ad3a268470245d1df18"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerInputEligibilityRechecksFrozenAssociationsAndFiles"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "bc1d3ef9e1ce12b0fbab0f3e25e3a3aad53fa182b7a64f289326604fa762bb32"
+  clause_label: "admission"
+}
+
+bindings {
+  requirement_id: "REQ-go-invocation-input-files"
+  content_hash: "07c576801d2183d81c6bf13d386eb168b5e43140a4db1b0170f336ca5f391649"
+  source_hash: "5d560a5f60829ba8315be4951149252d54f7897d5b112ad3a268470245d1df18"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.nativePackageLeg"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "11de8ad6b486f57b3a26dc752dc837ee12327cefdd528927b29a31a084c15f3f"
+  clause_label: "attempt-binding"
+}
+
+bindings {
+  requirement_id: "REQ-go-invocation-input-files"
+  content_hash: "07c576801d2183d81c6bf13d386eb168b5e43140a4db1b0170f336ca5f391649"
+  source_hash: "5d560a5f60829ba8315be4951149252d54f7897d5b112ad3a268470245d1df18"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.runNativePackage"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "fbf4e0aa3193e9dfd7585e0b8d585a9be4fe52b9aeb62cd4009f3f52060faa55"
+  clause_label: "attempt-binding"
+}
+
+bindings {
+  requirement_id: "REQ-go-invocation-input-files"
+  content_hash: "07c576801d2183d81c6bf13d386eb168b5e43140a4db1b0170f336ca5f391649"
+  source_hash: "5d560a5f60829ba8315be4951149252d54f7897d5b112ad3a268470245d1df18"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerInputGatePreventsEveryDegradedNativeAttempt"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "c1ab0148535ab979a2a6105edf6714688234f3455975082acf31f99b25a71376"
+  clause_label: "attempt-binding"
+}
+
+bindings {
+  requirement_id: "REQ-go-invocation-input-files"
+  content_hash: "07c576801d2183d81c6bf13d386eb168b5e43140a4db1b0170f336ca5f391649"
+  source_hash: "5d560a5f60829ba8315be4951149252d54f7897d5b112ad3a268470245d1df18"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerExecutionAndFreshnessUseActualAssignments"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "3743b7d9ba1a616be92f9ead6e9d3440c765e7a4c4e40f81b4aab535df3a62f7"
+  clause_label: "attempt-binding"
+}
+
+bindings {
+  requirement_id: "REQ-go-invocation-input-files"
+  content_hash: "07c576801d2183d81c6bf13d386eb168b5e43140a4db1b0170f336ca5f391649"
+  source_hash: "5d560a5f60829ba8315be4951149252d54f7897d5b112ad3a268470245d1df18"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerInputEligibilityRechecksFrozenAssociationsAndFiles"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "bc1d3ef9e1ce12b0fbab0f3e25e3a3aad53fa182b7a64f289326604fa762bb32"
+  clause_label: "attempt-binding"
+}
+
+bindings {
+  requirement_id: "REQ-go-invocation-input-files"
+  content_hash: "07c576801d2183d81c6bf13d386eb168b5e43140a4db1b0170f336ca5f391649"
+  source_hash: "5d560a5f60829ba8315be4951149252d54f7897d5b112ad3a268470245d1df18"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.bracketRootsFor"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "8488c1821f9f25909e1b54dbae270aeb9046b9344d95eec42baab8b6cd682d03"
+  clause_label: "evidence"
+}
+
+bindings {
+  requirement_id: "REQ-go-invocation-input-files"
+  content_hash: "07c576801d2183d81c6bf13d386eb168b5e43140a4db1b0170f336ca5f391649"
+  source_hash: "5d560a5f60829ba8315be4951149252d54f7897d5b112ad3a268470245d1df18"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.resolvedConfig"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "753e192d99fe96fc5fcf85c4b09932cb95d107d8527d410ba299d3c95e3d5808"
+  clause_label: "evidence"
+}
+
+bindings {
+  requirement_id: "REQ-go-invocation-input-files"
+  content_hash: "07c576801d2183d81c6bf13d386eb168b5e43140a4db1b0170f336ca5f391649"
+  source_hash: "5d560a5f60829ba8315be4951149252d54f7897d5b112ad3a268470245d1df18"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.linkerIdentitySegments"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "5aa5d12e6d8ab783808b141c6c8d9967f9e87a25e61fef6a3dcc338a1910d00c"
+  clause_label: "evidence"
+}
+
+bindings {
+  requirement_id: "REQ-go-invocation-input-files"
+  content_hash: "07c576801d2183d81c6bf13d386eb168b5e43140a4db1b0170f336ca5f391649"
+  source_hash: "5d560a5f60829ba8315be4951149252d54f7897d5b112ad3a268470245d1df18"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerResolutionFreezesValuesAndExactFiles"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "148e1ad3ccf4f9e60c7b9cc7a7e96d04e248fe64c91cd4f6ce1cda92718a1e8b"
+  clause_label: "evidence"
+}
+
+bindings {
+  requirement_id: "REQ-go-invocation-input-files"
+  content_hash: "07c576801d2183d81c6bf13d386eb168b5e43140a4db1b0170f336ca5f391649"
+  source_hash: "5d560a5f60829ba8315be4951149252d54f7897d5b112ad3a268470245d1df18"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerExecutionAndFreshnessUseActualAssignments"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "3743b7d9ba1a616be92f9ead6e9d3440c765e7a4c4e40f81b4aab535df3a62f7"
+  clause_label: "evidence"
 }

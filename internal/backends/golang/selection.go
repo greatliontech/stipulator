@@ -57,7 +57,7 @@ type SelectionResult struct {
 
 // ExecuteSelection executes a witness-only selection of one normalized
 // invocation: the selected packages, each narrowed to its top-level
-// runnables, one owned `go test -json` process per package under the
+// runnables, one owned retained test process per package under the
 // invocation's reviewed envelope timeout, followed by the isolation pass
 // — every test a red or aborted process denied an outcome is re-run
 // solo, once, inside the same envelope context, so retries can never
@@ -98,10 +98,22 @@ type packageUnit struct {
 // (REQ-policy-explicit-time-bounds). A hook error ends the invocation with it.
 // A nil hook is ExecuteSelection.
 func ExecuteSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel TestSelection, onPackage func(unit packageUnit) error) (*SelectionResult, error) {
-	return executeSelectionObserved(ctx, n, sel, onPackage, nil)
+	freezeWitnessAllocation(n, len(sel))
+	var packages []string
+	for pkg := range sel {
+		packages = append(packages, pkg)
+	}
+	sort.Strings(packages)
+	legs := executionLegs(ctx, n, packages)
+	defer func() {
+		for _, leg := range legs {
+			leg.dispose()
+		}
+	}()
+	return executeSelectionObserved(ctx, n, sel, onPackage, legs, spawnOrdinals())
 }
 
-func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel TestSelection, onPackage func(unit packageUnit) error, proofs map[string]*packageLeg) (*SelectionResult, error) {
+func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel TestSelection, onPackage func(unit packageUnit) error, proofs map[string]*packageLeg, spawn func() int32) (*SelectionResult, error) {
 	pkgs := make([]string, 0, len(sel))
 	for pkg := range sel {
 		pkgs = append(pkgs, pkg)
@@ -115,8 +127,15 @@ func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 	// expiry, never on a caller's own deadline.
 	invCtx, cancel := context.WithTimeoutCause(ctx, n.Timeout, errEnvelopeExpired)
 	defer cancel()
-	spawn := spawnOrdinals()
 	units := make([]packageUnit, len(pkgs))
+	defer func() {
+		for i := range units {
+			units[i].run.attempt.release()
+			for j := range units[i].solos {
+				units[i].solos[j].attempt.release()
+			}
+		}
+	}()
 	var (
 		mu       sync.Mutex
 		firstErr error
@@ -137,6 +156,7 @@ func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 	// slot is released.
 	inSlot := func(i int, run *packageRun, gate *admission) {
 		unit := packageUnit{pkg: pkgs[i], run: *run}
+		defer func() { mu.Lock(); units[i] = unit; mu.Unlock() }()
 		timedOut := invCtx.Err() != nil
 		if err := finalizeRun(n, &unit.run, timedOut, ""); err != nil {
 			mu.Lock()
@@ -160,13 +180,15 @@ func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 				// The re-run spawns inside the package's slot and under
 				// its gate: registered at its spawn, reaped with its
 				// peak (REQ-evidence-admission-origin).
-				solo = runPackage(invCtx, n, unit.pkg, []string{name}, spawn(), gate, proofs[unit.pkg])
+				solo = runNativePackage(ctx, invCtx, n, unit.pkg, []string{name}, spawn(), gate, proofs[unit.pkg], unit.run.execution)
 				solo.soloTest = name
 			}
 			if ctx.Err() != nil {
+				unit.solos = append(unit.solos, solo)
 				return
 			}
 			if err := finalizeRun(n, &solo, invCtx.Err() != nil, name); err != nil {
+				unit.solos = append(unit.solos, solo)
 				mu.Lock()
 				fail(err)
 				units[i] = unit
@@ -182,6 +204,13 @@ func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 	afterSlot := func(i int, _ *packageRun) {
 		mu.Lock()
 		defer mu.Unlock()
+		if beforePackagePublishForTest != nil {
+			beforePackagePublishForTest(units[i].pkg)
+		}
+		finishNativeRun(ctx, &units[i].run)
+		for j := range units[i].solos {
+			finishNativeRun(ctx, &units[i].solos[j])
+		}
 		if onPackage != nil && firstErr == nil {
 			if err := onPackage(units[i]); err != nil {
 				fail(err)

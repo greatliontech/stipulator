@@ -12,6 +12,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/facts"
 	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verify"
+	"github.com/greatliontech/stipulator/internal/views"
 	"github.com/greatliontech/stipulator/internal/wire"
 )
 
@@ -72,11 +73,13 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 	// export write; the export line carries the phase stamps like every
 	// completed suite-running result.
 	if in.ExportPath != "" {
-		doc, err := wire.CanonicalJSON(pr.ProtoUncapped())
+		full := pr.ProtoUncapped()
+		full.SetWitnessCacheLoad(rep.WitnessCacheLoad)
+		doc, err := wire.CanonicalJSON(full)
 		if err != nil {
 			return nil, nil, terminalToolError(prog, ctx, err)
 		}
-		res, structured, err := s.exportTo(in.ExportPath, doc, "partitions")
+		res, structured, err := s.exportTo(in.ExportPath, doc, "partitions", rep.WitnessCacheLoad)
 		if err != nil {
 			return nil, nil, terminalToolError(prog, ctx, err)
 		}
@@ -85,6 +88,7 @@ func (s *Server) toolPartitions(ctx context.Context, req *mcp.CallToolRequest, i
 	}
 	prog.Terminal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED)
 	m := pr.Proto()
+	m.SetWitnessCacheLoad(views.WitnessCacheLoadSummary(rep.WitnessCacheLoad))
 	var componentRows []string
 	for i, component := range m.GetComponents() {
 		ids := component.GetRequirementIds()

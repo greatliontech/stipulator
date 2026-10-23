@@ -5,17 +5,27 @@ a 600-second execution budget before running any witnesses, while specification
 compilation and records-only verification completed. Attribute the discovery cost
 and establish a bounded affected-requirement workflow without weakening evidence.
 
-Lands: tooling-redesign 5.2e
+Lands: tooling-redesign 7.7; refinements at 7.8 and authorized corpus acceptance at 9.3.
 
-The remaining obligation is attributed scoped-discovery and certificate
-cold/warm cost under the identified workload, followed by justified bounded
-work. `packageinventory.go`, `served.go` and `sourcecertificate.go` now carry
-complete selected-view and certificate dependencies. Do not reopen 5.2a/b's
+The remaining obligation is to recover the workload and cache identity, attribute
+scoped-discovery and certificate cold/warm cost, then perform only justified
+bounded work. The recorded external evidence locator is unavailable on this
+machine; the baseline commit alone does not contain the candidate's uncommitted
+repair. Endpoint-local preparation and synthetic complete-population baselines
+do not establish this corpus's acceptance. The current implementation work is
+verified through direct suites, targeted probes and records-only checks, not
+an authorized Cerebro witness evaluation.
+
+`packageinventory.go`, `served.go` and `sourcecertificate.go` carry complete
+selected-view and certificate dependencies. Do not reopen 5.2a/b's
 selection, module-mode, physical-position or dotted-identity repairs, and do
 not claim this report was reproduced on the current source.
 
-Secondary constituents: 7.7 owns representative resource measurements;
-7.8 owns broader demand-driven sharing if those measurements justify it.
+Workload recovery and representative resource attribution land at 7.7;
+7.8 owns broader demand-driven sharing only if those measurements justify it.
+The selected-witness completion criterion below remains open at 9.3 under
+its authorization and prerequisite gates. An identified current-tree control
+must be labelled separately from an exact replay of the reported candidate.
 
 ## Reproduction identity
 

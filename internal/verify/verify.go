@@ -76,6 +76,8 @@ const (
 // material witnesses are derived from. Producing it is backend work;
 // correlating it is this package's.
 type TestRun struct {
+	// WitnessCacheLoad accounts for observed store refusals without granting evidence.
+	WitnessCacheLoad *stipulatorv1.WitnessCacheLoadAccount
 	// RaceEnabled records whether the run's witness grants derive from
 	// race-enabled invocations: the rigor attribute a witness inherits
 	// unless PlainWitness marks its key downgraded.
@@ -259,7 +261,9 @@ var errNotServingClass = errors.New("this operation takes serving-class witness 
 
 // Report is the outcome of a verification run.
 type Report struct {
-	Problems []Problem
+	// WitnessCacheLoad is advisory store-read metadata, never evidence.
+	WitnessCacheLoad *stipulatorv1.WitnessCacheLoadAccount
+	Problems         []Problem
 	// Results holds the verified state of every well-formed binding, in
 	// store order.
 	Results []BindingResult
@@ -489,6 +493,7 @@ func Correlate(rep *Report, store *records.Store, testRun *TestRun) *Report {
 	}
 	rep.OutsidePolicy = testRun.OutsidePolicy
 	rep.Diagnostics = testRun.Diagnostics
+	rep.WitnessCacheLoad = testRun.WitnessCacheLoad
 	// Cross-check runtime registrations: every registration must be
 	// backed by a witness-role binding (tests or proves) for the same
 	// requirement on the registration's top-level test — the binding

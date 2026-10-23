@@ -56,6 +56,11 @@ func fixturePolicy() proto.Message {
 	member.SetCount(1)
 	member.SetCacheMode(stipulatorv1.GoCacheMode_GO_CACHE_MODE_BYPASS)
 	member.SetArgs([]string{"-quick"})
+	literal := &stipulatorv1.GoLinkerString{}
+	literal.SetPackage("example.com/m/build")
+	literal.SetVariable("version")
+	literal.SetValue("source/1:abc")
+	member.SetLinkerStrings([]*stipulatorv1.GoLinkerString{literal})
 	inv1 := &stipulatorv1.PolicyInvocation{}
 	inv1.SetName("member-health")
 	inv1.SetTimeout(durationpb.New(600e9))
@@ -64,6 +69,12 @@ func fixturePolicy() proto.Message {
 	root := &stipulatorv1.GoInvocationConfig{}
 	root.SetPackages([]string{"./...", "./stipulate/..."})
 	root.SetRace(true)
+	environment := &stipulatorv1.GoLinkerString{}
+	environment.SetPackage("example.com/m/build")
+	environment.SetVariable("version")
+	environment.SetValueEnvironment("LIBRARY_ID")
+	root.SetLinkerStrings([]*stipulatorv1.GoLinkerString{environment})
+	root.SetInputFilesFromEnvironment([]string{"LIBRARY_MANIFEST"})
 	inv2 := &stipulatorv1.PolicyInvocation{}
 	inv2.SetName("workspace-race")
 	inv2.SetTimeout(durationpb.New(900e9))
@@ -95,6 +106,8 @@ func fixtureExecutionReport() proto.Message {
 	resolved.SetGoexperiment("jsonv2")
 	resolved.SetWorkspaceOn(true)
 	resolved.SetRace(true)
+	resolved.SetLinkerAssignments([]string{"example.com/m/build.version=source/1:abc"})
+	resolved.SetInputFiles([]string{"/retained/library-source.json"})
 	invHealth.SetGo(resolved)
 
 	producer := &stipulatorv1.ProducerIdentity{}

@@ -137,7 +137,7 @@ func gapCmd() *cobra.Command {
 // records listed rather than refused. It writes nothing; editing a gap
 // is re-declaring it.
 func gapListRun(ctx context.Context) error {
-	prepared, rep, cov, err := verifyrun.Gaps(ctx, cliDeps())
+	prepared, rep, cov, err := verifyrun.Gaps(ctx, cliDeps(os.Stderr))
 	if err != nil {
 		return withRecordPath(err)
 	}

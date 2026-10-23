@@ -32,15 +32,15 @@ import (
 // outcomes both derive from the same execution, never from a second run
 // and never from a cache. The gating is deliberately asymmetric. A pass
 // grants a witness only when its producing package disposed healthy
-// inside its producing invocation and that invocation ran under the race
-// detector — a red suite never yields green evidence, and a non-race
-// invocation contributes suite health but no Go witness. A failure is
+// inside a race-enabled or explicitly plain-admitted invocation. A red suite
+// never yields green evidence; an unadmitted non-race invocation contributes
+// suite health but no Go witness. A failure is
 // surfaced regardless: red is a fact about the tree whatever the rigor of
 // the run that saw it. Health is computed from invocation dispositions
 // alone — the witness cache is not an input to any health or outcome here,
 // so a cached green outcome structurally cannot satisfy package, command,
 // or suite health. The cache appears only on the producer side: after a
-// healthy race execution, per-test freshness records are published for
+// healthy witness-eligible execution, per-test freshness records are published for
 // later freshness-serving consumers, each carrying its own producing
 // process's runtime observation and only surviving source and runtime
 // producer validation.
@@ -89,9 +89,10 @@ func indexInvocations(report *stipulatorv1.ExecutionReport) invocationFacts {
 // DeriveTestRun derives the witness-evidence view of one execution report
 // for binding verification. A passing result becomes a witness outcome
 // only when its producing package disposed healthy inside its producing
-// invocation and that invocation ran under the race detector; a pass that
-// fails either gate records no outcome at all, so a bound test in that
-// position reads as unwitnessed. Failed and skipped results are recorded
+// invocation and that invocation ran under the race detector or explicitly
+// admitted plain witnesses; a pass that fails either gate records no outcome
+// at all, so a bound test in that position reads as unwitnessed. Failed and
+// skipped results are recorded
 // regardless — a failure is a fact whatever produced it, and a skip
 // grants nothing without reading as broken. When one test name carries
 // several results (an invocation with -count above one, or the same
@@ -171,39 +172,13 @@ func DeriveTestRun(report *stipulatorv1.ExecutionReport) *verify.TestRun {
 	return tr
 }
 
-// groupPackage is one selected package's facts within a capture
-// group: the invocation selecting it, its expected witness set (named
-// Test functions and fuzz targets), whether a second invocation of the
-// group also selected it — such a package never publishes, its record
-// would have no single producing invocation — and whether its
-// whole-package process runs solo.
+// groupPackage retains the policy-discovered witness subjects and their selecting
+// invocation. Current runnable populations belong to witnessSnapshot instead.
+// A package selected twice in one capture group has no producing leg.
 type groupPackage struct {
 	inv       string
 	names     []string
 	ambiguous bool
-	solo      bool
-}
-
-// soloProcess is the one prediction of a solo process — a process that
-// runs exactly one top-level runnable, a test or fuzz target and
-// nothing else — made before execution wherever a proof candidate is
-// chosen: the whole-package process at discovery, the selective
-// process over one stale name, the retry's process over one retried
-// subject. The caller supplies the count of everything its process
-// runs: the whole-package process counts its executable examples, a
-// selective process only the names it selects, which a -run pattern
-// never widens to an example. Only such a process can carry an
-// observation-completeness proof, because a sibling test could
-// contribute unrecorded process state to the subject's outcome; the
-// judgment then observes the fact from the process's own rows before
-// the proof attaches.
-func soloProcess(runnables int) bool { return runnables == 1 }
-
-// proofCandidate is the one admission of a subject to a group's proof
-// candidates: captured, its process predicted solo, and no author's
-// purity assertion — an asserted subject never carries a proof.
-func proofCandidate(fp gofresh.Fingerprint, captured, solo bool) bool {
-	return captured && solo && fp.PurityAssertion == ""
 }
 
 // selectingInvocation names the one invocation of the group selecting
@@ -217,27 +192,6 @@ func (g *captureGroup) selectingInvocation(pkg string) string {
 		return p.inv
 	}
 	return ""
-}
-
-// proofCandidates selects, from the subjects selected for one
-// execution, those admitted by proofCandidate with the solo prediction
-// counted per package over the subjects given — the execution spawns
-// one process per package. A caller-named scope may leave some of the
-// selected subjects unexecuted, which only withholds candidacy from a
-// package the scope narrows. The order is the subjects'.
-func proofCandidates(subjects []gofresh.Subject, fps map[gofresh.Subject]gofresh.Fingerprint) []gofresh.Subject {
-	perPkg := map[string]int{}
-	for _, s := range subjects {
-		perPkg[s.Package]++
-	}
-	var candidates []gofresh.Subject
-	for _, s := range subjects {
-		fp, ok := fps[s]
-		if proofCandidate(fp, ok, soloProcess(perPkg[s.Package])) {
-			candidates = append(candidates, s)
-		}
-	}
-	return candidates
 }
 
 // subjectsOf lists a selection's subjects ordered by package, then
@@ -291,10 +245,8 @@ type captureGroup struct {
 	// (REQ-evidence-witness-freshness-seeded); resolved once per policy
 	// capture, read by both witness forms' serving and publish paths.
 	neverServes map[gofresh.Subject]uncacheable
-	// witnessEnv is the group's witness environment
-	// (NormalizedInvocation.WitnessEnv): revalidation recomputes env
-	// digests from it as the engine's producer env; loads and analysis
-	// stay on env.
+	// witnessEnv is the complete compilation environment, including the derived
+	// width. Runtime bindings separately own each actual package environment.
 	witnessEnv []string
 	// race is the group's witness tier AND a build input: the analysis
 	// engine's flags must describe the binary the tests actually run as,
@@ -309,9 +261,10 @@ type captureGroup struct {
 	// has one of each, and the engine's flags and build inputs describe
 	// the binary the witnesses run as (REQ-evidence-witness-freshness-inputs's
 	// caller-supplied build inputs).
-	moduleRoot string
-	moduleMode stipulatorv1.GoModuleMode
-	pgo        string
+	moduleRoot        string
+	moduleMode        stipulatorv1.GoModuleMode
+	pgo               string
+	linkerAssignments []string
 	// vouches carries the group's reviewed dynamic-state vouch set into
 	// the engine; part of the group key, so one group has one set.
 	vouches []string
@@ -340,27 +293,22 @@ type captureGroup struct {
 	// whole-package process runs solo — so the facts cannot disagree
 	// about which packages the group holds.
 	packages map[string]*groupPackage
-	// view and fps are the pre-execution captures: fingerprints must pin
-	// the tree that compiles the binaries, so capturing after execution
-	// would let a mid-run edit publish pre-edit outcomes under a
-	// post-edit hash — a spurious reuse. Captured before, the same
-	// interleaving reads stale: the safe direction. view is the group's
-	// one analysis view — the expensive observation, paid once —
-	// released once every package's leg has published.
-	view *gofresh.View
-	fps  map[gofresh.Subject]gofresh.Fingerprint
-	// legs is the health-judged form's publication state per package:
-	// the package is the unit of persistence (REQ-policy-cancellation-unit),
-	// so each publishes on its own sibling of view, its proof leg over
-	// its whole-package process's solo candidates captured before
-	// execution and validated at its publish.
+	// selectedPackages retains discovery's original-package metadata for the
+	// invocations sharing this engine. Default PGO belongs only to selected
+	// main packages, including when the invocation omits the PGO flag.
+	selectedPackages []listedPackage
+	telemetrySource  string
+	// view is the shared pre-execution source/build generation. Runtime
+	// bindings and independent producing/checking units derive from it.
+	view *witnessSnapshot
+	// Each package owns its runtime binding and independent closing state.
 	legs map[string]*packageLeg
 }
 
 // WitnessRecorder is the producer side of witness freshness under the
-// accepted policy: it captures per-test fingerprints before the policy
-// executes and publishes witness-cache records from the execution report
-// after, once source and runtime producer validation succeed. It is a
+// accepted policy: it prepares source/build snapshots before execution and
+// publishes independently eligible native-finalized results from each actual
+// process. It is a
 // cache producer only — health and witness evidence never depend on it,
 // and any fault on this path degrades to publishing nothing while the
 // derivation's evidence stands (the cache saves work, it never blocks or
@@ -371,6 +319,20 @@ type WitnessRecorder struct {
 	groups   []*captureGroup
 	records  []witnesscache.Record
 	reasons  map[gofresh.Subject]uncacheable
+}
+
+// Close releases remaining source views and prospective runtime storage. The
+// caller must first finish, or cancel and join, executions using the recorder.
+func (r *WitnessRecorder) Close() {
+	if r == nil {
+		return
+	}
+	for _, g := range r.groups {
+		for _, leg := range g.legs {
+			leg.dispose()
+		}
+		g.view = nil
+	}
 }
 
 // invocationCapture pairs one Go invocation's normalized form with its
@@ -393,21 +355,16 @@ type invocationCapture struct {
 // goroutine; it is not safe for concurrent use. It performs no gofresh
 // work, so the witness recorder, the selective witness runner, the
 // executor, and the explainer all build on it — and they share the
-// normalized forms, which discovery annotates in place (package
-// directories and closure directories): every reader of the capture
-// sees the one annotated form.
+// normalized forms, which discovery annotates in place (package directories,
+// closure directories, and the finalized execution allocation). Configure the
+// execution class and scope before the first discovery reader; every later
+// reader sees the same frozen environment and selection.
 type Capture struct {
 	dir        string
+	execution  executionScope
 	normalized []*NormalizedInvocation
 	discovered held[*policyDiscovery]
 	universe   held[[]Obligation]
-	// roots is the operation's classification-root memo
-	// (runtimeinput.Roots): one `go env -json` probe per package
-	// directory and environment across every observation this capture's
-	// executions ingest, held for the capture's life — the judged
-	// operation's, as its toolchain sampler is (the discovery's, held
-	// with it) — never the process's.
-	roots *runtimeinput.Roots
 }
 
 // held is a derivation performed on first demand and kept for the
@@ -444,13 +401,9 @@ func (pc *Capture) byName() map[string]*NormalizedInvocation {
 // by group key).
 type policyDiscovery struct {
 	invocations []invocationCapture
-	// globalCount counts, per package, the invocations selecting it — race
-	// or not, in any group. A package selected by more than one invocation
-	// can never publish or serve: its record would have no single
-	// producing invocation. Counting across the whole policy keeps such
-	// packages out of every capture, so their guaranteed ineligibility can
-	// never strip the observation-proof leg from a group's publishable
-	// candidates.
+	// globalCount includes every invocation selecting a package, including
+	// ineligible legs whose failures still contribute to selective execution.
+	// Publication ambiguity is judged separately within each capture group.
 	globalCount map[string]int
 	groups      []*captureGroup
 	// invGroup names each witness-eligible invocation's capture group.
@@ -462,7 +415,7 @@ type policyDiscovery struct {
 // fault is the operation's fault: nothing downstream can derive without
 // the invocation's effective environment.
 func CapturePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) (*Capture, error) {
-	pc := &Capture{dir: dir, roots: &runtimeinput.Roots{}}
+	pc := &Capture{dir: dir}
 	for _, inv := range p.GetInvocations() {
 		if inv.GetGo() == nil {
 			continue
@@ -471,7 +424,6 @@ func CapturePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) 
 		if err != nil {
 			return nil, err
 		}
-		n.roots = pc.roots
 		pc.normalized = append(pc.normalized, n)
 	}
 	return pc, nil
@@ -628,7 +580,7 @@ func encodeSegments(segments []keySegment) string {
 // all - the one caller-arbitrary byte string here) can alias a
 // separator or a neighboring segment into a colliding key.
 func groupKeySegments(n *NormalizedInvocation) []keySegment {
-	return []keySegment{
+	segments := append([]keySegment{
 		{"tags", quotedList(n.Tags)},
 		{"env", quotedList(sortedCopy(witnessEnvOf(n)))},
 		{"modulemode", quotedValue(n.ModuleMode.String())},
@@ -637,16 +589,15 @@ func groupKeySegments(n *NormalizedInvocation) []keySegment {
 		{"args", quotedList(identityArgs(n.Args))},
 		{"pure", boolValue(n.AssumePure)},
 		{"race", boolValue(n.Race)},
-		{"exclusions", quotedList(canonicalExclusions(n.ExcludedPaths))},
-		// Vouches change verdicts, so two vouch sets are two capture
-		// groups - one view never mixes two reviewed sets. Records
-		// still share the identity coordinate across vouch and
-		// exclusion sets: an added vouch serves existing evidence
-		// unchanged, and a withdrawn vouch's records refuse in the
-		// current derivation.
-		{"vouches", quotedList(n.Vouches)},
-		{"namespaces", quotedList(namespaceRows(n.ScratchNamespaces))},
+	}, reviewedKeySegments(n)...)
+	segments = append(segments, linkerIdentitySegments(n)...)
+	if len(n.LinkerAssignments) != 0 {
+		segments = append(segments, keySegment{"linker_values", quotedList(n.LinkerAssignments)})
 	}
+	if len(n.InputFiles) != 0 {
+		segments = append(segments, keySegment{"input_files", quotedList(inputFilePaths(n.InputFiles))})
+	}
+	return segments
 }
 
 // groupKey is one invocation's capture-group identity: the
@@ -692,7 +643,7 @@ func groupKey(n *NormalizedInvocation) string {
 // identity-bearing partition alone: a reviewed runtime-only bound
 // (runtimeOnlyArg) edits without re-addressing the store.
 func groupIdentitySegments(n *NormalizedInvocation) []keySegment {
-	return []keySegment{
+	return append([]keySegment{
 		{"tags", quotedList(n.Tags)},
 		{"race", boolValue(n.Race)},
 		{"goos", quotedValue(n.DeclaredGOOS)},
@@ -707,7 +658,19 @@ func groupIdentitySegments(n *NormalizedInvocation) []keySegment {
 		{"args", quotedList(identityArgs(n.Args))},
 		{"envset", quotedList(sortedCopy(n.EnvOverrides))},
 		{"envdeny", quotedList(sortedCopy(n.EnvDeny))},
+	}, linkerIdentitySegments(n)...)
+}
+
+// Optional declared coordinates preserve every pre-feature record address.
+func linkerIdentitySegments(n *NormalizedInvocation) []keySegment {
+	var segments []keySegment
+	if len(n.DeclaredLinkerStrings) != 0 {
+		segments = append(segments, keySegment{"linker_sources", quotedList(n.DeclaredLinkerStrings)})
 	}
+	if len(n.InputFiles) != 0 {
+		segments = append(segments, keySegment{"input_file_environment", quotedList(inputFileNames(n.InputFiles))})
+	}
+	return segments
 }
 
 func groupIdentity(n *NormalizedInvocation) string {
@@ -743,51 +706,6 @@ func LiveGroupDigests(pc *Capture) map[string]bool {
 	return out
 }
 
-// canonicalExclusions sorts and deduplicates a reviewed exclusion set so
-// group identity, record provenance, and the serving subset check all
-// compare one canonical form.
-func canonicalExclusions(paths []string) []string {
-	out := append([]string(nil), paths...)
-	sort.Strings(out)
-	return slices.Compact(out)
-}
-
-// canonicalNamespaces is the scratch namespace set's one order (by
-// directory, then pattern), deduplicated.
-func canonicalNamespaces(in []runtimeinput.ScratchNamespace) []runtimeinput.ScratchNamespace {
-	out := append([]runtimeinput.ScratchNamespace(nil), in...)
-	slices.SortFunc(out, func(a, b runtimeinput.ScratchNamespace) int {
-		if c := strings.Compare(a.Dir, b.Dir); c != 0 {
-			return c
-		}
-		return strings.Compare(a.Pattern, b.Pattern)
-	})
-	return slices.Compact(out)
-}
-
-// namespaceRows renders the canonical namespace set as one element per
-// row for the key encoding: each row is the pair's own quoted list, so
-// no directory or pattern byte can alias one pair into another
-// whatever validation admits — the encoding's uniform rule, never a
-// dependence on validation staying in sync.
-func namespaceRows(in []runtimeinput.ScratchNamespace) []string {
-	rows := make([]string, 0, len(in))
-	for _, ns := range canonicalNamespaces(in) {
-		rows = append(rows, string(quotedList([]string{ns.Dir, ns.Pattern})))
-	}
-	return rows
-}
-
-// recordNamespaces is the group's canonical namespace set in the
-// record's own form.
-func recordNamespaces(in []runtimeinput.ScratchNamespace) []witnesscache.ScratchNamespace {
-	out := make([]witnesscache.ScratchNamespace, 0, len(in))
-	for _, ns := range canonicalNamespaces(in) {
-		out = append(out, witnesscache.ScratchNamespace{Dir: ns.Dir, Pattern: ns.Pattern})
-	}
-	return out
-}
-
 // discover is the capture's discovered leg, derived on the first call
 // and held: every invocation's obligations, the policy-wide selection
 // count, and the witness-eligible invocations (race-enabled, plus
@@ -795,7 +713,7 @@ func recordNamespaces(in []runtimeinput.ScratchNamespace) []witnesscache.Scratch
 // carrying its tier. A fault, cancellation included, is held with it;
 // ctx binds the first call only.
 func (pc *Capture) discover(ctx context.Context) (*policyDiscovery, error) {
-	return pc.discovered.get(func() (*policyDiscovery, error) { return discoverPolicy(ctx, pc.normalized) })
+	return pc.discovered.get(func() (*policyDiscovery, error) { return discoverPolicy(ctx, pc.normalized, pc.execution) })
 }
 
 // populatedGroups walks the capture groups that own at least one
@@ -815,7 +733,7 @@ func (d *policyDiscovery) populatedGroups() iter.Seq2[*captureGroup, []gofresh.S
 	}
 }
 
-func discoverPolicy(ctx context.Context, normalized []*NormalizedInvocation) (*policyDiscovery, error) {
+func discoverPolicy(ctx context.Context, normalized []*NormalizedInvocation, execution executionScope) (*policyDiscovery, error) {
 	pc := &policyDiscovery{globalCount: map[string]int{}, invGroup: map[string]*captureGroup{}}
 	var entries []invocationCapture
 	for _, n := range normalized {
@@ -847,19 +765,20 @@ func discoverPolicy(ctx context.Context, normalized []*NormalizedInvocation) (*p
 			entries = append(entries, ic)
 		}
 	}
+	// Every invocation's selection count is known before deciding which
+	// ineligible legs can execute. Freeze all widths before grouping by env.
+	for _, ic := range pc.invocations {
+		freezeWitnessAllocation(ic.n, execution.packageCount(ic, pc.globalCount))
+	}
 	byKey := map[string]*captureGroup{}
 	var keys []string
 	for _, e := range entries {
 		n := e.n
 		tests := map[string][]string{}
-		runnables := map[string]int{}
 		for _, o := range e.obligations {
 			switch o.Kind {
 			case ObligationTest, ObligationFuzz:
 				tests[o.Package] = append(tests[o.Package], o.Name)
-				runnables[o.Package]++
-			case ObligationExample:
-				runnables[o.Package]++
 			}
 		}
 		key := groupKey(n)
@@ -867,6 +786,7 @@ func discoverPolicy(ctx context.Context, normalized []*NormalizedInvocation) (*p
 		if g == nil {
 			g = &captureGroup{
 				toolchain:         n.Toolchain,
+				telemetrySource:   n.TelemetrySource,
 				id:                recordstore.Digest(groupIdentity(n)),
 				tags:              n.Tags,
 				env:               n.Env,
@@ -875,10 +795,11 @@ func discoverPolicy(ctx context.Context, normalized []*NormalizedInvocation) (*p
 				moduleRoot:        n.ModuleRoot,
 				moduleMode:        n.ModuleMode,
 				pgo:               n.PGO,
+				linkerAssignments: slices.Clone(n.LinkerAssignments),
 				assumePure:        n.AssumePure,
-				vouches:           n.Vouches,
-				excludedPaths:     canonicalExclusions(n.ExcludedPaths),
-				scratchNamespaces: canonicalNamespaces(n.ScratchNamespaces),
+				vouches:           sortedCompact(n.Vouches, strings.Compare),
+				excludedPaths:     canonicalReviewedExclusions(n.ExcludedPaths),
+				scratchNamespaces: canonicalReviewedNamespaces(n.ScratchNamespaces),
 				packages:          map[string]*groupPackage{},
 			}
 			byKey[key] = g
@@ -888,6 +809,7 @@ func discoverPolicy(ctx context.Context, normalized []*NormalizedInvocation) (*p
 			g.invs = append(g.invs, n.Name)
 		}
 		pc.invGroup[n.Name] = g
+		g.selectedPackages = append(g.selectedPackages, n.selectedPackages...)
 		for pkg, names := range tests {
 			if prev, taken := g.packages[pkg]; taken {
 				if prev.inv != n.Name {
@@ -895,7 +817,7 @@ func discoverPolicy(ctx context.Context, normalized []*NormalizedInvocation) (*p
 				}
 				continue
 			}
-			g.packages[pkg] = &groupPackage{inv: n.Name, names: names, solo: soloProcess(runnables[pkg])}
+			g.packages[pkg] = &groupPackage{inv: n.Name, names: names}
 		}
 	}
 	sort.Strings(keys)
@@ -931,14 +853,14 @@ func groupSubjects(g *captureGroup) []gofresh.Subject {
 // loads against the seeding backend's release.
 var beforeGroupEngineForTest func()
 
-// groupEngine constructs the gofresh engine for one capture group's
-// closure-shaping configuration.
-func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Engine, error) {
+// groupEngine constructs a source-analysis session for dynamic-state
+// explanations. Native production and checking use groupSnapshot.
+func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Session, error) {
 	if beforeGroupEngineForTest != nil {
 		beforeGroupEngineForTest()
 	}
 	// Toolchain provenance is a prerequisite to constructing any
-	// engine: the sample is the one the invocation's normalization
+	// session: the sample is the one the invocation's normalization
 	// took — `go env` in this group's module root (under
 	// GOTOOLCHAIN=auto the selected toolchain is per module), whose
 	// GOVERSION the group's environment then pins, so a second spawn
@@ -953,50 +875,141 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Eng
 	// The profile's content is build evidence no flag carries: it
 	// rides the build-configuration guard as an opaque input, so a
 	// profile edit at a stable path re-executes instead of serving.
-	inputs, err := pgoBuildInputs(dir, g.moduleRoot, g.pgo)
+	inputs, err := observePGO(ctx, dir, g)
 	if err != nil {
 		return nil, err
 	}
-	opts := []gofresh.Option{gofresh.WithBuildInputs(inputs...), gofresh.WithEvidenceRoot(dir)}
+	policy := gofresh.SessionPolicy{
+		EvidenceRoot: dir,
+		Vouches:      slices.Clone(g.vouches),
+		Execution:    gofresh.PackageExecution,
+		Runner:       engineRunner,
+		Progress: func(p gofresh.Progress) {
+			emitEngineDiagnostic(p)
+			progress.FromContext(ctx).Keepalive()
+		},
+	}
 	if g.assumePure {
-		// The reviewed purity assumption rides every subject of the
-		// group as a caller assertion; the recorded fingerprints carry
-		// caller-assertion attribution on every record; an explicit
-		// gofresh:external declaration is never suppressed by it.
-		opts = append(opts, gofresh.WithAssumePure(func(gofresh.Subject) bool { return true }))
+		policy.PureSubjects = groupSubjects(g)
 	}
-	if len(g.vouches) > 0 {
-		// The reviewed dynamic-state vouch set: discharging vouches ride
-		// every record's evidence, so acceptance is auditable there.
-		opts = append(opts, gofresh.WithDynamicStateVouches(g.vouches...))
-	}
-	// Every consumer of these views' verdicts follows the
-	// producer-view discipline: each group's served outcomes AND its
-	// published records stand only after the group's ONE closing
-	// validation (publishEligible's closeGroup, last on the view),
-	// so checks defer their closing base observation to that single
-	// validation instead of paying a full re-observation per call
-	// (gofresh's deferred-close contract).
-	opts = append(opts, gofresh.WithDeferredCheckClose())
-	// Every process the executor spawns for a witness is the witness
-	// package's own test binary — the package's run and its isolation
-	// re-runs alike — so the package-process execution model is a true
-	// statement about every subject this engine judges, and attesting it
-	// lets the binary-scoped reachability discharge judge a culprit no
-	// harness root of that binary reaches; the load-bearing discharges
-	// ride each record. A package's selected tests share one process (an
-	// isolation re-run alone is one subject's), so the single-subject
-	// model, which binds every process, is never attested. The resolution engine
-	// (served.go) stays unattested: it judges no measured subject and
-	// its store keeps the source tiers alone, so the attestation would
-	// only pay the reachability pass for a discharge the store strips
-	// (REQ-evidence-witness-freshness-package-process).
-	opts = append(opts, gofresh.WithPackageProcessExecution())
 	// The witness command compiles as well as executes. Analyze under its
 	// complete environment, including the width cap: a compiler wrapper can
 	// read that value too. A split environment requires a separately built
 	// artifact, which this producing path does not provide.
-	return newEngine(ctx, g.directory(dir), g.witnessEnv, buildFlags(g.race, g.tags, g.moduleMode, buildPGO(dir, g.pgo)), opts...)
+	flags := append(buildFlags(g.race, g.tags, g.moduleMode, buildPGO(dir, g.pgo)), linkerBuildFlags(g.linkerAssignments)...)
+	return gofresh.NewSession(ctx, gofresh.BuildDescription{
+		Directory:   g.directory(dir),
+		Environment: g.witnessEnv,
+		Flags:       flags,
+		Inputs:      append([]string{}, inputs.inputs...),
+	}, policy)
+}
+
+// pgoObservation is immutable after construction. The metadata query names
+// only accepted import paths, under the compiling invocation's selection;
+// validating it never replaces discovery's obligation set.
+type pgoObservation struct {
+	root     string
+	pgo      string
+	inputs   []string
+	selected []listedPackage
+	query    *NormalizedInvocation
+}
+
+// buildInputDrift records a comparison that demonstrated movement of an
+// already observed compilation input. Read/analysis failures remain distinct.
+type buildInputDrift struct {
+	detail string
+	cause  error
+}
+
+func (e *buildInputDrift) Error() string { return e.detail }
+func (e *buildInputDrift) Unwrap() error { return e.cause }
+
+func observePGO(ctx context.Context, root string, g *captureGroup) (*pgoObservation, error) {
+	o := &pgoObservation{root: root, pgo: g.pgo, selected: pgoPackageFacts(g.selectedPackages)}
+	if (g.pgo == "" || g.pgo == "auto") && len(o.selected) != 0 {
+		var paths []string
+		for _, p := range o.selected {
+			paths = append(paths, p.ImportPath)
+		}
+		o.query = &NormalizedInvocation{
+			Name: strings.Join(g.invs, ","), Dir: g.directory(root),
+			Env: slices.Clone(g.witnessEnv), Tags: slices.Clone(g.tags), Race: g.race,
+			ModuleMode: g.moduleMode, Packages: slices.Compact(paths), TelemetrySource: g.telemetrySource,
+		}
+		if err := o.validateSelection(ctx); err != nil {
+			return nil, err
+		}
+	}
+	var err error
+	o.inputs, err = pgoBuildInputs(ctx, root, g.pgo, o.selected)
+	return o, err
+}
+
+// pgoPackageFacts drops enumeration details that cannot select a profile and
+// canonicalizes the remaining original-package facts for equality judgment.
+func pgoPackageFacts(packages []listedPackage) []listedPackage {
+	result := make([]listedPackage, 0, len(packages))
+	for _, p := range packages {
+		result = append(result, listedPackage{ImportPath: p.ImportPath, Name: p.Name, Dir: p.Dir})
+	}
+	slices.SortFunc(result, func(a, b listedPackage) int {
+		if c := strings.Compare(a.ImportPath, b.ImportPath); c != 0 {
+			return c
+		}
+		if c := strings.Compare(a.Name, b.Name); c != 0 {
+			return c
+		}
+		return strings.Compare(a.Dir, b.Dir)
+	})
+	return slices.CompactFunc(result, samePGOPackage)
+}
+
+func samePGOPackage(a, b listedPackage) bool {
+	return a.ImportPath == b.ImportPath && a.Name == b.Name && a.Dir == b.Dir
+}
+
+func (o *pgoObservation) validateSelection(ctx context.Context) error {
+	if o.query == nil {
+		return ctx.Err()
+	}
+	current, err := listPackageMetadata(ctx, o.query)
+	if err != nil {
+		return fmt.Errorf("pgo selected package metadata: %w", err)
+	}
+	for _, pkg := range current {
+		if pkg.Error != nil {
+			return fmt.Errorf("pgo selected package metadata for %s: %s", pkg.ImportPath, pkg.Error.Err)
+		}
+		if pkg.Name == "" || pkg.Dir == "" {
+			return fmt.Errorf("pgo selected package metadata incomplete for %s", pkg.ImportPath)
+		}
+	}
+	if !slices.EqualFunc(o.selected, pgoPackageFacts(current), samePGOPackage) {
+		return &buildInputDrift{detail: fmt.Sprintf("pgo selected package metadata changed for %s", strings.Join(o.query.Packages, ", "))}
+	}
+	return nil
+}
+
+func (o *pgoObservation) validate(ctx context.Context) error {
+	if o == nil {
+		return ctx.Err()
+	}
+	if err := o.validateSelection(ctx); err != nil {
+		return err
+	}
+	current, err := pgoBuildInputs(ctx, o.root, o.pgo, o.selected)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return &buildInputDrift{detail: err.Error(), cause: err}
+		}
+		return err
+	}
+	if !slices.Equal(current, o.inputs) {
+		return &buildInputDrift{detail: fmt.Sprintf("pgo build inputs changed: opening %v; current %v", o.inputs, current)}
+	}
+	return nil
 }
 
 func (g *captureGroup) directory(root string) string {
@@ -1064,13 +1077,14 @@ func emitEngineDiagnostic(p gofresh.Progress) { engineDiagnosticSink(p) }
 
 // NewWitnessRecorder prepares freshness publication for one execution of
 // the accepted policy: it must be called before the policy executes, so
-// the captured fingerprints pin the tree the execution compiles, and
-// the caller must report every package's completion under its covering
+// the shared snapshots pin the tree the execution compiles, and
+// the caller must close the recorder after executions have joined and report
+// every package's completion under its covering
 // invocation through the completion hook — a package whose completion
-// is never reported publishes nothing, with no fallback. Only
-// race-enabled Go invocations are captured — a non-race invocation grants
-// no witness evidence, so nothing it produces may enter the cache a
-// freshness-serving run would grant evidence from. The seeding
+// is never reported publishes nothing, with no fallback. Only race-enabled
+// or explicitly plain-admitted Go invocations are captured. An unadmitted
+// non-race invocation grants no witness evidence, so nothing it produces may
+// enter the cache a freshness-serving run would grant evidence from. The seeding
 // classification is the recorder's one question to its backend, and the
 // backend is released right after it (verify.Quiescer) — before the
 // engines' loads below, so the backend's child is never resident beside
@@ -1082,6 +1096,9 @@ func emitEngineDiagnostic(p gofresh.Progress) { engineDiagnosticSink(p) }
 // because the refused frontend also discovered and selected the suite
 // the degraded run would execute.
 func NewWitnessRecorder(ctx context.Context, pc *Capture, seeding verify.WitnessSeeding) (*WitnessRecorder, error) {
+	if err := pc.ConfigureExecution(true, nil); err != nil {
+		return nil, err
+	}
 	dir := pc.dir
 	r := &WitnessRecorder{dir: dir, reasons: map[gofresh.Subject]uncacheable{}}
 	degrade := func(err error) (*WitnessRecorder, error) {
@@ -1097,6 +1114,16 @@ func NewWitnessRecorder(ctx context.Context, pc *Capture, seeding verify.Witness
 	if err != nil {
 		return degrade(err)
 	}
+	defer func() {
+		if r.degraded != "" {
+			for _, g := range d.groups {
+				for _, leg := range g.legs {
+					leg.dispose()
+				}
+				g.view = nil
+			}
+		}
+	}()
 	// A seeding-classification fault degrades the run exactly as an
 	// engine fault does: nothing publishes, so nothing can later serve
 	// a witness the fault left unclassified (fail closed).
@@ -1130,50 +1157,21 @@ func NewWitnessRecorder(ctx context.Context, pc *Capture, seeding verify.Witness
 		}
 	}
 	for g, subjects := range d.populatedGroups() {
-		engine, err := groupEngine(ctx, dir, g)
-		if err != nil {
-			return degrade(err)
-		}
-		view, err := engine.NewView(ctx, subjects, g.directory(dir))
+		view, inputs, err := groupSnapshot(ctx, dir, g)
 		if err != nil {
 			return degrade(err)
 		}
 		g.view = view
-		g.fps = map[gofresh.Subject]gofresh.Fingerprint{}
-		for _, s := range subjects {
-			// A random-seeded witness never publishes, so it is never
-			// fingerprinted; any other subject that fails to fingerprint
-			// simply stays unpublishable. Execution and evidence are
-			// untouched either way.
-			if _, refused := g.neverServes[s]; refused {
-				continue
-			}
-			if fp, err := view.Capture(ctx, s); err == nil {
-				g.fps[s] = fp
-			}
-		}
-		// The package is the unit of persistence, so it is the unit of
-		// validation too: each package publishes on its own sibling of
-		// the group's view, its proof candidates the subjects whose
-		// whole-package process is predicted solo.
 		byPkg := map[string][]gofresh.Subject{}
 		for _, s := range subjects {
 			byPkg[s.Package] = append(byPkg[s.Package], s)
 		}
 		g.legs = map[string]*packageLeg{}
-		for pkg, pkgSubjects := range byPkg {
-			leg, err := newPackageLeg(g.view, pkgSubjects)
+		for pkg := range byPkg {
+			leg, err := nativePackageLeg(ctx, g.view, inputs, pc.byName()[g.selectingInvocation(pkg)], pkg)
 			if err != nil {
 				return degrade(err)
 			}
-			var candidates []gofresh.Subject
-			for _, s := range pkgSubjects {
-				fp, captured := g.fps[s]
-				if proofCandidate(fp, captured, g.packages[pkg].solo) {
-					candidates = append(candidates, s)
-				}
-			}
-			leg.prove(ctx, candidates)
 			g.legs[pkg] = leg
 		}
 		r.groups = append(r.groups, g)
@@ -1342,9 +1340,6 @@ func (r *WitnessRecorder) packageCompleted(ctx context.Context, invocation strin
 		if !ok || p.ambiguous || p.inv != invocation {
 			continue
 		}
-		if beforePackagePublishForTest != nil {
-			beforePackagePublishForTest(unit.pkg)
-		}
 		// Every non-ambiguous package of a populated group has a leg —
 		// its entry carries at least one expected test, and the legs
 		// were built over the group's subjects — and completes once
@@ -1386,23 +1381,26 @@ func (r *WitnessRecorder) publish() ([]witnesscache.Record, map[gofresh.Subject]
 	return append([]witnesscache.Record(nil), r.records...), maps.Clone(r.reasons), r.degraded
 }
 
-// publishPackage assembles and validates the records one package's
-// subjects support in one group, from the package's producing process,
-// on the package's own leg: the proof leg, the final fingerprints, the
-// post-run check, and the leg's one closing validation gate the
-// records. The leg is released after — nothing serves on this form, so
+// publishPackage selects native-finalized records from this package's actual
+// process and applies the consumer's outcome and opaque-input gates.
+// The leg is released after — nothing serves on this form, so
 // nothing reads it again — and the group's view with it once every
-// leg has published. A check fault or closing refusal degrades the
-// run's further publication with the named cause rather than filling
-// per-subject reasons: this package's evidence executed under one view
-// a tree edit disproved wholesale; packages that closed before it keep
-// what their own legs validated. The error return is reserved for
-// caller cancellation.
+// leg has published. A source-view, configuration or infrastructure fault ends
+// further publication with its named cause; earlier packages keep what their
+// own legs independently validated. Demonstrated runtime-input movement refuses
+// this process's records locally; its account and execution facts remain intact.
+// The error return is reserved for caller cancellation.
 func (r *WitnessRecorder) publishPackage(ctx context.Context, g *captureGroup, pkg string, leg *packageLeg, candidate producerCandidate) ([]witnesscache.Record, map[gofresh.Subject]uncacheable, string, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, "", err
 	}
 	defer g.release(pkg)
+	if candidate.obs != nil && candidate.obs.closeErr != nil && !runtimeInputMovement(candidate.obs.closeErr) {
+		if ctx.Err() != nil {
+			return nil, nil, "", ctx.Err()
+		}
+		return nil, nil, "runtime producer validation failed: " + candidate.obs.closeErr.Error(), nil
+	}
 	reasons := map[gofresh.Subject]uncacheable{}
 	eligible := map[gofresh.Subject]*pubSubject{}
 	var order []gofresh.Subject
@@ -1410,8 +1408,7 @@ func (r *WitnessRecorder) publishPackage(ctx context.Context, g *captureGroup, p
 	for _, name := range g.packages[pkg].names {
 		subject := gofresh.Subject{Package: pkg, Symbol: name}
 		why, refused := g.neverServes[subject]
-		_, captured := g.fps[subject]
-		ps, reason := judgeSubject(subject, why, refused, captured, candidates)
+		ps, reason := judgeSubject(subject, why, refused, true, candidates)
 		if ps == nil {
 			reasons[subject] = reason
 			continue
@@ -1420,14 +1417,11 @@ func (r *WitnessRecorder) publishPackage(ctx context.Context, g *captureGroup, p
 		order = append(order, subject)
 	}
 	sortSubjects(order)
-	// The shared publication ladder (publishEligible) takes over from
-	// eligibility; this full-execution path has no served outcomes.
-	records, _, checkFault, closeFault, fatal := publishEligible(ctx, g.id, leg.view, leg.observed, leg.observedFPs, leg.candidates, order, eligible, g.fps, g.excludedPaths, recordNamespaces(g.scratchNamespaces), nil, nil, reasons)
+	// Native closing already supplied the evidence. The shared publication
+	// path applies the remaining consumer input and record-assembly gates.
+	records, closeFault, fatal := publishEligible(ctx, g.id, leg, order, eligible, declarationsFor(g), reasons)
 	if fatal != nil {
 		return nil, nil, "", fatal
-	}
-	if checkFault != nil {
-		return nil, nil, fmt.Sprintf("runtime producer validation failed: %v", checkFault), nil
 	}
 	if closeFault != nil {
 		return nil, nil, reasonSourceFailed.with(closeFault.Error()).String(), nil
@@ -1491,6 +1485,7 @@ func ExecutePolicyWitnessed(ctx context.Context, pc *Capture, seeding verify.Wit
 		// (REQ-evidence-toolchain-provenance).
 		return nil, nil, err
 	}
+	defer recorder.Close()
 	proofs := processProofs{}
 	for _, g := range recorder.groups {
 		proofs.add(g, g.legs)
@@ -1645,61 +1640,68 @@ func executedTopPackages(report *stipulatorv1.ExecutionReport) map[string]string
 	return keys
 }
 
-// pgoBuildInputs digests the profile content a group's witnesses build
-// under: a committed tree-relative profile is one digest, and `auto`
-// digests every default.pgo under the group's module root (a superset
-// of the profiles the toolchain may select for a tested main package —
-// an unused profile's edit over-stales, never under-serves; a
-// directory the walk cannot list refuses, since the build may still
-// open a profile inside it by name); `off` and an absent setting
-// contribute nothing. A named profile that cannot be read refuses:
-// every build under it would fail.
-func pgoBuildInputs(dir, moduleRoot, pgo string) ([]string, error) {
-	switch pgo {
-	case "", "off":
+// pgoBuildInputs observes the profiles cmd/go selects for the original
+// packages, before it constructs test binaries. Omission uses Go's default
+// auto mode: only an original main package consumes its own default.pgo.
+// Missing defaults are explicit inputs so their appearance moves the guard;
+// a named profile must exist. Other stat/read failures refuse even though
+// cmd/go skips a default on any stat error: uncertainty is not absence proof.
+// These are opaque input values, not engine-watched files; a caller retaining
+// an engine across execution must re-observe them before accepting its results.
+func pgoBuildInputs(ctx context.Context, dir, pgo string, selected []listedPackage) ([]string, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if pgo == "off" {
 		return nil, nil
-	case "auto":
-		var inputs []string
-		root := filepath.Join(dir, filepath.FromSlash(moduleRoot))
-		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				// A directory the walk cannot list may still hold a
-				// profile the build opens by name (traverse permission
-				// alone suffices for that), so skipping it would leave
-				// that profile's edits unguarded: refuse, naming it.
-				return err
+	}
+	optional := pgo == "" || pgo == "auto"
+	var paths []string
+	if optional {
+		for _, pkg := range selected {
+			if pkg.Name == "" || pkg.Dir == "" {
+				return nil, fmt.Errorf("pgo auto: incomplete selected package metadata for %q", pkg.ImportPath)
 			}
-			if d.IsDir() {
-				if name := d.Name(); path != root && (name == ".git" || name == "vendor") {
-					return filepath.SkipDir
-				}
-				return nil
+			if pkg.Name == "main" {
+				paths = append(paths, filepath.Join(pkg.Dir, "default.pgo"))
 			}
-			if d.Name() != "default.pgo" {
-				return nil
-			}
-			data, err := os.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			rel, err := filepath.Rel(dir, path)
-			if err != nil {
-				return err
-			}
-			inputs = append(inputs, fmt.Sprintf("pgo:%s=%x", filepath.ToSlash(rel), sha256.Sum256(data)))
-			return nil
-		})
-		if err != nil {
-			return nil, fmt.Errorf("pgo auto: %w", err)
 		}
-		sort.Strings(inputs)
-		return inputs, nil
+	} else {
+		paths = []string{buildPGO(dir, pgo)}
 	}
-	data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(pgo)))
-	if err != nil {
-		return nil, fmt.Errorf("pgo profile %s: %w", pgo, err)
+	sort.Strings(paths)
+	paths = slices.Compact(paths)
+	var inputs []string
+	for _, path := range paths {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		rel, err := filepath.Rel(dir, path)
+		if err != nil {
+			return nil, fmt.Errorf("pgo profile %s: %w", path, err)
+		}
+		identity := fmt.Sprintf("pgo:%q=", filepath.ToSlash(rel))
+		info, err := os.Stat(path)
+		if optional && errors.Is(err, fs.ErrNotExist) {
+			inputs = append(inputs, identity+"absent")
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("pgo profile %s: %w", path, err)
+		}
+		if !info.Mode().IsRegular() {
+			return nil, fmt.Errorf("pgo profile %s: not a regular file", path)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("pgo profile %s: %w", path, err)
+		}
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		inputs = append(inputs, fmt.Sprintf("%s%x", identity, sha256.Sum256(data)))
 	}
-	return []string{fmt.Sprintf("pgo:%x", sha256.Sum256(data))}, nil
+	return inputs, nil
 }
 
 // dispositionCause spells one package's disposition under its

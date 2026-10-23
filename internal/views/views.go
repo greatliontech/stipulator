@@ -184,6 +184,7 @@ func CoverageView(cov *coverage.Report, facts Facts, view string, scope Scope) (
 	switch view {
 	case "", "summary":
 		out := &stipulatorv1.CoverageSummary{}
+		out.SetWitnessCacheLoad(WitnessCacheLoadSummary(cov.WitnessCacheLoad))
 		// The gate verdict is the global one: a slice passing means
 		// nothing when the tree fails.
 		out.SetGatePasses(cov.GatePasses())
@@ -354,6 +355,7 @@ func VerifyView(vr *verify.Report, facts Facts, view string, scope Scope) (proto
 			vr = sliced
 		}
 		out := &stipulatorv1.VerifySummary{}
+		out.SetWitnessCacheLoad(WitnessCacheLoadSummary(vr.WitnessCacheLoad))
 		out.SetProblems(int32(len(vr.Problems)))
 		out.SetPinned(int32(vr.Pinned))
 		out.SetStale(int32(vr.Stale))

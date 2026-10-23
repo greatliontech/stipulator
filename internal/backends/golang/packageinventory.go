@@ -39,20 +39,7 @@ func symbolPackageCandidates(symbol string) []string {
 // declarationPackages asks only for package metadata, before source capture
 // and typed loading. Relative queries cannot turn an absent local candidate
 // into a dependency fetched to satisfy its import spelling.
-func declarationPackages(ctx context.Context, dir string, sel buildSelection, symbols []string) (map[string]bool, error) {
-	members, err := sel.members(dir)
-	if err != nil {
-		return nil, err
-	}
-	modules, err := memberModules(dir, members)
-	if err != nil {
-		return nil, err
-	}
-	base, err := goworkEnv(dir)
-	if err != nil {
-		return nil, err
-	}
-	env := selectionViewEnv(base, sel)
+func declarationPackages(ctx context.Context, view *selectedContext, symbols []string) (map[string]bool, error) {
 	seen := map[string]bool{}
 	for _, symbol := range symbols {
 		for _, candidate := range symbolPackageCandidates(symbol) {
@@ -64,25 +51,25 @@ func declarationPackages(ctx context.Context, dir string, sel buildSelection, sy
 		candidates = append(candidates, candidate)
 	}
 	sort.Strings(candidates)
-	owned := memberPatterns(modules, candidates)
+	owned := memberPatterns(view.modules, candidates)
 	declared := map[string]bool{}
-	for _, member := range members {
+	for _, member := range view.members {
 		paths := owned[member]
 		if len(paths) == 0 {
 			continue
 		}
 		args := []string{"-e", "-json=ImportPath,Dir,GoFiles,CgoFiles,TestGoFiles,XTestGoFiles,InvalidGoFiles,Error"}
-		args = append(args, selectionViewFlags(sel)...)
+		args = append(args, view.flags...)
 		expected := map[string]string{}
 		for _, path := range paths {
 			rel := "."
-			if path != modules[member] {
-				rel = "./" + strings.TrimPrefix(path, modules[member]+"/")
+			if path != view.modules[member] {
+				rel = "./" + strings.TrimPrefix(path, view.modules[member]+"/")
 			}
 			args = append(args, rel)
 			expected[rel], expected[path] = path, path
 		}
-		data, err := ownedRunner.List(ctx, filepath.Join(dir, member), env, args...)
+		data, err := ownedRunner.List(ctx, filepath.Join(view.root, member), view.env, args...)
 		if err != nil {
 			return nil, err
 		}
@@ -157,7 +144,7 @@ func explicitPackageAbsence(why string) bool {
 		strings.HasSuffix(why, ": directory not found")
 }
 
-func (s *Served) inventoryPackages(symbols []string) {
+func (s *Served) inventoryPackages(endpoint *selectionEndpoint, symbols []string) {
 	s.inventory = map[string]map[string]bool{}
 	keys := make([]string, 0, len(s.sels))
 	for _, sel := range s.sels {
@@ -165,8 +152,12 @@ func (s *Served) inventoryPackages(symbols []string) {
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		sel, _ := s.selection(key)
-		pkgs, err := declarationPackages(s.ctx, s.dir, sel, symbols)
+		view, err := endpoint.selected(key)
+		if err != nil {
+			s.degraded = append(s.degraded, fmt.Sprintf("selection %q: package inventory: %v", key, err))
+			continue
+		}
+		pkgs, err := declarationPackages(s.ctx, view, symbols)
 		if err != nil {
 			s.degraded = append(s.degraded, fmt.Sprintf("selection %q: package inventory: %v", key, err))
 			continue

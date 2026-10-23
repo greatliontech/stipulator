@@ -1080,3 +1080,73 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "84764ba77b14d6dd4f8cc37e12bcc2f9a7bbf0e66822136a9384a51bd7049a07"
 }
+
+bindings {
+  requirement_id: "REQ-check-derivation"
+  content_hash: "0c2b6c3d79a0909b05d4c55d29fbf1c6651c545b5f89959a429fd05f3d2266bf"
+  source_hash: "1aa76f5f20b3ae08e203cbf2c37f81f7bc7c8fac6e7ac4a581bcff5fab2f78b3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestPGOValidationObservesMetadataWithoutRediscoveringObligations"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "9ad042f2f222bf932a718c035dc522750fbc57bf6c23388e36d98de5e6fd8e83"
+}
+
+bindings {
+  requirement_id: "REQ-check-derivation"
+  content_hash: "0c2b6c3d79a0909b05d4c55d29fbf1c6651c545b5f89959a429fd05f3d2266bf"
+  source_hash: "1aa76f5f20b3ae08e203cbf2c37f81f7bc7c8fac6e7ac4a581bcff5fab2f78b3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestNativeSnapshotIncludesRunnablesAddedAfterPolicyDiscovery"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "30628ce5930c8ffc9975ccdcedf633289fad5d7ce8825ff11987f2c95b6bb4c9"
+}
+
+bindings {
+  requirement_id: "REQ-check-verdict-scoped"
+  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
+  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.executionScope.retrySubjects"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "07d5878a490c3cbb8e57fd61074bd6904611979654cdff82f4c546dab3267e68"
+}
+
+bindings {
+  requirement_id: "REQ-check-verdict-scoped"
+  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
+  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestExecutionScopeOwnsSelection"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "0ed1605f6502cc15fad1b655b57e9882b508786a97d24d8867bb6037078e06a9"
+}
+
+bindings {
+  requirement_id: "REQ-check-verdict-scoped"
+  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
+  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoScopedDriftRetriesStayWithinScope"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "742738ccde949ca3cb001f35efa1dd1642653a4b006495734e6fcc482280a0fd"
+}
+
+bindings {
+  requirement_id: "REQ-check-derivation"
+  content_hash: "0c2b6c3d79a0909b05d4c55d29fbf1c6651c545b5f89959a429fd05f3d2266bf"
+  source_hash: "1aa76f5f20b3ae08e203cbf2c37f81f7bc7c8fac6e7ac4a581bcff5fab2f78b3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoCaptureAllocationPrecedesOperationSymbols"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "af0e17008aca62bf6ec64b63e886354ac938f4e016da3a642648179561b09206"
+}
+
+bindings {
+  requirement_id: "REQ-check-verdict-scoped"
+  content_hash: "57f91c22ea716134e024ee932fcc433fc108df9a62de948fbfdca0df71e67d72"
+  source_hash: "6e2ffbadab19fe07290cb40c3da2bc65e6d6c22e61a6aaf2319bbb709bfabe7a"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRetryWavesScopeLateDrift"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7b34d9b5ba68e8c8938e2fd63cb506a75ae32a0efb129e503c78ad872b956f82"
+}

@@ -37,6 +37,9 @@ import (
 // workspace whose go.work members are all in scope.
 type Backend struct {
 	pkgs []*packages.Package
+	// exportFailures are observations from the same typed load as each
+	// package, never a later view's attempt to explain an earlier failure.
+	exportFailures map[*packages.Package]*missingExportError
 	// sourceLoads holds on-demand declaring packages by their original
 	// load configuration. Export data's positions may name //line aliases,
 	// so only source can establish a promoted method's physical file.
@@ -194,6 +197,7 @@ func newContext(ctx context.Context, dir string, patterns []string) (*Backend, e
 		return nil, err
 	}
 	var pkgs []*packages.Package
+	exportFailures := map[*packages.Package]*missingExportError{}
 	var viewErrors []string
 	// Cross-platform selections are named refusals, not silent
 	// absences: a reference the loaded views cannot answer refuses
@@ -274,7 +278,7 @@ func newContext(ctx context.Context, dir string, patterns []string) (*Backend, e
 					continue
 				}
 			}
-			loaded, err := packages.Load(cfg, load...)
+			loaded, failures, err := loadTypedPackages(cfg, load...)
 			if err == nil && patterns != nil {
 				loaded = matchedRoots(loaded)
 			}
@@ -292,6 +296,9 @@ func newContext(ctx context.Context, dir string, patterns []string) (*Backend, e
 			}
 			for _, pkg := range loaded {
 				viewLoads[pkg] = loads
+				if failure := failures[pkg]; failure != nil {
+					exportFailures[pkg] = failure
+				}
 			}
 			loadSelection[loads] = sel.key()
 			loads++
@@ -322,7 +329,7 @@ func newContext(ctx context.Context, dir string, patterns []string) (*Backend, e
 		}
 		byPath[pkg.PkgPath] = append(byPath[pkg.PkgPath], pkg)
 	}
-	return &Backend{pkgs: pkgs, load: loadIndex, loadSelection: loadSelection, viewErrors: viewErrors, dir: abs, modules: modules, lazyCfg: lazyCfg, typesPkg: typesPkg, byPath: byPath}, nil
+	return &Backend{pkgs: pkgs, exportFailures: exportFailures, load: loadIndex, loadSelection: loadSelection, viewErrors: viewErrors, dir: abs, modules: modules, lazyCfg: lazyCfg, typesPkg: typesPkg, byPath: byPath}, nil
 }
 
 // matchedRoots drops the roots a scoped load's patterns matched nothing
@@ -580,6 +587,9 @@ func (b *Backend) ResolveIn(symbol string) (verify.Resolution, string, string, e
 			continue
 		}
 		if len(pkg.Errors) > 0 {
+			if failure := b.exportFailures[pkg]; failure != nil {
+				return verify.NotFound, "", "", fmt.Errorf("package %s has load errors: %w", pkg.ID, failure)
+			}
 			// A dependency-rooted failure names the import, its module,
 			// and the committed directives that pin it, so the
 			// operator's next step is a decision, not a diagnosis; an
@@ -986,12 +996,15 @@ func (b *Backend) selectionOf(pkg *packages.Package) string {
 	return b.loadSelection[b.load[pkg]]
 }
 
-// indexDecls adds every function declaration of the packages to the
+// indexDecls adds every function declaration of successfully loaded packages to the
 // declaration index under the selection, keyed on the declared object
 // — the origin an instantiated method resolves back to. The caller
 // holds walkMu.
 func (b *Backend) indexDecls(sel string, pkgs []*packages.Package) {
 	for _, pkg := range pkgs {
+		if len(pkg.Errors) > 0 {
+			continue
+		}
 		for _, f := range pkg.Syntax {
 			for _, decl := range f.Decls {
 				if fd, ok := decl.(*ast.FuncDecl); ok {
@@ -1037,14 +1050,26 @@ func (b *Backend) inModule(sel, pkgPath string) string {
 func (b *Backend) funcDeclOf(sel string, fn *types.Func) (*ast.FuncDecl, *packages.Package, error) {
 	fn = fn.Origin()
 	b.initWalk()
-	key := walkKey(sel, fn)
-	if d, ok := b.declIndex[key]; ok {
-		return d.fd, d.pkg, nil
-	}
 	if fn.Pkg() == nil {
 		return nil, nil, nil
 	}
 	pkgPath := fn.Pkg().Path()
+	loadKey := sel + "\x00" + pkgPath
+	// A retained failure precedes the declaration memo. Eager partial types
+	// may expose a callable even though its package's source did not load;
+	// use that exact type universe, not an unrelated variant or selection.
+	if err := b.lazyLoaded[loadKey]; err != nil {
+		return nil, nil, err
+	}
+	if owner := b.typesPkg[fn.Pkg()]; owner != nil && b.selectionOf(owner) == sel {
+		if err := helperPackageError(owner, b.exportFailures[owner]); err != nil {
+			return nil, nil, err
+		}
+	}
+	key := walkKey(sel, fn)
+	if d, ok := b.declIndex[key]; ok {
+		return d.fd, d.pkg, nil
+	}
 	member := b.inModule(sel, pkgPath)
 	if member == "" {
 		return nil, nil, nil
@@ -1052,17 +1077,20 @@ func (b *Backend) funcDeclOf(sel string, fn *types.Func) (*ast.FuncDecl, *packag
 	missing := func() error {
 		return fmt.Errorf("declaration of %s is not among the parsed files of in-module package %s in the %q view%s", fn.FullName(), pkgPath, viewLabel(sel), b.placedAt(fn))
 	}
-	loadKey := sel + "\x00" + pkgPath
-	if err, done := b.lazyLoaded[loadKey]; done {
-		if err != nil {
-			return nil, nil, err
-		}
-		if d, ok := b.declIndex[key]; ok {
-			return d.fd, d.pkg, nil
-		}
+	if _, done := b.lazyLoaded[loadKey]; done {
 		return nil, nil, missing()
 	}
 	if b.packageLoaded(sel, pkgPath) {
+		// An imported export object can belong to another load's type
+		// universe. A failed selected source load still supplies its own
+		// diagnostic rather than pretending that the helper is absent.
+		for _, pkg := range b.byPath[pkgPath] {
+			if b.selectionOf(pkg) == sel {
+				if err := helperPackageError(pkg, b.exportFailures[pkg]); err != nil {
+					return nil, nil, err
+				}
+			}
+		}
 		// The package is held by this view's loads and its parsed
 		// files declare no such function. The object and the index
 		// read one parse under one selection, so no loaded view
@@ -1077,11 +1105,10 @@ func (b *Backend) funcDeclOf(sel string, fn *types.Func) (*ast.FuncDecl, *packag
 		b.lazyLoaded[loadKey] = err
 		return nil, nil, err
 	}
-	loaded, err := packages.Load(cfg, pkgPath)
+	loaded, failures, err := loadTypedPackages(cfg, pkgPath)
 	if err == nil {
 		for _, pkg := range loaded {
-			if len(pkg.Errors) > 0 && len(pkg.GoFiles) == 0 {
-				err = fmt.Errorf("in-module package %s: %v", pkgPath, pkg.Errors[0])
+			if err = helperPackageError(pkg, failures[pkg]); err != nil {
 				break
 			}
 		}
@@ -1102,6 +1129,18 @@ func (b *Backend) funcDeclOf(sel string, fn *types.Func) (*ast.FuncDecl, *packag
 		return d.fd, d.pkg, nil
 	}
 	return nil, nil, missing()
+}
+
+// helperPackageError refuses partial helper bodies independently of whether
+// the loader failure has an established disposable-export classification.
+func helperPackageError(pkg *packages.Package, failure *missingExportError) error {
+	if len(pkg.Errors) == 0 {
+		return nil
+	}
+	if failure != nil {
+		return fmt.Errorf("in-module package %s has load errors: %w", pkg.PkgPath, failure)
+	}
+	return fmt.Errorf("in-module package %s: %v", pkg.PkgPath, pkg.Errors[0])
 }
 
 // placedAt names where the type information declares a function —

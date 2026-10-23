@@ -102,7 +102,7 @@ func TestIndependentModuleRootsReachResolutionAndWitnesses(t *testing.T) {
 					t.Errorf("missing %s outcome: %v", symbol, run.Outcomes)
 				}
 			}
-			if got := witnesscache.Load(t.Context(), dir); len(got) != 2 {
+			if got := witnesscache.Load(t.Context(), dir).Records; len(got) != 2 {
 				t.Fatalf("published %d records, want both independent modules", len(got))
 			}
 			freshRun := func() (*verify.TestRun, error) {

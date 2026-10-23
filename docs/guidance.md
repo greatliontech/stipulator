@@ -371,6 +371,39 @@ diverging one is an error, never a rewrite.
 **example:** policy init in a fresh corpus, then review and commit
 the record.
 
+Existing Go invocations can select string-variable linker assignments inside
+their `go` payload:
+
+```textproto
+linker_strings {
+  package: "example.com/library/internal/build"
+  variable: "version"
+  value_environment: "LIBRARY_IMPLEMENTATION_ID"
+}
+input_files_from_environment: "LIBRARY_IMPLEMENTATION_MANIFEST"
+```
+
+`value` is a literal alternative (including empty). Targets are unique and sorted
+by package and variable. Environment sources resolve once after denials and
+overrides; unset or empty values refuse. Values admit printable ASCII without
+whitespace, quotes or backslashes. Resolved assignments reach retained compilation
+and native build guards and appear in invocation reports. GOFLAGS linker flags
+remain unsupported; binary `args` cannot supply build flags. Independently owned
+child builds retain their own selections.
+
+Input-file names are unique and sorted. Each selects a clean absolute regular
+file without symlink components. Before warm checking and every execution attempt,
+its selecting value must still agree with the frozen path and Gofresh must admit
+raw-byte observation under the actual retained runtime. Excluded, guard-covered,
+projected or unverifiable inputs refuse. Exactly the selected file augments the
+bracket; declaration invents no read or outcome evidence. Cache exceptions and
+overlaps are judged by Gofresh, not consumer prefix rules.
+
+Run the existing producer before verification, retain its output, and keep its
+source-to-manifest relationship valid through execution and endpoint comparison.
+Stipulator runs no producer and certifies no manifest assertions. CLI and MCP
+consume the same policy.
+
 ### init
 **surfaces:** cli
 **does:** Scaffold the manifest for a new corpus.

@@ -2,6 +2,9 @@ package golang
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"maps"
 	"os"
@@ -76,7 +79,8 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 	// its sibling's kill will shadow — that test produces no row, and a
 	// record this execution never touched is retained, never silently
 	// dropped.
-	seedFP := witnesscache.Fingerprint{MaximalClosure: "00112233445566778899aabbccddeeff", TestVariantClosure: "00112233445566778899aabbccddeeff", ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy, Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: "eyJ2IjoyfQ", RuntimeDigest: "00112233445566778899aabbccddeeff", ResultKind: gofresh.CodeResult}
+	inputs := emptyWitnessInputs(t, tmp)
+	seedFP := witnesscache.Fingerprint{MaximalClosure: "00112233445566778899aabbccddeeff", TestVariantClosure: "00112233445566778899aabbccddeeff", ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy, Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult}
 	seedLedger := func(pkg, test string) *witnesscache.CompartmentLedger {
 		return &witnesscache.CompartmentLedger{
 			BindingStrategy: testvariant.BindingStrategy,
@@ -101,7 +105,7 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 			t.Fatalf("seeded ledger for %s is not loadable", rec.Key())
 		}
 	}
-	if len(witnesscache.Load(t.Context(), tmp)) != 3 {
+	if len(witnesscache.Load(t.Context(), tmp).Records) != 3 {
 		t.Fatal("seeded cache records are not loadable; the seeds would prove nothing")
 	}
 
@@ -209,7 +213,7 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 		t.Errorf("denied subject reason = %q, want attribution beyond the executed set", why)
 	}
 
-	cache := witnesscache.Load(t.Context(), tmp)
+	cache := witnesscache.Load(t.Context(), tmp).Records
 	if len(cache) != 6 {
 		t.Fatalf("cache carries %d records, want 6 (3 published + 3 seeded variants retained): %+v", len(cache), cache)
 	}
@@ -274,24 +278,33 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 	}
 }
 
-// TestGoDerivePublishesObservationProofForSoloProcess pins the
-// observation-proof selection rule: a process running exactly one
-// selected top-level test may publish with an attached
-// observation-completeness proof, while a multi-test process publishes
-// with the plain per-package manifest — sibling tests could contribute
-// unrecorded process state, so proof selection is never inferred for
-// them. Runtime registrations ride the published record. A package two
-// invocations select can never publish, and its guaranteed ineligibility
-// must not strip the proof from the group's publishable candidates.
-func TestGoDerivePublishesObservationProofForSoloProcess(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-witness-freshness-purity")
+// TestGoDerivePublishesWholeProcessObservationEvidence pins native publication:
+// every subject retains its whole process's observation and its selected evidence
+// channel. Supported outcome evidence covers the complete actual runnable set,
+// including purity-supported examples whose own records need no observation
+// proof. Source- and assertion-supported processes retain identity guards without
+// gaining an observation assertion or outcome support.
+// Runtime registrations and subtest outcomes survive publication, and separate
+// capture groups retain independent evidence for a shared package.
+func TestGoDerivePublishesWholeProcessObservationEvidence(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-purity", "REQ-evidence-outcome-premises")
 	if testing.Short() {
 		t.Skip("executes a race-instrumented policy over a temporary module")
 	}
 	neutralAmbient(t)
+	var finalized []gofresh.FinalizedProcess
+	accounts := map[string]gofresh.ProcessAccount{}
+	priorClose := closeNativeProcess
+	closeNativeProcess = func(ctx context.Context, unit *gofresh.PackageUnit) (gofresh.FinalizedProcess, error) {
+		final, err := priorClose(ctx, unit)
+		account, _ := unit.Account()
+		accounts[account.Process] = account
+		finalized = append(finalized, final)
+		return final, err
+	}
+	t.Cleanup(func() { closeNativeProcess = priorClose })
 	tmp := writeModule(t, map[string]string{
-		"go.mod":        "module example.com/pub\n\ngo 1.26\n",
-		"solo/data.txt": "v1\n",
+		"go.mod": "module example.com/pub\n\ngo 1.26\n",
 		"solo/solo_test.go": `package solo
 
 import (
@@ -328,12 +341,14 @@ func TestSecond(t *testing.T) {}
 		"shown/shown.go": "package shown\n\n// Shown is the example's subject.\nfunc Shown() string { return \"shown\" }\n",
 		"shown/shown_test.go": `package shown
 
-import "testing"
+import ("os"; "testing")
 
-func TestBeside(t *testing.T) { _ = Shown() }
+func TestBeside(t *testing.T) { _ = Shown(); _ = os.Getenv("PUB_GROUP_SPLIT") }
 
 // ExampleShown runs (an Output comment, empty) without an ambient
 // effect that would refuse the compartment's other witness.
+//
+//gofresh:pure
 func ExampleShown() {
 	_ = Shown()
 	// Output:
@@ -352,7 +367,6 @@ func TestAssertedReads(t *testing.T) {
 	_, _ = os.ReadFile("data.txt")
 }
 `,
-		"shared/data.txt": "v1\n",
 		"shared/shared_test.go": `package shared
 
 import (
@@ -407,7 +421,7 @@ func TestSharedReads(t *testing.T) {
 	if tr.Ran != 8 || tr.Uncached != 0 {
 		t.Errorf("ran=%d uncached=%d, want 8/0", tr.Ran, tr.Uncached)
 	}
-	cache := witnesscache.Load(t.Context(), tmp)
+	cache := witnesscache.Load(t.Context(), tmp).Records
 	if len(cache) != 9 {
 		t.Fatalf("published %d records, want 9 (shared publishes per group): %+v", len(cache), cache)
 	}
@@ -420,64 +434,142 @@ func TestSharedReads(t *testing.T) {
 	if len(sharedGroups) != 2 {
 		t.Errorf("shared package records span %d build coordinates, want one per selecting group", len(sharedGroups))
 	}
-	solo := cacheRecord(t, cache, "example.com/pub/solo", "TestReadsObserved")
-	if solo == nil {
-		t.Fatal("no record for the solo-process test")
+	wantRosters := map[string][]string{
+		"example.com/pub/solo":     {"TestReadsObserved"},
+		"example.com/pub/multi":    {"TestOne", "TestTwo"},
+		"example.com/pub/pair":     {"TestFirst", "TestSecond"},
+		"example.com/pub/shown":    {"ExampleShown", "TestBeside"},
+		"example.com/pub/asserted": {"TestAssertedReads"},
+		"example.com/pub/shared":   {"TestSharedReads"},
 	}
-	if solo.Fingerprint.ObservationProof == (gofresh.ObservationProof{}) || solo.Fingerprint.ObservationAssertion == "" {
-		t.Errorf("solo-process record carries no observation proof: %+v", solo.Fingerprint)
-	} else if solo.Fingerprint.ObservationProof.Subject.Package != solo.Package ||
-		solo.Fingerprint.ObservationProof.Subject.Symbol != solo.Test ||
-		!solo.Fingerprint.ObservationProof.Observable {
-		t.Errorf("observation proof does not attest the record's own subject: %+v", solo.Fingerprint.ObservationProof)
+	if len(finalized) != 7 || len(accounts) != 7 {
+		t.Fatalf("native processes=%d accounts=%d, want 7 independently finalized processes", len(finalized), len(accounts))
 	}
-	for _, name := range []string{"TestOne", "TestTwo"} {
-		rec := cacheRecord(t, cache, "example.com/pub/multi", name)
-		if rec == nil {
-			t.Fatalf("no record for multi-process test %s", name)
+	matched := make([]bool, len(cache))
+	processCounts := map[string]int{}
+	for _, final := range finalized {
+		if len(final.Subjects) == 0 {
+			t.Fatal("native process closed without subject evidence")
 		}
-		if rec.Fingerprint.ObservationProof != (gofresh.ObservationProof{}) || rec.Fingerprint.ObservationAssertion != "" {
-			t.Errorf("%s gained an observation proof from a process it shared with a sibling: %+v", name, rec.Fingerprint)
+		pkg := final.Subjects[0].Subject.Package
+		processCounts[pkg]++
+		account := accounts[final.Process]
+		if !account.Prepared || account.Terminal.Kind != gofresh.NormalCompletion || !account.Inputs.OK || account.Inputs.Unverifiable {
+			t.Fatalf("%s lacks normally completed, stable native inputs: %+v", final.Process, account)
 		}
-		if rec.Fingerprint.RuntimeInputs == "" || rec.Fingerprint.RuntimeDigest == "" {
-			t.Errorf("%s record carries no runtime-input manifest: %+v", name, rec.Fingerprint)
+		var roster, identities []string
+		method, supported := outcomeFields(t, account.Inputs.Manifest)
+		// The observing member supplies the process's preparation-rule identity.
+		// A purity-supported member need not retain that proof in its fingerprint,
+		// but its inventory must still participate in process-wide outcome support.
+		var observationStrategy string
+		for _, result := range final.Subjects {
+			if strategy := result.Fingerprint.ObservationProof.Strategy; strategy != "" {
+				if observationStrategy != "" && observationStrategy != strategy {
+					t.Fatal("process selected inconsistent observation rules")
+				}
+				observationStrategy = strategy
+			}
+		}
+		wantsSupport := pkg == "example.com/pub/solo" || pkg == "example.com/pub/shared" || pkg == "example.com/pub/shown"
+		for _, result := range final.Subjects {
+			fp, subject := result.Fingerprint, result.Subject
+			roster = append(roster, subject.Symbol)
+			if subject.Package != pkg || result.Verdict.Status != gofresh.Valid {
+				t.Errorf("%s has unexpected native subject judgment: %+v", final.Process, result)
+			}
+			observing := wantsSupport && subject.Symbol != "ExampleShown"
+			if observing {
+				if fp.ObservationAssertion == "" || !fp.ObservationProof.Observable || fp.ObservationProof.Subject != subject {
+					t.Errorf("%s.%s lost its selected observation proof: %+v", pkg, subject.Symbol, fp)
+				}
+				if accepted := result.Verdict.Ground.Accepted.Observation; accepted.Assertion == "" || accepted.OutcomeMethod != method {
+					t.Errorf("%s.%s lost its admitted observation authority: %+v", pkg, subject.Symbol, accepted)
+				}
+			} else if fp.ObservationAssertion != "" || fp.ObservationProof != (gofresh.ObservationProof{}) || result.Verdict.Ground.Accepted.Observation != (gofresh.ObservationAuthority{}) {
+				t.Errorf("%s.%s acquired unselected observation authority: %+v", pkg, subject.Symbol, result)
+			}
+			if subject.Symbol == "ExampleShown" && result.Verdict.Ground.Accepted.Purity != (gofresh.PurityAuthority{Recorded: gofresh.SourcePurity, Current: gofresh.SourcePurity}) {
+				t.Errorf("example lost its independently selected purity authority: %+v", result.Verdict)
+			}
+			if fp.RuntimeInputs != account.Inputs.Manifest || fp.RuntimeDigest != account.Inputs.Digest {
+				t.Errorf("%s.%s lost its whole-process input evidence", pkg, subject.Symbol)
+			}
+			// The manifest's documented support identity binds the exact native
+			// subject and its producing source/build/proof coordinate. Checking
+			// the full set detects a same-sized but incomplete or borrowed roster.
+			if wantsSupport {
+				encoded, err := json.Marshal([]string{method, subject.Package, subject.Symbol, fp.MaximalClosure, fp.TestVariantClosure, fp.Guards.Toolchain, fp.Guards.BuildConfig, fp.ToolchainContent, fp.AdmissionPolicy, observationStrategy})
+				if err != nil {
+					t.Fatal(err)
+				}
+				digest := sha256.Sum256(encoded)
+				identities = append(identities, hex.EncodeToString(digest[:]))
+			}
+			if strings.HasPrefix(subject.Symbol, "Example") {
+				continue
+			}
+			found := false
+			for i, rec := range cache {
+				if rec.Package == pkg && rec.Test == subject.Symbol && rec.Fingerprint == fp {
+					if matched[i] {
+						t.Errorf("%s.%s borrowed another process's record", pkg, subject.Symbol)
+					}
+					matched[i], found = true, true
+				}
+			}
+			if !found {
+				t.Errorf("%s.%s did not publish its exact native fingerprint", pkg, subject.Symbol)
+			}
+		}
+		slices.Sort(roster)
+		if !slices.Equal(roster, wantRosters[pkg]) {
+			t.Errorf("%s actual roster=%v, want %v", final.Process, roster, wantRosters[pkg])
+		}
+		if !wantsSupport {
+			if account.Observation != gofresh.IdentityObservation || account.OutcomeReason == "" || method != "" || len(supported) != 0 {
+				t.Errorf("source/assertion-supported process gained outcome support: %+v", account)
+			}
+		} else {
+			slices.Sort(identities)
+			if observationStrategy == "" || account.Observation != gofresh.SupportedObservation || account.OutcomeReason != "" || method != "gofresh/immutable-environment@1" || !slices.Equal(supported, identities) {
+				t.Errorf("%s lacks support for its exact whole roster: account=%+v want identities=%v", final.Process, account, identities)
+			}
+		}
+		if pkg == "example.com/pub/asserted" {
+			if final.Subjects[0].Fingerprint.PurityAssertion == "" {
+				t.Error("asserted file read lost its purity override")
+			}
+			accepted := final.Subjects[0].Verdict.Ground.Accepted
+			if accepted.Purity != (gofresh.PurityAuthority{Recorded: gofresh.SourcePurity, Current: gofresh.SourcePurity}) || accepted.Observation != (gofresh.ObservationAuthority{}) || !accepted.RuntimeInputs {
+				t.Errorf("asserted file reader's validity did not rest on purity beside its input guard: %+v", accepted)
+			}
+			paths, err := runtimeinput.ModuleRelPaths(account.Inputs.Manifest)
+			if err != nil || !slices.Equal(paths, []string{"asserted/data.txt"}) {
+				t.Errorf("asserted reader lost its identity-only file guard: paths=%v err=%v", paths, err)
+			}
 		}
 	}
-	// The pair package shares one process between two unasserted
-	// tests: neither is a proof candidate, and the solo package's proof
-	// above stands beside them — a candidate whose process runs a
-	// sibling would drop the group's proof whole.
-	for _, name := range []string{"TestFirst", "TestSecond"} {
-		rec := cacheRecord(t, cache, "example.com/pub/pair", name)
-		if rec == nil {
-			t.Fatalf("no record for pair-process test %s", name)
+	for pkg := range wantRosters {
+		want := 1
+		if pkg == "example.com/pub/shared" {
+			want = 2
 		}
-		if rec.Fingerprint.ObservationProof != (gofresh.ObservationProof{}) || rec.Fingerprint.ObservationAssertion != "" {
-			t.Errorf("%s gained an observation proof from a process it shared with a sibling: %+v", name, rec.Fingerprint)
+		if processCounts[pkg] != want {
+			t.Errorf("%s finalized %d processes, want %d", pkg, processCounts[pkg], want)
 		}
 	}
-	// A test beside an executable example shares its whole-package
-	// process with the example, and a purity-asserted test never carries
-	// a proof: neither is a candidate, and the solo package's proof above
-	// stands beside them — an over-admitted candidate would drop the
-	// group's proof whole.
-	for _, sub := range []gofresh.Subject{
-		{Package: "example.com/pub/shown", Symbol: "TestBeside"},
-		{Package: "example.com/pub/asserted", Symbol: "TestAssertedReads"},
-	} {
-		rec := cacheRecord(t, cache, sub.Package, sub.Symbol)
-		if rec == nil {
-			t.Fatalf("no record for %s.%s", sub.Package, sub.Symbol)
-		}
-		if rec.Fingerprint.ObservationProof != (gofresh.ObservationProof{}) {
-			t.Errorf("%s.%s carries an observation proof it cannot hold: %+v", sub.Package, sub.Symbol, rec.Fingerprint)
-		}
+	if slices.Contains(matched, false) {
+		t.Error("published a record without its own native process evidence")
 	}
 	two := cacheRecord(t, cache, "example.com/pub/multi", "TestTwo")
+	one := cacheRecord(t, cache, "example.com/pub/multi", "TestOne")
+	if one == nil || two == nil {
+		t.Fatal("multi package lost a published subject")
+	}
 	if two.Outcomes["example.com/pub/multi.TestTwo/sub"] != "passed" {
 		t.Errorf("subtest outcome missing from the record: %v", two.Outcomes)
 	}
-	one := cacheRecord(t, cache, "example.com/pub/multi", "TestOne")
 	wantReg := verify.Registration{Package: "example.com/pub/multi", Test: "TestOne", Requirement: "REQ-pub-probe"}
 	if !slices.Contains(one.Regs, wantReg) {
 		t.Errorf("runtime registration missing from the record: %+v", one.Regs)
@@ -547,19 +639,23 @@ func TestMutatesSourceOnce(t *testing.T) {
 	if tr.Uncached != tr.Ran {
 		t.Errorf("uncached=%d ran=%d, want every executed test counted uncacheable", tr.Uncached, tr.Ran)
 	}
+	observations := report.GetObservations()
+	if len(observations) != 1 || observations[0].GetCompleted() == nil || observations[0].GetCompleted().GetManifest() == "" {
+		t.Fatalf("source closing refusal erased the completed process's observed input account: %v", observations)
+	}
 	requireCacheAbsent(t, tmp)
 }
 
 // TestGoDeriveRuntimeDriftAndUnverifiableSkipRecords pins runtime
 // producer validation per record: a package whose observed runtime input
-// moved after its process ingested it (the purity-asserted reader, whose
+// moved after its process read it (the purity-asserted reader, whose
 // fixture moves between its process's completion and its package's
 // publish — the pre-publish seam, the package being the unit of
 // persistence), and packages whose observations are unverifiable (a
-// process-local environment read; a parent-traversal write), all execute
+// parent-traversal write), all execute
 // and witness normally but publish nothing — their records are dropped
 // and counted uncacheable so the next run re-derives them — while an
-// unaffected package in the same execution still publishes.
+// unaffected package and a reader of the actual process PWD still publish.
 func TestGoDeriveRuntimeDriftAndUnverifiableSkipRecords(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness")
 	if testing.Short() {
@@ -578,8 +674,8 @@ import (
 
 //gofresh:pure
 func TestReads(t *testing.T) {
-	if _, err := os.ReadFile("data.txt"); err != nil {
-		t.Fatal(err)
+	if data, err := os.ReadFile("data.txt"); err != nil || string(data) != "before" {
+		t.Fatalf("producing read = %q, %v; want before", data, err)
 	}
 }
 
@@ -607,18 +703,18 @@ func TestWritesOnce(t *testing.T) {
 
 func TestWriterNoop(t *testing.T) {}
 `,
-		"impure/impure_test.go": `package impure
+		"pwd/pwd_test.go": `package pwd
 
 import (
 	"os"
 	"testing"
 )
 
-func TestReadsProcessLocalEnv(t *testing.T) {
+func TestReadsPWD(t *testing.T) {
 	_ = os.Getenv("PWD")
 }
 
-func TestImpureNoop(t *testing.T) {}
+func TestPWDNoop(t *testing.T) {}
 `,
 		"clean/clean_test.go": `package clean
 
@@ -637,20 +733,23 @@ func TestCleanNoop(t *testing.T) {}
 		if pkg != "example.com/drift/reader" {
 			return
 		}
+		if data, err := os.ReadFile(filepath.Join(tmp, "reader", "data.txt")); err != nil || string(data) != "before" {
+			t.Errorf("pre-close fixture = %q, %v; want before", data, err)
+		}
 		if err := os.WriteFile(filepath.Join(tmp, "reader", "data.txt"), []byte("after"), 0o644); err != nil {
 			t.Error(err)
 		}
 	}
 	t.Cleanup(func() { beforePackagePublishForTest = nil })
 	first := &stipulatorv1.GoInvocationConfig{}
-	first.SetPackages([]string{"./clean", "./impure", "./reader"})
+	first.SetPackages([]string{"./clean", "./pwd", "./reader"})
 	first.SetRace(true)
 	second := &stipulatorv1.GoInvocationConfig{}
 	second.SetPackages([]string{"./writer"})
 	second.SetRace(true)
 	p := &stipulatorv1.TestPolicy{}
 	// The reader's drift lands deterministically between its process's
-	// ingestion and its package's publish through the pre-publish seam;
+	// read and its native closing through the pre-publish seam;
 	// the writer's own out-of-bracket write is the unverifiable arm.
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{
 		goInvocation("a-first", first),
@@ -670,18 +769,16 @@ func TestCleanNoop(t *testing.T) {}
 	for _, key := range []string{
 		"example.com/drift/reader.TestReads",
 		"example.com/drift/writer.TestWritesOnce",
-		"example.com/drift/impure.TestReadsProcessLocalEnv",
+		"example.com/drift/pwd.TestReadsPWD",
 	} {
 		if got := tr.Outcomes[key]; got != verify.TestPassed {
 			t.Errorf("%s = %v, want PASSED: dropping a record never touches evidence", key, got)
 		}
 	}
-	cache := witnesscache.Load(t.Context(), tmp)
+	cache := witnesscache.Load(t.Context(), tmp).Records
 	for _, dropped := range []struct{ pkg, test string }{
 		{"example.com/drift/reader", "TestReads"},
 		{"example.com/drift/reader", "TestReaderNoop"},
-		{"example.com/drift/impure", "TestReadsProcessLocalEnv"},
-		{"example.com/drift/impure", "TestImpureNoop"},
 		{"example.com/drift/writer", "TestWritesOnce"},
 		{"example.com/drift/writer", "TestWriterNoop"},
 	} {
@@ -693,8 +790,39 @@ func TestCleanNoop(t *testing.T) {}
 		cacheRecord(t, cache, "example.com/drift/clean", "TestCleanNoop") == nil {
 		t.Errorf("unaffected package did not publish: %+v", cache)
 	}
-	if tr.Ran != 8 || tr.Uncached != 6 {
-		t.Errorf("ran=%d uncached=%d, want 8/6", tr.Ran, tr.Uncached)
+	// PWD is an ordinary v3 observed input under the native process's actual
+	// directory. Both subjects keep that whole-process guard without purity;
+	// a different directory must move it, even for the non-reading sibling.
+	var pwdManifest string
+	for _, name := range []string{"TestReadsPWD", "TestPWDNoop"} {
+		rec := cacheRecord(t, cache, "example.com/drift/pwd", name)
+		if rec == nil {
+			t.Fatalf("PWD package did not publish %s", name)
+		}
+		fp := rec.Fingerprint
+		description, err := runtimeinput.Describe(fp.RuntimeInputs, tmp)
+		if err != nil || !slices.Equal(description.EnvNames, []string{"PWD"}) || len(description.Unverifiable) != 0 || fp.PurityAssertion != "" {
+			t.Fatalf("%s lost its supported PWD dependency: description=%+v purity=%q err=%v", name, description, fp.PurityAssertion, err)
+		}
+		method, subjects := outcomeFields(t, fp.RuntimeInputs)
+		if method != "gofresh/immutable-environment@1" || len(subjects) != 2 {
+			t.Errorf("%s lacks whole-package outcome support: method=%q subjects=%v", name, method, subjects)
+		}
+		if pwdManifest != "" && pwdManifest != fp.RuntimeInputs {
+			t.Error("PWD sibling lost its whole-process observation")
+		}
+		pwdManifest = fp.RuntimeInputs
+		current, err := runtimeinput.Current(t.Context(), fp.RuntimeInputs, tmp, []string{"PWD=" + filepath.Join(tmp, "pwd")})
+		if err != nil || !current.OK || current.Unverifiable || current.Digest != fp.RuntimeDigest {
+			t.Errorf("%s guard does not describe the actual package PWD: state=%+v err=%v", name, current, err)
+		}
+		moved, err := runtimeinput.MovedInputs(t.Context(), fp.RuntimeInputs, tmp, []string{"PWD=" + tmp})
+		if err != nil || !slices.Equal(moved, []string{"env PWD"}) {
+			t.Errorf("%s ignored a different process directory: moved=%v err=%v", name, moved, err)
+		}
+	}
+	if tr.Ran != 8 || tr.Uncached != 4 {
+		t.Errorf("ran=%d uncached=%d, want 8/4", tr.Ran, tr.Uncached)
 	}
 }
 
@@ -756,11 +884,11 @@ func TestGoDeriveCheckFaultDegradesRun(t *testing.T) {
 		t.Skip("executes a race-instrumented policy over a temporary module")
 	}
 	neutralAmbient(t)
-	restore := checkFingerprints
-	checkFingerprints = func(context.Context, *gofresh.View, map[gofresh.Subject]gofresh.Fingerprint) (map[gofresh.Subject]gofresh.Verdict, error) {
-		return nil, errors.New("injected check fault")
+	restore := closeNativeProcess
+	closeNativeProcess = func(context.Context, *gofresh.PackageUnit) (gofresh.FinalizedProcess, error) {
+		return gofresh.FinalizedProcess{}, errors.New("injected check fault")
 	}
-	defer func() { checkFingerprints = restore }()
+	defer func() { closeNativeProcess = restore }()
 	tmp := writeModule(t, map[string]string{
 		"go.mod":    "module example.com/faulty\n\ngo 1.26\n",
 		"f.go":      "package faulty\n\nfunc One() int { return 1 }\n",
@@ -778,7 +906,7 @@ func TestGoDeriveCheckFaultDegradesRun(t *testing.T) {
 	if tr.Degraded == "" || !strings.Contains(tr.Degraded, "runtime producer validation failed") || !strings.Contains(tr.Degraded, "injected check fault") {
 		t.Fatalf("degraded = %q, want the named check fault", tr.Degraded)
 	}
-	if len(witnesscache.Load(t.Context(), tmp)) != 0 {
+	if len(witnesscache.Load(t.Context(), tmp).Records) != 0 {
 		t.Fatal("a faulting check still published records")
 	}
 	if tr.Outcomes["example.com/faulty.TestOne"] != verify.TestPassed {
@@ -837,7 +965,7 @@ func TestHealthJudgedFormPersistsPerPackage(t *testing.T) {
 		t.Fatalf("kept = %v; want the first invocation's package alone", kept)
 	}
 	tests := map[string]bool{}
-	for _, rec := range witnesscache.Load(t.Context(), tmp) {
+	for _, rec := range witnesscache.Load(t.Context(), tmp).Records {
 		tests[rec.Package+"."+rec.Test] = true
 	}
 	if !tests["example.com/units/a.TestA"] || tests["example.com/units/b.TestB"] {
@@ -924,7 +1052,7 @@ func TestHealthJudgedFormKeepsWhatClosedBeforeADegrade(t *testing.T) {
 		t.Fatalf("kept = %v; want the first invocation's package alone", kept)
 	}
 	tests := map[string]bool{}
-	for _, rec := range witnesscache.Load(t.Context(), tmp) {
+	for _, rec := range witnesscache.Load(t.Context(), tmp).Records {
 		tests[rec.Package+"."+rec.Test] = true
 	}
 	if !tests["example.com/units/a.TestA"] || tests["example.com/units/b.TestB"] || tests["example.com/units/d.TestD"] {

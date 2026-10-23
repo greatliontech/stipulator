@@ -12,6 +12,53 @@ import "stipulator/v1/records.proto";
 // computed fresh from the tree at every trust boundary and never
 // persisted as inputs.
 
+// WitnessCacheRefusalCause names the operation that refused a stored witness,
+// independently of the diagnostic text returned by that operation.
+enum WitnessCacheRefusalCause {
+  WITNESS_CACHE_REFUSAL_CAUSE_UNSPECIFIED = 0;
+  WITNESS_CACHE_REFUSAL_CAUSE_READ = 1;
+  WITNESS_CACHE_REFUSAL_CAUSE_ENVELOPE = 2;
+  WITNESS_CACHE_REFUSAL_CAUSE_EVIDENCE_STRUCTURE = 3;
+  WITNESS_CACHE_REFUSAL_CAUSE_RUNTIME_MANIFEST = 4;
+}
+
+// WitnessCacheCoordinate is an exact witness identity whose complete record
+// structure and filename agreement were validated before runtime admission.
+message WitnessCacheCoordinate {
+  string group = 1;
+  string package = 2;
+  string test = 3;
+}
+
+// WitnessCacheRefusal is advisory metadata, never witness evidence. Display
+// strings are bounded to 1024 UTF-8 bytes; invalid filename bytes are escaped.
+message WitnessCacheRefusal {
+  string file = 1;
+  WitnessCacheRefusalCause cause = 2;
+  string detail = 3;
+  bool detail_truncated = 4;
+  bool filename_truncated = 5;
+  // Absent until the whole structure and filename agree. A coordinate with
+  // any component longer than 1024 UTF-8 bytes is omitted whole.
+  WitnessCacheCoordinate coordinate = 6;
+  bool coordinate_omitted = 7;
+}
+
+// WitnessCacheLoadAccount describes refusals observed in the initial record
+// snapshot. Full views retain at most 25 rows, summaries at most five; rows
+// remain in newest-variant-first order. A complete clean load has no account.
+message WitnessCacheLoadAccount {
+  repeated WitnessCacheRefusal refusals = 1;
+  // Further observed refusals whose rows are not retained in this view.
+  uint64 omitted = 2;
+  // Enumeration or loading stopped early; unexamined files are not counted.
+  bool incomplete = 3;
+  // Account-level discovery, listing or cancellation diagnostic, bounded to
+  // 1024 UTF-8 bytes. It contributes no fictitious record refusal.
+  string problem = 4;
+  bool problem_truncated = 5;
+}
+
 // Resolution classifies a backend's answer for a symbol reference.
 enum Resolution {
   RESOLUTION_UNSPECIFIED = 0;
@@ -169,6 +216,9 @@ message VerifyReport {
   // outside_policy: a scoped slice says nothing about the serving path.
   // Empty on a report whose pass built no serving backend.
   repeated string resolution_notices = 11;
+  // Advisory store refusals observed by this witnessing run. Composed check
+  // results carry this account at check level and leave this field absent.
+  WitnessCacheLoadAccount witness_cache_load = 12;
 }
 
 // ChangeSignature labels one requirement's change shape.
@@ -276,6 +326,9 @@ message CoverageReport {
   // of their requirement, in requirement then text order
   // (REQ-change-enforcement-pointers).
   repeated DanglingPointer dangling_pointers = 6;
+  // Advisory store refusals from the witnessing run behind this evaluation.
+  // Composed check results carry the account at check level instead.
+  WitnessCacheLoadAccount witness_cache_load = 7;
 }
 
 // DanglingPointer is one enforcement pointer no binding of its
@@ -327,6 +380,9 @@ message CoverageSummary {
   // GapsDue counts `due` gaps among the scoped requirements — the
   // landing condition holds, the deferred work is ready.
   int32 gaps_due = 15;
+  // The evaluation's advisory account, projected to at most five rows with
+  // further observed refusals counted in omitted.
+  WitnessCacheLoadAccount witness_cache_load = 16;
 }
 
 // VerifySummary is the verification roll-up: record hygiene and witness
@@ -362,6 +418,9 @@ message VerifySummary {
   // (REQ-evidence-consent-current). Never counted as stale; the binding
   // rows carry the per-row flag.
   int32 rehash = 17;
+  // The report's advisory account reduced to at most five refusal rows;
+  // further rows contribute to omitted and incompleteness is preserved.
+  WitnessCacheLoadAccount witness_cache_load = 18;
 }
 
 
@@ -447,6 +506,8 @@ message DossierReport {
   // Floor is the slice's package-level sound floor with dispositions,
   // riding the same slice leg (REQ-go-slice).
   repeated SliceFloorPackage floor = 4;
+  // Advisory store refusals observed while deriving witness-backed context.
+  WitnessCacheLoadAccount witness_cache_load = 5;
 }
 
 // PartitionComponent is one candidate work unit: requirements whose
@@ -474,6 +535,8 @@ message PartitionReport {
   // truncation is never silent (REQ-mcp-response-contract).
   repeated PartitionOverlap overlaps = 2;
   int32 overlaps_omitted = 3;
+  // Advisory store refusals observed by the witnessing derivation.
+  WitnessCacheLoadAccount witness_cache_load = 4;
 }
 
 // CompileResult is the compile tool's result: the corpus's diagnostics
@@ -495,6 +558,9 @@ message WriteResult {
   int32 removed = 3;
   repeated string notes = 4;
   bool check = 5;
+  // Advisory store refusals observed when resolved-record pruning evaluates
+  // witnesses. Absent for authoring operations that do not load witnesses.
+  WitnessCacheLoadAccount witness_cache_load = 6;
 }
 
 // GapListResult is the gap tool's list form: the write result's fields
@@ -507,6 +573,8 @@ message GapListResult {
   bool check = 5;
   repeated GapReport gaps = 6;
   int32 gaps_omitted = 7;
+  // Advisory store refusals observed while evaluating the listed gaps.
+  WitnessCacheLoadAccount witness_cache_load = 8;
 }
 
 // ExplainLink is one link of a derivation chain: a dynamic-state
@@ -540,4 +608,7 @@ message ReadSpecResult {
 message ExportResult {
   string exported = 1;
   int32 bytes = 2;
+  // Advisory store refusals from a witness-backed context or partition
+  // export, carried by the receipt as well as by the separate exported report.
+  WitnessCacheLoadAccount witness_cache_load = 3;
 }

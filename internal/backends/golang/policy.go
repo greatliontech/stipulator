@@ -3,8 +3,6 @@ package golang
 import (
 	"errors"
 	"fmt"
-
-	"github.com/greatliontech/gofresh/runtimeinput"
 	"io/fs"
 	"os"
 	"path"
@@ -18,6 +16,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/greatliontech/gofresh/gotool"
+	"github.com/greatliontech/gofresh/runtimeinput"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 )
 
@@ -48,6 +47,9 @@ func (Policy) ValidateInvocation(invocation string, payload proto.Message) error
 // and the excluded paths' form are record facts (only an excluded
 // path's position against the resolved tree waits for normalization).
 func validateConfig(cfg *stipulatorv1.GoInvocationConfig) error {
+	if err := validateLinkerSelection(cfg); err != nil {
+		return err
+	}
 	if cfg.GetRace() && cfg.GetPlainWitness() {
 		return fmt.Errorf("plain_witness is meaningful only on a race: false invocation - a race invocation already grants at the stronger tier")
 	}
@@ -59,17 +61,7 @@ func validateConfig(cfg *stipulatorv1.GoInvocationConfig) error {
 			return err
 		}
 	}
-	for _, p := range cfg.GetExcludedPaths() {
-		if err := validateExcludedPathForm(p); err != nil {
-			return err
-		}
-	}
-	for _, v := range cfg.GetDynamicStateVouches() {
-		if _, err := vouchIdentity(v); err != nil {
-			return err
-		}
-	}
-	if err := validateScratchNamespaces(cfg); err != nil {
+	if err := validateReviewedRows(cfg); err != nil {
 		return err
 	}
 	for _, p := range cfg.GetPackages() {
@@ -522,36 +514,14 @@ func validateScratchNamespaces(cfg *stipulatorv1.GoInvocationConfig) error {
 			if p == dir || strings.HasPrefix(dir, p+"/") {
 				return fmt.Errorf("excluded path %q covers scratch namespace %q %q, which would admit nothing under it", p, dir, pattern)
 			}
-			if namespaceCoversPath(dir, pattern, p) {
+			matches, err := (runtimeinput.ScratchNamespace{Dir: dir, Pattern: pattern}).MatchesPath(p)
+			if err != nil {
+				return fmt.Errorf("scratch namespace: %w", err)
+			}
+			if matches {
 				return fmt.Errorf("excluded path %q lies under a child scratch namespace %q %q names: the namespace retires the exclusion", p, dir, pattern)
 			}
 		}
 	}
 	return nil
-}
-
-// namespaceCoversPath reports whether a tree-relative slash path lies
-// on or beneath a child the namespace names — gofresh's own matching
-// rule (the pattern's text before its last '*' is the child's prefix,
-// the text after it the suffix; a pattern with no '*' is a prefix) —
-// restated here for the policy's own refusals until gofresh's
-// runtimeinput exports the matcher.
-func namespaceCoversPath(dir, pattern, p string) bool {
-	rel := ""
-	if dir == "." {
-		rel = p
-	} else if strings.HasPrefix(p, dir+"/") {
-		rel = p[len(dir)+1:]
-	} else {
-		return false
-	}
-	first, _, _ := strings.Cut(rel, "/")
-	prefix, suffix := pattern, ""
-	if i := strings.LastIndex(pattern, "*"); i >= 0 {
-		prefix, suffix = pattern[:i], pattern[i+1:]
-	}
-	if len(first) < len(prefix)+len(suffix) {
-		return false
-	}
-	return strings.HasPrefix(first, prefix) && strings.HasSuffix(first[len(prefix):], suffix)
 }

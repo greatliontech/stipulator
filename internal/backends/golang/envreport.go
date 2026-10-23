@@ -79,7 +79,7 @@ func truncateValidUTF8(s string, limit int) string {
 // environment for a verdict-flipping witness failure: the working
 // directories (the go command's and the failing package's), the
 // delivered parallelism width and fan-out exactly as the invocation
-// froze them at normalize, the curated-vs-ambient delta (runner-set
+// finalized them before capture grouping, the curated-vs-ambient delta (runner-set
 // and runner-changed entries with prefix-capped values, the ambient
 // counterpart rendered only for the runner's own pins, dropped entries
 // by name), and the process resource limits. Deterministic for a fixed

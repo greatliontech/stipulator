@@ -153,6 +153,8 @@ func Dangling(d Deps) ([]author.Update, error) {
 
 // Resolved is the resolved-gap evaluation's outcome.
 type Resolved struct {
+	// WitnessCacheLoad is the evaluated pass's advisory store-read account.
+	WitnessCacheLoad *stipulatorv1.WitnessCacheLoadAccount
 	// Gaps is the gap-record count the evaluation read.
 	Gaps int
 	// Evaluated is false on the deletion-only fast path: no gap records
@@ -238,6 +240,7 @@ func Evaluate(ctx context.Context, d Deps, noTest bool) (Resolved, error) {
 		}
 	}
 	out := Resolved{Gaps: len(store.Gaps), Evaluated: true, Notices: rep.ResolutionNotices, Prunes: author.PruneResolvedGaps(store, resolved)}
+	out.WitnessCacheLoad = rep.WitnessCacheLoad
 	if tr != nil {
 		out.Served, out.Executed = tr.Fresh, tr.Ran
 	}

@@ -58,7 +58,7 @@ func TestServingFormPersistsAtTheExecutingInvocation(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tmp, "b", "b_test.go"), []byte("package b\n\nimport \"testing\"\n\nfunc TestB(t *testing.T) { _ = 1 }\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	before := len(witnesscache.Load(t.Context(), tmp))
+	before := len(witnesscache.Load(t.Context(), tmp).Records)
 	cctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	var notes []string
@@ -74,13 +74,13 @@ func TestServingFormPersistsAtTheExecutingInvocation(t *testing.T) {
 		t.Fatalf("persisted notes = %v (err %v); want the group installed at the executing invocation's completion", notes, err)
 	}
 	stale := false
-	for _, rec := range witnesscache.Load(t.Context(), tmp) {
+	for _, rec := range witnesscache.Load(t.Context(), tmp).Records {
 		if rec.Package == "example.com/units/b" && rec.Test == "TestB" {
 			stale = true
 		}
 	}
-	if !stale || len(witnesscache.Load(t.Context(), tmp)) < before {
-		t.Fatalf("the stale package's new record is not in the store after the cancellation (%d records, was %d)", len(witnesscache.Load(t.Context(), tmp)), before)
+	if !stale || len(witnesscache.Load(t.Context(), tmp).Records) < before {
+		t.Fatalf("the stale package's new record is not in the store after the cancellation (%d records, was %d)", len(witnesscache.Load(t.Context(), tmp).Records), before)
 	}
 }
 
@@ -127,7 +127,7 @@ func TestScopedRunPersistsAtTheExecutingInvocation(t *testing.T) {
 		t.Fatalf("persisted notes = %v (err %v); want the group installed at the executing invocation's completion", notes, err)
 	}
 	found := false
-	for _, rec := range witnesscache.Load(t.Context(), tmp) {
+	for _, rec := range witnesscache.Load(t.Context(), tmp).Records {
 		found = found || (rec.Package == "example.com/units/b" && rec.Test == "TestB")
 	}
 	if !found {
@@ -171,7 +171,7 @@ func TestDoublySelectedPackageIsRefusedAtDiscovery(t *testing.T) {
 	if got := tr.UncacheableReasons["example.com/units/a.TestA"]; got != want {
 		t.Fatalf("a.TestA reason = %q; want %q — the discovery-time refusal, not the structural fallback", got, want)
 	}
-	if len(witnesscache.Load(t.Context(), tmp)) != 0 {
+	if len(witnesscache.Load(t.Context(), tmp).Records) != 0 {
 		t.Fatal("an ambiguous package published a record")
 	}
 }
@@ -200,9 +200,13 @@ func TestMixedGroupPublishesOnlyItsSinglySelectedPackage(t *testing.T) {
 	first := &stipulatorv1.GoInvocationConfig{}
 	first.SetPackages([]string{"./a", "./b"})
 	first.SetRace(true)
+	// Keep both legs in one capture group despite their different package
+	// populations: this fixture tests ambiguous production within that group.
+	first.SetEnvironment([]string{"GOMAXPROCS=1"})
 	second := &stipulatorv1.GoInvocationConfig{}
 	second.SetPackages([]string{"./a"})
 	second.SetRace(true)
+	second.SetEnvironment([]string{"GOMAXPROCS=1"})
 	pol := &stipulatorv1.TestPolicy{}
 	pol.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("first", first), goInvocation("second", second)})
 	var notes []string
@@ -220,7 +224,7 @@ func TestMixedGroupPublishesOnlyItsSinglySelectedPackage(t *testing.T) {
 		t.Fatalf("a.TestA reason = %q; want %q", got, reasonNoProducingLeg)
 	}
 	var stored []string
-	for _, rec := range witnesscache.Load(t.Context(), tmp) {
+	for _, rec := range witnesscache.Load(t.Context(), tmp).Records {
 		stored = append(stored, rec.Package+"."+rec.Test)
 	}
 	if len(stored) != 1 || stored[0] != "example.com/units/b.TestB" {
@@ -276,7 +280,7 @@ func TestHealthJudgedPackagePersistsBeforeItsSiblingCompletes(t *testing.T) {
 		t.Fatalf("persisted notes = %v; want package a installed at its own completion, its sibling still running", notes)
 	}
 	var stored []string
-	for _, rec := range witnesscache.Load(t.Context(), tmp) {
+	for _, rec := range witnesscache.Load(t.Context(), tmp).Records {
 		stored = append(stored, rec.Package+"."+rec.Test)
 	}
 	if len(stored) != 1 || stored[0] != "example.com/units/a.TestA" {
@@ -333,7 +337,7 @@ func TestHealthJudgedPackagePublishesInItsOwnGroupAlone(t *testing.T) {
 		t.Fatalf("persisted notes = %v; want %v — the package once per group, under its own invocation", notes, want)
 	}
 	groups := map[string]bool{}
-	for _, rec := range witnesscache.Load(t.Context(), tmp) {
+	for _, rec := range witnesscache.Load(t.Context(), tmp).Records {
 		if rec.Package+"."+rec.Test != "example.com/units/a.TestA" {
 			t.Fatalf("store holds a record for %s.%s; want a.TestA alone", rec.Package, rec.Test)
 		}
@@ -498,6 +502,11 @@ func TestHealthJudgedDegradeReleasesEveryLeg(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer recorder.Close()
+	proofs := processProofs{}
+	for _, g := range recorder.groups {
+		proofs.add(g, g.legs)
+	}
 	// Once the first package has published, the second group's closure
 	// moves under it: its closing validation refuses and the run
 	// degrades; the third never publishes.
@@ -512,7 +521,7 @@ func TestHealthJudgedDegradeReleasesEveryLeg(t *testing.T) {
 	t.Cleanup(func() { beforePackagePublishForTest = nil })
 	if _, _, err := executePolicy(ctx, pc, func(invocation string, unit packageUnit) error {
 		return recorder.packageCompleted(ctx, invocation, unit)
-	}, nil); err != nil {
+	}, proofs); err != nil {
 		t.Fatal(err)
 	}
 	if recorder.degraded == "" || len(recorder.records) != 1 {
@@ -554,12 +563,17 @@ func TestHealthJudgedRunReleasesEveryGroupView(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer recorder.Close()
+	proofs := processProofs{}
+	for _, g := range recorder.groups {
+		proofs.add(g, g.legs)
+	}
 	if len(recorder.groups) != 1 || recorder.groups[0].view == nil || len(recorder.groups[0].legs) != 2 {
 		t.Fatalf("recorder holds %d group(s); want one with its view and two legs before execution", len(recorder.groups))
 	}
 	if _, _, err := executePolicy(ctx, pc, func(invocation string, unit packageUnit) error {
 		return recorder.packageCompleted(ctx, invocation, unit)
-	}, nil); err != nil {
+	}, proofs); err != nil {
 		t.Fatal(err)
 	}
 	if recorder.degraded != "" || len(recorder.records) != 2 {
@@ -578,16 +592,16 @@ func TestHealthJudgedRunReleasesEveryGroupView(t *testing.T) {
 //
 //gofresh:pure
 func TestReleaseDropsTheGroupViewAfterTheLastLeg(t *testing.T) {
-	g := &captureGroup{view: &gofresh.View{}, legs: map[string]*packageLeg{"p": {view: &gofresh.View{}, observed: &gofresh.View{}}, "q": {view: &gofresh.View{}}}}
+	g := &captureGroup{view: &witnessSnapshot{}, legs: map[string]*packageLeg{"p": {view: &witnessSnapshot{}, binding: &gofresh.RuntimeBinding{}}, "q": {view: &witnessSnapshot{}}}}
 	g.release("p")
-	if g.legs["p"].view != nil || g.legs["p"].observed != nil || g.view == nil || g.legs["q"].view == nil {
+	if g.legs["p"].view != nil || g.legs["p"].binding != nil || g.view == nil || g.legs["q"].view == nil {
 		t.Fatal("releasing one leg dropped more or less than that leg's views")
 	}
 	g.release("q")
 	if g.view != nil {
 		t.Fatal("the last leg's release kept the group's view")
 	}
-	wg := &witnessGroup{view: &gofresh.View{}, legs: map[string]*packageLeg{"p": {view: &gofresh.View{}}, "q": {view: &gofresh.View{}}}}
+	wg := &witnessGroup{view: &witnessSnapshot{}, legs: map[string]*packageLeg{"p": {view: &witnessSnapshot{}}, "q": {view: &witnessSnapshot{}}}}
 	wg.release("p")
 	if wg.legs["p"].view != nil || wg.view == nil {
 		t.Fatal("the selective form's release dropped more or less than the leg's views")
@@ -884,7 +898,7 @@ func TestPackagePersistsBeforeItsSiblingCompletes(t *testing.T) {
 		t.Fatalf("persisted notes = %v (err %v); want package a installed at its own completion, its sibling still running", notes, err)
 	}
 	var stored []string
-	for _, rec := range witnesscache.Load(t.Context(), tmp) {
+	for _, rec := range witnesscache.Load(t.Context(), tmp).Records {
 		stored = append(stored, rec.Package+"."+rec.Test)
 	}
 	if len(stored) != 1 || stored[0] != "example.com/units/a.TestPass" {

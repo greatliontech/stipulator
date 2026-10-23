@@ -513,20 +513,34 @@ func TestGoExecutePolicyWorkspaceReport(t *testing.T) {
 	if len(report.GetObligations()) != 0 {
 		t.Errorf("complete policy reported findings: %v", report.GetObligations())
 	}
-	// Every launched process owns exactly one observation on the report,
-	// bound to its producer — one per selected package here, since every
-	// package spawns a process.
-	launched := len(byName["root"].GetPackages()) + len(byName["member"].GetPackages())
-	if got := len(report.GetObservations()); got != launched {
-		t.Errorf("report carries %d observations, want one per launched process (%d)", got, launched)
+	// Only packages with an executed test binary own observations. The
+	// compiler's build-only and failed packages retain their health above,
+	// but must never acquire fabricated process evidence.
+	wantObservations := map[string]bool{}
+	for _, h := range report.GetInvocations() {
+		for _, p := range h.GetPackages() {
+			switch p.GetPackage() {
+			case "example.com/exec/buildonly", "example.com/exec/builderr", "example.com/exec/depbad":
+				continue
+			}
+			wantObservations[h.GetInvocation()+" "+p.GetPackage()] = true
+		}
 	}
 	for _, o := range report.GetObservations() {
+		key := o.GetProducer().GetInvocation() + " " + o.GetPackage()
+		if !wantObservations[key] {
+			t.Errorf("unexpected or duplicate process observation: %v", o)
+		}
+		delete(wantObservations, key)
 		if o.GetProducer().GetInvocation() == "" || o.GetProducer().GetProcessId() <= 0 {
 			t.Errorf("observation not bound to a producing process: %v", o)
 		}
 		if (o.GetCompleted() == nil) == (o.GetIncompleteReason() == "") {
 			t.Errorf("observation is neither completed nor loudly incomplete: %v", o)
 		}
+	}
+	if len(wantObservations) != 0 {
+		t.Errorf("executed packages missing observations: %v", wantObservations)
 	}
 }
 
@@ -687,7 +701,7 @@ func TestGoExecuteSpawnRefusedByExpiredContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	n := &NormalizedInvocation{Name: "expired", Dir: t.TempDir(), Timeout: time.Minute}
-	run := runPackage(ctx, n, "example.com/x", nil, 1, nil, nil)
+	run := runNativePackage(ctx, ctx, n, "example.com/x", nil, 1, nil, nil, &packageExecution{})
 	if run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_UNSPECIFIED {
 		t.Fatalf("disposition = %v, want none: the caller owns the timeout-or-discard classification", run.disposition)
 	}
@@ -1330,17 +1344,16 @@ func TestGoExecuteDiagnosticOutputBounded(t *testing.T) {
 	}
 }
 
-// The witness fan-out bound is derived, never declared: half the
-// processor count, floored at one - each unit is itself a parallel
-// process tree, so a full fan-out multiplies into host-freezing load
-// (REQ-evidence-witness-freshness-concurrency).
+// With enough permitted packages, the derived witness fan-out bound is
+// processor-limited: half the processor count, floored at one. Each unit is
+// itself a parallel process tree (REQ-evidence-witness-freshness-concurrency).
 func TestWitnessSpawnBound(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency")
 	want := runtime.GOMAXPROCS(0) / 2
 	if want < 1 {
 		want = 1
 	}
-	if got := witnessSpawnBound(); got != want {
+	if got := witnessSpawnBound(runtime.GOMAXPROCS(0), runtime.GOMAXPROCS(0)); got != want {
 		t.Fatalf("derived bound = %d, want %d", got, want)
 	}
 }
@@ -1364,7 +1377,7 @@ func TestWitnessChildWidth(t *testing.T) {
 			t.Errorf("width at bound %d = %d, want %d", test.bound, got, test.want)
 		}
 	}
-	units := witnessSpawnBound()
+	units := witnessSpawnBound(procs, procs)
 	width := witnessChildWidth(&NormalizedInvocation{})
 	if units*width > procs+units {
 		t.Fatalf("default units %d x width %d overcommits %d processors", units, width, procs)
@@ -1415,19 +1428,20 @@ func TestWitnessWidthEnv(t *testing.T) {
 	if v, _ := lookupEnv(witnessWidthEnv(full), "GOMAXPROCS"); v != "1" {
 		t.Fatalf("malformed ambient = %q, want narrowed to 1", v)
 	}
-	framed := witnessProcessEnv(&NormalizedInvocation{SpawnBound: procs, Env: []string{"A=1"}}, observationFrame{})
+	framed := witnessEnvOf(&NormalizedInvocation{SpawnBound: procs, Env: []string{"A=1"}})
 	if v, ok := lookupEnv(framed, "GOMAXPROCS"); !ok || v != "1" {
 		t.Fatalf("frameless spawn env width = %q/%v, want 1", v, ok)
 	}
 }
 
-// The witness environment is derived exactly once, at normalization:
+// The witness environment is finalized once, before capture grouping:
 // every consumer reads NormalizedInvocation.WitnessEnv, so one
 // invocation observes one width for its whole lifetime - per-call
 // re-derivation would race dynamic GOMAXPROCS movement and could
 // split the spawned environment from the recorded one.
-func TestWitnessEnvDerivedOnceAtNormalize(t *testing.T) {
+func TestWitnessAllocationFrozenBeforeCapture(t *testing.T) {
 	neutralAmbient(t)
+	t.Setenv("GOMAXPROCS", strconv.Itoa(runtime.GOMAXPROCS(0)))
 	inv := &stipulatorv1.PolicyInvocation{}
 	inv.SetName("width")
 	cfg := &stipulatorv1.GoInvocationConfig{}
@@ -1437,12 +1451,21 @@ func TestWitnessEnvDerivedOnceAtNormalize(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n.WitnessEnv == nil {
-		t.Fatal("normalization left WitnessEnv underived")
+	if n.WitnessEnv != nil || n.SpawnBound != 0 {
+		t.Fatal("normalization allocated before the permitted packages were known")
 	}
-	spawn := witnessProcessEnv(n, observationFrame{})
+	budget := n.processorBudget
+	freezeWitnessAllocation(n, 1)
+	if n.SpawnBound != 1 {
+		t.Fatalf("single-package bound = %d, want 1", n.SpawnBound)
+	}
+	if width, _ := lookupEnv(n.WitnessEnv, "GOMAXPROCS"); width != strconv.Itoa(budget) {
+		t.Fatalf("single-package width = %s, want captured budget %d", width, budget)
+	}
+	freezeWitnessAllocation(n, 100)
+	spawn := witnessEnvOf(n)
 	if &spawn[0] != &n.WitnessEnv[0] {
-		t.Fatal("frameless spawn env re-derived instead of reading the normalization-time witness env")
+		t.Fatal("frameless spawn env re-derived instead of reading the frozen witness env")
 	}
 	if got := witnessEnvOf(n); &got[0] != &n.WitnessEnv[0] {
 		t.Fatal("witnessEnvOf re-derived for a normalized invocation")
@@ -1461,7 +1484,8 @@ func TestGoExecuteDeliversInnerParallelismCap(t *testing.T) {
 		t.Skip("loads the tree")
 	}
 	neutralAmbient(t)
-	width := witnessChildWidth(&NormalizedInvocation{})
+	width := runtime.GOMAXPROCS(0)
+	t.Setenv("GOMAXPROCS", strconv.Itoa(width))
 	t.Setenv("STIPULATOR_FIXTURE_REQUIRE_WIDTH", strconv.Itoa(width))
 	cfg := &stipulatorv1.GoInvocationConfig{}
 	cfg.SetPackages([]string{"./widthprobe"})
@@ -1483,6 +1507,15 @@ func TestGoExecuteDeliversInnerParallelismCap(t *testing.T) {
 	tr = findTest(tests, "example.com/exec/widthprobe", "TestWidthDelivered")
 	if tr == nil || tr.GetOutcome() != stipulatorv1.TestOutcome_TEST_OUTCOME_FAILED {
 		t.Fatalf("negative-arm probe = %v, want FAILED at the full-budget width", tr)
+	}
+	// A reviewed narrower environment remains the child's actual runtime
+	// limit even when one permitted package could otherwise use the full host.
+	t.Setenv("STIPULATOR_FIXTURE_REQUIRE_WIDTH", "1")
+	cfg.SetEnvironment([]string{"GOMAXPROCS=1"})
+	health, tests, diags = executeInvocation(t, time.Minute, cfg, "widthcap-narrow")
+	tr = findTest(tests, "example.com/exec/widthprobe", "TestWidthDelivered")
+	if health.GetDisposition() != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY || tr == nil || tr.GetOutcome() != stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED {
+		t.Fatalf("narrower declared width not delivered: health=%v test=%v diagnostics=%v", health, tr, diags)
 	}
 }
 
@@ -1542,13 +1575,17 @@ func TestIsolationReRunsAreRegisteredWithTheAdmission(t *testing.T) {
 	mu.Lock()
 	defer mu.Unlock()
 	got := reaps["example.com/exec/mixed"]
-	if len(got) != 2 {
-		t.Fatalf("reaps for the package = %+v, want two: the whole-package process and the solo re-run", got)
-	}
 	want := map[int]bool{int(main.Producer.GetProcessId()): true, int(solo.Producer.GetProcessId()): true}
+	seen := map[int]bool{}
 	for _, r := range got {
-		if !want[r.pid] || !r.registered || r.peak < 1<<20 {
-			t.Fatalf("reap %+v: want a process the result names (%v), registered, with a positive peak", r, want)
+		if seen[r.pid] || !r.registered || r.peak < 1<<20 {
+			t.Fatalf("reap %+v: want an independently registered process with a positive peak", r)
+		}
+		seen[r.pid] = true
+	}
+	for pid := range want {
+		if !seen[pid] {
+			t.Fatalf("reported test process %d escaped admission accounting", pid)
 		}
 	}
 }

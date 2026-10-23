@@ -8,9 +8,11 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/gotool"
 	"github.com/greatliontech/gofresh/runtimeinput"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -71,7 +73,7 @@ func TestGoExecuteObservationOwnership(t *testing.T) {
 		}
 		// The live gofresh evidence rides beside the wire form and agrees
 		// with it.
-		state, err := runtimeinput.CompletedState(po.Runtime)
+		state, err := processObservationState(po)
 		if err != nil {
 			t.Fatalf("live observation for %s is not sealed completed evidence: %v", po.Wire.GetPackage(), err)
 		}
@@ -162,8 +164,8 @@ func TestGoExecuteUnopenedCaptureObservationIncomplete(t *testing.T) {
 	if o.GetCompleted() != nil {
 		t.Fatalf("an unopened capture became completed evidence: %v", o)
 	}
-	if reason := o.GetIncompleteReason(); !strings.Contains(reason, "never opened") {
-		t.Errorf("incomplete reason = %q, want it to name the unopened capture", reason)
+	if o.GetIncompleteReason() == "" || observations[0].account.Terminal.Kind != gofresh.AbnormalCompletion {
+		t.Errorf("a synthetic green health event supplied native harness completion: %v account=%+v", o, observations[0].account)
 	}
 }
 
@@ -420,7 +422,7 @@ func TestGoExecuteSelfMutatedInputSealsUnverifiable(t *testing.T) {
 	if o == nil || o.Wire.GetCompleted() == nil {
 		t.Fatalf("healthy completed process yielded no completed observation: %v", observations)
 	}
-	state, err := runtimeinput.CompletedState(o.Runtime)
+	state, err := processObservationState(o)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -486,7 +488,7 @@ func TestGoExecuteModuleRootPackageBracket(t *testing.T) {
 		if o == nil || o.Wire.GetCompleted() == nil {
 			t.Fatalf("healthy completed process yielded no completed observation: %v", observations)
 		}
-		state, err := runtimeinput.CompletedState(o.Runtime)
+		state, err := processObservationState(o)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -569,7 +571,7 @@ func TestGoExecuteOutOfRootReadSealsUnverifiable(t *testing.T) {
 	if o == nil || o.Wire.GetCompleted() == nil {
 		t.Fatalf("healthy completed process yielded no completed observation: %v", observations)
 	}
-	state, err := runtimeinput.CompletedState(o.Runtime)
+	state, err := processObservationState(o)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -768,7 +770,7 @@ func TestReadsFixture(t *testing.T) {
 	if o.Wire.GetCompleted() == nil {
 		t.Fatalf("symlinked-tree observation incomplete: %q", o.Wire.GetIncompleteReason())
 	}
-	state, err := runtimeinput.CompletedState(o.Runtime)
+	state, err := processObservationState(o)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1103,13 +1105,16 @@ func TestRootsProbeRunsThroughTheProbeRunnerOncePerPackage(t *testing.T) {
 	pol := &stipulatorv1.TestPolicy{}
 	pol.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", race)})
 	var probed []string
-	prior := probeObserverForTest
-	probeObserverForTest = func(cmd *exec.Cmd) {
-		if slices.Contains(cmd.Args, "-json") {
+	prior := engineCommandHook
+	var probeMu sync.Mutex
+	engineCommandHook = func(cmd *exec.Cmd) {
+		if slices.Contains(cmd.Args, "-json") && (cmd.Dir == filepath.Join(tmp, "a") || cmd.Dir == filepath.Join(tmp, "b")) {
+			probeMu.Lock()
+			defer probeMu.Unlock()
 			probed = append(probed, cmd.Dir)
 		}
 	}
-	t.Cleanup(func() { probeObserverForTest = prior })
+	t.Cleanup(func() { engineCommandHook = prior })
 	ctx := context.Background()
 	// Every run must observe both packages: a package that timed out
 	// or degraded under load has no observation and no probe, and the
@@ -1138,8 +1143,8 @@ func TestRootsProbeRunsThroughTheProbeRunnerOncePerPackage(t *testing.T) {
 	if got := run(pc); !slices.Equal(got, want) {
 		t.Fatalf("roots probes through the probe runner in %v, want one per package directory %v", got, want)
 	}
-	if got := run(pc); len(got) != 0 {
-		t.Fatalf("a second execution over the same capture probed again: %v", got)
+	if got := run(pc); !slices.Equal(got, want) {
+		t.Fatalf("a new native execution generation reused the previous process environment: %v, want %v", got, want)
 	}
 	if got := run(mustCapture(t, ctx, tmp, pol)); !slices.Equal(got, want) {
 		t.Fatalf("a fresh capture did not probe anew: %v, want %v", got, want)

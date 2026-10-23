@@ -7,6 +7,7 @@ import (
 // Proto renders the report as its wire message.
 func (r *Report) Proto() *stipulatorv1.VerifyReport {
 	out := &stipulatorv1.VerifyReport{}
+	out.SetWitnessCacheLoad(r.WitnessCacheLoad)
 	var problems []*stipulatorv1.Problem
 	for _, p := range r.Problems {
 		m := &stipulatorv1.Problem{}

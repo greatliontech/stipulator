@@ -2,6 +2,7 @@ package golang
 
 import (
 	"context"
+	"fmt"
 	"github.com/greatliontech/go-x-tools/go/packages"
 	"go/ast"
 	"go/token"
@@ -255,7 +256,7 @@ func TestGoRunWitnessesRandomSeededNeverServes(t *testing.T) {
 	if _, refused := first.UncacheableReasons[example]; refused {
 		t.Fatalf("deterministic sibling refused publication: %q", first.UncacheableReasons[example])
 	}
-	for _, rec := range witnesscache.Load(t.Context(), tmp) {
+	for _, rec := range witnesscache.Load(t.Context(), tmp).Records {
 		if rec.Test == "TestProperty" {
 			t.Fatalf("random-seeded witness published a record: %+v", rec)
 		}
@@ -286,7 +287,7 @@ func TestGoRunWitnessesRandomSeededNeverServes(t *testing.T) {
 	// unserved — the exact shape of a store published before the
 	// contract held — attributing both the re-execution and the refused
 	// publication, and publishing nothing new.
-	before := len(witnesscache.Load(t.Context(), tmp))
+	before := len(witnesscache.Load(t.Context(), tmp).Records)
 	refused, err := RunWitnesses(context.Background(), tmp, stubSeeding{example: true, property: true})
 	if err != nil {
 		t.Fatal(err)
@@ -300,7 +301,7 @@ func TestGoRunWitnessesRandomSeededNeverServes(t *testing.T) {
 	if got := refused.UncacheableReasons[example]; got != seededReason.String() {
 		t.Fatalf("refused witness uncacheable reason = %q, want %q", got, seededReason.String())
 	}
-	if after := len(witnesscache.Load(t.Context(), tmp)); after != before {
+	if after := len(witnesscache.Load(t.Context(), tmp).Records); after != before {
 		t.Fatalf("store grew from %d to %d records under a refusing classifier", before, after)
 	}
 }
@@ -323,7 +324,7 @@ func TestGoRunWitnessesSeedingFaultFailsClosed(t *testing.T) {
 		t.Fatal(err)
 	}
 	published := map[string]bool{}
-	for _, rec := range witnesscache.Load(t.Context(), tmp) {
+	for _, rec := range witnesscache.Load(t.Context(), tmp).Records {
 		published[rec.Test] = true
 	}
 	if warm.Ran != 2 || !published["TestExample"] {
@@ -343,7 +344,7 @@ func TestGoRunWitnessesSeedingFaultFailsClosed(t *testing.T) {
 	if faulted.Outcomes["example.com/seeded/prop.TestProperty"] != verify.TestPassed {
 		t.Fatalf("faulted run withheld executed evidence: %v", faulted.Outcomes)
 	}
-	if got := len(witnesscache.Load(t.Context(), tmp)); got != 1 {
+	if got := len(witnesscache.Load(t.Context(), tmp).Records); got != 1 {
 		t.Fatalf("store holds %d records after the faulted run, want the warm-up's one — a degraded run publishes nothing", got)
 	}
 }
@@ -377,7 +378,7 @@ func TestExecutePolicyWitnessedSeedingFaultFailsClosed(t *testing.T) {
 	if tr.Outcomes["example.com/seeded/lib.TestExample"] != verify.TestPassed {
 		t.Fatalf("degraded full run withheld executed evidence: %v", tr.Outcomes)
 	}
-	if got := len(witnesscache.Load(t.Context(), tmp)); got != 0 {
+	if got := len(witnesscache.Load(t.Context(), tmp).Records); got != 0 {
 		t.Fatalf("degraded full run published %d records, want none", got)
 	}
 }
@@ -413,7 +414,7 @@ func TestExecutePolicyWitnessedRandomSeededNeverPublishes(t *testing.T) {
 	if got := tr.UncacheableReasons["example.com/seeded/prop.TestProperty"]; got != seededReason.String() {
 		t.Fatalf("seeded witness uncacheable reason = %q, want %q", got, seededReason.String())
 	}
-	records := witnesscache.Load(t.Context(), tmp)
+	records := witnesscache.Load(t.Context(), tmp).Records
 	if len(records) != 1 || records[0].Test != "TestExample" {
 		t.Fatalf("records after a full execution = %+v, want the deterministic witness alone", records)
 	}
@@ -478,6 +479,8 @@ func TestHelperIndirectedDriverRefusesServing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	badDiagnostic := selectedUndefinedDiagnostic(t, fb, "example.com/fixture/badhelper", (buildSelection{}).key(), "Run")
+	badLoadRefusal := seededRefusal(fmt.Errorf("in-module package example.com/fixture/badhelper: %v", badDiagnostic)).String()
 	want := map[string]string{
 		"example.com/fixture/lib.TestPropViaHelper":  seededThroughReason("example.com/fixture/lib.runProp").String(),
 		"example.com/fixture/lib.TestPropViaTwoHops": seededThroughReason("example.com/fixture/lib.runPropTwice").String(),
@@ -496,7 +499,7 @@ func TestHelperIndirectedDriverRefusesServing(t *testing.T) {
 		// A refusal met before the driving hop: the hop outranks it;
 		// two refusals: the first in breadth-first order stands.
 		"example.com/fixture/lib.TestPropViaBadThenGood":     seededThroughReason("example.com/fixture/lib.runProp").String(),
-		"example.com/fixture/lib.TestPropViaTwoBad":          seededRefusal(errors.New("call of mystery in example.com/fixture/badhelper.Run resolves to no declaration")).String(),
+		"example.com/fixture/lib.TestPropViaTwoBad":          badLoadRefusal,
 		"example.com/fixture/lib.TestPropViaOtherThroughHop": seededThroughReason("example.com/fixture/lib.viaHelpers").String(),
 		// A function the body names as a value is walked; the driver
 		// itself named as a value seeds directly; a value from
@@ -609,10 +612,12 @@ func TestSeedingWalkFailsClosedWithoutADeclaration(t *testing.T) {
 	if why := refused["example.com/fixture/unresolved.TestViaTagged"]; !strings.HasPrefix(why, "unclassifiable witness:") || !strings.Contains(why, "load errors") {
 		t.Fatalf("unresolved import served or misattributed: %q", why)
 	}
-	// A helper whose body calls something undeclared loads with errors
-	// but indexes; the walk names the unresolved call.
-	if why := refused["example.com/fixture/lib.TestPropViaBadHelper"]; !strings.HasPrefix(why, "unclassifiable seeding:") || !strings.Contains(why, "call of mystery in example.com/fixture/badhelper.Run resolves to no declaration") {
-		t.Fatalf("unresolved call in a helper served or misattributed: %q", why)
+	// The helper's package cannot load. Refuse at that boundary with the
+	// original diagnostic, before indexing or traversing its partial body.
+	diagnostic := selectedUndefinedDiagnostic(t, fb, "example.com/fixture/badhelper", (buildSelection{}).key(), "Run")
+	want := seededRefusal(fmt.Errorf("in-module package example.com/fixture/badhelper: %v", diagnostic)).String()
+	if why := refused["example.com/fixture/lib.TestPropViaBadHelper"]; why != want {
+		t.Fatalf("helper load refusal = %q, want %q", why, want)
 	}
 	// An in-module package whose on-demand load fails refuses serving
 	// under the seeding spelling — witnessed by injection: a scoped

@@ -7,86 +7,101 @@ import (
 	"os/exec"
 	"strconv"
 
+	gofresh "github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/gotool"
-	"github.com/greatliontech/gofresh/runtimeinput"
-
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 )
 
-// Per-process runtime-input observation for the policy executor. Every
-// launched test process owns exactly one observation, bound to its
-// ProducerIdentity: the process's `-test.testlogfile` capture is ingested
-// through gofresh's producer facade into finalized input guards only
-// when the process provably completed and flushed it — a terminal pass or
-// ordinarily completed failing test, no abort output, and no
-// started-but-unfinished test. Outcome support is independently prepared
-// before execution and bound to the process, frame and environment. Without
-// it, finalized guards remain identity-only. An unproven completion yields an
-// incomplete observation carrying only its reason, never manifest bytes.
-// Observations from distinct processes are never merged here; a union is
-// a downstream consumer's judgment under its own contract.
-//
-// The facade owns frame capture (symlink resolution, containment, the
-// bracket, the VCS exclusion), the test-log-header proof, the ingest
-// exclusions, the PWD requirement, and the fail-closed fold discipline
-// (gofresh REQ-inputs-producer-facade). What stays here is stipulator's
-// vocabulary: which directory is the bracket root, and what counts as a
-// provably completed process.
-//
-// The package directory is the bracket root policy here because it is
-// the surface `go test` conventions give a test to read (testdata rides
-// it as a subtree) while staying narrow enough that a sibling package's
-// parallel writes cannot move it; declaring the whole tree instead would
-// turn every concurrent package's writes into bracket noise. The
-// consequence is deliberate: a read resolving outside the declared roots
-// seals per-identity unverifiable — permanently uncacheable — and a test
-// wanting cacheable cross-directory fixtures must move them under its
-// package, name them in the invocation's reviewed bracket paths, or
-// assert purity in source. The tree's own bookkeeping directory
-// (`.stipulator`) is deliberately not excluded from the bracket: every
-// in-process writer of it runs after ingestion, so it cannot move an
-// in-flight bracket, and an external tool writing it mid-run is exactly
-// the interference a bracket exists to catch — a module-root package
-// pays re-execution for it, never a wrong bind.
-
-// ProcessObservation pairs one launched process's wire observation with
-// the live gofresh evidence behind it. Runtime is set exactly when Wire
-// carries a completed record: gofresh's producer-side attach path consumes
-// the sealed observation value, which has no wire decode, so the live
-// value must survive in memory beside the report for in-process
-// consumers. An incomplete record retains no live value — there is no
-// evidence to hand anywhere.
+// ProcessObservation pairs the public, non-authorizing process account with the
+// native result of this exact attempt. A failed close retains observed facts but
+// exposes no subject evidence. No sealed observation capability crosses this
+// consumer boundary.
 type ProcessObservation struct {
-	Wire    *stipulatorv1.Observation
-	Runtime runtimeinput.Observation
+	Wire     *stipulatorv1.Observation
+	final    gofresh.FinalizedProcess
+	account  gofresh.ProcessAccount
+	closeErr error
+	runtime  gofresh.RuntimeDescription
 }
 
-// observationFrame is one process's producer frame plus the one refusal
-// the facade cannot know: a package whose directory discovery never
-// resolved has nothing to capture a frame for, so the spawn-side reason
-// rides beside the zero frame and reaches the facade as the caller's
-// incompleteness verdict.
-type observationFrame struct {
-	frame   runtimeinput.ProducerFrame
-	outcome runtimeinput.OutcomeSupport
-	// roots is the capture's classification-root memo the ingest reads
-	// its roots probe through.
-	roots *runtimeinput.Roots
-	// spawnReason is non-empty exactly when no capture was attempted.
-	spawnReason string
+// nativeCloseCauses retains both demonstrated runtime movement and other faults.
+// Ordinary publication can localize only an exclusively runtime-movement error;
+// retry validation must still notice established movement beside another fault.
+// Wrapping preserves the cause, and every branch of a join is inspected, never
+// just the first match errors.As could find. Diagnostics grant no classification.
+func nativeCloseCauses(err error) (movement, fault bool) {
+	if err == nil {
+		return false, false
+	}
+	fault = errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
+	causal, hasCause := err.(interface{ Cause() gofresh.Cause })
+	if hasCause {
+		movement = causal.Cause() == (gofresh.Cause{Kind: gofresh.RuntimeInputsCause, Condition: gofresh.Changed})
+		fault = fault || !movement
+	}
+	var children []error
+	switch wrapped := err.(type) {
+	case interface{ Unwrap() []error }:
+		children = wrapped.Unwrap()
+	case interface{ Unwrap() error }:
+		children = []error{wrapped.Unwrap()}
+	}
+	found := false
+	for _, child := range children {
+		if child == nil {
+			continue
+		}
+		found = true
+		childMovement, childFault := nativeCloseCauses(child)
+		movement = movement || childMovement
+		fault = fault || childFault
+	}
+	return movement, fault || !hasCause && !found
 }
 
-// bracketRootsFor resolves the extra observation-bracket roots one
-// package's producing process declares beside its own directory: the
-// package's in-tree import-closure directories — everything the
-// consuming compile may read from the tree, sealed over the
-// run-to-ingest span, so a mid-span source edit persisting anywhere in
-// the closure, or a restore that does not reproduce content and
-// metadata alike, moves the bracket toward re-execution — followed by
-// the invocation's reviewed bracket paths. A closure the toolchain
-// could not list fails closed with the refusing reason: sealing only
-// the package directory would publish records carrying a weaker claim
-// silently.
+func runtimeInputMovement(err error) bool {
+	movement, fault := nativeCloseCauses(err)
+	return movement && !fault
+}
+
+func (o *ProcessObservation) subject(s gofresh.Subject) (gofresh.FinalizedSubject, bool) {
+	if o != nil && o.closeErr == nil {
+		for _, result := range o.final.Subjects {
+			if result.Subject == s {
+				return result, true
+			}
+		}
+	}
+	return gofresh.FinalizedSubject{}, false
+}
+
+func nativeObservation(pkg string, producer *stipulatorv1.ProducerIdentity, final gofresh.FinalizedProcess, account gofresh.ProcessAccount, closeErr error) *ProcessObservation {
+	o := &ProcessObservation{final: final, account: account, closeErr: closeErr, Wire: &stipulatorv1.Observation{}}
+	o.Wire.SetProducer(producer)
+	o.Wire.SetPackage(pkg)
+	if account.Observation == gofresh.SupportedObservation || account.Observation == gofresh.IdentityObservation {
+		completed := &stipulatorv1.CompletedObservation{}
+		completed.SetManifest(account.Inputs.Manifest)
+		completed.SetOutcomeReason(account.OutcomeReason)
+		if !account.Inputs.Unverifiable {
+			completed.SetDigest(account.Inputs.Digest)
+		}
+		o.Wire.SetCompleted(completed)
+	} else {
+		reason := account.ObservationReason
+		if reason == "" && closeErr != nil {
+			reason = closeErr.Error()
+		}
+		if reason == "" {
+			reason = "native observation not finalized"
+		}
+		o.Wire.SetIncompleteReason(reason)
+	}
+	return o
+}
+
+// bracketRootsFor preserves the discovery-owned compilation closure beside the
+// reviewed roots. An unavailable closure cannot silently narrow the bracket.
 func bracketRootsFor(n *NormalizedInvocation, pkg string) ([]string, string) {
 	if n.ClosureDirsErr != "" {
 		return nil, "package import closure unresolved at spawn (" + n.ClosureDirsErr + "); no observation bracket was captured"
@@ -95,138 +110,25 @@ func bracketRootsFor(n *NormalizedInvocation, pkg string) ([]string, string) {
 	if !ok {
 		return nil, "package import closure unknown at spawn; no observation bracket was captured"
 	}
-	if len(closure) == 0 {
-		return n.BracketPaths, ""
-	}
-	return append(append([]string(nil), closure...), n.BracketPaths...), ""
+	roots := append(append([]string(nil), closure...), n.BracketPaths...)
+	return append(roots, inputFilePaths(n.InputFiles)...), ""
 }
 
-// captureObservationFrame captures the pre-spawn frame one package's
-// completed observation seals on: the package directory declared
-// module-relative under the verification tree root, beside the
-// invocation's reviewed bracket paths — fingerprinted pre-spawn, present
-// or absent, so consumed process images and fixed external files bind
-// instead of sealing out-of-bracket. Resolution, containment, and the
-// capture refusals are the facade's (an external workspace member — no
-// module-relative root can name it — is permanently uncacheable here). A
-// capture that succeeds while gofresh's hashing semantics refuse a root
-// still returns its bracket: gofresh seals that observation attributably
-// unverifiable, which is the honest disposition — the process ran and
-// its evidence exists, it just cannot bind.
-func captureObservationFrame(ctx context.Context, n *NormalizedInvocation, pkg string) observationFrame {
-	pkgDir, ok := n.PkgDirs[pkg]
-	if !ok {
-		return observationFrame{spawnReason: "package directory unknown at spawn; no observation bracket was captured"}
-	}
-	bracketPaths, refused := bracketRootsFor(n, pkg)
-	if refused != "" {
-		return observationFrame{spawnReason: refused}
-	}
-	// The invocation's reviewed exclusions apply at both endpoints: a
-	// path whose manifest reads the exclusion drops ("its digest moves
-	// under unrelated tooling") must not churn the bracket either, or
-	// the same unrelated tooling seals the observation the exclusion
-	// exists to keep cacheable. The caller-side soundness assertion the
-	// exclusion carries covers both uses.
-	return observationFrame{roots: n.roots, frame: runtimeinput.CaptureProducerFrame(ctx, treeRoot(n), pkgDir,
-		runtimeinput.FrameOptions{BracketPaths: bracketPaths, ExcludedPaths: n.ExcludedPaths})}
-}
-
-// observeProcess builds the observation one launched process owns, from
-// its parsed stream, exit, terminal disposition, testlog capture, and
-// pre-spawn observation frame. Stipulator's process-health verdict — and
-// the spawn-side refusal of a package with no known directory — enter
-// the facade as the caller's incompleteness verdict; every other
-// fail-closed shape (missing, unreadable, or headerless capture, a
-// bracketless frame, a PWD mismatch, an ingestion failure) is the
-// facade's own fold. A construction error out of the facade (a cancelled
-// context, a malformed environment) still yields the fail-closed record:
-// the run it belongs to is discarded or diagnosed upstream, never bound.
-func observeProcess(ctx context.Context, n *NormalizedInvocation, pkg string, producer *stipulatorv1.ProducerIdentity, st *streamState, waitErr error, disposition stipulatorv1.HealthDisposition, logPath string, frame observationFrame) *ProcessObservation {
-	callerReason := incompleteObservationReason(st, waitErr, disposition)
-	if callerReason == "" {
-		callerReason = frame.spawnReason
-	}
-	identity, env := processIdentity(n, producer, pkg), witnessProcessEnv(n, frame)
-	receipt, err := frame.frame.Completion(identity, env, callerReason)
-	if err != nil {
-		return incompleteObservation(pkg, producer, fmt.Sprintf("observation construction failed: %v", err))
-	}
-	ingest := runtimeinput.ProducerIngest{
-		Identity:   identity,
-		Env:        env,
-		Completion: receipt,
-		Outcome:    frame.outcome,
-		// The classification roots — toolchain, module cache, build
-		// cache, temp — are the facade's to resolve from this very
-		// environment; a declaration could only restate or contradict
-		// them. The probe that resolves them (a bare `go env -json` in
-		// the package directory, which forks the configured C compiler)
-		// is a go child of this operation: it runs under the owned
-		// boundary with a probe's bounded reap (rootsRunner;
-		// REQ-go-owned-processes-runner), and its answer is memoized on the
-		// capture's roots memo, one probe per package directory and
-		// environment for the operation's life.
-		Runner:            rootsRunner,
-		Roots:             frame.roots,
-		ExcludedPaths:     n.ExcludedPaths,
-		ScratchNamespaces: n.ScratchNamespaces,
-	}
-	var observation runtimeinput.Observation
-	var reason string
-	binding, err := frame.frame.OutcomeBinding(identity, env)
-	if err != nil {
-		return incompleteObservation(pkg, producer, fmt.Sprintf("observation construction failed: %v", err))
-	}
-	outcomeReason := frame.outcome.Reason(binding)
-	if outcomeReason == "" {
-		observation, reason, err = frame.frame.Observe(ctx, logPath, ingest)
-	} else {
-		observation, reason, err = frame.frame.ObserveInputs(ctx, logPath, ingest)
-	}
-	if err != nil {
-		return incompleteObservation(pkg, producer, fmt.Sprintf("observation construction failed: %v", err))
-	}
-	if reason != "" {
-		return incompleteObservation(pkg, producer, reason)
-	}
-	state, err := runtimeinput.CompletedState(observation)
-	if err != nil {
-		return incompleteObservation(pkg, producer, fmt.Sprintf("testlog ingestion failed: %v", err))
-	}
-	completed := &stipulatorv1.CompletedObservation{}
-	completed.SetManifest(state.Manifest)
-	completed.SetOutcomeReason(outcomeReason)
-	if !state.Unverifiable {
-		completed.SetDigest(state.Digest)
-	}
-	wire := &stipulatorv1.Observation{}
-	wire.SetProducer(producer)
-	wire.SetPackage(pkg)
-	wire.SetCompleted(completed)
-	return &ProcessObservation{Wire: wire, Runtime: observation}
-}
-
-// incompleteObservationReason is stipulator's process-health verdict. It
-// returns the empty string only when the producing process provably
-// completed and flushed its testlog; otherwise it names the first
-// disqualifying fact, in a fixed order so the same stream always yields
-// the same reason. Capture-file health (attached, present, readable,
-// headed) is the facade's judgment, not this one.
+// incompleteObservationReason explains the stream/exit portion of an incomplete
+// harness. The retained driver separately checks the original terminal event,
+// conversion, ownership and actual binary status before asserting completion.
 func incompleteObservationReason(st *streamState, waitErr error, disposition stipulatorv1.HealthDisposition) string {
 	failed := disposition == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED && st.terminal == "fail"
 	if disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY && !failed {
 		return fmt.Sprintf("package disposed %s, not HEALTHY; the testlog flush is unproven", disposition)
 	}
 	if st.terminal != "pass" && !failed {
-		// The healthy non-pass terminal is "skip": no test binary ran (no
-		// test files), so no process observed anything.
 		return "no test process ran (terminal " + st.terminal + ")"
 	}
 	if st.sawAbort {
 		return "abort output observed in the stream; the testlog flush cannot be trusted"
 	}
-	if names := startedTests(st); len(names) > 0 {
+	if len(startedTests(st)) > 0 {
 		return "tests started but unfinished; the process died before its testlog flushed"
 	}
 	if failed {
@@ -241,35 +143,15 @@ func incompleteObservationReason(st *streamState, waitErr error, disposition sti
 		}
 		return "failing process has no completed failing test; the testlog flush is unproven"
 	}
-	// Defense in depth: classifyRun grants HEALTHY only under a nil
-	// waitErr, so no production path reaches this branch — it guards the
-	// conjunction's own completeness, not a reachable state.
 	if waitErr != nil {
 		return fmt.Sprintf("process exited with failure: %v", waitErr)
 	}
 	return ""
 }
 
-// witnessProcessEnv mirrors cmd/go's test-process environment for
-// observation ingestion: the frozen witness environment with PWD set to
-// the package directory where cmd/go starts the binary. The facade
-// refuses a PWD that does not name the frame's package directory. The
-// compiling command instead keeps its invocation-directory PWD; it must
-// not borrow the later test process's coordinate. Both environments
-// share the width derivation through witnessEnvOf.
-func witnessProcessEnv(n *NormalizedInvocation, frame observationFrame) []string {
-	env := witnessEnvOf(n)
-	if frame.frame.PkgDir == "" {
-		return env
-	}
-	return gotool.SetEnv(env, "PWD", frame.frame.PkgDir)
-}
-
-// witnessEnvOf is every consumer's road to the invocation's witness
-// environment: the normalization-time derivation (n.WitnessEnv, whose
-// field doc carries the one-derivation rationale). The fallback
-// re-derivation exists only for hand-built values in tests -
-// production invocations always pass through NormalizeInvocation.
+// witnessEnvOf reads the once-derived compilation environment. The fallback is
+// for hand-built test invocations; production execution finalizes allocation
+// before capture or spawn.
 func witnessEnvOf(n *NormalizedInvocation) []string {
 	if n.WitnessEnv != nil {
 		return n.WitnessEnv
@@ -277,19 +159,6 @@ func witnessEnvOf(n *NormalizedInvocation) []string {
 	return witnessWidthEnv(n)
 }
 
-// witnessWidthEnv derives the witness environment: the frozen
-// invocation environment with the unit's inner-parallelism cap applied
-// as GOMAXPROCS - the one entry the go tool's build workers and -p
-// default, and the test binary's scheduler and -parallel default, all
-// honor; an explicit flag is deliberately not emitted because it would
-// override an environment bound the default never does. The cap only
-// ever narrows: an environment already carrying a narrower positive
-// GOMAXPROCS keeps it. One derivation serves capture-group identity,
-// the group engine's producer env, spawn, and ingest (see
-// NormalizedInvocation.WitnessEnv): a witness that reads GOMAXPROCS
-// records the value its process actually saw, and a moved width
-// stales the group's evidence through the measurement guard's
-// runtime-config digest.
 func witnessWidthEnv(n *NormalizedInvocation) []string {
 	width := witnessChildWidth(n)
 	if v, ok := lookupEnv(n.Env, "GOMAXPROCS"); ok {
@@ -300,9 +169,6 @@ func witnessWidthEnv(n *NormalizedInvocation) []string {
 	return gotool.SetEnv(n.Env, "GOMAXPROCS", strconv.Itoa(width))
 }
 
-// incompleteObservation is the fail-closed record: a launched process
-// whose testlog flush is unproven owns an observation carrying only its
-// reason.
 func incompleteObservation(pkg string, producer *stipulatorv1.ProducerIdentity, reason string) *ProcessObservation {
 	wire := &stipulatorv1.Observation{}
 	wire.SetProducer(producer)
@@ -311,16 +177,10 @@ func incompleteObservation(pkg string, producer *stipulatorv1.ProducerIdentity, 
 	return &ProcessObservation{Wire: wire}
 }
 
-// processIdentity names one launched process for gofresh's process
-// provenance: unique within the execution (the spawn ordinal
-// disambiguates pid reuse) and stable for the same process.
 func processIdentity(n *NormalizedInvocation, producer *stipulatorv1.ProducerIdentity, pkg string) string {
 	return fmt.Sprintf("%s#%d:%s", n.Name, producer.GetProcessOrdinal(), pkg)
 }
 
-// resolvedConfig renders the invocation's resolved pin-at-load
-// configuration for its evidentiary record: what actually ran, reviewable
-// after the fact.
 func resolvedConfig(n *NormalizedInvocation) *stipulatorv1.GoResolvedConfig {
 	rc := &stipulatorv1.GoResolvedConfig{}
 	rc.SetToolchain(n.Toolchain)
@@ -332,5 +192,7 @@ func resolvedConfig(n *NormalizedInvocation) *stipulatorv1.GoResolvedConfig {
 	rc.SetWorkspaceOn(n.WorkspaceOn)
 	rc.SetRace(n.Race)
 	rc.SetPlainWitness(n.PlainWitness)
+	rc.SetLinkerAssignments(append([]string(nil), n.LinkerAssignments...))
+	rc.SetInputFiles(inputFilePaths(n.InputFiles))
 	return rc
 }

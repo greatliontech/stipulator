@@ -15,8 +15,9 @@ import (
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
-func reusedLedgerRecord() Record {
-	return Record{Group: "group", Package: "example.com/p", Test: "TestA", Fingerprint: ledgerFingerprint(strings.Repeat("e", 32)), CompartmentLedger: simpleLedger("TestA"), Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
+func reusedLedgerRecord(t *testing.T) Record {
+	t.Helper()
+	return Record{Group: "group", Package: "example.com/p", Test: "TestA", Fingerprint: ledgerFingerprint(t, strings.Repeat("e", 32)), CompartmentLedger: simpleLedger("TestA"), Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
 }
 
 // The installer starts in another process after the collector's final snapshot.
@@ -25,7 +26,7 @@ func reusedLedgerRecord() Record {
 func TestCollectorsSerializeOldLedgerReuseAcrossProcesses(t *testing.T) {
 	if dir := os.Getenv("STIPULATOR_LEDGER_INSTALL"); dir != "" {
 		fmt.Println("attempting install")
-		if err := Install(t.Context(), dir, reusedLedgerRecord()); err != nil {
+		if err := Install(t.Context(), dir, reusedLedgerRecord(t)); err != nil {
 			t.Fatal(err)
 		}
 		return
@@ -35,7 +36,7 @@ func TestCollectorsSerializeOldLedgerReuseAcrossProcesses(t *testing.T) {
 		t.Run(collect, func(t *testing.T) {
 			t.Setenv("XDG_CACHE_HOME", t.TempDir())
 			dir := t.TempDir()
-			rec := reusedLedgerRecord()
+			rec := reusedLedgerRecord(t)
 			if err := Install(t.Context(), dir, rec); err != nil {
 				t.Fatal(err)
 			}
@@ -107,7 +108,7 @@ func TestCollectorsSerializeOldLedgerReuseAcrossProcesses(t *testing.T) {
 			if got := LoadLedger(dir, rec); got == nil {
 				t.Fatal("collector removed the concurrently reused ledger")
 			}
-			if got := Load(t.Context(), dir); len(got) != 1 {
+			if got := Load(t.Context(), dir).Records; len(got) != 1 {
 				t.Fatalf("installer's record lost: %v", got)
 			}
 		})

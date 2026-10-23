@@ -46,6 +46,20 @@ func projected(res *mcp.CallToolResult, m proto.Message) (*mcp.CallToolResult, m
 	if err != nil {
 		return nil, nil, err
 	}
+	// Every account-bearing payload has one root home. The text channel
+	// points there without repeating refusal details or enumerating rows.
+	if carrier, ok := m.(interface {
+		GetWitnessCacheLoad() *stipulatorv1.WitnessCacheLoadAccount
+	}); ok {
+		if account := carrier.GetWitnessCacheLoad(); account != nil {
+			line := fmt.Sprintf("witness cache: %d observed refusals", uint64(len(account.GetRefusals()))+account.GetOmitted())
+			if account.GetIncomplete() {
+				line += "; incomplete"
+			}
+			line += "; see witnessCacheLoad"
+			res.Content = append(res.Content, &mcp.TextContent{Text: line})
+		}
+	}
 	return res, out, nil
 }
 

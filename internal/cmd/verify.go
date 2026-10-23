@@ -33,7 +33,7 @@ func verifyCmd() *cobra.Command {
 			if err := validateScoped(scope, views.ValidateVerifyView, view); err != nil {
 				return err
 			}
-			prepared, rep, testRun, err := verifyrun.Run(cmd.Context(), cliDeps(), noTest, scope.Ids)
+			prepared, rep, testRun, err := verifyrun.Run(cmd.Context(), cliDeps(os.Stderr), noTest, scope.Ids)
 			if err != nil {
 				return withRecordPath(err)
 			}

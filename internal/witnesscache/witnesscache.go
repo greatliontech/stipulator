@@ -24,6 +24,7 @@ import (
 	"github.com/greatliontech/gofresh/closure/testvariant"
 	"github.com/greatliontech/gofresh/runtimeinput"
 
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
@@ -239,22 +240,33 @@ type Record struct {
 	// those surfaces and serves only while the current policy still
 	// asserts each one. Absent means the capture ran with no reviewed
 	// exclusions (the built-in pair is tool semantics, never recorded).
+	// Entries are strictly increasing in lexicographic string order.
 	ObservationExclusions []string `json:"observationExclusions,omitempty"`
 	// ObservationNamespaces is the canonical reviewed scratch namespace
 	// set the record's observation was captured under: a read inside one
 	// entered no identity, so the evidence proves nothing about such a
 	// surface once the policy no longer declares the namespace, and the
 	// record serves only while each is still declared. Absent means the
-	// capture ran with none.
+	// capture ran with none. Entries are strictly increasing under
+	// CompareScratchNamespaces.
 	ObservationNamespaces []ScratchNamespace `json:"observationNamespaces,omitempty"`
 }
 
-// ScratchNamespace is one reviewed in-module run-scratch namespace as
-// the record carries it: a module-relative directory and a
+// ScratchNamespace is one reviewed run-scratch namespace as
+// the record carries it: a verification-tree-relative directory and a
 // single-component name pattern.
 type ScratchNamespace struct {
 	Dir     string `json:"dir"`
 	Pattern string `json:"pattern"`
+}
+
+// CompareScratchNamespaces orders namespace declarations lexicographically by
+// directory, then by pattern. Equal pairs denote the same recorded declaration.
+func CompareScratchNamespaces(a, b ScratchNamespace) int {
+	if order := strings.Compare(a.Dir, b.Dir); order != 0 {
+		return order
+	}
+	return strings.Compare(a.Pattern, b.Pattern)
 }
 
 func isJSONNull(value json.RawMessage) bool {
@@ -291,8 +303,9 @@ type entry struct {
 // state change produced — the one that proves equivalent whenever the tree has
 // not alternated since. Ledgers no record file names are reclaimed here: the
 // ledger store is bounded by the record store, whose variant bound evicts
-// records without reading them.
-func Load(ctx context.Context, dir string) []Record {
+// records without reading them. Account retains bounded advisory refusals from
+// the initial name snapshot; cancellation returns it incomplete with no records.
+func Load(ctx context.Context, dir string) LoadResult {
 	return loadSince(ctx, dir, time.Now())
 }
 
@@ -303,32 +316,29 @@ var betweenScans func()
 
 // loadSince is Load with the moment the load is taken to begin: a
 // ledger no younger than it is a concurrent install's and is spared.
-func loadSince(ctx context.Context, dir string, started time.Time) []Record {
-	if ctx.Err() != nil {
-		return nil
+func loadSince(ctx context.Context, dir string, started time.Time) LoadResult {
+	var result LoadResult
+	if err := ctx.Err(); err != nil {
+		return result.incomplete("load witness records", err)
 	}
 	store, err := open(dir)
 	if err != nil {
-		return nil
+		return result.incomplete("discover witness store", err)
 	}
 	names, err := store.Names()
-	if err != nil {
-		return nil
+	if cancelErr := ctx.Err(); cancelErr != nil {
+		return result.incomplete("list witness records", cancelErr)
 	}
-	var records []Record
+	if err != nil {
+		if os.IsNotExist(err) {
+			return result
+		}
+		return result.incomplete("list witness records", err)
+	}
 	referenced := map[string]bool{}
-	for _, name := range names {
-		if ctx.Err() != nil {
-			return nil
-		}
-		data, _ := store.Read(name)
-		rec, digest, ok := loadEntry(name, data, dir)
-		if digest != "" {
-			referenced[digest] = true
-		}
-		if ok {
-			records = append(records, rec)
-		}
+	result = scanRecords(ctx, dir, store, names, referenced)
+	if result.Account.GetIncomplete() {
+		return result
 	}
 	if betweenScans != nil {
 		betweenScans()
@@ -336,18 +346,22 @@ func loadSince(ctx context.Context, dir string, started time.Time) []Record {
 	// The reference snapshot and reclamation share the install lock. This
 	// includes old ledgers reused without a rewrite: age alone cannot protect
 	// them while a new referring record is between its reuse check and rename.
-	if ctx.Err() != nil {
-		return nil
+	if err := ctx.Err(); err != nil {
+		return result.incomplete("retain witness ledgers", err)
 	}
 	if lock, err := store.TryLock(); err == nil {
 		defer lock.Close()
 		if late, err := store.Names(); err == nil {
 			for _, name := range late {
-				if ctx.Err() != nil {
-					return nil
+				if err := ctx.Err(); err != nil {
+					return result.incomplete("retain witness ledgers", err)
 				}
-				data, _ := store.Read(name)
-				if _, digest, _ := loadEntry(name, data, dir); digest != "" {
+				data, err := store.Read(name)
+				if err != nil {
+					continue // Retention only: no initial-snapshot observation.
+				}
+				fields, _ := envelopeFields(data)
+				if digest := ledgerReference(fields); digest != "" {
 					referenced[digest] = true
 				}
 			}
@@ -357,68 +371,112 @@ func loadSince(ctx context.Context, dir string, started time.Time) []Record {
 			sweepLedgers(ctx, store.Path(), referenced, started)
 		}
 	}
-	if ctx.Err() != nil {
-		return nil
+	if err := ctx.Err(); err != nil {
+		return result.incomplete("retain witness ledgers", err)
 	}
-	return records
+	return result
 }
 
 // beforeLedgerSweep observes the protected interval after the last reference
 // snapshot and before deletion. Tests start a competing process at this point.
 var beforeLedgerSweep func()
 
+// entryAssessment keeps evidence admission, weak retention references and
+// advisory refusal metadata separate. A refused entry carries no record.
+type entryAssessment struct {
+	record  *Record
+	ledger  string
+	refusal *stipulatorv1.WitnessCacheRefusal
+}
+
 // loadEntry reads one variant file: the record when it is valid, and
 // the ledger key whenever its complete coordinate parses — a refused
 // record's ledger is kept referenced: every refusal
 // here is the record's own bytes' (a field that fails the format, a
-// manifest that does not decode as canonical Gofresh v2), and keeping
+// manifest that does not decode as canonical Gofresh v3), and keeping
 // a refused record's ledger costs nothing, so a refusal costs the
 // record's execution and nothing more.
-func loadEntry(name string, data []byte, dir string) (Record, string, bool) {
-	rec, digest, ok := decodeRecord(name, data)
-	if !ok {
-		return Record{}, digest, false
+func loadEntry(name string, data []byte, dir string) entryAssessment {
+	rec, digest, cause, detail := decodeEnvelope(name, data)
+	if cause != stipulatorv1.WitnessCacheRefusalCause_WITNESS_CACHE_REFUSAL_CAUSE_UNSPECIFIED {
+		return entryAssessment{ledger: digest, refusal: refusal(name, cause, detail, nil)}
 	}
 	proof := rec.Fingerprint.ObservationProof
 	if (proof != (gofresh.ObservationProof{}) && (proof.Subject.Package != rec.Package || proof.Subject.Symbol != rec.Test)) ||
-		!validOutcomes(rec) || !validFingerprint(rec.Fingerprint, dir) {
-		return Record{}, digest, false
+		!validOutcomes(rec) || !validFingerprint(rec.Fingerprint) {
+		return entryAssessment{ledger: digest, refusal: refusal(name, stipulatorv1.WitnessCacheRefusalCause_WITNESS_CACHE_REFUSAL_CAUSE_EVIDENCE_STRUCTURE, "invalid fingerprint, subject agreement or outcomes", nil)}
 	}
-	return rec, digest, true
+	if _, err := runtimeinput.Describe(rec.Fingerprint.RuntimeInputs, dir); err != nil {
+		return entryAssessment{ledger: digest, refusal: refusal(name, stipulatorv1.WitnessCacheRefusalCause_WITNESS_CACHE_REFUSAL_CAUSE_RUNTIME_MANIFEST, err.Error(), &rec)}
+	}
+	return entryAssessment{record: &rec, ledger: digest}
 }
 
-// decodeRecord is the one admission every reader of a variant file
-// shares — the loader and the garbage collector alike: the file
+// decodeRecord exposes the shared envelope admission to garbage collection:
+// the file
 // parses whole, is of this version, carries its identity, and is named
 // by its content; the ledger key is returned whenever its complete
 // coordinate parses, so a refused record's ledger stays referenced. What
-// a file passes here and still fails is the record's own shape
-// judgment (validFingerprint), never the store's; whether it then
+// a file passes here and still fails is the record's evidence structure or
+// runtime manifest admission; whether it then
 // serves is the engine's currency comparison against the tree.
 func decodeRecord(name string, data []byte) (Record, string, bool) {
-	fields, nonNull := envelopeFields(data)
+	rec, digest, cause, _ := decodeEnvelope(name, data)
+	return rec, digest, cause == stipulatorv1.WitnessCacheRefusalCause_WITNESS_CACHE_REFUSAL_CAUSE_UNSPECIFIED
+}
+
+func decodeEnvelope(name string, data []byte) (Record, string, stipulatorv1.WitnessCacheRefusalCause, string) {
+	fields, canonical := envelopeFields(data)
 	digest := ledgerReference(fields)
-	if !nonNull {
-		return Record{}, digest, false
+	refuse := func(detail string) (Record, string, stipulatorv1.WitnessCacheRefusalCause, string) {
+		return Record{}, digest, stipulatorv1.WitnessCacheRefusalCause_WITNESS_CACHE_REFUSAL_CAUSE_ENVELOPE, detail
+	}
+	if !canonical {
+		return refuse("malformed envelope or noncanonical, duplicated, unknown or null member")
+	}
+	for _, required := range []string{"version", "group", "package", "test", "fingerprint", "outcomes"} {
+		if _, ok := fields[required]; !ok {
+			return refuse("missing envelope member: " + required)
+		}
+	}
+	if !canonicalCollections(fields) {
+		return refuse("noncanonical outcomes, registrations or observation collections")
 	}
 	var e entry
+	// Decode the outer member shapes independently of the native fingerprint
+	// codec, so each refusal is classified by its operation, not error text.
+	wire := struct {
+		*entry
+		Fingerprint json.RawMessage `json:"fingerprint"`
+	}{entry: &e}
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
-	if dec.Decode(&e) != nil || e.Version != version {
-		return Record{}, digest, false
+	if err := dec.Decode(&wire); err != nil {
+		return refuse(err.Error())
+	}
+	if e.Version != version {
+		return refuse(fmt.Sprintf("unsupported witness record version %d", e.Version))
+	}
+	if !strictlyOrdered(e.ObservationExclusions, strings.Compare) || !strictlyOrdered(e.ObservationNamespaces, CompareScratchNamespaces) {
+		return refuse("reviewed exclusion and namespace sets must be strictly ordered and unique")
+	}
+	if err := json.Unmarshal(wire.Fingerprint, &e.Fingerprint); err != nil {
+		return Record{}, digest, stipulatorv1.WitnessCacheRefusalCause_WITNESS_CACHE_REFUSAL_CAUSE_EVIDENCE_STRUCTURE, err.Error()
 	}
 	rec := Record{Group: e.Group, Package: e.Package, Test: e.Test, Fingerprint: e.Fingerprint, Outcomes: e.Outcomes, Regs: e.Regs, ObservationExclusions: e.ObservationExclusions, ObservationNamespaces: e.ObservationNamespaces}
 	if rec.Group == "" || rec.Package == "" || rec.Test == "" {
-		return Record{}, digest, false
+		return refuse("missing witness identity")
 	}
-	// A decoded fingerprint passed Gofresh's decoder, whose ladder is the
-	// encoder's, so it always names a file; a file without the member
-	// decodes to the zero fingerprint, whose empty name matches no file.
-	want, _ := fileName(rec)
+	// Compare against the native fingerprint's canonical encoding, never the
+	// display spelling used by refusal diagnostics.
+	want, err := fileName(rec)
+	if err != nil {
+		return refuse(err.Error())
+	}
 	if name != want {
-		return Record{}, digest, false
+		return refuse("filename disagrees with record identity or fingerprint")
 	}
-	return rec, digest, true
+	return rec, digest, stipulatorv1.WitnessCacheRefusalCause_WITNESS_CACHE_REFUSAL_CAUSE_UNSPECIFIED, ""
 }
 
 // sweepLedgers removes every ledger file whose digest no record file
@@ -683,27 +741,16 @@ func validOutcomes(rec Record) bool {
 	return true
 }
 
-// valid is the record's shape judgment — every field the format
-// requires, well-formed, the runtime-input manifest decoding as
-// canonical Gofresh v1 under the tree root (Describe, whose refusal
-// set is the decoder's plus the root's absolute form, which every
-// caller's absolute root meets). Whether the manifest's inputs are
-// current is gofresh's fingerprint tier's comparison, never a judgment
-// here: recomputing the manifest faults on nothing beyond this
-// judgment but a cancellation or the environment's normalization — a
-// path that cannot be hashed is an unverifiable mark, not an error —
-// and this judgment reads no environment, so a duplicate key in the
-// ambient environment no longer refuses every record of the store as
-// the recomputation once did.
 // validFingerprint is this store's own completeness over a decoded
 // record: every serving tier present and well-formed, and a code result
 // — Gofresh's decoder having judged the form, and its ladder having
 // refused a measurement guard on a code result, so the predicate does
 // not restate that.
-func validFingerprint(f Fingerprint, dir string) bool {
-	_, manifestErr := runtimeinput.Describe(f.RuntimeInputs, dir)
+// Runtime manifest admission is a separate operation after this judgment, so
+// only a fully attributed structure may carry a runtime refusal coordinate.
+func validFingerprint(f Fingerprint) bool {
 	return ValidDigest(f.MaximalClosure) && ValidDigest(f.TestVariantClosure) && ValidDigest(f.EffectiveTestVariantClosure()) && f.Guards.Toolchain != "" && ValidDigest(f.Guards.BuildConfig) &&
-		validObservation(f) && validPurity(f.PurityAssertion) && manifestErr == nil && ValidDigest(f.RuntimeDigest) &&
+		validObservation(f) && validPurity(f.PurityAssertion) && ValidDigest(f.RuntimeDigest) &&
 		f.ResultKind == gofresh.CodeResult
 }
 
@@ -715,8 +762,10 @@ func validObservation(f Fingerprint) bool {
 	if absent {
 		return false
 	}
+	// Strategy compatibility is the current Gofresh view's judgment. A
+	// structurally valid historical proof remains readable without acquiring
+	// current proof integrity or outcome support.
 	return f.ObservationAssertion == "caller assertion" &&
-		f.ObservationProof.Strategy == gofresh.ObservationRTA &&
 		f.ObservationProof.Subject.Package != "" && f.ObservationProof.Subject.Symbol != "" &&
 		f.ObservationProof.Observable == (f.ObservationProof.Reason == "") &&
 		ValidDigest(f.ObservationProof.Evidence)

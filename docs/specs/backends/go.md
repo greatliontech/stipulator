@@ -40,7 +40,8 @@ nothing stands beside them, and only an all-versions replace standing
 above the requires it supersedes — derived from the committed tree
 alone, so one commit yields one attribution on every run, and rendered
 single-line beside the loader's own diagnostic with its position where
-the loader supplies one; an in-tree failure, an unrecognized shape, and
+the loader supplies one. Apart from a separately established disposable-export
+failure under REQ-go-export-cache-failure, an in-tree failure, an unrecognized shape, and
 a package whose own module cannot be identified surface the loader's
 diagnostic unchanged, never a guessed attribution; the witness
 classifier — the backend surface every class rendering consumes —
@@ -48,6 +49,21 @@ answers an unloadable bound symbol with the load failure as its verdict
 rather than a class derived from the absent body, so no consumer can
 present the absence as a classification, while the user-facing naming
 of the state rides the resolution error's verification problem.
+
+**REQ-go-export-cache-failure** (behavior): A typed-load failure with an
+established missing disposable export dependency MUST name the affected
+package and missing export and give an actionable rebuild or retry remedy
+under the same selected directory, environment and build flags. The class
+requires structured dependency/export metadata and an observed absence within
+the effective selected Go build cache; diagnostic text alone, an ordinary
+source error, or an unexamined path cannot establish it. The loader's original
+diagnostic remains available, and a missing export does not establish why the
+cache entry disappeared. A bounded refresh under the same selection is
+permitted; an unsuccessful or unattempted refresh leaves the operation
+explicitly refused. Neither path may substitute a
+previous typed answer, widen the selection, or turn an unresolved load into
+an absent declaration or successful witness classification. Unrelated package
+answers retain their own load disposition.
 
 **REQ-go-build-selections** (behavior): Symbol resolution MUST span the
 accepted policy's build-selection dimensions - one package view per
@@ -108,13 +124,107 @@ implicitly added to the conservation universe.
 
 ## Witnesses
 
-**REQ-go-witness** (behavior): Witnesses MUST be derived from `go test -json`
-output produced in the current verification run, correlating passed tests
+**REQ-go-linker-selection** (behavior): An invocation declaring
+`linker_strings` MUST preserve these selection and authority obligations:
+
+- **admission** — Go string-variable linker assignments are sorted by
+  `(package, variable)` with no duplicate target. Each entry names an import path
+  and Go identifier and exactly one source: literal `value` (including empty), or
+  `value_environment`, a nonempty portable environment-variable name. Environment
+  sources resolve once from the admitted invocation environment after its denials
+  and overrides; unset or empty environment values refuse. Values contain only
+  printable ASCII without whitespace, quotes or backslashes; unsupported values
+  refuse rather than being expanded or truncated. The closed selection supplies
+  only `-X package.variable=value`, never arbitrary linker flags, pattern overrides,
+  shell commands or source substitutions. The linker's own applicability rules
+  still apply: an assignment does not prove a target is linked, is an eligible
+  string variable, or is consumed by a test.
+- **propagation** — The same resolved assignments reach every retained test
+  compilation and native build description, including whole-policy execution,
+  selective witnesses and rebuilds or isolation retries. Sharing an artifact
+  preserves its selection; another attempt cannot fall back to an unlinked
+  default. These assignments partition capture groups and build guards; declared
+  targets and value sources partition record identity. An environment-resolved
+  value is a producing build input, not a new declared record coordinate.
+  Invocation reports retain the resolved assignments. Existing invocations without
+  assignments retain their record coordinates.
+- **authority** — Ambient and explicit GOFLAGS still refuse `-ldflags` and
+  unsupported substitution controls; binary `args` is not another build-flag
+  channel. CLI and MCP use the same policy normalization and execution. Selection
+  governs the runner's own compilation, not child builds a test independently owns.
+  Producing a value and establishing its claimed relation to source remain the
+  consumer producer's responsibility, not a policy hook or build certification.
+
+**REQ-go-invocation-input-files** (behavior): An invocation declaring
+`input_files_from_environment` MUST preserve these selection and authority
+obligations:
+
+- **admission** — The declaration is a sorted unique list of portable environment
+  names. After environment denials and overrides, each name resolves once to a
+  clean absolute file path. Absent or empty values and duplicate paths refuse
+  admission. Before execution, each selected input is an existing regular file
+  without symlink components and raw-byte eligible under the native observation
+  owner's actual producing directory, complete environment and classification
+  declarations. Excluded, recordless, projected or unverifiable inputs refuse;
+  no consumer prefix approximation or bracket override can confer eligibility.
+- **attempt-binding** — Before execution or warm checking, the prepared actual or
+  prospective retained runtime environment is validated for this eligibility and
+  each selecting environment value's agreement with its frozen association. Every
+  execution attempt repeats this validation. Failure prevents execution or serving
+  under that invalid selection, even when native freshness preparation is otherwise
+  unavailable; it creates neither observations nor a new historical-record judgment.
+- **evidence** — Exactly the selected files augment the ordinary observation
+  bracket; their parents and siblings gain no admission. The resolved paths appear
+  in invocation reports, and the declarations participate in record identity.
+  Declaration does not claim that each test reads the file. An observed dependency
+  still requires the actual read and its independently governed observation,
+  outcome, closing and current-check obligations. A matching content guard neither
+  validates assertions inside a manifest nor establishes that it describes the
+  source actually built. These declarations execute no producer, create no missing
+  file or observation, and grant no purity or semantic approval. The consumer
+  retains any required producer lifecycle, source-to-manifest relationship and
+  hold-still obligations.
+
+**REQ-go-witness** (behavior): Witnesses MUST be derived from Go test JSON
+events produced in the current verification run, correlating passed tests
 with bindings of role `tests` or `proves` — both name executable test
 symbols; toolchain cache replays are current-run
 equivalent (the cache key is the tree content), and a bound test producing
 no outcome in a witnessed run is unwitnessed and reads as `broken`; a
 skipped test grants no witness without reading as `broken`.
+
+**REQ-go-retained-test-execution** (behavior): Package execution MUST build a
+retained test artifact under the admitted complete compilation description,
+then execute that artifact under its package-runtime description. Compilation
+and execution cannot exchange environments or working directories. The build
+retains Go's package compilation and vet semantics, including build failures
+and packages with no runnable test artifact; a package without an executed
+test process gains no fabricated execution or observation evidence.
+The complete actual runnable roster is fixed before the process begins;
+original executions and isolation retries own separate native transactions,
+even when they reuse an unchanged artifact and immutable preparation facts.
+Stipulator's owned, bounded streaming conversion of the Go test output protocol
+supplies the JSON event stream without owning or replacing the test binary's
+termination. Framing and escape interpretation are independent of input read or
+write segmentation. EOF emits an unterminated fragment as diagnostic output,
+then flushes already-parsed per-test reports exactly once; it never completes a
+fragment into framing or invents a package PASS or FAIL. Conversion introduces
+no synthetic test-output framing and retains no whole-stream or unbounded
+physical-line buffer or spool. The binary's
+exact exit status, signal, original harness completion and conversion success
+remain separate facts. A synthesized package-health event cannot establish
+process completion, and conversion failure cannot yield a complete witnessed
+stream. Build, execution and conversion remain inside the owning cancellation
+and process-accounting boundary, with their actual descendants accounted for.
+Retained execution preserves the accepted invocation's runtime flags from
+GOFLAGS, typed configuration and raw arguments, including their ordering,
+precedence and positional parsing. It also preserves Go's runtime PATH,
+coverage and profile output behavior, fuzz-seed replay, examples, TestMain and
+timeout semantics under the policy. Runtime output handling cannot substitute
+converter success for a failed or incomplete test process, nor turn a passing
+test prefix into package health. Native finalization and checking provide the
+reusable evidence and judgments; consumer publication selects an independently
+eligible attempt without rebuilding the native evidence-selection ladder.
 
 **REQ-go-witness-class** (behavior): A witness MUST be classified `proof`
 when its bound test's own body directly invokes the `stipulate/structural`
@@ -163,9 +273,11 @@ A runnable fuzz declaration retains its harness-derived property class when
 implemented by a linked function rather than a Go body.
 
 **REQ-go-race** (behavior): A Go witness MUST derive only from a
-race-enabled policy invocation, so every witness is race-attributed; an
-accepted invocation running without the race detector contributes suite
-health exactly like any other invocation and grants no witness evidence.
+race-enabled policy invocation or a non-race invocation explicitly admitted
+through `plain_witness`, with tier attribution following
+REQ-check-witness-selection. An accepted non-race invocation without that
+admission contributes suite health exactly like any other invocation and
+grants no witness evidence.
 
 **REQ-go-policy-complete** (behavior): A Go policy execution MUST conserve
 the complete suite semantics of its invocations: package build and exit
@@ -240,13 +352,12 @@ descendant the boundary sweeps — memoized per package directory and
 environment for the judged operation's life) through it with a probe's
 bounded reap; the provenance probe (`go env GOVERSION`, naming its
 key, so forking nothing) runs through a plain runner in its caller's
-group with the bounded reap; a witness process's stream is
-read to its end by the invocation itself, so a descendant it left
-holding its standard output delays the stream's end until the
-envelope's expiry sweeps the group, and a descendant holding its
-standard error alone past the wait delay after the process exited on
-its own truncates the diagnostic residue, never the verdict, which is
-the whole stream's and the exit's; a listing — collected by the
+group with the bounded reap; a retained witness process's standard output
+and standard error form one stream, read to its end by the invocation itself.
+A descendant retaining either output holds that stream open until the
+envelope's expiry sweeps the group; reader completion cannot substitute for
+binary termination, and output drainage cannot end an unfinished binary's
+quit/grace escalation. A listing — collected by the
 boundary, with no wholeness test of its own (a truncation at an object
 boundary reads as a shorter set) — is refused naming the hold whenever
 the wait delay expires before the listing is drained (Gofresh's listing
@@ -261,10 +372,14 @@ rather than through the owned command boundary, run by the resolver
 child's typed views, by the analysis engines the parent process
 hosts, and by a witness's own structural proofs — each swept with the
 operation that owns it),
-`go test` (execution through the owned boundary), and the analysis
-engines' own `go version` and `go env` samples (descendant-free
+`go test -c` (retained compilation through the owned boundary),
+and the analysis engines' own `go version` and `go env` samples (descendant-free
 queries, under the boundary through the engines' runner); every one
-runs under the owned environment.
+runs under the owned environment. Retained test binaries use the runner's
+consumer-program form under the same ownership policy and their admitted
+package-runtime environments. Output conversion runs inside Stipulator under
+the operation's cancellation boundary; it is not a child process. A reader,
+writer or conversion fault cannot establish a complete witnessed stream.
 
 **REQ-go-owned-processes-resolver-child** (behavior): This binary's
 own child, the self-executed resolver child, is no Go child: it MUST be

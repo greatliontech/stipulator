@@ -173,6 +173,10 @@ the full check result
 message and identifier scoping opt-in per call under the same
 refused-typo rule; the summary is a projection of the one result
 message, never a second derivation.
+The advisory witness-cache refusal account follows
+REQ-evidence-witness-cache-refusals: summary truncation preserves the total
+observed refusal count and the incomplete marker without turning a refusal
+into a witness outcome or verdict failure.
 
 **REQ-mcp-views-check-scope** (behavior): Check's identifier scope MUST narrow the
 pass itself, not only the view: it selects the scoped witness-evidence

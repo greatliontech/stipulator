@@ -330,7 +330,7 @@ func TestToolchainSampledInTheTargetModule(t *testing.T) {
 	if _, err := newContext(context.Background(), tmp, nil); err != nil {
 		t.Fatalf("unsampleable member failed the binding context: %v (want the per-view degradation)", err)
 	}
-	if _, err := selectionEngine(context.Background(), tmp, buildSelection{}, newToolchainSample()); err != nil {
+	if _, err := selectionEngine(context.Background(), selectedContextForTest(t, tmp, buildSelection{}), newToolchainSample()); err != nil {
 		t.Fatalf("unsampleable member failed the served selection engine: %v", err)
 	}
 	dirs = nil
@@ -338,7 +338,7 @@ func TestToolchainSampledInTheTargetModule(t *testing.T) {
 		dirs = append(dirs, dir)
 		return runtime.Version(), nil
 	}
-	if _, err := selectionEngine(context.Background(), tmp, buildSelection{}, newToolchainSample()); err != nil {
+	if _, err := selectionEngine(context.Background(), selectedContextForTest(t, tmp, buildSelection{}), newToolchainSample()); err != nil {
 		t.Fatal(err)
 	}
 	seen = map[string]bool{}
@@ -351,7 +351,7 @@ func TestToolchainSampledInTheTargetModule(t *testing.T) {
 		}
 	}
 	toolchainSampleForTest = func(context.Context, string, []string) (string, error) { return "go99.1.0", nil }
-	if _, err := selectionEngine(context.Background(), tmp, buildSelection{}, newToolchainSample()); err == nil || !strings.Contains(err.Error(), "toolchain provenance") {
+	if _, err := selectionEngine(context.Background(), selectedContextForTest(t, tmp, buildSelection{}), newToolchainSample()); err == nil || !strings.Contains(err.Error(), "toolchain provenance") {
 		t.Fatalf("skewed served selection engine = %v, want the skew refusal", err)
 	}
 }
@@ -688,12 +688,12 @@ func TestServedSelectionEngineRefusesAnUnsatisfiedPin(t *testing.T) {
 	dir := buildSelectionModule(t)
 	local := hostGoVersion(t)
 	sample := func(_ context.Context, dir string, env []string) (string, error) { return local, nil }
-	if _, err := selectionEngine(context.Background(), dir, buildSelection{tags: []string{"dst"}, toolchain: "go1.26.5"}, sample); err == nil || !strings.Contains(err.Error(), `member "."`) || !strings.Contains(err.Error(), `pin "go1.26.5" is not satisfied`) {
+	if _, err := selectionEngine(context.Background(), selectedContextForTest(t, dir, buildSelection{tags: []string{"dst"}, toolchain: "go1.26.5"}), sample); err == nil || !strings.Contains(err.Error(), `member "."`) || !strings.Contains(err.Error(), `pin "go1.26.5" is not satisfied`) {
 		t.Fatalf("the served selection engine under an unsatisfied pin = %v, want the member's pin refusal", err)
 	}
 	// The satisfied leg pins the host's own toolchain: the engine builds
 	// under the local binary, no release fetched.
-	if _, err := selectionEngine(context.Background(), dir, buildSelection{tags: []string{"dst"}, toolchain: local}, sample); err != nil {
+	if _, err := selectionEngine(context.Background(), selectedContextForTest(t, dir, buildSelection{tags: []string{"dst"}, toolchain: local}), sample); err != nil {
 		t.Fatalf("the served selection engine under a satisfied pin: %v", err)
 	}
 }

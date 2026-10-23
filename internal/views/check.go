@@ -114,6 +114,7 @@ func scopeCheck(res *stipulatorv1.CheckResult, ids []string) *stipulatorv1.Check
 // red rows, and heading-only diagnostics.
 func checkSummary(res *stipulatorv1.CheckResult) *stipulatorv1.CheckSummary {
 	out := &stipulatorv1.CheckSummary{}
+	out.SetWitnessCacheLoad(WitnessCacheLoadSummary(res.GetWitnessCacheLoad()))
 	out.SetPassed(res.GetPassed())
 	out.SetSuiteHealthJudged(res.GetSuiteHealthJudged())
 	if ex := res.GetExecution(); ex != nil {

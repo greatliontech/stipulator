@@ -87,7 +87,28 @@ func execute(ctx context.Context, args []string, sink func(*stipulatorv1.Progres
 	// start (gofresh's resident.InstallCeiling) — and states it with the
 	// resident datum.
 	resident.InstallCeiling()
-	prog := progress.New(sink, progress.WithResident(resident.Sample))
+	gate, _, _ := root.Find([]string{"gate"})
+	quietGate := func() bool {
+		quiet, _ := gate.Flags().GetBool("quiet")
+		return quiet
+	}
+	// Cobra has parsed the selected command's flags before its first
+	// progress event. Quiet gate calls retain tracking, but render neither
+	// live progress nor normal-verdict timings. Fault and interruption
+	// endings still report their operational account.
+	prog := progress.New(func(event *stipulatorv1.ProgressEvent) {
+		if quietGate() {
+			switch event.GetTerminalCause() {
+			case stipulatorv1.TerminalCause_TERMINAL_CAUSE_UNSPECIFIED,
+				stipulatorv1.TerminalCause_TERMINAL_CAUSE_COMPLETED,
+				stipulatorv1.TerminalCause_TERMINAL_CAUSE_TEST_FAILURE:
+				return
+			}
+		}
+		if sink != nil {
+			sink(event)
+		}
+	}, progress.WithResident(resident.Sample))
 	err := root.ExecuteContext(progress.NewContext(ctx, prog))
 	var verdict ExitStatus
 	switch {
@@ -98,7 +119,7 @@ func execute(ctx context.Context, args []string, sink func(*stipulatorv1.Progres
 		prog.Seal(stipulatorv1.TerminalCause_TERMINAL_CAUSE_DEADLINE)
 		return Interrupted{Cause: ctx.Err()}
 	default:
-		if stamps := prog.Stamps(); stamps != "" {
+		if stamps := prog.Stamps(); stamps != "" && (!quietGate() || (err != nil && !errors.As(err, &verdict))) {
 			fmt.Fprintln(status, stamps)
 		}
 		switch {
@@ -176,9 +197,9 @@ func newRootCmd() *cobra.Command {
 
 // mustPrepare gathers an operation's held inputs — corpus, records,
 // coverage policy, record hygiene — before its first child process
-// (REQ-check-preparation), rendering compile diagnostics as mustCompile
-// does: errors end the command.
-func mustPrepare(dir string) (*check.Prepared, error) {
+// (REQ-check-preparation), rendering compile diagnostics on w: errors end
+// the command independently of whether the caller displays them.
+func mustPrepare(w io.Writer, dir string) (*check.Prepared, error) {
 	prepared, err := check.Prepare(os.DirFS(dir))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) && strings.Contains(err.Error(), corpus.ManifestPath) {
@@ -186,7 +207,7 @@ func mustPrepare(dir string) (*check.Prepared, error) {
 		}
 		return nil, err
 	}
-	if _, err := mustClean(prepared.Spec, prepared.Diagnostics); err != nil {
+	if _, err := mustClean(w, prepared.Spec, prepared.Diagnostics); err != nil {
 		return nil, err
 	}
 	return prepared, nil
@@ -233,7 +254,7 @@ func mustCompile(dir string) (*stipulatorv1.Spec, error) {
 		}
 		return nil, err
 	}
-	return mustClean(spec, diags)
+	return mustClean(os.Stderr, spec, diags)
 }
 
 // mustCompileFS compiles a corpus from any filesystem — a git revision's
@@ -246,12 +267,12 @@ func mustCompileFS(fsys fs.FS, label string) (*stipulatorv1.Spec, error) {
 		}
 		return nil, err
 	}
-	return mustClean(spec, diags)
+	return mustClean(os.Stderr, spec, diags)
 }
 
-func mustClean(spec *stipulatorv1.Spec, diags []compile.Diagnostic) (*stipulatorv1.Spec, error) {
+func mustClean(w io.Writer, spec *stipulatorv1.Spec, diags []compile.Diagnostic) (*stipulatorv1.Spec, error) {
 	for _, d := range diags {
-		fmt.Fprintln(os.Stderr, d)
+		fmt.Fprintln(w, d)
 	}
 	if len(compile.Errors(diags)) > 0 {
 		return nil, exitStatus(1)

@@ -132,19 +132,14 @@ func TestAnalysisEnginesRideTheOwnedBoundary(t *testing.T) {
 	}
 }
 
-// A wrapper's pipe hold (REQ-go-owned-processes-runner): a go wrapper that
-// runs the real toolchain and leaves a descendant holding its pipes
-// exits on its own. The witness invocation reads its stream to the end
-// through its own pipe, so a hold on stdout only delays the stream's
-// end, and a hold on stderr alone — the one pipe the wait bounds — ends
-// at the wait delay, truncating residue, never the verdict: the package
-// stays healthy and its outcomes stand under either hold. A listing is
-// collected by the boundary and has no wholeness test: the hold refuses
-// it naming the hold.
+// A retained witness's stdout and stderr share one owned stream. A finite
+// descendant hold on either output delays completion until the descendant
+// releases it, preserving the package's health and passing outcome. A listing
+// has no wholeness test: the same hold past its wait delay refuses the answer.
 func TestWitnessStreamServesAndListingRefusesBehindAPipeHold(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-owned-processes-runner")
 	if testing.Short() {
-		t.Skip("runs the toolchain under a wrapper")
+		t.Skip("builds and runs a retained witness with an output-holding descendant")
 	}
 	for _, hold := range []struct{ name, redirect string }{{"both pipes", ""}, {"stderr alone", " >/dev/null"}} {
 		t.Run(hold.name, func(t *testing.T) { witnessAndListingBehindAHold(t, hold.redirect) })
@@ -158,32 +153,84 @@ func witnessAndListingBehindAHold(t *testing.T, redirect string) {
 		t.Fatal(err)
 	}
 	bin := t.TempDir()
-	script := "#!/bin/sh\ncase \"$1\" in\ntest|list) \"" + goBinary + "\" \"$@\"; s=$?; ( sleep 3 )" + redirect + " & exit $s;;\n*) exec \"" + goBinary + "\" \"$@\";;\nesac\n"
+	listingHold := filepath.Join(bin, "hold-listing")
+	script := "#!/bin/sh\nif [ \"$1\" = list ] && [ -f \"" + listingHold + "\" ]; then \"" + goBinary + "\" \"$@\"; s=$?; ( sleep 3 )" + redirect + " & exit $s; fi\nexec \"" + goBinary + "\" \"$@\"\n"
 	if err := os.WriteFile(filepath.Join(bin, "go"), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	neutralAmbient(t)
-	dir := discoverFixture(t)
+	stdout := ""
+	if redirect == "" {
+		stdout = "c.Stdout = os.Stdout"
+	}
+	dir := writeModule(t, map[string]string{
+		"go.mod": "module example.com/pipehold\n\ngo 1.25\n",
+		"hold_test.go": `package pipehold
+import ("os"; "os/exec"; "testing"; "time")
+func TestPipeHold(t *testing.T) {
+	c := exec.Command("/bin/sh", "-c", "set -e; printf ready > child-ready; /bin/sleep 3; printf released > child-released")
+	c.Stderr = os.Stderr
+	` + stdout + `
+	if err := c.Start(); err != nil { t.Fatal(err) }
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	tick := time.NewTicker(10 * time.Millisecond)
+	defer tick.Stop()
+	for {
+		if ready, err := os.ReadFile("child-ready"); err == nil && string(ready) == "ready" { break }
+		select {
+		case <-tick.C:
+		case <-deadline.C: t.Fatal("output-holding child never became ready")
+		}
+	}
+	if _, err := os.Stat("child-released"); !os.IsNotExist(err) {
+		t.Fatalf("child released before the test could leave its pipes held: %v", err)
+	}
+}
+`,
+	})
 	cfg := &stipulatorv1.GoInvocationConfig{}
 	cfg.SetPackages([]string{"./..."})
 	n, err := NormalizeInvocation(context.Background(), dir, goInvocation("hold", cfg))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := listPackages(context.Background(), n); err == nil || !errors.Is(err, gotool.ErrListingRefused) || !strings.Contains(err.Error(), "invocation \"hold\": go list -e ") {
-		t.Fatalf("a listing behind a pipe hold = %v, want gofresh's listing refusal naming the invocation", err)
+	if _, err := DiscoverInvocation(t.Context(), n); err != nil {
+		t.Fatal(err)
 	}
-	selection := []Obligation{{Kind: ObligationPackage, Package: "example.com/disc/alpha"}}
-	health, tests, _, _, err := ExecuteInvocation(context.Background(), n, selection)
+	selection := []Obligation{{Kind: ObligationPackage, Package: "example.com/pipehold"}}
+	// Observe the marker at process completion, before native closing can
+	// give a child whose stream was prematurely drained time to finish.
+	var released []byte
+	var releaseErr error
+	completed := false
+	previous := beforePackagePublishForTest
+	beforePackagePublishForTest = func(pkg string) {
+		if pkg == "example.com/pipehold" {
+			completed = true
+			released, releaseErr = os.ReadFile(filepath.Join(dir, "child-released"))
+		}
+	}
+	defer func() { beforePackagePublishForTest = previous }()
+	health, tests, diags, _, err := ExecuteInvocation(t.Context(), n, selection)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := health.GetDisposition(); got != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
-		t.Fatalf("witness behind a pipe hold = %v, want HEALTHY", got)
+		t.Fatalf("witness behind a pipe hold = %v, want HEALTHY; diagnostics: %v", got, diags)
 	}
-	if len(tests) == 0 {
-		t.Fatal("the witness stream behind a pipe hold produced no outcomes")
+	if tr := findTest(tests, "example.com/pipehold", "TestPipeHold"); tr == nil || tr.GetOutcome() != stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED {
+		t.Fatalf("witness behind a pipe hold = %v, want TestPipeHold's passing outcome", tr)
+	}
+	if !completed || releaseErr != nil || string(released) != "released" {
+		t.Fatalf("witness completed before its descendant released the stream: completed %v, marker %q, error %v", completed, released, releaseErr)
+	}
+	if err := os.WriteFile(listingHold, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := listPackages(t.Context(), n); err == nil || !errors.Is(err, gotool.ErrListingRefused) || !strings.Contains(err.Error(), "invocation \"hold\": go list -e ") {
+		t.Fatalf("a listing behind a pipe hold = %v, want gofresh's listing refusal naming the invocation", err)
 	}
 }
 

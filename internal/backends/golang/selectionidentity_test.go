@@ -221,7 +221,7 @@ func TestModuleModeReachesEagerLazyAndFingerprintLoads(t *testing.T) {
 		if sel.isDefault() {
 			continue
 		}
-		engine, err := selectionEngine(t.Context(), dir, sel, newToolchainSample())
+		engine, err := selectionEngine(t.Context(), selectedContextForTest(t, dir, sel), newToolchainSample())
 		if err != nil {
 			t.Fatal(err)
 		}

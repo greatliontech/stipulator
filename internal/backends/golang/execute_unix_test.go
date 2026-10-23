@@ -21,35 +21,21 @@ import (
 // TestGoExecuteEnvelopeTimeoutNamesAbortedTests pins the timeout
 // diagnostic's residue: when the envelope expires over a run that had
 // started tests, the TIMEOUT diagnostic names the started-but-unfinished
-// tests instead of reporting bare expiry. A hanging toolchain stand-in
-// makes the cutoff deterministic.
+// tests instead of reporting bare expiry. Warm compilation first so the
+// short envelope reaches the retained test process rather than its compiler.
 func TestGoExecuteEnvelopeTimeoutNamesAbortedTests(t *testing.T) {
 	if testing.Short() {
 		t.Skip("measured heavy under the fast tier (in-process)")
 	}
 	stipulate.Covers(t, "REQ-go-policy-complete")
-	bin := t.TempDir()
-	stub := filepath.Join(bin, "go")
-	script := "#!/bin/sh\n" +
-		// The child environment strips PATH down to the stub directory;
-		// restore the standard locations inside the script so its own
-		// tools resolve.
-		"PATH=/usr/bin:/bin\n" +
-		`echo '{"Action":"start","Package":"example.com/hang"}'` + "\n" +
-		`echo '{"Action":"run","Package":"example.com/hang","Test":"TestHang"}'` + "\n" +
-		"sleep 60\n"
-	if err := os.WriteFile(stub, []byte(script), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", bin)
-	n := &NormalizedInvocation{
-		Name:     "hang",
-		Dir:      t.TempDir(),
-		Packages: []string{"./..."},
-		Timeout:  700 * time.Millisecond,
-		Env:      []string{"PATH=" + bin},
-	}
-	selection := []Obligation{{Kind: ObligationPackage, Package: "example.com/hang"}}
+	neutralAmbient(t)
+	n := retainedFixtureInvocation(t, map[string]string{"p_test.go": `package p
+import ("testing"; "time")
+func TestHang(t *testing.T) { for { time.Sleep(time.Hour) } }
+`})
+	retainedBuildOK(t, n, "retained.test")
+	n.Name, n.Timeout = "hang", 2*time.Second
+	selection := []Obligation{{Kind: ObligationPackage, Package: "retained.test"}}
 	health, _, diags, observations, err := ExecuteInvocation(context.Background(), n, selection)
 	if err != nil {
 		t.Fatal(err)
@@ -126,6 +112,7 @@ func TestGoExecuteEnvelopeTimeoutRetainsGoroutineDump(t *testing.T) {
 	// inherit whatever GOWORK the surrounding runner pinned and resolve
 	// the temp module against the wrong workspace.
 	n := normalizedFixtureInvocation(t, dir, "hangdump", 2*time.Second)
+	retainedBuildOK(t, n, "example.com/hangdump")
 	selection := []Obligation{{Kind: ObligationPackage, Package: "example.com/hangdump"}}
 	health, _, diags, _, err := ExecuteInvocation(context.Background(), n, selection)
 	if err != nil {
@@ -165,6 +152,7 @@ func TestGoExecuteCallerDeadlineSkipsDumpGrace(t *testing.T) {
 		"\tsignal.Ignore(syscall.SIGQUIT)\n" +
 		"\tos.Exit(m.Run())\n}\n\n" +
 		"func TestWedge(t *testing.T) {\n" +
+		"\tif err := os.WriteFile(\"ready\", nil, 0600); err != nil { t.Fatal(err) }\n" +
 		"\tch := make(chan struct{})\n" +
 		"\tgo func() {\n\t\ttime.Sleep(time.Hour)\n\t\tclose(ch)\n\t}()\n" +
 		"\t<-ch\n}\n"
@@ -172,9 +160,10 @@ func TestGoExecuteCallerDeadlineSkipsDumpGrace(t *testing.T) {
 		t.Fatal(err)
 	}
 	n := normalizedFixtureInvocation(t, dir, "hangfast", time.Hour)
+	retainedBuildOK(t, n, "example.com/hangfast")
 	selection := []Obligation{{Kind: ObligationPackage, Package: "example.com/hangfast"}}
-	// The deadline leaves room for the trivial build; the wedge then holds
-	// the binary until the caller deadline fires.
+	// Warm compilation leaves the deadline testing cancellation of the
+	// SIGQUIT-ignoring binary, not cancellation of a cold compiler.
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
 	start := time.Now()
@@ -182,6 +171,9 @@ func TestGoExecuteCallerDeadlineSkipsDumpGrace(t *testing.T) {
 	elapsed := time.Since(start)
 	if err == nil || health != nil {
 		t.Fatalf("caller-deadline run returned a report (health=%v err=%v); it must be discarded whole", health, err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "ready")); err != nil {
+		t.Fatalf("deadline did not reach the SIGQUIT-ignoring test: %v", err)
 	}
 	// Well inside deadline + grace: an immediate kill returns almost at
 	// the deadline; paying the 10s SIGQUIT grace would land past it.
@@ -194,8 +186,8 @@ func TestGoExecuteCallerDeadlineSkipsDumpGrace(t *testing.T) {
 // pass's bound: solo re-runs execute under the invocation envelope, so an
 // envelope expiring mid-isolation cuts the re-run off — the denied test
 // is reported as a TIMEOUT process outcome, never granted an outcome and
-// never retried outside the reviewed bound. A toolchain stand-in makes
-// the timing deterministic: the package run reds instantly around a
+// never retried outside the reviewed bound. A real binary distinguishes
+// its selection: the package run reds instantly around a
 // completed pass, and the solo re-run of that pass wedges until the
 // envelope kills it.
 func TestGoExecuteSelectionEnvelopeBoundsIsolation(t *testing.T) {
@@ -203,44 +195,45 @@ func TestGoExecuteSelectionEnvelopeBoundsIsolation(t *testing.T) {
 		t.Skip("measured heavy under the fast tier (in-process)")
 	}
 	stipulate.Covers(t, "REQ-core-one-execution", "REQ-evidence-witness-freshness-isolation")
-	bin := t.TempDir()
-	stub := filepath.Join(bin, "go")
-	script := "#!/bin/sh\n" +
-		"PATH=/usr/bin:/bin\n" +
-		// The solo isolation re-run carries a single-name -run pattern
-		// (the package-selection run carries the two-name alternation):
-		// wedge the solo so only the envelope can end it.
-		"for a in \"$@\"; do if [ \"$a\" = '-run=^(TestGreen)$' ]; then sleep 30; exit 0; fi; done\n" +
-		`echo '{"Action":"run","Package":"example.com/mix","Test":"TestRed"}'` + "\n" +
-		`echo '{"Action":"fail","Package":"example.com/mix","Test":"TestRed"}'` + "\n" +
-		`echo '{"Action":"run","Package":"example.com/mix","Test":"TestGreen"}'` + "\n" +
-		`echo '{"Action":"pass","Package":"example.com/mix","Test":"TestGreen"}'` + "\n" +
-		`echo '{"Action":"fail","Package":"example.com/mix"}'` + "\n" +
-		"exit 1\n"
-	if err := os.WriteFile(stub, []byte(script), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", bin)
-	n := &NormalizedInvocation{
-		Name:     "bounded",
-		Dir:      t.TempDir(),
-		Packages: []string{"./..."},
-		Timeout:  2 * time.Second,
-		Env:      []string{"PATH=" + bin},
-	}
+	neutralAmbient(t)
+	n := retainedFixtureInvocation(t, map[string]string{"p_test.go": `package p
+import ("flag"; "testing"; "time")
+func TestRed(t *testing.T) { t.Fatal("red package") }
+func TestGreen(t *testing.T) {
+ if flag.Lookup("test.run").Value.String() == "^(TestGreen)$" {
+  for { time.Sleep(time.Hour) }
+ }
+}
+`})
+	retainedBuildOK(t, n, "retained.test")
+	n.Name, n.Timeout = "bounded", 2*time.Second
 	start := time.Now()
-	res, err := ExecuteSelection(context.Background(), n, TestSelection{
-		"example.com/mix": {"TestGreen", "TestRed"},
-	})
+	// Native capture is optional for execution. Supply no snapshots here so
+	// the short bound exercises the original binary and its isolation retry,
+	// rather than expiring during a retry's native registration.
+	res, err := executeSelectionObserved(context.Background(), n, TestSelection{
+		"retained.test": {"TestGreen", "TestRed"},
+	}, nil, nil, spawnOrdinals())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if elapsed, limit := time.Since(start), 15*time.Second; elapsed > limit {
 		t.Errorf("selective run took %v, want < %v: isolation re-runs must not outlive the envelope", elapsed, limit)
 	}
-	solo := findProcess(res.Processes, "example.com/mix", "TestGreen")
+	solo := findProcess(res.Processes, "retained.test", "TestGreen")
 	if solo == nil || solo.Disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT {
 		t.Fatalf("cut-off solo re-run = %+v, want a TIMEOUT process outcome", solo)
+	}
+	if solo.Producer.GetProcessId() <= 0 {
+		t.Fatal("envelope expired before the isolation process started")
+	}
+	original := findProcess(res.Processes, "retained.test", "")
+	if original == nil || original.Disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED || sameProcess(original.Producer, solo.Producer) {
+		t.Fatalf("isolation did not follow an independently failed process: %+v", original)
+	}
+	green := findTest(res.Tests, "retained.test", "TestGreen")
+	if green == nil || green.GetOutcome() != stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED || !sameProcess(green.GetProducer(), original.Producer) {
+		t.Fatalf("original red process lost its completed passing prefix: %v", green)
 	}
 	// The wedged re-run granted nothing: the only green outcome is the
 	// red package process's, which the isolation pass was voiding.
@@ -253,6 +246,9 @@ func TestGoExecuteSelectionEnvelopeBoundsIsolation(t *testing.T) {
 	for _, d := range res.Diagnostics {
 		if d.GetTest() == "TestGreen" && d.GetDisposition() == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TIMEOUT {
 			denialNamed = true
+			if !strings.Contains(d.GetOutput(), "started but unfinished: TestGreen") {
+				t.Errorf("retry did not reach the hanging test: %v", d)
+			}
 		}
 	}
 	if !denialNamed {

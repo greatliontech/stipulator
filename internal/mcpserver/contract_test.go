@@ -20,6 +20,7 @@ import (
 	"github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/guard"
 	"github.com/greatliontech/gofresh/resident"
+	"github.com/greatliontech/gofresh/runtimeinput"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/facts"
@@ -667,6 +668,10 @@ func TestPruneToolStoreGC(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-store-gc")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	root := t.TempDir()
+	inputs, err := runtimeinput.Merge(root, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	install := func(pkg, test string) {
 		t.Helper()
 		// A record carries its producing group: one without is refused
@@ -675,14 +680,14 @@ func TestPruneToolStoreGC(t *testing.T) {
 			MaximalClosure: strings.Repeat("a", 32), TestVariantClosure: strings.Repeat("b", 32),
 			ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy,
 			Guards:        guard.Guards{Toolchain: "go1.27.1", BuildConfig: strings.Repeat("c", 32)},
-			RuntimeInputs: "eyJ2IjoyfQ", RuntimeDigest: "3a79bf37b571938d1f2907afb6a643f4", ResultKind: gofresh.CodeResult,
+			RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult,
 		}}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	install("example.com/p", "TestA")
 	install("example.com/p", "TestDeparted")
-	if got := witnesscache.Load(t.Context(), root); len(got) != 2 {
+	if got := witnesscache.Load(t.Context(), root).Records; len(got) != 2 {
 		t.Fatalf("seeded GC records are not loadable: %+v", got)
 	}
 	sess, _ := harnessWith(t, map[string]string{

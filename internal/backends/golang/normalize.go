@@ -6,11 +6,10 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"sort"
+	"runtime"
 	"strings"
 	"time"
 
-	"github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/closure"
 	"github.com/greatliontech/gofresh/gotool"
 	"github.com/greatliontech/gofresh/runtimeinput"
@@ -23,6 +22,8 @@ import (
 // visible in full. It is in-memory only — environment-derived pins never
 // enter the committed record, which stays a pure function of the workspace
 // declaration (the derived-record byte-determinism contract).
+// Discovery finalizes the execution allocation after resolving the operation's
+// permitted packages and before constructing environment-keyed capture groups.
 type NormalizedInvocation struct {
 	// Name is the canonical invocation identity from the policy envelope.
 	Name string
@@ -59,11 +60,6 @@ type NormalizedInvocation struct {
 	// downgrade is recorded on every witness it grants (the run-attribute
 	// race flag reads false).
 	PlainWitness bool
-	// roots is the capture's classification-root memo the spawn path
-	// hands the observation facade (Capture.roots); nil for an
-	// invocation normalized outside a capture, which the facade resolves
-	// unmemoized.
-	roots *runtimeinput.Roots
 	// BracketPaths are the invocation's reviewed extra observation-bracket
 	// roots - process images and fixed external files its tests consume -
 	// validated to clean absolute or tree-relative slash form.
@@ -75,8 +71,9 @@ type NormalizedInvocation struct {
 	ExcludedPaths []string
 	// AssumePure carries the invocation-wide reviewed purity assertion.
 	AssumePure bool
-	// ScratchNamespaces are the invocation's reviewed in-module run-scratch
-	// namespaces (gofresh's grammar, accepted by validateConfig), the
+	// ScratchNamespaces are the invocation's reviewed run-scratch namespaces
+	// rooted at the verification tree (gofresh's grammar, accepted by
+	// validateConfig), the
 	// declaration the engine's ingest admits a proven scratch mint under;
 	// they partition the group key as exclusions do.
 	ScratchNamespaces []runtimeinput.ScratchNamespace
@@ -92,11 +89,11 @@ type NormalizedInvocation struct {
 	// invocation's own environment (REQ-check-derivation: a reader of
 	// the normalized form pays no toolchain query of its own).
 	SelectionNotice string
-	// WitnessEnv is the environment the invocation's witness processes
-	// run, ingest, and revalidate under: Env with the inner-parallelism
-	// cap applied, derived exactly once at normalization so every
-	// consumer - capture-group identity, the group engine's producer
-	// env, spawn, and ingest - observes one width for the invocation's
+	// WitnessEnv is the complete compilation environment: Env with the
+	// inner-parallelism cap finalized once after discovery resolves the operation's
+	// permitted package population, before capture grouping. Retained runtime environments derive
+	// their package PWD, PATH and output storage from it, preserving that width.
+	// Capture-group identity, analysis and compilation observe one width for the invocation's
 	// whole lifetime. Per-call re-derivation would race Go 1.25's
 	// dynamic cgroup GOMAXPROCS updates: a mid-run width move could
 	// split the spawned environment from the recorded one and serve
@@ -113,7 +110,12 @@ type NormalizedInvocation struct {
 	// Timeout is the envelope's explicit, reviewed timeout.
 	Timeout time.Duration
 	// Toolchain is the effective toolchain identity (`go env GOVERSION`).
-	Toolchain  string
+	Toolchain string
+	// GOROOT and GOCACHE are the compilation toolchain's directories from the
+	// same normalization snapshot. Retained runtime preparation does not sample
+	// them again under the different package-process environment.
+	GOROOT     string
+	GOCACHE    string
 	GOOS       string
 	GOARCH     string
 	CgoEnabled bool
@@ -132,6 +134,13 @@ type NormalizedInvocation struct {
 	Count       int32
 	CacheBypass bool
 	Args        []string
+	// LinkerAssignments freeze effective values separately from declared sources,
+	// so ambient value changes affect build guards without re-addressing records.
+	LinkerAssignments     []string
+	DeclaredLinkerStrings []string
+	InputFiles            []selectedInputFile
+	// inputRoots memoizes classification-root probes for this judged invocation.
+	inputRoots *runtimeinput.Roots
 	// Env is the complete normalized child-process environment every
 	// subprocess of this invocation runs under: inherited minus denials,
 	// plus overrides, with every backend-pinned key set from its one
@@ -143,11 +152,21 @@ type NormalizedInvocation struct {
 	// the curation consumed, never a re-sample the derivation did not
 	// see (REQ-evidence-flip-environment).
 	Ambient []string
-	// SpawnBound is the package fan-out bound frozen at normalize,
+	// processorBudget is the parent's one normalization-time processor sample.
+	// Discovery uses it for both the package bound and the delivered width.
+	processorBudget int
+	// SpawnBound is the package fan-out bound frozen before capture grouping,
 	// beside WitnessEnv and for the same reason: the spawn and every
 	// later report of it observe one value, immune to dynamic
 	// GOMAXPROCS movement between derivation and use.
 	SpawnBound int
+	// selectedPackages is discovery's original-package metadata under this
+	// invocation's complete build selection. PGO selection reads these names,
+	// never the synthetic main package generated for every test binary.
+	selectedPackages []listedPackage
+	// runnables is the conserved discovery inventory, not authority for a later
+	// producing generation's actual process population.
+	runnables map[string][]string
 	// PkgDirs maps each package the invocation's discovery listed to its
 	// absolute source directory, recorded by DiscoverInvocation so the
 	// executor can capture a package's observation bracket before its
@@ -176,6 +195,8 @@ type NormalizedInvocation struct {
 // external package driver) are refused. The one toolchain query it makes
 // runs inside the same owned, cancellable process boundary as every other
 // child of policy work (REQ-go-owned-processes-runner).
+// The processor budget is sampled here; the package bound and witness
+// environment are finalized once the execution population is resolved.
 func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.PolicyInvocation) (*NormalizedInvocation, error) {
 	cfg := inv.GetGo()
 	if cfg == nil {
@@ -213,6 +234,7 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	env = gotool.SetEnv(env, "GOPACKAGESDRIVER", "off")
 
 	n := &NormalizedInvocation{
+		processorBudget:   runtime.GOMAXPROCS(0),
 		Name:              inv.GetName(),
 		Ambient:           ambient,
 		ModuleRoot:        cfg.GetModuleRoot(),
@@ -319,6 +341,7 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	version, goos, goarch, cgo := v("GOVERSION"), v("GOOS"), v("GOARCH"), v("CGO_ENABLED")
 	goflags, goexperiment := v("GOFLAGS"), v("GOEXPERIMENT")
 	gomodcache, gocache := v("GOMODCACHE"), v("GOCACHE")
+	n.GOROOT, n.GOCACHE = v("GOROOT"), gocache
 	// A declared toolchain is exported above and read back here as the
 	// toolchain the environment actually resolves — a wrapper on PATH
 	// may override the export outright — so the one read judges the
@@ -400,61 +423,21 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		env = gotool.SetEnv(env, "GOCACHE", gocache)
 	}
 	n.Env = env
-	// The record's forms were accepted by validateConfig at the top; the
-	// loops build, and the one arm that needs the resolved tree —
-	// an absolute excluded path's position — decides here.
+	// Record-only grammar was accepted at entry. Only absolute exclusion
+	// placement needs the resolved verification tree.
 	n.BracketPaths = append(n.BracketPaths, cfg.GetBracketPaths()...)
-	for _, p := range cfg.GetExcludedPaths() {
+	normalizeReviewedRows(cfg, n)
+	for _, p := range n.ExcludedPaths {
 		if err := validateExcludedPathInTree(p, treeRoot(n)); err != nil {
 			return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
 		}
-		n.ExcludedPaths = append(n.ExcludedPaths, p)
 	}
-	seenVouch := map[string]bool{}
-	for _, v := range cfg.GetDynamicStateVouches() {
-		identity, _ := vouchIdentity(v)
-		if !seenVouch[identity] {
-			seenVouch[identity] = true
-			n.Vouches = append(n.Vouches, identity)
-		}
+	if err := resolveLinkerSelection(n, cfg); err != nil {
+		return nil, fmt.Errorf("invocation %q: %w", n.Name, err)
 	}
-	sort.Strings(n.Vouches)
-	for _, ns := range cfg.GetScratchNamespaces() {
-		n.ScratchNamespaces = append(n.ScratchNamespaces, runtimeinput.ScratchNamespace{Dir: ns.GetDir(), Pattern: ns.GetPattern()})
-	}
-	n.ScratchNamespaces = canonicalNamespaces(n.ScratchNamespaces)
-	// The one witness-env derivation for this invocation's lifetime
-	// (see the WitnessEnv field doc).
-	n.SpawnBound = witnessSpawnBound()
-	n.WitnessEnv = witnessWidthEnv(n)
+	// Discovery finalizes the width once its permitted package population is
+	// known. It needs only Env; no witness environment is consumed before then.
 	return n, nil
-}
-
-// vouchIdentity maps a policy vouch — the import path and the variable
-// as two fields — to the canonical dotted identity the engine judges
-// under, through gofresh's one grammar for a reviewed spelling
-// (gofresh.ParseVouchEntry over IMPORT-PATH:VARIABLE): the path carries
-// no space or control character, the variable is one Go identifier; a
-// refusal names the record's field.
-func vouchIdentity(v *stipulatorv1.DynamicStateVouch) (string, error) {
-	pkg, name := v.GetPackage(), v.GetVariable()
-	if pkg == "" {
-		return "", fmt.Errorf("dynamic_state_vouches entry needs a package import path")
-	}
-	if name == "" {
-		return "", fmt.Errorf("dynamic_state_vouches entry for %q needs a variable name", pkg)
-	}
-	// gofresh's spelling joins the two fields with a colon: a colon in
-	// the path would be read as the join, so it is refused here, named
-	// for the field it is in.
-	if strings.Contains(pkg, ":") {
-		return "", fmt.Errorf("dynamic_state_vouches package %q carries a colon", pkg)
-	}
-	identity, err := gofresh.ParseVouchEntry(pkg + ":" + name)
-	if err != nil {
-		return "", fmt.Errorf("dynamic_state_vouches entry for %q: %w", pkg, err)
-	}
-	return identity, nil
 }
 
 // validateExcludedPathInTree is the one exclusion check that needs the

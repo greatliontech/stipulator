@@ -74,7 +74,7 @@ func TestGoEnvDivergenceReportContent(t *testing.T) {
 	// bounds must each report THEIR values: a re-derivation computes
 	// one host-dependent value and cannot satisfy both, so this pins
 	// the width line to the spawn environment and the fan-out to the
-	// normalize-time freeze on every host.
+	// pre-capture freeze on every host.
 	n7 := &NormalizedInvocation{
 		Dir:        "/tree/mod",
 		Env:        []string{"GOMAXPROCS=7"},

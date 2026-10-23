@@ -145,6 +145,9 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		if err != nil {
 			return recordProblem(err)
 		}
+		if err := pc.ConfigureExecution(full, scope); err != nil {
+			return nil, err
+		}
 
 		// Policy-tier notices surface at load, attributed to the
 		// invocation that authored the condition — a degradation must be
@@ -217,6 +220,7 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 			res.SetWitnessDiagnostics(testRun.Diagnostics)
 		}
 		res.SetTestsExecuted(int32(testRun.Ran))
+		res.SetWitnessCacheLoad(testRun.WitnessCacheLoad)
 		res.SetTestsOutsidePolicy(int32(testRun.OutsidePolicy))
 		// The catastrophic shape - nothing served and no witness outcome
 		// granted while expected witnesses sit outside the eligible selection
@@ -259,11 +263,14 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	// empty: one fact, one home per payload
 	// (REQ-mcp-response-contract).
 	vp.SetWitnessDiagnostics(nil)
+	vp.SetWitnessCacheLoad(nil)
 	res.SetVerify(vp)
 
 	rep.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
 	cov := coverage.Evaluate(spec, vr, store, testRun != nil, covPol)
 	res.SetCoverage(cov.Proto())
+	// Composed reports carry the global account only at the result root.
+	res.GetCoverage().SetWitnessCacheLoad(nil)
 
 	// Prune residue is echoed from this same witnessed gap evaluation —
 	// one source, so the residue and the coverage gap states cannot

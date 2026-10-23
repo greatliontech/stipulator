@@ -73,7 +73,7 @@ func TestResolutionWorkspaceModeKeepsItsDependencyGraph(t *testing.T) {
 		if len(sel.tags) == 0 {
 			continue
 		}
-		engine, err := selectionEngine(t.Context(), dir, sel, newToolchainSample())
+		engine, err := selectionEngine(t.Context(), selectedContextForTest(t, dir, sel), newToolchainSample())
 		if err != nil {
 			t.Fatal(err)
 		}

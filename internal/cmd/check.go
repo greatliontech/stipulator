@@ -74,6 +74,7 @@ func checkCmd() *cobra.Command {
 // projection of the message — the wire result is the one source, so the
 // human and machine surfaces cannot drift.
 func renderCheck(stdout, stderr io.Writer, res *stipulatorv1.CheckResult) {
+	renderWitnessCacheLoad(stderr, res.GetWitnessCacheLoad())
 	for _, p := range res.GetCompileProblems() {
 		fmt.Fprintln(stderr, red(p.GetPath()+": "+p.GetMessage()))
 	}

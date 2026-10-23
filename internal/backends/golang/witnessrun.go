@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"maps"
 	"runtime/debug"
+	"slices"
 	"sort"
+	"strings"
 
 	gofresh "github.com/greatliontech/gofresh"
 
@@ -80,20 +82,17 @@ func RunWitnessesScoped(ctx context.Context, pc *Capture, scope map[gofresh.Subj
 // over its in-policy subjects, the cached records found for them, and the
 // served/stale partition the pre-execution fingerprint check produced.
 type witnessGroup struct {
-	g      *captureGroup
-	engine *gofresh.Engine
+	g *captureGroup
 	// view is the group's one analysis view: the expensive observation,
 	// paid once per group, whose facts every package's leg shares;
 	// released once every leg has.
-	view *gofresh.View
+	view *witnessSnapshot
 	// legs is the publication state per PACKAGE — the unit of
 	// persistence (REQ-policy-cancellation-unit): the package's serving
 	// checks and captures start on its own sibling of view. Publication
 	// and serving close independently over shared facts; the leg releases
 	// once the package has published and, where it serves, revalidated.
 	legs map[string]*packageLeg
-	// recorded holds the loadable cache record per subject, when one exists.
-	recorded map[gofresh.Subject]witnesscache.Record
 	// executedWhy names, per stale subject that held prior evidence, why
 	// its variants failed to serve - the last-checked variant's verdict
 	// reason, movers named by gofresh's attribution.
@@ -103,17 +102,6 @@ type witnessGroup struct {
 	// names, sorted.
 	served []gofresh.Subject
 	stale  map[string][]string
-	// refreshed marks served subjects that rode the inert-growth carve-out
-	// (REQ-evidence-witness-freshness-carve-out): their record in `recorded`
-	// carries the returned applicability fingerprint and companion ledger,
-	// and installs after post-run revalidation keeps them.
-	refreshed map[gofresh.Subject]bool
-	// fps are the pre-execution captures for stale subjects: fingerprints
-	// must pin the tree that compiles the binaries, so capturing after
-	// execution would let a mid-run edit publish pre-edit outcomes under a
-	// post-edit hash. Captured before, the same interleaving reads stale:
-	// the safe direction.
-	fps map[gofresh.Subject]gofresh.Fingerprint
 }
 
 // packages lists the group's packages in order: every package holding a
@@ -148,7 +136,14 @@ func (wg *witnessGroup) servedIn(pkg string) []gofresh.Subject {
 	return out
 }
 
+func (wg *witnessGroup) selectedRecord(s gofresh.Subject) witnesscache.Record {
+	return wg.legs[s.Package].chosen[s].record
+}
+
 func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bool, seeding verify.WitnessSeeding) (*verify.TestRun, error) {
+	if err := pc.ConfigureExecution(false, scope); err != nil {
+		return nil, err
+	}
 	rep := progress.FromContext(ctx)
 	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	dir := pc.dir
@@ -247,13 +242,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 			continue
 		}
 		for _, o := range ic.obligations {
-			if o.Kind != ObligationTest && o.Kind != ObligationFuzz {
-				continue
-			}
-			if d.globalCount[o.Package] <= 1 {
-				continue
-			}
-			if scope != nil && !scope[gofresh.Subject{Package: o.Package, Symbol: o.Name}] {
+			if !pc.execution.selectsWitness(ic.n, d.globalCount, o) {
 				continue
 			}
 			sel := multiIneligible[ic.n.Name]
@@ -274,7 +263,8 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	outsideSubjects := d.classifyWitnesses(universe, nil, nil, nil).outside
 	outside := len(outsideSubjects)
 
-	cached := witnesscache.Load(ctx, dir)
+	loaded := witnesscache.Load(ctx, dir)
+	cached := loaded.Records
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -300,6 +290,13 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	}
 
 	var groups []*witnessGroup
+	defer func() {
+		for _, wg := range groups {
+			for _, leg := range wg.legs {
+				leg.dispose()
+			}
+		}
+	}()
 	degraded := ""
 	if universeErr != nil {
 		degraded = universeErr.Error()
@@ -326,7 +323,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	staleSel := map[string]TestSelection{}
 	scopeSkipped := map[string]bool{}
 	addStale := func(g *captureGroup, s gofresh.Subject) {
-		if scope != nil && !scope[s] {
+		if !pc.execution.permits(s) {
 			// A stale subject outside the caller's scope is skipped,
 			// recorded so its bindings read scope-skipped rather than
 			// broken; on the degraded path this same gate makes the
@@ -371,7 +368,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 		}
 		for pkg, names := range sel {
 			for _, name := range names {
-				if scope != nil && !scope[gofresh.Subject{Package: pkg, Symbol: name}] {
+				if !pc.execution.permits(gofresh.Subject{Package: pkg, Symbol: name}) {
 					scopeSkipped[pkg+"."+name] = true
 					continue
 				}
@@ -503,10 +500,13 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 		return nil
 	}
 	proofs := processProofs{}
+	// One ordinal space spans initial executions, isolation and every retry
+	// wave, so PID reuse cannot alias independently owned process accounts.
+	ordinal := spawnOrdinals()
 	for _, wg := range groups {
 		proofs.add(wg.g, wg.legs)
 	}
-	if err := executeSelections(ctx, pc.normalized, staleSel, m, onPackageDone, proofs); err != nil {
+	if err := executeSelections(ctx, pc.normalized, staleSel, m, onPackageDone, proofs, ordinal); err != nil {
 		return nil, err
 	}
 	var ineligibleMerge *execMerge
@@ -516,7 +516,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 		// they execute here in the execution phase and fold after the
 		// main merges — failures and registrations only, never a grant.
 		ineligibleMerge = newExecMerge()
-		if err := executeSelections(ctx, pc.normalized, multiIneligible, ineligibleMerge, nil, nil); err != nil {
+		if err := executeSelections(ctx, pc.normalized, multiIneligible, ineligibleMerge, nil, nil, ordinal); err != nil {
 			return nil, err
 		}
 	}
@@ -525,6 +525,8 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	var servedRecords []witnesscache.Record
 	plainServedKey := map[string]bool{}
 	retryMerge := newExecMerge()
+	heldRetries := &retryResources{}
+	defer heldRetries.close()
 	if degraded == "" {
 		var drifted []gofresh.Subject
 		revalidated := 0
@@ -539,7 +541,13 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 			}
 			maps.Copy(uncacheableWhy, reasons)
 			landed, installErr := installNow(records)
-			published = append(published, landed...)
+			for _, record := range landed {
+				// A transformed serve remains conditional through retry waves;
+				// its durable historical variant is not an executed initial grant.
+				if !slices.Contains(wg.served, gofresh.Subject{Package: record.Package, Symbol: record.Test}) {
+					published = append(published, record)
+				}
+			}
 			driftedByGroup[wg] = append(driftedByGroup[wg], groupDrifted...)
 			revalidated += len(landed)
 			if installErr != nil {
@@ -553,35 +561,25 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 			for _, s := range groupDrifted {
 				isDrifted[s] = true
 			}
-			for _, s := range wg.served {
-				if !isDrifted[s] {
-					servedRecords = append(servedRecords, wg.recorded[s])
-					// The record fingerprints under its covering
-					// invocation's build inputs, so that invocation's
-					// tier — within the record's own group — is the
-					// served witness's tier.
-					if n := normalized[wg.g.selectingInvocation(s.Package)]; n != nil && n.PlainWitness {
-						plainServedKey[s.Package+"."+s.Symbol] = true
-					}
-				}
-			}
+			wg.served = slices.DeleteFunc(wg.served, func(s gofresh.Subject) bool { return isDrifted[s] })
 		}
 		if revalidated > 0 {
 			rep.Persisted("revalidation", revalidated)
 		}
 		if len(drifted) > 0 {
-			retryPublished, retryReasons, err := retryDrifted(ctx, pc, driftedByGroup, retryMerge)
+			retryPublished, retryReasons, err := settleRetries(ctx, pc, groups, driftedByGroup, retryMerge, heldRetries, installNow, ordinal, scopeSkipped)
 			if err != nil {
 				return nil, err
 			}
 			maps.Copy(uncacheableWhy, retryReasons)
-			landed, installErr := installNow(retryPublished)
-			published = append(published, landed...)
-			if len(landed) > 0 {
-				rep.Persisted("drift retry", len(landed))
-			}
-			if installErr != nil {
-				return nil, installErr
+			published = append(published, retryPublished...)
+		}
+		for _, wg := range groups {
+			for _, s := range wg.served {
+				servedRecords = append(servedRecords, wg.selectedRecord(s))
+				if n := normalized[wg.g.selectingInvocation(s.Package)]; n != nil && n.PlainWitness {
+					plainServedKey[s.Package+"."+s.Symbol] = true
+				}
 			}
 		}
 	}
@@ -595,6 +593,7 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	// empty-served form included (REQ-gap-resolved-pruned's consumers
 	// enforce the mark).
 	tr := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}, RaceEnabled: true, PlainWitness: map[string]bool{}, OutsidePolicy: outside, OutsideSubjects: outsideSubjects, ScopeSkipped: scopeSkipped, SelectiveServing: true}
+	tr.WitnessCacheLoad = loaded.Account
 	// Tier attribution across every grant source: a key granted by any
 	// race leg holds the race tier; a key granted only by plain-witness
 	// admissions carries the recorded downgrade
@@ -607,11 +606,42 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 	}
 	for _, wg := range groups {
 		for s, why := range wg.executedWhy {
+			if scopeSkipped[s.Package+"."+s.Symbol] {
+				continue
+			}
 			why = executedReason(why)
 			if tr.ExecutedReasons == nil {
 				tr.ExecutedReasons = map[string]string{}
 			}
 			tr.ExecutedReasons[s.Package+"."+s.Symbol] = why
+		}
+	}
+	if degraded == "" {
+		for _, g := range d.groups {
+			for _, s := range groupSubjects(g) {
+				if !slices.Contains(staleSel[g.selectingInvocation(s.Package)][s.Package], s.Symbol) {
+					continue
+				}
+				key := s.Package + "." + s.Symbol
+				if tr.ExecutedReasons[key] != "" {
+					continue
+				}
+				for _, refusal := range loaded.Account.GetRefusals() {
+					coordinate := refusal.GetCoordinate()
+					if coordinate == nil || coordinate.GetGroup() != g.id || coordinate.GetPackage() != s.Package || coordinate.GetTest() != s.Symbol {
+						continue
+					}
+					why := reasonStoreRefused.with(fmt.Sprintf("load witness record (%s): %s", refusal.GetCause(), refusal.GetDetail()))
+					if policyReason, refused := g.neverServes[s]; refused {
+						why = policyReason
+					}
+					if tr.ExecutedReasons == nil {
+						tr.ExecutedReasons = map[string]string{}
+					}
+					tr.ExecutedReasons[key] = why.String()
+					break
+				}
+			}
 		}
 	}
 	// A failure that flips prior passing witness evidence carries the
@@ -734,6 +764,17 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 			tr.NoOutcome[key] = cause
 		}
 	}
+	denialReasons := map[string][]string{}
+	for denied, reason := range m.denied {
+		key := denied.subject.Package + "." + denied.subject.Symbol
+		if _, granted := tr.Outcomes[key]; !granted && !scopeSkipped[key] {
+			denialReasons[key] = append(denialReasons[key], reason.String())
+		}
+	}
+	for key, reasons := range denialReasons {
+		slices.Sort(reasons)
+		tr.NoOutcome[key] = strings.Join(slices.Compact(reasons), "; ")
+	}
 	// Publication installed at production: each record landed as its own
 	// variant file, atomically, the moment its group finished — at its
 	// last covering invocation's completion for executing groups, in the
@@ -787,21 +828,17 @@ func plural(n int, noun string) string {
 // so the record serves only while the current policy still declares
 // each — a withdrawn or narrowed namespace re-executes the witnesses it
 // licensed, an added one serves existing evidence unchanged.
-func roundCandidates(subjects []gofresh.Subject, cached map[string][]witnesscache.Record, valid map[gofresh.Subject]bool, round int, current []string, currentNamespaces []witnesscache.ScratchNamespace, refused func(gofresh.Subject, string)) (map[gofresh.Subject]gofresh.Fingerprint, bool) {
+func roundCandidates(subjects []gofresh.Subject, cached map[string][]witnesscache.Record, chosen map[gofresh.Subject]chosenWitness, round int, declarations recordedDeclarations, refused func(gofresh.Subject, string)) (map[gofresh.Subject]gofresh.Fingerprint, bool) {
 	fps := map[gofresh.Subject]gofresh.Fingerprint{}
 	advanced := false
 	for _, s := range subjects {
 		vars := cached[s.Package+"."+s.Symbol]
-		if valid[s] || round >= len(vars) {
+		if _, selected := chosen[s]; selected || round >= len(vars) {
 			continue
 		}
 		advanced = true
-		if !exclusionsStillAsserted(vars[round].ObservationExclusions, current) {
-			refused(s, refusedWithdrawnExclusion)
-			continue
-		}
-		if !namespacesStillDeclared(vars[round].ObservationNamespaces, currentNamespaces) {
-			refused(s, refusedWithdrawnNamespace)
+		if why := declarations.refusal(vars[round]); why != "" {
+			refused(s, why)
 			continue
 		}
 		fps[s] = vars[round].Fingerprint
@@ -816,68 +853,27 @@ const (
 	refusedWithdrawnNamespace = "recorded under a withdrawn scratch namespace"
 )
 
-// namespacesStillDeclared reports whether every capture-time scratch
-// namespace is still in the group's current canonical set — the serving
-// condition for evidence whose manifest elided reads inside them. Both
-// sides are canonical (by directory then pattern, deduplicated), so
-// the check is a linear merge.
-func namespacesStillDeclared(recorded, current []witnesscache.ScratchNamespace) bool {
-	i := 0
-	for _, want := range recorded {
-		for i < len(current) && namespaceLess(current[i], want) {
-			i++
-		}
-		if i >= len(current) || current[i] != want {
-			return false
-		}
-	}
-	return true
-}
-
-func namespaceLess(a, b witnesscache.ScratchNamespace) bool {
-	if a.Dir != b.Dir {
-		return a.Dir < b.Dir
-	}
-	return a.Pattern < b.Pattern
-}
-
-// exclusionsStillAsserted reports whether every capture-time exclusion
-// is still in the group's current canonical set — the serving condition
-// for evidence whose manifest elided those identities. Both sides are
-// canonical (sorted, deduplicated), so the check is a linear merge.
-func exclusionsStillAsserted(recorded, current []string) bool {
-	i := 0
-	for _, want := range recorded {
-		for i < len(current) && current[i] < want {
-			i++
-		}
-		if i >= len(current) || current[i] != want {
-			return false
-		}
-	}
-	return true
-}
-
-// prepareWitnessGroups builds each capture group's serving state: the
-// analysis view over its in-policy subjects, the pre-execution
-// fingerprint check partitioning served from stale, the stale captures,
-// and the observation-proof leg for packages executing exactly one
-// top-level runnable. Faults split by classifyFault: a
+// prepareWitnessGroups builds each group's shared native snapshot and independent
+// package checking transactions. Variant decisions are provisional until those
+// transactions close after execution. Faults split by classifyFault: a
 // toolchain-provenance refusal returns as the error — a run-level
 // abort, never a degradation — while any other fault returns the
 // degraded reason: the caller serves nothing and executes everything
 // covered (REQ-evidence-freshness-degrade).
 func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, cached map[string][]witnesscache.Record) ([]*witnessGroup, string, error) {
 	var out []*witnessGroup
-	for g, subjects := range d.populatedGroups() {
-		engine, err := groupEngine(ctx, dir, g)
-		if err != nil {
-			if abort, reason := classifyFault(err); !abort {
-				return nil, reason, nil
+	var prepared []*packageLeg
+	complete := false
+	defer func() {
+		if !complete {
+			for _, leg := range prepared {
+				leg.dispose()
 			}
-			return nil, "", err
 		}
-		view, err := engine.NewView(ctx, subjects, g.directory(dir))
+	}()
+	for g, subjects := range d.populatedGroups() {
+		declarations := declarationsFor(g)
+		view, inputs, err := groupSnapshot(ctx, dir, g)
 		if err != nil {
 			if abort, reason := classifyFault(err); !abort {
 				return nil, reason, nil
@@ -885,17 +881,13 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 			return nil, "", err
 		}
 		wg := &witnessGroup{
-			g: g, engine: engine, view: view, legs: map[string]*packageLeg{},
-			recorded:    map[gofresh.Subject]witnesscache.Record{},
+			g: g, view: view, legs: map[string]*packageLeg{},
 			executedWhy: map[gofresh.Subject]string{},
 			stale:       map[string][]string{},
-			fps:         map[gofresh.Subject]gofresh.Fingerprint{},
-			refreshed:   map[gofresh.Subject]bool{},
 		}
-		// The package is the unit of persistence, so it is the unit of
-		// validation too: the group pays its one observation, and each
-		// package runs its serving decision, captures, proof leg, publish
-		// and revalidation on its own leg — a sibling of that view.
+		// Every package binds its actual prospective runtime over the shared
+		// snapshot. Its historical checking transaction closes independently
+		// of every producing attempt and retains all candidate rounds.
 		byPkg := map[string][]gofresh.Subject{}
 		for _, s := range subjects {
 			byPkg[s.Package] = append(byPkg[s.Package], s)
@@ -907,7 +899,14 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 		sort.Strings(pkgs)
 		for _, pkg := range pkgs {
 			subjects := byPkg[pkg]
-			leg, err := newPackageLeg(wg.view, subjects)
+			var invocation *NormalizedInvocation
+			for _, ic := range d.invocations {
+				if ic.n.Name == g.selectingInvocation(pkg) {
+					invocation = ic.n
+					break
+				}
+			}
+			leg, err := nativePackageLeg(ctx, wg.view, inputs, invocation, pkg)
 			if err != nil {
 				if abort, reason := classifyFault(err); !abort {
 					return nil, reason, nil
@@ -915,7 +914,12 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 				return nil, "", err
 			}
 			wg.legs[pkg] = leg
-			view := leg.view
+			prepared = append(prepared, leg)
+			leg.checking, err = leg.binding.BeginCheck(subjects)
+			if err != nil {
+				return nil, err.Error(), nil
+			}
+			leg.chosen = map[gofresh.Subject]chosenWitness{}
 			serving, groupCached := servingCandidates(g.id, subjects, g.neverServes, cached, wg.executedWhy)
 			// Round-based variant checking: round N checks each unproven
 			// subject's Nth variant, and the first variant proving equivalent
@@ -926,10 +930,8 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 			// equivalent; each is a proven equivalence, so either serves
 			// soundly. Rounds cost only fingerprint checks, never analysis or
 			// execution.
-			valid := map[gofresh.Subject]bool{}
-			declared := recordNamespaces(g.scratchNamespaces)
 			for round := 0; ; round++ {
-				fps, advanced := roundCandidates(serving, groupCached, valid, round, g.excludedPaths, declared, func(s gofresh.Subject, why string) {
+				fps, advanced := roundCandidates(serving, groupCached, leg.chosen, round, declarations, func(s gofresh.Subject, why string) {
 					wg.executedWhy[s] = why
 				})
 				if !advanced {
@@ -940,36 +942,41 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 					// variants may still prove equivalent.
 					continue
 				}
-				verdicts, err := checkFingerprints(ctx, view, fps)
+				var candidates []gofresh.Candidate
+				for _, s := range subjects {
+					if fp, ok := fps[s]; ok {
+						candidates = append(candidates, gofresh.Candidate{Subject: s, Recorded: fp})
+					}
+				}
+				verdicts, err := leg.checking.CheckBatch(ctx, candidates)
 				if err != nil {
 					if abort, reason := classifyFault(err); !abort {
 						return nil, reason, nil
 					}
 					return nil, "", err
 				}
-				for s := range fps {
-					if verdicts[s].Status == gofresh.Valid {
-						valid[s] = true
-						wg.recorded[s] = groupCached[s.Package+"."+s.Symbol][round]
+				for _, checked := range verdicts {
+					s := checked.Subject
+					if checked.Verdict.Status == gofresh.Valid {
+						leg.chosen[s] = chosenWitness{index: checked.Index, record: groupCached[s.Package+"."+s.Symbol][round]}
 						delete(wg.executedWhy, s)
 						continue
 					}
-					rec, extended, err := compartmentGrownRefresh(ctx, dir, view, groupCached[s.Package+"."+s.Symbol][round], verdicts[s], s)
-					if err == nil && extended.Status == gofresh.Valid {
+					rec := groupCached[s.Package+"."+s.Symbol][round]
+					extended, err := compartmentGrownRefresh(ctx, dir, leg.checking, rec, checked)
+					if err == nil && extended.Verdict.Status == gofresh.Valid {
 						// The selected applicability is provisional until this
 						// same view closes in revalidateServed. Only that path
 						// returns the pair for installation.
-						valid[s] = true
-						wg.recorded[s] = rec
-						wg.refreshed[s] = true
+						leg.chosen[s] = chosenWitness{index: extended.Index, record: rec}
 						delete(wg.executedWhy, s)
 						continue
 					}
 					// The last-checked variant's refusal explains the coming
 					// re-execution; a later round's success deletes it.
-					wg.executedWhy[s] = verdicts[s].Reason
-					if err == nil && extended.Reason != "" {
-						wg.executedWhy[s] = extended.Reason
+					wg.executedWhy[s] = checked.Verdict.Reason
+					if err == nil && extended.Verdict.Reason != "" {
+						wg.executedWhy[s] = extended.Verdict.Reason
 					}
 					if err != nil && ctx.Err() != nil {
 						if abort, reason := classifyFault(err); !abort {
@@ -980,7 +987,7 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 				}
 			}
 			for _, s := range subjects {
-				if valid[s] {
+				if _, valid := leg.chosen[s]; valid {
 					// Proven equivalent: the chosen variant serves, pending
 					// post-run revalidation.
 					wg.served = append(wg.served, s)
@@ -993,25 +1000,11 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 				// witness publishes nothing by contract, so it is never
 				// fingerprinted.
 				wg.stale[s.Package] = append(wg.stale[s.Package], s.Symbol)
-				if _, refused := g.neverServes[s]; refused {
-					continue
-				}
-				if fp, err := view.Capture(ctx, s); err == nil {
-					wg.fps[s] = fp
-				}
 			}
-			stale := make([]gofresh.Subject, 0, len(wg.stale[pkg]))
-			for _, name := range wg.stale[pkg] {
-				stale = append(stale, gofresh.Subject{Package: pkg, Symbol: name})
-			}
-			// A selective process running exactly one top-level runnable
-			// is proof-eligible: no sibling runnable in the process can
-			// contribute unrecorded process state to the subject's
-			// outcome.
-			leg.prove(ctx, proofCandidates(stale, wg.fps))
 		}
 		out = append(out, wg)
 	}
+	complete = true
 	return out, "", nil
 }
 
@@ -1041,32 +1034,24 @@ func servingCandidates(groupID string, subjects []gofresh.Subject, neverServes m
 	return serving, groupCached
 }
 
-// compartmentGrownRefresh applies REQ-evidence-witness-freshness-carve-out's
-// inert-growth carve-out using Gofresh's explicit applicability check. The
-// native return retains the producing fingerprint and support; its companion
-// ledger is paired with the effective endpoint. With deferred close, the
-// caller must validate this same view before serving or installing the pair.
-func compartmentGrownRefresh(ctx context.Context, dir string, view *gofresh.View, rec witnesscache.Record, verdict gofresh.Verdict, s gofresh.Subject) (witnesscache.Record, gofresh.Verdict, error) {
-	if verdict.Status != gofresh.Stale || verdict.Reason != "test variants" {
-		return witnesscache.Record{}, verdict, nil
+// compartmentGrownRefresh adds an explicit native extension slot only for
+// compartment staleness with a paired historical ledger. Its answer remains
+// provisional until this checking unit closes; no endpoint installs here.
+func compartmentGrownRefresh(ctx context.Context, dir string, unit *gofresh.CheckingUnit, rec witnesscache.Record, checked gofresh.ProvisionalCheck) (gofresh.ProvisionalCheck, error) {
+	if checked.Verdict.Status != gofresh.Stale || checked.Verdict.Reason != gofresh.ReasonTestVariants {
+		return checked, nil
 	}
 	if rec.CompartmentLedger == nil {
 		rec.CompartmentLedger = witnesscache.LoadLedger(dir, rec)
 	}
 	if rec.CompartmentLedger == nil {
-		return witnesscache.Record{}, verdict, nil
+		return checked, nil
 	}
-	check := view.CheckInertTestVariantExtension
-	if observedFingerprint(rec.Fingerprint) {
-		check = view.CheckObservedInertTestVariantExtension
+	extended, err := unit.ExtendInertBatch(ctx, []gofresh.InertRequest{{Index: checked.Index, PriorLedger: rec.CompartmentLedger.ToGofresh()}})
+	if err != nil {
+		return checked, err
 	}
-	fp, current, verdict, err := check(ctx, rec.Fingerprint, rec.CompartmentLedger.ToGofresh(), s)
-	if err != nil || verdict.Status != gofresh.Valid {
-		return witnesscache.Record{}, verdict, err
-	}
-	rec.Fingerprint = fp
-	rec.CompartmentLedger = witnesscache.LedgerFromGofresh(current)
-	return rec, verdict, nil
+	return extended[0], nil
 }
 
 // execMerge folds one or more selective executions into the per-process
@@ -1078,6 +1063,9 @@ type execMerge struct {
 	diags []*stipulatorv1.FailureDiagnostic
 	disp  map[producerKey]stipulatorv1.HealthDisposition
 	obs   map[producerKey]*ProcessObservation
+	// denied suppresses only a retry attempt's passing witness grants. Raw
+	// rows, registrations and actual process dispositions remain untouched.
+	denied map[producerSubject]uncacheable
 	// pkgDisp records each package-scoped process's disposition by
 	// invocation and package — the execution-layer cause an eligible
 	// subject the run granted nothing is named by
@@ -1114,6 +1102,12 @@ func (m *execMerge) absorb(later *execMerge) {
 	for key, observation := range later.obs {
 		m.obs[key] = observation
 	}
+	if len(later.denied) != 0 && m.denied == nil {
+		m.denied = map[producerSubject]uncacheable{}
+	}
+	for key, reason := range later.denied {
+		m.denied[key] = reason
+	}
 	for key, disposition := range later.pkgDisp {
 		if first, ok := m.pkgDisp[key]; ok {
 			disposition = worseDisposition(first, disposition)
@@ -1132,6 +1126,7 @@ func newExecMerge() *execMerge {
 	return &execMerge{
 		disp:    map[producerKey]stipulatorv1.HealthDisposition{},
 		obs:     map[producerKey]*ProcessObservation{},
+		denied:  map[producerSubject]uncacheable{},
 		pkgDisp: map[string]stipulatorv1.HealthDisposition{},
 	}
 }
@@ -1169,7 +1164,7 @@ func (m *execMerge) add(invocation string, res *SelectionResult) {
 // install while its siblings still execute, so a run dying
 // mid-execution keeps every record already produced
 // (REQ-evidence-witness-cache-format-install's install-on-completion rule).
-func executeSelections(ctx context.Context, invocations []*NormalizedInvocation, staleSel map[string]TestSelection, m *execMerge, onPackage func(invocation string, unit packageUnit) error, proofs processProofs) error {
+func executeSelections(ctx context.Context, invocations []*NormalizedInvocation, staleSel map[string]TestSelection, m *execMerge, onPackage func(invocation string, unit packageUnit) error, proofs processProofs, ordinal func() int32) error {
 	for _, n := range invocations {
 		sel := staleSel[n.Name]
 		if len(sel) == 0 {
@@ -1184,7 +1179,7 @@ func executeSelections(ctx context.Context, invocations []*NormalizedInvocation,
 				return onPackage(n.Name, unit)
 			}
 		}
-		res, err := executeSelectionObserved(ctx, n, sel, hook, proofs[n.Name])
+		res, err := executeSelectionObserved(ctx, n, sel, hook, proofs[n.Name], ordinal)
 		if err != nil {
 			return err
 		}
@@ -1231,15 +1226,14 @@ func finishGroup(ctx context.Context, wg *witnessGroup, m *execMerge) ([]gofresh
 // move an input between the package's process and its publish.
 var beforePackagePublishForTest func(pkg string)
 
-// afterServedCheckForTest, when set, runs between a package's served
-// re-check and its closing validation — the seam a test uses to move an
-// input inside the deferred-close interval.
+// afterServedCheckForTest runs after executions and before closing the historical
+// checking transaction, allowing tests to move an input in its provisional span.
 var afterServedCheckForTest func(pkg string)
 
 // publishPackage publishes one package's executed subjects' new records
 // the moment the package completes — the unit of persistence
-// (REQ-policy-cancellation-unit) — on the package's own sibling view, whose
-// closing validation gates the records. Its served records are not
+// (REQ-policy-cancellation-unit) — from independently native-closed attempts.
+// Its served records are not
 // judged here: the clause revalidates them after the run's executions
 // complete (revalidateServed), so a sibling package's later write still
 // disproves a serve the run would otherwise report. The error return is
@@ -1247,9 +1241,6 @@ var afterServedCheckForTest func(pkg string)
 // its sibling here.
 func publishPackage(ctx context.Context, wg *witnessGroup, pkg string, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]uncacheable, error) {
 	wg.legs[pkg].published = true
-	if beforePackagePublishForTest != nil {
-		beforePackagePublishForTest(pkg)
-	}
 	records, reasons, _, err := publishExecuted(ctx, wg, pkg, m)
 	if err != nil {
 		return nil, nil, err
@@ -1289,12 +1280,13 @@ func revalidateServed(ctx context.Context, wg *witnessGroup, pkg string) ([]gofr
 	if len(served) == 0 {
 		return nil, nil, reasons
 	}
-	view := leg.view
-	servedFPs := map[gofresh.Subject]gofresh.Fingerprint{}
-	for _, s := range served {
-		servedFPs[s] = wg.recorded[s].Fingerprint
+	if afterServedCheckForTest != nil {
+		afterServedCheckForTest(pkg)
 	}
-	verdicts, err := checkFingerprints(ctx, view, servedFPs)
+	verdicts, err := leg.checking.Close(ctx)
+	if err == nil {
+		err = leg.validateInputs(ctx)
+	}
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, nil, reasons
@@ -1307,45 +1299,38 @@ func revalidateServed(ctx context.Context, wg *witnessGroup, pkg string) ([]gofr
 		}
 		return served, nil, reasons
 	}
-	// The verdicts are provisional until the sibling validates: its one
-	// closing observation is the comparison against the tree the run
-	// finished on — a change landing between the check and this close
-	// refuses here, never passes as a serve.
-	if afterServedCheckForTest != nil {
-		afterServedCheckForTest(pkg)
-	}
-	discarded, _, fatal := closeGroup(ctx, view, true, nil, served, wg.executedWhy, reasons)
-	if fatal != nil || discarded {
-		return served, nil, reasons
-	}
 	var drifted []gofresh.Subject
 	var records []witnesscache.Record
 	for _, s := range served {
-		if verdicts[s].Status != gofresh.Valid {
+		chosen := leg.chosen[s]
+		checked := verdicts[chosen.index]
+		if checked.Verdict.Status != gofresh.Valid {
 			drifted = append(drifted, s)
 			// The served record held prior evidence and now re-executes:
 			// the drift verdict's reason - movers named - is its
 			// executed-reason attribution, never a cold read.
-			wg.executedWhy[s] = "mid-run drift: " + verdicts[s].Reason
+			wg.executedWhy[s] = "mid-run drift: " + checked.Verdict.Reason
 			continue
 		}
 		// A carve-out-served record that survived post-run revalidation
 		// installs its effective applicability endpoint and ledger — so
 		// the next run reads it plainly valid instead of re-proving the
 		// same inert delta.
-		if wg.refreshed[s] {
-			records = append(records, wg.recorded[s])
+		if checked.Extension != nil {
+			rec := chosen.record
+			rec.Fingerprint = checked.Extension.Fingerprint
+			rec.CompartmentLedger = witnesscache.LedgerFromGofresh(checked.Extension.Ledger)
+			chosen.record = rec
+			leg.chosen[s] = chosen
+			records = append(records, rec)
 		}
 	}
 	return drifted, records, reasons
 }
 
-// publishExecuted assembles the cache records one package's executed
-// subjects support, reusing the producer-validation ladder: per-process
-// eligibility, the observation-proof leg where every candidate of the
-// package can attach, plain per-process manifests otherwise, and a
-// post-run fingerprint check per record — a stale verdict is mid-run
-// drift of the record's inputs, dropped so the next run re-derives it.
+// publishExecuted selects independently eligible native-finalized attempts.
+// Refused native judgments never become records; actual outcomes remain in the
+// execution account independently of publication.
 // The error return is reserved for caller cancellation. The second
 // return names, per unpublished subject, the leg that refused
 // (REQ-evidence-witness-freshness-diagnosable's diagnosable-set requirement).
@@ -1358,8 +1343,7 @@ func publishExecuted(ctx context.Context, wg *witnessGroup, pkg string, m *execM
 	reasons := map[gofresh.Subject]uncacheable{}
 	for _, s := range order {
 		why, refused := wg.g.neverServes[s]
-		_, captured := wg.fps[s]
-		ps, reason := judgeSubject(s, why, refused, captured, producersOf(s, wg.g, m))
+		ps, reason := judgeSubject(s, why, refused, true, producersOf(s, wg.g, m))
 		if ps == nil {
 			reasons[s] = reason
 			continue
@@ -1370,52 +1354,35 @@ func publishExecuted(ctx context.Context, wg *witnessGroup, pkg string, m *execM
 	// after the run's executions complete (revalidateServed), so this
 	// close gates the executed records alone.
 	leg := wg.legs[pkg]
-	view := leg.view
-	if len(order) != 0 && len(wg.servedIn(pkg)) != 0 {
-		// Publication closes at package completion; serving closes after all
-		// executions. Both start at the same captured facts, but must have
-		// independent seals. Keep applicability obligations on their original
-		// serving view, and close only this producer sibling here.
-		var err error
-		view, err = view.Sibling(order)
-		if err != nil {
-			if ctx.Err() != nil {
-				return nil, nil, false, ctx.Err()
-			}
-			for _, s := range order {
-				reasons[s] = reasonSourceFailed.with(err.Error())
-			}
-			return nil, reasons, false, nil
-		}
-	}
-	records, discarded, _, _, fatal := publishEligible(ctx, wg.g.id, view, leg.observed, leg.observedFPs, leg.candidates, order, eligible, wg.fps, wg.g.excludedPaths, recordNamespaces(wg.g.scratchNamespaces), nil, wg.executedWhy, reasons)
+	records, _, fatal := publishEligible(ctx, wg.g.id, leg, order, eligible, declarationsFor(wg.g), reasons)
 	if fatal != nil {
 		return nil, nil, false, fatal
 	}
-	return records, reasons, discarded, nil
+	return records, reasons, false, nil
 }
 
 // retryDrifted re-executes each drifted served subject exactly once,
 // within the same run, under its covering invocation's envelope: the
 // served outcome was already discarded, so the retry's execution is the
-// subject's outcome for this run. Fresh fingerprints are captured against
-// the current tree before the retry executes; a retry whose record still
-// fails validation afterwards — still drifting — is dropped and counted
-// uncacheable, never retried again.
-func retryDrifted(ctx context.Context, pc *Capture, driftedByGroup map[*witnessGroup][]gofresh.Subject, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]uncacheable, error) {
+// subject's outcome for this run. New native snapshots precede the wave;
+// packages deposit independently at completion. Demonstrated retry drift denies
+// passing grants separately from ordinary uncacheability and raw process facts.
+func retryDrifted(ctx context.Context, pc *Capture, groups []*witnessGroup, driftedByGroup map[*witnessGroup][]gofresh.Subject, m *execMerge, resources *retryResources, install func([]witnesscache.Record) ([]witnesscache.Record, error), ordinal func() int32) ([]*retryCandidate, map[gofresh.Subject]uncacheable, error) {
 	dir := pc.dir
 	normalized := pc.byName()
 	// Fresh pre-retry capture per group: the old view described a tree the
 	// drift already left behind.
 	type retryState struct {
-		wg   *witnessGroup
-		view *gofresh.View
-		fps  map[gofresh.Subject]gofresh.Fingerprint
-		legs map[string]*packageLeg
+		wg       *witnessGroup
+		view     *witnessSnapshot
+		subjects []gofresh.Subject
+		legs     map[string]*packageLeg
 	}
 	var states []retryState
+	reasons := map[gofresh.Subject]uncacheable{}
 	retrySel := map[string]TestSelection{}
-	for wg, subjects := range driftedByGroup {
+	for _, wg := range groups {
+		subjects := driftedByGroup[wg]
 		if len(subjects) == 0 {
 			continue
 		}
@@ -1429,42 +1396,43 @@ func retryDrifted(ctx context.Context, pc *Capture, driftedByGroup map[*witnessG
 			}
 			sel[s.Package] = append(sel[s.Package], s.Symbol)
 		}
-		st := retryState{wg: wg, fps: map[gofresh.Subject]gofresh.Fingerprint{}, legs: map[string]*packageLeg{}}
+		st := retryState{wg: wg, subjects: subjects, legs: map[string]*packageLeg{}}
 		// A failed view or capture leaves the retry unpublishable — it
 		// still executes, its outcome still witnesses, its record is
 		// simply dropped and counted uncacheable.
-		if view, err := wg.engine.NewView(ctx, subjects, wg.g.directory(dir)); err == nil {
-			st.view = view
-			for _, s := range subjects {
-				if fp, err := view.Capture(ctx, s); err == nil {
-					st.fps[s] = fp
-				}
+		view, inputs, err := groupSnapshot(ctx, dir, wg.g)
+		if err != nil {
+			if ctx.Err() != nil {
+				return nil, nil, ctx.Err()
 			}
-		} else if ctx.Err() != nil {
-			return nil, nil, ctx.Err()
+			if abort, _ := classifyFault(err); abort {
+				return nil, nil, err
+			}
+			for _, s := range subjects {
+				reasons[s] = reasonNoCapture.with("retry engine: " + err.Error())
+			}
+			states = append(states, st)
+			continue
 		}
-		// One leg per package, as the main pass: a sibling of the retry
-		// view whose validation re-observes the package's retried
-		// subjects alone, its proof candidates under the same
-		// per-process solo rule over the retry's own stale set — a
-		// retried subject alone in its package runs in a process of its
-		// own. A leg that fails to derive leaves the retry unpublishable
-		// like a failed view.
+		st.view = view
+		// Retry packages receive new runtime bindings on the newly observed
+		// build generation. Each actual process independently registers the
+		// effective runnable roster; a failed preparation cannot publish.
 		byPkg := map[string][]gofresh.Subject{}
 		for _, s := range subjects {
 			byPkg[s.Package] = append(byPkg[s.Package], s)
 		}
-		for pkg, ss := range byPkg {
+		for pkg := range byPkg {
 			if st.view == nil {
 				break
 			}
-			leg, err := newPackageLeg(st.view, ss)
+			leg, err := nativePackageLeg(ctx, st.view, inputs, normalized[wg.g.selectingInvocation(pkg)], pkg)
 			if err != nil {
 				st.view = nil
 				break
 			}
-			leg.prove(ctx, proofCandidates(ss, st.fps))
 			st.legs[pkg] = leg
+			resources.release = append(resources.release, leg.dispose)
 		}
 		states = append(states, st)
 	}
@@ -1472,40 +1440,78 @@ func retryDrifted(ctx context.Context, pc *Capture, driftedByGroup map[*witnessG
 	for _, st := range states {
 		proofs.add(st.wg.g, st.legs)
 	}
-	if err := executeSelections(ctx, pc.normalized, retrySel, m, nil, proofs); err != nil {
-		return nil, nil, err
-	}
-	var published []witnesscache.Record
-	reasons := map[gofresh.Subject]uncacheable{}
-	for _, st := range states {
-		if st.view == nil {
-			continue
-		}
-		// No pre-publish validate here: it closed no checks (only
-		// captures ran on this view), and publishExecuted's single close
-		// refuses the same drift with per-subject reasons.
-		stale := map[string][]string{}
-		for s := range st.fps {
-			stale[s.Package] = append(stale[s.Package], s.Symbol)
-		}
-		// The retry publishes through the same ladder over a synthetic
-		// group state, its proof leg captured before the retry executed.
-		rwg := &witnessGroup{
-			g: st.wg.g, engine: st.wg.engine, view: st.view, legs: st.legs, stale: stale, fps: st.fps,
-			executedWhy: map[gofresh.Subject]string{},
-		}
-		for _, pkg := range rwg.packages() {
-			records, retryReasons, _, err := publishExecuted(ctx, rwg, pkg, m)
-			if err != nil {
-				return nil, nil, err
+	var candidates []*retryCandidate
+	onPackage := func(invocation string, unit packageUnit) error {
+		resources.retain(unit)
+		for _, st := range states {
+			if st.wg.g.selectingInvocation(unit.pkg) != invocation {
+				continue
 			}
-			// The retry is the subject's one re-derivation this run; a
-			// record still refusing keeps the retry's reason.
+			var names []string
+			for _, subject := range st.subjects {
+				if subject.Package == unit.pkg {
+					names = append(names, subject.Symbol)
+				}
+			}
+			if len(names) == 0 {
+				continue
+			}
+			current := collectRetryCandidates(st.wg, unit, m, reasons)
+			candidates = append(candidates, current...)
+			leg := st.legs[unit.pkg]
+			if st.view == nil || leg == nil {
+				continue
+			}
+			// Later waves build new snapshots. Keep only runtime storage through
+			// final consumption, rather than retaining completed source graphs.
+			defer leg.release()
+			rwg := &witnessGroup{g: st.wg.g, view: st.view, legs: st.legs, stale: map[string][]string{unit.pkg: names}, executedWhy: map[gofresh.Subject]string{}}
+			records, retryReasons, _, err := publishExecuted(ctx, rwg, unit.pkg, m)
 			maps.Copy(reasons, retryReasons)
-			published = append(published, records...)
+			if err != nil {
+				return err
+			}
+			leg.preparation.Lock()
+			inputErr := leg.inputErr
+			leg.preparation.Unlock()
+			if demonstratedDrift(inputErr) {
+				for _, item := range current {
+					reason := reasonSourceFailed.with(inputErr.Error())
+					m.denied[item.key] = reason
+					reasons[item.key.subject] = reason
+					if item.native != nil {
+						item.native.reusable = false
+					}
+				}
+			}
+			landed, err := install(records)
+			noteRetryPublication(ctx, invocation, unit.pkg, landed)
+			for _, record := range landed {
+				subject := gofresh.Subject{Package: record.Package, Symbol: record.Test}
+				why, refused := st.wg.g.neverServes[subject]
+				selected, _ := judgeSubject(subject, why, refused, true, producersOf(subject, st.wg.g, m))
+				if selected == nil {
+					continue
+				}
+				key := producerSubject{producer: keyOfProducer(selected.obs.Wire.GetProducer()), subject: subject}
+				for _, item := range current {
+					if item.key == key && item.native != nil {
+						copy := record
+						item.native.record = &copy
+						break
+					}
+				}
+			}
+			if err != nil {
+				return err
+			}
 		}
+		return nil
 	}
-	return published, reasons, nil
+	if err := executeSelections(ctx, pc.normalized, retrySel, m, onPackage, proofs, ordinal); err != nil {
+		return candidates, reasons, err
+	}
+	return candidates, reasons, nil
 }
 
 // consumeMergeFailuresOnly folds one merge's failed outcomes, its
@@ -1554,7 +1560,8 @@ func consumeMerge(tr *verify.TestRun, m *execMerge, ranTop map[string]bool, plai
 		case stipulatorv1.TestOutcome_TEST_OUTCOME_SKIPPED:
 			outcome = verify.TestSkipped
 		case stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED:
-			if m.disp[keyOfProducer(row.GetProducer())] == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+			_, denied := m.denied[producerSubject{producer: keyOfProducer(row.GetProducer()), subject: gofresh.Subject{Package: pkg, Symbol: topLevel(test)}}]
+			if !denied && m.disp[keyOfProducer(row.GetProducer())] == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
 				outcome = verify.TestPassed
 				if plainInv[row.GetProducer().GetInvocation()] {
 					plainGranted[key] = true

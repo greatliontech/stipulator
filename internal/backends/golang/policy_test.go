@@ -18,6 +18,35 @@ import (
 
 var updatePolicyGolden = flag.Bool("update-policy-golden", false, "rewrite the derived-policy goldens under testdata/policyderive")
 
+func TestReviewedNamespaceExternalExclusion(t *testing.T) {
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	ns := &stipulatorv1.ScratchNamespace{}
+	ns.SetDir(".")
+	ns.SetPattern("*")
+	cfg.SetScratchNamespaces([]*stipulatorv1.ScratchNamespace{ns})
+	// Absolute identities retain their host-native canonical spelling.
+	cfg.SetExcludedPaths([]string{filepath.Join(t.TempDir(), "external")})
+	if err := validateConfig(cfg); err != nil {
+		t.Fatalf("external absolute exclusion conflicts with tree-relative namespace: %v", err)
+	}
+	cfg.SetExcludedPaths([]string{"child/file"})
+	if err := validateConfig(cfg); err == nil || !strings.Contains(err.Error(), "retires the exclusion") {
+		t.Fatalf("in-tree overlap must refuse: %v", err)
+	}
+}
+
+func TestReviewedNamespaceMatcherErrorPropagates(t *testing.T) {
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	ns := &stipulatorv1.ScratchNamespace{}
+	ns.SetDir(".")
+	ns.SetPattern("*")
+	cfg.SetScratchNamespaces([]*stipulatorv1.ScratchNamespace{ns})
+	cfg.SetExcludedPaths([]string{"invalid-\xff"})
+	if err := validateConfig(cfg); err == nil || !strings.Contains(err.Error(), "invalid path") {
+		t.Fatalf("native identity grammar failure was lost: %v", err)
+	}
+}
+
 // TestGoPolicyDeriveGoldenByteIdentical pins the policy-init derivation
 // byte-for-byte against committed goldens: the derived record depends only
 // on the tree's workspace declaration — module roots tree-relative in

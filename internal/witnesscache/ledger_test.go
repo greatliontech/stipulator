@@ -12,14 +12,28 @@ import (
 	"github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/closure/testvariant"
 	"github.com/greatliontech/gofresh/guard"
+	"github.com/greatliontech/gofresh/runtimeinput"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
-func ledgerFingerprint(compartment string) Fingerprint {
+// emptyRuntimeInputs supplies structural store data, not a completed process
+// observation or operation-outcome support.
+func emptyRuntimeInputs(t *testing.T) runtimeinput.State {
+	t.Helper()
+	observation, err := runtimeinput.Merge(t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return observation.State
+}
+
+func ledgerFingerprint(t *testing.T, compartment string) Fingerprint {
+	t.Helper()
+	inputs := emptyRuntimeInputs(t)
 	return Fingerprint{MaximalClosure: strings.Repeat("a", 32), TestVariantClosure: compartment,
 		ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy,
 		Guards:        guard.Guards{Toolchain: "go1.27.1", BuildConfig: strings.Repeat("b", 32)},
-		RuntimeInputs: "eyJ2IjoyfQ", RuntimeDigest: "3a79bf37b571938d1f2907afb6a643f4", ResultKind: gofresh.CodeResult}
+		RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult}
 }
 
 func simpleLedger(test string) *CompartmentLedger {
@@ -43,7 +57,7 @@ func TestLedgerBindingsRoundTripAndIndependentOwnership(t *testing.T) {
 	if back := wire.ToGofresh(); !reflect.DeepEqual(back, original) {
 		t.Fatalf("conversion lost evidence: %#v", back)
 	}
-	rec := Record{Group: "group", Package: "example.com/p", Test: "TestA", Fingerprint: ledgerFingerprint(strings.Repeat("e", 32)), CompartmentLedger: wire, Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
+	rec := Record{Group: "group", Package: "example.com/p", Test: "TestA", Fingerprint: ledgerFingerprint(t, strings.Repeat("e", 32)), CompartmentLedger: wire, Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
 	if err := Install(t.Context(), dir, rec); err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +111,7 @@ func TestLedgerCoordinatesSeparateCoreAndConfiguration(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-cache-format-ledger", "REQ-evidence-store-gc")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
-	base := Record{Group: "group", Package: "example.com/p", Test: "TestA", Fingerprint: ledgerFingerprint(strings.Repeat("e", 32)), CompartmentLedger: simpleLedger("TestA"), Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
+	base := Record{Group: "group", Package: "example.com/p", Test: "TestA", Fingerprint: ledgerFingerprint(t, strings.Repeat("e", 32)), CompartmentLedger: simpleLedger("TestA"), Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
 	changes := []func(*Record){
 		func(r *Record) {},
 		func(r *Record) { r.Fingerprint.MaximalClosure = strings.Repeat("f", 32) },
@@ -133,7 +147,7 @@ func TestLedgerCoordinatesSeparateCoreAndConfiguration(t *testing.T) {
 	if _, _, err := GC(t.Context(), dir, func(pkg, test string) bool { return true }, nil); err != nil {
 		t.Fatal(err)
 	}
-	kept := Load(t.Context(), dir)
+	kept := Load(t.Context(), dir).Records
 	if len(kept) == 0 {
 		t.Fatal("no retained records")
 	}
@@ -152,7 +166,7 @@ func TestLedgerRefusesAbsentUnknownAndPartialBindings(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-cache-format-ledger", "REQ-evidence-witness-cache-format-version")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
-	r := Record{Group: "group", Package: "example.com/p", Test: "TestA", Fingerprint: ledgerFingerprint(strings.Repeat("e", 32)), CompartmentLedger: simpleLedger("TestA"), Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
+	r := Record{Group: "group", Package: "example.com/p", Test: "TestA", Fingerprint: ledgerFingerprint(t, strings.Repeat("e", 32)), CompartmentLedger: simpleLedger("TestA"), Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
 	if err := Install(t.Context(), dir, r); err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +220,7 @@ func TestLedgerRefusesAbsentUnknownAndPartialBindings(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(store, name), data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if got := Load(t.Context(), dir); len(got) != 0 {
+	if got := Load(t.Context(), dir).Records; len(got) != 0 {
 		t.Fatal("old record backfilled")
 	}
 	// Load retains the reference even though the record refuses; explicit

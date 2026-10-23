@@ -107,6 +107,11 @@ func Scoped(ctx context.Context, d verbcore.Deps, prepared *check.Prepared, scop
 		if pc, err = d.Capture(ctx); err != nil {
 			return nil, nil, err
 		}
+		if pc != nil {
+			if err := pc.ConfigureExecution(false, scope); err != nil {
+				return nil, nil, err
+			}
+		}
 	}
 	symbols, err := golang.OperationSymbols(ctx, store, pc)
 	if err != nil {

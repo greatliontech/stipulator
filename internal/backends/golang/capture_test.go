@@ -82,13 +82,11 @@ func countSpawns(t *testing.T) *spawnCounter {
 	t.Helper()
 	c := &spawnCounter{}
 	commandHook = func(name string, args []string) {
-		if name != "go" {
-			// The owned resolver child — this binary in its resolver
-			// mode — the one seam spawn that is not the go tool.
+		if isResolverSpawn(name, args) {
 			c.child.Add(1)
 			return
 		}
-		if len(args) == 0 {
+		if name != "go" || len(args) == 0 {
 			return
 		}
 		switch args[0] {
@@ -102,6 +100,39 @@ func countSpawns(t *testing.T) *spawnCounter {
 	}
 	t.Cleanup(func() { commandHook = nil })
 	return c
+}
+
+func TestResolverSpawnCountersDistinguishRetainedBinaries(t *testing.T) {
+	for _, exported := range []bool{false, true} {
+		t.Run(fmt.Sprint(exported), func(t *testing.T) {
+			var children func() int
+			if exported {
+				var release func()
+				children, release = CountChildSpawnsForTest()
+				t.Cleanup(release)
+			} else {
+				counter := countSpawns(t)
+				children = func() int { return counter.snapshot().child }
+			}
+			for _, event := range []struct {
+				name string
+				args []string
+			}{
+				{"go", []string{"env"}},
+				{"self", []string{resolverSubcommand, "/tree"}},
+				{"package.test", []string{"-test.run=TestOK"}},
+				{"go", []string{resolverSubcommand}},
+				{"package.test", nil},
+				{"package.test", []string{"-test.run", resolverSubcommand}},
+				{"self", []string{resolverSubcommand, "/tree", "example.com/p"}},
+			} {
+				commandHook(event.name, event.args)
+			}
+			if got := children(); got != 2 {
+				t.Fatalf("counted %d resolver children, want both resolver events only", got)
+			}
+		})
+	}
 }
 
 // unitCosts measures, on the fixture and through the seam, what one
@@ -326,9 +357,10 @@ func TestGoCaptureDerivationProperty(t *testing.T) {
 // TestGoCaptureExecutionReadersReuseTheDerivation pins the readers the
 // clause names beyond the derivation legs — witness selection, the
 // health-judged execution, and the outside-policy accounting — to the
-// one derivation: a selective witness run, then a health-judged
-// execution, then the conservation report over the same capture pay
-// exactly the derivation's unit costs and nothing more.
+// one derivation: on either execution class, early symbol discovery, execution,
+// and the conservation report over the same capture pay exactly the
+// derivation's unit costs and nothing more. The execution class is selected
+// before discovery; one capture never changes its allocation mid-operation.
 //
 // Deliberately not //gofresh:pure: executes the fixture's tests.
 func TestGoCaptureExecutionReadersReuseTheDerivation(t *testing.T) {
@@ -348,22 +380,31 @@ func TestGoCaptureExecutionReadersReuseTheDerivation(t *testing.T) {
 	normalize, discover, universe := unitCosts(t, c, ctx, tmp, pol)
 	want := normalize.plus(discover).plus(universe)
 
-	c.reset()
-	pc := mustCapture(t, ctx, tmp, pol)
-	if _, err := RunWitnessesPolicy(ctx, pc, noSeeding{}); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := ExecutePolicyWitnessed(ctx, pc, noSeeding{}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := ConservationReport(ctx, pc); err != nil {
-		t.Fatal(err)
-	}
-	if c.snapshot().test == 0 {
-		t.Fatal("nothing executed through the seam; the pin below would prove nothing about execution readers")
-	}
-	if got := c.snapshot().derivation(); got != want {
-		t.Fatalf("the witness run, the health-judged execution, and the conservation report spawned %+v of derivation, want the capture's %+v", got, want)
+	for _, full := range []bool{false, true} {
+		c.reset()
+		pc := mustCapture(t, ctx, tmp, pol)
+		if err := pc.ConfigureExecution(full, nil); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := witnessSymbols(ctx, pc); err != nil {
+			t.Fatal(err)
+		}
+		if full {
+			if _, _, err := ExecutePolicyWitnessed(ctx, pc, noSeeding{}); err != nil {
+				t.Fatal(err)
+			}
+		} else if _, err := RunWitnessesPolicy(ctx, pc, noSeeding{}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := ConservationReport(ctx, pc); err != nil {
+			t.Fatal(err)
+		}
+		if c.snapshot().test == 0 {
+			t.Fatal("nothing executed through the seam; the pin below would prove nothing about execution readers")
+		}
+		if got := c.snapshot().derivation(); got != want {
+			t.Fatalf("full=%t: execution readers spawned %+v of derivation, want %+v", full, got, want)
+		}
 	}
 }
 

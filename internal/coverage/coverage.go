@@ -146,8 +146,10 @@ type Gap struct {
 
 // Report is the coverage evaluation and gate verdict.
 type Report struct {
-	Requirements []Requirement
-	Gaps         []Gap
+	// WitnessCacheLoad retains the verification pass's advisory load account.
+	WitnessCacheLoad *stipulatorv1.WitnessCacheLoadAccount
+	Requirements     []Requirement
+	Gaps             []Gap
 	// PolicyOverrides lists the manifest's active overrides,
 	// human-readable and canonically ordered: contract-tier
 	// configuration is surfaced in every coverage output.
@@ -556,7 +558,7 @@ func Evaluate(spec *stipulatorv1.Spec, vr *verify.Report, store *records.Store, 
 	for _, r := range vr.Results {
 		boundIDs[r.RequirementId] = true
 	}
-	rep := &Report{PolicyOverrides: pol.Active(), DanglingPointers: dangling}
+	rep := &Report{PolicyOverrides: pol.Active(), DanglingPointers: dangling, WitnessCacheLoad: vr.WitnessCacheLoad}
 	buckets := map[string]Bucket{}
 	// facts keeps, per requirement, the red facts behind its bucket that
 	// the two boundary classes read once the gaps are judged.

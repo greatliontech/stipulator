@@ -3,13 +3,14 @@ package golang
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"maps"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"slices"
 	"sort"
 	"strings"
@@ -18,20 +19,19 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/greatliontech/gofresh/gotool"
 	"github.com/greatliontech/gofresh/resident"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
 )
 
 // The policy executor runs each normalized Go invocation exactly once and
-// derives its terminal health from the `go test -json` streams of its
-// selected packages, one owned child process per package. Per-package
+// derives terminal health from retained binaries' actual exits and their owned
+// output conversion streams. Per-package
 // processes are what make attribution honest: every outcome in the report
 // names the one process whose stream produced it (REQ-policy-attribution),
 // and per-process observation refines the same boundary. The
 // executor trusts nothing silent: a stream that ends without a terminal
-// package event, carries unparseable bytes, or disagrees with its process
+// package or build event, carries unparseable bytes, or disagrees with its process
 // exit status is degraded, never healthy — an environment that swallowed a
 // suite must be distinguishable from a suite that passed.
 
@@ -134,7 +134,9 @@ type testEvent struct {
 // when a process was launched; obs is that process's owned observation,
 // absent until the caller classifies a cut-off run.
 type packageRun struct {
-	pkg string
+	pkg       string
+	execution *packageExecution
+	attempt   *nativeAttempt
 	// soloTest names the one test an isolation re-run executed; empty
 	// for a package's own process.
 	soloTest    string
@@ -156,7 +158,7 @@ type packageRun struct {
 
 // ExecuteInvocation executes one normalized invocation's selected packages
 // — the package obligations of selection — each in its own owned,
-// cancellable `go test -json` process, fanned out under the derived
+// cancellable retained test process, fanned out under the derived
 // concurrency bound with the invocation's reviewed
 // envelope timeout governing the whole invocation as a context deadline.
 // Every selected package executes whole: the exported executor accepts
@@ -189,7 +191,14 @@ func ExecuteInvocation(ctx context.Context, n *NormalizedInvocation, selection [
 // the run is disposed once and the assembly reads the disposition. A hook
 // error ends the invocation with it. A nil hook is ExecuteInvocation.
 func ExecuteInvocationObserved(ctx context.Context, n *NormalizedInvocation, selection []Obligation, onPackage func(unit packageUnit) error) (*stipulatorv1.InvocationHealth, []*stipulatorv1.TestResult, []*stipulatorv1.FailureDiagnostic, []*ProcessObservation, error) {
-	return executeInvocationPrepared(ctx, n, selection, onPackage, nil)
+	freezeWitnessAllocation(n, len(selectedPackages(selection)))
+	legs := executionLegs(ctx, n, selectedPackages(selection))
+	defer func() {
+		for _, leg := range legs {
+			leg.dispose()
+		}
+	}()
+	return executeInvocationPrepared(ctx, n, selection, onPackage, legs)
 }
 
 func executeInvocationPrepared(ctx context.Context, n *NormalizedInvocation, selection []Obligation, onPackage func(unit packageUnit) error, proofs map[string]*packageLeg) (*stipulatorv1.InvocationHealth, []*stipulatorv1.TestResult, []*stipulatorv1.FailureDiagnostic, []*ProcessObservation, error) {
@@ -204,27 +213,28 @@ func executeInvocationPrepared(ctx context.Context, n *NormalizedInvocation, sel
 	// abort.
 	invCtx, cancel := context.WithTimeoutCause(ctx, n.Timeout, errEnvelopeExpired)
 	defer cancel()
-	var afterSlot func(i int, run *packageRun)
 	var (
 		mu       sync.Mutex
 		firstErr error
 	)
-	if onPackage != nil {
-		afterSlot = func(i int, run *packageRun) {
-			mu.Lock()
-			defer mu.Unlock()
-			if err := finalizeRun(n, run, invCtx.Err() != nil, ""); err != nil {
-				if firstErr == nil {
-					firstErr = err
-				}
-				return
-			}
-			if firstErr != nil {
-				return
-			}
-			if err := onPackage(packageUnit{pkg: pkgs[i], run: *run}); err != nil {
+	afterSlot := func(i int, run *packageRun) {
+		mu.Lock()
+		defer mu.Unlock()
+		if err := finalizeRun(n, run, invCtx.Err() != nil, ""); err != nil {
+			if firstErr == nil {
 				firstErr = err
 			}
+			return
+		}
+		if beforePackagePublishForTest != nil {
+			beforePackagePublishForTest(run.pkg)
+		}
+		finishNativeRun(ctx, run)
+		if firstErr != nil || onPackage == nil {
+			return
+		}
+		if err := onPackage(packageUnit{pkg: pkgs[i], run: *run}); err != nil {
+			firstErr = err
 		}
 	}
 	runs := runSelectedPackages(ctx, invCtx, n, pkgs, nil, spawnOrdinals(), nil, afterSlot, proofs)
@@ -274,20 +284,126 @@ func runSelectedPackages(ctx, invCtx context.Context, n *NormalizedInvocation, p
 	gate := newAdmission(invCtx, spawnBoundOf(n))
 	defer gate.leave()
 	runs := make([]packageRun, len(pkgs))
+	dispatched := false
+	defer func() {
+		if dispatched || ctx.Err() != nil {
+			return
+		}
+		for i := range runs {
+			if inSlot != nil {
+				inSlot(i, &runs[i], nil)
+			}
+			if afterSlot != nil {
+				afterSlot(i, &runs[i])
+			}
+		}
+	}()
+	profile, profileErr := openRetainedCoverage(n)
+	if profileErr != nil {
+		for i, pkg := range pkgs {
+			runs[i] = degradedRun(n.Name, pkg, "coverage output: "+profileErr.Error(), false)
+		}
+		return runs
+	}
+	defer profile.Close()
+	builds := map[string]*retainedBuildResult{}
+	var artifacts []*retainedArtifact
+	flags, flagErr := retainedGOFLAGS(n)
+	if flagErr != nil {
+		for i, pkg := range pkgs {
+			runs[i] = degradedRun(n.Name, pkg, flagErr.Error(), false)
+		}
+		return runs
+	}
+	// The public execution surface can be given package obligations without an
+	// earlier discovery. Resolve execution coordinates for that case, without
+	// turning this later listing into native preparation or a runnable inventory.
+	buildInvocation := *n
+	runtimeDirs := maps.Clone(n.PkgDirs)
+	if runtimeDirs == nil {
+		runtimeDirs = map[string]string{}
+	}
+	missingDirectory := false
+	for _, pkg := range pkgs {
+		missingDirectory = missingDirectory || runtimeDirs[pkg] == ""
+	}
+	if missingDirectory || flags.coverPkg != "" && len(n.selectedPackages) == 0 {
+		query := *n
+		query.Packages = pkgs
+		query.Env = witnessEnvOf(n)
+		facts, err := readPackageListing(invCtx, &query, engineRunner, "ImportPath,Name,Dir,TestGoFiles,XTestGoFiles,Error")
+		if err == nil {
+			buildInvocation.selectedPackages = facts
+			for _, fact := range facts {
+				if runtimeDirs[fact.ImportPath] == "" {
+					runtimeDirs[fact.ImportPath] = fact.Dir
+				}
+			}
+		}
+		// Compilation still owns build-failure classification. If it succeeds
+		// without a resolvable runtime directory, runtime preparation refuses.
+	}
+	if flags.coverPkg != "" {
+		admitted, refusal, held := gate.admit()
+		if !admitted {
+			for i, pkg := range pkgs {
+				runs[i] = packageRun{pkg: pkg, heldBy: held}
+				if refusal != "" {
+					runs[i] = degradedRun(n.Name, pkg, "memory: "+refusal, false)
+				}
+			}
+			return runs
+		}
+		for _, pkg := range pkgs {
+			if beforePackageBuildForTest != nil {
+				beforePackageBuildForTest(pkg)
+			}
+			proofs[pkg].prepareBuild(invCtx)
+		}
+		scope := buildRetainedScope(invCtx, &buildInvocation, pkgs, retainedProcessHooks{
+			Spawned: func(_ string, pid int) { gate.spawned("coverage compilation", pid) },
+			Reaped: func(_ string, pid int, state *os.ProcessState) {
+				gate.reaped("coverage compilation", pid, processPeakBytes(state))
+			},
+		})
+		gate.release()
+		defer scope.Close()
+		for _, pkg := range pkgs {
+			b, ok := scope.Packages[pkg]
+			if !ok {
+				b = retainedBuildResult{Err: scope.Err, Stream: scope.Stream, Stderr: scope.Stderr}
+				if b.Err == nil {
+					b.Err = fmt.Errorf("coverage compilation returned no package %s", pkg)
+				}
+			}
+			builds[pkg] = &b
+			if b.Artifact != nil {
+				artifacts = append(artifacts, b.Artifact)
+			}
+		}
+	}
 	rep := progress.FromContext(ctx)
 	var pkgsDone atomic.Int32
 	var wg sync.WaitGroup
+	dispatched = true
 	for i, pkg := range pkgs {
 		wg.Add(1)
 		go func(i int, pkg string) {
 			defer wg.Done()
+			defer func() {
+				runs[i].attempt.release()
+				if execution := runs[i].execution; builds[pkg] == nil && execution != nil && execution.built != nil && execution.built.Artifact != nil {
+					_ = execution.built.Artifact.Close()
+				}
+			}()
 			// Every package reports its completion exactly once, whichever
 			// way it ends; the reporter bounds emission.
 			defer func() { rep.Step(n.Name, pkgsDone.Add(1), int32(len(pkgs))) }()
 			admitted, refusal, held := gate.admit()
 			switch {
 			case admitted:
-				runs[i] = runPackage(invCtx, n, pkg, tests[pkg], spawnOrdinal(), gate, proofs[pkg])
+				execution := &packageExecution{built: builds[pkg], coverage: profile, artifacts: artifacts, directory: runtimeDirs[pkg]}
+				runs[i] = runNativePackage(ctx, invCtx, n, pkg, tests[pkg], spawnOrdinal(), gate, proofs[pkg], execution)
 				if inSlot != nil && ctx.Err() == nil {
 					inSlot(i, &runs[i], gate)
 				}
@@ -536,9 +652,9 @@ type admission struct {
 	// admission's readings — execution's own peak, the growth term's
 	// reference.
 	passPeak uint64
-	// treePeak is, per registered process, the largest its tree has
-	// shown in this admission's readings — a live package tree's
-	// observed peak, released with the process.
+	// treePeak is the largest observed live-tree reading per registered
+	// process. Compilation and execution roots occupy the slot sequentially;
+	// a reaped root's live readings are replaced by its completed peak.
 	treePeak map[int]uint64
 }
 
@@ -651,7 +767,7 @@ func (g *hostGate) member(a *admission) bool {
 var admissionObserverForTest func(*admission)
 
 func newAdmission(ctx context.Context, bound int) *admission {
-	a := &admission{ctx: ctx, gate: theHostGate, bound: bound, pids: map[int]bool{}, treePeak: map[int]uint64{}, pkgOf: map[int]string{}}
+	a := &admission{ctx: ctx, gate: theHostGate, bound: bound, pids: map[int]bool{}, pkgOf: map[int]string{}, treePeak: map[int]uint64{}}
 	if admissionObserverForTest != nil {
 		admissionObserverForTest(a)
 	}
@@ -871,22 +987,15 @@ func (a *admission) release() {
 // returned.
 func (a *admission) leave() { a.gate.leave(a) }
 
-// witnessSpawnBound derives the package fan-out bound: max(1,
-// GOMAXPROCS/2) — each unit is itself a parallel process tree, so a
-// full processor-count fan-out multiplies into host-freezing load that
-// nice(1)'s CPU priority does not cover. The bound is derived, never
-// declared: reviewed GOFLAGS or binary arguments carrying their own
-// parallelism flags are the operator's explicit surface.
-func witnessSpawnBound() int {
-	bound := runtime.GOMAXPROCS(0) / 2
-	if bound < 1 {
-		bound = 1
-	}
-	return bound
+// witnessSpawnBound shares the parent's processor budget over the permitted
+// package population. Each package is a parallel process tree; reserving slots
+// for packages that cannot execute would unnecessarily narrow every child.
+func witnessSpawnBound(processors, packages int) int {
+	return min(max(1, processors/2), max(1, packages))
 }
 
 // spawnBoundOf is every post-normalize consumer's road to the fan-out
-// bound: the normalize-time freeze (n.SpawnBound), so the spawn and
+// bound: the pre-capture freeze (n.SpawnBound), so the spawn and
 // every later report of it observe one value — a re-derivation at use
 // time would race dynamic GOMAXPROCS updates exactly as the WitnessEnv
 // field doc describes for the inner width. The fallback re-derivation
@@ -895,7 +1004,7 @@ func spawnBoundOf(n *NormalizedInvocation) int {
 	if n.SpawnBound > 0 {
 		return n.SpawnBound
 	}
-	return witnessSpawnBound()
+	return max(1, processorBudgetOf(n)/2)
 }
 
 // witnessChildWidth derives one unit's inner-parallelism width: the
@@ -907,179 +1016,16 @@ func spawnBoundOf(n *NormalizedInvocation) int {
 // (not the raw core count) honors an operator who already narrowed
 // the stipulator process.
 func witnessChildWidth(n *NormalizedInvocation) int {
-	width := runtime.GOMAXPROCS(0) / spawnBoundOf(n)
+	width := processorBudgetOf(n) / spawnBoundOf(n)
 	if width < 1 {
 		width = 1
 	}
 	return width
 }
 
-// runPackage executes one package's `go test -json` in an owned child
-// process — narrowed to the selected top-level runnables when selection
-// is non-nil, the test binary's testlog directed to a per-process capture
-// file the executor owns — and classifies its stream. A cancelled or
-// deadline-expired context leaves the disposition unspecified: the caller
-// — not the stream parser — decides between timeout reporting and
-// cancellation discard.
-func runPackage(ctx context.Context, n *NormalizedInvocation, pkg string, selection []string, ordinal int32, gate *admission, proof *packageLeg) packageRun {
-	// Directing the test binary's testlog to a per-process capture file
-	// makes the run uncacheable to the toolchain (extra binary arguments
-	// fall outside its cacheable set): observation capture deliberately
-	// trades toolchain cache hits for per-process evidence — a cached
-	// replay has no process, so nothing could own its observation — and
-	// witness freshness serving is the sanctioned cache
-	// (REQ-evidence-witness-freshness).
-	// A failed capture-file creation never blocks execution: the run
-	// proceeds without a testlog and the process's observation is
-	// incomplete for that stated reason.
-	logPath := ""
-	if logf, err := os.CreateTemp("", "stipulator-testlog-*.txt"); err == nil {
-		logPath = logf.Name()
-		logf.Close()
-		defer os.Remove(logPath)
-	}
-	// The observation bracket is captured strictly before the process
-	// spawns: it must fingerprint the declared roots as they were when the
-	// run could first read them, so a change under a declared root
-	// persisting across the run-to-ingest span moves it. A capture failure
-	// never blocks execution — the process's observation is incomplete for
-	// the stated reason, exactly as a failed capture-file creation.
-	// Every witness process reuses the invocation's derived environment:
-	// its owned telemetry home is re-established before each spawn, in
-	// case something swept it since normalization — a fan-out runs for
-	// minutes, and a later package's process must not fork the sidecar.
-	// Before the bracket is captured, so a repair write precedes it.
-	if err := ensureTelemetryOwned(n.Env, n.TelemetrySource); err != nil {
-		if ctx.Err() != nil {
-			return packageRun{pkg: pkg}
-		}
-		return degradedRun(n.Name, pkg, fmt.Sprintf("spawning go test: %v", err), false)
-	}
-	frame := captureObservationFrame(ctx, n, pkg)
-	producer := &stipulatorv1.ProducerIdentity{}
-	producer.SetInvocation(n.Name)
-	producer.SetProcessOrdinal(ordinal)
-	frame.outcome = proof.prepareOutcome(ctx, selection, frame.frame, processIdentity(n, producer, pkg))
-	cmd, err := ownedRunner.Command(ctx, n.Dir, witnessEnvOf(n), testCommandArgs(n, pkg, selection, logPath)...)
-	if err != nil {
-		return degradedRun(n.Name, pkg, fmt.Sprintf("spawning go test: %v", err), false)
-	}
-	// This command compiles in the invocation directory. cmd/go derives
-	// the test binary's PWD from the package directory when it starts it;
-	// witnessProcessEnv describes that later process for observation ingest.
-	// Do not lend the binary's PWD to the compiler or a go-command wrapper.
-	var stderr boundedBuffer
-	cmd.Stderr = writerFunc(func(p []byte) (int, error) {
-		stderr.write(string(p))
-		return len(p), nil
-	})
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		if ctx.Err() != nil {
-			return packageRun{pkg: pkg}
-		}
-		return degradedRun(n.Name, pkg, fmt.Sprintf("spawning go test: %v", err), false)
-	}
-	if err := cmd.Start(); err != nil {
-		// A spawn refused by an expired or cancelled context is not an
-		// environmental degradation: the caller classifies the missing
-		// terminal fact as timeout or discards the run.
-		if ctx.Err() != nil {
-			return packageRun{pkg: pkg}
-		}
-		return degradedRun(n.Name, pkg, fmt.Sprintf("spawning go test: %v", err), false)
-	}
-	gate.spawned(pkg, cmd.Process.Pid)
-	producer.SetProcessId(int64(cmd.Process.Pid))
-
-	st := parseTestStream(n.Name, pkg, stdout, producer)
-	waitErr := cmd.Wait()
-	gate.reaped(pkg, cmd.Process.Pid, processPeakBytes(cmd.ProcessState))
-	if gotool.Salvaged(ctx, waitErr) {
-		// The stream above was read to its end through the invocation's
-		// own pipe before this wait, so a descendant the process left
-		// holding stdout delays the stream's end and never reaches the
-		// wait; the one pipe the wait bounds is stderr's copier, so the
-		// wait-delay form here is a descendant holding stderr alone past
-		// the boundary's wait delay after the process exited on its own —
-		// it truncates the diagnostic residue, never the verdict, which is
-		// the whole stream's and the exit's (REQ-go-owned-processes-runner).
-		waitErr = nil
-	}
-	bound := declaredBinaryBound(n)
-	if ctx.Err() != nil {
-		// Keep the parsed residue: on envelope expiry the caller's
-		// timeout diagnostic names the tests the cutoff aborted, carries
-		// the bounded output the cut-off process left behind — the
-		// kill-time goroutine dump arrives on the child's stdout and
-		// stderr — and the launched process gains its incomplete
-		// observation. The process exit is withheld: the envelope kill's
-		// own signal is the runner's act, not a fact of the run.
-		return packageRun{pkg: pkg, aborted: startedTests(st), residue: runResidue(st, &stderr, nil, ""), producer: producer, peakBytes: processPeakBytes(cmd.ProcessState)}
-	}
-	run := classifyRun(n.Name, pkg, st, waitErr, &stderr, bound)
-	run.peakBytes = processPeakBytes(cmd.ProcessState)
-	// A terminal run retains its started-but-unfinished tests: a package
-	// abort's shadowed tests are structural facts the selective isolation
-	// pass consumes, not only diagnostic prose.
-	run.aborted = startedTests(st)
-	run.producer = producer
-	run.obs = observeProcess(ctx, n, pkg, producer, st, waitErr, run.disposition, logPath, frame)
-	return run
-}
-
-// testCommandArgs renders one package's `go test -json` argument list from
-// the normalized invocation: the typed configuration and nothing ambient,
-// plus the per-process testlog capture file when one exists and the
-// top-level test selection when one is given — both executor property no
-// reviewed args entry may name (validation refuses the collisions, so the
-// capture is always the executor's own file and the selection always the
-// executor's own rendering, bound to exactly this process).
-//
-// A non-nil selection renders as an anchored, alternation-of-literals
-// `-run` flag on the go command — never a binary argument, so the
-// toolchain applies it to every test binary it builds for the package.
-// Anchoring is per top-level runnable: subtests and committed fuzz seeds
-// ride their selected parent (a single-element Fuzz selection replays the
-// target's committed seeds, exactly the ordinary run's replay obligation).
-//
-// The toolchain's implicit per-binary timeout is disabled outright: the
-// reviewed record is the only source of test bounds. The envelope timeout
-// governs the whole invocation through owned process termination, and a
-// finer per-binary bound rides the reviewed args — the test binary honors
-// the last -test.timeout it parses. Left in force, the implicit default
-// would abort a reviewed long-running invocation at ten minutes: the go
-// command derives both the binary's default -test.timeout and its own
-// SIGQUIT kill backstop from its -timeout flag, and binary-level
-// arguments cannot reach that backstop, so the inherited ceiling must be
-// disabled at the go level, never overridden per binary.
-func testCommandArgs(n *NormalizedInvocation, pkg string, selection []string, logPath string) []string {
-	args := []string{"test", "-json", "-timeout=0"}
-	pgo := buildPGO(treeRoot(n), n.PGO)
-	args = append(args, buildFlags(n.Race, n.Tags, n.ModuleMode, pgo)...)
-	switch {
-	case n.CacheBypass:
-		args = append(args, "-count=1")
-	case n.Count > 0:
-		args = append(args, fmt.Sprintf("-count=%d", n.Count))
-	}
-	if len(selection) > 0 {
-		quoted := make([]string, len(selection))
-		for i, name := range selection {
-			quoted[i] = regexp.QuoteMeta(name)
-		}
-		args = append(args, "-run=^("+strings.Join(quoted, "|")+")$")
-	}
-	args = append(args, pkg)
-	if logPath != "" || len(n.Args) > 0 {
-		args = append(args, "-args")
-		if logPath != "" {
-			args = append(args, "-test.testlogfile="+logPath)
-		}
-		args = append(args, n.Args...)
-	}
-	return args
-}
+// beforePackageBuildForTest places an edit immediately before the producer's
+// build-input validation and compiler spawn.
+var beforePackageBuildForTest func(pkg string)
 
 // declaredBinaryBound extracts the binary deadline the reviewed record
 // declares — the value of the last -test.timeout token in the reviewed args,
@@ -1173,7 +1119,7 @@ type streamState struct {
 	diags []*stipulatorv1.FailureDiagnostic
 }
 
-// parseTestStream consumes one `go test -json` stream, recording named
+// parseTestStream consumes Go's test/build JSON stream, recording named
 // test outcomes attributed to producer — subtests under the same producer
 // as their parent, in stream order — with each occurrence's runtime
 // registrations, and retaining bounded failure output. It never
@@ -1421,7 +1367,7 @@ func outcomeOf(action string) stipulatorv1.TestOutcome {
 
 // classifyRun turns a parsed stream plus its process exit into the
 // package's terminal disposition. The refusal ladder comes first: a
-// malformed stream, a stream without a terminal package event, or a
+// malformed stream, a stream without a terminal package/build event, or a
 // process that produced no events at all — exit status notwithstanding —
 // is degraded, never healthy, because a report that cannot prove the suite
 // ran cannot certify it passed.
@@ -1439,12 +1385,19 @@ func classifyRun(invocation, pkg string, st *streamState, waitErr error, stderr 
 		run.diags = append(run.diags, d)
 		return run
 	}
+	// `go test -c -json` can end at build-fail without emitting a test
+	// package terminal. That compiler fact plus an ordinary nonzero exit
+	// establishes build failure; a missing artifact, failed start, or signal
+	// does not. Ownership and conversion faults poison their stream before
+	// reaching this shared classifier.
+	var exit *exec.ExitError
+	failedCompilation := st.failedBuild && errors.As(waitErr, &exit) && exit.ExitCode() > 0
 	switch {
 	case st.malformed != "":
 		return degrade("go test -json stream carried unparseable output")
 	case st.events == 0:
 		return degrade("go test -json produced no events; a silent command stream is refused")
-	case st.terminal == "":
+	case st.terminal == "" && !failedCompilation:
 		return degrade("go test -json stream ended without a terminal package event")
 	case st.postTerminal:
 		return degrade("go test -json stream carried events after the terminal package event; a stream that outlives its own verdict is refused")
@@ -1616,6 +1569,9 @@ func ExecutePolicy(ctx context.Context, pc *Capture) (*stipulatorv1.ExecutionRep
 // its siblings still execute on this form too
 // (REQ-evidence-witness-cache-format-install's install-on-completion rule).
 func executePolicy(ctx context.Context, pc *Capture, onPackage func(invocation string, unit packageUnit) error, proofs processProofs) (*stipulatorv1.ExecutionReport, []*ProcessObservation, error) {
+	if err := pc.ConfigureExecution(true, nil); err != nil {
+		return nil, nil, err
+	}
 	rep := progress.FromContext(ctx)
 	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	universe, err := pc.ObligationUniverse(ctx)

@@ -2,6 +2,8 @@ package widthprobe
 
 import (
 	"os"
+	"runtime"
+	"strconv"
 	"testing"
 )
 
@@ -18,5 +20,8 @@ func TestWidthDelivered(t *testing.T) {
 	}
 	if got := os.Getenv("GOMAXPROCS"); got != want {
 		t.Fatalf("GOMAXPROCS = %q, want %q", got, want)
+	}
+	if got := strconv.Itoa(runtime.GOMAXPROCS(0)); got != want {
+		t.Fatalf("runtime GOMAXPROCS = %q, want %q", got, want)
 	}
 }

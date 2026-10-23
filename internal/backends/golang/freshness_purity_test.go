@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/runtimeinput"
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
 
@@ -80,7 +80,7 @@ func TestObservationProofPublishesAndServes(t *testing.T) {
 	if first.Ran != 1 || first.Uncached != 0 {
 		t.Fatalf("first run: ran=%d uncached=%d; the observation-proven record must publish", first.Ran, first.Uncached)
 	}
-	records := witnesscache.Load(t.Context(), tmp)
+	records := witnesscache.Load(t.Context(), tmp).Records
 	if len(records) != 1 || records[0].Fingerprint.PurityAssertion != "" ||
 		records[0].Fingerprint.ObservationAssertion != "caller assertion" ||
 		records[0].Fingerprint.ObservationProof == (gofresh.ObservationProof{}) ||
@@ -176,22 +176,20 @@ func TestStatsFixture(t *testing.T) {
 	if result.Ran != 1 || result.Uncached != 1 {
 		t.Fatalf("run: ran=%d uncached=%d; unverifiable runtime state must not publish", result.Ran, result.Uncached)
 	}
-	if records := witnesscache.Load(t.Context(), tmp); len(records) != 0 {
+	if records := witnesscache.Load(t.Context(), tmp).Records; len(records) != 0 {
 		t.Fatalf("unverifiable runtime state published: %+v", records)
 	}
 }
 
 func TestValidatedObservationRequiresVerifiableRuntimeState(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	positive := gofresh.Fingerprint{ObservationProof: gofresh.ObservationProof{Observable: true}}
-	if validatedObservation(positive, runtimeinput.State{Unverifiable: true}) {
-		t.Fatal("positive proof validated an unverifiable runtime state")
-	}
-	if !validatedObservation(positive, runtimeinput.State{}) {
-		t.Fatal("positive proof rejected a verifiable runtime state")
-	}
-	if validatedObservation(gofresh.Fingerprint{}, runtimeinput.State{}) {
-		t.Fatal("missing proof validated a runtime state")
+	s := gofresh.Subject{Package: "p", Symbol: "TestP"}
+	row := synthRow("plain", s.Package, s.Symbol, passed)
+	for _, status := range []gofresh.Status{gofresh.Valid, gofresh.Unverifiable, gofresh.Stale} {
+		obs := &ProcessObservation{Wire: completedWire(), final: gofresh.FinalizedProcess{Subjects: []gofresh.FinalizedSubject{{Subject: s, Fingerprint: gofresh.Fingerprint{ObservationProof: gofresh.ObservationProof{Observable: true}}, Verdict: gofresh.Verdict{Status: status, Reason: "runtime input refused"}}}}}
+		grant, _ := judgeSubject(s, uncacheable{}, false, true, []producerCandidate{{healthy: true, obs: obs, rows: []*stipulatorv1.TestResult{row}}})
+		if (grant != nil) != (status == gofresh.Valid) {
+			t.Fatalf("native %s result granted=%v", status, grant != nil)
+		}
 	}
 }
 
@@ -213,7 +211,7 @@ func TestIncompatibleObservationEvidenceCannotServe(t *testing.T) {
 	if first.Ran != 1 || first.Uncached != 0 {
 		t.Fatalf("first run: ran=%d uncached=%d; record did not publish", first.Ran, first.Uncached)
 	}
-	records := witnesscache.Load(t.Context(), tmp)
+	records := witnesscache.Load(t.Context(), tmp).Records
 	if len(records) != 1 || records[0].Fingerprint.ObservationProof == (gofresh.ObservationProof{}) {
 		t.Fatalf("published proof missing: %+v", records)
 	}
@@ -238,7 +236,7 @@ func TestIncompatibleObservationEvidenceCannotServe(t *testing.T) {
 	if err := witnesscache.Install(t.Context(), tmp, rec); err != nil {
 		t.Fatal(err)
 	}
-	if got := witnesscache.Load(t.Context(), tmp); len(got) != 1 {
+	if got := witnesscache.Load(t.Context(), tmp).Records; len(got) != 1 {
 		t.Fatalf("canonical incompatible proof was not structurally readable: %+v", got)
 	}
 
@@ -254,9 +252,8 @@ func TestIncompatibleObservationEvidenceCannotServe(t *testing.T) {
 	}
 }
 
-// TestObservationProofRequiresIsolatedTestProcess pins attribution at the
-// process boundary: one sibling mutates process state and another consumes it,
-// so neither outcome may receive a per-subject completeness proof.
+// Shared dynamic state and unsupported file outcomes refuse this whole process's
+// proof. Package preparation must not select only the apparently safe sibling.
 //
 //gofresh:pure
 func TestObservationProofRequiresIsolatedTestProcess(t *testing.T) {
