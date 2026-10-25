@@ -3,7 +3,9 @@ package golang
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"slices"
+	"sync"
 
 	"github.com/greatliontech/gofresh/gotool"
 )
@@ -64,6 +66,7 @@ type selectionEndpoint struct {
 	root        string
 	selections  map[string]*endpointSelection
 	files       *sourceFiles
+	mu          sync.Mutex
 	graphs      map[sourceGraphKey]sourceGraphResult
 	graphLoader func(context.Context, *selectedContext, string, *sourceFiles) (string, error)
 }
@@ -111,17 +114,66 @@ func (e *selectionEndpoint) loadGraph(view *selectedContext, owner string) (stri
 }
 
 func (e *selectionEndpoint) warmGraphs(view *selectedContext, owners []string) {
+	var pending []string
+	seen := make(map[string]bool, len(owners))
+	e.mu.Lock()
 	for _, owner := range owners {
-		_, _ = e.graph(view, owner)
+		if owner == "" || seen[owner] {
+			continue
+		}
+		seen[owner] = true
+		if _, ok := e.graphs[sourceGraphKey{view.key, owner}]; !ok {
+			pending = append(pending, owner)
+		}
 	}
+	e.mu.Unlock()
+	if len(pending) == 0 {
+		return
+	}
+	if len(pending) == 1 {
+		_, _ = e.graph(view, pending[0])
+		return
+	}
+	workers := min(len(pending), max(1, runtime.GOMAXPROCS(0)))
+	ch := make(chan string, len(pending))
+	for _, owner := range pending {
+		ch <- owner
+	}
+	close(ch)
+	var wg sync.WaitGroup
+	wg.Add(workers)
+	for range workers {
+		go func() {
+			defer wg.Done()
+			for owner := range ch {
+				var res sourceGraphResult
+				res.digest, res.err = e.loadGraph(view, owner)
+				e.mu.Lock()
+				key := sourceGraphKey{view.key, owner}
+				if _, exists := e.graphs[key]; !exists {
+					e.graphs[key] = res
+				}
+				e.mu.Unlock()
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 func (e *selectionEndpoint) graph(view *selectedContext, owner string) (string, error) {
 	key := sourceGraphKey{view.key, owner}
+	e.mu.Lock()
 	result, ok := e.graphs[key]
+	e.mu.Unlock()
 	if !ok {
 		result.digest, result.err = e.loadGraph(view, owner)
-		e.graphs[key] = result
+		e.mu.Lock()
+		if existing, exists := e.graphs[key]; exists {
+			result = existing
+		} else {
+			e.graphs[key] = result
+		}
+		e.mu.Unlock()
 	}
 	return result.digest, result.err
 }

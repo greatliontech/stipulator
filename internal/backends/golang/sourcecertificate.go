@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"sync"
 
 	"github.com/greatliontech/gofresh/closure"
 	"github.com/greatliontech/stipulator/internal/resolutioncache"
@@ -28,6 +29,7 @@ type certificateView struct {
 
 type sourceFiles struct {
 	ctx     context.Context
+	mu      sync.Mutex
 	digests map[string]string
 }
 
@@ -59,9 +61,12 @@ func (f *sourceFiles) digest(path string) (string, error) {
 		return "", err
 	}
 	path = filepath.Clean(path)
+	f.mu.Lock()
 	if value, ok := f.digests[path]; ok {
+		f.mu.Unlock()
 		return value, nil
 	}
+	f.mu.Unlock()
 	file, err := os.Open(path)
 	if err != nil {
 		return "", err
@@ -85,7 +90,9 @@ func (f *sourceFiles) digest(path string) (string, error) {
 		}
 	}
 	value := hex.EncodeToString(h.Sum(nil))
+	f.mu.Lock()
 	f.digests[path] = value
+	f.mu.Unlock()
 	return value, nil
 }
 
@@ -276,6 +283,22 @@ func (s *Served) captureSourceCertificates(endpoint *selectionEndpoint, symbols 
 			}
 			contextFiles[work] = digest
 		}
+		var owners []string
+		for _, symbol := range symbols {
+			owner, known := s.packageOf(symbol)
+			if !known {
+				continue
+			}
+			for _, candidate := range symbolPackageCandidates(symbol) {
+				if s.set != nil && inventory[candidate] != s.inventory[key][candidate] {
+					return nil, errors.New("resolution package inventory changed during derivation")
+				}
+			}
+			if inventory[owner] {
+				owners = append(owners, owner)
+			}
+		}
+		endpoint.warmGraphs(view, owners)
 		for _, symbol := range symbols {
 			owner, known := s.packageOf(symbol)
 			if !known {
@@ -284,9 +307,6 @@ func (s *Served) captureSourceCertificates(endpoint *selectionEndpoint, symbols 
 			candidates := map[string]bool{}
 			for _, candidate := range symbolPackageCandidates(symbol) {
 				candidates[candidate] = inventory[candidate]
-				if s.set != nil && inventory[candidate] != s.inventory[key][candidate] {
-					return nil, errors.New("resolution package inventory changed during derivation")
-				}
 			}
 			graph := ""
 			if inventory[owner] {

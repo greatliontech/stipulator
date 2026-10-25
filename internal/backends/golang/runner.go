@@ -3,6 +3,7 @@ package golang
 import (
 	"errors"
 	"os/exec"
+	"sync"
 	"time"
 
 	"github.com/greatliontech/gofresh/gotool"
@@ -20,7 +21,10 @@ var errEnvelopeExpired = errors.New("policy invocation envelope expired")
 // sessions' analysis and classification-root commands are no derivation spawn and never
 // reach it. Tests install it to pin that a refusal fired before any of
 // these spawns and that the readers reuse the derivation.
-var commandHook func(name string, args []string)
+var (
+	commandHookMu sync.Mutex
+	commandHook   func(name string, args []string)
+)
 
 // quitGrace bounds the window between the envelope-expiry SIGQUIT and the
 // process group's SIGKILL: long enough for the Go runtime to write a full
@@ -65,6 +69,8 @@ var childRunner = gotool.Runner{Containment: &gotool.Containment{}, Prepare: obs
 // observeChild hands a prepared consumer-program spawn to the test seam
 // (commandHook): the program as named, then its arguments.
 func observeChild(cmd *exec.Cmd) {
+	commandHookMu.Lock()
+	defer commandHookMu.Unlock()
 	if commandHook != nil {
 		commandHook(cmd.Args[0], cmd.Args[1:])
 	}
@@ -116,6 +122,8 @@ var probeObserverForTest func(*exec.Cmd)
 // (commandHook), the go tool's name and arguments as the seam reads
 // them.
 func observeCommand(cmd *exec.Cmd) {
+	commandHookMu.Lock()
+	defer commandHookMu.Unlock()
 	if commandHook != nil {
 		commandHook("go", cmd.Args[1:])
 	}

@@ -948,11 +948,30 @@ func (s *Served) publishSelection(key string, symbols []string) {
 	if !ok {
 		return
 	}
-	certificates, err := s.captureSourceCertificates(endpoint, symbols)
+	opening := s.opening[key]
+	var certSymbols []string
+	for _, symbol := range symbols {
+		subject, ok := s.subjectOf(symbol)
+		if !ok {
+			continue
+		}
+		fp, captured := closing[subject]
+		if !captured {
+			continue
+		}
+		before, opened := opening[subject]
+		if !opened || closureMovedReason(before, fp) != (resolutionReason{}) {
+			continue
+		}
+		if _, opened := s.openingCertificates[symbol]; !opened {
+			continue
+		}
+		certSymbols = append(certSymbols, symbol)
+	}
+	certificates, err := s.captureSourceCertificates(endpoint, certSymbols)
 	if err != nil {
 		s.degraded = append(s.degraded, "publish source certificate: "+err.Error())
 	}
-	opening := s.opening[key]
 	var recs []resolutioncache.Record
 	var account publishAccount
 	for _, symbol := range symbols {
