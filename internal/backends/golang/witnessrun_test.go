@@ -1297,9 +1297,12 @@ func TestStable(t *testing.T) {}
 		"two/two.go": "package two\n\nconst edition = 1\n",
 		"two/two_test.go": `package two
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
-func TestFirst(t *testing.T) { _ = edition }
+func TestFirst(t *testing.T) { _ = edition; _ = os.Getenv("STIPULATOR_FLAKY_INPUT") }
 
 func TestSecond(t *testing.T) { _ = edition }
 `,

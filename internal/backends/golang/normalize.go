@@ -640,16 +640,30 @@ func SelectionNotices(pc *Capture) []string {
 // no '=' survives execve into os.Environ but no Setenv produces one).
 var ambientEnviron = os.Environ
 
+var ambientGoCache = func() string {
+	if v := os.Getenv("GOCACHE"); filepath.IsAbs(v) {
+		return v
+	}
+	if dir, err := os.UserCacheDir(); err == nil && filepath.IsAbs(dir) {
+		return filepath.Join(dir, "go-build")
+	}
+	return ""
+}()
+
 // NeutralAmbient pins the ambient Go toolchain and cache controls policy
 // normalization and execution read to a hermetic state, so host configuration
 // (GOENV, GOWORK, GOFLAGS, GOPACKAGESDRIVER, GOTOOLCHAIN, XDG_CACHE_HOME)
-// cannot steer tests across packages.
+// cannot steer tests across packages while keeping Go's content-addressed
+// build cache warm across temporary XDG cache homes.
 func NeutralAmbient(tb interface {
 	Helper()
 	Setenv(key, value string)
 	TempDir() string
 }) {
 	tb.Helper()
+	if os.Getenv("GOCACHE") == "" && ambientGoCache != "" {
+		tb.Setenv("GOCACHE", ambientGoCache)
+	}
 	tb.Setenv("XDG_CACHE_HOME", tb.TempDir())
 	tb.Setenv("GOENV", "off")
 	tb.Setenv("GOWORK", "off")

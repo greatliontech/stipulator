@@ -51,7 +51,6 @@ func TestInterruptedRunEndsBySignalAfterItsEnding(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	// The store is isolated under the temporary cache home; Go's build
 	// cache is content-addressed and stays the parent's, or the child
 	// rebuilds the race-instrumented standard library on every run (the
@@ -60,6 +59,7 @@ func TestInterruptedRunEndsBySignalAfterItsEnding(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	// Each signal that ends a run is the one the process dies by: an
 	// interactive interrupt and a supervisor's termination read apart.
 	for _, sig := range []syscall.Signal{syscall.SIGINT, syscall.SIGTERM} {

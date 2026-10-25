@@ -35,11 +35,6 @@ func discoverFixture(t *testing.T) string {
 func neutralAmbient(t *testing.T) {
 	t.Helper()
 	NeutralAmbient(t)
-	// An exported GOCACHE would out-rank the go env config file these
-	// tests source values from - the witness executor itself pins one
-	// into child environments, so the suite must stay hermetic when run
-	// as its own witness. Empty defers to the config file.
-	t.Setenv("GOCACHE", "")
 }
 
 func goInvocation(name string, cfg *stipulatorv1.GoInvocationConfig) *stipulatorv1.PolicyInvocation {
@@ -245,6 +240,7 @@ func TestGoNormalizeWorkspaceModeRequiresDeclaration(t *testing.T) {
 func TestGoNormalizeCarriesObservationGuardRoots(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-exemptions")
 	neutralAmbient(t)
+	t.Setenv("GOCACHE", "")
 	gocache := t.TempDir()
 	tmproot := t.TempDir()
 	goenvFile := filepath.Join(t.TempDir(), "goenv")

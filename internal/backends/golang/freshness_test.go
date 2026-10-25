@@ -1237,10 +1237,14 @@ func TestReadsDep(t *testing.T) {
 	if got := rec.Fingerprint.SingleSubjectDischarges; got != "" {
 		t.Fatalf("a single-subject discharge rode a package-process witness: %q", got)
 	}
-	// The solo witness publishes the proof-attached form; a later proof
-	// refusal would fall through to the plain form unseen without this.
-	if !rec.Fingerprint.ObservationProof.Observable {
-		t.Fatalf("the solo witness published no observation proof: %+v", rec.Fingerprint)
+	// With dep.registry discharged by the package-process model, the witness is
+	// source-supported and retains an identity-only capture rather than forcing
+	// observation proof.
+	if rec.Fingerprint.ObservationProof != (gofresh.ObservationProof{}) || rec.Fingerprint.ObservationAssertion != "" {
+		t.Fatalf("the source-supported witness selected observation proof: %+v", rec.Fingerprint)
+	}
+	if method, subjects := outcomeFields(t, rec.Fingerprint.RuntimeInputs); method != "" || len(subjects) != 0 {
+		t.Fatalf("the source-supported witness acquired outcome authority: method=%q subjects=%v", method, subjects)
 	}
 	second, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err != nil {
