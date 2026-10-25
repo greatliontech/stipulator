@@ -315,7 +315,7 @@ func TestSupersedeCarriesClausesAndRespectsLayout(t *testing.T) {
 	// Missing clause on successor refuses the carry.
 	missingSucc := "# T\n\n**REQ-au-a1** (behavior, supersedes REQ-au-a): It MUST hold:\n\n- only one\n"
 	missingFS := testFS(map[string]string{
-		"specs/a.md":                       missingSucc,
+		"specs/a.md":                        missingSucc,
 		".stipulator/bindings/au.textproto": "bindings { requirement_id: \"REQ-au-a\" backend: \"go\" symbol: \"example.com/p.TestA\" role: BINDING_ROLE_TESTS clause_label: \"alpha\" }\n",
 	})
 	if _, err := Supersede(missingFS, []string{"REQ-au-a"}, []string{"REQ-au-a1"}, false); err == nil || !strings.Contains(err.Error(), "REQ-au-a1 declares no clause `alpha`") {
@@ -325,7 +325,7 @@ func TestSupersedeCarriesClausesAndRespectsLayout(t *testing.T) {
 	// Carrying an unscoped tests binding onto a clause-structured
 	// successor refuses by default.
 	unscopedFS := testFS(map[string]string{
-		"specs/a.md":                       succDoc,
+		"specs/a.md":                        succDoc,
 		".stipulator/bindings/au.textproto": "bindings { requirement_id: \"REQ-au-a\" backend: \"go\" symbol: \"example.com/p.TestA\" role: BINDING_ROLE_TESTS }\n",
 	})
 	if _, err := Supersede(unscopedFS, []string{"REQ-au-a"}, []string{"REQ-au-a1"}, false); err == nil || !strings.Contains(err.Error(), "cannot carry unscoped tests binding") {

@@ -214,7 +214,7 @@ var executedTable = [...]struct {
 	executedVerdict:            {"", explainCulprit},
 }
 
-func (c executedClass) prefix() string   { return executedTable[c].prefix }
+func (c executedClass) prefix() string    { return executedTable[c].prefix }
 func (c executedClass) kind() explainKind { return executedTable[c].kind }
 
 // executedReason is one typed re-execution reason: its class and detail.
@@ -327,7 +327,7 @@ var resolutionTable = [...]struct {
 	resolutionClosureMoved:             {"", explainSelf},
 }
 
-func (c resolutionClass) prefix() string   { return resolutionTable[c].prefix }
+func (c resolutionClass) prefix() string    { return resolutionTable[c].prefix }
 func (c resolutionClass) kind() explainKind { return resolutionTable[c].kind }
 
 // resolutionReason is one typed resolution-serving refusal.

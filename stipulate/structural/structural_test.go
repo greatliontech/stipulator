@@ -349,9 +349,9 @@ type PublicCodecData struct {
 	Size int
 }
 
-func (PublicCodecData) Validate() error            { return nil }
+func (PublicCodecData) Validate() error              { return nil }
 func (PublicCodecData) MarshalJSON() ([]byte, error) { return nil, nil }
-func (*PublicCodecData) UnmarshalJSON([]byte) error { return nil }
+func (*PublicCodecData) UnmarshalJSON([]byte) error  { return nil }
 
 //gofresh:pure
 func TestExportedDataWithMethods(t *testing.T) {

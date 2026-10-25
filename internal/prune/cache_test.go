@@ -84,13 +84,13 @@ func TestPruneGlobalCachePreservesTelemetryAndRepoState(t *testing.T) {
 			t.Fatal(err)
 		}
 		if err := resolutioncache.InstallAll(repo, []resolutioncache.Record{{
-			Selection:   "default",
-			Symbol:      "example.com/p.TestA",
-			Fingerprint: resolutioncache.SourceTiers(fp),
-			Certificate: resolutioncache.Certificate{Derivation: resolutioncache.Derivation, Inputs: strings.Repeat("e", 64)},
-			Resolution:  "resolved",
-			Shape:       strings.Repeat("d", 32),
-			Package:     "example.com/p",
+			Selection:    "default",
+			Symbol:       "example.com/p.TestA",
+			Fingerprint:  resolutioncache.SourceTiers(fp),
+			Certificate:  resolutioncache.Certificate{Derivation: resolutioncache.Derivation, Inputs: strings.Repeat("e", 64)},
+			Resolution:   "resolved",
+			Shape:        strings.Repeat("d", 32),
+			Package:      "example.com/p",
 			WitnessClass: "example",
 		}}); err != nil {
 			t.Fatal(err)
