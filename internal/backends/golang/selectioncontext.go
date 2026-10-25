@@ -60,11 +60,12 @@ type sourceGraphResult struct {
 // Endpoints are local to construction, each child opening, and each key's
 // publication. Keeping one on Served would erase the closing observations.
 type selectionEndpoint struct {
-	ctx        context.Context
-	root       string
-	selections map[string]*endpointSelection
-	files      *sourceFiles
-	graphs     map[sourceGraphKey]sourceGraphResult
+	ctx         context.Context
+	root        string
+	selections  map[string]*endpointSelection
+	files       *sourceFiles
+	graphs      map[sourceGraphKey]sourceGraphResult
+	graphLoader func(context.Context, *selectedContext, string, *sourceFiles) (string, error)
 }
 
 func newSelectionEndpoint(ctx context.Context, root string, selections []buildSelection) *selectionEndpoint {
@@ -102,11 +103,24 @@ func (e *selectionEndpoint) certificateReader(view *selectedContext) *gotool.Env
 	return s.reader
 }
 
+func (e *selectionEndpoint) loadGraph(view *selectedContext, owner string) (string, error) {
+	if e.graphLoader != nil {
+		return e.graphLoader(e.ctx, view, owner, e.files)
+	}
+	return sourceGraph(e.ctx, view.directory, view.env, view.flags, owner, e.files)
+}
+
+func (e *selectionEndpoint) warmGraphs(view *selectedContext, owners []string) {
+	for _, owner := range owners {
+		_, _ = e.graph(view, owner)
+	}
+}
+
 func (e *selectionEndpoint) graph(view *selectedContext, owner string) (string, error) {
 	key := sourceGraphKey{view.key, owner}
 	result, ok := e.graphs[key]
 	if !ok {
-		result.digest, result.err = sourceGraph(e.ctx, view.directory, view.env, view.flags, owner, e.files)
+		result.digest, result.err = e.loadGraph(view, owner)
 		e.graphs[key] = result
 	}
 	return result.digest, result.err
