@@ -10,3 +10,13 @@ bindings {
   role: BINDING_ROLE_PROVES
   shape_hash: "fa309f1cfb5ff3acbf0db23e57d2ea554c45ac74b809bb00789edbd1c87beb04"
 }
+
+bindings {
+  requirement_id: "REQ-backend-surfaces"
+  content_hash: "aaa2ef5d38671437a394f4fc7c3ec1adab173541653a877058132bf9f9085bc5"
+  source_hash: "f60aa43db2fb282c81a08b35bf02c0dbbc0f8d4e670b89db0455cac3ddceeab3"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/arch.TestBackendSatisfiesVerifierSurfaces"
+  role: BINDING_ROLE_PROVES
+  shape_hash: "78735ffa13dad3bde5c9160ae7c95e286443e8b6880528510a0b86101ac3f85c"
+}

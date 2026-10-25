@@ -1,8 +1,0 @@
-# proto-file: proto/stipulator/v1/records.proto
-# proto-message: stipulator.v1.Gap
-
-requirement_id: "REQ-go-owned-processes"
-reason: "The analysis engines hosted by the parent load packages through an in-process loader: cancellation ends its go list, but the loader's descendants are not swept by the operation's boundary."
-content_hash: "d6c0fce44aa6ef961f4f82007a13a1eaf7e920391e190db62043d91eb64b6e7e"
-source_hash: "2a8c932c8e0e016f6cd259fe64b52e510ae41699cf6a070a2c59e11a257107c6"
-lands { manual { condition: "tooling-redesign 5.5: parent-hosted loader descendants are contained and cancelled with their owning operation, with process-tree regressions on supported platforms" contradicted: true } }

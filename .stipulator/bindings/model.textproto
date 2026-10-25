@@ -170,3 +170,23 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "6bbbb7894bddc75189fe76e4131322ef9119f165ed23858dd6ca06f8bf55d2fa"
 }
+
+bindings {
+  requirement_id: "REQ-model-graph"
+  content_hash: "1b75b66169214a3c8963f571669498f63900964eb6d06a3ed52c524677a28b86"
+  source_hash: "b97d1fe74f8c8c15bc562fdfb77da990747f4154aa9865119a1cd64735418379"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestReferences"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "52dcdf5bf827ee77f22b0fd2e082189a8e10b06c9b44b054e78104bac7eb7223"
+}
+
+bindings {
+  requirement_id: "REQ-model-graph"
+  content_hash: "1b75b66169214a3c8963f571669498f63900964eb6d06a3ed52c524677a28b86"
+  source_hash: "b97d1fe74f8c8c15bc562fdfb77da990747f4154aa9865119a1cd64735418379"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/compile.TestNotes"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "196213a296a4ab8553e6c554729cf3057751d2497c2f7212011a3b0e88de4798"
+}

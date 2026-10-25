@@ -397,6 +397,7 @@ func TestEdgeClausesAdmitTargetLists(t *testing.T) {
 
 //gofresh:pure
 func TestReferences(t *testing.T) {
+	stipulate.Covers(t, "REQ-model-graph")
 	t.Run("edge from requirement", func(t *testing.T) {
 		spec, diags := compileFiles(t, map[string]string{
 			"specs/a.md": "# T\n\n**REQ-x-a** (behavior): It MUST x.\n\n**REQ-x-b** (behavior): Like REQ-x-a, it MUST y.\n",
@@ -468,6 +469,7 @@ func TestTermMatching(t *testing.T) {
 
 //gofresh:pure
 func TestNotes(t *testing.T) {
+	stipulate.Covers(t, "REQ-model-graph")
 	spec, diags := compileFiles(t, map[string]string{
 		"specs/a.md": "# T\n\n**REQ-x-a** (behavior): It MUST x.\n\n> Attached commentary.\n\n## S\n\n> Section commentary.\n",
 	})

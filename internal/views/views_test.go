@@ -15,7 +15,7 @@ import (
 //
 //gofresh:pure
 func TestVerifyViews(t *testing.T) {
-	stipulate.Covers(t, "REQ-mcp-views")
+	stipulate.Covers(t, "REQ-core-proto-io", "REQ-mcp-views")
 	vr := &verify.Report{
 		Results: []verify.BindingResult{
 			{RequirementId: "REQ-v-a", Symbol: "example.com/p.TestA", Package: "example.com/p", Role: stipulatorv1.BindingRole_BINDING_ROLE_TESTS},

@@ -150,3 +150,23 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "6dec692994f249d1e93ecc9af7a5416fb000487fc850f7c2088f12785b5b7185"
 }
+
+bindings {
+  requirement_id: "REQ-core-one-execution"
+  content_hash: "27037830c846e6bd1e46201d4c5410eac7011f7c1805f54c2cdb095c122af3bc"
+  source_hash: "4f2748afe980fea70c2e9c2386289f174d0389a3801bf849b1e7defe4cfb4628"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.FuzzLadderExecutesRunTestsAtMostOnce"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "593e8bcc8ebb046428184cef14df180802e2b0d49ae4f4cc0773f62f7c4d6f21"
+}
+
+bindings {
+  requirement_id: "REQ-core-proto-io"
+  content_hash: "fdf39bd8dde031ef09be16b828b1a811e4df2d37670ba2f5355bdd56d2cb0b11"
+  source_hash: "72929eb427c5ffa4143a1700079524616fe36bb1032e87008315771fd712f29f"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/views.TestVerifyViews"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "491f781e3cde49224ccc57876aae6d8d04d498214f2566e60bcee4eb6a1eaeb6"
+}

@@ -92,7 +92,7 @@ func TestPolicyCoreStaysBackendNeutral(t *testing.T) {
 //
 //gofresh:pure
 func TestBackendSatisfiesVerifierSurfaces(t *testing.T) {
-	stipulate.Covers(t, "REQ-go-structural-provers")
+	stipulate.Covers(t, "REQ-backend-surfaces", "REQ-go-structural-provers")
 	structural.Implements[verify.Backend](t, (*golang.Backend)(nil))
 	structural.Implements[verify.Slicer](t, (*golang.Backend)(nil))
 	structural.Implements[verify.WitnessClassifier](t, (*golang.Backend)(nil))

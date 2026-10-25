@@ -1150,3 +1150,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "7b34d9b5ba68e8c8938e2fd63cb506a75ae32a0efb129e503c78ad872b956f82"
 }
+
+bindings {
+  requirement_id: "REQ-check-preparation"
+  content_hash: "07b2dacbd49648ecdf34074eeb666ba98808f684d8db17893a3bd0c543e847ec"
+  source_hash: "99c9eb28feeef750e649273c0a784f1571f142ddfc7f23e97e4d822f7949c26b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/check.FuzzCheckPreparationRefusesHeldInputFaults"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "8f7bc90a1871700b0dfd2d8e4f4b6d0e4b565de16e9d8c3a6ece42643a72f0ec"
+}
