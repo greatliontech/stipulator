@@ -24,8 +24,7 @@ concurrency:
 # tool's own check verdict (the tool over its own tree) has no seat
 # here and is no release precondition (the train's doctrine, amended
 # 2026-10-02: the gate is CI's three tiers): it runs at a band's
-# close, where a chunk's charter names its own verdict, and in the
-# weekly fleet sweep (gofresh scripts/fleet-sweep.sh) — never before a
+# close, where a chunk's charter names its own verdict — never before a
 # release, never at a chunk's close-out, never on a cold runner. The
 # inputs are this repository's own facts:
 #
@@ -57,8 +56,7 @@ concurrency:
 # Checker.isComplete (an unlocked read of fromRHS) between x/tools'
 # concurrent checkers sharing an instantiated type — go1.27.0 and
 # go1.27.1 carry the same two sites, nothing in this tree removes it,
-# and the detector cannot exclude a package (gofresh
-# docs/issues/go-types-named-unpack-races-iscomplete.md). A red the
+# and the detector cannot exclude a package. A red the
 # commit cannot fix judges nothing about the commit, so the tier waits
 # for a listed toolchain carrying the fix; the policy's own race
 # invocations (.stipulator/policy.textproto) stay the tree's race
