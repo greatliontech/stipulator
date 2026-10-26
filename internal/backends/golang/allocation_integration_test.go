@@ -151,9 +151,10 @@ func TestGoScopedAllocationWarmWidthMovement(t *testing.T) {
 	checkScopedAllocationWidthMovement(t, true)
 }
 
-// Purity and the absence of environment reads must not bypass the compilation
-// guard. A second identical run proves the cold result really published before
-// a new execution scope changes the delivered width.
+// Ordinary witnesses that do not read GOMAXPROCS remain reusable when a new
+// execution scope changes the delivered width, because gofresh's build guard
+// excludes non-build runtime environment variables while runtime-input
+// observation still invalidates width-reading witnesses.
 func TestGoScopedAllocationWarmUnobservedWidthMovement(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency", "REQ-evidence-witness-freshness-record-identity")
 	if testing.Short() {
@@ -202,9 +203,15 @@ func checkScopedAllocationWidthMovement(t *testing.T, observesWidth bool) {
 	}
 	run(one, 1, 0)
 	run(one, 0, 1)
-	run(nil, 2, 0)
-	run(nil, 0, 2)
-	run(one, 0, 1)
+	if observesWidth {
+		run(nil, 2, 0)
+		run(nil, 0, 2)
+		run(one, 0, 1)
+	} else {
+		run(nil, 1, 1)
+		run(nil, 0, 2)
+		run(one, 0, 2)
+	}
 }
 
 func TestGoScopedDriftRetriesStayWithinScope(t *testing.T) {

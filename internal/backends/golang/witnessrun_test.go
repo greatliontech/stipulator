@@ -1264,9 +1264,11 @@ func TestFine(t *testing.T) {}
 // per-process native proof rule on the selective path. The
 // first run reds the package process — the flaky test fails once, so its
 // record is refused while its denied sibling publishes from its solo
-// isolation process. Changing the complete compilation environment re-executes
-// every affected package; supported shared processes then publish their own
-// complete-roster evidence rather than borrowing the earlier isolation proof.
+// isolation process. Settling the observed runtime environment variable while
+// editing the second package's source leaves the pure sibling fresh, runs the
+// recordless flaky test in a solo selective process that publishes its own
+// observation proof, and re-executes the two-test package in a shared selective
+// process that publishes complete-roster evidence for both subjects.
 func TestGoRunWitnessesSoloSelectiveProcessPublishesProof(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-purity")
 	if testing.Short() {
@@ -1337,8 +1339,11 @@ func TestSecond(t *testing.T) { _ = edition }
 	if cacheRecord(t, cache, "example.com/proofy/two", "TestFirst") == nil {
 		t.Fatal("red run published no record for the two-test package")
 	}
-	// The environment changes compilation as well as the observed input. The
-	// source edit independently moves the pair, which also executes shared.
+	// Settle the flaky test's observed environment input and move the pair's
+	// source: the pure sibling stays fresh under gofresh's build-environment
+	// guard, the recordless flaky test re-executes in a solo selective process
+	// of its own, and the pair — stale by source — re-executes in one shared
+	// selective process.
 	t.Setenv("STIPULATOR_FLAKY_INPUT", "pass")
 	if err := os.WriteFile(filepath.Join(tmp, "two", "two.go"), []byte("package two\n\nconst edition = 2\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -1350,8 +1355,8 @@ func TestSecond(t *testing.T) { _ = edition }
 	if solo.Degraded != "" {
 		t.Fatalf("solo: freshness path degraded: %s", solo.Degraded)
 	}
-	if solo.Fresh != 0 || solo.Ran != 4 {
-		t.Fatalf("fresh=%d ran=%d, want all four subjects re-executed under the changed complete compilation environment", solo.Fresh, solo.Ran)
+	if solo.Fresh != 1 || solo.Ran != 3 {
+		t.Fatalf("fresh=%d ran=%d, want 1 fresh (TestStable) and 3 ran (TestFlakyReads solo + two pair)", solo.Fresh, solo.Ran)
 	}
 	if got := solo.Outcomes["example.com/proofy/pkg.TestFlakyReads"]; got != verify.TestPassed {
 		t.Errorf("solo: flaky outcome = %v, want PASSED", got)

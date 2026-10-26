@@ -791,12 +791,12 @@ func TestWitnessRunNotesAreBoundedByThePolicy(t *testing.T) {
 	if len(executing) != 2 || len(persisted) != 1 || persisted["race example.com/notes/many"] == "" || len(rep.Kept()) != 1 {
 		t.Fatalf("executing %v persisted %v kept %v", executing, persisted, rep.Kept())
 	}
-	// Run two, after a witness body moved, under a policy with a second
+	// Run two, after the witness bodies moved, under a policy with a second
 	// eligible leg (a tagged race invocation, its own capture group): the
 	// race leg re-executes all twelve with a reason of its own records;
 	// the tagged leg, which holds no records, names none — the reason
 	// count and the attribution are per invocation, never pooled.
-	files["many/many_test.go"] = strings.Replace(files["many/many_test.go"], "func TestMany0(t *testing.T) {}", "func TestMany0(t *testing.T) { t.Log(\"moved\") }", 1)
+	files["many/many_test.go"] = strings.ReplaceAll(files["many/many_test.go"], "(t *testing.T) {}", "(t *testing.T) { t.Log(\"moved\") }")
 	if err := os.WriteFile(filepath.Join(tmp, "many", "many_test.go"), []byte(files["many/many_test.go"]), 0o644); err != nil {
 		t.Fatal(err)
 	}

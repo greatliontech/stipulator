@@ -536,10 +536,11 @@ both the complete compilation description and the complete runtime description.
 Compilation analysis and compilation share the former; binary spawn, observation
 ingestion and runtime-input checking share the latter, including its package PWD
 and runtime PATH. These descriptions need not be identical. A witness reading
-the delivered width records the value its process actually saw. The explicit
-build guard covers the complete compilation environment, including that width,
-so a unit-bound change moving it invalidates prior evidence without adding
-measurement-only guards to code results. Runtime-input evidence and the admitted
+the delivered width records the value its process actually saw, so a unit-bound
+change moving that width invalidates width-observing evidence while ordinary
+witnesses that do not read `GOMAXPROCS` remain reusable across scope-driven
+width movement under gofresh's build-determining compilation-environment guard.
+Runtime-input evidence and the admitted
 native method retain their separate applicability obligations; equal inherited
 width does not license an unaccounted in-process change. Invocations delivering
 different widths occupy distinct capture groups through their effective
