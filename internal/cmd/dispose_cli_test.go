@@ -13,8 +13,6 @@ import (
 // The CLI supersede runs on the corpus as edited — the source removed,
 // the successor declaring — in one step, and takes --force for a source
 // no record names, as the MCP form does (REQ-change-split-merge).
-//
-//gofresh:pure
 func TestDisposeSupersedeCLIIsOneStep(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-split-merge")
 	dir := t.TempDir()

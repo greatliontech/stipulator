@@ -11,7 +11,6 @@ import (
 	"pgregory.net/rapid"
 )
 
-//gofresh:pure
 func TestText(t *testing.T) {
 	cases := []struct {
 		name, in, want string
@@ -33,7 +32,6 @@ func TestText(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestHash(t *testing.T) {
 	stipulate.Covers(t, "REQ-model-hash-func")
 	// Known SHA-256 vector: canonical form of "abc" is "abc" itself, so the
@@ -132,8 +130,6 @@ func TestTextStripsControlCharacters(t *testing.T) {
 // equality) — pinned over a generated alphabet rather than hand-chosen
 // examples: ASCII, C0/C1/DEL, format characters, whitespace variants,
 // and combining marks in any combination.
-//
-//gofresh:pure
 func TestPropCanonProjection(t *testing.T) {
 	// Tokens rather than lone runes: the adversarial shapes (a control
 	// BLOCKING canonical composition between a starter and a combining
@@ -175,8 +171,6 @@ func TestPropCanonProjection(t *testing.T) {
 // hex digests of the raw blocks, digested once more — is pinned by
 // known vectors, so the join, the per-block hashing, and the absence of
 // canonicalization are each observable (REQ-model-consent-source).
-//
-//gofresh:pure
 func TestSourceDigest(t *testing.T) {
 	stipulate.Covers(t, "REQ-model-consent-source")
 	// sha256("abc") = ba78…15ad; sha256("de") = the second line;

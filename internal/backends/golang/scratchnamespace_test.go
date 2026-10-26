@@ -145,8 +145,6 @@ import (
 // namespace declaration rides beside: the observation proof is the
 // assertion's, and the runtime-input manifest is where the declaration
 // decides.
-//
-//gofresh:pure
 func TestUsesScratch(t *testing.T) {
 	dir, err := os.MkdirTemp("scratch", "run-*")
 	if err != nil {

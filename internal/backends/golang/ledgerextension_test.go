@@ -59,7 +59,6 @@ func TestNativeLedgerExtensionPersistsAcrossRestart(t *testing.T) {
 		return
 	}
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	source := `package ledgergrowth
 import ("os"; "testing")
 func TestEnv(t *testing.T) { if os.Getenv("LEDGER_VALUE") != "guarded" { t.Fatal("environment") } }
@@ -194,7 +193,6 @@ func TestObservedExtensionSurvivesExecutingSiblingPublication(t *testing.T) {
 	}
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-carve-out", "REQ-evidence-witness-freshness-revalidation")
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := observedEnvironmentModule(t)
 	ctx := context.Background()
 	requireRun := func(fresh, ran int) {

@@ -16,7 +16,6 @@ func TestNativeRawSelectionIncludesUnsupportedNeighbor(t *testing.T) {
 	}
 	stipulate.Covers(t, "REQ-go-retained-test-execution", "REQ-evidence-outcome-premises")
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := writeModule(t, map[string]string{
 		"go.mod":    "module example.com/roster\n\ngo 1.26\n",
 		"p_test.go": "package p\nimport (\"os\"; \"testing\"; \"time\")\nfunc TestEnv(t *testing.T) { if os.Getenv(\"PWD\") == \"\" { t.Fatal(\"PWD\") } }\nfunc TestUnsupported(t *testing.T) { if time.Now().IsZero() { t.Fatal(\"clock\") } }\nfunc Example() {\n// Output:\n}\n",

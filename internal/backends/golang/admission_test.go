@@ -93,8 +93,6 @@ func admitAsync(a *admission) <-chan [2]string {
 // and, nothing else running, refuses the next with the readings named;
 // a completed package's peak raises the estimate the refusal states; the
 // invocation's end releases a waiter unadmitted and unrefused.
-//
-//gofresh:pure
 func TestAdmissionGateDerivesTheMemoryTerm(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency")
 	const gib = uint64(1) << 30
@@ -399,8 +397,6 @@ func TestPackageHeldUntilTheInvocationsEndCarriesTheTerm(t *testing.T) {
 // package the memory term held until the envelope expired
 // (REQ-evidence-witness-freshness-concurrency): its timeout diagnostic names
 // the term and its readings, never a bare timeout.
-//
-//gofresh:pure
 func TestTimedOutPackageHeldByTheMemoryTermNamesIt(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency")
 	n := &NormalizedInvocation{Name: "held", Timeout: time.Minute}
@@ -569,8 +565,6 @@ func TestInvocationTheHostCannotHoldRefusesEveryPackageStated(t *testing.T) {
 // test-scoped diagnostic's and never the bare disposition; a timed-out
 // package names the memory term when it held the package and the bare
 // disposition otherwise.
-//
-//gofresh:pure
 func TestPackageCauseNamesTheRefusalsReason(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency")
 	m := newExecMerge()
@@ -657,8 +651,6 @@ func TestPackageCauseNamesTheRefusalsReason(t *testing.T) {
 // a descendant outside them (a resolver child leaving the table) with a
 // large peak prices nothing, while a registered tree's observed maximum
 // stands after the tree shrinks.
-//
-//gofresh:pure
 func TestAdmissionScopesItsTermsToThePhaseAndTheRegisteredTrees(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-concurrency")
 	const gib, mib = uint64(1) << 30, uint64(1) << 20
@@ -838,8 +830,6 @@ func TestAdmissionScopesItsTermsToThePhaseAndTheRegisteredTrees(t *testing.T) {
 // package and process whose completed peak the estimate is; the
 // package whose live tree the readings show larger than any peak —
 // and every face carries the words as the term spoke them.
-//
-//gofresh:pure
 func TestEstimateNamesItsOrigin(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-admission-origin")
 	const gib = uint64(1) << 30
@@ -1102,8 +1092,6 @@ func TestEstimateNamesItsOrigin(t *testing.T) {
 // everything before the first "; " — are kept whole however long the
 // package path, the readings after it are cut at the bound, and a line
 // that is not the term's is cut whole (REQ-evidence-admission-origin).
-//
-//gofresh:pure
 func TestBoundedReasonKeepsTheOriginWhole(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-admission-origin")
 	head := "held by the memory term: one package estimated at 7.3 GiB — package " + strings.Repeat("github.com/example/organisation/", 4) + "joints's live tree (process 4321) in this invocation's readings"
@@ -1135,8 +1123,6 @@ func TestBoundedReasonKeepsTheOriginWhole(t *testing.T) {
 // when the first's release frees a slot (the release wakes it) — and
 // a third held beside two operations' packages admitted by the
 // first's end.
-//
-//gofresh:pure
 func TestAdmissionsOfOneProcessShareTheHostGate(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-admission-origin")
 	const gib = uint64(1) << 30

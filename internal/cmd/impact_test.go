@@ -14,8 +14,6 @@ import (
 // The rendering names every candidate class and closes with the advisory
 // posture: candidates, never verdicts — the words "stale" or "fresh"
 // would claim what only the witnessed surfaces can decide.
-//
-//gofresh:pure
 func TestImpactRenderNamesCandidatesAndAdvisoryFooter(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-impact")
 	r := &impact.Report{
@@ -57,8 +55,6 @@ func TestImpactRenderNamesCandidatesAndAdvisoryFooter(t *testing.T) {
 // Quiescence needs every section empty: a spec delta with an empty
 // change set (a gitignored spec document) still renders, and only a
 // fully empty preview reads as "no changes".
-//
-//gofresh:pure
 func TestImpactRenderEmptyChangeSetStillShowsSpecDelta(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-impact")
 	var out bytes.Buffer

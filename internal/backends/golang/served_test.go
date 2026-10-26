@@ -388,8 +388,6 @@ func bindingSet(symbols ...string) *stipulatorv1.BindingSet {
 // come most recently installed first and the first per subject is
 // kept, so an older stale twin never displaces the current record into
 // a typed resolution (REQ-evidence-record-store-layout).
-//
-//gofresh:pure
 func TestServedTakesTheNewestOfADuplicatedIdentity(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-record-store-layout")
 	if testing.Short() {
@@ -478,14 +476,11 @@ func TestServedTakesTheNewestOfADuplicatedIdentity(t *testing.T) {
 // the first answer, through the child — while the serving form, which
 // keys its records by the policy's selections, refuses at construction
 // (REQ-evidence-resolution-freshness-typed-load).
-//
-//gofresh:pure
 func TestWholeTreeFormReadsNoPolicy(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-freshness-typed-load")
 	if testing.Short() {
 		t.Skip("loads a fixture module's types")
 	}
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	neutralAmbient(t)
 	dir := servedModule(t)
 	policyPath := filepath.Join(dir, filepath.FromSlash(policy.Path))
@@ -516,14 +511,11 @@ func TestWholeTreeFormReadsNoPolicy(t *testing.T) {
 // through it leave no record at close, so a declaration-reading role never
 // writes evidence a serving run would key by a selection it never read
 // (REQ-evidence-resolution-freshness-typed-load).
-//
-//gofresh:pure
 func TestWholeTreeFormPublishesNothing(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-freshness-typed-load")
 	if testing.Short() {
 		t.Skip("loads a fixture module's types")
 	}
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	neutralAmbient(t)
 	dir := servedModule(t)
 	whole, err := NewWholeTree(context.Background(), dir)
@@ -574,14 +566,11 @@ func TestWholeTreeFormPublishesNothing(t *testing.T) {
 // symbol over a whole-tree child, exactly as the whole-tree form does,
 // and publishes nothing at close: the policy is read, nothing is served
 // (REQ-evidence-resolution-freshness-typed-load).
-//
-//gofresh:pure
 func TestEmptySetServingFormAdmitsItsWholeTree(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-freshness-typed-load")
 	if testing.Short() {
 		t.Skip("loads a fixture module's types")
 	}
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	neutralAmbient(t)
 	dir := servedModule(t)
 	s, err := NewServed(context.Background(), dir, []string{})

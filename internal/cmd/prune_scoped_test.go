@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -23,6 +24,7 @@ func TestPruneScopedWitnessEvaluationAndDeletionOnlyFastPath(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds the CLI and executes a policy over a fixture tree")
 	}
+	golang.NeutralAmbient(t)
 	bin := cliBinary(t)
 	dir := t.TempDir()
 	write := func(path, content string) {
@@ -44,7 +46,7 @@ func TestPruneScopedWitnessEvaluationAndDeletionOnlyFastPath(t *testing.T) {
 	write(".stipulator/policy.textproto", "invocations {\n  name: \"race\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./...\"\n    race: true\n  }\n}\n")
 	write("specs/p.md", "# P\n\n**REQ-pr-a** (behavior): The fixture MUST double.\n\n**REQ-pr-b** (behavior): The fixture MUST triple.\n")
 
-	env := append(os.Environ(), "GOENV=off", "GOFLAGS=", "GOPACKAGESDRIVER=", "GOTOOLCHAIN=local", "NO_COLOR=1", "XDG_CACHE_HOME="+t.TempDir())
+	env := append(os.Environ(), "NO_COLOR=1")
 	run := func(wantExit int, args ...string) string {
 		t.Helper()
 		cmd := exec.Command(bin, append([]string{"-C", dir}, args...)...)

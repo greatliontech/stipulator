@@ -48,3 +48,5 @@ require (
 	golang.org/x/sync v0.23.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
+
+replace github.com/greatliontech/gofresh => ../gofresh

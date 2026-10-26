@@ -20,8 +20,6 @@ import (
 // requirements share one declaration, the self sentinel lands each on
 // its own coverage, fired alone fires existing manual conditions, and
 // retract deletes records — dangling ones included.
-//
-//gofresh:pure
 func TestGapToolBatchFireRetract(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-tools", "REQ-gap-bulk", "REQ-gap-retract")
 	danglingPath := ".stipulator/gaps/ghost.textproto"
@@ -115,8 +113,6 @@ func TestGapToolBatchFireRetract(t *testing.T) {
 // records — judged from corpus and records alone — and its check form
 // deletes nothing; the ordinary resolved-mode prune never touches a
 // dangling record.
-//
-//gofresh:pure
 func TestPruneToolDanglingMode(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-tools", "REQ-gap-prune-dangling")
 	danglingPath := ".stipulator/gaps/ghost.textproto"

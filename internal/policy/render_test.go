@@ -14,8 +14,6 @@ import (
 // bytes for a given policy (prototext.Marshal deliberately destabilizes
 // whitespace, a committed record cannot), and a strict-parse round trip
 // back to the same message.
-//
-//gofresh:pure
 func TestPolicyRenderRoundTripsCanonically(t *testing.T) {
 	stipulate.Covers(t, "REQ-policy-record-location")
 	p := mkPolicy(

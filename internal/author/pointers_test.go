@@ -19,8 +19,6 @@ import (
 // member alone; a pointer whose requirement's source cannot be placed
 // once in its document refuses the whole retarget
 // (REQ-change-enforcement-pointers).
-//
-//gofresh:pure
 func TestRetargetRewritesEnforcementPointersAndRepins(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-enforcement-pointers", "REQ-change-retarget")
 	spec := "# T\n\n**REQ-au-a** (behavior): The `TestX` fast path MUST x, which is Enforced by `TestX` in prose. Enforced by `pkg.Q`, `TestX` and `TestKept`.\n\n- **alpha** first\n\n**REQ-au-b** (behavior): It MUST y. Enforced by `TestX`.\n"

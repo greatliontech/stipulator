@@ -199,7 +199,6 @@ func TestNoImport(t *testing.T) {
 	})
 }
 
-//gofresh:pure
 func TestImplements(t *testing.T) {
 	r := &recorder{}
 	Implements[io.Reader](r, (*strings.Reader)(nil))
@@ -223,7 +222,6 @@ func TestImplements(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestExportedData(t *testing.T) {
 	t.Run("exact exported shape passes", func(t *testing.T) {
 		r := &recorder{}
@@ -311,7 +309,6 @@ func TestExportedData(t *testing.T) {
 	})
 }
 
-//gofresh:pure
 func TestFunctionSignature(t *testing.T) {
 	fn := func(string) bool { return true }
 	t.Run("exact signature passes", func(t *testing.T) {
@@ -353,7 +350,6 @@ func (PublicCodecData) Validate() error              { return nil }
 func (PublicCodecData) MarshalJSON() ([]byte, error) { return nil, nil }
 func (*PublicCodecData) UnmarshalJSON([]byte) error  { return nil }
 
-//gofresh:pure
 func TestExportedDataWithMethods(t *testing.T) {
 	fields := []Field{
 		TaggedFieldOf[string]("Name", `json:"name"`),

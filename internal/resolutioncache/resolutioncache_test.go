@@ -144,8 +144,6 @@ func TestRecordsRefuseWhatTheStoreDoesNotServe(t *testing.T) {
 // — the store serves nothing it did not name — and an install temporary
 // beside the records is never read and never swept: a concurrent
 // installer's rename is about to claim it.
-//
-//gofresh:pure
 func TestMisnamedRecordsAndTemporariesAreNotRecords(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-cache-format")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())

@@ -35,8 +35,6 @@ func writeRacePolicy(t *testing.T, dir string) {
 // runnable tests is a clean empty run — nothing serves, nothing
 // executes, nothing degrades — never a fault. A corpus adopting a policy
 // before writing its first test must not fail witnessing.
-//
-//gofresh:pure
 func TestGoRunWitnessesTestlessPolicyRunsClean(t *testing.T) {
 	if testing.Short() {
 		t.Skip("runs policy discovery over a temporary module")
@@ -65,8 +63,6 @@ func TestGoRunWitnessesTestlessPolicyRunsClean(t *testing.T) {
 // compiled the binaries, so an edit made while the tests run voids every
 // publication — the executed evidence stands, and nothing is recorded
 // under a hash the edited tree no longer matches.
-//
-//gofresh:pure
 func TestGoRunWitnessesMidRunSourceEditNeverPublishes(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness")
 	if testing.Short() {
@@ -156,7 +152,6 @@ import (
 	"testing"
 )
 
-//gofresh:pure
 func TestReads(t *testing.T) {
 	if _, err := os.ReadFile("data.txt"); err != nil {
 		t.Fatal(err)
@@ -347,14 +342,12 @@ func sameRegistrationSet(a, b []verify.Registration) bool {
 // see only those copies, and the toolchain itself is pinned by the
 // fingerprint's toolchain guard. That is why the purity assertion below
 // is sound.
-//
-//gofresh:pure
 func TestGoRunWitnessesServingRoundTrip(t *testing.T) {
 	// The witness store must never be the user's real one: an
 	// un-overridden store poisons this package's own observation and
 	// pollutes the host cache (t.Setenv forbids t.Parallel, which these
 	// tests drop for hermeticity).
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	neutralAmbient(t)
 	stipulate.Covers(t, "REQ-evidence-witness-freshness", "REQ-go-witness", "REQ-evidence-run-attributes")
 	if testing.Short() {
 		t.Skip("runs go test per package")
@@ -483,14 +476,12 @@ func TestGoRunWitnessesServingRoundTrip(t *testing.T) {
 // one selected test, so process isolation permits proof selection; the
 // race test's environment read and harness failure channel are covered
 // by its positive observation proof, so it serves like its sibling.
-//
-//gofresh:pure
 func TestGoRunWitnessesSelectsRaceSources(t *testing.T) {
 	// The witness store must never be the user's real one: an
 	// un-overridden store poisons this package's own observation and
 	// pollutes the host cache (t.Setenv forbids t.Parallel, which these
 	// tests drop for hermeticity).
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	neutralAmbient(t)
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-inputs", "REQ-go-race")
 	if testing.Short() {
 		t.Skip("runs go test per package")
@@ -613,7 +604,6 @@ func TestReadsSession(t *testing.T) {
 		{name: "undeclared identity still detects drift under purity", assumed: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv("XDG_CACHE_HOME", t.TempDir())
 			neutralAmbient(t)
 			tmp := writeModule(t, files)
 			cfg := &stipulatorv1.GoInvocationConfig{}
@@ -744,7 +734,6 @@ func TestGoRunWitnessesWithdrawnVariantNeverMasksServeable(t *testing.T) {
 	if testing.Short() {
 		t.Skip("runs go test per package")
 	}
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	neutralAmbient(t)
 	tmp := writeModule(t, map[string]string{
 		"go.mod":          "module example.com/maskfixture\n\ngo 1.26\n",
@@ -809,8 +798,6 @@ func TestReadsCache(t *testing.T) {
 // covering invocation completes, so a later invocation's failure — the
 // run erroring out mid-execution — keeps every record already produced
 // (REQ-evidence-witness-cache-format-install).
-//
-//gofresh:pure
 func TestGoRunWitnessesCompletedGroupSurvivesLaterInvocationFailure(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-cache-format-install")
 	if testing.Short() {
@@ -929,14 +916,12 @@ import (
 	"testing"
 )
 
-//gofresh:pure
 func TestReads(t *testing.T) {
 	if _, err := os.ReadFile("data.txt"); err != nil {
 		t.Fatal(err)
 	}
 }
 
-//gofresh:pure
 func TestTouch(t *testing.T) {
 	b, err := os.ReadFile("touch.txt")
 	if err != nil {
@@ -957,7 +942,6 @@ import (
 	"time"
 )
 
-//gofresh:pure
 func TestWritesOnce(t *testing.T) {
 	raw, err := os.ReadFile("trigger.txt")
 	if err != nil {
@@ -1107,14 +1091,12 @@ import (
 	"testing"
 )
 
-//gofresh:pure
 func TestReads(t *testing.T) {
 	if _, err := os.ReadFile("data.txt"); err != nil {
 		t.Fatal(err)
 	}
 }
 
-//gofresh:pure
 func TestTouch(t *testing.T) {
 	b, err := os.ReadFile("touch.txt")
 	if err != nil {

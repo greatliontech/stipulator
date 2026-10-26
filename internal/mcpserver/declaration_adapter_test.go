@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
 )
@@ -17,12 +18,7 @@ func TestMCPDefaultDeclarationAdapterKeepsExplicitScope(t *testing.T) {
 		t.Skip("loads declarations through the production MCP adapter")
 	}
 	stipulate.Covers(t, "REQ-evidence-resolution-freshness-typed-load")
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	t.Setenv("GOENV", "off")
-	t.Setenv("GOFLAGS", "")
-	t.Setenv("GOPACKAGESDRIVER", "")
-	t.Setenv("GOTOOLCHAIN", "local")
-	t.Setenv("GOWORK", "off")
+	golang.NeutralAmbient(t)
 	dir := t.TempDir()
 	for name, content := range map[string]string{
 		"go.mod": "module example.com/adapter\n\ngo 1.27\n",

@@ -8,7 +8,6 @@ import (
 	"testing"
 )
 
-//gofresh:pure
 func BenchmarkSymbolPackageCandidates(b *testing.B) {
 	const symbol = "github.com/greatliontech/stipulator/internal/backends/golang.Served.ResolveIn"
 	b.ReportAllocs()
@@ -21,7 +20,6 @@ func BenchmarkSymbolPackageCandidates(b *testing.B) {
 	}
 }
 
-//gofresh:pure
 func BenchmarkWarmGraphs(b *testing.B) {
 	owners := make([]string, 16)
 	for i := range owners {

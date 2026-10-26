@@ -78,7 +78,7 @@ func TestGoRunWitnessesUnderForeignWorkspace(t *testing.T) {
 	// un-overridden store poisons this package's own observation and
 	// pollutes the host cache (t.Setenv forbids t.Parallel, which these
 	// tests drop for hermeticity).
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	neutralAmbient(t)
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")
 	}
@@ -117,8 +117,6 @@ func TestGoRunWitnessesUnderForeignWorkspace(t *testing.T) {
 // TestGoRunWitnessesCarriesFailureOutput pins the failure-diagnostic
 // merge across the selective run's processes: a red witness must be
 // diagnosable from the run that saw it.
-//
-//gofresh:pure
 func TestGoRunWitnessesCarriesFailureOutput(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a race-instrumented selective run over a temporary module")

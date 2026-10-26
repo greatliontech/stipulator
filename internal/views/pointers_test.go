@@ -12,8 +12,6 @@ import (
 // the count to the scoped requirements on both — the coverage summary
 // through the in-memory tally, the check summary through the wire rows
 // the scope filter kept (REQ-change-enforcement-pointers, REQ-mcp-views-scope).
-//
-//gofresh:pure
 func TestSummariesCountDanglingPointersScoped(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-enforcement-pointers", "REQ-mcp-views-scope")
 	cov := &coverage.Report{

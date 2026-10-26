@@ -256,7 +256,6 @@ func TestReviewedDeclarationsPublishAndRestart(t *testing.T) {
 	}
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-inputs", "REQ-evidence-witness-freshness-scratch-namespaces")
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := writeModule(t, map[string]string{
 		"go.mod": "module example.com/declarations\n\ngo 1.26\n",
 		"p_test.go": `package p

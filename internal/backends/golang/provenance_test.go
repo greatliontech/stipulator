@@ -162,7 +162,7 @@ func TestCheckToolchainProvenanceDirectional(t *testing.T) {
 // suite the refused frontend discovered and selected
 // (REQ-evidence-toolchain-provenance vs REQ-evidence-freshness-degrade).
 func TestRunWitnessesAbortsOnToolchainSkew(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	neutralAmbient(t)
 	stipulate.Covers(t, "REQ-evidence-toolchain-provenance")
 	if testing.Short() {
 		t.Skip("runs policy discovery")
@@ -189,7 +189,7 @@ func TestRunWitnessesAbortsOnToolchainSkew(t *testing.T) {
 // The recorder path aborts identically: a skewed frontend must not
 // prepare a witnessed suite execution.
 func TestNewWitnessRecorderAbortsOnToolchainSkew(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	neutralAmbient(t)
 	stipulate.Covers(t, "REQ-evidence-toolchain-provenance")
 	if testing.Short() {
 		t.Skip("runs policy discovery")
@@ -247,14 +247,12 @@ func TestNewContextRefusesToolchainSkew(t *testing.T) {
 // record-judging engine arm refuses an unidentifiable toolchain, while
 // the selection arms leave an unsampleable member to its loads and
 // refuse only an identified skew.
-//
-//gofresh:pure
 func TestToolchainSampledInTheTargetModule(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads the workspace fixture")
 	}
 	stipulate.Covers(t, "REQ-evidence-toolchain-provenance")
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	neutralAmbient(t)
 	orig := toolchainSampleForTest
 	t.Cleanup(func() { toolchainSampleForTest = orig })
 	var dirs []string

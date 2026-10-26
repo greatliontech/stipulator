@@ -52,7 +52,6 @@ func bindReq(id, symbol string) BindRequest {
 	}
 }
 
-//gofresh:pure
 func TestBind(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-record-verbs")
 
@@ -155,7 +154,6 @@ func TestBind(t *testing.T) {
 	})
 }
 
-//gofresh:pure
 func TestBindFileConfinement(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-record-verbs")
 	for _, escape := range []string{"specs/a.md", "../evil.textproto", ".stipulator/bindings/../../x.textproto", ".stipulator/bindings/x.md"} {
@@ -172,7 +170,6 @@ func TestBindFileConfinement(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestUnbind(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-record-verbs")
 	fsys := testFS(nil)
@@ -196,7 +193,6 @@ func TestUnbind(t *testing.T) {
 	})
 }
 
-//gofresh:pure
 func TestGap(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-verb")
 	mkGap := func(id, reason string, lands *stipulatorv1.LandingCondition) *stipulatorv1.Gap {
@@ -310,7 +306,6 @@ func TestGap(t *testing.T) {
 // with the bind verb itself.
 var _ = records.GapsDir
 
-//gofresh:pure
 func TestParseRoleAndConditions(t *testing.T) {
 	if _, err := ParseRole("implments"); err == nil {
 		t.Fatal("typo'd role accepted — mass-removal hazard")
@@ -327,7 +322,6 @@ func TestParseRoleAndConditions(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestGapRefusesForeignPathCollision(t *testing.T) {
 	// A hand-authored gap for another requirement legally sitting at this
 	// requirement's canonical path must never be overwritten.
@@ -345,7 +339,6 @@ func TestGapRefusesForeignPathCollision(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestAppendPreservesIndentedHeaderComment(t *testing.T) {
 	raw := "# header\n  # indented note, still header\n\nbindings {\n  requirement_id: \"REQ-au-b\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_TESTS\n}\n"
 	fsys := testFS(map[string]string{".stipulator/bindings/au.textproto": raw})
@@ -362,8 +355,6 @@ func TestAppendPreservesIndentedHeaderComment(t *testing.T) {
 
 // TestInit pins first-run bootstrap: a fresh tree scaffolds the manifest
 // with the default include; an initialized tree refuses.
-//
-//gofresh:pure
 func TestInit(t *testing.T) {
 	up, err := Init(fstest.MapFS{})
 	if err != nil {
@@ -383,8 +374,6 @@ func TestInit(t *testing.T) {
 
 // TestGapsBulk pins bulk declaration: one record per requirement, shared
 // reason and landing condition, all-or-nothing validation.
-//
-//gofresh:pure
 func TestGapsBulk(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-verb")
 	fsys := testFS(nil)
@@ -420,8 +409,6 @@ func TestGapsBulk(t *testing.T) {
 // Declared excuse classes are validated at write time, ride the record,
 // and a rescoped set is surfaced exactly as a retargeted landing
 // condition is (REQ-gap-verb, REQ-gap-record).
-//
-//gofresh:pure
 func TestGapExcusesValidatedAndRescopeSurfaced(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-verb", "REQ-gap-record")
 	fsys := testFS(nil)
@@ -476,8 +463,6 @@ func TestGapExcusesValidatedAndRescopeSurfaced(t *testing.T) {
 
 // TestPruneResolvedGaps pins the fmt arm of gap hygiene: resolved gaps
 // delete, open ones stay.
-//
-//gofresh:pure
 func TestPruneResolvedGaps(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-resolved-pruned")
 	fsys := testFS(map[string]string{
@@ -515,8 +500,6 @@ func (fakeSyntaxVerdict) Vacuous(string) (bool, error) { return true, nil }
 // TestBindDoesNotInferTestOutcomeFromSyntax pins the evidence boundary:
 // successful resolution authors the claim, while execution decides whether
 // the bound test produces evidence.
-//
-//gofresh:pure
 func TestBindDoesNotInferTestOutcomeFromSyntax(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-record-verbs", "REQ-evidence-promotion")
 	fsys := testFS(nil)
@@ -530,8 +513,6 @@ func TestBindDoesNotInferTestOutcomeFromSyntax(t *testing.T) {
 
 // TestProvesDischarge pins the loud-failure contract: a proves claim the
 // backend cannot discharge is refused at write time, never recorded.
-//
-//gofresh:pure
 func TestProvesDischarge(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-proves-discharge")
 	fsys := testFS(nil)
@@ -566,8 +547,6 @@ func TestProvesDischarge(t *testing.T) {
 // machine-owned form, one that it does not is refused naming what it
 // offers, and a claim that differs only in its clause is its own claim
 // (REQ-evidence-clause-claim, REQ-evidence-record-verbs).
-//
-//gofresh:pure
 func TestBindClauseClaims(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-clause-claim")
 	clauseDoc := doc + "\n**REQ-au-c** (behavior): It MUST hold:\n\n- **alpha** first\n- second\n"

@@ -17,8 +17,6 @@ import (
 // the operation read it refuses the WHOLE batch before the first write,
 // so a concurrent agent's records are never silently dropped
 // (REQ-record-cas).
-//
-//gofresh:pure
 func TestApplyUpdatesCompareAndSwap(t *testing.T) {
 	stipulate.Covers(t, "REQ-record-cas")
 	dir := t.TempDir()
@@ -103,8 +101,6 @@ func TestApplyUpdatesCompareAndSwap(t *testing.T) {
 // The verbs stamp what they read: an update over an existing record
 // carries its bytes, a fresh record stamps read-absent — the
 // preconditions applyUpdates enforces (REQ-record-cas).
-//
-//gofresh:pure
 func TestVerbsStampPriors(t *testing.T) {
 	stipulate.Covers(t, "REQ-record-cas")
 	dir := t.TempDir()
@@ -171,8 +167,6 @@ func TestVerbsStampPriors(t *testing.T) {
 // target still matches what the operation read — a single moved,
 // appeared, or vanished target refuses the WHOLE batch and leaves every
 // target byte-identical (REQ-record-cas, quantified).
-//
-//gofresh:pure
 func TestPropApplyRefusesIffAnyTargetMoved(t *testing.T) {
 	stipulate.Covers(t, "REQ-record-cas")
 	rapid.Check(t, func(rt *rapid.T) {

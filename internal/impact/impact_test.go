@@ -94,8 +94,6 @@ var fixture = map[string]string{
 // other witness (its external test package imports the leaf, and the
 // test variant folds onto its production package) — while the island
 // witness stays out: reach is the import closure, not the module.
-//
-//gofresh:pure
 func TestPreviewJoinsBindingsAndImportReach(t *testing.T) {
 	if testing.Short() {
 		t.Skip("spawns a toolchain child (go list, the resolver) — measured heavy under the fast tier")
@@ -133,8 +131,6 @@ func TestPreviewJoinsBindingsAndImportReach(t *testing.T) {
 // everything importing the package — is reached (REQ-change-impact's
 // embed-coupling reach). Bindings on backends the preview does not
 // implement are counted as unconsulted, never silently dropped.
-//
-//gofresh:pure
 func TestPreviewReachesEmbedCouplingsAndCountsUnconsulted(t *testing.T) {
 	if testing.Short() {
 		t.Skip("spawns a toolchain child (go list, the resolver) — measured heavy under the fast tier")
@@ -178,8 +174,6 @@ func TestPreviewReachesEmbedCouplingsAndCountsUnconsulted(t *testing.T) {
 // file yields no code-side candidate — symbols resolve in the working
 // tree alone, where nothing remains to resolve — and only the change
 // set and the advisory footer say anything (REQ-change-impact).
-//
-//gofresh:pure
 func TestPreviewDeletionAsymmetry(t *testing.T) {
 	if testing.Short() {
 		t.Skip("spawns a toolchain child (go list, the resolver) — measured heavy under the fast tier")
@@ -230,8 +224,6 @@ func TestPreviewDeletionAsymmetry(t *testing.T) {
 // preview never converts a content-hash delta into a staleness verdict.
 // The delta's orientation is HEAD-to-worktree — a requirement the edit
 // introduces reads as added, never removed.
-//
-//gofresh:pure
 func TestPreviewNamesSpecDeltaWithoutVerdict(t *testing.T) {
 	if testing.Short() {
 		t.Skip("spawns a toolchain child (go list, the resolver) — measured heavy under the fast tier")
@@ -265,8 +257,6 @@ func TestPreviewNamesSpecDeltaWithoutVerdict(t *testing.T) {
 // first go list, so this passing proves no load ran — symbol resolution
 // requires nothing here, and the spec delta previews without a
 // toolchain in sight (REQ-change-impact's loading bound).
-//
-//gofresh:pure
 func TestPreviewSpecOnlyCorpusNeedsNoGoTree(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-impact")
 	dir := repoWith(t, map[string]string{
@@ -290,8 +280,6 @@ func TestPreviewSpecOnlyCorpusNeedsNoGoTree(t *testing.T) {
 // change set requires no resolution. The fixture's malformed go.work
 // makes any attempted package load fail before its first go list, so
 // this passing proves no load ran.
-//
-//gofresh:pure
 func TestPreviewCleanGoBoundTreeSkipsGoLoad(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-impact")
 	dir := repoWith(t, map[string]string{
@@ -312,8 +300,6 @@ func TestPreviewCleanGoBoundTreeSkipsGoLoad(t *testing.T) {
 
 // A clean tree previews empty everywhere; a tree outside any repository
 // reports that plainly instead of guessing (REQ-change-impact).
-//
-//gofresh:pure
 func TestPreviewCleanTreeAndNonRepo(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-impact")
 	dir := repoWith(t, fixture, nil)
@@ -334,8 +320,6 @@ func TestPreviewCleanTreeAndNonRepo(t *testing.T) {
 // one-step disposition for a mid-disposition edit), while HEAD — a
 // historical corpus a remedy would misdirect against — quotes its
 // faults alone (REQ-change-impact, REQ-change-remediation).
-//
-//gofresh:pure
 func TestCompileCleanCarriesRemediesOnlyForTheLiveTree(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-remediation")
 	mid := fstest.MapFS{

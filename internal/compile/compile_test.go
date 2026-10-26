@@ -65,7 +65,6 @@ func hasEdge(spec *stipulatorv1.Spec, kind stipulatorv1.EdgeKind, from, to *stip
 	return false
 }
 
-//gofresh:pure
 func TestRequirementLead(t *testing.T) {
 	spec, diags := compileFiles(t, map[string]string{
 		"specs/a.md": "# T\n\n## S\n\n**REQ-a-one** (behavior): It MUST do the thing.\n\n" +
@@ -113,7 +112,6 @@ func TestRequirementLead(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestPayloadChangesHash(t *testing.T) {
 	base := "# T\n\n**REQ-x-a** (behavior): It MUST hold:\n\n- point\n"
 	specA, diags := compileFiles(t, map[string]string{"specs/a.md": base})
@@ -133,7 +131,6 @@ func TestPayloadChangesHash(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestHashStableUnderRewrap(t *testing.T) {
 	a := "# T\n\n**REQ-w-a** (behavior): The system MUST do a thing that is long enough to wrap.\n"
 	b := "# T\n\n**REQ-w-a** (behavior): The system MUST do\na thing that is long\nenough to wrap.\n"
@@ -146,7 +143,6 @@ func TestHashStableUnderRewrap(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestLeadErrors(t *testing.T) {
 	cases := []struct{ name, body, diag string }{
 		{"near miss no metadata", "**REQ-x-a** does the thing.", "does not parse as a requirement lead"},
@@ -163,7 +159,6 @@ func TestLeadErrors(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestKeywordDiscipline(t *testing.T) {
 	// The refusal names the remedy for the count found, and the lint
 	// entry point — the message is where an author reads it, on
@@ -223,7 +218,6 @@ func TestKeywordDiscipline(t *testing.T) {
 	})
 }
 
-//gofresh:pure
 func TestIdentity(t *testing.T) {
 	t.Run("duplicate requirement", func(t *testing.T) {
 		_, diags := compileFiles(t, map[string]string{
@@ -340,8 +334,6 @@ func TestIdentity(t *testing.T) {
 // whatever the spelling, and the closure reaches every target — a
 // requirement refining two broader ones states both relationships
 // (REQ-profile-metadata, REQ-model-canonical-order, REQ-model-closure).
-//
-//gofresh:pure
 func TestEdgeClausesAdmitTargetLists(t *testing.T) {
 	stipulate.Covers(t, "REQ-profile-metadata", "REQ-model-closure", "REQ-model-canonical-order")
 	base := "# T\n\n**REQ-e-one** (behavior): It MUST one.\n\n**REQ-e-two** (behavior): It MUST two.\n\n"
@@ -395,7 +387,6 @@ func TestEdgeClausesAdmitTargetLists(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestReferences(t *testing.T) {
 	stipulate.Covers(t, "REQ-model-graph")
 	t.Run("edge from requirement", func(t *testing.T) {
@@ -441,7 +432,6 @@ func TestReferences(t *testing.T) {
 	})
 }
 
-//gofresh:pure
 func TestTermMatching(t *testing.T) {
 	spec, diags := compileFiles(t, map[string]string{
 		"specs/a.md": "# T\n\n**content hash** (term): a hash of content.\n\n**hash** (term): a digest.\n\n" +
@@ -467,7 +457,6 @@ func TestTermMatching(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestNotes(t *testing.T) {
 	stipulate.Covers(t, "REQ-model-graph")
 	spec, diags := compileFiles(t, map[string]string{
@@ -505,7 +494,6 @@ func TestNotes(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestDocumentErrors(t *testing.T) {
 	t.Run("two titles", func(t *testing.T) {
 		_, diags := compileFiles(t, map[string]string{"specs/a.md": "# T\n\n# U\n"})
@@ -517,7 +505,6 @@ func TestDocumentErrors(t *testing.T) {
 	})
 }
 
-//gofresh:pure
 func TestLayoutIndependence(t *testing.T) {
 	blocks := []string{
 		"**REQ-l-a** (behavior): It MUST x.",
@@ -541,7 +528,6 @@ func TestLayoutIndependence(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestGeneratedIndexExcluded(t *testing.T) {
 	spec, diags := compileFiles(t, map[string]string{
 		"specs/a.md":      "# T\n\n**REQ-x-a** (behavior): It MUST x.\n",
@@ -558,8 +544,6 @@ func TestGeneratedIndexExcluded(t *testing.T) {
 // shadowing and denylist warnings when opted in — surfaced without
 // failing compilation — and word-boundary matching (a plural is not a
 // shadow).
-//
-//gofresh:pure
 func TestTermLint(t *testing.T) {
 	stipulate.Covers(t, "REQ-profile-term-lint")
 	doc := "# T\n\n**law node** (term): a node holding law.\n\n**node** (term): a graph vertex.\n\n**nodes overview** (term): prose about many.\n"
@@ -608,8 +592,6 @@ func TestTermLint(t *testing.T) {
 // underscore as a boundary - so a non-ASCII term name matches exactly
 // as an ASCII one, and the lint judges containment with the same
 // definition (REQ-profile-term-matching, REQ-profile-term-lint).
-//
-//gofresh:pure
 func TestTermMatchingRuneBoundaries(t *testing.T) {
 	stipulate.Covers(t, "REQ-profile-term-matching", "REQ-profile-term-lint")
 	spec, diags := compileFiles(t, map[string]string{
@@ -639,8 +621,6 @@ func TestTermMatchingRuneBoundaries(t *testing.T) {
 
 // The shadowing lint sees non-ASCII containment with the matcher's own
 // boundary definition (REQ-profile-term-lint).
-//
-//gofresh:pure
 func TestTermLintRuneBoundaries(t *testing.T) {
 	stipulate.Covers(t, "REQ-profile-term-lint")
 	_, diags := compileFiles(t, map[string]string{
@@ -663,8 +643,6 @@ func TestTermLintRuneBoundaries(t *testing.T) {
 // label; nested items and tables contribute none; a label declared
 // twice is a compile error, so a clause claim is never ambiguous
 // (REQ-profile-clauses).
-//
-//gofresh:pure
 func TestClausesAreThePayloadListItems(t *testing.T) {
 	stipulate.Covers(t, "REQ-profile-clauses")
 	doc := "# T\n\n**REQ-x-a** (behavior): It MUST hold:\n\n" +
@@ -712,8 +690,6 @@ func TestClausesAreThePayloadListItems(t *testing.T) {
 // an extent edit exactly as the content hash does, and it never
 // canonicalizes — so byte-identical source digests identically whatever
 // the canonical form does (REQ-model-consent-source).
-//
-//gofresh:pure
 func TestConsentSourceDigestFollowsRawBytes(t *testing.T) {
 	stipulate.Covers(t, "REQ-model-consent-source")
 	lead := "**REQ-x-a** (behavior): It MUST hold:\n\n- point\n\n> Commentary.\n"

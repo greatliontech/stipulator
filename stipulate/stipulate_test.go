@@ -17,7 +17,6 @@ func (r *recorder) Log(args ...any) {
 	}
 }
 
-//gofresh:pure
 func TestCoversEmitsMarker(t *testing.T) {
 	r := &recorder{}
 	Covers(r, "REQ-x-a", "REQ-x-b")

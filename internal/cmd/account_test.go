@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
 )
@@ -66,7 +67,7 @@ func TestServingVerbsRenderTheResolutionAccount(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	golang.NeutralAmbient(t)
 	t.Setenv("NO_COLOR", "1")
 	priorDir := chdir
 	chdir = dir
@@ -183,7 +184,7 @@ func TestServingRefusalsRenderTheResolutionAccount(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	golang.NeutralAmbient(t)
 	t.Setenv("NO_COLOR", "1")
 	priorDir, priorServing := chdir, servingBackends
 	chdir = dir

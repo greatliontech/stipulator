@@ -30,8 +30,6 @@ func read(t *testing.T, root, path string) string {
 // leaves the first unrenamed, a deletion failing after the writes
 // leaves them standing and named, and a file appearing before its
 // create refuses by name (REQ-record-cas, REQ-mcp-writes-confined).
-//
-//gofresh:pure
 func TestApplyStagesEveryFileBeforeTheFirstRename(t *testing.T) {
 	stipulate.Covers(t, "REQ-record-cas", "REQ-mcp-writes-confined")
 	root := t.TempDir()

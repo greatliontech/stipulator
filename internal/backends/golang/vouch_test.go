@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -25,14 +24,12 @@ import (
 // records the discharge on the fingerprint produced through the same
 // policy-scoped engine the verdicts use
 // (REQ-evidence-witness-freshness-vouches's vouch discipline).
-//
-//gofresh:pure
 func TestPolicyVouchReachesTheCaptureEngine(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds gofresh views over the protobuf graph")
 	}
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-vouches")
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	neutralAmbient(t)
 	out, err := exec.Command("go", "list", "-m", "-f", "{{.Version}}", "google.golang.org/protobuf").Output()
 	if err != nil {
 		t.Fatal(err)
@@ -163,17 +160,17 @@ func TestCount(t *testing.T) {
 	if discharges != "" {
 		t.Fatalf("unvouched capture recorded a discharge: %q", discharges)
 	}
-	m := regexp.MustCompile(`([^\s:]+): ([^\s:]+)\.([\p{L}_][\p{L}\p{Nd}_]*) `).FindStringSubmatch(reason + " ")
-	if m == nil || m[1] != m[2] {
+	pkgPath, sym, ok := CulpritFromReason(reason)
+	if !ok {
 		t.Fatalf("no culprit parsed from %q", reason)
 	}
-	culprit := m[1] + "." + m[3]
+	culprit := pkgPath + "." + sym
 
 	// The repository's own vouch file is declined: a file entry naming
 	// the culprit while the policy names no vouch neither discharges
 	// nor licenses — the policy is the reviewed set's one home
 	// (REQ-vouch-input's consumer rule).
-	if err := os.WriteFile(filepath.Join(dir, "vouches"), []byte(m[1]+":"+m[3]+"\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "vouches"), []byte(pkgPath+":"+sym+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	reasonFile, dischargesFile := capture(base)
@@ -190,7 +187,7 @@ func TestCount(t *testing.T) {
   go {
     packages: "./..."
     race: true
-    dynamic_state_vouches { package: "` + m[1] + `" variable: "` + m[3] + `" }
+    dynamic_state_vouches { package: "` + pkgPath + `" variable: "` + sym + `" }
   }
 }
 `
@@ -254,7 +251,6 @@ func TestReviewedVouchRestartKeepsOnlyUsedAcceptances(t *testing.T) {
 	}
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-vouches")
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	// A real version-addressed dependency with two reviewed globals. The
 	// unused mutator makes the stability assertion substantive without
 	// importing unrelated I/O effects into the witness's native proof.

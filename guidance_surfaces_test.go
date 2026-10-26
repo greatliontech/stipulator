@@ -45,8 +45,6 @@ func namesReader(text, surface string) bool {
 // of a single-surface verb inherits the verb's reason. The document is
 // embedded and parsed in-process: the test's inputs are the source
 // closure the fingerprint already pins (REQ-purity-responsibility).
-//
-//gofresh:pure
 func TestGuidanceNamesTheReaderOfEverySingleSurfaceElement(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-surfaces")
 	doc, err := GuidanceDocument()

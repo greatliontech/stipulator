@@ -16,8 +16,6 @@ import (
 
 // The self sentinel resolves to each named requirement's own coverage —
 // the design-stage idiom — while a literal target stays shared.
-//
-//gofresh:pure
 func TestGapsSelfSentinel(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-bulk")
 	fsys := testFS(nil)
@@ -80,8 +78,6 @@ func (c *countingFS) Open(name string) (fs.File, error) {
 
 // The bulk form compiles the corpus and loads the store once for the
 // whole list: each declaration reads the same compiled spec.
-//
-//gofresh:pure
 func TestGapsCompileOnce(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-bulk")
 	m := testFS(nil)
@@ -114,8 +110,6 @@ func TestGapsCompileOnce(t *testing.T) {
 // dangling state is what retraction repairs — never touching the
 // tombstone registry, erroring on a requirement with no record, and
 // applying all-or-nothing.
-//
-//gofresh:pure
 func TestRetractGaps(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-retract")
 	fsys := testFS(map[string]string{
@@ -151,8 +145,6 @@ func TestRetractGaps(t *testing.T) {
 // path: a machine condition refuses, a missing record refuses, a
 // dangling record refuses toward retraction, an already-fired record
 // stays fired, and the batch validates all-or-nothing.
-//
-//gofresh:pure
 func TestFireGaps(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-verb")
 	fsys := testFS(map[string]string{
@@ -200,8 +192,6 @@ func TestFireGaps(t *testing.T) {
 // Re-declaring a gap whose manual condition text is unchanged preserves
 // its fired state — an unfire is a lifecycle retarget that only happens
 // through an explicit changed declaration.
-//
-//gofresh:pure
 func TestGapFiredPreservedOnRedeclare(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-verb")
 	fsys := testFS(map[string]string{
@@ -262,8 +252,6 @@ func TestGapFiredPreservedOnRedeclare(t *testing.T) {
 // is a landing retarget surfaced like any other, the fired state still
 // preserved across an unchanged condition text (REQ-gap-conditions,
 // REQ-gap-verb, REQ-gap-record).
-//
-//gofresh:pure
 func TestGapContradictedClassRidesTheManualCondition(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-conditions", "REQ-gap-verb", "REQ-gap-record")
 	for _, machine := range [][2]string{{"REQ-au-a", ""}, {"", "REQ-au-a"}} {
@@ -321,8 +309,6 @@ func TestGapContradictedClassRidesTheManualCondition(t *testing.T) {
 // condition must not carry explicit fired=false presence, which would
 // make proto.Equal see a retarget against every prior record that
 // simply lacks the field.
-//
-//gofresh:pure
 func TestUnchangedRedeclareIsSilent(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-verb")
 	fsys := testFS(map[string]string{
@@ -342,8 +328,6 @@ func TestUnchangedRedeclareIsSilent(t *testing.T) {
 }
 
 // Fired at declaration time rides only a manual condition.
-//
-//gofresh:pure
 func TestNewLandingConditionFired(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-verb")
 	if _, err := NewLandingCondition("REQ-au-a", "", "", true, false); err == nil {
@@ -373,8 +357,6 @@ func stripHeader(b []byte) []byte {
 // writes: a duplicate inside one batch is refused exactly like a
 // committed duplicate, which proves the overlay feeds each claim's
 // effect forward — and a refusal anywhere authors nothing.
-//
-//gofresh:pure
 func TestBindsBatchOverlay(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-tools-bind-batch")
 	claims := []BindRequest{
@@ -407,8 +389,6 @@ func TestBindsBatchOverlay(t *testing.T) {
 // absent from the corpus is accepted — the prospective use covered and
 // exists exist for — and surfaced in the notes so a typo is loud
 // without foreclosing the future requirement.
-//
-//gofresh:pure
 func TestGapDeclarationStampsConsentAndValidatesTargets(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-consent", "REQ-gap-verb")
 	fsys := testFS(nil)
@@ -469,8 +449,6 @@ func TestGapDeclarationStampsConsentAndValidatesTargets(t *testing.T) {
 
 // A re-declaration over a drifted consent re-stamps — a fresh consent —
 // and the discharge is surfaced in the notes, never silent.
-//
-//gofresh:pure
 func TestGapRedeclarationSurfacesConsentRestamp(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-verb", "REQ-gap-consent")
 	fsys := testFS(nil)
@@ -516,8 +494,6 @@ func TestGapRedeclarationSurfacesConsentRestamp(t *testing.T) {
 
 // The editorial disposition re-stamps the identity's gap record beside
 // its bindings: the gap's consent surface rides the same ceremony.
-//
-//gofresh:pure
 func TestEditorialRestampsGapPin(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-consent", "REQ-change-editorial")
 	fsys := testFS(nil)
@@ -587,8 +563,6 @@ func TestEditorialRestampsGapPin(t *testing.T) {
 // Firing a gap rewrites the record through the machine-owned gap writer
 // like every other rewrite: a body comment refuses, a custom header is
 // preserved (REQ-evidence-binding-machine-owned).
-//
-//gofresh:pure
 func TestFireGapsMachineOwnedRewrite(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-verb")
 	fsys := testFS(nil)

@@ -41,7 +41,6 @@ func TestUnsupportedFileOutcomesRetainIdentityWithoutPublishing(t *testing.T) {
 	}
 	stipulate.Covers(t, "REQ-evidence-outcome-premises")
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := observedReaderModule(t)
 	cfg := &stipulatorv1.GoInvocationConfig{}
 	cfg.SetPackages([]string{"."})

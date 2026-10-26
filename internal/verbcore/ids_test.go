@@ -14,8 +14,6 @@ import (
 // forbids), a JSON-array encoding is tolerated, and a list given but
 // reducing to nothing refuses — never the whole corpus
 // (REQ-check-preparation).
-//
-//gofresh:pure
 func TestSplitIDsIsTheOneGrammar(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-claim-batch")
 	got, err := SplitIDLists([]string{"REQ-a, REQ-b", "REQ-c", ""})

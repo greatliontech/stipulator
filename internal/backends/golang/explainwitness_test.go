@@ -197,7 +197,6 @@ func TestExplainWitnessAnswersAcrossViews(t *testing.T) {
 		t.Skip("loads a fixture module under two views")
 	}
 	stipulate.Covers(t, "REQ-mcp-explain")
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	neutralAmbient(t)
 	dir := splitModule(t)
 	dstPolicy(t, dir)
@@ -326,8 +325,6 @@ func dispatch[T interface { Run(*testing.T, func(*rapid.T)) }](t *testing.T, x T
 // TestSeedingChainIsBoundedKeepingTheDecidingLink pins the cap: a
 // chain past the bound keeps its first links and its last — the
 // deciding one — and counts the rest (REQ-mcp-explain).
-//
-//gofresh:pure
 func TestSeedingChainIsBoundedKeepingTheDecidingLink(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-explain")
 	var links []gofresh.ChainLink
@@ -353,8 +350,6 @@ func TestSeedingChainIsBoundedKeepingTheDecidingLink(t *testing.T) {
 // explain kind; a judgment reason classifies whole and not with a
 // detail; a spelling no class owns is foreign (REQ-mcp-explain,
 // REQ-evidence-witness-freshness-diagnosable).
-//
-//gofresh:pure
 func TestReasonClassesCarryTheirExplainKind(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-explain", "REQ-evidence-witness-freshness-diagnosable")
 	minted := map[string]explainKind{
@@ -420,8 +415,6 @@ func TestReasonClassesCarryTheirExplainKind(t *testing.T) {
 // fail-closed under the unclassifiable class with the spelling as its
 // detail, so it never serves and explain answers it as its own
 // attribution (REQ-mcp-explain, REQ-evidence-witness-freshness-diagnosable).
-//
-//gofresh:pure
 func TestParseReasonAdmitsEveryClassAndWrapsTheForeign(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-explain", "REQ-evidence-witness-freshness-diagnosable")
 	for _, c := range reasonClasses {

@@ -23,8 +23,6 @@ import (
 // This subject parses committed fixture files: its inputs are the
 // source closure the fingerprint already pins, asserted pure under
 // REQ-purity-responsibility.
-//
-//gofresh:pure
 func TestGoPinTableClasses(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
 	broken := loadPinTable("testdata/depbroken")
@@ -75,8 +73,6 @@ func TestGoPinTableClasses(t *testing.T) {
 // nested member modules: the longest owning member answers, never
 // map-iteration order — the same commit must yield the same
 // attribution on every run.
-//
-//gofresh:pure
 func TestGoMemberModuleNestedIsDeterministic(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
 	table := &pinTable{members: map[string]string{
@@ -94,8 +90,6 @@ func TestGoMemberModuleNestedIsDeterministic(t *testing.T) {
 // question shares: ownership holds only at a path boundary, so a
 // sibling whose path merely extends the module's ("b" vs "bb") is
 // never owned, while the module itself and its subpackages are.
-//
-//gofresh:pure
 func TestGoModuleOwnsPathBoundary(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
 	cases := []struct {
@@ -120,8 +114,6 @@ func TestGoModuleOwnsPathBoundary(t *testing.T) {
 // ordering: conditions render in their applying-version's semantic
 // precedence, never lexicographic and never the rendered string's
 // target order.
-//
-//gofresh:pure
 func TestGoCondReplacesBySemverOrder(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
 	got := condReplacesBySemver([]string{
@@ -137,8 +129,6 @@ func TestGoCondReplacesBySemverOrder(t *testing.T) {
 // directives render in semantic version precedence — the order minimal
 // version selection reasons in — never lexicographic, where v1.10.0
 // would sort before v1.9.0.
-//
-//gofresh:pure
 func TestGoRequiresBySemverOrder(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
 	got := requiresBySemver([]string{"v1.10.0 (b/go.mod require)", "v1.9.0 (a/go.mod require)"})
@@ -151,8 +141,6 @@ func TestGoRequiresBySemverOrder(t *testing.T) {
 // framing lines are dropped, remaining lines join single-line, a real
 // loader position prefixes the message, and the wrapped shape's "-"
 // position does not.
-//
-//gofresh:pure
 func TestGoLoaderTextRendering(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
 	wrapped := packages.Error{Pos: "-", Msg: "# example.com/p\n./x.go:1:1: undefined: q.R\nmore context\n"}
@@ -169,8 +157,6 @@ func TestGoLoaderTextRendering(t *testing.T) {
 // ordering: a member module whose own path ends in "_test" identifies
 // its root package — the untrimmed path matches before the xtest fold
 // could erase it.
-//
-//gofresh:pure
 func TestGoMemberModuleKeepsTestSuffixedMemberRoot(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
 	table := &pinTable{members: map[string]string{"example.com/m_test": "."}}
@@ -186,8 +172,6 @@ func TestGoMemberModuleKeepsTestSuffixedMemberRoot(t *testing.T) {
 // This subject parses committed fixture files: its inputs are the
 // source closure the fingerprint already pins, asserted pure under
 // REQ-purity-responsibility.
-//
-//gofresh:pure
 func TestGoMemberModuleFoldsExternalTestSuffix(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
 	table := loadPinTable("testdata/depbroken")
@@ -203,8 +187,6 @@ func TestGoMemberModuleFoldsExternalTestSuffix(t *testing.T) {
 // missing-package message classes: each shape yields the named package
 // path, and a path inside the erroring package's own module never
 // classifies as a dependency.
-//
-//gofresh:pure
 func TestGoDependencyImportMissingPackageShapes(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
 	pkg := &packages.Package{PkgPath: "example.com/m/p"}
@@ -235,8 +217,6 @@ func TestGoDependencyImportMissingPackageShapes(t *testing.T) {
 // package name and then the path's last element, and an identifier
 // binding two distinct paths across the package's files refuses rather
 // than guessing.
-//
-//gofresh:pure
 func TestGoImportForIdentRules(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
 	parse := func(name, src string) *ast.File {
@@ -276,8 +256,6 @@ func TestGoImportForIdentRules(t *testing.T) {
 // This subject analyzes a committed fixture tree: its inputs are the
 // source closure and guard-covered toolchain state the fingerprint
 // already pins, asserted pure under REQ-purity-responsibility.
-//
-//gofresh:pure
 func TestGoLoadAttributionNoCommittedPinArm(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
 	b, err := newContext(context.Background(), "testdata/depbroken", nil)
@@ -301,8 +279,6 @@ func TestGoLoadAttributionNoCommittedPinArm(t *testing.T) {
 // This subject analyzes a committed fixture tree: its inputs are the
 // source closure and guard-covered toolchain state the fingerprint
 // already pins, asserted pure under REQ-purity-responsibility.
-//
-//gofresh:pure
 func TestGoLoadAttributionFailsClosedOnUnidentifiedModule(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
 	b, err := newContext(context.Background(), "testdata/depbroken", nil)
@@ -327,8 +303,6 @@ func TestGoLoadAttributionFailsClosedOnUnidentifiedModule(t *testing.T) {
 // This subject analyzes a committed fixture tree: its inputs are the
 // source closure and guard-covered toolchain state the fingerprint
 // already pins, asserted pure under REQ-purity-responsibility.
-//
-//gofresh:pure
 func TestGoLoadAttributionMemberClass(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads the tree")

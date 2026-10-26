@@ -13,8 +13,6 @@ import (
 // a code span that is not an identifier is no pointer, and a
 // requirement without the phrase names none; the phrase inside a
 // sentence is prose (REQ-change-enforcement-pointers).
-//
-//gofresh:pure
 func TestEnforcementPointersAreTheSentencesCodeSpans(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-enforcement-pointers")
 	spec, diags := compileFiles(t, map[string]string{

@@ -11,8 +11,6 @@ import (
 
 // One applier per root: the one-apply-at-a-time rule is the applier's,
 // so every verb writing a root shares its applier (REQ-record-cas).
-//
-//gofresh:pure
 func TestApplierIsOnePerRoot(t *testing.T) {
 	stipulate.Covers(t, "REQ-record-cas")
 	a, b := t.TempDir(), t.TempDir()

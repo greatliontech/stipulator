@@ -28,8 +28,6 @@ const mod = "github.com/greatliontech/stipulator"
 // This subject analyzes the repository tree itself: its inputs are
 // the source closure and guard-covered toolchain state the fingerprint
 // already pins, asserted pure under REQ-purity-responsibility.
-//
-//gofresh:pure
 func TestResolve(t *testing.T) {
 	if testing.Short() {
 		t.Skip("reads the repository-tree backend the full tier loads before the testlog")
@@ -75,8 +73,6 @@ func TestResolve(t *testing.T) {
 // This subject analyzes the repository tree itself: its inputs are
 // the source closure and guard-covered toolchain state the fingerprint
 // already pins, asserted pure under REQ-purity-responsibility.
-//
-//gofresh:pure
 func TestFixtureModule(t *testing.T) {
 	b, err := newContext(context.Background(), "testdata/fixturemod", nil)
 	if err != nil {
@@ -121,8 +117,6 @@ func TestFixtureModule(t *testing.T) {
 // This subject analyzes the repository tree itself: its inputs are
 // the source closure and guard-covered toolchain state the fingerprint
 // already pins, asserted pure under REQ-purity-responsibility.
-//
-//gofresh:pure
 func TestShapeHashIsPackageQualified(t *testing.T) {
 	fn := func(path string) *types.Func {
 		pkg := types.NewPackage(path, "p")
@@ -143,8 +137,6 @@ func TestShapeHashIsPackageQualified(t *testing.T) {
 // This subject analyzes the repository tree itself: its inputs are
 // the source closure and guard-covered toolchain state the fingerprint
 // already pins, asserted pure under REQ-purity-responsibility.
-//
-//gofresh:pure
 func TestShapeHashDistinguishesSignatures(t *testing.T) {
 	if testing.Short() {
 		t.Skip("reads the repository-tree backend the full tier loads before the testlog")
@@ -180,8 +172,6 @@ func TestShapeHashDistinguishesSignatures(t *testing.T) {
 // This subject analyzes the repository tree itself: its inputs are
 // the source closure and guard-covered toolchain state the fingerprint
 // already pins, asserted pure under REQ-purity-responsibility.
-//
-//gofresh:pure
 func TestWitnessClass(t *testing.T) {
 	if testing.Short() {
 		t.Skip("reads the repository-tree backend the full tier loads before the testlog")
@@ -256,8 +246,6 @@ func TestWitnessClassVerdicts(t *testing.T) {
 // This subject analyzes the repository tree itself: its inputs are
 // the source closure and guard-covered toolchain state the fingerprint
 // already pins, asserted pure under REQ-purity-responsibility.
-//
-//gofresh:pure
 func TestSlice(t *testing.T) {
 	if testing.Short() {
 		t.Skip("reads the repository-tree backend the full tier loads before the testlog")
@@ -307,13 +295,11 @@ func TestSlice(t *testing.T) {
 // This subject analyzes the repository tree itself: its inputs are
 // the source closure and guard-covered toolchain state the fingerprint
 // already pins, asserted pure under REQ-purity-responsibility.
-//
-//gofresh:pure
 func TestWorkspaceMembers(t *testing.T) {
 	if testing.Short() {
 		t.Skip("runs go test over a fixture module")
 	}
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	neutralAmbient(t)
 	stipulate.Covers(t, "REQ-go-static-binding", "REQ-go-witness", "REQ-go-workspace")
 	b, err := newContext(context.Background(), "testdata/workspacemod", nil)
 	if err != nil {
@@ -386,8 +372,6 @@ func TestWorkspaceMembers(t *testing.T) {
 // This subject analyzes a committed fixture tree: its inputs are the
 // source closure and guard-covered toolchain state the fingerprint
 // already pins, asserted pure under REQ-purity-responsibility.
-//
-//gofresh:pure
 func TestGoLoadAttributionNamesDependencyResolutionState(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
 	b, err := newContext(context.Background(), "testdata/depbroken", nil)
@@ -417,8 +401,6 @@ func TestGoLoadAttributionNamesDependencyResolutionState(t *testing.T) {
 // This subject analyzes a committed fixture tree: its inputs are the
 // source closure and guard-covered toolchain state the fingerprint
 // already pins, asserted pure under REQ-purity-responsibility.
-//
-//gofresh:pure
 func TestGoLoadAttributionLeavesInTreeErrorsUnchanged(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
 	b, err := newContext(context.Background(), "testdata/depbroken", nil)
@@ -453,8 +435,6 @@ func TestGoLoadAttributionLeavesInTreeErrorsUnchanged(t *testing.T) {
 // This subject analyzes a committed fixture tree: its inputs are the
 // source closure and guard-covered toolchain state the fingerprint
 // already pins, asserted pure under REQ-purity-responsibility.
-//
-//gofresh:pure
 func TestGoWitnessClassVerdictNamesLoadFailure(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution", "REQ-go-witness-class")
 	b, err := newContext(context.Background(), "testdata/depbroken", nil)
@@ -476,8 +456,6 @@ func TestGoWitnessClassVerdictNamesLoadFailure(t *testing.T) {
 // TestInTreeRelAndWorkspaceMembers pins the shared in-tree relative-path
 // predicate and workspace member discovery across SymbolFile and workspace
 // loading.
-//
-//gofresh:pure
 func TestInTreeRelAndWorkspaceMembers(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-symbol-syntax")
 	for _, rel := range []string{".", "pkg/file.go", "..foo/bar.go", "...triple/file.go"} {

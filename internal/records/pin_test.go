@@ -25,8 +25,6 @@ func storeWith(t *testing.T, bindings string) *Store {
 // the blanket form sets only UNSET content pins — a differing pin is the
 // consent trail, rewritten only through the named editorial path, so
 // staleness cannot be laundered.
-//
-//gofresh:pure
 func TestPinNeverRewritesDifferingContent(t *testing.T) {
 	stipulate.Covers(t, "REQ-pin-backfill")
 	stale := strings.Repeat("0", 64)
@@ -51,8 +49,6 @@ func TestPinNeverRewritesDifferingContent(t *testing.T) {
 // clears verification's shape-mismatch signal, the one trace that a
 // bound implementation moved — while a backfilled unset shape pin
 // cleared nothing and stays unreported.
-//
-//gofresh:pure
 func TestPinReportsRewrittenShapePins(t *testing.T) {
 	stipulate.Covers(t, "REQ-pin-backfill")
 	oldShape := strings.Repeat("a", 64)
@@ -78,8 +74,6 @@ func TestPinReportsRewrittenShapePins(t *testing.T) {
 // bindings are judged, and only a set-and-differing shape pin counts —
 // unset pins and other requirements' mismatches are not this answer's
 // business.
-//
-//gofresh:pure
 func TestShapeMismatchedReportsOnlyNamedDiffering(t *testing.T) {
 	stipulate.Covers(t, "REQ-pin-backfill")
 	oldShape := strings.Repeat("a", 64)
@@ -100,8 +94,6 @@ func TestShapeMismatchedReportsOnlyNamedDiffering(t *testing.T) {
 // an unset gap content pin backfills to the current hash, a differing
 // one is preserved and its requirement named, and a current one leaves
 // the file untouched.
-//
-//gofresh:pure
 func TestPinBackfillsGapPins(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-consent", "REQ-pin-backfill")
 	current := strings.Repeat("a", 64)
@@ -186,8 +178,6 @@ func TestPinBackfillsGapPins(t *testing.T) {
 // source pin gains one; a differing content pin with a differing (or
 // absent) source pin stays preserved. Gaps and attestations ride the
 // same pass (REQ-evidence-consent-current, REQ-pin-backfill).
-//
-//gofresh:pure
 func TestPinRehashesByteIdenticalText(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-consent-current", "REQ-pin-backfill")
 	old := strings.Repeat("0", 64)
@@ -273,8 +263,6 @@ func TestPinRehashesByteIdenticalText(t *testing.T) {
 // when the source pin alone matches, stale otherwise — an unset content
 // pin never current, an unset source pin never a rehash
 // (REQ-evidence-consent-current).
-//
-//gofresh:pure
 func TestJudgeConsent(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-consent-current")
 	for _, c := range []struct {

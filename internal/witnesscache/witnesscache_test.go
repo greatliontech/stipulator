@@ -69,8 +69,6 @@ func generatedObservationFingerprint(t *testing.T) gofresh.Fingerprint {
 // a corrupt, version-mismatched, misnamed, or structurally invalid
 // variant file is that record alone absent, so its test runs — a broken
 // record costs work, never correctness.
-//
-//gofresh:pure
 func TestLoadUnreadableIsEmpty(t *testing.T) {
 	if testing.Short() {
 		t.Skip("measured heavy under the fast tier (in-process)")
@@ -350,8 +348,6 @@ func TestHistoricalV2ManifestRefusesBesideCurrentVariant(t *testing.T) {
 // a malformed file, another version, a name-content disagreement, a ledger
 // omitting the record's declaration, or an absent file is no ledger, which
 // costs the carve-out alone.
-//
-//gofresh:pure
 func TestLedgerStoreRefusesPerFile(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-cache-format-ledger", "REQ-evidence-witness-freshness-carve-out")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
@@ -460,8 +456,6 @@ func TestLedgerStoreRefusesPerFile(t *testing.T) {
 // — its records evicted past the variant bound — is reclaimed as the
 // store loads, while a ledger a refused record still names stays, so
 // the ledger store never outgrows the record store.
-//
-//gofresh:pure
 func TestLoadReclaimsUnreferencedLedgers(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-cache-format-ledger")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
@@ -562,8 +556,6 @@ func TestLoadReclaimsUnreferencedLedgers(t *testing.T) {
 // (REQ-evidence-witness-cache-format-eviction): one identity's variants load
 // most recently installed first, by install time rather than name, so the
 // variant the last state change produced is the first checked.
-//
-//gofresh:pure
 func TestLoadOrdersVariantsNewestFirst(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-cache-format-eviction")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
@@ -603,8 +595,6 @@ func TestLoadOrdersVariantsNewestFirst(t *testing.T) {
 // discards a sibling record, one identity's distinct tree states coexist as
 // variants, and the identity's variant set stays bounded with the oldest
 // evicted first.
-//
-//gofresh:pure
 func TestStoreVariantsAndSiblings(t *testing.T) {
 	if testing.Short() {
 		t.Skip("measured heavy under the fast tier (in-process)")
@@ -944,8 +934,6 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 // saw for their complete ledger coordinates, so a concurrent install's
 // ledger-then-record ordering holds for the sweep as it does for a
 // reader (REQ-evidence-witness-cache-format-ledger).
-//
-//gofresh:pure
 func TestLateRecordsKeepTheirLedgers(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-cache-format-ledger")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())

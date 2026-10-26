@@ -20,8 +20,6 @@ import (
 // a declared override's ambient value withheld, dropped entries named
 // alone, and the ambient leg being the invocation's normalize-time
 // sample.
-//
-//gofresh:pure
 func TestGoEnvDivergenceReportContent(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-flip-environment")
 	n := &NormalizedInvocation{
@@ -103,8 +101,6 @@ func TestGoEnvDivergenceReportContent(t *testing.T) {
 // report at its own cap, so the failure output always keeps most of
 // the diagnostic's room (the starvation regimes are unrepresentable,
 // not reconciled).
-//
-//gofresh:pure
 func TestGoEnvDivergenceReportBoundedAtRender(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-flip-environment")
 	huge := strings.Repeat("v", 4*envValueCap)
@@ -170,8 +166,6 @@ func TestGoEnvDivergenceReportBoundedAtRender(t *testing.T) {
 // pass, a prior FAILURE, a package-scoped diagnostic, and a
 // non-failure disposition stay bare; the combined output stays within
 // the one-diagnostic cap with truncation marked on the typed field.
-//
-//gofresh:pure
 func TestGoEnrichFlipDiagnostics(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-flip-environment")
 	mk := func(pkg, test string, disp stipulatorv1.HealthDisposition) *stipulatorv1.FailureDiagnostic {
@@ -266,8 +260,6 @@ func TestGoEnrichFlipDiagnostics(t *testing.T) {
 // straddling the prefix cap, an invalid byte in a short value, and a
 // report-cap cut through multi-byte content all render valid — and the
 // enriched diagnostic itself marshals.
-//
-//gofresh:pure
 func TestGoEnvDivergenceReportValidUTF8(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-flip-environment")
 	straddle := strings.Repeat("x", envValueCap-1) + "日本語" + strings.Repeat("x", envValueCap)
@@ -315,8 +307,6 @@ func TestGoEnvDivergenceReportValidUTF8(t *testing.T) {
 // to the replacement rune, and the result is always valid UTF-8 —
 // the guarantee the proto marshal depends on, independent of any
 // outer scrub that would mask a broken inner one.
-//
-//gofresh:pure
 func TestGoTruncateValidUTF8(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-flip-environment")
 	if got := truncateValidUTF8("ab日本", 3); got != "ab" {

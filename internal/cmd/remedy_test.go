@@ -17,8 +17,6 @@ import (
 // path resolves to a leaf command and its flags parse there, so a
 // renamed verb or flag can never leave a rendered finding naming a
 // spelling the tool no longer accepts (REQ-change-remediation).
-//
-//gofresh:pure
 func TestEveryRemedyParsesAgainstTheCommandTree(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-remediation")
 	samples := remedy.Samples()
@@ -76,8 +74,6 @@ func TestEveryRemedyParsesAgainstTheCommandTree(t *testing.T) {
 // registry lacks: the accessors are exempt, unexported helpers and
 // methods are not composers, and a registered name is an exact match,
 // never a prefix of one.
-//
-//gofresh:pure
 func TestUnregisteredComposersAreNamedExactly(t *testing.T) {
 	src := `package remedy
 func Pin() string { return "" }

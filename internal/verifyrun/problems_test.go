@@ -11,8 +11,6 @@ import (
 // RefuseProblems is the one hygiene refusal both faces render: nil for a
 // clean record, the typed error carrying every problem otherwise
 // (REQ-check-preparation).
-//
-//gofresh:pure
 func TestRefuseProblemsIsTheOneRefusal(t *testing.T) {
 	stipulate.Covers(t, "REQ-check-preparation")
 	if err := RefuseProblems(nil); err != nil {

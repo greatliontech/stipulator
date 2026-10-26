@@ -105,8 +105,6 @@ func TestGoGroupSubjectsExcludeAmbiguousPackages(t *testing.T) {
 // invalidation acknowledged (module_root joined the identity that way)
 // and never by a drifting digest
 // (REQ-evidence-witness-cache-format, REQ-evidence-record-store-layout).
-//
-//gofresh:pure
 func TestLiveGroupDigestsAreTheStoresDigestOfTheIdentity(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-cache-format", "REQ-evidence-record-store-layout")
 	base := func() *NormalizedInvocation {

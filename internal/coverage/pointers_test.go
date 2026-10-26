@@ -14,8 +14,6 @@ import (
 // another requirement, or under the implements role, or not at all,
 // leaves the requirement red in the pointer's own class, counted apart,
 // with the remedy named (REQ-change-enforcement-pointers).
-//
-//gofresh:pure
 func TestEnforcementPointersAreJudgedAgainstTheRequirementsBindings(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-enforcement-pointers")
 	doc := "# T\n\n**REQ-v-p** (behavior): It MUST x. Enforced by `TestP`, `TestQ`, and `TestR`.\n\n**REQ-v-o** (behavior): It MUST y.\n"

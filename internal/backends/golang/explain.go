@@ -3,7 +3,6 @@ package golang
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -47,21 +46,13 @@ func ExplainDynamicState(ctx context.Context, pc *Capture, pkgPath, varName stri
 	return gofresh.Chain{}, "", nil
 }
 
-// culpritReason matches the "<pkg>: <pkg>.<var> <verdict text>" tail
-// every shared-dynamic-state downgrade carries.
-var culpritReason = regexp.MustCompile(`([^\s:]+): ([^\s:]+)\.([\p{L}_][\p{L}\p{Nd}_]*) `)
-
 // CulpritFromReason extracts the dynamic-state culprit a composed
 // uncacheable reason names — the package and variable — so a surface
 // can explain a verdict from the reason text verbatim, on the CLI and
 // the MCP alike.
 func CulpritFromReason(reason string) (pkgPath, symbol string, ok bool) {
-	for _, m := range culpritReason.FindAllStringSubmatch(reason+" ", -1) {
-		if m[1] == m[2] {
-			return m[1], m[3], true
-		}
-	}
-	return "", "", false
+	c, ok := gofresh.CulpritFromReason(reason)
+	return c.Package, c.Symbol, ok
 }
 
 // ExplainRequest is what a surface's explain request settled to: a

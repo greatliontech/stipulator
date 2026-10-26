@@ -16,8 +16,6 @@ import (
 // construction reads no policy, where the serving form's refuses a
 // policy the tree cannot parse at construction
 // (REQ-evidence-resolution-freshness-typed-load).
-//
-//gofresh:pure
 func TestDeclarationReadingBackendsReadNoPolicy(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-freshness-typed-load")
 	dir := t.TempDir()

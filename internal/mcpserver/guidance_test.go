@@ -41,8 +41,6 @@ func guidanceText(t *testing.T, res *mcp.CallToolResult) string {
 // This subject analyzes embedded content compiled into the test
 // binary: its inputs are the source closure the fingerprint already
 // pins, asserted pure under REQ-purity-responsibility.
-//
-//gofresh:pure
 func TestGuidanceDocumentParses(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-guidance")
 	if _, err := stipulator.GuidanceDocument(); err != nil {
@@ -54,8 +52,6 @@ func TestGuidanceDocumentParses(t *testing.T) {
 // listed tool's name and every input-schema property is documented,
 // in both directions, judged over the REAL ListTools result
 // (REQ-mcp-guidance).
-//
-//gofresh:pure
 func TestGuidanceCoversTheWireSurface(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-guidance")
 	doc, err := stipulator.GuidanceDocument()
@@ -186,8 +182,6 @@ func TestGuidanceCoversTheWireSurface(t *testing.T) {
 // The guidance tool serves the document: a verb's long section under
 // its mcp spelling, the decision map for the empty verb, and a
 // teaching error for an unknown verb (REQ-mcp-guidance).
-//
-//gofresh:pure
 func TestGuidanceToolServesTheDocument(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-guidance")
 	doc, err := stipulator.GuidanceDocument()
@@ -229,8 +223,6 @@ func TestGuidanceToolServesTheDocument(t *testing.T) {
 // is embedded — while corpus tools return the teaching error
 // (REQ-mcp-guidance). The server here carries an fsys with no
 // manifest: the corpus-less state guarded() detects.
-//
-//gofresh:pure
 func TestGuidanceToolServesOutsideACorpus(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-guidance")
 	doc, err := stipulator.GuidanceDocument()

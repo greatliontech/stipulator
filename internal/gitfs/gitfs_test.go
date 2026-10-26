@@ -64,8 +64,6 @@ func repoWith(t *testing.T, committed, worktree map[string]string) string {
 
 // TestChanged pins the working-tree boundary: a file untouched since HEAD is
 // absent, while a modified file and a brand-new untracked file are present.
-//
-//gofresh:pure
 func TestChanged(t *testing.T) {
 	dir := repoWith(t,
 		map[string]string{
@@ -104,8 +102,6 @@ func TestChanged(t *testing.T) {
 // TestRevisionCorpusDiff pins the diff-against-revision path end to end:
 // the committed corpus compiles from the object store — no checkout — and
 // diffs against the edited working tree.
-//
-//gofresh:pure
 func TestRevisionCorpusDiff(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-diff-revision")
 	man := ".stipulator/manifest.textproto"
@@ -159,8 +155,6 @@ func TestRevisionCorpusDiff(t *testing.T) {
 
 // TestRevisionSubdirCorpus pins prefix mapping: a corpus root below the
 // repository root maps onto the same subtree at the revision.
-//
-//gofresh:pure
 func TestRevisionSubdirCorpus(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-diff-revision")
 	dir := repoWith(t,
@@ -257,8 +251,6 @@ func TestLinkedWorktreeSupported(t *testing.T) {
 // corpus file at a revision is refused loudly — serving the link-target
 // path as content would silently compile it as spec text — and directory
 // listings report the honest entry type.
-//
-//gofresh:pure
 func TestSymlinkEntriesRefused(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-diff-revision")
 	dir := t.TempDir()

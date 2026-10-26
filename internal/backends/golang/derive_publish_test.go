@@ -320,12 +320,10 @@ func TestReadsObserved(t *testing.T) {
 
 import "testing"
 
-//gofresh:pure
 func TestOne(t *testing.T) {
 	t.Log("stipulator:covers REQ-pub-probe")
 }
 
-//gofresh:pure
 func TestTwo(t *testing.T) {
 	t.Run("sub", func(t *testing.T) {})
 }
@@ -347,8 +345,6 @@ func TestBeside(t *testing.T) { _ = Shown(); _ = os.Getenv("PUB_GROUP_SPLIT") }
 
 // ExampleShown runs (an Output comment, empty) without an ambient
 // effect that would refuse the compartment's other witness.
-//
-//gofresh:pure
 func ExampleShown() {
 	_ = Shown()
 	// Output:
@@ -362,7 +358,6 @@ import (
 	"testing"
 )
 
-//gofresh:pure
 func TestAssertedReads(t *testing.T) {
 	_, _ = os.ReadFile("data.txt")
 }
@@ -672,14 +667,12 @@ import (
 	"testing"
 )
 
-//gofresh:pure
 func TestReads(t *testing.T) {
 	if data, err := os.ReadFile("data.txt"); err != nil || string(data) != "before" {
 		t.Fatalf("producing read = %q, %v; want before", data, err)
 	}
 }
 
-//gofresh:pure
 func TestReaderNoop(t *testing.T) {}
 `,
 		"writer/writer_test.go": `package writer
@@ -720,10 +713,8 @@ func TestPWDNoop(t *testing.T) {}
 
 import "testing"
 
-//gofresh:pure
 func TestClean(t *testing.T) {}
 
-//gofresh:pure
 func TestCleanNoop(t *testing.T) {}
 `,
 	})
@@ -928,7 +919,6 @@ func TestHealthJudgedFormPersistsPerPackage(t *testing.T) {
 		t.Skip("executes two race invocations over a temporary module")
 	}
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	tmp := writeModule(t, map[string]string{
 		"go.mod":      "module example.com/units\n\ngo 1.26\n",
 		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
@@ -1003,7 +993,6 @@ func TestHealthJudgedFormKeepsWhatClosedBeforeADegrade(t *testing.T) {
 		t.Skip("executes two race invocations over a temporary module")
 	}
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	// The first invocation also runs a red package: its subject refuses
 	// on the ladder's own reason, which the later degrade must not
 	// overwrite.

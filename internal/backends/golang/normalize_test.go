@@ -447,8 +447,6 @@ func TestBuildFlagsCarryModeAndProfile(t *testing.T) {
 // platform's key rule, and lookupEnv reads under it — one key-equality
 // decision for the normalizer, the report, and the engine
 // (REQ-evidence-flip-environment).
-//
-//gofresh:pure
 func TestEnvHelpersFollowGofreshsPolicy(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-flip-environment")
 	got := gotool.SetEnv([]string{"A-=1", "B=2"}, "A", "1")

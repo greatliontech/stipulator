@@ -23,7 +23,6 @@ func TestNativePackageRosterAndPWDPublishAndServe(t *testing.T) {
 	}
 	stipulate.Covers(t, "REQ-evidence-outcome-premises", "REQ-evidence-witness-freshness-purity", "REQ-evidence-witness-freshness-inputs", "REQ-go-retained-test-execution")
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := writeModule(t, map[string]string{"go.mod": "module example.com/native\n\ngo 1.26\n", "pkg/data": "fixture"})
 	source := fmt.Sprintf(`package pkg
 import ("os"; "testing")
@@ -100,7 +99,6 @@ func TestNativeIsolationKeepsAttemptEvidence(t *testing.T) {
 	}
 	stipulate.Covers(t, "REQ-evidence-outcome-premises", "REQ-evidence-witness-freshness-isolation", "REQ-go-retained-test-execution")
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := writeModule(t, map[string]string{
 		"go.mod":    "module example.com/nativeisolation\n\ngo 1.26\n",
 		"p_test.go": "package p\nimport (\"os\"; \"testing\")\nfunc TestEnv(t *testing.T) { if os.Getenv(\"PWD\") == \"\" { t.Fatal(\"missing PWD\") } }\nfunc TestFail(t *testing.T) { t.Fatal(\"ordinary failure\") }\n",

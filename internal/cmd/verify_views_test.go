@@ -196,8 +196,6 @@ func TestVerifyBindingsViewAnswersWhatClaimsThisSymbol(t *testing.T) {
 // as the MCP tool does — a lone package or symbol refuses, an
 // unparseable reason refuses naming the alternative
 // (REQ-mcp-surfaces).
-//
-//gofresh:pure
 func TestExplainArgumentContract(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-surfaces")
 	for _, tc := range []struct {
@@ -226,8 +224,6 @@ func TestExplainArgumentContract(t *testing.T) {
 // carries — one per line with kind, culprit, callee, clause, and
 // position — with the arm and view in the header and the omitted count
 // on stderr; a culprit no view knows says so (REQ-mcp-explain).
-//
-//gofresh:pure
 func TestExplainRendersTheChain(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-explain")
 	chain := gofresh.Chain{

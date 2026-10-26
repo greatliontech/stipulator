@@ -21,13 +21,11 @@ func TestRetryCompleteEmptyPopulationRevokesEarlierGrant(t *testing.T) {
 	}
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-revalidation", "REQ-evidence-witness-freshness-interference", "REQ-go-retained-test-execution")
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	// Purity permits the intentionally interfering fixtures to seed reusable
 	// records. It must not override their runtime-input or current-source guards.
 	sources := map[string]string{
 		"a/a_test.go": `package a
 import ("os"; "strings"; "testing")
-//gofresh:pure
 func TestA(t *testing.T) {
  data, err := os.ReadFile("data"); if err != nil { t.Fatal(err) }
  if string(data) == "moved" {
@@ -40,7 +38,6 @@ func TestA(t *testing.T) {
 `,
 		"b/b_test.go": `package b
 import ("os"; "testing")
-//gofresh:pure
 func TestB(t *testing.T) {
  data, err := os.ReadFile("trigger"); if err != nil { t.Fatal(err) }
  if string(data) == "yes" { if err := os.WriteFile("../a/data", []byte("moved"), 0600); err != nil { t.Fatal(err) } }
@@ -49,7 +46,6 @@ func TestB(t *testing.T) {
 		"c/c_test.go": `package c
 import ("os"; "testing")
 const armed = false
-//gofresh:pure
 func TestC(t *testing.T) {
  if armed { if err := os.WriteFile("../b/trigger", []byte("yes"), 0600); err != nil { t.Fatal(err) } }
 }
@@ -168,7 +164,6 @@ func TestRetryUnavailableCurrentPopulationKeepsEarlierMeasuredPass(t *testing.T)
 	}
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-revalidation")
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	reader := "package reader\nimport (\"os\"; \"testing\")\n//gofresh:pure\nfunc TestRead(t *testing.T) { if _, err := os.ReadFile(\"data\"); err != nil { t.Fatal(err) } }\n"
 	writer := "package writer\nimport (\"os\"; \"testing\")\nconst armed = false\n//gofresh:pure\nfunc TestWriter(t *testing.T) { if armed { if err := os.WriteFile(\"../reader/data\", []byte(\"new\"), 0600); err != nil { t.Fatal(err) } } }\n"
 	dir := writeModule(t, map[string]string{"go.mod": "module example.com/unavailableretry\n\ngo 1.26\n", "reader/data": "old", "reader/r_test.go": reader, "writer/w_test.go": writer})
@@ -236,7 +231,6 @@ func TestRetryMissingFingerprintKeepsMeasuredPassWithoutDrift(t *testing.T) {
 	}
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-revalidation")
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	for _, name := range []string{"present", "unavailable"} {
 		t.Run(name, func(t *testing.T) {
 			reader := "package reader\nimport (\"os\"; \"testing\")\n//gofresh:pure\nfunc TestRead(t *testing.T) { if _, err := os.ReadFile(\"data\"); err != nil { t.Fatal(err) } }\n"

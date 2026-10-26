@@ -35,8 +35,6 @@ func (b *recordingBackend) Resolve(symbol string) (verify.Resolution, string, er
 // silently emptying the shape map, and the wanted filter scopes
 // resolution to the named requirements' bindings — an unnamed
 // requirement's symbol is never resolved (REQ-pin-backfill).
-//
-//gofresh:pure
 func TestResolveShapesSurfacesFaultsAndScopesToWanted(t *testing.T) {
 	stipulate.Covers(t, "REQ-pin-backfill")
 	shape := strings.Repeat("b", 64)

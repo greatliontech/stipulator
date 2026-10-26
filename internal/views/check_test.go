@@ -25,8 +25,6 @@ func redRow(id string) *stipulatorv1.RequirementCoverage {
 // caps red rows with a stated remainder, and reduces diagnostics to
 // headings — bounded by construction while the full view carries
 // everything (REQ-mcp-response-contract, REQ-mcp-views-check-summary).
-//
-//gofresh:pure
 func TestCheckViewSummaryBounds(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-response-contract", "REQ-mcp-views-check-summary")
 	res := &stipulatorv1.CheckResult{}
@@ -112,8 +110,6 @@ func TestCheckViewSummaryBounds(t *testing.T) {
 // The summary's derived judgments match their canonical sources: an
 // empty invocation list reads unhealthy exactly as the verdict judges
 // it, and the binding counts are verification's own axes.
-//
-//gofresh:pure
 func TestCheckViewSummaryMatchesCanonicalJudgments(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-views-check-summary", "REQ-mcp-response-contract")
 	res := &stipulatorv1.CheckResult{}
@@ -159,8 +155,6 @@ func TestCheckViewSummaryMatchesCanonicalJudgments(t *testing.T) {
 // witness count with one deterministic exemplar each, capped with a
 // counted remainder — per-test-distinct reasons can never rebuild the
 // per-test map one row at a time.
-//
-//gofresh:pure
 func TestCheckViewBlockerRowsCapAndDeterminism(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-response-contract", "REQ-mcp-views-check-summary")
 	res := &stipulatorv1.CheckResult{}
@@ -206,8 +200,6 @@ func TestCheckViewBlockerRowsCapAndDeterminism(t *testing.T) {
 // Scoping filters coverage rows, gaps, and violations together and
 // never mutates the unscoped result, and never alters the verdict it
 // projects.
-//
-//gofresh:pure
 func TestCheckViewScopeFiltersWholeReport(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-views-scope")
 	res := &stipulatorv1.CheckResult{}
@@ -262,8 +254,6 @@ func TestCheckViewScopeFiltersWholeReport(t *testing.T) {
 // summary omits it entirely and the full report carries the rows
 // untruncated — bounded summary, lossless drill-down
 // (REQ-mcp-response-contract).
-//
-//gofresh:pure
 func TestVerifySummaryOmitsFailureDiagnosticOutput(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-response-contract")
 	noise := strings.Repeat("compiler noise\n", 1000)
@@ -316,8 +306,6 @@ func TestVerifySummaryOmitsFailureDiagnosticOutput(t *testing.T) {
 // contradicted count is the subset of the unresolved rows declared
 // contradicted — a resolved contradicted row leaves it
 // (REQ-gap-lifecycle).
-//
-//gofresh:pure
 func TestCheckSummaryCountsContradictedGapsApart(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-lifecycle", "REQ-report-check-result")
 	row := func(id string, state stipulatorv1.GapState, contradicted bool) *stipulatorv1.GapReport {
@@ -355,8 +343,6 @@ func TestCheckSummaryCountsContradictedGapsApart(t *testing.T) {
 // requirements red solely on the scope boundary to a count — the cause
 // stated once by scope_partial, the rows riding the full view. Without
 // the partial flag the row marker folds nothing.
-//
-//gofresh:pure
 func TestCheckSummaryMirrorsScopeAndFoldsScopeBlockedRows(t *testing.T) {
 	stipulate.Covers(t, "REQ-check-verdict-scoped", "REQ-report-check-result")
 	blocked := &stipulatorv1.RequirementCoverage{}
@@ -474,8 +460,6 @@ func TestCheckSummaryFoldsPolicyBlockedRows(t *testing.T) {
 // few and load-bearing, and dropping them at the default view would
 // hide the degradation exactly where operators read
 // (REQ-check-policy-notices).
-//
-//gofresh:pure
 func TestCheckSummaryCarriesPolicyNotices(t *testing.T) {
 	stipulate.Covers(t, "REQ-check-policy-notices")
 	res := &stipulatorv1.CheckResult{}

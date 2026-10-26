@@ -25,8 +25,6 @@ import (
 // The spawned shells' behavior is the author-owned dependency here:
 // the interpreter image is bracket-bound by the policy's bracket_paths,
 // and the inline scripts are source.
-//
-//gofresh:pure
 func TestGoResolverCancellationTerminatesDescendants(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-owned-processes")
 	stipulate.Covers(t, "REQ-policy-cancellation")
@@ -133,8 +131,6 @@ func TestGoResolverCancellationTerminatesDescendants(t *testing.T) {
 // The spawned shells' behavior is the author-owned dependency here:
 // the interpreter image is bracket-bound by the policy's bracket_paths,
 // and the inline scripts are source.
-//
-//gofresh:pure
 func TestResolverClientChildCrashErrors(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-owned-processes")
 	t.Run("before handshake", func(t *testing.T) {
@@ -172,8 +168,6 @@ func TestResolverClientChildCrashErrors(t *testing.T) {
 // The spawned shells' behavior is the author-owned dependency here:
 // the interpreter image is bracket-bound by the policy's bracket_paths,
 // and the inline scripts are source.
-//
-//gofresh:pure
 func TestResolverClientProtocolErrorSurfaces(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-owned-processes")
 	ctx, cancel := context.WithCancel(context.Background())

@@ -13,8 +13,6 @@ import (
 // The tool's own corpus passes its own judgment: every enforcement
 // pointer in these specs resolves to a tests- or proves-role binding of
 // its requirement in this store (REQ-change-enforcement-pointers).
-//
-//gofresh:pure
 func TestOwnCorpusPointersResolve(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-enforcement-pointers")
 	fsys := os.DirFS("../..")

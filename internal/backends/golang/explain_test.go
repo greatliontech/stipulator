@@ -19,8 +19,6 @@ import (
 // selects its package alone (named as the answering view), and a
 // package two invocations select is in no view, so its culprit
 // yields an empty chain even though a whole-tree glob would chain it.
-//
-//gofresh:pure
 func TestExplainDynamicStateChainsThroughPolicyViews(t *testing.T) {
 	if testing.Short() {
 		t.Skip("measured heavy under the fast tier (in-process)")
@@ -169,8 +167,6 @@ invocations {
 // Explain is the one entry both surfaces call: a policy fault carries
 // the "explain: policy:" shape, and ResolveExplain's refusals spell the
 // argument names the calling surface hands it (REQ-mcp-explain).
-//
-//gofresh:pure
 func TestExplainEntryShapesItsRefusals(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-explain")
 	if _, _, err := Explain(context.Background(), t.TempDir(), "example.com/p", "V"); err == nil || !strings.HasPrefix(err.Error(), "explain: policy: ") {

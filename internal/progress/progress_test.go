@@ -675,8 +675,6 @@ func TestResidentWordsAreOneSpellingOnBothFaces(t *testing.T) {
 // (REQ-mcp-progress-resident): a reading taken under an installed soft ceiling
 // states it after the kernel's figures, on the wire and in the words
 // both faces print; a reading without one states no ceiling.
-//
-//gofresh:pure
 func TestResidentWordsStateTheCeiling(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-progress-resident")
 	under := resident.Set{ProcessBytes: 10, ProcessPeakBytes: 20, CeilingBytes: 3 << 30}

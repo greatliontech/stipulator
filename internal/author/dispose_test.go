@@ -35,7 +35,6 @@ func disposeFS(t *testing.T, oldDoc, newDoc string, extra map[string]string) fst
 	return fsys
 }
 
-//gofresh:pure
 func TestEditorial(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-editorial")
 	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST x.\n\n**REQ-au-b** (behavior): It MUST y.\n"
@@ -95,7 +94,6 @@ func TestEditorial(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestRetire(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-retire")
 	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST x.\n\n**REQ-au-b** (behavior): It MUST y.\n"
@@ -142,7 +140,6 @@ func TestRetire(t *testing.T) {
 	})
 }
 
-//gofresh:pure
 func TestSupersede(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-split-merge", "REQ-change-transient")
 	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST x.\n\n**REQ-au-b** (behavior): It MUST y.\n"
@@ -207,8 +204,6 @@ func TestSupersede(t *testing.T) {
 // response — and refuses when a clause claim no longer resolves, so
 // consent to a dangling claim is never recorded
 // (REQ-evidence-clause-claim, REQ-change-editorial).
-//
-//gofresh:pure
 func TestEditorialNamesTheClauseEachClaimNowDenotes(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-clause-claim")
 	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST hold:\n\n- **alpha** first\n- second\n\n**REQ-au-b** (behavior): It MUST y.\n"
@@ -270,8 +265,6 @@ func TestEditorialNamesTheClauseEachClaimNowDenotes(t *testing.T) {
 // witness claim on a clause-structured requirement, and places carried
 // bindings according to the manifest's binding_layout
 // (REQ-change-split-merge, REQ-evidence-clause-claim).
-//
-//gofresh:pure
 func TestSupersedeCarriesClausesAndRespectsLayout(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-split-merge", "REQ-evidence-clause-claim")
 	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST hold:\n\n- **alpha** first\n- second\n"
@@ -338,8 +331,6 @@ func TestSupersedeCarriesClausesAndRespectsLayout(t *testing.T) {
 // the operator asked to re-consent and learns there was nothing to
 // consent to for that record (REQ-evidence-consent-current,
 // REQ-change-editorial).
-//
-//gofresh:pure
 func TestAuthoringStampsTheSourcePinAndEditorialNamesRehashes(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-consent-current")
 	fsys := attestableFS(nil)
@@ -460,8 +451,6 @@ func TestAuthoringStampsTheSourcePinAndEditorialNamesRehashes(t *testing.T) {
 // requirement, and the re-attest ceremony when the only consent not
 // holding is an attestation's — a judgment the editorial re-pin never
 // rewrites (REQ-pin-backfill).
-//
-//gofresh:pure
 func TestEditorialNoOpNamesItsReason(t *testing.T) {
 	stipulate.Covers(t, "REQ-pin-backfill")
 	fsys := attestableFS(nil)
@@ -516,8 +505,6 @@ func TestEditorialNoOpNamesItsReason(t *testing.T) {
 // tombstones the source, accepts the edge, and retargets the source's
 // binding; a source no record names needs force, the typo guard
 // (REQ-change-split-merge).
-//
-//gofresh:pure
 func TestSupersedeConsumesTheMidDispositionCorpus(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-split-merge")
 	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST x.\n\n**REQ-au-b** (behavior): It MUST y.\n"
@@ -590,8 +577,6 @@ func TestSupersedeConsumesTheMidDispositionCorpus(t *testing.T) {
 // retargets to c alone, b's to c and d, and no binding lands on a
 // successor that does not declare its source; a source no named
 // successor declares refuses naming it (REQ-change-split-merge).
-//
-//gofresh:pure
 func TestSupersedeFollowsTheDeclaredEdges(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-split-merge")
 	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST a.\n\n**REQ-au-b** (behavior): It MUST b.\n"

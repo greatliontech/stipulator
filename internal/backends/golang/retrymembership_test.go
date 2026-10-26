@@ -20,7 +20,6 @@ func TestRetryRunnableRemovalRevokesOnlyTheRemovedGrant(t *testing.T) {
 	}
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-revalidation", "REQ-evidence-witness-freshness-interference")
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	b := "package b\nimport (\"os\"; \"testing\")\n//gofresh:pure\nfunc TestB(t *testing.T) { value, err := os.ReadFile(\"trigger\"); if err != nil { t.Fatal(err) }; if string(value) == \"yes\" { if err := os.WriteFile(\"../a/data\", []byte(\"moved\"), 0600); err != nil { t.Fatal(err) } } }\n"
 	b += "//gofresh:pure\nfunc TestKeep(t *testing.T) {}\n"
 	a := fmt.Sprintf("package a\nimport (\"os\"; \"testing\")\n//gofresh:pure\nfunc TestA(t *testing.T) { value, err := os.ReadFile(\"data\"); if err != nil { t.Fatal(err) }; if string(value) == \"moved\" { if err := os.WriteFile(\"../b/b_test.go\", []byte(%q), 0600); err != nil { t.Fatal(err) } } }\n", strings.Replace(b, "func TestB(", "func TestOther(", 1))

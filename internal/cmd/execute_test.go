@@ -24,8 +24,6 @@ import (
 // completed run, a failing verdict as a test failure, an operational
 // fault as a failure, an interruption as its own cause — and a verdict
 // leaves through the exit status, never an in-place exit.
-//
-//gofresh:pure
 func TestExecuteSealsEachEndingWithItsCause(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-progress-surfaces")
 	t.Setenv("NO_COLOR", "1")

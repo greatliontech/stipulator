@@ -21,8 +21,6 @@ import (
 // (REQ-mcp-guidance). Grouping parents and the root-persistent chdir
 // flag are surface plumbing, not verbs; cobra's help and completion
 // commands join the tree only at execution, after the walk.
-//
-//gofresh:pure
 func TestGuidanceCoversTheCLISurface(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-guidance")
 	doc, err := stipulator.GuidanceDocument()
@@ -145,8 +143,6 @@ func TestGuidanceCoversTheCLISurface(t *testing.T) {
 // verb's long section, the decision map for no verb, and a teaching
 // error for an unknown one (REQ-mcp-guidance). It runs outside a
 // corpus — the document is embedded.
-//
-//gofresh:pure
 func TestGuidanceCommandServesTheDocument(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-guidance")
 	doc, err := stipulator.GuidanceDocument()
@@ -187,8 +183,6 @@ func TestGuidanceCommandServesTheDocument(t *testing.T) {
 // TestGuidanceRefusalsCarryThePackagesWording pins the refusal a face's
 // construction meets for a knob or a verb the document does not carry:
 // the package's wording, one on both faces (REQ-mcp-guidance).
-//
-//gofresh:pure
 func TestGuidanceRefusalsCarryThePackagesWording(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-guidance")
 	refusal := func(f func()) (msg string) {
@@ -214,8 +208,6 @@ var faceWord = regexp.MustCompile(`\b(?:mcp|cli)\b`)
 
 // shellSpelling is the test's own reading of the pointer's verb
 // spelling: a verb with a space is quoted for the shell.
-//
-//gofresh:pure
 func shellSpelling(verb string) string {
 	if strings.ContainsAny(verb, " \t") {
 		return "\"" + verb + "\""

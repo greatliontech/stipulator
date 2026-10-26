@@ -35,7 +35,6 @@ func TestServingFormPersistsAtTheExecutingInvocation(t *testing.T) {
 		t.Skip("executes race invocations over a temporary module")
 	}
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	tmp := writeModule(t, map[string]string{
 		"go.mod":      "module example.com/units\n\ngo 1.26\n",
 		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
@@ -96,7 +95,6 @@ func TestScopedRunPersistsAtTheExecutingInvocation(t *testing.T) {
 		t.Skip("executes race invocations over a temporary module")
 	}
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	tmp := writeModule(t, map[string]string{
 		"go.mod":      "module example.com/units\n\ngo 1.26\n",
 		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
@@ -149,7 +147,6 @@ func TestDoublySelectedPackageIsRefusedAtDiscovery(t *testing.T) {
 		t.Skip("executes two race invocations over a temporary module")
 	}
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	tmp := writeModule(t, map[string]string{
 		"go.mod":      "module example.com/units\n\ngo 1.26\n",
 		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
@@ -191,7 +188,6 @@ func TestMixedGroupPublishesOnlyItsSinglySelectedPackage(t *testing.T) {
 		t.Skip("executes two race invocations over a temporary module")
 	}
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	tmp := writeModule(t, map[string]string{
 		"go.mod":      "module example.com/units\n\ngo 1.26\n",
 		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
@@ -250,7 +246,6 @@ func TestHealthJudgedPackagePersistsBeforeItsSiblingCompletes(t *testing.T) {
 		t.Skip("executes a race invocation over a temporary module")
 	}
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	tmp := writeModule(t, map[string]string{
 		"go.mod":      "module example.com/units\n\ngo 1.26\n",
 		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
@@ -304,7 +299,6 @@ func TestHealthJudgedPackagePublishesInItsOwnGroupAlone(t *testing.T) {
 		t.Skip("executes two race invocations over a temporary module")
 	}
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	tmp := writeModule(t, map[string]string{
 		"go.mod":      "module example.com/units\n\ngo 1.26\n",
 		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
@@ -377,7 +371,6 @@ func TestHealthJudgedPublicationHoldsNoSpawnSlot(t *testing.T) {
 		t.Skip("executes a race invocation over a temporary module")
 	}
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	tmp := writeModule(t, map[string]string{
 		"go.mod":      "module example.com/units\n\ngo 1.26\n",
 		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
@@ -430,7 +423,6 @@ func TestSelectivePublicationHoldsNoSpawnSlot(t *testing.T) {
 		t.Skip("executes a race invocation over a temporary module")
 	}
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	tmp := writeModule(t, map[string]string{
 		"go.mod":      "module example.com/units\n\ngo 1.26\n",
 		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
@@ -475,7 +467,6 @@ func TestHealthJudgedDegradeReleasesEveryLeg(t *testing.T) {
 		t.Skip("executes three race invocations over a temporary module")
 	}
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	tmp := writeModule(t, map[string]string{
 		"go.mod":      "module example.com/units\n\ngo 1.26\n",
 		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
@@ -546,7 +537,6 @@ func TestHealthJudgedRunReleasesEveryGroupView(t *testing.T) {
 		t.Skip("executes a race invocation over a temporary module")
 	}
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	tmp := writeModule(t, map[string]string{
 		"go.mod":      "module example.com/units\n\ngo 1.26\n",
 		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
@@ -589,8 +579,6 @@ func TestHealthJudgedRunReleasesEveryGroupView(t *testing.T) {
 // A finished package returns the memory its analysis held while its
 // siblings still execute: releasing a leg drops its views, and the last
 // release drops the group's view too — on both forms' group shapes.
-//
-//gofresh:pure
 func TestReleaseDropsTheGroupViewAfterTheLastLeg(t *testing.T) {
 	g := &captureGroup{view: &witnessSnapshot{}, legs: map[string]*packageLeg{"p": {view: &witnessSnapshot{}, binding: &gofresh.RuntimeBinding{}}, "q": {view: &witnessSnapshot{}}}}
 	g.release("p")
@@ -625,7 +613,6 @@ func TestExecutedCountExcludesExamplesOnBothForms(t *testing.T) {
 		t.Skip("executes race invocations over a temporary module")
 	}
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	files := map[string]string{
 		"go.mod":      "module example.com/units\n\ngo 1.26\n",
 		"a/a.go":      "package a\n\n// A is the example's subject.\nfunc A() string { return \"a\" }\n",
@@ -686,7 +673,6 @@ func TestUngrantedEligibleWitnessIsNotOutsideTheSelection(t *testing.T) {
 		t.Skip("executes a race invocation over a temporary module until its envelope expires")
 	}
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	tmp := writeModule(t, map[string]string{
 		"go.mod":      "module example.com/units\n\ngo 1.26\n",
 		"a/a_test.go": "package a\n\nimport (\n\t\"testing\"\n\t\"time\"\n)\n\nfunc TestEarly(t *testing.T) {}\n\nfunc TestBlocks(t *testing.T) { time.Sleep(30 * time.Second) }\n\nfunc TestLater(t *testing.T) {}\n",
@@ -802,7 +788,6 @@ func TestUngrantedEligibleWitnessCarriesItsCauseOnTheSelectiveForm(t *testing.T)
 		t.Skip("executes a race invocation over a temporary module until its envelope expires")
 	}
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	tmp := writeModule(t, map[string]string{
 		"go.mod":      "module example.com/units\n\ngo 1.26\n",
 		"a/a_test.go": "package a\n\nimport (\n\t\"testing\"\n\t\"time\"\n)\n\nfunc TestEarly(t *testing.T) {}\n\nfunc TestBlocks(t *testing.T) { time.Sleep(30 * time.Second) }\n\nfunc TestLater(t *testing.T) {}\n",
@@ -871,7 +856,6 @@ func TestPackagePersistsBeforeItsSiblingCompletes(t *testing.T) {
 		t.Skip("executes a race invocation over a temporary module")
 	}
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	tmp := writeModule(t, map[string]string{
 		"go.mod":      "module example.com/units\n\ngo 1.26\n",
 		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestFail(t *testing.T) { t.Fatal(\"red\") }\n\nfunc TestPass(t *testing.T) {}\n",

@@ -87,8 +87,6 @@ func backends() map[string]verify.Backend {
 
 // TestSeedsFromNeighborhood pins the greenfield story: REQ-f-new has no
 // bindings, but seeding it reaches its dependency's bindings.
-//
-//gofresh:pure
 func TestSeedsFromNeighborhood(t *testing.T) {
 	stipulate.Covers(t, "REQ-context-seeds")
 	spec, store := fixture(t)
@@ -113,7 +111,6 @@ func TestSeedsFromNeighborhood(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestContextSlices(t *testing.T) {
 	spec, store := fixture(t)
 	seeds, decls, _, err := Context(spec, store, backends(), []string{"REQ-f-a"})
@@ -133,8 +130,6 @@ func TestContextSlices(t *testing.T) {
 // TestPartitions pins connectivity and disjointness: a/b/new form one
 // component (intersecting closures), lone another; their packages differ,
 // so no overlap is reported.
-//
-//gofresh:pure
 func TestPartitions(t *testing.T) {
 	stipulate.Covers(t, "REQ-context-partitions")
 	spec, store := fixture(t)
@@ -185,8 +180,6 @@ func TestPartitions(t *testing.T) {
 // The wire overlap list is capped at the heaviest couplings with the
 // remainder counted — a silent truncation would read as "no more
 // overlaps" (REQ-mcp-response-contract).
-//
-//gofresh:pure
 func TestPartitionProtoCapsOverlaps(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-response-contract")
 	r := &Report{}
@@ -245,8 +238,6 @@ func (f floorFake) SliceFloor(symbols []string, declaredPkgs []string) ([]verify
 // boundary, and judging overlap from the typed frontier would silently
 // split it; external rows stay out of the in-module partition
 // (REQ-go-slice's consumer rule).
-//
-//gofresh:pure
 func TestPartitionsJudgePackagesFromTheFloor(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-slice")
 	spec, store := fixture(t)

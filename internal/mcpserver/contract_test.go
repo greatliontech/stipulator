@@ -35,8 +35,6 @@ import (
 // The bind tool authors many claims in one call, all-or-nothing: two
 // claims landing in one file merge, and a failure anywhere authors
 // nothing (REQ-mcp-tools-bind-batch).
-//
-//gofresh:pure
 func TestBindToolBatchClaims(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-tools-bind-batch")
 	sess, writes := harness(t, nil)
@@ -130,8 +128,6 @@ func bareHarness(t *testing.T) *mcp.ClientSession {
 // first (the clause's bindings carry the sentences' pins — amending
 // the clause stales them, which is how a moved clause reaches the
 // telling); no served word is broken at its hyphen (a rewrap's).
-//
-//gofresh:pure
 func TestServerDeclaresInstructions(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-server", "REQ-check-policy-notices", "REQ-mcp-explain")
 	for _, want := range []string{"check", "progress token", ".stipulator/"} {
@@ -170,8 +166,6 @@ func TestServerDeclaresInstructions(t *testing.T) {
 // lands under .stipulator/exports/ with only its location on the wire —
 // and the partitions export carries the uncapped overlap set, the
 // explicit-request form the capped wire default points at.
-//
-//gofresh:pure
 func TestContextAndPartitionsExportPath(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-response-contract", "REQ-mcp-writes-confined")
 	// The backends are built by every pass, the no-test form included:
@@ -254,8 +248,6 @@ func TestContextAndPartitionsExportPath(t *testing.T) {
 // The server-side applier enforces the same compare-and-swap: a record
 // that moved between the operation's read and the apply refuses the
 // whole batch (REQ-record-cas).
-//
-//gofresh:pure
 func TestServerApplyCompareAndSwap(t *testing.T) {
 	stipulate.Covers(t, "REQ-record-cas")
 	mem := fstest.MapFS{
@@ -288,8 +280,6 @@ func TestServerApplyCompareAndSwap(t *testing.T) {
 // phase-transition log messages ride the token-free logging channel, so
 // slow work is distinguishable from a hang without a progress token
 // (REQ-mcp-progress-liveness).
-//
-//gofresh:pure
 func TestTokenlessCallEmitsPhaseLogMessages(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-progress-liveness", "REQ-mcp-progress-resident")
 	fsys := fstest.MapFS{
@@ -397,8 +387,6 @@ func TestTokenlessCallEmitsPhaseLogMessages(t *testing.T) {
 // The applier's admission asserts the .stipulator/ confinement
 // (REQ-mcp-writes-confined) — at the one point every record write
 // passes, not a per-call-site convention.
-//
-//gofresh:pure
 func TestWriteSeamConfinesToStipulatorDir(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-writes-confined")
 	dir := t.TempDir()
@@ -522,8 +510,6 @@ func TestWriteSeamConfinesToStipulatorDir(t *testing.T) {
 // sender goroutine ends at the terminal event, so a long-lived server
 // does not strand one goroutine per pin/retarget call
 // (REQ-mcp-progress).
-//
-//gofresh:pure
 func TestPinAndRetargetSealTheirProgressReporters(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-progress")
 	sess, _ := harness(t, map[string]string{
@@ -562,8 +548,6 @@ func TestPinAndRetargetSealTheirProgressReporters(t *testing.T) {
 // added to the spec after the last compiling operation reads
 // successfully - each read recompiles - even though no tool call has
 // refreshed the listed index (REQ-mcp-resources).
-//
-//gofresh:pure
 func TestResourceReadServesUnlistedButExistingRequirement(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-resources")
 	fsys := fstest.MapFS{
@@ -593,8 +577,6 @@ func TestResourceReadServesUnlistedButExistingRequirement(t *testing.T) {
 // wire default caps with the omission counted: the tool-seam call pair
 // (Proto vs ProtoUncapped) is pinned with a small fixture by lowering
 // the cap (REQ-mcp-response-contract).
-//
-//gofresh:pure
 func TestPartitionsExportCarriesUncappedOverlaps(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-response-contract")
 	prior := facts.OverlapCap
@@ -662,8 +644,6 @@ func (s slicingFake) Slice(symbols []string) ([]verify.Decl, error) {
 // The prune tool's store mode garbage-collects the corpus's witness
 // store against the current obligation universe - explicit only,
 // composing with no other mode (REQ-evidence-store-gc).
-//
-//gofresh:pure
 func TestPruneToolStoreGC(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-store-gc")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
@@ -714,8 +694,6 @@ func TestPruneToolStoreGC(t *testing.T) {
 // clause silently dropped into a whole-requirement record
 // (REQ-evidence-clause-claim, REQ-evidence-claim-batch). unbind narrows
 // by the claim's spelling.
-//
-//gofresh:pure
 func TestBindToolClauseClaims(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-clause-claim")
 	clauseDoc := doc + "\n**REQ-m-c** (behavior): It MUST hold:\n\n- **alpha** first\n- second\n"
@@ -791,8 +769,6 @@ func TestBindToolClauseClaims(t *testing.T) {
 // its faults on the agent surface too: a gap declared against the
 // mid-disposition corpus names the one-step supersede
 // (REQ-change-remediation, REQ-change-split-merge).
-//
-//gofresh:pure
 func TestCorpusRefusalCarriesRemediesOnTheAgentSurface(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-remediation")
 	mid := "# T\n\n**REQ-m-new** (behavior, supersedes REQ-m-gone): It MUST new.\n"

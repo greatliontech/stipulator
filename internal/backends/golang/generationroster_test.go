@@ -21,7 +21,6 @@ func TestNativeSnapshotIncludesRunnablesAddedAfterPolicyDiscovery(t *testing.T) 
 	}
 	stipulate.Covers(t, "REQ-evidence-outcome-premises", "REQ-go-retained-test-execution", "REQ-check-derivation")
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := writeModule(t, map[string]string{
 		"go.mod":    "module example.com/generation\n\ngo 1.26\n",
 		"p_test.go": "package p\nimport (\"os\"; \"testing\")\nfunc TestEnv(t *testing.T) { if os.Getenv(\"PWD\") == \"\" { t.Fatal(\"PWD\") } }\n",
@@ -77,7 +76,6 @@ func TestNativeDriftRetryRefreshesRunnablePopulation(t *testing.T) {
 	}
 	stipulate.Covers(t, "REQ-evidence-outcome-premises", "REQ-evidence-witness-freshness-revalidation")
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	clock := "package reader\nimport (\"testing\"; \"time\")\nfunc TestClock(t *testing.T) { if time.Now().IsZero() { t.Fatal(\"clock\") } }\n"
 	writer := fmt.Sprintf("package writer\nimport (\"os\"; \"testing\")\nconst armed = false\n//gofresh:pure\nfunc TestWriter(t *testing.T) { if armed { if err := os.WriteFile(\"../reader/clock_test.go\", []byte(%q), 0600); err != nil { t.Fatal(err) } } }\n", clock)
 	dir := writeModule(t, map[string]string{
@@ -148,7 +146,6 @@ func TestNativeRosterMotionCannotCrossCaptureOrRegistration(t *testing.T) {
 	}
 	stipulate.Covers(t, "REQ-evidence-outcome-premises", "REQ-go-retained-test-execution")
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	for _, duringCapture := range []bool{true, false} {
 		name := "before-registration"
 		if duringCapture {
@@ -188,7 +185,6 @@ func TestNativeFreshBodyAndHelperGenerationRetainsProof(t *testing.T) {
 	}
 	stipulate.Covers(t, "REQ-evidence-outcome-premises", "REQ-evidence-witness-freshness-revalidation")
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	initial := "package reader\nimport (\"os\"; \"testing\")\nfunc TestEnv(t *testing.T) { if os.Getenv(\"PWD\") == \"\" { t.Fatal(\"PWD\") } }\n"
 	replacement := "package reader\nimport (\"os\"; \"testing\")\nfunc currentDirectory() string { return os.Getenv(\"PWD\") }\nfunc TestEnv(t *testing.T) { if currentDirectory() == \"\" { t.Fatal(\"changed body\") } }\n"
 	writer := fmt.Sprintf("package writer\nimport (\"os\"; \"testing\")\nconst armed = false\n//gofresh:pure\nfunc TestWriter(t *testing.T) { if armed { if err := os.WriteFile(\"../reader/r_test.go\", []byte(%q), 0600); err != nil { t.Fatal(err) } } }\n", replacement)

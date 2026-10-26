@@ -63,7 +63,6 @@ func TestImportAllowlistProof(t *testing.T) {
 	})
 }
 
-//gofresh:pure
 func TestFieldHelperOnly(t *testing.T) {
 	_ = structural.FieldOf[int]("Value")
 }

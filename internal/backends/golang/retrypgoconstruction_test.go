@@ -18,7 +18,6 @@ func TestRetryConstructionPGODriftRevokesEarlierGrant(t *testing.T) {
 	}
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-revalidation", "REQ-evidence-witness-freshness-inputs")
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	b := "package b\nimport (\"os\"; \"testing\")\n//gofresh:pure\nfunc TestB(t *testing.T) { value, err := os.ReadFile(\"trigger\"); if err != nil { t.Fatal(err) }; if string(value) == \"yes\" { if err := os.WriteFile(\"../a/data\", []byte(\"moved\"), 0600); err != nil { t.Fatal(err) } } }\n"
 	a := fmt.Sprintf("package a\nimport (\"os\"; \"testing\")\n//gofresh:pure\nfunc TestA(t *testing.T) { value, err := os.ReadFile(\"data\"); if err != nil { t.Fatal(err) }; if string(value) == \"moved\" { if err := os.WriteFile(\"../b/b_test.go\", []byte(%q), 0600); err != nil { t.Fatal(err) } } }\n", strings.Replace(b, "package b", "package main", 1))
 	c := "package c\nimport (\"os\"; \"testing\")\nconst armed = false\n//gofresh:pure\nfunc TestC(t *testing.T) { if armed { if err := os.WriteFile(\"../b/trigger\", []byte(\"yes\"), 0600); err != nil { t.Fatal(err) } } }\n"
@@ -63,7 +62,6 @@ func TestRetryGenericConstructionFailureKeepsMeasuredPass(t *testing.T) {
 		t.Skip("refuses a checking construction after a real passing retry")
 	}
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	writer := "package writer\nimport (\"os\"; \"testing\")\nconst armed = false\n//gofresh:pure\nfunc TestWriter(t *testing.T) { if armed { if err := os.WriteFile(\"../reader/data\", []byte(\"new\"), 0600); err != nil { t.Fatal(err) } } }\n"
 	dir := writeModule(t, map[string]string{"go.mod": "module example.com/unknowncheck\n\ngo 1.26\n", "reader/data": "old", "reader/r_test.go": "package reader\nimport (\"os\"; \"testing\")\n//gofresh:pure\nfunc TestRead(t *testing.T) { if _, err := os.ReadFile(\"data\"); err != nil { t.Fatal(err) } }\n", "writer/w_test.go": writer})
 	retryLifecyclePolicy(t, dir)

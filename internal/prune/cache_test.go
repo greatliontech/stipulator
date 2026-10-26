@@ -19,8 +19,6 @@ import (
 // TestPruneGlobalCachePreservesTelemetryAndRepoState pins that global cache
 // reclamation reclaims abandoned witness, ledger, and resolution stores while
 // leaving telemetry-off configuration and repository .stipulator/ files untouched.
-//
-//gofresh:pure
 func TestPruneGlobalCachePreservesTelemetryAndRepoState(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-store-gc")
 	cacheDir := t.TempDir()

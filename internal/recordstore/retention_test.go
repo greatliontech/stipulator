@@ -16,8 +16,6 @@ import (
 //   - busy stores holding a store lock are reported in BusyStores and spared;
 //   - dot-prefixed active publication temporaries are never deleted;
 //   - MaxBytes bounds total retained bytes across live corpus roots oldest-first.
-//
-//gofresh:pure
 func TestPruneKindAbandonedBusyTemporariesAndBoundedGrowth(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-record-store-layout")
 	cacheDir := t.TempDir()

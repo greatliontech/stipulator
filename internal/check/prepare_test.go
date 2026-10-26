@@ -41,8 +41,6 @@ func TestKnownIDsRefusesUnknownIdentifiers(t *testing.T) {
 // their own rows beside the faults — marked as remedies, never counted
 // as faults — so an agent reading a broken-corpus verdict sees the
 // operation that renders the state (REQ-change-remediation).
-//
-//gofresh:pure
 func TestCompileProblemsCarryRemedies(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-remediation")
 	prepared, err := Prepare(fstest.MapFS{
@@ -85,7 +83,6 @@ func (staticResolveBackend) Resolve(symbol string) (verify.Resolution, string, e
 	return verify.Resolved, "sha256:0000000000000000000000000000000000000000000000000000000000000000", nil
 }
 
-//gofresh:pure
 func FuzzCheckPreparationRefusesHeldInputFaults(f *testing.F) {
 	f.Add(uint8(0), "REQ-a-unknown")
 	f.Add(uint8(1), "REQ-b-ghost")
@@ -154,7 +151,6 @@ func FuzzCheckPreparationRefusesHeldInputFaults(f *testing.F) {
 	})
 }
 
-//gofresh:pure
 func FuzzLadderExecutesRunTestsAtMostOnce(f *testing.F) {
 	f.Add(true, uint8(1))
 	f.Add(false, uint8(3))

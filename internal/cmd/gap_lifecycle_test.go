@@ -144,8 +144,6 @@ func TestGapLifecycleCLI(t *testing.T) {
 // Every condition flag the gap verb's presence guard consults is a
 // registered flag — an unregistered name reads as never present, which
 // would silently admit a spelled condition on a destructive call.
-//
-//gofresh:pure
 func TestGapConditionFlagsAreRegistered(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-retract")
 	c := gapCmd()
@@ -159,8 +157,6 @@ func TestGapConditionFlagsAreRegistered(t *testing.T) {
 // A stray --contradicted is a declaration flag: it refuses on a retract
 // and on a bare fire before any record is read, exactly as the served
 // face refuses it (REQ-gap-verb).
-//
-//gofresh:pure
 func TestGapContradictedFlagRefusesOnRetractAndBareFire(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-verb")
 	priorDir := chdir
@@ -191,8 +187,6 @@ func TestGapContradictedFlagRefusesOnRetractAndBareFire(t *testing.T) {
 // The gate's red rows name the class beside the gap's state — a
 // contradicted debt never reads as a plain coverage hole on the triage
 // surface (REQ-gap-lifecycle).
-//
-//gofresh:pure
 func TestGateRowNamesTheContradictedClass(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-lifecycle")
 	if got := gateGapNote(coverage.Gap{State: coverage.Open, Contradicted: true}); got != "gap open, contradicted" {
@@ -206,8 +200,6 @@ func TestGateRowNamesTheContradictedClass(t *testing.T) {
 // One list row spells its declared bits in the shared order after the
 // condition, the class on an in-corpus row exactly as on a dangling
 // one, and the consent state after them (REQ-gap-list).
-//
-//gofresh:pure
 func TestGapListLineSpellsTheDeclaredBits(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-list")
 	t.Setenv("NO_COLOR", "1")

@@ -58,8 +58,6 @@ func TestGoLoadPinsAmbientPackageDriverOff(t *testing.T) {
 // over every enum member — including the proof class, which the fixture
 // module cannot produce — so no member can silently alias another across
 // the wire.
-//
-//gofresh:pure
 func TestResolverWireMappingsRoundTrip(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-owned-processes")
 	for _, r := range []verify.Resolution{verify.Unverified, verify.Resolved, verify.NotFound, verify.GeneratedFile} {

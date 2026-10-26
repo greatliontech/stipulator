@@ -47,8 +47,6 @@ func sectionsInOrder(text string, markers ...string) bool {
 // — with truncation propagated from every buffer, and the unparsed
 // remainder rendered as a bounded share so it never displaces the
 // package output.
-//
-//gofresh:pure
 func TestRunResidueIsOneCompositionOnEveryArm(t *testing.T) {
 	stipulate.Covers(t, "REQ-policy-budget-attribution")
 	fresh := func() (*streamState, *boundedBuffer) {

@@ -13,8 +13,6 @@ import (
 // an editor dropping must not brick the load, while a visible stray
 // non-.textproto file stays the loud typo guard (REQ-record-cas's
 // staging rides on this tolerance).
-//
-//gofresh:pure
 func TestLoadSkipsHiddenFiles(t *testing.T) {
 	stipulate.Covers(t, "REQ-record-cas")
 	fsys := fstest.MapFS{
@@ -58,8 +56,6 @@ func TestLoadRefusesAnEmptyRecordFile(t *testing.T) {
 // present label — empty included — its own, an ordinal "#n"; and an
 // empty label resolves to no clause, so hygiene names it dangling
 // rather than reading it as the unscoped claim (REQ-evidence-clause-claim).
-//
-//gofresh:pure
 func TestClauseKeyKeepsAPresentLabelApartFromTheUnscopedClaim(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-clause-claim")
 	unscoped := &stipulatorv1.Binding{}

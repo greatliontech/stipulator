@@ -61,10 +61,8 @@ func TestReadsObservedFixture(t *testing.T) {
 // to end: an environment-reading test without a purity directive publishes only after
 // its completed observation is attached and validated, then serves through
 // an explicitly observed check.
-//
-//gofresh:pure
 func TestObservationProofPublishesAndServes(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	neutralAmbient(t)
 	if testing.Short() {
 		t.Skip("executes a real race-instrumented witness suite")
 	}
@@ -107,10 +105,8 @@ func TestObservationProofPublishesAndServes(t *testing.T) {
 // TestObservationProofNeverWaivesInputDigest pins that the proof suppresses
 // only closure-level observation conservatism: a change to the observed
 // environment still stales the record and re-runs the test.
-//
-//gofresh:pure
 func TestObservationProofNeverWaivesInputDigest(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	neutralAmbient(t)
 	if testing.Short() {
 		t.Skip("executes a real race-instrumented witness suite")
 	}
@@ -138,9 +134,8 @@ func TestObservationProofNeverWaivesInputDigest(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestObservationProofDoesNotPublishUnverifiableRuntimeState(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	neutralAmbient(t)
 	if testing.Short() {
 		t.Skip("executes a real race-instrumented witness suite")
 	}
@@ -196,10 +191,8 @@ func TestValidatedObservationRequiresVerifiableRuntimeState(t *testing.T) {
 // TestIncompatibleObservationEvidenceCannotServe pins the cache boundary: a
 // canonical structural digest remains readable without source loading, but
 // CheckObserved rejects evidence that is not bound to the current proof.
-//
-//gofresh:pure
 func TestIncompatibleObservationEvidenceCannotServe(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	neutralAmbient(t)
 	if testing.Short() {
 		t.Skip("executes a real race-instrumented witness suite")
 	}
@@ -254,10 +247,8 @@ func TestIncompatibleObservationEvidenceCannotServe(t *testing.T) {
 
 // Shared dynamic state and unsupported file outcomes refuse this whole process's
 // proof. Package preparation must not select only the apparently safe sibling.
-//
-//gofresh:pure
 func TestObservationProofRequiresIsolatedTestProcess(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	neutralAmbient(t)
 	if testing.Short() {
 		t.Skip("executes a real race-instrumented witness suite")
 	}

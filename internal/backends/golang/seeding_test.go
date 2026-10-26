@@ -135,8 +135,6 @@ func TestRandomSeeded(t *testing.T) {
 // the refused evidence, attributed as the subject's re-execution
 // reason — while every other subject enters with its group's records
 // (REQ-evidence-witness-freshness-seeded).
-//
-//gofresh:pure
 func TestServingCandidatesExcludeRandomSeeded(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-seeded")
 	example := gofresh.Subject{Package: "example.com/m", Symbol: "TestExample"}
@@ -172,8 +170,6 @@ func TestServingCandidatesExcludeRandomSeeded(t *testing.T) {
 // as an unclassifiable witness naming the spelling
 // (REQ-evidence-witness-freshness-diagnosable's attributable reason,
 // REQ-evidence-witness-freshness-seeded's refusal naming the class).
-//
-//gofresh:pure
 func TestClassifySeededAttributesEveryRefusal(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-seeded", "REQ-evidence-witness-freshness-diagnosable")
 	s := gofresh.Subject{Package: "example.com/m", Symbol: "TestX"}
@@ -749,8 +745,6 @@ func splitModule(t *testing.T) string {
 
 // TestBodyFactsMemoizesSingleWalk pins that bodyFactsOf memoizes a single AST
 // walk across witness classification and seeding reachability.
-//
-//gofresh:pure
 func TestBodyFactsMemoizesSingleWalk(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-witness-class")
 	b := fixtureBackend(t)

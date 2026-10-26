@@ -26,11 +26,7 @@ func TestCheckSpawnsTheResolverChildOnce(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a race-instrumented policy over a fixture tree")
 	}
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	t.Setenv("GOENV", "off")
-	t.Setenv("GOFLAGS", "")
-	t.Setenv("GOPACKAGESDRIVER", "")
-	t.Setenv("GOTOOLCHAIN", "local")
+	golang.NeutralAmbient(t)
 	dir := t.TempDir()
 	for path, content := range map[string]string{
 		"go.mod":                         "module example.com/spawnfix\n\ngo 1.26.4\n",

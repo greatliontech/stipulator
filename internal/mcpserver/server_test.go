@@ -184,7 +184,6 @@ func TestCanceledToolCallStopsWitnessRun(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestResourceIndexAndReads(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-resources", "REQ-mcp-server")
 	sess, _ := harness(t, nil)
@@ -238,7 +237,6 @@ func TestResourceIndexAndReads(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestGateTool(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-tools", "REQ-mcp-views", "REQ-mcp-response-contract", "REQ-report-messages")
 	// REQ-m-a witnessed; REQ-m-b red but gapped → gate passes.
@@ -367,7 +365,6 @@ func TestGateTool(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestBindToolWritesConfined(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-writes-confined")
 	sess, writes := harness(t, nil)
@@ -426,8 +423,6 @@ func TestBindToolWritesConfined(t *testing.T) {
 
 // TestToolListExact pins REQ-mcp-tools at the wire: the exposed tool set
 // is exactly the specced one — a dropped or extra registration fails.
-//
-//gofresh:pure
 func TestToolListExact(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-tools")
 	sess, _ := harness(t, nil)
@@ -461,8 +456,6 @@ func TestToolListExact(t *testing.T) {
 // witness evidence without the selective runner's mark refuses the
 // operation instead of pruning on whole-execution evidence
 // (REQ-gap-resolved-pruned).
-//
-//gofresh:pure
 func TestPruneRefusesNonServingEvidence(t *testing.T) {
 	stipulate.Covers(t, "REQ-gap-resolved-pruned")
 	fsys := fstest.MapFS{
@@ -510,8 +503,6 @@ func TestPruneRefusesNonServingEvidence(t *testing.T) {
 // The retarget tool's check form runs the full validation and writes
 // nothing; the applying form rewrites the store and reports every
 // old-to-new identity (REQ-change-retarget).
-//
-//gofresh:pure
 func TestRetargetToolCheckWritesNothing(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-retarget")
 	// Two distinct-clause claims on one untouched symbol ride in the
@@ -668,8 +659,6 @@ func TestCompileToolCounts(t *testing.T) {
 // TestDisposeToolRetire exercises the wire deletion path: retiring an
 // identity whose binding and gap records exist but whose requirement is
 // gone writes the tombstone and deletes the records.
-//
-//gofresh:pure
 func TestDisposeToolRetire(t *testing.T) {
 	sess, writes := harness(t, map[string]string{
 		".stipulator/bindings/gone.textproto": "bindings {\n  requirement_id: \"REQ-m-gone\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_IMPLEMENTS\n}\n",
@@ -709,8 +698,6 @@ func TestDisposeToolRetire(t *testing.T) {
 // TestPruneTool exercises the wire prune verb: a gap on a now-covered
 // requirement is resolved dead weight — check=true reports it without
 // deleting, and the plain call deletes exactly that record and nothing else.
-//
-//gofresh:pure
 func TestPruneTool(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-tools", "REQ-mcp-response-contract", "REQ-gap-resolved-pruned")
 	gapPath := ".stipulator/gaps/m-a.textproto"
@@ -782,7 +769,6 @@ func TestPruneTool(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestReadSpecToolMirrorsBundle(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-response-contract")
 	sess, _ := harness(t, nil)
@@ -815,8 +801,6 @@ func TestReadSpecToolMirrorsBundle(t *testing.T) {
 
 // TestAttestTools pins the MCP surface of the requirement attest verb:
 // writes land in the record store, and refusals surface as tool errors.
-//
-//gofresh:pure
 func TestAttestTools(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-tools", "REQ-evidence-attestation")
 	sess, writes := harness(t, map[string]string{
@@ -958,8 +942,6 @@ func TestPinToolReportsMovedShapes(t *testing.T) {
 // stale content pin (the one-verb recovery after a reword), a clean
 // requirement reports "pins current", and the no-id no-op is never a
 // silent empty object.
-//
-//gofresh:pure
 func TestPinTool(t *testing.T) {
 	stipulate.Covers(t, "REQ-pin-backfill", "REQ-change-editorial")
 	sess, writes := harness(t, map[string]string{
@@ -1042,8 +1024,6 @@ func TestPinTool(t *testing.T) {
 // the clause, coverage, gap, and bindings with witness class — no
 // record-store spelunking; a JSON-array-encoded ids value is
 // tolerated; an unknown id is quoted cleanly.
-//
-//gofresh:pure
 func TestContextDossier(t *testing.T) {
 	stipulate.Covers(t, "REQ-context-dossier")
 	sess, _ := harness(t, map[string]string{
@@ -1247,8 +1227,6 @@ func TestVerifyToolNamesPolicyRecordProblem(t *testing.T) {
 
 // The explain tool's reason parser and its guided refusals
 // (REQ-mcp-explain).
-//
-//gofresh:pure
 func TestExplainToolParsesAndRefuses(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-explain")
 	pkg, sym, ok := golang.CulpritFromReason("post-run validation: package graph shares mutated dynamic state: github.com/x/internal/books: github.com/x/internal/books.normativeThresholds registers function values outside the environment-free audit")
@@ -1339,8 +1317,6 @@ func TestExplainToolParsesAndRefuses(t *testing.T) {
 // and the digest names the arm, link count, and answering view - with
 // an empty chain stated as such (REQ-mcp-explain,
 // REQ-mcp-response-contract).
-//
-//gofresh:pure
 func TestExplainToolProjectsChain(t *testing.T) {
 	stipulate.Covers(t, "REQ-mcp-explain")
 	var gotPkg, gotSym string
@@ -1505,8 +1481,6 @@ func TestGapListLeadsWithDanglingAndCapsCounted(t *testing.T) {
 // concurrent writer moving a later id's file — names the files already
 // re-pinned instead of reporting nothing written
 // (REQ-change-editorial, REQ-record-cas).
-//
-//gofresh:pure
 func TestPinToolIdsFormIsAllOrNothingOrHonest(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-editorial")
 	clauseDoc := doc + "\n**REQ-m-c** (behavior): It MUST hold:\n\n- **alpha** first\n- second\n"

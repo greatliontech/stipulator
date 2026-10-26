@@ -13,8 +13,6 @@ import (
 // named backend all-or-nothing, re-derives shape pins from the resolved
 // replacements, leaves content pins and everything else untouched, and
 // reports each old-to-new identity (REQ-change-retarget).
-//
-//gofresh:pure
 func TestRetargetSymbolsRewritesAtBoundaryAllOrNothing(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-retarget")
 	fsys := testFS(map[string]string{
@@ -99,8 +97,6 @@ func TestRetargetSymbolsRewritesAtBoundaryAllOrNothing(t *testing.T) {
 // A full-symbol --from is the degenerate member boundary: the
 // single-symbol rename repair rewrites exactly that binding and no
 // sibling sharing the prefix (REQ-change-retarget).
-//
-//gofresh:pure
 func TestRetargetFullSymbolIsDegenerateBoundary(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-retarget")
 	fsys := testFS(map[string]string{
@@ -135,8 +131,6 @@ const clauseDoc = "# C\n\n**REQ-au-c** (behavior): It MUST support both operatio
 // and a pre-existing duplicate outside the selection is refused as
 // verification's hygiene refuses it (REQ-change-retarget,
 // REQ-evidence-clause-claim).
-//
-//gofresh:pure
 func TestRetargetJudgesCollisionsByClaimIdentity(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-retarget", "REQ-evidence-clause-claim")
 	resolver := map[string]verify.Backend{"go": fakeBackend{

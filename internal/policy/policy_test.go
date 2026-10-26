@@ -30,7 +30,6 @@ func mkPolicy(invs ...*stipulatorv1.PolicyInvocation) *stipulatorv1.TestPolicy {
 	return p
 }
 
-//gofresh:pure
 func TestPolicyCanonicalFormAccepted(t *testing.T) {
 	stipulate.Covers(t, "REQ-policy-record-location")
 	cases := []struct {
@@ -53,7 +52,6 @@ func TestPolicyCanonicalFormAccepted(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestPolicyNonCanonicalFormRefusedWhole(t *testing.T) {
 	stipulate.Covers(t, "REQ-policy-record-location")
 	cases := []struct {
@@ -111,7 +109,6 @@ func TestPolicyNonCanonicalFormRefusedWhole(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestPolicyRecordParseRefusesMalformedWhole(t *testing.T) {
 	stipulate.Covers(t, "REQ-policy-record-location")
 	valid := `invocations {

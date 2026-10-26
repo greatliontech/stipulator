@@ -46,8 +46,6 @@ func mkGoInvocation(name, moduleRoot string, timeout time.Duration) *stipulatorv
 // each invocation's typed payload reaches the backend named by its payload
 // case, while the caller receives only canonical invocation identity,
 // backend name, and timeout — never the payload.
-//
-//gofresh:pure
 func TestPolicyDispatchRoutesPayloadsToNamedBackend(t *testing.T) {
 	stipulate.Covers(t, "REQ-policy-backend-neutral")
 	rb := &recordingBackend{}
@@ -89,8 +87,6 @@ func TestPolicyDispatchRoutesPayloadsToNamedBackend(t *testing.T) {
 // TestPolicyDispatchRejectsUnsupportedBackend pins the unsupported-backend
 // refusal: a payload case no registered backend claims rejects the policy
 // whole, naming the invocation and the unclaimed case.
-//
-//gofresh:pure
 func TestPolicyDispatchRejectsUnsupportedBackend(t *testing.T) {
 	stipulate.Covers(t, "REQ-policy-backend-neutral")
 	p := mkPolicy(mkGoInvocation("race", "", time.Minute))
@@ -111,8 +107,6 @@ func TestPolicyDispatchRejectsUnsupportedBackend(t *testing.T) {
 // TestPolicyDispatchPropagatesBackendRefusal pins that a payload the
 // claiming backend refuses rejects the policy whole, attributed to its
 // invocation.
-//
-//gofresh:pure
 func TestPolicyDispatchPropagatesBackendRefusal(t *testing.T) {
 	stipulate.Covers(t, "REQ-policy-backend-neutral")
 	rb := &recordingBackend{err: errors.New("module_root escapes")}

@@ -43,14 +43,12 @@ func writePolicyRecord(t *testing.T, dir string, p *stipulatorv1.TestPolicy) {
 // shared loading seam and surfaces every load failure — a record problem
 // and an operational read fault alike — instead of assuming a universal
 // suite.
-//
-//gofresh:pure
 func TestGoRunWitnessesRequiresPolicyRecord(t *testing.T) {
 	// The witness store must never be the user's real one: an
 	// un-overridden store poisons this package's own observation and
 	// pollutes the host cache (t.Setenv forbids t.Parallel, which these
 	// tests drop for hermeticity).
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	neutralAmbient(t)
 	stipulate.Covers(t, "REQ-policy-explicit")
 	tmp := writeModule(t, map[string]string{
 		"go.mod": "module example.com/nopolicy\n\ngo 1.26\n",
@@ -100,7 +98,6 @@ func disjointWitnessFixture(t *testing.T) string {
 
 import "testing"
 
-//gofresh:pure
 func TestOne(t *testing.T) {
 	t.Log("stipulator:covers REQ-wit-probe")
 	if One() == "" {
@@ -113,7 +110,6 @@ func TestOne(t *testing.T) {
 
 import "testing"
 
-//gofresh:pure
 func TestTwo(t *testing.T) {
 	if Two() == "" {
 		t.Fatal("empty")
@@ -339,7 +335,6 @@ func TestGoRunWitnessesServeUnderInertSiblingAddition(t *testing.T) {
 
 import "testing"
 
-//gofresh:pure
 func TestBase(t *testing.T) {
 	if Value() == "" {
 		t.Fatal("empty")
@@ -377,7 +372,6 @@ func TestBase(t *testing.T) {
 
 import "testing"
 
-//gofresh:pure
 func TestMore(t *testing.T) {
 	if Value() != "v1" {
 		t.Fatal(Value())
@@ -441,7 +435,6 @@ import (
 	"testing"
 )
 
-//gofresh:pure
 func TestReadsFixture(t *testing.T) {
 	b, err := os.ReadFile("fixture.txt")
 	if err != nil {
@@ -486,7 +479,6 @@ func TestReadsFixture(t *testing.T) {
 
 import "testing"
 
-//gofresh:pure
 func TestMore(t *testing.T) {}
 `), 0o644); err != nil {
 		t.Fatal(err)
@@ -652,7 +644,6 @@ import (
 	"testing"
 )
 
-//gofresh:pure
 func TestReadsCorpus(t *testing.T) {
 	data, _ := os.ReadFile("../docs/law/source.md")
 	_ = data
@@ -990,7 +981,6 @@ import (
 	"testing"
 )
 
-//gofresh:pure
 func TestReads(t *testing.T) {
 	_, _ = os.ReadFile("data.txt")
 }
@@ -1004,7 +994,6 @@ import (
 	"testing"
 )
 
-//gofresh:pure
 func TestWritesOnce(t *testing.T) {
 	raw, err := os.ReadFile("trigger.txt")
 	if err != nil {
@@ -1183,7 +1172,6 @@ func TestGoRunWitnessesDegradesToFullExecution(t *testing.T) {
 
 import "testing"
 
-//gofresh:pure
 func TestOK(t *testing.T) {}
 `,
 	})
@@ -1291,7 +1279,6 @@ func TestFlakyReads(t *testing.T) {
 	}
 }
 
-//gofresh:pure
 func TestStable(t *testing.T) {}
 `,
 		"two/two.go": "package two\n\nconst edition = 1\n",
@@ -1476,7 +1463,6 @@ func TestGoRunWitnessesDegradesOnUniverseFault(t *testing.T) {
 
 import "testing"
 
-//gofresh:pure
 func TestOK(t *testing.T) {}
 `,
 	})
@@ -1848,7 +1834,6 @@ import (
 	"testing"
 )
 
-//gofresh:pure
 func TestReadsToolchain(t *testing.T) {
 	if _, err := os.ReadFile(filepath.Join(runtime.GOROOT(), "VERSION")); err != nil {
 		t.Fatal(err)
@@ -1939,8 +1924,6 @@ import (
 // Reading a cache file as data is outside the admission's stated
 // assumption — it is used here only as a deterministic vehicle for
 // exercising the classification, not as an endorsed subject pattern.
-//
-//gofresh:pure
 func TestReadsBuildCacheAndTempRoot(t *testing.T) {
 	if _, err := os.ReadFile(filepath.Join(os.Getenv("GOCACHE"), "pinned.txt")); err != nil {
 		t.Fatal(err)
@@ -2498,7 +2481,6 @@ func TestGoRunWitnessesPerGroupRecordsServeSharedPackage(t *testing.T) {
 
 import "testing"
 
-//gofresh:pure
 func TestShared(t *testing.T) {
 	if Lib() == "" {
 		t.Fatal("empty")
@@ -2599,7 +2581,6 @@ func TestGoRunWitnessesServedPassNeverOverridesExecutedFailure(t *testing.T) {
 
 import "testing"
 
-//gofresh:pure
 func TestV(t *testing.T) {
 	if !V() {
 		t.Fatal("default build fails by design")
@@ -2660,7 +2641,6 @@ func TestGoRunWitnessesFlipCarriesEnvironmentReport(t *testing.T) {
 
 import "testing"
 
-//gofresh:pure
 func TestFlip(t *testing.T) {
 	if V() != 1 {
 		t.Fatal("value moved")
@@ -2671,7 +2651,6 @@ func TestFlip(t *testing.T) {
 
 import "testing"
 
-//gofresh:pure
 func TestAlwaysRed(t *testing.T) {
 	t.Fatal("red from birth")
 }
@@ -2743,7 +2722,6 @@ import (
 	"testing"
 )
 
-//gofresh:pure
 func TestReads(t *testing.T) {
 	if os.Getenv("READER_INVOCATION") == "" {
 		t.Fatal("executed outside the reader's own invocation")
@@ -2760,7 +2738,6 @@ import (
 	"testing"
 )
 
-//gofresh:pure
 func TestWritesOnce(t *testing.T) {
 	raw, err := os.ReadFile("trigger.txt")
 	if err != nil {

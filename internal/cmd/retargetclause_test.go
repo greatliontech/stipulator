@@ -24,8 +24,6 @@ func (resolvingBackend) Close() error { return nil }
 // The CLI's retarget preview accepts a store holding two distinct-clause
 // claims on one untouched symbol — two claims, never a collision — and
 // writes nothing (REQ-change-retarget, REQ-evidence-clause-claim).
-//
-//gofresh:pure
 func TestRetargetCLIPreviewAdmitsDistinctClauseClaims(t *testing.T) {
 	stipulate.Covers(t, "REQ-change-retarget", "REQ-evidence-clause-claim")
 	priorDir, priorMake := chdir, makeBackends

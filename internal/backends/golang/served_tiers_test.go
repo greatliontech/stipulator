@@ -301,7 +301,6 @@ func TestServedRefusesSymbolsOutsideTheOperation(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads a fixture module's types")
 	}
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	neutralAmbient(t)
 	dir := writeModule(t, map[string]string{
 		"go.mod":      "module example.com/scoped\n\ngo 1.26\n",
@@ -348,7 +347,6 @@ func TestServedWithoutASymbolSetAnswersTheWholeTree(t *testing.T) {
 	if testing.Short() {
 		t.Skip("loads a fixture module's types")
 	}
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	neutralAmbient(t)
 	dir := writeModule(t, map[string]string{
 		"go.mod":      "module example.com/scoped\n\ngo 1.26\n",

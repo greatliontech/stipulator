@@ -30,7 +30,6 @@ func TestNativeCacheRefusalsRemainAdvisoryAcrossExecutionAndRestart(t *testing.T
 	}
 	stipulate.Covers(t, "REQ-evidence-outcome-premises", "REQ-evidence-witness-cache-format-validation", "REQ-evidence-flip-environment")
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	t.Setenv("STIPULATOR_NATIVE_REFUSAL_FAIL", "")
 	for _, name := range []string{"historical-v2", "historical-v3", "malformed"} {
 		t.Run(name, func(t *testing.T) {

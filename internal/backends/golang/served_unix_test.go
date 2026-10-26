@@ -15,8 +15,6 @@ import (
 // preview distinguishes "does not resolve" from "the boundary died"
 // only through the error, so a dead child errors SymbolFile and
 // ReachedPackages rather than answering absence (REQ-go-owned-processes).
-//
-//gofresh:pure
 func TestWholeTreeForwardersSurfaceTheChildsFault(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-owned-processes")
 	whole, err := NewWholeTree(context.Background(), t.TempDir())

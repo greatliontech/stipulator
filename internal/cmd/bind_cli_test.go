@@ -19,8 +19,6 @@ import (
 // --file once (applying to every claim) or exactly once per claim; the
 // backend defaulting to go; and every other count refused with both
 // counts named — never aligned by guess, never dropped.
-//
-//gofresh:pure
 func TestBindClaimsAlignment(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-claim-batch")
 	claims, err := bindClaims(
@@ -89,8 +87,6 @@ func TestBindClaimsAlignment(t *testing.T) {
 // (the CLI arm exercises it through a subprocess no in-process oracle
 // can see): a repeated narrowing flag refuses by name, never
 // last-wins.
-//
-//gofresh:pure
 func TestOneFlagRefusesRepetition(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-claim-batch")
 	if v, err := oneFlag("req", nil); err != nil || v != "" {

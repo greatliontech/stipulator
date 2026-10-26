@@ -89,8 +89,6 @@ func TestPolicyCoreStaysBackendNeutral(t *testing.T) {
 
 // TestBackendSatisfiesVerifierSurfaces proves the Go backend's optional
 // surfaces are real interface satisfactions, not naming coincidences.
-//
-//gofresh:pure
 func TestBackendSatisfiesVerifierSurfaces(t *testing.T) {
 	stipulate.Covers(t, "REQ-backend-surfaces", "REQ-go-structural-provers")
 	structural.Implements[verify.Backend](t, (*golang.Backend)(nil))

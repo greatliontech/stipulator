@@ -94,8 +94,6 @@ func TestQuiescedBackendAnswersFromMemory(t *testing.T) {
 // the child: the installed counts added, every named list joined in
 // publish order (REQ-evidence-resolution-cache-format's never-silent
 // account).
-//
-//gofresh:pure
 func TestPublishAccountSumsAcrossPublishes(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-cache-format")
 	// The prior's refused list carries spare capacity: an append that
@@ -125,8 +123,6 @@ func TestPublishAccountSumsAcrossPublishes(t *testing.T) {
 // counted AND named, sorted, the first eight named and the remainder
 // counted, so an operator reads which bindings pay the typed resolution
 // every run and why; a class with no symbol renders nothing.
-//
-//gofresh:pure
 func TestPublishAccountNamesEverySkippedSymbol(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-cache-format")
 	var many []string
@@ -167,7 +163,6 @@ func TestWitnessRunsQuiesceTheSeedingBeforeExecuting(t *testing.T) {
 		t.Skip("executes a race invocation over a temporary module")
 	}
 	neutralAmbient(t)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	tmp := writeModule(t, map[string]string{
 		"go.mod":      "module example.com/units\n\ngo 1.26\n",
 		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",

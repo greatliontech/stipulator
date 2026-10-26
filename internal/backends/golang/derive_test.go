@@ -514,8 +514,6 @@ func TestDeriveNamesUncacheableWithoutGroups(t *testing.T) {
 // and vocabulary: every refusal leg names itself, in the recorded precedence,
 // and a grant carries the granting process's own material and solo fact
 // (REQ-evidence-witness-freshness-diagnosable's diagnosable set).
-//
-//gofresh:pure
 func TestJudgeSubjectNamesRefusalsInOneVocabulary(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-diagnosable")
 	subject := gofresh.Subject{Package: "p", Symbol: "TestX"}
@@ -579,8 +577,6 @@ func TestJudgeSubjectNamesRefusalsInOneVocabulary(t *testing.T) {
 // isolation pass's — each with every row it produced for the package
 // (REQ-policy-attribution-no-merge: a group publishes under its own witness
 // class, so another group's process sharing the package cannot grant).
-//
-//gofresh:pure
 func TestProducersOfOffersTheGroupsOwnLegsInMergeOrder(t *testing.T) {
 	stipulate.Covers(t, "REQ-policy-attribution-no-merge")
 	subject := gofresh.Subject{Package: "example.com/m/pkg", Symbol: "TestX"}
@@ -767,14 +763,12 @@ func TestPGOBuildInputsDigestTheProfileContent(t *testing.T) {
 // The group engine carries the profile: two captures over one tree
 // differing only in the committed profile's bytes fingerprint under
 // distinct guards, so the edit re-executes instead of serving.
-//
-//gofresh:pure
 func TestProfileContentMovesTheFingerprint(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds gofresh views")
 	}
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-inputs")
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	neutralAmbient(t)
 	dir := writeModule(t, map[string]string{
 		"go.mod":    "module example.com/p\n\ngo 1.26\n",
 		"p.go":      "package p\n\nfunc F() int { return 1 }\n",

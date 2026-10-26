@@ -19,8 +19,6 @@ import (
 // were, over random batch sequences, bounds, and identity overlaps; a
 // model of the retention rule judges the store after every batch
 // (REQ-evidence-record-store-layout).
-//
-//gofresh:pure
 func TestInstallKeepsTheNewestVariantsPerIdentity(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-record-store-layout")
 	rapid.Check(t, func(rt *rapid.T) {
@@ -86,8 +84,6 @@ func TestInstallKeepsTheNewestVariantsPerIdentity(t *testing.T) {
 // Names lists newest first with names breaking ties, and never a
 // directory, a dot-prefixed temporary, or a non-.json file; a missing
 // store is the error, and an unreadable file is its read's error.
-//
-//gofresh:pure
 func TestNamesOrderAndTemporaries(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-record-store-layout")
 	store := Store{kind: "k", path: t.TempDir()}
@@ -127,8 +123,6 @@ func TestNamesOrderAndTemporaries(t *testing.T) {
 // batch never names keeps every variant it holds, however many — the
 // garbage-collection verb is the one eviction across identities
 // (REQ-evidence-store-gc).
-//
-//gofresh:pure
 func TestInstallNeverEvictsAnUntouchedIdentity(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-record-store-layout")
 	store := Store{kind: "k", path: t.TempDir()}
@@ -157,8 +151,6 @@ func TestInstallNeverEvictsAnUntouchedIdentity(t *testing.T) {
 // never swept; an unreadable file reaches keep without data; the first
 // removal failure is the error and the walk continues; a store that
 // cannot be listed is the error.
-//
-//gofresh:pure
 func TestSweepCountsAndSparesTemporaries(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-record-store-layout")
 	store := Store{kind: "k", path: filepath.Join(t.TempDir(), "s")}
@@ -201,8 +193,6 @@ func TestSweepCountsAndSparesTemporaries(t *testing.T) {
 // Name and Open follow the layout: identity digest, fingerprint digest
 // over the canonical JSON, the corpus root's resolved path under the
 // kind's root.
-//
-//gofresh:pure
 func TestLayout(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-record-store-layout")
 	name := mustName(t, []string{"g", "p", "T"}, map[string]string{"k": "v"})
@@ -258,8 +248,6 @@ func mustName(t interface {
 // arm (REQ-evidence-record-store-layout): a fingerprint its encoder
 // refuses names no file — the refusal is returned, never an empty digest
 // a caller could install under or match.
-//
-//gofresh:pure
 func TestNameRefusesAnUnencodableFingerprint(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-record-store-layout")
 	name, err := Name([]string{"g"}, make(chan int))
