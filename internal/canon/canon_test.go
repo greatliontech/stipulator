@@ -12,6 +12,7 @@ import (
 )
 
 func TestText(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name, in, want string
 	}{
@@ -33,6 +34,7 @@ func TestText(t *testing.T) {
 }
 
 func TestHash(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-model-hash-func")
 	// Known SHA-256 vector: canonical form of "abc" is "abc" itself, so the
 	// output must be the standard digest, pinning both the algorithm and
@@ -92,6 +94,7 @@ func FuzzTextProjection(f *testing.F) {
 // HashParts' block delimiter rests on: non-whitespace controls (C0, C1,
 // DEL) are removed, whitespace controls collapse with all whitespace.
 func TestTextStripsControlCharacters(t *testing.T) {
+	t.Parallel()
 	cases := map[string]string{
 		"a\x1eb":      "ab",
 		"a\x00b\x7fc": "abc",
@@ -131,6 +134,7 @@ func TestTextStripsControlCharacters(t *testing.T) {
 // examples: ASCII, C0/C1/DEL, format characters, whitespace variants,
 // and combining marks in any combination.
 func TestPropCanonProjection(t *testing.T) {
+	t.Parallel()
 	// Tokens rather than lone runes: the adversarial shapes (a control
 	// BLOCKING canonical composition between a starter and a combining
 	// mark) need adjacency, and independent rune draws hit a specific
@@ -172,6 +176,7 @@ func TestPropCanonProjection(t *testing.T) {
 // known vectors, so the join, the per-block hashing, and the absence of
 // canonicalization are each observable (REQ-model-consent-source).
 func TestSourceDigest(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-model-consent-source")
 	// sha256("abc") = ba78…15ad; sha256("de") = the second line;
 	// the digest is sha256("<hex(abc)>\n<hex(de)>").

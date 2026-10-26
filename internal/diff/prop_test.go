@@ -14,6 +14,7 @@ import (
 // byte-identical corpus pairs yield identical reports on every run,
 // including the self-diff (which must also be empty).
 func TestPropDiffDeterminism(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-core-determinism")
 	rapid.Check(t, func(rt *rapid.T) {
 		gen := func(label string) map[string]string {

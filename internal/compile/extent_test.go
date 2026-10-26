@@ -15,6 +15,7 @@ import (
 // the carried text stays the lead+payload alone
 // (REQ-model-content-hash, REQ-profile-context-extent).
 func TestContextExtentRidesContentHash(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-model-content-hash", "REQ-profile-context-extent")
 	base := map[string]string{
 		"specs/a.md": "# Doc\n\n**REQ-a** (wire): The encoding MUST use the verdict codes below.\n\nContext prose about the codes.\n\n| code | meaning |\n|------|---------|\n| 23   | stale   |\n\n**REQ-b** (behavior): The reader MUST parse.\n",
@@ -59,6 +60,7 @@ func TestContextExtentRidesContentHash(t *testing.T) {
 // re-consent even though the concatenated words are unchanged
 // (REQ-model-content-hash's boundary-preservation clause).
 func TestExtentBoundaryRidesPreimage(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-model-content-hash")
 	separate := map[string]string{
 		"specs/a.md": "# Doc\n\n**REQ-a** (behavior): A MUST hold.\n\nExtra context words.\n",
@@ -83,6 +85,7 @@ func TestExtentBoundaryRidesPreimage(t *testing.T) {
 // break each close the extent — content beyond them never moves the
 // hash (REQ-profile-context-extent).
 func TestContextExtentBoundaries(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-profile-context-extent")
 	base := map[string]string{
 		"specs/a.md": "# Doc\n\n**REQ-a** (behavior): A MUST hold.\n\n## Section\n\nSection intro prose.\n\n**REQ-b** (behavior): B MUST hold.\n\n---\n\nFree-standing context after the break.\n",
@@ -124,6 +127,7 @@ func TestContextExtentBoundaries(t *testing.T) {
 
 // Terms carry extents under the same rule.
 func TestContextExtentOnTerms(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-profile-context-extent")
 	base := map[string]string{
 		"specs/a.md": "# Doc\n\n**widget** (term): A widget is a unit of work.\n\nContext about widgets.\n",
@@ -157,6 +161,7 @@ func TestContextExtentOnTerms(t *testing.T) {
 // so the delimiter is unrepresentable inside a part
 // (REQ-model-content-hash's delimiter clause).
 func TestRawSeparatorCannotForgeBoundary(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-model-content-hash")
 	forge := map[string]string{
 		"specs/a.md": "# Doc\n\n**REQ-a** (behavior): A MUST hold.\x1eExtra context words.\n",
@@ -181,6 +186,7 @@ func TestRawSeparatorCannotForgeBoundary(t *testing.T) {
 // hash, while a note after a heading rides nothing: the two windows
 // differ exactly here (REQ-profile-context-extent, REQ-profile-note).
 func TestDetachedNoteInExtentRidesTheHash(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-profile-context-extent")
 	base := map[string]string{
 		"specs/a.md": "# Doc\n\n**REQ-a** (behavior): A MUST hold.\n\nProse between.\n\n> Detached note.\n\n## Section\n\n> Section note.\n",

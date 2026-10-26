@@ -9,6 +9,7 @@ import (
 // must always be profile-clean, and the compiler's first real input is its
 // own contract.
 func TestSelfCompile(t *testing.T) {
+	t.Parallel()
 	spec, diags, err := Compile(os.DirFS("../.."))
 	if err != nil {
 		t.Fatal(err)

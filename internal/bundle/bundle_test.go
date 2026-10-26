@@ -43,6 +43,7 @@ func ids(b *stipulatorv1.Spec) []string {
 }
 
 func TestClosure(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-model-closure")
 	spec := compileDoc(t)
 
@@ -90,6 +91,7 @@ func TestClosure(t *testing.T) {
 // identifier and term name occurring in the rendered bundle resolves
 // within it.
 func TestBundleSelfContained(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-model-bundle")
 	spec := compileDoc(t)
 	b, err := Compute(spec, []string{"REQ-b-a"})
@@ -124,6 +126,7 @@ func TestBundleSelfContained(t *testing.T) {
 // included section referencing an out-of-closure requirement pulls that
 // requirement in, so nothing rendered dangles.
 func TestBundleFixpointPullsNoteReferences(t *testing.T) {
+	t.Parallel()
 	spec := compileDoc(t)
 	b, err := Compute(spec, []string{"REQ-b-deep"})
 	if err != nil {

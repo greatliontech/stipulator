@@ -40,6 +40,7 @@ func untouchable(t *testing.T, prepared *check.Prepared) verbcore.Deps {
 // compiled corpus before any child process — never an empty result,
 // never one that costs the pass to hear (REQ-check-preparation).
 func TestRunRefusesUnknownIDsBeforeAnyChild(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-check-preparation")
 	prepared := &check.Prepared{Spec: &stipulatorv1.Spec{}, Store: &records.Store{}}
 	_, _, _, err := Run(context.Background(), untouchable(t, prepared), false, []string{"REQ-ghost"})
@@ -53,6 +54,7 @@ func TestRunRefusesUnknownIDsBeforeAnyChild(t *testing.T) {
 // witness run — and the run is nil so a coverage caller knows the pass
 // never witnessed (REQ-check-preparation).
 func TestRunTakesTheRecordOnlyFormUnderHygieneProblems(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-check-preparation")
 	prepared := &check.Prepared{Spec: &stipulatorv1.Spec{}, Store: &records.Store{}, Hygiene: []verify.Problem{{Path: "a", Message: "stale"}}}
 	p, rep, tr, err := Run(context.Background(), untouchable(t, prepared), false, nil)
@@ -68,6 +70,7 @@ func TestRunTakesTheRecordOnlyFormUnderHygieneProblems(t *testing.T) {
 // captured and no witness runs; the backends still resolve the
 // bindings (REQ-evidence-resolution-freshness).
 func TestRunNoTestCapturesNoPolicy(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
 	prepared := &check.Prepared{Spec: &stipulatorv1.Spec{}, Store: &records.Store{}}
 	deps := untouchable(t, prepared)
@@ -86,6 +89,7 @@ func TestRunNoTestCapturesNoPolicy(t *testing.T) {
 // alike: the witnessed form captures exactly once, and the run receives
 // that capture (REQ-check-derivation).
 func TestRunCapturesThePolicyOnce(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-check-derivation")
 	prepared := &check.Prepared{Spec: &stipulatorv1.Spec{}, Store: &records.Store{}}
 	deps := untouchable(t, prepared)
@@ -121,6 +125,7 @@ func TestRunCapturesThePolicyOnce(t *testing.T) {
 // report with a nil run; a populated scope captures once and hands
 // the run that scope (REQ-gap-resolved-pruned, REQ-gap-list).
 func TestScopedCapturesOnlyWhenAsked(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-gap-resolved-pruned", "REQ-gap-list")
 	prepared := &check.Prepared{Spec: &stipulatorv1.Spec{}, Store: &records.Store{}}
 	deps := untouchable(t, prepared)
@@ -155,6 +160,7 @@ func TestScopedCapturesOnlyWhenAsked(t *testing.T) {
 // compilation: the coverage is nil and no capture, backend, or run
 // happens (REQ-gap-list).
 func TestGapsGathersNothingWithoutGapRecords(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-gap-list")
 	prepared := &check.Prepared{Spec: &stipulatorv1.Spec{}, Store: &records.Store{}}
 	p, rep, cov, err := Gaps(context.Background(), untouchable(t, prepared))
@@ -168,6 +174,7 @@ func TestGapsGathersNothingWithoutGapRecords(t *testing.T) {
 // is taken — no capture, no run — while the report and the coverage
 // still evaluate over the records (REQ-gap-list).
 func TestGapsCapturesNothingWithoutAScope(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-gap-list")
 	id := "REQ-x"
 	store := &records.Store{Gaps: []records.GapFile{{Path: ".stipulator/gaps/x.textproto", Gap: stipulatorv1.Gap_builder{RequirementId: &id}.Build()}}}

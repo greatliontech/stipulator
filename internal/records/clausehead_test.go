@@ -11,6 +11,7 @@ import (
 // A clause's name is one spelling: the head alone, and the heading is
 // the head followed by the text prefix.
 func TestClauseHeadIsTheHeadingsHead(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-clause-claim")
 	c := &stipulatorv1.Clause{}
 	c.SetOrdinal(3)

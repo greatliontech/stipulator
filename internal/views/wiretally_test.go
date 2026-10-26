@@ -11,6 +11,7 @@ import (
 // never recounted from the rows: a message whose counters and rows
 // disagree summarizes by its counters.
 func TestCheckSummaryReadsTheWireVerifyTally(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-report-check-result")
 	unpinned := &stipulatorv1.BindingResult{}
 	unpinned.SetContentPinned(false)
@@ -38,6 +39,7 @@ func TestCheckSummaryReadsTheWireVerifyTally(t *testing.T) {
 // execution distinctly from an assertion failure, a build failure and a
 // timeout each by their own word (REQ-check-diagnostics).
 func TestDiagnosticHeadingNamesEveryDisposition(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-check-diagnostics")
 	cases := map[stipulatorv1.HealthDisposition]string{
 		stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_DEGRADED:     "degraded: example.com/m.TestX",

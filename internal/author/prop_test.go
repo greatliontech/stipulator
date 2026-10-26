@@ -50,6 +50,7 @@ func parseRecord(rt *rapid.T, u Update) {
 // pure functions of their inputs (identical on a second run over the
 // same state).
 func TestPropVerbsWriteOnlyRecords(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-transient", "REQ-core-scope")
 	rapid.Check(t, func(rt *rapid.T) {
 		c := proptest.Gen(rt)

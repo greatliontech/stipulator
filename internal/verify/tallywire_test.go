@@ -10,6 +10,7 @@ import (
 // reader of the message takes the counts the report derived, so no
 // summary re-derives them from the rows.
 func TestReportProtoCarriesTheTally(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-report-check-result")
 	rep := &Report{Results: []BindingResult{
 		{ContentPinned: false, Resolution: NotFound},

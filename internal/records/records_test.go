@@ -14,6 +14,7 @@ import (
 // non-.textproto file stays the loud typo guard (REQ-record-cas's
 // staging rides on this tolerance).
 func TestLoadSkipsHiddenFiles(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-record-cas")
 	fsys := fstest.MapFS{
 		".stipulator/gaps/a.textproto":          {Data: []byte("requirement_id: \"REQ-r-a\"\nreason: \"r\"\nlands { manual { condition: \"c\" } }\n")},
@@ -39,6 +40,7 @@ func TestLoadSkipsHiddenFiles(t *testing.T) {
 // with no content — an empty gap would otherwise load as a record
 // naming no requirement and vanish from every surface (REQ-record-cas).
 func TestLoadRefusesAnEmptyRecordFile(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-record-cas")
 	for _, p := range []string{".stipulator/gaps/g.textproto", ".stipulator/bindings/b.textproto", ".stipulator/attestations/a.textproto", TombstonesPath} {
 		fsys := fstest.MapFS{p: {Data: nil}}
@@ -57,6 +59,7 @@ func TestLoadRefusesAnEmptyRecordFile(t *testing.T) {
 // empty label resolves to no clause, so hygiene names it dangling
 // rather than reading it as the unscoped claim (REQ-evidence-clause-claim).
 func TestClauseKeyKeepsAPresentLabelApartFromTheUnscopedClaim(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-clause-claim")
 	unscoped := &stipulatorv1.Binding{}
 	empty := &stipulatorv1.Binding{}

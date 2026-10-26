@@ -13,6 +13,7 @@ import (
 // through the in-memory tally, the check summary through the wire rows
 // the scope filter kept (REQ-change-enforcement-pointers, REQ-mcp-views-scope).
 func TestSummariesCountDanglingPointersScoped(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-enforcement-pointers", "REQ-mcp-views-scope")
 	cov := &coverage.Report{
 		Requirements:     []coverage.Requirement{{Id: "REQ-a", Bucket: coverage.Broken}, {Id: "REQ-b", Bucket: coverage.Broken}},

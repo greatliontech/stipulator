@@ -11,6 +11,7 @@ import (
 // lifecycle words, the dangling class its own word, the line's count,
 // tally, and dangling apart.
 func TestGapListWordsAndLine(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-gap-list")
 	words := map[stipulatorv1.GapState]string{
 		stipulatorv1.GapState_GAP_STATE_OPEN:     "open",

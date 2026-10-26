@@ -9,6 +9,7 @@ import (
 )
 
 func TestPinSymbolsSelectsCompleteNamedSet(t *testing.T) {
+	t.Parallel()
 	store, err := records.Load(fstest.MapFS{
 		".stipulator/bindings/a.textproto": {Data: []byte(`
 bindings { requirement_id: "REQ-a" backend: "go" symbol: "example.com/p.A" role: BINDING_ROLE_IMPLEMENTS }

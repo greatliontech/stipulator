@@ -16,6 +16,7 @@ import (
 // pass's problems — same set, same order — so the two cannot drift
 // apart; the classes' own messages are pinned by the verify tests.
 func TestHygieneIsRunsRecordOnlyJudgment(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-check-preparation")
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},

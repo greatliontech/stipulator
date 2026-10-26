@@ -36,6 +36,7 @@ func (b *recordingBackend) Resolve(symbol string) (verify.Resolution, string, er
 // resolution to the named requirements' bindings — an unnamed
 // requirement's symbol is never resolved (REQ-pin-backfill).
 func TestResolveShapesSurfacesFaultsAndScopesToWanted(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-pin-backfill")
 	shape := strings.Repeat("b", 64)
 	store, err := records.Load(fstest.MapFS{

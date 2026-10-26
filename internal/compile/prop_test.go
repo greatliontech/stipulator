@@ -48,6 +48,7 @@ func compileClean(rt *rapid.T, files map[string]string) *stipulatorv1.Spec {
 // metadata, and location never contributes to identities or content
 // hashes.
 func TestPropLayoutIndependence(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-model-layout-independence", "REQ-model-location-metadata")
 	rapid.Check(t, func(rt *rapid.T) {
 		c := proptest.Gen(rt)
@@ -103,6 +104,7 @@ func caseVariant(rt *rapid.T, s string) string {
 // permanence: any declared identity, tombstoned under any letter case,
 // makes the corpus refuse to compile cleanly.
 func TestPropTombstonedIdentityNeverRedeclared(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-model-identity")
 	rapid.Check(t, func(rt *rapid.T) {
 		c := proptest.Gen(rt)

@@ -66,6 +66,7 @@ func hasEdge(spec *stipulatorv1.Spec, kind stipulatorv1.EdgeKind, from, to *stip
 }
 
 func TestRequirementLead(t *testing.T) {
+	t.Parallel()
 	spec, diags := compileFiles(t, map[string]string{
 		"specs/a.md": "# T\n\n## S\n\n**REQ-a-one** (behavior): It MUST do the thing.\n\n" +
 			"**REQ-a-two** (wire, refines REQ-a-one, depends REQ-a-one): It MUST hold:\n\n" +
@@ -113,6 +114,7 @@ func TestRequirementLead(t *testing.T) {
 }
 
 func TestPayloadChangesHash(t *testing.T) {
+	t.Parallel()
 	base := "# T\n\n**REQ-x-a** (behavior): It MUST hold:\n\n- point\n"
 	specA, diags := compileFiles(t, map[string]string{"specs/a.md": base})
 	wantClean(t, diags)
@@ -132,6 +134,7 @@ func TestPayloadChangesHash(t *testing.T) {
 }
 
 func TestHashStableUnderRewrap(t *testing.T) {
+	t.Parallel()
 	a := "# T\n\n**REQ-w-a** (behavior): The system MUST do a thing that is long enough to wrap.\n"
 	b := "# T\n\n**REQ-w-a** (behavior): The system MUST do\na thing that is long\nenough to wrap.\n"
 	specA, diags := compileFiles(t, map[string]string{"specs/a.md": a})
@@ -144,6 +147,7 @@ func TestHashStableUnderRewrap(t *testing.T) {
 }
 
 func TestLeadErrors(t *testing.T) {
+	t.Parallel()
 	cases := []struct{ name, body, diag string }{
 		{"near miss no metadata", "**REQ-x-a** does the thing.", "does not parse as a requirement lead"},
 		{"unknown kind", "**REQ-x-a** (behaviour): It MUST x.", `unknown clause kind "behaviour"`},
@@ -160,6 +164,7 @@ func TestLeadErrors(t *testing.T) {
 }
 
 func TestKeywordDiscipline(t *testing.T) {
+	t.Parallel()
 	// The refusal names the remedy for the count found, and the lint
 	// entry point — the message is where an author reads it, on
 	// whatever operation compiled the corpus (REQ-change-remediation).
@@ -219,6 +224,7 @@ func TestKeywordDiscipline(t *testing.T) {
 }
 
 func TestIdentity(t *testing.T) {
+	t.Parallel()
 	t.Run("duplicate requirement", func(t *testing.T) {
 		_, diags := compileFiles(t, map[string]string{
 			"specs/a.md": "# T\n\n**REQ-x-a** (behavior): It MUST x.\n",
@@ -335,6 +341,7 @@ func TestIdentity(t *testing.T) {
 // requirement refining two broader ones states both relationships
 // (REQ-profile-metadata, REQ-model-canonical-order, REQ-model-closure).
 func TestEdgeClausesAdmitTargetLists(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-profile-metadata", "REQ-model-closure", "REQ-model-canonical-order")
 	base := "# T\n\n**REQ-e-one** (behavior): It MUST one.\n\n**REQ-e-two** (behavior): It MUST two.\n\n"
 	list := base + "**REQ-e-both** (behavior, refines REQ-e-two REQ-e-one): It MUST both.\n"
@@ -388,6 +395,7 @@ func TestEdgeClausesAdmitTargetLists(t *testing.T) {
 }
 
 func TestReferences(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-model-graph")
 	t.Run("edge from requirement", func(t *testing.T) {
 		spec, diags := compileFiles(t, map[string]string{
@@ -433,6 +441,7 @@ func TestReferences(t *testing.T) {
 }
 
 func TestTermMatching(t *testing.T) {
+	t.Parallel()
 	spec, diags := compileFiles(t, map[string]string{
 		"specs/a.md": "# T\n\n**content hash** (term): a hash of content.\n\n**hash** (term): a digest.\n\n" +
 			"**REQ-x-a** (behavior): The Content Hash MUST be stable.\n\n" +
@@ -458,6 +467,7 @@ func TestTermMatching(t *testing.T) {
 }
 
 func TestNotes(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-model-graph")
 	spec, diags := compileFiles(t, map[string]string{
 		"specs/a.md": "# T\n\n**REQ-x-a** (behavior): It MUST x.\n\n> Attached commentary.\n\n## S\n\n> Section commentary.\n",
@@ -495,6 +505,7 @@ func TestNotes(t *testing.T) {
 }
 
 func TestDocumentErrors(t *testing.T) {
+	t.Parallel()
 	t.Run("two titles", func(t *testing.T) {
 		_, diags := compileFiles(t, map[string]string{"specs/a.md": "# T\n\n# U\n"})
 		wantDiag(t, diags, "exactly one level-1 heading, found 2")
@@ -506,6 +517,7 @@ func TestDocumentErrors(t *testing.T) {
 }
 
 func TestLayoutIndependence(t *testing.T) {
+	t.Parallel()
 	blocks := []string{
 		"**REQ-l-a** (behavior): It MUST x.",
 		"**REQ-l-b** (behavior, refines REQ-l-a): Using the widget it MUST y.",
@@ -529,6 +541,7 @@ func TestLayoutIndependence(t *testing.T) {
 }
 
 func TestGeneratedIndexExcluded(t *testing.T) {
+	t.Parallel()
 	spec, diags := compileFiles(t, map[string]string{
 		"specs/a.md":      "# T\n\n**REQ-x-a** (behavior): It MUST x.\n",
 		"specs/README.md": "# Index\n\nProse that MUST not be compiled.\n",
@@ -545,6 +558,7 @@ func TestGeneratedIndexExcluded(t *testing.T) {
 // failing compilation — and word-boundary matching (a plural is not a
 // shadow).
 func TestTermLint(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-profile-term-lint")
 	doc := "# T\n\n**law node** (term): a node holding law.\n\n**node** (term): a graph vertex.\n\n**nodes overview** (term): prose about many.\n"
 
@@ -593,6 +607,7 @@ func TestTermLint(t *testing.T) {
 // as an ASCII one, and the lint judges containment with the same
 // definition (REQ-profile-term-matching, REQ-profile-term-lint).
 func TestTermMatchingRuneBoundaries(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-profile-term-matching", "REQ-profile-term-lint")
 	spec, diags := compileFiles(t, map[string]string{
 		"specs/a.md": "# T\n\n**épreuve** (term): a trial.\n\n**garantie** (term): a promise.\n\n**über** (term): the над.\n\n" +
@@ -622,6 +637,7 @@ func TestTermMatchingRuneBoundaries(t *testing.T) {
 // The shadowing lint sees non-ASCII containment with the matcher's own
 // boundary definition (REQ-profile-term-lint).
 func TestTermLintRuneBoundaries(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-profile-term-lint")
 	_, diags := compileFiles(t, map[string]string{
 		".stipulator/manifest.textproto": "include: \"specs/**/*.md\"\nterm_lint { warn_shadowing: true }\n",
@@ -644,6 +660,7 @@ func TestTermLintRuneBoundaries(t *testing.T) {
 // twice is a compile error, so a clause claim is never ambiguous
 // (REQ-profile-clauses).
 func TestClausesAreThePayloadListItems(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-profile-clauses")
 	doc := "# T\n\n**REQ-x-a** (behavior): It MUST hold:\n\n" +
 		"- **first** — the first obligation\n" +
@@ -691,6 +708,7 @@ func TestClausesAreThePayloadListItems(t *testing.T) {
 // canonicalizes — so byte-identical source digests identically whatever
 // the canonical form does (REQ-model-consent-source).
 func TestConsentSourceDigestFollowsRawBytes(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-model-consent-source")
 	lead := "**REQ-x-a** (behavior): It MUST hold:\n\n- point\n\n> Commentary.\n"
 	one, diags := compileFiles(t, map[string]string{"specs/a.md": "# T\n\n" + lead})

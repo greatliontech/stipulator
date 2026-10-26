@@ -13,6 +13,7 @@ import (
 // TestVerifyViews pins the verify view axis: the summary is counts and
 // signatures with no binding rows; the bindings view scopes.
 func TestVerifyViews(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-core-proto-io", "REQ-mcp-views")
 	vr := &verify.Report{
 		Results: []verify.BindingResult{
@@ -76,6 +77,7 @@ func TestVerifyViews(t *testing.T) {
 // filter gaps and violations to the scope, so filtered triage is not
 // polluted by out-of-scope entries — while the gate verdict stays global.
 func TestCoverageViewScopesGapsAndViolations(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-views-scope", "REQ-mcp-views-global-verdict", "REQ-mcp-views")
 	cov := &coverage.Report{
 		Requirements: []coverage.Requirement{
@@ -168,6 +170,7 @@ func TestCoverageViewScopesGapsAndViolations(t *testing.T) {
 // resolved/open misclassification cannot pass silently. The prunable count
 // is how the gate surfaces resolved gaps awaiting prune.
 func TestCoverageSummaryPinsCountsAndGapState(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-views", "REQ-gap-resolved-pruned")
 	cov := &coverage.Report{
 		Requirements: []coverage.Requirement{
@@ -214,6 +217,7 @@ func TestCoverageSummaryPinsCountsAndGapState(t *testing.T) {
 // TestScopeValidate pins the typo rule: unknown vocabulary refuses
 // before filtering, so a misspelling never reads as an empty result.
 func TestScopeValidate(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-views")
 	if err := (Scope{Bucket: "redish"}).Validate(); err == nil || !strings.Contains(err.Error(), `unknown bucket "redish"`) {
 		t.Fatalf("bucket typo accepted: %v", err)
@@ -269,6 +273,7 @@ func TestScopeValidate(t *testing.T) {
 // vs example.com/p.v2) and method receivers (example.com/p.Server.Handle
 // lives in example.com/p) (REQ-mcp-views-scope).
 func TestVerifyBindingsScopeDiagnosticsResolvedPackage(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-views-scope")
 	vr := &verify.Report{
 		Results: []verify.BindingResult{
@@ -368,6 +373,7 @@ func packageDiag(pkg, out string) *stipulatorv1.FailureDiagnostic {
 // character a separator - shared by document, symbol, and diagnostic
 // matching (REQ-mcp-views).
 func TestElementPrefixBoundaries(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-views")
 	for _, tc := range []struct {
 		s, prefix string
@@ -394,6 +400,7 @@ func TestElementPrefixBoundaries(t *testing.T) {
 // rows; problems and the outside-policy count stay tree-wide like the
 // gate verdict (REQ-mcp-views-scope).
 func TestVerifySummaryHonoursScope(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-views-scope")
 	vr := &verify.Report{
 		Witnessed: true,
@@ -473,6 +480,7 @@ func TestVerifySummaryHonoursScope(t *testing.T) {
 // The scope vocabulary is the closed bucket set, whole: a bucket added
 // to the ladder is nameable in a scope and listed in the refusal.
 func TestScopeVocabularyIsEveryBucket(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-views")
 	have := map[coverage.Bucket]bool{}
 	for _, b := range scopeBuckets {
@@ -490,6 +498,7 @@ func TestScopeVocabularyIsEveryBucket(t *testing.T) {
 }
 
 func TestCheckSummaryProjectsInvocationWitnesses(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-views-check-summary")
 	inv := &stipulatorv1.InvocationWitnessAccount{}
 	inv.SetInvocation("race")

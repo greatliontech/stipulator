@@ -62,6 +62,7 @@ const (
 // the bound body lacks, and sorted reasons put the verdict first
 // (REQ-go-witness-class).
 func TestExampleClassificationVerdictSurfaces(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-go-witness-class")
 	doc := "# T\n\n**REQ-v-inv** (invariant): It MUST hold.\n"
 	spec, store := fixture(t, doc, nil)
@@ -124,6 +125,7 @@ func TestExampleClassificationVerdictSurfaces(t *testing.T) {
 // binding does not; a static binding satisfies SHOULD; structural
 // accepts nothing weaker than an analyzer proof.
 func TestPolicyDefaults(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-coverage-policy-default", "REQ-evidence-ladder")
 	doc := "# T\n\n" +
 		"**REQ-c-beh** (behavior): It MUST x.\n\n" +
@@ -208,6 +210,7 @@ func TestPolicyDefaults(t *testing.T) {
 // the defaults, exempt cells mirror the MAY rule while red claims still
 // read red, and the uncovered reason names the override.
 func TestPolicyOverrides(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-coverage-policy")
 	doc := "# T\n\n" +
 		"**REQ-c-str** (structural): It MUST NOT depend.\n\n" +
@@ -315,6 +318,7 @@ func TestPolicyOverrides(t *testing.T) {
 // TestBuckets pins precedence and claim hygiene: broken beats stale beats
 // covered — red claims downgrade even when other evidence satisfies.
 func TestBuckets(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-coverage-buckets")
 	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n"
 	spec, store := fixture(t, doc, nil)
@@ -356,6 +360,7 @@ func TestBuckets(t *testing.T) {
 // with no verifying backend, and passed tests without witnessing, grant no
 // evidence tier.
 func TestClaimsGrantNothingUnverified(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-promotion", "REQ-core-claims-untrusted")
 	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n"
 	spec, store := fixture(t, doc, nil)
@@ -382,6 +387,7 @@ func TestClaimsGrantNothingUnverified(t *testing.T) {
 // green witnesses, and resolves only once the condition is explicitly
 // fired.
 func TestGapStates(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-gap-lifecycle", "REQ-gap-conditions")
 	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n\n**REQ-c-b** (behavior): It MUST y.\n\n**REQ-c-c** (behavior): It MUST z.\n\n**REQ-c-d** (behavior): It MUST w.\n\n**REQ-c-e** (behavior): It MUST v.\n\n**REQ-c-f** (behavior): It MUST u.\n\n**REQ-c-g** (behavior): It MUST t.\n\n**REQ-c-h** (behavior): It MAY s.\n\n**REQ-c-i** (behavior): It MAY r.\n\n**REQ-c-j** (behavior): It MAY q.\n\n**REQ-c-k** (behavior): It MUST p.\n\n**REQ-c-l** (behavior): It MUST o.\n"
 	gap := func(id, lands string) string {
@@ -441,6 +447,7 @@ func TestGapStates(t *testing.T) {
 // red of a different class, and the mismatch is surfaced on the
 // requirement's own reasons (REQ-gate-no-undeclared, REQ-gap-record).
 func TestGateGapExcusesBindTheViolationClass(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-gate-no-undeclared", "REQ-gap-record")
 	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n"
 
@@ -523,6 +530,7 @@ func TestGateGapExcusesBindTheViolationClass(t *testing.T) {
 // ratio — one undeclared red among many covered fails; all-red-all-gapped
 // passes.
 func TestGate(t *testing.T) {
+	t.Parallel()
 	// Registered per subtest, not at the top: each arm pins both clauses
 	// on its own, and the live corpus should exercise the
 	// subtest-granular registration path it ships to consumers.
@@ -556,6 +564,7 @@ func TestGate(t *testing.T) {
 }
 
 func TestReasonsAreDeterministic(t *testing.T) {
+	t.Parallel()
 	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n"
 	spec, store := fixture(t, doc, nil)
 	vr := &verify.Report{Results: []verify.BindingResult{
@@ -575,6 +584,7 @@ func TestReasonsAreDeterministic(t *testing.T) {
 // proves-role binding whose witness class is an analyzer proof covers
 // structural (and invariant) requirements; an example witness never does.
 func TestAnalyzerProofSatisfiesStructural(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-go-structural-provers")
 	doc := "# T\n\n**REQ-c-str** (structural): It MUST NOT depend.\n\n**REQ-c-inv** (invariant): It MUST hold.\n\n**REQ-c-beh** (behavior): It MUST behave.\n"
 	spec, store := fixture(t, doc, nil)
@@ -631,6 +641,7 @@ func TestAnalyzerProofSatisfiesStructural(t *testing.T) {
 // output, is never folded into covered when stronger evidence exists, and
 // stales when the requirement moves.
 func TestAttestationEvidence(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-attestation")
 	doc := "# T\n\n**REQ-c-att** (behavior): It MUST x.\n\n**REQ-c-plain** (behavior): It MUST y.\n"
 	spec, store := fixture(t, doc, nil)
@@ -708,6 +719,7 @@ func TestAttestationEvidence(t *testing.T) {
 // resolves, unfired never does whatever the bucket, and the fired
 // uncovered one is due like any fired manual gap (REQ-gap-lifecycle).
 func TestContradictedGapResolvesOnlyByFire(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-gap-lifecycle")
 	doc := "# T\n\n**REQ-x-a** (behavior): It MUST a.\n\n**REQ-x-b** (behavior): It MUST b.\n\n**REQ-x-c** (behavior): It MUST c.\n\n**REQ-x-d** (behavior): It MUST d.\n\n**REQ-x-e** (behavior): It MAY e.\n\n**REQ-x-f** (behavior): It MAY f.\n"
 	gap := func(id string, fired bool) string {
@@ -762,6 +774,7 @@ func TestContradictedGapResolvesOnlyByFire(t *testing.T) {
 // prunable, and keep (nil = all) scopes both. Asymmetric on purpose so a
 // resolved/open misclassification flips a tally.
 func TestGapCounts(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-gap-resolved-pruned")
 	gaps := []Gap{
 		{RequirementId: "a", State: Open},
@@ -784,6 +797,7 @@ func TestGapCounts(t *testing.T) {
 // (REQ-change-remediation): the tool computes the remediation and says
 // it.
 func TestStalePinReasonNamesReConsent(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-remediation")
 	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n"
 	spec, store := fixture(t, doc, nil)
@@ -802,6 +816,7 @@ func TestStalePinReasonNamesReConsent(t *testing.T) {
 // the moved shape and the unpinned shape both point at stipulator pin
 // (REQ-change-remediation).
 func TestShapeFindingsNameRePin(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-remediation")
 	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n"
 	spec, store := fixture(t, doc, nil)
@@ -825,6 +840,7 @@ func TestShapeFindingsNameRePin(t *testing.T) {
 // disqualify, so folding can never hide a red the caller must read
 // (REQ-check-witness-selection).
 func TestWitnessSelectionBlockedRequiresBoundaryOnlyRedness(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-check-witness-selection")
 	doc := "# A\n\n**REQ-c-pure** (behavior): It MUST a.\n\n**REQ-c-failed** (behavior): It MUST b.\n\n**REQ-c-unwitnessed** (behavior): It MUST c.\n\n**REQ-c-stale** (behavior): It MUST d.\n\n**REQ-c-shape** (behavior): It MUST e.\n\n**REQ-c-missing** (behavior): It MUST f.\n"
 	spec, store := fixture(t, doc, nil)
@@ -870,6 +886,7 @@ func TestWitnessSelectionBlockedRequiresBoundaryOnlyRedness(t *testing.T) {
 // excuses as declared and an unset pin (a pre-field record) excuses as
 // declared until the blanket pin backfills it.
 func TestGapStaleConsentSuspendsExcuse(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-gap-consent")
 	doc := "# T\n\n**REQ-gc-a** (behavior): It MUST x.\n\n**REQ-gc-b** (behavior): It MUST y.\n\n**REQ-gc-c** (behavior): It MUST z.\n"
 	spec0, _ := fixture(t, doc, nil)
@@ -981,6 +998,7 @@ func clauseResult(t *testing.T, spec *stipulatorv1.Spec, id, symbol, clause stri
 // above it, covered and an admitted attestation too
 // (REQ-evidence-clause-claim, REQ-coverage-buckets).
 func TestClauseClaimsGrantToTheirClauseAlone(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-clause-claim", "REQ-coverage-buckets")
 	doc := "# T\n\n**REQ-c-cl** (behavior): It MUST hold:\n\n- **alpha** first\n- second\n- **gamma** third\n"
 	spec, store := fixture(t, doc, nil)
@@ -1090,6 +1108,7 @@ func TestClauseClaimsGrantToTheirClauseAlone(t *testing.T) {
 // attestation stands above partial as it stands above uncovered
 // (REQ-gate-no-undeclared, REQ-evidence-attestation).
 func TestPartialIsTheUncoveredClassInPart(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-gate-no-undeclared", "REQ-evidence-clause-claim")
 	doc := "# T\n\n**REQ-c-cl** (behavior): It MUST hold:\n\n- **alpha** first\n- second\n"
 	spec, store := fixture(t, doc, nil)
@@ -1134,6 +1153,7 @@ func TestPartialIsTheUncoveredClassInPart(t *testing.T) {
 // to byte-identical text: it keeps excusing — a rehash, not a drift
 // (REQ-gap-consent, REQ-evidence-consent-current).
 func TestGapConsentHoldsByRehash(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-gap-consent", "REQ-evidence-consent-current")
 	doc := "# T\n\n**REQ-gc-a** (behavior): It MUST x.\n"
 	spec0, _ := fixture(t, doc, nil)
@@ -1158,6 +1178,7 @@ func TestGapConsentHoldsByRehash(t *testing.T) {
 // producing package's disposition, is never classed policy-blocked,
 // and never carries the admission advice (REQ-check-witness-selection).
 func TestUngrantedWitnessNamesItsCauseNeverTheSelection(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-check-witness-selection")
 	doc := "# A\n\n**REQ-u-timeout** (behavior): It MUST a.\n"
 	spec, store := fixture(t, doc, nil)
@@ -1185,6 +1206,7 @@ func TestUngrantedWitnessNamesItsCauseNeverTheSelection(t *testing.T) {
 // missing symbol — leaves the row unblocked (REQ-check-verdict-scoped,
 // REQ-gap-consent).
 func TestScopeBlockedSurvivesAnExcusedStaleConsent(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-check-verdict-scoped", "REQ-gap-consent")
 	doc := "# S\n\n**REQ-s-excused** (behavior): It MUST a.\n\n**REQ-s-uncovered** (behavior): It MUST b.\n\n**REQ-s-drifted** (behavior): It MUST c.\n\n**REQ-s-bare** (behavior): It MUST d.\n\n**REQ-s-failed** (behavior): It MUST e.\n\n**REQ-s-missing** (behavior): It MUST f.\n\n**REQ-s-current** (behavior): It MUST g.\n\n**REQ-s-both** (behavior): It MUST h.\n\n**REQ-s-policy** (behavior): It MUST i.\n\n**REQ-s-twogaps** (behavior): It MUST j.\n\n**REQ-s-currentgap** (behavior): It MUST k.\n\n**REQ-s-bothexcused** (behavior): It MUST l.\n"
 	spec0, _ := fixture(t, doc, nil)
@@ -1327,6 +1349,7 @@ func TestScopeBlockedSurvivesAnExcusedStaleConsent(t *testing.T) {
 // excused by a gap declaring both, and a stale-only row keeps its
 // one-class judgment (REQ-gate-no-undeclared, REQ-coverage-buckets).
 func TestGateExcusesEveryRedClassARowCarries(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-gate-no-undeclared", "REQ-coverage-buckets")
 	doc := "# T\n\n**REQ-c-a** (behavior): It MUST x.\n"
 	gap := func(excuses string) map[string]string {

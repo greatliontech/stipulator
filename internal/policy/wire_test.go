@@ -320,6 +320,9 @@ func roundTrip(t *testing.T, name string, msg, fresh func() proto.Message) {
 }
 
 func TestPolicyAndReportWireFixturesRoundTrip(t *testing.T) {
+	if !*update {
+		t.Parallel()
+	}
 	stipulate.Covers(t, "REQ-report-policy-messages")
 	for _, f := range wireFixturesNamed(t, "test_policy", "execution_report", "progress_event") {
 		t.Run(f.name, func(t *testing.T) { roundTrip(t, f.name, f.msg, f.fresh) })
@@ -327,6 +330,9 @@ func TestPolicyAndReportWireFixturesRoundTrip(t *testing.T) {
 }
 
 func TestCheckResultWireFixtureRoundTrip(t *testing.T) {
+	if !*update {
+		t.Parallel()
+	}
 	stipulate.Covers(t, "REQ-report-check-result")
 	f := wireFixtureNamed(t, "check_result")
 	roundTrip(t, f.name, f.msg, f.fresh)

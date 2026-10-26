@@ -47,6 +47,7 @@ func mkGoInvocation(name, moduleRoot string, timeout time.Duration) *stipulatorv
 // case, while the caller receives only canonical invocation identity,
 // backend name, and timeout — never the payload.
 func TestPolicyDispatchRoutesPayloadsToNamedBackend(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-policy-backend-neutral")
 	rb := &recordingBackend{}
 	p := mkPolicy(
@@ -88,6 +89,7 @@ func TestPolicyDispatchRoutesPayloadsToNamedBackend(t *testing.T) {
 // refusal: a payload case no registered backend claims rejects the policy
 // whole, naming the invocation and the unclaimed case.
 func TestPolicyDispatchRejectsUnsupportedBackend(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-policy-backend-neutral")
 	p := mkPolicy(mkGoInvocation("race", "", time.Minute))
 	invs, err := Dispatch(p, map[string]Backend{})
@@ -108,6 +110,7 @@ func TestPolicyDispatchRejectsUnsupportedBackend(t *testing.T) {
 // claiming backend refuses rejects the policy whole, attributed to its
 // invocation.
 func TestPolicyDispatchPropagatesBackendRefusal(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-policy-backend-neutral")
 	rb := &recordingBackend{err: errors.New("module_root escapes")}
 	_, err := Dispatch(mkPolicy(mkGoInvocation("race", "", time.Minute)), map[string]Backend{"go": rb})
@@ -132,6 +135,7 @@ func TestPolicyDispatchPropagatesBackendRefusal(t *testing.T) {
 // read from its fixed location, strict-parsed, and dispatched; an absent
 // record is an explicit error, never an assumed policy.
 func TestPolicyLoadReadsCommittedRecord(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-policy-explicit")
 	dir := t.TempDir()
 	rb := &recordingBackend{}

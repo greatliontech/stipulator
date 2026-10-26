@@ -18,6 +18,7 @@ func (r *recorder) Log(args ...any) {
 }
 
 func TestCoversEmitsMarker(t *testing.T) {
+	t.Parallel()
 	r := &recorder{}
 	Covers(r, "REQ-x-a", "REQ-x-b")
 	if len(r.lines) != 2 {

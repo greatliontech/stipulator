@@ -74,10 +74,7 @@ func TestResolve(t *testing.T) {
 // the source closure and guard-covered toolchain state the fingerprint
 // already pins, asserted pure under REQ-purity-responsibility.
 func TestFixtureModule(t *testing.T) {
-	b, err := newContext(context.Background(), "testdata/fixturemod", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	b := fixtureBackend(t)
 	cases := []struct {
 		name, symbol string
 		want         verify.Resolution
@@ -374,10 +371,7 @@ func TestWorkspaceMembers(t *testing.T) {
 // already pins, asserted pure under REQ-purity-responsibility.
 func TestGoLoadAttributionNamesDependencyResolutionState(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
-	b, err := newContext(context.Background(), "testdata/depbroken", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	b := depbrokenBackend(t)
 	_, _, rerr := b.Resolve("example.com/depbroken.Use")
 	if rerr == nil {
 		t.Fatal("a load-errored package must refuse, never answer")
@@ -403,10 +397,7 @@ func TestGoLoadAttributionNamesDependencyResolutionState(t *testing.T) {
 // already pins, asserted pure under REQ-purity-responsibility.
 func TestGoLoadAttributionLeavesInTreeErrorsUnchanged(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
-	b, err := newContext(context.Background(), "testdata/depbroken", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	b := depbrokenBackend(t)
 	_, _, rerr := b.Resolve("example.com/depbroken/selfbad.F")
 	if rerr == nil {
 		t.Fatal("a load-errored package must refuse, never answer")
@@ -437,10 +428,7 @@ func TestGoLoadAttributionLeavesInTreeErrorsUnchanged(t *testing.T) {
 // already pins, asserted pure under REQ-purity-responsibility.
 func TestGoWitnessClassVerdictNamesLoadFailure(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution", "REQ-go-witness-class")
-	b, err := newContext(context.Background(), "testdata/depbroken", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	b := depbrokenBackend(t)
 	class, verdict := b.WitnessClassVerdict("example.com/depbroken.TestUses")
 	if class != verify.ExampleWitness {
 		t.Fatalf("class = %v, want the weakest class for an unloadable body", class)

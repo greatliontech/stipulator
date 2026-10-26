@@ -31,6 +31,7 @@ func mkPolicy(invs ...*stipulatorv1.PolicyInvocation) *stipulatorv1.TestPolicy {
 }
 
 func TestPolicyCanonicalFormAccepted(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-policy-record-location")
 	cases := []struct {
 		name   string
@@ -53,6 +54,7 @@ func TestPolicyCanonicalFormAccepted(t *testing.T) {
 }
 
 func TestPolicyNonCanonicalFormRefusedWhole(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-policy-record-location")
 	cases := []struct {
 		name    string
@@ -110,6 +112,7 @@ func TestPolicyNonCanonicalFormRefusedWhole(t *testing.T) {
 }
 
 func TestPolicyRecordParseRefusesMalformedWhole(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-policy-record-location")
 	valid := `invocations {
   name: "workspace-race"

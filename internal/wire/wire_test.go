@@ -205,6 +205,7 @@ func genCheckResult(rt *rapid.T) *stipulatorv1.CheckResult {
 // (StructuredContent) both decode — strictly — back to the same message,
 // so the two machine surfaces carry identical facts.
 func TestCheckSurfacesRenderEquivalentFacts(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-report-check-result", "REQ-mcp-tools")
 	rapid.Check(t, func(rt *rapid.T) {
 		res := genCheckResult(rt)
@@ -243,6 +244,7 @@ func TestCheckSurfacesRenderEquivalentFacts(t *testing.T) {
 // bytes: two renders of one message are identical, keys sorted, trailing
 // newline present — the property machine consumers pin.
 func TestCanonicalJSONIsByteDeterministic(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-report-check-result")
 	rapid.Check(t, func(rt *rapid.T) {
 		res := genCheckResult(rt)

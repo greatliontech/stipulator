@@ -13,6 +13,7 @@ import (
 // boundary second, a row carrying a boundary flag while the result
 // never raised it stays a visible red.
 func TestRedRowsIsTheOneLadder(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-gate-no-undeclared")
 	// The words and the red membership as literals — the pin never reads
 	// them from the ladder it pins.

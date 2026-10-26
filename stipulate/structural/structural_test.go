@@ -76,6 +76,7 @@ func importFixtureRules() map[string]ImportRule {
 
 // Deliberately not //gofresh:pure: this assertion reads the production import graph.
 func TestImportAllowlist(t *testing.T) {
+	t.Parallel()
 	const pattern = structuralMod + "/internal/importallowfixture/..."
 	t.Run("complete policy passes", func(t *testing.T) {
 		r := &recorder{}
@@ -157,6 +158,7 @@ func containsMessage(messages []string, want string) bool {
 // could serve while an audited package drifts; the witness re-runs
 // every gate.
 func TestNoImport(t *testing.T) {
+	t.Parallel()
 	t.Run("clean constraint passes", func(t *testing.T) {
 		r := &recorder{}
 		NoImport(r, mod+"/internal/canon", mod+"/internal/backends/...")
@@ -200,6 +202,7 @@ func TestNoImport(t *testing.T) {
 }
 
 func TestImplements(t *testing.T) {
+	t.Parallel()
 	r := &recorder{}
 	Implements[io.Reader](r, (*strings.Reader)(nil))
 	if len(r.errors)+len(r.fatals) != 0 {
@@ -223,6 +226,7 @@ func TestImplements(t *testing.T) {
 }
 
 func TestExportedData(t *testing.T) {
+	t.Parallel()
 	t.Run("exact exported shape passes", func(t *testing.T) {
 		r := &recorder{}
 		ExportedData[PublicData](r, FieldOf[string]("Name"), FieldOf[int]("Count"))
@@ -310,6 +314,7 @@ func TestExportedData(t *testing.T) {
 }
 
 func TestFunctionSignature(t *testing.T) {
+	t.Parallel()
 	fn := func(string) bool { return true }
 	t.Run("exact signature passes", func(t *testing.T) {
 		r := &recorder{}
@@ -351,6 +356,7 @@ func (PublicCodecData) MarshalJSON() ([]byte, error) { return nil, nil }
 func (*PublicCodecData) UnmarshalJSON([]byte) error  { return nil }
 
 func TestExportedDataWithMethods(t *testing.T) {
+	t.Parallel()
 	fields := []Field{
 		TaggedFieldOf[string]("Name", `json:"name"`),
 		FieldOf[int]("Size"),

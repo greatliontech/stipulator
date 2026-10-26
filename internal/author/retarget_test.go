@@ -14,6 +14,7 @@ import (
 // replacements, leaves content pins and everything else untouched, and
 // reports each old-to-new identity (REQ-change-retarget).
 func TestRetargetSymbolsRewritesAtBoundaryAllOrNothing(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-retarget")
 	fsys := testFS(map[string]string{
 		".stipulator/bindings/m.textproto": "" +
@@ -98,6 +99,7 @@ func TestRetargetSymbolsRewritesAtBoundaryAllOrNothing(t *testing.T) {
 // single-symbol rename repair rewrites exactly that binding and no
 // sibling sharing the prefix (REQ-change-retarget).
 func TestRetargetFullSymbolIsDegenerateBoundary(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-retarget")
 	fsys := testFS(map[string]string{
 		".stipulator/bindings/m.textproto": "" +
@@ -132,6 +134,7 @@ const clauseDoc = "# C\n\n**REQ-au-c** (behavior): It MUST support both operatio
 // verification's hygiene refuses it (REQ-change-retarget,
 // REQ-evidence-clause-claim).
 func TestRetargetJudgesCollisionsByClaimIdentity(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-retarget", "REQ-evidence-clause-claim")
 	resolver := map[string]verify.Backend{"go": fakeBackend{
 		"example.com/new.Claim": strings.Repeat("c", 64),

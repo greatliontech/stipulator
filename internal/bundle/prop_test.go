@@ -15,6 +15,7 @@ import (
 // export: byte-identical corpora and identifier sets yield identical
 // closures and byte-identical rendered documents on every run.
 func TestPropBundleDeterminism(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-core-determinism")
 	rapid.Check(t, func(rt *rapid.T) {
 		c := proptest.Gen(rt)

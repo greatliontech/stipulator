@@ -15,6 +15,7 @@ import (
 // reducing to nothing refuses — never the whole corpus
 // (REQ-check-preparation).
 func TestSplitIDsIsTheOneGrammar(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-claim-batch")
 	got, err := SplitIDLists([]string{"REQ-a, REQ-b", "REQ-c", ""})
 	if err != nil || !slices.Equal(got, []string{"REQ-a", "REQ-b", "REQ-c"}) {

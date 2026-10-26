@@ -26,6 +26,7 @@ func redRow(id string) *stipulatorv1.RequirementCoverage {
 // headings — bounded by construction while the full view carries
 // everything (REQ-mcp-response-contract, REQ-mcp-views-check-summary).
 func TestCheckViewSummaryBounds(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-response-contract", "REQ-mcp-views-check-summary")
 	res := &stipulatorv1.CheckResult{}
 	res.SetPassed(false)
@@ -111,6 +112,7 @@ func TestCheckViewSummaryBounds(t *testing.T) {
 // empty invocation list reads unhealthy exactly as the verdict judges
 // it, and the binding counts are verification's own axes.
 func TestCheckViewSummaryMatchesCanonicalJudgments(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-views-check-summary", "REQ-mcp-response-contract")
 	res := &stipulatorv1.CheckResult{}
 	res.SetPassed(false)
@@ -156,6 +158,7 @@ func TestCheckViewSummaryMatchesCanonicalJudgments(t *testing.T) {
 // counted remainder — per-test-distinct reasons can never rebuild the
 // per-test map one row at a time.
 func TestCheckViewBlockerRowsCapAndDeterminism(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-response-contract", "REQ-mcp-views-check-summary")
 	res := &stipulatorv1.CheckResult{}
 	reasons := map[string]string{}
@@ -201,6 +204,7 @@ func TestCheckViewBlockerRowsCapAndDeterminism(t *testing.T) {
 // never mutates the unscoped result, and never alters the verdict it
 // projects.
 func TestCheckViewScopeFiltersWholeReport(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-views-scope")
 	res := &stipulatorv1.CheckResult{}
 	res.SetPassed(false)
@@ -255,6 +259,7 @@ func TestCheckViewScopeFiltersWholeReport(t *testing.T) {
 // untruncated — bounded summary, lossless drill-down
 // (REQ-mcp-response-contract).
 func TestVerifySummaryOmitsFailureDiagnosticOutput(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-response-contract")
 	noise := strings.Repeat("compiler noise\n", 1000)
 	d := &stipulatorv1.FailureDiagnostic{}
@@ -307,6 +312,7 @@ func TestVerifySummaryOmitsFailureDiagnosticOutput(t *testing.T) {
 // contradicted — a resolved contradicted row leaves it
 // (REQ-gap-lifecycle).
 func TestCheckSummaryCountsContradictedGapsApart(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-gap-lifecycle", "REQ-report-check-result")
 	row := func(id string, state stipulatorv1.GapState, contradicted bool) *stipulatorv1.GapReport {
 		g := &stipulatorv1.GapReport{}
@@ -344,6 +350,7 @@ func TestCheckSummaryCountsContradictedGapsApart(t *testing.T) {
 // stated once by scope_partial, the rows riding the full view. Without
 // the partial flag the row marker folds nothing.
 func TestCheckSummaryMirrorsScopeAndFoldsScopeBlockedRows(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-check-verdict-scoped", "REQ-report-check-result")
 	blocked := &stipulatorv1.RequirementCoverage{}
 	blocked.SetId("REQ-blocked")
@@ -403,6 +410,7 @@ func TestCheckSummaryMirrorsScopeAndFoldsScopeBlockedRows(t *testing.T) {
 }
 
 func TestCheckSummaryFoldsPolicyBlockedRows(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-check-witness-selection")
 	blocked := &stipulatorv1.RequirementCoverage{}
 	blocked.SetId("REQ-blocked")
@@ -461,6 +469,7 @@ func TestCheckSummaryFoldsPolicyBlockedRows(t *testing.T) {
 // hide the degradation exactly where operators read
 // (REQ-check-policy-notices).
 func TestCheckSummaryCarriesPolicyNotices(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-check-policy-notices")
 	res := &stipulatorv1.CheckResult{}
 	res.SetPolicyNotices([]string{`invocation "tagged": toolchain-selection audit: the audited surface of go1.X moved in 1 keys off go1.Y: net — standard-library observation admissions are disabled`})

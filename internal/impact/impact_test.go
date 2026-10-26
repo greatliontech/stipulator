@@ -95,6 +95,7 @@ var fixture = map[string]string{
 // test variant folds onto its production package) — while the island
 // witness stays out: reach is the import closure, not the module.
 func TestPreviewJoinsBindingsAndImportReach(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("spawns a toolchain child (go list, the resolver) — measured heavy under the fast tier")
 	}
@@ -132,6 +133,7 @@ func TestPreviewJoinsBindingsAndImportReach(t *testing.T) {
 // embed-coupling reach). Bindings on backends the preview does not
 // implement are counted as unconsulted, never silently dropped.
 func TestPreviewReachesEmbedCouplingsAndCountsUnconsulted(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("spawns a toolchain child (go list, the resolver) — measured heavy under the fast tier")
 	}
@@ -175,6 +177,7 @@ func TestPreviewReachesEmbedCouplingsAndCountsUnconsulted(t *testing.T) {
 // tree alone, where nothing remains to resolve — and only the change
 // set and the advisory footer say anything (REQ-change-impact).
 func TestPreviewDeletionAsymmetry(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("spawns a toolchain child (go list, the resolver) — measured heavy under the fast tier")
 	}
@@ -225,6 +228,7 @@ func TestPreviewDeletionAsymmetry(t *testing.T) {
 // The delta's orientation is HEAD-to-worktree — a requirement the edit
 // introduces reads as added, never removed.
 func TestPreviewNamesSpecDeltaWithoutVerdict(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("spawns a toolchain child (go list, the resolver) — measured heavy under the fast tier")
 	}
@@ -258,6 +262,7 @@ func TestPreviewNamesSpecDeltaWithoutVerdict(t *testing.T) {
 // requires nothing here, and the spec delta previews without a
 // toolchain in sight (REQ-change-impact's loading bound).
 func TestPreviewSpecOnlyCorpusNeedsNoGoTree(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-impact")
 	dir := repoWith(t, map[string]string{
 		".stipulator/manifest.textproto": "include: \"specs/**/*.md\"\n",
@@ -281,6 +286,7 @@ func TestPreviewSpecOnlyCorpusNeedsNoGoTree(t *testing.T) {
 // makes any attempted package load fail before its first go list, so
 // this passing proves no load ran.
 func TestPreviewCleanGoBoundTreeSkipsGoLoad(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-impact")
 	dir := repoWith(t, map[string]string{
 		".stipulator/manifest.textproto": "include: \"specs/**/*.md\"\n",
@@ -301,6 +307,7 @@ func TestPreviewCleanGoBoundTreeSkipsGoLoad(t *testing.T) {
 // A clean tree previews empty everywhere; a tree outside any repository
 // reports that plainly instead of guessing (REQ-change-impact).
 func TestPreviewCleanTreeAndNonRepo(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-impact")
 	dir := repoWith(t, fixture, nil)
 	r, err := Preview(context.Background(), dir)
@@ -321,6 +328,7 @@ func TestPreviewCleanTreeAndNonRepo(t *testing.T) {
 // historical corpus a remedy would misdirect against — quotes its
 // faults alone (REQ-change-impact, REQ-change-remediation).
 func TestCompileCleanCarriesRemediesOnlyForTheLiveTree(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-remediation")
 	mid := fstest.MapFS{
 		".stipulator/manifest.textproto": &fstest.MapFile{Data: []byte("include: \"specs/**/*.md\"\n")},

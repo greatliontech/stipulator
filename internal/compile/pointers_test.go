@@ -14,6 +14,7 @@ import (
 // requirement without the phrase names none; the phrase inside a
 // sentence is prose (REQ-change-enforcement-pointers).
 func TestEnforcementPointersAreTheSentencesCodeSpans(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-enforcement-pointers")
 	spec, diags := compileFiles(t, map[string]string{
 		"specs/a.md": "# T\n\n**REQ-p-a** (behavior): It MUST x. Enforced by `TestA`, `pkg.Qualified`, `TestB`, and the CLI arm of `TestC`. Later text names `NotAPointer`.\n\n**REQ-p-b** (behavior): It MUST y; see `TestD`, which is Enforced by `TestG` in prose.\n\n**REQ-p-c** (behavior): It MUST z. Enforced by `TestE` and\n`TestF`.\n",

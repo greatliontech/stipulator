@@ -14,6 +14,7 @@ import (
 // pointer in these specs resolves to a tests- or proves-role binding of
 // its requirement in this store (REQ-change-enforcement-pointers).
 func TestOwnCorpusPointersResolve(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-enforcement-pointers")
 	fsys := os.DirFS("../..")
 	spec, diags, err := compile.Compile(fsys)

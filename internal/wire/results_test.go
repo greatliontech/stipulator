@@ -17,6 +17,7 @@ import (
 // message, for the write-shaped, compile, list, chain, bundle, and
 // export results as for the reports (REQ-mcp-tools).
 func TestEveryResultRendersThroughTheOneProjection(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-tools")
 	compile := &stipulatorv1.CompileResult{}
 	compile.SetDiagnostics([]string{"a.md:3: unknown term"})
@@ -88,6 +89,7 @@ func TestEveryResultRendersThroughTheOneProjection(t *testing.T) {
 // The gap list's write fields are the write result's, field for field:
 // a write field the list lacks would silently never reach a listing.
 func TestGapListCarriesEveryWriteField(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-tools-messages")
 	write := (&stipulatorv1.WriteResult{}).ProtoReflect().Descriptor().Fields()
 	list := (&stipulatorv1.GapListResult{}).ProtoReflect().Descriptor().Fields()
@@ -104,6 +106,7 @@ func TestGapListCarriesEveryWriteField(t *testing.T) {
 // determinism alone: the characters an HTML-minded encoder would
 // escape stay as ProtoJSON wrote them.
 func TestCanonicalJSONKeepsProtoJSONsCharacters(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-report-check-result")
 	m := &stipulatorv1.WriteResult{}
 	m.SetNotes([]string{"run `stipulator retarget --from <old> --to <new>` & re-pin"})
@@ -119,6 +122,7 @@ func TestCanonicalJSONKeepsProtoJSONsCharacters(t *testing.T) {
 // The canonical form's shape is literal: sorted keys, two-space
 // indentation, one trailing newline (REQ-report-check-result).
 func TestCanonicalJSONShapeIsLiteral(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-report-check-result")
 	m := &stipulatorv1.WriteResult{}
 	m.SetNotes([]string{"n"})

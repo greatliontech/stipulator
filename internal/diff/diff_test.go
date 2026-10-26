@@ -25,6 +25,7 @@ func compileFiles(t *testing.T, files map[string]string) *stipulatorv1.Spec {
 }
 
 func TestDiff(t *testing.T) {
+	t.Parallel()
 	base := compileFiles(t, map[string]string{
 		"specs/a.md": "# T\n\n**widget** (term): a gadget.\n\n" +
 			"**REQ-d-a** (behavior): Using the widget it MUST x.\n\n" +

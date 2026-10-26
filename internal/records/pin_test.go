@@ -26,6 +26,7 @@ func storeWith(t *testing.T, bindings string) *Store {
 // consent trail, rewritten only through the named editorial path, so
 // staleness cannot be laundered.
 func TestPinNeverRewritesDifferingContent(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-pin-backfill")
 	stale := strings.Repeat("0", 64)
 	current := strings.Repeat("1", 64)
@@ -50,6 +51,7 @@ func TestPinNeverRewritesDifferingContent(t *testing.T) {
 // bound implementation moved — while a backfilled unset shape pin
 // cleared nothing and stays unreported.
 func TestPinReportsRewrittenShapePins(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-pin-backfill")
 	oldShape := strings.Repeat("a", 64)
 	newShape := strings.Repeat("b", 64)
@@ -75,6 +77,7 @@ func TestPinReportsRewrittenShapePins(t *testing.T) {
 // unset pins and other requirements' mismatches are not this answer's
 // business.
 func TestShapeMismatchedReportsOnlyNamedDiffering(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-pin-backfill")
 	oldShape := strings.Repeat("a", 64)
 	newShape := strings.Repeat("b", 64)
@@ -95,6 +98,7 @@ func TestShapeMismatchedReportsOnlyNamedDiffering(t *testing.T) {
 // one is preserved and its requirement named, and a current one leaves
 // the file untouched.
 func TestPinBackfillsGapPins(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-gap-consent", "REQ-pin-backfill")
 	current := strings.Repeat("a", 64)
 	drifted := strings.Repeat("0", 64)
@@ -179,6 +183,7 @@ func TestPinBackfillsGapPins(t *testing.T) {
 // absent) source pin stays preserved. Gaps and attestations ride the
 // same pass (REQ-evidence-consent-current, REQ-pin-backfill).
 func TestPinRehashesByteIdenticalText(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-consent-current", "REQ-pin-backfill")
 	old := strings.Repeat("0", 64)
 	current := strings.Repeat("1", 64)
@@ -264,6 +269,7 @@ func TestPinRehashesByteIdenticalText(t *testing.T) {
 // pin never current, an unset source pin never a rehash
 // (REQ-evidence-consent-current).
 func TestJudgeConsent(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-consent-current")
 	for _, c := range []struct {
 		content, source, hash, digest string

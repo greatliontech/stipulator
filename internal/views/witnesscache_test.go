@@ -31,6 +31,7 @@ func loadAccount(rows int) *pb.WitnessCacheLoadAccount {
 }
 
 func TestWitnessCacheSummaryConservesObservationsAndOwnership(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-witness-cache-refusals", "REQ-mcp-views-check-summary")
 	for n := 0; n <= 25; n++ {
 		a := loadAccount(n)
@@ -61,6 +62,7 @@ func TestWitnessCacheSummaryConservesObservationsAndOwnership(t *testing.T) {
 }
 
 func TestWitnessCacheAccountSurvivesEmptyScopesWithoutChangingVerdicts(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-witness-cache-refusals")
 	a := loadAccount(25)
 	store := &records.Store{}

@@ -249,6 +249,15 @@ func TestGoImportForIdentRules(t *testing.T) {
 	}
 }
 
+func depbrokenBackend(t *testing.T) *Backend {
+	t.Helper()
+	b, err := newContext(context.Background(), "testdata/depbroken", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
 // TestGoLoadAttributionNoCommittedPinArm pins the arm for an import no
 // committed pin speaks for: the state is still classified — the import
 // named, the absence of a pin stated — never a guessed directive.
@@ -258,10 +267,7 @@ func TestGoImportForIdentRules(t *testing.T) {
 // already pins, asserted pure under REQ-purity-responsibility.
 func TestGoLoadAttributionNoCommittedPinArm(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
-	b, err := newContext(context.Background(), "testdata/depbroken", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	b := depbrokenBackend(t)
 	pkg := &packages.Package{
 		PkgPath: "example.com/depbroken",
 		Errors:  []packages.Error{{Msg: "no required module provides package example.com/unpinned/x"}},
@@ -281,10 +287,7 @@ func TestGoLoadAttributionNoCommittedPinArm(t *testing.T) {
 // already pins, asserted pure under REQ-purity-responsibility.
 func TestGoLoadAttributionFailsClosedOnUnidentifiedModule(t *testing.T) {
 	stipulate.Covers(t, "REQ-go-load-attribution")
-	b, err := newContext(context.Background(), "testdata/depbroken", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	b := depbrokenBackend(t)
 	pkg := &packages.Package{
 		PkgPath: "example.com/foreign/pkg",
 		Errors:  []packages.Error{{Msg: "no required module provides package example.com/unpinned/x"}},

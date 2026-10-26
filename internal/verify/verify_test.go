@@ -55,6 +55,7 @@ func binding(id, hash string) string {
 }
 
 func TestConsistency(t *testing.T) {
+	t.Parallel()
 	t.Run("dangling binding", func(t *testing.T) {
 		rep, _ := run(t, map[string]string{
 			".stipulator/bindings/x.textproto": binding("REQ-v-ghost", ""),
@@ -119,6 +120,7 @@ func TestConsistency(t *testing.T) {
 }
 
 func TestPin(t *testing.T) {
+	t.Parallel()
 	header := "# proto-file: proto/stipulator/v1/records.proto\n# proto-message: stipulator.v1.BindingSet\n"
 	rep, store := run(t, map[string]string{
 		".stipulator/bindings/x.textproto": header + binding("REQ-v-a", "") + binding("REQ-v-ghost", ""),
@@ -171,6 +173,7 @@ func TestPin(t *testing.T) {
 }
 
 func TestPinRefusesCommentedFile(t *testing.T) {
+	t.Parallel()
 	header := "# proto-file: proto/stipulator/v1/records.proto\n"
 	_, store := run(t, map[string]string{
 		".stipulator/bindings/x.textproto": header + binding("REQ-v-a", "") +
@@ -186,6 +189,7 @@ func TestPinRefusesCommentedFile(t *testing.T) {
 }
 
 func TestRecordHygiene(t *testing.T) {
+	t.Parallel()
 	t.Run("duplicate binding flagged", func(t *testing.T) {
 		rep, _ := run(t, map[string]string{
 			".stipulator/bindings/x.textproto": binding("REQ-v-a", "") + binding("REQ-v-a", ""),
@@ -254,6 +258,7 @@ func (f fakeBackend) Resolve(symbol string) (Resolution, string, error) {
 }
 
 func TestBackendResolution(t *testing.T) {
+	t.Parallel()
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
 		"specs/a.md":                     {Data: []byte(goodDoc)},
@@ -331,6 +336,7 @@ func TestBackendResolution(t *testing.T) {
 }
 
 func TestShapeMismatchIsDataNotProblem(t *testing.T) {
+	t.Parallel()
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
 		"specs/a.md":                     {Data: []byte(goodDoc)},
@@ -358,6 +364,7 @@ func TestShapeMismatchIsDataNotProblem(t *testing.T) {
 }
 
 func TestWitnessCorrelation(t *testing.T) {
+	t.Parallel()
 	testsBinding := strings.ReplaceAll(
 		strings.ReplaceAll(binding("REQ-v-a", ""), "example.com/p.F", "example.com/p.TestA"),
 		"BINDING_ROLE_IMPLEMENTS", "BINDING_ROLE_TESTS")
@@ -455,6 +462,7 @@ func (e errFS) ReadFile(name string) ([]byte, error) {
 }
 
 func TestUnreadableTombstonesPropagates(t *testing.T) {
+	t.Parallel()
 	base := fstest.MapFS{
 		".stipulator/tombstones.textproto": {Data: []byte("retired: \"REQ-old\"\n")},
 	}
@@ -469,6 +477,7 @@ func TestUnreadableTombstonesPropagates(t *testing.T) {
 // TestSelfVerify checks this repository's own records against its own
 // corpus: no dangling identities, no malformed records.
 func TestSelfVerify(t *testing.T) {
+	t.Parallel()
 	fsys := os.DirFS("../..")
 	spec, diags, err := compile.Compile(fsys)
 	if err != nil || len(diags) > 0 {
@@ -491,6 +500,7 @@ func TestSelfVerify(t *testing.T) {
 // the one-judgment rule: a requirement cannot be both gapped and
 // attested, and duplicate attestations across files are problems.
 func TestAttestationRecordHygiene(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-attestation")
 	rep, _ := run(t, map[string]string{
 		".stipulator/gaps/a.textproto":          "requirement_id: \"REQ-v-a\"\nreason: \"deferred\"\nlands { manual { condition: \"x\" } }\n",
@@ -515,6 +525,7 @@ func TestAttestationRecordHygiene(t *testing.T) {
 // to the enum but not the wire mirror (analyzer proofs shipped as
 // UNSPECIFIED exactly that way).
 func TestWireWitnessClassMirrorsClassifier(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-report-messages")
 	for wc := ExampleWitness; wc <= AnalyzerProof; wc++ {
 		if _, ok := classProto[wc]; !ok {
@@ -557,6 +568,7 @@ func (b sigBackend) WitnessClass(sym string) WitnessClass { return b.classes[sym
 // witness green is a rearchitecture; a red witness whose contract text
 // also moved carries a spec delta and is neither.
 func TestChangeSignatures(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-gate-change-signature")
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
@@ -679,6 +691,7 @@ func packageAbortDiag(pkg, out string) *stipulatorv1.FailureDiagnostic {
 // per-subject reasons both faces share (REQ-core-determinism): most
 // frequent first, ties on the text.
 func TestReasonHistogramOrdersByCountThenText(t *testing.T) {
+	t.Parallel()
 	got := ReasonHistogram(map[string]string{"a.T1": "moved", "a.T2": "moved", "a.T3": "beta", "a.T4": "alpha", "a.T5": "alpha"})
 	want := []ReasonCount{{"alpha", 2}, {"moved", 2}, {"beta", 1}}
 	if !reflect.DeepEqual(got, want) {
@@ -695,6 +708,7 @@ func TestReasonHistogramOrdersByCountThenText(t *testing.T) {
 // duplicate key; a resolving claim carries its clause onto the row
 // (REQ-evidence-clause-claim).
 func TestClauseClaimHygiene(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-clause-claim")
 	clauseDoc := goodDoc + "\n**REQ-v-c** (behavior): It MUST hold:\n\n- **alpha** first\n- second\n"
 	clauseBinding := func(clause string) string {
@@ -805,6 +819,7 @@ func TestClauseClaimHygiene(t *testing.T) {
 // none, leaves the differing content pin stale
 // (REQ-evidence-consent-current).
 func TestConsentHoldsByRehash(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-consent-current")
 	spec0, diags, err := compile.Compile(fstest.MapFS{
 		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
@@ -863,6 +878,7 @@ func TestConsentHoldsByRehash(t *testing.T) {
 // zero outcome is not a test that never ran, so the roll-up an operator
 // reads after --no-test says nothing false about witnesses.
 func TestUnwitnessedReportCountsNoOutcomes(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-witness")
 	rep, _ := run(t, map[string]string{
 		".stipulator/bindings/x.textproto": "bindings {\n  requirement_id: \"REQ-v-a\"\n  backend: \"go\"\n  symbol: \"example.com/p.TestA\"\n  role: BINDING_ROLE_TESTS\n}\n",
@@ -876,6 +892,7 @@ func TestUnwitnessedReportCountsNoOutcomes(t *testing.T) {
 // unverified — never resolved with a shape verdict it did not compute —
 // and the row counts among the unverified, as a resolve fault does.
 func TestServedUnverifiedStaysUnverified(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-promotion")
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto":   {Data: []byte("include: \"specs/**/*.md\"\n")},
@@ -906,6 +923,7 @@ func (unverifiedBackend) Resolve(string) (Resolution, string, error) { return Un
 // no-outcome carries the cause, and nothing else does
 // (REQ-check-witness-selection).
 func TestRunProjectsTheNoOutcomeCauseOntoTheRow(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-check-witness-selection")
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},

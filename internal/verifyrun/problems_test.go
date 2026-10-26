@@ -12,6 +12,7 @@ import (
 // clean record, the typed error carrying every problem otherwise
 // (REQ-check-preparation).
 func TestRefuseProblemsIsTheOneRefusal(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-check-preparation")
 	if err := RefuseProblems(nil); err != nil {
 		t.Fatalf("clean record refused: %v", err)

@@ -46,6 +46,7 @@ func namesReader(text, surface string) bool {
 // embedded and parsed in-process: the test's inputs are the source
 // closure the fingerprint already pins (REQ-purity-responsibility).
 func TestGuidanceNamesTheReaderOfEverySingleSurfaceElement(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-surfaces")
 	doc, err := GuidanceDocument()
 	if err != nil {

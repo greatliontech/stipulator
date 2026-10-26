@@ -49,6 +49,7 @@ func (b *accountBackend) Notices() []string {
 // the first execution-phase reading is the run's, with the pass's
 // backends already released (REQ-evidence-resolution-freshness-quiesce).
 func TestPassEmitsThePhasesItOwns(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-resolution-freshness-quiesce")
 	prepared := &check.Prepared{Spec: &stipulatorv1.Spec{}, Store: &records.Store{}}
 	var phases []stipulatorv1.Phase
@@ -80,6 +81,7 @@ func TestPassEmitsThePhasesItOwns(t *testing.T) {
 // alike — so a publish refused or degraded is never a fault nobody sees
 // (REQ-evidence-resolution-freshness-account).
 func TestPassesCarryTheServingAccountReadAfterTheClose(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-resolution-freshness-account")
 	prepared := &check.Prepared{Spec: &stipulatorv1.Spec{}, Store: &records.Store{}}
 	for _, form := range []string{"run", "scoped"} {

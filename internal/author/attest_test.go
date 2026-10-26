@@ -21,6 +21,7 @@ func attestableFS(files map[string]string) fstest.MapFS {
 // TestAttestRequirement pins the evidence-attestation verb: reasoned,
 // corpus-validated, content-pinned at write, one per requirement.
 func TestAttestRequirement(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-attestation")
 	fsys := attestableFS(nil)
 
@@ -96,6 +97,7 @@ func TestAttestRequirement(t *testing.T) {
 // hand-edited multi-attestation file, records preceding AND following the
 // judgment survive a replace untouched.
 func TestAttestRequirementMultiRecordFile(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-attestation")
 	fsys := attestableFS(map[string]string{
 		".stipulator/attestations/combo.textproto": "attestations {\n  requirement_id: \"REQ-au-b\"\n  reason: \"before\"\n}\nattestations {\n  requirement_id: \"REQ-au-s\"\n  reason: \"old\"\n}\n",

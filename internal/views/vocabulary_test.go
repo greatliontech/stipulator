@@ -14,6 +14,7 @@ import (
 // renderer refuses with the same message, so a surface validating at
 // parse can never disagree with the view it later renders.
 func TestViewVocabulariesAreOneSource(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-check-preparation")
 	cov := &coverage.Report{}
 	vr := &verify.Report{}

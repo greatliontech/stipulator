@@ -12,5 +12,6 @@ import (
 // (github.com/greatliontech/gofresh/shortgates states the rules and pins
 // its own arms).
 func TestShortGatesLiveInTestBodiesAndSkip(t *testing.T) {
+	t.Parallel()
 	shortgates.Pin(t, ".")
 }

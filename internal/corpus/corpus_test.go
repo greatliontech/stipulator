@@ -19,6 +19,7 @@ func manifest(includes ...string) *stipulatorv1.Manifest {
 }
 
 func TestLoadManifest(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-profile-manifest")
 	t.Run("missing manifest is an error", func(t *testing.T) {
 		_, err := LoadManifest(fstest.MapFS{})
@@ -66,6 +67,7 @@ func TestLoadManifest(t *testing.T) {
 }
 
 func TestEnumerate(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-profile-enumeration")
 	md := &fstest.MapFile{Data: []byte("x")}
 	fsys := fstest.MapFS{
@@ -184,6 +186,7 @@ func TestEnumerate(t *testing.T) {
 }
 
 func TestMatchGlob(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		pattern, name string
 		want          bool
@@ -215,6 +218,7 @@ func TestMatchGlob(t *testing.T) {
 // TestValidateGlobErrors pins eager validation independently of matching:
 // malformed patterns are refused before any path is considered.
 func TestValidateGlobErrors(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-profile-glob")
 	for _, bad := range []string{"", "a//b", "a/[x/b", "[/b"} {
 		if err := validateGlob(bad); err == nil {
@@ -231,6 +235,7 @@ func TestValidateGlobErrors(t *testing.T) {
 // TestFindRoot pins root discovery: the root itself, a nested working
 // directory, nearest-wins across nested corpora, and the teaching error.
 func TestFindRoot(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-profile-root")
 	outer := t.TempDir()
 	must := func(err error) {
@@ -277,6 +282,7 @@ func TestFindRoot(t *testing.T) {
 // name instead of silently standing in for the default include set
 // (REQ-record-cas).
 func TestLoadManifestRefusesAnEmptyFile(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-record-cas")
 	if _, err := LoadManifest(fstest.MapFS{ManifestPath: {Data: nil}}); err == nil || !strings.Contains(err.Error(), ManifestPath+" is empty") {
 		t.Fatalf("empty manifest loaded: %v; want the reservation residue named", err)

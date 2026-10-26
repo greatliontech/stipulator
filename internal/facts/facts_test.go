@@ -88,6 +88,7 @@ func backends() map[string]verify.Backend {
 // TestSeedsFromNeighborhood pins the greenfield story: REQ-f-new has no
 // bindings, but seeding it reaches its dependency's bindings.
 func TestSeedsFromNeighborhood(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-context-seeds")
 	spec, store := fixture(t)
 	seeds, err := Seeds(spec, store, []string{"REQ-f-new"})
@@ -112,6 +113,7 @@ func TestSeedsFromNeighborhood(t *testing.T) {
 }
 
 func TestContextSlices(t *testing.T) {
+	t.Parallel()
 	spec, store := fixture(t)
 	seeds, decls, _, err := Context(spec, store, backends(), []string{"REQ-f-a"})
 	if err != nil {
@@ -131,6 +133,7 @@ func TestContextSlices(t *testing.T) {
 // component (intersecting closures), lone another; their packages differ,
 // so no overlap is reported.
 func TestPartitions(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-context-partitions")
 	spec, store := fixture(t)
 	rep, err := Partitions(spec, store, backends(), []string{"REQ-f-a", "REQ-f-b", "REQ-f-new", "REQ-f-lone"})
@@ -181,6 +184,7 @@ func TestPartitions(t *testing.T) {
 // remainder counted — a silent truncation would read as "no more
 // overlaps" (REQ-mcp-response-contract).
 func TestPartitionProtoCapsOverlaps(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-response-contract")
 	r := &Report{}
 	for i := 0; i < OverlapCap+9; i++ {
@@ -239,6 +243,7 @@ func (f floorFake) SliceFloor(symbols []string, declaredPkgs []string) ([]verify
 // split it; external rows stay out of the in-module partition
 // (REQ-go-slice's consumer rule).
 func TestPartitionsJudgePackagesFromTheFloor(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-go-slice")
 	spec, store := fixture(t)
 	rep, err := Partitions(spec, store, map[string]verify.Backend{"go": floorFake{slicer}}, []string{"REQ-f-a", "REQ-f-lone"})

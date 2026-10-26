@@ -53,6 +53,7 @@ func bindReq(id, symbol string) BindRequest {
 }
 
 func TestBind(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-record-verbs")
 
 	t.Run("authors a fully pinned binding into the derived file", func(t *testing.T) {
@@ -155,6 +156,7 @@ func TestBind(t *testing.T) {
 }
 
 func TestBindFileConfinement(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-record-verbs")
 	for _, escape := range []string{"specs/a.md", "../evil.textproto", ".stipulator/bindings/../../x.textproto", ".stipulator/bindings/x.md"} {
 		req := bindReq("REQ-au-a", "example.com/p.F")
@@ -171,6 +173,7 @@ func TestBindFileConfinement(t *testing.T) {
 }
 
 func TestUnbind(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-record-verbs")
 	fsys := testFS(nil)
 	up, _ := bind(fsys, backends, bindReq("REQ-au-a", "example.com/p.F"))
@@ -194,6 +197,7 @@ func TestUnbind(t *testing.T) {
 }
 
 func TestGap(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-gap-verb")
 	mkGap := func(id, reason string, lands *stipulatorv1.LandingCondition) *stipulatorv1.Gap {
 		g := &stipulatorv1.Gap{}
@@ -307,6 +311,7 @@ func TestGap(t *testing.T) {
 var _ = records.GapsDir
 
 func TestParseRoleAndConditions(t *testing.T) {
+	t.Parallel()
 	if _, err := ParseRole("implments"); err == nil {
 		t.Fatal("typo'd role accepted — mass-removal hazard")
 	}
@@ -323,6 +328,7 @@ func TestParseRoleAndConditions(t *testing.T) {
 }
 
 func TestGapRefusesForeignPathCollision(t *testing.T) {
+	t.Parallel()
 	// A hand-authored gap for another requirement legally sitting at this
 	// requirement's canonical path must never be overwritten.
 	fsys := testFS(map[string]string{
@@ -340,6 +346,7 @@ func TestGapRefusesForeignPathCollision(t *testing.T) {
 }
 
 func TestAppendPreservesIndentedHeaderComment(t *testing.T) {
+	t.Parallel()
 	raw := "# header\n  # indented note, still header\n\nbindings {\n  requirement_id: \"REQ-au-b\"\n  backend: \"go\"\n  symbol: \"example.com/p.F\"\n  role: BINDING_ROLE_TESTS\n}\n"
 	fsys := testFS(map[string]string{".stipulator/bindings/au.textproto": raw})
 	req := bindReq("REQ-au-a", "example.com/p.F")
@@ -356,6 +363,7 @@ func TestAppendPreservesIndentedHeaderComment(t *testing.T) {
 // TestInit pins first-run bootstrap: a fresh tree scaffolds the manifest
 // with the default include; an initialized tree refuses.
 func TestInit(t *testing.T) {
+	t.Parallel()
 	up, err := Init(fstest.MapFS{})
 	if err != nil {
 		t.Fatal(err)
@@ -375,6 +383,7 @@ func TestInit(t *testing.T) {
 // TestGapsBulk pins bulk declaration: one record per requirement, shared
 // reason and landing condition, all-or-nothing validation.
 func TestGapsBulk(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-gap-verb")
 	fsys := testFS(nil)
 	fsys["specs/a.md"] = &fstest.MapFile{Data: []byte(
@@ -410,6 +419,7 @@ func TestGapsBulk(t *testing.T) {
 // and a rescoped set is surfaced exactly as a retargeted landing
 // condition is (REQ-gap-verb, REQ-gap-record).
 func TestGapExcusesValidatedAndRescopeSurfaced(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-gap-verb", "REQ-gap-record")
 	fsys := testFS(nil)
 	lc, err := NewLandingCondition("", "", "later", false, false)
@@ -464,6 +474,7 @@ func TestGapExcusesValidatedAndRescopeSurfaced(t *testing.T) {
 // TestPruneResolvedGaps pins the fmt arm of gap hygiene: resolved gaps
 // delete, open ones stay.
 func TestPruneResolvedGaps(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-gap-resolved-pruned")
 	fsys := testFS(map[string]string{
 		".stipulator/gaps/a.textproto": "requirement_id: \"REQ-au-a\"\nreason: \"r\"\nlands { manual { condition: \"x\" } }\n",
@@ -501,6 +512,7 @@ func (fakeSyntaxVerdict) Vacuous(string) (bool, error) { return true, nil }
 // successful resolution authors the claim, while execution decides whether
 // the bound test produces evidence.
 func TestBindDoesNotInferTestOutcomeFromSyntax(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-record-verbs", "REQ-evidence-promotion")
 	fsys := testFS(nil)
 	req := bindReq("REQ-au-a", "example.com/p.F")
@@ -514,6 +526,7 @@ func TestBindDoesNotInferTestOutcomeFromSyntax(t *testing.T) {
 // TestProvesDischarge pins the loud-failure contract: a proves claim the
 // backend cannot discharge is refused at write time, never recorded.
 func TestProvesDischarge(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-proves-discharge")
 	fsys := testFS(nil)
 	req := bindReq("REQ-au-a", "example.com/p.F")
@@ -548,6 +561,7 @@ func TestProvesDischarge(t *testing.T) {
 // offers, and a claim that differs only in its clause is its own claim
 // (REQ-evidence-clause-claim, REQ-evidence-record-verbs).
 func TestBindClauseClaims(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-clause-claim")
 	clauseDoc := doc + "\n**REQ-au-c** (behavior): It MUST hold:\n\n- **alpha** first\n- second\n"
 	fsys := testFS(map[string]string{"specs/a.md": clauseDoc})

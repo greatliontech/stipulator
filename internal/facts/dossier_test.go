@@ -7,6 +7,7 @@ import (
 )
 
 func TestRetiredDossierWireContract(t *testing.T) {
+	t.Parallel()
 	dossier := (&stipulatorv1.Dossier{}).ProtoReflect().Descriptor()
 	if !dossier.ReservedRanges().Has(6) || !dossier.ReservedNames().Has("hardening") {
 		t.Fatal("Dossier does not reserve retired hardening field 6")

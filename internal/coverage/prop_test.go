@@ -45,6 +45,7 @@ func pipeline(rt *rapid.T, files, extra map[string]string, backends map[string]v
 // byte-identical inputs produce identical compile, verify, and coverage
 // outputs on every run.
 func TestPropPipelineDeterminism(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-core-determinism")
 	rapid.Check(t, func(rt *rapid.T) {
 		c := proptest.Gen(rt)
@@ -96,6 +97,7 @@ func TestPropPipelineDeterminism(t *testing.T) {
 // record claims, and files outside the corpus and record stores — where
 // any persisted result would live — never influence verification.
 func TestPropEvidenceOnlyFromCurrentRun(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-promotion", "REQ-core-claims-untrusted")
 	rapid.Check(t, func(rt *rapid.T) {
 		// MUST-only requirements: every generated clause demands

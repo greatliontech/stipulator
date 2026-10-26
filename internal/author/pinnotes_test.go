@@ -11,6 +11,7 @@ import (
 // for the requirements a blanket pin left awaiting it — as literals,
 // never read from the composers under test.
 func TestPinNotesNameTheirRemedies(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-remediation")
 	if got := ShapeMovedNote([]string{"example.com/p.F", "example.com/p.G"}); got != "shape of example.com/p.F, example.com/p.G moved — the ids form re-consents clause text only: blanket stipulator pin re-pins shapes" {
 		t.Fatalf("shape note = %q", got)

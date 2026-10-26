@@ -36,6 +36,7 @@ func disposeFS(t *testing.T, oldDoc, newDoc string, extra map[string]string) fst
 }
 
 func TestEditorial(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-editorial")
 	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST x.\n\n**REQ-au-b** (behavior): It MUST y.\n"
 	newDoc := "# T\n\n**REQ-au-a** (behavior): It MUST x, reworded.\n\n**REQ-au-b** (behavior): It MUST y.\n"
@@ -95,6 +96,7 @@ func TestEditorial(t *testing.T) {
 }
 
 func TestRetire(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-retire")
 	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST x.\n\n**REQ-au-b** (behavior): It MUST y.\n"
 	newDoc := "# T\n\n**REQ-au-b** (behavior): It MUST y.\n" // a removed
@@ -141,6 +143,7 @@ func TestRetire(t *testing.T) {
 }
 
 func TestSupersede(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-split-merge", "REQ-change-transient")
 	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST x.\n\n**REQ-au-b** (behavior): It MUST y.\n"
 	split := "# T\n\n**REQ-au-b** (behavior): It MUST y.\n\n" +
@@ -205,6 +208,7 @@ func TestSupersede(t *testing.T) {
 // consent to a dangling claim is never recorded
 // (REQ-evidence-clause-claim, REQ-change-editorial).
 func TestEditorialNamesTheClauseEachClaimNowDenotes(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-clause-claim")
 	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST hold:\n\n- **alpha** first\n- second\n\n**REQ-au-b** (behavior): It MUST y.\n"
 	// The edit inserts an item above the second: ordinal 2 now denotes
@@ -266,6 +270,7 @@ func TestEditorialNamesTheClauseEachClaimNowDenotes(t *testing.T) {
 // bindings according to the manifest's binding_layout
 // (REQ-change-split-merge, REQ-evidence-clause-claim).
 func TestSupersedeCarriesClausesAndRespectsLayout(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-split-merge", "REQ-evidence-clause-claim")
 	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST hold:\n\n- **alpha** first\n- second\n"
 	succDoc := "# T\n\n**REQ-au-a1** (behavior, supersedes REQ-au-a): It MUST hold:\n\n- **alpha** first\n- second\n"
@@ -332,6 +337,7 @@ func TestSupersedeCarriesClausesAndRespectsLayout(t *testing.T) {
 // consent to for that record (REQ-evidence-consent-current,
 // REQ-change-editorial).
 func TestAuthoringStampsTheSourcePinAndEditorialNamesRehashes(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-evidence-consent-current")
 	fsys := attestableFS(nil)
 	spec, err := compileClean(fsys)
@@ -452,6 +458,7 @@ func TestAuthoringStampsTheSourcePinAndEditorialNamesRehashes(t *testing.T) {
 // holding is an attestation's — a judgment the editorial re-pin never
 // rewrites (REQ-pin-backfill).
 func TestEditorialNoOpNamesItsReason(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-pin-backfill")
 	fsys := attestableFS(nil)
 	_, _, err := Editorial(fsys, "REQ-au-b")
@@ -506,6 +513,7 @@ func TestEditorialNoOpNamesItsReason(t *testing.T) {
 // binding; a source no record names needs force, the typo guard
 // (REQ-change-split-merge).
 func TestSupersedeConsumesTheMidDispositionCorpus(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-split-merge")
 	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST x.\n\n**REQ-au-b** (behavior): It MUST y.\n"
 	rewritten := "# T\n\n**REQ-au-b** (behavior): It MUST y.\n\n**REQ-au-n** (behavior, supersedes REQ-au-a): It MUST x, rewritten.\n"
@@ -578,6 +586,7 @@ func TestSupersedeConsumesTheMidDispositionCorpus(t *testing.T) {
 // successor that does not declare its source; a source no named
 // successor declares refuses naming it (REQ-change-split-merge).
 func TestSupersedeFollowsTheDeclaredEdges(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-split-merge")
 	oldDoc := "# T\n\n**REQ-au-a** (behavior): It MUST a.\n\n**REQ-au-b** (behavior): It MUST b.\n"
 	chain := "# T\n\n**REQ-au-c** (behavior, supersedes REQ-au-a REQ-au-b): It MUST c.\n\n**REQ-au-d** (behavior, supersedes REQ-au-b): It MUST d.\n"

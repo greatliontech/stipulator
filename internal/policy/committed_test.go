@@ -10,6 +10,7 @@ import (
 // leaves gate, check, and verify inoperable on the tree, and nothing
 // else in the suite reads it.
 func TestCommittedPolicyParses(t *testing.T) {
+	t.Parallel()
 	raw, err := os.ReadFile(filepath.Join("..", "..", Path))
 	if err != nil {
 		t.Fatalf("committed policy unreadable: %v", err)

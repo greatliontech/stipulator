@@ -98,6 +98,7 @@ func model(blocks []block) []expectation {
 // and every attached note's context is its attachment
 // (REQ-profile-note, REQ-profile-context-extent).
 func TestOneWalkAnswersAttachmentAndExtent(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-profile-note", "REQ-profile-context-extent")
 	kinds := []string{"heading", "req", "term", "para", "quote", "list", "table", "code", "break", "html"}
 	rapid.Check(t, func(rt *rapid.T) {
@@ -168,6 +169,7 @@ func TestOneWalkAnswersAttachmentAndExtent(t *testing.T) {
 // after a heading attaches to the section and joins no extent
 // (REQ-profile-note, REQ-profile-context-extent, REQ-profile-payload).
 func TestNoteAttachmentWindowEdges(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-profile-note", "REQ-profile-context-extent")
 	src := "# Doc\n\n**REQ-a** (behavior): A MUST hold.\n\n- item\n\n| c |\n| --- |\n| v |\n\n> after payload\n\n**widget** (term): A widget.\n\n- not payload\n\n> after a term's list\n\n## Section\n\n> after a heading\n"
 	root, diags := parse([]byte(src))

@@ -65,6 +65,7 @@ func repoWith(t *testing.T, committed, worktree map[string]string) string {
 // TestChanged pins the working-tree boundary: a file untouched since HEAD is
 // absent, while a modified file and a brand-new untracked file are present.
 func TestChanged(t *testing.T) {
+	t.Parallel()
 	dir := repoWith(t,
 		map[string]string{
 			"a.go":     "package p\nfunc A() {}\n",
@@ -103,6 +104,7 @@ func TestChanged(t *testing.T) {
 // the committed corpus compiles from the object store — no checkout — and
 // diffs against the edited working tree.
 func TestRevisionCorpusDiff(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-diff-revision")
 	man := ".stipulator/manifest.textproto"
 	dir := repoWith(t,
@@ -156,6 +158,7 @@ func TestRevisionCorpusDiff(t *testing.T) {
 // TestRevisionSubdirCorpus pins prefix mapping: a corpus root below the
 // repository root maps onto the same subtree at the revision.
 func TestRevisionSubdirCorpus(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-diff-revision")
 	dir := repoWith(t,
 		map[string]string{
@@ -189,6 +192,7 @@ func TestRevisionSubdirCorpus(t *testing.T) {
 // covers, and the drift this test exists to catch. It re-runs every
 // gate.
 func TestLinkedWorktreeSupported(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-diff-revision")
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git binary not available")
@@ -252,6 +256,7 @@ func TestLinkedWorktreeSupported(t *testing.T) {
 // path as content would silently compile it as spec text — and directory
 // listings report the honest entry type.
 func TestSymlinkEntriesRefused(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-diff-revision")
 	dir := t.TempDir()
 	repo, err := git.PlainInit(dir, false)

@@ -15,6 +15,7 @@ import (
 // the dangling count rides beside them. The caveat over a problem-
 // bearing record names the repair in the one executable spelling.
 func TestGapRowsIsTheOneListing(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-gap-list")
 	spec := &stipulatorv1.Spec{}
 	known := &stipulatorv1.Requirement{}

@@ -15,6 +15,7 @@ import (
 // whitespace, a committed record cannot), and a strict-parse round trip
 // back to the same message.
 func TestPolicyRenderRoundTripsCanonically(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-policy-record-location")
 	p := mkPolicy(
 		mkGoInvocation("member-race", "member/nested", 10*time.Minute),

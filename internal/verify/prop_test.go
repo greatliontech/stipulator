@@ -17,6 +17,7 @@ import (
 // verification problem, and records naming declared identities never
 // produce one.
 func TestPropDanglingRecordsAreProblems(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-change-dangling")
 	rapid.Check(t, func(rt *rapid.T) {
 		c := proptest.Gen(rt)

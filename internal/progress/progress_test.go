@@ -24,6 +24,7 @@ func collect(events *[]*stipulatorv1.ProgressEvent) func(*stipulatorv1.ProgressE
 // thousand step reports inside one interval collapse to the phase
 // transition and the invocation-completion milestone.
 func TestReporterBoundsEventFlood(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-progress")
 	var events []*stipulatorv1.ProgressEvent
 	r := New(collect(&events), WithInterval(time.Hour))
@@ -52,6 +53,7 @@ func TestReporterBoundsEventFlood(t *testing.T) {
 // distinct phase emits exactly one transition event however small the
 // interval budget, and a repeated mark of the current phase is silent.
 func TestReporterPhaseTransitionsAlwaysEmit(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-progress")
 	var events []*stipulatorv1.ProgressEvent
 	r := New(collect(&events), WithInterval(time.Hour))
@@ -83,6 +85,7 @@ func TestReporterPhaseTransitionsAlwaysEmit(t *testing.T) {
 // final event carries the cause and the phase the operation ended in,
 // emits exactly once, and nothing reports progress after it.
 func TestReporterTerminalEmitsOnceAndSeals(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-progress")
 	var events []*stipulatorv1.ProgressEvent
 	r := New(collect(&events), WithInterval(0))
@@ -113,6 +116,7 @@ func TestReporterTerminalEmitsOnceAndSeals(t *testing.T) {
 // suppressed, emitted counts are strictly increasing per invocation, and
 // the completion milestone fires exactly once, from the max holder.
 func TestReporterStepKeepsCompletedCountsIncreasing(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-progress")
 	var events []*stipulatorv1.ProgressEvent
 	r := New(collect(&events), WithInterval(0))
@@ -166,6 +170,7 @@ func TestReporterStepKeepsCompletedCountsIncreasing(t *testing.T) {
 // events are dropped, and the terminal event is still delivered last once
 // the consumer drains.
 func TestNonBlockingSinkShieldsOperationFromStalledConsumer(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-progress")
 	release := make(chan struct{})
 	var mu sync.Mutex
@@ -221,6 +226,7 @@ func TestNonBlockingSinkShieldsOperationFromStalledConsumer(t *testing.T) {
 // state without emitting or panicking — the CLI path installs neither a
 // reporter nor a sink and must be observably unchanged.
 func TestNilReporterAndSinkAreInert(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-progress")
 	var r *Reporter
 	r.Phase(stipulatorv1.Phase_PHASE_COMPILE)
@@ -253,6 +259,7 @@ func TestNilReporterAndSinkAreInert(t *testing.T) {
 // phase graphs are linear, which is what bounds the line); a reporter
 // that never entered a phase stamps nothing.
 func TestStampsRenderAdjacentDedupedPhases(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-progress-stamps")
 	r := New(nil)
 	r.Phase(stipulatorv1.Phase_PHASE_COMPILE)
@@ -288,6 +295,7 @@ func TestStampsRenderAdjacentDedupedPhases(t *testing.T) {
 // once and exactly once, a persisted unit emits its note and joins the
 // kept list, and the terminal event — alone — carries every kept unit.
 func TestNotesAndKeptRideTheStream(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-progress", "REQ-policy-cancellation-kept", "REQ-mcp-progress-surfaces")
 	var events []*stipulatorv1.ProgressEvent
 	r := New(collect(&events), WithInterval(time.Hour))
@@ -329,6 +337,7 @@ func TestNotesAndKeptRideTheStream(t *testing.T) {
 // event as its cause with the phase and the kept units — or "kept
 // nothing" when a cancelled run persisted none.
 func TestStderrSinkRendersEachEventOnce(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-progress-surfaces")
 	var out strings.Builder
 	r := New(Stderr(&out), WithInterval(time.Hour))
@@ -399,6 +408,7 @@ func TestStderrSinkRendersEachEventOnce(t *testing.T) {
 // (REQ-mcp-progress): a note quoting a multi-line, multi-kilobyte
 // reason reaches the stream as its first line, capped.
 func TestNotesAreOneBoundedLine(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-progress")
 	var events []*stipulatorv1.ProgressEvent
 	r := New(collect(&events), WithInterval(time.Hour))
@@ -419,6 +429,7 @@ func TestNotesAreOneBoundedLine(t *testing.T) {
 // the terminal event once, returns the same account the event carries,
 // and renders again without emitting.
 func TestSealRendersAndEmitsAtomically(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-progress-surfaces", "REQ-policy-cancellation-kept")
 	var events []*stipulatorv1.ProgressEvent
 	r := New(collect(&events), WithInterval(time.Hour))
@@ -470,6 +481,7 @@ func rs(rss, peak uint64) resident.Set {
 // as the transitions; a reporter without the reading, or one whose host
 // does not answer, carries it nowhere and states no resident words.
 func TestResidentReadingRidesTransitionsAndTheEnding(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-progress-resident")
 	var events []*stipulatorv1.ProgressEvent
 	r := New(collect(&events), WithInterval(0), WithResident(residentSequence(
@@ -526,6 +538,7 @@ func TestResidentReadingRidesTransitionsAndTheEnding(t *testing.T) {
 // reading at the end, taken by the digest itself when it renders before
 // the sealing, and by the sealing otherwise.
 func TestStampsAttributeThePeakToTheMomentItWasFirstReached(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-progress-resident")
 	r := New(nil, WithResident(residentSequence(
 		rs(32<<20, 32<<20),   // the baseline
@@ -569,6 +582,7 @@ func TestStampsAttributeThePeakToTheMomentItWasFirstReached(t *testing.T) {
 // operation's units already arrived as notes, and the list is unbounded
 // by anything but the policy.
 func TestEndingLineCarriesKeptOnlyWhenInterrupted(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-progress-surfaces")
 	kept := []string{"race:a", "race:b"}
 	for _, cause := range []stipulatorv1.TerminalCause{
@@ -596,6 +610,7 @@ func TestEndingLineCarriesKeptOnlyWhenInterrupted(t *testing.T) {
 // the digest and the sealing carries nothing, and the sealing's own
 // reading is the one the terminal event carries.
 func TestDigestReadingNeverPends(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-progress-resident")
 	var events []*stipulatorv1.ProgressEvent
 	r := New(collect(&events), WithInterval(0), WithResident(residentSequence(rs(1, 1), rs(2, 2), rs(3, 3), rs(4, 4))))
@@ -626,6 +641,7 @@ func TestDigestReadingNeverPends(t *testing.T) {
 // no tail, and the byte words are binary units, rounded, with one
 // decimal above a gibibyte.
 func TestResidentWordsAreOneSpellingOnBothFaces(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-progress-resident")
 	for b, want := range map[uint64]string{0: "0 B", 1023: "1023 B", 1024: "1 KiB", 1536: "2 KiB", 1048400: "1 MiB", 75 << 20: "75 MiB", 1004 << 20: "1004 MiB", 1073700000: "1.0 GiB", 1 << 30: "1.0 GiB", 4714064 * 1024: "4.5 GiB"} {
 		if got := resident.ByteWord(b); got != want {
@@ -676,6 +692,7 @@ func TestResidentWordsAreOneSpellingOnBothFaces(t *testing.T) {
 // states it after the kernel's figures, on the wire and in the words
 // both faces print; a reading without one states no ceiling.
 func TestResidentWordsStateTheCeiling(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-mcp-progress-resident")
 	under := resident.Set{ProcessBytes: 10, ProcessPeakBytes: 20, CeilingBytes: 3 << 30}
 	wire := residentWire(under, moment{})

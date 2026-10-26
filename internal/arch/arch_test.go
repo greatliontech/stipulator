@@ -24,6 +24,7 @@ const mod = "github.com/greatliontech/stipulator"
 // could serve while an audited package drifts; the witness re-runs
 // every gate.
 func TestCoreNeverImportsBackends(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("spawns a toolchain child (go list, the resolver) — measured heavy under the fast tier")
 	}
@@ -49,6 +50,7 @@ func TestCoreNeverImportsBackends(t *testing.T) {
 // could serve while an audited package drifts; the witness re-runs
 // every gate.
 func TestCoreIsVcsFree(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("spawns a toolchain child (go list, the resolver) — measured heavy under the fast tier")
 	}
@@ -83,6 +85,7 @@ func TestCoreIsVcsFree(t *testing.T) {
 // that type-asserted a concrete payload and peeked would pass this proof.
 // That residue is pinned behaviorally by the dispatch tests, not structurally.
 func TestPolicyCoreStaysBackendNeutral(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-policy-backend-neutral")
 	structural.NoImport(t, mod+"/internal/policy", mod+"/internal/backends/...")
 }
@@ -90,6 +93,7 @@ func TestPolicyCoreStaysBackendNeutral(t *testing.T) {
 // TestBackendSatisfiesVerifierSurfaces proves the Go backend's optional
 // surfaces are real interface satisfactions, not naming coincidences.
 func TestBackendSatisfiesVerifierSurfaces(t *testing.T) {
+	t.Parallel()
 	stipulate.Covers(t, "REQ-backend-surfaces", "REQ-go-structural-provers")
 	structural.Implements[verify.Backend](t, (*golang.Backend)(nil))
 	structural.Implements[verify.Slicer](t, (*golang.Backend)(nil))
