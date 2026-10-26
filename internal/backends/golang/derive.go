@@ -1026,32 +1026,28 @@ func buildPGO(root, value string) string {
 	return filepath.Join(root, filepath.FromSlash(value))
 }
 
-// newEngine is the one gofresh engine constructor: the analysis directory, the
-// view's environment and build flags, and the operation's progress
-// seam — freshness capture and validation are the longest silent
-// stretches of a run, so gofresh's own analysis steps feed the seam as
-// rate-limited keepalives and the engine diagnostic face. Callers add
-// their role's options.
-func newEngine(ctx context.Context, dir string, env, flags []string, extra ...gofresh.Option) (*gofresh.Engine, error) {
-	opts := []gofresh.Option{
-		gofresh.WithDir(dir),
-		gofresh.WithBuildFlags(flags...),
-		gofresh.WithEnv(env...),
+// newEngine is the one gofresh session constructor for source resolution: the
+// analysis directory, the view's environment and build flags, the evidence
+// root, and the operation's progress seam — freshness capture and validation
+// are the longest silent stretches of a run, so gofresh's own analysis steps
+// feed the seam as rate-limited keepalives and the engine diagnostic face.
+func newEngine(ctx context.Context, dir string, env, flags []string, evidenceRoot string) (*gofresh.Session, error) {
+	return gofresh.NewSession(ctx, gofresh.BuildDescription{
+		Directory:   dir,
+		Environment: env,
+		Flags:       flags,
+		Inputs:      []string{},
+	}, gofresh.SessionPolicy{
+		EvidenceRoot: evidenceRoot,
 		// The engine's own go commands ride the owned boundary
 		// (REQ-go-owned-processes-runner); the loader's go list children spawn
 		// through x/tools outside any runner.
-		gofresh.WithGoRunner(engineRunner),
-		// The policy is the one home of the reviewed vouch set: the
-		// repository's own vouch file is declined on every engine, so
-		// a file entry never licenses a verdict the policy did not
-		// review (REQ-vouch-input's one-set-one-home rule).
-		gofresh.WithoutRepositoryVouches(),
-		gofresh.WithProgress(func(p gofresh.Progress) {
+		Runner: engineRunner,
+		Progress: func(p gofresh.Progress) {
 			emitEngineDiagnostic(p)
 			progress.FromContext(ctx).Keepalive()
-		}),
-	}
-	return gofresh.NewContext(ctx, append(opts, extra...)...)
+		},
+	})
 }
 
 // engineDiagnostics receives payload-bearing gofresh diagnostics from

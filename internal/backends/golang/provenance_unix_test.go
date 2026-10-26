@@ -124,7 +124,7 @@ func TestAnalysisEnginesRideTheOwnedBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := newEngine(context.Background(), dir, env, nil); err != nil {
+	if _, err := newEngine(context.Background(), dir, env, nil, ""); err != nil {
 		t.Fatal(err)
 	}
 	if seen.Load() == 0 || grouped.Load() != seen.Load() {

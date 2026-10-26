@@ -398,3 +398,54 @@ func TestResolutionCertificateReopensAfterQuiesce(t *testing.T) {
 	commandHook = func(name string, args []string) { t.Errorf("held answer spawned %s %v", name, args) }
 	ask(t, s, second)
 }
+
+func TestWarmGraphsBatchesSelectionOwners(t *testing.T) {
+	neutralAmbient(t)
+	dir := writeModule(t, map[string]string{
+		"go.mod":            "module example.com/batch\n\ngo 1.27\n",
+		"shared/shared.go":  "package shared\nfunc V() int { return 1 }\n",
+		"shared/embed.txt":  "test-only embedded data\n",
+		"shared/s_test.go":  "package shared\nimport (_ \"embed\"; \"testing\")\n//go:embed embed.txt\nvar data string\nfunc TestS(*testing.T) { _ = data }\n",
+		"shared/x_test.go":  "package shared_test\nimport (_ \"embed\"; \"testing\")\n//go:embed embed.txt\nvar xdata string\nfunc TestX(*testing.T) { _ = xdata }\n",
+		"a/a.go":            "package a\nimport \"example.com/batch/shared\"\nfunc A() int { return shared.V() }\n",
+		"a/a_test.go":       "package a\nimport \"testing\"\nfunc TestA(*testing.T) {}\n",
+		"a/a_ext_test.go":   "package a_test\nimport (\"testing\"; \"example.com/batch/a\")\nfunc TestAExt(*testing.T) { _ = a.A() }\n",
+		"b/b.go":            "package b\nimport \"example.com/batch/shared\"\nfunc B() int { return shared.V() }\n",
+	})
+	sels, _, err := policyBuildSelections(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ep := newSelectionEndpoint(t.Context(), dir, sels)
+	view, err := ep.selected(sels[0].key())
+	if err != nil {
+		t.Fatal(err)
+	}
+	owners := []string{"example.com/batch/shared", "example.com/batch/a", "example.com/batch/b"}
+	oldHook := commandHook
+	t.Cleanup(func() { commandHook = oldHook })
+	listSpawns := 0
+	commandHook = func(name string, args []string) {
+		if name == "go" && strings.Contains(strings.Join(args, " "), "-deps") {
+			listSpawns++
+		}
+	}
+	ep.warmGraphs(view, owners)
+	if listSpawns != 1 {
+		t.Fatalf("warmGraphs spawned %d go list -deps commands for %d owners, want 1", listSpawns, len(owners))
+	}
+	for _, owner := range owners {
+		got, err := ep.graph(view, owner)
+		if err != nil {
+			t.Fatalf("warmed graph(%s): %v", owner, err)
+		}
+		want, err := sourceGraph(t.Context(), view.directory, view.env, view.flags, owner, &sourceFiles{ctx: t.Context(), digests: map[string]string{}})
+		if err != nil {
+			t.Fatalf("sourceGraph(%s): %v", owner, err)
+		}
+		if got != want {
+			t.Fatalf("graph(%s) = %q, want %q", owner, got, want)
+		}
+	}
+}
+

@@ -134,6 +134,19 @@ func (e *selectionEndpoint) warmGraphs(view *selectedContext, owners []string) {
 		_, _ = e.graph(view, pending[0])
 		return
 	}
+	if e.graphLoader == nil {
+		if batch, err := sourceGraphs(e.ctx, view.directory, view.env, view.flags, pending, e.files); err == nil {
+			e.mu.Lock()
+			for _, owner := range pending {
+				key := sourceGraphKey{view.key, owner}
+				if _, exists := e.graphs[key]; !exists {
+					e.graphs[key] = batch[owner]
+				}
+			}
+			e.mu.Unlock()
+			return
+		}
+	}
 	workers := min(len(pending), max(1, runtime.GOMAXPROCS(0)))
 	ch := make(chan string, len(pending))
 	for _, owner := range pending {

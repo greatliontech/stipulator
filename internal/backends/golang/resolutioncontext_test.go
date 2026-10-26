@@ -78,7 +78,7 @@ func TestResolutionWorkspaceModeKeepsItsDependencyGraph(t *testing.T) {
 			t.Fatal(err)
 		}
 		subject := gofresh.Subject{Package: "example.com/main", Symbol: "Read"}
-		view, err := engine.NewView(t.Context(), []gofresh.Subject{subject}, sel.directory(dir))
+		view, err := engine.Snapshot(t.Context(), []gofresh.Subject{subject}, gofresh.CodeResult)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/greatliontech/gofresh/closure"
@@ -135,9 +136,92 @@ func sourceGraph(ctx context.Context, dir string, env []string, flags []string, 
 	if err != nil {
 		return "", err
 	}
+	rows, err := decodeSourcePackageRows(ctx, data)
+	if err != nil {
+		return "", err
+	}
+	return digestSourceGraph(ctx, pkg, rows, files)
+}
+
+// sourceGraphs queries the compile/load inputs of multiple packages under one
+// selection in a single `go list` invocation and derives each package's
+// independent source-graph result. Any command-level or stream-decode failure
+// returns an error so the caller can fall back to isolated per-package queries.
+func sourceGraphs(ctx context.Context, dir string, env []string, flags []string, pkgs []string, files *sourceFiles) (map[string]sourceGraphResult, error) {
+	args := []string{"-e", "-deps", "-test", "-compiled", "-export", "-json"}
+	args = append(args, flags...)
+	args = append(args, pkgs...)
+	data, err := ownedRunner.List(ctx, dir, env, args...)
+	if err != nil {
+		return nil, err
+	}
+	allRows, err := decodeSourcePackageRows(ctx, data)
+	if err != nil {
+		return nil, err
+	}
+	byImportPath := make(map[string]sourcePackageRow, len(allRows))
+	for _, row := range allRows {
+		if row.ImportPath == "" {
+			return nil, fmt.Errorf("source graph: missing or repeated package identity %q", row.ImportPath)
+		}
+		if row.ForTest == "" && strings.Contains(row.ImportPath, " [") {
+			return nil, fmt.Errorf("source graph: per-main PGO split on %q requires isolated package query", row.ImportPath)
+		}
+		if _, dup := byImportPath[row.ImportPath]; dup {
+			return nil, fmt.Errorf("source graph: missing or repeated package identity %q", row.ImportPath)
+		}
+		byImportPath[row.ImportPath] = row
+	}
+	out := make(map[string]sourceGraphResult, len(pkgs))
+	for _, pkg := range pkgs {
+		needed := map[string]bool{}
+		for _, row := range allRows {
+			if row.ImportPath == pkg || row.ForTest == pkg || row.ImportPath == pkg+".test" {
+				needed[row.ImportPath] = true
+				for _, dep := range row.Deps {
+					needed[dep] = true
+				}
+			}
+		}
+		pkgRows := make([]sourcePackageRow, 0, len(needed))
+		var missingDep error
+		for imp := range needed {
+			row, ok := byImportPath[imp]
+			if !ok {
+				missingDep = fmt.Errorf("source graph omitted dependency %q", imp)
+				break
+			}
+			pkgRows = append(pkgRows, row)
+		}
+		if missingDep != nil {
+			out[pkg] = sourceGraphResult{err: missingDep}
+			continue
+		}
+		digest, err := digestSourceGraph(ctx, pkg, pkgRows, files)
+		out[pkg] = sourceGraphResult{digest: digest, err: err}
+	}
+	return out, nil
+}
+
+func decodeSourcePackageRows(ctx context.Context, data []byte) ([]sourcePackageRow, error) {
 	var rows []sourcePackageRow
 	dec := json.NewDecoder(bytes.NewReader(data))
-	seen := map[string]bool{}
+	for {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		var row sourcePackageRow
+		if err := dec.Decode(&row); err == io.EOF {
+			return rows, nil
+		} else if err != nil {
+			return nil, fmt.Errorf("source graph: %w", err)
+		}
+		rows = append(rows, row)
+	}
+}
+
+func digestSourceGraph(ctx context.Context, pkg string, rows []sourcePackageRow, files *sourceFiles) (string, error) {
+	seen := make(map[string]bool, len(rows))
 	root := false
 	inputs := map[string]string{}
 	add := func(path string) error {
@@ -151,15 +235,10 @@ func sourceGraph(ctx context.Context, dir string, env []string, flags []string, 
 		inputs[filepath.Clean(path)] = digest
 		return nil
 	}
-	for {
+	sorted := make([]sourcePackageRow, 0, len(rows))
+	for _, row := range rows {
 		if err := ctx.Err(); err != nil {
 			return "", err
-		}
-		var row sourcePackageRow
-		if err := dec.Decode(&row); err == io.EOF {
-			break
-		} else if err != nil {
-			return "", fmt.Errorf("source graph: %w", err)
 		}
 		if row.ImportPath == "" || seen[row.ImportPath] {
 			return "", fmt.Errorf("source graph: missing or repeated package identity %q", row.ImportPath)
@@ -171,6 +250,14 @@ func sourceGraph(ctx context.Context, dir string, env []string, flags []string, 
 		}
 		if len(row.DepsErrors) > 0 {
 			return "", fmt.Errorf("source graph %s: %s", row.ImportPath, row.DepsErrors[0].Err)
+		}
+		// In a multi-package `go list -test`, cmd/go resolves TestEmbedFiles
+		// and XTestEmbedFiles in place on every command-line root package,
+		// whereas single-package `go list -deps -test` resolves them only on
+		// the queried root package (and its ForTest variants).
+		if row.ImportPath != pkg && row.ForTest != pkg {
+			row.TestEmbedFiles = nil
+			row.XTestEmbedFiles = nil
 		}
 		if err := add(row.Export); err != nil {
 			return "", err
@@ -194,23 +281,23 @@ func sourceGraph(ctx context.Context, dir string, env []string, flags []string, 
 				return "", err
 			}
 		}
-		rows = append(rows, row)
+		sorted = append(sorted, row)
 	}
 	if !root {
 		return "", fmt.Errorf("source graph omitted root package %q", pkg)
 	}
-	for _, row := range rows {
+	for _, row := range sorted {
 		for _, dep := range row.Deps {
 			if !seen[dep] {
 				return "", fmt.Errorf("source graph omitted dependency %q", dep)
 			}
 		}
 	}
-	sort.Slice(rows, func(i, j int) bool { return rows[i].ImportPath < rows[j].ImportPath })
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i].ImportPath < sorted[j].ImportPath })
 	return sourceDigest(struct {
 		Packages []sourcePackageRow
 		Files    map[string]string
-	}{rows, inputs})
+	}{sorted, inputs})
 }
 
 // captureSourceCertificates re-derives each symbol's complete selected

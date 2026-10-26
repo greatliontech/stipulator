@@ -22,7 +22,7 @@ import (
 // resolution (REQ-evidence-resolution-freshness). Resolution observes
 // no runtime input, so every check closes its own window: no deferred
 // close, no producer environment.
-func selectionEngine(ctx context.Context, view *selectedContext, sample toolchainSample) (*gofresh.Engine, error) {
+func selectionEngine(ctx context.Context, view *selectedContext, sample toolchainSample) (*gofresh.Session, error) {
 	// The same provenance prerequisite the child's typed view enforces,
 	// in the same form — every member sampled where its view loads
 	// (checkSelectionMembers): an identified selection toolchain this
@@ -33,7 +33,7 @@ func selectionEngine(ctx context.Context, view *selectedContext, sample toolchai
 	if err := checkSelectionMembers(ctx, view.root, view.env, view.members, view.selection.toolchain, sample); err != nil {
 		return nil, err
 	}
-	return newEngine(ctx, view.directory, view.env, view.flags, gofresh.WithEvidenceRoot(view.root))
+	return newEngine(ctx, view.directory, view.env, view.flags, view.root)
 }
 
 // Served is the verification backend that answers a binding's
@@ -379,9 +379,9 @@ func (s *Served) captureUnder(endpoint *selectionEndpoint, key string, symbols [
 		}
 		subjects = append(subjects, subject)
 	}
-	var view *gofresh.View
+	var view *gofresh.Snapshot
 	for len(subjects) > 0 {
-		view, err = engine.NewView(s.ctx, subjects, selected.directory)
+		view, err = engine.Snapshot(s.ctx, subjects, gofresh.CodeResult)
 		var unknown *gofresh.UnknownSubjectsError
 		if errors.As(err, &unknown) {
 			gone := map[gofresh.Subject]bool{}
@@ -450,9 +450,9 @@ func (s *Served) serveSelection(endpoint *selectionEndpoint, key string, recs []
 		subjects = append(subjects, subject)
 		bySubject[subject] = rec
 	}
-	var view *gofresh.View
+	var view *gofresh.Snapshot
 	for len(subjects) > 0 {
-		view, err = engine.NewView(s.ctx, subjects, selected.directory)
+		view, err = engine.Snapshot(s.ctx, subjects, gofresh.CodeResult)
 		var unknown *gofresh.UnknownSubjectsError
 		if errors.As(err, &unknown) {
 			// Vanished since they were recorded: stale, resolved

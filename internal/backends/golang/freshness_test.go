@@ -152,6 +152,7 @@ import (
 	"testing"
 )
 
+//gofresh:pure
 func TestReads(t *testing.T) {
 	if _, err := os.ReadFile("data.txt"); err != nil {
 		t.Fatal(err)
@@ -916,12 +917,14 @@ import (
 	"testing"
 )
 
+//gofresh:pure
 func TestReads(t *testing.T) {
 	if _, err := os.ReadFile("data.txt"); err != nil {
 		t.Fatal(err)
 	}
 }
 
+//gofresh:pure
 func TestTouch(t *testing.T) {
 	b, err := os.ReadFile("touch.txt")
 	if err != nil {
@@ -942,6 +945,7 @@ import (
 	"time"
 )
 
+//gofresh:pure
 func TestWritesOnce(t *testing.T) {
 	raw, err := os.ReadFile("trigger.txt")
 	if err != nil {
@@ -1091,12 +1095,14 @@ import (
 	"testing"
 )
 
+//gofresh:pure
 func TestReads(t *testing.T) {
 	if _, err := os.ReadFile("data.txt"); err != nil {
 		t.Fatal(err)
 	}
 }
 
+//gofresh:pure
 func TestTouch(t *testing.T) {
 	b, err := os.ReadFile("touch.txt")
 	if err != nil {

@@ -28,12 +28,16 @@ func TestLedgerPersistsCompiledEmbeddedMember(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	engine, err := gofresh.New(gofresh.WithDir(dir), gofresh.WithEnv(gotool.SetEnv(os.Environ(), "GOWORK", "off")...))
+	engine, err := gofresh.NewSession(context.Background(), gofresh.BuildDescription{
+		Directory:   dir,
+		Environment: gotool.SetEnv(os.Environ(), "GOWORK", "off"),
+		Inputs:      []string{},
+	}, gofresh.SessionPolicy{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	s := gofresh.Subject{Package: "example.com/dual", Symbol: "TestDual"}
-	view, err := engine.NewView(context.Background(), []gofresh.Subject{s}, dir)
+	view, err := engine.Snapshot(context.Background(), []gofresh.Subject{s}, gofresh.CodeResult)
 	if err != nil {
 		t.Fatal(err)
 	}

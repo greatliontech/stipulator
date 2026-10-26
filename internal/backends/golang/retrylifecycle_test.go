@@ -204,11 +204,13 @@ func TestRetryWavesScopeLateDrift(t *testing.T) {
 	width := budget / slots
 	reader := fmt.Sprintf(`package a
 import ("os"; "runtime"; "testing")
+//gofresh:pure
 func TestIn(t *testing.T) {
  if _,err := os.ReadFile("data"); err != nil { t.Fatal(err) }
  if got := os.Getenv("GOMAXPROCS"); got != %q { t.Fatalf("environment width = %%s", got) }
  if got := runtime.GOMAXPROCS(0); got != %d { t.Fatalf("runtime width = %%d", got) }
 }
+//gofresh:pure
 func TestOut(t *testing.T) {
  data,err := os.ReadFile("data"); if err != nil { t.Fatal(err) }
  if string(data) != "old" { t.Fatal("late out-of-scope retry executed") }
@@ -216,6 +218,7 @@ func TestOut(t *testing.T) {
 `, strconv.Itoa(width), width)
 	bridge := `package b
 import ("os"; "testing")
+//gofresh:pure
 func TestB(t *testing.T) {
  data,err := os.ReadFile("trigger"); if err != nil { t.Fatal(err) }
  if string(data) == "yes" { if err := os.WriteFile("../a/data", []byte("moved"),0600); err != nil { t.Fatal(err) } }
@@ -224,6 +227,7 @@ func TestB(t *testing.T) {
 	writer := `package c
 import ("os"; "testing")
 const armed = false
+//gofresh:pure
 func TestC(t *testing.T) {
  if armed { if err := os.WriteFile("../b/trigger",[]byte("yes"),0600); err != nil { t.Fatal(err) } }
 }

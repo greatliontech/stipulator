@@ -225,7 +225,7 @@ func TestModuleModeReachesEagerLazyAndFingerprintLoads(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		view, err := engine.NewView(t.Context(), []gofresh.Subject{subject}, dir)
+		view, err := engine.Snapshot(t.Context(), []gofresh.Subject{subject}, gofresh.CodeResult)
 		if err != nil {
 			t.Fatal(err)
 		}

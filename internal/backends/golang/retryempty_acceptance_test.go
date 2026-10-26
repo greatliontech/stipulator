@@ -26,6 +26,7 @@ func TestRetryCompleteEmptyPopulationRevokesEarlierGrant(t *testing.T) {
 	sources := map[string]string{
 		"a/a_test.go": `package a
 import ("os"; "strings"; "testing")
+//gofresh:pure
 func TestA(t *testing.T) {
  data, err := os.ReadFile("data"); if err != nil { t.Fatal(err) }
  if string(data) == "moved" {
@@ -38,6 +39,7 @@ func TestA(t *testing.T) {
 `,
 		"b/b_test.go": `package b
 import ("os"; "testing")
+//gofresh:pure
 func TestB(t *testing.T) {
  data, err := os.ReadFile("trigger"); if err != nil { t.Fatal(err) }
  if string(data) == "yes" { if err := os.WriteFile("../a/data", []byte("moved"), 0600); err != nil { t.Fatal(err) } }
@@ -46,6 +48,7 @@ func TestB(t *testing.T) {
 		"c/c_test.go": `package c
 import ("os"; "testing")
 const armed = false
+//gofresh:pure
 func TestC(t *testing.T) {
  if armed { if err := os.WriteFile("../b/trigger", []byte("yes"), 0600); err != nil { t.Fatal(err) } }
 }

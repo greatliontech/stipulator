@@ -183,7 +183,7 @@ func TestSelectedContextPreservesConsumerViews(t *testing.T) {
 				t.Fatal(err)
 			}
 			subject := gofresh.Subject{Package: "example.com/shared", Symbol: "F"}
-			native, err := engine.NewView(t.Context(), []gofresh.Subject{subject}, view.directory)
+			native, err := engine.Snapshot(t.Context(), []gofresh.Subject{subject}, gofresh.CodeResult)
 			if err != nil {
 				t.Fatal(err)
 			}
