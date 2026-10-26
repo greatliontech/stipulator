@@ -402,15 +402,15 @@ func TestResolutionCertificateReopensAfterQuiesce(t *testing.T) {
 func TestWarmGraphsBatchesSelectionOwners(t *testing.T) {
 	neutralAmbient(t)
 	dir := writeModule(t, map[string]string{
-		"go.mod":            "module example.com/batch\n\ngo 1.27\n",
-		"shared/shared.go":  "package shared\nfunc V() int { return 1 }\n",
-		"shared/embed.txt":  "test-only embedded data\n",
-		"shared/s_test.go":  "package shared\nimport (_ \"embed\"; \"testing\")\n//go:embed embed.txt\nvar data string\nfunc TestS(*testing.T) { _ = data }\n",
-		"shared/x_test.go":  "package shared_test\nimport (_ \"embed\"; \"testing\")\n//go:embed embed.txt\nvar xdata string\nfunc TestX(*testing.T) { _ = xdata }\n",
-		"a/a.go":            "package a\nimport \"example.com/batch/shared\"\nfunc A() int { return shared.V() }\n",
-		"a/a_test.go":       "package a\nimport \"testing\"\nfunc TestA(*testing.T) {}\n",
-		"a/a_ext_test.go":   "package a_test\nimport (\"testing\"; \"example.com/batch/a\")\nfunc TestAExt(*testing.T) { _ = a.A() }\n",
-		"b/b.go":            "package b\nimport \"example.com/batch/shared\"\nfunc B() int { return shared.V() }\n",
+		"go.mod":           "module example.com/batch\n\ngo 1.27\n",
+		"shared/shared.go": "package shared\nfunc V() int { return 1 }\n",
+		"shared/embed.txt": "test-only embedded data\n",
+		"shared/s_test.go": "package shared\nimport (_ \"embed\"; \"testing\")\n//go:embed embed.txt\nvar data string\nfunc TestS(*testing.T) { _ = data }\n",
+		"shared/x_test.go": "package shared_test\nimport (_ \"embed\"; \"testing\")\n//go:embed embed.txt\nvar xdata string\nfunc TestX(*testing.T) { _ = xdata }\n",
+		"a/a.go":           "package a\nimport \"example.com/batch/shared\"\nfunc A() int { return shared.V() }\n",
+		"a/a_test.go":      "package a\nimport \"testing\"\nfunc TestA(*testing.T) {}\n",
+		"a/a_ext_test.go":  "package a_test\nimport (\"testing\"; \"example.com/batch/a\")\nfunc TestAExt(*testing.T) { _ = a.A() }\n",
+		"b/b.go":           "package b\nimport \"example.com/batch/shared\"\nfunc B() int { return shared.V() }\n",
 	})
 	sels, _, err := policyBuildSelections(dir)
 	if err != nil {
@@ -448,4 +448,3 @@ func TestWarmGraphsBatchesSelectionOwners(t *testing.T) {
 		}
 	}
 }
-
