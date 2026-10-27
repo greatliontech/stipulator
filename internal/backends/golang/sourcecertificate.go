@@ -159,7 +159,12 @@ func sourceGraphs(ctx context.Context, dir string, env []string, flags []string,
 	if err != nil {
 		return nil, err
 	}
+	return selectSourceGraphs(ctx, pkgs, allRows, files)
+}
+
+func selectSourceGraphs(ctx context.Context, pkgs []string, allRows []sourcePackageRow, files *sourceFiles) (map[string]sourceGraphResult, error) {
 	byImportPath := make(map[string]sourcePackageRow, len(allRows))
+	byForTest := make(map[string][]sourcePackageRow)
 	for _, row := range allRows {
 		if row.ImportPath == "" {
 			return nil, fmt.Errorf("source graph: missing or repeated package identity %q", row.ImportPath)
@@ -171,30 +176,42 @@ func sourceGraphs(ctx context.Context, dir string, env []string, flags []string,
 			return nil, fmt.Errorf("source graph: missing or repeated package identity %q", row.ImportPath)
 		}
 		byImportPath[row.ImportPath] = row
+		if row.ForTest != "" {
+			byForTest[row.ForTest] = append(byForTest[row.ForTest], row)
+		}
+	}
+	addRoot := func(needed map[string]bool, row sourcePackageRow) {
+		needed[row.ImportPath] = true
+		for _, dep := range row.Deps {
+			needed[dep] = true
+		}
 	}
 	out := make(map[string]sourceGraphResult, len(pkgs))
 	for _, pkg := range pkgs {
 		needed := map[string]bool{}
-		for _, row := range allRows {
-			if row.ImportPath == pkg || row.ForTest == pkg || row.ImportPath == pkg+".test" {
-				needed[row.ImportPath] = true
-				for _, dep := range row.Deps {
-					needed[dep] = true
-				}
-			}
+		if row, ok := byImportPath[pkg]; ok {
+			addRoot(needed, row)
+		}
+		if row, ok := byImportPath[pkg+".test"]; ok {
+			addRoot(needed, row)
+		}
+		for _, row := range byForTest[pkg] {
+			addRoot(needed, row)
 		}
 		pkgRows := make([]sourcePackageRow, 0, len(needed))
-		var missingDep error
+		var missingImp string
 		for imp := range needed {
 			row, ok := byImportPath[imp]
 			if !ok {
-				missingDep = fmt.Errorf("source graph omitted dependency %q", imp)
-				break
+				if missingImp == "" || imp < missingImp {
+					missingImp = imp
+				}
+				continue
 			}
 			pkgRows = append(pkgRows, row)
 		}
-		if missingDep != nil {
-			out[pkg] = sourceGraphResult{err: missingDep}
+		if missingImp != "" {
+			out[pkg] = sourceGraphResult{err: fmt.Errorf("source graph omitted dependency %q", missingImp)}
 			continue
 		}
 		digest, err := digestSourceGraph(ctx, pkg, pkgRows, files)

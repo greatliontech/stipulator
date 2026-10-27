@@ -168,6 +168,8 @@ func NewServed(ctx context.Context, dir string, symbols []string) (*Served, erro
 		s.inventoryPackages(endpoint, symbols)
 	}
 	bySelection := map[string][]resolutioncache.Record{}
+	var recordedSymbols []string
+	seenRecorded := map[string]bool{}
 	for _, rec := range resolutioncache.Load(abs) {
 		if !s.inventoryComplete() {
 			continue
@@ -182,6 +184,10 @@ func NewServed(ctx context.Context, dir string, symbols []string) (*Served, erro
 			continue
 		}
 		bySelection[rec.Selection] = append(bySelection[rec.Selection], rec)
+		if !seenRecorded[rec.Symbol] {
+			seenRecorded[rec.Symbol] = true
+			recordedSymbols = append(recordedSymbols, rec.Symbol)
+		}
 	}
 	keys := make([]string, 0, len(bySelection))
 	for key := range bySelection {
@@ -189,7 +195,8 @@ func NewServed(ctx context.Context, dir string, symbols []string) (*Served, erro
 	}
 	sort.Strings(keys)
 	if len(keys) > 0 {
-		certs, err := s.captureSourceCertificates(endpoint, symbols)
+		sort.Strings(recordedSymbols)
+		certs, err := s.captureSourceCertificates(endpoint, recordedSymbols)
 		if err != nil {
 			s.degraded = append(s.degraded, "source certificate: "+err.Error())
 		}
@@ -557,16 +564,13 @@ func closureMoved(recorded, current gofresh.Fingerprint) string {
 // never a verdict input.
 func (s *Served) Notices() []string {
 	var out []string
-	// The serving form's typed count is its stale remainder; the
-	// whole-tree form resolves everything typed, so its count is the
-	// symbols it resolved (a classified-only symbol is not among them).
-	typed := len(s.unserved)
-	if s.whole {
-		typed = 0
-		for _, a := range s.answers {
-			if a.resolved {
-				typed++
-			}
+	// Both forms count the symbols that completed a typed resolution
+	// through the child (a classified-only or unasked frontier symbol is
+	// not among them).
+	typed := 0
+	for _, a := range s.answers {
+		if a.resolved && a.err == nil {
+			typed++
 		}
 	}
 	out = append(out, fmt.Sprintf("resolution: %d served from records, %d resolved typed", len(s.served), typed))
@@ -576,7 +580,9 @@ func (s *Served) Notices() []string {
 	out = append(out, s.publishNotices()...)
 	keys := make([]string, 0, len(s.reasons))
 	for k := range s.reasons {
-		keys = append(keys, k)
+		if a, ok := s.answers[k]; ok && a.resolved && a.err == nil {
+			keys = append(keys, k)
+		}
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
@@ -658,19 +664,30 @@ func (s *Served) typed(symbol string) childAnswer {
 		return a
 	}
 	a := s.answers[symbol]
-	a.resolved = true
 	if !s.admits(symbol) {
+		a.resolved = true
 		a.err = outsideSet(symbol)
+		s.answers[symbol] = a
+		return a
+	}
+	if err := s.ctx.Err(); err != nil {
+		a.err = err
 		s.answers[symbol] = a
 		return a
 	}
 	child, err := s.ensureChild()
 	if err != nil {
+		if s.ctx.Err() == nil {
+			a.resolved = true
+		}
 		a.err = err
 		s.answers[symbol] = a
 		return a
 	}
 	res, shape, selection, err := child.ResolveIn(symbol)
+	if err == nil || s.ctx.Err() == nil {
+		a.resolved = true
+	}
 	a.res, a.shape, a.selection, a.err = res, shape, selection, err
 	// The serving form records every resolved symbol for publication,
 	// its package read once so the record can carry it; the whole-tree
@@ -913,6 +930,9 @@ func (s *Served) Quiesce() {
 }
 
 func (s *Served) publishSelection(key string, symbols []string) {
+	if s.ctx.Err() != nil {
+		return
+	}
 	// Every symbol's class and refusal, from the child, before the
 	// capture: the record carries the whole answer set.
 	var unclassed []string

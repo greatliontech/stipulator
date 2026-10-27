@@ -144,6 +144,9 @@ func validateConfig(cfg *stipulatorv1.GoInvocationConfig) error {
 			if name == "test.testlogfile" {
 				return fmt.Errorf("args entry %q names the runtime-input capture file, which the executor owns per process", a)
 			}
+			if name == "timeout" {
+				return fmt.Errorf("args entry %q uses bare -timeout; use -test.timeout=<duration> for per-binary bounds or the invocation's timeout field for the envelope timeout", a)
+			}
 			if selectionBinaryArgs[name] {
 				return fmt.Errorf("args entry %q names the test selection, which the executor owns per process", a)
 			}

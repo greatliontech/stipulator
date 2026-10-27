@@ -51,6 +51,7 @@ func Run(ctx context.Context, d verbcore.Deps, noTest bool, ids []string) (*chec
 	var pc *golang.Capture
 	var runTests func(context.Context, verify.WitnessSeeding) (*verify.TestRun, error)
 	if !noTest {
+		rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 		if pc, err = d.Capture(ctx); err != nil {
 			return nil, nil, nil, err
 		}
@@ -86,6 +87,7 @@ func Scoped(ctx context.Context, d verbcore.Deps, prepared *check.Prepared, scop
 	var runTests func(context.Context, verify.WitnessSeeding) (*verify.TestRun, error)
 	var err error
 	if capture {
+		progress.FromContext(ctx).Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 		if pc, err = d.Capture(ctx); err != nil {
 			return nil, nil, err
 		}

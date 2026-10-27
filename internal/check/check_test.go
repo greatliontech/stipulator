@@ -1371,3 +1371,45 @@ func TestCheckReleasesTheResolverChildBeforeExecution(t *testing.T) {
 		t.Fatalf("the execution phase opened with %d descendant process(es); want the resolver child released before it", n)
 	}
 }
+
+func TestLadderPhaseAttributionOrdersDiscoveryBeforeBackendPreparation(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-preparation")
+	var phases []stipulatorv1.Phase
+	var backendPhase stipulatorv1.Phase
+	rep := progress.New(func(e *stipulatorv1.ProgressEvent) {
+		if e.GetPhase() != stipulatorv1.Phase_PHASE_UNSPECIFIED {
+			phases = append(phases, e.GetPhase())
+		}
+	})
+	ctx, cancel := context.WithCancel(progress.NewContext(context.Background(), rep))
+	defer cancel()
+
+	fsys := os.DirFS(writeTree(t, baseTree(map[string]string{
+		"specs/check.md": "# Check\n\n**REQ-fix-must** (behavior): The fixture MUST pass.\n",
+	})))
+	rep.Phase(stipulatorv1.Phase_PHASE_COMPILE)
+	prepared, err := Prepare(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(phases) != 1 || phases[0] != stipulatorv1.Phase_PHASE_COMPILE {
+		t.Fatalf("compile phase attribution = %v, want [PHASE_COMPILE]", phases)
+	}
+	_, _, err = Ladder(ctx, prepared.Spec, prepared.Store, nil, true, LadderDeps{
+		Backends: func(ctx context.Context, _ []string) (map[string]verify.Backend, error) {
+			backendPhase = phases[len(phases)-1]
+			cancel()
+			return nil, ctx.Err()
+		},
+		RunTests: func(context.Context, verify.WitnessSeeding) (*verify.TestRun, error) {
+			t.Fatal("RunTests reached after backend cancellation")
+			return nil, nil
+		},
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Ladder cancellation = %v, want context.Canceled", err)
+	}
+	if backendPhase != stipulatorv1.Phase_PHASE_DISCOVERY {
+		t.Fatalf("backend preparation ran under %v, want PHASE_DISCOVERY (phases=%v)", backendPhase, phases)
+	}
+}

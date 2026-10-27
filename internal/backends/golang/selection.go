@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -147,6 +148,32 @@ func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 			firstErr = err
 		}
 	}
+	// When a package selection mixes Test* and Fuzz* runnables under a
+	// native witness snapshot, run the Fuzz* targets as solo processes in
+	// the package's slot reusing the compiled binary so (*testing.F).Fuzz
+	// (which has no operation-outcome support method) does not poison
+	// PackageUnit outcome support for the sibling Test* subjects.
+	mainSel := make(TestSelection, len(sel))
+	fuzzSolos := map[string][]string{}
+	for _, pkg := range pkgs {
+		names := sel[pkg]
+		if proofs != nil && proofs[pkg] != nil && proofs[pkg].view != nil && len(names) > 1 {
+			var tests, fuzzes []string
+			for _, name := range names {
+				if strings.HasPrefix(name, "Fuzz") {
+					fuzzes = append(fuzzes, name)
+				} else {
+					tests = append(tests, name)
+				}
+			}
+			if len(tests) > 0 && len(fuzzes) > 0 {
+				mainSel[pkg] = tests
+				fuzzSolos[pkg] = fuzzes
+				continue
+			}
+		}
+		mainSel[pkg] = names
+	}
 	// Inside the package's own slot: its classification, then the
 	// isolation re-runs of the tests its process denied an outcome —
 	// each solo, once, inside the same envelope, so an expired envelope
@@ -174,7 +201,10 @@ func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 		// earned.
 		var denied []string
 		if unit.run.producer != nil {
-			denied = deniedTests(&unit.run, sel[unit.pkg])
+			denied = deniedTests(&unit.run, mainSel[unit.pkg])
+			if unit.run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_BUILD_FAILED {
+				denied = append(denied, fuzzSolos[unit.pkg]...)
+			}
 		}
 		for _, name := range denied {
 			solo := packageRun{pkg: unit.pkg, soloTest: name}
@@ -223,7 +253,7 @@ func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 			}
 		}
 	}
-	runSelectedPackages(ctx, invCtx, n, pkgs, sel, spawn, inSlot, afterSlot, proofs)
+	runSelectedPackages(ctx, invCtx, n, pkgs, mainSel, spawn, inSlot, afterSlot, proofs)
 	if err := ctx.Err(); err != nil {
 		// Caller cancellation: the partial run is discarded whole.
 		return nil, err

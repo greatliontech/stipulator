@@ -141,6 +141,10 @@ func TestKeyEncodingIsCollisionFree(t *testing.T) {
 	if groupIdentity(aliasA) == groupIdentity(aliasB) {
 		t.Error("cooperating raw scalars aliased two configurations into one record coordinate")
 	}
+	adversarialVal := adversarialValGen()
+	adversarialList := adversarialListGen()
+	adversarialNamespaces := adversarialNamespacesGen()
+	perturbations := perturbationTable()
 	gen := rapid.Custom(func(t *rapid.T) *NormalizedInvocation {
 		return &NormalizedInvocation{
 			Tags:                  adversarialList.Draw(t, "tags"),
@@ -196,74 +200,86 @@ func TestKeyEncodingIsCollisionFree(t *testing.T) {
 	})
 }
 
-// adversarialVal and adversarialList are the shared draw pools for the
+// adversarialValGen and adversarialListGen are the shared draw pools for the
 // collision property and the perturbation registry: separator bytes,
 // quotes, label-shaped fragments, and the runtime-only spellings.
-var adversarialVal = rapid.SampledFrom([]string{
-	"", "a", "b", "a,b", `"`, `\"`,
-	"a\x00b", "a\x01b", "x\x00args=", "\x00race=true", "A=1", "A=1\x01B=2", "A=x\x01B=y",
-	"-test.timeout=30m", "-test.timeout=100m", "-test.timeout", "30m", "-fixture=big",
-})
+func adversarialValGen() *rapid.Generator[string] {
+	return rapid.SampledFrom([]string{
+		"", "a", "b", "a,b", `"`, `\"`,
+		"a\x00b", "a\x01b", "x\x00args=", "\x00race=true", "A=1", "A=1\x01B=2", "A=x\x01B=y",
+		"-test.timeout=30m", "-test.timeout=100m", "-test.timeout", "30m", "-fixture=big",
+	})
+}
 
-var adversarialList = rapid.SliceOfN(adversarialVal, 0, 3)
+func adversarialListGen() *rapid.Generator[[]string] {
+	return rapid.SliceOfN(adversarialValGen(), 0, 3)
+}
 
-// adversarialNamespaces draws scratch namespace rows over the same
+// adversarialNamespacesGen draws scratch namespace rows over the same
 // adversarial pool for both halves, so the pair joiner and the row
 // quoting are exercised against separator bytes and label fragments.
-var adversarialNamespaces = rapid.SliceOfN(rapid.Custom(func(t *rapid.T) runtimeinput.ScratchNamespace {
-	return runtimeinput.ScratchNamespace{Dir: adversarialVal.Draw(t, "dir"), Pattern: adversarialVal.Draw(t, "pattern")}
-}), 0, 3)
+func adversarialNamespacesGen() *rapid.Generator[[]runtimeinput.ScratchNamespace] {
+	val := adversarialValGen()
+	return rapid.SliceOfN(rapid.Custom(func(t *rapid.T) runtimeinput.ScratchNamespace {
+		return runtimeinput.ScratchNamespace{Dir: val.Draw(t, "dir"), Pattern: val.Draw(t, "pattern")}
+	}), 0, 3)
+}
 
-// perturbations maps every keyed segment label to a draw replacing its
+// perturbationTable maps every keyed segment label to a draw replacing its
 // underlying invocation field; TestPerturbationDomainCoversEveryKeyedField
 // holds this map and the keys' segment tables in exact correspondence,
 // label sets AND label-to-field wiring.
-var perturbations = map[string]func(t *rapid.T, n *NormalizedInvocation){
-	"linker_values": func(t *rapid.T, n *NormalizedInvocation) {
-		n.LinkerAssignments = adversarialList.Draw(t, "linker_values2")
-	},
-	"linker_sources": func(t *rapid.T, n *NormalizedInvocation) {
-		n.DeclaredLinkerStrings = adversarialList.Draw(t, "linker_sources2")
-	},
-	"input_file_environment": func(t *rapid.T, n *NormalizedInvocation) {
-		n.InputFiles = slices.Clone(n.InputFiles)
-		for i := range n.InputFiles {
-			n.InputFiles[i].Name = adversarialVal.Draw(t, "input_name")
-		}
-	},
-	"input_files": func(t *rapid.T, n *NormalizedInvocation) {
-		n.InputFiles = slices.Clone(n.InputFiles)
-		for i := range n.InputFiles {
-			n.InputFiles[i].Path = adversarialVal.Draw(t, "input_path")
-		}
-	},
-	"tags": func(t *rapid.T, n *NormalizedInvocation) { n.Tags = adversarialList.Draw(t, "tags2") },
-	"env": func(t *rapid.T, n *NormalizedInvocation) {
-		n.WitnessEnv = append([]string{"K=V"}, adversarialList.Draw(t, "env2")...)
-	},
-	"args":       func(t *rapid.T, n *NormalizedInvocation) { n.Args = adversarialList.Draw(t, "args2") },
-	"exclusions": func(t *rapid.T, n *NormalizedInvocation) { n.ExcludedPaths = adversarialList.Draw(t, "excl2") },
-	"vouches":    func(t *rapid.T, n *NormalizedInvocation) { n.Vouches = adversarialList.Draw(t, "vouches2") },
-	"namespaces": func(t *rapid.T, n *NormalizedInvocation) {
-		n.ScratchNamespaces = adversarialNamespaces.Draw(t, "scratch2")
-	},
-	"envset":    func(t *rapid.T, n *NormalizedInvocation) { n.EnvOverrides = adversarialList.Draw(t, "envset2") },
-	"envdeny":   func(t *rapid.T, n *NormalizedInvocation) { n.EnvDeny = adversarialList.Draw(t, "envdeny2") },
-	"pure":      func(t *rapid.T, n *NormalizedInvocation) { n.AssumePure = !n.AssumePure },
-	"race":      func(t *rapid.T, n *NormalizedInvocation) { n.Race = !n.Race },
-	"workspace": func(t *rapid.T, n *NormalizedInvocation) { n.WorkspaceOn = !n.WorkspaceOn },
-	"modulemode": func(t *rapid.T, n *NormalizedInvocation) {
-		n.ModuleMode = rapid.SampledFrom([]stipulatorv1.GoModuleMode{stipulatorv1.GoModuleMode_GO_MODULE_MODE_UNSPECIFIED, stipulatorv1.GoModuleMode_GO_MODULE_MODE_VENDOR}).Draw(t, "mode2")
-	},
-	"pgo": func(t *rapid.T, n *NormalizedInvocation) { n.PGO = adversarialVal.Draw(t, "pgo2") },
-	"module_root": func(t *rapid.T, n *NormalizedInvocation) {
-		n.ModuleRoot = adversarialVal.Draw(t, "module_root2")
-	},
-	"goos":      func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredGOOS = adversarialVal.Draw(t, "goos2") },
-	"goarch":    func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredGOARCH = adversarialVal.Draw(t, "goarch2") },
-	"cgo":       func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredCgo = adversarialVal.Draw(t, "cgo2") },
-	"goflags":   func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredGOFLAGS = adversarialVal.Draw(t, "goflags2") },
-	"toolchain": func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredToolchain = adversarialVal.Draw(t, "toolchain2") },
+func perturbationTable() map[string]func(t *rapid.T, n *NormalizedInvocation) {
+	adversarialVal := adversarialValGen()
+	adversarialList := adversarialListGen()
+	adversarialNamespaces := adversarialNamespacesGen()
+	return map[string]func(t *rapid.T, n *NormalizedInvocation){
+		"linker_values": func(t *rapid.T, n *NormalizedInvocation) {
+			n.LinkerAssignments = adversarialList.Draw(t, "linker_values2")
+		},
+		"linker_sources": func(t *rapid.T, n *NormalizedInvocation) {
+			n.DeclaredLinkerStrings = adversarialList.Draw(t, "linker_sources2")
+		},
+		"input_file_environment": func(t *rapid.T, n *NormalizedInvocation) {
+			n.InputFiles = slices.Clone(n.InputFiles)
+			for i := range n.InputFiles {
+				n.InputFiles[i].Name = adversarialVal.Draw(t, "input_name")
+			}
+		},
+		"input_files": func(t *rapid.T, n *NormalizedInvocation) {
+			n.InputFiles = slices.Clone(n.InputFiles)
+			for i := range n.InputFiles {
+				n.InputFiles[i].Path = adversarialVal.Draw(t, "input_path")
+			}
+		},
+		"tags": func(t *rapid.T, n *NormalizedInvocation) { n.Tags = adversarialList.Draw(t, "tags2") },
+		"env": func(t *rapid.T, n *NormalizedInvocation) {
+			n.WitnessEnv = append([]string{"K=V"}, adversarialList.Draw(t, "env2")...)
+		},
+		"args":       func(t *rapid.T, n *NormalizedInvocation) { n.Args = adversarialList.Draw(t, "args2") },
+		"exclusions": func(t *rapid.T, n *NormalizedInvocation) { n.ExcludedPaths = adversarialList.Draw(t, "excl2") },
+		"vouches":    func(t *rapid.T, n *NormalizedInvocation) { n.Vouches = adversarialList.Draw(t, "vouches2") },
+		"namespaces": func(t *rapid.T, n *NormalizedInvocation) {
+			n.ScratchNamespaces = adversarialNamespaces.Draw(t, "scratch2")
+		},
+		"envset":    func(t *rapid.T, n *NormalizedInvocation) { n.EnvOverrides = adversarialList.Draw(t, "envset2") },
+		"envdeny":   func(t *rapid.T, n *NormalizedInvocation) { n.EnvDeny = adversarialList.Draw(t, "envdeny2") },
+		"pure":      func(t *rapid.T, n *NormalizedInvocation) { n.AssumePure = !n.AssumePure },
+		"race":      func(t *rapid.T, n *NormalizedInvocation) { n.Race = !n.Race },
+		"workspace": func(t *rapid.T, n *NormalizedInvocation) { n.WorkspaceOn = !n.WorkspaceOn },
+		"modulemode": func(t *rapid.T, n *NormalizedInvocation) {
+			n.ModuleMode = rapid.SampledFrom([]stipulatorv1.GoModuleMode{stipulatorv1.GoModuleMode_GO_MODULE_MODE_UNSPECIFIED, stipulatorv1.GoModuleMode_GO_MODULE_MODE_VENDOR}).Draw(t, "mode2")
+		},
+		"pgo": func(t *rapid.T, n *NormalizedInvocation) { n.PGO = adversarialVal.Draw(t, "pgo2") },
+		"module_root": func(t *rapid.T, n *NormalizedInvocation) {
+			n.ModuleRoot = adversarialVal.Draw(t, "module_root2")
+		},
+		"goos":      func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredGOOS = adversarialVal.Draw(t, "goos2") },
+		"goarch":    func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredGOARCH = adversarialVal.Draw(t, "goarch2") },
+		"cgo":       func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredCgo = adversarialVal.Draw(t, "cgo2") },
+		"goflags":   func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredGOFLAGS = adversarialVal.Draw(t, "goflags2") },
+		"toolchain": func(t *rapid.T, n *NormalizedInvocation) { n.DeclaredToolchain = adversarialVal.Draw(t, "toolchain2") },
+	}
 }
 
 // keyedLabels is the union of both segment tables' labels, sorted. The
@@ -318,6 +334,7 @@ func changedLabels(a, b *NormalizedInvocation) []string {
 // one level down (REQ-evidence-witness-cache-format).
 func TestPerturbationDomainCoversEveryKeyedField(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-cache-format")
+	perturbations := perturbationTable()
 	labels := keyedLabels()
 	for _, l := range labels {
 		if perturbations[l] == nil {

@@ -333,6 +333,12 @@ func TestGoPolicyConfigStaticValidation(t *testing.T) {
 		{"args bare run", "test selection", func(c *stipulatorv1.GoInvocationConfig) {
 			c.SetArgs([]string{"-run=TestOnlyThis"})
 		}},
+		{"args bare timeout", "-test.timeout", func(c *stipulatorv1.GoInvocationConfig) {
+			c.SetArgs([]string{"-timeout=30m"})
+		}},
+		{"args bare timeout split value", "-test.timeout", func(c *stipulatorv1.GoInvocationConfig) {
+			c.SetArgs([]string{"-timeout", "30m"})
+		}},
 	}
 	for _, c := range reject {
 		cfg := base()

@@ -710,3 +710,124 @@ func TestPublishNamesTheSymbolWithoutAClosingCapture(t *testing.T) {
 		t.Fatalf("published records = %+v, want none", recs)
 	}
 }
+
+func TestServedCounterCountsCompletedResolutionsNotFrontier(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness-account")
+	if testing.Short() {
+		t.Skip("loads a fixture module's types and views")
+	}
+	neutralAmbient(t)
+	dir := servedModule(t)
+	ctx := context.Background()
+
+	// 1. Zero completed resolutions on an N-symbol frontier reports 0 resolved typed, not N.
+	zero, err := NewServed(ctx, dir, servedSymbols)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := zero.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if notices := zero.Notices(); len(notices) == 0 || notices[0] != "resolution: 0 served from records, 0 resolved typed" {
+		t.Fatalf("zero-resolution notices = %v, want 0 served, 0 resolved typed", notices)
+	}
+
+	// 2. Resolving k < N symbols (with repeated requests for the same symbol) reports k, not N.
+	partial, err := NewServed(ctx, dir, servedSymbols)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ask(t, partial, servedSymbols[0])
+	ask(t, partial, servedSymbols[0])
+	ask(t, partial, servedSymbols[1])
+	if err := partial.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if notices := partial.Notices(); len(notices) == 0 || notices[0] != "resolution: 0 served from records, 2 resolved typed" {
+		t.Fatalf("partial-resolution notices = %v, want 0 served, 2 resolved typed", notices)
+	}
+
+	// 3. Subsequent run serves the 2 published records, resolves 1 more symbol, and interrupts before the rest.
+	cancelCtx, cancel := context.WithCancel(ctx)
+	warmPartial, err := NewServed(cancelCtx, dir, servedSymbols)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := warmPartial.ServedCount(); got != 2 {
+		t.Fatalf("warmPartial served %d, want 2", got)
+	}
+	ask(t, warmPartial, servedSymbols[2])
+	cancel()
+	// Asking an unserved symbol after cancellation must not count as a completed resolution.
+	_, _, _, _ = warmPartial.ResolveIn(servedSymbols[3])
+	// Asking a symbol outside the admitted set must also not count as a completed resolution.
+	_, _, _, _ = warmPartial.ResolveIn("example.com/served/p.NotInSet")
+	_ = warmPartial.Close()
+	if notices := warmPartial.Notices(); len(notices) == 0 || notices[0] != "resolution: 2 served from records, 1 resolved typed" {
+		t.Fatalf("interrupted warm notices = %v, want 2 served, 1 resolved typed", notices)
+	}
+
+	// 4. Modify source so the 2 recorded symbols become stale (populating s.reasons),
+	// then resolve only 1 of the 2 stale symbols before closing: Notices() must emit
+	// "resolution typed:" only for the resolved symbol, not the unasked stale symbol.
+	if err := os.WriteFile(filepath.Join(dir, "p", "p.go"), []byte("package p\n\n// T is a type: no subject, no record.\ntype T struct{ N int }\n\nfunc H(n int) int { return n + 2 }\n\nfunc F(n int) int { return H(n) * 2 }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	staleRun, err := NewServed(ctx, dir, servedSymbols)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ask(t, staleRun, servedSymbols[0])
+	if err := staleRun.Close(); err != nil {
+		t.Fatal(err)
+	}
+	staleNotices := staleRun.Notices()
+	sawFirstReason := false
+	for _, line := range staleNotices {
+		if strings.HasPrefix(line, "resolution typed: "+servedSymbols[0]+": ") {
+			sawFirstReason = true
+		}
+		if strings.HasPrefix(line, "resolution typed: "+servedSymbols[1]+": ") {
+			t.Fatalf("unasked stale symbol emitted resolution typed notice: %v", staleNotices)
+		}
+	}
+	if !sawFirstReason {
+		t.Fatalf("resolved stale symbol missing resolution typed notice in %v", staleNotices)
+	}
+}
+
+func TestNewServedCheckingCertificatesScopedToRecordedSymbols(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	if testing.Short() {
+		t.Skip("loads a fixture module's types and views")
+	}
+	neutralAmbient(t)
+	dir := writeModule(t, map[string]string{
+		"go.mod":                   "module example.com/scopedcerts\n\ngo 1.26\n",
+		"recorded/recorded.go":     "package recorded\nfunc F() int { return 1 }\n",
+		"unrecorded/unrecorded.go": "package unrecorded\nfunc G() int { return 2 }\n",
+	})
+	const recSym = "example.com/scopedcerts/recorded.F"
+	const unrecSym = "example.com/scopedcerts/unrecorded.G"
+	publishResolution(t, dir, recSym)
+
+	oldHook := commandHook
+	t.Cleanup(func() { commandHook = oldHook })
+	unrecordedQueried := 0
+	commandHook = func(name string, args []string) {
+		if name == "go" && strings.Contains(strings.Join(args, " "), "-deps") && strings.Contains(strings.Join(args, " "), "example.com/scopedcerts/unrecorded") {
+			unrecordedQueried++
+		}
+	}
+	s, err := NewServed(t.Context(), dir, []string{recSym, unrecSym})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if s.ServedCount() != 1 {
+		t.Fatalf("served %d, want 1", s.ServedCount())
+	}
+	if unrecordedQueried != 0 {
+		t.Fatalf("NewServed checkingCertificates queried unrecorded owner package %d times, want 0", unrecordedQueried)
+	}
+}

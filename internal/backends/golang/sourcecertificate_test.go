@@ -1,10 +1,14 @@
 package golang
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"pgregory.net/rapid"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/resolutioncache"
@@ -12,25 +16,27 @@ import (
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
-func publishResolution(t *testing.T, dir, symbol string) {
+func publishResolution(t *testing.T, dir string, symbols ...string) {
 	t.Helper()
-	s, err := NewServed(t.Context(), dir, []string{symbol})
+	s, err := NewServed(t.Context(), dir, symbols)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer s.Close()
-	if res, _, err := s.Resolve(symbol); err != nil || res != verify.Resolved {
-		t.Fatalf("initial resolution: %v, %v", res, err)
+	for _, symbol := range symbols {
+		if res, _, err := s.Resolve(symbol); err != nil || res != verify.Resolved {
+			t.Fatalf("initial resolution (%s): %v, %v", symbol, res, err)
+		}
 	}
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
 	}
-	warm, err := NewServed(t.Context(), dir, []string{symbol})
+	warm, err := NewServed(t.Context(), dir, symbols)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer warm.Close()
-	if warm.ServedCount() != 1 {
+	if warm.ServedCount() != len(symbols) {
 		t.Fatalf("unchanged control did not serve: %v; %v", s.Notices(), warm.Notices())
 	}
 }
@@ -147,6 +153,7 @@ func TestResolutionCertificateIsolatesGraphFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Close()
+	_, _, _ = s.Resolve("example.com/certificate/bad.F")
 	if s.ServedCount() != 1 || s.served[good].Symbol != good {
 		t.Fatalf("independent graph failure discarded good certificate: %v", s.Notices())
 	}
@@ -447,4 +454,119 @@ func TestWarmGraphsBatchesSelectionOwners(t *testing.T) {
 			t.Fatalf("graph(%s) = %q, want %q", owner, got, want)
 		}
 	}
+}
+
+func referenceSelectSourceGraphs(ctx context.Context, pkgs []string, allRows []sourcePackageRow, files *sourceFiles) (map[string]sourceGraphResult, error) {
+	byImportPath := make(map[string]sourcePackageRow, len(allRows))
+	for _, row := range allRows {
+		if row.ImportPath == "" {
+			return nil, fmt.Errorf("source graph: missing or repeated package identity %q", row.ImportPath)
+		}
+		if row.ForTest == "" && strings.Contains(row.ImportPath, " [") {
+			return nil, fmt.Errorf("source graph: per-main PGO split on %q requires isolated package query", row.ImportPath)
+		}
+		if _, dup := byImportPath[row.ImportPath]; dup {
+			return nil, fmt.Errorf("source graph: missing or repeated package identity %q", row.ImportPath)
+		}
+		byImportPath[row.ImportPath] = row
+	}
+	out := make(map[string]sourceGraphResult, len(pkgs))
+	for _, pkg := range pkgs {
+		needed := map[string]bool{}
+		for _, row := range allRows {
+			if row.ImportPath == pkg || row.ForTest == pkg || row.ImportPath == pkg+".test" {
+				needed[row.ImportPath] = true
+				for _, dep := range row.Deps {
+					needed[dep] = true
+				}
+			}
+		}
+		pkgRows := make([]sourcePackageRow, 0, len(needed))
+		var missingImp string
+		for imp := range needed {
+			row, ok := byImportPath[imp]
+			if !ok {
+				if missingImp == "" || imp < missingImp {
+					missingImp = imp
+				}
+				continue
+			}
+			pkgRows = append(pkgRows, row)
+		}
+		if missingImp != "" {
+			out[pkg] = sourceGraphResult{err: fmt.Errorf("source graph omitted dependency %q", missingImp)}
+			continue
+		}
+		digest, err := digestSourceGraph(ctx, pkg, pkgRows, files)
+		out[pkg] = sourceGraphResult{digest: digest, err: err}
+	}
+	return out, nil
+}
+
+func TestSelectSourceGraphsMatchesReferenceSelector(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	ownersPool := []string{"example.com/a", "example.com/b", "example.com/c", "example.com/shared"}
+	rowGen := rapid.Custom(func(rt *rapid.T) sourcePackageRow {
+		kind := rapid.IntRange(0, 6).Draw(rt, "kind")
+		base := rapid.SampledFrom(ownersPool).Draw(rt, "base")
+		var imp, forTest string
+		switch kind {
+		case 0:
+			imp = base
+		case 1:
+			imp = base + " [" + base + ".test]"
+			forTest = base
+		case 2:
+			imp = base + "_test [" + base + ".test]"
+			forTest = base
+		case 3:
+			imp = base + ".test"
+		case 4:
+			imp = "example.com/dep/" + rapid.SampledFrom([]string{"x", "y", "z"}).Draw(rt, "dep")
+		case 5:
+			// Per-main PGO split without ForTest.
+			imp = base + " [cmd/pgo]"
+		case 6:
+			imp = ""
+		}
+		deps := rapid.SliceOfN(rapid.SampledFrom([]string{"example.com/shared", "example.com/dep/x", "example.com/missing"}), 0, 2).Draw(rt, "deps")
+		return sourcePackageRow{
+			ImportPath: imp,
+			Name:       "p",
+			ForTest:    forTest,
+			Deps:       deps,
+		}
+	})
+	rapid.Check(t, func(rt *rapid.T) {
+		rows := rapid.SliceOfN(rowGen, 0, 8).Draw(rt, "rows")
+		pkgs := rapid.SliceOfN(rapid.SampledFrom(ownersPool), 0, 4).Draw(rt, "pkgs")
+		ctx := context.Background()
+		if rapid.Bool().Draw(rt, "cancel") {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithCancel(ctx)
+			cancel()
+		}
+		filesA := &sourceFiles{ctx: ctx, digests: map[string]string{}}
+		filesB := &sourceFiles{ctx: ctx, digests: map[string]string{}}
+		got, gotErr := selectSourceGraphs(ctx, pkgs, rows, filesA)
+		want, wantErr := referenceSelectSourceGraphs(ctx, pkgs, rows, filesB)
+		if (gotErr != nil) != (wantErr != nil) {
+			rt.Fatalf("err = %v, want %v", gotErr, wantErr)
+		}
+		if gotErr != nil {
+			if gotErr.Error() != wantErr.Error() {
+				rt.Fatalf("err = %q, want %q", gotErr.Error(), wantErr.Error())
+			}
+			return
+		}
+		if len(got) != len(want) {
+			rt.Fatalf("len(got) = %d, len(want) = %d", len(got), len(want))
+		}
+		for _, pkg := range pkgs {
+			g, w := got[pkg], want[pkg]
+			if g.digest != w.digest || (g.err != nil) != (w.err != nil) || (g.err != nil && g.err.Error() != w.err.Error()) {
+				rt.Fatalf("pkg %s: got (%q, %v), want (%q, %v)", pkg, g.digest, g.err, w.digest, w.err)
+			}
+		}
+	})
 }

@@ -30,6 +30,7 @@ type LadderDeps struct {
 //     and records closer() on report.ResolutionNotices.
 func Ladder(ctx context.Context, spec *stipulatorv1.Spec, store *records.Store, pc *golang.Capture, witnessed bool, d LadderDeps) (*verify.Report, *verify.TestRun, error) {
 	rep := progress.FromContext(ctx)
+	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	symbols, err := golang.OperationSymbols(ctx, store, pc)
 	if err != nil {
 		return nil, nil, err
@@ -40,7 +41,6 @@ func Ladder(ctx context.Context, spec *stipulatorv1.Spec, store *records.Store, 
 	}
 	closer := verify.Closer(backends)
 	defer closer()
-	rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 	report := verify.Resolve(spec, store, backends, witnessed)
 	var tr *verify.TestRun
 	if d.RunTests != nil {
