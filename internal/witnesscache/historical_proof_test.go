@@ -2,6 +2,7 @@ package witnesscache
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"os"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/gotool"
-	"github.com/greatliontech/gofresh/runtimeinput"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -53,59 +53,53 @@ func TestObserved(t *testing.T) {
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build fixture: %v\n%s", err, output)
 	}
-	engine, err := gofresh.New(gofresh.WithDir(dir), gofresh.WithEnv(env...))
+	session, err := gofresh.NewSession(t.Context(), gofresh.BuildDescription{
+		Directory:   dir,
+		Environment: env,
+		Inputs:      []string{},
+	}, gofresh.SessionPolicy{EvidenceRoot: dir})
 	if err != nil {
 		t.Fatal(err)
 	}
 	subject := gofresh.Subject{Package: "example.com/historicalproof", Symbol: "TestObserved"}
-	producer, err := engine.NewView(t.Context(), []gofresh.Subject{subject}, dir)
+	snapshot, err := session.Snapshot(t.Context(), []gofresh.Subject{subject}, gofresh.CodeResult)
 	if err != nil {
 		t.Fatal(err)
 	}
-	frame := runtimeinput.CaptureProducerFrame(t.Context(), dir, dir, runtimeinput.FrameOptions{})
-	support, err := producer.PrepareOutcomeSupport(t.Context(), frame, "execution")
+	built, err := snapshot.BindBuilt(subject.Package, bin)
 	if err != nil {
 		t.Fatal(err)
 	}
-	fingerprint, err := producer.CaptureObserved(t.Context(), subject)
+	binding, err := snapshot.BindRuntime(t.Context(), gofresh.RuntimeDescription{Directory: dir, Environment: env})
 	if err != nil {
 		t.Fatal(err)
-	}
-	if !fingerprint.ObservationProof.Observable || fingerprint.PurityAssertion != "" {
-		t.Fatalf("fixture needs positive observation proof without purity: %+v", fingerprint)
 	}
 	log := filepath.Join(t.TempDir(), "test.log")
-	run := exec.CommandContext(t.Context(), bin, "-test.v", "-test.run=^TestObserved$", "-test.testlogfile="+log)
-	run.Dir, run.Env = dir, env
-	if output, err := run.CombinedOutput(); err != nil || !strings.Contains(string(output), "--- PASS: TestObserved") {
-		t.Fatalf("execute fixture: %v\n%s", err, output)
-	}
-	receipt, err := frame.Completion("execution", env, "")
+	finalized, err := binding.Execute(t.Context(), subject, built, gofresh.ProcessDescription{
+		Identity: "execution",
+		Capture:  log,
+	}, func(ctx context.Context, contrib gofresh.Contribution) (gofresh.Terminal, error) {
+		run := exec.CommandContext(ctx, bin, "-test.v", "-test.run=^TestObserved$", "-test.testlogfile="+contrib.Capture())
+		run.Dir, run.Env = contrib.Directory(), contrib.Environment()
+		if output, err := run.CombinedOutput(); err != nil || !strings.Contains(string(output), "--- PASS: TestObserved") {
+			t.Fatalf("execute fixture: %v\n%s", err, output)
+		}
+		return gofresh.Terminal{Kind: gofresh.NormalCompletion}, nil
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	observation, reason, err := frame.Observe(t.Context(), log, runtimeinput.ProducerIngest{Identity: "execution", Env: env, Completion: receipt, Outcome: support})
-	if err != nil || reason != "" {
-		t.Fatalf("observe completed fixture: %q %v", reason, err)
-	}
-	fingerprint, err = producer.AttachObservation(subject, fingerprint, observation)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := producer.Validate(t.Context()); err != nil {
-		t.Fatal(err)
+	fingerprint := finalized.Fingerprint
+	if !fingerprint.ObservationProof.Observable || fingerprint.PurityAssertion != "" {
+		t.Fatalf("fixture needs positive observation proof without purity: %+v", fingerprint)
 	}
 	manifest, err := base64.RawURLEncoding.DecodeString(fingerprint.RuntimeInputs)
 	if err != nil || !bytes.HasPrefix(manifest, []byte(`{"v":4,`)) {
 		t.Fatalf("fixture needs the supported native v4 manifest: %s (%v)", manifest, err)
 	}
-	current, err := engine.NewView(t.Context(), []gofresh.Subject{subject}, dir)
-	if err != nil {
-		t.Fatal(err)
-	}
 	check := func(label string, fp gofresh.Fingerprint, want gofresh.Status) {
 		t.Helper()
-		verdict, err := current.CheckObserved(t.Context(), fp, subject)
+		verdict, err := binding.Check(t.Context(), subject, fp)
 		if err != nil || verdict.Status != want {
 			t.Fatalf("%s native judgment = %+v (%v), want %s", label, verdict, err, want)
 		}

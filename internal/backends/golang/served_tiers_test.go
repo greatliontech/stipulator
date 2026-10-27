@@ -144,8 +144,8 @@ func TestServedReresolvesWhenATestBodyChangesClass(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := ask(t, second, symbol)
-	if got.class != verify.PropertyWitness || got.refusal != seededReason.String() || c.snapshot().child != 1 {
-		t.Fatalf("after the body gained the driver call: %+v with %d children (reasons %v); want property, the seeded refusal, one typed resolution", got, c.snapshot().child, second.Reasons())
+	if got.class != verify.PropertyWitness || got.refusal != seededReason.String() || c.snapshot().child != 1 || second.Reasons()[symbol] != "test variants" {
+		t.Fatalf("after the body gained the driver call: %+v with %d children (reasons %v); want property, the seeded refusal, one typed resolution for reason \"test variants\"", got, c.snapshot().child, second.Reasons())
 	}
 	if err := second.Close(); err != nil {
 		t.Fatal(err)
@@ -168,8 +168,8 @@ func TestServedReresolvesWhenATestBodyChangesClass(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := ask(t, third, symbol); got.class != verify.ExampleWitness || got.refusal != "" {
-		t.Fatalf("after the helper lost the driver: %+v; want example, no refusal", got)
+	if got := ask(t, third, symbol); got.class != verify.ExampleWitness || got.refusal != "" || third.Reasons()[symbol] != "closure" {
+		t.Fatalf("after the helper lost the driver: %+v (reasons %v); want example, no refusal, reason \"closure\"", got, third.Reasons())
 	}
 	if err := third.Close(); err != nil {
 		t.Fatal(err)

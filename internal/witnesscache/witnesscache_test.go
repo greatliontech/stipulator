@@ -42,18 +42,39 @@ func generatedObservationFingerprint(t *testing.T) gofresh.Fingerprint {
 			env = append(env, entry)
 		}
 	}
-	engine, err := gofresh.New(gofresh.WithDir(dir), gofresh.WithEnv(env...))
+	session, err := gofresh.NewSession(context.Background(), gofresh.BuildDescription{
+		Directory:   dir,
+		Environment: env,
+		Inputs:      []string{},
+	}, gofresh.SessionPolicy{EvidenceRoot: dir})
 	if err != nil {
 		t.Fatal(err)
 	}
-	view, err := engine.NewView(context.Background(), []gofresh.Subject{subject}, dir)
+	snapshot, err := session.Snapshot(context.Background(), []gofresh.Subject{subject}, gofresh.CodeResult)
 	if err != nil {
 		t.Fatal(err)
 	}
-	fingerprint, err := view.CaptureObserved(context.Background(), subject)
+	built, err := snapshot.BindBuilt(subject.Package, "cacheproof.test")
 	if err != nil {
 		t.Fatal(err)
 	}
+	binding, err := snapshot.BindRuntime(context.Background(), gofresh.RuntimeDescription{Directory: dir, Environment: env})
+	if err != nil {
+		t.Fatal(err)
+	}
+	finalized, err := binding.Execute(context.Background(), subject, built, gofresh.ProcessDescription{
+		Identity: "execution",
+		Capture:  filepath.Join(dir, "test.log"),
+	}, func(_ context.Context, contrib gofresh.Contribution) (gofresh.Terminal, error) {
+		if err := os.WriteFile(contrib.Capture(), []byte("# Go test log\nopen data.txt\n"), 0o644); err != nil {
+			return gofresh.Terminal{}, err
+		}
+		return gofresh.Terminal{Kind: gofresh.NormalCompletion}, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fingerprint := finalized.Fingerprint
 	if !fingerprint.ObservationProof.Observable {
 		t.Fatalf("generated proof is not positive: %+v", fingerprint.ObservationProof)
 	}

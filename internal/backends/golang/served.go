@@ -503,15 +503,6 @@ func (s *Served) serveSelection(endpoint *selectionEndpoint, key string, recs []
 	}
 	for _, subject := range subjects {
 		rec := bySubject[subject]
-		certificate, ok := s.checkingCertificates[rec.Symbol]
-		if !ok {
-			s.reasons[rec.Symbol] = resolutionNoCurrentCertificate.with("")
-			continue
-		}
-		if sourceCertificateMoved(rec.Certificate, certificate) {
-			s.reasons[rec.Symbol] = resolutionSourceDependencies.with("")
-			continue
-		}
 		fp, captured := current[subject]
 		if !captured {
 			s.reasons[rec.Symbol] = resolutionNoCurrentCapture.with("")
@@ -519,6 +510,15 @@ func (s *Served) serveSelection(endpoint *selectionEndpoint, key string, recs []
 		}
 		if why := closureMovedReason(rec.Fingerprint, fp); why != (resolutionReason{}) {
 			s.reasons[rec.Symbol] = why
+			continue
+		}
+		certificate, ok := s.checkingCertificates[rec.Symbol]
+		if !ok {
+			s.reasons[rec.Symbol] = resolutionNoCurrentCertificate.with("")
+			continue
+		}
+		if sourceCertificateMoved(rec.Certificate, certificate) {
+			s.reasons[rec.Symbol] = resolutionSourceDependencies.with("")
 			continue
 		}
 		s.served[rec.Symbol] = rec

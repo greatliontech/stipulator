@@ -204,6 +204,11 @@ func TestServedReresolvesWhenTheClosureMoves(t *testing.T) {
 	if c.snapshot().child == 0 || s.ServedCount() != 0 {
 		t.Fatalf("a referenced signature moved: served %d, %d children, reasons %v", s.ServedCount(), c.snapshot().child, s.Reasons())
 	}
+	for _, symbol := range symbols {
+		if s.Reasons()[symbol] != "closure" {
+			t.Fatalf("reason[%s] = %q, want \"closure\" (reasons %v)", symbol, s.Reasons()[symbol], s.Reasons())
+		}
+	}
 	if got["example.com/served/p.F"].shape != cold["example.com/served/p.F"].shape || got["example.com/served/p.H"].shape == cold["example.com/served/p.H"].shape {
 		t.Fatalf("shapes after H moved: F %s→%s, H %s→%s", cold["example.com/served/p.F"].shape[:8], got["example.com/served/p.F"].shape[:8], cold["example.com/served/p.H"].shape[:8], got["example.com/served/p.H"].shape[:8])
 	}
