@@ -515,11 +515,10 @@ held until the envelope expired names the term in its timeout
 diagnostic and in its witnesses' cause; an invocation the host cannot hold one process of refuses
 every package stated — a degraded disposition naming the readings, no
 process and no isolation re-run spawned, the refused witnesses' cause
-naming the reason — rather than spawning into the host's guard; the
-tool's own parent and resolver processes run under the fleet's soft
+naming the reason — rather than spawning into the host's guard; the tool's own process runs under the fleet's soft
 ceiling (gofresh's resident-readings clause: half the room the host has for
-the process family at their start, floored, never above the operator's
-word), the parent's re-derived at each operation's start — rising or
+the process family at its start, floored, never above the operator's
+word), re-derived at each operation's start — rising or
 falling with the host, never pinned by an earlier derivation of its own
 — and stated with its resident datum; neither the
 bound nor the term is declared — and each unit's inner parallelism is capped at
@@ -994,7 +993,7 @@ verdict — engine construction before any freshness verdict, and a build
 selection's package-load view before any resolution: the effective
 toolchain is sampled as that consumer's own loads resolve it — `go env
 GOVERSION` in the target module's directory (a capture group's module
-root; each member's own directory for a selection view, the child's
+root; each member's own directory for a selection view, the typed
 and the served form's alike — under GOTOOLCHAIN=auto the selected
 toolchain is per module, so the tree root is not a member's sample)
 under the consumer's complete effective environment, a declared
@@ -1003,7 +1002,7 @@ the invocation's one environment read at normalization, whose
 GOVERSION the group's environment then pins, judged through Gofresh's
 provenance composite; on the selection arms sampled through Gofresh's
 memoized toolchain sampler, one sampler per judged operation (a verb's
-process, a server's per-call operation, a resolver child's load) and
+process, a server's per-call operation, a typed load) and
 never per process, so a toolchain replaced under a living memo is
 never judged by its predecessor's sample — by the Gofresh skew
 contract:
@@ -1014,7 +1013,7 @@ version on either side refuses, and a failed sample refuses identically on
 the engine arm — its environment was normalized from a working toolchain,
 so an unsampleable one is anomalous — while on the selection arm a
 member whose toolchain cannot be sampled is left to its loads: the
-child's typed view loads no view for it and falls to the selection
+typed view loads no view for it and falls to the selection
 view's own named unloadable-view degradation (REQ-go-build-selections),
 and the served form's engine proceeds, resolving the member's symbols
 as its own loads allow; an identified, skewed selection toolchain still
@@ -1082,8 +1081,7 @@ certificates depending on that package; a shared configuration failure affects
 every certificate depending on that configuration.
 
 **REQ-evidence-resolution-freshness-typed-load** (behavior): A symbol without a
-valid record, a symbol the selected source no longer declares, and a
-symbol that is not a callable — a type, a constant, a variable — MUST resolve
+valid record and a symbol the selected source no longer declares MUST resolve
 through the typed load, whose scope is the packages of exactly those
 symbols — each pattern loaded once, from the workspace member whose
 module owns it, a pattern no member owns loaded by nobody, and a
@@ -1103,9 +1101,12 @@ scopes retain every policy selection, owned module, required dependency, test
 variant and native declaration judgment. Blanket pin, retargeting, impact,
 the declaration frontier and partitions retain their unscoped whole-tree form.
 A record is written only from a typed resolution, never from a served one,
-and only when the symbol's
-fingerprint and complete source certificate captured before the typed load
-opened equal those captured after the resolution — a dependency that moved
+and only when the symbol's complete source certificate — and, for a callable
+subject, its native source-closure fingerprint — captured before the typed load
+opened equal those captured after the resolution (with a non-callable
+declaration — a type, variable, constant, or struct field — narrowed as an
+unknown subject by the native snapshot at both captures and governed by its
+source certificate and non-runnable serving refusal) — a dependency that moved
 between them prevents recording the answer.
 Package boundaries are established from selected declaration inventories
 before the opening capture and typed load. If an inventory is unavailable,
@@ -1123,7 +1124,8 @@ load (REQ-evidence-resolution-freshness-typed-load) for the affected symbols, an
 verification pass MUST ask its serving backend every question before any
 execution — the bindings' resolutions, shapes, packages and classes, and
 the witness run's seeding classification last — and the backend releases
-what answering cost it, its child process and the child's loaded program,
+what answering cost it, its in-process typed backend and loaded program
+(`Quiesce()`, returning released memory to the OS),
 before the run's first process spawns, publishing its records then and
 answering every later question of the pass from what it kept, so the
 resolution's cost is never resident beside the suite's executions.
@@ -1147,7 +1149,8 @@ the witness cache, its identity parts the resolving build selection's
 key and the symbol, holding one record per identity — a record
 installed under another fingerprint or certificate supersedes the identity's prior
 one — each carrying one record object with integer `version`, the
-selection key, the symbol, the fingerprint (source-closure tiers only:
+selection key, the symbol, the optional fingerprint (present for callable
+subjects with source-closure tiers only:
 maximal closure, test-variant compartment, the closure strategy that
 derived them, native toolchain content and admission policy, toolchain,
 build configuration, result kind — the
@@ -1155,8 +1158,12 @@ publisher projects the capture onto exactly those parts, since a
 subject's purity assertion, observation proof, vouches, discharges,
 runtime inputs, or machine guard say nothing about where its
 declaration lives, and a record whose source tiers the store cannot
-serve is refused alone and named, never the batch it arrived in), and the served fields
-REQ-evidence-resolution-freshness names; the fingerprint member is
+serve is refused alone and named, never the batch it arrived in; omitted
+for non-callable declarations — types, variables, constants, and struct
+fields — which have no native callable subject and require `witnessClass`
+equal to `example` and a non-empty `neverServe` refusal alongside their
+complete `certificate`), and the served fields
+REQ-evidence-resolution-freshness names; when present, the fingerprint member is
 Gofresh's published record form, decoded and refused exactly as the
 witness record's (REQ-evidence-witness-cache-format-fingerprint). A record whose
 fingerprint carries any observation, purity, or runtime tier is
@@ -1164,11 +1171,13 @@ ignored, because resolution observes nothing at run time. A classifier change
 that alters what a record proves changes its derivation identity, independently
 of the envelope version, so a record of an incompatible classifier never serves.
 Version 5 adds a required `certificate` object with exactly two string members:
-`derivation`, currently `stipulator/source-resolution@1`, and `inputs`, a
+`derivation`, currently `stipulator/source-resolution@2`, and `inputs`, a
 64-character lowercase hexadecimal SHA-256 digest of the complete source
-dependency description. Missing, unknown or malformed certificate support
+dependency description. Version 6 admits non-callable declaration records
+whose `fingerprint` member is omitted and whose freshness is governed by
+`certificate`. Missing, unknown or malformed certificate support
 requires typed re-derivation. The filename's content digest covers both the
-native fingerprint and the certificate. These are derivation inputs, not
+native fingerprint (when present) and the certificate. These are derivation inputs, not
 runtime evidence or a receipt for an executed subject.
 The default selection key is `default`; every other key joins five
 components with NUL: the sorted, deduplicated effective tags joined by comma,
@@ -1182,7 +1191,8 @@ upgraded. Version 2 records also lack physical-source ownership in their
 classification and are refused. Version 3 records lack declared package
 boundary and module/workspace-context fidelity and are also refused; version
 4 carries the context-qualified key but lacks the complete cross-view
-certificate and is also refused. Version 5 retains that key. This key identifies
+certificate and is also refused; version 5 lacks typed non-callable
+declaration support and is also refused. Version 6 retains that key. This key identifies
 one view, not the complete certificate required by
 REQ-evidence-resolution-freshness.
 The envelope is exactly one complete JSON object, permitting only JSON
@@ -1245,7 +1255,7 @@ one environment read resolves at normalization (`go env GOVERSION` under
 the invocation's complete effective environment, the declared pin
 exported) MUST satisfy the invocation's declared toolchain pin, and a
 selection view's declared toolchain binds each member's sample where its
-view loads by the same rule, on the resolver child's typed views and the
+view loads by the same rule, on the typed views and the
 served form alike: in the GOTOOLCHAIN grammar, `local`, `path`, `auto`,
 `local+auto` and `local+path` name no toolchain and require nothing; a
 bare `<name>` is satisfied by equality alone; `<name>+auto` and

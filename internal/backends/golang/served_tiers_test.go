@@ -252,7 +252,7 @@ func TestScopedChildAnswersLikeTheWholeTree(t *testing.T) {
 	// A package that lists but fails to type-check keeps its load error
 	// under both loads: only a pattern matching nothing is dropped.
 	symbols := []string{"example.com/scoped/q.F", "example.com/scoped/q.T.Gen", "example.com/scoped/q.T", "example.com/scoped/gone.X", "example.com/scoped/x.X", "example.com/scoped/bad.B"}
-	whole, err := newResolverClient(ctx, dir)
+	whole, err := NewWholeTree(ctx, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -283,10 +283,10 @@ func TestScopedChildAnswersLikeTheWholeTree(t *testing.T) {
 	if res, _, _, _ := scoped.ResolveIn("example.com/scoped/q.T.Gen"); res != verify.GeneratedFile {
 		t.Fatalf("the promoted generated method resolved %v under the scoped load; want the generated-file verdict", res)
 	}
-	// A package outside the scope is unknown to the scoped child, which
+	// A package outside the scope is unknown to the scoped backend, which
 	// answers not found for it — the served backend never asks it about
 	// one (TestServedRefusesSymbolsOutsideTheOperation).
-	if res, _, _, err := scoped.child.ResolveIn("example.com/scoped/s.Unrelated"); err != nil || res != verify.NotFound {
+	if res, _, _, err := scoped.backend.ResolveIn("example.com/scoped/s.Unrelated"); err != nil || res != verify.NotFound {
 		t.Fatalf("out-of-scope symbol: %v, %v; want not found", res, err)
 	}
 }
@@ -396,7 +396,7 @@ func TestGeneratedVerdictReadsADependencyDeclaringFile(t *testing.T) {
 		"main/go.mod": "module example.com/main\n\ngo 1.26\n\nrequire example.com/gen v0.0.0\n\nreplace example.com/gen => ../gen\n",
 		"main/q/q.go": "package q\n\nimport \"example.com/gen\"\n\ntype T struct{ gen.Base }\n\nfunc F() int { return T{}.Gen() }\n",
 	})
-	whole, err := newResolverClient(context.Background(), filepath.Join(root, "main"))
+	whole, err := NewWholeTree(context.Background(), filepath.Join(root, "main"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -414,11 +414,10 @@ func TestGeneratedVerdictReadsADependencyDeclaringFile(t *testing.T) {
 	if res, _, _, err := whole.ResolveIn("example.com/gen.Base.Gen"); err != nil || res != verify.NotFound {
 		t.Fatalf("dependency symbol under the whole tree: %v, %v; want not found", res, err)
 	}
-	scoped, err := newResolverClientScoped(context.Background(), filepath.Join(root, "main"), []string{"example.com/gen"})
+	scoped, err := newContext(context.Background(), filepath.Join(root, "main"), []string{"example.com/gen"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer scoped.Close()
 	if res, _, _, err := scoped.ResolveIn("example.com/gen.Base.Gen"); err != nil || res != verify.NotFound {
 		t.Fatalf("dependency symbol under a scoped load naming its package: %v, %v; want not found as the whole tree answers", res, err)
 	}
@@ -472,7 +471,7 @@ func TestScopedLoadOwnsPatternsPerWorkspaceMember(t *testing.T) {
 }
 
 // TestServedRecordsNothingThatMovedDuringTheRun pins the straddle check:
-// a symbol edited between the child's snapshot and the close is not
+// a symbol edited between the typed load's snapshot and the close is not
 // recorded, so the next run resolves it typed again instead of serving
 // a stale shape under a moved fingerprint.
 func TestServedRecordsNothingThatMovedDuringTheRun(t *testing.T) {
@@ -490,7 +489,7 @@ func TestServedRecordsNothingThatMovedDuringTheRun(t *testing.T) {
 	}
 	cold := ask(t, first, "example.com/served/p.F")
 	ask(t, first, "example.com/served/p.H")
-	// The tree moves after the child's snapshot answered F.
+	// The tree moves after the typed load's snapshot answered F.
 	p := filepath.Join(dir, "p", "p.go")
 	src, _ := os.ReadFile(p)
 	if err := os.WriteFile(p, []byte(replaceOnce(t, string(src), "func F(n int) int { return H(n) * 2 }", "func F(n int64) int { return H(int(n)) * 2 }")), 0o644); err != nil {

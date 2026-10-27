@@ -116,9 +116,9 @@ func TestGateToolRefusesVocabularyBeforeAnyChild(t *testing.T) {
 	}
 }
 
-// TestWitnessRunSharesTheToolsResolverChild pins the shared child: the
+// TestWitnessRunSharesTheToolsResolverChild pins the shared backend: the
 // witness run classifies through the very backend the tool opened to
-// resolve bindings — one owned process per tool call.
+// resolve bindings — one served backend per tool call.
 func TestWitnessRunSharesTheToolsResolverChild(t *testing.T) {
 	stipulate.Covers(t, "REQ-check-preparation")
 	backend := &seedingBackend{fakeBackend{"example.com/p.TestA": strings.Repeat("s", 64)}}
@@ -149,7 +149,7 @@ func TestWitnessRunSharesTheToolsResolverChild(t *testing.T) {
 func TestWitnessRunRefusesWithoutAResolverChild(t *testing.T) {
 	stipulate.Covers(t, "REQ-check-preparation")
 	_, err := New(t.TempDir()).runTests(context.Background(), nil, nil, nil)
-	if err == nil || !strings.Contains(err.Error(), "resolver child") {
+	if err == nil || !strings.Contains(err.Error(), "verification backend") {
 		t.Fatalf("err = %v, want the missing-classifier refusal", err)
 	}
 }

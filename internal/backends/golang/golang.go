@@ -178,15 +178,9 @@ func (b *Backend) pins() *pinTable {
 // package patterns are module-scoped, so nested published modules would
 // otherwise vanish from symbol resolution. A load failure is an error:
 // per the spec, an unloadable tree is a verification error, never an
-// absence. Deliberately unexported: in-process loading spawns go list
-// outside any owned process group, so the only cross-package door to
-// package discovery is the owned resolver client (NewWholeTree — the
-// client alone), keeping
-// REQ-go-owned-processes structurally satisfied for every consumer.
-// newContext loads the tree's resolution views: every visible member
-// under every build selection, over "./..." — or, when patterns are
-// given, over exactly those packages (an explicitly empty slice loads none),
-// the scope a served resolution's
+// absence. It loads every visible member under every build selection,
+// over "./..." — or, when patterns are given, over exactly those packages
+// (an explicitly empty slice loads none), the scope a served resolution's
 // stale remainder needs (REQ-evidence-resolution-freshness-typed-load). Their
 // dependencies stay export data; the one verdict that reads a
 // dependency's source — a promoted method's declaring file, for the
@@ -225,10 +219,8 @@ func newContext(ctx context.Context, dir string, patterns []string) (*Backend, e
 		return nil, fmt.Errorf("loading Go packages: %w", err)
 	}
 	lazyCfg := map[string]map[string]*packages.Config{}
-	// One toolchain sampler for this load — the child's one judged
-	// operation (a child process makes one load, so this is also the
-	// child's process-wide memo); every selection's members sample
-	// through it.
+	// One toolchain sampler for this load — every selection's members
+	// sample through it.
 	sample := newToolchainSample()
 	for _, sel := range selections {
 		viewEnv := selectionViewEnv(env, sel)
@@ -413,7 +405,7 @@ func memberPatterns(modules map[string]string, patterns []string) map[string][]s
 // declares one — exactly as its invocation executes, since a
 // toolchain'd tag view under the ambient toolchain would miss the
 // selection's own stdlib surface (REQ-go-build-selections). The one
-// derivation the resolver child's typed views and the served
+// derivation the backend's typed views and the served
 // resolution's freshness views share, so a record's fingerprint is
 // checked under the environment that produced it.
 func selectionViewEnv(env []string, sel buildSelection) []string {
@@ -747,8 +739,8 @@ func (b *Backend) splitSymbol(symbol string) (string, string) {
 	return best, strings.TrimPrefix(symbol, best+".")
 }
 
-// lookup finds a package-scope object, or a method through its receiver
-// type name.
+// lookup finds a package-scope object, or a method or struct field through its
+// enclosing type name.
 func lookup(pkg *types.Package, parts []string) types.Object {
 	obj := pkg.Scope().Lookup(parts[0])
 	if obj == nil {
@@ -786,6 +778,13 @@ func lookup(pkg *types.Package, parts []string) types.Object {
 			// package-qualified path rides the shape hash.
 			if m := ms.At(i).Obj(); m.Name() == parts[1] {
 				return m
+			}
+		}
+	}
+	if _, ok := tn.Type().Underlying().(*types.Struct); ok {
+		if fieldObj, _, _ := types.LookupFieldOrMethod(tn.Type(), true, pkg, parts[1]); fieldObj != nil {
+			if v, ok := fieldObj.(*types.Var); ok && v.IsField() {
+				return v.Origin()
 			}
 		}
 	}

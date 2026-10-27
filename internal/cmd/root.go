@@ -300,10 +300,10 @@ var declarationBackends = func(ctx context.Context, dir string, symbols []string
 // makeBackends builds the declaration-reading backends — the
 // whole-tree form, the one an unscoped declaration read takes on either face
 // (impact builds its own over the same constructor) — and the closer
-// that ends their children: the backend's own Close, so a verb that
-// defers it ends the resolver child with the verb, not with the
-// process. The whole-tree form publishes nothing, so the close's error
-// is the child's end and no verb's result depends on it. A variable
+// that releases their state: the backend's own Close, so a verb that
+// defers it releases the typed backend with the verb, not with the
+// process. The whole-tree form publishes nothing, so no verb's result
+// depends on the close's error. A variable
 // so a test can stand in a recording backend and pin that every verb
 // closes what it built.
 var makeBackends = func(ctx context.Context, dir string) (map[string]verify.Backend, func() error, error) {

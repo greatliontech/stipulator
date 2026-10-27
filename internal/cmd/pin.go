@@ -30,7 +30,7 @@ func pinCmd() *cobra.Command {
 			}
 			if len(ids) > 0 {
 				// Every id is judged before the first write and before
-				// the resolver child is spawned: a refusal mid-list writes
+				// the typed backend is loaded: a refusal mid-list writes
 				// nothing and pays no toolchain cost — the batch contract
 				// the ids form keeps on both faces (REQ-check-preparation).
 				spec, err := author.JudgeEditorial(os.DirFS(chdir), ids)

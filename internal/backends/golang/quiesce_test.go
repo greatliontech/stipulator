@@ -12,13 +12,14 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/resolutioncache"
+	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
-// A quiesced serving backend publishes its records and closes its child,
-// then answers every question it has already heard — resolution, package,
-// class, serving refusal — from memory, spawning no second child; a
-// symbol it never heard costs a child again
+// A quiesced serving backend publishes its records and releases its typed
+// backend, then answers every question it has already heard — resolution,
+// package, class, serving refusal — from memory, loading no second backend;
+// a symbol it never heard costs a typed load again
 // (REQ-evidence-resolution-freshness-quiesce).
 func TestQuiescedBackendAnswersFromMemory(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-freshness-quiesce")
@@ -34,31 +35,46 @@ func TestQuiescedBackendAnswersFromMemory(t *testing.T) {
 	})
 	c := countSpawns(t)
 	ctx := context.Background()
-	s, err := NewServed(ctx, dir, []string{"example.com/quiet/p.F", "example.com/quiet/p.TestF", "example.com/quiet/p.G"})
+	s, err := NewServed(ctx, dir, []string{"example.com/quiet/p.F", "example.com/quiet/p.TestF", "example.com/quiet/p.Missing", "example.com/quiet/nopkg.Missing", "example.com/quiet/p.G"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	before := ask(t, s, "example.com/quiet/p.F")
 	beforeTest := ask(t, s, "example.com/quiet/p.TestF")
+	// Resolve Missing and nopkg.Missing without calling SymbolPackage or
+	// WitnessClassVerdict before Quiesce; Quiesce must still memoize their
+	// package (including the empty package for nopkg.Missing) and class so
+	// post-quiesce queries do not reload the backend.
+	for _, sym := range []string{"example.com/quiet/p.Missing", "example.com/quiet/nopkg.Missing"} {
+		if res, _, err := s.Resolve(sym); err != nil || res != verify.NotFound {
+			t.Fatalf("Resolve(%s) before quiesce = %v, %v; want NotFound", sym, res, err)
+		}
+	}
 	if c.snapshot().child != 1 {
 		t.Fatalf("spawns before quiesce = %+v; want one child", c.snapshot())
 	}
 	s.Quiesce()
-	if s.child != nil {
-		t.Fatal("quiesce left the child open")
+	if s.backend != nil {
+		t.Fatal("quiesce left the typed backend open")
 	}
 	if n := len(resolutioncache.Load(dir)); n != 2 {
-		t.Fatalf("quiesce published %d records; want the two asked symbols", n)
+		t.Fatalf("quiesce published %d records; want the two found symbols", n)
 	}
 	if !strings.Contains(strings.Join(s.Notices(), "\n"), "resolution published under \"default\": 2 records") {
 		t.Fatalf("the account after the quiesce names %v; want 2 records", s.Notices())
 	}
-	// Every heard question answers from memory: no second child.
+	// Every heard question answers from memory: no second typed load.
 	if after := ask(t, s, "example.com/quiet/p.F"); after != before {
 		t.Fatalf("F after quiesce = %+v; before %+v", after, before)
 	}
 	if after := ask(t, s, "example.com/quiet/p.TestF"); after != beforeTest {
 		t.Fatalf("TestF after quiesce = %+v; before %+v", after, beforeTest)
+	}
+	if afterMissing := ask(t, s, "example.com/quiet/p.Missing"); afterMissing.res != verify.NotFound || afterMissing.pkg != "example.com/quiet/p" {
+		t.Fatalf("Missing after quiesce = %+v; want NotFound in example.com/quiet/p", afterMissing)
+	}
+	if afterNoPkg := ask(t, s, "example.com/quiet/nopkg.Missing"); afterNoPkg.res != verify.NotFound || afterNoPkg.pkg != "" {
+		t.Fatalf("nopkg.Missing after quiesce = %+v; want NotFound with empty package", afterNoPkg)
 	}
 	// The seeding classification answers from the memo too: the
 	// non-test symbol's recorded refusal, the test's recorded absence.
@@ -66,13 +82,13 @@ func TestQuiescedBackendAnswersFromMemory(t *testing.T) {
 		t.Fatalf("seeding after quiesce = %v, %v; want F's recorded refusal alone", refusals, err)
 	}
 	if got := c.snapshot().child; got != 1 {
-		t.Fatalf("a heard question spawned a child again: %d spawns", got)
+		t.Fatalf("a heard question reloaded the typed backend: %d loads", got)
 	}
-	// A question never heard costs a child again — correct, and
+	// A question never heard costs a typed load again — correct, and
 	// accounted by the spawn seam.
 	ask(t, s, "example.com/quiet/p.G")
 	if got := c.snapshot().child; got != 2 {
-		t.Fatalf("an unheard question spawned %d children in all; want a second", got)
+		t.Fatalf("an unheard question loaded %d backends in all; want a second", got)
 	}
 	// The close owes nothing: the records published at the quiesce stand
 	// alone, plus G's.
@@ -80,7 +96,7 @@ func TestQuiescedBackendAnswersFromMemory(t *testing.T) {
 		t.Fatal(err)
 	}
 	if n := len(resolutioncache.Load(dir)); n != 3 {
-		t.Fatalf("records after close = %d; want the three asked symbols", n)
+		t.Fatalf("records after close = %d; want the three found symbols", n)
 	}
 	// The account sums the quiesce's publish and the close's: three
 	// records, never the last publish's one.
@@ -90,8 +106,8 @@ func TestQuiescedBackendAnswersFromMemory(t *testing.T) {
 }
 
 // The publish account under one key is the sum of its publishes — a
-// quiesce's and a later close's after an unheard question respawned
-// the child: the installed counts added, every named list joined in
+// quiesce's and a later close's after an unheard question reloaded
+// the typed backend: the installed counts added, every named list joined in
 // publish order (REQ-evidence-resolution-cache-format's never-silent
 // account).
 func TestPublishAccountSumsAcrossPublishes(t *testing.T) {

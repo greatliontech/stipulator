@@ -152,7 +152,7 @@ func pkgPathOf(fn *types.Func) string {
 }
 
 // ExplainWitness loads the policy's whole tree at dir and derives one
-// witness's seeding chain through the owned resolver child — the one
+// witness's seeding chain through the typed backend — the one
 // route a typed load takes — naming the view that answered
 // (REQ-mcp-explain).
 func ExplainWitness(ctx context.Context, dir, symbol string) (gofresh.Chain, string, error) {

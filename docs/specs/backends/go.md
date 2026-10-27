@@ -8,9 +8,9 @@ interface (REQ-backend-surfaces); nothing in the core knows Go exists.
 ## Symbols and shapes
 
 **REQ-go-symbol** (behavior): A Go symbol reference MUST name the package
-import path, the identifier, and the receiver type for methods; the object's
-kind and shape are resolved from the code, never declared in the reference,
-so they cannot diverge from reality.
+import path, the identifier, and the enclosing type for methods and struct
+fields; the object's kind and shape are resolved from the code, never
+declared in the reference, so they cannot diverge from reality.
 The package boundary is the longest declared import-path prefix followed by
 `.`; dotted path elements are not receiver separators. Package metadata is
 read under the selected views before capture and scoped typed loading. Each
@@ -308,8 +308,8 @@ Go policy execution or package discovery MUST run inside an owned,
 cancellable process boundary whose descendant tree terminates
 with the operation's cancellation — except for the platform telemetry
 escape in REQ-go-owned-processes-telemetry-home — package loading owning
-its launcher's process and a dead or erroring resolver child surfacing
-as an error rather than a silent absence over its wire protocol, and an external
+its launcher's process and surfacing load failures as errors rather than
+silent absences, and an external
 package driver never shaping verification — an ambient one is refused,
 and the curated environment's package-driver variable is pinned off as
 its last word, past every declared override or denial.
@@ -370,8 +370,8 @@ owned boundary; the provenance probe's toolchain sample, a
 descendant-free query in its caller's own process group), `go list`
 (discovery's listings through the owned boundary; the package loader's
 — spawned by an in-process loader
-rather than through the owned command boundary, run by the resolver
-child's typed views, by the analysis engines the parent process
+rather than through the owned command boundary, run by the backend's
+typed views, by the analysis engines the process
 hosts, and by a witness's own structural proofs — each `go list` process swept with the
 operation that owns it),
 `go test -c` (retained compilation through the owned boundary),
@@ -382,32 +382,6 @@ consumer-program form under the same ownership policy and their admitted
 package-runtime environments. Output conversion runs inside Stipulator under
 the operation's cancellation boundary; it is not a child process. A reader,
 writer or conversion fault cannot establish a complete witnessed stream.
-
-**REQ-go-owned-processes-resolver-child** (behavior): This binary's
-own child, the self-executed resolver child, is no Go child: it MUST be
-spawned by the consumer-command form of Gofresh's go-command runner,
-under a containment of its own — its own process group swept outright
-with its operation (no quit arm: the child's operation is never an
-envelope), the reap bounded by the policy's wait delay — and under the
-parent's own environment normalized under the policy (a malformed
-entry refuses the spawn); on Windows the tree-kill helper is the
-boundary's mechanism.
-
-**REQ-go-owned-processes-child-identity** (behavior): The
-resolver child's handshake line — ready or the tree's load error alike —
-carries the child's executable identity (the size and modification time
-of the file it runs as and, where the platform exposes one, its inode,
-sampled when its process starts), and the parent MUST refuse, before reading
-anything else the child says, a child whose identity is not the file the
-parent chose to spawn: its own image as sampled at its own start on the
-self-executed path, so a binary replaced under a running server is a
-refusal naming both sides rather than a build answering with fields this
-one never wrote; a child answering no identity is refused as an older
-build; a parent that cannot read its own image refuses every child.
-Enforced by `TestSelfExecutedChildIsRefusedWhenTheParentsImageMoved`,
-`TestSelfExecutedChildsLoadErrorIsItsOwn`,
-`TestResolverClientRefusesAChildOfAnotherBuild`, and
-`TestFileIdentityMovesWithTheFile`.
 
 **REQ-go-fuzz-exploration** (behavior): A fuzzing campaign MUST NOT feed the
 gate directly — campaigns are time-bounded and nondeterministic; their

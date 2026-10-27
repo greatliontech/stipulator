@@ -15,11 +15,11 @@ import (
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
-// A check spawns its resolver child exactly once: every question the
+// A check loads its typed backend at most once: every question the
 // pass has for the serving backend is asked before the witness run,
-// the child is released before the first process spawns, and nothing
+// the backend is released before the first process spawns, and nothing
 // the pass does after the run — correlation, coverage, the account —
-// asks a question that would cost a second child
+// asks a question that would cost a second typed load
 // (REQ-evidence-resolution-freshness-quiesce).
 func TestCheckSpawnsTheResolverChildOnce(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-freshness-quiesce")
@@ -45,7 +45,7 @@ func TestCheckSpawnsTheResolverChildOnce(t *testing.T) {
 		}
 	}
 	// The bindings are authored pinned through the declaration-reading
-	// form, whose own child is not the check's: the spawn seam installs
+	// form, whose own typed load is not the check's: the load seam installs
 	// after it.
 	ctx := context.Background()
 	gb, err := golang.NewWholeTree(ctx, dir)
@@ -79,6 +79,6 @@ func TestCheckSpawnsTheResolverChildOnce(t *testing.T) {
 		t.Fatalf("the fixture check failed:\n%s", strings.Join(res.GetResolutionNotices(), "\n"))
 	}
 	if got := children(); got != 1 {
-		t.Fatalf("the check spawned %d resolver children; want exactly one — a second means a question was asked after the release", got)
+		t.Fatalf("the check performed %d typed loads; want exactly one — a second means a question was asked after the release", got)
 	}
 }

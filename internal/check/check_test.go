@@ -655,8 +655,7 @@ func TestCheckUnfiredManualGapOutlivesGreenWitnesses(t *testing.T) {
 // subprocess invocations of the individual operations, so this package
 // has no business importing subprocess plumbing. Child processes exist
 // only behind the backend execution seam, which spawns toolchain
-// commands and the owned symbol-resolution child — never a subprocess
-// invocation of a stipulator verb.
+// commands — never a subprocess invocation of a stipulator verb.
 func TestCheckComposesInProcess(t *testing.T) {
 	stipulate.Covers(t, "REQ-check-verdict")
 	fset := token.NewFileSet()
@@ -1331,11 +1330,12 @@ func TestCheckPublishesAndServesResolutionRecords(t *testing.T) {
 	}
 }
 
-// TestCheckReleasesTheResolverChildBeforeExecution pins the resolver child's
+// TestCheckReleasesTheResolverChildBeforeExecution pins the typed backend's
 // lifetime on the check (REQ-evidence-resolution-freshness-quiesce): the
-// bindings resolve and publish before the witness run's first process spawns,
-// and the child is gone — the execution phase opens with no descendant of the
-// pass — while the account still names the publish.
+// bindings resolve and publish before the witness run's execution phase opens,
+// and the typed backend is released — the execution phase opens with the
+// resolution records already published and no descendant of the pass — while
+// the account still names the publish.
 func TestCheckReleasesTheResolverChildBeforeExecution(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-freshness-quiesce")
 	if testing.Short() {
@@ -1348,8 +1348,14 @@ func TestCheckReleasesTheResolverChildBeforeExecution(t *testing.T) {
 		".stipulator/policy.textproto":     racePolicy,
 		".stipulator/bindings/a.textproto": "bindings {\n  requirement_id: \"REQ-fix-must\"\n  backend: \"go\"\n  symbol: \"example.com/checkfix/ok.TestDouble\"\n  role: BINDING_ROLE_TESTS\n}\n",
 	}))
-	var events []*stipulatorv1.ProgressEvent
-	rep := progress.New(func(e *stipulatorv1.ProgressEvent) { events = append(events, e) }, progress.WithResident(resident.Sample))
+	var execution *stipulatorv1.ProgressEvent
+	publishedAtExecutionOpen := -1
+	rep := progress.New(func(e *stipulatorv1.ProgressEvent) {
+		if e.GetPhase() == stipulatorv1.Phase_PHASE_EXECUTION && e.GetResident() != nil && execution == nil {
+			execution = e
+			publishedAtExecutionOpen = len(resolutioncache.Load(dir))
+		}
+	}, progress.WithResident(resident.Sample))
 	res, err := Run(progress.NewContext(context.Background(), rep), dir, false, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -1357,18 +1363,14 @@ func TestCheckReleasesTheResolverChildBeforeExecution(t *testing.T) {
 	if !strings.Contains(strings.Join(res.GetResolutionNotices(), "\n"), "resolution published under") {
 		t.Fatalf("the account names no publish:\n%s", strings.Join(res.GetResolutionNotices(), "\n"))
 	}
-	var execution *stipulatorv1.ProgressEvent
-	for _, e := range events {
-		if e.GetPhase() == stipulatorv1.Phase_PHASE_EXECUTION && e.GetResident() != nil {
-			execution = e
-			break
-		}
-	}
 	if execution == nil {
 		t.Fatal("no execution-phase event with a resident reading")
 	}
+	if publishedAtExecutionOpen == 0 {
+		t.Fatal("the execution phase opened before Quiesce published the resolution records")
+	}
 	if n := execution.GetResident().GetDescendants(); n != 0 {
-		t.Fatalf("the execution phase opened with %d descendant process(es); want the resolver child released before it", n)
+		t.Fatalf("the execution phase opened with %d descendant process(es); want zero", n)
 	}
 }
 

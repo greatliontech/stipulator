@@ -21,13 +21,13 @@ import (
 )
 
 // servedModule is the served backend's fixture: a callable that
-// references another, a test, and a type — the last no gofresh
-// subject, so it resolves typed every run.
+// references another, a test, and non-callable declarations (type,
+// field, var, const).
 func servedModule(t *testing.T) string {
 	t.Helper()
 	return writeModule(t, map[string]string{
 		"go.mod":                       "module example.com/served\n\ngo 1.26\n",
-		"p/p.go":                       "package p\n\n// T is a type: no subject, no record.\ntype T struct{ N int }\n\nfunc H(n int) int { return n + 1 }\n\nfunc F(n int) int { return H(n) * 2 }\n",
+		"p/p.go":                       "package p\n\ntype T struct{ N int }\n\nvar V = 1\n\nconst C = 2\n\nfunc H(n int) int { return n + 1 }\n\nfunc F(n int) int { return H(n) * 2 }\n",
 		"p/p_test.go":                  "package p\n\nimport \"testing\"\n\nfunc TestF(t *testing.T) {\n\tif F(1) != 4 {\n\t\tt.Fatal(\"F\")\n\t}\n}\n",
 		"p/ext_test.go":                "package p_test\n\nimport (\n\t\"testing\"\n\n\t\"example.com/served/p\"\n)\n\nfunc TestExt(t *testing.T) {\n\tif p.H(1) != 2 {\n\t\tt.Fatal(\"H\")\n\t}\n}\n",
 		".stipulator/policy.textproto": "invocations {\n  name: \"all\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./...\"\n    race: true\n  }\n}\n",
@@ -63,15 +63,17 @@ func ask(t *testing.T, s *Served, symbol string) answer {
 	return answer{res, shape, selection, pkg, class, reason, refusals[symbol]}
 }
 
-var servedSymbols = []string{"example.com/served/p.F", "example.com/served/p.H", "example.com/served/p.TestF", "example.com/served/p.TestExt", "example.com/served/p.T"}
+var servedSymbols = []string{"example.com/served/p.F", "example.com/served/p.H", "example.com/served/p.TestF", "example.com/served/p.TestExt", "example.com/served/p.T", "example.com/served/p.T.N", "example.com/served/p.V", "example.com/served/p.C"}
 
 // TestServedAnswersFromRecordsWithoutTheChild pins the served path: the
-// first run resolves typed through the child and publishes records; the
-// second run answers every callable's every field identically without
-// opening the child, and opens it only when asked about the type, which
-// has no record (REQ-evidence-resolution-freshness).
+// first run resolves typed and publishes records for both callables and
+// non-callable declarations (type, field, var, const); the second run
+// answers every symbol's every field identically without a typed load,
+// and re-resolves non-callable declarations when their source
+// certificate moves (REQ-evidence-resolution-freshness,
+// REQ-evidence-resolution-freshness-typed-load).
 func TestServedAnswersFromRecordsWithoutTheChild(t *testing.T) {
-	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness", "REQ-evidence-resolution-freshness-typed-load")
 	if testing.Short() {
 		t.Skip("loads a fixture module's types and views")
 	}
@@ -89,9 +91,9 @@ func TestServedAnswersFromRecordsWithoutTheChild(t *testing.T) {
 		cold[symbol] = ask(t, first, symbol)
 	}
 	if c.snapshot().child == 0 {
-		t.Fatal("the first run opened no child; the no-child pin below would be vacuous")
+		t.Fatal("the first run performed no typed load; the warm pin below would be vacuous")
 	}
-	if cold["example.com/served/p.F"].res != verify.Resolved || cold["example.com/served/p.T"].res != verify.Resolved || cold["example.com/served/p.TestF"].class != verify.ExampleWitness {
+	if cold["example.com/served/p.F"].res != verify.Resolved || cold["example.com/served/p.T"].res != verify.Resolved || cold["example.com/served/p.T.N"].res != verify.Resolved || cold["example.com/served/p.V"].res != verify.Resolved || cold["example.com/served/p.C"].res != verify.Resolved || cold["example.com/served/p.TestF"].class != verify.ExampleWitness {
 		t.Fatalf("cold answers: %+v", cold)
 	}
 	if err := first.Close(); err != nil {
@@ -103,20 +105,23 @@ func TestServedAnswersFromRecordsWithoutTheChild(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := second.ServedCount(); got != 4 {
-		t.Fatalf("served %d symbols, want the four callables (the external test included); reasons %v, degraded %v", got, second.Reasons(), second.Degraded())
+	if got := second.ServedCount(); got != len(servedSymbols) {
+		t.Fatalf("served %d symbols, want all %d symbols (callables and non-callables); reasons %v, degraded %v", got, len(servedSymbols), second.Reasons(), second.Degraded())
 	}
-	for _, symbol := range servedSymbols[:4] {
+	for _, symbol := range servedSymbols {
 		if got := ask(t, second, symbol); got != cold[symbol] {
 			t.Fatalf("%s served %+v, typed %+v", symbol, got, cold[symbol])
 		}
 	}
 	if got := c.snapshot(); got.child != 0 {
-		t.Fatalf("the served run opened %d children for the callables", got.child)
+		t.Fatalf("the served run performed %d typed loads", got.child)
+	}
+	if err := second.Close(); err != nil {
+		t.Fatal(err)
 	}
 	// Declaration queries on a fully served set still obtain typed source.
 	// Explicit-empty authoring must not turn this older unscoped read into
-	// an empty child simply because there is no stale remainder.
+	// an empty backend simply because there is no stale remainder.
 	fullyServed, err := NewServed(ctx, dir, servedSymbols[:4])
 	if err != nil {
 		t.Fatal(err)
@@ -129,14 +134,26 @@ func TestServedAnswersFromRecordsWithoutTheChild(t *testing.T) {
 		t.Fatalf("served declaration file = %q %t %v", file, ok, err)
 	}
 	fullyServed.Close()
+
+	// Moving a non-callable declaration invalidates its source certificate
+	// and re-resolves it typed with the new shape.
+	p := filepath.Join(dir, "p", "p.go")
+	src, _ := os.ReadFile(p)
+	if err := os.WriteFile(p, []byte(replaceOnce(t, string(src), "type T struct{ N int }", "type T struct{ N int64 }")), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	c.reset()
-	if got := ask(t, second, "example.com/served/p.T"); got != cold["example.com/served/p.T"] {
-		t.Fatalf("type served %+v, typed %+v", got, cold["example.com/served/p.T"])
+	third, err := NewServed(ctx, dir, servedSymbols[4:])
+	if err != nil {
+		t.Fatal(err)
 	}
-	if got := c.snapshot(); got.child != 1 {
-		t.Fatalf("the type opened %d children, want exactly the one typed resolution", got.child)
+	if third.ServedCount() != 0 || third.Reasons()["example.com/served/p.T"] != "source dependencies" || third.Reasons()["example.com/served/p.T.N"] != "source dependencies" {
+		t.Fatalf("after editing T: served %d, reasons %v", third.ServedCount(), third.Reasons())
 	}
-	if err := second.Close(); err != nil {
+	if got := ask(t, third, "example.com/served/p.T.N"); got.shape == cold["example.com/served/p.T.N"].shape || c.snapshot().child != 1 {
+		t.Fatalf("moved field T.N answered %+v with %d typed loads", got, c.snapshot().child)
+	}
+	if err := third.Close(); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -455,8 +472,8 @@ func TestServedTakesTheNewestOfADuplicatedIdentity(t *testing.T) {
 	if err := os.Chtimes(older, past, past); err != nil {
 		t.Fatal(err)
 	}
-	if got := len(resolutioncache.Load(dir)); got != 5 {
-		t.Fatalf("the store loads %d records, want the four published and the twin", got)
+	if got := len(resolutioncache.Load(dir)); got != len(servedSymbols)+1 {
+		t.Fatalf("the store loads %d records, want the %d published and the twin", got, len(servedSymbols))
 	}
 
 	c.reset()
@@ -464,8 +481,8 @@ func TestServedTakesTheNewestOfADuplicatedIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := second.ServedCount(); got != 4 {
-		t.Fatalf("served %d symbols, want four: the twin displaced p.F (reasons %v)", got, second.Reasons())
+	if got := second.ServedCount(); got != len(servedSymbols) {
+		t.Fatalf("served %d symbols, want %d: the twin displaced p.F (reasons %v)", got, len(servedSymbols), second.Reasons())
 	}
 	if got := ask(t, second, "example.com/served/p.F"); got.shape == "stale twin" {
 		t.Fatalf("p.F served the older twin: %+v", got)
@@ -478,7 +495,7 @@ func TestServedTakesTheNewestOfADuplicatedIdentity(t *testing.T) {
 // The whole-tree form is the typed path alone: it reads no policy at
 // construction, so a policy the tree cannot
 // parse refuses it only where it refused the typed path before — at
-// the first answer, through the child — while the serving form, which
+// the first answer, through the typed load — while the serving form, which
 // keys its records by the policy's selections, refuses at construction
 // (REQ-evidence-resolution-freshness-typed-load).
 func TestWholeTreeFormReadsNoPolicy(t *testing.T) {
@@ -505,7 +522,7 @@ func TestWholeTreeFormReadsNoPolicy(t *testing.T) {
 	}
 	defer whole.Close()
 	if _, _, err := whole.Resolve("example.com/served/p.F"); err == nil || !strings.Contains(err.Error(), policy.Path) {
-		t.Fatalf("the whole-tree form's first answer = %v, want the child's policy refusal", err)
+		t.Fatalf("the whole-tree form's first answer = %v, want the policy refusal", err)
 	}
 	if whole.ServedCount() != 0 || len(whole.Degraded()) != 0 {
 		t.Fatalf("the whole-tree form served %d, degraded %v", whole.ServedCount(), whole.Degraded())
@@ -539,7 +556,7 @@ func TestWholeTreeFormPublishesNothing(t *testing.T) {
 	if notices := whole.Notices(); len(notices) == 0 || notices[0] != fmt.Sprintf("resolution: 0 served from records, %d resolved typed", len(servedSymbols)) {
 		t.Fatalf("whole-tree notices = %v", notices)
 	}
-	// The form accumulates no publication row and asks the child
+	// The form accumulates no publication row and asks the typed backend
 	// nothing beyond the answer: publication is not merely blocked at
 	// close, it is never prepared.
 	if len(whole.pending) != 0 {
@@ -834,5 +851,43 @@ func TestNewServedCheckingCertificatesScopedToRecordedSymbols(t *testing.T) {
 	}
 	if unrecordedQueried != 0 {
 		t.Fatalf("NewServed checkingCertificates queried unrecorded owner package %d times, want 0", unrecordedQueried)
+	}
+}
+
+func TestGoLoadPinsAmbientPackageDriverOff(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-owned-processes")
+	t.Setenv("GOPACKAGESDRIVER", filepath.Join(t.TempDir(), "no-such-driver"))
+	b, err := newContext(context.Background(), "testdata/fixturemod", nil)
+	if err != nil {
+		t.Fatalf("load consulted the ambient package driver: %v", err)
+	}
+	res, shape, err := b.Resolve("example.com/fixture/lib.Add")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res != verify.Resolved || len(shape) != 64 {
+		t.Fatalf("Resolve under ambient driver = %v shape %q, want resolved with a shape hash", res, shape)
+	}
+}
+
+func TestResolverWireMappingsRoundTrip(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-resolution-cache-format")
+	for _, r := range []verify.Resolution{verify.Unverified, verify.Resolved, verify.NotFound, verify.GeneratedFile} {
+		got, ok := resolutionFromWire(resolutionWire(r))
+		if !ok || got != r {
+			t.Errorf("resolution %v round-tripped to %v (known=%v)", r, got, ok)
+		}
+	}
+	if _, ok := resolutionFromWire("bogus"); ok {
+		t.Error("unknown resolution accepted")
+	}
+	for _, c := range []verify.WitnessClass{verify.ExampleWitness, verify.PropertyWitness, verify.AnalyzerProof} {
+		got, ok := classFromWire(classWire(c))
+		if !ok || got != c {
+			t.Errorf("class %v round-tripped to %v (known=%v)", c, got, ok)
+		}
+	}
+	if _, ok := classFromWire("bogus"); ok {
+		t.Error("unknown class accepted")
 	}
 }

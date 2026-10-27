@@ -3,8 +3,8 @@
 
 bindings {
   requirement_id: "REQ-go-symbol"
-  content_hash: "527e9b00ba21d90ec561f1b2d2da50d9e011326bd116a53713cc0693c4e05069"
-  source_hash: "1ad3b57b56e61b92f3be859826daea96bc96a2e7fdfe3a826a51eebe04b54674"
+  content_hash: "82c1576024b98ccf6f34771e35589db0150e6cfa381b3d2cffd480b6db9889a9"
+  source_hash: "65c9ada543732efca37667523749c74e323c6b86427ce46e23ba38842bcd1a80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.Backend.Resolve"
   role: BINDING_ROLE_IMPLEMENTS
@@ -13,8 +13,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-symbol"
-  content_hash: "527e9b00ba21d90ec561f1b2d2da50d9e011326bd116a53713cc0693c4e05069"
-  source_hash: "1ad3b57b56e61b92f3be859826daea96bc96a2e7fdfe3a826a51eebe04b54674"
+  content_hash: "82c1576024b98ccf6f34771e35589db0150e6cfa381b3d2cffd480b6db9889a9"
+  source_hash: "65c9ada543732efca37667523749c74e323c6b86427ce46e23ba38842bcd1a80"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestResolve"
   role: BINDING_ROLE_TESTS

@@ -8,14 +8,11 @@ import (
 	"testing"
 )
 
-// TestMain routes resolver-child re-execs — a resolver client self-execs
-// os.Executable(), this binary — and loads the shared repository-tree
-// backend: after flags parse, before m.Run installs the testlog, so
-// the tree read stays outside every witness's observation exactly as
-// a package-init load kept it, and only on the full tier when at least
-// one selected test reads it.
+// TestMain loads the shared repository-tree backend: after flags parse,
+// before m.Run installs the testlog, so the tree read stays outside
+// every witness's observation exactly as a package-init load kept it,
+// and only on the full tier when at least one selected test reads it.
 func TestMain(m *testing.M) {
-	ResolverChildMain()
 	flag.Parse()
 	if !testing.Short() && needsRepoBackend() {
 		b, err := newContext(context.Background(), "../../..", nil)

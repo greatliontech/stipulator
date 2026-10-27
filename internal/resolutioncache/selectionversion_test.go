@@ -29,10 +29,10 @@ func TestIncompleteSelectionRecordsNeverServe(t *testing.T) {
 		t.Fatal(err)
 	}
 	var written struct{ Version int }
-	if err := json.Unmarshal(data, &written); err != nil || written.Version != 5 {
-		t.Fatalf("writer version = %d, %v; want source-certificate version 5", written.Version, err)
+	if err := json.Unmarshal(data, &written); err != nil || written.Version != 6 {
+		t.Fatalf("writer version = %d, %v; want source-certificate version 6", written.Version, err)
 	}
-	for _, v := range []int{1, 2, 3, 4} {
+	for _, v := range []int{1, 2, 3, 4, 5} {
 		legacy := current
 		legacy.Fingerprint = fingerprint(string(rune('0' + v)))
 		data, err = json.Marshal(entry{Version: v, Selection: legacy.Selection, Symbol: legacy.Symbol, Fingerprint: legacy.Fingerprint, Certificate: legacy.Certificate, Resolution: legacy.Resolution, Shape: legacy.Shape, Package: legacy.Package, WitnessClass: legacy.WitnessClass})
@@ -46,7 +46,7 @@ func TestIncompleteSelectionRecordsNeverServe(t *testing.T) {
 	if got := Load(dir); len(got) != 1 || got[0] != current {
 		t.Fatalf("incomplete-selection record served beside current record: %+v", got)
 	}
-	if removed, kept, err := GC(t.Context(), dir, func(string, string) bool { return true }); err != nil || removed != 4 || kept != 1 {
+	if removed, kept, err := GC(t.Context(), dir, func(string, string) bool { return true }); err != nil || removed != 5 || kept != 1 {
 		t.Fatalf("collecting incomplete selection records: removed=%d kept=%d err=%v", removed, kept, err)
 	}
 }

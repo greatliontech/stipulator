@@ -17,8 +17,8 @@ var errEnvelopeExpired = errors.New("policy invocation envelope expired")
 
 // commandHook observes the derivation's spawns — the normalization's
 // snapshot, discovery listings, retained compilation and consumer
-// binaries, including the resolver child. The provenance probe and native
-// sessions' analysis and classification-root commands are no derivation spawn and never
+// binaries. The provenance probe and native sessions' analysis and
+// classification-root commands are no derivation spawn and never
 // reach it. Tests install it to pin that a refusal fired before any of
 // these spawns and that the readers reuse the derivation.
 var (
@@ -45,26 +45,9 @@ var ownedBoundary = &gotool.Containment{
 
 // ownedRunner is the derivation's go-command runner under the owned
 // boundary: discovery's listings, resolution's package inventories, the
-// witness invocations, and the
-// normalization's environment snapshot run through it, and the test
-// seam (commandHook) sees each of those spawns — the derivation's own,
-// which the reuse pins count. Non-go spawns include both retained test binaries
-// and this binary's resolver re-exec. The resolver uses childRunner, whose
-// operation lifetime has no package-envelope quit arm; retained tests keep
-// their own invocation boundary.
+// witness invocations, and the normalization's environment snapshot run
+// through it, and the test seam (commandHook) sees each of those spawns.
 var ownedRunner = gotool.Runner{Containment: ownedBoundary, Prepare: observeCommand}
-
-// childRunner spawns the resolver child — this binary re-executed on
-// its resolver route — as the consumer-command form of the one
-// go-command policy (gotool.Runner.Program, REQ-go-owned-processes-resolver-child):
-// its own process group, killed outright when its operation ends (the
-// child's context is the operation's, never a package envelope's, so
-// the envelope-expiry quit has no arm here — an ended operation
-// discards the child's answers whole, and a dump would have no
-// consumer), the reap bounded by the policy's wait delay, the parent's
-// own environment normalized under the policy. The derivation seam sees
-// the spawn as the child's program name with its arguments.
-var childRunner = gotool.Runner{Containment: &gotool.Containment{}, Prepare: observeChild}
 
 // observeChild hands a prepared consumer-program spawn to the test seam
 // (commandHook): the program as named, then its arguments.
@@ -98,9 +81,8 @@ var engineCommandHook func(*exec.Cmd)
 
 // probeRunner is the toolchain sample's runner: the caller's own
 // process group — `go env GOVERSION` names its key, so the query forks
-// nothing and is swept with its caller by the owner that kills the
-// caller outright (the served resolver child's client does exactly
-// that) — with the reap bounded so a wrapper's descendant holding the
+// nothing and is swept with its caller when the caller is terminated —
+// with the reap bounded so a wrapper's descendant holding the
 // pipe cannot outlive the cancellation (REQ-policy-cancellation); a
 // sample is no derivation spawn, so the seam does not see it.
 var probeRunner = gotool.Runner{Prepare: boundProbe}

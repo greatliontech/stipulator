@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"runtime/debug"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/greatliontech/gofresh"
 	"github.com/greatliontech/stipulator/internal/records"
@@ -14,22 +16,89 @@ import (
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
+var (
+	typedLoadHookMu sync.Mutex
+	typedLoadHook   func()
+)
+
+func noteTypedLoad() {
+	typedLoadHookMu.Lock()
+	defer typedLoadHookMu.Unlock()
+	if typedLoadHook != nil {
+		typedLoadHook()
+	}
+}
+
+// resolutionWire renders a resolution for persistence in resolution records.
+func resolutionWire(r verify.Resolution) string {
+	switch r {
+	case verify.Resolved:
+		return "resolved"
+	case verify.NotFound:
+		return "not_found"
+	case verify.GeneratedFile:
+		return "generated_file"
+	}
+	return "unverified"
+}
+
+// resolutionFromWire parses a persisted resolution, reporting whether the
+// value is known.
+func resolutionFromWire(s string) (verify.Resolution, bool) {
+	switch s {
+	case "resolved":
+		return verify.Resolved, true
+	case "not_found":
+		return verify.NotFound, true
+	case "generated_file":
+		return verify.GeneratedFile, true
+	case "unverified":
+		return verify.Unverified, true
+	}
+	return verify.NotFound, false
+}
+
+// classWire renders a witness class for persistence in resolution records.
+func classWire(c verify.WitnessClass) string {
+	switch c {
+	case verify.AnalyzerProof:
+		return "proof"
+	case verify.PropertyWitness:
+		return "property"
+	}
+	return "example"
+}
+
+// classFromWire parses a persisted witness class, reporting whether the
+// value is known.
+func classFromWire(s string) (verify.WitnessClass, bool) {
+	switch s {
+	case "proof":
+		return verify.AnalyzerProof, true
+	case "property":
+		return verify.PropertyWitness, true
+	case "example":
+		return verify.ExampleWitness, true
+	}
+	return verify.ExampleWitness, false
+}
+
 // selectionEngine is the freshness engine for one resolution build
-// selection: it loads the selection's sources exactly as the resolver
-// child's typed view does — the same environment, tags and module mode
+// selection: it loads the selection's sources exactly as the backend's
+// typed view does — the same environment, tags and module mode
 // (selectionViewEnv, selectionViewFlags) — so a resolution record's
 // fingerprint is captured and checked under the view that produced the
 // resolution (REQ-evidence-resolution-freshness). Resolution observes
 // no runtime input, so every check closes its own window: no deferred
 // close, no producer environment.
 func selectionEngine(ctx context.Context, view *selectedContext, sample toolchainSample) (*gofresh.Session, error) {
-	// The same provenance prerequisite the child's typed view enforces,
+	// The same provenance prerequisite the typed view enforces,
 	// in the same form — every member sampled where its view loads
 	// (checkSelectionMembers): an identified selection toolchain this
 	// binary's frontend cannot read refuses before any verdict, while a
 	// member whose toolchain cannot be sampled is left to this engine's
 	// own loads (REQ-evidence-toolchain-provenance) — so a served view
-	// refuses exactly when the child's would.
+	// refuses exactly when the typed load would.
 	if err := checkSelectionMembers(ctx, view.root, view.env, view.members, view.selection.toolchain, sample); err != nil {
 		return nil, err
 	}
@@ -37,16 +106,16 @@ func selectionEngine(ctx context.Context, view *selectedContext, sample toolchai
 }
 
 // Served is the verification backend that answers a binding's
-// resolution from a resolution record proven fresh by gofresh and opens
-// the owned resolver child only for the stale remainder
+// resolution from a resolution record proven fresh by gofresh and loads
+// the typed backend only for the stale remainder
 // (REQ-evidence-resolution-freshness). One per operation, constructed
 // with the operation's whole symbol set — every bound symbol and every
 // witness subject — so the served and stale sets are known before any
-// child starts. It performs the child's roles for verification: symbol
+// typed load starts. It performs the backend's roles for verification: symbol
 // resolution, package location, witness classification, and the
 // serving refusals of random-seeded witnesses; the slice roles that
-// read declarations keep the child: NewWholeTree builds the whole-tree
-// form — no record served or published, no policy read, the child
+// read declarations use the typed backend: NewWholeTree builds the whole-tree
+// form — no record served or published, no policy read, the typed load
 // over the whole tree.
 type Served struct {
 	ctx context.Context
@@ -62,7 +131,7 @@ type Served struct {
 	sels   []buildSelection
 	served map[string]resolutioncache.Record
 	// set is the operation's symbol set. When it names symbols the
-	// child is scoped to their stale remainder and a symbol outside the
+	// typed load is scoped to their stale remainder and a symbol outside the
 	// set is refused, never forwarded (admits); a backend built for the
 	// unscoped declaration-reading form names none and loads the whole tree.
 	set map[string]bool
@@ -70,20 +139,24 @@ type Served struct {
 	// before capture and typed scope, never guessed from a dot position.
 	inventory map[string]map[string]bool
 	// unserved is every requested symbol without a served record — the
-	// child's scope and the opening capture's subjects.
+	// typed load's scope and the opening capture's subjects.
 	unserved []string
 	// opening holds, per selection key, the fingerprints captured when
-	// the child opened: a record publishes only when its closing
+	// the typed load opened: a record publishes only when its closing
 	// capture equals its opening one, so a resolution answered from the
-	// child's snapshot is never recorded under a fingerprint of a tree
+	// typed load's snapshot is never recorded under a fingerprint of a tree
 	// that moved after it (the straddle check).
 	opening              map[string]map[gofresh.Subject]gofresh.Fingerprint
+	openingUnknown       map[string]map[gofresh.Subject]bool
 	openingCertificates  map[string]resolutioncache.Certificate
 	checkingCertificates map[string]resolutioncache.Certificate
-	child                *resolverClient
-	answers              map[string]childAnswer
+	backend              *Backend
+	backendErr           error
+	backendLoaded        bool
+	typedLoads           int
+	answers              map[string]symbolAnswer
 	pending              map[string][]string
-	// refusals holds, per symbol the child was asked about, its serving
+	// refusals holds, per symbol the typed backend was asked about, its serving
 	// refusal or "" — the absence is an answer too.
 	refusals map[string]string
 	// reasons names, per recorded symbol that did not serve, why: the
@@ -119,9 +192,9 @@ var (
 	_ verify.WitnessSeeding    = (*Served)(nil)
 )
 
-// childAnswer is one symbol's typed resolution this run, kept so the
+// symbolAnswer is one symbol's typed resolution this run, kept so the
 // record it publishes and every later reader share one answer.
-type childAnswer struct {
+type symbolAnswer struct {
 	// resolved marks the resolution half answered; classed the class
 	// half — either may arrive first, and neither stands in for the
 	// other.
@@ -130,6 +203,7 @@ type childAnswer struct {
 	shape     string
 	selection string
 	pkg       string
+	pkgKnown  bool
 	class     verify.WitnessClass
 	reason    string
 	classed   bool
@@ -142,7 +216,7 @@ type childAnswer struct {
 // stale — a fault on the serving path degrades the affected symbols to
 // the typed resolution, never the operation
 // (REQ-evidence-freshness-degrade). An empty symbol set serves nothing
-// and scopes the child to the whole tree; the policy is read either
+// and scopes the typed load to the whole tree; the policy is read either
 // way, since every record it publishes is keyed by a selection.
 func NewServed(ctx context.Context, dir string, symbols []string) (*Served, error) {
 	s, err := newServed(ctx, dir)
@@ -259,7 +333,7 @@ func BackendSet(s *Served) map[string]verify.Backend {
 // NewWholeTree prepares the whole-tree form: the typed path over the
 // whole tree with nothing served or published and no selection read,
 // so a policy the tree cannot parse refuses only where the typed path
-// refuses it — at the first answer, through the child. The
+// refuses it — at the first answer, through the typed load. The
 // Unscoped declaration-reading roles (blanket pinning, retargeting, impact,
 // the declaration frontier and the partitions) take this form; explicit
 // authoring uses NewDeclarations.
@@ -278,7 +352,7 @@ func newServed(ctx context.Context, dir string) (*Served, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Served{sample: newToolchainSample(), ctx: ctx, dir: abs, served: map[string]resolutioncache.Record{}, answers: map[string]childAnswer{}, pending: map[string][]string{}, reasons: map[string]resolutionReason{}}, nil
+	return &Served{sample: newToolchainSample(), ctx: ctx, dir: abs, served: map[string]resolutioncache.Record{}, answers: map[string]symbolAnswer{}, pending: map[string][]string{}, reasons: map[string]resolutionReason{}}, nil
 }
 
 func (s *Served) selection(key string) (buildSelection, bool) {
@@ -299,10 +373,10 @@ func (s *Served) subjectOf(symbol string) (gofresh.Subject, bool) {
 	return gofresh.Subject{Package: pkg, Symbol: symbol[len(pkg)+1:]}, true
 }
 
-// childPatterns is the typed load's scope: the packages of every
+// loadPatterns is the typed load's scope: the packages of every
 // unserved symbol. An unavailable inventory permits only the bounded
 // syntactic candidates; an empty scope never widens to the whole tree.
-func (s *Served) childPatterns() []string {
+func (s *Served) loadPatterns() []string {
 	if len(s.unserved) == 0 && (!s.whole || s.set == nil) {
 		return nil
 	}
@@ -329,12 +403,13 @@ func (s *Served) childPatterns() []string {
 }
 
 // openingCapture fingerprints every unserved subject under every
-// selection before the child opens: the fingerprints a record may
-// publish under, contemporaneous with the snapshot the child answers
+// selection before the typed load opens: the fingerprints a record may
+// publish under, contemporaneous with the snapshot the typed load answers
 // from. Unknown subjects are narrowed by gofresh's refusal; a fault
 // leaves the selection uncaptured, so nothing publishes under it.
 func (s *Served) openingCapture() {
 	s.opening = map[string]map[gofresh.Subject]gofresh.Fingerprint{}
+	s.openingUnknown = map[string]map[gofresh.Subject]bool{}
 	s.openingCertificates = nil
 	if len(s.unserved) == 0 {
 		return
@@ -346,9 +421,10 @@ func (s *Served) openingCapture() {
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		fps, ok := s.captureUnder(endpoint, key, s.unserved, "opening")
+		fps, unknown, ok := s.captureUnder(endpoint, key, s.unserved, "opening")
 		if ok {
 			s.opening[key] = fps
+			s.openingUnknown[key] = unknown
 		}
 	}
 	certs, err := s.captureSourceCertificates(endpoint, s.unserved)
@@ -360,20 +436,21 @@ func (s *Served) openingCapture() {
 
 // captureUnder builds a view over the symbols' subjects under one
 // selection, narrowing the subjects the selected source does not
-// declare, and captures their fingerprints.
-func (s *Served) captureUnder(endpoint *selectionEndpoint, key string, symbols []string, phase string) (map[gofresh.Subject]gofresh.Fingerprint, bool) {
+// declare, and captures their fingerprints alongside the narrowed
+// non-callable/unknown subject set.
+func (s *Served) captureUnder(endpoint *selectionEndpoint, key string, symbols []string, phase string) (map[gofresh.Subject]gofresh.Fingerprint, map[gofresh.Subject]bool, bool) {
 	if !s.inventoryComplete() {
-		return nil, false
+		return nil, nil, false
 	}
 	selected, err := endpoint.selected(key)
 	if err != nil {
 		s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
-		return nil, false
+		return nil, nil, false
 	}
 	engine, err := selectionEngine(s.ctx, selected, s.sample)
 	if err != nil {
 		s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
-		return nil, false
+		return nil, nil, false
 	}
 	var subjects []gofresh.Subject
 	for _, sym := range symbols {
@@ -386,6 +463,7 @@ func (s *Served) captureUnder(endpoint *selectionEndpoint, key string, symbols [
 		}
 		subjects = append(subjects, subject)
 	}
+	unknownSubjects := map[gofresh.Subject]bool{}
 	var view *gofresh.Snapshot
 	for len(subjects) > 0 {
 		view, err = engine.Snapshot(s.ctx, subjects, gofresh.CodeResult)
@@ -394,10 +472,11 @@ func (s *Served) captureUnder(endpoint *selectionEndpoint, key string, symbols [
 			gone := map[gofresh.Subject]bool{}
 			for _, subject := range unknown.Subjects {
 				gone[subject] = true
+				unknownSubjects[subject] = true
 			}
 			if len(gone) == 0 {
 				s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
-				return nil, false
+				return nil, nil, false
 			}
 			kept := subjects[:0]
 			for _, subject := range subjects {
@@ -410,27 +489,28 @@ func (s *Served) captureUnder(endpoint *selectionEndpoint, key string, symbols [
 		}
 		if err != nil {
 			s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
-			return nil, false
+			return nil, nil, false
 		}
 		break
 	}
-	if len(subjects) == 0 {
-		return map[gofresh.Subject]gofresh.Fingerprint{}, true
-	}
-	fps, err := view.CaptureBatch(s.ctx)
-	if err != nil {
-		s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
-		return nil, false
+	fps := map[gofresh.Subject]gofresh.Fingerprint{}
+	if len(subjects) > 0 {
+		fps, err = view.CaptureBatch(s.ctx)
+		if err != nil {
+			s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
+			return nil, nil, false
+		}
 	}
 	if captureForTest != nil {
 		fps = captureForTest(phase, fps)
 	}
-	return fps, true
+	return fps, unknownSubjects, true
 }
 
-// serveSelection checks one selection's records: the recorded subjects
-// viewed together, the ones the selected source no longer declares
-// narrowed away by gofresh's own refusal, the rest batch-checked.
+// serveSelection checks one selection's records: the recorded callable
+// subjects viewed together, the ones the selected source no longer declares
+// narrowed away by gofresh's own refusal, the rest batch-checked alongside
+// recorded non-callable declarations governed by their source certificates.
 func (s *Served) serveSelection(endpoint *selectionEndpoint, key string, recs []resolutioncache.Record) {
 	selected, err := endpoint.selected(key)
 	if err != nil {
@@ -444,6 +524,8 @@ func (s *Served) serveSelection(endpoint *selectionEndpoint, key string, recs []
 	}
 	subjects := make([]gofresh.Subject, 0, len(recs))
 	bySubject := map[gofresh.Subject]resolutioncache.Record{}
+	seenSubject := map[gofresh.Subject]bool{}
+	var nonCallables []resolutioncache.Record
 	for _, rec := range recs {
 		subject, ok := recordSubject(rec)
 		if !ok {
@@ -451,7 +533,12 @@ func (s *Served) serveSelection(endpoint *selectionEndpoint, key string, recs []
 		}
 		// Records come newest first; a subject met twice (a partial
 		// install left two files of one identity) keeps its newest.
-		if _, seen := bySubject[subject]; seen {
+		if seenSubject[subject] {
+			continue
+		}
+		seenSubject[subject] = true
+		if rec.Fingerprint == (gofresh.Fingerprint{}) {
+			nonCallables = append(nonCallables, rec)
 			continue
 		}
 		subjects = append(subjects, subject)
@@ -488,30 +575,41 @@ func (s *Served) serveSelection(endpoint *selectionEndpoint, key string, recs []
 		}
 		break
 	}
-	if len(subjects) == 0 {
-		return
-	}
-	// Equivalence is of the SOURCE closure alone: the current capture's
-	// closure tiers — maximal closure, toolchain, build configuration —
-	// must equal the record's. gofresh's result-serving verdict judges
-	// more (dynamic state, purity, runtime inputs), which a resolution
-	// never depends on, so it is not consulted here.
-	current, err := view.CaptureBatch(s.ctx)
-	if err != nil {
-		s.degraded = append(s.degraded, fmt.Sprintf("selection %q: %v", key, err))
-		return
-	}
-	for _, subject := range subjects {
-		rec := bySubject[subject]
-		fp, captured := current[subject]
-		if !captured {
-			s.reasons[rec.Symbol] = resolutionNoCurrentCapture.with("")
-			continue
+	if len(subjects) > 0 {
+		// Equivalence is of the SOURCE closure alone: the current capture's
+		// closure tiers — maximal closure, toolchain, build configuration —
+		// must equal the record's. gofresh's result-serving verdict judges
+		// more (dynamic state, purity, runtime inputs), which a resolution
+		// never depends on, so it is not consulted here.
+		current, err := view.CaptureBatch(s.ctx)
+		if err != nil {
+			s.degraded = append(s.degraded, fmt.Sprintf("selection %q: %v", key, err))
+			return
 		}
-		if why := closureMovedReason(rec.Fingerprint, fp); why != (resolutionReason{}) {
-			s.reasons[rec.Symbol] = why
-			continue
+		for _, subject := range subjects {
+			rec := bySubject[subject]
+			fp, captured := current[subject]
+			if !captured {
+				s.reasons[rec.Symbol] = resolutionNoCurrentCapture.with("")
+				continue
+			}
+			if why := closureMovedReason(rec.Fingerprint, fp); why != (resolutionReason{}) {
+				s.reasons[rec.Symbol] = why
+				continue
+			}
+			certificate, ok := s.checkingCertificates[rec.Symbol]
+			if !ok {
+				s.reasons[rec.Symbol] = resolutionNoCurrentCertificate.with("")
+				continue
+			}
+			if sourceCertificateMoved(rec.Certificate, certificate) {
+				s.reasons[rec.Symbol] = resolutionSourceDependencies.with("")
+				continue
+			}
+			s.served[rec.Symbol] = rec
 		}
+	}
+	for _, rec := range nonCallables {
 		certificate, ok := s.checkingCertificates[rec.Symbol]
 		if !ok {
 			s.reasons[rec.Symbol] = resolutionNoCurrentCertificate.with("")
@@ -565,7 +663,7 @@ func closureMoved(recorded, current gofresh.Fingerprint) string {
 func (s *Served) Notices() []string {
 	var out []string
 	// Both forms count the symbols that completed a typed resolution
-	// through the child (a classified-only or unasked frontier symbol is
+	// through the typed backend (a classified-only or unasked frontier symbol is
 	// not among them).
 	typed := 0
 	for _, a := range s.answers {
@@ -618,48 +716,55 @@ func (s *Served) Degraded() []string { return append([]string(nil), s.degraded..
 // ServedCount is the number of symbols answered from records this run.
 func (s *Served) ServedCount() int { return len(s.served) }
 
-func (s *Served) ensureChild() (*resolverClient, error) {
-	if s.child == nil {
+func (s *Served) ensureBackend() (*Backend, error) {
+	if !s.backendLoaded {
 		if err := s.prepareDeclarations(); err != nil {
 			return nil, err
 		}
-		// The opening capture precedes the child's snapshot: a record
+		// The opening capture precedes the typed load's snapshot: a record
 		// publishes under a fingerprint no later than the answer it
 		// carries.
 		if !s.whole {
 			s.openingCapture()
 		}
-		patterns := s.childPatterns()
-		child, err := newResolverClientScoped(s.ctx, s.dir, patterns)
+		patterns := s.loadPatterns()
+		s.typedLoads++
+		noteTypedLoad()
+		b, err := newContext(s.ctx, s.dir, patterns)
 		if err != nil {
+			if s.ctx.Err() == nil {
+				s.backendLoaded = true
+				s.backendErr = err
+			}
 			return nil, err
 		}
-		s.child = child
+		s.backend = b
+		s.backendLoaded = true
 	}
-	return s.child, nil
+	return s.backend, s.backendErr
 }
 
-// Slice implements verify.Slicer through the child: the
+// Slice implements verify.Slicer through the typed backend: the
 // declaration-reading roles have no served form.
 func (s *Served) Slice(symbols []string) ([]verify.Decl, error) {
-	child, err := s.ensureChild()
+	b, err := s.ensureBackend()
 	if err != nil {
 		return nil, err
 	}
-	return child.Slice(symbols)
+	return b.Slice(symbols)
 }
 
-// SliceFloor implements verify.FloorSlicer through the child.
+// SliceFloor implements verify.FloorSlicer through the typed backend.
 func (s *Served) SliceFloor(symbols []string, declaredPkgs []string) ([]verify.FloorPackage, error) {
-	child, err := s.ensureChild()
+	b, err := s.ensureBackend()
 	if err != nil {
 		return nil, err
 	}
-	return child.SliceFloor(symbols, declaredPkgs)
+	return b.SliceFloor(symbols, declaredPkgs)
 }
 
-// typed resolves one symbol through the child, once per run.
-func (s *Served) typed(symbol string) childAnswer {
+// typed resolves one symbol through the typed backend, once per run.
+func (s *Served) typed(symbol string) symbolAnswer {
 	if a, ok := s.answers[symbol]; ok && a.resolved {
 		return a
 	}
@@ -675,7 +780,7 @@ func (s *Served) typed(symbol string) childAnswer {
 		s.answers[symbol] = a
 		return a
 	}
-	child, err := s.ensureChild()
+	b, err := s.ensureBackend()
 	if err != nil {
 		if s.ctx.Err() == nil {
 			a.resolved = true
@@ -684,19 +789,18 @@ func (s *Served) typed(symbol string) childAnswer {
 		s.answers[symbol] = a
 		return a
 	}
-	res, shape, selection, err := child.ResolveIn(symbol)
+	res, shape, selection, err := b.ResolveIn(symbol)
 	if err == nil || s.ctx.Err() == nil {
 		a.resolved = true
 	}
 	a.res, a.shape, a.selection, a.err = res, shape, selection, err
-	// The serving form records every resolved symbol for publication,
-	// its package read once so the record can carry it; the whole-tree
-	// form publishes nothing and asks nothing more.
-	if !s.whole && err == nil && res != verify.NotFound {
-		if pkg, perr := child.SymbolPackage(symbol); perr == nil {
-			a.pkg = pkg
-		}
-		if a.pkg != "" {
+	// Every resolved symbol's package is read once so later callers
+	// (including after Quiesce) and published records share the answer;
+	// the serving form also queues found symbols for publication.
+	if err == nil {
+		a.pkg = b.SymbolPackage(symbol)
+		a.pkgKnown = true
+		if !s.whole && res != verify.NotFound && a.pkg != "" {
 			s.pending[selection] = append(s.pending[selection], symbol)
 		}
 	}
@@ -720,24 +824,25 @@ func (s *Served) ResolveIn(symbol string) (verify.Resolution, string, string, er
 	return a.res, a.shape, a.selection, a.err
 }
 
-// SymbolFile answers a symbol's declaring file through the child: a
-// record names a package, never a file.
+// SymbolFile answers a symbol's declaring file through the typed backend:
+// a record names a package, never a file.
 func (s *Served) SymbolFile(symbol string) (string, bool, error) {
-	child, err := s.ensureChild()
+	b, err := s.ensureBackend()
 	if err != nil {
 		return "", false, err
 	}
-	return child.SymbolFile(symbol)
+	file, found := b.SymbolFile(symbol)
+	return file, found, nil
 }
 
 // ReachedPackages answers the packages a set of changed files reaches
-// through the child.
+// through the typed backend.
 func (s *Served) ReachedPackages(files []string) (map[string]bool, error) {
-	child, err := s.ensureChild()
+	b, err := s.ensureBackend()
 	if err != nil {
 		return nil, err
 	}
-	return child.ReachedPackages(files)
+	return b.ReachedPackages(files), nil
 }
 
 // SymbolPackage implements verify.SymbolLocator.
@@ -745,17 +850,22 @@ func (s *Served) SymbolPackage(symbol string) (string, error) {
 	if rec, ok := s.served[symbol]; ok {
 		return rec.Package, nil
 	}
-	if a, ok := s.answers[symbol]; ok && a.err == nil && a.pkg != "" {
+	if a, ok := s.answers[symbol]; ok && a.err == nil && a.pkgKnown {
 		return a.pkg, nil
 	}
 	if !s.admits(symbol) {
 		return "", outsideSet(symbol)
 	}
-	child, err := s.ensureChild()
+	b, err := s.ensureBackend()
 	if err != nil {
 		return "", err
 	}
-	return child.SymbolPackage(symbol)
+	pkg := b.SymbolPackage(symbol)
+	a := s.answers[symbol]
+	a.pkg = pkg
+	a.pkgKnown = true
+	s.answers[symbol] = a
+	return pkg, nil
 }
 
 // admits is the symbol set's own — the one admission every
@@ -763,12 +873,12 @@ func (s *Served) SymbolPackage(symbol string) (string, error) {
 // location, serving refusal), so the boundary cannot drift between
 // them. A nil set is a backend that named no symbols — the whole-tree
 // form, or a serving operation whose set came up empty — and admits
-// every symbol; its child loads the whole tree. The declaration-reading
+// every symbol; its typed load covers the whole tree. The declaration-reading
 // roles (Slice, SliceFloor, SymbolFile) and ReachedPackages, which
 // takes files, read the tree as it is and consult no set.
 func (s *Served) admits(symbol string) bool {
 	if len(symbolPackageCandidates(symbol)) == 0 {
-		// No package to scope by: the child answers not found for it
+		// No package to scope by: the typed backend answers not found for it
 		// under any load, never a narrowed frontier's not found.
 		return true
 	}
@@ -776,14 +886,14 @@ func (s *Served) admits(symbol string) bool {
 }
 
 // outsideSet is the refusal for a symbol the operation never named:
-// the child is scoped to the set's stale remainder, so forwarding an
+// the typed load is scoped to the set's stale remainder, so forwarding an
 // outside symbol would answer not found for what the tree declares.
 func outsideSet(symbol string) error {
 	return fmt.Errorf("symbol %q is outside this operation's symbol set", symbol)
 }
 
 // classify answers a symbol's witness class and reason through the
-// child, once per run.
+// typed backend, once per run.
 func (s *Served) classify(symbol string) (verify.WitnessClass, string) {
 	a := s.answers[symbol]
 	if a.classed {
@@ -792,11 +902,11 @@ func (s *Served) classify(symbol string) (verify.WitnessClass, string) {
 	if !s.admits(symbol) {
 		return verify.ExampleWitness, outsideSet(symbol).Error()
 	}
-	child, err := s.ensureChild()
+	b, err := s.ensureBackend()
 	if err != nil {
 		return verify.ExampleWitness, ""
 	}
-	class, reason := child.WitnessClassVerdict(symbol)
+	class, reason := b.WitnessClassVerdict(symbol)
 	a.class, a.reason, a.classed = class, reason, true
 	s.answers[symbol] = a
 	return class, reason
@@ -817,22 +927,22 @@ func (s *Served) WitnessClass(symbol string) verify.WitnessClass {
 	return class
 }
 
-// ExplainWitness derives a witness's seeding chain through the child:
+// ExplainWitness derives a witness's seeding chain through the typed backend:
 // the derivation is the walk serving decided over, so a served record
 // explains through the same typed load its refusal came from.
 func (s *Served) ExplainWitness(symbol string) (gofresh.Chain, string, error) {
 	if !s.admits(symbol) {
 		return gofresh.Chain{}, "", outsideSet(symbol)
 	}
-	child, err := s.ensureChild()
+	b, err := s.ensureBackend()
 	if err != nil {
 		return gofresh.Chain{}, "", err
 	}
-	return child.ExplainWitness(symbol)
+	return b.explainWitness(symbol)
 }
 
 // NeverServe implements verify.WitnessSeeding: served records answer
-// their recorded refusal; the rest ask the child in one batch.
+// their recorded refusal; the rest ask the typed backend in one batch.
 func (s *Served) NeverServe(symbols []string) (map[string]string, error) {
 	out := map[string]string{}
 	var ask []string
@@ -848,10 +958,10 @@ func (s *Served) NeverServe(symbols []string) (map[string]string, error) {
 		}
 		ask = append(ask, symbol)
 	}
-	// A symbol the child has answered before answers from the memo —
-	// its refusal or the recorded absence of one — so a quiesced backend
-	// serves the classification without a child; only the never-asked
-	// remainder reaches the child.
+	// A symbol answered before answers from the memo — its refusal or
+	// the recorded absence of one — so a quiesced backend serves the
+	// classification without reloading; only the never-asked remainder
+	// reaches the typed backend.
 	var unasked []string
 	for _, symbol := range ask {
 		if why, asked := s.refusals[symbol]; asked {
@@ -866,7 +976,7 @@ func (s *Served) NeverServe(symbols []string) (map[string]string, error) {
 	if len(ask) == 0 {
 		return out, nil
 	}
-	child, err := s.ensureChild()
+	b, err := s.ensureBackend()
 	if err != nil {
 		return nil, err
 	}
@@ -878,7 +988,7 @@ func (s *Served) NeverServe(symbols []string) (map[string]string, error) {
 			s.typed(symbol)
 		}
 	}
-	refusals, err := child.NeverServe(ask)
+	refusals, err := b.NeverServe(ask)
 	if err != nil {
 		return nil, err
 	}
@@ -889,33 +999,63 @@ func (s *Served) NeverServe(symbols []string) (map[string]string, error) {
 	return out, nil
 }
 
-// Close publishes a record for every symbol the child resolved since the
-// last quiesce — the typed answer, its class, its serving refusal — and
-// closes the child. Records are the next run's served set; a publication
-// fault leaves the run's answers untouched. A backend quiesced and asked
-// nothing new since owes nothing here.
+// Close publishes a record for every symbol the typed backend resolved
+// since the last quiesce — the typed answer, its class, its serving
+// refusal — and releases the typed backend. Records are the next run's
+// served set; a publication fault leaves the run's answers untouched. A
+// backend quiesced and asked nothing new since owes nothing here.
 func (s *Served) Close() error {
 	s.Quiesce()
 	return nil
 }
 
-// Quiesce implements verify.Quiescer: the records the child's answers
-// owe publish now and the child closes, while every answer this run
-// gathered — resolutions, packages, classes, serving refusals — stays
-// to be served from memory; a symbol never asked before costs a child
-// again (ensureChild), which the spawn account witnesses, and the
-// publish account accumulates across the publishes. The witness run
-// calls it right after its seeding classification, so the child's
-// loaded program is never resident through the run's loads and
-// executions (REQ-evidence-resolution-freshness-quiesce).
+// Quiesce implements verify.Quiescer: the records the typed backend's
+// answers owe publish now and the typed backend is released, while
+// every answer this run gathered — resolutions, packages, classes,
+// serving refusals — stays to be served from memory; a symbol never
+// asked before costs a typed load again (ensureBackend), which the load
+// account witnesses, and the publish account accumulates across the
+// publishes. The witness run calls it right after its seeding
+// classification, so the loaded program is released before the run's
+// loads and executions (REQ-evidence-resolution-freshness-quiesce).
 func (s *Served) Quiesce() {
 	defer func() {
-		if s.child != nil {
-			s.child.Close()
-			s.child = nil
+		hadBackend := s.backend != nil
+		s.backend = nil
+		s.backendErr = nil
+		s.backendLoaded = false
+		if hadBackend {
+			debug.FreeOSMemory()
 		}
 	}()
-	if s.child == nil || len(s.pending) == 0 {
+	if s.backend == nil {
+		return
+	}
+	if s.ctx.Err() == nil {
+		var unasked []string
+		for symbol, a := range s.answers {
+			if a.err != nil {
+				continue
+			}
+			if !a.pkgKnown {
+				a.pkg = s.backend.SymbolPackage(symbol)
+				a.pkgKnown = true
+				s.answers[symbol] = a
+			}
+			if !a.classed {
+				s.classify(symbol)
+			}
+			if _, asked := s.refusals[symbol]; !asked {
+				unasked = append(unasked, symbol)
+			}
+		}
+		if len(unasked) > 0 {
+			if refusals, err := s.backend.NeverServe(unasked); err == nil {
+				s.refusals = mergeRefusals(s.refusals, unasked, refusals)
+			}
+		}
+	}
+	if len(s.pending) == 0 {
 		return
 	}
 	keys := make([]string, 0, len(s.pending))
@@ -933,7 +1073,7 @@ func (s *Served) publishSelection(key string, symbols []string) {
 	if s.ctx.Err() != nil {
 		return
 	}
-	// Every symbol's class and refusal, from the child, before the
+	// Every symbol's class and refusal, from the typed backend, before the
 	// capture: the record carries the whole answer set.
 	var unclassed []string
 	for _, symbol := range symbols {
@@ -954,21 +1094,16 @@ func (s *Served) publishSelection(key string, symbols []string) {
 		}
 	}
 	if len(unrefused) > 0 {
-		refusals, err := s.child.NeverServe(unrefused)
-		if err != nil {
-			// A child fault here publishes nothing under the key — said
-			// so, like every other publish fault.
-			s.degraded = append(s.degraded, fmt.Sprintf("publish %q: never-serve classification: %v", key, err))
-			return
-		}
+		refusals, _ := s.backend.NeverServe(unrefused)
 		s.refusals = mergeRefusals(s.refusals, unrefused, refusals)
 	}
 	endpoint := newSelectionEndpoint(s.ctx, s.dir, s.sels)
-	closing, ok := s.captureUnder(endpoint, key, symbols, "publish")
+	closing, closingUnknown, ok := s.captureUnder(endpoint, key, symbols, "publish")
 	if !ok {
 		return
 	}
 	opening := s.opening[key]
+	openingUnknown := s.openingUnknown[key]
 	var certSymbols []string
 	for _, symbol := range symbols {
 		subject, ok := s.subjectOf(symbol)
@@ -976,11 +1111,12 @@ func (s *Served) publishSelection(key string, symbols []string) {
 			continue
 		}
 		fp, captured := closing[subject]
-		if !captured {
-			continue
-		}
-		before, opened := opening[subject]
-		if !opened || closureMovedReason(before, fp) != (resolutionReason{}) {
+		if captured {
+			before, opened := opening[subject]
+			if !opened || closureMovedReason(before, fp) != (resolutionReason{}) {
+				continue
+			}
+		} else if !closingUnknown[subject] || !openingUnknown[subject] {
 			continue
 		}
 		if _, opened := s.openingCertificates[symbol]; !opened {
@@ -1001,22 +1137,28 @@ func (s *Served) publishSelection(key string, symbols []string) {
 			continue
 		}
 		fp, captured := closing[subject]
-		if !captured {
+		before, opened := opening[subject]
+		var source gofresh.Fingerprint
+		switch {
+		case !captured && !closingUnknown[subject]:
 			account.uncaptured = append(account.uncaptured, symbol)
 			continue
-		}
-		// The straddle check: the tree the child answered from is the
-		// tree the record's fingerprint describes only when the closing
-		// capture equals the opening one; a subject that moved between
-		// them resolves typed again next run.
-		before, opened := opening[subject]
-		if !opened {
+		case !opened && !openingUnknown[subject]:
 			account.unopened = append(account.unopened, symbol)
 			continue
-		}
-		if closureMovedReason(before, fp) != (resolutionReason{}) {
+		case captured != opened:
 			account.moved = append(account.moved, symbol)
 			continue
+		case captured:
+			if closureMovedReason(before, fp) != (resolutionReason{}) {
+				account.moved = append(account.moved, symbol)
+				continue
+			}
+			source = resolutioncache.SourceTiers(before)
+			if !resolutioncache.Admits(source) {
+				account.refused = append(account.refused, symbol)
+				continue
+			}
 		}
 		certificate, opened := s.openingCertificates[symbol]
 		if !opened {
@@ -1032,23 +1174,18 @@ func (s *Served) publishSelection(key string, symbols []string) {
 			account.moved = append(account.moved, symbol)
 			continue
 		}
-		// The record carries the capture's source tiers alone — the
-		// store's contract; a subject's purity assertion or observation
-		// proof says nothing about where its declaration lives — and a
-		// record the store would refuse is refused here, alone and
-		// named, never the batch.
-		source := resolutioncache.SourceTiers(before)
-		if !resolutioncache.Admits(source) {
-			account.refused = append(account.refused, symbol)
-			continue
-		}
-		recs = append(recs, resolutioncache.Record{
+		rec := resolutioncache.Record{
 			Selection: key, Symbol: symbol, Fingerprint: source,
 			Certificate: certificate,
 			Resolution:  resolutionWire(a.res), Shape: a.shape, Package: a.pkg,
 			WitnessClass: classWire(a.class), WitnessClassReason: a.reason,
 			NeverServe: s.refusals[symbol],
-		})
+		}
+		if !resolutioncache.AdmitsRecord(rec) {
+			account.refused = append(account.refused, symbol)
+			continue
+		}
+		recs = append(recs, rec)
 	}
 	if err := resolutioncache.InstallAll(s.dir, recs); err != nil {
 		s.degraded = append(s.degraded, fmt.Sprintf("publish %q: %v", key, err))
@@ -1159,7 +1296,7 @@ func selectionWord(key string) string {
 	return tags + " " + toolchain
 }
 
-// mergeRefusals records, for every asked symbol, the child's refusal or
+// mergeRefusals records, for every asked symbol, the typed backend's refusal or
 // its absence — the absence is an answer too.
 func mergeRefusals(into map[string]string, asked []string, refusals map[string]string) map[string]string {
 	if into == nil {

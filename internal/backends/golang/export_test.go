@@ -2,22 +2,21 @@ package golang
 
 import "sync/atomic"
 
-// CountChildSpawnsForTest installs the spawn seam for the test's life and
-// returns a reader of the owned resolver children spawned since, for an external
-// test package driving a whole pass over this backend. It counts the resolver
-// route, excluding retained test binaries. The returned release restores the seam.
+// CountChildSpawnsForTest installs the typed-load seam for the test's life and
+// returns a reader of the typed loads opened since, for an external test
+// package driving a whole pass over this backend. The returned release
+// restores the seam.
 func CountChildSpawnsForTest() (children func() int, release func()) {
 	var n atomic.Int64
-	prior := commandHook
-	commandHook = func(name string, args []string) {
-		if isResolverSpawn(name, args) {
-			n.Add(1)
-		}
+	typedLoadHookMu.Lock()
+	prior := typedLoadHook
+	typedLoadHook = func() {
+		n.Add(1)
 	}
-	return func() int { return int(n.Load()) }, func() { commandHook = prior }
-}
-
-// isResolverSpawn classifies the backend's resolver route for both test counters.
-func isResolverSpawn(name string, args []string) bool {
-	return name != "go" && len(args) > 0 && args[0] == resolverSubcommand
+	typedLoadHookMu.Unlock()
+	return func() int { return int(n.Load()) }, func() {
+		typedLoadHookMu.Lock()
+		typedLoadHook = prior
+		typedLoadHookMu.Unlock()
+	}
 }

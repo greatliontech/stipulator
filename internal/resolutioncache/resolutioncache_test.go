@@ -64,6 +64,13 @@ func TestRecordsRoundTripOnePerIdentity(t *testing.T) {
 	if err != nil || removed != 1 || kept != 1 {
 		t.Fatalf("gc removed %d kept %d err %v, want 1/1", removed, kept, err)
 	}
+	nonCallable := Record{Selection: "race", Symbol: "example.com/p.T", Certificate: certificate(), Resolution: "resolved", Shape: strings.Repeat("c", 32), Package: "example.com/p", WitnessClass: "example", NeverServe: "not a runnable witness"}
+	if err := InstallAll(dir, []Record{nonCallable}); err != nil {
+		t.Fatal(err)
+	}
+	if got := Load(dir); len(got) != 2 {
+		t.Fatalf("after installing non-callable record: %+v, want 2 records", got)
+	}
 }
 
 // TestRecordsRefuseWhatTheStoreDoesNotServe pins the fail-closed reads:
@@ -89,7 +96,13 @@ func TestRecordsRefuseWhatTheStoreDoesNotServe(t *testing.T) {
 	benchmark.Fingerprint.ResultKind = gofresh.Measurement
 	noCompartment := good
 	noCompartment.Fingerprint.TestVariantClosure = ""
-	for name, rec := range map[string]Record{"runtime tier": observed, "observation assertion": asserted, "observation proof": proved, "purity tier": pure, "unresolved": unresolved, "no selection": {Symbol: "x", Fingerprint: fingerprint("a"), Resolution: "resolved"}, "benchmark result kind": benchmark, "no compartment digest": noCompartment} {
+	nonCallableWithoutNeverServe := good
+	nonCallableWithoutNeverServe.Fingerprint = witnesscache.Fingerprint{}
+	nonCallableProof := good
+	nonCallableProof.Fingerprint = witnesscache.Fingerprint{}
+	nonCallableProof.WitnessClass = "proof"
+	nonCallableProof.NeverServe = "not a runnable witness"
+	for name, rec := range map[string]Record{"runtime tier": observed, "observation assertion": asserted, "observation proof": proved, "purity tier": pure, "unresolved": unresolved, "no selection": {Symbol: "x", Fingerprint: fingerprint("a"), Resolution: "resolved"}, "benchmark result kind": benchmark, "no compartment digest": noCompartment, "non-callable without neverServe": nonCallableWithoutNeverServe, "non-callable proof": nonCallableProof} {
 		if err := InstallAll(dir, []Record{rec}); err == nil {
 			t.Fatalf("%s: installed", name)
 		}

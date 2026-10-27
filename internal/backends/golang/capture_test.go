@@ -82,10 +82,6 @@ func countSpawns(t *testing.T) *spawnCounter {
 	t.Helper()
 	c := &spawnCounter{}
 	commandHook = func(name string, args []string) {
-		if isResolverSpawn(name, args) {
-			c.child.Add(1)
-			return
-		}
 		if name != "go" || len(args) == 0 {
 			return
 		}
@@ -98,7 +94,18 @@ func countSpawns(t *testing.T) *spawnCounter {
 			c.test.Add(1)
 		}
 	}
-	t.Cleanup(func() { commandHook = nil })
+	typedLoadHookMu.Lock()
+	priorTyped := typedLoadHook
+	typedLoadHook = func() {
+		c.child.Add(1)
+	}
+	typedLoadHookMu.Unlock()
+	t.Cleanup(func() {
+		commandHook = nil
+		typedLoadHookMu.Lock()
+		typedLoadHook = priorTyped
+		typedLoadHookMu.Unlock()
+	})
 	return c
 }
 
@@ -119,17 +126,17 @@ func TestResolverSpawnCountersDistinguishRetainedBinaries(t *testing.T) {
 				args []string
 			}{
 				{"go", []string{"env"}},
-				{"self", []string{resolverSubcommand, "/tree"}},
 				{"package.test", []string{"-test.run=TestOK"}},
-				{"go", []string{resolverSubcommand}},
 				{"package.test", nil},
-				{"package.test", []string{"-test.run", resolverSubcommand}},
-				{"self", []string{resolverSubcommand, "/tree", "example.com/p"}},
 			} {
-				commandHook(event.name, event.args)
+				if commandHook != nil {
+					commandHook(event.name, event.args)
+				}
 			}
+			noteTypedLoad()
+			noteTypedLoad()
 			if got := children(); got != 2 {
-				t.Fatalf("counted %d resolver children, want both resolver events only", got)
+				t.Fatalf("counted %d typed loads, want 2", got)
 			}
 		})
 	}

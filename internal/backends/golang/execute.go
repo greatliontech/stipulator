@@ -710,8 +710,8 @@ var (
 // status and the largest a registered package's tree has shown in the
 // readings — floored at packageEstimateFloor, so it grows as the
 // packages' processes do and never shrinks within the invocation, and
-// a descendant outside every registered tree (a resolver child leaving
-// the table, a driver of the pass's own) prices no package; each
+// a descendant outside every registered tree (a driver of the pass's own)
+// prices no package; each
 // running package is reserved its estimate less what ITS tree already
 // shows in the process table (its held pages are out of the room
 // already, its file-backed pages the page cache's, reclaimable and

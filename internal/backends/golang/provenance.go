@@ -25,11 +25,7 @@ import (
 // (REQ-evidence-freshness-degrade: the cache saves work, it never
 // blocks witnessing).
 func classifyFault(err error) (abort bool, reason string) {
-	// The class is gofresh's typed refusal; it does not survive the
-	// out-of-process resolver boundary (the wire flattens errors to
-	// strings) — abort semantics still hold there, the owned resolver
-	// recording a sticky fault and killing the child, so a consumer
-	// wanting the class on that wire must re-establish it there.
+	// The class is gofresh's typed refusal.
 	var pe *gofresh.ToolchainProvenanceError
 	if errors.As(err, &pe) {
 		return true, ""
@@ -53,7 +49,7 @@ type toolchainSample func(ctx context.Context, dir string, env []string) (string
 // toolchain replaced under a living memo — the go on PATH swapped, a
 // go.mod toolchain line moved — would otherwise be judged by its
 // predecessor's sample for the process's whole life, which for the MCP
-// server is every call. A resolver child's load and a served backend
+// server is every call. A backend's typed load and a served backend
 // each mint their own (the engine arm samples nothing: a capture
 // group's provenance is judged on the GOVERSION its invocation's
 // normalization read, captureGroup.toolchain); a minted sampler asks
@@ -116,7 +112,7 @@ func checkToolchainProvenance(ctx context.Context, dir string, env []string, sam
 // operation.
 const probeWaitDelay = 2 * time.Second
 
-// checkSelectionMembers is the selection-view arms' guard, the child's
+// checkSelectionMembers is the selection-view arms' guard, the backend's
 // typed views and the served form's alike: every member is sampled in
 // its own directory, where its view loads (under GOTOOLCHAIN=auto the
 // selected toolchain is per module, so the tree root is not a member's

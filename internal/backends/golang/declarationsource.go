@@ -31,6 +31,9 @@ func (b *Backend) declarationSource(resolving *packages.Package, obj types.Objec
 	if fn, ok := obj.(*types.Func); ok {
 		obj = fn.Origin()
 	}
+	if v, ok := obj.(*types.Var); ok && v.IsField() {
+		obj = v.Origin()
+	}
 	if !obj.Pos().IsValid() || obj.Pkg() == nil {
 		return declarationSource{}, nil
 	}
@@ -81,6 +84,36 @@ func (b *Backend) declarationSource(resolving *packages.Package, obj types.Objec
 					}
 				}
 				if len(parts) == 2 {
+					break
+				}
+			}
+		}
+	} else if v, ok := obj.(*types.Var); ok && v.IsField() {
+		for _, name := range obj.Pkg().Scope().Names() {
+			tn, ok := obj.Pkg().Scope().Lookup(name).(*types.TypeName)
+			if !ok {
+				continue
+			}
+			typ := tn.Type()
+			target := name
+			if _, ok := typ.Underlying().(*types.Struct); !ok {
+				ptr, ok := typ.Underlying().(*types.Pointer)
+				if !ok {
+					continue
+				}
+				named, ok := types.Unalias(ptr.Elem()).(*types.Named)
+				if !ok || named.Obj().Pkg() != obj.Pkg() {
+					continue
+				}
+				if _, ok := named.Underlying().(*types.Struct); !ok {
+					continue
+				}
+				typ = named
+				target = named.Obj().Name()
+			}
+			if got, _, _ := types.LookupFieldOrMethod(typ, true, obj.Pkg(), obj.Name()); got != nil {
+				if gotVar, ok := got.(*types.Var); ok && gotVar.IsField() && gotVar.Origin() == v {
+					parts = []string{target, obj.Name()}
 					break
 				}
 			}

@@ -63,7 +63,7 @@ func TestSelectionEndpointPreparesOnceAcrossConsumers(t *testing.T) {
 	}
 	var captures []gofresh.Fingerprint
 	for _, sel := range s.sels {
-		fps, ok := s.captureUnder(endpoint, sel.key(), symbols, "opening")
+		fps, _, ok := s.captureUnder(endpoint, sel.key(), symbols, "opening")
 		if !ok || len(fps) != 1 {
 			t.Fatalf("capture under %q: %v; %v", sel.key(), fps, s.Notices())
 		}

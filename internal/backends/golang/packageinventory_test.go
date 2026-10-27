@@ -107,12 +107,12 @@ func TestEmptyDeclaredScopeNeverLoadsTheWholeTree(t *testing.T) {
 	if res, _, err := s.Resolve("not-a-symbol"); err != nil || res != verify.NotFound {
 		t.Fatalf("invalid symbol: %v %v", res, err)
 	}
-	child, err := s.ensureChild()
+	b, err := s.ensureBackend()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res, _, _, err := child.ResolveIn("example.com/empty.Existing"); err != nil || res != verify.NotFound {
-		t.Fatalf("empty child widened: %v %v", res, err)
+	if res, _, _, err := b.ResolveIn("example.com/empty.Existing"); err != nil || res != verify.NotFound {
+		t.Fatalf("empty backend widened: %v %v", res, err)
 	}
 	whole, err := NewWholeTree(t.Context(), dir)
 	if err != nil {
@@ -175,7 +175,7 @@ func TestInventoryFailureUsesOnlyBoundedTypedCandidates(t *testing.T) {
 	if res, got, err := failed.Resolve(symbol); err != nil || res != verify.Resolved || got != shape {
 		t.Fatalf("typed fallback: %v %q %v", res, got, err)
 	}
-	if res, _, _, err := failed.child.ResolveIn("example.com/fallback/unrelated.Other"); err != nil || res != verify.NotFound {
+	if res, _, _, err := failed.backend.ResolveIn("example.com/fallback/unrelated.Other"); err != nil || res != verify.NotFound {
 		t.Fatalf("typed fallback widened: %v %v", res, err)
 	}
 	if len(failed.opening) != 0 {

@@ -82,7 +82,7 @@ func New(dir string) *Server {
 		root: dir,
 		fsys: func() fs.FS { return os.DirFS(dir) },
 		// backends is the serving form a verification runs over
-		// (resolutions proven fresh serve, the owned child opens only
+		// (resolutions proven fresh serve, the typed backend loads only
 		// for the stale remainder — REQ-evidence-resolution-freshness);
 		// wholeTree the whole-tree form a declaration read takes.
 		backends: func(ctx context.Context, symbols []string) (map[string]verify.Backend, error) {
@@ -107,7 +107,7 @@ func New(dir string) *Server {
 			if seeding == nil {
 				// The witness run classifies through the tool's own
 				// verification backend; without one it must not guess.
-				return nil, errors.New("witness run without the tool's resolver child")
+				return nil, errors.New("witness run without the tool's verification backend")
 			}
 			if scope == nil {
 				return golang.RunWitnessesPolicy(ctx, pc, seeding)

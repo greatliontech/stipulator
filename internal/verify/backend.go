@@ -73,10 +73,10 @@ type Slicer interface {
 }
 
 // Quiescer is an optional Backend extension: the backend releases what
-// answering has cost it — an owned child process, its loaded program —
+// answering has cost it — its loaded program and typed views —
 // once a pass has asked every question it puts before executing, and
 // answers later questions from what it kept (a question it never heard
-// may cost the child again). The witness run calls it right after its
+// may cost a typed load again). The witness run calls it right after its
 // seeding classification, the last question, so nothing of the
 // resolution's cost is resident through the run's loads and executions
 // (REQ-evidence-resolution-freshness-quiesce). The records the backend owes
@@ -96,7 +96,7 @@ type Backend interface {
 }
 
 // CloseBackends releases an operation's backends — a backend that owns a
-// child or a store closes it — and returns the serving path's account:
+// loaded program or a store closes it — and returns the serving path's account:
 // every backend's Notices, read after its close, because the close is
 // what publishes the resolution records and a publish refused or
 // degraded is otherwise a fault nobody sees. The one closer every face

@@ -35,9 +35,9 @@ import (
 func TestLookupResolvesParenthesizedReceiverMethods(t *testing.T) {
 	const src = `package p
 
-type T struct{ U }
+type T struct{ U; Own int }
 
-type U struct{}
+type U struct{ PromotedField string }
 
 type J struct{ I }
 
@@ -89,5 +89,11 @@ func (U) Promoted()   {}
 		if obj.Name() != method {
 			t.Errorf("lookup(T.%s) resolved %q", method, obj.Name())
 		}
+	}
+	if own := lookup(pkg, []string{"T", "Own"}); own == nil || own.Name() != "Own" {
+		t.Errorf("lookup(T.Own) = %v, want struct field Own", own)
+	}
+	if pf := lookup(pkg, []string{"T", "PromotedField"}); pf == nil || pf != lookup(pkg, []string{"U", "PromotedField"}) {
+		t.Errorf("lookup(T.PromotedField) = %v, want promoted struct field U.PromotedField", pf)
 	}
 }

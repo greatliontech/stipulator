@@ -27,18 +27,25 @@ import (
 // that the serving decision consumes, or when the classifier's contract
 // changes what a record proves — either way a prior record fails closed
 // to a typed resolution.
-// Complete cross-view certificates are required; older records lack them.
-const version = 5
+// Complete cross-view certificates and typed non-callable declaration
+// records are required; older records lack them.
+const version = 6
 
 // Derivation identifies the rules behind the recorded source fact, apart
 // from the envelope version. A classifier or lookup-rule change moves it.
-const Derivation = "stipulator/source-resolution@1"
+const Derivation = "stipulator/source-resolution@2"
 
 // Certificate binds a source derivation to its complete selected inputs.
 // It is not evidence of executing the subject it describes.
 type Certificate struct {
 	Derivation string `json:"derivation"`
 	Inputs     string `json:"inputs"`
+}
+
+// AdmitsCertificate reports whether a source certificate is complete and
+// matches the current derivation rules.
+func AdmitsCertificate(c Certificate) bool {
+	return c.valid()
 }
 
 func (c Certificate) valid() bool {
@@ -73,7 +80,10 @@ type Record struct {
 	Selection string
 	Symbol    string
 	// Fingerprint is the Gofresh fingerprint of the symbol as a subject:
-	// source-closure tiers only, never an observation.
+	// source-closure tiers only, never an observation. A non-callable
+	// declaration (type, var, const, field) has no Gofresh subject and
+	// carries the zero Fingerprint alongside its source Certificate and
+	// non-runnable NeverServe reason.
 	Fingerprint witnesscache.Fingerprint
 	Certificate Certificate
 	// Resolution is "resolved" or "generated_file"; an unresolved symbol
@@ -96,7 +106,7 @@ type entry struct {
 	Version            int                      `json:"version"`
 	Selection          string                   `json:"selection"`
 	Symbol             string                   `json:"symbol"`
-	Fingerprint        witnesscache.Fingerprint `json:"fingerprint"`
+	Fingerprint        witnesscache.Fingerprint `json:"fingerprint,omitzero"`
 	Certificate        Certificate              `json:"certificate"`
 	Resolution         string                   `json:"resolution"`
 	Shape              string                   `json:"shape,omitempty"`
@@ -124,7 +134,7 @@ func open(dir string) (recordstore.Store, error) { return recordstore.Open("reso
 // (REQ-evidence-resolution-cache-format).
 func (r Record) FileName() (string, error) {
 	return recordstore.Name([]string{r.Selection, r.Symbol}, struct {
-		Fingerprint witnesscache.Fingerprint `json:"fingerprint"`
+		Fingerprint witnesscache.Fingerprint `json:"fingerprint,omitzero"`
 		Certificate Certificate              `json:"certificate"`
 	}{r.Fingerprint, r.Certificate})
 }
@@ -163,7 +173,7 @@ func decodeRecord(name string, data []byte) (Record, bool) {
 	var e entry
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
-	if dec.Decode(&e) != nil || dec.Decode(&struct{}{}) != io.EOF || e.Version != version || e.Selection == "" || e.Symbol == "" || !validResolution(e.Resolution) || !Admits(e.Fingerprint) || !e.Certificate.valid() {
+	if dec.Decode(&e) != nil || dec.Decode(&struct{}{}) != io.EOF || e.Version != version {
 		return Record{}, false
 	}
 	rec := Record{
@@ -172,17 +182,29 @@ func decodeRecord(name string, data []byte) (Record, bool) {
 		Resolution:  e.Resolution, Shape: e.Shape, Package: e.Package,
 		WitnessClass: e.WitnessClass, WitnessClassReason: e.WitnessClassReason, NeverServe: e.NeverServe,
 	}
-	if !validAnswer(rec) {
+	if !AdmitsRecord(rec) {
 		return Record{}, false
 	}
-	// A decoded fingerprint passed Gofresh's decoder, whose ladder is the
-	// encoder's, so it always names a file; a file without the member
-	// decodes to the zero fingerprint, whose empty name matches no file.
-	want, _ := rec.FileName()
-	if name != want {
+	want, err := rec.FileName()
+	if err != nil || name != want {
 		return Record{}, false
 	}
 	return rec, true
+}
+
+// AdmitsRecord reports whether a resolution record is complete and valid
+// to install or serve: either a callable record carrying source-closure
+// Fingerprint tiers and a source Certificate, or a non-callable
+// declaration record carrying the zero Fingerprint, a source Certificate,
+// WitnessClass "example", and a non-empty NeverServe reason.
+func AdmitsRecord(r Record) bool {
+	if r.Selection == "" || r.Symbol == "" || !validResolution(r.Resolution) || !AdmitsCertificate(r.Certificate) || !validAnswer(r) {
+		return false
+	}
+	if r.Fingerprint == (witnesscache.Fingerprint{}) {
+		return r.WitnessClass == "example" && r.NeverServe != ""
+	}
+	return Admits(r.Fingerprint)
 }
 
 func validResolution(r string) bool { return r == "resolved" || r == "generated_file" }
@@ -246,12 +268,13 @@ func InstallAll(dir string, recs []Record) error {
 	}
 	entries := make([]recordstore.Entry, 0, len(recs))
 	for _, rec := range recs {
-		if !validResolution(rec.Resolution) || !Admits(rec.Fingerprint) || !rec.Certificate.valid() || !validAnswer(rec) || rec.Selection == "" || rec.Symbol == "" {
+		if !AdmitsRecord(rec) {
 			return errors.New("resolutioncache: record carries a field this store does not serve")
 		}
-		// Admits admitted a code result with no measurement
-		// guard — the encoder's own ladder — so the name always exists.
-		name, _ := rec.FileName()
+		name, err := rec.FileName()
+		if err != nil {
+			return err
+		}
 		e := entry{Version: version, Selection: rec.Selection, Symbol: rec.Symbol, Fingerprint: rec.Fingerprint, Certificate: rec.Certificate, Resolution: rec.Resolution, Shape: rec.Shape, Package: rec.Package, WitnessClass: rec.WitnessClass, WitnessClassReason: rec.WitnessClassReason, NeverServe: rec.NeverServe}
 		data, err := json.MarshalIndent(e, "", "  ")
 		if err != nil {

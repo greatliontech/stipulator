@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
-
-	"github.com/greatliontech/stipulator/internal/backends/golang"
 )
 
 var (
@@ -44,11 +42,8 @@ func cliBinary(t *testing.T) string {
 	return cliBinPath
 }
 
-// TestMain routes resolver-child re-execs: commands run in-process by
-// tests reach the owned Go backend, whose client self-execs
-// os.Executable() — this test binary.
+// TestMain removes the shared CLI binary directory after all tests complete.
 func TestMain(m *testing.M) {
-	golang.ResolverChildMain()
 	code := m.Run()
 	if cliBinDir != "" {
 		_ = os.RemoveAll(cliBinDir)

@@ -123,8 +123,7 @@ func (c reasonClass) with(detail string) uncacheable { return uncacheable{c, det
 // answers it as its own attribution — a judged reason carrying a
 // detail is such a spelling, since the judged class spells its reasons
 // whole; a wrapped spelling parsed again is its own class, unchanged
-// (the resolver child is this build, pinned at the handshake, so a
-// foreign spelling is a record of an earlier one).
+// (a foreign spelling is a record produced by an earlier build).
 func parseReason(text string) uncacheable {
 	if c, ok := classifyReason(text); ok {
 		return uncacheable{c, strings.TrimPrefix(text, c.prefix())}

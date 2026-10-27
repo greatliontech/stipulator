@@ -142,7 +142,7 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		// reader below — the notices, selection, execution, the outside
 		// accounting — consults it (REQ-check-derivation). A
 		// normalization fault is the check's fault, before the
-		// verification backend opens a child.
+		// verification backend loads typed packages.
 		rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
 		pc, err := golang.LoadCapture(ctx, dir)
 		if err != nil {
