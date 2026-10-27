@@ -10,6 +10,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
 
+//gofresh:pure
 func BenchmarkDecodeRecord(b *testing.B) {
 	fp := witnesscache.Fingerprint{
 		MaximalClosure:     strings.Repeat("a", 32),

@@ -5,6 +5,7 @@ import (
 	"testing/fstest"
 )
 
+//gofresh:pure
 func BenchmarkCompile(b *testing.B) {
 	fsys := fstest.MapFS{
 		".stipulator/manifest.textproto": {Data: []byte("include: \"specs/**/*.md\"\n")},
