@@ -22,16 +22,23 @@ func groupSnapshot(ctx context.Context, root string, g *captureGroup) (*witnessS
 	if err != nil {
 		return nil, prepared.inputs, err
 	}
-	return &witnessSnapshot{Snapshot: prepared.native, roster: prepared.population}, prepared.inputs, nil
+	return &witnessSnapshot{
+		Snapshot:     prepared.native,
+		solo:         prepared.solo,
+		soloSubjects: prepared.soloSubjects,
+		roster:       prepared.population,
+	}, prepared.inputs, nil
 }
 
 // witnessPreparation keeps observed population facts independently of native
 // capability. A present population has passed its closing agreement observation,
 // including when empty; a missing native snapshot grants no native methods.
 type witnessPreparation struct {
-	population *runnableGeneration
-	native     *gofresh.Snapshot
-	inputs     *pgoObservation
+	population   *runnableGeneration
+	native       *gofresh.Snapshot
+	solo         *gofresh.Snapshot
+	soloSubjects map[gofresh.Subject]bool
+	inputs       *pgoObservation
 }
 
 func prepareWitnessGeneration(ctx context.Context, root string, g *captureGroup) (witnessPreparation, error) {
@@ -55,12 +62,13 @@ func prepareWitnessGeneration(ctx context.Context, root string, g *captureGroup)
 		return witnessPreparation{}, errors.Join(nativeErr, err)
 	}
 	subjects := roster.subjects()
-	var snapshot *gofresh.Snapshot
+	var snapshot, solo *gofresh.Snapshot
+	var soloSubjects map[gofresh.Subject]bool
 	if nativeErr == nil {
 		if len(subjects) == 0 {
 			nativeErr = fmt.Errorf("native source generation has no runnable subjects")
 		} else {
-			snapshot, nativeErr = captureNativeGeneration(ctx, root, g, inputs, subjects)
+			snapshot, solo, soloSubjects, nativeErr = captureNativeGeneration(ctx, root, g, inputs, subjects)
 		}
 	}
 	if ctx.Err() != nil {
@@ -75,10 +83,10 @@ func prepareWitnessGeneration(ctx context.Context, root string, g *captureGroup)
 	if err := roster.unchanged(ctx); err != nil {
 		return witnessPreparation{}, errors.Join(nativeErr, err)
 	}
-	return witnessPreparation{population: roster, native: snapshot, inputs: inputs}, nativeErr
+	return witnessPreparation{population: roster, native: snapshot, solo: solo, soloSubjects: soloSubjects, inputs: inputs}, nativeErr
 }
 
-func captureNativeGeneration(ctx context.Context, root string, g *captureGroup, inputs *pgoObservation, subjects []gofresh.Subject) (*gofresh.Snapshot, error) {
+func captureNativeGeneration(ctx context.Context, root string, g *captureGroup, inputs *pgoObservation, subjects []gofresh.Subject) (*gofresh.Snapshot, *gofresh.Snapshot, map[gofresh.Subject]bool, error) {
 	policy := gofresh.SessionPolicy{
 		EvidenceRoot: root, Vouches: slices.Clone(g.vouches), Execution: gofresh.PackageExecution,
 		Runner:   engineRunner,
@@ -87,15 +95,108 @@ func captureNativeGeneration(ctx context.Context, root string, g *captureGroup, 
 	if g.assumePure {
 		policy.PureSubjects = subjects
 	}
-	session, err := gofresh.NewSession(ctx, gofresh.BuildDescription{
+	buildDesc := gofresh.BuildDescription{
 		Directory: g.directory(root), Environment: g.witnessEnv,
 		Flags:  append(buildFlags(g.race, g.tags, g.moduleMode, buildPGO(root, g.pgo)), linkerBuildFlags(g.linkerAssignments)...),
 		Inputs: append([]string{}, inputs.inputs...),
-	}, policy)
-	if err != nil {
-		return nil, err
 	}
-	return session.Snapshot(ctx, subjects, gofresh.CodeResult)
+	session, err := gofresh.NewSession(ctx, buildDesc, policy)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	snapshot, err := session.Snapshot(ctx, subjects, gofresh.CodeResult)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	fps, err := snapshot.CaptureBatch(ctx)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, nil, nil, ctx.Err()
+		}
+		return snapshot, nil, nil, nil
+	}
+	probeRuntime := gofresh.RuntimeDescription{Directory: g.directory(root), Environment: g.witnessEnv}
+	binding, err := snapshot.BindRuntime(ctx, probeRuntime)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, nil, nil, ctx.Err()
+		}
+		return snapshot, nil, nil, nil
+	}
+	batchCands := make([]gofresh.Candidate, 0, len(subjects))
+	for _, s := range subjects {
+		batchCands = append(batchCands, gofresh.Candidate{Subject: s, Recorded: fps[s]})
+	}
+	verdicts, err := binding.CheckBatchWithLedgers(ctx, batchCands, nil)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, nil, nil, ctx.Err()
+		}
+		return snapshot, nil, nil, nil
+	}
+	var candidates []gofresh.Subject
+	for _, v := range verdicts {
+		if v.Verdict.Ground.Cause.Kind == gofresh.SharedDynamicStateCause {
+			candidates = append(candidates, v.Subject)
+		}
+	}
+	if len(candidates) == 0 {
+		return snapshot, nil, nil, nil
+	}
+	soloPolicy := policy
+	soloPolicy.Execution = gofresh.SingleSubjectExecution
+	if g.assumePure {
+		soloPolicy.PureSubjects = candidates
+	}
+	soloSession, err := gofresh.NewSession(ctx, buildDesc, soloPolicy)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, nil, nil, ctx.Err()
+		}
+		return snapshot, nil, nil, nil
+	}
+	candSnapshot, err := soloSession.Snapshot(ctx, candidates, gofresh.CodeResult)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, nil, nil, ctx.Err()
+		}
+		return snapshot, nil, nil, nil
+	}
+	soloFPs, err := candSnapshot.CaptureBatch(ctx)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, nil, nil, ctx.Err()
+		}
+		return snapshot, nil, nil, nil
+	}
+	soloBinding, err := candSnapshot.BindRuntime(ctx, probeRuntime)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, nil, nil, ctx.Err()
+		}
+		return snapshot, nil, nil, nil
+	}
+	soloCands := make([]gofresh.Candidate, 0, len(candidates))
+	for _, s := range candidates {
+		soloCands = append(soloCands, gofresh.Candidate{Subject: s, Recorded: soloFPs[s]})
+	}
+	soloVerdicts, err := soloBinding.CheckBatchWithLedgers(ctx, soloCands, nil)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, nil, nil, ctx.Err()
+		}
+		return snapshot, nil, nil, nil
+	}
+	soloSubjects := map[gofresh.Subject]bool{}
+	for _, v := range soloVerdicts {
+		if v.Verdict.Ground.Cause.Kind != gofresh.SharedDynamicStateCause {
+			soloSubjects[v.Subject] = true
+		}
+	}
+	if len(soloSubjects) == 0 {
+		return snapshot, nil, nil, nil
+	}
+	return snapshot, candSnapshot, soloSubjects, nil
 }
 
 // nativePackageLeg binds checking to the same runtime coordinate that the
@@ -116,12 +217,21 @@ func nativePackageLeg(ctx context.Context, snapshot *witnessSnapshot, inputs *pg
 		_ = environment.Close()
 		return nil, err
 	}
-	binding, err := snapshot.BindRuntime(ctx, gofresh.RuntimeDescription{Directory: environment.Dir, Environment: environment.Env})
+	desc := gofresh.RuntimeDescription{Directory: environment.Dir, Environment: environment.Env}
+	binding, err := snapshot.BindRuntime(ctx, desc)
 	if err != nil {
 		_ = environment.Close()
 		return nil, err
 	}
-	return &packageLeg{view: snapshot, binding: binding, environment: environment, inputs: inputs}, nil
+	var soloBinding *gofresh.RuntimeBinding
+	if snapshot.hasSoloInPackage(pkg) {
+		soloBinding, err = snapshot.solo.BindRuntime(ctx, desc)
+		if err != nil {
+			_ = environment.Close()
+			return nil, err
+		}
+	}
+	return &packageLeg{view: snapshot, binding: binding, soloBinding: soloBinding, environment: environment, inputs: inputs}, nil
 }
 
 // executionLegs provides native process accounts for the execution-only surface.

@@ -130,7 +130,12 @@ implicitly added to the conservation universe.
 - **admission** — Go string-variable linker assignments are sorted by
   `(package, variable)` with no duplicate target. Each entry names an import path
   and Go identifier and exactly one source: literal `value` (including empty), or
-  `value_environment`, a nonempty portable environment-variable name. Environment
+  `value_environment`, a nonempty portable environment-variable name. `-ldflags`
+  tokens in `goflags` or ambient `GOFLAGS` carrying `-X <package>.<variable>=<value>`
+  (or `-X=<package>.<variable>=<value>`) are automatically extracted as literal
+  `linker_strings` entries, merged and sorted with any explicit `linker_strings`
+  (refusing duplicate `(package, variable)` targets across explicit declarations
+  and `-ldflags`), and stripped from the retained `GOFLAGS` string. Environment
   sources resolve once from the admitted invocation environment after its denials
   and overrides; unset or empty environment values refuse. Values contain only
   printable ASCII without whitespace, quotes or backslashes; unsupported values
@@ -148,7 +153,8 @@ implicitly added to the conservation universe.
   value is a producing build input, not a new declared record coordinate.
   Invocation reports retain the resolved assignments. Existing invocations without
   assignments retain their record coordinates.
-- **authority** — Ambient and explicit GOFLAGS still refuse `-ldflags` and
+- **authority** — Ambient and explicit GOFLAGS still refuse non-`-X` or malformed
+  `-ldflags` (including bare `-X package.variable` without `=`) and
   unsupported substitution controls; binary `args` is not another build-flag
   channel. CLI and MCP use the same policy normalization and execution. Selection
   governs the runner's own compilation, not child builds a test independently owns.

@@ -22,7 +22,25 @@ import (
 // population: later source generations can compile additional runnables.
 type witnessSnapshot struct {
 	*gofresh.Snapshot
-	roster *runnableGeneration
+	solo         *gofresh.Snapshot
+	soloSubjects map[gofresh.Subject]bool
+	roster       *runnableGeneration
+}
+
+func (s *witnessSnapshot) isSolo(subject gofresh.Subject) bool {
+	return s != nil && s.solo != nil && s.soloSubjects[subject]
+}
+
+func (s *witnessSnapshot) hasSoloInPackage(pkg string) bool {
+	if s == nil || s.solo == nil {
+		return false
+	}
+	for subject, ok := range s.soloSubjects {
+		if ok && subject.Package == pkg {
+			return true
+		}
+	}
+	return false
 }
 
 type runnableSource struct {

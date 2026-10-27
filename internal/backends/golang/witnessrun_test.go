@@ -38,11 +38,11 @@ func writePolicyRecord(t *testing.T, dir string, p *stipulatorv1.TestPolicy) {
 	}
 }
 
-// TestGoRunWitnessesRequiresPolicyRecord pins the no-fallback rule: the
-// selective witness runner consumes the committed test policy through the
-// shared loading seam and surfaces every load failure — a record problem
-// and an operational read fault alike — instead of assuming a universal
-// suite.
+// TestGoRunWitnessesRequiresPolicyRecord pins default policy synthesis and
+// the record-refusal rule: when .stipulator/policy.textproto is absent in a
+// Go module, the selective witness runner synthesizes the default policy;
+// when neither a policy record nor a Go module/workspace exists, or when an
+// existing record is invalid or unreadable, it surfaces the load failure.
 func TestGoRunWitnessesRequiresPolicyRecord(t *testing.T) {
 	// The witness store must never be the user's real one: an
 	// un-overridden store poisons this package's own observation and
@@ -50,11 +50,21 @@ func TestGoRunWitnessesRequiresPolicyRecord(t *testing.T) {
 	// tests drop for hermeticity).
 	neutralAmbient(t)
 	stipulate.Covers(t, "REQ-policy-explicit")
+	if _, err := RunWitnesses(context.Background(), t.TempDir(), noSeeding{}); !errors.Is(err, policy.ErrRecord) {
+		t.Errorf("missing policy record without go.mod: err = %v, want policy.ErrRecord", err)
+	}
+
 	tmp := writeModule(t, map[string]string{
-		"go.mod": "module example.com/nopolicy\n\ngo 1.26\n",
+		"go.mod":     "module example.com/nopolicy\n\ngo 1.26\n",
+		"ok.go":      "package nopolicy\n\nfunc OK() bool { return true }\n",
+		"ok_test.go": "package nopolicy\n\nimport \"testing\"\n\nfunc TestOK(t *testing.T) {\n\tif !OK() {\n\t\tt.Fatal(\"not ok\")\n\t}\n}\n",
 	})
-	if _, err := RunWitnesses(context.Background(), tmp, noSeeding{}); !errors.Is(err, policy.ErrRecord) {
-		t.Errorf("missing policy record: err = %v, want policy.ErrRecord", err)
+	tr, err := RunWitnesses(context.Background(), tmp, noSeeding{})
+	if err != nil {
+		t.Fatalf("synthesized default policy failed: %v", err)
+	}
+	if tr.Outcomes["example.com/nopolicy.TestOK"] != verify.TestPassed {
+		t.Errorf("synthesized default policy outcomes = %v, want TestOK passed", tr.Outcomes)
 	}
 
 	recordPath := filepath.Join(tmp, filepath.FromSlash(policy.Path))
@@ -75,7 +85,7 @@ func TestGoRunWitnessesRequiresPolicyRecord(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.Chmod(recordPath, 0o644)
-	_, err := RunWitnesses(context.Background(), tmp, noSeeding{})
+	_, err = RunWitnesses(context.Background(), tmp, noSeeding{})
 	if err == nil {
 		t.Fatal("unreadable policy record did not fail the run")
 	}

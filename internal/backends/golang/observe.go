@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"path"
 	"strconv"
 
 	gofresh "github.com/greatliontech/gofresh"
@@ -100,8 +101,17 @@ func nativeObservation(pkg string, producer *stipulatorv1.ProducerIdentity, fina
 	return o
 }
 
-// bracketRootsFor preserves the discovery-owned compilation closure beside the
-// reviewed roots. An unavailable closure cannot silently narrow the bracket.
+func workspaceBracketRoots(n *NormalizedInvocation) []string {
+	roots := []string{"go.mod", "go.sum", "go.work", ".stipulator"}
+	if n != nil && n.ModuleRoot != "" {
+		roots = append(roots, path.Join(n.ModuleRoot, "go.mod"), path.Join(n.ModuleRoot, "go.sum"))
+	}
+	return roots
+}
+
+// bracketRootsFor preserves the discovery-owned compilation closure and
+// workspace metadata beside the reviewed roots. An unavailable closure cannot
+// silently narrow the bracket.
 func bracketRootsFor(n *NormalizedInvocation, pkg string) ([]string, string) {
 	if n.ClosureDirsErr != "" {
 		return nil, "package import closure unresolved at spawn (" + n.ClosureDirsErr + "); no observation bracket was captured"
@@ -110,7 +120,8 @@ func bracketRootsFor(n *NormalizedInvocation, pkg string) ([]string, string) {
 	if !ok {
 		return nil, "package import closure unknown at spawn; no observation bracket was captured"
 	}
-	roots := append(append([]string(nil), closure...), n.BracketPaths...)
+	roots := append(append([]string(nil), closure...), workspaceBracketRoots(n)...)
+	roots = append(roots, n.BracketPaths...)
 	return append(roots, inputFilePaths(n.InputFiles)...), ""
 }
 

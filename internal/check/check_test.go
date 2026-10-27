@@ -82,13 +82,14 @@ func TestCheckMissingPolicyFailsWithGuidance(t *testing.T) {
 	stipulate.Covers(t, "REQ-check-verdict")
 	files := baseTree(nil)
 	delete(files, ".stipulator/policy.textproto")
+	delete(files, "go.mod")
 	dir := writeTree(t, files)
 	res, err := Run(context.Background(), dir, true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if res.GetPassed() {
-		t.Error("check passed without an accepted test policy")
+		t.Error("check passed without an accepted test policy or synthesizable Go root")
 	}
 	p := res.GetPolicyProblem()
 	if p == nil {

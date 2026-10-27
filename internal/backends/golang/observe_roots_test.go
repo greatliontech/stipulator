@@ -27,15 +27,26 @@ func TestGoBracketRootsDeclareImportClosure(t *testing.T) {
 	if refused != "" {
 		t.Fatalf("resolved closure refused: %s", refused)
 	}
-	if want := []string{"deep", "lib", "docs/corpus"}; !slices.Equal(roots, want) {
-		t.Fatalf("roots = %v, want closure dirs then reviewed paths %v", roots, want)
+	if want := []string{"deep", "lib", "go.mod", "go.sum", "go.work", ".stipulator", "docs/corpus"}; !slices.Equal(roots, want) {
+		t.Fatalf("roots = %v, want closure dirs, workspace metadata, then reviewed paths %v", roots, want)
 	}
 	roots, refused = bracketRootsFor(n, "example.com/m/leaf")
 	if refused != "" {
 		t.Fatalf("empty closure refused: %s", refused)
 	}
-	if want := []string{"docs/corpus"}; !slices.Equal(roots, want) {
-		t.Fatalf("leaf roots = %v, want reviewed paths only %v", roots, want)
+	if want := []string{"go.mod", "go.sum", "go.work", ".stipulator", "docs/corpus"}; !slices.Equal(roots, want) {
+		t.Fatalf("leaf roots = %v, want workspace metadata and reviewed paths %v", roots, want)
+	}
+	nested := &NormalizedInvocation{
+		ModuleRoot:     "sub/mod",
+		PkgClosureDirs: map[string][]string{"example.com/sub": {"sub/mod"}},
+	}
+	roots, refused = bracketRootsFor(nested, "example.com/sub")
+	if refused != "" {
+		t.Fatalf("nested module closure refused: %s", refused)
+	}
+	if want := []string{"sub/mod", "go.mod", "go.sum", "go.work", ".stipulator", "sub/mod/go.mod", "sub/mod/go.sum"}; !slices.Equal(roots, want) {
+		t.Fatalf("nested module roots = %v, want %v", roots, want)
 	}
 	if _, refused = bracketRootsFor(n, "example.com/m/unknown"); refused == "" {
 		t.Fatal("unknown closure did not refuse")

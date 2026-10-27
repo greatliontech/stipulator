@@ -430,12 +430,13 @@ func CapturePolicy(ctx context.Context, dir string, p *stipulatorv1.TestPolicy) 
 	return pc, nil
 }
 
-// LoadCapture loads the tree's accepted policy record and captures it:
+// LoadCapture loads the tree's accepted policy record (or synthesizes the
+// default policy when .stipulator/policy.textproto is absent) and captures it:
 // the one entry every operation that consumes the policy takes. A
 // record fault carries policy.ErrRecord for the caller's disposition;
 // a normalization fault is the operation's.
 func LoadCapture(ctx context.Context, dir string) (*Capture, error) {
-	p, _, err := policy.Load(dir, map[string]policy.Backend{"go": Policy{}})
+	p, err := LoadPolicy(dir)
 	if err != nil {
 		return nil, err
 	}
@@ -1327,6 +1328,14 @@ func (r *WitnessRecorder) packageCompleted(ctx context.Context, invocation strin
 		rows:    unit.run.tests,
 		obs:     unit.run.obs,
 	}
+	var soloCandidates []producerCandidate
+	for _, s := range unit.solos {
+		soloCandidates = append(soloCandidates, producerCandidate{
+			healthy: s.disposition == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY,
+			rows:    s.tests,
+			obs:     s.obs,
+		})
+	}
 	for _, g := range r.groups {
 		// One package can sit in several groups — two invocations under
 		// different build coordinates both selecting it — each group
@@ -1341,7 +1350,7 @@ func (r *WitnessRecorder) packageCompleted(ctx context.Context, invocation strin
 		// its entry carries at least one expected test, and the legs
 		// were built over the group's subjects — and completes once
 		// under its invocation, so the leg is not yet published.
-		records, reasons, degraded, err := r.publishPackage(ctx, g, unit.pkg, g.legs[unit.pkg], candidate)
+		records, reasons, degraded, err := r.publishPackage(ctx, g, unit.pkg, g.legs[unit.pkg], candidate, soloCandidates)
 		if err != nil {
 			return err
 		}
@@ -1387,7 +1396,7 @@ func (r *WitnessRecorder) publish() ([]witnesscache.Record, map[gofresh.Subject]
 // own legs independently validated. Demonstrated runtime-input movement refuses
 // this process's records locally; its account and execution facts remain intact.
 // The error return is reserved for caller cancellation.
-func (r *WitnessRecorder) publishPackage(ctx context.Context, g *captureGroup, pkg string, leg *packageLeg, candidate producerCandidate) ([]witnesscache.Record, map[gofresh.Subject]uncacheable, string, error) {
+func (r *WitnessRecorder) publishPackage(ctx context.Context, g *captureGroup, pkg string, leg *packageLeg, candidate producerCandidate, soloCandidates []producerCandidate) ([]witnesscache.Record, map[gofresh.Subject]uncacheable, string, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, "", err
 	}
@@ -1398,6 +1407,14 @@ func (r *WitnessRecorder) publishPackage(ctx context.Context, g *captureGroup, p
 		}
 		return nil, nil, "runtime producer validation failed: " + candidate.obs.closeErr.Error(), nil
 	}
+	for _, sc := range soloCandidates {
+		if sc.obs != nil && sc.obs.closeErr != nil && !runtimeInputMovement(sc.obs.closeErr) {
+			if ctx.Err() != nil {
+				return nil, nil, "", ctx.Err()
+			}
+			return nil, nil, "runtime producer validation failed: " + sc.obs.closeErr.Error(), nil
+		}
+	}
 	reasons := map[gofresh.Subject]uncacheable{}
 	eligible := map[gofresh.Subject]*pubSubject{}
 	var order []gofresh.Subject
@@ -1405,7 +1422,11 @@ func (r *WitnessRecorder) publishPackage(ctx context.Context, g *captureGroup, p
 	for _, name := range g.packages[pkg].names {
 		subject := gofresh.Subject{Package: pkg, Symbol: name}
 		why, refused := g.neverServes[subject]
-		ps, reason := judgeSubject(subject, why, refused, true, candidates)
+		subCandidates := candidates
+		if leg != nil && leg.view != nil && leg.view.isSolo(subject) && len(soloCandidates) > 0 {
+			subCandidates = soloCandidates
+		}
+		ps, reason := judgeSubject(subject, why, refused, true, subCandidates)
 		if ps == nil {
 			reasons[subject] = reason
 			continue

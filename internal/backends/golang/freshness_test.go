@@ -1306,22 +1306,49 @@ func TestReads(t *testing.T) {
 	}
 }
 `,
+		"r/r_test.go": `package r
+
+import (
+	"testing"
+
+	"example.com/ppmut/dep"
+)
+
+func BenchmarkMutates(b *testing.B) {
+	dep.Register("r", func() int { return 3 })
+}
+
+func TestReadsOnly(t *testing.T) {
+	if dep.Has("never") {
+		t.Fatal("state")
+	}
+}
+`,
 	})
 	writeRacePolicy(t, tmp)
-	subjects := map[string]string{
+	refusedSubjects := map[string]string{
 		"example.com/ppmut/p.TestMutatesDep": "TestMutatesDep",
 		"example.com/ppmut/q.TestMutates":    "TestMutates",
-		"example.com/ppmut/q.TestReads":      "TestReads",
+	}
+	soloSubjects := map[string]struct{ pkg, test string }{
+		"example.com/ppmut/q.TestReads":     {pkg: "example.com/ppmut/q", test: "TestReads"},
+		"example.com/ppmut/r.TestReadsOnly": {pkg: "example.com/ppmut/r", test: "TestReadsOnly"},
 	}
 	for i := 1; i <= 2; i++ {
 		run, err := RunWitnesses(context.Background(), tmp, noSeeding{})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if run.Degraded != "" || run.Ran != len(subjects) || run.Fresh != 0 {
-			t.Fatalf("run %d: degraded=%q ran=%d fresh=%d", i, run.Degraded, run.Ran, run.Fresh)
+		wantRan := 4
+		wantFresh := 0
+		if i == 2 {
+			wantRan = 2
+			wantFresh = 2
 		}
-		for subject, test := range subjects {
+		if run.Degraded != "" || run.Ran != wantRan || run.Fresh != wantFresh || run.Uncached != len(refusedSubjects) {
+			t.Fatalf("run %d: degraded=%q ran=%d (want %d) fresh=%d (want %d) uncached=%d", i, run.Degraded, run.Ran, wantRan, run.Fresh, wantFresh, run.Uncached)
+		}
+		for subject, test := range refusedSubjects {
 			reason := run.UncacheableReasons[subject]
 			if !strings.Contains(reason, "package graph shares mutated dynamic state") || !strings.Contains(reason, "example.com/ppmut/dep.registry is mutated") {
 				t.Fatalf("run %d: %s's refusal did not stand on the uncacheable face: %q (executed=%v)", i, subject, reason, run.ExecutedReasons)
@@ -1330,6 +1357,37 @@ func TestReads(t *testing.T) {
 			if rec := cacheRecord(t, witnesscache.Load(t.Context(), tmp).Records, pkg, test); rec != nil {
 				t.Fatalf("run %d published a record the serve can never admit for %s: %+v", i, subject, rec.Fingerprint)
 			}
+		}
+		for soloSubject, id := range soloSubjects {
+			if reason, ok := run.UncacheableReasons[soloSubject]; ok {
+				t.Fatalf("run %d: solo-partitioned reader %s was refused: %q", i, soloSubject, reason)
+			}
+			rec := cacheRecord(t, witnesscache.Load(t.Context(), tmp).Records, id.pkg, id.test)
+			if rec == nil || !strings.Contains(rec.Fingerprint.SingleSubjectDischarges, "example.com/ppmut/dep.registry") {
+				t.Fatalf("run %d: solo-partitioned reader %s record = %+v, want SingleSubjectDischarges naming dep.registry", i, soloSubject, rec)
+			}
+		}
+	}
+
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	pol, err := LoadPolicy(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, fullRun, err := ExecutePolicyWitnessed(context.Background(), mustCapture(t, context.Background(), tmp, pol), noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fullRun.Degraded != "" || fullRun.Ran != 4 || fullRun.Uncached != len(refusedSubjects) {
+		t.Fatalf("full witnessed run: degraded=%q ran=%d uncached=%d uncacheable=%v", fullRun.Degraded, fullRun.Ran, fullRun.Uncached, fullRun.UncacheableReasons)
+	}
+	for soloSubject, id := range soloSubjects {
+		if reason, ok := fullRun.UncacheableReasons[soloSubject]; ok {
+			t.Fatalf("full witnessed run: solo-partitioned reader %s was refused: %q", soloSubject, reason)
+		}
+		rec := cacheRecord(t, witnesscache.Load(t.Context(), tmp).Records, id.pkg, id.test)
+		if rec == nil || !strings.Contains(rec.Fingerprint.SingleSubjectDischarges, "example.com/ppmut/dep.registry") {
+			t.Fatalf("full witnessed run: solo-partitioned reader %s record = %+v, want SingleSubjectDischarges naming dep.registry", soloSubject, rec)
 		}
 	}
 }

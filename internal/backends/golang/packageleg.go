@@ -15,14 +15,16 @@ type packageLeg struct {
 	preparation sync.Mutex
 	view        *witnessSnapshot
 	binding     *gofresh.RuntimeBinding
+	soloBinding *gofresh.RuntimeBinding
 	// environment belongs to the operation, not source-memory release. A
 	// sibling's publication fault must not remove an active process's files.
-	environment *retainedEnvironment
-	checking    *gofresh.CheckingUnit
-	chosen      map[gofresh.Subject]chosenWitness
-	inputs      *pgoObservation
-	inputErr    error
-	published   bool
+	environment  *retainedEnvironment
+	checking     *gofresh.CheckingUnit
+	soloChecking *gofresh.CheckingUnit
+	chosen       map[gofresh.Subject]chosenWitness
+	inputs       *pgoObservation
+	inputErr     error
+	published    bool
 }
 
 // chosenWitness keeps the consumer outcome record with the native operation
@@ -30,6 +32,7 @@ type packageLeg struct {
 // until the checking unit returns its final endpoint and ledger.
 type chosenWitness struct {
 	index  int
+	solo   bool
 	record witnesscache.Record
 }
 
@@ -78,7 +81,10 @@ func (l *packageLeg) release() {
 	if l.checking != nil {
 		l.checking.Abort()
 	}
-	l.view, l.binding, l.checking = nil, nil, nil
+	if l.soloChecking != nil {
+		l.soloChecking.Abort()
+	}
+	l.view, l.binding, l.soloBinding, l.checking, l.soloChecking = nil, nil, nil, nil, nil
 }
 
 func (l *packageLeg) dispose() {

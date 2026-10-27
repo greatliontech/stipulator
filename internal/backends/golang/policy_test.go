@@ -269,7 +269,7 @@ func TestGoPolicyConfigStaticValidation(t *testing.T) {
 		{"goflags overlay", "unsupported", func(c *stipulatorv1.GoInvocationConfig) { c.SetGoflags("-overlay=/tmp/o.json") }},
 		{"goflags toolexec", "unsupported", func(c *stipulatorv1.GoInvocationConfig) { c.SetGoflags("-toolexec=strace") }},
 		{"goflags exec", "unsupported", func(c *stipulatorv1.GoInvocationConfig) { c.SetGoflags("-exec=/bin/true") }},
-		{"goflags ldflags", "unsupported", func(c *stipulatorv1.GoInvocationConfig) { c.SetGoflags("-ldflags=-X main.v=1") }},
+		{"goflags ldflags non-X", "unsupported", func(c *stipulatorv1.GoInvocationConfig) { c.SetGoflags("-ldflags=-s -w") }},
 		{"goflags run selection", "shapes test selection", func(c *stipulatorv1.GoInvocationConfig) { c.SetGoflags("-run=TestOnlyThis") }},
 		{"goflags skip selection", "shapes test selection", func(c *stipulatorv1.GoInvocationConfig) { c.SetGoflags("-skip=.*") }},
 		{"goflags short selection", "shapes test selection", func(c *stipulatorv1.GoInvocationConfig) { c.SetGoflags("-short") }},

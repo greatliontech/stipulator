@@ -133,8 +133,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-linker-selection"
-  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
-  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  content_hash: "6a0aaee68ff69b123e49f39e71eb2932391828420cc1f75fca068d1876009680"
+  source_hash: "30b458f9a4b0c1e4f1ed5a835e89462525bbc662cbed96e7c600724783a17525"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.validateLinkerSelection"
   role: BINDING_ROLE_IMPLEMENTS
@@ -144,8 +144,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-linker-selection"
-  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
-  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  content_hash: "6a0aaee68ff69b123e49f39e71eb2932391828420cc1f75fca068d1876009680"
+  source_hash: "30b458f9a4b0c1e4f1ed5a835e89462525bbc662cbed96e7c600724783a17525"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.resolveLinkerSelection"
   role: BINDING_ROLE_IMPLEMENTS
@@ -155,8 +155,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-linker-selection"
-  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
-  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  content_hash: "6a0aaee68ff69b123e49f39e71eb2932391828420cc1f75fca068d1876009680"
+  source_hash: "30b458f9a4b0c1e4f1ed5a835e89462525bbc662cbed96e7c600724783a17525"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerSelectionClosedPolicy"
   role: BINDING_ROLE_TESTS
@@ -166,8 +166,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-linker-selection"
-  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
-  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  content_hash: "6a0aaee68ff69b123e49f39e71eb2932391828420cc1f75fca068d1876009680"
+  source_hash: "30b458f9a4b0c1e4f1ed5a835e89462525bbc662cbed96e7c600724783a17525"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerNormalizedOverrideAndDenial"
   role: BINDING_ROLE_TESTS
@@ -177,8 +177,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-linker-selection"
-  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
-  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  content_hash: "6a0aaee68ff69b123e49f39e71eb2932391828420cc1f75fca068d1876009680"
+  source_hash: "30b458f9a4b0c1e4f1ed5a835e89462525bbc662cbed96e7c600724783a17525"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerResolutionFreezesValuesAndExactFiles"
   role: BINDING_ROLE_TESTS
@@ -188,8 +188,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-linker-selection"
-  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
-  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  content_hash: "6a0aaee68ff69b123e49f39e71eb2932391828420cc1f75fca068d1876009680"
+  source_hash: "30b458f9a4b0c1e4f1ed5a835e89462525bbc662cbed96e7c600724783a17525"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.retainedBuildArgs"
   role: BINDING_ROLE_IMPLEMENTS
@@ -199,19 +199,19 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-linker-selection"
-  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
-  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  content_hash: "6a0aaee68ff69b123e49f39e71eb2932391828420cc1f75fca068d1876009680"
+  source_hash: "30b458f9a4b0c1e4f1ed5a835e89462525bbc662cbed96e7c600724783a17525"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.captureNativeGeneration"
   role: BINDING_ROLE_IMPLEMENTS
-  shape_hash: "9b6f8cbe3d62a4e0d03e7342b4856f348d133ea9187f6d36e3a289e491fefde3"
+  shape_hash: "e25c8d9251463d106830d249f27c7925c2197ac797eb1402ccdce70b28bb30ee"
   clause_label: "propagation"
 }
 
 bindings {
   requirement_id: "REQ-go-linker-selection"
-  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
-  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  content_hash: "6a0aaee68ff69b123e49f39e71eb2932391828420cc1f75fca068d1876009680"
+  source_hash: "30b458f9a4b0c1e4f1ed5a835e89462525bbc662cbed96e7c600724783a17525"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.groupKeySegments"
   role: BINDING_ROLE_IMPLEMENTS
@@ -221,8 +221,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-linker-selection"
-  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
-  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  content_hash: "6a0aaee68ff69b123e49f39e71eb2932391828420cc1f75fca068d1876009680"
+  source_hash: "30b458f9a4b0c1e4f1ed5a835e89462525bbc662cbed96e7c600724783a17525"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.groupIdentitySegments"
   role: BINDING_ROLE_IMPLEMENTS
@@ -232,8 +232,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-linker-selection"
-  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
-  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  content_hash: "6a0aaee68ff69b123e49f39e71eb2932391828420cc1f75fca068d1876009680"
+  source_hash: "30b458f9a4b0c1e4f1ed5a835e89462525bbc662cbed96e7c600724783a17525"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.resolvedConfig"
   role: BINDING_ROLE_IMPLEMENTS
@@ -243,8 +243,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-linker-selection"
-  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
-  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  content_hash: "6a0aaee68ff69b123e49f39e71eb2932391828420cc1f75fca068d1876009680"
+  source_hash: "30b458f9a4b0c1e4f1ed5a835e89462525bbc662cbed96e7c600724783a17525"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerResolutionFreezesValuesAndExactFiles"
   role: BINDING_ROLE_TESTS
@@ -254,8 +254,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-linker-selection"
-  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
-  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  content_hash: "6a0aaee68ff69b123e49f39e71eb2932391828420cc1f75fca068d1876009680"
+  source_hash: "30b458f9a4b0c1e4f1ed5a835e89462525bbc662cbed96e7c600724783a17525"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerAbsentSelectionKeepsExistingCoordinate"
   role: BINDING_ROLE_TESTS
@@ -265,8 +265,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-linker-selection"
-  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
-  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  content_hash: "6a0aaee68ff69b123e49f39e71eb2932391828420cc1f75fca068d1876009680"
+  source_hash: "30b458f9a4b0c1e4f1ed5a835e89462525bbc662cbed96e7c600724783a17525"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerExecutionAndFreshnessUseActualAssignments"
   role: BINDING_ROLE_TESTS
@@ -276,8 +276,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-linker-selection"
-  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
-  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  content_hash: "6a0aaee68ff69b123e49f39e71eb2932391828420cc1f75fca068d1876009680"
+  source_hash: "30b458f9a4b0c1e4f1ed5a835e89462525bbc662cbed96e7c600724783a17525"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.validateConfig"
   role: BINDING_ROLE_IMPLEMENTS
@@ -287,8 +287,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-linker-selection"
-  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
-  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  content_hash: "6a0aaee68ff69b123e49f39e71eb2932391828420cc1f75fca068d1876009680"
+  source_hash: "30b458f9a4b0c1e4f1ed5a835e89462525bbc662cbed96e7c600724783a17525"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.retainedBuildArgs"
   role: BINDING_ROLE_IMPLEMENTS
@@ -298,8 +298,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-linker-selection"
-  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
-  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  content_hash: "6a0aaee68ff69b123e49f39e71eb2932391828420cc1f75fca068d1876009680"
+  source_hash: "30b458f9a4b0c1e4f1ed5a835e89462525bbc662cbed96e7c600724783a17525"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerSelectionClosedPolicy"
   role: BINDING_ROLE_TESTS
@@ -309,8 +309,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-linker-selection"
-  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
-  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  content_hash: "6a0aaee68ff69b123e49f39e71eb2932391828420cc1f75fca068d1876009680"
+  source_hash: "30b458f9a4b0c1e4f1ed5a835e89462525bbc662cbed96e7c600724783a17525"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerAbsentSelectionKeepsExistingCoordinate"
   role: BINDING_ROLE_TESTS
@@ -320,8 +320,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-go-linker-selection"
-  content_hash: "37e735334b430ffc1f2d0f3726a9ab1d00038b7b657404f95e155a29c12ea663"
-  source_hash: "239d8e8259c3dcd76c5a9e2c709a45e2b335cb7f3c6bd723351b469f9367b289"
+  content_hash: "6a0aaee68ff69b123e49f39e71eb2932391828420cc1f75fca068d1876009680"
+  source_hash: "30b458f9a4b0c1e4f1ed5a835e89462525bbc662cbed96e7c600724783a17525"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerExecutionAndFreshnessUseActualAssignments"
   role: BINDING_ROLE_TESTS

@@ -312,39 +312,56 @@ func recheckRetryWave(ctx context.Context, pc *Capture, groups []*witnessGroup, 
 			}
 		} else {
 			check := func(runtime gofresh.RuntimeDescription, entries []retryCheckEntry) error {
-				var subjects []gofresh.Subject
-				var candidates []gofresh.Candidate
-				for _, entry := range entries {
-					subjects = append(subjects, entry.subject)
-					candidates = append(candidates, gofresh.Candidate{Subject: entry.subject, Recorded: entry.recorded})
-				}
-				binding, err := prepared.native.BindRuntime(ctx, runtime)
-				var results []gofresh.CheckedCandidate
-				if err == nil {
-					var unit *gofresh.CheckingUnit
-					unit, err = binding.BeginCheck(subjects)
+				checkSlice := func(snap *gofresh.Snapshot, subEntries []retryCheckEntry) error {
+					if len(subEntries) == 0 {
+						return nil
+					}
+					var subjects []gofresh.Subject
+					var candidates []gofresh.Candidate
+					for _, entry := range subEntries {
+						subjects = append(subjects, entry.subject)
+						candidates = append(candidates, gofresh.Candidate{Subject: entry.subject, Recorded: entry.recorded})
+					}
+					binding, err := snap.BindRuntime(ctx, runtime)
+					var results []gofresh.CheckedCandidate
 					if err == nil {
-						defer unit.Abort()
-						_, err = unit.CheckBatch(ctx, candidates)
+						var unit *gofresh.CheckingUnit
+						unit, err = binding.BeginCheck(subjects)
 						if err == nil {
-							results, err = unit.Close(ctx)
+							defer unit.Abort()
+							_, err = unit.CheckBatch(ctx, candidates)
+							if err == nil {
+								results, err = unit.Close(ctx)
+							}
 						}
 					}
-				}
-				if err == nil {
-					err = prepared.inputs.validate(ctx)
-				}
-				if ctx.Err() != nil {
-					return ctx.Err()
-				}
-				for i, entry := range entries {
-					verdict := gofresh.Verdict{}
 					if err == nil {
-						verdict = results[i].Verdict
+						err = prepared.inputs.validate(ctx)
 					}
-					refuse(entry, verdict, err)
+					if ctx.Err() != nil {
+						return ctx.Err()
+					}
+					for i, entry := range subEntries {
+						verdict := gofresh.Verdict{}
+						if err == nil {
+							verdict = results[i].Verdict
+						}
+						refuse(entry, verdict, err)
+					}
+					return nil
 				}
-				return nil
+				var batchEntries, soloEntries []retryCheckEntry
+				for _, entry := range entries {
+					if prepared.solo != nil && prepared.soloSubjects[entry.subject] {
+						soloEntries = append(soloEntries, entry)
+					} else {
+						batchEntries = append(batchEntries, entry)
+					}
+				}
+				if err := checkSlice(prepared.native, batchEntries); err != nil {
+					return err
+				}
+				return checkSlice(prepared.solo, soloEntries)
 			}
 			for _, pkg := range wg.packages() {
 				var entries []retryCheckEntry

@@ -126,7 +126,7 @@ func TestProducingCloseRefusalScope(t *testing.T) {
 				cancel()
 			}
 			r := &WitnessRecorder{}
-			records, reasons, degraded, err := r.publishPackage(ctx, g, unit.pkg, leg, producerCandidate{healthy: true, obs: unit.run.obs, rows: unit.run.tests})
+			records, reasons, degraded, err := r.publishPackage(ctx, g, unit.pkg, leg, producerCandidate{healthy: true, obs: unit.run.obs, rows: unit.run.tests}, nil)
 			if len(records) != 0 {
 				t.Fatal("refused process gained reusable records")
 			}

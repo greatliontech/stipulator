@@ -416,7 +416,7 @@ existing evidence unchanged.
 
 **REQ-evidence-witness-freshness-bracket** (behavior): Each producing process's completed observation MUST be sealed against an
 observation bracket captured before the process spawns, declaring the
-package's own directory and its test build's in-tree import-closure
+package's own directory, its test build's in-tree import-closure
 directories — module-relative under the verification tree, with the VCS
 bookkeeping tree excluded, the closure resolved from the toolchain's
 own dependency listing so the bracket seals exactly what the consuming
@@ -424,7 +424,11 @@ compile may read from the tree (a source edit and content-only revert
 anywhere in the closure completed inside the span moves the bracket;
 the content-and-metadata-exact restore stays the declared residual,
 and a closure the toolchain cannot list yields an incomplete
-observation rather than a record sealed over a weaker claim) —
+observation rather than a record sealed over a weaker claim) — and the
+workspace metadata roots (`go.mod`, `go.sum`, `go.work`, and
+`.stipulator` at the verification tree root, plus the invocation's
+`module_root` `go.mod` and `go.sum` when a nested module root is
+selected),
 together with the invocation's
 reviewed bracket paths (process images, fixed external files, and fixed
 data directories its tests deliberately consume — a documentation corpus
@@ -632,15 +636,20 @@ complete before its records install, inside the package's own slot of the
 derived concurrency bound.
 
 **REQ-evidence-witness-freshness-package-process** (behavior): Every process that runs a witness — the
-package's run and its isolation re-runs — MUST be the witness package's own
-test binary, and the engine every witness is judged on attests that
-package-process execution model, so the binary-scoped reachability
-discharge applies to each witness and the discharges it rests on ride
-the record; a package's selected tests share one process, so the
-single-subject model — which binds every process — is never attested
-and a `//gofresh:single-subject` directive is backed by nothing here,
-and a culprit the model leaves undischarged refuses the witness whole on
-the uncacheable face, publishing no record — the proof-attached form
+package's batch run, its automatically partitioned single-subject solo runs,
+and its isolation re-runs — MUST be the witness package's own
+test binary. By default a package's selected tests share one process and the
+engine attests the package-process execution model (`PackageExecution`), so
+binary-scoped reachability discharge (`PackageProcessDischarges`) applies to
+each batch witness and the discharges it rests on ride the record. When a
+witness subject is refused under `PackageExecution` for shared dynamic state
+(`SharedDynamicStateCause`) and that refusal is discharged under
+single-subject execution (`SingleSubjectExecution`, whether by solo
+reachability or by an in-source `//gofresh:single-subject` directive), the
+runner automatically partitions that subject into a solo single-subject
+process under `SingleSubjectExecution` whose `SingleSubjectDischarges` ride
+the record; a culprit neither execution model discharges refuses the witness
+whole on the uncacheable face, publishing no record — the proof-attached form
 passes the same post-run check as the plain one.
 
 **REQ-evidence-witness-freshness-revalidation** (behavior): A served record's fingerprint MUST be
@@ -1229,11 +1238,17 @@ health suite whose outcomes are discarded beside an independent witness
 run duplicating its work.
 
 **REQ-policy-explicit** (behavior): Witness execution MUST consume the
-corpus's accepted test policy — a committed record declaring every policy
-invocation with its backend, package scope, typed configuration, and an
-explicit timeout, so a deliberately long-running invocation is admitted by
-review rather than aborted by an inherited ceiling — never an assumed
-universal invocation.
+corpus's accepted test policy — a committed record at
+`.stipulator/policy.textproto` declaring every policy invocation with its
+backend, package scope, typed configuration, and an explicit timeout, so a
+deliberately long-running invocation is admitted by review rather than
+aborted by an inherited ceiling, or, when `.stipulator/policy.textproto` is
+absent in a Go module or workspace (`go.mod` or `go.work` at the verification
+tree root), the synthesized default policy derived from that root
+(REQ-policy-init-immutable); when neither `.stipulator/policy.textproto` nor
+a Go module or workspace root is present, or when an existing policy record
+is invalid, policy loading refuses with `.stipulator/policy.textproto`
+attributed.
 
 **REQ-policy-explicit-time-bounds** (behavior): No toolchain-implicit time bound survives the
 accepted record: the record's envelope and its reviewed arguments MUST be

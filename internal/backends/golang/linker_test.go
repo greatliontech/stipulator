@@ -43,6 +43,8 @@ func TestLinkerSelectionClosedPolicy(t *testing.T) {
 		`linker_strings { package:"example.com/p" variable:"Version" value:"" }`,
 		`linker_strings { package:"example.com/p" variable:"Version" value_environment:"LIBRARY_ID" }`,
 		`input_files_from_environment:"MANIFEST"`,
+		`goflags:"-ldflags=-X=example.com/p.V=1"`,
+		`goflags:"-ldflags=\"-X example.com/p.V=1 -X example.com/p.W=2\""`,
 	} {
 		if err := validateConfig(linkerConfig(t, text)); err != nil {
 			t.Fatalf("valid %s: %v", text, err)
@@ -62,7 +64,10 @@ func TestLinkerSelectionClosedPolicy(t *testing.T) {
 		`input_files_from_environment:"Z" input_files_from_environment:"A"`,
 		`input_files_from_environment:"A" input_files_from_environment:"A"`,
 		`input_files_from_environment:"1INVALID"`,
-		`goflags:"-ldflags=-X=example.com/p.V=1"`,
+		`goflags:"-ldflags=-s"`,
+		`goflags:"-ldflags=all=-X=example.com/p.V=1"`,
+		`goflags:"-ldflags=-X=../p.V=1"`,
+		`linker_strings { package:"example.com/p" variable:"V" value:"1" } goflags:"-ldflags=-X=example.com/p.V=1"`,
 		`environment:"GOFLAGS=-ldflags=-X=example.com/p.V=1"`,
 	} {
 		if err := validateConfig(linkerConfig(t, text)); err == nil {
@@ -84,7 +89,7 @@ func TestLinkerResolutionFreezesValuesAndExactFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	brackets, why := bracketRootsFor(a, "p")
-	if why != "" || !slices.Equal(brackets, []string{".", file}) {
+	if why != "" || !slices.Equal(brackets, []string{".", "go.mod", "go.sum", "go.work", ".stipulator", file}) {
 		t.Fatalf("broadened file bracket: %v %s", brackets, why)
 	}
 	if !slices.Equal(a.LinkerAssignments, []string{"example.com/p.V=ordinary/1:a=b"}) {
@@ -169,6 +174,25 @@ func TestLinkerNormalizedOverrideAndDenial(t *testing.T) {
 	c.SetEnvironment(nil)
 	if _, err := NormalizeInvocation(t.Context(), discoverFixture(t), goInvocation("test", c)); err == nil {
 		t.Fatal("denied linker value resurrected")
+	}
+
+	// Auto-extraction of linker_strings from -ldflags in explicit goflags and ambient GOFLAGS.
+	fromGoflags := linkerConfig(t, `packages:"./..." goflags:"-ldflags=\"-X example.com/p.W=2 -X example.com/p.V=1\""`)
+	nf, err := NormalizeInvocation(t.Context(), discoverFixture(t), goInvocation("from-goflags", fromGoflags))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(nf.LinkerAssignments, []string{"example.com/p.V=1", "example.com/p.W=2"}) || nf.GOFLAGS != "" {
+		t.Fatalf("extracted goflags = %v (GOFLAGS=%q)", nf.LinkerAssignments, nf.GOFLAGS)
+	}
+	t.Setenv("GOFLAGS", "-ldflags=-X=example.com/p.Ambient=ok")
+	fromAmbient := linkerConfig(t, `packages:"./..."`)
+	na, err := NormalizeInvocation(t.Context(), discoverFixture(t), goInvocation("from-ambient", fromAmbient))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(na.LinkerAssignments, []string{"example.com/p.Ambient=ok"}) || na.GOFLAGS != "" {
+		t.Fatalf("extracted ambient GOFLAGS = %v (GOFLAGS=%q)", na.LinkerAssignments, na.GOFLAGS)
 	}
 }
 

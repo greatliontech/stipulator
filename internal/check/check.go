@@ -225,7 +225,7 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		res.SetExecutedReasons(testRun.ExecutedReasons)
 		res.SetWitnessPublicationDegraded(testRun.Degraded)
 	} else {
-		if _, _, err := policy.Load(dir, map[string]policy.Backend{"go": golang.Policy{}}); err != nil {
+		if _, err := golang.LoadPolicy(dir); err != nil {
 			// The policy term still stands on the witness-free pass: the
 			// record's static faults decide without a toolchain query
 			// (REQ-check-verdict-moot). What the pass forgoes is the capture —

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/greatliontech/gofresh"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
 )
@@ -149,26 +150,39 @@ func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 		}
 	}
 	// When a package selection mixes Test* and Fuzz* runnables under a
-	// native witness snapshot, run the Fuzz* targets as solo processes in
-	// the package's slot reusing the compiled binary so (*testing.F).Fuzz
-	// (which has no operation-outcome support method) does not poison
-	// PackageUnit outcome support for the sibling Test* subjects.
+	// native witness snapshot, or contains subjects partitioned into solo
+	// SingleSubjectExecution, run those targets as solo processes in the
+	// package's slot reusing the compiled binary.
 	mainSel := make(TestSelection, len(sel))
-	fuzzSolos := map[string][]string{}
+	plannedSolos := map[string][]string{}
 	for _, pkg := range pkgs {
 		names := sel[pkg]
 		if proofs != nil && proofs[pkg] != nil && proofs[pkg].view != nil && len(names) > 1 {
-			var tests, fuzzes []string
+			view := proofs[pkg].view
+			var batch, fuzzes, solos []string
 			for _, name := range names {
-				if strings.HasPrefix(name, "Fuzz") {
+				switch {
+				case view.isSolo(gofresh.Subject{Package: pkg, Symbol: name}):
+					solos = append(solos, name)
+				case strings.HasPrefix(name, "Fuzz"):
 					fuzzes = append(fuzzes, name)
-				} else {
-					tests = append(tests, name)
+				default:
+					batch = append(batch, name)
 				}
 			}
-			if len(tests) > 0 && len(fuzzes) > 0 {
-				mainSel[pkg] = tests
-				fuzzSolos[pkg] = fuzzes
+			if len(batch) > 0 && len(fuzzes) > 0 {
+				solos = append(solos, fuzzes...)
+			} else {
+				batch = append(batch, fuzzes...)
+			}
+			if len(solos) > 0 {
+				if len(batch) > 0 {
+					mainSel[pkg] = batch
+					plannedSolos[pkg] = solos
+				} else {
+					mainSel[pkg] = solos[:1]
+					plannedSolos[pkg] = solos[1:]
+				}
 				continue
 			}
 		}
@@ -203,7 +217,7 @@ func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 		if unit.run.producer != nil {
 			denied = deniedTests(&unit.run, mainSel[unit.pkg])
 			if unit.run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_BUILD_FAILED {
-				denied = append(denied, fuzzSolos[unit.pkg]...)
+				denied = append(denied, plannedSolos[unit.pkg]...)
 			}
 		}
 		for _, name := range denied {

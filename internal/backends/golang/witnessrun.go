@@ -934,12 +934,71 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 			}
 			wg.legs[pkg] = leg
 			prepared = append(prepared, leg)
-			leg.checking, err = leg.binding.BeginCheck(subjects)
-			if err != nil {
-				return nil, err.Error(), nil
+			var batchSubjects, soloSubjects []gofresh.Subject
+			for _, s := range subjects {
+				if wg.view.isSolo(s) {
+					soloSubjects = append(soloSubjects, s)
+				} else {
+					batchSubjects = append(batchSubjects, s)
+				}
+			}
+			if len(batchSubjects) > 0 {
+				leg.checking, err = leg.binding.BeginCheck(batchSubjects)
+				if err != nil {
+					return nil, err.Error(), nil
+				}
+			}
+			if len(soloSubjects) > 0 {
+				leg.soloChecking, err = leg.soloBinding.BeginCheck(soloSubjects)
+				if err != nil {
+					return nil, err.Error(), nil
+				}
 			}
 			leg.chosen = map[gofresh.Subject]chosenWitness{}
 			serving, groupCached := servingCandidates(g.id, subjects, g.neverServes, cached, wg.executedWhy)
+			checkRound := func(unit *gofresh.CheckingUnit, isSolo bool, candidates []gofresh.Candidate, round int) (string, error) {
+				if len(candidates) == 0 {
+					return "", nil
+				}
+				verdicts, err := unit.CheckBatch(ctx, candidates)
+				if err != nil {
+					if abort, reason := classifyFault(err); !abort {
+						return reason, nil
+					}
+					return "", err
+				}
+				for _, checked := range verdicts {
+					s := checked.Subject
+					if checked.Verdict.Status == gofresh.Valid {
+						leg.chosen[s] = chosenWitness{index: checked.Index, solo: isSolo, record: groupCached[s.Package+"."+s.Symbol][round]}
+						delete(wg.executedWhy, s)
+						continue
+					}
+					rec := groupCached[s.Package+"."+s.Symbol][round]
+					extended, err := compartmentGrownRefresh(ctx, dir, unit, rec, checked)
+					if err == nil && extended.Verdict.Status == gofresh.Valid {
+						// The selected applicability is provisional until this
+						// same view closes in revalidateServed. Only that path
+						// returns the pair for installation.
+						leg.chosen[s] = chosenWitness{index: extended.Index, solo: isSolo, record: rec}
+						delete(wg.executedWhy, s)
+						continue
+					}
+					// The last-checked variant's refusal explains the coming
+					// re-execution; a later round's success deletes it.
+					wg.executedWhy[s] = verdictExecutedReason(checked.Verdict.Reason)
+					if err == nil && extended.Verdict.Reason != "" {
+						wg.executedWhy[s] = verdictExecutedReason(extended.Verdict.Reason)
+					}
+					if err != nil && ctx.Err() != nil {
+						if abort, reason := classifyFault(err); !abort {
+							return reason, nil
+						}
+						return "", err
+					}
+				}
+				return "", nil
+			}
 			// Round-based variant checking: round N checks each unproven
 			// subject's Nth variant, and the first variant proving equivalent
 			// serves — deterministic by load order, most recently installed
@@ -961,48 +1020,22 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 					// variants may still prove equivalent.
 					continue
 				}
-				var candidates []gofresh.Candidate
+				var batchCandidates, soloCandidates []gofresh.Candidate
 				for _, s := range subjects {
 					if fp, ok := fps[s]; ok {
-						candidates = append(candidates, gofresh.Candidate{Subject: s, Recorded: fp})
-					}
-				}
-				verdicts, err := leg.checking.CheckBatch(ctx, candidates)
-				if err != nil {
-					if abort, reason := classifyFault(err); !abort {
-						return nil, reason, nil
-					}
-					return nil, "", err
-				}
-				for _, checked := range verdicts {
-					s := checked.Subject
-					if checked.Verdict.Status == gofresh.Valid {
-						leg.chosen[s] = chosenWitness{index: checked.Index, record: groupCached[s.Package+"."+s.Symbol][round]}
-						delete(wg.executedWhy, s)
-						continue
-					}
-					rec := groupCached[s.Package+"."+s.Symbol][round]
-					extended, err := compartmentGrownRefresh(ctx, dir, leg.checking, rec, checked)
-					if err == nil && extended.Verdict.Status == gofresh.Valid {
-						// The selected applicability is provisional until this
-						// same view closes in revalidateServed. Only that path
-						// returns the pair for installation.
-						leg.chosen[s] = chosenWitness{index: extended.Index, record: rec}
-						delete(wg.executedWhy, s)
-						continue
-					}
-					// The last-checked variant's refusal explains the coming
-					// re-execution; a later round's success deletes it.
-					wg.executedWhy[s] = verdictExecutedReason(checked.Verdict.Reason)
-					if err == nil && extended.Verdict.Reason != "" {
-						wg.executedWhy[s] = verdictExecutedReason(extended.Verdict.Reason)
-					}
-					if err != nil && ctx.Err() != nil {
-						if abort, reason := classifyFault(err); !abort {
-							return nil, reason, nil
+						cand := gofresh.Candidate{Subject: s, Recorded: fp}
+						if wg.view.isSolo(s) {
+							soloCandidates = append(soloCandidates, cand)
+						} else {
+							batchCandidates = append(batchCandidates, cand)
 						}
-						return nil, "", err
 					}
+				}
+				if reason, err := checkRound(leg.checking, false, batchCandidates, round); reason != "" || err != nil {
+					return nil, reason, err
+				}
+				if reason, err := checkRound(leg.soloChecking, true, soloCandidates, round); reason != "" || err != nil {
+					return nil, reason, err
 				}
 			}
 			for _, s := range subjects {
@@ -1168,8 +1201,17 @@ func (m *execMerge) add(invocation string, res *SelectionResult) {
 		}
 		// A package's process carries its disposition whether or not it
 		// spawned — an envelope denied before the spawn disposes it too.
-		if p.Package != "" && p.Test == "" {
-			m.pkgDisp[invPkgKey(invocation, p.Package)] = p.Disposition
+		if p.Package != "" {
+			key := invPkgKey(invocation, p.Package)
+			if p.Test == "" {
+				if prev, ok := m.pkgDisp[key]; ok {
+					m.pkgDisp[key] = worseDisposition(prev, p.Disposition)
+				} else {
+					m.pkgDisp[key] = p.Disposition
+				}
+			} else if p.Disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+				m.pkgDisp[key] = worseDisposition(m.pkgDisp[key], p.Disposition)
+			}
 		}
 	}
 	for _, o := range res.Observations {
@@ -1302,7 +1344,22 @@ func revalidateServed(ctx context.Context, wg *witnessGroup, pkg string) ([]gofr
 	if afterServedCheckForTest != nil {
 		afterServedCheckForTest(pkg)
 	}
-	verdicts, err := leg.checking.Close(ctx)
+	var needBatch, needSolo bool
+	for _, s := range served {
+		if leg.chosen[s].solo {
+			needSolo = true
+		} else {
+			needBatch = true
+		}
+	}
+	var batchVerdicts, soloVerdicts []gofresh.CheckedCandidate
+	var err error
+	if needBatch {
+		batchVerdicts, err = leg.checking.Close(ctx)
+	}
+	if err == nil && needSolo {
+		soloVerdicts, err = leg.soloChecking.Close(ctx)
+	}
 	if err == nil {
 		err = leg.validateInputs(ctx)
 	}
@@ -1322,6 +1379,10 @@ func revalidateServed(ctx context.Context, wg *witnessGroup, pkg string) ([]gofr
 	var records []witnesscache.Record
 	for _, s := range served {
 		chosen := leg.chosen[s]
+		verdicts := batchVerdicts
+		if chosen.solo {
+			verdicts = soloVerdicts
+		}
 		checked := verdicts[chosen.index]
 		if checked.Verdict.Status != gofresh.Valid {
 			drifted = append(drifted, s)

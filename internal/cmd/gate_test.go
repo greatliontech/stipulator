@@ -81,16 +81,15 @@ func TestGateJSONIgnoresConsumerFindings(t *testing.T) {
 	}
 }
 
-// TestGateFailsWithoutPolicyRecord pins the no-fallback rule on the
-// standalone command surface: a missing accepted test policy fails the
-// gate loudly, carrying the record's path and the loader's guidance —
-// witness execution consumes the accepted policy, never an assumed
-// universal suite (REQ-policy-explicit).
+// TestGateFailsWithoutPolicyRecord pins default policy synthesis and the
+// record-refusal rule on the standalone command surface: when neither
+// .stipulator/policy.textproto nor a Go module/workspace root exists, the gate
+// fails loudly carrying the record's path and the loader's guidance
+// (REQ-policy-explicit).
 func TestGateFailsWithoutPolicyRecord(t *testing.T) {
 	stipulate.Covers(t, "REQ-policy-explicit")
 	dir := t.TempDir()
 	files := map[string]string{
-		"go.mod":                         "module example.com/nopolicy\n\ngo 1.26.4\n",
 		"specs/gate.md":                  "# Gate\n\n**REQ-cli-gate** (behavior): The gate MAY pass.\n",
 		".stipulator/manifest.textproto": "include: \"specs/**/*.md\"\n",
 	}
@@ -125,16 +124,15 @@ func TestGateFailsWithoutPolicyRecord(t *testing.T) {
 }
 
 // Every verb that consumes the accepted policy names the record path
-// exactly once when the record is missing — the verb's return is the
-// one attribution point, so a refusal never carries the path twice or
-// not at all (REQ-policy-explicit): gate, verify, and the two scoped
-// verbs (prune, gap --list), whose scope the open gap's bound witness
-// makes non-empty.
+// exactly once when the record is missing and cannot be synthesized — the
+// verb's return is the one attribution point, so a refusal never carries
+// the path twice or not at all (REQ-policy-explicit): gate, verify, and the
+// two scoped verbs (prune, gap --list), whose scope the open gap's bound
+// witness makes non-empty.
 func TestVerbsAttributeTheRecordPathOnce(t *testing.T) {
 	stipulate.Covers(t, "REQ-policy-explicit")
 	dir := t.TempDir()
 	files := map[string]string{
-		"go.mod":                           "module example.com/nopolicy\n\ngo 1.26.4\n",
 		"ok/ok.go":                         "package ok\n\nfunc Double(x int) int { return 2 * x }\n",
 		"ok/ok_test.go":                    "package ok\n\nimport \"testing\"\n\nfunc TestDouble(t *testing.T) {\n\tif Double(2) != 4 {\n\t\tt.Fatal(\"double\")\n\t}\n}\n",
 		"specs/gate.md":                    "# Gate\n\n**REQ-cli-gate** (behavior): The gate MAY pass.\n",

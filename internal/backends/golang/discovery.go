@@ -507,6 +507,7 @@ func scratchNamespacesCovered(n *NormalizedInvocation) error {
 	for _, rels := range n.PkgClosureDirs {
 		covers = append(covers, rels...)
 	}
+	covers = append(covers, workspaceBracketRoots(n)...)
 	for _, p := range n.BracketPaths {
 		if !filepath.IsAbs(p) {
 			covers = append(covers, p)

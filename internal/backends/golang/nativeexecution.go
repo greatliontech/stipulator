@@ -234,15 +234,20 @@ func prepareNativeAttempt(ctx context.Context, n *NormalizedInvocation, pkg stri
 	if reason != "" {
 		return nil, gofresh.Contribution{}, fmt.Errorf("%s", reason)
 	}
+	snapshot := leg.view.Snapshot
 	binding := leg.binding
-	if runtime.retainedEnvironment != leg.environment {
+	if len(subjects) == 1 && leg.view.isSolo(subjects[0]) {
+		snapshot = leg.view.solo
+		binding = leg.soloBinding
+	}
+	if runtime.retainedEnvironment != leg.environment || binding == nil {
 		var err error
-		binding, err = leg.view.BindRuntime(ctx, gofresh.RuntimeDescription{Directory: runtime.Dir, Environment: runtime.Env})
+		binding, err = snapshot.BindRuntime(ctx, gofresh.RuntimeDescription{Directory: runtime.Dir, Environment: runtime.Env})
 		if err != nil {
 			return nil, gofresh.Contribution{}, err
 		}
 	}
-	build, err := leg.view.BindBuilt(pkg, artifact.Path)
+	build, err := snapshot.BindBuilt(pkg, artifact.Path)
 	if err != nil {
 		return nil, gofresh.Contribution{}, err
 	}

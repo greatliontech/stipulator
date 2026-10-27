@@ -19,6 +19,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/resident"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
@@ -311,28 +312,92 @@ func executeInvocationPrepared(ctx context.Context, n *NormalizedInvocation, sel
 	var (
 		mu       sync.Mutex
 		firstErr error
+		units    = make([]packageUnit, len(pkgs))
+		spawn    = spawnOrdinals()
 	)
-	afterSlot := func(i int, run *packageRun) {
-		mu.Lock()
-		defer mu.Unlock()
-		if err := finalizeRun(n, run, invCtx.Err() != nil, ""); err != nil {
+	defer func() {
+		for i := range units {
+			for j := range units[i].solos {
+				units[i].solos[j].attempt.release()
+			}
+		}
+	}()
+	inSlot := func(i int, run *packageRun, gate *admission) {
+		unit := packageUnit{pkg: pkgs[i], run: *run}
+		defer func() { mu.Lock(); units[i] = unit; mu.Unlock() }()
+		if err := finalizeRun(n, &unit.run, invCtx.Err() != nil, ""); err != nil {
+			mu.Lock()
 			if firstErr == nil {
 				firstErr = err
 			}
+			mu.Unlock()
+			return
+		}
+		*run = unit.run
+		if onPackage == nil || unit.run.producer == nil || unit.run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+			return
+		}
+		leg := proofs[unit.pkg]
+		if leg == nil || leg.view == nil || leg.view.roster == nil || !leg.view.hasSoloInPackage(unit.pkg) {
+			return
+		}
+		invPkg := leg.view.roster.packages[unit.pkg]
+		if len(invPkg.runnables) <= 1 {
+			return
+		}
+		for _, ob := range invPkg.runnables {
+			if !leg.view.isSolo(gofresh.Subject{Package: unit.pkg, Symbol: ob.Name}) {
+				continue
+			}
+			if invCtx.Err() != nil || ctx.Err() != nil {
+				return
+			}
+			solo := runNativePackage(ctx, invCtx, n, unit.pkg, []string{ob.Name}, spawn(), gate, leg, unit.run.execution)
+			solo.soloTest = ob.Name
+			if ctx.Err() != nil {
+				pt := solo.buildTimingDiagnostic(n.Name, true)
+				progress.FromContext(ctx).RecordPackageTiming(pt)
+				unit.solos = append(unit.solos, solo)
+				return
+			}
+			if err := finalizeRun(n, &solo, invCtx.Err() != nil, ob.Name); err != nil {
+				unit.solos = append(unit.solos, solo)
+				mu.Lock()
+				if firstErr == nil {
+					firstErr = err
+				}
+				mu.Unlock()
+				return
+			}
+			pt := solo.buildTimingDiagnostic(n.Name, false)
+			progress.FromContext(ctx).RecordPackageTiming(pt)
+			unit.solos = append(unit.solos, solo)
+		}
+	}
+	afterSlot := func(i int, run *packageRun) {
+		mu.Lock()
+		defer mu.Unlock()
+		if firstErr != nil {
 			return
 		}
 		if beforePackagePublishForTest != nil {
 			beforePackagePublishForTest(run.pkg)
 		}
 		finishNativeRun(ctx, run)
-		if firstErr != nil || onPackage == nil {
+		unit := units[i]
+		unit.run = *run
+		for j := range unit.solos {
+			finishNativeRun(ctx, &unit.solos[j])
+		}
+		units[i] = unit
+		if onPackage == nil {
 			return
 		}
-		if err := onPackage(packageUnit{pkg: pkgs[i], run: *run}); err != nil {
+		if err := onPackage(unit); err != nil {
 			firstErr = err
 		}
 	}
-	runs := runSelectedPackages(ctx, invCtx, n, pkgs, nil, spawnOrdinals(), nil, afterSlot, proofs)
+	runs := runSelectedPackages(ctx, invCtx, n, pkgs, nil, spawn, inSlot, afterSlot, proofs)
 	if err := ctx.Err(); err != nil {
 		// Caller cancellation: the partial run is discarded whole. The
 		// envelope context is derived from ctx, so every child is already

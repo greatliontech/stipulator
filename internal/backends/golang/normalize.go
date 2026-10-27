@@ -140,7 +140,8 @@ type NormalizedInvocation struct {
 	DeclaredLinkerStrings []string
 	InputFiles            []selectedInputFile
 	// inputRoots memoizes classification-root probes for this judged invocation.
-	inputRoots *runtimeinput.Roots
+	inputRoots             *runtimeinput.Roots
+	extractedLinkerStrings []*stipulatorv1.GoLinkerString
 	// Env is the complete normalized child-process environment every
 	// subprocess of this invocation runs under: inherited minus denials,
 	// plus overrides, with every backend-pinned key set from its one
@@ -320,8 +321,25 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		}
 		env = gotool.SetEnv(env, "CGO_ENABLED", v)
 	}
+	extractedLinker := cfg.GetLinkerStrings()
+	var ambientGoflagsErr error
 	if cfg.HasGoflags() {
-		env = gotool.SetEnv(env, "GOFLAGS", cfg.GetGoflags())
+		var stripped string
+		extractedLinker, stripped, err = extractGoflagsLinkerStrings(cfg.GetGoflags(), extractedLinker)
+		if err != nil {
+			return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
+		}
+		env = gotool.SetEnv(env, "GOFLAGS", stripped)
+		n.DeclaredGOFLAGS = declaredPin(stripped != "" || len(extractedLinker) == len(cfg.GetLinkerStrings()), stripped)
+	} else if rawAmbient, ok := gotool.LookupEnv(env, "GOFLAGS"); ok && rawAmbient != "" {
+		extracted, stripped, extractErr := extractGoflagsLinkerStrings(rawAmbient, extractedLinker)
+		if extractErr != nil {
+			ambientGoflagsErr = extractErr
+			env = gotool.SetEnv(env, "GOFLAGS", "")
+		} else {
+			extractedLinker = extracted
+			env = gotool.SetEnv(env, "GOFLAGS", stripped)
+		}
 	}
 
 	// Every child of this invocation — the load-time query included —
@@ -357,13 +375,18 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 			return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
 		}
 	}
+	if ambientGoflagsErr != nil {
+		return nil, fmt.Errorf("invocation %q: ambient control: %w", inv.GetName(), ambientGoflagsErr)
+	}
 	// The effective GOFLAGS covers the ambient variable and the go env
-	// config file alike; validate whichever source won. The explicit field
-	// was already statically validated, so a failure here always names an
-	// ambient control.
-	if err := validateGoflags(goflags); err != nil {
+	// config file alike; validate and extract any -ldflags -X entries from
+	// whichever source won. The explicit field was already statically
+	// validated, so a failure here always names an ambient control.
+	extractedLinker, goflags, err = extractGoflagsLinkerStrings(goflags, extractedLinker)
+	if err != nil {
 		return nil, fmt.Errorf("invocation %q: ambient control: %w", inv.GetName(), err)
 	}
+	n.extractedLinkerStrings = extractedLinker
 	// A witness-eligible invocation's toolchain-source verdict (gofresh's
 	// content-keyed audit of the selection's standard-library surface),
 	// resolved once here under the invocation's own environment through

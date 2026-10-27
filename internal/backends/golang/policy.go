@@ -1,7 +1,10 @@
 package golang
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
+	"os"
 	"path"
 	"path/filepath"
 	"sort"
@@ -14,6 +17,7 @@ import (
 	"github.com/greatliontech/gofresh/gotool"
 	"github.com/greatliontech/gofresh/runtimeinput"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/policy"
 )
 
 // Policy is the Go backend's policy surface: the dispatch target for the
@@ -92,7 +96,7 @@ func validateConfig(cfg *stipulatorv1.GoInvocationConfig) error {
 		}
 	}
 	if cfg.HasGoflags() {
-		if err := validateGoflags(cfg.GetGoflags()); err != nil {
+		if _, _, err := extractGoflagsLinkerStrings(cfg.GetGoflags(), cfg.GetLinkerStrings()); err != nil {
 			return err
 		}
 	}
@@ -276,7 +280,6 @@ var unsupportedGoflags = map[string]string{
 	"overlay":  "freshness analysis hashes disk source",
 	"toolexec": "an ambient tool substitution must never shape verification",
 	"exec":     "an ambient test-binary substitution must never shape verification",
-	"ldflags":  "ambient linker flags change compiled semantics outside the reviewed record",
 	"gcflags":  "ambient compiler flags change compiled semantics outside the reviewed record",
 	"asmflags": "ambient assembler flags change compiled semantics outside the reviewed record",
 }
@@ -306,23 +309,8 @@ var selectionBinaryArgs = map[string]bool{
 
 // validateGoflags checks one GOFLAGS value, explicit or effective.
 func validateGoflags(goflags string) error {
-	for _, word := range strings.Fields(goflags) {
-		word = strings.Trim(word, `"'`)
-		name := strings.TrimLeft(word, "-")
-		if i := strings.IndexByte(name, '='); i >= 0 {
-			name = name[:i]
-		}
-		if reason, ok := unsupportedGoflags[name]; ok {
-			return fmt.Errorf("GOFLAGS carries -%s, which is unsupported: %s", name, reason)
-		}
-		if selectionGoflags[name] {
-			return fmt.Errorf("GOFLAGS carries -%s, which shapes test selection outside the reviewed record", name)
-		}
-		if owner, ok := ownedGoflags[name]; ok {
-			return fmt.Errorf("GOFLAGS carries -%s, which is owned by %s; declare it there", name, owner)
-		}
-	}
-	return nil
+	_, _, err := extractGoflagsLinkerStrings(goflags, nil)
+	return err
 }
 
 // validatePGO accepts the toolchain's keyword selections or a committed
@@ -428,6 +416,34 @@ func DerivePolicy(dir string) (*stipulatorv1.TestPolicy, error) {
 	p := &stipulatorv1.TestPolicy{}
 	p.SetInvocations(invs)
 	return p, nil
+}
+
+func treeHasGoRoot(dir string) bool {
+	for _, name := range []string{"go.mod", "go.work"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// LoadPolicy loads the committed policy record when present, or synthesizes
+// the default policy via DerivePolicy when .stipulator/policy.textproto is
+// absent in a Go module or workspace.
+func LoadPolicy(dir string) (*stipulatorv1.TestPolicy, error) {
+	full := filepath.Join(dir, filepath.FromSlash(policy.Path))
+	if _, err := os.Stat(full); errors.Is(err, fs.ErrNotExist) && treeHasGoRoot(dir) {
+		p, derr := DerivePolicy(dir)
+		if derr != nil {
+			return nil, fmt.Errorf("%w: %w", policy.ErrRecord, derr)
+		}
+		if _, derr := policy.Dispatch(p, map[string]policy.Backend{"go": Policy{}}); derr != nil {
+			return nil, fmt.Errorf("%w: %w", policy.ErrRecord, derr)
+		}
+		return p, nil
+	}
+	p, _, err := policy.Load(dir, map[string]policy.Backend{"go": Policy{}})
+	return p, err
 }
 
 // policyMembers enumerates the tree's Go module roots for policy
