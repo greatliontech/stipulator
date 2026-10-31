@@ -6,7 +6,7 @@ require (
 	github.com/go-git/go-git/v5 v5.19.1
 	github.com/google/jsonschema-go v0.4.3
 	github.com/greatliontech/go-x-tools v0.51.1-0.20261026181510-e3066d594d0a
-	github.com/greatliontech/gofresh v0.120.1
+	github.com/greatliontech/gofresh v0.121.0
 	github.com/greatliontech/gofresh/toolversion v0.0.0-20261012210745-f5a40c0055e1
 	github.com/greatliontech/stipulator/stipulate v0.1.0
 	github.com/greatliontech/stipulator/stipulate/structural v0.3.1

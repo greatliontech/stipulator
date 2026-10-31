@@ -444,17 +444,17 @@ func TestToolchainSamplerIsMintedPerOperation(t *testing.T) {
 	}
 	t.Cleanup(func() { probeObserverForTest = prior })
 	for round := 1; round <= 2; round++ {
+		mu.Lock()
+		before := probes
+		mu.Unlock()
 		s, err := NewServed(context.Background(), dir, servedSymbols)
 		if err != nil {
 			t.Fatal(err)
 		}
-		mu.Lock()
-		before := probes
-		mu.Unlock()
-		// The type has no record on any round, so the ask types it
-		// through the child and the backend publishes at its close,
-		// where its selection engine is built; the window spans the
-		// backend's whole life.
+		// The window spans the backend's whole life: round 1 resolves p.T
+		// typed and builds its selection engine at Close to publish; round 2
+		// serves the published record during NewServed, where its own freshly
+		// minted per-operation sampler probes the toolchain again.
 		ask(t, s, "example.com/served/p.T")
 		if err := s.Close(); err != nil {
 			t.Fatal(err)

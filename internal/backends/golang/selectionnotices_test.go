@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -15,25 +16,28 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 )
 
-// A policy invocation whose build selection moves standard-library
-// surface bytes off every listed toolchain chain (netgo selects net's
-// netgo files, which no chain row lists) runs under a selection the
-// freshness engine's content-keyed toolchain-source audit refuses until
-// its delta is walked: observation admissions strip and serving
+// A policy invocation whose build selection selects a standard-library
+// surface violating structural audit contracts (badstd selects strings'
+// unapproved linkname file) runs under a selection the freshness engine's
+// toolchain-source audit refuses: observation admissions strip and serving
 // degrades to execution. The policy tier names that cost where the
 // tags were declared — the notice carries the invocation name and the
 // engine's own rendering — while admitted selections (a tag that
-// constrains no standard-library file, the race selection of a listed
-// toolchain) and non-witness invocations (which build no engine) raise
-// nothing (REQ-check-policy-notices). The selection resolves under the
-// invocation's own environment: a declared GOOS pin naming another
-// platform raises the notice with no tag at all.
+// constrains no standard-library file or selects an admitted tag-gated
+// standard-library variant such as netgo, or the race selection of a
+// structurally verified toolchain) and non-witness invocations (which
+// build no engine) raise nothing (REQ-check-policy-notices). The
+// selection resolves under the invocation's own environment: a declared
+// GOOS pin naming another platform raises the notice with no tag at all.
 //
 // Deliberately not //gofresh:pure: normalization shells the go toolchain.
 func TestSelectionNoticesAttributeUnwalkedSelections(t *testing.T) {
 	stipulate.Covers(t, "REQ-check-policy-notices")
 	neutralAmbient(t)
 	dir := discoverFixture(t)
+	badRoot := unauditedTagGOROOT(t)
+	t.Setenv("GOROOT", badRoot)
+	t.Setenv("GOTOOLCHAIN", "local")
 	ambient, err := gotool.NormalizeEnv(os.Environ())
 	if err != nil {
 		t.Fatal(err)
@@ -47,17 +51,17 @@ func TestSelectionNoticesAttributeUnwalkedSelections(t *testing.T) {
 	tagged := &stipulatorv1.GoInvocationConfig{}
 	tagged.SetPackages([]string{"./..."})
 	tagged.SetRace(true)
-	tagged.SetTags([]string{"netgo"})
+	tagged.SetTags([]string{"badstd"})
 	vanilla := &stipulatorv1.GoInvocationConfig{}
 	vanilla.SetPackages([]string{"./..."})
 	vanilla.SetRace(true)
 	plainTagged := &stipulatorv1.GoInvocationConfig{}
 	plainTagged.SetPackages([]string{"./..."})
-	plainTagged.SetTags([]string{"netgo"})
+	plainTagged.SetTags([]string{"badstd"})
 	admittedTag := &stipulatorv1.GoInvocationConfig{}
 	admittedTag.SetPackages([]string{"./..."})
 	admittedTag.SetRace(true)
-	admittedTag.SetTags([]string{"dup"})
+	admittedTag.SetTags([]string{"dup", "netgo"})
 	// The selection is resolved under the invocation's OWN environment:
 	// a declared GOOS pin naming another platform makes the race
 	// selection unlistable (the go command refuses -race without cgo,
@@ -78,9 +82,9 @@ func TestSelectionNoticesAttributeUnwalkedSelections(t *testing.T) {
 	})
 	got := SelectionNotices(mustCapture(t, context.Background(), dir, pol))
 	if len(got) != 2 {
-		t.Fatalf("notices = %v, want exactly the two witness-eligible netgo invocations'", got)
+		t.Fatalf("notices = %v, want exactly the two witness-eligible refused invocations'", got)
 	}
-	for i, arm := range [][]string{{`invocation "tagged"`, " moved in "}, {`invocation "platform-pinned"`, " could not be read: "}} {
+	for i, arm := range [][]string{{`invocation "tagged"`, " moved in 1 keys: strings"}, {`invocation "platform-pinned"`, " could not be read: "}} {
 		for _, frag := range append(arm, "toolchain-selection audit: the audited surface of ", "observation admissions are disabled") {
 			if !strings.Contains(got[i], frag) {
 				t.Fatalf("notice %q missing %q", got[i], frag)
@@ -105,6 +109,119 @@ func TestSelectionNoticesAttributeUnwalkedSelections(t *testing.T) {
 			t.Fatalf("notice %d = %q, want record order %v", i, got[i], wantOrder)
 		}
 	}
+}
+
+func unauditedTagGOROOT(t *testing.T) string {
+	t.Helper()
+	snapshot, err := (gotool.Runner{}).TakeEnvSnapshot(context.Background(), t.TempDir(), os.Environ())
+	if err != nil {
+		t.Fatal(err)
+	}
+	origRoot := snapshot.Value("GOROOT")
+	tmp, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	dstRoot := filepath.Join(tmp, "goroot")
+	if err := os.MkdirAll(dstRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	copyTree := func(srcDir, dstDir string, allowHardlink bool, skip func(rel string, d os.DirEntry) (skipDir, skipFile bool)) {
+		if err := filepath.WalkDir(srcDir, func(path string, d os.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			rel, err := filepath.Rel(srcDir, path)
+			if err != nil {
+				return err
+			}
+			if rel != "." && skip != nil {
+				sd, sf := skip(rel, d)
+				if sd {
+					return filepath.SkipDir
+				}
+				if sf {
+					return nil
+				}
+			}
+			dst := filepath.Join(dstDir, rel)
+			if d.IsDir() {
+				return os.MkdirAll(dst, 0o755)
+			}
+			if d.Type()&os.ModeSymlink != 0 {
+				return nil
+			}
+			if allowHardlink {
+				if err := os.Link(path, dst); err == nil {
+					return nil
+				}
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			info, err := d.Info()
+			if err != nil {
+				return err
+			}
+			return os.WriteFile(dst, data, info.Mode().Perm())
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, topFile := range []string{"VERSION", "go.env"} {
+		src := filepath.Join(origRoot, topFile)
+		if data, err := os.ReadFile(src); err == nil {
+			if err := os.WriteFile(filepath.Join(dstRoot, topFile), data, 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if origBin := filepath.Join(origRoot, "bin"); func() bool { _, err := os.Stat(origBin); return err == nil }() {
+		dstBin := filepath.Join(dstRoot, "bin")
+		if err := os.Symlink(origBin, dstBin); err != nil {
+			copyTree(origBin, dstBin, true, nil)
+		}
+	}
+	if origPkg := filepath.Join(origRoot, "pkg"); func() bool { _, err := os.Stat(origPkg); return err == nil }() {
+		dstPkg := filepath.Join(dstRoot, "pkg")
+		if err := os.MkdirAll(dstPkg, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		entries, err := os.ReadDir(origPkg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, entry := range entries {
+			src := filepath.Join(origPkg, entry.Name())
+			dst := filepath.Join(dstPkg, entry.Name())
+			if entry.Name() == "include" && entry.IsDir() {
+				copyTree(src, dst, false, nil)
+				continue
+			}
+			if err := os.Symlink(src, dst); err != nil {
+				copyTree(src, dst, true, nil)
+			}
+		}
+	}
+	if origLib := filepath.Join(origRoot, "lib"); func() bool { _, err := os.Stat(origLib); return err == nil }() {
+		copyTree(origLib, filepath.Join(dstRoot, "lib"), true, nil)
+	}
+	copyTree(filepath.Join(origRoot, "src"), filepath.Join(dstRoot, "src"), true, func(rel string, d os.DirEntry) (bool, bool) {
+		slash := filepath.ToSlash(rel)
+		if d.IsDir() && (slash == "cmd" || d.Name() == "testdata") {
+			return true, false
+		}
+		if !d.IsDir() && strings.HasSuffix(d.Name(), "_test.go") {
+			return false, true
+		}
+		return false, false
+	})
+	badStd := "//go:build badstd\n\npackage strings\n\nimport _ \"unsafe\"\n\n//go:linkname gofreshUnapproved\nfunc gofreshUnapproved() {}\n"
+	if err := os.WriteFile(filepath.Join(dstRoot, "src", "strings", "gofresh_badstd.go"), []byte(badStd), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return dstRoot
 }
 
 // The verdict is the normalized form's: a form carrying a notice is
