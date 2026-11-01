@@ -74,8 +74,12 @@ func TestObserved(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	unit, err := binding.Begin(subject)
+	if err != nil {
+		t.Fatal(err)
+	}
 	log := filepath.Join(t.TempDir(), "test.log")
-	finalized, err := binding.Execute(t.Context(), subject, built, gofresh.ProcessDescription{
+	finalized, err := unit.Execute(t.Context(), built, gofresh.ProcessDescription{
 		Identity: "execution",
 		Capture:  log,
 	}, func(ctx context.Context, contrib gofresh.Contribution) (gofresh.Terminal, error) {

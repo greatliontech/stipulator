@@ -105,7 +105,7 @@ func observeProcess(ctx context.Context, n *NormalizedInvocation, pkg string, pr
 	if err != nil {
 		err = fmt.Errorf("observation construction failed: %w", err)
 	}
-	return nativeObservation(pkg, producer, gofresh.FinalizedProcess{}, account, err)
+	return nativeObservation(pkg, producer, gofresh.Finalized{}, account, err)
 }
 
 func processObservationState(o *ProcessObservation) (runtimeinput.State, error) {

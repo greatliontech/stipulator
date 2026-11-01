@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/closure"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 )
 
@@ -196,7 +195,7 @@ func TestSelectedContextPreservesConsumerViews(t *testing.T) {
 			if err != nil || snapshot.Value("GOWORK") != wantWork {
 				t.Fatalf("certificate workspace: %v %v", snapshot, err)
 			}
-			if _, err := closure.NewAt(t.Context(), reader, view.flags...); err != nil {
+			if _, err := gofresh.ResolveToolchainSelection(t.Context(), reader, view.flags...); err != nil {
 				t.Fatal(err)
 			}
 			graph, err := endpoint.graph(view, "example.com/shared")

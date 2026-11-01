@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/guard"
 	"github.com/greatliontech/gofresh/runtimeinput"
 	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
@@ -92,7 +91,7 @@ func publicationRecord(t *testing.T, dir, test string) witnesscache.Record {
 	inputs := emptyWitnessInputs(t, dir)
 	return witnesscache.Record{Group: "group", Package: "example.com/p", Test: test, Outcomes: map[string]string{"example.com/p." + test: "passed"}, Fingerprint: gofresh.Fingerprint{
 		MaximalClosure: strings.Repeat("a", 32), TestVariantClosure: strings.Repeat("b", 32), ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy,
-		Guards: guard.Guards{Toolchain: "go1.27.2", BuildConfig: strings.Repeat("c", 32)}, RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult,
+		Guards: gofresh.Guards{Toolchain: "go1.27.2", BuildConfig: strings.Repeat("c", 32)}, RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult,
 	}}
 }
 

@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/guard"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
 
@@ -18,7 +17,7 @@ func BenchmarkDecodeRecord(b *testing.B) {
 		ClosureStrategy:    gofresh.ClosureStrategy,
 		ToolchainContent:   "toolchain-content",
 		AdmissionPolicy:    "admission-policy",
-		Guards:             guard.Guards{Toolchain: "go1.27.0", BuildConfig: strings.Repeat("c", 32)},
+		Guards:             gofresh.Guards{Toolchain: "go1.27.0", BuildConfig: strings.Repeat("c", 32)},
 		ResultKind:         gofresh.CodeResult,
 	}
 	cert := Certificate{Derivation: Derivation, Inputs: strings.Repeat("e", 64)}

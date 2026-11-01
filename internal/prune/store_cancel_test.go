@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/guard"
 	"github.com/greatliontech/gofresh/runtimeinput"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/check"
@@ -26,7 +25,7 @@ func TestStoreGCPropagatesCancellationFromPolicyCapture(t *testing.T) {
 	}
 	rec := witnesscache.Record{Group: "group", Package: "example.com/p", Test: "TestA", Outcomes: map[string]string{"example.com/p.TestA": "passed"}, Fingerprint: gofresh.Fingerprint{
 		MaximalClosure: strings.Repeat("a", 32), TestVariantClosure: strings.Repeat("b", 32), ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy,
-		Guards: guard.Guards{Toolchain: "go1.27.2", BuildConfig: strings.Repeat("c", 32)}, RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult,
+		Guards: gofresh.Guards{Toolchain: "go1.27.2", BuildConfig: strings.Repeat("c", 32)}, RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult,
 	}}
 	if err := witnesscache.Install(t.Context(), dir, rec); err != nil {
 		t.Fatal(err)

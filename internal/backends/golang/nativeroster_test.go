@@ -34,9 +34,9 @@ func TestNativeRawSelectionIncludesUnsupportedNeighbor(t *testing.T) {
 	if _, err := DiscoverInvocation(t.Context(), n); err != nil {
 		t.Fatal(err)
 	}
-	var final gofresh.FinalizedProcess
+	var final gofresh.Finalized
 	prior := closeNativeProcess
-	closeNativeProcess = func(ctx context.Context, unit *gofresh.PackageUnit) (gofresh.FinalizedProcess, error) {
+	closeNativeProcess = func(ctx context.Context, unit *gofresh.Unit) (gofresh.Finalized, error) {
 		result, err := prior(ctx, unit)
 		final = result
 		return result, err

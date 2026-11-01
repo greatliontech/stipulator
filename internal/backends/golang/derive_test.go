@@ -15,7 +15,6 @@ import (
 	"testing/fstest"
 
 	gofresh "github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/guard"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/compile"
 	"github.com/greatliontech/stipulator/internal/records"
@@ -310,7 +309,7 @@ func TestDeriveCachedOutcomeGrantsNoHealthOrEvidence(t *testing.T) {
 		Group:       "00112233aabbccdd",
 		Package:     "example.com/m/redmain",
 		Test:        "TestGreen",
-		Fingerprint: witnesscache.Fingerprint{MaximalClosure: "00112233445566778899aabbccddeeff", TestVariantClosure: "00112233445566778899aabbccddeeff", ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy, Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult},
+		Fingerprint: witnesscache.Fingerprint{MaximalClosure: "00112233445566778899aabbccddeeff", TestVariantClosure: "00112233445566778899aabbccddeeff", ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy, Guards: gofresh.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult},
 		CompartmentLedger: &witnesscache.CompartmentLedger{
 			BindingStrategy: "gofresh/test-variant-bindings@1",
 			Declarations: []witnesscache.CompartmentDeclaration{
@@ -525,7 +524,7 @@ func TestJudgeSubjectNamesRefusalsInOneVocabulary(t *testing.T) {
 		return r
 	}
 	passed, failed := stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED, stipulatorv1.TestOutcome_TEST_OUTCOME_FAILED
-	proven := &ProcessObservation{Wire: completedWire(), final: gofresh.FinalizedProcess{Subjects: []gofresh.FinalizedSubject{{Subject: subject, Verdict: gofresh.Verdict{Status: gofresh.Valid}}}}}
+	proven := &ProcessObservation{Wire: completedWire(), final: gofresh.Finalized{Subjects: []gofresh.FinalizedSubject{{Subject: subject, Verdict: gofresh.Verdict{Status: gofresh.Valid}}}}}
 	seeded := reasonSeeded.with(": executes every run, never served")
 	for _, c := range []struct {
 		name       string

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/guard"
 	"github.com/greatliontech/gofresh/runtimeinput"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/recordstore"
@@ -44,7 +43,7 @@ func New(t *testing.T, resolution bool) Store {
 		MaximalClosure: strings.Repeat("a", 32), TestVariantClosure: strings.Repeat("b", 32),
 		ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy,
 		ToolchainContent: "content", AdmissionPolicy: "admission",
-		Guards:        guard.Guards{Toolchain: "go1.27.2", BuildConfig: strings.Repeat("c", 32)},
+		Guards:        gofresh.Guards{Toolchain: "go1.27.2", BuildConfig: strings.Repeat("c", 32)},
 		RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult,
 	}
 	const pkg = "example.com/prunegc"

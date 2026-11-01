@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/closure/testvariant"
-	"github.com/greatliontech/gofresh/guard"
 	"github.com/greatliontech/gofresh/runtimeinput"
 	"github.com/greatliontech/stipulator/stipulate"
 )
@@ -32,12 +30,12 @@ func ledgerFingerprint(t *testing.T, compartment string) Fingerprint {
 	inputs := emptyRuntimeInputs(t)
 	return Fingerprint{MaximalClosure: strings.Repeat("a", 32), TestVariantClosure: compartment,
 		ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy,
-		Guards:        guard.Guards{Toolchain: "go1.27.1", BuildConfig: strings.Repeat("b", 32)},
+		Guards:        gofresh.Guards{Toolchain: "go1.27.1", BuildConfig: strings.Repeat("b", 32)},
 		RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult}
 }
 
 func simpleLedger(test string) *CompartmentLedger {
-	return &CompartmentLedger{BindingStrategy: testvariant.BindingStrategy,
+	return &CompartmentLedger{BindingStrategy: gofresh.TestVariantBindingStrategy,
 		Declarations: []CompartmentDeclaration{{File: "p_test.go", Package: "p", Kind: "func", Name: test, Hash: strings.Repeat("c", 32)}},
 		FileHeaders:  []CompartmentFileHeader{{File: "p_test.go", Hash: strings.Repeat("d", 32), Bindings: &CompartmentFileBindings{Package: "p"}}}}
 }
@@ -46,10 +44,10 @@ func TestLedgerBindingsRoundTripAndIndependentOwnership(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-cache-format-ledger")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
-	bindings := func() *testvariant.TestVariantFileBindings {
-		return &testvariant.TestVariantFileBindings{Package: "p", References: []string{"V", "testing"}, Imports: []testvariant.TestVariantImport{{Name: "testing", Path: "testing"}}}
+	bindings := func() *gofresh.TestVariantFileBindings {
+		return &gofresh.TestVariantFileBindings{Package: "p", References: []string{"V", "testing"}, Imports: []gofresh.TestVariantImport{{Name: "testing", Path: "testing"}}}
 	}
-	original := gofresh.TestVariantLedger{BindingStrategy: testvariant.BindingStrategy,
+	original := gofresh.TestVariantLedger{BindingStrategy: gofresh.TestVariantBindingStrategy,
 		BaseFiles:    []gofresh.TestVariantFileHeader{{File: "p.go", Bindings: bindings()}},
 		Declarations: []gofresh.TestVariantDeclaration{{File: "p_test.go", Kind: "func", Name: "TestA", Hash: strings.Repeat("a", 32), Package: "p", References: []string{"V"}}},
 		FileHeaders:  []gofresh.TestVariantFileHeader{{File: "p_test.go", Hash: strings.Repeat("b", 32), Bindings: bindings()}, {File: "fixture", Hash: strings.Repeat("c", 32), Embedded: true}}}
@@ -88,7 +86,7 @@ func TestLedgerBindingsRoundTripAndIndependentOwnership(t *testing.T) {
 		l := original.Clone()
 		if empty {
 			l.BaseFiles[0].Bindings.References = []string{}
-			l.BaseFiles[0].Bindings.Imports = []testvariant.TestVariantImport{}
+			l.BaseFiles[0].Bindings.Imports = []gofresh.TestVariantImport{}
 		} else {
 			l.BaseFiles[0].Bindings.References = nil
 			l.BaseFiles[0].Bindings.Imports = nil

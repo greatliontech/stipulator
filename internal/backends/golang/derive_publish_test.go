@@ -15,8 +15,6 @@ import (
 	"time"
 
 	gofresh "github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/closure/testvariant"
-	"github.com/greatliontech/gofresh/guard"
 	"github.com/greatliontech/gofresh/runtimeinput"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -80,10 +78,10 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 	// record this execution never touched is retained, never silently
 	// dropped.
 	inputs := emptyWitnessInputs(t, tmp)
-	seedFP := witnesscache.Fingerprint{MaximalClosure: "00112233445566778899aabbccddeeff", TestVariantClosure: "00112233445566778899aabbccddeeff", ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy, Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult}
+	seedFP := witnesscache.Fingerprint{MaximalClosure: "00112233445566778899aabbccddeeff", TestVariantClosure: "00112233445566778899aabbccddeeff", ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy, Guards: gofresh.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult}
 	seedLedger := func(pkg, test string) *witnesscache.CompartmentLedger {
 		return &witnesscache.CompartmentLedger{
-			BindingStrategy: testvariant.BindingStrategy,
+			BindingStrategy: gofresh.TestVariantBindingStrategy,
 			Declarations: []witnesscache.CompartmentDeclaration{
 				{File: "seed_test.go", Package: pkg, Kind: "func", Name: test, Hash: "00112233445566778899aabbccddeeff"},
 			},
@@ -292,10 +290,10 @@ func TestGoDerivePublishesWholeProcessObservationEvidence(t *testing.T) {
 		t.Skip("executes a race-instrumented policy over a temporary module")
 	}
 	neutralAmbient(t)
-	var finalized []gofresh.FinalizedProcess
+	var finalized []gofresh.Finalized
 	accounts := map[string]gofresh.ProcessAccount{}
 	priorClose := closeNativeProcess
-	closeNativeProcess = func(ctx context.Context, unit *gofresh.PackageUnit) (gofresh.FinalizedProcess, error) {
+	closeNativeProcess = func(ctx context.Context, unit *gofresh.Unit) (gofresh.Finalized, error) {
 		final, err := priorClose(ctx, unit)
 		account, _ := unit.Account()
 		accounts[account.Process] = account
@@ -885,8 +883,8 @@ func TestGoDeriveCheckFaultDegradesRun(t *testing.T) {
 	}
 	neutralAmbient(t)
 	restore := closeNativeProcess
-	closeNativeProcess = func(context.Context, *gofresh.PackageUnit) (gofresh.FinalizedProcess, error) {
-		return gofresh.FinalizedProcess{}, errors.New("injected check fault")
+	closeNativeProcess = func(context.Context, *gofresh.Unit) (gofresh.Finalized, error) {
+		return gofresh.Finalized{}, errors.New("injected check fault")
 	}
 	defer func() { closeNativeProcess = restore }()
 	tmp := writeModule(t, map[string]string{

@@ -19,7 +19,7 @@ import (
 // consumer boundary.
 type ProcessObservation struct {
 	Wire     *stipulatorv1.Observation
-	final    gofresh.FinalizedProcess
+	final    gofresh.Finalized
 	account  gofresh.ProcessAccount
 	closeErr error
 	runtime  gofresh.RuntimeDescription
@@ -76,7 +76,7 @@ func (o *ProcessObservation) subject(s gofresh.Subject) (gofresh.FinalizedSubjec
 	return gofresh.FinalizedSubject{}, false
 }
 
-func nativeObservation(pkg string, producer *stipulatorv1.ProducerIdentity, final gofresh.FinalizedProcess, account gofresh.ProcessAccount, closeErr error) *ProcessObservation {
+func nativeObservation(pkg string, producer *stipulatorv1.ProducerIdentity, final gofresh.Finalized, account gofresh.ProcessAccount, closeErr error) *ProcessObservation {
 	o := &ProcessObservation{final: final, account: account, closeErr: closeErr, Wire: &stipulatorv1.Observation{}}
 	o.Wire.SetProducer(producer)
 	o.Wire.SetPackage(pkg)

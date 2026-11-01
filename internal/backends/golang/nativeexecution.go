@@ -24,7 +24,7 @@ type packageExecution struct {
 }
 
 type nativeAttempt struct {
-	unit             *gofresh.PackageUnit
+	unit             *gofresh.Unit
 	ownedEnvironment *retainedEnvironment
 	logPath          string
 	leg              *packageLeg
@@ -61,7 +61,7 @@ func finishNativeRun(ctx context.Context, run *packageRun) {
 	}
 	// The execution owner releases captures and runtime storage only after the
 	// package-completion consumer has selected and persisted its records.
-	var final gofresh.FinalizedProcess
+	var final gofresh.Finalized
 	err := a.err
 	if err == nil && a.unit != nil {
 		final, err = closeNativeProcess(ctx, a.unit)
@@ -197,11 +197,11 @@ func runNativePackage(caller, ctx context.Context, n *NormalizedInvocation, pkg 
 
 // This seam injects an infrastructure closing fault without manufacturing an
 // executed fingerprint or weakening the real process's terminal assertion.
-var closeNativeProcess = func(ctx context.Context, unit *gofresh.PackageUnit) (gofresh.FinalizedProcess, error) {
+var closeNativeProcess = func(ctx context.Context, unit *gofresh.Unit) (gofresh.Finalized, error) {
 	return unit.Close(ctx)
 }
 
-func prepareNativeAttempt(ctx context.Context, n *NormalizedInvocation, pkg string, leg *packageLeg, artifact *retainedArtifact, runtime *retainedRuntime, logPath string, producer *stipulatorv1.ProducerIdentity) (*gofresh.PackageUnit, gofresh.Contribution, error) {
+func prepareNativeAttempt(ctx context.Context, n *NormalizedInvocation, pkg string, leg *packageLeg, artifact *retainedArtifact, runtime *retainedRuntime, logPath string, producer *stipulatorv1.ProducerIdentity) (*gofresh.Unit, gofresh.Contribution, error) {
 	if leg == nil {
 		if n.PkgDirs[pkg] == "" {
 			return nil, gofresh.Contribution{}, fmt.Errorf("package directory unknown at native capture; no observation bracket was captured")

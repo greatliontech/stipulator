@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/closure"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -97,7 +96,7 @@ func TestGroupEngineRefusesUnidentifiableToolchain(t *testing.T) {
 	}
 	if _, err := groupEngine(t.Context(), t.TempDir(), &captureGroup{}); err == nil {
 		t.Fatal("groupEngine accepted an unidentifiable toolchain")
-	} else if !strings.Contains(err.Error(), "unidentifiable") || !strings.Contains(err.Error(), "binary built with") || !strings.Contains(err.Error(), closure.AnalyzingFrontend()) {
+	} else if !strings.Contains(err.Error(), "unidentifiable") || !strings.Contains(err.Error(), "binary built with") || !strings.Contains(err.Error(), runtime.Version()) {
 		t.Fatalf("refusal = %v, want the composite's unidentifiable refusal naming the frontend", err)
 	}
 	toolchainSampleForTest = func(_ context.Context, dir string, env []string) (string, error) {

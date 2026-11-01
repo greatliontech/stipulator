@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/greatliontech/gofresh/closure"
+	"github.com/greatliontech/gofresh"
 	"github.com/greatliontech/gofresh/gotool"
 	"github.com/greatliontech/gofresh/runtimeinput"
 
@@ -400,11 +400,11 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	// resolution past a taken snapshot is the run's own end, which
 	// refuses normalization as any spawn would.
 	if n.WitnessEligible() {
-		notice, err := closure.ToolchainSelectionNoticeResolved(ctx, gotool.PrimedEnvReader(ownedRunner, n.Dir, env, snapshot), selectionBuildFlags(cfg.GetRace(), cfg.GetTags()))
+		sel, err := gofresh.ResolveToolchainSelection(ctx, gotool.PrimedEnvReader(ownedRunner, n.Dir, env, snapshot), selectionBuildFlags(cfg.GetRace(), cfg.GetTags())...)
 		if err != nil {
 			return nil, fmt.Errorf("invocation %q: toolchain-source audit: %w", inv.GetName(), err)
 		}
-		n.SelectionNotice = notice
+		n.SelectionNotice = sel.SelectionNotice
 	}
 	n.Toolchain, n.GOOS, n.GOARCH, n.GOFLAGS = version, goos, goarch, goflags
 	n.GOEXPERIMENT = goexperiment

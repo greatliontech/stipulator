@@ -49,7 +49,7 @@ func TestNativeSnapshotIncludesRunnablesAddedAfterPolicyDiscovery(t *testing.T) 
 	t.Cleanup(func() { beforeGroupEngineForTest = prior })
 	var declared []gofresh.FinalizedSubject
 	priorClose := closeNativeProcess
-	closeNativeProcess = func(ctx context.Context, unit *gofresh.PackageUnit) (gofresh.FinalizedProcess, error) {
+	closeNativeProcess = func(ctx context.Context, unit *gofresh.Unit) (gofresh.Finalized, error) {
 		final, err := priorClose(ctx, unit)
 		declared = final.Subjects
 		return final, err
@@ -113,9 +113,9 @@ func TestNativeDriftRetryRefreshesRunnablePopulation(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "writer/w_test.go"), []byte(strings.Replace(writer, "armed = false", "armed = true", 1)), 0600); err != nil {
 		t.Fatal(err)
 	}
-	var reader gofresh.FinalizedProcess
+	var reader gofresh.Finalized
 	prior := closeNativeProcess
-	closeNativeProcess = func(ctx context.Context, unit *gofresh.PackageUnit) (gofresh.FinalizedProcess, error) {
+	closeNativeProcess = func(ctx context.Context, unit *gofresh.Unit) (gofresh.Finalized, error) {
 		final, err := prior(ctx, unit)
 		for _, result := range final.Subjects {
 			if result.Subject.Package == "example.com/retryroster/reader" {

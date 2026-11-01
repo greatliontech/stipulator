@@ -265,14 +265,14 @@ func TestRetryMissingFingerprintKeepsMeasuredPassWithoutDrift(t *testing.T) {
 			fault := errors.New("fixture native closing infrastructure unavailable")
 			faultNextClose, refused := false, 0
 			beforePackagePublishForTest = func(pkg string) { faultNextClose = pkg == "example.com/nofpretry/reader" }
-			closeNativeProcess = func(ctx context.Context, unit *gofresh.PackageUnit) (gofresh.FinalizedProcess, error) {
+			closeNativeProcess = func(ctx context.Context, unit *gofresh.Unit) (gofresh.Finalized, error) {
 				if faultNextClose {
 					faultNextClose = false
 					refused++
 					// The real retained binary has already passed and submitted its
 					// completion. Refuse closing through the infrastructure seam;
 					// no finalized observation or fingerprint is edited after the fact.
-					return gofresh.FinalizedProcess{}, fault
+					return gofresh.Finalized{}, fault
 				}
 				return priorClose(ctx, unit)
 			}

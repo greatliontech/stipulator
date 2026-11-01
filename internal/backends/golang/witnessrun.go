@@ -1089,7 +1089,7 @@ func servingCandidates(groupID string, subjects []gofresh.Subject, neverServes m
 // compartmentGrownRefresh adds an explicit native extension slot only for
 // compartment staleness with a paired historical ledger. Its answer remains
 // provisional until this checking unit closes; no endpoint installs here.
-func compartmentGrownRefresh(ctx context.Context, dir string, unit *gofresh.CheckingUnit, rec witnesscache.Record, checked gofresh.ProvisionalCheck) (gofresh.ProvisionalCheck, error) {
+func compartmentGrownRefresh(ctx context.Context, dir string, unit *gofresh.CheckingUnit, rec witnesscache.Record, checked gofresh.CheckedCandidate) (gofresh.CheckedCandidate, error) {
 	if checked.Verdict.Status != gofresh.Stale || checked.Verdict.Reason != gofresh.ReasonTestVariants {
 		return checked, nil
 	}

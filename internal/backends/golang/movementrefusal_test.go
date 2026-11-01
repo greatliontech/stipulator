@@ -92,7 +92,7 @@ func movementPublicationFixture(err error) (*captureGroup, *packageLeg, packageU
 		rows = append(rows, row)
 	}
 	account := gofresh.ProcessAccount{Process: "attempt", Prepared: true, Terminal: gofresh.Terminal{Kind: gofresh.NormalCompletion}}
-	obs := nativeObservation(pkg, producer, gofresh.FinalizedProcess{}, account, err)
+	obs := nativeObservation(pkg, producer, gofresh.Finalized{}, account, err)
 	return g, leg, packageUnit{pkg: pkg, run: packageRun{pkg: pkg, producer: producer, tests: rows, obs: obs, disposition: stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY}}
 }
 
@@ -276,11 +276,11 @@ func TestRuntimeMovementAllowsLaterPackagePublication(t *testing.T) {
 	refuseNext := false
 	beforePackagePublishForTest = func(pkg string) { order = append(order, pkg); refuseNext = pkg == "example.com/localmotion/first" }
 	var account gofresh.ProcessAccount
-	closeNativeProcess = func(ctx context.Context, u *gofresh.PackageUnit) (gofresh.FinalizedProcess, error) {
+	closeNativeProcess = func(ctx context.Context, u *gofresh.Unit) (gofresh.Finalized, error) {
 		if refuseNext {
 			refuseNext = false
 			account, _ = u.Account()
-			return gofresh.FinalizedProcess{}, fmt.Errorf("native closing: %w", motion)
+			return gofresh.Finalized{}, fmt.Errorf("native closing: %w", motion)
 		}
 		return priorClose(ctx, u)
 	}

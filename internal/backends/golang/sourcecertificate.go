@@ -16,7 +16,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/greatliontech/gofresh/closure"
+	"github.com/greatliontech/gofresh"
 	"github.com/greatliontech/stipulator/internal/resolutioncache"
 )
 
@@ -363,11 +363,11 @@ func (s *Served) captureSourceCertificates(endpoint *selectionEndpoint, symbols 
 		if err != nil {
 			return nil, err
 		}
-		hasher, err := closure.NewAt(s.ctx, reader, view.flags...)
+		selection, err := gofresh.ResolveToolchainSelection(s.ctx, reader, view.flags...)
 		if err != nil {
 			return nil, err
 		}
-		content, admission := hasher.ToolchainContent(), hasher.AdmissionPolicy()
+		content, admission := selection.ToolchainContent, selection.AdmissionPolicy
 		if content == "" || admission == "" {
 			return nil, errors.New("resolution toolchain dependency identity unavailable")
 		}

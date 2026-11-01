@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/guard"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/internal/records"
@@ -387,7 +386,7 @@ func TestGCResolutionsKeepsBoundAndWitnessSymbols(t *testing.T) {
 }
 
 func fingerprintFor(closure string) witnesscache.Fingerprint {
-	return witnesscache.Fingerprint{MaximalClosure: strings.Repeat(closure, 32), TestVariantClosure: strings.Repeat("b", 32), ClosureStrategy: gofresh.ClosureStrategy, ToolchainContent: "native-content", AdmissionPolicy: "native-policy", Guards: guard.Guards{Toolchain: "go1.27.0", BuildConfig: strings.Repeat("c", 32)}, ResultKind: gofresh.CodeResult}
+	return witnesscache.Fingerprint{MaximalClosure: strings.Repeat(closure, 32), TestVariantClosure: strings.Repeat("b", 32), ClosureStrategy: gofresh.ClosureStrategy, ToolchainContent: "native-content", AdmissionPolicy: "native-policy", Guards: gofresh.Guards{Toolchain: "go1.27.0", BuildConfig: strings.Repeat("c", 32)}, ResultKind: gofresh.CodeResult}
 }
 
 func bindingSet(symbols ...string) *stipulatorv1.BindingSet {

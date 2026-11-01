@@ -18,7 +18,6 @@ import (
 	"strings"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/guard"
 	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
@@ -234,7 +233,7 @@ func SourceTiers(f witnesscache.Fingerprint) witnesscache.Fingerprint {
 		ClosureStrategy:    f.ClosureStrategy,
 		ToolchainContent:   f.ToolchainContent,
 		AdmissionPolicy:    f.AdmissionPolicy,
-		Guards:             guard.Guards{Toolchain: f.Guards.Toolchain, BuildConfig: f.Guards.BuildConfig},
+		Guards:             gofresh.Guards{Toolchain: f.Guards.Toolchain, BuildConfig: f.Guards.BuildConfig},
 		ResultKind:         f.ResultKind,
 	}
 }

@@ -96,7 +96,7 @@ func (e *selectionEndpoint) selected(key string) (*selectedContext, error) {
 }
 
 // certificateReader belongs only to this endpoint's certificate observation.
-// Snapshot and closure.NewAt must consume this same reader, including for a
+// Snapshot and gofresh.ResolveToolchainSelection must consume this same reader, including for a
 // selected view with no native subject. A native fingerprint cannot replace it.
 func (e *selectionEndpoint) certificateReader(view *selectedContext) *gotool.EnvReader {
 	s := e.selections[view.key]

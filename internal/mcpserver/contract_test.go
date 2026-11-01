@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/guard"
 	"github.com/greatliontech/gofresh/resident"
 	"github.com/greatliontech/gofresh/runtimeinput"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -659,7 +658,7 @@ func TestPruneToolStoreGC(t *testing.T) {
 		if err := witnesscache.Install(t.Context(), root, witnesscache.Record{Group: "6772702d64696765", Package: pkg, Test: test, Outcomes: map[string]string{pkg + "." + test: "passed"}, Fingerprint: witnesscache.Fingerprint{
 			MaximalClosure: strings.Repeat("a", 32), TestVariantClosure: strings.Repeat("b", 32),
 			ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy,
-			Guards:        guard.Guards{Toolchain: "go1.27.1", BuildConfig: strings.Repeat("c", 32)},
+			Guards:        gofresh.Guards{Toolchain: "go1.27.1", BuildConfig: strings.Repeat("c", 32)},
 			RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult,
 		}}); err != nil {
 			t.Fatal(err)

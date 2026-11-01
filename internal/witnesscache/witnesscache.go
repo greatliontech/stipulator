@@ -21,7 +21,6 @@ import (
 	"time"
 
 	gofresh "github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/closure/testvariant"
 	"github.com/greatliontech/gofresh/runtimeinput"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -183,12 +182,12 @@ func headersToGofresh(headers []CompartmentFileHeader) []gofresh.TestVariantFile
 	for i, h := range headers {
 		out[i] = gofresh.TestVariantFileHeader{File: h.File, Hash: h.Hash, Embedded: h.Embedded}
 		if b := h.Bindings; b != nil {
-			native := &testvariant.TestVariantFileBindings{Package: b.Package, References: slices.Clone(b.References)}
+			native := &gofresh.TestVariantFileBindings{Package: b.Package, References: slices.Clone(b.References)}
 			if b.Imports != nil {
-				native.Imports = make([]testvariant.TestVariantImport, len(b.Imports))
+				native.Imports = make([]gofresh.TestVariantImport, len(b.Imports))
 			}
 			for j, imp := range b.Imports {
-				native.Imports[j] = testvariant.TestVariantImport{Name: imp.Name, Path: imp.Path}
+				native.Imports[j] = gofresh.TestVariantImport{Name: imp.Name, Path: imp.Path}
 			}
 			out[i].Bindings = native
 		}
@@ -513,11 +512,11 @@ func coordinateOf(rec Record) ledgerCoordinate {
 	f := rec.Fingerprint
 	return ledgerCoordinate{rec.Group, rec.Package, f.MaximalClosure,
 		f.EffectiveTestVariantClosure(), f.Guards.Toolchain, f.Guards.BuildConfig,
-		f.ClosureStrategy, testvariant.BindingStrategy}
+		f.ClosureStrategy, gofresh.TestVariantBindingStrategy}
 }
 
 func (c ledgerCoordinate) key() string {
-	if c.Group == "" || c.Package == "" || !ValidDigest(c.Core) || !ValidDigest(c.Compartment) || c.Toolchain == "" || !ValidDigest(c.BuildConfig) || c.ClosureStrategy == "" || c.BindingStrategy != testvariant.BindingStrategy {
+	if c.Group == "" || c.Package == "" || !ValidDigest(c.Core) || !ValidDigest(c.Compartment) || c.Toolchain == "" || !ValidDigest(c.BuildConfig) || c.ClosureStrategy == "" || c.BindingStrategy != gofresh.TestVariantBindingStrategy {
 		return ""
 	}
 	data, _ := json.Marshal(c) // strings only
@@ -615,7 +614,7 @@ func readLedger(store recordstore.Store, coordinate ledgerCoordinate) *Compartme
 }
 
 func validLedger(ledger *CompartmentLedger) bool {
-	if ledger.BindingStrategy != testvariant.BindingStrategy {
+	if ledger.BindingStrategy != gofresh.TestVariantBindingStrategy {
 		return false
 	}
 	for _, declaration := range ledger.Declarations {

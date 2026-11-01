@@ -14,8 +14,6 @@ import (
 	"time"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/closure/testvariant"
-	"github.com/greatliontech/gofresh/guard"
 	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/stipulate"
 )
@@ -62,7 +60,11 @@ func generatedObservationFingerprint(t *testing.T) gofresh.Fingerprint {
 	if err != nil {
 		t.Fatal(err)
 	}
-	finalized, err := binding.Execute(context.Background(), subject, built, gofresh.ProcessDescription{
+	unit, err := binding.Begin(subject)
+	if err != nil {
+		t.Fatal(err)
+	}
+	finalized, err := unit.Execute(context.Background(), built, gofresh.ProcessDescription{
 		Identity: "execution",
 		Capture:  filepath.Join(dir, "test.log"),
 	}, func(_ context.Context, contrib gofresh.Contribution) (gofresh.Terminal, error) {
@@ -379,7 +381,7 @@ func TestLedgerStoreRefusesPerFile(t *testing.T) {
 	}
 	digest := "0123456789abcdef0123456789abcdef"
 	ledger := &CompartmentLedger{
-		BindingStrategy: testvariant.BindingStrategy,
+		BindingStrategy: gofresh.TestVariantBindingStrategy,
 		Declarations: []CompartmentDeclaration{
 			{File: "p_test.go", Kind: "func", Name: "TestA", Hash: "00112233445566778899aabbccddeeff", Package: "p", References: []string{"testing"}},
 			{File: "p_test.go", Kind: "method", Name: "M", Receiver: "T", Hash: "00112233445566778899aabbccddeeff", Package: "p"},
@@ -486,7 +488,7 @@ func TestLoadReclaimsUnreferencedLedgers(t *testing.T) {
 		t.Fatal(err)
 	}
 	inputs := emptyRuntimeInputs(t)
-	base := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestA", Fingerprint: Fingerprint{MaximalClosure: "0123456789abcdef0123456789abcdef", Guards: guard.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult}, Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
+	base := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestA", Fingerprint: Fingerprint{MaximalClosure: "0123456789abcdef0123456789abcdef", Guards: gofresh.Guards{Toolchain: "go1.26", BuildConfig: "00112233445566778899aabbccddeeff"}, RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult}, Outcomes: map[string]string{"example.com/p.TestA": "passed"}}
 	base.Fingerprint.ClosureStrategy = gofresh.ClosureStrategy
 	base.Fingerprint.DynamicStateStrategy = gofresh.DynamicStateStrategy
 	ledgerOf := func(digest string) *CompartmentLedger {
@@ -639,7 +641,7 @@ func TestStoreVariantsAndSiblings(t *testing.T) {
 		Fingerprint: generated,
 		// One compartment, shared by both tests of the package.
 		CompartmentLedger: &CompartmentLedger{
-			BindingStrategy: testvariant.BindingStrategy,
+			BindingStrategy: gofresh.TestVariantBindingStrategy,
 			Declarations: []CompartmentDeclaration{
 				{File: "observed_test.go", Kind: "func", Name: "TestObserved", Hash: "00112233445566778899aabbccddeeff", Package: "cacheproof"},
 				{File: "observed_test.go", Kind: "func", Name: "TestSibling", Hash: "00112233445566778899aabbccddeeff", Package: "cacheproof"},
@@ -776,7 +778,7 @@ func TestFingerprintWireKeySet(t *testing.T) {
 	// expected list is the enumeration in docs/specs/evidence.md's
 	// REQ-evidence-witness-cache-format-record-keys, byte-for-byte — Gofresh's
 	// published form spelling this store's keys.
-	want.Guards = guard.Guards{Toolchain: "toolchain", BuildConfig: "build"}
+	want.Guards = gofresh.Guards{Toolchain: "toolchain", BuildConfig: "build"}
 	want.PurityAssertion = "source directive"
 	want.DynamicStateVouches = "a.example/dep.Var"
 	want.SingleSubjectDischarges = "s.example/dep.One"

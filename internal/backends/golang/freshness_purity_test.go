@@ -180,7 +180,7 @@ func TestValidatedObservationRequiresVerifiableRuntimeState(t *testing.T) {
 	s := gofresh.Subject{Package: "p", Symbol: "TestP"}
 	row := synthRow("plain", s.Package, s.Symbol, passed)
 	for _, status := range []gofresh.Status{gofresh.Valid, gofresh.Unverifiable, gofresh.Stale} {
-		obs := &ProcessObservation{Wire: completedWire(), final: gofresh.FinalizedProcess{Subjects: []gofresh.FinalizedSubject{{Subject: s, Fingerprint: gofresh.Fingerprint{ObservationProof: gofresh.ObservationProof{Observable: true}}, Verdict: gofresh.Verdict{Status: status, Reason: "runtime input refused"}}}}}
+		obs := &ProcessObservation{Wire: completedWire(), final: gofresh.Finalized{Subjects: []gofresh.FinalizedSubject{{Subject: s, Fingerprint: gofresh.Fingerprint{ObservationProof: gofresh.ObservationProof{Observable: true}}, Verdict: gofresh.Verdict{Status: status, Reason: "runtime input refused"}}}}}
 		grant, _ := judgeSubject(s, uncacheable{}, false, true, []producerCandidate{{healthy: true, obs: obs, rows: []*stipulatorv1.TestResult{row}}})
 		if (grant != nil) != (status == gofresh.Valid) {
 			t.Fatalf("native %s result granted=%v", status, grant != nil)

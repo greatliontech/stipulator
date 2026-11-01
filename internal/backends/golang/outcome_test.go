@@ -155,7 +155,7 @@ func TestOutcomePreparationMatchesTheActualProcess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	prepare := func(ctx context.Context, leg *packageLeg, names []string) (*gofresh.PackageUnit, gofresh.Contribution, error) {
+	prepare := func(ctx context.Context, leg *packageLeg, names []string) (*gofresh.Unit, gofresh.Contribution, error) {
 		selectedRuntime := *runtime
 		selectedRuntime.Args = environment.flags.runtimeArgs(n, names, log)
 		return prepareNativeAttempt(ctx, n, pkg, leg, built.Artifact, &selectedRuntime, log, producer)

@@ -9,7 +9,7 @@ import (
 )
 
 // packageLeg holds immutable preparation and an independently closing historical
-// check. Each execution creates its own PackageUnit; publication cannot close the
+// check. Each execution creates its own Unit; publication cannot close the
 // historical check, and isolation never borrows an earlier process's support.
 type packageLeg struct {
 	preparation sync.Mutex

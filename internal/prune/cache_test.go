@@ -7,8 +7,6 @@ import (
 	"testing"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/closure/testvariant"
-	"github.com/greatliontech/gofresh/guard"
 	"github.com/greatliontech/gofresh/runtimeinput"
 	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/internal/resolutioncache"
@@ -56,7 +54,7 @@ func TestPruneGlobalCachePreservesTelemetryAndRepoState(t *testing.T) {
 			DynamicStateStrategy: gofresh.DynamicStateStrategy,
 			ToolchainContent:     "tc",
 			AdmissionPolicy:      "ap",
-			Guards:               guard.Guards{Toolchain: "go1.27.1", BuildConfig: strings.Repeat("c", 32)},
+			Guards:               gofresh.Guards{Toolchain: "go1.27.1", BuildConfig: strings.Repeat("c", 32)},
 			RuntimeInputs:        inputs.Manifest,
 			RuntimeDigest:        inputs.Digest,
 			InertTestVariantApplicability: gofresh.InertTestVariantApplicability{
@@ -71,7 +69,7 @@ func TestPruneGlobalCachePreservesTelemetryAndRepoState(t *testing.T) {
 			Test:     "TestA",
 			Outcomes: map[string]string{"example.com/p.TestA": "passed"},
 			CompartmentLedger: &witnesscache.CompartmentLedger{
-				BindingStrategy: testvariant.BindingStrategy,
+				BindingStrategy: gofresh.TestVariantBindingStrategy,
 				Declarations: []witnesscache.CompartmentDeclaration{
 					{File: "p_test.go", Kind: "func", Name: "TestA", Hash: strings.Repeat("0", 32), Package: "p", References: []string{"testing"}},
 				},

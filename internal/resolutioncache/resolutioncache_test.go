@@ -8,14 +8,13 @@ import (
 	"testing"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/guard"
 	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
 func fingerprint(closure string) witnesscache.Fingerprint {
-	return witnesscache.Fingerprint{MaximalClosure: strings.Repeat(closure, 32), TestVariantClosure: strings.Repeat("b", 32), ClosureStrategy: gofresh.ClosureStrategy, ToolchainContent: "toolchain-content", AdmissionPolicy: "admission-policy", Guards: guard.Guards{Toolchain: "go1.27.0", BuildConfig: strings.Repeat("c", 32)}, ResultKind: gofresh.CodeResult}
+	return witnesscache.Fingerprint{MaximalClosure: strings.Repeat(closure, 32), TestVariantClosure: strings.Repeat("b", 32), ClosureStrategy: gofresh.ClosureStrategy, ToolchainContent: "toolchain-content", AdmissionPolicy: "admission-policy", Guards: gofresh.Guards{Toolchain: "go1.27.0", BuildConfig: strings.Repeat("c", 32)}, ResultKind: gofresh.CodeResult}
 }
 
 func certificate() Certificate {
@@ -230,7 +229,7 @@ func TestSourceTiersProjectTheCaptureTheStoreServes(t *testing.T) {
 	full := witnesscache.Fingerprint{
 		MaximalClosure: digest, TestVariantClosure: strings.Repeat("b", 32), ResultKind: gofresh.CodeResult,
 		ToolchainContent: "native-content", AdmissionPolicy: "native-policy",
-		Guards:               guard.Guards{Toolchain: "go1.27.1", BuildConfig: strings.Repeat("c", 32), Machine: strings.Repeat("d", 32), RuntimeConfig: strings.Repeat("e", 32)},
+		Guards:               gofresh.Guards{Toolchain: "go1.27.1", BuildConfig: strings.Repeat("c", 32), Machine: strings.Repeat("d", 32), RuntimeConfig: strings.Repeat("e", 32)},
 		ObservationAssertion: "pure", ObservationProof: gofresh.ObservationProof{Observable: true},
 		PurityAssertion: "pure", DynamicStateVouches: "x:y", RuntimeInputs: strings.Repeat("f", 32), RuntimeDigest: strings.Repeat("9", 32),
 		SingleSubjectDischarges: "a", PackageProcessDischarges: "b", DynamicStateStrategy: "dyn@3", ClosureStrategy: "closure@2",
@@ -242,7 +241,7 @@ func TestSourceTiersProjectTheCaptureTheStoreServes(t *testing.T) {
 	if !Admits(source) {
 		t.Fatalf("the projected capture was refused: %+v", source)
 	}
-	want := witnesscache.Fingerprint{MaximalClosure: full.MaximalClosure, TestVariantClosure: full.TestVariantClosure, ClosureStrategy: full.ClosureStrategy, ToolchainContent: full.ToolchainContent, AdmissionPolicy: full.AdmissionPolicy, ResultKind: full.ResultKind, Guards: guard.Guards{Toolchain: full.Guards.Toolchain, BuildConfig: full.Guards.BuildConfig}}
+	want := witnesscache.Fingerprint{MaximalClosure: full.MaximalClosure, TestVariantClosure: full.TestVariantClosure, ClosureStrategy: full.ClosureStrategy, ToolchainContent: full.ToolchainContent, AdmissionPolicy: full.AdmissionPolicy, ResultKind: full.ResultKind, Guards: gofresh.Guards{Toolchain: full.Guards.Toolchain, BuildConfig: full.Guards.BuildConfig}}
 	if source != want {
 		t.Fatalf("projection = %+v, want %+v", source, want)
 	}

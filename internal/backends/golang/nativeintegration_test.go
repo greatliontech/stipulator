@@ -111,7 +111,7 @@ func TestNativeIsolationKeepsAttemptEvidence(t *testing.T) {
 	writePolicyRecord(t, dir, p)
 	var accounts []gofresh.ProcessAccount
 	prior := closeNativeProcess
-	closeNativeProcess = func(ctx context.Context, unit *gofresh.PackageUnit) (gofresh.FinalizedProcess, error) {
+	closeNativeProcess = func(ctx context.Context, unit *gofresh.Unit) (gofresh.Finalized, error) {
 		final, err := prior(ctx, unit)
 		account, _ := unit.Account()
 		accounts = append(accounts, account)
