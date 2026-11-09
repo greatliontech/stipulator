@@ -1,3 +1,4 @@
 # Open Issues
 
+- [`eliminate-redundant-gofresh-sessions-and-split-golang-backend.md`](eliminate-redundant-gofresh-sessions-and-split-golang-backend.md) — **Lands: Chunk 6 (`gofresh/docs/plans/plan.md`)**. Eliminate the second full-repo `soloSession.Snapshot` reload in `captureNativeGeneration`, reuse opening captures/certificates between `NewServed` and `openingCapture` (and check `len(subjects) == 0` before `selectionEngine`), deduplicate opening `declarationPackages` `go list` calls in `NewServed`, scope `retryDrifted` to drifted packages, and split oversized `internal/backends/golang` files.
 - [`shared-cli-mcp-process-utilities.md`](shared-cli-mcp-process-utilities.md) — Evaluate extracting internalized CLI/MCP/process utilities (`internal/guidance`, `internal/resident`, `internal/toolversion`, `internal/shortgates`, `internal/shapecorpus`, `internal/gotool`, `internal/trace`) into a dedicated shared module (Option 1B) on the next cross-tool utility change.
