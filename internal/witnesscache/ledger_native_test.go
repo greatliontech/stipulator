@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/gotool"
+	"github.com/greatliontech/stipulator/internal/gotool"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 

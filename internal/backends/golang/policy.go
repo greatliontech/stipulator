@@ -14,8 +14,8 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 
-	"github.com/greatliontech/gofresh/gotool"
-	"github.com/greatliontech/gofresh/runtimeinput"
+	"github.com/greatliontech/stipulator/internal/gotool"
+	gofresh "github.com/greatliontech/gofresh"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/policy"
 )
@@ -482,7 +482,7 @@ func validateScratchNamespaces(cfg *stipulatorv1.GoInvocationConfig) error {
 	seen := map[string]bool{}
 	for _, ns := range cfg.GetScratchNamespaces() {
 		dir, pattern := ns.GetDir(), ns.GetPattern()
-		if err := runtimeinput.ValidateScratchNamespace(dir, pattern); err != nil {
+		if err := gofresh.ValidateScratchNamespace(dir, pattern); err != nil {
 			return fmt.Errorf("scratch namespace: %w", err)
 		}
 		if dir != path.Clean(dir) || strings.Contains(dir, `\`) {
@@ -500,7 +500,7 @@ func validateScratchNamespaces(cfg *stipulatorv1.GoInvocationConfig) error {
 			if p == dir || strings.HasPrefix(dir, p+"/") {
 				return fmt.Errorf("excluded path %q covers scratch namespace %q %q, which would admit nothing under it", p, dir, pattern)
 			}
-			matches, err := (runtimeinput.ScratchNamespace{Dir: dir, Pattern: pattern}).MatchesPath(p)
+			matches, err := (gofresh.ScratchNamespace{Dir: dir, Pattern: pattern}).MatchesPath(p)
 			if err != nil {
 				return fmt.Errorf("scratch namespace: %w", err)
 			}

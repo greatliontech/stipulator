@@ -10,8 +10,7 @@ import (
 	"testing"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/gotool"
-	"github.com/greatliontech/gofresh/runtimeinput"
+	"github.com/greatliontech/stipulator/internal/gotool"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/stipulate"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -256,7 +255,7 @@ func TestAbort(t *testing.T) { if os.Getenv("ABORT")=="yes" {os.Exit(3)} }
 			t.Fatal(err)
 		}
 		// Independent literal flags catch omission from the native build owner.
-		control, err := gofresh.NewSession(t.Context(), gofresh.BuildDescription{Directory: dir, Environment: g.witnessEnv, Flags: []string{"-ldflags=-X example.com/linked.Version=" + value}, Inputs: []string{}}, gofresh.SessionPolicy{EvidenceRoot: dir, Execution: gofresh.PackageExecution, Runner: engineRunner})
+		control, err := gofresh.NewSession(t.Context(), gofresh.BuildDescription{Directory: dir, Environment: g.witnessEnv, Flags: []string{"-ldflags=-X example.com/linked.Version=" + value}, Inputs: []string{}}, gofresh.SessionPolicy{EvidenceRoot: dir, Execution: gofresh.PackageExecution, PrepareCommand: engineRunner.PrepareCommand})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -315,9 +314,9 @@ func TestAbort(t *testing.T) { if os.Getenv("ABORT")=="yes" {os.Exit(3)} }
 			t.Fatalf("missing completed observation: %v", observations)
 		}
 		obs := observations[0]
-		current := func() runtimeinput.State {
+		current := func() gofresh.RuntimeState {
 			t.Helper()
-			s, err := runtimeinput.Current(t.Context(), obs.Wire.GetCompleted().GetManifest(), dir, obs.runtime.Environment)
+			s, err := gofresh.CurrentRuntimeInputs(t.Context(), obs.Wire.GetCompleted().GetManifest(), dir, obs.runtime.Environment)
 			if err != nil || s.Unverifiable || !s.OK {
 				t.Fatalf("exact observation refused: %+v %v", s, err)
 			}
@@ -365,7 +364,7 @@ func TestAbort(t *testing.T) { if os.Getenv("ABORT")=="yes" {os.Exit(3)} }
 		if noRead.Observations[0].Wire.GetCompleted() == nil {
 			t.Fatalf("no-read process lacks completed native account: %v", noRead.Observations[0].Wire)
 		}
-		paths, err := runtimeinput.Paths(noRead.Observations[0].Wire.GetCompleted().GetManifest(), dir)
+		paths, err := gofresh.RuntimeInputPaths(noRead.Observations[0].Wire.GetCompleted().GetManifest(), dir)
 		if err != nil || slices.Contains(paths, file) {
 			t.Fatalf("declaration invented file observation: %v %v", paths, err)
 		}

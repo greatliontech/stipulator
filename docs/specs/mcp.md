@@ -61,8 +61,8 @@ zero count and an unset flag likewise.
 in one call, validating all-or-nothing like the gap surface.
 
 **REQ-mcp-guidance** (behavior): Tool-level served prose MUST be the
-embedded guidance document's projections (`docs/guidance.md`, in the
-fleet format gofresh's guidance spec defines): every tool description
+embedded guidance document's projections (`docs/guidance.md`, parsed by
+`internal/guidance`): every tool description
 and CLI Short/Long is the document's rendering for that surface and
 spelling, the server instructions are the decision map verbatim, and
 the `guidance` tool (and CLI command, its verb positional) serves a
@@ -74,7 +74,7 @@ nested object's properties and an array's items, each a knob of its
 own name — and every visible leaf command and local flag, documented
 exactly, both directions. The document's knob prose is the
 authoritative superset; per-parameter schema descriptions and flag
-usage strings are gofresh's projections of the document — the schema
+usage strings are `internal/guidance`'s projections of the document — the schema
 rendering on the wire (each knob's terse clause verbatim, at every
 depth) and the usage rendering on the CLI (the clause in pflag's
 grammar: code spans unquoted, the default parenthetical cobra prints
@@ -84,7 +84,7 @@ verb's purpose, knobless help, and prose pointer), the knob projection
 description), never a second literal or a grammar of this tool's own,
 so a served string cannot contradict the document; the served strings
 are judged as served bytes against the document's projections
-(gofresh's served-bytes judgment, never a grammar of this tool's own),
+(`internal/guidance`'s served-bytes judgment, never a grammar of this tool's own),
 the coverage judgment the names and the registered facts; a knob the
 document does not carry refuses the face's construction with the
 package's wording; the long help of a CLI verb with knobs is the

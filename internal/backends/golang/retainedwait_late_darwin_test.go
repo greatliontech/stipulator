@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/greatliontech/gofresh/gotool"
+	"github.com/greatliontech/stipulator/internal/gotool"
 	"golang.org/x/sys/unix"
 )
 

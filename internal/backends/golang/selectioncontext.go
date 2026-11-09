@@ -7,7 +7,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/greatliontech/gofresh/gotool"
+	"github.com/greatliontech/stipulator/internal/gotool"
 )
 
 // selectedContext owns the configuration of one selected view. Its private

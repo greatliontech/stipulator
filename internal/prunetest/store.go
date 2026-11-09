@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/runtimeinput"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/internal/resolutioncache"
@@ -35,7 +34,7 @@ func New(t *testing.T, resolution bool) Store {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	f := Store{Root: t.TempDir(), resolution: resolution}
 	// Observation-free data exercises storage, not producing-process support.
-	inputs, err := runtimeinput.Merge(f.Root, nil)
+	inputs, err := gofresh.MergeObservations(f.Root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,11 +8,12 @@ import (
 	"go/version"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/gotool"
+	"github.com/greatliontech/stipulator/internal/gotool"
 )
 
 // classifyFault is the one boundary where a preparation fault chooses
@@ -34,18 +35,18 @@ func classifyFault(err error) (abort bool, reason string) {
 }
 
 // toolchainSample samples a toolchain's GOVERSION where a directory's
-// go command resolves it under an environment — gofresh's sampler
+// go command resolves it under an environment — internal/gotool's sampler
 // shape.
 type toolchainSample func(ctx context.Context, dir string, env []string) (string, error)
 
 // newToolchainSample mints one judged operation's GOVERSION sampler —
-// gofresh's memoized sampler under probeRunner: one sample per
+// internal/gotool's memoized sampler under probeRunner: one sample per
 // (directory coordinate, environment) for the operation's life, a
 // failed sample memoized like an answered one, a cancelled sample
 // never, the first line a cleanly exited process wrote taken when a
 // wrapper's descendant holds the pipe past the wait delay. The memo's
-// life is the operation's, never the process's (gofresh's
-// toolchain-skew clause bounds a sampler to one judged run): a
+// life is the operation's, never the process's (REQ-evidence-toolchain-provenance
+// bounds a sampler to one judged run): a
 // toolchain replaced under a living memo — the go on PATH swapped, a
 // go.mod toolchain line moved — would otherwise be judged by its
 // predecessor's sample for the process's whole life, which for the MCP
@@ -96,14 +97,17 @@ func groupSample(g *captureGroup) toolchainSample {
 // its view loads and keeps the view's own per-view degradation for a
 // sample that fails.
 func checkToolchainProvenance(ctx context.Context, dir string, env []string, sample toolchainSample) error {
-	// A composite per check: the memo lives in the operation's sampler,
-	// so the composite carries no state worth holding.
-	check, err := gofresh.NewToolchainProvenance(gofresh.SampleFunc(sample))
-	if err != nil {
-		return err
+	if sample == nil {
+		return errors.New("toolchain provenance: no sampler — a consumer holds one memoized sampler per judged run")
 	}
-	_, err = check.Check(ctx, dir, env)
-	return err
+	ambient, err := sample(ctx, dir, env)
+	if err != nil {
+		return &gofresh.ToolchainProvenanceError{Err: fmt.Errorf("toolchain provenance: binary built with %s, ambient toolchain unidentifiable — refusing to judge: %w", runtime.Version(), err)}
+	}
+	if err := gofresh.ToolchainSkew(ambient); err != nil {
+		return &gofresh.ToolchainProvenanceError{Err: err}
+	}
+	return nil
 }
 
 // probeWaitDelay bounds how long a cancelled provenance probe may hold

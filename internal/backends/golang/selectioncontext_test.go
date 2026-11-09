@@ -195,7 +195,12 @@ func TestSelectedContextPreservesConsumerViews(t *testing.T) {
 			if err != nil || snapshot.Value("GOWORK") != wantWork {
 				t.Fatalf("certificate workspace: %v %v", snapshot, err)
 			}
-			if _, err := gofresh.ResolveToolchainSelection(t.Context(), reader, view.flags...); err != nil {
+			if _, err := gofresh.ResolveToolchainSelection(t.Context(), gofresh.BuildDescription{
+				Directory:   reader.Dir,
+				Environment: reader.Env,
+				Flags:       view.flags,
+				GoEnv:       snapshot.Values(),
+			}, reader.Runner.PrepareCommand); err != nil {
 				t.Fatal(err)
 			}
 			graph, err := endpoint.graph(view, "example.com/shared")

@@ -11,7 +11,7 @@ import (
 
 	"golang.org/x/mod/modfile"
 
-	"github.com/greatliontech/gofresh/gotool"
+	"github.com/greatliontech/stipulator/internal/gotool"
 )
 
 // workspaceMembers returns the tree's Go module directories, relative to

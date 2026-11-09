@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/greatliontech/gofresh/gotool"
+	"github.com/greatliontech/stipulator/internal/gotool"
 )
 
 // errEnvelopeExpired marks a context whose deadline is a policy
@@ -32,7 +32,7 @@ var (
 // the run (the boundary's grace on every platform that has the signal).
 const quitGrace = 10 * time.Second
 
-// ownedBoundary is the owned process boundary as gofresh's containment
+// ownedBoundary is the owned process boundary as internal/gotool's containment
 // (REQ-go-owned-processes-runner): the child in its own process group, swept
 // whole by the operation's cancellation, asked to quit first with the
 // quit grace when the cancellation is the policy envelope's expiry (a
@@ -68,8 +68,8 @@ func containedRunner(prepare func(*exec.Cmd)) gotool.Runner {
 }
 
 // engineRunner carries the owned boundary to the analysis engines'
-// own go commands (gofresh.WithGoRunner on every engine) — gofresh's
-// spawns, outside the derivation seam; engineCommandHook is the test
+// own go commands (PrepareCommand on every session and single-pass query) —
+// gofresh's spawns, outside the derivation seam; engineCommandHook is the test
 // seam that witnesses the installation, nil in production.
 var engineRunner = containedRunner(func(cmd *exec.Cmd) {
 	if engineCommandHook != nil {

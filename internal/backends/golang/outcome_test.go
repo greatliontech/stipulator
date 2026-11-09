@@ -12,8 +12,7 @@ import (
 	"time"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/gotool"
-	"github.com/greatliontech/gofresh/runtimeinput"
+	"github.com/greatliontech/stipulator/internal/gotool"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -60,7 +59,7 @@ func TestUnsupportedFileOutcomesRetainIdentityWithoutPublishing(t *testing.T) {
 			t.Fatalf("completed file-reading process lost its identity guards: %v", obs)
 		}
 		guard := obs[0].GetCompleted()
-		paths, err := runtimeinput.ModuleRelPaths(guard.GetManifest())
+		paths, err := gofresh.ModuleRelRuntimeInputPaths(guard.GetManifest())
 		if err != nil || !slices.Contains(paths, "data.txt") || guard.GetDigest() == "" {
 			t.Fatalf("file identity not retained: paths=%v err=%v guard=%v", paths, err, guard)
 		}
@@ -87,7 +86,7 @@ func TestUnsupportedFileOutcomesRetainIdentityWithoutPublishing(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "data.txt"), []byte("moved\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	state, err := runtimeinput.Current(context.Background(), records[0].Fingerprint.RuntimeInputs, dir, os.Environ())
+	state, err := gofresh.CurrentRuntimeInputs(context.Background(), records[0].Fingerprint.RuntimeInputs, dir, os.Environ())
 	if err != nil || state.Digest == records[0].Fingerprint.RuntimeDigest {
 		t.Fatalf("purity lost the file drift guard: %+v %v", state, err)
 	}
@@ -111,7 +110,7 @@ func TestOutcomePreparationMatchesTheActualProcess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := gofresh.NewSession(ctx, gofresh.BuildDescription{Directory: dir, Environment: env, Inputs: []string{}}, gofresh.SessionPolicy{EvidenceRoot: dir, Execution: gofresh.PackageExecution, Runner: engineRunner})
+	session, err := gofresh.NewSession(ctx, gofresh.BuildDescription{Directory: dir, Environment: env, Inputs: []string{}}, gofresh.SessionPolicy{EvidenceRoot: dir, Execution: gofresh.PackageExecution, PrepareCommand: engineRunner.PrepareCommand})
 	if err != nil {
 		t.Fatal(err)
 	}

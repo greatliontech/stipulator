@@ -9,7 +9,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/greatliontech/gofresh/guidance"
+	"github.com/greatliontech/stipulator/internal/guidance"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	stipulator "github.com/greatliontech/stipulator"

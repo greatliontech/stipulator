@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/runtimeinput"
 	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/internal/resolutioncache"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
@@ -43,7 +42,7 @@ func TestPruneGlobalCachePreservesTelemetryAndRepoState(t *testing.T) {
 	}
 
 	seedRepo := func(repo string) {
-		inputs, err := runtimeinput.Merge(repo, nil)
+		inputs, err := gofresh.MergeObservations(repo, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

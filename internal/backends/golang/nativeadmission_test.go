@@ -3,7 +3,7 @@ package golang
 import (
 	"testing"
 
-	"github.com/greatliontech/gofresh/resident"
+	"github.com/greatliontech/stipulator/internal/resident"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 

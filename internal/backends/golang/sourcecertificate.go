@@ -363,7 +363,12 @@ func (s *Served) captureSourceCertificates(endpoint *selectionEndpoint, symbols 
 		if err != nil {
 			return nil, err
 		}
-		selection, err := gofresh.ResolveToolchainSelection(s.ctx, reader, view.flags...)
+		selection, err := gofresh.ResolveToolchainSelection(s.ctx, gofresh.BuildDescription{
+			Directory:   reader.Dir,
+			Environment: reader.Env,
+			Flags:       view.flags,
+			GoEnv:       snapshot.Values(),
+		}, reader.Runner.PrepareCommand)
 		if err != nil {
 			return nil, err
 		}

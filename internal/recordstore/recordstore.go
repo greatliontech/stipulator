@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/greatliontech/gofresh/gotool"
+	"github.com/greatliontech/stipulator/internal/gotool"
 )
 
 // Root is the cache directory every stipulator kind lives under:

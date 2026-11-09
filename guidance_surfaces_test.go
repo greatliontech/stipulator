@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/greatliontech/gofresh/guidance"
+	"github.com/greatliontech/stipulator/internal/guidance"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 

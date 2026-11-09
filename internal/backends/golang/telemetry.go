@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"strconv"
 
-	"github.com/greatliontech/gofresh/gotool"
+	"github.com/greatliontech/stipulator/internal/gotool"
 	"github.com/greatliontech/stipulator/internal/recordstore"
 )
 

@@ -1,7 +1,7 @@
 package golang
 
 import (
-	"github.com/greatliontech/gofresh/runtimeinput"
+	gofresh "github.com/greatliontech/gofresh"
 	"slices"
 	"strings"
 	"testing"
@@ -218,10 +218,10 @@ func adversarialListGen() *rapid.Generator[[]string] {
 // adversarialNamespacesGen draws scratch namespace rows over the same
 // adversarial pool for both halves, so the pair joiner and the row
 // quoting are exercised against separator bytes and label fragments.
-func adversarialNamespacesGen() *rapid.Generator[[]runtimeinput.ScratchNamespace] {
+func adversarialNamespacesGen() *rapid.Generator[[]gofresh.ScratchNamespace] {
 	val := adversarialValGen()
-	return rapid.SliceOfN(rapid.Custom(func(t *rapid.T) runtimeinput.ScratchNamespace {
-		return runtimeinput.ScratchNamespace{Dir: val.Draw(t, "dir"), Pattern: val.Draw(t, "pattern")}
+	return rapid.SliceOfN(rapid.Custom(func(t *rapid.T) gofresh.ScratchNamespace {
+		return gofresh.ScratchNamespace{Dir: val.Draw(t, "dir"), Pattern: val.Draw(t, "pattern")}
 	}), 0, 3)
 }
 
@@ -378,7 +378,7 @@ func TestPerturbationDomainCoversEveryKeyedField(t *testing.T) {
 
 // namespacePairs is the canonical namespace set as structural pairs —
 // the tuple judges the rows' renderer rather than consulting it.
-func namespacePairs(in []runtimeinput.ScratchNamespace) [][2]string {
+func namespacePairs(in []gofresh.ScratchNamespace) [][2]string {
 	out := make([][2]string, 0, len(in))
 	for _, ns := range canonicalReviewedNamespaces(in) {
 		out = append(out, [2]string{ns.Dir, ns.Pattern})

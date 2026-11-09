@@ -18,7 +18,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/greatliontech/gofresh/runtimeinput"
+	gofresh "github.com/greatliontech/gofresh"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -92,7 +92,7 @@ func TestLoadAccountRuntimeRefusalsPreserveSiblingAndHistory(t *testing.T) {
 			if rec, _, ok := decodeRecord(name, before); !ok || rec.Fingerprint != bad.Fingerprint {
 				t.Fatal("refusal fixture failed outer/native codec control")
 			}
-			_, nativeErr := runtimeinput.Describe(manifest, dir)
+			_, nativeErr := gofresh.DescribeRuntimeInputs(manifest, dir)
 			if nativeErr == nil {
 				t.Fatal("negative manifest control unexpectedly supported")
 			}

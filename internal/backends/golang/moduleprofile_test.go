@@ -65,7 +65,7 @@ func TestNestedAnalysisAndExecutionUseTheTreeProfile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	control, err := gofresh.NewSession(t.Context(), gofresh.BuildDescription{Directory: filepath.Join(dir, "consumer"), Environment: group.witnessEnv, Flags: []string{"-pgo=" + path}, Inputs: append([]string{}, inputs...)}, gofresh.SessionPolicy{EvidenceRoot: dir, Execution: gofresh.PackageExecution, Runner: engineRunner})
+	control, err := gofresh.NewSession(t.Context(), gofresh.BuildDescription{Directory: filepath.Join(dir, "consumer"), Environment: group.witnessEnv, Flags: []string{"-pgo=" + path}, Inputs: append([]string{}, inputs...)}, gofresh.SessionPolicy{EvidenceRoot: dir, Execution: gofresh.PackageExecution, PrepareCommand: engineRunner.PrepareCommand})
 	if err != nil {
 		t.Fatal(err)
 	}

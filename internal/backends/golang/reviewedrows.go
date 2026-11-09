@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/runtimeinput"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
@@ -33,7 +32,7 @@ func containsCanonical[T any](current, recorded []T, compare func(T, T) int) boo
 	return true
 }
 
-func compareNativeNamespaces(a, b runtimeinput.ScratchNamespace) int {
+func compareNativeNamespaces(a, b gofresh.ScratchNamespace) int {
 	return witnesscache.CompareScratchNamespaces(
 		witnesscache.ScratchNamespace{Dir: a.Dir, Pattern: a.Pattern},
 		witnesscache.ScratchNamespace{Dir: b.Dir, Pattern: b.Pattern})
@@ -41,11 +40,11 @@ func compareNativeNamespaces(a, b runtimeinput.ScratchNamespace) int {
 
 func canonicalReviewedExclusions(rows []string) []string { return sortedCompact(rows, strings.Compare) }
 
-func canonicalReviewedNamespaces(rows []runtimeinput.ScratchNamespace) []runtimeinput.ScratchNamespace {
+func canonicalReviewedNamespaces(rows []gofresh.ScratchNamespace) []gofresh.ScratchNamespace {
 	return sortedCompact(rows, compareNativeNamespaces)
 }
 
-func reviewedNamespaceRows(rows []runtimeinput.ScratchNamespace) []string {
+func reviewedNamespaceRows(rows []gofresh.ScratchNamespace) []string {
 	out := make([]string, 0, len(rows))
 	for _, ns := range canonicalReviewedNamespaces(rows) {
 		out = append(out, string(quotedList([]string{ns.Dir, ns.Pattern})))
@@ -53,7 +52,7 @@ func reviewedNamespaceRows(rows []runtimeinput.ScratchNamespace) []string {
 	return out
 }
 
-func toRecordedNamespaces(rows []runtimeinput.ScratchNamespace) []witnesscache.ScratchNamespace {
+func toRecordedNamespaces(rows []gofresh.ScratchNamespace) []witnesscache.ScratchNamespace {
 	out := make([]witnesscache.ScratchNamespace, 0, len(rows))
 	for _, ns := range rows {
 		out = append(out, witnesscache.ScratchNamespace{Dir: ns.Dir, Pattern: ns.Pattern})
@@ -139,9 +138,9 @@ func normalizeReviewedRows(cfg *stipulatorv1.GoInvocationConfig, n *NormalizedIn
 		vouches = append(vouches, identity)
 	}
 	n.Vouches = sortedCompact(vouches, strings.Compare)
-	var namespaces []runtimeinput.ScratchNamespace
+	var namespaces []gofresh.ScratchNamespace
 	for _, ns := range cfg.GetScratchNamespaces() {
-		namespaces = append(namespaces, runtimeinput.ScratchNamespace{Dir: ns.GetDir(), Pattern: ns.GetPattern()})
+		namespaces = append(namespaces, gofresh.ScratchNamespace{Dir: ns.GetDir(), Pattern: ns.GetPattern()})
 	}
 	n.ScratchNamespaces = canonicalReviewedNamespaces(namespaces)
 }

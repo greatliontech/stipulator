@@ -11,8 +11,7 @@ import (
 	"time"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/gotool"
-	"github.com/greatliontech/gofresh/runtimeinput"
+	"github.com/greatliontech/stipulator/internal/gotool"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 )
@@ -76,7 +75,7 @@ type NormalizedInvocation struct {
 	// validateConfig), the
 	// declaration the engine's ingest admits a proven scratch mint under;
 	// they partition the group key as exclusions do.
-	ScratchNamespaces []runtimeinput.ScratchNamespace
+	ScratchNamespaces []gofresh.ScratchNamespace
 	// Vouches are the invocation's reviewed dynamic-state vouches:
 	// canonical "<import path>.<Variable>" identities of version-pinned
 	// dependency variables accepted as stable after initialization
@@ -140,7 +139,7 @@ type NormalizedInvocation struct {
 	DeclaredLinkerStrings []string
 	InputFiles            []selectedInputFile
 	// inputRoots memoizes classification-root probes for this judged invocation.
-	inputRoots             *runtimeinput.Roots
+	inputRoots             *gofresh.InputRoots
 	extractedLinkerStrings []*stipulatorv1.GoLinkerString
 	// Env is the complete normalized child-process environment every
 	// subprocess of this invocation runs under: inherited minus denials,
@@ -400,7 +399,12 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	// resolution past a taken snapshot is the run's own end, which
 	// refuses normalization as any spawn would.
 	if n.WitnessEligible() {
-		sel, err := gofresh.ResolveToolchainSelection(ctx, gotool.PrimedEnvReader(ownedRunner, n.Dir, env, snapshot), selectionBuildFlags(cfg.GetRace(), cfg.GetTags())...)
+		sel, err := gofresh.ResolveToolchainSelection(ctx, gofresh.BuildDescription{
+			Directory:   n.Dir,
+			Environment: env,
+			Flags:       selectionBuildFlags(cfg.GetRace(), cfg.GetTags()),
+			GoEnv:       snapshot.Values(),
+		}, ownedRunner.PrepareCommand)
 		if err != nil {
 			return nil, fmt.Errorf("invocation %q: toolchain-source audit: %w", inv.GetName(), err)
 		}

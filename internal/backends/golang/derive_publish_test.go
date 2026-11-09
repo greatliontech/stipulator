@@ -15,7 +15,6 @@ import (
 	"time"
 
 	gofresh "github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/runtimeinput"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
@@ -260,14 +259,14 @@ func TestGoDeriveUnifiedExecutionEvidence(t *testing.T) {
 	if reads == nil {
 		t.Fatal("no record published for the fixture-reading test")
 	}
-	readsPaths, err := runtimeinput.ModuleRelPaths(reads.Fingerprint.RuntimeInputs)
+	readsPaths, err := gofresh.ModuleRelRuntimeInputPaths(reads.Fingerprint.RuntimeInputs)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !slices.Contains(readsPaths, "reads/testdata/fixture.txt") {
 		t.Errorf("reads record does not carry its own process's observation: %v", readsPaths)
 	}
-	doublePaths, err := runtimeinput.ModuleRelPaths(double.Fingerprint.RuntimeInputs)
+	doublePaths, err := gofresh.ModuleRelRuntimeInputPaths(double.Fingerprint.RuntimeInputs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -542,7 +541,7 @@ func TestSharedReads(t *testing.T) {
 			if accepted.Purity != (gofresh.PurityAuthority{Recorded: gofresh.SourcePurity, Current: gofresh.SourcePurity}) || accepted.Observation != (gofresh.ObservationAuthority{}) || !accepted.RuntimeInputs {
 				t.Errorf("asserted file reader's validity did not rest on purity beside its input guard: %+v", accepted)
 			}
-			paths, err := runtimeinput.ModuleRelPaths(account.Inputs.Manifest)
+			paths, err := gofresh.ModuleRelRuntimeInputPaths(account.Inputs.Manifest)
 			if err != nil || !slices.Equal(paths, []string{"asserted/data.txt"}) {
 				t.Errorf("asserted reader lost its identity-only file guard: paths=%v err=%v", paths, err)
 			}
@@ -798,7 +797,7 @@ func TestCleanNoop(t *testing.T) {}
 			t.Fatalf("PWD package did not publish %s", name)
 		}
 		fp := rec.Fingerprint
-		description, err := runtimeinput.Describe(fp.RuntimeInputs, tmp)
+		description, err := gofresh.DescribeRuntimeInputs(fp.RuntimeInputs, tmp)
 		if err != nil || !slices.Equal(description.EnvNames, []string{"PWD"}) || len(description.Unverifiable) != 0 || fp.PurityAssertion != "" {
 			t.Fatalf("%s lost its supported PWD dependency: description=%+v purity=%q err=%v", name, description, fp.PurityAssertion, err)
 		}
@@ -810,11 +809,11 @@ func TestCleanNoop(t *testing.T) {}
 			t.Error("PWD sibling lost its whole-process observation")
 		}
 		pwdManifest = fp.RuntimeInputs
-		current, err := runtimeinput.Current(t.Context(), fp.RuntimeInputs, tmp, []string{"PWD=" + filepath.Join(tmp, "pwd")})
+		current, err := gofresh.CurrentRuntimeInputs(t.Context(), fp.RuntimeInputs, tmp, []string{"PWD=" + filepath.Join(tmp, "pwd")})
 		if err != nil || !current.OK || current.Unverifiable || current.Digest != fp.RuntimeDigest {
 			t.Errorf("%s guard does not describe the actual package PWD: state=%+v err=%v", name, current, err)
 		}
-		moved, err := runtimeinput.MovedInputs(t.Context(), fp.RuntimeInputs, tmp, []string{"PWD=" + tmp})
+		moved, err := gofresh.MovedRuntimeInputs(t.Context(), fp.RuntimeInputs, tmp, []string{"PWD=" + tmp})
 		if err != nil || !slices.Equal(moved, []string{"env PWD"}) {
 			t.Errorf("%s ignored a different process directory: moved=%v err=%v", name, moved, err)
 		}

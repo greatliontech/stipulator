@@ -350,10 +350,10 @@ toolchain's detached telemetry is the one sanctioned escape from the
 owned process boundary (REQ-go-owned-processes).
 
 **REQ-go-owned-processes-runner** (behavior): Every go child but the loader's and the provenance probe's
-MUST run through Gofresh's go-command runner carrying the owned process boundary (REQ-go-owned-processes) as its
+MUST run through `internal/gotool`'s go-command runner carrying the owned process boundary (REQ-go-owned-processes) as its
 containment — the group, the envelope expiry's quit and grace, the
 policy's wait delay — the analysis engines' own commands through the
-same runner installed on every engine, and the observation facade's
+same runner's `PrepareCommand` hook installed on every engine, and the observation facade's
 classification-root probe (a bare `go env -json` in the package
 directory, which forks the C compiler the toolchain configures — a
 descendant the boundary sweeps — memoized per package directory and
@@ -368,7 +368,7 @@ binary termination, and output drainage cannot end an unfinished binary's
 quit/grace escalation. A listing — collected by the
 boundary, with no wholeness test of its own (a truncation at an object
 boundary reads as a shorter set) — is refused naming the hold whenever
-the wait delay expires before the listing is drained (Gofresh's listing
+the wait delay expires before the listing is drained (`internal/gotool`'s listing
 form), and a listing exiting nonzero answers nothing. The Go
 children are `go env` (the workspace's and normalization's samples — the
 normalization's the toolchain's one environment snapshot — through the

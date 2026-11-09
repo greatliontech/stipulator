@@ -20,7 +20,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/resident"
+	"github.com/greatliontech/stipulator/internal/resident"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -762,7 +762,7 @@ var (
 // the host's available memory, less what the running packages are
 // estimated still to take, covers one more package at the invocation's
 // estimate with the pass's own room to grow back to its peak left
-// over. The measure is the host's (gofresh's readings carry it); the
+// over. The measure is the host's (internal/resident's readings carry it); the
 // family's soft ceilings are collection targets, not needs — the pass's
 // need beyond what it holds is its growth, below — so no half of the
 // room is set aside for a pass that holds a fraction of it. Both terms

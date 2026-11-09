@@ -12,7 +12,6 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	gofresh "github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/runtimeinput"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/policy"
@@ -696,7 +695,7 @@ func TestReadsCorpus(t *testing.T) {
 		if rec == nil {
 			t.Fatal("no directory-reader record to inspect")
 		}
-		state, err := runtimeinput.Current(context.Background(), rec.Fingerprint.RuntimeInputs, tmp, os.Environ())
+		state, err := gofresh.CurrentRuntimeInputs(context.Background(), rec.Fingerprint.RuntimeInputs, tmp, os.Environ())
 		if err != nil || state.Unverifiable != unverifiable {
 			t.Fatalf("directory bracket disposition = %+v %v, want unverifiable=%v", state, err, unverifiable)
 		}
@@ -751,7 +750,7 @@ func TestCompartmentGrownServeGates(t *testing.T) {
 		"pkg/pkg.go":      "package pkg\n\nfunc V() int { return 1 }\n",
 		"pkg/pkg_test.go": "package pkg\n\nimport \"testing\"\n\nfunc TestV(t *testing.T) {\n\tif V() != 1 {\n\t\tt.Fail()\n\t}\n}\n",
 	})
-	engine, err := gofresh.NewSession(t.Context(), gofresh.BuildDescription{Directory: tmp, Environment: os.Environ(), Inputs: []string{}}, gofresh.SessionPolicy{EvidenceRoot: tmp, Execution: gofresh.PackageExecution, Runner: engineRunner})
+	engine, err := gofresh.NewSession(t.Context(), gofresh.BuildDescription{Directory: tmp, Environment: os.Environ(), Inputs: []string{}}, gofresh.SessionPolicy{EvidenceRoot: tmp, Execution: gofresh.PackageExecution, PrepareCommand: engineRunner.PrepareCommand})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1903,7 +1902,7 @@ func TestReadsToolchain(t *testing.T) {
 	if len(records) != 1 {
 		t.Fatalf("store holds %d records, want 1", len(records))
 	}
-	desc, err := runtimeinput.Describe(records[0].Fingerprint.RuntimeInputs, tmp)
+	desc, err := gofresh.DescribeRuntimeInputs(records[0].Fingerprint.RuntimeInputs, tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2002,7 +2001,7 @@ func TestReadsBuildCacheAndTempRoot(t *testing.T) {
 	if len(records) != 1 {
 		t.Fatalf("store holds %d records, want 1", len(records))
 	}
-	desc, err := runtimeinput.Describe(records[0].Fingerprint.RuntimeInputs, tmp)
+	desc, err := gofresh.DescribeRuntimeInputs(records[0].Fingerprint.RuntimeInputs, tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2308,7 +2307,7 @@ func TestReadsPinnedExternal(*testing.T) {
 			if rec == nil {
 				t.Fatal("no external-reader record to inspect")
 			}
-			state, err := runtimeinput.Current(context.Background(), rec.Fingerprint.RuntimeInputs, tmp, os.Environ())
+			state, err := gofresh.CurrentRuntimeInputs(context.Background(), rec.Fingerprint.RuntimeInputs, tmp, os.Environ())
 			if err != nil || state.Unverifiable == declare {
 				t.Fatalf("external bracket disposition = %+v %v, declared=%v", state, err, declare)
 			}

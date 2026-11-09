@@ -10,15 +10,14 @@ import (
 	"time"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/runtimeinput"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
 // emptyRuntimeInputs supplies structural store data, not a completed process
 // observation or operation-outcome support.
-func emptyRuntimeInputs(t *testing.T) runtimeinput.State {
+func emptyRuntimeInputs(t *testing.T) gofresh.RuntimeState {
 	t.Helper()
-	observation, err := runtimeinput.Merge(t.TempDir(), nil)
+	observation, err := gofresh.MergeObservations(t.TempDir(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

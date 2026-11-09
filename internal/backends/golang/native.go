@@ -89,8 +89,8 @@ func prepareWitnessGeneration(ctx context.Context, root string, g *captureGroup)
 func captureNativeGeneration(ctx context.Context, root string, g *captureGroup, inputs *pgoObservation, subjects []gofresh.Subject) (*gofresh.Snapshot, *gofresh.Snapshot, map[gofresh.Subject]bool, error) {
 	policy := gofresh.SessionPolicy{
 		EvidenceRoot: root, Vouches: slices.Clone(g.vouches), Execution: gofresh.PackageExecution,
-		Runner:   engineRunner,
-		Progress: func(p gofresh.Progress) { emitEngineDiagnostic(p); progress.FromContext(ctx).Keepalive() },
+		PrepareCommand: engineRunner.PrepareCommand,
+		Progress:       func(p gofresh.Progress) { emitEngineDiagnostic(p); progress.FromContext(ctx).Keepalive() },
 	}
 	if g.assumePure {
 		policy.PureSubjects = subjects

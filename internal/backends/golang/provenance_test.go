@@ -13,7 +13,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/greatliontech/gofresh/gotool"
+	"github.com/greatliontech/stipulator/internal/gotool"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -356,7 +356,7 @@ func TestToolchainSampledInTheTargetModule(t *testing.T) {
 // The provenance probe runs in the caller's own process group
 // (REQ-go-owned-processes-runner: a descendant-free query, swept with its
 // caller by the owner that kills the caller outright) with the reap
-// bounded (REQ-policy-cancellation), through gofresh's memoized sampler:
+// bounded (REQ-policy-cancellation), through internal/gotool's memoized sampler:
 // two asks of one (directory, environment) spawn one `go env GOVERSION`
 // (the test seam counts the prepared commands), the sample is the
 // trimmed version, a cancelled operation samples nothing and the member
@@ -420,8 +420,8 @@ func TestProvenanceProbeRunsInTheCallersGroup(t *testing.T) {
 // over one tree each mint their own memo, so the second's first
 // selection engine samples the toolchain again where a process-wide
 // memo would have served the first's answer for the process's life —
-// the MCP server builds a served backend per call (gofresh's
-// toolchain-skew clause bounds a sampler to one judged run). A capture
+// the MCP server builds a served backend per call
+// (REQ-evidence-toolchain-provenance bounds a sampler to one judged run). A capture
 // group's engine, by contrast, judges the normalization's one read and
 // samples nothing.
 //

@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/runtimeinput"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 )
 
@@ -35,7 +34,7 @@ func captureObservationFrame(ctx context.Context, n *NormalizedInvocation, pkg s
 		}
 	}
 	subject := gofresh.Subject{Package: pkg, Symbol: "NativeObservationProbe"}
-	session, err := gofresh.NewSession(ctx, gofresh.BuildDescription{Directory: n.Dir, Environment: append([]string{}, n.Env...), Inputs: []string{}}, gofresh.SessionPolicy{EvidenceRoot: treeRoot(n), Runner: engineRunner})
+	session, err := gofresh.NewSession(ctx, gofresh.BuildDescription{Directory: n.Dir, Environment: append([]string{}, n.Env...), Inputs: []string{}}, gofresh.SessionPolicy{EvidenceRoot: treeRoot(n), PrepareCommand: engineRunner.PrepareCommand})
 	if err != nil {
 		frame.err = err
 		return
@@ -108,9 +107,9 @@ func observeProcess(ctx context.Context, n *NormalizedInvocation, pkg string, pr
 	return nativeObservation(pkg, producer, gofresh.Finalized{}, account, err)
 }
 
-func processObservationState(o *ProcessObservation) (runtimeinput.State, error) {
+func processObservationState(o *ProcessObservation) (gofresh.RuntimeState, error) {
 	if o.account.Inputs.Manifest == "" {
-		return runtimeinput.State{}, fmt.Errorf("observation has no finalized input account: %s", o.Wire.GetIncompleteReason())
+		return gofresh.RuntimeState{}, fmt.Errorf("observation has no finalized input account: %s", o.Wire.GetIncompleteReason())
 	}
 	return o.account.Inputs, nil
 }

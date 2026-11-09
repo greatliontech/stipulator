@@ -1,0 +1,242 @@
+package gotool
+
+import (
+	"context"
+	"fmt"
+	"path/filepath"
+	"runtime"
+	"sort"
+	"strings"
+	"time"
+)
+
+// The environment policy: every go invocation gofresh or a consumer
+// makes runs under a complete, normalized environment — the exec.Cmd
+// key=value form, deterministic order, duplicate keys refused rather
+// than resolved by platform behaviour, PWD derived from the command's
+// directory as go/packages derives it, and the ordinary Go loader
+// pinned (no external package driver). One policy, exported here, so a
+// consumer never re-derives it (REQ-fresh-coherent-view).
+
+// SetEnv returns env with key set to value: every entry of that key
+// dropped (case-insensitively on Windows, as go resolves keys) and the
+// new entry inserted where NormalizeEnv orders it — over a normalized
+// environment the result stays normalized; the one setter, so a
+// consumer's environment never diverges from the policy's order by
+// appending.
+func SetEnv(env []string, key, value string) []string {
+	out := UnsetEnv(env, key)
+	if IsTraceEnvKey(key) {
+		return out
+	}
+	entry := key + "=" + value
+	i := sort.Search(len(out), func(i int) bool { return entryLess(entry, out[i]) })
+	out = append(out, "")
+	copy(out[i+1:], out[i:])
+	out[i] = entry
+	return out
+}
+
+// UnsetEnv returns env without every entry under key, judged as the
+// policy judges keys (EqualEnvKey), the remaining entries in their
+// order — the one remover beside the one setter, so a consumer that
+// strips a setting never spells the key comparison itself.
+func UnsetEnv(env []string, key string) []string {
+	out := make([]string, 0, len(env)+1)
+	for _, entry := range env {
+		if name, _, ok := split(entry); !ok || !equalKey(name, key) {
+			out = append(out, entry)
+		}
+	}
+	return out
+}
+
+// EnvForCommand returns env with PWD derived from dir, matching the environment
+// go/packages gives a Go command run under packages.Config.Dir.
+func EnvForCommand(env []string, dir string) ([]string, error) {
+	if dir == "" {
+		return NormalizeEnv(env)
+	}
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, err
+	}
+	normalized, err := NormalizeEnv(env)
+	if err != nil {
+		return nil, err
+	}
+	command := make([]string, 0, len(normalized)+1)
+	for _, entry := range normalized {
+		name, _, _ := split(entry)
+		if !equalKey(name, "PWD") {
+			command = append(command, entry)
+		}
+	}
+	return NormalizeEnv(append(command, "PWD="+abs))
+}
+
+// NormalizeEnv returns a deterministic owned copy of env. Entries must use the
+// exec.Cmd key=value form, and duplicate keys are refused rather than resolved
+// by platform-dependent first- or last-entry behavior. Diagnostic tracing
+// variables (GOFRESH_TRACE and GOFRESH_TRACE_FILE) are validated and then
+// stripped so enabling tracing never alters any normalized environment or digest.
+func NormalizeEnv(env []string) ([]string, error) {
+	normalized := make([]string, 0, len(env))
+	seen := make(map[string]bool, len(env))
+	for i, entry := range env {
+		if strings.IndexByte(entry, 0) >= 0 {
+			return nil, fmt.Errorf("environment entry %d contains NUL", i)
+		}
+		key, _, ok := split(entry)
+		if !ok {
+			return nil, fmt.Errorf("environment entry %d is malformed: expected non-empty key=value", i)
+		}
+		identity := key
+		if runtime.GOOS == "windows" {
+			identity = strings.ToUpper(key)
+		}
+		if seen[identity] {
+			return nil, fmt.Errorf("environment contains duplicate key %q", key)
+		}
+		seen[identity] = true
+		if IsTraceEnvKey(key) {
+			continue
+		}
+		normalized = append(normalized, entry)
+	}
+	sort.Slice(normalized, func(i, j int) bool { return entryLess(normalized[i], normalized[j]) })
+	return normalized, nil
+}
+
+// IsTraceEnvKey reports whether key names a gofresh diagnostic tracing
+// environment variable (GOFRESH_TRACE or GOFRESH_TRACE_FILE) excluded from
+// normalized environments and runtime-input dependency recording.
+func IsTraceEnvKey(key string) bool {
+	return equalKey(key, "GOFRESH_TRACE") || equalKey(key, "GOFRESH_TRACE_FILE")
+}
+
+// EnvForPackages returns a normalized environment that cannot delegate source
+// selection to an external package driver. The ordinary Go loader is the source
+// model freshness analysis represents.
+func EnvForPackages(env []string) ([]string, error) {
+	normalized, err := NormalizeEnv(env)
+	if err != nil {
+		return nil, err
+	}
+	if driver, ok := LookupEnv(normalized, "GOPACKAGESDRIVER"); ok {
+		if driver != "" && driver != "off" {
+			return nil, fmt.Errorf("GOPACKAGESDRIVER=%q is unsupported because freshness analysis requires Go package loading", driver)
+		}
+	}
+	pinned := make([]string, 0, len(normalized)+1)
+	for _, entry := range normalized {
+		name, _, _ := split(entry)
+		if !equalKey(name, "GOPACKAGESDRIVER") {
+			pinned = append(pinned, entry)
+		}
+	}
+	return NormalizeEnv(append(pinned, "GOPACKAGESDRIVER=off"))
+}
+
+// LookupEnv returns key's value from a normalized complete environment.
+func LookupEnv(env []string, key string) (string, bool) {
+	for _, entry := range env {
+		name, value, ok := split(entry)
+		if ok && equalKey(name, key) {
+			return value, true
+		}
+	}
+	return "", false
+}
+
+// EqualEnvKey reports whether two environment names identify the same variable on
+// the current platform.
+func EqualEnvKey(left, right string) bool { return equalKey(left, right) }
+
+// GoBuildCache resolves the effective Go build cache from an explicit
+// environment before a caller changes XDG_CACHE_HOME. Only Go determines the
+// default, including any GOENV configuration.
+func GoBuildCache(ctx context.Context, env []string) (string, error) {
+	normalized, err := NormalizeEnv(env)
+	if err != nil {
+		return "", err
+	}
+	return goBuildCache(normalized, func() (string, error) {
+		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+		reader := NewEnvReader(Runner{}, "", normalized)
+		snapshot, err := reader.Snapshot(ctx)
+		if err != nil {
+			return "", err
+		}
+		return snapshot.Value("GOCACHE"), nil
+	})
+}
+
+// PreserveBuildCache returns a normalized environment with GOCACHE explicitly
+// pinned to the effective Go build cache resolved from env, so isolating
+// XDG_CACHE_HOME in hermetic tests does not cold-rebuild the standard library.
+func PreserveBuildCache(ctx context.Context, env []string) ([]string, error) {
+	normalized, err := NormalizeEnv(env)
+	if err != nil {
+		return nil, err
+	}
+	cache, err := GoBuildCache(ctx, normalized)
+	if err != nil {
+		return nil, err
+	}
+	return SetEnv(normalized, "GOCACHE", cache), nil
+}
+
+func goBuildCache(env []string, lookup func() (string, error)) (string, error) {
+	if cache, _ := LookupEnv(env, "GOCACHE"); cache != "" {
+		return cache, nil
+	}
+	cache, err := lookup()
+	if err != nil {
+		return "", fmt.Errorf("test environment: determine Go build cache: %w", err)
+	}
+	if cache == "" {
+		return "", fmt.Errorf("test environment: go env supplied no GOCACHE")
+	}
+	return cache, nil
+}
+
+// entryLess is the policy's one order: by key (case-folded on Windows,
+// as go resolves keys), then by the whole entry — NormalizeEnv sorts by
+// it and SetEnv inserts by it.
+func entryLess(a, b string) bool {
+	left, _, _ := split(a)
+	right, _, _ := split(b)
+	if runtime.GOOS == "windows" {
+		left = strings.ToUpper(left)
+		right = strings.ToUpper(right)
+	}
+	if left == right {
+		return a < b
+	}
+	return left < right
+}
+
+func split(entry string) (string, string, bool) {
+	equals := strings.IndexByte(entry, '=')
+	if equals > 0 {
+		return entry[:equals], entry[equals+1:], true
+	}
+	if runtime.GOOS == "windows" && equals == 0 {
+		// Windows carries hidden per-drive working-directory entries such as
+		// =C:=C:\path in an otherwise ordinary process environment.
+		if second := strings.IndexByte(entry[1:], '='); second > 0 {
+			second++
+			return entry[:second], entry[second+1:], true
+		}
+	}
+	return "", "", false
+}
+
+func equalKey(left, right string) bool {
+	if runtime.GOOS == "windows" {
+		return strings.EqualFold(left, right)
+	}
+	return left == right
+}

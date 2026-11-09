@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/runtimeinput"
 	"github.com/greatliontech/stipulator/internal/recordstore"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -77,9 +76,9 @@ func TestPublicationPassesCancellationToStoreAcquisition(t *testing.T) {
 
 // emptyWitnessInputs supplies a current structural manifest for store fixtures;
 // it establishes neither a completed process nor operation-outcome support.
-func emptyWitnessInputs(t *testing.T, dir string) runtimeinput.State {
+func emptyWitnessInputs(t *testing.T, dir string) gofresh.RuntimeState {
 	t.Helper()
-	observation, err := runtimeinput.Merge(dir, nil)
+	observation, err := gofresh.MergeObservations(dir, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

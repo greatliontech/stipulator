@@ -13,8 +13,7 @@ import (
 	"time"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/gotool"
-	"github.com/greatliontech/gofresh/runtimeinput"
+	"github.com/greatliontech/stipulator/internal/gotool"
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -91,7 +90,7 @@ func TestGoExecuteObservationOwnership(t *testing.T) {
 		}
 	}
 
-	readsPaths, err := runtimeinput.ModuleRelPaths(readsObs.Wire.GetCompleted().GetManifest())
+	readsPaths, err := gofresh.ModuleRelRuntimeInputPaths(readsObs.Wire.GetCompleted().GetManifest())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +98,7 @@ func TestGoExecuteObservationOwnership(t *testing.T) {
 	if !slices.Contains(readsPaths, fixture) {
 		t.Errorf("reads observation does not record its own fixture read %s: %v", fixture, readsPaths)
 	}
-	okPaths, err := runtimeinput.ModuleRelPaths(okObs.Wire.GetCompleted().GetManifest())
+	okPaths, err := gofresh.ModuleRelRuntimeInputPaths(okObs.Wire.GetCompleted().GetManifest())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -435,7 +434,7 @@ func TestGoExecuteSelfMutatedInputSealsUnverifiable(t *testing.T) {
 	if o.Wire.GetCompleted().GetDigest() != "" {
 		t.Error("unverifiable observation carries a bound digest; a moved bracket must never bind")
 	}
-	paths, err := runtimeinput.ModuleRelPaths(o.Wire.GetCompleted().GetManifest())
+	paths, err := gofresh.ModuleRelRuntimeInputPaths(o.Wire.GetCompleted().GetManifest())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -459,7 +458,7 @@ func TestGoExecuteModuleRootPackageBracket(t *testing.T) {
 	}
 	stipulate.Covers(t, "REQ-evidence-witness-freshness-bracket", "REQ-policy-attribution")
 	neutralAmbient(t)
-	execRoot := func(t *testing.T, files map[string]string) (*ProcessObservation, runtimeinput.State) {
+	execRoot := func(t *testing.T, files map[string]string) (*ProcessObservation, gofresh.RuntimeState) {
 		t.Helper()
 		tmp := writeModule(t, files)
 		inv := &stipulatorv1.PolicyInvocation{}
@@ -780,7 +779,7 @@ func TestReadsFixture(t *testing.T) {
 	if o.Wire.GetCompleted().GetDigest() == "" {
 		t.Error("symlinked-tree observation carries no bound digest")
 	}
-	paths, err := runtimeinput.ModuleRelPaths(o.Wire.GetCompleted().GetManifest())
+	paths, err := gofresh.ModuleRelRuntimeInputPaths(o.Wire.GetCompleted().GetManifest())
 	if err != nil {
 		t.Fatal(err)
 	}

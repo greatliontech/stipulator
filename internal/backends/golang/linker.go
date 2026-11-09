@@ -8,8 +8,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/greatliontech/gofresh/gotool"
-	"github.com/greatliontech/gofresh/runtimeinput"
+	"github.com/greatliontech/gofresh"
+	"github.com/greatliontech/stipulator/internal/gotool"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"golang.org/x/mod/module"
 )
@@ -307,7 +307,7 @@ func resolveLinkerSelection(n *NormalizedInvocation, cfg *stipulatorv1.GoInvocat
 	}
 	seen := map[string]bool{}
 	if len(cfg.GetInputFilesFromEnvironment()) != 0 {
-		n.inputRoots = &runtimeinput.Roots{}
+		n.inputRoots = &gofresh.InputRoots{}
 	}
 	for _, name := range cfg.GetInputFilesFromEnvironment() {
 		p, ok := gotool.LookupEnv(n.Env, name)
@@ -332,14 +332,14 @@ func requireExactInputEligibility(ctx context.Context, n *NormalizedInvocation, 
 		if !ok || value != f.Path {
 			return fmt.Errorf("input file environment %s no longer selects frozen file %s", f.Name, f.Path)
 		}
-		result, err := runtimeinput.FileInputEligibility(ctx, treeRoot(n), runtime.Dir, f.Path, runtimeinput.FileInputContext{
-			Env: runtime.Env, Runner: ownedRunner, Roots: n.inputRoots, ExcludedPaths: n.ExcludedPaths,
+		reason, err := gofresh.CheckFileInputEligibility(ctx, treeRoot(n), runtime.Dir, f.Path, gofresh.ProducerIngest{
+			Env: runtime.Env, PrepareCommand: ownedRunner.PrepareCommand, Roots: n.inputRoots, ExcludedPaths: n.ExcludedPaths,
 		})
 		if err != nil {
 			return fmt.Errorf("input file environment %s (%s): %w", f.Name, f.Path, err)
 		}
-		if result.Kind != runtimeinput.RawFileInput {
-			return fmt.Errorf("input file environment %s (%s) is not raw-byte eligible: %s", f.Name, f.Path, result.Reason)
+		if reason != "" {
+			return fmt.Errorf("input file environment %s (%s) is not raw-byte eligible: %s", f.Name, f.Path, reason)
 		}
 	}
 	return nil

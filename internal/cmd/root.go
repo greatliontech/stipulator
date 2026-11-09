@@ -15,7 +15,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/greatliontech/gofresh/resident"
+	"github.com/greatliontech/stipulator/internal/resident"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/backends/golang"

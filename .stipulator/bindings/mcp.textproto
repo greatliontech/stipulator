@@ -703,8 +703,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-guidance"
-  content_hash: "9cf78ad2a85f4a99b52d2388118a549937279a7401787c80a7d1e70be661df15"
-  source_hash: "0506c52fb484e29ccdbe9911be0b5581404784bfb7d4a2d7c0c580e66ff4205f"
+  content_hash: "aea5062194dbacba5200f742e439e7ab7c630ff9b4f3e38157c027578809306f"
+  source_hash: "dbc5ecd8470047f719a2842a75cfd028a31987467281b16f93601c7fddfe4dc3"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGuidanceCoversTheWireSurface"
   role: BINDING_ROLE_TESTS
@@ -713,8 +713,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-guidance"
-  content_hash: "9cf78ad2a85f4a99b52d2388118a549937279a7401787c80a7d1e70be661df15"
-  source_hash: "0506c52fb484e29ccdbe9911be0b5581404784bfb7d4a2d7c0c580e66ff4205f"
+  content_hash: "aea5062194dbacba5200f742e439e7ab7c630ff9b4f3e38157c027578809306f"
+  source_hash: "dbc5ecd8470047f719a2842a75cfd028a31987467281b16f93601c7fddfe4dc3"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGuidanceToolServesTheDocument"
   role: BINDING_ROLE_TESTS
@@ -723,8 +723,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-guidance"
-  content_hash: "9cf78ad2a85f4a99b52d2388118a549937279a7401787c80a7d1e70be661df15"
-  source_hash: "0506c52fb484e29ccdbe9911be0b5581404784bfb7d4a2d7c0c580e66ff4205f"
+  content_hash: "aea5062194dbacba5200f742e439e7ab7c630ff9b4f3e38157c027578809306f"
+  source_hash: "dbc5ecd8470047f719a2842a75cfd028a31987467281b16f93601c7fddfe4dc3"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestGuidanceCoversTheCLISurface"
   role: BINDING_ROLE_TESTS
@@ -733,8 +733,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-guidance"
-  content_hash: "9cf78ad2a85f4a99b52d2388118a549937279a7401787c80a7d1e70be661df15"
-  source_hash: "0506c52fb484e29ccdbe9911be0b5581404784bfb7d4a2d7c0c580e66ff4205f"
+  content_hash: "aea5062194dbacba5200f742e439e7ab7c630ff9b4f3e38157c027578809306f"
+  source_hash: "dbc5ecd8470047f719a2842a75cfd028a31987467281b16f93601c7fddfe4dc3"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestGuidanceCommandServesTheDocument"
   role: BINDING_ROLE_TESTS
@@ -743,8 +743,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-guidance"
-  content_hash: "9cf78ad2a85f4a99b52d2388118a549937279a7401787c80a7d1e70be661df15"
-  source_hash: "0506c52fb484e29ccdbe9911be0b5581404784bfb7d4a2d7c0c580e66ff4205f"
+  content_hash: "aea5062194dbacba5200f742e439e7ab7c630ff9b4f3e38157c027578809306f"
+  source_hash: "dbc5ecd8470047f719a2842a75cfd028a31987467281b16f93601c7fddfe4dc3"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGuidanceToolServesOutsideACorpus"
   role: BINDING_ROLE_TESTS
@@ -963,8 +963,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-guidance"
-  content_hash: "9cf78ad2a85f4a99b52d2388118a549937279a7401787c80a7d1e70be661df15"
-  source_hash: "0506c52fb484e29ccdbe9911be0b5581404784bfb7d4a2d7c0c580e66ff4205f"
+  content_hash: "aea5062194dbacba5200f742e439e7ab7c630ff9b4f3e38157c027578809306f"
+  source_hash: "dbc5ecd8470047f719a2842a75cfd028a31987467281b16f93601c7fddfe4dc3"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/cmd.TestGuidanceRefusalsCarryThePackagesWording"
   role: BINDING_ROLE_TESTS
@@ -1043,8 +1043,8 @@ bindings {
 
 bindings {
   requirement_id: "REQ-mcp-guidance"
-  content_hash: "9cf78ad2a85f4a99b52d2388118a549937279a7401787c80a7d1e70be661df15"
-  source_hash: "0506c52fb484e29ccdbe9911be0b5581404784bfb7d4a2d7c0c580e66ff4205f"
+  content_hash: "aea5062194dbacba5200f742e439e7ab7c630ff9b4f3e38157c027578809306f"
+  source_hash: "dbc5ecd8470047f719a2842a75cfd028a31987467281b16f93601c7fddfe4dc3"
   backend: "go"
   symbol: "github.com/greatliontech/stipulator/internal/mcpserver.TestGuidanceDocumentParses"
   role: BINDING_ROLE_TESTS

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/greatliontech/gofresh/runtimeinput"
+	gofresh "github.com/greatliontech/gofresh"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
@@ -88,7 +88,7 @@ func TestReviewedRowsComparatorDefinesIdentity(t *testing.T) {
 }
 
 func TestReviewedDeclarationsRecordAndWithdraw(t *testing.T) {
-	g := &captureGroup{excludedPaths: []string{"z", "a", "a"}, scratchNamespaces: []runtimeinput.ScratchNamespace{{Dir: "z", Pattern: "a*"}, {Dir: "a", Pattern: "z*"}, {Dir: "a", Pattern: "z*"}}}
+	g := &captureGroup{excludedPaths: []string{"z", "a", "a"}, scratchNamespaces: []gofresh.ScratchNamespace{{Dir: "z", Pattern: "a*"}, {Dir: "a", Pattern: "z*"}, {Dir: "a", Pattern: "z*"}}}
 	declarations := declarationsFor(g)
 	g.excludedPaths[0] = "changed"
 	g.scratchNamespaces[0].Dir = "changed"
@@ -123,8 +123,8 @@ func TestReviewedDeclarationsRecordAndWithdraw(t *testing.T) {
 	}{
 		{"both withdrawn", &captureGroup{}, refusedWithdrawnExclusion},
 		{"namespace withdrawn", &captureGroup{excludedPaths: []string{"a", "z"}}, refusedWithdrawnNamespace},
-		{"exclusion withdrawn", &captureGroup{scratchNamespaces: []runtimeinput.ScratchNamespace{{Dir: "a", Pattern: "z*"}, {Dir: "z", Pattern: "a*"}}}, refusedWithdrawnExclusion},
-		{"added rows", &captureGroup{excludedPaths: []string{"a", "b", "z"}, scratchNamespaces: []runtimeinput.ScratchNamespace{{Dir: "a", Pattern: "z*"}, {Dir: "z", Pattern: "a*"}, {Dir: "extra", Pattern: "*"}}}, ""},
+		{"exclusion withdrawn", &captureGroup{scratchNamespaces: []gofresh.ScratchNamespace{{Dir: "a", Pattern: "z*"}, {Dir: "z", Pattern: "a*"}}}, refusedWithdrawnExclusion},
+		{"added rows", &captureGroup{excludedPaths: []string{"a", "b", "z"}, scratchNamespaces: []gofresh.ScratchNamespace{{Dir: "a", Pattern: "z*"}, {Dir: "z", Pattern: "a*"}, {Dir: "extra", Pattern: "*"}}}, ""},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			d := declarationsFor(tt.g)
@@ -136,7 +136,7 @@ func TestReviewedDeclarationsRecordAndWithdraw(t *testing.T) {
 }
 
 func TestReviewedDeclarationsExactRowsNotCoverage(t *testing.T) {
-	d := declarationsFor(&captureGroup{excludedPaths: []string{"parent"}, scratchNamespaces: []runtimeinput.ScratchNamespace{{Dir: ".", Pattern: "*"}}})
+	d := declarationsFor(&captureGroup{excludedPaths: []string{"parent"}, scratchNamespaces: []gofresh.ScratchNamespace{{Dir: ".", Pattern: "*"}}})
 	for _, rec := range []witnesscache.Record{
 		{ObservationExclusions: []string{"parent/child"}},
 		{ObservationNamespaces: []witnesscache.ScratchNamespace{{Dir: ".", Pattern: "run-*"}}},
@@ -167,9 +167,9 @@ func TestReviewedDeclarationThirdTypeUsesSameCollection(t *testing.T) {
 }
 
 func TestReviewedNamespaceCanonicalAdapter(t *testing.T) {
-	rows := []runtimeinput.ScratchNamespace{{Dir: "z", Pattern: "a"}, {Dir: "a", Pattern: "z"}, {Dir: "a", Pattern: "b"}}
+	rows := []gofresh.ScratchNamespace{{Dir: "z", Pattern: "a"}, {Dir: "a", Pattern: "z"}, {Dir: "a", Pattern: "b"}}
 	want := []witnesscache.ScratchNamespace{{Dir: "a", Pattern: "b"}, {Dir: "a", Pattern: "z"}, {Dir: "z", Pattern: "a"}}
-	wantNative := []runtimeinput.ScratchNamespace{{Dir: "a", Pattern: "b"}, {Dir: "a", Pattern: "z"}, {Dir: "z", Pattern: "a"}}
+	wantNative := []gofresh.ScratchNamespace{{Dir: "a", Pattern: "b"}, {Dir: "a", Pattern: "z"}, {Dir: "z", Pattern: "a"}}
 	if got := canonicalReviewedNamespaces(rows); !slices.Equal(got, wantNative) {
 		t.Fatalf("native namespace order drift: %+v", got)
 	}
@@ -181,7 +181,7 @@ func TestReviewedNamespaceCanonicalAdapter(t *testing.T) {
 func TestReviewedCaptureKeyGoldenAndStableRecordIdentity(t *testing.T) {
 	n := &NormalizedInvocation{WitnessEnv: []string{}, Race: true,
 		ExcludedPaths: []string{"z", "a", "a"}, Vouches: []string{"dep.Var"},
-		ScratchNamespaces: []runtimeinput.ScratchNamespace{{Dir: "scratch", Pattern: "run-*"}},
+		ScratchNamespaces: []gofresh.ScratchNamespace{{Dir: "scratch", Pattern: "run-*"}},
 	}
 	want := "tags=\x00env=\x00modulemode=\"GO_MODULE_MODE_UNSPECIFIED\"\x00module_root=\"\"\x00pgo=\"\"\x00args=\x00pure=false\x00race=true\x00exclusions=\"a\",\"z\"\x00vouches=\"dep.Var\"\x00namespaces=\"\\\"scratch\\\",\\\"run-*\\\"\""
 	if got := groupKey(n); got != want {

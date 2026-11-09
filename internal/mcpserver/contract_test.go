@@ -18,8 +18,7 @@ import (
 	"time"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/resident"
-	"github.com/greatliontech/gofresh/runtimeinput"
+	"github.com/greatliontech/stipulator/internal/resident"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/facts"
@@ -647,7 +646,7 @@ func TestPruneToolStoreGC(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-store-gc")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	root := t.TempDir()
-	inputs, err := runtimeinput.Merge(root, nil)
+	inputs, err := gofresh.MergeObservations(root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

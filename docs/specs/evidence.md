@@ -520,7 +520,7 @@ diagnostic and in its witnesses' cause; an invocation the host cannot hold one p
 every package stated — a degraded disposition naming the readings, no
 process and no isolation re-run spawned, the refused witnesses' cause
 naming the reason — rather than spawning into the host's guard; the tool's own process runs under the fleet's soft
-ceiling (gofresh's resident-readings clause: half the room the host has for
+ceiling (`internal/resident`'s resident-readings clause: half the room the host has for
 the process family at its start, floored, never above the operator's
 word), re-derived at each operation's start — rising or
 falling with the host, never pinned by an earlier derivation of its own
@@ -1008,12 +1008,12 @@ toolchain is per module, so the tree root is not a member's sample)
 under the consumer's complete effective environment, a declared
 toolchain pin (invocation or selection) included — on the engine arm
 the invocation's one environment read at normalization, whose
-GOVERSION the group's environment then pins, judged through Gofresh's
-provenance composite; on the selection arms sampled through Gofresh's
-memoized toolchain sampler, one sampler per judged operation (a verb's
+GOVERSION the group's environment then pins, judged through the backend's
+provenance composite (`internal/backends/golang`); on the selection arms sampled through
+`internal/gotool`'s memoized toolchain sampler, one sampler per judged operation (a verb's
 process, a server's per-call operation, a typed load) and
 never per process, so a toolchain replaced under a living memo is
-never judged by its predecessor's sample — by the Gofresh skew
+never judged by its predecessor's sample — by the toolchain-skew
 contract:
 directional within a major (an older compiled-in
 frontend refuses newer sources; a newer frontend reads older language under

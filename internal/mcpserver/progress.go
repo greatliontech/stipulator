@@ -10,7 +10,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	"github.com/greatliontech/gofresh/resident"
+	"github.com/greatliontech/stipulator/internal/resident"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/internal/progress"

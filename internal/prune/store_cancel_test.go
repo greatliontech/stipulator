@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/runtimeinput"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/check"
 	"github.com/greatliontech/stipulator/internal/records"
@@ -19,7 +18,7 @@ func TestStoreGCPropagatesCancellationFromPolicyCapture(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-store-gc")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
-	inputs, err := runtimeinput.Merge(dir, nil)
+	inputs, err := gofresh.MergeObservations(dir, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

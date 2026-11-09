@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/gotool"
+	"github.com/greatliontech/stipulator/internal/gotool"
 	"github.com/greatliontech/stipulator/stipulate"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -45,7 +45,11 @@ func TestSelectionNoticesAttributeUnwalkedSelections(t *testing.T) {
 	// The arms below are race selections: the gate asks the same, so a
 	// host whose race selection cannot be listed (no cgo) skips rather
 	// than reads its own "could not be read" notices as the audit's.
-	if sel, err := gofresh.ResolveToolchainSelection(context.Background(), gotool.NewEnvReader(ownedRunner, dir, ambient), selectionBuildFlags(true, nil)...); err != nil || sel.SelectionNotice != "" {
+	if sel, err := gofresh.ResolveToolchainSelection(context.Background(), gofresh.BuildDescription{
+		Directory:   dir,
+		Environment: ambient,
+		Flags:       selectionBuildFlags(true, nil),
+	}, ownedRunner.PrepareCommand); err != nil || sel.SelectionNotice != "" {
 		t.Skipf("the running toolchain's race selection is not admitted here (%v, %q); the version canary covers this", err, sel.SelectionNotice)
 	}
 	tagged := &stipulatorv1.GoInvocationConfig{}

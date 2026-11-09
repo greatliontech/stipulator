@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/greatliontech/gofresh/runtimeinput"
+	gofresh "github.com/greatliontech/gofresh"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -78,7 +78,7 @@ func TestScratchNamespacesAreAcceptedAsDeclared(t *testing.T) {
 		{"scratch", "run-*.tmp", "scratch/run-9.log", false},
 		{".", "keep", "keep/x", true},
 	} {
-		matched, err := (runtimeinput.ScratchNamespace{Dir: tc.dir, Pattern: tc.pattern}).MatchesPath(tc.path)
+		matched, err := (gofresh.ScratchNamespace{Dir: tc.dir, Pattern: tc.pattern}).MatchesPath(tc.path)
 		if err != nil || matched != tc.want {
 			t.Fatalf("namespace match for %+v: %v %v", tc, matched, err)
 		}
@@ -97,7 +97,7 @@ func TestScratchNamespacesAreAcceptedAsDeclared(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []runtimeinput.ScratchNamespace{{Dir: "a", Pattern: "run-*"}, {Dir: "z", Pattern: "a-*"}, {Dir: "z", Pattern: "b-*"}}
+	want := []gofresh.ScratchNamespace{{Dir: "a", Pattern: "run-*"}, {Dir: "z", Pattern: "a-*"}, {Dir: "z", Pattern: "b-*"}}
 	if len(n.ScratchNamespaces) != len(want) {
 		t.Fatalf("normalized namespaces = %+v, want %+v", n.ScratchNamespaces, want)
 	}
@@ -111,7 +111,7 @@ func TestScratchNamespacesAreAcceptedAsDeclared(t *testing.T) {
 	}
 	// The pair is quoted structurally: no directory or pattern byte
 	// aliases one pair into another.
-	if a, b := reviewedNamespaceRows([]runtimeinput.ScratchNamespace{{Dir: "a\x00b", Pattern: "c"}}), reviewedNamespaceRows([]runtimeinput.ScratchNamespace{{Dir: "a", Pattern: "b\x00c"}}); a[0] == b[0] {
+	if a, b := reviewedNamespaceRows([]gofresh.ScratchNamespace{{Dir: "a\x00b", Pattern: "c"}}), reviewedNamespaceRows([]gofresh.ScratchNamespace{{Dir: "a", Pattern: "b\x00c"}}); a[0] == b[0] {
 		t.Fatalf("two pairs rendered as one row %q", a[0])
 	}
 }
@@ -194,7 +194,7 @@ func TestUsesScratch(t *testing.T) {
 			if len(records) != 1 {
 				t.Fatalf("records after the first run = %d, want 1", len(records))
 			}
-			desc, err := runtimeinput.Describe(records[0].Fingerprint.RuntimeInputs, tmp)
+			desc, err := gofresh.DescribeRuntimeInputs(records[0].Fingerprint.RuntimeInputs, tmp)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -353,7 +353,7 @@ func TestScratchNamespaceCoveredByNoBracketRootIsRefused(t *testing.T) {
 	// The precondition, pure over the invocation: an uncovered namespace
 	// refuses only over a listed closure — a run whose closure could
 	// not be listed admits nothing anywhere and is not refused here.
-	bare := &NormalizedInvocation{Name: "x", Dir: tmp, ScratchNamespaces: []runtimeinput.ScratchNamespace{{Dir: "elsewhere", Pattern: "run-*"}}}
+	bare := &NormalizedInvocation{Name: "x", Dir: tmp, ScratchNamespaces: []gofresh.ScratchNamespace{{Dir: "elsewhere", Pattern: "run-*"}}}
 	if err := scratchNamespacesCovered(bare); err == nil {
 		t.Fatal("an uncovered namespace over an empty listed closure was accepted")
 	}

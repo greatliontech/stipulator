@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	guidancepkg "github.com/greatliontech/gofresh/guidance"
+	guidancepkg "github.com/greatliontech/stipulator/internal/guidance"
 	stipulator "github.com/greatliontech/stipulator"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"

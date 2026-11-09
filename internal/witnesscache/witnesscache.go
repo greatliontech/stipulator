@@ -21,7 +21,6 @@ import (
 	"time"
 
 	gofresh "github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/runtimeinput"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/recordstore"
@@ -410,7 +409,7 @@ func loadEntry(name string, data []byte, dir string) entryAssessment {
 		!validOutcomes(rec) || !validFingerprint(rec.Fingerprint) {
 		return entryAssessment{ledger: digest, refusal: refusal(name, stipulatorv1.WitnessCacheRefusalCause_WITNESS_CACHE_REFUSAL_CAUSE_EVIDENCE_STRUCTURE, "invalid fingerprint, subject agreement or outcomes", nil)}
 	}
-	if _, err := runtimeinput.Describe(rec.Fingerprint.RuntimeInputs, dir); err != nil {
+	if _, err := gofresh.DescribeRuntimeInputs(rec.Fingerprint.RuntimeInputs, dir); err != nil {
 		return entryAssessment{ledger: digest, refusal: refusal(name, stipulatorv1.WitnessCacheRefusalCause_WITNESS_CACHE_REFUSAL_CAUSE_RUNTIME_MANIFEST, err.Error(), &rec)}
 	}
 	return entryAssessment{record: &rec, ledger: digest}

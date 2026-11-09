@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/greatliontech/go-x-tools/go/packages"
-	"github.com/greatliontech/gofresh/gotool"
+	"github.com/greatliontech/stipulator/internal/gotool"
 )
 
 type missingExport struct {

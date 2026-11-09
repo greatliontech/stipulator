@@ -15,9 +15,9 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 
 	gofresh "github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/runtimeinput"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/policy"
@@ -284,7 +284,7 @@ type captureGroup struct {
 	// namespace set, the declaration every package's ingest runs under;
 	// it partitions the group key as exclusions do and re-addresses no
 	// record (the admission rides the engine's proof at both ends).
-	scratchNamespaces []runtimeinput.ScratchNamespace
+	scratchNamespaces []gofresh.ScratchNamespace
 	// invs names the group's member invocations in policy order; the
 	// explain surface reports them as the answering view's identity.
 	invs []string
@@ -866,11 +866,11 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Ses
 	// took — `go env` in this group's module root (under
 	// GOTOOLCHAIN=auto the selected toolchain is per module), whose
 	// GOVERSION the group's environment then pins, so a second spawn
-	// could only re-read it — judged through gofresh's provenance
+	// could only re-read it — judged through the backend's provenance
 	// composite, so a frontend that cannot read what this group's
 	// toolchain builds refuses before any verdict
-	// (REQ-fresh-toolchain-skew) — the go1.27 stale-binary episode's
-	// structural fix, shared with pew and gomutant.
+	// (REQ-evidence-toolchain-provenance) — the go1.27 stale-binary
+	// episode's structural fix, shared with pew and gomutant.
 	if err := checkToolchainProvenance(ctx, filepath.Join(dir, filepath.FromSlash(g.moduleRoot)), g.env, groupSample(g)); err != nil {
 		return nil, err
 	}
@@ -882,10 +882,10 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Ses
 		return nil, err
 	}
 	policy := gofresh.SessionPolicy{
-		EvidenceRoot: dir,
-		Vouches:      slices.Clone(g.vouches),
-		Execution:    gofresh.PackageExecution,
-		Runner:       engineRunner,
+		EvidenceRoot:   dir,
+		Vouches:        slices.Clone(g.vouches),
+		Execution:      gofresh.PackageExecution,
+		PrepareCommand: engineRunner.PrepareCommand,
 		Progress: func(p gofresh.Progress) {
 			emitEngineDiagnostic(p)
 			progress.FromContext(ctx).Keepalive()
@@ -1043,7 +1043,7 @@ func newEngine(ctx context.Context, dir string, env, flags []string, evidenceRoo
 		// The engine's own go commands ride the owned boundary
 		// (REQ-go-owned-processes-runner); the loader's go list children spawn
 		// through x/tools outside any runner.
-		Runner: engineRunner,
+		PrepareCommand: engineRunner.PrepareCommand,
 		Progress: func(p gofresh.Progress) {
 			emitEngineDiagnostic(p)
 			progress.FromContext(ctx).Keepalive()
@@ -1058,12 +1058,38 @@ func newEngine(ctx context.Context, dir string, env, flags []string, evidenceRoo
 var engineDiagnostics io.Writer = os.Stderr
 
 // engineDiagnosticSink is the one sink every engine's diagnostics
-// reach — gofresh's own rendering (Progress.Diagnostic: a multi-line
-// detail folded onto one line), serialized per sink, built once
-// beside the writer and never per engine; it writes through the
+// reach — a multi-line detail folded onto one line, serialized per sink,
+// built once beside the writer and never per engine; it writes through the
 // swappable engineDiagnostics at call time, so a test's swap is
 // honoured.
-var engineDiagnosticSink = gofresh.DiagnosticsTo(writerFunc(func(p []byte) (int, error) { return engineDiagnostics.Write(p) }))
+var engineDiagnosticSink = diagnosticsTo(writerFunc(func(p []byte) (int, error) { return engineDiagnostics.Write(p) }))
+
+func progressDiagnostic(p gofresh.Progress) (string, bool) {
+	detail := strings.ReplaceAll(strings.TrimSpace(p.Detail), "\n", "; ")
+	if detail == "" {
+		return "", false
+	}
+	if p.Phase == "unlisted-toolchain" {
+		return "gofresh: " + detail + "\n", true
+	}
+	if p.Package != "" {
+		return "gofresh: " + p.Phase + " " + p.Package + " — " + detail + "\n", true
+	}
+	return "gofresh: " + p.Phase + " — " + detail + "\n", true
+}
+
+func diagnosticsTo(w io.Writer) func(gofresh.Progress) {
+	var mu sync.Mutex
+	return func(p gofresh.Progress) {
+		line, ok := progressDiagnostic(p)
+		if !ok {
+			return
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		_, _ = io.WriteString(w, line)
+	}
+}
 
 // emitEngineDiagnostic writes a payload-bearing gofresh event
 // (per-subject analysis-unavailable provenance, the unlisted-toolchain

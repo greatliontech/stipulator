@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/greatliontech/gofresh/resident"
+	"github.com/greatliontech/stipulator/internal/resident"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/stipulate"

@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/greatliontech/gofresh/shapecorpus"
+	"github.com/greatliontech/stipulator/internal/shapecorpus"
 )
 
-// TestLanguageShapeCanaries runs the fleet's shared shape corpus
-// (gofresh/shapecorpus) through this backend's symbol resolution and
+// TestLanguageShapeCanaries runs the shape corpus
+// (internal/shapecorpus) through this backend's symbol resolution and
 // content hashing: each entry resolves its SHAPE-CARRYING symbol —
 // the generic method, the alias-signed function, the origin — so the
 // hash path itself sees type parameters and aliases, not only the

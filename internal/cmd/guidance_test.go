@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/greatliontech/gofresh/guidance"
+	"github.com/greatliontech/stipulator/internal/guidance"
 	stipulator "github.com/greatliontech/stipulator"
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/stipulate"

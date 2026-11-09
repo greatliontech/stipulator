@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/runtimeinput"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
@@ -58,7 +57,7 @@ func Example() {
 		t.Fatalf("records=%d", len(records))
 	}
 	for _, rec := range records {
-		description, err := runtimeinput.Describe(rec.Fingerprint.RuntimeInputs, dir)
+		description, err := gofresh.DescribeRuntimeInputs(rec.Fingerprint.RuntimeInputs, dir)
 		if err != nil || !slices.Contains(description.EnvNames, "PWD") {
 			t.Fatalf("stored PWD absent: %+v %v", description, err)
 		}

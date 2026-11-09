@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/greatliontech/gofresh/gotool"
+	"github.com/greatliontech/stipulator/internal/gotool"
 )
 
 func TestRetainedExitObserverAcceptsAlreadyExitedChild(t *testing.T) {

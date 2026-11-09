@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/greatliontech/gofresh/runtimeinput"
+	gofresh "github.com/greatliontech/gofresh"
 	"google.golang.org/protobuf/proto"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -206,7 +206,7 @@ func FuzzGoExecuteTestlogIngestion(f *testing.F) {
 		// One bracket per iteration, captured over the package root before
 		// any mutation, shared by both ingestions so determinism is judged
 		// against one capture — exactly the executor's pre-spawn shape.
-		bracket, err := runtimeinput.CaptureBracket(context.Background(), dir, []string{"p"})
+		bracket, err := gofresh.CaptureBracket(context.Background(), dir, []string{"p"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -218,11 +218,11 @@ func FuzzGoExecuteTestlogIngestion(f *testing.F) {
 			}
 		}
 		env := []string{"HOME=/nonexistent", "PATH=/usr/bin"}
-		ingest := func() (runtimeinput.Observation, error) {
-			return runtimeinput.FromTestLog(log, dir, pkgDir, env,
-				runtimeinput.WithCompletedProcess("fuzz#1:example.com/p"),
-				runtimeinput.WithBracket(bracket),
-				runtimeinput.WithExcludedPaths(".", ".git"))
+		ingest := func() (gofresh.Observation, error) {
+			return gofresh.FromTestLog(log, dir, pkgDir, env,
+				gofresh.WithCompletedProcess("fuzz#1:example.com/p"),
+				gofresh.WithBracket(bracket),
+				gofresh.WithExcludedPaths(".", ".git"))
 		}
 		o1, err1 := ingest()
 		o2, err2 := ingest()
@@ -237,11 +237,11 @@ func FuzzGoExecuteTestlogIngestion(f *testing.F) {
 			}
 			return
 		}
-		s1, err := runtimeinput.CompletedState(o1)
+		s1, err := gofresh.CompletedObservationState(o1)
 		if err != nil {
 			t.Fatalf("accepted ingestion is not sealed completed evidence: %v", err)
 		}
-		s2, err := runtimeinput.CompletedState(o2)
+		s2, err := gofresh.CompletedObservationState(o2)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -250,7 +250,7 @@ func FuzzGoExecuteTestlogIngestion(f *testing.F) {
 		if s1.Manifest != s2.Manifest {
 			t.Fatal("nondeterministic manifest from identical testlog bytes")
 		}
-		if _, err := runtimeinput.ModuleRelPaths(s1.Manifest); err != nil {
+		if _, err := gofresh.ModuleRelRuntimeInputPaths(s1.Manifest); err != nil {
 			t.Fatalf("accepted manifest does not decode: %v", err)
 		}
 		if mutate && !s1.Unverifiable {

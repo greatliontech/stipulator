@@ -3,14 +3,13 @@
 // prose (what a verb does, what a knob controls, when to use which),
 // embedded here because the binary travels while the repository stays
 // home, and parsed once for every surface to project from
-// (gofresh docs/specs/guidance.md is the format contract; this
-// module's serving contract is REQ-mcp-guidance in docs/specs/mcp.md).
+// (REQ-mcp-guidance in docs/specs/mcp.md).
 package stipulator
 
 import (
 	_ "embed"
 
-	"github.com/greatliontech/gofresh/guidance"
+	"github.com/greatliontech/stipulator/internal/guidance"
 )
 
 //go:embed docs/guidance.md
@@ -28,9 +27,9 @@ func GuidanceDocument() (*guidance.Document, error) { return embeddedGuidance.Do
 // Guidance is the embedded guidance document every face reads: a
 // malformed document is a build defect the parse-pinning test
 // surfaces, so a face's construction fails loudly rather than serving
-// nothing (REQ-mcp-guidance). Each served string is one of gofresh's
-// projections of the document — the registration, the knob usage, the
-// schema rendering — read through the accessors below.
+// nothing (REQ-mcp-guidance). Each served string is one of
+// internal/guidance's projections of the document — the registration,
+// the knob usage, the schema rendering — read through the accessors below.
 func Guidance() *guidance.Document { return embeddedGuidance.Must() }
 
 // GuidanceKnob is a verb's knob under a face's spelling, refusing a

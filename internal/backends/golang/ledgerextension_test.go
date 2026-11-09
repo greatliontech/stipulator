@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/gofresh/gotool"
+	"github.com/greatliontech/stipulator/internal/gotool"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/stipulate"
 )
@@ -28,7 +28,7 @@ func TestNativeLedgerExtensionPersistsAcrossRestart(t *testing.T) {
 	newView := func(dir string, env []string) *gofresh.RuntimeBinding {
 		t.Helper()
 		env = gotool.UnsetEnv(env, "STIPULATOR_LEDGER_RESTART")
-		engine, err := gofresh.NewSession(ctx, gofresh.BuildDescription{Directory: dir, Environment: env, Inputs: []string{}}, gofresh.SessionPolicy{EvidenceRoot: dir, Execution: gofresh.PackageExecution, Runner: engineRunner})
+		engine, err := gofresh.NewSession(ctx, gofresh.BuildDescription{Directory: dir, Environment: env, Inputs: []string{}}, gofresh.SessionPolicy{EvidenceRoot: dir, Execution: gofresh.PackageExecution, PrepareCommand: engineRunner.PrepareCommand})
 		if err != nil {
 			t.Fatal(err)
 		}

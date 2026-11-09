@@ -2,7 +2,7 @@ package golang
 
 import (
 	"context"
-	"github.com/greatliontech/gofresh/runtimeinput"
+	gofresh "github.com/greatliontech/gofresh"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -216,7 +216,7 @@ func TestGroupKeySpansBuildDimensions(t *testing.T) {
 		"pgo":         func(n *NormalizedInvocation) { n.PGO = "default.pgo" },
 		"args":        func(n *NormalizedInvocation) { n.Args = []string{"-myflag"} },
 		"scratch": func(n *NormalizedInvocation) {
-			n.ScratchNamespaces = []runtimeinput.ScratchNamespace{{Dir: "scratch", Pattern: "run-*"}}
+			n.ScratchNamespaces = []gofresh.ScratchNamespace{{Dir: "scratch", Pattern: "run-*"}}
 		},
 	} {
 		changed := base()
