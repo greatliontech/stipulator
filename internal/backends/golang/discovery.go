@@ -16,8 +16,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/greatliontech/stipulator/internal/gotool"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/gotool"
 )
 
 // ObligationKind classifies one suite obligation the Go backend defines

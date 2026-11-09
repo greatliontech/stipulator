@@ -4,8 +4,8 @@ import (
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/greatliontech/stipulator/internal/guidance"
 	stipulator "github.com/greatliontech/stipulator"
+	"github.com/greatliontech/stipulator/internal/guidance"
 )
 
 // The served schema machinery every registered tool shares.

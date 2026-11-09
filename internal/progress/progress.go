@@ -31,8 +31,8 @@ import (
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
-	"github.com/greatliontech/stipulator/internal/resident"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/resident"
 )
 
 // defaultInterval is the minimum spacing of non-milestone events.

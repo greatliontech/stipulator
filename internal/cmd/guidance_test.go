@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/greatliontech/stipulator/internal/guidance"
 	stipulator "github.com/greatliontech/stipulator"
+	"github.com/greatliontech/stipulator/internal/guidance"
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/stipulate"
 	"github.com/spf13/cobra"

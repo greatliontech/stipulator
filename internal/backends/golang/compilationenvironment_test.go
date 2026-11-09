@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/greatliontech/stipulator/internal/gotool"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/gotool"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 

@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/greatliontech/stipulator/internal/gotool"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/gotool"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 

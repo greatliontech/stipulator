@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	guidancepkg "github.com/greatliontech/stipulator/internal/guidance"
 	stipulator "github.com/greatliontech/stipulator"
+	guidancepkg "github.com/greatliontech/stipulator/internal/guidance"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )

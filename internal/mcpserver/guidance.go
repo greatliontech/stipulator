@@ -6,8 +6,8 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	guidancepkg "github.com/greatliontech/stipulator/internal/guidance"
 	stipulator "github.com/greatliontech/stipulator"
+	guidancepkg "github.com/greatliontech/stipulator/internal/guidance"
 )
 
 // guidanceDoc is the embedded guidance document; a malformed document

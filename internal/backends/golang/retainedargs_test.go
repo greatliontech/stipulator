@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/greatliontech/stipulator/internal/gotool"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/gotool"
 )
 
 // This is a differential against cmd/go running a REAL test binary. TestMain

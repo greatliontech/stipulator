@@ -20,7 +20,6 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/stipulator/internal/toolversion"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/check"
@@ -30,6 +29,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/recordapply"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/remedy"
+	"github.com/greatliontech/stipulator/internal/toolversion"
 	"github.com/greatliontech/stipulator/internal/verbcore"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/verifyrun"

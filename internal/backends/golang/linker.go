@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/stipulator/internal/gotool"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/gotool"
 	"golang.org/x/mod/module"
 )
 

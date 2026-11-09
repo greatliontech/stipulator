@@ -20,9 +20,9 @@ import (
 	"unicode/utf8"
 
 	"github.com/greatliontech/gofresh"
-	"github.com/greatliontech/stipulator/internal/resident"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
+	"github.com/greatliontech/stipulator/internal/resident"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 

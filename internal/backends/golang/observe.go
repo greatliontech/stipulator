@@ -9,8 +9,8 @@ import (
 	"strconv"
 
 	gofresh "github.com/greatliontech/gofresh"
-	"github.com/greatliontech/stipulator/internal/gotool"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/gotool"
 )
 
 // ProcessObservation pairs the public, non-authorizing process account with the
