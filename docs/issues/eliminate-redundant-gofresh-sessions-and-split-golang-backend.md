@@ -1,6 +1,6 @@
 # Eliminate Redundant `gofresh.Session` / `go list` Passes and Split Oversized `internal/backends/golang` Files
 
-**Lands:** Chunk 6 in `gofresh/docs/plans/plan.md` (`Redesign Snapshot / Sibling Observability Sharing & stipulator Solo Scoping`).
+**Lands:** Chunk 8 in `gofresh/docs/plans/plan.md` (`Downstream Fleet Refactoring, Batching & Startup Purity`).
 
 ## Context & Concrete Findings
 
@@ -31,4 +31,4 @@
 
 ## Resolution
 
-Land all five improvements in Chunk 6 (`gofresh/docs/plans/plan.md`).
+Land all five improvements in Chunk 8 (`gofresh/docs/plans/plan.md`).
